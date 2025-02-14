@@ -9,9 +9,8 @@ LL |     x.owned();
    |
 help: there is a method `to_owned` with a similar name
    |
-LL -     x.owned();
-LL +     x.to_owned();
-   |
+LL |     x.to_owned();
+   |       +++
 
 error[E0599]: no method named `owned` found for mutable reference `&mut dyn Foo` in the current scope
   --> $DIR/object-pointer-types.rs:17:7

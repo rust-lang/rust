@@ -32,9 +32,8 @@ LL |     "\●"
    = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>
 help: if you meant to write a literal backslash (perhaps escaping in a regular expression), consider a raw string literal
    |
-LL -     "\●"
-LL +     r"\●"
-   |
+LL |     r"\●"
+   |     +
 
 error: aborting due to 4 previous errors
 

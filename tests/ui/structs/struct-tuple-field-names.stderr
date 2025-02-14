@@ -30,19 +30,16 @@ LL |     if let E::S { 0: a } = x {
    |
 help: include the missing field in the pattern
    |
-LL -     if let E::S { 0: a } = x {
-LL +     if let E::S { 0: a, 1: _ } = x {
-   |
+LL |     if let E::S { 0: a, 1: _ } = x {
+   |                       ++++++
 help: if you don't care about this missing field, you can explicitly ignore it
    |
-LL -     if let E::S { 0: a } = x {
-LL +     if let E::S { 0: a, 1: _ } = x {
-   |
+LL |     if let E::S { 0: a, 1: _ } = x {
+   |                       ++++++
 help: or always ignore missing fields here
    |
-LL -     if let E::S { 0: a } = x {
-LL +     if let E::S { 0: a, .. } = x {
-   |
+LL |     if let E::S { 0: a, .. } = x {
+   |                       ++++
 
 error: aborting due to 3 previous errors
 

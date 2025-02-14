@@ -24,9 +24,8 @@ LL |     println!("My shape is {:?}", Shape::Circl { size: 5});
    |
 help: there is a variant with a similar name
    |
-LL -     println!("My shape is {:?}", Shape::Circl { size: 5});
-LL +     println!("My shape is {:?}", Shape::Circle { size: 5});
-   |
+LL |     println!("My shape is {:?}", Shape::Circle { size: 5});
+   |                                              +
 
 error[E0599]: no variant named `Rombus` found for enum `Shape`
   --> $DIR/suggest-variants.rs:14:41
@@ -63,9 +62,8 @@ LL |     Shape::Circl;
    |
 help: there is a variant with a similar name
    |
-LL -     Shape::Circl;
-LL +     Shape::Circle { radius: /* value */ };
-   |
+LL |     Shape::Circle { radius: /* value */ };
+   |                 +++++++++++++++++++++++++
 
 error[E0599]: no variant or associated item named `Rombus` found for enum `Shape` in the current scope
   --> $DIR/suggest-variants.rs:17:12

@@ -9,9 +9,8 @@ LL |     let _ = std::collections::HashMap();
    |
 help: you might have meant to use an associated function to build this type
    |
-LL -     let _ = std::collections::HashMap();
-LL +     let _ = std::collections::HashMap::new();
-   |
+LL |     let _ = std::collections::HashMap::new();
+   |                                      +++++
 LL -     let _ = std::collections::HashMap();
 LL +     let _ = std::collections::HashMap::with_capacity(_);
    |
@@ -23,9 +22,8 @@ LL +     let _ = std::collections::HashMap::with_capacity_and_hasher(_, _);
    |
 help: consider using the `Default` trait
    |
-LL -     let _ = std::collections::HashMap();
-LL +     let _ = <std::collections::HashMap as std::default::Default>::default();
-   |
+LL |     let _ = <std::collections::HashMap as std::default::Default>::default();
+   |             +                          ++++++++++++++++++++++++++++++++++
 
 error[E0423]: cannot initialize a tuple struct which contains private fields
   --> $DIR/suggest-box-new.rs:8:19

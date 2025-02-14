@@ -39,9 +39,8 @@ LL |     modul::foo();
    |
 help: there is a crate or module with a similar name
    |
-LL -     modul::foo();
-LL +     module::foo();
-   |
+LL |     module::foo();
+   |          +
 
 error[E0433]: failed to resolve: use of undeclared type `Trai`
   --> $DIR/typo-suggestion-mistyped-in-path.rs:39:5

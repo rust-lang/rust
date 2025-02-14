@@ -9,9 +9,8 @@ LL |     let _ = unsafe { (&TEST) as *const usize };
    = note: `#[warn(static_mut_refs)]` on by default
 help: use `&raw const` instead to create a raw pointer
    |
-LL -     let _ = unsafe { (&TEST) as *const usize };
-LL +     let _ = unsafe { (&raw const TEST) as *const usize };
-   |
+LL |     let _ = unsafe { (&raw const TEST) as *const usize };
+   |                        +++++++++
 
 warning: creating a mutable reference to mutable static is discouraged
   --> $DIR/static-mut-shared-parens.rs:11:22

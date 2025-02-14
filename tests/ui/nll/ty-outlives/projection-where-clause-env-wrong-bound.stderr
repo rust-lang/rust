@@ -9,9 +9,8 @@ LL |     bar::<T::Output>()
    |
 help: consider adding an explicit lifetime bound
    |
-LL -     <T as MyTrait<'a>>::Output: 'b,
-LL +     <T as MyTrait<'a>>::Output: 'b, <T as MyTrait<'a>>::Output: 'a
-   |
+LL |     <T as MyTrait<'a>>::Output: 'b, <T as MyTrait<'a>>::Output: 'a
+   |                                     ++++++++++++++++++++++++++++++
 
 error: aborting due to 1 previous error
 

@@ -10,9 +10,8 @@ LL |     const CRATE: Crate = Crate { fiel: () };
    = note: this error originates in the macro `environment` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: a field with a similar name exists
    |
-LL -     const CRATE: Crate = Crate { fiel: () };
-LL +     const CRATE: Crate = Crate { field: () };
-   |
+LL |     const CRATE: Crate = Crate { field: () };
+   |                                      +
 
 error[E0609]: no field `field` on type `Compound`
   --> $DIR/dont-suggest-hygienic-fields.rs:24:16

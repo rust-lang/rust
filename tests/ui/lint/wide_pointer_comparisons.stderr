@@ -627,9 +627,8 @@ LL |         cmp!(a, b);
    |
 help: use `std::ptr::addr_eq` or untyped pointers to only compare their addresses
    |
-LL -         cmp!(a, b);
-LL +         cmp!(std::ptr::addr_eq(a, b));
-   |
+LL |         cmp!(std::ptr::addr_eq(a, b));
+   |              ++++++++++++++++++    +
 
 warning: ambiguous wide pointer comparison, the comparison includes metadata which may not be expected
   --> $DIR/wide_pointer_comparisons.rs:159:39

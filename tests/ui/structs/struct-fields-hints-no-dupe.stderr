@@ -6,9 +6,8 @@ LL |         bar : 42,
    |
 help: a field with a similar name exists
    |
-LL -         bar : 42,
-LL +         barr : 42,
-   |
+LL |         barr : 42,
+   |            +
 
 error: aborting due to 1 previous error
 
