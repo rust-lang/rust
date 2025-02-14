@@ -300,7 +300,6 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
                         inspect::ProbeKind::NormalizedSelfTyAssembly
                         | inspect::ProbeKind::UnsizeAssembly
                         | inspect::ProbeKind::Root { .. }
-                        | inspect::ProbeKind::TryNormalizeNonRigid { .. }
                         | inspect::ProbeKind::TraitCandidate { .. }
                         | inspect::ProbeKind::OpaqueTypeStorageLookup { .. }
                         | inspect::ProbeKind::RigidAlias { .. } => {
@@ -325,7 +324,6 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
             // We add a candidate even for the root evaluation if there
             // is only one way to prove a given goal, e.g. for `WellFormed`.
             inspect::ProbeKind::Root { result }
-            | inspect::ProbeKind::TryNormalizeNonRigid { result }
             | inspect::ProbeKind::TraitCandidate { source: _, result }
             | inspect::ProbeKind::OpaqueTypeStorageLookup { result }
             | inspect::ProbeKind::RigidAlias { result } => {
