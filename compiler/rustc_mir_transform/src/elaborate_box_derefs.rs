@@ -4,11 +4,12 @@
 
 use rustc_abi::FieldIdx;
 use rustc_hir::def_id::DefId;
-use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{Ty, TyCtxt};
+
+use crate::patch::MirPatch;
 
 /// Constructs the types used when accessing a Box's pointer
 fn build_ptr_tys<'tcx>(
