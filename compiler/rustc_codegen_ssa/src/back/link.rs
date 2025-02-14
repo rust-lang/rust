@@ -578,7 +578,7 @@ fn link_dwarf_object(sess: &Session, cg_results: &CodegenResults, executable_out
         }
 
         fn read_input(&self, path: &Path) -> std::io::Result<&[u8]> {
-            let mmap = (unsafe { Mmap::map(&path) })?;
+            let mmap = Mmap::map(&path)?;
             Ok(self.alloc_mmap(mmap))
         }
     }

@@ -137,10 +137,8 @@ pub trait ArchiveBuilderBuilder {
         outdir: &Path,
         bundled_lib_file_names: &FxIndexSet<Symbol>,
     ) -> Result<(), ExtractBundledLibsError<'a>> {
-        let archive_map = unsafe {
-            Mmap::map(rlib)
-                .map_err(|e| ExtractBundledLibsError::MmapFile { rlib, error: Box::new(e) })?
-        };
+        let archive_map = Mmap::map(rlib)
+            .map_err(|e| ExtractBundledLibsError::MmapFile { rlib, error: Box::new(e) })?;
         let archive = ArchiveFile::parse(&*archive_map)
             .map_err(|e| ExtractBundledLibsError::ParseArchive { rlib, error: Box::new(e) })?;
 
@@ -360,7 +358,7 @@ pub fn try_extract_macho_fat_archive(
     sess: &Session,
     archive_path: &Path,
 ) -> io::Result<Option<PathBuf>> {
-    let archive_map = unsafe { Mmap::map(&archive_path)? };
+    let archive_map = Mmap::map(&archive_path)?;
     let target_arch = match sess.target.arch.as_ref() {
         "aarch64" => object::Architecture::Aarch64,
         "x86_64" => object::Architecture::X86_64,
@@ -397,7 +395,7 @@ impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
             return Ok(());
         }
 
-        let archive_map = unsafe { Mmap::map(&archive_path)? };
+        let archive_map = Mmap::map(&archive_path)?;
         let archive = ArchiveFile::parse(&*archive_map)
             .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
         let archive_index = self.src_archives.len();
@@ -469,12 +467,10 @@ impl<'a> ArArchiveBuilder<'a> {
 
                     Box::new(data) as Box<dyn AsRef<[u8]>>
                 }
-                ArchiveEntry::File(file) => unsafe {
-                    Box::new(
-                        Mmap::map(file)
-                            .map_err(|err| io_error_context("failed to map object file", err))?,
-                    ) as Box<dyn AsRef<[u8]>>
-                },
+                ArchiveEntry::File(file) => Box::new(
+                    Mmap::map(file)
+                        .map_err(|err| io_error_context("failed to map object file", err))?,
+                ) as Box<dyn AsRef<[u8]>>,
             };
 
             entries.push(NewArchiveMember {
