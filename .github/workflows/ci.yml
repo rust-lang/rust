@@ -179,6 +179,7 @@ jobs:
       # Pre-build citool before the following step uninstalls rustup
       # Build is into the build directory, to avoid modifying sources
       - name: build citool
+        if: needs.calculate_matrix.outputs.run_type != 'pr'
         run: |
           cd src/ci/citool
           CARGO_TARGET_DIR=../../../build/citool cargo build
