@@ -768,23 +768,22 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let outlived_fr_name = self.give_region_a_name(*outlived_fr).unwrap();
         outlived_fr_name.highlight_region_name(&mut diag);
 
-        let err_category = match category {
-            ConstraintCategory::Return(_)
-                if self.regioncx.universal_regions().is_local_free_region(*outlived_fr) =>
-            {
-                LifetimeReturnCategoryErr::WrongReturn {
-                    span: *span,
-                    mir_def_name,
-                    outlived_fr_name,
-                    fr_name: &fr_name,
-                }
+        let err_category = if matches!(category, ConstraintCategory::Return(_))
+            && self.regioncx.universal_regions().is_local_free_region(*outlived_fr)
+        {
+            LifetimeReturnCategoryErr::WrongReturn {
+                span: *span,
+                mir_def_name,
+                outlived_fr_name,
+                fr_name: &fr_name,
             }
-            _ => LifetimeReturnCategoryErr::ShortReturn {
+        } else {
+            LifetimeReturnCategoryErr::ShortReturn {
                 span: *span,
                 category_desc: category.description(),
                 free_region_name: &fr_name,
                 outlived_fr_name,
-            },
+            }
         };
 
         diag.subdiagnostic(err_category);
