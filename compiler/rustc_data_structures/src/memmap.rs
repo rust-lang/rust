@@ -3,12 +3,19 @@ use std::io;
 use std::ops::{Deref, DerefMut};
 use std::path::Path;
 
+use crate::flock::Lock;
+
 /// A trivial wrapper for [`memmap2::Mmap`] (or `Vec<u8>` on WASM).
 #[cfg(not(any(miri, target_arch = "wasm32")))]
-pub struct Mmap(memmap2::Mmap);
+pub struct Mmap {
+    map: memmap2::Mmap,
+    _lock: Option<Lock>,
+}
 
 #[cfg(any(miri, target_arch = "wasm32"))]
-pub struct Mmap(Vec<u8>);
+pub struct Mmap {
+    map: Vec<u8>,
+}
 
 #[cfg(not(any(miri, target_arch = "wasm32")))]
 impl Mmap {
@@ -19,7 +26,9 @@ impl Mmap {
     /// However in practice most callers do not ensure this, so uses of this function are likely unsound.
     #[inline]
     pub unsafe fn map(path: impl AsRef<Path>) -> io::Result<Self> {
+        let path = path.as_ref();
         let file = File::open(path)?;
+        let _lock = Some(Lock::new(path, true, false, false)?);
         // By default, memmap2 creates shared mappings, implying that we could see updates to the
         // file through the mapping. That would violate our precondition; so by requesting a
         // map_copy_read_only we do not lose anything.
@@ -27,7 +36,9 @@ impl Mmap {
         // For more details see https://github.com/rust-lang/rust/issues/122262
         //
         // SAFETY: The caller must ensure that this is safe.
-        unsafe { Ok(Self(memmap2::MmapOptions::new().map_copy_read_only(&file)?)) }
+
+        let map = unsafe { memmap2::MmapOptions::new().map_copy_read_only(&file)? };
+        Ok(Self { _lock, map })
     }
 }
 
@@ -44,13 +55,13 @@ impl Deref for Mmap {
 
     #[inline]
     fn deref(&self) -> &[u8] {
-        &self.0
+        &self.map
     }
 }
 
 impl AsRef<[u8]> for Mmap {
     fn as_ref(&self) -> &[u8] {
-        &self.0
+        &self.map
     }
 }
 
@@ -75,8 +86,8 @@ impl MmapMut {
 
     #[inline]
     pub fn make_read_only(self) -> std::io::Result<Mmap> {
-        let mmap = self.0.make_read_only()?;
-        Ok(Mmap(mmap))
+        let map = self.0.make_read_only()?;
+        Ok(Mmap { map, _lock: None })
     }
 }
 
@@ -95,7 +106,7 @@ impl MmapMut {
 
     #[inline]
     pub fn make_read_only(self) -> std::io::Result<Mmap> {
-        Ok(Mmap(self.0))
+        Ok(Mmap { map: self.0 })
     }
 }
 
