@@ -217,6 +217,7 @@ impl Step for GenerateCopyright {
         cmd.env("DEST", &dest);
         cmd.env("DEST_LIBSTD", &dest_libstd);
         cmd.env("OUT_DIR", &builder.out);
+        cmd.env("SRC_DIR", &builder.src);
         cmd.env("CARGO", &builder.initial_cargo);
         // it is important that generate-copyright runs from the root of the
         // source tree, because it uses relative paths
