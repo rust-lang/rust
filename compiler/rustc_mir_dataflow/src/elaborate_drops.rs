@@ -240,6 +240,8 @@ where
                         target: self.succ,
                         unwind: self.unwind.into_action(),
                         replace: false,
+                        drop: None,
+                        async_fut: None,
                     },
                 );
             }
@@ -739,6 +741,8 @@ where
                 target: loop_block,
                 unwind: unwind.into_action(),
                 replace: false,
+                drop: None,
+                async_fut: None,
             },
         );
 
@@ -976,6 +980,8 @@ where
             target,
             unwind: unwind.into_action(),
             replace: false,
+            drop: None,
+            async_fut: None,
         };
         self.new_block(unwind, block)
     }
