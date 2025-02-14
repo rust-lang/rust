@@ -9,6 +9,7 @@ fn slice_iter_next(_1: &mut std::slice::Iter<'_, T>) -> Option<&T> {
         let mut _7: bool;
         let mut _10: std::ptr::NonNull<T>;
         let mut _12: usize;
+        let _14: &T;
         scope 2 {
             let _3: *const T;
             scope 3 {
@@ -41,6 +42,13 @@ fn slice_iter_next(_1: &mut std::slice::Iter<'_, T>) -> Option<&T> {
                     scope 15 (inlined NonNull::<T>::as_ptr) {
                     }
                 }
+                scope 16 (inlined NonNull::<T>::as_ref::<'_>) {
+                    let _13: *const T;
+                    scope 17 (inlined NonNull::<T>::as_ptr) {
+                    }
+                    scope 18 (inlined std::ptr::mut_ptr::<impl *mut T>::cast_const) {
+                    }
+                }
             }
         }
     }
@@ -51,6 +59,7 @@ fn slice_iter_next(_1: &mut std::slice::Iter<'_, T>) -> Option<&T> {
         StorageLive(_11);
         StorageLive(_12);
         StorageLive(_4);
+        StorageLive(_14);
         _2 = copy ((*_1).0: std::ptr::NonNull<T>);
         _3 = copy ((*_1).1: *const T);
         switchInt(const <T as std::mem::SizedTypeProperties>::IS_ZST) -> [0: bb1, otherwise: bb4];
@@ -107,11 +116,16 @@ fn slice_iter_next(_1: &mut std::slice::Iter<'_, T>) -> Option<&T> {
     }
 
     bb7: {
-        _0 = copy _2 as std::option::Option<&T> (Transmute);
+        StorageLive(_13);
+        _13 = copy _2 as *const T (Transmute);
+        _14 = &(*_13);
+        StorageDead(_13);
+        _0 = Option::<&T>::Some(copy _14);
         goto -> bb8;
     }
 
     bb8: {
+        StorageDead(_14);
         StorageDead(_4);
         StorageDead(_12);
         StorageDead(_11);

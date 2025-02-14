@@ -173,7 +173,7 @@ macro_rules! iterator {
                         }
                         self.ptr = ptr.add(1);
                     }
-                    crate::intrinsics::transmute::<NonNull<T>, Option<$elem>>(ptr)
+                    Some({ptr}.$into_ref())
                 }
             }
 
