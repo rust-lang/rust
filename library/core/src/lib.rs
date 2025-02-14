@@ -127,6 +127,7 @@
 #![feature(ub_checks)]
 #![feature(unchecked_neg)]
 #![feature(unchecked_shifts)]
+#![feature(unsafe_pinned)]
 #![feature(utf16_extra)]
 #![feature(variant_count)]
 // tidy-alphabetical-end

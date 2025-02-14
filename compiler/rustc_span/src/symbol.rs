@@ -2215,6 +2215,8 @@ symbols! {
         unsafe_fields,
         unsafe_no_drop_flag,
         unsafe_pin_internals,
+        unsafe_pinned,
+        unsafe_unpin,
         unsize,
         unsized_const_param_ty,
         unsized_const_params,
