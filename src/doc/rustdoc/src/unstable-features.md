@@ -264,7 +264,7 @@ the flag in question to Rustdoc on the command-line. To do this from Cargo, you 
 By default, `rustdoc` does not document items that are annotated with
 [`#[doc(hidden)]`](write-documentation/the-doc-attribute.html#hidden).
 
-`--document-hidden-items` causes all items to be documented as if they did not have `#[doc(hidden)]`.
+`--document-hidden-items` causes all items to be documented as if they did not have `#[doc(hidden)]`, except that hidden items will be shown with a 👻 icon.
 
 Here is a table that fully describes which items are documented with each combination of `--document-hidden-items` and `--document-private-items`:
 
