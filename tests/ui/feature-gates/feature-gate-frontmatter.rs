@@ -1,6 +1,7 @@
 ---
-//~^ ERROR expected item, found `-`
 ---
+
+//@ check-pass
 
 pub fn main() {
 }

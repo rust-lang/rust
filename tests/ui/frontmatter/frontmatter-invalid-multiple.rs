@@ -1,8 +1,8 @@
 ---cargo
-//~^ ERROR expected item, found `-`
 ---
 
 ---buck
+//~^ ERROR expected item, found `-`
 ---
 
 #![feature(frontmatter)]
