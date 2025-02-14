@@ -12,9 +12,8 @@ LL | #![deny(unused)]
    = note: `#[deny(unused_variables)]` implied by `#[deny(unused)]`
 help: try ignoring the field
    |
-LL -         A { i, j } | B { i, j } => {
-LL +         A { i, j: _ } | B { i, j: _ } => {
-   |
+LL |         A { i, j: _ } | B { i, j: _ } => {
+   |                 +++             +++
 
 error: unused variable: `j`
   --> $DIR/issue-67691-unused-field-in-or-pattern.rs:30:16
@@ -36,9 +35,8 @@ LL |         Some(A { i, j } | B { i, j }) => {
    |
 help: try ignoring the field
    |
-LL -         Some(A { i, j } | B { i, j }) => {
-LL +         Some(A { i, j: _ } | B { i, j: _ }) => {
-   |
+LL |         Some(A { i, j: _ } | B { i, j: _ }) => {
+   |                      +++             +++
 
 error: unused variable: `j`
   --> $DIR/issue-67691-unused-field-in-or-pattern.rs:52:21

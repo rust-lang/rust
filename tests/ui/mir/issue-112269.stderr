@@ -11,9 +11,8 @@ LL |     let x: i32 = 3;
    = note: the matched value is of type `i32`
 help: introduce a variable instead
    |
-LL -     let x: i32 = 3;
-LL +     let x_var: i32 = 3;
-   |
+LL |     let x_var: i32 = 3;
+   |          ++++
 
 error[E0005]: refutable pattern in local binding
   --> $DIR/issue-112269.rs:7:9
@@ -28,9 +27,8 @@ LL |     let y = 4;
    = note: the matched value is of type `i32`
 help: introduce a variable instead
    |
-LL -     let y = 4;
-LL +     let y_var = 4;
-   |
+LL |     let y_var = 4;
+   |          ++++
 
 error: aborting due to 2 previous errors
 

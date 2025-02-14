@@ -8,9 +8,8 @@ LL |         Foo:Bar => {}
    |
 help: maybe write a path separator here
    |
-LL -         Foo:Bar => {}
-LL +         Foo::Bar => {}
-   |
+LL |         Foo::Bar => {}
+   |             +
 
 error: expected one of `!`, `(`, `...`, `..=`, `..`, `::`, `{`, or `|`, found `:`
   --> $DIR/issue-87086-colon-path-sep.rs:23:17
@@ -22,9 +21,8 @@ LL |         qux::Foo:Bar => {}
    |
 help: maybe write a path separator here
    |
-LL -         qux::Foo:Bar => {}
-LL +         qux::Foo::Bar => {}
-   |
+LL |         qux::Foo::Bar => {}
+   |                  +
 
 error: expected one of `@` or `|`, found `:`
   --> $DIR/issue-87086-colon-path-sep.rs:29:12
@@ -36,9 +34,8 @@ LL |         qux:Foo::Baz => {}
    |
 help: maybe write a path separator here
    |
-LL -         qux:Foo::Baz => {}
-LL +         qux::Foo::Baz => {}
-   |
+LL |         qux::Foo::Baz => {}
+   |             +
 
 error: expected one of `@` or `|`, found `:`
   --> $DIR/issue-87086-colon-path-sep.rs:35:12
@@ -50,9 +47,8 @@ LL |         qux: Foo::Baz if true => {}
    |
 help: maybe write a path separator here
    |
-LL -         qux: Foo::Baz if true => {}
-LL +         qux::Foo::Baz if true => {}
-   |
+LL |         qux::Foo::Baz if true => {}
+   |            ~~
 
 error: expected one of `@` or `|`, found `:`
   --> $DIR/issue-87086-colon-path-sep.rs:40:15
@@ -64,9 +60,8 @@ LL |     if let Foo:Bar = f() {
    |
 help: maybe write a path separator here
    |
-LL -     if let Foo:Bar = f() {
-LL +     if let Foo::Bar = f() {
-   |
+LL |     if let Foo::Bar = f() {
+   |                +
 
 error: expected one of `@` or `|`, found `:`
   --> $DIR/issue-87086-colon-path-sep.rs:49:16
@@ -78,9 +73,8 @@ LL |         ref qux: Foo::Baz => {}
    |
 help: maybe write a path separator here
    |
-LL -         ref qux: Foo::Baz => {}
-LL +         ref qux::Foo::Baz => {}
-   |
+LL |         ref qux::Foo::Baz => {}
+   |                ~~
 
 error: expected one of `@` or `|`, found `:`
   --> $DIR/issue-87086-colon-path-sep.rs:58:16
@@ -92,9 +86,8 @@ LL |         mut qux: Foo::Baz => {}
    |
 help: maybe write a path separator here
    |
-LL -         mut qux: Foo::Baz => {}
-LL +         mut qux::Foo::Baz => {}
-   |
+LL |         mut qux::Foo::Baz => {}
+   |                ~~
 
 error: expected one of `@` or `|`, found `:`
   --> $DIR/issue-87086-colon-path-sep.rs:69:12
@@ -106,9 +99,8 @@ LL |         Foo:Bar::Baz => {}
    |
 help: maybe write a path separator here
    |
-LL -         Foo:Bar::Baz => {}
-LL +         Foo::Bar::Baz => {}
-   |
+LL |         Foo::Bar::Baz => {}
+   |             +
 
 error: expected one of `@` or `|`, found `:`
   --> $DIR/issue-87086-colon-path-sep.rs:75:12
@@ -120,9 +112,8 @@ LL |         Foo:Bar => {}
    |
 help: maybe write a path separator here
    |
-LL -         Foo:Bar => {}
-LL +         Foo::Bar => {}
-   |
+LL |         Foo::Bar => {}
+   |             +
 
 warning: irrefutable `if let` pattern
   --> $DIR/issue-87086-colon-path-sep.rs:40:8

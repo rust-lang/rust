@@ -13,9 +13,8 @@ LL |     fn values(&self) -> Self::Values;
               found signature `fn(Option<_>)`
 help: change the self-receiver type to match the trait
    |
-LL -     fn values(self) -> Self::Values {
-LL +     fn values(&self) -> Self::Values {
-   |
+LL |     fn values(&self) -> Self::Values {
+   |               +
 
 error[E0631]: type mismatch in function arguments
   --> $DIR/mismatched-map-under-self.rs:12:18
