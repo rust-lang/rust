@@ -13,29 +13,9 @@ use rustc_span::DUMMY_SP;
 use rustc_span::source_map::Spanned;
 use tracing::{debug, instrument};
 
-/// The value of an inserted drop flag.
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
-pub enum DropFlagState {
-    /// The tracked value is initialized and needs to be dropped when leaving its scope.
-    Present,
-
-    /// The tracked value is uninitialized or was moved out of and does not need to be dropped when
-    /// leaving its scope.
-    Absent,
-}
-
-impl DropFlagState {
-    pub fn value(self) -> bool {
-        match self {
-            DropFlagState::Present => true,
-            DropFlagState::Absent => false,
-        }
-    }
-}
-
 /// Describes how/if a value should be dropped.
 #[derive(Debug)]
-pub enum DropStyle {
+pub(crate) enum DropStyle {
     /// The value is already dead at the drop location, no drop will be executed.
     Dead,
 
@@ -56,7 +36,7 @@ pub enum DropStyle {
 
 /// Which drop flags to affect/check with an operation.
 #[derive(Debug)]
-pub enum DropFlagMode {
+pub(crate) enum DropFlagMode {
     /// Only affect the top-level drop flag, not that of any contained fields.
     Shallow,
     /// Affect all nested drop flags in addition to the top-level one.
@@ -65,7 +45,7 @@ pub enum DropFlagMode {
 
 /// Describes if unwinding is necessary and where to unwind to if a panic occurs.
 #[derive(Copy, Clone, Debug)]
-pub enum Unwind {
+pub(crate) enum Unwind {
     /// Unwind to this block.
     To(BasicBlock),
     /// Already in an unwind path, any panic will cause an abort.
@@ -98,7 +78,7 @@ impl Unwind {
     }
 }
 
-pub trait DropElaborator<'a, 'tcx>: fmt::Debug {
+pub(crate) trait DropElaborator<'a, 'tcx>: fmt::Debug {
     /// The type representing paths that can be moved out of.
     ///
     /// Users can move out of individual fields of a struct, such as `a.b.c`. This type is used to
@@ -177,7 +157,7 @@ where
 /// value.
 ///
 /// When this returns, the MIR patch in the `elaborator` contains the necessary changes.
-pub fn elaborate_drop<'b, 'tcx, D>(
+pub(crate) fn elaborate_drop<'b, 'tcx, D>(
     elaborator: &mut D,
     source_info: SourceInfo,
     place: Place<'tcx>,

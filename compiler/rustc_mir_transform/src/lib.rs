@@ -49,6 +49,7 @@ mod check_pointers;
 mod cost_checker;
 mod cross_crate_inline;
 mod deduce_param_attrs;
+mod elaborate_drop;
 mod errors;
 mod ffi_unwind_calls;
 mod lint;
