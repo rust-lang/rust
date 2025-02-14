@@ -336,12 +336,7 @@ impl<'ll> CodegenCx<'ll, '_> {
             llvm::set_thread_local_mode(g, self.tls_model);
         }
 
-        let dso_local = self.should_assume_dso_local(g, true);
-        if dso_local {
-            unsafe {
-                llvm::LLVMRustSetDSOLocal(g, true);
-            }
-        }
+        let dso_local = self.assume_dso_local(g, true);
 
         if !def_id.is_local() {
             let needs_dll_storage_attr = self.use_dll_storage_attrs
@@ -456,9 +451,7 @@ impl<'ll> CodegenCx<'ll, '_> {
             set_global_alignment(self, g, alloc.align);
             llvm::set_initializer(g, v);
 
-            if self.should_assume_dso_local(g, true) {
-                llvm::LLVMRustSetDSOLocal(g, true);
-            }
+            self.assume_dso_local(g, true);
 
             // Forward the allocation's mutability (picked by the const interner) to LLVM.
             if alloc.mutability.is_not() {
