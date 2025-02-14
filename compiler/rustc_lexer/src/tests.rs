@@ -124,6 +124,119 @@ fn test_valid_shebang() {
     assert_eq!(strip_shebang(input), None);
 }
 
+#[test]
+fn test_frontmatter() {
+    let input = "---
+---
+";
+    assert_eq!(strip_frontmatter(input), Some(input.len()));
+
+    let input = "---
+package.edition = '2024'
+
+[dependencies]
+regex = '1'
+---
+";
+    assert_eq!(strip_frontmatter(input), Some(input.len()));
+
+    // allow ident infostring
+    let input = "---cargo
+
+---
+";
+    assert_eq!(strip_frontmatter(input), Some(input.len()));
+
+    // disallow non-ident infostring
+    let input = "---cargo hello
+
+---
+";
+    assert_eq!(strip_frontmatter(input), None);
+
+    // ignore extra whitespace
+    let input = "
+
+
+---\u{0020}
+
+---\u{0020}
+";
+    assert_eq!(strip_frontmatter(input), Some(input.len()));
+
+    // disallow indented opening/close
+    let input = "  ---
+  ---
+";
+    assert_eq!(strip_frontmatter(input), None);
+
+    // ignore inner dashes not at line start
+    let input = "---
+
+  ---
+  ---
+
+---
+";
+    assert_eq!(strip_frontmatter(input), Some(input.len()));
+
+    // ignore fewer dashes inside
+    let input = "-----
+
+---
+---
+
+-----
+";
+    assert_eq!(strip_frontmatter(input), Some(input.len()));
+
+    // disallow more dashes inside
+    let input = "---
+
+-----
+-----
+
+---
+";
+    assert_eq!(strip_frontmatter(input), None);
+
+    // disallow mismatch close
+    let input = "----
+
+---
+";
+    assert_eq!(strip_frontmatter(input), None);
+
+    // disallow unclosed
+    let input = "---
+
+";
+    assert_eq!(strip_frontmatter(input), None);
+
+    // disallow short open/close
+    let input = "--
+
+--
+";
+    assert_eq!(strip_frontmatter(input), None);
+
+    // disallow content before
+    let input = "#![feature(frontmatter)]
+
+---
+---
+";
+    assert_eq!(strip_frontmatter(input), None);
+
+    // disallow trailing text
+    let input = "#![feature(frontmatter)]
+
+---
+---cargo
+";
+    assert_eq!(strip_frontmatter(input), None);
+}
+
 fn check_lexing(src: &str, expect: Expect) {
     let actual: String = tokenize(src).map(|token| format!("{:?}\n", token)).collect();
     expect.assert_eq(&actual)
