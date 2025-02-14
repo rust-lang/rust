@@ -585,6 +585,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(ty)) => {
                         let ty = self.resolve_vars_if_possible(ty);
                         if self.next_trait_solver() {
+                            if let Err(guar) = ty.error_reported() {
+                                return guar;
+                            }
+
                             // FIXME: we'll need a better message which takes into account
                             // which bounds actually failed to hold.
                             self.dcx().struct_span_err(
