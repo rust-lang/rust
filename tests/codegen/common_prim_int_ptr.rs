@@ -40,7 +40,7 @@ pub unsafe fn extract_int(x: Result<usize, Box<()>>) -> usize {
 }
 
 // CHECK-LABEL: @extract_box
-// CHECK-SAME: (i{{[0-9]+}} {{[^%]+}} [[DISCRIMINANT:%[0-9]+]], ptr {{[^,]+}} [[PAYLOAD:%[0-9]+]])
+// CHECK-SAME: (i{{[0-9]+}} {{[^%]+}} [[DISCRIMINANT:%[0-9]+]], ptr {{[^%]+}} [[PAYLOAD:%[0-9]+]])
 #[no_mangle]
 pub unsafe fn extract_box(x: Result<usize, Box<i32>>) -> Box<i32> {
     // CHECK: ret ptr [[PAYLOAD]]
