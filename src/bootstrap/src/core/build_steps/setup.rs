@@ -527,6 +527,7 @@ enum EditorKind {
     Helix,
     Vim,
     VsCode,
+    Zed,
 }
 
 impl EditorKind {
@@ -536,6 +537,7 @@ impl EditorKind {
 2. Helix
 3. Vim
 4. VS Code
+5. Zed
 
 Select which editor you would like to set up [default: None]: ";
 
@@ -552,6 +554,7 @@ Select which editor you would like to set up [default: None]: ";
                 "2" | "helix" => return Ok(Some(EditorKind::Helix)),
                 "3" | "vim" => return Ok(Some(EditorKind::Vim)),
                 "4" | "vscode" => return Ok(Some(EditorKind::VsCode)),
+                "5" | "zed" => return Ok(Some(EditorKind::Zed)),
                 "" | "none" => return Ok(None),
                 _ => {
                     eprintln!("ERROR: unrecognized option '{}'", input.trim());
@@ -587,6 +590,9 @@ Select which editor you would like to set up [default: None]: ";
                 "4eecb58a2168b252077369da446c30ed0e658301efe69691979d1ef0443928f4",
                 "c394386e6133bbf29ffd32c8af0bb3d4aac354cba9ee051f29612aa9350f8f8d",
             ],
+            EditorKind::Zed => {
+                &["bbce727c269d1bd0c98afef4d612eb4ce27aea3c3a8968c5f10b31affbc40b6c"]
+            }
         }
     }
 
@@ -599,7 +605,7 @@ Select which editor you would like to set up [default: None]: ";
             EditorKind::Emacs => ".dir-locals.el",
             EditorKind::Helix => "languages.toml",
             EditorKind::Vim => "coc-settings.json",
-            EditorKind::VsCode => "settings.json",
+            EditorKind::VsCode | EditorKind::Zed => "settings.json",
         })
     }
 
@@ -609,6 +615,7 @@ Select which editor you would like to set up [default: None]: ";
             EditorKind::Helix => PathBuf::from(".helix"),
             EditorKind::Vim => PathBuf::from(".vim"),
             EditorKind::VsCode => PathBuf::from(".vscode"),
+            EditorKind::Zed => PathBuf::from(".zed"),
         }
     }
 
@@ -619,6 +626,7 @@ Select which editor you would like to set up [default: None]: ";
             EditorKind::Vim | EditorKind::VsCode => {
                 include_str!("../../../../etc/rust_analyzer_settings.json")
             }
+            EditorKind::Zed => include_str!("../../../../etc/rust_analyzer_zed.json"),
         }
     }
 
