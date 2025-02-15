@@ -204,7 +204,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// that the regions produced are in fact equal to the named region they are
     /// replaced with. This is fine because this function is only to improve the
     /// region names in error messages.
-    pub(crate) fn name_regions<T>(&self, tcx: TyCtxt<'tcx>, ty: T) -> T
+    ///
+    /// This differs from `MirBorrowckCtxt::name_regions` since it is particularly
+    /// lax with mapping region vids that are *shorter* than a universal region to
+    /// that universal region. This is useful for member region constraints since
+    /// we want to suggest a universal region name to capture even if it's technically
+    /// not equal to the error region.
+    pub(crate) fn name_regions_for_member_constraint<T>(&self, tcx: TyCtxt<'tcx>, ty: T) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
