@@ -820,7 +820,7 @@ fn link_natively(
                 for lib_dir in &library_search_dirs {
                     let candidate_path = lib_dir.join(candidate);
                     if candidate_path.is_file() {
-                        eprintln!("Found native library at {candidate_path:?}");
+                        // eprintln!("Found native library at {candidate_path:?}");
                         obj_candidates.push(candidate_path);
                     }
                 }
