@@ -229,11 +229,32 @@ impl fmt::Display for ValidityRequirement {
 
 #[derive(Copy, Clone, Debug, HashStable, TyEncodable, TyDecodable)]
 pub enum LayoutError<'tcx> {
+    /// A type doesn't have a sensible layout.
+    ///
+    /// This variant is used for layout errors that don't necessarily cause
+    /// compile errors.
+    ///
+    /// For example, this can happen if a struct contains an unsized type in a
+    /// non-tail field, but has an unsatisfiable bound like `str: Sized`.
     Unknown(Ty<'tcx>),
+    /// The size of a type exceeds [`TargetDataLayout::obj_size_bound`].
     SizeOverflow(Ty<'tcx>),
+    /// The layout can vary due to a generic parameter.
+    ///
+    /// Unlike `Unknown`, this variant is a "soft" error and indicates that the layout
+    /// may become computable after further instantiating the generic parameter(s).
     TooGeneric(Ty<'tcx>),
+    /// An alias failed to normalize.
+    ///
+    /// This variant is necessary, because, due to trait solver incompleteness, it is
+    /// possible than an alias that was rigid during analysis fails to normalize after
+    /// revealing opaque types.
+    ///
+    /// See `tests/ui/layout/normalization-failure.rs` for an example.
     NormalizationFailure(Ty<'tcx>, NormalizationError<'tcx>),
+    /// A non-layout error is reported elsewhere.
     ReferencesError(ErrorGuaranteed),
+    /// A type has cyclic layout, i.e. the type contains itself without indirection.
     Cycle(ErrorGuaranteed),
 }
 
