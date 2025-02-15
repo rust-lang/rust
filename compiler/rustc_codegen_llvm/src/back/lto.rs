@@ -617,21 +617,25 @@ pub(crate) fn run_pass_manager(
     let enable_ad = config.autodiff.contains(&config::AutoDiff::Enable);
     let stage =
         if enable_ad { write::AutodiffStage::DuringAD } else { write::AutodiffStage::PostAD };
+
+    // If Enzyme fails to differentiate the code, then this module will have everything that's
+    // needed to reproduce the bug.
+    if config.autodiff.contains(&config::AutoDiff::PrintModBefore) {
+        unsafe { llvm::LLVMDumpModule(module.module_llvm.llmod()) };
+    }
     unsafe {
         write::llvm_optimize(cgcx, dcx, module, config, opt_level, opt_stage, stage)?;
     }
-    if cfg!(llvm_enzyme) && !thin && enable_ad {
+    if cfg!(llvm_enzyme) && enable_ad {
+        let opt_stage = llvm::OptStage::FatLTO;
+        let stage = write::AutodiffStage::PostAD;
         unsafe {
-            write::llvm_optimize(
-                cgcx,
-                dcx,
-                module,
-                config,
-                opt_level,
-                llvm::OptStage::FatLTO,
-                write::AutodiffStage::PostAD,
-            )?;
+            write::llvm_optimize(cgcx, dcx, module, config, opt_level, opt_stage, stage)?;
         }
+    }
+    // This is the final IR, so people should be able to inspect the optimized autodiff output.
+    if config.autodiff.contains(&config::AutoDiff::PrintModAfter) {
+        unsafe { llvm::LLVMDumpModule(module.module_llvm.llmod()) };
     }
     debug!("lto done");
     Ok(())
