@@ -783,8 +783,12 @@ pub enum PatKind<'tcx> {
         var: LocalVarId,
         ty: Ty<'tcx>,
         subpattern: Option<Box<Pat<'tcx>>>,
+
         /// Is this the leftmost occurrence of the binding, i.e., is `var` the
         /// `HirId` of this pattern?
+        ///
+        /// (The same binding can occur multiple times in different branches of
+        /// an or-pattern, but only one of them will be primary.)
         is_primary: bool,
     },
 
