@@ -6,8 +6,8 @@ define-function: (
     "click-code-wrapping",
     [expected],
     block {
-        click: "#wrap-source-code"
-        wait-for-local-storage: {"rustdoc-wrap-source-code": |expected|}
+        click: "#word-wrap-source-code"
+        wait-for-local-storage: {"rustdoc-word-wrap-source-code": |expected|}
     },
 )
 

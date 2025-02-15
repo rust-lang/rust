@@ -286,8 +286,8 @@ if (getSettingValue("hide-modnav") === "true") {
 if (getSettingValue("sans-serif-fonts") === "true") {
     addClass(document.documentElement, "sans-serif");
 }
-if (getSettingValue("wrap-source-code") === "true") {
-    addClass(document.documentElement, "wrap-source-code");
+if (getSettingValue("word-wrap-source-code") === "true") {
+    addClass(document.documentElement, "word-wrap-source-code");
 }
 function updateSidebarWidth() {
     const desktopSidebarWidth = getSettingValue("desktop-sidebar-width");
