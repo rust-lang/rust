@@ -781,10 +781,10 @@ fn run_test(
     let mut cmd;
 
     let output_file = make_maybe_absolute_path(output_file);
-    if let Some(tool) = &rustdoc_options.runtool {
+    if let Some(tool) = &rustdoc_options.test_runtool {
         let tool = make_maybe_absolute_path(tool.into());
         cmd = Command::new(tool);
-        cmd.args(&rustdoc_options.runtool_args);
+        cmd.args(&rustdoc_options.test_runtool_args);
         cmd.arg(&output_file);
     } else {
         cmd = Command::new(&output_file);

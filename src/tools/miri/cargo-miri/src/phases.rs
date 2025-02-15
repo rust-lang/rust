@@ -666,8 +666,8 @@ pub fn phase_rustdoc(mut args: impl Iterator<Item = String>) {
         if arg == "--extern" {
             // Patch --extern arguments to use *.rmeta files, since phase_cargo_rustc only creates stub *.rlib files.
             forward_patched_extern_arg(&mut args, &mut cmd);
-        } else if arg == "--runtool" {
-            // An existing --runtool flag indicates cargo is running in cross-target mode, which we don't support.
+        } else if arg == "--test-runtool" {
+            // An existing --test-runtool flag indicates cargo is running in cross-target mode, which we don't support.
             // Note that this is only passed when cargo is run with the unstable -Zdoctest-xcompile flag;
             // otherwise, we won't be called as rustdoc at all.
             show_error!("cross-interpreting doctests is not currently supported by Miri.");
@@ -693,8 +693,8 @@ pub fn phase_rustdoc(mut args: impl Iterator<Item = String>) {
     // to let phase_cargo_rustc know to expect that. We'll use this environment variable as a flag:
     cmd.env("MIRI_CALLED_FROM_RUSTDOC", "1");
 
-    // The `--test-builder` and `--runtool` arguments are unstable rustdoc features,
-    // which are disabled by default. We first need to enable them explicitly:
+    // The `--test-builder` is an unstable rustdoc features,
+    // which is disabled by default. We first need to enable them explicitly:
     cmd.arg("-Zunstable-options");
 
     // rustdoc needs to know the right sysroot.
@@ -705,7 +705,7 @@ pub fn phase_rustdoc(mut args: impl Iterator<Item = String>) {
     // Make rustdoc call us back.
     let cargo_miri_path = env::current_exe().expect("current executable path invalid");
     cmd.arg("--test-builder").arg(&cargo_miri_path); // invoked by forwarding most arguments
-    cmd.arg("--runtool").arg(&cargo_miri_path); // invoked with just a single path argument
+    cmd.arg("--test-runtool").arg(&cargo_miri_path); // invoked with just a single path argument
 
     debug_cmd("[cargo-miri rustdoc]", verbose, &cmd);
     exec(cmd)

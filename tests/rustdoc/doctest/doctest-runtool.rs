@@ -1,10 +1,10 @@
-// Tests that the --runtool argument works.
+// Tests that the --test-runtool argument works.
 
 //@ ignore-cross-compile
 //@ aux-bin: doctest-runtool.rs
 //@ compile-flags: --test
-//@ compile-flags: --runtool=auxiliary/bin/doctest-runtool
-//@ compile-flags: --runtool-arg=arg1 --runtool-arg
+//@ compile-flags: --test-runtool=auxiliary/bin/doctest-runtool
+//@ compile-flags: --test-runtool-arg=arg1 --test-runtool-arg
 //@ compile-flags: 'arg2 with space'
 //@ compile-flags: -Zunstable-options
 

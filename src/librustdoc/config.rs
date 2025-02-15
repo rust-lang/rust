@@ -124,9 +124,9 @@ pub(crate) struct Options {
     /// temporary directory if not set.
     pub(crate) persist_doctests: Option<PathBuf>,
     /// Runtool to run doctests with
-    pub(crate) runtool: Option<String>,
+    pub(crate) test_runtool: Option<String>,
     /// Arguments to pass to the runtool
-    pub(crate) runtool_args: Vec<String>,
+    pub(crate) test_runtool_args: Vec<String>,
     /// Whether to allow ignoring doctests on a per-target basis
     /// For example, using ignore-foo to ignore running the doctest on any target that
     /// contains "foo" as a substring
@@ -215,8 +215,8 @@ impl fmt::Debug for Options {
             .field("persist_doctests", &self.persist_doctests)
             .field("show_coverage", &self.show_coverage)
             .field("crate_version", &self.crate_version)
-            .field("runtool", &self.runtool)
-            .field("runtool_args", &self.runtool_args)
+            .field("test_runtool", &self.test_runtool)
+            .field("test_runtool_args", &self.test_runtool_args)
             .field("enable-per-target-ignores", &self.enable_per_target_ignores)
             .field("run_check", &self.run_check)
             .field("no_run", &self.no_run)
@@ -779,8 +779,8 @@ impl Options {
         let unstable_opts_strs = matches.opt_strs("Z");
         let lib_strs = matches.opt_strs("L");
         let extern_strs = matches.opt_strs("extern");
-        let runtool = matches.opt_str("runtool");
-        let runtool_args = matches.opt_strs("runtool-arg");
+        let test_runtool = matches.opt_str("test-runtool");
+        let test_runtool_args = matches.opt_strs("test-runtool-arg");
         let enable_per_target_ignores = matches.opt_present("enable-per-target-ignores");
         let document_private = matches.opt_present("document-private-items");
         let document_hidden = matches.opt_present("document-hidden-items");
@@ -843,8 +843,8 @@ impl Options {
             crate_version,
             test_run_directory,
             persist_doctests,
-            runtool,
-            runtool_args,
+            test_runtool,
+            test_runtool_args,
             enable_per_target_ignores,
             test_builder,
             run_check,
