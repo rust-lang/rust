@@ -138,9 +138,6 @@ Options:
         --show-coverage 
                         calculate percentage of public items with
                         documentation
-        --enable-per-target-ignores 
-                        parse ignore-foo for ignoring doctests on a per-target
-                        basis
         --test-runtool The tool to run tests with when building for a different target than host
                         
         --test-runtool-arg One (of possibly many) arguments to pass to the runtool

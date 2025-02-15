@@ -507,14 +507,6 @@ fn opts() -> Vec<RustcOptGroup> {
             "",
         ),
         opt(
-            Unstable,
-            FlagMulti,
-            "",
-            "enable-per-target-ignores",
-            "parse ignore-foo for ignoring doctests on a per-target basis",
-            "",
-        ),
-        opt(
             Stable,
             Opt,
             "",

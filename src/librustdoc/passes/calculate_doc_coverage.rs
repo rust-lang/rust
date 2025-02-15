@@ -212,7 +212,7 @@ impl DocVisitor<'_> for CoverageCalculator<'_, '_> {
                 let has_docs = !i.attrs.doc_strings.is_empty();
                 let mut tests = Tests { found_tests: 0 };
 
-                find_testable_code(&i.doc_value(), &mut tests, ErrorCodes::No, false, None);
+                find_testable_code(&i.doc_value(), &mut tests, ErrorCodes::No, None);
 
                 let has_doc_example = tests.found_tests != 0;
                 let hir_id = DocContext::as_local_hir_id(self.ctx.tcx, i.item_id).unwrap();

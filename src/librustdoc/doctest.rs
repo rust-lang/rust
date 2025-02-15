@@ -218,11 +218,9 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
             let crate_name = tcx.crate_name(LOCAL_CRATE).to_string();
             let crate_attrs = tcx.hir_attrs(CRATE_HIR_ID);
             let opts = scrape_test_config(crate_name, crate_attrs, args_path);
-            let enable_per_target_ignores = options.enable_per_target_ignores;
 
             let hir_collector = HirCollector::new(
                 ErrorCodes::from(compiler.sess.opts.unstable_features.is_nightly_build()),
-                enable_per_target_ignores,
                 tcx,
             );
             let tests = hir_collector.collect_crate();

@@ -127,10 +127,6 @@ pub(crate) struct Options {
     pub(crate) test_runtool: Option<String>,
     /// Arguments to pass to the runtool
     pub(crate) test_runtool_args: Vec<String>,
-    /// Whether to allow ignoring doctests on a per-target basis
-    /// For example, using ignore-foo to ignore running the doctest on any target that
-    /// contains "foo" as a substring
-    pub(crate) enable_per_target_ignores: bool,
     /// Do not run doctests, compile them if should_test is active.
     pub(crate) no_run: bool,
     /// What sources are being mapped.
@@ -217,7 +213,6 @@ impl fmt::Debug for Options {
             .field("crate_version", &self.crate_version)
             .field("test_runtool", &self.test_runtool)
             .field("test_runtool_args", &self.test_runtool_args)
-            .field("enable-per-target-ignores", &self.enable_per_target_ignores)
             .field("run_check", &self.run_check)
             .field("no_run", &self.no_run)
             .field("test_builder_wrappers", &self.test_builder_wrappers)
@@ -781,7 +776,6 @@ impl Options {
         let extern_strs = matches.opt_strs("extern");
         let test_runtool = matches.opt_str("test-runtool");
         let test_runtool_args = matches.opt_strs("test-runtool-arg");
-        let enable_per_target_ignores = matches.opt_present("enable-per-target-ignores");
         let document_private = matches.opt_present("document-private-items");
         let document_hidden = matches.opt_present("document-hidden-items");
         let run_check = matches.opt_present("check");
@@ -845,7 +839,6 @@ impl Options {
             persist_doctests,
             test_runtool,
             test_runtool_args,
-            enable_per_target_ignores,
             test_builder,
             run_check,
             no_run,
