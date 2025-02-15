@@ -46,19 +46,19 @@ pub use self::join::join;
 /// It also simplifies the HIR lowering of `.await`.
 #[lang = "ResumeTy"]
 #[doc(hidden)]
-#[unstable(feature = "gen_future", issue = "50547")]
+#[unstable(feature = "gen_future", issue= "none")]
 #[derive(Debug, Copy, Clone)]
 pub struct ResumeTy(NonNull<Context<'static>>);
 
-#[unstable(feature = "gen_future", issue = "50547")]
+#[unstable(feature = "gen_future", issue= "none")]
 unsafe impl Send for ResumeTy {}
 
-#[unstable(feature = "gen_future", issue = "50547")]
+#[unstable(feature = "gen_future", issue= "none")]
 unsafe impl Sync for ResumeTy {}
 
 #[lang = "get_context"]
 #[doc(hidden)]
-#[unstable(feature = "gen_future", issue = "50547")]
+#[unstable(feature = "gen_future", issue= "none")]
 #[must_use]
 #[inline]
 pub unsafe fn get_context<'a, 'b>(cx: ResumeTy) -> &'a mut Context<'b> {
