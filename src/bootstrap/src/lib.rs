@@ -469,6 +469,15 @@ impl Build {
     ///
     /// The given `err_hint` will be shown to the user if the submodule is not
     /// checked out and submodule management is disabled.
+    #[cfg_attr(
+        feature = "tracing",
+        instrument(
+            level = "trace",
+            name = "Build::require_submodule",
+            skip_all,
+            fields(submodule = submodule),
+        ),
+    )]
     pub fn require_submodule(&self, submodule: &str, err_hint: Option<&str>) {
         // When testing bootstrap itself, it is much faster to ignore
         // submodules. Almost all Steps work fine without their submodules.

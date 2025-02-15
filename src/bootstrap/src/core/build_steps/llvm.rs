@@ -16,6 +16,8 @@ use std::{env, fs};
 
 use build_helper::ci::CiEnv;
 use build_helper::git::get_closest_merge_commit;
+#[cfg(feature = "tracing")]
+use tracing::instrument;
 
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::core::config::{Config, TargetSelection};
@@ -24,7 +26,7 @@ use crate::utils::exec::command;
 use crate::utils::helpers::{
     self, exe, get_clang_cl_resource_dir, t, unhashed_basename, up_to_date,
 };
-use crate::{CLang, GitRepo, Kind};
+use crate::{CLang, GitRepo, Kind, trace};
 
 #[derive(Clone)]
 pub struct LlvmResult {
@@ -934,6 +936,15 @@ impl Step for Enzyme {
     }
 
     /// Compile Enzyme for `target`.
+    #[cfg_attr(
+        feature = "tracing",
+        instrument(
+            level = "debug",
+            name = "Enzyme::run",
+            skip_all,
+            fields(target = ?self.target),
+        ),
+    )]
     fn run(self, builder: &Builder<'_>) -> PathBuf {
         builder.require_submodule(
             "src/tools/enzyme",
@@ -959,7 +970,9 @@ impl Step for Enzyme {
         let out_dir = builder.enzyme_out(target);
         let stamp = BuildStamp::new(&out_dir).with_prefix("enzyme").add_stamp(smart_stamp_hash);
 
+        trace!("checking build stamp to see if we need to rebuild enzyme artifacts");
         if stamp.is_up_to_date() {
+            trace!(?out_dir, "enzyme build artifacts are up to date");
             if stamp.stamp().is_empty() {
                 builder.info(
                     "Could not determine the Enzyme submodule commit hash. \
@@ -973,6 +986,7 @@ impl Step for Enzyme {
             return out_dir;
         }
 
+        trace!(?target, "(re)building enzyme artifacts");
         builder.info(&format!("Building Enzyme for {}", target));
         t!(stamp.remove());
         let _time = helpers::timeit(builder);
@@ -994,6 +1008,7 @@ impl Step for Enzyme {
             (true, false) => "Release",
             (true, true) => "RelWithDebInfo",
         };
+        trace!(?profile);
 
         cfg.out_dir(&out_dir)
             .profile(profile)
