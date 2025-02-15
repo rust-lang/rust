@@ -47,7 +47,7 @@ $ rustup target add x86_64-apple-ios
 ```
 
 The tier 3 targets can be built by enabling them for a `rustc` build in
-`config.toml`, by adding, for example:
+`bootstrap.toml`, by adding, for example:
 
 ```toml
 [build]
