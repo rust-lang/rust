@@ -7,7 +7,7 @@ use ide_db::{
 };
 use stdx::never;
 use syntax::{
-    ast::{self, make, Use, UseTree},
+    ast::{self, make, Use, UseTree, VisibilityKind},
     ted, AstNode, Direction, SyntaxNode, SyntaxToken, T,
 };
 
@@ -65,7 +65,76 @@ pub(crate) fn expand_glob_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
         "Expand glob import",
         target.text_range(),
         |builder| {
-            build_expanded_import(ctx, builder, use_tree, use_item, target_module, current_module)
+            build_expanded_import(
+                ctx,
+                builder,
+                use_tree,
+                use_item,
+                target_module,
+                current_module,
+                false,
+            )
+        },
+    )
+}
+
+// Assist: expand_glob_reexport
+//
+// Expands non-private glob imports.
+//
+// ```
+// mod foo {
+//     pub struct Bar;
+//     pub struct Baz;
+// }
+//
+// pub use foo::*$0;
+// ```
+// ->
+// ```
+// mod foo {
+//     pub struct Bar;
+//     pub struct Baz;
+// }
+//
+// pub use foo::{Bar, Baz};
+// ```
+pub(crate) fn expand_glob_reexport(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+    let star = ctx.find_token_syntax_at_offset(T![*])?;
+    let use_tree = star.parent().and_then(ast::UseTree::cast)?;
+    let use_item = star.parent_ancestors().find_map(ast::Use::cast)?;
+    let (parent, mod_path) = find_parent_and_path(&star)?;
+    let target_module = match ctx.sema.resolve_path(&mod_path)? {
+        PathResolution::Def(ModuleDef::Module(it)) => Expandable::Module(it),
+        PathResolution::Def(ModuleDef::Adt(hir::Adt::Enum(e))) => Expandable::Enum(e),
+        _ => return None,
+    };
+
+    let current_scope = ctx.sema.scope(&star.parent()?)?;
+    let current_module = current_scope.module();
+
+    if let VisibilityKind::PubSelf = get_export_visibility_kind(&use_item) {
+        return None;
+    }
+    if !is_visible_from(ctx, &target_module, current_module) {
+        return None;
+    }
+
+    let target = parent.either(|n| n.syntax().clone(), |n| n.syntax().clone());
+    acc.add(
+        AssistId("expand_glob_reexport", AssistKind::RefactorRewrite),
+        "Expand glob reexport",
+        target.text_range(),
+        |builder| {
+            build_expanded_import(
+                ctx,
+                builder,
+                use_tree,
+                use_item,
+                target_module,
+                current_module,
+                true,
+            )
         },
     )
 }
@@ -77,13 +146,27 @@ fn build_expanded_import(
     use_item: Use,
     target_module: Expandable,
     current_module: Module,
+    reexport_public_items: bool,
 ) {
-    let refs_in_target = find_refs_in_mod(ctx, target_module, current_module);
+    let (must_be_pub, visible_from) = if !reexport_public_items {
+        (false, current_module)
+    } else {
+        match get_export_visibility_kind(&use_item) {
+            VisibilityKind::Pub => (true, current_module.krate().root_module()),
+            VisibilityKind::PubCrate => (false, current_module.krate().root_module()),
+            _ => (false, current_module),
+        }
+    };
+
+    let refs_in_target = find_refs_in_mod(ctx, target_module, visible_from, must_be_pub);
     let imported_defs = find_imported_defs(ctx, use_item);
+
+    let filtered_defs =
+        if reexport_public_items { refs_in_target } else { refs_in_target.used_refs(ctx) };
 
     let use_tree = builder.make_mut(use_tree);
 
-    let names_to_import = find_names_to_import(ctx, refs_in_target, imported_defs);
+    let names_to_import = find_names_to_import(filtered_defs, imported_defs);
     let expanded = make::use_tree_list(names_to_import.iter().map(|n| {
         let path = make::ext::ident_path(
             &n.display(ctx.db(), current_module.krate().edition(ctx.db())).to_string(),
@@ -107,6 +190,21 @@ fn build_expanded_import(
             }
         }
         None => never!(),
+    }
+}
+
+fn get_export_visibility_kind(use_item: &Use) -> VisibilityKind {
+    use syntax::ast::HasVisibility as _;
+    match use_item.visibility() {
+        Some(vis) => match vis.kind() {
+            VisibilityKind::PubCrate => VisibilityKind::PubCrate,
+            VisibilityKind::Pub => VisibilityKind::Pub,
+            VisibilityKind::PubSelf => VisibilityKind::PubSelf,
+            // We don't handle pub(in ...) and pub(super) yet
+            VisibilityKind::In(_) => VisibilityKind::PubSelf,
+            VisibilityKind::PubSuper => VisibilityKind::PubSelf,
+        },
+        None => VisibilityKind::PubSelf,
     }
 }
 
@@ -147,14 +245,17 @@ struct Ref {
     // could be alias
     visible_name: Name,
     def: Definition,
+    is_pub: bool,
 }
 
 impl Ref {
-    fn from_scope_def(name: Name, scope_def: ScopeDef) -> Option<Self> {
+    fn from_scope_def(ctx: &AssistContext<'_>, name: Name, scope_def: ScopeDef) -> Option<Self> {
         match scope_def {
-            ScopeDef::ModuleDef(def) => {
-                Some(Ref { visible_name: name, def: Definition::from(def) })
-            }
+            ScopeDef::ModuleDef(def) => Some(Ref {
+                visible_name: name,
+                def: Definition::from(def),
+                is_pub: matches!(def.visibility(ctx.db()), hir::Visibility::Public),
+            }),
             _ => None,
         }
     }
@@ -193,18 +294,30 @@ impl Refs {
     }
 }
 
-fn find_refs_in_mod(ctx: &AssistContext<'_>, expandable: Expandable, visible_from: Module) -> Refs {
+fn find_refs_in_mod(
+    ctx: &AssistContext<'_>,
+    expandable: Expandable,
+    visible_from: Module,
+    must_be_pub: bool,
+) -> Refs {
     match expandable {
         Expandable::Module(module) => {
             let module_scope = module.scope(ctx.db(), Some(visible_from));
-            let refs =
-                module_scope.into_iter().filter_map(|(n, d)| Ref::from_scope_def(n, d)).collect();
+            let refs = module_scope
+                .into_iter()
+                .filter_map(|(n, d)| Ref::from_scope_def(ctx, n, d))
+                .filter(|r| !must_be_pub || r.is_pub)
+                .collect();
             Refs(refs)
         }
         Expandable::Enum(enm) => Refs(
             enm.variants(ctx.db())
                 .into_iter()
-                .map(|v| Ref { visible_name: v.name(ctx.db()), def: Definition::Variant(v) })
+                .map(|v| Ref {
+                    visible_name: v.name(ctx.db()),
+                    def: Definition::Variant(v),
+                    is_pub: true,
+                })
                 .collect(),
         ),
     }
@@ -276,13 +389,9 @@ fn find_imported_defs(ctx: &AssistContext<'_>, use_item: Use) -> Vec<Definition>
         .collect()
 }
 
-fn find_names_to_import(
-    ctx: &AssistContext<'_>,
-    refs_in_target: Refs,
-    imported_defs: Vec<Definition>,
-) -> Vec<Name> {
-    let used_refs = refs_in_target.used_refs(ctx).filter_out_by_defs(imported_defs);
-    used_refs.0.iter().map(|r| r.visible_name.clone()).collect()
+fn find_names_to_import(refs_in_target: Refs, imported_defs: Vec<Definition>) -> Vec<Name> {
+    let final_refs = refs_in_target.filter_out_by_defs(imported_defs);
+    final_refs.0.iter().map(|r| r.visible_name.clone()).collect()
 }
 
 #[cfg(test)]
@@ -1028,5 +1137,84 @@ mod abc {
 
 }"#,
         )
+    }
+
+    #[test]
+    fn expanding_glob_reexport() {
+        check_assist(
+            expand_glob_reexport,
+            r"
+mod foo {
+    pub struct Bar;
+    pub struct Baz;
+    struct Qux;
+
+    pub fn f() {}
+
+    pub(crate) fn g() {}
+    pub(self) fn h() {}
+}
+
+pub use foo::*$0;
+",
+            r"
+mod foo {
+    pub struct Bar;
+    pub struct Baz;
+    struct Qux;
+
+    pub fn f() {}
+
+    pub(crate) fn g() {}
+    pub(self) fn h() {}
+}
+
+pub use foo::{Bar, Baz, f};
+",
+        )
+    }
+
+    #[test]
+    fn expanding_recursive_glob_reexport() {
+        check_assist(
+            expand_glob_reexport,
+            r"
+mod foo {
+    pub use bar::*;
+    mod bar {
+        pub struct Bar;
+        pub struct Baz;
+    }
+}
+
+pub use foo::*$0;
+",
+            r"
+mod foo {
+    pub use bar::*;
+    mod bar {
+        pub struct Bar;
+        pub struct Baz;
+    }
+}
+
+pub use foo::{Bar, Baz};
+",
+        )
+    }
+
+    #[test]
+    fn expanding_reexport_is_not_applicable_for_private_import() {
+        check_assist_not_applicable(
+            expand_glob_reexport,
+            r"
+mod foo {
+    pub struct Bar;
+    pub struct Baz;
+}
+
+use foo::*$0;
+",
+        );
     }
 }
