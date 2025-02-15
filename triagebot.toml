@@ -421,7 +421,7 @@ trigger_files = [
 trigger_files = [
     "Cargo.toml",
     "configure",
-    "config.example.toml",
+    "bootstrap.example.toml",
     "src/bootstrap",
     "src/build_helper",
     "src/tools/rust-installer",

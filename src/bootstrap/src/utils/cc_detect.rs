@@ -4,8 +4,8 @@
 //! C and C++ compilers for each target configured. A compiler is found through
 //! a number of vectors (in order of precedence)
 //!
-//! 1. Configuration via `target.$target.cc` in `config.toml`.
-//! 2. Configuration via `target.$target.android-ndk` in `config.toml`, if
+//! 1. Configuration via `target.$target.cc` in `bootstrap.toml`.
+//! 2. Configuration via `target.$target.android-ndk` in `bootstrap.toml`, if
 //!    applicable
 //! 3. Special logic to probe on OpenBSD
 //! 4. The `CC_$target` environment variable.
@@ -195,7 +195,7 @@ fn default_compiler(
 ) -> Option<PathBuf> {
     match &*target.triple {
         // When compiling for android we may have the NDK configured in the
-        // config.toml in which case we look there. Otherwise the default
+        // bootstrap.toml in which case we look there. Otherwise the default
         // compiler already takes into account the triple in question.
         t if t.contains("android") => {
             build.config.android_ndk.as_ref().map(|ndk| ndk_compiler(compiler, &target.triple, ndk))
