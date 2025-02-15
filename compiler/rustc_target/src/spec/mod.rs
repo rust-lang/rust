@@ -1109,6 +1109,8 @@ impl ToJson for FloatAbi {
 /// The Rustc-specific variant of the ABI used for this target.
 #[derive(Clone, Copy, PartialEq, Hash, Debug)]
 pub enum RustcAbi {
+    /// On x86-32 only: make use of SSE and SSE2 for ABI purposes.
+    X86Sse2,
     /// On x86-32/64 only: do not use any FPU or SIMD registers for the ABI.
     X86Softfloat,
 }
@@ -1118,6 +1120,7 @@ impl FromStr for RustcAbi {
 
     fn from_str(s: &str) -> Result<RustcAbi, ()> {
         Ok(match s {
+            "x86-sse2" => RustcAbi::X86Sse2,
             "x86-softfloat" => RustcAbi::X86Softfloat,
             _ => return Err(()),
         })
@@ -1127,6 +1130,7 @@ impl FromStr for RustcAbi {
 impl ToJson for RustcAbi {
     fn to_json(&self) -> Json {
         match *self {
+            RustcAbi::X86Sse2 => "x86-sse2",
             RustcAbi::X86Softfloat => "x86-softfloat",
         }
         .to_json()
@@ -3264,6 +3268,11 @@ impl Target {
         // Check consistency of Rust ABI declaration.
         if let Some(rust_abi) = self.rustc_abi {
             match rust_abi {
+                RustcAbi::X86Sse2 => check_matches!(
+                    &*self.arch,
+                    "x86",
+                    "`x86-sse2` ABI is only valid for x86-32 targets"
+                ),
                 RustcAbi::X86Softfloat => check_matches!(
                     &*self.arch,
                     "x86" | "x86_64",

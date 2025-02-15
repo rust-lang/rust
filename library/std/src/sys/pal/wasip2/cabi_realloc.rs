@@ -32,7 +32,7 @@ static FORCE_CODEGEN_OF_CABI_REALLOC: unsafe extern "C" fn(
 ) -> *mut u8 = cabi_realloc;
 
 #[linkage = "weak"]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn cabi_realloc(
     old_ptr: *mut u8,
     old_len: usize,

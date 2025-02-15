@@ -116,7 +116,7 @@ rustc_queries! {
     }
 
     query early_lint_checks(_: ()) {
-        desc { "perform lints prior to macro expansion" }
+        desc { "perform lints prior to AST lowering" }
     }
 
     query resolutions(_: ()) -> &'tcx ty::ResolverGlobalCtxt {
