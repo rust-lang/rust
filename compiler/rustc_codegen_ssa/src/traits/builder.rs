@@ -340,6 +340,17 @@ pub trait BuilderMethods<'a, 'tcx>:
     }
 
     fn trunc(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
+    /// Produces the same value as [`Self::trunc`] (and defaults to that),
+    /// but is UB unless the *zero*-extending the result can reproduce `val`.
+    fn unchecked_utrunc(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value {
+        self.trunc(val, dest_ty)
+    }
+    /// Produces the same value as [`Self::trunc`] (and defaults to that),
+    /// but is UB unless the *sign*-extending the result can reproduce `val`.
+    fn unchecked_strunc(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value {
+        self.trunc(val, dest_ty)
+    }
+
     fn sext(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
     fn fptoui_sat(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
     fn fptosi_sat(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;

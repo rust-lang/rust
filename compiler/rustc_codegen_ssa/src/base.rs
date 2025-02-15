@@ -24,7 +24,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::Session;
-use rustc_session::config::{self, CrateType, EntryFnType, OptLevel, OutputType};
+use rustc_session::config::{self, CrateType, EntryFnType, OutputType};
 use rustc_span::{DUMMY_SP, Symbol, sym};
 use rustc_trait_selection::infer::{BoundRegionConversionTime, TyCtxtInferExt};
 use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
@@ -364,13 +364,7 @@ pub(crate) fn build_shift_expr_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let rhs_sz = bx.cx().int_width(rhs_llty);
     let lhs_sz = bx.cx().int_width(lhs_llty);
     if lhs_sz < rhs_sz {
-        if is_unchecked && bx.sess().opts.optimize != OptLevel::No {
-            // FIXME: Use `trunc nuw` once that's available
-            let inrange = bx.icmp(IntPredicate::IntULE, rhs, mask);
-            bx.assume(inrange);
-        }
-
-        bx.trunc(rhs, lhs_llty)
+        if is_unchecked { bx.unchecked_utrunc(rhs, lhs_llty) } else { bx.trunc(rhs, lhs_llty) }
     } else if lhs_sz > rhs_sz {
         // We zero-extend even if the RHS is signed. So e.g. `(x: i32) << -1i8` will zero-extend the
         // RHS to `255i32`. But then we mask the shift amount to be within the size of the LHS

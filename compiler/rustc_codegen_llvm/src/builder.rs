@@ -29,13 +29,13 @@ use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
 use crate::abi::FnAbiLlvmExt;
-use crate::attributes;
 use crate::common::Funclet;
 use crate::context::{CodegenCx, SimpleCx};
 use crate::llvm::{self, AtomicOrdering, AtomicRmwBinOp, BasicBlock, False, Metadata, True};
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
+use crate::{attributes, llvm_util};
 
 #[must_use]
 pub(crate) struct GenericBuilder<'a, 'll, CX: Borrow<SimpleCx<'ll>>> {
@@ -606,7 +606,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
     fn to_immediate_scalar(&mut self, val: Self::Value, scalar: abi::Scalar) -> Self::Value {
         if scalar.is_bool() {
-            return self.trunc(val, self.cx().type_i1());
+            return self.unchecked_utrunc(val, self.cx().type_i1());
         }
         val
     }
@@ -940,6 +940,30 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     /* Casts */
     fn trunc(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
         unsafe { llvm::LLVMBuildTrunc(self.llbuilder, val, dest_ty, UNNAMED) }
+    }
+
+    fn unchecked_utrunc(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
+        let trunc = self.trunc(val, dest_ty);
+        if llvm_util::get_version() >= (19, 0, 0) {
+            unsafe {
+                if llvm::LLVMIsATruncInst(trunc).is_some() {
+                    llvm::LLVMSetNUW(trunc, True);
+                }
+            }
+        }
+        trunc
+    }
+
+    fn unchecked_strunc(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
+        let trunc = self.trunc(val, dest_ty);
+        if llvm_util::get_version() >= (19, 0, 0) {
+            unsafe {
+                if llvm::LLVMIsATruncInst(trunc).is_some() {
+                    llvm::LLVMSetNSW(trunc, True);
+                }
+            }
+        }
+        trunc
     }
 
     fn sext(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {

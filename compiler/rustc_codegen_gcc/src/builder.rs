@@ -1694,7 +1694,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
     fn to_immediate_scalar(&mut self, val: Self::Value, scalar: abi::Scalar) -> Self::Value {
         if scalar.is_bool() {
-            return self.trunc(val, self.cx().type_i1());
+            return self.unchecked_utrunc(val, self.cx().type_i1());
         }
         val
     }
