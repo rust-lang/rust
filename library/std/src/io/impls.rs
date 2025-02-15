@@ -45,6 +45,7 @@ impl<R: Read + ?Sized> Read for &mut R {
     fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
         (**self).read_exact(buf)
     }
+
     #[inline]
     fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
         (**self).read_buf_exact(cursor)
@@ -78,6 +79,11 @@ impl<W: Write + ?Sized> Write for &mut W {
     }
 
     #[inline]
+    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        (**self).write_all_vectored(bufs)
+    }
+
+    #[inline]
     fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> io::Result<()> {
         (**self).write_fmt(fmt)
     }
@@ -90,8 +96,23 @@ impl<S: Seek + ?Sized> Seek for &mut S {
     }
 
     #[inline]
+    fn rewind(&mut self) -> io::Result<()> {
+        (**self).rewind()
+    }
+
+    #[inline]
+    fn stream_len(&mut self) -> io::Result<u64> {
+        (**self).stream_len()
+    }
+
+    #[inline]
     fn stream_position(&mut self) -> io::Result<u64> {
         (**self).stream_position()
+    }
+
+    #[inline]
+    fn seek_relative(&mut self, offset: i64) -> io::Result<()> {
+        (**self).seek_relative(offset)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -107,8 +128,18 @@ impl<B: BufRead + ?Sized> BufRead for &mut B {
     }
 
     #[inline]
+    fn has_data_left(&mut self) -> io::Result<bool> {
+        (**self).has_data_left()
+    }
+
+    #[inline]
     fn read_until(&mut self, byte: u8, buf: &mut Vec<u8>) -> io::Result<usize> {
         (**self).read_until(byte, buf)
+    }
+
+    #[inline]
+    fn skip_until(&mut self, byte: u8) -> io::Result<usize> {
+        (**self).skip_until(byte)
     }
 
     #[inline]
@@ -153,6 +184,7 @@ impl<R: Read + ?Sized> Read for Box<R> {
     fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
         (**self).read_exact(buf)
     }
+
     #[inline]
     fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
         (**self).read_buf_exact(cursor)
@@ -186,6 +218,11 @@ impl<W: Write + ?Sized> Write for Box<W> {
     }
 
     #[inline]
+    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        (**self).write_all_vectored(bufs)
+    }
+
+    #[inline]
     fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> io::Result<()> {
         (**self).write_fmt(fmt)
     }
@@ -198,8 +235,23 @@ impl<S: Seek + ?Sized> Seek for Box<S> {
     }
 
     #[inline]
+    fn rewind(&mut self) -> io::Result<()> {
+        (**self).rewind()
+    }
+
+    #[inline]
+    fn stream_len(&mut self) -> io::Result<u64> {
+        (**self).stream_len()
+    }
+
+    #[inline]
     fn stream_position(&mut self) -> io::Result<u64> {
         (**self).stream_position()
+    }
+
+    #[inline]
+    fn seek_relative(&mut self, offset: i64) -> io::Result<()> {
+        (**self).seek_relative(offset)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -215,8 +267,18 @@ impl<B: BufRead + ?Sized> BufRead for Box<B> {
     }
 
     #[inline]
+    fn has_data_left(&mut self) -> io::Result<bool> {
+        (**self).has_data_left()
+    }
+
+    #[inline]
     fn read_until(&mut self, byte: u8, buf: &mut Vec<u8>) -> io::Result<usize> {
         (**self).read_until(byte, buf)
+    }
+
+    #[inline]
+    fn skip_until(&mut self, byte: u8) -> io::Result<usize> {
+        (**self).skip_until(byte)
     }
 
     #[inline]
