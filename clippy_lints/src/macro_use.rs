@@ -21,7 +21,21 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust,ignore
     /// #[macro_use]
-    /// use some_macro;
+    /// extern crate some_crate;
+    ///
+    /// fn main() {
+    ///     some_macro!();
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    ///
+    /// ```rust,ignore
+    /// use some_crate::some_macro;
+    ///
+    /// fn main() {
+    ///     some_macro!();
+    /// }
     /// ```
     #[clippy::version = "1.44.0"]
     pub MACRO_USE_IMPORTS,
