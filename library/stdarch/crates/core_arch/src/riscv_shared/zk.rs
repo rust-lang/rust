@@ -57,22 +57,18 @@ unsafe extern "unadjusted" {
 /// Version: v1.0.1
 ///
 /// Section: 3.47
-///
-/// # Safety
-///
-/// This function is safe to use if the `zbkx` target feature is present.
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 #[target_feature(enable = "zbkx")]
 #[cfg_attr(test, assert_instr(xperm8))]
 #[inline]
-pub unsafe fn xperm8(rs1: usize, rs2: usize) -> usize {
+pub fn xperm8(rs1: usize, rs2: usize) -> usize {
     #[cfg(target_arch = "riscv32")]
-    {
+    unsafe {
         _xperm8_32(rs1 as i32, rs2 as i32) as usize
     }
 
     #[cfg(target_arch = "riscv64")]
-    {
+    unsafe {
         _xperm8_64(rs1 as i64, rs2 as i64) as usize
     }
 }
@@ -89,22 +85,18 @@ pub unsafe fn xperm8(rs1: usize, rs2: usize) -> usize {
 /// Version: v1.0.1
 ///
 /// Section: 3.48
-///
-/// # Safety
-///
-/// This function is safe to use if the `zbkx` target feature is present.
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 #[target_feature(enable = "zbkx")]
 #[cfg_attr(test, assert_instr(xperm4))]
 #[inline]
-pub unsafe fn xperm4(rs1: usize, rs2: usize) -> usize {
+pub fn xperm4(rs1: usize, rs2: usize) -> usize {
     #[cfg(target_arch = "riscv32")]
-    {
+    unsafe {
         _xperm4_32(rs1 as i32, rs2 as i32) as usize
     }
 
     #[cfg(target_arch = "riscv64")]
-    {
+    unsafe {
         _xperm4_64(rs1 as i64, rs2 as i64) as usize
     }
 }
@@ -124,16 +116,12 @@ pub unsafe fn xperm4(rs1: usize, rs2: usize) -> usize {
 /// Version: v1.0.1
 ///
 /// Section: 3.27
-///
-/// # Safety
-///
-/// This function is safe to use if the `zknh` target feature is present.
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 #[target_feature(enable = "zknh")]
 #[cfg_attr(test, assert_instr(sha256sig0))]
 #[inline]
-pub unsafe fn sha256sig0(rs1: u32) -> u32 {
-    _sha256sig0(rs1 as i32) as u32
+pub fn sha256sig0(rs1: u32) -> u32 {
+    unsafe { _sha256sig0(rs1 as i32) as u32 }
 }
 
 /// Implements the Sigma1 transformation function as used in the SHA2-256 hash function \[49\]
@@ -151,16 +139,12 @@ pub unsafe fn sha256sig0(rs1: u32) -> u32 {
 /// Version: v1.0.1
 ///
 /// Section: 3.28
-///
-/// # Safety
-///
-/// This function is safe to use if the `zknh` target feature is present.
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 #[target_feature(enable = "zknh")]
 #[cfg_attr(test, assert_instr(sha256sig1))]
 #[inline]
-pub unsafe fn sha256sig1(rs1: u32) -> u32 {
-    _sha256sig1(rs1 as i32) as u32
+pub fn sha256sig1(rs1: u32) -> u32 {
+    unsafe { _sha256sig1(rs1 as i32) as u32 }
 }
 
 /// Implements the Sum0 transformation function as used in the SHA2-256 hash function \[49\]
@@ -178,16 +162,12 @@ pub unsafe fn sha256sig1(rs1: u32) -> u32 {
 /// Version: v1.0.1
 ///
 /// Section: 3.29
-///
-/// # Safety
-///
-/// This function is safe to use if the `zknh` target feature is present.
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 #[target_feature(enable = "zknh")]
 #[cfg_attr(test, assert_instr(sha256sum0))]
 #[inline]
-pub unsafe fn sha256sum0(rs1: u32) -> u32 {
-    _sha256sum0(rs1 as i32) as u32
+pub fn sha256sum0(rs1: u32) -> u32 {
+    unsafe { _sha256sum0(rs1 as i32) as u32 }
 }
 
 /// Implements the Sum1 transformation function as used in the SHA2-256 hash function \[49\]
@@ -205,16 +185,12 @@ pub unsafe fn sha256sum0(rs1: u32) -> u32 {
 /// Version: v1.0.1
 ///
 /// Section: 3.30
-///
-/// # Safety
-///
-/// This function is safe to use if the `zknh` target feature is present.
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 #[target_feature(enable = "zknh")]
 #[cfg_attr(test, assert_instr(sha256sum1))]
 #[inline]
-pub unsafe fn sha256sum1(rs1: u32) -> u32 {
-    _sha256sum1(rs1 as i32) as u32
+pub fn sha256sum1(rs1: u32) -> u32 {
+    unsafe { _sha256sum1(rs1 as i32) as u32 }
 }
 
 /// Accelerates the block encrypt/decrypt operation of the SM4 block cipher \[5, 31\].
@@ -236,10 +212,6 @@ pub unsafe fn sha256sum1(rs1: u32) -> u32 {
 ///
 /// The `BS` parameter is expected to be a constant value and only the bottom 2 bits of `bs` are
 /// used.
-///
-/// # Safety
-///
-/// This function is safe to use if the `zksed` target feature is present.
 ///
 /// # Details
 ///
@@ -291,10 +263,10 @@ pub unsafe fn sha256sum1(rs1: u32) -> u32 {
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(sm4ed, BS = 0))]
 #[inline]
-pub unsafe fn sm4ed<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
+pub fn sm4ed<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
     static_assert!(BS < 4);
 
-    _sm4ed(rs1 as i32, rs2 as i32, BS as i32) as u32
+    unsafe { _sm4ed(rs1 as i32, rs2 as i32, BS as i32) as u32 }
 }
 
 /// Accelerates the Key Schedule operation of the SM4 block cipher \[5, 31\] with `bs=0`.
@@ -316,10 +288,6 @@ pub unsafe fn sm4ed<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
 ///
 /// The `BS` parameter is expected to be a constant value and only the bottom 2 bits of `bs` are
 /// used.
-///
-/// # Safety
-///
-/// This function is safe to use if the `zksed` target feature is present.
 ///
 /// # Details
 ///
@@ -371,10 +339,10 @@ pub unsafe fn sm4ed<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
 #[rustc_legacy_const_generics(2)]
 #[cfg_attr(test, assert_instr(sm4ks, BS = 0))]
 #[inline]
-pub unsafe fn sm4ks<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
+pub fn sm4ks<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
     static_assert!(BS < 4);
 
-    _sm4ks(rs1 as i32, rs2 as i32, BS as i32) as u32
+    unsafe { _sm4ks(rs1 as i32, rs2 as i32, BS as i32) as u32 }
 }
 
 /// Implements the P0 transformation function as used in the SM3 hash function [4, 30].
@@ -388,10 +356,6 @@ pub unsafe fn sm4ks<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
 /// Version: v1.0.1
 ///
 /// Section: 3.41
-///
-/// # Safety
-///
-/// This function is safe to use if the `zksh` target feature is present.
 ///
 /// # Details
 ///
@@ -412,8 +376,8 @@ pub unsafe fn sm4ks<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
 #[target_feature(enable = "zksh")]
 #[cfg_attr(test, assert_instr(sm3p0))]
 #[inline]
-pub unsafe fn sm3p0(rs1: u32) -> u32 {
-    _sm3p0(rs1 as i32) as u32
+pub fn sm3p0(rs1: u32) -> u32 {
+    unsafe { _sm3p0(rs1 as i32) as u32 }
 }
 
 /// Implements the P1 transformation function as used in the SM3 hash function [4, 30].
@@ -427,10 +391,6 @@ pub unsafe fn sm3p0(rs1: u32) -> u32 {
 /// Version: v1.0.1
 ///
 /// Section: 3.42
-///
-/// # Safety
-///
-/// This function is safe to use if the `zksh` target feature is present.
 ///
 /// # Details
 ///
@@ -457,6 +417,6 @@ pub unsafe fn sm3p0(rs1: u32) -> u32 {
 #[target_feature(enable = "zksh")]
 #[cfg_attr(test, assert_instr(sm3p1))]
 #[inline]
-pub unsafe fn sm3p1(rs1: u32) -> u32 {
-    _sm3p1(rs1 as i32) as u32
+pub fn sm3p1(rs1: u32) -> u32 {
+    unsafe { _sm3p1(rs1 as i32) as u32 }
 }

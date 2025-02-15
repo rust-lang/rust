@@ -56,20 +56,16 @@ unsafe extern "unadjusted" {
 ///
 /// The `BS` parameter is expected to be a constant value and only the bottom 2 bits of `bs` are
 /// used.
-///
-/// # Safety
-///
-/// This function is safe to use if the `zkne` target feature is present.
 #[target_feature(enable = "zkne")]
 #[rustc_legacy_const_generics(2)]
 // See #1464
 // #[cfg_attr(test, assert_instr(aes32esi, BS = 0))]
 #[inline]
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
-pub unsafe fn aes32esi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
+pub fn aes32esi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
     static_assert!(BS < 4);
 
-    _aes32esi(rs1 as i32, rs2 as i32, BS as i32) as u32
+    unsafe { _aes32esi(rs1 as i32, rs2 as i32, BS as i32) as u32 }
 }
 
 /// AES middle round encryption instruction for RV32 with.
@@ -89,20 +85,16 @@ pub unsafe fn aes32esi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
 ///
 /// The `bs` parameter is expected to be a constant value and only the bottom 2 bits of `bs` are
 /// used.
-///
-/// # Safety
-///
-/// This function is safe to use if the `zkne` target feature is present.
 #[target_feature(enable = "zkne")]
 #[rustc_legacy_const_generics(2)]
 // See #1464
 // #[cfg_attr(test, assert_instr(aes32esmi, BS = 0))]
 #[inline]
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
-pub unsafe fn aes32esmi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
+pub fn aes32esmi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
     static_assert!(BS < 4);
 
-    _aes32esmi(rs1 as i32, rs2 as i32, BS as i32) as u32
+    unsafe { _aes32esmi(rs1 as i32, rs2 as i32, BS as i32) as u32 }
 }
 
 /// AES final round decryption instruction for RV32.
@@ -121,20 +113,16 @@ pub unsafe fn aes32esmi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
 ///
 /// The `BS` parameter is expected to be a constant value and only the bottom 2 bits of `bs` are
 /// used.
-///
-/// # Safety
-///
-/// This function is safe to use if the `zknd` target feature is present.
 #[target_feature(enable = "zknd")]
 #[rustc_legacy_const_generics(2)]
 // See #1464
 // #[cfg_attr(test, assert_instr(aes32dsi, BS = 0))]
 #[inline]
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
-pub unsafe fn aes32dsi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
+pub fn aes32dsi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
     static_assert!(BS < 4);
 
-    _aes32dsi(rs1 as i32, rs2 as i32, BS as i32) as u32
+    unsafe { _aes32dsi(rs1 as i32, rs2 as i32, BS as i32) as u32 }
 }
 
 /// AES middle round decryption instruction for RV32.
@@ -154,20 +142,16 @@ pub unsafe fn aes32dsi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
 ///
 /// The `BS` parameter is expected to be a constant value and only the bottom 2 bits of `bs` are
 /// used.
-///
-/// # Safety
-///
-/// This function is safe to use if the `zknd` target feature is present.
 #[target_feature(enable = "zknd")]
 #[rustc_legacy_const_generics(2)]
 // See #1464
 // #[cfg_attr(test, assert_instr(aes32dsmi, BS = 0))]
 #[inline]
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
-pub unsafe fn aes32dsmi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
+pub fn aes32dsmi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
     static_assert!(BS < 4);
 
-    _aes32dsmi(rs1 as i32, rs2 as i32, BS as i32) as u32
+    unsafe { _aes32dsmi(rs1 as i32, rs2 as i32, BS as i32) as u32 }
 }
 
 /// Place upper/lower halves of the source register into odd/even bits of the destination
@@ -183,17 +167,13 @@ pub unsafe fn aes32dsmi<const BS: u8>(rs1: u32, rs2: u32) -> u32 {
 /// Version: v1.0.1
 ///
 /// Section: 3.49
-///
-/// # Safety
-///
-/// This function is safe to use if the `zbkb` target feature is present.
 #[target_feature(enable = "zbkb")]
 // See #1464
 // #[cfg_attr(test, assert_instr(zip))]
 #[inline]
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
-pub unsafe fn zip(rs: u32) -> u32 {
-    _zip(rs as i32) as u32
+pub fn zip(rs: u32) -> u32 {
+    unsafe { _zip(rs as i32) as u32 }
 }
 
 /// Place odd and even bits of the source word into upper/lower halves of the destination.
@@ -207,16 +187,12 @@ pub unsafe fn zip(rs: u32) -> u32 {
 /// Version: v1.0.1
 ///
 /// Section: 3.45
-///
-/// # Safety
-///
-/// This function is safe to use if the `zbkb` target feature is present.
 #[target_feature(enable = "zbkb")]
 #[cfg_attr(test, assert_instr(unzip))]
 #[inline]
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
-pub unsafe fn unzip(rs: u32) -> u32 {
-    _unzip(rs as i32) as u32
+pub fn unzip(rs: u32) -> u32 {
+    unsafe { _unzip(rs as i32) as u32 }
 }
 
 /// Implements the high half of the Sigma0 transformation, as used in the SHA2-512 hash
@@ -233,17 +209,13 @@ pub unsafe fn unzip(rs: u32) -> u32 {
 /// Version: v1.0.1
 ///
 /// Section: 3.31
-///
-/// # Safety
-///
-/// This function is safe to use if the `zknh` target feature is present.
 #[target_feature(enable = "zknh")]
 // See #1464
 // #[cfg_attr(test, assert_instr(sha512sig0h))]
 #[inline]
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
-pub unsafe fn sha512sig0h(rs1: u32, rs2: u32) -> u32 {
-    _sha512sig0h(rs1 as i32, rs2 as i32) as u32
+pub fn sha512sig0h(rs1: u32, rs2: u32) -> u32 {
+    unsafe { _sha512sig0h(rs1 as i32, rs2 as i32) as u32 }
 }
 
 /// Implements the low half of the Sigma0 transformation, as used in the SHA2-512 hash function
@@ -260,17 +232,13 @@ pub unsafe fn sha512sig0h(rs1: u32, rs2: u32) -> u32 {
 /// Version: v1.0.1
 ///
 /// Section: 3.32
-///
-/// # Safety
-///
-/// This function is safe to use if the `zknh` target feature is present.
 #[target_feature(enable = "zknh")]
 // See #1464
 // #[cfg_attr(test, assert_instr(sha512sig0l))]
 #[inline]
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
-pub unsafe fn sha512sig0l(rs1: u32, rs2: u32) -> u32 {
-    _sha512sig0l(rs1 as i32, rs2 as i32) as u32
+pub fn sha512sig0l(rs1: u32, rs2: u32) -> u32 {
+    unsafe { _sha512sig0l(rs1 as i32, rs2 as i32) as u32 }
 }
 
 /// Implements the high half of the Sigma1 transformation, as used in the SHA2-512 hash
@@ -287,17 +255,13 @@ pub unsafe fn sha512sig0l(rs1: u32, rs2: u32) -> u32 {
 /// Version: v1.0.1
 ///
 /// Section: 3.33
-///
-/// # Safety
-///
-/// This function is safe to use if the `zknh` target feature is present.
 #[target_feature(enable = "zknh")]
 // See #1464
 // #[cfg_attr(test, assert_instr(sha512sig1h))]
 #[inline]
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
-pub unsafe fn sha512sig1h(rs1: u32, rs2: u32) -> u32 {
-    _sha512sig1h(rs1 as i32, rs2 as i32) as u32
+pub fn sha512sig1h(rs1: u32, rs2: u32) -> u32 {
+    unsafe { _sha512sig1h(rs1 as i32, rs2 as i32) as u32 }
 }
 
 /// Implements the low half of the Sigma1 transformation, as used in the SHA2-512 hash function
@@ -314,16 +278,12 @@ pub unsafe fn sha512sig1h(rs1: u32, rs2: u32) -> u32 {
 /// Version: v1.0.1
 ///
 /// Section: 3.34
-///
-/// # Safety
-///
-/// This function is safe to use if the `zknh` target feature is present.
 #[target_feature(enable = "zknh")]
 #[cfg_attr(test, assert_instr(sha512sig1l))]
 #[inline]
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
-pub unsafe fn sha512sig1l(rs1: u32, rs2: u32) -> u32 {
-    _sha512sig1l(rs1 as i32, rs2 as i32) as u32
+pub fn sha512sig1l(rs1: u32, rs2: u32) -> u32 {
+    unsafe { _sha512sig1l(rs1 as i32, rs2 as i32) as u32 }
 }
 
 /// Implements the Sum0 transformation, as used in the SHA2-512 hash function \[49\] (Section
@@ -339,17 +299,13 @@ pub unsafe fn sha512sig1l(rs1: u32, rs2: u32) -> u32 {
 /// Version: v1.0.1
 ///
 /// Section: 3.35
-///
-/// # Safety
-///
-/// This function is safe to use if the `zknh` target feature is present.
 #[target_feature(enable = "zknh")]
 // See #1464
 // #[cfg_attr(test, assert_instr(sha512sum0r))]
 #[inline]
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
-pub unsafe fn sha512sum0r(rs1: u32, rs2: u32) -> u32 {
-    _sha512sum0r(rs1 as i32, rs2 as i32) as u32
+pub fn sha512sum0r(rs1: u32, rs2: u32) -> u32 {
+    unsafe { _sha512sum0r(rs1 as i32, rs2 as i32) as u32 }
 }
 
 /// Implements the Sum1 transformation, as used in the SHA2-512 hash function \[49\] (Section
@@ -365,15 +321,11 @@ pub unsafe fn sha512sum0r(rs1: u32, rs2: u32) -> u32 {
 /// Version: v1.0.1
 ///
 /// Section: 3.36
-///
-/// # Safety
-///
-/// This function is safe to use if the `zknh` target feature is present.
 #[target_feature(enable = "zknh")]
 // See #1464
 // #[cfg_attr(test, assert_instr(sha512sum1r))]
 #[inline]
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
-pub unsafe fn sha512sum1r(rs1: u32, rs2: u32) -> u32 {
-    _sha512sum1r(rs1 as i32, rs2 as i32) as u32
+pub fn sha512sum1r(rs1: u32, rs2: u32) -> u32 {
+    unsafe { _sha512sum1r(rs1 as i32, rs2 as i32) as u32 }
 }

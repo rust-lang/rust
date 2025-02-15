@@ -42,22 +42,18 @@ unsafe extern "unadjusted" {
 /// Version: v1.0.0
 ///
 /// Section: 2.24
-///
-/// # Safety
-///
-/// This function is safe to use if the `zbb` target feature is present.
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 #[target_feature(enable = "zbb")]
 #[cfg_attr(test, assert_instr(orc.b))]
 #[inline]
-pub unsafe fn orc_b(rs: usize) -> usize {
+pub fn orc_b(rs: usize) -> usize {
     #[cfg(target_arch = "riscv32")]
-    {
+    unsafe {
         _orc_b_32(rs as i32) as usize
     }
 
     #[cfg(target_arch = "riscv64")]
-    {
+    unsafe {
         _orc_b_64(rs as i64) as usize
     }
 }
@@ -71,22 +67,18 @@ pub unsafe fn orc_b(rs: usize) -> usize {
 /// Version: v1.0.0
 ///
 /// Section: 2.11
-///
-/// # Safety
-///
-/// This function is safe to use if the `zbc` target feature is present.
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 #[target_feature(enable = "zbc")]
 #[cfg_attr(test, assert_instr(clmul))]
 #[inline]
-pub unsafe fn clmul(rs1: usize, rs2: usize) -> usize {
+pub fn clmul(rs1: usize, rs2: usize) -> usize {
     #[cfg(target_arch = "riscv32")]
-    {
+    unsafe {
         _clmul_32(rs1 as i32, rs2 as i32) as usize
     }
 
     #[cfg(target_arch = "riscv64")]
-    {
+    unsafe {
         _clmul_64(rs1 as i64, rs2 as i64) as usize
     }
 }
@@ -100,22 +92,18 @@ pub unsafe fn clmul(rs1: usize, rs2: usize) -> usize {
 /// Version: v1.0.0
 ///
 /// Section: 2.12
-///
-/// # Safety
-///
-/// This function is safe to use if the `zbc` target feature is present.
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 #[target_feature(enable = "zbc")]
 #[cfg_attr(test, assert_instr(clmulh))]
 #[inline]
-pub unsafe fn clmulh(rs1: usize, rs2: usize) -> usize {
+pub fn clmulh(rs1: usize, rs2: usize) -> usize {
     #[cfg(target_arch = "riscv32")]
-    {
+    unsafe {
         _clmulh_32(rs1 as i32, rs2 as i32) as usize
     }
 
     #[cfg(target_arch = "riscv64")]
-    {
+    unsafe {
         _clmulh_64(rs1 as i64, rs2 as i64) as usize
     }
 }
@@ -129,22 +117,18 @@ pub unsafe fn clmulh(rs1: usize, rs2: usize) -> usize {
 /// Version: v1.0.0
 ///
 /// Section: 2.13
-///
-/// # Safety
-///
-/// This function is safe to use if the `zbc` target feature is present.
 #[unstable(feature = "riscv_ext_intrinsics", issue = "114544")]
 #[target_feature(enable = "zbc")]
 #[cfg_attr(test, assert_instr(clmulr))]
 #[inline]
-pub unsafe fn clmulr(rs1: usize, rs2: usize) -> usize {
+pub fn clmulr(rs1: usize, rs2: usize) -> usize {
     #[cfg(target_arch = "riscv32")]
-    {
+    unsafe {
         _clmulr_32(rs1 as i32, rs2 as i32) as usize
     }
 
     #[cfg(target_arch = "riscv64")]
-    {
+    unsafe {
         _clmulr_64(rs1 as i64, rs2 as i64) as usize
     }
 }
