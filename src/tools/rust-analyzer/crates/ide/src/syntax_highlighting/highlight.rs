@@ -703,24 +703,7 @@ fn highlight_name_ref_by_syntax(
     };
 
     match parent.kind() {
-        EXTERN_CRATE => {
-            let mut h: Highlight = HlTag::Symbol(SymbolKind::Module).into();
-            let is_crate_root = if let Some(extern_crate) = ast::ExternCrate::cast(parent.clone()) {
-                if let Some(first_segment) = extern_crate.name_ref() {
-                    first_segment.syntax().text() == name.syntax().text()
-                } else {
-                    false
-                }
-            } else {
-                false
-            };
-
-            if is_crate_root {
-                h |= HlMod::CrateRoot;
-            }
-
-            h | HlMod::Library
-        }
+        EXTERN_CRATE => (HlTag::Symbol(SymbolKind::Module) | HlMod::CrateRoot).into(),
         METHOD_CALL_EXPR => ast::MethodCallExpr::cast(parent)
             .and_then(|it| highlight_method_call(sema, krate, &it, edition))
             .unwrap_or_else(|| SymbolKind::Method.into()),
