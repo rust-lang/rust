@@ -331,42 +331,6 @@ impl<T> MaybeUninit<T> {
         MaybeUninit { uninit: () }
     }
 
-    /// Creates a new array of `MaybeUninit<T>` items, in an uninitialized state.
-    ///
-    /// Note: in a future Rust version this method may become unnecessary
-    /// when Rust allows
-    /// [inline const expressions](https://github.com/rust-lang/rust/issues/76001).
-    /// The example below could then use `let mut buf = [const { MaybeUninit::<u8>::uninit() }; 32];`.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// #![feature(maybe_uninit_uninit_array, maybe_uninit_slice)]
-    ///
-    /// use std::mem::MaybeUninit;
-    ///
-    /// unsafe extern "C" {
-    ///     fn read_into_buffer(ptr: *mut u8, max_len: usize) -> usize;
-    /// }
-    ///
-    /// /// Returns a (possibly smaller) slice of data that was actually read
-    /// fn read(buf: &mut [MaybeUninit<u8>]) -> &[u8] {
-    ///     unsafe {
-    ///         let len = read_into_buffer(buf.as_mut_ptr() as *mut u8, buf.len());
-    ///         buf[..len].assume_init_ref()
-    ///     }
-    /// }
-    ///
-    /// let mut buf: [MaybeUninit<u8>; 32] = MaybeUninit::uninit_array();
-    /// let data = read(&mut buf);
-    /// ```
-    #[unstable(feature = "maybe_uninit_uninit_array", issue = "96097")]
-    #[must_use]
-    #[inline(always)]
-    pub const fn uninit_array<const N: usize>() -> [Self; N] {
-        [const { MaybeUninit::uninit() }; N]
-    }
-
     /// Creates a new `MaybeUninit<T>` in an uninitialized state, with the memory being
     /// filled with `0` bytes. It depends on `T` whether that already makes for
     /// proper initialization. For example, `MaybeUninit<usize>::zeroed()` is initialized,
