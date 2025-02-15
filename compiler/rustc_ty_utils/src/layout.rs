@@ -155,18 +155,11 @@ fn extract_const_value<'tcx>(
         ty::ConstKind::Error(guar) => {
             return Err(error(cx, LayoutError::ReferencesError(guar)));
         }
-        ty::ConstKind::Param(_) | ty::ConstKind::Expr(_) => {
+        ty::ConstKind::Param(_) | ty::ConstKind::Expr(_) | ty::ConstKind::Unevaluated(_) => {
             if !const_.has_param() {
-                bug!("no generic type found in the type: {ty:?}");
+                bug!("failed to normalize const, but it is not generic: {const_:?}");
             }
             return Err(error(cx, LayoutError::TooGeneric(ty)));
-        }
-        ty::ConstKind::Unevaluated(_) => {
-            if !const_.has_param() {
-                return Err(error(cx, LayoutError::Unknown(ty)));
-            } else {
-                return Err(error(cx, LayoutError::TooGeneric(ty)));
-            }
         }
         ty::ConstKind::Infer(_) | ty::ConstKind::Bound(..) | ty::ConstKind::Placeholder(_) => {
             bug!("unexpected type: {ty:?}");
@@ -728,16 +721,16 @@ fn layout_of_uncached<'tcx>(
             return Err(error(cx, LayoutError::Unknown(ty)));
         }
 
-        ty::Bound(..) | ty::CoroutineWitness(..) | ty::Infer(_) | ty::Error(_) => {
-            bug!("Layout::compute: unexpected type `{}`", ty)
+        ty::Placeholder(..)
+        | ty::Bound(..)
+        | ty::CoroutineWitness(..)
+        | ty::Infer(_)
+        | ty::Error(_) => {
+            bug!("layout_of: unexpected type `{ty}`")
         }
 
         ty::Param(_) => {
             return Err(error(cx, LayoutError::TooGeneric(ty)));
-        }
-
-        ty::Placeholder(..) => {
-            return Err(error(cx, LayoutError::Unknown(ty)));
         }
     })
 }
