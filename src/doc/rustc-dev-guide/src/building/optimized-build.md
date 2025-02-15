@@ -13,7 +13,7 @@ This page describes how you can use these approaches when building `rustc` yours
 
 Link-time optimization is a powerful compiler technique that can increase program performance. To
 enable (Thin-)LTO when building `rustc`, set the `rust.lto` config option to `"thin"`
-in `config.toml`:
+in `bootstrap.toml`:
 
 ```toml
 [rust]
@@ -34,7 +34,7 @@ Enabling LTO on Linux has [produced] speed-ups by up to 10%.
 
 Using a different memory allocator for `rustc` can provide significant performance benefits. If you
 want to enable the `jemalloc` allocator, you can set the `rust.jemalloc` option to `true`
-in `config.toml`:
+in `bootstrap.toml`:
 
 ```toml
 [rust]
@@ -46,7 +46,7 @@ jemalloc = true
 ## Codegen units
 
 Reducing the amount of codegen units per `rustc` crate can produce a faster build of the compiler.
-You can modify the number of codegen units for `rustc` and `libstd` in `config.toml` with the
+You can modify the number of codegen units for `rustc` and `libstd` in `bootstrap.toml` with the
 following options:
 
 ```toml
@@ -67,7 +67,7 @@ RUSTFLAGS="-C target_cpu=x86-64-v3" ./x build ...
 ```
 
 If you also want to compile LLVM for a specific instruction set, you can set `llvm` flags
-in `config.toml`:
+in `bootstrap.toml`:
 
 ```toml
 [llvm]
