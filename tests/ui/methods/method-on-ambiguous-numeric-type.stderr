@@ -6,9 +6,8 @@ LL |     let x = 2.0.neg();
    |
 help: you must specify a concrete type for this numeric value, like `f32`
    |
-LL -     let x = 2.0.neg();
-LL +     let x = 2.0_f32.neg();
-   |
+LL |     let x = 2.0_f32.neg();
+   |                ++++
 
 error[E0689]: can't call method `neg` on ambiguous numeric type `{float}`
   --> $DIR/method-on-ambiguous-numeric-type.rs:17:15

@@ -1092,9 +1092,10 @@ pub fn rustc_cargo(
 
     // We want to link against registerEnzyme and in the future we want to use additional
     // functionality from Enzyme core. For that we need to link against Enzyme.
-    // FIXME(ZuseZ4): Get the LLVM version number automatically instead of hardcoding it.
     if builder.config.llvm_enzyme {
-        cargo.rustflag("-l").rustflag("Enzyme-19");
+        let llvm_config = builder.llvm_config(builder.config.build).unwrap();
+        let llvm_version_major = llvm::get_llvm_version_major(builder, &llvm_config);
+        cargo.rustflag("-l").rustflag(&format!("Enzyme-{llvm_version_major}"));
     }
 
     // Building with protected visibility reduces the number of dynamic relocations needed, giving
@@ -2234,6 +2235,10 @@ pub fn stream_cargo(
     cb: &mut dyn FnMut(CargoMessage<'_>),
 ) -> bool {
     let mut cmd = cargo.into_cmd();
+
+    #[cfg(feature = "tracing")]
+    let _run_span = crate::trace_cmd!(cmd);
+
     let cargo = cmd.as_command_mut();
     // Instruct Cargo to give us json messages on stdout, critically leaving
     // stderr as piped so we can get those pretty colors.

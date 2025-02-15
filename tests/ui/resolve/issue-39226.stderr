@@ -9,9 +9,8 @@ LL |         handle: Handle
    |
 help: use struct literal syntax instead
    |
-LL -         handle: Handle
-LL +         handle: Handle {}
-   |
+LL |         handle: Handle {}
+   |                        ++
 help: a local variable with a similar name exists
    |
 LL -         handle: Handle

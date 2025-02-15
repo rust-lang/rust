@@ -1,11 +1,11 @@
 use std::fmt::Debug;
 
-use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{Ty, TyCtxt};
 use tracing::trace;
 
 use super::simplify::simplify_cfg;
+use crate::patch::MirPatch;
 
 /// This pass optimizes something like
 /// ```ignore (syntax-highlighting-only)

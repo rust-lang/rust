@@ -11,9 +11,8 @@ LL | #![deny(let_underscore_drop)]
    |         ^^^^^^^^^^^^^^^^^^^
 help: consider binding to an unused variable to avoid immediately dropping the value
    |
-LL -     let _ = foo();
-LL +     let _unused = foo();
-   |
+LL |     let _unused = foo();
+   |          ++++++
 help: consider immediately dropping the value
    |
 LL -     let _ = foo();

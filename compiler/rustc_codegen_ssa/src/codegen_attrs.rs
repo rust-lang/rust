@@ -272,10 +272,9 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                 if safe_target_features {
                     if tcx.sess.target.is_like_wasm || tcx.sess.opts.actually_rustdoc {
                         // The `#[target_feature]` attribute is allowed on
-                        // WebAssembly targets on all functions, including safe
-                        // ones. Other targets require that `#[target_feature]` is
-                        // only applied to unsafe functions (pending the
-                        // `target_feature_11` feature) because on most targets
+                        // WebAssembly targets on all functions. Prior to stabilizing
+                        // the `target_feature_11` feature, `#[target_feature]` was
+                        // only permitted on unsafe functions because on most targets
                         // execution of instructions that are not supported is
                         // considered undefined behavior. For WebAssembly which is a
                         // 100% safe target at execution time it's not possible to
@@ -289,17 +288,10 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                         // if a target is documenting some wasm-specific code then
                         // it's not spuriously denied.
                         //
-                        // This exception needs to be kept in sync with allowing
-                        // `#[target_feature]` on `main` and `start`.
-                    } else if !tcx.features().target_feature_11() {
-                        feature_err(
-                            &tcx.sess,
-                            sym::target_feature_11,
-                            attr.span,
-                            "`#[target_feature(..)]` can only be applied to `unsafe` functions",
-                        )
-                        .with_span_label(tcx.def_span(did), "not an `unsafe` function")
-                        .emit();
+                        // Now that `#[target_feature]` is permitted on safe functions,
+                        // this exception must still exist for allowing the attribute on
+                        // `main`, `start`, and other functions that are not usually
+                        // allowed.
                     } else {
                         check_target_feature_trait_unsafe(tcx, did, attr.span);
                     }
@@ -628,10 +620,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     // its parent function, which effectively inherits the features anyway. Boxing this closure
     // would result in this closure being compiled without the inherited target features, but this
     // is probably a poor usage of `#[inline(always)]` and easily avoided by not using the attribute.
-    if tcx.features().target_feature_11()
-        && tcx.is_closure_like(did.to_def_id())
-        && !codegen_fn_attrs.inline.always()
-    {
+    if tcx.is_closure_like(did.to_def_id()) && codegen_fn_attrs.inline != InlineAttr::Always {
         let owner_id = tcx.parent(did.to_def_id());
         if tcx.def_kind(owner_id).has_codegen_attrs() {
             codegen_fn_attrs

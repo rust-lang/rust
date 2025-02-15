@@ -19,9 +19,8 @@ LL |     let _ = format!("{xyza}");
    |             ++++++++        +
 help: if this is intentional, prefix it with an underscore
    |
-LL - fn foo(xyza: &str) {
-LL + fn foo(_xyza: &str) {
-   |
+LL | fn foo(_xyza: &str) {
+   |        +
 
 error: unused variable: `xyza`
   --> $DIR/issue-100584.rs:7:9
@@ -38,9 +37,8 @@ LL |     let _ = format!("aaa{xyza}bbb");
    |             ++++++++              +
 help: if this is intentional, prefix it with an underscore
    |
-LL - fn foo3(xyza: &str) {
-LL + fn foo3(_xyza: &str) {
-   |
+LL | fn foo3(_xyza: &str) {
+   |         +
 
 error: aborting due to 2 previous errors
 

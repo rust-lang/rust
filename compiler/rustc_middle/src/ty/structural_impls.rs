@@ -165,13 +165,9 @@ impl<'tcx> fmt::Debug for ty::consts::Expr<'tcx> {
 impl<'tcx> fmt::Debug for ty::Const<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // If this is a value, we spend some effort to make it look nice.
-        if let ConstKind::Value(_) = self.kind() {
+        if let ConstKind::Value(cv) = self.kind() {
             return ty::tls::with(move |tcx| {
-                // ValTrees aren't interned, so we lift the entire constant.
-                let lifted = tcx.lift(*self).unwrap();
-                let ConstKind::Value(cv) = lifted.kind() else {
-                    bug!("we checked that this is a valtree")
-                };
+                let cv = tcx.lift(cv).unwrap();
                 let mut cx = FmtPrinter::new(tcx, Namespace::ValueNS);
                 cx.pretty_print_const_valtree(cv, /*print_ty*/ true)?;
                 f.write_str(&cx.into_buffer())

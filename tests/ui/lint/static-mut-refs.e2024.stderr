@@ -9,9 +9,8 @@ LL |         let _y = &X;
    = note: `#[deny(static_mut_refs)]` on by default
 help: use `&raw const` instead to create a raw pointer
    |
-LL -         let _y = &X;
-LL +         let _y = &raw const X;
-   |
+LL |         let _y = &raw const X;
+   |                   +++++++++
 
 error: creating a mutable reference to mutable static is discouraged
   --> $DIR/static-mut-refs.rs:42:18
@@ -46,9 +45,8 @@ LL |         let (_b, _c) = (&X, &Y);
    = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
 help: use `&raw const` instead to create a raw pointer
    |
-LL -         let (_b, _c) = (&X, &Y);
-LL +         let (_b, _c) = (&raw const X, &Y);
-   |
+LL |         let (_b, _c) = (&raw const X, &Y);
+   |                          +++++++++
 
 error: creating a shared reference to mutable static is discouraged
   --> $DIR/static-mut-refs.rs:54:29
@@ -60,9 +58,8 @@ LL |         let (_b, _c) = (&X, &Y);
    = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
 help: use `&raw const` instead to create a raw pointer
    |
-LL -         let (_b, _c) = (&X, &Y);
-LL +         let (_b, _c) = (&X, &raw const Y);
-   |
+LL |         let (_b, _c) = (&X, &raw const Y);
+   |                              +++++++++
 
 error: creating a shared reference to mutable static is discouraged
   --> $DIR/static-mut-refs.rs:60:13
@@ -74,9 +71,8 @@ LL |         foo(&X);
    = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
 help: use `&raw const` instead to create a raw pointer
    |
-LL -         foo(&X);
-LL +         foo(&raw const X);
-   |
+LL |         foo(&raw const X);
+   |              +++++++++
 
 error: creating a shared reference to mutable static is discouraged
   --> $DIR/static-mut-refs.rs:66:17
@@ -106,9 +102,8 @@ LL |         let _v = &A.value;
    = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
 help: use `&raw const` instead to create a raw pointer
    |
-LL -         let _v = &A.value;
-LL +         let _v = &raw const A.value;
-   |
+LL |         let _v = &raw const A.value;
+   |                   +++++++++
 
 error: creating a shared reference to mutable static is discouraged
   --> $DIR/static-mut-refs.rs:80:18
@@ -120,9 +115,8 @@ LL |         let _s = &A.s.value;
    = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
 help: use `&raw const` instead to create a raw pointer
    |
-LL -         let _s = &A.s.value;
-LL +         let _s = &raw const A.s.value;
-   |
+LL |         let _s = &raw const A.s.value;
+   |                   +++++++++
 
 error: creating a shared reference to mutable static is discouraged
   --> $DIR/static-mut-refs.rs:84:22

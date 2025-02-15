@@ -11,7 +11,7 @@ use crate::sys::pal::waitqueue::SpinMutex;
 // in the rust-lang/rust repository as a submodule. The crate is a port of
 // dlmalloc.c from C to Rust.
 #[cfg_attr(test, linkage = "available_externally")]
-#[export_name = "_ZN16__rust_internals3std3sys3sgx5alloc8DLMALLOCE"]
+#[unsafe(export_name = "_ZN16__rust_internals3std3sys3sgx5alloc8DLMALLOCE")]
 static DLMALLOC: SpinMutex<dlmalloc::Dlmalloc<Sgx>> =
     SpinMutex::new(dlmalloc::Dlmalloc::new_with_allocator(Sgx {}));
 
@@ -85,13 +85,13 @@ unsafe impl GlobalAlloc for System {
 // The following functions are needed by libunwind. These symbols are named
 // in pre-link args for the target specification, so keep that in sync.
 #[cfg(not(test))]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn __rust_c_alloc(size: usize, align: usize) -> *mut u8 {
     unsafe { crate::alloc::alloc(Layout::from_size_align_unchecked(size, align)) }
 }
 
 #[cfg(not(test))]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn __rust_c_dealloc(ptr: *mut u8, size: usize, align: usize) {
     unsafe { crate::alloc::dealloc(ptr, Layout::from_size_align_unchecked(size, align)) }
 }

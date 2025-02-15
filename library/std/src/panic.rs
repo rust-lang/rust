@@ -376,7 +376,9 @@ pub fn catch_unwind<F: FnOnce() -> R + UnwindSafe, R>(f: F) -> Result<R> {
 /// use std::panic;
 ///
 /// let result = panic::catch_unwind(|| {
-///     panic!("oh no!");
+///     if 1 != 2 {
+///         panic!("oh no!");
+///     }
 /// });
 ///
 /// if let Err(err) = result {

@@ -6,9 +6,8 @@ LL |     mutate(&mut x);
    |
 help: consider changing this to be mutable
    |
-LL - fn foo(&x: &i32) {
-LL + fn foo(&(mut x): &i32) {
-   |
+LL | fn foo(&(mut x): &i32) {
+   |         ++++  +
 
 error: aborting due to 1 previous error
 

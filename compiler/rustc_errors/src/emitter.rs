@@ -1976,13 +1976,16 @@ impl HumanEmitter {
             Some(Style::HeaderMsg),
         );
 
+        let other_suggestions = suggestions.len().saturating_sub(MAX_SUGGESTIONS);
+
         let mut row_num = 2;
         for (i, (complete, parts, highlights, _)) in
-            suggestions.iter().enumerate().take(MAX_SUGGESTIONS)
+            suggestions.into_iter().enumerate().take(MAX_SUGGESTIONS)
         {
             debug!(?complete, ?parts, ?highlights);
 
-            let has_deletion = parts.iter().any(|p| p.is_deletion(sm) || p.is_replacement(sm));
+            let has_deletion =
+                parts.iter().any(|p| p.is_deletion(sm) || p.is_destructive_replacement(sm));
             let is_multiline = complete.lines().count() > 1;
 
             if i == 0 {
@@ -2167,7 +2170,7 @@ impl HumanEmitter {
                 self.draw_code_line(
                     &mut buffer,
                     &mut row_num,
-                    highlight_parts,
+                    &highlight_parts,
                     line_pos + line_start,
                     line,
                     show_code_change,
@@ -2213,7 +2216,12 @@ impl HumanEmitter {
             if let DisplaySuggestion::Diff | DisplaySuggestion::Underline | DisplaySuggestion::Add =
                 show_code_change
             {
-                for part in parts {
+                for mut part in parts {
+                    // If this is a replacement of, e.g. `"a"` into `"ab"`, adjust the
+                    // suggestion and snippet to look as if we just suggested to add
+                    // `"b"`, which is typically much easier for the user to understand.
+                    part.trim_trivial_replacements(sm);
+
                     let snippet = if let Ok(snippet) = sm.span_to_snippet(part.span) {
                         snippet
                     } else {
@@ -2376,9 +2384,12 @@ impl HumanEmitter {
                 row_num = row + 1;
             }
         }
-        if suggestions.len() > MAX_SUGGESTIONS {
-            let others = suggestions.len() - MAX_SUGGESTIONS;
-            let msg = format!("and {} other candidate{}", others, pluralize!(others));
+        if other_suggestions > 0 {
+            let msg = format!(
+                "and {} other candidate{}",
+                other_suggestions,
+                pluralize!(other_suggestions)
+            );
             buffer.puts(row_num, max_line_num_len + 3, &msg, Style::NoStyle);
         }
 

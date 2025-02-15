@@ -14,9 +14,8 @@ LL + struct Foo<T> where T: Bar, T: Bar<Baz = String> {
    |
 help: a trait with a similar name exists
    |
-LL - struct Foo<T> where T: Bar, <T as Bar>::Baz: String {
-LL + struct Foo<T> where T: Bar, <T as Bar>::Baz: ToString {
-   |
+LL | struct Foo<T> where T: Bar, <T as Bar>::Baz: ToString {
+   |                                              ++
 
 error[E0404]: expected trait, found struct `String`
   --> $DIR/assoc_type_bound_with_struct.rs:9:54
@@ -34,9 +33,8 @@ LL + struct Qux<'a, T> where T: Bar, &'a T: Bar<Baz = String> {
    |
 help: a trait with a similar name exists
    |
-LL - struct Qux<'a, T> where T: Bar, <&'a T as Bar>::Baz: String {
-LL + struct Qux<'a, T> where T: Bar, <&'a T as Bar>::Baz: ToString {
-   |
+LL | struct Qux<'a, T> where T: Bar, <&'a T as Bar>::Baz: ToString {
+   |                                                      ++
 
 error[E0404]: expected trait, found struct `String`
   --> $DIR/assoc_type_bound_with_struct.rs:13:45
@@ -54,9 +52,8 @@ LL + fn foo<T: Bar>(_: T) where T: Bar<Baz = String> {
    |
 help: a trait with a similar name exists
    |
-LL - fn foo<T: Bar>(_: T) where <T as Bar>::Baz: String {
-LL + fn foo<T: Bar>(_: T) where <T as Bar>::Baz: ToString {
-   |
+LL | fn foo<T: Bar>(_: T) where <T as Bar>::Baz: ToString {
+   |                                             ++
 
 error[E0404]: expected trait, found struct `String`
   --> $DIR/assoc_type_bound_with_struct.rs:16:57
@@ -74,9 +71,8 @@ LL + fn qux<'a, T: Bar>(_: &'a T) where &'a T: Bar<Baz = String> {
    |
 help: a trait with a similar name exists
    |
-LL - fn qux<'a, T: Bar>(_: &'a T) where <&'a T as Bar>::Baz: String {
-LL + fn qux<'a, T: Bar>(_: &'a T) where <&'a T as Bar>::Baz: ToString {
-   |
+LL | fn qux<'a, T: Bar>(_: &'a T) where <&'a T as Bar>::Baz: ToString {
+   |                                                         ++
 
 error[E0405]: cannot find trait `Unresolved` in this scope
   --> $DIR/assoc_type_bound_with_struct.rs:19:31

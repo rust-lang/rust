@@ -12,6 +12,7 @@ use clap_complete::shells;
 
 use crate::core::build_steps::compile::run_cargo;
 use crate::core::build_steps::doc::DocumentationFormat;
+use crate::core::build_steps::llvm::get_llvm_version;
 use crate::core::build_steps::synthetic_targets::MirOptPanicAbortSyntheticTarget;
 use crate::core::build_steps::tool::{self, SourceType, Tool};
 use crate::core::build_steps::toolstate::ToolState;
@@ -1845,18 +1846,20 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             }
         }
 
+        // FIXME(136096): on macOS, we get linker warnings about duplicate `-lm` flags.
+        // NOTE: `stage > 1` here because `test --stage 1 ui-fulldeps` is a hack that compiles
+        // with stage 0, but links the tests against stage 1.
+        // cfg(bootstrap) - remove only the `stage > 1` check, leave everything else.
+        if suite == "ui-fulldeps" && compiler.stage > 1 && target.ends_with("darwin") {
+            flags.push("-Alinker_messages".into());
+        }
+
         let mut hostflags = flags.clone();
         hostflags.push(format!("-Lnative={}", builder.test_helpers_out(compiler.host).display()));
         hostflags.extend(linker_flags(builder, compiler.host, LldThreads::No));
 
         let mut targetflags = flags;
         targetflags.push(format!("-Lnative={}", builder.test_helpers_out(target).display()));
-
-        // FIXME: on macOS, we get linker warnings about duplicate `-lm` flags. We should investigate why this happens.
-        if suite == "ui-fulldeps" && target.ends_with("darwin") {
-            hostflags.push("-Alinker_messages".into());
-            targetflags.push("-Alinker_messages".into());
-        }
 
         for flag in hostflags {
             cmd.arg("--host-rustcflags").arg(flag);
@@ -1945,8 +1948,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             let llvm::LlvmResult { llvm_config, .. } =
                 builder.ensure(llvm::Llvm { target: builder.config.build });
             if !builder.config.dry_run() {
-                let llvm_version =
-                    command(&llvm_config).arg("--version").run_capture_stdout(builder).stdout();
+                let llvm_version = get_llvm_version(builder, &llvm_config);
                 let llvm_components =
                     command(&llvm_config).arg("--components").run_capture_stdout(builder).stdout();
                 // Remove trailing newline from llvm-config output.
@@ -1969,13 +1971,12 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             if !builder.config.dry_run() && suite.ends_with("fulldeps") {
                 let llvm_libdir =
                     command(&llvm_config).arg("--libdir").run_capture_stdout(builder).stdout();
-                let mut rustflags = env::var("RUSTFLAGS").unwrap_or_default();
-                if target.is_msvc() {
-                    rustflags.push_str(&format!("-Clink-arg=-LIBPATH:{llvm_libdir}"));
+                let link_llvm = if target.is_msvc() {
+                    format!("-Clink-arg=-LIBPATH:{llvm_libdir}")
                 } else {
-                    rustflags.push_str(&format!("-Clink-arg=-L{llvm_libdir}"));
-                }
-                cmd.env("RUSTFLAGS", rustflags);
+                    format!("-Clink-arg=-L{llvm_libdir}")
+                };
+                cmd.arg("--host-rustcflags").arg(link_llvm);
             }
 
             if !builder.config.dry_run() && matches!(mode, "run-make" | "coverage-run") {

@@ -35,7 +35,6 @@
 #![feature(freeze)]
 #![feature(future_join)]
 #![feature(generic_assert_internals)]
-#![feature(get_many_mut)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
 #![feature(inline_const_pat)]

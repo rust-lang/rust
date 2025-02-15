@@ -16,9 +16,8 @@ LL |     cbor_map! { #[cfg(test)] 4};
    = note: this error originates in the macro `cbor_map` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: you must specify a concrete type for this numeric value, like `i32`
    |
-LL -     cbor_map! { #[cfg(test)] 4};
-LL +     cbor_map! { #[cfg(test)] 4_i32};
-   |
+LL |     cbor_map! { #[cfg(test)] 4_i32};
+   |                               ++++
 
 error: aborting due to 2 previous errors
 

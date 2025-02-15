@@ -30,9 +30,8 @@ LL |     use env;
    |
 help: consider importing this module instead
    |
-LL -     use env;
-LL +     use std::env;
-   |
+LL |     use std::env;
+   |         +++++
 
 error: aborting due to 4 previous errors
 

@@ -14,9 +14,8 @@ LL | pub struct XEmpty2;
    |
 help: use struct literal syntax instead
    |
-LL -     let e1 = Empty1;
-LL +     let e1 = Empty1 {};
-   |
+LL |     let e1 = Empty1 {};
+   |                     ++
 help: a unit struct with a similar name exists
    |
 LL -     let e1 = Empty1;
@@ -38,9 +37,8 @@ LL | pub struct XEmpty2;
    |
 help: use struct literal syntax instead
    |
-LL -     let xe1 = XEmpty1;
-LL +     let xe1 = XEmpty1 {};
-   |
+LL |     let xe1 = XEmpty1 {};
+   |                       ++
 help: a unit struct with a similar name exists
    |
 LL -     let xe1 = XEmpty1;
@@ -127,9 +125,8 @@ LL |     let xe3 = XE::Empty3;
    |
 help: there is a variant with a similar name
    |
-LL -     let xe3 = XE::Empty3;
-LL +     let xe3 = XE::XEmpty3;
-   |
+LL |     let xe3 = XE::XEmpty3;
+   |                   +
 
 error[E0599]: no variant or associated item named `Empty3` found for enum `empty_struct::XE` in the current scope
   --> $DIR/empty-struct-braces-expr.rs:26:19

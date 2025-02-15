@@ -54,9 +54,8 @@ LL |     static_bound(&static_mut_xc::a);
    = note: shared references to mutable statics are dangerous; it's undefined behavior if the static is mutated or if a mutable reference is created for it while the shared reference lives
 help: use `&raw const` instead to create a raw pointer
    |
-LL -     static_bound(&static_mut_xc::a);
-LL +     static_bound(&raw const static_mut_xc::a);
-   |
+LL |     static_bound(&raw const static_mut_xc::a);
+   |                   +++++++++
 
 warning: creating a mutable reference to mutable static is discouraged
   --> $DIR/static-mut-xc.rs:35:22

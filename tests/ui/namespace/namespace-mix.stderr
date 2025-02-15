@@ -10,9 +10,8 @@ LL |     check(m1::S);
    = note: can't use a type alias as a constructor
 help: a tuple struct with a similar name exists
    |
-LL -     check(m1::S);
-LL +     check(m1::TS);
-   |
+LL |     check(m1::TS);
+   |               +
 help: consider importing one of these constants instead
    |
 LL + use m2::S;
@@ -39,9 +38,8 @@ LL |     pub struct TS();
    = note: can't use a type alias as a constructor
 help: a tuple struct with a similar name exists
    |
-LL -     check(xm1::S);
-LL +     check(xm1::TS);
-   |
+LL |     check(xm1::TS);
+   |                +
 help: consider importing one of these constants instead
    |
 LL + use m2::S;
@@ -66,9 +64,8 @@ LL |     check(m7::V);
    = note: can't use a type alias as a constructor
 help: a tuple variant with a similar name exists
    |
-LL -     check(m7::V);
-LL +     check(m7::TV);
-   |
+LL |     check(m7::TV);
+   |               +
 help: consider importing one of these constants instead
    |
 LL + use m8::V;
@@ -95,9 +92,8 @@ LL |         TV(),
    = note: can't use a type alias as a constructor
 help: a tuple variant with a similar name exists
    |
-LL -     check(xm7::V);
-LL +     check(xm7::TV);
-   |
+LL |     check(xm7::TV);
+   |                +
 help: consider importing one of these constants instead
    |
 LL + use m8::V;

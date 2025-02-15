@@ -868,3 +868,38 @@ pub(crate) struct ReplaceCommaWithSemicolon {
     pub comma_span: Span,
     pub descr: &'static str,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(hir_typeck_supertrait_item_shadowing)]
+pub(crate) struct SupertraitItemShadowing {
+    pub item: Symbol,
+    pub subtrait: Symbol,
+    #[subdiagnostic]
+    pub shadower: SupertraitItemShadower,
+    #[subdiagnostic]
+    pub shadowee: SupertraitItemShadowee,
+}
+
+#[derive(Subdiagnostic)]
+#[note(hir_typeck_supertrait_item_shadower)]
+pub(crate) struct SupertraitItemShadower {
+    pub subtrait: Symbol,
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum SupertraitItemShadowee {
+    #[note(hir_typeck_supertrait_item_shadowee)]
+    Labeled {
+        #[primary_span]
+        span: Span,
+        supertrait: Symbol,
+    },
+    #[note(hir_typeck_supertrait_item_multiple_shadowee)]
+    Several {
+        #[primary_span]
+        spans: MultiSpan,
+        traits: DiagSymbolList,
+    },
+}

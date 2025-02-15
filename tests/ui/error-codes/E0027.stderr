@@ -6,19 +6,16 @@ LL |         Dog { age: x } => {}
    |
 help: include the missing field in the pattern
    |
-LL -         Dog { age: x } => {}
-LL +         Dog { age: x, name } => {}
-   |
+LL |         Dog { age: x, name } => {}
+   |                     ++++++
 help: if you don't care about this missing field, you can explicitly ignore it
    |
-LL -         Dog { age: x } => {}
-LL +         Dog { age: x, name: _ } => {}
-   |
+LL |         Dog { age: x, name: _ } => {}
+   |                     +++++++++
 help: or always ignore missing fields here
    |
-LL -         Dog { age: x } => {}
-LL +         Dog { age: x, .. } => {}
-   |
+LL |         Dog { age: x, .. } => {}
+   |                     ++++
 
 error[E0027]: pattern does not mention field `age`
   --> $DIR/E0027.rs:15:9

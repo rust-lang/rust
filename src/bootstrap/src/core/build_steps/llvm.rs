@@ -571,10 +571,7 @@ impl Step for Llvm {
 
         // Helper to find the name of LLVM's shared library on darwin and linux.
         let find_llvm_lib_name = |extension| {
-            let version =
-                command(&res.llvm_config).arg("--version").run_capture_stdout(builder).stdout();
-            let major = version.split('.').next().unwrap();
-
+            let major = get_llvm_version_major(builder, &res.llvm_config);
             match &llvm_version_suffix {
                 Some(version_suffix) => format!("libLLVM-{major}{version_suffix}.{extension}"),
                 None => format!("libLLVM-{major}.{extension}"),
@@ -624,12 +621,22 @@ impl Step for Llvm {
     }
 }
 
+pub fn get_llvm_version(builder: &Builder<'_>, llvm_config: &Path) -> String {
+    command(llvm_config).arg("--version").run_capture_stdout(builder).stdout().trim().to_owned()
+}
+
+pub fn get_llvm_version_major(builder: &Builder<'_>, llvm_config: &Path) -> u8 {
+    let version = get_llvm_version(builder, llvm_config);
+    let major_str = version.split_once('.').expect("Failed to parse LLVM version").0;
+    major_str.parse().unwrap()
+}
+
 fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
     if builder.config.dry_run() {
         return;
     }
 
-    let version = command(llvm_config).arg("--version").run_capture_stdout(builder).stdout();
+    let version = get_llvm_version(builder, llvm_config);
     let mut parts = version.split('.').take(2).filter_map(|s| s.parse::<u32>().ok());
     if let (Some(major), Some(_minor)) = (parts.next(), parts.next()) {
         if major >= 18 {

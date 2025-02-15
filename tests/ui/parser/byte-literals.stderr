@@ -39,9 +39,8 @@ LL |     b''';
    |
 help: escape the character
    |
-LL -     b''';
-LL +     b'\'';
-   |
+LL |     b'\'';
+   |       +
 
 error: non-ASCII character in byte literal
   --> $DIR/byte-literals.rs:10:7

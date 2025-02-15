@@ -16,9 +16,8 @@ LL + use reexported_trait::Trait;
    |
 help: there is a method `trait_method_b` with a similar name
    |
-LL -     reexported_trait::FooStruct.trait_method();
-LL +     reexported_trait::FooStruct.trait_method_b();
-   |
+LL |     reexported_trait::FooStruct.trait_method_b();
+   |                                             ++
 
 error[E0599]: no method named `trait_method_b` found for struct `FooStruct` in the current scope
   --> $DIR/issue-56175.rs:7:33
