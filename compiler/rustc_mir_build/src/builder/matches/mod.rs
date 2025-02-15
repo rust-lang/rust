@@ -755,7 +755,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         guard: Option<ExprId>,
         opt_match_place: Option<(Option<&Place<'tcx>>, Span)>,
     ) -> Option<SourceScope> {
-        self.visit_primary_bindings(
+        self.visit_primary_bindings_special(
             pattern,
             UserTypeProjections::none(),
             &mut |this, name, mode, var, span, ty, user_ty| {
@@ -846,10 +846,32 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    /// Visit all of the primary bindings in a patterns, that is, visit the
-    /// leftmost occurrence of each variable bound in a pattern. A variable
-    /// will occur more than once in an or-pattern.
+    /// Visits all of the "primary" bindings in a pattern, i.e. the leftmost
+    /// occurrence of each variable bound by the pattern.
+    /// See [`PatKind::Binding::is_primary`] for more context.
+    ///
+    /// This variant provides only the limited subset of binding data needed
+    /// by its callers, and should be a "pure" visit without side-effects.
     pub(super) fn visit_primary_bindings(
+        &mut self,
+        pattern: &Pat<'tcx>,
+        f: &mut impl FnMut(&mut Self, LocalVarId, Span),
+    ) {
+        pattern.walk_always(|pat| {
+            if let PatKind::Binding { var, is_primary: true, .. } = pat.kind {
+                f(self, var, pat.span);
+            }
+        })
+    }
+
+    /// Visits all of the "primary" bindings in a pattern, while preparing
+    /// additional user-type-annotation data needed by `declare_bindings`.
+    ///
+    /// This also has the side-effect of pushing all user type annotations
+    /// onto `canonical_user_type_annotations`, so that they end up in MIR
+    /// even if they aren't associated with any bindings.
+    #[instrument(level = "debug", skip(self, f))]
+    fn visit_primary_bindings_special(
         &mut self,
         pattern: &Pat<'tcx>,
         pattern_user_ty: UserTypeProjections,
@@ -863,17 +885,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             UserTypeProjections,
         ),
     ) {
-        debug!(
-            "visit_primary_bindings: pattern={:?} pattern_user_ty={:?}",
-            pattern, pattern_user_ty
-        );
+        // Avoid having to write the full method name at each recursive call.
+        let visit_subpat = |this: &mut Self, subpat, user_tys, f: &mut _| {
+            this.visit_primary_bindings_special(subpat, user_tys, f)
+        };
+
         match pattern.kind {
             PatKind::Binding { name, mode, var, ty, ref subpattern, is_primary, .. } => {
                 if is_primary {
                     f(self, name, mode, var, pattern.span, ty, pattern_user_ty.clone());
                 }
                 if let Some(subpattern) = subpattern.as_ref() {
-                    self.visit_primary_bindings(subpattern, pattern_user_ty, f);
+                    visit_subpat(self, subpattern, pattern_user_ty, f);
                 }
             }
 
@@ -882,17 +905,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let from = u64::try_from(prefix.len()).unwrap();
                 let to = u64::try_from(suffix.len()).unwrap();
                 for subpattern in prefix.iter() {
-                    self.visit_primary_bindings(subpattern, pattern_user_ty.clone().index(), f);
+                    visit_subpat(self, subpattern, pattern_user_ty.clone().index(), f);
                 }
                 if let Some(subpattern) = slice {
-                    self.visit_primary_bindings(
-                        subpattern,
-                        pattern_user_ty.clone().subslice(from, to),
-                        f,
-                    );
+                    visit_subpat(self, subpattern, pattern_user_ty.clone().subslice(from, to), f);
                 }
                 for subpattern in suffix.iter() {
-                    self.visit_primary_bindings(subpattern, pattern_user_ty.clone().index(), f);
+                    visit_subpat(self, subpattern, pattern_user_ty.clone().index(), f);
                 }
             }
 
@@ -903,11 +922,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | PatKind::Error(_) => {}
 
             PatKind::Deref { ref subpattern } => {
-                self.visit_primary_bindings(subpattern, pattern_user_ty.deref(), f);
+                visit_subpat(self, subpattern, pattern_user_ty.deref(), f);
             }
 
             PatKind::DerefPattern { ref subpattern, .. } => {
-                self.visit_primary_bindings(subpattern, UserTypeProjections::none(), f);
+                visit_subpat(self, subpattern, UserTypeProjections::none(), f);
             }
 
             PatKind::AscribeUserType {
@@ -925,18 +944,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 let base_user_ty = self.canonical_user_type_annotations.push(annotation.clone());
                 let subpattern_user_ty = pattern_user_ty.push_user_type(base_user_ty);
-                self.visit_primary_bindings(subpattern, subpattern_user_ty, f)
+                visit_subpat(self, subpattern, subpattern_user_ty, f)
             }
 
             PatKind::ExpandedConstant { ref subpattern, .. } => {
-                self.visit_primary_bindings(subpattern, pattern_user_ty, f)
+                visit_subpat(self, subpattern, pattern_user_ty, f)
             }
 
             PatKind::Leaf { ref subpatterns } => {
                 for subpattern in subpatterns {
                     let subpattern_user_ty = pattern_user_ty.clone().leaf(subpattern.field);
                     debug!("visit_primary_bindings: subpattern_user_ty={:?}", subpattern_user_ty);
-                    self.visit_primary_bindings(&subpattern.pattern, subpattern_user_ty, f);
+                    visit_subpat(self, &subpattern.pattern, subpattern_user_ty, f);
                 }
             }
 
@@ -944,7 +963,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 for subpattern in subpatterns {
                     let subpattern_user_ty =
                         pattern_user_ty.clone().variant(adt_def, variant_index, subpattern.field);
-                    self.visit_primary_bindings(&subpattern.pattern, subpattern_user_ty, f);
+                    visit_subpat(self, &subpattern.pattern, subpattern_user_ty, f);
                 }
             }
             PatKind::Or { ref pats } => {
@@ -953,7 +972,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // `let (x | y) = ...`, the primary binding of `y` occurs in
                 // the right subpattern
                 for subpattern in pats.iter() {
-                    self.visit_primary_bindings(subpattern, pattern_user_ty.clone(), f);
+                    visit_subpat(self, subpattern, pattern_user_ty.clone(), f);
                 }
             }
         }
