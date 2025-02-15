@@ -234,6 +234,14 @@ fn parse_cfg_name_directive<'a>(
         allowed_names: ["coverage-map", "coverage-run"],
         message: "when the test mode is {name}",
     }
+    condition! {
+        name: target_cfg.rustc_abi.as_ref().map(|abi| format!("rustc_abi-{abi}")).unwrap_or_default(),
+        allowed_names: ContainsPrefixed {
+            prefix: "rustc_abi-",
+            inner: target_cfgs.all_rustc_abis.clone(),
+        },
+        message: "when the target `rustc_abi` is {name}",
+    }
 
     condition! {
         name: "dist",
