@@ -14,8 +14,8 @@ https://rust-analyzer.github.io/book/installation.html
 ## Documentation
 
 If you want to **contribute** to rust-analyzer check out the [CONTRIBUTING.md](./CONTRIBUTING.md) or
-if you are just curious about how things work under the hood, check the [./docs/dev](./docs/dev)
-folder.
+if you are just curious about how things work under the hood, see the
+[Contributing](https://rust-analyzer.github.io/book/contributing) section of the manual.
 
 If you want to **use** rust-analyzer's language server with your editor of
 choice, check [the manual](https://rust-analyzer.github.io/book/).

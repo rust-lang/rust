@@ -34,3 +34,8 @@ use-boolean-and = true
 [output.html.fold]
 enable = true
 level = 3
+
+[preprocessor.toc]
+command = "mdbook-toc"
+renderer = ["html"]
+max-level = 3

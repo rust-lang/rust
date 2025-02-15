@@ -27,8 +27,9 @@ fn check_lsp_extensions_docs(sh: &Shell) {
     };
 
     let actual_hash = {
-        let lsp_extensions_md =
-            sh.read_file(project_root().join("docs/dev/lsp-extensions.md")).unwrap();
+        let lsp_extensions_md = sh
+            .read_file(project_root().join("docs/book/src/contributing/lsp-extensions.md"))
+            .unwrap();
         let text = lsp_extensions_md
             .lines()
             .find_map(|line| line.strip_prefix("lsp/ext.rs hash:"))

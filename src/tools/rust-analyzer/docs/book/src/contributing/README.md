@@ -9,7 +9,7 @@ $ cargo test
 
 should be enough to get you started!
 
-To learn more about how rust-analyzer works, see [./architecture.md](./architecture.md).
+To learn more about how rust-analyzer works, see [Architecture](architecture.md).
 It also explains the high-level layout of the source code.
 Do skim through that document.
 
@@ -24,7 +24,9 @@ rust-analyzer is a part of the [RLS-2.0 working
 group](https://github.com/rust-lang/compiler-team/tree/6a769c13656c0a6959ebc09e7b1f7c09b86fb9c0/working-groups/rls-2.0).
 Discussion happens in this Zulip stream:
 
-https://rust-lang.zulipchat.com/#narrow/stream/185405-t-compiler.2Frust-analyzer
+<https://rust-lang.zulipchat.com/#narrow/stream/185405-t-compiler.2Frust-analyzer>
+
+<!-- toc -->
 
 # Issue Labels
 
@@ -54,7 +56,7 @@ https://rust-lang.zulipchat.com/#narrow/stream/185405-t-compiler.2Frust-analyzer
 
 # Code Style & Review Process
 
-Do see [./style.md](./style.md).
+See the [Style Guide](style.md).
 
 # Cookbook
 
@@ -88,11 +90,13 @@ As a sanity check after I'm done, I use `cargo xtask install --server` and **Rel
 If the problem concerns only the VS Code extension, I use **Run Installed Extension** launch configuration from `launch.json`.
 Notably, this uses the usual `rust-analyzer` binary from `PATH`.
 For this, it is important to have the following in your `settings.json` file:
+
 ```json
 {
     "rust-analyzer.server.path": "rust-analyzer"
 }
 ```
+
 After I am done with the fix, I use `cargo xtask install --client` to try the new extension for real.
 
 If I need to fix something in the `rust-analyzer` crate, I feel sad because it's on the boundary between the two processes, and working there is slow.
@@ -117,6 +121,7 @@ cd editors/code
 npm ci
 npm run lint
 ```
+
 ## How to ...
 
 * ... add an assist? [#7535](https://github.com/rust-lang/rust-analyzer/pull/7535)
@@ -142,13 +147,14 @@ Note that `stdout` is used for the actual protocol, so `println!` will break thi
 To log all communication between the server and the client, there are two choices:
 
 * You can log on the server side, by running something like
+
   ```
   env RA_LOG=lsp_server=debug code .
   ```
+
 * You can log on the client side, by the `rust-analyzer: Toggle LSP Logs` command or enabling `"rust-analyzer.trace.server": "verbose"` workspace setting.
   These logs are shown in a separate tab in the output and could be used with LSP inspector.
   Kudos to [@DJMcNab](https://github.com/DJMcNab) for setting this awesome infra up!
-
 
 There are also several VS Code commands which might be of interest:
 
