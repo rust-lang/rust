@@ -34,9 +34,8 @@ LL + use crate::foo::Bar;
    |
 help: there is a method `foobar` with a similar name
    |
-LL -     x.bar();
-LL +     x.foobar();
-   |
+LL |     x.foobar();
+   |       +++
 
 error[E0599]: no method named `baz` found for type `u32` in the current scope
   --> $DIR/trait-import-suggestions.rs:29:7

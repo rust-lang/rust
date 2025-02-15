@@ -20,7 +20,7 @@ pub type ConstKind<'tcx> = ir::ConstKind<TyCtxt<'tcx>>;
 pub type UnevaluatedConst<'tcx> = ir::UnevaluatedConst<TyCtxt<'tcx>>;
 
 #[cfg(target_pointer_width = "64")]
-rustc_data_structures::static_assert_size!(ConstKind<'_>, 32);
+rustc_data_structures::static_assert_size!(ConstKind<'_>, 24);
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, HashStable)]
 #[rustc_pass_by_value]
@@ -190,7 +190,7 @@ impl<'tcx> Const<'tcx> {
             .size;
         ty::Const::new_value(
             tcx,
-            ty::ValTree::from_scalar_int(ScalarInt::try_from_uint(bits, size).unwrap()),
+            ty::ValTree::from_scalar_int(tcx, ScalarInt::try_from_uint(bits, size).unwrap()),
             ty,
         )
     }
@@ -198,7 +198,7 @@ impl<'tcx> Const<'tcx> {
     #[inline]
     /// Creates an interned zst constant.
     pub fn zero_sized(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Self {
-        ty::Const::new_value(tcx, ty::ValTree::zst(), ty)
+        ty::Const::new_value(tcx, ty::ValTree::zst(tcx), ty)
     }
 
     #[inline]

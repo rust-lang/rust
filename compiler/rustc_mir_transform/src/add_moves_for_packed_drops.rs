@@ -1,8 +1,8 @@
-use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
 use tracing::debug;
 
+use crate::patch::MirPatch;
 use crate::util;
 
 /// This pass moves values being dropped that are within a packed

@@ -1109,6 +1109,8 @@ impl ToJson for FloatAbi {
 /// The Rustc-specific variant of the ABI used for this target.
 #[derive(Clone, Copy, PartialEq, Hash, Debug)]
 pub enum RustcAbi {
+    /// On x86-32 only: make use of SSE and SSE2 for ABI purposes.
+    X86Sse2,
     /// On x86-32/64 only: do not use any FPU or SIMD registers for the ABI.
     X86Softfloat,
 }
@@ -1118,6 +1120,7 @@ impl FromStr for RustcAbi {
 
     fn from_str(s: &str) -> Result<RustcAbi, ()> {
         Ok(match s {
+            "x86-sse2" => RustcAbi::X86Sse2,
             "x86-softfloat" => RustcAbi::X86Softfloat,
             _ => return Err(()),
         })
@@ -1127,6 +1130,7 @@ impl FromStr for RustcAbi {
 impl ToJson for RustcAbi {
     fn to_json(&self) -> Json {
         match *self {
+            RustcAbi::X86Sse2 => "x86-sse2",
             RustcAbi::X86Softfloat => "x86-softfloat",
         }
         .to_json()
@@ -1636,6 +1640,55 @@ impl fmt::Display for StackProtector {
     }
 }
 
+#[derive(PartialEq, Clone, Debug)]
+pub enum BinaryFormat {
+    Coff,
+    Elf,
+    MachO,
+    Wasm,
+    Xcoff,
+}
+
+impl BinaryFormat {
+    /// Returns [`object::BinaryFormat`] for given `BinaryFormat`
+    pub fn to_object(&self) -> object::BinaryFormat {
+        match self {
+            Self::Coff => object::BinaryFormat::Coff,
+            Self::Elf => object::BinaryFormat::Elf,
+            Self::MachO => object::BinaryFormat::MachO,
+            Self::Wasm => object::BinaryFormat::Wasm,
+            Self::Xcoff => object::BinaryFormat::Xcoff,
+        }
+    }
+}
+
+impl FromStr for BinaryFormat {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "coff" => Ok(Self::Coff),
+            "elf" => Ok(Self::Elf),
+            "mach-o" => Ok(Self::MachO),
+            "wasm" => Ok(Self::Wasm),
+            "xcoff" => Ok(Self::Xcoff),
+            _ => Err(()),
+        }
+    }
+}
+
+impl ToJson for BinaryFormat {
+    fn to_json(&self) -> Json {
+        match self {
+            Self::Coff => "coff",
+            Self::Elf => "elf",
+            Self::MachO => "mach-o",
+            Self::Wasm => "wasm",
+            Self::Xcoff => "xcoff",
+        }
+        .to_json()
+    }
+}
+
 macro_rules! supported_targets {
     ( $(($tuple:literal, $module:ident),)+ ) => {
         mod targets {
@@ -2013,6 +2066,7 @@ supported_targets! {
     ("riscv64imac-unknown-nuttx-elf", riscv64imac_unknown_nuttx_elf),
     ("riscv64gc-unknown-nuttx-elf", riscv64gc_unknown_nuttx_elf),
 
+    ("x86_64-pc-cygwin", x86_64_pc_cygwin),
 }
 
 /// Cow-Vec-Str: Cow<'static, [Cow<'static, str>]>
@@ -2364,6 +2418,8 @@ pub struct TargetOptions {
     pub is_like_wasm: bool,
     /// Whether a target toolchain is like Android, implying a Linux kernel and a Bionic libc
     pub is_like_android: bool,
+    /// Target's binary file format. Defaults to BinaryFormat::Elf
+    pub binary_format: BinaryFormat,
     /// Default supported version of DWARF on this platform.
     /// Useful because some platforms (osx, bsd) only want up to DWARF2.
     pub default_dwarf_version: u32,
@@ -2739,6 +2795,7 @@ impl Default for TargetOptions {
             is_like_msvc: false,
             is_like_wasm: false,
             is_like_android: false,
+            binary_format: BinaryFormat::Elf,
             default_dwarf_version: 4,
             allows_weak_linkage: true,
             has_rpath: false,
@@ -2994,8 +3051,8 @@ impl Target {
         );
         check_eq!(
             self.is_like_windows,
-            self.os == "windows" || self.os == "uefi",
-            "`is_like_windows` must be set if and only if `os` is `windows` or `uefi`"
+            self.os == "windows" || self.os == "uefi" || self.os == "cygwin",
+            "`is_like_windows` must be set if and only if `os` is `windows`, `uefi` or `cygwin`"
         );
         check_eq!(
             self.is_like_wasm,
@@ -3263,6 +3320,11 @@ impl Target {
         // Check consistency of Rust ABI declaration.
         if let Some(rust_abi) = self.rustc_abi {
             match rust_abi {
+                RustcAbi::X86Sse2 => check_matches!(
+                    &*self.arch,
+                    "x86",
+                    "`x86-sse2` ABI is only valid for x86-32 targets"
+                ),
                 RustcAbi::X86Softfloat => check_matches!(
                     &*self.arch,
                     "x86" | "x86_64",

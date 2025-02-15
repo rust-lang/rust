@@ -494,7 +494,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let scalar = ScalarInt::try_from_uint(value, size).ok_or_else(|| {
             Error::new(format!("Value overflow: cannot convert `{value}` to `{ty}`."))
         })?;
-        Ok(ty::Const::new_value(tables.tcx, ValTree::from_scalar_int(scalar), ty)
+        Ok(ty::Const::new_value(tcx, ValTree::from_scalar_int(tcx, scalar), ty)
             .stable(&mut *tables))
     }
 

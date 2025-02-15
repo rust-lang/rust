@@ -147,9 +147,7 @@ pub(crate) enum RegionErrorKind<'tcx> {
 pub(crate) struct ErrorConstraintInfo<'tcx> {
     // fr: outlived_fr
     pub(super) fr: RegionVid,
-    pub(super) fr_is_local: bool,
     pub(super) outlived_fr: RegionVid,
-    pub(super) outlived_fr_is_local: bool,
 
     // Category and span for best blame constraint
     pub(super) category: ConstraintCategory<'tcx>,
@@ -316,13 +314,16 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     let type_test_span = type_test.span;
 
                     if let Some(lower_bound_region) = lower_bound_region {
-                        let generic_ty = type_test.generic_kind.to_ty(self.infcx.tcx);
+                        let generic_ty = self.regioncx.name_regions(
+                            self.infcx.tcx,
+                            type_test.generic_kind.to_ty(self.infcx.tcx),
+                        );
                         let origin = RelateParamBound(type_test_span, generic_ty, None);
                         self.buffer_error(self.infcx.err_ctxt().construct_generic_bound_failure(
                             self.body.source.def_id().expect_local(),
                             type_test_span,
                             Some(origin),
-                            type_test.generic_kind,
+                            self.regioncx.name_regions(self.infcx.tcx, type_test.generic_kind),
                             lower_bound_region,
                         ));
                     } else {
@@ -468,14 +469,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             fr_is_local, outlived_fr_is_local, category
         );
 
-        let errci = ErrorConstraintInfo {
-            fr,
-            outlived_fr,
-            fr_is_local,
-            outlived_fr_is_local,
-            category,
-            span: cause.span,
-        };
+        let errci = ErrorConstraintInfo { fr, outlived_fr, category, span: cause.span };
 
         let mut diag = match (category, fr_is_local, outlived_fr_is_local) {
             (ConstraintCategory::Return(kind), true, false) if self.is_closure_fn_mut(fr) => {
@@ -677,11 +671,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 && self.regioncx.universal_regions().defining_ty.is_fn_def())
             || self.regioncx.universal_regions().defining_ty.is_const()
         {
-            return self.report_general_error(&ErrorConstraintInfo {
-                fr_is_local: true,
-                outlived_fr_is_local: false,
-                ..*errci
-            });
+            return self.report_general_error(errci);
         }
 
         let mut diag =
@@ -759,15 +749,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     /// ```
     #[allow(rustc::diagnostic_outside_of_impl)] // FIXME
     fn report_general_error(&self, errci: &ErrorConstraintInfo<'tcx>) -> Diag<'infcx> {
-        let ErrorConstraintInfo {
-            fr,
-            fr_is_local,
-            outlived_fr,
-            outlived_fr_is_local,
-            span,
-            category,
-            ..
-        } = errci;
+        let ErrorConstraintInfo { fr, outlived_fr, span, category, .. } = errci;
 
         let mir_def_name = self.infcx.tcx.def_descr(self.mir_def_id().to_def_id());
 
@@ -786,19 +768,22 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let outlived_fr_name = self.give_region_a_name(*outlived_fr).unwrap();
         outlived_fr_name.highlight_region_name(&mut diag);
 
-        let err_category = match (category, outlived_fr_is_local, fr_is_local) {
-            (ConstraintCategory::Return(_), true, _) => LifetimeReturnCategoryErr::WrongReturn {
+        let err_category = if matches!(category, ConstraintCategory::Return(_))
+            && self.regioncx.universal_regions().is_local_free_region(*outlived_fr)
+        {
+            LifetimeReturnCategoryErr::WrongReturn {
                 span: *span,
                 mir_def_name,
                 outlived_fr_name,
                 fr_name: &fr_name,
-            },
-            _ => LifetimeReturnCategoryErr::ShortReturn {
+            }
+        } else {
+            LifetimeReturnCategoryErr::ShortReturn {
                 span: *span,
                 category_desc: category.description(),
                 free_region_name: &fr_name,
                 outlived_fr_name,
-            },
+            }
         };
 
         diag.subdiagnostic(err_category);

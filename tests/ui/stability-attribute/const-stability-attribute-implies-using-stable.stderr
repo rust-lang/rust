@@ -11,9 +11,8 @@ LL | #![deny(stable_features)]
    |         ^^^^^^^^^^^^^^^
 help: if you are using features which are still unstable, change to using `const_foobar`
    |
-LL - #![feature(const_foo)]
-LL + #![feature(const_foobar)]
-   |
+LL | #![feature(const_foobar)]
+   |                     +++
 help: if you are using features which are now stable, remove this line
    |
 LL - #![feature(const_foo)]

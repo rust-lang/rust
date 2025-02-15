@@ -1837,7 +1837,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// # // don't use this as a starting point for a real library.
     /// # pub struct StreamWrapper { strm: *mut std::ffi::c_void }
     /// # const Z_OK: i32 = 0;
-    /// # extern "C" {
+    /// # unsafe extern "C" {
     /// #     fn deflateGetDictionary(
     /// #         strm: *mut std::ffi::c_void,
     /// #         dictionary: *mut u8,

@@ -68,9 +68,8 @@ LL |     MAX;
    |
 help: use the associated constant instead
    |
-LL -     MAX;
-LL +     u32::MAX;
-   |
+LL |     u32::MAX;
+   |     +++++
 
 error: usage of a legacy numeric method
   --> tests/ui/legacy_numeric_constants.rs:49:10

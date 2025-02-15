@@ -2249,6 +2249,7 @@ fn skip_until<R: BufRead + ?Sized>(r: &mut R, delim: u8) -> Result<usize> {
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "IoBufRead")]
 pub trait BufRead: Read {
     /// Returns the contents of the internal buffer, filling it with more data
     /// from the inner reader if it is empty.

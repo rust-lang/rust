@@ -1639,14 +1639,12 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         match ty.kind() {
             // Byte strings (&[u8; N])
             ty::Ref(_, inner, _) => {
-                if let ty::Array(elem, len) = inner.kind()
+                if let ty::Array(elem, ct_len) = inner.kind()
                     && let ty::Uint(ty::UintTy::U8) = elem.kind()
-                    && let ty::ConstKind::Value(cv) = len.kind()
-                    && let ty::ValTree::Leaf(int) = cv.valtree
+                    && let Some(len) = ct_len.try_to_target_usize(self.tcx())
                 {
                     match self.tcx().try_get_global_alloc(prov.alloc_id()) {
                         Some(GlobalAlloc::Memory(alloc)) => {
-                            let len = int.to_bits(self.tcx().data_layout.pointer_size);
                             let range = AllocRange { start: offset, size: Size::from_bytes(len) };
                             if let Ok(byte_str) =
                                 alloc.inner().get_bytes_strip_provenance(&self.tcx(), range)
@@ -1800,8 +1798,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         }
 
         let u8_type = self.tcx().types.u8;
-        match (cv.valtree, *cv.ty.kind()) {
-            (ty::ValTree::Branch(_), ty::Ref(_, inner_ty, _)) => match inner_ty.kind() {
+        match (*cv.valtree, *cv.ty.kind()) {
+            (ty::ValTreeKind::Branch(_), ty::Ref(_, inner_ty, _)) => match inner_ty.kind() {
                 ty::Slice(t) if *t == u8_type => {
                     let bytes = cv.try_to_raw_bytes(self.tcx()).unwrap_or_else(|| {
                         bug!(
@@ -1826,7 +1824,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     return Ok(());
                 }
             },
-            (ty::ValTree::Branch(_), ty::Array(t, _)) if t == u8_type => {
+            (ty::ValTreeKind::Branch(_), ty::Array(t, _)) if t == u8_type => {
                 let bytes = cv.try_to_raw_bytes(self.tcx()).unwrap_or_else(|| {
                     bug!("expected to convert valtree to raw bytes for type {:?}", t)
                 });
@@ -1835,7 +1833,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 return Ok(());
             }
             // Aggregates, printed as array/tuple/struct/variant construction syntax.
-            (ty::ValTree::Branch(_), ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) => {
+            (ty::ValTreeKind::Branch(_), ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) => {
                 let contents = self.tcx().destructure_const(ty::Const::new_value(
                     self.tcx(),
                     cv.valtree,
@@ -1891,12 +1889,12 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 }
                 return Ok(());
             }
-            (ty::ValTree::Leaf(leaf), ty::Ref(_, inner_ty, _)) => {
+            (ty::ValTreeKind::Leaf(leaf), ty::Ref(_, inner_ty, _)) => {
                 p!(write("&"));
-                return self.pretty_print_const_scalar_int(leaf, inner_ty, print_ty);
+                return self.pretty_print_const_scalar_int(*leaf, inner_ty, print_ty);
             }
-            (ty::ValTree::Leaf(leaf), _) => {
-                return self.pretty_print_const_scalar_int(leaf, cv.ty, print_ty);
+            (ty::ValTreeKind::Leaf(leaf), _) => {
+                return self.pretty_print_const_scalar_int(*leaf, cv.ty, print_ty);
             }
             (_, ty::FnDef(def_id, args)) => {
                 // Never allowed today, but we still encounter them in invalid const args.
@@ -1909,7 +1907,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         }
 
         // fallback
-        if cv.valtree == ty::ValTree::zst() {
+        if cv.valtree.is_zst() {
             p!(write("<ZST>"));
         } else {
             p!(write("{:?}", cv.valtree));

@@ -122,7 +122,7 @@ impl BorrowedFd<'_> {
     /// Creates a new `OwnedFd` instance that shares the same underlying file
     /// description as the existing `BorrowedFd` instance.
     pub fn try_clone_to_owned(&self) -> crate::io::Result<OwnedFd> {
-        let fd = sys::net::cvt(unsafe { sys::net::netc::dup(self.as_raw_fd()) })?;
+        let fd = sys::net::cvt(unsafe { crate::sys::abi::sockets::dup(self.as_raw_fd()) })?;
         Ok(unsafe { OwnedFd::from_raw_fd(fd) })
     }
 }
@@ -168,7 +168,7 @@ impl FromRawFd for OwnedFd {
 impl Drop for OwnedFd {
     #[inline]
     fn drop(&mut self) {
-        unsafe { sys::net::netc::close(self.fd.as_inner()) };
+        unsafe { crate::sys::abi::sockets::close(self.fd.as_inner()) };
     }
 }
 

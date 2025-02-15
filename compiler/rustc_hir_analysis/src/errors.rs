@@ -3,7 +3,8 @@
 use rustc_abi::ExternAbi;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, MultiSpan,
+    Applicability, Diag, DiagCtxtHandle, DiagSymbolList, Diagnostic, EmissionGuarantee, Level,
+    MultiSpan,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
@@ -1732,4 +1733,29 @@ pub(crate) struct RegisterTypeUnstable<'a> {
     #[primary_span]
     pub span: Span,
     pub ty: Ty<'a>,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(hir_analysis_supertrait_item_shadowing)]
+pub(crate) struct SupertraitItemShadowing {
+    pub item: Symbol,
+    pub subtrait: Symbol,
+    #[subdiagnostic]
+    pub shadowee: SupertraitItemShadowee,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum SupertraitItemShadowee {
+    #[note(hir_analysis_supertrait_item_shadowee)]
+    Labeled {
+        #[primary_span]
+        span: Span,
+        supertrait: Symbol,
+    },
+    #[note(hir_analysis_supertrait_item_multiple_shadowee)]
+    Several {
+        #[primary_span]
+        spans: MultiSpan,
+        traits: DiagSymbolList,
+    },
 }

@@ -11,9 +11,8 @@ LL |     const DEFAULT: u32 = 0;
    = note: the matched value is of type `u32`
 help: introduce a variable instead
    |
-LL -     let DEFAULT: u32 = 0;
-LL +     let DEFAULT_var: u32 = 0;
-   |
+LL |     let DEFAULT_var: u32 = 0;
+   |                ++++
 
 error: aborting due to 1 previous error
 

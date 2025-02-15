@@ -23,7 +23,19 @@ error[E0271]: type mismatch resolving `<Y as X>::LineStreamFut<'a, Repr> == ()`
 LL |     fn line_stream<'a, Repr>(&'a self) -> Self::LineStreamFut<'a, Repr> {}
    |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ
 
-error: aborting due to 3 previous errors
+error[E0271]: type mismatch resolving `<Y as X>::LineStreamFut<'a, Repr> normalizes-to _`
+  --> $DIR/ice-unexpected-param-type-whensubstituting-in-region-112823.rs:28:73
+   |
+LL |     fn line_stream<'a, Repr>(&'a self) -> Self::LineStreamFut<'a, Repr> {}
+   |                                                                         ^^ types differ
+
+error[E0271]: type mismatch resolving `<Y as X>::LineStreamFut<'a, Repr> normalizes-to _`
+  --> $DIR/ice-unexpected-param-type-whensubstituting-in-region-112823.rs:28:5
+   |
+LL |     fn line_stream<'a, Repr>(&'a self) -> Self::LineStreamFut<'a, Repr> {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ types differ
+
+error: aborting due to 5 previous errors
 
 Some errors have detailed explanations: E0049, E0271, E0407.
 For more information about an error, try `rustc --explain E0049`.

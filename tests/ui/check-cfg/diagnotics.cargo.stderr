@@ -17,9 +17,8 @@ LL | #[cfg(featur = "foo")]
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
 help: there is a config with a similar name and value
    |
-LL - #[cfg(featur = "foo")]
-LL + #[cfg(feature = "foo")]
-   |
+LL | #[cfg(feature = "foo")]
+   |             +
 
 warning: unexpected `cfg` condition name: `featur`
   --> $DIR/diagnotics.rs:17:7

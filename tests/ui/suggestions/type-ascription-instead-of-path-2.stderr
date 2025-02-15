@@ -7,9 +7,8 @@ LL |     let _ = vec![Ok(2)].into_iter().collect:<Result<Vec<_>,_>>()?;
    = note: type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>
 help: maybe write a path separator here
    |
-LL -     let _ = vec![Ok(2)].into_iter().collect:<Result<Vec<_>,_>>()?;
-LL +     let _ = vec![Ok(2)].into_iter().collect::<Result<Vec<_>,_>>()?;
-   |
+LL |     let _ = vec![Ok(2)].into_iter().collect::<Result<Vec<_>,_>>()?;
+   |                                             +
 
 error: aborting due to 1 previous error
 

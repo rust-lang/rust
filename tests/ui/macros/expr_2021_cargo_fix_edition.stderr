@@ -13,9 +13,8 @@ LL | #![warn(edition_2024_expr_fragment_specifier)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: to keep the existing behavior, use the `expr_2021` fragment specifier
    |
-LL -     ($e:expr) => {
-LL +     ($e:expr_2021) => {
-   |
+LL |     ($e:expr_2021) => {
+   |             +++++
 
 warning: the `expr` fragment specifier will accept more expressions in the 2024 edition
   --> $DIR/expr_2021_cargo_fix_edition.rs:11:11
@@ -27,9 +26,8 @@ LL |     ($($i:expr)*) => { };
    = note: for more information, see Migration Guide <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/macro-fragment-specifiers.html>
 help: to keep the existing behavior, use the `expr_2021` fragment specifier
    |
-LL -     ($($i:expr)*) => { };
-LL +     ($($i:expr_2021)*) => { };
-   |
+LL |     ($($i:expr_2021)*) => { };
+   |               +++++
 
 warning: 2 warnings emitted
 

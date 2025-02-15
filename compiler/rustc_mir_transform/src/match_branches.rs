@@ -2,7 +2,6 @@ use std::iter;
 
 use rustc_abi::Integer;
 use rustc_index::IndexSlice;
-use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
@@ -10,6 +9,7 @@ use rustc_type_ir::TyKind::*;
 use tracing::instrument;
 
 use super::simplify::simplify_cfg;
+use crate::patch::MirPatch;
 
 pub(super) struct MatchBranchSimplification;
 

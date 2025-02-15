@@ -138,8 +138,10 @@ fn windows_env_unicode_case() {
         let mut cmd = Command::new("cmd");
         cmd.env(a, "1");
         cmd.env(b, "2");
-        env::set_var(a, "1");
-        env::set_var(b, "2");
+        unsafe {
+            env::set_var(a, "1");
+            env::set_var(b, "2");
+        }
 
         for (key, value) in cmd.get_envs() {
             assert_eq!(

@@ -51,9 +51,8 @@ LL |     format_args!("{}", 0xffff_ffff); // treat unsuffixed literals as i32
    = help: consider using the type `u32` instead
 help: to use as a negative number (decimal `-1`), consider using the type `u32` for the literal and cast it to `i32`
    |
-LL -     format_args!("{}", 0xffff_ffff); // treat unsuffixed literals as i32
-LL +     format_args!("{}", 0xffff_ffffu32 as i32); // treat unsuffixed literals as i32
-   |
+LL |     format_args!("{}", 0xffff_ffffu32 as i32); // treat unsuffixed literals as i32
+   |                                   ++++++++++
 
 error: aborting due to 5 previous errors
 
