@@ -54,7 +54,7 @@ pub struct Flags {
     /// TOML configuration file for build
     pub config: Option<PathBuf>,
     #[arg(global = true, long, value_hint = clap::ValueHint::DirPath, value_name = "DIR")]
-    /// Build directory, overrides `build.build-dir` in `config.toml`
+    /// Build directory, overrides `build.build-dir` in `bootstrap.toml`
     pub build_dir: Option<PathBuf>,
 
     #[arg(global = true, long, value_hint = clap::ValueHint::Other, value_name = "BUILD")]
@@ -173,7 +173,7 @@ pub struct Flags {
     #[arg(global = true)]
     /// paths for the subcommand
     pub paths: Vec<PathBuf>,
-    /// override options in config.toml
+    /// override options in bootstrap.toml
     #[arg(global = true, value_hint = clap::ValueHint::Other, long, value_name = "section.option=value")]
     pub set: Vec<String>,
     /// arguments passed to subcommands
@@ -448,7 +448,7 @@ pub enum Subcommand {
     /// Set up the environment for development
     #[command(long_about = format!(
         "\n
-x.py setup creates a `config.toml` which changes the defaults for x.py itself,
+x.py setup creates a `bootstrap.toml` which changes the defaults for x.py itself,
 as well as setting up a git pre-push hook, VS Code config and toolchain link.
 Arguments:
     This subcommand accepts a 'profile' to use for builds. For example:
@@ -461,7 +461,7 @@ Arguments:
         ./x.py setup editor
         ./x.py setup link", Profile::all_for_help("        ").trim_end()))]
     Setup {
-        /// Either the profile for `config.toml` or another setup action.
+        /// Either the profile for `bootstrap.toml` or another setup action.
         /// May be omitted to set up interactively
         #[arg(value_name = "<PROFILE>|hook|editor|link")]
         profile: Option<PathBuf>,

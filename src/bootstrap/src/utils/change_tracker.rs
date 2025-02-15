@@ -380,4 +380,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Warning,
         summary: "Removed `src/tools/rls` tool as it was deprecated long time ago.",
     },
+    ChangeInfo {
+        change_id: 137081,
+        severity: ChangeSeverity::Info,
+        summary: "The default configuration filename has changed from `config.toml` to `bootstrap.toml`. `config.toml` is deprecated but remains supported for backward compatibility.",
+    },
 ];
