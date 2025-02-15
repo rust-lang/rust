@@ -60,11 +60,11 @@
                     removeClass(document.documentElement, "sans-serif");
                 }
                 break;
-            case "wrap-source-code":
+            case "word-wrap-source-code":
                 if (value === true) {
-                    addClass(document.documentElement, "wrap-source-code");
+                    addClass(document.documentElement, "word-wrap-source-code");
                 } else {
-                    removeClass(document.documentElement, "wrap-source-code");
+                    removeClass(document.documentElement, "word-wrap-source-code");
                 }
                 break;
         }
@@ -255,8 +255,8 @@
                 "default": false,
             },
             {
-                "name": "Wrap source codes",
-                "js_name": "wrap-source-code",
+                "name": "Word wrap source code",
+                "js_name": "word-wrap-source-code",
                 "default": false,
             },
         ];

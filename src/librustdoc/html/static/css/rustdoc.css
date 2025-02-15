@@ -938,54 +938,54 @@ ul.block, .block li, .block ul {
 .example-wrap .line-highlighted[data-nosnippet] {
 	background-color: var(--src-line-number-highlighted-background-color);
 }
-:root.wrap-source-code .example-wrap [data-nosnippet] {
+:root.word-wrap-source-code .example-wrap [data-nosnippet] {
 	position: absolute;
 	left: 0;
 }
-.wrap-source-code .example-wrap pre > code {
+.word-wrap-source-code .example-wrap pre > code {
 	position: relative;
 	word-break: break-all;
 }
-:root.wrap-source-code .example-wrap pre > code {
+:root.word-wrap-source-code .example-wrap pre > code {
 	display: block;
 	white-space: pre-wrap;
 }
-:root.wrap-source-code .example-wrap pre > code * {
+:root.word-wrap-source-code .example-wrap pre > code * {
 	word-break: break-all;
 }
-:root.wrap-source-code .example-wrap.digits-1 pre > code {
+:root.word-wrap-source-code .example-wrap.digits-1 pre > code {
 	padding-left: calc(
 		1ch + var(--line-number-padding) * 2 + var(--line-number-right-margin));
 }
-:root.wrap-source-code .example-wrap.digits-2 pre > code {
+:root.word-wrap-source-code .example-wrap.digits-2 pre > code {
 	padding-left: calc(
 		2ch + var(--line-number-padding) * 2 + var(--line-number-right-margin));
 }
-:root.wrap-source-code .example-wrap.digits-3 pre > code {
+:root.word-wrap-source-code .example-wrap.digits-3 pre > code {
 	padding-left: calc(
 		3ch + var(--line-number-padding) * 2 + var(--line-number-right-margin));
 }
-:root.wrap-source-code .example-wrap.digits-4 pre > code {
+:root.word-wrap-source-code .example-wrap.digits-4 pre > code {
 	padding-left: calc(
 		4ch + var(--line-number-padding) * 2 + var(--line-number-right-margin));
 }
-:root.wrap-source-code .example-wrap.digits-5 pre > code {
+:root.word-wrap-source-code .example-wrap.digits-5 pre > code {
 	padding-left: calc(
 		5ch + var(--line-number-padding) * 2 + var(--line-number-right-margin));
 }
-:root.wrap-source-code .example-wrap.digits-6 pre > code {
+:root.word-wrap-source-code .example-wrap.digits-6 pre > code {
 	padding-left: calc(
 		6ch + var(--line-number-padding) * 2 + var(--line-number-right-margin));
 }
-:root.wrap-source-code .example-wrap.digits-7 pre > code {
+:root.word-wrap-source-code .example-wrap.digits-7 pre > code {
 	padding-left: calc(
 		7ch + var(--line-number-padding) * 2 + var(--line-number-right-margin));
 }
-:root.wrap-source-code .example-wrap.digits-8 pre > code {
+:root.word-wrap-source-code .example-wrap.digits-8 pre > code {
 	padding-left: calc(
 		8ch + var(--line-number-padding) * 2 + var(--line-number-right-margin));
 }
-:root.wrap-source-code .example-wrap.digits-9 pre > code {
+:root.word-wrap-source-code .example-wrap.digits-9 pre > code {
 	padding-left: calc(
 		9ch + var(--line-number-padding) * 2 + var(--line-number-right-margin));
 }
