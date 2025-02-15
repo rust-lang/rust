@@ -812,7 +812,7 @@ impl File {
     /// will prevent anyone from opening a new handle to the file.
     #[allow(unused)]
     fn win32_delete(&self) -> Result<(), WinError> {
-        let info = c::FILE_DISPOSITION_INFO { DeleteFile: c::TRUE as _ };
+        let info = c::FILE_DISPOSITION_INFO { DeleteFile: true };
         api::set_file_information_by_handle(self.handle.as_raw_handle(), &info)
     }
 
@@ -1372,7 +1372,7 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
     if let Err(err) = result {
         if err.raw_os_error() == Some(c::ERROR_INVALID_PARAMETER as _) {
             // FileRenameInfoEx and FILE_RENAME_FLAG_POSIX_SEMANTICS were added in Windows 10 1607; retry with FileRenameInfo.
-            file_rename_info.Anonymous.ReplaceIfExists = 1;
+            file_rename_info.Anonymous.ReplaceIfExists = true;
 
             cvt(unsafe {
                 c::SetFileInformationByHandle(
