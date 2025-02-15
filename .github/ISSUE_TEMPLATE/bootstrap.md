@@ -32,7 +32,7 @@ Describe what you expected to happen.
 Describe what actually happened.
 -->
 
-### Bootstrap configuration (config.toml)
+### Bootstrap configuration (bootstrap.toml)
 ```toml
 <config>
 ```
