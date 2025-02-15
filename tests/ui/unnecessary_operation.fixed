@@ -6,7 +6,7 @@
     clippy::unnecessary_struct_initialization
 )]
 #![warn(clippy::unnecessary_operation)]
-
+#![allow(clippy::uninlined_format_args)]
 use std::fmt::Display;
 use std::ops::Shl;
 

@@ -1,5 +1,5 @@
 #![deny(clippy::index_refutable_slice)]
-
+#![allow(clippy::uninlined_format_args)]
 fn below_limit() {
     let slice: Option<&[u32]> = Some(&[1, 2, 3]);
     if let Some([_, _, _, _, _, _, _, slice_7, ..]) = slice {

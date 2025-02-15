@@ -1,6 +1,6 @@
 #![warn(clippy::dbg_macro)]
 #![allow(clippy::unnecessary_operation, clippy::no_effect, clippy::unit_arg)]
-
+#![allow(clippy::uninlined_format_args)]
 fn foo(n: u32) -> u32 {
     if let Some(n) = n.checked_sub(4) { n } else { n }
     //~^ dbg_macro

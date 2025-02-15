@@ -1,5 +1,5 @@
 //@compile-flags: -C incremental=target/debug/test/incr
-
+#![allow(clippy::uninlined_format_args)]
 // see https://github.com/rust-lang/rust-clippy/issues/10969
 
 fn main() {

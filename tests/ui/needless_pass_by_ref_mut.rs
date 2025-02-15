@@ -1,13 +1,13 @@
 #![allow(
     clippy::if_same_then_else,
     clippy::no_effect,
+    clippy::ptr_arg,
     clippy::redundant_closure_call,
-    clippy::ptr_arg
+    clippy::uninlined_format_args
 )]
 #![warn(clippy::needless_pass_by_ref_mut)]
 //@no-rustfix
 use std::ptr::NonNull;
-
 fn foo(s: &mut Vec<u32>, b: &u32, x: &mut u32) {
     //~^ needless_pass_by_ref_mut
 
