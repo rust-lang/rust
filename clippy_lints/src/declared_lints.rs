@@ -418,6 +418,7 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::methods::ITER_SKIP_ZERO_INFO,
     crate::methods::ITER_WITH_DRAIN_INFO,
     crate::methods::JOIN_ABSOLUTE_PATHS_INFO,
+    crate::methods::MANUAL_CONTAINS_INFO,
     crate::methods::MANUAL_C_STR_LITERALS_INFO,
     crate::methods::MANUAL_FILTER_MAP_INFO,
     crate::methods::MANUAL_FIND_MAP_INFO,

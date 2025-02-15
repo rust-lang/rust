@@ -1,4 +1,4 @@
-#![allow(dead_code, clippy::explicit_auto_deref, clippy::useless_vec)]
+#![allow(dead_code, clippy::explicit_auto_deref, clippy::useless_vec, clippy::manual_contains)]
 #![warn(clippy::search_is_some)]
 
 fn main() {
