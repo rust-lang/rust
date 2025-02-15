@@ -398,7 +398,7 @@ mod enum_keyword {}
 /// The mirror use case of FFI is also done via the `extern` keyword:
 ///
 /// ```rust
-/// #[no_mangle]
+/// #[unsafe(no_mangle)]
 /// pub extern "C" fn callable_from_c(x: i32) -> bool {
 ///     x % 3 == 0
 /// }
@@ -1428,7 +1428,7 @@ mod self_upper_keyword {}
 ///
 /// ```rust,no_run
 /// # #![allow(dead_code)]
-/// extern "C" {
+/// unsafe extern "C" {
 ///     static mut ERROR_MESSAGE: *mut std::os::raw::c_char;
 /// }
 /// ```
@@ -1925,7 +1925,7 @@ mod type_keyword {}
 ///
 /// unsafe fn unsafe_fn() {}
 ///
-/// extern "C" {
+/// unsafe extern "C" {
 ///     fn unsafe_extern_fn();
 ///     static BAR: *mut u32;
 /// }

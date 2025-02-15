@@ -42,7 +42,7 @@
     function createScrapeButton(parent, className, content) {
         const button = document.createElement("button");
         button.className = className;
-        button.innerText = content;
+        button.title = content;
         parent.insertBefore(button, parent.firstChild);
         return button;
     }
@@ -54,14 +54,14 @@
         let expandButton = null;
 
         if (!example.classList.contains("expanded")) {
-            expandButton = createScrapeButton(buttonHolder, "expand", "↕");
+            expandButton = createScrapeButton(buttonHolder, "expand", "Show all");
         }
         const isHidden = example.parentElement.classList.contains("more-scraped-examples");
 
         const locs = example.locs;
         if (locs.length > 1) {
-            const next = createScrapeButton(buttonHolder, "next", "≻");
-            const prev = createScrapeButton(buttonHolder, "prev", "≺");
+            const next = createScrapeButton(buttonHolder, "next", "Next usage");
+            const prev = createScrapeButton(buttonHolder, "prev", "Previous usage");
 
             // Toggle through list of examples in a given file
             const onChangeLoc = changeIndex => {
@@ -94,9 +94,13 @@
             expandButton.addEventListener("click", () => {
                 if (hasClass(example, "expanded")) {
                     removeClass(example, "expanded");
+                    removeClass(expandButton, "collapse");
+                    expandButton.title = "Show all";
                     scrollToLoc(example, locs[0][0], isHidden);
                 } else {
                     addClass(example, "expanded");
+                    addClass(expandButton, "collapse");
+                    expandButton.title = "Show single example";
                 }
             });
         }

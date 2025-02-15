@@ -12,9 +12,8 @@ LL |     const A: i32 = 2;
    = note: the matched value is of type `i32`
 help: introduce a variable instead
    |
-LL -     let A = 3;
-LL +     let A_var = 3;
-   |
+LL |     let A_var = 3;
+   |          ++++
 
 error: aborting due to 1 previous error
 

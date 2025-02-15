@@ -6,9 +6,8 @@ LL |     let _: Vec<A:B> = A::B;
    |
 help: you might have meant to write a path instead of an associated type bound
    |
-LL -     let _: Vec<A:B> = A::B;
-LL +     let _: Vec<A::B> = A::B;
-   |
+LL |     let _: Vec<A::B> = A::B;
+   |                  +
 
 error[E0107]: struct takes at least 1 generic argument but 0 generic arguments were supplied
   --> $DIR/type-ascription-instead-of-path-in-type.rs:6:12

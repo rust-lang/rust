@@ -12,7 +12,7 @@ where
     <T as MyTrait<'b>>::Output: 'a,
 {
     bar::<<T as MyTrait<'a>>::Output>()
-    //~^ ERROR the associated type `<T as MyTrait<'_>>::Output` may not live long enough
+    //~^ ERROR the associated type `<T as MyTrait<'a>>::Output` may not live long enough
 }
 
 fn bar<'a, T>() -> &'a ()

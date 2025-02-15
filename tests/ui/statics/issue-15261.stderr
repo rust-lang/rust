@@ -9,9 +9,8 @@ LL | static n: &'static usize = unsafe { &n_mut };
    = note: `#[warn(static_mut_refs)]` on by default
 help: use `&raw const` instead to create a raw pointer
    |
-LL - static n: &'static usize = unsafe { &n_mut };
-LL + static n: &'static usize = unsafe { &raw const n_mut };
-   |
+LL | static n: &'static usize = unsafe { &raw const n_mut };
+   |                                      +++++++++
 
 warning: 1 warning emitted
 

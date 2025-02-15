@@ -43,9 +43,8 @@ LL |     real_method_stmt!();
    = note: this error originates in the macro `real_method_stmt` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: you must specify a concrete type for this numeric value, like `f32`
    |
-LL -           2.0.neg()
-LL +           2.0_f32.neg()
-   |
+LL |           2.0_f32.neg()
+   |              ++++
 
 error[E0599]: no method named `fake` found for type `{integer}` in the current scope
   --> $DIR/macro-backtrace-invalid-internals.rs:23:13
@@ -92,9 +91,8 @@ LL |     let _ = real_method_expr!();
    = note: this error originates in the macro `real_method_expr` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: you must specify a concrete type for this numeric value, like `f32`
    |
-LL -           2.0.neg()
-LL +           2.0_f32.neg()
-   |
+LL |           2.0_f32.neg()
+   |              ++++
 
 error: aborting due to 8 previous errors
 

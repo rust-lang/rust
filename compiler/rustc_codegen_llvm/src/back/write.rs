@@ -141,7 +141,7 @@ fn to_llvm_opt_settings(cfg: config::OptLevel) -> (llvm::CodeGenOptLevel, llvm::
     match cfg {
         No => (llvm::CodeGenOptLevel::None, llvm::CodeGenOptSizeNone),
         Less => (llvm::CodeGenOptLevel::Less, llvm::CodeGenOptSizeNone),
-        Default => (llvm::CodeGenOptLevel::Default, llvm::CodeGenOptSizeNone),
+        More => (llvm::CodeGenOptLevel::Default, llvm::CodeGenOptSizeNone),
         Aggressive => (llvm::CodeGenOptLevel::Aggressive, llvm::CodeGenOptSizeNone),
         Size => (llvm::CodeGenOptLevel::Default, llvm::CodeGenOptSizeDefault),
         SizeMin => (llvm::CodeGenOptLevel::Default, llvm::CodeGenOptSizeAggressive),
@@ -153,7 +153,7 @@ fn to_pass_builder_opt_level(cfg: config::OptLevel) -> llvm::PassBuilderOptLevel
     match cfg {
         No => llvm::PassBuilderOptLevel::O0,
         Less => llvm::PassBuilderOptLevel::O1,
-        Default => llvm::PassBuilderOptLevel::O2,
+        More => llvm::PassBuilderOptLevel::O2,
         Aggressive => llvm::PassBuilderOptLevel::O3,
         Size => llvm::PassBuilderOptLevel::Os,
         SizeMin => llvm::PassBuilderOptLevel::Oz,

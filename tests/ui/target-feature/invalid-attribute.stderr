@@ -32,7 +32,7 @@ LL | extern "Rust" {}
    | ---------------- not a function definition
 
 error: attribute should be applied to a function definition
-  --> $DIR/invalid-attribute.rs:38:1
+  --> $DIR/invalid-attribute.rs:31:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -41,7 +41,7 @@ LL | mod another {}
    | -------------- not a function definition
 
 error: attribute should be applied to a function definition
-  --> $DIR/invalid-attribute.rs:43:1
+  --> $DIR/invalid-attribute.rs:36:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -50,7 +50,7 @@ LL | const FOO: usize = 7;
    | --------------------- not a function definition
 
 error: attribute should be applied to a function definition
-  --> $DIR/invalid-attribute.rs:48:1
+  --> $DIR/invalid-attribute.rs:41:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -59,7 +59,7 @@ LL | struct Foo;
    | ----------- not a function definition
 
 error: attribute should be applied to a function definition
-  --> $DIR/invalid-attribute.rs:53:1
+  --> $DIR/invalid-attribute.rs:46:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -68,7 +68,7 @@ LL | enum Bar {}
    | ----------- not a function definition
 
 error: attribute should be applied to a function definition
-  --> $DIR/invalid-attribute.rs:58:1
+  --> $DIR/invalid-attribute.rs:51:1
    |
 LL |   #[target_feature(enable = "sse2")]
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -81,7 +81,7 @@ LL | | }
    | |_- not a function definition
 
 error: attribute should be applied to a function definition
-  --> $DIR/invalid-attribute.rs:66:1
+  --> $DIR/invalid-attribute.rs:59:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -90,7 +90,7 @@ LL | type Uwu = ();
    | -------------- not a function definition
 
 error: attribute should be applied to a function definition
-  --> $DIR/invalid-attribute.rs:71:1
+  --> $DIR/invalid-attribute.rs:64:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -99,7 +99,7 @@ LL | trait Baz {}
    | ------------ not a function definition
 
 error: attribute should be applied to a function definition
-  --> $DIR/invalid-attribute.rs:81:1
+  --> $DIR/invalid-attribute.rs:74:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -108,7 +108,7 @@ LL | static A: () = ();
    | ------------------ not a function definition
 
 error: attribute should be applied to a function definition
-  --> $DIR/invalid-attribute.rs:86:1
+  --> $DIR/invalid-attribute.rs:79:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -117,7 +117,7 @@ LL | impl Quux for u8 {}
    | ------------------- not a function definition
 
 error: attribute should be applied to a function definition
-  --> $DIR/invalid-attribute.rs:93:1
+  --> $DIR/invalid-attribute.rs:86:1
    |
 LL | #[target_feature(enable = "sse2")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -126,19 +126,18 @@ LL | impl Foo {}
    | ----------- not a function definition
 
 error: attribute should be applied to a function definition
-  --> $DIR/invalid-attribute.rs:116:5
+  --> $DIR/invalid-attribute.rs:108:5
    |
 LL |       #[target_feature(enable = "sse2")]
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL |
 LL | /     unsafe {
 LL | |         foo();
-LL | |         bar();
 LL | |     }
    | |_____- not a function definition
 
 error: attribute should be applied to a function definition
-  --> $DIR/invalid-attribute.rs:124:5
+  --> $DIR/invalid-attribute.rs:115:5
    |
 LL |     #[target_feature(enable = "sse2")]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -164,27 +163,14 @@ error: malformed `target_feature` attribute input
 LL | #[target_feature(disable = "baz")]
    |                  ^^^^^^^^^^^^^^^ help: must be of the form: `enable = ".."`
 
-error[E0658]: `#[target_feature(..)]` can only be applied to `unsafe` functions
-  --> $DIR/invalid-attribute.rs:31:1
-   |
-LL | #[target_feature(enable = "sse2")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-...
-LL | fn bar() {}
-   | -------- not an `unsafe` function
-   |
-   = note: see issue #69098 <https://github.com/rust-lang/rust/issues/69098> for more information
-   = help: add `#![feature(target_feature_11)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
 error: cannot use `#[inline(always)]` with `#[target_feature]`
-  --> $DIR/invalid-attribute.rs:76:1
+  --> $DIR/invalid-attribute.rs:69:1
    |
 LL | #[inline(always)]
    | ^^^^^^^^^^^^^^^^^
 
 error[E0046]: not all trait items implemented, missing: `foo`
-  --> $DIR/invalid-attribute.rs:88:1
+  --> $DIR/invalid-attribute.rs:81:1
    |
 LL | impl Quux for u8 {}
    | ^^^^^^^^^^^^^^^^ missing `foo` in implementation
@@ -192,34 +178,30 @@ LL | impl Quux for u8 {}
 LL |     fn foo();
    |     --------- `foo` from trait
 
-error[E0658]: `#[target_feature(..)]` can only be applied to `unsafe` functions
-  --> $DIR/invalid-attribute.rs:104:5
+error: `#[target_feature(..)]` cannot be applied to safe trait method
+  --> $DIR/invalid-attribute.rs:97:5
    |
 LL |     #[target_feature(enable = "sse2")]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot be applied to safe trait method
 ...
 LL |     fn foo() {}
    |     -------- not an `unsafe` function
-   |
-   = note: see issue #69098 <https://github.com/rust-lang/rust/issues/69098> for more information
-   = help: add `#![feature(target_feature_11)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0053]: method `foo` has an incompatible type for trait
-  --> $DIR/invalid-attribute.rs:108:5
+  --> $DIR/invalid-attribute.rs:100:5
    |
 LL |     fn foo() {}
    |     ^^^^^^^^ expected safe fn, found unsafe fn
    |
 note: type in trait
-  --> $DIR/invalid-attribute.rs:99:5
+  --> $DIR/invalid-attribute.rs:92:5
    |
 LL |     fn foo();
    |     ^^^^^^^^^
    = note: expected signature `fn()`
               found signature `#[target_features] fn()`
 
-error: aborting due to 24 previous errors
+error: aborting due to 23 previous errors
 
-Some errors have detailed explanations: E0046, E0053, E0658.
+Some errors have detailed explanations: E0046, E0053.
 For more information about an error, try `rustc --explain E0046`.

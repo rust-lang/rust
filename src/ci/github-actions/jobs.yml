@@ -168,10 +168,10 @@ auto:
     <<: *job-linux-4c
 
   - name: dist-loongarch64-linux
-    <<: *job-linux-4c-largedisk
+    <<: *job-linux-4c
 
   - name: dist-loongarch64-musl
-    <<: *job-linux-4c-largedisk
+    <<: *job-linux-4c
 
   - name: dist-ohos
     <<: *job-linux-4c
@@ -294,9 +294,7 @@ auto:
     <<: *job-linux-4c
 
   - name: x86_64-gnu-debug
-    # This seems to be needed because a full stage 2 build + run-make tests
-    # overwhelms the storage capacity of the standard 4c runner.
-    <<: *job-linux-4c-largedisk
+    <<: *job-linux-4c
 
   - name: x86_64-gnu-distcheck
     <<: *job-linux-8c

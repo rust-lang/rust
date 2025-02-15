@@ -49,7 +49,6 @@ pub mod generic_graphviz;
 pub mod graphviz;
 pub mod interpret;
 pub mod mono;
-pub mod patch;
 pub mod pretty;
 mod query;
 mod statement;

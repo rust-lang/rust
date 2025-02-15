@@ -172,8 +172,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             {
                 1
             }
-            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => 3,
             ty::PredicateKind::Coerce(_) => 2,
+            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => 3,
             _ => 0,
         });
 

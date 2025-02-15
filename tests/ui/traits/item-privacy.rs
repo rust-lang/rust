@@ -98,9 +98,12 @@ fn check_assoc_const() {
     S::B; //~ ERROR no associated item named `B` found
     S::C; // OK
     // A, B, C are resolved as inherent items, their traits don't need to be in scope
-    <dyn C>::A; //~ ERROR associated constant `A` is private
-                //~^ ERROR the trait `assoc_const::C` is not dyn compatible
-    <dyn C>::B; // ERROR the trait `assoc_const::C` is not dyn compatible
+    <dyn C>::A;
+    //~^ ERROR associated constant `A` is private
+    //~| ERROR the trait `assoc_const::C` is not dyn compatible
+    //~| ERROR the trait `assoc_const::C` is not dyn compatible
+    <dyn C>::B;
+    //~^ ERROR the trait `assoc_const::C` is not dyn compatible
     C::C; // OK
 }
 

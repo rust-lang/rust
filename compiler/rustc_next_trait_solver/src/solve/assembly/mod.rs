@@ -6,7 +6,6 @@ use derive_where::derive_where;
 use rustc_type_ir::fold::TypeFoldable;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
-use rustc_type_ir::solve::inspect;
 use rustc_type_ir::visit::TypeVisitableExt as _;
 use rustc_type_ir::{self as ty, Interner, TypingMode, Upcast as _, elaborate};
 use tracing::{debug, instrument};
@@ -297,25 +296,6 @@ where
         let Ok(normalized_self_ty) =
             self.structurally_normalize_ty(goal.param_env, goal.predicate.self_ty())
         else {
-            // FIXME: We register a fake candidate when normalization fails so that
-            // we can point at the reason for *why*. I'm tempted to say that this
-            // is the wrong way to do this, though.
-            let result =
-                self.probe(|&result| inspect::ProbeKind::RigidAlias { result }).enter(|this| {
-                    let normalized_ty = this.next_ty_infer();
-                    let alias_relate_goal = Goal::new(
-                        this.cx(),
-                        goal.param_env,
-                        ty::PredicateKind::AliasRelate(
-                            goal.predicate.self_ty().into(),
-                            normalized_ty.into(),
-                            ty::AliasRelationDirection::Equate,
-                        ),
-                    );
-                    this.add_goal(GoalSource::AliasWellFormed, alias_relate_goal);
-                    this.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
-                });
-            assert_eq!(result, Err(NoSolution));
             return vec![];
         };
 
@@ -797,11 +777,12 @@ where
     /// treat the alias as rigid.
     ///
     /// See trait-system-refactor-initiative#124 for more details.
-    #[instrument(level = "debug", skip(self), ret)]
+    #[instrument(level = "debug", skip(self, inject_normalize_to_rigid_candidate), ret)]
     pub(super) fn merge_candidates(
         &mut self,
         proven_via: Option<TraitGoalProvenVia>,
         candidates: Vec<Candidate<I>>,
+        inject_normalize_to_rigid_candidate: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResult<I>,
     ) -> QueryResult<I> {
         let Some(proven_via) = proven_via else {
             // We don't care about overflow. If proving the trait goal overflowed, then
@@ -818,13 +799,27 @@ where
             // FIXME(const_trait_impl): should this behavior also be used by
             // constness checking. Doing so is *at least theoretically* breaking,
             // see github.com/rust-lang/rust/issues/133044#issuecomment-2500709754
-            TraitGoalProvenVia::ParamEnv | TraitGoalProvenVia::AliasBound => candidates
-                .iter()
-                .filter(|c| {
-                    matches!(c.source, CandidateSource::AliasBound | CandidateSource::ParamEnv(_))
-                })
-                .map(|c| c.result)
-                .collect(),
+            TraitGoalProvenVia::ParamEnv | TraitGoalProvenVia::AliasBound => {
+                let mut candidates_from_env: Vec<_> = candidates
+                    .iter()
+                    .filter(|c| {
+                        matches!(
+                            c.source,
+                            CandidateSource::AliasBound | CandidateSource::ParamEnv(_)
+                        )
+                    })
+                    .map(|c| c.result)
+                    .collect();
+
+                // If the trait goal has been proven by using the environment, we want to treat
+                // aliases as rigid if there are no applicable projection bounds in the environment.
+                if candidates_from_env.is_empty() {
+                    if let Ok(response) = inject_normalize_to_rigid_candidate(self) {
+                        candidates_from_env.push(response);
+                    }
+                }
+                candidates_from_env
+            }
             TraitGoalProvenVia::Misc => candidates.iter().map(|c| c.result).collect(),
         };
 

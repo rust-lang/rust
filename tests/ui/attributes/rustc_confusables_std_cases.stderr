@@ -38,9 +38,8 @@ LL |     let mut x = VecDeque::new();
    |         ----- earlier `x` shadowed here with type `VecDeque`
 help: you might have meant to use `push_back`
    |
-LL -     x.push(1);
-LL +     x.push_back(1);
-   |
+LL |     x.push_back(1);
+   |           +++++
 
 error[E0599]: no method named `length` found for struct `Vec<{integer}>` in the current scope
   --> $DIR/rustc_confusables_std_cases.rs:15:7
@@ -98,9 +97,8 @@ note: method defined here
   --> $SRC_DIR/alloc/src/string.rs:LL:COL
 help: you might have meant to use `push_str`
    |
-LL -     String::new().push("");
-LL +     String::new().push_str("");
-   |
+LL |     String::new().push_str("");
+   |                       ++++
 
 error[E0599]: no method named `append` found for struct `String` in the current scope
   --> $DIR/rustc_confusables_std_cases.rs:24:19

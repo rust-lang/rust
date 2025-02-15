@@ -245,9 +245,6 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     }
 }
 
-unsafe impl Send for LlvmCodegenBackend {} // Llvm is on a per-thread basis
-unsafe impl Sync for LlvmCodegenBackend {}
-
 impl LlvmCodegenBackend {
     pub fn new() -> Box<dyn CodegenBackend> {
         Box::new(LlvmCodegenBackend(()))

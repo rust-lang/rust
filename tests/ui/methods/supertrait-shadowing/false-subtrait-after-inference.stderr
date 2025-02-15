@@ -1,0 +1,59 @@
+warning: trait item `hello` from `Downstream` shadows identically named item from supertrait
+  --> $DIR/false-subtrait-after-inference.rs:13:5
+   |
+LL |     fn hello(&self) {}
+   |     ^^^^^^^^^^^^^^^
+   |
+note: item from `Upstream` is shadowed by a subtrait item
+  --> $DIR/false-subtrait-after-inference.rs:8:5
+   |
+LL |     fn hello(&self) {}
+   |     ^^^^^^^^^^^^^^^
+note: the lint level is defined here
+  --> $DIR/false-subtrait-after-inference.rs:3:9
+   |
+LL | #![warn(supertrait_item_shadowing_definition)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: trait item `hello` from `Downstream` shadows identically named item from supertrait
+  --> $DIR/false-subtrait-after-inference.rs:22:7
+   |
+LL |     x.hello();
+   |       ^^^^^
+   |
+note: item from `Downstream` shadows a supertrait item
+  --> $DIR/false-subtrait-after-inference.rs:13:5
+   |
+LL |     fn hello(&self) {}
+   |     ^^^^^^^^^^^^^^^
+note: item from `Upstream` is shadowed by a subtrait item
+  --> $DIR/false-subtrait-after-inference.rs:8:5
+   |
+LL |     fn hello(&self) {}
+   |     ^^^^^^^^^^^^^^^
+note: the lint level is defined here
+  --> $DIR/false-subtrait-after-inference.rs:2:9
+   |
+LL | #![warn(supertrait_item_shadowing_usage)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `i32: Foo` is not satisfied
+  --> $DIR/false-subtrait-after-inference.rs:22:7
+   |
+LL |     x.hello();
+   |       ^^^^^ the trait `Foo` is not implemented for `i32`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/false-subtrait-after-inference.rs:18:1
+   |
+LL | trait Foo {}
+   | ^^^^^^^^^
+note: required for `W<i32>` to implement `Downstream`
+  --> $DIR/false-subtrait-after-inference.rs:16:9
+   |
+LL | impl<T> Downstream for W<T> where T: Foo {}
+   |         ^^^^^^^^^^     ^^^^          --- unsatisfied trait bound introduced here
+
+error: aborting due to 1 previous error; 2 warnings emitted
+
+For more information about this error, try `rustc --explain E0277`.

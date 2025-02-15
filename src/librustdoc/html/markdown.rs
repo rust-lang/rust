@@ -139,7 +139,7 @@ impl ErrorCodes {
 /// Controls whether a line will be hidden or shown in HTML output.
 ///
 /// All lines are used in documentation tests.
-enum Line<'a> {
+pub(crate) enum Line<'a> {
     Hidden(&'a str),
     Shown(Cow<'a, str>),
 }
@@ -152,7 +152,7 @@ impl<'a> Line<'a> {
         }
     }
 
-    fn for_code(self) -> Cow<'a, str> {
+    pub(crate) fn for_code(self) -> Cow<'a, str> {
         match self {
             Line::Shown(l) => l,
             Line::Hidden(l) => Cow::Borrowed(l),
@@ -160,12 +160,14 @@ impl<'a> Line<'a> {
     }
 }
 
+/// This function is used to handle the "hidden lines" (ie starting with `#`) in
+/// doctests. It also transforms `##` back into `#`.
 // FIXME: There is a minor inconsistency here. For lines that start with ##, we
 // have no easy way of removing a potential single space after the hashes, which
 // is done in the single # case. This inconsistency seems okay, if non-ideal. In
 // order to fix it we'd have to iterate to find the first non-# character, and
 // then reallocate to remove it; which would make us return a String.
-fn map_line(s: &str) -> Line<'_> {
+pub(crate) fn map_line(s: &str) -> Line<'_> {
     let trimmed = s.trim();
     if trimmed.starts_with("##") {
         Line::Shown(Cow::Owned(s.replacen("##", "#", 1)))

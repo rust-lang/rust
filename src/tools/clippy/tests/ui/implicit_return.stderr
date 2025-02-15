@@ -8,8 +8,7 @@ LL |     true
    = help: to override `-D warnings` add `#[allow(clippy::implicit_return)]`
 help: add `return` as shown
    |
-LL -     true
-LL +     return true
+LL |     return true
    |
 
 error: missing `return` statement
@@ -20,9 +19,8 @@ LL |     if true { true } else { false }
    |
 help: add `return` as shown
    |
-LL -     if true { true } else { false }
-LL +     if true { return true } else { false }
-   |
+LL |     if true { return true } else { false }
+   |               ++++++
 
 error: missing `return` statement
   --> tests/ui/implicit_return.rs:19:29
@@ -32,9 +30,8 @@ LL |     if true { true } else { false }
    |
 help: add `return` as shown
    |
-LL -     if true { true } else { false }
-LL +     if true { true } else { return false }
-   |
+LL |     if true { true } else { return false }
+   |                             ++++++
 
 error: missing `return` statement
   --> tests/ui/implicit_return.rs:25:17
@@ -44,9 +41,8 @@ LL |         true => false,
    |
 help: add `return` as shown
    |
-LL -         true => false,
-LL +         true => return false,
-   |
+LL |         true => return false,
+   |                 ++++++
 
 error: missing `return` statement
   --> tests/ui/implicit_return.rs:26:20
@@ -56,9 +52,8 @@ LL |         false => { true },
    |
 help: add `return` as shown
    |
-LL -         false => { true },
-LL +         false => { return true },
-   |
+LL |         false => { return true },
+   |                    ++++++
 
 error: missing `return` statement
   --> tests/ui/implicit_return.rs:39:9
@@ -104,9 +99,8 @@ LL |     let _ = || { true };
    |
 help: add `return` as shown
    |
-LL -     let _ = || { true };
-LL +     let _ = || { return true };
-   |
+LL |     let _ = || { return true };
+   |                  ++++++
 
 error: missing `return` statement
   --> tests/ui/implicit_return.rs:73:16
@@ -116,9 +110,8 @@ LL |     let _ = || true;
    |
 help: add `return` as shown
    |
-LL -     let _ = || true;
-LL +     let _ = || return true;
-   |
+LL |     let _ = || return true;
+   |                ++++++
 
 error: missing `return` statement
   --> tests/ui/implicit_return.rs:81:5
@@ -128,8 +121,7 @@ LL |     format!("test {}", "test")
    |
 help: add `return` as shown
    |
-LL -     format!("test {}", "test")
-LL +     return format!("test {}", "test")
+LL |     return format!("test {}", "test")
    |
 
 error: missing `return` statement
@@ -140,8 +132,7 @@ LL |     m!(true, false)
    |
 help: add `return` as shown
    |
-LL -     m!(true, false)
-LL +     return m!(true, false)
+LL |     return m!(true, false)
    |
 
 error: missing `return` statement
@@ -191,8 +182,7 @@ LL |     true
    |
 help: add `return` as shown
    |
-LL -     true
-LL +     return true
+LL |     return true
    |
 
 error: aborting due to 16 previous errors

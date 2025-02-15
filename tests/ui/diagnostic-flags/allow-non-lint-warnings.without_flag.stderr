@@ -1,8 +1,8 @@
-warning: relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
-  --> $DIR/allow-non-lint-warnings.rs:26:13
+warning: unexpected annotation used with `#[rustc_error(...)]`!
+  --> $DIR/allow-non-lint-warnings.rs:25:1
    |
-LL | pub fn f<T: ?Trait>() {}
-   |             ^^^^^^
+LL | fn main() {}
+   | ^^^^^^^^^
 
 warning: 1 warning emitted
 

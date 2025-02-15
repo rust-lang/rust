@@ -6,9 +6,8 @@ LL | use alloc;
    |
 help: consider importing this module instead
    |
-LL - use alloc;
-LL + use std::alloc;
-   |
+LL | use std::alloc;
+   |     +++++
 
 error: aborting due to 1 previous error
 

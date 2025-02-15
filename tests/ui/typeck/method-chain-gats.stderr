@@ -19,9 +19,8 @@ LL |         Self::Base<B>: Functor<B>;
    |                        ^^^^^^^^^^ required by this bound in `Functor::fmap`
 help: consider further restricting the associated type
    |
-LL -     T::Base<B>: Functor<B, Base<C> = T::Base<C>>,
-LL +     T::Base<B>: Functor<B, Base<C> = T::Base<C>>, <T as Base>::Base<C>: Functor<C>
-   |
+LL |     T::Base<B>: Functor<B, Base<C> = T::Base<C>>, <T as Base>::Base<C>: Functor<C>
+   |                                                   ++++++++++++++++++++++++++++++++
 
 error: aborting due to 1 previous error
 

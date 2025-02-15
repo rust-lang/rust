@@ -45,9 +45,8 @@ LL |     let _ = 63u32.count_o();
    |
 help: there is a method `count_ones` with a similar name
    |
-LL -     let _ = 63u32.count_o();
-LL +     let _ = 63u32.count_ones();
-   |
+LL |     let _ = 63u32.count_ones();
+   |                          +++
 
 error: aborting due to 4 previous errors
 

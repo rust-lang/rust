@@ -44,10 +44,14 @@ o("optimize-tests", "rust.optimize-tests", "build tests with optimizations")
 o("verbose-tests", "rust.verbose-tests", "enable verbose output when running tests")
 o(
     "ccache",
-    "llvm.ccache",
-    "invoke gcc/clang via ccache to reuse object files between builds",
+    "build.ccache",
+    "invoke gcc/clang/rustc via ccache to reuse object files between builds",
 )
-o("sccache", None, "invoke gcc/clang via sccache to reuse object files between builds")
+o(
+    "sccache",
+    None,
+    "invoke gcc/clang/rustc via sccache to reuse object files between builds",
+)
 o("local-rust", None, "use an installed rustc rather than downloading a snapshot")
 v("local-rust-root", None, "set prefix for local rust binary")
 o(
@@ -510,7 +514,7 @@ def apply_args(known_args, option_checking, config):
         build_triple = build(known_args)
 
         if option.name == "sccache":
-            set("llvm.ccache", "sccache", config)
+            set("build.ccache", "sccache", config)
         elif option.name == "local-rust":
             for path in os.environ["PATH"].split(os.pathsep):
                 if os.path.exists(path + "/rustc"):
