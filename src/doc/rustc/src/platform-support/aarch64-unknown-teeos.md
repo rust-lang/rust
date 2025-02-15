@@ -54,7 +54,7 @@ exec /path/to/ohos-sdk/linux/native/llvm/bin/clang++ \
 
 ## Building the target
 
-To build a rust toolchain, create a `config.toml` with the following contents:
+To build a rust toolchain, create a `bootstrap.toml` with the following contents:
 
 ```toml
 profile = "compiler"

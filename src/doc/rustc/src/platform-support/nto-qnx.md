@@ -124,7 +124,7 @@ For conditional compilation, following QNX specific attributes are defined:
 
 ## Building the target
 
-1. Create a `config.toml`
+1. Create a `bootstrap.toml`
 
     Example content:
 
