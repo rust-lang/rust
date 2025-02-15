@@ -1,4 +1,4 @@
-error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
+error[E0803]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
   --> $DIR/issue-20831-debruijn.rs:28:33
    |
 LL |     fn subscribe(&mut self, t : Box<dyn Subscriber<Input=<Self as Publisher>::Output> + 'a>) {
@@ -48,4 +48,4 @@ LL |     fn subscribe(&mut self, t : Box<dyn Subscriber<Input=<Self as Publisher
 
 error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0495`.
+For more information about this error, try `rustc --explain E0803`.
