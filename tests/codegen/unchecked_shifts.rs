@@ -24,9 +24,9 @@ pub unsafe fn unchecked_shl_unsigned_same(a: u32, b: u32) -> u32 {
 #[no_mangle]
 pub unsafe fn unchecked_shl_unsigned_smaller(a: u16, b: u32) -> u16 {
     // CHECK-NOT: assume
-    // LLVM18-DAG: %[[TRUNC:.+]] = trunc i32 %b to i16
-    // LLVM19PLUS-DAG: %[[TRUNC:.+]] = trunc nuw i32 %b to i16
-    // CHECK-DAG: shl i16 %a, %[[TRUNC]]
+    // LLVM18: %[[TRUNC:.+]] = trunc i32 %b to i16
+    // LLVM19PLUS: %[[TRUNC:.+]] = trunc nuw i32 %b to i16
+    // CHECK: shl i16 %a, %[[TRUNC]]
     a.unchecked_shl(b)
 }
 

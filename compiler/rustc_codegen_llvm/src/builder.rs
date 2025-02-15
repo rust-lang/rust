@@ -946,7 +946,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let trunc = self.trunc(val, dest_ty);
         if llvm_util::get_version() >= (19, 0, 0) {
             unsafe {
-                if llvm::LLVMIsATruncInst(trunc).is_some() {
+                if llvm::LLVMIsAInstruction(trunc).is_some() {
                     llvm::LLVMSetNUW(trunc, True);
                 }
             }
@@ -958,7 +958,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let trunc = self.trunc(val, dest_ty);
         if llvm_util::get_version() >= (19, 0, 0) {
             unsafe {
-                if llvm::LLVMIsATruncInst(trunc).is_some() {
+                if llvm::LLVMIsAInstruction(trunc).is_some() {
                     llvm::LLVMSetNSW(trunc, True);
                 }
             }
