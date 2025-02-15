@@ -531,6 +531,16 @@ enum EditorKind {
 }
 
 impl EditorKind {
+    // Used in `./tests.rs`.
+    #[allow(dead_code)]
+    pub const ALL: &[EditorKind] = &[
+        EditorKind::Emacs,
+        EditorKind::Helix,
+        EditorKind::Vim,
+        EditorKind::VsCode,
+        EditorKind::Zed,
+    ];
+
     fn prompt_user() -> io::Result<Option<EditorKind>> {
         let prompt_str = "Available editors:
 1. Emacs
@@ -575,9 +585,10 @@ Select which editor you would like to set up [default: None]: ";
                 "51068d4747a13732440d1a8b8f432603badb1864fa431d83d0fd4f8fa57039e0",
                 "d29af4d949bbe2371eac928a3c31cf9496b1701aa1c45f11cd6c759865ad5c45",
             ],
-            EditorKind::Helix => {
-                &["2d3069b8cf1b977e5d4023965eb6199597755e6c96c185ed5f2854f98b83d233"]
-            }
+            EditorKind::Helix => &[
+                "2d3069b8cf1b977e5d4023965eb6199597755e6c96c185ed5f2854f98b83d233",
+                "6736d61409fbebba0933afd2e4c44ff2f97c1cb36cf0299a7f4a7819b8775040",
+            ],
             EditorKind::Vim | EditorKind::VsCode => &[
                 "ea67e259dedf60d4429b6c349a564ffcd1563cf41c920a856d1f5b16b4701ac8",
                 "56e7bf011c71c5d81e0bf42e84938111847a810eee69d906bba494ea90b51922",
