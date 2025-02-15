@@ -1,6 +1,8 @@
-//@stderr-per-bitwidth
+//@revisions: 32bit 64bit
 //@aux-build:proc_macros.rs
 //@no-rustfix
+//@[32bit]ignore-bitwidth: 64
+//@[64bit]ignore-bitwidth: 32
 #![allow(dead_code)]
 #![allow(unused_variables)]
 #![warn(clippy::large_enum_variant)]
@@ -219,13 +221,13 @@ mod issue11915 {
     }
 
     enum NoWarnings {
-        //~^ large_enum_variant
+        //~[64bit]^ large_enum_variant
         BigBoi(PublishWithBytes),
         _SmallBoi(u8),
     }
 
     enum MakesClippyAngry {
-        //~^ large_enum_variant
+        //~[64bit]^ large_enum_variant
         BigBoi(PublishWithVec),
         _SmallBoi(u8),
     }

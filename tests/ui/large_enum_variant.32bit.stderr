@@ -1,5 +1,5 @@
 error: large size difference between variants
-  --> tests/ui/large_enum_variant.rs:11:1
+  --> tests/ui/large_enum_variant.rs:13:1
    |
 LL | / enum LargeEnum {
 LL | |
@@ -18,7 +18,7 @@ LL |     B(Box<[i32; 8000]>),
    |       ~~~~~~~~~~~~~~~~
 
 error: large size difference between variants
-  --> tests/ui/large_enum_variant.rs:36:1
+  --> tests/ui/large_enum_variant.rs:38:1
    |
 LL | / enum LargeEnum2 {
 LL | |
@@ -35,7 +35,7 @@ LL |     ContainingLargeEnum(Box<LargeEnum>),
    |                         ~~~~~~~~~~~~~~
 
 error: large size difference between variants
-  --> tests/ui/large_enum_variant.rs:42:1
+  --> tests/ui/large_enum_variant.rs:44:1
    |
 LL | / enum LargeEnum3 {
 LL | |
@@ -53,7 +53,7 @@ LL |     ContainingMoreThanOneField(i32, Box<[i32; 8000]>, Box<[i32; 9500]>),
    |                                     ~~~~~~~~~~~~~~~~  ~~~~~~~~~~~~~~~~
 
 error: large size difference between variants
-  --> tests/ui/large_enum_variant.rs:49:1
+  --> tests/ui/large_enum_variant.rs:51:1
    |
 LL | / enum LargeEnum4 {
 LL | |
@@ -70,7 +70,7 @@ LL |     StructLikeLarge { x: Box<[i32; 8000]>, y: i32 },
    |                          ~~~~~~~~~~~~~~~~
 
 error: large size difference between variants
-  --> tests/ui/large_enum_variant.rs:55:1
+  --> tests/ui/large_enum_variant.rs:57:1
    |
 LL | / enum LargeEnum5 {
 LL | |
@@ -87,7 +87,7 @@ LL |     StructLikeLarge2 { x: Box<[i32; 8000]> },
    |                           ~~~~~~~~~~~~~~~~
 
 error: large size difference between variants
-  --> tests/ui/large_enum_variant.rs:72:1
+  --> tests/ui/large_enum_variant.rs:74:1
    |
 LL | / enum LargeEnum7 {
 LL | |
@@ -105,7 +105,7 @@ LL |     B(Box<[u8; 1255]>),
    |       ~~~~~~~~~~~~~~~
 
 error: large size difference between variants
-  --> tests/ui/large_enum_variant.rs:79:1
+  --> tests/ui/large_enum_variant.rs:81:1
    |
 LL | / enum LargeEnum8 {
 LL | |
@@ -122,7 +122,7 @@ LL |     ContainingMoreThanOneField(Box<[i32; 8000]>, [i32; 2], Box<[i32; 9500]>
    |                                ~~~~~~~~~~~~~~~~            ~~~~~~~~~~~~~~~~
 
 error: large size difference between variants
-  --> tests/ui/large_enum_variant.rs:85:1
+  --> tests/ui/large_enum_variant.rs:87:1
    |
 LL | / enum LargeEnum9 {
 LL | |
@@ -139,7 +139,7 @@ LL |     B(Box<Struct2>),
    |       ~~~~~~~~~~~~
 
 error: large size difference between variants
-  --> tests/ui/large_enum_variant.rs:91:1
+  --> tests/ui/large_enum_variant.rs:93:1
    |
 LL | / enum LargeEnumOk2<T> {
 LL | |
@@ -156,7 +156,7 @@ LL |     B(Box<Struct2>),
    |       ~~~~~~~~~~~~
 
 error: large size difference between variants
-  --> tests/ui/large_enum_variant.rs:97:1
+  --> tests/ui/large_enum_variant.rs:99:1
    |
 LL | / enum LargeEnumOk3<T> {
 LL | |
@@ -173,7 +173,7 @@ LL |     B(Box<Struct2>),
    |       ~~~~~~~~~~~~
 
 error: large size difference between variants
-  --> tests/ui/large_enum_variant.rs:113:1
+  --> tests/ui/large_enum_variant.rs:115:1
    |
 LL | / enum CopyableLargeEnum {
 LL | |
@@ -185,18 +185,18 @@ LL | | }
    | |_^ the entire enum is at least 64004 bytes
    |
 note: boxing a variant would require the type no longer be `Copy`
-  --> tests/ui/large_enum_variant.rs:113:6
+  --> tests/ui/large_enum_variant.rs:115:6
    |
 LL | enum CopyableLargeEnum {
    |      ^^^^^^^^^^^^^^^^^
 help: consider boxing the large fields to reduce the total size of the enum
-  --> tests/ui/large_enum_variant.rs:116:5
+  --> tests/ui/large_enum_variant.rs:118:5
    |
 LL |     B([u64; 8000]),
    |     ^^^^^^^^^^^^^^
 
 error: large size difference between variants
-  --> tests/ui/large_enum_variant.rs:119:1
+  --> tests/ui/large_enum_variant.rs:121:1
    |
 LL | / enum ManuallyCopyLargeEnum {
 LL | |
@@ -208,18 +208,18 @@ LL | | }
    | |_^ the entire enum is at least 64004 bytes
    |
 note: boxing a variant would require the type no longer be `Copy`
-  --> tests/ui/large_enum_variant.rs:119:6
+  --> tests/ui/large_enum_variant.rs:121:6
    |
 LL | enum ManuallyCopyLargeEnum {
    |      ^^^^^^^^^^^^^^^^^^^^^
 help: consider boxing the large fields to reduce the total size of the enum
-  --> tests/ui/large_enum_variant.rs:122:5
+  --> tests/ui/large_enum_variant.rs:124:5
    |
 LL |     B([u64; 8000]),
    |     ^^^^^^^^^^^^^^
 
 error: large size difference between variants
-  --> tests/ui/large_enum_variant.rs:133:1
+  --> tests/ui/large_enum_variant.rs:135:1
    |
 LL | / enum SomeGenericPossiblyCopyEnum<T> {
 LL | |
@@ -231,18 +231,18 @@ LL | | }
    | |_^ the entire enum is at least 32004 bytes
    |
 note: boxing a variant would require the type no longer be `Copy`
-  --> tests/ui/large_enum_variant.rs:133:6
+  --> tests/ui/large_enum_variant.rs:135:6
    |
 LL | enum SomeGenericPossiblyCopyEnum<T> {
    |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider boxing the large fields to reduce the total size of the enum
-  --> tests/ui/large_enum_variant.rs:136:5
+  --> tests/ui/large_enum_variant.rs:138:5
    |
 LL |     B([u64; 4000]),
    |     ^^^^^^^^^^^^^^
 
 error: large size difference between variants
-  --> tests/ui/large_enum_variant.rs:147:1
+  --> tests/ui/large_enum_variant.rs:149:1
    |
 LL | / enum LargeEnumWithGenerics<T> {
 LL | |
@@ -259,7 +259,7 @@ LL |     Large(Box<(T, [u8; 512])>),
    |           ~~~~~~~~~~~~~~~~~~~
 
 error: large size difference between variants
-  --> tests/ui/large_enum_variant.rs:157:1
+  --> tests/ui/large_enum_variant.rs:159:1
    |
 LL | / enum WithGenerics {
 LL | |
@@ -276,7 +276,7 @@ LL |     Large(Box<[Foo<u64>; 64]>),
    |           ~~~~~~~~~~~~~~~~~~~
 
 error: large size difference between variants
-  --> tests/ui/large_enum_variant.rs:168:1
+  --> tests/ui/large_enum_variant.rs:170:1
    |
 LL | / enum LargeEnumOfConst {
 LL | |
@@ -293,7 +293,7 @@ LL |     Error(Box<PossiblyLargeEnumWithConst<256>>),
    |           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: large size difference between variants
-  --> tests/ui/large_enum_variant.rs:174:1
+  --> tests/ui/large_enum_variant.rs:176:1
    |
 LL | / enum WithRecursion {
 LL | |
@@ -310,7 +310,7 @@ LL |     Large(Box<[u64; 64]>),
    |           ~~~~~~~~~~~~~~
 
 error: large size difference between variants
-  --> tests/ui/large_enum_variant.rs:185:1
+  --> tests/ui/large_enum_variant.rs:187:1
    |
 LL | / enum LargeEnumWithGenericsAndRecursive {
 LL | |
