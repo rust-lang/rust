@@ -101,7 +101,7 @@ impl<'tcx> CValue<'tcx> {
     /// The is represented by a dangling pointer of suitable alignment.
     pub(crate) fn zst(layout: TyAndLayout<'tcx>) -> CValue<'tcx> {
         assert!(layout.is_zst());
-        CValue::by_ref(crate::Pointer::dangling(layout.align.pref), layout)
+        CValue::by_ref(crate::Pointer::dangling(layout.align.abi), layout)
     }
 
     pub(crate) fn layout(&self) -> TyAndLayout<'tcx> {
@@ -392,7 +392,7 @@ impl<'tcx> CPlace<'tcx> {
         assert!(layout.is_sized());
         if layout.size.bytes() == 0 {
             return CPlace {
-                inner: CPlaceInner::Addr(Pointer::dangling(layout.align.pref), None),
+                inner: CPlaceInner::Addr(Pointer::dangling(layout.align.abi), None),
                 layout,
             };
         }
@@ -405,7 +405,7 @@ impl<'tcx> CPlace<'tcx> {
 
         let stack_slot = fx.create_stack_slot(
             u32::try_from(layout.size.bytes()).unwrap(),
-            u32::try_from(layout.align.pref.bytes()).unwrap(),
+            u32::try_from(layout.align.abi.bytes()).unwrap(),
         );
         CPlace { inner: CPlaceInner::Addr(stack_slot, None), layout }
     }
