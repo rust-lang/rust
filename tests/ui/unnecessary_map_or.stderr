@@ -287,5 +287,29 @@ LL -     o.map_or(true, |n| n > 5)
 LL +     o.is_none_or(|n| n > 5)
    |
 
-error: aborting due to 24 previous errors
+error: this `map_or` can be simplified
+  --> tests/ui/unnecessary_map_or.rs:107:13
+   |
+LL |     let x = a.map_or(false, |a| a == *s);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use is_some_and instead
+   |
+LL -     let x = a.map_or(false, |a| a == *s);
+LL +     let x = a.is_some_and(|a| a == *s);
+   |
+
+error: this `map_or` can be simplified
+  --> tests/ui/unnecessary_map_or.rs:108:13
+   |
+LL |     let y = b.map_or(true, |b| b == *s);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use is_none_or instead
+   |
+LL -     let y = b.map_or(true, |b| b == *s);
+LL +     let y = b.is_none_or(|b| b == *s);
+   |
+
+error: aborting due to 26 previous errors
 
