@@ -17,7 +17,6 @@ use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
 use super::HirTyLowerer;
-use crate::bounds::Bounds;
 use crate::hir_ty_lowering::{
     GenericArgCountMismatch, GenericArgCountResult, PredicateFilter, RegionInferReason,
 };
@@ -36,7 +35,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let tcx = self.tcx();
         let dummy_self = tcx.types.trait_object_dummy_self;
 
-        let mut user_written_bounds = Bounds::default();
+        let mut user_written_bounds = Vec::new();
         let mut potential_assoc_types = Vec::new();
         for trait_bound in hir_bounds.iter() {
             if let hir::BoundPolarity::Maybe(_) = trait_bound.modifiers.polarity {
@@ -60,15 +59,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
 
         let (trait_bounds, mut projection_bounds) =
-            traits::expand_trait_aliases(tcx, user_written_bounds.clauses());
+            traits::expand_trait_aliases(tcx, user_written_bounds.iter().copied());
         let (regular_traits, mut auto_traits): (Vec<_>, Vec<_>) = trait_bounds
             .into_iter()
             .partition(|(trait_ref, _)| !tcx.trait_is_auto(trait_ref.def_id()));
 
         // We  don't support empty trait objects.
         if regular_traits.is_empty() && auto_traits.is_empty() {
-            let guar =
-                self.report_trait_object_with_no_traits_error(span, user_written_bounds.clauses());
+            let guar = self.report_trait_object_with_no_traits_error(
+                span,
+                user_written_bounds.iter().copied(),
+            );
             return Ty::new_error(tcx, guar);
         }
         // We don't support >1 principal
@@ -84,7 +85,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // Check that there are no gross dyn-compatibility violations;
         // most importantly, that the supertraits don't contain `Self`,
         // to avoid ICEs.
-        for (clause, span) in user_written_bounds.clauses() {
+        for (clause, span) in user_written_bounds {
             if let Some(trait_pred) = clause.as_trait_clause() {
                 let violations =
                     hir_ty_lowering_dyn_compatibility_violations(tcx, trait_pred.def_id());

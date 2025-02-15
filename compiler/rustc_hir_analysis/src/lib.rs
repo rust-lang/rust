@@ -80,7 +80,6 @@ This API is completely unstable and subject to change.
 pub mod check;
 
 pub mod autoderef;
-mod bounds;
 mod check_unused;
 mod coherence;
 mod collect;
