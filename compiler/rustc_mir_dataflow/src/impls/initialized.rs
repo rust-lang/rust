@@ -9,7 +9,7 @@ use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::{self, TyCtxt};
 use tracing::{debug, instrument};
 
-use crate::elaborate_drops::DropFlagState;
+use crate::drop_flag_effects::DropFlagState;
 use crate::framework::SwitchIntTarget;
 use crate::move_paths::{HasMoveData, InitIndex, InitKind, LookupResult, MoveData, MovePathIndex};
 use crate::{

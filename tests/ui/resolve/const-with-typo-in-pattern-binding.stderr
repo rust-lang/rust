@@ -73,9 +73,8 @@ LL |         _ => {}
    |
 help: you might have meant to pattern match against the value of constant `ARCH` instead of introducing a new catch-all binding
    |
-LL -         ARCH => {}
-LL +         std::env::consts::ARCH => {}
-   |
+LL |         std::env::consts::ARCH => {}
+   |         ++++++++++++++++++
 
 error: aborting due to 5 previous errors
 

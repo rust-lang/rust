@@ -101,6 +101,8 @@ declare_lint_pass! {
         SINGLE_USE_LIFETIMES,
         SOFT_UNSTABLE,
         STABLE_FEATURES,
+        SUPERTRAIT_ITEM_SHADOWING_DEFINITION,
+        SUPERTRAIT_ITEM_SHADOWING_USAGE,
         TAIL_EXPR_DROP_ORDER,
         TEST_UNSTABLE_LINT,
         TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
@@ -4914,6 +4916,87 @@ declare_lint! {
         reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
         reference: "issue #124535 <https://github.com/rust-lang/rust/issues/124535>",
     };
+}
+
+declare_lint! {
+    /// The `supertrait_item_shadowing_usage` lint detects when the
+    /// usage of an item that is provided by both a subtrait and supertrait
+    /// is shadowed, preferring the subtrait.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![feature(supertrait_item_shadowing)]
+    /// #![deny(supertrait_item_shadowing_usage)]
+    ///
+    /// trait Upstream {
+    ///     fn hello(&self) {}
+    /// }
+    /// impl<T> Upstream for T {}
+    ///
+    /// trait Downstream: Upstream {
+    ///     fn hello(&self) {}
+    /// }
+    /// impl<T> Downstream for T {}
+    ///
+    /// struct MyType;
+    /// MyType.hello();
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// RFC 3624 specified a heuristic in which a supertrait item would be
+    /// shadowed by a subtrait item when ambiguity occurs during item
+    /// selection. In order to mitigate side-effects of this happening
+    /// silently, this lint detects these cases when users want to deny them
+    /// or fix the call sites.
+    pub SUPERTRAIT_ITEM_SHADOWING_USAGE,
+    // FIXME(supertrait_item_shadowing): It is not decided if this should
+    // warn by default at the call site.
+    Allow,
+    "detects when a supertrait item is shadowed by a subtrait item",
+    @feature_gate = supertrait_item_shadowing;
+}
+
+declare_lint! {
+    /// The `supertrait_item_shadowing_definition` lint detects when the
+    /// definition of an item that is provided by both a subtrait and
+    /// supertrait is shadowed, preferring the subtrait.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![feature(supertrait_item_shadowing)]
+    /// #![deny(supertrait_item_shadowing_definition)]
+    ///
+    /// trait Upstream {
+    ///     fn hello(&self) {}
+    /// }
+    /// impl<T> Upstream for T {}
+    ///
+    /// trait Downstream: Upstream {
+    ///     fn hello(&self) {}
+    /// }
+    /// impl<T> Downstream for T {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// RFC 3624 specified a heuristic in which a supertrait item would be
+    /// shadowed by a subtrait item when ambiguity occurs during item
+    /// selection. In order to mitigate side-effects of this happening
+    /// silently, this lint detects these cases when users want to deny them
+    /// or fix their trait definitions.
+    pub SUPERTRAIT_ITEM_SHADOWING_DEFINITION,
+    // FIXME(supertrait_item_shadowing): It is not decided if this should
+    // warn by default at the usage site.
+    Allow,
+    "detects when a supertrait item is shadowed by a subtrait item",
+    @feature_gate = supertrait_item_shadowing;
 }
 
 declare_lint! {

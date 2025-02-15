@@ -26,10 +26,7 @@ fn destructure_const<'tcx>(
         bug!("cannot destructure constant {:?}", const_)
     };
 
-    let branches = match cv.valtree {
-        ty::ValTree::Branch(b) => b,
-        _ => bug!("cannot destructure constant {:?}", const_),
-    };
+    let branches = cv.valtree.unwrap_branch();
 
     let (fields, variant) = match cv.ty.kind() {
         ty::Array(inner_ty, _) | ty::Slice(inner_ty) => {
@@ -126,13 +123,10 @@ fn recurse_build<'tcx>(
             tcx.at(sp).lit_to_const(LitToConstInput { lit: &lit.node, ty: node.ty, neg })
         }
         &ExprKind::NonHirLiteral { lit, user_ty: _ } => {
-            let val = ty::ValTree::from_scalar_int(lit);
+            let val = ty::ValTree::from_scalar_int(tcx, lit);
             ty::Const::new_value(tcx, val, node.ty)
         }
-        &ExprKind::ZstLiteral { user_ty: _ } => {
-            let val = ty::ValTree::zst();
-            ty::Const::new_value(tcx, val, node.ty)
-        }
+        &ExprKind::ZstLiteral { user_ty: _ } => ty::Const::zero_sized(tcx, node.ty),
         &ExprKind::NamedConst { def_id, args, user_ty: _ } => {
             let uneval = ty::UnevaluatedConst::new(def_id, args);
             ty::Const::new_unevaluated(tcx, uneval)

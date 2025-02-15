@@ -105,7 +105,6 @@ impl<'tcx> Stable<'tcx> for callconv::Conv {
             Conv::CCmseNonSecureCall => CallConvention::CCmseNonSecureCall,
             Conv::CCmseNonSecureEntry => CallConvention::CCmseNonSecureEntry,
             Conv::Msp430Intr => CallConvention::Msp430Intr,
-            Conv::PtxKernel => CallConvention::PtxKernel,
             Conv::X86Fastcall => CallConvention::X86Fastcall,
             Conv::X86Intr => CallConvention::X86Intr,
             Conv::X86Stdcall => CallConvention::X86Stdcall,

@@ -84,6 +84,9 @@
 //@ revisions: x86_64_win7_windows_msvc
 //@ [x86_64_win7_windows_msvc] compile-flags: --target x86_64-win7-windows-msvc
 //@ [x86_64_win7_windows_msvc] needs-llvm-components: x86
+//@ revisions: x86_64_pc_cygwin
+//@ [x86_64_pc_cygwin] compile-flags: --target x86_64-pc-cygwin
+//@ [x86_64_pc_cygwin] needs-llvm-components: x86
 
 // Sanity-check that each target can produce assembly code.
 

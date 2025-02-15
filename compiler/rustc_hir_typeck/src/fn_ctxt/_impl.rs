@@ -798,13 +798,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 bug!("`resolve_ty_and_res_fully_qualified_call` called on `LangItem`")
             }
         };
+
+        self.register_wf_obligation(
+            ty.raw.into(),
+            qself.span,
+            ObligationCauseCode::WellFormed(None),
+        );
+        self.select_obligations_where_possible(|_| {});
+
         if let Some(&cached_result) = self.typeck_results.borrow().type_dependent_defs().get(hir_id)
         {
-            self.register_wf_obligation(
-                ty.raw.into(),
-                qself.span,
-                ObligationCauseCode::WellFormed(None),
-            );
             // Return directly on cache hit. This is useful to avoid doubly reporting
             // errors with default match binding modes. See #44614.
             let def = cached_result.map_or(Res::Err, |(kind, def_id)| Res::Def(kind, def_id));
@@ -824,18 +827,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 let trait_missing_method =
                     matches!(error, method::MethodError::NoMatch(_)) && ty.normalized.is_trait();
-                // If we have a path like `MyTrait::missing_method`, then don't register
-                // a WF obligation for `dyn MyTrait` when method lookup fails. Otherwise,
-                // register a WF obligation so that we can detect any additional
-                // errors in the self type.
-                if !trait_missing_method {
-                    self.register_wf_obligation(
-                        ty.raw.into(),
-                        qself.span,
-                        ObligationCauseCode::WellFormed(None),
-                    );
-                }
-
                 if item_name.name != kw::Empty {
                     self.report_method_error(
                         hir_id,
@@ -848,14 +839,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 result
             });
-
-        if result.is_ok() {
-            self.register_wf_obligation(
-                ty.raw.into(),
-                qself.span,
-                ObligationCauseCode::WellFormed(None),
-            );
-        }
 
         // Write back the new resolution.
         self.write_resolution(hir_id, result);

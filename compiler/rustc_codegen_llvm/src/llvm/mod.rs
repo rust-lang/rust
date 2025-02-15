@@ -24,7 +24,7 @@ mod ffi;
 pub use self::enzyme_ffi::*;
 
 impl LLVMRustResult {
-    pub fn into_result(self) -> Result<(), ()> {
+    pub(crate) fn into_result(self) -> Result<(), ()> {
         match self {
             LLVMRustResult::Success => Ok(()),
             LLVMRustResult::Failure => Err(()),
@@ -32,13 +32,17 @@ impl LLVMRustResult {
     }
 }
 
-pub fn AddFunctionAttributes<'ll>(llfn: &'ll Value, idx: AttributePlace, attrs: &[&'ll Attribute]) {
+pub(crate) fn AddFunctionAttributes<'ll>(
+    llfn: &'ll Value,
+    idx: AttributePlace,
+    attrs: &[&'ll Attribute],
+) {
     unsafe {
         LLVMRustAddFunctionAttributes(llfn, idx.as_uint(), attrs.as_ptr(), attrs.len());
     }
 }
 
-pub fn AddCallSiteAttributes<'ll>(
+pub(crate) fn AddCallSiteAttributes<'ll>(
     callsite: &'ll Value,
     idx: AttributePlace,
     attrs: &[&'ll Attribute],
@@ -48,7 +52,11 @@ pub fn AddCallSiteAttributes<'ll>(
     }
 }
 
-pub fn CreateAttrStringValue<'ll>(llcx: &'ll Context, attr: &str, value: &str) -> &'ll Attribute {
+pub(crate) fn CreateAttrStringValue<'ll>(
+    llcx: &'ll Context,
+    attr: &str,
+    value: &str,
+) -> &'ll Attribute {
     unsafe {
         LLVMCreateStringAttribute(
             llcx,
@@ -60,7 +68,7 @@ pub fn CreateAttrStringValue<'ll>(llcx: &'ll Context, attr: &str, value: &str) -
     }
 }
 
-pub fn CreateAttrString<'ll>(llcx: &'ll Context, attr: &str) -> &'ll Attribute {
+pub(crate) fn CreateAttrString<'ll>(llcx: &'ll Context, attr: &str) -> &'ll Attribute {
     unsafe {
         LLVMCreateStringAttribute(
             llcx,
@@ -72,39 +80,39 @@ pub fn CreateAttrString<'ll>(llcx: &'ll Context, attr: &str) -> &'ll Attribute {
     }
 }
 
-pub fn CreateAlignmentAttr(llcx: &Context, bytes: u64) -> &Attribute {
+pub(crate) fn CreateAlignmentAttr(llcx: &Context, bytes: u64) -> &Attribute {
     unsafe { LLVMRustCreateAlignmentAttr(llcx, bytes) }
 }
 
-pub fn CreateDereferenceableAttr(llcx: &Context, bytes: u64) -> &Attribute {
+pub(crate) fn CreateDereferenceableAttr(llcx: &Context, bytes: u64) -> &Attribute {
     unsafe { LLVMRustCreateDereferenceableAttr(llcx, bytes) }
 }
 
-pub fn CreateDereferenceableOrNullAttr(llcx: &Context, bytes: u64) -> &Attribute {
+pub(crate) fn CreateDereferenceableOrNullAttr(llcx: &Context, bytes: u64) -> &Attribute {
     unsafe { LLVMRustCreateDereferenceableOrNullAttr(llcx, bytes) }
 }
 
-pub fn CreateByValAttr<'ll>(llcx: &'ll Context, ty: &'ll Type) -> &'ll Attribute {
+pub(crate) fn CreateByValAttr<'ll>(llcx: &'ll Context, ty: &'ll Type) -> &'ll Attribute {
     unsafe { LLVMRustCreateByValAttr(llcx, ty) }
 }
 
-pub fn CreateStructRetAttr<'ll>(llcx: &'ll Context, ty: &'ll Type) -> &'ll Attribute {
+pub(crate) fn CreateStructRetAttr<'ll>(llcx: &'ll Context, ty: &'ll Type) -> &'ll Attribute {
     unsafe { LLVMRustCreateStructRetAttr(llcx, ty) }
 }
 
-pub fn CreateUWTableAttr(llcx: &Context, async_: bool) -> &Attribute {
+pub(crate) fn CreateUWTableAttr(llcx: &Context, async_: bool) -> &Attribute {
     unsafe { LLVMRustCreateUWTableAttr(llcx, async_) }
 }
 
-pub fn CreateAllocSizeAttr(llcx: &Context, size_arg: u32) -> &Attribute {
+pub(crate) fn CreateAllocSizeAttr(llcx: &Context, size_arg: u32) -> &Attribute {
     unsafe { LLVMRustCreateAllocSizeAttr(llcx, size_arg) }
 }
 
-pub fn CreateAllocKindAttr(llcx: &Context, kind_arg: AllocKindFlags) -> &Attribute {
+pub(crate) fn CreateAllocKindAttr(llcx: &Context, kind_arg: AllocKindFlags) -> &Attribute {
     unsafe { LLVMRustCreateAllocKindAttr(llcx, kind_arg.bits()) }
 }
 
-pub fn CreateRangeAttr(llcx: &Context, size: Size, range: WrappingRange) -> &Attribute {
+pub(crate) fn CreateRangeAttr(llcx: &Context, size: Size, range: WrappingRange) -> &Attribute {
     let lower = range.start;
     let upper = range.end.wrapping_add(1);
     let lower_words = [lower as u64, (lower >> 64) as u64];
@@ -127,7 +135,7 @@ pub enum AttributePlace {
 }
 
 impl AttributePlace {
-    pub fn as_uint(self) -> c_uint {
+    pub(crate) fn as_uint(self) -> c_uint {
         match self {
             AttributePlace::ReturnValue => 0,
             AttributePlace::Argument(i) => 1 + i,
@@ -159,12 +167,12 @@ impl FromStr for ArchiveKind {
     }
 }
 
-pub fn SetInstructionCallConv(instr: &Value, cc: CallConv) {
+pub(crate) fn SetInstructionCallConv(instr: &Value, cc: CallConv) {
     unsafe {
         LLVMSetInstructionCallConv(instr, cc as c_uint);
     }
 }
-pub fn SetFunctionCallConv(fn_: &Value, cc: CallConv) {
+pub(crate) fn SetFunctionCallConv(fn_: &Value, cc: CallConv) {
     unsafe {
         LLVMSetFunctionCallConv(fn_, cc as c_uint);
     }
@@ -176,20 +184,20 @@ pub fn SetFunctionCallConv(fn_: &Value, cc: CallConv) {
 // value's name as the comdat value to make sure that it is in a 1-to-1 relationship to the
 // function.
 // For more details on COMDAT sections see e.g., https://www.airs.com/blog/archives/52
-pub fn SetUniqueComdat(llmod: &Module, val: &Value) {
+pub(crate) fn SetUniqueComdat(llmod: &Module, val: &Value) {
     let name_buf = get_value_name(val).to_vec();
     let name =
         CString::from_vec_with_nul(name_buf).or_else(|buf| CString::new(buf.into_bytes())).unwrap();
     set_comdat(llmod, val, &name);
 }
 
-pub fn SetUnnamedAddress(global: &Value, unnamed: UnnamedAddr) {
+pub(crate) fn SetUnnamedAddress(global: &Value, unnamed: UnnamedAddr) {
     unsafe {
         LLVMSetUnnamedAddress(global, unnamed);
     }
 }
 
-pub fn set_thread_local_mode(global: &Value, mode: ThreadLocalMode) {
+pub(crate) fn set_thread_local_mode(global: &Value, mode: ThreadLocalMode) {
     unsafe {
         LLVMSetThreadLocalMode(global, mode);
     }
@@ -197,65 +205,65 @@ pub fn set_thread_local_mode(global: &Value, mode: ThreadLocalMode) {
 
 impl AttributeKind {
     /// Create an LLVM Attribute with no associated value.
-    pub fn create_attr(self, llcx: &Context) -> &Attribute {
+    pub(crate) fn create_attr(self, llcx: &Context) -> &Attribute {
         unsafe { LLVMRustCreateAttrNoValue(llcx, self) }
     }
 }
 
 impl MemoryEffects {
     /// Create an LLVM Attribute with these memory effects.
-    pub fn create_attr(self, llcx: &Context) -> &Attribute {
+    pub(crate) fn create_attr(self, llcx: &Context) -> &Attribute {
         unsafe { LLVMRustCreateMemoryEffectsAttr(llcx, self) }
     }
 }
 
-pub fn set_section(llglobal: &Value, section_name: &CStr) {
+pub(crate) fn set_section(llglobal: &Value, section_name: &CStr) {
     unsafe {
         LLVMSetSection(llglobal, section_name.as_ptr());
     }
 }
 
-pub fn add_global<'a>(llmod: &'a Module, ty: &'a Type, name_cstr: &CStr) -> &'a Value {
+pub(crate) fn add_global<'a>(llmod: &'a Module, ty: &'a Type, name_cstr: &CStr) -> &'a Value {
     unsafe { LLVMAddGlobal(llmod, ty, name_cstr.as_ptr()) }
 }
 
-pub fn set_initializer(llglobal: &Value, constant_val: &Value) {
+pub(crate) fn set_initializer(llglobal: &Value, constant_val: &Value) {
     unsafe {
         LLVMSetInitializer(llglobal, constant_val);
     }
 }
 
-pub fn set_global_constant(llglobal: &Value, is_constant: bool) {
+pub(crate) fn set_global_constant(llglobal: &Value, is_constant: bool) {
     unsafe {
         LLVMSetGlobalConstant(llglobal, if is_constant { ffi::True } else { ffi::False });
     }
 }
 
-pub fn get_linkage(llglobal: &Value) -> Linkage {
+pub(crate) fn get_linkage(llglobal: &Value) -> Linkage {
     unsafe { LLVMGetLinkage(llglobal) }.to_rust()
 }
 
-pub fn set_linkage(llglobal: &Value, linkage: Linkage) {
+pub(crate) fn set_linkage(llglobal: &Value, linkage: Linkage) {
     unsafe {
         LLVMSetLinkage(llglobal, linkage);
     }
 }
 
-pub fn is_declaration(llglobal: &Value) -> bool {
+pub(crate) fn is_declaration(llglobal: &Value) -> bool {
     unsafe { LLVMIsDeclaration(llglobal) == ffi::True }
 }
 
-pub fn get_visibility(llglobal: &Value) -> Visibility {
+pub(crate) fn get_visibility(llglobal: &Value) -> Visibility {
     unsafe { LLVMGetVisibility(llglobal) }.to_rust()
 }
 
-pub fn set_visibility(llglobal: &Value, visibility: Visibility) {
+pub(crate) fn set_visibility(llglobal: &Value, visibility: Visibility) {
     unsafe {
         LLVMSetVisibility(llglobal, visibility);
     }
 }
 
-pub fn set_alignment(llglobal: &Value, align: Align) {
+pub(crate) fn set_alignment(llglobal: &Value, align: Align) {
     unsafe {
         ffi::LLVMSetAlignment(llglobal, align.bytes() as c_uint);
     }
@@ -265,7 +273,7 @@ pub fn set_alignment(llglobal: &Value, align: Align) {
 ///
 /// Inserts the comdat into `llmod` if it does not exist.
 /// It is an error to call this if the target does not support comdat.
-pub fn set_comdat(llmod: &Module, llglobal: &Value, name: &CStr) {
+pub(crate) fn set_comdat(llmod: &Module, llglobal: &Value, name: &CStr) {
     unsafe {
         let comdat = LLVMGetOrInsertComdat(llmod, name.as_ptr());
         LLVMSetComdat(llglobal, comdat);
@@ -273,7 +281,7 @@ pub fn set_comdat(llmod: &Module, llglobal: &Value, name: &CStr) {
 }
 
 /// Safe wrapper around `LLVMGetParam`, because segfaults are no fun.
-pub fn get_param(llfn: &Value, index: c_uint) -> &Value {
+pub(crate) fn get_param(llfn: &Value, index: c_uint) -> &Value {
     unsafe {
         assert!(
             index < LLVMCountParams(llfn),
@@ -286,7 +294,7 @@ pub fn get_param(llfn: &Value, index: c_uint) -> &Value {
 }
 
 /// Safe wrapper for `LLVMGetValueName2` into a byte slice
-pub fn get_value_name(value: &Value) -> &[u8] {
+pub(crate) fn get_value_name(value: &Value) -> &[u8] {
     unsafe {
         let mut len = 0;
         let data = LLVMGetValueName2(value, &mut len);
@@ -295,28 +303,28 @@ pub fn get_value_name(value: &Value) -> &[u8] {
 }
 
 /// Safe wrapper for `LLVMSetValueName2` from a byte slice
-pub fn set_value_name(value: &Value, name: &[u8]) {
+pub(crate) fn set_value_name(value: &Value, name: &[u8]) {
     unsafe {
         let data = name.as_c_char_ptr();
         LLVMSetValueName2(value, data, name.len());
     }
 }
 
-pub fn build_string(f: impl FnOnce(&RustString)) -> Result<String, FromUtf8Error> {
+pub(crate) fn build_string(f: impl FnOnce(&RustString)) -> Result<String, FromUtf8Error> {
     String::from_utf8(RustString::build_byte_buffer(f))
 }
 
-pub fn build_byte_buffer(f: impl FnOnce(&RustString)) -> Vec<u8> {
+pub(crate) fn build_byte_buffer(f: impl FnOnce(&RustString)) -> Vec<u8> {
     RustString::build_byte_buffer(f)
 }
 
-pub fn twine_to_string(tr: &Twine) -> String {
+pub(crate) fn twine_to_string(tr: &Twine) -> String {
     unsafe {
         build_string(|s| LLVMRustWriteTwineToString(tr, s)).expect("got a non-UTF8 Twine from LLVM")
     }
 }
 
-pub fn last_error() -> Option<String> {
+pub(crate) fn last_error() -> Option<String> {
     unsafe {
         let cstr = LLVMRustGetLastError();
         if cstr.is_null() {

@@ -30,75 +30,26 @@ where
     ) -> QueryResult<I> {
         self.set_is_normalizes_to_goal();
         debug_assert!(self.term_is_fully_unconstrained(goal));
-        let normalize_result = self
-            .probe(|&result| ProbeKind::TryNormalizeNonRigid { result })
-            .enter(|this| this.normalize_at_least_one_step(goal));
-
-        match normalize_result {
-            Ok(res) => Ok(res),
-            Err(NoSolution) => {
-                self.probe(|&result| ProbeKind::RigidAlias { result }).enter(|this| {
-                    let Goal { param_env, predicate: NormalizesTo { alias, term } } = goal;
-                    this.add_rigid_constraints(param_env, alias)?;
-                    this.relate_rigid_alias_non_alias(param_env, alias, ty::Invariant, term)?;
-                    this.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-                })
-            }
-        }
-    }
-
-    /// Register any obligations that are used to validate that an alias should be
-    /// treated as rigid.
-    ///
-    /// An alias may be considered rigid if it fails normalization, but we also don't
-    /// want to consider aliases that are not well-formed to be rigid simply because
-    /// they fail normalization.
-    ///
-    /// For example, some `<T as Trait>::Assoc` where `T: Trait` does not hold, or an
-    /// opaque type whose hidden type doesn't actually satisfy the opaque item bounds.
-    fn add_rigid_constraints(
-        &mut self,
-        param_env: I::ParamEnv,
-        rigid_alias: ty::AliasTerm<I>,
-    ) -> Result<(), NoSolution> {
-        let cx = self.cx();
-        match rigid_alias.kind(cx) {
-            // Projections are rigid only if their trait ref holds,
-            // and the GAT where-clauses hold.
-            ty::AliasTermKind::ProjectionTy | ty::AliasTermKind::ProjectionConst => {
-                let trait_ref = rigid_alias.trait_ref(cx);
-                self.add_goal(GoalSource::AliasWellFormed, Goal::new(cx, param_env, trait_ref));
-                Ok(())
-            }
-            ty::AliasTermKind::OpaqueTy => {
-                if self.opaque_type_is_rigid(rigid_alias.def_id) {
-                    Ok(())
-                } else {
-                    Err(NoSolution)
-                }
-            }
-            // FIXME(generic_const_exprs): we would need to support generic consts here
-            ty::AliasTermKind::UnevaluatedConst => Err(NoSolution),
-            // Inherent and weak types are never rigid. This type must not be well-formed.
-            ty::AliasTermKind::WeakTy | ty::AliasTermKind::InherentTy => Err(NoSolution),
-        }
-    }
-
-    /// Normalize the given alias by at least one step. If the alias is rigid, this
-    /// returns `NoSolution`.
-    #[instrument(level = "trace", skip(self), ret)]
-    fn normalize_at_least_one_step(&mut self, goal: Goal<I, NormalizesTo<I>>) -> QueryResult<I> {
         let cx = self.cx();
         match goal.predicate.alias.kind(cx) {
             ty::AliasTermKind::ProjectionTy | ty::AliasTermKind::ProjectionConst => {
                 let candidates = self.assemble_and_evaluate_candidates(goal);
+                let trait_ref = goal.predicate.alias.trait_ref(cx);
                 let (_, proven_via) =
                     self.probe(|_| ProbeKind::ShadowedEnvProbing).enter(|ecx| {
-                        let trait_goal: Goal<I, ty::TraitPredicate<I>> =
-                            goal.with(cx, goal.predicate.alias.trait_ref(cx));
+                        let trait_goal: Goal<I, ty::TraitPredicate<I>> = goal.with(cx, trait_ref);
                         ecx.compute_trait_goal(trait_goal)
                     })?;
-                self.merge_candidates(proven_via, candidates)
+                self.merge_candidates(proven_via, candidates, |ecx| {
+                    ecx.probe(|&result| ProbeKind::RigidAlias { result }).enter(|this| {
+                        this.structurally_instantiate_normalizes_to_term(
+                            goal,
+                            goal.predicate.alias,
+                        );
+                        this.add_goal(GoalSource::AliasWellFormed, goal.with(cx, trait_ref));
+                        this.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                    })
+                })
             }
             ty::AliasTermKind::InherentTy => self.normalize_inherent_associated_type(goal),
             ty::AliasTermKind::OpaqueTy => self.normalize_opaque_type(goal),
@@ -118,6 +69,17 @@ where
         term: I::Term,
     ) {
         self.eq(goal.param_env, goal.predicate.term, term)
+            .expect("expected goal term to be fully unconstrained");
+    }
+
+    /// Unlike `instantiate_normalizes_to_term` this instantiates the expected term
+    /// with a rigid alias. Using this is pretty much always wrong.
+    pub fn structurally_instantiate_normalizes_to_term(
+        &mut self,
+        goal: Goal<I, NormalizesTo<I>>,
+        term: ty::AliasTerm<I>,
+    ) {
+        self.relate_rigid_alias_non_alias(goal.param_env, term, ty::Invariant, goal.predicate.term)
             .expect("expected goal term to be fully unconstrained");
     }
 }
@@ -576,80 +538,92 @@ where
         let cx = ecx.cx();
         let metadata_def_id = cx.require_lang_item(TraitSolverLangItem::Metadata);
         assert_eq!(metadata_def_id, goal.predicate.def_id());
+        let metadata_ty = match goal.predicate.self_ty().kind() {
+            ty::Bool
+            | ty::Char
+            | ty::Int(..)
+            | ty::Uint(..)
+            | ty::Float(..)
+            | ty::Array(..)
+            | ty::Pat(..)
+            | ty::RawPtr(..)
+            | ty::Ref(..)
+            | ty::FnDef(..)
+            | ty::FnPtr(..)
+            | ty::Closure(..)
+            | ty::CoroutineClosure(..)
+            | ty::Infer(ty::IntVar(..) | ty::FloatVar(..))
+            | ty::Coroutine(..)
+            | ty::CoroutineWitness(..)
+            | ty::Never
+            | ty::Foreign(..)
+            | ty::Dynamic(_, _, ty::DynStar) => Ty::new_unit(cx),
+
+            ty::Error(e) => Ty::new_error(cx, e),
+
+            ty::Str | ty::Slice(_) => Ty::new_usize(cx),
+
+            ty::Dynamic(_, _, ty::Dyn) => {
+                let dyn_metadata = cx.require_lang_item(TraitSolverLangItem::DynMetadata);
+                cx.type_of(dyn_metadata)
+                    .instantiate(cx, &[I::GenericArg::from(goal.predicate.self_ty())])
+            }
+
+            ty::Alias(_, _) | ty::Param(_) | ty::Placeholder(..) => {
+                // This is the "fallback impl" for type parameters, unnormalizable projections
+                // and opaque types: If the `self_ty` is `Sized`, then the metadata is `()`.
+                // FIXME(ptr_metadata): This impl overlaps with the other impls and shouldn't
+                // exist. Instead, `Pointee<Metadata = ()>` should be a supertrait of `Sized`.
+                let alias_bound_result =
+                    ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
+                        let sized_predicate = ty::TraitRef::new(
+                            cx,
+                            cx.require_lang_item(TraitSolverLangItem::Sized),
+                            [I::GenericArg::from(goal.predicate.self_ty())],
+                        );
+                        ecx.add_goal(GoalSource::Misc, goal.with(cx, sized_predicate));
+                        ecx.instantiate_normalizes_to_term(goal, Ty::new_unit(cx).into());
+                        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                    });
+                // In case the dummy alias-bound candidate does not apply, we instead treat this projection
+                // as rigid.
+                return alias_bound_result.or_else(|NoSolution| {
+                    ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|this| {
+                        this.structurally_instantiate_normalizes_to_term(
+                            goal,
+                            goal.predicate.alias,
+                        );
+                        this.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                    })
+                });
+            }
+
+            ty::Adt(def, args) if def.is_struct() => match def.struct_tail_ty(cx) {
+                None => Ty::new_unit(cx),
+                Some(tail_ty) => {
+                    Ty::new_projection(cx, metadata_def_id, [tail_ty.instantiate(cx, args)])
+                }
+            },
+            ty::Adt(_, _) => Ty::new_unit(cx),
+
+            ty::Tuple(elements) => match elements.last() {
+                None => Ty::new_unit(cx),
+                Some(tail_ty) => Ty::new_projection(cx, metadata_def_id, [tail_ty]),
+            },
+
+            ty::UnsafeBinder(_) => {
+                // FIXME(unsafe_binder): Figure out how to handle pointee for unsafe binders.
+                todo!()
+            }
+
+            ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
+            | ty::Bound(..) => panic!(
+                "unexpected self ty `{:?}` when normalizing `<T as Pointee>::Metadata`",
+                goal.predicate.self_ty()
+            ),
+        };
+
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
-            let metadata_ty = match goal.predicate.self_ty().kind() {
-                ty::Bool
-                | ty::Char
-                | ty::Int(..)
-                | ty::Uint(..)
-                | ty::Float(..)
-                | ty::Array(..)
-                | ty::Pat(..)
-                | ty::RawPtr(..)
-                | ty::Ref(..)
-                | ty::FnDef(..)
-                | ty::FnPtr(..)
-                | ty::Closure(..)
-                | ty::CoroutineClosure(..)
-                | ty::Infer(ty::IntVar(..) | ty::FloatVar(..))
-                | ty::Coroutine(..)
-                | ty::CoroutineWitness(..)
-                | ty::Never
-                | ty::Foreign(..)
-                | ty::Dynamic(_, _, ty::DynStar) => Ty::new_unit(cx),
-
-                ty::Error(e) => Ty::new_error(cx, e),
-
-                ty::Str | ty::Slice(_) => Ty::new_usize(cx),
-
-                ty::Dynamic(_, _, ty::Dyn) => {
-                    let dyn_metadata = cx.require_lang_item(TraitSolverLangItem::DynMetadata);
-                    cx.type_of(dyn_metadata)
-                        .instantiate(cx, &[I::GenericArg::from(goal.predicate.self_ty())])
-                }
-
-                ty::Alias(_, _) | ty::Param(_) | ty::Placeholder(..) => {
-                    // This is the "fallback impl" for type parameters, unnormalizable projections
-                    // and opaque types: If the `self_ty` is `Sized`, then the metadata is `()`.
-                    // FIXME(ptr_metadata): This impl overlaps with the other impls and shouldn't
-                    // exist. Instead, `Pointee<Metadata = ()>` should be a supertrait of `Sized`.
-                    let sized_predicate = ty::TraitRef::new(
-                        cx,
-                        cx.require_lang_item(TraitSolverLangItem::Sized),
-                        [I::GenericArg::from(goal.predicate.self_ty())],
-                    );
-                    // FIXME(-Znext-solver=coinductive): Should this be `GoalSource::ImplWhereBound`?
-                    ecx.add_goal(GoalSource::Misc, goal.with(cx, sized_predicate));
-                    Ty::new_unit(cx)
-                }
-
-                ty::Adt(def, args) if def.is_struct() => match def.struct_tail_ty(cx) {
-                    None => Ty::new_unit(cx),
-                    Some(tail_ty) => {
-                        Ty::new_projection(cx, metadata_def_id, [tail_ty.instantiate(cx, args)])
-                    }
-                },
-                ty::Adt(_, _) => Ty::new_unit(cx),
-
-                ty::Tuple(elements) => match elements.last() {
-                    None => Ty::new_unit(cx),
-                    Some(tail_ty) => Ty::new_projection(cx, metadata_def_id, [tail_ty]),
-                },
-
-                ty::UnsafeBinder(_) => {
-                    // FIXME(unsafe_binder): Figure out how to handle pointee for unsafe binders.
-                    todo!()
-                }
-
-                ty::Infer(
-                    ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_),
-                )
-                | ty::Bound(..) => panic!(
-                    "unexpected self ty `{:?}` when normalizing `<T as Pointee>::Metadata`",
-                    goal.predicate.self_ty()
-                ),
-            };
-
             ecx.instantiate_normalizes_to_term(goal, metadata_ty.into());
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
@@ -850,12 +824,14 @@ where
                 todo!("discr subgoal...")
             }
 
-            // We do not call `Ty::discriminant_ty` on alias, param, or placeholder
-            // types, which return `<self_ty as DiscriminantKind>::Discriminant`
-            // (or ICE in the case of placeholders). Projecting a type to itself
-            // is never really productive.
+            // Given an alias, parameter, or placeholder we add an impl candidate normalizing to a rigid
+            // alias. In case there's a where-bound further constraining this alias it is preferred over
+            // this impl candidate anyways. It's still a bit scuffed.
             ty::Alias(_, _) | ty::Param(_) | ty::Placeholder(..) => {
-                return Err(NoSolution);
+                return ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
+                    ecx.structurally_instantiate_normalizes_to_term(goal, goal.predicate.alias);
+                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                });
             }
 
             ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
@@ -902,12 +878,14 @@ where
                 todo!()
             }
 
-            // We do not call `Ty::async_destructor_ty` on alias, param, or placeholder
-            // types, which return `<self_ty as AsyncDestruct>::AsyncDestructor`
-            // (or ICE in the case of placeholders). Projecting a type to itself
-            // is never really productive.
+            // Given an alias, parameter, or placeholder we add an impl candidate normalizing to a rigid
+            // alias. In case there's a where-bound further constraining this alias it is preferred over
+            // this impl candidate anyways. It's still a bit scuffed.
             ty::Alias(_, _) | ty::Param(_) | ty::Placeholder(..) => {
-                return Err(NoSolution);
+                return ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
+                    ecx.structurally_instantiate_normalizes_to_term(goal, goal.predicate.alias);
+                    ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                });
             }
 
             ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))

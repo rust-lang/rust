@@ -7,9 +7,8 @@ LL |     let bad = "ab\[c";
    = help: for more information, visit <https://doc.rust-lang.org/reference/tokens.html#literals>
 help: if you meant to write a literal backslash (perhaps escaping in a regular expression), consider a raw string literal
    |
-LL -     let bad = "ab\[c";
-LL +     let bad = r"ab\[c";
-   |
+LL |     let bad = r"ab\[c";
+   |               +
 
 error: aborting due to 1 previous error
 

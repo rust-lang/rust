@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `#[target_features] fn() -> Pin<Box<(dyn Future<Output = ()> + 'static)>> {target_feature}: AsyncFn()` is not satisfied
-  --> $DIR/fn-exception-target-features.rs:16:10
+  --> $DIR/fn-exception-target-features.rs:15:10
    |
 LL |     test(target_feature);
    |     ---- ^^^^^^^^^^^^^^ unsatisfied trait bound
@@ -8,7 +8,7 @@ LL |     test(target_feature);
    |
    = help: the trait `AsyncFn()` is not implemented for fn item `#[target_features] fn() -> Pin<Box<(dyn Future<Output = ()> + 'static)>> {target_feature}`
 note: required by a bound in `test`
-  --> $DIR/fn-exception-target-features.rs:13:17
+  --> $DIR/fn-exception-target-features.rs:12:17
    |
 LL | fn test(f: impl AsyncFn()) {}
    |                 ^^^^^^^^^ required by this bound in `test`

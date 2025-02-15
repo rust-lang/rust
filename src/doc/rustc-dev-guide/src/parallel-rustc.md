@@ -46,8 +46,6 @@ are implemented differently depending on whether `parallel-compiler` is true.
 
 | data structure                   | parallel                                            | non-parallel |
 | -------------------------------- | --------------------------------------------------- | ------------ |
-| Weak                             | std::sync::Weak                                     | std::rc::Weak |
-| Atomic{Bool}/{Usize}/{U32}/{U64} | std::sync::atomic::Atomic{Bool}/{Usize}/{U32}/{U64} | (std::cell::Cell<bool/usize/u32/u64>) |
 | OnceCell                         | std::sync::OnceLock                                 | std::cell::OnceCell |
 | Lock\<T> | (parking_lot::Mutex\<T>) | (std::cell::RefCell) |
 | RwLock\<T> | (parking_lot::RwLock\<T>) | (std::cell::RefCell) |
@@ -58,7 +56,6 @@ are implemented differently depending on whether `parallel-compiler` is true.
 | WriteGuard | parking_lot::RwLockWriteGuard | std::cell::RefMut |
 | MappedWriteGuard | parking_lot::MappedRwLockWriteGuard | std::cell::RefMut |
 | LockGuard | parking_lot::MutexGuard | std::cell::RefMut |
-| MappedLockGuard | parking_lot::MappedMutexGuard | std::cell::RefMut |
 
 - These thread-safe data structures are interspersed during compilation which
   can cause lock contention resulting in degraded performance as the number of
@@ -173,12 +170,10 @@ Here are some resources that can be used to learn more:
 - [This list of interior mutability in the compiler by nikomatsakis][imlist]
 
 [`rayon`]: https://crates.io/crates/rayon
-[Arc]: https://doc.rust-lang.org/std/sync/struct.Arc.html
 [imlist]: https://github.com/nikomatsakis/rustc-parallelization/blob/master/interior-mutability-list.md
 [irlo0]: https://internals.rust-lang.org/t/parallelizing-rustc-using-rayon/6606
 [irlo1]: https://internals.rust-lang.org/t/help-test-parallel-rustc/11503
 [monomorphization]: backend/monomorph.md
 [parallel-rustdoc]: https://github.com/rust-lang/rust/issues/82741
-[Rc]: https://doc.rust-lang.org/std/rc/struct.Rc.html
 [rustc-rayon]: https://github.com/rust-lang/rustc-rayon
 [tracking]: https://github.com/rust-lang/rust/issues/48685

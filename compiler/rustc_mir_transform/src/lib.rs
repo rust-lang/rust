@@ -49,10 +49,12 @@ mod check_pointers;
 mod cost_checker;
 mod cross_crate_inline;
 mod deduce_param_attrs;
+mod elaborate_drop;
 mod errors;
 mod ffi_unwind_calls;
 mod lint;
 mod lint_tail_expr_drop_order;
+mod patch;
 mod shim;
 mod ssa;
 

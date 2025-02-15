@@ -1,8 +1,8 @@
 use std::env;
-use std::hash::Hash;
 use std::str::FromStr;
 use std::sync::OnceLock;
 
+use rand::distr::Uniform;
 use rand::prelude::*;
 use rand_xorshift::XorShiftRng;
 
@@ -23,14 +23,14 @@ pub fn random(len: usize) -> Vec<i32> {
 
 pub fn random_uniform<R>(len: usize, range: R) -> Vec<i32>
 where
-    R: Into<rand::distributions::Uniform<i32>> + Hash,
+    Uniform<i32>: TryFrom<R, Error: std::fmt::Debug>,
 {
     // :.:.:.::
 
     let mut rng: XorShiftRng = rand::SeedableRng::seed_from_u64(get_or_init_rand_seed());
 
     // Abstracting over ranges in Rust :(
-    let dist: rand::distributions::Uniform<i32> = range.into();
+    let dist = Uniform::try_from(range).unwrap();
     (0..len).map(|_| dist.sample(&mut rng)).collect()
 }
 
@@ -207,5 +207,5 @@ fn rand_root_seed() -> u64 {
 
 fn random_vec(len: usize) -> Vec<i32> {
     let mut rng: XorShiftRng = rand::SeedableRng::seed_from_u64(get_or_init_rand_seed());
-    (0..len).map(|_| rng.gen::<i32>()).collect()
+    (0..len).map(|_| rng.random::<i32>()).collect()
 }

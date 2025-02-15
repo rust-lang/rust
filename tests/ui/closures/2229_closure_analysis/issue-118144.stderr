@@ -8,9 +8,8 @@ LL |         V(x) = func_arg;
    |
 help: consider dereferencing to access the inner value using the Deref trait
    |
-LL -         V(x) = func_arg;
-LL +         V(x) = &*func_arg;
-   |
+LL |         V(x) = &*func_arg;
+   |                ++
 
 error: aborting due to 1 previous error
 

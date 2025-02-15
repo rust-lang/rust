@@ -506,6 +506,12 @@ hir_analysis_specialization_trait = implementing `rustc_specialization_trait` tr
 
 hir_analysis_static_specialize = cannot specialize on `'static` lifetime
 
+hir_analysis_supertrait_item_multiple_shadowee = items from several supertraits are shadowed: {$traits}
+
+hir_analysis_supertrait_item_shadowee = item from `{$supertrait}` is shadowed by a subtrait item
+
+hir_analysis_supertrait_item_shadowing = trait item `{$item}` from `{$subtrait}` shadows identically named item from supertrait
+
 hir_analysis_tait_forward_compat = item constrains opaque type that is not in its signature
     .note = this item must mention the opaque type in its signature in order to be able to register hidden types
 

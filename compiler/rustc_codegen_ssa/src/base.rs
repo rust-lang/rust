@@ -1054,12 +1054,12 @@ pub(crate) fn provide(providers: &mut Providers) {
             config::OptLevel::No => return config::OptLevel::No,
             // If globally optimise-speed is already specified, just use that level.
             config::OptLevel::Less => return config::OptLevel::Less,
-            config::OptLevel::Default => return config::OptLevel::Default,
+            config::OptLevel::More => return config::OptLevel::More,
             config::OptLevel::Aggressive => return config::OptLevel::Aggressive,
             // If globally optimize-for-size has been requested, use -O2 instead (if optimize(size)
             // are present).
-            config::OptLevel::Size => config::OptLevel::Default,
-            config::OptLevel::SizeMin => config::OptLevel::Default,
+            config::OptLevel::Size => config::OptLevel::More,
+            config::OptLevel::SizeMin => config::OptLevel::More,
         };
 
         let defids = tcx.collect_and_partition_mono_items(cratenum).all_mono_items;

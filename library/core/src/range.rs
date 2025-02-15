@@ -31,7 +31,9 @@ pub use iter::{IterRange, IterRangeFrom, IterRangeInclusive};
 #[doc(inline)]
 pub use crate::iter::Step;
 #[doc(inline)]
-pub use crate::ops::{Bound, OneSidedRange, RangeBounds, RangeFull, RangeTo, RangeToInclusive};
+pub use crate::ops::{
+    Bound, IntoBounds, OneSidedRange, RangeBounds, RangeFull, RangeTo, RangeToInclusive,
+};
 
 /// A (half-open) range bounded inclusively below and exclusively above
 /// (`start..end` in a future edition).
@@ -172,6 +174,14 @@ impl<T> RangeBounds<T> for Range<&T> {
     }
     fn end_bound(&self) -> Bound<&T> {
         Excluded(self.end)
+    }
+}
+
+// #[unstable(feature = "range_into_bounds", issue = "136903")]
+#[unstable(feature = "new_range_api", issue = "125687")]
+impl<T> IntoBounds<T> for Range<T> {
+    fn into_bounds(self) -> (Bound<T>, Bound<T>) {
+        (Included(self.start), Excluded(self.end))
     }
 }
 
@@ -343,6 +353,14 @@ impl<T> RangeBounds<T> for RangeInclusive<&T> {
     }
 }
 
+// #[unstable(feature = "range_into_bounds", issue = "136903")]
+#[unstable(feature = "new_range_api", issue = "125687")]
+impl<T> IntoBounds<T> for RangeInclusive<T> {
+    fn into_bounds(self) -> (Bound<T>, Bound<T>) {
+        (Included(self.start), Included(self.end))
+    }
+}
+
 #[unstable(feature = "new_range_api", issue = "125687")]
 impl<T> From<RangeInclusive<T>> for legacy::RangeInclusive<T> {
     #[inline]
@@ -476,6 +494,14 @@ impl<T> RangeBounds<T> for RangeFrom<&T> {
     }
     fn end_bound(&self) -> Bound<&T> {
         Unbounded
+    }
+}
+
+// #[unstable(feature = "range_into_bounds", issue = "136903")]
+#[unstable(feature = "new_range_api", issue = "125687")]
+impl<T> IntoBounds<T> for RangeFrom<T> {
+    fn into_bounds(self) -> (Bound<T>, Bound<T>) {
+        (Included(self.start), Unbounded)
     }
 }
 

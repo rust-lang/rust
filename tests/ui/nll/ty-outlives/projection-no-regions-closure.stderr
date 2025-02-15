@@ -33,9 +33,8 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
    |
 help: consider adding an explicit lifetime bound
    |
-LL -     T: Iterator,
-LL +     T: Iterator, <T as Iterator>::Item: 'a
-   |
+LL |     T: Iterator, <T as Iterator>::Item: 'a
+   |                  +++++++++++++++++++++++++
 
 note: external requirements
   --> $DIR/projection-no-regions-closure.rs:34:23
@@ -96,9 +95,8 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
    |
 help: consider adding an explicit lifetime bound
    |
-LL -     T: 'b + Iterator,
-LL +     T: 'b + Iterator, <T as Iterator>::Item: 'a
-   |
+LL |     T: 'b + Iterator, <T as Iterator>::Item: 'a
+   |                       +++++++++++++++++++++++++
 
 note: external requirements
   --> $DIR/projection-no-regions-closure.rs:52:23

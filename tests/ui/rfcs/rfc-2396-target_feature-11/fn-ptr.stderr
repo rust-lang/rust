@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/fn-ptr.rs:14:21
+  --> $DIR/fn-ptr.rs:12:21
    |
 LL | #[target_feature(enable = "avx")]
    | --------------------------------- `#[target_feature]` added here
@@ -14,7 +14,7 @@ LL |     let foo: fn() = foo_avx;
    = note: functions with `#[target_feature]` can only be coerced to `unsafe` function pointers
 
 error[E0308]: mismatched types
-  --> $DIR/fn-ptr.rs:23:21
+  --> $DIR/fn-ptr.rs:21:21
    |
 LL | #[target_feature(enable = "sse2")]
    | ---------------------------------- `#[target_feature]` added here
