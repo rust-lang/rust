@@ -159,20 +159,33 @@ macro_rules! iterator {
 
                 let ptr = self.ptr;
                 let end_or_len = self.end_or_len;
-                // SAFETY: Type invariants.
+                // SAFETY: See inner comments. (For some reason having multiple
+                // block breaks inlining this -- if you can fix that please do!)
                 unsafe {
                     if T::IS_ZST {
                         let len = end_or_len.addr();
                         if len == 0 {
                             return None;
                         }
+                        // SAFETY: just checked that it's not zero, so subtracting one
+                        // cannot wrap.  (Ideally this would be `checked_sub`, which
+                        // does the same thing internally, but as of 2025-02 that
+                        // doesn't optimize quite as small in MIR.)
                         self.end_or_len = without_provenance_mut(len.unchecked_sub(1));
                     } else {
+                        // SAFETY: by type invariant, the `end_or_len` field is always
+                        // non-null for a non-ZST pointee.  (This transmute ensures we
+                        // get `!nonnull` metadata on the load of the field.)
                         if ptr == crate::intrinsics::transmute::<$ptr, NonNull<T>>(end_or_len) {
                             return None;
                         }
+                        // SAFETY: since it's not empty, per the check above, moving
+                        // forward one keeps us inside the slice, and this is valid.
                         self.ptr = ptr.add(1);
                     }
+                    // SAFETY: Now that we know it wasn't empty and we've moved past
+                    // the first one (to avoid giving a duplicate `&mut` next time),
+                    // we can give out a reference to it.
                     Some({ptr}.$into_ref())
                 }
             }
