@@ -9,7 +9,7 @@ use rustc_abi::{
     HasDataLayout, Layout, LayoutCalculatorError, LayoutData, Niche, ReprOptions, Scalar, Size,
     StructKind, TagEncoding, VariantIdx, Variants, WrappingRange,
 };
-use rustc_data_structures::stable_hasher::Hash64;
+use rustc_hashes::Hash64;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::bug;

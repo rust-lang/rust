@@ -2,7 +2,7 @@ use std::fmt::{self, Write};
 use std::ops::{Bound, Deref};
 use std::{cmp, iter};
 
-use rustc_data_structures::stable_hasher::Hash64;
+use rustc_hashes::Hash64;
 use rustc_index::Idx;
 use tracing::debug;
 

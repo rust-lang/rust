@@ -48,9 +48,9 @@ use std::ops::{Add, AddAssign, Mul, RangeInclusive, Sub};
 use std::str::FromStr;
 
 use bitflags::bitflags;
-use rustc_data_structures::stable_hasher::Hash64;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::StableOrd;
+use rustc_hashes::Hash64;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_Generic, Encodable_Generic, HashStable_Generic};

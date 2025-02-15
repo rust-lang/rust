@@ -15,6 +15,7 @@ use hir_def::{
 use la_arena::{Idx, RawIdx};
 use rustc_abi::AddressSpace;
 use rustc_index::{IndexSlice, IndexVec};
+use rustc_hashes::Hash64;
 
 use triomphe::Arc;
 
@@ -197,7 +198,7 @@ fn layout_of_simd_ty(
         align,
         max_repr_align: None,
         unadjusted_abi_align: align.abi,
-        randomization_seed: 0,
+        randomization_seed: Hash64::ZERO,
     }))
 }
 
@@ -314,7 +315,7 @@ pub fn layout_of_ty_query(
                 size,
                 max_repr_align: None,
                 unadjusted_abi_align: element.align.abi,
-                randomization_seed: 0,
+                randomization_seed: Hash64::ZERO,
             }
         }
         TyKind::Slice(element) => {
@@ -328,7 +329,7 @@ pub fn layout_of_ty_query(
                 size: Size::ZERO,
                 max_repr_align: None,
                 unadjusted_abi_align: element.align.abi,
-                randomization_seed: 0,
+                randomization_seed: Hash64::ZERO,
             }
         }
         TyKind::Str => Layout {
@@ -340,7 +341,7 @@ pub fn layout_of_ty_query(
             size: Size::ZERO,
             max_repr_align: None,
             unadjusted_abi_align: dl.i8_align.abi,
-            randomization_seed: 0,
+            randomization_seed: Hash64::ZERO,
         },
         // Potentially-wide pointers.
         TyKind::Ref(_, _, pointee) | TyKind::Raw(_, pointee) => {

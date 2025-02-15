@@ -3317,6 +3317,7 @@ dependencies = [
  "rand 0.8.5",
  "rand_xoshiro",
  "rustc_data_structures",
+ "rustc_hashes",
  "rustc_index",
  "rustc_macros",
  "rustc_serialize",
@@ -3544,6 +3545,7 @@ dependencies = [
  "rustc_errors",
  "rustc_fluent_macro",
  "rustc_fs_util",
+ "rustc_hashes",
  "rustc_hir",
  "rustc_index",
  "rustc_llvm",
@@ -3586,6 +3588,7 @@ dependencies = [
  "rustc_errors",
  "rustc_fluent_macro",
  "rustc_fs_util",
+ "rustc_hashes",
  "rustc_hir",
  "rustc_hir_pretty",
  "rustc_incremental",
@@ -3658,6 +3661,7 @@ dependencies = [
  "rustc-stable-hash",
  "rustc_arena",
  "rustc_graphviz",
+ "rustc_hashes",
  "rustc_index",
  "rustc_macros",
  "rustc_serialize",
@@ -3768,6 +3772,7 @@ dependencies = [
  "rustc_error_codes",
  "rustc_error_messages",
  "rustc_fluent_macro",
+ "rustc_hashes",
  "rustc_hir",
  "rustc_index",
  "rustc_lexer",
@@ -3841,6 +3846,13 @@ name = "rustc_graphviz"
 version = "0.0.0"
 
 [[package]]
+name = "rustc_hashes"
+version = "0.0.0"
+dependencies = [
+ "rustc-stable-hash",
+]
+
+[[package]]
 name = "rustc_hir"
 version = "0.0.0"
 dependencies = [
@@ -3849,6 +3861,7 @@ dependencies = [
  "rustc_arena",
  "rustc_ast",
  "rustc_data_structures",
+ "rustc_hashes",
  "rustc_index",
  "rustc_macros",
  "rustc_serialize",
@@ -4169,6 +4182,7 @@ dependencies = [
  "rustc_feature",
  "rustc_fluent_macro",
  "rustc_graphviz",
+ "rustc_hashes",
  "rustc_hir",
  "rustc_hir_pretty",
  "rustc_index",
@@ -4405,6 +4419,7 @@ dependencies = [
  "measureme",
  "rustc_data_structures",
  "rustc_errors",
+ "rustc_hashes",
  "rustc_hir",
  "rustc_index",
  "rustc_middle",
@@ -4428,6 +4443,7 @@ dependencies = [
  "rustc_errors",
  "rustc_feature",
  "rustc_fluent_macro",
+ "rustc_hashes",
  "rustc_hir",
  "rustc_index",
  "rustc_macros",
@@ -4488,6 +4504,7 @@ name = "rustc_serialize"
 version = "0.0.0"
 dependencies = [
  "indexmap",
+ "rustc_hashes",
  "rustc_macros",
  "smallvec",
  "tempfile",
@@ -4508,6 +4525,7 @@ dependencies = [
  "rustc_feature",
  "rustc_fluent_macro",
  "rustc_fs_util",
+ "rustc_hashes",
  "rustc_hir",
  "rustc_lint_defs",
  "rustc_macros",
@@ -4549,6 +4567,7 @@ dependencies = [
  "md-5",
  "rustc_arena",
  "rustc_data_structures",
+ "rustc_hashes",
  "rustc_index",
  "rustc_macros",
  "rustc_serialize",
@@ -4568,6 +4587,7 @@ dependencies = [
  "rustc_abi",
  "rustc_data_structures",
  "rustc_errors",
+ "rustc_hashes",
  "rustc_hir",
  "rustc_middle",
  "rustc_session",
@@ -4663,6 +4683,7 @@ dependencies = [
  "rustc_data_structures",
  "rustc_errors",
  "rustc_fluent_macro",
+ "rustc_hashes",
  "rustc_hir",
  "rustc_index",
  "rustc_infer",

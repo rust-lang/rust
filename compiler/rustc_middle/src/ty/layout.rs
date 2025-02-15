@@ -7,11 +7,11 @@ use rustc_abi::{
     PointeeInfo, PointerKind, Primitive, ReprOptions, Scalar, Size, TagEncoding, TargetDataLayout,
     TyAbiInterface, VariantIdx, Variants,
 };
-use rustc_data_structures::stable_hasher::Hash64;
 use rustc_error_messages::DiagMessage;
 use rustc_errors::{
     Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
 };
+use rustc_hashes::Hash64;
 use rustc_hir::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
