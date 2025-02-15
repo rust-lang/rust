@@ -2,9 +2,9 @@
 mod tests;
 
 use crate::alloc::Allocator;
-use crate::cmp;
 use crate::io::prelude::*;
 use crate::io::{self, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut, SeekFrom};
+use crate::{cmp, fmt};
 
 /// A `Cursor` wraps an in-memory buffer and provides it with a
 /// [`Seek`] implementation.
@@ -603,6 +603,11 @@ where
         true
     }
 
+    fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> io::Result<()> {
+        self.inner.reserve(fmt.estimated_capacity());
+        io::default_write_fmt(self, fmt)
+    }
+
     #[inline]
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
@@ -625,6 +630,11 @@ where
     #[inline]
     fn is_write_vectored(&self) -> bool {
         true
+    }
+
+    fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> io::Result<()> {
+        self.inner.reserve(fmt.estimated_capacity());
+        io::default_write_fmt(self, fmt)
     }
 
     #[inline]
