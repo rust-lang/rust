@@ -12,10 +12,9 @@ enum FakeCallType2 {
 }
 
 enum Foo {
-    //~^ ERROR: all variants have the same prefix: `c`
+    //~^ enum_variant_names
     cFoo,
-    //~^ ERROR: variant name ends with the enum's name
-    //~| NOTE: `-D clippy::enum-variant-names` implied by `-D warnings`
+    //~^ enum_variant_names
     cBar,
     cBaz,
 }
@@ -26,13 +25,13 @@ enum Fooo {
 }
 
 enum Food {
-    //~^ ERROR: all variants have the same prefix: `Food`
+    //~^ enum_variant_names
     FoodGood,
-    //~^ ERROR: variant name starts with the enum's name
+    //~^ enum_variant_names
     FoodMiddle,
-    //~^ ERROR: variant name starts with the enum's name
+    //~^ enum_variant_names
     FoodBad,
-    //~^ ERROR: variant name starts with the enum's name
+    //~^ enum_variant_names
 }
 
 enum Stuff {
@@ -40,7 +39,7 @@ enum Stuff {
 }
 
 enum BadCallType {
-    //~^ ERROR: all variants have the same prefix: `CallType`
+    //~^ enum_variant_names
     CallTypeCall,
     CallTypeCreate,
     CallTypeDestroy,
@@ -53,7 +52,7 @@ enum TwoCallType {
 }
 
 enum Consts {
-    //~^ ERROR: all variants have the same prefix: `Constant`
+    //~^ enum_variant_names
     ConstantInt,
     ConstantCake,
     ConstantLie,
@@ -66,7 +65,7 @@ enum Two {
 }
 
 enum Something {
-    //~^ ERROR: all variants have the same prefix: `C`
+    //~^ enum_variant_names
     CCall,
     CCreate,
     CCryogenize,
@@ -89,7 +88,7 @@ enum Sealll {
 }
 
 enum Seallll {
-    //~^ ERROR: all variants have the same prefix: `WithOut`
+    //~^ enum_variant_names
     WithOutCake,
     WithOutTea,
     WithOut,
@@ -145,14 +144,14 @@ pub enum NetworkLayer {
 
 // should lint suggesting `IData`, not only `Data` (see #4639)
 enum IDataRequest {
-    //~^ ERROR: all variants have the same postfix: `IData`
+    //~^ enum_variant_names
     PutIData(String),
     GetIData(String),
     DeleteUnpubIData(String),
 }
 
 enum HIDataRequest {
-    //~^ ERROR: all variants have the same postfix: `HIData`
+    //~^ enum_variant_names
     PutHIData(String),
     GetHIData(String),
     DeleteUnpubHIData(String),
@@ -173,7 +172,7 @@ enum Phase {
 
 mod issue9018 {
     enum DoLint {
-        //~^ ERROR: all variants have the same prefix: `_Type`
+        //~^ enum_variant_names
         _TypeCreate,
         _TypeRead,
         _TypeUpdate,
@@ -181,7 +180,7 @@ mod issue9018 {
     }
 
     enum DoLintToo {
-        //~^ ERROR: all variants have the same postfix: `Type`
+        //~^ enum_variant_names
         _CreateType,
         _UpdateType,
         _DeleteType,
@@ -210,12 +209,12 @@ mod issue11494 {
         Valid,
         Invalid,
         DataDependent,
-        //~^ ERROR: variant name starts with the enum's name
+        //~^ enum_variant_names
     }
 
     enum Datas {
         DatasDependent,
-        //~^ ERROR: variant name starts with the enum's name
+        //~^ enum_variant_names
         Valid,
         Invalid,
     }

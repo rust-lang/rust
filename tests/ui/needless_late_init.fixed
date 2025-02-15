@@ -25,22 +25,28 @@ impl std::ops::Drop for SignificantDrop {
 
 fn simple() {
     
+    //~^ needless_late_init
     let a = "zero";
 
     
+    //~^ needless_late_init
     
+    //~^ needless_late_init
     let b = 1;
     let c = 2;
 
     
+    //~^ needless_late_init
     let d: usize = 1;
 
     
+    //~^ needless_late_init
     let e = format!("{}", d);
 }
 
 fn main() {
     
+    //~^ needless_late_init
     let n = 1;
     let a = match n {
         1 => "one",
@@ -50,6 +56,7 @@ fn main() {
     };
 
     
+    //~^ needless_late_init
     let b = if n == 3 {
         "four"
     } else {
@@ -57,6 +64,7 @@ fn main() {
     };
 
     
+    //~^ needless_late_init
     let d = if true {
         let temp = 5;
         temp
@@ -65,6 +73,7 @@ fn main() {
     };
 
     
+    //~^ needless_late_init
     let e = if true {
         format!("{} {}", a, b)
     } else {
@@ -72,12 +81,14 @@ fn main() {
     };
 
     
+    //~^ needless_late_init
     let f = match 1 {
         1 => "three",
         _ => return,
     }; // has semi
 
     
+    //~^ needless_late_init
     let g: usize = if true {
         5
     } else {
@@ -86,14 +97,17 @@ fn main() {
 
     // Drop order only matters if both are significant
     
+    //~^ needless_late_init
     let y = SignificantDrop;
     let x = 1;
 
     
+    //~^ needless_late_init
     let y = 1;
     let x = SignificantDrop;
 
     
+    //~^ needless_late_init
     // types that should be considered insignificant
     let y = 1;
     let y = "2";
@@ -113,6 +127,7 @@ async fn in_async() -> &'static str {
     }
 
     
+    //~^ needless_late_init
     let n = 1;
     let a = match n {
         1 => f().await,
@@ -130,6 +145,7 @@ const fn in_const() -> &'static str {
     }
 
     
+    //~^ needless_late_init
     let n = 1;
     let a = match n {
         1 => f(),

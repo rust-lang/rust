@@ -1,3 +1,5 @@
+//@ check-pass
+
 #![deny(clippy::match_same_arms)]
 
 // Test for https://github.com/rust-lang/rust-clippy/issues/2427

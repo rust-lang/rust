@@ -12,32 +12,56 @@ use std::mem::{size_of, size_of_val};
 
 fn main() {
     i8::BITS as usize;
+    //~^ manual_bits
     i16::BITS as usize;
+    //~^ manual_bits
     i32::BITS as usize;
+    //~^ manual_bits
     i64::BITS as usize;
+    //~^ manual_bits
     i128::BITS as usize;
+    //~^ manual_bits
     isize::BITS as usize;
+    //~^ manual_bits
 
     u8::BITS as usize;
+    //~^ manual_bits
     u16::BITS as usize;
+    //~^ manual_bits
     u32::BITS as usize;
+    //~^ manual_bits
     u64::BITS as usize;
+    //~^ manual_bits
     u128::BITS as usize;
+    //~^ manual_bits
     usize::BITS as usize;
+    //~^ manual_bits
 
     i8::BITS as usize;
+    //~^ manual_bits
     i16::BITS as usize;
+    //~^ manual_bits
     i32::BITS as usize;
+    //~^ manual_bits
     i64::BITS as usize;
+    //~^ manual_bits
     i128::BITS as usize;
+    //~^ manual_bits
     isize::BITS as usize;
+    //~^ manual_bits
 
     u8::BITS as usize;
+    //~^ manual_bits
     u16::BITS as usize;
+    //~^ manual_bits
     u32::BITS as usize;
+    //~^ manual_bits
     u64::BITS as usize;
+    //~^ manual_bits
     u128::BITS as usize;
+    //~^ manual_bits
     usize::BITS as usize;
+    //~^ manual_bits
 
     size_of::<usize>() * 4;
     4 * size_of::<usize>();
@@ -48,13 +72,18 @@ fn main() {
 
     type Word = u32;
     Word::BITS as usize;
+    //~^ manual_bits
     type Bool = bool;
     size_of::<Bool>() * 8;
 
     let _: u32 = u128::BITS as u32;
+    //~^ manual_bits
     let _: u32 = u128::BITS.try_into().unwrap();
+    //~^ manual_bits
     let _ = (u128::BITS as usize).pow(5);
+    //~^ manual_bits
     let _ = &(u128::BITS as usize);
+    //~^ manual_bits
 }
 
 fn should_not_lint() {

@@ -1,7 +1,8 @@
 error: empty line after doc comment
-  --> tests/ui/empty_line_after/doc_comments.rs:6:1
+  --> tests/ui/empty_line_after/doc_comments.rs:5:1
    |
 LL | / /// for the crate
+LL | |
 LL | |
    | |_^
 LL |   fn first_in_crate() {}
@@ -10,11 +11,11 @@ LL |   fn first_in_crate() {}
    = note: `-D clippy::empty-line-after-doc-comments` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::empty_line_after_doc_comments)]`
    = help: if the empty line is unintentional remove it
-help: if the comment should document the crate use an inner doc comment
+help: if the doc comment should not document `first_in_crate` comment it out
    |
-LL ~ //! Meant to be an
-LL ~ //! inner doc comment
-LL ~ //! for the crate
+LL ~ // /// Meant to be an
+LL ~ // /// inner doc comment
+LL ~ // /// for the crate
    |
 
 error: empty line after doc comment
@@ -22,16 +23,17 @@ error: empty line after doc comment
    |
 LL | /     /// for the module
 LL | |
+LL | |
    | |_^
 LL |       fn first_in_module() {}
    |       -------------------- the comment documents this function
    |
    = help: if the empty line is unintentional remove it
-help: if the comment should document the parent module use an inner doc comment
+help: if the doc comment should not document `first_in_module` comment it out
    |
-LL ~     //! Meant to be an
-LL ~     //! inner doc comment
-LL ~     //! for the module
+LL ~     // /// Meant to be an
+LL ~     // /// inner doc comment
+LL ~     // /// for the module
    |
 
 error: empty line after doc comment
@@ -39,32 +41,39 @@ error: empty line after doc comment
    |
 LL | /     /// # Indented
 LL | |
+LL | |
    | |_^
 LL |       /// Blank line
 LL |       fn indented() {}
    |       ------------- the comment documents this function
    |
    = help: if the empty line is unintentional remove it
-help: if the documentation should include the empty line include it in the comment
+help: if the doc comment should not document `indented` comment it out
    |
-LL |     ///
-   |
+LL |     // /// # Indented
+   |     ++
 
 error: empty line after doc comment
   --> tests/ui/empty_line_after/doc_comments.rs:34:1
    |
 LL | / /// This should produce a warning
 LL | |
+LL | |
    | |_^
 LL |   fn with_doc_and_newline() {}
    |   ------------------------- the comment documents this function
    |
    = help: if the empty line is unintentional remove it
+help: if the doc comment should not document `with_doc_and_newline` comment it out
+   |
+LL | // /// This should produce a warning
+   | ++
 
 error: empty lines after doc comment
   --> tests/ui/empty_line_after/doc_comments.rs:44:1
    |
 LL | / /// This doc comment should produce a warning
+LL | |
 LL | |
 LL | | /** This is also a doc comment and is part of the warning
 LL | |  */
@@ -75,12 +84,19 @@ LL |   fn three_attributes() {}
    |   --------------------- the comment documents this function
    |
    = help: if the empty lines are unintentional remove them
+help: if the doc comment should not document `three_attributes` comment it out
+   |
+LL ~ // /// This doc comment should produce a warning
+LL |
+LL |
+LL ~ /* This is also a doc comment and is part of the warning
+   |
 
 error: empty line after doc comment
-  --> tests/ui/empty_line_after/doc_comments.rs:56:5
+  --> tests/ui/empty_line_after/doc_comments.rs:57:5
    |
 LL | /     /// docs for `old_code`
-LL | |     // fn old_code() {}
+...  |
 LL | |
    | |_^
 LL |       fn new_code() {}
@@ -93,12 +109,9 @@ LL |     // /// docs for `old_code`
    |     ++
 
 error: empty lines after doc comment
-  --> tests/ui/empty_line_after/doc_comments.rs:63:5
+  --> tests/ui/empty_line_after/doc_comments.rs:64:5
    |
 LL | /     /// for OldA
-LL | |     // struct OldA;
-LL | |
-LL | |     /// Docs
 ...  |
 LL | |
    | |_^
@@ -111,6 +124,7 @@ help: if the doc comment should not document `Multiple` comment it out
    |
 LL ~     // /// Docs
 LL ~     // /// for OldA
+LL |
 LL |     // struct OldA;
 LL |
 LL ~     // /// Docs
@@ -118,29 +132,31 @@ LL ~     // /// for OldB
    |
 
 error: empty line after doc comment
-  --> tests/ui/empty_line_after/doc_comments.rs:78:5
+  --> tests/ui/empty_line_after/doc_comments.rs:80:5
    |
 LL | /     /**
 LL | |      * Meant to be inner doc comment
 LL | |      */
+LL | |
 LL | |
    | |_^
 LL |       fn first_in_module() {}
    |       -------------------- the comment documents this function
    |
    = help: if the empty line is unintentional remove it
-help: if the comment should document the parent module use an inner doc comment
+help: if the doc comment should not document `first_in_module` comment it out
    |
-LL |     /*!
-   |       ~
+LL -     /**
+LL +     /*
+   |
 
 error: empty line after doc comment
-  --> tests/ui/empty_line_after/doc_comments.rs:85:5
+  --> tests/ui/empty_line_after/doc_comments.rs:87:5
    |
 LL | /     /**
 LL | |      * Docs for `old_code`
 LL | |      */
-LL | |     /* fn old_code() {} */
+...  |
 LL | |
    | |_^
 ...
@@ -155,9 +171,10 @@ LL +     /*
    |
 
 error: empty line after doc comment
-  --> tests/ui/empty_line_after/doc_comments.rs:96:5
+  --> tests/ui/empty_line_after/doc_comments.rs:98:5
    |
 LL | /     /// Docs for `old_code2`
+LL | |
 LL | |     /* fn old_code2() {} */
 LL | |
    | |_^

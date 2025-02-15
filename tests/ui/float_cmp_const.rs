@@ -13,22 +13,27 @@ fn eq_one(x: f32) -> bool {
 fn main() {
     // has errors
     1f32 == ONE;
-    //~^ ERROR: strict comparison of `f32` or `f64` constant
+    //~^ float_cmp_const
+
     TWO == ONE;
-    //~^ ERROR: strict comparison of `f32` or `f64` constant
+    //~^ float_cmp_const
+
     TWO != ONE;
-    //~^ ERROR: strict comparison of `f32` or `f64` constant
+    //~^ float_cmp_const
+
     ONE + ONE == TWO;
-    //~^ ERROR: strict comparison of `f32` or `f64` constant
+    //~^ float_cmp_const
+
     let x = 1;
     x as f32 == ONE;
-    //~^ ERROR: strict comparison of `f32` or `f64` constant
+    //~^ float_cmp_const
 
     let v = 0.9;
     v == ONE;
-    //~^ ERROR: strict comparison of `f32` or `f64` constant
+    //~^ float_cmp_const
+
     v != ONE;
-    //~^ ERROR: strict comparison of `f32` or `f64` constant
+    //~^ float_cmp_const
 
     // no errors, lower than or greater than comparisons
     v < ONE;
@@ -61,5 +66,5 @@ fn main() {
 
     // has errors
     NON_ZERO_ARRAY == NON_ZERO_ARRAY2;
-    //~^ ERROR: strict comparison of `f32` or `f64` constant arrays
+    //~^ float_cmp_const
 }

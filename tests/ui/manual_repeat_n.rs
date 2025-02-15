@@ -4,14 +4,19 @@ use std::iter::repeat;
 
 fn main() {
     let _ = repeat(10).take(3);
+    //~^ manual_repeat_n
 
     let _ = repeat(String::from("foo")).take(4);
+    //~^ manual_repeat_n
 
     for value in std::iter::repeat(5).take(3) {}
+    //~^ manual_repeat_n
 
     let _: Vec<_> = std::iter::repeat(String::from("bar")).take(10).collect();
+    //~^ manual_repeat_n
 
     let _ = repeat(vec![1, 2]).take(2);
+    //~^ manual_repeat_n
 }
 
 mod foo_lib {

@@ -7,18 +7,22 @@ fn main() {
     let b = 13u32;
 
     let result = if a > b { b - a } else { 0 };
-    //~^ ERROR: inverted arithmetic check before subtraction
+    //~^ inverted_saturating_sub
+
     let result = if b < a { b - a } else { 0 };
-    //~^ ERROR: inverted arithmetic check before subtraction
+    //~^ inverted_saturating_sub
 
     let result = if a > b { 0 } else { a - b };
-    //~^ ERROR: inverted arithmetic check before subtraction
+    //~^ inverted_saturating_sub
+
     let result = if a >= b { 0 } else { a - b };
-    //~^ ERROR: inverted arithmetic check before subtraction
+    //~^ inverted_saturating_sub
+
     let result = if b < a { 0 } else { a - b };
-    //~^ ERROR: inverted arithmetic check before subtraction
+    //~^ inverted_saturating_sub
+
     let result = if b <= a { 0 } else { a - b };
-    //~^ ERROR: inverted arithmetic check before subtraction
+    //~^ inverted_saturating_sub
 
     let af = 12f32;
     let bf = 13f32;

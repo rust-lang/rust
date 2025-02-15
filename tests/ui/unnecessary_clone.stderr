@@ -14,25 +14,25 @@ LL |     arc.clone();
    |     ^^^^^^^^^^^ help: try: `Arc::<bool>::clone(&arc)`
 
 error: using `.clone()` on a ref-counted pointer
-  --> tests/ui/unnecessary_clone.rs:32:5
+  --> tests/ui/unnecessary_clone.rs:33:5
    |
 LL |     rcweak.clone();
    |     ^^^^^^^^^^^^^^ help: try: `Weak::<bool>::clone(&rcweak)`
 
 error: using `.clone()` on a ref-counted pointer
-  --> tests/ui/unnecessary_clone.rs:36:5
+  --> tests/ui/unnecessary_clone.rs:38:5
    |
 LL |     arc_weak.clone();
    |     ^^^^^^^^^^^^^^^^ help: try: `Weak::<bool>::clone(&arc_weak)`
 
 error: using `.clone()` on a ref-counted pointer
-  --> tests/ui/unnecessary_clone.rs:41:33
+  --> tests/ui/unnecessary_clone.rs:44:33
    |
 LL |     let _: Arc<dyn SomeTrait> = x.clone();
    |                                 ^^^^^^^^^ help: try: `Arc::<SomeImpl>::clone(&x)`
 
 error: using `clone` on type `T` which implements the `Copy` trait
-  --> tests/ui/unnecessary_clone.rs:46:5
+  --> tests/ui/unnecessary_clone.rs:49:5
    |
 LL |     t.clone();
    |     ^^^^^^^^^ help: try removing the `clone` call: `t`
@@ -41,19 +41,19 @@ LL |     t.clone();
    = help: to override `-D warnings` add `#[allow(clippy::clone_on_copy)]`
 
 error: using `clone` on type `Option<T>` which implements the `Copy` trait
-  --> tests/ui/unnecessary_clone.rs:50:5
+  --> tests/ui/unnecessary_clone.rs:52:5
    |
 LL |     Some(t).clone();
    |     ^^^^^^^^^^^^^^^ help: try removing the `clone` call: `Some(t)`
 
 error: using `clone` on type `E` which implements the `Copy` trait
-  --> tests/ui/unnecessary_clone.rs:85:20
+  --> tests/ui/unnecessary_clone.rs:87:20
    |
 LL |         let _: E = a.clone();
    |                    ^^^^^^^^^ help: try dereferencing it: `*****a`
 
 error: using `.clone()` on a ref-counted pointer
-  --> tests/ui/unnecessary_clone.rs:105:14
+  --> tests/ui/unnecessary_clone.rs:108:14
    |
 LL |         Some(try_opt!(Some(rc)).clone())
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Rc::<u8>::clone(&try_opt!(Some(rc)))`

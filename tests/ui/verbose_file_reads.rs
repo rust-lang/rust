@@ -21,10 +21,12 @@ fn main() -> std::io::Result<()> {
     let mut f = File::open(path)?;
     let mut buffer = Vec::new();
     f.read_to_end(&mut buffer)?;
-    //~^ ERROR: use of `File::read_to_end`
+    //~^ verbose_file_reads
+
     // ...and this
     let mut string_buffer = String::new();
     f.read_to_string(&mut string_buffer)?;
-    //~^ ERROR: use of `File::read_to_string`
+    //~^ verbose_file_reads
+
     Ok(())
 }

@@ -17,7 +17,7 @@ LL |     let _ = res.expect("");
    = note: if this value is an `Err`, it will panic
 
 error: used `expect_err()` on a `Result` value
-  --> tests/ui/expect.rs:14:13
+  --> tests/ui/expect.rs:15:13
    |
 LL |     let _ = res.expect_err("");
    |             ^^^^^^^^^^^^^^^^^^

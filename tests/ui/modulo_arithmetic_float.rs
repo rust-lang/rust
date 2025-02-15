@@ -6,67 +6,62 @@
 fn main() {
     // Lint when both sides are const and of the opposite sign
     -1.6 % 2.1;
-    //~^ ERROR: you are using modulo operator on constants with different signs: `-1.600 %
-    //~| NOTE: double check for expected result especially when interoperating with differ
+    //~^ modulo_arithmetic
+
     1.6 % -2.1;
-    //~^ ERROR: you are using modulo operator on constants with different signs: `1.600 %
-    //~| NOTE: double check for expected result especially when interoperating with differ
+    //~^ modulo_arithmetic
+
     (1.1 - 2.3) % (1.1 + 2.3);
-    //~^ ERROR: you are using modulo operator on constants with different signs: `-1.200 %
-    //~| NOTE: double check for expected result especially when interoperating with differ
+    //~^ modulo_arithmetic
+
     (1.1 + 2.3) % (1.1 - 2.3);
-    //~^ ERROR: you are using modulo operator on constants with different signs: `3.400 %
-    //~| NOTE: double check for expected result especially when interoperating with differ
+    //~^ modulo_arithmetic
 
     // Lint on floating point numbers
     let a_f16: f16 = -1.6;
     let mut b_f16: f16 = 2.1;
     a_f16 % b_f16;
-    //~^ ERROR: you are using modulo operator on types that might have different signs
-    //~| NOTE: double check for expected result especially when interoperating with differ
+    //~^ modulo_arithmetic
+
     b_f16 % a_f16;
-    //~^ ERROR: you are using modulo operator on types that might have different signs
-    //~| NOTE: double check for expected result especially when interoperating with differ
+    //~^ modulo_arithmetic
+
     b_f16 %= a_f16;
-    //~^ ERROR: you are using modulo operator on types that might have different signs
-    //~| NOTE: double check for expected result especially when interoperating with differ
+    //~^ modulo_arithmetic
 
     // Lint on floating point numbers
     let a_f32: f32 = -1.6;
     let mut b_f32: f32 = 2.1;
     a_f32 % b_f32;
-    //~^ ERROR: you are using modulo operator on types that might have different signs
-    //~| NOTE: double check for expected result especially when interoperating with differ
+    //~^ modulo_arithmetic
+
     b_f32 % a_f32;
-    //~^ ERROR: you are using modulo operator on types that might have different signs
-    //~| NOTE: double check for expected result especially when interoperating with differ
+    //~^ modulo_arithmetic
+
     b_f32 %= a_f32;
-    //~^ ERROR: you are using modulo operator on types that might have different signs
-    //~| NOTE: double check for expected result especially when interoperating with differ
+    //~^ modulo_arithmetic
 
     let a_f64: f64 = -1.6;
     let mut b_f64: f64 = 2.1;
     a_f64 % b_f64;
-    //~^ ERROR: you are using modulo operator on types that might have different signs
-    //~| NOTE: double check for expected result especially when interoperating with differ
+    //~^ modulo_arithmetic
+
     b_f64 % a_f64;
-    //~^ ERROR: you are using modulo operator on types that might have different signs
-    //~| NOTE: double check for expected result especially when interoperating with differ
+    //~^ modulo_arithmetic
+
     b_f64 %= a_f64;
-    //~^ ERROR: you are using modulo operator on types that might have different signs
-    //~| NOTE: double check for expected result especially when interoperating with differ
+    //~^ modulo_arithmetic
 
     let a_f128: f128 = -1.6;
     let mut b_f128: f128 = 2.1;
     a_f128 % b_f128;
-    //~^ ERROR: you are using modulo operator on types that might have different signs
-    //~| NOTE: double check for expected result especially when interoperating with differ
+    //~^ modulo_arithmetic
+
     b_f128 % a_f128;
-    //~^ ERROR: you are using modulo operator on types that might have different signs
-    //~| NOTE: double check for expected result especially when interoperating with differ
+    //~^ modulo_arithmetic
+
     b_f128 %= a_f128;
-    //~^ ERROR: you are using modulo operator on types that might have different signs
-    //~| NOTE: double check for expected result especially when interoperating with differ
+    //~^ modulo_arithmetic
 
     // No lint when both sides are const and of the same sign
     1.6 % 2.1;

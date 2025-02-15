@@ -17,7 +17,7 @@ macro_rules! allow_works {
 macro_rules! simple {
     ($v:expr) => {
         unsafe {
-            //~^ ERROR: this macro expands metavariables in an unsafe block
+            //~^ macro_metavars_in_unsafe
             dbg!($v);
         }
     };
@@ -28,7 +28,7 @@ macro_rules! simple {
 macro_rules! raw_symbol {
     ($r#mod:expr, $r#unsafe:expr) => {
         unsafe {
-            //~^ ERROR: this macro expands metavariables in an unsafe block
+        //~^ macro_metavars_in_unsafe
             $r#mod;
         }
         $r#unsafe;
@@ -40,7 +40,7 @@ macro_rules! multilevel_unsafe {
     ($v:expr) => {
         unsafe {
             unsafe {
-                //~^ ERROR: this macro expands metavariables in an unsafe block
+                //~^ macro_metavars_in_unsafe
                 $v;
             }
         }
@@ -65,7 +65,7 @@ macro_rules! in_function_with_unsafe {
         unsafe {
             fn f() {
                 unsafe {
-                    //~^ ERROR: this macro expands metavariables in an unsafe block
+                    //~^ macro_metavars_in_unsafe
                     $v;
                 }
             }
@@ -93,7 +93,7 @@ macro_rules! const_generic_in_struct {
                 const M: i32 = {
                     1;
                     unsafe { $inside_unsafe }
-                    //~^ ERROR: this macro expands metavariables in an unsafe block
+                    //~^ macro_metavars_in_unsafe
                 },
                 const N: i32 = { $outside_unsafe },
             >;
@@ -108,7 +108,7 @@ macro_rules! fn_with_const_generic {
             fn f<const N: usize>() {
                 $outside_unsafe;
                 unsafe {
-                    //~^ ERROR: this macro expands metavariables in an unsafe block
+                    //~^ macro_metavars_in_unsafe
                     $inside_unsafe;
                 }
             }
@@ -120,7 +120,7 @@ macro_rules! fn_with_const_generic {
 macro_rules! variables {
     ($inside_unsafe:expr, $outside_unsafe:expr) => {
         unsafe {
-            //~^ ERROR: this macro expands metavariables in an unsafe block
+            //~^ macro_metavars_in_unsafe
             $inside_unsafe;
             let inside_unsafe = 1;
             inside_unsafe;
@@ -135,7 +135,7 @@ macro_rules! variables {
 macro_rules! multiple_matchers {
     ($inside_unsafe:expr, $outside_unsafe:expr) => {
         unsafe {
-            //~^ ERROR: this macro expands metavariables in an unsafe block
+        //~^ macro_metavars_in_unsafe
             $inside_unsafe;
         }
         $outside_unsafe;
@@ -144,7 +144,7 @@ macro_rules! multiple_matchers {
         $(
             $v;
             unsafe {
-                //~^ ERROR: this macro expands metavariables in an unsafe block
+            //~^ macro_metavars_in_unsafe
                 $x;
             }
         );+
@@ -156,11 +156,11 @@ macro_rules! multiple_unsafe_blocks {
     ($w:expr, $x:expr, $y:expr) => {
         $w;
         unsafe {
-            //~^ ERROR: this macro expands metavariables in an unsafe block
+            //~^ macro_metavars_in_unsafe
             $x;
         }
         unsafe {
-            //~^ ERROR: this macro expands metavariables in an unsafe block
+            //~^ macro_metavars_in_unsafe
             $x;
             $y;
         }
@@ -169,7 +169,7 @@ macro_rules! multiple_unsafe_blocks {
 
 pub macro macro2_0($v:expr) {
     unsafe {
-        //~^ ERROR: this macro expands metavariables in an unsafe block
+        //~^ macro_metavars_in_unsafe
         $v;
     }
 }
@@ -220,7 +220,7 @@ macro_rules! unsafe_from_root_ctxt {
 macro_rules! nested_macro_helper {
     ($v:expr) => {{
         unsafe {
-            //~^ ERROR: this macro expands metavariables in an unsafe block
+            //~^ macro_metavars_in_unsafe
             $v;
         }
     }};
@@ -230,7 +230,7 @@ macro_rules! nested_macro_helper {
 macro_rules! nested_macros {
     ($v:expr, $v2:expr) => {{
         unsafe {
-            //~^ ERROR: this macro expands metavariables in an unsafe block
+            //~^ macro_metavars_in_unsafe
             nested_macro_helper!($v);
             $v;
         }
@@ -243,6 +243,7 @@ pub mod issue13219 {
         ($e:expr) => {
             // Metavariable in a block tail expression
             unsafe { $e }
+            //~^ macro_metavars_in_unsafe
         };
     }
     pub fn f(p: *const i32) -> i32 {

@@ -8,7 +8,7 @@ LL |         x = x + ".";
    = help: to override `-D warnings` add `#[allow(clippy::string_add)]`
 
 error: you added something to a string. Consider using `String::push_str()` instead
-  --> tests/ui/string_add.rs:17:13
+  --> tests/ui/string_add.rs:18:13
    |
 LL |     let z = y + "...";
    |             ^^^^^^^^^

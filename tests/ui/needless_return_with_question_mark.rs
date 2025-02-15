@@ -27,6 +27,7 @@ fn c() -> Option<()> {
 
 fn main() -> Result<(), ()> {
     return Err(())?;
+    //~^ needless_return_with_question_mark
     return Ok::<(), ()>(());
     Err(())?;
     Ok::<(), ()>(());

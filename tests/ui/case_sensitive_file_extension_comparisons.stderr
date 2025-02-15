@@ -15,7 +15,7 @@ LL +         .map_or(false, |ext| ext.eq_ignore_ascii_case("rs"))
    |
 
 error: case-sensitive file extension comparison
-  --> tests/ui/case_sensitive_file_extension_comparisons.rs:19:13
+  --> tests/ui/case_sensitive_file_extension_comparisons.rs:20:13
    |
 LL |     let _ = String::new().ends_with(".ext12");
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -29,7 +29,7 @@ LL ~         .map_or(false, |ext| ext.eq_ignore_ascii_case("ext12"));
    |
 
 error: case-sensitive file extension comparison
-  --> tests/ui/case_sensitive_file_extension_comparisons.rs:20:13
+  --> tests/ui/case_sensitive_file_extension_comparisons.rs:22:13
    |
 LL |     let _ = "str".ends_with(".ext12");
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -43,7 +43,7 @@ LL ~         .map_or(false, |ext| ext.eq_ignore_ascii_case("ext12"));
    |
 
 error: case-sensitive file extension comparison
-  --> tests/ui/case_sensitive_file_extension_comparisons.rs:24:17
+  --> tests/ui/case_sensitive_file_extension_comparisons.rs:27:17
    |
 LL |         let _ = "str".ends_with(".ext12");
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -57,7 +57,7 @@ LL ~             .map_or(false, |ext| ext.eq_ignore_ascii_case("ext12"));
    |
 
 error: case-sensitive file extension comparison
-  --> tests/ui/case_sensitive_file_extension_comparisons.rs:31:13
+  --> tests/ui/case_sensitive_file_extension_comparisons.rs:35:13
    |
 LL |     let _ = String::new().ends_with(".EXT12");
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -71,7 +71,7 @@ LL ~         .map_or(false, |ext| ext.eq_ignore_ascii_case("EXT12"));
    |
 
 error: case-sensitive file extension comparison
-  --> tests/ui/case_sensitive_file_extension_comparisons.rs:32:13
+  --> tests/ui/case_sensitive_file_extension_comparisons.rs:37:13
    |
 LL |     let _ = "str".ends_with(".EXT12");
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^

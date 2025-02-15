@@ -90,7 +90,6 @@ mod with_type_coercion {
             None => None,
         };
 
-        //~v ERROR: manual implementation of `Option::map`
         let _ = Some(0).map(|_| match f() {
                 Ok(res) => Ok(Box::new(res)),
                 _ => Err(()),
@@ -110,7 +109,6 @@ mod with_type_coercion {
             None => None,
         });
 
-        //~v ERROR: manual implementation of `Option::map`
         let _: Option<Box<&[u8]>> = Some(0).map(|_| g(x));
     }
 

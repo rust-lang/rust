@@ -15,7 +15,7 @@ LL ~     5
    |
 
 error: returning the result of a `let` binding from a block
-  --> tests/ui/let_and_return.rs:21:9
+  --> tests/ui/let_and_return.rs:20:9
    |
 LL |         let x = 5;
    |         ---------- unnecessary `let` binding
@@ -29,7 +29,7 @@ LL ~         5
    |
 
 error: returning the result of a `let` binding from a block
-  --> tests/ui/let_and_return.rs:84:5
+  --> tests/ui/let_and_return.rs:83:5
    |
 LL |     let line = stdin.lock().lines().next().unwrap().unwrap();
    |     --------------------------------------------------------- unnecessary `let` binding
@@ -43,7 +43,7 @@ LL ~     stdin.lock().lines().next().unwrap().unwrap()
    |
 
 error: returning the result of a `let` binding from a block
-  --> tests/ui/let_and_return.rs:179:13
+  --> tests/ui/let_and_return.rs:178:13
    |
 LL |             let clone = Arc::clone(&self.foo);
    |             ---------------------------------- unnecessary `let` binding
@@ -57,7 +57,7 @@ LL ~             (Arc::clone(&self.foo)) as _
    |
 
 error: returning the result of a `let` binding from a block
-  --> tests/ui/let_and_return.rs:198:13
+  --> tests/ui/let_and_return.rs:197:13
    |
 LL | /             let result = match self {
 LL | |                 E::A(x) => x,
@@ -79,7 +79,7 @@ LL +             }) as _
    |
 
 error: returning the result of a `let` binding from a block
-  --> tests/ui/let_and_return.rs:224:9
+  --> tests/ui/let_and_return.rs:223:9
    |
 LL |         let s = if true { "a".to_string() } else { "b".to_string() } + "c";
    |         ------------------------------------------------------------------- unnecessary `let` binding
@@ -93,7 +93,7 @@ LL ~         (if true { "a".to_string() } else { "b".to_string() } + "c")
    |
 
 error: returning the result of a `let` binding from a block
-  --> tests/ui/let_and_return.rs:230:9
+  --> tests/ui/let_and_return.rs:229:9
    |
 LL |         let s = "c".to_string() + if true { "a" } else { "b" };
    |         ------------------------------------------------------- unnecessary `let` binding
@@ -107,7 +107,7 @@ LL ~         "c".to_string() + if true { "a" } else { "b" }
    |
 
 error: returning the result of a `let` binding from a block
-  --> tests/ui/let_and_return.rs:236:9
+  --> tests/ui/let_and_return.rs:235:9
    |
 LL |         let s = { "a".to_string() } + "b" + { "c" } + "d";
    |         -------------------------------------------------- unnecessary `let` binding
@@ -121,7 +121,7 @@ LL ~         ({ "a".to_string() } + "b" + { "c" } + "d")
    |
 
 error: returning the result of a `let` binding from a block
-  --> tests/ui/let_and_return.rs:244:13
+  --> tests/ui/let_and_return.rs:243:13
    |
 LL |             let s = if true { 2 } else { 3 } << 4;
    |             -------------------------------------- unnecessary `let` binding
@@ -135,7 +135,7 @@ LL ~             (if true { 2 } else { 3 } << 4)
    |
 
 error: returning the result of a `let` binding from a block
-  --> tests/ui/let_and_return.rs:249:13
+  --> tests/ui/let_and_return.rs:248:13
    |
 LL |             let s = { true } || { false } && { 2 <= 3 };
    |             -------------------------------------------- unnecessary `let` binding

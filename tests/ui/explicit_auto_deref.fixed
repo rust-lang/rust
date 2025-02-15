@@ -67,43 +67,55 @@ fn main() {
     let s = String::new();
 
     let _: &str = &s;
+    //~^ explicit_auto_deref
     let _: &str = &{ String::new() };
+    //~^ explicit_auto_deref
     let _: &str = &mut { String::new() };
+    //~^ explicit_auto_deref
     let _ = &*s; // Don't lint. Inferred type would change.
     let _: &_ = &*s; // Don't lint. Inferred type would change.
 
     f_str(&s);
+    //~^ explicit_auto_deref
     f_t(&*s); // Don't lint. Inferred type would change.
     f_ref_t(&*s); // Don't lint. Inferred type would change.
 
     f_str_t(&s, &*s); // Don't lint second param.
+    //
+    //~^^ explicit_auto_deref
 
     let b = Box::new(Box::new(Box::new(5)));
     let _: &Box<i32> = &b;
+    //~^ explicit_auto_deref
     let _: &Box<_> = &**b; // Don't lint. Inferred type would change.
 
     f_box_t(&**b); // Don't lint. Inferred type would change.
 
     let c = |_x: &str| ();
     c(&s);
+    //~^ explicit_auto_deref
 
     let c = |_x| ();
     c(&*s); // Don't lint. Inferred type would change.
 
     fn _f(x: &String) -> &str {
         x
+        //~^ explicit_auto_deref
     }
 
     fn _f1(x: &String) -> &str {
         { x }
+        //~^ explicit_auto_deref
     }
 
     fn _f2(x: &String) -> &str {
         { x }
+        //~^ explicit_auto_deref
     }
 
     fn _f3(x: &Box<Box<Box<i32>>>) -> &Box<i32> {
         x
+        //~^ explicit_auto_deref
     }
 
     fn _f4(
@@ -121,25 +133,38 @@ fn main() {
         f11: &dyn CallableT<str, T = fn(&str)>,
     ) {
         f1(&x);
+        //~^ explicit_auto_deref
         f2(&x);
+        //~^ explicit_auto_deref
         f3(&x);
+        //~^ explicit_auto_deref
         f4.callable_str()(&x);
+        //~^ explicit_auto_deref
         f5(&x);
+        //~^ explicit_auto_deref
         f6(&x);
+        //~^ explicit_auto_deref
         f7.callable_str()(&x);
+        //~^ explicit_auto_deref
         f8.callable_t()(&x);
+        //~^ explicit_auto_deref
         f9(&x);
+        //~^ explicit_auto_deref
         f10(&x);
+        //~^ explicit_auto_deref
         f11.callable_t()(&x);
+        //~^ explicit_auto_deref
     }
 
     struct S1<'a>(&'a str);
     let _ = S1(&s);
+    //~^ explicit_auto_deref
 
     struct S2<'a> {
         s: &'a str,
     }
     let _ = S2 { s: &s };
+    //~^ explicit_auto_deref
 
     struct S3<'a, T: ?Sized>(&'a T);
     let _ = S3(&*s); // Don't lint. Inferred type would change.
@@ -156,11 +181,15 @@ fn main() {
     impl<'a> E1<'a> {
         fn m1(s: &'a String) {
             let _ = Self::S1(s);
+            //~^ explicit_auto_deref
             let _ = Self::S2 { s: s };
+            //~^ explicit_auto_deref
         }
     }
     let _ = E1::S1(&s);
+    //~^ explicit_auto_deref
     let _ = E1::S2 { s: &s };
+    //~^ explicit_auto_deref
 
     enum E2<'a, T: ?Sized> {
         S1(&'a T),
@@ -179,7 +208,9 @@ fn main() {
     let b = Box::new(Box::new(S5 { foo: 5 }));
     let _ = b.foo;
     let _ = b.foo;
+    //~^ explicit_auto_deref
     let _ = b.foo;
+    //~^ explicit_auto_deref
 
     struct S6 {
         foo: S5,
@@ -195,8 +226,10 @@ fn main() {
 
     let ref_str = &"foo";
     let _ = f_str(ref_str);
+    //~^ explicit_auto_deref
     let ref_ref_str = &ref_str;
     let _ = f_str(ref_ref_str);
+    //~^ explicit_auto_deref
 
     fn _f5(x: &u32) -> u32 {
         if true {
@@ -207,7 +240,11 @@ fn main() {
     }
 
     f_str(&ref_str); // `needless_borrow` will suggest removing both references
+    //
+    //~^^ explicit_auto_deref
     f_str(&ref_str); // `needless_borrow` will suggest removing only one reference
+    //
+    //~^^ explicit_auto_deref
 
     let x = &&40;
     unsafe {
@@ -217,6 +254,7 @@ fn main() {
     let s = &"str";
     let _ = || return *s;
     let _ = || -> &'static str { return s };
+    //~^ explicit_auto_deref
 
     struct X;
     struct Y(X);
@@ -236,6 +274,7 @@ fn main() {
 
     fn deref_to_u<U, T: core::ops::Deref<Target = U>>(x: &T) -> &U {
         x
+        //~^ explicit_auto_deref
     }
 
     let _ = |x: &'static Box<dyn Iterator<Item = u32>>| -> &'static dyn Iterator<Item = u32> { &**x };
@@ -259,11 +298,14 @@ fn main() {
     let c1 = |_: &Vec<&u32>| {};
     let x = &&vec![&1u32];
     c1(x);
+    //~^ explicit_auto_deref
     let _ = for<'a, 'b> |x: &'a &'a Vec<&'b u32>, b: bool| -> &'a Vec<&'b u32> {
         if b {
             return x;
+            //~^ explicit_auto_deref
         }
         x
+        //~^ explicit_auto_deref
     };
 
     trait WithAssoc {
@@ -298,6 +340,7 @@ fn main() {
     // Issue #11366
     let _: &mut u32 = match &mut Some(&mut 0u32) {
         Some(x) => x,
+        //~^ explicit_auto_deref
         None => panic!(),
     };
 
@@ -331,18 +374,23 @@ fn main() {
         };
         let _ = &mut (*x.u).x;
         let _ = &mut { x.u }.x;
+        //~^ explicit_auto_deref
         let _ = &mut ({ *x.u }).x;
 
         let mut x = U {
             u: Wrap(core::mem::ManuallyDrop::new(S8 { x: "" })),
         };
         let _ = &mut (*x.u).x;
+        //~^ explicit_auto_deref
         let _ = &mut { x.u }.x;
+        //~^ explicit_auto_deref
         let _ = &mut ({ **x.u }).x;
 
         let mut x = U { u: Wrap(S8 { x: "" }) };
         let _ = &mut x.u.x;
+        //~^ explicit_auto_deref
         let _ = &mut { x.u }.x;
+        //~^ explicit_auto_deref
         let _ = &mut ({ *x.u }).x;
     }
 }
@@ -366,6 +414,7 @@ mod issue_12969 {
         let wrapped_bar = Wrapper("");
 
         foo(&wrapped_bar);
+        //~^ explicit_auto_deref
     }
 }
 

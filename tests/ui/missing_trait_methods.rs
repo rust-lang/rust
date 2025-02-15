@@ -20,10 +20,11 @@ trait B {
 struct Partial;
 
 impl A for Partial {}
-//~^ ERROR: missing trait method provided by default: `provided`
+//~^ missing_trait_methods
 
 impl B for Partial {
-    //~^ ERROR: missing trait method provided by default: `b`
+    //~^ missing_trait_methods
+
     fn required() {}
 
     fn a(_: usize) -> usize {
@@ -56,5 +57,8 @@ trait MissingMultiple {
 }
 
 impl MissingMultiple for Partial {}
+//~^ missing_trait_methods
+//~| missing_trait_methods
+//~| missing_trait_methods
 
 fn main() {}

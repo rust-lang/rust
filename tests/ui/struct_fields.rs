@@ -339,7 +339,9 @@ struct Use {
     use_foo: bool,
     //~^ ERROR: field name starts with the struct's name
     use_bar: bool,
+    //~^ struct_field_names
     use_baz: bool,
+    //~^ struct_field_names
 }
 
 fn main() {}

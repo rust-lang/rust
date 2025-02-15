@@ -36,23 +36,45 @@ fn main() {
     {
         // Test `get().unwrap()`
         let _ = &boxed_slice[1];
+        //~^ get_unwrap
+        //~| unwrap_used
         let _ = &some_slice[0];
+        //~^ get_unwrap
+        //~| unwrap_used
         let _ = &some_vec[0];
+        //~^ get_unwrap
+        //~| unwrap_used
         let _ = &some_vecdeque[0];
+        //~^ get_unwrap
+        //~| unwrap_used
         let _ = &some_hashmap[&1];
+        //~^ get_unwrap
+        //~| unwrap_used
         let _ = &some_btreemap[&1];
+        //~^ get_unwrap
+        //~| unwrap_used
         #[allow(clippy::unwrap_used)]
         let _ = false_positive.get(0).unwrap();
         // Test with deref
         let _: u8 = boxed_slice[1];
+        //~^ get_unwrap
+        //~| unwrap_used
     }
 
     {
         // Test `get_mut().unwrap()`
         boxed_slice[0] = 1;
+        //~^ get_unwrap
+        //~| unwrap_used
         some_slice[0] = 1;
+        //~^ get_unwrap
+        //~| unwrap_used
         some_vec[0] = 1;
+        //~^ get_unwrap
+        //~| unwrap_used
         some_vecdeque[0] = 1;
+        //~^ get_unwrap
+        //~| unwrap_used
         // Check false positives
         #[allow(clippy::unwrap_used)]
         {
@@ -65,7 +87,11 @@ fn main() {
     {
         // Test `get().unwrap().foo()` and `get_mut().unwrap().bar()`
         let _ = some_vec[0..1].to_vec();
+        //~^ get_unwrap
+        //~| unwrap_used
         let _ = some_vec[0..1].to_vec();
+        //~^ get_unwrap
+        //~| unwrap_used
     }
 }
 
@@ -73,6 +99,7 @@ fn main() {
 fn test() {
     let boxed_slice: Box<[u8]> = Box::new([0, 1, 2, 3]);
     let _ = &boxed_slice[1];
+    //~^ get_unwrap
 }
 
 #[cfg(test)]
@@ -92,5 +119,6 @@ mod issue9612 {
         let _a: u8 = 5.try_into().expect("");
         // should still warn
         let _ = &Box::new([0])[1];
+        //~^ get_unwrap
     }
 }

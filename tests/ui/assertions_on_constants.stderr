@@ -9,7 +9,7 @@ LL |     assert!(true);
    = help: to override `-D warnings` add `#[allow(clippy::assertions_on_constants)]`
 
 error: `assert!(false)` should probably be replaced
-  --> tests/ui/assertions_on_constants.rs:12:5
+  --> tests/ui/assertions_on_constants.rs:13:5
    |
 LL |     assert!(false);
    |     ^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL |     assert!(false);
    = help: use `panic!()` or `unreachable!()`
 
 error: `assert!(true)` will be optimized out by the compiler
-  --> tests/ui/assertions_on_constants.rs:14:5
+  --> tests/ui/assertions_on_constants.rs:16:5
    |
 LL |     assert!(true, "true message");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL |     assert!(true, "true message");
    = help: remove it
 
 error: `assert!(false, ..)` should probably be replaced
-  --> tests/ui/assertions_on_constants.rs:16:5
+  --> tests/ui/assertions_on_constants.rs:19:5
    |
 LL |     assert!(false, "false message");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -33,7 +33,7 @@ LL |     assert!(false, "false message");
    = help: use `panic!(..)` or `unreachable!(..)`
 
 error: `assert!(false, ..)` should probably be replaced
-  --> tests/ui/assertions_on_constants.rs:20:5
+  --> tests/ui/assertions_on_constants.rs:23:5
    |
 LL |     assert!(false, "{}", msg.to_uppercase());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -41,7 +41,7 @@ LL |     assert!(false, "{}", msg.to_uppercase());
    = help: use `panic!(..)` or `unreachable!(..)`
 
 error: `assert!(true)` will be optimized out by the compiler
-  --> tests/ui/assertions_on_constants.rs:24:5
+  --> tests/ui/assertions_on_constants.rs:27:5
    |
 LL |     assert!(B);
    |     ^^^^^^^^^^
@@ -49,7 +49,7 @@ LL |     assert!(B);
    = help: remove it
 
 error: `assert!(false)` should probably be replaced
-  --> tests/ui/assertions_on_constants.rs:28:5
+  --> tests/ui/assertions_on_constants.rs:31:5
    |
 LL |     assert!(C);
    |     ^^^^^^^^^^
@@ -57,7 +57,7 @@ LL |     assert!(C);
    = help: use `panic!()` or `unreachable!()`
 
 error: `assert!(false, ..)` should probably be replaced
-  --> tests/ui/assertions_on_constants.rs:30:5
+  --> tests/ui/assertions_on_constants.rs:34:5
    |
 LL |     assert!(C, "C message");
    |     ^^^^^^^^^^^^^^^^^^^^^^^
@@ -65,7 +65,7 @@ LL |     assert!(C, "C message");
    = help: use `panic!(..)` or `unreachable!(..)`
 
 error: `debug_assert!(true)` will be optimized out by the compiler
-  --> tests/ui/assertions_on_constants.rs:33:5
+  --> tests/ui/assertions_on_constants.rs:37:5
    |
 LL |     debug_assert!(true);
    |     ^^^^^^^^^^^^^^^^^^^
@@ -73,7 +73,7 @@ LL |     debug_assert!(true);
    = help: remove it
 
 error: `assert!(true)` will be optimized out by the compiler
-  --> tests/ui/assertions_on_constants.rs:49:19
+  --> tests/ui/assertions_on_constants.rs:54:19
    |
 LL |     const _: () = assert!(true);
    |                   ^^^^^^^^^^^^^
@@ -81,7 +81,7 @@ LL |     const _: () = assert!(true);
    = help: remove it
 
 error: `assert!(true)` will be optimized out by the compiler
-  --> tests/ui/assertions_on_constants.rs:52:5
+  --> tests/ui/assertions_on_constants.rs:57:5
    |
 LL |     assert!(8 == (7 + 1));
    |     ^^^^^^^^^^^^^^^^^^^^^
@@ -89,7 +89,7 @@ LL |     assert!(8 == (7 + 1));
    = help: remove it
 
 error: `assert!(true)` will be optimized out by the compiler
-  --> tests/ui/assertions_on_constants.rs:61:5
+  --> tests/ui/assertions_on_constants.rs:66:5
    |
 LL |     assert!(true);
    |     ^^^^^^^^^^^^^

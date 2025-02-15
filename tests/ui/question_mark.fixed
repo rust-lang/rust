@@ -141,6 +141,7 @@ fn func_returning_result() -> Result<i32, i32> {
 
 fn result_func(x: Result<i32, i32>) -> Result<i32, i32> {
     let _ = x?;
+    //~^ question_mark
 
     x?;
 
@@ -371,5 +372,6 @@ fn issue12412(foo: &Foo, bar: &Bar) -> Option<()> {
     };
     // lint
     let v = bar.foo.owned.clone()?;
+    //~^^^ question_mark
     Some(())
 }

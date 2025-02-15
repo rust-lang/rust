@@ -18,10 +18,10 @@ impl A {
 fn main() {
     let b = true;
     b || diverge();
-    //~^ ERROR: sub-expression diverges
-    //~| NOTE: `-D clippy::diverging-sub-expression` implied by `-D warnings`
+    //~^ diverging_sub_expression
+
     b || A.foo();
-    //~^ ERROR: sub-expression diverges
+    //~^ diverging_sub_expression
 }
 
 #[allow(dead_code, unused_variables)]
@@ -32,28 +32,36 @@ fn foobar() {
             4 => return,
             5 => continue,
             6 => true || return,
-            //~^ ERROR: sub-expression diverges
+            //~^ diverging_sub_expression
+
             7 => true || continue,
-            //~^ ERROR: sub-expression diverges
+            //~^ diverging_sub_expression
+
             8 => break,
             9 => diverge(),
             3 => true || diverge(),
-            //~^ ERROR: sub-expression diverges
+            //~^ diverging_sub_expression
+
             10 => match 42 {
                 99 => return,
                 _ => true || panic!("boo"),
-                //~^ ERROR: sub-expression diverges
+                //~^ diverging_sub_expression
+
             },
             // lint blocks as well
             15 => true || { return; },
-            //~^ ERROR: sub-expression diverges
+            //~^ diverging_sub_expression
+
             16 => false || { return; },
-            //~^ ERROR: sub-expression diverges
+            //~^ diverging_sub_expression
+
             // ... and when it's a single expression
             17 => true || { return },
-            //~^ ERROR: sub-expression diverges
+            //~^ diverging_sub_expression
+
             18 => false || { return },
-            //~^ ERROR: sub-expression diverges
+            //~^ diverging_sub_expression
+
             // ... but not when there's both an expression and a statement
             19 => true || { _ = 1; return },
             20 => false || { _ = 1; return },
@@ -63,7 +71,8 @@ fn foobar() {
             23 => true || { return; true },
             24 => true || { return; true },
             _ => true || break,
-            //~^ ERROR: sub-expression diverges
+            //~^ diverging_sub_expression
+
         };
     }
 }

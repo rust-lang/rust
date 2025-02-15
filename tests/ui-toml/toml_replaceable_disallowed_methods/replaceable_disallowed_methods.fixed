@@ -4,5 +4,7 @@ fn good() {}
 
 fn main() {
     good();
+    //~^ disallowed_methods
     good();
+    //~^ disallowed_methods
 }

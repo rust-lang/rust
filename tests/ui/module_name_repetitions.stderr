@@ -14,25 +14,25 @@ LL |     pub fn bar_foo() {}
    |            ^^^^^^^
 
 error: item name starts with its containing module's name
-  --> tests/ui/module_name_repetitions.rs:13:16
+  --> tests/ui/module_name_repetitions.rs:14:16
    |
 LL |     pub struct FooCake;
    |                ^^^^^^^
 
 error: item name ends with its containing module's name
-  --> tests/ui/module_name_repetitions.rs:15:14
+  --> tests/ui/module_name_repetitions.rs:17:14
    |
 LL |     pub enum CakeFoo {}
    |              ^^^^^^^
 
 error: item name starts with its containing module's name
-  --> tests/ui/module_name_repetitions.rs:17:16
+  --> tests/ui/module_name_repetitions.rs:20:16
    |
 LL |     pub struct Foo7Bar;
    |                ^^^^^^^
 
 error: item name starts with its containing module's name
-  --> tests/ui/module_name_repetitions.rs:30:20
+  --> tests/ui/module_name_repetitions.rs:33:20
    |
 LL |     pub use error::FooError;
    |                    ^^^^^^^^

@@ -11,7 +11,7 @@ LL |     let _ = Arc::new(RefCell::new(42));
    = help: to override `-D warnings` add `#[allow(clippy::arc_with_non_send_sync)]`
 
 error: usage of an `Arc` that is not `Send` and `Sync`
-  --> tests/ui/arc_with_non_send_sync.rs:38:13
+  --> tests/ui/arc_with_non_send_sync.rs:39:13
    |
 LL |     let _ = Arc::new(mutex.lock().unwrap());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -21,7 +21,7 @@ LL |     let _ = Arc::new(mutex.lock().unwrap());
    = help: otherwise make `MutexGuard<'_, i32>` `Send` and `Sync` or consider a wrapper type such as `Mutex`
 
 error: usage of an `Arc` that is not `Send` and `Sync`
-  --> tests/ui/arc_with_non_send_sync.rs:40:13
+  --> tests/ui/arc_with_non_send_sync.rs:42:13
    |
 LL |     let _ = Arc::new(&42 as *const i32);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^

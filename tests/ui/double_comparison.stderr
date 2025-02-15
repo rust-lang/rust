@@ -8,43 +8,43 @@ LL |     if x == y || x < y {
    = help: to override `-D warnings` add `#[allow(clippy::double_comparisons)]`
 
 error: this binary expression can be simplified
-  --> tests/ui/double_comparison.rs:9:8
+  --> tests/ui/double_comparison.rs:10:8
    |
 LL |     if x < y || x == y {
    |        ^^^^^^^^^^^^^^^ help: try: `x <= y`
 
 error: this binary expression can be simplified
-  --> tests/ui/double_comparison.rs:12:8
+  --> tests/ui/double_comparison.rs:14:8
    |
 LL |     if x == y || x > y {
    |        ^^^^^^^^^^^^^^^ help: try: `x >= y`
 
 error: this binary expression can be simplified
-  --> tests/ui/double_comparison.rs:15:8
+  --> tests/ui/double_comparison.rs:18:8
    |
 LL |     if x > y || x == y {
    |        ^^^^^^^^^^^^^^^ help: try: `x >= y`
 
 error: this binary expression can be simplified
-  --> tests/ui/double_comparison.rs:18:8
+  --> tests/ui/double_comparison.rs:22:8
    |
 LL |     if x < y || x > y {
    |        ^^^^^^^^^^^^^^ help: try: `x != y`
 
 error: this binary expression can be simplified
-  --> tests/ui/double_comparison.rs:21:8
+  --> tests/ui/double_comparison.rs:26:8
    |
 LL |     if x > y || x < y {
    |        ^^^^^^^^^^^^^^ help: try: `x != y`
 
 error: this binary expression can be simplified
-  --> tests/ui/double_comparison.rs:24:8
+  --> tests/ui/double_comparison.rs:30:8
    |
 LL |     if x <= y && x >= y {
    |        ^^^^^^^^^^^^^^^^ help: try: `x == y`
 
 error: this binary expression can be simplified
-  --> tests/ui/double_comparison.rs:27:8
+  --> tests/ui/double_comparison.rs:34:8
    |
 LL |     if x >= y && x <= y {
    |        ^^^^^^^^^^^^^^^^ help: try: `x == y`

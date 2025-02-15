@@ -13,8 +13,10 @@ macro_rules! mac {
 
 pub fn wake(cx: &mut std::task::Context) {
     cx.waker().clone().wake();
+    //~^ waker_clone_wake
 
     mac!(cx).clone().wake();
+    //~^ waker_clone_wake
 }
 
 pub fn no_lint(cx: &mut std::task::Context, c: &Custom) {

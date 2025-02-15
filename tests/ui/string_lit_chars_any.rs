@@ -16,11 +16,16 @@ impl NotStringLit {
 fn main() {
     let c = 'c';
     "\\.+*?()|[]{}^$#&-~".chars().any(|x| x == c);
+    //~^ string_lit_chars_any
     r#"\.+*?()|[]{}^$#&-~"#.chars().any(|x| x == c);
+    //~^ string_lit_chars_any
     "\\.+*?()|[]{}^$#&-~".chars().any(|x| c == x);
+    //~^ string_lit_chars_any
     r#"\.+*?()|[]{}^$#&-~"#.chars().any(|x| c == x);
+    //~^ string_lit_chars_any
     #[rustfmt::skip]
     "\\.+*?()|[]{}^$#&-~".chars().any(|x| { x == c });
+    //~^ string_lit_chars_any
     // Do not lint
     NotStringLit.chars().any(|x| x == c);
     "\\.+*?()|[]{}^$#&-~".chars().any(|x| {

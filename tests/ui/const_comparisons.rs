@@ -43,42 +43,39 @@ fn main() {
     // Correct
     status_code >= 400 && status_code < 500;
     status_code <= 400 && status_code > 500;
-    //~^ ERROR: boolean expression will never evaluate to 'true'
-    //~| NOTE: since `400` < `500`, the expression evaluates to false for any value of `st
+    //~^ impossible_comparisons
+
     status_code > 500 && status_code < 400;
-    //~^ ERROR: boolean expression will never evaluate to 'true'
-    //~| NOTE: since `500` > `400`, the expression evaluates to false for any value of `st
+    //~^ impossible_comparisons
+
     status_code < 500 && status_code > 500;
-    //~^ ERROR: boolean expression will never evaluate to 'true'
-    //~| NOTE: `status_code` cannot simultaneously be greater than and less than `500`
+    //~^ impossible_comparisons
 
     // More complex expressions
     status_code < { 400 } && status_code > { 500 };
-    //~^ ERROR: boolean expression will never evaluate to 'true'
-    //~| NOTE: since `{ 400 }` < `{ 500 }`, the expression evaluates to false for any valu
+    //~^ impossible_comparisons
+
     status_code < STATUS_BAD_REQUEST && status_code > STATUS_SERVER_ERROR;
-    //~^ ERROR: boolean expression will never evaluate to 'true'
-    //~| NOTE: since `STATUS_BAD_REQUEST` < `STATUS_SERVER_ERROR`, the expression evaluate
+    //~^ impossible_comparisons
+
     status_code <= u16::MIN + 1 && status_code > STATUS_SERVER_ERROR;
-    //~^ ERROR: boolean expression will never evaluate to 'true'
-    //~| NOTE: since `u16::MIN + 1` < `STATUS_SERVER_ERROR`, the expression evaluates to f
+    //~^ impossible_comparisons
+
     status_code < STATUS_SERVER_ERROR && status_code > STATUS_SERVER_ERROR;
-    //~^ ERROR: boolean expression will never evaluate to 'true'
-    //~| NOTE: `status_code` cannot simultaneously be greater than and less than `STATUS_S
+    //~^ impossible_comparisons
 
     // Comparing two different types, via the `impl PartialOrd<u16> for Status`
     status < { 400 } && status > { 500 };
-    //~^ ERROR: boolean expression will never evaluate to 'true'
-    //~| NOTE: since `{ 400 }` < `{ 500 }`, the expression evaluates to false for any valu
+    //~^ impossible_comparisons
+
     status < STATUS_BAD_REQUEST && status > STATUS_SERVER_ERROR;
-    //~^ ERROR: boolean expression will never evaluate to 'true'
-    //~| NOTE: since `STATUS_BAD_REQUEST` < `STATUS_SERVER_ERROR`, the expression evaluate
+    //~^ impossible_comparisons
+
     status <= u16::MIN + 1 && status > STATUS_SERVER_ERROR;
-    //~^ ERROR: boolean expression will never evaluate to 'true'
-    //~| NOTE: since `u16::MIN + 1` < `STATUS_SERVER_ERROR`, the expression evaluates to f
+    //~^ impossible_comparisons
+
     status < STATUS_SERVER_ERROR && status > STATUS_SERVER_ERROR;
-    //~^ ERROR: boolean expression will never evaluate to 'true'
-    //~| NOTE: `status` cannot simultaneously be greater than and less than `STATUS_SERVER
+    //~^ impossible_comparisons
 
     // Yoda conditions
     // Correct
@@ -87,12 +84,11 @@ fn main() {
     500 <= status_code && status_code <= 600;
     // Incorrect
     500 >= status_code && 600 < status_code;
-    //~^ ERROR: boolean expression will never evaluate to 'true'
-    //~| NOTE: since `500` < `600`, the expression evaluates to false for any value of `st
+    //~^ impossible_comparisons
+
     // Incorrect
     500 >= status_code && status_code > 600;
-    //~^ ERROR: boolean expression will never evaluate to 'true'
-    //~| NOTE: since `500` < `600`, the expression evaluates to false for any value of `st
+    //~^ impossible_comparisons
 
     // Yoda conditions, comparing two different types
     // Correct
@@ -101,50 +97,49 @@ fn main() {
     500 <= status && status <= 600;
     // Incorrect
     500 >= status && 600 < status;
-    //~^ ERROR: boolean expression will never evaluate to 'true'
-    //~| NOTE: since `500` < `600`, the expression evaluates to false for any value of `st
+    //~^ impossible_comparisons
+
     // Incorrect
     500 >= status && status > 600;
-    //~^ ERROR: boolean expression will never evaluate to 'true'
-    //~| NOTE: since `500` < `600`, the expression evaluates to false for any value of `st
+    //~^ impossible_comparisons
 
     // Expressions where one of the sides has no effect
     status_code < 200 && status_code <= 299;
-    //~^ ERROR: right-hand side of `&&` operator has no effect
+    //~^ redundant_comparisons
+
     status_code > 200 && status_code >= 299;
-    //~^ ERROR: left-hand side of `&&` operator has no effect
+    //~^ redundant_comparisons
 
     // Useless left
     status_code >= 500 && status_code > 500;
-    //~^ ERROR: left-hand side of `&&` operator has no effect
+    //~^ redundant_comparisons
+
     // Useless right
     status_code > 500 && status_code >= 500;
-    //~^ ERROR: right-hand side of `&&` operator has no effect
+    //~^ redundant_comparisons
+
     // Useless left
     status_code <= 500 && status_code < 500;
-    //~^ ERROR: left-hand side of `&&` operator has no effect
+    //~^ redundant_comparisons
+
     // Useless right
     status_code < 500 && status_code <= 500;
-    //~^ ERROR: right-hand side of `&&` operator has no effect
+    //~^ redundant_comparisons
 
     // Other types
     let name = "Steve";
     name < "Jennifer" && name > "Shannon";
-    //~^ ERROR: boolean expression will never evaluate to 'true'
-    //~| NOTE: since `"Jennifer"` < `"Shannon"`, the expression evaluates to false for any
+    //~^ impossible_comparisons
 
     let numbers = [1, 2];
     numbers < [3, 4] && numbers > [5, 6];
-    //~^ ERROR: boolean expression will never evaluate to 'true'
-    //~| NOTE: since `[3, 4]` < `[5, 6]`, the expression evaluates to false for any value
+    //~^ impossible_comparisons
 
     let letter = 'a';
     letter < 'b' && letter > 'c';
-    //~^ ERROR: boolean expression will never evaluate to 'true'
-    //~| NOTE: since `'b'` < `'c'`, the expression evaluates to false for any value of `le
+    //~^ impossible_comparisons
 
     let area = 42.0;
     area < std::f32::consts::E && area > std::f32::consts::PI;
-    //~^ ERROR: boolean expression will never evaluate to 'true'
-    //~| NOTE: since `std::f32::consts::E` < `std::f32::consts::PI`, the expression evalua
+    //~^ impossible_comparisons
 }

@@ -4,40 +4,40 @@ fn main() {
     // --- TryFromMethod `T::try_from(u)` ---
 
     let _: i64 = 0i32.into();
-    //~^ ERROR: use of a fallible conversion when an infallible one could be used
+    //~^ unnecessary_fallible_conversions
 
     let _: i64 = 0i32.into();
-    //~^ ERROR: use of a fallible conversion when an infallible one could be used
+    //~^ unnecessary_fallible_conversions
 
     // --- TryFromFunction `T::try_from(U)` ---
 
     let _ = i64::from(0i32);
-    //~^ ERROR: use of a fallible conversion when an infallible one could be used
+    //~^ unnecessary_fallible_conversions
 
     let _ = i64::from(0i32);
-    //~^ ERROR: use of a fallible conversion when an infallible one could be used
+    //~^ unnecessary_fallible_conversions
 
     // --- TryIntoFunction `U::try_into(t)` ---
 
     let _: i64 = i32::into(0);
-    //~^ ERROR: use of a fallible conversion when an infallible one could be used
+    //~^ unnecessary_fallible_conversions
 
     let _: i64 = i32::into(0i32);
-    //~^ ERROR: use of a fallible conversion when an infallible one could be used
+    //~^ unnecessary_fallible_conversions
 
     // --- TryFromFunction `<T as TryFrom<U>>::try_from(U)` ---
 
     let _ = <i64 as From<i32>>::from(0);
-    //~^ ERROR: use of a fallible conversion when an infallible one could be used
+    //~^ unnecessary_fallible_conversions
 
     let _ = <i64 as From<i32>>::from(0);
-    //~^ ERROR: use of a fallible conversion when an infallible one could be used
+    //~^ unnecessary_fallible_conversions
 
     // --- TryIntoFunction `<U as TryInto<_>>::try_into(U)` ---
 
     let _: i64 = <i32 as Into<_>>::into(0);
-    //~^ ERROR: use of a fallible conversion when an infallible one could be used
+    //~^ unnecessary_fallible_conversions
 
     let _: i64 = <i32 as Into<_>>::into(0);
-    //~^ ERROR: use of a fallible conversion when an infallible one could be used
+    //~^ unnecessary_fallible_conversions
 }

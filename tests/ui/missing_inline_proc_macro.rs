@@ -1,3 +1,5 @@
+//@ check-pass
+
 #![warn(clippy::missing_inline_in_public_items)]
 
 extern crate proc_macro;

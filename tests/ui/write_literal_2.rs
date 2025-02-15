@@ -8,44 +8,58 @@ fn main() {
     let mut v = Vec::new();
 
     writeln!(v, "{}", "{hello}");
-    //~^ ERROR: literal with an empty format string
-    //~| NOTE: `-D clippy::write-literal` implied by `-D warnings`
+    //~^ write_literal
+
     writeln!(v, r"{}", r"{hello}");
-    //~^ ERROR: literal with an empty format string
+    //~^ write_literal
+
     writeln!(v, "{}", '\'');
-    //~^ ERROR: literal with an empty format string
+    //~^ write_literal
+
     writeln!(v, "{}", '"');
-    //~^ ERROR: literal with an empty format string
+    //~^ write_literal
+
     writeln!(v, r"{}", '"');
-    //~^ ERROR: literal with an empty format string
+    //~^ write_literal
+
     writeln!(v, r"{}", '\'');
-    //~^ ERROR: literal with an empty format string
+    //~^ write_literal
+
     writeln!(
         v,
         "some {}",
         "hello \
+        //~^ write_literal
         world!",
-        //~^^ ERROR: literal with an empty format string
     );
     writeln!(
         v,
         "some {}\
         {} \\ {}",
-        "1", "2", "3",
+        "1",
+        "2",
+        "3",
+        //~^^^ write_literal
     );
     writeln!(v, "{}", "\\");
-    //~^ ERROR: literal with an empty format string
+    //~^ write_literal
+
     writeln!(v, r"{}", "\\");
-    //~^ ERROR: literal with an empty format string
+    //~^ write_literal
+
     writeln!(v, r#"{}"#, "\\");
-    //~^ ERROR: literal with an empty format string
+    //~^ write_literal
+
     writeln!(v, "{}", r"\");
-    //~^ ERROR: literal with an empty format string
+    //~^ write_literal
+
     writeln!(v, "{}", "\r");
-    //~^ ERROR: literal with an empty format string
+    //~^ write_literal
+
     // hard mode
     writeln!(v, r#"{}{}"#, '#', '"');
-    //~^ ERROR: literal with an empty format string
+    //~^ write_literal
+
     // should not lint
     writeln!(v, r"{}", "\r");
 }

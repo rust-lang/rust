@@ -42,45 +42,58 @@ fn main() {
     let x = 0;
 
     x;
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
     x;
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
     x + 1;
     x;
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
     1 + x;
     x - ZERO; //no error, as we skip lookups (for now)
     x;
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
     ((ZERO)) | x; //no error, as we skip lookups (for now)
 
     x;
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
     x;
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
     x / ONE; //no error, as we skip lookups (for now)
 
     x / 2; //no false positive
 
     x & NEG_ONE; //no error, as we skip lookups (for now)
     x;
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
 
     let u: u8 = 0;
     u;
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
 
     1 << 0; // no error, this case is allowed, see issue 3430
     42;
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
     1;
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
     42;
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
     x;
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
     x;
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
 
     let mut a = A(String::new());
     let b = a << 0; // no error: non-integer
@@ -88,15 +101,20 @@ fn main() {
     1 * Meter; // no error: non-integer
 
     2;
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
     -2;
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
     2 + x;
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
     -2 + x;
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
     x + 1;
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
     (x + 1) % 3; // no error
     4 % 3; // no error
     4 % -3; // no error
@@ -105,63 +123,85 @@ fn main() {
     let a = 0;
     let b = true;
     (if b { 1 } else { 2 });
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
     (if b { 1 } else { 2 }) + if b { 3 } else { 4 };
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
     (match a { 0 => 10, _ => 20 });
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
     (match a { 0 => 10, _ => 20 }) + match a { 0 => 30, _ => 40 };
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
     (if b { 1 } else { 2 }) + match a { 0 => 30, _ => 40 };
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
     (match a { 0 => 10, _ => 20 }) + if b { 3 } else { 4 };
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
     ((if b { 1 } else { 2 }));
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
 
     ({ a }) + 3;
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
     ({ a } * 2);
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
     (loop { let mut c = 0; if c == 10 { break c; } c += 1; }) + { a * 2 };
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
 
     fn f(_: i32) {
         todo!();
     }
 
     f(a + { 8 * 5 });
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
     f(if b { 1 } else { 2 } + 3);
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
 
     const _: i32 = { 2 * 4 } + 3;
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
     const _: i32 = { 1 + 2 * 3 } + 3;
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
 
     a as usize;
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
     let _ = a as usize;
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
     ({ a } as usize);
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
 
     2 * { a };
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
     (({ a } + 4));
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
     1;
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
 
     // Issue #9904
     let x = 0i32;
     let _: i32 = x;
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
 }
 
 pub fn decide(a: bool, b: bool) -> u32 {
     (if a { 1 } else { 2 }) + if b { 3 } else { 5 }
+    //~^ identity_op
 }
 
 /// The following tests are from / for issue #12050
@@ -173,43 +213,51 @@ fn issue_12050() {
     {
         let x = &0i32;
         let _: i32 = *x;
-        //~^ ERROR: this operation has no effect
+        //~^ identity_op
+
         let _: i32 = *x;
-        //~^ ERROR: this operation has no effect
+        //~^ identity_op
     }
     {
         let x = &&0i32;
         let _: i32 = **x;
-        //~^ ERROR: this operation has no effect
+        //~^ identity_op
+
         let x = &&0i32;
         let _: i32 = **x;
-        //~^ ERROR: this operation has no effect
+        //~^ identity_op
     }
     {
         // this is just silly
         let x = &&&0i32;
         let _: i32 = ***x;
-        //~^ ERROR: this operation has no effect
+        //~^ identity_op
+
         let _: i32 = ***x;
-        //~^ ERROR: this operation has no effect
+        //~^ identity_op
+
         let x = 0i32;
         let _: i32 = *&x;
-        //~^ ERROR: this operation has no effect
+        //~^ identity_op
+
         let _: i32 = **&&x;
-        //~^ ERROR: this operation has no effect
+        //~^ identity_op
+
         let _: i32 = *&*&x;
-        //~^ ERROR: this operation has no effect
+        //~^ identity_op
+
         let _: i32 = **&&*&x;
-        //~^ ERROR: this operation has no effect
+        //~^ identity_op
     }
     {
         // this is getting ridiculous, but we should still see the same
         // error message so let's just keep going
         let x = &0i32;
         let _: i32 = ***&&*&x;
-        //~^ ERROR: this operation has no effect
+        //~^ identity_op
+
         let _: i32 = ***&&*&x;
-        //~^ ERROR: this operation has no effect
+        //~^ identity_op
     }
 }
 
@@ -218,41 +266,49 @@ fn issue_13470() {
     let y = 1i32;
     // Removes the + 0i32 while keeping the parentheses around x + y so the cast operation works
     let _: u64 = (x + y) as u64;
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
     // both of the next two lines should look the same after rustfix
     let _: u64 = 1u64 & (x + y) as u64;
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
     // Same as above, but with extra redundant parenthesis
     let _: u64 = 1u64 & ((x + y)) as u64;
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
     // Should maintain parenthesis even if the surrounding expr has the same precedence
     let _: u64 = 5u64 + ((x + y)) as u64;
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
 
     // If we don't maintain the parens here, the behavior changes
     let _ = -(x + y);
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
     // Similarly, we need to maintain parens here
     let _ = -(x / y);
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
     // Maintain parenthesis if the parent expr is of higher precedence
     let _ = 2i32 * (x + y);
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
     // Maintain parenthesis if the parent expr is the same precedence
     // as not all operations are associative
     let _ = 2i32 - (x - y);
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
     // But make sure that inner parens still exist
     let z = 1i32;
     let _ = 2 + (x + (y * z));
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
+
     // Maintain parenthesis if the parent expr is of lower precedence
     // This is for clarity, and clippy will not warn on these being unnecessary
     let _ = 2i32 + (x * y);
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
 
     let x = 1i16;
     let y = 1i16;
     let _: u64 = 1u64 + ((x as i32 + y as i32) as u64);
-    //~^ ERROR: this operation has no effect
+    //~^ identity_op
 }

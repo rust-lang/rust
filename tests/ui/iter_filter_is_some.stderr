@@ -8,55 +8,55 @@ LL |         let _ = vec![Some(1), None, Some(3)].into_iter().filter(Option::is_
    = help: to override `-D warnings` add `#[allow(clippy::iter_filter_is_some)]`
 
 error: `filter` for `is_some` on iterator over `Option`
-  --> tests/ui/iter_filter_is_some.rs:17:58
+  --> tests/ui/iter_filter_is_some.rs:18:58
    |
 LL |         let _ = vec![Some(1), None, Some(3)].into_iter().filter(|a| a.is_some());
    |                                                          ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
 
 error: `filter` for `is_some` on iterator over `Option`
-  --> tests/ui/iter_filter_is_some.rs:20:58
+  --> tests/ui/iter_filter_is_some.rs:22:58
    |
 LL |         let _ = vec![Some(1), None, Some(3)].into_iter().filter(|o| { o.is_some() });
    |                                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
 
 error: `filter` for `is_some` on iterator over `Option`
-  --> tests/ui/iter_filter_is_some.rs:27:14
+  --> tests/ui/iter_filter_is_some.rs:29:14
    |
 LL |             .filter(std::option::Option::is_some);
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
 
 error: `filter` for `is_some` on iterator over `Option`
-  --> tests/ui/iter_filter_is_some.rs:32:14
+  --> tests/ui/iter_filter_is_some.rs:34:14
    |
 LL |             .filter(|a| std::option::Option::is_some(a));
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
 
 error: `filter` for `is_some` on iterator over `Option`
-  --> tests/ui/iter_filter_is_some.rs:35:58
+  --> tests/ui/iter_filter_is_some.rs:38:58
    |
 LL |         let _ = vec![Some(1), None, Some(3)].into_iter().filter(|a| { std::option::Option::is_some(a) });
    |                                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
 
 error: `filter` for `is_some` on iterator over `Option`
-  --> tests/ui/iter_filter_is_some.rs:40:58
+  --> tests/ui/iter_filter_is_some.rs:43:58
    |
 LL |         let _ = vec![Some(1), None, Some(3)].into_iter().filter(|&a| a.is_some());
    |                                                          ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
 
 error: `filter` for `is_some` on iterator over `Option`
-  --> tests/ui/iter_filter_is_some.rs:44:58
+  --> tests/ui/iter_filter_is_some.rs:47:58
    |
 LL |         let _ = vec![Some(1), None, Some(3)].into_iter().filter(|&o| { o.is_some() });
    |                                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
 
 error: `filter` for `is_some` on iterator over `Option`
-  --> tests/ui/iter_filter_is_some.rs:49:58
+  --> tests/ui/iter_filter_is_some.rs:52:58
    |
 LL |         let _ = vec![Some(1), None, Some(3)].into_iter().filter(|ref a| a.is_some());
    |                                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
 
 error: `filter` for `is_some` on iterator over `Option`
-  --> tests/ui/iter_filter_is_some.rs:53:58
+  --> tests/ui/iter_filter_is_some.rs:56:58
    |
 LL |         let _ = vec![Some(1), None, Some(3)].into_iter().filter(|ref o| { o.is_some() });
    |                                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`

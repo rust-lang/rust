@@ -11,23 +11,35 @@ fn main() {
 
     // order shouldn't matter
     (8..12).contains(&x);
+    //~^ manual_range_contains
     (21..42).contains(&x);
+    //~^ manual_range_contains
     (1..100).contains(&x);
+    //~^ manual_range_contains
 
     // also with inclusive ranges
     (9..=99).contains(&x);
+    //~^ manual_range_contains
     (1..=33).contains(&x);
+    //~^ manual_range_contains
     (1..=999).contains(&x);
+    //~^ manual_range_contains
 
     // and the outside
     !(8..12).contains(&x);
+    //~^ manual_range_contains
     !(21..42).contains(&x);
+    //~^ manual_range_contains
     !(1..100).contains(&x);
+    //~^ manual_range_contains
 
     // also with the outside of inclusive ranges
     !(9..=99).contains(&x);
+    //~^ manual_range_contains
     !(1..=33).contains(&x);
+    //~^ manual_range_contains
     !(1..=999).contains(&x);
+    //~^ manual_range_contains
 
     // not a range.contains
     x > 8 && x < 12; // lower bound not inclusive
@@ -43,18 +55,26 @@ fn main() {
     // Fix #6315
     let y = 3.;
     (0. ..1.).contains(&y);
+    //~^ manual_range_contains
     !(0. ..=1.).contains(&y);
+    //~^ manual_range_contains
 
     // handle negatives #8721
     (-10..=10).contains(&x);
+    //~^ manual_range_contains
     x >= 10 && x <= -10;
     (-3. ..=3.).contains(&y);
+    //~^ manual_range_contains
     y >= 3. && y <= -3.;
 
     // Fix #8745
     let z = 42;
     (0..=10).contains(&x) && (0..=10).contains(&z);
+    //~^ manual_range_contains
+    //~| manual_range_contains
     !(0..10).contains(&x) || !(0..10).contains(&z);
+    //~^ manual_range_contains
+    //~| manual_range_contains
     // Make sure operators in parens don't give a breaking suggestion
     ((x % 2 == 0) || (x < 0)) || (x >= 10);
 }
@@ -74,4 +94,5 @@ fn msrv_1_34() {
 fn msrv_1_35() {
     let x = 5;
     (8..35).contains(&x);
+    //~^ manual_range_contains
 }

@@ -12,18 +12,18 @@ fn ifs_same_cond() {
 
     if b {
     } else if b {
-        //~^ ERROR: this `if` has the same condition as a previous `if`
+        //~^ ifs_same_cond
     }
 
     if a == 1 {
     } else if a == 1 {
-        //~^ ERROR: this `if` has the same condition as a previous `if`
+        //~^ ifs_same_cond
     }
 
     if 2 * a == 1 {
     } else if 2 * a == 2 {
     } else if 2 * a == 1 {
-        //~^ ERROR: this `if` has the same condition as a previous `if`
+        //~^ ifs_same_cond
     } else if a == 1 {
     }
 
@@ -56,7 +56,8 @@ fn issue10272() {
     let a = String::from("ha");
     if a.contains("ah") {
     } else if a.contains("ah") {
-        //~^ ERROR: this `if` has the same condition as a previous `if`
+        //~^ ifs_same_cond
+
         // Trigger this lint
     } else if a.contains("ha") {
     } else if a == "wow" {

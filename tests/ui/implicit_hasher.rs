@@ -13,6 +13,7 @@ pub trait Foo<T>: Sized {
 }
 
 impl<K: Hash + Eq, V> Foo<i8> for HashMap<K, V> {
+    //~^ implicit_hasher
     fn make() -> (Self, Self) {
         // OK, don't suggest to modify these
         let _: HashMap<i32, i32> = HashMap::new();
@@ -22,11 +23,13 @@ impl<K: Hash + Eq, V> Foo<i8> for HashMap<K, V> {
     }
 }
 impl<K: Hash + Eq, V> Foo<i8> for (HashMap<K, V>,) {
+    //~^ implicit_hasher
     fn make() -> (Self, Self) {
         ((HashMap::new(),), (HashMap::with_capacity(10),))
     }
 }
 impl Foo<i16> for HashMap<String, String> {
+    //~^ implicit_hasher
     fn make() -> (Self, Self) {
         (HashMap::new(), HashMap::with_capacity(10))
     }
@@ -44,11 +47,13 @@ impl<S: BuildHasher + Default> Foo<i64> for HashMap<String, String, S> {
 }
 
 impl<T: Hash + Eq> Foo<i8> for HashSet<T> {
+    //~^ implicit_hasher
     fn make() -> (Self, Self) {
         (HashSet::new(), HashSet::with_capacity(10))
     }
 }
 impl Foo<i16> for HashSet<String> {
+    //~^ implicit_hasher
     fn make() -> (Self, Self) {
         (HashSet::new(), HashSet::with_capacity(10))
     }
@@ -66,14 +71,17 @@ impl<S: BuildHasher + Default> Foo<i64> for HashSet<String, S> {
 }
 
 pub fn map(map: &mut HashMap<i32, i32>) {}
+//~^ implicit_hasher
 
 pub fn set(set: &mut HashSet<i32>) {}
+//~^ implicit_hasher
 
 #[inline_macros]
 pub mod gen_ {
     use super::*;
     inline! {
         impl<K: Hash + Eq, V> Foo<u8> for HashMap<K, V> {
+        //~^ implicit_hasher
             fn make() -> (Self, Self) {
                 (HashMap::new(), HashMap::with_capacity(10))
             }
@@ -98,5 +106,6 @@ external! {
 
 // #7712
 pub async fn election_vote(_data: HashMap<i32, i32>) {}
+//~^ implicit_hasher
 
 fn main() {}

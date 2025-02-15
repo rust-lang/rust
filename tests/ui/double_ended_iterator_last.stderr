@@ -8,7 +8,7 @@ LL |     s.split(' ').last()
    = help: to override `-D warnings` add `#[allow(clippy::double_ended_iterator_last)]`
 
 error: called `Iterator::last` on a `DoubleEndedIterator`; this will needlessly iterate the entire iterator
-  --> tests/ui/double_ended_iterator_last.rs:22:24
+  --> tests/ui/double_ended_iterator_last.rs:23:24
    |
 LL |     let _ = DeIterator.last();
    |                        ^^^^^^ help: try: `next_back()`

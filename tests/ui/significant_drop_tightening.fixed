@@ -8,6 +8,7 @@ pub fn complex_return_triggers_the_lint() -> i32 {
     }
     let mutex = Mutex::new(1);
     let lock = mutex.lock().unwrap();
+    //~^ significant_drop_tightening
     let _ = *lock;
     let _ = *lock;
     drop(lock);
@@ -103,6 +104,7 @@ pub fn unnecessary_contention_with_multiple_owned_results() {
     {
         let mutex = Mutex::new(1i32);
         let lock = mutex.lock().unwrap();
+        //~^ significant_drop_tightening
         let rslt0 = lock.abs();
         let rslt1 = lock.is_positive();
         drop(lock);
@@ -126,6 +128,7 @@ pub fn unnecessary_contention_with_single_owned_results() {
         let mutex = Mutex::new(1i32);
         
         let rslt0 = mutex.lock().unwrap().abs();
+        //~^ significant_drop_tightening
         
         do_heavy_computation_that_takes_time(rslt0);
     }
@@ -133,6 +136,7 @@ pub fn unnecessary_contention_with_single_owned_results() {
         let mutex = Mutex::new(vec![1i32]);
         
         mutex.lock().unwrap().clear();
+        //~^ significant_drop_tightening
         
         do_heavy_computation_that_takes_time(());
     }

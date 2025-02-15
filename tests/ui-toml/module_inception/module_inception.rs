@@ -4,11 +4,13 @@
 pub mod foo2 {
     pub mod bar2 {
         pub mod bar2 {
+            //~^ module_inception
             pub mod foo2 {}
         }
         pub mod foo2 {}
     }
     pub mod foo2 {
+        //~^ module_inception
         pub mod bar2 {}
     }
 }

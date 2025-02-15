@@ -10,10 +10,12 @@ struct Baz<'a> {
 }
 
 impl<'a> Foo for Baz<'a> {}
+//~^ needless_lifetimes
 
 impl Bar {
     fn baz<'a>(&'a self) -> impl Foo + 'a {
-        //~^ ERROR: the following explicit lifetimes could be elided: 'a
+        //~^ needless_lifetimes
+
         Baz { bar: self }
     }
 }

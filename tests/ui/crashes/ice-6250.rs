@@ -10,6 +10,8 @@ pub fn list_data(cache: &Cache, key: usize) {
         if
         /* let */
         Some(reference) = cache.data.get(key) {
+            //~^ ERROR: mismatched types
+            //~| ERROR: mismatched types
             unimplemented!()
         }
     }

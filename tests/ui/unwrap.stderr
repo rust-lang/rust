@@ -19,7 +19,7 @@ LL |     let _ = res.unwrap();
    = help: consider using `expect()` to provide a better panic message
 
 error: used `unwrap_err()` on a `Result` value
-  --> tests/ui/unwrap.rs:14:13
+  --> tests/ui/unwrap.rs:15:13
    |
 LL |     let _ = res.unwrap_err();
    |             ^^^^^^^^^^^^^^^^

@@ -5,48 +5,55 @@
 
 fn float_to_int() {
     let _: u32 = unsafe { 1f32.to_bits() };
-    //~^ ERROR: transmute from a `f32` to a `u32`
-    //~| NOTE: `-D clippy::transmute-float-to-int` implied by `-D warnings`
+    //~^ transmute_float_to_int
+
     let _: i32 = unsafe { 1f32.to_bits() as i32 };
-    //~^ ERROR: transmute from a `f32` to a `i32`
+    //~^ transmute_float_to_int
+
     let _: u64 = unsafe { 1f64.to_bits() };
-    //~^ ERROR: transmute from a `f64` to a `u64`
+    //~^ transmute_float_to_int
+
     let _: i64 = unsafe { 1f64.to_bits() as i64 };
-    //~^ ERROR: transmute from a `f64` to a `i64`
+    //~^ transmute_float_to_int
+
     let _: u64 = unsafe { 1.0f64.to_bits() };
-    //~^ ERROR: transmute from a `f64` to a `u64`
+    //~^ transmute_float_to_int
+
     let _: u64 = unsafe { (-1.0f64).to_bits() };
-    //~^ ERROR: transmute from a `f64` to a `u64`
+    //~^ transmute_float_to_int
 }
 
 mod issue_5747 {
     const VALUE16: i16 = unsafe { 1f16.to_bits() as i16 };
-    //~^ ERROR: transmute from a `f16` to a `i16`
+    //~^ transmute_float_to_int
+
     const VALUE32: i32 = unsafe { 1f32.to_bits() as i32 };
-    //~^ ERROR: transmute from a `f32` to a `i32`
+    //~^ transmute_float_to_int
+
     const VALUE64: u64 = unsafe { 1f64.to_bits() };
-    //~^ ERROR: transmute from a `f64` to a `u64`
+    //~^ transmute_float_to_int
+
     const VALUE128: u128 = unsafe { 1f128.to_bits() };
-    //~^ ERROR: transmute from a `f128` to a `u128`
+    //~^ transmute_float_to_int
 
     const fn to_bits_16(v: f16) -> u16 {
         unsafe { v.to_bits() }
-        //~^ ERROR: transmute from a `f16` to a `u16`
+        //~^ transmute_float_to_int
     }
 
     const fn to_bits_32(v: f32) -> u32 {
         unsafe { v.to_bits() }
-        //~^ ERROR: transmute from a `f32` to a `u32`
+        //~^ transmute_float_to_int
     }
 
     const fn to_bits_64(v: f64) -> i64 {
         unsafe { v.to_bits() as i64 }
-        //~^ ERROR: transmute from a `f64` to a `i64`
+        //~^ transmute_float_to_int
     }
 
     const fn to_bits_128(v: f128) -> i128 {
         unsafe { v.to_bits() as i128 }
-        //~^ ERROR: transmute from a `f128` to a `i128`
+        //~^ transmute_float_to_int
     }
 }
 

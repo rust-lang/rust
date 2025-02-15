@@ -11,7 +11,7 @@ LL | #[deny(clippy::while_float)]
    |        ^^^^^^^^^^^^^^^^^^^
 
 error: while condition comparing floats
-  --> tests/ui/while_float.rs:7:11
+  --> tests/ui/while_float.rs:8:11
    |
 LL |     while x < 42.0 {
    |           ^^^^^^^^

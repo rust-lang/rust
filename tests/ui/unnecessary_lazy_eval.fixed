@@ -81,42 +81,69 @@ fn main() {
 
     // Should lint - Option
     let _ = opt.unwrap_or(2);
+    //~^ unnecessary_lazy_evaluations
     let _ = opt.unwrap_or(astronomers_pi);
+    //~^ unnecessary_lazy_evaluations
     let _ = opt.unwrap_or(ext_str.some_field);
+    //~^ unnecessary_lazy_evaluations
     let _ = opt.unwrap_or_else(|| ext_arr[0]);
     let _ = opt.and(ext_opt);
+    //~^ unnecessary_lazy_evaluations
     let _ = opt.or(ext_opt);
+    //~^ unnecessary_lazy_evaluations
     let _ = opt.or(None);
+    //~^ unnecessary_lazy_evaluations
     let _ = opt.get_or_insert(2);
+    //~^ unnecessary_lazy_evaluations
     let _ = opt.ok_or(2);
+    //~^ unnecessary_lazy_evaluations
     let _ = nested_tuple_opt.unwrap_or(Some((1, 2)));
+    //~^ unnecessary_lazy_evaluations
     let _ = cond.then_some(astronomers_pi);
+    //~^ unnecessary_lazy_evaluations
     let _ = true.then_some({});
+    //~^ unnecessary_lazy_evaluations
     let _ = true.then_some({});
+    //~^ unnecessary_lazy_evaluations
 
     // Should lint - Builtin deref
     let r = &1;
     let _ = Some(1).unwrap_or(*r);
+    //~^ unnecessary_lazy_evaluations
     let b = Box::new(1);
     let _ = Some(1).unwrap_or(*b);
+    //~^ unnecessary_lazy_evaluations
     // Should lint - Builtin deref through autoderef
     let _ = Some(1).as_ref().unwrap_or(&r);
+    //~^ unnecessary_lazy_evaluations
     let _ = Some(1).as_ref().unwrap_or(&b);
+    //~^ unnecessary_lazy_evaluations
 
     // Cases when unwrap is not called on a simple variable
     let _ = Some(10).unwrap_or(2);
+    //~^ unnecessary_lazy_evaluations
     let _ = Some(10).and(ext_opt);
+    //~^ unnecessary_lazy_evaluations
     let _: Option<usize> = None.or(ext_opt);
+    //~^ unnecessary_lazy_evaluations
     let _ = None.get_or_insert(2);
+    //~^ unnecessary_lazy_evaluations
     let _: Result<usize, usize> = None.ok_or(2);
+    //~^ unnecessary_lazy_evaluations
     let _: Option<usize> = None.or(None);
+    //~^ unnecessary_lazy_evaluations
 
     let mut deep = Deep(Some(42));
     let _ = deep.0.unwrap_or(2);
+    //~^ unnecessary_lazy_evaluations
     let _ = deep.0.and(ext_opt);
+    //~^ unnecessary_lazy_evaluations
     let _ = deep.0.or(None);
+    //~^ unnecessary_lazy_evaluations
     let _ = deep.0.get_or_insert(2);
+    //~^ unnecessary_lazy_evaluations
     let _ = deep.0.ok_or(2);
+    //~^ unnecessary_lazy_evaluations
 
     // Should not lint - Option
     let _ = opt.unwrap_or_else(|| ext_str.return_some_field());
@@ -148,16 +175,22 @@ fn main() {
 
     // should lint, bind_instead_of_map doesn't apply
     let _: Option<usize> = None.or(Some(3));
+    //~^ unnecessary_lazy_evaluations
     let _ = deep.0.or(Some(3));
+    //~^ unnecessary_lazy_evaluations
     let _ = opt.or(Some(3));
+    //~^ unnecessary_lazy_evaluations
 
     // Should lint - Result
     let res: Result<usize, usize> = Err(5);
     let res2: Result<usize, SomeStruct> = Err(SomeStruct { some_field: 5 });
 
     let _ = res2.unwrap_or(2);
+    //~^ unnecessary_lazy_evaluations
     let _ = res2.unwrap_or(astronomers_pi);
+    //~^ unnecessary_lazy_evaluations
     let _ = res2.unwrap_or(ext_str.some_field);
+    //~^ unnecessary_lazy_evaluations
 
     // Should not lint - Result
     let _ = res.unwrap_or_else(|err| err);
@@ -180,13 +213,20 @@ fn main() {
 
     // should lint, bind_instead_of_map doesn't apply
     let _: Result<usize, usize> = res.and(Err(2));
+    //~^ unnecessary_lazy_evaluations
     let _: Result<usize, usize> = res.and(Err(astronomers_pi));
+    //~^ unnecessary_lazy_evaluations
     let _: Result<usize, usize> = res.and(Err(ext_str.some_field));
+    //~^ unnecessary_lazy_evaluations
 
     let _: Result<usize, usize> = res.or(Ok(2));
+    //~^ unnecessary_lazy_evaluations
     let _: Result<usize, usize> = res.or(Ok(astronomers_pi));
+    //~^ unnecessary_lazy_evaluations
     let _: Result<usize, usize> = res.or(Ok(ext_str.some_field));
+    //~^ unnecessary_lazy_evaluations
     let _: Result<usize, usize> = res.
+    //~^ unnecessary_lazy_evaluations
     // some lines
     // some lines
     // some lines
@@ -217,39 +257,39 @@ fn panicky_arithmetic_ops(x: usize, y: isize) {
     // See comments in `eager_or_lazy.rs` for the rules that this is meant to follow
 
     let _x = false.then_some(i32::MAX + 1);
-    //~^ ERROR: unnecessary closure used with `bool::then`
+    //~^ unnecessary_lazy_evaluations
     let _x = false.then_some(i32::MAX * 2);
-    //~^ ERROR: unnecessary closure used with `bool::then`
+    //~^ unnecessary_lazy_evaluations
     let _x = false.then_some(i32::MAX - 1);
-    //~^ ERROR: unnecessary closure used with `bool::then`
+    //~^ unnecessary_lazy_evaluations
     let _x = false.then_some(i32::MIN - 1);
-    //~^ ERROR: unnecessary closure used with `bool::then`
+    //~^ unnecessary_lazy_evaluations
     let _x = false.then_some((1 + 2 * 3 - 2 / 3 + 9) << 2);
-    //~^ ERROR: unnecessary closure used with `bool::then`
+    //~^ unnecessary_lazy_evaluations
     let _x = false.then_some(255u8 << 7);
-    //~^ ERROR: unnecessary closure used with `bool::then`
+    //~^ unnecessary_lazy_evaluations
     let _x = false.then_some(255u8 << 8);
-    //~^ ERROR: unnecessary closure used with `bool::then`
+    //~^ unnecessary_lazy_evaluations
     let _x = false.then_some(255u8 >> 8);
-    //~^ ERROR: unnecessary closure used with `bool::then`
+    //~^ unnecessary_lazy_evaluations
     let _x = false.then(|| 255u8 >> x);
     let _x = false.then_some(i32::MAX + -1);
-    //~^ ERROR: unnecessary closure used with `bool::then`
+    //~^ unnecessary_lazy_evaluations
     let _x = false.then_some(-i32::MAX);
-    //~^ ERROR: unnecessary closure used with `bool::then`
+    //~^ unnecessary_lazy_evaluations
     let _x = false.then_some(-i32::MIN);
-    //~^ ERROR: unnecessary closure used with `bool::then`
+    //~^ unnecessary_lazy_evaluations
     let _x = false.then(|| -y);
     let _x = false.then_some(255 >> -7);
-    //~^ ERROR: unnecessary closure used with `bool::then`
+    //~^ unnecessary_lazy_evaluations
     let _x = false.then_some(255 << -1);
-    //~^ ERROR: unnecessary closure used with `bool::then`
+    //~^ unnecessary_lazy_evaluations
     let _x = false.then_some(1 / 0);
-    //~^ ERROR: unnecessary closure used with `bool::then`
+    //~^ unnecessary_lazy_evaluations
     let _x = false.then_some(x << -1);
-    //~^ ERROR: unnecessary closure used with `bool::then`
+    //~^ unnecessary_lazy_evaluations
     let _x = false.then_some(x << 2);
-    //~^ ERROR: unnecessary closure used with `bool::then`
+    //~^ unnecessary_lazy_evaluations
     let _x = false.then(|| x + x);
     let _x = false.then(|| x * x);
     let _x = false.then(|| x - x);
@@ -259,19 +299,19 @@ fn panicky_arithmetic_ops(x: usize, y: isize) {
     let _x = false.then(|| 1 + x);
 
     let _x = false.then_some(x / 0);
-    //~^ ERROR: unnecessary closure used with `bool::then`
+    //~^ unnecessary_lazy_evaluations
     let _x = false.then_some(x % 0);
-    //~^ ERROR: unnecessary closure used with `bool::then`
+    //~^ unnecessary_lazy_evaluations
     let _x = false.then(|| y / -1);
     let _x = false.then_some(1 / -1);
-    //~^ ERROR: unnecessary closure used with `bool::then`
+    //~^ unnecessary_lazy_evaluations
     let _x = false.then_some(i32::MIN / -1);
-    //~^ ERROR: unnecessary closure used with `bool::then`
+    //~^ unnecessary_lazy_evaluations
     let _x = false.then(|| i32::MIN / x as i32);
     let _x = false.then_some(i32::MIN / 0);
-    //~^ ERROR: unnecessary closure used with `bool::then`
+    //~^ unnecessary_lazy_evaluations
     let _x = false.then_some(4 / 2);
-    //~^ ERROR: unnecessary closure used with `bool::then`
+    //~^ unnecessary_lazy_evaluations
     let _x = false.then(|| 1 / x);
 
     // const eval doesn't read variables, but floating point math never panics, so we can still emit a
@@ -279,5 +319,5 @@ fn panicky_arithmetic_ops(x: usize, y: isize) {
     let f1 = 1.0;
     let f2 = 2.0;
     let _x = false.then_some(f1 + f2);
-    //~^ ERROR: unnecessary closure used with `bool::then`
+    //~^ unnecessary_lazy_evaluations
 }

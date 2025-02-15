@@ -9,23 +9,33 @@ use itertools::Itertools;
 fn main() {
     let _ = "key=value".splitn(2, '=').nth(2);
     let _ = "key=value".split_once('=').unwrap().1;
+    //~^ manual_split_once
     let _ = "key=value".split_once('=').unwrap().1;
+    //~^ manual_split_once
     let (_, _) = "key=value".split_once('=').unwrap();
+    //~^ manual_split_once
 
     let s = String::from("key=value");
     let _ = s.split_once('=').unwrap().1;
+    //~^ manual_split_once
 
     let s = Box::<str>::from("key=value");
     let _ = s.split_once('=').unwrap().1;
+    //~^ manual_split_once
 
     let s = &"key=value";
     let _ = s.split_once('=').unwrap().1;
+    //~^ manual_split_once
 
     fn _f(s: &str) -> Option<&str> {
         let _ = s.split_once('=')?.1;
+        //~^ manual_split_once
         let _ = s.split_once('=')?.1;
+        //~^ manual_split_once
         let _ = s.rsplit_once('=')?.0;
+        //~^ manual_split_once
         let _ = s.rsplit_once('=')?.0;
+        //~^ manual_split_once
         None
     }
 
@@ -34,24 +44,31 @@ fn main() {
 
     // `rsplitn` gives the results in the reverse order of `rsplit_once`
     let _ = "key=value".rsplit_once('=').unwrap().0;
+    //~^ manual_split_once
     let (_, _) = "key=value".rsplit_once('=').map(|(x, y)| (y, x)).unwrap();
+    //~^ manual_split_once
     let _ = s.rsplit_once('=').map(|x| x.0);
+    //~^ manual_split_once
 }
 
 fn indirect() -> Option<()> {
     let (l, r) = "a.b.c".split_once('.').unwrap();
+    //~^ manual_split_once
     
     
 
     let (l, r) = "a.b.c".split_once('.')?;
+    //~^ manual_split_once
     
     
 
     let (l, r) = "a.b.c".rsplit_once('.').unwrap();
+    //~^ manual_split_once
     
     
 
     let (l, r) = "a.b.c".rsplit_once('.')?;
+    //~^ manual_split_once
     
     
 
@@ -137,8 +154,10 @@ fn _msrv_1_51() {
 #[clippy::msrv = "1.52"]
 fn _msrv_1_52() {
     let _ = "key=value".split_once('=').unwrap().1;
+    //~^ manual_split_once
 
     let (a, b) = "a.b.c".split_once('.').unwrap();
+    //~^ manual_split_once
     
     
 }

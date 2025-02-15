@@ -48,8 +48,8 @@ impl R for S3 {
 impl S3 {
     // should trigger the lint
     pub fn new(_: String) -> impl R<Item = u32> {
-        //~^ ERROR: methods called `new` usually return `Self`
-        //~| NOTE: `-D clippy::new-ret-no-self` implied by `-D warnings`
+        //~^ new_ret_no_self
+
         S3
     }
 }
@@ -82,7 +82,8 @@ struct U;
 impl U {
     // should trigger lint
     pub fn new() -> u32 {
-        //~^ ERROR: methods called `new` usually return `Self`
+        //~^ new_ret_no_self
+
         unimplemented!();
     }
 }
@@ -92,7 +93,8 @@ struct V;
 impl V {
     // should trigger lint
     pub fn new(_: String) -> u32 {
-        //~^ ERROR: methods called `new` usually return `Self`
+        //~^ new_ret_no_self
+
         unimplemented!();
     }
 }
@@ -129,7 +131,8 @@ struct TupleReturnerBad;
 impl TupleReturnerBad {
     // should trigger lint
     pub fn new() -> (u32, u32) {
-        //~^ ERROR: methods called `new` usually return `Self`
+        //~^ new_ret_no_self
+
         unimplemented!();
     }
 }
@@ -157,7 +160,8 @@ struct MutPointerReturnerBad;
 impl MutPointerReturnerBad {
     // should trigger lint
     pub fn new() -> *mut V {
-        //~^ ERROR: methods called `new` usually return `Self`
+        //~^ new_ret_no_self
+
         unimplemented!();
     }
 }
@@ -176,7 +180,8 @@ struct GenericReturnerBad;
 impl GenericReturnerBad {
     // should trigger lint
     pub fn new() -> Option<u32> {
-        //~^ ERROR: methods called `new` usually return `Self`
+        //~^ new_ret_no_self
+
         unimplemented!();
     }
 }
@@ -230,7 +235,7 @@ mod issue5435 {
     pub trait TraitRet {
         // should trigger lint as we are in trait definition
         fn new() -> String;
-        //~^ ERROR: methods called `new` usually return `Self`
+        //~^ new_ret_no_self
     }
     pub struct StructRet;
     impl TraitRet for StructRet {
@@ -243,7 +248,7 @@ mod issue5435 {
     pub trait TraitRet2 {
         // should trigger lint
         fn new(_: String) -> String;
-        //~^ ERROR: methods called `new` usually return `Self`
+        //~^ new_ret_no_self
     }
 
     trait TupleReturnerOk {
@@ -279,7 +284,8 @@ mod issue5435 {
     trait TupleReturnerBad {
         // should trigger lint
         fn new() -> (u32, u32) {
-            //~^ ERROR: methods called `new` usually return `Self`
+            //~^ new_ret_no_self
+
             unimplemented!();
         }
     }
@@ -307,7 +313,8 @@ mod issue5435 {
     trait MutPointerReturnerBad {
         // should trigger lint
         fn new() -> *mut V {
-            //~^ ERROR: methods called `new` usually return `Self`
+            //~^ new_ret_no_self
+
             unimplemented!();
         }
     }
@@ -378,7 +385,8 @@ mod issue7344 {
     impl<T> RetImplTraitNoSelf<T> {
         // should trigger lint
         fn new(t: T) -> impl Into<i32> {
-            //~^ ERROR: methods called `new` usually return `Self`
+            //~^ new_ret_no_self
+
             1
         }
     }
@@ -398,7 +406,7 @@ mod issue7344 {
     impl<T> RetImplTraitNoSelf2<T> {
         // should trigger lint
         fn new(t: T) -> impl Trait2<(), i32> {
-            //~^ ERROR: methods called `new` usually return `Self`
+            //~^ new_ret_no_self
         }
     }
 

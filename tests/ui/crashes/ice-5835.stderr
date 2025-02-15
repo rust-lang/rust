@@ -7,5 +7,21 @@ LL |     /// 位
    = note: `-D clippy::tabs-in-doc-comments` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::tabs_in_doc_comments)]`
 
-error: aborting due to 1 previous error
+error: empty lines after doc comment
+  --> tests/ui/crashes/ice-5835.rs:3:5
+   |
+LL | /     /// 位    
+...  |
+LL | |
+   | |_^
+   |
+   = note: `-D clippy::empty-line-after-doc-comments` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::empty_line_after_doc_comments)]`
+   = help: if the empty lines are unintentional remove them
+help: if the doc comment should not document `bar` comment it out
+   |
+LL |     // /// 位    
+   |     ++
+
+error: aborting due to 2 previous errors
 

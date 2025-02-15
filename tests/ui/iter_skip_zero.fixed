@@ -9,9 +9,14 @@ use std::iter::once;
 
 fn main() {
     let _ = [1, 2, 3].iter().skip(1);
+    //~^ iter_skip_zero
     let _ = vec![1, 2, 3].iter().skip(1);
+    //~^ iter_skip_zero
     let _ = once([1, 2, 3]).skip(1);
+    //~^ iter_skip_zero
     let _ = vec![1, 2, 3].iter().chain([1, 2, 3].iter().skip(1)).skip(1);
+    //~^ iter_skip_zero
+    //~| iter_skip_zero
     // Don't lint
     let _ = [1, 2, 3].iter().skip(1);
     let _ = vec![1, 2, 3].iter().skip(1);

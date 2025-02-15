@@ -14,11 +14,14 @@ use std::process::Command;
 
 fn main() {
     let _ = Command::new("ls").args(["-a", "-l"]).status().unwrap();
+    //~^ needless_borrows_for_generic_args
     let _ = Path::new(".").join(".");
+    //~^ needless_borrows_for_generic_args
     let _ = Any::type_id(&""); // Don't lint. `Any` is only bound
     let _ = Box::new(&""); // Don't lint. Type parameter appears in return type
     let _ = Some("").unwrap_or(&"");
     let _ = std::fs::write("x", "".to_string());
+    //~^ needless_borrows_for_generic_args
 
     {
         #[derive(Clone, Copy)]
@@ -34,6 +37,7 @@ fn main() {
         fn deref_target_is_x<T: Deref<Target = X>>(_: T) {}
 
         deref_target_is_x(X);
+        //~^ needless_borrows_for_generic_args
     }
     {
         fn multiple_constraints<T, U, V, X, Y>(_: T)
@@ -47,6 +51,7 @@ fn main() {
         }
 
         multiple_constraints([[""]]);
+        //~^ needless_borrows_for_generic_args
     }
     {
         #[derive(Clone, Copy)]
@@ -67,6 +72,7 @@ fn main() {
         }
 
         multiple_constraints_normalizes_to_same(X, X);
+        //~^ needless_borrows_for_generic_args
     }
     {
         fn only_sized<T>(_: T) {}
@@ -125,6 +131,7 @@ fn main() {
         #[allow(unused_mut)]
         fn warn(mut x: &mut Iter) {
             takes_iter(x)
+            //~^ needless_borrows_for_generic_args
         }
     }
     #[clippy::msrv = "1.52.0"]
@@ -134,6 +141,7 @@ fn main() {
     #[clippy::msrv = "1.53.0"]
     {
         let _ = Command::new("ls").args(["-a", "-l"]).status().unwrap();
+        //~^ needless_borrows_for_generic_args
     };
     {
         let env = "env".to_owned();
@@ -245,6 +253,7 @@ fn main() {
         // 8
         foo::<&[u8; 100]>(&a);
         foo(a);
+        //~^ needless_borrows_for_generic_args
     }
     {
         struct S;
@@ -329,9 +338,13 @@ fn main() {
         let x = String::new();
         f(&x); // Don't lint, not a copy, makes it unavailable later
         f(String::new()); // Lint, makes no difference
+        //
+        //~^^ needless_borrows_for_generic_args
         let y = "".to_owned();
         f(&y); // Don't lint
         f("".to_owned()); // Lint
+        //
+        //~^^ needless_borrows_for_generic_args
     }
     {
         fn takes_writer<T: std::io::Write>(_: T) {}

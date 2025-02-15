@@ -8,12 +8,17 @@ mod dont_warn {
 
     pub(super) unsafe fn use_asm() {
         asm!("");
+        //~^ inline_asm_x86_intel_syntax
         asm!("", options());
+        //~^ inline_asm_x86_intel_syntax
         asm!("", options(nostack));
+        //~^ inline_asm_x86_intel_syntax
     }
 
     global_asm!("");
+    //~^ inline_asm_x86_intel_syntax
     global_asm!("", options());
+    //~^ inline_asm_x86_intel_syntax
 }
 
 fn main() {

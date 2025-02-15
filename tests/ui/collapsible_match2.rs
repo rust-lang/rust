@@ -11,7 +11,7 @@ fn lint_cases(opt_opt: Option<Option<u32>>, res_opt: Result<Option<u32>, String>
     {
         match res_opt {
             Ok(val) if make() => match val {
-                //~^ ERROR: this `match` can be collapsed into the outer `match`
+                //~^ collapsible_match
                 Some(n) => foo(n),
                 _ => return,
             },
@@ -19,7 +19,7 @@ fn lint_cases(opt_opt: Option<Option<u32>>, res_opt: Result<Option<u32>, String>
         }
         match res_opt {
             Ok(val) => match val {
-                //~^ ERROR: this `match` can be collapsed into the outer `match`
+                //~^ collapsible_match
                 Some(n) => foo(n),
                 _ => return,
             },
@@ -34,6 +34,7 @@ fn lint_cases(opt_opt: Option<Option<u32>>, res_opt: Result<Option<u32>, String>
             ($outer:expr => $pat:pat, $e:expr => $inner_pat:pat, $then:expr) => {
                 match $outer {
                     $pat => match $e {
+                        //~^ collapsible_match
                         $inner_pat => $then,
                         _ => return,
                     },
@@ -51,7 +52,7 @@ fn lint_cases(opt_opt: Option<Option<u32>>, res_opt: Result<Option<u32>, String>
     // deref reference value
     match Some(&[1]) {
         Some(s) => match *s {
-            //~^ ERROR: this `match` can be collapsed into the outer `match`
+            //~^ collapsible_match
             [n] => foo(n),
             _ => (),
         },
@@ -61,7 +62,7 @@ fn lint_cases(opt_opt: Option<Option<u32>>, res_opt: Result<Option<u32>, String>
     // ref pattern and deref
     match Some(&[1]) {
         Some(ref s) => match s {
-            //~^ ERROR: this `match` can be collapsed into the outer `match`
+            //~^ collapsible_match
             [n] => foo(n),
             _ => (),
         },

@@ -5,4 +5,5 @@
 fn main() {
     let s = "Hello, world!";
     println!("{}", s.to_string());
+    //~^ to_string_in_format_args
 }

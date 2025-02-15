@@ -68,26 +68,45 @@ where
 
 fn main() {
     Tuple(get_number());
+    //~^ unnecessary_operation
     Struct { field: get_number() };
+    //~^ unnecessary_operation
     Struct { ..get_struct() };
+    //~^ unnecessary_operation
     Enum::Tuple(get_number());
+    //~^ unnecessary_operation
     Enum::Struct { field: get_number() };
+    //~^ unnecessary_operation
     5 + get_number();
+    //~^ unnecessary_operation
     *&get_number();
+    //~^ unnecessary_operation
     &get_number();
+    //~^ unnecessary_operation
     (5, 6, get_number());
+    //~^ unnecessary_operation
     get_number()..;
+    //~^ unnecessary_operation
     ..get_number();
+    //~^ unnecessary_operation
     5..get_number();
+    //~^ unnecessary_operation
     [42, get_number()];
+    //~^ unnecessary_operation
     [42, 55][get_usize()];
+    //~^ unnecessary_operation
     (42, get_number()).1;
+    //~^ unnecessary_operation
     [get_number(); 55];
+    //~^ unnecessary_operation
     [42; 55][get_usize()];
+    //~^ unnecessary_operation
     {
+        //~^ unnecessary_operation
         get_number()
     };
     FooString {
+        //~^ unnecessary_operation
         s: String::from("blah"),
     };
 
@@ -128,5 +147,5 @@ const _: () = {
 
 const fn foo() {
     [42, 55][get_usize()];
-    //~^ ERROR: unnecessary operation
+    //~^ unnecessary_operation
 }

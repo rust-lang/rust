@@ -3,6 +3,7 @@
 // Typical case
 pub fn last_arg(s: &str) -> Option<&str> {
     s.split(' ').last()
+    //~^ double_ended_iterator_last
 }
 
 fn main() {
@@ -20,6 +21,7 @@ fn main() {
         }
     }
     let _ = DeIterator.last();
+    //~^ double_ended_iterator_last
     // Should not apply to other methods of Iterator
     let _ = DeIterator.count();
 

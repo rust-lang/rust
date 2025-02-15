@@ -9,25 +9,34 @@ mod unused_self {
 
     impl A {
         fn unused_self_move(self) {}
-        //~^ ERROR: unused `self` argument
+        //~^ unused_self
+
         fn unused_self_ref(&self) {}
-        //~^ ERROR: unused `self` argument
+        //~^ unused_self
+
         fn unused_self_mut_ref(&mut self) {}
-        //~^ ERROR: unused `self` argument
+        //~^ unused_self
+
         fn unused_self_pin_ref(self: Pin<&Self>) {}
-        //~^ ERROR: unused `self` argument
+        //~^ unused_self
+
         fn unused_self_pin_mut_ref(self: Pin<&mut Self>) {}
-        //~^ ERROR: unused `self` argument
+        //~^ unused_self
+
         fn unused_self_pin_nested(self: Pin<Arc<Self>>) {}
-        //~^ ERROR: unused `self` argument
+        //~^ unused_self
+
         fn unused_self_box(self: Box<Self>) {}
-        //~^ ERROR: unused `self` argument
+        //~^ unused_self
+
         fn unused_with_other_used_args(&self, x: u8, y: u8) -> u8 {
-            //~^ ERROR: unused `self` argument
+            //~^ unused_self
+
             x + y
         }
         fn unused_self_class_method(&self) {
-            //~^ ERROR: unused `self` argument
+            //~^ unused_self
+
             Self::static_method();
         }
 

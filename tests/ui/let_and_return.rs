@@ -11,15 +11,14 @@ fn test() -> i32 {
     let _y = 0; // no warning
     let x = 5;
     x
-    //~^ ERROR: returning the result of a `let` binding from a block
-    //~| NOTE: `-D clippy::let-and-return` implied by `-D warnings`
+    //~^ let_and_return
 }
 
 fn test_inner() -> i32 {
     if true {
         let x = 5;
         x
-        //~^ ERROR: returning the result of a `let` binding from a block
+        //~^ let_and_return
     } else {
         0
     }
@@ -82,7 +81,7 @@ fn issue_3792() -> String {
     // https://github.com/rust-lang/rust/pull/93965
     let line = stdin.lock().lines().next().unwrap().unwrap();
     line
-    //~^ ERROR: returning the result of a `let` binding from a block
+    //~^ let_and_return
 }
 
 tuple_encode!(T0, T1, T2, T3, T4, T5, T6, T7);
@@ -105,7 +104,7 @@ mod no_lint_if_stmt_borrows {
         let value = value.upgrade().unwrap();
         let ret = value.borrow().baz();
         ret
-        //~[edition2024]^ ERROR: returning the result of a `let` binding from a block
+        //~[edition2024]^ let_and_return
     }
 
     fn borrows_in_closure(value: Weak<RefCell<Bar>>) -> u32 {
@@ -116,7 +115,7 @@ mod no_lint_if_stmt_borrows {
         let value = value.upgrade().unwrap();
         let ret = f(|| value.borrow().baz())();
         ret
-        //~[edition2024]^ ERROR: returning the result of a `let` binding from a block
+        //~[edition2024]^ let_and_return
     }
 
     mod free_function {
@@ -148,14 +147,14 @@ mod no_lint_if_stmt_borrows {
             let x = Inner {};
             let value = some_foo(&x).value();
             value
-            //~[edition2024]^ ERROR: returning the result of a `let` binding from a block
+            //~[edition2024]^ let_and_return
         }
 
         fn test2() -> i32 {
             let x = Inner {};
             let value = Foo::new(&x).value();
             value
-            //~[edition2024]^ ERROR: returning the result of a `let` binding from a block
+            //~[edition2024]^ let_and_return
         }
     }
 }
@@ -177,7 +176,7 @@ mod issue_5729 {
         fn foo_cloned(&self) -> Arc<dyn Foo> {
             let clone = Arc::clone(&self.foo);
             clone
-            //~^ ERROR: returning the result of a `let` binding from a block
+            //~^ let_and_return
         }
     }
 }
@@ -196,7 +195,7 @@ mod issue_11335 {
             };
 
             result
-            //~^ ERROR: returning the result of a `let` binding from a block
+            //~^ let_and_return
         }
     }
 }
@@ -222,19 +221,19 @@ fn issue12801() {
     fn left_is_if() -> String {
         let s = if true { "a".to_string() } else { "b".to_string() } + "c";
         s
-        //~^ ERROR: returning the result of a `let` binding from a block
+        //~^ let_and_return
     }
 
     fn no_par_needed() -> String {
         let s = "c".to_string() + if true { "a" } else { "b" };
         s
-        //~^ ERROR: returning the result of a `let` binding from a block
+        //~^ let_and_return
     }
 
     fn conjunctive_blocks() -> String {
         let s = { "a".to_string() } + "b" + { "c" } + "d";
         s
-        //~^ ERROR: returning the result of a `let` binding from a block
+        //~^ let_and_return
     }
 
     #[allow(clippy::overly_complex_bool_expr)]
@@ -242,12 +241,12 @@ fn issue12801() {
         let _ = || {
             let s = if true { 2 } else { 3 } << 4;
             s
-            //~^ ERROR: returning the result of a `let` binding from a block
+            //~^ let_and_return
         };
         let _ = || {
             let s = { true } || { false } && { 2 <= 3 };
             s
-            //~^ ERROR: returning the result of a `let` binding from a block
+            //~^ let_and_return
         };
     }
 }
@@ -259,7 +258,7 @@ fn issue14164() -> Result<u32, ()> {
         None => Ok(Ok(0)),
     }?;
     r
-    //~[edition2024]^ ERROR: returning the result of a `let` binding from a block
+    //~[edition2024]^ let_and_return
 }
 
 fn main() {}

@@ -4,6 +4,7 @@
 fn main() {
     // Lint. `y` is declared within the arm, so it isn't captured by the map closure
     let _ = match Some(0) {
+        //~^ manual_map
         Some(x) => Some({
             let y = (String::new(), String::new());
             (x, y.0)
@@ -46,6 +47,7 @@ fn main() {
     let s = Some(String::new());
     // Lint. `s` is captured by reference, so no lifetime issues.
     let _ = match &s {
+        //~^ manual_map
         Some(x) => Some({ if let Some(ref s) = s { (x.clone(), s) } else { panic!() } }),
         None => None,
     };
@@ -61,15 +63,18 @@ fn main() {
     }
     unsafe {
         let _ = match Some(0) {
+            //~^ manual_map
             Some(x) => Some(f(x)),
             None => None,
         };
     }
     let _ = match Some(0) {
+        //~^ manual_map
         Some(x) => unsafe { Some(f(x)) },
         None => None,
     };
     let _ = match Some(0) {
+        //~^ manual_map
         Some(x) => Some(unsafe { f(x) }),
         None => None,
     };
@@ -105,8 +110,8 @@ mod with_type_coercion {
             None => None,
         };
 
-        //~v ERROR: manual implementation of `Option::map`
         let _ = match Some(0) {
+            //~^ manual_map
             Some(_) => Some(match f() {
                 Ok(res) => Ok(Box::new(res)),
                 _ => Err(()),
@@ -128,8 +133,8 @@ mod with_type_coercion {
             None => None,
         });
 
-        //~v ERROR: manual implementation of `Option::map`
         let _: Option<Box<&[u8]>> = match Some(0) {
+            //~^ manual_map
             Some(_) => Some(g(x)),
             None => None,
         };

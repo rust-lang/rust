@@ -8,6 +8,7 @@ fn main() {
 pub mod enums {
     #[non_exhaustive]
     pub enum Exhaustive {
+        //~^ exhaustive_enums
         Foo,
         Bar,
         Baz,
@@ -18,6 +19,7 @@ pub mod enums {
     #[repr(C)]
     #[non_exhaustive]
     pub enum ExhaustiveWithAttrs {
+        //~^ exhaustive_enums
         Foo,
         Bar,
         Baz,
@@ -54,6 +56,7 @@ pub mod enums {
 pub mod structs {
     #[non_exhaustive]
     pub struct Exhaustive {
+        //~^ exhaustive_structs
         pub foo: u8,
         pub bar: String,
     }

@@ -9,7 +9,7 @@ LL |     let TupleStruct(_) = ref_value;
    = help: to override `-D warnings` add `#[allow(clippy::pattern_type_mismatch)]`
 
 error: type of pattern does not match the expression type
-  --> tests/ui/pattern_type_mismatch/pattern_tuples.rs:13:25
+  --> tests/ui/pattern_type_mismatch/pattern_tuples.rs:14:25
    |
 LL |     if let &TupleStruct(Some(_)) = ref_value {}
    |                         ^^^^^^^
@@ -17,7 +17,7 @@ LL |     if let &TupleStruct(Some(_)) = ref_value {}
    = help: explicitly match against a `&_` pattern and adjust the enclosed variable bindings
 
 error: type of pattern does not match the expression type
-  --> tests/ui/pattern_type_mismatch/pattern_tuples.rs:15:24
+  --> tests/ui/pattern_type_mismatch/pattern_tuples.rs:17:24
    |
 LL |     if let TupleStruct(Some(_)) = *ref_value {}
    |                        ^^^^^^^
@@ -25,7 +25,7 @@ LL |     if let TupleStruct(Some(_)) = *ref_value {}
    = help: explicitly match against a `&_` pattern and adjust the enclosed variable bindings
 
 error: type of pattern does not match the expression type
-  --> tests/ui/pattern_type_mismatch/pattern_tuples.rs:33:12
+  --> tests/ui/pattern_type_mismatch/pattern_tuples.rs:35:12
    |
 LL |     if let TupleEnum::Var(_) = ref_value {}
    |            ^^^^^^^^^^^^^^^^^
@@ -33,7 +33,7 @@ LL |     if let TupleEnum::Var(_) = ref_value {}
    = help: use `*` to dereference the match expression or explicitly match against a `&_` pattern and adjust the enclosed variable bindings
 
 error: type of pattern does not match the expression type
-  --> tests/ui/pattern_type_mismatch/pattern_tuples.rs:35:28
+  --> tests/ui/pattern_type_mismatch/pattern_tuples.rs:38:28
    |
 LL |     if let &TupleEnum::Var(Some(_)) = ref_value {}
    |                            ^^^^^^^
@@ -41,7 +41,7 @@ LL |     if let &TupleEnum::Var(Some(_)) = ref_value {}
    = help: explicitly match against a `&_` pattern and adjust the enclosed variable bindings
 
 error: type of pattern does not match the expression type
-  --> tests/ui/pattern_type_mismatch/pattern_tuples.rs:37:27
+  --> tests/ui/pattern_type_mismatch/pattern_tuples.rs:41:27
    |
 LL |     if let TupleEnum::Var(Some(_)) = *ref_value {}
    |                           ^^^^^^^
@@ -49,7 +49,7 @@ LL |     if let TupleEnum::Var(Some(_)) = *ref_value {}
    = help: explicitly match against a `&_` pattern and adjust the enclosed variable bindings
 
 error: type of pattern does not match the expression type
-  --> tests/ui/pattern_type_mismatch/pattern_tuples.rs:39:12
+  --> tests/ui/pattern_type_mismatch/pattern_tuples.rs:44:12
    |
 LL |     if let TupleEnum::Empty = ref_value {}
    |            ^^^^^^^^^^^^^^^^
@@ -57,7 +57,7 @@ LL |     if let TupleEnum::Empty = ref_value {}
    = help: use `*` to dereference the match expression or explicitly match against a `&_` pattern and adjust the enclosed variable bindings
 
 error: type of pattern does not match the expression type
-  --> tests/ui/pattern_type_mismatch/pattern_tuples.rs:55:9
+  --> tests/ui/pattern_type_mismatch/pattern_tuples.rs:60:9
    |
 LL |     let (_a, _b) = ref_value;
    |         ^^^^^^^^
@@ -65,7 +65,7 @@ LL |     let (_a, _b) = ref_value;
    = help: use `*` to dereference the match expression or explicitly match against a `&_` pattern and adjust the enclosed variable bindings
 
 error: type of pattern does not match the expression type
-  --> tests/ui/pattern_type_mismatch/pattern_tuples.rs:57:18
+  --> tests/ui/pattern_type_mismatch/pattern_tuples.rs:63:18
    |
 LL |     if let &(_a, Some(_)) = ref_value {}
    |                  ^^^^^^^
@@ -73,7 +73,7 @@ LL |     if let &(_a, Some(_)) = ref_value {}
    = help: explicitly match against a `&_` pattern and adjust the enclosed variable bindings
 
 error: type of pattern does not match the expression type
-  --> tests/ui/pattern_type_mismatch/pattern_tuples.rs:59:17
+  --> tests/ui/pattern_type_mismatch/pattern_tuples.rs:66:17
    |
 LL |     if let (_a, Some(_)) = *ref_value {}
    |                 ^^^^^^^

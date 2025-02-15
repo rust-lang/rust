@@ -4,6 +4,7 @@ error: item uses `packed` representation without ABI-qualification
 LL |   #[repr(packed)]
    |          ------ `packed` representation set here
 LL | / struct NetworkPacketHeader {
+LL | |
 LL | |     header_length: u8,
 LL | |     header_version: u16,
 LL | | }
@@ -18,11 +19,12 @@ LL | #![deny(clippy::repr_packed_without_abi)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: item uses `packed` representation without ABI-qualification
-  --> tests/ui/repr_packed_without_abi.rs:10:1
+  --> tests/ui/repr_packed_without_abi.rs:11:1
    |
 LL |   #[repr(packed)]
    |          ------ `packed` representation set here
 LL | / union Foo {
+LL | |
 LL | |     a: u8,
 LL | |     b: u16,
 LL | | }

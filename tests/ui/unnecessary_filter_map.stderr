@@ -13,15 +13,15 @@ error: this `.filter_map` can be written more simply
 LL |       let _ = (0..4).filter_map(|x| {
    |  _____________^
 LL | |
+LL | |
 LL | |         if x > 1 {
-LL | |             return Some(x);
-LL | |         };
+...  |
 LL | |         None
 LL | |     });
    | |______^ help: try instead: `filter`
 
 error: this `.filter_map` can be written more simply
-  --> tests/ui/unnecessary_filter_map.rs:15:13
+  --> tests/ui/unnecessary_filter_map.rs:16:13
    |
 LL |       let _ = (0..4).filter_map(|x| match x {
    |  _____________^
@@ -32,13 +32,13 @@ LL | |     });
    | |______^ help: try instead: `filter`
 
 error: this `.filter_map` can be written more simply
-  --> tests/ui/unnecessary_filter_map.rs:21:13
+  --> tests/ui/unnecessary_filter_map.rs:22:13
    |
 LL |     let _ = (0..4).filter_map(|x| Some(x + 1));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try instead: `map`
 
 error: redundant closure
-  --> tests/ui/unnecessary_filter_map.rs:28:57
+  --> tests/ui/unnecessary_filter_map.rs:29:57
    |
 LL |     let _ = vec![Some(10), None].into_iter().filter_map(|x| Some(x));
    |                                                         ^^^^^^^^^^^ help: replace the closure with the function itself: `Some`
@@ -47,19 +47,19 @@ LL |     let _ = vec![Some(10), None].into_iter().filter_map(|x| Some(x));
    = help: to override `-D warnings` add `#[allow(clippy::redundant_closure)]`
 
 error: filter_map is unnecessary
-  --> tests/ui/unnecessary_filter_map.rs:28:61
+  --> tests/ui/unnecessary_filter_map.rs:29:61
    |
 LL |     let _ = vec![Some(10), None].into_iter().filter_map(|x| Some(x));
    |                                                             ^^^^ help: try removing the filter_map
 
 error: this `.filter_map` can be written more simply
-  --> tests/ui/unnecessary_filter_map.rs:28:13
+  --> tests/ui/unnecessary_filter_map.rs:29:13
    |
 LL |     let _ = vec![Some(10), None].into_iter().filter_map(|x| Some(x));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try instead: `map`
 
 error: this `.filter_map` can be written more simply
-  --> tests/ui/unnecessary_filter_map.rs:165:14
+  --> tests/ui/unnecessary_filter_map.rs:169:14
    |
 LL |     let _x = std::iter::once(1).filter_map(|n| (n > 1).then_some(n));
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try instead: `filter`

@@ -1,3 +1,4 @@
+//@ check-pass
 //@aux-build:../auxiliary/proc_macros.rs
 extern crate proc_macros;
 

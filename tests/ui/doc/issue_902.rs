@@ -1,3 +1,4 @@
+//@ check-pass
 /// See [NIST SP 800-56A, revision 2].
 ///
 /// [NIST SP 800-56A, revision 2]:

@@ -26,9 +26,13 @@ fn main() {
     3 | 2 - 1;
     3 & 5 - 2;
     0x0F00 & 0x00F0 << 4;
+    //~^ precedence_bits
     0x0F00 & 0xF000 >> 4;
+    //~^ precedence_bits
     0x0F00 << 1 ^ 3;
+    //~^ precedence_bits
     0x0F00 << 1 | 2;
+    //~^ precedence_bits
 
     let b = 3;
     trip!(b * 8);

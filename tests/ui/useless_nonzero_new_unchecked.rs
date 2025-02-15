@@ -5,7 +5,7 @@ use std::num::{NonZero, NonZeroUsize};
 #[clippy::msrv = "1.83"]
 const fn func() -> NonZeroUsize {
     const { unsafe { NonZeroUsize::new_unchecked(3) } }
-    //~^ ERROR: `Option::unwrap()` can be safely used in a `const` context
+    //~^ useless_nonzero_new_unchecked
 }
 
 #[clippy::msrv = "1.82"]
@@ -35,17 +35,17 @@ macro_rules! nzu {
 
 fn main() {
     const _A: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(3) };
-    //~^ ERROR: `Option::unwrap()` can be safely used in a `const` context
+    //~^ useless_nonzero_new_unchecked
 
     static _B: NonZero<u8> = unsafe { NonZero::<u8>::new_unchecked(42) };
-    //~^ ERROR: `Option::unwrap()` can be safely used in a `const` context
+    //~^ useless_nonzero_new_unchecked
 
     const _C: usize = unsafe { NonZeroUsize::new_unchecked(3).get() };
-    //~^ ERROR: `Option::unwrap()` can be safely used in a `const` context
+    //~^ useless_nonzero_new_unchecked
 
     const AUX: usize = 3;
     const _D: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(AUX) };
-    //~^ ERROR: `Option::unwrap()` can be safely used in a `const` context
+    //~^ useless_nonzero_new_unchecked
 
     const _X: NonZeroUsize = uns!(NonZeroUsize::new_unchecked(3));
     const _Y: NonZeroUsize = unsafe { nzu!() };

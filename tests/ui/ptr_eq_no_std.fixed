@@ -29,7 +29,9 @@ fn main() {
     let b = &[1, 2, 3];
 
     let _ = core::ptr::eq(a, b);
+    //~^ ptr_eq
     let _ = core::ptr::eq(a, b);
+    //~^ ptr_eq
     let _ = a.as_ptr() == b as *const _;
     let _ = a.as_ptr() == b.as_ptr();
 

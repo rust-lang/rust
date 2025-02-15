@@ -7,7 +7,7 @@ use std::iter::IntoIterator;
 
 pub struct S1;
 impl<'a> IntoIterator for &'a S1 {
-    //~^ ERROR: `IntoIterator` implemented for a reference type without an `iter` method
+    //~^ into_iter_without_iter
     type IntoIter = std::slice::Iter<'a, u8>;
     type Item = &'a u8;
     fn into_iter(self) -> Self::IntoIter {
@@ -15,7 +15,7 @@ impl<'a> IntoIterator for &'a S1 {
     }
 }
 impl<'a> IntoIterator for &'a mut S1 {
-    //~^ ERROR: `IntoIterator` implemented for a reference type without an `iter_mut` method
+    //~^ into_iter_without_iter
     type IntoIter = std::slice::IterMut<'a, u8>;
     type Item = &'a mut u8;
     fn into_iter(self) -> Self::IntoIter {
@@ -25,7 +25,7 @@ impl<'a> IntoIterator for &'a mut S1 {
 
 pub struct S2<T>(T);
 impl<'a, T> IntoIterator for &'a S2<T> {
-    //~^ ERROR: `IntoIterator` implemented for a reference type without an `iter` method
+    //~^ into_iter_without_iter
     type IntoIter = std::slice::Iter<'a, T>;
     type Item = &'a T;
     fn into_iter(self) -> Self::IntoIter {
@@ -33,7 +33,7 @@ impl<'a, T> IntoIterator for &'a S2<T> {
     }
 }
 impl<'a, T> IntoIterator for &'a mut S2<T> {
-    //~^ ERROR: `IntoIterator` implemented for a reference type without an `iter_mut` method
+    //~^ into_iter_without_iter
     type IntoIter = std::slice::IterMut<'a, T>;
     type Item = &'a mut T;
     fn into_iter(self) -> Self::IntoIter {
@@ -84,7 +84,7 @@ impl<'a, T> IntoIterator for &S4<'a, T> {
 }
 
 impl<'a, T> IntoIterator for &mut S4<'a, T> {
-    //~^ ERROR: `IntoIterator` implemented for a reference type without an `iter_mut` method
+    //~^ into_iter_without_iter
     type IntoIter = std::slice::IterMut<'a, T>;
     type Item = &'a mut T;
     fn into_iter(self) -> Self::IntoIter {
@@ -118,6 +118,7 @@ pub struct Issue12037;
 macro_rules! generate_impl {
     () => {
         impl<'a> IntoIterator for &'a Issue12037 {
+            //~^ into_iter_without_iter
             type IntoIter = std::slice::Iter<'a, u8>;
             type Item = &'a u8;
             fn into_iter(self) -> Self::IntoIter {

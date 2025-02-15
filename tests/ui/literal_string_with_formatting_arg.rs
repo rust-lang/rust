@@ -40,7 +40,8 @@ fn main() {
     x.expect(r##" {y:?} {y:?} "##); //~ literal_string_with_formatting_args
     assert!("{y}".is_ascii()); //~ literal_string_with_formatting_args
     // Ensure that it doesn't try to go in the middle of a unicode character.
-    x.expect("———{:?}"); //~ literal_string_with_formatting_args
+    x.expect("———{:?}");
+    //~^ literal_string_with_formatting_args
 
     // Should not lint!
     format!("{y:?}");
@@ -51,6 +52,8 @@ fn main() {
     x.expect("{{y:?}");
     x.expect(" {0}"); // If it only contains an integer, we ignore it.
     x.expect(r##" {x:?} "##); // `x` doesn't exist so we shoud not lint
+    //
+    //~^^ literal_string_with_formatting_args
     x.expect("{y:...}");
     let _ = "fn main {\n\
     }";
