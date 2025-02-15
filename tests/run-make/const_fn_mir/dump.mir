@@ -25,16 +25,3 @@ fn foo() -> i32 {
         return;
     }
 }
-
-fn main() -> () {
-    let mut _0: ();
-    let _1: i32;
-
-    bb0: {
-        _1 = foo() -> [return: bb1, unwind continue];
-    }
-
-    bb1: {
-        return;
-    }
-}
