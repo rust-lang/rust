@@ -107,7 +107,7 @@ flag, for example:
 
 Users need to install or built wasi-sdk since release 20.0
 https://github.com/WebAssembly/wasi-sdk/releases/tag/wasi-sdk-20
-and specify path to *wasi-root* `config.toml`
+and specify path to *wasi-root* `bootstrap.toml`
 
 ```toml
 [target.wasm32-wasip1-threads]
@@ -115,7 +115,7 @@ wasi-root = ".../wasi-libc/sysroot"
 ```
 
 After that users can build this by adding it to the `target` list in
-`config.toml`, or with `-Zbuild-std`.
+`bootstrap.toml`, or with `-Zbuild-std`.
 
 ## Building Rust programs
 
