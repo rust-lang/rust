@@ -1,4 +1,7 @@
-//@ check-pass
+//@revisions: current gai
+//@[current] check-pass
+
+#![cfg_attr(gai, feature(generic_arg_infer))]
 
 use std::marker::PhantomData;
 
@@ -17,5 +20,6 @@ fn extract<T, const N: usize>(_: [Foo<T>; N]) -> T {
 
 fn main() {
     let x = [Foo(PhantomData); 2];
+    //[gai]~^ ERROR: type annotations needed
     _ = extract(x).max(2);
 }
