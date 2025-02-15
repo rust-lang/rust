@@ -385,4 +385,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "New option `build.exclude` that adds support for excluding test.",
     },
+    ChangeInfo {
+        change_id: 137081,
+        severity: ChangeSeverity::Info,
+        summary: "The default configuration filename has changed from `config.toml` to `bootstrap.toml`. `config.toml` is deprecated but remains supported for backward compatibility.",
+    },
 ];

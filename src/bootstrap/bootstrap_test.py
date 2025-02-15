@@ -156,7 +156,7 @@ class ParseArgsInConfigure(unittest.TestCase):
 
 
 class GenerateAndParseConfig(unittest.TestCase):
-    """Test that we can serialize and deserialize a config.toml file"""
+    """Test that we can serialize and deserialize a bootstrap.toml file"""
 
     def test_no_args(self):
         build = serialize_and_parse([])
@@ -206,11 +206,11 @@ class BuildBootstrap(unittest.TestCase):
         # problem in most cases, but there is a scenario where it would cause
         # the test to fail.
         #
-        # When a custom local Cargo is configured in config.toml (with the
+        # When a custom local Cargo is configured in bootstrap.toml (with the
         # build.cargo setting), no Cargo is downloaded to any location known by
         # bootstrap, and bootstrap relies on that setting to find it.
         #
-        # In this test though we are not using the config.toml of the caller:
+        # In this test though we are not using the bootstrap.toml of the caller:
         # we are generating a blank one instead. If we don't set build.cargo in
         # it, the test will have no way to find Cargo, failing the test.
         cargo_bin = os.environ.get("BOOTSTRAP_TEST_CARGO_BIN")

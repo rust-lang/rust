@@ -2282,7 +2282,7 @@ Compatibility Notes
 - [Cargo denies `CARGO_HOME` in the `[env]` configuration table. Cargo itself doesn't pick up this value, but recursive calls to cargo would, which was not intended.](https://github.com/rust-lang/cargo/pull/11644/)
 - [Debuginfo for build dependencies is now off if not explicitly set. This is expected to improve the overall build time.](https://github.com/rust-lang/cargo/pull/11252/)
 - [The Rust distribution no longer always includes rustdoc](https://github.com/rust-lang/rust/pull/106886)
-  If `tools = [...]` is set in config.toml, we will respect a missing rustdoc in that list. By
+  If `tools = [...]` is set in bootstrap.toml, we will respect a missing rustdoc in that list. By
   default rustdoc remains included. To retain the prior behavior explicitly add `"rustdoc"` to the
   list.
 
@@ -5268,7 +5268,7 @@ related tools.
 
 - [Building `rustc` from source now uses `ninja` by default over `make`.][74922]
   You can continue building with `make` by setting `ninja=false` in
-  your `config.toml`.
+  your `bootstrap.toml`.
 - [cg_llvm: `fewer_names` in `uncached_llvm_type`][76030]
 - [Made `ensure_sufficient_stack()` non-generic][76680]
 

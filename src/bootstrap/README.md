@@ -163,7 +163,7 @@ compiler, which will then build the bootstrap binary written in Rust.
 
 Because there are two separate codebases behind `x.py`, they need to
 be kept in sync. In particular, both `bootstrap.py` and the bootstrap binary
-parse `config.toml` and read the same command line arguments. `bootstrap.py`
+parse `bootstrap.toml` and read the same command line arguments. `bootstrap.py`
 keeps these in sync by setting various environment variables, and the
 programs sometimes have to add arguments that are explicitly ignored, to be
 read by the other.
