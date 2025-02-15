@@ -5,8 +5,7 @@ edition = "2024"
 
 [dependencies]
 # tidy-alphabetical-start
-# FIXME: waiting for the new version of measureme. (https://github.com/rust-lang/measureme/pull/240)
-measureme = { package = "measureme-mirror", version = "12.0.1" }
+measureme = "12.0.1"
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_hashes = { path = "../rustc_hashes" }
