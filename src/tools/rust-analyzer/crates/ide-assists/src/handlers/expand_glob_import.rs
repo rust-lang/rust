@@ -3,10 +3,11 @@ use hir::{AssocItem, Enum, HasVisibility, Module, ModuleDef, Name, PathResolutio
 use ide_db::{
     defs::{Definition, NameRefClass},
     search::SearchScope,
+    source_change::SourceChangeBuilder,
 };
 use stdx::never;
 use syntax::{
-    ast::{self, make},
+    ast::{self, make, Use, UseTree},
     ted, AstNode, Direction, SyntaxNode, SyntaxToken, T,
 };
 
@@ -43,6 +44,7 @@ use crate::{
 pub(crate) fn expand_glob_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let star = ctx.find_token_syntax_at_offset(T![*])?;
     let use_tree = star.parent().and_then(ast::UseTree::cast)?;
+    let use_item = star.parent_ancestors().find_map(ast::Use::cast)?;
     let (parent, mod_path) = find_parent_and_path(&star)?;
     let target_module = match ctx.sema.resolve_path(&mod_path)? {
         PathResolution::Def(ModuleDef::Module(it)) => Expandable::Module(it),
@@ -53,8 +55,9 @@ pub(crate) fn expand_glob_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
     let current_scope = ctx.sema.scope(&star.parent()?)?;
     let current_module = current_scope.module();
 
-    let refs_in_target = find_refs_in_mod(ctx, target_module, current_module)?;
-    let imported_defs = find_imported_defs(ctx, star)?;
+    if !is_visible_from(ctx, &target_module, current_module) {
+        return None;
+    }
 
     let target = parent.either(|n| n.syntax().clone(), |n| n.syntax().clone());
     acc.add(
@@ -62,35 +65,49 @@ pub(crate) fn expand_glob_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
         "Expand glob import",
         target.text_range(),
         |builder| {
-            let use_tree = builder.make_mut(use_tree);
-
-            let names_to_import = find_names_to_import(ctx, refs_in_target, imported_defs);
-            let expanded = make::use_tree_list(names_to_import.iter().map(|n| {
-                let path = make::ext::ident_path(
-                    &n.display(ctx.db(), current_module.krate().edition(ctx.db())).to_string(),
-                );
-                make::use_tree(path, None, None, false)
-            }))
-            .clone_for_update();
-
-            match use_tree.star_token() {
-                Some(star) => {
-                    let needs_braces = use_tree.path().is_some() && names_to_import.len() != 1;
-                    if needs_braces {
-                        ted::replace(star, expanded.syntax())
-                    } else {
-                        let without_braces = expanded
-                            .syntax()
-                            .children_with_tokens()
-                            .filter(|child| !matches!(child.kind(), T!['{'] | T!['}']))
-                            .collect();
-                        ted::replace_with_many(star, without_braces)
-                    }
-                }
-                None => never!(),
-            }
+            build_expanded_import(ctx, builder, use_tree, use_item, target_module, current_module)
         },
     )
+}
+
+fn build_expanded_import(
+    ctx: &AssistContext<'_>,
+    builder: &mut SourceChangeBuilder,
+    use_tree: UseTree,
+    use_item: Use,
+    target_module: Expandable,
+    current_module: Module,
+) {
+    let refs_in_target = find_refs_in_mod(ctx, target_module, current_module);
+    let imported_defs = find_imported_defs(ctx, use_item);
+
+    let use_tree = builder.make_mut(use_tree);
+
+    let names_to_import = find_names_to_import(ctx, refs_in_target, imported_defs);
+    let expanded = make::use_tree_list(names_to_import.iter().map(|n| {
+        let path = make::ext::ident_path(
+            &n.display(ctx.db(), current_module.krate().edition(ctx.db())).to_string(),
+        );
+        make::use_tree(path, None, None, false)
+    }))
+    .clone_for_update();
+
+    match use_tree.star_token() {
+        Some(star) => {
+            let needs_braces = use_tree.path().is_some() && names_to_import.len() != 1;
+            if needs_braces {
+                ted::replace(star, expanded.syntax())
+            } else {
+                let without_braces = expanded
+                    .syntax()
+                    .children_with_tokens()
+                    .filter(|child| !matches!(child.kind(), T!['{'] | T!['}']))
+                    .collect();
+                ted::replace_with_many(star, without_braces)
+            }
+        }
+        None => never!(),
+    }
 }
 
 enum Expandable {
@@ -176,36 +193,24 @@ impl Refs {
     }
 }
 
-fn find_refs_in_mod(
-    ctx: &AssistContext<'_>,
-    expandable: Expandable,
-    visible_from: Module,
-) -> Option<Refs> {
-    if !is_expandable_visible_from(ctx, &expandable, visible_from) {
-        return None;
-    }
-
+fn find_refs_in_mod(ctx: &AssistContext<'_>, expandable: Expandable, visible_from: Module) -> Refs {
     match expandable {
         Expandable::Module(module) => {
             let module_scope = module.scope(ctx.db(), Some(visible_from));
             let refs =
                 module_scope.into_iter().filter_map(|(n, d)| Ref::from_scope_def(n, d)).collect();
-            Some(Refs(refs))
+            Refs(refs)
         }
-        Expandable::Enum(enm) => Some(Refs(
+        Expandable::Enum(enm) => Refs(
             enm.variants(ctx.db())
                 .into_iter()
                 .map(|v| Ref { visible_name: v.name(ctx.db()), def: Definition::Variant(v) })
                 .collect(),
-        )),
+        ),
     }
 }
 
-fn is_expandable_visible_from(
-    ctx: &AssistContext<'_>,
-    expandable: &Expandable,
-    from: Module,
-) -> bool {
+fn is_visible_from(ctx: &AssistContext<'_>, expandable: &Expandable, from: Module) -> bool {
     fn is_mod_visible_from(ctx: &AssistContext<'_>, module: Module, from: Module) -> bool {
         match module.parent(ctx.db()) {
             Some(parent) => {
@@ -246,41 +251,29 @@ fn is_expandable_visible_from(
 // use foo::*$0;
 // use baz::Baz;
 // ↑ ---------------
-fn find_imported_defs(ctx: &AssistContext<'_>, star: SyntaxToken) -> Option<Vec<Definition>> {
-    let parent_use_item_syntax = star.parent_ancestors().find_map(|n| {
-        if ast::Use::can_cast(n.kind()) {
-            Some(n)
-        } else {
-            None
-        }
-    })?;
-
-    Some(
-        [Direction::Prev, Direction::Next]
-            .into_iter()
-            .flat_map(|dir| {
-                parent_use_item_syntax
-                    .siblings(dir.to_owned())
-                    .filter(|n| ast::Use::can_cast(n.kind()))
-            })
-            .flat_map(|n| n.descendants().filter_map(ast::NameRef::cast))
-            .filter_map(|r| match NameRefClass::classify(&ctx.sema, &r)? {
-                NameRefClass::Definition(
-                    def @ (Definition::Macro(_)
-                    | Definition::Module(_)
-                    | Definition::Function(_)
-                    | Definition::Adt(_)
-                    | Definition::Variant(_)
-                    | Definition::Const(_)
-                    | Definition::Static(_)
-                    | Definition::Trait(_)
-                    | Definition::TypeAlias(_)),
-                    _,
-                ) => Some(def),
-                _ => None,
-            })
-            .collect(),
-    )
+fn find_imported_defs(ctx: &AssistContext<'_>, use_item: Use) -> Vec<Definition> {
+    [Direction::Prev, Direction::Next]
+        .into_iter()
+        .flat_map(|dir| {
+            use_item.syntax().siblings(dir.to_owned()).filter(|n| ast::Use::can_cast(n.kind()))
+        })
+        .flat_map(|n| n.descendants().filter_map(ast::NameRef::cast))
+        .filter_map(|r| match NameRefClass::classify(&ctx.sema, &r)? {
+            NameRefClass::Definition(
+                def @ (Definition::Macro(_)
+                | Definition::Module(_)
+                | Definition::Function(_)
+                | Definition::Adt(_)
+                | Definition::Variant(_)
+                | Definition::Const(_)
+                | Definition::Static(_)
+                | Definition::Trait(_)
+                | Definition::TypeAlias(_)),
+                _,
+            ) => Some(def),
+            _ => None,
+        })
+        .collect()
 }
 
 fn find_names_to_import(
