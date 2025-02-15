@@ -2399,7 +2399,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 // Impl trait in bindings lower as an infer var with additional
                 // set of type bounds.
                 let self_ty = self.ty_infer(None, hir_ty.span);
-                let mut bounds = Vec::new();
+                let mut bounds = Vec::with_capacity(hir_bounds.len());
                 self.lower_bounds(
                     self_ty,
                     hir_bounds.iter(),

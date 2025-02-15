@@ -177,7 +177,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     // on a trait we must also consider the bounds that follow the trait's name,
     // like `trait Foo: A + B + C`.
     if let Some(self_bounds) = is_trait {
-        let mut bounds = Vec::new();
+        let mut bounds = Vec::with_capacity(self_bounds.len());
         icx.lowerer().lower_bounds(
             tcx.types.self_param,
             self_bounds,
@@ -263,7 +263,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                     }
                 }
 
-                let mut bounds = Vec::new();
+                let mut bounds = Vec::with_capacity(bound_pred.bounds.len());
                 icx.lowerer().lower_bounds(
                     ty,
                     bound_pred.bounds,
@@ -626,7 +626,7 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
     let icx = ItemCtxt::new(tcx, trait_def_id);
 
     let self_param_ty = tcx.types.self_param;
-    let mut bounds = Vec::new();
+    let mut bounds = Vec::with_capacity(superbounds.len());
     icx.lowerer().lower_bounds(self_param_ty, superbounds, &mut bounds, ty::List::empty(), filter);
 
     let where_bounds_that_match =
