@@ -515,6 +515,7 @@ impl<A: Allocator> Read for VecDeque<u8, A> {
         Ok(n)
     }
 
+    #[inline]
     fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
         let (front, back) = self.as_slices();
 
@@ -547,6 +548,7 @@ impl<A: Allocator> Read for VecDeque<u8, A> {
         Ok(())
     }
 
+    #[inline]
     fn read_buf_exact(&mut self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
         let len = cursor.capacity();
         let (front, back) = self.as_slices();
@@ -646,6 +648,7 @@ impl<A: Allocator> Write for VecDeque<u8, A> {
 
 #[unstable(feature = "read_buf", issue = "78485")]
 impl<'a> io::Write for core::io::BorrowedCursor<'a> {
+    #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let amt = cmp::min(buf.len(), self.capacity());
         self.append(&buf[..amt]);
