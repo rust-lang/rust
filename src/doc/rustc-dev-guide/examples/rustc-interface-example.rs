@@ -1,3 +1,5 @@
+// Tested with nightly-2025-02-13
+
 #![feature(rustc_private)]
 
 extern crate rustc_driver;
@@ -8,8 +10,6 @@ extern crate rustc_hir;
 extern crate rustc_interface;
 extern crate rustc_session;
 extern crate rustc_span;
-
-use std::sync::Arc;
 
 use rustc_errors::registry;
 use rustc_hash::FxHashMap;
@@ -56,7 +56,7 @@ fn main() {
         expanded_args: Vec::new(),
         ice_file: None,
         hash_untracked_state: None,
-        using_internal_features: Arc::default(),
+        using_internal_features: &rustc_driver::USING_INTERNAL_FEATURES,
     };
     rustc_interface::run_compiler(config, |compiler| {
         // Parse the program and print the syntax tree.
@@ -68,7 +68,7 @@ fn main() {
                 let hir = tcx.hir();
                 let item = hir.item(id);
                 match item.kind {
-                    rustc_hir::ItemKind::Static(_, _, _) | rustc_hir::ItemKind::Fn(_, _, _) => {
+                    rustc_hir::ItemKind::Static(_, _, _) | rustc_hir::ItemKind::Fn { .. } => {
                         let name = item.ident;
                         let ty = tcx.type_of(item.hir_id().owner.def_id);
                         println!("{name:?}:\t{ty:?}")

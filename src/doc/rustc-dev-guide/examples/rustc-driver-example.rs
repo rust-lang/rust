@@ -1,3 +1,5 @@
+// Tested with nightly-2025-02-13
+
 #![feature(rustc_private)]
 
 extern crate rustc_ast;
@@ -73,7 +75,7 @@ impl rustc_driver::Callbacks for MyCallbacks {
             let hir = tcx.hir();
             let item = hir.item(id);
             match item.kind {
-                rustc_hir::ItemKind::Static(_, _, _) | rustc_hir::ItemKind::Fn(_, _, _) => {
+                rustc_hir::ItemKind::Static(_, _, _) | rustc_hir::ItemKind::Fn { .. } => {
                     let name = item.ident;
                     let ty = tcx.type_of(item.hir_id().owner.def_id);
                     println!("{name:?}:\t{ty:?}")
@@ -87,5 +89,13 @@ impl rustc_driver::Callbacks for MyCallbacks {
 }
 
 fn main() {
-    run_compiler(&["main.rs".to_string()], &mut MyCallbacks);
+    run_compiler(
+        &[
+            // The first argument, which in practice contains the name of the binary being executed
+            // (i.e. "rustc") is ignored by rustc.
+            "ignored".to_string(),
+            "main.rs".to_string(),
+        ],
+        &mut MyCallbacks,
+    );
 }

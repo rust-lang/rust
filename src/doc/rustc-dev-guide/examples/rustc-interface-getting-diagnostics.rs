@@ -1,3 +1,5 @@
+// Tested with nightly-2025-02-13
+
 #![feature(rustc_private)]
 
 extern crate rustc_data_structures;
@@ -15,7 +17,7 @@ use std::sync::{Arc, Mutex};
 use rustc_errors::emitter::Emitter;
 use rustc_errors::registry::{self, Registry};
 use rustc_errors::translation::Translate;
-use rustc_errors::{DiagCtxt, DiagInner, FluentBundle};
+use rustc_errors::{DiagInner, FluentBundle};
 use rustc_session::config;
 use rustc_span::source_map::SourceMap;
 
@@ -79,7 +81,7 @@ fn main() {
         expanded_args: Vec::new(),
         ice_file: None,
         hash_untracked_state: None,
-        using_internal_features: Arc::default(),
+        using_internal_features: &rustc_driver::USING_INTERNAL_FEATURES,
     };
     rustc_interface::run_compiler(config, |compiler| {
         let krate = rustc_interface::passes::parse(&compiler.sess);
