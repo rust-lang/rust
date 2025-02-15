@@ -154,7 +154,7 @@ impl Step for Std {
 
         // When using `download-rustc`, we already have artifacts for the host available. Don't
         // recompile them.
-        if builder.download_rustc() && target == builder.build.build
+        if builder.download_rustc() && builder.is_builder_target(target)
             // NOTE: the beta compiler may generate different artifacts than the downloaded compiler, so
             // its artifacts can't be reused.
             && compiler.stage != 0
@@ -232,7 +232,7 @@ impl Step for Std {
         // The LLD wrappers and `rust-lld` are self-contained linking components that can be
         // necessary to link the stdlib on some targets. We'll also need to copy these binaries to
         // the `stage0-sysroot` to ensure the linker is found when bootstrapping on such a target.
-        if compiler.stage == 0 && builder.is_builder_target(&compiler.host) {
+        if compiler.stage == 0 && builder.is_builder_target(compiler.host) {
             trace!(
                 "(build == host) copying linking components to `stage0-sysroot` for bootstrapping"
             );
@@ -1559,7 +1559,7 @@ impl Step for CodegenBackend {
     #[cfg_attr(
         feature = "tracing",
         instrument(
-            level = "debug", 
+            level = "debug",
             name = "CodegenBackend::run",
             skip_all,
             fields(
@@ -2485,7 +2485,7 @@ pub fn strip_debug(builder: &Builder<'_>, target: TargetSelection, path: &Path) 
     // FIXME: to make things simpler for now, limit this to the host and target where we know
     // `strip -g` is both available and will fix the issue, i.e. on a x64 linux host that is not
     // cross-compiling. Expand this to other appropriate targets in the future.
-    if target != "x86_64-unknown-linux-gnu" || !builder.is_builder_target(&target) || !path.exists()
+    if target != "x86_64-unknown-linux-gnu" || !builder.is_builder_target(target) || !path.exists()
     {
         return;
     }
