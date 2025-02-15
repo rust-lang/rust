@@ -176,6 +176,13 @@ jobs:
       - name: ensure the stable version number is correct
         run: src/ci/scripts/verify-stable-version-number.sh
 
+      # Pre-build citool before the following step uninstalls rustup
+      # Build is into the build directory, to avoid modifying sources
+      - name: build citool
+        run: |
+          cd src/ci/citool
+          CARGO_TARGET_DIR=../../../build/citool cargo build
+
       - name: run the build
         # Redirect stderr to stdout to avoid reordering the two streams in the GHA logs.
         run: src/ci/scripts/run-build-from-ci.sh 2>&1
@@ -212,16 +219,13 @@ jobs:
         # erroring about invalid credentials instead.
         if: github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1'
 
-      - name: upload job metrics to DataDog
-        if: needs.calculate_matrix.outputs.run_type != 'pr'
-        env:
-          DATADOG_SITE: datadoghq.com
-          DATADOG_API_KEY: ${{ secrets.DATADOG_API_KEY }}
-          DD_GITHUB_JOB_NAME: ${{ matrix.full_name }}
+      - name: postprocess metrics into the summary
         run: |
-          cd src/ci
-          npm ci
-          python3 scripts/upload-build-metrics.py ../../build/cpu-usage.csv
+          if [ -f build/metrics.json ]; then
+            ./build/citool/debug/citool postprocess-metrics build/metrics.json ${GITHUB_STEP_SUMMARY}
+          elif [ -f obj/build/metrics.json ]; then
+            ./build/citool/debug/citool postprocess-metrics obj/build/metrics.json ${GITHUB_STEP_SUMMARY}
+          fi
 
   # This job isused to tell bors the final status of the build, as there is no practical way to detect
   # when a workflow is successful listening to webhooks only in our current bors implementation (homu).
