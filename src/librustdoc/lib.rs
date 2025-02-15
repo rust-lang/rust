@@ -515,7 +515,7 @@ fn opts() -> Vec<RustcOptGroup> {
             "",
         ),
         opt(
-            Unstable,
+            Stable,
             Opt,
             "",
             "test-runtool",
@@ -523,7 +523,7 @@ fn opts() -> Vec<RustcOptGroup> {
             "The tool to run tests with when building for a different target than host",
         ),
         opt(
-            Unstable,
+            Stable,
             Multi,
             "",
             "test-runtool-arg",

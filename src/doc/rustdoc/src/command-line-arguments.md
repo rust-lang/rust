@@ -222,6 +222,23 @@ For more, see [the chapter on documentation tests](write-documentation/documenta
 
 See also `--test`.
 
+## `--test-runtool`, `--test-runtool-arg`: program to run tests with; args to pass to it
+
+Using these options looks like this:
+
+```bash
+$ rustdoc src/lib.rs --test-runtool runner --test-runtool-arg --do-thing --test-runtool-arg --do-other-thing
+```
+
+These options can be used to run the doctest under a program, and also pass arguments to
+that program. For example, if you want to run your doctests under valgrind you might run
+
+```bash
+$ rustdoc src/lib.rs --test-runtool valgrind
+```
+
+Another use case would be to run a test inside an emulator, or through a Virtual Machine.
+
 ## `--target`: generate documentation for the specified target triple
 
 Using this flag looks like this:

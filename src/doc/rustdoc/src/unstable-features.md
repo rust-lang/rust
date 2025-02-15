@@ -666,25 +666,6 @@ struct Foo;
 In older versions, this will be ignored on all targets, but on newer versions `ignore-gnu` will
 override `ignore`.
 
-## `--test-runtool`, `--test-runtool-arg`: program to run tests with; args to pass to it
-
- * Tracking issue: [#64245](https://github.com/rust-lang/rust/issues/64245)
-
-Using these options looks like this:
-
-```bash
-$ rustdoc src/lib.rs -Z unstable-options --test-runtool runner --test-runtool-arg --do-thing --test-runtool-arg --do-other-thing
-```
-
-These options can be used to run the doctest under a program, and also pass arguments to
-that program. For example, if you want to run your doctests under valgrind you might run
-
-```bash
-$ rustdoc src/lib.rs -Z unstable-options --test-runtool valgrind
-```
-
-Another use case would be to run a test inside an emulator, or through a Virtual Machine.
-
 ## `--with-examples`: include examples of uses of items as documentation
 
  * Tracking issue: [#88791](https://github.com/rust-lang/rust/issues/88791)
