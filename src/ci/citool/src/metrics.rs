@@ -10,6 +10,7 @@ pub fn postprocess_metrics(metrics_path: &Path, summary_path: &Path) -> anyhow::
     let suites = get_test_suites(&metrics);
 
     if suites.is_empty() {
+        eprintln!("No test suites found in {}", metrics_path.display());
         return Ok(());
     }
 
@@ -23,6 +24,8 @@ pub fn postprocess_metrics(metrics_path: &Path, summary_path: &Path) -> anyhow::
         .with_context(|| format!("Cannot open summary file at {summary_path:?}"))?;
     writeln!(file, "\n# Test results\n")?;
     writeln!(file, "{table}")?;
+
+    eprintln!("Written test suite summary into {}", summary_path.display());
 
     Ok(())
 }

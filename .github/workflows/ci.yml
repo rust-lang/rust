@@ -225,6 +225,8 @@ jobs:
             ./build/citool/debug/citool postprocess-metrics build/metrics.json ${GITHUB_STEP_SUMMARY}
           elif [ -f obj/build/metrics.json ]; then
             ./build/citool/debug/citool postprocess-metrics obj/build/metrics.json ${GITHUB_STEP_SUMMARY}
+          else
+            echo "No metrics.json found"
           fi
 
   # This job isused to tell bors the final status of the build, as there is no practical way to detect
