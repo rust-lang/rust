@@ -79,7 +79,7 @@ fn test_function_var_to_numeric_cast() {
 fn fn_with_fn_args(f: fn(i32) -> i32) -> i32 {
     f as i32
     //~[64bit]^ fn_to_numeric_cast_with_truncation
-    //~[32bit]^^ ERROR: literal out of range for `usize`
+    //~[32bit]^^ fn_to_numeric_cast
 }
 
 fn main() {}

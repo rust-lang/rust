@@ -62,6 +62,6 @@ fn main() {
     //~^ cast_precision_loss
     9_999_999_999_999_999usize as f64;
     //~^ cast_precision_loss
-    //~[32bit]^^ overflowing_literals
+    //~[32bit]^^ ERROR: literal out of range for `usize`
     // 999_999_999_999_999_999_999_999_999_999u128 as f128;
 }
