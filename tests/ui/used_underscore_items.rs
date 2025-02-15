@@ -61,3 +61,13 @@ fn external_item_call() {
 
     external_item::_exernal_foo();
 }
+
+// should not lint foreign functions.
+// issue #14156
+extern "C" {
+    pub fn _exit(code: i32) -> !;
+}
+
+fn _f() {
+    unsafe { _exit(1) }
+}
