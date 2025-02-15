@@ -7,6 +7,7 @@ use rustc_abi::{
     PointeeInfo, PointerKind, Primitive, ReprOptions, Scalar, Size, TagEncoding, TargetDataLayout,
     TyAbiInterface, VariantIdx, Variants,
 };
+use rustc_data_structures::stable_hasher::Hash64;
 use rustc_error_messages::DiagMessage;
 use rustc_errors::{
     Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
@@ -778,7 +779,7 @@ where
                     size: Size::ZERO,
                     max_repr_align: None,
                     unadjusted_abi_align: tcx.data_layout.i8_align.abi,
-                    randomization_seed: 0,
+                    randomization_seed: Hash64::ZERO,
                 })
             }
 

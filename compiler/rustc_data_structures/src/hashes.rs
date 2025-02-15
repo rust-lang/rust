@@ -35,6 +35,11 @@ impl Hash64 {
     pub fn as_u64(self) -> u64 {
         self.inner
     }
+
+    #[inline]
+    pub fn wrapping_add(self, other: Self) -> Self {
+        Self { inner: self.inner.wrapping_add(other.inner) }
+    }
 }
 
 impl BitXorAssign<u64> for Hash64 {
