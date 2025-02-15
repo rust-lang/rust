@@ -108,11 +108,18 @@ impl Timespec {
             not(target_arch = "riscv32")
         ))]
         {
-            use crate::sys::weak::weak;
+            use crate::sys::weak::maybe_weak;
 
             // __clock_gettime64 was added to 32-bit arches in glibc 2.34,
             // and it handles both vDSO calls and ENOSYS fallbacks itself.
-            weak!(fn __clock_gettime64(libc::clockid_t, *mut __timespec64) -> libc::c_int);
+            maybe_weak!(
+                // FIXME: Mark with `os_version_min` once that supports glibc.
+                #[cfg_always_available_on(false)]
+                fn __clock_gettime64(
+                    clock_id: libc::clockid_t,
+                    tp: *mut __timespec64,
+                ) -> libc::c_int;
+            );
 
             if let Some(clock_gettime64) = __clock_gettime64.get() {
                 let mut t = MaybeUninit::uninit();

@@ -4,7 +4,7 @@ use crate::num::NonZero;
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
 use crate::sys::weak::dlsym;
 #[cfg(any(target_os = "solaris", target_os = "illumos", target_os = "nto",))]
-use crate::sys::weak::weak;
+use crate::sys::weak::maybe_weak;
 use crate::sys::{os, stack_overflow};
 use crate::time::Duration;
 use crate::{cmp, io, ptr};
@@ -186,11 +186,13 @@ impl Thread {
 
     #[cfg(any(target_os = "solaris", target_os = "illumos", target_os = "nto"))]
     pub fn set_name(name: &CStr) {
-        weak! {
+        maybe_weak!(
+            #[cfg_always_available_on(false)]
             fn pthread_setname_np(
-                libc::pthread_t, *const libc::c_char
-            ) -> libc::c_int
-        }
+                thread: libc::pthread_t,
+                name: *const libc::c_char,
+            ) -> libc::c_int;
+        );
 
         if let Some(f) = pthread_setname_np.get() {
             #[cfg(target_os = "nto")]
