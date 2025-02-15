@@ -1,3 +1,5 @@
+//! Various utilities for working with [`fmt::Display`] implementations.
+
 use std::fmt::{self, Display, Formatter};
 
 pub(crate) trait Joined: IntoIterator {
@@ -25,5 +27,21 @@ where
             item.fmt(f)?;
         }
         Ok(())
+    }
+}
+
+pub(crate) trait MaybeDisplay {
+    /// For a given `Option<T: Display>`, returns a `Display` implementation that will display `t` if `Some(t)`, or nothing if `None`.
+    fn maybe_display(self) -> impl Display;
+}
+
+impl<T: Display> MaybeDisplay for Option<T> {
+    fn maybe_display(self) -> impl Display {
+        fmt::from_fn(move |f| {
+            if let Some(t) = self.as_ref() {
+                t.fmt(f)?;
+            }
+            Ok(())
+        })
     }
 }
