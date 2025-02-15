@@ -241,7 +241,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         interp_ok(caller == callee)
     }
 
-    fn check_argument_compat(
+    pub fn check_argument_compat(
         &self,
         caller_abi: &ArgAbi<'tcx, Ty<'tcx>>,
         callee_abi: &ArgAbi<'tcx, Ty<'tcx>>,
