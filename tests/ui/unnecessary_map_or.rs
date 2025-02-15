@@ -129,6 +129,8 @@ fn with_deref(o: &S) -> bool {
 
 fn issue14201(a: Option<String>, b: Option<String>, s: &String) -> bool {
     let x = a.map_or(false, |a| a == *s);
+    //~^ unnecessary_map_or
     let y = b.map_or(true, |b| b == *s);
+    //~^ unnecessary_map_or
     x && y
 }

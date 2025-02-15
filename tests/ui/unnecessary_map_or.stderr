@@ -290,7 +290,7 @@ LL +     o.is_none_or(|n| n > 5)
    |
 
 error: this `map_or` can be simplified
-  --> tests/ui/unnecessary_map_or.rs:107:13
+  --> tests/ui/unnecessary_map_or.rs:131:13
    |
 LL |     let x = a.map_or(false, |a| a == *s);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -302,7 +302,7 @@ LL +     let x = a.is_some_and(|a| a == *s);
    |
 
 error: this `map_or` can be simplified
-  --> tests/ui/unnecessary_map_or.rs:108:13
+  --> tests/ui/unnecessary_map_or.rs:133:13
    |
 LL |     let y = b.map_or(true, |b| b == *s);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
