@@ -1,3 +1,4 @@
+use rustc_ast::LitIntType;
 use rustc_errors::Applicability;
 use rustc_hir_analysis::autoderef::Autoderef;
 use rustc_infer::infer::InferOk;
@@ -117,13 +118,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             expr, base_expr, adjusted_ty, index_ty
         );
 
-        if let hir::ExprKind::Unary(
-            hir::UnOp::Neg,
-            hir::Expr {
-                kind: hir::ExprKind::Lit(hir::Lit { node: ast::LitKind::Int(..), .. }),
-                ..
-            },
-        ) = index_expr.kind
+        if let hir::ExprKind::Lit(hir::Lit {
+            node: ast::LitKind::Int(_, LitIntType::Unsuffixed(true)),
+            ..
+        }) = index_expr.kind
         {
             match adjusted_ty.kind() {
                 ty::Adt(def, _) if self.tcx.is_diagnostic_item(sym::Vec, def.did()) => {

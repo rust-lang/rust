@@ -131,6 +131,7 @@ impl<'a> Sugg<'a> {
             | ExprKind::Closure { .. }
             | ExprKind::Unary(..)
             | ExprKind::Match(..) => Sugg::MaybeParen(get_snippet(expr.span)),
+            | ExprKind::Lit(lit) if lit.node.is_negative() => Sugg::MaybeParen(get_snippet(expr.span)),
             ExprKind::Continue(..)
             | ExprKind::Yield(..)
             | ExprKind::Array(..)

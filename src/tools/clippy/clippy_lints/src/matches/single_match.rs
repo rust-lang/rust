@@ -127,7 +127,7 @@ fn report_single_pattern(cx: &LateContext<'_>, ex: &Expr<'_>, arm: &Arm<'_>, exp
         let pat_ref_count = match pat.kind {
             // string literals are already a reference.
             PatKind::Expr(PatExpr {
-                kind: PatExprKind::Lit { lit, negated: false },
+                kind: PatExprKind::Lit { lit },
                 ..
             }) if lit.node.is_str() || lit.node.is_bytestr() => pat_ref_count + 1,
             _ => pat_ref_count,

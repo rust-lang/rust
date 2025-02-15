@@ -536,18 +536,8 @@ fn lint_fn_pointer<'tcx>(
 }
 
 impl<'tcx> LateLintPass<'tcx> for TypeLimits {
-    fn check_lit(
-        &mut self,
-        cx: &LateContext<'tcx>,
-        hir_id: HirId,
-        lit: &'tcx hir::Lit,
-        negated: bool,
-    ) {
-        if negated {
-            self.negated_expr_id = Some(hir_id);
-            self.negated_expr_span = Some(lit.span);
-        }
-        lint_literal(cx, self, hir_id, lit.span, lit, negated);
+    fn check_lit(&mut self, cx: &LateContext<'tcx>, hir_id: HirId, lit: &'tcx hir::Lit) {
+        lint_literal(cx, self, hir_id, lit.span, lit);
     }
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx hir::Expr<'tcx>) {
@@ -636,8 +626,12 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
                         hir::ExprKind::Lit(li) => match li.node {
                             ast::LitKind::Int(
                                 v,
-                                ast::LitIntType::Signed(_) | ast::LitIntType::Unsuffixed,
-                            ) => v.get() as i128,
+                                ast::LitIntType::Signed(_, negated)
+                                | ast::LitIntType::Unsuffixed(negated),
+                            ) => {
+                                let v = v.get() as i128;
+                                if negated { v.wrapping_neg() } else { v }
+                            }
                             _ => return true,
                         },
                         _ => bug!(),

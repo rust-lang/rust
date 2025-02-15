@@ -1,37 +1,70 @@
-error[E0600]: cannot apply unary operator `-` to type `usize`
+error[E0277]: cannot apply unary operator `-` to type `usize`
   --> $DIR/unsigned-literal-negation.rs:2:13
    |
 LL |     let x = -1 as usize;
    |             ^^ cannot apply unary operator `-`
    |
+   = help: the trait `Neg` is not implemented for `usize`
+   = help: the following other types implement trait `Neg`:
+             &f128
+             &f16
+             &f32
+             &f64
+             &i128
+             &i16
+             &i32
+             &i64
+           and 12 others
    = note: unsigned values cannot be negated
-help: you may have meant the maximum value of `usize`
+help: you may have meant to the wrapped-around value of type `usize`
    |
 LL -     let x = -1 as usize;
 LL +     let x = usize::MAX;
    |
 
-error[E0600]: cannot apply unary operator `-` to type `usize`
-  --> $DIR/unsigned-literal-negation.rs:3:13
+error[E0277]: cannot apply unary operator `-` to type `usize`
+  --> $DIR/unsigned-literal-negation.rs:3:14
    |
 LL |     let x = (-1) as usize;
-   |             ^^^^ cannot apply unary operator `-`
+   |              ^^ cannot apply unary operator `-`
    |
+   = help: the trait `Neg` is not implemented for `usize`
+   = help: the following other types implement trait `Neg`:
+             &f128
+             &f16
+             &f32
+             &f64
+             &i128
+             &i16
+             &i32
+             &i64
+           and 12 others
    = note: unsigned values cannot be negated
-help: you may have meant the maximum value of `usize`
+help: you may have meant to the wrapped-around value of type `usize`
    |
 LL -     let x = (-1) as usize;
 LL +     let x = usize::MAX;
    |
 
-error[E0600]: cannot apply unary operator `-` to type `u32`
+error[E0277]: cannot apply unary operator `-` to type `u32`
   --> $DIR/unsigned-literal-negation.rs:4:18
    |
 LL |     let x: u32 = -1;
    |                  ^^ cannot apply unary operator `-`
    |
+   = help: the trait `Neg` is not implemented for `u32`
+   = help: the following other types implement trait `Neg`:
+             &f128
+             &f16
+             &f32
+             &f64
+             &i128
+             &i16
+             &i32
+             &i64
+           and 12 others
    = note: unsigned values cannot be negated
-help: you may have meant the maximum value of `u32`
+help: you may have meant to the wrapped-around value of type `u32`
    |
 LL -     let x: u32 = -1;
 LL +     let x: u32 = u32::MAX;
@@ -39,4 +72,4 @@ LL +     let x: u32 = u32::MAX;
 
 error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0600`.
+For more information about this error, try `rustc --explain E0277`.

@@ -2045,7 +2045,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             Some((
                 _,
                 MetaItemLit {
-                    kind: ast::LitKind::Int(literal, ast::LitIntType::Unsuffixed), ..
+                    kind: ast::LitKind::Int(literal, ast::LitIntType::Unsuffixed(false)),
+                    ..
                 },
             )) => {
                 let val = literal.get() as u64;

@@ -1,7 +1,7 @@
 //! See docs in build/expr/mod.rs
 
 use rustc_abi::Size;
-use rustc_ast as ast;
+use rustc_ast::{self as ast, LitIntType};
 use rustc_hir::LangItem;
 use rustc_middle::mir::interpret::{Allocation, CTFE_ALLOC_SALT, LitToConstInput, Scalar};
 use rustc_middle::mir::*;
@@ -48,8 +48,8 @@ pub(crate) fn as_constant_inner<'tcx>(
 ) -> ConstOperand<'tcx> {
     let Expr { ty, temp_lifetime: _, span, ref kind } = *expr;
     match *kind {
-        ExprKind::Literal { lit, neg } => {
-            let const_ = lit_to_mir_constant(tcx, LitToConstInput { lit: &lit.node, ty, neg });
+        ExprKind::Literal { lit } => {
+            let const_ = lit_to_mir_constant(tcx, LitToConstInput { lit: &lit.node, ty });
 
             ConstOperand { span, user_ty: None, const_ }
         }
@@ -99,7 +99,7 @@ pub(crate) fn as_constant_inner<'tcx>(
 
 #[instrument(skip(tcx, lit_input))]
 fn lit_to_mir_constant<'tcx>(tcx: TyCtxt<'tcx>, lit_input: LitToConstInput<'tcx>) -> Const<'tcx> {
-    let LitToConstInput { lit, ty, neg } = lit_input;
+    let LitToConstInput { lit, ty } = lit_input;
 
     if let Err(guar) = ty.error_reported() {
         return Const::Ty(Ty::new_error(tcx, guar), ty::Const::new_error(tcx, guar));
@@ -144,14 +144,18 @@ fn lit_to_mir_constant<'tcx>(tcx: TyCtxt<'tcx>, lit_input: LitToConstInput<'tcx>
         (ast::LitKind::Byte(n), ty::Uint(ty::UintTy::U8)) => {
             ConstValue::Scalar(Scalar::from_uint(*n, Size::from_bytes(1)))
         }
-        (ast::LitKind::Int(n, _), ty::Uint(ui)) if !neg => trunc(n.get(), *ui),
-        (ast::LitKind::Int(n, _), ty::Int(i)) => trunc(
+        (
+            ast::LitKind::Int(n, LitIntType::Unsigned(_) | LitIntType::Unsuffixed(false)),
+            ty::Uint(ui),
+        ) => trunc(n.get(), *ui),
+        (
+            &ast::LitKind::Int(n, LitIntType::Signed(_, neg) | LitIntType::Unsuffixed(neg)),
+            ty::Int(i),
+        ) => trunc(
             if neg { (n.get() as i128).overflowing_neg().0 as u128 } else { n.get() },
             i.to_unsigned(),
         ),
-        (ast::LitKind::Float(n, _), ty::Float(fty)) => {
-            parse_float_into_constval(*n, *fty, neg).unwrap()
-        }
+        (ast::LitKind::Float(n, _), ty::Float(fty)) => parse_float_into_constval(*n, *fty).unwrap(),
         (ast::LitKind::Bool(b), ty::Bool) => ConstValue::Scalar(Scalar::from_bool(*b)),
         (ast::LitKind::Char(c), ty::Char) => ConstValue::Scalar(Scalar::from_char(*c)),
         (ast::LitKind::Err(guar), _) => {

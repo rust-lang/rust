@@ -111,7 +111,7 @@ impl LateLintPass<'_> for SingleRangeInVecInit {
                 && implements_trait(cx, ty, copy_def_id, &[])
                 && let ExprKind::Lit(lit_kind) = end.expr.kind
                 && let LitKind::Int(.., suffix_type) = lit_kind.node
-                && let LitIntType::Unsigned(UintTy::Usize) | LitIntType::Unsuffixed = suffix_type
+                && let LitIntType::Unsigned(UintTy::Usize) | LitIntType::Unsuffixed(false) = suffix_type
             {
                 true
             } else {

@@ -70,7 +70,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingAdd {
             && clippy_utils::SpanlessEq::new(cx).eq_expr(l, target)
             && BinOpKind::Add == op1.node
             && let ExprKind::Lit(lit) = value.kind
-            && let LitKind::Int(Pu128(1), LitIntType::Unsuffixed) = lit.node
+            && let LitKind::Int(Pu128(1), LitIntType::Unsuffixed(false)) = lit.node
             && block.expr.is_none()
         {
             let mut app = Applicability::MachineApplicable;

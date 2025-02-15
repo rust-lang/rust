@@ -30,12 +30,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
             Ok(LitKind::Int(n, ty)) => {
                 match ty {
                     // unsuffixed integer literals are assumed to be i32's
-                    LitIntType::Unsuffixed => {
-                        (n <= i32::MAX as u128).then_some(Symbol::intern(&n.to_string()))
-                    }
-                    LitIntType::Signed(int_ty) => {
+                    LitIntType::Unsuffixed(negated) => (!negated && n <= i32::MAX as u128)
+                        .then_some(Symbol::intern(&n.to_string())),
+                    LitIntType::Signed(int_ty, negated) => {
                         let max_literal = self.int_ty_max(int_ty);
-                        (n <= max_literal).then_some(Symbol::intern(&n.to_string()))
+                        (!negated && n <= max_literal).then_some(Symbol::intern(&n.to_string()))
                     }
                     LitIntType::Unsigned(uint_ty) => {
                         let max_literal = self.uint_ty_max(uint_ty);

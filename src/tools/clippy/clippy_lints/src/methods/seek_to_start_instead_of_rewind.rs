@@ -31,7 +31,7 @@ pub(super) fn check<'tcx>(
         && let Some(ctor_call_id) = cx.qpath_res(path, func.hir_id).opt_def_id()
         && is_enum_variant_ctor(cx, sym::SeekFrom, sym!(Start), ctor_call_id)
         && let ExprKind::Lit(lit) = arg.kind
-        && let LitKind::Int(Pu128(0), LitIntType::Unsuffixed) = lit.node
+        && let LitKind::Int(Pu128(0), LitIntType::Unsuffixed(false)) = lit.node
     {
         let method_call_span = expr.span.with_lo(name_span.lo());
         span_lint_and_then(

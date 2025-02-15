@@ -1,9 +1,26 @@
-error[E0277]: the trait bound `u8: Neg` is not satisfied
+error: cannot negate `char` literal
+  --> $DIR/signed_ranges.rs:9:41
+   |
+LL | type SignedChar = pattern_type!(char is -'A'..);
+   |                                         ^^^^
+   |
+   = note: only signed integer literals and float literals can be negated
+
+error: cannot negate `char` literal
+  --> $DIR/signed_ranges.rs:20:9
+   |
+LL |         -'\0'..'a' => {}
+   |         ^^^^^
+   |
+   = note: only signed integer literals and float literals can be negated
+
+error[E0277]: cannot apply unary operator `-` to type `u8`
   --> $DIR/signed_ranges.rs:14:9
    |
 LL |         -10..253 => {}
-   |         ^^^ the trait `Neg` is not implemented for `u8`
+   |         ^^^ cannot apply unary operator `-`
    |
+   = help: the trait `Neg` is not implemented for `u8`
    = help: the following other types implement trait `Neg`:
              &f128
              &f16
@@ -14,28 +31,37 @@ LL |         -10..253 => {}
              &i32
              &i64
            and 12 others
-
-error[E0277]: the trait bound `char: Neg` is not satisfied
-  --> $DIR/signed_ranges.rs:20:9
+   = note: unsigned values cannot be negated
+help: you may have meant to the wrapped-around value of type `u8`
    |
-LL |         -'\0'..'a' => {}
-   |         ^^^^^ the trait `Neg` is not implemented for `char`
+LL -         -10..253 => {}
+LL +         246..253 => {}
+   |
 
-error[E0600]: cannot apply unary operator `-` to type `u32`
+error[E0277]: cannot apply unary operator `-` to type `u32`
   --> $DIR/signed_ranges.rs:6:34
    |
 LL | type Sign = pattern_type!(u32 is -10..);
    |                                  ^^^ cannot apply unary operator `-`
    |
+   = help: the trait `Neg` is not implemented for `u32`
+   = help: the following other types implement trait `Neg`:
+             &f128
+             &f16
+             &f32
+             &f64
+             &i128
+             &i16
+             &i32
+             &i64
+           and 12 others
    = note: unsigned values cannot be negated
-
-error[E0600]: cannot apply unary operator `-` to type `char`
-  --> $DIR/signed_ranges.rs:9:41
+help: you may have meant to the wrapped-around value of type `u32`
    |
-LL | type SignedChar = pattern_type!(char is -'A'..);
-   |                                         ^^^^ cannot apply unary operator `-`
+LL - type Sign = pattern_type!(u32 is -10..);
+LL + type Sign = pattern_type!(u32 is 0xfffffff6..);
+   |
 
 error: aborting due to 4 previous errors
 
-Some errors have detailed explanations: E0277, E0600.
-For more information about an error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0277`.

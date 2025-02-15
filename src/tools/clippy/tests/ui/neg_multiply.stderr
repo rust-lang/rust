@@ -49,5 +49,19 @@ error: this multiplication by -1 can be written more succinctly
 LL |     (3_usize as i32) * -1;
    |     ^^^^^^^^^^^^^^^^^^^^^ help: consider using: `-(3_usize as i32)`
 
-error: aborting due to 8 previous errors
+error: this multiplication by -1 can be written more succinctly
+  --> tests/ui/neg_multiply.rs:43:5
+   |
+LL |     -1 * -1; // should be ok
+   |     ^^^^^^^ help: consider using: `1`
+
+error: this multiplication by -1 can be written more succinctly
+  --> tests/ui/neg_multiply.rs:43:5
+   |
+LL |     -1 * -1; // should be ok
+   |     ^^^^^^^ help: consider using: `1`
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 10 previous errors
 

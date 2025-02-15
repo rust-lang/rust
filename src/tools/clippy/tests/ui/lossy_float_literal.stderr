@@ -61,10 +61,10 @@ LL +     let _ = 16_777_220_f32;
    |
 
 error: literal cannot be represented as the underlying type without loss of precision
-  --> tests/ui/lossy_float_literal.rs:19:19
+  --> tests/ui/lossy_float_literal.rs:19:18
    |
 LL |     let _: f32 = -16_777_219.0;
-   |                   ^^^^^^^^^^^^
+   |                  ^^^^^^^^^^^^^
    |
 help: consider changing the type or replacing it with
    |
@@ -121,10 +121,10 @@ LL +     let _ = 9_007_199_254_740_992_f64;
    |
 
 error: literal cannot be represented as the underlying type without loss of precision
-  --> tests/ui/lossy_float_literal.rs:25:19
+  --> tests/ui/lossy_float_literal.rs:25:18
    |
 LL |     let _: f64 = -9_007_199_254_740_993.0;
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: consider changing the type or replacing it with
    |
