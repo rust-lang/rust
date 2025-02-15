@@ -245,6 +245,8 @@ jobs:
             ./build/citool/debug/citool postprocess-metrics build/metrics.json ${GITHUB_STEP_SUMMARY}
           elif [ -f obj/build/metrics.json ]; then
             ./build/citool/debug/citool postprocess-metrics obj/build/metrics.json ${GITHUB_STEP_SUMMARY}
+          else
+            echo "No metrics.json found"
           fi
 
       - name: upload job metrics to DataDog
