@@ -13,7 +13,7 @@ use ide_db::{
     documentation::docs_from_attrs,
     helpers::visit_file_defs,
     search::{FileReferenceNode, SearchScope},
-    FilePosition, FxHashMap, FxHashSet, RootDatabase, SymbolKind,
+    FilePosition, FxHashMap, FxHashSet, FxIndexMap, RootDatabase, SymbolKind,
 };
 use itertools::Itertools;
 use smallvec::SmallVec;
@@ -130,7 +130,7 @@ pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
     let mut res = Vec::new();
     // Record all runnables that come from macro expansions here instead.
     // In case an expansion creates multiple runnables we want to name them to avoid emitting a bunch of equally named runnables.
-    let mut in_macro_expansion = FxHashMap::<hir::HirFileId, Vec<Runnable>>::default();
+    let mut in_macro_expansion = FxIndexMap::<hir::HirFileId, Vec<Runnable>>::default();
     let mut add_opt = |runnable: Option<Runnable>, def| {
         if let Some(runnable) = runnable.filter(|runnable| runnable.nav.file_id == file_id) {
             if let Some(def) = def {
