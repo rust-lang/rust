@@ -1,8 +1,8 @@
-error[E0658]: the `#[pattern_complexity]` attribute is just used for rustc unit tests and will never be stable
-  --> $DIR/feature-gate-pattern-complexity.rs:3:1
+error[E0658]: the `#[pattern_complexity_limit]` attribute is just used for rustc unit tests and will never be stable
+  --> $DIR/feature-gate-pattern-complexity-limit.rs:3:1
    |
-LL | #![pattern_complexity = "42"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #![pattern_complexity_limit = "42"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date

@@ -2168,6 +2168,10 @@ impl<'tcx> TyCtxt<'tcx> {
         self.limits(()).move_size_limit
     }
 
+    pub fn pattern_complexity_limit(self) -> Limit {
+        self.limits(()).pattern_complexity_limit
+    }
+
     /// All traits in the crate graph, including those not visible to the user.
     pub fn all_traits(self) -> impl Iterator<Item = DefId> + 'tcx {
         iter::once(LOCAL_CRATE)

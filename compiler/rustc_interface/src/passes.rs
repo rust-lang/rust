@@ -39,7 +39,7 @@ use rustc_trait_selection::traits;
 use tracing::{info, instrument};
 
 use crate::interface::Compiler;
-use crate::{errors, proc_macro_decls, util};
+use crate::{errors, limits, proc_macro_decls, util};
 
 pub fn parse<'a>(sess: &'a Session) -> ast::Crate {
     let krate = sess
@@ -687,6 +687,7 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
         |tcx, _| tcx.arena.alloc_from_iter(tcx.resolutions(()).stripped_cfg_items.steal());
     providers.resolutions = |tcx, ()| tcx.resolver_for_lowering_raw(()).1;
     providers.early_lint_checks = early_lint_checks;
+    limits::provide(providers);
     proc_macro_decls::provide(providers);
     rustc_const_eval::provide(providers);
     rustc_middle::hir::provide(providers);
@@ -1134,7 +1135,7 @@ fn get_recursion_limit(krate_attrs: &[ast::Attribute], sess: &Session) -> Limit 
     // because that would require expanding this while in the middle of expansion, which needs to
     // know the limit before expanding.
     let _ = validate_and_find_value_str_builtin_attr(sym::recursion_limit, sess, krate_attrs);
-    rustc_middle::middle::limits::get_recursion_limit(krate_attrs, sess)
+    crate::limits::get_recursion_limit(krate_attrs, sess)
 }
 
 /// Validate *all* occurrences of the given "[value-str]" built-in attribute and return the first find.
