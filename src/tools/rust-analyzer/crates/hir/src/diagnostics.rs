@@ -10,7 +10,7 @@ use hir_def::{
     hir::ExprOrPatId,
     path::{hir_segment_to_ast_segment, ModPath},
     type_ref::TypesSourceMap,
-    AssocItemId, DefWithBodyId, SyntheticSyntax,
+    DefWithBodyId, SyntheticSyntax,
 };
 use hir_expand::{name::Name, HirFileId, InFile};
 use hir_ty::{
@@ -25,7 +25,7 @@ use syntax::{
 };
 use triomphe::Arc;
 
-use crate::{AssocItem, Field, Local, Trait, Type};
+use crate::{AssocItem, Field, Function, Local, Trait, Type};
 
 pub use hir_def::VariantId;
 pub use hir_ty::{
@@ -253,7 +253,7 @@ pub struct UnresolvedMethodCall {
     pub receiver: Type,
     pub name: Name,
     pub field_with_same_name: Option<Type>,
-    pub assoc_func_with_same_name: Option<AssocItemId>,
+    pub assoc_func_with_same_name: Option<Function>,
 }
 
 #[derive(Debug)]
@@ -623,7 +623,7 @@ impl AnyDiagnostic {
                     field_with_same_name: field_with_same_name
                         .clone()
                         .map(|ty| Type::new(db, def, ty)),
-                    assoc_func_with_same_name: *assoc_func_with_same_name,
+                    assoc_func_with_same_name: assoc_func_with_same_name.map(Into::into),
                 }
                 .into()
             }
