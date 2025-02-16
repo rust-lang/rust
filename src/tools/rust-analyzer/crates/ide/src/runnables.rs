@@ -4,8 +4,8 @@ use arrayvec::ArrayVec;
 use ast::HasName;
 use cfg::{CfgAtom, CfgExpr};
 use hir::{
-    db::HirDatabase, sym, AsAssocItem, AttrsWithOwner, HasAttrs, HasCrate, HasSource, HirFileIdExt,
-    ModPath, Name, PathKind, Semantics, Symbol,
+    db::HirDatabase, sym, symbols::FxIndexSet, AsAssocItem, AttrsWithOwner, HasAttrs, HasCrate,
+    HasSource, HirFileIdExt, ModPath, Name, PathKind, Semantics, Symbol,
 };
 use ide_assists::utils::{has_test_related_attribute, test_related_attribute_syn};
 use ide_db::{
@@ -13,7 +13,7 @@ use ide_db::{
     documentation::docs_from_attrs,
     helpers::visit_file_defs,
     search::{FileReferenceNode, SearchScope},
-    FilePosition, FxHashMap, FxHashSet, FxIndexMap, RootDatabase, SymbolKind,
+    FilePosition, FxHashMap, FxIndexMap, RootDatabase, SymbolKind,
 };
 use itertools::Itertools;
 use smallvec::SmallVec;
@@ -182,20 +182,7 @@ pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
             r
         })
     }));
-    res.sort_by(|Runnable { nav, kind, .. }, Runnable { nav: nav_b, kind: kind_b, .. }| {
-        // full_range.start < focus_range.start < name, should give us a decent unique ordering
-        nav.full_range
-            .start()
-            .cmp(&nav_b.full_range.start())
-            .then_with(|| {
-                let t_0 = || TextSize::from(0);
-                nav.focus_range
-                    .map_or_else(t_0, |it| it.start())
-                    .cmp(&nav_b.focus_range.map_or_else(t_0, |it| it.start()))
-            })
-            .then_with(|| kind.disc().cmp(&kind_b.disc()))
-            .then_with(|| nav.name.cmp(&nav_b.name))
-    });
+    res.sort_by(cmp_runnables);
     res
 }
 
@@ -215,12 +202,30 @@ pub(crate) fn related_tests(
     search_scope: Option<SearchScope>,
 ) -> Vec<Runnable> {
     let sema = Semantics::new(db);
-    let mut res: FxHashSet<Runnable> = FxHashSet::default();
+    let mut res: FxIndexSet<Runnable> = FxIndexSet::default();
     let syntax = sema.parse_guess_edition(position.file_id).syntax().clone();
 
     find_related_tests(&sema, &syntax, position, search_scope, &mut res);
 
-    res.into_iter().collect()
+    res.into_iter().sorted_by(cmp_runnables).collect()
+}
+
+fn cmp_runnables(
+    Runnable { nav, kind, .. }: &Runnable,
+    Runnable { nav: nav_b, kind: kind_b, .. }: &Runnable,
+) -> std::cmp::Ordering {
+    // full_range.start < focus_range.start < name, should give us a decent unique ordering
+    nav.full_range
+        .start()
+        .cmp(&nav_b.full_range.start())
+        .then_with(|| {
+            let t_0 = || TextSize::from(0);
+            nav.focus_range
+                .map_or_else(t_0, |it| it.start())
+                .cmp(&nav_b.focus_range.map_or_else(t_0, |it| it.start()))
+        })
+        .then_with(|| kind.disc().cmp(&kind_b.disc()))
+        .then_with(|| nav.name.cmp(&nav_b.name))
 }
 
 fn find_related_tests(
@@ -228,7 +233,7 @@ fn find_related_tests(
     syntax: &SyntaxNode,
     position: FilePosition,
     search_scope: Option<SearchScope>,
-    tests: &mut FxHashSet<Runnable>,
+    tests: &mut FxIndexSet<Runnable>,
 ) {
     // FIXME: why is this using references::find_defs, this should use ide_db::search
     let defs = match references::find_defs(sema, syntax, position.offset) {
@@ -268,7 +273,7 @@ fn find_related_tests_in_module(
     syntax: &SyntaxNode,
     fn_def: &ast::Fn,
     parent_module: &hir::Module,
-    tests: &mut FxHashSet<Runnable>,
+    tests: &mut FxIndexSet<Runnable>,
 ) {
     let fn_name = match fn_def.name() {
         Some(it) => it,
@@ -1501,18 +1506,18 @@ mod tests {
                         file_id: FileId(
                             0,
                         ),
-                        full_range: 121..185,
-                        focus_range: 136..145,
-                        name: "foo2_test",
+                        full_range: 52..115,
+                        focus_range: 67..75,
+                        name: "foo_test",
                         kind: Function,
                     },
                     NavigationTarget {
                         file_id: FileId(
                             0,
                         ),
-                        full_range: 52..115,
-                        focus_range: 67..75,
-                        name: "foo_test",
+                        full_range: 121..185,
+                        focus_range: 136..145,
+                        name: "foo2_test",
                         kind: Function,
                     },
                 ]

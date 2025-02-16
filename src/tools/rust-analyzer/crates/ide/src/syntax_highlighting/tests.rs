@@ -1084,6 +1084,9 @@ pub struct Struct;
     );
 }
 
+// Rainbow highlighting uses a deterministic hash (fxhash) but the hashing does differ
+// depending on the pointer width so only runs this on 64-bit targets.
+#[cfg(target_pointer_width = "64")]
 #[test]
 fn test_rainbow_highlighting() {
     check_highlighting(
