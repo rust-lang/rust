@@ -141,17 +141,17 @@ fn univariant_uninterned<'tcx>(
 }
 
 fn extract_const_value<'tcx>(
-    const_: ty::Const<'tcx>,
-    ty: Ty<'tcx>,
     cx: &LayoutCx<'tcx>,
+    ty: Ty<'tcx>,
+    ct: ty::Const<'tcx>,
 ) -> Result<ty::Value<'tcx>, &'tcx LayoutError<'tcx>> {
-    match const_.kind() {
+    match ct.kind() {
         ty::ConstKind::Value(cv) => Ok(cv),
         ty::ConstKind::Param(_) | ty::ConstKind::Expr(_) | ty::ConstKind::Unevaluated(_) => {
-            if !const_.has_param() {
-                bug!("failed to normalize const, but it is not generic: {const_:?}");
+            if !ct.has_param() {
+                bug!("failed to normalize const, but it is not generic: {ct:?}");
             }
-            return Err(error(cx, LayoutError::TooGeneric(ty)));
+            Err(error(cx, LayoutError::TooGeneric(ty)))
         }
         ty::ConstKind::Infer(_)
         | ty::ConstKind::Bound(..)
@@ -159,7 +159,7 @@ fn extract_const_value<'tcx>(
         | ty::ConstKind::Error(_) => {
             // `ty::ConstKind::Error` is handled at the top of `layout_of_uncached`
             // (via `ty.error_reported()`).
-            bug!("layout_of: unexpected const: {const_:?}");
+            bug!("layout_of: unexpected const: {ct:?}");
         }
     }
 }
@@ -199,12 +199,12 @@ fn layout_of_uncached<'tcx>(
                         &mut layout.backend_repr
                     {
                         if let Some(start) = start {
-                            scalar.valid_range_mut().start = extract_const_value(start, ty, cx)?
+                            scalar.valid_range_mut().start = extract_const_value(cx, ty, start)?
                                 .try_to_bits(tcx, cx.typing_env)
                                 .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
                         }
                         if let Some(end) = end {
-                            let mut end = extract_const_value(end, ty, cx)?
+                            let mut end = extract_const_value(cx, ty, end)?
                                 .try_to_bits(tcx, cx.typing_env)
                                 .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
                             if !include_end {
@@ -338,7 +338,7 @@ fn layout_of_uncached<'tcx>(
 
         // Arrays and slices.
         ty::Array(element, count) => {
-            let count = extract_const_value(count, ty, cx)?
+            let count = extract_const_value(cx, ty, count)?
                 .try_to_target_usize(tcx)
                 .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
 
@@ -690,13 +690,21 @@ fn layout_of_uncached<'tcx>(
         }
 
         // Types with no meaningful known layout.
+        ty::Param(_) => {
+            return Err(error(cx, LayoutError::TooGeneric(ty)));
+        }
+
         ty::Alias(..) => {
-            if ty.has_param() {
-                return Err(error(cx, LayoutError::TooGeneric(ty)));
-            }
             // NOTE(eddyb) `layout_of` query should've normalized these away,
             // if that was possible, so there's no reason to try again here.
-            return Err(error(cx, LayoutError::Unknown(ty)));
+            let err = if ty.has_param() {
+                LayoutError::TooGeneric(ty)
+            } else {
+                // This is only reachable with unsatisfiable predicates. For example, if we have
+                // `u8: Iterator`, then we can't compute the layout of `<u8 as Iterator>::Item`.
+                LayoutError::Unknown(ty)
+            };
+            return Err(error(cx, err));
         }
 
         ty::Placeholder(..)
@@ -706,10 +714,6 @@ fn layout_of_uncached<'tcx>(
         | ty::Error(_) => {
             // `ty::Error` is handled at the top of this function.
             bug!("layout_of: unexpected type `{ty}`")
-        }
-
-        ty::Param(_) => {
-            return Err(error(cx, LayoutError::TooGeneric(ty)));
         }
     })
 }
