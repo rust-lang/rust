@@ -152,17 +152,19 @@ fn extract_const_value<'tcx>(
 ) -> Result<ty::Value<'tcx>, &'tcx LayoutError<'tcx>> {
     match const_.kind() {
         ty::ConstKind::Value(cv) => Ok(cv),
-        ty::ConstKind::Error(guar) => {
-            return Err(error(cx, LayoutError::ReferencesError(guar)));
-        }
         ty::ConstKind::Param(_) | ty::ConstKind::Expr(_) | ty::ConstKind::Unevaluated(_) => {
             if !const_.has_param() {
                 bug!("failed to normalize const, but it is not generic: {const_:?}");
             }
             return Err(error(cx, LayoutError::TooGeneric(ty)));
         }
-        ty::ConstKind::Infer(_) | ty::ConstKind::Bound(..) | ty::ConstKind::Placeholder(_) => {
-            bug!("unexpected type: {ty:?}");
+        ty::ConstKind::Infer(_)
+        | ty::ConstKind::Bound(..)
+        | ty::ConstKind::Placeholder(_)
+        | ty::ConstKind::Error(_) => {
+            // `ty::ConstKind::Error` is handled at the top of `layout_of_uncached`
+            // (via `ty.error_reported()`).
+            bug!("layout_of: unexpected const: {const_:?}");
         }
     }
 }
@@ -267,16 +269,11 @@ fn layout_of_uncached<'tcx>(
                 data_ptr.valid_range_mut().start = 1;
             }
 
-            let pointee = tcx.normalize_erasing_regions(cx.typing_env, pointee);
             if pointee.is_sized(tcx, cx.typing_env) {
                 return Ok(tcx.mk_layout(LayoutData::scalar(cx, data_ptr)));
             }
 
-            let metadata = if let Some(metadata_def_id) = tcx.lang_items().metadata_type()
-                // Projection eagerly bails out when the pointee references errors,
-                // fall back to structurally deducing metadata.
-                && !pointee.references_error()
-            {
+            let metadata = if let Some(metadata_def_id) = tcx.lang_items().metadata_type() {
                 let pointee_metadata = Ty::new_projection(tcx, metadata_def_id, [pointee]);
                 let metadata_ty =
                     match tcx.try_normalize_erasing_regions(cx.typing_env, pointee_metadata) {
@@ -726,6 +723,7 @@ fn layout_of_uncached<'tcx>(
         | ty::CoroutineWitness(..)
         | ty::Infer(_)
         | ty::Error(_) => {
+            // `ty::Error` is handled at the top of this function.
             bug!("layout_of: unexpected type `{ty}`")
         }
 
