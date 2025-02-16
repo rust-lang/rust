@@ -247,7 +247,7 @@ impl Sysroot {
             let library_manifest = ManifestPath::try_from(src_root.join("Cargo.toml")).unwrap();
             if fs::metadata(&library_manifest).is_ok() {
                 if let Some(loaded) =
-                    Self::load_library_via_cargo(library_manifest, src_root, cargo_config)
+                    self.load_library_via_cargo(library_manifest, src_root, cargo_config)
                 {
                     return Some(loaded);
                 }
@@ -326,6 +326,7 @@ impl Sysroot {
     }
 
     fn load_library_via_cargo(
+        &self,
         library_manifest: ManifestPath,
         rust_lib_src_dir: &AbsPathBuf,
         cargo_config: &CargoMetadataConfig,
@@ -342,7 +343,7 @@ impl Sysroot {
             &library_manifest,
             rust_lib_src_dir,
             &cargo_config,
-            &Sysroot::empty(),
+            self,
             // Make sure we never attempt to write to the sysroot
             true,
             &|_| (),
