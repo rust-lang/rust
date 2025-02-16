@@ -3616,7 +3616,7 @@ pub trait Iterator {
             }
         }
 
-        match SpecIterCompare::spec_iter_compare(self, other.into_iter(), compare(cmp)) {
+        match iter_compare(self, other.into_iter(), compare(cmp)) {
             ControlFlow::Continue(ord) => ord,
             ControlFlow::Break(ord) => ord,
         }
@@ -3708,7 +3708,7 @@ pub trait Iterator {
             }
         }
 
-        match SpecIterCompare::spec_iter_compare(self, other.into_iter(), compare(partial_cmp)) {
+        match iter_compare(self, other.into_iter(), compare(partial_cmp)) {
             ControlFlow::Continue(ord) => Some(ord),
             ControlFlow::Break(ord) => ord,
         }
