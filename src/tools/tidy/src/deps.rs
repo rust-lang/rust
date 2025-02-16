@@ -406,6 +406,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "tracing-log",
     "tracing-subscriber",
     "tracing-tree",
+    "triomphe",
     "twox-hash",
     "type-map",
     "typenum",
