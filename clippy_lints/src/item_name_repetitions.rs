@@ -377,22 +377,21 @@ impl ItemNameRepetitions {
                         "field name starts with the struct's name",
                     );
                 }
-                if field_words.len() > item_name_words.len() {
+                if field_words.len() > item_name_words.len()
                     // lint only if the end is not covered by the start
-                    if field_words
+                    && field_words
                         .iter()
                         .rev()
                         .zip(item_name_words.iter().rev())
                         .all(|(a, b)| a == b)
-                    {
-                        span_lint_hir(
-                            cx,
-                            STRUCT_FIELD_NAMES,
-                            field.hir_id,
-                            field.span,
-                            "field name ends with the struct's name",
-                        );
-                    }
+                {
+                    span_lint_hir(
+                        cx,
+                        STRUCT_FIELD_NAMES,
+                        field.hir_id,
+                        field.span,
+                        "field name ends with the struct's name",
+                    );
                 }
             }
         }
