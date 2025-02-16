@@ -135,7 +135,11 @@ where
 // and it becomes free on modern ISAs, including x86, x86_64 and ARM.
 //
 // ```
-// // shrx state, qword ptr [table_addr + 8 * byte], state   # On x86-64-v3
+// // On x86-64-v3: (more instructions on ordinary x86_64 but with same cycles-per-byte)
+// //   shrx state, qword ptr [TRANS_TABLE + 4 * byte], state
+// // On aarch64/ARMv8:
+// //   ldr temp, [TRANS_TABLE, byte, lsl 2]
+// //   lsr state, temp, state
 // state = TRANS_TABLE[byte].wrapping_shr(state);
 // ```
 //
@@ -290,27 +294,28 @@ fn run_utf8_validation_rt(bytes: &[u8]) -> Result<(), Utf8Error> {
     // SAFETY: Start at initial state ACCEPT.
     let mut st = unsafe { run_with_error_handling(ST_ACCEPT, &bytes[..i], 0)? };
 
-    while i + MAIN_CHUNK_SIZE <= bytes.len() {
+    while i < bytes.len() {
         // Fast path: if the current state is ACCEPT, we can skip to the next non-ASCII chunk.
         // We also did a quick inspection on the first byte to avoid getting into this path at all
         // when handling strings with almost no ASCII, eg. Chinese scripts.
         // SAFETY: `i` is in bound.
-        if st == ST_ACCEPT && unsafe { *bytes.get_unchecked(i) } < 0x80 {
+        if st == ST_ACCEPT && unsafe { bytes.get_unchecked(i).is_ascii() } {
             // SAFETY: `i` is in bound.
             let rest = unsafe { bytes.get_unchecked(i..) };
             let mut ascii_chunks = rest.array_chunks::<ASCII_CHUNK_SIZE>();
             let ascii_rest_chunk_cnt = ascii_chunks.len();
             let pos = ascii_chunks
                 .position(|chunk| {
-                    // NB. Always traverse the whole chunk to enable vectorization, instead of `.any()`.
-                    // LLVM will be fear of memory traps and fallback if loop has short-circuit.
+                    // NB. Always traverse the whole chunk instead of `.all()`, to persuade LLVM to
+                    // vectorize this check.
+                    // We also do not use `<[u8]>::is_ascii` which is unnecessarily complex here.
                     #[expect(clippy::unnecessary_fold)]
-                    let has_non_ascii = chunk.iter().fold(false, |acc, &b| acc || (b >= 0x80));
-                    has_non_ascii
+                    let all_ascii = chunk.iter().fold(true, |acc, b| acc && b.is_ascii());
+                    !all_ascii
                 })
                 .unwrap_or(ascii_rest_chunk_cnt);
             i += pos * ASCII_CHUNK_SIZE;
-            if i + MAIN_CHUNK_SIZE > bytes.len() {
+            if i >= bytes.len() {
                 break;
             }
         }
