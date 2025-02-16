@@ -1,4 +1,6 @@
-use crate::spec::{Cc, FloatAbi, LinkerFlavor, Lld, RelocModel, Target, TargetOptions, cvs};
+use crate::spec::{
+    Cc, FloatAbi, LinkerFlavor, Lld, RelocModel, Target, TargetMetadata, TargetOptions, cvs,
+};
 
 /// A base target for Nintendo 3DS devices using the devkitARM toolchain.
 ///
@@ -12,7 +14,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "armv6k-none-eabihf".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("Armv6K Nintendo 3DS, Horizon (Requires devkitARM toolchain)".into()),
             tier: Some(3),
             host_tools: Some(false),

@@ -1,11 +1,11 @@
 use crate::spec::base::apple::{Arch, TargetAbi, base};
-use crate::spec::{FramePointer, SanitizerSet, Target, TargetOptions};
+use crate::spec::{FramePointer, SanitizerSet, Target, TargetMetadata, TargetOptions};
 
 pub(crate) fn target() -> Target {
     let (opts, llvm_target, arch) = base("visionos", Arch::Arm64, TargetAbi::Simulator);
     Target {
         llvm_target,
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("ARM64 Apple visionOS simulator".into()),
             tier: Some(3),
             host_tools: Some(false),

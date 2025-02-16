@@ -8,7 +8,7 @@
 
 use crate::spec::{
     Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, SanitizerSet, StackProbeType, Target,
-    TargetOptions,
+    TargetMetadata, TargetOptions,
 };
 
 pub(crate) fn target() -> Target {
@@ -27,7 +27,7 @@ pub(crate) fn target() -> Target {
     };
     Target {
         llvm_target: "aarch64-unknown-none".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("Bare ARM64, softfloat".into()),
             tier: Some(2),
             host_tools: Some(false),

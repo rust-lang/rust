@@ -1,6 +1,6 @@
 use rustc_abi::Endian;
 
-use crate::spec::{StackProbeType, Target, TargetOptions, base};
+use crate::spec::{StackProbeType, Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::linux_gnu::opts();
@@ -8,7 +8,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "aarch64_be-unknown-linux-gnu_ilp32".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("ARM64 Linux (big-endian, ILP32 ABI)".into()),
             tier: Some(3),
             host_tools: Some(true),

@@ -1,6 +1,6 @@
 use rustc_abi::Endian;
 
-use crate::spec::{LinkSelfContainedDefault, Target, TargetOptions, base};
+use crate::spec::{LinkSelfContainedDefault, Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::linux_gnu::opts();
@@ -9,7 +9,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "m68k-unknown-linux-gnu".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("Motorola 680x0 Linux".into()),
             tier: Some(3),
             host_tools: Some(false),
