@@ -1,5 +1,4 @@
 #![warn(clippy::doc_link_with_quotes)]
-#![allow(clippy::empty_line_after_doc_comments)]
 
 fn main() {
     foo()

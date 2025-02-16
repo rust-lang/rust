@@ -64,7 +64,19 @@ LL | |     if foo() { // the span of the above error should continue here
    = note: to remove this lint, remove the `else` or remove the new line between `else` and `if`
 
 error: this is an `else {..}` but the formatting might hide it
-  --> tests/ui/suspicious_else_formatting.rs:108:6
+  --> tests/ui/suspicious_else_formatting.rs:101:6
+   |
+LL |       }
+   |  ______^
+LL | |
+LL | |     else
+LL | |     {
+   | |____^
+   |
+   = note: to remove this lint, remove the `else` or remove the new line between `else` and `{..}`
+
+error: this is an `else {..}` but the formatting might hide it
+  --> tests/ui/suspicious_else_formatting.rs:109:6
    |
 LL |       }
    |  ______^
@@ -75,5 +87,5 @@ LL | |     {
    |
    = note: to remove this lint, remove the `else` or remove the new line between `else` and `{..}`
 
-error: aborting due to 8 previous errors
+error: aborting due to 9 previous errors
 

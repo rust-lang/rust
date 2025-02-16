@@ -99,10 +99,11 @@ fn main() {
     // Almost Allman style braces. Lint these.
     if foo() {
     }
+
     else
     {
-
     }
+    //~^^^^^ suspicious_else_formatting
 
     if foo() {
     }
