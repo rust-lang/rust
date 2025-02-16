@@ -1,112 +1,98 @@
-error: empty line after doc comment
-  --> tests/ui/doc/unbalanced_ticks.rs:7:1
+error: backticks are unbalanced
+  --> tests/ui/doc/unbalanced_ticks.rs:7:5
    |
-LL | / /// This is a doc comment with `unbalanced_tick marks and several words that
+LL |   /// This is a doc comment with `unbalanced_tick marks and several words that
+   |  _____^
 LL | |
-LL | |
-   | |_^
-...
-LL |   fn main() {}
-   |   --------- the comment documents this function
+LL | | /// should be `encompassed_by` tick marks because they `contain_underscores`.
+LL | | /// Because of the initial `unbalanced_tick` pair, the error message is
+LL | | /// very `confusing_and_misleading`.
+   | |____________________________________^
    |
-   = note: `-D clippy::empty-line-after-doc-comments` implied by `-D warnings`
-   = help: to override `-D warnings` add `#[allow(clippy::empty_line_after_doc_comments)]`
-   = help: if the empty line is unintentional remove it
-help: if the doc comment should not document `main` comment it out
-   |
-LL | // /// This is a doc comment with `unbalanced_tick marks and several words that
-   | ++
+   = help: a backtick may be missing a pair
+   = note: `-D clippy::doc-markdown` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::doc_markdown)]`
 
-error: empty lines after doc comment
-  --> tests/ui/doc/unbalanced_ticks.rs:15:1
+error: backticks are unbalanced
+  --> tests/ui/doc/unbalanced_ticks.rs:14:5
    |
-LL | / /// This paragraph has `unbalanced_tick marks and should stop_linting.
-LL | |
-LL | |
-LL | | ///
-...  |
-LL | | /// Double unbalanced backtick from ``here to here` should lint.
-LL | |
-   | |_^
-...
-LL |   fn multiple_paragraphs() {}
-   |   ------------------------ the comment documents this function
+LL | /// This paragraph has `unbalanced_tick marks and should stop_linting.
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: if the empty lines are unintentional remove them
-help: if the doc comment should not document `multiple_paragraphs` comment it out
-   |
-LL ~ // /// This paragraph has `unbalanced_tick marks and should stop_linting.
-LL |
-LL |
-LL ~ // ///
-LL ~ // /// This paragraph is fine and should_be linted normally.
-LL |
-LL ~ // ///
-LL ~ // /// Double unbalanced backtick from ``here to here` should lint.
-   |
+   = help: a backtick may be missing a pair
 
-error: empty lines after doc comment
-  --> tests/ui/doc/unbalanced_ticks.rs:36:1
+error: item in documentation is missing backticks
+  --> tests/ui/doc/unbalanced_ticks.rs:17:32
    |
-LL | / /// ## not_fine
-LL | |
-LL | |
-LL | | ///
-...  |
-LL | | /// - This item needs backticks_here
-LL | |
-   | |_^
-LL |   fn other_markdown() {}
-   |   ------------------- the comment documents this function
+LL | /// This paragraph is fine and should_be linted normally.
+   |                                ^^^^^^^^^
    |
-   = help: if the empty lines are unintentional remove them
-help: if the doc comment should not document `other_markdown` comment it out
+help: try
    |
-LL ~ // /// # `Fine`
-LL ~ // ///
-LL ~ // /// ## not_fine
-LL |
-LL |
-LL ~ // ///
-LL ~ // /// ### `unbalanced
-LL |
-LL ~ // ///
-LL ~ // /// - This `item has unbalanced tick marks
-LL |
-LL ~ // /// - This item needs backticks_here
-   |
+LL | /// This paragraph is fine and `should_be` linted normally.
+   |                                ~~~~~~~~~~~
 
-error: empty line after doc comment
-  --> tests/ui/doc/unbalanced_ticks.rs:56:1
+error: backticks are unbalanced
+  --> tests/ui/doc/unbalanced_ticks.rs:20:5
    |
-LL | / /// `
-LL | |
-LL | |
-   | |_^
-LL |   fn escape_0() {}
-   |   ------------- the comment documents this function
+LL | /// Double unbalanced backtick from ``here to here` should lint.
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: if the empty line is unintentional remove it
-help: if the doc comment should not document `escape_0` comment it out
-   |
-LL | // /// `
-   | ++
+   = help: a backtick may be missing a pair
 
-error: empty line after doc comment
-  --> tests/ui/doc/unbalanced_ticks.rs:67:1
+error: item in documentation is missing backticks
+  --> tests/ui/doc/unbalanced_ticks.rs:34:8
    |
-LL | / /// Escaped \` ` backticks don't count, but unescaped backticks do.
-LL | |
-LL | |
-   | |_^
-LL |   fn escape_3() {}
-   |   ------------- the comment documents this function
+LL | /// ## not_fine
+   |        ^^^^^^^^
    |
-   = help: if the empty line is unintentional remove it
-help: if the doc comment should not document `escape_3` comment it out
+help: try
    |
-LL | // /// Escaped \` ` backticks don't count, but unescaped backticks do.
-   | ++
+LL | /// ## `not_fine`
+   |        ~~~~~~~~~~
 
-error: aborting due to 5 previous errors
+error: backticks are unbalanced
+  --> tests/ui/doc/unbalanced_ticks.rs:37:5
+   |
+LL | /// ### `unbalanced
+   |     ^^^^^^^^^^^^^^^
+   |
+   = help: a backtick may be missing a pair
+
+error: backticks are unbalanced
+  --> tests/ui/doc/unbalanced_ticks.rs:40:5
+   |
+LL | /// - This `item has unbalanced tick marks
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: a backtick may be missing a pair
+
+error: item in documentation is missing backticks
+  --> tests/ui/doc/unbalanced_ticks.rs:42:23
+   |
+LL | /// - This item needs backticks_here
+   |                       ^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL | /// - This item needs `backticks_here`
+   |                       ~~~~~~~~~~~~~~~~
+
+error: backticks are unbalanced
+  --> tests/ui/doc/unbalanced_ticks.rs:53:5
+   |
+LL | /// `
+   |     ^
+   |
+   = help: a backtick may be missing a pair
+
+error: backticks are unbalanced
+  --> tests/ui/doc/unbalanced_ticks.rs:63:5
+   |
+LL | /// Escaped \` ` backticks don't count, but unescaped backticks do.
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: a backtick may be missing a pair
+
+error: aborting due to 10 previous errors
 

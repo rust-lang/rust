@@ -1,4 +1,3 @@
-//@error-in-other-file: empty line after outer attribute
 //@error-in-other-file: item has both inner and outer attributes
 //@no-rustfix
 #[path = "auxiliary/submodule.rs"] // don't lint.

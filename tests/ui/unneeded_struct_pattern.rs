@@ -2,8 +2,7 @@
 #![allow(
     clippy::manual_unwrap_or_default,
     clippy::manual_unwrap_or,
-    clippy::redundant_pattern_matching,
-    clippy::no_effect
+    clippy::redundant_pattern_matching
 )]
 #![warn(clippy::unneeded_struct_pattern)]
 
@@ -65,22 +64,28 @@ fn main() {
     match Custom::Init {
         Custom::HasFields { field: value } => value,
         Custom::HasBracketsNoFields {} => 0,
+        Custom::NoBrackets {} => 0,              //~ unneeded_struct_pattern
+        Custom::NoBracketsNonExhaustive {} => 0, //~ unneeded_struct_pattern
         _ => 0,
     };
 
     match Custom::Init {
         Custom::HasFields { field: value } => value,
         Custom::HasBracketsNoFields { .. } => 0,
+        Custom::NoBrackets { .. } => 0,              //~ unneeded_struct_pattern
+        Custom::NoBracketsNonExhaustive { .. } => 0, //~ unneeded_struct_pattern
         _ => 0,
     };
 
     match Custom::Init {
+        Custom::NoBrackets {} if true => 0, //~ unneeded_struct_pattern
         _ => 0,
     };
-    //~^^^ match_single_binding
 
     match Custom::Init {
-        //~^ match_single_binding
+        Custom::NoBrackets {} | Custom::NoBracketsNonExhaustive {} => 0,
+        //~^ unneeded_struct_pattern
+        //~| unneeded_struct_pattern
         _ => 0,
     };
 
@@ -126,6 +131,7 @@ fn main() {
     let Custom::HasBracketsNoFields { .. } = Custom::Init else {
         panic!()
     };
+    let Custom::NoBrackets {} = Custom::Init else { panic!() }; //~ unneeded_struct_pattern
 
     let Custom::NoBrackets { .. } = Custom::Init else {
         //~^ unneeded_struct_pattern
@@ -143,6 +149,12 @@ fn main() {
     enum Refutable {
         Variant,
     }
+
+    fn pat_in_fn_param_1(Refutable::Variant {}: Refutable) {} //~ unneeded_struct_pattern
+    fn pat_in_fn_param_2(Refutable::Variant { .. }: Refutable) {} //~ unneeded_struct_pattern
+
+    for Refutable::Variant {} in [] {} //~ unneeded_struct_pattern
+    for Refutable::Variant { .. } in [] {} //~ unneeded_struct_pattern
 }
 
 fn external_crate() {
@@ -155,14 +167,14 @@ fn external_crate() {
     };
 
     match ExhaustiveUnit {
-        //~^ match_single_binding
         // Exhaustive variant
+        ExhaustiveUnit { .. } => 0, //~ unneeded_struct_pattern
         _ => 0,
     };
 
     match ExhaustiveUnit {
-        //~^ match_single_binding
         // Exhaustive variant
+        ExhaustiveUnit {} => 0, //~ unneeded_struct_pattern
         _ => 0,
     };
 
