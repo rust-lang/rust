@@ -264,11 +264,11 @@ impl<'tcx> LayoutError<'tcx> {
 
         use crate::fluent_generated::*;
         match self {
-            Unknown(_) => middle_unknown_layout,
-            SizeOverflow(_) => middle_values_too_big,
-            TooGeneric(_) => middle_too_generic,
-            NormalizationFailure(_, _) => middle_cannot_be_normalized,
-            Cycle(_) => middle_cycle,
+            Unknown(_) => middle_layout_unknown,
+            SizeOverflow(_) => middle_layout_size_overflow,
+            TooGeneric(_) => middle_layout_too_generic,
+            NormalizationFailure(_, _) => middle_layout_normalization_failure,
+            Cycle(_) => middle_layout_cycle,
             ReferencesError(_) => middle_layout_references_error,
         }
     }
@@ -297,7 +297,7 @@ impl<'tcx> fmt::Display for LayoutError<'tcx> {
         match *self {
             LayoutError::Unknown(ty) => write!(f, "the type `{ty}` has an unknown layout"),
             LayoutError::TooGeneric(ty) => {
-                write!(f, "`{ty}` does not have a fixed size")
+                write!(f, "the type `{ty}` does not have a fixed layout")
             }
             LayoutError::SizeOverflow(ty) => {
                 write!(f, "values of the type `{ty}` are too big for the target architecture")

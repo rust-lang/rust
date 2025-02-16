@@ -86,4 +86,4 @@ union EmptyUnion {} //~ ERROR: has an unknown layout
 // Test the error message of `LayoutError::TooGeneric`
 // (this error is never emitted to users).
 #[rustc_layout(debug)]
-type TooGeneric<T> = T; //~ ERROR: does not have a fixed size
+type TooGeneric<T> = T; //~ ERROR: does not have a fixed layout

@@ -596,7 +596,7 @@ error: the type has an unknown layout
 LL | union EmptyUnion {}
    | ^^^^^^^^^^^^^^^^
 
-error: `T` does not have a fixed size
+error: the type `T` does not have a fixed layout
   --> $DIR/debug.rs:89:1
    |
 LL | type TooGeneric<T> = T;
