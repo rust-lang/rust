@@ -2,18 +2,17 @@
 
 mod check_match;
 mod const_to_pat;
+mod migration;
 
 use std::cmp::Ordering;
 use std::sync::Arc;
 
 use rustc_abi::{FieldIdx, Integer};
-use rustc_errors::MultiSpan;
 use rustc_errors::codes::*;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
-use rustc_hir::{self as hir, ByRef, Mutability, RangeEnd};
+use rustc_hir::{self as hir, RangeEnd};
 use rustc_index::Idx;
-use rustc_lint as lint;
 use rustc_middle::mir::interpret::LitToConstInput;
 use rustc_middle::thir::{
     Ascription, FieldPat, LocalVarId, Pat, PatKind, PatRange, PatRangeBoundary,
@@ -26,8 +25,8 @@ use rustc_span::{ErrorGuaranteed, Span};
 use tracing::{debug, instrument};
 
 pub(crate) use self::check_match::check_match;
+use self::migration::PatMigration;
 use crate::errors::*;
-use crate::fluent_generated as fluent;
 
 struct PatCtxt<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -35,7 +34,7 @@ struct PatCtxt<'a, 'tcx> {
     typeck_results: &'a ty::TypeckResults<'tcx>,
 
     /// Used by the Rust 2024 migration lint.
-    rust_2024_migration_suggestion: Option<Rust2024IncompatiblePatSugg>,
+    rust_2024_migration: Option<PatMigration<'a>>,
 }
 
 pub(super) fn pat_from_hir<'a, 'tcx>(
@@ -44,59 +43,19 @@ pub(super) fn pat_from_hir<'a, 'tcx>(
     typeck_results: &'a ty::TypeckResults<'tcx>,
     pat: &'tcx hir::Pat<'tcx>,
 ) -> Box<Pat<'tcx>> {
-    let migration_info = typeck_results.rust_2024_migration_desugared_pats().get(pat.hir_id);
     let mut pcx = PatCtxt {
         tcx,
         typing_env,
         typeck_results,
-        rust_2024_migration_suggestion: migration_info.and_then(|info| {
-            Some(Rust2024IncompatiblePatSugg {
-                suggest_eliding_modes: info.suggest_eliding_modes,
-                suggestion: Vec::new(),
-                ref_pattern_count: 0,
-                binding_mode_count: 0,
-                default_mode_span: None,
-                default_mode_labels: Default::default(),
-            })
-        }),
+        rust_2024_migration: typeck_results
+            .rust_2024_migration_desugared_pats()
+            .get(pat.hir_id)
+            .map(PatMigration::new),
     };
     let result = pcx.lower_pattern(pat);
     debug!("pat_from_hir({:?}) = {:?}", pat, result);
-    if let Some(info) = migration_info
-        && let Some(sugg) = pcx.rust_2024_migration_suggestion
-    {
-        let mut spans =
-            MultiSpan::from_spans(info.primary_labels.iter().map(|(span, _)| *span).collect());
-        for (span, label) in &info.primary_labels {
-            spans.push_span_label(*span, label.clone());
-        }
-        // If a relevant span is from at least edition 2024, this is a hard error.
-        let is_hard_error = spans.primary_spans().iter().any(|span| span.at_least_rust_2024());
-        if is_hard_error {
-            let mut err =
-                tcx.dcx().struct_span_err(spans, fluent::mir_build_rust_2024_incompatible_pat);
-            if let Some(lint_info) = lint::builtin::RUST_2024_INCOMPATIBLE_PAT.future_incompatible {
-                // provide the same reference link as the lint
-                err.note(format!("for more information, see {}", lint_info.reference));
-            }
-            err.arg("bad_modifiers", info.bad_modifiers);
-            err.arg("bad_ref_pats", info.bad_ref_pats);
-            err.arg("is_hard_error", true);
-            err.subdiagnostic(sugg);
-            err.emit();
-        } else {
-            tcx.emit_node_span_lint(
-                lint::builtin::RUST_2024_INCOMPATIBLE_PAT,
-                pat.hir_id,
-                spans,
-                Rust2024IncompatiblePat {
-                    sugg,
-                    bad_modifiers: info.bad_modifiers,
-                    bad_ref_pats: info.bad_ref_pats,
-                    is_hard_error,
-                },
-            );
-        }
+    if let Some(m) = pcx.rust_2024_migration {
+        m.emit(tcx, pat.hir_id);
     }
     result
 }
@@ -106,31 +65,13 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let adjustments: &[Ty<'tcx>] =
             self.typeck_results.pat_adjustments().get(pat.hir_id).map_or(&[], |v| &**v);
 
+        // Track the default binding mode for the Rust 2024 migration suggestion.
         let mut opt_old_mode_span = None;
-        if let Some(s) = &mut self.rust_2024_migration_suggestion
+        if let Some(s) = &mut self.rust_2024_migration
             && !adjustments.is_empty()
         {
-            let implicit_deref_mutbls = adjustments.iter().map(|ref_ty| {
-                let &ty::Ref(_, _, mutbl) = ref_ty.kind() else {
-                    span_bug!(pat.span, "pattern implicitly dereferences a non-ref type");
-                };
-                mutbl
-            });
-
-            if !s.suggest_eliding_modes {
-                let suggestion_str: String =
-                    implicit_deref_mutbls.clone().map(|mutbl| mutbl.ref_prefix_str()).collect();
-                s.suggestion.push((pat.span.shrink_to_lo(), suggestion_str));
-                s.ref_pattern_count += adjustments.len();
-            }
-
-            // Remember if this changed the default binding mode, in case we want to label it.
-            let min_mutbl = implicit_deref_mutbls.min().unwrap();
-            if s.default_mode_span.is_none_or(|(_, old_mutbl)| min_mutbl < old_mutbl) {
-                opt_old_mode_span = Some(s.default_mode_span);
-                s.default_mode_span = Some((pat.span, min_mutbl));
-            }
-        };
+            opt_old_mode_span = s.visit_implicit_derefs(pat.span, adjustments);
+        }
 
         // When implicit dereferences have been inserted in this pattern, the unadjusted lowered
         // pattern has the type that results *after* dereferencing. For example, in this code:
@@ -169,10 +110,10 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             })
         });
 
-        if let Some(s) = &mut self.rust_2024_migration_suggestion
-            && let Some(old_mode_span) = opt_old_mode_span
+        if let Some(s) = &mut self.rust_2024_migration
+            && !adjustments.is_empty()
         {
-            s.default_mode_span = old_mode_span;
+            s.leave_ref(opt_old_mode_span);
         }
 
         adjusted_pat
@@ -368,16 +309,11 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             }
             hir::PatKind::Ref(subpattern, _) => {
                 // Track the default binding mode for the Rust 2024 migration suggestion.
-                let old_mode_span = self.rust_2024_migration_suggestion.as_mut().and_then(|s| {
-                    if let Some((default_mode_span, default_ref_mutbl)) = s.default_mode_span {
-                        // If this eats a by-ref default binding mode, label the binding mode.
-                        s.default_mode_labels.insert(default_mode_span, default_ref_mutbl);
-                    }
-                    s.default_mode_span.take()
-                });
+                let opt_old_mode_span =
+                    self.rust_2024_migration.as_mut().and_then(|s| s.visit_explicit_deref());
                 let subpattern = self.lower_pattern(subpattern);
-                if let Some(s) = &mut self.rust_2024_migration_suggestion {
-                    s.default_mode_span = old_mode_span;
+                if let Some(s) = &mut self.rust_2024_migration {
+                    s.leave_ref(opt_old_mode_span);
                 }
                 PatKind::Deref { subpattern }
             }
@@ -408,32 +344,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     .get(pat.hir_id)
                     .expect("missing binding mode");
 
-                if let Some(s) = &mut self.rust_2024_migration_suggestion {
-                    if explicit_ba != hir::BindingMode::NONE
-                        && let Some((default_mode_span, default_ref_mutbl)) = s.default_mode_span
-                    {
-                        // If this overrides a by-ref default binding mode, label the binding mode.
-                        s.default_mode_labels.insert(default_mode_span, default_ref_mutbl);
-                        // If our suggestion is to elide redundnt modes, this will be one of them.
-                        if s.suggest_eliding_modes {
-                            s.suggestion.push((pat.span.with_hi(ident.span.lo()), String::new()));
-                            s.binding_mode_count += 1;
-                        }
-                    }
-                    if !s.suggest_eliding_modes
-                        && explicit_ba.0 == ByRef::No
-                        && let ByRef::Yes(mutbl) = mode.0
-                    {
-                        let sugg_str = match mutbl {
-                            Mutability::Not => "ref ",
-                            Mutability::Mut => "ref mut ",
-                        };
-                        s.suggestion.push((
-                            pat.span.with_lo(ident.span.lo()).shrink_to_lo(),
-                            sugg_str.to_owned(),
-                        ));
-                        s.binding_mode_count += 1;
-                    }
+                if let Some(s) = &mut self.rust_2024_migration {
+                    s.visit_binding(pat.span, mode, explicit_ba, ident);
                 }
 
                 // A ref x pattern is the same node used for x, and as such it has
