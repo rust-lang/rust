@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions:x86-linux x86-darwin
 
 //@[x86-linux] compile-flags: --target i686-unknown-linux-gnu
@@ -7,18 +8,14 @@
 
 // Tests that aggregates containing vector types get their alignment increased to 16 on Darwin.
 
-#![feature(no_core, lang_items, repr_simd, simd_ffi)]
+#![feature(no_core, repr_simd, simd_ffi)]
 #![crate_type = "lib"]
 #![no_std]
 #![no_core]
 #![allow(non_camel_case_types)]
 
-#[lang = "sized"]
-trait Sized {}
-#[lang = "freeze"]
-trait Freeze {}
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 #[repr(simd)]
 pub struct i32x4([i32; 4]);

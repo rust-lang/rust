@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions: z10 z13_no_vector z13_soft_float
 //@ build-fail
 //@[z10] compile-flags: --target s390x-unknown-linux-gnu
@@ -8,20 +9,14 @@
 //@[z13_soft_float] compile-flags: --target s390x-unknown-linux-gnu -C target-cpu=z13 -C target-feature=-vector,+soft-float
 //@[z13_soft_float] needs-llvm-components: systemz
 
-#![feature(no_core, lang_items, repr_simd, s390x_target_feature)]
+#![feature(no_core, repr_simd, s390x_target_feature)]
 #![no_core]
 #![crate_type = "lib"]
 #![allow(non_camel_case_types, improper_ctypes_definitions)]
 #![deny(abi_unsupported_vector_types)]
 
-#[lang = "sized"]
-pub trait Sized {}
-#[lang = "copy"]
-pub trait Copy {}
-#[lang = "freeze"]
-pub trait Freeze {}
-
-impl<T: Copy, const N: usize> Copy for [T; N] {}
+extern crate minicore;
+use minicore::*;
 
 #[repr(simd)]
 pub struct i8x8([i8; 8]);
@@ -34,8 +29,6 @@ pub struct Wrapper<T>(T);
 #[repr(transparent)]
 pub struct TransparentWrapper<T>(T);
 
-impl Copy for i8 {}
-impl Copy for i64 {}
 impl Copy for i8x8 {}
 impl Copy for i8x16 {}
 impl Copy for i8x32 {}

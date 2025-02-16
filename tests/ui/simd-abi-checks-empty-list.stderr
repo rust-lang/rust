@@ -1,5 +1,5 @@
 warning: this function definition uses SIMD vector type `SimdVec` which is not currently supported with the chosen ABI
-  --> $DIR/simd-abi-checks-empty-list.rs:17:1
+  --> $DIR/simd-abi-checks-empty-list.rs:16:1
    |
 LL | pub extern "C" fn pass_by_vec(_: SimdVec) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
@@ -12,7 +12,7 @@ warning: 1 warning emitted
 
 Future incompatibility report: Future breakage diagnostic:
 warning: this function definition uses SIMD vector type `SimdVec` which is not currently supported with the chosen ABI
-  --> $DIR/simd-abi-checks-empty-list.rs:17:1
+  --> $DIR/simd-abi-checks-empty-list.rs:16:1
    |
 LL | pub extern "C" fn pass_by_vec(_: SimdVec) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
