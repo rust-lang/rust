@@ -9,7 +9,7 @@ use gccjit::FunctionType;
 use gccjit::{ComparisonOp, Function, RValue, ToRValue, Type, UnaryOp};
 #[cfg(feature = "master")]
 use rustc_abi::ExternAbi;
-use rustc_abi::HasDataLayout;
+use rustc_abi::{BackendRepr, HasDataLayout};
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::common::IntPredicate;
@@ -181,14 +181,19 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             sym::volatile_load | sym::unaligned_volatile_load => {
                 let tp_ty = fn_args.type_at(0);
                 let ptr = args[0].immediate();
+                let layout = self.layout_of(tp_ty);
                 let load = if let PassMode::Cast { cast: ref ty, pad_i32: _ } = fn_abi.ret.mode {
                     let gcc_ty = ty.gcc_type(self);
                     self.volatile_load(gcc_ty, ptr)
                 } else {
-                    self.volatile_load(self.layout_of(tp_ty).gcc_type(self), ptr)
+                    self.volatile_load(layout.gcc_type(self), ptr)
                 };
                 // TODO(antoyo): set alignment.
-                self.to_immediate(load, self.layout_of(tp_ty))
+                if let BackendRepr::Scalar(scalar) = layout.backend_repr {
+                    self.to_immediate_scalar(load, scalar)
+                } else {
+                    load
+                }
             }
             sym::volatile_store => {
                 let dst = args[0].deref(self.cx());

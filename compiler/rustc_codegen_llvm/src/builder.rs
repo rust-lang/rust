@@ -746,10 +746,12 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 let load = self.load(llty, place.val.llval, place.val.align);
                 if let abi::BackendRepr::Scalar(scalar) = place.layout.backend_repr {
                     scalar_load_metadata(self, load, scalar, place.layout, Size::ZERO);
+                    self.to_immediate_scalar(load, scalar)
+                } else {
+                    load
                 }
-                load
             });
-            OperandValue::Immediate(self.to_immediate(llval, place.layout))
+            OperandValue::Immediate(llval)
         } else if let abi::BackendRepr::ScalarPair(a, b) = place.layout.backend_repr {
             let b_offset = a.size(self).align_to(b.align(self).abi);
 
@@ -943,6 +945,8 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn unchecked_utrunc(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
+        debug_assert_ne!(self.val_ty(val), dest_ty);
+
         let trunc = self.trunc(val, dest_ty);
         if llvm_util::get_version() >= (19, 0, 0) {
             unsafe {
@@ -955,6 +959,8 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn unchecked_strunc(&mut self, val: &'ll Value, dest_ty: &'ll Type) -> &'ll Value {
+        debug_assert_ne!(self.val_ty(val), dest_ty);
+
         let trunc = self.trunc(val, dest_ty);
         if llvm_util::get_version() >= (19, 0, 0) {
             unsafe {
