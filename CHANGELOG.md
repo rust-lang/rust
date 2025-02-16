@@ -6,11 +6,53 @@ document.
 
 ## Unreleased / Beta / In Rust Nightly
 
-[786fbd6d...master](https://github.com/rust-lang/rust-clippy/compare/786fbd6d...master)
+[609cd310...master](https://github.com/rust-lang/rust-clippy/compare/609cd310...master)
+
+## Rust 1.85
+
+Current stable, released 2025-02-20
+
+[View all 72 merged pull requests](https://github.com/rust-lang/rust-clippy/pulls?q=merged%3A2024-11-15T19%3A31%3A08Z..2024-12-26T13%3A59%3A48Z+base%3Amaster)
+
+### New Lints
+
+* Added [`repr_packed_without_abi`] to `suspicious`
+  [#13398](https://github.com/rust-lang/rust-clippy/pull/13398)
+* Added [`as_pointer_underscore`] to `restriction`
+  [#13251](https://github.com/rust-lang/rust-clippy/pull/13251)
+* Added [`doc_nested_refdefs`] to `suspicious`
+  [#13707](https://github.com/rust-lang/rust-clippy/pull/13707)
+* Added [`literal_string_with_formatting_args`] to `nursery`
+  [#13410](https://github.com/rust-lang/rust-clippy/pull/13410)
+* Added [`doc_include_without_cfg`] to `restriction`
+  [#13625](https://github.com/rust-lang/rust-clippy/pull/13625)
+
+### Enhancements
+
+* [`indexing_slicing`]: Can now be allowed in tests using the [`allow-indexing-slicing-in-tests`]
+  configuration
+  [#13854](https://github.com/rust-lang/rust-clippy/pull/13854)
+* [`if_let_mutex`]: disable lint from Edition 2024 since
+  [if_let_rescope](https://github.com/rust-lang/rust/issues/131154) was stabilized
+  [#13695](https://github.com/rust-lang/rust-clippy/pull/13695)
+* [`format_in_format_args`], [`recursive_format_impl`], [`to_string_in_format_args`],
+  [`uninlined_format_args`], [`unused_format_specs`]: Can now support 3er party format macros
+  if they're marked with the `#[clippy::format_args]` attribute
+  [#9948](https://github.com/rust-lang/rust-clippy/pull/9948)
+
+### ICE Fixes
+
+* [`trait_duplication_in_bounds`]: fix ICE on duplicate type or constant bound
+  [#13722](https://github.com/rust-lang/rust-clippy/pull/13722)
+
+### Others
+
+* `clippy_utils` is now published to crates.io. Note that this crate is and will remain unstable.
+  [#13700](https://github.com/rust-lang/rust-clippy/pull/13700)
 
 ## Rust 1.84
 
-Current stable, released 2025-01-09
+Released 2025-01-09
 
 [View all 84 merged pull requests](https://github.com/rust-lang/rust-clippy/pulls?q=merged%3A2024-10-03T21%3A23%3A58Z..2024-11-14T17%3A41%3A37Z+base%3Amaster)
 
