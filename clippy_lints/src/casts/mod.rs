@@ -747,7 +747,7 @@ declare_clippy_lint! {
     ///     t as *const T as usize
     /// }
     /// ```
-    #[clippy::version = "1.81.0"]
+    #[clippy::version = "1.85.0"]
     pub AS_POINTER_UNDERSCORE,
     restriction,
     "detects `as *mut _` and `as *const _` conversion"
