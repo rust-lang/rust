@@ -1,6 +1,4 @@
 //@normalize-stderr-test: "\d+ < \d+" -> "$$ADDR < $$ADDR"
-#![feature(ptr_sub_ptr)]
-
 fn main() {
     let arr = [0u8; 8];
     let ptr1 = arr.as_ptr();

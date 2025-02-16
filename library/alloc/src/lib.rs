@@ -136,7 +136,6 @@
 #![feature(pointer_like_trait)]
 #![feature(ptr_internals)]
 #![feature(ptr_metadata)]
-#![feature(ptr_sub_ptr)]
 #![feature(set_ptr_value)]
 #![feature(sized_type_properties)]
 #![feature(slice_from_ptr_range)]

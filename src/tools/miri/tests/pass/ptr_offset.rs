@@ -1,5 +1,4 @@
 //@compile-flags: -Zmiri-permissive-provenance
-#![feature(ptr_sub_ptr)]
 use std::{mem, ptr};
 
 fn main() {
