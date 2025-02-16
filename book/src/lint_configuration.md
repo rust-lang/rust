@@ -613,6 +613,17 @@ The maximum size of the `Err`-variant in a `Result` returned from a function
 * [`result_large_err`](https://rust-lang.github.io/rust-clippy/master/index.html#result_large_err)
 
 
+## `lint-commented-code`
+Whether collapsible `if` chains are linted if they contain comments inside the parts
+that would be collapsed.
+
+**Default Value:** `false`
+
+---
+**Affected lints:**
+* [`collapsible_if`](https://rust-lang.github.io/rust-clippy/master/index.html#collapsible_if)
+
+
 ## `lint-inconsistent-struct-field-initializers`
 Whether to suggest reordering constructor fields when initializers are present.
 

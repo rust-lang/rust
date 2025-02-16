@@ -549,6 +549,10 @@ define_Conf! {
     /// The maximum size of the `Err`-variant in a `Result` returned from a function
     #[lints(result_large_err)]
     large_error_threshold: u64 = 128,
+    /// Whether collapsible `if` chains are linted if they contain comments inside the parts
+    /// that would be collapsed.
+    #[lints(collapsible_if)]
+    lint_commented_code: bool = false,
     /// Whether to suggest reordering constructor fields when initializers are present.
     ///
     /// Warnings produced by this configuration aren't necessarily fixed by just reordering the fields. Even if the
