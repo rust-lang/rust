@@ -425,6 +425,10 @@ impl File {
         Err(Error::from_raw_os_error(22))
     }
 
+    pub fn size(&self) -> Option<io::Result<u64>> {
+        None
+    }
+
     pub fn duplicate(&self) -> io::Result<File> {
         Err(Error::from_raw_os_error(22))
     }
