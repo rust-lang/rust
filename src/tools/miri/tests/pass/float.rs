@@ -13,78 +13,27 @@ use std::fmt::{Debug, Display, LowerHex};
 use std::hint::black_box;
 use std::{f32, f64};
 
-/// Another way of checking if 2 floating-point numbers are almost equal to eachother.
-/// Using `a` and `b` as floating-point numbers:
+/// Compare the two floats, allowing for $ulp many ULPs of error.
 ///
-/// Instead of performing a simple EPSILON check (which we used at first):
-/// The absolute difference between 'a' and 'b' must not be greater than some E (10^-6, ...)
-///
-/// We will now use ULP: `Units in the Last Place` or `Units of Least Precision`,
-/// more specific, the difference in ULP of `a` and `b`.
-/// First: The ULP of a float 'a' is the smallest possible change at 'a', so the ULP difference represents how
-/// many discrete floating-point steps are needed to reach 'b' from 'a'.
-///
-/// ULP(a) is the distance between the 2 closest floating-point numbers `x` and `y` around `a`, satisfying x < a < y, x != y.
-/// To use this to calculate the ULP difference we have to halve it (we need it at `a`, but we just went "up" and "down", halving it gives us this ULP).
-/// Then take the difference of `b` and `a` and divide it by that ULP and finally round it.
-/// We know now how many floating-point changes we have to apply to `a` to get to `b`.
-///
-/// So if this ULP difference is less than or equal to our chosen upper bound
-/// we can say that `a` and `b` are approximately equal, because they lie "close" enough to each other to be considered equal.
-///
-/// Note: We can see that checking `a` and `b` with different signs has no meaning, but we should not forget
-/// -0.0 and +0.0.
+/// ULP means "Units in the Last Place" or "Units of Least Precision".
+/// The ULP of a float `a`` is the smallest possible change at `a`, so the ULP difference represents how
+/// many discrete floating-point steps are needed to reach the actual value from the expected value.
 ///
 /// Essentially ULP can be seen as a distance metric of floating-point numbers, but with
 /// the same amount of "spacing" between all consecutive representable values. So even though 2 very large floating point numbers
 /// have a large value difference, their ULP can still be 1, so they are still "approximatly equal",
 /// but the EPSILON check would have failed.
-///
-fn approx_eq_check<F: Float>(
-    actual: F,
-    expected: F,
-    allowed_ulp: F::Int,
-) -> Result<(), NotApproxEq<F>>
-where
-    F::Int: PartialOrd,
-{
-    let actual_signum = actual.signum();
-    let expected_signum = expected.signum();
-
-    if actual_signum != expected_signum {
-        // Floats with different signs must both be 0.
-        if actual != expected {
-            return Err(NotApproxEq::SignsDiffer);
-        }
-    } else {
-        let ulp = (expected.next_up() - expected.next_down()).halve();
-        let ulp_diff = ((actual - expected) / ulp).round().as_int();
-
-        if ulp_diff > allowed_ulp {
-            return Err(NotApproxEq::UlpFail(ulp_diff));
-        }
-    }
-    Ok(())
-}
-
-/// Give more context to execution and result of [`approx_eq_check`].
-enum NotApproxEq<F: Float> {
-    SignsDiffer,
-
-    /// Contains the actual ulp value calculated.
-    UlpFail(F::Int),
-}
-
 macro_rules! assert_approx_eq {
     ($a:expr, $b:expr, $ulp:expr) => {{
-        let (a, b) = ($a, $b);
-        let allowed_ulp = $ulp;
-        match approx_eq_check(a, b, allowed_ulp) {
-            Err(NotApproxEq::SignsDiffer) =>
-                panic!("{a:?} is not approximately equal to {b:?}: signs differ"),
-            Err(NotApproxEq::UlpFail(actual_ulp)) =>
-                panic!("{a:?} is not approximately equal to {b:?}\nulp diff: {actual_ulp} > {allowed_ulp}"),
-            Ok(_) => {}
+        let (actual, expected) = ($a, $b);
+        let allowed_ulp_diff = $ulp;
+        let _force_same_type = actual == expected;
+        // Approximate the ULP by taking half the distance between the number one place "up"
+        // and the number one place "down".
+        let ulp = (expected.next_up() - expected.next_down()) / 2.0;
+        let ulp_diff = ((actual - expected) / ulp).abs().round() as i32;
+        if ulp_diff > allowed_ulp_diff {
+            panic!("{actual:?} is not approximately equal to {expected:?}\ndifference in ULP: {ulp_diff} > {allowed_ulp_diff}");
         };
     }};
 
@@ -101,8 +50,8 @@ fn main() {
     ops();
     nan_casts();
     rounding();
-    libm();
     mul_add();
+    libm();
     test_fast();
     test_algebraic();
     test_fmuladd();
@@ -110,14 +59,7 @@ fn main() {
     test_non_determinism();
 }
 
-trait Float:
-    Copy
-    + PartialEq
-    + Debug
-    + std::ops::Sub<Output = Self>
-    + std::cmp::PartialOrd
-    + std::ops::Div<Output = Self>
-{
+trait Float: Copy + PartialEq + Debug {
     /// The unsigned integer with the same bit width as this float
     type Int: Copy + PartialEq + LowerHex + Debug;
     const BITS: u32 = size_of::<Self>() as u32 * 8;
@@ -131,15 +73,6 @@ trait Float:
     const EXPONENT_BIAS: u32 = Self::EXPONENT_SAT >> 1;
 
     fn to_bits(self) -> Self::Int;
-
-    // to make "approx_eq_check" generic
-    fn signum(self) -> Self;
-    fn next_up(self) -> Self;
-    fn next_down(self) -> Self;
-    fn round(self) -> Self;
-    // self / 2
-    fn halve(self) -> Self;
-    fn as_int(self) -> Self::Int;
 }
 
 macro_rules! impl_float {
@@ -151,27 +84,6 @@ macro_rules! impl_float {
 
             fn to_bits(self) -> Self::Int {
                 self.to_bits()
-            }
-
-            fn signum(self) -> Self {
-                self.signum()
-            }
-            fn next_up(self) -> Self {
-                self.next_up()
-            }
-            fn next_down(self) -> Self {
-                self.next_down()
-            }
-            fn round(self) -> Self {
-                self.round()
-            }
-
-            fn halve(self) -> Self {
-                self / 2.0
-            }
-
-            fn as_int(self) -> Self::Int {
-                self as Self::Int
             }
         }
     };
@@ -1117,8 +1029,8 @@ pub fn libm() {
 
     #[allow(deprecated)]
     {
-        assert_approx_eq!(5.0f32.abs_sub(3.0), 2.0f32);
-        assert_approx_eq!(3.0f64.abs_sub(5.0), 0.0f64);
+        assert_approx_eq!(5.0f32.abs_sub(3.0), 2.0);
+        assert_approx_eq!(3.0f64.abs_sub(5.0), 0.0);
     }
 
     assert_approx_eq!(27.0f32.cbrt(), 3.0f32);
@@ -1135,8 +1047,8 @@ pub fn libm() {
 
     assert_approx_eq!(0f32.sin(), 0f32);
     assert_approx_eq!((f64::consts::PI / 2f64).sin(), 1f64);
-    assert_approx_eq!(f32::consts::FRAC_PI_6.sin(), 0.5f32);
-    assert_approx_eq!(f64::consts::FRAC_PI_6.sin(), 0.5f64);
+    assert_approx_eq!(f32::consts::FRAC_PI_6.sin(), 0.5);
+    assert_approx_eq!(f64::consts::FRAC_PI_6.sin(), 0.5);
     assert_approx_eq!(f32::consts::FRAC_PI_4.sin().asin(), f32::consts::FRAC_PI_4);
     assert_approx_eq!(f64::consts::FRAC_PI_4.sin().asin(), f64::consts::FRAC_PI_4);
 
@@ -1147,8 +1059,8 @@ pub fn libm() {
 
     assert_approx_eq!(0f32.cos(), 1f32);
     assert_approx_eq!((f64::consts::PI * 2f64).cos(), 1f64);
-    assert_approx_eq!(f32::consts::FRAC_PI_3.cos(), 0.5f32);
-    assert_approx_eq!(f64::consts::FRAC_PI_3.cos(), 0.5f64);
+    assert_approx_eq!(f32::consts::FRAC_PI_3.cos(), 0.5);
+    assert_approx_eq!(f64::consts::FRAC_PI_3.cos(), 0.5);
     assert_approx_eq!(f32::consts::FRAC_PI_4.cos().acos(), f32::consts::FRAC_PI_4);
     assert_approx_eq!(f64::consts::FRAC_PI_4.cos().acos(), f64::consts::FRAC_PI_4);
 
@@ -1175,8 +1087,8 @@ pub fn libm() {
     assert_approx_eq!(0.5f32.atanh(), 0.54930614433405484569762261846126285f32);
     assert_approx_eq!(0.5f64.atanh(), 0.54930614433405484569762261846126285f64);
 
-    assert_approx_eq!(5.0f32.gamma(), 24.0f32);
-    assert_approx_eq!(5.0f64.gamma(), 24.0f64);
+    assert_approx_eq!(5.0f32.gamma(), 24.0);
+    assert_approx_eq!(5.0f64.gamma(), 24.0);
     assert_approx_eq!((-0.5f32).gamma(), (-2.0) * f32::consts::PI.sqrt());
     assert_approx_eq!((-0.5f64).gamma(), (-2.0) * f64::consts::PI.sqrt());
 
@@ -1424,6 +1336,8 @@ fn test_non_determinism() {
         ensure_nondet(|| 1.0f32.atan2(2.0f32));
         ensure_nondet(|| 0.5f32.atanh());
         ensure_nondet(|| 5.0f32.gamma());
+        ensure_nondet(|| 5.0f32.erf());
+        ensure_nondet(|| 5.0f32.erfc());
     }
     pub fn test_operations_f64(a: f64, b: f64) {
         test_operations_f!(a, b);
@@ -1446,6 +1360,8 @@ fn test_non_determinism() {
         ensure_nondet(|| 1.0f64.tanh());
         ensure_nondet(|| 0.5f64.atanh());
         ensure_nondet(|| 5.0f64.gamma());
+        ensure_nondet(|| 5.0f64.erf());
+        ensure_nondet(|| 5.0f64.erfc());
     }
     pub fn test_operations_f128(a: f128, b: f128) {
         test_operations_f!(a, b);

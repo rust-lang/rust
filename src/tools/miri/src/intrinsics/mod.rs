@@ -254,7 +254,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let res = apply_random_float_error_ulp(
                     this,
                     res,
-                    4
+                    4, // log2(16)
                 );
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
@@ -289,7 +289,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let res = apply_random_float_error_ulp(
                     this,
                     res,
-                    4
+                    4, // log2(16)
                 );
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
@@ -411,7 +411,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // `binary_op` already called `generate_nan` if needed.
                 // Apply a relative error of 16ULP to simulate non-deterministic precision loss
                 // due to optimizations.
-                let res = apply_random_float_error_to_imm(this, res)?;
+                let res = apply_random_float_error_to_imm(this, res, 4 /* log2(16) */)?;
                 this.write_immediate(*res, dest)?;
             }
 
@@ -464,7 +464,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
                 // Apply a relative error of 16ULP to simulate non-deterministic precision loss
                 // due to optimizations.
-                let res = apply_random_float_error_to_imm(this, res)?;
+                let res = apply_random_float_error_to_imm(this, res, 4 /* log2(16) */)?;
                 this.write_immediate(*res, dest)?;
             }
 
@@ -503,13 +503,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 fn apply_random_float_error_to_imm<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
     val: ImmTy<'tcx>,
+    ulp_exponent: u32,
 ) -> InterpResult<'tcx, ImmTy<'tcx>> {
     let scalar = val.to_scalar_int()?;
     let res: ScalarInt = match val.layout.ty.kind() {
-        ty::Float(FloatTy::F16) => apply_random_float_error_ulp(ecx, scalar.to_f16(), 4).into(),
-        ty::Float(FloatTy::F32) => apply_random_float_error_ulp(ecx, scalar.to_f32(), 4).into(),
-        ty::Float(FloatTy::F64) => apply_random_float_error_ulp(ecx, scalar.to_f64(), 4).into(),
-        ty::Float(FloatTy::F128) => apply_random_float_error_ulp(ecx, scalar.to_f128(), 4).into(),
+        ty::Float(FloatTy::F16) =>
+            apply_random_float_error_ulp(ecx, scalar.to_f16(), ulp_exponent).into(),
+        ty::Float(FloatTy::F32) =>
+            apply_random_float_error_ulp(ecx, scalar.to_f32(), ulp_exponent).into(),
+        ty::Float(FloatTy::F64) =>
+            apply_random_float_error_ulp(ecx, scalar.to_f64(), ulp_exponent).into(),
+        ty::Float(FloatTy::F128) =>
+            apply_random_float_error_ulp(ecx, scalar.to_f128(), ulp_exponent).into(),
         _ => bug!("intrinsic called with non-float input type"),
     };
 
