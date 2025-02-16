@@ -1779,11 +1779,12 @@ struct InvocationCollector<'a, 'b> {
 }
 
 impl<'a, 'b> InvocationCollector<'a, 'b> {
-    fn cfg(&self) -> StripUnconfigured<'_> {
+    fn cfg(&mut self) -> StripUnconfigured<'_> {
         StripUnconfigured {
             sess: self.cx.sess,
             features: Some(self.cx.ecfg.features),
             config_tokens: false,
+            resolver: Some(self.cx.resolver),
             lint_node_id: self.cx.current_expansion.lint_node_id,
         }
     }
@@ -1950,7 +1951,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         (res, meta_item)
     }
 
-    fn expand_cfg_attr(&self, node: &mut impl HasAttrs, attr: &ast::Attribute, pos: usize) {
+    fn expand_cfg_attr(&mut self, node: &mut impl HasAttrs, attr: &ast::Attribute, pos: usize) {
         node.visit_attrs(|attrs| {
             // Repeated `insert` calls is inefficient, but the number of
             // insertions is almost always 0 or 1 in practice.

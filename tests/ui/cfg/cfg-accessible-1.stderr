@@ -1,0 +1,53 @@
+error: expected cfg-accessible path, starting with `::`, and consisting of module names and item names
+  --> $DIR/cfg-accessible-1.rs:4:7
+   |
+LL | #[cfg(accessible())]
+   |       ^^^^^^^^^^^^
+   |
+   = note: cfg-accessible paths start with `::`, followed by zero, one or more (maybe reexported) module name identifiers each followed by `::` in the middle, and then followed by item name identifier at the end
+
+error[E0565]: unsupported literal
+  --> $DIR/cfg-accessible-1.rs:6:18
+   |
+LL | #[cfg(accessible(42))]
+   |                  ^^
+
+error: expected cfg-accessible path, starting with `::`, and consisting of module names and item names
+  --> $DIR/cfg-accessible-1.rs:12:7
+   |
+LL | #[cfg(accessible(::std::nonexistent::item, ::nonexistent2::item))]
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: cfg-accessible paths start with `::`, followed by zero, one or more (maybe reexported) module name identifiers each followed by `::` in the middle, and then followed by item name identifier at the end
+
+error: `cfg(accessible(..))` mentioned external crate is not accessible
+  --> $DIR/cfg-accessible-1.rs:16:20
+   |
+LL | #[cfg(accessible(::nonexistent_crate::item))]
+   |                    ^^^^^^^^^^^^^^^^^
+
+error: `cfg(accessible(..))` mentioned external crate is not accessible
+  --> $DIR/cfg-accessible-1.rs:18:24
+   |
+LL | #[cfg(not(accessible(::nonexistent_crate::item)))]
+   |                        ^^^^^^^^^^^^^^^^^
+
+error: `cfg(accessible(..))` mentioned external crate is not accessible
+  --> $DIR/cfg-accessible-1.rs:26:32
+   |
+LL |     assert!(!cfg!(accessible(::nonexistent::item)));
+   |                                ^^^^^^^^^^^
+
+error[E0425]: cannot find function `baz` in this scope
+  --> $DIR/cfg-accessible-1.rs:24:5
+   |
+LL | fn bar() -> bool { true }
+   | ---------------- similarly named function `bar` defined here
+...
+LL |     baz();
+   |     ^^^ help: a function with a similar name exists: `bar`
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0425, E0565.
+For more information about an error, try `rustc --explain E0425`.

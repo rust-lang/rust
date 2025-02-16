@@ -23,42 +23,39 @@ pub struct Condition {
     pub span: Span,
 }
 
-/// Tests if a cfg-pattern matches the cfg set
-pub fn cfg_matches(
-    cfg: &ast::MetaItemInner,
+pub fn eval_individual_cfg(
+    condition: Condition,
     sess: &Session,
     lint_node_id: NodeId,
     features: Option<&Features>,
 ) -> bool {
-    eval_condition(cfg, sess, features, &mut |cfg| {
-        try_gate_cfg(cfg.name, cfg.span, sess, features);
-        match sess.psess.check_config.expecteds.get(&cfg.name) {
-            Some(ExpectedValues::Some(values)) if !values.contains(&cfg.value) => {
-                sess.psess.buffer_lint(
-                    UNEXPECTED_CFGS,
-                    cfg.span,
-                    lint_node_id,
-                    BuiltinLintDiag::UnexpectedCfgValue(
-                        (cfg.name, cfg.name_span),
-                        cfg.value.map(|v| (v, cfg.value_span.unwrap())),
-                    ),
-                );
-            }
-            None if sess.psess.check_config.exhaustive_names => {
-                sess.psess.buffer_lint(
-                    UNEXPECTED_CFGS,
-                    cfg.span,
-                    lint_node_id,
-                    BuiltinLintDiag::UnexpectedCfgName(
-                        (cfg.name, cfg.name_span),
-                        cfg.value.map(|v| (v, cfg.value_span.unwrap())),
-                    ),
-                );
-            }
-            _ => { /* not unexpected */ }
+    try_gate_cfg(condition.name, condition.span, sess, features);
+    match sess.psess.check_config.expecteds.get(&condition.name) {
+        Some(ExpectedValues::Some(values)) if !values.contains(&condition.value) => {
+            sess.psess.buffer_lint(
+                UNEXPECTED_CFGS,
+                condition.span,
+                lint_node_id,
+                BuiltinLintDiag::UnexpectedCfgValue(
+                    (condition.name, condition.name_span),
+                    condition.value.map(|v| (v, condition.value_span.unwrap())),
+                ),
+            );
         }
-        sess.psess.config.contains(&(cfg.name, cfg.value))
-    })
+        None if sess.psess.check_config.exhaustive_names => {
+            sess.psess.buffer_lint(
+                UNEXPECTED_CFGS,
+                condition.span,
+                lint_node_id,
+                BuiltinLintDiag::UnexpectedCfgName(
+                    (condition.name, condition.name_span),
+                    condition.value.map(|v| (v, condition.value_span.unwrap())),
+                ),
+            );
+        }
+        _ => { /* not unexpected */ }
+    }
+    sess.psess.config.contains(&(condition.name, condition.value))
 }
 
 fn try_gate_cfg(name: Symbol, span: Span, sess: &Session, features: Option<&Features>) {
@@ -77,14 +74,33 @@ fn gate_cfg(gated_cfg: &GatedCfg, cfg_span: Span, sess: &Session, features: &Fea
     }
 }
 
+pub trait CfgEval {
+    fn eval_individual(&mut self, condition: Condition, features: Option<&Features>) -> bool;
+
+    fn eval_accessible_path(
+        &mut self,
+        target_crate: rustc_span::Ident,
+        target_path_segs: impl Iterator<Item = rustc_span::Ident>,
+    ) -> Option<bool>;
+}
+
 /// Evaluate a cfg-like condition (with `any` and `all`), using `eval` to
 /// evaluate individual items.
 pub fn eval_condition(
     cfg: &ast::MetaItemInner,
     sess: &Session,
     features: Option<&Features>,
-    eval: &mut impl FnMut(Condition) -> bool,
+    eval: &mut impl CfgEval,
 ) -> bool {
+    eval_condition_inner(cfg, sess, features, eval).unwrap_or_default()
+}
+
+fn eval_condition_inner(
+    cfg: &ast::MetaItemInner,
+    sess: &Session,
+    features: Option<&Features>,
+    eval: &mut impl CfgEval,
+) -> Option<bool> {
     let dcx = sess.dcx();
 
     let cfg = match cfg {
@@ -104,7 +120,7 @@ pub fn eval_condition(
                     features,
                 );
             }
-            return *b;
+            return Some(*b);
         }
         _ => {
             dcx.emit_err(session_diagnostics::UnsupportedLiteral {
@@ -113,7 +129,7 @@ pub fn eval_condition(
                 is_bytestr: false,
                 start_point_span: sess.source_map().start_point(cfg.span()),
             });
-            return false;
+            return None;
         }
     };
 
@@ -129,25 +145,25 @@ pub fn eval_condition(
                     | MetaItemInner::MetaItem(MetaItem { span, .. }),
                 ] => {
                     dcx.emit_err(session_diagnostics::ExpectedVersionLiteral { span: *span });
-                    return false;
+                    return None;
                 }
                 [..] => {
                     dcx.emit_err(session_diagnostics::ExpectedSingleVersionLiteral {
                         span: cfg.span,
                     });
-                    return false;
+                    return None;
                 }
             };
             let Some(min_version) = parse_version(*min_version) else {
                 dcx.emit_warn(session_diagnostics::UnknownVersionLiteral { span: *span });
-                return false;
+                return None;
             };
 
             // See https://github.com/rust-lang/rust/issues/64796#issuecomment-640851454 for details
             if sess.psess.assume_incomplete_release {
-                RustcVersion::CURRENT > min_version
+                Some(RustcVersion::CURRENT > min_version)
             } else {
-                RustcVersion::CURRENT >= min_version
+                Some(RustcVersion::CURRENT >= min_version)
             }
         }
         ast::MetaItemKind::List(mis) => {
@@ -159,7 +175,7 @@ pub fn eval_condition(
                         is_bytestr: false,
                         start_point_span: sess.source_map().start_point(mi.span()),
                     });
-                    return false;
+                    return None;
                 }
             }
 
@@ -170,19 +186,23 @@ pub fn eval_condition(
                     .iter()
                     // We don't use any() here, because we want to evaluate all cfg condition
                     // as eval_condition can (and does) extra checks
-                    .fold(false, |res, mi| res | eval_condition(mi, sess, features, eval)),
+                    .fold(Some(false), |res, mi| {
+                        Some(res? | eval_condition_inner(mi, sess, features, eval)?)
+                    }),
                 sym::all => mis
                     .iter()
                     // We don't use all() here, because we want to evaluate all cfg condition
                     // as eval_condition can (and does) extra checks
-                    .fold(true, |res, mi| res & eval_condition(mi, sess, features, eval)),
+                    .fold(Some(true), |res, mi| {
+                        Some(res? & eval_condition_inner(mi, sess, features, eval)?)
+                    }),
                 sym::not => {
                     let [mi] = mis.as_slice() else {
                         dcx.emit_err(session_diagnostics::ExpectedOneCfgPattern { span: cfg.span });
-                        return false;
+                        return None;
                     };
 
-                    !eval_condition(mi, sess, features, eval)
+                    Some(!eval_condition_inner(mi, sess, features, eval)?)
                 }
                 sym::target => {
                     if let Some(features) = features
@@ -197,38 +217,103 @@ pub fn eval_condition(
                         .emit();
                     }
 
-                    mis.iter().fold(true, |res, mi| {
+                    mis.iter().fold(Some(true), |res, mi| {
                         let Some(mut mi) = mi.meta_item().cloned() else {
                             dcx.emit_err(session_diagnostics::CfgPredicateIdentifier {
                                 span: mi.span(),
                             });
-                            return false;
+                            return None;
                         };
 
                         if let [seg, ..] = &mut mi.path.segments[..] {
                             seg.ident.name = Symbol::intern(&format!("target_{}", seg.ident.name));
                         }
 
-                        res & eval_condition(
-                            &ast::MetaItemInner::MetaItem(mi),
-                            sess,
-                            features,
-                            eval,
+                        Some(
+                            res? & eval_condition_inner(
+                                &ast::MetaItemInner::MetaItem(mi),
+                                sess,
+                                features,
+                                eval,
+                            )?,
                         )
                     })
+                }
+                sym::accessible => {
+                    if let Some(features) = features
+                        && !features.cfg_accessible()
+                    {
+                        feature_err(
+                            sess,
+                            sym::cfg_accessible,
+                            cfg.span,
+                            fluent_generated::attr_parsing_unstable_cfg_accessible,
+                        )
+                        .emit();
+                    }
+
+                    let [
+                        MetaItemInner::MetaItem(MetaItem {
+                            path: accessible_path,
+                            kind: MetaItemKind::Word,
+                            ..
+                        }),
+                    ] = mis.as_slice()
+                    else {
+                        dcx.emit_err(session_diagnostics::ExpectedCfgAccessiblePath {
+                            span: cfg.span,
+                            details: (),
+                        });
+                        return None;
+                    };
+
+                    if !accessible_path.span.at_least_rust_2018() {
+                        dcx.emit_err(session_diagnostics::IncorrectCfgAccessibleEdition {
+                            span: accessible_path.span,
+                        });
+                        return None;
+                    }
+
+                    if !(accessible_path.segments.len() >= 3
+                        && accessible_path
+                            .segments
+                            .first()
+                            .is_some_and(|segment| segment.ident.name == kw::PathRoot)
+                        && accessible_path
+                            .segments
+                            .iter()
+                            .skip(1)
+                            .all(|path_seg| path_seg.args.is_none()))
+                    {
+                        dcx.emit_err(session_diagnostics::ExpectedCfgAccessiblePath {
+                            span: cfg.span,
+                            details: (),
+                        });
+                        return None;
+                    }
+
+                    let Some(accessible) = eval.eval_accessible_path(
+                        accessible_path.segments.iter().nth(1).unwrap().ident,
+                        accessible_path.segments.iter().skip(2).map(|path_seg| path_seg.ident),
+                    ) else {
+                        // error already emitted
+                        return None;
+                    };
+
+                    Some(accessible)
                 }
                 _ => {
                     dcx.emit_err(session_diagnostics::InvalidPredicate {
                         span: cfg.span,
                         predicate: pprust::path_to_string(&cfg.path),
                     });
-                    false
+                    None
                 }
             }
         }
         ast::MetaItemKind::Word | MetaItemKind::NameValue(..) if cfg.path.segments.len() != 1 => {
             dcx.emit_err(session_diagnostics::CfgPredicateIdentifier { span: cfg.path.span });
-            true
+            None
         }
         MetaItemKind::NameValue(lit) if !lit.kind.is_str() => {
             dcx.emit_err(session_diagnostics::UnsupportedLiteral {
@@ -237,17 +322,20 @@ pub fn eval_condition(
                 is_bytestr: lit.kind.is_bytestr(),
                 start_point_span: sess.source_map().start_point(lit.span),
             });
-            true
+            None
         }
         ast::MetaItemKind::Word | ast::MetaItemKind::NameValue(..) => {
             let ident = cfg.ident().expect("multi-segment cfg predicate");
-            eval(Condition {
-                name: ident.name,
-                name_span: ident.span,
-                value: cfg.value_str(),
-                value_span: cfg.name_value_literal_span(),
-                span: cfg.span,
-            })
+            Some(eval.eval_individual(
+                Condition {
+                    name: ident.name,
+                    name_span: ident.span,
+                    value: cfg.value_str(),
+                    value_span: cfg.name_value_literal_span(),
+                    span: cfg.span,
+                },
+                features,
+            ))
         }
     }
 }

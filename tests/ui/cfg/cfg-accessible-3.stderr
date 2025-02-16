@@ -1,0 +1,8 @@
+error: `cfg(accessible(..))` cannot be used in edition 2015
+  --> $DIR/cfg-accessible-3.rs:5:29
+   |
+LL |     assert!(cfg!(accessible(::std::boxed::Box)));
+   |                             ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

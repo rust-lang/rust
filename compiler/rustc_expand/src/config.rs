@@ -5,9 +5,7 @@ use rustc_ast::token::{Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{
     AttrTokenStream, AttrTokenTree, LazyAttrTokenStream, Spacing, TokenTree,
 };
-use rustc_ast::{
-    self as ast, AttrStyle, Attribute, HasAttrs, HasTokens, MetaItem, MetaItemInner, NodeId,
-};
+use rustc_ast::{self as ast, AttrStyle, Attribute, HasAttrs, HasTokens, MetaItem, MetaItemInner};
 use rustc_attr_parsing as attr;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_feature::{
@@ -32,11 +30,12 @@ use crate::errors::{
 pub struct StripUnconfigured<'a> {
     pub sess: &'a Session,
     pub features: Option<&'a Features>,
+    pub resolver: Option<&'a mut dyn crate::base::ResolverExpand>,
+    pub lint_node_id: rustc_ast::NodeId,
     /// If `true`, perform cfg-stripping on attached tokens.
     /// This is only used for the input to derive macros,
     /// which needs eager expansion of `cfg` and `cfg_attr`
     pub config_tokens: bool,
-    pub lint_node_id: NodeId,
 }
 
 pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -> Features {
@@ -140,17 +139,24 @@ pub fn features(sess: &Session, krate_attrs: &[Attribute], crate_name: Symbol) -
 }
 
 pub fn pre_configure_attrs(sess: &Session, attrs: &[Attribute]) -> ast::AttrVec {
-    let strip_unconfigured = StripUnconfigured {
+    let mut strip_unconfigured = StripUnconfigured {
         sess,
         features: None,
         config_tokens: false,
+        resolver: None,
         lint_node_id: ast::CRATE_NODE_ID,
     };
-    attrs
-        .iter()
-        .flat_map(|attr| strip_unconfigured.process_cfg_attr(attr))
-        .take_while(|attr| !is_cfg(attr) || strip_unconfigured.cfg_true(attr).0)
-        .collect()
+    let mut output = ast::AttrVec::default();
+    'process: for attr in attrs {
+        for attr in strip_unconfigured.process_cfg_attr(attr) {
+            if !is_cfg(&attr) || strip_unconfigured.cfg_true(&attr).0 {
+                output.push(attr);
+                continue;
+            }
+            break 'process;
+        }
+    }
+    output
 }
 
 #[macro_export]
@@ -163,8 +169,27 @@ macro_rules! configure {
     };
 }
 
+macro_rules! as_deref_mut_reborrow_macro {
+    ($v:expr) => {
+        match $v {
+            Some(v) => Some(&mut **v),
+            None => None,
+        }
+    };
+}
+
+/*
+// FIXME: This doesn't work if extracted as a function
+fn as_deref_mut_reborrow<'a, 'b: 'a, 'c: 'b, T: ?Sized>(v: &'b mut Option<&'c mut T>) -> Option<&'a mut T> {
+    match v {
+        Some(v) => Some(&mut **v),
+        None => None,
+    }
+}
+*/
+
 impl<'a> StripUnconfigured<'a> {
-    pub fn configure<T: HasAttrs + HasTokens>(&self, mut node: T) -> Option<T> {
+    pub fn configure<T: HasAttrs + HasTokens>(&mut self, mut node: T) -> Option<T> {
         self.process_cfg_attrs(&mut node);
         self.in_cfg(node.attrs()).then(|| {
             self.try_configure_tokens(&mut node);
@@ -172,7 +197,7 @@ impl<'a> StripUnconfigured<'a> {
         })
     }
 
-    fn try_configure_tokens<T: HasTokens>(&self, node: &mut T) {
+    fn try_configure_tokens<T: HasTokens>(&mut self, node: &mut T) {
         if self.config_tokens {
             if let Some(Some(tokens)) = node.tokens_mut() {
                 let attr_stream = tokens.to_attr_token_stream();
@@ -185,7 +210,7 @@ impl<'a> StripUnconfigured<'a> {
     /// This is only used during the invocation of `derive` proc-macros,
     /// which require that we cfg-expand their entire input.
     /// Normal cfg-expansion operates on parsed AST nodes via the `configure` method
-    fn configure_tokens(&self, stream: &AttrTokenStream) -> AttrTokenStream {
+    fn configure_tokens(&mut self, stream: &AttrTokenStream) -> AttrTokenStream {
         fn can_skip(stream: &AttrTokenStream) -> bool {
             stream.0.iter().all(|tree| match tree {
                 AttrTokenTree::AttrsTarget(_) => false,
@@ -251,13 +276,13 @@ impl<'a> StripUnconfigured<'a> {
     /// Gives compiler warnings if any `cfg_attr` does not contain any
     /// attributes and is in the original source code. Gives compiler errors if
     /// the syntax of any `cfg_attr` is incorrect.
-    fn process_cfg_attrs<T: HasAttrs>(&self, node: &mut T) {
+    fn process_cfg_attrs<T: HasAttrs>(&mut self, node: &mut T) {
         node.visit_attrs(|attrs| {
             attrs.flat_map_in_place(|attr| self.process_cfg_attr(&attr));
         });
     }
 
-    fn process_cfg_attr(&self, attr: &Attribute) -> Vec<Attribute> {
+    fn process_cfg_attr(&mut self, attr: &Attribute) -> Vec<Attribute> {
         if attr.has_name(sym::cfg_attr) {
             self.expand_cfg_attr(attr, true)
         } else {
@@ -272,7 +297,11 @@ impl<'a> StripUnconfigured<'a> {
     /// Gives a compiler warning when the `cfg_attr` contains no attributes and
     /// is in the original source file. Gives a compiler error if the syntax of
     /// the attribute is incorrect.
-    pub(crate) fn expand_cfg_attr(&self, cfg_attr: &Attribute, recursive: bool) -> Vec<Attribute> {
+    pub(crate) fn expand_cfg_attr(
+        &mut self,
+        cfg_attr: &Attribute,
+        recursive: bool,
+    ) -> Vec<Attribute> {
         validate_attr::check_attribute_safety(&self.sess.psess, AttributeSafety::Normal, &cfg_attr);
 
         let Some((cfg_predicate, expanded_attrs)) =
@@ -291,7 +320,16 @@ impl<'a> StripUnconfigured<'a> {
             );
         }
 
-        if !attr::cfg_matches(&cfg_predicate, &self.sess, self.lint_node_id, self.features) {
+        if !attr::eval_condition(
+            &cfg_predicate,
+            &self.sess,
+            self.features,
+            &mut StripUnconfiguredCfgEval {
+                sess: &self.sess,
+                lint_node_id: self.lint_node_id,
+                resolver: as_deref_mut_reborrow_macro!(&mut self.resolver),
+            },
+        ) {
             return vec![];
         }
 
@@ -375,11 +413,11 @@ impl<'a> StripUnconfigured<'a> {
     }
 
     /// Determines if a node with the given attributes should be included in this configuration.
-    fn in_cfg(&self, attrs: &[Attribute]) -> bool {
+    fn in_cfg(&mut self, attrs: &[Attribute]) -> bool {
         attrs.iter().all(|attr| !is_cfg(attr) || self.cfg_true(attr).0)
     }
 
-    pub(crate) fn cfg_true(&self, attr: &Attribute) -> (bool, Option<MetaItem>) {
+    pub(crate) fn cfg_true(&mut self, attr: &Attribute) -> (bool, Option<MetaItem>) {
         let meta_item = match validate_attr::parse_meta(&self.sess.psess, attr) {
             Ok(meta_item) => meta_item,
             Err(err) => {
@@ -392,7 +430,16 @@ impl<'a> StripUnconfigured<'a> {
 
         (
             parse_cfg(&meta_item, self.sess).is_none_or(|meta_item| {
-                attr::cfg_matches(meta_item, &self.sess, self.lint_node_id, self.features)
+                attr::eval_condition(
+                    meta_item,
+                    &self.sess,
+                    self.features,
+                    &mut StripUnconfiguredCfgEval {
+                        sess: &self.sess,
+                        lint_node_id: self.lint_node_id,
+                        resolver: as_deref_mut_reborrow_macro!(&mut self.resolver),
+                    },
+                )
             }),
             Some(meta_item),
         )
@@ -424,7 +471,7 @@ impl<'a> StripUnconfigured<'a> {
     }
 
     #[instrument(level = "trace", skip(self))]
-    pub fn configure_expr(&self, expr: &mut P<ast::Expr>, method_receiver: bool) {
+    pub fn configure_expr(&mut self, expr: &mut P<ast::Expr>, method_receiver: bool) {
         if !method_receiver {
             for attr in expr.attrs.iter() {
                 self.maybe_emit_expr_attr_err(attr);
@@ -444,6 +491,65 @@ impl<'a> StripUnconfigured<'a> {
 
         self.process_cfg_attrs(expr);
         self.try_configure_tokens(&mut *expr);
+    }
+}
+
+pub struct StripUnconfiguredCfgEval<'a, 'b> {
+    sess: &'a Session,
+    #[allow(dead_code)]
+    resolver: Option<&'b mut dyn crate::base::ResolverExpand>,
+    lint_node_id: rustc_ast::NodeId,
+}
+
+impl<'a, 'b> StripUnconfiguredCfgEval<'a, 'b> {
+    pub fn new(
+        sess: &'a Session,
+        resolver: Option<&'b mut dyn crate::base::ResolverExpand>,
+        lint_node_id: rustc_ast::NodeId,
+    ) -> Self {
+        StripUnconfiguredCfgEval { sess, resolver, lint_node_id }
+    }
+}
+
+impl attr::CfgEval for StripUnconfiguredCfgEval<'_, '_> {
+    fn eval_individual(&mut self, condition: attr::Condition, features: Option<&Features>) -> bool {
+        attr::eval_individual_cfg(condition, self.sess, self.lint_node_id, features)
+    }
+
+    fn eval_accessible_path(
+        &mut self,
+        target_crate: rustc_span::Ident,
+        target_path_segs: impl Iterator<Item = rustc_span::Ident>,
+    ) -> Option<bool> {
+        let Some(resolver) = &mut self.resolver else {
+            self.sess.dcx().emit_err(attr::session_diagnostics::IncorrectCfgAccessiblePos {
+                span: target_crate.span,
+            });
+            return None;
+        };
+
+        let Ok(mut cur_mod_def) = resolver.cfg_accessible_crate(target_crate) else {
+            self.sess.dcx().emit_err(attr::session_diagnostics::NonexistentCfgAccessibleCrate {
+                span: target_crate.span,
+            });
+            return None;
+        };
+        let mut target_path_segs = target_path_segs.peekable();
+        while let Some(next_path_seg) = target_path_segs.next() {
+            let is_mod = target_path_segs.peek().is_some();
+            if is_mod {
+                let Ok(mod_def) = resolver.cfg_accessible_mod(cur_mod_def, next_path_seg) else {
+                    return Some(false);
+                };
+                cur_mod_def = mod_def;
+                continue;
+            }
+            let Ok(()) = resolver.cfg_accessible_item(cur_mod_def, next_path_seg) else {
+                return Some(false);
+            };
+            return Some(true);
+        }
+        unreachable!()
     }
 }
 

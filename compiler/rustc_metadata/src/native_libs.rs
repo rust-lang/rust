@@ -189,8 +189,35 @@ pub(crate) fn collect(tcx: TyCtxt<'_>, LocalCrate: LocalCrate) -> Vec<NativeLib>
 }
 
 pub(crate) fn relevant_lib(sess: &Session, lib: &NativeLib) -> bool {
+    struct Eval<'a> {
+        sess: &'a Session,
+        lint_node_id: rustc_ast::NodeId,
+    }
+    impl attr::CfgEval for Eval<'_> {
+        fn eval_individual(
+            &mut self,
+            condition: attr::Condition,
+            features: Option<&rustc_feature::Features>,
+        ) -> bool {
+            attr::eval_individual_cfg(condition, self.sess, self.lint_node_id, features)
+        }
+
+        fn eval_accessible_path(
+            &mut self,
+            _target_crate: rustc_span::Ident,
+            _target_path_segs: impl Iterator<Item = rustc_span::Ident>,
+        ) -> Option<bool> {
+            // FIXME: this seems incorrect?
+            Some(true)
+        }
+    }
     match lib.cfg {
-        Some(ref cfg) => attr::cfg_matches(cfg, sess, CRATE_NODE_ID, None),
+        Some(ref cfg) => rustc_attr_parsing::eval_condition(
+            cfg,
+            sess,
+            None,
+            &mut Eval { sess, lint_node_id: CRATE_NODE_ID },
+        ),
         None => true,
     }
 }

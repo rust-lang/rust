@@ -6,6 +6,10 @@ attr_parsing_deprecated_item_suggestion =
     .help = add `#![feature(deprecated_suggestion)]` to the crate root
     .note = see #94785 for more details
 
+attr_parsing_expected_cfg_accessible_path =
+    expected cfg-accessible path, starting with `::`, and consisting of module names and item names
+    .note = cfg-accessible paths start with `::`, followed by zero, one or more (maybe reexported) module name identifiers each followed by `::` in the middle, and then followed by item name identifier at the end
+
 attr_parsing_expected_one_cfg_pattern =
     expected 1 cfg-pattern
 
@@ -20,6 +24,12 @@ attr_parsing_expects_feature_list =
 
 attr_parsing_expects_features =
     `{$name}` expects feature names
+
+attr_parsing_incorrect_cfg_accessible_edition =
+    `cfg(accessible(..))` cannot be used in edition 2015
+
+attr_parsing_incorrect_cfg_accessible_pos =
+    `cfg(accessible(..))` cannot be used as crate attribute
 
 attr_parsing_incorrect_meta_item =
     incorrect meta item
@@ -88,6 +98,9 @@ attr_parsing_multiple_stability_levels =
 attr_parsing_non_ident_feature =
     'feature' is not an identifier
 
+attr_parsing_nonexistent_cfg_accessible_crate =
+    `cfg(accessible(..))` mentioned external crate is not accessible
+
 attr_parsing_rustc_allowed_unstable_pairing =
     `rustc_allowed_through_unstable_modules` attribute must be paired with a `stable` attribute
 
@@ -106,6 +119,9 @@ attr_parsing_unknown_meta_item =
 
 attr_parsing_unknown_version_literal =
     unknown version literal format, assuming it refers to a future version
+
+attr_parsing_unstable_cfg_accessible =
+    `cfg(accessible(..))` is experimental and subject to change
 
 attr_parsing_unstable_cfg_target_compact =
     compact `cfg(target(..))` is experimental and subject to change
