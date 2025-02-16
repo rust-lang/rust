@@ -101,12 +101,9 @@ impl BorrowedFd<'_> {
     /// the returned `BorrowedFd`, and it must not have the value
     /// `SOLID_NET_INVALID_FD`.
     #[inline]
+    #[track_caller]
     pub const unsafe fn borrow_raw(fd: RawFd) -> Self {
-        assert!(fd != -1 as RawFd);
-        // SAFETY: we just asserted that the value is in the valid range and
-        // isn't `-1` (the only value bigger than `0xFF_FF_FF_FE` unsigned)
-        let fd = unsafe { ValidRawFd::new_unchecked(fd) };
-        Self { fd, _phantom: PhantomData }
+        Self { fd: ValidRawFd::new(fd).expect("fd != -1"), _phantom: PhantomData }
     }
 }
 
@@ -156,12 +153,9 @@ impl FromRawFd for OwnedFd {
     /// The resource pointed to by `fd` must be open and suitable for assuming
     /// ownership. The resource must not require any cleanup other than `close`.
     #[inline]
+    #[track_caller]
     unsafe fn from_raw_fd(fd: RawFd) -> Self {
-        assert_ne!(fd, -1 as RawFd);
-        // SAFETY: we just asserted that the value is in the valid range and
-        // isn't `-1` (the only value bigger than `0xFF_FF_FF_FE` unsigned)
-        let fd = unsafe { ValidRawFd::new_unchecked(fd) };
-        Self { fd }
+        Self { fd: ValidRawFd::new(fd).expect("fd != -1") }
     }
 }
 

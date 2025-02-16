@@ -34,7 +34,7 @@ fn do_check_abi<'tcx>(
     tcx: TyCtxt<'tcx>,
     abi: &FnAbi<'tcx, Ty<'tcx>>,
     target_feature_def: DefId,
-    mut emit_err: impl FnMut(Option<&'static str>),
+    mut emit_err: impl FnMut(Ty<'tcx>, Option<&'static str>),
 ) {
     let feature_def = tcx.sess.target.features_for_correct_vector_abi();
     let codegen_attrs = tcx.codegen_fn_attrs(target_feature_def);
@@ -45,7 +45,7 @@ fn do_check_abi<'tcx>(
             let feature = match feature_def.iter().find(|(bits, _)| size.bits() <= *bits) {
                 Some((_, feature)) => feature,
                 None => {
-                    emit_err(None);
+                    emit_err(arg_abi.layout.ty, None);
                     continue;
                 }
             };
@@ -53,7 +53,7 @@ fn do_check_abi<'tcx>(
             if !tcx.sess.unstable_target_features.contains(&feature_sym)
                 && !codegen_attrs.target_features.iter().any(|x| x.name == feature_sym)
             {
-                emit_err(Some(&feature));
+                emit_err(arg_abi.layout.ty, Some(&feature));
             }
         }
     }
@@ -69,21 +69,21 @@ fn check_instance_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
         // function.
         return;
     };
-    do_check_abi(tcx, abi, instance.def_id(), |required_feature| {
+    do_check_abi(tcx, abi, instance.def_id(), |ty, required_feature| {
         let span = tcx.def_span(instance.def_id());
         if let Some(required_feature) = required_feature {
             tcx.emit_node_span_lint(
                 ABI_UNSUPPORTED_VECTOR_TYPES,
                 CRATE_HIR_ID,
                 span,
-                AbiErrorDisabledVectorTypeDef { span, required_feature },
+                AbiErrorDisabledVectorTypeDef { span, required_feature, ty },
             );
         } else {
             tcx.emit_node_span_lint(
                 ABI_UNSUPPORTED_VECTOR_TYPES,
                 CRATE_HIR_ID,
                 span,
-                AbiErrorUnsupportedVectorTypeDef { span },
+                AbiErrorUnsupportedVectorTypeDef { span, ty },
             );
         }
     })
@@ -123,20 +123,20 @@ fn check_call_site_abi<'tcx>(
         // ABI failed to compute; this will not get through codegen.
         return;
     };
-    do_check_abi(tcx, callee_abi, caller.def_id(), |required_feature| {
+    do_check_abi(tcx, callee_abi, caller.def_id(), |ty, required_feature| {
         if let Some(required_feature) = required_feature {
             tcx.emit_node_span_lint(
                 ABI_UNSUPPORTED_VECTOR_TYPES,
                 CRATE_HIR_ID,
                 span,
-                AbiErrorDisabledVectorTypeCall { span, required_feature },
+                AbiErrorDisabledVectorTypeCall { span, required_feature, ty },
             );
         } else {
             tcx.emit_node_span_lint(
                 ABI_UNSUPPORTED_VECTOR_TYPES,
                 CRATE_HIR_ID,
                 span,
-                AbiErrorUnsupportedVectorTypeCall { span },
+                AbiErrorUnsupportedVectorTypeCall { span, ty },
             );
         }
     });

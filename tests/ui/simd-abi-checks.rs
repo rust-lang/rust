@@ -13,19 +13,19 @@ use std::arch::x86_64::*;
 struct Wrapper(__m256);
 
 unsafe extern "C" fn w(_: Wrapper) {
-    //~^ this function definition uses a SIMD vector type that (with the chosen ABI) requires the `avx` target feature, which is not enabled
+    //~^ requires the `avx` target feature, which is not enabled
     //~| WARNING this was previously accepted by the compiler
     todo!()
 }
 
 unsafe extern "C" fn f(_: __m256) {
-    //~^ this function definition uses a SIMD vector type that (with the chosen ABI) requires the `avx` target feature, which is not enabled
+    //~^ requires the `avx` target feature, which is not enabled
     //~| WARNING this was previously accepted by the compiler
     todo!()
 }
 
 unsafe extern "C" fn g() -> __m256 {
-    //~^ this function definition uses a SIMD vector type that (with the chosen ABI) requires the `avx` target feature, which is not enabled
+    //~^ requires the `avx` target feature, which is not enabled
     //~| WARNING this was previously accepted by the compiler
     todo!()
 }
@@ -55,23 +55,23 @@ unsafe fn test() {
 unsafe fn in_closure() -> impl FnOnce() -> __m256 {
     #[inline(always)] // this disables target-feature inheritance
     || g()
-    //~^ WARNING this function call uses a SIMD vector type that (with the chosen ABI) requires the `avx` target feature, which is not enabled in the caller
+    //~^ WARNING requires the `avx` target feature, which is not enabled in the caller
     //~| WARNING this was previously accepted by the compiler
 }
 
 fn main() {
     unsafe {
         f(g());
-        //~^ WARNING this function call uses a SIMD vector type that (with the chosen ABI) requires the `avx` target feature, which is not enabled in the caller
-        //~| WARNING this function call uses a SIMD vector type that (with the chosen ABI) requires the `avx` target feature, which is not enabled in the caller
+        //~^ WARNING requires the `avx` target feature, which is not enabled in the caller
+        //~| WARNING requires the `avx` target feature, which is not enabled in the caller
         //~| WARNING this was previously accepted by the compiler
         //~| WARNING this was previously accepted by the compiler
     }
 
     unsafe {
         gavx(favx());
-        //~^ WARNING this function call uses a SIMD vector type that (with the chosen ABI) requires the `avx` target feature, which is not enabled in the caller
-        //~| WARNING this function call uses a SIMD vector type that (with the chosen ABI) requires the `avx` target feature, which is not enabled in the caller
+        //~^ WARNING requires the `avx` target feature, which is not enabled in the caller
+        //~| WARNING requires the `avx` target feature, which is not enabled in the caller
         //~| WARNING this was previously accepted by the compiler
         //~| WARNING this was previously accepted by the compiler
     }
@@ -82,8 +82,8 @@ fn main() {
 
     unsafe {
         w(Wrapper(g()));
-        //~^ WARNING this function call uses a SIMD vector type that (with the chosen ABI) requires the `avx` target feature, which is not enabled in the caller
-        //~| WARNING this function call uses a SIMD vector type that (with the chosen ABI) requires the `avx` target feature, which is not enabled in the caller
+        //~^ WARNING requires the `avx` target feature, which is not enabled in the caller
+        //~| WARNING requires the `avx` target feature, which is not enabled in the caller
         //~| WARNING this was previously accepted by the compiler
         //~| WARNING this was previously accepted by the compiler
     }
@@ -98,7 +98,7 @@ fn main() {
             fn some_extern() -> __m256;
         }
         some_extern();
-        //~^ WARNING this function call uses a SIMD vector type that (with the chosen ABI) requires the `avx` target feature, which is not enabled in the caller
+        //~^ WARNING requires the `avx` target feature, which is not enabled in the caller
         //~| WARNING this was previously accepted by the compiler
     }
 }

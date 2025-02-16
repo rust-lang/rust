@@ -2442,6 +2442,32 @@ impl<'a> Extend<Cow<'a, str>> for String {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
+#[unstable(feature = "ascii_char", issue = "110998")]
+impl Extend<core::ascii::Char> for String {
+    fn extend<I: IntoIterator<Item = core::ascii::Char>>(&mut self, iter: I) {
+        self.vec.extend(iter.into_iter().map(|c| c.to_u8()));
+    }
+
+    #[inline]
+    fn extend_one(&mut self, c: core::ascii::Char) {
+        self.vec.push(c.to_u8());
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[unstable(feature = "ascii_char", issue = "110998")]
+impl<'a> Extend<&'a core::ascii::Char> for String {
+    fn extend<I: IntoIterator<Item = &'a core::ascii::Char>>(&mut self, iter: I) {
+        self.extend(iter.into_iter().cloned());
+    }
+
+    #[inline]
+    fn extend_one(&mut self, c: &'a core::ascii::Char) {
+        self.vec.push(c.to_u8());
+    }
+}
+
 /// A convenience impl that delegates to the impl for `&str`.
 ///
 /// # Examples

@@ -13,8 +13,8 @@ use rustc_session::parse::ParseSess;
 use rustc_span::Span;
 use rustc_span::symbol::{Symbol, sym};
 
+use crate::display::Joined as _;
 use crate::html::escape::Escape;
-use crate::joined::Joined as _;
 
 #[cfg(test)]
 mod tests;
