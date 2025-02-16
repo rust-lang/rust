@@ -9,6 +9,7 @@
 )]
 #![allow(internal_features)]
 #![cfg_attr(not(bootstrap), feature(cfg_emscripten_wasm_eh))]
+#![deny(unsafe_op_in_unsafe_fn)]
 
 // Force libc to be included even if unused. This is required by many platforms.
 #[cfg(not(all(windows, target_env = "msvc")))]
