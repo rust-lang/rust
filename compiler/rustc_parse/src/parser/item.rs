@@ -2043,9 +2043,6 @@ impl<'a> Parser<'a> {
         }
         self.expect_field_ty_separator()?;
         let ty = self.parse_ty()?;
-        if self.token == token::Colon && self.look_ahead(1, |t| *t != token::Colon) {
-            self.dcx().emit_err(errors::SingleColonStructType { span: self.token.span });
-        }
         let default = if self.token == token::Eq {
             self.bump();
             let const_expr = self.parse_expr_anon_const()?;

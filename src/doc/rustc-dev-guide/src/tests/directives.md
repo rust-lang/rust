@@ -154,6 +154,7 @@ Some examples of `X` in `ignore-X` or `only-X`:
   `ignore-coverage-map`, `ignore-coverage-run`
 - When testing a dist toolchain: `dist`
   - This needs to be enabled with `COMPILETEST_ENABLE_DIST_TESTS=1`
+- The `rustc_abi` of the target: e.g. `rustc_abi-x86_64-sse2`
 
 The following directives will check rustc build settings and target
 settings:

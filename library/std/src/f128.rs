@@ -1226,6 +1226,7 @@ impl f128 {
     #[inline]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
+    // #[unstable(feature = "float_gamma", issue = "99842")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn gamma(self) -> f128 {
         unsafe { cmath::tgammaf128(self) }
@@ -1260,10 +1261,83 @@ impl f128 {
     #[inline]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
+    // #[unstable(feature = "float_gamma", issue = "99842")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn ln_gamma(self) -> (f128, i32) {
         let mut signgamp: i32 = 0;
         let x = unsafe { cmath::lgammaf128_r(self, &mut signgamp) };
         (x, signgamp)
+    }
+
+    /// Error function.
+    ///
+    /// # Unspecified precision
+    ///
+    /// The precision of this function is non-deterministic. This means it varies by platform,
+    /// Rust version, and can even differ within the same execution from one invocation to the next.
+    ///
+    /// This function currently corresponds to the `erff128` from libc on Unix
+    /// and Windows. Note that this might change in the future.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(f128)]
+    /// #![feature(float_erf)]
+    /// # #[cfg(reliable_f128_math)] {
+    /// /// The error function relates what percent of a normal distribution lies
+    /// /// within `x` standard deviations (scaled by `1/sqrt(2)`).
+    /// fn within_standard_deviations(x: f128) -> f128 {
+    ///     (x * std::f128::consts::FRAC_1_SQRT_2).erf() * 100.0
+    /// }
+    ///
+    /// // 68% of a normal distribution is within one standard deviation
+    /// assert!((within_standard_deviations(1.0) - 68.269).abs() < 0.01);
+    /// // 95% of a normal distribution is within two standard deviations
+    /// assert!((within_standard_deviations(2.0) - 95.450).abs() < 0.01);
+    /// // 99.7% of a normal distribution is within three standard deviations
+    /// assert!((within_standard_deviations(3.0) - 99.730).abs() < 0.01);
+    /// # }
+    /// ```
+    #[rustc_allow_incoherent_impl]
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "f128", issue = "116909")]
+    // #[unstable(feature = "float_erf", issue = "136321")]
+    #[inline]
+    pub fn erf(self) -> f128 {
+        unsafe { cmath::erff128(self) }
+    }
+
+    /// Complementary error function.
+    ///
+    /// # Unspecified precision
+    ///
+    /// The precision of this function is non-deterministic. This means it varies by platform,
+    /// Rust version, and can even differ within the same execution from one invocation to the next.
+    ///
+    /// This function currently corresponds to the `erfcf128` from libc on Unix
+    /// and Windows. Note that this might change in the future.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(f128)]
+    /// #![feature(float_erf)]
+    /// # #[cfg(reliable_f128_math)] {
+    /// let x: f128 = 0.123;
+    ///
+    /// let one = x.erf() + x.erfc();
+    /// let abs_difference = (one - 1.0).abs();
+    ///
+    /// assert!(abs_difference <= f128::EPSILON);
+    /// # }
+    /// ```
+    #[rustc_allow_incoherent_impl]
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "f128", issue = "116909")]
+    // #[unstable(feature = "float_erf", issue = "136321")]
+    #[inline]
+    pub fn erfc(self) -> f128 {
+        unsafe { cmath::erfcf128(self) }
     }
 }

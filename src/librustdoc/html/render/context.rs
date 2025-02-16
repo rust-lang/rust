@@ -1,8 +1,9 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
+use std::fmt::{self, Write as _};
+use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{Receiver, channel};
-use std::{fmt, io};
 
 use rinja::Template;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
@@ -265,12 +266,12 @@ impl<'tcx> Context<'tcx> {
                     // preventing an infinite redirection loop in the generated
                     // documentation.
 
-                    let mut path = String::new();
-                    for name in &names[..names.len() - 1] {
-                        path.push_str(name.as_str());
-                        path.push('/');
-                    }
-                    path.push_str(&item_path(ty, names.last().unwrap().as_str()));
+                    let path = fmt::from_fn(|f| {
+                        for name in &names[..names.len() - 1] {
+                            write!(f, "{name}/")?;
+                        }
+                        write!(f, "{}", item_path(ty, names.last().unwrap().as_str()))
+                    });
                     match self.shared.redirections {
                         Some(ref redirections) => {
                             let mut current_path = String::new();
@@ -278,8 +279,12 @@ impl<'tcx> Context<'tcx> {
                                 current_path.push_str(name.as_str());
                                 current_path.push('/');
                             }
-                            current_path.push_str(&item_path(ty, names.last().unwrap().as_str()));
-                            redirections.borrow_mut().insert(current_path, path);
+                            let _ = write!(
+                                current_path,
+                                "{}",
+                                item_path(ty, names.last().unwrap().as_str())
+                            );
+                            redirections.borrow_mut().insert(current_path, path.to_string());
                         }
                         None => {
                             return layout::redirect(&format!(
@@ -854,9 +859,9 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         if !buf.is_empty() {
             let name = item.name.as_ref().unwrap();
             let item_type = item.type_();
-            let file_name = &item_path(item_type, name.as_str());
+            let file_name = item_path(item_type, name.as_str()).to_string();
             self.shared.ensure_dir(&self.dst)?;
-            let joint_dst = self.dst.join(file_name);
+            let joint_dst = self.dst.join(&file_name);
             self.shared.fs.write(joint_dst, buf)?;
 
             if !self.info.render_redirect_pages {
@@ -873,7 +878,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                         format!("{crate_name}/{file_name}"),
                     );
                 } else {
-                    let v = layout::redirect(file_name);
+                    let v = layout::redirect(&file_name);
                     let redir_dst = self.dst.join(redir_name);
                     self.shared.fs.write(redir_dst, v)?;
                 }

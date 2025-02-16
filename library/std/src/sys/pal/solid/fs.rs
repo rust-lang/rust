@@ -22,12 +22,9 @@ struct FileDesc {
 
 impl FileDesc {
     #[inline]
+    #[track_caller]
     fn new(fd: c_int) -> FileDesc {
-        assert_ne!(fd, -1i32);
-        // Safety: we just asserted that the value is in the valid range and
-        // isn't `-1` (the only value bigger than `0xFF_FF_FF_FE` unsigned)
-        let fd = unsafe { CIntNotMinusOne::new_unchecked(fd) };
-        FileDesc { fd }
+        FileDesc { fd: CIntNotMinusOne::new(fd).expect("fd != -1") }
     }
 
     #[inline]

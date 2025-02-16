@@ -30,11 +30,11 @@ use super::url_parts_builder::{UrlPartsBuilder, estimate_item_path_byte_length};
 use crate::clean::types::ExternalLocation;
 use crate::clean::utils::find_nearest_parent_module;
 use crate::clean::{self, ExternalCrate, PrimitiveType};
+use crate::display::Joined as _;
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::escape::{Escape, EscapeBodyText};
 use crate::html::render::Context;
-use crate::joined::Joined as _;
 use crate::passes::collect_intra_doc_links::UrlFragment;
 
 pub(crate) fn write_str(s: &mut String, f: fmt::Arguments<'_>) {
@@ -709,19 +709,22 @@ fn resolved_path(
     if w.alternate() {
         write!(w, "{}{:#}", last.name, last.args.print(cx))?;
     } else {
-        let path = if use_absolute {
-            if let Ok((_, _, fqp)) = href(did, cx) {
-                format!(
-                    "{path}::{anchor}",
-                    path = join_with_double_colon(&fqp[..fqp.len() - 1]),
-                    anchor = anchor(did, *fqp.last().unwrap(), cx)
-                )
+        let path = fmt::from_fn(|f| {
+            if use_absolute {
+                if let Ok((_, _, fqp)) = href(did, cx) {
+                    write!(
+                        f,
+                        "{path}::{anchor}",
+                        path = join_with_double_colon(&fqp[..fqp.len() - 1]),
+                        anchor = anchor(did, *fqp.last().unwrap(), cx)
+                    )
+                } else {
+                    write!(f, "{}", last.name)
+                }
             } else {
-                last.name.to_string()
+                write!(f, "{}", anchor(did, last.name, cx))
             }
-        } else {
-            anchor(did, last.name, cx).to_string()
-        };
+        });
         write!(w, "{path}{args}", args = last.args.print(cx))?;
     }
     Ok(())
@@ -749,16 +752,20 @@ fn primitive_link_fragment(
         match m.primitive_locations.get(&prim) {
             Some(&def_id) if def_id.is_local() => {
                 let len = cx.current.len();
-                let path = if len == 0 {
-                    let cname_sym = ExternalCrate { crate_num: def_id.krate }.name(cx.tcx());
-                    format!("{cname_sym}/")
-                } else {
-                    "../".repeat(len - 1)
-                };
+                let path = fmt::from_fn(|f| {
+                    if len == 0 {
+                        let cname_sym = ExternalCrate { crate_num: def_id.krate }.name(cx.tcx());
+                        write!(f, "{cname_sym}/")?;
+                    } else {
+                        for _ in 0..(len - 1) {
+                            f.write_str("../")?;
+                        }
+                    }
+                    Ok(())
+                });
                 write!(
                     f,
-                    "<a class=\"primitive\" href=\"{}primitive.{}.html{fragment}\">",
-                    path,
+                    "<a class=\"primitive\" href=\"{path}primitive.{}.html{fragment}\">",
                     prim.as_sym()
                 )?;
                 needs_termination = true;

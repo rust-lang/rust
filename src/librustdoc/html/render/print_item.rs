@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 use std::fmt;
-use std::fmt::{Display, Write};
+use std::fmt::Display;
 
 use itertools::Itertools;
 use rinja::Template;
@@ -27,6 +27,7 @@ use super::{
 };
 use crate::clean;
 use crate::config::ModuleSorting;
+use crate::display::{Joined as _, MaybeDisplay as _};
 use crate::formats::Impl;
 use crate::formats::item_type::ItemType;
 use crate::html::escape::{Escape, EscapeBodyTextWithWbr};
@@ -37,7 +38,6 @@ use crate::html::format::{
 use crate::html::markdown::{HeadingOffset, MarkdownSummaryLine};
 use crate::html::render::{document_full, document_item_info};
 use crate::html::url_parts_builder::UrlPartsBuilder;
-use crate::joined::Joined as _;
 
 /// Generates a Rinja template struct for rendering items with common methods.
 ///
@@ -619,7 +619,7 @@ fn item_function(w: &mut String, cx: &Context<'_>, it: &clean::Item, f: &clean::
         + name.as_str().len()
         + generics_len;
 
-    let notable_traits = notable_traits_button(&f.decl.output, cx);
+    let notable_traits = notable_traits_button(&f.decl.output, cx).maybe_display();
 
     wrap_item(w, |w| {
         w.reserve(header_len);
@@ -638,7 +638,6 @@ fn item_function(w: &mut String, cx: &Context<'_>, it: &clean::Item, f: &clean::
                 generics = f.generics.print(cx),
                 where_clause = print_where_clause(&f.generics, cx, 0, Ending::Newline),
                 decl = f.decl.full_print(header_len, 0, cx),
-                notable_traits = notable_traits.unwrap_or_default(),
             ),
         );
     });
@@ -2116,34 +2115,33 @@ pub(super) fn full_path(cx: &Context<'_>, item: &clean::Item) -> String {
     s
 }
 
-pub(super) fn item_path(ty: ItemType, name: &str) -> String {
-    match ty {
-        ItemType::Module => format!("{}index.html", ensure_trailing_slash(name)),
-        _ => format!("{ty}.{name}.html"),
-    }
+pub(super) fn item_path(ty: ItemType, name: &str) -> impl Display + '_ {
+    fmt::from_fn(move |f| match ty {
+        ItemType::Module => write!(f, "{}index.html", ensure_trailing_slash(name)),
+        _ => write!(f, "{ty}.{name}.html"),
+    })
 }
 
-fn bounds(t_bounds: &[clean::GenericBound], trait_alias: bool, cx: &Context<'_>) -> String {
-    let mut bounds = String::new();
-    if t_bounds.is_empty() {
-        return bounds;
-    }
-    let has_lots_of_bounds = t_bounds.len() > 2;
-    let inter_str = if has_lots_of_bounds { "\n    + " } else { " + " };
-    if !trait_alias {
-        if has_lots_of_bounds {
-            bounds.push_str(":\n    ");
-        } else {
-            bounds.push_str(": ");
-        }
-    }
-    write!(
-        bounds,
-        "{}",
-        fmt::from_fn(|f| t_bounds.iter().map(|p| p.print(cx)).joined(inter_str, f))
-    )
-    .unwrap();
-    bounds
+fn bounds<'a, 'tcx>(
+    bounds: &'a [clean::GenericBound],
+    trait_alias: bool,
+    cx: &'a Context<'tcx>,
+) -> impl Display + 'a + Captures<'tcx> {
+    (!bounds.is_empty())
+        .then_some(fmt::from_fn(move |f| {
+            let has_lots_of_bounds = bounds.len() > 2;
+            let inter_str = if has_lots_of_bounds { "\n    + " } else { " + " };
+            if !trait_alias {
+                if has_lots_of_bounds {
+                    f.write_str(":\n    ")?;
+                } else {
+                    f.write_str(": ")?;
+                }
+            }
+
+            bounds.iter().map(|p| p.print(cx)).joined(inter_str, f)
+        }))
+        .maybe_display()
 }
 
 fn wrap_item<W, F>(w: &mut W, f: F)

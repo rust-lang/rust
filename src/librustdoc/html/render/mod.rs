@@ -63,6 +63,7 @@ pub(crate) use self::context::*;
 pub(crate) use self::span_map::{LinkFromSrc, collect_spans_and_sources};
 pub(crate) use self::write_shared::*;
 use crate::clean::{self, ItemId, RenderedLink};
+use crate::display::{Joined as _, MaybeDisplay as _};
 use crate::error::Error;
 use crate::formats::Impl;
 use crate::formats::cache::Cache;
@@ -568,17 +569,27 @@ fn document_short<'a, 'cx: 'a>(
             let (mut summary_html, has_more_content) =
                 MarkdownSummaryLine(&s, &item.links(cx)).into_string_with_has_more_content();
 
-            if has_more_content {
-                let link = format!(" <a{}>Read more</a>", assoc_href_attr(item, link, cx));
+            let link = if has_more_content {
+                let link = fmt::from_fn(|f| {
+                    write!(
+                        f,
+                        " <a{}>Read more</a>",
+                        assoc_href_attr(item, link, cx).maybe_display()
+                    )
+                });
 
                 if let Some(idx) = summary_html.rfind("</p>") {
-                    summary_html.insert_str(idx, &link);
+                    summary_html.insert_str(idx, &link.to_string());
+                    None
                 } else {
-                    summary_html.push_str(&link);
+                    Some(link)
                 }
+            } else {
+                None
             }
+            .maybe_display();
 
-            write!(f, "<div class='docblock'>{summary_html}</div>")?;
+            write!(f, "<div class='docblock'>{summary_html}{link}</div>")?;
         }
         Ok(())
     })
@@ -788,13 +799,23 @@ pub(crate) fn render_impls(
 }
 
 /// Build a (possibly empty) `href` attribute (a key-value pair) for the given associated item.
-fn assoc_href_attr(it: &clean::Item, link: AssocItemLink<'_>, cx: &Context<'_>) -> String {
+fn assoc_href_attr<'a, 'tcx>(
+    it: &clean::Item,
+    link: AssocItemLink<'a>,
+    cx: &Context<'tcx>,
+) -> Option<impl fmt::Display + 'a + Captures<'tcx>> {
     let name = it.name.unwrap();
     let item_type = it.type_();
 
+    enum Href<'a> {
+        AnchorId(&'a str),
+        Anchor(ItemType),
+        Url(String, ItemType),
+    }
+
     let href = match link {
-        AssocItemLink::Anchor(Some(ref id)) => Some(format!("#{id}")),
-        AssocItemLink::Anchor(None) => Some(format!("#{item_type}.{name}")),
+        AssocItemLink::Anchor(Some(ref id)) => Href::AnchorId(id),
+        AssocItemLink::Anchor(None) => Href::Anchor(item_type),
         AssocItemLink::GotoSource(did, provided_methods) => {
             // We're creating a link from the implementation of an associated item to its
             // declaration in the trait declaration.
@@ -814,7 +835,7 @@ fn assoc_href_attr(it: &clean::Item, link: AssocItemLink<'_>, cx: &Context<'_>) 
             };
 
             match href(did.expect_def_id(), cx) {
-                Ok((url, ..)) => Some(format!("{url}#{item_type}.{name}")),
+                Ok((url, ..)) => Href::Url(url, item_type),
                 // The link is broken since it points to an external crate that wasn't documented.
                 // Do not create any link in such case. This is better than falling back to a
                 // dummy anchor like `#{item_type}.{name}` representing the `id` of *this* impl item
@@ -826,15 +847,25 @@ fn assoc_href_attr(it: &clean::Item, link: AssocItemLink<'_>, cx: &Context<'_>) 
                 // those two items are distinct!
                 // In this scenario, the actual `id` of this impl item would be
                 // `#{item_type}.{name}-{n}` for some number `n` (a disambiguator).
-                Err(HrefError::DocumentationNotBuilt) => None,
-                Err(_) => Some(format!("#{item_type}.{name}")),
+                Err(HrefError::DocumentationNotBuilt) => return None,
+                Err(_) => Href::Anchor(item_type),
             }
         }
     };
 
+    let href = fmt::from_fn(move |f| match &href {
+        Href::AnchorId(id) => write!(f, "#{id}"),
+        Href::Url(url, item_type) => {
+            write!(f, "{url}#{item_type}.{name}")
+        }
+        Href::Anchor(item_type) => {
+            write!(f, "#{item_type}.{name}")
+        }
+    });
+
     // If there is no `href` for the reason explained above, simply do not render it which is valid:
     // https://html.spec.whatwg.org/multipage/links.html#links-created-by-a-and-area-elements
-    href.map(|href| format!(" href=\"{href}\"")).unwrap_or_default()
+    Some(fmt::from_fn(move |f| write!(f, " href=\"{href}\"")))
 }
 
 #[derive(Debug)]
@@ -865,7 +896,7 @@ fn assoc_const(
             "{indent}{vis}const <a{href} class=\"constant\">{name}</a>{generics}: {ty}",
             indent = " ".repeat(indent),
             vis = visibility_print_with_space(it, cx),
-            href = assoc_href_attr(it, link, cx),
+            href = assoc_href_attr(it, link, cx).maybe_display(),
             name = it.name.as_ref().unwrap(),
             generics = generics.print(cx),
             ty = ty.print(cx),
@@ -905,7 +936,7 @@ fn assoc_type(
             "{indent}{vis}type <a{href} class=\"associatedtype\">{name}</a>{generics}",
             indent = " ".repeat(indent),
             vis = visibility_print_with_space(it, cx),
-            href = assoc_href_attr(it, link, cx),
+            href = assoc_href_attr(it, link, cx).maybe_display(),
             name = it.name.as_ref().unwrap(),
             generics = generics.print(cx),
         ),
@@ -948,7 +979,7 @@ fn assoc_method(
     let asyncness = header.asyncness.print_with_space();
     let safety = header.safety.print_with_space();
     let abi = print_abi_with_space(header.abi).to_string();
-    let href = assoc_href_attr(meth, link, cx);
+    let href = assoc_href_attr(meth, link, cx).maybe_display();
 
     // NOTE: `{:#}` does not print HTML formatting, `{}` does. So `g.print` can't be reused between the length calculation and `write!`.
     let generics_len = format!("{:#}", g.print(cx)).len();
@@ -962,7 +993,7 @@ fn assoc_method(
         + name.as_str().len()
         + generics_len;
 
-    let notable_traits = notable_traits_button(&d.output, cx);
+    let notable_traits = notable_traits_button(&d.output, cx).maybe_display();
 
     let (indent, indent_str, end_newline) = if parent == ItemType::Trait {
         header_len += 4;
@@ -990,7 +1021,6 @@ fn assoc_method(
             name = name,
             generics = g.print(cx),
             decl = d.full_print(header_len, indent, cx),
-            notable_traits = notable_traits.unwrap_or_default(),
             where_clause = print_where_clause(g, cx, indent, end_newline),
         ),
     );
@@ -1438,7 +1468,10 @@ fn should_render_item(item: &clean::Item, deref_mut_: bool, tcx: TyCtxt<'_>) -> 
     }
 }
 
-pub(crate) fn notable_traits_button(ty: &clean::Type, cx: &Context<'_>) -> Option<String> {
+pub(crate) fn notable_traits_button<'a, 'tcx>(
+    ty: &'a clean::Type,
+    cx: &'a Context<'tcx>,
+) -> Option<impl fmt::Display + 'a + Captures<'tcx>> {
     let mut has_notable_trait = false;
 
     if ty.is_unit() {
@@ -1480,15 +1513,16 @@ pub(crate) fn notable_traits_button(ty: &clean::Type, cx: &Context<'_>) -> Optio
         }
     }
 
-    if has_notable_trait {
+    has_notable_trait.then(|| {
         cx.types_with_notable_traits.borrow_mut().insert(ty.clone());
-        Some(format!(
-            " <a href=\"#\" class=\"tooltip\" data-notable-ty=\"{ty}\">ⓘ</a>",
-            ty = Escape(&format!("{:#}", ty.print(cx))),
-        ))
-    } else {
-        None
-    }
+        fmt::from_fn(|f| {
+            write!(
+                f,
+                " <a href=\"#\" class=\"tooltip\" data-notable-ty=\"{ty}\">ⓘ</a>",
+                ty = Escape(&format!("{:#}", ty.print(cx))),
+            )
+        })
+    })
 }
 
 fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
@@ -2117,11 +2151,11 @@ pub(crate) fn render_impl_summary(
 ) {
     let inner_impl = i.inner_impl();
     let id = cx.derive_id(get_id_for_impl(cx.tcx(), i.impl_item.item_id));
-    let aliases = if aliases.is_empty() {
-        String::new()
-    } else {
-        format!(" data-aliases=\"{}\"", aliases.join(","))
-    };
+    let aliases = (!aliases.is_empty())
+        .then_some(fmt::from_fn(|f| {
+            write!(f, " data-aliases=\"{}\"", fmt::from_fn(|f| aliases.iter().joined(",", f)))
+        }))
+        .maybe_display();
     write_str(w, format_args!("<section id=\"{id}\" class=\"impl\"{aliases}>"));
     render_rightside(w, cx, &i.impl_item, RenderMode::Normal);
     write_str(
