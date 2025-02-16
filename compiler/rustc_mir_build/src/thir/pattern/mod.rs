@@ -189,7 +189,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
         // Lower the endpoint into a temporary `PatKind` that will then be
         // deconstructed to obtain the constant value and other data.
-        let mut kind: PatKind<'tcx> = self.lower_lit(expr);
+        let mut kind: PatKind<'tcx> = self.lower_pat_expr(expr);
 
         // Unpeel any ascription or inline-const wrapper nodes.
         loop {
@@ -353,7 +353,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
             hir::PatKind::Never => PatKind::Never,
 
-            hir::PatKind::Expr(value) => self.lower_lit(value),
+            hir::PatKind::Expr(value) => self.lower_pat_expr(value),
 
             hir::PatKind::Range(ref lo_expr, ref hi_expr, end) => {
                 let (lo_expr, hi_expr) = (lo_expr.as_deref(), hi_expr.as_deref());
@@ -638,54 +638,57 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let ty = self.typeck_results.node_type(id);
         let res = self.typeck_results.qpath_res(qpath, id);
 
-        let pat_from_kind = |kind| Box::new(Pat { span, ty, kind });
+        let (def_id, user_ty) = match res {
+            Res::Def(DefKind::Const, def_id) => (def_id, None),
+            Res::Def(DefKind::AssocConst, def_id) => {
+                (def_id, self.typeck_results.user_provided_types().get(id))
+            }
 
-        let (def_id, is_associated_const) = match res {
-            Res::Def(DefKind::Const, def_id) => (def_id, false),
-            Res::Def(DefKind::AssocConst, def_id) => (def_id, true),
-
-            _ => return pat_from_kind(self.lower_variant_or_leaf(res, id, span, ty, vec![])),
+            _ => {
+                // The path isn't the name of a constant, so it must actually
+                // be a unit struct or unit variant (e.g. `Option::None`).
+                let kind = self.lower_variant_or_leaf(res, id, span, ty, vec![]);
+                return Box::new(Pat { span, ty, kind });
+            }
         };
 
+        // Lower the named constant to a THIR pattern.
         let args = self.typeck_results.node_args(id);
         let c = ty::Const::new_unevaluated(self.tcx, ty::UnevaluatedConst { def: def_id, args });
         let subpattern = self.const_to_pat(c, ty, id, span);
-        let pattern = Box::new(Pat {
-            span,
-            ty,
-            kind: PatKind::ExpandedConstant { subpattern, def_id, is_inline: false },
-        });
 
-        if !is_associated_const {
-            return pattern;
-        }
+        // Wrap the pattern in a marker node to indicate that it is the result
+        // of lowering a named constant. This marker is used for improved
+        // diagnostics in some situations, but has no effect at runtime.
+        let mut pattern = {
+            let kind = PatKind::ExpandedConstant { subpattern, def_id, is_inline: false };
+            Box::new(Pat { span, ty, kind })
+        };
 
-        let user_provided_types = self.typeck_results.user_provided_types();
-        if let Some(&user_ty) = user_provided_types.get(id) {
+        // If this is an associated constant with an explicit user-written
+        // type, add an ascription node (e.g. `<Foo<'a> as MyTrait>::CONST`).
+        if let Some(&user_ty) = user_ty {
             let annotation = CanonicalUserTypeAnnotation {
                 user_ty: Box::new(user_ty),
                 span,
                 inferred_ty: self.typeck_results.node_type(id),
             };
-            Box::new(Pat {
-                span,
-                kind: PatKind::AscribeUserType {
-                    subpattern: pattern,
-                    ascription: Ascription {
-                        annotation,
-                        // Note that use `Contravariant` here. See the
-                        // `variance` field documentation for details.
-                        variance: ty::Contravariant,
-                    },
+            let kind = PatKind::AscribeUserType {
+                subpattern: pattern,
+                ascription: Ascription {
+                    annotation,
+                    // Note that we use `Contravariant` here. See the
+                    // `variance` field documentation for details.
+                    variance: ty::Contravariant,
                 },
-                ty,
-            })
-        } else {
-            pattern
+            };
+            pattern = Box::new(Pat { span, kind, ty });
         }
+
+        pattern
     }
 
-    /// Converts inline const patterns.
+    /// Lowers an inline const block (e.g. `const { 1 + 1 }`) to a pattern.
     fn lower_inline_const(
         &mut self,
         block: &'tcx hir::ConstBlock,
@@ -705,14 +708,17 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
         let ct = ty::UnevaluatedConst { def: def_id.to_def_id(), args };
         let subpattern = self.const_to_pat(ty::Const::new_unevaluated(self.tcx, ct), ty, id, span);
+
+        // Wrap the pattern in a marker node to indicate that it is the result
+        // of lowering an inline const block.
         PatKind::ExpandedConstant { subpattern, def_id: def_id.to_def_id(), is_inline: true }
     }
 
-    /// Converts literals, paths and negation of literals to patterns.
-    /// The special case for negation exists to allow things like `-128_i8`
-    /// which would overflow if we tried to evaluate `128_i8` and then negate
-    /// afterwards.
-    fn lower_lit(&mut self, expr: &'tcx hir::PatExpr<'tcx>) -> PatKind<'tcx> {
+    /// Lowers the kinds of "expression" that can appear in a HIR pattern:
+    /// - Paths (e.g. `FOO`, `foo::BAR`, `Option::None`)
+    /// - Inline const blocks (e.g. `const { 1 + 1 }`)
+    /// - Literals, possibly negated (e.g. `-128u8`, `"hello"`)
+    fn lower_pat_expr(&mut self, expr: &'tcx hir::PatExpr<'tcx>) -> PatKind<'tcx> {
         let (lit, neg) = match &expr.kind {
             hir::PatExprKind::Path(qpath) => {
                 return self.lower_path(qpath, expr.hir_id, expr.span).kind;
