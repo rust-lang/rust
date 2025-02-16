@@ -382,6 +382,11 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
     }
 
     pub(crate) fn create_stack_slot(&mut self, size: u32, align: u32) -> Pointer {
+        assert!(
+            size % align == 0,
+            "size must be a multiple of alignment (size={size}, align={align})"
+        );
+
         let abi_align = if self.tcx.sess.target.arch == "s390x" { 8 } else { 16 };
         if align <= abi_align {
             let stack_slot = self.bcx.create_sized_stack_slot(StackSlotData {
@@ -403,7 +408,7 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
                 align_shift: 4,
             });
             let base_ptr = self.bcx.ins().stack_addr(self.pointer_type, stack_slot, 0);
-            let misalign_offset = self.bcx.ins().urem_imm(base_ptr, i64::from(align));
+            let misalign_offset = self.bcx.ins().band_imm(base_ptr, i64::from(align - 1));
             let realign_offset = self.bcx.ins().irsub_imm(misalign_offset, i64::from(align));
             Pointer::new(self.bcx.ins().iadd(base_ptr, realign_offset))
         }

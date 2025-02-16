@@ -213,21 +213,6 @@ pub(crate) struct FileWriteFail<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(session_crate_name_does_not_match)]
-pub(crate) struct CrateNameDoesNotMatch {
-    #[primary_span]
-    pub(crate) span: Span,
-    pub(crate) s: Symbol,
-    pub(crate) name: Symbol,
-}
-
-#[derive(Diagnostic)]
-#[diag(session_crate_name_invalid)]
-pub(crate) struct CrateNameInvalid<'a> {
-    pub(crate) s: &'a str,
-}
-
-#[derive(Diagnostic)]
 #[diag(session_crate_name_empty)]
 pub(crate) struct CrateNameEmpty {
     #[primary_span]
@@ -235,20 +220,14 @@ pub(crate) struct CrateNameEmpty {
 }
 
 #[derive(Diagnostic)]
-#[diag(session_invalid_character_in_create_name)]
+#[diag(session_invalid_character_in_crate_name)]
 pub(crate) struct InvalidCharacterInCrateName {
     #[primary_span]
     pub(crate) span: Option<Span>,
     pub(crate) character: char,
     pub(crate) crate_name: Symbol,
-    #[subdiagnostic]
-    pub(crate) crate_name_help: Option<InvalidCrateNameHelp>,
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum InvalidCrateNameHelp {
-    #[help(session_invalid_character_in_create_name_help)]
-    AddCrateName,
+    #[help]
+    pub(crate) help: Option<()>,
 }
 
 #[derive(Subdiagnostic)]

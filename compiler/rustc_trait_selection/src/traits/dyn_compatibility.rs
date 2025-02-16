@@ -187,7 +187,10 @@ fn predicates_reference_self(
 fn bounds_reference_self(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SmallVec<[Span; 1]> {
     tcx.associated_items(trait_def_id)
         .in_definition_order()
+        // We're only looking at associated type bounds
         .filter(|item| item.kind == ty::AssocKind::Type)
+        // Ignore GATs with `Self: Sized`
+        .filter(|item| !tcx.generics_require_sized_self(item.def_id))
         .flat_map(|item| tcx.explicit_item_bounds(item.def_id).iter_identity_copied())
         .filter_map(|(clause, sp)| {
             // Item bounds *can* have self projections, since they never get

@@ -28,6 +28,10 @@ unsafe extern "C" {
     pub fn lgamma_r(n: f64, s: &mut i32) -> f64;
     #[cfg(not(target_os = "aix"))]
     pub fn lgammaf_r(n: f32, s: &mut i32) -> f32;
+    pub fn erf(n: f64) -> f64;
+    pub fn erff(n: f32) -> f32;
+    pub fn erfc(n: f64) -> f64;
+    pub fn erfcf(n: f32) -> f32;
 
     pub fn acosf128(n: f128) -> f128;
     pub fn asinf128(n: f128) -> f128;
@@ -43,6 +47,8 @@ unsafe extern "C" {
     pub fn tanhf128(n: f128) -> f128;
     pub fn tgammaf128(n: f128) -> f128;
     pub fn lgammaf128_r(n: f128, s: &mut i32) -> f128;
+    pub fn erff128(n: f128) -> f128;
+    pub fn erfcf128(n: f128) -> f128;
 
     cfg_if::cfg_if! {
     if #[cfg(not(all(target_os = "windows", target_env = "msvc", target_arch = "x86")))] {

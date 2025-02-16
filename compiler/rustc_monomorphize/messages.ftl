@@ -1,17 +1,17 @@
 monomorphize_abi_error_disabled_vector_type_call =
-  this function call uses a SIMD vector type that (with the chosen ABI) requires the `{$required_feature}` target feature, which is not enabled in the caller
+  this function call uses SIMD vector type `{$ty}` which (with the chosen ABI) requires the `{$required_feature}` target feature, which is not enabled in the caller
   .label = function called here
   .help = consider enabling it globally (`-C target-feature=+{$required_feature}`) or locally (`#[target_feature(enable="{$required_feature}")]`)
 monomorphize_abi_error_disabled_vector_type_def =
-  this function definition uses a SIMD vector type that (with the chosen ABI) requires the `{$required_feature}` target feature, which is not enabled
+  this function definition uses SIMD vector type `{$ty}` which (with the chosen ABI) requires the `{$required_feature}` target feature, which is not enabled
   .label = function defined here
   .help = consider enabling it globally (`-C target-feature=+{$required_feature}`) or locally (`#[target_feature(enable="{$required_feature}")]`)
 
 monomorphize_abi_error_unsupported_vector_type_call =
-  this function call uses a SIMD vector type that is not currently supported with the chosen ABI
+  this function call uses SIMD vector type `{$ty}` which is not currently supported with the chosen ABI
   .label = function called here
 monomorphize_abi_error_unsupported_vector_type_def =
-  this function definition uses a SIMD vector type that is not currently supported with the chosen ABI
+  this function definition uses SIMD vector type `{$ty}` which is not currently supported with the chosen ABI
   .label = function defined here
 
 monomorphize_couldnt_dump_mono_stats =

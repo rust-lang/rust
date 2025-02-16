@@ -743,9 +743,6 @@ parse_single_colon_import_path = expected `::`, found `:`
     .suggestion = use double colon
     .note = import paths are delimited using `::`
 
-parse_single_colon_struct_type = found single colon in a struct field type path
-    .suggestion = write a path separator here
-
 parse_static_with_generics = static items may not have generic parameters
 
 parse_struct_literal_body_without_path =

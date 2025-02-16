@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use rustc_macros::{Diagnostic, LintDiagnostic};
+use rustc_middle::ty::Ty;
 use rustc_span::{Span, Symbol};
 
 #[derive(Diagnostic)]
@@ -75,6 +76,7 @@ pub(crate) struct AbiErrorDisabledVectorTypeDef<'a> {
     #[label]
     pub span: Span,
     pub required_feature: &'a str,
+    pub ty: Ty<'a>,
 }
 
 #[derive(LintDiagnostic)]
@@ -84,18 +86,21 @@ pub(crate) struct AbiErrorDisabledVectorTypeCall<'a> {
     #[label]
     pub span: Span,
     pub required_feature: &'a str,
+    pub ty: Ty<'a>,
 }
 
 #[derive(LintDiagnostic)]
 #[diag(monomorphize_abi_error_unsupported_vector_type_def)]
-pub(crate) struct AbiErrorUnsupportedVectorTypeDef {
+pub(crate) struct AbiErrorUnsupportedVectorTypeDef<'a> {
     #[label]
     pub span: Span,
+    pub ty: Ty<'a>,
 }
 
 #[derive(LintDiagnostic)]
 #[diag(monomorphize_abi_error_unsupported_vector_type_call)]
-pub(crate) struct AbiErrorUnsupportedVectorTypeCall {
+pub(crate) struct AbiErrorUnsupportedVectorTypeCall<'a> {
     #[label]
     pub span: Span,
+    pub ty: Ty<'a>,
 }
