@@ -456,12 +456,11 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
     fn visit_local_decl(&mut self, local: Local, local_decl: &LocalDecl<'tcx>) {
         self.super_local_decl(local, local_decl);
 
-        for (user_ty, span) in local_decl
-            .user_ty
-            .as_deref()
-            .into_iter()
-            .flat_map(UserTypeProjections::projections_and_spans)
+        for user_ty in
+            local_decl.user_ty.as_deref().into_iter().flat_map(UserTypeProjections::projections)
         {
+            let span = self.typeck.user_type_annotations[user_ty.base].span;
+
             let ty = if local_decl.is_nonref_binding() {
                 local_decl.ty
             } else if let &ty::Ref(_, rty, _) = local_decl.ty.kind() {
@@ -477,7 +476,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                 ty,
                 ty::Invariant,
                 user_ty,
-                Locations::All(*span),
+                Locations::All(span),
                 ConstraintCategory::TypeAnnotation(AnnotationSource::Declaration),
             ) {
                 span_mirbug!(

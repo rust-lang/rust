@@ -927,8 +927,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // of `user_ty` on any bindings contained with subpattern.
 
                 let base_user_ty = self.canonical_user_type_annotations.push(annotation.clone());
-                let subpattern_user_ty =
-                    pattern_user_ty.push_user_type(base_user_ty, annotation.span);
+                let subpattern_user_ty = pattern_user_ty.push_user_type(base_user_ty);
                 self.visit_primary_bindings(subpattern, subpattern_user_ty, f)
             }
 
