@@ -8,7 +8,6 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::{EnumDef, FieldDef, Item, ItemKind, OwnerId, Variant, VariantData};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
-use rustc_span::Span;
 use rustc_span::symbol::Symbol;
 
 declare_clippy_lint! {
@@ -197,6 +196,25 @@ fn have_no_extra_prefix(prefixes: &[&str]) -> bool {
 }
 
 impl ItemNameRepetitions {
+    /// Lint the names of enum variants against the name of the enum.
+    fn check_variants(&self, cx: &LateContext<'_>, item: &Item<'_>, def: &EnumDef<'_>) {
+        if self.avoid_breaking_exported_api && cx.effective_visibilities.is_exported(item.owner_id.def_id) {
+            return;
+        }
+
+        if (def.variants.len() as u64) < self.enum_threshold {
+            return;
+        }
+
+        let item_name = item.ident.name.as_str();
+        for var in def.variants {
+            check_enum_start(cx, item_name, var);
+            check_enum_end(cx, item_name, var);
+        }
+
+        Self::check_enum_common_affix(cx, item, def);
+    }
+
     /// Lint the names of struct fields against the name of the struct.
     fn check_fields(&self, cx: &LateContext<'_>, item: &Item<'_>, fields: &[FieldDef<'_>]) {
         if (fields.len() as u64) < self.struct_threshold {
@@ -204,10 +222,60 @@ impl ItemNameRepetitions {
         }
 
         self.check_struct_name_repetition(cx, item, fields);
-        self.check_common_affix(cx, item, fields);
+        self.check_struct_common_affix(cx, item, fields);
     }
 
-    fn check_common_affix(&self, cx: &LateContext<'_>, item: &Item<'_>, fields: &[FieldDef<'_>]) {
+    fn check_enum_common_affix(cx: &LateContext<'_>, item: &Item<'_>, def: &EnumDef<'_>) {
+        let first = match def.variants.first() {
+            Some(variant) => variant.ident.name.as_str(),
+            None => return,
+        };
+        let mut pre = camel_case_split(first);
+        let mut post = pre.clone();
+        post.reverse();
+        for var in def.variants {
+            let name = var.ident.name.as_str();
+
+            let variant_split = camel_case_split(name);
+            if variant_split.len() == 1 {
+                return;
+            }
+
+            pre = pre
+                .iter()
+                .zip(variant_split.iter())
+                .take_while(|(a, b)| a == b)
+                .map(|e| *e.0)
+                .collect();
+            post = post
+                .iter()
+                .zip(variant_split.iter().rev())
+                .take_while(|(a, b)| a == b)
+                .map(|e| *e.0)
+                .collect();
+        }
+        let (what, value) = match (have_no_extra_prefix(&pre), post.is_empty()) {
+            (true, true) => return,
+            (false, _) => ("pre", pre.join("")),
+            (true, false) => {
+                post.reverse();
+                ("post", post.join(""))
+            },
+        };
+        span_lint_and_help(
+            cx,
+            ENUM_VARIANT_NAMES,
+            item.span,
+            format!("all variants have the same {what}fix: `{value}`"),
+            None,
+            format!(
+                "remove the {what}fixes and use full paths to \
+                 the variants instead of glob imports"
+            ),
+        );
+    }
+
+    fn check_struct_common_affix(&self, cx: &LateContext<'_>, item: &Item<'_>, fields: &[FieldDef<'_>]) {
         // if the SyntaxContext of the identifiers of the fields and struct differ dont lint them.
         // this prevents linting in macros in which the location of the field identifier names differ
         if !fields.iter().all(|field| item.ident.span.eq_ctxt(field.ident.span)) {
@@ -357,65 +425,6 @@ fn check_enum_end(cx: &LateContext<'_>, item_name: &str, variant: &Variant<'_>) 
     }
 }
 
-fn check_variant(cx: &LateContext<'_>, threshold: u64, def: &EnumDef<'_>, item_name: &str, span: Span) {
-    if (def.variants.len() as u64) < threshold {
-        return;
-    }
-
-    for var in def.variants {
-        check_enum_start(cx, item_name, var);
-        check_enum_end(cx, item_name, var);
-    }
-
-    let first = match def.variants.first() {
-        Some(variant) => variant.ident.name.as_str(),
-        None => return,
-    };
-    let mut pre = camel_case_split(first);
-    let mut post = pre.clone();
-    post.reverse();
-    for var in def.variants {
-        let name = var.ident.name.as_str();
-
-        let variant_split = camel_case_split(name);
-        if variant_split.len() == 1 {
-            return;
-        }
-
-        pre = pre
-            .iter()
-            .zip(variant_split.iter())
-            .take_while(|(a, b)| a == b)
-            .map(|e| *e.0)
-            .collect();
-        post = post
-            .iter()
-            .zip(variant_split.iter().rev())
-            .take_while(|(a, b)| a == b)
-            .map(|e| *e.0)
-            .collect();
-    }
-    let (what, value) = match (have_no_extra_prefix(&pre), post.is_empty()) {
-        (true, true) => return,
-        (false, _) => ("pre", pre.join("")),
-        (true, false) => {
-            post.reverse();
-            ("post", post.join(""))
-        },
-    };
-    span_lint_and_help(
-        cx,
-        ENUM_VARIANT_NAMES,
-        span,
-        format!("all variants have the same {what}fix: `{value}`"),
-        None,
-        format!(
-            "remove the {what}fixes and use full paths to \
-             the variants instead of glob imports"
-        ),
-    );
-}
-
 impl LateLintPass<'_> for ItemNameRepetitions {
     fn check_item_post(&mut self, _cx: &LateContext<'_>, _item: &Item<'_>) {
         let last = self.modules.pop();
@@ -482,11 +491,7 @@ impl LateLintPass<'_> for ItemNameRepetitions {
         if span_is_local(item.span) {
             match item.kind {
                 ItemKind::Enum(def, _) => {
-                    if !(self.avoid_breaking_exported_api
-                        && cx.effective_visibilities.is_exported(item.owner_id.def_id))
-                    {
-                        check_variant(cx, self.enum_threshold, &def, item_name, item.span);
-                    }
+                    self.check_variants(cx, item, &def);
                 },
                 ItemKind::Struct(VariantData::Struct { fields, .. }, _) => {
                     self.check_fields(cx, item, fields);
