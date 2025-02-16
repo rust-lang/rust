@@ -770,7 +770,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let res = math::apply_random_float_error_ulp(
                     this,
                     res.to_soft(),
-                    4
+                    4, // log2(16)
                 );
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
@@ -799,7 +799,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let res = math::apply_random_float_error_ulp(
                     this,
                     res,
-                    4
+                    4, // log2(16)
                 );
                 let res = this.adjust_nan(res, &[f1, f2]);
                 this.write_scalar(res, dest)?;
@@ -844,7 +844,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let res = math::apply_random_float_error_ulp(
                     this,
                     res.to_soft(),
-                    4
+                    4, // log2(16)
                 );
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
@@ -873,7 +873,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let res = math::apply_random_float_error_ulp(
                     this,
                     res,
-                    4
+                    4, // log2(16)
                 );
                 let res = this.adjust_nan(res, &[f1, f2]);
                 this.write_scalar(res, dest)?;
@@ -902,7 +902,8 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_int(sign, &signp)?;
                 // Apply a relative error of 16ULP to introduce some non-determinism
                 // simulating imprecise implementations and optimizations.
-                let res = math::apply_random_float_error_ulp(this, res.to_soft(), 4);
+                let res =
+                    math::apply_random_float_error_ulp(this, res.to_soft(), 4 /* log2(16) */);
                 let res = this.adjust_nan(res, &[x]);
                 this.write_scalar(res, dest)?;
             }
@@ -916,7 +917,8 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_int(sign, &signp)?;
                 // Apply a relative error of 16ULP to introduce some non-determinism
                 // simulating imprecise implementations and optimizations.
-                let res = math::apply_random_float_error_ulp(this, res.to_soft(), 4);
+                let res =
+                    math::apply_random_float_error_ulp(this, res.to_soft(), 4 /* log2(16) */);
                 let res = this.adjust_nan(res, &[x]);
                 this.write_scalar(res, dest)?;
             }
