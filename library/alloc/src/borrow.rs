@@ -340,8 +340,18 @@ where
     }
 }
 
+// `Cow<'_, T>` can only implement `DerefPure` if `<T::Owned as Borrow<T>>` (and `BorrowMut<T>`) is trusted.
+// For now, we restrict `DerefPure for Cow<T>` to `T: Sized` (`T as Borrow<T>` is trusted),
+// `str` (`String as Borrow<str>` is trusted) and `[T]` (`Vec<T> as Borrow<[T]>` is trusted).
+// In the future, a `BorrowPure<T>` trait analogous to `DerefPure` might generalize this.
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
-unsafe impl<B: ?Sized + ToOwned> DerefPure for Cow<'_, B> where B::Owned: Borrow<B> {}
+unsafe impl<T: Clone> DerefPure for Cow<'_, T> {}
+#[cfg(not(no_global_oom_handling))]
+#[unstable(feature = "deref_pure_trait", issue = "87121")]
+unsafe impl DerefPure for Cow<'_, str> {}
+#[cfg(not(no_global_oom_handling))]
+#[unstable(feature = "deref_pure_trait", issue = "87121")]
+unsafe impl<T: Clone> DerefPure for Cow<'_, [T]> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<B: ?Sized> Eq for Cow<'_, B> where B: Eq + ToOwned {}
