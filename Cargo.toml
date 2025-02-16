@@ -93,3 +93,6 @@ codegen-units = 1
 # FIXME: LTO cannot be enabled for binaries in a workspace
 # <https://github.com/rust-lang/cargo/issues/9330>
 # lto = true
+
+[patch.crates-io]
+triomphe = { git = 'https://github.com/Manishearth/triomphe.git', rev = '6ff0527036632be33a6ed45e5e8a0fb6243dee47' }
