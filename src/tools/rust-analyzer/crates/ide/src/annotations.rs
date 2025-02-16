@@ -1,6 +1,6 @@
 use hir::{HasSource, InFile, InRealFile, Semantics};
 use ide_db::{
-    defs::Definition, helpers::visit_file_defs, FileId, FilePosition, FileRange, FxHashSet,
+    defs::Definition, helpers::visit_file_defs, FileId, FilePosition, FileRange, FxIndexSet,
     RootDatabase,
 };
 use itertools::Itertools;
@@ -55,7 +55,7 @@ pub(crate) fn annotations(
     config: &AnnotationConfig,
     file_id: FileId,
 ) -> Vec<Annotation> {
-    let mut annotations = FxHashSet::default();
+    let mut annotations = FxIndexSet::default();
 
     if config.annotate_runnables {
         for runnable in runnables(db, file_id) {
@@ -170,7 +170,19 @@ pub(crate) fn annotations(
         }));
     }
 
-    annotations.into_iter().sorted_by_key(|a| (a.range.start(), a.range.end())).collect()
+    annotations
+        .into_iter()
+        .sorted_by_key(|a| {
+            (
+                a.range.start(),
+                a.range.end(),
+                match &a.kind {
+                    AnnotationKind::Runnable(runnable) => Some(runnable.nav.name.clone()),
+                    _ => None,
+                },
+            )
+        })
+        .collect()
 }
 
 pub(crate) fn resolve_annotation(db: &RootDatabase, mut annotation: Annotation) -> Annotation {
@@ -537,6 +549,20 @@ fn main() {
                     },
                     Annotation {
                         range: 69..73,
+                        kind: HasReferences {
+                            pos: FilePositionWrapper {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                offset: 69,
+                            },
+                            data: Some(
+                                [],
+                            ),
+                        },
+                    },
+                    Annotation {
+                        range: 69..73,
                         kind: Runnable(
                             Runnable {
                                 use_name_in_title: false,
@@ -558,20 +584,6 @@ fn main() {
                                 },
                             },
                         ),
-                    },
-                    Annotation {
-                        range: 69..73,
-                        kind: HasReferences {
-                            pos: FilePositionWrapper {
-                                file_id: FileId(
-                                    0,
-                                ),
-                                offset: 69,
-                            },
-                            data: Some(
-                                [],
-                            ),
-                        },
                     },
                 ]
             "#]],
@@ -719,6 +731,20 @@ fn main() {
                     },
                     Annotation {
                         range: 61..65,
+                        kind: HasReferences {
+                            pos: FilePositionWrapper {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                offset: 61,
+                            },
+                            data: Some(
+                                [],
+                            ),
+                        },
+                    },
+                    Annotation {
+                        range: 61..65,
                         kind: Runnable(
                             Runnable {
                                 use_name_in_title: false,
@@ -740,20 +766,6 @@ fn main() {
                                 },
                             },
                         ),
-                    },
-                    Annotation {
-                        range: 61..65,
-                        kind: HasReferences {
-                            pos: FilePositionWrapper {
-                                file_id: FileId(
-                                    0,
-                                ),
-                                offset: 61,
-                            },
-                            data: Some(
-                                [],
-                            ),
-                        },
                     },
                 ]
             "#]],
