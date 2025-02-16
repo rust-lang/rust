@@ -722,6 +722,15 @@ fn test_highlight_doc_comment() {
 //! fn test() {}
 //! ```
 
+//! ```rust
+//! extern crate self;
+//! extern crate std;
+//! extern crate core;
+//! extern crate alloc;
+//! extern crate proc_macro;
+//! extern crate test;
+//! extern crate Krate;
+//! ```
 mod outline_module;
 
 /// ```
