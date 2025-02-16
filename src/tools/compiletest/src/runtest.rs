@@ -1970,11 +1970,6 @@ impl<'test> TestCx<'test> {
             filecheck.arg("--check-prefix").arg(rev);
         }
 
-        // HACK: the filecheck tool normally fails if a prefix is defined but not used. However,
-        // sometimes revisions are used to specify *compiletest* directives which are not FileCheck
-        // concerns.
-        filecheck.arg("--allow-unused-prefixes");
-
         // Provide more context on failures.
         filecheck.args(&["--dump-input-context", "100"]);
 
