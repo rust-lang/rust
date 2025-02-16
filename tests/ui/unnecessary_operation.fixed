@@ -1,12 +1,13 @@
 #![allow(
     clippy::deref_addrof,
-    dead_code,
-    unused,
     clippy::no_effect,
-    clippy::unnecessary_struct_initialization
+    clippy::uninlined_format_args,
+    clippy::unnecessary_struct_initialization,
+    dead_code,
+    unused
 )]
 #![warn(clippy::unnecessary_operation)]
-#![allow(clippy::uninlined_format_args)]
+
 use std::fmt::Display;
 use std::ops::Shl;
 

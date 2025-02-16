@@ -1,5 +1,5 @@
-#![warn(clippy::manual_inspect)]
 #![allow(clippy::no_effect, clippy::op_ref, clippy::uninlined_format_args)]
+#![warn(clippy::manual_inspect)]
 
 fn main() {
     let _ = Some(0).inspect(|&x| {
