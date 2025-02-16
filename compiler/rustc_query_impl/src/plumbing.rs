@@ -4,10 +4,11 @@
 
 use std::num::NonZero;
 
-use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::DiagInner;
+use rustc_hashes::Hash64;
 use rustc_index::Idx;
 use rustc_middle::bug;
 use rustc_middle::dep_graph::{

@@ -12,6 +12,7 @@ itoa = "1.0"
 md5 = { package = "md-5", version = "0.10.0" }
 rustc_arena = { path = "../rustc_arena" }
 rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_hashes = { path = "../rustc_hashes" }
 rustc_index = { path = "../rustc_index" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_serialize = { path = "../rustc_serialize" }

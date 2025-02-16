@@ -22,6 +22,7 @@ rustc_errors = { path = "../rustc_errors" }
 rustc_feature = { path = "../rustc_feature" }
 rustc_fluent_macro = { path = "../rustc_fluent_macro" }
 rustc_graphviz = { path = "../rustc_graphviz" }
+rustc_hashes = { path = "../rustc_hashes" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_hir_pretty = { path = "../rustc_hir_pretty" }
 rustc_index = { path = "../rustc_index" }

@@ -11,6 +11,7 @@ use rustc_error_messages::DiagMessage;
 use rustc_errors::{
     Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
 };
+use rustc_hashes::Hash64;
 use rustc_hir::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
@@ -778,7 +779,7 @@ where
                     size: Size::ZERO,
                     max_repr_align: None,
                     unadjusted_abi_align: tcx.data_layout.i8_align.abi,
-                    randomization_seed: 0,
+                    randomization_seed: Hash64::ZERO,
                 })
             }
 
