@@ -1516,8 +1516,8 @@ impl<'tcx> UserTypeProjections {
         self.contents.iter().map(|&(ref user_type, _span)| user_type)
     }
 
-    pub fn push_projection(mut self, user_ty: &UserTypeProjection, span: Span) -> Self {
-        self.contents.push((user_ty.clone(), span));
+    pub fn push_user_type(mut self, base_user_ty: UserTypeAnnotationIndex, span: Span) -> Self {
+        self.contents.push((UserTypeProjection { base: base_user_ty, projs: vec![] }, span));
         self
     }
 
