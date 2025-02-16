@@ -65,7 +65,7 @@ pub struct XLinkToCloneWithStartSpace;
 /// [x][struct@Clone ] //~ERROR link
 pub struct XLinkToCloneWithEndSpace;
 
-/// [x][Clone\(\)] not URL-shaped enough
+/// [x][Clone\(\)] //~ERROR link
 pub struct XLinkToCloneWithEscapedParens;
 
 /// [x][`Clone`] not URL-shaped enough
