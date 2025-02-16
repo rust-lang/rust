@@ -1922,21 +1922,32 @@ impl InferenceContext<'_> {
             VisibleFromModule::Filter(self.resolver.module()),
             method_name,
         );
-        let (receiver_ty, method_ty, substs) = match resolved {
+        match resolved {
             Some((adjust, func, visible)) => {
-                let (ty, adjustments) = adjust.apply(&mut self.table, receiver_ty);
-                let generics = generics(self.db.upcast(), func.into());
-                let substs = self.substs_for_method_call(generics, generic_args);
-                self.write_expr_adj(receiver, adjustments);
-                self.write_method_resolution(tgt_expr, func, substs.clone());
                 if !visible {
                     self.push_diagnostic(InferenceDiagnostic::PrivateAssocItem {
                         id: tgt_expr.into(),
                         item: func.into(),
                     })
                 }
-                (ty, self.db.value_ty(func.into()).unwrap(), substs)
+
+                let (ty, adjustments) = adjust.apply(&mut self.table, receiver_ty);
+                self.write_expr_adj(receiver, adjustments);
+
+                let generics = generics(self.db.upcast(), func.into());
+                let substs = self.substs_for_method_call(generics, generic_args);
+                self.write_method_resolution(tgt_expr, func, substs.clone());
+                self.check_method_call(
+                    tgt_expr,
+                    args,
+                    self.db.value_ty(func.into()).expect("we have a function def"),
+                    substs,
+                    ty,
+                    expected,
+                )
             }
+            // Failed to resolve, report diagnostic and try to resolve as call to field access or
+            // assoc function
             None => {
                 let field_with_same_name_exists = match self.lookup_field(&receiver_ty, method_name)
                 {
@@ -1956,12 +1967,11 @@ impl InferenceContext<'_> {
                     VisibleFromModule::Filter(self.resolver.module()),
                     Some(method_name),
                     method_resolution::LookupMode::Path,
-                    |_ty, item, visible| {
-                        if visible {
-                            Some(item)
-                        } else {
-                            None
+                    |_ty, item, visible| match item {
+                        hir_def::AssocItemId::FunctionId(function_id) if visible => {
+                            Some(function_id)
                         }
+                        _ => None,
                     },
                 );
 
@@ -1973,31 +1983,41 @@ impl InferenceContext<'_> {
                     assoc_func_with_same_name,
                 });
 
-                return match field_with_same_name_exists {
-                    Some(field_ty) => match field_ty.callable_sig(self.db) {
-                        Some(sig) => self.check_call(
-                            tgt_expr,
-                            args,
-                            field_ty,
-                            sig.params(),
-                            sig.ret().clone(),
-                            &[],
-                            true,
-                            expected,
-                        ),
-                        None => {
-                            self.check_call_arguments(tgt_expr, args, &[], &[], &[], true);
-                            field_ty
-                        }
-                    },
+                let recovered = match assoc_func_with_same_name {
+                    Some(f) => {
+                        let generics = generics(self.db.upcast(), f.into());
+                        let substs = self.substs_for_method_call(generics, generic_args);
+                        let f = self
+                            .db
+                            .value_ty(f.into())
+                            .expect("we have a function def")
+                            .substitute(Interner, &substs);
+                        let sig = f.callable_sig(self.db).expect("we have a function def");
+                        Some((f, sig, true))
+                    }
+                    None => field_with_same_name_exists.and_then(|field_ty| {
+                        let callable_sig = field_ty.callable_sig(self.db)?;
+                        Some((field_ty, callable_sig, false))
+                    }),
+                };
+                match recovered {
+                    Some((callee_ty, sig, strip_first)) => self.check_call(
+                        tgt_expr,
+                        args,
+                        callee_ty,
+                        sig.params().get(strip_first as usize..).unwrap_or(&[]),
+                        sig.ret().clone(),
+                        &[],
+                        true,
+                        expected,
+                    ),
                     None => {
                         self.check_call_arguments(tgt_expr, args, &[], &[], &[], true);
                         self.err_ty()
                     }
-                };
+                }
             }
-        };
-        self.check_method_call(tgt_expr, args, method_ty, substs, receiver_ty, expected)
+        }
     }
 
     fn check_method_call(
@@ -2067,9 +2087,10 @@ impl InferenceContext<'_> {
         expected_inputs: &[Ty],
         param_tys: &[Ty],
         skip_indices: &[u32],
-        is_varargs: bool,
+        ignore_arg_param_mismatch: bool,
     ) {
-        let arg_count_mismatch = args.len() != param_tys.len() + skip_indices.len() && !is_varargs;
+        let arg_count_mismatch =
+            !ignore_arg_param_mismatch && args.len() != param_tys.len() + skip_indices.len();
         if arg_count_mismatch {
             self.push_diagnostic(InferenceDiagnostic::MismatchedArgCount {
                 call_expr: expr,
@@ -2098,7 +2119,7 @@ impl InferenceContext<'_> {
                     continue;
                 }
 
-                while skip_indices.peek().is_some_and(|i| *i < idx as u32) {
+                while skip_indices.peek().is_some_and(|&i| i < idx as u32) {
                     skip_indices.next();
                 }
                 if skip_indices.peek().copied() == Some(idx as u32) {
