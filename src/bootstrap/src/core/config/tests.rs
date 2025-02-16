@@ -454,3 +454,17 @@ fn check_rustc_if_unchanged_paths() {
         assert!(config.src.join(p).exists(), "{p} doesn't exist.");
     }
 }
+
+#[test]
+fn test_exclude() {
+    let config = parse("build.exclude=[\"test/codegen\"]");
+
+    let first_excluded = config
+        .skip
+        .first()
+        .expect("Expected at least one excluded path")
+        .to_str()
+        .expect("Failed to convert excluded path to string");
+
+    assert_eq!(first_excluded, "test/codegen");
+}
