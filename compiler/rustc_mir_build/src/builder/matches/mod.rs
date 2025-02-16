@@ -760,15 +760,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             pattern,
             UserTypeProjections::none(),
             &mut |this, name, mode, var, span, ty, user_ty| {
-                if visibility_scope.is_none() {
-                    visibility_scope =
-                        Some(this.new_source_scope(scope_span, LintLevel::Inherited));
-                }
+                let vis_scope = *visibility_scope
+                    .get_or_insert_with(|| this.new_source_scope(scope_span, LintLevel::Inherited));
                 let source_info = SourceInfo { span, scope: this.source_scope };
-                let visibility_scope = visibility_scope.unwrap();
+
                 this.declare_binding(
                     source_info,
-                    visibility_scope,
+                    vis_scope,
                     name,
                     mode,
                     var,
