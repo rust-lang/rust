@@ -857,13 +857,13 @@ impl<T: ?Sized> NonNull<T> {
     /// that their safety preconditions are met:
     /// ```rust
     /// # #![feature(ptr_sub_ptr)]
-    /// # unsafe fn blah(ptr: std::ptr::NonNull<u32>, origin: std::ptr::NonNull<u32>, count: usize) -> bool {
+    /// # unsafe fn blah(ptr: std::ptr::NonNull<u32>, origin: std::ptr::NonNull<u32>, count: usize) -> bool { unsafe {
     /// ptr.sub_ptr(origin) == count
     /// # &&
     /// origin.add(count) == ptr
     /// # &&
     /// ptr.sub(count) == origin
-    /// # }
+    /// # } }
     /// ```
     ///
     /// # Safety
