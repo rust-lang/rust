@@ -2039,7 +2039,10 @@ function preLoadCss(cssUrl) {
         // Most page titles are '<Item> in <path::to::module> - Rust', except
         // modules (which don't have the first part) and keywords/primitives
         // (which don't have a module path)
-        const [item, module] = document.title.split(" in ");
+        const titleElement = document.querySelector("title");
+        const title = titleElement && titleElement.textContent ?
+                      titleElement.textContent.replace(" - Rust", "") : "";
+        const [item, module] = title.split(" in ");
         const path = [item];
         if (module !== undefined) {
             path.unshift(module);

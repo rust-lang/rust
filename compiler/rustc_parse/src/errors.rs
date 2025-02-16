@@ -3072,14 +3072,6 @@ pub(crate) struct BadItemKind {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_single_colon_struct_type)]
-pub(crate) struct SingleColonStructType {
-    #[primary_span]
-    #[suggestion(code = "::", applicability = "maybe-incorrect", style = "verbose")]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(parse_macro_rules_missing_bang)]
 pub(crate) struct MacroRulesMissingBang {
     #[primary_span]
