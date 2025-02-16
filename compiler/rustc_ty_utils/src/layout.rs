@@ -134,15 +134,10 @@ fn univariant_uninterned<'tcx>(
     cx: &LayoutCx<'tcx>,
     ty: Ty<'tcx>,
     fields: &IndexSlice<FieldIdx, TyAndLayout<'tcx>>,
-    repr: &ReprOptions,
     kind: StructKind,
 ) -> Result<LayoutData<FieldIdx, VariantIdx>, &'tcx LayoutError<'tcx>> {
-    let pack = repr.pack;
-    if pack.is_some() && repr.align.is_some() {
-        cx.tcx().dcx().bug("struct cannot be packed and aligned");
-    }
-
-    cx.calc.univariant(fields, repr, kind).map_err(|err| map_error(cx, ty, err))
+    let repr = ReprOptions::default();
+    cx.calc.univariant(fields, &repr, kind).map_err(|err| map_error(cx, ty, err))
 }
 
 fn extract_const_value<'tcx>(
@@ -189,10 +184,9 @@ fn layout_of_uncached<'tcx>(
     };
     let scalar = |value: Primitive| tcx.mk_layout(LayoutData::scalar(cx, scalar_unit(value)));
 
-    let univariant =
-        |fields: &IndexSlice<FieldIdx, TyAndLayout<'tcx>>, repr: &ReprOptions, kind| {
-            Ok(tcx.mk_layout(univariant_uninterned(cx, ty, fields, repr, kind)?))
-        };
+    let univariant = |fields: &IndexSlice<FieldIdx, TyAndLayout<'tcx>>, kind| {
+        Ok(tcx.mk_layout(univariant_uninterned(cx, ty, fields, kind)?))
+    };
     debug_assert!(!ty.has_non_region_infer());
 
     Ok(match *ty.kind() {
@@ -405,17 +399,10 @@ fn layout_of_uncached<'tcx>(
         }),
 
         // Odd unit types.
-        ty::FnDef(..) => {
-            univariant(IndexSlice::empty(), &ReprOptions::default(), StructKind::AlwaysSized)?
-        }
+        ty::FnDef(..) => univariant(IndexSlice::empty(), StructKind::AlwaysSized)?,
         ty::Dynamic(_, _, ty::Dyn) | ty::Foreign(..) => {
-            let mut unit = univariant_uninterned(
-                cx,
-                ty,
-                IndexSlice::empty(),
-                &ReprOptions::default(),
-                StructKind::AlwaysSized,
-            )?;
+            let mut unit =
+                univariant_uninterned(cx, ty, IndexSlice::empty(), StructKind::AlwaysSized)?;
             match unit.backend_repr {
                 BackendRepr::Memory { ref mut sized } => *sized = false,
                 _ => bug!(),
@@ -429,7 +416,6 @@ fn layout_of_uncached<'tcx>(
             let tys = args.as_closure().upvar_tys();
             univariant(
                 &tys.iter().map(|ty| cx.layout_of(ty)).try_collect::<IndexVec<_, _>>()?,
-                &ReprOptions::default(),
                 StructKind::AlwaysSized,
             )?
         }
@@ -438,7 +424,6 @@ fn layout_of_uncached<'tcx>(
             let tys = args.as_coroutine_closure().upvar_tys();
             univariant(
                 &tys.iter().map(|ty| cx.layout_of(ty)).try_collect::<IndexVec<_, _>>()?,
-                &ReprOptions::default(),
                 StructKind::AlwaysSized,
             )?
         }
@@ -447,11 +432,7 @@ fn layout_of_uncached<'tcx>(
             let kind =
                 if tys.len() == 0 { StructKind::AlwaysSized } else { StructKind::MaybeUnsized };
 
-            univariant(
-                &tys.iter().map(|k| cx.layout_of(k)).try_collect::<IndexVec<_, _>>()?,
-                &ReprOptions::default(),
-                kind,
-            )?
+            univariant(&tys.iter().map(|k| cx.layout_of(k)).try_collect::<IndexVec<_, _>>()?, kind)?
         }
 
         // SIMD vector types.
@@ -902,13 +883,7 @@ fn coroutine_layout<'tcx>(
         .chain(iter::once(Ok(tag_layout)))
         .chain(promoted_layouts)
         .try_collect::<IndexVec<_, _>>()?;
-    let prefix = univariant_uninterned(
-        cx,
-        ty,
-        &prefix_layouts,
-        &ReprOptions::default(),
-        StructKind::AlwaysSized,
-    )?;
+    let prefix = univariant_uninterned(cx, ty, &prefix_layouts, StructKind::AlwaysSized)?;
 
     let (prefix_size, prefix_align) = (prefix.size, prefix.align);
 
@@ -973,7 +948,6 @@ fn coroutine_layout<'tcx>(
                 cx,
                 ty,
                 &variant_only_tys.map(|ty| cx.layout_of(ty)).try_collect::<IndexVec<_, _>>()?,
-                &ReprOptions::default(),
                 StructKind::Prefixed(prefix_size, prefix_align.abi),
             )?;
             variant.variants = Variants::Single { index };
