@@ -4,6 +4,7 @@ use super::super::{
     Product, Rev, Scan, Skip, SkipWhile, StepBy, Sum, Take, TakeWhile, TrustedRandomAccessNoCoerce,
     Zip, try_process,
 };
+use super::TrustedLen;
 use crate::array;
 use crate::cmp::{self, Ordering};
 use crate::num::NonZero;
@@ -3615,7 +3616,7 @@ pub trait Iterator {
             }
         }
 
-        match iter_compare(self, other.into_iter(), compare(cmp)) {
+        match SpecIterCompare::spec_iter_compare(self, other.into_iter(), compare(cmp)) {
             ControlFlow::Continue(ord) => ord,
             ControlFlow::Break(ord) => ord,
         }
@@ -3707,7 +3708,7 @@ pub trait Iterator {
             }
         }
 
-        match iter_compare(self, other.into_iter(), compare(partial_cmp)) {
+        match SpecIterCompare::spec_iter_compare(self, other.into_iter(), compare(partial_cmp)) {
             ControlFlow::Continue(ord) => Some(ord),
             ControlFlow::Break(ord) => ord,
         }
@@ -3762,7 +3763,7 @@ pub trait Iterator {
             }
         }
 
-        match iter_compare(self, other.into_iter(), compare(eq)) {
+        match SpecIterCompare::spec_iter_compare(self, other.into_iter(), compare(eq)) {
             ControlFlow::Continue(ord) => ord == Ordering::Equal,
             ControlFlow::Break(()) => false,
         }
@@ -3981,6 +3982,41 @@ pub trait Iterator {
         Self: TrustedRandomAccessNoCoerce,
     {
         unreachable!("Always specialized");
+    }
+}
+
+trait SpecIterCompare<B: Iterator>: Iterator {
+    fn spec_iter_compare<F, T>(self, b: B, f: F) -> ControlFlow<T, Ordering>
+    where
+        F: FnMut(Self::Item, B::Item) -> ControlFlow<T>;
+}
+
+impl<A: Iterator, B: Iterator> SpecIterCompare<B> for A {
+    #[inline]
+    default fn spec_iter_compare<F, T>(self, b: B, f: F) -> ControlFlow<T, Ordering>
+    where
+        F: FnMut(A::Item, <B as Iterator>::Item) -> ControlFlow<T>,
+    {
+        iter_compare(self, b, f)
+    }
+}
+
+impl<A: Iterator + TrustedLen, B: Iterator + TrustedLen> SpecIterCompare<B> for A {
+    #[inline]
+    fn spec_iter_compare<F, T>(self, b: B, f: F) -> ControlFlow<T, Ordering>
+    where
+        F: FnMut(Self::Item, <B as Iterator>::Item) -> ControlFlow<T>,
+    {
+        if let (_, Some(a)) = self.size_hint()
+            && let (_, Some(b)) = b.size_hint()
+        {
+            let ord = a.cmp(&b);
+            if ord != Ordering::Equal {
+                return ControlFlow::Continue(ord);
+            }
+        }
+
+        iter_compare(self, b, f)
     }
 }
 
