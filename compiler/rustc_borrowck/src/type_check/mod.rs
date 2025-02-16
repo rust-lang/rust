@@ -462,17 +462,15 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
             .into_iter()
             .flat_map(UserTypeProjections::projections_and_spans)
         {
-            let ty = if !local_decl.is_nonref_binding() {
+            let ty = if local_decl.is_nonref_binding() {
+                local_decl.ty
+            } else if let &ty::Ref(_, rty, _) = local_decl.ty.kind() {
                 // If we have a binding of the form `let ref x: T = ..`
                 // then remove the outermost reference so we can check the
                 // type annotation for the remaining type.
-                if let ty::Ref(_, rty, _) = local_decl.ty.kind() {
-                    *rty
-                } else {
-                    bug!("{:?} with ref binding has wrong type {}", local, local_decl.ty);
-                }
+                rty
             } else {
-                local_decl.ty
+                bug!("{:?} with ref binding has wrong type {}", local, local_decl.ty);
             };
 
             if let Err(terr) = self.typeck.relate_type_and_user_type(
