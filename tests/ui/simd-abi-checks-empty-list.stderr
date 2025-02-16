@@ -1,4 +1,4 @@
-warning: this function definition uses a SIMD vector type that is not currently supported with the chosen ABI
+warning: this function definition uses SIMD vector type `SimdVec` which is not currently supported with the chosen ABI
   --> $DIR/simd-abi-checks-empty-list.rs:17:1
    |
 LL | pub extern "C" fn pass_by_vec(_: SimdVec) {}
@@ -11,7 +11,7 @@ LL | pub extern "C" fn pass_by_vec(_: SimdVec) {}
 warning: 1 warning emitted
 
 Future incompatibility report: Future breakage diagnostic:
-warning: this function definition uses a SIMD vector type that is not currently supported with the chosen ABI
+warning: this function definition uses SIMD vector type `SimdVec` which is not currently supported with the chosen ABI
   --> $DIR/simd-abi-checks-empty-list.rs:17:1
    |
 LL | pub extern "C" fn pass_by_vec(_: SimdVec) {}
