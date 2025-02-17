@@ -806,7 +806,7 @@ fn link_natively(
 
     // eprintln!("Library dirs: {:?}", library_search_dirs);
     // Native libraries
-    for native_lib in codegen_results.crate_info.native_libraries.values().flatten() {
+    for native_lib in &codegen_results.crate_info.used_libraries {
         // eprintln!("native lib {}", native_lib.name);
         if let Some(ref path) = native_lib.filename {
             // eprintln!("  located at {path:?}");
@@ -833,21 +833,21 @@ fn link_natively(
     // Scan native libraries, sources of .ctors/.dtors
     let mut problematic_objects = vec![];
     let sections = &[".ctors", ".dtors"];
-    for path in obj_candidates {
-        match std::process::Command::new("readelf").arg("-S").arg(&path).output() {
-            Ok(output) => {
-                let stdout = String::from_utf8_lossy(&output.stdout);
-                for section in sections {
-                    if stdout.lines().any(|line| line.contains(section)) {
-                        problematic_objects.push((path.clone(), section.to_string()));
-                    }
-                }
-            }
-            Err(error) => {
-                eprintln!("Cannot run readelf -S: {error:?}")
-            }
-        }
-    }
+    // for path in obj_candidates {
+    //     match std::process::Command::new("readelf").arg("-S").arg(&path).output() {
+    //         Ok(output) => {
+    //             let stdout = String::from_utf8_lossy(&output.stdout);
+    //             for section in sections {
+    //                 if stdout.lines().any(|line| line.contains(section)) {
+    //                     problematic_objects.push((path.clone(), section.to_string()));
+    //                 }
+    //             }
+    //         }
+    //         Err(error) => {
+    //             eprintln!("Cannot run readelf -S: {error:?}")
+    //         }
+    //     }
+    // }
 
     let mut cmd = linker_with_args(
         &linker_path,
@@ -1059,6 +1059,7 @@ fn link_natively(
         if let Ok(file) = object::read::File::parse(data.as_slice()) {
             for section_name in sections {
                 if let Some(_section) = file.section_by_name(section_name) {
+                    eprintln!("{section_name} FOUND IN FINAL ARTIFACT!");
                     problematic_objects
                         .push((temp_filename.to_path_buf(), section_name.to_string()));
                 }
@@ -1066,7 +1067,7 @@ fn link_natively(
         }
     }
     if !problematic_objects.is_empty() {
-        eprintln!("PROBLEMATIC OBJECtS\n{problematic_objects:?}");
+        eprintln!("PROBLEMATIC OBJECTS\n{problematic_objects:?}");
         panic!("{problematic_objects:?}");
     }
 
