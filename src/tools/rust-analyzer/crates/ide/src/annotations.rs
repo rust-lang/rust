@@ -173,14 +173,7 @@ pub(crate) fn annotations(
     annotations
         .into_iter()
         .sorted_by_key(|a| {
-            (
-                a.range.start(),
-                a.range.end(),
-                match &a.kind {
-                    AnnotationKind::Runnable(runnable) => Some(runnable.nav.name.clone()),
-                    _ => None,
-                },
-            )
+            (a.range.start(), a.range.end(), matches!(a.kind, AnnotationKind::Runnable(..)))
         })
         .collect()
 }
