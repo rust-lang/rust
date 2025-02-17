@@ -1139,6 +1139,18 @@ impl String {
         *self = unsafe { Self::from_utf8_unchecked(v) }
     }
 
+    #[unstable(feature = "string_make_uplowercase", issue = "135885")]
+    #[allow(missing_docs)]
+    pub fn make_lowercase(&mut self) {
+        let mut v = core::mem::take(self).vec;
+        let res = unsafe { v.make_utf8_lowercase() };
+        match res {
+            Ok(n) => v.truncate(n),
+            Err(queue) => v.extend(queue),
+        }
+        *self = unsafe { Self::from_utf8_unchecked(v) }
+    }
+
     /// Copies elements from `src` range to the end of the string.
     ///
     /// # Panics

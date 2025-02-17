@@ -703,6 +703,106 @@ impl [u8] {
         assert_eq!(read_offset, self.len());
         if write_offset < read_offset { Ok(write_offset) } else { Err(queue) }
     }
+
+    #[rustc_allow_incoherent_impl]
+    #[unstable(issue = "none", feature = "std_internals")]
+    #[allow(dead_code)]
+    /// Safety:
+    ///    - Must be UTF-8
+    pub unsafe fn make_utf8_lowercase(&mut self) -> Result<usize, VecDeque<u8>> {
+        let mut queue = VecDeque::new();
+
+        let mut read_offset = 0;
+        let mut write_offset = 0;
+
+        let mut buffer = [0; 4];
+        let mut final_sigma_automata = FinalSigmaAutomata::new();
+        while let Some((codepoint, width)) =
+            unsafe { core::str::next_code_point_with_width(&mut self[read_offset..].iter()) }
+        {
+            read_offset += width;
+            let uppercase_char = unsafe { char::from_u32_unchecked(codepoint) };
+            if uppercase_char == 'Σ' {
+                // Σ maps to σ, except at the end of a word where it maps to ς.
+                // See core::str::to_lowercase
+                let rest = unsafe { core::str::from_utf8_unchecked(&self[read_offset..]) };
+                let is_word_final =
+                    final_sigma_automata.is_accepting() && !case_ignorable_then_cased(rest.chars());
+                let sigma_lowercase = if is_word_final { 'ς' } else { 'σ' };
+                let l = sigma_lowercase.len_utf8();
+                sigma_lowercase.encode_utf8(&mut buffer);
+                queue.extend(&buffer[..l]);
+            } else {
+                for c in uppercase_char.to_lowercase() {
+                    let l = c.len_utf8();
+                    c.encode_utf8(&mut buffer);
+                    queue.extend(&buffer[..l]);
+                }
+            }
+            final_sigma_automata.step(uppercase_char);
+            while write_offset < read_offset {
+                match queue.pop_front() {
+                    Some(b) => {
+                        self[write_offset] = b;
+                        write_offset += 1;
+                    }
+                    None => break,
+                }
+            }
+        }
+        assert_eq!(read_offset, self.len());
+        return if write_offset < read_offset { Ok(write_offset) } else { Err(queue) };
+
+        // For now this is copy pasted from core::str, FIXME: DRY
+        fn case_ignorable_then_cased<I: Iterator<Item = char>>(iter: I) -> bool {
+            use core::unicode::{Case_Ignorable, Cased};
+            match iter.skip_while(|&c| Case_Ignorable(c)).next() {
+                Some(c) => Cased(c),
+                None => false,
+            }
+        }
+    }
+}
+
+#[derive(Clone)]
+enum FinalSigmaAutomata {
+    Init,
+    Accepted,
+}
+
+impl FinalSigmaAutomata {
+    fn new() -> Self {
+        Self::Init
+    }
+
+    fn is_accepting(&self) -> bool {
+        match self {
+            FinalSigmaAutomata::Accepted => true,
+            FinalSigmaAutomata::Init => false,
+        }
+    }
+
+    fn step(&mut self, c: char) {
+        use core::unicode::{Case_Ignorable, Cased};
+
+        use FinalSigmaAutomata::*;
+        *self = match self {
+            Init => {
+                if Cased(c) {
+                    Accepted
+                } else {
+                    Init
+                }
+            }
+            Accepted => {
+                if Cased(c) || Case_Ignorable(c) {
+                    Accepted
+                } else {
+                    Init
+                }
+            }
+        }
+    }
 }
 
 #[cfg(not(test))]
