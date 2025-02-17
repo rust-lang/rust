@@ -17,7 +17,8 @@ fn main() {
             fix,
             allow_dirty,
             allow_staged,
-        } => dogfood::dogfood(fix, allow_dirty, allow_staged),
+            allow_no_vcs,
+        } => dogfood::dogfood(fix, allow_dirty, allow_staged, allow_no_vcs),
         DevCommand::Fmt { check, verbose } => fmt::run(check, verbose),
         DevCommand::UpdateLints { print_only, check } => {
             if print_only {
@@ -106,6 +107,9 @@ enum DevCommand {
         #[arg(long, requires = "fix")]
         /// Fix code even if the working directory has staged changes
         allow_staged: bool,
+        #[arg(long, requires = "fix")]
+        /// Fix code even if a VCS was not detected
+        allow_no_vcs: bool,
     },
     /// Run rustfmt on all projects and tests
     Fmt {
