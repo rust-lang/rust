@@ -1,7 +1,7 @@
 ---
+//~^ frontmatter syntax is unstable [E0658]
 ---
 
-//@ check-pass
 
 pub fn main() {
 }
