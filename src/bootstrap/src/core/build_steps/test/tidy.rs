@@ -32,6 +32,15 @@ impl Step for Tidy {
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        let default = run.builder.doc_tests != DocTests::Only;
+        run.path("src/tools/tidy").default_condition(default)
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Tidy);
+    }
+
     /// Runs the `tidy` tool.
     ///
     /// This tool in `src/tools` checks up on various bits and pieces of style and
@@ -114,14 +123,5 @@ HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
             );
             crate::exit!(1);
         }
-    }
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let default = run.builder.doc_tests != DocTests::Only;
-        run.path("src/tools/tidy").default_condition(default)
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Tidy);
     }
 }
