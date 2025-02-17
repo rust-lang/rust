@@ -666,7 +666,7 @@ pub static CRATES: &[&str] = &[
         for extra in expected.difference(&proc_macro_deps) {
             tidy_error!(
                 bad,
-                "`{extra}` is not registered in `src/bootstrap/src/utils/proc_macro_deps.rs`, but is not a proc-macro crate dependency",
+                "`{extra}` is registered in `src/bootstrap/src/utils/proc_macro_deps.rs`, but is not a proc-macro crate dependency",
             );
         }
         if *bad != old_bad {
