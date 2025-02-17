@@ -218,36 +218,38 @@ if #[cfg(any(target_vendor = "apple", target_os = "netbsd", not(target_arch = "a
 
     pub unsafe fn _Unwind_GetGR(ctx: *mut _Unwind_Context, reg_index: c_int) -> _Unwind_Word {
         let mut val: _Unwind_Word = core::ptr::null();
-        _Unwind_VRS_Get(ctx, _UVRSC_CORE, reg_index as _Unwind_Word, _UVRSD_UINT32,
-                        (&raw mut val) as *mut c_void);
+        unsafe { _Unwind_VRS_Get(ctx, _UVRSC_CORE, reg_index as _Unwind_Word, _UVRSD_UINT32,
+                        (&raw mut val) as *mut c_void); }
         val
     }
 
     pub unsafe fn _Unwind_SetGR(ctx: *mut _Unwind_Context, reg_index: c_int, value: _Unwind_Word) {
         let mut value = value;
-        _Unwind_VRS_Set(ctx, _UVRSC_CORE, reg_index as _Unwind_Word, _UVRSD_UINT32,
-                        (&raw mut value) as *mut c_void);
+        unsafe { _Unwind_VRS_Set(ctx, _UVRSC_CORE, reg_index as _Unwind_Word, _UVRSD_UINT32,
+                        (&raw mut value) as *mut c_void); }
     }
 
     pub unsafe fn _Unwind_GetIP(ctx: *mut _Unwind_Context)
                                 -> _Unwind_Word {
-        let val = _Unwind_GetGR(ctx, UNWIND_IP_REG);
+        let val = unsafe { _Unwind_GetGR(ctx, UNWIND_IP_REG) };
         val.map_addr(|v| v & !1)
     }
 
     pub unsafe fn _Unwind_SetIP(ctx: *mut _Unwind_Context,
                                 value: _Unwind_Word) {
         // Propagate thumb bit to instruction pointer
-        let thumb_state = _Unwind_GetGR(ctx, UNWIND_IP_REG).addr() & 1;
+        let thumb_state = unsafe { _Unwind_GetGR(ctx, UNWIND_IP_REG).addr() & 1 };
         let value = value.map_addr(|v| v | thumb_state);
-        _Unwind_SetGR(ctx, UNWIND_IP_REG, value);
+        unsafe { _Unwind_SetGR(ctx, UNWIND_IP_REG, value); }
     }
 
     pub unsafe fn _Unwind_GetIPInfo(ctx: *mut _Unwind_Context,
                                     ip_before_insn: *mut c_int)
                                     -> _Unwind_Word {
-        *ip_before_insn = 0;
-        _Unwind_GetIP(ctx)
+        unsafe {
+            *ip_before_insn = 0;
+            _Unwind_GetIP(ctx)
+        }
     }
 
     // This function also doesn't exist on Android or ARM/Linux, so make it a no-op

@@ -38,7 +38,7 @@ use std::sync::{Arc, Weak};
 use pulldown_cmark::{
     BrokenLink, CodeBlockKind, CowStr, Event, LinkType, Options, Parser, Tag, TagEnd, html,
 };
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::{Diag, DiagMessage};
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::TyCtxt;
@@ -1763,6 +1763,46 @@ pub(crate) fn markdown_links<'md, R>(
         }
     };
 
+    let span_for_refdef = |link: &CowStr<'_>, span: Range<usize>| {
+        // We want to underline the link's definition, but `span` will point at the entire refdef.
+        // Skip the label, then try to find the entire URL.
+        let mut square_brace_count = 0;
+        let mut iter = md.as_bytes()[span.start..span.end].iter().copied().enumerate();
+        for (_i, c) in &mut iter {
+            match c {
+                b':' if square_brace_count == 0 => break,
+                b'[' => square_brace_count += 1,
+                b']' => square_brace_count -= 1,
+                _ => {}
+            }
+        }
+        while let Some((i, c)) = iter.next() {
+            if c == b'<' {
+                while let Some((j, c)) = iter.next() {
+                    match c {
+                        b'\\' => {
+                            let _ = iter.next();
+                        }
+                        b'>' => {
+                            return MarkdownLinkRange::Destination(
+                                i + 1 + span.start..j + span.start,
+                            );
+                        }
+                        _ => {}
+                    }
+                }
+            } else if !c.is_ascii_whitespace() {
+                while let Some((j, c)) = iter.next() {
+                    if c.is_ascii_whitespace() {
+                        return MarkdownLinkRange::Destination(i + span.start..j + span.start);
+                    }
+                }
+                return MarkdownLinkRange::Destination(i + span.start..span.end);
+            }
+        }
+        span_for_link(link, span)
+    };
+
     let span_for_offset_backward = |span: Range<usize>, open: u8, close: u8| {
         let mut open_brace = !0;
         let mut close_brace = !0;
@@ -1844,9 +1884,16 @@ pub(crate) fn markdown_links<'md, R>(
     .into_offset_iter();
     let mut links = Vec::new();
 
+    let mut refdefs = FxIndexMap::default();
+    for (label, refdef) in event_iter.reference_definitions().iter() {
+        refdefs.insert(label.to_string(), (false, refdef.dest.to_string(), refdef.span.clone()));
+    }
+
     for (event, span) in event_iter {
         match event {
-            Event::Start(Tag::Link { link_type, dest_url, .. }) if may_be_doc_link(link_type) => {
+            Event::Start(Tag::Link { link_type, dest_url, id, .. })
+                if may_be_doc_link(link_type) =>
+            {
                 let range = match link_type {
                     // Link is pulled from the link itself.
                     LinkType::ReferenceUnknown | LinkType::ShortcutUnknown => {
@@ -1856,7 +1903,12 @@ pub(crate) fn markdown_links<'md, R>(
                     LinkType::Inline => span_for_offset_backward(span, b'(', b')'),
                     // Link is pulled from elsewhere in the document.
                     LinkType::Reference | LinkType::Collapsed | LinkType::Shortcut => {
-                        span_for_link(&dest_url, span)
+                        if let Some((is_used, dest_url, span)) = refdefs.get_mut(&id[..]) {
+                            *is_used = true;
+                            span_for_refdef(&CowStr::from(&dest_url[..]), span.clone())
+                        } else {
+                            span_for_link(&dest_url, span)
+                        }
                     }
                     LinkType::Autolink | LinkType::Email => unreachable!(),
                 };
@@ -1870,6 +1922,18 @@ pub(crate) fn markdown_links<'md, R>(
                 }
             }
             _ => {}
+        }
+    }
+
+    for (_label, (is_used, dest_url, span)) in refdefs.into_iter() {
+        if !is_used
+            && let Some(link) = preprocess_link(MarkdownLink {
+                kind: LinkType::Reference,
+                range: span_for_refdef(&CowStr::from(&dest_url[..]), span),
+                link: dest_url,
+            })
+        {
+            links.push(link);
         }
     }
 

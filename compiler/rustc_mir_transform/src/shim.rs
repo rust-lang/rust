@@ -350,6 +350,9 @@ impl fmt::Debug for DropShimElaborator<'_, '_> {
 impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
     type Path = ();
 
+    fn patch_ref(&self) -> &MirPatch<'tcx> {
+        &self.patch
+    }
     fn patch(&mut self) -> &mut MirPatch<'tcx> {
         &mut self.patch
     }

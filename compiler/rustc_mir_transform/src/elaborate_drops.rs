@@ -138,6 +138,10 @@ impl InitializationData<'_, '_> {
 impl<'a, 'tcx> DropElaborator<'a, 'tcx> for ElaborateDropsCtxt<'a, 'tcx> {
     type Path = MovePathIndex;
 
+    fn patch_ref(&self) -> &MirPatch<'tcx> {
+        &self.patch
+    }
+
     fn patch(&mut self) -> &mut MirPatch<'tcx> {
         &mut self.patch
     }
