@@ -20,6 +20,7 @@
 #![feature(rustdoc_internals)]
 #![feature(file_buffered)]
 #![feature(internal_output_capture)]
+#![feature(io_const_error)]
 #![feature(staged_api)]
 #![feature(process_exitcode_internals)]
 #![feature(panic_can_unwind)]
