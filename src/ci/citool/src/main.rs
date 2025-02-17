@@ -92,7 +92,7 @@ struct GithubActionsJob {
     /// prefix (PR/try/auto).
     full_name: String,
     os: String,
-    env: BTreeMap<String, String>,
+    env: BTreeMap<String, serde_json::Value>,
     #[serde(flatten)]
     extra_keys: BTreeMap<String, serde_json::Value>,
 }
@@ -165,15 +165,12 @@ fn skip_jobs(jobs: Vec<Job>, channel: &str) -> Vec<Job> {
         .collect()
 }
 
-fn to_string_map(map: &BTreeMap<String, Value>) -> BTreeMap<String, String> {
-    map.iter()
+fn yaml_map_to_json(map: &BTreeMap<String, Value>) -> BTreeMap<String, serde_json::Value> {
+    map.into_iter()
         .map(|(key, value)| {
             (
                 key.clone(),
-                serde_yaml::to_string(value)
-                    .expect("Cannot serialize YAML value to string")
-                    .trim()
-                    .to_string(),
+                serde_json::to_value(&value).expect("Cannot convert map value from YAML to JSON"),
             )
         })
         .collect()
@@ -222,8 +219,8 @@ fn calculate_jobs(
     let jobs = jobs
         .into_iter()
         .map(|job| {
-            let mut env: BTreeMap<String, String> = to_string_map(base_env);
-            env.extend(to_string_map(&job.env));
+            let mut env: BTreeMap<String, serde_json::Value> = yaml_map_to_json(base_env);
+            env.extend(yaml_map_to_json(&job.env));
             let full_name = format!("{prefix} - {}", job.name);
 
             GithubActionsJob {
@@ -231,17 +228,7 @@ fn calculate_jobs(
                 full_name,
                 os: job.os,
                 env,
-                extra_keys: job
-                    .extra_keys
-                    .into_iter()
-                    .map(|(key, value)| {
-                        (
-                            key,
-                            serde_json::to_value(&value)
-                                .expect("Cannot convert extra key value from YAML to JSON"),
-                        )
-                    })
-                    .collect(),
+                extra_keys: yaml_map_to_json(&job.extra_keys),
             }
         })
         .collect();
@@ -314,7 +301,15 @@ fn run_workflow_locally(db: JobDatabase, job_type: JobType, name: String) -> any
             custom_env.insert("DEPLOY".to_string(), "1".to_string());
         }
     }
-    custom_env.extend(to_string_map(&job.env));
+    custom_env.extend(job.env.iter().map(|(key, value)| {
+        let value = match value {
+            Value::Bool(value) => value.to_string(),
+            Value::Number(value) => value.to_string(),
+            Value::String(value) => value.clone(),
+            _ => panic!("Unexpected type for environment variable {key} Only bool/number/string is supported.")
+        };
+        (key.clone(), value)
+    }));
 
     let mut cmd = Command::new(Path::new(DOCKER_DIRECTORY).join("run.sh"));
     cmd.arg(job.image());
