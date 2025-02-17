@@ -2489,7 +2489,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// #![feature(push_mut)]
     ///
     /// let mut vec = vec![];
-    /// // Polonius moment.
+    /// // Due to current borrow checker limitations (see -Zpolonius), this is the only way to spell this right now.
     /// let last = if let Some(v) = vec.last_mut() { v } else { vec.push_mut(0) };
     /// *last += 6;
     /// assert_eq!(vec, [6]);
