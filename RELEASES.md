@@ -34,7 +34,8 @@ Libraries
 ---------
 - [Panics in the standard library now have a leading `library/` in their path](https://github.com/rust-lang/rust/pull/132390)
 - [`std::env::home_dir()` on Windows now ignores the non-standard `$HOME` environment variable](https://github.com/rust-lang/rust/pull/132515)
-   It will be un-deprecated in a subsequent release.
+
+  It will be un-deprecated in a subsequent release.
 - [Add `AsyncFn*` to the prelude in all editions.](https://github.com/rust-lang/rust/pull/132611)
 
 <a id="1.85.0-Stabilized-APIs"></a>
@@ -98,15 +99,18 @@ Rustdoc
 Compatibility Notes
 -------------------
 - [`rustc` no longer treats the `test` cfg as a well known check-cfg](https://github.com/rust-lang/rust/pull/131729), instead it is up to the build systems and users of `--check-cfg`[^check-cfg] to set it as a well known cfg using `--check-cfg=cfg(test)`.
+
   This is done to enable build systems like Cargo to set it conditionally, as not all source files are suitable for unit tests.
   [Cargo (for now) unconditionally sets the `test` cfg as a well known cfg](https://github.com/rust-lang/cargo/pull/14963).
-[^check-cfg]: https://doc.rust-lang.org/nightly/rustc/check-cfg.html
+  [^check-cfg]: https://doc.rust-lang.org/nightly/rustc/check-cfg.html
 - [Disable potentially incorrect type inference if there are trivial and non-trivial where-clauses](https://github.com/rust-lang/rust/pull/132325)
 - `std::env::home_dir()` has been deprecated for years, because it can give surprising results in some Windows configurations if the `HOME` environment variable is set (which is not the normal configuration on Windows). We had previously avoided changing its behavior, out of concern for compatibility with code depending on this non-standard configuration. Given how long this function has been deprecated, we're now fixing its behavior as a bugfix. A subsequent release will remove the deprecation for this function.
 - [Make `core::ffi::c_char` signedness more closely match that of the platform-default `char`](https://github.com/rust-lang/rust/pull/132975)
+
   This changed `c_char` from an `i8` to `u8` or vice versa on many Tier 2 and 3
   targets (mostly Arm and RISC-V embedded targets). The new definition may
   result in compilation failures but fixes compatibility issues with C.
+
   The `libc` crate matches this change as of its 0.2.169 release.
 - [When compiling a nested `macro_rules` macro from an external crate, the content of the inner `macro_rules` is now built with the edition of the external crate, not the local crate.](https://github.com/rust-lang/rust/pull/133274)
 - [Increase `sparcv9-sun-solaris` and `x86_64-pc-solaris` Solaris baseline to 11.4.](https://github.com/rust-lang/rust/pull/133293)
