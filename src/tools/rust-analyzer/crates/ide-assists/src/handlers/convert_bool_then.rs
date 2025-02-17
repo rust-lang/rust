@@ -13,7 +13,7 @@ use syntax::{
 };
 
 use crate::{
-    utils::{invert_boolean_expression, unwrap_trivial_block},
+    utils::{invert_boolean_expression_legacy, unwrap_trivial_block},
     AssistContext, AssistId, AssistKind, Assists,
 };
 
@@ -119,7 +119,7 @@ pub(crate) fn convert_if_to_bool_then(acc: &mut Assists, ctx: &AssistContext<'_>
                     | ast::Expr::WhileExpr(_)
                     | ast::Expr::YieldExpr(_)
             );
-            let cond = if invert_cond { invert_boolean_expression(cond) } else { cond };
+            let cond = if invert_cond { invert_boolean_expression_legacy(cond) } else { cond };
             let cond = if parenthesize { make::expr_paren(cond) } else { cond };
             let arg_list = make::arg_list(Some(make::expr_closure(None, closure_body)));
             let mcall = make::expr_method_call(cond, make::name_ref("then"), arg_list);
