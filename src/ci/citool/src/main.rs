@@ -136,7 +136,7 @@ impl GitHubContext {
         if let Some(ref msg) = self.commit_message {
             msg.lines()
                 .filter_map(|line| line.trim().strip_prefix("try-job: "))
-                .map(|l| l.to_string())
+                .map(|l| l.trim().to_string())
                 .collect()
         } else {
             vec![]
