@@ -73,3 +73,16 @@ mod issue_non_copy_13077 {
         pub field: (),
     }
 }
+
+mod issue14148 {
+    pub trait SomeTrait {
+        fn something(&self, mut maybe_side_effect: Option<&mut String>) {
+            other(maybe_side_effect.as_deref_mut());
+            other(maybe_side_effect);
+        }
+    }
+
+    fn other(_maybe_side_effect: Option<&mut String>) {
+        unimplemented!()
+    }
+}
