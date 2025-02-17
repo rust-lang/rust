@@ -93,5 +93,23 @@ LL | |         _ => None,
 LL | |     };
    | |_____^ help: replace with: `(-S).ok()`
 
-error: aborting due to 8 previous errors
+error: manual implementation of `ok`
+  --> tests/ui/manual_ok_err.rs:132:12
+   |
+LL |       } else if let Ok(n) = "1".parse::<u8>() {
+   |  ____________^
+LL | |         Some(n)
+LL | |     } else {
+LL | |         None
+LL | |     };
+   | |_____^
+   |
+help: replace with
+   |
+LL ~     } else {
+LL +         "1".parse::<u8>().ok()
+LL ~     };
+   |
+
+error: aborting due to 9 previous errors
 

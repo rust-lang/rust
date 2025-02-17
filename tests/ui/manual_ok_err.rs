@@ -125,3 +125,14 @@ const fn cf(x: Result<u32, &'static str>) -> Option<u32> {
         Err(_) => None,
     }
 }
+
+fn issue14239() {
+    let _ = if false {
+        None
+    } else if let Ok(n) = "1".parse::<u8>() {
+        Some(n)
+    } else {
+        None
+    };
+    //~^^^^^ manual_ok_err
+}
