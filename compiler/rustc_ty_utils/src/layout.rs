@@ -9,6 +9,7 @@ use rustc_abi::{
     HasDataLayout, Layout, LayoutCalculatorError, LayoutData, Niche, ReprOptions, Scalar, Size,
     StructKind, TagEncoding, VariantIdx, Variants, WrappingRange,
 };
+use rustc_hashes::Hash64;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::bug;
@@ -380,7 +381,7 @@ fn layout_of_uncached<'tcx>(
                 size,
                 max_repr_align: None,
                 unadjusted_abi_align: element.align.abi,
-                randomization_seed: element.randomization_seed.wrapping_add(count),
+                randomization_seed: element.randomization_seed.wrapping_add(Hash64::new(count)),
             })
         }
         ty::Slice(element) => {
@@ -395,7 +396,9 @@ fn layout_of_uncached<'tcx>(
                 max_repr_align: None,
                 unadjusted_abi_align: element.align.abi,
                 // adding a randomly chosen value to distinguish slices
-                randomization_seed: element.randomization_seed.wrapping_add(0x2dcba99c39784102),
+                randomization_seed: element
+                    .randomization_seed
+                    .wrapping_add(Hash64::new(0x2dcba99c39784102)),
             })
         }
         ty::Str => tcx.mk_layout(LayoutData {
@@ -408,7 +411,7 @@ fn layout_of_uncached<'tcx>(
             max_repr_align: None,
             unadjusted_abi_align: dl.i8_align.abi,
             // another random value
-            randomization_seed: 0xc1325f37d127be22,
+            randomization_seed: Hash64::new(0xc1325f37d127be22),
         }),
 
         // Odd unit types.
@@ -585,7 +588,7 @@ fn layout_of_uncached<'tcx>(
                 align,
                 max_repr_align: None,
                 unadjusted_abi_align: align.abi,
-                randomization_seed: e_ly.randomization_seed.wrapping_add(e_len),
+                randomization_seed: e_ly.randomization_seed.wrapping_add(Hash64::new(e_len)),
             })
         }
 
@@ -1051,7 +1054,7 @@ fn coroutine_layout<'tcx>(
     };
 
     // this is similar to how ReprOptions populates its field_shuffle_seed
-    let def_hash = tcx.def_path_hash(def_id).0.to_smaller_hash().as_u64();
+    let def_hash = tcx.def_path_hash(def_id).0.to_smaller_hash();
 
     let layout = tcx.mk_layout(LayoutData {
         variants: Variants::Multiple {

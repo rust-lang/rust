@@ -50,6 +50,7 @@ use std::str::FromStr;
 use bitflags::bitflags;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::StableOrd;
+use rustc_hashes::Hash64;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_Generic, Encodable_Generic, HashStable_Generic};
@@ -140,7 +141,7 @@ pub struct ReprOptions {
     /// hash without loss, but it does pay the price of being larger.
     /// Everything's a tradeoff, a 64-bit seed should be sufficient for our
     /// purposes (primarily `-Z randomize-layout`)
-    pub field_shuffle_seed: u64,
+    pub field_shuffle_seed: Hash64,
 }
 
 impl ReprOptions {
@@ -1727,7 +1728,7 @@ pub struct LayoutData<FieldIdx: Idx, VariantIdx: Idx> {
     /// transmuted to `Foo<U>` we aim to create probalistically distinct seeds so that Foo can choose
     /// to reorder its fields based on that information. The current implementation is a conservative
     /// approximation of this goal.
-    pub randomization_seed: u64,
+    pub randomization_seed: Hash64,
 }
 
 impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
@@ -1781,7 +1782,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             align,
             max_repr_align: None,
             unadjusted_abi_align: align.abi,
-            randomization_seed,
+            randomization_seed: Hash64::new(randomization_seed),
         }
     }
 }
