@@ -7,7 +7,7 @@ use std::fmt::{self, Debug, Formatter};
 use std::ops::{Index, IndexMut};
 use std::{iter, mem};
 
-pub use basic_blocks::BasicBlocks;
+pub use basic_blocks::{BasicBlocks, SwitchTargetValue};
 use either::Either;
 use polonius_engine::Atom;
 use rustc_abi::{FieldIdx, VariantIdx};

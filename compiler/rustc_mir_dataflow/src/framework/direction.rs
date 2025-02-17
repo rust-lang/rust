@@ -1,9 +1,11 @@
 use std::ops::RangeInclusive;
 
-use rustc_middle::mir::{self, BasicBlock, CallReturnPlaces, Location, TerminatorEdges};
+use rustc_middle::mir::{
+    self, BasicBlock, CallReturnPlaces, Location, SwitchTargetValue, TerminatorEdges,
+};
 
 use super::visitor::ResultsVisitor;
-use super::{Analysis, Effect, EffectIndex, Results, SwitchIntTarget};
+use super::{Analysis, Effect, EffectIndex, Results};
 
 pub trait Direction {
     const IS_FORWARD: bool;
@@ -112,14 +114,10 @@ impl Direction for Backward {
 
                 mir::TerminatorKind::SwitchInt { targets: _, ref discr } => {
                     if let Some(mut data) = analysis.get_switch_int_data(block, discr) {
-                        let values = &body.basic_blocks.switch_sources()[&(block, pred)];
-                        let targets =
-                            values.iter().map(|&value| SwitchIntTarget { value, target: block });
-
                         let mut tmp = analysis.bottom_value(body);
-                        for target in targets {
-                            tmp.clone_from(&exit_state);
-                            analysis.apply_switch_int_edge_effect(&mut data, &mut tmp, target);
+                        for &value in &body.basic_blocks.switch_sources()[&(block, pred)] {
+                            tmp.clone_from(exit_state);
+                            analysis.apply_switch_int_edge_effect(&mut data, &mut tmp, value);
                             propagate(pred, &tmp);
                         }
                     } else {
@@ -292,12 +290,9 @@ impl Direction for Forward {
                 if let Some(mut data) = analysis.get_switch_int_data(block, discr) {
                     let mut tmp = analysis.bottom_value(body);
                     for (value, target) in targets.iter() {
-                        tmp.clone_from(&exit_state);
-                        analysis.apply_switch_int_edge_effect(
-                            &mut data,
-                            &mut tmp,
-                            SwitchIntTarget { value: Some(value), target },
-                        );
+                        tmp.clone_from(exit_state);
+                        let value = SwitchTargetValue::Normal(value);
+                        analysis.apply_switch_int_edge_effect(&mut data, &mut tmp, value);
                         propagate(target, &tmp);
                     }
 
@@ -308,7 +303,7 @@ impl Direction for Forward {
                     analysis.apply_switch_int_edge_effect(
                         &mut data,
                         exit_state,
-                        SwitchIntTarget { value: None, target: otherwise },
+                        SwitchTargetValue::Otherwise,
                     );
                     propagate(otherwise, exit_state);
                 } else {
