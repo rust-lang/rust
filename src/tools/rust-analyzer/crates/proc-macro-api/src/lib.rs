@@ -5,6 +5,10 @@
 //! is used to provide basic infrastructure for communication between two
 //! processes: Client (RA itself), Server (the external program)
 
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#[cfg(all(feature = "in-rust-tree", test))]
+extern crate rustc_driver as _;
+
 pub mod legacy_protocol {
     pub mod json;
     pub mod msg;

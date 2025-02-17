@@ -2,6 +2,10 @@
 //!
 //! It is mainly a `HirDatabase` for semantic analysis, plus a `SymbolsDatabase`, for fuzzy search.
 
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#[cfg(all(feature = "in-rust-tree", test))]
+extern crate rustc_driver as _;
+
 mod apply_change;
 
 pub mod active_parameter;

@@ -15,6 +15,10 @@
 //!   procedural macros).
 //! * Lowering of concrete model to a [`base_db::CrateGraph`]
 
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#[cfg(all(feature = "in-rust-tree", test))]
+extern crate rustc_driver as _;
+
 pub mod project_json;
 pub mod toolchain_info {
     pub mod rustc_cfg;

@@ -3,6 +3,10 @@
 //! Allows searching the AST for code that matches one or more patterns and then replacing that code
 //! based on a template.
 
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#[cfg(all(feature = "in-rust-tree", test))]
+extern crate rustc_driver as _;
+
 // Feature: Structural Search and Replace
 //
 // Search and replace with named wildcards that will match any expression, type, path, pattern or item.

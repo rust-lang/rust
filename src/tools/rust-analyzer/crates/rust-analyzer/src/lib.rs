@@ -9,6 +9,10 @@
 //! The `cli` submodule implements some batch-processing analysis, primarily as
 //! a debugging aid.
 
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#[cfg(all(feature = "in-rust-tree", test))]
+extern crate rustc_driver as _;
+
 pub mod cli;
 
 mod command;

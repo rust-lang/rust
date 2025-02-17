@@ -24,6 +24,7 @@ stdx.workspace = true
 
 [features]
 default = ["ra-salsa"]
+in-rust-tree = []
 
 [lints]
 workspace = true

@@ -17,8 +17,11 @@
 //! from the ide with completions, hovers, etc. It is a (soft, internal) boundary:
 //! <https://www.tedinski.com/2018/02/06/system-boundaries.html>.
 
-#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 #![recursion_limit = "512"]
+
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#[cfg(all(feature = "in-rust-tree", test))]
+extern crate rustc_driver as _;
 
 mod attrs;
 mod from_id;

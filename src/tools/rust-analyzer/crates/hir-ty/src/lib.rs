@@ -2,6 +2,8 @@
 //! information and various assists.
 
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#[cfg(all(feature = "in-rust-tree", test))]
+extern crate rustc_driver as _;
 
 #[cfg(feature = "in-rust-tree")]
 extern crate rustc_index;

@@ -1,4 +1,9 @@
 //! A set of high-level utility fixture methods to use in tests.
+
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#[cfg(all(feature = "in-rust-tree", test))]
+extern crate rustc_driver as _;
+
 use std::{iter, mem, str::FromStr, sync};
 
 use base_db::{

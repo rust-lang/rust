@@ -10,6 +10,12 @@
 
 #![allow(clippy::disallowed_types)]
 
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+
+#[cfg_attr(all(feature = "in-rust-tree", test), allow(unused_extern_crates))]
+#[cfg(all(feature = "in-rust-tree", test))]
+extern crate rustc_driver;
+
 mod cli;
 mod ratoml;
 mod support;

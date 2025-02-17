@@ -9,8 +9,11 @@
 
 // For proving that RootDatabase is RefUnwindSafe.
 
-#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 #![recursion_limit = "128"]
+
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#[cfg(all(feature = "in-rust-tree", test))]
+extern crate rustc_driver as _;
 
 #[cfg(test)]
 mod fixture;

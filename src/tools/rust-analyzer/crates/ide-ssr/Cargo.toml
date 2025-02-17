@@ -32,5 +32,9 @@ expect-test = "1.4.0"
 test-utils.workspace = true
 test-fixture.workspace = true
 
+[features]
+default = []
+in-rust-tree = []
+
 [lints]
 workspace = true

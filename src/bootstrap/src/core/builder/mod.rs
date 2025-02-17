@@ -21,7 +21,7 @@ use crate::core::config::{DryRun, TargetSelection};
 use crate::utils::cache::Cache;
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{self, LldThreads, add_dylib_path, exe, libdir, linker_args, t};
-use crate::{Build, Crate};
+use crate::{Build, Crate, trace};
 
 mod cargo;
 
@@ -975,6 +975,7 @@ impl<'a> Builder<'a> {
                 test::Cargotest,
                 test::Cargo,
                 test::RustAnalyzer,
+                test::RustAnalyzerProcMacroSrv,
                 test::ErrorIndex,
                 test::Distcheck,
                 test::Nomicon,
@@ -1219,7 +1220,7 @@ impl<'a> Builder<'a> {
     /// `Compiler` since all `Compiler` instances are meant to be obtained through this function,
     /// since it ensures that they are valid (i.e., built and assembled).
     pub fn compiler(&self, stage: u32, host: TargetSelection) -> Compiler {
-        self.ensure(compile::Assemble { target_compiler: Compiler { stage, host } })
+        self.ensure(compile::Assemble { output_compiler: Compiler { stage, host } })
     }
 
     /// Similar to `compiler`, except handles the full-bootstrap option to
@@ -1334,6 +1335,8 @@ impl<'a> Builder<'a> {
         if cfg!(windows) {
             return;
         }
+
+        trace!(rustc_lib_paths = ?self.rustc_lib_paths(compiler));
 
         add_dylib_path(self.rustc_lib_paths(compiler), cmd);
     }

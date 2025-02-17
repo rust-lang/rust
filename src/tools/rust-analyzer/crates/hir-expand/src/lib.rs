@@ -3,7 +3,12 @@
 //! Specifically, it implements a concept of `MacroFile` -- a file whose syntax
 //! tree originates not from the text of some `FileId`, but from some macro
 //! expansion.
+
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+
+#[cfg_attr(all(feature = "in-rust-tree", test), allow(unused_extern_crates))]
+#[cfg(all(feature = "in-rust-tree", test))]
+extern crate rustc_driver;
 
 pub mod attrs;
 pub mod builtin;

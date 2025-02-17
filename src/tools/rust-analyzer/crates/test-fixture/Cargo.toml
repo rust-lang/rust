@@ -19,5 +19,9 @@ span.workspace = true
 stdx.workspace = true
 intern.workspace = true
 
+[features]
+default = []
+in-rust-tree = []
+
 [lints]
 workspace = true

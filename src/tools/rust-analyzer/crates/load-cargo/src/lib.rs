@@ -1,5 +1,10 @@
 //! Loads a Cargo project into a static instance of analysis, without support
 //! for incorporating changes.
+
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#[cfg(all(feature = "in-rust-tree", test))]
+extern crate rustc_driver as _;
+
 // Note, don't remove any public api from this. This API is consumed by external tools
 // to run rust-analyzer as a library.
 use std::{collections::hash_map::Entry, iter, mem, path::Path, sync};

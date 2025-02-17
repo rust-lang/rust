@@ -1,5 +1,9 @@
 //! cfg defines conditional compiling options, `cfg` attribute parser and evaluator
 
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#[cfg(all(feature = "in-rust-tree", test))]
+extern crate rustc_driver as _;
+
 mod cfg_expr;
 mod dnf;
 #[cfg(test)]
