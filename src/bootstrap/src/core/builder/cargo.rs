@@ -1,6 +1,6 @@
 use std::env;
 use std::ffi::{OsStr, OsString};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use super::{Builder, Kind};
 use crate::core::build_steps::tool::SourceType;
@@ -491,6 +491,8 @@ impl Builder<'_> {
             build_stamp::clear_if_dirty(self, &out_dir, &backend);
         }
 
+        // RUSTC AND TOOL DOWNGRADES MISMATCH
+        let rustdoc_path = self.rustc(compiler).parent().unwrap().join("rustdoc");
         if cmd_kind == Kind::Doc {
             let my_out = match mode {
                 // This is the intended out directory for compiler documentation.
@@ -504,8 +506,7 @@ impl Builder<'_> {
                 }
                 _ => panic!("doc mode {mode:?} not expected"),
             };
-            let rustdoc = self.rustdoc(compiler);
-            build_stamp::clear_if_dirty(self, &my_out, &rustdoc);
+            build_stamp::clear_if_dirty(self, &my_out, &rustdoc_path);
         }
 
         let profile_var = |name: &str| cargo_profile_var(name, &self.config);
@@ -800,11 +801,6 @@ impl Builder<'_> {
         if !self.config.dry_run() && mode == Mode::Std && cmd_kind == Kind::Build {
             build_stamp::clear_if_dirty(self, &out_dir, &self.rustc(compiler));
         }
-
-        let rustdoc_path = match cmd_kind {
-            Kind::Doc | Kind::Test | Kind::MiriTest => self.rustdoc(compiler),
-            _ => PathBuf::from("/path/to/nowhere/rustdoc/not/required"),
-        };
 
         // Customize the compiler we're running. Specify the compiler to cargo
         // as our shim and then pass it some various options used to configure

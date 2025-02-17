@@ -638,6 +638,9 @@ impl Step for Rustdoc {
         }
 
         let bin_rustdoc = || {
+            let mut compiler = self.compiler;
+            compiler.stage += 1;
+
             let sysroot = builder.sysroot(compiler);
             let bindir = sysroot.join("bin");
             t!(fs::create_dir_all(&bindir));
@@ -694,7 +697,7 @@ impl Step for Rustdoc {
         });
 
         // don't create a stage0-sysroot/bin directory.
-        if compiler.stage > 0 {
+        if compiler.stage > 0 || self.compiler.is_downgraded_already() {
             if builder.config.rust_debuginfo_level_tools == DebuginfoLevel::None {
                 // Due to LTO a lot of debug info from C++ dependencies such as jemalloc can make it into
                 // our final binaries
