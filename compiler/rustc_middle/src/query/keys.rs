@@ -3,7 +3,7 @@
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalModDefId, ModDefId};
 use rustc_hir::hir_id::{HirId, OwnerId};
 use rustc_query_system::dep_graph::DepNodeIndex;
-use rustc_query_system::query::{DefIdCache, DefaultCache, SingleCache, VecCache};
+use rustc_query_system::query::{DefIdCache, DefaultCache, IndexCache, SingleCache, VecCache};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol};
 
 use crate::infer::canonical::CanonicalQueryInput;
@@ -471,7 +471,7 @@ impl<'tcx> Key for ty::ParamEnv<'tcx> {
 }
 
 impl<'tcx, T: Key> Key for ty::PseudoCanonicalInput<'tcx, T> {
-    type Cache<V> = DefaultCache<Self, V>;
+    type Cache<V> = IndexCache<Self, V>;
 
     fn default_span(&self, tcx: TyCtxt<'_>) -> Span {
         self.value.default_span(tcx)

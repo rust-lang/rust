@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 # tidy-alphabetical-start
+indexmap = "2.4"
 parking_lot = "0.12"
 rustc-rayon-core = { version = "0.5.0" }
 rustc_abi = { path = "../rustc_abi" }
