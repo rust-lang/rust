@@ -165,12 +165,6 @@ impl<'tcx> TyCtxt<'tcx> {
         self.hir_node(self.parent_hir_id(hir_id))
     }
 
-    /// Best avoided in favour of more targeted methods. See the comment on the `hir_crate` query.
-    #[inline]
-    pub fn hir_krate(self) -> &'tcx Crate<'tcx> {
-        self.hir_crate(())
-    }
-
     #[inline]
     pub fn hir_root_module(self) -> &'tcx Mod<'tcx> {
         match self.hir_owner_node(CRATE_OWNER_ID) {
@@ -414,7 +408,7 @@ impl<'hir> Map<'hir> {
     where
         V: Visitor<'hir>,
     {
-        let krate = self.tcx.hir_krate();
+        let krate = self.tcx.hir_crate(());
         for info in krate.owners.iter() {
             if let MaybeOwner::Owner(info) = info {
                 for attrs in info.attrs.map.values() {
