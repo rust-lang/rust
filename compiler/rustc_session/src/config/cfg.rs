@@ -29,7 +29,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_lint_defs::BuiltinLintDiag;
 use rustc_lint_defs::builtin::EXPLICIT_BUILTIN_CFGS_IN_FLAGS;
 use rustc_span::{Symbol, sym};
-use rustc_target::spec::{PanicStrategy, RelocModel, SanitizerSet, TARGETS, Target, TargetTuple};
+use rustc_target::spec::{PanicStrategy, RelocModel, SanitizerSet, Target};
 
 use crate::Session;
 use crate::config::{CrateType, FmtDebug};
@@ -432,11 +432,7 @@ impl CheckCfg {
                     panic!("unable to get all the check-cfg values buckets");
                 };
 
-                for target in TARGETS
-                    .iter()
-                    .map(|target| Target::expect_builtin(&TargetTuple::from_tuple(target)))
-                    .chain(iter::once(current_target.clone()))
-                {
+                for target in Target::builtins().chain(iter::once(current_target.clone())) {
                     values_target_abi.insert(Symbol::intern(&target.options.abi));
                     values_target_arch.insert(Symbol::intern(&target.arch));
                     values_target_endian.insert(Symbol::intern(target.options.endian.as_str()));

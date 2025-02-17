@@ -268,9 +268,11 @@ static mut TYPE_DESCRIPTOR: _TypeDescriptor = _TypeDescriptor {
 macro_rules! define_cleanup {
     ($abi:tt $abi2:tt) => {
         unsafe extern $abi fn exception_cleanup(e: *mut Exception) {
-            if let Exception { data: Some(b), .. } = e.read() {
-                drop(b);
-                super::__rust_drop_panic();
+            unsafe {
+                if let Exception { data: Some(b), .. } = e.read() {
+                    drop(b);
+                    super::__rust_drop_panic();
+                }
             }
         }
         unsafe extern $abi2 fn exception_copy(
@@ -322,45 +324,51 @@ pub(crate) unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     //
     // In any case, we basically need to do something like this until we can
     // express more operations in statics (and we may never be able to).
-    atomic_store_seqcst(
-        (&raw mut THROW_INFO.pmfnUnwind).cast(),
-        ptr_t::new(exception_cleanup as *mut u8).raw(),
-    );
-    atomic_store_seqcst(
-        (&raw mut THROW_INFO.pCatchableTypeArray).cast(),
-        ptr_t::new((&raw mut CATCHABLE_TYPE_ARRAY).cast()).raw(),
-    );
-    atomic_store_seqcst(
-        (&raw mut CATCHABLE_TYPE_ARRAY.arrayOfCatchableTypes[0]).cast(),
-        ptr_t::new((&raw mut CATCHABLE_TYPE).cast()).raw(),
-    );
-    atomic_store_seqcst(
-        (&raw mut CATCHABLE_TYPE.pType).cast(),
-        ptr_t::new((&raw mut TYPE_DESCRIPTOR).cast()).raw(),
-    );
-    atomic_store_seqcst(
-        (&raw mut CATCHABLE_TYPE.copyFunction).cast(),
-        ptr_t::new(exception_copy as *mut u8).raw(),
-    );
+    unsafe {
+        atomic_store_seqcst(
+            (&raw mut THROW_INFO.pmfnUnwind).cast(),
+            ptr_t::new(exception_cleanup as *mut u8).raw(),
+        );
+        atomic_store_seqcst(
+            (&raw mut THROW_INFO.pCatchableTypeArray).cast(),
+            ptr_t::new((&raw mut CATCHABLE_TYPE_ARRAY).cast()).raw(),
+        );
+        atomic_store_seqcst(
+            (&raw mut CATCHABLE_TYPE_ARRAY.arrayOfCatchableTypes[0]).cast(),
+            ptr_t::new((&raw mut CATCHABLE_TYPE).cast()).raw(),
+        );
+        atomic_store_seqcst(
+            (&raw mut CATCHABLE_TYPE.pType).cast(),
+            ptr_t::new((&raw mut TYPE_DESCRIPTOR).cast()).raw(),
+        );
+        atomic_store_seqcst(
+            (&raw mut CATCHABLE_TYPE.copyFunction).cast(),
+            ptr_t::new(exception_copy as *mut u8).raw(),
+        );
+    }
 
     unsafe extern "system-unwind" {
         fn _CxxThrowException(pExceptionObject: *mut c_void, pThrowInfo: *mut u8) -> !;
     }
 
-    _CxxThrowException(throw_ptr, (&raw mut THROW_INFO) as *mut _);
+    unsafe {
+        _CxxThrowException(throw_ptr, (&raw mut THROW_INFO) as *mut _);
+    }
 }
 
 pub(crate) unsafe fn cleanup(payload: *mut u8) -> Box<dyn Any + Send> {
-    // A null payload here means that we got here from the catch (...) of
-    // __rust_try. This happens when a non-Rust foreign exception is caught.
-    if payload.is_null() {
-        super::__rust_foreign_exception();
+    unsafe {
+        // A null payload here means that we got here from the catch (...) of
+        // __rust_try. This happens when a non-Rust foreign exception is caught.
+        if payload.is_null() {
+            super::__rust_foreign_exception();
+        }
+        let exception = payload as *mut Exception;
+        let canary = (&raw const (*exception).canary).read();
+        if !core::ptr::eq(canary, &raw const TYPE_DESCRIPTOR) {
+            // A foreign Rust exception.
+            super::__rust_foreign_exception();
+        }
+        (*exception).data.take().unwrap()
     }
-    let exception = payload as *mut Exception;
-    let canary = (&raw const (*exception).canary).read();
-    if !core::ptr::eq(canary, &raw const TYPE_DESCRIPTOR) {
-        // A foreign Rust exception.
-        super::__rust_foreign_exception();
-    }
-    (*exception).data.take().unwrap()
 }

@@ -89,6 +89,7 @@ pub(crate) trait DropElaborator<'a, 'tcx>: fmt::Debug {
 
     // Accessors
 
+    fn patch_ref(&self) -> &MirPatch<'tcx>;
     fn patch(&mut self) -> &mut MirPatch<'tcx>;
     fn body(&self) -> &'a Body<'tcx>;
     fn tcx(&self) -> TyCtxt<'tcx>;
@@ -180,7 +181,14 @@ where
 {
     #[instrument(level = "trace", skip(self), ret)]
     fn place_ty(&self, place: Place<'tcx>) -> Ty<'tcx> {
-        place.ty(self.elaborator.body(), self.tcx()).ty
+        if place.local < self.elaborator.body().local_decls.next_index() {
+            place.ty(self.elaborator.body(), self.tcx()).ty
+        } else {
+            // We don't have a slice with all the locals, since some are in the patch.
+            tcx::PlaceTy::from_ty(self.elaborator.patch_ref().local_ty(place.local))
+                .multi_projection_ty(self.elaborator.tcx(), place.projection)
+                .ty
+        }
     }
 
     fn tcx(&self) -> TyCtxt<'tcx> {
@@ -410,12 +418,26 @@ where
 
         let unique_place = self.tcx().mk_place_field(self.place, FieldIdx::ZERO, unique_ty);
         let nonnull_place = self.tcx().mk_place_field(unique_place, FieldIdx::ZERO, nonnull_ty);
-        let ptr_place = self.tcx().mk_place_field(nonnull_place, FieldIdx::ZERO, ptr_ty);
-        let interior = self.tcx().mk_place_deref(ptr_place);
 
+        let ptr_local = self.new_temp(ptr_ty);
+
+        let interior = self.tcx().mk_place_deref(Place::from(ptr_local));
         let interior_path = self.elaborator.deref_subpath(self.path);
 
-        self.drop_subpath(interior, interior_path, succ, unwind)
+        let do_drop_bb = self.drop_subpath(interior, interior_path, succ, unwind);
+
+        let setup_bbd = BasicBlockData {
+            statements: vec![self.assign(
+                Place::from(ptr_local),
+                Rvalue::Cast(CastKind::Transmute, Operand::Copy(nonnull_place), ptr_ty),
+            )],
+            terminator: Some(Terminator {
+                kind: TerminatorKind::Goto { target: do_drop_bb },
+                source_info: self.source_info,
+            }),
+            is_cleanup: unwind.is_cleanup(),
+        };
+        self.elaborator.patch().new_block(setup_bbd)
     }
 
     #[instrument(level = "debug", ret)]

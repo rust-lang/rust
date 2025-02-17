@@ -27,6 +27,7 @@
 #![allow(internal_features)]
 #![cfg_attr(not(bootstrap), feature(cfg_emscripten_wasm_eh))]
 #![warn(unreachable_pub)]
+#![deny(unsafe_op_in_unsafe_fn)]
 
 use alloc::boxed::Box;
 use core::any::Any;
@@ -87,14 +88,16 @@ unsafe extern "C" {
 #[rustc_std_internal_symbol]
 #[allow(improper_ctypes_definitions)]
 pub unsafe extern "C" fn __rust_panic_cleanup(payload: *mut u8) -> *mut (dyn Any + Send + 'static) {
-    Box::into_raw(imp::cleanup(payload))
+    unsafe { Box::into_raw(imp::cleanup(payload)) }
 }
 
 // Entry point for raising an exception, just delegates to the platform-specific
 // implementation.
 #[rustc_std_internal_symbol]
 pub unsafe fn __rust_start_panic(payload: &mut dyn PanicPayload) -> u32 {
-    let payload = Box::from_raw(payload.take_box());
+    unsafe {
+        let payload = Box::from_raw(payload.take_box());
 
-    imp::panic(payload)
+        imp::panic(payload)
+    }
 }

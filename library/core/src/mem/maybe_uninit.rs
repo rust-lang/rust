@@ -98,7 +98,7 @@ use crate::{fmt, intrinsics, ptr, slice};
 ///
 /// unsafe fn make_vec(out: *mut Vec<i32>) {
 ///     // `write` does not drop the old contents, which is important.
-///     out.write(vec![1, 2, 3]);
+///     unsafe { out.write(vec![1, 2, 3]); }
 /// }
 ///
 /// let mut v = MaybeUninit::uninit();
@@ -844,7 +844,7 @@ impl<T> MaybeUninit<T> {
     /// # #![allow(unexpected_cfgs)]
     /// use std::mem::MaybeUninit;
     ///
-    /// # unsafe extern "C" fn initialize_buffer(buf: *mut [u8; 1024]) { *buf = [0; 1024] }
+    /// # unsafe extern "C" fn initialize_buffer(buf: *mut [u8; 1024]) { unsafe { *buf = [0; 1024] } }
     /// # #[cfg(FALSE)]
     /// extern "C" {
     ///     /// Initializes *all* the bytes of the input buffer.

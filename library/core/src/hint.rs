@@ -52,7 +52,7 @@ use crate::{intrinsics, ub_checks};
 ///             // Safety: `divisor` can't be zero because of `prepare_inputs`,
 ///             // but the compiler does not know about this. We *promise*
 ///             // that we always call `prepare_inputs`.
-///             std::hint::unreachable_unchecked()
+///             unsafe { std::hint::unreachable_unchecked() }
 ///         }
 ///         // The compiler would normally introduce a check here that prevents
 ///         // a division by zero. However, if `divisor` was zero, the branch

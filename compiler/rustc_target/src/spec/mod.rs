@@ -1658,6 +1658,14 @@ macro_rules! supported_targets {
             Some(t)
         }
 
+        fn load_all_builtins() -> impl Iterator<Item = Target> {
+            [
+                $( targets::$module::target, )+
+            ]
+            .into_iter()
+            .map(|f| f())
+        }
+
         #[cfg(test)]
         mod tests {
             // Cannot put this into a separate file without duplication, make an exception.
@@ -3358,6 +3366,11 @@ impl Target {
                 panic!("built-in targets doesn't support target-paths")
             }
         }
+    }
+
+    /// Load all built-in targets
+    pub fn builtins() -> impl Iterator<Item = Target> {
+        load_all_builtins()
     }
 
     /// Search for a JSON file specifying the given target tuple.
