@@ -36,7 +36,7 @@ Current stable, released 2025-02-20
   [if_let_rescope](https://github.com/rust-lang/rust/issues/131154) was stabilized
   [#13695](https://github.com/rust-lang/rust-clippy/pull/13695)
 * [`format_in_format_args`], [`recursive_format_impl`], [`to_string_in_format_args`],
-  [`uninlined_format_args`], [`unused_format_specs`]: Can now support 3er party format macros
+  [`uninlined_format_args`], [`unused_format_specs`]: Can now support 3rd party format macros
   if they're marked with the `#[clippy::format_args]` attribute
   [#9948](https://github.com/rust-lang/rust-clippy/pull/9948)
 
