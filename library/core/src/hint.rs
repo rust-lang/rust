@@ -472,7 +472,7 @@ pub fn spin_loop() {
 /// During constant evaluation, `black_box` is treated as a no-op.
 #[inline]
 #[stable(feature = "bench_black_box", since = "1.66.0")]
-#[rustc_const_stable(feature = "const_black_box", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "const_black_box", since = "1.86.0")]
 pub const fn black_box<T>(dummy: T) -> T {
     crate::intrinsics::black_box(dummy)
 }
