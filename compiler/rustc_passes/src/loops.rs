@@ -76,7 +76,7 @@ struct CheckLoopVisitor<'tcx> {
 fn check_mod_loops(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
     let mut check =
         CheckLoopVisitor { tcx, cx_stack: vec![Normal], block_breaks: Default::default() };
-    tcx.hir().visit_item_likes_in_module(module_def_id, &mut check);
+    tcx.hir_visit_item_likes_in_module(module_def_id, &mut check);
     check.report_outside_loop_error();
 }
 

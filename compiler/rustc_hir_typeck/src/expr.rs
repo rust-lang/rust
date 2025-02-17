@@ -1150,13 +1150,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // We are inside a function body, so reporting "return statement
             // outside of function body" needs an explanation.
 
-            let encl_body_owner_id = self.tcx.hir().enclosing_body_owner(expr.hir_id);
+            let encl_body_owner_id = self.tcx.hir_enclosing_body_owner(expr.hir_id);
 
             // If this didn't hold, we would not have to report an error in
             // the first place.
             assert_ne!(encl_item_id.def_id, encl_body_owner_id);
 
-            let encl_body = self.tcx.hir().body_owned_by(encl_body_owner_id);
+            let encl_body = self.tcx.hir_body_owned_by(encl_body_owner_id);
 
             err.encl_body_span = Some(encl_body.value.span);
             err.encl_fn_span = Some(*encl_fn_span);
@@ -3229,7 +3229,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             None => return,
         };
         let param_span = self.tcx.hir().span(param_hir_id);
-        let param_name = self.tcx.hir().ty_param_name(param_def_id.expect_local());
+        let param_name = self.tcx.hir_ty_param_name(param_def_id.expect_local());
 
         err.span_label(param_span, format!("type parameter '{param_name}' declared here"));
     }

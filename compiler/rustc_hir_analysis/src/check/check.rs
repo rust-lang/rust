@@ -484,7 +484,7 @@ fn best_definition_site_of_opaque<'tcx>(
         hir::OpaqueTyOrigin::TyAlias { in_assoc_ty: false, .. } => {
             let scope = tcx.hir().get_defining_scope(tcx.local_def_id_to_hir_id(opaque_def_id));
             let found = if scope == hir::CRATE_HIR_ID {
-                tcx.hir().walk_toplevel_module(&mut locator)
+                tcx.hir_walk_toplevel_module(&mut locator)
             } else {
                 match tcx.hir_node(scope) {
                     Node::Item(it) => locator.visit_item(it),

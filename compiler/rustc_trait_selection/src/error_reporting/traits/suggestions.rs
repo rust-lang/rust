@@ -876,7 +876,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             span.remove_mark();
         }
         let mut expr_finder = FindExprBySpan::new(span, self.tcx);
-        let Some(body) = self.tcx.hir().maybe_body_owned_by(obligation.cause.body_id) else {
+        let Some(body) = self.tcx.hir_maybe_body_owned_by(obligation.cause.body_id) else {
             return;
         };
         expr_finder.visit_expr(body.value);
@@ -1347,8 +1347,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         // Issue #104961, we need to add parentheses properly for compound expressions
                         // for example, `x.starts_with("hi".to_string() + "you")`
                         // should be `x.starts_with(&("hi".to_string() + "you"))`
-                        let Some(body) =
-                            self.tcx.hir().maybe_body_owned_by(obligation.cause.body_id)
+                        let Some(body) = self.tcx.hir_maybe_body_owned_by(obligation.cause.body_id)
                         else {
                             return false;
                         };
@@ -1447,7 +1446,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             span.remove_mark();
         }
         let mut expr_finder = super::FindExprBySpan::new(span, self.tcx);
-        let Some(body) = self.tcx.hir().maybe_body_owned_by(obligation.cause.body_id) else {
+        let Some(body) = self.tcx.hir_maybe_body_owned_by(obligation.cause.body_id) else {
             return false;
         };
         expr_finder.visit_expr(body.value);
@@ -1766,7 +1765,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         err.children.clear();
 
         let span = obligation.cause.span;
-        let body = self.tcx.hir().body_owned_by(obligation.cause.body_id);
+        let body = self.tcx.hir_body_owned_by(obligation.cause.body_id);
 
         let mut visitor = ReturnsVisitor::default();
         visitor.visit_body(&body);
@@ -2300,7 +2299,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         );
 
         let coroutine_body =
-            coroutine_did.as_local().and_then(|def_id| hir.maybe_body_owned_by(def_id));
+            coroutine_did.as_local().and_then(|def_id| self.tcx.hir_maybe_body_owned_by(def_id));
         let mut visitor = AwaitsVisitor::default();
         if let Some(body) = coroutine_body {
             visitor.visit_body(&body);
@@ -4130,7 +4129,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         };
                         suggest_restriction(
                             tcx,
-                            hir.body_owner_def_id(body_id),
+                            tcx.hir_body_owner_def_id(body_id),
                             generics,
                             &format!("type parameter `{ty}`"),
                             err,
@@ -4352,7 +4351,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     term: ty.into(),
                 }),
             ));
-            let body_def_id = self.tcx.hir().enclosing_body_owner(body_id);
+            let body_def_id = self.tcx.hir_enclosing_body_owner(body_id);
             // Add `<ExprTy as Iterator>::Item = _` obligation.
             ocx.register_obligation(Obligation::misc(
                 self.tcx,

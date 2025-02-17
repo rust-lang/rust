@@ -99,11 +99,10 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let mut visitor = TypeParamSpanVisitor { tcx: self.tcx(), types: vec![] };
         match assoc_item.kind {
             ty::AssocKind::Fn => {
-                let hir = self.tcx().hir();
                 if let Some(hir_id) =
                     assoc_item.def_id.as_local().map(|id| self.tcx().local_def_id_to_hir_id(id))
                 {
-                    if let Some(decl) = hir.fn_decl_by_hir_id(hir_id) {
+                    if let Some(decl) = self.tcx().hir_fn_decl_by_hir_id(hir_id) {
                         visitor.visit_fn_decl(decl);
                     }
                 }

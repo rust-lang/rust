@@ -147,7 +147,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             | ObligationCauseCode::BlockTailExpression(hir_id, ..) = cause.code()
             {
                 let parent_id = tcx.hir().get_parent_item(*hir_id);
-                if let Some(fn_decl) = tcx.hir().fn_decl_by_hir_id(parent_id.into()) {
+                if let Some(fn_decl) = tcx.hir_fn_decl_by_hir_id(parent_id.into()) {
                     let mut span: MultiSpan = fn_decl.output.span().into();
                     let mut spans = Vec::new();
                     let mut add_label = true;
@@ -490,7 +490,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 // obligation comes from the `impl`. Find that `impl` so that we can point
                 // at it in the suggestion.
                 let trait_did = trait_id.to_def_id();
-                tcx.hir().trait_impls(trait_did).iter().find_map(|&impl_did| {
+                tcx.hir_trait_impls(trait_did).iter().find_map(|&impl_did| {
                     if let Node::Item(Item {
                         kind: ItemKind::Impl(hir::Impl { self_ty, .. }), ..
                     }) = tcx.hir_node_by_def_id(impl_did)

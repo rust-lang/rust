@@ -196,7 +196,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let args = self.resolve_vars_if_possible(args);
         let closure_def_id = closure_def_id.expect_local();
 
-        assert_eq!(self.tcx.hir().body_owner_def_id(body.id()), closure_def_id);
+        assert_eq!(self.tcx.hir_body_owner_def_id(body.id()), closure_def_id);
         let mut delegate = InferBorrowKind {
             closure_def_id,
             capture_information: Default::default(),

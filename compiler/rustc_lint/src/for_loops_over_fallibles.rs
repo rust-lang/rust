@@ -166,7 +166,7 @@ fn suggest_question_mark<'tcx>(
     let (infcx, param_env) = cx.tcx.infer_ctxt().build_with_typing_env(cx.typing_env());
     let ocx = ObligationCtxt::new(&infcx);
 
-    let body_def_id = cx.tcx.hir().body_owner_def_id(body_id);
+    let body_def_id = cx.tcx.hir_body_owner_def_id(body_id);
     let cause =
         ObligationCause::new(span, body_def_id, rustc_infer::traits::ObligationCauseCode::Misc);
 

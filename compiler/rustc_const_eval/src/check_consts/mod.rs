@@ -31,7 +31,7 @@ pub struct ConstCx<'mir, 'tcx> {
 impl<'mir, 'tcx> ConstCx<'mir, 'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, body: &'mir mir::Body<'tcx>) -> Self {
         let typing_env = body.typing_env(tcx);
-        let const_kind = tcx.hir().body_const_context(body.source.def_id().expect_local());
+        let const_kind = tcx.hir_body_const_context(body.source.def_id().expect_local());
         ConstCx { body, tcx, typing_env, const_kind }
     }
 

@@ -1340,7 +1340,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 };
                 def = ResolvedArg::Error(guar);
             } else if let Some(body_id) = outermost_body {
-                let fn_id = self.tcx.hir().body_owner(body_id);
+                let fn_id = self.tcx.hir_body_owner(body_id);
                 match self.tcx.hir_node(fn_id) {
                     Node::Item(hir::Item { owner_id, kind: hir::ItemKind::Fn { .. }, .. })
                     | Node::TraitItem(hir::TraitItem {
@@ -2265,7 +2265,7 @@ fn is_late_bound_map(
     tcx: TyCtxt<'_>,
     owner_id: hir::OwnerId,
 ) -> Option<&FxIndexSet<hir::ItemLocalId>> {
-    let sig = tcx.hir().fn_sig_by_hir_id(owner_id.into())?;
+    let sig = tcx.hir_fn_sig_by_hir_id(owner_id.into())?;
     let generics = tcx.hir_get_generics(owner_id.def_id)?;
 
     let mut late_bound = FxIndexSet::default();

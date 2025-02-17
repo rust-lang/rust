@@ -100,7 +100,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut deferred_asm_checks = self.deferred_asm_checks.borrow_mut();
         debug!("FnCtxt::check_asm: {} deferred checks", deferred_asm_checks.len());
         for (asm, hir_id) in deferred_asm_checks.drain(..) {
-            let enclosing_id = self.tcx.hir().enclosing_body_owner(hir_id);
+            let enclosing_id = self.tcx.hir_enclosing_body_owner(hir_id);
             let get_operand_ty = |expr| {
                 let ty = self.typeck_results.borrow().expr_ty_adjusted(expr);
                 let ty = self.resolve_vars_if_possible(ty);

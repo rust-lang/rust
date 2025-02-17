@@ -163,7 +163,7 @@ rustc_queries! {
 
     /// The items in a module.
     ///
-    /// This can be conveniently accessed by `tcx.hir().visit_item_likes_in_module`.
+    /// This can be conveniently accessed by `tcx.hir_visit_item_likes_in_module`.
     /// Avoid calling this query directly.
     query hir_module_items(key: LocalModDefId) -> &'tcx rustc_middle::hir::ModuleItems {
         arena_cache
@@ -771,7 +771,7 @@ rustc_queries! {
     query type_param_predicates(
         key: (LocalDefId, LocalDefId, rustc_span::Ident)
     ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
-        desc { |tcx| "computing the bounds for type parameter `{}`", tcx.hir().ty_param_name(key.1) }
+        desc { |tcx| "computing the bounds for type parameter `{}`", tcx.hir_ty_param_name(key.1) }
     }
 
     query trait_def(key: DefId) -> &'tcx ty::TraitDef {

@@ -135,8 +135,7 @@ where
         // If we visit an item that contains an expression outside a function body,
         // then we need to exit before calling typeck (which will panic). See
         // test/run-make/rustdoc-scrape-examples-invalid-expr for an example.
-        let hir = tcx.hir();
-        if hir.maybe_body_owned_by(ex.hir_id.owner.def_id).is_none() {
+        if tcx.hir_maybe_body_owned_by(ex.hir_id.owner.def_id).is_none() {
             return;
         }
 
@@ -302,7 +301,7 @@ pub(crate) fn run(
         // Run call-finder on all items
         let mut calls = FxIndexMap::default();
         let mut finder = FindCalls { calls: &mut calls, cx, target_crates, bin_crate };
-        tcx.hir().visit_all_item_likes_in_crate(&mut finder);
+        tcx.hir_visit_all_item_likes_in_crate(&mut finder);
 
         // The visitor might have found a type error, which we need to
         // promote to a fatal error

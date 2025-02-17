@@ -156,7 +156,7 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
                     output: &mut self.registered_lints,
                     cx,
                 };
-                let body = cx.tcx.hir().body_owned_by(
+                let body = cx.tcx.hir_body_owned_by(
                     impl_item_refs
                         .iter()
                         .find(|iiref| iiref.ident.as_str() == "lint_vec")
