@@ -1,7 +1,7 @@
 //! Error Reporting for static impl Traits.
 
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, Subdiagnostic};
+use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{Visitor, VisitorExt, walk_ty};
 use rustc_hir::{
@@ -14,9 +14,7 @@ use rustc_span::{Ident, Span};
 use tracing::debug;
 
 use crate::error_reporting::infer::nice_region_error::NiceRegionError;
-use crate::errors::{
-    ButNeedsToSatisfy, DynTraitConstraintSuggestion, MoreTargeted, ReqIntroducedLocations,
-};
+use crate::errors::{ButNeedsToSatisfy, ReqIntroducedLocations};
 use crate::infer::{RegionResolutionError, SubregionOrigin, TypeTrace};
 use crate::traits::ObligationCauseCode;
 
@@ -147,36 +145,6 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let mut err = self.tcx().dcx().create_err(diag);
 
         let fn_returns = tcx.return_type_impl_or_dyn_traits(anon_reg_sup.scope);
-
-        let mut override_error_code = None;
-
-        if let SubregionOrigin::Subtype(box TypeTrace { cause, .. }) = &sub_origin
-            && let code = match cause.code() {
-                ObligationCauseCode::MatchImpl(parent, ..) => parent.code(),
-                _ => cause.code(),
-            }
-            && let &ObligationCauseCode::WhereClause(item_def_id, _)
-            | &ObligationCauseCode::WhereClauseInExpr(item_def_id, ..) = code
-        {
-            // Same case of `impl Foo for dyn Bar { fn qux(&self) {} }` introducing a `'static`
-            // lifetime as above, but called using a fully-qualified path to the method:
-            // `Foo::qux(bar)`.
-            let mut v = TraitObjectVisitor(FxIndexSet::default());
-            v.visit_ty(param.param_ty);
-            if let Some((ident, self_ty)) =
-                NiceRegionError::get_impl_ident_and_self_ty_from_trait(tcx, item_def_id, &v.0)
-                && self.suggest_constrain_dyn_trait_in_impl(&mut err, &v.0, ident, self_ty)
-            {
-                override_error_code = Some(ident.name);
-            }
-        }
-        if let Some(ident) = override_error_code
-            && fn_returns.is_empty()
-        {
-            // Provide a more targeted error code and description.
-            let retarget_subdiag = MoreTargeted { ident };
-            retarget_subdiag.add_to_diag(&mut err);
-        }
 
         let arg = match param.param.pat.simple_ident() {
             Some(simple_ident) => format!("argument `{simple_ident}`"),
@@ -456,27 +424,6 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             }
             _ => None,
         }
-    }
-
-    fn suggest_constrain_dyn_trait_in_impl(
-        &self,
-        err: &mut Diag<'_>,
-        found_dids: &FxIndexSet<DefId>,
-        ident: Ident,
-        self_ty: &hir::Ty<'_>,
-    ) -> bool {
-        let mut suggested = false;
-        for found_did in found_dids {
-            let mut traits = vec![];
-            let mut hir_v = HirTraitObjectVisitor(&mut traits, *found_did);
-            hir_v.visit_ty_unambig(self_ty);
-            for &span in &traits {
-                let subdiag = DynTraitConstraintSuggestion { span, ident };
-                subdiag.add_to_diag(err);
-                suggested = true;
-            }
-        }
-        suggested
     }
 }
 
