@@ -1135,9 +1135,6 @@ pub struct ButNeedsToSatisfy {
     #[note(trait_selection_introduced_by_bound)]
     pub bound: Option<Span>,
 
-    #[subdiagnostic]
-    pub req_introduces_loc: Option<ReqIntroducedLocations>,
-
     pub has_param_name: bool,
     pub param_name: String,
     pub spans_empty: bool,

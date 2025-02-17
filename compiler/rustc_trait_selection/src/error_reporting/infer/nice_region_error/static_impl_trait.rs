@@ -1,22 +1,21 @@
 //! Error Reporting for static impl Traits.
 
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{Applicability, Diag, ErrorGuaranteed};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{Visitor, VisitorExt, walk_ty};
 use rustc_hir::{
     self as hir, AmbigArg, GenericBound, GenericParam, GenericParamKind, Item, ItemKind, Lifetime,
     LifetimeName, LifetimeParamKind, MissingLifetimeKind, Node, TyKind,
 };
-use rustc_middle::ty::{self, StaticLifetimeVisitor, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Ident, Span};
 use tracing::debug;
 
 use crate::error_reporting::infer::nice_region_error::NiceRegionError;
-use crate::errors::{ButNeedsToSatisfy, ReqIntroducedLocations};
-use crate::infer::{RegionResolutionError, SubregionOrigin, TypeTrace};
-use crate::traits::ObligationCauseCode;
+use crate::errors::ButNeedsToSatisfy;
+use crate::infer::{RegionResolutionError, SubregionOrigin};
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// Print the error message for lifetime errors when the return type is a static `impl Trait`,
@@ -89,39 +88,6 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             None
         };
 
-        let mut subdiag = None;
-
-        if let SubregionOrigin::Subtype(box TypeTrace { cause, .. }) = sub_origin {
-            if let ObligationCauseCode::ReturnValue(hir_id)
-            | ObligationCauseCode::BlockTailExpression(hir_id, ..) = cause.code()
-            {
-                let parent_id = tcx.hir().get_parent_item(*hir_id);
-                if let Some(fn_decl) = tcx.hir().fn_decl_by_hir_id(parent_id.into()) {
-                    let mut span: MultiSpan = fn_decl.output.span().into();
-                    let mut spans = Vec::new();
-                    let mut add_label = true;
-                    if let hir::FnRetTy::Return(ty) = fn_decl.output {
-                        let mut v = StaticLifetimeVisitor(vec![], tcx.hir());
-                        v.visit_ty_unambig(ty);
-                        if !v.0.is_empty() {
-                            span = v.0.clone().into();
-                            spans = v.0;
-                            add_label = false;
-                        }
-                    }
-                    let fn_decl_span = fn_decl.output.span();
-
-                    subdiag = Some(ReqIntroducedLocations {
-                        span,
-                        spans,
-                        fn_decl_span,
-                        cause_span: cause.span,
-                        add_label,
-                    });
-                }
-            }
-        }
-
         let diag = ButNeedsToSatisfy {
             sp,
             influencer_point,
@@ -132,7 +98,6 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             require_span_as_note: require_as_note.then_some(require_span),
             // We don't need a note, it's already at the end, it can be shown as a `span_label`.
             require_span_as_label: (!require_as_note).then_some(require_span),
-            req_introduces_loc: subdiag,
 
             has_lifetime: sup_r.has_name(),
             lifetime: lifetime_name.clone(),
