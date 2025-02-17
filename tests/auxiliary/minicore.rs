@@ -17,6 +17,7 @@
 #![feature(no_core, lang_items, rustc_attrs, decl_macro, naked_functions, f16, f128)]
 #![allow(unused, improper_ctypes_definitions, internal_features)]
 #![feature(asm_experimental_arch)]
+#![feature(intrinsics)]
 #![no_std]
 #![no_core]
 
@@ -104,10 +105,101 @@ macro_rules! concat {
         /* compiler built-in */
     };
 }
+
 #[rustc_builtin_macro]
 #[macro_export]
 macro_rules! stringify {
     ($($t:tt)*) => {
         /* compiler built-in */
     };
+}
+
+#[macro_export]
+macro_rules! partialEq {
+    ($($ty:ty),* $(,)?) => {
+        $(
+            impl PartialEq for $ty {
+                #[inline]
+                fn eq(&self, other: &$ty) -> bool {
+                    (*self) == (*other)
+                }
+                #[inline]
+                fn ne(&self, other: &$ty) -> bool {
+                    (*self) != (*other)
+                }
+            }
+        )*
+    }
+}
+
+partialEq!(
+    bool, char, isize, i8, i16, i32, i64, i128, usize, u8, u16, u32, u64, u128, f16, f32, f64, f128
+);
+
+#[lang = "panic"]
+//#[rustc_const_panic_str]
+//#[inline(never)]
+//#[cold]
+//#[track_caller]
+//#[rustc_nounwind]
+const fn panic(expr: &'static str) -> ! {
+    abort()
+}
+
+#[lang = "panic_fmt"]
+const fn panic_fmt(fmt: &str) -> ! {
+    abort()
+}
+
+#[macro_export]
+macro_rules! panic {
+    ($msg:expr) => {
+        $crate::panic($msg)
+    };
+}
+
+#[rustc_intrinsic]
+#[rustc_intrinsic_const_stable_indirect]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn size_of<T>() -> usize {
+    loop {}
+}
+
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub const fn abort() -> ! {
+    loop {}
+}
+
+#[lang = "eq"]
+pub trait PartialEq<Rhs: ?Sized = Self> {
+    fn eq(&self, other: &Rhs) -> bool;
+    fn ne(&self, other: &Rhs) -> bool {
+        !self.eq(other)
+    }
+}
+
+//impl PartialEq for usize {
+//    fn eq(&self, other: &usize) -> bool {
+//        (*self) == (*other)
+//    }
+//}
+//
+//impl PartialEq for bool {
+//    fn eq(&self, other: &bool) -> bool {
+//        (*self) == (*other)
+//    }
+//}
+
+#[lang = "not"]
+pub trait Not {
+    type Output;
+    fn not(self) -> Self::Output;
+}
+
+impl Not for bool {
+    type Output = bool;
+    fn not(self) -> Self {
+        !self
+    }
 }
