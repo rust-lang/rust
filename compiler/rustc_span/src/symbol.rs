@@ -104,6 +104,8 @@ symbols! {
         Gen:                "gen", // >= 2024 Edition only
         Try:                "try", // >= 2018 Edition only
 
+        // NOTE: When adding new keywords, consider adding them to the ui/parser/raw/raw-idents.rs test.
+
         // "Lifetime keywords": regular keywords with a leading `'`.
         // Matching predicates: `is_any_keyword`
         UnderscoreLifetime: "'_",
