@@ -202,5 +202,5 @@ impl Step for Gcc {
 /// Configures a Cargo invocation so that it can build the GCC codegen backend.
 pub fn add_cg_gcc_cargo_flags(cargo: &mut Cargo, gcc: &GccOutput) {
     // Add the path to libgccjit.so to the linker search paths.
-    cargo.rustflag(&format!("-L{}", gcc.libgccjit.parent().unwrap().display()));
+    cargo.rustflag(&format!("-L{}", gcc.libgccjit.parent().unwrap().to_str().unwrap()));
 }
