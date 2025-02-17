@@ -546,6 +546,12 @@ impl<'tcx> Visitor<'tcx> for IteratorMethodCheckVisitor<'_, 'tcx> {
             && !is_trait_method(self.cx, expr, sym::Iterator)
         {
             return ControlFlow::Break(());
+        } else if let ExprKind::Assign(place, value, _span) = &expr.kind
+            && value.hir_id == self.hir_id_of_expr
+            && let Some(id) = path_to_local(place)
+        {
+            // our iterator was directly assigned to a variable
+            self.hir_id_of_let_binding = Some(id);
         }
         walk_expr(self, expr)
     }
@@ -561,6 +567,7 @@ impl<'tcx> Visitor<'tcx> for IteratorMethodCheckVisitor<'_, 'tcx> {
         }) = &stmt.kind
             && expr.hir_id == self.hir_id_of_expr
         {
+            // our iterator was directly assigned to a variable
             self.hir_id_of_let_binding = Some(*id);
         }
         walk_stmt(self, stmt)

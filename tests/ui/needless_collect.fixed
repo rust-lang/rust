@@ -87,6 +87,15 @@ fn main() {
     let my_collection: Vec<()> = vec![()].into_iter().map(|()| {}).collect();
     let my_iter = my_collection.into_iter();
     let _sliced = my_iter.as_slice();
+    // Assignment outside of main scope
+    {
+        let x;
+        {
+            let xxx: Vec<()> = vec![()].into_iter().map(|()| {}).collect();
+            x = xxx.into_iter();
+            for i in x.as_slice() {}
+        }
+    }
 }
 
 fn foo(_: impl IntoIterator<Item = usize>) {}
