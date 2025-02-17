@@ -221,8 +221,8 @@ impl SpanMapVisitor<'_> {
 impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
     type NestedFilter = nested_filter::All;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
 
     fn visit_path(&mut self, path: &rustc_hir::Path<'tcx>, _id: HirId) {

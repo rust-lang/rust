@@ -1,4 +1,6 @@
-use crate::spec::{Cc, FloatAbi, LinkerFlavor, Lld, SanitizerSet, Target, TargetOptions, base};
+use crate::spec::{
+    Cc, FloatAbi, LinkerFlavor, Lld, SanitizerSet, Target, TargetMetadata, TargetOptions, base,
+};
 
 // This target if is for the baseline of the Android v7a ABI
 // in thumb mode. It's named armv7-* instead of thumbv7-*
@@ -13,7 +15,7 @@ pub(crate) fn target() -> Target {
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-march=armv7-a"]);
     Target {
         llvm_target: "armv7-none-linux-android".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("Armv7-A Android".into()),
             tier: Some(2),
             host_tools: Some(false),

@@ -25,8 +25,9 @@ LL | impl Foo for Vec<isize> {
    | ^^^^^^^^^^^^^^^^^^^^^^^
 help: try using a fully qualified path to specify the expected types
    |
-LL |     <Vec<T> as Foo>::foo(&x);
-   |     ++++++++++++++++++++++ ~
+LL -     x.foo();
+LL +     <Vec<T> as Foo>::foo(&x);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/method-ambig-one-trait-unknown-int-type.rs:33:20

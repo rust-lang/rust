@@ -13,6 +13,7 @@
 #![feature(extern_types)]
 #![feature(file_buffered)]
 #![feature(hash_raw_entry)]
+#![feature(if_let_guard)]
 #![feature(impl_trait_in_assoc_type)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
@@ -29,7 +30,7 @@ use std::mem::ManuallyDrop;
 use back::owned_target_machine::OwnedTargetMachine;
 use back::write::{create_informational_target_machine, create_target_machine};
 use errors::{AutoDiffWithoutLTO, ParseTargetMachineConfig};
-pub use llvm_util::target_features_cfg;
+pub(crate) use llvm_util::target_features_cfg;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
@@ -243,9 +244,6 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         builder::autodiff::differentiate(module, cgcx, diff_fncs, config)
     }
 }
-
-unsafe impl Send for LlvmCodegenBackend {} // Llvm is on a per-thread basis
-unsafe impl Sync for LlvmCodegenBackend {}
 
 impl LlvmCodegenBackend {
     pub fn new() -> Box<dyn CodegenBackend> {

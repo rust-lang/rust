@@ -245,7 +245,11 @@ impl Cargo {
                 // flesh out rpath support more fully in the future.
                 self.rustflags.arg("-Zosx-rpath-install-name");
                 Some(format!("-Wl,-rpath,@loader_path/../{libdir}"))
-            } else if !target.is_windows() && !target.contains("aix") && !target.contains("xous") {
+            } else if !target.is_windows()
+                && !target.contains("cygwin")
+                && !target.contains("aix")
+                && !target.contains("xous")
+            {
                 self.rustflags.arg("-Clink-args=-Wl,-z,origin");
                 Some(format!("-Wl,-rpath,$ORIGIN/../{libdir}"))
             } else {
@@ -323,8 +327,15 @@ impl Cargo {
             let cc = ccacheify(&builder.cc(target));
             self.command.env(format!("CC_{triple_underscored}"), &cc);
 
-            let cflags = builder.cflags(target, GitRepo::Rustc, CLang::C).join(" ");
-            self.command.env(format!("CFLAGS_{triple_underscored}"), &cflags);
+            // Extend `CXXFLAGS_$TARGET` with our extra flags.
+            let env = format!("CFLAGS_{triple_underscored}");
+            let mut cflags =
+                builder.cc_unhandled_cflags(target, GitRepo::Rustc, CLang::C).join(" ");
+            if let Ok(var) = std::env::var(&env) {
+                cflags.push(' ');
+                cflags.push_str(&var);
+            }
+            self.command.env(env, &cflags);
 
             if let Some(ar) = builder.ar(target) {
                 let ranlib = format!("{} s", ar.display());
@@ -335,10 +346,17 @@ impl Cargo {
 
             if let Ok(cxx) = builder.cxx(target) {
                 let cxx = ccacheify(&cxx);
-                let cxxflags = builder.cflags(target, GitRepo::Rustc, CLang::Cxx).join(" ");
-                self.command
-                    .env(format!("CXX_{triple_underscored}"), &cxx)
-                    .env(format!("CXXFLAGS_{triple_underscored}"), cxxflags);
+                self.command.env(format!("CXX_{triple_underscored}"), &cxx);
+
+                // Extend `CXXFLAGS_$TARGET` with our extra flags.
+                let env = format!("CXXFLAGS_{triple_underscored}");
+                let mut cxxflags =
+                    builder.cc_unhandled_cflags(target, GitRepo::Rustc, CLang::Cxx).join(" ");
+                if let Ok(var) = std::env::var(&env) {
+                    cxxflags.push(' ');
+                    cxxflags.push_str(&var);
+                }
+                self.command.env(&env, cxxflags);
             }
         }
 

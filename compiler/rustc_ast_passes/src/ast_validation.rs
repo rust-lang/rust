@@ -20,6 +20,7 @@ use std::mem;
 use std::ops::{Deref, DerefMut};
 
 use itertools::{Either, Itertools};
+use rustc_abi::ExternAbi;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor, walk_list};
 use rustc_ast::*;
@@ -35,7 +36,6 @@ use rustc_session::lint::builtin::{
 };
 use rustc_session::lint::{BuiltinLintDiag, LintBuffer};
 use rustc_span::{Ident, Span, kw, sym};
-use rustc_target::spec::abi;
 use thin_vec::thin_vec;
 
 use crate::errors::{self, TildeConstReason};
@@ -723,7 +723,7 @@ impl<'a> AstValidator<'a> {
                 MISSING_ABI,
                 id,
                 span,
-                BuiltinLintDiag::MissingAbi(span, abi::Abi::FALLBACK),
+                BuiltinLintDiag::MissingAbi(span, ExternAbi::FALLBACK),
             )
         }
     }

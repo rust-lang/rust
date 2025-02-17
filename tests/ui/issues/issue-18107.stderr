@@ -6,8 +6,9 @@ LL |     dyn AbstractRenderer
    |
 help: consider returning an `impl Trait` instead of a `dyn Trait`
    |
-LL |     impl AbstractRenderer
-   |     ~~~~
+LL -     dyn AbstractRenderer
+LL +     impl AbstractRenderer
+   |
 help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
    |
 LL ~     Box<dyn AbstractRenderer>

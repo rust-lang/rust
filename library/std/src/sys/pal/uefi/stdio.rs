@@ -71,7 +71,7 @@ impl io::Read for Stdin {
             };
 
         if ch.len() > 1 {
-            return Err(io::Error::new(io::ErrorKind::InvalidData, "invalid utf-16 sequence"));
+            return Err(io::const_error!(io::ErrorKind::InvalidData, "invalid utf-16 sequence"));
         }
 
         match ch.pop().unwrap() {

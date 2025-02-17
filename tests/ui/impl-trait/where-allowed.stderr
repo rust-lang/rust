@@ -364,8 +364,9 @@ LL |     fn in_trait_impl_return() -> Self::Out;
    = note: distinct uses of `impl Trait` result in different opaque types
 help: change the output type to match the trait
    |
-LL |     fn in_trait_impl_return() -> <() as DummyTrait>::Out { () }
-   |                                  ~~~~~~~~~~~~~~~~~~~~~~~
+LL -     fn in_trait_impl_return() -> impl Debug { () }
+LL +     fn in_trait_impl_return() -> <() as DummyTrait>::Out { () }
+   |
 
 error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
   --> $DIR/where-allowed.rs:245:36

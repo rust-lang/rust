@@ -2347,9 +2347,14 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     // try to give a suggestion for this pattern: `name = blah`, which is common in other languages
     // suggest `let name = blah` to introduce a new binding
     fn let_binding_suggestion(&mut self, err: &mut Diag<'_>, ident_span: Span) -> bool {
+        if ident_span.from_expansion() {
+            return false;
+        }
+
+        // only suggest when the code is a assignment without prefix code
         if let Some(Expr { kind: ExprKind::Assign(lhs, ..), .. }) = self.diag_metadata.in_assignment
             && let ast::ExprKind::Path(None, ref path) = lhs.kind
-            && !ident_span.from_expansion()
+            && self.r.tcx.sess.source_map().is_line_before_span_empty(ident_span)
         {
             let (span, text) = match path.segments.first() {
                 Some(seg) if let Some(name) = seg.ident.as_str().strip_prefix("let") => {
@@ -2364,6 +2369,22 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 span,
                 "you might have meant to introduce a new binding",
                 text,
+                Applicability::MaybeIncorrect,
+            );
+            return true;
+        }
+
+        // a special case for #133713
+        // '=' maybe a typo of `:`, which is a type annotation instead of assignment
+        if err.code == Some(E0423)
+            && let Some((let_span, None, Some(val_span))) = self.diag_metadata.current_let_binding
+            && val_span.contains(ident_span)
+            && val_span.lo() == ident_span.lo()
+        {
+            err.span_suggestion_verbose(
+                let_span.shrink_to_hi().to(val_span.shrink_to_lo()),
+                "you might have meant to use `:` for type annotation",
+                ": ",
                 Applicability::MaybeIncorrect,
             );
             return true;

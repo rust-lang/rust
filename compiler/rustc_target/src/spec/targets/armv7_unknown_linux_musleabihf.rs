@@ -1,11 +1,11 @@
-use crate::spec::{FloatAbi, Target, TargetOptions, base};
+use crate::spec::{FloatAbi, Target, TargetMetadata, TargetOptions, base};
 
 // This target is for musl Linux on ARMv7 without thumb-mode or NEON.
 
 pub(crate) fn target() -> Target {
     Target {
         llvm_target: "armv7-unknown-linux-musleabihf".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("Armv7-A Linux with musl 1.2.3, hardfloat".into()),
             tier: Some(2),
             host_tools: Some(false),

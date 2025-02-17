@@ -15,8 +15,9 @@ LL | static BAR: _ = "test";
    |
 help: replace this with a fully-specified type
    |
-LL | static BAR: &str = "test";
-   |             ~~~~
+LL - static BAR: _ = "test";
+LL + static BAR: &str = "test";
+   |
 
 error: aborting due to 2 previous errors
 

@@ -1,6 +1,6 @@
 use rustc_abi::Endian;
 
-use crate::spec::{CodeModel, PanicStrategy, RelocModel, Target, TargetOptions};
+use crate::spec::{CodeModel, PanicStrategy, RelocModel, Target, TargetMetadata, TargetOptions};
 
 pub(crate) fn target() -> Target {
     let options = TargetOptions {
@@ -20,7 +20,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "m68k".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("Motorola 680x0".into()),
             tier: Some(3),
             host_tools: Some(false),

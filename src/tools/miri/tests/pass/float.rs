@@ -1,4 +1,5 @@
 #![feature(stmt_expr_attributes)]
+#![feature(float_erf)]
 #![feature(float_gamma)]
 #![feature(core_intrinsics)]
 #![feature(f128)]
@@ -1076,6 +1077,11 @@ pub fn libm() {
     let (val, sign) = (-0.5f64).ln_gamma();
     assert_approx_eq!(val, (2.0 * f64::consts::PI.sqrt()).ln());
     assert_eq!(sign, -1);
+
+    assert_approx_eq!(1.0f32.erf(), 0.84270079294971486934122063508260926f32);
+    assert_approx_eq!(1.0f64.erf(), 0.84270079294971486934122063508260926f64);
+    assert_approx_eq!(1.0f32.erfc(), 0.15729920705028513065877936491739074f32);
+    assert_approx_eq!(1.0f64.erfc(), 0.15729920705028513065877936491739074f64);
 }
 
 fn test_fast() {

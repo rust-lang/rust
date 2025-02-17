@@ -30,7 +30,7 @@ macro_rules! if_zst {
             $zst_body
         } else {
             // SAFETY: for non-ZSTs, the type invariant ensures it cannot be null
-            let $end = unsafe { *(&raw const $this.end_or_len).cast::<NonNull<T>>() };
+            let $end = unsafe { mem::transmute::<*const T, NonNull<T>>($this.end_or_len) };
             $other_body
         }
     }};

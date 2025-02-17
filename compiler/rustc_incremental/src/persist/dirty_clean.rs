@@ -455,8 +455,8 @@ impl<'tcx> FindAllAttrs<'tcx> {
 impl<'tcx> intravisit::Visitor<'tcx> for FindAllAttrs<'tcx> {
     type NestedFilter = nested_filter::All;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
 
     fn visit_attribute(&mut self, attr: &'tcx Attribute) {

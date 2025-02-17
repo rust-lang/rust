@@ -9,8 +9,9 @@ LL | fn f(b1: B, b2: B, a2: C) {}
    |
 help: a struct with a similar name exists
    |
-LL | fn f(b1: B, b2: B, a2: A) {}
-   |                        ~
+LL - fn f(b1: B, b2: B, a2: C) {}
+LL + fn f(b1: B, b2: B, a2: A) {}
+   |
 help: you might be missing a type parameter
    |
 LL | fn f<C>(b1: B, b2: B, a2: C) {}

@@ -318,7 +318,7 @@ pub fn suggest_new_region_bound(
                 } else {
                     // get a lifetime name of existing named lifetimes if any
                     let existing_lt_name = if let Some(id) = scope_def_id
-                        && let Some(generics) = tcx.hir().get_generics(id)
+                        && let Some(generics) = tcx.hir_get_generics(id)
                         && let named_lifetimes = generics
                             .params
                             .iter()
@@ -349,7 +349,7 @@ pub fn suggest_new_region_bound(
                     // if there are more than one elided lifetimes in inputs, the explicit `'_` lifetime cannot be used.
                     // introducing a new lifetime `'a` or making use of one from existing named lifetimes if any
                     if let Some(id) = scope_def_id
-                        && let Some(generics) = tcx.hir().get_generics(id)
+                        && let Some(generics) = tcx.hir_get_generics(id)
                         && let mut spans_suggs =
                             make_elided_region_spans_suggs(name, generics.params.iter())
                         && spans_suggs.len() > 1
@@ -470,7 +470,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         def_id: DefId,
         trait_objects: &FxIndexSet<DefId>,
     ) -> Option<(Ident, &'tcx hir::Ty<'tcx>)> {
-        match tcx.hir().get_if_local(def_id)? {
+        match tcx.hir_get_if_local(def_id)? {
             Node::ImplItem(impl_item) => {
                 let impl_did = tcx.hir().get_parent_item(impl_item.hir_id());
                 if let hir::OwnerNode::Item(Item {

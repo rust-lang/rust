@@ -74,7 +74,7 @@ pub fn enable() {
     unsafe { ptr::from_ref(&CALLBACK).read_volatile() };
 }
 
-#[link_section = ".CRT$XLB"]
+#[unsafe(link_section = ".CRT$XLB")]
 #[cfg_attr(miri, used)] // Miri only considers explicitly `#[used]` statics for `lookup_link_section`
 pub static CALLBACK: unsafe extern "system" fn(*mut c_void, u32, *mut c_void) = tls_callback;
 

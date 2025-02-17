@@ -7,12 +7,12 @@
 // This target uses the "hard" floating convention (ABI) where floating point values
 // are passed to/from subroutines via FPU registers (S0, S1, D0, D1, etc.).
 
-use crate::spec::{FloatAbi, Target, TargetOptions, base, cvs};
+use crate::spec::{FloatAbi, Target, TargetMetadata, TargetOptions, base, cvs};
 
 pub(crate) fn target() -> Target {
     Target {
         llvm_target: "thumbv7a-none-eabihf".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: None,
             tier: Some(3),
             host_tools: None,

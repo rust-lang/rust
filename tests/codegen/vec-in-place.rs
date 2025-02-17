@@ -1,5 +1,5 @@
 //@ ignore-std-debug-assertions (FIXME: checks for call detect scoped noalias metadata)
-//@ compile-flags: -O -Z merge-functions=disabled
+//@ compile-flags: -Copt-level=3 -Z merge-functions=disabled
 #![crate_type = "lib"]
 
 // Ensure that trivial casts of vec elements are O(1)

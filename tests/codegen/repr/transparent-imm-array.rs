@@ -1,5 +1,5 @@
 //@ revisions: arm-linux arm-android armv7-linux armv7-android mips thumb sparc
-//@ compile-flags: -O -C no-prepopulate-passes
+//@ compile-flags: -Copt-level=3 -C no-prepopulate-passes
 
 //@[arm-linux] compile-flags: --target arm-unknown-linux-gnueabi
 //@[arm-linux] needs-llvm-components: arm

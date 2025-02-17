@@ -14,7 +14,7 @@ LL | #![warn(edition_2024_expr_fragment_specifier)]
 help: to keep the existing behavior, use the `expr_2021` fragment specifier
    |
 LL |     ($e:expr_2021) => {
-   |         ~~~~~~~~~
+   |             +++++
 
 warning: the `expr` fragment specifier will accept more expressions in the 2024 edition
   --> $DIR/expr_2021_cargo_fix_edition.rs:11:11
@@ -27,7 +27,7 @@ LL |     ($($i:expr)*) => { };
 help: to keep the existing behavior, use the `expr_2021` fragment specifier
    |
 LL |     ($($i:expr_2021)*) => { };
-   |           ~~~~~~~~~
+   |               +++++
 
 warning: 2 warnings emitted
 

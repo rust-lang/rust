@@ -11,8 +11,9 @@ note: for a trait to be dyn compatible it needs to allow building a vtable
    = note: the trait is not dyn compatible because it uses `Self` as a type parameter
 help: consider using an opaque type instead
    |
-LL | fn foo(a: &impl ConstParamTy_) {}
-   |            ~~~~
+LL - fn foo(a: &dyn ConstParamTy_) {}
+LL + fn foo(a: &impl ConstParamTy_) {}
+   |
 
 error[E0038]: the trait `UnsizedConstParamTy` is not dyn compatible
   --> $DIR/const_param_ty_dyn_compatibility.rs:9:16
@@ -27,8 +28,9 @@ note: for a trait to be dyn compatible it needs to allow building a vtable
    = note: the trait is not dyn compatible because it uses `Self` as a type parameter
 help: consider using an opaque type instead
    |
-LL | fn bar(a: &impl UnsizedConstParamTy) {}
-   |            ~~~~
+LL - fn bar(a: &dyn UnsizedConstParamTy) {}
+LL + fn bar(a: &impl UnsizedConstParamTy) {}
+   |
 
 error: aborting due to 2 previous errors
 

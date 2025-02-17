@@ -48,7 +48,7 @@ pub(crate) fn get_ptr_and_method_ref<'tcx>(
 ) -> (Pointer, Value) {
     let (ptr, vtable) = 'block: {
         if let BackendRepr::Scalar(_) = arg.layout().backend_repr {
-            while !arg.layout().ty.is_unsafe_ptr() && !arg.layout().ty.is_ref() {
+            while !arg.layout().ty.is_raw_ptr() && !arg.layout().ty.is_ref() {
                 let (idx, _) = arg
                     .layout()
                     .non_1zst_field(fx)

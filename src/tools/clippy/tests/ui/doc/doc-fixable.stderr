@@ -8,8 +8,9 @@ LL | /// The foo_bar function does _nothing_. See also foo::bar. (note the dot t
    = help: to override `-D warnings` add `#[allow(clippy::doc_markdown)]`
 help: try
    |
-LL | /// The `foo_bar` function does _nothing_. See also foo::bar. (note the dot there)
-   |         ~~~~~~~~~
+LL - /// The foo_bar function does _nothing_. See also foo::bar. (note the dot there)
+LL + /// The `foo_bar` function does _nothing_. See also foo::bar. (note the dot there)
+   |
 
 error: item in documentation is missing backticks
   --> tests/ui/doc/doc-fixable.rs:9:51
@@ -19,8 +20,9 @@ LL | /// The foo_bar function does _nothing_. See also foo::bar. (note the dot t
    |
 help: try
    |
-LL | /// The foo_bar function does _nothing_. See also `foo::bar`. (note the dot there)
-   |                                                   ~~~~~~~~~~
+LL - /// The foo_bar function does _nothing_. See also foo::bar. (note the dot there)
+LL + /// The foo_bar function does _nothing_. See also `foo::bar`. (note the dot there)
+   |
 
 error: item in documentation is missing backticks
   --> tests/ui/doc/doc-fixable.rs:10:83
@@ -30,8 +32,9 @@ LL | /// Markdown is _weird_. I mean _really weird_. This \_ is ok. So is `_`. B
    |
 help: try
    |
-LL | /// Markdown is _weird_. I mean _really weird_. This \_ is ok. So is `_`. But not `Foo::some_fun`
-   |                                                                                   ~~~~~~~~~~~~~~~
+LL - /// Markdown is _weird_. I mean _really weird_. This \_ is ok. So is `_`. But not Foo::some_fun
+LL + /// Markdown is _weird_. I mean _really weird_. This \_ is ok. So is `_`. But not `Foo::some_fun`
+   |
 
 error: item in documentation is missing backticks
   --> tests/ui/doc/doc-fixable.rs:12:13
@@ -41,8 +44,9 @@ LL | /// Here be ::a::global:path, and _::another::global::path_.  :: is not a p
    |
 help: try
    |
-LL | /// Here be `::a::global:path`, and _::another::global::path_.  :: is not a path though.
-   |             ~~~~~~~~~~~~~~~~~~
+LL - /// Here be ::a::global:path, and _::another::global::path_.  :: is not a path though.
+LL + /// Here be `::a::global:path`, and _::another::global::path_.  :: is not a path though.
+   |
 
 error: item in documentation is missing backticks
   --> tests/ui/doc/doc-fixable.rs:12:36
@@ -52,8 +56,9 @@ LL | /// Here be ::a::global:path, and _::another::global::path_.  :: is not a p
    |
 help: try
    |
-LL | /// Here be ::a::global:path, and _`::another::global::path`_.  :: is not a path though.
-   |                                    ~~~~~~~~~~~~~~~~~~~~~~~~~
+LL - /// Here be ::a::global:path, and _::another::global::path_.  :: is not a path though.
+LL + /// Here be ::a::global:path, and _`::another::global::path`_.  :: is not a path though.
+   |
 
 error: item in documentation is missing backticks
   --> tests/ui/doc/doc-fixable.rs:13:25
@@ -63,8 +68,9 @@ LL | /// Import an item from ::awesome::global::blob:: (Intended postfix)
    |
 help: try
    |
-LL | /// Import an item from `::awesome::global::blob::` (Intended postfix)
-   |                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL - /// Import an item from ::awesome::global::blob:: (Intended postfix)
+LL + /// Import an item from `::awesome::global::blob::` (Intended postfix)
+   |
 
 error: item in documentation is missing backticks
   --> tests/ui/doc/doc-fixable.rs:14:31
@@ -74,8 +80,9 @@ LL | /// These are the options for ::Cat: (Intended trailing single colon, shoul
    |
 help: try
    |
-LL | /// These are the options for `::Cat`: (Intended trailing single colon, shouldn't be linted)
-   |                               ~~~~~~~
+LL - /// These are the options for ::Cat: (Intended trailing single colon, shouldn't be linted)
+LL + /// These are the options for `::Cat`: (Intended trailing single colon, shouldn't be linted)
+   |
 
 error: item in documentation is missing backticks
   --> tests/ui/doc/doc-fixable.rs:15:22
@@ -85,8 +92,9 @@ LL | /// That's not code ~NotInCodeBlock~.
    |
 help: try
    |
-LL | /// That's not code ~`NotInCodeBlock`~.
-   |                      ~~~~~~~~~~~~~~~~
+LL - /// That's not code ~NotInCodeBlock~.
+LL + /// That's not code ~`NotInCodeBlock`~.
+   |
 
 error: item in documentation is missing backticks
   --> tests/ui/doc/doc-fixable.rs:16:5
@@ -96,8 +104,9 @@ LL | /// be_sure_we_got_to_the_end_of_it
    |
 help: try
    |
-LL | /// `be_sure_we_got_to_the_end_of_it`
-   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL - /// be_sure_we_got_to_the_end_of_it
+LL + /// `be_sure_we_got_to_the_end_of_it`
+   |
 
 error: item in documentation is missing backticks
   --> tests/ui/doc/doc-fixable.rs:30:5
@@ -107,8 +116,9 @@ LL | /// be_sure_we_got_to_the_end_of_it
    |
 help: try
    |
-LL | /// `be_sure_we_got_to_the_end_of_it`
-   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL - /// be_sure_we_got_to_the_end_of_it
+LL + /// `be_sure_we_got_to_the_end_of_it`
+   |
 
 error: item in documentation is missing backticks
   --> tests/ui/doc/doc-fixable.rs:37:5
@@ -118,8 +128,9 @@ LL | /// be_sure_we_got_to_the_end_of_it
    |
 help: try
    |
-LL | /// `be_sure_we_got_to_the_end_of_it`
-   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL - /// be_sure_we_got_to_the_end_of_it
+LL + /// `be_sure_we_got_to_the_end_of_it`
+   |
 
 error: item in documentation is missing backticks
   --> tests/ui/doc/doc-fixable.rs:51:5
@@ -129,8 +140,9 @@ LL | /// be_sure_we_got_to_the_end_of_it
    |
 help: try
    |
-LL | /// `be_sure_we_got_to_the_end_of_it`
-   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL - /// be_sure_we_got_to_the_end_of_it
+LL + /// `be_sure_we_got_to_the_end_of_it`
+   |
 
 error: item in documentation is missing backticks
   --> tests/ui/doc/doc-fixable.rs:79:5
@@ -140,8 +152,9 @@ LL | /// be_sure_we_got_to_the_end_of_it
    |
 help: try
    |
-LL | /// `be_sure_we_got_to_the_end_of_it`
-   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL - /// be_sure_we_got_to_the_end_of_it
+LL + /// `be_sure_we_got_to_the_end_of_it`
+   |
 
 error: item in documentation is missing backticks
   --> tests/ui/doc/doc-fixable.rs:96:5
@@ -151,8 +164,9 @@ LL | /// be_sure_we_got_to_the_end_of_it
    |
 help: try
    |
-LL | /// `be_sure_we_got_to_the_end_of_it`
-   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL - /// be_sure_we_got_to_the_end_of_it
+LL + /// `be_sure_we_got_to_the_end_of_it`
+   |
 
 error: item in documentation is missing backticks
   --> tests/ui/doc/doc-fixable.rs:104:8
@@ -162,8 +176,9 @@ LL | /// ## CamelCaseThing
    |
 help: try
    |
-LL | /// ## `CamelCaseThing`
-   |        ~~~~~~~~~~~~~~~~
+LL - /// ## CamelCaseThing
+LL + /// ## `CamelCaseThing`
+   |
 
 error: item in documentation is missing backticks
   --> tests/ui/doc/doc-fixable.rs:107:7
@@ -173,8 +188,9 @@ LL | /// # CamelCaseThing
    |
 help: try
    |
-LL | /// # `CamelCaseThing`
-   |       ~~~~~~~~~~~~~~~~
+LL - /// # CamelCaseThing
+LL + /// # `CamelCaseThing`
+   |
 
 error: item in documentation is missing backticks
   --> tests/ui/doc/doc-fixable.rs:109:22
@@ -184,8 +200,9 @@ LL | /// Not a title #897 CamelCaseThing
    |
 help: try
    |
-LL | /// Not a title #897 `CamelCaseThing`
-   |                      ~~~~~~~~~~~~~~~~
+LL - /// Not a title #897 CamelCaseThing
+LL + /// Not a title #897 `CamelCaseThing`
+   |
 
 error: item in documentation is missing backticks
   --> tests/ui/doc/doc-fixable.rs:110:5
@@ -195,8 +212,9 @@ LL | /// be_sure_we_got_to_the_end_of_it
    |
 help: try
    |
-LL | /// `be_sure_we_got_to_the_end_of_it`
-   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL - /// be_sure_we_got_to_the_end_of_it
+LL + /// `be_sure_we_got_to_the_end_of_it`
+   |
 
 error: item in documentation is missing backticks
   --> tests/ui/doc/doc-fixable.rs:117:5
@@ -206,8 +224,9 @@ LL | /// be_sure_we_got_to_the_end_of_it
    |
 help: try
    |
-LL | /// `be_sure_we_got_to_the_end_of_it`
-   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL - /// be_sure_we_got_to_the_end_of_it
+LL + /// `be_sure_we_got_to_the_end_of_it`
+   |
 
 error: item in documentation is missing backticks
   --> tests/ui/doc/doc-fixable.rs:130:5
@@ -217,8 +236,9 @@ LL | /// be_sure_we_got_to_the_end_of_it
    |
 help: try
    |
-LL | /// `be_sure_we_got_to_the_end_of_it`
-   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL - /// be_sure_we_got_to_the_end_of_it
+LL + /// `be_sure_we_got_to_the_end_of_it`
+   |
 
 error: item in documentation is missing backticks
   --> tests/ui/doc/doc-fixable.rs:141:43
@@ -228,8 +248,9 @@ LL | /** E.g., serialization of an empty list: FooBar
    |
 help: try
    |
-LL | /** E.g., serialization of an empty list: `FooBar`
-   |                                           ~~~~~~~~
+LL - /** E.g., serialization of an empty list: FooBar
+LL + /** E.g., serialization of an empty list: `FooBar`
+   |
 
 error: item in documentation is missing backticks
   --> tests/ui/doc/doc-fixable.rs:146:5
@@ -239,8 +260,9 @@ LL | And BarQuz too.
    |
 help: try
    |
-LL | And `BarQuz` too.
-   |     ~~~~~~~~
+LL - And BarQuz too.
+LL + And `BarQuz` too.
+   |
 
 error: item in documentation is missing backticks
   --> tests/ui/doc/doc-fixable.rs:147:1
@@ -250,7 +272,8 @@ LL | be_sure_we_got_to_the_end_of_it
    |
 help: try
    |
-LL | `be_sure_we_got_to_the_end_of_it`
+LL - be_sure_we_got_to_the_end_of_it
+LL + `be_sure_we_got_to_the_end_of_it`
    |
 
 error: item in documentation is missing backticks
@@ -261,8 +284,9 @@ LL | /** E.g., serialization of an empty list: FooBar
    |
 help: try
    |
-LL | /** E.g., serialization of an empty list: `FooBar`
-   |                                           ~~~~~~~~
+LL - /** E.g., serialization of an empty list: FooBar
+LL + /** E.g., serialization of an empty list: `FooBar`
+   |
 
 error: item in documentation is missing backticks
   --> tests/ui/doc/doc-fixable.rs:157:5
@@ -272,8 +296,9 @@ LL | And BarQuz too.
    |
 help: try
    |
-LL | And `BarQuz` too.
-   |     ~~~~~~~~
+LL - And BarQuz too.
+LL + And `BarQuz` too.
+   |
 
 error: item in documentation is missing backticks
   --> tests/ui/doc/doc-fixable.rs:158:1
@@ -283,7 +308,8 @@ LL | be_sure_we_got_to_the_end_of_it
    |
 help: try
    |
-LL | `be_sure_we_got_to_the_end_of_it`
+LL - be_sure_we_got_to_the_end_of_it
+LL + `be_sure_we_got_to_the_end_of_it`
    |
 
 error: item in documentation is missing backticks
@@ -294,8 +320,9 @@ LL | /// be_sure_we_got_to_the_end_of_it
    |
 help: try
    |
-LL | /// `be_sure_we_got_to_the_end_of_it`
-   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL - /// be_sure_we_got_to_the_end_of_it
+LL + /// `be_sure_we_got_to_the_end_of_it`
+   |
 
 error: item in documentation is missing backticks
   --> tests/ui/doc/doc-fixable.rs:188:22
@@ -305,8 +332,9 @@ LL | /// An iterator over mycrate::Collection's values.
    |
 help: try
    |
-LL | /// An iterator over `mycrate::Collection`'s values.
-   |                      ~~~~~~~~~~~~~~~~~~~~~
+LL - /// An iterator over mycrate::Collection's values.
+LL + /// An iterator over `mycrate::Collection`'s values.
+   |
 
 error: item in documentation is missing backticks
   --> tests/ui/doc/doc-fixable.rs:212:34
@@ -316,8 +344,9 @@ LL | /// Foo \[bar\] \[baz\] \[qux\]. DocMarkdownLint
    |
 help: try
    |
-LL | /// Foo \[bar\] \[baz\] \[qux\]. `DocMarkdownLint`
-   |                                  ~~~~~~~~~~~~~~~~~
+LL - /// Foo \[bar\] \[baz\] \[qux\]. DocMarkdownLint
+LL + /// Foo \[bar\] \[baz\] \[qux\]. `DocMarkdownLint`
+   |
 
 error: item in documentation is missing backticks
   --> tests/ui/doc/doc-fixable.rs:235:22
@@ -327,8 +356,9 @@ LL | /// There is no try (do() or do_not()).
    |
 help: try
    |
-LL | /// There is no try (`do()` or do_not()).
-   |                      ~~~~~~
+LL - /// There is no try (do() or do_not()).
+LL + /// There is no try (`do()` or do_not()).
+   |
 
 error: item in documentation is missing backticks
   --> tests/ui/doc/doc-fixable.rs:235:30
@@ -338,8 +368,9 @@ LL | /// There is no try (do() or do_not()).
    |
 help: try
    |
-LL | /// There is no try (do() or `do_not()`).
-   |                              ~~~~~~~~~~
+LL - /// There is no try (do() or do_not()).
+LL + /// There is no try (do() or `do_not()`).
+   |
 
 error: item in documentation is missing backticks
   --> tests/ui/doc/doc-fixable.rs:238:5
@@ -349,8 +380,9 @@ LL | /// ABes
    |
 help: try
    |
-LL | /// `ABes`
-   |     ~~~~~~
+LL - /// ABes
+LL + /// `ABes`
+   |
 
 error: item in documentation is missing backticks
   --> tests/ui/doc/doc-fixable.rs:244:9
@@ -360,8 +392,9 @@ LL |     /// foo()
    |
 help: try
    |
-LL |     /// `foo()`
-   |         ~~~~~~~
+LL -     /// foo()
+LL +     /// `foo()`
+   |
 
 error: you should put bare URLs between `<`/`>` or make a proper Markdown link
   --> tests/ui/doc/doc-fixable.rs:248:5

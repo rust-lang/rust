@@ -554,7 +554,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                             _ => self.requires_unsafe(expr.span, UseOfExternStatic),
                         }
                     }
-                } else if self.thir[arg].ty.is_unsafe_ptr() {
+                } else if self.thir[arg].ty.is_raw_ptr() {
                     self.requires_unsafe(expr.span, DerefOfRawPointer);
                 }
             }
@@ -759,7 +759,7 @@ impl UnsafeOpKind {
         });
         let unsafe_not_inherited_note = if should_suggest {
             suggest_unsafe_block.then(|| {
-                let body_span = tcx.hir().body(parent_owner.body_id().unwrap()).value.span;
+                let body_span = tcx.hir_body(parent_owner.body_id().unwrap()).value.span;
                 UnsafeNotInheritedLintNote {
                     signature_span: tcx.def_span(parent_id.def_id),
                     body_span,

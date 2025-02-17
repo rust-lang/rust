@@ -245,8 +245,8 @@ fn needs_mutable_borrow(cx: &LateContext<'_>, iter_expr: &IterExpr, loop_expr: &
     impl<'tcx> Visitor<'tcx> for AfterLoopVisitor<'_, '_, 'tcx> {
         type NestedFilter = OnlyBodies;
         type Result = ControlFlow<()>;
-        fn nested_visit_map(&mut self) -> Self::Map {
-            self.cx.tcx.hir()
+        fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+            self.cx.tcx
         }
 
         fn visit_expr(&mut self, e: &'tcx Expr<'_>) -> Self::Result {
@@ -288,8 +288,8 @@ fn needs_mutable_borrow(cx: &LateContext<'_>, iter_expr: &IterExpr, loop_expr: &
     }
     impl<'tcx> Visitor<'tcx> for NestedLoopVisitor<'_, '_, 'tcx> {
         type NestedFilter = OnlyBodies;
-        fn nested_visit_map(&mut self) -> Self::Map {
-            self.cx.tcx.hir()
+        fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+            self.cx.tcx
         }
 
         fn visit_local(&mut self, l: &'tcx LetStmt<'_>) {
@@ -351,7 +351,7 @@ fn needs_mutable_borrow(cx: &LateContext<'_>, iter_expr: &IterExpr, loop_expr: &
             loop_id: loop_expr.hir_id,
             after_loop: false,
         };
-        v.visit_expr(cx.tcx.hir().body(cx.enclosing_body.unwrap()).value)
+        v.visit_expr(cx.tcx.hir_body(cx.enclosing_body.unwrap()).value)
             .is_break()
     }
 }

@@ -159,12 +159,35 @@ pub trait BuilderMethods<'a, 'tcx>:
     /// must be interpreted as unsigned and can be assumed to be less than the size of the left
     /// operand.
     fn ashr(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
-    fn unchecked_sadd(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
-    fn unchecked_uadd(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
-    fn unchecked_ssub(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
-    fn unchecked_usub(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
-    fn unchecked_smul(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
-    fn unchecked_umul(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
+    fn unchecked_sadd(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value {
+        self.add(lhs, rhs)
+    }
+    fn unchecked_uadd(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value {
+        self.add(lhs, rhs)
+    }
+    fn unchecked_suadd(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value {
+        self.unchecked_sadd(lhs, rhs)
+    }
+    fn unchecked_ssub(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value {
+        self.sub(lhs, rhs)
+    }
+    fn unchecked_usub(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value {
+        self.sub(lhs, rhs)
+    }
+    fn unchecked_susub(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value {
+        self.unchecked_ssub(lhs, rhs)
+    }
+    fn unchecked_smul(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value {
+        self.mul(lhs, rhs)
+    }
+    fn unchecked_umul(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value {
+        self.mul(lhs, rhs)
+    }
+    fn unchecked_sumul(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value {
+        // Which to default to is a fairly arbitrary choice,
+        // but this is what slice layout was using before.
+        self.unchecked_smul(lhs, rhs)
+    }
     fn and(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn or(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     /// Defaults to [`Self::or`], but guarantees `(lhs & rhs) == 0` so some backends
@@ -241,6 +264,19 @@ pub trait BuilderMethods<'a, 'tcx>:
         let width = self.const_uint_big(ty, u128::wrapping_sub(end, start));
         let cmp = self.icmp(IntPredicate::IntULE, shifted, width);
         self.assume(cmp);
+    }
+
+    /// Emits an `assume` that the `val` of pointer type is non-null.
+    ///
+    /// You may want to check the optimization level before bothering calling this.
+    fn assume_nonnull(&mut self, val: Self::Value) {
+        // Arguably in LLVM it'd be better to emit an assume operand bundle instead
+        // <https://llvm.org/docs/LangRef.html#assume-operand-bundles>
+        // but this works fine for all backends.
+
+        let null = self.const_null(self.type_ptr());
+        let is_null = self.icmp(IntPredicate::IntNE, val, null);
+        self.assume(is_null);
     }
 
     fn range_metadata(&mut self, load: Self::Value, range: WrappingRange);

@@ -7,7 +7,6 @@ use rustc_ast::{self as ast, NodeId, visit as ast_visit};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::thousands::format_with_underscores;
 use rustc_hir::{self as hir, AmbigArg, HirId, intravisit as hir_visit};
-use rustc_middle::hir::map::Map;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
@@ -56,17 +55,14 @@ impl Node {
 /// a `visit_*` method for, and so we cannot measure these, which is
 /// unfortunate.
 struct StatCollector<'k> {
-    krate: Option<Map<'k>>,
+    tcx: Option<TyCtxt<'k>>,
     nodes: FxHashMap<&'static str, Node>,
     seen: FxHashSet<HirId>,
 }
 
 pub fn print_hir_stats(tcx: TyCtxt<'_>) {
-    let mut collector = StatCollector {
-        krate: Some(tcx.hir()),
-        nodes: FxHashMap::default(),
-        seen: FxHashSet::default(),
-    };
+    let mut collector =
+        StatCollector { tcx: Some(tcx), nodes: FxHashMap::default(), seen: FxHashSet::default() };
     tcx.hir().walk_toplevel_module(&mut collector);
     tcx.hir().walk_attributes(&mut collector);
     collector.print("HIR STATS", "hir-stats");
@@ -76,7 +72,7 @@ pub fn print_ast_stats(krate: &ast::Crate, title: &str, prefix: &str) {
     use rustc_ast::visit::Visitor;
 
     let mut collector =
-        StatCollector { krate: None, nodes: FxHashMap::default(), seen: FxHashSet::default() };
+        StatCollector { tcx: None, nodes: FxHashMap::default(), seen: FxHashSet::default() };
     collector.visit_crate(krate);
     collector.print(title, prefix);
 }
@@ -205,27 +201,27 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     }
 
     fn visit_nested_item(&mut self, id: hir::ItemId) {
-        let nested_item = self.krate.unwrap().item(id);
+        let nested_item = self.tcx.unwrap().hir_item(id);
         self.visit_item(nested_item)
     }
 
     fn visit_nested_trait_item(&mut self, trait_item_id: hir::TraitItemId) {
-        let nested_trait_item = self.krate.unwrap().trait_item(trait_item_id);
+        let nested_trait_item = self.tcx.unwrap().hir_trait_item(trait_item_id);
         self.visit_trait_item(nested_trait_item)
     }
 
     fn visit_nested_impl_item(&mut self, impl_item_id: hir::ImplItemId) {
-        let nested_impl_item = self.krate.unwrap().impl_item(impl_item_id);
+        let nested_impl_item = self.tcx.unwrap().hir_impl_item(impl_item_id);
         self.visit_impl_item(nested_impl_item)
     }
 
     fn visit_nested_foreign_item(&mut self, id: hir::ForeignItemId) {
-        let nested_foreign_item = self.krate.unwrap().foreign_item(id);
+        let nested_foreign_item = self.tcx.unwrap().hir_foreign_item(id);
         self.visit_foreign_item(nested_foreign_item);
     }
 
     fn visit_nested_body(&mut self, body_id: hir::BodyId) {
-        let nested_body = self.krate.unwrap().body(body_id);
+        let nested_body = self.tcx.unwrap().hir_body(body_id);
         self.visit_body(nested_body)
     }
 

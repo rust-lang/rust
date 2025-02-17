@@ -8,8 +8,9 @@ LL |         Some(Val::Foo) => 3;
    |
 help: replace `;` with `,` to end a `match` arm expression
    |
-LL |         Some(Val::Foo) => 3,
-   |                            ~
+LL -         Some(Val::Foo) => 3;
+LL +         Some(Val::Foo) => 3,
+   |
 
 error: `match` arm body without braces
   --> $DIR/match-arm-without-braces.rs:31:11

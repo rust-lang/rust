@@ -9,6 +9,8 @@ LL | | fn a() {}
    = help: to override `-D warnings` add `#[allow(clippy::four_forward_slashes)]`
 help: make this a doc comment by removing one `/`
    |
+LL - //// whoops
+LL - fn a() {}
 LL + /// whoops
    |
 
@@ -22,6 +24,8 @@ LL | | fn b() {}
    |
 help: make this a doc comment by removing one `/`
    |
+LL - //// whoops
+LL - #[allow(dead_code)]
 LL + /// whoops
    |
 
@@ -50,6 +54,8 @@ LL | | fn g() {}
    |
 help: make this a doc comment by removing one `/`
    |
+LL - //// between attributes
+LL - #[allow(dead_code)]
 LL + /// between attributes
    |
 
@@ -62,6 +68,8 @@ LL | | fn h() {}
    |
 help: make this a doc comment by removing one `/`
    |
+LL -     //// not very start of contents
+LL - fn h() {}
 LL + /// not very start of contents
    |
 

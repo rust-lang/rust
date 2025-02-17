@@ -1,6 +1,3 @@
-middle_adjust_for_foreign_abi_error =
-    target architecture {$arch} does not support `extern {$abi}` ABI
-
 middle_assert_async_resume_after_panic = `async fn` resumed after panicking
 
 middle_assert_async_resume_after_return = `async fn` resumed after completion
@@ -83,10 +80,6 @@ middle_failed_writing_file =
 
 middle_layout_references_error =
     the type has an unknown layout
-
-middle_limit_invalid =
-    `limit` must be a non-negative integer
-    .label = {$error_str}
 
 middle_opaque_hidden_type_mismatch =
     concrete type differs from previous defining opaque type use

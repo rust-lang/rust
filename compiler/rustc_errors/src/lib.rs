@@ -230,9 +230,39 @@ impl SubstitutionPart {
         !self.snippet.is_empty() && self.replaces_meaningful_content(sm)
     }
 
+    /// Whether this is a replacement that overwrites source with a snippet
+    /// in a way that isn't a superset of the original string. For example,
+    /// replacing "abc" with "abcde" is not destructive, but replacing it
+    /// it with "abx" is, since the "c" character is lost.
+    pub fn is_destructive_replacement(&self, sm: &SourceMap) -> bool {
+        self.is_replacement(sm)
+            && !sm.span_to_snippet(self.span).is_ok_and(|snippet| {
+                self.snippet.trim_start().starts_with(snippet.trim_start())
+                    || self.snippet.trim_end().ends_with(snippet.trim_end())
+            })
+    }
+
     fn replaces_meaningful_content(&self, sm: &SourceMap) -> bool {
         sm.span_to_snippet(self.span)
             .map_or(!self.span.is_empty(), |snippet| !snippet.trim().is_empty())
+    }
+
+    /// Try to turn a replacement into an addition when the span that is being
+    /// overwritten matches either the prefix or suffix of the replacement.
+    fn trim_trivial_replacements(&mut self, sm: &SourceMap) {
+        if self.snippet.is_empty() {
+            return;
+        }
+        let Ok(snippet) = sm.span_to_snippet(self.span) else {
+            return;
+        };
+        if self.snippet.starts_with(&snippet) {
+            self.span = self.span.shrink_to_hi();
+            self.snippet = self.snippet[snippet.len()..].to_string();
+        } else if self.snippet.ends_with(&snippet) {
+            self.span = self.span.shrink_to_lo();
+            self.snippet = self.snippet[..self.snippet.len() - snippet.len()].to_string();
+        }
     }
 }
 

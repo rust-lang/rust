@@ -42,8 +42,9 @@ LL |     attr::fn bar() -> String {
    = help: the `.` operator will dereference the value if needed
 help: try using `.` instead
    |
-LL |     attr::fn bar() . String {
-   |                    ~
+LL -     attr::fn bar() -> String {
+LL +     attr::fn bar() . String {
+   |
 
 error: expected one of `(`, `.`, `::`, `;`, `?`, `}`, or an operator, found `{`
   --> $DIR/issue-118530-ice.rs:5:30

@@ -238,6 +238,7 @@ impl str {
     /// assert_eq!("💖", sparkle_heart);
     /// ```
     #[unstable(feature = "inherent_str_constructors", issue = "131114")]
+    #[rustc_diagnostic_item = "str_inherent_from_utf8"]
     pub const fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
         converts::from_utf8(v)
     }
@@ -274,6 +275,7 @@ impl str {
     /// errors that can be returned.
     #[unstable(feature = "inherent_str_constructors", issue = "131114")]
     #[rustc_const_unstable(feature = "const_str_from_utf8", issue = "91006")]
+    #[rustc_diagnostic_item = "str_inherent_from_utf8_mut"]
     pub const fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
         converts::from_utf8_mut(v)
     }
@@ -306,6 +308,7 @@ impl str {
     #[inline]
     #[must_use]
     #[unstable(feature = "inherent_str_constructors", issue = "131114")]
+    #[rustc_diagnostic_item = "str_inherent_from_utf8_unchecked"]
     pub const unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
         // SAFETY: converts::from_utf8_unchecked has the same safety requirements as this function.
         unsafe { converts::from_utf8_unchecked(v) }
@@ -331,6 +334,7 @@ impl str {
     #[inline]
     #[must_use]
     #[unstable(feature = "inherent_str_constructors", issue = "131114")]
+    #[rustc_diagnostic_item = "str_inherent_from_utf8_unchecked_mut"]
     pub const unsafe fn from_utf8_unchecked_mut(v: &mut [u8]) -> &mut str {
         // SAFETY: converts::from_utf8_unchecked_mut has the same safety requirements as this function.
         unsafe { converts::from_utf8_unchecked_mut(v) }
@@ -361,7 +365,7 @@ impl str {
     /// ```
     #[must_use]
     #[stable(feature = "is_char_boundary", since = "1.9.0")]
-    #[rustc_const_unstable(feature = "const_is_char_boundary", issue = "131516")]
+    #[rustc_const_stable(feature = "const_is_char_boundary", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn is_char_boundary(&self, index: usize) -> bool {
         // 0 is always ok.
@@ -818,7 +822,7 @@ impl str {
     #[inline]
     #[must_use]
     #[stable(feature = "str_split_at", since = "1.4.0")]
-    #[rustc_const_unstable(feature = "const_str_split_at", issue = "131518")]
+    #[rustc_const_stable(feature = "const_str_split_at", since = "CURRENT_RUSTC_VERSION")]
     pub const fn split_at(&self, mid: usize) -> (&str, &str) {
         match self.split_at_checked(mid) {
             None => slice_error_fail(self, 0, mid),
@@ -859,7 +863,7 @@ impl str {
     #[inline]
     #[must_use]
     #[stable(feature = "str_split_at", since = "1.4.0")]
-    #[rustc_const_unstable(feature = "const_str_split_at", issue = "131518")]
+    #[rustc_const_stable(feature = "const_str_split_at", since = "CURRENT_RUSTC_VERSION")]
     pub const fn split_at_mut(&mut self, mid: usize) -> (&mut str, &mut str) {
         // is_char_boundary checks that the index is in [0, .len()]
         if self.is_char_boundary(mid) {
@@ -899,7 +903,7 @@ impl str {
     #[inline]
     #[must_use]
     #[stable(feature = "split_at_checked", since = "1.80.0")]
-    #[rustc_const_unstable(feature = "const_str_split_at", issue = "131518")]
+    #[rustc_const_stable(feature = "const_str_split_at", since = "CURRENT_RUSTC_VERSION")]
     pub const fn split_at_checked(&self, mid: usize) -> Option<(&str, &str)> {
         // is_char_boundary checks that the index is in [0, .len()]
         if self.is_char_boundary(mid) {
@@ -940,7 +944,7 @@ impl str {
     #[inline]
     #[must_use]
     #[stable(feature = "split_at_checked", since = "1.80.0")]
-    #[rustc_const_unstable(feature = "const_str_split_at", issue = "131518")]
+    #[rustc_const_stable(feature = "const_str_split_at", since = "CURRENT_RUSTC_VERSION")]
     pub const fn split_at_mut_checked(&mut self, mid: usize) -> Option<(&mut str, &mut str)> {
         // is_char_boundary checks that the index is in [0, .len()]
         if self.is_char_boundary(mid) {

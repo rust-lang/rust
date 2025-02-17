@@ -1,4 +1,4 @@
-error: couldn't read `$DIR/lol`: No such file or directory (os error 2)
+error: couldn't read `$DIR/lol`: $FILE_NOT_FOUND_MSG (os error 2)
   --> $DIR/staged-api-invalid-path-108697.rs:8:1
    |
 LL | mod foo;

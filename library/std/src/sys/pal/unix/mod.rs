@@ -373,24 +373,24 @@ cfg_if::cfg_if! {
             cfg(target_feature = "crt-static"))]
         #[link(name = "dl", cfg(not(target_feature = "crt-static")))]
         #[link(name = "log", cfg(not(target_feature = "crt-static")))]
-        extern "C" {}
+        unsafe extern "C" {}
     } else if #[cfg(target_os = "freebsd")] {
         #[link(name = "execinfo")]
         #[link(name = "pthread")]
-        extern "C" {}
+        unsafe extern "C" {}
     } else if #[cfg(target_os = "netbsd")] {
         #[link(name = "pthread")]
         #[link(name = "rt")]
-        extern "C" {}
+        unsafe extern "C" {}
     } else if #[cfg(any(target_os = "dragonfly", target_os = "openbsd"))] {
         #[link(name = "pthread")]
-        extern "C" {}
+        unsafe extern "C" {}
     } else if #[cfg(target_os = "solaris")] {
         #[link(name = "socket")]
         #[link(name = "posix4")]
         #[link(name = "pthread")]
         #[link(name = "resolv")]
-        extern "C" {}
+        unsafe extern "C" {}
     } else if #[cfg(target_os = "illumos")] {
         #[link(name = "socket")]
         #[link(name = "posix4")]
@@ -399,24 +399,24 @@ cfg_if::cfg_if! {
         #[link(name = "nsl")]
         // Use libumem for the (malloc-compatible) allocator
         #[link(name = "umem")]
-        extern "C" {}
+        unsafe extern "C" {}
     } else if #[cfg(target_vendor = "apple")] {
         // Link to `libSystem.dylib`.
         //
         // Don't get confused by the presence of `System.framework`,
         // it is a deprecated wrapper over the dynamic library.
         #[link(name = "System")]
-        extern "C" {}
+        unsafe extern "C" {}
     } else if #[cfg(target_os = "fuchsia")] {
         #[link(name = "zircon")]
         #[link(name = "fdio")]
-        extern "C" {}
+        unsafe extern "C" {}
     } else if #[cfg(all(target_os = "linux", target_env = "uclibc"))] {
         #[link(name = "dl")]
-        extern "C" {}
+        unsafe extern "C" {}
     } else if #[cfg(target_os = "vita")] {
         #[link(name = "pthread", kind = "static", modifiers = "-bundle")]
-        extern "C" {}
+        unsafe extern "C" {}
     }
 }
 

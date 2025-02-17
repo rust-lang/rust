@@ -1,4 +1,4 @@
-use crate::spec::{LinkerFlavor, Lld, Target, add_link_args, base};
+use crate::spec::{LinkerFlavor, Lld, Target, TargetMetadata, add_link_args, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::windows_msvc::opts();
@@ -12,7 +12,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "arm64ec-pc-windows-msvc".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("Arm64EC Windows MSVC".into()),
             tier: Some(3),
             host_tools: Some(false),

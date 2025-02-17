@@ -478,7 +478,7 @@ fn collect_items_rec<'tcx>(
             );
             recursion_depth_reset = None;
 
-            let item = tcx.hir().item(item_id);
+            let item = tcx.hir_item(item_id);
             if let hir::ItemKind::GlobalAsm(asm) = item.kind {
                 for (op, op_sp) in asm.operands {
                     match op {
@@ -1508,6 +1508,13 @@ impl<'v> RootCollector<'_, 'v> {
                             Instance::new(def_id, self.tcx.erase_regions(args))
                         }
                         _ => unreachable!(),
+                    };
+                    let Ok(instance) = self.tcx.try_normalize_erasing_regions(
+                        ty::TypingEnv::fully_monomorphized(),
+                        instance,
+                    ) else {
+                        // Don't ICE on an impossible-to-normalize closure.
+                        return;
                     };
                     let mono_item = create_fn_mono_item(self.tcx, instance, DUMMY_SP);
                     if mono_item.node.is_instantiable(self.tcx) {

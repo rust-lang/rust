@@ -4,6 +4,7 @@
 use std::mem::replace;
 use std::num::NonZero;
 
+use rustc_ast_lowering::stability::extern_abi_stability;
 use rustc_attr_parsing::{
     self as attr, ConstStability, DeprecatedSince, Stability, StabilityLevel, StableSince,
     UnstableReason, VERSION_PLACEHOLDER,
@@ -393,8 +394,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
     /// deep-walking.
     type NestedFilter = nested_filter::All;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
 
     fn visit_item(&mut self, i: &'tcx Item<'tcx>) {
@@ -615,8 +616,8 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
 impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
 
     fn visit_item(&mut self, i: &'tcx Item<'tcx>) {
@@ -755,8 +756,8 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
     /// Because stability levels are scoped lexically, we want to walk
     /// nested items in the context of the outer item, so enable
     /// deep-walking.
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
@@ -1027,8 +1028,8 @@ impl<'tcx> Visitor<'tcx> for CheckTraitImplStable<'tcx> {
         if let TyKind::Never = t.kind {
             self.fully_stable = false;
         }
-        if let TyKind::BareFn(f) = t.kind {
-            if rustc_target::spec::abi::is_stable(f.abi.name()).is_err() {
+        if let TyKind::BareFn(function) = t.kind {
+            if extern_abi_stability(function.abi).is_err() {
                 self.fully_stable = false;
             }
         }

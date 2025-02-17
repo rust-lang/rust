@@ -10,7 +10,6 @@ mod unexpand;
 
 use rustc_hir as hir;
 use rustc_hir::intravisit::{Visitor, walk_expr};
-use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::mir::coverage::{
     CoverageKind, DecisionInfo, FunctionCoverageInfo, Mapping, MappingKind,
@@ -21,7 +20,7 @@ use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 use tracing::{debug, debug_span, trace};
 
-use crate::coverage::counters::CoverageCounters;
+use crate::coverage::counters::BcbCountersData;
 use crate::coverage::graph::CoverageGraph;
 use crate::coverage::mappings::ExtractedMappings;
 
@@ -82,28 +81,21 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
     let extracted_mappings =
         mappings::extract_all_mapping_info_from_mir(tcx, mir_body, &hir_info, &graph);
 
-    ////////////////////////////////////////////////////
-    // Create an optimized mix of `Counter`s and `Expression`s for the `CoverageGraph`. Ensure
-    // every coverage span has a `Counter` or `Expression` assigned to its `BasicCoverageBlock`
-    // and all `Expression` dependencies (operands) are also generated, for any other
-    // `BasicCoverageBlock`s not already associated with a coverage span.
-    let bcbs_with_counter_mappings = extracted_mappings.all_bcbs_with_counter_mappings();
-    if bcbs_with_counter_mappings.is_empty() {
-        // No relevant spans were found in MIR, so skip instrumenting this function.
-        return;
-    }
-
-    let coverage_counters = counters::make_bcb_counters(&graph, &bcbs_with_counter_mappings);
-
-    let mappings = create_mappings(&extracted_mappings, &coverage_counters);
+    let mappings = create_mappings(&extracted_mappings);
     if mappings.is_empty() {
         // No spans could be converted into valid mappings, so skip this function.
         debug!("no spans could be converted into valid mappings; skipping");
         return;
     }
 
-    inject_coverage_statements(mir_body, &graph, &extracted_mappings, &coverage_counters);
+    // Use the coverage graph to prepare intermediate data that will eventually
+    // be used to assign physical counters and counter expressions to points in
+    // the control-flow graph
+    let BcbCountersData { node_flow_data, priority_list } =
+        counters::prepare_bcb_counters_data(&graph);
 
+    // Inject coverage statements into MIR.
+    inject_coverage_statements(mir_body, &graph);
     inject_mcdc_statements(mir_body, &graph, &extracted_mappings);
 
     let mcdc_num_condition_bitmaps = extracted_mappings
@@ -116,29 +108,25 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
     mir_body.function_coverage_info = Some(Box::new(FunctionCoverageInfo {
         function_source_hash: hir_info.function_source_hash,
         body_span: hir_info.body_span,
-        num_counters: coverage_counters.num_counters(),
-        mcdc_bitmap_bits: extracted_mappings.mcdc_bitmap_bits,
-        expressions: coverage_counters.into_expressions(),
+
+        node_flow_data,
+        priority_list,
+
         mappings,
+
+        mcdc_bitmap_bits: extracted_mappings.mcdc_bitmap_bits,
         mcdc_num_condition_bitmaps,
     }));
 }
 
-/// For each coverage span extracted from MIR, create a corresponding
-/// mapping.
+/// For each coverage span extracted from MIR, create a corresponding mapping.
 ///
-/// Precondition: All BCBs corresponding to those spans have been given
-/// coverage counters.
-fn create_mappings(
-    extracted_mappings: &ExtractedMappings,
-    coverage_counters: &CoverageCounters,
-) -> Vec<Mapping> {
-    let term_for_bcb =
-        |bcb| coverage_counters.term_for_bcb(bcb).expect("all BCBs with spans were given counters");
-
+/// FIXME(Zalathar): This used to be where BCBs in the extracted mappings were
+/// resolved to a `CovTerm`. But that is now handled elsewhere, so this
+/// function can potentially be simplified even further.
+fn create_mappings(extracted_mappings: &ExtractedMappings) -> Vec<Mapping> {
     // Fully destructure the mappings struct to make sure we don't miss any kinds.
     let ExtractedMappings {
-        num_bcbs: _,
         code_mappings,
         branch_pairs,
         mcdc_bitmap_bits: _,
@@ -150,22 +138,17 @@ fn create_mappings(
     mappings.extend(code_mappings.iter().map(
         // Ordinary code mappings are the simplest kind.
         |&mappings::CodeMapping { span, bcb }| {
-            let kind = MappingKind::Code(term_for_bcb(bcb));
+            let kind = MappingKind::Code { bcb };
             Mapping { kind, span }
         },
     ));
 
     mappings.extend(branch_pairs.iter().map(
         |&mappings::BranchPair { span, true_bcb, false_bcb }| {
-            let true_term = term_for_bcb(true_bcb);
-            let false_term = term_for_bcb(false_bcb);
-            let kind = MappingKind::Branch { true_term, false_term };
+            let kind = MappingKind::Branch { true_bcb, false_bcb };
             Mapping { kind, span }
         },
     ));
-
-    let term_for_bcb =
-        |bcb| coverage_counters.term_for_bcb(bcb).expect("all BCBs with spans were given counters");
 
     // MCDC branch mappings are appended with their decisions in case decisions were ignored.
     mappings.extend(mcdc_degraded_branches.iter().map(
@@ -176,11 +159,7 @@ fn create_mappings(
              condition_info: _,
              true_index: _,
              false_index: _,
-         }| {
-            let true_term = term_for_bcb(true_bcb);
-            let false_term = term_for_bcb(false_bcb);
-            Mapping { kind: MappingKind::Branch { true_term, false_term }, span }
-        },
+         }| { Mapping { kind: MappingKind::Branch { true_bcb, false_bcb }, span } },
     ));
 
     for (decision, branches) in mcdc_mappings {
@@ -201,12 +180,10 @@ fn create_mappings(
                      true_index: _,
                      false_index: _,
                  }| {
-                    let true_term = term_for_bcb(true_bcb);
-                    let false_term = term_for_bcb(false_bcb);
                     Mapping {
                         kind: MappingKind::MCDCBranch {
-                            true_term,
-                            false_term,
+                            true_bcb,
+                            false_bcb,
                             mcdc_params: condition_info,
                         },
                         span,
@@ -227,41 +204,11 @@ fn create_mappings(
     mappings
 }
 
-/// For each BCB node or BCB edge that has an associated coverage counter,
-/// inject any necessary coverage statements into MIR.
-fn inject_coverage_statements<'tcx>(
-    mir_body: &mut mir::Body<'tcx>,
-    graph: &CoverageGraph,
-    extracted_mappings: &ExtractedMappings,
-    coverage_counters: &CoverageCounters,
-) {
-    // Inject counter-increment statements into MIR.
-    for (id, bcb) in coverage_counters.counter_increment_sites() {
-        let target_bb = graph[bcb].leader_bb();
-        inject_statement(mir_body, CoverageKind::CounterIncrement { id }, target_bb);
-    }
-
-    // For each counter expression that is directly associated with at least one
-    // span, we inject an "expression-used" statement, so that coverage codegen
-    // can check whether the injected statement survived MIR optimization.
-    // (BCB edges can't have spans, so we only need to process BCB nodes here.)
-    //
-    // We only do this for ordinary `Code` mappings, because branch and MC/DC
-    // mappings might have expressions that don't correspond to any single
-    // point in the control-flow graph.
-    //
-    // See the code in `rustc_codegen_llvm::coverageinfo::map_data` that deals
-    // with "expressions seen" and "zero terms".
-    let eligible_bcbs = extracted_mappings.bcbs_with_ordinary_code_mappings();
-    for (bcb, expression_id) in coverage_counters
-        .bcb_nodes_with_coverage_expressions()
-        .filter(|&(bcb, _)| eligible_bcbs.contains(bcb))
-    {
-        inject_statement(
-            mir_body,
-            CoverageKind::ExpressionUsed { id: expression_id },
-            graph[bcb].leader_bb(),
-        );
+/// Inject any necessary coverage statements into MIR, so that they influence codegen.
+fn inject_coverage_statements<'tcx>(mir_body: &mut mir::Body<'tcx>, graph: &CoverageGraph) {
+    for (bcb, data) in graph.iter_enumerated() {
+        let target_bb = data.leader_bb();
+        inject_statement(mir_body, CoverageKind::VirtualCounter { bcb }, target_bb);
     }
 }
 
@@ -343,7 +290,7 @@ fn extract_hir_info<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> ExtractedHir
 
     let hir_node = tcx.hir_node_by_def_id(def_id);
     let fn_body_id = hir_node.body_id().expect("HIR node is a function with body");
-    let hir_body = tcx.hir().body(fn_body_id);
+    let hir_body = tcx.hir_body(fn_body_id);
 
     let maybe_fn_sig = hir_node.fn_sig();
     let is_async_fn = maybe_fn_sig.is_some_and(|fn_sig| fn_sig.header.is_async());
@@ -400,7 +347,7 @@ fn extract_hole_spans_from_hir<'tcx>(
     hir_body: &hir::Body<'tcx>,
 ) -> Vec<Span> {
     struct HolesVisitor<'hir, F> {
-        hir: Map<'hir>,
+        tcx: TyCtxt<'hir>,
         visit_hole_span: F,
     }
 
@@ -412,8 +359,8 @@ fn extract_hole_spans_from_hir<'tcx>(
         ///   items contained within them.
         type NestedFilter = nested_filter::All;
 
-        fn nested_visit_map(&mut self) -> Self::Map {
-            self.hir
+        fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+            self.tcx
         }
 
         fn visit_item(&mut self, item: &'hir hir::Item<'hir>) {
@@ -440,7 +387,7 @@ fn extract_hole_spans_from_hir<'tcx>(
 
     let mut hole_spans = vec![];
     let mut visitor = HolesVisitor {
-        hir: tcx.hir(),
+        tcx,
         visit_hole_span: |hole_span| {
             // Discard any holes that aren't directly visible within the body span.
             if body_span.contains(hole_span) && body_span.eq_ctxt(hole_span) {

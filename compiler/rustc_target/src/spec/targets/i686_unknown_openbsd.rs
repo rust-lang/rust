@@ -1,7 +1,8 @@
-use crate::spec::{Cc, LinkerFlavor, Lld, StackProbeType, Target, base};
+use crate::spec::{Cc, LinkerFlavor, Lld, RustcAbi, StackProbeType, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::openbsd::opts();
+    base.rustc_abi = Some(RustcAbi::X86Sse2);
     base.cpu = "pentium4".into();
     base.max_atomic_width = Some(64);
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m32", "-fuse-ld=lld"]);
@@ -9,7 +10,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "i686-unknown-openbsd".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("32-bit OpenBSD".into()),
             tier: Some(3),
             host_tools: Some(true),

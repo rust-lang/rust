@@ -435,18 +435,22 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         scalar: abi::Scalar,
         backend_ty: Bx::Type,
     ) {
-        if matches!(self.cx.sess().opts.optimize, OptLevel::No)
-            // For now, the critical niches are all over `Int`eger values.
-            // Should floating-point values or pointers ever get more complex
-            // niches, then this code will probably want to handle them too.
-            || !matches!(scalar.primitive(), abi::Primitive::Int(..))
-            || scalar.is_always_valid(self.cx)
-        {
+        if matches!(self.cx.sess().opts.optimize, OptLevel::No) || scalar.is_always_valid(self.cx) {
             return;
         }
 
-        let range = scalar.valid_range(self.cx);
-        bx.assume_integer_range(imm, backend_ty, range);
+        match scalar.primitive() {
+            abi::Primitive::Int(..) => {
+                let range = scalar.valid_range(self.cx);
+                bx.assume_integer_range(imm, backend_ty, range);
+            }
+            abi::Primitive::Pointer(abi::AddressSpace::DATA)
+                if !scalar.valid_range(self.cx).contains(0) =>
+            {
+                bx.assume_nonnull(imm);
+            }
+            abi::Primitive::Pointer(..) | abi::Primitive::Float(..) => {}
+        }
     }
 
     pub(crate) fn codegen_rvalue_unsized(
@@ -689,7 +693,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         (OperandValue::Immediate(llval), operand.layout)
                     }
                     mir::UnOp::PtrMetadata => {
-                        assert!(operand.layout.ty.is_unsafe_ptr() || operand.layout.ty.is_ref(),);
+                        assert!(operand.layout.ty.is_raw_ptr() || operand.layout.ty.is_ref(),);
                         let (_, meta) = operand.val.pointer_parts();
                         assert_eq!(operand.layout.fields.count() > 1, meta.is_some());
                         if let Some(meta) = meta {

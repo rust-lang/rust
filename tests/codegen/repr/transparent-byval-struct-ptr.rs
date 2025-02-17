@@ -1,5 +1,5 @@
 //@ revisions: i686-linux i686-freebsd x64-linux x64-apple
-//@ compile-flags: -O -C no-prepopulate-passes
+//@ compile-flags: -Copt-level=3 -C no-prepopulate-passes
 
 //@[i686-linux] compile-flags: --target i686-unknown-linux-gnu
 //@[i686-linux] needs-llvm-components: x86

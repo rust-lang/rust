@@ -100,6 +100,8 @@ use rustc_middle::middle;
 use rustc_middle::mir::interpret::GlobalId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt};
+use rustc_session::parse::feature_err;
+use rustc_span::symbol::sym;
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::traits;
 
@@ -114,9 +116,48 @@ fn require_c_abi_if_c_variadic(
     abi: ExternAbi,
     span: Span,
 ) {
-    if decl.c_variadic && !abi.supports_varargs() {
-        tcx.dcx().emit_err(errors::VariadicFunctionCompatibleConvention { span });
+    const CONVENTIONS_UNSTABLE: &str =
+        "`C`, `cdecl`, `system`, `aapcs`, `win64`, `sysv64` or `efiapi`";
+    const CONVENTIONS_STABLE: &str = "`C` or `cdecl`";
+    const UNSTABLE_EXPLAIN: &str =
+        "using calling conventions other than `C` or `cdecl` for varargs functions is unstable";
+
+    // ABIs which can stably use varargs
+    if !decl.c_variadic || matches!(abi, ExternAbi::C { .. } | ExternAbi::Cdecl { .. }) {
+        return;
     }
+
+    // ABIs with feature-gated stability
+    let extended_abi_support = tcx.features().extended_varargs_abi_support();
+    let extern_system_varargs = tcx.features().extern_system_varargs();
+
+    // If the feature gate has been enabled, we can stop here
+    if extern_system_varargs && let ExternAbi::System { .. } = abi {
+        return;
+    };
+    if extended_abi_support && abi.supports_varargs() {
+        return;
+    };
+
+    // Looks like we need to pick an error to emit.
+    // Is there any feature which we could have enabled to make this work?
+    match abi {
+        ExternAbi::System { .. } => {
+            feature_err(&tcx.sess, sym::extern_system_varargs, span, UNSTABLE_EXPLAIN)
+        }
+        abi if abi.supports_varargs() => {
+            feature_err(&tcx.sess, sym::extended_varargs_abi_support, span, UNSTABLE_EXPLAIN)
+        }
+        _ => tcx.dcx().create_err(errors::VariadicFunctionCompatibleConvention {
+            span,
+            conventions: if tcx.sess.opts.unstable_features.is_nightly_build() {
+                CONVENTIONS_UNSTABLE
+            } else {
+                CONVENTIONS_STABLE
+            },
+        }),
+    }
+    .emit();
 }
 
 pub fn provide(providers: &mut Providers) {

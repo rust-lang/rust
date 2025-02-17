@@ -6,8 +6,9 @@ LL | fn or<'a>(first: &'static dyn Foo<'a>) -> dyn Foo<'a> {
    |
 help: consider returning an `impl Trait` instead of a `dyn Trait`
    |
-LL | fn or<'a>(first: &'static dyn Foo<'a>) -> impl Foo<'a> {
-   |                                           ~~~~
+LL - fn or<'a>(first: &'static dyn Foo<'a>) -> dyn Foo<'a> {
+LL + fn or<'a>(first: &'static dyn Foo<'a>) -> impl Foo<'a> {
+   |
 help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
    |
 LL | fn or<'a>(first: &'static dyn Foo<'a>) -> Box<dyn Foo<'a>> {

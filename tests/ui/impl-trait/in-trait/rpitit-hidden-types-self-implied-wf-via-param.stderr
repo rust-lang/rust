@@ -9,7 +9,9 @@ LL |         'a: 'static,
    |
 help: copy the `where` clause predicates from the trait
    |
-LL |     where 'a: 'a
+LL -     where
+LL -         'a: 'static,
+LL +     where 'a: 'a
    |
 
 error: aborting due to 1 previous error

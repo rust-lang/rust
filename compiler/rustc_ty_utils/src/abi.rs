@@ -290,7 +290,7 @@ fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: ExternAbi, c_variadic: bool) -> Conv
         Aapcs { .. } => Conv::ArmAapcs,
         CCmseNonSecureCall => Conv::CCmseNonSecureCall,
         CCmseNonSecureEntry => Conv::CCmseNonSecureEntry,
-        PtxKernel => Conv::PtxKernel,
+        PtxKernel => Conv::GpuKernel,
         Msp430Interrupt => Conv::Msp430Intr,
         X86Interrupt => Conv::X86Intr,
         GpuKernel => Conv::GpuKernel,
@@ -650,7 +650,7 @@ fn fn_abi_new_uncached<'tcx>(
         conv,
         can_unwind: fn_can_unwind(cx.tcx(), fn_def_id, sig.abi),
     };
-    fn_abi_adjust_for_abi(cx, &mut fn_abi, sig.abi, fn_def_id)?;
+    fn_abi_adjust_for_abi(cx, &mut fn_abi, sig.abi, fn_def_id);
     debug!("fn_abi_new_uncached = {:?}", fn_abi);
     fn_abi_sanity_check(cx, &fn_abi, sig.abi);
     Ok(tcx.arena.alloc(fn_abi))
@@ -662,7 +662,7 @@ fn fn_abi_adjust_for_abi<'tcx>(
     fn_abi: &mut FnAbi<'tcx, Ty<'tcx>>,
     abi: ExternAbi,
     fn_def_id: Option<DefId>,
-) -> Result<(), &'tcx FnAbiError<'tcx>> {
+) {
     if abi == ExternAbi::Unadjusted {
         // The "unadjusted" ABI passes aggregates in "direct" mode. That's fragile but needed for
         // some LLVM intrinsics.
@@ -682,7 +682,7 @@ fn fn_abi_adjust_for_abi<'tcx>(
         for arg in fn_abi.args.iter_mut() {
             unadjust(arg);
         }
-        return Ok(());
+        return;
     }
 
     let tcx = cx.tcx();
@@ -723,12 +723,8 @@ fn fn_abi_adjust_for_abi<'tcx>(
             }
         }
     } else {
-        fn_abi
-            .adjust_for_foreign_abi(cx, abi)
-            .map_err(|err| &*tcx.arena.alloc(FnAbiError::AdjustForForeignAbi(err)))?;
+        fn_abi.adjust_for_foreign_abi(cx, abi);
     }
-
-    Ok(())
 }
 
 #[tracing::instrument(level = "debug", skip(cx))]
@@ -753,7 +749,7 @@ fn make_thin_self_ptr<'tcx>(
         // To get the type `*mut RcInner<Self>`, we just keep unwrapping newtypes until we
         // get a built-in pointer type
         let mut wide_pointer_layout = layout;
-        while !wide_pointer_layout.ty.is_unsafe_ptr() && !wide_pointer_layout.ty.is_ref() {
+        while !wide_pointer_layout.ty.is_raw_ptr() && !wide_pointer_layout.ty.is_ref() {
             wide_pointer_layout = wide_pointer_layout
                 .non_1zst_field(cx)
                 .expect("not exactly one non-1-ZST field in a `DispatchFromDyn` type")

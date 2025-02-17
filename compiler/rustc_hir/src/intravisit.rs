@@ -18,7 +18,7 @@
 //!    within one another.
 //!    - Example: Examine each expression to look for its type and do some check or other.
 //!    - How: Implement `intravisit::Visitor` and override the `NestedFilter` type to
-//!      `nested_filter::OnlyBodies` (and implement `nested_visit_map`), and use
+//!      `nested_filter::OnlyBodies` (and implement `maybe_tcx`), and use
 //!      `tcx.hir().visit_all_item_likes_in_crate(&mut visitor)`. Within your
 //!      `intravisit::Visitor` impl, implement methods like `visit_expr()` (don't forget to invoke
 //!      `intravisit::walk_expr()` to keep walking the subparts).
@@ -30,7 +30,7 @@
 //!    - Example: Lifetime resolution, which wants to bring lifetimes declared on the
 //!      impl into scope while visiting the impl-items, and then back out again.
 //!    - How: Implement `intravisit::Visitor` and override the `NestedFilter` type to
-//!      `nested_filter::All` (and implement `nested_visit_map`). Walk your crate with
+//!      `nested_filter::All` (and implement `maybe_tcx`). Walk your crate with
 //!      `tcx.hir().walk_toplevel_module(visitor)` invoked on `tcx.hir().krate()`.
 //!    - Pro: Visitor methods for any kind of HIR node, not just item-like things.
 //!    - Pro: Preserves nesting information
@@ -106,45 +106,43 @@ impl<'a> FnKind<'a> {
     }
 }
 
-/// An abstract representation of the HIR `rustc_middle::hir::map::Map`.
-pub trait Map<'hir> {
+/// HIR things retrievable from `TyCtxt`, avoiding an explicit dependence on
+/// `TyCtxt`. The only impls are for `!` (where these functions are never
+/// called) and `TyCtxt` (in `rustc_middle`).
+pub trait HirTyCtxt<'hir> {
     /// Retrieves the `Node` corresponding to `id`.
     fn hir_node(&self, hir_id: HirId) -> Node<'hir>;
-    fn hir_node_by_def_id(&self, def_id: LocalDefId) -> Node<'hir>;
-    fn body(&self, id: BodyId) -> &'hir Body<'hir>;
-    fn item(&self, id: ItemId) -> &'hir Item<'hir>;
-    fn trait_item(&self, id: TraitItemId) -> &'hir TraitItem<'hir>;
-    fn impl_item(&self, id: ImplItemId) -> &'hir ImplItem<'hir>;
-    fn foreign_item(&self, id: ForeignItemId) -> &'hir ForeignItem<'hir>;
+    fn hir_body(&self, id: BodyId) -> &'hir Body<'hir>;
+    fn hir_item(&self, id: ItemId) -> &'hir Item<'hir>;
+    fn hir_trait_item(&self, id: TraitItemId) -> &'hir TraitItem<'hir>;
+    fn hir_impl_item(&self, id: ImplItemId) -> &'hir ImplItem<'hir>;
+    fn hir_foreign_item(&self, id: ForeignItemId) -> &'hir ForeignItem<'hir>;
 }
 
-// Used when no map is actually available, forcing manual implementation of nested visitors.
-impl<'hir> Map<'hir> for ! {
+// Used when no tcx is actually available, forcing manual implementation of nested visitors.
+impl<'hir> HirTyCtxt<'hir> for ! {
     fn hir_node(&self, _: HirId) -> Node<'hir> {
-        *self;
+        unreachable!();
     }
-    fn hir_node_by_def_id(&self, _: LocalDefId) -> Node<'hir> {
-        *self;
+    fn hir_body(&self, _: BodyId) -> &'hir Body<'hir> {
+        unreachable!();
     }
-    fn body(&self, _: BodyId) -> &'hir Body<'hir> {
-        *self;
+    fn hir_item(&self, _: ItemId) -> &'hir Item<'hir> {
+        unreachable!();
     }
-    fn item(&self, _: ItemId) -> &'hir Item<'hir> {
-        *self;
+    fn hir_trait_item(&self, _: TraitItemId) -> &'hir TraitItem<'hir> {
+        unreachable!();
     }
-    fn trait_item(&self, _: TraitItemId) -> &'hir TraitItem<'hir> {
-        *self;
+    fn hir_impl_item(&self, _: ImplItemId) -> &'hir ImplItem<'hir> {
+        unreachable!();
     }
-    fn impl_item(&self, _: ImplItemId) -> &'hir ImplItem<'hir> {
-        *self;
-    }
-    fn foreign_item(&self, _: ForeignItemId) -> &'hir ForeignItem<'hir> {
-        *self;
+    fn hir_foreign_item(&self, _: ForeignItemId) -> &'hir ForeignItem<'hir> {
+        unreachable!();
     }
 }
 
 pub mod nested_filter {
-    use super::Map;
+    use super::HirTyCtxt;
 
     /// Specifies what nested things a visitor wants to visit. By "nested
     /// things", we are referring to bits of HIR that are not directly embedded
@@ -159,7 +157,7 @@ pub mod nested_filter {
     /// See the comments at [`rustc_hir::intravisit`] for more details on the overall
     /// visit strategy.
     pub trait NestedFilter<'hir> {
-        type Map: Map<'hir>;
+        type MaybeTyCtxt: HirTyCtxt<'hir>;
 
         /// Whether the visitor visits nested "item-like" things.
         /// E.g., item, impl-item.
@@ -175,10 +173,10 @@ pub mod nested_filter {
     ///
     /// Use this if you are only walking some particular kind of tree
     /// (i.e., a type, or fn signature) and you don't want to thread a
-    /// HIR map around.
+    /// `tcx` around.
     pub struct None(());
     impl NestedFilter<'_> for None {
-        type Map = !;
+        type MaybeTyCtxt = !;
         const INTER: bool = false;
         const INTRA: bool = false;
     }
@@ -203,18 +201,18 @@ use nested_filter::NestedFilter;
 /// to monitor future changes to `Visitor` in case a new method with a
 /// new default implementation gets introduced.)
 pub trait Visitor<'v>: Sized {
-    // this type should not be overridden, it exists for convenient usage as `Self::Map`
-    type Map: Map<'v> = <Self::NestedFilter as NestedFilter<'v>>::Map;
+    // This type should not be overridden, it exists for convenient usage as `Self::MaybeTyCtxt`.
+    type MaybeTyCtxt: HirTyCtxt<'v> = <Self::NestedFilter as NestedFilter<'v>>::MaybeTyCtxt;
 
     ///////////////////////////////////////////////////////////////////////////
     // Nested items.
 
     /// Override this type to control which nested HIR are visited; see
     /// [`NestedFilter`] for details. If you override this type, you
-    /// must also override [`nested_visit_map`](Self::nested_visit_map).
+    /// must also override [`maybe_tcx`](Self::maybe_tcx).
     ///
     /// **If for some reason you want the nested behavior, but don't
-    /// have a `Map` at your disposal:** then override the
+    /// have a `tcx` at your disposal:** then override the
     /// `visit_nested_XXX` methods. If a new `visit_nested_XXX` variant is
     /// added in the future, it will cause a panic which can be detected
     /// and fixed appropriately.
@@ -226,9 +224,9 @@ pub trait Visitor<'v>: Sized {
 
     /// If `type NestedFilter` is set to visit nested items, this method
     /// must also be overridden to provide a map to retrieve nested items.
-    fn nested_visit_map(&mut self) -> Self::Map {
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
         panic!(
-            "nested_visit_map must be implemented or consider using \
+            "maybe_tcx must be implemented or consider using \
             `type NestedFilter = nested_filter::None` (the default)"
         );
     }
@@ -240,10 +238,10 @@ pub trait Visitor<'v>: Sized {
     /// "deep" visit patterns described at
     /// [`rustc_hir::intravisit`]. The only reason to override
     /// this method is if you want a nested pattern but cannot supply a
-    /// [`Map`]; see `nested_visit_map` for advice.
+    /// `TyCtxt`; see `maybe_tcx` for advice.
     fn visit_nested_item(&mut self, id: ItemId) -> Self::Result {
         if Self::NestedFilter::INTER {
-            let item = self.nested_visit_map().item(id);
+            let item = self.maybe_tcx().hir_item(id);
             try_visit!(self.visit_item(item));
         }
         Self::Result::output()
@@ -254,7 +252,7 @@ pub trait Visitor<'v>: Sized {
     /// method.
     fn visit_nested_trait_item(&mut self, id: TraitItemId) -> Self::Result {
         if Self::NestedFilter::INTER {
-            let item = self.nested_visit_map().trait_item(id);
+            let item = self.maybe_tcx().hir_trait_item(id);
             try_visit!(self.visit_trait_item(item));
         }
         Self::Result::output()
@@ -265,7 +263,7 @@ pub trait Visitor<'v>: Sized {
     /// method.
     fn visit_nested_impl_item(&mut self, id: ImplItemId) -> Self::Result {
         if Self::NestedFilter::INTER {
-            let item = self.nested_visit_map().impl_item(id);
+            let item = self.maybe_tcx().hir_impl_item(id);
             try_visit!(self.visit_impl_item(item));
         }
         Self::Result::output()
@@ -276,7 +274,7 @@ pub trait Visitor<'v>: Sized {
     /// method.
     fn visit_nested_foreign_item(&mut self, id: ForeignItemId) -> Self::Result {
         if Self::NestedFilter::INTER {
-            let item = self.nested_visit_map().foreign_item(id);
+            let item = self.maybe_tcx().hir_foreign_item(id);
             try_visit!(self.visit_foreign_item(item));
         }
         Self::Result::output()
@@ -287,7 +285,7 @@ pub trait Visitor<'v>: Sized {
     /// `Self::NestedFilter`.
     fn visit_nested_body(&mut self, id: BodyId) -> Self::Result {
         if Self::NestedFilter::INTRA {
-            let body = self.nested_visit_map().body(id);
+            let body = self.maybe_tcx().hir_body(id);
             try_visit!(self.visit_body(body));
         }
         Self::Result::output()

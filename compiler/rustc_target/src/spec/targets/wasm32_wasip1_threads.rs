@@ -7,7 +7,9 @@
 //!
 //! Historically this target was known as `wasm32-wasi-preview1-threads`.
 
-use crate::spec::{Cc, LinkSelfContainedDefault, LinkerFlavor, Target, base, crt_objects};
+use crate::spec::{
+    Cc, LinkSelfContainedDefault, LinkerFlavor, Target, TargetMetadata, base, crt_objects,
+};
 
 pub(crate) fn target() -> Target {
     let mut options = base::wasm::options();
@@ -61,7 +63,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "wasm32-wasi".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: None,
             tier: Some(2),
             host_tools: Some(false),

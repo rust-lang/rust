@@ -30,120 +30,15 @@ use super::url_parts_builder::{UrlPartsBuilder, estimate_item_path_byte_length};
 use crate::clean::types::ExternalLocation;
 use crate::clean::utils::find_nearest_parent_module;
 use crate::clean::{self, ExternalCrate, PrimitiveType};
+use crate::display::Joined as _;
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::escape::{Escape, EscapeBodyText};
 use crate::html::render::Context;
-use crate::joined::Joined as _;
 use crate::passes::collect_intra_doc_links::UrlFragment;
 
-pub(crate) trait Print {
-    fn print(self, buffer: &mut Buffer);
-}
-
-impl<F> Print for F
-where
-    F: FnOnce(&mut Buffer),
-{
-    fn print(self, buffer: &mut Buffer) {
-        (self)(buffer)
-    }
-}
-
-impl Print for String {
-    fn print(self, buffer: &mut Buffer) {
-        buffer.write_str(&self);
-    }
-}
-
-impl Print for &'_ str {
-    fn print(self, buffer: &mut Buffer) {
-        buffer.write_str(self);
-    }
-}
-
-#[derive(Debug, Clone)]
-pub(crate) struct Buffer {
-    for_html: bool,
-    buffer: String,
-}
-
-impl core::fmt::Write for Buffer {
-    #[inline]
-    fn write_str(&mut self, s: &str) -> fmt::Result {
-        self.buffer.write_str(s)
-    }
-
-    #[inline]
-    fn write_char(&mut self, c: char) -> fmt::Result {
-        self.buffer.write_char(c)
-    }
-
-    #[inline]
-    fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> fmt::Result {
-        self.buffer.write_fmt(args)
-    }
-}
-
-impl Buffer {
-    pub(crate) fn empty_from(v: &Buffer) -> Buffer {
-        Buffer { for_html: v.for_html, buffer: String::new() }
-    }
-
-    pub(crate) fn html() -> Buffer {
-        Buffer { for_html: true, buffer: String::new() }
-    }
-
-    pub(crate) fn new() -> Buffer {
-        Buffer { for_html: false, buffer: String::new() }
-    }
-
-    pub(crate) fn is_empty(&self) -> bool {
-        self.buffer.is_empty()
-    }
-
-    pub(crate) fn into_inner(self) -> String {
-        self.buffer
-    }
-
-    pub(crate) fn push(&mut self, c: char) {
-        self.buffer.push(c);
-    }
-
-    pub(crate) fn push_str(&mut self, s: &str) {
-        self.buffer.push_str(s);
-    }
-
-    pub(crate) fn push_buffer(&mut self, other: Buffer) {
-        self.buffer.push_str(&other.buffer);
-    }
-
-    // Intended for consumption by write! and writeln! (std::fmt) but without
-    // the fmt::Result return type imposed by fmt::Write (and avoiding the trait
-    // import).
-    pub(crate) fn write_str(&mut self, s: &str) {
-        self.buffer.push_str(s);
-    }
-
-    // Intended for consumption by write! and writeln! (std::fmt) but without
-    // the fmt::Result return type imposed by fmt::Write (and avoiding the trait
-    // import).
-    pub(crate) fn write_fmt(&mut self, v: fmt::Arguments<'_>) {
-        self.buffer.write_fmt(v).unwrap();
-    }
-
-    pub(crate) fn to_display<T: Print>(mut self, t: T) -> String {
-        t.print(&mut self);
-        self.into_inner()
-    }
-
-    pub(crate) fn reserve(&mut self, additional: usize) {
-        self.buffer.reserve(additional)
-    }
-
-    pub(crate) fn len(&self) -> usize {
-        self.buffer.len()
-    }
+pub(crate) fn write_str(s: &mut String, f: fmt::Arguments<'_>) {
+    s.write_fmt(f).unwrap();
 }
 
 pub(crate) fn print_generic_bounds<'a, 'tcx: 'a>(
@@ -772,7 +667,7 @@ pub(crate) fn link_tooltip(did: DefId, fragment: &Option<UrlFragment>, cx: &Cont
     else {
         return String::new();
     };
-    let mut buf = Buffer::new();
+    let mut buf = String::new();
     let fqp = if *shortty == ItemType::Primitive {
         // primitives are documented in a crate, but not actually part of it
         &fqp[fqp.len() - 1..]
@@ -780,19 +675,19 @@ pub(crate) fn link_tooltip(did: DefId, fragment: &Option<UrlFragment>, cx: &Cont
         fqp
     };
     if let &Some(UrlFragment::Item(id)) = fragment {
-        write!(buf, "{} ", cx.tcx().def_descr(id));
+        write_str(&mut buf, format_args!("{} ", cx.tcx().def_descr(id)));
         for component in fqp {
-            write!(buf, "{component}::");
+            write_str(&mut buf, format_args!("{component}::"));
         }
-        write!(buf, "{}", cx.tcx().item_name(id));
+        write_str(&mut buf, format_args!("{}", cx.tcx().item_name(id)));
     } else if !fqp.is_empty() {
         let mut fqp_it = fqp.iter();
-        write!(buf, "{shortty} {}", fqp_it.next().unwrap());
+        write_str(&mut buf, format_args!("{shortty} {}", fqp_it.next().unwrap()));
         for component in fqp_it {
-            write!(buf, "::{component}");
+            write_str(&mut buf, format_args!("::{component}"));
         }
     }
-    buf.into_inner()
+    buf
 }
 
 /// Used to render a [`clean::Path`].
@@ -814,19 +709,22 @@ fn resolved_path(
     if w.alternate() {
         write!(w, "{}{:#}", last.name, last.args.print(cx))?;
     } else {
-        let path = if use_absolute {
-            if let Ok((_, _, fqp)) = href(did, cx) {
-                format!(
-                    "{path}::{anchor}",
-                    path = join_with_double_colon(&fqp[..fqp.len() - 1]),
-                    anchor = anchor(did, *fqp.last().unwrap(), cx)
-                )
+        let path = fmt::from_fn(|f| {
+            if use_absolute {
+                if let Ok((_, _, fqp)) = href(did, cx) {
+                    write!(
+                        f,
+                        "{path}::{anchor}",
+                        path = join_with_double_colon(&fqp[..fqp.len() - 1]),
+                        anchor = anchor(did, *fqp.last().unwrap(), cx)
+                    )
+                } else {
+                    write!(f, "{}", last.name)
+                }
             } else {
-                last.name.to_string()
+                write!(f, "{}", anchor(did, last.name, cx))
             }
-        } else {
-            anchor(did, last.name, cx).to_string()
-        };
+        });
         write!(w, "{path}{args}", args = last.args.print(cx))?;
     }
     Ok(())
@@ -854,16 +752,20 @@ fn primitive_link_fragment(
         match m.primitive_locations.get(&prim) {
             Some(&def_id) if def_id.is_local() => {
                 let len = cx.current.len();
-                let path = if len == 0 {
-                    let cname_sym = ExternalCrate { crate_num: def_id.krate }.name(cx.tcx());
-                    format!("{cname_sym}/")
-                } else {
-                    "../".repeat(len - 1)
-                };
+                let path = fmt::from_fn(|f| {
+                    if len == 0 {
+                        let cname_sym = ExternalCrate { crate_num: def_id.krate }.name(cx.tcx());
+                        write!(f, "{cname_sym}/")?;
+                    } else {
+                        for _ in 0..(len - 1) {
+                            f.write_str("../")?;
+                        }
+                    }
+                    Ok(())
+                });
                 write!(
                     f,
-                    "<a class=\"primitive\" href=\"{}primitive.{}.html{fragment}\">",
-                    path,
+                    "<a class=\"primitive\" href=\"{path}primitive.{}.html{fragment}\">",
                     prim.as_sym()
                 )?;
                 needs_termination = true;

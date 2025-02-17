@@ -1,5 +1,5 @@
 //@ ignore-emscripten vectors passed directly
-//@ compile-flags: -O -C no-prepopulate-passes
+//@ compile-flags: -Copt-level=3 -C no-prepopulate-passes
 // 32-bit x86 returns `f32` differently to avoid the x87 stack.
 // 32-bit systems will return 128bit values using a return area pointer.
 //@ revisions: x86 bit32 bit64

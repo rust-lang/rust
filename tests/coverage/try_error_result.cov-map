@@ -55,27 +55,31 @@ Number of file 0 mappings: 4
 Highest counter ID seen: c1
 
 Function name: try_error_result::test1
-Raw bytes (63): 0x[01, 01, 02, 09, 0d, 05, 09, 0b, 01, 0d, 01, 02, 17, 05, 07, 09, 00, 0e, 09, 02, 09, 04, 1a, 0d, 06, 0d, 00, 29, 11, 00, 29, 00, 2a, 00, 01, 0d, 00, 2a, 00, 00, 2a, 00, 2b, 02, 04, 0d, 00, 2a, 00, 00, 2a, 00, 2b, 06, 03, 05, 00, 0b, 01, 01, 01, 00, 02]
+Raw bytes (67): 0x[01, 01, 04, 07, 05, 01, 09, 05, 01, 05, 09, 0b, 01, 0d, 01, 02, 17, 05, 07, 09, 00, 0e, 09, 02, 09, 04, 1a, 02, 06, 0d, 00, 29, 02, 00, 29, 00, 2a, 00, 01, 0d, 00, 2a, 00, 00, 2a, 00, 2b, 0a, 04, 0d, 00, 2a, 00, 00, 2a, 00, 2b, 0e, 03, 05, 00, 0b, 01, 01, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
-Number of expressions: 2
-- expression 0 operands: lhs = Counter(2), rhs = Counter(3)
-- expression 1 operands: lhs = Counter(1), rhs = Counter(2)
+Number of expressions: 4
+- expression 0 operands: lhs = Expression(1, Add), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(0), rhs = Counter(2)
+- expression 2 operands: lhs = Counter(1), rhs = Counter(0)
+- expression 3 operands: lhs = Counter(1), rhs = Counter(2)
 Number of file 0 mappings: 11
 - Code(Counter(0)) at (prev + 13, 1) to (start + 2, 23)
 - Code(Counter(1)) at (prev + 7, 9) to (start + 0, 14)
 - Code(Counter(2)) at (prev + 2, 9) to (start + 4, 26)
-- Code(Counter(3)) at (prev + 6, 13) to (start + 0, 41)
-- Code(Counter(4)) at (prev + 0, 41) to (start + 0, 42)
+- Code(Expression(0, Sub)) at (prev + 6, 13) to (start + 0, 41)
+    = ((c0 + c2) - c1)
+- Code(Expression(0, Sub)) at (prev + 0, 41) to (start + 0, 42)
+    = ((c0 + c2) - c1)
 - Code(Zero) at (prev + 1, 13) to (start + 0, 42)
 - Code(Zero) at (prev + 0, 42) to (start + 0, 43)
-- Code(Expression(0, Sub)) at (prev + 4, 13) to (start + 0, 42)
-    = (c2 - c3)
+- Code(Expression(2, Sub)) at (prev + 4, 13) to (start + 0, 42)
+    = (c1 - c0)
 - Code(Zero) at (prev + 0, 42) to (start + 0, 43)
-- Code(Expression(1, Sub)) at (prev + 3, 5) to (start + 0, 11)
+- Code(Expression(3, Sub)) at (prev + 3, 5) to (start + 0, 11)
     = (c1 - c2)
 - Code(Counter(0)) at (prev + 1, 1) to (start + 0, 2)
-Highest counter ID seen: c4
+Highest counter ID seen: c2
 
 Function name: try_error_result::test2
 Raw bytes (336): 0x[01, 01, 36, 0d, 11, 0d, 3f, 11, 15, 0d, 37, 3b, 1d, 3f, 19, 11, 15, 0d, 3f, 11, 15, 0d, 3b, 3f, 19, 11, 15, 0d, 37, 3b, 1d, 3f, 19, 11, 15, 41, 53, 21, 25, 41, 21, 41, 53, 21, 25, 09, 73, 77, 2d, 0d, 29, 09, 0d, 09, 77, 0d, 29, 09, 73, 77, 2d, 0d, 29, 45, 8b, 01, 31, 35, 45, 31, 45, 8b, 01, 31, 35, 49, 9f, 01, 39, 3d, 49, 39, 49, 9f, 01, 39, 3d, 05, 09, ab, 01, 09, af, 01, 3d, b3, 01, 39, b7, 01, 35, bb, 01, 31, bf, 01, 2d, c3, 01, 29, c7, 01, 25, cb, 01, 21, cf, 01, 1d, d3, 01, 19, d7, 01, 15, 05, 11, 28, 01, 3d, 01, 03, 17, 05, 08, 09, 00, 0e, 09, 02, 09, 04, 1a, 0d, 06, 0d, 00, 2f, 11, 00, 2f, 00, 30, 02, 00, 31, 03, 35, 15, 04, 11, 00, 12, 1e, 02, 11, 04, 12, 32, 05, 11, 00, 14, 1e, 00, 17, 00, 41, 19, 00, 41, 00, 42, 26, 00, 43, 00, 5f, 1d, 00, 5f, 00, 60, 32, 01, 0d, 00, 20, 4e, 01, 11, 00, 14, 41, 00, 17, 00, 41, 21, 00, 41, 00, 42, 4a, 00, 43, 00, 60, 25, 00, 60, 00, 61, 4e, 01, 0d, 00, 20, 6e, 04, 11, 00, 14, 62, 00, 17, 00, 42, 29, 00, 42, 00, 43, 66, 00, 44, 00, 61, 2d, 00, 61, 00, 62, 6e, 01, 0d, 00, 20, 86, 01, 01, 11, 00, 14, 45, 00, 17, 01, 36, 31, 01, 36, 00, 37, 82, 01, 01, 12, 00, 2f, 35, 00, 2f, 00, 30, 86, 01, 01, 0d, 00, 20, 9a, 01, 01, 11, 00, 14, 49, 00, 17, 01, 36, 39, 02, 11, 00, 12, 96, 01, 01, 12, 00, 2f, 3d, 01, 11, 00, 12, 9a, 01, 02, 0d, 00, 20, a2, 01, 03, 05, 00, 0b, a6, 01, 01, 01, 00, 02]

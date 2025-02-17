@@ -214,7 +214,7 @@ impl LazyInfo {
             && state.once_cell_sync_lazy.contains(&path_def_id)
         {
             let ty_span_no_args = path_span_without_args(path);
-            let body = cx.tcx.hir().body(body_id);
+            let body = cx.tcx.hir_body(body_id);
 
             // visit body to collect `Lazy::new` calls
             let mut new_fn_calls = FxIndexMap::default();

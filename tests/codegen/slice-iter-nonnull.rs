@@ -1,4 +1,4 @@
-//@ compile-flags: -O
+//@ compile-flags: -Copt-level=3
 //@ needs-deterministic-layouts
 #![crate_type = "lib"]
 #![feature(exact_size_is_empty)]

@@ -249,7 +249,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     fn visit_const_block(&mut self, span: Span, anon_const: &hir::ConstBlock) {
         self.visit_node_id(span, anon_const.hir_id);
 
-        let body = self.tcx().hir().body(anon_const.body);
+        let body = self.tcx().hir_body(anon_const.body);
         self.visit_body(body);
     }
 }
@@ -266,7 +266,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
     fn visit_expr(&mut self, e: &'tcx hir::Expr<'tcx>) {
         match e.kind {
             hir::ExprKind::Closure(&hir::Closure { body, .. }) => {
-                let body = self.fcx.tcx.hir().body(body);
+                let body = self.fcx.tcx.hir_body(body);
                 for param in body.params {
                     self.visit_node_id(e.span, param.hir_id);
                 }

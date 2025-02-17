@@ -1091,7 +1091,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     continue;
                 }
 
-                match self.tcx.hir().get_if_local(item_def_id) {
+                match self.tcx.hir_get_if_local(item_def_id) {
                     // Unmet obligation comes from a `derive` macro, point at it once to
                     // avoid multiple span labels pointing at the same place.
                     Some(Node::Item(hir::Item {
@@ -3753,19 +3753,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         hir::TraitFn::Required([ident, ..]) => {
                                             ident.name == kw::SelfLower
                                         }
-                                        hir::TraitFn::Provided(body_id) => self
-                                            .tcx
-                                            .hir()
-                                            .body(*body_id)
-                                            .params
-                                            .first()
-                                            .is_some_and(|param| {
-                                                matches!(
-                                                    param.pat.kind,
-                                                    hir::PatKind::Binding(_, _, ident, _)
-                                                        if ident.name == kw::SelfLower
-                                                )
-                                            }),
+                                        hir::TraitFn::Provided(body_id) => {
+                                            self.tcx.hir_body(*body_id).params.first().is_some_and(
+                                                |param| {
+                                                    matches!(
+                                                        param.pat.kind,
+                                                        hir::PatKind::Binding(_, _, ident, _)
+                                                            if ident.name == kw::SelfLower
+                                                    )
+                                                },
+                                            )
+                                        }
                                         _ => false,
                                     };
 
@@ -3833,20 +3831,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let Some(param) = param_type {
                 let generics = self.tcx.generics_of(self.body_id.to_def_id());
                 let type_param = generics.type_param(param, self.tcx);
-                let hir = self.tcx.hir();
+                let tcx = self.tcx;
                 if let Some(def_id) = type_param.def_id.as_local() {
-                    let id = self.tcx.local_def_id_to_hir_id(def_id);
+                    let id = tcx.local_def_id_to_hir_id(def_id);
                     // Get the `hir::Param` to verify whether it already has any bounds.
                     // We do this to avoid suggesting code that ends up as `T: FooBar`,
                     // instead we suggest `T: Foo + Bar` in that case.
-                    match self.tcx.hir_node(id) {
+                    match tcx.hir_node(id) {
                         Node::GenericParam(param) => {
                             enum Introducer {
                                 Plus,
                                 Colon,
                                 Nothing,
                             }
-                            let hir_generics = hir.get_generics(id.owner.def_id).unwrap();
+                            let hir_generics = tcx.hir_get_generics(id.owner.def_id).unwrap();
                             let trait_def_ids: DefIdSet = hir_generics
                                 .bounds_for_param(def_id)
                                 .flat_map(|bp| bp.bounds.iter())
@@ -3866,8 +3864,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let candidate_strs: Vec<_> = candidates
                                 .iter()
                                 .map(|cand| {
-                                    let cand_path = self.tcx.def_path_str(cand.def_id);
-                                    let cand_params = &self.tcx.generics_of(cand.def_id).own_params;
+                                    let cand_path = tcx.def_path_str(cand.def_id);
+                                    let cand_params = &tcx.generics_of(cand.def_id).own_params;
                                     let cand_args: String = cand_params
                                         .iter()
                                         .skip(1)
@@ -3960,9 +3958,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             err.span_suggestions(
                                 sp,
                                 message(format!("add {article} supertrait for")),
-                                candidates.iter().map(|t| {
-                                    format!("{} {}", sep, self.tcx.def_path_str(t.def_id),)
-                                }),
+                                candidates
+                                    .iter()
+                                    .map(|t| format!("{} {}", sep, tcx.def_path_str(t.def_id),)),
                                 Applicability::MaybeIncorrect,
                             );
                             return;

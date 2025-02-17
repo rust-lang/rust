@@ -269,7 +269,7 @@ fn layout_of_uncached<'tcx>(
         // Potentially-wide pointers.
         ty::Ref(_, pointee, _) | ty::RawPtr(pointee, _) => {
             let mut data_ptr = scalar_unit(Pointer(AddressSpace::DATA));
-            if !ty.is_unsafe_ptr() {
+            if !ty.is_raw_ptr() {
                 data_ptr.valid_range_mut().start = 1;
             }
 

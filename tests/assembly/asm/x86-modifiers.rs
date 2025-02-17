@@ -1,7 +1,7 @@
 //@ add-core-stubs
 //@ revisions: x86_64 i686
 //@ assembly-output: emit-asm
-//@ compile-flags: -O -C panic=abort
+//@ compile-flags: -Copt-level=3 -C panic=abort
 //@[x86_64] compile-flags: --target x86_64-unknown-linux-gnu
 //@[x86_64] needs-llvm-components: x86
 //@[i686] compile-flags: --target i686-unknown-linux-gnu
@@ -20,7 +20,7 @@ use minicore::*;
 
 macro_rules! check {
     ($func:ident $modifier:literal $reg:ident $mov:literal) => {
-        // -O and extern "C" guarantee that the selected register is always ax/xmm0
+        // -Copt-level=3 and extern "C" guarantee that the selected register is always ax/xmm0
         #[no_mangle]
         pub unsafe extern "C" fn $func() -> i32 {
             let y;
