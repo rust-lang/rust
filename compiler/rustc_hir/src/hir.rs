@@ -3848,7 +3848,7 @@ impl<'hir> Item<'hir> {
         expect_foreign_mod, (ExternAbi, &'hir [ForeignItemRef]),
             ItemKind::ForeignMod { abi, items }, (*abi, items);
 
-        expect_global_asm, &'hir InlineAsm<'hir>, ItemKind::GlobalAsm(asm), asm;
+        expect_global_asm, &'hir InlineAsm<'hir>, ItemKind::GlobalAsm { asm }, asm;
 
         expect_ty_alias, (&'hir Ty<'hir>, &'hir Generics<'hir>),
             ItemKind::TyAlias(ty, generics), (ty, generics);
@@ -4015,7 +4015,7 @@ pub enum ItemKind<'hir> {
     /// An external module, e.g. `extern { .. }`.
     ForeignMod { abi: ExternAbi, items: &'hir [ForeignItemRef] },
     /// Module-level inline assembly (from `global_asm!`).
-    GlobalAsm(&'hir InlineAsm<'hir>),
+    GlobalAsm { asm: &'hir InlineAsm<'hir> },
     /// A type alias, e.g., `type Foo = Bar<u8>`.
     TyAlias(&'hir Ty<'hir>, &'hir Generics<'hir>),
     /// An enum definition, e.g., `enum Foo<A, B> {C<A>, D<B>}`.
@@ -4081,7 +4081,7 @@ impl ItemKind<'_> {
             ItemKind::Macro(..) => "macro",
             ItemKind::Mod(..) => "module",
             ItemKind::ForeignMod { .. } => "extern block",
-            ItemKind::GlobalAsm(..) => "global asm item",
+            ItemKind::GlobalAsm { .. } => "global asm item",
             ItemKind::TyAlias(..) => "type alias",
             ItemKind::Enum(..) => "enum",
             ItemKind::Struct(..) => "struct",

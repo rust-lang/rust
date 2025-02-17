@@ -573,7 +573,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
             try_visit!(visitor.visit_id(item.hir_id()));
             walk_list!(visitor, visit_foreign_item_ref, items);
         }
-        ItemKind::GlobalAsm(asm) => {
+        ItemKind::GlobalAsm { asm } => {
             try_visit!(visitor.visit_id(item.hir_id()));
             try_visit!(visitor.visit_inline_asm(asm, item.hir_id()));
         }

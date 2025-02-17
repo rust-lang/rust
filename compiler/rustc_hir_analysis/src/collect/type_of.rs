@@ -59,7 +59,7 @@ fn anon_const_type_of<'tcx>(icx: &ItemCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx
 
         // Anon consts outside the type system.
         Node::Expr(&Expr { kind: ExprKind::InlineAsm(asm), .. })
-        | Node::Item(&Item { kind: ItemKind::GlobalAsm(asm), .. })
+        | Node::Item(&Item { kind: ItemKind::GlobalAsm { asm }, .. })
             if let Some((anon_const, op_sp)) = asm.operands.iter().find_map(find_sym_fn) =>
         {
             let ty = tcx.typeck(def_id).node_type(hir_id);
@@ -83,7 +83,7 @@ fn anon_const_type_of<'tcx>(icx: &ItemCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx
             }
         }
         Node::Expr(&Expr { kind: ExprKind::InlineAsm(asm), .. })
-        | Node::Item(&Item { kind: ItemKind::GlobalAsm(asm), .. })
+        | Node::Item(&Item { kind: ItemKind::GlobalAsm { asm }, .. })
             if let Some((anon_const, op_sp)) = asm.operands.iter().find_map(find_const) =>
         {
             let ty = tcx.typeck(def_id).node_type(hir_id);
@@ -318,7 +318,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
             | ItemKind::Macro(..)
             | ItemKind::Mod(..)
             | ItemKind::ForeignMod { .. }
-            | ItemKind::GlobalAsm(..)
+            | ItemKind::GlobalAsm { .. }
             | ItemKind::ExternCrate(..)
             | ItemKind::Use(..) => {
                 span_bug!(item.span, "compute_type_of_item: unexpected item type: {:?}", item.kind);

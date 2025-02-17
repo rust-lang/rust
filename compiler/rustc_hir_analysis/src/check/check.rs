@@ -897,7 +897,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         }
         DefKind::GlobalAsm => {
             let it = tcx.hir().expect_item(def_id);
-            let hir::ItemKind::GlobalAsm(asm) = it.kind else {
+            let hir::ItemKind::GlobalAsm { asm } = it.kind else {
                 span_bug!(it.span, "DefKind::GlobalAsm but got {:#?}", it)
             };
             InlineAsmCtxt::new_global_asm(tcx).check_asm(asm, def_id);

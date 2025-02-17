@@ -1166,7 +1166,7 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
                 ItemKind::Macro(..) => "macro",
                 ItemKind::Mod(..) => "mod",
                 ItemKind::ForeignMod { .. } => "foreign mod",
-                ItemKind::GlobalAsm(..) => "global asm",
+                ItemKind::GlobalAsm { .. } => "global asm",
                 ItemKind::TyAlias(..) => "ty",
                 ItemKind::Enum(..) => "enum",
                 ItemKind::Struct(..) => "struct",
