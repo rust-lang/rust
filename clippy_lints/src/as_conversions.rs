@@ -9,12 +9,24 @@ declare_clippy_lint! {
     /// Checks for usage of `as` conversions.
     ///
     /// Note that this lint is specialized in linting *every single* use of `as`
-    /// regardless of whether good alternatives exist or not.
-    /// If you want more precise lints for `as`, please consider using these separate lints:
-    /// `unnecessary_cast`, `cast_lossless/cast_possible_truncation/cast_possible_wrap/cast_precision_loss/cast_sign_loss`,
-    /// `fn_to_numeric_cast(_with_truncation)`, `char_lit_as_u8`, `ref_to_mut` and `ptr_as_ptr`.
-    /// There is a good explanation the reason why this lint should work in this way and how it is useful
-    /// [in this issue](https://github.com/rust-lang/rust-clippy/issues/5122).
+    /// regardless of whether good alternatives exist or not. If you want more
+    /// precise lints for `as`, please consider using these separate lints:
+    ///
+    /// - clippy::cast_lossless
+    /// - clippy::cast_possible_truncation
+    /// - clippy::cast_possible_wrap
+    /// - clippy::cast_precision_loss
+    /// - clippy::cast_sign_loss
+    /// - clippy::char_lit_as_u8
+    /// - clippy::fn_to_numeric_cast
+    /// - clippy::fn_to_numeric_cast_with_truncation
+    /// - clippy::ptr_as_ptr
+    /// - clippy::unnecessary_cast
+    /// - invalid_reference_casting
+    ///
+    /// There is a good explanation the reason why this lint should work in this
+    /// way and how it is useful [in this
+    /// issue](https://github.com/rust-lang/rust-clippy/issues/5122).
     ///
     /// ### Why restrict this?
     /// `as` conversions will perform many kinds of
