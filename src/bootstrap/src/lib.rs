@@ -469,6 +469,15 @@ impl Build {
     ///
     /// The given `err_hint` will be shown to the user if the submodule is not
     /// checked out and submodule management is disabled.
+    #[cfg_attr(
+        feature = "tracing",
+        instrument(
+            level = "trace",
+            name = "Build::require_submodule",
+            skip_all,
+            fields(submodule = submodule),
+        ),
+    )]
     pub fn require_submodule(&self, submodule: &str, err_hint: Option<&str>) {
         // When testing bootstrap itself, it is much faster to ignore
         // submodules. Almost all Steps work fine without their submodules.
@@ -739,7 +748,7 @@ impl Build {
     /// Note that if LLVM is configured externally then the directory returned
     /// will likely be empty.
     fn llvm_out(&self, target: TargetSelection) -> PathBuf {
-        if self.config.llvm_from_ci && self.is_builder_target(&target) {
+        if self.config.llvm_from_ci && self.is_builder_target(target) {
             self.config.ci_llvm_root()
         } else {
             self.out.join(target).join("llvm")
@@ -789,7 +798,7 @@ impl Build {
     fn is_system_llvm(&self, target: TargetSelection) -> bool {
         match self.config.target_config.get(&target) {
             Some(Target { llvm_config: Some(_), .. }) => {
-                let ci_llvm = self.config.llvm_from_ci && self.is_builder_target(&target);
+                let ci_llvm = self.config.llvm_from_ci && self.is_builder_target(target);
                 !ci_llvm
             }
             // We're building from the in-tree src/llvm-project sources.
@@ -1277,7 +1286,7 @@ Executed at: {executed_at}"#,
             // need to use CXX compiler as linker to resolve the exception functions
             // that are only existed in CXX libraries
             Some(self.cxx.borrow()[&target].path().into())
-        } else if !self.is_builder_target(&target)
+        } else if !self.is_builder_target(target)
             && helpers::use_host_linker(target)
             && !target.is_msvc()
         {
@@ -1930,8 +1939,8 @@ to download LLVM rather than building it.
     }
 
     /// Checks if the given target is the same as the builder target.
-    fn is_builder_target(&self, target: &TargetSelection) -> bool {
-        &self.config.build == target
+    fn is_builder_target(&self, target: TargetSelection) -> bool {
+        self.config.build == target
     }
 }
 

@@ -329,7 +329,7 @@ than building it.
         if target.contains("musl") && !target.contains("unikraft") {
             // If this is a native target (host is also musl) and no musl-root is given,
             // fall back to the system toolchain in /usr before giving up
-            if build.musl_root(*target).is_none() && build.is_builder_target(target) {
+            if build.musl_root(*target).is_none() && build.is_builder_target(*target) {
                 let target = build.config.target_config.entry(*target).or_default();
                 target.musl_root = Some("/usr".into());
             }
