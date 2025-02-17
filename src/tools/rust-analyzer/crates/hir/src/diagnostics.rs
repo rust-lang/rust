@@ -112,6 +112,7 @@ diagnostics![
     UnusedMut,
     UnusedVariable,
     GenericArgsProhibited,
+    ParenthesizedGenericArgsWithoutFnTrait,
 ];
 
 #[derive(Debug)]
@@ -414,6 +415,11 @@ pub struct GenericArgsProhibited {
     pub reason: GenericArgsProhibitedReason,
 }
 
+#[derive(Debug)]
+pub struct ParenthesizedGenericArgsWithoutFnTrait {
+    pub args: InFile<AstPtr<ast::ParenthesizedArgList>>,
+}
+
 impl AnyDiagnostic {
     pub(crate) fn body_validation_diagnostic(
         db: &dyn HirDatabase,
@@ -703,8 +709,8 @@ impl AnyDiagnostic {
         diag: &PathLoweringDiagnostic,
         path: InFile<ast::Path>,
     ) -> Option<AnyDiagnostic> {
-        Some(match diag {
-            &PathLoweringDiagnostic::GenericArgsProhibited { segment, reason } => {
+        Some(match *diag {
+            PathLoweringDiagnostic::GenericArgsProhibited { segment, reason } => {
                 let segment = hir_segment_to_ast_segment(&path.value, segment)?;
                 let args = if let Some(generics) = segment.generic_arg_list() {
                     AstPtr::new(&generics).wrap_left()
@@ -713,6 +719,12 @@ impl AnyDiagnostic {
                 };
                 let args = path.with_value(args);
                 GenericArgsProhibited { args, reason }.into()
+            }
+            PathLoweringDiagnostic::ParenthesizedGenericArgsWithoutFnTrait { segment } => {
+                let segment = hir_segment_to_ast_segment(&path.value, segment)?;
+                let args = AstPtr::new(&segment.parenthesized_arg_list()?);
+                let args = path.with_value(args);
+                ParenthesizedGenericArgsWithoutFnTrait { args }.into()
             }
         })
     }
