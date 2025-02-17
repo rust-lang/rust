@@ -232,12 +232,15 @@ enum InheritedRefMatchRule {
     /// When the underlying type is a reference type, reference patterns consume both layers of
     /// reference, i.e. they both reset the binding mode and consume the reference type.
     EatBoth {
-        /// This represents two behaviors implemented by both the `ref_pat_eat_one_layer_2024` and
-        /// `ref_pat_eat_one_layer_2024_structural` feature gates, and is false for stable Rust.
-        /// - Whether to allow reference patterns to consume only an inherited reference when
-        ///   matching against a non-reference type.
-        /// - Whether to allow a `&mut` reference pattern to eat a `&` reference type if it's also
-        ///   able to consume a mutable inherited reference.
+        /// If `true`, an inherited reference will be considered when determining whether a reference
+        /// pattern matches a given type:
+        /// - If the underlying type is not a reference, a reference pattern may eat the inherited reference;
+        /// - If the underlying type is a reference, a reference pattern matches if it can eat either one
+        ///    of the underlying and inherited references. E.g. a `&mut` pattern is allowed if either the
+        ///    underlying type is `&mut` or the inherited reference is `&mut`.
+        /// If `false`, a reference pattern is only matched against the underlying type.
+        /// This is `false` for stable Rust and `true` for both the `ref_pat_eat_one_layer_2024` and
+        /// `ref_pat_eat_one_layer_2024_structural` feature gates.
         consider_inherited_ref_first: bool,
     },
 }
