@@ -2473,7 +2473,6 @@ impl<T, A: Allocator> Vec<T, A> {
             let end = self.as_mut_ptr().add(self.len);
             ptr::write(end, value);
             self.len += 1;
-            // SAFETY: We just wrote a value to the pointer that will live the lifetime of the reference.
             Ok(())
         }
     }
