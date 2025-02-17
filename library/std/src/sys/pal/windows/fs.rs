@@ -631,6 +631,10 @@ impl File {
         Ok(newpos as u64)
     }
 
+    pub fn tell(&self) -> io::Result<u64> {
+        self.seek(SeekFrom::Current(0))
+    }
+
     pub fn duplicate(&self) -> io::Result<File> {
         Ok(Self { handle: self.handle.try_clone()? })
     }

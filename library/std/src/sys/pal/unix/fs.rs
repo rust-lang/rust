@@ -1438,6 +1438,10 @@ impl File {
         Ok(n as u64)
     }
 
+    pub fn tell(&self) -> io::Result<u64> {
+        self.seek(SeekFrom::Current(0))
+    }
+
     pub fn duplicate(&self) -> io::Result<File> {
         self.0.duplicate().map(File)
     }
