@@ -352,7 +352,7 @@ impl MutablyUsedVariablesCtxt<'_> {
     fn is_in_unsafe_block(&self, item: HirId) -> bool {
         let hir = self.tcx.hir();
         for (parent, node) in hir.parent_iter(item) {
-            if let Some(fn_sig) = hir.fn_sig_by_hir_id(parent) {
+            if let Some(fn_sig) = self.tcx.hir_fn_sig_by_hir_id(parent) {
                 return fn_sig.header.is_unsafe();
             } else if let Node::Block(block) = node {
                 if matches!(block.rules, BlockCheckMode::UnsafeBlock(_)) {
