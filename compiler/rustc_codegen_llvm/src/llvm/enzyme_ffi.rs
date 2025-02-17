@@ -125,4 +125,7 @@ pub mod Fallback_AD {
     pub fn set_loose_types(loose: bool) {
         unimplemented!()
     }
+    pub fn set_rust_rules(val: bool) {
+        unimplemented!()
+    }
 }
