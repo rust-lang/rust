@@ -159,11 +159,18 @@ pub(crate) fn emit_unescape_error(
                      version control settings",
                 );
             } else if looks_like_quote(c) {
+                diag.span_suggestion(
+                    err_span,
+                    "if you meant to use a unicode quote; \
+                    consider using its escaped form for clarity",
+                    // lit.replace(c, &ec[1..]),
+                    &ec,
+                    Applicability::MaybeIncorrect,
+                );
+
                 diag.help(format!(
-                    "{ec} is not an ascii quote, \
-                             but may look like one in some fonts.\n\
-                             consider writing it in its \
-                             escaped form for clarity."
+                    "{ec} is not an ascii quote, but may look like one in some fonts; \
+                     consider writing it in its escaped form for clarity."
                 ));
             } else {
                 if mode == Mode::Str || mode == Mode::Char {

@@ -1,20 +1,28 @@
 error: unknown character escape: `\u{201c}`
-  --> $DIR/unicode-quote.rs:2:26
+  --> $DIR/unicode-quote.rs:2:20
    |
-LL |     dbg!("since when is \“THIS\” not allowed in a string literal");
-   |                          ^ unknown character escape
+LL |     dbg!("Is this \“ a small sized quote or a big sized quote. \“ ");
+   |                    ^ unknown character escape
    |
-   = help: \u{201c} is not an ascii quote, but may look like one in some fonts.
-           consider writing it in its escaped form for clarity.
+   = help: \u{201c} is not an ascii quote, but may look like one in some fonts; consider writing it in its escaped form for clarity.
+help: if you meant to use a unicode quote; consider using its escaped form for clarity
+   |
+LL -     dbg!("Is this \“ a small sized quote or a big sized quote. \“ ");
+LL +     dbg!("Is this \u{201c} a small sized quote or a big sized quote. \“ ");
+   |
 
-error: unknown character escape: `\u{201d}`
-  --> $DIR/unicode-quote.rs:2:32
+error: unknown character escape: `\u{201c}`
+  --> $DIR/unicode-quote.rs:2:65
    |
-LL |     dbg!("since when is \“THIS\” not allowed in a string literal");
-   |                                ^ unknown character escape
+LL |     dbg!("Is this \“ a small sized quote or a big sized quote. \“ ");
+   |                                                                 ^ unknown character escape
    |
-   = help: \u{201d} is not an ascii quote, but may look like one in some fonts.
-           consider writing it in its escaped form for clarity.
+   = help: \u{201c} is not an ascii quote, but may look like one in some fonts; consider writing it in its escaped form for clarity.
+help: if you meant to use a unicode quote; consider using its escaped form for clarity
+   |
+LL -     dbg!("Is this \“ a small sized quote or a big sized quote. \“ ");
+LL +     dbg!("Is this \“ a small sized quote or a big sized quote. \u{201c} ");
+   |
 
 error: aborting due to 2 previous errors
 
