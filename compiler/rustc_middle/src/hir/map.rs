@@ -305,6 +305,7 @@ impl<'tcx> TyCtxt<'tcx> {
             DefKind::Static { safety: _, mutability, nested: false } => {
                 BodyOwnerKind::Static(mutability)
             }
+            DefKind::GlobalAsm => BodyOwnerKind::GlobalAsm,
             dk => bug!("{:?} is not a body node: {:?}", def_id, dk),
         }
     }
@@ -327,7 +328,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 ConstContext::ConstFn
             }
             BodyOwnerKind::Fn if self.is_const_default_method(def_id) => ConstContext::ConstFn,
-            BodyOwnerKind::Fn | BodyOwnerKind::Closure => return None,
+            BodyOwnerKind::Fn | BodyOwnerKind::Closure | BodyOwnerKind::GlobalAsm => return None,
         };
 
         Some(ccx)

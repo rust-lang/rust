@@ -61,7 +61,9 @@ pub fn build_mir<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> Body<'tcx> {
         Ok((thir, expr)) => {
             let build_mir = |thir: &Thir<'tcx>| match thir.body_type {
                 thir::BodyTy::Fn(fn_sig) => construct_fn(tcx, def, thir, expr, fn_sig),
-                thir::BodyTy::Const(ty) => construct_const(tcx, def, thir, expr, ty),
+                thir::BodyTy::Const(ty) | thir::BodyTy::GlobalAsm(ty) => {
+                    construct_const(tcx, def, thir, expr, ty)
+                }
             };
 
             // this must run before MIR dump, because
@@ -576,6 +578,7 @@ fn construct_const<'a, 'tcx>(
             let span = tcx.def_span(def);
             (span, span)
         }
+        Node::Item(hir::Item { kind: hir::ItemKind::GlobalAsm { .. }, span, .. }) => (*span, *span),
         _ => span_bug!(tcx.def_span(def), "can't build MIR for {:?}", def),
     };
 

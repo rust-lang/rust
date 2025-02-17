@@ -6,7 +6,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem};
 use rustc_middle::bug;
-use rustc_middle::ty::{self, FloatTy, IntTy, Ty, TyCtxt, TypeVisitableExt, UintTy};
+use rustc_middle::ty::{self, Article, FloatTy, IntTy, Ty, TyCtxt, TypeVisitableExt, UintTy};
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Symbol, sym};
@@ -30,7 +30,11 @@ enum NonAsmTypeReason<'tcx> {
 }
 
 impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
-    pub fn new_global_asm(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
+    pub fn new(
+        tcx: TyCtxt<'tcx>,
+        def_id: LocalDefId,
+        get_operand_ty: impl Fn(&hir::Expr<'tcx>) -> Ty<'tcx> + 'a,
+    ) -> Self {
         InlineAsmCtxt {
             tcx,
             typing_env: ty::TypingEnv {
@@ -38,23 +42,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                 param_env: ty::ParamEnv::empty(),
             },
             target_features: tcx.asm_target_features(def_id),
-            expr_ty: Box::new(|e| bug!("asm operand in global asm: {e:?}")),
-        }
-    }
-
-    // FIXME(#132279): This likely causes us to incorrectly handle opaque types in their
-    // defining scope.
-    pub fn new_in_fn(
-        tcx: TyCtxt<'tcx>,
-        typing_env: ty::TypingEnv<'tcx>,
-        def_id: LocalDefId,
-        expr_ty: impl Fn(&hir::Expr<'tcx>) -> Ty<'tcx> + 'a,
-    ) -> Self {
-        InlineAsmCtxt {
-            tcx,
-            typing_env,
-            target_features: tcx.asm_target_features(def_id),
-            expr_ty: Box::new(expr_ty),
+            expr_ty: Box::new(get_operand_ty),
         }
     }
 
@@ -492,11 +480,25 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     );
                 }
                 // Typeck has checked that SymFn refers to a function.
-                hir::InlineAsmOperand::SymFn { anon_const } => {
-                    debug_assert_matches!(
-                        self.tcx.type_of(anon_const.def_id).instantiate_identity().kind(),
-                        ty::Error(_) | ty::FnDef(..)
-                    );
+                hir::InlineAsmOperand::SymFn { expr } => {
+                    let ty = self.expr_ty(expr);
+                    match ty.kind() {
+                        ty::FnDef(..) => {}
+                        ty::Error(_) => {}
+                        _ => {
+                            self.tcx
+                                .dcx()
+                                .struct_span_err(op_sp, "invalid `sym` operand")
+                                .with_span_label(
+                                    expr.span,
+                                    format!("is {} `{}`", ty.kind().article(), ty),
+                                )
+                                .with_help(
+                                    "`sym` operands must refer to either a function or a static",
+                                )
+                                .emit();
+                        }
+                    }
                 }
                 // AST lowering guarantees that SymStatic points to a static.
                 hir::InlineAsmOperand::SymStatic { .. } => {}
