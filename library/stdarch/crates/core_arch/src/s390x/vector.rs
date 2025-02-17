@@ -82,6 +82,10 @@ unsafe extern "unadjusted" {
 
     #[link_name = "llvm.roundeven.v4f32"] fn roundeven_v4f32(a: vector_float) -> vector_float;
     #[link_name = "llvm.roundeven.v2f64"] fn roundeven_v2f64(a: vector_double) -> vector_double;
+
+    #[link_name = "llvm.s390.vsra"] fn vsra(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char;
+    #[link_name = "llvm.s390.vsrl"] fn vsrl(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char;
+    #[link_name = "llvm.s390.vsl"] fn vsl(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char;
 }
 
 impl_from! { i8x16, u8x16,  i16x8, u16x8, i32x4, u32x4, i64x2, u64x2, f32x4, f64x2 }
@@ -701,6 +705,43 @@ mod sealed {
 
     impl_vec_trait! { [VectorFloor vec_floor] simd_floor (vector_float) }
     impl_vec_trait! { [VectorFloor vec_floor] simd_floor (vector_double) }
+
+    macro_rules! impl_vec_shift_long {
+        ([$trait:ident $m:ident] ($f:ident)) => {
+            impl_vec_trait!{ [$trait $m]+ $f (vector_unsigned_char, vector_unsigned_char) -> vector_unsigned_char }
+            impl_vec_trait!{ [$trait $m]+ $f (vector_signed_char, vector_unsigned_char) -> vector_signed_char }
+            impl_vec_trait!{ [$trait $m]+ $f (vector_unsigned_short, vector_unsigned_char) -> vector_unsigned_short }
+            impl_vec_trait!{ [$trait $m]+ $f (vector_signed_short, vector_unsigned_char) -> vector_signed_short }
+            impl_vec_trait!{ [$trait $m]+ $f (vector_unsigned_int, vector_unsigned_char) -> vector_unsigned_int }
+            impl_vec_trait!{ [$trait $m]+ $f (vector_signed_int, vector_unsigned_char) -> vector_signed_int }
+            impl_vec_trait!{ [$trait $m]+ $f (vector_unsigned_long_long, vector_unsigned_char) -> vector_unsigned_long_long }
+            impl_vec_trait!{ [$trait $m]+ $f (vector_signed_long_long, vector_unsigned_char) -> vector_signed_long_long }
+        };
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorSrl<Other> {
+        type Result;
+        unsafe fn vec_srl(self, b: Other) -> Self::Result;
+    }
+
+    impl_vec_shift_long! { [VectorSrl vec_srl] (vsrl) }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorSral<Other> {
+        type Result;
+        unsafe fn vec_sral(self, b: Other) -> Self::Result;
+    }
+
+    impl_vec_shift_long! { [VectorSral vec_sral] (vsra) }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorSll<Other> {
+        type Result;
+        unsafe fn vec_sll(self, b: Other) -> Self::Result;
+    }
+
+    impl_vec_shift_long! { [VectorSll vec_sll] (vsl) }
 }
 
 /// Vector element-wise addition.
@@ -1035,6 +1076,43 @@ where
     a.vec_rint()
 }
 
+/// Performs a left shift for a vector by a given number of bits. Each element of the result is obtained by shifting the corresponding
+/// element of a left by the number of bits specified by the last 3 bits of every byte of b. The bits that are shifted out are replaced by zeros.
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_sll<T>(a: T, b: vector_unsigned_char) -> T
+where
+    T: sealed::VectorSll<vector_unsigned_char, Result = T>,
+{
+    a.vec_sll(b)
+}
+
+/// Performs a right shift for a vector by a given number of bits. Each element of the result is obtained by shifting the corresponding
+/// element of a right by the number of bits specified by the last 3 bits of every byte of b. The bits that are shifted out are replaced by zeros.
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_srl<T>(a: T, b: vector_unsigned_char) -> T
+where
+    T: sealed::VectorSrl<vector_unsigned_char, Result = T>,
+{
+    a.vec_srl(b)
+}
+
+/// Performs an algebraic right shift for a vector by a given number of bits. Each element of the result is obtained by shifting the corresponding
+/// element of a right by the number of bits specified by the last 3 bits of every byte of b. The bits that are shifted out are replaced by copies of
+/// the most significant bit of the element of a.
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_sral<T>(a: T, b: vector_unsigned_char) -> T
+where
+    T: sealed::VectorSral<vector_unsigned_char, Result = T>,
+{
+    a.vec_sral(b)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1076,10 +1154,13 @@ mod tests {
             test_vec_2! { $name, $fn, $ty -> $ty, [$($a),+], [$($b),+], [$($d),+] }
         };
         { $name: ident, $fn:ident, $ty: ident -> $ty_out: ident, [$($a:expr),+], [$($b:expr),+], [$($d:expr),+] } => {
+            test_vec_2! { $name, $fn, $ty, $ty -> $ty, [$($a),+], [$($b),+], [$($d),+] }
+         };
+        { $name: ident, $fn:ident, $ty1: ident, $ty2: ident -> $ty_out: ident, [$($a:expr),+], [$($b:expr),+], [$($d:expr),+] } => {
             #[simd_test(enable = "vector")]
             unsafe fn $name() {
-                let a: s_t_l!($ty) = transmute($ty::new($($a),+));
-                let b: s_t_l!($ty) = transmute($ty::new($($b),+));
+                let a: s_t_l!($ty1) = transmute($ty1::new($($a),+));
+                let b: s_t_l!($ty2) = transmute($ty2::new($($b),+));
 
                 let d = $ty_out::new($($d),+);
                 let r : $ty_out = transmute($fn(a, b));
@@ -1362,4 +1443,24 @@ mod tests {
         [0.6, 0.9],
         [1.0, 1.0]
     }
+
+    test_vec_2! { test_vec_sll, vec_sll, i32x4, u8x16 -> i32x4,
+    [1, 1, 1, 1],
+    [0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 4, 0, 0, 0, 8],
+    [1 << 2, 1 << 3, 1 << 4, 1] }
+
+    test_vec_2! { test_vec_srl, vec_srl, i32x4, u8x16 -> i32x4,
+    [0b1000, 0b1000, 0b1000, 0b1000],
+    [0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 16],
+    [4, 2, 1, 8] }
+
+    test_vec_2! { test_vec_sral_pos, vec_sral, u32x4, u8x16 -> i32x4,
+    [0b1000, 0b1000, 0b1000, 0b1000],
+    [0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 16],
+    [4, 2, 1, 8] }
+
+    test_vec_2! { test_vec_sral_neg, vec_sral, i32x4, u8x16 -> i32x4,
+    [-8, -8, -8, -8],
+    [0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 16],
+    [-4, -2, -1, -8] }
 }
