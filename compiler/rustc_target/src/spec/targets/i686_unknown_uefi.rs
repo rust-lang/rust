@@ -5,7 +5,7 @@
 // The cdecl ABI is used. It differs from the stdcall or fastcall ABI.
 // "i686-unknown-windows" is used to get the minimal subset of windows-specific features.
 
-use crate::spec::{LinkerFlavor, Lld, RustcAbi, Target, add_link_args, base};
+use crate::spec::{LinkerFlavor, Lld, RustcAbi, Target, TargetMetadata, add_link_args, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::uefi_msvc::opts();
@@ -86,7 +86,7 @@ pub(crate) fn target() -> Target {
     // remove -gnu and use the default one.
     Target {
         llvm_target: "i686-unknown-windows-gnu".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("32-bit UEFI".into()),
             tier: Some(2),
             host_tools: Some(false),

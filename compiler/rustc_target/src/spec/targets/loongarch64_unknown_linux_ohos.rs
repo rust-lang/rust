@@ -1,9 +1,9 @@
-use crate::spec::{CodeModel, SanitizerSet, Target, TargetOptions, base};
+use crate::spec::{CodeModel, SanitizerSet, Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
         llvm_target: "loongarch64-unknown-linux-ohos".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("LoongArch64 OpenHarmony".into()),
             tier: Some(3),
             host_tools: Some(false),

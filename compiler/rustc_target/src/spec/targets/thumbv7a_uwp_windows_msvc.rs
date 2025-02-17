@@ -1,9 +1,9 @@
-use crate::spec::{FloatAbi, PanicStrategy, Target, TargetOptions, base};
+use crate::spec::{FloatAbi, PanicStrategy, Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
         llvm_target: "thumbv7a-pc-windows-msvc".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: None,
             tier: Some(3),
             host_tools: Some(false),

@@ -6,7 +6,7 @@
 // LLVM. "x86_64-unknown-windows" is used to get the minimal subset of windows-specific features.
 
 use crate::callconv::Conv;
-use crate::spec::{RustcAbi, Target, base};
+use crate::spec::{RustcAbi, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::uefi_msvc::opts();
@@ -30,7 +30,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "x86_64-unknown-windows".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("64-bit UEFI".into()),
             tier: Some(2),
             host_tools: Some(false),

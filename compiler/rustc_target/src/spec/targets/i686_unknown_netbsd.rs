@@ -1,4 +1,6 @@
-use crate::spec::{Cc, LinkerFlavor, Lld, RustcAbi, StackProbeType, Target, TargetOptions, base};
+use crate::spec::{
+    Cc, LinkerFlavor, Lld, RustcAbi, StackProbeType, Target, TargetMetadata, TargetOptions, base,
+};
 
 pub(crate) fn target() -> Target {
     let mut base = base::netbsd::opts();
@@ -10,7 +12,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "i686-unknown-netbsdelf".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("NetBSD/i386 with SSE2".into()),
             tier: Some(3),
             host_tools: Some(true),

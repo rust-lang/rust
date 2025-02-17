@@ -1,4 +1,4 @@
-use crate::spec::{Target, base};
+use crate::spec::{Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::windows_msvc::opts();
@@ -7,7 +7,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "aarch64-pc-windows-msvc".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("ARM64 Windows MSVC".into()),
             tier: Some(2),
             host_tools: Some(true),

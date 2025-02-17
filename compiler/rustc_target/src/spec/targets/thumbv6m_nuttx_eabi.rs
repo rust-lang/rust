@@ -1,11 +1,11 @@
 // Targets the Cortex-M0, Cortex-M0+ and Cortex-M1 processors (ARMv6-M architecture)
 
-use crate::spec::{FloatAbi, Target, TargetOptions, base, cvs};
+use crate::spec::{FloatAbi, Target, TargetMetadata, TargetOptions, base, cvs};
 
 pub(crate) fn target() -> Target {
     Target {
         llvm_target: "thumbv6m-none-eabi".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: None,
             tier: Some(3),
             host_tools: None,

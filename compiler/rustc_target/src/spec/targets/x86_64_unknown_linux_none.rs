@@ -1,4 +1,6 @@
-use crate::spec::{Cc, LinkerFlavor, Lld, PanicStrategy, StackProbeType, Target, base};
+use crate::spec::{
+    Cc, LinkerFlavor, Lld, PanicStrategy, StackProbeType, Target, TargetMetadata, base,
+};
 
 pub(crate) fn target() -> Target {
     let mut base = base::linux::opts();
@@ -11,7 +13,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "x86_64-unknown-linux-none".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: None,
             tier: None,
             host_tools: None,
