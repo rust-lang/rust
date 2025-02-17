@@ -11,6 +11,7 @@ use rustc_error_messages::DiagMessage;
 use rustc_errors::{
     Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
 };
+use rustc_hashes::Hash64;
 use rustc_hir::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
@@ -24,7 +25,6 @@ use rustc_target::spec::{
 use tracing::debug;
 use {rustc_abi as abi, rustc_hir as hir};
 
-use crate::error::UnsupportedFnAbi;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::query::TyCtxtAt;
 use crate::ty::normalize_erasing_regions::NormalizationError;
@@ -231,6 +231,7 @@ impl fmt::Display for ValidityRequirement {
 pub enum LayoutError<'tcx> {
     Unknown(Ty<'tcx>),
     SizeOverflow(Ty<'tcx>),
+    TooGeneric(Ty<'tcx>),
     NormalizationFailure(Ty<'tcx>, NormalizationError<'tcx>),
     ReferencesError(ErrorGuaranteed),
     Cycle(ErrorGuaranteed),
@@ -244,6 +245,7 @@ impl<'tcx> LayoutError<'tcx> {
         match self {
             Unknown(_) => middle_unknown_layout,
             SizeOverflow(_) => middle_values_too_big,
+            TooGeneric(_) => middle_too_generic,
             NormalizationFailure(_, _) => middle_cannot_be_normalized,
             Cycle(_) => middle_cycle,
             ReferencesError(_) => middle_layout_references_error,
@@ -257,6 +259,7 @@ impl<'tcx> LayoutError<'tcx> {
         match self {
             Unknown(ty) => E::Unknown { ty },
             SizeOverflow(ty) => E::Overflow { ty },
+            TooGeneric(ty) => E::TooGeneric { ty },
             NormalizationFailure(ty, e) => {
                 E::NormalizationFailure { ty, failure_ty: e.get_type_for_failure() }
             }
@@ -272,6 +275,9 @@ impl<'tcx> fmt::Display for LayoutError<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             LayoutError::Unknown(ty) => write!(f, "the type `{ty}` has an unknown layout"),
+            LayoutError::TooGeneric(ty) => {
+                write!(f, "`{ty}` does not have a fixed size")
+            }
             LayoutError::SizeOverflow(ty) => {
                 write!(f, "values of the type `{ty}` are too big for the target architecture")
             }
@@ -350,10 +356,11 @@ impl<'tcx> SizeSkeleton<'tcx> {
                     return Err(tcx.arena.alloc(LayoutError::Unknown(ty)));
                 }
             }
-            Err(err @ LayoutError::Unknown(_)) => err,
+            Err(err @ LayoutError::TooGeneric(_)) => err,
             // We can't extract SizeSkeleton info from other layout errors
             Err(
                 e @ LayoutError::Cycle(_)
+                | e @ LayoutError::Unknown(_)
                 | e @ LayoutError::SizeOverflow(_)
                 | e @ LayoutError::NormalizationFailure(..)
                 | e @ LayoutError::ReferencesError(_),
@@ -362,7 +369,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
 
         match *ty.kind() {
             ty::Ref(_, pointee, _) | ty::RawPtr(pointee, _) => {
-                let non_zero = !ty.is_unsafe_ptr();
+                let non_zero = !ty.is_raw_ptr();
 
                 let tail = tcx.struct_tail_raw(
                     pointee,
@@ -413,10 +420,9 @@ impl<'tcx> SizeSkeleton<'tcx> {
                             // Alignment is unchanged by arrays.
                             return Ok(SizeSkeleton::Known(Size::from_bytes(size), a));
                         }
-                        Err(tcx.arena.alloc(LayoutError::Unknown(ty)))
+                        Err(err)
                     }
-                    SizeSkeleton::Pointer { .. } => Err(err),
-                    SizeSkeleton::Generic(_) => Err(tcx.arena.alloc(LayoutError::Unknown(ty))),
+                    SizeSkeleton::Pointer { .. } | SizeSkeleton::Generic(_) => Err(err),
                 }
             }
 
@@ -497,6 +503,9 @@ impl<'tcx> SizeSkeleton<'tcx> {
                     SizeSkeleton::compute(normalized, tcx, typing_env)
                 }
             }
+
+            // Pattern types are always the same size as their base.
+            ty::Pat(base, _) => SizeSkeleton::compute(base, tcx, typing_env),
 
             _ => Err(err),
         }
@@ -770,7 +779,7 @@ where
                     size: Size::ZERO,
                     max_repr_align: None,
                     unadjusted_abi_align: tcx.data_layout.i8_align.abi,
-                    randomization_seed: 0,
+                    randomization_seed: Hash64::ZERO,
                 })
             }
 
@@ -832,7 +841,7 @@ where
                     // as the `Abi` or `FieldsShape` is checked by users.
                     if i == 0 {
                         let nil = tcx.types.unit;
-                        let unit_ptr_ty = if this.ty.is_unsafe_ptr() {
+                        let unit_ptr_ty = if this.ty.is_raw_ptr() {
                             Ty::new_mut_ptr(tcx, nil)
                         } else {
                             Ty::new_mut_ref(tcx, tcx.lifetimes.re_static, nil)
@@ -849,7 +858,12 @@ where
                     }
 
                     let mk_dyn_vtable = |principal: Option<ty::PolyExistentialTraitRef<'tcx>>| {
-                        let min_count = ty::vtable_min_entries(tcx, principal);
+                        let min_count = ty::vtable_min_entries(
+                            tcx,
+                            principal.map(|principal| {
+                                tcx.instantiate_bound_regions_with_erased(principal)
+                            }),
+                        );
                         Ty::new_imm_ref(
                             tcx,
                             tcx.lifetimes.re_static,
@@ -1241,6 +1255,7 @@ pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: ExternAbi) 
         PtxKernel
         | Msp430Interrupt
         | X86Interrupt
+        | GpuKernel
         | EfiApi
         | AvrInterrupt
         | AvrNonBlockingInterrupt
@@ -1260,18 +1275,12 @@ pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: ExternAbi) 
 pub enum FnAbiError<'tcx> {
     /// Error produced by a `layout_of` call, while computing `FnAbi` initially.
     Layout(LayoutError<'tcx>),
-
-    /// Error produced by attempting to adjust a `FnAbi`, for a "foreign" ABI.
-    AdjustForForeignAbi(rustc_target::callconv::AdjustForForeignAbiError),
 }
 
 impl<'a, 'b, G: EmissionGuarantee> Diagnostic<'a, G> for FnAbiError<'b> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
         match self {
             Self::Layout(e) => e.into_diagnostic().into_diag(dcx, level),
-            Self::AdjustForForeignAbi(
-                rustc_target::callconv::AdjustForForeignAbiError::Unsupported { arch, abi },
-            ) => UnsupportedFnAbi { arch, abi: abi.name() }.into_diag(dcx, level),
         }
     }
 }
@@ -1354,10 +1363,11 @@ pub trait FnAbiOf<'tcx>: FnAbiOfHelpers<'tcx> {
                     // `def_span` unconditionally (which may have a perf penalty).
                     let span =
                         if !span.is_dummy() { span } else { tcx.def_span(instance.def_id()) };
-                    self.handle_fn_abi_err(*err, span, FnAbiRequest::OfInstance {
-                        instance,
-                        extra_args,
-                    })
+                    self.handle_fn_abi_err(
+                        *err,
+                        span,
+                        FnAbiRequest::OfInstance { instance, extra_args },
+                    )
                 }),
         )
     }

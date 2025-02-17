@@ -71,7 +71,7 @@ error: fn_abi_of(pass_zst) = FnAbi {
            conv: C,
            can_unwind: false,
        }
-  --> $DIR/c-zst.rs:63:1
+  --> $DIR/c-zst.rs:64:1
    |
 LL | extern "C" fn pass_zst(_: ()) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

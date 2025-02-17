@@ -23,8 +23,6 @@ pub mod env;
 // `crate::sys::error`
 pub(crate) mod error;
 pub mod fs;
-pub mod io;
-pub mod net;
 pub mod os;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;
@@ -51,7 +49,7 @@ pub fn unsupported_err() -> crate::io::Error {
 
 #[inline]
 pub fn is_interrupted(code: i32) -> bool {
-    net::is_interrupted(code)
+    crate::sys::net::is_interrupted(code)
 }
 
 pub fn decode_error_kind(code: i32) -> crate::io::ErrorKind {

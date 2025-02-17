@@ -60,4 +60,8 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyConstCondition {
             };
         }
     }
+
+    fn is_required(&self) -> bool {
+        false
+    }
 }

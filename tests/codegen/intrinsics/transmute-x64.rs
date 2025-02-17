@@ -1,4 +1,4 @@
-//@ compile-flags: -O -C no-prepopulate-passes
+//@ compile-flags: -Copt-level=3 -C no-prepopulate-passes
 //@ only-x86_64 (it's using arch-specific types)
 
 #![crate_type = "lib"]

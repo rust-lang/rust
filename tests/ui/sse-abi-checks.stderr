@@ -1,5 +1,5 @@
-warning: this function definition uses a SIMD vector type that (with the chosen ABI) requires the `sse` target feature, which is not enabled
-  --> $DIR/sse-abi-checks.rs:21:1
+warning: this function definition uses SIMD vector type `SseVector` which (with the chosen ABI) requires the `sse` target feature, which is not enabled
+  --> $DIR/sse-abi-checks.rs:19:1
    |
 LL | pub unsafe extern "C" fn f(_: SseVector) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
@@ -12,8 +12,8 @@ LL | pub unsafe extern "C" fn f(_: SseVector) {
 warning: 1 warning emitted
 
 Future incompatibility report: Future breakage diagnostic:
-warning: this function definition uses a SIMD vector type that (with the chosen ABI) requires the `sse` target feature, which is not enabled
-  --> $DIR/sse-abi-checks.rs:21:1
+warning: this function definition uses SIMD vector type `SseVector` which (with the chosen ABI) requires the `sse` target feature, which is not enabled
+  --> $DIR/sse-abi-checks.rs:19:1
    |
 LL | pub unsafe extern "C" fn f(_: SseVector) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here

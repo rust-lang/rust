@@ -221,7 +221,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             infer::Subtype(ref trace) => RegionOriginNote::WithRequirement {
                 span: trace.cause.span,
                 requirement: ObligationCauseAsDiagArg(trace.cause.clone()),
-                expected_found: self.values_str(trace.values).map(|(e, f, _)| (e, f)),
+                expected_found: self.values_str(trace.values, &trace.cause, err.long_ty_path()),
             }
             .add_to_diag(err),
             infer::Reborrow(span) => {
@@ -487,7 +487,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     &format!("`{sup}: {sub}`"),
                 );
                 // We should only suggest rewriting the `where` clause if the predicate is within that `where` clause
-                if let Some(generics) = self.tcx.hir().get_generics(impl_item_def_id)
+                if let Some(generics) = self.tcx.hir_get_generics(impl_item_def_id)
                     && generics.where_clause_span.contains(span)
                 {
                     self.suggest_copy_trait_method_bounds(
@@ -590,7 +590,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             return;
         };
 
-        let Some(generics) = self.tcx.hir().get_generics(impl_item_def_id) else {
+        let Some(generics) = self.tcx.hir_get_generics(impl_item_def_id) else {
             return;
         };
 
@@ -763,7 +763,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     // Get the `hir::Param` to verify whether it already has any bounds.
                     // We do this to avoid suggesting code that ends up as `T: 'a'b`,
                     // instead we suggest `T: 'a + 'b` in that case.
-                    let hir_generics = self.tcx.hir().get_generics(scope).unwrap();
+                    let hir_generics = self.tcx.hir_get_generics(scope).unwrap();
                     let sugg_span = match hir_generics.bounds_span_for_suggestions(def_id) {
                         Some((span, open_paren_sp)) => Some((span, true, open_paren_sp)),
                         // If `param` corresponds to `Self`, no usable suggestion span.
@@ -822,7 +822,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             {
                 // The lifetime found in the `impl` is longer than the one on the RPITIT.
                 // Do not suggest `<Type as Trait>::{opaque}: 'static`.
-            } else if let Some(generics) = self.tcx.hir().get_generics(suggestion_scope) {
+            } else if let Some(generics) = self.tcx.hir_get_generics(suggestion_scope) {
                 let pred = format!("{bound_kind}: {lt_name}");
                 let suggestion = format!("{} {}", generics.add_where_or_trailing_comma(), pred);
                 suggs.push((generics.tail_span_for_predicate_suggestion(), suggestion))
@@ -907,7 +907,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             hir::OwnerNode::Synthetic => unreachable!(),
         }
 
-        let ast_generics = self.tcx.hir().get_generics(lifetime_scope).unwrap();
+        let ast_generics = self.tcx.hir_get_generics(lifetime_scope).unwrap();
         let sugg = ast_generics
             .span_for_lifetime_suggestion()
             .map(|span| (span, format!("{new_lt}, ")))
@@ -946,8 +946,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         if let infer::Subtype(ref sup_trace) = sup_origin
             && let infer::Subtype(ref sub_trace) = sub_origin
-            && let Some((sup_expected, sup_found, _)) = self.values_str(sup_trace.values)
-            && let Some((sub_expected, sub_found, _)) = self.values_str(sub_trace.values)
+            && let Some((sup_expected, sup_found)) =
+                self.values_str(sup_trace.values, &sup_trace.cause, err.long_ty_path())
+            && let Some((sub_expected, sub_found)) =
+                self.values_str(sub_trace.values, &sup_trace.cause, err.long_ty_path())
             && sub_expected == sup_expected
             && sub_found == sup_found
         {
@@ -1380,7 +1382,7 @@ fn suggest_precise_capturing<'tcx>(
                 new_params += name_as_bounds;
             }
 
-            let Some(generics) = tcx.hir().get_generics(fn_def_id) else {
+            let Some(generics) = tcx.hir_get_generics(fn_def_id) else {
                 // This shouldn't happen, but don't ICE.
                 return;
             };

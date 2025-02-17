@@ -4,7 +4,7 @@ use rustc_ast::{
     WhereClause, token,
 };
 use rustc_errors::{Applicability, PResult};
-use rustc_span::{Ident, Span, kw};
+use rustc_span::{Ident, Span, kw, sym};
 use thin_vec::ThinVec;
 
 use super::{ForceCollect, Parser, Trailing, UsePreAttrPos};
@@ -295,6 +295,32 @@ impl<'a> Parser<'a> {
             },
             span,
         })
+    }
+
+    /// Parses an experimental fn contract
+    /// (`contract_requires(WWW) contract_ensures(ZZZ)`)
+    pub(super) fn parse_contract(
+        &mut self,
+    ) -> PResult<'a, Option<rustc_ast::ptr::P<ast::FnContract>>> {
+        let requires = if self.eat_keyword_noexpect(exp!(ContractRequires).kw) {
+            self.psess.gated_spans.gate(sym::contracts_internals, self.prev_token.span);
+            let precond = self.parse_expr()?;
+            Some(precond)
+        } else {
+            None
+        };
+        let ensures = if self.eat_keyword_noexpect(exp!(ContractEnsures).kw) {
+            self.psess.gated_spans.gate(sym::contracts_internals, self.prev_token.span);
+            let postcond = self.parse_expr()?;
+            Some(postcond)
+        } else {
+            None
+        };
+        if requires.is_none() && ensures.is_none() {
+            Ok(None)
+        } else {
+            Ok(Some(rustc_ast::ptr::P(ast::FnContract { requires, ensures })))
+        }
     }
 
     /// Parses an optional where-clause.

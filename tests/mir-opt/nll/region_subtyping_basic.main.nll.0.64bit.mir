@@ -52,8 +52,8 @@ fn main() -> () {
         StorageLive(_3);
         _3 = const ConstValue(Scalar(0x0000000000000000): usize);
         FakeRead(ForIndex, _1);
-        _4 = Lt(copy _3, const ConstValue(Scalar(0x0000000000000003): usize));
-        assert(move _4, "index out of bounds: the length is {} but the index is {}", const ConstValue(Scalar(0x0000000000000003): usize), copy _3) -> [success: bb1, unwind: bb7];
+        _4 = Lt(copy _3, const ValTree(Leaf(0x0000000000000003): usize));
+        assert(move _4, "index out of bounds: the length is {} but the index is {}", const ValTree(Leaf(0x0000000000000003): usize), copy _3) -> [success: bb1, unwind: bb7];
     }
 
     bb1: {

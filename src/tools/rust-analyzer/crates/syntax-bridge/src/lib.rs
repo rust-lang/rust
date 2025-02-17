@@ -1,6 +1,6 @@
 //! Conversions between [`SyntaxNode`] and [`tt::TokenTree`].
 
-use std::fmt;
+use std::{fmt, hash::Hash};
 
 use intern::Symbol;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -58,7 +58,7 @@ pub mod dummy_test_span_utils {
             ),
             ast_id: span::ROOT_ERASED_FILE_AST_ID,
         },
-        ctx: SyntaxContextId::ROOT,
+        ctx: SyntaxContextId::root(Edition::CURRENT),
     };
 
     pub struct DummyTestSpanMap;
@@ -74,7 +74,7 @@ pub mod dummy_test_span_utils {
                     ),
                     ast_id: span::ROOT_ERASED_FILE_AST_ID,
                 },
-                ctx: SyntaxContextId::ROOT,
+                ctx: SyntaxContextId::root(Edition::CURRENT),
             }
         }
     }
@@ -141,15 +141,16 @@ where
 pub fn token_tree_to_syntax_node<Ctx>(
     tt: &tt::TopSubtree<SpanData<Ctx>>,
     entry_point: parser::TopEntryPoint,
-    edition: parser::Edition,
+    span_to_edition: &mut dyn FnMut(Ctx) -> Edition,
+    top_edition: Edition,
 ) -> (Parse<SyntaxNode>, SpanMap<Ctx>)
 where
-    SpanData<Ctx>: Copy + fmt::Debug,
-    Ctx: PartialEq,
+    Ctx: Copy + fmt::Debug + PartialEq + PartialEq + Eq + Hash,
 {
     let buffer = tt.view().strip_invisible();
-    let parser_input = to_parser_input(edition, buffer);
-    let parser_output = entry_point.parse(&parser_input, edition);
+    let parser_input = to_parser_input(buffer, span_to_edition);
+    // It matters what edition we parse with even when we escape all identifiers correctly.
+    let parser_output = entry_point.parse(&parser_input, top_edition);
     let mut tree_sink = TtTreeSink::new(buffer.cursor());
     for event in parser_output.iter() {
         match event {

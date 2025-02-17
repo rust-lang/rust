@@ -196,7 +196,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let item_def_id = self.tcx.associated_item_def_ids(future_trait)[0];
 
         self.tcx
-            .explicit_item_super_predicates(def_id)
+            .explicit_item_self_bounds(def_id)
             .iter_instantiated_copied(self.tcx, args)
             .find_map(|(predicate, _)| {
                 predicate
@@ -457,6 +457,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             format!("this is an iterator with items of type `{}`", args.type_at(0)),
                         );
                     } else {
+                        let expected_ty = self.tcx.short_string(expected_ty, err.long_ty_path());
                         err.span_label(span, format!("this expression has type `{expected_ty}`"));
                     }
                 }
@@ -620,6 +621,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }) => {
                 let then_span = self.find_block_span_from_hir_id(then_id);
                 let else_span = self.find_block_span_from_hir_id(else_id);
+                if let hir::Node::Expr(e) = self.tcx.hir_node(else_id)
+                    && let hir::ExprKind::If(_cond, _then, None) = e.kind
+                    && else_ty.is_unit()
+                {
+                    // Account for `let x = if a { 1 } else if b { 2 };`
+                    err.note("`if` expressions without `else` evaluate to `()`");
+                    err.note("consider adding an `else` block that evaluates to the expected type");
+                }
                 err.span_label(then_span, "expected because of this");
                 if let Some(sp) = outer_span {
                     err.span_label(sp, "`if` and `else` have incompatible types");
@@ -709,53 +718,47 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         value: &mut DiagStyledString,
         other_value: &mut DiagStyledString,
         name: String,
-        sub: ty::GenericArgsRef<'tcx>,
+        args: &[ty::GenericArg<'tcx>],
         pos: usize,
         other_ty: Ty<'tcx>,
     ) {
         // `value` and `other_value` hold two incomplete type representation for display.
         // `name` is the path of both types being compared. `sub`
         value.push_highlighted(name);
-        let len = sub.len();
-        if len > 0 {
-            value.push_highlighted("<");
+
+        if args.is_empty() {
+            return;
         }
+        value.push_highlighted("<");
 
-        // Output the lifetimes for the first type
-        let lifetimes = sub
-            .regions()
-            .map(|lifetime| {
-                let s = lifetime.to_string();
-                if s.is_empty() { "'_".to_string() } else { s }
-            })
-            .collect::<Vec<_>>()
-            .join(", ");
-        if !lifetimes.is_empty() {
-            if sub.regions().count() < len {
-                value.push_normal(lifetimes + ", ");
-            } else {
-                value.push_normal(lifetimes);
-            }
-        }
-
-        // Highlight all the type arguments that aren't at `pos` and compare the type argument at
-        // `pos` and `other_ty`.
-        for (i, type_arg) in sub.types().enumerate() {
-            if i == pos {
-                let values = self.cmp(type_arg, other_ty);
-                value.0.extend((values.0).0);
-                other_value.0.extend((values.1).0);
-            } else {
-                value.push_highlighted(type_arg.to_string());
-            }
-
-            if len > 0 && i != len - 1 {
+        for (i, arg) in args.iter().enumerate() {
+            if i > 0 {
                 value.push_normal(", ");
             }
+
+            match arg.unpack() {
+                ty::GenericArgKind::Lifetime(lt) => {
+                    let s = lt.to_string();
+                    value.push_normal(if s.is_empty() { "'_" } else { &s });
+                }
+                ty::GenericArgKind::Const(ct) => {
+                    value.push_normal(ct.to_string());
+                }
+                // Highlight all the type arguments that aren't at `pos` and compare
+                // the type argument at `pos` and `other_ty`.
+                ty::GenericArgKind::Type(type_arg) => {
+                    if i == pos {
+                        let values = self.cmp(type_arg, other_ty);
+                        value.0.extend((values.0).0);
+                        other_value.0.extend((values.1).0);
+                    } else {
+                        value.push_highlighted(type_arg.to_string());
+                    }
+                }
+            }
         }
-        if len > 0 {
-            value.push_highlighted(">");
-        }
+
+        value.push_highlighted(">");
     }
 
     /// If `other_ty` is the same as a type argument present in `sub`, highlight `path` in `t1_out`,
@@ -783,27 +786,26 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         t1_out: &mut DiagStyledString,
         t2_out: &mut DiagStyledString,
         path: String,
-        sub: &'tcx [ty::GenericArg<'tcx>],
+        args: &'tcx [ty::GenericArg<'tcx>],
         other_path: String,
         other_ty: Ty<'tcx>,
-    ) -> Option<()> {
-        // FIXME/HACK: Go back to `GenericArgsRef` to use its inherent methods,
-        // ideally that shouldn't be necessary.
-        let sub = self.tcx.mk_args(sub);
-        for (i, ta) in sub.types().enumerate() {
-            if ta == other_ty {
-                self.highlight_outer(t1_out, t2_out, path, sub, i, other_ty);
-                return Some(());
-            }
-            if let ty::Adt(def, _) = ta.kind() {
-                let path_ = self.tcx.def_path_str(def.did());
-                if path_ == other_path {
-                    self.highlight_outer(t1_out, t2_out, path, sub, i, other_ty);
-                    return Some(());
+    ) -> bool {
+        for (i, arg) in args.iter().enumerate() {
+            if let Some(ta) = arg.as_type() {
+                if ta == other_ty {
+                    self.highlight_outer(t1_out, t2_out, path, args, i, other_ty);
+                    return true;
+                }
+                if let ty::Adt(def, _) = ta.kind() {
+                    let path_ = self.tcx.def_path_str(def.did());
+                    if path_ == other_path {
+                        self.highlight_outer(t1_out, t2_out, path, args, i, other_ty);
+                        return true;
+                    }
                 }
             }
         }
-        None
+        false
     }
 
     /// Adds a `,` to the type representation only if it is appropriate.
@@ -811,10 +813,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         &self,
         value: &mut DiagStyledString,
         other_value: &mut DiagStyledString,
-        len: usize,
         pos: usize,
     ) {
-        if len > 0 && pos != len - 1 {
+        if pos > 0 {
             value.push_normal(", ");
             other_value.push_normal(", ");
         }
@@ -824,9 +825,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn cmp_fn_sig(
         &self,
         sig1: &ty::PolyFnSig<'tcx>,
-        fn_def1: Option<(DefId, &'tcx [ty::GenericArg<'tcx>])>,
+        fn_def1: Option<(DefId, Option<&'tcx [ty::GenericArg<'tcx>]>)>,
         sig2: &ty::PolyFnSig<'tcx>,
-        fn_def2: Option<(DefId, &'tcx [ty::GenericArg<'tcx>])>,
+        fn_def2: Option<(DefId, Option<&'tcx [ty::GenericArg<'tcx>]>)>,
     ) -> (DiagStyledString, DiagStyledString) {
         let sig1 = &(self.normalize_fn_sig)(*sig1);
         let sig2 = &(self.normalize_fn_sig)(*sig2);
@@ -850,8 +851,20 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
         // ^^^^^^
-        values.0.push(sig1.safety.prefix_str(), sig1.safety != sig2.safety);
-        values.1.push(sig2.safety.prefix_str(), sig1.safety != sig2.safety);
+        let safety = |fn_def, sig: ty::FnSig<'_>| match fn_def {
+            None => sig.safety.prefix_str(),
+            Some((did, _)) => {
+                if self.tcx.codegen_fn_attrs(did).safe_target_features {
+                    "#[target_features] "
+                } else {
+                    sig.safety.prefix_str()
+                }
+            }
+        };
+        let safety1 = safety(fn_def1, sig1);
+        let safety2 = safety(fn_def2, sig2);
+        values.0.push(safety1, safety1 != safety2);
+        values.1.push(safety2, safety1 != safety2);
 
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
         //        ^^^^^^^^^^
@@ -879,10 +892,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let len2 = sig2.inputs().len();
         if len1 == len2 {
             for (i, (l, r)) in iter::zip(sig1.inputs(), sig2.inputs()).enumerate() {
+                self.push_comma(&mut values.0, &mut values.1, i);
                 let (x1, x2) = self.cmp(*l, *r);
                 (values.0).0.extend(x1.0);
                 (values.1).0.extend(x2.0);
-                self.push_comma(&mut values.0, &mut values.1, len1, i);
             }
         } else {
             for (i, l) in sig1.inputs().iter().enumerate() {
@@ -932,23 +945,23 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             (values.1).0.extend(x2.0);
         }
 
-        let fmt = |(did, args)| format!(" {{{}}}", self.tcx.def_path_str_with_args(did, args));
+        let fmt = |did, args| format!(" {{{}}}", self.tcx.def_path_str_with_args(did, args));
 
         match (fn_def1, fn_def2) {
-            (None, None) => {}
-            (Some(fn_def1), Some(fn_def2)) => {
-                let path1 = fmt(fn_def1);
-                let path2 = fmt(fn_def2);
+            (Some((fn_def1, Some(fn_args1))), Some((fn_def2, Some(fn_args2)))) => {
+                let path1 = fmt(fn_def1, fn_args1);
+                let path2 = fmt(fn_def2, fn_args2);
                 let same_path = path1 == path2;
                 values.0.push(path1, !same_path);
                 values.1.push(path2, !same_path);
             }
-            (Some(fn_def1), None) => {
-                values.0.push_highlighted(fmt(fn_def1));
+            (Some((fn_def1, Some(fn_args1))), None) => {
+                values.0.push_highlighted(fmt(fn_def1, fn_args1));
             }
-            (None, Some(fn_def2)) => {
-                values.1.push_highlighted(fmt(fn_def2));
+            (None, Some((fn_def2, Some(fn_args2)))) => {
+                values.1.push_highlighted(fmt(fn_def2, fn_args2));
             }
+            _ => {}
         }
 
         values
@@ -1130,14 +1143,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     let len1 = sub_no_defaults_1.len();
                     let len2 = sub_no_defaults_2.len();
                     let common_len = cmp::min(len1, len2);
-                    let remainder1: Vec<_> = sub1.types().skip(common_len).collect();
-                    let remainder2: Vec<_> = sub2.types().skip(common_len).collect();
+                    let remainder1 = &sub1[common_len..];
+                    let remainder2 = &sub2[common_len..];
                     let common_default_params =
                         iter::zip(remainder1.iter().rev(), remainder2.iter().rev())
                             .filter(|(a, b)| a == b)
                             .count();
                     let len = sub1.len() - common_default_params;
-                    let consts_offset = len - sub1.consts().count();
 
                     // Only draw `<...>` if there are lifetime/type arguments.
                     if len > 0 {
@@ -1149,70 +1161,68 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         let s = lifetime.to_string();
                         if s.is_empty() { "'_".to_string() } else { s }
                     }
-                    // At one point we'd like to elide all lifetimes here, they are irrelevant for
-                    // all diagnostics that use this output
-                    //
-                    //     Foo<'x, '_, Bar>
-                    //     Foo<'y, '_, Qux>
-                    //         ^^  ^^  --- type arguments are not elided
-                    //         |   |
-                    //         |   elided as they were the same
-                    //         not elided, they were different, but irrelevant
-                    //
-                    // For bound lifetimes, keep the names of the lifetimes,
-                    // even if they are the same so that it's clear what's happening
-                    // if we have something like
-                    //
-                    // for<'r, 's> fn(Inv<'r>, Inv<'s>)
-                    // for<'r> fn(Inv<'r>, Inv<'r>)
-                    let lifetimes = sub1.regions().zip(sub2.regions());
-                    for (i, lifetimes) in lifetimes.enumerate() {
-                        let l1 = lifetime_display(lifetimes.0);
-                        let l2 = lifetime_display(lifetimes.1);
-                        if lifetimes.0 != lifetimes.1 {
-                            values.0.push_highlighted(l1);
-                            values.1.push_highlighted(l2);
-                        } else if lifetimes.0.is_bound() || self.tcx.sess.opts.verbose {
-                            values.0.push_normal(l1);
-                            values.1.push_normal(l2);
-                        } else {
-                            values.0.push_normal("'_");
-                            values.1.push_normal("'_");
-                        }
-                        self.push_comma(&mut values.0, &mut values.1, len, i);
-                    }
 
-                    // We're comparing two types with the same path, so we compare the type
-                    // arguments for both. If they are the same, do not highlight and elide from the
-                    // output.
-                    //     Foo<_, Bar>
-                    //     Foo<_, Qux>
-                    //         ^ elided type as this type argument was the same in both sides
-                    let type_arguments = sub1.types().zip(sub2.types());
-                    let regions_len = sub1.regions().count();
-                    let num_display_types = consts_offset - regions_len;
-                    for (i, (ta1, ta2)) in type_arguments.take(num_display_types).enumerate() {
-                        let i = i + regions_len;
-                        if ta1 == ta2 && !self.tcx.sess.opts.verbose {
-                            values.0.push_normal("_");
-                            values.1.push_normal("_");
-                        } else {
-                            recurse(ta1, ta2, &mut values);
-                        }
-                        self.push_comma(&mut values.0, &mut values.1, len, i);
-                    }
+                    for (i, (arg1, arg2)) in sub1.iter().zip(sub2).enumerate().take(len) {
+                        self.push_comma(&mut values.0, &mut values.1, i);
+                        match arg1.unpack() {
+                            // At one point we'd like to elide all lifetimes here, they are
+                            // irrelevant for all diagnostics that use this output.
+                            //
+                            //     Foo<'x, '_, Bar>
+                            //     Foo<'y, '_, Qux>
+                            //         ^^  ^^  --- type arguments are not elided
+                            //         |   |
+                            //         |   elided as they were the same
+                            //         not elided, they were different, but irrelevant
+                            //
+                            // For bound lifetimes, keep the names of the lifetimes,
+                            // even if they are the same so that it's clear what's happening
+                            // if we have something like
+                            //
+                            // for<'r, 's> fn(Inv<'r>, Inv<'s>)
+                            // for<'r> fn(Inv<'r>, Inv<'r>)
+                            ty::GenericArgKind::Lifetime(l1) => {
+                                let l1_str = lifetime_display(l1);
+                                let l2 = arg2.expect_region();
+                                let l2_str = lifetime_display(l2);
+                                if l1 != l2 {
+                                    values.0.push_highlighted(l1_str);
+                                    values.1.push_highlighted(l2_str);
+                                } else if l1.is_bound() || self.tcx.sess.opts.verbose {
+                                    values.0.push_normal(l1_str);
+                                    values.1.push_normal(l2_str);
+                                } else {
+                                    values.0.push_normal("'_");
+                                    values.1.push_normal("'_");
+                                }
+                            }
+                            ty::GenericArgKind::Type(ta1) => {
+                                let ta2 = arg2.expect_ty();
+                                if ta1 == ta2 && !self.tcx.sess.opts.verbose {
+                                    values.0.push_normal("_");
+                                    values.1.push_normal("_");
+                                } else {
+                                    recurse(ta1, ta2, &mut values);
+                                }
+                            }
+                            // We're comparing two types with the same path, so we compare the type
+                            // arguments for both. If they are the same, do not highlight and elide
+                            // from the output.
+                            //     Foo<_, Bar>
+                            //     Foo<_, Qux>
+                            //         ^ elided type as this type argument was the same in both sides
 
-                    // Do the same for const arguments, if they are equal, do not highlight and
-                    // elide them from the output.
-                    let const_arguments = sub1.consts().zip(sub2.consts());
-                    for (i, (ca1, ca2)) in const_arguments.enumerate() {
-                        let i = i + consts_offset;
-                        maybe_highlight(ca1, ca2, &mut values, self.tcx);
-                        self.push_comma(&mut values.0, &mut values.1, len, i);
+                            // Do the same for const arguments, if they are equal, do not highlight and
+                            // elide them from the output.
+                            ty::GenericArgKind::Const(ca1) => {
+                                let ca2 = arg2.expect_const();
+                                maybe_highlight(ca1, ca2, &mut values, self.tcx);
+                            }
+                        }
                     }
 
                     // Close the type argument bracket.
-                    // Only draw `<...>` if there are lifetime/type arguments.
+                    // Only draw `<...>` if there are arguments.
                     if len > 0 {
                         values.0.push_normal(">");
                         values.1.push_normal(">");
@@ -1224,17 +1234,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     //     Foo<Bar<Qux>
                     //         ------- this type argument is exactly the same as the other type
                     //     Bar<Qux>
-                    if self
-                        .cmp_type_arg(
-                            &mut values.0,
-                            &mut values.1,
-                            path1.clone(),
-                            sub_no_defaults_1,
-                            path2.clone(),
-                            t2,
-                        )
-                        .is_some()
-                    {
+                    if self.cmp_type_arg(
+                        &mut values.0,
+                        &mut values.1,
+                        path1.clone(),
+                        sub_no_defaults_1,
+                        path2.clone(),
+                        t2,
+                    ) {
                         return values;
                     }
                     // Check for case:
@@ -1242,17 +1249,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     //     Bar<Qux>
                     //     Foo<Bar<Qux>>
                     //         ------- this type argument is exactly the same as the other type
-                    if self
-                        .cmp_type_arg(
-                            &mut values.1,
-                            &mut values.0,
-                            path2,
-                            sub_no_defaults_2,
-                            path1,
-                            t1,
-                        )
-                        .is_some()
-                    {
+                    if self.cmp_type_arg(
+                        &mut values.1,
+                        &mut values.0,
+                        path2,
+                        sub_no_defaults_2,
+                        path1,
+                        t1,
+                    ) {
                         return values;
                     }
 
@@ -1323,8 +1327,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let mut values = (DiagStyledString::normal("("), DiagStyledString::normal("("));
                 let len = args1.len();
                 for (i, (left, right)) in args1.iter().zip(args2).enumerate() {
+                    self.push_comma(&mut values.0, &mut values.1, i);
                     recurse(left, right, &mut values);
-                    self.push_comma(&mut values.0, &mut values.1, len, i);
                 }
                 if len == 1 {
                     // Keep the output for single element tuples as `(ty,)`.
@@ -1339,17 +1343,22 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             (ty::FnDef(did1, args1), ty::FnDef(did2, args2)) => {
                 let sig1 = self.tcx.fn_sig(*did1).instantiate(self.tcx, args1);
                 let sig2 = self.tcx.fn_sig(*did2).instantiate(self.tcx, args2);
-                self.cmp_fn_sig(&sig1, Some((*did1, args1)), &sig2, Some((*did2, args2)))
+                self.cmp_fn_sig(
+                    &sig1,
+                    Some((*did1, Some(args1))),
+                    &sig2,
+                    Some((*did2, Some(args2))),
+                )
             }
 
             (ty::FnDef(did1, args1), ty::FnPtr(sig_tys2, hdr2)) => {
                 let sig1 = self.tcx.fn_sig(*did1).instantiate(self.tcx, args1);
-                self.cmp_fn_sig(&sig1, Some((*did1, args1)), &sig_tys2.with(*hdr2), None)
+                self.cmp_fn_sig(&sig1, Some((*did1, Some(args1))), &sig_tys2.with(*hdr2), None)
             }
 
             (ty::FnPtr(sig_tys1, hdr1), ty::FnDef(did2, args2)) => {
                 let sig2 = self.tcx.fn_sig(*did2).instantiate(self.tcx, args2);
-                self.cmp_fn_sig(&sig_tys1.with(*hdr1), None, &sig2, Some((*did2, args2)))
+                self.cmp_fn_sig(&sig_tys1.with(*hdr1), None, &sig2, Some((*did2, Some(args2))))
             }
 
             (ty::FnPtr(sig_tys1, hdr1), ty::FnPtr(sig_tys2, hdr2)) => {
@@ -1382,9 +1391,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         mut values: Option<ty::ParamEnvAnd<'tcx, ValuePairs<'tcx>>>,
         terr: TypeError<'tcx>,
         prefer_label: bool,
+        override_span: Option<Span>,
     ) {
-        let span = cause.span;
-
+        // We use `override_span` when we want the error to point at a `Span` other than
+        // `cause.span`. This is used in E0271, when a closure is passed in where the return type
+        // isn't what was expected. We want to point at the closure's return type (or expression),
+        // instead of the expression where the closure is passed as call argument.
+        let span = override_span.unwrap_or(cause.span);
         // For some types of errors, expected-found does not make
         // sense, so just ignore the values we were given.
         if let TypeError::CyclicTy(_) = terr {
@@ -1531,7 +1544,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         (false, Mismatch::Fixed("existential projection"))
                     }
                 };
-                let Some(vals) = self.values_str(values) else {
+                let Some(vals) = self.values_str(values, cause, diag.long_ty_path()) else {
                     // Derived error. Cancel the emitter.
                     // NOTE(eddyb) this was `.cancel()`, but `diag`
                     // is borrowed, so we can't fully defuse it.
@@ -1586,7 +1599,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             return;
         }
 
-        if let Some((expected, found, path)) = expected_found {
+        if let Some((expected, found)) = expected_found {
             let (expected_label, found_label, exp_found) = match exp_found {
                 Mismatch::Variable(ef) => (
                     ef.expected.prefix_string(self.tcx),
@@ -1709,32 +1722,42 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
                 }
                 TypeError::Sorts(values) => {
-                    let extra = expected == found;
+                    let extra = expected == found
+                        // Ensure that we don't ever say something like
+                        // expected `impl Trait` (opaque type `impl Trait`)
+                        //    found `impl Trait` (opaque type `impl Trait`)
+                        && values.expected.sort_string(self.tcx)
+                            != values.found.sort_string(self.tcx);
                     let sort_string = |ty: Ty<'tcx>| match (extra, ty.kind()) {
                         (true, ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. })) => {
                             let sm = self.tcx.sess.source_map();
                             let pos = sm.lookup_char_pos(self.tcx.def_span(*def_id).lo());
-                            format!(
+                            DiagStyledString::normal(format!(
                                 " (opaque type at <{}:{}:{}>)",
                                 sm.filename_for_diagnostics(&pos.file.name),
                                 pos.line,
                                 pos.col.to_usize() + 1,
-                            )
+                            ))
                         }
                         (true, ty::Alias(ty::Projection, proj))
                             if self.tcx.is_impl_trait_in_trait(proj.def_id) =>
                         {
                             let sm = self.tcx.sess.source_map();
                             let pos = sm.lookup_char_pos(self.tcx.def_span(proj.def_id).lo());
-                            format!(
+                            DiagStyledString::normal(format!(
                                 " (trait associated opaque type at <{}:{}:{}>)",
                                 sm.filename_for_diagnostics(&pos.file.name),
                                 pos.line,
                                 pos.col.to_usize() + 1,
-                            )
+                            ))
                         }
-                        (true, _) => format!(" ({})", ty.sort_string(self.tcx)),
-                        (false, _) => "".to_string(),
+                        (true, _) => {
+                            let mut s = DiagStyledString::normal(" (");
+                            s.push_highlighted(ty.sort_string(self.tcx));
+                            s.push_normal(")");
+                            s
+                        }
+                        (false, _) => DiagStyledString::normal(""),
                     };
                     if !(values.expected.is_simple_text() && values.found.is_simple_text())
                         || (exp_found.is_some_and(|ef| {
@@ -1751,30 +1774,23 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             }
                         }))
                     {
-                        if let Some(ExpectedFound { found: found_ty, .. }) = exp_found {
+                        if let Some(ExpectedFound { found: found_ty, .. }) = exp_found
+                            && !self.tcx.ty_is_opaque_future(found_ty)
+                        {
                             // `Future` is a special opaque type that the compiler
                             // will try to hide in some case such as `async fn`, so
                             // to make an error more use friendly we will
                             // avoid to suggest a mismatch type with a
                             // type that the user usually are not using
                             // directly such as `impl Future<Output = u8>`.
-                            if !self.tcx.ty_is_opaque_future(found_ty) {
-                                diag.note_expected_found_extra(
-                                    &expected_label,
-                                    expected,
-                                    &found_label,
-                                    found,
-                                    &sort_string(values.expected),
-                                    &sort_string(values.found),
-                                );
-                                if let Some(path) = path {
-                                    diag.note(format!(
-                                        "the full type name has been written to '{}'",
-                                        path.display(),
-                                    ));
-                                    diag.note("consider using `--verbose` to print the full type name to the console");
-                                }
-                            }
+                            diag.note_expected_found_extra(
+                                &expected_label,
+                                expected,
+                                &found_label,
+                                found,
+                                sort_string(values.expected),
+                                sort_string(values.found),
+                            );
                         }
                     }
                 }
@@ -1839,7 +1855,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 self.suggest_tuple_pattern(cause, &exp_found, diag);
                 self.suggest_accessing_field_where_appropriate(cause, &exp_found, diag);
                 self.suggest_await_on_expect_found(cause, span, &exp_found, diag);
-                self.suggest_function_pointers(cause, span, &exp_found, diag);
+                self.suggest_function_pointers(cause, span, &exp_found, terr, diag);
                 self.suggest_turning_stmt_into_expr(cause, &exp_found, diag);
             }
         }
@@ -1878,6 +1894,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         &self,
         trace: &TypeTrace<'tcx>,
         terr: TypeError<'tcx>,
+        path: &mut Option<PathBuf>,
     ) -> Vec<TypeErrorAdditionalDiags> {
         let mut suggestions = Vec::new();
         let span = trace.cause.span;
@@ -1956,7 +1973,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         })
         | ObligationCauseCode::BlockTailExpression(.., source)) = code
             && let hir::MatchSource::TryDesugar(_) = source
-            && let Some((expected_ty, found_ty, _)) = self.values_str(trace.values)
+            && let Some((expected_ty, found_ty)) = self.values_str(trace.values, &trace.cause, path)
         {
             suggestions.push(TypeErrorAdditionalDiags::TryCannotConvert {
                 found: found_ty.content(),
@@ -1972,7 +1989,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         trace: &TypeTrace<'tcx>,
         span: Span,
     ) -> Option<TypeErrorAdditionalDiags> {
-        let hir = self.tcx.hir();
         let TypeError::ArraySize(sz) = terr else {
             return None;
         };
@@ -1980,7 +1996,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             hir::Node::Item(hir::Item {
                 kind: hir::ItemKind::Fn { body: body_id, .. }, ..
             }) => {
-                let body = hir.body(*body_id);
+                let body = self.tcx.hir_body(*body_id);
                 struct LetVisitor {
                     span: Span,
                 }
@@ -2014,14 +2030,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             _ => None,
         };
         if let Some(tykind) = tykind
-            && let hir::TyKind::Array(_, length) = tykind
-            && let Some((scalar, ty)) = sz.found.try_to_scalar()
-            && ty == self.tcx.types.usize
+            && let hir::TyKind::Array(_, length_arg) = tykind
+            && let Some(length_val) = sz.found.try_to_target_usize(self.tcx)
         {
-            let span = length.span();
             Some(TypeErrorAdditionalDiags::ConsiderSpecifyingLength {
-                span,
-                length: scalar.to_target_usize(&self.tcx).unwrap(),
+                span: length_arg.span(),
+                length: length_val,
             })
         } else {
             None
@@ -2037,12 +2051,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         debug!("report_and_explain_type_error(trace={:?}, terr={:?})", trace, terr);
 
         let span = trace.cause.span;
+        let mut path = None;
         let failure_code = trace.cause.as_failure_code_diag(
             terr,
             span,
-            self.type_error_additional_suggestions(&trace, terr),
+            self.type_error_additional_suggestions(&trace, terr, &mut path),
         );
         let mut diag = self.dcx().create_err(failure_code);
+        *diag.long_ty_path() = path;
         self.note_type_err(
             &mut diag,
             &trace.cause,
@@ -2050,6 +2066,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             Some(param_env.and(trace.values)),
             terr,
             false,
+            None,
         );
         diag
     }
@@ -2085,10 +2102,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn values_str(
         &self,
         values: ValuePairs<'tcx>,
-    ) -> Option<(DiagStyledString, DiagStyledString, Option<PathBuf>)> {
+        cause: &ObligationCause<'tcx>,
+        file: &mut Option<PathBuf>,
+    ) -> Option<(DiagStyledString, DiagStyledString)> {
         match values {
             ValuePairs::Regions(exp_found) => self.expected_found_str(exp_found),
-            ValuePairs::Terms(exp_found) => self.expected_found_str_term(exp_found),
+            ValuePairs::Terms(exp_found) => self.expected_found_str_term(exp_found, file),
             ValuePairs::Aliases(exp_found) => self.expected_found_str(exp_found),
             ValuePairs::ExistentialTraitRef(exp_found) => self.expected_found_str(exp_found),
             ValuePairs::ExistentialProjection(exp_found) => self.expected_found_str(exp_found),
@@ -2098,7 +2117,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     found: exp_found.found.print_trait_sugared(),
                 };
                 match self.expected_found_str(pretty_exp_found) {
-                    Some((expected, found, _)) if expected == found => {
+                    Some((expected, found)) if expected == found => {
                         self.expected_found_str(exp_found)
                     }
                     ret => ret,
@@ -2109,8 +2128,18 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 if exp_found.references_error() {
                     return None;
                 }
-                let (exp, fnd) = self.cmp_fn_sig(&exp_found.expected, None, &exp_found.found, None);
-                Some((exp, fnd, None))
+                let (fn_def1, fn_def2) = if let ObligationCauseCode::CompareImplItem {
+                    impl_item_def_id,
+                    trait_item_def_id,
+                    ..
+                } = *cause.code()
+                {
+                    (Some((trait_item_def_id, None)), Some((impl_item_def_id.to_def_id(), None)))
+                } else {
+                    (None, None)
+                };
+
+                Some(self.cmp_fn_sig(&exp_found.expected, fn_def1, &exp_found.found, fn_def2))
             }
         }
     }
@@ -2118,7 +2147,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn expected_found_str_term(
         &self,
         exp_found: ty::error::ExpectedFound<ty::Term<'tcx>>,
-    ) -> Option<(DiagStyledString, DiagStyledString, Option<PathBuf>)> {
+        path: &mut Option<PathBuf>,
+    ) -> Option<(DiagStyledString, DiagStyledString)> {
         let exp_found = self.resolve_vars_if_possible(exp_found);
         if exp_found.references_error() {
             return None;
@@ -2133,21 +2163,19 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let len = self.tcx.sess().diagnostic_width() + 40;
                 let exp_s = exp.content();
                 let fnd_s = fnd.content();
-                let mut path = None;
                 if exp_s.len() > len {
-                    let exp_s = self.tcx.short_ty_string(expected, &mut path);
+                    let exp_s = self.tcx.short_string(expected, path);
                     exp = DiagStyledString::highlighted(exp_s);
                 }
                 if fnd_s.len() > len {
-                    let fnd_s = self.tcx.short_ty_string(found, &mut path);
+                    let fnd_s = self.tcx.short_string(found, path);
                     fnd = DiagStyledString::highlighted(fnd_s);
                 }
-                (exp, fnd, path)
+                (exp, fnd)
             }
             _ => (
                 DiagStyledString::highlighted(exp_found.expected.to_string()),
                 DiagStyledString::highlighted(exp_found.found.to_string()),
-                None,
             ),
         })
     }
@@ -2156,7 +2184,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn expected_found_str<T: fmt::Display + TypeFoldable<TyCtxt<'tcx>>>(
         &self,
         exp_found: ty::error::ExpectedFound<T>,
-    ) -> Option<(DiagStyledString, DiagStyledString, Option<PathBuf>)> {
+    ) -> Option<(DiagStyledString, DiagStyledString)> {
         let exp_found = self.resolve_vars_if_possible(exp_found);
         if exp_found.references_error() {
             return None;
@@ -2165,7 +2193,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         Some((
             DiagStyledString::highlighted(exp_found.expected.to_string()),
             DiagStyledString::highlighted(exp_found.found.to_string()),
-            None,
         ))
     }
 
@@ -2280,7 +2307,6 @@ impl<'tcx> ObligationCause<'tcx> {
             | ObligationCauseCode::MatchExpressionArm(_)
             | ObligationCauseCode::IfExpression { .. }
             | ObligationCauseCode::LetElse
-            | ObligationCauseCode::StartFunctionType
             | ObligationCauseCode::LangFunctionType(_)
             | ObligationCauseCode::IntrinsicType
             | ObligationCauseCode::MethodReceiver => FailureCode::Error0308,
@@ -2338,9 +2364,6 @@ impl<'tcx> ObligationCause<'tcx> {
             ObligationCauseCode::MainFunctionType => {
                 ObligationCauseFailureCode::FnMainCorrectType { span }
             }
-            ObligationCauseCode::StartFunctionType => {
-                ObligationCauseFailureCode::FnStartCorrectType { span, subdiags }
-            }
             &ObligationCauseCode::LangFunctionType(lang_item_name) => {
                 ObligationCauseFailureCode::FnLangCorrectType { span, subdiags, lang_item_name }
             }
@@ -2383,7 +2406,6 @@ impl<'tcx> ObligationCause<'tcx> {
                 "const is compatible with trait"
             }
             ObligationCauseCode::MainFunctionType => "`main` function has the correct type",
-            ObligationCauseCode::StartFunctionType => "`#[start]` function has the correct type",
             ObligationCauseCode::LangFunctionType(_) => "lang item function has the correct type",
             ObligationCauseCode::IntrinsicType => "intrinsic has the correct type",
             ObligationCauseCode::MethodReceiver => "method receiver has the correct type",
@@ -2404,7 +2426,6 @@ impl IntoDiagArg for ObligationCauseAsDiagArg<'_> {
                 "const_compat"
             }
             ObligationCauseCode::MainFunctionType => "fn_main_correct_type",
-            ObligationCauseCode::StartFunctionType => "fn_start_correct_type",
             ObligationCauseCode::LangFunctionType(_) => "fn_lang_correct_type",
             ObligationCauseCode::IntrinsicType => "intrinsic_correct_type",
             ObligationCauseCode::MethodReceiver => "method_correct_type",

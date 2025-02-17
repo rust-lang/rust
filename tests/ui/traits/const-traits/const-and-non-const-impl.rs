@@ -1,6 +1,6 @@
 //@ known-bug: #110395
 
-#![feature(const_trait_impl)]
+#![feature(const_trait_impl, const_ops)]
 
 pub struct Int(i32);
 

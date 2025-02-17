@@ -277,7 +277,7 @@ impl CapturedItem {
     /// Converts the place to a name that can be inserted into source code.
     pub fn place_to_name(&self, owner: DefWithBodyId, db: &dyn HirDatabase) -> String {
         let body = db.body(owner);
-        let mut result = body[self.place.local].name.unescaped().display(db.upcast()).to_string();
+        let mut result = body[self.place.local].name.as_str().to_owned();
         for proj in &self.place.projections {
             match proj {
                 ProjectionElem::Deref => {}

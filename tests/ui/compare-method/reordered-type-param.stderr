@@ -18,8 +18,9 @@ LL |   fn b<C:Clone,D>(&self, x: C) -> C;
    = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 help: change the parameter type to match the trait
    |
-LL |   fn b<F:Clone,G>(&self, _x: F) -> G { panic!() }
-   |                              ~
+LL -   fn b<F:Clone,G>(&self, _x: G) -> G { panic!() }
+LL +   fn b<F:Clone,G>(&self, _x: F) -> G { panic!() }
+   |
 
 error: aborting due to 1 previous error
 

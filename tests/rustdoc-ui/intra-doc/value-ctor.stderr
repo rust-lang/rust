@@ -11,8 +11,9 @@ LL | #![deny(rustdoc::broken_intra_doc_links)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: to link to the variant, prefix with `variant@`
    |
-LL | /// [variant@Foo::X]
-   |      ~~~~~~~~
+LL - /// [value@Foo::X]
+LL + /// [variant@Foo::X]
+   |
 
 error: unresolved link to `MyStruct`
   --> $DIR/value-ctor.rs:10:11
@@ -22,8 +23,9 @@ LL | /// [tst][value@MyStruct]
    |
 help: to link to the struct, prefix with `struct@`
    |
-LL | /// [tst][struct@MyStruct]
-   |           ~~~~~~~
+LL - /// [tst][value@MyStruct]
+LL + /// [tst][struct@MyStruct]
+   |
 
 error: unresolved link to `Internals`
   --> $DIR/value-ctor.rs:20:15
@@ -33,8 +35,9 @@ LL | /// while [b][value@Internals] fails.
    |
 help: to link to the struct, prefix with `struct@`
    |
-LL | /// while [b][struct@Internals] fails.
-   |               ~~~~~~~
+LL - /// while [b][value@Internals] fails.
+LL + /// while [b][struct@Internals] fails.
+   |
 
 error: incompatible link kind for `Internals`
   --> $DIR/value-ctor.rs:22:15
@@ -44,8 +47,9 @@ LL | /// while [d][variant@Internals] fails.
    |
 help: to link to the struct, prefix with `struct@`
    |
-LL | /// while [d][struct@Internals] fails.
-   |               ~~~~~~~
+LL - /// while [d][variant@Internals] fails.
+LL + /// while [d][struct@Internals] fails.
+   |
 
 error: unresolved link to `Internals2`
   --> $DIR/value-ctor.rs:34:15
@@ -55,8 +59,9 @@ LL | /// while [b][value@Internals2] fails.
    |
 help: to link to the enum, prefix with `enum@`
    |
-LL | /// while [b][enum@Internals2] fails.
-   |               ~~~~~
+LL - /// while [b][value@Internals2] fails.
+LL + /// while [b][enum@Internals2] fails.
+   |
 
 error: aborting due to 5 previous errors
 

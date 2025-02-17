@@ -185,6 +185,8 @@ config_data! {
         inlayHints_genericParameterHints_type_enable: bool = false,
         /// Whether to show implicit drop hints.
         inlayHints_implicitDrops_enable: bool                      = false,
+        /// Whether to show inlay hints for the implied type parameter `Sized` bound.
+        inlayHints_implicitSizedBoundHints_enable: bool            = false,
         /// Whether to show inlay type hints for elided lifetimes in function signatures.
         inlayHints_lifetimeElisionHints_enable: LifetimeElisionDef = LifetimeElisionDef::Never,
         /// Whether to prefer using parameter names as the name for elided lifetime hints if possible.
@@ -206,6 +208,8 @@ config_data! {
         /// Whether to hide inlay type hints for `let` statements that initialize to a closure.
         /// Only applies to closures with blocks, same as `#rust-analyzer.inlayHints.closureReturnTypeHints.enable#`.
         inlayHints_typeHints_hideClosureInitialization: bool       = false,
+        /// Whether to hide inlay parameter type hints for closures.
+        inlayHints_typeHints_hideClosureParameter:bool             = false,
         /// Whether to hide inlay type hints for constructors.
         inlayHints_typeHints_hideNamedConstructor: bool            = false,
 
@@ -324,8 +328,16 @@ config_data! {
         /// Show documentation.
         signatureInfo_documentation_enable: bool                       = true,
 
-        /// Specify the characters to exclude from triggering typing assists. The default trigger characters are `.`, `=`, `<`, `>`, `{`, and `(`.
-        typing_excludeChars: Option<String> = Some("|<".to_owned()),
+        /// Specify the characters allowed to invoke special on typing triggers.
+        /// - typing `=` after `let` tries to smartly add `;` if `=` is followed by an existing expression
+        /// - typing `=` between two expressions adds `;` when in statement position
+        /// - typing `=` to turn an assignment into an equality comparison removes `;` when in expression position
+        /// - typing `.` in a chain method call auto-indents
+        /// - typing `{` or `(` in front of an expression inserts a closing `}` or `)` after the expression
+        /// - typing `{` in a use item adds a closing `}` in the right place
+        /// - typing `>` to complete a return type `->` will insert a whitespace after it
+        /// - typing `<` in a path or type position inserts a closing `>` after the path or type.
+        typing_triggerChars: Option<String> = Some("=.".to_owned()),
 
 
         /// Enables automatic discovery of projects using [`DiscoverWorkspaceConfig::command`].
@@ -443,6 +455,10 @@ config_data! {
         ///
         /// In `match` arms it completes a comma instead.
         completion_addSemicolonToUnit: bool = true,
+        /// Toggles the additional completions that automatically show method calls and field accesses with `await` prefixed to them when completing on a future.
+        completion_autoAwait_enable: bool        = true,
+        /// Toggles the additional completions that automatically show method calls with `iter()` or `into_iter()` prefixed to them when completing on a type that has them.
+        completion_autoIter_enable: bool        = true,
         /// Toggles the additional completions that automatically add imports when completed.
         /// Note that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.
         completion_autoimport_enable: bool       = true,
@@ -514,7 +530,7 @@ config_data! {
         imports_granularity_enforce: bool              = false,
         /// How imports should be grouped into use statements.
         imports_granularity_group: ImportGranularityDef  = ImportGranularityDef::Crate,
-        /// Group inserted imports by the https://rust-analyzer.github.io/manual.html#auto-import[following order]. Groups are separated by newlines.
+        /// Group inserted imports by the [following order](https://rust-analyzer.github.io/manual.html#auto-import). Groups are separated by newlines.
         imports_group_enable: bool                           = true,
         /// Whether to allow import insertion to merge new imports into single path glob imports like `use std::fmt::*;`.
         imports_merge_glob: bool           = true,
@@ -571,11 +587,8 @@ config_data! {
         /// avoid checking unnecessary things.
         cargo_buildScripts_useRustcWrapper: bool = true,
         /// List of cfg options to enable with the given values.
-        cargo_cfgs: FxHashMap<String, Option<String>> = {
-            let mut m = FxHashMap::default();
-            m.insert("debug_assertions".to_owned(), None);
-            m.insert("miri".to_owned(), None);
-            m
+        cargo_cfgs: Vec<String> = {
+            vec!["debug_assertions".into(), "miri".into()]
         },
         /// Extra arguments that are passed to every cargo invocation.
         cargo_extraArgs: Vec<String> = vec![],
@@ -728,6 +741,10 @@ config_data! {
         /// available on a nightly build.
         rustfmt_rangeFormatting_enable: bool = false,
 
+        /// Additional paths to include in the VFS. Generally for code that is
+        /// generated or otherwise managed by a build system outside of Cargo,
+        /// though Cargo might be the eventual consumer.
+        vfs_extraIncludes: Vec<String> = vec![],
 
         /// Workspace symbol search kind.
         workspace_symbol_search_kind: WorkspaceSymbolSearchKindDef = WorkspaceSymbolSearchKindDef::OnlyTypes,
@@ -1473,6 +1490,8 @@ impl Config {
             enable_imports_on_the_fly: self.completion_autoimport_enable(source_root).to_owned()
                 && self.caps.completion_item_edit_resolve(),
             enable_self_on_the_fly: self.completion_autoself_enable(source_root).to_owned(),
+            enable_auto_iter: *self.completion_autoIter_enable(source_root),
+            enable_auto_await: *self.completion_autoAwait_enable(source_root),
             enable_private_editable: self.completion_privateEditable_enable(source_root).to_owned(),
             full_function_signatures: self
                 .completion_fullFunctionSignatures_enable(source_root)
@@ -1620,6 +1639,7 @@ impl Config {
         InlayHintsConfig {
             render_colons: self.inlayHints_renderColons().to_owned(),
             type_hints: self.inlayHints_typeHints_enable().to_owned(),
+            sized_bound: self.inlayHints_implicitSizedBoundHints_enable().to_owned(),
             parameter_hints: self.inlayHints_parameterHints_enable().to_owned(),
             generic_parameter_hints: GenericParameterHints {
                 type_hints: self.inlayHints_genericParameterHints_type_enable().to_owned(),
@@ -1647,6 +1667,9 @@ impl Config {
                 .to_owned(),
             hide_closure_initialization_hints: self
                 .inlayHints_typeHints_hideClosureInitialization()
+                .to_owned(),
+            hide_closure_parameter_hints: self
+                .inlayHints_typeHints_hideClosureParameter()
                 .to_owned(),
             closure_style: match self.inlayHints_closureStyle() {
                 ClosureStyle::ImplFn => hir::ClosureStyle::ImplFn,
@@ -1926,6 +1949,13 @@ impl Config {
         });
         let sysroot_src =
             self.cargo_sysrootSrc(source_root).as_ref().map(|sysroot| self.root_path.join(sysroot));
+        let extra_includes = self
+            .vfs_extraIncludes(source_root)
+            .iter()
+            .map(String::as_str)
+            .map(AbsPathBuf::try_from)
+            .filter_map(Result::ok)
+            .collect();
 
         CargoConfig {
             all_targets: *self.cargo_allTargets(source_root),
@@ -1940,10 +1970,18 @@ impl Config {
             sysroot,
             sysroot_src,
             rustc_source,
+            extra_includes,
             cfg_overrides: project_model::CfgOverrides {
                 global: CfgDiff::new(
                     self.cargo_cfgs(source_root)
                         .iter()
+                        // parse any cfg setting formatted as key=value or just key (without value)
+                        .filter_map(|s| {
+                            let mut sp = s.splitn(2, "=");
+                            let key = sp.next();
+                            let val = sp.next();
+                            key.map(|key| (key, val))
+                        })
                         .map(|(key, val)| match val {
                             Some(val) => CfgAtom::KeyValue {
                                 key: Symbol::intern(key),
@@ -2232,8 +2270,8 @@ impl Config {
         }
     }
 
-    pub fn typing_exclude_chars(&self) -> Option<String> {
-        self.typing_excludeChars().clone()
+    pub fn typing_trigger_chars(&self) -> &str {
+        self.typing_triggerChars().as_deref().unwrap_or_default()
     }
 
     // VSCode is our reference implementation, so we allow ourselves to work around issues by
@@ -3591,21 +3629,9 @@ fn manual(fields: &[SchemaField]) -> String {
         let name = format!("rust-analyzer.{}", field.replace('_', "."));
         let doc = doc_comment_to_string(doc);
         if default.contains('\n') {
-            format_to_acc!(
-                acc,
-                r#"[[{name}]]{name}::
-+
---
-Default:
-----
-{default}
-----
-{doc}
---
-"#
-            )
+            format_to_acc!(acc, " **{name}**\n\nDefault:\n\n```{default}\n\n```\n\n {doc}\n\n ")
         } else {
-            format_to_acc!(acc, "[[{name}]]{name} (default: `{default}`)::\n+\n--\n{doc}--\n")
+            format_to_acc!(acc, "**{name}** (default: {default})\n\n {doc}\n\n")
         }
     })
 }
@@ -3683,7 +3709,7 @@ mod tests {
 
     #[test]
     fn generate_config_documentation() {
-        let docs_path = project_root().join("docs/user/generated_config.adoc");
+        let docs_path = project_root().join("docs/book/src/configuration_generated.md");
         let expected = FullConfigInput::manual();
         ensure_file_contents(docs_path.as_std_path(), &expected);
     }

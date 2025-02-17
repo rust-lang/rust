@@ -7,7 +7,8 @@ use rustc_abi::{AddressSpace, HasDataLayout};
 use rustc_ast::Mutability;
 use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::*;
-use rustc_data_structures::stable_hasher::{Hash128, HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_hashes::Hash128;
 use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, Scalar};
@@ -126,6 +127,10 @@ impl<'ll, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         unsafe { llvm::LLVMGetUndef(t) }
     }
 
+    fn is_undef(&self, v: &'ll Value) -> bool {
+        unsafe { llvm::LLVMIsUndef(v) == True }
+    }
+
     fn const_poison(&self, t: &'ll Type) -> &'ll Value {
         unsafe { llvm::LLVMGetPoison(t) }
     }
@@ -215,12 +220,14 @@ impl<'ll, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 let g = self.define_global(&sym, self.val_ty(sc)).unwrap_or_else(|| {
                     bug!("symbol `{}` is already defined", sym);
                 });
+                llvm::set_initializer(g, sc);
                 unsafe {
-                    llvm::LLVMSetInitializer(g, sc);
                     llvm::LLVMSetGlobalConstant(g, True);
                     llvm::LLVMSetUnnamedAddress(g, llvm::UnnamedAddr::Global);
                 }
                 llvm::set_linkage(g, llvm::Linkage::InternalLinkage);
+                // Cast to default address space if globals are in a different addrspace
+                let g = self.const_pointercast(g, self.type_ptr());
                 (s.to_owned(), g)
             })
             .1;
@@ -285,7 +292,7 @@ impl<'ll, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                             let alloc = alloc.inner();
                             let value = match alloc.mutability {
                                 Mutability::Mut => self.static_addr_of_mut(init, alloc.align, None),
-                                _ => self.static_addr_of(init, alloc.align, None),
+                                _ => self.static_addr_of_impl(init, alloc.align, None),
                             };
                             if !self.sess().fewer_names() && llvm::get_value_name(value).is_empty()
                             {
@@ -308,10 +315,15 @@ impl<'ll, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                     GlobalAlloc::VTable(ty, dyn_ty) => {
                         let alloc = self
                             .tcx
-                            .global_alloc(self.tcx.vtable_allocation((ty, dyn_ty.principal())))
+                            .global_alloc(self.tcx.vtable_allocation((
+                                ty,
+                                dyn_ty.principal().map(|principal| {
+                                    self.tcx.instantiate_bound_regions_with_erased(principal)
+                                }),
+                            )))
                             .unwrap_memory();
                         let init = const_alloc_to_llvm(self, alloc, /*static*/ false);
-                        let value = self.static_addr_of(init, alloc.inner().align, None);
+                        let value = self.static_addr_of_impl(init, alloc.inner().align, None);
                         (value, AddressSpace::DATA)
                     }
                     GlobalAlloc::Static(def_id) => {
@@ -323,7 +335,8 @@ impl<'ll, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 let llval = unsafe {
                     llvm::LLVMConstInBoundsGEP2(
                         self.type_i8(),
-                        self.const_bitcast(base_addr, self.type_ptr_ext(base_addr_space)),
+                        // Cast to the required address space if necessary
+                        self.const_pointercast(base_addr, self.type_ptr_ext(base_addr_space)),
                         &self.const_usize(offset.bytes()),
                         1,
                     )

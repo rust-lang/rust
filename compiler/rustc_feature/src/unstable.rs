@@ -104,7 +104,7 @@ macro_rules! declare_features {
     )+) => {
         /// Unstable language features that are being implemented or being
         /// considered for acceptance (stabilization) or removal.
-        pub const UNSTABLE_LANG_FEATURES: &[Feature] = &[
+        pub static UNSTABLE_LANG_FEATURES: &[Feature] = &[
             $(Feature {
                 name: sym::$feature,
                 since: $ver,
@@ -227,7 +227,7 @@ declare_features! (
     /// Allows using `#[omit_gdb_pretty_printer_section]`.
     (internal, omit_gdb_pretty_printer_section, "1.5.0", None),
     /// Set the maximum pattern complexity allowed (not limited by default).
-    (internal, pattern_complexity, "1.78.0", None),
+    (internal, pattern_complexity_limit, "1.78.0", None),
     /// Allows using pattern types.
     (internal, pattern_types, "1.79.0", Some(123646)),
     /// Allows using `#[prelude_import]` on glob `use` items.
@@ -272,7 +272,7 @@ declare_features! (
     (unstable, doc_notable_trait, "1.52.0", Some(45040)),
     /// Allows using the `may_dangle` attribute (RFC 1327).
     (unstable, dropck_eyepatch, "1.10.0", Some(34761)),
-    /// Allows making `dyn Trait` well-formed even if `Trait` is not dyn-compatible[^1].
+    /// Allows making `dyn Trait` well-formed even if `Trait` is not dyn compatible[^1].
     /// In that case, `dyn Trait: Trait` does not hold. Moreover, coercions and
     /// casts in safe Rust to `dyn Trait` for such a `Trait` is also forbidden.
     ///
@@ -300,8 +300,6 @@ declare_features! (
     (internal, rustdoc_internals, "1.58.0", Some(90418)),
     /// Allows using the `rustdoc::missing_doc_code_examples` lint
     (unstable, rustdoc_missing_doc_code_examples, "1.31.0", Some(101730)),
-    /// Allows using `#[start]` on a function indicating that it is the program entrypoint.
-    (unstable, start, "1.0.0", Some(29633)),
     /// Allows using `#[structural_match]` which indicates that a type is structurally matchable.
     /// FIXME: Subsumed by trait `StructuralPartialEq`, cannot move to removed until a library
     /// feature with the same name exists.
@@ -361,6 +359,8 @@ declare_features! (
     (unstable, abi_avr_interrupt, "1.45.0", Some(69664)),
     /// Allows `extern "C-cmse-nonsecure-call" fn()`.
     (unstable, abi_c_cmse_nonsecure_call, "1.51.0", Some(81391)),
+    /// Allows `extern "gpu-kernel" fn()`.
+    (unstable, abi_gpu_kernel, "CURRENT_RUSTC_VERSION", Some(135467)),
     /// Allows `extern "msp430-interrupt" fn()`.
     (unstable, abi_msp430_interrupt, "1.16.0", Some(38487)),
     /// Allows `extern "ptx-*" fn()`.
@@ -403,6 +403,8 @@ declare_features! (
     (unstable, c_variadic, "1.34.0", Some(44930)),
     /// Allows the use of `#[cfg(<true/false>)]`.
     (unstable, cfg_boolean_literals, "1.83.0", Some(131204)),
+    /// Allows the use of `#[cfg(contract_checks)` to check if contract checks are enabled.
+    (unstable, cfg_contract_checks, "CURRENT_RUSTC_VERSION", Some(128044)),
     /// Allows the use of `#[cfg(overflow_checks)` to check if integer overflow behaviour.
     (unstable, cfg_overflow_checks, "1.71.0", Some(111466)),
     /// Provides the relocation model information as cfg entry
@@ -445,6 +447,10 @@ declare_features! (
     (unstable, const_trait_impl, "1.42.0", Some(67792)),
     /// Allows the `?` operator in const contexts.
     (unstable, const_try, "1.56.0", Some(74935)),
+    /// Allows use of contracts attributes.
+    (incomplete, contracts, "CURRENT_RUSTC_VERSION", Some(128044)),
+    /// Allows access to internal machinery used to implement contracts.
+    (internal, contracts_internals, "CURRENT_RUSTC_VERSION", Some(128044)),
     /// Allows coroutines to be cloned.
     (unstable, coroutine_clone, "1.65.0", Some(95360)),
     /// Allows defining coroutines.
@@ -481,6 +487,11 @@ declare_features! (
     (unstable, exhaustive_patterns, "1.13.0", Some(51085)),
     /// Allows explicit tail calls via `become` expression.
     (incomplete, explicit_tail_calls, "1.72.0", Some(112788)),
+    /// Allows using `aapcs`, `efiapi`, `sysv64` and `win64` as calling conventions
+    /// for functions with varargs.
+    (unstable, extended_varargs_abi_support, "1.65.0", Some(100189)),
+    /// Allows using `system` as a calling convention with varargs.
+    (unstable, extern_system_varargs, "CURRENT_RUSTC_VERSION", Some(136946)),
     /// Allows defining `extern type`s.
     (unstable, extern_types, "1.23.0", Some(43467)),
     /// Allow using 128-bit (quad precision) floating point numbers.
@@ -507,6 +518,8 @@ declare_features! (
     (incomplete, generic_const_exprs, "1.56.0", Some(76560)),
     /// Allows generic parameters and where-clauses on free & associated const items.
     (incomplete, generic_const_items, "1.73.0", Some(113521)),
+    /// Allows any generic constants being used as pattern type range ends
+    (incomplete, generic_pattern_types, "CURRENT_RUSTC_VERSION", Some(136574)),
     /// Allows registering static items globally, possibly across crates, to iterate over at runtime.
     (unstable, global_registration, "1.80.0", Some(125119)),
     /// Allows using guards in patterns.
@@ -521,12 +534,16 @@ declare_features! (
     (unstable, impl_trait_in_bindings, "1.64.0", Some(63065)),
     /// Allows `impl Trait` as output type in `Fn` traits in return position of functions.
     (unstable, impl_trait_in_fn_trait_return, "1.64.0", Some(99697)),
+    /// Allows `use` associated functions from traits.
+    (unstable, import_trait_associated_functions, "CURRENT_RUSTC_VERSION", Some(134691)),
     /// Allows associated types in inherent impls.
     (incomplete, inherent_associated_types, "1.52.0", Some(8995)),
     /// Allow anonymous constants from an inline `const` block in pattern position
     (unstable, inline_const_pat, "1.58.0", Some(76001)),
     /// Allows using `pointer` and `reference` in intra-doc links
     (unstable, intra_doc_pointers, "1.51.0", Some(80896)),
+    // Allows using the `kl` and `widekl` target features and the associated intrinsics
+    (unstable, keylocker_x86, "CURRENT_RUSTC_VERSION", Some(134813)),
     // Allows setting the threshold for the `large_assignments` lint.
     (unstable, large_assignments, "1.52.0", Some(83518)),
     /// Allow to have type alias types for inter-crate use.
@@ -566,6 +583,8 @@ declare_features! (
     (unstable, never_type, "1.13.0", Some(35121)),
     /// Allows diverging expressions to fall back to `!` rather than `()`.
     (unstable, never_type_fallback, "1.41.0", Some(65992)),
+    /// Switch `..` syntax to use the new (`Copy + IntoIterator`) range types.
+    (unstable, new_range, "CURRENT_RUSTC_VERSION", Some(123741)),
     /// Allows `#![no_core]`.
     (unstable, no_core, "1.3.0", Some(29639)),
     /// Allows the use of `no_sanitize` attribute.
@@ -616,15 +635,12 @@ declare_features! (
     (unstable, strict_provenance_lints, "1.61.0", Some(130351)),
     /// Allows string patterns to dereference values to match them.
     (unstable, string_deref_patterns, "1.67.0", Some(87121)),
-    /// Allows the use of `#[target_feature]` on safe functions.
-    (unstable, target_feature_11, "1.45.0", Some(69098)),
+    /// Allows subtrait items to shadow supertrait items.
+    (unstable, supertrait_item_shadowing, "CURRENT_RUSTC_VERSION", Some(89151)),
     /// Allows using `#[thread_local]` on `static` items.
     (unstable, thread_local, "1.0.0", Some(29594)),
     /// Allows defining `trait X = A + B;` alias items.
     (unstable, trait_alias, "1.24.0", Some(41517)),
-    /// Allows dyn upcasting trait objects via supertraits.
-    /// Dyn upcasting is casting, e.g., `dyn Foo -> dyn Bar` where `Foo: Bar`.
-    (unstable, trait_upcasting, "1.56.0", Some(65991)),
     /// Allows for transmuting between arrays with sizes that contain generic consts.
     (unstable, transmute_generic_consts, "1.70.0", Some(109929)),
     /// Allows #[repr(transparent)] on unions (RFC 2645).
@@ -718,7 +734,8 @@ impl Features {
 
 /// Some features are not allowed to be used together at the same time, if
 /// the two are present, produce an error.
-///
-/// Currently empty, but we will probably need this again in the future,
-/// so let's keep it in for now.
-pub const INCOMPATIBLE_FEATURES: &[(Symbol, Symbol)] = &[];
+pub const INCOMPATIBLE_FEATURES: &[(Symbol, Symbol)] = &[
+    // Experimental match ergonomics rulesets are incompatible with each other, to simplify the
+    // boolean logic required to tell which typing rules to use.
+    (sym::ref_pat_eat_one_layer_2024, sym::ref_pat_eat_one_layer_2024_structural),
+];

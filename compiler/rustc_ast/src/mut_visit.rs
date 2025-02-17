@@ -9,10 +9,10 @@
 
 use std::ops::DerefMut;
 use std::panic;
+use std::sync::Arc;
 
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_data_structures::sync::Lrc;
 use rustc_span::source_map::Spanned;
 use rustc_span::{Ident, Span};
 use smallvec::{Array, SmallVec, smallvec};
@@ -143,6 +143,10 @@ pub trait MutVisitor: Sized {
         walk_flat_map_assoc_item(self, i, ctxt)
     }
 
+    fn visit_contract(&mut self, c: &mut P<FnContract>) {
+        walk_contract(self, c);
+    }
+
     fn visit_fn_decl(&mut self, d: &mut P<FnDecl>) {
         walk_fn_decl(self, d);
     }
@@ -204,6 +208,10 @@ pub trait MutVisitor: Sized {
 
     fn visit_ty(&mut self, t: &mut P<Ty>) {
         walk_ty(self, t);
+    }
+
+    fn visit_ty_pat(&mut self, t: &mut P<TyPat>) {
+        walk_ty_pat(self, t);
     }
 
     fn visit_lifetime(&mut self, l: &mut Lifetime) {
@@ -566,7 +574,7 @@ pub fn walk_ty<T: MutVisitor>(vis: &mut T, ty: &mut P<Ty>) {
         TyKind::Paren(ty) => vis.visit_ty(ty),
         TyKind::Pat(ty, pat) => {
             vis.visit_ty(ty);
-            vis.visit_pat(pat);
+            vis.visit_ty_pat(pat);
         }
         TyKind::Path(qself, path) => {
             vis.visit_qself(qself);
@@ -585,6 +593,20 @@ pub fn walk_ty<T: MutVisitor>(vis: &mut T, ty: &mut P<Ty>) {
             visit_vec(bounds, |bound| vis.visit_param_bound(bound, BoundKind::Impl));
         }
         TyKind::MacCall(mac) => vis.visit_mac_call(mac),
+    }
+    visit_lazy_tts(vis, tokens);
+    vis.visit_span(span);
+}
+
+pub fn walk_ty_pat<T: MutVisitor>(vis: &mut T, ty: &mut P<TyPat>) {
+    let TyPat { id, kind, span, tokens } = ty.deref_mut();
+    vis.visit_id(id);
+    match kind {
+        TyPatKind::Range(start, end, _include_end) => {
+            visit_opt(start, |c| vis.visit_anon_const(c));
+            visit_opt(end, |c| vis.visit_anon_const(c));
+        }
+        TyPatKind::Err(_) => {}
     }
     visit_lazy_tts(vis, tokens);
     vis.visit_span(span);
@@ -789,14 +811,14 @@ fn visit_tt<T: MutVisitor>(vis: &mut T, tt: &mut TokenTree) {
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 fn visit_tts<T: MutVisitor>(vis: &mut T, TokenStream(tts): &mut TokenStream) {
     if T::VISIT_TOKENS && !tts.is_empty() {
-        let tts = Lrc::make_mut(tts);
+        let tts = Arc::make_mut(tts);
         visit_vec(tts, |tree| visit_tt(vis, tree));
     }
 }
 
 fn visit_attr_tts<T: MutVisitor>(vis: &mut T, AttrTokenStream(tts): &mut AttrTokenStream) {
     if T::VISIT_TOKENS && !tts.is_empty() {
-        let tts = Lrc::make_mut(tts);
+        let tts = Arc::make_mut(tts);
         visit_vec(tts, |tree| visit_attr_tt(vis, tree));
     }
 }
@@ -836,7 +858,7 @@ pub fn visit_token<T: MutVisitor>(vis: &mut T, t: &mut Token) {
             vis.visit_ident(ident);
         }
         token::Interpolated(nt) => {
-            let nt = Lrc::make_mut(nt);
+            let nt = Arc::make_mut(nt);
             visit_nonterminal(vis, nt);
         }
         _ => {}
@@ -954,11 +976,20 @@ fn walk_coroutine_kind<T: MutVisitor>(vis: &mut T, coroutine_kind: &mut Coroutin
 
 fn walk_fn<T: MutVisitor>(vis: &mut T, kind: FnKind<'_>) {
     match kind {
-        FnKind::Fn(_ctxt, _ident, FnSig { header, decl, span }, _visibility, generics, body) => {
+        FnKind::Fn(
+            _ctxt,
+            _ident,
+            _vis,
+            Fn { defaultness, generics, contract, body, sig: FnSig { header, decl, span } },
+        ) => {
             // Identifier and visibility are visited as a part of the item.
+            visit_defaultness(vis, defaultness);
             vis.visit_fn_header(header);
             vis.visit_generics(generics);
             vis.visit_fn_decl(decl);
+            if let Some(contract) = contract {
+                vis.visit_contract(contract);
+            }
             if let Some(body) = body {
                 vis.visit_block(body);
             }
@@ -970,6 +1001,16 @@ fn walk_fn<T: MutVisitor>(vis: &mut T, kind: FnKind<'_>) {
             vis.visit_fn_decl(decl);
             vis.visit_expr(body);
         }
+    }
+}
+
+fn walk_contract<T: MutVisitor>(vis: &mut T, contract: &mut P<FnContract>) {
+    let FnContract { requires, ensures } = contract.deref_mut();
+    if let Some(pred) = requires {
+        vis.visit_expr(pred);
+    }
+    if let Some(pred) = ensures {
+        vis.visit_expr(pred);
     }
 }
 
@@ -1205,13 +1246,8 @@ impl WalkItemKind for ItemKind {
             ItemKind::Const(item) => {
                 visit_const_item(item, vis);
             }
-            ItemKind::Fn(box Fn { defaultness, generics, sig, body }) => {
-                visit_defaultness(vis, defaultness);
-                vis.visit_fn(
-                    FnKind::Fn(FnCtxt::Free, ident, sig, visibility, generics, body),
-                    span,
-                    id,
-                );
+            ItemKind::Fn(func) => {
+                vis.visit_fn(FnKind::Fn(FnCtxt::Free, ident, visibility, &mut *func), span, id);
             }
             ItemKind::Mod(safety, mod_kind) => {
                 visit_safety(vis, safety);
@@ -1329,10 +1365,9 @@ impl WalkItemKind for AssocItemKind {
             AssocItemKind::Const(item) => {
                 visit_const_item(item, visitor);
             }
-            AssocItemKind::Fn(box Fn { defaultness, generics, sig, body }) => {
-                visit_defaultness(visitor, defaultness);
+            AssocItemKind::Fn(func) => {
                 visitor.visit_fn(
-                    FnKind::Fn(FnCtxt::Assoc(ctxt), ident, sig, visibility, generics, body),
+                    FnKind::Fn(FnCtxt::Assoc(ctxt), ident, visibility, &mut *func),
                     span,
                     id,
                 );
@@ -1476,10 +1511,9 @@ impl WalkItemKind for ForeignItemKind {
                 visitor.visit_ty(ty);
                 visit_opt(expr, |expr| visitor.visit_expr(expr));
             }
-            ForeignItemKind::Fn(box Fn { defaultness, generics, sig, body }) => {
-                visit_defaultness(visitor, defaultness);
+            ForeignItemKind::Fn(func) => {
                 visitor.visit_fn(
-                    FnKind::Fn(FnCtxt::Foreign, ident, sig, visibility, generics, body),
+                    FnKind::Fn(FnCtxt::Foreign, ident, visibility, &mut *func),
                     span,
                     id,
                 );
@@ -1813,10 +1847,10 @@ pub fn walk_flat_map_stmt<T: MutVisitor>(
         .into_iter()
         .map(|kind| Stmt { id, kind, span })
         .collect();
-    match stmts.len() {
-        0 => {}
-        1 => vis.visit_span(&mut stmts[0].span),
-        2.. => panic!(
+    match &mut stmts[..] {
+        [] => {}
+        [stmt] => vis.visit_span(&mut stmt.span),
+        _ => panic!(
             "cloning statement `NodeId`s is prohibited by default, \
              the visitor should implement custom statement visiting"
         ),
@@ -1965,14 +1999,7 @@ impl<N: DummyAstNode, T: DummyAstNode> DummyAstNode for crate::ast_traits::AstNo
 #[derive(Debug)]
 pub enum FnKind<'a> {
     /// E.g., `fn foo()`, `fn foo(&self)`, or `extern "Abi" fn foo()`.
-    Fn(
-        FnCtxt,
-        &'a mut Ident,
-        &'a mut FnSig,
-        &'a mut Visibility,
-        &'a mut Generics,
-        &'a mut Option<P<Block>>,
-    ),
+    Fn(FnCtxt, &'a mut Ident, &'a mut Visibility, &'a mut Fn),
 
     /// E.g., `|x, y| body`.
     Closure(

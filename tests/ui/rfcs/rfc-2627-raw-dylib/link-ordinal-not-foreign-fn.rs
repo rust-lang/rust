@@ -11,7 +11,7 @@ fn test() {}
 static mut imported_val: i32 = 123;
 
 #[link(name = "exporter", kind = "raw-dylib")]
-extern {
+extern "C" {
     #[link_ordinal(13)]
     fn imported_function();
 

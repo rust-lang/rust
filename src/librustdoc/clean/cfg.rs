@@ -13,6 +13,7 @@ use rustc_session::parse::ParseSess;
 use rustc_span::Span;
 use rustc_span::symbol::{Symbol, sym};
 
+use crate::display::Joined as _;
 use crate::html::escape::Escape;
 
 #[cfg(test)]
@@ -90,11 +91,11 @@ impl Cfg {
             },
             MetaItemKind::List(ref items) => {
                 let orig_len = items.len();
-                let sub_cfgs =
+                let mut sub_cfgs =
                     items.iter().filter_map(|i| Cfg::parse_nested(i, exclude).transpose());
                 let ret = match name {
-                    sym::all => sub_cfgs.fold(Ok(Cfg::True), |x, y| Ok(x? & y?)),
-                    sym::any => sub_cfgs.fold(Ok(Cfg::False), |x, y| Ok(x? | y?)),
+                    sym::all => sub_cfgs.try_fold(Cfg::True, |x, y| Ok(x & y?)),
+                    sym::any => sub_cfgs.try_fold(Cfg::False, |x, y| Ok(x | y?)),
                     sym::not => {
                         if orig_len == 1 {
                             let mut sub_cfgs = sub_cfgs.collect::<Vec<_>>();
@@ -389,6 +390,60 @@ fn write_with_opt_paren<T: fmt::Display>(
     Ok(())
 }
 
+impl Display<'_> {
+    fn display_sub_cfgs(
+        &self,
+        fmt: &mut fmt::Formatter<'_>,
+        sub_cfgs: &[Cfg],
+        separator: &str,
+    ) -> fmt::Result {
+        use fmt::Display as _;
+
+        let short_longhand = self.1.is_long() && {
+            let all_crate_features =
+                sub_cfgs.iter().all(|sub_cfg| matches!(sub_cfg, Cfg::Cfg(sym::feature, Some(_))));
+            let all_target_features = sub_cfgs
+                .iter()
+                .all(|sub_cfg| matches!(sub_cfg, Cfg::Cfg(sym::target_feature, Some(_))));
+
+            if all_crate_features {
+                fmt.write_str("crate features ")?;
+                true
+            } else if all_target_features {
+                fmt.write_str("target features ")?;
+                true
+            } else {
+                false
+            }
+        };
+
+        fmt::from_fn(|f| {
+            sub_cfgs
+                .iter()
+                .map(|sub_cfg| {
+                    fmt::from_fn(move |fmt| {
+                        if let Cfg::Cfg(_, Some(feat)) = sub_cfg
+                            && short_longhand
+                        {
+                            if self.1.is_html() {
+                                write!(fmt, "<code>{feat}</code>")?;
+                            } else {
+                                write!(fmt, "`{feat}`")?;
+                            }
+                        } else {
+                            write_with_opt_paren(fmt, !sub_cfg.is_all(), Display(sub_cfg, self.1))?;
+                        }
+                        Ok(())
+                    })
+                })
+                .joined(separator, f)
+        })
+        .fmt(fmt)?;
+
+        Ok(())
+    }
+}
+
 impl fmt::Display for Display<'_> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self.0 {
@@ -396,11 +451,20 @@ impl fmt::Display for Display<'_> {
                 Cfg::Any(ref sub_cfgs) => {
                     let separator =
                         if sub_cfgs.iter().all(Cfg::is_simple) { " nor " } else { ", nor " };
-                    for (i, sub_cfg) in sub_cfgs.iter().enumerate() {
-                        fmt.write_str(if i == 0 { "neither " } else { separator })?;
-                        write_with_opt_paren(fmt, !sub_cfg.is_all(), Display(sub_cfg, self.1))?;
-                    }
-                    Ok(())
+                    fmt.write_str("neither ")?;
+
+                    sub_cfgs
+                        .iter()
+                        .map(|sub_cfg| {
+                            fmt::from_fn(|fmt| {
+                                write_with_opt_paren(
+                                    fmt,
+                                    !sub_cfg.is_all(),
+                                    Display(sub_cfg, self.1),
+                                )
+                            })
+                        })
+                        .joined(separator, fmt)
                 }
                 ref simple @ Cfg::Cfg(..) => write!(fmt, "non-{}", Display(simple, self.1)),
                 ref c => write!(fmt, "not ({})", Display(c, self.1)),
@@ -408,79 +472,9 @@ impl fmt::Display for Display<'_> {
 
             Cfg::Any(ref sub_cfgs) => {
                 let separator = if sub_cfgs.iter().all(Cfg::is_simple) { " or " } else { ", or " };
-
-                let short_longhand = self.1.is_long() && {
-                    let all_crate_features = sub_cfgs
-                        .iter()
-                        .all(|sub_cfg| matches!(sub_cfg, Cfg::Cfg(sym::feature, Some(_))));
-                    let all_target_features = sub_cfgs
-                        .iter()
-                        .all(|sub_cfg| matches!(sub_cfg, Cfg::Cfg(sym::target_feature, Some(_))));
-
-                    if all_crate_features {
-                        fmt.write_str("crate features ")?;
-                        true
-                    } else if all_target_features {
-                        fmt.write_str("target features ")?;
-                        true
-                    } else {
-                        false
-                    }
-                };
-
-                for (i, sub_cfg) in sub_cfgs.iter().enumerate() {
-                    if i != 0 {
-                        fmt.write_str(separator)?;
-                    }
-                    if let (true, Cfg::Cfg(_, Some(feat))) = (short_longhand, sub_cfg) {
-                        if self.1.is_html() {
-                            write!(fmt, "<code>{feat}</code>")?;
-                        } else {
-                            write!(fmt, "`{feat}`")?;
-                        }
-                    } else {
-                        write_with_opt_paren(fmt, !sub_cfg.is_all(), Display(sub_cfg, self.1))?;
-                    }
-                }
-                Ok(())
+                self.display_sub_cfgs(fmt, sub_cfgs, separator)
             }
-
-            Cfg::All(ref sub_cfgs) => {
-                let short_longhand = self.1.is_long() && {
-                    let all_crate_features = sub_cfgs
-                        .iter()
-                        .all(|sub_cfg| matches!(sub_cfg, Cfg::Cfg(sym::feature, Some(_))));
-                    let all_target_features = sub_cfgs
-                        .iter()
-                        .all(|sub_cfg| matches!(sub_cfg, Cfg::Cfg(sym::target_feature, Some(_))));
-
-                    if all_crate_features {
-                        fmt.write_str("crate features ")?;
-                        true
-                    } else if all_target_features {
-                        fmt.write_str("target features ")?;
-                        true
-                    } else {
-                        false
-                    }
-                };
-
-                for (i, sub_cfg) in sub_cfgs.iter().enumerate() {
-                    if i != 0 {
-                        fmt.write_str(" and ")?;
-                    }
-                    if let (true, Cfg::Cfg(_, Some(feat))) = (short_longhand, sub_cfg) {
-                        if self.1.is_html() {
-                            write!(fmt, "<code>{feat}</code>")?;
-                        } else {
-                            write!(fmt, "`{feat}`")?;
-                        }
-                    } else {
-                        write_with_opt_paren(fmt, !sub_cfg.is_simple(), Display(sub_cfg, self.1))?;
-                    }
-                }
-                Ok(())
-            }
+            Cfg::All(ref sub_cfgs) => self.display_sub_cfgs(fmt, sub_cfgs, " and "),
 
             Cfg::True => fmt.write_str("everywhere"),
             Cfg::False => fmt.write_str("nowhere"),

@@ -1,9 +1,9 @@
 //! Doctest functionality used only for doctests in `.rs` source files.
 
 use std::env;
+use std::sync::Arc;
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::sync::Lrc;
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_hir::{self as hir, CRATE_HIR_ID, intravisit};
 use rustc_middle::hir::nested_filter;
@@ -13,12 +13,11 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, DUMMY_SP, FileName, Pos, Span};
 
 use super::{DocTestVisitor, ScrapedDocTest};
-use crate::clean::Attributes;
-use crate::clean::types::AttributesExt;
+use crate::clean::{Attributes, extract_cfg_from_attrs};
 use crate::html::markdown::{self, ErrorCodes, LangString, MdRelLine};
 
 struct RustCollector {
-    source_map: Lrc<SourceMap>,
+    source_map: Arc<SourceMap>,
     tests: Vec<ScrapedDocTest>,
     cur_path: Vec<String>,
     position: Span,
@@ -97,7 +96,9 @@ impl HirCollector<'_> {
         nested: F,
     ) {
         let ast_attrs = self.tcx.hir().attrs(self.tcx.local_def_id_to_hir_id(def_id));
-        if let Some(ref cfg) = ast_attrs.cfg(self.tcx, &FxHashSet::default()) {
+        if let Some(ref cfg) =
+            extract_cfg_from_attrs(ast_attrs.iter(), self.tcx, &FxHashSet::default())
+        {
             if !cfg.matches(&self.tcx.sess.psess, Some(self.tcx.features())) {
                 return;
             }
@@ -146,14 +147,14 @@ impl HirCollector<'_> {
 impl<'tcx> intravisit::Visitor<'tcx> for HirCollector<'tcx> {
     type NestedFilter = nested_filter::All;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item<'_>) {
         let name = match &item.kind {
             hir::ItemKind::Impl(impl_) => {
-                rustc_hir_pretty::id_to_string(&self.tcx.hir(), impl_.self_ty.hir_id)
+                rustc_hir_pretty::id_to_string(&self.tcx, impl_.self_ty.hir_id)
             }
             _ => item.ident.to_string(),
         };

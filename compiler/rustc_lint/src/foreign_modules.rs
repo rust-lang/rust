@@ -241,10 +241,7 @@ fn structurally_same_type_impl<'tcx>(
             if let ty::Adt(def, args) = *ty.kind() {
                 let is_transparent = def.repr().transparent();
                 let is_non_null = types::nonnull_optimization_guaranteed(tcx, def);
-                debug!(
-                    "non_transparent_ty({:?}) -- type is transparent? {}, type is non-null? {}",
-                    ty, is_transparent, is_non_null
-                );
+                debug!(?ty, is_transparent, is_non_null);
                 if is_transparent && !is_non_null {
                     debug_assert_eq!(def.variants().len(), 1);
                     let v = &def.variant(FIRST_VARIANT);
@@ -378,14 +375,14 @@ fn structurally_same_type_impl<'tcx>(
 
                 // An Adt and a primitive or pointer type. This can be FFI-safe if non-null
                 // enum layout optimisation is being applied.
-                (Adt(..), _) if is_primitive_or_pointer(b) => {
+                (Adt(..) | Pat(..), _) if is_primitive_or_pointer(b) => {
                     if let Some(a_inner) = types::repr_nullable_ptr(tcx, typing_env, a, ckind) {
                         a_inner == b
                     } else {
                         false
                     }
                 }
-                (_, Adt(..)) if is_primitive_or_pointer(a) => {
+                (_, Adt(..) | Pat(..)) if is_primitive_or_pointer(a) => {
                     if let Some(b_inner) = types::repr_nullable_ptr(tcx, typing_env, b, ckind) {
                         b_inner == a
                     } else {

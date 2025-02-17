@@ -1044,11 +1044,14 @@ fn insert_switch<'tcx>(
     let switch = TerminatorKind::SwitchInt { discr: Operand::Move(discr), targets: switch_targets };
 
     let source_info = SourceInfo::outermost(body.span);
-    body.basic_blocks_mut().raw.insert(0, BasicBlockData {
-        statements: vec![assign],
-        terminator: Some(Terminator { source_info, kind: switch }),
-        is_cleanup: false,
-    });
+    body.basic_blocks_mut().raw.insert(
+        0,
+        BasicBlockData {
+            statements: vec![assign],
+            terminator: Some(Terminator { source_info, kind: switch }),
+            is_cleanup: false,
+        },
+    );
 
     let blocks = body.basic_blocks_mut().iter_mut();
 
@@ -1058,9 +1061,8 @@ fn insert_switch<'tcx>(
 }
 
 fn elaborate_coroutine_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    use rustc_middle::mir::patch::MirPatch;
-    use rustc_mir_dataflow::elaborate_drops::{Unwind, elaborate_drop};
-
+    use crate::elaborate_drop::{Unwind, elaborate_drop};
+    use crate::patch::MirPatch;
     use crate::shim::DropShimElaborator;
 
     // Note that `elaborate_drops` only drops the upvars of a coroutine, and
@@ -1594,13 +1596,16 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
         // (which is now a generator interior).
         let source_info = SourceInfo::outermost(body.span);
         let stmts = &mut body.basic_blocks_mut()[START_BLOCK].statements;
-        stmts.insert(0, Statement {
-            source_info,
-            kind: StatementKind::Assign(Box::new((
-                old_resume_local.into(),
-                Rvalue::Use(Operand::Move(resume_local.into())),
-            ))),
-        });
+        stmts.insert(
+            0,
+            Statement {
+                source_info,
+                kind: StatementKind::Assign(Box::new((
+                    old_resume_local.into(),
+                    Rvalue::Use(Operand::Move(resume_local.into())),
+                ))),
+            },
+        );
 
         let always_live_locals = always_storage_live_locals(body);
 
@@ -1687,6 +1692,10 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
 
         // Run derefer to fix Derefs that are not in the first place
         deref_finder(tcx, body);
+    }
+
+    fn is_required(&self) -> bool {
+        true
     }
 }
 
@@ -1835,12 +1844,17 @@ fn check_suspend_tys<'tcx>(tcx: TyCtxt<'tcx>, layout: &CoroutineLayout<'tcx>, bo
                     continue;
                 };
 
-                check_must_not_suspend_ty(tcx, decl.ty, hir_id, SuspendCheckData {
-                    source_span: decl.source_info.span,
-                    yield_span: yield_source_info.span,
-                    plural_len: 1,
-                    ..Default::default()
-                });
+                check_must_not_suspend_ty(
+                    tcx,
+                    decl.ty,
+                    hir_id,
+                    SuspendCheckData {
+                        source_span: decl.source_info.span,
+                        yield_span: yield_source_info.span,
+                        plural_len: 1,
+                        ..Default::default()
+                    },
+                );
             }
         }
     }
@@ -1879,13 +1893,17 @@ fn check_must_not_suspend_ty<'tcx>(
         ty::Adt(_, args) if ty.is_box() => {
             let boxed_ty = args.type_at(0);
             let allocator_ty = args.type_at(1);
-            check_must_not_suspend_ty(tcx, boxed_ty, hir_id, SuspendCheckData {
-                descr_pre: &format!("{}boxed ", data.descr_pre),
-                ..data
-            }) || check_must_not_suspend_ty(tcx, allocator_ty, hir_id, SuspendCheckData {
-                descr_pre: &format!("{}allocator ", data.descr_pre),
-                ..data
-            })
+            check_must_not_suspend_ty(
+                tcx,
+                boxed_ty,
+                hir_id,
+                SuspendCheckData { descr_pre: &format!("{}boxed ", data.descr_pre), ..data },
+            ) || check_must_not_suspend_ty(
+                tcx,
+                allocator_ty,
+                hir_id,
+                SuspendCheckData { descr_pre: &format!("{}allocator ", data.descr_pre), ..data },
+            )
         }
         ty::Adt(def, _) => check_must_not_suspend_def(tcx, def.did(), hir_id, data),
         // FIXME: support adding the attribute to TAITs
@@ -1898,10 +1916,12 @@ fn check_must_not_suspend_ty<'tcx>(
                 {
                     let def_id = poly_trait_predicate.trait_ref.def_id;
                     let descr_pre = &format!("{}implementer{} of ", data.descr_pre, plural_suffix);
-                    if check_must_not_suspend_def(tcx, def_id, hir_id, SuspendCheckData {
-                        descr_pre,
-                        ..data
-                    }) {
+                    if check_must_not_suspend_def(
+                        tcx,
+                        def_id,
+                        hir_id,
+                        SuspendCheckData { descr_pre, ..data },
+                    ) {
                         has_emitted = true;
                         break;
                     }
@@ -1915,10 +1935,12 @@ fn check_must_not_suspend_ty<'tcx>(
                 if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate.skip_binder() {
                     let def_id = trait_ref.def_id;
                     let descr_post = &format!(" trait object{}{}", plural_suffix, data.descr_post);
-                    if check_must_not_suspend_def(tcx, def_id, hir_id, SuspendCheckData {
-                        descr_post,
-                        ..data
-                    }) {
+                    if check_must_not_suspend_def(
+                        tcx,
+                        def_id,
+                        hir_id,
+                        SuspendCheckData { descr_post, ..data },
+                    ) {
                         has_emitted = true;
                         break;
                     }
@@ -1930,10 +1952,12 @@ fn check_must_not_suspend_ty<'tcx>(
             let mut has_emitted = false;
             for (i, ty) in fields.iter().enumerate() {
                 let descr_post = &format!(" in tuple element {i}");
-                if check_must_not_suspend_ty(tcx, ty, hir_id, SuspendCheckData {
-                    descr_post,
-                    ..data
-                }) {
+                if check_must_not_suspend_ty(
+                    tcx,
+                    ty,
+                    hir_id,
+                    SuspendCheckData { descr_post, ..data },
+                ) {
                     has_emitted = true;
                 }
             }
@@ -1941,12 +1965,17 @@ fn check_must_not_suspend_ty<'tcx>(
         }
         ty::Array(ty, len) => {
             let descr_pre = &format!("{}array{} of ", data.descr_pre, plural_suffix);
-            check_must_not_suspend_ty(tcx, ty, hir_id, SuspendCheckData {
-                descr_pre,
-                // FIXME(must_not_suspend): This is wrong. We should handle printing unevaluated consts.
-                plural_len: len.try_to_target_usize(tcx).unwrap_or(0) as usize + 1,
-                ..data
-            })
+            check_must_not_suspend_ty(
+                tcx,
+                ty,
+                hir_id,
+                SuspendCheckData {
+                    descr_pre,
+                    // FIXME(must_not_suspend): This is wrong. We should handle printing unevaluated consts.
+                    plural_len: len.try_to_target_usize(tcx).unwrap_or(0) as usize + 1,
+                    ..data
+                },
+            )
         }
         // If drop tracking is enabled, we want to look through references, since the referent
         // may not be considered live across the await point.

@@ -25,6 +25,6 @@ impl PartialEq for colour {
     fn ne(&self, other: &colour) -> bool { !(*self).eq(other) }
 }
 
-fn f() { let x = colour::red(1, 2); let y = colour::green; assert!((x != y)); }
+fn f() { let x = colour::red(1, 2); let y = colour::green; assert!(x != y); }
 
 pub fn main() { f(); }

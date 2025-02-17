@@ -29,15 +29,15 @@ use std::num::NonZero;
 use std::ops::Range;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::sync::atomic::{AtomicI32, Ordering};
 use std::sync::{Arc, Once};
+use std::sync::atomic::{AtomicI32, AtomicU32, Ordering};
 
 use miri::{
-    BacktraceStyle, BorrowTrackerMethod, MiriConfig, ProvenanceMode, RetagFields, ValidationMode,
+    BacktraceStyle, BorrowTrackerMethod, MiriConfig, MiriEntryFnType, ProvenanceMode, RetagFields,
+    ValidationMode,
 };
 use rustc_abi::ExternAbi;
 use rustc_data_structures::sync;
-use rustc_data_structures::sync::Lrc;
 use rustc_driver::Compilation;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::{self as hir, Node};
@@ -51,7 +51,7 @@ use rustc_middle::query::LocalCrate;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::util::Providers;
-use rustc_session::config::{CrateType, EntryFnType, ErrorOutputType, OptLevel};
+use rustc_session::config::{CrateType, ErrorOutputType, OptLevel};
 use rustc_session::search_paths::PathKind;
 use rustc_session::{CtfeBacktrace, EarlyDiagCtxt};
 use rustc_span::def_id::DefId;
@@ -73,9 +73,9 @@ impl MiriCompilerCalls {
     }
 }
 
-fn entry_fn(tcx: TyCtxt<'_>) -> (DefId, EntryFnType) {
-    if let Some(entry_def) = tcx.entry_fn(()) {
-        return entry_def;
+fn entry_fn(tcx: TyCtxt<'_>) -> (DefId, MiriEntryFnType) {
+    if let Some((def_id, entry_type)) = tcx.entry_fn(()) {
+        return (def_id, MiriEntryFnType::Rustc(entry_type));
     }
     // Look for a symbol in the local crate named `miri_start`, and treat that as the entry point.
     let sym = tcx.exported_symbols(LOCAL_CRATE).iter().find_map(|(sym, _)| {
@@ -102,7 +102,7 @@ fn entry_fn(tcx: TyCtxt<'_>) -> (DefId, EntryFnType) {
         .is_ok();
 
         if correct_func_sig {
-            (*id, EntryFnType::Start)
+            (*id, MiriEntryFnType::MiriStart)
         } else {
             tcx.dcx().fatal(
                 "`miri_start` must have the following signature:\n\
@@ -133,7 +133,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
                 // HACK: rustc will emit "crate ... required to be available in rlib format, but
                 // was not found in this form" errors once we use `tcx.dependency_formats()` if
                 // there's no rlib provided, so setting a dummy path here to workaround those errors.
-                Lrc::make_mut(&mut crate_source).rlib = Some((PathBuf::new(), PathKind::All));
+                Arc::make_mut(&mut crate_source).rlib = Some((PathBuf::new(), PathKind::All));
                 crate_source
             };
         });
@@ -182,7 +182,8 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
         if let Some(many_seeds) = self.many_seeds.take() {
             assert!(config.seed.is_none());
             let exit_code = sync::IntoDynSyncSend(AtomicI32::new(rustc_driver::EXIT_SUCCESS));
-            sync::par_for_each_in(many_seeds.seeds, |seed| {
+            let num_failed = sync::IntoDynSyncSend(AtomicU32::new(0));
+            sync::par_for_each_in(many_seeds.seeds.clone(), |seed| {
                 let mut config = config.clone();
                 config.seed = Some(seed.into());
                 eprintln!("Trying seed: {seed}");
@@ -196,8 +197,13 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
                         std::process::exit(return_code);
                     }
                     exit_code.store(return_code, Ordering::Relaxed);
+                    num_failed.fetch_add(1, Ordering::Relaxed);
                 }
             });
+            let num_failed = num_failed.0.into_inner();
+            if num_failed > 0 {
+                eprintln!("{num_failed}/{total} SEEDS FAILED", total = many_seeds.seeds.count());
+            }
             std::process::exit(exit_code.0.into_inner());
         } else {
             let return_code = miri::eval_entry(tcx, entry_def_id, entry_type, config)
@@ -370,15 +376,10 @@ fn init_late_loggers(early_dcx: &EarlyDiagCtxt, tcx: TyCtxt<'_>) {
 fn run_compiler_and_exit(
     args: &[String],
     callbacks: &mut (dyn rustc_driver::Callbacks + Send),
-    using_internal_features: Arc<std::sync::atomic::AtomicBool>,
 ) -> ! {
     // Invoke compiler, and handle return code.
-    let exit_code = rustc_driver::catch_with_exit_code(move || {
-        rustc_driver::RunCompiler::new(args, callbacks)
-            .set_using_internal_features(using_internal_features)
-            .run();
-        Ok(())
-    });
+    let exit_code =
+        rustc_driver::catch_with_exit_code(move || rustc_driver::run_compiler(args, callbacks));
     std::process::exit(exit_code)
 }
 
@@ -457,7 +458,7 @@ fn main() {
     // (`install_ice_hook` might change `RUST_BACKTRACE`.)
     let env_snapshot = env::vars_os().collect::<Vec<_>>();
 
-    let args = rustc_driver::args::raw_args(&early_dcx)
+    let args = rustc_driver::catch_fatal_errors(|| rustc_driver::args::raw_args(&early_dcx))
         .unwrap_or_else(|_| std::process::exit(rustc_driver::EXIT_FAILURE));
 
     // Install the ctrlc handler that sets `rustc_const_eval::CTRL_C_RECEIVED`, even if
@@ -467,8 +468,7 @@ fn main() {
     // If the environment asks us to actually be rustc, then do that.
     if let Some(crate_kind) = env::var_os("MIRI_BE_RUSTC") {
         // Earliest rustc setup.
-        let using_internal_features =
-            rustc_driver::install_ice_hook(rustc_driver::DEFAULT_BUG_REPORT_URL, |_| ());
+        rustc_driver::install_ice_hook(rustc_driver::DEFAULT_BUG_REPORT_URL, |_| ());
         rustc_driver::init_rustc_env_logger(&early_dcx);
 
         let target_crate = if crate_kind == "target" {
@@ -492,16 +492,11 @@ fn main() {
         }
 
         // We cannot use `rustc_driver::main` as we want it to use `args` as the CLI arguments.
-        run_compiler_and_exit(
-            &args,
-            &mut MiriBeRustCompilerCalls { target_crate },
-            using_internal_features,
-        )
+        run_compiler_and_exit(&args, &mut MiriBeRustCompilerCalls { target_crate })
     }
 
     // Add an ICE bug report hook.
-    let using_internal_features =
-        rustc_driver::install_ice_hook("https://github.com/rust-lang/miri/issues/new", |_| ());
+    rustc_driver::install_ice_hook("https://github.com/rust-lang/miri/issues/new", |_| ());
 
     // Init loggers the Miri way.
     init_early_loggers(&early_dcx);
@@ -725,19 +720,14 @@ fn main() {
 
     // Ensure we have parallelism for many-seeds mode.
     if many_seeds.is_some() && !rustc_args.iter().any(|arg| arg.starts_with("-Zthreads=")) {
-        rustc_args.push(format!(
-            "-Zthreads={}",
-            std::thread::available_parallelism().map_or(1, |n| n.get())
-        ));
+        // Clamp to 10 threads; things get a lot less efficient beyond that due to lock contention.
+        let threads = std::thread::available_parallelism().map_or(1, |n| n.get()).min(10);
+        rustc_args.push(format!("-Zthreads={threads}"));
     }
     let many_seeds =
         many_seeds.map(|seeds| ManySeedsConfig { seeds, keep_going: many_seeds_keep_going });
 
     debug!("rustc arguments: {:?}", rustc_args);
     debug!("crate arguments: {:?}", miri_config.args);
-    run_compiler_and_exit(
-        &rustc_args,
-        &mut MiriCompilerCalls::new(miri_config, many_seeds),
-        using_internal_features,
-    )
+    run_compiler_and_exit(&rustc_args, &mut MiriCompilerCalls::new(miri_config, many_seeds))
 }

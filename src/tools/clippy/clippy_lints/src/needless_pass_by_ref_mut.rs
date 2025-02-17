@@ -20,7 +20,7 @@ use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::kw;
-use rustc_target::spec::abi::Abi;
+use rustc_abi::ExternAbi;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -103,7 +103,6 @@ fn check_closures<'tcx>(
     checked_closures: &mut FxHashSet<LocalDefId>,
     closures: FxIndexSet<LocalDefId>,
 ) {
-    let hir = cx.tcx.hir();
     for closure in closures {
         if !checked_closures.insert(closure) {
             continue;
@@ -114,7 +113,7 @@ fn check_closures<'tcx>(
             .tcx
             .hir_node_by_def_id(closure)
             .associated_body()
-            .map(|(_, body_id)| hir.body(body_id))
+            .map(|(_, body_id)| cx.tcx.hir_body(body_id))
         {
             euv::ExprUseVisitor::for_clippy(cx, closure, &mut *ctx)
                 .consume_body(body)
@@ -149,7 +148,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
                     return;
                 }
                 let attrs = cx.tcx.hir().attrs(hir_id);
-                if header.abi != Abi::Rust || requires_exact_signature(attrs) {
+                if header.abi != ExternAbi::Rust || requires_exact_signature(attrs) {
                     return;
                 }
                 header.is_async()

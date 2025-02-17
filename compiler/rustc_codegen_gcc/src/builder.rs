@@ -29,7 +29,7 @@ use rustc_middle::ty::layout::{
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_span::Span;
 use rustc_span::def_id::DefId;
-use rustc_target::abi::call::FnAbi;
+use rustc_target::callconv::FnAbi;
 use rustc_target::spec::{HasTargetSpec, HasWasmCAbiOpt, HasX86AbiOpt, Target, WasmCAbi, X86Abi};
 
 use crate::common::{SignType, TypeReflection, type_is_pointer};
@@ -155,14 +155,11 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         // NOTE: not sure why, but we have the wrong type here.
         let int_type = compare_exchange.get_param(2).to_rvalue().get_type();
         let src = self.context.new_bitcast(self.location, src, int_type);
-        self.context.new_call(self.location, compare_exchange, &[
-            dst,
-            expected,
-            src,
-            weak,
-            order,
-            failure_order,
-        ])
+        self.context.new_call(
+            self.location,
+            compare_exchange,
+            &[dst, expected, src, weak, order, failure_order],
+        )
     }
 
     pub fn assign(&self, lvalue: LValue<'gcc>, value: RValue<'gcc>) {
@@ -668,6 +665,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         a + b
     }
 
+    // TODO(antoyo): should we also override the `unchecked_` versions?
     fn sub(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
         self.gcc_sub(a, b)
     }
@@ -833,31 +831,6 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
     fn not(&mut self, a: RValue<'gcc>) -> RValue<'gcc> {
         set_rvalue_location(self, self.gcc_not(a))
-    }
-
-    fn unchecked_sadd(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        set_rvalue_location(self, self.gcc_add(a, b))
-    }
-
-    fn unchecked_uadd(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        set_rvalue_location(self, self.gcc_add(a, b))
-    }
-
-    fn unchecked_ssub(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        set_rvalue_location(self, self.gcc_sub(a, b))
-    }
-
-    fn unchecked_usub(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        // TODO(antoyo): should generate poison value?
-        set_rvalue_location(self, self.gcc_sub(a, b))
-    }
-
-    fn unchecked_smul(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        set_rvalue_location(self, self.gcc_mul(a, b))
-    }
-
-    fn unchecked_umul(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        set_rvalue_location(self, self.gcc_mul(a, b))
     }
 
     fn fadd_fast(&mut self, lhs: RValue<'gcc>, rhs: RValue<'gcc>) -> RValue<'gcc> {
@@ -1076,9 +1049,11 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let align = dest.val.align.restrict_for_offset(dest.layout.field(self.cx(), 0).size);
         cg_elem.val.store(self, PlaceRef::new_sized_aligned(current_val, cg_elem.layout, align));
 
-        let next = self.inbounds_gep(self.backend_type(cg_elem.layout), current.to_rvalue(), &[
-            self.const_usize(1),
-        ]);
+        let next = self.inbounds_gep(
+            self.backend_type(cg_elem.layout),
+            current.to_rvalue(),
+            &[self.const_usize(1)],
+        );
         self.llbb().add_assignment(self.location, current, next);
         self.br(header_bb);
 

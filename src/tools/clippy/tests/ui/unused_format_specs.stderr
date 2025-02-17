@@ -8,8 +8,9 @@ LL |     println!("{:5}.", format_args!(""));
    = help: to override `-D warnings` add `#[allow(clippy::unused_format_specs)]`
 help: for the width to apply consider using `format!()`
    |
-LL |     println!("{:5}.", format!(""));
-   |                       ~~~~~~
+LL -     println!("{:5}.", format_args!(""));
+LL +     println!("{:5}.", format!(""));
+   |
 help: if the current behavior is intentional, remove the format specifiers
    |
 LL -     println!("{:5}.", format_args!(""));
@@ -24,8 +25,9 @@ LL |     println!("{:.3}", format_args!("abcde"));
    |
 help: for the precision to apply consider using `format!()`
    |
-LL |     println!("{:.3}", format!("abcde"));
-   |                       ~~~~~~
+LL -     println!("{:.3}", format_args!("abcde"));
+LL +     println!("{:.3}", format!("abcde"));
+   |
 help: if the current behavior is intentional, remove the format specifiers
    |
 LL -     println!("{:.3}", format_args!("abcde"));
@@ -66,8 +68,9 @@ LL |     usr_println!(true, "{:5}.", format_args!(""));
    |
 help: for the width to apply consider using `format!()`
    |
-LL |     usr_println!(true, "{:5}.", format!(""));
-   |                                 ~~~~~~
+LL -     usr_println!(true, "{:5}.", format_args!(""));
+LL +     usr_println!(true, "{:5}.", format!(""));
+   |
 help: if the current behavior is intentional, remove the format specifiers
    |
 LL -     usr_println!(true, "{:5}.", format_args!(""));
@@ -82,8 +85,9 @@ LL |     usr_println!(true, "{:.3}", format_args!("abcde"));
    |
 help: for the precision to apply consider using `format!()`
    |
-LL |     usr_println!(true, "{:.3}", format!("abcde"));
-   |                                 ~~~~~~
+LL -     usr_println!(true, "{:.3}", format_args!("abcde"));
+LL +     usr_println!(true, "{:.3}", format!("abcde"));
+   |
 help: if the current behavior is intentional, remove the format specifiers
    |
 LL -     usr_println!(true, "{:.3}", format_args!("abcde"));

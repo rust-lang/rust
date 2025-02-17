@@ -4,6 +4,7 @@
 //! and the corresponding code mostly in rustc_hir_analysis/check/method/probe.rs.
 use std::ops::ControlFlow;
 
+use arrayvec::ArrayVec;
 use base_db::CrateId;
 use chalk_ir::{cast::Cast, UniverseIndex, WithKind};
 use hir_def::{
@@ -528,7 +529,7 @@ impl ReceiverAdjustments {
         let mut ty = table.resolve_ty_shallow(&ty);
         let mut adjust = Vec::new();
         for _ in 0..self.autoderefs {
-            match autoderef::autoderef_step(table, ty.clone(), true) {
+            match autoderef::autoderef_step(table, ty.clone(), true, false) {
                 None => {
                     never!("autoderef not possible for {:?}", ty);
                     ty = TyKind::Error.intern(Interner);
@@ -732,30 +733,35 @@ fn lookup_impl_assoc_item_for_trait_ref(
     let self_ty = trait_ref.self_type_parameter(Interner);
     let self_ty_fp = TyFingerprint::for_trait_impl(&self_ty)?;
     let impls = db.trait_impls_in_deps(env.krate);
-    let self_impls = match self_ty.kind(Interner) {
-        TyKind::Adt(id, _) => {
-            id.0.module(db.upcast()).containing_block().and_then(|it| db.trait_impls_in_block(it))
+
+    let trait_module = hir_trait_id.module(db.upcast());
+    let type_module = match self_ty_fp {
+        TyFingerprint::Adt(adt_id) => Some(adt_id.module(db.upcast())),
+        TyFingerprint::ForeignType(type_id) => {
+            Some(from_foreign_def_id(type_id).module(db.upcast()))
         }
+        TyFingerprint::Dyn(trait_id) => Some(trait_id.module(db.upcast())),
         _ => None,
     };
+
+    let def_blocks: ArrayVec<_, 2> =
+        [trait_module.containing_block(), type_module.and_then(|it| it.containing_block())]
+            .into_iter()
+            .flatten()
+            .filter_map(|block_id| db.trait_impls_in_block(block_id))
+            .collect();
+
     let impls = impls
         .iter()
-        .chain(self_impls.as_ref())
+        .chain(&def_blocks)
         .flat_map(|impls| impls.for_trait_and_self_ty(hir_trait_id, self_ty_fp));
 
     let table = InferenceTable::new(db, env);
 
     let (impl_data, impl_subst) = find_matching_impl(impls, table, trait_ref)?;
-    let item = impl_data.items.iter().find_map(|&it| match it {
-        AssocItemId::FunctionId(f) => {
-            (db.function_data(f).name == *name).then_some(AssocItemId::FunctionId(f))
-        }
-        AssocItemId::ConstId(c) => db
-            .const_data(c)
-            .name
-            .as_ref()
-            .map(|n| n == name)
-            .and_then(|result| if result { Some(AssocItemId::ConstId(c)) } else { None }),
+    let item = impl_data.items.iter().find_map(|(n, it)| match *it {
+        AssocItemId::FunctionId(f) => (n == name).then_some(AssocItemId::FunctionId(f)),
+        AssocItemId::ConstId(c) => (n == name).then_some(AssocItemId::ConstId(c)),
         AssocItemId::TypeAliasId(_) => None,
     })?;
     Some((item, impl_subst))
@@ -850,7 +856,7 @@ fn is_inherent_impl_coherent(
         };
         rustc_has_incoherent_inherent_impls
             && !impl_data.items.is_empty()
-            && impl_data.items.iter().copied().all(|assoc| match assoc {
+            && impl_data.items.iter().all(|&(_, assoc)| match assoc {
                 AssocItemId::FunctionId(it) => db.function_data(it).rustc_allow_incoherent_impl,
                 AssocItemId::ConstId(it) => db.const_data(it).rustc_allow_incoherent_impl,
                 AssocItemId::TypeAliasId(it) => db.type_alias_data(it).rustc_allow_incoherent_impl,
@@ -1113,7 +1119,8 @@ fn iterate_method_candidates_by_receiver(
     // be found in any of the derefs of receiver_ty, so we have to go through
     // that, including raw derefs.
     table.run_in_snapshot(|table| {
-        let mut autoderef = autoderef::Autoderef::new_no_tracking(table, receiver_ty.clone(), true);
+        let mut autoderef =
+            autoderef::Autoderef::new_no_tracking(table, receiver_ty.clone(), true, true);
         while let Some((self_ty, _)) = autoderef.next() {
             iterate_inherent_methods(
                 &self_ty,
@@ -1130,7 +1137,8 @@ fn iterate_method_candidates_by_receiver(
         ControlFlow::Continue(())
     })?;
     table.run_in_snapshot(|table| {
-        let mut autoderef = autoderef::Autoderef::new_no_tracking(table, receiver_ty.clone(), true);
+        let mut autoderef =
+            autoderef::Autoderef::new_no_tracking(table, receiver_ty.clone(), true, true);
         while let Some((self_ty, _)) = autoderef.next() {
             if matches!(self_ty.kind(Interner), TyKind::InferenceVar(_, TyVariableKind::General)) {
                 // don't try to resolve methods on unknown types
@@ -1399,7 +1407,7 @@ fn iterate_inherent_methods(
         callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId, bool) -> ControlFlow<()>,
     ) -> ControlFlow<()> {
         for &impl_id in impls.for_self_ty(self_ty) {
-            for &item in table.db.impl_data(impl_id).items.iter() {
+            for &(ref item_name, item) in table.db.impl_data(impl_id).items.iter() {
                 let visible = match is_valid_impl_method_candidate(
                     table,
                     self_ty,
@@ -1408,6 +1416,7 @@ fn iterate_inherent_methods(
                     name,
                     impl_id,
                     item,
+                    item_name,
                 ) {
                     IsValidCandidate::Yes => true,
                     IsValidCandidate::NotVisible => false,
@@ -1467,6 +1476,7 @@ fn is_valid_impl_method_candidate(
     name: Option<&Name>,
     impl_id: ImplId,
     item: AssocItemId,
+    item_name: &Name,
 ) -> IsValidCandidate {
     match item {
         AssocItemId::FunctionId(f) => is_valid_impl_fn_candidate(
@@ -1477,11 +1487,12 @@ fn is_valid_impl_method_candidate(
             receiver_ty,
             self_ty,
             visible_from_module,
+            item_name,
         ),
         AssocItemId::ConstId(c) => {
             let db = table.db;
             check_that!(receiver_ty.is_none());
-            check_that!(name.is_none_or(|n| db.const_data(c).name.as_ref() == Some(n)));
+            check_that!(name.is_none_or(|n| n == item_name));
 
             if let Some(from_module) = visible_from_module {
                 if !db.const_visibility(c).is_visible_from(db.upcast(), from_module) {
@@ -1565,11 +1576,13 @@ fn is_valid_impl_fn_candidate(
     receiver_ty: Option<&Ty>,
     self_ty: &Ty,
     visible_from_module: Option<ModuleId>,
+    item_name: &Name,
 ) -> IsValidCandidate {
+    check_that!(name.is_none_or(|n| n == item_name));
+
     let db = table.db;
     let data = db.function_data(fn_id);
 
-    check_that!(name.is_none_or(|n| n == &data.name));
     if let Some(from_module) = visible_from_module {
         if !db.function_visibility(fn_id).is_visible_from(db.upcast(), from_module) {
             cov_mark::hit!(autoderef_candidate_not_visible);
@@ -1711,7 +1724,7 @@ fn autoderef_method_receiver(
     ty: Ty,
 ) -> Vec<(Canonical<Ty>, ReceiverAdjustments)> {
     let mut deref_chain: Vec<_> = Vec::new();
-    let mut autoderef = autoderef::Autoderef::new_no_tracking(table, ty, false);
+    let mut autoderef = autoderef::Autoderef::new_no_tracking(table, ty, false, true);
     while let Some((ty, derefs)) = autoderef.next() {
         deref_chain.push((
             autoderef.table.canonicalize(ty),

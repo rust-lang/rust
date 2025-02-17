@@ -310,6 +310,8 @@ pub use self::error::RawOsError;
 pub use self::error::SimpleMessage;
 #[unstable(feature = "io_const_error", issue = "133448")]
 pub use self::error::const_error;
+#[unstable(feature = "anonymous_pipe", issue = "127154")]
+pub use self::pipe::{PipeReader, PipeWriter, pipe};
 #[stable(feature = "is_terminal", since = "1.70.0")]
 pub use self::stdio::IsTerminal;
 pub(crate) use self::stdio::attempt_print_to_stderr;
@@ -337,11 +339,12 @@ pub(crate) mod copy;
 mod cursor;
 mod error;
 mod impls;
+mod pipe;
 pub mod prelude;
 mod stdio;
 mod util;
 
-const DEFAULT_BUF_SIZE: usize = crate::sys_common::io::DEFAULT_BUF_SIZE;
+const DEFAULT_BUF_SIZE: usize = crate::sys::io::DEFAULT_BUF_SIZE;
 
 pub(crate) use stdio::cleanup;
 
@@ -2246,6 +2249,7 @@ fn skip_until<R: BufRead + ?Sized>(r: &mut R, delim: u8) -> Result<usize> {
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "IoBufRead")]
 pub trait BufRead: Read {
     /// Returns the contents of the internal buffer, filling it with more data
     /// from the inner reader if it is empty.

@@ -60,7 +60,8 @@ pub use self::closure::{
     place_to_string_for_capture,
 };
 pub use self::consts::{
-    Const, ConstInt, ConstKind, Expr, ExprKind, ScalarInt, UnevaluatedConst, ValTree,
+    Const, ConstInt, ConstKind, Expr, ExprKind, ScalarInt, UnevaluatedConst, ValTree, ValTreeKind,
+    Value,
 };
 pub use self::context::{
     CtxtInterners, CurrentGcx, DeducedParamAttrs, Feed, FreeRegionInfo, GlobalCtxt, Lift, TyCtxt,
@@ -79,8 +80,7 @@ pub use self::predicate::{
     PolyExistentialPredicate, PolyExistentialProjection, PolyExistentialTraitRef,
     PolyProjectionPredicate, PolyRegionOutlivesPredicate, PolySubtypePredicate, PolyTraitPredicate,
     PolyTraitRef, PolyTypeOutlivesPredicate, Predicate, PredicateKind, ProjectionPredicate,
-    RegionOutlivesPredicate, SubtypePredicate, ToPolyTraitRef, TraitPredicate, TraitRef,
-    TypeOutlivesPredicate,
+    RegionOutlivesPredicate, SubtypePredicate, TraitPredicate, TraitRef, TypeOutlivesPredicate,
 };
 pub use self::region::{
     BoundRegion, BoundRegionKind, EarlyParamRegion, LateParamRegion, LateParamRegionKind, Region,
@@ -95,7 +95,7 @@ pub use self::sty::{
 pub use self::trait_def::TraitDef;
 pub use self::typeck_results::{
     CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, IsIdentity,
-    TypeckResults, UserType, UserTypeAnnotationIndex, UserTypeKind,
+    Rust2024IncompatiblePatInfo, TypeckResults, UserType, UserTypeAnnotationIndex, UserTypeKind,
 };
 pub use self::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
 use crate::error::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
@@ -222,6 +222,7 @@ pub struct DelegationFnSig {
     pub param_count: usize,
     pub has_self: bool,
     pub c_variadic: bool,
+    pub target_feature: bool,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -1486,8 +1487,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         // Generate a deterministically-derived seed from the item's path hash
         // to allow for cross-crate compilation to actually work
-        let mut field_shuffle_seed =
-            self.def_path_hash(did.to_def_id()).0.to_smaller_hash().as_u64();
+        let mut field_shuffle_seed = self.def_path_hash(did.to_def_id()).0.to_smaller_hash();
 
         // If the user defined a custom seed for layout randomization, xor the item's
         // path hash with the user defined seed, this will allowing determinism while
@@ -1594,6 +1594,15 @@ impl<'tcx> TyCtxt<'tcx> {
             .def_ident_span(def_id)
             .unwrap_or_else(|| bug!("missing ident span for {def_id:?}"));
         Some(Ident::new(def, span))
+    }
+
+    /// Look up the name and span of a definition.
+    ///
+    /// See [`item_name`][Self::item_name] for more information.
+    pub fn item_ident(self, def_id: DefId) -> Ident {
+        self.opt_item_ident(def_id).unwrap_or_else(|| {
+            bug!("item_ident: no name for {:?}", self.def_path(def_id));
+        })
     }
 
     pub fn opt_associated_item(self, def_id: DefId) -> Option<AssocItem> {
@@ -2158,7 +2167,6 @@ pub fn provide(providers: &mut Providers) {
     util::provide(providers);
     print::provide(providers);
     super::util::bug::provide(providers);
-    super::middle::provide(providers);
     *providers = Providers {
         trait_impls_of: trait_def::trait_impls_of_provider,
         incoherent_impls: trait_def::incoherent_impls_provider,

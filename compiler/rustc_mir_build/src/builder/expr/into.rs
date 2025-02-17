@@ -220,10 +220,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.in_breakable_scope(Some(loop_block), destination, expr_span, move |this| {
                     // conduct the test, if necessary
                     let body_block = this.cfg.start_new_block();
-                    this.cfg.terminate(loop_block, source_info, TerminatorKind::FalseUnwind {
-                        real_target: body_block,
-                        unwind: UnwindAction::Continue,
-                    });
+                    this.cfg.terminate(
+                        loop_block,
+                        source_info,
+                        TerminatorKind::FalseUnwind {
+                            real_target: body_block,
+                            unwind: UnwindAction::Continue,
+                        },
+                    );
                     this.diverge_from(loop_block);
 
                     // The “return” value of the loop body must always be a unit. We therefore
@@ -254,30 +258,34 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 debug!("expr_into_dest: fn_span={:?}", fn_span);
 
-                this.cfg.terminate(block, source_info, TerminatorKind::Call {
-                    func: fun,
-                    args,
-                    unwind: UnwindAction::Continue,
-                    destination,
-                    // The presence or absence of a return edge affects control-flow sensitive
-                    // MIR checks and ultimately whether code is accepted or not. We can only
-                    // omit the return edge if a return type is visibly uninhabited to a module
-                    // that makes the call.
-                    target: expr
-                        .ty
-                        .is_inhabited_from(
-                            this.tcx,
-                            this.parent_module,
-                            this.infcx.typing_env(this.param_env),
-                        )
-                        .then_some(success),
-                    call_source: if from_hir_call {
-                        CallSource::Normal
-                    } else {
-                        CallSource::OverloadedOperator
+                this.cfg.terminate(
+                    block,
+                    source_info,
+                    TerminatorKind::Call {
+                        func: fun,
+                        args,
+                        unwind: UnwindAction::Continue,
+                        destination,
+                        // The presence or absence of a return edge affects control-flow sensitive
+                        // MIR checks and ultimately whether code is accepted or not. We can only
+                        // omit the return edge if a return type is visibly uninhabited to a module
+                        // that makes the call.
+                        target: expr
+                            .ty
+                            .is_inhabited_from(
+                                this.tcx,
+                                this.parent_module,
+                                this.infcx.typing_env(this.param_env),
+                            )
+                            .then_some(success),
+                        call_source: if from_hir_call {
+                            CallSource::Normal
+                        } else {
+                            CallSource::OverloadedOperator
+                        },
+                        fn_span,
                     },
-                    fn_span,
-                });
+                );
                 this.diverge_from(block);
                 success.unit()
             }
@@ -303,7 +311,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     hir::Mutability::Not => this.as_read_only_place(block, arg),
                     hir::Mutability::Mut => this.as_place(block, arg),
                 };
-                let address_of = Rvalue::RawPtr(mutability, unpack!(block = place));
+                let address_of = Rvalue::RawPtr(mutability.into(), unpack!(block = place));
                 this.cfg.push_assign(block, source_info, destination, address_of);
                 block.unit()
             }
@@ -494,9 +502,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             let tmp = this.get_unit_temp();
                             let target =
                                 this.ast_block(tmp, target, block, source_info).into_block();
-                            this.cfg.terminate(target, source_info, TerminatorKind::Goto {
-                                target: destination_block,
-                            });
+                            this.cfg.terminate(
+                                target,
+                                source_info,
+                                TerminatorKind::Goto { target: destination_block },
+                            );
 
                             mir::InlineAsmOperand::Label { target_index }
                         }
@@ -515,19 +525,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     AsmMacro::NakedAsm => InlineAsmMacro::NakedAsm,
                 };
 
-                this.cfg.terminate(block, source_info, TerminatorKind::InlineAsm {
-                    asm_macro,
-                    template,
-                    operands,
-                    options,
-                    line_spans,
-                    targets: targets.into_boxed_slice(),
-                    unwind: if options.contains(InlineAsmOptions::MAY_UNWIND) {
-                        UnwindAction::Continue
-                    } else {
-                        UnwindAction::Unreachable
+                this.cfg.terminate(
+                    block,
+                    source_info,
+                    TerminatorKind::InlineAsm {
+                        asm_macro,
+                        template,
+                        operands,
+                        options,
+                        line_spans,
+                        targets: targets.into_boxed_slice(),
+                        unwind: if options.contains(InlineAsmOptions::MAY_UNWIND) {
+                            UnwindAction::Continue
+                        } else {
+                            UnwindAction::Unreachable
+                        },
                     },
-                });
+                );
                 if options.contains(InlineAsmOptions::MAY_UNWIND) {
                     this.diverge_from(block);
                 }
@@ -554,7 +568,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::VarRef { .. }
             | ExprKind::UpvarRef { .. }
             | ExprKind::PlaceTypeAscription { .. }
-            | ExprKind::ValueTypeAscription { .. } => {
+            | ExprKind::ValueTypeAscription { .. }
+            | ExprKind::PlaceUnwrapUnsafeBinder { .. }
+            | ExprKind::ValueUnwrapUnsafeBinder { .. } => {
                 debug_assert!(Category::of(&expr.kind) == Some(Category::Place));
 
                 let place = unpack!(block = this.as_place(block, expr_id));
@@ -585,12 +601,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         this.as_operand(block, scope, value, LocalInfo::Boring, NeedsTemporary::No)
                 );
                 let resume = this.cfg.start_new_block();
-                this.cfg.terminate(block, source_info, TerminatorKind::Yield {
-                    value,
-                    resume,
-                    resume_arg: destination,
-                    drop: None,
-                });
+                this.cfg.terminate(
+                    block,
+                    source_info,
+                    TerminatorKind::Yield { value, resume, resume_arg: destination, drop: None },
+                );
                 this.coroutine_drop_cleanup(block);
                 resume.unit()
             }
@@ -613,7 +628,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::ConstParam { .. }
             | ExprKind::ThreadLocalRef(_)
             | ExprKind::StaticRef { .. }
-            | ExprKind::OffsetOf { .. } => {
+            | ExprKind::OffsetOf { .. }
+            | ExprKind::WrapUnsafeBinder { .. } => {
                 debug_assert!(match Category::of(&expr.kind).unwrap() {
                     // should be handled above
                     Category::Rvalue(RvalueFunc::Into) => false,

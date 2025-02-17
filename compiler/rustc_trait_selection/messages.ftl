@@ -148,8 +148,6 @@ trait_selection_dtcs_has_req_note = the used `impl` has a `'static` requirement
 trait_selection_dtcs_introduces_requirement = calling this method introduces the `impl`'s `'static` requirement
 trait_selection_dtcs_suggestion = consider relaxing the implicit `'static` requirement
 
-trait_selection_dump_vtable_entries = vtable entries for `{$trait_ref}`: {$entries}
-
 trait_selection_empty_on_clause_in_rustc_on_unimplemented = empty `on`-clause in `#[rustc_on_unimplemented]`
     .label = empty on-clause here
 
@@ -164,6 +162,8 @@ trait_selection_explicit_lifetime_required_with_param_type = explicit lifetime r
     .label = lifetime `{$named}` required
 
 trait_selection_fn_consider_casting = consider casting the fn item to a fn pointer: `{$casting}`
+
+trait_selection_fn_consider_casting_both = consider casting both fn items to fn pointers using `as {$sig}`
 
 trait_selection_fn_uniq_types = different fn items have unique types, even if their signatures are the same
 trait_selection_fps_cast = consider casting to a fn pointer
@@ -261,7 +261,6 @@ trait_selection_oc_fn_lang_correct_type = {$lang_item_name ->
         *[lang_item_name] lang item `{$lang_item_name}`
     } function has wrong type
 trait_selection_oc_fn_main_correct_type = `main` function has wrong type
-trait_selection_oc_fn_start_correct_type = `#[start]` function has wrong type
 trait_selection_oc_generic = mismatched types
 
 trait_selection_oc_if_else_different = `if` and `else` have incompatible types
@@ -396,7 +395,6 @@ trait_selection_subtype = ...so that the {$requirement ->
     [if_else_different] `if` and `else` have incompatible types
     [no_else] `if` missing an `else` returns `()`
     [fn_main_correct_type] `main` function has the correct type
-    [fn_start_correct_type] `#[start]` function has the correct type
     [fn_lang_correct_type] lang item function has the correct type
     [intrinsic_correct_type] intrinsic has the correct type
     [method_correct_type] method receiver has the correct type
@@ -410,7 +408,6 @@ trait_selection_subtype_2 = ...so that {$requirement ->
     [if_else_different] `if` and `else` have incompatible types
     [no_else] `if` missing an `else` returns `()`
     [fn_main_correct_type] `main` function has the correct type
-    [fn_start_correct_type] `#[start]` function has the correct type
     [fn_lang_correct_type] lang item function has the correct type
     [intrinsic_correct_type] intrinsic has the correct type
     [method_correct_type] method receiver has the correct type

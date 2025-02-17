@@ -794,9 +794,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 // fictitious values after `{u,i}size::MAX` (see [`IntRange::split`] for why we do
                 // this). We show this to the user as `usize::MAX..` which is slightly incorrect but
                 // probably clear enough.
-                let c = ty.numeric_max_val(cx.tcx).unwrap();
-                let value = mir::Const::from_ty_const(c, ty.0, cx.tcx);
-                lo = PatRangeBoundary::Finite(value);
+                lo = PatRangeBoundary::Finite(ty.numeric_max_val(cx.tcx).unwrap());
             }
             let hi = if let Some(hi) = range.hi.minus_one() {
                 hi
@@ -1086,12 +1084,16 @@ pub fn analyze_match<'p, 'tcx>(
     tycx: &RustcPatCtxt<'p, 'tcx>,
     arms: &[MatchArm<'p, 'tcx>],
     scrut_ty: Ty<'tcx>,
-    pattern_complexity_limit: Option<usize>,
 ) -> Result<UsefulnessReport<'p, 'tcx>, ErrorGuaranteed> {
     let scrut_ty = tycx.reveal_opaque_ty(scrut_ty);
     let scrut_validity = PlaceValidity::from_bool(tycx.known_valid_scrutinee);
-    let report =
-        compute_match_usefulness(tycx, arms, scrut_ty, scrut_validity, pattern_complexity_limit)?;
+    let report = compute_match_usefulness(
+        tycx,
+        arms,
+        scrut_ty,
+        scrut_validity,
+        tycx.tcx.pattern_complexity_limit().0,
+    )?;
 
     // Run the non_exhaustive_omitted_patterns lint. Only run on refutable patterns to avoid hitting
     // `if let`s. Only run if the match is exhaustive otherwise the error is redundant.

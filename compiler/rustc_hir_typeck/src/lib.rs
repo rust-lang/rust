@@ -87,7 +87,7 @@ fn used_trait_imports(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &UnordSet<LocalDef
 }
 
 fn typeck<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx ty::TypeckResults<'tcx> {
-    typeck_with_fallback(tcx, def_id, None)
+    typeck_with_inspect(tcx, def_id, None)
 }
 
 /// Same as `typeck` but `inspect` is invoked on evaluation of each root obligation.
@@ -99,11 +99,11 @@ pub fn inspect_typeck<'tcx>(
     def_id: LocalDefId,
     inspect: ObligationInspector<'tcx>,
 ) -> &'tcx ty::TypeckResults<'tcx> {
-    typeck_with_fallback(tcx, def_id, Some(inspect))
+    typeck_with_inspect(tcx, def_id, Some(inspect))
 }
 
 #[instrument(level = "debug", skip(tcx, inspector), ret)]
-fn typeck_with_fallback<'tcx>(
+fn typeck_with_inspect<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
     inspector: Option<ObligationInspector<'tcx>>,
@@ -123,7 +123,7 @@ fn typeck_with_fallback<'tcx>(
     let body_id = node.body_id().unwrap_or_else(|| {
         span_bug!(span, "can't type-check body of {:?}", def_id);
     });
-    let body = tcx.hir().body(body_id);
+    let body = tcx.hir_body(body_id);
 
     let param_env = tcx.param_env(def_id);
 
@@ -139,7 +139,7 @@ fn typeck_with_fallback<'tcx>(
             // type that has an infer in it, lower the type directly so that it'll
             // be correctly filled with infer. We'll use this inference to provide
             // a suggestion later on.
-            fcx.lowerer().lower_fn_ty(id, header.safety, header.abi, decl, None, None)
+            fcx.lowerer().lower_fn_ty(id, header.safety(), header.abi, decl, None, None)
         } else {
             tcx.fn_sig(def_id).instantiate_identity()
         };
@@ -185,8 +185,6 @@ fn typeck_with_fallback<'tcx>(
 
         let wf_code = ObligationCauseCode::WellFormed(Some(WellFormedLoc::Ty(def_id)));
         fcx.register_wf_obligation(expected_type.into(), body.value.span, wf_code);
-
-        fcx.require_type_is_sized(expected_type, body.value.span, ObligationCauseCode::ConstSized);
 
         // Gather locals in statics (because of block expressions).
         GatherLocalsVisitor::new(&fcx).visit_body(body);
@@ -251,7 +249,8 @@ fn typeck_with_fallback<'tcx>(
 fn infer_type_if_missing<'tcx>(fcx: &FnCtxt<'_, 'tcx>, node: Node<'tcx>) -> Option<Ty<'tcx>> {
     let tcx = fcx.tcx;
     let def_id = fcx.body_id;
-    let expected_type = if let Some(&hir::Ty { kind: hir::TyKind::Infer, span, .. }) = node.ty() {
+    let expected_type = if let Some(&hir::Ty { kind: hir::TyKind::Infer(()), span, .. }) = node.ty()
+    {
         if let Some(item) = tcx.opt_associated_item(def_id.into())
             && let ty::AssocKind::Const = item.kind
             && let ty::AssocItemContainer::Impl = item.container
@@ -452,7 +451,7 @@ fn report_unexpected_variant_res(
                 );
                 let fields = fields
                     .iter()
-                    .map(|field| format!("{}: _", field.name.to_ident_string()))
+                    .map(|field| format!("{}: _", field.ident(tcx)))
                     .collect::<Vec<_>>()
                     .join(", ");
                 let sugg = format!(" {{ {} }}", fields);

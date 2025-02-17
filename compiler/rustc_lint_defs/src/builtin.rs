@@ -27,7 +27,6 @@ declare_lint_pass! {
         BARE_TRAIT_OBJECTS,
         BINDINGS_WITH_VARIANT_NAME,
         BREAK_WITH_LABEL_AND_LOOP,
-        CENUM_IMPL_DROP_CAST,
         COHERENCE_LEAK_CHECK,
         CONFLICTING_REPR_HINTS,
         CONST_EVALUATABLE_UNCHECKED,
@@ -60,6 +59,7 @@ declare_lint_pass! {
         LARGE_ASSIGNMENTS,
         LATE_BOUND_LIFETIME_ARGUMENTS,
         LEGACY_DERIVE_HELPERS,
+        LINKER_MESSAGES,
         LONG_RUNNING_CONST_EVAL,
         LOSSY_PROVENANCE_CASTS,
         MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
@@ -101,6 +101,8 @@ declare_lint_pass! {
         SINGLE_USE_LIFETIMES,
         SOFT_UNSTABLE,
         STABLE_FEATURES,
+        SUPERTRAIT_ITEM_SHADOWING_DEFINITION,
+        SUPERTRAIT_ITEM_SHADOWING_USAGE,
         TAIL_EXPR_DROP_ORDER,
         TEST_UNSTABLE_LINT,
         TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
@@ -143,7 +145,6 @@ declare_lint_pass! {
         UNUSED_VARIABLES,
         USELESS_DEPRECATED,
         WARNINGS,
-        WASM_C_ABI,
         // tidy-alphabetical-end
     ]
 }
@@ -2613,58 +2614,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `cenum_impl_drop_cast` lint detects an `as` cast of a field-less
-    /// `enum` that implements [`Drop`].
-    ///
-    /// [`Drop`]: https://doc.rust-lang.org/std/ops/trait.Drop.html
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// # #![allow(unused)]
-    /// enum E {
-    ///     A,
-    /// }
-    ///
-    /// impl Drop for E {
-    ///     fn drop(&mut self) {
-    ///         println!("Drop");
-    ///     }
-    /// }
-    ///
-    /// fn main() {
-    ///     let e = E::A;
-    ///     let i = e as u32;
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Casting a field-less `enum` that does not implement [`Copy`] to an
-    /// integer moves the value without calling `drop`. This can result in
-    /// surprising behavior if it was expected that `drop` should be called.
-    /// Calling `drop` automatically would be inconsistent with other move
-    /// operations. Since neither behavior is clear or consistent, it was
-    /// decided that a cast of this nature will no longer be allowed.
-    ///
-    /// This is a [future-incompatible] lint to transition this to a hard error
-    /// in the future. See [issue #73333] for more details.
-    ///
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    /// [issue #73333]: https://github.com/rust-lang/rust/issues/73333
-    /// [`Copy`]: https://doc.rust-lang.org/std/marker/trait.Copy.html
-    pub CENUM_IMPL_DROP_CAST,
-    Deny,
-    "a C-like enum implementing Drop is cast",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
-        reference: "issue #73333 <https://github.com/rust-lang/rust/issues/73333>",
-    };
-}
-
-declare_lint! {
     /// The `fuzzy_provenance_casts` lint detects an `as` cast between an integer
     /// and a pointer.
     ///
@@ -3597,7 +3546,7 @@ declare_lint! {
     ///
     /// [Other ABIs]: https://doc.rust-lang.org/reference/items/external-blocks.html#abi
     pub MISSING_ABI,
-    Allow,
+    Warn,
     "No declared ABI for extern declaration"
 }
 
@@ -4083,6 +4032,47 @@ declare_lint! {
     pub FFI_UNWIND_CALLS,
     Allow,
     "call to foreign functions or function pointers with FFI-unwind ABI"
+}
+
+declare_lint! {
+    /// The `linker_messages` lint forwards warnings from the linker.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (needs CLI args, platform-specific)
+    /// #[warn(linker_messages)]
+    /// extern "C" {
+    ///   fn foo();
+    /// }
+    /// fn main () { unsafe { foo(); } }
+    /// ```
+    ///
+    /// On Linux, using `gcc -Wl,--warn-unresolved-symbols` as a linker, this will produce
+    ///
+    /// ```text
+    /// warning: linker stderr: rust-lld: undefined symbol: foo
+    ///          >>> referenced by rust_out.69edbd30df4ae57d-cgu.0
+    ///          >>>               rust_out.rust_out.69edbd30df4ae57d-cgu.0.rcgu.o:(rust_out::main::h3a90094b06757803)
+    ///   |
+    /// note: the lint level is defined here
+    ///  --> warn.rs:1:9
+    ///   |
+    /// 1 | #![warn(linker_messages)]
+    ///   |         ^^^^^^^^^^^^^^^
+    /// warning: 1 warning emitted
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// Linkers emit platform-specific and program-specific warnings that cannot be predicted in
+    /// advance by the Rust compiler. Such messages are ignored by default for now. While linker
+    /// warnings could be very useful they have been ignored for many years by essentially all
+    /// users, so we need to do a bit more work than just surfacing their text to produce a clear
+    /// and actionable warning of similar quality to our other diagnostics. See this tracking
+    /// issue for more details: <https://github.com/rust-lang/rust/issues/136096>.
+    pub LINKER_MESSAGES,
+    Allow,
+    "warnings emitted at runtime by the target-specific linker program"
 }
 
 declare_lint! {
@@ -4648,44 +4638,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `wasm_c_abi` lint detects crate dependencies that are incompatible
-    /// with future versions of Rust that will emit spec-compliant C ABI.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,ignore (needs extern crate)
-    /// #![deny(wasm_c_abi)]
-    /// ```
-    ///
-    /// This will produce:
-    ///
-    /// ```text
-    /// error: the following packages contain code that will be rejected by a future version of Rust: wasm-bindgen v0.2.87
-    ///   |
-    /// note: the lint level is defined here
-    ///  --> src/lib.rs:1:9
-    ///   |
-    /// 1 | #![deny(wasm_c_abi)]
-    ///   |         ^^^^^^^^^^
-    /// ```
-    ///
-    /// ### Explanation
-    ///
-    /// Rust has historically emitted non-spec-compliant C ABI. This has caused
-    /// incompatibilities between other compilers and Wasm targets. In a future
-    /// version of Rust this will be fixed and therefore dependencies relying
-    /// on the non-spec-compliant C ABI will stop functioning.
-    pub WASM_C_ABI,
-    Deny,
-    "detects dependencies that are incompatible with the Wasm C ABI",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
-        reference: "issue #71871 <https://github.com/rust-lang/rust/issues/71871>",
-    };
-    crate_level_only
-}
-
-declare_lint! {
     /// The `uncovered_param_in_projection` lint detects a violation of one of Rust's orphan rules for
     /// foreign trait implementations that concerns the use of type parameters inside trait associated
     /// type paths ("projections") whose output may not be a local type that is mistakenly considered
@@ -4964,6 +4916,87 @@ declare_lint! {
         reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
         reference: "issue #124535 <https://github.com/rust-lang/rust/issues/124535>",
     };
+}
+
+declare_lint! {
+    /// The `supertrait_item_shadowing_usage` lint detects when the
+    /// usage of an item that is provided by both a subtrait and supertrait
+    /// is shadowed, preferring the subtrait.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![feature(supertrait_item_shadowing)]
+    /// #![deny(supertrait_item_shadowing_usage)]
+    ///
+    /// trait Upstream {
+    ///     fn hello(&self) {}
+    /// }
+    /// impl<T> Upstream for T {}
+    ///
+    /// trait Downstream: Upstream {
+    ///     fn hello(&self) {}
+    /// }
+    /// impl<T> Downstream for T {}
+    ///
+    /// struct MyType;
+    /// MyType.hello();
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// RFC 3624 specified a heuristic in which a supertrait item would be
+    /// shadowed by a subtrait item when ambiguity occurs during item
+    /// selection. In order to mitigate side-effects of this happening
+    /// silently, this lint detects these cases when users want to deny them
+    /// or fix the call sites.
+    pub SUPERTRAIT_ITEM_SHADOWING_USAGE,
+    // FIXME(supertrait_item_shadowing): It is not decided if this should
+    // warn by default at the call site.
+    Allow,
+    "detects when a supertrait item is shadowed by a subtrait item",
+    @feature_gate = supertrait_item_shadowing;
+}
+
+declare_lint! {
+    /// The `supertrait_item_shadowing_definition` lint detects when the
+    /// definition of an item that is provided by both a subtrait and
+    /// supertrait is shadowed, preferring the subtrait.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![feature(supertrait_item_shadowing)]
+    /// #![deny(supertrait_item_shadowing_definition)]
+    ///
+    /// trait Upstream {
+    ///     fn hello(&self) {}
+    /// }
+    /// impl<T> Upstream for T {}
+    ///
+    /// trait Downstream: Upstream {
+    ///     fn hello(&self) {}
+    /// }
+    /// impl<T> Downstream for T {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// RFC 3624 specified a heuristic in which a supertrait item would be
+    /// shadowed by a subtrait item when ambiguity occurs during item
+    /// selection. In order to mitigate side-effects of this happening
+    /// silently, this lint detects these cases when users want to deny them
+    /// or fix their trait definitions.
+    pub SUPERTRAIT_ITEM_SHADOWING_DEFINITION,
+    // FIXME(supertrait_item_shadowing): It is not decided if this should
+    // warn by default at the usage site.
+    Allow,
+    "detects when a supertrait item is shadowed by a subtrait item",
+    @feature_gate = supertrait_item_shadowing;
 }
 
 declare_lint! {

@@ -18,7 +18,7 @@ pub fn check(cx: &LateContext<'_>, expr: &Expr<'_>, from: &Expr<'_>, to: &Ty<'_>
             Mutability::Not => ("`0 as *const _` detected", "ptr::null"),
         };
 
-        let sugg = if let TyKind::Infer = mut_ty.ty.kind {
+        let sugg = if let TyKind::Infer(()) = mut_ty.ty.kind {
             format!("{std_or_core}::{sugg_fn}()")
         } else if let Some(mut_ty_snip) = mut_ty.ty.span.get_source_text(cx) {
             format!("{std_or_core}::{sugg_fn}::<{mut_ty_snip}>()")

@@ -1,0 +1,38 @@
+error: generic parameters may not be used in const operations
+  --> $DIR/assoc_const.rs:17:41
+   |
+LL | fn foo<T: Foo>(_: pattern_type!(u32 is <T as Foo>::START..=<T as Foo>::END)) {}
+   |                                         ^ cannot perform const operation using `T`
+   |
+   = note: type parameters may not be used in const expressions
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: generic parameters may not be used in const operations
+  --> $DIR/assoc_const.rs:17:61
+   |
+LL | fn foo<T: Foo>(_: pattern_type!(u32 is <T as Foo>::START..=<T as Foo>::END)) {}
+   |                                                             ^ cannot perform const operation using `T`
+   |
+   = note: type parameters may not be used in const expressions
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: generic parameters may not be used in const operations
+  --> $DIR/assoc_const.rs:20:40
+   |
+LL | fn bar<T: Foo>(_: pattern_type!(u32 is T::START..=T::END)) {}
+   |                                        ^^^^^^^^ cannot perform const operation using `T`
+   |
+   = note: type parameters may not be used in const expressions
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: generic parameters may not be used in const operations
+  --> $DIR/assoc_const.rs:20:51
+   |
+LL | fn bar<T: Foo>(_: pattern_type!(u32 is T::START..=T::END)) {}
+   |                                                   ^^^^^^ cannot perform const operation using `T`
+   |
+   = note: type parameters may not be used in const expressions
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: aborting due to 4 previous errors
+

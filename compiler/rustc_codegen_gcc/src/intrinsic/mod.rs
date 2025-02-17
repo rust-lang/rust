@@ -7,6 +7,9 @@ use std::iter;
 #[cfg(feature = "master")]
 use gccjit::FunctionType;
 use gccjit::{ComparisonOp, Function, RValue, ToRValue, Type, UnaryOp};
+#[cfg(feature = "master")]
+use rustc_abi::ExternAbi;
+use rustc_abi::HasDataLayout;
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::common::IntPredicate;
@@ -25,11 +28,8 @@ use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt};
 use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_span::{Span, Symbol, sym};
-use rustc_target::abi::HasDataLayout;
-use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode};
+use rustc_target::callconv::{ArgAbi, FnAbi, PassMode};
 use rustc_target::spec::PanicStrategy;
-#[cfg(feature = "master")]
-use rustc_target::spec::abi::Abi;
 
 #[cfg(feature = "master")]
 use crate::abi::FnAbiGccExt;
@@ -1001,7 +1001,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                     128 => "__rust_i128_addo",
                     _ => unreachable!(),
                 };
-                let (int_result, overflow) = self.operation_with_overflow(func_name, lhs, rhs);
+                let (int_result, overflow) =
+                    self.operation_with_overflow(func_name, lhs, rhs, width);
                 self.llbb().add_assignment(self.location, res, int_result);
                 overflow
             };
@@ -1071,7 +1072,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                     128 => "__rust_i128_subo",
                     _ => unreachable!(),
                 };
-                let (int_result, overflow) = self.operation_with_overflow(func_name, lhs, rhs);
+                let (int_result, overflow) =
+                    self.operation_with_overflow(func_name, lhs, rhs, width);
                 self.llbb().add_assignment(self.location, res, int_result);
                 overflow
             };
@@ -1236,7 +1238,7 @@ fn get_rust_try_fn<'a, 'gcc, 'tcx>(
             tcx.types.unit,
             false,
             rustc_hir::Safety::Unsafe,
-            Abi::Rust,
+            ExternAbi::Rust,
         )),
     );
     // `unsafe fn(*mut i8, *mut i8) -> ()`
@@ -1247,7 +1249,7 @@ fn get_rust_try_fn<'a, 'gcc, 'tcx>(
             tcx.types.unit,
             false,
             rustc_hir::Safety::Unsafe,
-            Abi::Rust,
+            ExternAbi::Rust,
         )),
     );
     // `unsafe fn(unsafe fn(*mut i8) -> (), *mut i8, unsafe fn(*mut i8, *mut i8) -> ()) -> i32`
@@ -1256,7 +1258,7 @@ fn get_rust_try_fn<'a, 'gcc, 'tcx>(
         tcx.types.i32,
         false,
         rustc_hir::Safety::Unsafe,
-        Abi::Rust,
+        ExternAbi::Rust,
     ));
     let rust_try = gen_fn(cx, "__rust_try", rust_fn_sig, codegen);
     cx.rust_try_fn.set(Some(rust_try));

@@ -101,7 +101,6 @@ it's easy to pick up work without a large time commitment:
 - [Rustdoc Askama Migration](https://github.com/rust-lang/rust/issues/108868)
 - [Diagnostic Translation](https://github.com/rust-lang/rust/issues/100717)
 - [Move UI tests to subdirectories](https://github.com/rust-lang/rust/issues/73494)
-- [Port run-make tests from Make to Rust](https://github.com/rust-lang/rust/issues/121876)
 
 If you find more recurring work, please feel free to add it here!
 
@@ -136,6 +135,10 @@ you can try to rebase the pull request on top of the latest `master` branch and 
 pull request, continuing the work on the feature.
 
 [abandoned-prs]: https://github.com/rust-lang/rust/pulls?q=is%3Apr+label%3AS-inactive+is%3Aclosed
+
+### Writing tests
+
+Issues that have been resolved but do not have a regression test are marked with the `E-needs-test` label. Writing unit tests is a low-risk, lower-priority task that offers new contributors a great opportunity to familiarize themselves with the testing infrastructure and contribution workflow.
 
 ### Contributing to std (standard library)
 

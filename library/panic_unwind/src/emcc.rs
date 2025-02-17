@@ -21,7 +21,7 @@ struct TypeInfo {
 }
 unsafe impl Sync for TypeInfo {}
 
-extern "C" {
+unsafe extern "C" {
     // The leading `\x01` byte here is actually a magical signal to LLVM to
     // *not* apply any other mangling like prefixing with a `_` character.
     //
@@ -64,46 +64,53 @@ struct Exception {
     data: Option<Box<dyn Any + Send>>,
 }
 
-pub unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
+pub(crate) unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
     // intrinsics::try actually gives us a pointer to this structure.
     #[repr(C)]
     struct CatchData {
         ptr: *mut u8,
         is_rust_panic: bool,
     }
-    let catch_data = &*(ptr as *mut CatchData);
+    unsafe {
+        let catch_data = &*(ptr as *mut CatchData);
 
-    let adjusted_ptr = __cxa_begin_catch(catch_data.ptr as *mut libc::c_void) as *mut Exception;
-    if !catch_data.is_rust_panic {
-        super::__rust_foreign_exception();
-    }
+        let adjusted_ptr = __cxa_begin_catch(catch_data.ptr as *mut libc::c_void) as *mut Exception;
+        if !catch_data.is_rust_panic {
+            super::__rust_foreign_exception();
+        }
 
-    let canary = (&raw const (*adjusted_ptr).canary).read();
-    if !ptr::eq(canary, &EXCEPTION_TYPE_INFO) {
-        super::__rust_foreign_exception();
-    }
+        let canary = (&raw const (*adjusted_ptr).canary).read();
+        if !ptr::eq(canary, &EXCEPTION_TYPE_INFO) {
+            super::__rust_foreign_exception();
+        }
 
-    let was_caught = (*adjusted_ptr).caught.swap(true, Ordering::Relaxed);
-    if was_caught {
-        // Since cleanup() isn't allowed to panic, we just abort instead.
-        intrinsics::abort();
+        let was_caught = (*adjusted_ptr).caught.swap(true, Ordering::Relaxed);
+        if was_caught {
+            // Since cleanup() isn't allowed to panic, we just abort instead.
+            intrinsics::abort();
+        }
+        let out = (*adjusted_ptr).data.take().unwrap();
+        __cxa_end_catch();
+        out
     }
-    let out = (*adjusted_ptr).data.take().unwrap();
-    __cxa_end_catch();
-    out
 }
 
-pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
-    let exception = __cxa_allocate_exception(mem::size_of::<Exception>()) as *mut Exception;
-    if exception.is_null() {
-        return uw::_URC_FATAL_PHASE1_ERROR as u32;
+pub(crate) unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
+    unsafe {
+        let exception = __cxa_allocate_exception(mem::size_of::<Exception>()) as *mut Exception;
+        if exception.is_null() {
+            return uw::_URC_FATAL_PHASE1_ERROR as u32;
+        }
+        ptr::write(
+            exception,
+            Exception {
+                canary: &EXCEPTION_TYPE_INFO,
+                caught: AtomicBool::new(false),
+                data: Some(data),
+            },
+        );
+        __cxa_throw(exception as *mut _, &EXCEPTION_TYPE_INFO, exception_cleanup);
     }
-    ptr::write(exception, Exception {
-        canary: &EXCEPTION_TYPE_INFO,
-        caught: AtomicBool::new(false),
-        data: Some(data),
-    });
-    __cxa_throw(exception as *mut _, &EXCEPTION_TYPE_INFO, exception_cleanup);
 }
 
 extern "C" fn exception_cleanup(ptr: *mut libc::c_void) -> *mut libc::c_void {
@@ -116,7 +123,7 @@ extern "C" fn exception_cleanup(ptr: *mut libc::c_void) -> *mut libc::c_void {
     }
 }
 
-extern "C" {
+unsafe extern "C" {
     fn __cxa_allocate_exception(thrown_size: libc::size_t) -> *mut libc::c_void;
     fn __cxa_begin_catch(thrown_exception: *mut libc::c_void) -> *mut libc::c_void;
     fn __cxa_end_catch();

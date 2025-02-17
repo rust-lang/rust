@@ -90,10 +90,12 @@ fn has_ffi_unwind_calls(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
             let span = terminator.source_info.span;
 
             let foreign = fn_def_id.is_some();
-            tcx.emit_node_span_lint(FFI_UNWIND_CALLS, lint_root, span, errors::FfiUnwindCall {
+            tcx.emit_node_span_lint(
+                FFI_UNWIND_CALLS,
+                lint_root,
                 span,
-                foreign,
-            });
+                errors::FfiUnwindCall { span, foreign },
+            );
 
             tainted = true;
         }

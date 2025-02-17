@@ -195,6 +195,7 @@ fn bool_expr_to_enum_expr(expr: ast::Expr) -> ast::Expr {
             make::tail_only_block_expr(true_expr),
             Some(ast::ElseBranch::Block(make::tail_only_block_expr(false_expr))),
         )
+        .into()
     }
 }
 

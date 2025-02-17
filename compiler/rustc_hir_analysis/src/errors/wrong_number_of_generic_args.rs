@@ -451,7 +451,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 )
             });
 
-        let fn_sig = self.tcx.hir().get_if_local(self.def_id).and_then(hir::Node::fn_sig);
+        let fn_sig = self.tcx.hir_get_if_local(self.def_id).and_then(hir::Node::fn_sig);
         let is_used_in_input = |def_id| {
             fn_sig.is_some_and(|fn_sig| {
                 fn_sig.decl.inputs.iter().any(|ty| match ty.kind {
@@ -495,7 +495,8 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                         .iter()
                         .any(|constraint| constraint.ident.name == item.name)
                 })
-                .map(|item| item.name.to_ident_string())
+                .filter(|item| !item.is_impl_trait_in_trait())
+                .map(|item| self.tcx.item_ident(item.def_id).to_string())
                 .collect()
         } else {
             Vec::default()

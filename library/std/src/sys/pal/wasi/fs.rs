@@ -183,7 +183,7 @@ impl Iterator for ReadDir {
 
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
         match &mut self.state {
-            ReadDirState::FillBuffer { next_read_offset, ref mut buf } => {
+            ReadDirState::FillBuffer { next_read_offset, buf } => {
                 let result = self.inner.dir.fd.readdir(buf, *next_read_offset);
                 match result {
                     Ok(read_bytes) => {
@@ -207,7 +207,7 @@ impl Iterator for ReadDir {
                     }
                 }
             }
-            ReadDirState::ProcessEntry { ref mut buf, next_read_offset, offset } => {
+            ReadDirState::ProcessEntry { buf, next_read_offset, offset } => {
                 let contents = &buf[*offset..];
                 const DIRENT_SIZE: usize = crate::mem::size_of::<wasi::Dirent>();
                 if contents.len() >= DIRENT_SIZE {
@@ -533,7 +533,7 @@ impl File {
             Some(time) if let Some(ts) = time.to_wasi_timestamp() => Ok(ts),
             Some(_) => Err(io::const_error!(
                 io::ErrorKind::InvalidInput,
-                "timestamp is too large to set as a file time"
+                "timestamp is too large to set as a file time",
             )),
             None => Ok(0),
         };
@@ -773,8 +773,7 @@ fn open_parent(p: &Path) -> io::Result<(ManuallyDrop<WasiFd>, PathBuf)> {
                     }
                     let msg = format!(
                         "failed to find a pre-opened file descriptor \
-                     through which {:?} could be opened",
-                        p
+                        through which {p:?} could be opened",
                     );
                     return Err(io::Error::new(io::ErrorKind::Uncategorized, msg));
                 }
@@ -787,7 +786,7 @@ fn open_parent(p: &Path) -> io::Result<(ManuallyDrop<WasiFd>, PathBuf)> {
             }
         }
 
-        extern "C" {
+        unsafe extern "C" {
             pub fn __wasilibc_find_relpath(
                 path: *const libc::c_char,
                 abs_prefix: *mut *const libc::c_char,

@@ -75,10 +75,10 @@ impl<'tcx> BorrowExplanation<'tcx> {
 
         if let Some(span) = borrow_span {
             let def_id = body.source.def_id();
-            if let Some(node) = tcx.hir().get_if_local(def_id)
+            if let Some(node) = tcx.hir_get_if_local(def_id)
                 && let Some(body_id) = node.body_id()
             {
-                let body = tcx.hir().body(body_id);
+                let body = tcx.hir_body(body_id);
                 let mut expr_finder = FindExprBySpan::new(span, tcx);
                 expr_finder.visit_expr(body.value);
                 if let Some(mut expr) = expr_finder.result {
@@ -131,10 +131,10 @@ impl<'tcx> BorrowExplanation<'tcx> {
                     && let Ok(pat) = tcx.sess.source_map().span_to_snippet(pat.span)
                 {
                     suggest_rewrite_if_let(tcx, expr, &pat, init, conseq, alt, err);
-                } else if path_span.map_or(true, |path_span| path_span == var_or_use_span) {
+                } else if path_span.is_none_or(|path_span| path_span == var_or_use_span) {
                     // We can use `var_or_use_span` if either `path_span` is not present, or both
                     // spans are the same.
-                    if borrow_span.map_or(true, |sp| !sp.overlaps(var_or_use_span)) {
+                    if borrow_span.is_none_or(|sp| !sp.overlaps(var_or_use_span)) {
                         err.span_label(
                             var_or_use_span,
                             format!("{borrow_desc}borrow later {message}"),
@@ -248,7 +248,98 @@ impl<'tcx> BorrowExplanation<'tcx> {
                         );
                         err.span_label(body.source_info(drop_loc).span, message);
 
-                        if let LocalInfo::BlockTailTemp(info) = local_decl.local_info() {
+                        struct FindLetExpr<'hir> {
+                            span: Span,
+                            result: Option<(Span, &'hir hir::Pat<'hir>, &'hir hir::Expr<'hir>)>,
+                            tcx: TyCtxt<'hir>,
+                        }
+
+                        impl<'hir> rustc_hir::intravisit::Visitor<'hir> for FindLetExpr<'hir> {
+                            type NestedFilter = rustc_middle::hir::nested_filter::OnlyBodies;
+                            fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+                                self.tcx
+                            }
+                            fn visit_expr(&mut self, expr: &'hir hir::Expr<'hir>) {
+                                if let hir::ExprKind::If(cond, _conseq, _alt)
+                                | hir::ExprKind::Loop(
+                                    hir::Block {
+                                        expr:
+                                            Some(&hir::Expr {
+                                                kind: hir::ExprKind::If(cond, _conseq, _alt),
+                                                ..
+                                            }),
+                                        ..
+                                    },
+                                    _,
+                                    hir::LoopSource::While,
+                                    _,
+                                ) = expr.kind
+                                    && let hir::ExprKind::Let(hir::LetExpr {
+                                        init: let_expr_init,
+                                        span: let_expr_span,
+                                        pat: let_expr_pat,
+                                        ..
+                                    }) = cond.kind
+                                    && let_expr_init.span.contains(self.span)
+                                {
+                                    self.result =
+                                        Some((*let_expr_span, let_expr_pat, let_expr_init))
+                                } else {
+                                    hir::intravisit::walk_expr(self, expr);
+                                }
+                            }
+                        }
+
+                        if let &LocalInfo::IfThenRescopeTemp { if_then } = local_decl.local_info()
+                            && let hir::Node::Expr(expr) = tcx.hir_node(if_then)
+                            && let hir::ExprKind::If(cond, conseq, alt) = expr.kind
+                            && let hir::ExprKind::Let(&hir::LetExpr {
+                                span: _,
+                                pat,
+                                init,
+                                // FIXME(#101728): enable rewrite when type ascription is
+                                // stabilized again.
+                                ty: None,
+                                recovered: _,
+                            }) = cond.kind
+                            && pat.span.can_be_used_for_suggestions()
+                            && let Ok(pat) = tcx.sess.source_map().span_to_snippet(pat.span)
+                        {
+                            suggest_rewrite_if_let(tcx, expr, &pat, init, conseq, alt, err);
+                        } else if let Some((old, new)) = multiple_borrow_span
+                            && let def_id = body.source.def_id()
+                            && let Some(node) = tcx.hir_get_if_local(def_id)
+                            && let Some(body_id) = node.body_id()
+                            && let hir_body = tcx.hir_body(body_id)
+                            && let mut expr_finder = (FindLetExpr { span: old, result: None, tcx })
+                            && let Some((let_expr_span, let_expr_pat, let_expr_init)) = {
+                                expr_finder.visit_expr(hir_body.value);
+                                expr_finder.result
+                            }
+                            && !let_expr_span.contains(new)
+                        {
+                            // #133941: The `old` expression is at the conditional part of an
+                            // if/while let expression. Adding a semicolon won't work.
+                            // Instead, try suggesting the `matches!` macro or a temporary.
+                            if let_expr_pat
+                                .walk_short(|pat| !matches!(pat.kind, hir::PatKind::Binding(..)))
+                            {
+                                if let Ok(pat_snippet) =
+                                    tcx.sess.source_map().span_to_snippet(let_expr_pat.span)
+                                    && let Ok(init_snippet) =
+                                        tcx.sess.source_map().span_to_snippet(let_expr_init.span)
+                                {
+                                    err.span_suggestion_verbose(
+                                        let_expr_span,
+                                        "consider using the `matches!` macro",
+                                        format!("matches!({init_snippet}, {pat_snippet})"),
+                                        Applicability::MaybeIncorrect,
+                                    );
+                                } else {
+                                    err.note("consider using the `matches!` macro");
+                                }
+                            }
+                        } else if let LocalInfo::BlockTailTemp(info) = local_decl.local_info() {
                             if info.tail_result_is_ignored {
                                 // #85581: If the first mutable borrow's scope contains
                                 // the second borrow, this suggestion isn't helpful.
@@ -281,23 +372,6 @@ impl<'tcx> BorrowExplanation<'tcx> {
                                     Applicability::MaybeIncorrect,
                                 );
                             };
-                        } else if let &LocalInfo::IfThenRescopeTemp { if_then } =
-                            local_decl.local_info()
-                            && let hir::Node::Expr(expr) = tcx.hir_node(if_then)
-                            && let hir::ExprKind::If(cond, conseq, alt) = expr.kind
-                            && let hir::ExprKind::Let(&hir::LetExpr {
-                                span: _,
-                                pat,
-                                init,
-                                // FIXME(#101728): enable rewrite when type ascription is
-                                // stabilized again.
-                                ty: None,
-                                recovered: _,
-                            }) = cond.kind
-                            && pat.span.can_be_used_for_suggestions()
-                            && let Ok(pat) = tcx.sess.source_map().span_to_snippet(pat.span)
-                        {
-                            suggest_rewrite_if_let(tcx, expr, &pat, init, conseq, alt, err);
                         }
                     }
                 }
@@ -548,8 +622,25 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             }
         }
 
+        // NLL doesn't consider boring locals for liveness, and wouldn't encounter a
+        // `Cause::LiveVar` for such a local. Polonius can't avoid computing liveness for boring
+        // locals yet, and will encounter them when trying to explain why a borrow contains a given
+        // point.
+        //
+        // We want to focus on relevant live locals in diagnostics, so when polonius is enabled, we
+        // ensure that we don't emit live boring locals as explanations.
+        let is_local_boring = |local| {
+            if let Some(polonius_diagnostics) = self.polonius_diagnostics {
+                polonius_diagnostics.boring_nll_locals.contains(&local)
+            } else {
+                assert!(!tcx.sess.opts.unstable_opts.polonius.is_next_enabled());
+
+                // Boring locals are never the cause of a borrow explanation in NLLs.
+                false
+            }
+        };
         match find_use::find(body, regioncx, tcx, region_sub, use_location) {
-            Some(Cause::LiveVar(local, location)) => {
+            Some(Cause::LiveVar(local, location)) if !is_local_boring(local) => {
                 let span = body.source_info(location).span;
                 let spans = self
                     .move_spans(Place::from(local).as_ref(), location)
@@ -592,7 +683,9 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 }
             }
 
-            None => {
+            Some(Cause::LiveVar(..)) | None => {
+                // Here, under NLL: no cause was found. Under polonius: no cause was found, or a
+                // boring local was found, which we ignore like NLLs do to match its diagnostics.
                 if let Some(region) = self.to_error_region_vid(borrow_region_vid) {
                     let (category, from_closure, span, region_name, path) =
                         self.free_region_constraint_info(borrow_region_vid, region);

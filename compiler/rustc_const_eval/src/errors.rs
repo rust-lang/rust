@@ -16,7 +16,6 @@ use rustc_middle::mir::interpret::{
 };
 use rustc_middle::ty::{self, Mutability, Ty};
 use rustc_span::{Span, Symbol};
-use rustc_target::callconv::AdjustForForeignAbiError;
 
 use crate::interpret::InternKind;
 
@@ -122,19 +121,34 @@ pub(crate) struct UnstableConstFn {
 }
 
 #[derive(Diagnostic)]
+#[diag(const_eval_unstable_const_trait)]
+pub(crate) struct UnstableConstTrait {
+    #[primary_span]
+    pub span: Span,
+    pub def_path: String,
+}
+
+#[derive(Diagnostic)]
 #[diag(const_eval_unstable_intrinsic)]
-#[help]
 pub(crate) struct UnstableIntrinsic {
     #[primary_span]
     pub span: Span,
     pub name: Symbol,
     pub feature: Symbol,
+    #[suggestion(
+        const_eval_unstable_intrinsic_suggestion,
+        code = "#![feature({feature})]\n",
+        applicability = "machine-applicable"
+    )]
+    pub suggestion: Option<Span>,
+    #[help(const_eval_unstable_intrinsic_suggestion)]
+    pub help: bool,
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_unmarked_const_fn_exposed)]
+#[diag(const_eval_unmarked_const_item_exposed)]
 #[help]
-pub(crate) struct UnmarkedConstFnExposed {
+pub(crate) struct UnmarkedConstItemExposed {
     #[primary_span]
     pub span: Span,
     pub def_path: String,
@@ -563,10 +577,13 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             }
             ShiftOverflow { intrinsic, shift_amount } => {
                 diag.arg("intrinsic", intrinsic);
-                diag.arg("shift_amount", match shift_amount {
-                    Either::Left(v) => v.to_string(),
-                    Either::Right(v) => v.to_string(),
-                });
+                diag.arg(
+                    "shift_amount",
+                    match shift_amount {
+                        Either::Left(v) => v.to_string(),
+                        Either::Right(v) => v.to_string(),
+                    },
+                );
             }
             BoundsCheckFailed { len, index } => {
                 diag.arg("len", len);
@@ -918,9 +935,6 @@ impl<'tcx> ReportErrorExt for InvalidProgramInfo<'tcx> {
             InvalidProgramInfo::TooGeneric => const_eval_too_generic,
             InvalidProgramInfo::AlreadyReported(_) => const_eval_already_reported,
             InvalidProgramInfo::Layout(e) => e.diagnostic_message(),
-            InvalidProgramInfo::FnAbiAdjustForForeignAbi(_) => {
-                rustc_middle::error::middle_adjust_for_foreign_abi_error
-            }
         }
     }
     fn add_args<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
@@ -934,12 +948,6 @@ impl<'tcx> ReportErrorExt for InvalidProgramInfo<'tcx> {
                     diag.arg(name.clone(), val.clone());
                 }
                 dummy_diag.cancel();
-            }
-            InvalidProgramInfo::FnAbiAdjustForForeignAbi(
-                AdjustForForeignAbiError::Unsupported { arch, abi },
-            ) => {
-                diag.arg("arch", arch);
-                diag.arg("abi", abi.name());
             }
         }
     }

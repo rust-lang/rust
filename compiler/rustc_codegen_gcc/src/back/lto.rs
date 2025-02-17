@@ -710,10 +710,6 @@ pub struct ThinBuffer {
     context: Arc<SyncContext>,
 }
 
-// TODO: check if this makes sense to make ThinBuffer Send and Sync.
-unsafe impl Send for ThinBuffer {}
-unsafe impl Sync for ThinBuffer {}
-
 impl ThinBuffer {
     pub(crate) fn new(context: &Arc<SyncContext>) -> Self {
         Self { context: Arc::clone(context) }

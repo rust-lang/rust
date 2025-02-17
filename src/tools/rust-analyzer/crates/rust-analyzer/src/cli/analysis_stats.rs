@@ -13,7 +13,7 @@ use hir::{
     ModuleDef, Name,
 };
 use hir_def::{
-    body::BodySourceMap,
+    expr_store::BodySourceMap,
     hir::{ExprId, PatId},
     SyntheticSyntax,
 };
@@ -465,6 +465,7 @@ impl flags::AnalysisStats {
                                 prefer_no_std: false,
                                 prefer_prelude: true,
                                 prefer_absolute: false,
+                                allow_unstable: true,
                             },
                             Edition::LATEST,
                         )
@@ -1051,6 +1052,7 @@ impl flags::AnalysisStats {
                 &InlayHintsConfig {
                     render_colons: false,
                     type_hints: true,
+                    sized_bound: false,
                     discriminant_hints: ide::DiscriminantHints::Always,
                     parameter_hints: true,
                     generic_parameter_hints: ide::GenericParameterHints {
@@ -1070,6 +1072,7 @@ impl flags::AnalysisStats {
                     param_names_for_lifetime_elision_hints: true,
                     hide_named_constructor_hints: false,
                     hide_closure_initialization_hints: false,
+                    hide_closure_parameter_hints: false,
                     closure_style: hir::ClosureStyle::ImplFn,
                     max_length: Some(25),
                     closing_brace_hints_min_lines: Some(20),

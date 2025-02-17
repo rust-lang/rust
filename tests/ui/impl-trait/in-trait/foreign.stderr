@@ -14,8 +14,9 @@ LL |     #[warn(refining_impl_trait)]
    = note: `#[warn(refining_impl_trait_internal)]` implied by `#[warn(refining_impl_trait)]`
 help: replace the return type so that it matches the trait
    |
-LL |     fn bar(self) -> impl Deref<Target = impl Sized> {
-   |                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     fn bar(self) -> Arc<String> {
+LL +     fn bar(self) -> impl Deref<Target = impl Sized> {
+   |
 
 warning: impl trait in impl method signature does not match trait method signature
   --> $DIR/foreign.rs:31:21
@@ -32,8 +33,9 @@ LL |     #[warn(refining_impl_trait)]
    |            ^^^^^^^^^^^^^^^^^^^
 help: replace the return type so that it matches the trait
    |
-LL |     fn bar(self) -> impl Deref<Target = impl Sized> {
-   |                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     fn bar(self) -> Arc<String> {
+LL +     fn bar(self) -> impl Deref<Target = impl Sized> {
+   |
 
 warning: 2 warnings emitted
 

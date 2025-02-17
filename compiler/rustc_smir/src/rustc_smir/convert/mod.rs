@@ -9,8 +9,6 @@ mod error;
 mod mir;
 mod ty;
 
-pub(crate) use ty::mir_const_from_ty_const;
-
 impl<'tcx> Stable<'tcx> for rustc_hir::Safety {
     type T = stable_mir::mir::Safety;
     fn stable(&self, _: &mut Tables<'_>) -> Self::T {

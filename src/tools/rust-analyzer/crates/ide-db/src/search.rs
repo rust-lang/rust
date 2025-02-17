@@ -354,6 +354,7 @@ impl Definition {
                 hir::GenericDef::TypeAlias(it) => it.source(db).map(|src| src.syntax().cloned()),
                 hir::GenericDef::Impl(it) => it.source(db).map(|src| src.syntax().cloned()),
                 hir::GenericDef::Const(it) => it.source(db).map(|src| src.syntax().cloned()),
+                hir::GenericDef::Static(it) => it.source(db).map(|src| src.syntax().cloned()),
             };
             return match def {
                 Some(def) => SearchScope::file_range(
@@ -625,7 +626,7 @@ impl<'a> FindUsages<'a> {
             let _p = tracing::info_span!("collect_possible_aliases").entered();
 
             let db = sema.db;
-            let container_name = container.name(db).unescaped().display(db).to_smolstr();
+            let container_name = container.name(db).as_str().to_smolstr();
             let search_scope = Definition::from(container).search_scope(db);
             let mut seen = FxHashSet::default();
             let mut completed = FxHashSet::default();
@@ -925,12 +926,8 @@ impl<'a> FindUsages<'a> {
                             .or_else(|| ty.as_builtin().map(|builtin| builtin.name()))
                     })
                 };
-                // We need to unescape the name in case it is written without "r#" in earlier
-                // editions of Rust where it isn't a keyword.
-                self.def
-                    .name(sema.db)
-                    .or_else(self_kw_refs)
-                    .map(|it| it.unescaped().display(sema.db).to_smolstr())
+                // We need to search without the `r#`, hence `as_str` access.
+                self.def.name(sema.db).or_else(self_kw_refs).map(|it| it.as_str().to_smolstr())
             }
         };
         let name = match &name {
@@ -953,14 +950,19 @@ impl<'a> FindUsages<'a> {
 
             // Search for occurrences of the items name
             for offset in Self::match_indices(&text, finder, search_range) {
-                tree.token_at_offset(offset).for_each(|token| {
-                    let Some(str_token) = ast::String::cast(token.clone()) else { return };
+                let ret = tree.token_at_offset(offset).any(|token| {
+                    let Some(str_token) = ast::String::cast(token.clone()) else { return false };
                     if let Some((range, Some(nameres))) =
                         sema.check_for_format_args_template(token, offset)
                     {
-                        if self.found_format_args_ref(file_id, range, str_token, nameres, sink) {}
+                        return self
+                            .found_format_args_ref(file_id, range, str_token, nameres, sink);
                     }
+                    false
                 });
+                if ret {
+                    return;
+                }
 
                 for name in
                     Self::find_nodes(sema, name, &tree, offset).filter_map(ast::NameLike::cast)

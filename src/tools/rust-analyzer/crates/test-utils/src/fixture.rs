@@ -168,7 +168,7 @@ impl FixtureWithProjectMeta {
     /// That will set toolchain to nightly and include predefined proc macros and a subset of
     /// `libcore` into the fixture, see `minicore.rs` for what's available. Note that toolchain
     /// defaults to stable.
-    pub fn parse(ra_fixture: &str) -> Self {
+    pub fn parse(#[rust_analyzer::rust_fixture] ra_fixture: &str) -> Self {
         let fixture = trim_indent(ra_fixture);
         let mut fixture = fixture.as_str();
         let mut toolchain = None;

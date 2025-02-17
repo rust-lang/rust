@@ -57,7 +57,7 @@ fn check_expectations(tcx: TyCtxt<'_>, tool_filter: Option<Symbol>) {
         let expect_id = canonicalize_id(expect_id);
 
         if !fulfilled_expectations.contains(&expect_id)
-            && tool_filter.map_or(true, |filter| expectation.lint_tool == Some(filter))
+            && tool_filter.is_none_or(|filter| expectation.lint_tool == Some(filter))
         {
             let rationale = expectation.reason.map(|rationale| ExpectationNote { rationale });
             let note = expectation.is_unfulfilled_lint_expectations;

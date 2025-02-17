@@ -321,7 +321,9 @@ fn signature_help_for_generics(
             format_to!(res.signature, "type {}", it.name(db).display(db, edition));
         }
         // These don't have generic args that can be specified
-        hir::GenericDef::Impl(_) | hir::GenericDef::Const(_) => return None,
+        hir::GenericDef::Impl(_) | hir::GenericDef::Const(_) | hir::GenericDef::Static(_) => {
+            return None
+        }
     }
 
     let params = generics_def.params(sema.db);
@@ -692,7 +694,9 @@ mod tests {
     use crate::RootDatabase;
 
     /// Creates analysis from a multi-file fixture, returns positions marked with $0.
-    pub(crate) fn position(ra_fixture: &str) -> (RootDatabase, FilePosition) {
+    pub(crate) fn position(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    ) -> (RootDatabase, FilePosition) {
         let change_fixture = ChangeFixture::parse(ra_fixture);
         let mut database = RootDatabase::default();
         database.apply_change(change_fixture.change);
@@ -703,7 +707,7 @@ mod tests {
     }
 
     #[track_caller]
-    fn check(ra_fixture: &str, expect: Expect) {
+    fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
         let fixture = format!(
             r#"
 //- minicore: sized, fn

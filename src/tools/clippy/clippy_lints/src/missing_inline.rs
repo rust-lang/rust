@@ -88,7 +88,7 @@ declare_lint_pass!(MissingInline => [MISSING_INLINE_IN_PUBLIC_ITEMS]);
 
 impl<'tcx> LateLintPass<'tcx> for MissingInline {
     fn check_item(&mut self, cx: &LateContext<'tcx>, it: &'tcx hir::Item<'_>) {
-        if rustc_middle::lint::in_external_macro(cx.sess(), it.span) || is_executable_or_proc_macro(cx) {
+        if it.span.in_external_macro(cx.sess().source_map()) || is_executable_or_proc_macro(cx) {
             return;
         }
 
@@ -105,7 +105,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
                 // note: we need to check if the trait is exported so we can't use
                 // `LateLintPass::check_trait_item` here.
                 for tit in trait_items {
-                    let tit_ = cx.tcx.hir().trait_item(tit.id);
+                    let tit_ = cx.tcx.hir_trait_item(tit.id);
                     match tit_.kind {
                         hir::TraitItemKind::Const(..) | hir::TraitItemKind::Type(..) => {},
                         hir::TraitItemKind::Fn(..) => {
@@ -113,7 +113,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
                                 // trait method with default body needs inline in case
                                 // an impl is not provided
                                 let desc = "a default trait method";
-                                let item = cx.tcx.hir().trait_item(tit.id);
+                                let item = cx.tcx.hir_trait_item(tit.id);
                                 let attrs = cx.tcx.hir().attrs(item.hir_id());
                                 check_missing_inline_attrs(cx, attrs, item.span, desc);
                             }
@@ -135,11 +135,11 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
             | hir::ItemKind::ForeignMod { .. }
             | hir::ItemKind::Impl { .. }
             | hir::ItemKind::Use(..) => {},
-        };
+        }
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx hir::ImplItem<'_>) {
-        if rustc_middle::lint::in_external_macro(cx.sess(), impl_item.span) || is_executable_or_proc_macro(cx) {
+        if impl_item.span.in_external_macro(cx.sess().source_map()) || is_executable_or_proc_macro(cx) {
             return;
         }
 

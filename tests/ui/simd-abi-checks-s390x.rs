@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions: z10 z13_no_vector z13_soft_float
 //@ build-fail
 //@[z10] compile-flags: --target s390x-unknown-linux-gnu
@@ -8,20 +9,14 @@
 //@[z13_soft_float] compile-flags: --target s390x-unknown-linux-gnu -C target-cpu=z13 -C target-feature=-vector,+soft-float
 //@[z13_soft_float] needs-llvm-components: systemz
 
-#![feature(no_core, lang_items, repr_simd, s390x_target_feature)]
+#![feature(no_core, repr_simd, s390x_target_feature)]
 #![no_core]
 #![crate_type = "lib"]
 #![allow(non_camel_case_types, improper_ctypes_definitions)]
 #![deny(abi_unsupported_vector_types)]
 
-#[lang = "sized"]
-pub trait Sized {}
-#[lang = "copy"]
-pub trait Copy {}
-#[lang = "freeze"]
-pub trait Freeze {}
-
-impl<T: Copy, const N: usize> Copy for [T; N] {}
+extern crate minicore;
+use minicore::*;
 
 #[repr(simd)]
 pub struct i8x8([i8; 8]);
@@ -34,8 +29,6 @@ pub struct Wrapper<T>(T);
 #[repr(transparent)]
 pub struct TransparentWrapper<T>(T);
 
-impl Copy for i8 {}
-impl Copy for i64 {}
 impl Copy for i8x8 {}
 impl Copy for i8x16 {}
 impl Copy for i8x32 {}
@@ -44,13 +37,13 @@ impl<T: Copy> Copy for TransparentWrapper<T> {}
 
 #[no_mangle]
 extern "C" fn vector_ret_small(x: &i8x8) -> i8x8 {
-    //~^ ERROR this function definition uses a SIMD vector type that (with the chosen ABI) requires the `vector` target feature, which is not enabled
+    //~^ ERROR requires the `vector` target feature, which is not enabled
     //~^^ WARN this was previously accepted
     *x
 }
 #[no_mangle]
 extern "C" fn vector_ret(x: &i8x16) -> i8x16 {
-    //~^ ERROR this function definition uses a SIMD vector type that (with the chosen ABI) requires the `vector` target feature, which is not enabled
+    //~^ ERROR requires the `vector` target feature, which is not enabled
     //~^^ WARN this was previously accepted
     *x
 }
@@ -99,7 +92,7 @@ extern "C" fn vector_wrapper_ret_large(x: &Wrapper<i8x32>) -> Wrapper<i8x32> {
 extern "C" fn vector_transparent_wrapper_ret_small(
     x: &TransparentWrapper<i8x8>,
 ) -> TransparentWrapper<i8x8> {
-    //~^^^ ERROR this function definition uses a SIMD vector type that (with the chosen ABI) requires the `vector` target feature, which is not enabled
+    //~^^^ ERROR requires the `vector` target feature, which is not enabled
     //~^^^^ WARN this was previously accepted
     *x
 }
@@ -107,7 +100,7 @@ extern "C" fn vector_transparent_wrapper_ret_small(
 extern "C" fn vector_transparent_wrapper_ret(
     x: &TransparentWrapper<i8x16>,
 ) -> TransparentWrapper<i8x16> {
-    //~^^^ ERROR this function definition uses a SIMD vector type that (with the chosen ABI) requires the `vector` target feature, which is not enabled
+    //~^^^ ERROR requires the `vector` target feature, which is not enabled
     //~^^^^ WARN this was previously accepted
     *x
 }
@@ -121,13 +114,13 @@ extern "C" fn vector_transparent_wrapper_ret_large(
 
 #[no_mangle]
 extern "C" fn vector_arg_small(x: i8x8) -> i64 {
-    //~^ ERROR this function definition uses a SIMD vector type that (with the chosen ABI) requires the `vector` target feature, which is not enabled
+    //~^ ERROR requires the `vector` target feature, which is not enabled
     //~^^ WARN this was previously accepted
     unsafe { *(&x as *const i8x8 as *const i64) }
 }
 #[no_mangle]
 extern "C" fn vector_arg(x: i8x16) -> i64 {
-    //~^ ERROR this function definition uses a SIMD vector type that (with the chosen ABI) requires the `vector` target feature, which is not enabled
+    //~^ ERROR requires the `vector` target feature, which is not enabled
     //~^^ WARN this was previously accepted
     unsafe { *(&x as *const i8x16 as *const i64) }
 }
@@ -139,13 +132,13 @@ extern "C" fn vector_arg_large(x: i8x32) -> i64 {
 
 #[no_mangle]
 extern "C" fn vector_wrapper_arg_small(x: Wrapper<i8x8>) -> i64 {
-    //~^ ERROR this function definition uses a SIMD vector type that (with the chosen ABI) requires the `vector` target feature, which is not enabled
+    //~^ ERROR requires the `vector` target feature, which is not enabled
     //~^^ WARN this was previously accepted
     unsafe { *(&x as *const Wrapper<i8x8> as *const i64) }
 }
 #[no_mangle]
 extern "C" fn vector_wrapper_arg(x: Wrapper<i8x16>) -> i64 {
-    //~^ ERROR this function definition uses a SIMD vector type that (with the chosen ABI) requires the `vector` target feature, which is not enabled
+    //~^ ERROR requires the `vector` target feature, which is not enabled
     //~^^ WARN this was previously accepted
     unsafe { *(&x as *const Wrapper<i8x16> as *const i64) }
 }
@@ -157,13 +150,13 @@ extern "C" fn vector_wrapper_arg_large(x: Wrapper<i8x32>) -> i64 {
 
 #[no_mangle]
 extern "C" fn vector_transparent_wrapper_arg_small(x: TransparentWrapper<i8x8>) -> i64 {
-    //~^ ERROR this function definition uses a SIMD vector type that (with the chosen ABI) requires the `vector` target feature, which is not enabled
+    //~^ ERROR requires the `vector` target feature, which is not enabled
     //~^^ WARN this was previously accepted
     unsafe { *(&x as *const TransparentWrapper<i8x8> as *const i64) }
 }
 #[no_mangle]
 extern "C" fn vector_transparent_wrapper_arg(x: TransparentWrapper<i8x16>) -> i64 {
-    //~^ ERROR this function definition uses a SIMD vector type that (with the chosen ABI) requires the `vector` target feature, which is not enabled
+    //~^ ERROR requires the `vector` target feature, which is not enabled
     //~^^ WARN this was previously accepted
     unsafe { *(&x as *const TransparentWrapper<i8x16> as *const i64) }
 }

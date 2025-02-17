@@ -10,8 +10,10 @@ use std::time::{Duration, Instant};
 use std::{env, fs};
 
 use clap::ValueEnum;
+#[cfg(feature = "tracing")]
+use tracing::instrument;
 
-pub use self::cargo::Cargo;
+pub use self::cargo::{Cargo, cargo_profile_var};
 pub use crate::Compiler;
 use crate::core::build_steps::{
     check, clean, clippy, compile, dist, doc, gcc, install, llvm, run, setup, test, tool, vendor,
@@ -21,7 +23,7 @@ use crate::core::config::{DryRun, TargetSelection};
 use crate::utils::cache::Cache;
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{self, LldThreads, add_dylib_path, exe, libdir, linker_args, t};
-use crate::{Build, Crate};
+use crate::{Build, Crate, trace};
 
 mod cargo;
 
@@ -127,10 +129,14 @@ impl RunConfig<'_> {
     pub fn cargo_crates_in_set(&self) -> Vec<String> {
         let mut crates = Vec::new();
         for krate in &self.paths {
-            let path = krate.assert_single_path();
-            let Some(crate_name) = self.builder.crate_paths.get(&path.path) else {
-                panic!("missing crate for path {}", path.path.display())
-            };
+            let path = &krate.assert_single_path().path;
+
+            let crate_name = self
+                .builder
+                .crate_paths
+                .get(path)
+                .unwrap_or_else(|| panic!("missing crate for path {}", path.display()));
+
             crates.push(crate_name.to_string());
         }
         crates
@@ -317,29 +323,32 @@ const PATH_REMAP: &[(&str, &[&str])] = &[
     // actual path is `proc-macro-srv-cli`
     ("rust-analyzer-proc-macro-srv", &["src/tools/rust-analyzer/crates/proc-macro-srv-cli"]),
     // Make `x test tests` function the same as `x t tests/*`
-    ("tests", &[
-        // tidy-alphabetical-start
-        "tests/assembly",
-        "tests/codegen",
-        "tests/codegen-units",
-        "tests/coverage",
-        "tests/coverage-run-rustdoc",
-        "tests/crashes",
-        "tests/debuginfo",
-        "tests/incremental",
-        "tests/mir-opt",
-        "tests/pretty",
-        "tests/run-make",
-        "tests/rustdoc",
-        "tests/rustdoc-gui",
-        "tests/rustdoc-js",
-        "tests/rustdoc-js-std",
-        "tests/rustdoc-json",
-        "tests/rustdoc-ui",
-        "tests/ui",
-        "tests/ui-fulldeps",
-        // tidy-alphabetical-end
-    ]),
+    (
+        "tests",
+        &[
+            // tidy-alphabetical-start
+            "tests/assembly",
+            "tests/codegen",
+            "tests/codegen-units",
+            "tests/coverage",
+            "tests/coverage-run-rustdoc",
+            "tests/crashes",
+            "tests/debuginfo",
+            "tests/incremental",
+            "tests/mir-opt",
+            "tests/pretty",
+            "tests/run-make",
+            "tests/rustdoc",
+            "tests/rustdoc-gui",
+            "tests/rustdoc-js",
+            "tests/rustdoc-js-std",
+            "tests/rustdoc-json",
+            "tests/rustdoc-ui",
+            "tests/ui",
+            "tests/ui-fulldeps",
+            // tidy-alphabetical-end
+        ],
+    ),
 ];
 
 fn remap_paths(paths: &mut Vec<PathBuf>) {
@@ -918,6 +927,7 @@ impl<'a> Builder<'a> {
                 clippy::BuildManifest,
                 clippy::CargoMiri,
                 clippy::Clippy,
+                clippy::CodegenGcc,
                 clippy::CollectLicenseMetadata,
                 clippy::Compiletest,
                 clippy::CoverageDump,
@@ -955,6 +965,7 @@ impl<'a> Builder<'a> {
                 check::Bootstrap,
                 check::RunMakeSupport,
                 check::Compiletest,
+                check::FeaturesStatusDump,
             ),
             Kind::Test => describe!(
                 crate::core::build_steps::toolstate::ToolStateCheck,
@@ -1106,6 +1117,7 @@ impl<'a> Builder<'a> {
                 run::GenerateWindowsSys,
                 run::GenerateCompletions,
                 run::UnicodeTableGenerator,
+                run::FeaturesStatusDump,
             ),
             Kind::Setup => {
                 describe!(setup::Profile, setup::Hook, setup::Link, setup::Editor)
@@ -1226,6 +1238,19 @@ impl<'a> Builder<'a> {
     /// compiler will run on, *not* the target it will build code for). Explicitly does not take
     /// `Compiler` since all `Compiler` instances are meant to be obtained through this function,
     /// since it ensures that they are valid (i.e., built and assembled).
+    #[cfg_attr(
+        feature = "tracing",
+        instrument(
+            level = "trace",
+            name = "Builder::compiler",
+            target = "COMPILER",
+            skip_all,
+            fields(
+                stage = stage,
+                host = ?host,
+            ),
+        ),
+    )]
     pub fn compiler(&self, stage: u32, host: TargetSelection) -> Compiler {
         self.ensure(compile::Assemble { target_compiler: Compiler { stage, host } })
     }
@@ -1241,19 +1266,39 @@ impl<'a> Builder<'a> {
     /// sysroot.
     ///
     /// See `force_use_stage1` and `force_use_stage2` for documentation on what each argument is.
+    #[cfg_attr(
+        feature = "tracing",
+        instrument(
+            level = "trace",
+            name = "Builder::compiler_for",
+            target = "COMPILER_FOR",
+            skip_all,
+            fields(
+                stage = stage,
+                host = ?host,
+                target = ?target,
+            ),
+        ),
+    )]
     pub fn compiler_for(
         &self,
         stage: u32,
         host: TargetSelection,
         target: TargetSelection,
     ) -> Compiler {
-        if self.build.force_use_stage2(stage) {
+        #![allow(clippy::let_and_return)]
+        let resolved_compiler = if self.build.force_use_stage2(stage) {
+            trace!(target: "COMPILER_FOR", ?stage, "force_use_stage2");
             self.compiler(2, self.config.build)
         } else if self.build.force_use_stage1(stage, target) {
+            trace!(target: "COMPILER_FOR", ?stage, "force_use_stage1");
             self.compiler(1, self.config.build)
         } else {
+            trace!(target: "COMPILER_FOR", ?stage, ?host, "no force, fallback to `compiler()`");
             self.compiler(stage, host)
-        }
+        };
+        trace!(target: "COMPILER_FOR", ?resolved_compiler);
+        resolved_compiler
     }
 
     pub fn sysroot(&self, compiler: Compiler) -> PathBuf {
@@ -1443,7 +1488,7 @@ impl<'a> Builder<'a> {
     ///
     /// Note that this returns `None` if LLVM is disabled, or if we're in a
     /// check build or dry-run, where there's no need to build all of LLVM.
-    fn llvm_config(&self, target: TargetSelection) -> Option<PathBuf> {
+    pub fn llvm_config(&self, target: TargetSelection) -> Option<PathBuf> {
         if self.config.llvm_enabled(target) && self.kind != Kind::Check && !self.config.dry_run() {
             let llvm::LlvmResult { llvm_config, .. } = self.ensure(llvm::Llvm { target });
             if llvm_config.is_file() {

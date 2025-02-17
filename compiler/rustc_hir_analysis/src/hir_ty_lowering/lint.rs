@@ -23,9 +23,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) -> Option<ErrorGuaranteed> {
         let tcx = self.tcx();
 
-        let hir::TyKind::TraitObject([poly_trait_ref, ..], _, TraitObjectSyntax::None) =
+        let poly_trait_ref = if let hir::TyKind::TraitObject([poly_trait_ref, ..], tagged_ptr) =
             self_ty.kind
-        else {
+            && let TraitObjectSyntax::None = tagged_ptr.tag()
+        {
+            poly_trait_ref
+        } else {
             return None;
         };
 
@@ -38,8 +41,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 kind: hir::ExprKind::Path(hir::QPath::TypeRelative(qself, _)),
                 ..
             })
-            | hir::Node::Pat(hir::Pat {
-                kind: hir::PatKind::Path(hir::QPath::TypeRelative(qself, _)),
+            | hir::Node::PatExpr(hir::PatExpr {
+                kind: hir::PatExprKind::Path(hir::QPath::TypeRelative(qself, _)),
                 ..
             }) if qself.hir_id == self_ty.hir_id => true,
             _ => false,
@@ -294,7 +297,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let (dyn_str, paren_dyn_str) =
                     if borrowed { ("dyn ", "(dyn ") } else { ("&dyn ", "&(dyn ") };
 
-                let sugg = if let hir::TyKind::TraitObject([_, _, ..], _, _) = self_ty.kind {
+                let sugg = if let hir::TyKind::TraitObject([_, _, ..], _) = self_ty.kind {
                     // There are more than one trait bound, we need surrounding parentheses.
                     vec![
                         (self_ty.span.shrink_to_lo(), paren_dyn_str.to_string()),

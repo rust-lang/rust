@@ -9,11 +9,12 @@
 //      12
 //      1
 
-#![feature(auto_traits, lang_items, no_core, start, intrinsics, rustc_attrs)]
+#![feature(auto_traits, lang_items, no_core, intrinsics, rustc_attrs)]
 #![allow(internal_features)]
 
 #![no_std]
 #![no_core]
+#![no_main]
 
 /*
  * Core
@@ -98,8 +99,8 @@ static mut WITH_REF: WithRef = WithRef {
     refe: unsafe { &TEST },
 };
 
-#[start]
-fn main(mut argc: isize, _argv: *const *const u8) -> isize {
+#[no_mangle]
+extern "C" fn main(argc: i32, _argv: *const *const u8) -> i32 {
     unsafe {
         libc::printf(b"%ld\n\0" as *const u8 as *const i8, CONSTANT);
         libc::printf(b"%ld\n\0" as *const u8 as *const i8, TEST2.field);

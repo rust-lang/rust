@@ -16,8 +16,9 @@ LL |     for _ in 0..(256 as u8) {}
    |
 help: use an inclusive range instead
    |
-LL |     for _ in 0..=(255 as u8) {}
-   |                 + ~~~
+LL -     for _ in 0..(256 as u8) {}
+LL +     for _ in 0..=(255 as u8) {}
+   |
 
 error: aborting due to 2 previous errors
 

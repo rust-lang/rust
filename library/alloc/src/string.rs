@@ -712,8 +712,8 @@ impl String {
         }
     }
 
-    /// Decode a UTF-16–encoded vector `v` into a `String`, returning [`Err`]
-    /// if `v` contains any invalid data.
+    /// Decode a native endian UTF-16–encoded vector `v` into a `String`,
+    /// returning [`Err`] if `v` contains any invalid data.
     ///
     /// # Examples
     ///
@@ -745,8 +745,8 @@ impl String {
         Ok(ret)
     }
 
-    /// Decode a UTF-16–encoded slice `v` into a `String`, replacing
-    /// invalid data with [the replacement character (`U+FFFD`)][U+FFFD].
+    /// Decode a native endian UTF-16–encoded slice `v` into a `String`,
+    /// replacing invalid data with [the replacement character (`U+FFFD`)][U+FFFD].
     ///
     /// Unlike [`from_utf8_lossy`] which returns a [`Cow<'a, str>`],
     /// `from_utf16_lossy` returns a `String` since the UTF-16 to UTF-8
@@ -777,8 +777,8 @@ impl String {
             .collect()
     }
 
-    /// Decode a UTF-16LE–encoded vector `v` into a `String`, returning [`Err`]
-    /// if `v` contains any invalid data.
+    /// Decode a UTF-16LE–encoded vector `v` into a `String`,
+    /// returning [`Err`] if `v` contains any invalid data.
     ///
     /// # Examples
     ///
@@ -852,8 +852,8 @@ impl String {
         }
     }
 
-    /// Decode a UTF-16BE–encoded vector `v` into a `String`, returning [`Err`]
-    /// if `v` contains any invalid data.
+    /// Decode a UTF-16BE–encoded vector `v` into a `String`,
+    /// returning [`Err`] if `v` contains any invalid data.
     ///
     /// # Examples
     ///
@@ -2439,6 +2439,32 @@ impl<'a> Extend<Cow<'a, str>> for String {
     #[inline]
     fn extend_one(&mut self, s: Cow<'a, str>) {
         self.push_str(&s);
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[unstable(feature = "ascii_char", issue = "110998")]
+impl Extend<core::ascii::Char> for String {
+    fn extend<I: IntoIterator<Item = core::ascii::Char>>(&mut self, iter: I) {
+        self.vec.extend(iter.into_iter().map(|c| c.to_u8()));
+    }
+
+    #[inline]
+    fn extend_one(&mut self, c: core::ascii::Char) {
+        self.vec.push(c.to_u8());
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[unstable(feature = "ascii_char", issue = "110998")]
+impl<'a> Extend<&'a core::ascii::Char> for String {
+    fn extend<I: IntoIterator<Item = &'a core::ascii::Char>>(&mut self, iter: I) {
+        self.extend(iter.into_iter().cloned());
+    }
+
+    #[inline]
+    fn extend_one(&mut self, c: &'a core::ascii::Char) {
+        self.vec.push(c.to_u8());
     }
 }
 

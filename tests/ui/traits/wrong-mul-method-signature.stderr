@@ -8,8 +8,9 @@ LL |     fn mul(self, s: &f64) -> Vec1 {
               found signature `fn(Vec1, &_) -> Vec1`
 help: change the parameter type to match the trait
    |
-LL |     fn mul(self, s: f64) -> Vec1 {
-   |                     ~~~
+LL -     fn mul(self, s: &f64) -> Vec1 {
+LL +     fn mul(self, s: f64) -> Vec1 {
+   |
 
 error[E0053]: method `mul` has an incompatible type for trait
   --> $DIR/wrong-mul-method-signature.rs:33:21
@@ -21,8 +22,9 @@ LL |     fn mul(self, s: f64) -> Vec2 {
               found signature `fn(Vec2, f64) -> Vec2`
 help: change the parameter type to match the trait
    |
-LL |     fn mul(self, s: Vec2) -> Vec2 {
-   |                     ~~~~
+LL -     fn mul(self, s: f64) -> Vec2 {
+LL +     fn mul(self, s: Vec2) -> Vec2 {
+   |
 
 error[E0053]: method `mul` has an incompatible type for trait
   --> $DIR/wrong-mul-method-signature.rs:52:29
@@ -34,8 +36,9 @@ LL |     fn mul(self, s: f64) -> f64 {
               found signature `fn(Vec3, _) -> f64`
 help: change the output type to match the trait
    |
-LL |     fn mul(self, s: f64) -> i32 {
-   |                             ~~~
+LL -     fn mul(self, s: f64) -> f64 {
+LL +     fn mul(self, s: f64) -> i32 {
+   |
 
 error[E0308]: mismatched types
   --> $DIR/wrong-mul-method-signature.rs:63:45

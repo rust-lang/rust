@@ -22,7 +22,6 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{AnonConst, Attribute, Expr, ImplItemKind, ItemKind, Node, Safety, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_resolve::rustdoc::{
     DocFragment, add_doc_fragment, attrs_to_doc_fragments, main_body_opts, source_span_for_markdown_range,
@@ -34,7 +33,6 @@ use rustc_span::{Span, sym};
 use std::ops::Range;
 use url::Url;
 
-mod empty_line_after;
 mod include_in_doc_without_cfg;
 mod link_with_quotes;
 mod markdown;
@@ -430,6 +428,39 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    ///
+    /// Detects overindented list items in doc comments where the continuation
+    /// lines are indented more than necessary.
+    ///
+    /// ### Why is this bad?
+    ///
+    /// Overindented list items in doc comments can lead to inconsistent and
+    /// poorly formatted documentation when rendered. Excessive indentation may
+    /// cause the text to be misinterpreted as a nested list item or code block,
+    /// affecting readability and the overall structure of the documentation.
+    ///
+    /// ### Example
+    ///
+    /// ```no_run
+    /// /// - This is the first item in a list
+    /// ///      and this line is overindented.
+    /// # fn foo() {}
+    /// ```
+    ///
+    /// Fixes this into:
+    /// ```no_run
+    /// /// - This is the first item in a list
+    /// ///   and this line is overindented.
+    /// # fn foo() {}
+    /// ```
+    #[clippy::version = "1.80.0"]
+    pub DOC_OVERINDENTED_LIST_ITEMS,
+    style,
+    "ensure list items are not overindented"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks if the first paragraph in the documentation of items listed in the module page is too long.
     ///
     /// ### Why is this bad?
@@ -457,82 +488,6 @@ declare_clippy_lint! {
     pub TOO_LONG_FIRST_DOC_PARAGRAPH,
     nursery,
     "ensure the first documentation paragraph is short"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for empty lines after outer attributes
-    ///
-    /// ### Why is this bad?
-    /// The attribute may have meant to be an inner attribute (`#![attr]`). If
-    /// it was meant to be an outer attribute (`#[attr]`) then the empty line
-    /// should be removed
-    ///
-    /// ### Example
-    /// ```no_run
-    /// #[allow(dead_code)]
-    ///
-    /// fn not_quite_good_code() {}
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// // Good (as inner attribute)
-    /// #![allow(dead_code)]
-    ///
-    /// fn this_is_fine() {}
-    ///
-    /// // or
-    ///
-    /// // Good (as outer attribute)
-    /// #[allow(dead_code)]
-    /// fn this_is_fine_too() {}
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub EMPTY_LINE_AFTER_OUTER_ATTR,
-    suspicious,
-    "empty line after outer attribute"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for empty lines after doc comments.
-    ///
-    /// ### Why is this bad?
-    /// The doc comment may have meant to be an inner doc comment, regular
-    /// comment or applied to some old code that is now commented out. If it was
-    /// intended to be a doc comment, then the empty line should be removed.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// /// Some doc comment with a blank line after it.
-    ///
-    /// fn f() {}
-    ///
-    /// /// Docs for `old_code`
-    /// // fn old_code() {}
-    ///
-    /// fn new_code() {}
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// //! Convert it to an inner doc comment
-    ///
-    /// // Or a regular comment
-    ///
-    /// /// Or remove the empty line
-    /// fn f() {}
-    ///
-    /// // /// Docs for `old_code`
-    /// // fn old_code() {}
-    ///
-    /// fn new_code() {}
-    /// ```
-    #[clippy::version = "1.70.0"]
-    pub EMPTY_LINE_AFTER_DOC_COMMENTS,
-    suspicious,
-    "empty line after doc comments"
 }
 
 declare_clippy_lint! {
@@ -617,8 +572,7 @@ impl_lint_pass!(Documentation => [
     SUSPICIOUS_DOC_COMMENTS,
     EMPTY_DOCS,
     DOC_LAZY_CONTINUATION,
-    EMPTY_LINE_AFTER_OUTER_ATTR,
-    EMPTY_LINE_AFTER_DOC_COMMENTS,
+    DOC_OVERINDENTED_LIST_ITEMS,
     TOO_LONG_FIRST_DOC_PARAGRAPH,
     DOC_INCLUDE_WITHOUT_CFG,
 ]);
@@ -641,9 +595,9 @@ impl<'tcx> LateLintPass<'tcx> for Documentation {
                 match item.kind {
                     ItemKind::Fn { sig, body: body_id, .. } => {
                         if !(is_entrypoint_fn(cx, item.owner_id.to_def_id())
-                            || in_external_macro(cx.tcx.sess, item.span))
+                            || item.span.in_external_macro(cx.tcx.sess.source_map()))
                         {
-                            let body = cx.tcx.hir().body(body_id);
+                            let body = cx.tcx.hir_body(body_id);
 
                             let panic_info = FindPanicUnwrap::find_span(cx, cx.tcx.typeck(item.owner_id), body.value);
                             missing_headers::check(
@@ -677,7 +631,7 @@ impl<'tcx> LateLintPass<'tcx> for Documentation {
             },
             Node::TraitItem(trait_item) => {
                 if let TraitItemKind::Fn(sig, ..) = trait_item.kind
-                    && !in_external_macro(cx.tcx.sess, trait_item.span)
+                    && !trait_item.span.in_external_macro(cx.tcx.sess.source_map())
                 {
                     missing_headers::check(
                         cx,
@@ -692,10 +646,10 @@ impl<'tcx> LateLintPass<'tcx> for Documentation {
             },
             Node::ImplItem(impl_item) => {
                 if let ImplItemKind::Fn(sig, body_id) = impl_item.kind
-                    && !in_external_macro(cx.tcx.sess, impl_item.span)
+                    && !impl_item.span.in_external_macro(cx.tcx.sess.source_map())
                     && !is_trait_impl_item(cx, impl_item.hir_id())
                 {
-                    let body = cx.tcx.hir().body(body_id);
+                    let body = cx.tcx.hir_body(body_id);
 
                     let panic_span = FindPanicUnwrap::find_span(cx, cx.tcx.typeck(impl_item.owner_id), body.value);
                     missing_headers::check(
@@ -751,13 +705,13 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
     }
 
     include_in_doc_without_cfg::check(cx, attrs);
-    if suspicious_doc_comments::check(cx, attrs) || empty_line_after::check(cx, attrs) || is_doc_hidden(attrs) {
+    if suspicious_doc_comments::check(cx, attrs) || is_doc_hidden(attrs) {
         return None;
     }
 
     let (fragments, _) = attrs_to_doc_fragments(
         attrs.iter().filter_map(|attr| {
-            if in_external_macro(cx.sess(), attr.span) {
+            if attr.span.in_external_macro(cx.sess().source_map()) {
                 None
             } else {
                 Some((attr, None))
@@ -1125,8 +1079,8 @@ impl<'tcx> Visitor<'tcx> for FindPanicUnwrap<'_, 'tcx> {
     // Panics in const blocks will cause compilation to fail.
     fn visit_anon_const(&mut self, _: &'tcx AnonConst) {}
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.cx.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.cx.tcx
     }
 }
 

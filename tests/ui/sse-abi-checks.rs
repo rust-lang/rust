@@ -1,6 +1,7 @@
 //! Ensure we trigger abi_unsupported_vector_types for target features that are usually enabled
 //! on a target, but disabled in this file via a `-C` flag.
-//@ compile-flags: --crate-type=rlib --target=i686-unknown-linux-gnu -C target-feature=-sse,-sse2
+//@ add-core-stubs
+//@ compile-flags: --crate-type=rlib --target=i586-unknown-linux-gnu -C target-feature=-sse,-sse2
 //@ build-pass
 //@ ignore-pass (test emits codegen-time warnings)
 //@ needs-llvm-components: x86
@@ -8,17 +9,14 @@
 #![no_core]
 #![allow(improper_ctypes_definitions)]
 
-#[lang = "sized"]
-trait Sized {}
-
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 #[repr(simd)]
 pub struct SseVector([i64; 2]);
 
 #[no_mangle]
 pub unsafe extern "C" fn f(_: SseVector) {
-    //~^ this function definition uses a SIMD vector type that (with the chosen ABI) requires the `sse` target feature, which is not enabled
+    //~^ this function definition uses SIMD vector type `SseVector` which (with the chosen ABI) requires the `sse` target feature, which is not enabled
     //~| WARNING this was previously accepted by the compiler
 }

@@ -86,10 +86,9 @@ impl InferenceContext<'_> {
             }
         };
 
-        let generic_def_id = value_def.to_generic_def_id(self.db);
-        let Some(generic_def) = generic_def_id else {
-            // `value_def` is the kind of item that can never be generic (i.e. statics, at least
-            // currently). We can just skip the binders to get its type.
+        let generic_def = value_def.to_generic_def_id(self.db);
+        if let GenericDefId::StaticId(_) = generic_def {
+            // `Static` is the kind of item that can never be generic currently. We can just skip the binders to get its type.
             let (ty, binders) = self.db.value_ty(value_def)?.into_value_and_skipped_binders();
             stdx::always!(binders.is_empty(Interner), "non-empty binders for non-generic def",);
             return Some(ValuePathResolution::NonGeneric(ty));
@@ -122,7 +121,7 @@ impl InferenceContext<'_> {
         }
 
         let parent_substs = self_subst.or_else(|| {
-            let generics = generics(self.db.upcast(), generic_def_id?);
+            let generics = generics(self.db.upcast(), generic_def);
             let parent_params_len = generics.parent_generics()?.len();
             let parent_args = &substs[substs.len() - parent_params_len..];
             Some(Substitution::from_iter(Interner, parent_args))

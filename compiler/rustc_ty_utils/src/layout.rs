@@ -9,6 +9,7 @@ use rustc_abi::{
     HasDataLayout, Layout, LayoutCalculatorError, LayoutData, Niche, ReprOptions, Scalar, Size,
     StructKind, TagEncoding, VariantIdx, Variants, WrappingRange,
 };
+use rustc_hashes::Hash64;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::bug;
@@ -104,7 +105,7 @@ fn map_error<'tcx>(
             // This is sometimes not a compile error if there are trivially false where clauses.
             // See `tests/ui/layout/trivial-bounds-sized.rs` for an example.
             assert!(field.layout.is_unsized(), "invalid layout error {err:#?}");
-            if !field.ty.is_sized(cx.tcx(), cx.typing_env) {
+            if cx.typing_env.param_env.caller_bounds().is_empty() {
                 cx.tcx().dcx().delayed_bug(format!(
                     "encountered unexpected unsized field in layout of {ty:?}: {field:#?}"
                 ));
@@ -113,13 +114,17 @@ fn map_error<'tcx>(
         }
         LayoutCalculatorError::EmptyUnion => {
             // This is always a compile error.
-            cx.tcx().dcx().delayed_bug(format!("computed layout of empty union: {ty:?}"));
-            LayoutError::Unknown(ty)
+            let guar =
+                cx.tcx().dcx().delayed_bug(format!("computed layout of empty union: {ty:?}"));
+            LayoutError::ReferencesError(guar)
         }
         LayoutCalculatorError::ReprConflict => {
             // packed enums are the only known trigger of this, but others might arise
-            cx.tcx().dcx().delayed_bug(format!("computed impossible repr (packed enum?): {ty:?}"));
-            LayoutError::Unknown(ty)
+            let guar = cx
+                .tcx()
+                .dcx()
+                .delayed_bug(format!("computed impossible repr (packed enum?): {ty:?}"));
+            LayoutError::ReferencesError(guar)
         }
     };
     error(cx, err)
@@ -138,6 +143,35 @@ fn univariant_uninterned<'tcx>(
     }
 
     cx.calc.univariant(fields, repr, kind).map_err(|err| map_error(cx, ty, err))
+}
+
+fn extract_const_value<'tcx>(
+    const_: ty::Const<'tcx>,
+    ty: Ty<'tcx>,
+    cx: &LayoutCx<'tcx>,
+) -> Result<ty::Value<'tcx>, &'tcx LayoutError<'tcx>> {
+    match const_.kind() {
+        ty::ConstKind::Value(cv) => Ok(cv),
+        ty::ConstKind::Error(guar) => {
+            return Err(error(cx, LayoutError::ReferencesError(guar)));
+        }
+        ty::ConstKind::Param(_) | ty::ConstKind::Expr(_) => {
+            if !const_.has_param() {
+                bug!("no generic type found in the type: {ty:?}");
+            }
+            return Err(error(cx, LayoutError::TooGeneric(ty)));
+        }
+        ty::ConstKind::Unevaluated(_) => {
+            if !const_.has_param() {
+                return Err(error(cx, LayoutError::Unknown(ty)));
+            } else {
+                return Err(error(cx, LayoutError::TooGeneric(ty)));
+            }
+        }
+        ty::ConstKind::Infer(_) | ty::ConstKind::Bound(..) | ty::ConstKind::Placeholder(_) => {
+            bug!("unexpected type: {ty:?}");
+        }
+    }
 }
 
 fn layout_of_uncached<'tcx>(
@@ -176,12 +210,12 @@ fn layout_of_uncached<'tcx>(
                         &mut layout.backend_repr
                     {
                         if let Some(start) = start {
-                            scalar.valid_range_mut().start = start
+                            scalar.valid_range_mut().start = extract_const_value(start, ty, cx)?
                                 .try_to_bits(tcx, cx.typing_env)
                                 .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
                         }
                         if let Some(end) = end {
-                            let mut end = end
+                            let mut end = extract_const_value(end, ty, cx)?
                                 .try_to_bits(tcx, cx.typing_env)
                                 .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
                             if !include_end {
@@ -207,14 +241,20 @@ fn layout_of_uncached<'tcx>(
         }
 
         // Basic scalars.
-        ty::Bool => tcx.mk_layout(LayoutData::scalar(cx, Scalar::Initialized {
-            value: Int(I8, false),
-            valid_range: WrappingRange { start: 0, end: 1 },
-        })),
-        ty::Char => tcx.mk_layout(LayoutData::scalar(cx, Scalar::Initialized {
-            value: Int(I32, false),
-            valid_range: WrappingRange { start: 0, end: 0x10FFFF },
-        })),
+        ty::Bool => tcx.mk_layout(LayoutData::scalar(
+            cx,
+            Scalar::Initialized {
+                value: Int(I8, false),
+                valid_range: WrappingRange { start: 0, end: 1 },
+            },
+        )),
+        ty::Char => tcx.mk_layout(LayoutData::scalar(
+            cx,
+            Scalar::Initialized {
+                value: Int(I32, false),
+                valid_range: WrappingRange { start: 0, end: 0x10FFFF },
+            },
+        )),
         ty::Int(ity) => scalar(Int(abi::Integer::from_int_ty(dl, ity), true)),
         ty::Uint(ity) => scalar(Int(abi::Integer::from_uint_ty(dl, ity), false)),
         ty::Float(fty) => scalar(Float(abi::Float::from_float_ty(fty))),
@@ -230,7 +270,7 @@ fn layout_of_uncached<'tcx>(
         // Potentially-wide pointers.
         ty::Ref(_, pointee, _) | ty::RawPtr(pointee, _) => {
             let mut data_ptr = scalar_unit(Pointer(AddressSpace::DATA));
-            if !ty.is_unsafe_ptr() {
+            if !ty.is_raw_ptr() {
                 data_ptr.valid_range_mut().start = 1;
             }
 
@@ -313,17 +353,11 @@ fn layout_of_uncached<'tcx>(
         }
 
         // Arrays and slices.
-        ty::Array(element, mut count) => {
-            if count.has_aliases() {
-                count = tcx.normalize_erasing_regions(cx.typing_env, count);
-                if count.has_aliases() {
-                    return Err(error(cx, LayoutError::Unknown(ty)));
-                }
-            }
-
-            let count = count
+        ty::Array(element, count) => {
+            let count = extract_const_value(count, ty, cx)?
                 .try_to_target_usize(tcx)
                 .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
+
             let element = cx.layout_of(element)?;
             let size = element
                 .size
@@ -347,7 +381,7 @@ fn layout_of_uncached<'tcx>(
                 size,
                 max_repr_align: None,
                 unadjusted_abi_align: element.align.abi,
-                randomization_seed: element.randomization_seed.wrapping_add(count),
+                randomization_seed: element.randomization_seed.wrapping_add(Hash64::new(count)),
             })
         }
         ty::Slice(element) => {
@@ -362,7 +396,9 @@ fn layout_of_uncached<'tcx>(
                 max_repr_align: None,
                 unadjusted_abi_align: element.align.abi,
                 // adding a randomly chosen value to distinguish slices
-                randomization_seed: element.randomization_seed.wrapping_add(0x2dcba99c39784102),
+                randomization_seed: element
+                    .randomization_seed
+                    .wrapping_add(Hash64::new(0x2dcba99c39784102)),
             })
         }
         ty::Str => tcx.mk_layout(LayoutData {
@@ -375,7 +411,7 @@ fn layout_of_uncached<'tcx>(
             max_repr_align: None,
             unadjusted_abi_align: dl.i8_align.abi,
             // another random value
-            randomization_seed: 0xc1325f37d127be22,
+            randomization_seed: Hash64::new(0xc1325f37d127be22),
         }),
 
         // Odd unit types.
@@ -432,8 +468,10 @@ fn layout_of_uncached<'tcx>(
         ty::Adt(def, args) if def.repr().simd() => {
             if !def.is_struct() {
                 // Should have yielded E0517 by now.
-                tcx.dcx().delayed_bug("#[repr(simd)] was applied to an ADT that is not a struct");
-                return Err(error(cx, LayoutError::Unknown(ty)));
+                let guar = tcx
+                    .dcx()
+                    .delayed_bug("#[repr(simd)] was applied to an ADT that is not a struct");
+                return Err(error(cx, LayoutError::ReferencesError(guar)));
             }
 
             let fields = &def.non_enum_variant().fields;
@@ -459,10 +497,10 @@ fn layout_of_uncached<'tcx>(
             // (should be caught by typeck)
             for fi in fields {
                 if fi.ty(tcx, args) != f0_ty {
-                    tcx.dcx().delayed_bug(
+                    let guar = tcx.dcx().delayed_bug(
                         "#[repr(simd)] was applied to an ADT with heterogeneous field type",
                     );
-                    return Err(error(cx, LayoutError::Unknown(ty)));
+                    return Err(error(cx, LayoutError::ReferencesError(guar)));
                 }
             }
 
@@ -522,10 +560,13 @@ fn layout_of_uncached<'tcx>(
                 // Non-power-of-two vectors have padding up to the next power-of-two.
                 // If we're a packed repr, remove the padding while keeping the alignment as close
                 // to a vector as possible.
-                (BackendRepr::Memory { sized: true }, AbiAndPrefAlign {
-                    abi: Align::max_for_offset(size),
-                    pref: dl.vector_align(size).pref,
-                })
+                (
+                    BackendRepr::Memory { sized: true },
+                    AbiAndPrefAlign {
+                        abi: Align::max_for_offset(size),
+                        pref: dl.vector_align(size).pref,
+                    },
+                )
             } else {
                 (BackendRepr::Vector { element: e_abi, count: e_len }, dl.vector_align(size))
             };
@@ -547,7 +588,7 @@ fn layout_of_uncached<'tcx>(
                 align,
                 max_repr_align: None,
                 unadjusted_abi_align: align.abi,
-                randomization_seed: e_ly.randomization_seed.wrapping_add(e_len),
+                randomization_seed: e_ly.randomization_seed.wrapping_add(Hash64::new(e_len)),
             })
         }
 
@@ -567,11 +608,11 @@ fn layout_of_uncached<'tcx>(
 
             if def.is_union() {
                 if def.repr().pack.is_some() && def.repr().align.is_some() {
-                    tcx.dcx().span_delayed_bug(
+                    let guar = tcx.dcx().span_delayed_bug(
                         tcx.def_span(def.did()),
                         "union cannot be packed and aligned",
                     );
-                    return Err(error(cx, LayoutError::Unknown(ty)));
+                    return Err(error(cx, LayoutError::ReferencesError(guar)));
                 }
 
                 return Ok(tcx.mk_layout(
@@ -679,6 +720,9 @@ fn layout_of_uncached<'tcx>(
 
         // Types with no meaningful known layout.
         ty::Alias(..) => {
+            if ty.has_param() {
+                return Err(error(cx, LayoutError::TooGeneric(ty)));
+            }
             // NOTE(eddyb) `layout_of` query should've normalized these away,
             // if that was possible, so there's no reason to try again here.
             return Err(error(cx, LayoutError::Unknown(ty)));
@@ -688,7 +732,11 @@ fn layout_of_uncached<'tcx>(
             bug!("Layout::compute: unexpected type `{}`", ty)
         }
 
-        ty::Placeholder(..) | ty::Param(_) => {
+        ty::Param(_) => {
+            return Err(error(cx, LayoutError::TooGeneric(ty)));
+        }
+
+        ty::Placeholder(..) => {
             return Err(error(cx, LayoutError::Unknown(ty)));
         }
     })
@@ -1006,7 +1054,7 @@ fn coroutine_layout<'tcx>(
     };
 
     // this is similar to how ReprOptions populates its field_shuffle_seed
-    let def_hash = tcx.def_path_hash(def_id).0.to_smaller_hash().as_u64();
+    let def_hash = tcx.def_path_hash(def_id).0.to_smaller_hash();
 
     let layout = tcx.mk_layout(LayoutData {
         variants: Variants::Multiple {
@@ -1143,10 +1191,13 @@ fn variant_info_for_adt<'tcx>(
                 })
                 .collect();
 
-            (variant_infos, match tag_encoding {
-                TagEncoding::Direct => Some(tag.size(cx)),
-                _ => None,
-            })
+            (
+                variant_infos,
+                match tag_encoding {
+                    TagEncoding::Direct => Some(tag.size(cx)),
+                    _ => None,
+                },
+            )
         }
     }
 }
@@ -1266,8 +1317,11 @@ fn variant_info_for_coroutine<'tcx>(
     let end_states: Vec<_> = end_states.collect();
     variant_infos.extend(end_states);
 
-    (variant_infos, match tag_encoding {
-        TagEncoding::Direct => Some(tag.size(cx)),
-        _ => None,
-    })
+    (
+        variant_infos,
+        match tag_encoding {
+            TagEncoding::Direct => Some(tag.size(cx)),
+            _ => None,
+        },
+    )
 }

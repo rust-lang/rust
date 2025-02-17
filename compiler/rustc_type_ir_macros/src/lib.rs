@@ -57,15 +57,18 @@ fn type_visitable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::Tok
     });
     s.bind_with(|_| synstructure::BindStyle::Move);
 
-    s.bound_impl(quote!(::rustc_type_ir::visit::TypeVisitable<I>), quote! {
-        fn visit_with<__V: ::rustc_type_ir::visit::TypeVisitor<I>>(
-            &self,
-            __visitor: &mut __V
-        ) -> __V::Result {
-            match *self { #body_visit }
-            <__V::Result as ::rustc_ast_ir::visit::VisitorResult>::output()
-        }
-    })
+    s.bound_impl(
+        quote!(::rustc_type_ir::visit::TypeVisitable<I>),
+        quote! {
+            fn visit_with<__V: ::rustc_type_ir::visit::TypeVisitor<I>>(
+                &self,
+                __visitor: &mut __V
+            ) -> __V::Result {
+                match *self { #body_visit }
+                <__V::Result as ::rustc_ast_ir::visit::VisitorResult>::output()
+            }
+        },
+    )
 }
 
 fn type_foldable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
@@ -101,14 +104,17 @@ fn type_foldable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::Toke
     // to generate code for them.
     s.filter(|bi| !has_ignore_attr(&bi.ast().attrs, "type_foldable", "identity"));
     s.add_bounds(synstructure::AddBounds::Fields);
-    s.bound_impl(quote!(::rustc_type_ir::fold::TypeFoldable<I>), quote! {
-        fn try_fold_with<__F: ::rustc_type_ir::fold::FallibleTypeFolder<I>>(
-            self,
-            __folder: &mut __F
-        ) -> Result<Self, __F::Error> {
-            Ok(match self { #body_fold })
-        }
-    })
+    s.bound_impl(
+        quote!(::rustc_type_ir::fold::TypeFoldable<I>),
+        quote! {
+            fn try_fold_with<__F: ::rustc_type_ir::fold::FallibleTypeFolder<I>>(
+                self,
+                __folder: &mut __F
+            ) -> Result<Self, __F::Error> {
+                Ok(match self { #body_fold })
+            }
+        },
+    )
 }
 
 fn lift_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
@@ -148,16 +154,19 @@ fn lift_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
     let self_ty: syn::Type = parse_quote! { #name #ty_generics };
     let lifted_ty = lift(self_ty);
 
-    s.bound_impl(quote!(::rustc_type_ir::lift::Lift<J>), quote! {
-        type Lifted = #lifted_ty;
+    s.bound_impl(
+        quote!(::rustc_type_ir::lift::Lift<J>),
+        quote! {
+            type Lifted = #lifted_ty;
 
-        fn lift_to_interner(
-            self,
-            interner: J,
-        ) -> Option<Self::Lifted> {
-            Some(match self { #body_fold })
-        }
-    })
+            fn lift_to_interner(
+                self,
+                interner: J,
+            ) -> Option<Self::Lifted> {
+                Some(match self { #body_fold })
+            }
+        },
+    )
 }
 
 fn lift(mut ty: syn::Type) -> syn::Type {

@@ -10,7 +10,6 @@ use rustc_hir::{self as hir, BindingMode, ByRef, HirId};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::Level;
 use rustc_middle::bug;
-use rustc_middle::middle::limits::get_limit_size;
 use rustc_middle::thir::visit::Visitor;
 use rustc_middle::thir::*;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -25,7 +24,7 @@ use rustc_session::lint::builtin::{
 };
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::DesugaringKind;
-use rustc_span::{Span, sym};
+use rustc_span::{Ident, Span};
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::instrument;
 
@@ -326,9 +325,10 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             | Use { source }
             | PointerCoercion { source, .. }
             | PlaceTypeAscription { source, .. }
-            | ValueTypeAscription { source, .. } => {
-                self.is_known_valid_scrutinee(&self.thir()[*source])
-            }
+            | ValueTypeAscription { source, .. }
+            | PlaceUnwrapUnsafeBinder { source }
+            | ValueUnwrapUnsafeBinder { source }
+            | WrapUnsafeBinder { source } => self.is_known_valid_scrutinee(&self.thir()[*source]),
 
             // These diverge.
             Become { .. } | Break { .. } | Continue { .. } | Return { .. } => true,
@@ -403,18 +403,11 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         arms: &[MatchArm<'p, 'tcx>],
         scrut_ty: Ty<'tcx>,
     ) -> Result<UsefulnessReport<'p, 'tcx>, ErrorGuaranteed> {
-        let pattern_complexity_limit =
-            get_limit_size(cx.tcx.hir().krate_attrs(), cx.tcx.sess, sym::pattern_complexity);
-        let report = rustc_pattern_analysis::rustc::analyze_match(
-            &cx,
-            &arms,
-            scrut_ty,
-            pattern_complexity_limit,
-        )
-        .map_err(|err| {
-            self.error = Err(err);
-            err
-        })?;
+        let report =
+            rustc_pattern_analysis::rustc::analyze_match(&cx, &arms, scrut_ty).map_err(|err| {
+                self.error = Err(err);
+                err
+            })?;
 
         // Warn unreachable subpatterns.
         for (arm, is_useful) in report.arm_usefulness.iter() {
@@ -675,12 +668,14 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         let mut interpreted_as_const = None;
         let mut interpreted_as_const_sugg = None;
 
-        if let PatKind::ExpandedConstant { def_id, is_inline: false, .. }
-        | PatKind::AscribeUserType {
-            subpattern:
-                box Pat { kind: PatKind::ExpandedConstant { def_id, is_inline: false, .. }, .. },
-            ..
-        } = pat.kind
+        // These next few matches want to peek through `AscribeUserType` to see
+        // the underlying pattern.
+        let mut unpeeled_pat = pat;
+        while let PatKind::AscribeUserType { ref subpattern, .. } = unpeeled_pat.kind {
+            unpeeled_pat = subpattern;
+        }
+
+        if let PatKind::ExpandedConstant { def_id, is_inline: false, .. } = unpeeled_pat.kind
             && let DefKind::Const = self.tcx.def_kind(def_id)
             && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(pat.span)
             // We filter out paths with multiple path::segments.
@@ -691,11 +686,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             // When we encounter a constant as the binding name, point at the `const` definition.
             interpreted_as_const = Some(span);
             interpreted_as_const_sugg = Some(InterpretedAsConst { span: pat.span, variable });
-        } else if let PatKind::Constant { .. }
-        | PatKind::AscribeUserType {
-            subpattern: box Pat { kind: PatKind::Constant { .. }, .. },
-            ..
-        } = pat.kind
+        } else if let PatKind::Constant { .. } = unpeeled_pat.kind
             && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(pat.span)
         {
             // If the pattern to match is an integer literal:
@@ -795,13 +786,17 @@ fn check_borrow_conflicts_in_at_patterns<'tcx>(cx: &MatchVisitor<'_, 'tcx>, pat:
                 }
             });
             if !conflicts_ref.is_empty() {
-                sess.dcx().emit_err(BorrowOfMovedValue {
+                let mut path = None;
+                let ty = cx.tcx.short_string(ty, &mut path);
+                let mut err = sess.dcx().create_err(BorrowOfMovedValue {
                     binding_span: pat.span,
                     conflicts_ref,
-                    name,
+                    name: Ident::new(name, pat.span),
                     ty,
                     suggest_borrowing: Some(pat.span.shrink_to_lo()),
                 });
+                *err.long_ty_path() = path;
+                err.emit();
             }
             return;
         }
@@ -904,7 +899,7 @@ fn check_for_bindings_named_same_as_variants(
                     None
                 },
                 ty_path,
-                name,
+                name: Ident::new(name, pat.span),
             },
         )
     }
@@ -1086,14 +1081,13 @@ fn find_fallback_pattern_typo<'tcx>(
                 let vis = cx.tcx.visibility(item.owner_id);
                 if vis.is_accessible_from(parent, cx.tcx) {
                     accessible.push(item_name);
-                    let path = if item_name == name {
-                        // We know that the const wasn't in scope because it has the exact
-                        // same name, so we suggest the full path.
-                        with_no_trimmed_paths!(cx.tcx.def_path_str(item.owner_id))
-                    } else {
-                        // The const is likely just typoed, and nothing else.
-                        cx.tcx.def_path_str(item.owner_id)
-                    };
+                    // FIXME: the line below from PR #135310 is a workaround for the ICE in issue
+                    // #135289, where a macro in a dependency can create unreachable patterns in the
+                    // current crate. Path trimming expects diagnostics for a typoed const, but no
+                    // diagnostics are emitted and we ICE. See
+                    // `tests/ui/resolve/const-with-typo-in-pattern-binding-ice-135289.rs` for a
+                    // test that reproduces the ICE if we don't use `with_no_trimmed_paths!`.
+                    let path = with_no_trimmed_paths!(cx.tcx.def_path_str(item.owner_id));
                     accessible_path.push(path);
                 } else if name == item_name {
                     // The const exists somewhere in this crate, but it can't be imported
@@ -1496,7 +1490,7 @@ fn report_adt_defined_here<'tcx>(
         return None;
     };
     let adt_def_span =
-        tcx.hir().get_if_local(def.did()).and_then(|node| node.ident()).map(|ident| ident.span);
+        tcx.hir_get_if_local(def.did()).and_then(|node| node.ident()).map(|ident| ident.span);
     let adt_def_span = if point_at_non_local_ty {
         adt_def_span.unwrap_or_else(|| tcx.def_span(def.did()))
     } else {

@@ -1,6 +1,5 @@
 //@ run-pass
-//@ ignore-wasm32 no subprocess support
-//@ ignore-sgx no processes
+//@ needs-subprocess
 
 use std::env;
 use std::process::Command;

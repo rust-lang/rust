@@ -3,21 +3,20 @@ use std::fmt;
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
-use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_mir_dataflow::elaborate_drops::{
-    DropElaborator, DropFlagMode, DropFlagState, DropStyle, Unwind, elaborate_drop,
-};
 use rustc_mir_dataflow::impls::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
 use rustc_mir_dataflow::move_paths::{LookupResult, MoveData, MovePathIndex};
 use rustc_mir_dataflow::{
-    Analysis, MoveDataTypingEnv, ResultsCursor, on_all_children_bits, on_lookup_result_bits,
+    Analysis, DropFlagState, MoveDataTypingEnv, ResultsCursor, on_all_children_bits,
+    on_lookup_result_bits,
 };
 use rustc_span::Span;
 use tracing::{debug, instrument};
 
 use crate::deref_separator::deref_finder;
+use crate::elaborate_drop::{DropElaborator, DropFlagMode, DropStyle, Unwind, elaborate_drop};
+use crate::patch::MirPatch;
 
 /// During MIR building, Drop terminators are inserted in every place where a drop may occur.
 /// However, in this phase, the presence of these terminators does not guarantee that a destructor
@@ -88,6 +87,10 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateDrops {
         elaborate_patch.apply(body);
         deref_finder(tcx, body);
     }
+
+    fn is_required(&self) -> bool {
+        true
+    }
 }
 
 /// Records unwind edges which are known to be unreachable, because they are in `drop` terminators
@@ -134,6 +137,10 @@ impl InitializationData<'_, '_> {
 
 impl<'a, 'tcx> DropElaborator<'a, 'tcx> for ElaborateDropsCtxt<'a, 'tcx> {
     type Path = MovePathIndex;
+
+    fn patch_ref(&self) -> &MirPatch<'tcx> {
+        &self.patch
+    }
 
     fn patch(&mut self) -> &mut MirPatch<'tcx> {
         &mut self.patch

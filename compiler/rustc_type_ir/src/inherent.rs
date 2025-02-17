@@ -286,6 +286,11 @@ pub trait Const<I: Interner<Const = Self>>:
     }
 }
 
+pub trait ValueConst<I: Interner<ValueConst = Self>>: Copy + Debug + Hash + Eq {
+    fn ty(self) -> I::Ty;
+    fn valtree(self) -> I::ValTree;
+}
+
 pub trait ExprConst<I: Interner<ExprConst = Self>>: Copy + Debug + Hash + Eq + Relate<I> {
     fn args(self) -> I::GenericArgs;
 }
@@ -534,6 +539,8 @@ pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
     fn struct_tail_ty(self, interner: I) -> Option<ty::EarlyBinder<I, I::Ty>>;
 
     fn is_phantom_data(self) -> bool;
+
+    fn is_manually_drop(self) -> bool;
 
     // FIXME: perhaps use `all_fields` and expose `FieldDef`.
     fn all_field_tys(self, interner: I) -> ty::EarlyBinder<I, impl IntoIterator<Item = I::Ty>>;

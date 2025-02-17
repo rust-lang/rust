@@ -224,7 +224,9 @@ pub struct Config {
     /// The directory containing the compiler sysroot
     pub sysroot_base: PathBuf,
 
-    /// The name of the stage being built (stage1, etc)
+    /// The number of the stage under test.
+    pub stage: u32,
+    /// The id of the stage under test (stage1-xxx, etc).
     pub stage_id: String,
 
     /// The test mode, e.g. ui or debuginfo.
@@ -488,6 +490,17 @@ impl Config {
             git_merge_commit_email: &self.git_merge_commit_email,
         }
     }
+
+    pub fn has_subprocess_support(&self) -> bool {
+        // FIXME(#135928): compiletest is always a **host** tool. Building and running an
+        // capability detection executable against the **target** is not trivial. The short term
+        // solution here is to hard-code some targets to allow/deny, unfortunately.
+
+        let unsupported_target = self.target_cfg().env == "sgx"
+            || matches!(self.target_cfg().arch.as_str(), "wasm32" | "wasm64")
+            || self.target_cfg().os == "emscripten";
+        !unsupported_target
+    }
 }
 
 /// Known widths of `target_has_atomic`.
@@ -504,6 +517,7 @@ pub struct TargetCfgs {
     pub all_abis: HashSet<String>,
     pub all_families: HashSet<String>,
     pub all_pointer_widths: HashSet<String>,
+    pub all_rustc_abis: HashSet<String>,
 }
 
 impl TargetCfgs {
@@ -523,6 +537,9 @@ impl TargetCfgs {
         let mut all_abis = HashSet::new();
         let mut all_families = HashSet::new();
         let mut all_pointer_widths = HashSet::new();
+        // NOTE: for distinction between `abi` and `rustc_abi`, see comment on
+        // `TargetCfg::rustc_abi`.
+        let mut all_rustc_abis = HashSet::new();
 
         // If current target is not included in the `--print=all-target-specs-json` output,
         // we check whether it is a custom target from the user or a synthetic target from bootstrap.
@@ -563,7 +580,9 @@ impl TargetCfgs {
                 all_families.insert(family.clone());
             }
             all_pointer_widths.insert(format!("{}bit", cfg.pointer_width));
-
+            if let Some(rustc_abi) = &cfg.rustc_abi {
+                all_rustc_abis.insert(rustc_abi.clone());
+            }
             all_targets.insert(target.clone());
         }
 
@@ -577,6 +596,7 @@ impl TargetCfgs {
             all_abis,
             all_families,
             all_pointer_widths,
+            all_rustc_abis,
         }
     }
 
@@ -663,6 +683,10 @@ pub struct TargetCfg {
     pub(crate) xray: bool,
     #[serde(default = "default_reloc_model")]
     pub(crate) relocation_model: String,
+    // NOTE: `rustc_abi` should not be confused with `abi`. `rustc_abi` was introduced in #137037 to
+    // make SSE2 *required* by the ABI (kind of a hack to make a target feature *required* via the
+    // target spec).
+    pub(crate) rustc_abi: Option<String>,
 
     // Not present in target cfg json output, additional derived information.
     #[serde(skip)]

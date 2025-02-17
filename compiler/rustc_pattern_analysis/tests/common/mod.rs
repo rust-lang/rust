@@ -124,7 +124,7 @@ pub fn compute_match_usefulness<'p>(
     arms: &[MatchArm<'p, Cx>],
     ty: Ty,
     scrut_validity: PlaceValidity,
-    complexity_limit: Option<usize>,
+    complexity_limit: usize,
 ) -> Result<UsefulnessReport<'p, Cx>, ()> {
     init_tracing();
     rustc_pattern_analysis::usefulness::compute_match_usefulness(

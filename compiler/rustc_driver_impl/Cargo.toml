@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 # tidy-alphabetical-start
+rustc_abi = { path = "../rustc_abi" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_lowering = { path = "../rustc_ast_lowering" }
 rustc_ast_passes = { path = "../rustc_ast_passes" }
@@ -59,7 +60,7 @@ libc = "0.2"
 # tidy-alphabetical-end
 
 [target.'cfg(windows)'.dependencies.windows]
-version = "0.57.0"
+version = "0.59.0"
 features = [
     "Win32_System_Diagnostics_Debug",
 ]

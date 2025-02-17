@@ -1,4 +1,4 @@
-//@ normalize-stderr: "parser:.*\(" -> "parser: $$ACCESS_DENIED_MSG ("
+//@ normalize-stderr: "parser`:.*\(" -> "parser`: $$ACCESS_DENIED_MSG ("
 //@ normalize-stderr: "os error \d+" -> "os error $$ACCESS_DENIED_CODE"
 
 #[path = "../parser"]

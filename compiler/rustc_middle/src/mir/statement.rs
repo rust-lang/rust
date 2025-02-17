@@ -62,7 +62,8 @@ impl<V, T> ProjectionElem<V, T> {
             | Self::Subtype(_)
             | Self::ConstantIndex { .. }
             | Self::Subslice { .. }
-            | Self::Downcast(_, _) => false,
+            | Self::Downcast(_, _)
+            | Self::UnwrapUnsafeBinder(..) => false,
         }
     }
 
@@ -76,7 +77,8 @@ impl<V, T> ProjectionElem<V, T> {
             | Self::Subtype(_)
             | Self::ConstantIndex { .. }
             | Self::Subslice { .. }
-            | Self::Downcast(_, _) => true,
+            | Self::Downcast(_, _)
+            | Self::UnwrapUnsafeBinder(..) => true,
         }
     }
 
@@ -102,6 +104,9 @@ impl<V, T> ProjectionElem<V, T> {
             | Self::Subtype(_)
             | Self::OpaqueCast(_)
             | Self::Subslice { .. } => false,
+
+            // FIXME(unsafe_binders): Figure this out.
+            Self::UnwrapUnsafeBinder(..) => false,
         }
     }
 }
@@ -424,6 +429,7 @@ impl<'tcx> Rvalue<'tcx> {
             | Rvalue::Ref(_, _, _)
             | Rvalue::ThreadLocalRef(_)
             | Rvalue::RawPtr(_, _)
+            | Rvalue::Len(_)
             | Rvalue::Cast(
                 CastKind::IntToInt
                 | CastKind::FloatToInt
@@ -442,7 +448,8 @@ impl<'tcx> Rvalue<'tcx> {
             | Rvalue::UnaryOp(_, _)
             | Rvalue::Discriminant(_)
             | Rvalue::Aggregate(_, _)
-            | Rvalue::ShallowInitBox(_, _) => true,
+            | Rvalue::ShallowInitBox(_, _)
+            | Rvalue::WrapUnsafeBinder(_, _) => true,
         }
     }
 }

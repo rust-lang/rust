@@ -1,3 +1,8 @@
+//! Command Execution Module
+//!
+//! This module provides a structured way to execute and manage commands efficiently,
+//! ensuring controlled failure handling and output management.
+
 use std::ffi::OsStr;
 use std::fmt::{Debug, Formatter};
 use std::path::Path;
@@ -322,5 +327,27 @@ impl Default for CommandOutput {
             stdout: Some(vec![]),
             stderr: Some(vec![]),
         }
+    }
+}
+
+/// Helper trait to format both Command and BootstrapCommand as a short execution line,
+/// without all the other details (e.g. environment variables).
+#[allow(unused)]
+pub trait FormatShortCmd {
+    fn format_short_cmd(&self) -> String;
+}
+
+impl FormatShortCmd for BootstrapCommand {
+    fn format_short_cmd(&self) -> String {
+        self.command.format_short_cmd()
+    }
+}
+
+impl FormatShortCmd for Command {
+    fn format_short_cmd(&self) -> String {
+        let program = Path::new(self.get_program());
+        let mut line = vec![program.file_name().unwrap().to_str().unwrap()];
+        line.extend(self.get_args().map(|arg| arg.to_str().unwrap()));
+        line.join(" ")
     }
 }

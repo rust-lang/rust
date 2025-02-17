@@ -14,8 +14,9 @@ LL +     use std::convert::TryInto;
    |
 help: there is a method `into` with a similar name
    |
-LL |         let _: u32 = 3u8.into().unwrap();
-   |                          ~~~~
+LL -         let _: u32 = 3u8.try_into().unwrap();
+LL +         let _: u32 = 3u8.into().unwrap();
+   |
 
 error: aborting due to 1 previous error
 

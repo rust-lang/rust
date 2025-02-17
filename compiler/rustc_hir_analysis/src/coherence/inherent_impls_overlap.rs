@@ -18,7 +18,7 @@ pub(crate) fn crate_inherent_impls_overlap_check(
 ) -> Result<(), ErrorGuaranteed> {
     let mut inherent_overlap_checker = InherentOverlapChecker { tcx };
     let mut res = Ok(());
-    for id in tcx.hir().items() {
+    for id in tcx.hir_free_items() {
         res = res.and(inherent_overlap_checker.check_item(id));
     }
     res
@@ -251,10 +251,13 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
                         for ident in &idents_to_add {
                             connected_region_ids.insert(*ident, id_to_set);
                         }
-                        connected_regions.insert(id_to_set, ConnectedRegion {
-                            idents: idents_to_add,
-                            impl_blocks: std::iter::once(i).collect(),
-                        });
+                        connected_regions.insert(
+                            id_to_set,
+                            ConnectedRegion {
+                                idents: idents_to_add,
+                                impl_blocks: std::iter::once(i).collect(),
+                            },
+                        );
                     }
                     // Take the only id inside the list
                     &[id_to_set] => {

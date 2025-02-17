@@ -46,7 +46,7 @@ pub(super) fn check(cx: &LateContext<'_>, call_expr: &Expr<'_>, recv: &Expr<'_>,
         && is_trait_method(cx, call_expr, sym::Iterator)
         // And the map argument is a closure
         && let ExprKind::Closure(closure) = closure_arg.kind
-        && let closure_body = cx.tcx.hir().body(closure.body)
+        && let closure_body = cx.tcx.hir_body(closure.body)
         // And that closure has one argument ...
         && let [closure_param] = closure_body.params
         // .. which is a tuple of 2 elements
@@ -130,7 +130,7 @@ pub(super) fn check(cx: &LateContext<'_>, call_expr: &Expr<'_>, recv: &Expr<'_>,
 fn find_elem_explicit_type_span(fn_decl: &FnDecl<'_>) -> Option<Span> {
     if let [tuple_ty] = fn_decl.inputs
         && let TyKind::Tup([_idx_ty, elem_ty]) = tuple_ty.kind
-        && !matches!(elem_ty.kind, TyKind::Err(..) | TyKind::Infer)
+        && !matches!(elem_ty.kind, TyKind::Err(..) | TyKind::Infer(()))
     {
         Some(elem_ty.span)
     } else {

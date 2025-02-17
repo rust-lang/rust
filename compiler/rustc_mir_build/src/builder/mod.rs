@@ -20,16 +20,13 @@ use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_middle::hir::place::PlaceBase as HirPlaceBase;
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
-use rustc_middle::query::TyCtxtAt;
 use rustc_middle::thir::{self, ExprId, LintLevel, LocalVarId, Param, ParamId, PatKind, Thir};
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt, TypeVisitableExt, TypingMode};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{Span, Symbol, sym};
 
-use super::lints;
 use crate::builder::expr::as_place::PlaceBuilder;
 use crate::builder::scope::DropKind;
-use crate::check_inline;
 
 pub(crate) fn closure_saved_names_of_captured_variables<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -47,10 +44,10 @@ pub(crate) fn closure_saved_names_of_captured_variables<'tcx>(
         .collect()
 }
 
-/// Construct the MIR for a given `DefId`.
-pub(crate) fn mir_build<'tcx>(tcx: TyCtxtAt<'tcx>, def: LocalDefId) -> Body<'tcx> {
-    let tcx = tcx.tcx;
-    tcx.ensure_with_value().thir_abstract_const(def);
+/// Create the MIR for a given `DefId`, including unreachable code. Do not call
+/// this directly; instead use the cached version via `mir_built`.
+pub fn build_mir<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> Body<'tcx> {
+    tcx.ensure_done().thir_abstract_const(def);
     if let Err(e) = tcx.check_match(def) {
         return construct_error(tcx, def, e);
     }
@@ -71,7 +68,7 @@ pub(crate) fn mir_build<'tcx>(tcx: TyCtxtAt<'tcx>, def: LocalDefId) -> Body<'tcx
             // "not all control paths return a value" is reported here.
             //
             // maybe move the check to a MIR pass?
-            tcx.ensure().check_liveness(def);
+            tcx.ensure_ok().check_liveness(def);
 
             // Don't steal here, instead steal in unsafeck. This is so that
             // pattern inline constants can be evaluated as part of building the
@@ -79,9 +76,6 @@ pub(crate) fn mir_build<'tcx>(tcx: TyCtxtAt<'tcx>, def: LocalDefId) -> Body<'tcx
             build_mir(&thir.borrow())
         }
     };
-
-    lints::check(tcx, &body);
-    check_inline::check_force_inline(tcx, &body);
 
     // The borrow checker will replace all the regions here with its own
     // inference variables. There's no point having non-erased regions here.

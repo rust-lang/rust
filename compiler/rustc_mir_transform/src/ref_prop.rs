@@ -81,6 +81,10 @@ impl<'tcx> crate::MirPass<'tcx> for ReferencePropagation {
         debug!(def_id = ?body.source.def_id());
         while propagate_ssa(tcx, body) {}
     }
+
+    fn is_required(&self) -> bool {
+        false
+    }
 }
 
 fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {

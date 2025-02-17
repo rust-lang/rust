@@ -1,4 +1,4 @@
-use crate::spec::{FloatAbi, Target, TargetOptions, base};
+use crate::spec::{FloatAbi, Target, TargetMetadata, TargetOptions, base};
 
 // This target is for OpenHarmony on ARMv7 Linux with thumb-mode, but no NEON or
 // hardfloat.
@@ -8,7 +8,7 @@ pub(crate) fn target() -> Target {
     // target.
     Target {
         llvm_target: "armv7-unknown-linux-ohos".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("Armv7-A OpenHarmony".into()),
             tier: Some(2),
             host_tools: Some(false),

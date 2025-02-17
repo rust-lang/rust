@@ -296,11 +296,12 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         let source_info = self.body.source_info(location);
         if let Some(lint_root) = self.lint_root(*source_info) {
             let span = source_info.span;
-            self.tcx.emit_node_span_lint(lint_kind.lint(), lint_root, span, AssertLint {
+            self.tcx.emit_node_span_lint(
+                lint_kind.lint(),
+                lint_root,
                 span,
-                assert_kind,
-                lint_kind,
-            });
+                AssertLint { span, assert_kind, lint_kind },
+            );
         }
     }
 
@@ -440,10 +441,12 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             | Rvalue::Use(..)
             | Rvalue::CopyForDeref(..)
             | Rvalue::Repeat(..)
+            | Rvalue::Len(..)
             | Rvalue::Cast(..)
             | Rvalue::ShallowInitBox(..)
             | Rvalue::Discriminant(..)
-            | Rvalue::NullaryOp(..) => {}
+            | Rvalue::NullaryOp(..)
+            | Rvalue::WrapUnsafeBinder(..) => {}
         }
 
         // FIXME we need to revisit this for #67176
@@ -545,7 +548,9 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         let val: Value<'_> = match *rvalue {
             ThreadLocalRef(_) => return None,
 
-            Use(ref operand) => self.eval_operand(operand)?.into(),
+            Use(ref operand) | WrapUnsafeBinder(ref operand, _) => {
+                self.eval_operand(operand)?.into()
+            }
 
             CopyForDeref(place) => self.eval_place(place)?.into(),
 
@@ -599,6 +604,20 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 return None;
             }
 
+            Len(place) => {
+                let len = if let ty::Array(_, n) = place.ty(self.local_decls(), self.tcx).ty.kind()
+                {
+                    n.try_to_target_usize(self.tcx)?
+                } else {
+                    match self.get_const(place)? {
+                        Value::Immediate(src) => src.len(&self.ecx).discard_err()?,
+                        Value::Aggregate { fields, .. } => fields.len() as u64,
+                        Value::Uninit => return None,
+                    }
+                };
+                ImmTy::from_scalar(Scalar::from_target_usize(len, self), layout).into()
+            }
+
             Ref(..) | RawPtr(..) => return None,
 
             NullaryOp(ref null_op, ty) => {
@@ -611,6 +630,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                         .offset_of_subfield(self.typing_env, op_layout, fields.iter())
                         .bytes(),
                     NullOp::UbChecks => return None,
+                    NullOp::ContractChecks => return None,
                 };
                 ImmTy::from_scalar(Scalar::from_target_usize(val, self), layout).into()
             }

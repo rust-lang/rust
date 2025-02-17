@@ -119,12 +119,11 @@ impl Runnable {
 // location**. Super useful for repeatedly running just a single test. Do bind this
 // to a shortcut!
 //
-// |===
-// | Editor  | Action Name
+// | Editor  | Action Name |
+// |---------|-------------|
+// | VS Code | **rust-analyzer: Run** |
 //
-// | VS Code | **rust-analyzer: Run**
-// |===
-// image::https://user-images.githubusercontent.com/48062697/113065583-055aae80-91b1-11eb-958f-d67efcaf6a2f.gif[]
+// ![Run](https://user-images.githubusercontent.com/48062697/113065583-055aae80-91b1-11eb-958f-d67efcaf6a2f.gif)
 pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
     let sema = Semantics::new(db);
 
@@ -207,11 +206,9 @@ pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
 // The simplest way to use this feature is via the context menu. Right-click on
 // the selected item. The context menu opens. Select **Peek Related Tests**.
 //
-// |===
-// | Editor  | Action Name
-//
-// | VS Code | **rust-analyzer: Peek Related Tests**
-// |===
+// | Editor  | Action Name |
+// |---------|-------------|
+// | VS Code | **rust-analyzer: Peek Related Tests** |
 pub(crate) fn related_tests(
     db: &RootDatabase,
     position: FilePosition,
@@ -748,7 +745,7 @@ mod tests {
 
     use crate::fixture;
 
-    fn check(ra_fixture: &str, expect: Expect) {
+    fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
         let (analysis, position) = fixture::position(ra_fixture);
         let result = analysis
             .runnables(position.file_id)
@@ -769,7 +766,7 @@ mod tests {
         expect.assert_debug_eq(&result);
     }
 
-    fn check_tests(ra_fixture: &str, expect: Expect) {
+    fn check_tests(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
         let (analysis, position) = fixture::position(ra_fixture);
         let tests = analysis.related_tests(position, None).unwrap();
         let navigation_targets = tests.into_iter().map(|runnable| runnable.nav).collect::<Vec<_>>();

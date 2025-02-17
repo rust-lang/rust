@@ -5,7 +5,9 @@
 #![feature(rustc_private)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
+#![feature(debug_closure_helpers)]
 #![feature(file_buffered)]
+#![feature(format_args_nl)]
 #![feature(if_let_guard)]
 #![feature(impl_trait_in_assoc_type)]
 #![feature(iter_intersperse)]
@@ -73,8 +75,6 @@ extern crate tikv_jemalloc_sys as jemalloc_sys;
 use std::env::{self, VarError};
 use std::io::{self, IsTerminal};
 use std::process;
-use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
 
 use rustc_errors::DiagCtxtHandle;
 use rustc_interface::interface;
@@ -83,7 +83,7 @@ use rustc_session::config::{ErrorOutputType, RustcOptGroup, make_crate_type_opti
 use rustc_session::{EarlyDiagCtxt, getopts};
 use tracing::info;
 
-use crate::clean::utils::DOC_RUST_LANG_ORG_CHANNEL;
+use crate::clean::utils::DOC_RUST_LANG_ORG_VERSION;
 
 /// A macro to create a FxHashMap.
 ///
@@ -106,6 +106,7 @@ macro_rules! map {
 mod clean;
 mod config;
 mod core;
+mod display;
 mod docfs;
 mod doctest;
 mod error;
@@ -158,7 +159,7 @@ pub fn main() {
 
     let mut early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
 
-    let using_internal_features = rustc_driver::install_ice_hook(
+    rustc_driver::install_ice_hook(
         "https://github.com/rust-lang/rust/issues/new\
     ?labels=C-bug%2C+I-ICE%2C+T-rustdoc&template=ice.md",
         |_| (),
@@ -178,9 +179,8 @@ pub fn main() {
     rustc_driver::init_logger(&early_dcx, rustc_log::LoggerConfig::from_env("RUSTDOC_LOG"));
 
     let exit_code = rustc_driver::catch_with_exit_code(|| {
-        let at_args = rustc_driver::args::raw_args(&early_dcx)?;
-        main_args(&mut early_dcx, &at_args, using_internal_features);
-        Ok(())
+        let at_args = rustc_driver::args::raw_args(&early_dcx);
+        main_args(&mut early_dcx, &at_args);
     });
     process::exit(exit_code);
 }
@@ -651,8 +651,15 @@ fn opts() -> Vec<RustcOptGroup> {
             "",
             "add arguments to be used when compiling doctests",
         ),
+        opt(
+            Unstable,
+            FlagMulti,
+            "",
+            "disable-minification",
+            "disable the minification of CSS/JS files (perma-unstable, do not use with cached files)",
+            "",
+        ),
         // deprecated / removed options
-        opt(Unstable, FlagMulti, "", "disable-minification", "removed", ""),
         opt(
             Stable,
             Multi,
@@ -704,7 +711,7 @@ fn usage(argv0: &str) {
     println!("{}", options.usage(&format!("{argv0} [options] <input>")));
     println!("    @path               Read newline separated options from `path`\n");
     println!(
-        "More information available at {DOC_RUST_LANG_ORG_CHANNEL}/rustdoc/what-is-rustdoc.html",
+        "More information available at {DOC_RUST_LANG_ORG_VERSION}/rustdoc/what-is-rustdoc.html",
     );
 }
 
@@ -761,11 +768,7 @@ fn run_merge_finalize(opt: config::RenderOptions) -> Result<(), error::Error> {
     Ok(())
 }
 
-fn main_args(
-    early_dcx: &mut EarlyDiagCtxt,
-    at_args: &[String],
-    using_internal_features: Arc<AtomicBool>,
-) {
+fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
     // Throw away the first argument, the name of the binary.
     // In case of at_args being empty, as might be the case by
     // passing empty argument array to execve under some platforms,
@@ -812,14 +815,18 @@ fn main_args(
         }
     };
 
-    match (options.should_test, config::markdown_input(&input)) {
+    let output_format = options.output_format;
+
+    match (
+        options.should_test || output_format == config::OutputFormat::Doctest,
+        config::markdown_input(&input),
+    ) {
         (true, Some(_)) => return wrap_return(dcx, doctest::test_markdown(&input, options)),
         (true, None) => return doctest::run(dcx, input, options),
         (false, Some(md_input)) => {
             let md_input = md_input.to_owned();
             let edition = options.edition;
-            let config =
-                core::create_config(input, options, &render_options, using_internal_features);
+            let config = core::create_config(input, options, &render_options);
 
             // `markdown::render` can invoke `doctest::make_test`, which
             // requires session globals and a thread pool, so we use
@@ -848,11 +855,10 @@ fn main_args(
     // plug/cleaning passes.
     let crate_version = options.crate_version.clone();
 
-    let output_format = options.output_format;
     let scrape_examples_options = options.scrape_examples_options.clone();
     let bin_crate = options.bin_crate;
 
-    let config = core::create_config(input, options, &render_options, using_internal_features);
+    let config = core::create_config(input, options, &render_options);
 
     let registered_lints = config.register_lints.is_some();
 
@@ -898,6 +904,8 @@ fn main_args(
                 config::OutputFormat::Json => sess.time("render_json", || {
                     run_renderer::<json::JsonRenderer<'_>>(krate, render_opts, cache, tcx)
                 }),
+                // Already handled above with doctest runners.
+                config::OutputFormat::Doctest => unreachable!(),
             }
         })
     })

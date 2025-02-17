@@ -240,6 +240,10 @@ impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
 
         trace!(round_count);
     }
+
+    fn is_required(&self) -> bool {
+        false
+    }
 }
 
 #[derive(Debug, Default)]
@@ -571,10 +575,14 @@ impl WriteInfo {
                             self.add_operand(op);
                         }
                     }
+                    Rvalue::WrapUnsafeBinder(op, _) => {
+                        self.add_operand(op);
+                    }
                     Rvalue::ThreadLocalRef(_)
                     | Rvalue::NullaryOp(_, _)
                     | Rvalue::Ref(_, _, _)
                     | Rvalue::RawPtr(_, _)
+                    | Rvalue::Len(_)
                     | Rvalue::Discriminant(_)
                     | Rvalue::CopyForDeref(_) => {}
                 }

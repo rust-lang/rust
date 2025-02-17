@@ -1,11 +1,13 @@
 use std::borrow::Borrow;
 use std::cell::{Cell, RefCell};
 use std::ffi::{CStr, c_char, c_uint};
+use std::ops::Deref;
 use std::str;
 
 use rustc_abi::{HasDataLayout, TargetDataLayout, VariantIdx};
 use rustc_codegen_ssa::back::versioned_llvm_target;
 use rustc_codegen_ssa::base::{wants_msvc_seh, wants_wasm_eh};
+use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::errors as ssa_errors;
 use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::base_n::{ALPHANUMERIC_ONLY, ToBaseN};
@@ -30,30 +32,52 @@ use smallvec::SmallVec;
 
 use crate::back::write::to_llvm_code_model;
 use crate::callee::get_fn;
-use crate::common::AsCCharPtr;
+use crate::common::{self, AsCCharPtr};
 use crate::debuginfo::metadata::apply_vcall_visibility_metadata;
 use crate::llvm::{Metadata, MetadataType};
 use crate::type_::Type;
 use crate::value::Value;
 use crate::{attributes, coverageinfo, debuginfo, llvm, llvm_util};
 
+/// `TyCtxt` (and related cache datastructures) can't be move between threads.
+/// However, there are various cx related functions which we want to be available to the builder and
+/// other compiler pieces. Here we define a small subset which has enough information and can be
+/// moved around more freely.
+pub(crate) struct SimpleCx<'ll> {
+    pub llmod: &'ll llvm::Module,
+    pub llcx: &'ll llvm::Context,
+}
+
+impl<'ll> Borrow<SimpleCx<'ll>> for CodegenCx<'ll, '_> {
+    fn borrow(&self) -> &SimpleCx<'ll> {
+        &self.scx
+    }
+}
+
+impl<'ll, 'tcx> Deref for CodegenCx<'ll, 'tcx> {
+    type Target = SimpleCx<'ll>;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.scx
+    }
+}
+
 /// There is one `CodegenCx` per codegen unit. Each one has its own LLVM
 /// `llvm::Context` so that several codegen units may be processed in parallel.
 /// All other LLVM data structures in the `CodegenCx` are tied to that `llvm::Context`.
 pub(crate) struct CodegenCx<'ll, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
+    pub scx: SimpleCx<'ll>,
     pub use_dll_storage_attrs: bool,
     pub tls_model: llvm::ThreadLocalMode,
 
-    pub llmod: &'ll llvm::Module,
-    pub llcx: &'ll llvm::Context,
     pub codegen_unit: &'tcx CodegenUnit<'tcx>,
 
     /// Cache instances of monomorphic and polymorphic items
     pub instances: RefCell<FxHashMap<Instance<'tcx>, &'ll Value>>,
     /// Cache generated vtables
-    pub vtables:
-        RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), &'ll Value>>,
+    pub vtables: RefCell<FxHashMap<(Ty<'tcx>, Option<ty::ExistentialTraitRef<'tcx>>), &'ll Value>>,
     /// Cache of constant strings,
     pub const_str_cache: RefCell<FxHashMap<String, &'ll Value>>,
 
@@ -168,6 +192,12 @@ pub(crate) unsafe fn create_module<'ll>(
             // LLVM 20 updates the wasm(32|64) layout to correctly align 128 bit integers to 128 bit.
             // See https://github.com/llvm/llvm-project/pull/119204
             target_data_layout = target_data_layout.replace("-i128:128", "");
+        }
+    }
+    if llvm_version < (21, 0, 0) {
+        if sess.target.arch == "nvptx64" {
+            // LLVM 21 updated the default layout on nvptx: https://github.com/llvm/llvm-project/pull/124961
+            target_data_layout = target_data_layout.replace("e-p6:32:32-i64", "e-i64");
         }
     }
 
@@ -553,10 +583,9 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 
         CodegenCx {
             tcx,
+            scx: SimpleCx { llcx, llmod },
             use_dll_storage_attrs,
             tls_model,
-            llmod,
-            llcx,
             codegen_unit,
             instances: Default::default(),
             vtables: Default::default(),
@@ -593,12 +622,15 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     pub(crate) fn create_used_variable_impl(&self, name: &'static CStr, values: &[&'ll Value]) {
         let array = self.const_array(self.type_ptr(), values);
 
-        unsafe {
-            let g = llvm::LLVMAddGlobal(self.llmod, self.val_ty(array), name.as_ptr());
-            llvm::LLVMSetInitializer(g, array);
-            llvm::set_linkage(g, llvm::Linkage::AppendingLinkage);
-            llvm::set_section(g, c"llvm.metadata");
-        }
+        let g = llvm::add_global(self.llmod, self.val_ty(array), name);
+        llvm::set_initializer(g, array);
+        llvm::set_linkage(g, llvm::Linkage::AppendingLinkage);
+        llvm::set_section(g, c"llvm.metadata");
+    }
+}
+impl<'ll> SimpleCx<'ll> {
+    pub(crate) fn val_ty(&self, v: &'ll Value) -> &'ll Type {
+        common::val_ty(v)
     }
 
     pub(crate) fn get_metadata_value(&self, metadata: &'ll Metadata) -> &'ll Value {
@@ -625,20 +657,23 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             llvm::LLVMMDStringInContext2(self.llcx, name.as_ptr() as *const c_char, name.len())
         })
     }
+
+    pub(crate) fn type_kind(&self, ty: &'ll Type) -> TypeKind {
+        unsafe { llvm::LLVMRustGetTypeKind(ty).to_generic() }
+    }
 }
 
 impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn vtables(
         &self,
-    ) -> &RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), &'ll Value>>
-    {
+    ) -> &RefCell<FxHashMap<(Ty<'tcx>, Option<ty::ExistentialTraitRef<'tcx>>), &'ll Value>> {
         &self.vtables
     }
 
     fn apply_vcall_visibility_metadata(
         &self,
         ty: Ty<'tcx>,
-        poly_trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
+        poly_trait_ref: Option<ty::ExistentialTraitRef<'tcx>>,
         vtable: &'ll Value,
     ) {
         apply_vcall_visibility_metadata(self, ty, poly_trait_ref, vtable);
@@ -741,14 +776,16 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         if self.get_declared_value(entry_name).is_none() {
             Some(self.declare_entry_fn(
                 entry_name,
-                self.sess().target.entry_abi.into(),
+                llvm::CallConv::from_conv(
+                    self.sess().target.entry_abi,
+                    self.sess().target.arch.borrow(),
+                ),
                 llvm::UnnamedAddr::Global,
                 fn_type,
             ))
         } else {
             // If the symbol already exists, it is an error: for example, the user wrote
             // #[no_mangle] extern "C" fn main(..) {..}
-            // instead of #[start]
             None
         }
     }
@@ -1167,6 +1204,20 @@ impl CodegenCx<'_, '_> {
         name
     }
 
+    /// A wrapper for [`llvm::LLVMSetMetadata`], but it takes `Metadata` as a parameter instead of `Value`.
+    pub(crate) fn set_metadata<'a>(&self, val: &'a Value, kind_id: MetadataType, md: &'a Metadata) {
+        unsafe {
+            let node = llvm::LLVMMetadataAsValue(&self.llcx, md);
+            llvm::LLVMSetMetadata(val, kind_id as c_uint, node);
+        }
+    }
+}
+
+// This is a duplication of the set_metadata function above. However, so far it's the only one
+// shared between both contexts, so it doesn't seem worth it to make the Cx generic like we did it
+// for the Builder.
+impl SimpleCx<'_> {
+    #[allow(unused)]
     /// A wrapper for [`llvm::LLVMSetMetadata`], but it takes `Metadata` as a parameter instead of `Value`.
     pub(crate) fn set_metadata<'a>(&self, val: &'a Value, kind_id: MetadataType, md: &'a Metadata) {
         unsafe {

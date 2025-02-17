@@ -3,6 +3,7 @@ use std::cell::{Cell, RefCell};
 use gccjit::{
     Block, CType, Context, Function, FunctionPtrType, FunctionType, LValue, Location, RValue, Type,
 };
+use rustc_abi::{HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx};
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::errors as ssa_errors;
 use rustc_codegen_ssa::traits::{BackendTypes, BaseTypeCodegenMethods, MiscCodegenMethods};
@@ -14,11 +15,10 @@ use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOf, FnAbiOfHelpers, FnAbiRequest, HasTyCtxt, HasTypingEnv, LayoutError,
     LayoutOfHelpers,
 };
-use rustc_middle::ty::{self, Instance, PolyExistentialTraitRef, Ty, TyCtxt};
+use rustc_middle::ty::{self, ExistentialTraitRef, Instance, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_span::source_map::respan;
 use rustc_span::{DUMMY_SP, Span};
-use rustc_target::abi::{HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx};
 use rustc_target::spec::{
     HasTargetSpec, HasWasmCAbiOpt, HasX86AbiOpt, Target, TlsModel, WasmCAbi, X86Abi,
 };
@@ -90,7 +90,7 @@ pub struct CodegenCx<'gcc, 'tcx> {
     pub function_instances: RefCell<FxHashMap<Instance<'tcx>, Function<'gcc>>>,
     /// Cache generated vtables
     pub vtables:
-        RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), RValue<'gcc>>>,
+        RefCell<FxHashMap<(Ty<'tcx>, Option<ty::ExistentialTraitRef<'tcx>>), RValue<'gcc>>>,
 
     // TODO(antoyo): improve the SSA API to not require those.
     /// Mapping from function pointer type to indexes of on stack parameters.
@@ -401,7 +401,7 @@ impl<'gcc, 'tcx> BackendTypes for CodegenCx<'gcc, 'tcx> {
 impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     fn vtables(
         &self,
-    ) -> &RefCell<FxHashMap<(Ty<'tcx>, Option<PolyExistentialTraitRef<'tcx>>), RValue<'gcc>>> {
+    ) -> &RefCell<FxHashMap<(Ty<'tcx>, Option<ExistentialTraitRef<'tcx>>), RValue<'gcc>>> {
         &self.vtables
     }
 
@@ -513,7 +513,6 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         } else {
             // If the symbol already exists, it is an error: for example, the user wrote
             // #[no_mangle] extern "C" fn main(..) {..}
-            // instead of #[start]
             None
         }
     }

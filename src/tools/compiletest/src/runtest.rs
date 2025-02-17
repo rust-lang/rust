@@ -32,7 +32,7 @@ use crate::{ColorConfig, json, stamp_file_path};
 mod debugger;
 
 // Helper modules that implement test running logic for each test suite.
-// tidy-alphabet-start
+// tidy-alphabetical-start
 mod assembly;
 mod codegen;
 mod codegen_units;
@@ -47,7 +47,7 @@ mod run_make;
 mod rustdoc;
 mod rustdoc_json;
 mod ui;
-// tidy-alphabet-end
+// tidy-alphabetical-end
 
 #[cfg(test)]
 mod tests;
@@ -59,7 +59,7 @@ fn disable_error_reporting<F: FnOnce() -> R, R>(f: F) -> R {
     use std::sync::Mutex;
 
     use windows::Win32::System::Diagnostics::Debug::{
-        SEM_FAILCRITICALERRORS, SEM_NOGPFAULTERRORBOX, SetErrorMode, THREAD_ERROR_MODE,
+        SEM_FAILCRITICALERRORS, SEM_NOGPFAULTERRORBOX, SetErrorMode,
     };
 
     static LOCK: Mutex<()> = Mutex::new(());
@@ -80,7 +80,6 @@ fn disable_error_reporting<F: FnOnce() -> R, R>(f: F) -> R {
     unsafe {
         // read inherited flags
         let old_mode = SetErrorMode(SEM_NOGPFAULTERRORBOX | SEM_FAILCRITICALERRORS);
-        let old_mode = THREAD_ERROR_MODE(old_mode);
         SetErrorMode(old_mode | SEM_NOGPFAULTERRORBOX | SEM_FAILCRITICALERRORS);
         let r = f();
         SetErrorMode(old_mode);
@@ -1418,9 +1417,7 @@ impl<'test> TestCx<'test> {
     }
 
     fn is_rustdoc(&self) -> bool {
-        self.config.src_base.ends_with("rustdoc-ui")
-            || self.config.src_base.ends_with("rustdoc-js")
-            || self.config.src_base.ends_with("rustdoc-json")
+        matches!(self.config.suite.as_str(), "rustdoc-ui" | "rustdoc-js" | "rustdoc-json")
     }
 
     fn get_mir_dump_dir(&self) -> PathBuf {

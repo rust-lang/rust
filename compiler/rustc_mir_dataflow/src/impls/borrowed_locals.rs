@@ -91,12 +91,14 @@ where
             | Rvalue::Use(..)
             | Rvalue::ThreadLocalRef(..)
             | Rvalue::Repeat(..)
+            | Rvalue::Len(..)
             | Rvalue::BinaryOp(..)
             | Rvalue::NullaryOp(..)
             | Rvalue::UnaryOp(..)
             | Rvalue::Discriminant(..)
             | Rvalue::Aggregate(..)
-            | Rvalue::CopyForDeref(..) => {}
+            | Rvalue::CopyForDeref(..)
+            | Rvalue::WrapUnsafeBinder(..) => {}
         }
     }
 

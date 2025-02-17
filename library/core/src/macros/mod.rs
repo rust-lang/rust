@@ -224,6 +224,7 @@ pub macro assert_matches {
 ///     }
 /// }
 /// ```
+#[cfg(bootstrap)]
 #[unstable(feature = "cfg_match", issue = "115585")]
 #[rustc_diagnostic_item = "cfg_match"]
 pub macro cfg_match {
@@ -282,6 +283,68 @@ pub macro cfg_match {
     (@__identity $($tokens:tt)*) => {
         $($tokens)*
     }
+}
+
+/// A macro for defining `#[cfg]` match-like statements.
+///
+/// It is similar to the `if/elif` C preprocessor macro by allowing definition of a cascade of
+/// `#[cfg]` cases, emitting the implementation which matches first.
+///
+/// This allows you to conveniently provide a long list `#[cfg]`'d blocks of code
+/// without having to rewrite each clause multiple times.
+///
+/// Trailing `_` wildcard match arms are **optional** and they indicate a fallback branch when
+/// all previous declarations do not evaluate to true.
+///
+/// # Example
+///
+/// ```
+/// #![feature(cfg_match)]
+///
+/// cfg_match! {
+///     unix => {
+///         fn foo() { /* unix specific functionality */ }
+///     }
+///     target_pointer_width = "32" => {
+///         fn foo() { /* non-unix, 32-bit functionality */ }
+///     }
+///     _ => {
+///         fn foo() { /* fallback implementation */ }
+///     }
+/// }
+/// ```
+///
+/// If desired, it is possible to return expressions through the use of surrounding braces:
+///
+/// ```
+/// #![feature(cfg_match)]
+///
+/// let _some_string = cfg_match! {{
+///     unix => { "With great power comes great electricity bills" }
+///     _ => { "Behind every successful diet is an unwatched pizza" }
+/// }};
+/// ```
+#[cfg(not(bootstrap))]
+#[unstable(feature = "cfg_match", issue = "115585")]
+#[rustc_diagnostic_item = "cfg_match"]
+pub macro cfg_match {
+    ({ $($tt:tt)* }) => {{
+        cfg_match! { $($tt)* }
+    }},
+    (_ => { $($output:tt)* }) => {
+        $($output)*
+    },
+    (
+        $cfg:meta => $output:tt
+        $($( $rest:tt )+)?
+    ) => {
+        #[cfg($cfg)]
+        cfg_match! { _ => $output }
+        $(
+            #[cfg(not($cfg))]
+            cfg_match! { $($rest)+ }
+        )?
+    },
 }
 
 /// Asserts that a boolean expression is `true` at runtime.
@@ -1714,6 +1777,32 @@ pub(crate) mod builtin {
         /* compiler built-in */
     }
 
+    /// Attribute macro applied to a function to give it a post-condition.
+    ///
+    /// The attribute carries an argument token-tree which is
+    /// eventually parsed as a unary closure expression that is
+    /// invoked on a reference to the return value.
+    #[cfg(not(bootstrap))]
+    #[unstable(feature = "contracts", issue = "128044")]
+    #[allow_internal_unstable(contracts_internals)]
+    #[rustc_builtin_macro]
+    pub macro contracts_ensures($item:item) {
+        /* compiler built-in */
+    }
+
+    /// Attribute macro applied to a function to give it a precondition.
+    ///
+    /// The attribute carries an argument token-tree which is
+    /// eventually parsed as an boolean expression with access to the
+    /// function's formal parameters
+    #[cfg(not(bootstrap))]
+    #[unstable(feature = "contracts", issue = "128044")]
+    #[allow_internal_unstable(contracts_internals)]
+    #[rustc_builtin_macro]
+    pub macro contracts_requires($item:item) {
+        /* compiler built-in */
+    }
+
     /// Attribute macro applied to a function to register it as a handler for allocation failure.
     ///
     /// See also [`std::alloc::handle_alloc_error`](../../../std/alloc/fn.handle_alloc_error.html).
@@ -1767,33 +1856,5 @@ pub(crate) mod builtin {
     )]
     pub macro deref($pat:pat) {
         builtin # deref($pat)
-    }
-
-    /// Derive macro for `rustc-serialize`. Should not be used in new code.
-    #[rustc_builtin_macro]
-    #[unstable(
-        feature = "rustc_encodable_decodable",
-        issue = "none",
-        soft,
-        reason = "derive macro for `rustc-serialize`; should not be used in new code"
-    )]
-    #[deprecated(since = "1.52.0", note = "rustc-serialize is deprecated and no longer supported")]
-    #[doc(hidden)] // While technically stable, using it is unstable, and deprecated. Hide it.
-    pub macro RustcDecodable($item:item) {
-        /* compiler built-in */
-    }
-
-    /// Derive macro for `rustc-serialize`. Should not be used in new code.
-    #[rustc_builtin_macro]
-    #[unstable(
-        feature = "rustc_encodable_decodable",
-        issue = "none",
-        soft,
-        reason = "derive macro for `rustc-serialize`; should not be used in new code"
-    )]
-    #[deprecated(since = "1.52.0", note = "rustc-serialize is deprecated and no longer supported")]
-    #[doc(hidden)] // While technically stable, using it is unstable, and deprecated. Hide it.
-    pub macro RustcEncodable($item:item) {
-        /* compiler built-in */
     }
 }

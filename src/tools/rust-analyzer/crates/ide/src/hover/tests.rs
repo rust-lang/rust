@@ -23,7 +23,7 @@ const HOVER_BASE_CONFIG: HoverConfig = HoverConfig {
     max_subst_ty_len: super::SubstTyLen::Unlimited,
 };
 
-fn check_hover_no_result(ra_fixture: &str) {
+fn check_hover_no_result(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
     let (analysis, position) = fixture::position(ra_fixture);
     let hover = analysis
         .hover(
@@ -35,7 +35,7 @@ fn check_hover_no_result(ra_fixture: &str) {
 }
 
 #[track_caller]
-fn check(ra_fixture: &str, expect: Expect) {
+fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let (analysis, position) = fixture::position(ra_fixture);
     let hover = analysis
         .hover(
@@ -55,7 +55,7 @@ fn check(ra_fixture: &str, expect: Expect) {
 #[track_caller]
 fn check_hover_fields_limit(
     fields_count: impl Into<Option<usize>>,
-    ra_fixture: &str,
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
     expect: Expect,
 ) {
     let (analysis, position) = fixture::position(ra_fixture);
@@ -81,7 +81,7 @@ fn check_hover_fields_limit(
 #[track_caller]
 fn check_hover_enum_variants_limit(
     variants_count: impl Into<Option<usize>>,
-    ra_fixture: &str,
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
     expect: Expect,
 ) {
     let (analysis, position) = fixture::position(ra_fixture);
@@ -105,7 +105,11 @@ fn check_hover_enum_variants_limit(
 }
 
 #[track_caller]
-fn check_assoc_count(count: usize, ra_fixture: &str, expect: Expect) {
+fn check_assoc_count(
+    count: usize,
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    expect: Expect,
+) {
     let (analysis, position) = fixture::position(ra_fixture);
     let hover = analysis
         .hover(
@@ -126,7 +130,7 @@ fn check_assoc_count(count: usize, ra_fixture: &str, expect: Expect) {
     expect.assert_eq(&actual)
 }
 
-fn check_hover_no_links(ra_fixture: &str, expect: Expect) {
+fn check_hover_no_links(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let (analysis, position) = fixture::position(ra_fixture);
     let hover = analysis
         .hover(
@@ -143,7 +147,7 @@ fn check_hover_no_links(ra_fixture: &str, expect: Expect) {
     expect.assert_eq(&actual)
 }
 
-fn check_hover_no_memory_layout(ra_fixture: &str, expect: Expect) {
+fn check_hover_no_memory_layout(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let (analysis, position) = fixture::position(ra_fixture);
     let hover = analysis
         .hover(
@@ -160,7 +164,7 @@ fn check_hover_no_memory_layout(ra_fixture: &str, expect: Expect) {
     expect.assert_eq(&actual)
 }
 
-fn check_hover_no_markdown(ra_fixture: &str, expect: Expect) {
+fn check_hover_no_markdown(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let (analysis, position) = fixture::position(ra_fixture);
     let hover = analysis
         .hover(
@@ -181,7 +185,7 @@ fn check_hover_no_markdown(ra_fixture: &str, expect: Expect) {
     expect.assert_eq(&actual)
 }
 
-fn check_actions(ra_fixture: &str, expect: Expect) {
+fn check_actions(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let (analysis, file_id, position) = fixture::range_or_position(ra_fixture);
     let mut hover = analysis
         .hover(
@@ -206,13 +210,13 @@ fn check_actions(ra_fixture: &str, expect: Expect) {
     expect.assert_debug_eq(&hover.info.actions)
 }
 
-fn check_hover_range(ra_fixture: &str, expect: Expect) {
+fn check_hover_range(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let (analysis, range) = fixture::range(ra_fixture);
     let hover = analysis.hover(&HOVER_BASE_CONFIG, range).unwrap().unwrap();
     expect.assert_eq(hover.info.markup.as_str())
 }
 
-fn check_hover_range_actions(ra_fixture: &str, expect: Expect) {
+fn check_hover_range_actions(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let (analysis, range) = fixture::range(ra_fixture);
     let mut hover = analysis
         .hover(&HoverConfig { links_in_hover: true, ..HOVER_BASE_CONFIG }, range)
@@ -234,7 +238,7 @@ fn check_hover_range_actions(ra_fixture: &str, expect: Expect) {
     expect.assert_debug_eq(&hover.info.actions);
 }
 
-fn check_hover_range_no_results(ra_fixture: &str) {
+fn check_hover_range_no_results(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
     let (analysis, range) = fixture::range(ra_fixture);
     let hover = analysis.hover(&HOVER_BASE_CONFIG, range).unwrap();
     assert!(hover.is_none());
@@ -299,6 +303,7 @@ m!(ab$0c);
             ---
 
             Outer
+
             ---
 
             ```rust
@@ -1353,7 +1358,7 @@ fn hover_enum_limit() {
 
             ---
 
-            size = 12 (0xC), align = 4, niches = 4294967288
+            size = 12 (0xC), align = 4, niches = a lot
         "#]],
     );
 }
@@ -2355,6 +2360,97 @@ fn test() {
                                 name: "S",
                                 kind: Struct,
                                 description: "struct S",
+                            },
+                        },
+                    ],
+                ),
+            ]
+        "#]],
+    );
+}
+
+#[test]
+fn test_hover_show_type_def_for_func_param() {
+    check_actions(
+        r#"
+struct Bar;
+fn f(b: Bar) {
+
+}
+
+fn test() {
+    let b = Bar;
+    f$0(b);
+}
+"#,
+        expect![[r#"
+            [
+                Reference(
+                    FilePositionWrapper {
+                        file_id: FileId(
+                            0,
+                        ),
+                        offset: 15,
+                    },
+                ),
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "ra_test_fixture::Bar",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 0..11,
+                                focus_range: 7..10,
+                                name: "Bar",
+                                kind: Struct,
+                                description: "struct Bar",
+                            },
+                        },
+                    ],
+                ),
+            ]
+        "#]],
+    );
+}
+
+#[test]
+fn test_hover_show_type_def_for_trait_bound() {
+    check_actions(
+        r#"
+trait Bar {}
+fn f<T: Bar>(b: T) {
+
+}
+
+fn test() {
+    f$0();
+}
+"#,
+        expect![[r#"
+            [
+                Reference(
+                    FilePositionWrapper {
+                        file_id: FileId(
+                            0,
+                        ),
+                        offset: 16,
+                    },
+                ),
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "ra_test_fixture::Bar",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 0..12,
+                                focus_range: 6..9,
+                                name: "Bar",
+                                kind: Trait,
+                                description: "trait Bar",
                             },
                         },
                     ],
@@ -4306,6 +4402,7 @@ fn main() {
             ---
 
             size = 8, align = 8, niches = 1
+
             ---
 
             ```rust
@@ -4700,6 +4797,10 @@ fn hover_lifetime() {
             *'lifetime*
 
             ```rust
+            ra_test_fixture::foo
+            ```
+
+            ```rust
             'lifetime
             ```
         "#]],
@@ -4730,6 +4831,10 @@ impl<T: TraitA + TraitB> Foo<T$0> where T: Sized {}
             *T*
 
             ```rust
+            ra_test_fixture::Foo
+            ```
+
+            ```rust
             T: TraitA + TraitB
             ```
         "#]],
@@ -4744,6 +4849,10 @@ impl<T> Foo<T$0> {}
             *T*
 
             ```rust
+            ra_test_fixture::Foo
+            ```
+
+            ```rust
             T
             ```
         "#]],
@@ -4756,6 +4865,10 @@ impl<T: 'static> Foo<T$0> {}
 "#,
         expect![[r#"
             *T*
+
+            ```rust
+            ra_test_fixture::Foo
+            ```
 
             ```rust
             T: 'static
@@ -4778,6 +4891,10 @@ impl<T$0: Trait> Foo<T> {}
             *T*
 
             ```rust
+            ra_test_fixture::Foo
+            ```
+
+            ```rust
             T: Trait
             ```
         "#]],
@@ -4791,6 +4908,10 @@ impl<T$0: Trait + ?Sized> Foo<T> {}
 "#,
         expect![[r#"
             *T*
+
+            ```rust
+            ra_test_fixture::Foo
+            ```
 
             ```rust
             T: Trait + ?Sized
@@ -4811,6 +4932,10 @@ fn foo<T$0>() {}
 "#,
             expect![[r#"
                 *T*
+
+                ```rust
+                ra_test_fixture::foo
+                ```
 
                 ```rust
                 T
@@ -4834,6 +4959,10 @@ fn foo<T$0: Sized>() {}
                 *T*
 
                 ```rust
+                ra_test_fixture::foo
+                ```
+
+                ```rust
                 T
                 ```
 
@@ -4853,6 +4982,10 @@ fn foo<T$0: ?Sized>() {}
 "#,
             expect![[r#"
                 *T*
+
+                ```rust
+                ra_test_fixture::foo
+                ```
 
                 ```rust
                 T: ?Sized
@@ -4877,6 +5010,10 @@ fn foo<T$0: Trait>() {}
                 *T*
 
                 ```rust
+                ra_test_fixture::foo
+                ```
+
+                ```rust
                 T: Trait
                 ```
 
@@ -4897,6 +5034,10 @@ fn foo<T$0: Trait + Sized>() {}
 "#,
             expect![[r#"
                 *T*
+
+                ```rust
+                ra_test_fixture::foo
+                ```
 
                 ```rust
                 T: Trait
@@ -4921,6 +5062,10 @@ fn foo<T$0: Trait + ?Sized>() {}
                 *T*
 
                 ```rust
+                ra_test_fixture::foo
+                ```
+
+                ```rust
                 T: Trait + ?Sized
                 ```
 
@@ -4940,6 +5085,10 @@ fn foo<T$0: ?Sized + Sized + Sized>() {}
 "#,
             expect![[r#"
                 *T*
+
+                ```rust
+                ra_test_fixture::foo
+                ```
 
                 ```rust
                 T
@@ -4962,6 +5111,10 @@ fn foo<T$0: Sized + ?Sized + Sized + Trait>() {}
 "#,
             expect![[r#"
                 *T*
+
+                ```rust
+                ra_test_fixture::foo
+                ```
 
                 ```rust
                 T: Trait
@@ -5009,6 +5162,10 @@ impl<const LEN: usize> Foo<LEN$0> {}
 "#,
         expect![[r#"
             *LEN*
+
+            ```rust
+            ra_test_fixture::Foo
+            ```
 
             ```rust
             const LEN: usize
@@ -6112,7 +6269,7 @@ use foo::bar::{self$0};
             ```
 
             ```rust
-            mod bar
+            pub mod bar
             ```
 
             ---
@@ -7857,7 +8014,7 @@ fn test() {
             *foo*
 
             ```rust
-            ra_test_fixture::S
+            ra_test_fixture::m::S
             ```
 
             ```rust
@@ -7886,7 +8043,7 @@ fn test() {
             *foo*
 
             ```rust
-            ra_test_fixture::S
+            ra_test_fixture::m::S
             ```
 
             ```rust
@@ -7916,7 +8073,7 @@ mod m {
             *foo*
 
             ```rust
-            ra_test_fixture::S
+            ra_test_fixture::m::inner::S
             ```
 
             ```rust
@@ -7946,7 +8103,7 @@ fn test() {
             *A*
 
             ```rust
-            ra_test_fixture::S
+            ra_test_fixture::m::S
             ```
 
             ```rust
@@ -7975,7 +8132,7 @@ fn test() {
             *A*
 
             ```rust
-            ra_test_fixture::S
+            ra_test_fixture::m::S
             ```
 
             ```rust
@@ -8005,7 +8162,7 @@ mod m {
             *A*
 
             ```rust
-            ra_test_fixture::S
+            ra_test_fixture::m::inner::S
             ```
 
             ```rust
@@ -9939,6 +10096,7 @@ fn bar() {
             ```rust
             let field: i32
             ```
+
             ---
 
             ```rust
@@ -9973,6 +10131,7 @@ fn bar() {
             ---
 
             size = 4, align = 4
+
             ---
 
             ```rust

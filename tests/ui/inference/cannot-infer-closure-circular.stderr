@@ -9,8 +9,8 @@ LL |         Ok(v)
    |
 help: consider giving this closure parameter an explicit type, where the type for type parameter `E` is specified
    |
-LL |     let x = |r: Result<(), E>| {
-   |               +++++++++++++++
+LL |     let x = |r: Result<_, E>| {
+   |               ++++++++++++++
 
 error: aborting due to 1 previous error
 

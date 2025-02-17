@@ -24,9 +24,9 @@ impl<'tcx> InferCtxt<'tcx> {
     #[instrument(level = "debug", skip(self), ret)]
     pub fn enter_forall_and_leak_universe<T>(&self, binder: ty::Binder<'tcx, T>) -> T
     where
-        T: TypeFoldable<TyCtxt<'tcx>> + Copy,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        if let Some(inner) = binder.no_bound_vars() {
+        if let Some(inner) = binder.clone().no_bound_vars() {
             return inner;
         }
 
@@ -34,22 +34,22 @@ impl<'tcx> InferCtxt<'tcx> {
 
         let delegate = FnMutDelegate {
             regions: &mut |br: ty::BoundRegion| {
-                ty::Region::new_placeholder(self.tcx, ty::PlaceholderRegion {
-                    universe: next_universe,
-                    bound: br,
-                })
+                ty::Region::new_placeholder(
+                    self.tcx,
+                    ty::PlaceholderRegion { universe: next_universe, bound: br },
+                )
             },
             types: &mut |bound_ty: ty::BoundTy| {
-                Ty::new_placeholder(self.tcx, ty::PlaceholderType {
-                    universe: next_universe,
-                    bound: bound_ty,
-                })
+                Ty::new_placeholder(
+                    self.tcx,
+                    ty::PlaceholderType { universe: next_universe, bound: bound_ty },
+                )
             },
             consts: &mut |bound_var: ty::BoundVar| {
-                ty::Const::new_placeholder(self.tcx, ty::PlaceholderConst {
-                    universe: next_universe,
-                    bound: bound_var,
-                })
+                ty::Const::new_placeholder(
+                    self.tcx,
+                    ty::PlaceholderConst { universe: next_universe, bound: bound_var },
+                )
             },
         };
 
@@ -71,7 +71,7 @@ impl<'tcx> InferCtxt<'tcx> {
     #[instrument(level = "debug", skip(self, f))]
     pub fn enter_forall<T, U>(&self, forall: ty::Binder<'tcx, T>, f: impl FnOnce(T) -> U) -> U
     where
-        T: TypeFoldable<TyCtxt<'tcx>> + Copy,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         // FIXME: currently we do nothing to prevent placeholders with the new universe being
         // used after exiting `f`. For example region subtyping can result in outlives constraints

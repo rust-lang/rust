@@ -1,31 +1,34 @@
-error[E0433]: failed to resolve: use of undeclared crate or module `fmt`
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `fmt`
   --> $DIR/issue-112590-suggest-import.rs:3:6
    |
 LL | impl fmt::Debug for S {
-   |      ^^^ use of undeclared crate or module `fmt`
+   |      ^^^ use of unresolved module or unlinked crate `fmt`
    |
+   = help: you might be missing a crate named `fmt`
 help: consider importing this module
    |
 LL + use std::fmt;
    |
 
-error[E0433]: failed to resolve: use of undeclared crate or module `fmt`
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `fmt`
   --> $DIR/issue-112590-suggest-import.rs:4:28
    |
 LL |     fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-   |                            ^^^ use of undeclared crate or module `fmt`
+   |                            ^^^ use of unresolved module or unlinked crate `fmt`
    |
+   = help: you might be missing a crate named `fmt`
 help: consider importing this module
    |
 LL + use std::fmt;
    |
 
-error[E0433]: failed to resolve: use of undeclared crate or module `fmt`
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `fmt`
   --> $DIR/issue-112590-suggest-import.rs:4:51
    |
 LL |     fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-   |                                                   ^^^ use of undeclared crate or module `fmt`
+   |                                                   ^^^ use of unresolved module or unlinked crate `fmt`
    |
+   = help: you might be missing a crate named `fmt`
 help: consider importing this module
    |
 LL + use std::fmt;

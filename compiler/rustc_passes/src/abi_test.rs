@@ -6,7 +6,7 @@ use rustc_middle::ty::layout::{FnAbiError, LayoutError};
 use rustc_middle::ty::{self, GenericArgs, Instance, Ty, TyCtxt};
 use rustc_span::source_map::Spanned;
 use rustc_span::sym;
-use rustc_target::abi::call::FnAbi;
+use rustc_target::callconv::FnAbi;
 
 use super::layout_test::ensure_wf;
 use crate::errors::{AbiInvalidAttribute, AbiNe, AbiOf, UnrecognizedField};
@@ -45,15 +45,6 @@ fn unwrap_fn_abi<'tcx>(
                 node: layout_error.into_diagnostic(),
                 span: tcx.def_span(item_def_id),
             });
-        }
-        Err(FnAbiError::AdjustForForeignAbi(e)) => {
-            // Sadly there seems to be no `into_diagnostic` for this case... and I am not sure if
-            // this can even be reached. Anyway this is a perma-unstable debug attribute, an ICE
-            // isn't the worst thing. Also this matches what codegen does.
-            span_bug!(
-                tcx.def_span(item_def_id),
-                "error computing fn_abi_of_instance, cannot adjust for foreign ABI: {e:?}",
-            )
         }
     }
 }

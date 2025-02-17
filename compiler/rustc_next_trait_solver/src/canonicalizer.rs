@@ -273,7 +273,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                         //
                         // For this we set `next_orig_uv` to the next smallest, not yet compressed,
                         // universe of the input.
-                        if next_orig_uv.map_or(true, |curr_next_uv| uv.cannot_name(curr_next_uv)) {
+                        if next_orig_uv.is_none_or(|curr_next_uv| uv.cannot_name(curr_next_uv)) {
                             next_orig_uv = Some(uv);
                         }
                     }
@@ -522,7 +522,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> TypeFolder<I> for Canonicaliz
             // FIXME: See comment above -- we could fold the region separately or something.
             ty::ConstKind::Bound(_, _)
             | ty::ConstKind::Unevaluated(_)
-            | ty::ConstKind::Value(_, _)
+            | ty::ConstKind::Value(_)
             | ty::ConstKind::Error(_)
             | ty::ConstKind::Expr(_) => return c.super_fold_with(self),
         };

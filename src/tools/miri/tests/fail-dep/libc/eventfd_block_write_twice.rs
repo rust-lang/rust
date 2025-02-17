@@ -1,4 +1,4 @@
-//@only-target: linux
+//@only-target: linux android illumos
 //~^ERROR: deadlocked
 //~^^ERROR: deadlocked
 //@compile-flags: -Zmiri-preemption-rate=0

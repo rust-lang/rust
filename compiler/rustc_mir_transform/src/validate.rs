@@ -91,8 +91,18 @@ impl<'tcx> crate::MirPass<'tcx> for Validator {
             }
         }
     }
+
+    fn is_required(&self) -> bool {
+        true
+    }
 }
 
+/// This checker covers basic properties of the control-flow graph, (dis)allowed statements and terminators.
+/// Everything checked here must be stable under substitution of generic parameters. In other words,
+/// this is about the *structure* of the MIR, not the *contents*.
+///
+/// Everything that depends on types, or otherwise can be affected by generic parameters,
+/// must be checked in `TypeChecker`.
 struct CfgChecker<'a, 'tcx> {
     when: &'a str,
     body: &'a Body<'tcx>,
@@ -803,6 +813,25 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     )
                 }
             }
+            ProjectionElem::UnwrapUnsafeBinder(unwrapped_ty) => {
+                let binder_ty = place_ref.ty(&self.body.local_decls, self.tcx);
+                let ty::UnsafeBinder(binder_ty) = *binder_ty.ty.kind() else {
+                    self.fail(
+                        location,
+                        format!("WrapUnsafeBinder does not produce a ty::UnsafeBinder"),
+                    );
+                    return;
+                };
+                let binder_inner_ty = self.tcx.instantiate_bound_regions_with_erased(*binder_ty);
+                if !self.mir_assign_valid_types(unwrapped_ty, binder_inner_ty) {
+                    self.fail(
+                        location,
+                        format!(
+                            "Cannot unwrap unsafe binder {binder_ty:?} into type {unwrapped_ty:?}"
+                        ),
+                    );
+                }
+            }
             _ => {}
         }
         self.super_projection_elem(place_ref, elem, context, location);
@@ -1018,6 +1047,14 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
             Rvalue::Ref(..) => {}
+            Rvalue::Len(p) => {
+                let pty = p.ty(&self.body.local_decls, self.tcx).ty;
+                check_kinds!(
+                    pty,
+                    "Cannot compute length of non-array type {:?}",
+                    ty::Array(..) | ty::Slice(..)
+                );
+            }
             Rvalue::BinaryOp(op, vals) => {
                 use BinOp::*;
                 let a = vals.0.ty(&self.body.local_decls, self.tcx);
@@ -1348,8 +1385,29 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             Rvalue::Repeat(_, _)
             | Rvalue::ThreadLocalRef(_)
             | Rvalue::RawPtr(_, _)
-            | Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::UbChecks, _)
+            | Rvalue::NullaryOp(
+                NullOp::SizeOf | NullOp::AlignOf | NullOp::UbChecks | NullOp::ContractChecks,
+                _,
+            )
             | Rvalue::Discriminant(_) => {}
+
+            Rvalue::WrapUnsafeBinder(op, ty) => {
+                let unwrapped_ty = op.ty(self.body, self.tcx);
+                let ty::UnsafeBinder(binder_ty) = *ty.kind() else {
+                    self.fail(
+                        location,
+                        format!("WrapUnsafeBinder does not produce a ty::UnsafeBinder"),
+                    );
+                    return;
+                };
+                let binder_inner_ty = self.tcx.instantiate_bound_regions_with_erased(*binder_ty);
+                if !self.mir_assign_valid_types(unwrapped_ty, binder_inner_ty) {
+                    self.fail(
+                        location,
+                        format!("Cannot wrap {unwrapped_ty:?} into unsafe binder {binder_ty:?}"),
+                    );
+                }
+            }
         }
         self.super_rvalue(rvalue, location);
     }

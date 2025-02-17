@@ -16,10 +16,12 @@ LL |     fn foo() {}
    |     ^^^^^^^^
 help: use fully-qualified syntax to disambiguate
    |
-LL |     <AB as A>::foo();
-   |     ~~~~~~~~~~~
-LL |     <AB as B>::foo();
-   |     ~~~~~~~~~~~
+LL -     AB::foo();
+LL +     <AB as A>::foo();
+   |
+LL -     AB::foo();
+LL +     <AB as B>::foo();
+   |
 
 error: aborting due to 1 previous error
 

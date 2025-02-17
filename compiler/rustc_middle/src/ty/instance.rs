@@ -10,13 +10,13 @@ use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::FiniteBitSet;
 use rustc_macros::{Decodable, Encodable, HashStable, Lift, TyDecodable, TyEncodable};
-use rustc_middle::ty::normalize_erasing_regions::NormalizationError;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::{DUMMY_SP, Span, Symbol};
 use tracing::{debug, instrument};
 
 use crate::error;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use crate::ty::normalize_erasing_regions::NormalizationError;
 use crate::ty::print::{FmtPrinter, Printer, shrunk_instance_name};
 use crate::ty::{
     self, EarlyBinder, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
@@ -328,7 +328,7 @@ impl<'tcx> InstanceKind<'tcx> {
             // We include enums without destructors to allow, say, optimizing
             // drops of `Option::None` before LTO. We also respect the intent of
             // `#[inline]` on `Drop::drop` implementations.
-            return ty.ty_adt_def().map_or(true, |adt_def| {
+            return ty.ty_adt_def().is_none_or(|adt_def| {
                 match *self {
                     ty::InstanceKind::DropGlue(..) => adt_def.destructor(tcx).map(|dtor| dtor.did),
                     ty::InstanceKind::AsyncDropGlueCtorShim(..) => {

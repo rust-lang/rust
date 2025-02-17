@@ -1,4 +1,5 @@
 use rustc_abi::Align;
+use rustc_ast::expand::autodiff_attrs::AutoDiffAttrs;
 use rustc_attr_parsing::{InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::Symbol;
@@ -30,6 +31,8 @@ pub struct CodegenFnAttrs {
     /// features (only enabled features are supported right now).
     /// Implied target features have already been applied.
     pub target_features: Vec<TargetFeature>,
+    /// Whether the function was declared safe, but has target features
+    pub safe_target_features: bool,
     /// The `#[linkage = "..."]` attribute on Rust-defined items and the value we found.
     pub linkage: Option<Linkage>,
     /// The `#[linkage = "..."]` attribute on foreign items and the value we found.
@@ -50,6 +53,8 @@ pub struct CodegenFnAttrs {
     /// The `#[patchable_function_entry(...)]` attribute. Indicates how many nops should be around
     /// the function entry.
     pub patchable_function_entry: Option<PatchableFunctionEntry>,
+    /// For the `#[autodiff]` macros.
+    pub autodiff_item: Option<AutoDiffAttrs>,
 }
 
 #[derive(Copy, Clone, Debug, TyEncodable, TyDecodable, HashStable)]
@@ -145,11 +150,12 @@ impl CodegenFnAttrs {
         CodegenFnAttrs {
             flags: CodegenFnAttrFlags::empty(),
             inline: InlineAttr::None,
-            optimize: OptimizeAttr::None,
+            optimize: OptimizeAttr::Default,
             export_name: None,
             link_name: None,
             link_ordinal: None,
             target_features: vec![],
+            safe_target_features: false,
             linkage: None,
             import_linkage: None,
             link_section: None,
@@ -157,6 +163,7 @@ impl CodegenFnAttrs {
             instruction_set: None,
             alignment: None,
             patchable_function_entry: None,
+            autodiff_item: None,
         }
     }
 
@@ -171,7 +178,7 @@ impl CodegenFnAttrs {
             || match self.linkage {
                 // These are private, so make sure we don't try to consider
                 // them external.
-                None | Some(Linkage::Internal | Linkage::Private) => false,
+                None | Some(Linkage::Internal) => false,
                 Some(_) => true,
             }
     }

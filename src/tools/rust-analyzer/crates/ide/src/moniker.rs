@@ -191,7 +191,7 @@ pub(crate) fn def_to_kind(db: &RootDatabase, def: Definition) -> SymbolInformati
             MacroKind::ProcMacro => Macro,
         },
         Definition::Field(..) | Definition::TupleField(..) => Field,
-        Definition::Module(..) => Module,
+        Definition::Module(..) | Definition::Crate(..) => Module,
         Definition::Function(it) => {
             if it.as_assoc_item(db).is_some() {
                 if it.has_self_param(db) {
@@ -289,7 +289,10 @@ fn def_to_non_local_moniker(
     definition: Definition,
     from_crate: Crate,
 ) -> Option<Moniker> {
-    let module = definition.module(db)?;
+    let module = match definition {
+        Definition::Module(module) if module.is_crate_root() => module,
+        _ => definition.module(db)?,
+    };
     let krate = module.krate();
     let edition = krate.edition(db);
 
@@ -322,12 +325,18 @@ fn def_to_non_local_moniker(
                         name: name.display(db, edition).to_string(),
                         desc: def_to_kind(db, def).into(),
                     });
-                } else if reverse_description.is_empty() {
-                    // Don't allow the last descriptor to be absent.
-                    return None;
                 } else {
                     match def {
-                        Definition::Module(module) if module.is_crate_root() => {}
+                        Definition::Module(module) if module.is_crate_root() => {
+                            // only include `crate` namespace by itself because we prefer
+                            // `rust-analyzer cargo foo . bar/` over `rust-analyzer cargo foo . crate/bar/`
+                            if reverse_description.is_empty() {
+                                reverse_description.push(MonikerDescriptor {
+                                    name: "crate".to_owned(),
+                                    desc: MonikerDescriptorKind::Namespace,
+                                });
+                            }
+                        }
                         _ => {
                             tracing::error!(?def, "Encountered enclosing definition with no name");
                         }
@@ -339,6 +348,9 @@ fn def_to_non_local_moniker(
             break;
         };
         def = next_def;
+    }
+    if reverse_description.is_empty() {
+        return None;
     }
     reverse_description.reverse();
     let description = reverse_description;
@@ -405,7 +417,7 @@ mod tests {
 
     #[allow(dead_code)]
     #[track_caller]
-    fn no_moniker(ra_fixture: &str) {
+    fn no_moniker(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         let (analysis, position) = fixture::position(ra_fixture);
         if let Some(x) = analysis.moniker(position).unwrap() {
             assert_eq!(x.info.len(), 0, "Moniker found but no moniker expected: {x:?}");
@@ -413,7 +425,12 @@ mod tests {
     }
 
     #[track_caller]
-    fn check_local_moniker(ra_fixture: &str, identifier: &str, package: &str, kind: MonikerKind) {
+    fn check_local_moniker(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        identifier: &str,
+        package: &str,
+        kind: MonikerKind,
+    ) {
         let (analysis, position) = fixture::position(ra_fixture);
         let x = analysis.moniker(position).unwrap().expect("no moniker found").info;
         assert_eq!(x.len(), 1);
@@ -433,7 +450,12 @@ mod tests {
     }
 
     #[track_caller]
-    fn check_moniker(ra_fixture: &str, identifier: &str, package: &str, kind: MonikerKind) {
+    fn check_moniker(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        identifier: &str,
+        package: &str,
+        kind: MonikerKind,
+    ) {
         let (analysis, position) = fixture::position(ra_fixture);
         let x = analysis.moniker(position).unwrap().expect("no moniker found").info;
         assert_eq!(x.len(), 1);

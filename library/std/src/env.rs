@@ -10,9 +10,6 @@
 
 #![stable(feature = "env", since = "1.0.0")]
 
-#[cfg(test)]
-mod tests;
-
 use crate::error::Error;
 use crate::ffi::{OsStr, OsString};
 use crate::path::{Path, PathBuf};
@@ -336,7 +333,10 @@ impl Error for VarError {
 ///  - [Austin Group Bugzilla](https://austingroupbugs.net/view.php?id=188)
 ///  - [GNU C library Bugzilla](https://sourceware.org/bugzilla/show_bug.cgi?id=15607#c2)
 ///
+/// To pass an environment variable to a child process, you can instead use [`Command::env`].
+///
 /// [`std::net::ToSocketAddrs`]: crate::net::ToSocketAddrs
+/// [`Command::env`]: crate::process::Command::env
 ///
 /// # Panics
 ///
@@ -396,7 +396,12 @@ pub unsafe fn set_var<K: AsRef<OsStr>, V: AsRef<OsStr>>(key: K, value: V) {
 ///  - [Austin Group Bugzilla](https://austingroupbugs.net/view.php?id=188)
 ///  - [GNU C library Bugzilla](https://sourceware.org/bugzilla/show_bug.cgi?id=15607#c2)
 ///
+/// To prevent a child process from inheriting an environment variable, you can
+/// instead use [`Command::env_remove`] or [`Command::env_clear`].
+///
 /// [`std::net::ToSocketAddrs`]: crate::net::ToSocketAddrs
+/// [`Command::env_remove`]: crate::process::Command::env_remove
+/// [`Command::env_clear`]: crate::process::Command::env_clear
 ///
 /// # Panics
 ///
@@ -563,7 +568,7 @@ pub struct JoinPathsError {
 ///         let mut paths = env::split_paths(&path).collect::<Vec<_>>();
 ///         paths.push(PathBuf::from("/home/xyz/bin"));
 ///         let new_path = env::join_paths(paths)?;
-///         env::set_var("PATH", &new_path);
+///         unsafe { env::set_var("PATH", &new_path); }
 ///     }
 ///
 ///     Ok(())

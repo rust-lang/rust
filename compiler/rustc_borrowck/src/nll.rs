@@ -27,7 +27,7 @@ use tracing::{debug, instrument};
 use crate::borrow_set::BorrowSet;
 use crate::consumers::ConsumerOptions;
 use crate::diagnostics::{BorrowckDiagnosticsBuffer, RegionErrors};
-use crate::polonius::LocalizedOutlivesConstraintSet;
+use crate::polonius::PoloniusDiagnosticsContext;
 use crate::polonius::legacy::{
     PoloniusFacts, PoloniusFactsExt, PoloniusLocationTable, PoloniusOutput,
 };
@@ -46,8 +46,9 @@ pub(crate) struct NllOutput<'tcx> {
     pub opt_closure_req: Option<ClosureRegionRequirements<'tcx>>,
     pub nll_errors: RegionErrors<'tcx>,
 
-    /// When using `-Zpolonius=next`: the localized typeck and liveness constraints.
-    pub localized_outlives_constraints: Option<LocalizedOutlivesConstraintSet>,
+    /// When using `-Zpolonius=next`: the data used to compute errors and diagnostics, e.g.
+    /// localized typeck and liveness constraints.
+    pub polonius_diagnostics: Option<PoloniusDiagnosticsContext>,
 }
 
 /// Rewrites the regions in the MIR to use NLL variables, also scraping out the set of universal
@@ -103,7 +104,7 @@ pub(crate) fn compute_regions<'a, 'tcx>(
         constraints,
         universal_region_relations,
         opaque_type_values,
-        mut polonius_context,
+        polonius_context,
     } = type_check::type_check(
         infcx,
         body,
@@ -142,10 +143,10 @@ pub(crate) fn compute_regions<'a, 'tcx>(
         location_map,
     );
 
-    // If requested for `-Zpolonius=next`, convert NLL constraints to localized outlives
-    // constraints.
-    let localized_outlives_constraints = polonius_context.as_mut().map(|polonius_context| {
-        polonius_context.create_localized_constraints(infcx.tcx, &regioncx, body)
+    // If requested for `-Zpolonius=next`, convert NLL constraints to localized outlives constraints
+    // and use them to compute loan liveness.
+    let polonius_diagnostics = polonius_context.map(|polonius_context| {
+        polonius_context.compute_loan_liveness(infcx.tcx, &mut regioncx, body, borrow_set)
     });
 
     // If requested: dump NLL facts, and run legacy polonius analysis.
@@ -188,7 +189,7 @@ pub(crate) fn compute_regions<'a, 'tcx>(
         polonius_output,
         opt_closure_req: closure_region_requirements,
         nll_errors,
-        localized_outlives_constraints,
+        polonius_diagnostics,
     }
 }
 

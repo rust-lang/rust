@@ -5,7 +5,7 @@
 // The cdecl ABI is used. It differs from the stdcall or fastcall ABI.
 // "i686-unknown-windows" is used to get the minimal subset of windows-specific features.
 
-use crate::spec::{Target, base};
+use crate::spec::{LinkerFlavor, Lld, RustcAbi, Target, TargetMetadata, add_link_args, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::uefi_msvc::opts();
@@ -22,6 +22,14 @@ pub(crate) fn target() -> Target {
     // If you initialize FP units yourself, you can override these flags with custom linker
     // arguments, thus giving you access to full MMX/SSE acceleration.
     base.features = "-mmx,-sse,+soft-float".into();
+    base.rustc_abi = Some(RustcAbi::X86Softfloat);
+
+    // Turn off DWARF. This fixes an lld warning, "section name .debug_frame is longer than 8
+    // characters and will use a non-standard string table". That section will not be created if
+    // DWARF is disabled.
+    //
+    // This is only needed in the i686 target due to using the `-gnu` LLVM target (see below).
+    add_link_args(&mut base.post_link_args, LinkerFlavor::Msvc(Lld::No), &["/DEBUG:NODWARF"]);
 
     // Use -GNU here, because of the reason below:
     // Background and Problem:
@@ -78,7 +86,7 @@ pub(crate) fn target() -> Target {
     // remove -gnu and use the default one.
     Target {
         llvm_target: "i686-unknown-windows-gnu".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("32-bit UEFI".into()),
             tier: Some(2),
             host_tools: Some(false),

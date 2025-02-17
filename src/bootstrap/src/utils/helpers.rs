@@ -106,31 +106,6 @@ pub fn add_dylib_path(path: Vec<PathBuf>, cmd: &mut BootstrapCommand) {
     cmd.env(dylib_path_var(), t!(env::join_paths(list)));
 }
 
-/// Adds a list of lookup paths to `cmd`'s link library lookup path.
-pub fn add_link_lib_path(path: Vec<PathBuf>, cmd: &mut BootstrapCommand) {
-    let mut list = link_lib_path();
-    for path in path {
-        list.insert(0, path);
-    }
-    cmd.env(link_lib_path_var(), t!(env::join_paths(list)));
-}
-
-/// Returns the environment variable which the link library lookup path
-/// resides in for this platform.
-fn link_lib_path_var() -> &'static str {
-    if cfg!(target_env = "msvc") { "LIB" } else { "LIBRARY_PATH" }
-}
-
-/// Parses the `link_lib_path_var()` environment variable, returning a list of
-/// paths that are members of this lookup path.
-fn link_lib_path() -> Vec<PathBuf> {
-    let var = match env::var_os(link_lib_path_var()) {
-        Some(v) => v,
-        None => return vec![],
-    };
-    env::split_paths(&var).collect()
-}
-
 pub struct TimeIt(bool, Instant);
 
 /// Returns an RAII structure that prints out how long it took to drop.
@@ -290,6 +265,9 @@ pub fn make(host: &str) -> PathBuf {
 
 #[track_caller]
 pub fn output(cmd: &mut Command) -> String {
+    #[cfg(feature = "tracing")]
+    let _run_span = crate::trace_cmd!(cmd);
+
     let output = match cmd.stderr(Stdio::inherit()).output() {
         Ok(status) => status,
         Err(e) => fail(&format!("failed to execute command: {cmd:?}\nERROR: {e}")),

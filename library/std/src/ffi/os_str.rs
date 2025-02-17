@@ -203,8 +203,8 @@ impl OsString {
         self
     }
 
-    /// Converts the `OsString` into a byte slice.  To convert the byte slice back into an
-    /// `OsString`, use the [`OsStr::from_encoded_bytes_unchecked`] function.
+    /// Converts the `OsString` into a byte vector.  To convert the byte vector back into an
+    /// `OsString`, use the [`OsString::from_encoded_bytes_unchecked`] function.
     ///
     /// The byte encoding is an unspecified, platform-specific, self-synchronizing superset of UTF-8.
     /// By being a self-synchronizing superset of UTF-8, this encoding is also a superset of 7-bit

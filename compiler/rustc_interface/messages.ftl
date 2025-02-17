@@ -1,5 +1,14 @@
+interface_abi_required_feature =
+    target feature `{$feature}` must be {$enabled} to ensure that the ABI of the current target can be implemented correctly
+    .note = this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+interface_abi_required_feature_issue = for more information, see issue #116344 <https://github.com/rust-lang/rust/issues/116344>
+
 interface_cant_emit_mir =
     could not emit MIR: {$error}
+
+interface_crate_name_does_not_match = `--crate-name` and `#[crate_name]` are required to match, but `{$crate_name}` != `{$attr_crate_name}`
+
+interface_crate_name_invalid = crate names cannot start with a `-`, but `{$crate_name}` has a leading hyphen
 
 interface_emoji_identifier =
     identifiers cannot contain emoji: `{$ident}`
@@ -23,6 +32,10 @@ interface_ignoring_out_dir = ignoring --out-dir flag due to -o flag
 
 interface_input_file_would_be_overwritten =
     the input file "{$path}" would be overwritten by the generated executable
+
+interface_limit_invalid =
+    `limit` must be a non-negative integer
+    .label = {$error_str}
 
 interface_mixed_bin_crate =
     cannot mix `bin` crate type with others

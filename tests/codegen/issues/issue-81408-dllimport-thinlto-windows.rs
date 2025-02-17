@@ -1,4 +1,4 @@
-//@ compile-flags: -O -C lto=thin -C prefer-dynamic=no
+//@ compile-flags: -Copt-level=3 -C lto=thin -C prefer-dynamic=no
 //@ only-windows
 //@ aux-build:static_dllimport_aux.rs
 

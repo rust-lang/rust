@@ -13,6 +13,7 @@ mod ty;
 
 use std::assert_matches::debug_assert_matches;
 use std::ops::Range;
+use std::sync::Arc;
 use std::{fmt, mem, slice};
 
 use attr_wrapper::{AttrWrapper, UsePreAttrPos};
@@ -34,7 +35,6 @@ use rustc_ast::{
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, Diag, FatalError, MultiSpan, PResult};
 use rustc_index::interval::IntervalSet;
 use rustc_session::parse::ParseSess;
@@ -189,8 +189,9 @@ pub struct Parser<'a> {
 }
 
 // This type is used a lot, e.g. it's cloned when matching many declarative macro rules with
-// nonterminals. Make sure it doesn't unintentionally get bigger.
-#[cfg(all(target_pointer_width = "64", not(target_arch = "s390x")))]
+// nonterminals. Make sure it doesn't unintentionally get bigger. We only check a few arches
+// though, because `TokenTypeSet(u128)` alignment varies on others, changing the total size.
+#[cfg(all(target_pointer_width = "64", any(target_arch = "aarch64", target_arch = "x86_64")))]
 rustc_data_structures::static_assert_size!(Parser<'_>, 288);
 
 /// Stores span information about a closure.
@@ -753,9 +754,9 @@ impl<'a> Parser<'a> {
         self.is_keyword_ahead(0, &[kw::Const])
             && self.look_ahead(1, |t| match &t.kind {
                 // async closures do not work with const closures, so we do not parse that here.
-                token::Ident(kw::Move | kw::Static, _) | token::OrOr | token::BinOp(token::Or) => {
-                    true
-                }
+                token::Ident(kw::Move | kw::Static, IdentIsRaw::No)
+                | token::OrOr
+                | token::BinOp(token::Or) => true,
                 _ => false,
             })
     }
@@ -923,10 +924,8 @@ impl<'a> Parser<'a> {
 
                                 _ => {
                                     // Attempt to keep parsing if it was a similar separator.
-                                    if let Some(tokens) = exp.tok.similar_tokens() {
-                                        if tokens.contains(&self.token.kind) {
-                                            self.bump();
-                                        }
+                                    if exp.tok.similar_tokens().contains(&self.token.kind) {
+                                        self.bump();
                                     }
                                 }
                             }
@@ -1597,45 +1596,35 @@ impl<'a> Parser<'a> {
     // Only used when debugging.
     #[allow(unused)]
     pub(crate) fn debug_lookahead(&self, lookahead: usize) -> impl fmt::Debug + '_ {
-        struct DebugParser<'dbg> {
-            parser: &'dbg Parser<'dbg>,
-            lookahead: usize,
-        }
+        fmt::from_fn(move |f| {
+            let mut dbg_fmt = f.debug_struct("Parser"); // or at least, one view of
 
-        impl fmt::Debug for DebugParser<'_> {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                let Self { parser, lookahead } = self;
-                let mut dbg_fmt = f.debug_struct("Parser"); // or at least, one view of
-
-                // we don't need N spans, but we want at least one, so print all of prev_token
-                dbg_fmt.field("prev_token", &parser.prev_token);
-                let mut tokens = vec![];
-                for i in 0..*lookahead {
-                    let tok = parser.look_ahead(i, |tok| tok.kind.clone());
-                    let is_eof = tok == TokenKind::Eof;
-                    tokens.push(tok);
-                    if is_eof {
-                        // Don't look ahead past EOF.
-                        break;
-                    }
+            // we don't need N spans, but we want at least one, so print all of prev_token
+            dbg_fmt.field("prev_token", &self.prev_token);
+            let mut tokens = vec![];
+            for i in 0..lookahead {
+                let tok = self.look_ahead(i, |tok| tok.kind.clone());
+                let is_eof = tok == TokenKind::Eof;
+                tokens.push(tok);
+                if is_eof {
+                    // Don't look ahead past EOF.
+                    break;
                 }
-                dbg_fmt.field_with("tokens", |field| field.debug_list().entries(tokens).finish());
-                dbg_fmt.field("approx_token_stream_pos", &parser.num_bump_calls);
-
-                // some fields are interesting for certain values, as they relate to macro parsing
-                if let Some(subparser) = parser.subparser_name {
-                    dbg_fmt.field("subparser_name", &subparser);
-                }
-                if let Recovery::Forbidden = parser.recovery {
-                    dbg_fmt.field("recovery", &parser.recovery);
-                }
-
-                // imply there's "more to know" than this view
-                dbg_fmt.finish_non_exhaustive()
             }
-        }
+            dbg_fmt.field_with("tokens", |field| field.debug_list().entries(tokens).finish());
+            dbg_fmt.field("approx_token_stream_pos", &self.num_bump_calls);
 
-        DebugParser { parser: self, lookahead }
+            // some fields are interesting for certain values, as they relate to macro parsing
+            if let Some(subparser) = self.subparser_name {
+                dbg_fmt.field("subparser_name", &subparser);
+            }
+            if let Recovery::Forbidden = self.recovery {
+                dbg_fmt.field("recovery", &self.recovery);
+            }
+
+            // imply there's "more to know" than this view
+            dbg_fmt.finish_non_exhaustive()
+        })
     }
 
     pub fn clear_expected_token_types(&mut self) {
@@ -1696,5 +1685,5 @@ pub enum ParseNtResult {
     Lifetime(Ident, IdentIsRaw),
 
     /// This case will eventually be removed, along with `Token::Interpolate`.
-    Nt(Lrc<Nonterminal>),
+    Nt(Arc<Nonterminal>),
 }

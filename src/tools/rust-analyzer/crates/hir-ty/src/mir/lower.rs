@@ -5,8 +5,8 @@ use std::{fmt::Write, iter, mem};
 use base_db::ra_salsa::Cycle;
 use chalk_ir::{BoundVar, ConstData, DebruijnIndex, TyKind};
 use hir_def::{
-    body::{Body, HygieneId},
     data::adt::{StructKind, VariantData},
+    expr_store::{Body, HygieneId},
     hir::{
         ArithOp, Array, BinaryOp, BindingAnnotation, BindingId, ExprId, LabelId, Literal,
         LiteralOrConst, MatchArm, Pat, PatId, RecordFieldPat, RecordLitField,
@@ -2156,7 +2156,7 @@ pub fn lower_to_mir(
     // need to take this input explicitly.
     root_expr: ExprId,
 ) -> Result<MirBody> {
-    if infer.has_errors {
+    if infer.type_mismatches().next().is_some() {
         return Err(MirLowerError::HasErrors);
     }
     let mut ctx = MirLowerCtx::new(db, owner, body, infer);

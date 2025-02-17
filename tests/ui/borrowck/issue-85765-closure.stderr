@@ -6,8 +6,9 @@ LL |         rofl.push(Vec::new());
    |
 help: consider changing this binding's type
    |
-LL |         let rofl: &mut Vec<Vec<i32>> = &mut test;
-   |                   ~~~~~~~~~~~~~~~~~~
+LL -         let rofl: &Vec<Vec<i32>> = &mut test;
+LL +         let rofl: &mut Vec<Vec<i32>> = &mut test;
+   |
 
 error[E0594]: cannot assign to `*r`, which is behind a `&` reference
   --> $DIR/issue-85765-closure.rs:13:9
@@ -28,8 +29,9 @@ LL |         *x = 1;
    |
 help: consider changing this binding's type
    |
-LL |         let x: &mut usize = &mut{0};
-   |                ~~~~~~~~~~
+LL -         let x: &usize = &mut{0};
+LL +         let x: &mut usize = &mut{0};
+   |
 
 error[E0594]: cannot assign to `*y`, which is behind a `&` reference
   --> $DIR/issue-85765-closure.rs:27:9
@@ -39,8 +41,9 @@ LL |         *y = 1;
    |
 help: consider changing this binding's type
    |
-LL |         let y: &mut usize = &mut(0);
-   |                ~~~~~~~~~~
+LL -         let y: &usize = &mut(0);
+LL +         let y: &mut usize = &mut(0);
+   |
 
 error: aborting due to 4 previous errors
 

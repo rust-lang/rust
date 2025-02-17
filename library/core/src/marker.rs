@@ -6,6 +6,13 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+mod variance;
+
+#[unstable(feature = "phantom_variance_markers", issue = "135806")]
+pub use self::variance::{
+    PhantomContravariant, PhantomContravariantLifetime, PhantomCovariant, PhantomCovariantLifetime,
+    PhantomInvariant, PhantomInvariantLifetime, Variance, variance,
+};
 use crate::cell::UnsafeCell;
 use crate::cmp;
 use crate::fmt::Debug;
@@ -445,6 +452,23 @@ impl Copy for ! {}
 /// Shared references can be copied, but mutable references *cannot*!
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Copy for &T {}
+
+/// Marker trait for the types that are allowed in union fields, unsafe fields,
+/// and unsafe binder types.
+///
+/// Implemented for:
+/// * `&T`, `&mut T` for all `T`,
+/// * `ManuallyDrop<T>` for all `T`,
+/// * tuples and arrays whose elements implement `BikeshedGuaranteedNoDrop`,
+/// * or otherwise, all types that are `Copy`.
+///
+/// Notably, this doesn't include all trivially-destructible types for semver
+/// reasons.
+///
+/// Bikeshed name for now.
+#[unstable(feature = "bikeshed_guaranteed_no_drop", issue = "none")]
+#[cfg_attr(not(bootstrap), lang = "bikeshed_guaranteed_no_drop")]
+pub trait BikeshedGuaranteedNoDrop {}
 
 /// Types for which it is safe to share references between threads.
 ///
@@ -952,6 +976,7 @@ marker_impls! {
 /// This should be used for `~const` bounds,
 /// as non-const bounds will always hold for every type.
 #[unstable(feature = "const_destruct", issue = "133214")]
+#[rustc_const_unstable(feature = "const_destruct", issue = "133214")]
 #[lang = "destruct"]
 #[rustc_on_unimplemented(message = "can't drop `{Self}`", append_const_msg)]
 #[rustc_deny_explicit_impl]
@@ -1069,6 +1094,9 @@ marker_impls! {
 }
 
 /// A common trait implemented by all function pointers.
+//
+// Note that while the trait is internal and unstable it is nevertheless
+// exposed as a public bound of the stable `core::ptr::fn_addr_eq` function.
 #[unstable(
     feature = "fn_ptr_trait",
     issue = "none",
@@ -1083,10 +1111,212 @@ pub trait FnPtr: Copy + Clone {
     fn addr(self) -> *const ();
 }
 
-/// Derive macro generating impls of traits related to smart pointers.
+/// Derive macro that makes a smart pointer usable with trait objects.
+///
+/// # What this macro does
+///
+/// This macro is intended to be used with user-defined pointer types, and makes it possible to
+/// perform coercions on the pointee of the user-defined pointer. There are two aspects to this:
+///
+/// ## Unsizing coercions of the pointee
+///
+/// By using the macro, the following example will compile:
+/// ```
+/// #![feature(derive_coerce_pointee)]
+/// use std::marker::CoercePointee;
+/// use std::ops::Deref;
+///
+/// #[derive(CoercePointee)]
+/// #[repr(transparent)]
+/// struct MySmartPointer<T: ?Sized>(Box<T>);
+///
+/// impl<T: ?Sized> Deref for MySmartPointer<T> {
+///     type Target = T;
+///     fn deref(&self) -> &T {
+///         &self.0
+///     }
+/// }
+///
+/// trait MyTrait {}
+///
+/// impl MyTrait for i32 {}
+///
+/// fn main() {
+///     let ptr: MySmartPointer<i32> = MySmartPointer(Box::new(4));
+///
+///     // This coercion would be an error without the derive.
+///     let ptr: MySmartPointer<dyn MyTrait> = ptr;
+/// }
+/// ```
+/// Without the `#[derive(CoercePointee)]` macro, this example would fail with the following error:
+/// ```text
+/// error[E0308]: mismatched types
+///   --> src/main.rs:11:44
+///    |
+/// 11 |     let ptr: MySmartPointer<dyn MyTrait> = ptr;
+///    |              ---------------------------   ^^^ expected `MySmartPointer<dyn MyTrait>`, found `MySmartPointer<i32>`
+///    |              |
+///    |              expected due to this
+///    |
+///    = note: expected struct `MySmartPointer<dyn MyTrait>`
+///               found struct `MySmartPointer<i32>`
+///    = help: `i32` implements `MyTrait` so you could box the found value and coerce it to the trait object `Box<dyn MyTrait>`, you will have to change the expected type as well
+/// ```
+///
+/// ## Dyn compatibility
+///
+/// This macro allows you to dispatch on the user-defined pointer type. That is, traits using the
+/// type as a receiver are dyn-compatible. For example, this compiles:
+///
+/// ```
+/// #![feature(arbitrary_self_types, derive_coerce_pointee)]
+/// use std::marker::CoercePointee;
+/// use std::ops::Deref;
+///
+/// #[derive(CoercePointee)]
+/// #[repr(transparent)]
+/// struct MySmartPointer<T: ?Sized>(Box<T>);
+///
+/// impl<T: ?Sized> Deref for MySmartPointer<T> {
+///     type Target = T;
+///     fn deref(&self) -> &T {
+///         &self.0
+///     }
+/// }
+///
+/// // You can always define this trait. (as long as you have #![feature(arbitrary_self_types)])
+/// trait MyTrait {
+///     fn func(self: MySmartPointer<Self>);
+/// }
+///
+/// // But using `dyn MyTrait` requires #[derive(CoercePointee)].
+/// fn call_func(value: MySmartPointer<dyn MyTrait>) {
+///     value.func();
+/// }
+/// ```
+/// If you remove the `#[derive(CoercePointee)]` annotation from the struct, then the above example
+/// will fail with this error message:
+/// ```text
+/// error[E0038]: the trait `MyTrait` is not dyn compatible
+///   --> src/lib.rs:21:36
+///    |
+/// 17 |     fn func(self: MySmartPointer<Self>);
+///    |                   -------------------- help: consider changing method `func`'s `self` parameter to be `&self`: `&Self`
+/// ...
+/// 21 | fn call_func(value: MySmartPointer<dyn MyTrait>) {
+///    |                                    ^^^^^^^^^^^ `MyTrait` is not dyn compatible
+///    |
+/// note: for a trait to be dyn compatible it needs to allow building a vtable
+///       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+///   --> src/lib.rs:17:19
+///    |
+/// 16 | trait MyTrait {
+///    |       ------- this trait is not dyn compatible...
+/// 17 |     fn func(self: MySmartPointer<Self>);
+///    |                   ^^^^^^^^^^^^^^^^^^^^ ...because method `func`'s `self` parameter cannot be dispatched on
+/// ```
+///
+/// # Requirements for using the macro
+///
+/// This macro can only be used if:
+/// * The type is a `#[repr(transparent)]` struct.
+/// * The type of its non-zero-sized field must either be a standard library pointer type
+///   (reference, raw pointer, `NonNull`, `Box`, `Rc`, `Arc`, etc.) or another user-defined type
+///   also using the `#[derive(CoercePointee)]` macro.
+/// * Zero-sized fields must not mention any generic parameters unless the zero-sized field has
+///   type [`PhantomData`].
+///
+/// ## Multiple type parameters
+///
+/// If the type has multiple type parameters, then you must explicitly specify which one should be
+/// used for dynamic dispatch. For example:
+/// ```
+/// # #![feature(derive_coerce_pointee)]
+/// # use std::marker::{CoercePointee, PhantomData};
+/// #[derive(CoercePointee)]
+/// #[repr(transparent)]
+/// struct MySmartPointer<#[pointee] T: ?Sized, U> {
+///     ptr: Box<T>,
+///     _phantom: PhantomData<U>,
+/// }
+/// ```
+/// Specifying `#[pointee]` when the struct has only one type parameter is allowed, but not required.
+///
+/// # Examples
+///
+/// A custom implementation of the `Rc` type:
+/// ```
+/// #![feature(derive_coerce_pointee)]
+/// use std::marker::CoercePointee;
+/// use std::ops::Deref;
+/// use std::ptr::NonNull;
+///
+/// #[derive(CoercePointee)]
+/// #[repr(transparent)]
+/// pub struct Rc<T: ?Sized> {
+///     inner: NonNull<RcInner<T>>,
+/// }
+///
+/// struct RcInner<T: ?Sized> {
+///     refcount: usize,
+///     value: T,
+/// }
+///
+/// impl<T: ?Sized> Deref for Rc<T> {
+///     type Target = T;
+///     fn deref(&self) -> &T {
+///         let ptr = self.inner.as_ptr();
+///         unsafe { &(*ptr).value }
+///     }
+/// }
+///
+/// impl<T> Rc<T> {
+///     pub fn new(value: T) -> Self {
+///         let inner = Box::new(RcInner {
+///             refcount: 1,
+///             value,
+///         });
+///         Self {
+///             inner: NonNull::from(Box::leak(inner)),
+///         }
+///     }
+/// }
+///
+/// impl<T: ?Sized> Clone for Rc<T> {
+///     fn clone(&self) -> Self {
+///         // A real implementation would handle overflow here.
+///         unsafe { (*self.inner.as_ptr()).refcount += 1 };
+///         Self { inner: self.inner }
+///     }
+/// }
+///
+/// impl<T: ?Sized> Drop for Rc<T> {
+///     fn drop(&mut self) {
+///         let ptr = self.inner.as_ptr();
+///         unsafe { (*ptr).refcount -= 1 };
+///         if unsafe { (*ptr).refcount } == 0 {
+///             drop(unsafe { Box::from_raw(ptr) });
+///         }
+///     }
+/// }
+/// ```
 #[rustc_builtin_macro(CoercePointee, attributes(pointee))]
-#[allow_internal_unstable(dispatch_from_dyn, coerce_unsized, unsize)]
+#[allow_internal_unstable(dispatch_from_dyn, coerce_unsized, unsize, coerce_pointee_validated)]
 #[unstable(feature = "derive_coerce_pointee", issue = "123430")]
 pub macro CoercePointee($item:item) {
+    /* compiler built-in */
+}
+
+/// A trait that is implemented for ADTs with `derive(CoercePointee)` so that
+/// the compiler can enforce the derive impls are valid post-expansion, since
+/// the derive has stricter requirements than if the impls were written by hand.
+///
+/// This trait is not intended to be implemented by users or used other than
+/// validation, so it should never be stabilized.
+#[cfg(not(bootstrap))]
+#[lang = "coerce_pointee_validated"]
+#[unstable(feature = "coerce_pointee_validated", issue = "none")]
+#[doc(hidden)]
+pub trait CoercePointeeValidated {
     /* compiler built-in */
 }

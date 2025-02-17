@@ -809,7 +809,7 @@ pub fn deref_closure_args(cx: &LateContext<'_>, closure: &hir::Expr<'_>) -> Opti
         fn_decl, def_id, body, ..
     }) = closure.kind
     {
-        let closure_body = cx.tcx.hir().body(body);
+        let closure_body = cx.tcx.hir_body(body);
         // is closure arg a type annotated double reference (i.e.: `|x: &&i32| ...`)
         // a type annotation is present if param `kind` is different from `TyKind::Infer`
         let closure_arg_is_type_annotated_double_ref = if let TyKind::Ref(_, MutTy { ty, .. }) = fn_decl.inputs[0].kind

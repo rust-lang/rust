@@ -54,6 +54,9 @@ impl<T: ?Sized, A: Allocator> LegacyReceiver for Box<T, A> {}
 #[lang = "copy"]
 pub trait Copy {}
 
+#[lang = "bikeshed_guaranteed_no_drop"]
+pub trait BikeshedGuaranteedNoDrop {}
+
 impl Copy for bool {}
 impl Copy for u8 {}
 impl Copy for u16 {}
@@ -689,7 +692,7 @@ impl<T> Index<usize> for [T] {
     }
 }
 
-extern {
+extern "C" {
     type VaListImpl;
 }
 

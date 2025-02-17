@@ -896,13 +896,13 @@ impl<T: ?Sized> *mut T {
     /// that their safety preconditions are met:
     /// ```rust
     /// # #![feature(ptr_sub_ptr)]
-    /// # unsafe fn blah(ptr: *mut i32, origin: *mut i32, count: usize) -> bool {
+    /// # unsafe fn blah(ptr: *mut i32, origin: *mut i32, count: usize) -> bool { unsafe {
     /// ptr.sub_ptr(origin) == count
     /// # &&
     /// origin.add(count) == ptr
     /// # &&
     /// ptr.sub(count) == origin
-    /// # }
+    /// # } }
     /// ```
     ///
     /// # Safety
@@ -2097,7 +2097,7 @@ impl<T, const N: usize> *mut [T; N] {
     }
 }
 
-// Equality for pointers
+/// Pointer equality is by address, as produced by the [`<*mut T>::addr`](pointer::addr) method.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> PartialEq for *mut T {
     #[inline(always)]
@@ -2107,9 +2107,11 @@ impl<T: ?Sized> PartialEq for *mut T {
     }
 }
 
+/// Pointer equality is an equivalence relation.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Eq for *mut T {}
 
+/// Pointer comparison is by address, as produced by the [`<*mut T>::addr`](pointer::addr) method.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Ord for *mut T {
     #[inline]
@@ -2125,6 +2127,7 @@ impl<T: ?Sized> Ord for *mut T {
     }
 }
 
+/// Pointer comparison is by address, as produced by the [`<*mut T>::addr`](pointer::addr) method.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> PartialOrd for *mut T {
     #[inline(always)]

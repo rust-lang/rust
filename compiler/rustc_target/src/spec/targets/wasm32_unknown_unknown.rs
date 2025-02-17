@@ -10,27 +10,33 @@
 //! This target is more or less managed by the Rust and WebAssembly Working
 //! Group nowadays at <https://github.com/rustwasm>.
 
-use crate::spec::{Cc, LinkerFlavor, Target, base};
+use crate::spec::{Cc, LinkerFlavor, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut options = base::wasm::options();
     options.os = "unknown".into();
 
-    options.add_pre_link_args(LinkerFlavor::WasmLld(Cc::No), &[
-        // For now this target just never has an entry symbol no matter the output
-        // type, so unconditionally pass this.
-        "--no-entry",
-    ]);
-    options.add_pre_link_args(LinkerFlavor::WasmLld(Cc::Yes), &[
-        // Make sure clang uses LLD as its linker and is configured appropriately
-        // otherwise
-        "--target=wasm32-unknown-unknown",
-        "-Wl,--no-entry",
-    ]);
+    options.add_pre_link_args(
+        LinkerFlavor::WasmLld(Cc::No),
+        &[
+            // For now this target just never has an entry symbol no matter the output
+            // type, so unconditionally pass this.
+            "--no-entry",
+        ],
+    );
+    options.add_pre_link_args(
+        LinkerFlavor::WasmLld(Cc::Yes),
+        &[
+            // Make sure clang uses LLD as its linker and is configured appropriately
+            // otherwise
+            "--target=wasm32-unknown-unknown",
+            "-Wl,--no-entry",
+        ],
+    );
 
     Target {
         llvm_target: "wasm32-unknown-unknown".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("WebAssembly".into()),
             tier: Some(2),
             host_tools: Some(false),

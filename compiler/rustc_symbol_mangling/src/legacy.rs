@@ -1,7 +1,8 @@
 use std::fmt::{self, Write};
 use std::mem::{self, discriminant};
 
-use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_hashes::Hash64;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_middle::bug;
@@ -19,15 +20,15 @@ pub(super) fn mangle<'tcx>(
     let def_id = instance.def_id();
 
     // We want to compute the "type" of this item. Unfortunately, some
-    // kinds of items (e.g., closures) don't have an entry in the
-    // item-type array. So walk back up the find the closest parent
-    // that DOES have an entry.
+    // kinds of items (e.g., synthetic static allocations from const eval)
+    // don't have a proper implementation for the `type_of` query. So walk
+    // back up the find the closest parent that DOES have a type.
     let mut ty_def_id = def_id;
     let instance_ty;
     loop {
         let key = tcx.def_key(ty_def_id);
         match key.disambiguated_data.data {
-            DefPathData::TypeNs(_) | DefPathData::ValueNs(_) => {
+            DefPathData::TypeNs(_) | DefPathData::ValueNs(_) | DefPathData::Closure => {
                 instance_ty = tcx.type_of(ty_def_id).instantiate_identity();
                 debug!(?instance_ty);
                 break;
@@ -274,14 +275,15 @@ impl<'tcx> Printer<'tcx> for SymbolPrinter<'tcx> {
     fn print_const(&mut self, ct: ty::Const<'tcx>) -> Result<(), PrintError> {
         // only print integers
         match ct.kind() {
-            ty::ConstKind::Value(ty, ty::ValTree::Leaf(scalar)) if ty.is_integral() => {
+            ty::ConstKind::Value(cv) if cv.ty.is_integral() => {
                 // The `pretty_print_const` formatting depends on -Zverbose-internals
                 // flag, so we cannot reuse it here.
-                let signed = matches!(ty.kind(), ty::Int(_));
+                let scalar = cv.valtree.unwrap_leaf();
+                let signed = matches!(cv.ty.kind(), ty::Int(_));
                 write!(
                     self,
                     "{:#?}",
-                    ty::ConstInt::new(scalar, signed, ty.is_ptr_sized_integral())
+                    ty::ConstInt::new(scalar, signed, cv.ty.is_ptr_sized_integral())
                 )?;
             }
             _ => self.write_str("_")?,

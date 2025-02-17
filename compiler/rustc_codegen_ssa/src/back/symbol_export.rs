@@ -10,9 +10,10 @@ use rustc_middle::middle::exported_symbols::{
     ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel, metadata_symbol_name,
 };
 use rustc_middle::query::LocalCrate;
-use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, Instance, SymbolName, TyCtxt};
+use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, Instance, SymbolName, Ty, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_session::config::{CrateType, OomStrategy};
+use rustc_target::callconv::Conv;
 use rustc_target::spec::{SanitizerSet, TlsModel};
 use tracing::debug;
 
@@ -140,11 +141,14 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<S
         .into();
 
     if let Some(id) = tcx.proc_macro_decls_static(()) {
-        reachable_non_generics.insert(id.to_def_id(), SymbolExportInfo {
-            level: SymbolExportLevel::C,
-            kind: SymbolExportKind::Data,
-            used: false,
-        });
+        reachable_non_generics.insert(
+            id.to_def_id(),
+            SymbolExportInfo {
+                level: SymbolExportLevel::C,
+                kind: SymbolExportKind::Data,
+                used: false,
+            },
+        );
     }
 
     reachable_non_generics
@@ -185,11 +189,14 @@ fn exported_symbols_provider_local(
     if !tcx.sess.target.dll_tls_export {
         symbols.extend(sorted.iter().filter_map(|(&def_id, &info)| {
             tcx.needs_thread_local_shim(def_id).then(|| {
-                (ExportedSymbol::ThreadLocalShim(def_id), SymbolExportInfo {
-                    level: info.level,
-                    kind: SymbolExportKind::Text,
-                    used: info.used,
-                })
+                (
+                    ExportedSymbol::ThreadLocalShim(def_id),
+                    SymbolExportInfo {
+                        level: info.level,
+                        kind: SymbolExportKind::Text,
+                        used: info.used,
+                    },
+                )
             })
         }))
     }
@@ -198,11 +205,14 @@ fn exported_symbols_provider_local(
         let exported_symbol =
             ExportedSymbol::NoDefId(SymbolName::new(tcx, tcx.sess.target.entry_name.as_ref()));
 
-        symbols.push((exported_symbol, SymbolExportInfo {
-            level: SymbolExportLevel::C,
-            kind: SymbolExportKind::Text,
-            used: false,
-        }));
+        symbols.push((
+            exported_symbol,
+            SymbolExportInfo {
+                level: SymbolExportLevel::C,
+                kind: SymbolExportKind::Text,
+                used: false,
+            },
+        ));
     }
 
     // Mark allocator shim symbols as exported only if they were generated.
@@ -214,20 +224,26 @@ fn exported_symbols_provider_local(
         {
             let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, &symbol_name));
 
-            symbols.push((exported_symbol, SymbolExportInfo {
-                level: SymbolExportLevel::Rust,
-                kind: SymbolExportKind::Text,
-                used: false,
-            }));
+            symbols.push((
+                exported_symbol,
+                SymbolExportInfo {
+                    level: SymbolExportLevel::Rust,
+                    kind: SymbolExportKind::Text,
+                    used: false,
+                },
+            ));
         }
 
         let exported_symbol =
             ExportedSymbol::NoDefId(SymbolName::new(tcx, NO_ALLOC_SHIM_IS_UNSTABLE));
-        symbols.push((exported_symbol, SymbolExportInfo {
-            level: SymbolExportLevel::Rust,
-            kind: SymbolExportKind::Data,
-            used: false,
-        }))
+        symbols.push((
+            exported_symbol,
+            SymbolExportInfo {
+                level: SymbolExportLevel::Rust,
+                kind: SymbolExportKind::Data,
+                used: false,
+            },
+        ))
     }
 
     if tcx.sess.instrument_coverage() || tcx.sess.opts.cg.profile_generate.enabled() {
@@ -239,11 +255,14 @@ fn exported_symbols_provider_local(
 
         symbols.extend(PROFILER_WEAK_SYMBOLS.iter().map(|sym| {
             let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, sym));
-            (exported_symbol, SymbolExportInfo {
-                level: SymbolExportLevel::C,
-                kind: SymbolExportKind::Data,
-                used: false,
-            })
+            (
+                exported_symbol,
+                SymbolExportInfo {
+                    level: SymbolExportLevel::C,
+                    kind: SymbolExportKind::Data,
+                    used: false,
+                },
+            )
         }));
     }
 
@@ -261,11 +280,14 @@ fn exported_symbols_provider_local(
 
         symbols.extend(msan_weak_symbols.into_iter().map(|sym| {
             let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, sym));
-            (exported_symbol, SymbolExportInfo {
-                level: SymbolExportLevel::C,
-                kind: SymbolExportKind::Data,
-                used: false,
-            })
+            (
+                exported_symbol,
+                SymbolExportInfo {
+                    level: SymbolExportLevel::C,
+                    kind: SymbolExportKind::Data,
+                    used: false,
+                },
+            )
         }));
     }
 
@@ -275,11 +297,14 @@ fn exported_symbols_provider_local(
         let symbol_name = metadata_symbol_name(tcx);
         let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, &symbol_name));
 
-        symbols.push((exported_symbol, SymbolExportInfo {
-            level: SymbolExportLevel::C,
-            kind: SymbolExportKind::Data,
-            used: true,
-        }));
+        symbols.push((
+            exported_symbol,
+            SymbolExportInfo {
+                level: SymbolExportLevel::C,
+                kind: SymbolExportKind::Data,
+                used: true,
+            },
+        ));
     }
 
     if tcx.local_crate_exports_generics() {
@@ -293,7 +318,7 @@ fn exported_symbols_provider_local(
         // external linkage is enough for monomorphization to be linked to.
         let need_visibility = tcx.sess.target.dynamic_linking && !tcx.sess.target.only_cdylib;
 
-        let (_, cgus) = tcx.collect_and_partition_mono_items(());
+        let cgus = tcx.collect_and_partition_mono_items(()).codegen_units;
 
         // The symbols created in this loop are sorted below it
         #[allow(rustc::potential_query_instability)]
@@ -325,21 +350,27 @@ fn exported_symbols_provider_local(
                 MonoItem::Fn(Instance { def: InstanceKind::Item(def), args }) => {
                     if args.non_erasable_generics().next().is_some() {
                         let symbol = ExportedSymbol::Generic(def, args);
-                        symbols.push((symbol, SymbolExportInfo {
-                            level: SymbolExportLevel::Rust,
-                            kind: SymbolExportKind::Text,
-                            used: false,
-                        }));
+                        symbols.push((
+                            symbol,
+                            SymbolExportInfo {
+                                level: SymbolExportLevel::Rust,
+                                kind: SymbolExportKind::Text,
+                                used: false,
+                            },
+                        ));
                     }
                 }
                 MonoItem::Fn(Instance { def: InstanceKind::DropGlue(_, Some(ty)), args }) => {
                     // A little sanity-check
                     assert_eq!(args.non_erasable_generics().next(), Some(GenericArgKind::Type(ty)));
-                    symbols.push((ExportedSymbol::DropGlue(ty), SymbolExportInfo {
-                        level: SymbolExportLevel::Rust,
-                        kind: SymbolExportKind::Text,
-                        used: false,
-                    }));
+                    symbols.push((
+                        ExportedSymbol::DropGlue(ty),
+                        SymbolExportInfo {
+                            level: SymbolExportLevel::Rust,
+                            kind: SymbolExportKind::Text,
+                            used: false,
+                        },
+                    ));
                 }
                 MonoItem::Fn(Instance {
                     def: InstanceKind::AsyncDropGlueCtorShim(_, Some(ty)),
@@ -347,11 +378,14 @@ fn exported_symbols_provider_local(
                 }) => {
                     // A little sanity-check
                     assert_eq!(args.non_erasable_generics().next(), Some(GenericArgKind::Type(ty)));
-                    symbols.push((ExportedSymbol::AsyncDropGlueCtorShim(ty), SymbolExportInfo {
-                        level: SymbolExportLevel::Rust,
-                        kind: SymbolExportKind::Text,
-                        used: false,
-                    }));
+                    symbols.push((
+                        ExportedSymbol::AsyncDropGlueCtorShim(ty),
+                        SymbolExportInfo {
+                            level: SymbolExportLevel::Rust,
+                            kind: SymbolExportKind::Text,
+                            used: false,
+                        },
+                    ));
                 }
                 _ => {
                     // Any other symbols don't qualify for sharing
@@ -551,6 +585,42 @@ pub(crate) fn symbol_name_for_instance_in_crate<'tcx>(
     }
 }
 
+fn calling_convention_for_symbol<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    symbol: ExportedSymbol<'tcx>,
+) -> (Conv, &'tcx [rustc_target::callconv::ArgAbi<'tcx, Ty<'tcx>>]) {
+    let instance = match symbol {
+        ExportedSymbol::NonGeneric(def_id) | ExportedSymbol::Generic(def_id, _)
+            if tcx.is_static(def_id) =>
+        {
+            None
+        }
+        ExportedSymbol::NonGeneric(def_id) => Some(Instance::mono(tcx, def_id)),
+        ExportedSymbol::Generic(def_id, args) => Some(Instance::new(def_id, args)),
+        // DropGlue always use the Rust calling convention and thus follow the target's default
+        // symbol decoration scheme.
+        ExportedSymbol::DropGlue(..) => None,
+        // AsyncDropGlueCtorShim always use the Rust calling convention and thus follow the
+        // target's default symbol decoration scheme.
+        ExportedSymbol::AsyncDropGlueCtorShim(..) => None,
+        // NoDefId always follow the target's default symbol decoration scheme.
+        ExportedSymbol::NoDefId(..) => None,
+        // ThreadLocalShim always follow the target's default symbol decoration scheme.
+        ExportedSymbol::ThreadLocalShim(..) => None,
+    };
+
+    instance
+        .map(|i| {
+            tcx.fn_abi_of_instance(
+                ty::TypingEnv::fully_monomorphized().as_query_input((i, ty::List::empty())),
+            )
+            .unwrap_or_else(|_| bug!("fn_abi_of_instance({i:?}) failed"))
+        })
+        .map(|fnabi| (fnabi.conv, &fnabi.args[..]))
+        // FIXME(workingjubilee): why don't we know the convention here?
+        .unwrap_or((Conv::Rust, &[]))
+}
+
 /// This is the symbol name of the given instance as seen by the linker.
 ///
 /// On 32-bit Windows symbols are decorated according to their calling conventions.
@@ -559,8 +629,6 @@ pub(crate) fn linking_symbol_name_for_instance_in_crate<'tcx>(
     symbol: ExportedSymbol<'tcx>,
     instantiating_crate: CrateNum,
 ) -> String {
-    use rustc_target::callconv::Conv;
-
     let mut undecorated = symbol_name_for_instance_in_crate(tcx, symbol, instantiating_crate);
 
     // thread local will not be a function call,
@@ -584,35 +652,7 @@ pub(crate) fn linking_symbol_name_for_instance_in_crate<'tcx>(
         _ => return undecorated,
     };
 
-    let instance = match symbol {
-        ExportedSymbol::NonGeneric(def_id) | ExportedSymbol::Generic(def_id, _)
-            if tcx.is_static(def_id) =>
-        {
-            None
-        }
-        ExportedSymbol::NonGeneric(def_id) => Some(Instance::mono(tcx, def_id)),
-        ExportedSymbol::Generic(def_id, args) => Some(Instance::new(def_id, args)),
-        // DropGlue always use the Rust calling convention and thus follow the target's default
-        // symbol decoration scheme.
-        ExportedSymbol::DropGlue(..) => None,
-        // AsyncDropGlueCtorShim always use the Rust calling convention and thus follow the
-        // target's default symbol decoration scheme.
-        ExportedSymbol::AsyncDropGlueCtorShim(..) => None,
-        // NoDefId always follow the target's default symbol decoration scheme.
-        ExportedSymbol::NoDefId(..) => None,
-        // ThreadLocalShim always follow the target's default symbol decoration scheme.
-        ExportedSymbol::ThreadLocalShim(..) => None,
-    };
-
-    let (conv, args) = instance
-        .map(|i| {
-            tcx.fn_abi_of_instance(
-                ty::TypingEnv::fully_monomorphized().as_query_input((i, ty::List::empty())),
-            )
-            .unwrap_or_else(|_| bug!("fn_abi_of_instance({i:?}) failed"))
-        })
-        .map(|fnabi| (fnabi.conv, &fnabi.args[..]))
-        .unwrap_or((Conv::Rust, &[]));
+    let (conv, args) = calling_convention_for_symbol(tcx, symbol);
 
     // Decorate symbols with prefixes, suffixes and total number of bytes of arguments.
     // Reference: https://docs.microsoft.com/en-us/cpp/build/reference/decorated-names?view=msvc-170
@@ -642,6 +682,27 @@ pub(crate) fn exporting_symbol_name_for_instance_in_crate<'tcx>(
 ) -> String {
     let undecorated = symbol_name_for_instance_in_crate(tcx, symbol, cnum);
     maybe_emutls_symbol_name(tcx, symbol, &undecorated).unwrap_or(undecorated)
+}
+
+/// On amdhsa, `gpu-kernel` functions have an associated metadata object with a `.kd` suffix.
+/// Add it to the symbols list for all kernel functions, so that it is exported in the linked
+/// object.
+pub(crate) fn extend_exported_symbols<'tcx>(
+    symbols: &mut Vec<String>,
+    tcx: TyCtxt<'tcx>,
+    symbol: ExportedSymbol<'tcx>,
+    instantiating_crate: CrateNum,
+) {
+    let (conv, _) = calling_convention_for_symbol(tcx, symbol);
+
+    if conv != Conv::GpuKernel || tcx.sess.target.os != "amdhsa" {
+        return;
+    }
+
+    let undecorated = symbol_name_for_instance_in_crate(tcx, symbol, instantiating_crate);
+
+    // Add the symbol for the kernel descriptor (with .kd suffix)
+    symbols.push(format!("{undecorated}.kd"));
 }
 
 fn maybe_emutls_symbol_name<'tcx>(

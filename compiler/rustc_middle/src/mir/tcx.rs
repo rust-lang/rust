@@ -86,6 +86,14 @@ impl<'tcx> PlaceTy<'tcx> {
         }
     }
 
+    pub fn multi_projection_ty(
+        self,
+        tcx: TyCtxt<'tcx>,
+        elems: &[PlaceElem<'tcx>],
+    ) -> PlaceTy<'tcx> {
+        elems.iter().fold(self, |place_ty, &elem| place_ty.projection_ty(tcx, elem))
+    }
+
     /// Convenience wrapper around `projection_ty_core` for
     /// `PlaceElem`, where we can just use the `Ty` that is already
     /// stored inline on field projection elems.
@@ -146,6 +154,11 @@ impl<'tcx> PlaceTy<'tcx> {
             ProjectionElem::Subtype(ty) => {
                 PlaceTy::from_ty(handle_opaque_cast_and_subtype(&self, ty))
             }
+
+            // FIXME(unsafe_binders): Rename `handle_opaque_cast_and_subtype` to be more general.
+            ProjectionElem::UnwrapUnsafeBinder(ty) => {
+                PlaceTy::from_ty(handle_opaque_cast_and_subtype(&self, ty))
+            }
         };
         debug!("projection_ty self: {:?} elem: {:?} yields: {:?}", self, elem, answer);
         answer
@@ -162,11 +175,7 @@ impl<'tcx> Place<'tcx> {
     where
         D: HasLocalDecls<'tcx>,
     {
-        projection
-            .iter()
-            .fold(PlaceTy::from_ty(local_decls.local_decls()[local].ty), |place_ty, &elem| {
-                place_ty.projection_ty(tcx, elem)
-            })
+        PlaceTy::from_ty(local_decls.local_decls()[local].ty).multi_projection_ty(tcx, projection)
     }
 
     pub fn ty<D: ?Sized>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> PlaceTy<'tcx>
@@ -206,10 +215,11 @@ impl<'tcx> Rvalue<'tcx> {
                 let place_ty = place.ty(local_decls, tcx).ty;
                 Ty::new_ref(tcx, reg, place_ty, bk.to_mutbl_lossy())
             }
-            Rvalue::RawPtr(mutability, ref place) => {
+            Rvalue::RawPtr(kind, ref place) => {
                 let place_ty = place.ty(local_decls, tcx).ty;
-                Ty::new_ptr(tcx, place_ty, mutability)
+                Ty::new_ptr(tcx, place_ty, kind.to_mutbl_lossy())
             }
+            Rvalue::Len(..) => tcx.types.usize,
             Rvalue::Cast(.., ty) => ty,
             Rvalue::BinaryOp(op, box (ref lhs, ref rhs)) => {
                 let lhs_ty = lhs.ty(local_decls, tcx);
@@ -224,7 +234,8 @@ impl<'tcx> Rvalue<'tcx> {
             Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(..), _) => {
                 tcx.types.usize
             }
-            Rvalue::NullaryOp(NullOp::UbChecks, _) => tcx.types.bool,
+            Rvalue::NullaryOp(NullOp::ContractChecks, _)
+            | Rvalue::NullaryOp(NullOp::UbChecks, _) => tcx.types.bool,
             Rvalue::Aggregate(ref ak, ref ops) => match **ak {
                 AggregateKind::Array(ty) => Ty::new_array(tcx, ty, ops.len() as u64),
                 AggregateKind::Tuple => {
@@ -240,6 +251,7 @@ impl<'tcx> Rvalue<'tcx> {
             },
             Rvalue::ShallowInitBox(_, ty) => Ty::new_box(tcx, ty),
             Rvalue::CopyForDeref(ref place) => place.ty(local_decls, tcx).ty,
+            Rvalue::WrapUnsafeBinder(_, ty) => ty,
         }
     }
 

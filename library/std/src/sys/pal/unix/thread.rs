@@ -23,7 +23,7 @@ mod zircon {
     type zx_status_t = i32;
     pub const ZX_PROP_NAME: u32 = 3;
 
-    extern "C" {
+    unsafe extern "C" {
         pub fn zx_object_set_property(
             handle: zx_handle_t,
             property: u32,
@@ -130,7 +130,12 @@ impl Thread {
         }
     }
 
-    #[cfg(any(target_os = "linux", target_os = "freebsd", target_os = "dragonfly"))]
+    #[cfg(any(
+        target_os = "linux",
+        target_os = "freebsd",
+        target_os = "dragonfly",
+        target_os = "nuttx"
+    ))]
     pub fn set_name(name: &CStr) {
         unsafe {
             cfg_if::cfg_if! {
@@ -139,7 +144,7 @@ impl Thread {
                     const TASK_COMM_LEN: usize = 16;
                     let name = truncate_cstr::<{ TASK_COMM_LEN }>(name);
                 } else {
-                    // FreeBSD and DragonFly BSD do not enforce length limits.
+                    // FreeBSD, DragonFly BSD and NuttX do not enforce length limits.
                 }
             };
             // Available since glibc 2.12, musl 1.1.16, and uClibc 1.0.20 for Linux,
@@ -150,7 +155,7 @@ impl Thread {
         }
     }
 
-    #[cfg(any(target_os = "openbsd", target_os = "nuttx"))]
+    #[cfg(target_os = "openbsd")]
     pub fn set_name(name: &CStr) {
         unsafe {
             libc::pthread_set_name_np(libc::pthread_self(), name.as_ptr());
@@ -225,7 +230,7 @@ impl Thread {
     #[cfg(target_os = "vxworks")]
     pub fn set_name(name: &CStr) {
         // FIXME(libc): adding real STATUS, ERROR type eventually.
-        extern "C" {
+        unsafe extern "C" {
             fn taskNameSet(task_id: libc::TASK_ID, task_name: *mut libc::c_char) -> libc::c_int;
         }
 
@@ -501,7 +506,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
         } else if #[cfg(target_os = "vxworks")] {
             // Note: there is also `vxCpuConfiguredGet`, closer to _SC_NPROCESSORS_CONF
             // expectations than the actual cores availability.
-            extern "C" {
+            unsafe extern "C" {
                 fn vxCpuEnabledGet() -> libc::cpuset_t;
             }
 

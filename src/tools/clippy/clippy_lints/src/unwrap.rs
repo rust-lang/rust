@@ -8,7 +8,6 @@ use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, HirId, Node, PathSegmen
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceWithHirId};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::declare_lint_pass;
@@ -292,7 +291,7 @@ impl<'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'_, 'tcx> {
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         // Shouldn't lint when `expr` is in macro.
-        if in_external_macro(self.cx.tcx.sess, expr.span) {
+        if expr.span.in_external_macro(self.cx.tcx.sess.source_map()) {
             return;
         }
         if let Some(higher::If { cond, then, r#else }) = higher::If::hir(expr) {
@@ -375,8 +374,8 @@ impl<'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'_, 'tcx> {
         }
     }
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.cx.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.cx.tcx
     }
 }
 

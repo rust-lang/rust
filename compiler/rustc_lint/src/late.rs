@@ -8,9 +8,8 @@ use std::cell::Cell;
 
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::join;
-use rustc_hir as hir;
 use rustc_hir::def_id::{LocalDefId, LocalModDefId};
-use rustc_hir::{HirId, intravisit as hir_visit};
+use rustc_hir::{self as hir, AmbigArg, HirId, intravisit as hir_visit};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::Session;
@@ -85,8 +84,8 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
     /// Because lints are scoped lexically, we want to walk nested
     /// items in the context of the outer item, so enable
     /// deep-walking.
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.context.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.context.tcx
     }
 
     fn visit_nested_body(&mut self, body_id: hir::BodyId) {
@@ -100,7 +99,7 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
             self.context.cached_typeck_results.set(None);
         }
 
-        let body = self.context.tcx.hir().body(body_id);
+        let body = self.context.tcx.hir_body(body_id);
         self.visit_body(body);
         self.context.enclosing_body = old_enclosing_body;
 
@@ -153,6 +152,10 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
         hir_visit::walk_pat(self, p);
     }
 
+    fn visit_lit(&mut self, hir_id: HirId, lit: &'tcx hir::Lit, negated: bool) {
+        lint_callback!(self, check_lit, hir_id, lit, negated);
+    }
+
     fn visit_expr_field(&mut self, field: &'tcx hir::ExprField<'tcx>) {
         self.with_lint_attrs(field.hir_id, |cx| hir_visit::walk_expr_field(cx, field))
     }
@@ -188,7 +191,7 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
         // in order for `check_fn` to be able to use them.
         let old_enclosing_body = self.context.enclosing_body.replace(body_id);
         let old_cached_typeck_results = self.context.cached_typeck_results.take();
-        let body = self.context.tcx.hir().body(body_id);
+        let body = self.context.tcx.hir_body(body_id);
         lint_callback!(self, check_fn, fk, decl, body, span, id);
         hir_visit::walk_fn(self, fk, decl, body_id, id);
         self.context.enclosing_body = old_enclosing_body;
@@ -214,13 +217,9 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
         })
     }
 
-    fn visit_ty(&mut self, t: &'tcx hir::Ty<'tcx>) {
+    fn visit_ty(&mut self, t: &'tcx hir::Ty<'tcx, AmbigArg>) {
         lint_callback!(self, check_ty, t);
         hir_visit::walk_ty(self, t);
-    }
-
-    fn visit_infer(&mut self, inf: &'tcx hir::InferArg) {
-        hir_visit::walk_inf(self, inf);
     }
 
     fn visit_mod(&mut self, m: &'tcx hir::Mod<'tcx>, _: Span, n: HirId) {
@@ -463,7 +462,7 @@ pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx>) {
         || {
             tcx.sess.time("module_lints", || {
                 // Run per-module lints
-                tcx.hir().par_for_each_module(|module| tcx.ensure().lint_mod(module));
+                tcx.hir().par_for_each_module(|module| tcx.ensure_ok().lint_mod(module));
             });
         },
     );

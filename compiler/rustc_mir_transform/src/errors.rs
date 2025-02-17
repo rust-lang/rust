@@ -5,9 +5,31 @@ use rustc_middle::mir::AssertKind;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::{self, Lint};
 use rustc_span::def_id::DefId;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Ident, Span, Symbol};
 
 use crate::fluent_generated as fluent;
+
+#[derive(LintDiagnostic)]
+#[diag(mir_transform_unconditional_recursion)]
+#[help]
+pub(crate) struct UnconditionalRecursion {
+    #[label]
+    pub(crate) span: Span,
+    #[label(mir_transform_unconditional_recursion_call_site_label)]
+    pub(crate) call_sites: Vec<Span>,
+}
+
+#[derive(Diagnostic)]
+#[diag(mir_transform_force_inline_attr)]
+#[note]
+pub(crate) struct InvalidForceInline {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label(mir_transform_callee)]
+    pub callee_span: Span,
+    pub callee: String,
+    pub reason: &'static str,
+}
 
 #[derive(LintDiagnostic)]
 pub(crate) enum ConstMutate {
@@ -92,7 +114,7 @@ pub(crate) struct FnItemRef {
     #[suggestion(code = "{sugg}", applicability = "unspecified")]
     pub span: Span,
     pub sugg: String,
-    pub ident: String,
+    pub ident: Ident,
 }
 
 #[derive(Diagnostic)]

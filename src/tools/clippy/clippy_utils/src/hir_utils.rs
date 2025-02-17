@@ -10,7 +10,7 @@ use rustc_hir::{
     AssocItemConstraint, BinOpKind, BindingMode, Block, BodyId, Closure, ConstArg, ConstArgKind, Expr, ExprField,
     ExprKind, FnRetTy, GenericArg, GenericArgs, HirId, HirIdMap, InlineAsmOperand, LetExpr, Lifetime, LifetimeName,
     Pat, PatExpr, PatExprKind, PatField, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, StructTailExpr,
-    TraitBoundModifiers, Ty, TyKind,
+    TraitBoundModifiers, Ty, TyKind, TyPat, TyPatKind,
 };
 use rustc_lexer::{TokenKind, tokenize};
 use rustc_lint::LateContext;
@@ -273,8 +273,8 @@ impl HirEqInterExpr<'_, '_, '_> {
             self.inner.cx.tcx.typeck_body(right),
         ));
         let res = self.eq_expr(
-            self.inner.cx.tcx.hir().body(left).value,
-            self.inner.cx.tcx.hir().body(right).value,
+            self.inner.cx.tcx.hir_body(left).value,
+            self.inner.cx.tcx.hir_body(right).value,
         );
         self.inner.maybe_typeck_results = old_maybe_typeck_results;
         res
@@ -459,9 +459,9 @@ impl HirEqInterExpr<'_, '_, '_> {
 
     fn eq_generic_arg(&mut self, left: &GenericArg<'_>, right: &GenericArg<'_>) -> bool {
         match (left, right) {
-            (GenericArg::Const(l), GenericArg::Const(r)) => self.eq_const_arg(l, r),
+            (GenericArg::Const(l), GenericArg::Const(r)) => self.eq_const_arg(l.as_unambig_ct(), r.as_unambig_ct()),
             (GenericArg::Lifetime(l_lt), GenericArg::Lifetime(r_lt)) => Self::eq_lifetime(l_lt, r_lt),
-            (GenericArg::Type(l_ty), GenericArg::Type(r_ty)) => self.eq_ty(l_ty, r_ty),
+            (GenericArg::Type(l_ty), GenericArg::Type(r_ty)) => self.eq_ty(l_ty.as_unambig_ty(), r_ty.as_unambig_ty()),
             (GenericArg::Infer(l_inf), GenericArg::Infer(r_inf)) => self.eq_ty(&l_inf.to_ty(), &r_inf.to_ty()),
             _ => false,
         }
@@ -524,7 +524,6 @@ impl HirEqInterExpr<'_, '_, '_> {
                 }
                 eq
             },
-            (PatKind::Path(l), PatKind::Path(r)) => self.eq_qpath(l, r),
             (&PatKind::Expr(l), &PatKind::Expr(r)) => self.eq_pat_expr(l, r),
             (&PatKind::Tuple(l, ls), &PatKind::Tuple(r, rs)) => ls == rs && over(l, r, |l, r| self.eq_pat(l, r)),
             (&PatKind::Range(ref ls, ref le, li), &PatKind::Range(ref rs, ref re, ri)) => {
@@ -618,7 +617,7 @@ impl HirEqInterExpr<'_, '_, '_> {
             },
             (TyKind::Path(l), TyKind::Path(r)) => self.eq_qpath(l, r),
             (&TyKind::Tup(l), &TyKind::Tup(r)) => over(l, r, |l, r| self.eq_ty(l, r)),
-            (&TyKind::Infer, &TyKind::Infer) => true,
+            (&TyKind::Infer(()), &TyKind::Infer(())) => true,
             _ => false,
         }
     }
@@ -907,7 +906,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             }) => {
                 std::mem::discriminant(&capture_clause).hash(&mut self.s);
                 // closures inherit TypeckResults
-                self.hash_expr(self.cx.tcx.hir().body(body).value);
+                self.hash_expr(self.cx.tcx.hir_body(body).value);
             },
             ExprKind::ConstBlock(ref l_id) => {
                 self.hash_body(l_id.body);
@@ -1103,6 +1102,22 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
         }
     }
 
+    pub fn hash_ty_pat(&mut self, pat: &TyPat<'_>) {
+        std::mem::discriminant(&pat.kind).hash(&mut self.s);
+        match pat.kind {
+            TyPatKind::Range(s, e, i) => {
+                if let Some(s) = s {
+                    self.hash_const_arg(s);
+                }
+                if let Some(e) = e {
+                    self.hash_const_arg(e);
+                }
+                std::mem::discriminant(&i).hash(&mut self.s);
+            },
+            TyPatKind::Err(_) => {},
+        }
+    }
+
     pub fn hash_pat(&mut self, pat: &Pat<'_>) {
         std::mem::discriminant(&pat.kind).hash(&mut self.s);
         match pat.kind {
@@ -1120,7 +1135,6 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                     self.hash_pat(pat);
                 }
             },
-            PatKind::Path(ref qpath) => self.hash_qpath(qpath),
             PatKind::Range(s, e, i) => {
                 if let Some(s) = s {
                     self.hash_pat_expr(s);
@@ -1249,7 +1263,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             },
             TyKind::Pat(ty, pat) => {
                 self.hash_ty(ty);
-                self.hash_pat(pat);
+                self.hash_ty_pat(pat);
             },
             TyKind::Ptr(mut_ty) => {
                 self.hash_ty(mut_ty.ty);
@@ -1281,7 +1295,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 }
             },
             TyKind::Path(qpath) => self.hash_qpath(qpath),
-            TyKind::TraitObject(_, lifetime, _) => {
+            TyKind::TraitObject(_, lifetime) => {
                 self.hash_lifetime(lifetime);
             },
             TyKind::Typeof(anon_const) => {
@@ -1291,7 +1305,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_ty(binder.inner_ty);
             },
             TyKind::Err(_)
-            | TyKind::Infer
+            | TyKind::Infer(())
             | TyKind::Never
             | TyKind::InferDelegation(..)
             | TyKind::OpaqueDef(_)
@@ -1302,7 +1316,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
     pub fn hash_body(&mut self, body_id: BodyId) {
         // swap out TypeckResults when hashing a body
         let old_maybe_typeck_results = self.maybe_typeck_results.replace(self.cx.tcx.typeck_body(body_id));
-        self.hash_expr(self.cx.tcx.hir().body(body_id).value);
+        self.hash_expr(self.cx.tcx.hir_body(body_id).value);
         self.maybe_typeck_results = old_maybe_typeck_results;
     }
 
@@ -1318,8 +1332,8 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
         for arg in arg_list {
             match *arg {
                 GenericArg::Lifetime(l) => self.hash_lifetime(l),
-                GenericArg::Type(ty) => self.hash_ty(ty),
-                GenericArg::Const(ca) => self.hash_const_arg(ca),
+                GenericArg::Type(ty) => self.hash_ty(ty.as_unambig_ty()),
+                GenericArg::Const(ca) => self.hash_const_arg(ca.as_unambig_ct()),
                 GenericArg::Infer(ref inf) => self.hash_ty(&inf.to_ty()),
             }
         }

@@ -95,10 +95,14 @@ impl FunctionData {
             .map(Box::new);
         let rustc_allow_incoherent_impl = attrs.by_key(&sym::rustc_allow_incoherent_impl).exists();
         if flags.contains(FnFlags::HAS_UNSAFE_KW)
-            && !crate_graph[krate].edition.at_least_2024()
             && attrs.by_key(&sym::rustc_deprecated_safe_2024).exists()
         {
             flags.remove(FnFlags::HAS_UNSAFE_KW);
+            flags.insert(FnFlags::DEPRECATED_SAFE_2024);
+        }
+
+        if attrs.by_key(&sym::target_feature).exists() {
+            flags.insert(FnFlags::HAS_TARGET_FEATURE);
         }
 
         Arc::new(FunctionData {
@@ -148,12 +152,20 @@ impl FunctionData {
         self.flags.contains(FnFlags::HAS_UNSAFE_KW)
     }
 
+    pub fn is_deprecated_safe_2024(&self) -> bool {
+        self.flags.contains(FnFlags::DEPRECATED_SAFE_2024)
+    }
+
     pub fn is_safe(&self) -> bool {
         self.flags.contains(FnFlags::HAS_SAFE_KW)
     }
 
     pub fn is_varargs(&self) -> bool {
         self.flags.contains(FnFlags::IS_VARARGS)
+    }
+
+    pub fn has_target_feature(&self) -> bool {
+        self.flags.contains(FnFlags::HAS_TARGET_FEATURE)
     }
 }
 
@@ -244,7 +256,7 @@ bitflags::bitflags! {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TraitData {
     pub name: Name,
-    pub items: Vec<(Name, AssocItemId)>,
+    pub items: Box<[(Name, AssocItemId)]>,
     pub flags: TraitFlags,
     pub visibility: RawVisibility,
     // box it as the vec is usually empty anyways
@@ -360,7 +372,7 @@ impl TraitAliasData {
 pub struct ImplData {
     pub target_trait: Option<TraitRef>,
     pub self_ty: TypeRefId,
-    pub items: Box<[AssocItemId]>,
+    pub items: Box<[(Name, AssocItemId)]>,
     pub is_negative: bool,
     pub is_unsafe: bool,
     // box it as the vec is usually empty anyways
@@ -393,7 +405,6 @@ impl ImplData {
         collector.collect(&item_tree, tree_id.tree_id(), &impl_def.items);
 
         let (items, macro_calls, diagnostics) = collector.finish();
-        let items = items.into_iter().map(|(_, item)| item).collect();
 
         (
             Arc::new(ImplData {
@@ -648,12 +659,12 @@ impl<'a> AssocItemCollector<'a> {
     fn finish(
         self,
     ) -> (
-        Vec<(Name, AssocItemId)>,
+        Box<[(Name, AssocItemId)]>,
         Option<Box<Vec<(AstId<ast::Item>, MacroCallId)>>>,
         Vec<DefDiagnostic>,
     ) {
         (
-            self.items,
+            self.items.into_boxed_slice(),
             if self.macro_calls.is_empty() { None } else { Some(Box::new(self.macro_calls)) },
             self.diagnostics,
         )

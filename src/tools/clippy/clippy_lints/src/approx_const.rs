@@ -3,10 +3,10 @@ use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::msrvs::{self, Msrv};
 use rustc_ast::ast::{FloatTy, LitFloatType, LitKind};
 use rustc_attr_parsing::RustcVersion;
-use rustc_hir::{Expr, ExprKind};
+use rustc_hir::{HirId, Lit};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
-use rustc_span::symbol;
+use rustc_span::{Span, symbol};
 use std::f64::consts as f64;
 
 declare_clippy_lint! {
@@ -73,22 +73,28 @@ impl ApproxConstant {
             msrv: conf.msrv.clone(),
         }
     }
+}
 
-    fn check_lit(&self, cx: &LateContext<'_>, lit: &LitKind, e: &Expr<'_>) {
-        match *lit {
+impl<'tcx> LateLintPass<'tcx> for ApproxConstant {
+    fn check_lit(&mut self, cx: &LateContext<'_>, _hir_id: HirId, lit: &Lit, _negated: bool) {
+        match lit.node {
             LitKind::Float(s, LitFloatType::Suffixed(fty)) => match fty {
-                FloatTy::F16 => self.check_known_consts(cx, e, s, "f16"),
-                FloatTy::F32 => self.check_known_consts(cx, e, s, "f32"),
-                FloatTy::F64 => self.check_known_consts(cx, e, s, "f64"),
-                FloatTy::F128 => self.check_known_consts(cx, e, s, "f128"),
+                FloatTy::F16 => self.check_known_consts(cx, lit.span, s, "f16"),
+                FloatTy::F32 => self.check_known_consts(cx, lit.span, s, "f32"),
+                FloatTy::F64 => self.check_known_consts(cx, lit.span, s, "f64"),
+                FloatTy::F128 => self.check_known_consts(cx, lit.span, s, "f128"),
             },
             // FIXME(f16_f128): add `f16` and `f128` when these types become stable.
-            LitKind::Float(s, LitFloatType::Unsuffixed) => self.check_known_consts(cx, e, s, "f{32, 64}"),
+            LitKind::Float(s, LitFloatType::Unsuffixed) => self.check_known_consts(cx, lit.span, s, "f{32, 64}"),
             _ => (),
         }
     }
 
-    fn check_known_consts(&self, cx: &LateContext<'_>, e: &Expr<'_>, s: symbol::Symbol, module: &str) {
+    extract_msrv_attr!(LateContext);
+}
+
+impl ApproxConstant {
+    fn check_known_consts(&self, cx: &LateContext<'_>, span: Span, s: symbol::Symbol, module: &str) {
         let s = s.as_str();
         if s.parse::<f64>().is_ok() {
             for &(constant, name, min_digits, msrv) in &KNOWN_CONSTS {
@@ -96,7 +102,7 @@ impl ApproxConstant {
                     span_lint_and_help(
                         cx,
                         APPROX_CONSTANT,
-                        e.span,
+                        span,
                         format!("approximate value of `{module}::consts::{name}` found"),
                         None,
                         "consider using the constant directly",
@@ -109,16 +115,6 @@ impl ApproxConstant {
 }
 
 impl_lint_pass!(ApproxConstant => [APPROX_CONSTANT]);
-
-impl<'tcx> LateLintPass<'tcx> for ApproxConstant {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
-        if let ExprKind::Lit(lit) = &e.kind {
-            self.check_lit(cx, &lit.node, e);
-        }
-    }
-
-    extract_msrv_attr!(LateContext);
-}
 
 /// Returns `false` if the number of significant figures in `value` are
 /// less than `min_digits`; otherwise, returns true if `value` is equal

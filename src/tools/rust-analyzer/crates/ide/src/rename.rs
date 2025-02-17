@@ -71,13 +71,11 @@ pub(crate) fn prepare_rename(
 //
 // Renames the item below the cursor and all of its references
 //
-// |===
-// | Editor  | Shortcut
+// | Editor  | Shortcut |
+// |---------|----------|
+// | VS Code | <kbd>F2</kbd> |
 //
-// | VS Code | kbd:[F2]
-// |===
-//
-// image::https://user-images.githubusercontent.com/48062697/113065582-055aae80-91b1-11eb-8ade-2b58e6d81883.gif[]
+// ![Rename](https://user-images.githubusercontent.com/48062697/113065582-055aae80-91b1-11eb-8ade-2b58e6d81883.gif)
 pub(crate) fn rename(
     db: &RootDatabase,
     position: FilePosition,
@@ -263,7 +261,7 @@ fn find_definitions(
                         .and_then(|def| {
                             // if the name differs from the definitions name it has to be an alias
                             if def
-                                .name(sema.db).is_some_and(|it| !it.eq_ident(name_ref.text().as_str()))
+                                .name(sema.db).is_some_and(|it| it.as_str() != name_ref.text().trim_start_matches("r#"))
                             {
                                 Err(format_err!("Renaming aliases is currently unsupported"))
                             } else {
@@ -456,7 +454,11 @@ mod tests {
     use super::{RangeInfo, RenameError};
 
     #[track_caller]
-    fn check(new_name: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
+    fn check(
+        new_name: &str,
+        #[rust_analyzer::rust_fixture] ra_fixture_before: &str,
+        #[rust_analyzer::rust_fixture] ra_fixture_after: &str,
+    ) {
         let ra_fixture_after = &trim_indent(ra_fixture_after);
         let (analysis, position) = fixture::position(ra_fixture_before);
         if !ra_fixture_after.starts_with("error: ") {
@@ -494,14 +496,22 @@ mod tests {
         };
     }
 
-    fn check_expect(new_name: &str, ra_fixture: &str, expect: Expect) {
+    fn check_expect(
+        new_name: &str,
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        expect: Expect,
+    ) {
         let (analysis, position) = fixture::position(ra_fixture);
         let source_change =
             analysis.rename(position, new_name).unwrap().expect("Expect returned a RenameError");
         expect.assert_eq(&filter_expect(source_change))
     }
 
-    fn check_expect_will_rename_file(new_name: &str, ra_fixture: &str, expect: Expect) {
+    fn check_expect_will_rename_file(
+        new_name: &str,
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        expect: Expect,
+    ) {
         let (analysis, position) = fixture::position(ra_fixture);
         let source_change = analysis
             .will_rename_file(position.file_id, new_name)
@@ -510,7 +520,7 @@ mod tests {
         expect.assert_eq(&filter_expect(source_change))
     }
 
-    fn check_prepare(ra_fixture: &str, expect: Expect) {
+    fn check_prepare(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
         let (analysis, position) = fixture::position(ra_fixture);
         let result = analysis
             .prepare_rename(position)
@@ -1991,14 +2001,32 @@ impl Foo {
             "foo",
             r#"
 fn f($0self) -> i32 {
-    use self as _;
     self.i
 }
 "#,
             r#"
 fn f(foo: _) -> i32 {
-    use self as _;
     foo.i
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn no_type_value_ns_confuse() {
+        // Test that we don't rename items from different namespaces.
+        check(
+            "bar",
+            r#"
+struct foo {}
+fn f(foo$0: i32) -> i32 {
+    use foo as _;
+}
+"#,
+            r#"
+struct foo {}
+fn f(bar: i32) -> i32 {
+    use foo as _;
 }
 "#,
         );

@@ -35,6 +35,7 @@ use std::backtrace::{Backtrace, BacktraceStatus};
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::error::Report;
+use std::ffi::OsStr;
 use std::hash::Hash;
 use std::io::Write;
 use std::num::NonZero;
@@ -57,14 +58,15 @@ pub use emitter::ColorConfig;
 use emitter::{DynEmitter, Emitter, is_case_difference, is_different};
 use rustc_data_structures::AtomicRef;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
-use rustc_data_structures::stable_hasher::{Hash128, StableHasher};
-use rustc_data_structures::sync::Lock;
+use rustc_data_structures::stable_hasher::StableHasher;
+use rustc_data_structures::sync::{DynSend, Lock};
 pub use rustc_error_messages::{
     DiagMessage, FluentBundle, LanguageIdentifier, LazyFallbackBundle, MultiSpan, SpanLabel,
     SubdiagMessage, fallback_fluent_bundle, fluent_bundle,
 };
+use rustc_hashes::Hash128;
 use rustc_lint_defs::LintExpectationId;
-pub use rustc_lint_defs::{Applicability, pluralize};
+pub use rustc_lint_defs::{Applicability, listify, pluralize};
 use rustc_macros::{Decodable, Encodable};
 pub use rustc_span::ErrorGuaranteed;
 pub use rustc_span::fatal_error::{FatalError, FatalErrorMarker};
@@ -229,9 +231,39 @@ impl SubstitutionPart {
         !self.snippet.is_empty() && self.replaces_meaningful_content(sm)
     }
 
+    /// Whether this is a replacement that overwrites source with a snippet
+    /// in a way that isn't a superset of the original string. For example,
+    /// replacing "abc" with "abcde" is not destructive, but replacing it
+    /// it with "abx" is, since the "c" character is lost.
+    pub fn is_destructive_replacement(&self, sm: &SourceMap) -> bool {
+        self.is_replacement(sm)
+            && !sm.span_to_snippet(self.span).is_ok_and(|snippet| {
+                self.snippet.trim_start().starts_with(snippet.trim_start())
+                    || self.snippet.trim_end().ends_with(snippet.trim_end())
+            })
+    }
+
     fn replaces_meaningful_content(&self, sm: &SourceMap) -> bool {
         sm.span_to_snippet(self.span)
             .map_or(!self.span.is_empty(), |snippet| !snippet.trim().is_empty())
+    }
+
+    /// Try to turn a replacement into an addition when the span that is being
+    /// overwritten matches either the prefix or suffix of the replacement.
+    fn trim_trivial_replacements(&mut self, sm: &SourceMap) {
+        if self.snippet.is_empty() {
+            return;
+        }
+        let Ok(snippet) = sm.span_to_snippet(self.span) else {
+            return;
+        };
+        if self.snippet.starts_with(&snippet) {
+            self.span = self.span.shrink_to_hi();
+            self.snippet = self.snippet[snippet.len()..].to_string();
+        } else if self.snippet.ends_with(&snippet) {
+            self.span = self.span.shrink_to_lo();
+            self.snippet = self.snippet[..self.snippet.len() - snippet.len()].to_string();
+        }
     }
 }
 
@@ -675,57 +707,44 @@ impl DiagCtxt {
         Self { inner: Lock::new(DiagCtxtInner::new(emitter)) }
     }
 
-    pub fn make_silent(
-        &self,
-        fallback_bundle: LazyFallbackBundle,
-        fatal_note: Option<String>,
-        emit_fatal_diagnostic: bool,
-    ) {
-        self.wrap_emitter(|old_dcx| {
-            Box::new(emitter::SilentEmitter {
-                fallback_bundle,
-                fatal_dcx: DiagCtxt { inner: Lock::new(old_dcx) },
-                fatal_note,
-                emit_fatal_diagnostic,
-            })
-        });
-    }
-
-    fn wrap_emitter<F>(&self, f: F)
-    where
-        F: FnOnce(DiagCtxtInner) -> Box<DynEmitter>,
-    {
-        // A empty type that implements `Emitter` so that a `DiagCtxtInner` can be constructed
-        // to temporarily swap in place of the real one, which will be used in constructing
-        // its replacement.
+    pub fn make_silent(&self, fatal_note: Option<String>, emit_fatal_diagnostic: bool) {
+        // An empty type that implements `Emitter` to temporarily swap in place of the real one,
+        // which will be used in constructing its replacement.
         struct FalseEmitter;
 
         impl Emitter for FalseEmitter {
             fn emit_diagnostic(&mut self, _: DiagInner, _: &Registry) {
-                unimplemented!("false emitter must only used during `wrap_emitter`")
+                unimplemented!("false emitter must only used during `make_silent`")
             }
 
             fn source_map(&self) -> Option<&SourceMap> {
-                unimplemented!("false emitter must only used during `wrap_emitter`")
+                unimplemented!("false emitter must only used during `make_silent`")
             }
         }
 
         impl translation::Translate for FalseEmitter {
             fn fluent_bundle(&self) -> Option<&FluentBundle> {
-                unimplemented!("false emitter must only used during `wrap_emitter`")
+                unimplemented!("false emitter must only used during `make_silent`")
             }
 
             fn fallback_fluent_bundle(&self) -> &FluentBundle {
-                unimplemented!("false emitter must only used during `wrap_emitter`")
+                unimplemented!("false emitter must only used during `make_silent`")
             }
         }
 
         let mut inner = self.inner.borrow_mut();
-        let mut prev_dcx = DiagCtxtInner::new(Box::new(FalseEmitter));
-        std::mem::swap(&mut *inner, &mut prev_dcx);
-        let new_emitter = f(prev_dcx);
-        let mut new_dcx = DiagCtxtInner::new(new_emitter);
-        std::mem::swap(&mut *inner, &mut new_dcx);
+        let mut prev_emitter = Box::new(FalseEmitter) as Box<dyn Emitter + DynSend>;
+        std::mem::swap(&mut inner.emitter, &mut prev_emitter);
+        let new_emitter = Box::new(emitter::SilentEmitter {
+            fatal_emitter: prev_emitter,
+            fatal_note,
+            emit_fatal_diagnostic,
+        });
+        inner.emitter = new_emitter;
+    }
+
+    pub fn set_emitter(&self, emitter: Box<dyn Emitter + DynSend>) {
+        self.inner.borrow_mut().emitter = emitter;
     }
 
     /// Translate `message` eagerly with `args` to `SubdiagMessage::Eager`.
@@ -1060,8 +1079,8 @@ impl<'a> DiagCtxtHandle<'a> {
     /// bad results, such as spurious/uninteresting additional errors -- when
     /// returning an error `Result` is difficult.
     pub fn abort_if_errors(&self) {
-        if self.has_errors().is_some() {
-            FatalError.raise();
+        if let Some(guar) = self.has_errors() {
+            guar.raise_fatal();
         }
     }
 
@@ -1717,7 +1736,7 @@ impl DiagCtxtInner {
         let bugs: Vec<_> =
             std::mem::take(&mut self.delayed_bugs).into_iter().map(|(b, _)| b).collect();
 
-        let backtrace = std::env::var_os("RUST_BACKTRACE").map_or(true, |x| &x != "0");
+        let backtrace = std::env::var_os("RUST_BACKTRACE").as_deref() != Some(OsStr::new("0"));
         let decorate = backtrace || self.ice_file.is_none();
         let mut out = self
             .ice_file
@@ -1995,18 +2014,6 @@ pub fn a_or_an(s: &str) -> &'static str {
         "an"
     } else {
         "a"
-    }
-}
-
-/// Grammatical tool for displaying messages to end users in a nice form.
-///
-/// Take a list ["a", "b", "c"] and output a display friendly version "a, b and c"
-pub fn display_list_with_comma_and<T: std::fmt::Display>(v: &[T]) -> String {
-    match v {
-        [] => "".to_string(),
-        [a] => a.to_string(),
-        [a, b] => format!("{a} and {b}"),
-        [a, v @ ..] => format!("{a}, {}", display_list_with_comma_and(v)),
     }
 }
 

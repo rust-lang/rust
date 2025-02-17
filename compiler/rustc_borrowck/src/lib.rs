@@ -60,6 +60,7 @@ use crate::diagnostics::{
 use crate::path_utils::*;
 use crate::place_ext::PlaceExt;
 use crate::places_conflict::{PlaceConflictBias, places_conflict};
+use crate::polonius::PoloniusDiagnosticsContext;
 use crate::polonius::legacy::{PoloniusLocationTable, PoloniusOutput};
 use crate::prefixes::PrefixSet;
 use crate::region_infer::RegionInferenceContext;
@@ -182,9 +183,6 @@ fn do_mir_borrowck<'tcx>(
     let location_table = PoloniusLocationTable::new(body);
 
     let move_data = MoveData::gather_moves(body, tcx, |_| true);
-    let promoted_move_data = promoted
-        .iter_enumerated()
-        .map(|(idx, body)| (idx, MoveData::gather_moves(body, tcx, |_| true)));
 
     let flow_inits = MaybeInitializedPlaces::new(tcx, body, &move_data)
         .iterate_to_fixpoint(tcx, body, Some("borrowck"))
@@ -201,7 +199,7 @@ fn do_mir_borrowck<'tcx>(
         polonius_output,
         opt_closure_req,
         nll_errors,
-        localized_outlives_constraints,
+        polonius_diagnostics,
     } = nll::compute_regions(
         &infcx,
         free_regions,
@@ -242,10 +240,14 @@ fn do_mir_borrowck<'tcx>(
         false
     };
 
-    for (idx, move_data) in promoted_move_data {
+    // While promoteds should mostly be correct by construction, we need to check them for
+    // invalid moves to detect moving out of arrays:`struct S; fn main() { &([S][0]); }`.
+    for promoted_body in &promoted {
         use rustc_middle::mir::visit::Visitor;
-
-        let promoted_body = &promoted[idx];
+        // This assumes that we won't use some of the fields of the `promoted_mbcx`
+        // when detecting and reporting move errors. While it would be nice to move
+        // this check out of `MirBorrowckCtxt`, actually doing so is far from trivial.
+        let move_data = MoveData::gather_moves(promoted_body, tcx, |_| true);
         let mut promoted_mbcx = MirBorrowckCtxt {
             infcx: &infcx,
             body: promoted_body,
@@ -269,10 +271,8 @@ fn do_mir_borrowck<'tcx>(
             polonius_output: None,
             move_errors: Vec::new(),
             diags_buffer,
+            polonius_diagnostics: polonius_diagnostics.as_ref(),
         };
-        MoveVisitor { ctxt: &mut promoted_mbcx }.visit_body(promoted_body);
-        promoted_mbcx.report_move_errors();
-
         struct MoveVisitor<'a, 'b, 'infcx, 'tcx> {
             ctxt: &'a mut MirBorrowckCtxt<'b, 'infcx, 'tcx>,
         }
@@ -284,6 +284,8 @@ fn do_mir_borrowck<'tcx>(
                 }
             }
         }
+        MoveVisitor { ctxt: &mut promoted_mbcx }.visit_body(promoted_body);
+        promoted_mbcx.report_move_errors();
     }
 
     let mut mbcx = MirBorrowckCtxt {
@@ -308,6 +310,7 @@ fn do_mir_borrowck<'tcx>(
         polonius_output,
         move_errors: Vec::new(),
         diags_buffer,
+        polonius_diagnostics: polonius_diagnostics.as_ref(),
     };
 
     // Compute and report region errors, if any.
@@ -329,7 +332,7 @@ fn do_mir_borrowck<'tcx>(
         body,
         &regioncx,
         &borrow_set,
-        localized_outlives_constraints,
+        polonius_diagnostics.as_ref(),
         &opt_closure_req,
     );
 
@@ -579,6 +582,9 @@ struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
 
     diags_buffer: &'a mut BorrowckDiagnosticsBuffer<'infcx, 'tcx>,
     move_errors: Vec<MoveError<'tcx>>,
+
+    /// When using `-Zpolonius=next`: the data used to compute errors and diagnostics.
+    polonius_diagnostics: Option<&'a PoloniusDiagnosticsContext>,
 }
 
 // Check that:
@@ -829,6 +835,7 @@ use self::ReadOrWrite::{Activation, Read, Reservation, Write};
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum ArtificialField {
+    ArrayLength,
     FakeBorrow,
 }
 
@@ -1283,15 +1290,18 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 );
             }
 
-            &Rvalue::RawPtr(mutability, place) => {
-                let access_kind = match mutability {
-                    Mutability::Mut => (
+            &Rvalue::RawPtr(kind, place) => {
+                let access_kind = match kind {
+                    RawPtrKind::Mut => (
                         Deep,
                         Write(WriteKind::MutableBorrow(BorrowKind::Mut {
                             kind: MutBorrowKind::Default,
                         })),
                     ),
-                    Mutability::Not => (Deep, Read(ReadKind::Borrow(BorrowKind::Shared))),
+                    RawPtrKind::Const => (Deep, Read(ReadKind::Borrow(BorrowKind::Shared))),
+                    RawPtrKind::FakeForPtrMetadata => {
+                        (Shallow(Some(ArtificialField::ArrayLength)), Read(ReadKind::Copy))
+                    }
                 };
 
                 self.access_place(
@@ -1338,11 +1348,16 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 );
             }
 
-            &Rvalue::Discriminant(place) => {
+            &(Rvalue::Len(place) | Rvalue::Discriminant(place)) => {
+                let af = match *rvalue {
+                    Rvalue::Len(..) => Some(ArtificialField::ArrayLength),
+                    Rvalue::Discriminant(..) => None,
+                    _ => unreachable!(),
+                };
                 self.access_place(
                     location,
                     (place, span),
-                    (Shallow(None), Read(ReadKind::Copy)),
+                    (Shallow(af), Read(ReadKind::Copy)),
                     LocalMutationIsAllowed::No,
                     state,
                 );
@@ -1388,6 +1403,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 for operand in operands {
                     self.consume_operand(location, (operand, span), state);
                 }
+            }
+
+            Rvalue::WrapUnsafeBinder(op, _) => {
+                self.consume_operand(location, (op, span), state);
             }
         }
     }
@@ -1649,9 +1668,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
             match elem {
                 ProjectionElem::Deref => match place_ty.ty.kind() {
                     ty::Ref(..) | ty::RawPtr(..) => {
-                        self.move_errors.push(MoveError::new(place, location, BorrowedContent {
-                            target_place: place_ref.project_deeper(&[elem], tcx),
-                        }));
+                        self.move_errors.push(MoveError::new(
+                            place,
+                            location,
+                            BorrowedContent {
+                                target_place: place_ref.project_deeper(&[elem], tcx),
+                            },
+                        ));
                         return;
                     }
                     ty::Adt(adt, _) => {
@@ -1761,7 +1784,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 // So it's safe to skip these.
                 ProjectionElem::OpaqueCast(_)
                 | ProjectionElem::Subtype(_)
-                | ProjectionElem::Downcast(_, _) => (),
+                | ProjectionElem::Downcast(_, _)
+                | ProjectionElem::UnwrapUnsafeBinder(_) => (),
             }
 
             place_ty = place_ty.projection_ty(tcx, elem);
@@ -1994,6 +2018,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 //
                 // FIXME: is this true even if P is an adt with a dtor?
                 { }
+
+                ProjectionElem::UnwrapUnsafeBinder(_) => {
+                    check_parent_of_field(self, location, place_base, span, state);
+                }
 
                 // assigning to (*P) requires P to be initialized
                 ProjectionElem::Deref => {
@@ -2375,7 +2403,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     | ProjectionElem::Subslice { .. }
                     | ProjectionElem::Subtype(..)
                     | ProjectionElem::OpaqueCast { .. }
-                    | ProjectionElem::Downcast(..) => {
+                    | ProjectionElem::Downcast(..)
+                    | ProjectionElem::UnwrapUnsafeBinder(_) => {
                         let upvar_field_projection = self.is_upvar_field_projection(place);
                         if let Some(field) = upvar_field_projection {
                             let upvar = &self.upvars[field.index()];

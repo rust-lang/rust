@@ -9,8 +9,9 @@ LL |     ApplePie = Delicious::Apple as isize | Delicious::PIE as isize,
    |
 help: there is a variant with a similar name
    |
-LL |     ApplePie = Delicious::Apple as isize | Delicious::Pie as isize,
-   |                                                       ~~~
+LL -     ApplePie = Delicious::Apple as isize | Delicious::PIE as isize,
+LL +     ApplePie = Delicious::Apple as isize | Delicious::Pie as isize,
+   |
 
 error: aborting due to 1 previous error
 

@@ -31,7 +31,7 @@ union Data<T, F> {
 /// ```
 /// use std::sync::LazyLock;
 ///
-/// // n.b. static items do not call [`Drop`] on program termination, so this won't be deallocated.
+/// // Note: static items do not call [`Drop`] on program termination, so this won't be deallocated.
 /// // this is fine, as the OS can deallocate the terminated program faster than we can free memory
 /// // but tools like valgrind might report "memory leaks" as it isn't obvious this is intentional.
 /// static DEEP_THOUGHT: LazyLock<String> = LazyLock::new(|| {
@@ -350,6 +350,3 @@ unsafe impl<T: Sync + Send, F: Send> Sync for LazyLock<T, F> {}
 impl<T: RefUnwindSafe + UnwindSafe, F: UnwindSafe> RefUnwindSafe for LazyLock<T, F> {}
 #[stable(feature = "lazy_cell", since = "1.80.0")]
 impl<T: UnwindSafe, F: UnwindSafe> UnwindSafe for LazyLock<T, F> {}
-
-#[cfg(test)]
-mod tests;

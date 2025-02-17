@@ -30,7 +30,7 @@ pub(super) fn check<'tcx>(
         && let Body {
             params: [p],
             value: body_expr,
-        } = cx.tcx.hir().body(c.body)
+        } = cx.tcx.hir_body(c.body)
         && let PatKind::Tuple([key_pat, val_pat], _) = p.pat.kind
         && let (replacement_kind, annotation, bound_ident) = match (&key_pat.kind, &val_pat.kind) {
             (key, PatKind::Binding(ann, _, value, _)) if pat_is_wild(cx, key, m_arg) => ("value", ann, value),

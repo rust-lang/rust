@@ -136,15 +136,13 @@ pub(crate) fn handle_memory_usage(state: &mut GlobalState, _: ()) -> anyhow::Res
     Ok(out)
 }
 
-pub(crate) fn handle_syntax_tree(
+pub(crate) fn handle_view_syntax_tree(
     snap: GlobalStateSnapshot,
-    params: lsp_ext::SyntaxTreeParams,
+    params: lsp_ext::ViewSyntaxTreeParams,
 ) -> anyhow::Result<String> {
-    let _p = tracing::info_span!("handle_syntax_tree").entered();
+    let _p = tracing::info_span!("handle_view_syntax_tree").entered();
     let id = from_proto::file_id(&snap, &params.text_document.uri)?;
-    let line_index = snap.file_line_index(id)?;
-    let text_range = params.range.and_then(|r| from_proto::text_range(&line_index, r).ok());
-    let res = snap.analysis.syntax_tree(id, text_range)?;
+    let res = snap.analysis.view_syntax_tree(id)?;
     Ok(res)
 }
 
@@ -436,29 +434,24 @@ pub(crate) fn handle_on_type_formatting(
     params: lsp_types::DocumentOnTypeFormattingParams,
 ) -> anyhow::Result<Option<Vec<lsp_ext::SnippetTextEdit>>> {
     let _p = tracing::info_span!("handle_on_type_formatting").entered();
+    let char_typed = params.ch.chars().next().unwrap_or('\0');
+    if !snap.config.typing_trigger_chars().contains(char_typed) {
+        return Ok(None);
+    }
+
     let mut position = from_proto::file_position(&snap, params.text_document_position)?;
     let line_index = snap.file_line_index(position.file_id)?;
 
     // in `ide`, the `on_type` invariant is that
     // `text.char_at(position) == typed_char`.
     position.offset -= TextSize::of('.');
-    let char_typed = params.ch.chars().next().unwrap_or('\0');
 
     let text = snap.analysis.file_text(position.file_id)?;
     if stdx::never!(!text[usize::from(position.offset)..].starts_with(char_typed)) {
         return Ok(None);
     }
 
-    // We have an assist that inserts ` ` after typing `->` in `fn foo() ->{`,
-    // but it requires precise cursor positioning to work, and one can't
-    // position the cursor with on_type formatting. So, let's just toggle this
-    // feature off here, hoping that we'll enable it one day, 😿.
-    if char_typed == '>' {
-        return Ok(None);
-    }
-    let chars_to_exclude = snap.config.typing_exclude_chars();
-
-    let edit = snap.analysis.on_char_typed(position, char_typed, chars_to_exclude)?;
+    let edit = snap.analysis.on_char_typed(position, char_typed)?;
     let edit = match edit {
         Some(it) => it,
         None => return Ok(None),
@@ -1161,10 +1154,7 @@ pub(crate) fn handle_completion_resolve(
             .resolve_completion_edits(
                 &forced_resolve_completions_config,
                 position,
-                resolve_data
-                    .imports
-                    .into_iter()
-                    .map(|import| (import.full_import_path, import.imported_name)),
+                resolve_data.imports.into_iter().map(|import| import.full_import_path),
             )?
             .into_iter()
             .flat_map(|edit| edit.into_iter().map(|indel| to_proto::text_edit(&line_index, indel)))
@@ -2328,18 +2318,21 @@ fn run_rustfmt(
         }
     };
 
-    tracing::debug!(?command, "created format command");
+    let output = {
+        let _p = tracing::info_span!("rustfmt", ?command).entered();
 
-    let mut rustfmt = command
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .context(format!("Failed to spawn {command:?}"))?;
+        let mut rustfmt = command
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .context(format!("Failed to spawn {command:?}"))?;
 
-    rustfmt.stdin.as_mut().unwrap().write_all(file.as_bytes())?;
+        rustfmt.stdin.as_mut().unwrap().write_all(file.as_bytes())?;
 
-    let output = rustfmt.wait_with_output()?;
+        rustfmt.wait_with_output()?
+    };
+
     let captured_stdout = String::from_utf8(output.stdout)?;
     let captured_stderr = String::from_utf8(output.stderr).unwrap_or_default();
 

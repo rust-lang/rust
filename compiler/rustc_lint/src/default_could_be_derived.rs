@@ -76,10 +76,8 @@ impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
 
         // We now know we have a manually written definition of a `<Type as Default>::default()`.
 
-        let hir = cx.tcx.hir();
-
         let type_def_id = def.did();
-        let body = hir.body(body_id);
+        let body = cx.tcx.hir_body(body_id);
 
         // FIXME: evaluate bodies with statements and evaluate bindings to see if they would be
         // derivable.
@@ -92,7 +90,7 @@ impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
         // Keep a mapping of field name to `hir::FieldDef` for every field in the type. We'll use
         // these to check for things like checking whether it has a default or using its span for
         // suggestions.
-        let orig_fields = match hir.get_if_local(type_def_id) {
+        let orig_fields = match cx.tcx.hir_get_if_local(type_def_id) {
             Some(hir::Node::Item(hir::Item {
                 kind:
                     hir::ItemKind::Struct(hir::VariantData::Struct { fields, recovered: _ }, _generics),
@@ -183,7 +181,7 @@ fn mk_lint(
     if removed_all_fields {
         let msg = "to avoid divergence in behavior between `Struct { .. }` and \
                    `<Struct as Default>::default()`, derive the `Default`";
-        if let Some(hir::Node::Item(impl_)) = tcx.hir().get_if_local(impl_def_id) {
+        if let Some(hir::Node::Item(impl_)) = tcx.hir_get_if_local(impl_def_id) {
             diag.multipart_suggestion_verbose(
                 msg,
                 vec![

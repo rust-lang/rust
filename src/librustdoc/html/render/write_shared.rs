@@ -44,7 +44,6 @@ use crate::docfs::PathError;
 use crate::error::Error;
 use crate::formats::Impl;
 use crate::formats::item_type::ItemType;
-use crate::html::format::Buffer;
 use crate::html::layout;
 use crate::html::render::ordered_json::{EscapedJson, OrderedJson};
 use crate::html::render::search_index::{SerializedSearchIndex, build_index};
@@ -207,7 +206,9 @@ fn write_static_files(
     if opt.emit.is_empty() || opt.emit.contains(&EmitType::Toolchain) {
         static_files::for_each(|f: &static_files::StaticFile| {
             let filename = static_dir.join(f.output_filename());
-            fs::write(&filename, f.minified()).map_err(|e| PathError::new(e, &filename))
+            let contents: &[u8] =
+                if opt.disable_minification { f.src_bytes } else { f.minified_bytes };
+            fs::write(&filename, contents).map_err(|e| PathError::new(e, &filename))
         })?;
     }
 
@@ -620,7 +621,6 @@ impl TypeAliasPart {
                     // to make that functionality work here, it needs to be called with
                     // each type alias, and if it gives a different result, split the impl
                     for &(type_alias_fqp, type_alias_item) in type_aliases {
-                        let mut buf = Buffer::html();
                         cx.id_map.borrow_mut().clear();
                         cx.deref_id_map.borrow_mut().clear();
                         let target_did = impl_
@@ -636,23 +636,26 @@ impl TypeAliasPart {
                         } else {
                             AssocItemLink::Anchor(None)
                         };
-                        super::render_impl(
-                            &mut buf,
-                            cx,
-                            impl_,
-                            type_alias_item,
-                            assoc_link,
-                            RenderMode::Normal,
-                            None,
-                            &[],
-                            ImplRenderingParameters {
-                                show_def_docs: true,
-                                show_default_items: true,
-                                show_non_assoc_items: true,
-                                toggle_open_by_default: true,
-                            },
-                        );
-                        let text = buf.into_inner();
+                        let text = {
+                            let mut buf = String::new();
+                            super::render_impl(
+                                &mut buf,
+                                cx,
+                                impl_,
+                                type_alias_item,
+                                assoc_link,
+                                RenderMode::Normal,
+                                None,
+                                &[],
+                                ImplRenderingParameters {
+                                    show_def_docs: true,
+                                    show_default_items: true,
+                                    show_non_assoc_items: true,
+                                    toggle_open_by_default: true,
+                                },
+                            );
+                            buf
+                        };
                         let type_alias_fqp = (*type_alias_fqp).iter().join("::");
                         if Some(&text) == ret.last().map(|s: &AliasSerializableImpl| &s.text) {
                             ret.last_mut()

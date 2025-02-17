@@ -48,7 +48,7 @@ pub(crate) fn get_ptr_and_method_ref<'tcx>(
 ) -> (Pointer, Value) {
     let (ptr, vtable) = 'block: {
         if let BackendRepr::Scalar(_) = arg.layout().backend_repr {
-            while !arg.layout().ty.is_unsafe_ptr() && !arg.layout().ty.is_ref() {
+            while !arg.layout().ty.is_raw_ptr() && !arg.layout().ty.is_ref() {
                 let (idx, _) = arg
                     .layout()
                     .non_1zst_field(fx)
@@ -90,7 +90,7 @@ pub(crate) fn get_ptr_and_method_ref<'tcx>(
 pub(crate) fn get_vtable<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     ty: Ty<'tcx>,
-    trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
+    trait_ref: Option<ty::ExistentialTraitRef<'tcx>>,
 ) -> Value {
     let data_id = data_id_for_vtable(fx.tcx, &mut fx.constants_cx, fx.module, ty, trait_ref);
     let local_data_id = fx.module.declare_data_in_func(data_id, fx.bcx.func);

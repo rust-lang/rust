@@ -108,19 +108,18 @@ impl Request for RebuildProcMacros {
     const METHOD: &'static str = "rust-analyzer/rebuildProcMacros";
 }
 
-pub enum SyntaxTree {}
+pub enum ViewSyntaxTree {}
 
-impl Request for SyntaxTree {
-    type Params = SyntaxTreeParams;
+impl Request for ViewSyntaxTree {
+    type Params = ViewSyntaxTreeParams;
     type Result = String;
-    const METHOD: &'static str = "rust-analyzer/syntaxTree";
+    const METHOD: &'static str = "rust-analyzer/viewSyntaxTree";
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
-pub struct SyntaxTreeParams {
+pub struct ViewSyntaxTreeParams {
     pub text_document: TextDocumentIdentifier,
-    pub range: Option<Range>,
 }
 
 pub enum ViewHir {}
@@ -851,7 +850,6 @@ pub struct InlayHintResolveData {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CompletionImport {
     pub full_import_path: String,
-    pub imported_name: String,
 }
 
 #[derive(Debug, Deserialize, Default)]

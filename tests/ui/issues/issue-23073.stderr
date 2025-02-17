@@ -6,8 +6,9 @@ LL |     type FooT = <<Self as Bar>::Foo>::T;
    |
 help: if there were a trait named `Example` with associated type `T` implemented for `<Self as Bar>::Foo`, you could use the fully-qualified path
    |
-LL |     type FooT = <<Self as Bar>::Foo as Example>::T;
-   |                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     type FooT = <<Self as Bar>::Foo>::T;
+LL +     type FooT = <<Self as Bar>::Foo as Example>::T;
+   |
 
 error: aborting due to 1 previous error
 

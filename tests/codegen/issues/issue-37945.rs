@@ -1,4 +1,4 @@
-//@ compile-flags: -O -Zmerge-functions=disabled
+//@ compile-flags: -Copt-level=3 -Zmerge-functions=disabled
 //@ ignore-32bit LLVM has a bug with them
 
 // Check that LLVM understands that `Iter` pointer is not null. Issue #37945.

@@ -11,10 +11,9 @@ use hir::def::DefKind;
 use hir::pat_util::EnumerateAndAdjustIterator as _;
 use rustc_abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, Res};
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::{HirId, PatKind};
+use rustc_hir::{self as hir, HirId, PatExpr, PatExprKind, PatKind};
 use rustc_lint::LateContext;
 use rustc_middle::hir::place::ProjectionKind;
 // Export these here so that Clippy can use them.
@@ -564,11 +563,11 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                         // FIXME(never_patterns): does this do what I expect?
                         needs_to_be_read = true;
                     }
-                    PatKind::Path(qpath) => {
+                    PatKind::Expr(PatExpr { kind: PatExprKind::Path(qpath), hir_id, span }) => {
                         // A `Path` pattern is just a name like `Foo`. This is either a
                         // named constant or else it refers to an ADT variant
 
-                        let res = self.cx.typeck_results().qpath_res(qpath, pat.hir_id);
+                        let res = self.cx.typeck_results().qpath_res(qpath, *hir_id);
                         match res {
                             Res::Def(DefKind::Const, _) | Res::Def(DefKind::AssocConst, _) => {
                                 // Named constants have to be equated with the value
@@ -581,7 +580,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                                 // Otherwise, this is a struct/enum variant, and so it's
                                 // only a read if we need to read the discriminant.
                                 needs_to_be_read |=
-                                    self.is_multivariant_adt(place.place.ty(), pat.span);
+                                    self.is_multivariant_adt(place.place.ty(), *span);
                             }
                         }
                     }
@@ -893,57 +892,75 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
 
         let tcx = self.cx.tcx();
         self.cat_pattern(discr_place.clone(), pat, &mut |place, pat| {
-            if let PatKind::Binding(_, canonical_id, ..) = pat.kind {
-                debug!("walk_pat: binding place={:?} pat={:?}", place, pat);
-                if let Some(bm) =
-                    self.cx.typeck_results().extract_binding_mode(tcx.sess, pat.hir_id, pat.span)
-                {
-                    debug!("walk_pat: pat.hir_id={:?} bm={:?}", pat.hir_id, bm);
+            match pat.kind {
+                PatKind::Binding(_, canonical_id, ..) => {
+                    debug!("walk_pat: binding place={:?} pat={:?}", place, pat);
+                    if let Some(bm) = self
+                        .cx
+                        .typeck_results()
+                        .extract_binding_mode(tcx.sess, pat.hir_id, pat.span)
+                    {
+                        debug!("walk_pat: pat.hir_id={:?} bm={:?}", pat.hir_id, bm);
 
-                    // pat_ty: the type of the binding being produced.
-                    let pat_ty = self.node_ty(pat.hir_id)?;
-                    debug!("walk_pat: pat_ty={:?}", pat_ty);
+                        // pat_ty: the type of the binding being produced.
+                        let pat_ty = self.node_ty(pat.hir_id)?;
+                        debug!("walk_pat: pat_ty={:?}", pat_ty);
 
-                    let def = Res::Local(canonical_id);
-                    if let Ok(ref binding_place) = self.cat_res(pat.hir_id, pat.span, pat_ty, def) {
-                        self.delegate.borrow_mut().bind(binding_place, binding_place.hir_id);
-                    }
-
-                    // Subtle: MIR desugaring introduces immutable borrows for each pattern
-                    // binding when lowering pattern guards to ensure that the guard does not
-                    // modify the scrutinee.
-                    if has_guard {
-                        self.delegate.borrow_mut().borrow(
-                            place,
-                            discr_place.hir_id,
-                            BorrowKind::Immutable,
-                        );
-                    }
-
-                    // It is also a borrow or copy/move of the value being matched.
-                    // In a cases of pattern like `let pat = upvar`, don't use the span
-                    // of the pattern, as this just looks confusing, instead use the span
-                    // of the discriminant.
-                    match bm.0 {
-                        hir::ByRef::Yes(m) => {
-                            let bk = ty::BorrowKind::from_mutbl(m);
-                            self.delegate.borrow_mut().borrow(place, discr_place.hir_id, bk);
+                        let def = Res::Local(canonical_id);
+                        if let Ok(ref binding_place) =
+                            self.cat_res(pat.hir_id, pat.span, pat_ty, def)
+                        {
+                            self.delegate.borrow_mut().bind(binding_place, binding_place.hir_id);
                         }
-                        hir::ByRef::No => {
-                            debug!("walk_pat binding consuming pat");
-                            self.consume_or_copy(place, discr_place.hir_id);
+
+                        // Subtle: MIR desugaring introduces immutable borrows for each pattern
+                        // binding when lowering pattern guards to ensure that the guard does not
+                        // modify the scrutinee.
+                        if has_guard {
+                            self.delegate.borrow_mut().borrow(
+                                place,
+                                discr_place.hir_id,
+                                BorrowKind::Immutable,
+                            );
+                        }
+
+                        // It is also a borrow or copy/move of the value being matched.
+                        // In a cases of pattern like `let pat = upvar`, don't use the span
+                        // of the pattern, as this just looks confusing, instead use the span
+                        // of the discriminant.
+                        match bm.0 {
+                            hir::ByRef::Yes(m) => {
+                                let bk = ty::BorrowKind::from_mutbl(m);
+                                self.delegate.borrow_mut().borrow(place, discr_place.hir_id, bk);
+                            }
+                            hir::ByRef::No => {
+                                debug!("walk_pat binding consuming pat");
+                                self.consume_or_copy(place, discr_place.hir_id);
+                            }
                         }
                     }
                 }
-            } else if let PatKind::Deref(subpattern) = pat.kind {
-                // A deref pattern is a bit special: the binding mode of its inner bindings
-                // determines whether to borrow *at the level of the deref pattern* rather than
-                // borrowing the bound place (since that inner place is inside the temporary that
-                // stores the result of calling `deref()`/`deref_mut()` so can't be captured).
-                let mutable = self.cx.typeck_results().pat_has_ref_mut_binding(subpattern);
-                let mutability = if mutable { hir::Mutability::Mut } else { hir::Mutability::Not };
-                let bk = ty::BorrowKind::from_mutbl(mutability);
-                self.delegate.borrow_mut().borrow(place, discr_place.hir_id, bk);
+                PatKind::Deref(subpattern) => {
+                    // A deref pattern is a bit special: the binding mode of its inner bindings
+                    // determines whether to borrow *at the level of the deref pattern* rather than
+                    // borrowing the bound place (since that inner place is inside the temporary that
+                    // stores the result of calling `deref()`/`deref_mut()` so can't be captured).
+                    let mutable = self.cx.typeck_results().pat_has_ref_mut_binding(subpattern);
+                    let mutability =
+                        if mutable { hir::Mutability::Mut } else { hir::Mutability::Not };
+                    let bk = ty::BorrowKind::from_mutbl(mutability);
+                    self.delegate.borrow_mut().borrow(place, discr_place.hir_id, bk);
+                }
+                PatKind::Never => {
+                    // A `!` pattern always counts as an immutable read of the discriminant,
+                    // even in an irrefutable pattern.
+                    self.delegate.borrow_mut().borrow(
+                        place,
+                        discr_place.hir_id,
+                        BorrowKind::Immutable,
+                    );
+                }
+                _ => {}
             }
 
             Ok(())
@@ -1801,8 +1818,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 }
             }
 
-            PatKind::Path(_)
-            | PatKind::Binding(.., None)
+            PatKind::Binding(.., None)
             | PatKind::Expr(..)
             | PatKind::Range(..)
             | PatKind::Never

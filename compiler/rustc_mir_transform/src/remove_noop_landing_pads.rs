@@ -1,9 +1,10 @@
 use rustc_index::bit_set::DenseBitSet;
-use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use rustc_target::spec::PanicStrategy;
 use tracing::debug;
+
+use crate::patch::MirPatch;
 
 /// A pass that removes noop landing pads and replaces jumps to them with
 /// `UnwindAction::Continue`. This is important because otherwise LLVM generates
@@ -73,6 +74,10 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveNoopLandingPads {
         }
 
         debug!("removed {:?} jumps and {:?} landing pads", jumps_folded, landing_pads_removed);
+    }
+
+    fn is_required(&self) -> bool {
+        true
     }
 }
 

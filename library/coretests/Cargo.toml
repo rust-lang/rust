@@ -1,0 +1,27 @@
+[package]
+name = "coretests"
+version = "0.0.0"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/rust-lang/rust.git"
+description = "Tests for the Rust Core Library"
+autotests = false
+autobenches = false
+edition = "2024"
+
+[lib]
+path = "lib.rs"
+test = false
+bench = false
+
+[[test]]
+name = "coretests"
+path = "tests/lib.rs"
+
+[[bench]]
+name = "corebenches"
+path = "benches/lib.rs"
+test = true
+
+[dev-dependencies]
+rand = { version = "0.9.0", default-features = false }
+rand_xorshift = { version = "0.4.0", default-features = false }

@@ -32,6 +32,8 @@
 #![allow(internal_features)]
 #![deny(ffi_unwind_calls)]
 #![warn(rustdoc::unescaped_backticks)]
+#![warn(unreachable_pub)]
+#![deny(unsafe_op_in_unsafe_fn)]
 
 #[unstable(feature = "proc_macro_internals", issue = "27812")]
 #[doc(hidden)]

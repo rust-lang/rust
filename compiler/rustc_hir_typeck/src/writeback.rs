@@ -6,9 +6,8 @@ use std::mem;
 
 use rustc_data_structures::unord::ExtendUnord;
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir as hir;
-use rustc_hir::HirId;
-use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::intravisit::{self, InferKind, Visitor};
+use rustc_hir::{self as hir, AmbigArg, HirId};
 use rustc_middle::span_bug;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCoercion};
@@ -250,7 +249,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     fn visit_const_block(&mut self, span: Span, anon_const: &hir::ConstBlock) {
         self.visit_node_id(span, anon_const.hir_id);
 
-        let body = self.tcx().hir().body(anon_const.body);
+        let body = self.tcx().hir_body(anon_const.body);
         self.visit_body(body);
     }
 }
@@ -267,7 +266,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
     fn visit_expr(&mut self, e: &'tcx hir::Expr<'tcx>) {
         match e.kind {
             hir::ExprKind::Closure(&hir::Closure { body, .. }) => {
-                let body = self.fcx.tcx.hir().body(body);
+                let body = self.fcx.tcx.hir_body(body);
                 for param in body.params {
                     self.visit_node_id(e.span, param.hir_id);
                 }
@@ -354,7 +353,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
         self.write_ty_to_typeck_results(l.hir_id, var_ty);
     }
 
-    fn visit_ty(&mut self, hir_ty: &'tcx hir::Ty<'tcx>) {
+    fn visit_ty(&mut self, hir_ty: &'tcx hir::Ty<'tcx, AmbigArg>) {
         intravisit::walk_ty(self, hir_ty);
         // If there are type checking errors, Type privacy pass will stop,
         // so we may not get the type from hid_id, see #104513
@@ -364,12 +363,20 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
         }
     }
 
-    fn visit_infer(&mut self, inf: &'tcx hir::InferArg) {
-        intravisit::walk_inf(self, inf);
-        // Ignore cases where the inference is a const.
-        if let Some(ty) = self.fcx.node_ty_opt(inf.hir_id) {
-            let ty = self.resolve(ty, &inf.span);
-            self.write_ty_to_typeck_results(inf.hir_id, ty);
+    fn visit_infer(
+        &mut self,
+        inf_id: HirId,
+        inf_span: Span,
+        _kind: InferKind<'cx>,
+    ) -> Self::Result {
+        self.visit_id(inf_id);
+
+        // We don't currently write inference results of const infer vars to
+        // the typeck results as there is not yet any part of the compiler that
+        // needs this information.
+        if let Some(ty) = self.fcx.node_ty_opt(inf_id) {
+            let ty = self.resolve(ty, &inf_span);
+            self.write_ty_to_typeck_results(inf_id, ty);
         }
     }
 }

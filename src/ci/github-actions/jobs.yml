@@ -5,22 +5,22 @@ runners:
     env: { }
 
   - &job-linux-4c
-    os: ubuntu-22.04
+    os: ubuntu-24.04
     # Free some disk space to avoid running out of space during the build.
     free_disk: true
     <<: *base-job
 
   # Large runner used mainly for its bigger disk capacity
   - &job-linux-4c-largedisk
-    os: ubuntu-22.04-4core-16gb
+    os: ubuntu-24.04-4core-16gb
     <<: *base-job
 
   - &job-linux-8c
-    os: ubuntu-22.04-8core-32gb
+    os: ubuntu-24.04-8core-32gb
     <<: *base-job
 
   - &job-linux-16c
-    os: ubuntu-22.04-16core-64gb
+    os: ubuntu-24.04-16core-64gb
     <<: *base-job
 
   - &job-macos-xl
@@ -35,22 +35,31 @@ runners:
     os: windows-2022
     <<: *base-job
 
+  - &job-windows-25
+    os: windows-2025
+    <<: *base-job
+
   - &job-windows-8c
     os: windows-2022-8core-32gb
     <<: *base-job
 
-  - &job-windows-16c
-    os: windows-2022-16core-64gb
+  - &job-windows-25-8c
+    os: windows-2025-8core-32gb
     <<: *base-job
 
   - &job-aarch64-linux
-    os: ubuntu-22.04-arm64-8core-32gb
+    # Free some disk space to avoid running out of space during the build.
+    free_disk: true
+    os: ubuntu-24.04-arm
 
+  - &job-aarch64-linux-8c
+    os: ubuntu-22.04-arm64-8core-32gb
 envs:
   env-x86_64-apple-tests: &env-x86_64-apple-tests
     SCRIPT: ./x.py --stage 2 test --skip tests/ui --skip tests/rustdoc -- --exact
     RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
     RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+    # Ensure that host tooling is tested on our minimum supported macOS version.
     MACOSX_DEPLOYMENT_TARGET: 10.12
     MACOSX_STD_DEPLOYMENT_TARGET: 10.12
     SELECT_XCODE: /Applications/Xcode_15.2.app
@@ -78,7 +87,7 @@ envs:
     #   builds)
     # - not running `opt-dist`'s post-optimization smoke tests on the resulting toolchain
     #
-    # If you *want* these to happen however, temporarily uncomment it before triggering a try build.
+    # If you *want* these to happen however, temporarily comment it before triggering a try build.
     DIST_TRY_BUILD: 1
 
   auto:
@@ -138,7 +147,7 @@ auto:
   - name: dist-aarch64-linux
     env:
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-aarch64-linux
+    <<: *job-aarch64-linux-8c
 
   - name: dist-android
     <<: *job-linux-4c
@@ -285,9 +294,7 @@ auto:
     <<: *job-linux-4c
 
   - name: x86_64-gnu-debug
-    # This seems to be needed because a full stage 2 build + run-make tests
-    # overwhelms the storage capacity of the standard 4c runner.
-    <<: *job-linux-4c-largedisk
+    <<: *job-linux-4c
 
   - name: x86_64-gnu-distcheck
     <<: *job-linux-8c
@@ -362,7 +369,9 @@ auto:
       SCRIPT: ./x.py dist bootstrap --include-default-paths --host=x86_64-apple-darwin --target=x86_64-apple-darwin
       RUST_CONFIGURE_ARGS: --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set rust.lto=thin --set rust.codegen-units=1
       RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+      # Ensure that host tooling is built to support our minimum support macOS version.
       MACOSX_DEPLOYMENT_TARGET: 10.12
+      MACOSX_STD_DEPLOYMENT_TARGET: 10.12
       SELECT_XCODE: /Applications/Xcode_15.2.app
       NO_LLVM_ASSERTIONS: 1
       NO_DEBUG_ASSERTIONS: 1
@@ -378,7 +387,10 @@ auto:
       # https://github.com/rust-lang/rust/issues/129069
       RUST_CONFIGURE_ARGS: --enable-sanitizers --enable-profiler --set rust.jemalloc --set target.aarch64-apple-ios-macabi.sanitizers=false --set target.x86_64-apple-ios-macabi.sanitizers=false
       RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+      # Ensure that host tooling is built to support our minimum support macOS version.
+      # FIXME(madsmtm): This might be redundant, as we're not building host tooling here (?)
       MACOSX_DEPLOYMENT_TARGET: 10.12
+      MACOSX_STD_DEPLOYMENT_TARGET: 10.12
       SELECT_XCODE: /Applications/Xcode_15.2.app
       NO_LLVM_ASSERTIONS: 1
       NO_DEBUG_ASSERTIONS: 1
@@ -396,7 +408,6 @@ auto:
       <<: *env-x86_64-apple-tests
     <<: *job-macos-xl
 
-  # This target only needs to support 11.0 and up as nothing else supports the hardware
   - name: dist-aarch64-apple
     env:
       SCRIPT: ./x.py dist bootstrap --include-default-paths --host=aarch64-apple-darwin --target=aarch64-apple-darwin
@@ -411,6 +422,8 @@ auto:
       RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
       SELECT_XCODE: /Applications/Xcode_15.4.app
       USE_XCODE_CLANG: 1
+      # Aarch64 tooling only needs to support macOS 11.0 and up as nothing else
+      # supports the hardware.
       MACOSX_DEPLOYMENT_TARGET: 11.0
       MACOSX_STD_DEPLOYMENT_TARGET: 11.0
       NO_LLVM_ASSERTIONS: 1
@@ -420,7 +433,6 @@ auto:
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-macos-m1
 
-  # This target only needs to support 11.0 and up as nothing else supports the hardware
   - name: aarch64-apple
     env:
       SCRIPT: ./x.py --stage 2 test --host=aarch64-apple-darwin --target=aarch64-apple-darwin
@@ -431,6 +443,8 @@ auto:
       RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
       SELECT_XCODE: /Applications/Xcode_15.4.app
       USE_XCODE_CLANG: 1
+      # Aarch64 tooling only needs to support macOS 11.0 and up as nothing else
+      # supports the hardware, so only need to test it there.
       MACOSX_DEPLOYMENT_TARGET: 11.0
       MACOSX_STD_DEPLOYMENT_TARGET: 11.0
       NO_LLVM_ASSERTIONS: 1
@@ -442,17 +456,31 @@ auto:
   #  Windows Builders  #
   ######################
 
-  - name: x86_64-msvc
+  # x86_64-msvc is split into two jobs to run tests in parallel.
+  - name: x86_64-msvc-1
     env:
-      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
-      SCRIPT: make ci-msvc
-    <<: *job-windows-8c
+      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-sanitizers --enable-profiler
+      SCRIPT: make ci-msvc-py
+    <<: *job-windows-25
 
-  - name: i686-msvc
+  - name: x86_64-msvc-2
     env:
-      RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
-      SCRIPT: make ci-msvc
-    <<: *job-windows-8c
+      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-sanitizers --enable-profiler
+      SCRIPT: make ci-msvc-ps1
+    <<: *job-windows-25
+
+  # i686-msvc is split into two jobs to run tests in parallel.
+  - name: i686-msvc-1
+    env:
+      RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc  --enable-sanitizers
+      SCRIPT: make ci-msvc-py
+    <<: *job-windows
+
+  - name: i686-msvc-2
+    env:
+      RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc --enable-sanitizers
+      SCRIPT: make ci-msvc-ps1
+    <<: *job-windows
 
   # x86_64-msvc-ext is split into multiple jobs to run tests in parallel.
   - name: x86_64-msvc-ext1
@@ -500,22 +528,37 @@ auto:
   # came from the mingw-w64 SourceForge download site. Unfortunately
   # SourceForge is notoriously flaky, so we mirror it on our own infrastructure.
 
-  - name: i686-mingw
+  # i686-mingw is split into three jobs to run tests in parallel.
+  - name: i686-mingw-1
     env:
       RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
-      SCRIPT: make ci-mingw
-      # We are intentionally allowing an old toolchain on this builder (and that's
-      # incompatible with LLVM downloads today).
+      SCRIPT: make ci-mingw-x-1
+      # There is no dist-i686-mingw-alt, so there is no prebuilt LLVM with assertions
       NO_DOWNLOAD_CI_LLVM: 1
-    <<: *job-windows-8c
+    <<: *job-windows-25
+
+  - name: i686-mingw-2
+    env:
+      RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
+      SCRIPT: make ci-mingw-x-2
+      # There is no dist-i686-mingw-alt, so there is no prebuilt LLVM with assertions
+      NO_DOWNLOAD_CI_LLVM: 1
+    <<: *job-windows-25
+
+  - name: i686-mingw-3
+    env:
+      RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
+      SCRIPT: make ci-mingw-bootstrap
+      # There is no dist-i686-mingw-alt, so there is no prebuilt LLVM with assertions
+      NO_DOWNLOAD_CI_LLVM: 1
+    <<: *job-windows-25
 
   # x86_64-mingw is split into two jobs to run tests in parallel.
   - name: x86_64-mingw-1
     env:
       SCRIPT: make ci-mingw-x
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
-      # We are intentionally allowing an old toolchain on this builder (and that's
-      # incompatible with LLVM downloads today).
+      # There is no dist-x86_64-mingw-alt, so there is no prebuilt LLVM with assertions
       NO_DOWNLOAD_CI_LLVM: 1
     <<: *job-windows
 
@@ -523,8 +566,7 @@ auto:
     env:
       SCRIPT: make ci-mingw-bootstrap
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
-      # We are intentionally allowing an old toolchain on this builder (and that's
-      # incompatible with LLVM downloads today).
+      # There is no dist-x86_64-mingw-alt, so there is no prebuilt LLVM with assertions
       NO_DOWNLOAD_CI_LLVM: 1
     <<: *job-windows
 
@@ -540,7 +582,7 @@ auto:
       SCRIPT: python x.py build --set rust.debug=true opt-dist && PGO_HOST=x86_64-pc-windows-msvc ./build/x86_64-pc-windows-msvc/stage0-tools-bin/opt-dist windows-ci -- python x.py dist bootstrap --include-default-paths
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-windows-8c
+    <<: *job-windows-25-8c
 
   - name: dist-i686-msvc
     env:
@@ -572,9 +614,6 @@ auto:
       RUST_CONFIGURE_ARGS: >-
         --build=i686-pc-windows-gnu
         --enable-full-tools
-      # We are intentionally allowing an old toolchain on this builder (and that's
-      # incompatible with LLVM downloads today).
-      NO_DOWNLOAD_CI_LLVM: 1
       SCRIPT: python x.py dist bootstrap --include-default-paths
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
@@ -586,9 +625,6 @@ auto:
       RUST_CONFIGURE_ARGS: >-
         --build=x86_64-pc-windows-gnu
         --enable-full-tools
-      # We are intentionally allowing an old toolchain on this builder (and that's
-      # incompatible with LLVM downloads today).
-      NO_DOWNLOAD_CI_LLVM: 1
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-windows

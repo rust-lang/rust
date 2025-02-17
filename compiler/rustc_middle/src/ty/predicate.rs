@@ -476,16 +476,6 @@ impl<'tcx> Clause<'tcx> {
     }
 }
 
-pub trait ToPolyTraitRef<'tcx> {
-    fn to_poly_trait_ref(&self) -> PolyTraitRef<'tcx>;
-}
-
-impl<'tcx> ToPolyTraitRef<'tcx> for PolyTraitPredicate<'tcx> {
-    fn to_poly_trait_ref(&self) -> PolyTraitRef<'tcx> {
-        self.map_bound_ref(|trait_pred| trait_pred.trait_ref)
-    }
-}
-
 impl<'tcx> UpcastFrom<TyCtxt<'tcx>, PredicateKind<'tcx>> for Predicate<'tcx> {
     fn upcast_from(from: PredicateKind<'tcx>, tcx: TyCtxt<'tcx>) -> Self {
         ty::Binder::dummy(from).upcast(tcx)

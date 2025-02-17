@@ -94,7 +94,7 @@ note: method defined here
   --> $DIR/trait-with-missing-associated-type-restriction.rs:9:8
    |
 LL |     fn funk(&self, _: Self::A);
-   |        ^^^^
+   |        ^^^^        -
 help: consider constraining the associated type `<T as Trait<i32>>::A` to `{integer}`
    |
 LL | fn bar2<T: Trait<i32, A = {integer}>>(x: T) {

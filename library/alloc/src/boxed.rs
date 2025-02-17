@@ -24,7 +24,7 @@
 //! Creating a recursive data structure:
 //!
 //! ```
-//! ##[allow(dead_code)]
+//! # #[allow(dead_code)]
 //! #[derive(Debug)]
 //! enum List<T> {
 //!     Cons(T, Box<List<T>>),
@@ -97,12 +97,12 @@
 //! #[repr(C)]
 //! pub struct Foo;
 //!
-//! #[no_mangle]
+//! #[unsafe(no_mangle)]
 //! pub extern "C" fn foo_new() -> Box<Foo> {
 //!     Box::new(Foo)
 //! }
 //!
-//! #[no_mangle]
+//! #[unsafe(no_mangle)]
 //! pub extern "C" fn foo_delete(_: Option<Box<Foo>>) {}
 //! ```
 //!
@@ -280,13 +280,9 @@ impl<T> Box<T> {
     ///
     /// ```
     /// let mut five = Box::<u32>::new_uninit();
-    ///
-    /// let five = unsafe {
-    ///     // Deferred initialization:
-    ///     five.as_mut_ptr().write(5);
-    ///
-    ///     five.assume_init()
-    /// };
+    /// // Deferred initialization:
+    /// five.write(5);
+    /// let five = unsafe { five.assume_init() };
     ///
     /// assert_eq!(*five, 5)
     /// ```
@@ -367,13 +363,9 @@ impl<T> Box<T> {
     /// #![feature(allocator_api)]
     ///
     /// let mut five = Box::<u32>::try_new_uninit()?;
-    ///
-    /// let five = unsafe {
-    ///     // Deferred initialization:
-    ///     five.as_mut_ptr().write(5);
-    ///
-    ///     five.assume_init()
-    /// };
+    /// // Deferred initialization:
+    /// five.write(5);
+    /// let five = unsafe { five.assume_init() };
     ///
     /// assert_eq!(*five, 5);
     /// # Ok::<(), std::alloc::AllocError>(())
@@ -435,10 +427,8 @@ impl<T, A: Allocator> Box<T, A> {
         A: Allocator,
     {
         let mut boxed = Self::new_uninit_in(alloc);
-        unsafe {
-            boxed.as_mut_ptr().write(x);
-            boxed.assume_init()
-        }
+        boxed.write(x);
+        unsafe { boxed.assume_init() }
     }
 
     /// Allocates memory in the given allocator then places `x` into it,
@@ -463,10 +453,8 @@ impl<T, A: Allocator> Box<T, A> {
         A: Allocator,
     {
         let mut boxed = Self::try_new_uninit_in(alloc)?;
-        unsafe {
-            boxed.as_mut_ptr().write(x);
-            Ok(boxed.assume_init())
-        }
+        boxed.write(x);
+        unsafe { Ok(boxed.assume_init()) }
     }
 
     /// Constructs a new box with uninitialized contents in the provided allocator.
@@ -479,13 +467,9 @@ impl<T, A: Allocator> Box<T, A> {
     /// use std::alloc::System;
     ///
     /// let mut five = Box::<u32, _>::new_uninit_in(System);
-    ///
-    /// let five = unsafe {
-    ///     // Deferred initialization:
-    ///     five.as_mut_ptr().write(5);
-    ///
-    ///     five.assume_init()
-    /// };
+    /// // Deferred initialization:
+    /// five.write(5);
+    /// let five = unsafe { five.assume_init() };
     ///
     /// assert_eq!(*five, 5)
     /// ```
@@ -517,13 +501,9 @@ impl<T, A: Allocator> Box<T, A> {
     /// use std::alloc::System;
     ///
     /// let mut five = Box::<u32, _>::try_new_uninit_in(System)?;
-    ///
-    /// let five = unsafe {
-    ///     // Deferred initialization:
-    ///     five.as_mut_ptr().write(5);
-    ///
-    ///     five.assume_init()
-    /// };
+    /// // Deferred initialization:
+    /// five.write(5);
+    /// let five = unsafe { five.assume_init() };
     ///
     /// assert_eq!(*five, 5);
     /// # Ok::<(), std::alloc::AllocError>(())
@@ -669,15 +649,11 @@ impl<T> Box<[T]> {
     ///
     /// ```
     /// let mut values = Box::<[u32]>::new_uninit_slice(3);
-    ///
-    /// let values = unsafe {
-    ///     // Deferred initialization:
-    ///     values[0].as_mut_ptr().write(1);
-    ///     values[1].as_mut_ptr().write(2);
-    ///     values[2].as_mut_ptr().write(3);
-    ///
-    ///     values.assume_init()
-    /// };
+    /// // Deferred initialization:
+    /// values[0].write(1);
+    /// values[1].write(2);
+    /// values[2].write(3);
+    /// let values = unsafe {values.assume_init() };
     ///
     /// assert_eq!(*values, [1, 2, 3])
     /// ```
@@ -722,13 +698,11 @@ impl<T> Box<[T]> {
     /// #![feature(allocator_api)]
     ///
     /// let mut values = Box::<[u32]>::try_new_uninit_slice(3)?;
-    /// let values = unsafe {
-    ///     // Deferred initialization:
-    ///     values[0].as_mut_ptr().write(1);
-    ///     values[1].as_mut_ptr().write(2);
-    ///     values[2].as_mut_ptr().write(3);
-    ///     values.assume_init()
-    /// };
+    /// // Deferred initialization:
+    /// values[0].write(1);
+    /// values[1].write(2);
+    /// values[2].write(3);
+    /// let values = unsafe { values.assume_init() };
     ///
     /// assert_eq!(*values, [1, 2, 3]);
     /// # Ok::<(), std::alloc::AllocError>(())
@@ -814,15 +788,11 @@ impl<T, A: Allocator> Box<[T], A> {
     /// use std::alloc::System;
     ///
     /// let mut values = Box::<[u32], _>::new_uninit_slice_in(3, System);
-    ///
-    /// let values = unsafe {
-    ///     // Deferred initialization:
-    ///     values[0].as_mut_ptr().write(1);
-    ///     values[1].as_mut_ptr().write(2);
-    ///     values[2].as_mut_ptr().write(3);
-    ///
-    ///     values.assume_init()
-    /// };
+    /// // Deferred initialization:
+    /// values[0].write(1);
+    /// values[1].write(2);
+    /// values[2].write(3);
+    /// let values = unsafe { values.assume_init() };
     ///
     /// assert_eq!(*values, [1, 2, 3])
     /// ```
@@ -873,13 +843,11 @@ impl<T, A: Allocator> Box<[T], A> {
     /// use std::alloc::System;
     ///
     /// let mut values = Box::<[u32], _>::try_new_uninit_slice_in(3, System)?;
-    /// let values = unsafe {
-    ///     // Deferred initialization:
-    ///     values[0].as_mut_ptr().write(1);
-    ///     values[1].as_mut_ptr().write(2);
-    ///     values[2].as_mut_ptr().write(3);
-    ///     values.assume_init()
-    /// };
+    /// // Deferred initialization:
+    /// values[0].write(1);
+    /// values[1].write(2);
+    /// values[2].write(3);
+    /// let values = unsafe { values.assume_init() };
     ///
     /// assert_eq!(*values, [1, 2, 3]);
     /// # Ok::<(), std::alloc::AllocError>(())
@@ -959,13 +927,9 @@ impl<T, A: Allocator> Box<mem::MaybeUninit<T>, A> {
     ///
     /// ```
     /// let mut five = Box::<u32>::new_uninit();
-    ///
-    /// let five: Box<u32> = unsafe {
-    ///     // Deferred initialization:
-    ///     five.as_mut_ptr().write(5);
-    ///
-    ///     five.assume_init()
-    /// };
+    /// // Deferred initialization:
+    /// five.write(5);
+    /// let five: Box<u32> = unsafe { five.assume_init() };
     ///
     /// assert_eq!(*five, 5)
     /// ```
@@ -1030,15 +994,11 @@ impl<T, A: Allocator> Box<[mem::MaybeUninit<T>], A> {
     ///
     /// ```
     /// let mut values = Box::<[u32]>::new_uninit_slice(3);
-    ///
-    /// let values = unsafe {
-    ///     // Deferred initialization:
-    ///     values[0].as_mut_ptr().write(1);
-    ///     values[1].as_mut_ptr().write(2);
-    ///     values[2].as_mut_ptr().write(3);
-    ///
-    ///     values.assume_init()
-    /// };
+    /// // Deferred initialization:
+    /// values[0].write(1);
+    /// values[1].write(2);
+    /// values[2].write(3);
+    /// let values = unsafe { values.assume_init() };
     ///
     /// assert_eq!(*values, [1, 2, 3])
     /// ```
@@ -1093,7 +1053,6 @@ impl<T: ?Sized> Box<T> {
     /// ```
     ///
     /// [memory layout]: self#memory-layout
-    /// [`Layout`]: crate::Layout
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
     #[must_use = "call `drop(Box::from_raw(ptr))` if you intend to drop the `Box`"]
@@ -1114,6 +1073,8 @@ impl<T: ?Sized> Box<T> {
     /// This function is unsafe because improper use may lead to
     /// memory problems. For example, a double-free may occur if the
     /// function is called twice on the same `NonNull` pointer.
+    ///
+    /// The non-null pointer must point to a block of memory allocated by the global allocator.
     ///
     /// The safety conditions are described in the [memory layout] section.
     ///
@@ -1146,7 +1107,6 @@ impl<T: ?Sized> Box<T> {
     /// ```
     ///
     /// [memory layout]: self#memory-layout
-    /// [`Layout`]: crate::Layout
     #[unstable(feature = "box_vec_non_null", reason = "new API", issue = "130364")]
     #[inline]
     #[must_use = "call `drop(Box::from_non_null(ptr))` if you intend to drop the `Box`"]
@@ -1170,7 +1130,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// memory problems. For example, a double-free may occur if the
     /// function is called twice on the same raw pointer.
     ///
-    /// The raw pointer must point to a block of memory allocated by `alloc`
+    /// The raw pointer must point to a block of memory allocated by `alloc`.
     ///
     /// # Examples
     ///
@@ -1203,7 +1163,6 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// ```
     ///
     /// [memory layout]: self#memory-layout
-    /// [`Layout`]: crate::Layout
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[rustc_const_unstable(feature = "const_box", issue = "92521")]
     #[inline]
@@ -1225,6 +1184,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// memory problems. For example, a double-free may occur if the
     /// function is called twice on the same raw pointer.
     ///
+    /// The non-null pointer must point to a block of memory allocated by `alloc`.
     ///
     /// # Examples
     ///
@@ -1256,7 +1216,6 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// ```
     ///
     /// [memory layout]: self#memory-layout
-    /// [`Layout`]: crate::Layout
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "box_vec_non_null", reason = "new API", issue = "130364")]
     #[rustc_const_unstable(feature = "const_box", issue = "92521")]

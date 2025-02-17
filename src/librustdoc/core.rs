@@ -1,10 +1,9 @@
-use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, LazyLock};
 use std::{io, mem};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
-use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unord::UnordSet;
+use rustc_driver::USING_INTERNAL_FEATURES;
 use rustc_errors::TerminalUrl;
 use rustc_errors::codes::*;
 use rustc_errors::emitter::{
@@ -145,7 +144,7 @@ impl<'tcx> DocContext<'tcx> {
 /// will be created for the `DiagCtxt`.
 pub(crate) fn new_dcx(
     error_format: ErrorOutputType,
-    source_map: Option<Lrc<source_map::SourceMap>>,
+    source_map: Option<Arc<source_map::SourceMap>>,
     diagnostic_width: Option<usize>,
     unstable_opts: &UnstableOptions,
 ) -> rustc_errors::DiagCtxt {
@@ -173,12 +172,12 @@ pub(crate) fn new_dcx(
         }
         ErrorOutputType::Json { pretty, json_rendered, color_config } => {
             let source_map = source_map.unwrap_or_else(|| {
-                Lrc::new(source_map::SourceMap::new(source_map::FilePathMapping::empty()))
+                Arc::new(source_map::SourceMap::new(source_map::FilePathMapping::empty()))
             });
             Box::new(
                 JsonEmitter::new(
                     Box::new(io::BufWriter::new(io::stderr())),
-                    source_map,
+                    Some(source_map),
                     fallback_bundle,
                     pretty,
                     json_rendered,
@@ -221,7 +220,6 @@ pub(crate) fn create_config(
         ..
     }: RustdocOptions,
     RenderOptions { document_private, .. }: &RenderOptions,
-    using_internal_features: Arc<AtomicBool>,
 ) -> rustc_interface::Config {
     // Add the doc cfg into the doc build.
     cfgs.push("doc".to_string());
@@ -316,7 +314,7 @@ pub(crate) fn create_config(
         make_codegen_backend: None,
         registry: rustc_driver::diagnostics_registry(),
         ice_file: None,
-        using_internal_features,
+        using_internal_features: &USING_INTERNAL_FEATURES,
         expanded_args,
     }
 }
@@ -337,14 +335,14 @@ pub(crate) fn run_global_ctxt(
 
     // NOTE: These are copy/pasted from typeck/lib.rs and should be kept in sync with those changes.
     let _ = tcx.sess.time("wf_checking", || {
-        tcx.hir().try_par_for_each_module(|module| tcx.ensure().check_mod_type_wf(module))
+        tcx.hir().try_par_for_each_module(|module| tcx.ensure_ok().check_mod_type_wf(module))
     });
 
     tcx.dcx().abort_if_errors();
 
     tcx.sess.time("missing_docs", || rustc_lint::check_crate(tcx));
     tcx.sess.time("check_mod_attrs", || {
-        tcx.hir().for_each_module(|module| tcx.ensure().check_mod_attrs(module))
+        tcx.hir().for_each_module(|module| tcx.ensure_ok().check_mod_attrs(module))
     });
     rustc_passes::stability::check_unused_or_stable_features(tcx);
 
@@ -380,7 +378,7 @@ pub(crate) fn run_global_ctxt(
         ctxt.external_traits.insert(sized_trait_did, sized_trait);
     }
 
-    debug!("crate: {:?}", tcx.hir().krate());
+    debug!("crate: {:?}", tcx.hir_crate(()));
 
     let mut krate = tcx.sess.time("clean_crate", || clean::krate(&mut ctxt));
 
@@ -388,7 +386,7 @@ pub(crate) fn run_global_ctxt(
         let help = format!(
             "The following guide may be of use:\n\
             {}/rustdoc/how-to-write-documentation.html",
-            crate::DOC_RUST_LANG_ORG_CHANNEL
+            crate::DOC_RUST_LANG_ORG_VERSION
         );
         tcx.node_lint(
             crate::lint::MISSING_CRATE_LEVEL_DOCS,
@@ -466,10 +464,10 @@ impl<'tcx> EmitIgnoredResolutionErrors<'tcx> {
 impl<'tcx> Visitor<'tcx> for EmitIgnoredResolutionErrors<'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
         // We need to recurse into nested closures,
         // since those will fallback to the parent for type checking.
-        self.tcx.hir()
+        self.tcx
     }
 
     fn visit_path(&mut self, path: &Path<'tcx>, _id: HirId) {

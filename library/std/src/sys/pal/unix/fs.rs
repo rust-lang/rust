@@ -9,9 +9,12 @@ use libc::c_char;
 #[cfg(any(
     all(target_os = "linux", not(target_env = "musl")),
     target_os = "android",
+    target_os = "fuchsia",
     target_os = "hurd"
 ))]
 use libc::dirfd;
+#[cfg(target_os = "fuchsia")]
+use libc::fstatat as fstatat64;
 #[cfg(any(all(target_os = "linux", not(target_env = "musl")), target_os = "hurd"))]
 use libc::fstatat64;
 #[cfg(any(
@@ -565,8 +568,7 @@ impl FileAttr {
 
         Err(io::const_error!(
             io::ErrorKind::Unsupported,
-            "creation time is not available on this platform \
-                            currently",
+            "creation time is not available on this platform currently",
         ))
     }
 
@@ -709,7 +711,7 @@ impl Iterator for ReadDir {
                 // thread safety for readdir() as long an individual DIR* is not accessed
                 // concurrently, which is sufficient for Rust.
                 super::os::set_errno(0);
-                let entry_ptr = readdir64(self.inner.dirp.0);
+                let entry_ptr: *const dirent64 = readdir64(self.inner.dirp.0);
                 if entry_ptr.is_null() {
                     // We either encountered an error, or reached the end. Either way,
                     // the next call to next() should return None.
@@ -735,44 +737,32 @@ impl Iterator for ReadDir {
                 // contents were "simply" partially initialized data.
                 //
                 // Like for uninitialized contents, converting entry_ptr to `&dirent64`
-                // would not be legal. However, unique to dirent64 is that we don't even
-                // get to use `&raw const (*entry_ptr).d_name` because that operation
-                // requires the full extent of *entry_ptr to be in bounds of the same
-                // allocation, which is not necessarily the case here.
-                //
-                // Instead we must access fields individually through their offsets.
-                macro_rules! offset_ptr {
-                    ($entry_ptr:expr, $field:ident) => {{
-                        const OFFSET: isize = mem::offset_of!(dirent64, $field) as isize;
-                        if true {
-                            // Cast to the same type determined by the else branch.
-                            $entry_ptr.byte_offset(OFFSET).cast::<_>()
-                        } else {
-                            #[allow(deref_nullptr)]
-                            {
-                                &raw const (*ptr::null::<dirent64>()).$field
-                            }
-                        }
-                    }};
-                }
+                // would not be legal. However, we can use `&raw const (*entry_ptr).d_name`
+                // to refer the fields individually, because that operation is equivalent
+                // to `byte_offset` and thus does not require the full extent of `*entry_ptr`
+                // to be in bounds of the same allocation, only the offset of the field
+                // being referenced.
 
                 // d_name is guaranteed to be null-terminated.
-                let name = CStr::from_ptr(offset_ptr!(entry_ptr, d_name).cast());
+                let name = CStr::from_ptr((&raw const (*entry_ptr).d_name).cast());
                 let name_bytes = name.to_bytes();
                 if name_bytes == b"." || name_bytes == b".." {
                     continue;
                 }
 
+                // When loading from a field, we can skip the `&raw const`; `(*entry_ptr).d_ino` as
+                // a value expression will do the right thing: `byte_offset` to the field and then
+                // only access those bytes.
                 #[cfg(not(target_os = "vita"))]
                 let entry = dirent64_min {
-                    d_ino: *offset_ptr!(entry_ptr, d_ino) as u64,
+                    d_ino: (*entry_ptr).d_ino as u64,
                     #[cfg(not(any(
                         target_os = "solaris",
                         target_os = "illumos",
                         target_os = "aix",
                         target_os = "nto",
                     )))]
-                    d_type: *offset_ptr!(entry_ptr, d_type) as u8,
+                    d_type: (*entry_ptr).d_type as u8,
                 };
 
                 #[cfg(target_os = "vita")]
@@ -860,7 +850,6 @@ impl Drop for Dir {
             target_os = "vita",
             target_os = "hurd",
             target_os = "espidf",
-            target_os = "fuchsia",
             target_os = "horizon",
             target_os = "vxworks",
             target_os = "rtems",
@@ -892,6 +881,7 @@ impl DirEntry {
         any(
             all(target_os = "linux", not(target_env = "musl")),
             target_os = "android",
+            target_os = "fuchsia",
             target_os = "hurd"
         ),
         not(miri) // no dirfd on Miri
@@ -920,6 +910,7 @@ impl DirEntry {
         not(any(
             all(target_os = "linux", not(target_env = "musl")),
             target_os = "android",
+            target_os = "fuchsia",
             target_os = "hurd",
         )),
         miri
@@ -1223,6 +1214,7 @@ impl File {
         }
         #[cfg(any(
             target_os = "freebsd",
+            target_os = "fuchsia",
             target_os = "linux",
             target_os = "android",
             target_os = "netbsd",
@@ -1235,6 +1227,7 @@ impl File {
         }
         #[cfg(not(any(
             target_os = "android",
+            target_os = "fuchsia",
             target_os = "freebsd",
             target_os = "linux",
             target_os = "netbsd",
@@ -1250,6 +1243,7 @@ impl File {
 
     #[cfg(any(
         target_os = "freebsd",
+        target_os = "fuchsia",
         target_os = "linux",
         target_os = "netbsd",
         target_vendor = "apple",
@@ -1261,6 +1255,7 @@ impl File {
 
     #[cfg(not(any(
         target_os = "freebsd",
+        target_os = "fuchsia",
         target_os = "linux",
         target_os = "netbsd",
         target_vendor = "apple",
@@ -1271,6 +1266,7 @@ impl File {
 
     #[cfg(any(
         target_os = "freebsd",
+        target_os = "fuchsia",
         target_os = "linux",
         target_os = "netbsd",
         target_vendor = "apple",
@@ -1282,6 +1278,7 @@ impl File {
 
     #[cfg(not(any(
         target_os = "freebsd",
+        target_os = "fuchsia",
         target_os = "linux",
         target_os = "netbsd",
         target_vendor = "apple",
@@ -1292,6 +1289,7 @@ impl File {
 
     #[cfg(any(
         target_os = "freebsd",
+        target_os = "fuchsia",
         target_os = "linux",
         target_os = "netbsd",
         target_vendor = "apple",
@@ -1309,6 +1307,7 @@ impl File {
 
     #[cfg(not(any(
         target_os = "freebsd",
+        target_os = "fuchsia",
         target_os = "linux",
         target_os = "netbsd",
         target_vendor = "apple",
@@ -1319,6 +1318,7 @@ impl File {
 
     #[cfg(any(
         target_os = "freebsd",
+        target_os = "fuchsia",
         target_os = "linux",
         target_os = "netbsd",
         target_vendor = "apple",
@@ -1336,6 +1336,7 @@ impl File {
 
     #[cfg(not(any(
         target_os = "freebsd",
+        target_os = "fuchsia",
         target_os = "linux",
         target_os = "netbsd",
         target_vendor = "apple",
@@ -1346,6 +1347,7 @@ impl File {
 
     #[cfg(any(
         target_os = "freebsd",
+        target_os = "fuchsia",
         target_os = "linux",
         target_os = "netbsd",
         target_vendor = "apple",
@@ -1357,6 +1359,7 @@ impl File {
 
     #[cfg(not(any(
         target_os = "freebsd",
+        target_os = "fuchsia",
         target_os = "linux",
         target_os = "netbsd",
         target_vendor = "apple",
@@ -1455,11 +1458,11 @@ impl File {
             Some(time) if let Some(ts) = time.t.to_timespec() => Ok(ts),
             Some(time) if time > crate::sys::time::UNIX_EPOCH => Err(io::const_error!(
                 io::ErrorKind::InvalidInput,
-                "timestamp is too large to set as a file time"
+                "timestamp is too large to set as a file time",
             )),
             Some(_) => Err(io::const_error!(
                 io::ErrorKind::InvalidInput,
-                "timestamp is too small to set as a file time"
+                "timestamp is too small to set as a file time",
             )),
             None => Ok(libc::timespec { tv_sec: 0, tv_nsec: libc::UTIME_OMIT as _ }),
         };

@@ -1,5 +1,6 @@
-use crate::abi::call::{ArgAbi, FnAbi};
-use crate::abi::{HasDataLayout, TyAbiInterface};
+use rustc_abi::{BackendRepr, Float, HasDataLayout, Integer, Primitive, TyAbiInterface};
+
+use crate::callconv::{ArgAbi, FnAbi};
 
 fn unwrap_trivial_aggregate<'a, Ty, C>(cx: &C, val: &mut ArgAbi<'a, Ty>) -> bool
 where
@@ -26,6 +27,16 @@ where
     ret.extend_integer_width_to(32);
     if ret.layout.is_aggregate() && !unwrap_trivial_aggregate(cx, ret) {
         ret.make_indirect();
+    }
+
+    // `long double`, `__int128_t` and `__uint128_t` use an indirect return
+    if let BackendRepr::Scalar(scalar) = ret.layout.backend_repr {
+        match scalar.primitive() {
+            Primitive::Int(Integer::I128, _) | Primitive::Float(Float::F128) => {
+                ret.make_indirect();
+            }
+            _ => {}
+        }
     }
 }
 

@@ -242,9 +242,6 @@ impl ProjectFolders {
                     }
                 }
 
-                if dirs.include.is_empty() {
-                    continue;
-                }
                 vfs::loader::Entry::Directories(dirs)
             };
 
@@ -259,6 +256,24 @@ impl ProjectFolders {
             fsc.add_file_set(file_set_roots)
         }
 
+        for ws in workspaces.iter() {
+            let mut file_set_roots: Vec<VfsPath> = vec![];
+            let mut entries = vec![];
+
+            for buildfile in ws.buildfiles() {
+                file_set_roots.push(VfsPath::from(buildfile.to_owned()));
+                entries.push(buildfile.to_owned());
+            }
+
+            if !file_set_roots.is_empty() {
+                let entry = vfs::loader::Entry::Files(entries);
+                res.watch.push(res.load.len());
+                res.load.push(entry);
+                local_filesets.push(fsc.len() as u64);
+                fsc.add_file_set(file_set_roots)
+            }
+        }
+
         if let Some(user_config_path) = user_config_dir_path {
             let ratoml_path = {
                 let mut p = user_config_path.to_path_buf();
@@ -267,7 +282,7 @@ impl ProjectFolders {
             };
 
             let file_set_roots = vec![VfsPath::from(ratoml_path.to_owned())];
-            let entry = vfs::loader::Entry::Files(vec![ratoml_path]);
+            let entry = vfs::loader::Entry::Files(vec![ratoml_path.to_owned()]);
 
             res.watch.push(res.load.len());
             res.load.push(entry);

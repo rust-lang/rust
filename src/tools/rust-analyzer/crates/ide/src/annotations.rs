@@ -21,7 +21,7 @@ mod fn_references;
 // Provides user with annotations above items for looking up references or impl blocks
 // and running/debugging binaries.
 //
-// image::https://user-images.githubusercontent.com/48062697/113020672-b7c34f00-917a-11eb-8f6e-858735660a0e.png[]
+// ![Annotations](https://user-images.githubusercontent.com/48062697/113020672-b7c34f00-917a-11eb-8f6e-858735660a0e.png)
 #[derive(Debug, Hash, PartialEq, Eq)]
 pub struct Annotation {
     pub range: TextRange,
@@ -220,7 +220,11 @@ mod tests {
         location: AnnotationLocation::AboveName,
     };
 
-    fn check_with_config(ra_fixture: &str, expect: Expect, config: &AnnotationConfig) {
+    fn check_with_config(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        expect: Expect,
+        config: &AnnotationConfig,
+    ) {
         let (analysis, file_id) = fixture::file(ra_fixture);
 
         let annotations: Vec<Annotation> = analysis
@@ -233,7 +237,7 @@ mod tests {
         expect.assert_debug_eq(&annotations);
     }
 
-    fn check(ra_fixture: &str, expect: Expect) {
+    fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
         check_with_config(ra_fixture, expect, &DEFAULT_CONFIG);
     }
 

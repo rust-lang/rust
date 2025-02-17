@@ -11,7 +11,6 @@ use super::{Context, ItemSection, item_ty_to_section};
 use crate::clean;
 use crate::formats::Impl;
 use crate::formats::item_type::ItemType;
-use crate::html::format::Buffer;
 use crate::html::markdown::{IdMap, MarkdownWithToc};
 
 #[derive(Clone, Copy)]
@@ -100,22 +99,21 @@ impl<'a> Link<'a> {
 }
 
 pub(crate) mod filters {
-    use std::fmt::Display;
+    use std::fmt::{self, Display};
 
     use rinja::filters::Safe;
 
     use crate::html::escape::EscapeBodyTextWithWbr;
-    use crate::html::render::display_fn;
     pub(crate) fn wrapped<T>(v: T) -> rinja::Result<Safe<impl Display>>
     where
         T: Display,
     {
         let string = v.to_string();
-        Ok(Safe(display_fn(move |f| EscapeBodyTextWithWbr(&string).fmt(f))))
+        Ok(Safe(fmt::from_fn(move |f| EscapeBodyTextWithWbr(&string).fmt(f))))
     }
 }
 
-pub(super) fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut Buffer) {
+pub(super) fn print_sidebar(cx: &Context<'_>, it: &clean::Item, buffer: &mut String) {
     let mut ids = IdMap::new();
     let mut blocks: Vec<LinkBlock<'_>> = docblock_toc(cx, it, &mut ids).into_iter().collect();
     let deref_id_map = cx.deref_id_map.borrow();

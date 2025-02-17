@@ -4,15 +4,19 @@
 //! executable MIR bodies, so we have to do this instead.
 #![allow(clippy::float_cmp)]
 
+use std::sync::Arc;
+
 use crate::source::{SpanRangeExt, walk_span_to_context};
 use crate::{clip, is_direct_expn_of, sext, unsext};
 
+use rustc_abi::Size;
 use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{Half, Quad};
 use rustc_ast::ast::{self, LitFloatType, LitKind};
-use rustc_data_structures::sync::Lrc;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{BinOp, BinOpKind, Block, ConstBlock, Expr, ExprKind, HirId, Item, ItemKind, Node, QPath, UnOp, PatExpr, PatExprKind};
+use rustc_hir::{
+    BinOp, BinOpKind, Block, ConstBlock, Expr, ExprKind, HirId, Item, ItemKind, Node, PatExpr, PatExprKind, QPath, UnOp,
+};
 use rustc_lexer::tokenize;
 use rustc_lint::LateContext;
 use rustc_middle::mir::ConstValue;
@@ -22,7 +26,6 @@ use rustc_middle::{bug, mir, span_bug};
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::Ident;
 use rustc_span::{SyntaxContext, sym};
-use rustc_target::abi::Size;
 use std::cell::Cell;
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
@@ -35,7 +38,7 @@ pub enum Constant<'tcx> {
     /// A `String` (e.g., "abc").
     Str(String),
     /// A binary string (e.g., `b"abc"`).
-    Binary(Lrc<[u8]>),
+    Binary(Arc<[u8]>),
     /// A single `char` (e.g., `'a'`).
     Char(char),
     /// An integer's bit representation.
@@ -303,7 +306,7 @@ pub fn lit_to_mir_constant<'tcx>(lit: &LitKind, ty: Option<Ty<'tcx>>) -> Constan
     match *lit {
         LitKind::Str(ref is, _) => Constant::Str(is.to_string()),
         LitKind::Byte(b) => Constant::Int(u128::from(b)),
-        LitKind::ByteStr(ref s, _) | LitKind::CStr(ref s, _) => Constant::Binary(Lrc::clone(s)),
+        LitKind::ByteStr(ref s, _) | LitKind::CStr(ref s, _) => Constant::Binary(Arc::clone(s)),
         LitKind::Char(c) => Constant::Char(c),
         LitKind::Int(n, _) => Constant::Int(n.get()),
         LitKind::Float(ref is, LitFloatType::Suffixed(fty)) => match fty {
@@ -451,8 +454,8 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                 } else {
                     Some(val)
                 }
-            }
-            PatExprKind::ConstBlock(ConstBlock { body, ..}) => self.expr(self.tcx.hir().body(*body).value),
+            },
+            PatExprKind::ConstBlock(ConstBlock { body, .. }) => self.expr(self.tcx.hir_body(*body).value),
             PatExprKind::Path(qpath) => self.qpath(qpath, pat_expr.hir_id),
         }
     }
@@ -480,7 +483,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
     /// Simple constant folding: Insert an expression, get a constant or none.
     fn expr(&self, e: &Expr<'_>) -> Option<Constant<'tcx>> {
         match e.kind {
-            ExprKind::ConstBlock(ConstBlock { body, .. }) => self.expr(self.tcx.hir().body(body).value),
+            ExprKind::ConstBlock(ConstBlock { body, .. }) => self.expr(self.tcx.hir_body(body).value),
             ExprKind::DropTemps(e) => self.expr(e),
             ExprKind::Path(ref qpath) => self.qpath(qpath, e.hir_id),
             ExprKind::Block(block, _) => self.block(block),
@@ -547,7 +550,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
     /// leaves the local crate.
     pub fn eval_is_empty(&self, e: &Expr<'_>) -> Option<bool> {
         match e.kind {
-            ExprKind::ConstBlock(ConstBlock { body, .. }) => self.eval_is_empty(self.tcx.hir().body(body).value),
+            ExprKind::ConstBlock(ConstBlock { body, .. }) => self.eval_is_empty(self.tcx.hir_body(body).value),
             ExprKind::DropTemps(e) => self.eval_is_empty(e),
             ExprKind::Path(ref qpath) => {
                 if !self
@@ -642,7 +645,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
             Res::Def(DefKind::Const | DefKind::AssocConst, def_id) => {
                 // Check if this constant is based on `cfg!(..)`,
                 // which is NOT constant for our purposes.
-                if let Some(node) = self.tcx.hir().get_if_local(def_id)
+                if let Some(node) = self.tcx.hir_get_if_local(def_id)
                     && let Node::Item(Item {
                         kind: ItemKind::Const(.., body_id),
                         ..

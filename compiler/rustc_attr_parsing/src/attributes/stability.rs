@@ -11,7 +11,7 @@ use rustc_attr_data_structures::{
 };
 use rustc_errors::ErrorGuaranteed;
 use rustc_session::Session;
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{Span, Symbol, kw, sym};
 
 use crate::attributes::util::UnsupportedLiteralReason;
 use crate::{parse_version, session_diagnostics};
@@ -24,11 +24,20 @@ pub fn find_stability(
     item_sp: Span,
 ) -> Option<(Stability, Span)> {
     let mut stab: Option<(Stability, Span)> = None;
-    let mut allowed_through_unstable_modules = false;
+    let mut allowed_through_unstable_modules = None;
 
     for attr in attrs {
         match attr.name_or_empty() {
-            sym::rustc_allowed_through_unstable_modules => allowed_through_unstable_modules = true,
+            sym::rustc_allowed_through_unstable_modules => {
+                // The value is mandatory, but avoid ICEs in case such code reaches this function.
+                allowed_through_unstable_modules = Some(attr.value_str().unwrap_or_else(|| {
+                    sess.dcx().span_delayed_bug(
+                        item_sp,
+                        "`#[rustc_allowed_through_unstable_modules]` without deprecation message",
+                    );
+                    kw::Empty
+                }))
+            }
             sym::unstable => {
                 if stab.is_some() {
                     sess.dcx().emit_err(session_diagnostics::MultipleStabilityLevels {
@@ -56,15 +65,15 @@ pub fn find_stability(
         }
     }
 
-    if allowed_through_unstable_modules {
+    if let Some(allowed_through_unstable_modules) = allowed_through_unstable_modules {
         match &mut stab {
             Some((
                 Stability {
-                    level: StabilityLevel::Stable { allowed_through_unstable_modules, .. },
+                    level: StabilityLevel::Stable { allowed_through_unstable_modules: in_stab, .. },
                     ..
                 },
                 _,
-            )) => *allowed_through_unstable_modules = true,
+            )) => *in_stab = Some(allowed_through_unstable_modules),
             _ => {
                 sess.dcx()
                     .emit_err(session_diagnostics::RustcAllowedUnstablePairing { span: item_sp });
@@ -283,7 +292,7 @@ fn parse_stability(sess: &Session, attr: &impl AttributeExt) -> Option<(Symbol, 
 
     match feature {
         Ok(feature) => {
-            let level = StabilityLevel::Stable { since, allowed_through_unstable_modules: false };
+            let level = StabilityLevel::Stable { since, allowed_through_unstable_modules: None };
             Some((feature, level))
         }
         Err(ErrorGuaranteed { .. }) => None,

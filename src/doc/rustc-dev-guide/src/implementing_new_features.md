@@ -9,7 +9,11 @@ smoothly.
 **NOTE: this section is for *language* features, not *library* features,
 which use [a different process].**
 
+See also [the Rust Language Design Team's procedures][lang-propose] for
+proposing changes to the language.
+
 [a different process]: ./stability.md
+[lang-propose]: https://lang-team.rust-lang.org/how_to/propose.html
 
 ## The @rfcbot FCP process
 

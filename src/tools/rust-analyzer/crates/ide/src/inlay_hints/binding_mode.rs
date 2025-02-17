@@ -99,17 +99,24 @@ pub(super) fn hints(
     }
 
     if let hints @ [_, ..] = &mut acc[acc_base..] {
-        let mut edit = TextEditBuilder::default();
-        for h in &mut *hints {
-            edit.insert(
-                match h.position {
-                    InlayHintPosition::Before => h.range.start(),
-                    InlayHintPosition::After => h.range.end(),
-                },
-                h.label.parts.iter().map(|p| &*p.text).collect(),
-            );
-        }
-        let edit = edit.finish();
+        let edit = config.lazy_text_edit(|| {
+            let mut edit = TextEditBuilder::default();
+            for h in &mut *hints {
+                edit.insert(
+                    match h.position {
+                        InlayHintPosition::Before => h.range.start(),
+                        InlayHintPosition::After => h.range.end(),
+                    },
+                    h.label
+                        .parts
+                        .iter()
+                        .map(|p| &*p.text)
+                        .chain(h.pad_right.then_some(" "))
+                        .collect(),
+                );
+            }
+            edit.finish()
+        });
         hints.iter_mut().for_each(|h| h.text_edit = Some(edit.clone()));
     }
 
@@ -118,8 +125,10 @@ pub(super) fn hints(
 
 #[cfg(test)]
 mod tests {
+    use expect_test::expect;
+
     use crate::{
-        inlay_hints::tests::{check_with_config, DISABLED_CONFIG},
+        inlay_hints::tests::{check_edit, check_with_config, DISABLED_CONFIG},
         InlayHintsConfig,
     };
 
@@ -192,6 +201,29 @@ fn foo(s @ Struct { field, .. }: &Struct) {}
          //^^^^^^^^^^^^^^^^^^^^&
                   //^^^^^ref
 "#,
+        );
+    }
+
+    #[test]
+    fn edits() {
+        check_edit(
+            InlayHintsConfig { binding_mode_hints: true, ..DISABLED_CONFIG },
+            r#"
+fn main() {
+    match &(0,) {
+        (x,) | (x,) => (),
+        ((x,) | (x,)) => (),
+    }
+}
+"#,
+            expect![[r#"
+                fn main() {
+                    match &(0,) {
+                        &(&((ref x,) | (ref x,))) => (),
+                        &((ref x,) | (ref x,)) => (),
+                    }
+                }
+            "#]],
         );
     }
 }

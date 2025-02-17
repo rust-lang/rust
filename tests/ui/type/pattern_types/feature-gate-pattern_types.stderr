@@ -48,6 +48,12 @@ LL | type Always = pattern_type!(Option<u32> is Some(_));
    = help: add `#![feature(pattern_type_macro)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: aborting due to 5 previous errors
+error: pattern not supported in pattern types
+  --> $DIR/feature-gate-pattern_types.rs:13:44
+   |
+LL | type Always = pattern_type!(Option<u32> is Some(_));
+   |                                            ^^^^^^^
+
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

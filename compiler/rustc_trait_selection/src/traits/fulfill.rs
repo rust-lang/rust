@@ -479,7 +479,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                         ty::ConstKind::Error(_) => {
                             return ProcessResult::Changed(PendingPredicateObligations::new());
                         }
-                        ty::ConstKind::Value(ty, _) => ty,
+                        ty::ConstKind::Value(cv) => cv.ty,
                         ty::ConstKind::Unevaluated(uv) => {
                             infcx.tcx.type_of(uv.def).instantiate(infcx.tcx, uv.args)
                         }

@@ -20,10 +20,10 @@ use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use tracing::{debug, instrument, trace};
 
 use super::{
-    AllocBytes, AllocId, AllocMap, AllocRange, Allocation, CheckAlignMsg, CheckInAllocMsg,
-    CtfeProvenance, GlobalAlloc, InterpCx, InterpResult, Machine, MayLeak, Misalignment, Pointer,
-    PointerArithmetic, Provenance, Scalar, alloc_range, err_ub, err_ub_custom, interp_ok, throw_ub,
-    throw_ub_custom, throw_unsup, throw_unsup_format,
+    AllocBytes, AllocId, AllocInit, AllocMap, AllocRange, Allocation, CheckAlignMsg,
+    CheckInAllocMsg, CtfeProvenance, GlobalAlloc, InterpCx, InterpResult, Machine, MayLeak,
+    Misalignment, Pointer, PointerArithmetic, Provenance, Scalar, alloc_range, err_ub,
+    err_ub_custom, interp_ok, throw_ub, throw_ub_custom, throw_unsup, throw_unsup_format,
 };
 use crate::fluent_generated as fluent;
 
@@ -230,11 +230,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         size: Size,
         align: Align,
         kind: MemoryKind<M::MemoryKind>,
+        init: AllocInit,
     ) -> InterpResult<'tcx, Pointer<M::Provenance>> {
         let alloc = if M::PANIC_ON_ALLOC_FAIL {
-            Allocation::uninit(size, align)
+            Allocation::new(size, align, init)
         } else {
-            Allocation::try_uninit(size, align)?
+            Allocation::try_new(size, align, init)?
         };
         self.insert_allocation(alloc, kind)
     }
@@ -270,6 +271,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         M::adjust_alloc_root_pointer(self, Pointer::from(id), Some(kind))
     }
 
+    /// If this grows the allocation, `init_growth` determines
+    /// whether the additional space will be initialized.
     pub fn reallocate_ptr(
         &mut self,
         ptr: Pointer<Option<M::Provenance>>,
@@ -277,6 +280,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         new_size: Size,
         new_align: Align,
         kind: MemoryKind<M::MemoryKind>,
+        init_growth: AllocInit,
     ) -> InterpResult<'tcx, Pointer<M::Provenance>> {
         let (alloc_id, offset, _prov) = self.ptr_get_alloc_id(ptr, 0)?;
         if offset.bytes() != 0 {
@@ -289,7 +293,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         // For simplicities' sake, we implement reallocate as "alloc, copy, dealloc".
         // This happens so rarely, the perf advantage is outweighed by the maintenance cost.
-        let new_ptr = self.allocate_ptr(new_size, new_align, kind)?;
+        // If requested, we zero-init the entire allocation, to ensure that a growing
+        // allocation has its new bytes properly set. For the part that is copied,
+        // `mem_copy` below will de-initialize things as necessary.
+        let new_ptr = self.allocate_ptr(new_size, new_align, kind, init_growth)?;
         let old_size = match old_size_and_align {
             Some((size, _align)) => size,
             None => self.get_alloc_raw(alloc_id)?.size(),
@@ -830,9 +837,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// [`InterpCx::get_alloc_info`] if all you need to check is whether the kind is
     /// [`AllocKind::Dead`] because it doesn't have to look up the type and layout of statics.
     pub fn is_alloc_live(&self, id: AllocId) -> bool {
-        self.tcx.try_get_global_alloc(id).is_some()
-            || self.memory.alloc_map.contains_key_ref(&id)
+        self.memory.alloc_map.contains_key_ref(&id)
             || self.memory.extra_fn_ptr_map.contains_key(&id)
+            // We check `tcx` last as that has to acquire a lock in `many-seeds` mode.
+            // This also matches the order in `get_alloc_info`.
+            || self.tcx.try_get_global_alloc(id).is_some()
     }
 
     /// Obtain the size and alignment of an allocation, even if that allocation has
@@ -1481,22 +1490,31 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Test if this value might be null.
     /// If the machine does not support ptr-to-int casts, this is conservative.
     pub fn scalar_may_be_null(&self, scalar: Scalar<M::Provenance>) -> InterpResult<'tcx, bool> {
-        interp_ok(match scalar.try_to_scalar_int() {
-            Ok(int) => int.is_null(),
+        match scalar.try_to_scalar_int() {
+            Ok(int) => interp_ok(int.is_null()),
             Err(_) => {
-                // Can only happen during CTFE.
+                // We can't cast this pointer to an integer. Can only happen during CTFE.
                 let ptr = scalar.to_pointer(self)?;
                 match self.ptr_try_get_alloc_id(ptr, 0) {
                     Ok((alloc_id, offset, _)) => {
-                        let size = self.get_alloc_info(alloc_id).size;
-                        // If the pointer is out-of-bounds, it may be null.
-                        // Note that one-past-the-end (offset == size) is still inbounds, and never null.
-                        offset > size
+                        let info = self.get_alloc_info(alloc_id);
+                        // If the pointer is in-bounds (including "at the end"), it is definitely not null.
+                        if offset <= info.size {
+                            return interp_ok(false);
+                        }
+                        // If the allocation is N-aligned, and the offset is not divisible by N,
+                        // then `base + offset` has a non-zero remainder after division by `N`,
+                        // which means `base + offset` cannot be null.
+                        if offset.bytes() % info.align.bytes() != 0 {
+                            return interp_ok(false);
+                        }
+                        // We don't know enough, this might be null.
+                        interp_ok(true)
                     }
                     Err(_offset) => bug!("a non-int scalar is always a pointer"),
                 }
             }
-        })
+        }
     }
 
     /// Turning a "maybe pointer" into a proper pointer (and some information

@@ -67,9 +67,6 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 #![deny(unsafe_op_in_unsafe_fn)]
 
-#[cfg(test)]
-mod tests;
-
 use core::clone::CloneToUninit;
 
 use crate::borrow::{Borrow, Cow};
@@ -3578,7 +3575,7 @@ impl Error for StripPrefixError {
 pub fn absolute<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
     let path = path.as_ref();
     if path.as_os_str().is_empty() {
-        Err(io::const_error!(io::ErrorKind::InvalidInput, "cannot make an empty path absolute",))
+        Err(io::const_error!(io::ErrorKind::InvalidInput, "cannot make an empty path absolute"))
     } else {
         sys::path::absolute(path)
     }

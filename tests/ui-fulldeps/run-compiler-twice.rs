@@ -72,7 +72,7 @@ fn compile(code: String, output: PathBuf, sysroot: PathBuf, linker: Option<&Path
         override_queries: None,
         make_codegen_backend: None,
         registry: rustc_driver::diagnostics_registry(),
-        using_internal_features: std::sync::Arc::default(),
+        using_internal_features: &rustc_driver::USING_INTERNAL_FEATURES,
         expanded_args: Default::default(),
     };
 

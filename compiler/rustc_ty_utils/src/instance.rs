@@ -225,7 +225,7 @@ fn resolve_associated_item<'tcx>(
             if trait_item_id != leaf_def.item.def_id
                 && let Some(leaf_def_item) = leaf_def.item.def_id.as_local()
             {
-                tcx.ensure().compare_impl_item(leaf_def_item)?;
+                tcx.ensure_ok().compare_impl_item(leaf_def_item)?;
             }
 
             Some(ty::Instance::new(leaf_def.item.def_id, args))
@@ -248,7 +248,7 @@ fn resolve_associated_item<'tcx>(
                 })
             }
         }
-        traits::ImplSource::Builtin(BuiltinImplSource::Misc, _) => {
+        traits::ImplSource::Builtin(BuiltinImplSource::Misc | BuiltinImplSource::Trivial, _) => {
             if tcx.is_lang_item(trait_ref.def_id, LangItem::Clone) {
                 // FIXME(eddyb) use lang items for methods instead of names.
                 let name = tcx.item_name(trait_item_id);

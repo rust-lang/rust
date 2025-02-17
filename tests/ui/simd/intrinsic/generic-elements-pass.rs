@@ -16,12 +16,15 @@ struct i32x4([i32; 4]);
 #[allow(non_camel_case_types)]
 struct i32x8([i32; 8]);
 
-extern "rust-intrinsic" {
-    fn simd_insert<T, E>(x: T, idx: u32, y: E) -> T;
-    fn simd_extract<T, E>(x: T, idx: u32) -> E;
+#[rustc_intrinsic]
+unsafe fn simd_insert<T, E>(x: T, idx: u32, y: E) -> T;
 
-    fn simd_shuffle<T, I, U>(x: T, y: T, idx: I) -> U;
-}
+#[rustc_intrinsic]
+unsafe fn simd_extract<T, E>(x: T, idx: u32) -> E;
+
+
+#[rustc_intrinsic]
+unsafe fn simd_shuffle<T, I, U>(x: T, y: T, idx: I) -> U;
 
 #[repr(simd)]
 struct SimdShuffleIdx<const LEN: usize>([u32; LEN]);

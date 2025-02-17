@@ -149,6 +149,7 @@ mod msrv {
         //~^ ERROR: this could be a `const fn`
 
         #[rustfmt::skip]
+        #[allow(missing_abi)]
         extern fn implicit_c() {}
         //~^ ERROR: this could be a `const fn`
 
@@ -211,4 +212,9 @@ mod extern_fn {
     //~^ ERROR: this could be a `const fn`
     extern "system-unwind" fn system_unwind() {}
     //~^ ERROR: this could be a `const fn`
+}
+
+fn mut_add(x: &mut i32) {
+    //~^ ERROR: this could be a `const fn`
+    *x += 1;
 }

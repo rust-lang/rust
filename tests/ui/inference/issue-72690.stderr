@@ -15,14 +15,16 @@ LL |     String::from("x".as_ref());
    |                      ^^^^^^
    |
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
+           - impl AsRef<ByteStr> for str;
            - impl AsRef<OsStr> for str;
            - impl AsRef<Path> for str;
            - impl AsRef<[u8]> for str;
            - impl AsRef<str> for str;
 help: try using a fully qualified path to specify the expected types
    |
-LL |     String::from(<str as AsRef<T>>::as_ref("x"));
-   |                  ++++++++++++++++++++++++++   ~
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<T>>::as_ref("x"));
+   |
 
 error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:12:9
@@ -41,14 +43,16 @@ LL |     |x| String::from("x".as_ref());
    |                          ^^^^^^
    |
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
+           - impl AsRef<ByteStr> for str;
            - impl AsRef<OsStr> for str;
            - impl AsRef<Path> for str;
            - impl AsRef<[u8]> for str;
            - impl AsRef<str> for str;
 help: try using a fully qualified path to specify the expected types
    |
-LL |     |x| String::from(<str as AsRef<T>>::as_ref("x"));
-   |                      ++++++++++++++++++++++++++   ~
+LL -     |x| String::from("x".as_ref());
+LL +     |x| String::from(<str as AsRef<T>>::as_ref("x"));
+   |
 
 error[E0283]: type annotations needed for `&_`
   --> $DIR/issue-72690.rs:17:9
@@ -57,6 +61,7 @@ LL |     let _ = "x".as_ref();
    |         ^       ------ type must be known at this point
    |
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
+           - impl AsRef<ByteStr> for str;
            - impl AsRef<OsStr> for str;
            - impl AsRef<Path> for str;
            - impl AsRef<[u8]> for str;
@@ -83,14 +88,16 @@ LL |     String::from("x".as_ref());
    |                      ^^^^^^
    |
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
+           - impl AsRef<ByteStr> for str;
            - impl AsRef<OsStr> for str;
            - impl AsRef<Path> for str;
            - impl AsRef<[u8]> for str;
            - impl AsRef<str> for str;
 help: try using a fully qualified path to specify the expected types
    |
-LL |     String::from(<str as AsRef<T>>::as_ref("x"));
-   |                  ++++++++++++++++++++++++++   ~
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<T>>::as_ref("x"));
+   |
 
 error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:28:5
@@ -109,14 +116,16 @@ LL |     String::from("x".as_ref());
    |                      ^^^^^^
    |
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
+           - impl AsRef<ByteStr> for str;
            - impl AsRef<OsStr> for str;
            - impl AsRef<Path> for str;
            - impl AsRef<[u8]> for str;
            - impl AsRef<str> for str;
 help: try using a fully qualified path to specify the expected types
    |
-LL |     String::from(<str as AsRef<T>>::as_ref("x"));
-   |                  ++++++++++++++++++++++++++   ~
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<T>>::as_ref("x"));
+   |
 
 error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:37:5
@@ -135,14 +144,16 @@ LL |     String::from("x".as_ref());
    |                      ^^^^^^
    |
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
+           - impl AsRef<ByteStr> for str;
            - impl AsRef<OsStr> for str;
            - impl AsRef<Path> for str;
            - impl AsRef<[u8]> for str;
            - impl AsRef<str> for str;
 help: try using a fully qualified path to specify the expected types
    |
-LL |     String::from(<str as AsRef<T>>::as_ref("x"));
-   |                  ++++++++++++++++++++++++++   ~
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<T>>::as_ref("x"));
+   |
 
 error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:46:5
@@ -161,14 +172,16 @@ LL |     String::from("x".as_ref());
    |                      ^^^^^^
    |
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
+           - impl AsRef<ByteStr> for str;
            - impl AsRef<OsStr> for str;
            - impl AsRef<Path> for str;
            - impl AsRef<[u8]> for str;
            - impl AsRef<str> for str;
 help: try using a fully qualified path to specify the expected types
    |
-LL |     String::from(<str as AsRef<T>>::as_ref("x"));
-   |                  ++++++++++++++++++++++++++   ~
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<T>>::as_ref("x"));
+   |
 
 error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:53:5
@@ -187,14 +200,16 @@ LL |     String::from("x".as_ref());
    |                      ^^^^^^
    |
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
+           - impl AsRef<ByteStr> for str;
            - impl AsRef<OsStr> for str;
            - impl AsRef<Path> for str;
            - impl AsRef<[u8]> for str;
            - impl AsRef<str> for str;
 help: try using a fully qualified path to specify the expected types
    |
-LL |     String::from(<str as AsRef<T>>::as_ref("x"));
-   |                  ++++++++++++++++++++++++++   ~
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<T>>::as_ref("x"));
+   |
 
 error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:62:5
@@ -213,14 +228,16 @@ LL |     String::from("x".as_ref());
    |                      ^^^^^^
    |
    = note: multiple `impl`s satisfying `str: AsRef<_>` found in the following crates: `core`, `std`:
+           - impl AsRef<ByteStr> for str;
            - impl AsRef<OsStr> for str;
            - impl AsRef<Path> for str;
            - impl AsRef<[u8]> for str;
            - impl AsRef<str> for str;
 help: try using a fully qualified path to specify the expected types
    |
-LL |     String::from(<str as AsRef<T>>::as_ref("x"));
-   |                  ++++++++++++++++++++++++++   ~
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<T>>::as_ref("x"));
+   |
 
 error: aborting due to 17 previous errors
 

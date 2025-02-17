@@ -637,9 +637,9 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
     }
 
     fn body(&self, body_id: &Binding<hir::BodyId>) {
-        let expr = self.cx.tcx.hir().body(body_id.value).value;
+        let expr = self.cx.tcx.hir_body(body_id.value).value;
         bind!(self, expr);
-        chain!(self, "{expr} = &cx.tcx.hir().body({body_id}).value");
+        chain!(self, "{expr} = &cx.tcx.hir_body({body_id}).value");
         self.expr(expr);
     }
 
@@ -707,11 +707,6 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 kind!("TupleStruct(ref {qpath}, {fields}, {skip_pos:?})");
                 self.qpath(qpath);
                 self.slice(fields, |pat| self.pat(pat));
-            },
-            PatKind::Path(ref qpath) => {
-                bind!(self, qpath);
-                kind!("Path(ref {qpath})");
-                self.qpath(qpath);
             },
             PatKind::Tuple(fields, skip_pos) => {
                 bind!(self, fields);

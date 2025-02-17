@@ -12,6 +12,9 @@ extern crate ra_ap_rustc_index as rustc_index;
 #[cfg(feature = "in-rust-tree")]
 extern crate rustc_abi;
 
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_hashes;
+
 #[cfg(not(feature = "in-rust-tree"))]
 extern crate ra_ap_rustc_abi as rustc_abi;
 
@@ -20,6 +23,9 @@ extern crate rustc_pattern_analysis;
 
 #[cfg(not(feature = "in-rust-tree"))]
 extern crate ra_ap_rustc_pattern_analysis as rustc_pattern_analysis;
+
+#[cfg(not(feature = "in-rust-tree"))]
+extern crate ra_ap_rustc_hashes as rustc_hashes;
 
 mod builder;
 mod chalk_db;
@@ -100,7 +106,9 @@ pub use mapping::{
 };
 pub use method_resolution::check_orphan_rules;
 pub use traits::TraitEnvironment;
-pub use utils::{all_super_traits, direct_super_traits, is_fn_unsafe_to_call};
+pub use utils::{
+    all_super_traits, direct_super_traits, is_fn_unsafe_to_call, TargetFeatures, Unsafety,
+};
 pub use variance::Variance;
 
 pub use chalk_ir::{
@@ -1046,4 +1054,21 @@ pub fn known_const_to_ast(
         }
     }
     Some(make::expr_const_value(konst.display(db, edition).to_string().as_str()))
+}
+
+#[derive(Debug, Copy, Clone)]
+pub(crate) enum DeclOrigin {
+    LetExpr,
+    /// from `let x = ..`
+    LocalDecl {
+        has_else: bool,
+    },
+}
+
+/// Provides context for checking patterns in declarations. More specifically this
+/// allows us to infer array types if the pattern is irrefutable and allows us to infer
+/// the size of the array. See issue rust-lang/rust#76342.
+#[derive(Debug, Copy, Clone)]
+pub(crate) struct DeclContext {
+    pub(crate) origin: DeclOrigin,
 }

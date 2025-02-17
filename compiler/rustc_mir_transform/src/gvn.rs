@@ -163,6 +163,10 @@ impl<'tcx> crate::MirPass<'tcx> for GVN {
         // statements.
         StorageRemover { tcx, reused_locals: state.reused_locals }.visit_body_preserves_cfg(body);
     }
+
+    fn is_required(&self) -> bool {
+        false
+    }
 }
 
 newtype_index! {
@@ -188,7 +192,7 @@ enum AggregateTy<'tcx> {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 enum AddressKind {
     Ref(BorrowKind),
-    Address(Mutability),
+    Address(RawPtrKind),
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -223,6 +227,8 @@ enum Value<'tcx> {
     Projection(VnIndex, ProjectionElem<VnIndex, Ty<'tcx>>),
     /// Discriminant of the given value.
     Discriminant(VnIndex),
+    /// Length of an array or slice.
+    Len(VnIndex),
 
     // Operations.
     NullaryOp(NullOp<'tcx>, Ty<'tcx>),
@@ -470,6 +476,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     }
                     ProjectionElem::OpaqueCast(ty) => ProjectionElem::OpaqueCast(ty),
                     ProjectionElem::Subtype(ty) => ProjectionElem::Subtype(ty),
+                    ProjectionElem::UnwrapUnsafeBinder(ty) => {
+                        ProjectionElem::UnwrapUnsafeBinder(ty)
+                    }
                     // This should have been replaced by a `ConstantIndex` earlier.
                     ProjectionElem::Index(_) => return None,
                 };
@@ -498,7 +507,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                         mplace.layout.ty,
                         bk.to_mutbl_lossy(),
                     ),
-                    AddressKind::Address(mutbl) => Ty::new_ptr(self.tcx, mplace.layout.ty, mutbl),
+                    AddressKind::Address(mutbl) => {
+                        Ty::new_ptr(self.tcx, mplace.layout.ty, mutbl.to_mutbl_lossy())
+                    }
                 };
                 let layout = self.ecx.layout_of(ty).ok()?;
                 ImmTy::from_immediate(pointer, layout).into()
@@ -510,6 +521,13 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 let discr_value =
                     self.ecx.discriminant_for_variant(base.layout.ty, variant).discard_err()?;
                 discr_value.into()
+            }
+            Len(slice) => {
+                let slice = self.evaluated[slice].as_ref()?;
+                let usize_layout = self.ecx.layout_of(self.tcx.types.usize).unwrap();
+                let len = slice.len(&self.ecx).discard_err()?;
+                let imm = ImmTy::from_uint(len, usize_layout);
+                imm.into()
             }
             NullaryOp(null_op, ty) => {
                 let layout = self.ecx.layout_of(ty).ok()?;
@@ -527,6 +545,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                         .offset_of_subfield(self.typing_env(), layout, fields.iter())
                         .bytes(),
                     NullOp::UbChecks => return None,
+                    NullOp::ContractChecks => return None,
                 };
                 let usize_layout = self.ecx.layout_of(self.tcx.types.usize).unwrap();
                 let imm = ImmTy::from_uint(val, usize_layout);
@@ -698,6 +717,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
             ProjectionElem::OpaqueCast(ty) => ProjectionElem::OpaqueCast(ty),
             ProjectionElem::Subtype(ty) => ProjectionElem::Subtype(ty),
+            ProjectionElem::UnwrapUnsafeBinder(ty) => ProjectionElem::UnwrapUnsafeBinder(ty),
         };
 
         Some(self.insert(Value::Projection(value, proj)))
@@ -852,8 +872,12 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 self.simplify_place_projection(place, location);
                 return self.new_pointer(*place, AddressKind::Address(mutbl));
             }
+            Rvalue::WrapUnsafeBinder(ref mut op, _) => {
+                return self.simplify_operand(op, location);
+            }
 
             // Operations.
+            Rvalue::Len(ref mut place) => return self.simplify_len(place, location),
             Rvalue::Cast(ref mut kind, ref mut value, to) => {
                 return self.simplify_cast(kind, value, to, location);
             }
@@ -915,6 +939,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             ProjectionElem::Downcast(symbol, idx) => ProjectionElem::Downcast(symbol, idx),
             ProjectionElem::OpaqueCast(idx) => ProjectionElem::OpaqueCast(idx),
             ProjectionElem::Subtype(idx) => ProjectionElem::Subtype(idx),
+            ProjectionElem::UnwrapUnsafeBinder(ty) => ProjectionElem::UnwrapUnsafeBinder(ty),
         })
     }
 
@@ -1164,11 +1189,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             ) if let ty::Slice(..) = to.builtin_deref(true).unwrap().kind()
                 && let ty::Array(_, len) = from.builtin_deref(true).unwrap().kind() =>
             {
-                return self.insert_constant(Const::from_ty_const(
-                    *len,
-                    self.tcx.types.usize,
-                    self.tcx,
-                ));
+                return self.insert_constant(Const::Ty(self.tcx.types.usize, *len));
             }
             _ => Value::UnaryOp(op, arg_index),
         };
@@ -1346,16 +1367,17 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
     fn simplify_cast(
         &mut self,
-        kind: &mut CastKind,
-        operand: &mut Operand<'tcx>,
+        initial_kind: &mut CastKind,
+        initial_operand: &mut Operand<'tcx>,
         to: Ty<'tcx>,
         location: Location,
     ) -> Option<VnIndex> {
         use CastKind::*;
         use rustc_middle::ty::adjustment::PointerCoercion::*;
 
-        let mut from = operand.ty(self.local_decls, self.tcx);
-        let mut value = self.simplify_operand(operand, location)?;
+        let mut from = initial_operand.ty(self.local_decls, self.tcx);
+        let mut kind = *initial_kind;
+        let mut value = self.simplify_operand(initial_operand, location)?;
         if from == to {
             return Some(value);
         }
@@ -1375,11 +1397,11 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             // or `*mut [i32]` <=> `*const [u64]`), including the common special
             // case of `*const T` <=> `*mut T`.
             if let Transmute = kind
-                && from.is_unsafe_ptr()
-                && to.is_unsafe_ptr()
+                && from.is_raw_ptr()
+                && to.is_raw_ptr()
                 && self.pointers_have_same_metadata(from, to)
             {
-                *kind = PtrToPtr;
+                kind = PtrToPtr;
                 was_updated_this_iteration = true;
             }
 
@@ -1422,7 +1444,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 to: inner_to,
             } = *self.get(value)
             {
-                let new_kind = match (inner_kind, *kind) {
+                let new_kind = match (inner_kind, kind) {
                     // Even if there's a narrowing cast in here that's fine, because
                     // things like `*mut [i32] -> *mut i32 -> *const i32` and
                     // `*mut [i32] -> *const [i32] -> *const i32` can skip the middle in MIR.
@@ -1450,7 +1472,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     _ => None,
                 };
                 if let Some(new_kind) = new_kind {
-                    *kind = new_kind;
+                    kind = new_kind;
                     from = inner_from;
                     value = inner_value;
                     was_updated_this_iteration = true;
@@ -1468,10 +1490,44 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         }
 
         if was_ever_updated && let Some(op) = self.try_as_operand(value, location) {
-            *operand = op;
+            *initial_operand = op;
+            *initial_kind = kind;
         }
 
-        Some(self.insert(Value::Cast { kind: *kind, value, from, to }))
+        Some(self.insert(Value::Cast { kind, value, from, to }))
+    }
+
+    fn simplify_len(&mut self, place: &mut Place<'tcx>, location: Location) -> Option<VnIndex> {
+        // Trivial case: we are fetching a statically known length.
+        let place_ty = place.ty(self.local_decls, self.tcx).ty;
+        if let ty::Array(_, len) = place_ty.kind() {
+            return self.insert_constant(Const::Ty(self.tcx.types.usize, *len));
+        }
+
+        let mut inner = self.simplify_place_value(place, location)?;
+
+        // The length information is stored in the wide pointer.
+        // Reborrowing copies length information from one pointer to the other.
+        while let Value::Address { place: borrowed, .. } = self.get(inner)
+            && let [PlaceElem::Deref] = borrowed.projection[..]
+            && let Some(borrowed) = self.locals[borrowed.local]
+        {
+            inner = borrowed;
+        }
+
+        // We have an unsizing cast, which assigns the length to wide pointer metadata.
+        if let Value::Cast { kind, from, to, .. } = self.get(inner)
+            && let CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize, _) = kind
+            && let Some(from) = from.builtin_deref(true)
+            && let ty::Array(_, len) = from.kind()
+            && let Some(to) = to.builtin_deref(true)
+            && let ty::Slice(..) = to.kind()
+        {
+            return self.insert_constant(Const::Ty(self.tcx.types.usize, *len));
+        }
+
+        // Fallback: a symbolic `Len`.
+        Some(self.insert(Value::Len(inner)))
     }
 
     fn pointers_have_same_metadata(&self, left_ptr_ty: Ty<'tcx>, right_ptr_ty: Ty<'tcx>) -> bool {

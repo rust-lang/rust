@@ -111,26 +111,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-mod common;
-
-/// The first version of the prelude of The Rust Standard Library.
-///
-/// See the [module-level documentation](self) for more.
-#[stable(feature = "rust1", since = "1.0.0")]
-pub mod v1 {
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub use super::common::*;
-
-    // Do not `doc(inline)` these `doc(hidden)` items.
-    #[unstable(
-        feature = "rustc_encodable_decodable",
-        issue = "none",
-        soft,
-        reason = "derive macro for `rustc-serialize`; should not be used in new code"
-    )]
-    #[allow(deprecated)]
-    pub use core::prelude::v1::{RustcDecodable, RustcEncodable};
-}
+pub mod v1;
 
 /// The 2015 version of the prelude of The Rust Standard Library.
 ///
@@ -172,7 +153,8 @@ pub mod rust_2021 {
 #[stable(feature = "prelude_2024", since = "1.85.0")]
 pub mod rust_2024 {
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub use super::common::*;
+    #[doc(no_inline)]
+    pub use super::v1::*;
 
     #[stable(feature = "prelude_2024", since = "1.85.0")]
     #[doc(no_inline)]

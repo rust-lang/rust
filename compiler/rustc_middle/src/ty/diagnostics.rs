@@ -5,11 +5,11 @@ use std::ops::ControlFlow;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{
-    Applicability, Diag, DiagArgValue, IntoDiagArg, into_diag_arg_using_display, pluralize,
+    Applicability, Diag, DiagArgValue, IntoDiagArg, into_diag_arg_using_display, listify, pluralize,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, LangItem, PredicateOrigin, WherePredicateKind};
+use rustc_hir::{self as hir, AmbigArg, LangItem, PredicateOrigin, WherePredicateKind};
 use rustc_span::{BytePos, Span};
 use rustc_type_ir::TyKind::*;
 
@@ -336,7 +336,7 @@ pub fn suggest_constraining_type_params<'a>(
             .collect();
 
         constraints
-            .retain(|(_, def_id, _)| def_id.map_or(true, |def| !bound_trait_defs.contains(&def)));
+            .retain(|(_, def_id, _)| def_id.is_none_or(|def| !bound_trait_defs.contains(&def)));
 
         if constraints.is_empty() {
             continue;
@@ -362,11 +362,8 @@ pub fn suggest_constraining_type_params<'a>(
             let n = trait_names.len();
             let stable = if all_stable { "" } else { "unstable " };
             let trait_ = if all_known { format!("trait{}", pluralize!(n)) } else { String::new() };
-            format!("{stable}{trait_}{}", match &trait_names[..] {
-                [t] => format!(" {t}"),
-                [ts @ .., last] => format!(" {} and {last}", ts.join(", ")),
-                [] => return false,
-            },)
+            let Some(trait_names) = listify(&trait_names, |n| n.to_string()) else { return false };
+            format!("{stable}{trait_} {trait_names}")
         } else {
             // We're more explicit when there's a mix of stable and unstable traits.
             let mut trait_names = constraints
@@ -378,10 +375,9 @@ pub fn suggest_constraining_type_params<'a>(
                 .collect::<Vec<_>>();
             trait_names.sort();
             trait_names.dedup();
-            match &trait_names[..] {
-                [t] => t.to_string(),
-                [ts @ .., last] => format!("{} and {last}", ts.join(", ")),
-                [] => return false,
+            match listify(&trait_names, |t| t.to_string()) {
+                Some(names) => names,
+                None => return false,
             }
         };
         let constraint = constraint.join(" + ");
@@ -570,18 +566,18 @@ pub fn suggest_constraining_type_params<'a>(
 pub struct TraitObjectVisitor<'tcx>(pub Vec<&'tcx hir::Ty<'tcx>>, pub crate::hir::map::Map<'tcx>);
 
 impl<'v> hir::intravisit::Visitor<'v> for TraitObjectVisitor<'v> {
-    fn visit_ty(&mut self, ty: &'v hir::Ty<'v>) {
+    fn visit_ty(&mut self, ty: &'v hir::Ty<'v, AmbigArg>) {
         match ty.kind {
-            hir::TyKind::TraitObject(
-                _,
-                hir::Lifetime {
+            hir::TyKind::TraitObject(_, tagged_ptr)
+                if let hir::Lifetime {
                     res:
                         hir::LifetimeName::ImplicitObjectLifetimeDefault | hir::LifetimeName::Static,
                     ..
-                },
-                _,
-            )
-            | hir::TyKind::OpaqueDef(..) => self.0.push(ty),
+                } = tagged_ptr.pointer() =>
+            {
+                self.0.push(ty.as_unambig_ty())
+            }
+            hir::TyKind::OpaqueDef(..) => self.0.push(ty.as_unambig_ty()),
             _ => {}
         }
         hir::intravisit::walk_ty(self, ty);

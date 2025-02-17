@@ -15,7 +15,8 @@ use std::fmt::Write;
 
 use rustc_abi::Integer;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_hashes::Hash64;
 use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData};
 use rustc_hir::{CoroutineDesugaring, CoroutineKind, CoroutineSource, Mutability};
@@ -367,9 +368,7 @@ fn push_debuginfo_type_name<'tcx>(
                 output.push_str(sig.safety.prefix_str());
 
                 if sig.abi != rustc_abi::ExternAbi::Rust {
-                    output.push_str("extern \"");
-                    output.push_str(sig.abi.name());
-                    output.push_str("\" ");
+                    let _ = write!(output, "extern {} ", sig.abi);
                 }
 
                 output.push_str("fn(");
@@ -507,7 +506,7 @@ pub enum VTableNameKind {
 pub fn compute_debuginfo_vtable_name<'tcx>(
     tcx: TyCtxt<'tcx>,
     t: Ty<'tcx>,
-    trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
+    trait_ref: Option<ty::ExistentialTraitRef<'tcx>>,
     kind: VTableNameKind,
 ) -> String {
     let cpp_like_debuginfo = cpp_like_debuginfo(tcx);
@@ -530,8 +529,8 @@ pub fn compute_debuginfo_vtable_name<'tcx>(
     }
 
     if let Some(trait_ref) = trait_ref {
-        let trait_ref = tcx
-            .normalize_erasing_late_bound_regions(ty::TypingEnv::fully_monomorphized(), trait_ref);
+        let trait_ref =
+            tcx.normalize_erasing_regions(ty::TypingEnv::fully_monomorphized(), trait_ref);
         push_item_name(tcx, trait_ref.def_id, true, &mut vtable_name);
         visited.clear();
         push_generic_params_internal(tcx, trait_ref.args, &mut vtable_name, &mut visited);
@@ -673,25 +672,23 @@ fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, output: &mut S
         ty::ConstKind::Param(param) => {
             write!(output, "{}", param.name)
         }
-        ty::ConstKind::Value(ty, valtree) => {
-            match ty.kind() {
+        ty::ConstKind::Value(cv) => {
+            match cv.ty.kind() {
                 ty::Int(ity) => {
-                    // FIXME: directly extract the bits from a valtree instead of evaluating an
-                    // already evaluated `Const` in order to get the bits.
-                    let bits = ct
+                    let bits = cv
                         .try_to_bits(tcx, ty::TypingEnv::fully_monomorphized())
                         .expect("expected monomorphic const in codegen");
                     let val = Integer::from_int_ty(&tcx, *ity).size().sign_extend(bits) as i128;
                     write!(output, "{val}")
                 }
                 ty::Uint(_) => {
-                    let val = ct
+                    let val = cv
                         .try_to_bits(tcx, ty::TypingEnv::fully_monomorphized())
                         .expect("expected monomorphic const in codegen");
                     write!(output, "{val}")
                 }
                 ty::Bool => {
-                    let val = ct.try_to_bool().expect("expected monomorphic const in codegen");
+                    let val = cv.try_to_bool().expect("expected monomorphic const in codegen");
                     write!(output, "{val}")
                 }
                 _ => {
@@ -703,9 +700,7 @@ fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, output: &mut S
                     // avoiding collisions and will make the emitted type names shorter.
                     let hash_short = tcx.with_stable_hashing_context(|mut hcx| {
                         let mut hasher = StableHasher::new();
-                        hcx.while_hashing_spans(false, |hcx| {
-                            (ty, valtree).hash_stable(hcx, &mut hasher)
-                        });
+                        hcx.while_hashing_spans(false, |hcx| cv.hash_stable(hcx, &mut hasher));
                         hasher.finish::<Hash64>()
                     });
 

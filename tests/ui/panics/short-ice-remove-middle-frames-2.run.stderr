@@ -1,5 +1,5 @@
 
-thread 'main' panicked at $DIR/short-ice-remove-middle-frames-2.rs:63:5:
+thread 'main' panicked at $DIR/short-ice-remove-middle-frames-2.rs:62:5:
 debug!!!
 stack backtrace:
    0: std::panicking::begin_panic

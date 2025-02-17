@@ -203,7 +203,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         cast_to: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
         assert!(src.layout.ty.is_any_ptr());
-        assert!(cast_to.ty.is_unsafe_ptr());
+        assert!(cast_to.ty.is_raw_ptr());
         // Handle casting any ptr to raw ptr (might be a wide ptr).
         if cast_to.size == src.layout.size {
             // Thin or wide pointer that just has the ptr kind of target type changed.
@@ -212,7 +212,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // Casting the metadata away from a wide ptr.
             assert_eq!(src.layout.size, 2 * self.pointer_size());
             assert_eq!(cast_to.size, self.pointer_size());
-            assert!(src.layout.ty.is_unsafe_ptr());
+            assert!(src.layout.ty.is_raw_ptr());
             return match **src {
                 Immediate::ScalarPair(data, _) => interp_ok(ImmTy::from_scalar(data, cast_to)),
                 Immediate::Scalar(..) => span_bug!(
@@ -414,36 +414,33 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 // Sanity-check that `supertrait_vtable_slot` in this type's vtable indeed produces
                 // our destination trait.
-                if cfg!(debug_assertions) {
-                    let vptr_entry_idx =
-                        self.tcx.supertrait_vtable_slot((src_pointee_ty, dest_pointee_ty));
-                    let vtable_entries = self.vtable_entries(data_a.principal(), ty);
-                    if let Some(entry_idx) = vptr_entry_idx {
-                        let Some(&ty::VtblEntry::TraitVPtr(upcast_trait_ref)) =
-                            vtable_entries.get(entry_idx)
-                        else {
-                            span_bug!(
-                                self.cur_span(),
-                                "invalid vtable entry index in {} -> {} upcast",
-                                src_pointee_ty,
-                                dest_pointee_ty
-                            );
-                        };
-                        let erased_trait_ref = upcast_trait_ref
-                            .map_bound(|r| ty::ExistentialTraitRef::erase_self_ty(*self.tcx, r));
-                        assert!(
-                            data_b
-                                .principal()
-                                .is_some_and(|b| self.eq_in_param_env(erased_trait_ref, b))
+                let vptr_entry_idx =
+                    self.tcx.supertrait_vtable_slot((src_pointee_ty, dest_pointee_ty));
+                let vtable_entries = self.vtable_entries(data_a.principal(), ty);
+                if let Some(entry_idx) = vptr_entry_idx {
+                    let Some(&ty::VtblEntry::TraitVPtr(upcast_trait_ref)) =
+                        vtable_entries.get(entry_idx)
+                    else {
+                        span_bug!(
+                            self.cur_span(),
+                            "invalid vtable entry index in {} -> {} upcast",
+                            src_pointee_ty,
+                            dest_pointee_ty
                         );
-                    } else {
-                        // In this case codegen would keep using the old vtable. We don't want to do
-                        // that as it has the wrong trait. The reason codegen can do this is that
-                        // one vtable is a prefix of the other, so we double-check that.
-                        let vtable_entries_b = self.vtable_entries(data_b.principal(), ty);
-                        assert!(&vtable_entries[..vtable_entries_b.len()] == vtable_entries_b);
                     };
-                }
+                    let erased_trait_ref =
+                        ty::ExistentialTraitRef::erase_self_ty(*self.tcx, upcast_trait_ref);
+                    assert!(data_b.principal().is_some_and(|b| self.eq_in_param_env(
+                        erased_trait_ref,
+                        self.tcx.instantiate_bound_regions_with_erased(b)
+                    )));
+                } else {
+                    // In this case codegen would keep using the old vtable. We don't want to do
+                    // that as it has the wrong trait. The reason codegen can do this is that
+                    // one vtable is a prefix of the other, so we double-check that.
+                    let vtable_entries_b = self.vtable_entries(data_b.principal(), ty);
+                    assert!(&vtable_entries[..vtable_entries_b.len()] == vtable_entries_b);
+                };
 
                 // Get the destination trait vtable and return that.
                 let new_vptr = self.get_vtable_ptr(ty, data_b)?;

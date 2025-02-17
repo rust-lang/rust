@@ -3,6 +3,9 @@
 //@ error-pattern: reached the recursion limit while instantiating
 //@ error-pattern: reached the recursion limit finding the struct tail
 
+// The regex below normalizes the long type file name to make it suitable for compare-modes.
+//@ normalize-stderr: "'\$TEST_BUILD_DIR/.*\.long-type.txt'" -> "'$$TEST_BUILD_DIR/$$FILE.long-type.txt'"
+
 // Regression test for #114484: This used to ICE during monomorphization, because we treated
 // `<VirtualWrapper<...> as Pointee>::Metadata` as a rigid projection after reaching the recursion
 // limit when finding the struct tail.
@@ -24,7 +27,7 @@ impl<T, const L: u8> VirtualWrapper<T, L> {
 impl<T: MyTrait + 'static, const L: u8> MyTrait for VirtualWrapper<T, L> {
     fn virtualize(&self) -> &dyn MyTrait {
         unsafe { virtualize_my_trait(L, self) }
-        // unsafe { virtualize_my_trait(L, &self.0) }    // <-- this code fixes the problem
+        // unsafe { virtualize_my_trait(L, &self.0) } // <-- this code fixes the problem
     }
 }
 

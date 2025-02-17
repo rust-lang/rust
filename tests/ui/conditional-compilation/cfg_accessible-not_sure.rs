@@ -63,7 +63,7 @@ const B: bool = true;
 
 // ForeignType::unresolved - error
 
-extern {
+extern "C" {
     type ForeignType;
 }
 

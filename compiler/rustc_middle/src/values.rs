@@ -7,7 +7,6 @@ use rustc_errors::codes::*;
 use rustc_errors::{Applicability, MultiSpan, pluralize, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
-use rustc_middle::ty::{self, Representability, Ty, TyCtxt};
 use rustc_query_system::Value;
 use rustc_query_system::query::{CycleError, report_cycle};
 use rustc_span::def_id::LocalDefId;
@@ -15,6 +14,7 @@ use rustc_span::{ErrorGuaranteed, Span};
 
 use crate::dep_graph::dep_kinds;
 use crate::query::plumbing::CyclePlaceholder;
+use crate::ty::{self, Representability, Ty, TyCtxt};
 
 impl<'tcx> Value<TyCtxt<'tcx>> for Ty<'_> {
     fn from_cycle_error(tcx: TyCtxt<'tcx>, _: &CycleError, guar: ErrorGuaranteed) -> Self {
@@ -53,7 +53,7 @@ impl<'tcx> Value<TyCtxt<'tcx>> for ty::Binder<'_, ty::FnSig<'_>> {
         let arity = if let Some(frame) = cycle_error.cycle.get(0)
             && frame.query.dep_kind == dep_kinds::fn_sig
             && let Some(def_id) = frame.query.def_id
-            && let Some(node) = tcx.hir().get_if_local(def_id)
+            && let Some(node) = tcx.hir_get_if_local(def_id)
             && let Some(sig) = node.fn_sig()
         {
             sig.decl.inputs.len()
@@ -360,7 +360,7 @@ fn find_item_ty_spans(
             if let Res::Def(kind, def_id) = path.res
                 && matches!(kind, DefKind::Enum | DefKind::Struct | DefKind::Union)
             {
-                let check_params = def_id.as_local().map_or(true, |def_id| {
+                let check_params = def_id.as_local().is_none_or(|def_id| {
                     if def_id == needle {
                         spans.push(ty.span);
                     }
@@ -374,7 +374,13 @@ fn find_item_ty_spans(
                         if let hir::GenericArg::Type(ty) = arg
                             && params_in_repr.contains(i as u32)
                         {
-                            find_item_ty_spans(tcx, ty, needle, spans, seen_representable);
+                            find_item_ty_spans(
+                                tcx,
+                                ty.as_unambig_ty(),
+                                needle,
+                                spans,
+                                seen_representable,
+                            );
                         }
                     }
                 }

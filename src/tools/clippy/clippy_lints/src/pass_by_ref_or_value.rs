@@ -19,7 +19,7 @@ use rustc_middle::ty::{self, RegionKind, TyCtxt};
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, sym};
-use rustc_target::spec::abi::Abi;
+use rustc_abi::ExternAbi;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -136,7 +136,7 @@ impl PassByRefOrValue {
         }
 
         let fn_sig = cx.tcx.fn_sig(def_id).instantiate_identity();
-        let fn_body = cx.enclosing_body.map(|id| cx.tcx.hir().body(id));
+        let fn_body = cx.enclosing_body.map(|id| cx.tcx.hir_body(id));
 
         // Gather all the lifetimes found in the output type which may affect whether
         // `TRIVIALLY_COPY_PASS_BY_REF` should be linted.
@@ -179,10 +179,10 @@ impl PassByRefOrValue {
                         && let hir::TyKind::Ref(_, MutTy { ty: decl_ty, .. }) = input.kind
                     {
                         if let Some(typeck) = cx.maybe_typeck_results() {
-                            // Don't lint if an unsafe pointer is created.
-                            // TODO: Limit the check only to unsafe pointers to the argument (or part of the argument)
+                            // Don't lint if a raw pointer is created.
+                            // TODO: Limit the check only to raw pointers to the argument (or part of the argument)
                             //       which escape the current function.
-                            if typeck.node_types().items().any(|(_, &ty)| ty.is_unsafe_ptr())
+                            if typeck.node_types().items().any(|(_, &ty)| ty.is_raw_ptr())
                                 || typeck
                                     .adjustments()
                                     .items()
@@ -277,7 +277,7 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
         let hir_id = cx.tcx.local_def_id_to_hir_id(def_id);
         match kind {
             FnKind::ItemFn(.., header) => {
-                if header.abi != Abi::Rust {
+                if header.abi != ExternAbi::Rust {
                     return;
                 }
                 let attrs = cx.tcx.hir().attrs(hir_id);

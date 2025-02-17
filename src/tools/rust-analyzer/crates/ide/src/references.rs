@@ -43,13 +43,11 @@ pub struct Declaration {
 //
 // Shows all references of the item at the cursor location
 //
-// |===
-// | Editor  | Shortcut
+// | Editor  | Shortcut |
+// |---------|----------|
+// | VS Code | <kbd>Shift+Alt+F12</kbd> |
 //
-// | VS Code | kbd:[Shift+Alt+F12]
-// |===
-//
-// image::https://user-images.githubusercontent.com/48062697/113020670-b7c34f00-917a-11eb-8003-370ac5f2b3cb.gif[]
+// ![Find All References](https://user-images.githubusercontent.com/48062697/113020670-b7c34f00-917a-11eb-8003-370ac5f2b3cb.gif)
 pub(crate) fn find_all_refs(
     sema: &Semantics<'_, RootDatabase>,
     position: FilePosition,
@@ -1255,11 +1253,15 @@ impl Foo {
         );
     }
 
-    fn check(ra_fixture: &str, expect: Expect) {
+    fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
         check_with_scope(ra_fixture, None, expect)
     }
 
-    fn check_with_scope(ra_fixture: &str, search_scope: Option<SearchScope>, expect: Expect) {
+    fn check_with_scope(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        search_scope: Option<SearchScope>,
+        expect: Expect,
+    ) {
         let (analysis, pos) = fixture::position(ra_fixture);
         let refs = analysis.find_all_refs(pos, search_scope).unwrap().unwrap();
 

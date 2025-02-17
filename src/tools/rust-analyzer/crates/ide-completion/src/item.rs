@@ -79,11 +79,10 @@ pub struct CompletionItem {
     // FIXME: We shouldn't expose Mutability here (that is HIR types at all), its fine for now though
     // until we have more splitting completions in which case we should think about
     // generalizing this. See https://github.com/rust-lang/rust-analyzer/issues/12571
-    pub ref_match: Option<(Mutability, TextSize)>,
+    pub ref_match: Option<(CompletionItemRefMode, TextSize)>,
 
     /// The import data to add to completion's edits.
-    /// (ImportPath, LastSegment)
-    pub import_to_add: SmallVec<[(String, String); 1]>,
+    pub import_to_add: SmallVec<[String; 1]>,
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -128,8 +127,15 @@ impl fmt::Debug for CompletionItem {
             s.field("relevance", &self.relevance);
         }
 
-        if let Some((mutability, offset)) = &self.ref_match {
-            s.field("ref_match", &format!("&{}@{offset:?}", mutability.as_keyword_for_ref()));
+        if let Some((ref_mode, offset)) = self.ref_match {
+            let prefix = match ref_mode {
+                CompletionItemRefMode::Reference(mutability) => match mutability {
+                    Mutability::Shared => "&",
+                    Mutability::Mut => "&mut ",
+                },
+                CompletionItemRefMode::Dereference => "*",
+            };
+            s.field("ref_match", &format!("{}@{offset:?}", prefix));
         }
         if self.trigger_call_info {
             s.field("trigger_call_info", &true);
@@ -174,6 +180,8 @@ pub struct CompletionRelevance {
     pub postfix_match: Option<CompletionRelevancePostfixMatch>,
     /// This is set for items that are function (associated or method)
     pub function: Option<CompletionRelevanceFn>,
+    /// true when there is an `await.method()` or `iter().method()` completion.
+    pub is_skipping_completion: bool,
 }
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct CompletionRelevanceTraitInfo {
@@ -262,6 +270,7 @@ impl CompletionRelevance {
             postfix_match,
             trait_,
             function,
+            is_skipping_completion,
         } = self;
 
         // only applicable for completions within use items
@@ -289,6 +298,12 @@ impl CompletionRelevance {
                 score -= 5;
             }
         }
+
+        // Lower rank for completions that skip `await` and `iter()`.
+        if is_skipping_completion {
+            score -= 7;
+        }
+
         // lower rank for items that need an import
         if requires_import {
             score -= 1;
@@ -400,6 +415,12 @@ impl CompletionItemKind {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
+pub enum CompletionItemRefMode {
+    Reference(Mutability),
+    Dereference,
+}
+
 impl CompletionItem {
     pub(crate) fn new(
         kind: impl Into<CompletionItemKind>,
@@ -441,15 +462,14 @@ impl CompletionItem {
         let mut relevance = self.relevance;
         relevance.type_match = Some(CompletionRelevanceTypeMatch::Exact);
 
-        self.ref_match.map(|(mutability, offset)| {
-            (
-                format!("&{}{}", mutability.as_keyword_for_ref(), self.label.primary),
-                ide_db::text_edit::Indel::insert(
-                    offset,
-                    format!("&{}", mutability.as_keyword_for_ref()),
-                ),
-                relevance,
-            )
+        self.ref_match.map(|(mode, offset)| {
+            let prefix = match mode {
+                CompletionItemRefMode::Reference(Mutability::Shared) => "&",
+                CompletionItemRefMode::Reference(Mutability::Mut) => "&mut ",
+                CompletionItemRefMode::Dereference => "*",
+            };
+            let label = format!("{prefix}{}", self.label.primary);
+            (label, ide_db::text_edit::Indel::insert(offset, String::from(prefix)), relevance)
         })
     }
 }
@@ -473,7 +493,7 @@ pub(crate) struct Builder {
     deprecated: bool,
     trigger_call_info: bool,
     relevance: CompletionRelevance,
-    ref_match: Option<(Mutability, TextSize)>,
+    ref_match: Option<(CompletionItemRefMode, TextSize)>,
     edition: Edition,
 }
 
@@ -549,12 +569,7 @@ impl Builder {
         let import_to_add = self
             .imports_to_add
             .into_iter()
-            .filter_map(|import| {
-                Some((
-                    import.import_path.display(db, self.edition).to_string(),
-                    import.import_path.segments().last()?.display(db, self.edition).to_string(),
-                ))
-            })
+            .map(|import| import.import_path.display(db, self.edition).to_string())
             .collect();
 
         CompletionItem {
@@ -657,8 +672,12 @@ impl Builder {
         self.imports_to_add.push(import_to_add);
         self
     }
-    pub(crate) fn ref_match(&mut self, mutability: Mutability, offset: TextSize) -> &mut Builder {
-        self.ref_match = Some((mutability, offset));
+    pub(crate) fn ref_match(
+        &mut self,
+        ref_mode: CompletionItemRefMode,
+        offset: TextSize,
+    ) -> &mut Builder {
+        self.ref_match = Some((ref_mode, offset));
         self
     }
 }

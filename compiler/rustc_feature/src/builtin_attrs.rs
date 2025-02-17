@@ -19,6 +19,7 @@ const GATED_CFGS: &[GatedCfg] = &[
     // (name in cfg, feature, function to check if the feature is enabled)
     (sym::overflow_checks, sym::cfg_overflow_checks, Features::cfg_overflow_checks),
     (sym::ub_checks, sym::cfg_ub_checks, Features::cfg_ub_checks),
+    (sym::contract_checks, sym::cfg_contract_checks, Features::cfg_contract_checks),
     (sym::target_thread_local, sym::cfg_target_thread_local, Features::cfg_target_thread_local),
     (
         sym::target_has_atomic_equal_alignment,
@@ -317,7 +318,7 @@ pub struct BuiltinAttribute {
 
 /// Attributes that have a special meaning to rustc or rustdoc.
 #[rustfmt::skip]
-pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
+pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ==========================================================================
     // Stable attributes:
     // ==========================================================================
@@ -408,11 +409,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         crate_type, CrateLevel, template!(NameValueStr: "bin|lib|..."), DuplicatesOk,
         EncodeCrossCrate::No,
     ),
-    // crate_id is deprecated
-    ungated!(
-        crate_id, CrateLevel, template!(NameValueStr: "ignored"), FutureWarnFollowing,
-        EncodeCrossCrate::No,
-    ),
 
     // ABI, linking, symbols, and FFI
     ungated!(
@@ -448,8 +444,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
 
     // Entry point:
-    ungated!(start, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::No),
-    ungated!(no_start, CrateLevel, template!(Word), WarnFollowing, EncodeCrossCrate::No),
     ungated!(no_main, CrateLevel, template!(Word), WarnFollowing, EncodeCrossCrate::No),
 
     // Modules, prelude, and resolution:
@@ -533,7 +527,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     // RFC 2412
     gated!(
-        optimize, Normal, template!(List: "size|speed"), ErrorPreceding,
+        optimize, Normal, template!(List: "none|size|speed"), ErrorPreceding,
         EncodeCrossCrate::No, optimize_attribute, experimental!(optimize)
     ),
 
@@ -623,7 +617,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::No, "allow_internal_unsafe side-steps the unsafe_code lint",
     ),
     rustc_attr!(
-        rustc_allowed_through_unstable_modules, Normal, template!(Word),
+        rustc_allowed_through_unstable_modules, Normal, template!(NameValueStr: "deprecation message"),
         WarnFollowing, EncodeCrossCrate::No,
         "rustc_allowed_through_unstable_modules special cases accidental stabilizations of stable items \
         through unstable paths"
@@ -1143,7 +1137,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     rustc_attr!(
         TEST, rustc_dump_vtable, Normal, template!(Word),
-        WarnFollowing, EncodeCrossCrate::Yes
+        WarnFollowing, EncodeCrossCrate::No
     ),
     rustc_attr!(
         TEST, rustc_dummy, Normal, template!(Word /* doesn't matter*/),
@@ -1155,7 +1149,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "the `#[omit_gdb_pretty_printer_section]` attribute is just used for the Rust test suite",
     ),
     rustc_attr!(
-        TEST, pattern_complexity, CrateLevel, template!(NameValueStr: "N"),
+        TEST, pattern_complexity_limit, CrateLevel, template!(NameValueStr: "N"),
         ErrorFollowing, EncodeCrossCrate::No,
     ),
 ];

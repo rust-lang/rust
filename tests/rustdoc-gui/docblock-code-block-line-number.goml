@@ -112,28 +112,6 @@ wait-for: "pre.example-line-numbers"
 go-to: "file://" + |DOC_PATH| + "/scrape_examples/fn.test_many.html"
 
 assert-css: (
-    ".scraped-example .src-line-numbers > pre",
-    {
-        // There should not be a radius on the right of the line numbers.
-        "border-top-left-radius": "6px",
-        "border-bottom-left-radius": "6px",
-        "border-top-right-radius": "0px",
-        "border-bottom-right-radius": "0px",
-    },
-    ALL,
-)
-assert-css: (
-    ".scraped-example .src-line-numbers",
-    {
-        // There should not be a radius on the right of the line numbers.
-        "border-top-left-radius": "6px",
-        "border-bottom-left-radius": "6px",
-        "border-top-right-radius": "0px",
-        "border-bottom-right-radius": "0px",
-    },
-    ALL,
-)
-assert-css: (
     ".scraped-example .rust",
     {
         // There should not be a radius on the left of the code.
@@ -149,23 +127,15 @@ define-function: (
     "check-padding",
     [path, padding_bottom],
     block {
-        assert-css: (|path| + " .src-line-numbers", {
+        assert-css: (|path| + " span[data-nosnippet]", {
             "padding-top": "0px",
             "padding-bottom": "0px",
-            "padding-left": "0px",
-            "padding-right": "0px",
-        }, ALL)
-        assert-css: (|path| + " .src-line-numbers > pre", {
-            "padding-top": "14px",
-            "padding-bottom": |padding_bottom|,
-            "padding-left": "0px",
-            "padding-right": "0px",
-        }, ALL)
-        assert-css: (|path| + " .src-line-numbers > pre > span", {
-            "padding-top": "0px",
-            "padding-bottom": "0px",
-            "padding-left": "8px",
-            "padding-right": "8px",
+            "padding-left": "4px",
+            "padding-right": "4px",
+            "margin-right": "20px",
+            "margin-left": "0px",
+            "margin-top": "0px",
+            "margin-bottom": "0px",
         }, ALL)
     },
 )
@@ -196,13 +166,13 @@ define-function: ("check-line-numbers-existence", [], block {
     wait-for-local-storage-false: {"rustdoc-line-numbers": "true" }
     assert-false: ".example-line-numbers"
     // Line numbers should still be there.
-    assert: ".src-line-numbers"
+    assert-css: ("[data-nosnippet]", { "display": "inline-block"})
     // Now disabling the setting.
     click: "input#line-numbers"
     wait-for-local-storage: {"rustdoc-line-numbers": "true" }
     assert-false: ".example-line-numbers"
     // Line numbers should still be there.
-    assert: ".src-line-numbers"
+    assert-css: ("[data-nosnippet]", { "display": "inline-block"})
     // Closing settings menu.
     click: "#settings-menu"
     wait-for-css: ("#settings", {"display": "none"})
@@ -214,18 +184,16 @@ call-function: ("check-line-numbers-existence", {})
 
 // Now checking the line numbers in the source code page.
 click: ".src"
-assert-css: (".src-line-numbers", {
-    "padding-top": "20px",
-    "padding-bottom": "20px",
-    "padding-left": "4px",
-    "padding-right": "0px",
-})
-assert-css: (".src-line-numbers > a", {
+assert-css: ("a[data-nosnippet]", {
     "padding-top": "0px",
     "padding-bottom": "0px",
-    "padding-left": "8px",
-    "padding-right": "8px",
-})
+    "padding-left": "4px",
+    "padding-right": "4px",
+    "margin-top": "0px",
+    "margin-bottom": "0px",
+    "margin-left": "0px",
+    "margin-right": "20px",
+}, ALL)
 // Checking that turning off the line numbers setting won't remove line numbers.
 call-function: ("check-line-numbers-existence", {})
 

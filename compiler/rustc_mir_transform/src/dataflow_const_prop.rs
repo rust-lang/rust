@@ -71,6 +71,10 @@ impl<'tcx> crate::MirPass<'tcx> for DataflowConstProp {
         let mut patch = visitor.patch;
         debug_span!("patch").in_scope(|| patch.visit_body_preserves_cfg(body));
     }
+
+    fn is_required(&self) -> bool {
+        false
+    }
 }
 
 // Note: Currently, places that have their reference taken cannot be tracked. Although this would
@@ -408,6 +412,18 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
         state: &mut State<FlatSet<Scalar>>,
     ) -> ValueOrPlace<FlatSet<Scalar>> {
         let val = match rvalue {
+            Rvalue::Len(place) => {
+                let place_ty = place.ty(self.local_decls, self.tcx);
+                if let ty::Array(_, len) = place_ty.ty.kind() {
+                    Const::Ty(self.tcx.types.usize, *len)
+                        .try_eval_scalar(self.tcx, self.typing_env)
+                        .map_or(FlatSet::Top, FlatSet::Elem)
+                } else if let [ProjectionElem::Deref] = place.projection[..] {
+                    state.get_len(place.local.into(), &self.map)
+                } else {
+                    FlatSet::Top
+                }
+            }
             Rvalue::Cast(CastKind::IntToInt | CastKind::IntToFloat, operand, ty) => {
                 let Ok(layout) = self.tcx.layout_of(self.typing_env.as_query_input(*ty)) else {
                     return ValueOrPlace::Value(FlatSet::Top);
@@ -488,7 +504,8 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             | Rvalue::Cast(..)
             | Rvalue::BinaryOp(..)
             | Rvalue::Aggregate(..)
-            | Rvalue::ShallowInitBox(..) => {
+            | Rvalue::ShallowInitBox(..)
+            | Rvalue::WrapUnsafeBinder(..) => {
                 // No modification is possible through these r-values.
                 return ValueOrPlace::TOP;
             }

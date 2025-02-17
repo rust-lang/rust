@@ -419,7 +419,7 @@ impl<'tcx> Visitor<'tcx> for UnsafeVisitor<'_, 'tcx> {
         id: LocalDefId,
     ) -> Self::Result {
         if let Some(header) = kind.header()
-            && header.safety.is_unsafe()
+            && header.is_unsafe()
         {
             ControlFlow::Break(())
         } else {
@@ -437,8 +437,8 @@ impl<'tcx> Visitor<'tcx> for UnsafeVisitor<'_, 'tcx> {
         walk_expr(self, expr)
     }
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.cx.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.cx.tcx
     }
 }
 

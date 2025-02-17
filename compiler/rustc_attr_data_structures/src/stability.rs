@@ -137,9 +137,9 @@ pub enum StabilityLevel {
     Stable {
         /// Rust release which stabilized this feature.
         since: StableSince,
-        /// Is this item allowed to be referred to on stable, despite being contained in unstable
-        /// modules?
-        allowed_through_unstable_modules: bool,
+        /// This is `Some` if this item allowed to be referred to on stable via unstable modules;
+        /// the `Symbol` is the deprecation message printed in that case.
+        allowed_through_unstable_modules: Option<Symbol>,
     },
 }
 

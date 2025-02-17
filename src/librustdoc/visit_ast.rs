@@ -19,7 +19,7 @@ use tracing::debug;
 
 use crate::clean::cfg::Cfg;
 use crate::clean::utils::{inherits_doc_hidden, should_ignore_res};
-use crate::clean::{AttributesExt, NestedAttributesExt, reexport_chain};
+use crate::clean::{NestedAttributesExt, hir_attr_lists, reexport_chain};
 use crate::core;
 
 /// This module is used to store stuff from Rust's AST in a more convenient
@@ -96,7 +96,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         let om = Module::new(
             cx.tcx.crate_name(LOCAL_CRATE),
             CRATE_DEF_ID,
-            cx.tcx.hir().root_module().spans.inner_span,
+            cx.tcx.hir_root_module().spans.inner_span,
             None,
             None,
         );
@@ -119,7 +119,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     }
 
     pub(crate) fn visit(mut self) -> Module<'tcx> {
-        let root_module = self.cx.tcx.hir().root_module();
+        let root_module = self.cx.tcx.hir_root_module();
         self.visit_mod_contents(CRATE_DEF_ID, root_module);
 
         let mut top_level_module = self.modules.pop().unwrap();
@@ -193,13 +193,13 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         // Reimplementation of `walk_mod` because we need to do it in two passes (explanations in
         // the second loop):
         for &i in m.item_ids {
-            let item = self.cx.tcx.hir().item(i);
+            let item = self.cx.tcx.hir_item(i);
             if !matches!(item.kind, hir::ItemKind::Use(_, hir::UseKind::Glob)) {
                 self.visit_item(item);
             }
         }
         for &i in m.item_ids {
-            let item = self.cx.tcx.hir().item(i);
+            let item = self.cx.tcx.hir_item(i);
             // To match the way import precedence works, visit glob imports last.
             // Later passes in rustdoc will de-duplicate by name and kind, so if glob-
             // imported items appear last, then they'll be the ones that get discarded.
@@ -247,8 +247,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         let document_hidden = self.cx.render_options.document_hidden;
         let use_attrs = tcx.hir().attrs(tcx.local_def_id_to_hir_id(def_id));
         // Don't inline `doc(hidden)` imports so they can be stripped at a later stage.
-        let is_no_inline = use_attrs.lists(sym::doc).has_word(sym::no_inline)
-            || (document_hidden && use_attrs.lists(sym::doc).has_word(sym::hidden));
+        let is_no_inline = hir_attr_lists(use_attrs, sym::doc).has_word(sym::no_inline)
+            || (document_hidden && hir_attr_lists(use_attrs, sym::doc).has_word(sym::hidden));
 
         if is_no_inline {
             return false;
@@ -315,7 +315,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             Node::Item(&hir::Item { kind: hir::ItemKind::Mod(m), .. }) if glob => {
                 let prev = mem::replace(&mut self.inlining, true);
                 for &i in m.item_ids {
-                    let i = tcx.hir().item(i);
+                    let i = tcx.hir_item(i);
                     self.visit_item_inner(i, None, Some(def_id));
                 }
                 self.inlining = prev;
@@ -433,7 +433,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         match item.kind {
             hir::ItemKind::ForeignMod { items, .. } => {
                 for item in items {
-                    let item = tcx.hir().foreign_item(item.id);
+                    let item = tcx.hir_foreign_item(item.id);
                     self.visit_foreign_item_inner(item, None);
                 }
             }
@@ -563,8 +563,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 impl<'tcx> Visitor<'tcx> for RustdocVisitor<'_, 'tcx> {
     type NestedFilter = nested_filter::All;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.cx.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.cx.tcx
     }
 
     fn visit_item(&mut self, i: &'tcx hir::Item<'tcx>) {
@@ -598,8 +598,13 @@ impl<'tcx> Visitor<'tcx> for RustdocVisitor<'_, 'tcx> {
         // Unneeded.
     }
 
-    fn visit_infer(&mut self, _: &hir::InferArg) {
-        // Unneeded.
+    fn visit_infer(
+        &mut self,
+        _inf_id: hir::HirId,
+        _inf_span: Span,
+        _kind: hir::intravisit::InferKind<'tcx>,
+    ) -> Self::Result {
+        // Unneeded
     }
 
     fn visit_lifetime(&mut self, _: &hir::Lifetime) {

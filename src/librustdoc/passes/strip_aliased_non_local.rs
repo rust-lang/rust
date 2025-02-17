@@ -26,7 +26,7 @@ impl DocFolder for AliasedNonLocalStripper<'_> {
         Some(match i.kind {
             clean::TypeAliasItem(..) => {
                 let mut stripper = NonLocalStripper { tcx: self.tcx };
-                // don't call `fold_item` as that could strip the type-alias it-self
+                // don't call `fold_item` as that could strip the type alias itself
                 // which we don't want to strip out
                 stripper.fold_item_recur(i)
             }

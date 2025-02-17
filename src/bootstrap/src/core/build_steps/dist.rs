@@ -16,6 +16,8 @@ use std::{env, fs};
 
 use object::BinaryFormat;
 use object::read::archive::ArchiveFile;
+#[cfg(feature = "tracing")]
+use tracing::instrument;
 
 use crate::core::build_steps::doc::DocumentationFormat;
 use crate::core::build_steps::tool::{self, Tool};
@@ -30,7 +32,7 @@ use crate::utils::helpers::{
     exe, is_dylib, move_file, t, target_supports_cranelift_backend, timeit,
 };
 use crate::utils::tarball::{GeneratedTarball, OverlayKind, Tarball};
-use crate::{Compiler, DependencyType, LLVM_TOOLS, Mode};
+use crate::{Compiler, DependencyType, LLVM_TOOLS, Mode, trace};
 
 pub fn pkgname(builder: &Builder<'_>, component: &str) -> String {
     format!("{}-{}", component, builder.rust_package_vers())
@@ -504,14 +506,22 @@ impl Step for Rustc {
             // Debugger scripts
             builder.ensure(DebuggerScripts { sysroot: image.to_owned(), host });
 
-            // Misc license info
-            let cp = |file: &str| {
-                builder.install(&builder.src.join(file), &image.join("share/doc/rust"), 0o644);
+            // HTML copyright files
+            let file_list = builder.ensure(super::run::GenerateCopyright);
+            for file in file_list {
+                builder.install(&file, &image.join("share/doc/rust"), 0o644);
+            }
+
+            // README
+            builder.install(&builder.src.join("README.md"), &image.join("share/doc/rust"), 0o644);
+
+            // The REUSE-managed license files
+            let license = |path: &Path| {
+                builder.install(path, &image.join("share/doc/rust/licences"), 0o644);
             };
-            cp("COPYRIGHT");
-            cp("LICENSE-APACHE");
-            cp("LICENSE-MIT");
-            cp("README.md");
+            for entry in t!(std::fs::read_dir(builder.src.join("LICENSES"))).flatten() {
+                license(&entry.path());
+            }
         }
     }
 }
@@ -574,7 +584,7 @@ impl Step for DebuggerScripts {
 fn skip_host_target_lib(builder: &Builder<'_>, compiler: Compiler) -> bool {
     // The only true set of target libraries came from the build triple, so
     // let's reduce redundant work by only producing archives from that host.
-    if compiler.host != builder.config.build {
+    if !builder.is_builder_target(compiler.host) {
         builder.info("\tskipping, not a build host");
         true
     } else {
@@ -629,7 +639,7 @@ fn copy_target_libs(
     for (path, dependency_type) in builder.read_stamp_file(stamp) {
         if dependency_type == DependencyType::TargetSelfContained {
             builder.copy_link(&path, &self_contained_dst.join(path.file_name().unwrap()));
-        } else if dependency_type == DependencyType::Target || builder.config.build == target {
+        } else if dependency_type == DependencyType::Target || builder.is_builder_target(target) {
             builder.copy_link(&path, &dst.join(path.file_name().unwrap()));
         }
     }
@@ -778,7 +788,7 @@ impl Step for Analysis {
     fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
         let compiler = self.compiler;
         let target = self.target;
-        if compiler.host != builder.config.build {
+        if !builder.is_builder_target(compiler.host) {
             return None;
         }
 
@@ -986,22 +996,39 @@ impl Step for PlainSourceTarball {
 
         // This is the set of root paths which will become part of the source package
         let src_files = [
+            // tidy-alphabetical-start
+            ".gitmodules",
+            "Cargo.lock",
+            "Cargo.toml",
+            "config.example.toml",
+            "configure",
+            "CONTRIBUTING.md",
             "COPYRIGHT",
             "LICENSE-APACHE",
+            "license-metadata.json",
             "LICENSE-MIT",
-            "CONTRIBUTING.md",
             "README.md",
             "RELEASES.md",
-            "configure",
+            "REUSE.toml",
+            "x",
+            "x.ps1",
             "x.py",
-            "config.example.toml",
-            "Cargo.toml",
-            "Cargo.lock",
-            ".gitmodules",
+            // tidy-alphabetical-end
         ];
-        let src_dirs = ["src", "compiler", "library", "tests"];
+        let src_dirs = ["src", "compiler", "library", "tests", "LICENSES"];
 
-        copy_src_dirs(builder, &builder.src, &src_dirs, &[], plain_dst_src);
+        copy_src_dirs(
+            builder,
+            &builder.src,
+            &src_dirs,
+            &[
+                // We don't currently use the GCC source code for building any official components,
+                // it is very big, and has unclear licensing implications due to being GPL licensed.
+                // We thus exclude it from the source tarball from now.
+                "src/gcc",
+            ],
+            plain_dst_src,
+        );
 
         // Copy the files normally
         for item in &src_files {
@@ -2004,6 +2031,15 @@ fn install_llvm_file(
 /// Maybe add LLVM object files to the given destination lib-dir. Allows either static or dynamic linking.
 ///
 /// Returns whether the files were actually copied.
+#[cfg_attr(
+    feature = "tracing",
+    instrument(
+        level = "trace",
+        name = "maybe_install_llvm",
+        skip_all,
+        fields(target = ?target, dst_libdir = ?dst_libdir, install_symlink = install_symlink),
+    ),
+)]
 fn maybe_install_llvm(
     builder: &Builder<'_>,
     target: TargetSelection,
@@ -2027,6 +2063,7 @@ fn maybe_install_llvm(
     // If the LLVM is coming from ourselves (just from CI) though, we
     // still want to install it, as it otherwise won't be available.
     if builder.is_system_llvm(target) {
+        trace!("system LLVM requested, no install");
         return false;
     }
 
@@ -2045,6 +2082,7 @@ fn maybe_install_llvm(
     } else if let llvm::LlvmBuildStatus::AlreadyBuilt(llvm::LlvmResult { llvm_config, .. }) =
         llvm::prebuilt_llvm_config(builder, target, true)
     {
+        trace!("LLVM already built, installing LLVM files");
         let mut cmd = command(llvm_config);
         cmd.arg("--libfiles");
         builder.verbose(|| println!("running {cmd:?}"));
@@ -2067,6 +2105,19 @@ fn maybe_install_llvm(
 }
 
 /// Maybe add libLLVM.so to the target lib-dir for linking.
+#[cfg_attr(
+    feature = "tracing",
+    instrument(
+        level = "trace",
+        name = "maybe_install_llvm_target",
+        skip_all,
+        fields(
+            llvm_link_shared = ?builder.llvm_link_shared(),
+            target = ?target,
+            sysroot = ?sysroot,
+        ),
+    ),
+)]
 pub fn maybe_install_llvm_target(builder: &Builder<'_>, target: TargetSelection, sysroot: &Path) {
     let dst_libdir = sysroot.join("lib/rustlib").join(target).join("lib");
     // We do not need to copy LLVM files into the sysroot if it is not
@@ -2078,6 +2129,19 @@ pub fn maybe_install_llvm_target(builder: &Builder<'_>, target: TargetSelection,
 }
 
 /// Maybe add libLLVM.so to the runtime lib-dir for rustc itself.
+#[cfg_attr(
+    feature = "tracing",
+    instrument(
+        level = "trace",
+        name = "maybe_install_llvm_runtime",
+        skip_all,
+        fields(
+            llvm_link_shared = ?builder.llvm_link_shared(),
+            target = ?target,
+            sysroot = ?sysroot,
+        ),
+    ),
+)]
 pub fn maybe_install_llvm_runtime(builder: &Builder<'_>, target: TargetSelection, sysroot: &Path) {
     let dst_libdir =
         sysroot.join(builder.sysroot_libdir_relative(Compiler { stage: 1, host: target }));
