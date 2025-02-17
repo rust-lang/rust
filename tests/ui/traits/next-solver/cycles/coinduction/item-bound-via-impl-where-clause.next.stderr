@@ -1,0 +1,49 @@
+error[E0275]: overflow evaluating the requirement `Vec<u8>: Trait<String>`
+  --> $DIR/item-bound-via-impl-where-clause.rs:31:33
+   |
+LL |     let s: String = transmute::<_, String>(vec![65_u8, 66, 67]);
+   |                                 ^
+   |
+note: required by a bound in `transmute`
+  --> $DIR/item-bound-via-impl-where-clause.rs:29:17
+   |
+LL | fn transmute<L: Trait<R>, R>(r: L) -> <L::Proof as Trait<R>>::Proof { r }
+   |                 ^^^^^^^^ required by this bound in `transmute`
+
+error[E0275]: overflow evaluating the requirement `<<Vec<u8> as Trait<String>>::Proof as Trait<String>>::Proof == _`
+  --> $DIR/item-bound-via-impl-where-clause.rs:31:21
+   |
+LL |     let s: String = transmute::<_, String>(vec![65_u8, 66, 67]);
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0275]: overflow evaluating the requirement `<<Vec<u8> as Trait<String>>::Proof as Trait<String>>::Proof == String`
+  --> $DIR/item-bound-via-impl-where-clause.rs:31:21
+   |
+LL |     let s: String = transmute::<_, String>(vec![65_u8, 66, 67]);
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0275]: overflow evaluating the requirement `<<Vec<u8> as Trait<String>>::Proof as Trait<String>>::Proof: Sized`
+  --> $DIR/item-bound-via-impl-where-clause.rs:31:21
+   |
+LL |     let s: String = transmute::<_, String>(vec![65_u8, 66, 67]);
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the return type of a function must have a statically known size
+
+error[E0275]: overflow evaluating the requirement `<<Vec<u8> as Trait<String>>::Proof as Trait<String>>::Proof well-formed`
+  --> $DIR/item-bound-via-impl-where-clause.rs:31:21
+   |
+LL |     let s: String = transmute::<_, String>(vec![65_u8, 66, 67]);
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0275]: overflow evaluating the requirement `<<Vec<u8> as Trait<String>>::Proof as Trait<String>>::Proof == _`
+  --> $DIR/item-bound-via-impl-where-clause.rs:31:21
+   |
+LL |     let s: String = transmute::<_, String>(vec![65_u8, 66, 67]);
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0275`.
