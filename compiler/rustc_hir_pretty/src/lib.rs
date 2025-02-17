@@ -692,7 +692,7 @@ impl<'a> State<'a> {
                 }
                 self.bclose(item.span);
             }
-            hir::ItemKind::GlobalAsm(asm) => {
+            hir::ItemKind::GlobalAsm { asm } => {
                 self.head("global_asm!");
                 self.print_inline_asm(asm);
                 self.end()

@@ -277,7 +277,7 @@ fn infer_type_if_missing<'tcx>(fcx: &FnCtxt<'_, 'tcx>, node: Node<'tcx>) -> Opti
                 Some(fcx.next_ty_var(span))
             }
             Node::Expr(&hir::Expr { kind: hir::ExprKind::InlineAsm(asm), span, .. })
-            | Node::Item(&hir::Item { kind: hir::ItemKind::GlobalAsm(asm), span, .. }) => {
+            | Node::Item(&hir::Item { kind: hir::ItemKind::GlobalAsm { asm }, span, .. }) => {
                 asm.operands.iter().find_map(|(op, _op_sp)| match op {
                     hir::InlineAsmOperand::Const { anon_const }
                     | hir::InlineAsmOperand::SymFn { anon_const }

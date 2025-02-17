@@ -645,7 +645,7 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
             // The interface is empty, and no nested items.
             hir::ItemKind::Use(..)
             | hir::ItemKind::ExternCrate(..)
-            | hir::ItemKind::GlobalAsm(..) => {}
+            | hir::ItemKind::GlobalAsm { .. } => {}
             // The interface is empty, and all nested items are processed by `visit_item`.
             hir::ItemKind::Mod(..) => {}
             hir::ItemKind::Macro(macro_def, _) => {
