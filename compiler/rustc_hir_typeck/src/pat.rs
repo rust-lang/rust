@@ -241,7 +241,7 @@ enum InheritedRefMatchRule {
         /// If `false`, a reference pattern is only matched against the underlying type.
         /// This is `false` for stable Rust and `true` for both the `ref_pat_eat_one_layer_2024` and
         /// `ref_pat_eat_one_layer_2024_structural` feature gates.
-        consider_inherited_ref_first: bool,
+        consider_inherited_ref: bool,
     },
 }
 
@@ -268,11 +268,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else {
                 // Currently, matching against an inherited ref on edition 2024 is an error.
                 // Use `EatBoth` as a fallback to be similar to stable Rust.
-                InheritedRefMatchRule::EatBoth { consider_inherited_ref_first: false }
+                InheritedRefMatchRule::EatBoth { consider_inherited_ref: false }
             }
         } else {
             InheritedRefMatchRule::EatBoth {
-                consider_inherited_ref_first: self.tcx.features().ref_pat_eat_one_layer_2024()
+                consider_inherited_ref: self.tcx.features().ref_pat_eat_one_layer_2024()
                     || self.tcx.features().ref_pat_eat_one_layer_2024_structural(),
             }
         }
@@ -2397,7 +2397,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         return expected;
                     }
                 }
-                InheritedRefMatchRule::EatBoth { consider_inherited_ref_first: true } => {
+                InheritedRefMatchRule::EatBoth { consider_inherited_ref: true } => {
                     // Reset binding mode on old editions
                     pat_info.binding_mode = ByRef::No;
 
@@ -2437,7 +2437,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         return expected;
                     }
                 }
-                InheritedRefMatchRule::EatBoth { consider_inherited_ref_first: false } => {
+                InheritedRefMatchRule::EatBoth { consider_inherited_ref: false } => {
                     // Reset binding mode on stable Rust. This will be a type error below if
                     // `expected` is not a reference type.
                     pat_info.binding_mode = ByRef::No;
