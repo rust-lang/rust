@@ -14,7 +14,7 @@ use rustc_session::lint::builtin::{
     TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
 };
 use rustc_session::parse::ParseSess;
-use rustc_span::{BytePos, Pos, Span, Symbol};
+use rustc_span::{BytePos, Pos, Span, Symbol, sym};
 use tracing::debug;
 
 use crate::lexer::diagnostics::TokenTreeDiagInfo;
@@ -58,7 +58,11 @@ pub(crate) fn lex_token_trees<'psess, 'src>(
     // Skip frontmatter, if present.
     if let Some(frontmatter_len) = rustc_lexer::strip_frontmatter(src) {
         src = &src[frontmatter_len..];
+        let lo = start_pos;
         start_pos = start_pos + BytePos::from_usize(frontmatter_len);
+        let hi = start_pos;
+        let span = Span::with_root_ctxt(lo, hi);
+        psess.gated_spans.gate(sym::frontmatter, span);
     }
 
     let cursor = Cursor::new(src);
