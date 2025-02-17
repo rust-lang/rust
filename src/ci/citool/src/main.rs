@@ -359,7 +359,9 @@ fn main() -> anyhow::Result<()> {
             let gh_ctx = load_github_ctx()
                 .context("Cannot load environment variables from GitHub Actions")?;
             let channel = read_to_string(Path::new(CI_DIRECTORY).join("channel"))
-                .context("Cannot read channel file")?;
+                .context("Cannot read channel file")?
+                .trim()
+                .to_string();
 
             calculate_job_matrix(load_db(jobs_path)?, gh_ctx, &channel)
                 .context("Failed to calculate job matrix")?;
