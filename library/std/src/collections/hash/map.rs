@@ -1024,7 +1024,7 @@ where
     /// ```
     #[inline]
     #[doc(alias = "get_many_mut")]
-    #[stable(feature = "map_many_mut", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "map_many_mut", since = "1.86.0")]
     pub fn get_disjoint_mut<Q: ?Sized, const N: usize>(
         &mut self,
         ks: [&Q; N],
@@ -1091,7 +1091,7 @@ where
     /// ```
     #[inline]
     #[doc(alias = "get_many_unchecked_mut")]
-    #[stable(feature = "map_many_mut", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "map_many_mut", since = "1.86.0")]
     pub unsafe fn get_disjoint_unchecked_mut<Q: ?Sized, const N: usize>(
         &mut self,
         ks: [&Q; N],
