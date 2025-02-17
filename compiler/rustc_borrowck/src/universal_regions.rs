@@ -125,6 +125,11 @@ pub(crate) enum DefiningTy<'tcx> {
     /// The MIR represents an inline const. The signature has no inputs and a
     /// single return value found via `InlineConstArgs::ty`.
     InlineConst(DefId, GenericArgsRef<'tcx>),
+
+    // Fake body for a global asm. Not particularly useful or interesting,
+    // but we need it so we can properly store the typeck results of the asm
+    // operands, which aren't associated with a body otherwise.
+    GlobalAsm(DefId),
 }
 
 impl<'tcx> DefiningTy<'tcx> {
@@ -137,9 +142,10 @@ impl<'tcx> DefiningTy<'tcx> {
             DefiningTy::Closure(_, args) => args.as_closure().upvar_tys(),
             DefiningTy::CoroutineClosure(_, args) => args.as_coroutine_closure().upvar_tys(),
             DefiningTy::Coroutine(_, args) => args.as_coroutine().upvar_tys(),
-            DefiningTy::FnDef(..) | DefiningTy::Const(..) | DefiningTy::InlineConst(..) => {
-                ty::List::empty()
-            }
+            DefiningTy::FnDef(..)
+            | DefiningTy::Const(..)
+            | DefiningTy::InlineConst(..)
+            | DefiningTy::GlobalAsm(_) => ty::List::empty(),
         }
     }
 
@@ -151,7 +157,10 @@ impl<'tcx> DefiningTy<'tcx> {
             DefiningTy::Closure(..)
             | DefiningTy::CoroutineClosure(..)
             | DefiningTy::Coroutine(..) => 1,
-            DefiningTy::FnDef(..) | DefiningTy::Const(..) | DefiningTy::InlineConst(..) => 0,
+            DefiningTy::FnDef(..)
+            | DefiningTy::Const(..)
+            | DefiningTy::InlineConst(..)
+            | DefiningTy::GlobalAsm(_) => 0,
         }
     }
 
@@ -170,7 +179,8 @@ impl<'tcx> DefiningTy<'tcx> {
             | DefiningTy::Coroutine(def_id, ..)
             | DefiningTy::FnDef(def_id, ..)
             | DefiningTy::Const(def_id, ..)
-            | DefiningTy::InlineConst(def_id, ..) => def_id,
+            | DefiningTy::InlineConst(def_id, ..)
+            | DefiningTy::GlobalAsm(def_id) => def_id,
         }
     }
 }
@@ -410,6 +420,7 @@ impl<'tcx> UniversalRegions<'tcx> {
                     tcx.def_path_str_with_args(def_id, args),
                 ));
             }
+            DefiningTy::GlobalAsm(_) => unreachable!(),
         }
     }
 
@@ -629,6 +640,8 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                     DefiningTy::InlineConst(self.mir_def.to_def_id(), args)
                 }
             }
+
+            BodyOwnerKind::GlobalAsm => DefiningTy::GlobalAsm(self.mir_def.to_def_id()),
         }
     }
 
@@ -662,6 +675,8 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
             }
 
             DefiningTy::FnDef(_, args) | DefiningTy::Const(_, args) => args,
+
+            DefiningTy::GlobalAsm(_) => ty::List::empty(),
         };
 
         let global_mapping = iter::once((tcx.lifetimes.re_static, fr_static));
@@ -797,6 +812,10 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                 assert_eq!(self.mir_def.to_def_id(), def_id);
                 let ty = args.as_inline_const().ty();
                 ty::Binder::dummy(tcx.mk_type_list(&[ty]))
+            }
+
+            DefiningTy::GlobalAsm(def_id) => {
+                ty::Binder::dummy(tcx.mk_type_list(&[tcx.type_of(def_id).instantiate_identity()]))
             }
         };
 
