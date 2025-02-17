@@ -2414,7 +2414,18 @@ impl<T, A: Allocator> Vec<T, A> {
     #[rustc_confusables("push_back", "put", "append")]
     #[track_caller]
     pub fn push(&mut self, value: T) {
-        let _ = self.push_mut(value);
+        // Inform codegen that the length does not change across grow_one().
+        let len = self.len;
+        // This will panic or abort if we would allocate > isize::MAX bytes
+        // or if the length increment would overflow for zero-sized types.
+        if len == self.buf.capacity() {
+            self.buf.grow_one();
+        }
+        unsafe {
+            let end = self.as_mut_ptr().add(len);
+            ptr::write(end, value);
+            self.len = len + 1;
+        }
     }
 
     /// Appends an element if there is sufficient spare capacity, otherwise an error is returned
@@ -2455,7 +2466,16 @@ impl<T, A: Allocator> Vec<T, A> {
     #[inline]
     #[unstable(feature = "vec_push_within_capacity", issue = "100486")]
     pub fn push_within_capacity(&mut self, value: T) -> Result<(), T> {
-        self.push_mut_within_capacity(value).map(|_| ())
+        if self.len == self.buf.capacity() {
+            return Err(value);
+        }
+        unsafe {
+            let end = self.as_mut_ptr().add(self.len);
+            ptr::write(end, value);
+            self.len += 1;
+            // SAFETY: We just wrote a value to the pointer that will live the lifetime of the reference.
+            Ok(())
+        }
     }
 
     /// Appends an element to the back of a collection, returning a reference to it.
