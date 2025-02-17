@@ -18,6 +18,8 @@ For example, when used with Cargo:
 clap = "4"
 ---
 
+#![feature(frontmatter)]
+
 use clap::Parser;
 
 #[derive(Parser)]
