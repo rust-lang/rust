@@ -1097,9 +1097,10 @@ pub fn rustc_cargo(
         let enzyme_dir = builder.build.out.join(arch).join("enzyme").join("lib");
         cargo.rustflag("-L").rustflag(enzyme_dir.to_str().expect("Invalid path"));
 
-        let llvm_config = builder.llvm_config(builder.config.build).unwrap();
-        let llvm_version_major = llvm::get_llvm_version_major(builder, &llvm_config);
-        cargo.rustflag("-l").rustflag(&format!("Enzyme-{llvm_version_major}"));
+        if let Some(llvm_config) = builder.llvm_config(builder.config.build) {
+            let llvm_version_major = llvm::get_llvm_version_major(builder, &llvm_config);
+            cargo.rustflag("-l").rustflag(&format!("Enzyme-{llvm_version_major}"));
+        }
     }
 
     // Building with protected visibility reduces the number of dynamic relocations needed, giving
