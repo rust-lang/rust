@@ -2168,7 +2168,6 @@ pub fn provide(providers: &mut Providers) {
     util::provide(providers);
     print::provide(providers);
     super::util::bug::provide(providers);
-    super::middle::provide(providers);
     *providers = Providers {
         trait_impls_of: trait_def::trait_impls_of_provider,
         incoherent_impls: trait_def::incoherent_impls_provider,
