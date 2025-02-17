@@ -1235,4 +1235,25 @@ fn f() {
 "#,
         );
     }
+
+    #[test]
+    fn complex_enum_variant_non_ref_pat() {
+        check_diagnostics(
+            r#"
+enum Enum { Variant }
+
+trait Trait {
+    type Assoc;
+}
+impl Trait for () {
+    type Assoc = Enum;
+}
+
+fn foo(v: &Enum) {
+    let <Enum>::Variant = v;
+    let <() as Trait>::Assoc::Variant = v;
+}
+    "#,
+        );
+    }
 }

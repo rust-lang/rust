@@ -40,7 +40,7 @@ impl InferenceContext<'_> {
     }
 
     fn resolve_value_path(&mut self, path: &Path, id: ExprOrPatId) -> Option<ValuePathResolution> {
-        let (value, self_subst) = self.resolve_value_path_inner(path, id)?;
+        let (value, self_subst) = self.resolve_value_path_inner(path, id, false)?;
 
         let value_def: ValueTyDefId = match value {
             ValueNs::FunctionId(it) => it.into(),
@@ -152,6 +152,7 @@ impl InferenceContext<'_> {
         &mut self,
         path: &Path,
         id: ExprOrPatId,
+        no_diagnostics: bool,
     ) -> Option<(ValueNs, Option<chalk_ir::Substitution<Interner>>)> {
         // Don't use `self.make_ty()` here as we need `orig_ns`.
         let mut ctx = TyLoweringContext::new(
@@ -162,7 +163,11 @@ impl InferenceContext<'_> {
             &self.diagnostics,
             InferenceTyDiagnosticSource::Body,
         );
-        let mut path_ctx = ctx.at_path(path, id);
+        let mut path_ctx = if no_diagnostics {
+            ctx.at_path_forget_diagnostics(path)
+        } else {
+            ctx.at_path(path, id)
+        };
         let (value, self_subst) = if let Some(type_ref) = path.type_anchor() {
             let last = path.segments().last()?;
 
@@ -172,7 +177,7 @@ impl InferenceContext<'_> {
 
             path_ctx.ignore_last_segment();
             let (ty, _) = path_ctx.lower_ty_relative_path(ty, orig_ns);
-            drop(ctx);
+            drop_ctx(ctx, no_diagnostics);
             let ty = self.table.insert_type_vars(ty);
             let ty = self.table.normalize_associated_types_in(ty);
             self.resolve_ty_assoc_item(ty, last.name, id).map(|(it, substs)| (it, Some(substs)))?
@@ -183,7 +188,7 @@ impl InferenceContext<'_> {
 
             match value_or_partial {
                 ResolveValueResult::ValueNs(it, _) => {
-                    drop(ctx);
+                    drop_ctx(ctx, no_diagnostics);
                     (it, None)
                 }
                 ResolveValueResult::Partial(def, remaining_index, _) => {
@@ -202,7 +207,7 @@ impl InferenceContext<'_> {
                             let self_ty = self.table.new_type_var();
                             let trait_ref =
                                 path_ctx.lower_trait_ref_from_resolved_path(trait_, self_ty);
-                            drop(ctx);
+                            drop_ctx(ctx, no_diagnostics);
                             self.resolve_trait_assoc_item(trait_ref, last_segment, id)
                         }
                         (def, _) => {
@@ -212,7 +217,7 @@ impl InferenceContext<'_> {
                             // as Iterator>::Item::default`)
                             path_ctx.ignore_last_segment();
                             let (ty, _) = path_ctx.lower_partly_resolved_path(def, true);
-                            drop(ctx);
+                            drop_ctx(ctx, no_diagnostics);
                             if ty.is_unknown() {
                                 return None;
                             }
@@ -227,7 +232,14 @@ impl InferenceContext<'_> {
                 }
             }
         };
-        Some((value, self_subst))
+        return Some((value, self_subst));
+
+        #[inline]
+        fn drop_ctx(mut ctx: TyLoweringContext<'_>, no_diagnostics: bool) {
+            if no_diagnostics {
+                ctx.forget_diagnostics();
+            }
+        }
     }
 
     fn add_required_obligations_for_value_path(&mut self, def: GenericDefId, subst: &Substitution) {

@@ -7,6 +7,7 @@ use std::ops::{Deref, DerefMut};
 
 use either::Either;
 use hir_def::{hir::ExprOrPatId, path::Path, resolver::Resolver, type_ref::TypesMap, TypeOwnerId};
+use la_arena::{Idx, RawIdx};
 
 use crate::{
     db::HirDatabase,
@@ -80,6 +81,26 @@ impl<'a> InferenceTyLoweringContext<'a> {
             },
         };
         PathLoweringContext::new(&mut self.ctx, on_diagnostic, path)
+    }
+
+    #[inline]
+    pub(super) fn at_path_forget_diagnostics<'b>(
+        &'b mut self,
+        path: &'b Path,
+    ) -> PathLoweringContext<'b, 'a> {
+        let on_diagnostic = PathDiagnosticCallback {
+            data: Either::Right(PathDiagnosticCallbackData {
+                diagnostics: self.diagnostics,
+                node: ExprOrPatId::ExprId(Idx::from_raw(RawIdx::from_u32(0))),
+            }),
+            callback: |_data, _, _diag| {},
+        };
+        PathLoweringContext::new(&mut self.ctx, on_diagnostic, path)
+    }
+
+    #[inline]
+    pub(super) fn forget_diagnostics(&mut self) {
+        self.ctx.diagnostics.clear();
     }
 }
 
