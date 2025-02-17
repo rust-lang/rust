@@ -2056,7 +2056,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match node {
             Node::Item(&hir::Item { kind: hir::ItemKind::Fn { body: body_id, .. }, .. })
             | Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Fn(_, body_id), .. }) => {
-                let body = self.tcx.hir().body(body_id);
+                let body = self.tcx.hir_body(body_id);
                 if let ExprKind::Block(block, _) = &body.value.kind {
                     return Some(block.span);
                 }
@@ -2512,11 +2512,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             err.span_note(spans, format!("{} defined here", self.tcx.def_descr(def_id)));
-        } else if let Some(hir::Node::Expr(e)) = self.tcx.hir().get_if_local(def_id)
+        } else if let Some(hir::Node::Expr(e)) = self.tcx.hir_get_if_local(def_id)
             && let hir::ExprKind::Closure(hir::Closure { body, .. }) = &e.kind
         {
             let param = expected_idx
-                .and_then(|expected_idx| self.tcx.hir().body(*body).params.get(expected_idx));
+                .and_then(|expected_idx| self.tcx.hir_body(*body).params.get(expected_idx));
             let (kind, span) = if let Some(param) = param {
                 // Try to find earlier invocations of this closure to find if the type mismatch
                 // is because of inference. If we find one, point at them.
@@ -2650,7 +2650,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         is_method: bool,
     ) -> Option<(IndexVec<ExpectedIdx, (Option<GenericIdx>, FnParam<'_>)>, &hir::Generics<'_>)>
     {
-        let (sig, generics, body_id, param_names) = match self.tcx.hir().get_if_local(def_id)? {
+        let (sig, generics, body_id, param_names) = match self.tcx.hir_get_if_local(def_id)? {
             hir::Node::TraitItem(&hir::TraitItem {
                 generics,
                 kind: hir::TraitItemKind::Fn(sig, trait_fn),
@@ -2695,7 +2695,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match (body_id, param_names) {
             (Some(_), Some(_)) | (None, None) => unreachable!(),
             (Some(body), None) => {
-                let params = self.tcx.hir().body(body).params;
+                let params = self.tcx.hir_body(body).params;
                 let params =
                     params.get(is_method as usize..params.len() - sig.decl.c_variadic as usize)?;
                 debug_assert_eq!(params.len(), fn_inputs.len());
@@ -2725,8 +2725,8 @@ struct FindClosureArg<'tcx> {
 impl<'tcx> Visitor<'tcx> for FindClosureArg<'tcx> {
     type NestedFilter = rustc_middle::hir::nested_filter::All;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
 
     fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) {

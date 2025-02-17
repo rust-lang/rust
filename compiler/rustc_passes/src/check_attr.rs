@@ -627,7 +627,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     fn check_object_lifetime_default(&self, hir_id: HirId) {
         let tcx = self.tcx;
         if let Some(owner_id) = hir_id.as_owner()
-            && let Some(generics) = tcx.hir().get_generics(owner_id.def_id)
+            && let Some(generics) = tcx.hir_get_generics(owner_id.def_id)
         {
             for p in generics.params {
                 let hir::GenericParamKind::Type { .. } = p.kind else { continue };
@@ -2606,8 +2606,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
 
     fn visit_item(&mut self, item: &'tcx Item<'tcx>) {
@@ -2740,9 +2740,8 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
             for attr_to_check in ATTRS_TO_CHECK {
                 if attr.has_name(*attr_to_check) {
                     let item = tcx
-                        .hir()
-                        .items()
-                        .map(|id| tcx.hir().item(id))
+                        .hir_free_items()
+                        .map(|id| tcx.hir_item(id))
                         .find(|item| !item.span.is_dummy()) // Skip prelude `use`s
                         .map(|item| errors::ItemFollowingInnerAttr {
                             span: item.ident.span,

@@ -25,7 +25,7 @@ pub(crate) fn crate_inherent_impls(
     let mut collect = InherentCollect { tcx, impls_map: Default::default() };
 
     let mut res = Ok(());
-    for id in tcx.hir().items() {
+    for id in tcx.hir_free_items() {
         res = res.and(collect.check_item(id));
     }
 

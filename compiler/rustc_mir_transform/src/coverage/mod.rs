@@ -10,7 +10,6 @@ mod unexpand;
 
 use rustc_hir as hir;
 use rustc_hir::intravisit::{Visitor, walk_expr};
-use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::mir::coverage::{
     CoverageKind, DecisionInfo, FunctionCoverageInfo, Mapping, MappingKind,
@@ -291,7 +290,7 @@ fn extract_hir_info<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> ExtractedHir
 
     let hir_node = tcx.hir_node_by_def_id(def_id);
     let fn_body_id = hir_node.body_id().expect("HIR node is a function with body");
-    let hir_body = tcx.hir().body(fn_body_id);
+    let hir_body = tcx.hir_body(fn_body_id);
 
     let maybe_fn_sig = hir_node.fn_sig();
     let is_async_fn = maybe_fn_sig.is_some_and(|fn_sig| fn_sig.header.is_async());
@@ -348,7 +347,7 @@ fn extract_hole_spans_from_hir<'tcx>(
     hir_body: &hir::Body<'tcx>,
 ) -> Vec<Span> {
     struct HolesVisitor<'hir, F> {
-        hir: Map<'hir>,
+        tcx: TyCtxt<'hir>,
         visit_hole_span: F,
     }
 
@@ -360,8 +359,8 @@ fn extract_hole_spans_from_hir<'tcx>(
         ///   items contained within them.
         type NestedFilter = nested_filter::All;
 
-        fn nested_visit_map(&mut self) -> Self::Map {
-            self.hir
+        fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+            self.tcx
         }
 
         fn visit_item(&mut self, item: &'hir hir::Item<'hir>) {
@@ -388,7 +387,7 @@ fn extract_hole_spans_from_hir<'tcx>(
 
     let mut hole_spans = vec![];
     let mut visitor = HolesVisitor {
-        hir: tcx.hir(),
+        tcx,
         visit_hole_span: |hole_span| {
             // Discard any holes that aren't directly visible within the body span.
             if body_span.contains(hole_span) && body_span.eq_ctxt(hole_span) {

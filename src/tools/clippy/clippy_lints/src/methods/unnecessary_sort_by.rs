@@ -117,7 +117,7 @@ fn detect_lint(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, arg: &Exp
         && let Some(impl_id) = cx.tcx.impl_of_method(method_id)
         && cx.tcx.type_of(impl_id).instantiate_identity().is_slice()
         && let ExprKind::Closure(&Closure { body, .. }) = arg.kind
-        && let closure_body = cx.tcx.hir().body(body)
+        && let closure_body = cx.tcx.hir_body(body)
         && let &[
             Param {
                 pat:

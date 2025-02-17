@@ -1498,7 +1498,7 @@ fn report_adt_defined_here<'tcx>(
         return None;
     };
     let adt_def_span =
-        tcx.hir().get_if_local(def.did()).and_then(|node| node.ident()).map(|ident| ident.span);
+        tcx.hir_get_if_local(def.did()).and_then(|node| node.ident()).map(|ident| ident.span);
     let adt_def_span = if point_at_non_local_ty {
         adt_def_span.unwrap_or_else(|| tcx.def_span(def.did()))
     } else {

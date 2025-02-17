@@ -687,7 +687,7 @@ impl<'tcx> Visitor<'tcx> for AnnotateUnitFallbackVisitor<'_, 'tcx> {
         if let hir::ExprKind::Closure(&hir::Closure { body, .. })
         | hir::ExprKind::ConstBlock(hir::ConstBlock { body, .. }) = expr.kind
         {
-            self.visit_body(self.fcx.tcx.hir().body(body))?;
+            self.visit_body(self.fcx.tcx.hir_body(body))?;
         }
 
         // Try to suggest adding an explicit qself `()` to a trait method path.

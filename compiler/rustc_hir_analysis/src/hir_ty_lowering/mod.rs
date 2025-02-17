@@ -1976,7 +1976,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     if let Some(hir::Node::Item(&hir::Item {
                         kind: hir::ItemKind::Impl(impl_),
                         ..
-                    })) = tcx.hir().get_if_local(def_id)
+                    })) = tcx.hir_get_if_local(def_id)
                     {
                         err.span_note(impl_.self_ty.span, "not a concrete type");
                     }
@@ -2213,7 +2213,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     fn lower_anon_const(&self, anon: &AnonConst) -> Const<'tcx> {
         let tcx = self.tcx();
 
-        let expr = &tcx.hir().body(anon.body).value;
+        let expr = &tcx.hir_body(anon.body).value;
         debug!(?expr);
 
         let ty = tcx

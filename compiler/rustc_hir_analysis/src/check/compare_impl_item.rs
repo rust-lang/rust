@@ -658,11 +658,10 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                 "method `{}` has an incompatible return type for trait",
                 trait_m.name
             );
-            let hir = tcx.hir();
             infcx.err_ctxt().note_type_err(
                 &mut diag,
                 &cause,
-                hir.get_if_local(impl_m.def_id)
+                tcx.hir_get_if_local(impl_m.def_id)
                     .and_then(|node| node.fn_decl())
                     .map(|decl| (decl.output.span(), Cow::from("return type in trait"), false)),
                 Some(param_env.and(infer::ValuePairs::Terms(ExpectedFound {
@@ -1123,15 +1122,14 @@ fn check_region_bounds_on_impl_item<'tcx>(
     // the moment, give a kind of vague error message.
     if trait_params != impl_params {
         let span = tcx
-            .hir()
-            .get_generics(impl_m.def_id.expect_local())
+            .hir_get_generics(impl_m.def_id.expect_local())
             .expect("expected impl item to have generics or else we can't compare them")
             .span;
 
         let mut generics_span = None;
         let mut bounds_span = vec![];
         let mut where_span = None;
-        if let Some(trait_node) = tcx.hir().get_if_local(trait_m.def_id)
+        if let Some(trait_node) = tcx.hir_get_if_local(trait_m.def_id)
             && let Some(trait_generics) = trait_node.generics()
         {
             generics_span = Some(trait_generics.span);
@@ -1146,7 +1144,7 @@ fn check_region_bounds_on_impl_item<'tcx>(
                     }
                 }
             }
-            if let Some(impl_node) = tcx.hir().get_if_local(impl_m.def_id)
+            if let Some(impl_node) = tcx.hir_get_if_local(impl_m.def_id)
                 && let Some(impl_generics) = impl_node.generics()
             {
                 let mut impl_bounds = 0;

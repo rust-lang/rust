@@ -90,7 +90,7 @@ fn find_innermost_closure<'tcx>(
     let mut data = None;
 
     while let ExprKind::Closure(closure) = expr.kind
-        && let body = cx.tcx.hir().body(closure.body)
+        && let body = cx.tcx.hir_body(closure.body)
         && {
             let mut visitor = ReturnVisitor;
             !visitor.visit_expr(body.value).is_break()
@@ -179,7 +179,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
                             // Like `async fn`, async closures are wrapped in an additional block
                             // to move all of the closure's arguments into the future.
 
-                            let async_closure_body = cx.tcx.hir().body(closure.body).value;
+                            let async_closure_body = cx.tcx.hir_body(closure.body).value;
                             let ExprKind::Block(block, _) = async_closure_body.kind else {
                                 return;
                             };
@@ -241,8 +241,8 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClosureCall {
                     hir_visit::walk_expr(self, expr);
                 }
 
-                fn nested_visit_map(&mut self) -> Self::Map {
-                    self.cx.tcx.hir()
+                fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+                    self.cx.tcx
                 }
             }
             let mut closure_usage_count = ClosureUsageCount { cx, path, count: 0 };
