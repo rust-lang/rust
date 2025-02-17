@@ -28,9 +28,7 @@ pub macro thread_local_inner {
         // user provided type or type alias with a matching name. Please update the shadowing test
         // in `tests/thread.rs` if these types are renamed.
         unsafe {
-            // Inlining does not work on windows-gnu due to linking errors around
-            // dllimports. See https://github.com/rust-lang/rust/issues/109797.
-            $crate::thread::LocalKey::new(#[cfg_attr(windows, inline(never))] |init| {
+            $crate::thread::LocalKey::new(|init| {
                 static VAL: $crate::thread::local_impl::Storage<$t>
                     = $crate::thread::local_impl::Storage::new();
                 VAL.get(init, __init)
