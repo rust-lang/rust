@@ -68,16 +68,6 @@ pub enum TypeMismatchReason {
 }
 
 #[derive(Diagnostic)]
-#[diag(middle_limit_invalid)]
-pub(crate) struct LimitInvalid<'a> {
-    #[primary_span]
-    pub span: Span,
-    #[label]
-    pub value_span: Span,
-    pub error_str: &'a str,
-}
-
-#[derive(Diagnostic)]
 #[diag(middle_recursion_limit_reached)]
 #[help]
 pub(crate) struct RecursionLimitReached<'tcx> {

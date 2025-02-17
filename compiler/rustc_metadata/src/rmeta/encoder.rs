@@ -1940,7 +1940,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     bug!("Unknown proc-macro type for item {:?}", id);
                 };
 
-                let mut def_key = self.tcx.hir().def_key(id);
+                let mut def_key = self.tcx.hir_def_key(id);
                 def_key.disambiguated_data.data = DefPathData::MacroNs(name);
 
                 let def_id = id.to_def_id();
@@ -2076,7 +2076,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let mut trait_impls: FxIndexMap<DefId, Vec<(DefIndex, Option<SimplifiedType>)>> =
             FxIndexMap::default();
 
-        for id in tcx.hir().items() {
+        for id in tcx.hir_free_items() {
             let DefKind::Impl { of_trait } = tcx.def_kind(id.owner_id) else {
                 continue;
             };
@@ -2410,7 +2410,6 @@ pub(crate) fn provide(providers: &mut Providers) {
 /// use a different method for pretty-printing. Ideally this function
 /// should only ever be used as a fallback.
 pub fn rendered_const<'tcx>(tcx: TyCtxt<'tcx>, body: &hir::Body<'_>, def_id: LocalDefId) -> String {
-    let hir = tcx.hir();
     let value = body.value;
 
     #[derive(PartialEq, Eq)]
@@ -2467,7 +2466,7 @@ pub fn rendered_const<'tcx>(tcx: TyCtxt<'tcx>, body: &hir::Body<'_>, def_id: Loc
 
         // Otherwise we prefer pretty-printing to get rid of extraneous whitespace, comments and
         // other formatting artifacts.
-        Literal | Simple => id_to_string(&hir, body.id().hir_id),
+        Literal | Simple => id_to_string(&tcx, body.id().hir_id),
 
         // FIXME: Omit the curly braces if the enclosing expression is an array literal
         //        with a repeated element (an `ExprKind::Repeat`) as in such case it

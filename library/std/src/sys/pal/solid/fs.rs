@@ -309,7 +309,7 @@ fn cstr(path: &Path) -> io::Result<CString> {
     let wrapped_path = [SAFE_PREFIX, &path, &[0]].concat();
 
     CString::from_vec_with_nul(wrapped_path).map_err(|_| {
-        crate::io::const_error!(io::ErrorKind::InvalidInput, "path provided contains a nul byte",)
+        crate::io::const_error!(io::ErrorKind::InvalidInput, "path provided contains a nul byte")
     })
 }
 

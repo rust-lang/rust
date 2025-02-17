@@ -25,7 +25,7 @@ pub(super) fn check<'tcx>(
 
     if is_option || is_result || is_bool {
         if let hir::ExprKind::Closure(&hir::Closure { body, fn_decl, .. }) = arg.kind {
-            let body = cx.tcx.hir().body(body);
+            let body = cx.tcx.hir_body(body);
             let body_expr = &body.value;
 
             if usage::BindingUsageFinder::are_params_used(cx, body) || is_from_proc_macro(cx, expr) {

@@ -241,13 +241,13 @@ impl<'tcx> Visitor<'tcx> for TypeWalker<'_, 'tcx> {
         }
     }
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.cx.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.cx.tcx
     }
 }
 
 fn is_empty_body(cx: &LateContext<'_>, body: BodyId) -> bool {
-    matches!(cx.tcx.hir().body(body).value.kind, ExprKind::Block(b, _) if b.stmts.is_empty() && b.expr.is_none())
+    matches!(cx.tcx.hir_body(body).value.kind, ExprKind::Block(b, _) if b.stmts.is_empty() && b.expr.is_none())
 }
 
 impl<'tcx> LateLintPass<'tcx> for ExtraUnusedTypeParameters {

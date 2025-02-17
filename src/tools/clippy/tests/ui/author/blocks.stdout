@@ -42,10 +42,10 @@ if let ExprKind::Block(block, None) = expr.kind
 }
 if let ExprKind::Closure { capture_clause: CaptureBy::Value { .. }, fn_decl: fn_decl, body: body_id, closure_kind: ClosureKind::CoroutineClosure(CoroutineDesugaring::Async), .. } = expr.kind
     && let FnRetTy::DefaultReturn(_) = fn_decl.output
-    && expr1 = &cx.tcx.hir().body(body_id).value
+    && expr1 = &cx.tcx.hir_body(body_id).value
     && let ExprKind::Closure { capture_clause: CaptureBy::Ref, fn_decl: fn_decl1, body: body_id1, closure_kind: ClosureKind::Coroutine(CoroutineKind::Desugared(CoroutineDesugaring::Async, CoroutineSource::Closure)), .. } = expr1.kind
     && let FnRetTy::DefaultReturn(_) = fn_decl1.output
-    && expr2 = &cx.tcx.hir().body(body_id1).value
+    && expr2 = &cx.tcx.hir_body(body_id1).value
     && let ExprKind::Block(block, None) = expr2.kind
     && block.stmts.is_empty()
     && let Some(trailing_expr) = block.expr

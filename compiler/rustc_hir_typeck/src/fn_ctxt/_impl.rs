@@ -640,7 +640,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let witness = Ty::new_coroutine_witness(self.tcx, expr_def_id.to_def_id(), args);
 
             // Unify `interior` with `witness` and collect all the resulting obligations.
-            let span = self.tcx.hir().body(body_id).value.span;
+            let span = self.tcx.hir_body(body_id).value.span;
             let ty::Infer(ty::InferTy::TyVar(_)) = interior.kind() else {
                 span_bug!(span, "coroutine interior witness not infer: {:?}", interior.kind())
             };

@@ -134,8 +134,8 @@ impl<'tcx> Visitor<'tcx> for SelfFinder<'_, 'tcx> {
     type Result = ControlFlow<()>;
     type NestedFilter = OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.cx.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.cx.tcx
     }
 
     fn visit_path(&mut self, path: &Path<'tcx>, _id: HirId) -> Self::Result {
@@ -175,11 +175,11 @@ fn convert_to_from(
         // bad suggestion/fix.
         return None;
     }
-    let impl_item = cx.tcx.hir().impl_item(impl_item_ref.id);
+    let impl_item = cx.tcx.hir_impl_item(impl_item_ref.id);
     let ImplItemKind::Fn(ref sig, body_id) = impl_item.kind else {
         return None;
     };
-    let body = cx.tcx.hir().body(body_id);
+    let body = cx.tcx.hir_body(body_id);
     let [input] = body.params else { return None };
     let PatKind::Binding(.., self_ident, None) = input.pat.kind else {
         return None;

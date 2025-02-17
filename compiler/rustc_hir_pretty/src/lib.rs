@@ -24,8 +24,8 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::{FileName, Ident, Span, Symbol, kw};
 use {rustc_ast as ast, rustc_hir as hir};
 
-pub fn id_to_string(map: &dyn rustc_hir::intravisit::Map<'_>, hir_id: HirId) -> String {
-    to_string(&map, |s| s.print_node(map.hir_node(hir_id)))
+pub fn id_to_string(cx: &dyn rustc_hir::intravisit::HirTyCtxt<'_>, hir_id: HirId) -> String {
+    to_string(&cx, |s| s.print_node(cx.hir_node(hir_id)))
 }
 
 pub enum AnnNode<'a> {
@@ -54,15 +54,15 @@ pub trait PpAnn {
     fn post(&self, _state: &mut State<'_>, _node: AnnNode<'_>) {}
 }
 
-impl PpAnn for &dyn rustc_hir::intravisit::Map<'_> {
+impl PpAnn for &dyn rustc_hir::intravisit::HirTyCtxt<'_> {
     fn nested(&self, state: &mut State<'_>, nested: Nested) {
         match nested {
-            Nested::Item(id) => state.print_item(self.item(id)),
-            Nested::TraitItem(id) => state.print_trait_item(self.trait_item(id)),
-            Nested::ImplItem(id) => state.print_impl_item(self.impl_item(id)),
-            Nested::ForeignItem(id) => state.print_foreign_item(self.foreign_item(id)),
-            Nested::Body(id) => state.print_expr(self.body(id).value),
-            Nested::BodyParamPat(id, i) => state.print_pat(self.body(id).params[i].pat),
+            Nested::Item(id) => state.print_item(self.hir_item(id)),
+            Nested::TraitItem(id) => state.print_trait_item(self.hir_trait_item(id)),
+            Nested::ImplItem(id) => state.print_impl_item(self.hir_impl_item(id)),
+            Nested::ForeignItem(id) => state.print_foreign_item(self.hir_foreign_item(id)),
+            Nested::Body(id) => state.print_expr(self.hir_body(id).value),
+            Nested::BodyParamPat(id, i) => state.print_pat(self.hir_body(id).params[i].pat),
         }
     }
 }

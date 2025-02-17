@@ -66,7 +66,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         );
         let mut impl_span = None;
         let mut implicit_static_lifetimes = Vec::new();
-        if let Some(impl_node) = self.tcx().hir().get_if_local(*impl_def_id) {
+        if let Some(impl_node) = self.tcx().hir_get_if_local(*impl_def_id) {
             // If an impl is local, then maybe this isn't what they want. Try to
             // be as helpful as possible with implicit lifetimes.
 

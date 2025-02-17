@@ -277,8 +277,8 @@ fn reject_placeholder_type_signatures_in_item<'tcx>(
 impl<'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
@@ -669,7 +669,7 @@ fn get_new_lifetime_name<'tcx>(
 
 #[instrument(level = "debug", skip_all)]
 fn lower_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
-    let it = tcx.hir().item(item_id);
+    let it = tcx.hir_item(item_id);
     debug!(item = %it.ident, id = %it.hir_id());
     let def_id = item_id.owner_id.def_id;
     let icx = ItemCtxt::new(tcx, def_id);
@@ -683,7 +683,7 @@ fn lower_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
         | hir::ItemKind::GlobalAsm(_) => {}
         hir::ItemKind::ForeignMod { items, .. } => {
             for item in *items {
-                let item = tcx.hir().foreign_item(item.id);
+                let item = tcx.hir_foreign_item(item.id);
                 tcx.ensure_ok().generics_of(item.owner_id);
                 tcx.ensure_ok().type_of(item.owner_id);
                 tcx.ensure_ok().predicates_of(item.owner_id);
@@ -790,7 +790,7 @@ fn lower_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
 }
 
 fn lower_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
-    let trait_item = tcx.hir().trait_item(trait_item_id);
+    let trait_item = tcx.hir_trait_item(trait_item_id);
     let def_id = trait_item_id.owner_id;
     tcx.ensure_ok().generics_of(def_id);
     let icx = ItemCtxt::new(tcx, def_id.def_id);
@@ -865,7 +865,7 @@ fn lower_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::ImplItemId) {
     tcx.ensure_ok().generics_of(def_id);
     tcx.ensure_ok().type_of(def_id);
     tcx.ensure_ok().predicates_of(def_id);
-    let impl_item = tcx.hir().impl_item(impl_item_id);
+    let impl_item = tcx.hir_impl_item(impl_item_id);
     let icx = ItemCtxt::new(tcx, def_id.def_id);
     match impl_item.kind {
         hir::ImplItemKind::Fn(..) => {
@@ -1769,7 +1769,7 @@ fn coroutine_for_closure(tcx: TyCtxt<'_>, def_id: LocalDefId) -> DefId {
                 ..
             }),
         ..
-    } = tcx.hir().body(body).value
+    } = tcx.hir_body(body).value
     else {
         bug!()
     };

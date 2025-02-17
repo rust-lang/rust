@@ -37,7 +37,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidPaths {
                 ty::TypingEnv::post_analysis(cx.tcx, item.owner_id),
                 cx.tcx.typeck(item.owner_id),
             )
-            .eval_simple(cx.tcx.hir().body(body_id).value)
+            .eval_simple(cx.tcx.hir_body(body_id).value)
             && let Some(path) = path
                 .iter()
                 .map(|x| {

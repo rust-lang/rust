@@ -759,7 +759,7 @@ impl UnsafeOpKind {
         });
         let unsafe_not_inherited_note = if should_suggest {
             suggest_unsafe_block.then(|| {
-                let body_span = tcx.hir().body(parent_owner.body_id().unwrap()).value.span;
+                let body_span = tcx.hir_body(parent_owner.body_id().unwrap()).value.span;
                 UnsafeNotInheritedLintNote {
                     signature_span: tcx.def_span(parent_id.def_id),
                     body_span,

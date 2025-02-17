@@ -10,7 +10,6 @@ use rustc_hir::{self as hir, BindingMode, ByRef, HirId};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::Level;
 use rustc_middle::bug;
-use rustc_middle::middle::limits::get_limit_size;
 use rustc_middle::thir::visit::Visitor;
 use rustc_middle::thir::*;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -25,7 +24,7 @@ use rustc_session::lint::builtin::{
 };
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::DesugaringKind;
-use rustc_span::{Ident, Span, sym};
+use rustc_span::{Ident, Span};
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::instrument;
 
@@ -404,18 +403,11 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         arms: &[MatchArm<'p, 'tcx>],
         scrut_ty: Ty<'tcx>,
     ) -> Result<UsefulnessReport<'p, 'tcx>, ErrorGuaranteed> {
-        let pattern_complexity_limit =
-            get_limit_size(cx.tcx.hir().krate_attrs(), cx.tcx.sess, sym::pattern_complexity);
-        let report = rustc_pattern_analysis::rustc::analyze_match(
-            &cx,
-            &arms,
-            scrut_ty,
-            pattern_complexity_limit,
-        )
-        .map_err(|err| {
-            self.error = Err(err);
-            err
-        })?;
+        let report =
+            rustc_pattern_analysis::rustc::analyze_match(&cx, &arms, scrut_ty).map_err(|err| {
+                self.error = Err(err);
+                err
+            })?;
 
         // Warn unreachable subpatterns.
         for (arm, is_useful) in report.arm_usefulness.iter() {
@@ -1498,7 +1490,7 @@ fn report_adt_defined_here<'tcx>(
         return None;
     };
     let adt_def_span =
-        tcx.hir().get_if_local(def.did()).and_then(|node| node.ident()).map(|ident| ident.span);
+        tcx.hir_get_if_local(def.did()).and_then(|node| node.ident()).map(|ident| ident.span);
     let adt_def_span = if point_at_non_local_ty {
         adt_def_span.unwrap_or_else(|| tcx.def_span(def.did()))
     } else {

@@ -3,7 +3,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::sym;
 
 pub(crate) fn inferred_outlives(tcx: TyCtxt<'_>) {
-    for id in tcx.hir().items() {
+    for id in tcx.hir_free_items() {
         if !tcx.has_attr(id.owner_id, sym::rustc_outlives) {
             continue;
         }

@@ -533,7 +533,7 @@ impl File {
             Some(time) if let Some(ts) = time.to_wasi_timestamp() => Ok(ts),
             Some(_) => Err(io::const_error!(
                 io::ErrorKind::InvalidInput,
-                "timestamp is too large to set as a file time"
+                "timestamp is too large to set as a file time",
             )),
             None => Ok(0),
         };
@@ -773,8 +773,7 @@ fn open_parent(p: &Path) -> io::Result<(ManuallyDrop<WasiFd>, PathBuf)> {
                     }
                     let msg = format!(
                         "failed to find a pre-opened file descriptor \
-                     through which {:?} could be opened",
-                        p
+                        through which {p:?} could be opened",
                     );
                     return Err(io::Error::new(io::ErrorKind::Uncategorized, msg));
                 }

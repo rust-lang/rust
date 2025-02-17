@@ -110,7 +110,7 @@ fn generic_arg_mismatch_err(
                 err.help(format!("`{}` is a function item, not a type", tcx.item_name(id)));
                 err.help("function item types cannot be named directly");
             } else if let hir::ConstArgKind::Anon(anon) = cnst.kind
-                && let body = tcx.hir().body(anon.body)
+                && let body = tcx.hir_body(anon.body)
                 && let rustc_hir::ExprKind::Path(rustc_hir::QPath::Resolved(_, path)) =
                     body.value.kind
                 && let Res::Def(DefKind::Fn { .. }, id) = path.res

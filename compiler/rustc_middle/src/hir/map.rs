@@ -93,7 +93,7 @@ impl<'hir> Iterator for ParentOwnerIterator<'hir> {
             return None;
         }
 
-        let parent_id = self.map.def_key(self.current_id.owner.def_id).parent;
+        let parent_id = self.map.tcx.hir_def_key(self.current_id.owner.def_id).parent;
         let parent_id = parent_id.map_or(CRATE_OWNER_ID, |local_def_index| {
             let def_id = LocalDefId { local_def_index };
             self.map.tcx.local_def_id_to_hir_id(def_id).owner
@@ -164,76 +164,74 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn parent_hir_node(self, hir_id: HirId) -> Node<'tcx> {
         self.hir_node(self.parent_hir_id(hir_id))
     }
-}
-
-impl<'hir> Map<'hir> {
-    #[inline]
-    pub fn krate(self) -> &'hir Crate<'hir> {
-        self.tcx.hir_crate(())
-    }
 
     #[inline]
-    pub fn root_module(self) -> &'hir Mod<'hir> {
-        match self.tcx.hir_owner_node(CRATE_OWNER_ID) {
+    pub fn hir_root_module(self) -> &'tcx Mod<'tcx> {
+        match self.hir_owner_node(CRATE_OWNER_ID) {
             OwnerNode::Crate(item) => item,
             _ => bug!(),
         }
     }
 
     #[inline]
-    pub fn items(self) -> impl Iterator<Item = ItemId> + 'hir {
-        self.tcx.hir_crate_items(()).free_items.iter().copied()
+    pub fn hir_free_items(self) -> impl Iterator<Item = ItemId> + 'tcx {
+        self.hir_crate_items(()).free_items.iter().copied()
     }
 
     #[inline]
-    pub fn module_items(self, module: LocalModDefId) -> impl Iterator<Item = ItemId> + 'hir {
-        self.tcx.hir_module_items(module).free_items()
+    pub fn hir_module_free_items(
+        self,
+        module: LocalModDefId,
+    ) -> impl Iterator<Item = ItemId> + 'tcx {
+        self.hir_module_items(module).free_items()
     }
 
-    pub fn def_key(self, def_id: LocalDefId) -> DefKey {
+    pub fn hir_def_key(self, def_id: LocalDefId) -> DefKey {
         // Accessing the DefKey is ok, since it is part of DefPathHash.
-        self.tcx.definitions_untracked().def_key(def_id)
+        self.definitions_untracked().def_key(def_id)
     }
 
-    pub fn def_path(self, def_id: LocalDefId) -> DefPath {
+    pub fn hir_def_path(self, def_id: LocalDefId) -> DefPath {
         // Accessing the DefPath is ok, since it is part of DefPathHash.
-        self.tcx.definitions_untracked().def_path(def_id)
+        self.definitions_untracked().def_path(def_id)
     }
 
     #[inline]
-    pub fn def_path_hash(self, def_id: LocalDefId) -> DefPathHash {
+    pub fn hir_def_path_hash(self, def_id: LocalDefId) -> DefPathHash {
         // Accessing the DefPathHash is ok, it is incr. comp. stable.
-        self.tcx.definitions_untracked().def_path_hash(def_id)
+        self.definitions_untracked().def_path_hash(def_id)
     }
 
-    pub fn get_if_local(self, id: DefId) -> Option<Node<'hir>> {
-        id.as_local().map(|id| self.tcx.hir_node_by_def_id(id))
+    pub fn hir_get_if_local(self, id: DefId) -> Option<Node<'tcx>> {
+        id.as_local().map(|id| self.hir_node_by_def_id(id))
     }
 
-    pub fn get_generics(self, id: LocalDefId) -> Option<&'hir Generics<'hir>> {
-        self.tcx.opt_hir_owner_node(id)?.generics()
+    pub fn hir_get_generics(self, id: LocalDefId) -> Option<&'tcx Generics<'tcx>> {
+        self.opt_hir_owner_node(id)?.generics()
     }
 
-    pub fn item(self, id: ItemId) -> &'hir Item<'hir> {
-        self.tcx.hir_owner_node(id.owner_id).expect_item()
+    pub fn hir_item(self, id: ItemId) -> &'tcx Item<'tcx> {
+        self.hir_owner_node(id.owner_id).expect_item()
     }
 
-    pub fn trait_item(self, id: TraitItemId) -> &'hir TraitItem<'hir> {
-        self.tcx.hir_owner_node(id.owner_id).expect_trait_item()
+    pub fn hir_trait_item(self, id: TraitItemId) -> &'tcx TraitItem<'tcx> {
+        self.hir_owner_node(id.owner_id).expect_trait_item()
     }
 
-    pub fn impl_item(self, id: ImplItemId) -> &'hir ImplItem<'hir> {
-        self.tcx.hir_owner_node(id.owner_id).expect_impl_item()
+    pub fn hir_impl_item(self, id: ImplItemId) -> &'tcx ImplItem<'tcx> {
+        self.hir_owner_node(id.owner_id).expect_impl_item()
     }
 
-    pub fn foreign_item(self, id: ForeignItemId) -> &'hir ForeignItem<'hir> {
-        self.tcx.hir_owner_node(id.owner_id).expect_foreign_item()
+    pub fn hir_foreign_item(self, id: ForeignItemId) -> &'tcx ForeignItem<'tcx> {
+        self.hir_owner_node(id.owner_id).expect_foreign_item()
     }
 
-    pub fn body(self, id: BodyId) -> &'hir Body<'hir> {
-        self.tcx.hir_owner_nodes(id.hir_id.owner).bodies[&id.hir_id.local_id]
+    pub fn hir_body(self, id: BodyId) -> &'tcx Body<'tcx> {
+        self.hir_owner_nodes(id.hir_id.owner).bodies[&id.hir_id.local_id]
     }
+}
 
+impl<'hir> Map<'hir> {
     #[track_caller]
     pub fn fn_decl_by_hir_id(self, hir_id: HirId) -> Option<&'hir FnDecl<'hir>> {
         self.tcx.hir_node(hir_id).fn_decl()
@@ -271,7 +269,7 @@ impl<'hir> Map<'hir> {
     /// Given a `LocalDefId`, returns the `BodyId` associated with it,
     /// if the node is a body owner, otherwise returns `None`.
     pub fn maybe_body_owned_by(self, id: LocalDefId) -> Option<&'hir Body<'hir>> {
-        Some(self.body(self.tcx.hir_node_by_def_id(id).body_id()?))
+        Some(self.tcx.hir_body(self.tcx.hir_node_by_def_id(id).body_id()?))
     }
 
     /// Given a body owner's id, returns the `BodyId` associated with it.
@@ -288,7 +286,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn body_param_names(self, id: BodyId) -> impl Iterator<Item = Ident> + 'hir {
-        self.body(id).params.iter().map(|arg| match arg.pat.kind {
+        self.tcx.hir_body(id).params.iter().map(|arg| match arg.pat.kind {
             PatKind::Binding(_, _, ident, _) => ident,
             _ => Ident::empty(),
         })
@@ -410,7 +408,7 @@ impl<'hir> Map<'hir> {
     where
         V: Visitor<'hir>,
     {
-        let krate = self.krate();
+        let krate = self.tcx.hir_crate(());
         for info in krate.owners.iter() {
             if let MaybeOwner::Owner(info) = info {
                 for attrs in info.attrs.map.values() {
@@ -436,13 +434,21 @@ impl<'hir> Map<'hir> {
         V: Visitor<'hir>,
     {
         let krate = self.tcx.hir_crate_items(());
-        walk_list!(visitor, visit_item, krate.free_items().map(|id| self.item(id)));
-        walk_list!(visitor, visit_trait_item, krate.trait_items().map(|id| self.trait_item(id)));
-        walk_list!(visitor, visit_impl_item, krate.impl_items().map(|id| self.impl_item(id)));
+        walk_list!(visitor, visit_item, krate.free_items().map(|id| self.tcx.hir_item(id)));
+        walk_list!(
+            visitor,
+            visit_trait_item,
+            krate.trait_items().map(|id| self.tcx.hir_trait_item(id))
+        );
+        walk_list!(
+            visitor,
+            visit_impl_item,
+            krate.impl_items().map(|id| self.tcx.hir_impl_item(id))
+        );
         walk_list!(
             visitor,
             visit_foreign_item,
-            krate.foreign_items().map(|id| self.foreign_item(id))
+            krate.foreign_items().map(|id| self.tcx.hir_foreign_item(id))
         );
         V::Result::output()
     }
@@ -454,13 +460,21 @@ impl<'hir> Map<'hir> {
         V: Visitor<'hir>,
     {
         let module = self.tcx.hir_module_items(module);
-        walk_list!(visitor, visit_item, module.free_items().map(|id| self.item(id)));
-        walk_list!(visitor, visit_trait_item, module.trait_items().map(|id| self.trait_item(id)));
-        walk_list!(visitor, visit_impl_item, module.impl_items().map(|id| self.impl_item(id)));
+        walk_list!(visitor, visit_item, module.free_items().map(|id| self.tcx.hir_item(id)));
+        walk_list!(
+            visitor,
+            visit_trait_item,
+            module.trait_items().map(|id| self.tcx.hir_trait_item(id))
+        );
+        walk_list!(
+            visitor,
+            visit_impl_item,
+            module.impl_items().map(|id| self.tcx.hir_impl_item(id))
+        );
         walk_list!(
             visitor,
             visit_foreign_item,
-            module.foreign_items().map(|id| self.foreign_item(id))
+            module.foreign_items().map(|id| self.tcx.hir_foreign_item(id))
         );
         V::Result::output()
     }
@@ -921,7 +935,7 @@ impl<'hir> Map<'hir> {
             Node::Variant(variant) => variant.span,
             Node::Field(field) => field.span,
             Node::AnonConst(constant) => constant.span,
-            Node::ConstBlock(constant) => self.body(constant.body).value.span,
+            Node::ConstBlock(constant) => self.tcx.hir_body(constant.body).value.span,
             Node::ConstArg(const_arg) => const_arg.span(),
             Node::Expr(expr) => expr.span,
             Node::ExprField(field) => field.span,
@@ -1014,39 +1028,35 @@ impl<'hir> Map<'hir> {
     }
 }
 
-impl<'hir> intravisit::Map<'hir> for Map<'hir> {
-    fn hir_node(&self, hir_id: HirId) -> Node<'hir> {
-        self.tcx.hir_node(hir_id)
+impl<'tcx> intravisit::HirTyCtxt<'tcx> for TyCtxt<'tcx> {
+    fn hir_node(&self, hir_id: HirId) -> Node<'tcx> {
+        (*self).hir_node(hir_id)
     }
 
-    fn hir_node_by_def_id(&self, def_id: LocalDefId) -> Node<'hir> {
-        self.tcx.hir_node_by_def_id(def_id)
+    fn hir_body(&self, id: BodyId) -> &'tcx Body<'tcx> {
+        (*self).hir_body(id)
     }
 
-    fn body(&self, id: BodyId) -> &'hir Body<'hir> {
-        (*self).body(id)
+    fn hir_item(&self, id: ItemId) -> &'tcx Item<'tcx> {
+        (*self).hir_item(id)
     }
 
-    fn item(&self, id: ItemId) -> &'hir Item<'hir> {
-        (*self).item(id)
+    fn hir_trait_item(&self, id: TraitItemId) -> &'tcx TraitItem<'tcx> {
+        (*self).hir_trait_item(id)
     }
 
-    fn trait_item(&self, id: TraitItemId) -> &'hir TraitItem<'hir> {
-        (*self).trait_item(id)
+    fn hir_impl_item(&self, id: ImplItemId) -> &'tcx ImplItem<'tcx> {
+        (*self).hir_impl_item(id)
     }
 
-    fn impl_item(&self, id: ImplItemId) -> &'hir ImplItem<'hir> {
-        (*self).impl_item(id)
-    }
-
-    fn foreign_item(&self, id: ForeignItemId) -> &'hir ForeignItem<'hir> {
-        (*self).foreign_item(id)
+    fn hir_foreign_item(&self, id: ForeignItemId) -> &'tcx ForeignItem<'tcx> {
+        (*self).hir_foreign_item(id)
     }
 }
 
 impl<'tcx> pprust_hir::PpAnn for TyCtxt<'tcx> {
     fn nested(&self, state: &mut pprust_hir::State<'_>, nested: pprust_hir::Nested) {
-        pprust_hir::PpAnn::nested(&(&self.hir() as &dyn intravisit::Map<'_>), state, nested)
+        pprust_hir::PpAnn::nested(&(self as &dyn intravisit::HirTyCtxt<'_>), state, nested)
     }
 }
 
@@ -1333,8 +1343,8 @@ impl<'tcx> ItemCollector<'tcx> {
 impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
     type NestedFilter = nested_filter::All;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
 
     fn visit_item(&mut self, item: &'hir Item<'hir>) {

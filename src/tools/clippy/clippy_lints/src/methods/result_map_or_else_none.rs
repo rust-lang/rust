@@ -23,7 +23,7 @@ pub(super) fn check<'tcx>(
         // We check that it is mapped as `Some`.
         && is_res_lang_ctor(cx, path_res(cx, map_arg), OptionSome)
         && let hir::ExprKind::Closure(&hir::Closure { body, .. }) = def_arg.kind
-        && let body = cx.tcx.hir().body(body)
+        && let body = cx.tcx.hir_body(body)
         // And finally we check that we return a `None` in the "else case".
         && is_res_lang_ctor(cx, path_res(cx, peel_blocks(body.value)), OptionNone)
     {

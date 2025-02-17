@@ -219,7 +219,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         lower_bound: RegionVid,
     ) {
         let mut suggestions = vec![];
-        let hir = self.infcx.tcx.hir();
+        let tcx = self.infcx.tcx;
 
         // find generic associated types in the given region 'lower_bound'
         let gat_id_and_generics = self
@@ -228,12 +228,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             .map(|placeholder| {
                 if let Some(id) = placeholder.bound.kind.get_id()
                     && let Some(placeholder_id) = id.as_local()
-                    && let gat_hir_id = self.infcx.tcx.local_def_id_to_hir_id(placeholder_id)
-                    && let Some(generics_impl) = self
-                        .infcx
-                        .tcx
-                        .parent_hir_node(self.infcx.tcx.parent_hir_id(gat_hir_id))
-                        .generics()
+                    && let gat_hir_id = tcx.local_def_id_to_hir_id(placeholder_id)
+                    && let Some(generics_impl) =
+                        tcx.parent_hir_node(tcx.parent_hir_id(gat_hir_id)).generics()
                 {
                     Some((gat_hir_id, generics_impl))
                 } else {
@@ -254,7 +251,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 };
                 if bound_generic_params
                     .iter()
-                    .rfind(|bgp| self.infcx.tcx.local_def_id_to_hir_id(bgp.def_id) == *gat_hir_id)
+                    .rfind(|bgp| tcx.local_def_id_to_hir_id(bgp.def_id) == *gat_hir_id)
                     .is_some()
                 {
                     for bound in *bounds {
@@ -270,7 +267,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 return;
             };
             diag.span_note(*trait_span, fluent::borrowck_limitations_implies_static);
-            let Some(generics_fn) = hir.get_generics(self.body.source.def_id().expect_local())
+            let Some(generics_fn) = tcx.hir_get_generics(self.body.source.def_id().expect_local())
             else {
                 return;
             };
@@ -1162,7 +1159,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
         if ocx.select_all_or_error().is_empty() && count > 0 {
             diag.span_suggestion_verbose(
-                tcx.hir().body(*body).value.peel_blocks().span.shrink_to_lo(),
+                tcx.hir_body(*body).value.peel_blocks().span.shrink_to_lo(),
                 fluent::borrowck_dereference_suggestion,
                 "*".repeat(count),
                 Applicability::MachineApplicable,

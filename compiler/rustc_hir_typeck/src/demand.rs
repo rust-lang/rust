@@ -727,7 +727,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             ident,
                             kind: hir::ItemKind::Static(ty, ..) | hir::ItemKind::Const(ty, ..),
                             ..
-                        })) = self.tcx.hir().get_if_local(*def_id)
+                        })) = self.tcx.hir_get_if_local(*def_id)
                         {
                             primary_span = ty.span;
                             secondary_span = ident.span;
@@ -1173,7 +1173,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let Some(hir::Node::Item(hir::Item {
                     kind: hir::ItemKind::Impl(hir::Impl { self_ty, .. }),
                     ..
-                })) = self.tcx.hir().get_if_local(*alias_to)
+                })) = self.tcx.hir_get_if_local(*alias_to)
                 {
                     err.span_label(self_ty.span, "this is the type of the `Self` literal");
                 }

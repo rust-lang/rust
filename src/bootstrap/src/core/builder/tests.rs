@@ -1080,7 +1080,7 @@ fn test_is_builder_target() {
         let build = Build::new(config);
         let builder = Builder::new(&build);
 
-        assert!(builder.is_builder_target(&target1));
-        assert!(!builder.is_builder_target(&target2));
+        assert!(builder.is_builder_target(target1));
+        assert!(!builder.is_builder_target(target2));
     }
 }
