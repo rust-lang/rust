@@ -38,7 +38,7 @@ pub(crate) struct Vendor {
 }
 
 impl Step for Vendor {
-    type Output = ();
+    type Output = VendorOutput;
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
@@ -89,6 +89,12 @@ impl Step for Vendor {
 
         cmd.current_dir(self.root_dir).arg(&self.output_dir);
 
-        cmd.run(builder);
+        let config = cmd.run_capture_stdout(builder);
+        VendorOutput { config: config.stdout() }
     }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct VendorOutput {
+    pub(crate) config: String,
 }
