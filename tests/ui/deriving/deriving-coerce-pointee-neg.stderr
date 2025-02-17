@@ -118,7 +118,54 @@ error[E0802]: `derive(CoercePointee)` is only applicable to `struct` with `repr(
 LL | struct TryToWipeRepr<'a, #[pointee] T: ?Sized> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 17 previous errors
+error[E0802]: `Box<T>` cannot be coerced to any unsized value
+  --> $DIR/deriving-coerce-pointee-neg.rs:146:10
+   |
+LL | #[derive(CoercePointee)]
+   |          ^^^^^^^^^^^^^
+   |
+   = note: this error originates in the derive macro `CoercePointee` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-Some errors have detailed explanations: E0392, E0802.
+error[E0802]: `derive(CoercePointee)` only admits exactly one data field, to which `dyn` methods shall be dispatched
+  --> $DIR/deriving-coerce-pointee-neg.rs:157:5
+   |
+LL |     inner1: Box<T>,
+   |     ^^^^^^^^^^^^^^
+...
+LL |     inner2: Box<T>,
+   |     ^^^^^^^^^^^^^^
+
+error[E0802]: `Box<T>` cannot be coerced to any unsized value
+  --> $DIR/deriving-coerce-pointee-neg.rs:146:10
+   |
+LL | #[derive(CoercePointee)]
+   |          ^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+   = note: this error originates in the derive macro `CoercePointee` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0802]: `derive(CoercePointee)` only admits exactly one data field, on which unsize coercion shall be performed
+  --> $DIR/deriving-coerce-pointee-neg.rs:157:5
+   |
+LL |     inner1: Box<T>,
+   |     ^^^^^^^^^^^^^^
+...
+LL |     inner2: Box<T>,
+   |     ^^^^^^^^^^^^^^
+
+error[E0690]: transparent struct needs at most one field with non-trivial size or alignment, but has 2
+  --> $DIR/deriving-coerce-pointee-neg.rs:155:1
+   |
+LL | struct MoreThanOneField<T: ?Sized> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ needs at most one field with non-trivial size or alignment, but has 2
+LL |
+LL |     inner1: Box<T>,
+   |     -------------- this field has non-zero size or requires alignment
+...
+LL |     inner2: Box<T>,
+   |     -------------- this field has non-zero size or requires alignment
+
+error: aborting due to 22 previous errors
+
+Some errors have detailed explanations: E0392, E0690, E0802.
 For more information about an error, try `rustc --explain E0392`.

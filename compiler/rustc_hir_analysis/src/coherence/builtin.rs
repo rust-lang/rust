@@ -1,9 +1,12 @@
 //! Check properties that are required by built-in traits and set
 //! up data structures required by type-checking/codegen.
 
+mod diagnostics;
+
 use std::assert_matches::assert_matches;
 use std::collections::BTreeMap;
 
+use diagnostics::{extract_coerce_pointee_data, redact_fulfillment_err_for_coerce_pointee};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
@@ -12,6 +15,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::{self, RegionResolutionError, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
+use rustc_middle::bug;
 use rustc_middle::ty::adjustment::CoerceUnsizedInfo;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{
@@ -307,29 +311,45 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
                 .collect::<Vec<_>>();
 
             if coerced_fields.is_empty() {
-                res = Err(tcx.dcx().emit_err(errors::DispatchFromDynSingle {
-                    span,
-                    trait_name: "DispatchFromDyn",
-                    note: true,
-                }));
+                if extract_coerce_pointee_data(tcx, def_a.did()).is_some() {
+                    res = Err(tcx.dcx().span_delayed_bug(
+                        span,
+                        "a specialised message for CoercePointee is expected",
+                    ));
+                } else {
+                    res = Err(tcx.dcx().emit_err(errors::DispatchFromDynSingle {
+                        span,
+                        trait_name: "DispatchFromDyn",
+                        note: true,
+                    }));
+                }
             } else if coerced_fields.len() > 1 {
-                res = Err(tcx.dcx().emit_err(errors::DispatchFromDynMulti {
-                    span,
-                    coercions_note: true,
-                    number: coerced_fields.len(),
-                    coercions: coerced_fields
-                        .iter()
-                        .map(|field| {
-                            format!(
-                                "`{}` (`{}` to `{}`)",
-                                field.name,
-                                field.ty(tcx, args_a),
-                                field.ty(tcx, args_b),
-                            )
-                        })
-                        .collect::<Vec<_>>()
-                        .join(", "),
-                }));
+                if extract_coerce_pointee_data(tcx, def_a.did()).is_some() {
+                    let spans =
+                        coerced_fields.iter().map(|field| tcx.def_span(field.did)).collect();
+                    res = Err(tcx.dcx().emit_err(errors::CoercePointeeMultipleTargets {
+                        spans,
+                        diag_trait: "DispatchFromDyn",
+                    }));
+                } else {
+                    res = Err(tcx.dcx().emit_err(errors::DispatchFromDynMulti {
+                        span,
+                        coercions_note: true,
+                        number: coerced_fields.len(),
+                        coercions: coerced_fields
+                            .iter()
+                            .map(|field| {
+                                format!(
+                                    "`{}` (`{}` to `{}`)",
+                                    field.name,
+                                    field.ty(tcx, args_a),
+                                    field.ty(tcx, args_b),
+                                )
+                            })
+                            .collect::<Vec<_>>()
+                            .join(", "),
+                    }));
+                }
             } else {
                 let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
                 for field in coerced_fields {
@@ -344,9 +364,31 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
                         ),
                     ));
                 }
-                let errors = ocx.select_all_or_error();
+                let mut errors = ocx.select_all_or_error();
                 if !errors.is_empty() {
-                    res = Err(infcx.err_ctxt().report_fulfillment_errors(errors));
+                    if let Some((pointee_idx, _)) = extract_coerce_pointee_data(tcx, def_a.did()) {
+                        let target_pointee = args_b.type_at(pointee_idx);
+
+                        errors = errors
+                            .into_iter()
+                            .filter_map(|err| {
+                                redact_fulfillment_err_for_coerce_pointee(
+                                    tcx,
+                                    err,
+                                    target_pointee,
+                                    span,
+                                )
+                            })
+                            .collect();
+                    }
+                    if errors.is_empty() {
+                        res = Err(tcx.dcx().span_delayed_bug(
+                            span,
+                            "a specialised CoercePointee error is expected",
+                        ));
+                    } else {
+                        res = Err(infcx.err_ctxt().report_fulfillment_errors(errors));
+                    }
                 }
 
                 // Finally, resolve all regions.
@@ -372,9 +414,11 @@ pub(crate) fn coerce_unsized_info<'tcx>(
     let unsize_trait = tcx.require_lang_item(LangItem::Unsize, Some(span));
 
     let source = tcx.type_of(impl_did).instantiate_identity();
+    let self_ty = source;
     let trait_ref = tcx.impl_trait_ref(impl_did).unwrap().instantiate_identity();
     assert_eq!(trait_ref.def_id, coerce_unsized_trait);
     let target = trait_ref.args.type_at(1);
+    let coerced_ty = target;
     debug!("visit_implementation_of_coerce_unsized: {:?} -> {:?} (bound)", source, target);
 
     let param_env = tcx.param_env(impl_did);
@@ -509,12 +553,28 @@ pub(crate) fn coerce_unsized_info<'tcx>(
                 .collect::<Vec<_>>();
 
             if diff_fields.is_empty() {
+                if extract_coerce_pointee_data(tcx, def_a.did()).is_some() {
+                    return Err(tcx.dcx().span_delayed_bug(
+                        span,
+                        "a specialised message for CoercePointee is expected",
+                    ));
+                }
                 return Err(tcx.dcx().emit_err(errors::CoerceUnsizedOneField {
                     span,
                     trait_name: "CoerceUnsized",
                     note: true,
                 }));
             } else if diff_fields.len() > 1 {
+                if extract_coerce_pointee_data(tcx, def_a.did()).is_some() {
+                    let spans = diff_fields
+                        .iter()
+                        .map(|&(idx, _, _)| tcx.def_span(fields[idx].did))
+                        .collect();
+                    return Err(tcx.dcx().emit_err(errors::CoercePointeeMultipleTargets {
+                        spans,
+                        diag_trait: "CoerceUnsized",
+                    }));
+                }
                 let item = tcx.hir().expect_item(impl_did);
                 let span = if let ItemKind::Impl(hir::Impl { of_trait: Some(t), .. }) = &item.kind {
                     t.path.span
@@ -547,8 +607,16 @@ pub(crate) fn coerce_unsized_info<'tcx>(
     };
 
     // Register an obligation for `A: Trait<B>`.
+    let coerce_pointee_data = if let ty::Adt(def, _) = self_ty.kind() {
+        extract_coerce_pointee_data(tcx, def.did())
+    } else {
+        None
+    };
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
-    let cause = traits::ObligationCause::misc(span, impl_did);
+    let cause = traits::ObligationCause::misc(
+        span,
+        coerce_pointee_data.map_or(impl_did, |(_, impl_did)| impl_did.expect_local()),
+    );
     let obligation = Obligation::new(
         tcx,
         cause,
@@ -556,9 +624,24 @@ pub(crate) fn coerce_unsized_info<'tcx>(
         ty::TraitRef::new(tcx, trait_def_id, [source, target]),
     );
     ocx.register_obligation(obligation);
-    let errors = ocx.select_all_or_error();
+    let mut errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        infcx.err_ctxt().report_fulfillment_errors(errors);
+        if let Some((pointee, _)) = coerce_pointee_data {
+            let ty::Adt(_def, args) = coerced_ty.kind() else { bug!() };
+            let target_pointee = args.type_at(pointee);
+            let ty::Adt(_def, _) = self_ty.kind() else { bug!() };
+            errors = errors
+                .into_iter()
+                .filter_map(|err| {
+                    redact_fulfillment_err_for_coerce_pointee(tcx, err, target_pointee, span)
+                })
+                .collect();
+        }
+        if errors.is_empty() {
+            tcx.dcx().span_delayed_bug(span, "a specialised CoercePointee error is expected");
+        } else {
+            infcx.err_ctxt().report_fulfillment_errors(errors);
+        }
     }
 
     // Finally, resolve all regions.

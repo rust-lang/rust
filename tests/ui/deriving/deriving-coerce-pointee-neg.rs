@@ -142,4 +142,22 @@ struct TryToWipeRepr<'a, #[pointee] T: ?Sized> {
     ptr: &'a T,
 }
 
+#[repr(transparent)]
+#[derive(CoercePointee)]
+//~^ ERROR: `Box<T>` cannot be coerced to any unsized value [E0802]
+//~| ERROR: `Box<T>` cannot be coerced to any unsized value [E0802]
+struct RcWithId<T: ?Sized> {
+    inner: std::rc::Rc<(i32, Box<T>)>,
+}
+
+#[repr(transparent)]
+#[derive(CoercePointee)]
+struct MoreThanOneField<T: ?Sized> {
+    //~^ ERROR: transparent struct needs at most one field with non-trivial size or alignment, but has 2 [E0690]
+    inner1: Box<T>,
+    //~^ ERROR: `derive(CoercePointee)` only admits exactly one data field, to which `dyn` methods shall be dispatched [E0802]
+    //~| ERROR: `derive(CoercePointee)` only admits exactly one data field, on which unsize coercion shall be performed [E0802]
+    inner2: Box<T>,
+}
+
 fn main() {}
