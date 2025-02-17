@@ -17,8 +17,8 @@ mod cargo_metadata;
 fn main() -> Result<(), Error> {
     let dest_file = env_path("DEST")?;
     let libstd_dest_file = env_path("DEST_LIBSTD")?;
-    let out_dir = env_path("OUT_DIR")?;
     let src_dir = env_path("SRC_DIR")?;
+    let vendor_dir = env_path("VENDOR_DIR")?;
     let cargo = env_path("CARGO")?;
     let license_metadata = env_path("LICENSE_METADATA")?;
 
@@ -39,16 +39,12 @@ fn main() -> Result<(), Error> {
         .collect::<Vec<_>>();
 
     // Scan Cargo dependencies
-    let mut collected_cargo_metadata = cargo_metadata::get_metadata_and_notices(
-        &cargo,
-        &out_dir.join("vendor"),
-        &src_dir,
-        &cargo_manifests,
-    )?;
+    let mut collected_cargo_metadata =
+        cargo_metadata::get_metadata_and_notices(&cargo, &vendor_dir, &src_dir, &cargo_manifests)?;
 
     let library_collected_cargo_metadata = cargo_metadata::get_metadata_and_notices(
         &cargo,
-        &out_dir.join("library-vendor"),
+        &vendor_dir,
         &src_dir,
         &library_manifests,
     )?;

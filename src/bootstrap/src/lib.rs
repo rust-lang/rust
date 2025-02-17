@@ -50,6 +50,8 @@ pub use utils::change_tracker::{
     CONFIG_CHANGE_HISTORY, find_recent_config_change_ids, human_readable_changes,
 };
 
+use crate::core::build_steps::vendor::VENDOR_DIR;
+
 const LLVM_TOOLS: &[&str] = &[
     "llvm-cov",      // used to generate coverage report
     "llvm-nm",       // used to inspect binaries; it shows symbol names, their sizes and visibility
@@ -780,6 +782,11 @@ impl Build {
     /// Output directory for some generated md crate documentation for a target (temporary)
     fn md_doc_out(&self, target: TargetSelection) -> PathBuf {
         self.out.join(target).join("md-doc")
+    }
+
+    /// Path to the vendored Rust crates.
+    fn vendored_crates_path(&self) -> Option<PathBuf> {
+        if self.config.vendor { Some(self.src.join(VENDOR_DIR)) } else { None }
     }
 
     /// Returns `true` if this is an external version of LLVM not managed by bootstrap.
