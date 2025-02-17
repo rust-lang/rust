@@ -13,7 +13,6 @@ members = [
   "src/tools/clippy/clippy_dev",
   "src/tools/compiletest",
   "src/tools/run-make-support",
-  "src/tools/error_index_generator",
   "src/tools/linkchecker",
   "src/tools/lint-docs",
   "src/tools/miropt-test-tools",
