@@ -36,7 +36,6 @@ pub enum LLVMRustVerifierFailureAction {
     LLVMReturnStatusAction = 2,
 }
 
-
 #[cfg(not(llvm_enzyme))]
 pub fn EnzymeSetCLBool(arg1: *mut ::std::os::raw::c_void, arg2: u8) {
     unimplemented!()
