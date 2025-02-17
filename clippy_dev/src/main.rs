@@ -54,7 +54,12 @@ fn main() {
                     setup::git_hook::install_hook(force_override);
                 }
             },
-            SetupSubcommand::Toolchain { force, release, name } => setup::toolchain::create(force, release, &name),
+            SetupSubcommand::Toolchain {
+                standalone,
+                force,
+                release,
+                name,
+            } => setup::toolchain::create(standalone, force, release, &name),
             SetupSubcommand::VscodeTasks { remove, force_override } => {
                 if remove {
                     setup::vscode::remove_tasks();
@@ -271,14 +276,25 @@ enum SetupSubcommand {
         force_override: bool,
     },
     /// Install a rustup toolchain pointing to the local clippy build
+    ///
+    /// This creates a toolchain with symlinks pointing at
+    /// `target/.../{clippy-driver,cargo-clippy}`, rebuilds of the project will be reflected in the
+    /// created toolchain unless `--standalone` is passed
     Toolchain {
+        #[arg(long, short)]
+        /// Create a standalone toolchain by copying the clippy binaries instead
+        /// of symlinking them
+        ///
+        /// Use this for example to create a toolchain, make a small change and then make another
+        /// toolchain with a different name in order to easily compare the two
+        standalone: bool,
         #[arg(long, short)]
         /// Override an existing toolchain
         force: bool,
         #[arg(long, short)]
         /// Point to --release clippy binary
         release: bool,
-        #[arg(long, default_value = "clippy")]
+        #[arg(long, short, default_value = "clippy")]
         /// Name of the toolchain
         name: String,
     },
