@@ -2403,17 +2403,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     if let ty::Ref(_, inner_ty, _) = *expected.kind() {
                         // Consume both the inherited and inner references.
-                        if inh_mut.is_mut() {
-                            // If the expected type is a reference type (of any mutability) and the
-                            // inherited ref is mutable, we'll be able to match, since we can fall
-                            // back to matching the inherited ref if the real reference isn't
-                            // mutable enough for our pattern. We handle that here to avoid adding
-                            // fallback-to-outer to the common logic below.
-                            // NB: This way of phrasing the logic will catch more cases than those
-                            // that need to fall back to matching the inherited reference. However,
-                            // as long as `&` patterns can match mutable (inherited) references
-                            // (RFC 3627, Rule 5) this should be sound.
-                            debug_assert!(ref_pat_matches_mut_ref);
+                        if pat_mutbl.is_mut() && inh_mut.is_mut() {
+                            // As a special case, a `&mut` reference pattern will be able to match
+                            // against a reference type of any mutability if the inherited ref is
+                            // mutable. Since this allows us to match against a shared reference
+                            // type, we refer to this as "falling back" to matching the inherited
+                            // reference, though we consume the real reference as well. We handle
+                            // this here to avoid adding this case to the common logic below.
                             self.check_pat(inner, inner_ty, pat_info);
                             return expected;
                         } else {
