@@ -12,8 +12,8 @@ use paths::Utf8PathBuf;
 use profile::StopWatch;
 use project_model::toolchain_info::{target_data_layout, QueryConfig};
 use project_model::{
-    CargoConfig, ManifestPath, ProjectWorkspace, ProjectWorkspaceKind, RustLibSource, Sysroot,
-    SysrootSourceWorkspaceConfig,
+    CargoConfig, ManifestPath, ProjectWorkspace, ProjectWorkspaceKind, RustLibSource,
+    RustSourceWorkspaceConfig, Sysroot,
 };
 
 use load_cargo::{load_workspace, LoadCargoConfig, ProcMacroServerChoice};
@@ -75,7 +75,11 @@ impl Tester {
         };
 
         let mut sysroot = Sysroot::discover(tmp_file.parent().unwrap(), &cargo_config.extra_env);
-        sysroot.load_workspace(&SysrootSourceWorkspaceConfig::default_cargo());
+        let loaded_sysroot = sysroot.load_workspace(&RustSourceWorkspaceConfig::default_cargo());
+        if let Some(loaded_sysroot) = loaded_sysroot {
+            sysroot.set_workspace(loaded_sysroot);
+        }
+
         let data_layout = target_data_layout::get(
             QueryConfig::Rustc(&sysroot, tmp_file.parent().unwrap().as_ref()),
             None,
@@ -86,7 +90,6 @@ impl Tester {
             kind: ProjectWorkspaceKind::DetachedFile {
                 file: ManifestPath::try_from(tmp_file).unwrap(),
                 cargo: None,
-                set_test: true,
             },
             sysroot,
             rustc_cfg: vec![],
@@ -94,6 +97,7 @@ impl Tester {
             target_layout: data_layout.map(Arc::from).map_err(|it| Arc::from(it.to_string())),
             cfg_overrides: Default::default(),
             extra_includes: vec![],
+            set_test: true,
         };
         let load_cargo_config = LoadCargoConfig {
             load_out_dirs_from_check: false,

@@ -18,7 +18,7 @@ use hir_def::{
         scope::{ExprScopes, ScopeId},
         Body, BodySourceMap, HygieneId,
     },
-    hir::{BindingId, Expr, ExprId, ExprOrPatId, Pat, PatId},
+    hir::{BindingId, Expr, ExprId, ExprOrPatId, Pat},
     lang_item::LangItem,
     lower::LowerCtx,
     nameres::MacroSubNs,
@@ -139,7 +139,7 @@ impl SourceAnalyzer {
         sm.node_expr(src.as_ref())
     }
 
-    fn pat_id(&self, pat: &ast::Pat) -> Option<PatId> {
+    fn pat_id(&self, pat: &ast::Pat) -> Option<ExprOrPatId> {
         // FIXME: macros, see `expr_id`
         let src = InFile { file_id: self.file_id, value: pat };
         self.body_source_map()?.node_pat(src)
@@ -147,7 +147,7 @@ impl SourceAnalyzer {
 
     fn binding_id_of_pat(&self, pat: &ast::IdentPat) -> Option<BindingId> {
         let pat_id = self.pat_id(&pat.clone().into())?;
-        if let Pat::Bind { id, .. } = self.body()?.pats[pat_id] {
+        if let Pat::Bind { id, .. } = self.body()?.pats[pat_id.as_pat()?] {
             Some(id)
         } else {
             None
@@ -210,11 +210,20 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         pat: &ast::Pat,
     ) -> Option<(Type, Option<Type>)> {
-        let pat_id = self.pat_id(pat)?;
+        let expr_or_pat_id = self.pat_id(pat)?;
         let infer = self.infer.as_ref()?;
-        let coerced =
-            infer.pat_adjustments.get(&pat_id).and_then(|adjusts| adjusts.last().cloned());
-        let ty = infer[pat_id].clone();
+        let coerced = match expr_or_pat_id {
+            ExprOrPatId::ExprId(idx) => infer
+                .expr_adjustments
+                .get(&idx)
+                .and_then(|adjusts| adjusts.last().cloned())
+                .map(|adjust| adjust.target),
+            ExprOrPatId::PatId(idx) => {
+                infer.pat_adjustments.get(&idx).and_then(|adjusts| adjusts.last().cloned())
+            }
+        };
+
+        let ty = infer[expr_or_pat_id].clone();
         let mk_ty = |ty| Type::new_with_resolver(db, &self.resolver, ty);
         Some((mk_ty(ty), coerced.map(mk_ty)))
     }
@@ -248,7 +257,7 @@ impl SourceAnalyzer {
     ) -> Option<BindingMode> {
         let id = self.pat_id(&pat.clone().into())?;
         let infer = self.infer.as_ref()?;
-        infer.binding_modes.get(id).map(|bm| match bm {
+        infer.binding_modes.get(id.as_pat()?).map(|bm| match bm {
             hir_ty::BindingMode::Move => BindingMode::Move,
             hir_ty::BindingMode::Ref(hir_ty::Mutability::Mut) => BindingMode::Ref(Mutability::Mut),
             hir_ty::BindingMode::Ref(hir_ty::Mutability::Not) => {
@@ -266,7 +275,7 @@ impl SourceAnalyzer {
         Some(
             infer
                 .pat_adjustments
-                .get(&pat_id)?
+                .get(&pat_id.as_pat()?)?
                 .iter()
                 .map(|ty| Type::new_with_resolver(db, &self.resolver, ty.clone()))
                 .collect(),
@@ -649,10 +658,10 @@ impl SourceAnalyzer {
         let field_name = field.field_name()?.as_name();
         let record_pat = ast::RecordPat::cast(field.syntax().parent().and_then(|p| p.parent())?)?;
         let pat_id = self.pat_id(&record_pat.into())?;
-        let variant = self.infer.as_ref()?.variant_resolution_for_pat(pat_id)?;
+        let variant = self.infer.as_ref()?.variant_resolution_for_pat(pat_id.as_pat()?)?;
         let variant_data = variant.variant_data(db.upcast());
         let field = FieldId { parent: variant, local_id: variant_data.field(&field_name)? };
-        let (adt, subst) = self.infer.as_ref()?.type_of_pat.get(pat_id)?.as_adt()?;
+        let (adt, subst) = self.infer.as_ref()?.type_of_pat.get(pat_id.as_pat()?)?.as_adt()?;
         let field_ty =
             db.field_types(variant).get(field.local_id)?.clone().substitute(Interner, subst);
         Some((
@@ -682,12 +691,20 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         pat: &ast::IdentPat,
     ) -> Option<ModuleDef> {
-        let pat_id = self.pat_id(&pat.clone().into())?;
+        let expr_or_pat_id = self.pat_id(&pat.clone().into())?;
         let body = self.body()?;
-        let path = match &body[pat_id] {
-            Pat::Path(path) => path,
-            _ => return None,
+
+        let path = match expr_or_pat_id {
+            ExprOrPatId::ExprId(idx) => match &body[idx] {
+                Expr::Path(path) => path,
+                _ => return None,
+            },
+            ExprOrPatId::PatId(idx) => match &body[idx] {
+                Pat::Path(path) => path,
+                _ => return None,
+            },
         };
+
         let res = resolve_hir_path(db, &self.resolver, path, HygieneId::ROOT, TypesMap::EMPTY)?;
         match res {
             PathResolution::Def(def) => Some(def),
@@ -782,8 +799,9 @@ impl SourceAnalyzer {
                 }
                 prefer_value_ns = true;
             } else if let Some(path_pat) = parent().and_then(ast::PathPat::cast) {
-                let pat_id = self.pat_id(&path_pat.into())?;
-                if let Some((assoc, subs)) = infer.assoc_resolutions_for_pat(pat_id) {
+                let expr_or_pat_id = self.pat_id(&path_pat.into())?;
+                if let Some((assoc, subs)) = infer.assoc_resolutions_for_expr_or_pat(expr_or_pat_id)
+                {
                     let (assoc, subst) = match assoc {
                         AssocItemId::ConstId(const_id) => {
                             let (konst, subst) =
@@ -807,7 +825,7 @@ impl SourceAnalyzer {
                     return Some((PathResolution::Def(AssocItem::from(assoc).into()), Some(subst)));
                 }
                 if let Some(VariantId::EnumVariantId(variant)) =
-                    infer.variant_resolution_for_pat(pat_id)
+                    infer.variant_resolution_for_expr_or_pat(expr_or_pat_id)
                 {
                     return Some((PathResolution::Def(ModuleDef::Variant(variant.into())), None));
                 }
@@ -824,7 +842,7 @@ impl SourceAnalyzer {
                     || parent().and_then(ast::TupleStructPat::cast).map(ast::Pat::from);
                 if let Some(pat) = record_pat.or_else(tuple_struct_pat) {
                     let pat_id = self.pat_id(&pat)?;
-                    let variant_res_for_pat = infer.variant_resolution_for_pat(pat_id);
+                    let variant_res_for_pat = infer.variant_resolution_for_pat(pat_id.as_pat()?);
                     if let Some(VariantId::EnumVariantId(variant)) = variant_res_for_pat {
                         return Some((
                             PathResolution::Def(ModuleDef::Variant(variant.into())),
@@ -866,7 +884,8 @@ impl SourceAnalyzer {
 
         // Case where path is a qualifier of another path, e.g. foo::bar::Baz where we are
         // trying to resolve foo::bar.
-        if path.parent_path().is_some() {
+        if let Some(parent_path) = path.parent_path() {
+            let parent_hir_path = Path::from_src(&mut ctx, parent_path);
             return match resolve_hir_path_qualifier(db, &self.resolver, &hir_path, &types_map) {
                 None if meta_path.is_some() => path
                     .first_segment()
@@ -876,6 +895,42 @@ impl SourceAnalyzer {
                             .map(PathResolution::ToolModule)
                     })
                     .map(|it| (it, None)),
+                // Case the type name conflict with use module,
+                // e.g.
+                // ```
+                // use std::str;
+                // fn main() {
+                //     str::from_utf8();  // as module std::str
+                //     str::len();        // as primitive type str
+                //     str::no_exist_item(); // as primitive type str
+                // }
+                // ```
+                Some(it) if matches!(it, PathResolution::Def(ModuleDef::BuiltinType(_))) => {
+                    if let (Some(mod_path), Some(parent_hir_path)) =
+                        (hir_path.mod_path(), parent_hir_path)
+                    {
+                        if let Some(ModuleDefId::ModuleId(id)) = self
+                            .resolver
+                            .resolve_module_path_in_items(db.upcast(), mod_path)
+                            .take_types()
+                        {
+                            let parent_hir_name =
+                                parent_hir_path.segments().get(1).map(|it| it.name);
+                            let module = crate::Module { id };
+                            if module
+                                .scope(db, None)
+                                .into_iter()
+                                .any(|(name, _)| Some(&name) == parent_hir_name)
+                            {
+                                return Some((
+                                    PathResolution::Def(ModuleDef::Module(module)),
+                                    None,
+                                ));
+                            };
+                        }
+                    }
+                    Some((it, None))
+                }
                 // FIXME: We do not show substitutions for parts of path, because this is really complex
                 // due to the interactions with associated items of `impl`s and associated items of associated
                 // types.
@@ -1043,7 +1098,7 @@ impl SourceAnalyzer {
         let body = self.body()?;
         let infer = self.infer.as_ref()?;
 
-        let pat_id = self.pat_id(&pattern.clone().into())?;
+        let pat_id = self.pat_id(&pattern.clone().into())?.as_pat()?;
         let substs = infer.type_of_pat[pat_id].as_adt()?.1;
 
         let (variant, missing_fields, _exhaustive) =

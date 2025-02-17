@@ -100,6 +100,9 @@ pub enum FileState {
     Exists(u64),
     /// The file is deleted.
     Deleted,
+    /// The file was specifically excluded by the user. We still include excluded files
+    /// when they're opened (without their contents).
+    Excluded,
 }
 
 /// Changed file in the [`Vfs`].
@@ -164,10 +167,22 @@ pub enum ChangeKind {
     Delete,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FileExcluded {
+    Yes,
+    No,
+}
+
 impl Vfs {
     /// Id of the given path if it exists in the `Vfs` and is not deleted.
-    pub fn file_id(&self, path: &VfsPath) -> Option<FileId> {
-        self.interner.get(path).filter(|&it| matches!(self.get(it), FileState::Exists(_)))
+    pub fn file_id(&self, path: &VfsPath) -> Option<(FileId, FileExcluded)> {
+        let file_id = self.interner.get(path)?;
+        let file_state = self.get(file_id);
+        match file_state {
+            FileState::Exists(_) => Some((file_id, FileExcluded::No)),
+            FileState::Deleted => None,
+            FileState::Excluded => Some((file_id, FileExcluded::Yes)),
+        }
     }
 
     /// File path corresponding to the given `file_id`.
@@ -216,6 +231,7 @@ impl Vfs {
                 }
                 Change::Modify(v, new_hash)
             }
+            (FileState::Excluded, _) => return false,
         };
 
         let mut set_data = |change_kind| {
@@ -296,6 +312,13 @@ impl Vfs {
     /// Panics if no file is associated to that id.
     fn get(&self, file_id: FileId) -> FileState {
         self.data[file_id.0 as usize]
+    }
+
+    /// We cannot ignore excluded files, because this will lead to errors when the client
+    /// requests semantic information for them, so we instead mark them specially.
+    pub fn insert_excluded_file(&mut self, path: VfsPath) {
+        let file_id = self.alloc_file_id(path);
+        self.data[file_id.0 as usize] = FileState::Excluded;
     }
 }
 

@@ -84,10 +84,10 @@ config_data! {
         completion_snippets_custom: FxHashMap<String, SnippetDef> = Config::completion_snippets_default(),
 
 
-        /// These directories will be ignored by rust-analyzer. They are
+        /// These paths (file/directories) will be ignored by rust-analyzer. They are
         /// relative to the workspace root, and globs are not supported. You may
         /// also need to add the folders to Code's `files.watcherExclude`.
-        files_excludeDirs: Vec<Utf8PathBuf> = vec![],
+        files_exclude | files_excludeDirs: Vec<Utf8PathBuf> = vec![],
 
 
 
@@ -1792,7 +1792,7 @@ impl Config {
 
     fn discovered_projects(&self) -> Vec<ManifestOrProjectJson> {
         let exclude_dirs: Vec<_> =
-            self.files_excludeDirs().iter().map(|p| self.root_path.join(p)).collect();
+            self.files_exclude().iter().map(|p| self.root_path.join(p)).collect();
 
         let mut projects = vec![];
         for fs_proj in &self.discovered_projects_from_filesystem {
@@ -1914,8 +1914,12 @@ impl Config {
                 }
                 _ => FilesWatcher::Server,
             },
-            exclude: self.files_excludeDirs().iter().map(|it| self.root_path.join(it)).collect(),
+            exclude: self.excluded().collect(),
         }
+    }
+
+    pub fn excluded(&self) -> impl Iterator<Item = AbsPathBuf> + use<'_> {
+        self.files_exclude().iter().map(|it| self.root_path.join(it))
     }
 
     pub fn notifications(&self) -> NotificationsConfig {
@@ -3798,8 +3802,10 @@ mod tests {
         (config, _, _) = config.apply_change(change);
 
         assert_eq!(config.cargo_targetDir(None), &Some(TargetDirectory::UseSubdirectory(true)));
+        let target =
+            Utf8PathBuf::from(std::env::var("CARGO_TARGET_DIR").unwrap_or("target".to_owned()));
         assert!(
-            matches!(config.flycheck(None), FlycheckConfig::CargoCommand { options, .. } if options.target_dir == Some(Utf8PathBuf::from("target/rust-analyzer")))
+            matches!(config.flycheck(None), FlycheckConfig::CargoCommand { options, .. } if options.target_dir == Some(target.join("rust-analyzer")))
         );
     }
 

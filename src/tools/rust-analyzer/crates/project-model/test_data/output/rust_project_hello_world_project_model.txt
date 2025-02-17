@@ -417,6 +417,7 @@
         cfg_options: CfgOptions(
             [
                 "rust_analyzer",
+                "test",
                 "true",
             ],
         ),

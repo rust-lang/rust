@@ -112,9 +112,9 @@ pub struct ExpressionStoreSourceMap {
     // AST expressions can create patterns in destructuring assignments. Therefore, `ExprSource` can also map
     // to `PatId`, and `PatId` can also map to `ExprSource` (the other way around is unaffected).
     expr_map: FxHashMap<ExprSource, ExprOrPatId>,
-    expr_map_back: ArenaMap<ExprId, ExprSource>,
+    expr_map_back: ArenaMap<ExprId, ExprOrPatSource>,
 
-    pat_map: FxHashMap<PatSource, PatId>,
+    pat_map: FxHashMap<PatSource, ExprOrPatId>,
     pat_map_back: ArenaMap<PatId, ExprOrPatSource>,
 
     label_map: FxHashMap<LabelSource, LabelId>,
@@ -606,12 +606,12 @@ impl Index<TypeRefId> for ExpressionStore {
 impl ExpressionStoreSourceMap {
     pub fn expr_or_pat_syntax(&self, id: ExprOrPatId) -> Result<ExprOrPatSource, SyntheticSyntax> {
         match id {
-            ExprOrPatId::ExprId(id) => self.expr_syntax(id).map(|it| it.map(AstPtr::wrap_left)),
+            ExprOrPatId::ExprId(id) => self.expr_syntax(id),
             ExprOrPatId::PatId(id) => self.pat_syntax(id),
         }
     }
 
-    pub fn expr_syntax(&self, expr: ExprId) -> Result<ExprSource, SyntheticSyntax> {
+    pub fn expr_syntax(&self, expr: ExprId) -> Result<ExprOrPatSource, SyntheticSyntax> {
         self.expr_map_back.get(expr).cloned().ok_or(SyntheticSyntax)
     }
 
@@ -633,7 +633,7 @@ impl ExpressionStoreSourceMap {
         self.pat_map_back.get(pat).cloned().ok_or(SyntheticSyntax)
     }
 
-    pub fn node_pat(&self, node: InFile<&ast::Pat>) -> Option<PatId> {
+    pub fn node_pat(&self, node: InFile<&ast::Pat>) -> Option<ExprOrPatId> {
         self.pat_map.get(&node.map(AstPtr::new)).cloned()
     }
 

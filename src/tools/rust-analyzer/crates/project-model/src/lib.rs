@@ -260,19 +260,19 @@ fn parse_cfg(s: &str) -> Result<cfg::CfgAtom, String> {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum SysrootSourceWorkspaceConfig {
+pub enum RustSourceWorkspaceConfig {
     CargoMetadata(CargoMetadataConfig),
     Stitched,
 }
 
-impl Default for SysrootSourceWorkspaceConfig {
+impl Default for RustSourceWorkspaceConfig {
     fn default() -> Self {
-        SysrootSourceWorkspaceConfig::default_cargo()
+        RustSourceWorkspaceConfig::default_cargo()
     }
 }
 
-impl SysrootSourceWorkspaceConfig {
+impl RustSourceWorkspaceConfig {
     pub fn default_cargo() -> Self {
-        SysrootSourceWorkspaceConfig::CargoMetadata(Default::default())
+        RustSourceWorkspaceConfig::CargoMetadata(Default::default())
     }
 }

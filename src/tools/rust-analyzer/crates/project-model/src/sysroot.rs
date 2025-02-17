@@ -22,38 +22,40 @@ use toolchain::{probe_for_binary, Tool};
 
 use crate::{
     cargo_workspace::CargoMetadataConfig, utf8_stdout, CargoWorkspace, ManifestPath,
-    SysrootSourceWorkspaceConfig,
+    RustSourceWorkspaceConfig,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Sysroot {
     root: Option<AbsPathBuf>,
-    src_root: Option<AbsPathBuf>,
-    workspace: SysrootWorkspace,
+    rust_lib_src_root: Option<AbsPathBuf>,
+    workspace: RustLibSrcWorkspace,
     error: Option<String>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub(crate) enum SysrootWorkspace {
+pub enum RustLibSrcWorkspace {
     Workspace(CargoWorkspace),
     Stitched(Stitched),
     Empty,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub(crate) struct Stitched {
-    crates: Arena<SysrootCrateData>,
+pub struct Stitched {
+    crates: Arena<RustLibSrcCrateData>,
 }
 
-impl ops::Index<SysrootCrate> for Stitched {
-    type Output = SysrootCrateData;
-    fn index(&self, index: SysrootCrate) -> &SysrootCrateData {
+impl ops::Index<RustLibSrcCrate> for Stitched {
+    type Output = RustLibSrcCrateData;
+    fn index(&self, index: RustLibSrcCrate) -> &RustLibSrcCrateData {
         &self.crates[index]
     }
 }
 
 impl Stitched {
-    pub(crate) fn public_deps(&self) -> impl Iterator<Item = (CrateName, SysrootCrate, bool)> + '_ {
+    pub(crate) fn public_deps(
+        &self,
+    ) -> impl Iterator<Item = (CrateName, RustLibSrcCrate, bool)> + '_ {
         // core is added as a dependency before std in order to
         // mimic rustcs dependency order
         [("core", true), ("alloc", false), ("std", true), ("test", false)].into_iter().filter_map(
@@ -63,32 +65,37 @@ impl Stitched {
         )
     }
 
-    pub(crate) fn proc_macro(&self) -> Option<SysrootCrate> {
+    pub(crate) fn proc_macro(&self) -> Option<RustLibSrcCrate> {
         self.by_name("proc_macro")
     }
 
-    pub(crate) fn crates(&self) -> impl ExactSizeIterator<Item = SysrootCrate> + '_ {
+    pub(crate) fn crates(&self) -> impl ExactSizeIterator<Item = RustLibSrcCrate> + '_ {
         self.crates.iter().map(|(id, _data)| id)
     }
 
-    fn by_name(&self, name: &str) -> Option<SysrootCrate> {
+    fn by_name(&self, name: &str) -> Option<RustLibSrcCrate> {
         let (id, _data) = self.crates.iter().find(|(_id, data)| data.name == name)?;
         Some(id)
     }
 }
 
-pub(crate) type SysrootCrate = Idx<SysrootCrateData>;
+pub(crate) type RustLibSrcCrate = Idx<RustLibSrcCrateData>;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub(crate) struct SysrootCrateData {
+pub(crate) struct RustLibSrcCrateData {
     pub(crate) name: String,
     pub(crate) root: ManifestPath,
-    pub(crate) deps: Vec<SysrootCrate>,
+    pub(crate) deps: Vec<RustLibSrcCrate>,
 }
 
 impl Sysroot {
     pub const fn empty() -> Sysroot {
-        Sysroot { root: None, src_root: None, workspace: SysrootWorkspace::Empty, error: None }
+        Sysroot {
+            root: None,
+            rust_lib_src_root: None,
+            workspace: RustLibSrcWorkspace::Empty,
+            error: None,
+        }
     }
 
     /// Returns sysroot "root" directory, where `bin/`, `etc/`, `lib/`, `libexec/`
@@ -100,15 +107,15 @@ impl Sysroot {
 
     /// Returns the sysroot "source" directory, where stdlib sources are located, like:
     /// `$HOME/.rustup/toolchains/nightly-2022-07-23-x86_64-unknown-linux-gnu/lib/rustlib/src/rust/library`
-    pub fn src_root(&self) -> Option<&AbsPath> {
-        self.src_root.as_deref()
+    pub fn rust_lib_src_root(&self) -> Option<&AbsPath> {
+        self.rust_lib_src_root.as_deref()
     }
 
-    pub fn is_empty(&self) -> bool {
+    pub fn is_rust_lib_src_empty(&self) -> bool {
         match &self.workspace {
-            SysrootWorkspace::Workspace(ws) => ws.packages().next().is_none(),
-            SysrootWorkspace::Stitched(stitched) => stitched.crates.is_empty(),
-            SysrootWorkspace::Empty => true,
+            RustLibSrcWorkspace::Workspace(ws) => ws.packages().next().is_none(),
+            RustLibSrcWorkspace::Stitched(stitched) => stitched.crates.is_empty(),
+            RustLibSrcWorkspace::Empty => true,
         }
     }
 
@@ -118,13 +125,13 @@ impl Sysroot {
 
     pub fn num_packages(&self) -> usize {
         match &self.workspace {
-            SysrootWorkspace::Workspace(ws) => ws.packages().count(),
-            SysrootWorkspace::Stitched(c) => c.crates().count(),
-            SysrootWorkspace::Empty => 0,
+            RustLibSrcWorkspace::Workspace(ws) => ws.packages().count(),
+            RustLibSrcWorkspace::Stitched(c) => c.crates().count(),
+            RustLibSrcWorkspace::Empty => 0,
         }
     }
 
-    pub(crate) fn workspace(&self) -> &SysrootWorkspace {
+    pub(crate) fn workspace(&self) -> &RustLibSrcWorkspace {
         &self.workspace
     }
 }
@@ -133,33 +140,33 @@ impl Sysroot {
     /// Attempts to discover the toolchain's sysroot from the given `dir`.
     pub fn discover(dir: &AbsPath, extra_env: &FxHashMap<String, String>) -> Sysroot {
         let sysroot_dir = discover_sysroot_dir(dir, extra_env);
-        let sysroot_src_dir = sysroot_dir.as_ref().ok().map(|sysroot_dir| {
-            discover_sysroot_src_dir_or_add_component(sysroot_dir, dir, extra_env)
+        let rust_lib_src_dir = sysroot_dir.as_ref().ok().map(|sysroot_dir| {
+            discover_rust_lib_src_dir_or_add_component(sysroot_dir, dir, extra_env)
         });
-        Sysroot::assemble(Some(sysroot_dir), sysroot_src_dir)
+        Sysroot::assemble(Some(sysroot_dir), rust_lib_src_dir)
     }
 
     pub fn discover_with_src_override(
         current_dir: &AbsPath,
         extra_env: &FxHashMap<String, String>,
-        sysroot_src_dir: AbsPathBuf,
+        rust_lib_src_dir: AbsPathBuf,
     ) -> Sysroot {
         let sysroot_dir = discover_sysroot_dir(current_dir, extra_env);
-        Sysroot::assemble(Some(sysroot_dir), Some(Ok(sysroot_src_dir)))
+        Sysroot::assemble(Some(sysroot_dir), Some(Ok(rust_lib_src_dir)))
     }
 
-    pub fn discover_sysroot_src_dir(sysroot_dir: AbsPathBuf) -> Sysroot {
-        let sysroot_src_dir = discover_sysroot_src_dir(&sysroot_dir)
+    pub fn discover_rust_lib_src_dir(sysroot_dir: AbsPathBuf) -> Sysroot {
+        let rust_lib_src_dir = discover_rust_lib_src_dir(&sysroot_dir)
             .ok_or_else(|| format_err!("can't find standard library sources in {sysroot_dir}"));
-        Sysroot::assemble(Some(Ok(sysroot_dir)), Some(sysroot_src_dir))
+        Sysroot::assemble(Some(Ok(sysroot_dir)), Some(rust_lib_src_dir))
     }
 
     pub fn discover_rustc_src(&self) -> Option<ManifestPath> {
         get_rustc_src(self.root()?)
     }
 
-    pub fn new(sysroot_dir: Option<AbsPathBuf>, sysroot_src_dir: Option<AbsPathBuf>) -> Sysroot {
-        Self::assemble(sysroot_dir.map(Ok), sysroot_src_dir.map(Ok))
+    pub fn new(sysroot_dir: Option<AbsPathBuf>, rust_lib_src_dir: Option<AbsPathBuf>) -> Sysroot {
+        Self::assemble(sysroot_dir.map(Ok), rust_lib_src_dir.map(Ok))
     }
 
     /// Returns a command to run a tool preferring the cargo proxies if the sysroot exists.
@@ -200,7 +207,7 @@ impl Sysroot {
 
     fn assemble(
         sysroot_dir: Option<Result<AbsPathBuf, anyhow::Error>>,
-        sysroot_src_dir: Option<Result<AbsPathBuf, anyhow::Error>>,
+        rust_lib_src_dir: Option<Result<AbsPathBuf, anyhow::Error>>,
     ) -> Sysroot {
         let mut errors = String::new();
         let root = match sysroot_dir {
@@ -211,8 +218,8 @@ impl Sysroot {
             }
             None => None,
         };
-        let src_root = match sysroot_src_dir {
-            Some(Ok(sysroot_src_dir)) => Some(sysroot_src_dir),
+        let rust_lib_src_root = match rust_lib_src_dir {
+            Some(Ok(rust_lib_src_dir)) => Some(rust_lib_src_dir),
             Some(Err(e)) => {
                 format_to!(errors, "{e}\n");
                 None
@@ -221,24 +228,28 @@ impl Sysroot {
         };
         Sysroot {
             root,
-            src_root,
-            workspace: SysrootWorkspace::Empty,
+            rust_lib_src_root,
+            workspace: RustLibSrcWorkspace::Empty,
             error: errors.is_empty().not().then_some(errors),
         }
     }
 
-    pub fn load_workspace(&mut self, sysroot_source_config: &SysrootSourceWorkspaceConfig) {
-        assert!(matches!(self.workspace, SysrootWorkspace::Empty), "workspace already loaded");
-        let Self { root: _, src_root: Some(src_root), workspace, error: _ } = self else { return };
-        if let SysrootSourceWorkspaceConfig::CargoMetadata(cargo_config) = sysroot_source_config {
+    pub fn load_workspace(
+        &self,
+        sysroot_source_config: &RustSourceWorkspaceConfig,
+    ) -> Option<RustLibSrcWorkspace> {
+        assert!(matches!(self.workspace, RustLibSrcWorkspace::Empty), "workspace already loaded");
+        let Self { root: _, rust_lib_src_root: Some(src_root), workspace: _, error: _ } = self
+        else {
+            return None;
+        };
+        if let RustSourceWorkspaceConfig::CargoMetadata(cargo_config) = sysroot_source_config {
             let library_manifest = ManifestPath::try_from(src_root.join("Cargo.toml")).unwrap();
             if fs::metadata(&library_manifest).is_ok() {
                 if let Some(loaded) =
-                    Self::load_library_via_cargo(library_manifest, src_root, cargo_config)
+                    self.load_library_via_cargo(library_manifest, src_root, cargo_config)
                 {
-                    *workspace = loaded;
-                    self.load_core_check();
-                    return;
+                    return Some(loaded);
                 }
             }
         }
@@ -255,7 +266,7 @@ impl Sysroot {
                 .find(|it| fs::metadata(it).is_ok());
 
             if let Some(root) = root {
-                stitched.crates.alloc(SysrootCrateData {
+                stitched.crates.alloc(RustLibSrcCrateData {
                     name: name.into(),
                     root,
                     deps: Vec::new(),
@@ -286,21 +297,23 @@ impl Sysroot {
                 }
             }
         }
-        *workspace = SysrootWorkspace::Stitched(stitched);
-        self.load_core_check();
+        Some(RustLibSrcWorkspace::Stitched(stitched))
     }
 
-    fn load_core_check(&mut self) {
+    pub fn set_workspace(&mut self, workspace: RustLibSrcWorkspace) {
+        self.workspace = workspace;
         if self.error.is_none() {
-            if let Some(src_root) = &self.src_root {
+            if let Some(src_root) = &self.rust_lib_src_root {
                 let has_core = match &self.workspace {
-                    SysrootWorkspace::Workspace(ws) => ws.packages().any(|p| ws[p].name == "core"),
-                    SysrootWorkspace::Stitched(stitched) => stitched.by_name("core").is_some(),
-                    SysrootWorkspace::Empty => true,
+                    RustLibSrcWorkspace::Workspace(ws) => {
+                        ws.packages().any(|p| ws[p].name == "core")
+                    }
+                    RustLibSrcWorkspace::Stitched(stitched) => stitched.by_name("core").is_some(),
+                    RustLibSrcWorkspace::Empty => true,
                 };
                 if !has_core {
-                    let var_note = if env::var_os("RUST_SRC_PATH").is_some() {
-                        " (env var `RUST_SRC_PATH` is set and may be incorrect, try unsetting it)"
+                    let var_note = if env::var_os("rust_lib_src_PATH").is_some() {
+                        " (env var `rust_lib_src_PATH` is set and may be incorrect, try unsetting it)"
                     } else {
                         ", try running `rustup component add rust-src` to possibly fix this"
                     };
@@ -313,10 +326,11 @@ impl Sysroot {
     }
 
     fn load_library_via_cargo(
+        &self,
         library_manifest: ManifestPath,
-        sysroot_src_dir: &AbsPathBuf,
+        rust_lib_src_dir: &AbsPathBuf,
         cargo_config: &CargoMetadataConfig,
-    ) -> Option<SysrootWorkspace> {
+    ) -> Option<RustLibSrcWorkspace> {
         tracing::debug!("Loading library metadata: {library_manifest}");
         let mut cargo_config = cargo_config.clone();
         // the sysroot uses `public-dependency`, so we make cargo think it's a nightly
@@ -327,9 +341,9 @@ impl Sysroot {
 
         let (mut res, _) = match CargoWorkspace::fetch_metadata(
             &library_manifest,
-            sysroot_src_dir,
+            rust_lib_src_dir,
             &cargo_config,
-            &Sysroot::empty(),
+            self,
             // Make sure we never attempt to write to the sysroot
             true,
             &|_| (),
@@ -391,7 +405,7 @@ impl Sysroot {
         });
 
         let cargo_workspace = CargoWorkspace::new(res, library_manifest, Default::default());
-        Some(SysrootWorkspace::Workspace(cargo_workspace))
+        Some(RustLibSrcWorkspace::Workspace(cargo_workspace))
     }
 }
 
@@ -407,36 +421,38 @@ fn discover_sysroot_dir(
     Ok(AbsPathBuf::assert(Utf8PathBuf::from(stdout)))
 }
 
-fn discover_sysroot_src_dir(sysroot_path: &AbsPathBuf) -> Option<AbsPathBuf> {
-    if let Ok(path) = env::var("RUST_SRC_PATH") {
+fn discover_rust_lib_src_dir(sysroot_path: &AbsPathBuf) -> Option<AbsPathBuf> {
+    if let Ok(path) = env::var("rust_lib_src_PATH") {
         if let Ok(path) = AbsPathBuf::try_from(path.as_str()) {
             let core = path.join("core");
             if fs::metadata(&core).is_ok() {
-                tracing::debug!("Discovered sysroot by RUST_SRC_PATH: {path}");
+                tracing::debug!("Discovered sysroot by rust_lib_src_PATH: {path}");
                 return Some(path);
             }
-            tracing::debug!("RUST_SRC_PATH is set, but is invalid (no core: {core:?}), ignoring");
+            tracing::debug!(
+                "rust_lib_src_PATH is set, but is invalid (no core: {core:?}), ignoring"
+            );
         } else {
-            tracing::debug!("RUST_SRC_PATH is set, but is invalid, ignoring");
+            tracing::debug!("rust_lib_src_PATH is set, but is invalid, ignoring");
         }
     }
 
-    get_rust_src(sysroot_path)
+    get_rust_lib_src(sysroot_path)
 }
 
-fn discover_sysroot_src_dir_or_add_component(
+fn discover_rust_lib_src_dir_or_add_component(
     sysroot_path: &AbsPathBuf,
     current_dir: &AbsPath,
     extra_env: &FxHashMap<String, String>,
 ) -> Result<AbsPathBuf> {
-    discover_sysroot_src_dir(sysroot_path)
+    discover_rust_lib_src_dir(sysroot_path)
         .or_else(|| {
             let mut rustup = toolchain::command(Tool::Rustup.prefer_proxy(), current_dir);
             rustup.envs(extra_env);
             rustup.args(["component", "add", "rust-src"]);
             tracing::info!("adding rust-src component by {:?}", rustup);
             utf8_stdout(&mut rustup).ok()?;
-            get_rust_src(sysroot_path)
+            get_rust_lib_src(sysroot_path)
         })
         .ok_or_else(|| {
             tracing::error!(%sysroot_path, "can't load standard library, try installing `rust-src`");
@@ -461,11 +477,11 @@ fn get_rustc_src(sysroot_path: &AbsPath) -> Option<ManifestPath> {
     }
 }
 
-fn get_rust_src(sysroot_path: &AbsPath) -> Option<AbsPathBuf> {
-    let rust_src = sysroot_path.join("lib/rustlib/src/rust/library");
-    tracing::debug!("checking sysroot library: {rust_src}");
-    if fs::metadata(&rust_src).is_ok() {
-        Some(rust_src)
+fn get_rust_lib_src(sysroot_path: &AbsPath) -> Option<AbsPathBuf> {
+    let rust_lib_src = sysroot_path.join("lib/rustlib/src/rust/library");
+    tracing::debug!("checking sysroot library: {rust_lib_src}");
+    if fs::metadata(&rust_lib_src).is_ok() {
+        Some(rust_lib_src)
     } else {
         None
     }
