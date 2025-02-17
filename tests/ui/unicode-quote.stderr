@@ -1,5 +1,5 @@
 error: unknown character escape: `\u{201c}`
-  --> $DIR/unicode-quote.rs:2:20
+  --> $DIR/unicode-quote.rs:4:20
    |
 LL |     dbg!("Is this \“ a small sized quote or a big sized quote. \“ ");
    |                    ^ unknown character escape
@@ -12,7 +12,7 @@ LL +     dbg!("Is this \u{201c} a small sized quote or a big sized quote. \“ "
    |
 
 error: unknown character escape: `\u{201c}`
-  --> $DIR/unicode-quote.rs:2:65
+  --> $DIR/unicode-quote.rs:4:65
    |
 LL |     dbg!("Is this \“ a small sized quote or a big sized quote. \“ ");
    |                                                                 ^ unknown character escape
