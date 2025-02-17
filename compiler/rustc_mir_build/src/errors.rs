@@ -1112,9 +1112,6 @@ pub(crate) struct Rust2024IncompatiblePatSugg {
     pub(crate) suggestion: Vec<(Span, String)>,
     pub(crate) ref_pattern_count: usize,
     pub(crate) binding_mode_count: usize,
-    /// Internal state: the ref-mutability of the default binding mode at the subpattern being
-    /// lowered, with the span where it was introduced. `None` for a by-value default mode.
-    pub(crate) default_mode_span: Option<(Span, ty::Mutability)>,
     /// Labels for where incompatibility-causing by-ref default binding modes were introduced.
     pub(crate) default_mode_labels: FxIndexMap<Span, ty::Mutability>,
 }
