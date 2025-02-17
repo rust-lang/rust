@@ -349,8 +349,12 @@ fn block_parents_have_safety_comment(
 ) -> bool {
     let (span, hir_id) = match cx.tcx.parent_hir_node(id) {
         Node::Expr(expr) => match cx.tcx.parent_hir_node(expr.hir_id) {
-            Node::LetStmt(hir::LetStmt { span, hir_id, .. }) => (*span, *hir_id),
-
+            Node::LetStmt(hir::LetStmt { span, hir_id, .. })
+            | Node::Expr(hir::Expr {
+                hir_id,
+                kind: hir::ExprKind::Assign(_, _, span),
+                ..
+            }) => (*span, *hir_id),
             node if let Some((span, hir_id)) = span_and_hid_of_item_alike_node(&node)
                 && is_const_or_static(&node) =>
             {

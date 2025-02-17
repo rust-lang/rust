@@ -668,10 +668,10 @@ fn issue_13024() {
     let mut just_a_simple_variable_with_a_very_long_name_that_has_seventy_eight_characters = 0;
     let here_is_another_variable_with_long_name = 100;
 
-    // SAFETY: good
+    // SAFETY: fail ONLY if `accept-comment-above-statement = false`
     just_a_simple_variable_with_a_very_long_name_that_has_seventy_eight_characters =
         unsafe { here_is_another_variable_with_long_name };
-    //~^ undocumented_unsafe_blocks
+    //~[disabled]^ undocumented_unsafe_blocks
 }
 
 fn main() {}

@@ -342,13 +342,5 @@ LL |         const NO_SAFETY_IN_IMPL: i32 = unsafe { 1 };
    |
    = help: consider adding a safety comment on the preceding line
 
-error: unsafe block missing a safety comment
-  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:673:9
-   |
-LL |         unsafe { here_is_another_variable_with_long_name };
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider adding a safety comment on the preceding line
-
-error: aborting due to 40 previous errors
+error: aborting due to 39 previous errors
 
