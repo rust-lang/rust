@@ -1,5 +1,6 @@
 //! Ensure we trigger abi_unsupported_vector_types for target features that are usually enabled
 //! on a target, but disabled in this file via a `-C` flag.
+//@ add-core-stubs
 //@ compile-flags: --crate-type=rlib --target=i586-unknown-linux-gnu -C target-feature=-sse,-sse2
 //@ build-pass
 //@ ignore-pass (test emits codegen-time warnings)
@@ -8,11 +9,8 @@
 #![no_core]
 #![allow(improper_ctypes_definitions)]
 
-#[lang = "sized"]
-trait Sized {}
-
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 #[repr(simd)]
 pub struct SseVector([i64; 2]);
