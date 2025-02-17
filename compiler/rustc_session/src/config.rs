@@ -217,8 +217,6 @@ pub enum AutoDiff {
     /// Enzyme's loose type debug helper (can cause incorrect gradients!!)
     /// Usable in cases where Enzyme errors with `can not deduce type of X`.
     LooseTypes,
-    /// See Enzyme core documentation. FIXME(ZuseZ4): Clarify usages
-    RuntimeActivity,
     /// Runs Enzyme's aggressive inlining
     Inline,
 }

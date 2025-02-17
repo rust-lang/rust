@@ -1,7 +1,7 @@
 #![allow(non_camel_case_types)]
 #![expect(dead_code)]
 
-use libc::{c_char, c_uint};
+use libc::{c_char, c_uint, c_void};
 
 use super::ffi::{BasicBlock, Metadata, Module, Type, Value};
 use crate::llvm::Bool;
@@ -34,4 +34,72 @@ pub enum LLVMRustVerifierFailureAction {
     LLVMAbortProcessAction = 0,
     LLVMPrintMessageAction = 1,
     LLVMReturnStatusAction = 2,
+}
+
+
+#[cfg(not(llvm_enzyme))]
+pub fn EnzymeSetCLBool(arg1: *mut ::std::os::raw::c_void, arg2: u8) {
+    unimplemented!()
+}
+#[cfg(not(llvm_enzyme))]
+pub fn EnzymeSetCLInteger(arg1: *mut ::std::os::raw::c_void, arg2: i64) {
+    unimplemented!()
+}
+
+#[cfg(llvm_enzyme)]
+extern "C" {
+    pub fn EnzymeSetCLBool(arg1: *mut ::std::os::raw::c_void, arg2: u8);
+    pub fn EnzymeSetCLInteger(arg1: *mut ::std::os::raw::c_void, arg2: i64);
+}
+
+#[cfg(llvm_enzyme)]
+extern "C" {
+    static mut EnzymePrintPerf: c_void;
+    static mut EnzymePrintActivity: c_void;
+    static mut EnzymePrintType: c_void;
+    static mut EnzymePrint: c_void;
+    static mut EnzymeStrictAliasing: c_void;
+    static mut looseTypeAnalysis: c_void;
+    static mut EnzymeInline: c_void;
+    static mut RustTypeRules: c_void;
+}
+pub fn set_print_perf(print: bool) {
+    unsafe {
+        EnzymeSetCLBool(std::ptr::addr_of_mut!(EnzymePrintPerf), print as u8);
+    }
+}
+pub fn set_print_activity(print: bool) {
+    unsafe {
+        EnzymeSetCLBool(std::ptr::addr_of_mut!(EnzymePrintActivity), print as u8);
+    }
+}
+pub fn set_print_type(print: bool) {
+    unsafe {
+        EnzymeSetCLBool(std::ptr::addr_of_mut!(EnzymePrintType), print as u8);
+    }
+}
+pub fn set_print(print: bool) {
+    unsafe {
+        EnzymeSetCLBool(std::ptr::addr_of_mut!(EnzymePrint), print as u8);
+    }
+}
+pub fn set_strict_aliasing(strict: bool) {
+    unsafe {
+        EnzymeSetCLBool(std::ptr::addr_of_mut!(EnzymeStrictAliasing), strict as u8);
+    }
+}
+pub fn set_loose_types(loose: bool) {
+    unsafe {
+        EnzymeSetCLBool(std::ptr::addr_of_mut!(looseTypeAnalysis), loose as u8);
+    }
+}
+pub fn set_inline(val: bool) {
+    unsafe {
+        EnzymeSetCLBool(std::ptr::addr_of_mut!(EnzymeInline), val as u8);
+    }
+}
+pub fn set_rust_rules(val: bool) {
+    unsafe {
+        EnzymeSetCLBool(std::ptr::addr_of_mut!(RustTypeRules), val as u8);
+    }
 }

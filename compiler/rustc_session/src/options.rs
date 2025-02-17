@@ -707,7 +707,7 @@ mod desc {
     pub(crate) const parse_list: &str = "a space-separated list of strings";
     pub(crate) const parse_list_with_polarity: &str =
         "a comma-separated list of strings, with elements beginning with + or -";
-    pub(crate) const parse_autodiff: &str = "a comma separated list of settings: `Enable`, `PrintSteps`, `PrintTA`, `PrintAA`, `PrintPerf`, `PrintModBefore`, `PrintModAfter`, `LooseTypes`, `RuntimeActivity`, `Inline`";
+    pub(crate) const parse_autodiff: &str = "a comma separated list of settings: `Enable`, `PrintSteps`, `PrintTA`, `PrintAA`, `PrintPerf`, `PrintModBefore`, `PrintModAfter`, `LooseTypes`, `Inline`";
     pub(crate) const parse_comma_list: &str = "a comma-separated list of strings";
     pub(crate) const parse_opt_comma_list: &str = parse_comma_list;
     pub(crate) const parse_number: &str = "a number";
@@ -1356,7 +1356,6 @@ pub mod parse {
                 "PrintModBefore" => AutoDiff::PrintModBefore,
                 "PrintModAfter" => AutoDiff::PrintModAfter,
                 "LooseTypes" => AutoDiff::LooseTypes,
-                "RuntimeActivity" => AutoDiff::RuntimeActivity,
                 "Inline" => AutoDiff::Inline,
                 _ => {
                     // FIXME(ZuseZ4): print an error saying which value is not recognized
@@ -2090,7 +2089,6 @@ options! {
         `=PrintModBefore`
         `=PrintModAfter`
         `=LooseTypes`
-        '=RuntimeActivity`
         `=Inline`
         Multiple options can be combined with commas."),
     #[rustc_lint_opt_deny_field_access("use `Session::binary_dep_depinfo` instead of this field")]
