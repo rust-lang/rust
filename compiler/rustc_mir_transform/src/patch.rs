@@ -166,6 +166,14 @@ impl<'tcx> MirPatch<'tcx> {
         Local::new(index)
     }
 
+    /// Returns the type of a local that's newly-added in the patch.
+    pub(crate) fn local_ty(&self, local: Local) -> Ty<'tcx> {
+        let local = local.as_usize();
+        assert!(local < self.next_local);
+        let new_local_idx = self.new_locals.len() - (self.next_local - local);
+        self.new_locals[new_local_idx].ty
+    }
+
     pub(crate) fn new_block(&mut self, data: BasicBlockData<'tcx>) -> BasicBlock {
         let block = BasicBlock::new(self.patch_map.len());
         debug!("MirPatch: new_block: {:?}: {:?}", block, data);

@@ -127,10 +127,14 @@ impl RunConfig<'_> {
     pub fn cargo_crates_in_set(&self) -> Vec<String> {
         let mut crates = Vec::new();
         for krate in &self.paths {
-            let path = krate.assert_single_path();
-            let Some(crate_name) = self.builder.crate_paths.get(&path.path) else {
-                panic!("missing crate for path {}", path.path.display())
-            };
+            let path = &krate.assert_single_path().path;
+
+            let crate_name = self
+                .builder
+                .crate_paths
+                .get(path)
+                .unwrap_or_else(|| panic!("missing crate for path {}", path.display()));
+
             crates.push(crate_name.to_string());
         }
         crates

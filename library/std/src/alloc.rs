@@ -20,11 +20,11 @@
 //!
 //! unsafe impl GlobalAlloc for MyAllocator {
 //!     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-//!         System.alloc(layout)
+//!         unsafe { System.alloc(layout) }
 //!     }
 //!
 //!     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-//!         System.dealloc(ptr, layout)
+//!         unsafe { System.dealloc(ptr, layout) }
 //!     }
 //! }
 //!
@@ -102,7 +102,7 @@ pub use alloc_crate::alloc::*;
 ///
 /// unsafe impl GlobalAlloc for Counter {
 ///     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-///         let ret = System.alloc(layout);
+///         let ret = unsafe { System.alloc(layout) };
 ///         if !ret.is_null() {
 ///             ALLOCATED.fetch_add(layout.size(), Relaxed);
 ///         }
@@ -110,7 +110,7 @@ pub use alloc_crate::alloc::*;
 ///     }
 ///
 ///     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-///         System.dealloc(ptr, layout);
+///         unsafe { System.dealloc(ptr, layout); }
 ///         ALLOCATED.fetch_sub(layout.size(), Relaxed);
 ///     }
 /// }

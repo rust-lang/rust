@@ -230,7 +230,7 @@ LL | /// [w](Clone  \))
 error: unresolved link to `cln`
   --> $DIR/weird-syntax.rs:120:10
    |
-LL | /// The [cln][] link here is going to be unresolved, because `Clone()` gets rejected
+LL | /// The [cln][] link here is going to be unresolved, because `Clone()` gets
    |          ^^^ no item named `cln` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
@@ -243,37 +243,61 @@ LL | /// [cln]: Clone()
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
-error: unresolved link to `cln`
-  --> $DIR/weird-syntax.rs:126:10
-   |
-LL | /// The [cln][] link here is going to be unresolved, because `struct@Clone` gets
-   |          ^^^ no item named `cln` in scope
-   |
-   = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
-
-error: unresolved link to `cln`
-  --> $DIR/weird-syntax.rs:129:6
+error: incompatible link kind for `Clone`
+  --> $DIR/weird-syntax.rs:129:12
    |
 LL | /// [cln]: struct@Clone
-   |      ^^^ no item named `cln` in scope
+   |            ^^^^^^^^^^^^ this link resolved to a trait, which is not a struct
+   |
+help: to link to the trait, prefix with `trait@`
+   |
+LL - /// [cln]: struct@Clone
+LL + /// [cln]: trait@Clone
+   |
+
+error: unresolved link to `Clone`
+  --> $DIR/weird-syntax.rs:135:12
+   |
+LL | /// [cln]: Clone\(\)
+   |            ^^^^^^^^^ this link resolves to the trait `Clone`, which is not a function
+   |
+help: to link to the trait, prefix with `trait@`
+   |
+LL - /// [cln]: Clone\(\)
+LL + /// [cln]: trait@Clone
+   |
+
+error: incompatible link kind for `Clone`
+  --> $DIR/weird-syntax.rs:141:12
+   |
+LL | /// [cln]: struct\@Clone
+   |            ^^^^^^^^^^^^^ this link resolved to a trait, which is not a struct
+   |
+help: to link to the trait, prefix with `trait@`
+   |
+LL - /// [cln]: struct\@Clone
+LL + /// [cln]: trait@struct
+   |
+
+error: incompatible link kind for `Clone`
+  --> $DIR/weird-syntax.rs:149:12
+   |
+LL | /// [cln]: struct\@Clone
+   |            ^^^^^^^^^^^^^ this link resolved to a trait, which is not a struct
+   |
+help: to link to the trait, prefix with `trait@`
+   |
+LL - /// [cln]: struct\@Clone
+LL + /// [cln]: trait@struct
+   |
+
+error: unresolved link to `the`
+  --> $DIR/weird-syntax.rs:155:56
+   |
+LL | /// - [`SDL_PROP_WINDOW_CREATE_COCOA_WINDOW_POINTER`]: the
+   |                                                        ^^^ no item named `the` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
 
-error: unresolved link to `Clone`
-  --> $DIR/weird-syntax.rs:132:9
-   |
-LL | /// The [cln][] link here will produce a plain text suggestion
-   |         ^^^^^ this link resolves to the trait `Clone`, which is not a function
-   |
-   = help: to link to the trait, prefix with `trait@`: trait@Clone
-
-error: incompatible link kind for `Clone`
-  --> $DIR/weird-syntax.rs:137:9
-   |
-LL | /// The [cln][] link here will produce a plain text suggestion
-   |         ^^^^^ this link resolved to a trait, which is not a struct
-   |
-   = help: to link to the trait, prefix with `trait@`: trait@Clone
-
-error: aborting due to 26 previous errors
+error: aborting due to 27 previous errors
 
