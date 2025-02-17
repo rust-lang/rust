@@ -2806,31 +2806,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && !self.tcx.features().ref_pat_eat_one_layer_2024_structural(),
         });
 
+        let pat_kind = if let PatKind::Binding(user_bind_annot, _, _, _) = subpat.kind {
+            info.bad_modifiers = true;
+            // If the user-provided binding modifier doesn't match the default binding mode, we'll
+            // need to suggest reference patterns, which can affect other bindings.
+            // For simplicity, we opt to suggest making the pattern fully explicit.
+            info.suggest_eliding_modes &=
+                user_bind_annot == BindingMode(ByRef::Yes(def_br_mutbl), Mutability::Not);
+            "binding modifier"
+        } else {
+            info.bad_ref_pats = true;
+            // For simplicity, we don't try to suggest eliding reference patterns. Thus, we'll
+            // suggest adding them instead, which can affect the types assigned to bindings.
+            // As such, we opt to suggest making the pattern fully explicit.
+            info.suggest_eliding_modes = false;
+            "reference pattern"
+        };
         // Only provide a detailed label if the problematic subpattern isn't from an expansion.
         // In the case that it's from a macro, we'll add a more detailed note in the emitter.
         let from_expansion = subpat.span.from_expansion();
         let primary_label = if from_expansion {
+            // We can't suggest eliding modifiers within expansions.
+            info.suggest_eliding_modes = false;
             // NB: This wording assumes the only expansions that can produce problematic reference
             // patterns and bindings are macros. If a desugaring or AST pass is added that can do
             // so, we may want to inspect the span's source callee or macro backtrace.
             "occurs within macro expansion".to_owned()
         } else {
-            let pat_kind = if let PatKind::Binding(user_bind_annot, _, _, _) = subpat.kind {
-                info.bad_modifiers |= true;
-                // If the user-provided binding modifier doesn't match the default binding mode, we'll
-                // need to suggest reference patterns, which can affect other bindings.
-                // For simplicity, we opt to suggest making the pattern fully explicit.
-                info.suggest_eliding_modes &=
-                    user_bind_annot == BindingMode(ByRef::Yes(def_br_mutbl), Mutability::Not);
-                "binding modifier"
-            } else {
-                info.bad_ref_pats |= true;
-                // For simplicity, we don't try to suggest eliding reference patterns. Thus, we'll
-                // suggest adding them instead, which can affect the types assigned to bindings.
-                // As such, we opt to suggest making the pattern fully explicit.
-                info.suggest_eliding_modes = false;
-                "reference pattern"
-            };
             let dbm_str = match def_br_mutbl {
                 Mutability::Not => "ref",
                 Mutability::Mut => "ref mut",

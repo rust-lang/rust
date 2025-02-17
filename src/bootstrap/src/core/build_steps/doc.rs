@@ -572,10 +572,7 @@ impl Step for Std {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
-        run.crate_or_deps("sysroot")
-            .path("library")
-            .alias("core")
-            .default_condition(builder.config.docs)
+        run.crate_or_deps("sysroot").path("library").default_condition(builder.config.docs)
     }
 
     fn make_run(run: RunConfig<'_>) {

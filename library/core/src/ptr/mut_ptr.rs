@@ -896,13 +896,13 @@ impl<T: ?Sized> *mut T {
     /// that their safety preconditions are met:
     /// ```rust
     /// # #![feature(ptr_sub_ptr)]
-    /// # unsafe fn blah(ptr: *mut i32, origin: *mut i32, count: usize) -> bool {
+    /// # unsafe fn blah(ptr: *mut i32, origin: *mut i32, count: usize) -> bool { unsafe {
     /// ptr.sub_ptr(origin) == count
     /// # &&
     /// origin.add(count) == ptr
     /// # &&
     /// ptr.sub(count) == origin
-    /// # }
+    /// # } }
     /// ```
     ///
     /// # Safety
