@@ -112,9 +112,46 @@ macro_rules! stringify {
 }
 
 #[macro_export]
+macro_rules! partialEq {
+    ($($ty:ty),* $(,)?) => {
+        $(
+            impl PartialEq for $ty {
+                #[inline]
+                fn eq(&self, other: &$ty) -> bool {
+                    (*self) == (*other)
+                }
+                #[inline]
+                fn ne(&self, other: &$ty) -> bool {
+                    (*self) != (*other)
+                }
+            }
+        )*
+    }
+}
+
+partialEq!(
+    bool, char, isize, i8, i16, i32, i64, i128, usize, u8, u16, u32, u64, u128, f16, f32, f64, f128
+);
+
+#[lang = "panic"]
+//#[rustc_const_panic_str]
+#[inline(never)]
+#[cold]
+#[track_caller]
+#[rustc_nounwind]
+const fn panic(expr: &'static str) -> ! {
+    abort()
+}
+
+#[lang = "panic_fmt"]
+const fn panic_fmt(fmt: &str) -> ! {
+    abort()
+}
+
+#[macro_export]
 macro_rules! panic {
-    ($msg:literal) => {
-        $crate::panic(&$msg)
+    ($msg:expr) => {
+        $crate::panic($msg)
     };
 }
 
@@ -131,12 +168,6 @@ pub const fn abort() -> ! {
     loop {}
 }
 
-#[lang = "panic"]
-#[rustc_const_panic_str]
-const fn panic(expr: &&'static str) -> ! {
-    abort();
-}
-
 #[lang = "eq"]
 pub trait PartialEq<Rhs: ?Sized = Self> {
     fn eq(&self, other: &Rhs) -> bool;
@@ -145,17 +176,17 @@ pub trait PartialEq<Rhs: ?Sized = Self> {
     }
 }
 
-impl PartialEq for usize {
-    fn eq(&self, other: &usize) -> bool {
-        (*self) == (*other)
-    }
-}
-
-impl PartialEq for bool {
-    fn eq(&self, other: &bool) -> bool {
-        (*self) == (*other)
-    }
-}
+//impl PartialEq for usize {
+//    fn eq(&self, other: &usize) -> bool {
+//        (*self) == (*other)
+//    }
+//}
+//
+//impl PartialEq for bool {
+//    fn eq(&self, other: &bool) -> bool {
+//        (*self) == (*other)
+//    }
+//}
 
 #[lang = "not"]
 pub trait Not {

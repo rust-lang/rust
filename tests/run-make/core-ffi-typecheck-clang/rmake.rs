@@ -42,6 +42,8 @@ fn main() {
 
     preprocess_core_ffi();
 
+    // Print the list of target JSON files, which will be used to match Rust target strings to LLVM
+
     let targets_json =
         rustc().arg("--print").arg("all-target-specs-json").arg("-Z").arg("unstable-options").run();
     let targets_json_str =
