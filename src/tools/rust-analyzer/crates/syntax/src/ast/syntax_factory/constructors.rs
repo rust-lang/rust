@@ -156,6 +156,32 @@ impl SyntaxFactory {
         make::literal_pat(text).clone_for_update()
     }
 
+    pub fn slice_pat(&self, pats: impl IntoIterator<Item = ast::Pat>) -> ast::SlicePat {
+        let (pats, input) = iterator_input(pats);
+        let ast = make::slice_pat(pats).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_children(input.into_iter(), ast.pats().map(|it| it.syntax().clone()));
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
+    pub fn tuple_pat(&self, pats: impl IntoIterator<Item = ast::Pat>) -> ast::TuplePat {
+        let (pats, input) = iterator_input(pats);
+        let ast = make::tuple_pat(pats).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_children(input.into_iter(), ast.fields().map(|it| it.syntax().clone()));
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
     pub fn tuple_struct_pat(
         &self,
         path: ast::Path,
@@ -169,6 +195,96 @@ impl SyntaxFactory {
             builder.map_node(path.syntax().clone(), ast.path().unwrap().syntax().clone());
             builder.map_children(input.into_iter(), ast.fields().map(|it| it.syntax().clone()));
             builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
+    pub fn record_pat_with_fields(
+        &self,
+        path: ast::Path,
+        fields: ast::RecordPatFieldList,
+    ) -> ast::RecordPat {
+        let ast = make::record_pat_with_fields(path.clone(), fields.clone()).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_node(path.syntax().clone(), ast.path().unwrap().syntax().clone());
+            builder.map_node(
+                fields.syntax().clone(),
+                ast.record_pat_field_list().unwrap().syntax().clone(),
+            );
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
+    pub fn record_pat_field_list(
+        &self,
+        fields: impl IntoIterator<Item = ast::RecordPatField>,
+        rest_pat: Option<ast::RestPat>,
+    ) -> ast::RecordPatFieldList {
+        let (fields, input) = iterator_input(fields);
+        let ast = make::record_pat_field_list(fields, rest_pat.clone()).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_children(input.into_iter(), ast.fields().map(|it| it.syntax().clone()));
+            if let Some(rest_pat) = rest_pat {
+                builder
+                    .map_node(rest_pat.syntax().clone(), ast.rest_pat().unwrap().syntax().clone());
+            }
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
+    pub fn record_pat_field(self, name_ref: ast::NameRef, pat: ast::Pat) -> ast::RecordPatField {
+        let ast = make::record_pat_field(name_ref.clone(), pat.clone()).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_node(name_ref.syntax().clone(), ast.name_ref().unwrap().syntax().clone());
+            builder.map_node(pat.syntax().clone(), ast.pat().unwrap().syntax().clone());
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
+    pub fn record_pat_field_shorthand(&self, name_ref: ast::NameRef) -> ast::RecordPatField {
+        let ast = make::record_pat_field_shorthand(name_ref.clone()).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_node(name_ref.syntax().clone(), ast.pat().unwrap().syntax().clone());
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
+    pub fn path_pat(&self, path: ast::Path) -> ast::Pat {
+        let ast = make::path_pat(path.clone()).clone_for_update();
+
+        match &ast {
+            ast::Pat::PathPat(ast) => {
+                if let Some(mut mapping) = self.mappings() {
+                    let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+                    builder.map_node(path.syntax().clone(), ast.path().unwrap().syntax().clone());
+                    builder.finish(&mut mapping)
+                }
+            }
+            ast::Pat::IdentPat(ast) => {
+                if let Some(mut mapping) = self.mappings() {
+                    let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+                    builder.map_node(path.syntax().clone(), ast.name().unwrap().syntax().clone());
+                    builder.finish(&mut mapping)
+                }
+            }
+            _ => unreachable!(),
         }
 
         ast
@@ -212,6 +328,21 @@ impl SyntaxFactory {
 
     pub fn expr_empty_block(&self) -> ast::BlockExpr {
         make::expr_empty_block().clone_for_update()
+    }
+
+    pub fn expr_paren(&self, expr: ast::Expr) -> ast::ParenExpr {
+        // FIXME: `make::expr_paren` should return a `MethodCallExpr`, not just an `Expr`
+        let ast::Expr::ParenExpr(ast) = make::expr_paren(expr.clone()).clone_for_update() else {
+            unreachable!()
+        };
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_node(expr.syntax().clone(), ast.expr().unwrap().syntax().clone());
+            builder.finish(&mut mapping);
+        }
+
+        ast
     }
 
     pub fn expr_tuple(&self, fields: impl IntoIterator<Item = ast::Expr>) -> ast::TupleExpr {
@@ -285,6 +416,31 @@ impl SyntaxFactory {
         if let Some(mut mapping) = self.mappings() {
             let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
             builder.map_node(expr.syntax().clone(), ast.expr().unwrap().syntax().clone());
+            builder.map_node(arg_list.syntax().clone(), ast.arg_list().unwrap().syntax().clone());
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
+    pub fn expr_method_call(
+        &self,
+        receiver: ast::Expr,
+        method: ast::NameRef,
+        arg_list: ast::ArgList,
+    ) -> ast::MethodCallExpr {
+        // FIXME: `make::expr_method_call` should return a `MethodCallExpr`, not just an `Expr`
+        let ast::Expr::MethodCallExpr(ast) =
+            make::expr_method_call(receiver.clone(), method.clone(), arg_list.clone())
+                .clone_for_update()
+        else {
+            unreachable!()
+        };
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_node(receiver.syntax().clone(), ast.receiver().unwrap().syntax().clone());
+            builder.map_node(method.syntax().clone(), ast.name_ref().unwrap().syntax().clone());
             builder.map_node(arg_list.syntax().clone(), ast.arg_list().unwrap().syntax().clone());
             builder.finish(&mut mapping);
         }
