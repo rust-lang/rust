@@ -135,10 +135,10 @@ partialEq!(
 
 #[lang = "panic"]
 //#[rustc_const_panic_str]
-#[inline(never)]
-#[cold]
-#[track_caller]
-#[rustc_nounwind]
+//#[inline(never)]
+//#[cold]
+//#[track_caller]
+//#[rustc_nounwind]
 const fn panic(expr: &'static str) -> ! {
     abort()
 }
