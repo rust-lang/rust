@@ -706,6 +706,73 @@ mod sealed {
     impl_vec_trait! { [VectorFloor vec_floor] simd_floor (vector_float) }
     impl_vec_trait! { [VectorFloor vec_floor] simd_floor (vector_double) }
 
+    macro_rules! impl_vec_shift {
+        ([$Trait:ident $m:ident] ($b:ident, $h:ident, $w:ident, $g:ident)) => {
+            impl_vec_trait!{ [$Trait $m]+ $b (vector_unsigned_char, vector_unsigned_char) -> vector_unsigned_char }
+            impl_vec_trait!{ [$Trait $m]+ $b (vector_signed_char, vector_unsigned_char) -> vector_signed_char }
+            impl_vec_trait!{ [$Trait $m]+ $h (vector_unsigned_short, vector_unsigned_short) -> vector_unsigned_short }
+            impl_vec_trait!{ [$Trait $m]+ $h (vector_signed_short, vector_unsigned_short) -> vector_signed_short }
+            impl_vec_trait!{ [$Trait $m]+ $w (vector_unsigned_int, vector_unsigned_int) -> vector_unsigned_int }
+            impl_vec_trait!{ [$Trait $m]+ $w (vector_signed_int, vector_unsigned_int) -> vector_signed_int }
+            impl_vec_trait!{ [$Trait $m]+ $g (vector_unsigned_long_long, vector_unsigned_long_long) -> vector_unsigned_long_long }
+            impl_vec_trait!{ [$Trait $m]+ $g (vector_signed_long_long, vector_unsigned_long_long) -> vector_signed_long_long }
+        };
+    }
+
+    macro_rules! impl_shift {
+        ($fun:ident $intr:ident $ty:ident) => {
+            #[inline]
+            #[target_feature(enable = "vector")]
+            #[cfg_attr(test, assert_instr($fun))]
+            unsafe fn $fun(a: t_t_l!($ty), b: t_t_l!($ty)) -> t_t_l!($ty) {
+                let a = transmute(a);
+                // use the remainder of b by the width of a's elements to prevent UB
+                let b = simd_rem(transmute(b), <t_t_s!($ty)>::splat($ty::BITS as $ty));
+
+                transmute($intr(a, b))
+            }
+        };
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorSl<Other> {
+        type Result;
+        unsafe fn vec_sl(self, b: Other) -> Self::Result;
+    }
+
+    impl_shift! { veslvb simd_shl u8 }
+    impl_shift! { veslvh simd_shl u16 }
+    impl_shift! { veslvf simd_shl u32 }
+    impl_shift! { veslvg simd_shl u64 }
+
+    impl_vec_shift! { [VectorSl vec_sl] (veslvb, veslvh, veslvf, veslvg) }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorSr<Other> {
+        type Result;
+        unsafe fn vec_sr(self, b: Other) -> Self::Result;
+    }
+
+    impl_shift! { vesrlvb simd_shr u8 }
+    impl_shift! { vesrlvh simd_shr u16 }
+    impl_shift! { vesrlvf simd_shr u32 }
+    impl_shift! { vesrlvg simd_shr u64 }
+
+    impl_vec_shift! { [VectorSr vec_sr] (vesrlvb, vesrlvh, vesrlvf, vesrlvg) }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorSra<Other> {
+        type Result;
+        unsafe fn vec_sra(self, b: Other) -> Self::Result;
+    }
+
+    impl_shift! { vesravb simd_shr i8 }
+    impl_shift! { vesravh simd_shr i16 }
+    impl_shift! { vesravf simd_shr i32 }
+    impl_shift! { vesravg simd_shr i64 }
+
+    impl_vec_shift! { [VectorSra vec_sra] (vesravb, vesravh, vesravf, vesravg) }
+
     macro_rules! impl_vec_shift_long {
         ([$trait:ident $m:ident] ($f:ident)) => {
             impl_vec_trait!{ [$trait $m]+ $f (vector_unsigned_char, vector_unsigned_char) -> vector_unsigned_char }
@@ -1074,6 +1141,39 @@ where
     T: sealed::VectorRint,
 {
     a.vec_rint()
+}
+
+/// Vector Shift Left
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_sl<T, U>(a: T, b: U) -> <T as sealed::VectorSl<U>>::Result
+where
+    T: sealed::VectorSl<U>,
+{
+    a.vec_sl(b)
+}
+
+/// Vector Shift Right
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_sr<T, U>(a: T, b: U) -> <T as sealed::VectorSr<U>>::Result
+where
+    T: sealed::VectorSr<U>,
+{
+    a.vec_sr(b)
+}
+
+/// Vector Shift Right Algebraic
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_sra<T, U>(a: T, b: U) -> <T as sealed::VectorSra<U>>::Result
+where
+    T: sealed::VectorSra<U>,
+{
+    a.vec_sra(b)
 }
 
 /// Performs a left shift for a vector by a given number of bits. Each element of the result is obtained by shifting the corresponding
