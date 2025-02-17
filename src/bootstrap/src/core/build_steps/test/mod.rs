@@ -3,6 +3,9 @@
 //! `./x.py test` (aka [`Kind::Test`]) is currently allowed to reach build steps in other modules.
 //! However, this contains ~all test parts we expect people to be able to build and run locally.
 
+// FIXME(jieyouxu): keeping unused imports here before all test steps are properly split out.
+#![expect(unused_imports)]
+
 use std::collections::HashSet;
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
