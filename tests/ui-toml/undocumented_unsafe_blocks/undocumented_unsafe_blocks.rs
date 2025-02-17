@@ -674,4 +674,33 @@ fn issue_13024() {
     //~[disabled]^ undocumented_unsafe_blocks
 }
 
+// https://docs.rs/time/0.3.36/src/time/offset_date_time.rs.html#35
+mod issue_11709_regression {
+    use std::num::NonZeroI32;
+
+    struct Date {
+        value: NonZeroI32,
+    }
+
+    impl Date {
+        const unsafe fn __from_ordinal_date_unchecked(year: i32, ordinal: u16) -> Self {
+            Self {
+                // Safety: The caller must guarantee that `ordinal` is not zero.
+                value: unsafe { NonZeroI32::new_unchecked((year << 9) | ordinal as i32) },
+            }
+        }
+
+        const fn into_julian_day_just_make_this_line_longer(self) -> i32 {
+            42
+        }
+    }
+
+    /// The Julian day of the Unix epoch.
+    // SAFETY: fail ONLY if `accept-comment-above-attribute = false`
+    #[allow(unsafe_code)]
+    const UNIX_EPOCH_JULIAN_DAY: i32 =
+        unsafe { Date::__from_ordinal_date_unchecked(1970, 1) }.into_julian_day_just_make_this_line_longer();
+    //~[disabled]^ undocumented_unsafe_blocks
+}
+
 fn main() {}

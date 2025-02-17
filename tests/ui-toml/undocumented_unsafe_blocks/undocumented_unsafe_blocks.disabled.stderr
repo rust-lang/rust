@@ -430,5 +430,13 @@ LL |         unsafe { here_is_another_variable_with_long_name };
    |
    = help: consider adding a safety comment on the preceding line
 
-error: aborting due to 50 previous errors
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:702:9
+   |
+LL |         unsafe { Date::__from_ordinal_date_unchecked(1970, 1) }.into_julian_day_just_make_this_line_longer();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: aborting due to 51 previous errors
 

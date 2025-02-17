@@ -339,6 +339,33 @@ fn is_unsafe_from_proc_macro(cx: &LateContext<'_>, span: Span) -> bool {
         .is_none_or(|src| !src.starts_with("unsafe"))
 }
 
+fn find_unsafe_block_parent_in_expr<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx hir::Expr<'tcx>,
+) -> Option<(Span, HirId)> {
+    match cx.tcx.parent_hir_node(expr.hir_id) {
+        Node::LetStmt(hir::LetStmt { span, hir_id, .. })
+        | Node::Expr(hir::Expr {
+            hir_id,
+            kind: hir::ExprKind::Assign(_, _, span),
+            ..
+        }) => Some((*span, *hir_id)),
+        Node::Expr(expr) => find_unsafe_block_parent_in_expr(cx, expr),
+        node if let Some((span, hir_id)) = span_and_hid_of_item_alike_node(&node)
+            && is_const_or_static(&node) =>
+        {
+            Some((span, hir_id))
+        },
+
+        _ => {
+            if is_branchy(expr) {
+                return None;
+            }
+            Some((expr.span, expr.hir_id))
+        },
+    }
+}
+
 // Checks if any parent {expression, statement, block, local, const, static}
 // has a safety comment
 fn block_parents_have_safety_comment(
@@ -348,26 +375,7 @@ fn block_parents_have_safety_comment(
     id: HirId,
 ) -> bool {
     let (span, hir_id) = match cx.tcx.parent_hir_node(id) {
-        Node::Expr(expr) => match cx.tcx.parent_hir_node(expr.hir_id) {
-            Node::LetStmt(hir::LetStmt { span, hir_id, .. })
-            | Node::Expr(hir::Expr {
-                hir_id,
-                kind: hir::ExprKind::Assign(_, _, span),
-                ..
-            }) => (*span, *hir_id),
-            node if let Some((span, hir_id)) = span_and_hid_of_item_alike_node(&node)
-                && is_const_or_static(&node) =>
-            {
-                (span, hir_id)
-            },
-
-            _ => {
-                if is_branchy(expr) {
-                    return false;
-                }
-                (expr.span, expr.hir_id)
-            },
-        },
+        Node::Expr(expr) if let Some(inner) = find_unsafe_block_parent_in_expr(cx, expr) => inner,
         Node::Stmt(hir::Stmt {
             kind:
                 hir::StmtKind::Let(hir::LetStmt { span, hir_id, .. })
@@ -433,12 +441,12 @@ fn block_has_safety_comment(cx: &LateContext<'_>, span: Span) -> bool {
 }
 
 fn include_attrs_in_span(cx: &LateContext<'_>, hir_id: HirId, span: Span) -> Span {
-    span.to(cx
-        .tcx
-        .hir()
-        .attrs(hir_id)
-        .iter()
-        .fold(span, |acc, attr| acc.to(attr.span())))
+    span.to(cx.tcx.hir().attrs(hir_id).iter().fold(span, |acc, attr| {
+        if attr.is_doc_comment() {
+            return acc;
+        }
+        acc.to(attr.span())
+    }))
 }
 
 enum HasSafetyComment {
