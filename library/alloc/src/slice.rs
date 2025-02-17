@@ -27,7 +27,7 @@ pub use core::slice::ArrayChunksMut;
 pub use core::slice::ArrayWindows;
 #[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
 pub use core::slice::EscapeAscii;
-#[stable(feature = "get_many_mut", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "get_many_mut", since = "1.86.0")]
 pub use core::slice::GetDisjointMutError;
 #[stable(feature = "slice_get_slice", since = "1.28.0")]
 pub use core::slice::SliceIndex;

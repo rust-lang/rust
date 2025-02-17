@@ -387,7 +387,7 @@ declare_features! (
     /// Allows `#[target_feature(...)]`.
     (accepted, target_feature, "1.27.0", None),
     /// Allows the use of `#[target_feature]` on safe functions.
-    (accepted, target_feature_11, "CURRENT_RUSTC_VERSION", Some(69098)),
+    (accepted, target_feature_11, "1.86.0", Some(69098)),
     /// Allows `fn main()` with return types which implements `Termination` (RFC 1937).
     (accepted, termination_trait, "1.26.0", Some(43301)),
     /// Allows `#[test]` functions where the return type implements `Termination` (RFC 1937).
@@ -401,7 +401,7 @@ declare_features! (
     (accepted, track_caller, "1.46.0", Some(47809)),
     /// Allows dyn upcasting trait objects via supertraits.
     /// Dyn upcasting is casting, e.g., `dyn Foo -> dyn Bar` where `Foo: Bar`.
-    (accepted, trait_upcasting, "CURRENT_RUSTC_VERSION", Some(65991)),
+    (accepted, trait_upcasting, "1.86.0", Some(65991)),
     /// Allows #[repr(transparent)] on univariant enums (RFC 2645).
     (accepted, transparent_enums, "1.42.0", Some(60405)),
     /// Allows indexing tuples.
