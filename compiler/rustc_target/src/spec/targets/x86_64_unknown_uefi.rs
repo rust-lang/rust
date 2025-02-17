@@ -2,8 +2,7 @@
 // uefi-base module for generic UEFI options. On x86_64 systems (mostly called "x64" in the spec)
 // UEFI systems always run in long-mode, have the interrupt-controller pre-configured and force a
 // single-CPU execution.
-// The win64 ABI is used. It differs from the sysv64 ABI, so we must use a windows target with
-// LLVM. "x86_64-unknown-windows" is used to get the minimal subset of windows-specific features.
+// The win64 ABI is used. It differs from the sysv64 ABI.
 
 use crate::callconv::Conv;
 use crate::spec::{RustcAbi, Target, base};
@@ -29,7 +28,7 @@ pub(crate) fn target() -> Target {
     base.rustc_abi = Some(RustcAbi::X86Softfloat);
 
     Target {
-        llvm_target: "x86_64-unknown-windows".into(),
+        llvm_target: "x86_64-unknown-uefi".into(),
         metadata: crate::spec::TargetMetadata {
             description: Some("64-bit UEFI".into()),
             tier: Some(2),
