@@ -424,7 +424,7 @@ fn resolve_expr<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, expr: &'tcx hi
         // that share the parent environment. We handle const blocks in
         // `visit_inline_const`.
         hir::ExprKind::Closure(&hir::Closure { body, .. }) => {
-            let body = visitor.tcx.hir().body(body);
+            let body = visitor.tcx.hir_body(body);
             visitor.visit_body(body);
         }
         hir::ExprKind::AssignOp(_, left_expr, right_expr) => {
@@ -906,7 +906,7 @@ impl<'tcx> Visitor<'tcx> for ScopeResolutionVisitor<'tcx> {
         resolve_local(self, Some(l.pat), l.init)
     }
     fn visit_inline_const(&mut self, c: &'tcx hir::ConstBlock) {
-        let body = self.tcx.hir().body(c.body);
+        let body = self.tcx.hir_body(c.body);
         self.visit_body(body);
     }
 }

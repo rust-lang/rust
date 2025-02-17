@@ -4716,7 +4716,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             if sig.decl.implicit_self.has_implicit_self()
                 && !(self.avoid_breaking_exported_api
                     && cx.effective_visibilities.is_exported(impl_item.owner_id.def_id))
-                && let Some(first_arg) = iter_input_pats(sig.decl, cx.tcx.hir().body(id)).next()
+                && let Some(first_arg) = iter_input_pats(sig.decl, cx.tcx.hir_body(id)).next()
                 && let Some(first_arg_ty) = first_arg_ty_opt
             {
                 wrong_self_convention::check(
@@ -4852,7 +4852,7 @@ impl Methods {
                         ),
                         Some(("chars", recv, _, _, _))
                             if let ExprKind::Closure(arg) = arg.kind
-                                && let body = cx.tcx.hir().body(arg.body)
+                                && let body = cx.tcx.hir_body(arg.body)
                                 && let [param] = body.params =>
                         {
                             string_lit_chars_any::check(cx, expr, recv, param, peel_blocks(body.value), &self.msrv);

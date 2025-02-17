@@ -194,6 +194,12 @@ pub(crate) unsafe fn create_module<'ll>(
             target_data_layout = target_data_layout.replace("-i128:128", "");
         }
     }
+    if llvm_version < (21, 0, 0) {
+        if sess.target.arch == "nvptx64" {
+            // LLVM 21 updated the default layout on nvptx: https://github.com/llvm/llvm-project/pull/124961
+            target_data_layout = target_data_layout.replace("e-p6:32:32-i64", "e-i64");
+        }
+    }
 
     // Ensure the data-layout values hardcoded remain the defaults.
     {
@@ -616,12 +622,10 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     pub(crate) fn create_used_variable_impl(&self, name: &'static CStr, values: &[&'ll Value]) {
         let array = self.const_array(self.type_ptr(), values);
 
-        unsafe {
-            let g = llvm::LLVMAddGlobal(self.llmod, self.val_ty(array), name.as_ptr());
-            llvm::LLVMSetInitializer(g, array);
-            llvm::set_linkage(g, llvm::Linkage::AppendingLinkage);
-            llvm::set_section(g, c"llvm.metadata");
-        }
+        let g = llvm::add_global(self.llmod, self.val_ty(array), name);
+        llvm::set_initializer(g, array);
+        llvm::set_linkage(g, llvm::Linkage::AppendingLinkage);
+        llvm::set_section(g, c"llvm.metadata");
     }
 }
 impl<'ll> SimpleCx<'ll> {

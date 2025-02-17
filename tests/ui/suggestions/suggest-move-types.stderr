@@ -8,8 +8,9 @@ LL | struct A<T, M: One<A=(), T>> {
    |
 help: move the constraint after the generic argument
    |
-LL | struct A<T, M: One<T, A = ()>> {
-   |                   ~~~~~~~~~~~
+LL - struct A<T, M: One<A=(), T>> {
+LL + struct A<T, M: One<T, A = ()>> {
+   |
 
 error: generic arguments must come before the first constraint
   --> $DIR/suggest-move-types.rs:33:43
@@ -21,8 +22,9 @@ LL | struct Al<'a, T, M: OneWithLifetime<A=(), T, 'a>> {
    |
 help: move the constraint after the generic arguments
    |
-LL | struct Al<'a, T, M: OneWithLifetime<'a, T, A = ()>> {
-   |                                    ~~~~~~~~~~~~~~~
+LL - struct Al<'a, T, M: OneWithLifetime<A=(), T, 'a>> {
+LL + struct Al<'a, T, M: OneWithLifetime<'a, T, A = ()>> {
+   |
 
 error: generic arguments must come before the first constraint
   --> $DIR/suggest-move-types.rs:40:46
@@ -34,8 +36,9 @@ LL | struct B<T, U, V, M: Three<A=(), B=(), C=(), T, U, V>> {
    |
 help: move the constraints after the generic arguments
    |
-LL | struct B<T, U, V, M: Three<T, U, V, A = (), B = (), C = ()>> {
-   |                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL - struct B<T, U, V, M: Three<A=(), B=(), C=(), T, U, V>> {
+LL + struct B<T, U, V, M: Three<T, U, V, A = (), B = (), C = ()>> {
+   |
 
 error: generic arguments must come before the first constraint
   --> $DIR/suggest-move-types.rs:48:71
@@ -47,8 +50,9 @@ LL | struct Bl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<A=(), B=(), C=(), T, U,
    |
 help: move the constraints after the generic arguments
    |
-LL | struct Bl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<'a, 'b, 'c, T, U, V, A = (), B = (), C = ()>> {
-   |                                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL - struct Bl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<A=(), B=(), C=(), T, U, V, 'a, 'b, 'c>> {
+LL + struct Bl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<'a, 'b, 'c, T, U, V, A = (), B = (), C = ()>> {
+   |
 
 error: generic arguments must come before the first constraint
   --> $DIR/suggest-move-types.rs:57:28
@@ -60,8 +64,9 @@ LL | struct C<T, U, V, M: Three<T, A=(), B=(), C=(), U, V>> {
    |
 help: move the constraints after the generic arguments
    |
-LL | struct C<T, U, V, M: Three<T, U, V, A = (), B = (), C = ()>> {
-   |                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL - struct C<T, U, V, M: Three<T, A=(), B=(), C=(), U, V>> {
+LL + struct C<T, U, V, M: Three<T, U, V, A = (), B = (), C = ()>> {
+   |
 
 error: generic arguments must come before the first constraint
   --> $DIR/suggest-move-types.rs:65:53
@@ -73,8 +78,9 @@ LL | struct Cl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<T, 'a, A=(), B=(), C=()
    |
 help: move the constraints after the generic arguments
    |
-LL | struct Cl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<'a, 'b, 'c, T, U, V, A = (), B = (), C = ()>> {
-   |                                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL - struct Cl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<T, 'a, A=(), B=(), C=(), U, 'b, V, 'c>> {
+LL + struct Cl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<'a, 'b, 'c, T, U, V, A = (), B = (), C = ()>> {
+   |
 
 error: generic arguments must come before the first constraint
   --> $DIR/suggest-move-types.rs:74:28
@@ -86,8 +92,9 @@ LL | struct D<T, U, V, M: Three<T, A=(), B=(), U, C=(), V>> {
    |
 help: move the constraints after the generic arguments
    |
-LL | struct D<T, U, V, M: Three<T, U, V, A = (), B = (), C = ()>> {
-   |                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL - struct D<T, U, V, M: Three<T, A=(), B=(), U, C=(), V>> {
+LL + struct D<T, U, V, M: Three<T, U, V, A = (), B = (), C = ()>> {
+   |
 
 error: generic arguments must come before the first constraint
   --> $DIR/suggest-move-types.rs:82:53
@@ -99,8 +106,9 @@ LL | struct Dl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<T, 'a, A=(), B=(), U, '
    |
 help: move the constraints after the generic arguments
    |
-LL | struct Dl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<'a, 'b, 'c, T, U, V, A = (), B = (), C = ()>> {
-   |                                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL - struct Dl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<T, 'a, A=(), B=(), U, 'b, C=(), V, 'c>> {
+LL + struct Dl<'a, 'b, 'c, T, U, V, M: ThreeWithLifetime<'a, 'b, 'c, T, U, V, A = (), B = (), C = ()>> {
+   |
 
 error[E0747]: type provided when a lifetime was expected
   --> $DIR/suggest-move-types.rs:33:43

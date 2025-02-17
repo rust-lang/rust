@@ -1,10 +1,10 @@
-pub use rustc_type_ir::relate::*;
-use rustc_type_ir::solve::Goal;
-use rustc_type_ir::{self as ty, InferCtxtLike, Interner};
 use tracing::{debug, instrument};
 
 use self::combine::{PredicateEmittingRelation, super_combine_consts, super_combine_tys};
 use crate::data_structures::DelayedSet;
+pub use crate::relate::*;
+use crate::solve::Goal;
+use crate::{self as ty, InferCtxtLike, Interner};
 
 pub trait RelateExt: InferCtxtLike {
     fn relate<T: Relate<Self::Interner>>(

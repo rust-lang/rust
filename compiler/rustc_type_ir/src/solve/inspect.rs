@@ -111,8 +111,6 @@ pub enum ProbeStep<I: Interner> {
 pub enum ProbeKind<I: Interner> {
     /// The root inference context while proving a goal.
     Root { result: QueryResult<I> },
-    /// Trying to normalize an alias by at least one step in `NormalizesTo`.
-    TryNormalizeNonRigid { result: QueryResult<I> },
     /// Probe entered when normalizing the self ty during candidate assembly
     NormalizedSelfTyAssembly,
     /// A candidate for proving a trait or alias-relate goal.

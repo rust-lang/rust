@@ -8,7 +8,7 @@ warning: extern declarations without an explicit ABI are deprecated
   --> $DIR/lit-err-in-macro.rs:3:9
    |
 LL |         extern $abi fn f() {}
-   |         ^^^^^^ help: explicitly specify the C ABI: `extern "C"`
+   |         ^^^^^^ help: explicitly specify the "C" ABI: `extern "C"`
 ...
 LL | f!("Foo"__);
    | ----------- in this macro invocation

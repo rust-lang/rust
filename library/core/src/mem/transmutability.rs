@@ -32,7 +32,7 @@ use crate::marker::{ConstParamTy_, UnsizedConstParamTy};
 ///         src: ManuallyDrop::new(src),
 ///     };
 ///
-///     let dst = transmute.dst;
+///     let dst = unsafe { transmute.dst };
 ///
 ///     ManuallyDrop::into_inner(dst)
 /// }

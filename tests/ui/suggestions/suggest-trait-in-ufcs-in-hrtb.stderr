@@ -6,10 +6,12 @@ LL | impl<S> Foo for Bar<S> where for<'a> <&'a S>::Item: Foo {}
    |
 help: use fully-qualified syntax
    |
-LL | impl<S> Foo for Bar<S> where for<'a> <&'a S as IntoAsyncIterator>::Item: Foo {}
-   |                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-LL | impl<S> Foo for Bar<S> where for<'a> <&'a S as IntoIterator>::Item: Foo {}
-   |                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL - impl<S> Foo for Bar<S> where for<'a> <&'a S>::Item: Foo {}
+LL + impl<S> Foo for Bar<S> where for<'a> <&'a S as IntoAsyncIterator>::Item: Foo {}
+   |
+LL - impl<S> Foo for Bar<S> where for<'a> <&'a S>::Item: Foo {}
+LL + impl<S> Foo for Bar<S> where for<'a> <&'a S as IntoIterator>::Item: Foo {}
+   |
 
 error: aborting due to 1 previous error
 

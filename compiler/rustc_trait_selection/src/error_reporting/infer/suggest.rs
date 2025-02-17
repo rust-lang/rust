@@ -649,7 +649,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         else {
             return;
         };
-        let hir::Body { params, .. } = self.tcx.hir().body(*body);
+        let hir::Body { params, .. } = self.tcx.hir_body(*body);
 
         // 1. Get the args of the closure.
         // 2. Assume exp_found is FnOnce / FnMut / Fn, we can extract function parameters from [1].
@@ -846,7 +846,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             true
         };
 
-        let hir = self.tcx.hir();
         for stmt in blk.stmts.iter().rev() {
             let hir::StmtKind::Let(local) = &stmt.kind else {
                 continue;
@@ -871,7 +870,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     kind: hir::ExprKind::Closure(hir::Closure { body, .. }),
                     ..
                 }) => {
-                    for param in hir.body(*body).params {
+                    for param in self.tcx.hir_body(*body).params {
                         param.pat.walk(&mut find_compatible_candidates);
                     }
                 }

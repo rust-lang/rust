@@ -6,8 +6,9 @@ LL | macro_rules! foo()
    |
 help: change the delimiters to curly braces
    |
-LL | macro_rules! foo{}
-   |                 ~~
+LL - macro_rules! foo()
+LL + macro_rules! foo{}
+   |
 help: add a semicolon
    |
 LL | macro_rules! foo();

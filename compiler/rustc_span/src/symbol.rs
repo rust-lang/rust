@@ -104,6 +104,8 @@ symbols! {
         Gen:                "gen", // >= 2024 Edition only
         Try:                "try", // >= 2018 Edition only
 
+        // NOTE: When adding new keywords, consider adding them to the ui/parser/raw/raw-idents.rs test.
+
         // "Lifetime keywords": regular keywords with a leading `'`.
         // Matching predicates: `is_any_keyword`
         UnderscoreLifetime: "'_",
@@ -193,6 +195,7 @@ symbols! {
         Cleanup,
         Clone,
         CoercePointee,
+        CoercePointeeValidated,
         CoerceUnsized,
         Command,
         ConstParamTy,
@@ -249,6 +252,7 @@ symbols! {
         Into,
         IntoFuture,
         IntoIterator,
+        IoBufRead,
         IoLines,
         IoRead,
         IoSeek,
@@ -514,6 +518,7 @@ symbols! {
         bang,
         begin_panic,
         bench,
+        bikeshed_guaranteed_no_drop,
         bin,
         binaryheap_iter,
         bind_by_move_pattern_guards,
@@ -619,6 +624,7 @@ symbols! {
         cmp_partialord_lt,
         cmpxchg16b_target_feature,
         cmse_nonsecure_entry,
+        coerce_pointee_validated,
         coerce_unsized,
         cold,
         cold_path,
@@ -877,6 +883,7 @@ symbols! {
         extern_crate_self,
         extern_in_paths,
         extern_prelude,
+        extern_system_varargs,
         extern_types,
         external,
         external_doc,
@@ -1024,6 +1031,7 @@ symbols! {
         generic_const_exprs,
         generic_const_items,
         generic_param_attrs,
+        generic_pattern_types,
         get_context,
         global_alloc_ty,
         global_allocator,
@@ -1506,7 +1514,7 @@ symbols! {
         path_main_separator,
         path_to_pathbuf,
         pathbuf_as_path,
-        pattern_complexity,
+        pattern_complexity_limit,
         pattern_parentheses,
         pattern_type,
         pattern_types,
@@ -1967,6 +1975,10 @@ symbols! {
         str_from_utf8_mut,
         str_from_utf8_unchecked,
         str_from_utf8_unchecked_mut,
+        str_inherent_from_utf8,
+        str_inherent_from_utf8_mut,
+        str_inherent_from_utf8_unchecked,
+        str_inherent_from_utf8_unchecked_mut,
         str_len,
         str_split_whitespace,
         str_starts_with,
@@ -1991,6 +2003,7 @@ symbols! {
         sub_assign,
         sub_with_overflow,
         suggestion,
+        supertrait_item_shadowing,
         surface_async_drop_in_place,
         sym,
         sync,

@@ -86,6 +86,14 @@ impl<'tcx> PlaceTy<'tcx> {
         }
     }
 
+    pub fn multi_projection_ty(
+        self,
+        tcx: TyCtxt<'tcx>,
+        elems: &[PlaceElem<'tcx>],
+    ) -> PlaceTy<'tcx> {
+        elems.iter().fold(self, |place_ty, &elem| place_ty.projection_ty(tcx, elem))
+    }
+
     /// Convenience wrapper around `projection_ty_core` for
     /// `PlaceElem`, where we can just use the `Ty` that is already
     /// stored inline on field projection elems.
@@ -167,11 +175,7 @@ impl<'tcx> Place<'tcx> {
     where
         D: HasLocalDecls<'tcx>,
     {
-        projection
-            .iter()
-            .fold(PlaceTy::from_ty(local_decls.local_decls()[local].ty), |place_ty, &elem| {
-                place_ty.projection_ty(tcx, elem)
-            })
+        PlaceTy::from_ty(local_decls.local_decls()[local].ty).multi_projection_ty(tcx, projection)
     }
 
     pub fn ty<D: ?Sized>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> PlaceTy<'tcx>

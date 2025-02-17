@@ -60,8 +60,9 @@ note: tuple variant defined here
   --> $SRC_DIR/core/src/option.rs:LL:COL
 help: provide the argument
    |
-LL |     let _: Option<(i8,)> = Some(/* (i8,) */);
-   |                                ~~~~~~~~~~~~~
+LL -     let _: Option<(i8,)> = Some();
+LL +     let _: Option<(i8,)> = Some(/* (i8,) */);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/args-instead-of-tuple-errors.rs:14:34

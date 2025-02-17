@@ -7,6 +7,7 @@
 #![feature(box_patterns)]
 #![feature(debug_closure_helpers)]
 #![feature(file_buffered)]
+#![feature(format_args_nl)]
 #![feature(if_let_guard)]
 #![feature(impl_trait_in_assoc_type)]
 #![feature(iter_intersperse)]
@@ -105,6 +106,7 @@ macro_rules! map {
 mod clean;
 mod config;
 mod core;
+mod display;
 mod docfs;
 mod doctest;
 mod error;
@@ -113,7 +115,6 @@ mod fold;
 mod formats;
 // used by the error-index generator, so it needs to be public
 pub mod html;
-mod joined;
 mod json;
 pub(crate) mod lint;
 mod markdown;

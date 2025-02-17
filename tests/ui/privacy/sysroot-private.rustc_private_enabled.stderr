@@ -14,8 +14,9 @@ LL | fn trait_member<T>(val: &T, key: &K) -> bool {
    |
 help: a type parameter with a similar name exists
    |
-LL | fn trait_member<T>(val: &T, key: &T) -> bool {
-   |                                   ~
+LL - fn trait_member<T>(val: &T, key: &K) -> bool {
+LL + fn trait_member<T>(val: &T, key: &T) -> bool {
+   |
 help: you might be missing a type parameter
    |
 LL | fn trait_member<T, K>(val: &T, key: &K) -> bool {

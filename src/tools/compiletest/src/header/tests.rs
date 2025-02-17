@@ -72,6 +72,7 @@ struct ConfigBuilder {
     channel: Option<String>,
     host: Option<String>,
     target: Option<String>,
+    stage: Option<u32>,
     stage_id: Option<String>,
     llvm_version: Option<String>,
     git_hash: bool,
@@ -99,6 +100,11 @@ impl ConfigBuilder {
 
     fn target(&mut self, s: &str) -> &mut Self {
         self.target = Some(s.to_owned());
+        self
+    }
+
+    fn stage(&mut self, n: u32) -> &mut Self {
+        self.stage = Some(n);
         self
     }
 
@@ -156,6 +162,8 @@ impl ConfigBuilder {
             "--cxxflags=",
             "--llvm-components=",
             "--android-cross-path=",
+            "--stage",
+            &self.stage.unwrap_or(2).to_string(),
             "--stage-id",
             self.stage_id.as_deref().unwrap_or("stage2-x86_64-unknown-linux-gnu"),
             "--channel",
@@ -388,7 +396,7 @@ fn std_debug_assertions() {
 
 #[test]
 fn stage() {
-    let config: Config = cfg().stage_id("stage1-x86_64-unknown-linux-gnu").build();
+    let config: Config = cfg().stage(1).stage_id("stage1-x86_64-unknown-linux-gnu").build();
 
     assert!(check_ignore(&config, "//@ ignore-stage1"));
     assert!(!check_ignore(&config, "//@ ignore-stage2"));
@@ -880,4 +888,18 @@ fn test_needs_target_has_atomic() {
     // Check whitespace between widths is permitted.
     assert!(!check_ignore(&config, "//@ needs-target-has-atomic: 8, ptr"));
     assert!(check_ignore(&config, "//@ needs-target-has-atomic: 8, ptr, 128"));
+}
+
+#[test]
+// FIXME: this test will fail against stage 0 until #137037 changes reach beta.
+#[cfg_attr(bootstrap, ignore)]
+fn test_rustc_abi() {
+    let config = cfg().target("i686-unknown-linux-gnu").build();
+    assert_eq!(config.target_cfg().rustc_abi, Some("x86-sse2".to_string()));
+    assert!(check_ignore(&config, "//@ ignore-rustc_abi-x86-sse2"));
+    assert!(!check_ignore(&config, "//@ only-rustc_abi-x86-sse2"));
+    let config = cfg().target("x86_64-unknown-linux-gnu").build();
+    assert_eq!(config.target_cfg().rustc_abi, None);
+    assert!(!check_ignore(&config, "//@ ignore-rustc_abi-x86-sse2"));
+    assert!(check_ignore(&config, "//@ only-rustc_abi-x86-sse2"));
 }

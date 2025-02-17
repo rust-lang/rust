@@ -12,7 +12,8 @@ LL | fn g<F:Typedef(isize) -> isize>(x: F) {}
    |
 help: you might have meant to use `#![feature(trait_alias)]` instead of a `type` alias
    |
-LL | trait Typedef = isize;
+LL - type Typedef = isize;
+LL + trait Typedef = isize;
    |
 
 error: aborting due to 2 previous errors

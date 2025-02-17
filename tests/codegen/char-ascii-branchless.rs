@@ -1,6 +1,6 @@
 // Checks that these functions are branchless.
 //
-//@ compile-flags: -O
+//@ compile-flags: -Copt-level=3
 
 #![crate_type = "lib"]
 

@@ -76,6 +76,14 @@ $ BOOTSTRAP_TRACING=CONFIG_HANDLING=TRACE ./x build library --stage 1
 
 [tracing-env-filter]: https://docs.rs/tracing-subscriber/0.3.19/tracing_subscriber/filter/struct.EnvFilter.html
 
+##### FIXME(#96176): specific tracing for `compiler()` vs `compiler_for()`
+
+The additional targets `COMPILER` and `COMPILER_FOR` are used to help trace what
+`builder.compiler()` and `builder.compiler_for()` does. They should be removed
+if [#96176][cleanup-compiler-for] is resolved.
+
+[cleanup-compiler-for]: https://github.com/rust-lang/rust/issues/96176
+
 ### Using `tracing` in bootstrap
 
 Both `tracing::*` macros and the `tracing::instrument` proc-macro attribute need to be gated behind `tracing` feature. Examples:
@@ -120,6 +128,14 @@ For `#[instrument]`, it's recommended to:
 - Gate it behind `trace` level for fine-granularity, possibly `debug` level for core functions.
 - Explicitly pick an instrumentation name via `name = ".."` to distinguish between e.g. `run` of different steps.
 - Take care to not cause diverging behavior via tracing, e.g. building extra things only when tracing infra is enabled.
+
+### Profiling bootstrap
+
+You can use the `COMMAND` tracing target to trace execution of most commands spawned by bootstrap. If you also use the `BOOTSTRAP_PROFILE=1` environment variable, bootstrap will generate a Chrome JSON trace file, which can be visualized in Chrome's `chrome://tracing` page or on https://ui.perfetto.dev.
+
+```bash
+$ BOOTSTRAP_TRACING=COMMAND=trace BOOTSTRAP_PROFILE=1 ./x build library
+```
 
 ### rust-analyzer integration?
 

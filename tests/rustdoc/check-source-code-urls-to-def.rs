@@ -31,7 +31,8 @@ fn babar() {}
 //@ has - '//pre[@class="rust"]//a/@href' '/struct.String.html'
 //@ has - '//pre[@class="rust"]//a/@href' '/primitive.u32.html'
 //@ has - '//pre[@class="rust"]//a/@href' '/primitive.str.html'
-//@ count - '//pre[@class="rust"]//a[@href="#23"]' 5
+// The 5 links to line 23 and the line 23 itself.
+//@ count - '//pre[@class="rust"]//a[@href="#23"]' 6
 //@ has - '//pre[@class="rust"]//a[@href="../../source_code/struct.SourceCode.html"]' \
 //        'source_code::SourceCode'
 pub fn foo(a: u32, b: &str, c: String, d: Foo, e: bar::Bar, f: source_code::SourceCode) {
@@ -50,8 +51,8 @@ pub fn foo2<T: bar::sub::Trait, V: Trait>(t: &T, v: &V, b: bool) {}
 pub trait AnotherTrait {}
 pub trait WhyNot {}
 
-//@ has - '//pre[@class="rust"]//a[@href="#50"]' 'AnotherTrait'
-//@ has - '//pre[@class="rust"]//a[@href="#51"]' 'WhyNot'
+//@ has - '//pre[@class="rust"]//a[@href="#51"]' 'AnotherTrait'
+//@ has - '//pre[@class="rust"]//a[@href="#52"]' 'WhyNot'
 pub fn foo3<T, V>(t: &T, v: &V)
 where
     T: AnotherTrait,
@@ -60,7 +61,7 @@ where
 
 pub trait AnotherTrait2 {}
 
-//@ has - '//pre[@class="rust"]//a[@href="#61"]' 'AnotherTrait2'
+//@ has - '//pre[@class="rust"]//a[@href="#62"]' 'AnotherTrait2'
 pub fn foo4() {
     let x: Vec<&dyn AnotherTrait2> = Vec::new();
 }

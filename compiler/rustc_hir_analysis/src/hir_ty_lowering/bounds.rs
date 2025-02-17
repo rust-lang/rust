@@ -102,8 +102,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 seen_sized_unbound = true;
                 continue;
             }
-            // There was a `?Trait` bound, but it was not `?Sized`; warn.
-            self.dcx().span_warn(
+            // There was a `?Trait` bound, but it was not `?Sized`
+            self.dcx().span_err(
                 unbound.span,
                 "relaxing a default bound only does something for `?Sized`; \
                 all other traits are not bound by default",

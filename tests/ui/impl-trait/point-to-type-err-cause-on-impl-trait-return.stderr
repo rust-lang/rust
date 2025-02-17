@@ -6,8 +6,9 @@ LL | fn hat() -> dyn std::fmt::Display {
    |
 help: consider returning an `impl Trait` instead of a `dyn Trait`
    |
-LL | fn hat() -> impl std::fmt::Display {
-   |             ~~~~
+LL - fn hat() -> dyn std::fmt::Display {
+LL + fn hat() -> impl std::fmt::Display {
+   |
 help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
    |
 LL ~ fn hat() -> Box<dyn std::fmt::Display> {
@@ -27,8 +28,9 @@ LL | fn pug() -> dyn std::fmt::Display {
    |
 help: consider returning an `impl Trait` instead of a `dyn Trait`
    |
-LL | fn pug() -> impl std::fmt::Display {
-   |             ~~~~
+LL - fn pug() -> dyn std::fmt::Display {
+LL + fn pug() -> impl std::fmt::Display {
+   |
 help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
    |
 LL ~ fn pug() -> Box<dyn std::fmt::Display> {
@@ -46,8 +48,9 @@ LL | fn man() -> dyn std::fmt::Display {
    |
 help: consider returning an `impl Trait` instead of a `dyn Trait`
    |
-LL | fn man() -> impl std::fmt::Display {
-   |             ~~~~
+LL - fn man() -> dyn std::fmt::Display {
+LL + fn man() -> impl std::fmt::Display {
+   |
 help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
    |
 LL ~ fn man() -> Box<dyn std::fmt::Display> {
@@ -68,8 +71,9 @@ LL |     1u32
    |
 help: change the type of the numeric literal from `u32` to `i32`
    |
-LL |     1i32
-   |      ~~~
+LL -     1u32
+LL +     1i32
+   |
 
 error[E0308]: mismatched types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:12:16
@@ -82,8 +86,9 @@ LL |         return 1u32;
    |
 help: change the type of the numeric literal from `u32` to `i32`
    |
-LL |         return 1i32;
-   |                 ~~~
+LL -         return 1u32;
+LL +         return 1i32;
+   |
 
 error[E0308]: mismatched types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:20:9
@@ -113,8 +118,9 @@ LL | |     }
    |
 help: you could change the return type to be a boxed trait object
    |
-LL | fn qux() -> Box<dyn std::fmt::Display> {
-   |             ~~~~~~~                  +
+LL - fn qux() -> impl std::fmt::Display {
+LL + fn qux() -> Box<dyn std::fmt::Display> {
+   |
 help: if you change the return type to expect trait objects, box the returned expressions
    |
 LL ~         Box::new(0i32)
@@ -123,8 +129,9 @@ LL ~         Box::new(1u32)
    |
 help: change the type of the numeric literal from `u32` to `i32`
    |
-LL |         1i32
-   |          ~~~
+LL -         1u32
+LL +         1i32
+   |
 
 error[E0308]: mismatched types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:35:14
@@ -185,8 +192,9 @@ LL | |     }
    |
 help: you could change the return type to be a boxed trait object
    |
-LL | fn dog() -> Box<dyn std::fmt::Display> {
-   |             ~~~~~~~                  +
+LL - fn dog() -> impl std::fmt::Display {
+LL + fn dog() -> Box<dyn std::fmt::Display> {
+   |
 help: if you change the return type to expect trait objects, box the returned expressions
    |
 LL ~         0 => Box::new(0i32),
@@ -194,8 +202,9 @@ LL ~         1 => Box::new(1u32),
    |
 help: change the type of the numeric literal from `u32` to `i32`
    |
-LL |         1 => 1i32,
-   |               ~~~
+LL -         1 => 1u32,
+LL +         1 => 1i32,
+   |
 
 error[E0308]: `if` and `else` have incompatible types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:97:9
@@ -211,8 +220,9 @@ LL | |     }
    |
 help: you could change the return type to be a boxed trait object
    |
-LL | fn apt() -> Box<dyn std::fmt::Display> {
-   |             ~~~~~~~                  +
+LL - fn apt() -> impl std::fmt::Display {
+LL + fn apt() -> Box<dyn std::fmt::Display> {
+   |
 help: if you change the return type to expect trait objects, box the returned expressions
    |
 LL ~         Box::new(0i32)
@@ -221,8 +231,9 @@ LL ~         Box::new(1u32)
    |
 help: change the type of the numeric literal from `u32` to `i32`
    |
-LL |         1i32
-   |          ~~~
+LL -         1u32
+LL +         1i32
+   |
 
 error: aborting due to 12 previous errors
 

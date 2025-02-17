@@ -1989,7 +1989,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         trace: &TypeTrace<'tcx>,
         span: Span,
     ) -> Option<TypeErrorAdditionalDiags> {
-        let hir = self.tcx.hir();
         let TypeError::ArraySize(sz) = terr else {
             return None;
         };
@@ -1997,7 +1996,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             hir::Node::Item(hir::Item {
                 kind: hir::ItemKind::Fn { body: body_id, .. }, ..
             }) => {
-                let body = hir.body(*body_id);
+                let body = self.tcx.hir_body(*body_id);
                 struct LetVisitor {
                     span: Span,
                 }

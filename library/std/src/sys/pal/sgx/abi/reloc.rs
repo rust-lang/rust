@@ -11,7 +11,7 @@ struct Rela<T> {
 }
 
 pub fn relocate_elf_rela() {
-    extern "C" {
+    unsafe extern "C" {
         static RELA: u64;
         static RELACOUNT: usize;
     }

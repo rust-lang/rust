@@ -15,7 +15,7 @@ use rustc_middle::ty;
 // Please change the public `use` directives cautiously, as they might be used by external tools.
 // See issue #120130.
 pub use self::drop_flag_effects::{
-    drop_flag_effects_for_function_entry, drop_flag_effects_for_location,
+    DropFlagState, drop_flag_effects_for_function_entry, drop_flag_effects_for_location,
     move_path_children_matching, on_all_children_bits, on_lookup_result_bits,
 };
 pub use self::framework::{
@@ -26,7 +26,6 @@ use self::move_paths::MoveData;
 
 pub mod debuginfo;
 mod drop_flag_effects;
-pub mod elaborate_drops;
 mod errors;
 mod framework;
 pub mod impls;

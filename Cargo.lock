@@ -420,9 +420,9 @@ version = "0.1.0"
 
 [[package]]
 name = "cc"
-version = "1.2.7"
+version = "1.2.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a012a0df96dd6d06ba9a1b29d6402d1a5d77c6befd2566afdc26e10603dc93d7"
+checksum = "c7777341816418c02e033934a09f20dc0ccaf65a5201ef8a450ae0105a573fda"
 dependencies = [
  "shlex",
 ]
@@ -1207,16 +1207,6 @@ dependencies = [
  "serde",
  "serde_json",
  "tidy",
-]
-
-[[package]]
-name = "field-offset"
-version = "0.3.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "38e2275cc4e4fc009b0669731a1e5ab7ebf11f469eaede2bab9309a5b4d6057f"
-dependencies = [
- "memoffset",
- "rustc_version",
 ]
 
 [[package]]
@@ -2007,7 +1997,7 @@ dependencies = [
  "anyhow",
  "clap",
  "fs-err",
- "rustc-hash 2.1.0",
+ "rustc-hash 2.1.1",
  "rustdoc-json-types",
  "serde",
  "serde_json",
@@ -2293,15 +2283,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "723e3ebdcdc5c023db1df315364573789f8857c11b631a2fdfad7c00f5c046b4"
 dependencies = [
  "libc",
-]
-
-[[package]]
-name = "memoffset"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "488016bfae457b036d996092f6cb448677611ce4449e970ceaf42695203f218a"
-dependencies = [
- "autocfg",
 ]
 
 [[package]]
@@ -3207,7 +3188,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "rinja_parser",
- "rustc-hash 2.1.0",
+ "rustc-hash 2.1.1",
  "serde",
  "syn 2.0.96",
 ]
@@ -3271,9 +3252,9 @@ checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 
 [[package]]
 name = "rustc-hash"
-version = "2.1.0"
+version = "2.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7fb8039b3032c191086b10f11f319a6e99e1e82889c5cc6046f515c9db1d497"
+checksum = "357703d41365b4b27c590e3ed91eabb1b663f07c4c084095e60cbed4362dff0d"
 
 [[package]]
 name = "rustc-main"
@@ -3336,7 +3317,6 @@ dependencies = [
  "rand 0.8.5",
  "rand_xoshiro",
  "rustc_data_structures",
- "rustc_feature",
  "rustc_index",
  "rustc_macros",
  "rustc_serialize",
@@ -3398,6 +3378,7 @@ dependencies = [
  "rustc_ast_pretty",
  "rustc_data_structures",
  "rustc_errors",
+ "rustc_feature",
  "rustc_fluent_macro",
  "rustc_hir",
  "rustc_index",
@@ -3428,7 +3409,6 @@ dependencies = [
  "rustc_parse",
  "rustc_session",
  "rustc_span",
- "rustc_target",
  "thin-vec",
 ]
 
@@ -3673,7 +3653,7 @@ dependencies = [
  "memmap2",
  "parking_lot",
  "portable-atomic",
- "rustc-hash 2.1.0",
+ "rustc-hash 2.1.1",
  "rustc-rayon",
  "rustc-stable-hash",
  "rustc_arena",
@@ -3702,6 +3682,7 @@ version = "0.0.0"
 dependencies = [
  "ctrlc",
  "libc",
+ "rustc_abi",
  "rustc_ast",
  "rustc_ast_lowering",
  "rustc_ast_passes",
@@ -4173,7 +4154,6 @@ version = "0.0.0"
 dependencies = [
  "bitflags",
  "either",
- "field-offset",
  "gsgdt",
  "polonius-engine",
  "rustc-rayon-core",
@@ -4357,6 +4337,7 @@ version = "0.0.0"
 dependencies = [
  "rustc_abi",
  "rustc_ast",
+ "rustc_ast_lowering",
  "rustc_ast_pretty",
  "rustc_attr_parsing",
  "rustc_data_structures",
@@ -4380,7 +4361,7 @@ dependencies = [
 name = "rustc_pattern_analysis"
 version = "0.0.0"
 dependencies = [
- "rustc-hash 2.1.0",
+ "rustc-hash 2.1.1",
  "rustc_abi",
  "rustc_apfloat",
  "rustc_arena",
@@ -4421,7 +4402,6 @@ dependencies = [
 name = "rustc_query_impl"
 version = "0.0.0"
 dependencies = [
- "field-offset",
  "measureme",
  "rustc_data_structures",
  "rustc_errors",
@@ -4442,6 +4422,7 @@ version = "0.0.0"
 dependencies = [
  "parking_lot",
  "rustc-rayon-core",
+ "rustc_abi",
  "rustc_ast",
  "rustc_data_structures",
  "rustc_errors",
@@ -4453,7 +4434,6 @@ dependencies = [
  "rustc_serialize",
  "rustc_session",
  "rustc_span",
- "rustc_target",
  "smallvec",
  "thin-vec",
  "tracing",
@@ -4776,7 +4756,7 @@ name = "rustdoc-json-types"
 version = "0.1.0"
 dependencies = [
  "bincode",
- "rustc-hash 2.1.0",
+ "rustc-hash 2.1.1",
  "serde",
  "serde_json",
 ]
@@ -5427,7 +5407,7 @@ dependencies = [
  "ignore",
  "miropt-test-tools",
  "regex",
- "rustc-hash 2.1.0",
+ "rustc-hash 2.1.1",
  "semver",
  "serde",
  "similar",
@@ -6215,16 +6195,11 @@ dependencies = [
 
 [[package]]
 name = "windows-bindgen"
-version = "0.58.0"
+version = "0.59.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "91cd28d93c692351f3a6e5615567c56756e330bee1c99c6bdd57bfc5ab15f589"
+checksum = "9b7fb600834d7e868f6e5bb748a86101427330fafbf9485c331b9d5f562d54a5"
 dependencies = [
- "proc-macro2",
  "rayon",
- "serde",
- "serde_json",
- "syn 2.0.96",
- "windows-metadata",
 ]
 
 [[package]]
@@ -6304,12 +6279,6 @@ dependencies = [
  "quote",
  "syn 2.0.96",
 ]
-
-[[package]]
-name = "windows-metadata"
-version = "0.58.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2e837f3c3012cfe9e7086302a93f441a7999439be1ad4c530d55d2f6d2921809"
 
 [[package]]
 name = "windows-result"

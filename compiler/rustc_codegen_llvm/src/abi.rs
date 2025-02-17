@@ -664,7 +664,7 @@ impl<'tcx> AbiBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
 }
 
 impl llvm::CallConv {
-    pub fn from_conv(conv: Conv, arch: &str) -> Self {
+    pub(crate) fn from_conv(conv: Conv, arch: &str) -> Self {
         match conv {
             Conv::C
             | Conv::Rust
@@ -687,7 +687,6 @@ impl llvm::CallConv {
             Conv::AvrNonBlockingInterrupt => llvm::AvrNonBlockingInterrupt,
             Conv::ArmAapcs => llvm::ArmAapcsCallConv,
             Conv::Msp430Intr => llvm::Msp430Intr,
-            Conv::PtxKernel => llvm::PtxKernel,
             Conv::X86Fastcall => llvm::X86FastcallCallConv,
             Conv::X86Intr => llvm::X86_Intr,
             Conv::X86Stdcall => llvm::X86StdcallCallConv,

@@ -1,11 +1,11 @@
 //! Targets the ARMv5TE, with code as `a32` code by default.
 
-use crate::spec::{FloatAbi, FramePointer, Target, TargetOptions, base, cvs};
+use crate::spec::{FloatAbi, FramePointer, Target, TargetMetadata, TargetOptions, base, cvs};
 
 pub(crate) fn target() -> Target {
     Target {
         llvm_target: "armv5te-none-eabi".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("Bare Armv5TE".into()),
             tier: Some(3),
             host_tools: Some(false),

@@ -95,7 +95,7 @@ impl<'db> MatchCheckCtx<'db> {
 
         let place_validity = PlaceValidity::from_bool(known_valid_scrutinee.unwrap_or(true));
         // Measured to take ~100ms on modern hardware.
-        let complexity_limit = Some(500000);
+        let complexity_limit = 500000;
         compute_match_usefulness(self, arms, scrut_ty, place_validity, complexity_limit)
     }
 

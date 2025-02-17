@@ -9,7 +9,6 @@ bitflags = "2.4.1"
 rand = { version = "0.8.4", default-features = false, optional = true }
 rand_xoshiro = { version = "0.6.0", optional = true }
 rustc_data_structures = { path = "../rustc_data_structures", optional = true  }
-rustc_feature = { path = "../rustc_feature", optional = true }
 rustc_index = { path = "../rustc_index", default-features = false }
 rustc_macros = { path = "../rustc_macros", optional = true }
 rustc_serialize = { path = "../rustc_serialize", optional = true  }
@@ -24,7 +23,6 @@ default = ["nightly", "randomize"]
 # without depending on rustc_data_structures, rustc_macros and rustc_serialize
 nightly = [
     "dep:rustc_data_structures",
-    "dep:rustc_feature",
     "dep:rustc_macros",
     "dep:rustc_serialize",
     "dep:rustc_span",

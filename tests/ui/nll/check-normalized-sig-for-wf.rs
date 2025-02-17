@@ -1,3 +1,7 @@
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
+
 // <https://github.com/rust-lang/rust/issues/114936>
 fn whoops(
     s: String,

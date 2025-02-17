@@ -16,7 +16,7 @@
 
     // Scroll code block to the given code location
     function scrollToLoc(elt, loc, isHidden) {
-        const lines = elt.querySelector(".src-line-numbers > pre");
+        const lines = elt.querySelectorAll("[data-nosnippet]");
         let scrollOffset;
 
         // If the block is greater than the size of the viewer,
@@ -25,24 +25,24 @@
         const maxLines = isHidden ? HIDDEN_MAX_LINES : DEFAULT_MAX_LINES;
         if (loc[1] - loc[0] > maxLines) {
             const line = Math.max(0, loc[0] - 1);
-            scrollOffset = lines.children[line].offsetTop;
+            scrollOffset = lines[line].offsetTop;
         } else {
             const halfHeight = elt.offsetHeight / 2;
-            const offsetTop = lines.children[loc[0]].offsetTop;
-            const lastLine = lines.children[loc[1]];
+            const offsetTop = lines[loc[0]].offsetTop;
+            const lastLine = lines[loc[1]];
             const offsetBot = lastLine.offsetTop + lastLine.offsetHeight;
             const offsetMid = (offsetTop + offsetBot) / 2;
             scrollOffset = offsetMid - halfHeight;
         }
 
-        lines.parentElement.scrollTo(0, scrollOffset);
+        lines[0].parentElement.scrollTo(0, scrollOffset);
         elt.querySelector(".rust").scrollTo(0, scrollOffset);
     }
 
     function createScrapeButton(parent, className, content) {
         const button = document.createElement("button");
         button.className = className;
-        button.innerText = content;
+        button.title = content;
         parent.insertBefore(button, parent.firstChild);
         return button;
     }
@@ -54,14 +54,14 @@
         let expandButton = null;
 
         if (!example.classList.contains("expanded")) {
-            expandButton = createScrapeButton(buttonHolder, "expand", "↕");
+            expandButton = createScrapeButton(buttonHolder, "expand", "Show all");
         }
         const isHidden = example.parentElement.classList.contains("more-scraped-examples");
 
         const locs = example.locs;
         if (locs.length > 1) {
-            const next = createScrapeButton(buttonHolder, "next", "≻");
-            const prev = createScrapeButton(buttonHolder, "prev", "≺");
+            const next = createScrapeButton(buttonHolder, "next", "Next usage");
+            const prev = createScrapeButton(buttonHolder, "prev", "Previous usage");
 
             // Toggle through list of examples in a given file
             const onChangeLoc = changeIndex => {
@@ -94,9 +94,13 @@
             expandButton.addEventListener("click", () => {
                 if (hasClass(example, "expanded")) {
                     removeClass(example, "expanded");
+                    removeClass(expandButton, "collapse");
+                    expandButton.title = "Show all";
                     scrollToLoc(example, locs[0][0], isHidden);
                 } else {
                     addClass(example, "expanded");
+                    addClass(expandButton, "collapse");
+                    expandButton.title = "Show single example";
                 }
             });
         }

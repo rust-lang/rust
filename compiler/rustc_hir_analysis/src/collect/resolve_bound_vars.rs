@@ -422,12 +422,12 @@ enum NonLifetimeBinderAllowed {
 impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
 
     fn visit_nested_body(&mut self, body: hir::BodyId) {
-        let body = self.tcx.hir().body(body);
+        let body = self.tcx.hir_body(body);
         self.with(Scope::Body { id: body.id(), s: self.scope }, |this| {
             this.visit_body(body);
         });
@@ -1049,7 +1049,7 @@ fn object_lifetime_default(tcx: TyCtxt<'_>, param_def_id: LocalDefId) -> ObjectL
     match param.source {
         hir::GenericParamSource::Generics => {
             let parent_def_id = tcx.local_parent(param_def_id);
-            let generics = tcx.hir().get_generics(parent_def_id).unwrap();
+            let generics = tcx.hir_get_generics(parent_def_id).unwrap();
             let param_hir_id = tcx.local_def_id_to_hir_id(param_def_id);
             let param = generics.params.iter().find(|p| p.hir_id == param_hir_id).unwrap();
 
@@ -1250,7 +1250,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     if let Some(hir::PredicateOrigin::ImplTrait) = where_bound_origin
                         && let hir::LifetimeName::Param(param_id) = lifetime_ref.res
                         && let Some(generics) =
-                            self.tcx.hir().get_generics(self.tcx.local_parent(param_id))
+                            self.tcx.hir_get_generics(self.tcx.local_parent(param_id))
                         && let Some(param) = generics.params.iter().find(|p| p.def_id == param_id)
                         && param.is_elided_lifetime()
                         && !self.tcx.asyncness(lifetime_ref.hir_id.owner.def_id).is_async()
@@ -1264,7 +1264,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                         );
 
                         if let Some(generics) =
-                            self.tcx.hir().get_generics(lifetime_ref.hir_id.owner.def_id)
+                            self.tcx.hir_get_generics(lifetime_ref.hir_id.owner.def_id)
                         {
                             let new_param_sugg =
                                 if let Some(span) = generics.span_for_lifetime_suggestion() {
@@ -2266,7 +2266,7 @@ fn is_late_bound_map(
     owner_id: hir::OwnerId,
 ) -> Option<&FxIndexSet<hir::ItemLocalId>> {
     let sig = tcx.hir().fn_sig_by_hir_id(owner_id.into())?;
-    let generics = tcx.hir().get_generics(owner_id.def_id)?;
+    let generics = tcx.hir_get_generics(owner_id.def_id)?;
 
     let mut late_bound = FxIndexSet::default();
 

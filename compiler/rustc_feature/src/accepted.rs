@@ -197,9 +197,6 @@ declare_features! (
     (accepted, expr_fragment_specifier_2024, "1.83.0", Some(123742)),
     /// Allows arbitrary expressions in key-value attributes at parse time.
     (accepted, extended_key_value_attributes, "1.54.0", Some(78835)),
-    /// Allows using `efiapi`, `aapcs`, `sysv64` and `win64` as calling
-    /// convention for functions with varargs.
-    (accepted, extended_varargs_abi_support, "1.85.0", Some(100189)),
     /// Allows resolving absolute paths as paths from other crates.
     (accepted, extern_absolute_paths, "1.30.0", Some(44660)),
     /// Allows `extern crate foo as bar;`. This puts `bar` into extern prelude.
@@ -389,6 +386,8 @@ declare_features! (
     (accepted, struct_variant, "1.0.0", None),
     /// Allows `#[target_feature(...)]`.
     (accepted, target_feature, "1.27.0", None),
+    /// Allows the use of `#[target_feature]` on safe functions.
+    (accepted, target_feature_11, "CURRENT_RUSTC_VERSION", Some(69098)),
     /// Allows `fn main()` with return types which implements `Termination` (RFC 1937).
     (accepted, termination_trait, "1.26.0", Some(43301)),
     /// Allows `#[test]` functions where the return type implements `Termination` (RFC 1937).

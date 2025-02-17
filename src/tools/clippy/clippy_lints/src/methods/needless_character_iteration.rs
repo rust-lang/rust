@@ -99,7 +99,7 @@ fn handle_expr(
 
 pub(super) fn check(cx: &LateContext<'_>, call_expr: &Expr<'_>, recv: &Expr<'_>, closure_arg: &Expr<'_>, is_all: bool) {
     if let ExprKind::Closure(&Closure { body, .. }) = closure_arg.kind
-        && let body = cx.tcx.hir().body(body)
+        && let body = cx.tcx.hir_body(body)
         && let Some(first_param) = body.params.first()
         && let ExprKind::MethodCall(method, mut recv, [], _) = recv.kind
         && method.ident.name.as_str() == "chars"

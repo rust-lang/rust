@@ -1703,12 +1703,12 @@ pub const fn forget<T: ?Sized>(_: T) {
 /// ```
 /// struct R<'a>(&'a i32);
 /// unsafe fn extend_lifetime<'b>(r: R<'b>) -> R<'static> {
-///     std::mem::transmute::<R<'b>, R<'static>>(r)
+///     unsafe { std::mem::transmute::<R<'b>, R<'static>>(r) }
 /// }
 ///
 /// unsafe fn shorten_invariant_lifetime<'b, 'c>(r: &'b mut R<'static>)
 ///                                              -> &'b mut R<'c> {
-///     std::mem::transmute::<&'b mut R<'static>, &'b mut R<'c>>(r)
+///     unsafe { std::mem::transmute::<&'b mut R<'static>, &'b mut R<'c>>(r) }
 /// }
 /// ```
 ///
@@ -4498,11 +4498,11 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 ///
 ///     // SAFETY: Our precondition ensures the source is aligned and valid,
 ///     // and `Vec::with_capacity` ensures that we have usable space to write them.
-///     ptr::copy(ptr, dst.as_mut_ptr(), elts);
+///     unsafe { ptr::copy(ptr, dst.as_mut_ptr(), elts); }
 ///
 ///     // SAFETY: We created it with this much capacity earlier,
 ///     // and the previous `copy` has initialized these elements.
-///     dst.set_len(elts);
+///     unsafe { dst.set_len(elts); }
 ///     dst
 /// }
 /// ```
@@ -4855,7 +4855,7 @@ pub const unsafe fn copysignf128(_x: f128, _y: f128) -> f128 {
 #[cfg(miri)]
 #[rustc_allow_const_fn_unstable(const_eval_select)]
 pub(crate) const fn miri_promise_symbolic_alignment(ptr: *const (), align: usize) {
-    extern "Rust" {
+    unsafe extern "Rust" {
         /// Miri-provided extern function to promise that a given pointer is properly aligned for
         /// "symbolic" alignment checks. Will fail if the pointer is not actually aligned or `align` is
         /// not a power of two. Has no effect when alignment checks are concrete (which is the default).

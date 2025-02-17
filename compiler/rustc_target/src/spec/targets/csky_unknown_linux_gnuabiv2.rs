@@ -1,4 +1,4 @@
-use crate::spec::{Cc, LinkerFlavor, Lld, Target, TargetOptions, base};
+use crate::spec::{Cc, LinkerFlavor, Lld, Target, TargetMetadata, TargetOptions, base};
 
 // This target is for glibc Linux on Csky
 
@@ -6,7 +6,7 @@ pub(crate) fn target() -> Target {
     Target {
         //https://github.com/llvm/llvm-project/blob/8b76aea8d8b1b71f6220bc2845abc749f18a19b7/clang/lib/Basic/Targets/CSKY.h
         llvm_target: "csky-unknown-linux-gnuabiv2".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("C-SKY abiv2 Linux (little endian)".into()),
             tier: Some(3),
             host_tools: Some(false),

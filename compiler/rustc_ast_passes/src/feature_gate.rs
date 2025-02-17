@@ -1,9 +1,9 @@
 use rustc_ast as ast;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use rustc_ast::{NodeId, PatKind, attr, token};
-use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute, Features, GateIssue};
+use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute, Features};
 use rustc_session::Session;
-use rustc_session::parse::{feature_err, feature_err_issue, feature_warn};
+use rustc_session::parse::{feature_err, feature_warn};
 use rustc_span::source_map::Spanned;
 use rustc_span::{Span, Symbol, sym};
 use thin_vec::ThinVec;
@@ -72,35 +72,6 @@ struct PostExpansionVisitor<'a> {
 }
 
 impl<'a> PostExpansionVisitor<'a> {
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
-    fn check_abi(&self, abi: ast::StrLit) {
-        let ast::StrLit { symbol_unescaped, span, .. } = abi;
-
-        match rustc_abi::is_enabled(self.features, span, symbol_unescaped.as_str()) {
-            Ok(()) => (),
-            Err(rustc_abi::AbiDisabled::Unstable { feature, explain }) => {
-                feature_err_issue(&self.sess, feature, span, GateIssue::Language, explain).emit();
-            }
-            Err(rustc_abi::AbiDisabled::Unrecognized) => {
-                if self.sess.opts.pretty.is_none_or(|ppm| ppm.needs_hir()) {
-                    self.sess.dcx().span_delayed_bug(
-                        span,
-                        format!(
-                            "unrecognized ABI not caught in lowering: {}",
-                            symbol_unescaped.as_str()
-                        ),
-                    );
-                }
-            }
-        }
-    }
-
-    fn check_extern(&self, ext: ast::Extern) {
-        if let ast::Extern::Explicit(abi, _) = ext {
-            self.check_abi(abi);
-        }
-    }
-
     /// Feature gate `impl Trait` inside `type Alias = $type_expr;`.
     fn check_impl_trait(&self, ty: &ast::Ty, in_associated_ty: bool) {
         struct ImplTraitVisitor<'a> {
@@ -223,12 +194,9 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_item(&mut self, i: &'a ast::Item) {
         match &i.kind {
-            ast::ItemKind::ForeignMod(foreign_module) => {
-                if let Some(abi) = foreign_module.abi {
-                    self.check_abi(abi);
-                }
+            ast::ItemKind::ForeignMod(_foreign_module) => {
+                // handled during lowering
             }
-
             ast::ItemKind::Struct(..) | ast::ItemKind::Enum(..) | ast::ItemKind::Union(..) => {
                 for attr in attr::filter_by_name(&i.attrs, sym::repr) {
                     for item in attr.meta_item_list().unwrap_or_else(ThinVec::new) {
@@ -315,7 +283,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         match &ty.kind {
             ast::TyKind::BareFn(bare_fn_ty) => {
                 // Function pointers cannot be `const`
-                self.check_extern(bare_fn_ty.ext);
                 self.check_late_bound_lifetime_defs(&bare_fn_ty.generic_params);
             }
             ast::TyKind::Never => {
@@ -418,9 +385,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_fn(&mut self, fn_kind: FnKind<'a>, span: Span, _: NodeId) {
-        if let Some(header) = fn_kind.header() {
+        if let Some(_header) = fn_kind.header() {
             // Stability of const fn methods are covered in `visit_assoc_item` below.
-            self.check_extern(header.ext);
         }
 
         if let FnKind::Closure(ast::ClosureBinder::For { generic_params, .. }, ..) = fn_kind {

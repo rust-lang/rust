@@ -14,8 +14,9 @@ LL | trait BB = Bar<{ 2 + 1 }>;
    |       this trait is not dyn compatible...
 help: consider using an opaque type instead
    |
-LL | fn foo(x: &impl BB) {}
-   |            ~~~~
+LL - fn foo(x: &dyn BB) {}
+LL + fn foo(x: &impl BB) {}
+   |
 
 error: aborting due to 1 previous error
 

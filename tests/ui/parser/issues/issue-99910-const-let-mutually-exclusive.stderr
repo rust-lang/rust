@@ -6,8 +6,9 @@ LL |     const let _FOO: i32 = 123;
    |
 help: remove `let`
    |
-LL |     const _FOO: i32 = 123;
-   |     ~~~~~
+LL -     const let _FOO: i32 = 123;
+LL +     const _FOO: i32 = 123;
+   |
 
 error: `const` and `let` are mutually exclusive
   --> $DIR/issue-99910-const-let-mutually-exclusive.rs:6:5
@@ -17,8 +18,9 @@ LL |     let const _BAR: i32 = 123;
    |
 help: remove `let`
    |
-LL |     const _BAR: i32 = 123;
-   |     ~~~~~
+LL -     let const _BAR: i32 = 123;
+LL +     const _BAR: i32 = 123;
+   |
 
 error: aborting due to 2 previous errors
 

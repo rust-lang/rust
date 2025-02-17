@@ -49,10 +49,12 @@ mod check_pointers;
 mod cost_checker;
 mod cross_crate_inline;
 mod deduce_param_attrs;
+mod elaborate_drop;
 mod errors;
 mod ffi_unwind_calls;
 mod lint;
 mod lint_tail_expr_drop_order;
+mod patch;
 mod shim;
 mod ssa;
 
@@ -135,7 +137,6 @@ declare_passes! {
         Initial,
         Final
     };
-    mod deduplicate_blocks : DeduplicateBlocks;
     mod deref_separator : Derefer;
     mod dest_prop : DestinationPropagation;
     pub mod dump_mir : Marker;
@@ -700,7 +701,6 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &nrvo::RenameReturnPlace,
             &simplify::SimplifyLocals::Final,
             &multiple_return_terminators::MultipleReturnTerminators,
-            &deduplicate_blocks::DeduplicateBlocks,
             &large_enums::EnumSizeOpt { discrepancy: 128 },
             // Some cleanup necessary at least for LLVM and potentially other codegen backends.
             &add_call_guards::CriticalCallEdges,

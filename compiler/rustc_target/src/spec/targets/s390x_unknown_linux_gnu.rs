@@ -1,6 +1,6 @@
 use rustc_abi::Endian;
 
-use crate::spec::{SanitizerSet, StackProbeType, Target, base};
+use crate::spec::{SanitizerSet, StackProbeType, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::linux_gnu::opts();
@@ -15,7 +15,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "s390x-unknown-linux-gnu".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("S390x Linux (kernel 3.2, glibc 2.17)".into()),
             tier: Some(2),
             host_tools: Some(true),

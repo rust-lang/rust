@@ -390,9 +390,6 @@ lint_improper_ctypes_only_phantomdata = composed only of `PhantomData`
 
 lint_improper_ctypes_opaque = opaque types have no C equivalent
 
-lint_improper_ctypes_pat_help = consider using the base type instead
-
-lint_improper_ctypes_pat_reason = pattern types have no C equivalent
 lint_improper_ctypes_slice_help = consider using a raw pointer instead
 
 lint_improper_ctypes_slice_reason = slices have no C equivalent
@@ -442,11 +439,11 @@ lint_invalid_crate_type_value = invalid `crate_type` value
     .suggestion = did you mean
 
 # FIXME: we should ordinalize $valid_up_to when we add support for doing so
-lint_invalid_from_utf8_checked = calls to `{$method}` with a invalid literal always return an error
+lint_invalid_from_utf8_checked = calls to `{$method}` with an invalid literal always return an error
     .label = the literal was valid UTF-8 up to the {$valid_up_to} bytes
 
 # FIXME: we should ordinalize $valid_up_to when we add support for doing so
-lint_invalid_from_utf8_unchecked = calls to `{$method}` with a invalid literal are undefined behavior
+lint_invalid_from_utf8_unchecked = calls to `{$method}` with an invalid literal are undefined behavior
     .label = the literal was valid UTF-8 up to the {$valid_up_to} bytes
 
 lint_invalid_nan_comparisons_eq_ne = incorrect NaN comparison, NaN cannot be directly compared to itself

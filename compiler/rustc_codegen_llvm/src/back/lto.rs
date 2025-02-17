@@ -606,10 +606,31 @@ pub(crate) fn run_pass_manager(
 
     // If this rustc version was build with enzyme/autodiff enabled, and if users applied the
     // `#[autodiff]` macro at least once, then we will later call llvm_optimize a second time.
-    let first_run = true;
     debug!("running llvm pm opt pipeline");
     unsafe {
-        write::llvm_optimize(cgcx, dcx, module, config, opt_level, opt_stage, first_run)?;
+        write::llvm_optimize(
+            cgcx,
+            dcx,
+            module,
+            config,
+            opt_level,
+            opt_stage,
+            write::AutodiffStage::DuringAD,
+        )?;
+    }
+    // FIXME(ZuseZ4): Make this more granular
+    if cfg!(llvm_enzyme) && !thin {
+        unsafe {
+            write::llvm_optimize(
+                cgcx,
+                dcx,
+                module,
+                config,
+                opt_level,
+                llvm::OptStage::FatLTO,
+                write::AutodiffStage::PostAD,
+            )?;
+        }
     }
     debug!("lto done");
     Ok(())
@@ -621,7 +642,7 @@ unsafe impl Send for ModuleBuffer {}
 unsafe impl Sync for ModuleBuffer {}
 
 impl ModuleBuffer {
-    pub fn new(m: &llvm::Module) -> ModuleBuffer {
+    pub(crate) fn new(m: &llvm::Module) -> ModuleBuffer {
         ModuleBuffer(unsafe { llvm::LLVMRustModuleBufferCreate(m) })
     }
 }
@@ -663,7 +684,7 @@ unsafe impl Send for ThinBuffer {}
 unsafe impl Sync for ThinBuffer {}
 
 impl ThinBuffer {
-    pub fn new(m: &llvm::Module, is_thin: bool, emit_summary: bool) -> ThinBuffer {
+    pub(crate) fn new(m: &llvm::Module, is_thin: bool, emit_summary: bool) -> ThinBuffer {
         unsafe {
             let buffer = llvm::LLVMRustThinLTOBufferCreate(m, is_thin, emit_summary);
             ThinBuffer(buffer)

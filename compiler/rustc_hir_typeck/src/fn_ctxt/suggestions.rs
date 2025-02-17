@@ -1813,7 +1813,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
             let owner = self.tcx.hir().enclosing_body_owner(expr.hir_id);
             if let ty::Param(param) = expected_ty.kind()
-                && let Some(generics) = self.tcx.hir().get_generics(owner)
+                && let Some(generics) = self.tcx.hir_get_generics(owner)
             {
                 suggest_constraining_type_params(
                     self.tcx,
@@ -1933,7 +1933,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ..
                     } = init
                 {
-                    let hir::Body { value: body_expr, .. } = self.tcx.hir().body(*body_id);
+                    let hir::Body { value: body_expr, .. } = self.tcx.hir_body(*body_id);
                     self.note_type_is_not_clone_inner_expr(body_expr)
                 } else {
                     expr

@@ -568,8 +568,7 @@ impl FileAttr {
 
         Err(io::const_error!(
             io::ErrorKind::Unsupported,
-            "creation time is not available on this platform \
-                            currently",
+            "creation time is not available on this platform currently",
         ))
     }
 
@@ -1459,11 +1458,11 @@ impl File {
             Some(time) if let Some(ts) = time.t.to_timespec() => Ok(ts),
             Some(time) if time > crate::sys::time::UNIX_EPOCH => Err(io::const_error!(
                 io::ErrorKind::InvalidInput,
-                "timestamp is too large to set as a file time"
+                "timestamp is too large to set as a file time",
             )),
             Some(_) => Err(io::const_error!(
                 io::ErrorKind::InvalidInput,
-                "timestamp is too small to set as a file time"
+                "timestamp is too small to set as a file time",
             )),
             None => Ok(libc::timespec { tv_sec: 0, tv_nsec: libc::UTIME_OMIT as _ }),
         };

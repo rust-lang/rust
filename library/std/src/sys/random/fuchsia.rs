@@ -4,7 +4,7 @@
 //! <https://fuchsia.dev/reference/syscalls/cprng_draw>.
 
 #[link(name = "zircon")]
-extern "C" {
+unsafe extern "C" {
     fn zx_cprng_draw(buffer: *mut u8, len: usize);
 }
 

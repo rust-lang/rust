@@ -1,5 +1,6 @@
 use crate::spec::{
-    LinkArgs, LinkerFlavor, PanicStrategy, RelocModel, Target, TargetOptions, base, cvs,
+    LinkArgs, LinkerFlavor, PanicStrategy, RelocModel, Target, TargetMetadata, TargetOptions, base,
+    cvs,
 };
 
 pub(crate) fn target() -> Target {
@@ -25,7 +26,7 @@ pub(crate) fn target() -> Target {
     };
     Target {
         llvm_target: "wasm32-unknown-emscripten".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("WebAssembly via Emscripten".into()),
             tier: Some(2),
             host_tools: Some(false),

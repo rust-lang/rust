@@ -28,8 +28,9 @@ LL |     fn one(self, _: isize) -> Foo { self }
    |        ^^^       --------
 help: provide the argument
    |
-LL |      .one(/* isize */)
-   |          ~~~~~~~~~~~~~
+LL -      .one()
+LL +      .one(/* isize */)
+   |
 
 error[E0061]: this method takes 2 arguments but 1 argument was supplied
   --> $DIR/method-call-err-msg.rs:15:7
@@ -44,8 +45,9 @@ LL |     fn two(self, _: isize, _: isize) -> Foo { self }
    |        ^^^                 --------
 help: provide the argument
    |
-LL |      .two(0, /* isize */);
-   |          ~~~~~~~~~~~~~~~~
+LL -      .two(0);
+LL +      .two(0, /* isize */);
+   |
 
 error[E0599]: `Foo` is not an iterator
   --> $DIR/method-call-err-msg.rs:19:7
@@ -82,8 +84,9 @@ LL |     fn three<T>(self, _: T, _: T, _: T) -> Foo { self }
    |        ^^^^^          ----  ----  ----
 help: provide the arguments
    |
-LL |     y.three::<usize>(/* usize */, /* usize */, /* usize */);
-   |                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     y.three::<usize>();
+LL +     y.three::<usize>(/* usize */, /* usize */, /* usize */);
+   |
 
 error: aborting due to 5 previous errors
 

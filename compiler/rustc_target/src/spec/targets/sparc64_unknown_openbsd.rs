@@ -1,6 +1,6 @@
 use rustc_abi::Endian;
 
-use crate::spec::{Cc, LinkerFlavor, Lld, Target, base};
+use crate::spec::{Cc, LinkerFlavor, Lld, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::openbsd::opts();
@@ -11,7 +11,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "sparc64-unknown-openbsd".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("OpenBSD/sparc64".into()),
             tier: Some(3),
             host_tools: Some(true),

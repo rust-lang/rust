@@ -8,7 +8,7 @@ use smallvec::SmallVec;
 
 use crate::ich::StableHashingContext;
 
-impl<'ctx> rustc_target::HashStableContext for StableHashingContext<'ctx> {}
+impl<'ctx> rustc_abi::HashStableContext for StableHashingContext<'ctx> {}
 impl<'ctx> rustc_ast::HashStableContext for StableHashingContext<'ctx> {}
 
 impl<'a> HashStable<StableHashingContext<'a>> for [hir::Attribute] {

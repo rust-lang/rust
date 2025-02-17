@@ -12,8 +12,9 @@ LL | const UNIVERSAL_GRAVITATIONAL_CONSTANT: f64 = 6.674e−11; // m³⋅kg⁻¹
    |
 help: Unicode character '−' (Minus Sign) looks like '-' (Minus/Hyphen), but it is not
    |
-LL | const UNIVERSAL_GRAVITATIONAL_CONSTANT: f64 = 6.674e-11; // m³⋅kg⁻¹⋅s⁻²
-   |                                                     ~
+LL - const UNIVERSAL_GRAVITATIONAL_CONSTANT: f64 = 6.674e−11; // m³⋅kg⁻¹⋅s⁻²
+LL + const UNIVERSAL_GRAVITATIONAL_CONSTANT: f64 = 6.674e-11; // m³⋅kg⁻¹⋅s⁻²
+   |
 
 error: aborting due to 2 previous errors
 

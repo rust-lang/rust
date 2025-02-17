@@ -8,8 +8,9 @@ LL |     fn f(a: dyn A) -> dyn A;
    |
 help: you might have meant to use `Self` to refer to the implementing type
    |
-LL |     fn f(a: Self) -> Self;
-   |             ~~~~     ~~~~
+LL -     fn f(a: dyn A) -> dyn A;
+LL +     fn f(a: Self) -> Self;
+   |
 
 error[E0038]: the trait `A` is not dyn compatible
   --> $DIR/dyn-incompatible-trait-should-use-self-2021.rs:4:13
@@ -36,8 +37,9 @@ LL |     fn f(a: dyn B) -> dyn B;
    |
 help: you might have meant to use `Self` to refer to the implementing type
    |
-LL |     fn f(a: Self) -> Self;
-   |             ~~~~     ~~~~
+LL -     fn f(a: dyn B) -> dyn B;
+LL +     fn f(a: Self) -> Self;
+   |
 
 error[E0038]: the trait `B` is not dyn compatible
   --> $DIR/dyn-incompatible-trait-should-use-self-2021.rs:9:13

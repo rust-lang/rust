@@ -9,8 +9,9 @@ LL |     Bar();
    |
 help: a unit struct with a similar name exists
    |
-LL |     Baz();
-   |     ~~~
+LL -     Bar();
+LL +     Baz();
+   |
 help: consider importing this function instead
    |
 LL + use foo2::Bar;
@@ -27,8 +28,9 @@ LL |     Bar();
    |
 help: a unit struct with a similar name exists
    |
-LL |     Baz();
-   |     ~~~
+LL -     Bar();
+LL +     Baz();
+   |
 help: consider importing this function
    |
 LL + use foo2::Bar;
@@ -45,8 +47,9 @@ LL |     let _x: Box<Bar>;
    |
 help: a struct with a similar name exists
    |
-LL |     let _x: Box<Baz>;
-   |                 ~~~
+LL -     let _x: Box<Bar>;
+LL +     let _x: Box<Baz>;
+   |
 help: consider importing this trait
    |
 LL + use foo1::Bar;

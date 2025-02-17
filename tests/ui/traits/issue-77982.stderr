@@ -52,8 +52,9 @@ LL |     let ips: Vec<_> = (0..100_000).map(|_| u32::from(0u32.into())).collect(
            - impl From<u8> for u32;
 help: try using a fully qualified path to specify the expected types
    |
-LL |     let ips: Vec<_> = (0..100_000).map(|_| u32::from(<u32 as Into<T>>::into(0u32))).collect();
-   |                                                      +++++++++++++++++++++++    ~
+LL -     let ips: Vec<_> = (0..100_000).map(|_| u32::from(0u32.into())).collect();
+LL +     let ips: Vec<_> = (0..100_000).map(|_| u32::from(<u32 as Into<T>>::into(0u32))).collect();
+   |
 
 error[E0283]: type annotations needed for `Box<_>`
   --> $DIR/issue-77982.rs:39:9

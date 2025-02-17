@@ -25,7 +25,7 @@ use libc::arc4random_buf;
     target_os = "vita", // See https://github.com/vitasdk/newlib/blob/b89e5bc183b516945f9ee07eef483ecb916e45ff/newlib/libc/include/stdlib.h#L74
 ))]
 #[cfg_attr(target_os = "haiku", link(name = "bsd"))]
-extern "C" {
+unsafe extern "C" {
     fn arc4random_buf(buf: *mut core::ffi::c_void, nbytes: libc::size_t);
 }
 

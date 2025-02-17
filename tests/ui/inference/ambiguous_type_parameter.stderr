@@ -6,8 +6,9 @@ LL |     InMemoryStore.get_raw(&String::default());
    |
 help: try using a fully qualified path to specify the expected types
    |
-LL |     <InMemoryStore as Store<String, HashMap<K, String>>>::get_raw(&InMemoryStore, &String::default());
-   |     +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++             ~
+LL -     InMemoryStore.get_raw(&String::default());
+LL +     <InMemoryStore as Store<String, HashMap<K, String>>>::get_raw(&InMemoryStore, &String::default());
+   |
 
 error: aborting due to 1 previous error
 

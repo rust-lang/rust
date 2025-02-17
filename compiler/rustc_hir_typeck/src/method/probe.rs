@@ -3,6 +3,7 @@ use std::cmp::max;
 use std::ops::Deref;
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::sso::SsoHashSet;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::HirId;
@@ -33,6 +34,7 @@ use rustc_trait_selection::traits::query::method_autoderef::{
     CandidateStep, MethodAutoderefBadTy, MethodAutoderefStepsResult,
 };
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCtxt};
+use rustc_type_ir::elaborate::supertrait_def_ids;
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 
@@ -224,6 +226,9 @@ pub(crate) struct Pick<'tcx> {
     /// to identify this method. Used only for deshadowing errors.
     /// Only applies for inherent impls.
     pub receiver_steps: Option<usize>,
+
+    /// Candidates that were shadowed by supertraits.
+    pub shadowed_candidates: Vec<ty::AssocItem>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -598,7 +603,7 @@ fn method_autoderef_steps<'tcx>(
                     unsize: false,
                     reachable_via_deref,
                 };
-                if ty.is_unsafe_ptr() {
+                if ty.is_raw_ptr() {
                     // all the subsequent steps will be from_unsafe_deref
                     reached_raw_pointer = true;
                 }
@@ -618,7 +623,7 @@ fn method_autoderef_steps<'tcx>(
                     unsize: false,
                     reachable_via_deref: true,
                 };
-                if ty.is_unsafe_ptr() {
+                if ty.is_raw_ptr() {
                     // all the subsequent steps will be from_unsafe_deref
                     reached_raw_pointer = true;
                 }
@@ -1634,6 +1639,17 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         }
 
         if applicable_candidates.len() > 1 {
+            // We collapse to a subtrait pick *after* filtering unstable candidates
+            // to make sure we don't prefer a unstable subtrait method over a stable
+            // supertrait method.
+            if self.tcx.features().supertrait_item_shadowing() {
+                if let Some(pick) =
+                    self.collapse_candidates_to_subtrait_pick(self_ty, &applicable_candidates)
+                {
+                    return Some(Ok(pick));
+                }
+            }
+
             let sources = candidates.iter().map(|p| self.candidate_source(p, self_ty)).collect();
             return Some(Err(MethodError::Ambiguity(sources)));
         }
@@ -1672,6 +1688,7 @@ impl<'tcx> Pick<'tcx> {
             self_ty,
             unstable_candidates: _,
             receiver_steps: _,
+            shadowed_candidates: _,
         } = *self;
         self_ty != other.self_ty || def_id != other.item.def_id
     }
@@ -2081,6 +2098,83 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             self_ty,
             unstable_candidates: vec![],
             receiver_steps: None,
+            shadowed_candidates: vec![],
+        })
+    }
+
+    /// Much like `collapse_candidates_to_trait_pick`, this method allows us to collapse
+    /// multiple conflicting picks if there is one pick whose trait container is a subtrait
+    /// of the trait containers of all of the other picks.
+    ///
+    /// This implements RFC #3624.
+    fn collapse_candidates_to_subtrait_pick(
+        &self,
+        self_ty: Ty<'tcx>,
+        probes: &[(&Candidate<'tcx>, ProbeResult)],
+    ) -> Option<Pick<'tcx>> {
+        let mut child_candidate = probes[0].0;
+        let mut child_trait = child_candidate.item.trait_container(self.tcx)?;
+        let mut supertraits: SsoHashSet<_> = supertrait_def_ids(self.tcx, child_trait).collect();
+
+        let mut remaining_candidates: Vec<_> = probes[1..].iter().map(|&(p, _)| p).collect();
+        while !remaining_candidates.is_empty() {
+            let mut made_progress = false;
+            let mut next_round = vec![];
+
+            for remaining_candidate in remaining_candidates {
+                let remaining_trait = remaining_candidate.item.trait_container(self.tcx)?;
+                if supertraits.contains(&remaining_trait) {
+                    made_progress = true;
+                    continue;
+                }
+
+                // This pick is not a supertrait of the `child_pick`.
+                // Check if it's a subtrait of the `child_pick`, instead.
+                // If it is, then it must have been a subtrait of every
+                // other pick we've eliminated at this point. It will
+                // take over at this point.
+                let remaining_trait_supertraits: SsoHashSet<_> =
+                    supertrait_def_ids(self.tcx, remaining_trait).collect();
+                if remaining_trait_supertraits.contains(&child_trait) {
+                    child_candidate = remaining_candidate;
+                    child_trait = remaining_trait;
+                    supertraits = remaining_trait_supertraits;
+                    made_progress = true;
+                    continue;
+                }
+
+                // `child_pick` is not a supertrait of this pick.
+                // Don't bail here, since we may be comparing two supertraits
+                // of a common subtrait. These two supertraits won't be related
+                // at all, but we will pick them up next round when we find their
+                // child as we continue iterating in this round.
+                next_round.push(remaining_candidate);
+            }
+
+            if made_progress {
+                // If we've made progress, iterate again.
+                remaining_candidates = next_round;
+            } else {
+                // Otherwise, we must have at least two candidates which
+                // are not related to each other at all.
+                return None;
+            }
+        }
+
+        Some(Pick {
+            item: child_candidate.item,
+            kind: TraitPick,
+            import_ids: child_candidate.import_ids.clone(),
+            autoderefs: 0,
+            autoref_or_ptr_adjustment: None,
+            self_ty,
+            unstable_candidates: vec![],
+            shadowed_candidates: probes
+                .iter()
+                .map(|(c, _)| c.item)
+                .filter(|item| item.def_id != child_candidate.item.def_id)
+                .collect(),
+            receiver_steps: None,
         })
     }
 
@@ -2378,6 +2472,7 @@ impl<'tcx> Candidate<'tcx> {
                 InherentImplCandidate { receiver_steps, .. } => Some(receiver_steps),
                 _ => None,
             },
+            shadowed_candidates: vec![],
         }
     }
 }

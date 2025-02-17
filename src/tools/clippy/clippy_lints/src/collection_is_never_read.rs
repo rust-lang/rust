@@ -118,7 +118,7 @@ fn has_no_read_access<'tcx, T: Visitable<'tcx>>(cx: &LateContext<'tcx>, id: HirI
             let is_read_in_closure_arg = args.iter().any(|arg| {
                 if let ExprKind::Closure(closure) = arg.kind
                     // To keep things simple, we only check the first param to see if its read.
-                    && let Body { params: [param, ..], value } = cx.tcx.hir().body(closure.body)
+                    && let Body { params: [param, ..], value } = cx.tcx.hir_body(closure.body)
                 {
                     !has_no_read_access(cx, param.hir_id, *value)
                 } else {

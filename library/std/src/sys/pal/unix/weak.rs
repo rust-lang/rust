@@ -31,7 +31,7 @@ use crate::{mem, ptr};
 pub(crate) macro weak {
     (fn $name:ident($($t:ty),*) -> $ret:ty) => (
         let ref $name: ExternWeak<unsafe extern "C" fn($($t),*) -> $ret> = {
-            extern "C" {
+            unsafe extern "C" {
                 #[linkage = "extern_weak"]
                 static $name: Option<unsafe extern "C" fn($($t),*) -> $ret>;
             }

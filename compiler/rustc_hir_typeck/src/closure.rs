@@ -51,7 +51,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
-        let body = tcx.hir().body(closure.body);
+        let body = tcx.hir_body(closure.body);
         let expr_def_id = closure.def_id;
 
         // It's always helpful for inference if we know the kind of

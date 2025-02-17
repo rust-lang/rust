@@ -6,16 +6,19 @@ LL |     let foo::Foo {} = foo::Foo::default();
    |
 help: include the missing field in the pattern and ignore the inaccessible fields
    |
-LL |     let foo::Foo { visible, .. } = foo::Foo::default();
-   |                  ~~~~~~~~~~~~~~~
+LL -     let foo::Foo {} = foo::Foo::default();
+LL +     let foo::Foo { visible, .. } = foo::Foo::default();
+   |
 help: if you don't care about this missing field, you can explicitly ignore it
    |
-LL |     let foo::Foo { visible: _, .. } = foo::Foo::default();
-   |                  ~~~~~~~~~~~~~~~~~~
+LL -     let foo::Foo {} = foo::Foo::default();
+LL +     let foo::Foo { visible: _, .. } = foo::Foo::default();
+   |
 help: or always ignore missing fields here
    |
-LL |     let foo::Foo { .. } = foo::Foo::default();
-   |                  ~~~~~~
+LL -     let foo::Foo {} = foo::Foo::default();
+LL +     let foo::Foo { .. } = foo::Foo::default();
+   |
 
 error: aborting due to 1 previous error
 

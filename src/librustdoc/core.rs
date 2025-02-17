@@ -378,7 +378,7 @@ pub(crate) fn run_global_ctxt(
         ctxt.external_traits.insert(sized_trait_did, sized_trait);
     }
 
-    debug!("crate: {:?}", tcx.hir().krate());
+    debug!("crate: {:?}", tcx.hir_crate(()));
 
     let mut krate = tcx.sess.time("clean_crate", || clean::krate(&mut ctxt));
 
@@ -464,10 +464,10 @@ impl<'tcx> EmitIgnoredResolutionErrors<'tcx> {
 impl<'tcx> Visitor<'tcx> for EmitIgnoredResolutionErrors<'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
         // We need to recurse into nested closures,
         // since those will fallback to the parent for type checking.
-        self.tcx.hir()
+        self.tcx
     }
 
     fn visit_path(&mut self, path: &Path<'tcx>, _id: HirId) {

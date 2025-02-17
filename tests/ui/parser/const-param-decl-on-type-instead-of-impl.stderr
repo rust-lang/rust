@@ -6,8 +6,9 @@ LL | impl NInts<const N: usize> {}
    |
 help: `const` parameters must be declared for the `impl`
    |
-LL | impl<const N: usize> NInts<N> {}
-   |     ++++++++++++++++       ~
+LL - impl NInts<const N: usize> {}
+LL + impl<const N: usize> NInts<N> {}
+   |
 
 error: unexpected `const` parameter declaration
   --> $DIR/const-param-decl-on-type-instead-of-impl.rs:8:17

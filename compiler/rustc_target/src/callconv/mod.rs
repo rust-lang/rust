@@ -6,7 +6,6 @@ use rustc_abi::{
     Size, TyAbiInterface, TyAndLayout,
 };
 use rustc_macros::HashStable_Generic;
-use rustc_span::Symbol;
 
 use crate::spec::{HasTargetSpec, HasWasmCAbiOpt, HasX86AbiOpt, WasmCAbi};
 
@@ -543,8 +542,6 @@ pub enum Conv {
 
     Msp430Intr,
 
-    PtxKernel,
-
     GpuKernel,
 
     X86Fastcall,
@@ -623,19 +620,8 @@ impl<'a, Ty: fmt::Display> fmt::Debug for FnAbi<'a, Ty> {
     }
 }
 
-/// Error produced by attempting to adjust a `FnAbi`, for a "foreign" ABI.
-#[derive(Copy, Clone, Debug, HashStable_Generic)]
-pub enum AdjustForForeignAbiError {
-    /// Target architecture doesn't support "foreign" (i.e. non-Rust) ABIs.
-    Unsupported { arch: Symbol, abi: ExternAbi },
-}
-
 impl<'a, Ty> FnAbi<'a, Ty> {
-    pub fn adjust_for_foreign_abi<C>(
-        &mut self,
-        cx: &C,
-        abi: ExternAbi,
-    ) -> Result<(), AdjustForForeignAbiError>
+    pub fn adjust_for_foreign_abi<C>(&mut self, cx: &C, abi: ExternAbi)
     where
         Ty: TyAbiInterface<'a, C> + Copy,
         C: HasDataLayout + HasTargetSpec + HasWasmCAbiOpt + HasX86AbiOpt,
@@ -644,7 +630,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             if let Some(arg) = self.args.first_mut() {
                 arg.pass_by_stack_offset(None);
             }
-            return Ok(());
+            return;
         }
 
         let spec = cx.target_spec();
@@ -701,7 +687,8 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "sparc" => sparc::compute_abi_info(cx, self),
             "sparc64" => sparc64::compute_abi_info(cx, self),
             "nvptx64" => {
-                if cx.target_spec().adjust_abi(abi, self.c_variadic) == ExternAbi::PtxKernel {
+                let abi = cx.target_spec().adjust_abi(abi, self.c_variadic);
+                if abi == ExternAbi::PtxKernel || abi == ExternAbi::GpuKernel {
                     nvptx64::compute_ptx_kernel_abi_info(cx, self)
                 } else {
                     nvptx64::compute_abi_info(self)
@@ -719,15 +706,8 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             }
             "wasm64" => wasm::compute_c_abi_info(cx, self),
             "bpf" => bpf::compute_abi_info(self),
-            arch => {
-                return Err(AdjustForForeignAbiError::Unsupported {
-                    arch: Symbol::intern(arch),
-                    abi,
-                });
-            }
+            arch => panic!("no lowering implemented for {arch}"),
         }
-
-        Ok(())
     }
 
     pub fn adjust_for_rust_abi<C>(&mut self, cx: &C, abi: ExternAbi)
@@ -860,7 +840,6 @@ impl FromStr for Conv {
             "CCmseNonSecureCall" => Ok(Conv::CCmseNonSecureCall),
             "CCmseNonSecureEntry" => Ok(Conv::CCmseNonSecureEntry),
             "Msp430Intr" => Ok(Conv::Msp430Intr),
-            "PtxKernel" => Ok(Conv::PtxKernel),
             "X86Fastcall" => Ok(Conv::X86Fastcall),
             "X86Intr" => Ok(Conv::X86Intr),
             "X86Stdcall" => Ok(Conv::X86Stdcall),

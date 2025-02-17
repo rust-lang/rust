@@ -40,6 +40,20 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 	--docblock-indent: 24px;
 	--font-family: "Source Serif 4", NanumBarunGothic, serif;
 	--font-family-code: "Source Code Pro", monospace;
+	--line-number-padding: 4px;
+	/* scraped examples icons (34x33px) */
+	--prev-arrow-image: url('data:image/svg+xml,<svg width="16" height="16" viewBox="0 0 16 16" \
+	enable-background="new 0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path fill="none" \
+	d="M8,3l-4,5l4,5m-4,-5h10" stroke="black" stroke-width="2"/></svg>');
+	--next-arrow-image: url('data:image/svg+xml,<svg width="16" height="16" viewBox="0 0 16 16" \
+	enable-background="new 0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path fill="none" \
+	d="M8,3l4,5l-4,5m4,-5h-10" stroke="black" stroke-width="2"/></svg>');
+	--expand-arrow-image: url('data:image/svg+xml,<svg width="16" height="16" viewBox="0 0 16 16" \
+	enable-background="new 0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path fill="none" \
+	d="M3,10l4,4l4,-4m-4,4M3,7l4,-4l4,4" stroke="black" stroke-width="2"/></svg>');
+	--collapse-arrow-image: url('data:image/svg+xml,<svg width="16" height="16" viewBox="0 0 16 16" \
+	enable-background="new 0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path fill="none" \
+	d="M3,8l4,4l4,-4m-4,4M3,4l4,4l4,-4" stroke="black" stroke-width="2"/></svg>');
 }
 
 :root.sans-serif {
@@ -450,9 +464,7 @@ pre.item-decl {
 
 .src .content pre {
 	padding: 20px;
-}
-.rustdoc.src .example-wrap .src-line-numbers  {
-	padding: 20px 0 20px 4px;
+	padding-left: 16px;
 }
 
 img {
@@ -901,29 +913,58 @@ both the code example and the line numbers, so we need to remove the radius in t
 	min-width: fit-content; /* prevent collapsing into nothing in truncated scraped examples */
 	flex-grow: 0;
 	text-align: right;
+	-moz-user-select: none;
 	-webkit-user-select: none;
+	-ms-user-select: none;
 	user-select: none;
 	padding: 14px 8px;
 	padding-right: 2px;
 	color: var(--src-line-numbers-span-color);
 }
 
-.rustdoc .scraped-example .example-wrap .src-line-numbers {
-	padding: 0;
+.example-wrap.digits-1 [data-nosnippet] {
+	width: calc(1ch + var(--line-number-padding) * 2);
 }
-.rustdoc .src-line-numbers pre {
-	padding: 14px 0;
+.example-wrap.digits-2 [data-nosnippet] {
+	width: calc(2ch + var(--line-number-padding) * 2);
 }
-.src-line-numbers a, .src-line-numbers span {
+.example-wrap.digits-3 [data-nosnippet] {
+	width: calc(3ch + var(--line-number-padding) * 2);
+}
+.example-wrap.digits-4 [data-nosnippet] {
+	width: calc(4ch + var(--line-number-padding) * 2);
+}
+.example-wrap.digits-5 [data-nosnippet] {
+	width: calc(5ch + var(--line-number-padding) * 2);
+}
+.example-wrap.digits-6 [data-nosnippet] {
+	width: calc(6ch + var(--line-number-padding) * 2);
+}
+.example-wrap.digits-7 [data-nosnippet] {
+	width: calc(7ch + var(--line-number-padding) * 2);
+}
+.example-wrap.digits-8 [data-nosnippet] {
+	width: calc(8ch + var(--line-number-padding) * 2);
+}
+.example-wrap.digits-9 [data-nosnippet] {
+	width: calc(9ch + var(--line-number-padding) * 2);
+}
+
+.example-wrap [data-nosnippet] {
 	color: var(--src-line-numbers-span-color);
-	padding: 0 8px;
+	text-align: right;
+	display: inline-block;
+	margin-right: 20px;
+	-moz-user-select: none;
+	-webkit-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+	padding: 0 4px;
 }
-.src-line-numbers :target {
-	background-color: transparent;
+.example-wrap [data-nosnippet]:target {
 	border-right: none;
-	padding: 0 8px;
 }
-.src-line-numbers .line-highlighted {
+.example-wrap .line-highlighted[data-nosnippet] {
 	background-color: var(--src-line-number-highlighted-background-color);
 }
 
@@ -1110,7 +1151,7 @@ because of the `[-]` element which would overlap with it. */
 }
 
 .main-heading a:hover,
-.example-wrap .rust a:hover,
+.example-wrap .rust a:hover:not([data-nosnippet]),
 .all-items a:hover,
 .docblock a:not(.scrape-help):not(.tooltip):hover:not(.doc-anchor),
 .item-table dd a:not(.scrape-help):not(.tooltip):hover,
@@ -1568,7 +1609,7 @@ pre.rust .doccomment {
 	color: var(--code-highlight-doc-comment-color);
 }
 
-.rustdoc.src .example-wrap pre.rust a {
+.rustdoc.src .example-wrap pre.rust a:not([data-nosnippet]) {
 	background: var(--codeblock-link-background);
 }
 
@@ -1701,7 +1742,10 @@ instead, we check that it's not a "finger" cursor.
 	padding: 2px 0 0 4px;
 }
 .example-wrap .button-holder .copy-button::before,
-.example-wrap .test-arrow::before {
+.example-wrap .test-arrow::before,
+.example-wrap .button-holder .prev::before,
+.example-wrap .button-holder .next::before,
+.example-wrap .button-holder .expand::before {
 	filter: var(--copy-path-img-filter);
 }
 .example-wrap .button-holder .copy-button::before {
@@ -1714,6 +1758,24 @@ instead, we check that it's not a "finger" cursor.
 .example-wrap .button-holder .copy-button.clicked::before {
 	content: var(--checkmark-image);
 	padding-right: 5px;
+}
+
+.example-wrap .button-holder .prev,
+.example-wrap .button-holder .next,
+.example-wrap .button-holder .expand {
+	line-height: 0px;
+}
+.example-wrap .button-holder .prev::before {
+	content: var(--prev-arrow-image);
+}
+.example-wrap .button-holder .next::before {
+	content: var(--next-arrow-image);
+}
+.example-wrap .button-holder .expand::before {
+	content: var(--expand-arrow-image);
+}
+.example-wrap .button-holder .expand.collapse::before {
+	content: var(--collapse-arrow-image);
 }
 
 .code-attribute {
@@ -1759,8 +1821,7 @@ instead, we check that it's not a "finger" cursor.
 	}
 }
 
-:target {
-	padding-right: 3px;
+:target:not([data-nosnippet]) {
 	background-color: var(--target-background-color);
 	border-right: 3px solid var(--target-border-color);
 }
@@ -1983,6 +2044,13 @@ button#toggle-all-docs:before {
 	width: 18px;
 	height: 18px;
 	filter: var(--settings-menu-filter);
+}
+
+button#toggle-all-docs.will-expand:before {
+	/* Custom arrow icon */
+	content: url('data:image/svg+xml,<svg width="18" height="18" viewBox="0 0 12 12" \
+	enable-background="new 0 0 12 12" xmlns="http://www.w3.org/2000/svg">\
+	<path d="M2,5l4,-4l4,4M2,7l4,4l4,-4" stroke="black" fill="none" stroke-width="2px"/></svg>');
 }
 
 #help-button > a:before {
@@ -3153,7 +3221,7 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	color: #ff7733;
 }
 
-:root[data-theme="ayu"] .src-line-numbers .line-highlighted {
+:root[data-theme="ayu"] a[data-nosnippet].line-highlighted {
 	color: #708090;
 	padding-right: 7px;
 	border-right: 1px solid #ffb44c;

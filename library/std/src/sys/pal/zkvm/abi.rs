@@ -18,7 +18,7 @@ pub mod fileno {
     pub const JOURNAL: u32 = 3;
 }
 
-extern "C" {
+unsafe extern "C" {
     // Wrappers around syscalls provided by risc0-zkvm-platform:
     pub fn sys_halt();
     pub fn sys_output(output_id: u32, output_value: u32);

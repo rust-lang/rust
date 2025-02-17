@@ -6,8 +6,8 @@ LL | fn test<const BAR: Bar>() {}
    |
 help: add `#[derive(ConstParamTy)]` to the struct
    |
+LL - enum Bar {
 LL + #[derive(ConstParamTy)]
-LL | enum Bar {
    |
 
 error: aborting due to 1 previous error

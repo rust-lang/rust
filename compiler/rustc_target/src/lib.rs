@@ -30,7 +30,7 @@ pub mod target_features;
 #[cfg(test)]
 mod tests;
 
-pub use rustc_abi::HashStableContext;
+use rustc_abi::HashStableContext;
 
 /// The name of rustc's own place to organize libraries.
 ///

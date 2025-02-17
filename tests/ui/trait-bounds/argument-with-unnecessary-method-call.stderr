@@ -14,8 +14,9 @@ LL | fn qux(_: impl From<Bar>) {}
    |                ^^^^^^^^^ required by this bound in `qux`
 help: try using a fully qualified path to specify the expected types
    |
-LL |     qux(<Bar as Into<T>>::into(Bar));
-   |         +++++++++++++++++++++++   ~
+LL -     qux(Bar.into());
+LL +     qux(<Bar as Into<T>>::into(Bar));
+   |
 help: consider removing this method call, as the receiver has type `Bar` and `Bar: From<Bar>` trivially holds
    |
 LL -     qux(Bar.into());

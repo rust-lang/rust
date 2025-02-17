@@ -10,7 +10,7 @@
 //! This target is more or less managed by the Rust and WebAssembly Working
 //! Group nowadays at <https://github.com/rustwasm>.
 
-use crate::spec::{Cc, LinkerFlavor, Target, base};
+use crate::spec::{Cc, LinkerFlavor, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut options = base::wasm::options();
@@ -36,7 +36,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "wasm32-unknown-unknown".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("WebAssembly".into()),
             tier: Some(2),
             host_tools: Some(false),

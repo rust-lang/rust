@@ -4531,7 +4531,7 @@ impl<T> [T] {
     /// to single elements, while if passed an array of ranges it gives back an array of
     /// mutable references to slices.
     ///
-    /// For a safe alternative see [`get_many_mut`].
+    /// For a safe alternative see [`get_disjoint_mut`].
     ///
     /// # Safety
     ///
@@ -4541,19 +4541,17 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(get_many_mut)]
-    ///
     /// let x = &mut [1, 2, 4];
     ///
     /// unsafe {
-    ///     let [a, b] = x.get_many_unchecked_mut([0, 2]);
+    ///     let [a, b] = x.get_disjoint_unchecked_mut([0, 2]);
     ///     *a *= 10;
     ///     *b *= 100;
     /// }
     /// assert_eq!(x, &[10, 2, 400]);
     ///
     /// unsafe {
-    ///     let [a, b] = x.get_many_unchecked_mut([0..1, 1..3]);
+    ///     let [a, b] = x.get_disjoint_unchecked_mut([0..1, 1..3]);
     ///     a[0] = 8;
     ///     b[0] = 88;
     ///     b[1] = 888;
@@ -4561,7 +4559,7 @@ impl<T> [T] {
     /// assert_eq!(x, &[8, 88, 888]);
     ///
     /// unsafe {
-    ///     let [a, b] = x.get_many_unchecked_mut([1..=2, 0..=0]);
+    ///     let [a, b] = x.get_disjoint_unchecked_mut([1..=2, 0..=0]);
     ///     a[0] = 11;
     ///     a[1] = 111;
     ///     b[0] = 1;
@@ -4569,16 +4567,16 @@ impl<T> [T] {
     /// assert_eq!(x, &[1, 11, 111]);
     /// ```
     ///
-    /// [`get_many_mut`]: slice::get_many_mut
+    /// [`get_disjoint_mut`]: slice::get_disjoint_mut
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
-    #[unstable(feature = "get_many_mut", issue = "104642")]
+    #[stable(feature = "get_many_mut", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
-    pub unsafe fn get_many_unchecked_mut<I, const N: usize>(
+    pub unsafe fn get_disjoint_unchecked_mut<I, const N: usize>(
         &mut self,
         indices: [I; N],
     ) -> [&mut I::Output; N]
     where
-        I: GetManyMutIndex + SliceIndex<Self>,
+        I: GetDisjointMutIndex + SliceIndex<Self>,
     {
         // NB: This implementation is written as it is because any variation of
         // `indices.map(|i| self.get_unchecked_mut(i))` would make miri unhappy,
@@ -4617,42 +4615,40 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(get_many_mut)]
-    ///
     /// let v = &mut [1, 2, 3];
-    /// if let Ok([a, b]) = v.get_many_mut([0, 2]) {
+    /// if let Ok([a, b]) = v.get_disjoint_mut([0, 2]) {
     ///     *a = 413;
     ///     *b = 612;
     /// }
     /// assert_eq!(v, &[413, 2, 612]);
     ///
-    /// if let Ok([a, b]) = v.get_many_mut([0..1, 1..3]) {
+    /// if let Ok([a, b]) = v.get_disjoint_mut([0..1, 1..3]) {
     ///     a[0] = 8;
     ///     b[0] = 88;
     ///     b[1] = 888;
     /// }
     /// assert_eq!(v, &[8, 88, 888]);
     ///
-    /// if let Ok([a, b]) = v.get_many_mut([1..=2, 0..=0]) {
+    /// if let Ok([a, b]) = v.get_disjoint_mut([1..=2, 0..=0]) {
     ///     a[0] = 11;
     ///     a[1] = 111;
     ///     b[0] = 1;
     /// }
     /// assert_eq!(v, &[1, 11, 111]);
     /// ```
-    #[unstable(feature = "get_many_mut", issue = "104642")]
+    #[stable(feature = "get_many_mut", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
-    pub fn get_many_mut<I, const N: usize>(
+    pub fn get_disjoint_mut<I, const N: usize>(
         &mut self,
         indices: [I; N],
-    ) -> Result<[&mut I::Output; N], GetManyMutError>
+    ) -> Result<[&mut I::Output; N], GetDisjointMutError>
     where
-        I: GetManyMutIndex + SliceIndex<Self>,
+        I: GetDisjointMutIndex + SliceIndex<Self>,
     {
-        get_many_check_valid(&indices, self.len())?;
-        // SAFETY: The `get_many_check_valid()` call checked that all indices
+        get_disjoint_check_valid(&indices, self.len())?;
+        // SAFETY: The `get_disjoint_check_valid()` call checked that all indices
         // are disjunct and in bounds.
-        unsafe { Ok(self.get_many_unchecked_mut(indices)) }
+        unsafe { Ok(self.get_disjoint_unchecked_mut(indices)) }
     }
 
     /// Returns the index that an element reference points to.
@@ -4994,26 +4990,26 @@ impl<T, const N: usize> SlicePattern for [T; N] {
 /// This will do `binomial(N + 1, 2) = N * (N + 1) / 2 = 0, 1, 3, 6, 10, ..`
 /// comparison operations.
 #[inline]
-fn get_many_check_valid<I: GetManyMutIndex, const N: usize>(
+fn get_disjoint_check_valid<I: GetDisjointMutIndex, const N: usize>(
     indices: &[I; N],
     len: usize,
-) -> Result<(), GetManyMutError> {
+) -> Result<(), GetDisjointMutError> {
     // NB: The optimizer should inline the loops into a sequence
     // of instructions without additional branching.
     for (i, idx) in indices.iter().enumerate() {
         if !idx.is_in_bounds(len) {
-            return Err(GetManyMutError::IndexOutOfBounds);
+            return Err(GetDisjointMutError::IndexOutOfBounds);
         }
         for idx2 in &indices[..i] {
             if idx.is_overlapping(idx2) {
-                return Err(GetManyMutError::OverlappingIndices);
+                return Err(GetDisjointMutError::OverlappingIndices);
             }
         }
     }
     Ok(())
 }
 
-/// The error type returned by [`get_many_mut`][`slice::get_many_mut`].
+/// The error type returned by [`get_disjoint_mut`][`slice::get_disjoint_mut`].
 ///
 /// It indicates one of two possible errors:
 /// - An index is out-of-bounds.
@@ -5023,74 +5019,75 @@ fn get_many_check_valid<I: GetManyMutIndex, const N: usize>(
 /// # Examples
 ///
 /// ```
-/// #![feature(get_many_mut)]
-/// use std::slice::GetManyMutError;
+/// use std::slice::GetDisjointMutError;
 ///
 /// let v = &mut [1, 2, 3];
-/// assert_eq!(v.get_many_mut([0, 999]), Err(GetManyMutError::IndexOutOfBounds));
-/// assert_eq!(v.get_many_mut([1, 1]), Err(GetManyMutError::OverlappingIndices));
+/// assert_eq!(v.get_disjoint_mut([0, 999]), Err(GetDisjointMutError::IndexOutOfBounds));
+/// assert_eq!(v.get_disjoint_mut([1, 1]), Err(GetDisjointMutError::OverlappingIndices));
 /// ```
-#[unstable(feature = "get_many_mut", issue = "104642")]
+#[stable(feature = "get_many_mut", since = "CURRENT_RUSTC_VERSION")]
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum GetManyMutError {
+pub enum GetDisjointMutError {
     /// An index provided was out-of-bounds for the slice.
     IndexOutOfBounds,
     /// Two indices provided were overlapping.
     OverlappingIndices,
 }
 
-#[unstable(feature = "get_many_mut", issue = "104642")]
-impl fmt::Display for GetManyMutError {
+#[stable(feature = "get_many_mut", since = "CURRENT_RUSTC_VERSION")]
+impl fmt::Display for GetDisjointMutError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let msg = match self {
-            GetManyMutError::IndexOutOfBounds => "an index is out of bounds",
-            GetManyMutError::OverlappingIndices => "there were overlapping indices",
+            GetDisjointMutError::IndexOutOfBounds => "an index is out of bounds",
+            GetDisjointMutError::OverlappingIndices => "there were overlapping indices",
         };
         fmt::Display::fmt(msg, f)
     }
 }
 
-mod private_get_many_mut_index {
+mod private_get_disjoint_mut_index {
     use super::{Range, RangeInclusive, range};
 
-    #[unstable(feature = "get_many_mut_helpers", issue = "none")]
+    #[unstable(feature = "get_disjoint_mut_helpers", issue = "none")]
     pub trait Sealed {}
 
-    #[unstable(feature = "get_many_mut_helpers", issue = "none")]
+    #[unstable(feature = "get_disjoint_mut_helpers", issue = "none")]
     impl Sealed for usize {}
-    #[unstable(feature = "get_many_mut_helpers", issue = "none")]
+    #[unstable(feature = "get_disjoint_mut_helpers", issue = "none")]
     impl Sealed for Range<usize> {}
-    #[unstable(feature = "get_many_mut_helpers", issue = "none")]
+    #[unstable(feature = "get_disjoint_mut_helpers", issue = "none")]
     impl Sealed for RangeInclusive<usize> {}
-    #[unstable(feature = "get_many_mut_helpers", issue = "none")]
+    #[unstable(feature = "get_disjoint_mut_helpers", issue = "none")]
     impl Sealed for range::Range<usize> {}
-    #[unstable(feature = "get_many_mut_helpers", issue = "none")]
+    #[unstable(feature = "get_disjoint_mut_helpers", issue = "none")]
     impl Sealed for range::RangeInclusive<usize> {}
 }
 
-/// A helper trait for `<[T]>::get_many_mut()`.
+/// A helper trait for `<[T]>::get_disjoint_mut()`.
 ///
 /// # Safety
 ///
 /// If `is_in_bounds()` returns `true` and `is_overlapping()` returns `false`,
 /// it must be safe to index the slice with the indices.
-#[unstable(feature = "get_many_mut_helpers", issue = "none")]
-pub unsafe trait GetManyMutIndex: Clone + private_get_many_mut_index::Sealed {
+#[unstable(feature = "get_disjoint_mut_helpers", issue = "none")]
+pub unsafe trait GetDisjointMutIndex:
+    Clone + private_get_disjoint_mut_index::Sealed
+{
     /// Returns `true` if `self` is in bounds for `len` slice elements.
-    #[unstable(feature = "get_many_mut_helpers", issue = "none")]
+    #[unstable(feature = "get_disjoint_mut_helpers", issue = "none")]
     fn is_in_bounds(&self, len: usize) -> bool;
 
     /// Returns `true` if `self` overlaps with `other`.
     ///
     /// Note that we don't consider zero-length ranges to overlap at the beginning or the end,
     /// but do consider them to overlap in the middle.
-    #[unstable(feature = "get_many_mut_helpers", issue = "none")]
+    #[unstable(feature = "get_disjoint_mut_helpers", issue = "none")]
     fn is_overlapping(&self, other: &Self) -> bool;
 }
 
-#[unstable(feature = "get_many_mut_helpers", issue = "none")]
+#[unstable(feature = "get_disjoint_mut_helpers", issue = "none")]
 // SAFETY: We implement `is_in_bounds()` and `is_overlapping()` correctly.
-unsafe impl GetManyMutIndex for usize {
+unsafe impl GetDisjointMutIndex for usize {
     #[inline]
     fn is_in_bounds(&self, len: usize) -> bool {
         *self < len
@@ -5102,9 +5099,9 @@ unsafe impl GetManyMutIndex for usize {
     }
 }
 
-#[unstable(feature = "get_many_mut_helpers", issue = "none")]
+#[unstable(feature = "get_disjoint_mut_helpers", issue = "none")]
 // SAFETY: We implement `is_in_bounds()` and `is_overlapping()` correctly.
-unsafe impl GetManyMutIndex for Range<usize> {
+unsafe impl GetDisjointMutIndex for Range<usize> {
     #[inline]
     fn is_in_bounds(&self, len: usize) -> bool {
         (self.start <= self.end) & (self.end <= len)
@@ -5116,9 +5113,9 @@ unsafe impl GetManyMutIndex for Range<usize> {
     }
 }
 
-#[unstable(feature = "get_many_mut_helpers", issue = "none")]
+#[unstable(feature = "get_disjoint_mut_helpers", issue = "none")]
 // SAFETY: We implement `is_in_bounds()` and `is_overlapping()` correctly.
-unsafe impl GetManyMutIndex for RangeInclusive<usize> {
+unsafe impl GetDisjointMutIndex for RangeInclusive<usize> {
     #[inline]
     fn is_in_bounds(&self, len: usize) -> bool {
         (self.start <= self.end) & (self.end < len)
@@ -5130,9 +5127,9 @@ unsafe impl GetManyMutIndex for RangeInclusive<usize> {
     }
 }
 
-#[unstable(feature = "get_many_mut_helpers", issue = "none")]
+#[unstable(feature = "get_disjoint_mut_helpers", issue = "none")]
 // SAFETY: We implement `is_in_bounds()` and `is_overlapping()` correctly.
-unsafe impl GetManyMutIndex for range::Range<usize> {
+unsafe impl GetDisjointMutIndex for range::Range<usize> {
     #[inline]
     fn is_in_bounds(&self, len: usize) -> bool {
         Range::from(*self).is_in_bounds(len)
@@ -5144,9 +5141,9 @@ unsafe impl GetManyMutIndex for range::Range<usize> {
     }
 }
 
-#[unstable(feature = "get_many_mut_helpers", issue = "none")]
+#[unstable(feature = "get_disjoint_mut_helpers", issue = "none")]
 // SAFETY: We implement `is_in_bounds()` and `is_overlapping()` correctly.
-unsafe impl GetManyMutIndex for range::RangeInclusive<usize> {
+unsafe impl GetDisjointMutIndex for range::RangeInclusive<usize> {
     #[inline]
     fn is_in_bounds(&self, len: usize) -> bool {
         RangeInclusive::from(*self).is_in_bounds(len)

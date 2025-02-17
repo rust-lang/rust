@@ -7,8 +7,9 @@ LL |     fn f(a: A) -> A;
    = note: `A` it is dyn-incompatible, so it can't be `dyn`
 help: use a new generic type parameter, constrained by `A`
    |
-LL |     fn f<T: A>(a: T) -> A;
-   |         ++++++    ~
+LL -     fn f(a: A) -> A;
+LL +     fn f<T: A>(a: T) -> A;
+   |
 help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
    |
 LL |     fn f(a: impl A) -> A;
@@ -34,8 +35,9 @@ LL |     fn f(b: B) -> B;
    = note: `B` it is dyn-incompatible, so it can't be `dyn`
 help: use a new generic type parameter, constrained by `B`
    |
-LL |     fn f<T: B>(b: T) -> B;
-   |         ++++++    ~
+LL -     fn f(b: B) -> B;
+LL +     fn f<T: B>(b: T) -> B;
+   |
 help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
    |
 LL |     fn f(b: impl B) -> B;
@@ -61,8 +63,9 @@ LL |     fn f(&self, c: C) -> C;
    = note: `C` it is dyn-incompatible, so it can't be `dyn`
 help: use a new generic type parameter, constrained by `C`
    |
-LL |     fn f<T: C>(&self, c: T) -> C;
-   |         ++++++           ~
+LL -     fn f(&self, c: C) -> C;
+LL +     fn f<T: C>(&self, c: T) -> C;
+   |
 help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
    |
 LL |     fn f(&self, c: impl C) -> C;
@@ -89,8 +92,9 @@ LL |     fn f(a: A) -> A;
    |
 help: you might have meant to use `Self` to refer to the implementing type
    |
-LL |     fn f(a: Self) -> Self;
-   |             ~~~~     ~~~~
+LL -     fn f(a: A) -> A;
+LL +     fn f(a: Self) -> Self;
+   |
 
 error: associated item referring to unboxed trait object for its own trait
   --> $DIR/dyn-incompatible-trait-should-use-self-2021-without-dyn.rs:10:13
@@ -102,8 +106,9 @@ LL |     fn f(b: B) -> B;
    |
 help: you might have meant to use `Self` to refer to the implementing type
    |
-LL |     fn f(b: Self) -> Self;
-   |             ~~~~     ~~~~
+LL -     fn f(b: B) -> B;
+LL +     fn f(b: Self) -> Self;
+   |
 
 error: associated item referring to unboxed trait object for its own trait
   --> $DIR/dyn-incompatible-trait-should-use-self-2021-without-dyn.rs:16:20
@@ -115,8 +120,9 @@ LL |     fn f(&self, c: C) -> C;
    |
 help: you might have meant to use `Self` to refer to the implementing type
    |
-LL |     fn f(&self, c: Self) -> Self;
-   |                    ~~~~     ~~~~
+LL -     fn f(&self, c: C) -> C;
+LL +     fn f(&self, c: Self) -> Self;
+   |
 
 error: aborting due to 9 previous errors
 

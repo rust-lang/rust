@@ -12,8 +12,9 @@ LL | fn foo(x: &mut Vec<&'_ u8>, y: &'_ u8) { x.push(y); }
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 help: consider introducing a named lifetime parameter
    |
-LL | fn foo<'a>(x: &mut Vec<&'a u8>, y: &'a u8) { x.push(y); }
-   |       ++++              ~~          ~~
+LL - fn foo(x: &mut Vec<&'_ u8>, y: &'_ u8) { x.push(y); }
+LL + fn foo<'a>(x: &mut Vec<&'a u8>, y: &'a u8) { x.push(y); }
+   |
 
 error: aborting due to 1 previous error
 
