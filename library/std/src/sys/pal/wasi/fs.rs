@@ -517,6 +517,10 @@ impl File {
         self.fd.seek(pos)
     }
 
+    pub fn size(&self) -> Option<io::Result<u64>> {
+        None
+    }
+
     pub fn duplicate(&self) -> io::Result<File> {
         // https://github.com/CraneStation/wasmtime/blob/master/docs/WASI-rationale.md#why-no-dup
         unsupported()
