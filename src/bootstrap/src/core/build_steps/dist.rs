@@ -21,7 +21,7 @@ use tracing::instrument;
 
 use crate::core::build_steps::doc::DocumentationFormat;
 use crate::core::build_steps::tool::{self, Tool};
-use crate::core::build_steps::vendor::default_paths_to_vendor;
+use crate::core::build_steps::vendor::{VENDOR_DIR, Vendor};
 use crate::core::build_steps::{compile, llvm};
 use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
@@ -1052,19 +1052,6 @@ impl Step for PlainSourceTarball {
         if builder.config.dist_vendor {
             builder.require_and_update_all_submodules();
 
-            // Vendor all Cargo dependencies
-            let mut cmd = command(&builder.initial_cargo);
-            cmd.arg("vendor").arg("--versioned-dirs");
-
-            for (p, _) in default_paths_to_vendor(builder) {
-                cmd.arg("--sync").arg(p);
-            }
-
-            cmd
-                // Will read the libstd Cargo.toml which uses the unstable `public-dependency` feature.
-                .env("RUSTC_BOOTSTRAP", "1")
-                .current_dir(plain_dst_src);
-
             // Vendor packages that are required by opt-dist to collect PGO profiles.
             let pkgs_for_pgo_training = build_helper::LLVM_PGO_CRATES
                 .iter()
@@ -1076,15 +1063,18 @@ impl Step for PlainSourceTarball {
                     manifest_path.push("Cargo.toml");
                     manifest_path
                 });
-            for manifest_path in pkgs_for_pgo_training {
-                cmd.arg("--sync").arg(manifest_path);
-            }
 
-            let config = cmd.run_capture(builder).stdout();
+            // Vendor all Cargo dependencies
+            let vendor = builder.ensure(Vendor {
+                sync_args: pkgs_for_pgo_training.collect(),
+                versioned_dirs: true,
+                root_dir: plain_dst_src.into(),
+                output_dir: VENDOR_DIR.into(),
+            });
 
             let cargo_config_dir = plain_dst_src.join(".cargo");
             builder.create_dir(&cargo_config_dir);
-            builder.create(&cargo_config_dir.join("config.toml"), &config);
+            builder.create(&cargo_config_dir.join("config.toml"), &vendor.config);
         }
 
         // Delete extraneous directories
