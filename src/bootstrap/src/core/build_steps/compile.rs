@@ -1341,7 +1341,7 @@ pub fn rustc_cargo_env(
 
     // Build jemalloc on AArch64 with support for page sizes up to 64K
     // See: https://github.com/rust-lang/rust/pull/135081
-    if builder.config.jemalloc
+    if builder.config.jemalloc(target)
         && target.starts_with("aarch64")
         && env::var_os("JEMALLOC_SYS_WITH_LG_PAGE").is_none()
     {

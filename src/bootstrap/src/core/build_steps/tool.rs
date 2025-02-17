@@ -654,7 +654,7 @@ impl Step for Rustdoc {
         // to build rustdoc.
         //
         let mut features = Vec::new();
-        if builder.config.jemalloc {
+        if builder.config.jemalloc(target) {
             features.push("jemalloc".to_string());
         }
 
