@@ -1,6 +1,5 @@
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_middle::mir::interpret::Scalar;
-use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty;
