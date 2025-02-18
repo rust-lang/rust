@@ -13,13 +13,13 @@ use crate::os::hermit::io::FromRawFd;
 use crate::os::unix::io::FromRawFd;
 use crate::sys::fd::FileDesc;
 
-pub struct Stdin(());
-pub struct Stdout(());
-pub struct Stderr(());
+pub struct Stdin;
+pub struct Stdout;
+pub struct Stderr;
 
 impl Stdin {
     pub const fn new() -> Stdin {
-        Stdin(())
+        Stdin
     }
 }
 
@@ -45,7 +45,7 @@ impl io::Read for Stdin {
 
 impl Stdout {
     pub const fn new() -> Stdout {
-        Stdout(())
+        Stdout
     }
 }
 
@@ -71,7 +71,7 @@ impl io::Write for Stdout {
 
 impl Stderr {
     pub const fn new() -> Stderr {
-        Stderr(())
+        Stderr
     }
 }
 
