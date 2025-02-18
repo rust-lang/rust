@@ -47,6 +47,7 @@
 +         Deinit(_8);
 +         copy_nonoverlapping(dst = copy _9, src = copy _11, count = copy _7);
 +         StorageDead(_4);
++         nop;
           StorageDead(_2);
 -         _0 = move _1;
 +         StorageLive(_12);
@@ -61,6 +62,7 @@
 +         Deinit(_16);
 +         copy_nonoverlapping(dst = copy _17, src = copy _19, count = copy _15);
 +         StorageDead(_12);
++         nop;
           StorageDead(_1);
           return;
       }
