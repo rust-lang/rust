@@ -65,8 +65,6 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         Ty: TyAbiInterface<'a, C> + Copy,
     {
         match self.backend_repr {
-            BackendRepr::Uninhabited => Err(Heterogeneous),
-
             // The primitive for this algorithm.
             BackendRepr::Scalar(scalar) => {
                 let kind = match scalar.primitive() {
