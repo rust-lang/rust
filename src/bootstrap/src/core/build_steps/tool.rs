@@ -1,3 +1,14 @@
+//! This module handles building and managing various tools in bootstrap
+//! build system.
+//!
+//! **What It Does**
+//! - Defines how tools are built, configured and installed.
+//! - Manages tool dependencies and build steps.
+//! - Copies built tool binaries to the correct locations.
+//!
+//! Each Rust tool **MUST** utilize `ToolBuild` inside their `Step` logic,
+//! return `ToolBuildResult` and should never prepare `cargo` invocations manually.
+
 use std::path::PathBuf;
 use std::{env, fs};
 
@@ -64,10 +75,16 @@ impl Builder<'_> {
     }
 }
 
+/// Result of the tool build process. Each `Step` in this module is responsible
+/// for using this type as `type Output = ToolBuildResult;`
 #[derive(Clone)]
 pub struct ToolBuildResult {
+    /// Executable path of the corresponding tool that was built.
     pub tool_path: PathBuf,
+    /// Compiler used to build the tool. For non-`ToolRustc` tools this is equal to `target_compiler`.
+    /// For `ToolRustc` this is one stage before of the `target_compiler`.
     pub build_compiler: Compiler,
+    /// Target compiler passed to `Step`.
     pub target_compiler: Compiler,
 }
 
@@ -274,6 +291,7 @@ pub fn prepare_tool_cargo(
     cargo
 }
 
+/// Handle stage-off logic for `ToolRustc` tools when necessary.
 pub(crate) fn get_tool_rustc_compiler(
     builder: &Builder<'_>,
     target_compiler: Compiler,
