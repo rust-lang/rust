@@ -28,6 +28,9 @@ hir_typeck_cannot_cast_to_bool = cannot cast `{$expr_ty}` as `bool`
     .help = compare with zero instead
     .label = unsupported cast
 
+hir_typeck_cant_dereference = type `{$ty}` cannot be dereferenced
+hir_typeck_cant_dereference_label = can't be dereferenced
+
 hir_typeck_cast_enum_drop = cannot cast enum `{$expr_ty}` into integer `{$cast_ty}` because it implements `Drop`
 
 hir_typeck_cast_thin_pointer_to_wide_pointer = cannot cast thin pointer `{$expr_ty}` to wide pointer `{$cast_ty}`

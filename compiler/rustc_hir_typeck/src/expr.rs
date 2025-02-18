@@ -44,9 +44,9 @@ use crate::coercion::{CoerceMany, DynamicCoerceMany};
 use crate::errors::{
     AddressOfTemporaryTaken, BaseExpressionDoubleDot, BaseExpressionDoubleDotAddExpr,
     BaseExpressionDoubleDotEnableDefaultFieldValues, BaseExpressionDoubleDotRemove,
-    FieldMultiplySpecifiedInInitializer, FunctionalRecordUpdateOnNonStruct, HelpUseLatestEdition,
-    ReturnLikeStatementKind, ReturnStmtOutsideOfFnBody, StructExprNonExhaustive,
-    TypeMismatchFruTypo, YieldExprOutsideOfCoroutine,
+    CantDereference, FieldMultiplySpecifiedInInitializer, FunctionalRecordUpdateOnNonStruct,
+    HelpUseLatestEdition, ReturnLikeStatementKind, ReturnStmtOutsideOfFnBody,
+    StructExprNonExhaustive, TypeMismatchFruTypo, YieldExprOutsideOfCoroutine,
 };
 use crate::{
     BreakableCtxt, CoroutineTypes, Diverges, FnCtxt, Needs, cast, fatally_break_rust,
@@ -606,13 +606,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if let Some(ty) = self.lookup_derefing(expr, oprnd, oprnd_t) {
                         oprnd_t = ty;
                     } else {
-                        let mut err = type_error_struct!(
-                            self.dcx(),
-                            expr.span,
-                            oprnd_t,
-                            E0614,
-                            "type `{oprnd_t}` cannot be dereferenced",
-                        );
+                        let mut err =
+                            self.dcx().create_err(CantDereference { span: expr.span, ty: oprnd_t });
                         let sp = tcx.sess.source_map().start_point(expr.span).with_parent(None);
                         if let Some(sp) =
                             tcx.sess.psess.ambiguous_block_expr_parse.borrow().get(&sp)
