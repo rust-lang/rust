@@ -10,6 +10,7 @@ note: required because it appears within the type `Foo`
    |
 LL | pub struct Foo {
    |            ^^^
+   = note: statics and constants must have a statically known size
 
 error[E0308]: mismatched types
   --> $DIR/unsized_type2.rs:14:45
