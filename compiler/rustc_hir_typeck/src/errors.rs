@@ -91,7 +91,7 @@ pub(crate) enum ReturnLikeStatementKind {
 }
 
 impl IntoDiagArg for ReturnLikeStatementKind {
-    fn into_diag_arg(self) -> DiagArgValue {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
         let kind = match self {
             Self::Return => "return",
             Self::Become => "become",
@@ -456,10 +456,11 @@ impl HelpUseLatestEdition {
 
 #[derive(Diagnostic)]
 #[diag(hir_typeck_invalid_callee, code = E0618)]
-pub(crate) struct InvalidCallee {
+pub(crate) struct InvalidCallee<'tcx> {
     #[primary_span]
     pub span: Span,
-    pub ty: String,
+    pub ty: Ty<'tcx>,
+    pub found: String,
 }
 
 #[derive(Diagnostic)]
@@ -469,7 +470,7 @@ pub(crate) struct IntToWide<'tcx> {
     #[label(hir_typeck_int_to_fat_label)]
     pub span: Span,
     pub metadata: &'tcx str,
-    pub expr_ty: String,
+    pub expr_ty: Ty<'tcx>,
     pub cast_ty: Ty<'tcx>,
     #[label(hir_typeck_int_to_fat_label_nightly)]
     pub expr_if_nightly: Option<Span>,
@@ -581,12 +582,12 @@ pub(crate) struct UnionPatDotDot {
     applicability = "maybe-incorrect",
     style = "verbose"
 )]
-pub(crate) struct UseIsEmpty {
+pub(crate) struct UseIsEmpty<'tcx> {
     #[suggestion_part(code = "!")]
     pub lo: Span,
     #[suggestion_part(code = ".is_empty()")]
     pub hi: Span,
-    pub expr_ty: String,
+    pub expr_ty: Ty<'tcx>,
 }
 
 #[derive(Diagnostic)]
@@ -745,10 +746,10 @@ pub(crate) struct CtorIsPrivate {
 
 #[derive(Subdiagnostic)]
 #[note(hir_typeck_deref_is_empty)]
-pub(crate) struct DerefImplsIsEmpty {
+pub(crate) struct DerefImplsIsEmpty<'tcx> {
     #[primary_span]
     pub span: Span,
-    pub deref_ty: String,
+    pub deref_ty: Ty<'tcx>,
 }
 
 #[derive(Subdiagnostic)]
@@ -826,7 +827,7 @@ pub(crate) struct CastThinPointerToWidePointer<'tcx> {
     #[primary_span]
     pub span: Span,
     pub expr_ty: Ty<'tcx>,
-    pub cast_ty: String,
+    pub cast_ty: Ty<'tcx>,
     #[note(hir_typeck_teach_help)]
     pub(crate) teach: bool,
 }

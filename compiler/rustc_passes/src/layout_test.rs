@@ -112,8 +112,7 @@ fn dump_layout_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribute) {
                     }
 
                     sym::debug => {
-                        let normalized_ty =
-                            format!("{}", tcx.normalize_erasing_regions(typing_env, ty));
+                        let normalized_ty = tcx.normalize_erasing_regions(typing_env, ty);
                         // FIXME: using the `Debug` impl here isn't ideal.
                         let ty_layout = format!("{:#?}", *ty_layout);
                         tcx.dcx().emit_err(LayoutOf { span, normalized_ty, ty_layout });

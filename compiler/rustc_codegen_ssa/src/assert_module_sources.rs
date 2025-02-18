@@ -211,7 +211,7 @@ impl fmt::Display for CguReuse {
 }
 
 impl IntoDiagArg for CguReuse {
-    fn into_diag_arg(self) -> DiagArgValue {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
         DiagArgValue::Str(Cow::Owned(self.to_string()))
     }
 }
