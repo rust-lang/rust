@@ -162,13 +162,6 @@ pub trait FileExt {
         Ok(())
     }
 
-    /// Returns the current position within the file.
-    ///
-    /// This corresponds to the `fd_tell` syscall and is similar to
-    /// `seek` where you offset 0 bytes from the current position.
-    #[doc(alias = "fd_tell")]
-    fn tell(&self) -> io::Result<u64>;
-
     /// Adjusts the flags associated with this file.
     ///
     /// This corresponds to the `fd_fdstat_set_flags` syscall.
@@ -238,10 +231,6 @@ impl FileExt for fs::File {
 
     fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
         self.as_inner().as_inner().pwrite(bufs, offset)
-    }
-
-    fn tell(&self) -> io::Result<u64> {
-        self.as_inner().as_inner().tell()
     }
 
     fn fdstat_set_flags(&self, flags: u16) -> io::Result<()> {
