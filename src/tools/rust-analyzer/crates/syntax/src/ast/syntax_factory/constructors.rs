@@ -331,7 +331,7 @@ impl SyntaxFactory {
     }
 
     pub fn expr_paren(&self, expr: ast::Expr) -> ast::ParenExpr {
-        // FIXME: `make::expr_paren` should return a `MethodCallExpr`, not just an `Expr`
+        // FIXME: `make::expr_paren` should return a `ParenExpr`, not just an `Expr`
         let ast::Expr::ParenExpr(ast) = make::expr_paren(expr.clone()).clone_for_update() else {
             unreachable!()
         };

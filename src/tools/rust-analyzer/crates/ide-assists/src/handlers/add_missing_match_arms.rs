@@ -1,6 +1,4 @@
 use std::iter::{self, Peekable};
-use std::ops::Deref;
-use std::rc::Rc;
 
 use either::Either;
 use hir::{sym, Adt, Crate, HasAttrs, ImportPathConfig, ModuleDef, Semantics};
@@ -78,10 +76,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
 
     let cfg = ctx.config.import_path_config();
 
-    // As `make` is borrowed by the closure that builds `missing_pats`, this is needed
-    // to satisfy the borrow checker.
-    let make = Rc::new(SyntaxFactory::new());
-    let make_weak = Rc::downgrade(&make);
+    let make = SyntaxFactory::new();
 
     let module = ctx.sema.scope(expr.syntax())?.module();
     let (mut missing_pats, is_non_exhaustive, has_hidden_variants): (
@@ -99,9 +94,8 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
         let missing_pats = variants
             .into_iter()
             .filter_map(|variant| {
-                let make = make_weak.upgrade()?;
                 Some((
-                    build_pat(ctx, make, module, variant, cfg)?,
+                    build_pat(ctx, &make, module, variant, cfg)?,
                     variant.should_be_hidden(ctx.db(), module.krate()),
                 ))
             })
@@ -148,17 +142,15 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
             .into_iter()
             .multi_cartesian_product()
             .inspect(|_| cov_mark::hit!(add_missing_match_arms_lazy_computation))
-            .filter_map(|variants| {
+            .map(|variants| {
                 let is_hidden = variants
                     .iter()
                     .any(|variant| variant.should_be_hidden(ctx.db(), module.krate()));
-                let patterns = variants.into_iter().filter_map(|variant| {
-                    make_weak.upgrade().and_then(|make| build_pat(ctx, make, module, variant, cfg))
-                });
+                let patterns = variants
+                    .into_iter()
+                    .filter_map(|variant| build_pat(ctx, &make, module, variant, cfg));
 
-                make_weak
-                    .upgrade()
-                    .map(|make| (ast::Pat::from(make.tuple_pat(patterns)), is_hidden))
+                (ast::Pat::from(make.tuple_pat(patterns)), is_hidden)
             })
             .filter(|(variant_pat, _)| is_variant_missing(&top_lvl_pats, variant_pat));
         (
@@ -183,17 +175,15 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
             .into_iter()
             .multi_cartesian_product()
             .inspect(|_| cov_mark::hit!(add_missing_match_arms_lazy_computation))
-            .filter_map(|variants| {
+            .map(|variants| {
                 let is_hidden = variants
                     .iter()
                     .any(|variant| variant.should_be_hidden(ctx.db(), module.krate()));
-                let patterns = variants.into_iter().filter_map(|variant| {
-                    make_weak.upgrade().and_then(|make| build_pat(ctx, make, module, variant, cfg))
-                });
+                let patterns = variants
+                    .into_iter()
+                    .filter_map(|variant| build_pat(ctx, &make, module, variant, cfg));
 
-                make_weak
-                    .upgrade()
-                    .map(|make| (ast::Pat::from(make.slice_pat(patterns)), is_hidden))
+                (ast::Pat::from(make.slice_pat(patterns)), is_hidden)
             })
             .filter(|(variant_pat, _)| is_variant_missing(&top_lvl_pats, variant_pat));
         (
@@ -303,7 +293,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
                 }
             }
 
-            editor.add_mappings(Rc::into_inner(make).unwrap().finish_with_mappings());
+            editor.add_mappings(make.take());
             builder.add_file_edits(ctx.file_id(), editor);
         },
     )
@@ -458,7 +448,7 @@ fn resolve_array_of_enum_def(
 
 fn build_pat(
     ctx: &AssistContext<'_>,
-    make: impl Deref<Target = SyntaxFactory>,
+    make: &SyntaxFactory,
     module: hir::Module,
     var: ExtendedVariant,
     cfg: ImportPathConfig,
