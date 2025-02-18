@@ -74,3 +74,12 @@ impl ToOwned for Baz {
         Baz
     }
 }
+
+fn issue_8103() {
+    let foo1 = String::from("foo");
+    let _ = foo1 == "foo".to_owned();
+    //~^ cmp_owned
+    let foo2 = "foo";
+    let _ = foo1 == foo2.to_owned();
+    //~^ cmp_owned
+}
