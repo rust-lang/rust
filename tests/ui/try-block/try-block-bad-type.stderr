@@ -10,7 +10,6 @@ LL |         Err("")?;
    = help: the trait `From<&str>` is not implemented for `TryFromSliceError`
            but trait `From<Infallible>` is implemented for it
    = help: for that trait implementation, expected `Infallible`, found `&str`
-   = note: required for `Result<u32, TryFromSliceError>` to implement `FromResidual<Result<Infallible, &str>>`
 
 error[E0271]: type mismatch resolving `<Result<i32, i32> as Try>::Output == &str`
   --> $DIR/try-block-bad-type.rs:12:9
