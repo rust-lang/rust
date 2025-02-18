@@ -417,7 +417,7 @@ impl<'a, 'tcx> ElaborateDropsCtxt<'a, 'tcx> {
                 ..
             } = data.terminator().kind
             {
-                assert!(!self.patch.is_patched(bb));
+                assert!(!self.patch.is_term_patched(bb));
 
                 let loc = Location { block: tgt, statement_index: 0 };
                 let path = self.move_data().rev_lookup.find(destination.as_ref());
@@ -462,7 +462,7 @@ impl<'a, 'tcx> ElaborateDropsCtxt<'a, 'tcx> {
                             // a Goto; see `MirPatch::new`).
                         }
                         _ => {
-                            assert!(!self.patch.is_patched(bb));
+                            assert!(!self.patch.is_term_patched(bb));
                         }
                     }
                 }
@@ -486,7 +486,7 @@ impl<'a, 'tcx> ElaborateDropsCtxt<'a, 'tcx> {
                 ..
             } = data.terminator().kind
             {
-                assert!(!self.patch.is_patched(bb));
+                assert!(!self.patch.is_term_patched(bb));
 
                 let loc = Location { block: bb, statement_index: data.statements.len() };
                 let path = self.move_data().rev_lookup.find(destination.as_ref());
