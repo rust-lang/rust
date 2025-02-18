@@ -202,7 +202,6 @@ impl<'tcx> Stable<'tcx> for rustc_abi::BackendRepr {
 
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         match *self {
-            rustc_abi::BackendRepr::Uninhabited => ValueAbi::Uninhabited,
             rustc_abi::BackendRepr::Scalar(scalar) => ValueAbi::Scalar(scalar.stable(tables)),
             rustc_abi::BackendRepr::ScalarPair(first, second) => {
                 ValueAbi::ScalarPair(first.stable(tables), second.stable(tables))

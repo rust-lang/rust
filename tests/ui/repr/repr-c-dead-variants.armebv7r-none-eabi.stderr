@@ -4,7 +4,15 @@ error: layout_of(Univariant) = Layout {
                abi: Align(1 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Uninhabited,
+           abi: Scalar(
+               Initialized {
+                   value: Int(
+                       I8,
+                       false,
+                   ),
+                   valid_range: 0..=0,
+               },
+           ),
            fields: Arbitrary {
                offsets: [
                    Size(0 bytes),
@@ -23,6 +31,7 @@ error: layout_of(Univariant) = Layout {
                    valid_range: 0..=0,
                },
            ),
+           uninhabited: true,
            variants: Multiple {
                tag: Initialized {
                    value: Int(
@@ -40,7 +49,15 @@ error: layout_of(Univariant) = Layout {
                            abi: Align(1 bytes),
                            pref: $SOME_ALIGN,
                        },
-                       abi: Uninhabited,
+                       abi: Scalar(
+                           Initialized {
+                               value: Int(
+                                   I8,
+                                   false,
+                               ),
+                               valid_range: 0..=0,
+                           },
+                       ),
                        fields: Arbitrary {
                            offsets: [
                                Size(1 bytes),
@@ -50,6 +67,7 @@ error: layout_of(Univariant) = Layout {
                            ],
                        },
                        largest_niche: None,
+                       uninhabited: true,
                        variants: Single {
                            index: 0,
                        },
@@ -107,6 +125,7 @@ error: layout_of(TwoVariants) = Layout {
                    valid_range: 0..=1,
                },
            ),
+           uninhabited: false,
            variants: Multiple {
                tag: Initialized {
                    value: Int(
@@ -119,12 +138,26 @@ error: layout_of(TwoVariants) = Layout {
                tag_field: 0,
                variants: [
                    Layout {
-                       size: Size(1 bytes),
+                       size: Size(2 bytes),
                        align: AbiAndPrefAlign {
                            abi: Align(1 bytes),
                            pref: $SOME_ALIGN,
                        },
-                       abi: Uninhabited,
+                       abi: ScalarPair(
+                           Initialized {
+                               value: Int(
+                                   I8,
+                                   false,
+                               ),
+                               valid_range: 0..=1,
+                           },
+                           Union {
+                               value: Int(
+                                   I8,
+                                   false,
+                               ),
+                           },
+                       ),
                        fields: Arbitrary {
                            offsets: [
                                Size(1 bytes),
@@ -134,6 +167,7 @@ error: layout_of(TwoVariants) = Layout {
                            ],
                        },
                        largest_niche: None,
+                       uninhabited: true,
                        variants: Single {
                            index: 0,
                        },
@@ -171,6 +205,7 @@ error: layout_of(TwoVariants) = Layout {
                            ],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 1,
                        },
@@ -216,6 +251,7 @@ error: layout_of(DeadBranchHasOtherField) = Layout {
                    valid_range: 0..=1,
                },
            ),
+           uninhabited: false,
            variants: Multiple {
                tag: Initialized {
                    value: Int(
@@ -233,7 +269,9 @@ error: layout_of(DeadBranchHasOtherField) = Layout {
                            abi: Align(8 bytes),
                            pref: $SOME_ALIGN,
                        },
-                       abi: Uninhabited,
+                       abi: Memory {
+                           sized: true,
+                       },
                        fields: Arbitrary {
                            offsets: [
                                Size(8 bytes),
@@ -245,6 +283,7 @@ error: layout_of(DeadBranchHasOtherField) = Layout {
                            ],
                        },
                        largest_niche: None,
+                       uninhabited: true,
                        variants: Single {
                            index: 0,
                        },
@@ -272,6 +311,7 @@ error: layout_of(DeadBranchHasOtherField) = Layout {
                            ],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 1,
                        },
