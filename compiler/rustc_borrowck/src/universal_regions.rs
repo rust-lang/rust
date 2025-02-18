@@ -21,6 +21,7 @@ use std::iter;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Diag;
 use rustc_hir::BodyOwnerKind;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_index::IndexVec;
@@ -603,7 +604,10 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 
             BodyOwnerKind::Const { .. } | BodyOwnerKind::Static(..) => {
                 let identity_args = GenericArgs::identity_for_item(tcx, typeck_root_def_id);
-                if self.mir_def.to_def_id() == typeck_root_def_id {
+                if self.mir_def.to_def_id() == typeck_root_def_id
+                    // Do not ICE when checking default_field_values consts with lifetimes (#135649)
+                    && DefKind::Field != tcx.def_kind(tcx.parent(typeck_root_def_id))
+                {
                     let args =
                         self.infcx.replace_free_regions_with_nll_infer_vars(FR, identity_args);
                     DefiningTy::Const(self.mir_def.to_def_id(), args)

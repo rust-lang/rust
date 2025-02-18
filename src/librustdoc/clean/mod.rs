@@ -1150,9 +1150,9 @@ fn clean_args_from_types_and_body_id<'tcx>(
     Arguments {
         values: types
             .iter()
-            .enumerate()
-            .map(|(i, ty)| Argument {
-                name: name_from_pat(body.params[i].pat),
+            .zip(body.params)
+            .map(|(ty, param)| Argument {
+                name: name_from_pat(param.pat),
                 type_: clean_ty(ty, cx),
                 is_const: false,
             })

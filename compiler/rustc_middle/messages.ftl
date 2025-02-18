@@ -37,9 +37,6 @@ middle_autodiff_unsafe_inner_const_ref = reading from a `Duplicated` const {$ty}
 middle_bounds_check =
     index out of bounds: the length is {$len} but the index is {$index}
 
-middle_cannot_be_normalized =
-    unable to determine layout for `{$ty}` because `{$failure_ty}` cannot be normalized
-
 middle_conflict_types =
     this expression supplies two conflicting concrete types for the same opaque type
 
@@ -51,9 +48,6 @@ middle_const_eval_non_int =
 
 middle_const_not_used_in_type_alias =
     const parameter `{$ct}` is part of concrete type but not used in parameter list for the `impl Trait` type alias
-
-middle_cycle =
-    a cycle occurred during layout computation
 
 middle_deprecated = use of deprecated {$kind} `{$path}`{$has_note ->
         [true] : {$note}
@@ -78,8 +72,22 @@ middle_erroneous_constant = erroneous constant encountered
 middle_failed_writing_file =
     failed to write file {$path}: {$error}"
 
+middle_layout_cycle =
+    a cycle occurred during layout computation
+
+middle_layout_normalization_failure =
+    unable to determine layout for `{$ty}` because `{$failure_ty}` cannot be normalized
+
 middle_layout_references_error =
     the type has an unknown layout
+
+middle_layout_size_overflow =
+    values of the type `{$ty}` are too big for the target architecture
+
+middle_layout_too_generic = the type `{$ty}` does not have a fixed layout
+
+middle_layout_unknown =
+    the type `{$ty}` has an unknown layout
 
 middle_opaque_hidden_type_mismatch =
     concrete type differs from previous defining opaque type use
@@ -98,16 +106,8 @@ middle_strict_coherence_needs_negative_coherence =
     to use `strict_coherence` on this trait, the `with_negative_coherence` feature must be enabled
     .label = due to this attribute
 
-middle_too_generic = `{$ty}` does not have a fixed size
-
 middle_type_length_limit = reached the type-length limit while instantiating `{$shrunk}`
 
-middle_unknown_layout =
-    the type `{$ty}` has an unknown layout
-
 middle_unsupported_union = we don't support unions yet: '{$ty_name}'
-
-middle_values_too_big =
-    values of the type `{$ty}` are too big for the target architecture
 
 middle_written_to_path = the full type name has been written to '{$path}'

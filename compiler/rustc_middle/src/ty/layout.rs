@@ -229,11 +229,32 @@ impl fmt::Display for ValidityRequirement {
 
 #[derive(Copy, Clone, Debug, HashStable, TyEncodable, TyDecodable)]
 pub enum LayoutError<'tcx> {
+    /// A type doesn't have a sensible layout.
+    ///
+    /// This variant is used for layout errors that don't necessarily cause
+    /// compile errors.
+    ///
+    /// For example, this can happen if a struct contains an unsized type in a
+    /// non-tail field, but has an unsatisfiable bound like `str: Sized`.
     Unknown(Ty<'tcx>),
+    /// The size of a type exceeds [`TargetDataLayout::obj_size_bound`].
     SizeOverflow(Ty<'tcx>),
+    /// The layout can vary due to a generic parameter.
+    ///
+    /// Unlike `Unknown`, this variant is a "soft" error and indicates that the layout
+    /// may become computable after further instantiating the generic parameter(s).
     TooGeneric(Ty<'tcx>),
+    /// An alias failed to normalize.
+    ///
+    /// This variant is necessary, because, due to trait solver incompleteness, it is
+    /// possible than an alias that was rigid during analysis fails to normalize after
+    /// revealing opaque types.
+    ///
+    /// See `tests/ui/layout/normalization-failure.rs` for an example.
     NormalizationFailure(Ty<'tcx>, NormalizationError<'tcx>),
+    /// A non-layout error is reported elsewhere.
     ReferencesError(ErrorGuaranteed),
+    /// A type has cyclic layout, i.e. the type contains itself without indirection.
     Cycle(ErrorGuaranteed),
 }
 
@@ -243,11 +264,11 @@ impl<'tcx> LayoutError<'tcx> {
 
         use crate::fluent_generated::*;
         match self {
-            Unknown(_) => middle_unknown_layout,
-            SizeOverflow(_) => middle_values_too_big,
-            TooGeneric(_) => middle_too_generic,
-            NormalizationFailure(_, _) => middle_cannot_be_normalized,
-            Cycle(_) => middle_cycle,
+            Unknown(_) => middle_layout_unknown,
+            SizeOverflow(_) => middle_layout_size_overflow,
+            TooGeneric(_) => middle_layout_too_generic,
+            NormalizationFailure(_, _) => middle_layout_normalization_failure,
+            Cycle(_) => middle_layout_cycle,
             ReferencesError(_) => middle_layout_references_error,
         }
     }
@@ -276,7 +297,7 @@ impl<'tcx> fmt::Display for LayoutError<'tcx> {
         match *self {
             LayoutError::Unknown(ty) => write!(f, "the type `{ty}` has an unknown layout"),
             LayoutError::TooGeneric(ty) => {
-                write!(f, "`{ty}` does not have a fixed size")
+                write!(f, "the type `{ty}` does not have a fixed layout")
             }
             LayoutError::SizeOverflow(ty) => {
                 write!(f, "values of the type `{ty}` are too big for the target architecture")
