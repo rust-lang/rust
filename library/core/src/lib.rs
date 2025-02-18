@@ -100,7 +100,7 @@
 #![feature(bigint_helper_methods)]
 #![feature(bstr)]
 #![feature(bstr_internals)]
-#![feature(cfg_match)]
+#![feature(cfg_select)]
 #![feature(cfg_target_has_reliable_f16_f128)]
 #![feature(const_carrying_mul_add)]
 #![feature(const_eval_select)]
@@ -235,8 +235,8 @@ pub mod autodiff {
 #[unstable(feature = "contracts", issue = "128044")]
 pub mod contracts;
 
-#[unstable(feature = "cfg_match", issue = "115585")]
-pub use crate::macros::cfg_match;
+#[unstable(feature = "cfg_select", issue = "115585")]
+pub use crate::macros::cfg_select;
 
 #[macro_use]
 mod internal_macros;
