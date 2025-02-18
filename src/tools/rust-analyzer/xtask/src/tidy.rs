@@ -186,7 +186,7 @@ Zlib OR Apache-2.0 OR MIT
 
 fn check_test_attrs(path: &Path, text: &str) {
     let panic_rule =
-        "https://github.com/rust-lang/rust-analyzer/blob/master/docs/dev/style.md#should_panic";
+        "https://github.com/rust-lang/rust-analyzer/blob/master/docs/book/src/contributing/style.md#should_panic";
     let need_panic: &[&str] = &[
         // This file.
         "slow-tests/tidy.rs",
