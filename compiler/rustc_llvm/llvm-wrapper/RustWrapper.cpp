@@ -1565,9 +1565,17 @@ extern "C" LLVMValueRef LLVMRustBuildMemCpy(LLVMBuilderRef B, LLVMValueRef Dst,
                                             unsigned SrcAlign,
                                             LLVMValueRef Size,
                                             bool IsVolatile) {
-  return wrap(unwrap(B)->CreateMemCpy(unwrap(Dst), MaybeAlign(DstAlign),
-                                      unwrap(Src), MaybeAlign(SrcAlign),
-                                      unwrap(Size), IsVolatile));
+  if (unwrap(B)->GetInsertBlock()->getParent()->hasFnAttribute("no-builtins") ||
+      unwrap(B)->GetInsertBlock()->getParent()->hasFnAttribute(
+          "no-builtin-memcpy")) {
+    return wrap(unwrap(B)->CreateMemCpyInline(unwrap(Dst), MaybeAlign(DstAlign),
+                                              unwrap(Src), MaybeAlign(SrcAlign),
+                                              unwrap(Size), IsVolatile));
+  } else {
+    return wrap(unwrap(B)->CreateMemCpy(unwrap(Dst), MaybeAlign(DstAlign),
+                                        unwrap(Src), MaybeAlign(SrcAlign),
+                                        unwrap(Size), IsVolatile));
+  }
 }
 
 extern "C" LLVMValueRef
@@ -1583,8 +1591,16 @@ extern "C" LLVMValueRef LLVMRustBuildMemSet(LLVMBuilderRef B, LLVMValueRef Dst,
                                             unsigned DstAlign, LLVMValueRef Val,
                                             LLVMValueRef Size,
                                             bool IsVolatile) {
-  return wrap(unwrap(B)->CreateMemSet(unwrap(Dst), unwrap(Val), unwrap(Size),
-                                      MaybeAlign(DstAlign), IsVolatile));
+  if (unwrap(B)->GetInsertBlock()->getParent()->hasFnAttribute("no-builtins") ||
+      unwrap(B)->GetInsertBlock()->getParent()->hasFnAttribute(
+          "no-builtin-memset")) {
+    return wrap(unwrap(B)->CreateMemSetInline(unwrap(Dst), MaybeAlign(DstAlign),
+                                              unwrap(Val), unwrap(Size),
+                                              IsVolatile));
+  } else {
+    return wrap(unwrap(B)->CreateMemSet(unwrap(Dst), unwrap(Val), unwrap(Size),
+                                        MaybeAlign(DstAlign), IsVolatile));
+  }
 }
 
 // Polyfill for `LLVMBuildCallBr`, which was added in LLVM 19.
