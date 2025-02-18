@@ -225,14 +225,6 @@ trait_selection_mismatched_static_lifetime = incompatible lifetime on type
 trait_selection_missing_options_for_on_unimplemented_attr = missing options for `on_unimplemented` attribute
     .help = at least one of the `message`, `note` and `label` options are expected
 
-trait_selection_more_targeted = {$has_param_name ->
-    [true] `{$param_name}`
-    *[false] `fn` parameter
-} has {$has_lifetime ->
-    [true] lifetime `{$lifetime}`
-    *[false] an anonymous lifetime `'_`
-} but calling `{$ident}` introduces an implicit `'static` lifetime requirement
-
 trait_selection_msl_introduces_static = introduces a `'static` lifetime requirement
 trait_selection_msl_unmet_req = because this has an unmet lifetime requirement
 

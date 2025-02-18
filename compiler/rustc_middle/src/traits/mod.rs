@@ -143,15 +143,6 @@ impl<'tcx> ObligationCause<'tcx> {
         }
     }
 }
-
-#[derive(Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
-#[derive(TypeVisitable, TypeFoldable)]
-pub struct UnifyReceiverContext<'tcx> {
-    pub assoc_item: ty::AssocItem,
-    pub param_env: ty::ParamEnv<'tcx>,
-    pub args: GenericArgsRef<'tcx>,
-}
-
 #[derive(Clone, PartialEq, Eq, Default, HashStable)]
 #[derive(TypeVisitable, TypeFoldable, TyEncodable, TyDecodable)]
 pub struct InternedObligationCauseCode<'tcx> {
@@ -358,8 +349,6 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// Method receiver
     MethodReceiver,
-
-    UnifyReceiver(Box<UnifyReceiverContext<'tcx>>),
 
     /// `return` with no expression
     ReturnNoExpression,

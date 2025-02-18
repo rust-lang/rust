@@ -11,7 +11,7 @@ use rustc_hir_analysis::hir_ty_lowering::{
 };
 use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk};
 use rustc_lint::builtin::SUPERTRAIT_ITEM_SHADOWING_USAGE;
-use rustc_middle::traits::{ObligationCauseCode, UnifyReceiverContext};
+use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCoercion,
 };
@@ -136,7 +136,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             "confirm: self_ty={:?} method_sig_rcvr={:?} method_sig={:?} method_predicates={:?}",
             self_ty, method_sig_rcvr, method_sig, method_predicates
         );
-        self.unify_receivers(self_ty, method_sig_rcvr, pick, all_args);
+        self.unify_receivers(self_ty, method_sig_rcvr, pick);
 
         let (method_sig, method_predicates) =
             self.normalize(self.span, (method_sig, method_predicates));
@@ -525,20 +525,12 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         self_ty: Ty<'tcx>,
         method_self_ty: Ty<'tcx>,
         pick: &probe::Pick<'tcx>,
-        args: GenericArgsRef<'tcx>,
     ) {
         debug!(
             "unify_receivers: self_ty={:?} method_self_ty={:?} span={:?} pick={:?}",
             self_ty, method_self_ty, self.span, pick
         );
-        let cause = self.cause(
-            self.self_expr.span,
-            ObligationCauseCode::UnifyReceiver(Box::new(UnifyReceiverContext {
-                assoc_item: pick.item,
-                param_env: self.param_env,
-                args,
-            })),
-        );
+        let cause = self.cause(self.self_expr.span, ObligationCauseCode::Misc);
         match self.at(&cause, self.param_env).sup(DefineOpaqueTypes::Yes, method_self_ty, self_ty) {
             Ok(InferOk { obligations, value: () }) => {
                 self.register_predicates(obligations);
