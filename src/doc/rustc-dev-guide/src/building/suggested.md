@@ -154,6 +154,16 @@ You can run `./x setup editor` and select `helix`, which will prompt you to
 create `languages.toml` with the recommended configuration for Helix. The
 recommended settings live at [`src/etc/rust_analyzer_helix.toml`].
 
+### Zed
+
+Zed comes with built-in LSP and rust-analyzer support.
+It can be configured through `.zed/settings.json`, as described
+[here](https://zed.dev/docs/configuring-languages). Selecting `zed`
+in `./x setup editor` will prompt you to create a `.zed/settings.json`
+file which will configure Zed with the recommended configuration. The
+recommended `rust-analyzer` settings live
+at [`src/etc/rust_analyzer_zed.json`].
+
 ## Check, check, and check again
 
 When doing simple refactoring, it can be useful to run `./x check`
@@ -381,4 +391,5 @@ load this completion.
 [`src/etc/rust_analyzer_settings.json`]: https://github.com/rust-lang/rust/blob/master/src/etc/rust_analyzer_settings.json
 [`src/etc/rust_analyzer_eglot.el`]: https://github.com/rust-lang/rust/blob/master/src/etc/rust_analyzer_eglot.el
 [`src/etc/rust_analyzer_helix.toml`]: https://github.com/rust-lang/rust/blob/master/src/etc/rust_analyzer_helix.toml
+[`src/etc/rust_analyzer_zed.json`]: https://github.com/rust-lang/rust/blob/master/src/etc/rust_analyzer_zed.json
 [`src/etc/pre-push.sh`]: https://github.com/rust-lang/rust/blob/master/src/etc/pre-push.sh
