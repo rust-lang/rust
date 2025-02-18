@@ -1,4 +1,3 @@
-#![cfg_attr(bootstrap, feature(trait_upcasting))]
 #![feature(rustc_private)]
 #![feature(cell_update)]
 #![feature(float_gamma)]

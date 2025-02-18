@@ -285,10 +285,7 @@ impl Cargo {
 
         // Ignore linker warnings for now. These are complicated to fix and don't affect the build.
         // FIXME: we should really investigate these...
-        // cfg(bootstrap)
-        if compiler.stage != 0 {
-            self.rustflags.arg("-Alinker-messages");
-        }
+        self.rustflags.arg("-Alinker-messages");
 
         // Throughout the build Cargo can execute a number of build scripts
         // compiling C/C++ code and we need to pass compilers, archivers, flags, etc
@@ -1071,10 +1068,7 @@ impl Builder<'_> {
 
         if mode == Mode::Rustc {
             rustflags.arg("-Wrustc::internal");
-            // cfg(bootstrap) - remove this check when lint is in bootstrap compiler
-            if stage != 0 {
-                rustflags.arg("-Drustc::symbol_intern_string_literal");
-            }
+            rustflags.arg("-Drustc::symbol_intern_string_literal");
             // FIXME(edition_2024): Change this to `-Wrust_2024_idioms` when all
             // of the individual lints are satisfied.
             rustflags.arg("-Wkeyword_idents_2024");
