@@ -83,6 +83,14 @@ impl Step for Bootstrap {
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/bootstrap")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Bootstrap);
+    }
+
     /// Tests the build system itself.
     fn run(self, builder: &Builder<'_>) {
         let host = builder.config.build;
@@ -125,13 +133,5 @@ impl Step for Bootstrap {
         // bootstrap tests are racy on directory creation so just run them one at a time. Since
         // there's not many this shouldn't be a problem.
         run_cargo_test(cargo, &["--test-threads=1"], &[], "bootstrap", None, host, builder);
-    }
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/bootstrap")
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Bootstrap);
     }
 }
