@@ -3619,7 +3619,7 @@ impl Step for TestFloatParse {
         let bootstrap_host = builder.config.build;
         let compiler = builder.compiler(builder.top_stage, bootstrap_host);
         let path = self.path.to_str().unwrap();
-        let crate_name = self.path.components().last().unwrap().as_os_str().to_str().unwrap();
+        let crate_name = self.path.iter().next_back().unwrap().to_str().unwrap();
 
         builder.ensure(tool::TestFloatParse { host: self.host });
 
