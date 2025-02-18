@@ -59,6 +59,7 @@ pub(crate) fn collect_spans_and_sources(
     src_root: &Path,
     include_sources: bool,
     generate_link_to_definition: bool,
+    generate_macro_expansion: bool,
 ) -> (
     FxIndexMap<PathBuf, String>,
     FxHashMap<Span, LinkFromSrc>,
@@ -68,7 +69,9 @@ pub(crate) fn collect_spans_and_sources(
         let mut visitor = SpanMapVisitor { tcx, matches: FxHashMap::default() };
         let mut expanded_visitor = ExpandedCodeVisitor { tcx, expanded_codes: Vec::new() };
 
-        tcx.hir().walk_toplevel_module(&mut expanded_visitor);
+        if generate_macro_expansion {
+            tcx.hir().walk_toplevel_module(&mut expanded_visitor);
+        }
         if generate_link_to_definition {
             tcx.hir().walk_toplevel_module(&mut visitor);
         }
@@ -352,10 +355,7 @@ impl<'tcx> ExpandedCodeVisitor<'tcx> {
             }
         } else {
             // We add a new item.
-            self.expanded_codes.push(ExpandedCodeInfo {
-                span: new_span,
-                code: f(self.tcx),
-            });
+            self.expanded_codes.push(ExpandedCodeInfo { span: new_span, code: f(self.tcx) });
         }
     }
 
