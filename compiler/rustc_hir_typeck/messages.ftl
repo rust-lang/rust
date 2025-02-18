@@ -10,6 +10,7 @@ hir_typeck_address_of_temporary_taken = cannot take address of a temporary
 hir_typeck_arg_mismatch_indeterminate = argument type mismatch was detected, but rustc had trouble determining where
     .note = we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new
 
+hir_typeck_as_deref_suggestion = consider using `as_deref` here
 hir_typeck_base_expression_double_dot = base expression required after `..`
 hir_typeck_base_expression_double_dot_add_expr = add a base expression here
 hir_typeck_base_expression_double_dot_enable_default_field_values =
@@ -71,6 +72,9 @@ hir_typeck_dependency_on_unit_never_type_fallback = this function depends on nev
     .help = specify the types explicitly
 
 hir_typeck_deref_is_empty = this expression `Deref`s to `{$deref_ty}` which implements `is_empty`
+
+hir_typeck_expected_array_or_slice = expected an array or slice, found `{$ty}`
+hir_typeck_expected_array_or_slice_label = pattern cannot match with input type `{$ty}`
 
 hir_typeck_expected_default_return_type = expected `()` because of default return type
 
@@ -186,6 +190,8 @@ hir_typeck_rustcall_incorrect_args =
 hir_typeck_self_ctor_from_outer_item = can't reference `Self` constructor from outer item
     .label = the inner item doesn't inherit generics from this impl, so `Self` is invalid to reference
     .suggestion = replace `Self` with the actual type
+
+hir_typeck_slicing_suggestion = consider slicing here
 
 hir_typeck_struct_expr_non_exhaustive =
     cannot create non-exhaustive {$what} using struct expression

@@ -455,6 +455,44 @@ impl HelpUseLatestEdition {
 }
 
 #[derive(Diagnostic)]
+#[diag(hir_typeck_expected_array_or_slice, code = E0529)]
+pub(crate) struct ExpectedArrayOrSlice<'tcx> {
+    #[primary_span]
+    #[label(hir_typeck_expected_array_or_slice_label)]
+    pub(crate) span: Span,
+    pub(crate) ty: Ty<'tcx>,
+    pub(crate) slice_pat_semantics: bool,
+    #[subdiagnostic]
+    pub(crate) as_deref: Option<AsDerefSuggestion>,
+    #[subdiagnostic]
+    pub(crate) slicing: Option<SlicingSuggestion>,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    hir_typeck_as_deref_suggestion,
+    code = ".as_deref()",
+    style = "verbose",
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct AsDerefSuggestion {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    hir_typeck_slicing_suggestion,
+    code = "[..]",
+    style = "verbose",
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct SlicingSuggestion {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(hir_typeck_invalid_callee, code = E0618)]
 pub(crate) struct InvalidCallee<'tcx> {
     #[primary_span]
