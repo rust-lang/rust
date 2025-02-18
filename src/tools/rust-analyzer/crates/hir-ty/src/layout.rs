@@ -194,6 +194,7 @@ fn layout_of_simd_ty(
         fields,
         backend_repr: BackendRepr::Vector { element: e_abi, count: e_len },
         largest_niche: e_ly.largest_niche,
+        uninhabited: false,
         size,
         align,
         max_repr_align: None,
@@ -297,20 +298,17 @@ pub fn layout_of_ty_query(
                 .checked_mul(count, dl)
                 .ok_or(LayoutError::BadCalc(LayoutCalculatorError::SizeOverflow))?;
 
-            let backend_repr =
-                if count != 0 && matches!(element.backend_repr, BackendRepr::Uninhabited) {
-                    BackendRepr::Uninhabited
-                } else {
-                    BackendRepr::Memory { sized: true }
-                };
+            let backend_repr = BackendRepr::Memory { sized: true };
 
             let largest_niche = if count != 0 { element.largest_niche } else { None };
+            let uninhabited = if count != 0 { element.uninhabited } else { false };
 
             Layout {
                 variants: Variants::Single { index: struct_variant_idx() },
                 fields: FieldsShape::Array { stride: element.size, count },
                 backend_repr,
                 largest_niche,
+                uninhabited,
                 align: element.align,
                 size,
                 max_repr_align: None,
@@ -325,6 +323,7 @@ pub fn layout_of_ty_query(
                 fields: FieldsShape::Array { stride: element.size, count: 0 },
                 backend_repr: BackendRepr::Memory { sized: false },
                 largest_niche: None,
+                uninhabited: false,
                 align: element.align,
                 size: Size::ZERO,
                 max_repr_align: None,
@@ -337,6 +336,7 @@ pub fn layout_of_ty_query(
             fields: FieldsShape::Array { stride: Size::from_bytes(1), count: 0 },
             backend_repr: BackendRepr::Memory { sized: false },
             largest_niche: None,
+            uninhabited: false,
             align: dl.i8_align,
             size: Size::ZERO,
             max_repr_align: None,

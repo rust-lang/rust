@@ -1274,11 +1274,11 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
         // FIXME: We could avoid some redundant checks here. For newtypes wrapping
         // scalars, we do the same check on every "level" (e.g., first we check
         // MyNewtype and then the scalar in there).
+        if val.layout.is_uninhabited() {
+            let ty = val.layout.ty;
+            throw_validation_failure!(self.path, UninhabitedVal { ty });
+        }
         match val.layout.backend_repr {
-            BackendRepr::Uninhabited => {
-                let ty = val.layout.ty;
-                throw_validation_failure!(self.path, UninhabitedVal { ty });
-            }
             BackendRepr::Scalar(scalar_layout) => {
                 if !scalar_layout.is_uninit_valid() {
                     // There is something to check here.
