@@ -251,8 +251,12 @@ pub mod autodiff {
 #[unstable(feature = "contracts", issue = "128044")]
 pub mod contracts;
 
+#[cfg(bootstrap)]
 #[unstable(feature = "cfg_match", issue = "115585")]
 pub use crate::macros::cfg_match;
+#[cfg(not(bootstrap))]
+#[unstable(feature = "cfg_select", issue = "115585")]
+pub use crate::macros::cfg_select;
 
 #[macro_use]
 mod internal_macros;

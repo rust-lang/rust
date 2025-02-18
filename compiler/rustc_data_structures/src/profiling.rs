@@ -923,7 +923,7 @@ cfg_match! {
 }
 
 #[cfg(not(bootstrap))]
-cfg_match! {
+cfg_select! {
     windows => {
         pub fn get_resident_set_size() -> Option<usize> {
             use std::mem;
