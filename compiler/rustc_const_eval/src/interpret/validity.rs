@@ -1264,12 +1264,11 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
             }
         }
 
-        // *After* all of this, check the ABI. We need to check the ABI to handle
-        // types like `NonNull` where the `Scalar` info is more restrictive than what
-        // the fields say (`rustc_layout_scalar_valid_range_start`).
-        // But in most cases, this will just propagate what the fields say,
-        // and then we want the error to point at the field -- so, first recurse,
-        // then check ABI.
+        // *After* all of this, check further information stored in the layout. We need to check
+        // this to handle types like `NonNull` where the `Scalar` info is more restrictive than what
+        // the fields say (`rustc_layout_scalar_valid_range_start`). But in most cases, this will
+        // just propagate what the fields say, and then we want the error to point at the field --
+        // so, we first recurse, then we do this check.
         //
         // FIXME: We could avoid some redundant checks here. For newtypes wrapping
         // scalars, we do the same check on every "level" (e.g., first we check
