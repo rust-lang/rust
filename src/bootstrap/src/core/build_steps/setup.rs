@@ -523,19 +523,31 @@ undesirable, simply delete the `pre-push` file from .git/hooks."
 /// Handles editor-specific setup differences
 #[derive(Clone, Debug, Eq, PartialEq)]
 enum EditorKind {
-    Vscode,
-    Vim,
     Emacs,
     Helix,
+    Vim,
+    VsCode,
+    Zed,
 }
 
 impl EditorKind {
+    // Used in `./tests.rs`.
+    #[allow(dead_code)]
+    pub const ALL: &[EditorKind] = &[
+        EditorKind::Emacs,
+        EditorKind::Helix,
+        EditorKind::Vim,
+        EditorKind::VsCode,
+        EditorKind::Zed,
+    ];
+
     fn prompt_user() -> io::Result<Option<EditorKind>> {
         let prompt_str = "Available editors:
-1. vscode
-2. vim
-3. emacs
-4. helix
+1. Emacs
+2. Helix
+3. Vim
+4. VS Code
+5. Zed
 
 Select which editor you would like to set up [default: None]: ";
 
@@ -543,28 +555,41 @@ Select which editor you would like to set up [default: None]: ";
         loop {
             print!("{}", prompt_str);
             io::stdout().flush()?;
-            input.clear();
             io::stdin().read_line(&mut input)?;
-            match input.trim().to_lowercase().as_str() {
-                "1" | "vscode" => return Ok(Some(EditorKind::Vscode)),
-                "2" | "vim" => return Ok(Some(EditorKind::Vim)),
-                "3" | "emacs" => return Ok(Some(EditorKind::Emacs)),
-                "4" | "helix" => return Ok(Some(EditorKind::Helix)),
-                "" => return Ok(None),
+
+            let mut modified_input = input.to_lowercase();
+            modified_input.retain(|ch| !ch.is_whitespace());
+            match modified_input.as_str() {
+                "1" | "emacs" => return Ok(Some(EditorKind::Emacs)),
+                "2" | "helix" => return Ok(Some(EditorKind::Helix)),
+                "3" | "vim" => return Ok(Some(EditorKind::Vim)),
+                "4" | "vscode" => return Ok(Some(EditorKind::VsCode)),
+                "5" | "zed" => return Ok(Some(EditorKind::Zed)),
+                "" | "none" => return Ok(None),
                 _ => {
                     eprintln!("ERROR: unrecognized option '{}'", input.trim());
                     eprintln!("NOTE: press Ctrl+C to exit");
                 }
-            };
+            }
+
+            input.clear();
         }
     }
 
     /// A list of historical hashes of each LSP settings file
     /// New entries should be appended whenever this is updated so we can detect
     /// outdated vs. user-modified settings files.
-    fn hashes(&self) -> Vec<&str> {
+    fn hashes(&self) -> &'static [&'static str] {
         match self {
-            EditorKind::Vscode | EditorKind::Vim => vec![
+            EditorKind::Emacs => &[
+                "51068d4747a13732440d1a8b8f432603badb1864fa431d83d0fd4f8fa57039e0",
+                "d29af4d949bbe2371eac928a3c31cf9496b1701aa1c45f11cd6c759865ad5c45",
+            ],
+            EditorKind::Helix => &[
+                "2d3069b8cf1b977e5d4023965eb6199597755e6c96c185ed5f2854f98b83d233",
+                "6736d61409fbebba0933afd2e4c44ff2f97c1cb36cf0299a7f4a7819b8775040",
+            ],
+            EditorKind::Vim | EditorKind::VsCode => &[
                 "ea67e259dedf60d4429b6c349a564ffcd1563cf41c920a856d1f5b16b4701ac8",
                 "56e7bf011c71c5d81e0bf42e84938111847a810eee69d906bba494ea90b51922",
                 "af1b5efe196aed007577899db9dae15d6dbc923d6fa42fa0934e68617ba9bbe0",
@@ -576,12 +601,8 @@ Select which editor you would like to set up [default: None]: ";
                 "4eecb58a2168b252077369da446c30ed0e658301efe69691979d1ef0443928f4",
                 "c394386e6133bbf29ffd32c8af0bb3d4aac354cba9ee051f29612aa9350f8f8d",
             ],
-            EditorKind::Emacs => vec![
-                "51068d4747a13732440d1a8b8f432603badb1864fa431d83d0fd4f8fa57039e0",
-                "d29af4d949bbe2371eac928a3c31cf9496b1701aa1c45f11cd6c759865ad5c45",
-            ],
-            EditorKind::Helix => {
-                vec!["2d3069b8cf1b977e5d4023965eb6199597755e6c96c185ed5f2854f98b83d233"]
+            EditorKind::Zed => {
+                &["bbce727c269d1bd0c98afef4d612eb4ce27aea3c3a8968c5f10b31affbc40b6c"]
             }
         }
     }
@@ -592,29 +613,31 @@ Select which editor you would like to set up [default: None]: ";
 
     fn settings_short_path(&self) -> PathBuf {
         self.settings_folder().join(match self {
-            EditorKind::Vscode => "settings.json",
-            EditorKind::Vim => "coc-settings.json",
             EditorKind::Emacs => ".dir-locals.el",
             EditorKind::Helix => "languages.toml",
+            EditorKind::Vim => "coc-settings.json",
+            EditorKind::VsCode | EditorKind::Zed => "settings.json",
         })
     }
 
     fn settings_folder(&self) -> PathBuf {
         match self {
-            EditorKind::Vscode => PathBuf::from(".vscode"),
-            EditorKind::Vim => PathBuf::from(".vim"),
             EditorKind::Emacs => PathBuf::new(),
             EditorKind::Helix => PathBuf::from(".helix"),
+            EditorKind::Vim => PathBuf::from(".vim"),
+            EditorKind::VsCode => PathBuf::from(".vscode"),
+            EditorKind::Zed => PathBuf::from(".zed"),
         }
     }
 
-    fn settings_template(&self) -> &str {
+    fn settings_template(&self) -> &'static str {
         match self {
-            EditorKind::Vscode | EditorKind::Vim => {
-                include_str!("../../../../etc/rust_analyzer_settings.json")
-            }
             EditorKind::Emacs => include_str!("../../../../etc/rust_analyzer_eglot.el"),
             EditorKind::Helix => include_str!("../../../../etc/rust_analyzer_helix.toml"),
+            EditorKind::Vim | EditorKind::VsCode => {
+                include_str!("../../../../etc/rust_analyzer_settings.json")
+            }
+            EditorKind::Zed => include_str!("../../../../etc/rust_analyzer_zed.json"),
         }
     }
 
