@@ -300,7 +300,9 @@ impl Step for Cargo {
     fn run(self, builder: &Builder<'_>) {
         let compiler = builder.compiler(self.stage, self.host);
 
-        builder.ensure(tool::Cargo { compiler, target: self.host });
+        let cargo = builder.ensure(tool::Cargo { compiler, target: self.host });
+        let compiler = cargo.build_compiler;
+
         let cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
