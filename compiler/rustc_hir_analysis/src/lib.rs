@@ -92,6 +92,7 @@ mod impl_wf_check;
 mod outlives;
 mod variance;
 
+pub use errors::NoVariantNamed;
 use rustc_abi::ExternAbi;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;

@@ -19,6 +19,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, HirId, QPath};
+use rustc_hir_analysis::NoVariantNamed;
 use rustc_hir_analysis::hir_ty_lowering::{FeedConstTy, HirTyLowerer as _};
 use rustc_infer::infer;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
@@ -3837,15 +3838,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .iter_enumerated()
                         .find(|(_, v)| v.ident(self.tcx).normalize_to_macros_2_0() == ident)
                     else {
-                        type_error_struct!(
-                            self.dcx(),
-                            ident.span,
-                            container,
-                            E0599,
-                            "no variant named `{ident}` found for enum `{container}`",
-                        )
-                        .with_span_label(field.span, "variant not found")
-                        .emit();
+                        self.dcx()
+                            .create_err(NoVariantNamed { span: ident.span, ident, ty: container })
+                            .with_span_label(field.span, "variant not found")
+                            .emit_unless(container.references_error());
                         break;
                     };
                     let Some(&subfield) = fields.next() else {

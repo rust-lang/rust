@@ -53,7 +53,9 @@ use rustc_type_ir::Upcast;
 use tracing::{debug, instrument};
 
 use crate::check::check_abi_fn_ptr;
-use crate::errors::{AmbiguousLifetimeBound, BadReturnTypeNotation, InvalidBaseType};
+use crate::errors::{
+    AmbiguousLifetimeBound, BadReturnTypeNotation, InvalidBaseType, NoVariantNamed,
+};
 use crate::hir_ty_lowering::errors::{GenericsArgsErrExtend, prohibit_assoc_item_constraint};
 use crate::hir_ty_lowering::generics::{check_generic_arg_count, lower_generic_args};
 use crate::middle::resolve_bound_vars as rbv;
@@ -1205,14 +1207,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     let msg = format!("expected type, found variant `{assoc_ident}`");
                     self.dcx().span_err(span, msg)
                 } else if qself_ty.is_enum() {
-                    let mut err = struct_span_code_err!(
-                        self.dcx(),
-                        assoc_ident.span,
-                        E0599,
-                        "no variant named `{}` found for enum `{}`",
-                        assoc_ident,
-                        qself_ty,
-                    );
+                    let mut err = self.dcx().create_err(NoVariantNamed {
+                        span: assoc_ident.span,
+                        ident: assoc_ident,
+                        ty: qself_ty,
+                    });
 
                     let adt_def = qself_ty.ty_adt_def().expect("enum is not an ADT");
                     if let Some(variant_name) = find_best_match_for_name(

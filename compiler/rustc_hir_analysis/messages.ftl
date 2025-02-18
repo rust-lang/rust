@@ -387,6 +387,8 @@ hir_analysis_must_implement_not_function_span_note = required by this annotation
 
 hir_analysis_must_implement_one_of_attribute = the `#[rustc_must_implement_one_of]` attribute must be used with at least 2 args
 
+hir_analysis_no_variant_named = no variant named `{$ident}` found for enum `{$ty}`
+
 hir_analysis_not_supported_delegation = {$descr}
     .label = callee defined here
 
