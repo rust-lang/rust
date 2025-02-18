@@ -1,0 +1,8 @@
+error: `#[const_continue]` must break to a labeled block that participates in a `#[loop_match]`
+  --> $DIR/const-continue-to-loop.rs:21:27
+   |
+LL |                     break 'a 2;
+   |                           ^^
+
+error: aborting due to 1 previous error
+
