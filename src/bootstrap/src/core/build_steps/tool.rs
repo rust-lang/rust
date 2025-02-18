@@ -145,7 +145,7 @@ impl Step for ToolBuild {
                 tool = "rust-tidy";
             }
             let tool_path =
-                copy_link_tool_bin(builder, target_compiler, self.target, self.mode, tool);
+                copy_link_tool_bin(builder, self.compiler, self.target, self.mode, tool);
 
             ToolBuildResult { tool_path, build_compiler: self.compiler, target_compiler }
         }
@@ -976,50 +976,30 @@ impl Step for LlvmBitcodeLinker {
         instrument(level = "debug", name = "LlvmBitcodeLinker::run", skip_all)
     )]
     fn run(self, builder: &Builder<'_>) -> PathBuf {
-        let bin_name = "llvm-bitcode-linker";
+        let ToolBuildResult { tool_path, build_compiler: _build_compiler, target_compiler } =
+            builder.ensure(ToolBuild {
+                compiler: self.compiler,
+                target: self.target,
+                tool: "llvm-bitcode-linker",
+                mode: Mode::ToolRustc,
+                path: "src/tools/llvm-bitcode-linker",
+                source_type: SourceType::InTree,
+                extra_features: self.extra_features,
+                allow_features: "",
+                cargo_args: Vec::new(),
+            });
 
-        // If enabled, use ci-rustc and skip building the in-tree compiler.
-        if !builder.download_rustc() {
-            builder.ensure(compile::Std::new(self.compiler, self.compiler.host));
-            builder.ensure(compile::Rustc::new(self.compiler, self.target));
-        }
-
-        let cargo = prepare_tool_cargo(
-            builder,
-            self.compiler,
-            Mode::ToolRustc,
-            self.target,
-            Kind::Build,
-            "src/tools/llvm-bitcode-linker",
-            SourceType::InTree,
-            &self.extra_features,
-        );
-
-        let _guard = builder.msg_tool(
-            Kind::Build,
-            Mode::ToolRustc,
-            bin_name,
-            self.compiler.stage,
-            &self.compiler.host,
-            &self.target,
-        );
-
-        cargo.into_cmd().run(builder);
-
-        let tool_out = builder
-            .cargo_out(self.compiler, Mode::ToolRustc, self.target)
-            .join(exe(bin_name, self.compiler.host));
-
-        if self.compiler.stage > 0 {
+        if target_compiler.stage > 0 {
             let bindir_self_contained = builder
-                .sysroot(self.compiler)
+                .sysroot(target_compiler)
                 .join(format!("lib/rustlib/{}/bin/self-contained", self.target.triple));
             t!(fs::create_dir_all(&bindir_self_contained));
-            let bin_destination = bindir_self_contained.join(exe(bin_name, self.compiler.host));
-            builder.copy_link(&tool_out, &bin_destination);
+            let bin_destination =
+                bindir_self_contained.join(exe("llvm-bitcode-linker", target_compiler.host));
+            builder.copy_link(&tool_path, &bin_destination);
             bin_destination
         } else {
-            tool_out
+            tool_path
         }
     }
 }
@@ -1171,7 +1151,7 @@ fn run_tool_build_step(
     path: &'static str,
     add_bins_to_sysroot: Option<&[&str]>,
 ) -> PathBuf {
-    let tool = builder
+    let ToolBuildResult { tool_path, build_compiler: _build_compiler, target_compiler } = builder
         .ensure(ToolBuild {
             compiler,
             target,
@@ -1182,28 +1162,24 @@ fn run_tool_build_step(
             source_type: SourceType::InTree,
             allow_features: "",
             cargo_args: vec![],
-        })
-        .tool_path;
+        });
 
     // FIXME: This should just be an if-let-chain, but those are unstable.
     if let Some(add_bins_to_sysroot) =
-        add_bins_to_sysroot.filter(|bins| !bins.is_empty() && compiler.stage > 0)
+        add_bins_to_sysroot.filter(|bins| !bins.is_empty() && target_compiler.stage > 0)
     {
-        let bindir = builder.sysroot(compiler).join("bin");
+        let bindir = builder.sysroot(target_compiler).join("bin");
         t!(fs::create_dir_all(&bindir));
 
-        let tools_out = builder.cargo_out(compiler, Mode::ToolRustc, target);
-
         for add_bin in add_bins_to_sysroot {
-            let bin_source = tools_out.join(exe(add_bin, target));
-            let bin_destination = bindir.join(exe(add_bin, compiler.host));
-            builder.copy_link(&bin_source, &bin_destination);
+            let bin_destination = bindir.join(exe(add_bin, target_compiler.host));
+            builder.copy_link(&tool_path, &bin_destination);
         }
 
         // Return a path into the bin dir.
-        bindir.join(exe(tool_name, compiler.host))
+        bindir.join(exe(tool_name, target_compiler.host))
     } else {
-        tool
+        tool_path
     }
 }
 
