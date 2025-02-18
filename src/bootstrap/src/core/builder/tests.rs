@@ -525,6 +525,7 @@ mod dist {
             first(cache.all::<compile::Rustc>()),
             &[
                 rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 0),
+                rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_2, stage = 0),
                 rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_2, stage = 1),
             ]
         );
@@ -796,7 +797,10 @@ mod dist {
         // stage minus 1 if --stage is not 0. Very confusing!
         assert_eq!(
             first(builder.cache.all::<tool::Rustdoc>()),
-            &[tool::Rustdoc { compiler: Compiler { host: a, stage: 2 } },]
+            &[
+                tool::Rustdoc { compiler: Compiler { host: a, stage: 1 } },
+                tool::Rustdoc { compiler: Compiler { host: a, stage: 2 } },
+            ]
         );
     }
 
