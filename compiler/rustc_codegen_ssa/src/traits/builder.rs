@@ -110,6 +110,20 @@ pub trait BuilderMethods<'a, 'tcx>:
         else_llbb: Self::BasicBlock,
         cases: impl ExactSizeIterator<Item = (u128, Self::BasicBlock)>,
     );
+
+    // This is like `switch()`, but every case has a bool flag indicating whether it's cold.
+    //
+    // Default implementation throws away the cold flags and calls `switch()`.
+    fn switch_with_weights(
+        &mut self,
+        v: Self::Value,
+        else_llbb: Self::BasicBlock,
+        _else_is_cold: bool,
+        cases: impl ExactSizeIterator<Item = (u128, Self::BasicBlock, bool)>,
+    ) {
+        self.switch(v, else_llbb, cases.map(|(val, bb, _)| (val, bb)))
+    }
+
     fn invoke(
         &mut self,
         llty: Self::Type,
