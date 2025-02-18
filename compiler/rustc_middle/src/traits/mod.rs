@@ -274,7 +274,7 @@ pub enum ObligationCauseCode<'tcx> {
     },
 
     /// Constant expressions must be sized.
-    ConstSized,
+    SizedConstOrStatic,
 
     /// `static` items must have `Sync` type.
     SharedStatic,
