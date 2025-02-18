@@ -263,7 +263,7 @@ impl Step for Cargotest {
 
         let _time = helpers::timeit(builder);
         let mut cmd = builder.tool_cmd(Tool::CargoTest);
-        cmd.arg(&cargo)
+        cmd.arg(&cargo.tool_path)
             .arg(&out_dir)
             .args(builder.config.test_args())
             .env("RUSTC", builder.rustc(compiler))
@@ -1718,7 +1718,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
                 // If we're using `--stage 0`, we should provide the bootstrap cargo.
                 builder.initial_cargo.clone()
             } else {
-                builder.ensure(tool::Cargo { compiler, target: compiler.host })
+                builder.ensure(tool::Cargo { compiler, target: compiler.host }).tool_path
             };
 
             cmd.arg("--cargo-path").arg(cargo_path);
@@ -1739,9 +1739,10 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             // Use the beta compiler for jsondocck
             let json_compiler = compiler.with_stage(0);
             cmd.arg("--jsondocck-path")
-                .arg(builder.ensure(tool::JsonDocCk { compiler: json_compiler, target }));
-            cmd.arg("--jsondoclint-path")
-                .arg(builder.ensure(tool::JsonDocLint { compiler: json_compiler, target }));
+                .arg(builder.ensure(tool::JsonDocCk { compiler: json_compiler, target }).tool_path);
+            cmd.arg("--jsondoclint-path").arg(
+                builder.ensure(tool::JsonDocLint { compiler: json_compiler, target }).tool_path,
+            );
         }
 
         if matches!(mode, "coverage-map" | "coverage-run") {
@@ -2976,12 +2977,15 @@ impl Step for RemoteCopyLibs {
 
         builder.info(&format!("REMOTE copy libs to emulator ({target})"));
 
-        let server = builder.ensure(tool::RemoteTestServer { compiler, target });
+        let remote_test_server = builder.ensure(tool::RemoteTestServer { compiler, target });
 
         // Spawn the emulator and wait for it to come online
         let tool = builder.tool_exe(Tool::RemoteTestClient);
         let mut cmd = command(&tool);
-        cmd.arg("spawn-emulator").arg(target.triple).arg(&server).arg(builder.tempdir());
+        cmd.arg("spawn-emulator")
+            .arg(target.triple)
+            .arg(&remote_test_server.tool_path)
+            .arg(builder.tempdir());
         if let Some(rootfs) = builder.qemu_rootfs(target) {
             cmd.arg(rootfs);
         }

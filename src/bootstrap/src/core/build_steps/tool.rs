@@ -347,7 +347,7 @@ macro_rules! bootstrap_tool {
                         self.ensure($name {
                             compiler: self.compiler(0, self.config.build),
                             target: self.config.build,
-                        }),
+                        }).tool_path,
                     )+
                 }
             }
@@ -361,7 +361,7 @@ macro_rules! bootstrap_tool {
         }
 
         impl Step for $name {
-            type Output = PathBuf;
+            type Output = ToolBuildResult;
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
                 run.path($path)
@@ -383,7 +383,7 @@ macro_rules! bootstrap_tool {
                     skip_all,
                 ),
             )]
-            fn run(self, builder: &Builder<'_>) -> PathBuf {
+            fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
                 $(
                     for submodule in $submodules {
                         builder.require_submodule(submodule, None);
@@ -408,7 +408,7 @@ macro_rules! bootstrap_tool {
                     extra_features: vec![],
                     allow_features: concat!($($allow_features)*),
                     cargo_args: vec![]
-                }).tool_path
+                })
             }
         }
         )+
@@ -458,7 +458,7 @@ pub struct OptimizedDist {
 }
 
 impl Step for OptimizedDist {
-    type Output = PathBuf;
+    type Output = ToolBuildResult;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/opt-dist")
@@ -471,24 +471,22 @@ impl Step for OptimizedDist {
         });
     }
 
-    fn run(self, builder: &Builder<'_>) -> PathBuf {
+    fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
         // We need to ensure the rustc-perf submodule is initialized when building opt-dist since
         // the tool requires it to be in place to run.
         builder.require_submodule("src/tools/rustc-perf", None);
 
-        builder
-            .ensure(ToolBuild {
-                compiler: self.compiler,
-                target: self.target,
-                tool: "opt-dist",
-                mode: Mode::ToolBootstrap,
-                path: "src/tools/opt-dist",
-                source_type: SourceType::InTree,
-                extra_features: Vec::new(),
-                allow_features: "",
-                cargo_args: Vec::new(),
-            })
-            .tool_path
+        builder.ensure(ToolBuild {
+            compiler: self.compiler,
+            target: self.target,
+            tool: "opt-dist",
+            mode: Mode::ToolBootstrap,
+            path: "src/tools/opt-dist",
+            source_type: SourceType::InTree,
+            extra_features: Vec::new(),
+            allow_features: "",
+            cargo_args: Vec::new(),
+        })
     }
 }
 
@@ -502,7 +500,7 @@ pub struct RustcPerf {
 
 impl Step for RustcPerf {
     /// Path to the built `collector` binary.
-    type Output = PathBuf;
+    type Output = ToolBuildResult;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/rustc-perf")
@@ -515,7 +513,7 @@ impl Step for RustcPerf {
         });
     }
 
-    fn run(self, builder: &Builder<'_>) -> PathBuf {
+    fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
         // We need to ensure the rustc-perf submodule is initialized.
         builder.require_submodule("src/tools/rustc-perf", None);
 
@@ -532,12 +530,12 @@ impl Step for RustcPerf {
             // a CLI.
             cargo_args: vec!["-p".to_string(), "collector".to_string()],
         };
-        let collector_bin = builder.ensure(tool.clone()).tool_path;
+        let res = builder.ensure(tool.clone());
         // We also need to symlink the `rustc-fake` binary to the corresponding directory,
         // because `collector` expects it in the same directory.
         copy_link_tool_bin(builder, tool.compiler, tool.target, tool.mode, "rustc-fake");
 
-        collector_bin
+        res
     }
 }
 
@@ -552,7 +550,7 @@ impl ErrorIndex {
         // for rustc_private and libLLVM.so, and `sysroot_lib` for libstd, etc.
         let host = builder.config.build;
         let compiler = builder.compiler_for(builder.top_stage, host, host);
-        let mut cmd = command(builder.ensure(ErrorIndex { compiler }));
+        let mut cmd = command(builder.ensure(ErrorIndex { compiler }).tool_path);
         let mut dylib_paths = builder.rustc_lib_paths(compiler);
         dylib_paths.push(PathBuf::from(&builder.sysroot_target_libdir(compiler, compiler.host)));
         add_dylib_path(dylib_paths, &mut cmd);
@@ -561,16 +559,13 @@ impl ErrorIndex {
 }
 
 impl Step for ErrorIndex {
-    type Output = PathBuf;
+    type Output = ToolBuildResult;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/error_index_generator")
     }
 
     fn make_run(run: RunConfig<'_>) {
-        // Compile the error-index in the same stage as rustdoc to avoid
-        // recompiling rustdoc twice if we can.
-        //
         // NOTE: This `make_run` isn't used in normal situations, only if you
         // manually build the tool with `x.py build
         // src/tools/error-index-generator` which almost nobody does.
@@ -580,20 +575,18 @@ impl Step for ErrorIndex {
         run.builder.ensure(ErrorIndex { compiler });
     }
 
-    fn run(self, builder: &Builder<'_>) -> PathBuf {
-        builder
-            .ensure(ToolBuild {
-                compiler: self.compiler,
-                target: self.compiler.host,
-                tool: "error_index_generator",
-                mode: Mode::ToolRustc,
-                path: "src/tools/error_index_generator",
-                source_type: SourceType::InTree,
-                extra_features: Vec::new(),
-                allow_features: "",
-                cargo_args: Vec::new(),
-            })
-            .tool_path
+    fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
+        builder.ensure(ToolBuild {
+            compiler: self.compiler,
+            target: self.compiler.host,
+            tool: "error_index_generator",
+            mode: Mode::ToolRustc,
+            path: "src/tools/error_index_generator",
+            source_type: SourceType::InTree,
+            extra_features: Vec::new(),
+            allow_features: "",
+            cargo_args: Vec::new(),
+        })
     }
 }
 
@@ -604,7 +597,7 @@ pub struct RemoteTestServer {
 }
 
 impl Step for RemoteTestServer {
-    type Output = PathBuf;
+    type Output = ToolBuildResult;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.path("src/tools/remote-test-server")
@@ -617,20 +610,18 @@ impl Step for RemoteTestServer {
         });
     }
 
-    fn run(self, builder: &Builder<'_>) -> PathBuf {
-        builder
-            .ensure(ToolBuild {
-                compiler: self.compiler,
-                target: self.target,
-                tool: "remote-test-server",
-                mode: Mode::ToolStd,
-                path: "src/tools/remote-test-server",
-                source_type: SourceType::InTree,
-                extra_features: Vec::new(),
-                allow_features: "",
-                cargo_args: Vec::new(),
-            })
-            .tool_path
+    fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
+        builder.ensure(ToolBuild {
+            compiler: self.compiler,
+            target: self.target,
+            tool: "remote-test-server",
+            mode: Mode::ToolStd,
+            path: "src/tools/remote-test-server",
+            source_type: SourceType::InTree,
+            extra_features: Vec::new(),
+            allow_features: "",
+            cargo_args: Vec::new(),
+        })
     }
 }
 
@@ -642,7 +633,7 @@ pub struct Rustdoc {
 }
 
 impl Step for Rustdoc {
-    type Output = PathBuf;
+    type Output = ToolBuildResult;
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
@@ -655,15 +646,21 @@ impl Step for Rustdoc {
             .ensure(Rustdoc { compiler: run.builder.compiler(run.builder.top_stage, run.target) });
     }
 
-    fn run(self, builder: &Builder<'_>) -> PathBuf {
+    fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
         let target_compiler = self.compiler;
+        let target = target_compiler.host;
+
         if target_compiler.stage == 0 {
             if !target_compiler.is_snapshot(builder) {
                 panic!("rustdoc in stage 0 must be snapshot rustdoc");
             }
-            return builder.initial_rustdoc.clone();
+
+            return ToolBuildResult {
+                tool_path: builder.initial_rustdoc.clone(),
+                build_compiler: target_compiler,
+                target_compiler,
+            };
         }
-        let target = target_compiler.host;
 
         let bin_rustdoc = || {
             let sysroot = builder.sysroot(target_compiler);
@@ -693,7 +690,12 @@ impl Step for Rustdoc {
 
                 let bin_rustdoc = bin_rustdoc();
                 builder.copy_link(&precompiled_rustdoc, &bin_rustdoc);
-                return bin_rustdoc;
+
+                return ToolBuildResult {
+                    tool_path: bin_rustdoc,
+                    build_compiler: target_compiler,
+                    target_compiler,
+                };
             }
         }
 
@@ -709,7 +711,7 @@ impl Step for Rustdoc {
             extra_features.push("jemalloc".to_string());
         }
 
-        let ToolBuildResult { tool_path, build_compiler: _build_compiler, target_compiler } =
+        let ToolBuildResult { tool_path, build_compiler, target_compiler } =
             builder.ensure(ToolBuild {
                 compiler: target_compiler,
                 target,
@@ -734,9 +736,9 @@ impl Step for Rustdoc {
             }
             let bin_rustdoc = bin_rustdoc();
             builder.copy_link(&tool_path, &bin_rustdoc);
-            bin_rustdoc
+            ToolBuildResult { tool_path: bin_rustdoc, build_compiler, target_compiler }
         } else {
-            tool_path
+            ToolBuildResult { tool_path, build_compiler, target_compiler }
         }
     }
 }
@@ -748,7 +750,7 @@ pub struct Cargo {
 }
 
 impl Step for Cargo {
-    type Output = PathBuf;
+    type Output = ToolBuildResult;
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
@@ -764,22 +766,20 @@ impl Step for Cargo {
         });
     }
 
-    fn run(self, builder: &Builder<'_>) -> PathBuf {
+    fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
         builder.build.require_submodule("src/tools/cargo", None);
 
-        builder
-            .ensure(ToolBuild {
-                compiler: self.compiler,
-                target: self.target,
-                tool: "cargo",
-                mode: Mode::ToolRustc,
-                path: "src/tools/cargo",
-                source_type: SourceType::Submodule,
-                extra_features: Vec::new(),
-                allow_features: "",
-                cargo_args: Vec::new(),
-            })
-            .tool_path
+        builder.ensure(ToolBuild {
+            compiler: self.compiler,
+            target: self.target,
+            tool: "cargo",
+            mode: Mode::ToolRustc,
+            path: "src/tools/cargo",
+            source_type: SourceType::Submodule,
+            extra_features: Vec::new(),
+            allow_features: "",
+            cargo_args: Vec::new(),
+        })
     }
 }
 
@@ -790,7 +790,7 @@ pub struct LldWrapper {
 }
 
 impl Step for LldWrapper {
-    type Output = ();
+    type Output = ToolBuildResult;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         run.never()
@@ -805,26 +805,29 @@ impl Step for LldWrapper {
             fields(build_compiler = ?self.build_compiler, target_compiler = ?self.target_compiler),
         ),
     )]
-    fn run(self, builder: &Builder<'_>) {
+
+    fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
         if builder.config.dry_run() {
-            return;
+            return ToolBuildResult {
+                tool_path: Default::default(),
+                build_compiler: self.build_compiler,
+                target_compiler: self.target_compiler,
+            };
         }
 
         let target = self.target_compiler.host;
 
-        let executable = builder
-            .ensure(ToolBuild {
-                compiler: self.build_compiler,
-                target,
-                tool: "lld-wrapper",
-                mode: Mode::ToolStd,
-                path: "src/tools/lld-wrapper",
-                source_type: SourceType::InTree,
-                extra_features: Vec::new(),
-                allow_features: "",
-                cargo_args: Vec::new(),
-            })
-            .tool_path;
+        let tool_result = builder.ensure(ToolBuild {
+            compiler: self.build_compiler,
+            target,
+            tool: "lld-wrapper",
+            mode: Mode::ToolStd,
+            path: "src/tools/lld-wrapper",
+            source_type: SourceType::InTree,
+            extra_features: Vec::new(),
+            allow_features: "",
+            cargo_args: Vec::new(),
+        });
 
         let libdir_bin = builder.sysroot_target_bindir(self.target_compiler, target);
         t!(fs::create_dir_all(&libdir_bin));
@@ -838,8 +841,11 @@ impl Step for LldWrapper {
         t!(fs::create_dir_all(&self_contained_lld_dir));
 
         for name in crate::LLD_FILE_NAMES {
-            builder.copy_link(&executable, &self_contained_lld_dir.join(exe(name, target)));
+            builder
+                .copy_link(&tool_result.tool_path, &self_contained_lld_dir.join(exe(name, target)));
         }
+
+        tool_result
     }
 }
 
@@ -854,7 +860,7 @@ impl RustAnalyzer {
 }
 
 impl Step for RustAnalyzer {
-    type Output = PathBuf;
+    type Output = ToolBuildResult;
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
@@ -870,20 +876,18 @@ impl Step for RustAnalyzer {
         });
     }
 
-    fn run(self, builder: &Builder<'_>) -> PathBuf {
-        builder
-            .ensure(ToolBuild {
-                compiler: self.compiler,
-                target: self.target,
-                tool: "rust-analyzer",
-                mode: Mode::ToolRustc,
-                path: "src/tools/rust-analyzer",
-                extra_features: vec!["in-rust-tree".to_owned()],
-                source_type: SourceType::InTree,
-                allow_features: RustAnalyzer::ALLOW_FEATURES,
-                cargo_args: Vec::new(),
-            })
-            .tool_path
+    fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
+        builder.ensure(ToolBuild {
+            compiler: self.compiler,
+            target: self.target,
+            tool: "rust-analyzer",
+            mode: Mode::ToolRustc,
+            path: "src/tools/rust-analyzer",
+            extra_features: vec!["in-rust-tree".to_owned()],
+            source_type: SourceType::InTree,
+            allow_features: RustAnalyzer::ALLOW_FEATURES,
+            cargo_args: Vec::new(),
+        })
     }
 }
 
@@ -894,7 +898,7 @@ pub struct RustAnalyzerProcMacroSrv {
 }
 
 impl Step for RustAnalyzerProcMacroSrv {
-    type Output = Option<PathBuf>;
+    type Output = Option<ToolBuildResult>;
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
@@ -916,28 +920,27 @@ impl Step for RustAnalyzerProcMacroSrv {
         });
     }
 
-    fn run(self, builder: &Builder<'_>) -> Option<PathBuf> {
-        let path = builder
-            .ensure(ToolBuild {
-                compiler: self.compiler,
-                target: self.target,
-                tool: "rust-analyzer-proc-macro-srv",
-                mode: Mode::ToolRustc,
-                path: "src/tools/rust-analyzer/crates/proc-macro-srv-cli",
-                extra_features: vec!["in-rust-tree".to_owned()],
-                source_type: SourceType::InTree,
-                allow_features: RustAnalyzer::ALLOW_FEATURES,
-                cargo_args: Vec::new(),
-            })
-            .tool_path;
+    fn run(self, builder: &Builder<'_>) -> Option<ToolBuildResult> {
+        let tool_result = builder.ensure(ToolBuild {
+            compiler: self.compiler,
+            target: self.target,
+            tool: "rust-analyzer-proc-macro-srv",
+            mode: Mode::ToolRustc,
+            path: "src/tools/rust-analyzer/crates/proc-macro-srv-cli",
+            extra_features: vec!["in-rust-tree".to_owned()],
+            source_type: SourceType::InTree,
+            allow_features: RustAnalyzer::ALLOW_FEATURES,
+            cargo_args: Vec::new(),
+        });
 
         // Copy `rust-analyzer-proc-macro-srv` to `<sysroot>/libexec/`
         // so that r-a can use it.
         let libexec_path = builder.sysroot(self.compiler).join("libexec");
         t!(fs::create_dir_all(&libexec_path));
-        builder.copy_link(&path, &libexec_path.join("rust-analyzer-proc-macro-srv"));
+        builder
+            .copy_link(&tool_result.tool_path, &libexec_path.join("rust-analyzer-proc-macro-srv"));
 
-        Some(path)
+        Some(tool_result)
     }
 }
 
@@ -949,7 +952,7 @@ pub struct LlvmBitcodeLinker {
 }
 
 impl Step for LlvmBitcodeLinker {
-    type Output = PathBuf;
+    type Output = ToolBuildResult;
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
@@ -971,31 +974,34 @@ impl Step for LlvmBitcodeLinker {
         feature = "tracing",
         instrument(level = "debug", name = "LlvmBitcodeLinker::run", skip_all)
     )]
-    fn run(self, builder: &Builder<'_>) -> PathBuf {
-        let ToolBuildResult { tool_path, build_compiler: _build_compiler, target_compiler } =
-            builder.ensure(ToolBuild {
-                compiler: self.compiler,
-                target: self.target,
-                tool: "llvm-bitcode-linker",
-                mode: Mode::ToolRustc,
-                path: "src/tools/llvm-bitcode-linker",
-                source_type: SourceType::InTree,
-                extra_features: self.extra_features,
-                allow_features: "",
-                cargo_args: Vec::new(),
-            });
+    fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
+        let tool_result = builder.ensure(ToolBuild {
+            compiler: self.compiler,
+            target: self.target,
+            tool: "llvm-bitcode-linker",
+            mode: Mode::ToolRustc,
+            path: "src/tools/llvm-bitcode-linker",
+            source_type: SourceType::InTree,
+            extra_features: self.extra_features,
+            allow_features: "",
+            cargo_args: Vec::new(),
+        });
 
-        if target_compiler.stage > 0 {
+        if tool_result.target_compiler.stage > 0 {
             let bindir_self_contained = builder
-                .sysroot(target_compiler)
+                .sysroot(tool_result.target_compiler)
                 .join(format!("lib/rustlib/{}/bin/self-contained", self.target.triple));
             t!(fs::create_dir_all(&bindir_self_contained));
-            let bin_destination =
-                bindir_self_contained.join(exe("llvm-bitcode-linker", target_compiler.host));
-            builder.copy_link(&tool_path, &bin_destination);
-            bin_destination
+            let bin_destination = bindir_self_contained
+                .join(exe("llvm-bitcode-linker", tool_result.target_compiler.host));
+            builder.copy_link(&tool_result.tool_path, &bin_destination);
+            ToolBuildResult {
+                tool_path: bin_destination,
+                build_compiler: tool_result.build_compiler,
+                target_compiler: tool_result.target_compiler,
+            }
         } else {
-            tool_path
+            tool_result
         }
     }
 }
@@ -1214,7 +1220,7 @@ pub struct TestFloatParse {
 }
 
 impl Step for TestFloatParse {
-    type Output = ();
+    type Output = ToolBuildResult;
     const ONLY_HOSTS: bool = true;
     const DEFAULT: bool = false;
 
@@ -1222,7 +1228,7 @@ impl Step for TestFloatParse {
         run.path("src/etc/test-float-parse")
     }
 
-    fn run(self, builder: &Builder<'_>) {
+    fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
         let bootstrap_host = builder.config.build;
         let compiler = builder.compiler(builder.top_stage, bootstrap_host);
 
@@ -1236,7 +1242,7 @@ impl Step for TestFloatParse {
             extra_features: Vec::new(),
             allow_features: "",
             cargo_args: Vec::new(),
-        });
+        })
     }
 }
 

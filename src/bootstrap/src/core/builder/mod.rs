@@ -1392,7 +1392,7 @@ impl<'a> Builder<'a> {
     }
 
     pub fn rustdoc(&self, compiler: Compiler) -> PathBuf {
-        self.ensure(tool::Rustdoc { compiler })
+        self.ensure(tool::Rustdoc { compiler }).tool_path
     }
 
     pub fn cargo_clippy_cmd(&self, run_compiler: Compiler) -> BootstrapCommand {
