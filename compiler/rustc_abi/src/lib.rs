@@ -1695,8 +1695,8 @@ pub struct LayoutData<FieldIdx: Idx, VariantIdx: Idx> {
     pub largest_niche: Option<Niche>,
     /// Is this type known to be uninhabted?
     ///
-    /// This is separate from BackendRepr, because an uninhabited return type may require special
-    /// consideration based on its size or other attributes.
+    /// This is separate from BackendRepr because uninhabited return types can affect ABI,
+    /// especially in the case of by-pointer struct returns, which allocate stack even when unused.
     pub uninhabited: bool,
 
     pub align: AbiAndPrefAlign,
