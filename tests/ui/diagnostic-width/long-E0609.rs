@@ -7,7 +7,7 @@ type C = (B, B, B, B);
 type D = (C, C, C, C);
 
 fn foo(x: D) {
-    x.field; //~ ERROR no field `field` on type `(
+    x.field; //~ ERROR no field `field` on type `(...
 }
 
 fn main() {}

@@ -45,8 +45,9 @@ use crate::errors::{
     AddressOfTemporaryTaken, BaseExpressionDoubleDot, BaseExpressionDoubleDotAddExpr,
     BaseExpressionDoubleDotEnableDefaultFieldValues, BaseExpressionDoubleDotRemove,
     CantDereference, FieldMultiplySpecifiedInInitializer, FunctionalRecordUpdateOnNonStruct,
-    HelpUseLatestEdition, ReturnLikeStatementKind, ReturnStmtOutsideOfFnBody,
-    StructExprNonExhaustive, TypeMismatchFruTypo, YieldExprOutsideOfCoroutine,
+    HelpUseLatestEdition, NoFieldOnType, NoFieldOnVariant, ReturnLikeStatementKind,
+    ReturnStmtOutsideOfFnBody, StructExprNonExhaustive, TypeMismatchFruTypo,
+    YieldExprOutsideOfCoroutine,
 };
 use crate::{
     BreakableCtxt, CoroutineTypes, Diverges, FnCtxt, Needs, cast, fatally_break_rust,
@@ -3281,13 +3282,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let span = field.span;
         debug!("no_such_field_err(span: {:?}, field: {:?}, expr_t: {:?})", span, field, expr_t);
 
-        let mut err = type_error_struct!(
-            self.dcx(),
-            span,
-            expr_t,
-            E0609,
-            "no field `{field}` on type `{expr_t}`",
-        );
+        let mut err = self.dcx().create_err(NoFieldOnType { span, ty: expr_t, field });
+        if expr_t.references_error() {
+            err.downgrade_to_delayed_bug();
+        }
 
         // try to add a suggestion in case the field is a nested field of a field of the Adt
         let mod_id = self.tcx.parent_module(id).to_def_id();
@@ -3863,16 +3861,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .iter_enumerated()
                         .find(|(_, f)| f.ident(self.tcx).normalize_to_macros_2_0() == subident)
                     else {
-                        type_error_struct!(
-                            self.dcx(),
-                            ident.span,
-                            container,
-                            E0609,
-                            "no field named `{subfield}` on enum variant `{container}::{ident}`",
-                        )
-                        .with_span_label(field.span, "this enum variant...")
-                        .with_span_label(subident.span, "...does not have this field")
-                        .emit();
+                        self.dcx()
+                            .create_err(NoFieldOnVariant {
+                                span: ident.span,
+                                container,
+                                ident,
+                                field: subfield,
+                                enum_span: field.span,
+                                field_span: subident.span,
+                            })
+                            .emit_unless(container.references_error());
                         break;
                     };
 
