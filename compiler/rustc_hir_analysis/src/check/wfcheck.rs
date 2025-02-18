@@ -1110,7 +1110,13 @@ fn check_associated_item(
                 let ty = tcx.type_of(item.def_id).instantiate_identity();
                 let ty = wfcx.normalize(span, Some(WellFormedLoc::Ty(item_id)), ty);
                 wfcx.register_wf_obligation(span, loc, ty.into());
-                check_sized_if_body(wfcx, item.def_id.expect_local(), ty, Some(span));
+                check_sized_if_body(
+                    wfcx,
+                    item.def_id.expect_local(),
+                    ty,
+                    Some(span),
+                    ObligationCauseCode::SizedConstOrStatic,
+                );
                 Ok(())
             }
             ty::AssocKind::Fn => {
@@ -1356,7 +1362,7 @@ fn check_item_type(
                 traits::ObligationCause::new(
                     ty_span,
                     wfcx.body_def_id,
-                    ObligationCauseCode::WellFormed(None),
+                    ObligationCauseCode::SizedConstOrStatic,
                 ),
                 wfcx.param_env,
                 item_ty,
@@ -1700,6 +1706,7 @@ fn check_fn_or_method<'tcx>(
             hir::FnRetTy::Return(ty) => Some(ty.span),
             hir::FnRetTy::DefaultReturn(_) => None,
         },
+        ObligationCauseCode::SizedReturnType,
     );
 }
 
@@ -1708,13 +1715,14 @@ fn check_sized_if_body<'tcx>(
     def_id: LocalDefId,
     ty: Ty<'tcx>,
     maybe_span: Option<Span>,
+    code: ObligationCauseCode<'tcx>,
 ) {
     let tcx = wfcx.tcx();
     if let Some(body) = tcx.hir_maybe_body_owned_by(def_id) {
         let span = maybe_span.unwrap_or(body.value.span);
 
         wfcx.register_bound(
-            ObligationCause::new(span, def_id, traits::ObligationCauseCode::SizedReturnType),
+            ObligationCause::new(span, def_id, code),
             wfcx.param_env,
             ty,
             tcx.require_lang_item(LangItem::Sized, Some(span)),
