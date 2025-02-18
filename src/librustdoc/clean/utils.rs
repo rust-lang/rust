@@ -1,5 +1,5 @@
 use std::assert_matches::debug_assert_matches;
-use std::fmt::Write as _;
+use std::fmt::{self, Display, Write as _};
 use std::mem;
 use std::sync::LazyLock as Lazy;
 
@@ -24,6 +24,7 @@ use crate::clean::{
     clean_middle_ty, inline,
 };
 use crate::core::DocContext;
+use crate::display::Joined as _;
 
 #[cfg(test)]
 mod tests;
@@ -250,16 +251,20 @@ pub(crate) fn qpath_to_string(p: &hir::QPath<'_>) -> String {
         hir::QPath::LangItem(lang_item, ..) => return lang_item.name().to_string(),
     };
 
-    let mut s = String::new();
-    for (i, seg) in segments.iter().enumerate() {
-        if i > 0 {
-            s.push_str("::");
-        }
-        if seg.ident.name != kw::PathRoot {
-            s.push_str(seg.ident.as_str());
-        }
-    }
-    s
+    fmt::from_fn(|f| {
+        segments
+            .iter()
+            .map(|seg| {
+                fmt::from_fn(|f| {
+                    if seg.ident.name != kw::PathRoot {
+                        write!(f, "{}", seg.ident)?;
+                    }
+                    Ok(())
+                })
+            })
+            .joined("::", f)
+    })
+    .to_string()
 }
 
 pub(crate) fn build_deref_target_impls(
@@ -299,35 +304,49 @@ pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
 
     Symbol::intern(&match p.kind {
         // FIXME(never_patterns): does this make sense?
-        PatKind::Wild | PatKind::Err(_) | PatKind::Never | PatKind::Struct(..) => {
+        PatKind::Wild
+        | PatKind::Err(_)
+        | PatKind::Never
+        | PatKind::Struct(..)
+        | PatKind::Range(..) => {
             return kw::Underscore;
         }
         PatKind::Binding(_, _, ident, _) => return ident.name,
+        PatKind::Box(p) | PatKind::Ref(p, _) | PatKind::Guard(p, _) => return name_from_pat(p),
         PatKind::TupleStruct(ref p, ..)
         | PatKind::Expr(PatExpr { kind: PatExprKind::Path(ref p), .. }) => qpath_to_string(p),
         PatKind::Or(pats) => {
-            pats.iter().map(|p| name_from_pat(p).to_string()).collect::<Vec<String>>().join(" | ")
+            fmt::from_fn(|f| pats.iter().map(|p| name_from_pat(p)).joined(" | ", f)).to_string()
         }
-        PatKind::Tuple(elts, _) => format!(
-            "({})",
-            elts.iter().map(|p| name_from_pat(p).to_string()).collect::<Vec<String>>().join(", ")
-        ),
-        PatKind::Box(p) => return name_from_pat(p),
+        PatKind::Tuple(elts, _) => {
+            format!("({})", fmt::from_fn(|f| elts.iter().map(|p| name_from_pat(p)).joined(", ", f)))
+        }
         PatKind::Deref(p) => format!("deref!({})", name_from_pat(p)),
-        PatKind::Ref(p, _) => return name_from_pat(p),
         PatKind::Expr(..) => {
             warn!(
                 "tried to get argument name from PatKind::Expr, which is silly in function arguments"
             );
             return Symbol::intern("()");
         }
-        PatKind::Guard(p, _) => return name_from_pat(p),
-        PatKind::Range(..) => return kw::Underscore,
-        PatKind::Slice(begin, ref mid, end) => {
-            let begin = begin.iter().map(|p| name_from_pat(p).to_string());
-            let mid = mid.as_ref().map(|p| format!("..{}", name_from_pat(p))).into_iter();
-            let end = end.iter().map(|p| name_from_pat(p).to_string());
-            format!("[{}]", begin.chain(mid).chain(end).collect::<Vec<_>>().join(", "))
+        PatKind::Slice(begin, mid, end) => {
+            fn print_pat<'a>(pat: &'a Pat<'a>, wild: bool) -> impl Display + 'a {
+                fmt::from_fn(move |f| {
+                    if wild {
+                        f.write_str("..")?;
+                    }
+                    name_from_pat(pat).fmt(f)
+                })
+            }
+
+            format!(
+                "[{}]",
+                fmt::from_fn(|f| {
+                    let begin = begin.iter().map(|p| print_pat(p, false));
+                    let mid = mid.map(|p| print_pat(p, true));
+                    let end = end.iter().map(|p| print_pat(p, false));
+                    begin.chain(mid).chain(end).joined(", ", f)
+                })
+            )
         }
     })
 }
