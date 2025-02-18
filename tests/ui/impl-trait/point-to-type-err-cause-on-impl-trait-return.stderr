@@ -12,7 +12,8 @@ LL + fn hat() -> impl std::fmt::Display {
 help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
    |
 LL ~ fn hat() -> Box<dyn std::fmt::Display> {
-LL |     match 13 {
+LL |
+...
 LL |         0 => {
 LL ~             return Box::new(0i32);
 LL |         }
@@ -21,7 +22,7 @@ LL ~             Box::new(1u32)
    |
 
 error[E0746]: return type cannot be a trait object without pointer indirection
-  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:77:13
+  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:79:13
    |
 LL | fn pug() -> dyn std::fmt::Display {
    |             ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
@@ -34,6 +35,8 @@ LL + fn pug() -> impl std::fmt::Display {
 help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
    |
 LL ~ fn pug() -> Box<dyn std::fmt::Display> {
+LL |
+LL |
 LL |     match 13 {
 LL ~         0 => Box::new(0i32),
 LL ~         1 => Box::new(1u32),
@@ -41,7 +44,7 @@ LL ~         _ => Box::new(2u32),
    |
 
 error[E0746]: return type cannot be a trait object without pointer indirection
-  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:85:13
+  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:89:13
    |
 LL | fn man() -> dyn std::fmt::Display {
    |             ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
@@ -54,6 +57,8 @@ LL + fn man() -> impl std::fmt::Display {
 help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
    |
 LL ~ fn man() -> Box<dyn std::fmt::Display> {
+LL |
+LL |
 LL |     if false {
 LL ~         Box::new(0i32)
 LL |     } else {
@@ -207,7 +212,7 @@ LL +         1 => 1i32,
    |
 
 error[E0308]: `if` and `else` have incompatible types
-  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:97:9
+  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:103:9
    |
 LL | /     if let Some(42) = Some(42) {
 LL | |         0i32
@@ -235,7 +240,77 @@ LL -         1u32
 LL +         1i32
    |
 
-error: aborting due to 12 previous errors
+error[E0746]: return type cannot be a trait object without pointer indirection
+  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:66:13
+   |
+LL | fn hat() -> dyn std::fmt::Display {
+   |             ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider returning an `impl Trait` instead of a `dyn Trait`
+   |
+LL - fn hat() -> dyn std::fmt::Display {
+LL + fn hat() -> impl std::fmt::Display {
+   |
+help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
+   |
+LL ~ fn hat() -> Box<dyn std::fmt::Display> {
+LL |
+...
+LL |         0 => {
+LL ~             return Box::new(0i32);
+LL |         }
+LL |         _ => {
+LL ~             Box::new(1u32)
+   |
+
+error[E0746]: return type cannot be a trait object without pointer indirection
+  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:79:13
+   |
+LL | fn pug() -> dyn std::fmt::Display {
+   |             ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider returning an `impl Trait` instead of a `dyn Trait`
+   |
+LL - fn pug() -> dyn std::fmt::Display {
+LL + fn pug() -> impl std::fmt::Display {
+   |
+help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
+   |
+LL ~ fn pug() -> Box<dyn std::fmt::Display> {
+LL |
+LL |
+LL |     match 13 {
+LL ~         0 => Box::new(0i32),
+LL ~         1 => Box::new(1u32),
+LL ~         _ => Box::new(2u32),
+   |
+
+error[E0746]: return type cannot be a trait object without pointer indirection
+  --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:89:13
+   |
+LL | fn man() -> dyn std::fmt::Display {
+   |             ^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider returning an `impl Trait` instead of a `dyn Trait`
+   |
+LL - fn man() -> dyn std::fmt::Display {
+LL + fn man() -> impl std::fmt::Display {
+   |
+help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
+   |
+LL ~ fn man() -> Box<dyn std::fmt::Display> {
+LL |
+LL |
+LL |     if false {
+LL ~         Box::new(0i32)
+LL |     } else {
+LL ~         Box::new(1u32)
+   |
+
+error: aborting due to 15 previous errors
 
 Some errors have detailed explanations: E0308, E0746.
 For more information about an error, try `rustc --explain E0308`.

@@ -19,8 +19,10 @@ impl DynIncompatible for B {
     }
 }
 
-fn car() -> dyn DynIncompatible { //~ ERROR the trait `DynIncompatible` is not dyn compatible
-//~^ ERROR return type cannot be a trait object without pointer indirection
+fn car() -> dyn DynIncompatible {
+    //~^ ERROR the trait `DynIncompatible` is not dyn compatible
+    //~| ERROR return type cannot be a trait object without pointer indirection
+    //~| ERROR return type cannot be a trait object without pointer indirection
     if true {
         return A;
     }

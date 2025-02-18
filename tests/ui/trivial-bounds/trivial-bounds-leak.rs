@@ -9,7 +9,9 @@ fn return_str() -> str where str: Sized {
     *"Sized".to_string().into_boxed_str()
 }
 
-fn cant_return_str() -> str { //~ ERROR
+fn cant_return_str() -> str {
+    //~^ ERROR the size for values of type `str` cannot be known at compilation time
+    //~| ERROR the size for values of type `str` cannot be known at compilation time
     *"Sized".to_string().into_boxed_str()
 }
 

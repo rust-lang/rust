@@ -4,6 +4,7 @@ trait Trait {
     fn bat(&self) -> Self {}
     //~^ ERROR mismatched types
     //~| ERROR the size for values of type `Self` cannot be known
+    //~| ERROR the size for values of type `Self` cannot be known
 }
 
 fn bar(x: &dyn Trait) {} //~ ERROR the trait `Trait` is not dyn compatible

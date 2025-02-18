@@ -14,6 +14,23 @@ help: alternatively, box the return type, and wrap all of the returned values in
 LL | fn or<'a>(first: &'static dyn Foo<'a>) -> Box<dyn Foo<'a>> {
    |                                           ++++           +
 
-error: aborting due to 1 previous error
+error[E0746]: return type cannot be a trait object without pointer indirection
+  --> $DIR/issue-91803.rs:3:43
+   |
+LL | fn or<'a>(first: &'static dyn Foo<'a>) -> dyn Foo<'a> {
+   |                                           ^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider returning an `impl Trait` instead of a `dyn Trait`
+   |
+LL - fn or<'a>(first: &'static dyn Foo<'a>) -> dyn Foo<'a> {
+LL + fn or<'a>(first: &'static dyn Foo<'a>) -> impl Foo<'a> {
+   |
+help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
+   |
+LL | fn or<'a>(first: &'static dyn Foo<'a>) -> Box<dyn Foo<'a>> {
+   |                                           ++++           +
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0746`.

@@ -1,0 +1,41 @@
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/unsized.rs:1:11
+   |
+LL | static S: str = todo!();
+   |           ^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = note: statics and constants must have a statically known size
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/unsized.rs:1:11
+   |
+LL | static S: str = todo!();
+   |           ^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = note: statics and constants must have a statically known size
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/unsized.rs:5:10
+   |
+LL | const A: str = todo!();
+   |          ^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = note: statics and constants must have a statically known size
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/unsized.rs:5:10
+   |
+LL | const A: str = todo!();
+   |          ^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `str`
+   = note: statics and constants must have a statically known size
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

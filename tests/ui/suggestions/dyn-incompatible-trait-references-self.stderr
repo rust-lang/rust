@@ -1,5 +1,5 @@
 error[E0038]: the trait `Trait` is not dyn compatible
-  --> $DIR/dyn-incompatible-trait-references-self.rs:9:12
+  --> $DIR/dyn-incompatible-trait-references-self.rs:10:12
    |
 LL | fn bar(x: &dyn Trait) {}
    |            ^^^^^^^^^ `Trait` is not dyn compatible
@@ -19,14 +19,14 @@ LL |     fn bat(&self) -> Self {}
    = help: consider moving `bat` to another trait
 
 error[E0038]: the trait `Other` is not dyn compatible
-  --> $DIR/dyn-incompatible-trait-references-self.rs:13:12
+  --> $DIR/dyn-incompatible-trait-references-self.rs:14:12
    |
 LL | fn foo(x: &dyn Other) {}
    |            ^^^^^^^^^ `Other` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/dyn-incompatible-trait-references-self.rs:11:14
+  --> $DIR/dyn-incompatible-trait-references-self.rs:12:14
    |
 LL | trait Other: Sized {}
    |       -----  ^^^^^ ...because it requires `Self: Sized`
@@ -73,7 +73,20 @@ LL |     fn bat(&self) -> Self {}
    = note: expected type parameter `Self`
                    found unit type `()`
 
-error: aborting due to 5 previous errors
+error[E0277]: the size for values of type `Self` cannot be known at compilation time
+  --> $DIR/dyn-incompatible-trait-references-self.rs:4:22
+   |
+LL |     fn bat(&self) -> Self {}
+   |                      ^^^^ doesn't have a size known at compile-time
+   |
+   = note: the return type of a function must have a statically known size
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider further restricting `Self`
+   |
+LL |     fn bat(&self) -> Self where Self: Sized {}
+   |                           +++++++++++++++++
+
+error: aborting due to 6 previous errors
 
 Some errors have detailed explanations: E0038, E0277, E0308.
 For more information about an error, try `rustc --explain E0038`.

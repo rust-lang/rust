@@ -1,23 +1,44 @@
 error[E0746]: return type cannot be a trait object without pointer indirection
-  --> $DIR/issue-18107.rs:4:5
+  --> $DIR/issue-18107.rs:3:30
    |
-LL |     dyn AbstractRenderer
-   |     ^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+LL | fn _create_render(_: &()) -> dyn AbstractRenderer
+   |                              ^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
 help: consider returning an `impl Trait` instead of a `dyn Trait`
    |
-LL -     dyn AbstractRenderer
-LL +     impl AbstractRenderer
+LL - fn _create_render(_: &()) -> dyn AbstractRenderer
+LL + fn _create_render(_: &()) -> impl AbstractRenderer
    |
 help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
    |
-LL ~     Box<dyn AbstractRenderer>
+LL ~ fn _create_render(_: &()) -> Box<dyn AbstractRenderer>
 LL |
-LL | {
+...
 LL |     match 0 {
 LL ~         _ => Box::new(unimplemented!())
    |
 
-error: aborting due to 1 previous error
+error[E0746]: return type cannot be a trait object without pointer indirection
+  --> $DIR/issue-18107.rs:3:30
+   |
+LL | fn _create_render(_: &()) -> dyn AbstractRenderer
+   |                              ^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider returning an `impl Trait` instead of a `dyn Trait`
+   |
+LL - fn _create_render(_: &()) -> dyn AbstractRenderer
+LL + fn _create_render(_: &()) -> impl AbstractRenderer
+   |
+help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
+   |
+LL ~ fn _create_render(_: &()) -> Box<dyn AbstractRenderer>
+LL |
+...
+LL |     match 0 {
+LL ~         _ => Box::new(unimplemented!())
+   |
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0746`.

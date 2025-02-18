@@ -4,6 +4,7 @@ use std::fmt::Debug;
 
 fn print_on_or_the_other<'a>(a: i32, b: &'a String) -> dyn Fn() + 'a {
     //~^ ERROR return type cannot be a trait object without pointer indirection
+    //~| ERROR return type cannot be a trait object without pointer indirection
     if a % 2 == 0 {
         move || println!("{a}")
     } else {

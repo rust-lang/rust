@@ -8,6 +8,7 @@ impl const dyn T {
     pub const fn new() -> std::sync::Mutex<dyn T> {}
     //~^ ERROR mismatched types
     //~| ERROR cannot be known at compilation time
+    //~| ERROR cannot be known at compilation time
 }
 
 fn main() {}

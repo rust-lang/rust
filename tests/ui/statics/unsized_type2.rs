@@ -14,6 +14,7 @@ pub struct Bar {
 pub static WITH_ERROR: Foo = Foo { version: 0 };
 //~^ ERROR the size for values of type `str` cannot be known at compilation time
 //~| ERROR the size for values of type `str` cannot be known at compilation time
+//~| ERROR the size for values of type `str` cannot be known at compilation time
 //~| ERROR mismatched types
 
 pub static USE_WITH_ERROR: Bar = Bar { ok: &[], bad: &WITH_ERROR };
