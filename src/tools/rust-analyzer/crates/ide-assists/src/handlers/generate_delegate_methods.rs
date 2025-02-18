@@ -217,7 +217,9 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::{check_assist, check_assist_not_applicable};
+    use crate::tests::{
+        check_assist, check_assist_not_applicable, check_assist_not_applicable_no_grouping,
+    };
 
     use super::*;
 
@@ -719,6 +721,23 @@ impl Person {
     fn age(&self) -> u8 { 0 }
 }
 "#,
+        );
+    }
+
+    #[test]
+    fn delegate_method_skipped_when_no_grouping() {
+        check_assist_not_applicable_no_grouping(
+            generate_delegate_methods,
+            r#"
+struct Age(u8);
+impl Age {
+    fn age(&self) -> u8 {
+        self.0
+    }
+}
+struct Person {
+    ag$0e: Age,
+}"#,
         );
     }
 }

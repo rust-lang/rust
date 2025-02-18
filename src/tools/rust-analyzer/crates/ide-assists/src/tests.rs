@@ -195,6 +195,20 @@ pub(crate) fn check_assist_not_applicable_for_import_one(
     );
 }
 
+#[track_caller]
+pub(crate) fn check_assist_not_applicable_no_grouping(
+    assist: Handler,
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+) {
+    check_with_config(
+        TEST_CONFIG_NO_GROUPING,
+        assist,
+        ra_fixture,
+        ExpectedResult::NotApplicable,
+        None,
+    );
+}
+
 /// Check assist in unresolved state. Useful to check assists for lazy computation.
 #[track_caller]
 pub(crate) fn check_assist_unresolved(
@@ -366,41 +380,6 @@ fn labels(assists: &[Assist]) -> String {
         .collect::<Vec<_>>();
     labels.dedup();
     labels.into_iter().collect::<String>()
-}
-
-#[test]
-fn long_groups_are_skipped_under_skip_resolve_strategy() {
-    let before = r#"
-trait SomeTrait {
-    type T;
-    fn fn_(arg: u32) -> u32;
-    fn method_(&mut self) -> bool;
-}
-struct A;
-impl SomeTrait for A {
-    type T = u32;
-
-    fn fn_(arg: u32) -> u32 {
-        42
-    }
-
-    fn method_(&mut self) -> bool {
-        false
-    }
-}
-struct B {
-    a$0 : A,
-}
-    "#;
-    let (before_cursor_pos, before) = extract_offset(before);
-    let (db, file_id) = with_single_file(&before);
-    let frange = FileRange { file_id, range: TextRange::empty(before_cursor_pos) };
-    let res = assists(&db, &TEST_CONFIG, AssistResolveStrategy::None, frange.into());
-    assert!(res.iter().map(|a| &a.id).any(|a| { a.0 == "generate_delegate_trait" }));
-
-    let limited =
-        assists(&db, &TEST_CONFIG_NO_GROUPING, AssistResolveStrategy::None, frange.into());
-    assert!(!limited.iter().map(|a| &a.id).any(|a| { a.0 == "generate_delegate_trait" }));
 }
 
 #[test]
