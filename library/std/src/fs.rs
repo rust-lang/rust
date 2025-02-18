@@ -649,7 +649,7 @@ impl File {
     /// this [may change in the future][changes].
     ///
     /// On Windows, locking a file will fail if the file is opened only for append. To lock a file,
-    /// open it with either `.read(true).append(true)` or `.write(true)`.
+    /// open it with one of `.read(true)`, `.read(true).append(true)`, or `.write(true)`.
     ///
     /// [changes]: io#platform-specific-behavior
     ///
@@ -702,7 +702,7 @@ impl File {
     /// [may change in the future][changes].
     ///
     /// On Windows, locking a file will fail if the file is opened only for append. To lock a file,
-    /// open it with either `.read(true).append(true)` or `.write(true)`.
+    /// open it with one of `.read(true)`, `.read(true).append(true)`, or `.write(true)`.
     ///
     /// [changes]: io#platform-specific-behavior
     ///
@@ -760,7 +760,7 @@ impl File {
     /// [may change in the future][changes].
     ///
     /// On Windows, locking a file will fail if the file is opened only for append. To lock a file,
-    /// open it with either `.read(true).append(true)` or `.write(true)`.
+    /// open it with one of `.read(true)`, `.read(true).append(true)`, or `.write(true)`.
     ///
     /// [changes]: io#platform-specific-behavior
     ///
@@ -817,7 +817,7 @@ impl File {
     /// [may change in the future][changes].
     ///
     /// On Windows, locking a file will fail if the file is opened only for append. To lock a file,
-    /// open it with either `.read(true).append(true)` or `.write(true)`.
+    /// open it with one of `.read(true)`, `.read(true).append(true)`, or `.write(true)`.
     ///
     /// [changes]: io#platform-specific-behavior
     ///
@@ -862,7 +862,7 @@ impl File {
     /// [may change in the future][changes].
     ///
     /// On Windows, locking a file will fail if the file is opened only for append. To lock a file,
-    /// open it with either `.read(true).append(true)` or `.write(true)`.
+    /// open it with one of `.read(true)`, `.read(true).append(true)`, or `.write(true)`.
     ///
     /// [changes]: io#platform-specific-behavior
     ///
