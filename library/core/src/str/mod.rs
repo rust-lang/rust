@@ -198,7 +198,7 @@ impl str {
     /// Basic usage:
     ///
     /// ```
-    /// use std::str;
+    /// #![feature(inherent_str_constructors)]
     ///
     /// // some bytes, in a vector
     /// let sparkle_heart = vec![240, 159, 146, 150];
@@ -207,13 +207,13 @@ impl str {
     /// let sparkle_heart = str::from_utf8(&sparkle_heart)?;
     ///
     /// assert_eq!("💖", sparkle_heart);
-    /// # Ok::<_, str::Utf8Error>(())
+    /// # Ok::<_, std::str::Utf8Error>(())
     /// ```
     ///
     /// Incorrect bytes:
     ///
     /// ```
-    /// use std::str;
+    /// #![feature(inherent_str_constructors)]
     ///
     /// // some invalid bytes, in a vector
     /// let sparkle_heart = vec![0, 159, 146, 150];
@@ -227,7 +227,7 @@ impl str {
     /// A "stack allocated string":
     ///
     /// ```
-    /// use std::str;
+    /// #![feature(inherent_str_constructors)]
     ///
     /// // some bytes, in a stack-allocated array
     /// let sparkle_heart = [240, 159, 146, 150];
@@ -250,7 +250,7 @@ impl str {
     /// Basic usage:
     ///
     /// ```
-    /// use std::str;
+    /// #![feature(inherent_str_constructors)]
     ///
     /// // "Hello, Rust!" as a mutable vector
     /// let mut hellorust = vec![72, 101, 108, 108, 111, 44, 32, 82, 117, 115, 116, 33];
@@ -264,7 +264,7 @@ impl str {
     /// Incorrect bytes:
     ///
     /// ```
-    /// use std::str;
+    /// #![feature(inherent_str_constructors)]
     ///
     /// // Some invalid bytes in a mutable vector
     /// let mut invalid = vec![128, 223];
@@ -294,7 +294,7 @@ impl str {
     /// Basic usage:
     ///
     /// ```
-    /// use std::str;
+    /// #![feature(inherent_str_constructors)]
     ///
     /// // some bytes, in a vector
     /// let sparkle_heart = vec![240, 159, 146, 150];
@@ -324,7 +324,7 @@ impl str {
     /// Basic usage:
     ///
     /// ```
-    /// use std::str;
+    /// #![feature(inherent_str_constructors)]
     ///
     /// let mut heart = vec![240, 159, 146, 150];
     /// let heart = unsafe { str::from_utf8_unchecked_mut(&mut heart) };
