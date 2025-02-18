@@ -9,19 +9,25 @@ pub(crate) struct Error {
     pub(crate) file: PathBuf,
     pub(crate) error: String,
 }
+//note for that as change some codes here
+//Make Changes if You know
 
 impl error::Error for Error {}
 
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let file = self.file.display().to_string();
-        if file.is_empty() {
-            write!(f, "{}", self.error)
+        if let Some(file) = self.file.to_str() {
+            if file.is_empty() {
+                write!(f, "Error: {}", self.error)
+            } else {
+                write!(f, "File: \"{}\", Error: {}", file, self.error)
+            }
         } else {
-            write!(f, "\"{}\": {}", self.file.display(), self.error)
+            write!(f, "Error: {}", self.error)
         }
     }
 }
+
 
 impl PathError for Error {
     fn new<S, P: AsRef<Path>>(e: S, path: P) -> Error
