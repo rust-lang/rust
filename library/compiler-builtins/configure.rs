@@ -78,7 +78,6 @@ pub fn configure_f16_f128(target: &Target) {
         "csky" => false,
         "hexagon" => false,
         "loongarch64" => false,
-        "mips" | "mips64" | "mips32r6" | "mips64r6" => false,
         "powerpc" | "powerpc64" => false,
         "sparc" | "sparc64" => false,
         "wasm32" | "wasm64" => false,
