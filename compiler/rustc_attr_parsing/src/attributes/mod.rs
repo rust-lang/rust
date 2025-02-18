@@ -32,6 +32,7 @@ pub(crate) mod confusables;
 pub(crate) mod deprecation;
 pub(crate) mod inline;
 pub(crate) mod lint_helpers;
+pub(crate) mod loop_match;
 pub(crate) mod must_use;
 pub(crate) mod repr;
 pub(crate) mod semantics;
