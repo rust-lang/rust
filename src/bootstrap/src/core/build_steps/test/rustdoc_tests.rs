@@ -7,10 +7,10 @@ use std::path::PathBuf;
 use super::test_helpers::run_cargo_test;
 use crate::Mode;
 use crate::core::build_steps::compile;
-use crate::core::build_steps::tool::{self, SourceType};
-use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
+use crate::core::build_steps::tool::{self, SourceType, Tool};
+use crate::core::builder::{Builder, Compiler, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
-use crate::utils::helpers::{dylib_path, dylib_path_var};
+use crate::utils::helpers::{LldThreads, dylib_path, dylib_path_var, linker_args};
 
 /// Rustdoc is special in various ways, which is why this step is different from `Crate`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -166,5 +166,42 @@ impl Step for CrateRustdocJsonTypes {
             target,
             builder,
         );
+    }
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct RustdocTheme {
+    pub compiler: Compiler,
+}
+
+impl Step for RustdocTheme {
+    type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/rustdoc-themes")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        let compiler = run.builder.compiler(run.builder.top_stage, run.target);
+
+        run.builder.ensure(RustdocTheme { compiler });
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let rustdoc = builder.bootstrap_out.join("rustdoc");
+        let mut cmd = builder.tool_cmd(Tool::RustdocTheme);
+        cmd.arg(rustdoc.to_str().unwrap())
+            .arg(builder.src.join("src/librustdoc/html/static/css/rustdoc.css").to_str().unwrap())
+            .env("RUSTC_STAGE", self.compiler.stage.to_string())
+            .env("RUSTC_SYSROOT", builder.sysroot(self.compiler))
+            .env("RUSTDOC_LIBDIR", builder.sysroot_target_libdir(self.compiler, self.compiler.host))
+            .env("CFG_RELEASE_CHANNEL", &builder.config.channel)
+            .env("RUSTDOC_REAL", builder.rustdoc(self.compiler))
+            .env("RUSTC_BOOTSTRAP", "1");
+        cmd.args(linker_args(builder, self.compiler.host, LldThreads::No));
+
+        cmd.delay_failure().run(builder);
     }
 }
