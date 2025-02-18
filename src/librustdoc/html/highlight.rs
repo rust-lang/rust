@@ -281,7 +281,7 @@ fn get_expansion<'a, W: Write>(
         && let Some(expanded_code) = expanded_codes.iter().find(|code| code.start_line == line)
     {
         let (closing, reopening) = if let Some(current_class) = token_handler.current_class
-            && let class = current_class.as_html() 
+            && let class = current_class.as_html()
             && !class.is_empty()
         {
             ("</span>", format!("<span class=\"{class}\">"))
@@ -321,11 +321,15 @@ fn end_expansion<W: Write>(token_handler: &mut TokenHandler<'_, '_, W>, level: u
     }
     let mut out = String::new();
     let mut end = String::new();
-    for (tag, class) in token_handler.closing_tags.iter().skip(token_handler.closing_tags.len() - level) {
+    for (tag, class) in
+        token_handler.closing_tags.iter().skip(token_handler.closing_tags.len() - level)
+    {
         out.push_str(tag);
         end.push_str(&format!("<span class=\"{}\">", class.as_html()));
     }
-    token_handler.pending_elems.push((Cow::Owned(format!("</span></span>{out}{end}")), Some(Class::Expansion)));
+    token_handler
+        .pending_elems
+        .push((Cow::Owned(format!("</span></span>{out}{end}")), Some(Class::Expansion)));
 }
 
 #[derive(Clone, Copy)]
@@ -399,8 +403,7 @@ pub(super) fn write_code(
         .href_context
         .as_ref()
         .and_then(|c| c.context.shared.expanded_codes.get(&c.file_span.lo()));
-    let mut current_expansion =
-        get_expansion(&mut token_handler, expanded_codes, line);
+    let mut current_expansion = get_expansion(&mut token_handler, expanded_codes, line);
     token_handler.write_pending_elems(None);
     let mut level = 0;
 
@@ -440,8 +443,7 @@ pub(super) fn write_code(
                             .push((Cow::Borrowed(text), Some(Class::Backline(line))));
                     }
                     if current_expansion.is_none() {
-                        current_expansion =
-                            get_expansion(&mut token_handler, expanded_codes, line);
+                        current_expansion = get_expansion(&mut token_handler, expanded_codes, line);
                     }
                 } else {
                     token_handler.pending_elems.push((Cow::Borrowed(text), class));
@@ -887,7 +889,9 @@ impl<'src> Classifier<'src> {
     ) {
         let lookahead = self.peek();
         let file_span = self.file_span;
-        let no_highlight = |sink: &mut dyn FnMut(_, _)| sink(new_span(before, text, file_span), Highlight::Token { text, class: None });
+        let no_highlight = |sink: &mut dyn FnMut(_, _)| {
+            sink(new_span(before, text, file_span), Highlight::Token { text, class: None })
+        };
         let whitespace = |sink: &mut dyn FnMut(_, _)| {
             let mut start = 0u32;
             for part in text.split('\n').intersperse("\n").filter(|s| !s.is_empty()) {
@@ -1053,7 +1057,10 @@ impl<'src> Classifier<'src> {
             TokenKind::CloseBracket => {
                 if self.in_attribute {
                     self.in_attribute = false;
-                    sink(new_span(before, text, file_span), Highlight::Token { text: "]", class: None });
+                    sink(
+                        new_span(before, text, file_span),
+                        Highlight::Token { text: "]", class: None },
+                    );
                     sink(DUMMY_SP, Highlight::ExitSpan);
                     return;
                 }
