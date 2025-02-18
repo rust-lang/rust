@@ -1127,6 +1127,7 @@ impl String {
         self.vec.extend_from_slice(string.as_bytes())
     }
 
+    #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "string_make_uplowercase", issue = "135885")]
     #[allow(missing_docs)]
     pub fn make_uppercase(&mut self) {
@@ -1139,6 +1140,7 @@ impl String {
         *self = unsafe { Self::from_utf8_unchecked(v) }
     }
 
+    #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "string_make_uplowercase", issue = "135885")]
     #[allow(missing_docs)]
     pub fn make_lowercase(&mut self) {
