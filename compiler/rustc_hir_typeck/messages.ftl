@@ -112,7 +112,11 @@ hir_typeck_int_to_fat = cannot cast `{$expr_ty}` to a pointer that {$known_wide 
 hir_typeck_int_to_fat_label = creating a `{$cast_ty}` requires both an address and {$metadata}
 hir_typeck_int_to_fat_label_nightly = consider casting this expression to `*const ()`, then using `core::ptr::from_raw_parts`
 
-hir_typeck_invalid_callee = expected function, found {$ty}
+hir_typeck_invalid_callee = expected function, found {$found}
+hir_typeck_invalid_defined = `{$path}` defined here
+hir_typeck_invalid_defined_kind = {$kind} `{$path}` defined here
+hir_typeck_invalid_fn_defined = `{$func}` defined here returns `{$ty}`
+hir_typeck_invalid_local = `{$local_name}` has type `{$ty}`
 
 hir_typeck_lossy_provenance_int2ptr =
     strict provenance disallows casting integer `{$expr_ty}` to pointer `{$cast_ty}`

@@ -596,10 +596,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         self.suggest_cloning(err, place_ty, expr, None);
                     }
 
-                    let ty = self.infcx.tcx.short_string(place_ty, err.long_ty_path());
                     err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::Label {
                         is_partial_move: false,
-                        ty,
+                        ty: place_ty,
                         place: &place_desc,
                         span,
                     });
@@ -629,10 +628,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     self.suggest_cloning(err, place_ty, expr, Some(use_spans));
                 }
 
-                let ty = self.infcx.tcx.short_string(place_ty, err.long_ty_path());
                 err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::Label {
                     is_partial_move: false,
-                    ty,
+                    ty: place_ty,
                     place: &place_desc,
                     span: use_span,
                 });
@@ -833,10 +831,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     self.suggest_cloning(err, bind_to.ty, expr, None);
                 }
 
-                let ty = self.infcx.tcx.short_string(bind_to.ty, err.long_ty_path());
                 err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::Label {
                     is_partial_move: false,
-                    ty,
+                    ty: bind_to.ty,
                     place: place_desc,
                     span: binding_span,
                 });

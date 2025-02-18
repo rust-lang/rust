@@ -148,11 +148,11 @@ where
 /// converted rather than on `DiagArgValue`, which enables types from other `rustc_*` crates to
 /// implement this.
 pub trait IntoDiagArg {
-    fn into_diag_arg(self) -> DiagArgValue;
+    fn into_diag_arg(self, path: &mut Option<std::path::PathBuf>) -> DiagArgValue;
 }
 
 impl IntoDiagArg for DiagArgValue {
-    fn into_diag_arg(self) -> DiagArgValue {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
         self
     }
 }
@@ -395,7 +395,7 @@ impl DiagInner {
     }
 
     pub(crate) fn arg(&mut self, name: impl Into<DiagArgName>, arg: impl IntoDiagArg) {
-        self.args.insert(name.into(), arg.into_diag_arg());
+        self.args.insert(name.into(), arg.into_diag_arg(&mut self.long_ty_path));
     }
 
     /// Fields used for Hash, and PartialEq trait.

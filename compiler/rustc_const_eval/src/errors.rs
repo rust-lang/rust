@@ -967,7 +967,7 @@ impl ReportErrorExt for ResourceExhaustionInfo {
 }
 
 impl rustc_errors::IntoDiagArg for InternKind {
-    fn into_diag_arg(self) -> DiagArgValue {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
         DiagArgValue::Str(Cow::Borrowed(match self {
             InternKind::Static(Mutability::Not) => "static",
             InternKind::Static(Mutability::Mut) => "static_mut",
