@@ -1365,17 +1365,6 @@ impl<'tcx> BasicBlockData<'tcx> {
         self.terminator.as_mut().expect("invalid terminator state")
     }
 
-    pub fn retain_statements<F>(&mut self, mut f: F)
-    where
-        F: FnMut(&mut Statement<'_>) -> bool,
-    {
-        for s in &mut self.statements {
-            if !f(s) {
-                s.make_nop();
-            }
-        }
-    }
-
     pub fn visitable(&self, index: usize) -> &dyn MirVisitable<'tcx> {
         if index < self.statements.len() { &self.statements[index] } else { &self.terminator }
     }
