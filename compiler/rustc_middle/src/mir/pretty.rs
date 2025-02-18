@@ -231,7 +231,8 @@ fn dump_path<'tcx>(
     let pass_num = if tcx.sess.opts.unstable_opts.dump_mir_exclude_pass_number {
         String::new()
     } else if pass_num {
-        format!(".{:03}-{:03}", body.phase.phase_index(), body.pass_count)
+        let (dialect_index, phase_index) = body.phase.index();
+        format!(".{}-{}-{:03}", dialect_index, phase_index, body.pass_count)
     } else {
         ".-------".to_string()
     };

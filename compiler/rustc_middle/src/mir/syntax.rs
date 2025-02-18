@@ -37,7 +37,7 @@ use crate::ty::{self, GenericArgsRef, List, Region, Ty, UserTypeAnnotationIndex}
 /// well-formed MIR, and subsequent phases mostly increase those restrictions. I.e. to convert MIR
 /// from one phase to the next might require removing/replacing certain MIR constructs.
 ///
-/// When adding dialects or phases, remember to update [`MirPhase::phase_index`].
+/// When adding dialects or phases, remember to update [`MirPhase::index`].
 #[derive(Copy, Clone, TyEncodable, TyDecodable, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[derive(HashStable)]
 pub enum MirPhase {
