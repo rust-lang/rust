@@ -53,7 +53,8 @@ pub enum MirPhase {
     /// sequences of statements that would generally be subject to constant promotion are
     /// semantically constants, while in analysis MIR all constants are explicit.
     ///
-    /// The result of const promotion is available from the `mir_promoted` and `promoted_mir` queries.
+    /// The result of const promotion is available from the `mir_promoted` and `promoted_mir`
+    /// queries.
     ///
     /// This is the version of MIR used by borrowck and friends.
     Analysis(AnalysisPhase),
@@ -61,26 +62,27 @@ pub enum MirPhase {
     ///
     /// The semantic changes that occur in the lowering from analysis to runtime MIR are as follows:
     ///
-    ///  - Drops: In analysis MIR, `Drop` terminators represent *conditional* drops; roughly speaking,
-    ///    if dataflow analysis determines that the place being dropped is uninitialized, the drop will
-    ///    not be executed. The exact semantics of this aren't written down anywhere, which means they
-    ///    are essentially "what drop elaboration does." In runtime MIR, the drops are unconditional;
-    ///    when a `Drop` terminator is reached, if the type has drop glue that drop glue is always
-    ///    executed. This may be UB if the underlying place is not initialized.
-    ///  - Packed drops: Places might in general be misaligned - in most cases this is UB, the exception
-    ///    is fields of packed structs. In analysis MIR, `Drop(P)` for a `P` that might be misaligned
-    ///    for this reason implicitly moves `P` to a temporary before dropping. Runtime MIR has no such
-    ///    rules, and dropping a misaligned place is simply UB.
-    ///  - Unwinding: in analysis MIR, unwinding from a function which may not unwind aborts. In runtime
-    ///    MIR, this is UB.
-    ///  - Retags: If `-Zmir-emit-retag` is enabled, analysis MIR has "implicit" retags in the same way
-    ///    that Rust itself has them. Where exactly these are is generally subject to change, and so we
-    ///    don't document this here. Runtime MIR has most retags explicit (though implicit retags
-    ///    can still occur at `Rvalue::{Ref,AddrOf}`).
-    ///  - Coroutine bodies: In analysis MIR, locals may actually be behind a pointer that user code has
-    ///    access to. This occurs in coroutine bodies. Such locals do not behave like other locals,
-    ///    because they eg may be aliased in surprising ways. Runtime MIR has no such special locals -
-    ///    all coroutine bodies are lowered and so all places that look like locals really are locals.
+    /// - Drops: In analysis MIR, `Drop` terminators represent *conditional* drops; roughly
+    ///   speaking, if dataflow analysis determines that the place being dropped is uninitialized,
+    ///   the drop will not be executed. The exact semantics of this aren't written down anywhere,
+    ///   which means they are essentially "what drop elaboration does." In runtime MIR, the drops
+    ///   are unconditional; when a `Drop` terminator is reached, if the type has drop glue that
+    ///   drop glue is always executed. This may be UB if the underlying place is not initialized.
+    /// - Packed drops: Places might in general be misaligned - in most cases this is UB, the
+    ///   exception is fields of packed structs. In analysis MIR, `Drop(P)` for a `P` that might be
+    ///   misaligned for this reason implicitly moves `P` to a temporary before dropping. Runtime
+    ///   MIR has no such rules, and dropping a misaligned place is simply UB.
+    /// - Unwinding: in analysis MIR, unwinding from a function which may not unwind aborts. In
+    ///   runtime MIR, this is UB.
+    /// - Retags: If `-Zmir-emit-retag` is enabled, analysis MIR has "implicit" retags in the same
+    ///   way that Rust itself has them. Where exactly these are is generally subject to change,
+    ///   and so we don't document this here. Runtime MIR has most retags explicit (though implicit
+    ///   retags can still occur at `Rvalue::{Ref,AddrOf}`).
+    /// - Coroutine bodies: In analysis MIR, locals may actually be behind a pointer that user code
+    ///   has access to. This occurs in coroutine bodies. Such locals do not behave like other
+    ///   locals, because they eg may be aliased in surprising ways. Runtime MIR has no such
+    ///   special locals. All coroutine bodies are lowered and so all places that look like locals
+    ///   really are locals.
     ///
     /// Also note that the lint pass which reports eg `200_u8 + 200_u8` as an error is run as a part
     /// of analysis to runtime MIR lowering. To ensure lints are reported reliably, this means that
@@ -111,7 +113,8 @@ pub enum AnalysisPhase {
     /// * [`TerminatorKind::FalseEdge`]
     /// * [`StatementKind::FakeRead`]
     /// * [`StatementKind::AscribeUserType`]
-    /// * [`StatementKind::Coverage`] with [`CoverageKind::BlockMarker`] or [`CoverageKind::SpanMarker`]
+    /// * [`StatementKind::Coverage`] with [`CoverageKind::BlockMarker`] or
+    ///   [`CoverageKind::SpanMarker`]
     /// * [`Rvalue::Ref`] with `BorrowKind::Fake`
     /// * [`CastKind::PointerCoercion`] with any of the following:
     ///   * [`PointerCoercion::ArrayToPointer`]
