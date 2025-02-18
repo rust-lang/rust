@@ -915,3 +915,15 @@ fn test_total_cmp() {
     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&f32::INFINITY));
     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&s_nan()));
 }
+
+#[test]
+fn test_algebraic() {
+    let a: f32 = 123.0;
+    let b: f32 = 456.0;
+
+    assert_approx_eq!(a.algebraic_add(b), a + b);
+    assert_approx_eq!(a.algebraic_sub(b), a - b);
+    assert_approx_eq!(a.algebraic_mul(b), a * b);
+    assert_approx_eq!(a.algebraic_div(b), a / b);
+    assert_approx_eq!(a.algebraic_rem(b), a % b);
+}
