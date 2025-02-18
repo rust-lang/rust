@@ -3,38 +3,6 @@
 //! `./x.py test` (aka [`Kind::Test`]) is currently allowed to reach build steps in other modules.
 //! However, this contains ~all test parts we expect people to be able to build and run locally.
 
-// FIXME(jieyouxu): keeping unused imports here before all test steps are properly split out.
-#![expect(unused_imports)]
-
-use std::collections::HashSet;
-use std::ffi::{OsStr, OsString};
-use std::path::{Path, PathBuf};
-use std::{env, fs, iter};
-
-use clap_complete::shells;
-
-use self::test_helpers::{RemoteCopyLibs, prepare_cargo_test, run_cargo_test};
-use crate::core::build_steps::compile::run_cargo;
-use crate::core::build_steps::doc::DocumentationFormat;
-use crate::core::build_steps::llvm::get_llvm_version;
-use crate::core::build_steps::synthetic_targets::MirOptPanicAbortSyntheticTarget;
-use crate::core::build_steps::tool::{self, SourceType, Tool};
-use crate::core::build_steps::toolstate::ToolState;
-use crate::core::build_steps::{compile, dist, llvm};
-use crate::core::builder::{
-    self, Alias, Builder, Compiler, Kind, RunConfig, ShouldRun, Step, crate_description,
-};
-use crate::core::config::TargetSelection;
-use crate::core::config::flags::{Subcommand, get_completion};
-use crate::utils::build_stamp::{self, BuildStamp};
-use crate::utils::exec::{BootstrapCommand, command};
-use crate::utils::helpers::{
-    self, LldThreads, add_rustdoc_cargo_linker_args, dylib_path, dylib_path_var, linker_args,
-    linker_flags, t, target_supports_cranelift_backend, up_to_date,
-};
-use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
-use crate::{CLang, DocTests, GitRepo, Mode, PathSet, envify};
-
 mod book_tests;
 mod bootstrap_self_tests;
 mod cargotest;
