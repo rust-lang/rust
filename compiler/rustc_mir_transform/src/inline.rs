@@ -463,7 +463,7 @@ fn inline<'tcx, T: Inliner<'tcx>>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> b
     let def_id = body.source.def_id();
 
     // Only do inlining into fn bodies.
-    if !tcx.hir().body_owner_kind(def_id).is_fn_or_closure() {
+    if !tcx.hir_body_owner_kind(def_id).is_fn_or_closure() {
         return false;
     }
 

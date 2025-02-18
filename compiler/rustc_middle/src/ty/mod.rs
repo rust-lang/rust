@@ -1470,7 +1470,7 @@ pub enum ImplTraitInTraitData {
 
 impl<'tcx> TyCtxt<'tcx> {
     pub fn typeck_body(self, body: hir::BodyId) -> &'tcx TypeckResults<'tcx> {
-        self.typeck(self.hir().body_owner_def_id(body))
+        self.typeck(self.hir_body_owner_def_id(body))
     }
 
     pub fn provided_trait_methods(self, id: DefId) -> impl 'tcx + Iterator<Item = &'tcx AssocItem> {

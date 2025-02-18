@@ -16,7 +16,7 @@ pub(super) struct CheckForceInline;
 impl<'tcx> MirLint<'tcx> for CheckForceInline {
     fn run_lint(&self, tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
         let def_id = body.source.def_id();
-        if !tcx.hir().body_owner_kind(def_id).is_fn_or_closure() || !def_id.is_local() {
+        if !tcx.hir_body_owner_kind(def_id).is_fn_or_closure() || !def_id.is_local() {
             return;
         }
         let InlineAttr::Force { attr_span, .. } = tcx.codegen_fn_attrs(def_id).inline else {

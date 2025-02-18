@@ -1771,7 +1771,7 @@ pub fn provide(providers: &mut Providers) {
 fn check_mod_privacy(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
     // Check privacy of names not checked in previous compilation stages.
     let mut visitor = NamePrivacyVisitor { tcx, maybe_typeck_results: None };
-    tcx.hir().visit_item_likes_in_module(module_def_id, &mut visitor);
+    tcx.hir_visit_item_likes_in_module(module_def_id, &mut visitor);
 
     // Check privacy of explicitly written types and traits as well as
     // inferred types of expressions and patterns.
@@ -1782,7 +1782,7 @@ fn check_mod_privacy(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
     for def_id in module.definitions() {
         rustc_ty_utils::sig_types::walk_types(tcx, def_id, &mut visitor);
 
-        if let Some(body_id) = tcx.hir().maybe_body_owned_by(def_id) {
+        if let Some(body_id) = tcx.hir_maybe_body_owned_by(def_id) {
             visitor.visit_nested_body(body_id.id());
         }
     }
@@ -1863,7 +1863,7 @@ fn effective_visibilities(tcx: TyCtxt<'_>, (): ()) -> &EffectiveVisibilities {
     }
 
     loop {
-        tcx.hir().visit_all_item_likes_in_crate(&mut visitor);
+        tcx.hir_visit_all_item_likes_in_crate(&mut visitor);
         if visitor.changed {
             visitor.changed = false;
         } else {
@@ -1875,7 +1875,7 @@ fn effective_visibilities(tcx: TyCtxt<'_>, (): ()) -> &EffectiveVisibilities {
     let mut check_visitor =
         TestReachabilityVisitor { tcx, effective_visibilities: &visitor.effective_visibilities };
     check_visitor.effective_visibility_diagnostic(CRATE_DEF_ID);
-    tcx.hir().visit_all_item_likes_in_crate(&mut check_visitor);
+    tcx.hir_visit_all_item_likes_in_crate(&mut check_visitor);
 
     tcx.arena.alloc(visitor.effective_visibilities)
 }

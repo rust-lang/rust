@@ -229,64 +229,62 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn hir_body(self, id: BodyId) -> &'tcx Body<'tcx> {
         self.hir_owner_nodes(id.hir_id.owner).bodies[&id.hir_id.local_id]
     }
-}
 
-impl<'hir> Map<'hir> {
     #[track_caller]
-    pub fn fn_decl_by_hir_id(self, hir_id: HirId) -> Option<&'hir FnDecl<'hir>> {
-        self.tcx.hir_node(hir_id).fn_decl()
+    pub fn hir_fn_decl_by_hir_id(self, hir_id: HirId) -> Option<&'tcx FnDecl<'tcx>> {
+        self.hir_node(hir_id).fn_decl()
     }
 
     #[track_caller]
-    pub fn fn_sig_by_hir_id(self, hir_id: HirId) -> Option<&'hir FnSig<'hir>> {
-        self.tcx.hir_node(hir_id).fn_sig()
+    pub fn hir_fn_sig_by_hir_id(self, hir_id: HirId) -> Option<&'tcx FnSig<'tcx>> {
+        self.hir_node(hir_id).fn_sig()
     }
 
     #[track_caller]
-    pub fn enclosing_body_owner(self, hir_id: HirId) -> LocalDefId {
-        for (_, node) in self.parent_iter(hir_id) {
+    pub fn hir_enclosing_body_owner(self, hir_id: HirId) -> LocalDefId {
+        for (_, node) in self.hir().parent_iter(hir_id) {
             if let Some((def_id, _)) = node.associated_body() {
                 return def_id;
             }
         }
 
-        bug!("no `enclosing_body_owner` for hir_id `{}`", hir_id);
+        bug!("no `hir_enclosing_body_owner` for hir_id `{}`", hir_id);
     }
 
     /// Returns the `HirId` that corresponds to the definition of
     /// which this is the body of, i.e., a `fn`, `const` or `static`
     /// item (possibly associated), a closure, or a `hir::AnonConst`.
-    pub fn body_owner(self, BodyId { hir_id }: BodyId) -> HirId {
-        let parent = self.tcx.parent_hir_id(hir_id);
-        assert_eq!(self.tcx.hir_node(parent).body_id().unwrap().hir_id, hir_id, "{hir_id:?}");
+    pub fn hir_body_owner(self, BodyId { hir_id }: BodyId) -> HirId {
+        let parent = self.parent_hir_id(hir_id);
+        assert_eq!(self.hir_node(parent).body_id().unwrap().hir_id, hir_id, "{hir_id:?}");
         parent
     }
 
-    pub fn body_owner_def_id(self, BodyId { hir_id }: BodyId) -> LocalDefId {
-        self.tcx.parent_hir_node(hir_id).associated_body().unwrap().0
+    pub fn hir_body_owner_def_id(self, BodyId { hir_id }: BodyId) -> LocalDefId {
+        self.parent_hir_node(hir_id).associated_body().unwrap().0
     }
 
     /// Given a `LocalDefId`, returns the `BodyId` associated with it,
     /// if the node is a body owner, otherwise returns `None`.
-    pub fn maybe_body_owned_by(self, id: LocalDefId) -> Option<&'hir Body<'hir>> {
-        Some(self.tcx.hir_body(self.tcx.hir_node_by_def_id(id).body_id()?))
+    pub fn hir_maybe_body_owned_by(self, id: LocalDefId) -> Option<&'tcx Body<'tcx>> {
+        Some(self.hir_body(self.hir_node_by_def_id(id).body_id()?))
     }
 
     /// Given a body owner's id, returns the `BodyId` associated with it.
     #[track_caller]
-    pub fn body_owned_by(self, id: LocalDefId) -> &'hir Body<'hir> {
-        self.maybe_body_owned_by(id).unwrap_or_else(|| {
-            let hir_id = self.tcx.local_def_id_to_hir_id(id);
+    pub fn hir_body_owned_by(self, id: LocalDefId) -> &'tcx Body<'tcx> {
+        self.hir_maybe_body_owned_by(id).unwrap_or_else(|| {
+            let hir_id = self.local_def_id_to_hir_id(id);
             span_bug!(
-                self.span(hir_id),
+                self.hir().span(hir_id),
                 "body_owned_by: {} has no associated body",
-                self.node_to_string(hir_id)
+                self.hir().node_to_string(hir_id)
             );
         })
     }
 
-    pub fn body_param_names(self, id: BodyId) -> impl Iterator<Item = Ident> + 'hir {
-        self.tcx.hir_body(id).params.iter().map(|arg| match arg.pat.kind {
+    pub fn hir_body_param_names(self, id: BodyId) -> impl Iterator<Item = Ident> + 'tcx {
+        self.hir_body(id).params.iter().map(|arg| match arg.pat.kind {
             PatKind::Binding(_, _, ident, _) => ident,
             _ => Ident::empty(),
         })
@@ -295,9 +293,9 @@ impl<'hir> Map<'hir> {
     /// Returns the `BodyOwnerKind` of this `LocalDefId`.
     ///
     /// Panics if `LocalDefId` does not have an associated body.
-    pub fn body_owner_kind(self, def_id: impl Into<DefId>) -> BodyOwnerKind {
+    pub fn hir_body_owner_kind(self, def_id: impl Into<DefId>) -> BodyOwnerKind {
         let def_id = def_id.into();
-        match self.tcx.def_kind(def_id) {
+        match self.def_kind(def_id) {
             DefKind::Const | DefKind::AssocConst | DefKind::AnonConst => {
                 BodyOwnerKind::Const { inline: false }
             }
@@ -318,17 +316,17 @@ impl<'hir> Map<'hir> {
     /// This should only be used for determining the context of a body, a return
     /// value of `Some` does not always suggest that the owner of the body is `const`,
     /// just that it has to be checked as if it were.
-    pub fn body_const_context(self, def_id: impl Into<DefId>) -> Option<ConstContext> {
+    pub fn hir_body_const_context(self, def_id: impl Into<DefId>) -> Option<ConstContext> {
         let def_id = def_id.into();
-        let ccx = match self.body_owner_kind(def_id) {
+        let ccx = match self.hir_body_owner_kind(def_id) {
             BodyOwnerKind::Const { inline } => ConstContext::Const { inline },
             BodyOwnerKind::Static(mutability) => ConstContext::Static(mutability),
 
-            BodyOwnerKind::Fn if self.tcx.is_constructor(def_id) => return None,
-            BodyOwnerKind::Fn | BodyOwnerKind::Closure if self.tcx.is_const_fn(def_id) => {
+            BodyOwnerKind::Fn if self.is_constructor(def_id) => return None,
+            BodyOwnerKind::Fn | BodyOwnerKind::Closure if self.is_const_fn(def_id) => {
                 ConstContext::ConstFn
             }
-            BodyOwnerKind::Fn if self.tcx.is_const_default_method(def_id) => ConstContext::ConstFn,
+            BodyOwnerKind::Fn if self.is_const_default_method(def_id) => ConstContext::ConstFn,
             BodyOwnerKind::Fn | BodyOwnerKind::Closure => return None,
         };
 
@@ -339,55 +337,55 @@ impl<'hir> Map<'hir> {
     /// crate. If you would prefer to iterate over the bodies
     /// themselves, you can do `self.hir().krate().body_ids.iter()`.
     #[inline]
-    pub fn body_owners(self) -> impl Iterator<Item = LocalDefId> + 'hir {
-        self.tcx.hir_crate_items(()).body_owners.iter().copied()
+    pub fn hir_body_owners(self) -> impl Iterator<Item = LocalDefId> + 'tcx {
+        self.hir_crate_items(()).body_owners.iter().copied()
     }
 
     #[inline]
-    pub fn par_body_owners(self, f: impl Fn(LocalDefId) + DynSend + DynSync) {
-        par_for_each_in(&self.tcx.hir_crate_items(()).body_owners[..], |&def_id| f(def_id));
+    pub fn par_hir_body_owners(self, f: impl Fn(LocalDefId) + DynSend + DynSync) {
+        par_for_each_in(&self.hir_crate_items(()).body_owners[..], |&def_id| f(def_id));
     }
 
-    pub fn ty_param_owner(self, def_id: LocalDefId) -> LocalDefId {
-        let def_kind = self.tcx.def_kind(def_id);
+    pub fn hir_ty_param_owner(self, def_id: LocalDefId) -> LocalDefId {
+        let def_kind = self.def_kind(def_id);
         match def_kind {
             DefKind::Trait | DefKind::TraitAlias => def_id,
             DefKind::LifetimeParam | DefKind::TyParam | DefKind::ConstParam => {
-                self.tcx.local_parent(def_id)
+                self.local_parent(def_id)
             }
             _ => bug!("ty_param_owner: {:?} is a {:?} not a type parameter", def_id, def_kind),
         }
     }
 
-    pub fn ty_param_name(self, def_id: LocalDefId) -> Symbol {
-        let def_kind = self.tcx.def_kind(def_id);
+    pub fn hir_ty_param_name(self, def_id: LocalDefId) -> Symbol {
+        let def_kind = self.def_kind(def_id);
         match def_kind {
             DefKind::Trait | DefKind::TraitAlias => kw::SelfUpper,
             DefKind::LifetimeParam | DefKind::TyParam | DefKind::ConstParam => {
-                self.tcx.item_name(def_id.to_def_id())
+                self.item_name(def_id.to_def_id())
             }
             _ => bug!("ty_param_name: {:?} is a {:?} not a type parameter", def_id, def_kind),
         }
     }
 
-    pub fn trait_impls(self, trait_did: DefId) -> &'hir [LocalDefId] {
-        self.tcx.all_local_trait_impls(()).get(&trait_did).map_or(&[], |xs| &xs[..])
+    pub fn hir_trait_impls(self, trait_did: DefId) -> &'tcx [LocalDefId] {
+        self.all_local_trait_impls(()).get(&trait_did).map_or(&[], |xs| &xs[..])
     }
 
     /// Gets the attributes on the crate. This is preferable to
     /// invoking `krate.attrs` because it registers a tighter
     /// dep-graph access.
-    pub fn krate_attrs(self) -> &'hir [Attribute] {
-        self.attrs(CRATE_HIR_ID)
+    pub fn hir_krate_attrs(self) -> &'tcx [Attribute] {
+        self.hir().attrs(CRATE_HIR_ID)
     }
 
-    pub fn rustc_coherence_is_core(self) -> bool {
-        self.krate_attrs().iter().any(|attr| attr.has_name(sym::rustc_coherence_is_core))
+    pub fn hir_rustc_coherence_is_core(self) -> bool {
+        self.hir_krate_attrs().iter().any(|attr| attr.has_name(sym::rustc_coherence_is_core))
     }
 
-    pub fn get_module(self, module: LocalModDefId) -> (&'hir Mod<'hir>, Span, HirId) {
+    pub fn hir_get_module(self, module: LocalModDefId) -> (&'tcx Mod<'tcx>, Span, HirId) {
         let hir_id = HirId::make_owner(module.to_local_def_id());
-        match self.tcx.hir_owner_node(hir_id.owner) {
+        match self.hir_owner_node(hir_id.owner) {
             OwnerNode::Item(&Item { span, kind: ItemKind::Mod(m), .. }) => (m, span, hir_id),
             OwnerNode::Crate(item) => (item, item.spans.inner_span, hir_id),
             node => panic!("not a module: {node:?}"),
@@ -395,20 +393,20 @@ impl<'hir> Map<'hir> {
     }
 
     /// Walks the contents of the local crate. See also `visit_all_item_likes_in_crate`.
-    pub fn walk_toplevel_module<V>(self, visitor: &mut V) -> V::Result
+    pub fn hir_walk_toplevel_module<V>(self, visitor: &mut V) -> V::Result
     where
-        V: Visitor<'hir>,
+        V: Visitor<'tcx>,
     {
-        let (top_mod, span, hir_id) = self.get_module(LocalModDefId::CRATE_DEF_ID);
+        let (top_mod, span, hir_id) = self.hir_get_module(LocalModDefId::CRATE_DEF_ID);
         visitor.visit_mod(top_mod, span, hir_id)
     }
 
     /// Walks the attributes in a crate.
-    pub fn walk_attributes<V>(self, visitor: &mut V) -> V::Result
+    pub fn hir_walk_attributes<V>(self, visitor: &mut V) -> V::Result
     where
-        V: Visitor<'hir>,
+        V: Visitor<'tcx>,
     {
-        let krate = self.tcx.hir_crate(());
+        let krate = self.hir_crate(());
         for info in krate.owners.iter() {
             if let MaybeOwner::Owner(info) = info {
                 for attrs in info.attrs.map.values() {
@@ -422,89 +420,87 @@ impl<'hir> Map<'hir> {
     /// Visits all item-likes in the crate in some deterministic (but unspecified) order. If you
     /// need to process every item-like, and don't care about visiting nested items in a particular
     /// order then this method is the best choice. If you do care about this nesting, you should
-    /// use the `tcx.hir().walk_toplevel_module`.
+    /// use the `tcx.hir_walk_toplevel_module`.
     ///
     /// Note that this function will access HIR for all the item-likes in the crate. If you only
     /// need to access some of them, it is usually better to manually loop on the iterators
     /// provided by `tcx.hir_crate_items(())`.
     ///
     /// Please see the notes in `intravisit.rs` for more information.
-    pub fn visit_all_item_likes_in_crate<V>(self, visitor: &mut V) -> V::Result
+    pub fn hir_visit_all_item_likes_in_crate<V>(self, visitor: &mut V) -> V::Result
     where
-        V: Visitor<'hir>,
+        V: Visitor<'tcx>,
     {
-        let krate = self.tcx.hir_crate_items(());
-        walk_list!(visitor, visit_item, krate.free_items().map(|id| self.tcx.hir_item(id)));
+        let krate = self.hir_crate_items(());
+        walk_list!(visitor, visit_item, krate.free_items().map(|id| self.hir_item(id)));
         walk_list!(
             visitor,
             visit_trait_item,
-            krate.trait_items().map(|id| self.tcx.hir_trait_item(id))
+            krate.trait_items().map(|id| self.hir_trait_item(id))
         );
-        walk_list!(
-            visitor,
-            visit_impl_item,
-            krate.impl_items().map(|id| self.tcx.hir_impl_item(id))
-        );
+        walk_list!(visitor, visit_impl_item, krate.impl_items().map(|id| self.hir_impl_item(id)));
         walk_list!(
             visitor,
             visit_foreign_item,
-            krate.foreign_items().map(|id| self.tcx.hir_foreign_item(id))
+            krate.foreign_items().map(|id| self.hir_foreign_item(id))
         );
         V::Result::output()
     }
 
     /// This method is the equivalent of `visit_all_item_likes_in_crate` but restricted to
     /// item-likes in a single module.
-    pub fn visit_item_likes_in_module<V>(self, module: LocalModDefId, visitor: &mut V) -> V::Result
+    pub fn hir_visit_item_likes_in_module<V>(
+        self,
+        module: LocalModDefId,
+        visitor: &mut V,
+    ) -> V::Result
     where
-        V: Visitor<'hir>,
+        V: Visitor<'tcx>,
     {
-        let module = self.tcx.hir_module_items(module);
-        walk_list!(visitor, visit_item, module.free_items().map(|id| self.tcx.hir_item(id)));
+        let module = self.hir_module_items(module);
+        walk_list!(visitor, visit_item, module.free_items().map(|id| self.hir_item(id)));
         walk_list!(
             visitor,
             visit_trait_item,
-            module.trait_items().map(|id| self.tcx.hir_trait_item(id))
+            module.trait_items().map(|id| self.hir_trait_item(id))
         );
-        walk_list!(
-            visitor,
-            visit_impl_item,
-            module.impl_items().map(|id| self.tcx.hir_impl_item(id))
-        );
+        walk_list!(visitor, visit_impl_item, module.impl_items().map(|id| self.hir_impl_item(id)));
         walk_list!(
             visitor,
             visit_foreign_item,
-            module.foreign_items().map(|id| self.tcx.hir_foreign_item(id))
+            module.foreign_items().map(|id| self.hir_foreign_item(id))
         );
         V::Result::output()
     }
 
-    pub fn for_each_module(self, mut f: impl FnMut(LocalModDefId)) {
-        let crate_items = self.tcx.hir_crate_items(());
+    pub fn hir_for_each_module(self, mut f: impl FnMut(LocalModDefId)) {
+        let crate_items = self.hir_crate_items(());
         for module in crate_items.submodules.iter() {
             f(LocalModDefId::new_unchecked(module.def_id))
         }
     }
 
     #[inline]
-    pub fn par_for_each_module(self, f: impl Fn(LocalModDefId) + DynSend + DynSync) {
-        let crate_items = self.tcx.hir_crate_items(());
+    pub fn par_hir_for_each_module(self, f: impl Fn(LocalModDefId) + DynSend + DynSync) {
+        let crate_items = self.hir_crate_items(());
         par_for_each_in(&crate_items.submodules[..], |module| {
             f(LocalModDefId::new_unchecked(module.def_id))
         })
     }
 
     #[inline]
-    pub fn try_par_for_each_module(
+    pub fn try_par_hir_for_each_module(
         self,
         f: impl Fn(LocalModDefId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
     ) -> Result<(), ErrorGuaranteed> {
-        let crate_items = self.tcx.hir_crate_items(());
+        let crate_items = self.hir_crate_items(());
         try_par_for_each_in(&crate_items.submodules[..], |module| {
             f(LocalModDefId::new_unchecked(module.def_id))
         })
     }
+}
 
+impl<'hir> Map<'hir> {
     /// Returns an iterator for the nodes in the ancestor tree of the `current_id`
     /// until the crate root is reached. Prefer this over your own loop using `parent_id`.
     #[inline]
@@ -540,7 +536,7 @@ impl<'hir> Map<'hir> {
     /// Whether the expression pointed at by `hir_id` belongs to a `const` evaluation context.
     /// Used exclusively for diagnostics, to avoid suggestion function calls.
     pub fn is_inside_const_context(self, hir_id: HirId) -> bool {
-        self.body_const_context(self.enclosing_body_owner(hir_id)).is_some()
+        self.tcx.hir_body_const_context(self.tcx.hir_enclosing_body_owner(hir_id)).is_some()
     }
 
     /// Retrieves the `HirId` for `id`'s enclosing function *if* the `id` block or return is
@@ -566,7 +562,8 @@ impl<'hir> Map<'hir> {
     /// }
     /// ```
     pub fn get_fn_id_for_return_block(self, id: HirId) -> Option<HirId> {
-        let enclosing_body_owner = self.tcx.local_def_id_to_hir_id(self.enclosing_body_owner(id));
+        let enclosing_body_owner =
+            self.tcx.local_def_id_to_hir_id(self.tcx.hir_enclosing_body_owner(id));
 
         // Return `None` if the `id` expression is not the returned value of the enclosing body
         let mut iter = [id].into_iter().chain(self.parent_id_iter(id)).peekable();
@@ -1249,7 +1246,7 @@ fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
 pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalModDefId) -> ModuleItems {
     let mut collector = ItemCollector::new(tcx, false);
 
-    let (hir_mod, span, hir_id) = tcx.hir().get_module(module_id);
+    let (hir_mod, span, hir_id) = tcx.hir_get_module(module_id);
     collector.visit_mod(hir_mod, span, hir_id);
 
     let ItemCollector {
@@ -1282,7 +1279,7 @@ pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
     // module item (the former starts at the crate root) but only
     // the former needs to collect it. ItemCollector does not do this for us.
     collector.submodules.push(CRATE_OWNER_ID);
-    tcx.hir().walk_toplevel_module(&mut collector);
+    tcx.hir_walk_toplevel_module(&mut collector);
 
     let ItemCollector {
         submodules,

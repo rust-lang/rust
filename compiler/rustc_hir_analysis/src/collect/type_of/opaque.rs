@@ -89,7 +89,7 @@ pub(super) fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: Local
     debug!(?scope);
 
     if scope == hir::CRATE_HIR_ID {
-        tcx.hir().walk_toplevel_module(&mut locator);
+        tcx.hir_walk_toplevel_module(&mut locator);
     } else {
         trace!("scope={:#?}", tcx.hir_node(scope));
         match tcx.hir_node(scope) {

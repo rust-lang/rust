@@ -648,10 +648,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     }
                 }
             }
-            let hir_map = self.infcx.tcx.hir();
             let def_id = self.body.source.def_id();
             let Some(local_def_id) = def_id.as_local() else { return };
-            let Some(body) = hir_map.maybe_body_owned_by(local_def_id) else { return };
+            let Some(body) = self.infcx.tcx.hir_maybe_body_owned_by(local_def_id) else { return };
 
             let mut v = SuggestIndexOperatorAlternativeVisitor {
                 assign_span: span,
@@ -749,7 +748,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         // `fn foo(&x: &i32)` -> `fn foo(&(mut x): &i32)`
         let def_id = self.body.source.def_id();
         if let Some(local_def_id) = def_id.as_local()
-            && let Some(body) = self.infcx.tcx.hir().maybe_body_owned_by(local_def_id)
+            && let Some(body) = self.infcx.tcx.hir_maybe_body_owned_by(local_def_id)
             && let Some(hir_id) = (BindingFinder { span: pat_span }).visit_body(&body).break_value()
             && let node = self.infcx.tcx.hir_node(hir_id)
             && let hir::Node::LetStmt(hir::LetStmt {
@@ -856,7 +855,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         use hir::ExprKind::{AddrOf, Block, Call, MethodCall};
         use hir::{BorrowKind, Expr};
 
-        let hir_map = self.infcx.tcx.hir();
+        let tcx = self.infcx.tcx;
         struct Finder {
             span: Span,
         }
@@ -871,7 +870,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 }
             }
         }
-        if let Some(body) = hir_map.maybe_body_owned_by(self.mir_def_id())
+        if let Some(body) = tcx.hir_maybe_body_owned_by(self.mir_def_id())
             && let Block(block, _) = body.value.kind
         {
             // `span` corresponds to the expression being iterated, find the `for`-loop desugared
@@ -884,17 +883,15 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     MethodCall(path_segment, _, _, span) => {
                         // We have `for _ in iter.read_only_iter()`, try to
                         // suggest `for _ in iter.mutable_iter()` instead.
-                        let opt_suggestions = self
-                            .infcx
-                            .tcx
+                        let opt_suggestions = tcx
                             .typeck(path_segment.hir_id.owner.def_id)
                             .type_dependent_def_id(expr.hir_id)
-                            .and_then(|def_id| self.infcx.tcx.impl_of_method(def_id))
-                            .map(|def_id| self.infcx.tcx.associated_items(def_id))
+                            .and_then(|def_id| tcx.impl_of_method(def_id))
+                            .map(|def_id| tcx.associated_items(def_id))
                             .map(|assoc_items| {
                                 assoc_items
                                     .in_definition_order()
-                                    .map(|assoc_item_def| assoc_item_def.ident(self.infcx.tcx))
+                                    .map(|assoc_item_def| assoc_item_def.ident(tcx))
                                     .filter(|&ident| {
                                         let original_method_ident = path_segment.ident;
                                         original_method_ident != ident
@@ -942,7 +939,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let closure_span = tcx.def_span(self.mir_def_id());
         let fn_call_id = tcx.parent_hir_id(closure_id);
         let node = tcx.hir_node(fn_call_id);
-        let def_id = hir.enclosing_body_owner(fn_call_id);
+        let def_id = tcx.hir_enclosing_body_owner(fn_call_id);
         let mut look_at_return = true;
 
         // If the HIR node is a function or method call gets the def ID
@@ -1275,7 +1272,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             }) => {
                 let def_id = self.body.source.def_id();
                 let hir_id = if let Some(local_def_id) = def_id.as_local()
-                    && let Some(body) = self.infcx.tcx.hir().maybe_body_owned_by(local_def_id)
+                    && let Some(body) = self.infcx.tcx.hir_maybe_body_owned_by(local_def_id)
                 {
                     BindingFinder { span: err_label_span }.visit_body(&body).break_value()
                 } else {

@@ -696,7 +696,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let target_modifiers = stat!("target-modifiers", || self.encode_target_modifiers());
 
         let root = stat!("final", || {
-            let attrs = tcx.hir().krate_attrs();
+            let attrs = tcx.hir_krate_attrs();
             self.lazy(CrateRoot {
                 header: CrateHeader {
                     name: tcx.crate_name(LOCAL_CRATE),
@@ -1763,7 +1763,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 if should_encode_const(tcx.def_kind(def_id)) {
                     let qualifs = tcx.mir_const_qualif(def_id);
                     record!(self.tables.mir_const_qualif[def_id.to_def_id()] <- qualifs);
-                    let body = tcx.hir().maybe_body_owned_by(def_id);
+                    let body = tcx.hir_maybe_body_owned_by(def_id);
                     if let Some(body) = body {
                         let const_data = rendered_const(self.tcx, &body, def_id);
                         record!(self.tables.rendered_const[def_id.to_def_id()] <- const_data);

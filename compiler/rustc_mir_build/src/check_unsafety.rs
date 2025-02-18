@@ -927,7 +927,7 @@ impl UnsafeOpKind {
                 && let hir::BlockCheckMode::UnsafeBlock(_) = block.rules
             {
                 true
-            } else if let Some(sig) = tcx.hir().fn_sig_by_hir_id(*id)
+            } else if let Some(sig) = tcx.hir_fn_sig_by_hir_id(*id)
                 && matches!(sig.header.safety, hir::HeaderSafety::Normal(hir::Safety::Unsafe))
             {
                 true
@@ -1145,7 +1145,7 @@ pub(crate) fn check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
     let thir = &thir.steal();
 
     let hir_id = tcx.local_def_id_to_hir_id(def);
-    let safety_context = tcx.hir().fn_sig_by_hir_id(hir_id).map_or(SafetyContext::Safe, |fn_sig| {
+    let safety_context = tcx.hir_fn_sig_by_hir_id(hir_id).map_or(SafetyContext::Safe, |fn_sig| {
         match fn_sig.header.safety {
             // We typeck the body as safe, but otherwise treat it as unsafe everywhere else.
             // Call sites to other SafeTargetFeatures functions are checked explicitly and don't need

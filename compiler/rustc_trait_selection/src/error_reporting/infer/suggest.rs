@@ -624,7 +624,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
         }
 
-        self.tcx.hir().maybe_body_owned_by(cause.body_id).and_then(|body| {
+        self.tcx.hir_maybe_body_owned_by(cause.body_id).and_then(|body| {
             IfVisitor { err_span: span, found_if: false }
                 .visit_body(&body)
                 .is_break()

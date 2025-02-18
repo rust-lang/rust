@@ -1710,7 +1710,7 @@ fn check_sized_if_body<'tcx>(
     maybe_span: Option<Span>,
 ) {
     let tcx = wfcx.tcx();
-    if let Some(body) = tcx.hir().maybe_body_owned_by(def_id) {
+    if let Some(body) = tcx.hir_maybe_body_owned_by(def_id) {
         let span = maybe_span.unwrap_or(body.value.span);
 
         wfcx.register_bound(

@@ -576,7 +576,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
         let tcx = self.infcx.tcx;
         let typeck_root_def_id = tcx.typeck_root_def_id(self.mir_def.to_def_id());
 
-        match tcx.hir().body_owner_kind(self.mir_def) {
+        match tcx.hir_body_owner_kind(self.mir_def) {
             BodyOwnerKind::Closure | BodyOwnerKind::Fn => {
                 let defining_ty = tcx.type_of(self.mir_def).instantiate_identity();
 

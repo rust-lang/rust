@@ -51,7 +51,7 @@ pub(crate) fn collect_spans_and_sources(
         let mut visitor = SpanMapVisitor { tcx, matches: FxHashMap::default() };
 
         if generate_link_to_definition {
-            tcx.hir().walk_toplevel_module(&mut visitor);
+            tcx.hir_walk_toplevel_module(&mut visitor);
         }
         let sources = sources::collect_local_sources(tcx, src_root, krate);
         (sources, visitor.matches)
@@ -173,18 +173,18 @@ impl SpanMapVisitor<'_> {
     }
 
     fn infer_id(&mut self, hir_id: HirId, expr_hir_id: Option<HirId>, span: Span) {
-        let hir = self.tcx.hir();
-        let body_id = hir.enclosing_body_owner(hir_id);
+        let tcx = self.tcx;
+        let body_id = tcx.hir_enclosing_body_owner(hir_id);
         // FIXME: this is showing error messages for parts of the code that are not
         // compiled (because of cfg)!
         //
         // See discussion in https://github.com/rust-lang/rust/issues/69426#issuecomment-1019412352
-        let typeck_results = self.tcx.typeck_body(hir.body_owned_by(body_id).id());
+        let typeck_results = tcx.typeck_body(tcx.hir_body_owned_by(body_id).id());
         // Interestingly enough, for method calls, we need the whole expression whereas for static
         // method/function calls, we need the call expression specifically.
         if let Some(def_id) = typeck_results.type_dependent_def_id(expr_hir_id.unwrap_or(hir_id)) {
             let link = if def_id.as_local().is_some() {
-                LinkFromSrc::Local(rustc_span(def_id, self.tcx))
+                LinkFromSrc::Local(rustc_span(def_id, tcx))
             } else {
                 LinkFromSrc::External(def_id)
             };

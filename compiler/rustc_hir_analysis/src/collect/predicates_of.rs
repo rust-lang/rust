@@ -435,7 +435,7 @@ fn const_evaluatable_predicates_of<'tcx>(
         self_ty.instantiate_identity().visit_with(&mut collector);
     }
 
-    if let Some(_) = tcx.hir().fn_sig_by_hir_id(hir_id) {
+    if let Some(_) = tcx.hir_fn_sig_by_hir_id(hir_id) {
         debug!("visit fn sig");
         let fn_sig = tcx.fn_sig(def_id);
         let fn_sig = fn_sig.instantiate_identity();
@@ -825,7 +825,7 @@ pub(super) fn type_param_predicates<'tcx>(
     // `where T: Foo`.
 
     let param_id = tcx.local_def_id_to_hir_id(def_id);
-    let param_owner = tcx.hir().ty_param_owner(def_id);
+    let param_owner = tcx.hir_ty_param_owner(def_id);
 
     // Don't look for bounds where the type parameter isn't in scope.
     let parent = if item_def_id == param_owner {

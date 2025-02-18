@@ -1001,11 +1001,12 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         let closure_def_id = closure_expr.def_id;
         // For purposes of this function, coroutine and closures are equivalent.
         let body_owner_is_closure = matches!(
-            tcx.hir().body_owner_kind(self.cx.body_owner_def_id()),
+            tcx.hir_body_owner_kind(self.cx.body_owner_def_id()),
             hir::BodyOwnerKind::Closure
         );
 
-        // If we have a nested closure, we want to include the fake reads present in the nested closure.
+        // If we have a nested closure, we want to include the fake reads present in the nested
+        // closure.
         if let Some(fake_reads) = self.cx.typeck_results().closure_fake_reads.get(&closure_def_id) {
             for (fake_read, cause, hir_id) in fake_reads.iter() {
                 match fake_read.base {

@@ -87,7 +87,7 @@ pub(crate) fn get_or_insert_gdb_debug_scripts_section_global<'ll>(
 
 pub(crate) fn needs_gdb_debug_scripts_section(cx: &CodegenCx<'_, '_>) -> bool {
     let omit_gdb_pretty_printer_section =
-        attr::contains_name(cx.tcx.hir().krate_attrs(), sym::omit_gdb_pretty_printer_section);
+        attr::contains_name(cx.tcx.hir_krate_attrs(), sym::omit_gdb_pretty_printer_section);
 
     // To ensure the section `__rustc_debug_gdb_scripts_section__` will not create
     // ODR violations at link time, this section will not be emitted for rlibs since

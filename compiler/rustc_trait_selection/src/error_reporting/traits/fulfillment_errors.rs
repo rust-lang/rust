@@ -367,7 +367,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                         (span.shrink_to_lo(), format!("(")),
                                         (span.shrink_to_hi(), format!(" as {})", cand.self_ty())),
                                     ]
-                                } else if let Some(body) = self.tcx.hir().maybe_body_owned_by(obligation.cause.body_id) {
+                                } else if let Some(body) = self.tcx.hir_maybe_body_owned_by(obligation.cause.body_id) {
                                     let mut expr_finder = FindExprBySpan::new(span, self.tcx);
                                     expr_finder.visit_expr(body.value);
                                     if let Some(expr) = expr_finder.result &&

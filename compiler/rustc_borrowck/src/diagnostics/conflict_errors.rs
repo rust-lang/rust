@@ -386,8 +386,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 hir::intravisit::walk_pat(self, p);
             }
         }
+        let tcx = self.infcx.tcx;
         let hir = self.infcx.tcx.hir();
-        if let Some(body) = hir.maybe_body_owned_by(self.mir_def_id()) {
+        if let Some(body) = tcx.hir_maybe_body_owned_by(self.mir_def_id()) {
             let expr = body.value;
             let place = &self.move_data.move_paths[mpi].place;
             let span = place.as_local().map(|local| self.body.local_decls[local].source_info.span);
@@ -396,7 +397,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 expr: None,
                 pat: None,
                 parent_pat: None,
-                tcx: self.infcx.tcx,
+                tcx,
             };
             finder.visit_expr(expr);
             if let Some(span) = span
@@ -782,9 +783,9 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
         // We use the statements were the binding was initialized, and inspect the HIR to look
         // for the branching codepaths that aren't covered, to point at them.
-        let map = self.infcx.tcx.hir();
-        let body = map.body_owned_by(self.mir_def_id());
-        let mut visitor = ConditionVisitor { tcx: self.infcx.tcx, spans, name, errors: vec![] };
+        let tcx = self.infcx.tcx;
+        let body = tcx.hir_body_owned_by(self.mir_def_id());
+        let mut visitor = ConditionVisitor { tcx, spans, name, errors: vec![] };
         visitor.visit_body(&body);
         let spans = visitor.spans;
 
@@ -2443,7 +2444,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     ) {
         let &UseSpans::ClosureUse { capture_kind_span, .. } = issued_spans else { return };
         let tcx = self.infcx.tcx;
-        let hir = tcx.hir();
 
         // Get the type of the local that we are trying to borrow
         let local = borrowed_place.local;
@@ -2522,7 +2522,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
         // Find the first argument with a matching type, get its name
         let Some((_, this_name)) =
-            params.iter().zip(hir.body_param_names(closure.body)).find(|(param_ty, name)| {
+            params.iter().zip(tcx.hir_body_param_names(closure.body)).find(|(param_ty, name)| {
                 // FIXME: also support deref for stuff like `Rc` arguments
                 param_ty.peel_refs() == local_ty && name != &Ident::empty()
             })
@@ -4178,7 +4178,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         debug!("annotate_fn_sig: did={:?} sig={:?}", did, sig);
         let is_closure = self.infcx.tcx.is_closure_like(did.to_def_id());
         let fn_hir_id = self.infcx.tcx.local_def_id_to_hir_id(did);
-        let fn_decl = self.infcx.tcx.hir().fn_decl_by_hir_id(fn_hir_id)?;
+        let fn_decl = self.infcx.tcx.hir_fn_decl_by_hir_id(fn_hir_id)?;
 
         // We need to work out which arguments to highlight. We do this by looking
         // at the return type, where there are three cases:

@@ -358,7 +358,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             if let Some(local_impl_of) = impl_of.as_local()
                 && let Some(local_def_id) = def_id.as_local()
                 && let Some(fn_sig) =
-                    self.tcx.hir().fn_sig_by_hir_id(self.tcx.local_def_id_to_hir_id(local_def_id))
+                    self.tcx.hir_fn_sig_by_hir_id(self.tcx.local_def_id_to_hir_id(local_def_id))
                 && matches!(fn_sig.decl.implicit_self, hir::ImplicitSelfKind::None)
                 && let TyKind::Path(hir::QPath::Resolved(_, path)) =
                     self.tcx.hir().expect_item(local_impl_of).expect_impl().self_ty.kind
@@ -779,7 +779,7 @@ fn check_item<'tcx>(
                 // check the function may construct Self
                 let mut may_construct_self = false;
                 if let Some(fn_sig) =
-                    tcx.hir().fn_sig_by_hir_id(tcx.local_def_id_to_hir_id(local_def_id))
+                    tcx.hir_fn_sig_by_hir_id(tcx.local_def_id_to_hir_id(local_def_id))
                 {
                     may_construct_self =
                         matches!(fn_sig.decl.implicit_self, hir::ImplicitSelfKind::None);
