@@ -22,6 +22,20 @@ monomorphize_abi_error_unsupported_vector_type =
     *[false] defined
   } here
 
+monomorphize_abi_required_target_feature =
+  this function {$is_call ->
+    [true] call
+    *[false] definition
+  } uses ABI "{$abi}" which requires the `{$required_feature}` target feature, which is not enabled{$is_call ->
+    [true] {" "}in the caller
+    *[false] {""}
+  }
+  .label = function {$is_call ->
+    [true] called
+    *[false] defined
+  } here
+  .help = consider enabling it globally (`-C target-feature=+{$required_feature}`) or locally (`#[target_feature(enable="{$required_feature}")]`)
+
 monomorphize_couldnt_dump_mono_stats =
     unexpected error occurred while dumping monomorphization stats: {$error}
 

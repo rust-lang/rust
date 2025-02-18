@@ -29,12 +29,12 @@ fn uses_vector_registers(mode: &PassMode, repr: &BackendRepr) -> bool {
 fn do_check_abi<'tcx>(
     tcx: TyCtxt<'tcx>,
     abi: &FnAbi<'tcx, Ty<'tcx>>,
-    target_feature_def: DefId,
+    def_id: DefId,
     is_call: bool,
     span: impl Fn() -> Span,
 ) {
     let feature_def = tcx.sess.target.features_for_correct_vector_abi();
-    let codegen_attrs = tcx.codegen_fn_attrs(target_feature_def);
+    let codegen_attrs = tcx.codegen_fn_attrs(def_id);
     let have_feature = |feat: Symbol| {
         tcx.sess.unstable_target_features.contains(&feat)
             || codegen_attrs.target_features.iter().any(|x| x.name == feat)
@@ -76,6 +76,15 @@ fn do_check_abi<'tcx>(
                 );
             }
         }
+    }
+    // The `vectorcall` ABI is special in that it requires SSE2 no matter which types are being passed.
+    if abi.conv == Conv::X86VectorCall && !have_feature(sym::sse2) {
+        tcx.dcx().emit_err(errors::AbiRequiredTargetFeature {
+            span: span(),
+            required_feature: "sse2",
+            abi: "vectorcall",
+            is_call,
+        });
     }
 }
 
