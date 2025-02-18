@@ -84,13 +84,13 @@ pub(super) fn add_local_place_comments<'tcx>(
     let (kind, extra) = place.debug_comment();
 
     fx.add_global_comment(format!(
-        "{:<5} {:5} {:30} {:4}b {}, {}{}",
+        "{:<5} {:5} {:30} {:4}b {}{}{}",
         kind,
         format!("{:?}", local),
         format!("{:?}", ty),
         size.bytes(),
         align.abi.bytes(),
-        if extra.is_empty() { "" } else { "              " },
+        if extra.is_empty() { "" } else { "                " },
         extra,
     ));
 }
