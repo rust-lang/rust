@@ -65,10 +65,10 @@ impl Builder<'_> {
 }
 
 #[derive(Clone)]
-struct ToolBuildResult {
-    tool_path: PathBuf,
-    build_compiler: Compiler,
-    target_compiler: Compiler,
+pub struct ToolBuildResult {
+    pub tool_path: PathBuf,
+    pub build_compiler: Compiler,
+    pub target_compiler: Compiler,
 }
 
 impl Step for ToolBuild {
@@ -114,10 +114,28 @@ impl Step for ToolBuild {
             self.source_type,
             &self.extra_features,
         );
+
+        if path.ends_with("/rustdoc") &&
+            // rustdoc is performance sensitive, so apply LTO to it.
+            is_lto_stage(&self.compiler)
+        {
+            let lto = match builder.config.rust_lto {
+                RustcLto::Off => Some("off"),
+                RustcLto::Thin => Some("thin"),
+                RustcLto::Fat => Some("fat"),
+                RustcLto::ThinLocal => None,
+            };
+            if let Some(lto) = lto {
+                cargo.env(cargo_profile_var("LTO", &builder.config), lto);
+            }
+        }
+
         if !self.allow_features.is_empty() {
             cargo.allow_features(self.allow_features);
         }
+
         cargo.args(self.cargo_args);
+
         let _guard = builder.msg_tool(
             Kind::Build,
             self.mode,
@@ -163,9 +181,6 @@ pub fn prepare_tool_cargo(
     source_type: SourceType,
     extra_features: &[String],
 ) -> CargoCommand {
-    let compiler =
-        if mode == Mode::ToolRustc { get_tool_rustc_compiler(builder, compiler) } else { compiler };
-
     let mut cargo = builder::Cargo::new(builder, compiler, mode, source_type, target, cmd_kind);
 
     let dir = builder.src.join(path);
@@ -667,14 +682,6 @@ impl Step for Rustdoc {
             }
         }
 
-        let build_compiler = get_tool_rustc_compiler(builder, target_compiler);
-
-        // When using `download-rustc` and a stage0 build_compiler, copying rustc doesn't actually
-        // build stage0 libstd (because the libstd in sysroot has the wrong ABI). Explicitly build
-        // it.
-        builder.ensure(compile::Std::new(build_compiler, target_compiler.host));
-        builder.ensure(compile::Rustc::new(build_compiler, target_compiler.host));
-
         // The presence of `target_compiler` ensures that the necessary libraries (codegen backends,
         // compiler libraries, ...) are built. Rustdoc does not require the presence of any
         // libraries within sysroot_libdir (i.e., rustlib), though doctests may want it (since
@@ -682,65 +689,39 @@ impl Step for Rustdoc {
         // libraries here. The intuition here is that If we've built a compiler, we should be able
         // to build rustdoc.
         //
-        let mut features = Vec::new();
+        let mut extra_features = Vec::new();
         if builder.config.jemalloc(target) {
-            features.push("jemalloc".to_string());
+            extra_features.push("jemalloc".to_string());
         }
 
-        // NOTE: Never modify the rustflags here, it breaks the build cache for other tools!
-        let mut cargo = prepare_tool_cargo(
-            builder,
-            target_compiler,
-            Mode::ToolRustc,
-            target,
-            Kind::Build,
-            "src/tools/rustdoc",
-            SourceType::InTree,
-            features.as_slice(),
-        );
-
-        // rustdoc is performance sensitive, so apply LTO to it.
-        if is_lto_stage(&build_compiler) {
-            let lto = match builder.config.rust_lto {
-                RustcLto::Off => Some("off"),
-                RustcLto::Thin => Some("thin"),
-                RustcLto::Fat => Some("fat"),
-                RustcLto::ThinLocal => None,
-            };
-            if let Some(lto) = lto {
-                cargo.env(cargo_profile_var("LTO", &builder.config), lto);
-            }
-        }
-
-        let _guard = builder.msg_tool(
-            Kind::Build,
-            Mode::ToolRustc,
-            "rustdoc",
-            build_compiler.stage,
-            &self.compiler.host,
-            &target,
-        );
-        cargo.into_cmd().run(builder);
-
-        // Cargo adds a number of paths to the dylib search path on windows, which results in
-        // the wrong rustdoc being executed. To avoid the conflicting rustdocs, we name the "tool"
-        // rustdoc a different name.
-        let tool_rustdoc = builder
-            .cargo_out(build_compiler, Mode::ToolRustc, target)
-            .join(exe("rustdoc_tool_binary", target_compiler.host));
+        let ToolBuildResult { tool_path, build_compiler: _build_compiler, target_compiler } =
+            builder.ensure(ToolBuild {
+                compiler: target_compiler,
+                target,
+                // Cargo adds a number of paths to the dylib search path on windows, which results in
+                // the wrong rustdoc being executed. To avoid the conflicting rustdocs, we name the "tool"
+                // rustdoc a different name.
+                tool: "rustdoc_tool_binary",
+                mode: Mode::ToolRustc,
+                path: "src/tools/rustdoc",
+                source_type: SourceType::InTree,
+                extra_features,
+                allow_features: "",
+                cargo_args: Vec::new(),
+            });
 
         // don't create a stage0-sysroot/bin directory.
         if target_compiler.stage > 0 {
             if builder.config.rust_debuginfo_level_tools == DebuginfoLevel::None {
                 // Due to LTO a lot of debug info from C++ dependencies such as jemalloc can make it into
                 // our final binaries
-                compile::strip_debug(builder, target, &tool_rustdoc);
+                compile::strip_debug(builder, target, &tool_path);
             }
             let bin_rustdoc = bin_rustdoc();
-            builder.copy_link(&tool_rustdoc, &bin_rustdoc);
+            builder.copy_link(&tool_path, &bin_rustdoc);
             bin_rustdoc
         } else {
-            tool_rustdoc
+            tool_path
         }
     }
 }
@@ -1084,7 +1065,7 @@ macro_rules! tool_extended {
         }
 
         impl Step for $name {
-            type Output = PathBuf;
+            type Output = ToolBuildResult;
             const DEFAULT: bool = true; // Overridden by `should_run_tool_build_step`
             const ONLY_HOSTS: bool = true;
 
@@ -1104,7 +1085,7 @@ macro_rules! tool_extended {
                 });
             }
 
-            fn run(self, builder: &Builder<'_>) -> PathBuf {
+            fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
                 let Self { compiler, target } = self;
                 run_tool_build_step(
                     builder,
@@ -1150,9 +1131,9 @@ fn run_tool_build_step(
     tool_name: &'static str,
     path: &'static str,
     add_bins_to_sysroot: Option<&[&str]>,
-) -> PathBuf {
-    let ToolBuildResult { tool_path, build_compiler: _build_compiler, target_compiler } = builder
-        .ensure(ToolBuild {
+) -> ToolBuildResult {
+    let ToolBuildResult { tool_path, build_compiler, target_compiler } =
+        builder.ensure(ToolBuild {
             compiler,
             target,
             tool: tool_name,
@@ -1177,9 +1158,10 @@ fn run_tool_build_step(
         }
 
         // Return a path into the bin dir.
-        bindir.join(exe(tool_name, target_compiler.host))
+        let path = bindir.join(exe(tool_name, target_compiler.host));
+        ToolBuildResult { tool_path: path, build_compiler, target_compiler }
     } else {
-        tool_path
+        ToolBuildResult { tool_path, build_compiler, target_compiler }
     }
 }
 

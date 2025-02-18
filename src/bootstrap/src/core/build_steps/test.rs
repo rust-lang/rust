@@ -427,7 +427,8 @@ impl Step for Rustfmt {
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
-        builder.ensure(tool::Rustfmt { compiler, target: self.host });
+        let tool_result = builder.ensure(tool::Rustfmt { compiler, target: self.host });
+        let compiler = tool_result.build_compiler;
 
         let mut cargo = tool::prepare_tool_cargo(
             builder,
@@ -571,7 +572,7 @@ impl Step for Miri {
         // miri tests need to know about the stage sysroot
         cargo.env("MIRI_SYSROOT", &miri_sysroot);
         cargo.env("MIRI_HOST_SYSROOT", &host_sysroot);
-        cargo.env("MIRI", &miri);
+        cargo.env("MIRI", &miri.tool_path);
 
         // Set the target.
         cargo.env("MIRI_TEST_TARGET", target.rustc_target_arg());
@@ -743,7 +744,8 @@ impl Step for Clippy {
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
-        builder.ensure(tool::Clippy { compiler, target: self.host });
+        let tool_result = builder.ensure(tool::Clippy { compiler, target: self.host });
+        let compiler = tool_result.build_compiler;
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             compiler,

@@ -1415,7 +1415,7 @@ impl<'a> Builder<'a> {
         let mut dylib_path = helpers::dylib_path();
         dylib_path.insert(0, self.sysroot(run_compiler).join("lib"));
 
-        let mut cmd = command(cargo_clippy);
+        let mut cmd = command(cargo_clippy.tool_path);
         cmd.env(helpers::dylib_path_var(), env::join_paths(&dylib_path).unwrap());
         cmd.env("CARGO", &self.initial_cargo);
         cmd
@@ -1430,8 +1430,8 @@ impl<'a> Builder<'a> {
         let cargo_miri =
             self.ensure(tool::CargoMiri { compiler: build_compiler, target: self.build.build });
         // Invoke cargo-miri, make sure it can find miri and cargo.
-        let mut cmd = command(cargo_miri);
-        cmd.env("MIRI", &miri);
+        let mut cmd = command(cargo_miri.tool_path);
+        cmd.env("MIRI", &miri.tool_path);
         cmd.env("CARGO", &self.initial_cargo);
         // Need to add the `run_compiler` libs. Those are the libs produces *by* `build_compiler`,
         // so they match the Miri we just built. However this means they are actually living one
