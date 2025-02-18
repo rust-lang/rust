@@ -1777,7 +1777,11 @@ impl Config {
 
         let is_user_configured_rust_channel =
             if let Some(channel) = toml.rust.as_ref().and_then(|r| r.channel.clone()) {
-                config.channel = channel;
+                if channel == "auto-detect" {
+                    config.channel = ci_channel.into();
+                } else {
+                    config.channel = channel;
+                }
                 true
             } else {
                 false
