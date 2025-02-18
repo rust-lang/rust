@@ -4,8 +4,8 @@
 
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Formatter};
+use std::iter;
 use std::ops::{Index, IndexMut};
-use std::{iter, mem};
 
 pub use basic_blocks::BasicBlocks;
 use either::Either;
