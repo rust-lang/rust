@@ -534,7 +534,7 @@ fn layout_of_uncached<'tcx>(
                 (
                     BackendRepr::Memory { sized: true },
                     AbiAndPrefAlign {
-                        abi: Align::max_for_offset(size),
+                        abi: Align::max_aligned_factor(size),
                         pref: dl.vector_align(size).pref,
                     },
                 )
