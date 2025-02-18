@@ -13,13 +13,13 @@ struct Bar {
 }
 
 impl fmt::Debug for Bar {
-    fn fmt<'_, '_, '_>(self: &'_ Self, f: &'_ mut fmt::Formatter<'_>)
+    fn fmt(self: &'_ Self, f: &'_ mut fmt::Formatter<'_>)
         ->
             fmt::Result {
         debug_struct_field2_finish(f, "Bar", "a", &self.a, "b", &&self.b)
     }
 }
 
-fn debug_struct_field2_finish<'a, '_, '_,
-    '_>(name: &'_ str, name1: &'_ str, value1: &'a dyn fmt::Debug,
-    name2: &'_ str, value2: &'a dyn fmt::Debug) -> fmt::Result { loop { } }
+fn debug_struct_field2_finish<'a>(name: &'_ str, name1: &'_ str,
+    value1: &'a dyn fmt::Debug, name2: &'_ str, value2: &'a dyn fmt::Debug)
+    -> fmt::Result { loop { } }

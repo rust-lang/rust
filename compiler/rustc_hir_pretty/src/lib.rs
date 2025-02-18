@@ -2284,7 +2284,9 @@ impl<'a> State<'a> {
                 GenericBound::Use(args, _) => {
                     self.word("use <");
 
-                    self.commasep(Inconsistent, args, |s, arg| s.print_precise_capturing_arg(*arg));
+                    self.commasep(Inconsistent, *args, |s, arg| {
+                        s.print_precise_capturing_arg(*arg)
+                    });
 
                     self.word(">");
                 }
@@ -2300,10 +2302,23 @@ impl<'a> State<'a> {
     }
 
     fn print_generic_params(&mut self, generic_params: &[GenericParam<'_>]) {
-        if !generic_params.is_empty() {
+        let is_lifetime_elided = |generic_param: &GenericParam<'_>| {
+            matches!(
+                generic_param.kind,
+                GenericParamKind::Lifetime { kind: LifetimeParamKind::Elided(_) }
+            )
+        };
+
+        // We don't want to show elided lifetimes as they are compiler-inserted and not
+        // expressible in surface level Rust.
+        if !generic_params.is_empty() && !generic_params.iter().all(is_lifetime_elided) {
             self.word("<");
 
-            self.commasep(Inconsistent, generic_params, |s, param| s.print_generic_param(param));
+            self.commasep(
+                Inconsistent,
+                generic_params.iter().filter(|gp| !is_lifetime_elided(gp)),
+                |s, param| s.print_generic_param(param),
+            );
 
             self.word(">");
         }
