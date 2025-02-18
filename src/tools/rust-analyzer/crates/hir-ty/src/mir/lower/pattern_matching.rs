@@ -1,6 +1,6 @@
 //! MIR lowering for patterns
 
-use hir_def::{hir::LiteralOrConst, AssocItemId};
+use hir_def::{hir::ExprId, AssocItemId};
 
 use crate::{
     mir::{
@@ -207,7 +207,7 @@ impl MirLowerCtx<'_> {
                 )?
             }
             Pat::Range { start, end } => {
-                let mut add_check = |l: &LiteralOrConst, binop| -> Result<()> {
+                let mut add_check = |l: &ExprId, binop| -> Result<()> {
                     let lv =
                         self.lower_literal_or_const_to_operand(self.infer[pattern].clone(), l)?;
                     let else_target = *current_else.get_or_insert_with(|| self.new_basic_block());

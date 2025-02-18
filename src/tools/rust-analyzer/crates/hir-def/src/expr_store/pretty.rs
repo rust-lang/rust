@@ -6,10 +6,7 @@ use itertools::Itertools;
 use span::Edition;
 
 use crate::{
-    hir::{
-        Array, BindingAnnotation, CaptureBy, ClosureKind, Literal, LiteralOrConst, Movability,
-        Statement,
-    },
+    hir::{Array, BindingAnnotation, CaptureBy, ClosureKind, Literal, Movability, Statement},
     pretty::{print_generic_args, print_path, print_type_ref},
 };
 
@@ -656,11 +653,11 @@ impl Printer<'_> {
             }
             Pat::Range { start, end } => {
                 if let Some(start) = start {
-                    self.print_literal_or_const(start);
+                    self.print_expr(*start);
                 }
                 w!(self, "..=");
                 if let Some(end) = end {
-                    self.print_literal_or_const(end);
+                    self.print_expr(*end);
                 }
             }
             Pat::Slice { prefix, slice, suffix } => {
@@ -754,13 +751,6 @@ impl Printer<'_> {
                 wln!(self);
             }
             Statement::Item(_) => (),
-        }
-    }
-
-    fn print_literal_or_const(&mut self, literal_or_const: &LiteralOrConst) {
-        match literal_or_const {
-            LiteralOrConst::Literal(l) => self.print_literal(l),
-            LiteralOrConst::Const(c) => self.print_pat(*c),
         }
     }
 

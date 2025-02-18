@@ -270,6 +270,7 @@ mod handlers {
             destructure_tuple_binding::destructure_tuple_binding,
             destructure_struct_binding::destructure_struct_binding,
             expand_glob_import::expand_glob_import,
+            expand_glob_import::expand_glob_reexport,
             explicit_enum_discriminant::explicit_enum_discriminant,
             extract_expressions_from_format_string::extract_expressions_from_format_string,
             extract_struct_from_enum_variant::extract_struct_from_enum_variant,

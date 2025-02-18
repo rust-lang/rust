@@ -837,7 +837,8 @@ pub fn match_guard(condition: ast::Expr) -> ast::MatchGuard {
 
 pub fn match_arm_list(arms: impl IntoIterator<Item = ast::MatchArm>) -> ast::MatchArmList {
     let arms_str = arms.into_iter().fold(String::new(), |mut acc, arm| {
-        let needs_comma = arm.expr().is_none_or(|it| !it.is_block_like());
+        let needs_comma =
+            arm.comma_token().is_none() && arm.expr().is_none_or(|it| !it.is_block_like());
         let comma = if needs_comma { "," } else { "" };
         let arm = arm.syntax();
         format_to_acc!(acc, "    {arm}{comma}\n")

@@ -2,6 +2,9 @@
 
 - [Introduction](README.md)
 - [Installation](installation.md)
+  - [VS Code](vs_code.md)
+  - [rust-analyzer Binary](rust_analyzer_binary.md)
+  - [Other Editors](other_editors.md)
 - [Troubleshooting](troubleshooting.md)
 - [Configuration](configuration.md)
   - [Non-Cargo Based Projects](non_cargo_based_projects.md)

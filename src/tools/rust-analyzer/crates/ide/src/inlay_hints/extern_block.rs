@@ -7,7 +7,7 @@ use crate::{InlayHint, InlayHintsConfig};
 
 pub(super) fn extern_block_hints(
     acc: &mut Vec<InlayHint>,
-    FamousDefs(_sema, _): &FamousDefs<'_, '_>,
+    FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
     _file_id: EditionedFileId,
     extern_block: ast::ExternBlock,
@@ -16,6 +16,7 @@ pub(super) fn extern_block_hints(
         return None;
     }
     let abi = extern_block.abi()?;
+    sema.to_def(&extern_block)?;
     acc.push(InlayHint {
         range: abi.syntax().text_range(),
         position: crate::InlayHintPosition::Before,
@@ -33,7 +34,7 @@ pub(super) fn extern_block_hints(
 
 pub(super) fn fn_hints(
     acc: &mut Vec<InlayHint>,
-    FamousDefs(_sema, _): &FamousDefs<'_, '_>,
+    FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
     _file_id: EditionedFileId,
     fn_: &ast::Fn,
@@ -43,14 +44,16 @@ pub(super) fn fn_hints(
     if !implicit_unsafe {
         return None;
     }
-    let fn_ = fn_.fn_token()?;
-    acc.push(item_hint(config, extern_block, fn_));
+    let fn_token = fn_.fn_token()?;
+    if sema.to_def(fn_).is_some_and(|def| def.extern_block(sema.db).is_some()) {
+        acc.push(item_hint(config, extern_block, fn_token));
+    }
     Some(())
 }
 
 pub(super) fn static_hints(
     acc: &mut Vec<InlayHint>,
-    FamousDefs(_sema, _): &FamousDefs<'_, '_>,
+    FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
     _file_id: EditionedFileId,
     static_: &ast::Static,
@@ -60,8 +63,10 @@ pub(super) fn static_hints(
     if !implicit_unsafe {
         return None;
     }
-    let static_ = static_.static_token()?;
-    acc.push(item_hint(config, extern_block, static_));
+    let static_token = static_.static_token()?;
+    if sema.to_def(static_).is_some_and(|def| def.extern_block(sema.db).is_some()) {
+        acc.push(item_hint(config, extern_block, static_token));
+    }
     Some(())
 }
 

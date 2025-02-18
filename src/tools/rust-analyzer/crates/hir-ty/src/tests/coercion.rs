@@ -185,11 +185,10 @@ fn test() {
     let t = &mut 1;
     let x = match 1 {
         1 => t as *mut i32,
+           //^^^^^^^^^^^^^ adjustments: Pointer(MutToConstPointer)
         2 => t as &i32,
            //^^^^^^^^^ expected *mut i32, got &'? i32
         _ => t as *const i32,
-          // ^^^^^^^^^^^^^^^ adjustments: Pointer(MutToConstPointer)
-
     };
     x;
   //^ type: *const i32
@@ -536,7 +535,7 @@ fn test() {
 
 #[test]
 fn coerce_unsize_generic() {
-    check(
+    check_no_mismatches(
         r#"
 //- minicore: coerce_unsized
 struct Foo<T> { t: T };
@@ -544,9 +543,7 @@ struct Bar<T>(Foo<T>);
 
 fn test() {
     let _: &Foo<[usize]> = &Foo { t: [1, 2, 3] };
-                         //^^^^^^^^^^^^^^^^^^^^^ expected &'? Foo<[usize]>, got &'? Foo<[i32; 3]>
     let _: &Bar<[usize]> = &Bar(Foo { t: [1, 2, 3] });
-                         //^^^^^^^^^^^^^^^^^^^^^^^^^^ expected &'? Bar<[usize]>, got &'? Bar<[i32; 3]>
 }
 "#,
     );
@@ -957,4 +954,25 @@ fn f() {
 }
     "#,
     );
+}
+
+#[test]
+fn coerce_nested_unsized_struct() {
+    check_types(
+        r#"
+//- minicore: fn, coerce_unsized, dispatch_from_dyn, sized
+use core::marker::Unsize;
+
+struct Foo<T: ?Sized>(T);
+
+fn need(_: &Foo<dyn Fn(i32) -> i32>) {
+}
+
+fn test() {
+    let callback = |x| x;
+                  //^ i32
+    need(&Foo(callback));
+}
+"#,
+    )
 }

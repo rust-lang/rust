@@ -38,7 +38,9 @@ use rustc_data_structures::work_queue::WorkQueue;
 use rustc_index::bit_set::{DenseBitSet, MixedBitSet};
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::bug;
-use rustc_middle::mir::{self, BasicBlock, CallReturnPlaces, Location, TerminatorEdges, traversal};
+use rustc_middle::mir::{
+    self, BasicBlock, CallReturnPlaces, Location, SwitchTargetValue, TerminatorEdges, traversal,
+};
 use rustc_middle::ty::TyCtxt;
 use tracing::error;
 
@@ -220,7 +222,7 @@ pub trait Analysis<'tcx> {
         &mut self,
         _data: &mut Self::SwitchIntData,
         _state: &mut Self::Domain,
-        _edge: SwitchIntTarget,
+        _value: SwitchTargetValue,
     ) {
         unreachable!();
     }
@@ -428,11 +430,6 @@ impl EffectIndex {
             .then_with(|| self.effect.cmp(&other.effect));
         ord == Ordering::Less
     }
-}
-
-pub struct SwitchIntTarget {
-    pub value: Option<u128>,
-    pub target: BasicBlock,
 }
 
 #[cfg(test)]

@@ -92,10 +92,10 @@ use hir_def::{
         DynMap,
     },
     hir::{BindingId, Expr, LabelId},
-    AdtId, BlockId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, ExternCrateId,
-    FieldId, FunctionId, GenericDefId, GenericParamId, ImplId, LifetimeParamId, Lookup, MacroId,
-    ModuleId, StaticId, StructId, TraitAliasId, TraitId, TypeAliasId, TypeParamId, UnionId, UseId,
-    VariantId,
+    AdtId, BlockId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, ExternBlockId,
+    ExternCrateId, FieldId, FunctionId, GenericDefId, GenericParamId, ImplId, LifetimeParamId,
+    Lookup, MacroId, ModuleId, StaticId, StructId, TraitAliasId, TraitId, TypeAliasId, TypeParamId,
+    UnionId, UseId, VariantId,
 };
 use hir_expand::{
     attrs::AttrId, name::AsName, ExpansionInfo, HirFileId, HirFileIdExt, InMacroFile, MacroCallId,
@@ -308,6 +308,12 @@ impl SourceToDefCtx<'_, '_> {
     ) -> Option<ExternCrateId> {
         self.to_def(src, keys::EXTERN_CRATE)
     }
+    pub(super) fn extern_block_to_def(
+        &mut self,
+        src: InFile<&ast::ExternBlock>,
+    ) -> Option<ExternBlockId> {
+        self.to_def(src, keys::EXTERN_BLOCK)
+    }
     #[allow(dead_code)]
     pub(super) fn use_to_def(&mut self, src: InFile<&ast::Use>) -> Option<UseId> {
         self.to_def(src, keys::USE)
@@ -352,7 +358,7 @@ impl SourceToDefCtx<'_, '_> {
         let src = src.cloned().map(ast::Pat::from);
         let pat_id = source_map.node_pat(src.as_ref())?;
         // the pattern could resolve to a constant, verify that this is not the case
-        if let crate::Pat::Bind { id, .. } = body[pat_id] {
+        if let crate::Pat::Bind { id, .. } = body[pat_id.as_pat()?] {
             Some((container, id))
         } else {
             None

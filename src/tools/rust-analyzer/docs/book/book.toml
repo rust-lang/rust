@@ -9,10 +9,10 @@ title = "rust-analyzer"
 edition = "2021"
 
 [output.html]
-edit-url-template = "https://github.com/rust-lang/rust-analyzer/edit/master/manual/{path}"
-git-repository-url = "https://github.com/rust-lang/rust-analyzer/tree/master/manual"
+edit-url-template = "https://github.com/rust-lang/rust-analyzer/edit/master/docs/book/{path}"
+git-repository-url = "https://github.com/rust-lang/rust-analyzer/tree/master/docs/book"
 mathjax-support = true
-site-url = "/manual/"
+site-url = "/book/"
 
 [output.html.playground]
 editable = true
@@ -34,8 +34,3 @@ use-boolean-and = true
 [output.html.fold]
 enable = true
 level = 3
-
-[preprocessor.toc]
-command = "mdbook-toc"
-renderer = ["html"]
-max-level = 3

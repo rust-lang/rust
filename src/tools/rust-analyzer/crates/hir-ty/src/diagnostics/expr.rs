@@ -440,7 +440,9 @@ impl ExprValidator {
                             return;
                         };
                         let root = source_ptr.file_syntax(db.upcast());
-                        let ast::Expr::IfExpr(if_expr) = source_ptr.value.to_node(&root) else {
+                        let either::Left(ast::Expr::IfExpr(if_expr)) =
+                            source_ptr.value.to_node(&root)
+                        else {
                             return;
                         };
                         let mut top_if_expr = if_expr;

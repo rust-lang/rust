@@ -280,8 +280,9 @@ impl NotifyActor {
                                 return false;
                             }
 
-                            root == path
-                                || dirs.exclude.iter().chain(&dirs.include).all(|it| it != path)
+                            // We want to filter out subdirectories that are roots themselves, because they will be visited separately.
+                            dirs.exclude.iter().all(|it| it != path)
+                                && (root == path || dirs.include.iter().all(|it| it != path))
                         });
 
                     let files = walkdir.filter_map(|it| it.ok()).filter_map(|entry| {

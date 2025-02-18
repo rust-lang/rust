@@ -1229,6 +1229,9 @@ impl Seek for &File {
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
         self.inner.seek(pos)
     }
+    fn stream_position(&mut self) -> io::Result<u64> {
+        self.inner.tell()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1274,6 +1277,9 @@ impl Write for File {
 impl Seek for File {
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
         (&*self).seek(pos)
+    }
+    fn stream_position(&mut self) -> io::Result<u64> {
+        (&*self).stream_position()
     }
 }
 

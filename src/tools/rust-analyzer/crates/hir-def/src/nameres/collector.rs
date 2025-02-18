@@ -1759,16 +1759,20 @@ impl ModCollector<'_, '_> {
                         );
                     }
                 }
-                ModItem::ExternBlock(block) => self.collect(
-                    &self.item_tree[block].children,
-                    ItemContainerId::ExternBlockId(
-                        ExternBlockLoc {
-                            container: module,
-                            id: ItemTreeId::new(self.tree_id, block),
-                        }
-                        .intern(db),
-                    ),
-                ),
+                ModItem::ExternBlock(block) => {
+                    let extern_block_id = ExternBlockLoc {
+                        container: module,
+                        id: ItemTreeId::new(self.tree_id, block),
+                    }
+                    .intern(db);
+                    self.def_collector.def_map.modules[self.module_id]
+                        .scope
+                        .define_extern_block(extern_block_id);
+                    self.collect(
+                        &self.item_tree[block].children,
+                        ItemContainerId::ExternBlockId(extern_block_id),
+                    )
+                }
                 ModItem::MacroCall(mac) => self.collect_macro_call(&self.item_tree[mac], container),
                 ModItem::MacroRules(id) => self.collect_macro_rules(id, module),
                 ModItem::Macro2(id) => self.collect_macro_def(id, module),
