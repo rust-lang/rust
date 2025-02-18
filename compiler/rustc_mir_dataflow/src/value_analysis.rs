@@ -7,7 +7,6 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexSet, StdEntry};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
-use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
