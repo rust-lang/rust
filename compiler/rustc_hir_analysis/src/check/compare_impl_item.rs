@@ -2104,18 +2104,21 @@ pub(super) fn check_type_bounds<'tcx>(
         ObligationCause::new(impl_ty_span, impl_ty_def_id, code)
     };
 
-    let mut obligations: Vec<_> = tcx
-        .explicit_item_bounds(trait_ty.def_id)
-        .iter_instantiated_copied(tcx, rebased_args)
-        .map(|(concrete_ty_bound, span)| {
-            debug!(?concrete_ty_bound);
-            traits::Obligation::new(tcx, mk_cause(span), param_env, concrete_ty_bound)
-        })
-        .collect();
+    let mut obligations: Vec<_> = util::elaborate(
+        tcx,
+        tcx.explicit_item_bounds(trait_ty.def_id).iter_instantiated_copied(tcx, rebased_args).map(
+            |(concrete_ty_bound, span)| {
+                debug!(?concrete_ty_bound);
+                traits::Obligation::new(tcx, mk_cause(span), param_env, concrete_ty_bound)
+            },
+        ),
+    )
+    .collect();
 
     // Only in a const implementation do we need to check that the `~const` item bounds hold.
     if tcx.is_conditionally_const(impl_ty_def_id) {
-        obligations.extend(
+        obligations.extend(util::elaborate(
+            tcx,
             tcx.explicit_implied_const_bounds(trait_ty.def_id)
                 .iter_instantiated_copied(tcx, rebased_args)
                 .map(|(c, span)| {
@@ -2126,7 +2129,7 @@ pub(super) fn check_type_bounds<'tcx>(
                         c.to_host_effect_clause(tcx, ty::BoundConstness::Maybe),
                     )
                 }),
-        );
+        ));
     }
     debug!(item_bounds=?obligations);
 
@@ -2134,26 +2137,19 @@ pub(super) fn check_type_bounds<'tcx>(
     // to its definition type. This should be the param-env we use to *prove* the
     // predicate too, but we don't do that because of performance issues.
     // See <https://github.com/rust-lang/rust/pull/117542#issue-1976337685>.
-    let trait_projection_ty = Ty::new_projection_from_args(tcx, trait_ty.def_id, rebased_args);
-    let impl_identity_ty = tcx.type_of(impl_ty.def_id).instantiate_identity();
     let normalize_param_env = param_env_with_gat_bounds(tcx, impl_ty, impl_trait_ref);
-    for mut obligation in util::elaborate(tcx, obligations) {
-        let normalized_predicate = if infcx.next_trait_solver() {
-            obligation.predicate.fold_with(&mut ReplaceTy {
-                tcx,
-                from: trait_projection_ty,
-                to: impl_identity_ty,
-            })
-        } else {
-            ocx.normalize(&normalize_cause, normalize_param_env, obligation.predicate)
-        };
-        debug!(?normalized_predicate);
-        obligation.predicate = normalized_predicate;
-
-        ocx.register_obligation(obligation);
+    for obligation in &mut obligations {
+        match ocx.deeply_normalize(&normalize_cause, normalize_param_env, obligation.predicate) {
+            Ok(pred) => obligation.predicate = pred,
+            Err(e) => {
+                return Err(infcx.err_ctxt().report_fulfillment_errors(e));
+            }
+        }
     }
+
     // Check that all obligations are satisfied by the implementation's
     // version.
+    ocx.register_obligations(obligations);
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
         let reported = infcx.err_ctxt().report_fulfillment_errors(errors);
@@ -2163,22 +2159,6 @@ pub(super) fn check_type_bounds<'tcx>(
     // Finally, resolve all regions. This catches wily misuses of
     // lifetime parameters.
     ocx.resolve_regions_and_report_errors(impl_ty_def_id, param_env, assumed_wf_types)
-}
-
-struct ReplaceTy<'tcx> {
-    tcx: TyCtxt<'tcx>,
-    from: Ty<'tcx>,
-    to: Ty<'tcx>,
-}
-
-impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceTy<'tcx> {
-    fn cx(&self) -> TyCtxt<'tcx> {
-        self.tcx
-    }
-
-    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if self.from == ty { self.to } else { ty.super_fold_with(self) }
-    }
 }
 
 /// Install projection predicates that allow GATs to project to their own
