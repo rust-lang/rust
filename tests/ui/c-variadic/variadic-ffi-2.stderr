@@ -1,5 +1,5 @@
 error[E0045]: C-variadic function must have a compatible calling convention, like `C`, `cdecl`, `system`, `aapcs`, `win64`, `sysv64` or `efiapi`
-  --> $DIR/variadic-ffi-2.rs:5:11
+  --> $DIR/variadic-ffi-2.rs:6:11
    |
 LL | fn baz(f: extern "stdcall" fn(usize, ...)) {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ C-variadic function must have a compatible calling convention
@@ -7,3 +7,13 @@ LL | fn baz(f: extern "stdcall" fn(usize, ...)) {
 error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0045`.
+Future incompatibility report: Future breakage diagnostic:
+warning: the calling convention "stdcall" is not supported on this target
+  --> $DIR/variadic-ffi-2.rs:6:11
+   |
+LL | fn baz(f: extern "stdcall" fn(usize, ...)) {
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
+
