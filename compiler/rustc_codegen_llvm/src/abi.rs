@@ -2,19 +2,18 @@ use std::borrow::Borrow;
 use std::cmp;
 
 use libc::c_uint;
-use rustc_abi as abi;
-pub(crate) use rustc_abi::ExternAbi;
-use rustc_abi::{HasDataLayout, Primitive, Reg, RegKind, Size};
+use rustc_abi::{BackendRepr, HasDataLayout, Primitive, Reg, RegKind, Size};
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
 use rustc_codegen_ssa::traits::*;
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::LayoutOf;
-pub(crate) use rustc_middle::ty::layout::{WIDE_PTR_ADDR, WIDE_PTR_EXTRA};
 use rustc_middle::{bug, ty};
 use rustc_session::config;
-pub(crate) use rustc_target::callconv::*;
+use rustc_target::callconv::{
+    ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, CastTarget, Conv, FnAbi, PassMode,
+};
 use rustc_target::spec::SanitizerSet;
 use smallvec::SmallVec;
 
@@ -458,7 +457,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         match &self.ret.mode {
             PassMode::Direct(attrs) => {
                 attrs.apply_attrs_to_llfn(llvm::AttributePlace::ReturnValue, cx, llfn);
-                if let abi::BackendRepr::Scalar(scalar) = self.ret.layout.backend_repr {
+                if let BackendRepr::Scalar(scalar) = self.ret.layout.backend_repr {
                     apply_range_attr(llvm::AttributePlace::ReturnValue, scalar);
                 }
             }
@@ -499,7 +498,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 }
                 PassMode::Direct(attrs) => {
                     let i = apply(attrs);
-                    if let abi::BackendRepr::Scalar(scalar) = arg.layout.backend_repr {
+                    if let BackendRepr::Scalar(scalar) = arg.layout.backend_repr {
                         apply_range_attr(llvm::AttributePlace::Argument(i), scalar);
                     }
                 }
@@ -514,9 +513,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 PassMode::Pair(a, b) => {
                     let i = apply(a);
                     let ii = apply(b);
-                    if let abi::BackendRepr::ScalarPair(scalar_a, scalar_b) =
-                        arg.layout.backend_repr
-                    {
+                    if let BackendRepr::ScalarPair(scalar_a, scalar_b) = arg.layout.backend_repr {
                         apply_range_attr(llvm::AttributePlace::Argument(i), scalar_a);
                         apply_range_attr(llvm::AttributePlace::Argument(ii), scalar_b);
                     }
@@ -576,7 +573,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         }
         if bx.cx.sess().opts.optimize != config::OptLevel::No
                 && llvm_util::get_version() < (19, 0, 0)
-                && let abi::BackendRepr::Scalar(scalar) = self.ret.layout.backend_repr
+                && let BackendRepr::Scalar(scalar) = self.ret.layout.backend_repr
                 && matches!(scalar.primitive(), Primitive::Int(..))
                 // If the value is a boolean, the range is 0..2 and that ultimately
                 // become 0..0 when the type becomes i1, which would be rejected
