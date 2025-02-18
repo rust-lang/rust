@@ -34,7 +34,17 @@ where
     ) -> QueryResult<I> {
         let cx = self.cx();
         let Goal { param_env, predicate: (lhs, rhs, direction) } = goal;
-        debug_assert!(lhs.to_alias_term().is_some() || rhs.to_alias_term().is_some());
+
+        // Check that the alias-relate goal is reasonable. Writeback for
+        // `coroutine_stalled_predicates` can replace alias terms with
+        // `{type error}` if the alias still contains infer vars, so we also
+        // accept alias-relate goals where one of the terms is an error.
+        debug_assert!(
+            lhs.to_alias_term().is_some()
+                || rhs.to_alias_term().is_some()
+                || lhs.is_error()
+                || rhs.is_error()
+        );
 
         // Structurally normalize the lhs.
         let lhs = if let Some(alias) = lhs.to_alias_term() {
