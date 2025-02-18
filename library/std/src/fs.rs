@@ -628,16 +628,16 @@ impl File {
     ///
     /// This acquires an exclusive lock; no other file handle to this file may acquire another lock.
     ///
+    /// This lock may be advisory or mandatory. This lock is meant to interact with [`lock`],
+    /// [`try_lock`], [`lock_shared`], [`try_lock_shared`], and [`unlock`]. Its interactions with
+    /// other methods, such as [`read`] and [`write`] are platform specific, and it may or may not
+    /// cause non-lockholders to block.
+    ///
     /// If this file handle/descriptor, or a clone of it, already holds an lock the exact behavior
     /// is unspecified and platform dependent, including the possibility that it will deadlock.
     /// However, if this method returns, then an exclusive lock is held.
     ///
     /// If the file not open for writing, it is unspecified whether this function returns an error.
-    ///
-    /// This lock may be advisory or mandatory. This lock is meant to interact with [`lock`],
-    /// [`try_lock`], [`lock_shared`], [`try_lock_shared`], and [`unlock`]. Its interactions with
-    /// other methods, such as [`read`] and [`write`] are platform specific, and it may or may not
-    /// cause non-lockholders to block.
     ///
     /// The lock will be released when this file (along with any other file descriptors/handles
     /// duplicated or inherited from it) is closed, or if the [`unlock`] method is called.
@@ -683,14 +683,14 @@ impl File {
     /// This acquires a shared lock; more than one file handle may hold a shared lock, but none may
     /// hold an exclusive lock at the same time.
     ///
-    /// If this file handle/descriptor, or a clone of it, already holds an lock, the exact behavior
-    /// is unspecified and platform dependent, including the possibility that it will deadlock.
-    /// However, if this method returns, then a shared lock is held.
-    ///
     /// This lock may be advisory or mandatory. This lock is meant to interact with [`lock`],
     /// [`try_lock`], [`lock_shared`], [`try_lock_shared`], and [`unlock`]. Its interactions with
     /// other methods, such as [`read`] and [`write`] are platform specific, and it may or may not
     /// cause non-lockholders to block.
+    ///
+    /// If this file handle/descriptor, or a clone of it, already holds an lock, the exact behavior
+    /// is unspecified and platform dependent, including the possibility that it will deadlock.
+    /// However, if this method returns, then a shared lock is held.
     ///
     /// The lock will be released when this file (along with any other file descriptors/handles
     /// duplicated or inherited from it) is closed, or if the [`unlock`] method is called.
@@ -738,16 +738,16 @@ impl File {
     ///
     /// This acquires an exclusive lock; no other file handle to this file may acquire another lock.
     ///
+    /// This lock may be advisory or mandatory. This lock is meant to interact with [`lock`],
+    /// [`try_lock`], [`lock_shared`], [`try_lock_shared`], and [`unlock`]. Its interactions with
+    /// other methods, such as [`read`] and [`write`] are platform specific, and it may or may not
+    /// cause non-lockholders to block.
+    ///
     /// If this file handle/descriptor, or a clone of it, already holds an lock, the exact behavior
     /// is unspecified and platform dependent, including the possibility that it will deadlock.
     /// However, if this method returns `Ok(true)`, then it has acquired an exclusive lock.
     ///
     /// If the file not open for writing, it is unspecified whether this function returns an error.
-    ///
-    /// This lock may be advisory or mandatory. This lock is meant to interact with [`lock`],
-    /// [`try_lock`], [`lock_shared`], [`try_lock_shared`], and [`unlock`]. Its interactions with
-    /// other methods, such as [`read`] and [`write`] are platform specific, and it may or may not
-    /// cause non-lockholders to block.
     ///
     /// The lock will be released when this file (along with any other file descriptors/handles
     /// duplicated or inherited from it) is closed, or if the [`unlock`] method is called.
@@ -797,14 +797,14 @@ impl File {
     /// This acquires a shared lock; more than one file handle may hold a shared lock, but none may
     /// hold an exclusive lock at the same time.
     ///
-    /// If this file handle, or a clone of it, already holds an lock, the exact behavior is
-    /// unspecified and platform dependent, including the possibility that it will deadlock.
-    /// However, if this method returns `Ok(true)`, then it has acquired a shared lock.
-    ///
     /// This lock may be advisory or mandatory. This lock is meant to interact with [`lock`],
     /// [`try_lock`], [`lock_shared`], [`try_lock_shared`], and [`unlock`]. Its interactions with
     /// other methods, such as [`read`] and [`write`] are platform specific, and it may or may not
     /// cause non-lockholders to block.
+    ///
+    /// If this file handle, or a clone of it, already holds an lock, the exact behavior is
+    /// unspecified and platform dependent, including the possibility that it will deadlock.
+    /// However, if this method returns `Ok(true)`, then it has acquired a shared lock.
     ///
     /// The lock will be released when this file (along with any other file descriptors/handles
     /// duplicated or inherited from it) is closed, or if the [`unlock`] method is called.
