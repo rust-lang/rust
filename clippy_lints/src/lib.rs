@@ -1,5 +1,4 @@
 #![feature(array_windows)]
-#![feature(binary_heap_into_iter_sorted)]
 #![feature(box_patterns)]
 #![feature(macro_metavar_expr_concat)]
 #![feature(f128)]
