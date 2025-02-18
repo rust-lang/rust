@@ -485,6 +485,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             generate_redirect_map,
             show_type_layout,
             generate_link_to_definition,
+            generate_macro_expansion,
             call_locations,
             no_emit_shared,
             html_no_source,
@@ -549,6 +550,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             &src_root,
             include_sources,
             generate_link_to_definition,
+            generate_macro_expansion,
         );
 
         let (sender, receiver) = channel();
