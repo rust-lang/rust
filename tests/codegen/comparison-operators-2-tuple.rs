@@ -1,5 +1,6 @@
 //@ compile-flags: -C opt-level=1 -Z merge-functions=disabled
 //@ only-x86_64
+//@ min-llvm-version: 20
 
 #![crate_type = "lib"]
 
@@ -65,12 +66,7 @@ pub fn check_ge_direct(a: TwoTuple, b: TwoTuple) -> bool {
 }
 
 //
-// These ones are harder, since there are more intermediate values to remove.
-//
-// `<` seems to be getting lucky right now, so test that doesn't regress.
-//
-// The others, however, aren't managing to optimize away the extra `select`s yet.
-// See <https://github.com/rust-lang/rust/issues/106107> for more about this.
+// These used to not optimize as well, but thanks to LLVM 20 they work now 🎉
 //
 
 // CHECK-LABEL: @check_lt_via_cmp
@@ -89,11 +85,11 @@ pub fn check_lt_via_cmp(a: TwoTuple, b: TwoTuple) -> bool {
 // CHECK-SAME: (i16 noundef %[[A0:.+]], i16 noundef %[[A1:.+]], i16 noundef %[[B0:.+]], i16 noundef %[[B1:.+]])
 #[no_mangle]
 pub fn check_le_via_cmp(a: TwoTuple, b: TwoTuple) -> bool {
-    // FIXME-CHECK-DAG: %[[EQ:.+]] = icmp eq i16 %[[A0]], %[[B0]]
-    // FIXME-CHECK-DAG: %[[CMP0:.+]] = icmp sle i16 %[[A0]], %[[B0]]
-    // FIXME-CHECK-DAG: %[[CMP1:.+]] = icmp ule i16 %[[A1]], %[[B1]]
-    // FIXME-CHECK: %[[R:.+]] = select i1 %[[EQ]], i1 %[[CMP1]], i1 %[[CMP0]]
-    // FIXME-CHECK: ret i1 %[[R]]
+    // CHECK-DAG: %[[EQ:.+]] = icmp eq i16 %[[A0]], %[[B0]]
+    // CHECK-DAG: %[[CMP0:.+]] = icmp sle i16 %[[A0]], %[[B0]]
+    // CHECK-DAG: %[[CMP1:.+]] = icmp ule i16 %[[A1]], %[[B1]]
+    // CHECK: %[[R:.+]] = select i1 %[[EQ]], i1 %[[CMP1]], i1 %[[CMP0]]
+    // CHECK: ret i1 %[[R]]
     Ord::cmp(&a, &b).is_le()
 }
 
@@ -101,11 +97,11 @@ pub fn check_le_via_cmp(a: TwoTuple, b: TwoTuple) -> bool {
 // CHECK-SAME: (i16 noundef %[[A0:.+]], i16 noundef %[[A1:.+]], i16 noundef %[[B0:.+]], i16 noundef %[[B1:.+]])
 #[no_mangle]
 pub fn check_gt_via_cmp(a: TwoTuple, b: TwoTuple) -> bool {
-    // FIXME-CHECK-DAG: %[[EQ:.+]] = icmp eq i16 %[[A0]], %[[B0]]
-    // FIXME-CHECK-DAG: %[[CMP0:.+]] = icmp sgt i16 %[[A0]], %[[B0]]
-    // FIXME-CHECK-DAG: %[[CMP1:.+]] = icmp ugt i16 %[[A1]], %[[B1]]
-    // FIXME-CHECK: %[[R:.+]] = select i1 %[[EQ]], i1 %[[CMP1]], i1 %[[CMP0]]
-    // FIXME-CHECK: ret i1 %[[R]]
+    // CHECK-DAG: %[[EQ:.+]] = icmp eq i16 %[[A0]], %[[B0]]
+    // CHECK-DAG: %[[CMP0:.+]] = icmp sgt i16 %[[A0]], %[[B0]]
+    // CHECK-DAG: %[[CMP1:.+]] = icmp ugt i16 %[[A1]], %[[B1]]
+    // CHECK: %[[R:.+]] = select i1 %[[EQ]], i1 %[[CMP1]], i1 %[[CMP0]]
+    // CHECK: ret i1 %[[R]]
     Ord::cmp(&a, &b).is_gt()
 }
 
@@ -113,10 +109,10 @@ pub fn check_gt_via_cmp(a: TwoTuple, b: TwoTuple) -> bool {
 // CHECK-SAME: (i16 noundef %[[A0:.+]], i16 noundef %[[A1:.+]], i16 noundef %[[B0:.+]], i16 noundef %[[B1:.+]])
 #[no_mangle]
 pub fn check_ge_via_cmp(a: TwoTuple, b: TwoTuple) -> bool {
-    // FIXME-CHECK-DAG: %[[EQ:.+]] = icmp eq i16 %[[A0]], %[[B0]]
-    // FIXME-CHECK-DAG: %[[CMP0:.+]] = icmp sge i16 %[[A0]], %[[B0]]
-    // FIXME-CHECK-DAG: %[[CMP1:.+]] = icmp uge i16 %[[A1]], %[[B1]]
-    // FIXME-CHECK: %[[R:.+]] = select i1 %[[EQ]], i1 %[[CMP1]], i1 %[[CMP0]]
-    // FIXME-CHECK: ret i1 %[[R]]
+    // CHECK-DAG: %[[EQ:.+]] = icmp eq i16 %[[A0]], %[[B0]]
+    // CHECK-DAG: %[[CMP0:.+]] = icmp sge i16 %[[A0]], %[[B0]]
+    // CHECK-DAG: %[[CMP1:.+]] = icmp uge i16 %[[A1]], %[[B1]]
+    // CHECK: %[[R:.+]] = select i1 %[[EQ]], i1 %[[CMP1]], i1 %[[CMP0]]
+    // CHECK: ret i1 %[[R]]
     Ord::cmp(&a, &b).is_ge()
 }
