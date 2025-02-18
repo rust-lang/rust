@@ -1321,12 +1321,14 @@ impl f16 {
     /// ```
     /// #![feature(f16)]
     /// #![feature(float_erf)]
+    /// # #[cfg(reliable_f16_math)] {
     /// let x: f16 = 0.123;
     ///
     /// let one = x.erf() + x.erfc();
     /// let abs_difference = (one - 1.0).abs();
     ///
     /// assert!(abs_difference <= f16::EPSILON);
+    /// # }
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
