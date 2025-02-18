@@ -88,6 +88,10 @@ use syntax::{
 // }
 // ```
 pub(crate) fn generate_delegate_trait(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+    if !ctx.config.code_action_grouping {
+        return None;
+    }
+
     let strukt = Struct::new(ctx.find_node_at_offset::<ast::Struct>()?)?;
 
     let field: Field = match ctx.find_node_at_offset::<ast::RecordField>() {

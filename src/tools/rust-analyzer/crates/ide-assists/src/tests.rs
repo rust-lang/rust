@@ -34,6 +34,26 @@ pub(crate) const TEST_CONFIG: AssistConfig = AssistConfig {
     assist_emit_must_use: false,
     term_search_fuel: 400,
     term_search_borrowck: true,
+    code_action_grouping: true,
+};
+
+pub(crate) const TEST_CONFIG_NO_GROUPING: AssistConfig = AssistConfig {
+    snippet_cap: SnippetCap::new(true),
+    allowed: None,
+    insert_use: InsertUseConfig {
+        granularity: ImportGranularity::Crate,
+        prefix_kind: hir::PrefixKind::Plain,
+        enforce_granularity: true,
+        group: true,
+        skip_glob_imports: true,
+    },
+    prefer_no_std: false,
+    prefer_prelude: true,
+    prefer_absolute: false,
+    assist_emit_must_use: false,
+    term_search_fuel: 400,
+    term_search_borrowck: true,
+    code_action_grouping: false,
 };
 
 pub(crate) const TEST_CONFIG_NO_SNIPPET_CAP: AssistConfig = AssistConfig {
@@ -52,6 +72,7 @@ pub(crate) const TEST_CONFIG_NO_SNIPPET_CAP: AssistConfig = AssistConfig {
     assist_emit_must_use: false,
     term_search_fuel: 400,
     term_search_borrowck: true,
+    code_action_grouping: true,
 };
 
 pub(crate) const TEST_CONFIG_IMPORT_ONE: AssistConfig = AssistConfig {
@@ -70,6 +91,7 @@ pub(crate) const TEST_CONFIG_IMPORT_ONE: AssistConfig = AssistConfig {
     assist_emit_must_use: false,
     term_search_fuel: 400,
     term_search_borrowck: true,
+    code_action_grouping: true,
 };
 
 pub(crate) fn with_single_file(text: &str) -> (RootDatabase, EditionedFileId) {
@@ -344,6 +366,41 @@ fn labels(assists: &[Assist]) -> String {
         .collect::<Vec<_>>();
     labels.dedup();
     labels.into_iter().collect::<String>()
+}
+
+#[test]
+fn long_groups_are_skipped_under_skip_resolve_strategy() {
+    let before = r#"
+trait SomeTrait {
+    type T;
+    fn fn_(arg: u32) -> u32;
+    fn method_(&mut self) -> bool;
+}
+struct A;
+impl SomeTrait for A {
+    type T = u32;
+
+    fn fn_(arg: u32) -> u32 {
+        42
+    }
+
+    fn method_(&mut self) -> bool {
+        false
+    }
+}
+struct B {
+    a$0 : A,
+}
+    "#;
+    let (before_cursor_pos, before) = extract_offset(before);
+    let (db, file_id) = with_single_file(&before);
+    let frange = FileRange { file_id, range: TextRange::empty(before_cursor_pos) };
+    let res = assists(&db, &TEST_CONFIG, AssistResolveStrategy::None, frange.into());
+    assert!(res.iter().map(|a| &a.id).any(|a| { a.0 == "generate_delegate_trait" }));
+
+    let limited =
+        assists(&db, &TEST_CONFIG_NO_GROUPING, AssistResolveStrategy::None, frange.into());
+    assert!(!limited.iter().map(|a| &a.id).any(|a| { a.0 == "generate_delegate_trait" }));
 }
 
 #[test]
