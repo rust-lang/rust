@@ -60,9 +60,6 @@ macro_rules! public_test_dep {
 ///   the specified ABI everywhere else.
 /// * `unadjusted_on_win64` - like `aapcs_on_arm` this switches to the
 ///   `"unadjusted"` abi on Win64 and the specified abi elsewhere.
-/// * `win64_128bit_abi_hack` - this attribute is used for 128-bit integer
-///   intrinsics where the ABI is slightly tweaked on Windows platforms, but
-///   it's a normal ABI elsewhere for returning a 128 bit integer.
 /// * `arm_aeabi_alias` - handles the "aliasing" of various intrinsics on ARM
 ///   their otherwise typical names to other prefixed ones.
 /// * `ppc_alias` - changes the name of the symbol on PowerPC platforms without
@@ -221,51 +218,6 @@ macro_rules! intrinsics {
         }
 
         #[cfg(not(all(any(windows, all(target_os = "uefi", target_arch = "x86_64")), target_pointer_width = "64")))]
-        intrinsics! {
-            $(#[$($attr)*])*
-            pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
-                $($body)*
-            }
-        }
-
-        intrinsics!($($rest)*);
-    );
-
-    // Some intrinsics on win64 which return a 128-bit integer have an.. unusual
-    // calling convention. That's managed here with this "abi hack" which alters
-    // the generated symbol's ABI.
-    //
-    // This will still define a function in this crate with the given name and
-    // signature, but the actual symbol for the intrinsic may have a slightly
-    // different ABI on win64.
-    (
-        #[win64_128bit_abi_hack]
-        $(#[$($attr:tt)*])*
-        pub extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) $(-> $ret:ty)? {
-            $($body:tt)*
-        }
-
-        $($rest:tt)*
-    ) => (
-        #[cfg(all(any(windows, target_os = "uefi"), target_arch = "x86_64"))]
-        $(#[$($attr)*])*
-        pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
-            $($body)*
-        }
-
-        #[cfg(all(any(windows, target_os = "uefi"), target_arch = "x86_64", not(feature = "mangled-names")))]
-        mod $name {
-            #[no_mangle]
-            #[cfg_attr(not(all(windows, target_env = "gnu")), linkage = "weak")]
-            extern $abi fn $name( $($argname: $ty),* )
-                -> $crate::macros::win64_128bit_abi_hack::U64x2
-            {
-                let e: $($ret)? = super::$name($($argname),*);
-                $crate::macros::win64_128bit_abi_hack::U64x2::from(e)
-            }
-        }
-
-        #[cfg(not(all(any(windows, target_os = "uefi"), target_arch = "x86_64")))]
         intrinsics! {
             $(#[$($attr)*])*
             pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
@@ -575,27 +527,4 @@ macro_rules! intrinsics {
 
         intrinsics!($($rest)*);
     );
-}
-
-// Hack for LLVM expectations for ABI on windows. This is used by the
-// `#[win64_128bit_abi_hack]` attribute recognized above
-#[cfg(all(any(windows, target_os = "uefi"), target_pointer_width = "64"))]
-pub mod win64_128bit_abi_hack {
-    #[repr(simd)]
-    pub struct U64x2([u64; 2]);
-
-    impl From<i128> for U64x2 {
-        fn from(i: i128) -> U64x2 {
-            use crate::int::DInt;
-            let j = i as u128;
-            U64x2([j.lo(), j.hi()])
-        }
-    }
-
-    impl From<u128> for U64x2 {
-        fn from(i: u128) -> U64x2 {
-            use crate::int::DInt;
-            U64x2([i.lo(), i.hi()])
-        }
-    }
 }

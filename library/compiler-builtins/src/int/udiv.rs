@@ -58,7 +58,6 @@ intrinsics! {
     // the existence of `u128_div_rem` to get 32-bit SPARC to compile, see `u128_divide_sparc` docs.
 
     #[avr_skip]
-    #[win64_128bit_abi_hack]
     /// Returns `n / d`
     pub extern "C" fn __udivti3(n: u128, d: u128) -> u128 {
         #[cfg(not(any(target_arch = "sparc", target_arch = "sparc64")))] {
@@ -70,7 +69,6 @@ intrinsics! {
     }
 
     #[avr_skip]
-    #[win64_128bit_abi_hack]
     /// Returns `n % d`
     pub extern "C" fn __umodti3(n: u128, d: u128) -> u128 {
         #[cfg(not(any(target_arch = "sparc", target_arch = "sparc64")))] {
@@ -84,7 +82,6 @@ intrinsics! {
     }
 
     #[avr_skip]
-    #[win64_128bit_abi_hack]
     /// Returns `n / d` and sets `*rem = n % d`
     pub extern "C" fn __udivmodti4(n: u128, d: u128, rem: Option<&mut u128>) -> u128 {
         #[cfg(not(any(target_arch = "sparc", target_arch = "sparc64")))] {

@@ -403,7 +403,6 @@ intrinsics! {
         float_to_unsigned_int(f)
     }
 
-    #[win64_128bit_abi_hack]
     pub extern "C" fn __fixunssfti(f: f32) -> u128 {
         float_to_unsigned_int(f)
     }
@@ -418,7 +417,6 @@ intrinsics! {
         float_to_unsigned_int(f)
     }
 
-    #[win64_128bit_abi_hack]
     pub extern "C" fn __fixunsdfti(f: f64) -> u128 {
         float_to_unsigned_int(f)
     }
@@ -454,7 +452,6 @@ intrinsics! {
         float_to_signed_int(f)
     }
 
-    #[win64_128bit_abi_hack]
     pub extern "C" fn __fixsfti(f: f32) -> i128 {
         float_to_signed_int(f)
     }
@@ -469,7 +466,6 @@ intrinsics! {
         float_to_signed_int(f)
     }
 
-    #[win64_128bit_abi_hack]
     pub extern "C" fn __fixdfti(f: f64) -> i128 {
         float_to_signed_int(f)
     }

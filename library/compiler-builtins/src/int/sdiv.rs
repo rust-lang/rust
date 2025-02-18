@@ -165,5 +165,5 @@ sdivmod!(
     i128,
     maybe_use_optimized_c_shim
 );
-sdiv!(__udivti3, __divti3, u128, i128, win64_128bit_abi_hack);
-smod!(__umodti3, __modti3, u128, i128, win64_128bit_abi_hack);
+sdiv!(__udivti3, __divti3, u128, i128,);
+smod!(__umodti3, __modti3, u128, i128,);
