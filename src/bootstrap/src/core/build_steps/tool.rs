@@ -274,7 +274,10 @@ pub fn prepare_tool_cargo(
     cargo
 }
 
-fn get_tool_rustc_compiler(builder: &Builder<'_>, target_compiler: Compiler) -> Compiler {
+pub(crate) fn get_tool_rustc_compiler(
+    builder: &Builder<'_>,
+    target_compiler: Compiler,
+) -> Compiler {
     if builder.download_rustc() && target_compiler.stage == 1 {
         // We already have the stage 1 compiler, we don't need to cut the stage.
         builder.compiler(target_compiler.stage, builder.config.build)
@@ -555,8 +558,7 @@ impl Step for ErrorIndex {
         // src/tools/error-index-generator` which almost nobody does.
         // Normally, `x.py test` or `x.py doc` will use the
         // `ErrorIndex::command` function instead.
-        let compiler =
-            run.builder.compiler(run.builder.top_stage.saturating_sub(1), run.builder.config.build);
+        let compiler = run.builder.compiler(run.builder.top_stage, run.builder.config.build);
         run.builder.ensure(ErrorIndex { compiler });
     }
 
@@ -631,13 +633,8 @@ impl Step for Rustdoc {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Rustdoc {
-            // NOTE: this is somewhat unique in that we actually want a *target*
-            // compiler here, because rustdoc *is* a compiler. We won't be using
-            // this as the compiler to build with, but rather this is "what
-            // compiler are we producing"?
-            compiler: run.builder.compiler(run.builder.top_stage, run.target),
-        });
+        run.builder
+            .ensure(Rustdoc { compiler: run.builder.compiler(run.builder.top_stage, run.target) });
     }
 
     fn run(self, builder: &Builder<'_>) -> PathBuf {

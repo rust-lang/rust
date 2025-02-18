@@ -523,16 +523,11 @@ impl Step for Miri {
 
         // This compiler runs on the host, we'll just use it for the target.
         let target_compiler = builder.compiler(stage, host);
-        // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
-        // we'd have stageN/bin/rustc and stageN/bin/rustdoc be effectively different stage
-        // compilers, which isn't what we want. Rustdoc should be linked in the same way as the
-        // rustc compiler it's paired with, so it must be built with the previous stage compiler.
-        let host_compiler = builder.compiler(stage - 1, host);
 
         // Build our tools.
-        let miri = builder.ensure(tool::Miri { compiler: host_compiler, target: host });
+        let miri = builder.ensure(tool::Miri { compiler: target_compiler, target: host });
         // the ui tests also assume cargo-miri has been built
-        builder.ensure(tool::CargoMiri { compiler: host_compiler, target: host });
+        builder.ensure(tool::CargoMiri { compiler: target_compiler, target: host });
 
         // We also need sysroots, for Miri and for the host (the latter for build scripts).
         // This is for the tests so everything is done with the target compiler.
@@ -543,7 +538,8 @@ impl Step for Miri {
         // Miri has its own "target dir" for ui test dependencies. Make sure it gets cleared when
         // the sysroot gets rebuilt, to avoid "found possibly newer version of crate `std`" errors.
         if !builder.config.dry_run() {
-            let ui_test_dep_dir = builder.stage_out(host_compiler, Mode::ToolStd).join("miri_ui");
+            let ui_test_dep_dir =
+                builder.stage_out(miri.build_compiler, Mode::ToolStd).join("miri_ui");
             // The mtime of `miri_sysroot` changes when the sysroot gets rebuilt (also see
             // <https://github.com/RalfJung/rustc-build-sysroot/commit/10ebcf60b80fe2c3dc765af0ff19fdc0da4b7466>).
             // We can hence use that directly as a signal to clear the ui test dir.
@@ -554,7 +550,7 @@ impl Step for Miri {
         // This is with the Miri crate, so it uses the host compiler.
         let mut cargo = tool::prepare_tool_cargo(
             builder,
-            host_compiler,
+            miri.build_compiler,
             Mode::ToolRustc,
             host,
             Kind::Test,
@@ -1722,17 +1718,6 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
                 // If we're using `--stage 0`, we should provide the bootstrap cargo.
                 builder.initial_cargo.clone()
             } else {
-                // We need to properly build cargo using the suitable stage compiler.
-
-                let compiler = builder.download_rustc().then_some(compiler).unwrap_or_else(||
-                    // HACK: currently tool stages are off-by-one compared to compiler stages, i.e. if
-                    // you give `tool::Cargo` a stage 1 rustc, it will cause stage 2 rustc to be built
-                    // and produce a cargo built with stage 2 rustc. To fix this, we need to chop off
-                    // the compiler stage by 1 to align with expected `./x test run-make --stage N`
-                    // behavior, i.e. we need to pass `N - 1` compiler stage to cargo. See also Miri
-                    // which does a similar hack.
-                    builder.compiler(builder.top_stage - 1, compiler.host));
-
                 builder.ensure(tool::Cargo { compiler, target: compiler.host })
             };
 
