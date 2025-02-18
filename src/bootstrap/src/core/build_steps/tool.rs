@@ -650,16 +650,7 @@ impl Step for Rustdoc {
             }
         }
 
-        let build_compiler = if builder.download_rustc() && target_compiler.stage == 1 {
-            // We already have the stage 1 compiler, we don't need to cut the stage.
-            builder.compiler(target_compiler.stage, builder.config.build)
-        } else {
-            // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
-            // we'd have stageN/bin/rustc and stageN/bin/rustdoc be effectively different stage
-            // compilers, which isn't what we want. Rustdoc should be linked in the same way as the
-            // rustc compiler it's paired with, so it must be built with the previous stage compiler.
-            builder.compiler(target_compiler.stage - 1, builder.config.build)
-        };
+        let build_compiler = get_tool_rustc_compiler(builder, target_compiler);
 
         // When using `download-rustc` and a stage0 build_compiler, copying rustc doesn't actually
         // build stage0 libstd (because the libstd in sysroot has the wrong ABI). Explicitly build
@@ -682,7 +673,7 @@ impl Step for Rustdoc {
         // NOTE: Never modify the rustflags here, it breaks the build cache for other tools!
         let mut cargo = prepare_tool_cargo(
             builder,
-            build_compiler,
+            target_compiler,
             Mode::ToolRustc,
             target,
             Kind::Build,
