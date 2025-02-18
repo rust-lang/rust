@@ -1,3 +1,5 @@
+# Style
+
 Our approach to "clean code" is two-fold:
 
 * We generally don't block PRs on style changes.
