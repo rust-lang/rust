@@ -777,12 +777,12 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }
         let Some(pat_span) = pat_span else { return };
 
-        let hir = self.infcx.tcx.hir();
-        let Some(body) = hir.maybe_body_owned_by(self.mir_def_id()) else { return };
+        let tcx = self.infcx.tcx;
+        let Some(body) = tcx.hir_maybe_body_owned_by(self.mir_def_id()) else { return };
         let typeck_results = self.infcx.tcx.typeck(self.mir_def_id());
         let mut finder = BindingFinder {
             typeck_results,
-            tcx: self.infcx.tcx,
+            tcx,
             pat_span,
             binding_spans,
             found_pat: false,

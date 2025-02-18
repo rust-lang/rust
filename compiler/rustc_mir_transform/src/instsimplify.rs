@@ -36,7 +36,7 @@ impl<'tcx> crate::MirPass<'tcx> for InstSimplify {
             typing_env: body.typing_env(tcx),
         };
         let preserve_ub_checks =
-            attr::contains_name(tcx.hir().krate_attrs(), sym::rustc_preserve_ub_checks);
+            attr::contains_name(tcx.hir_krate_attrs(), sym::rustc_preserve_ub_checks);
         for block in body.basic_blocks.as_mut() {
             for statement in block.statements.iter_mut() {
                 match statement.kind {

@@ -379,7 +379,7 @@ fn late_lint_mod_inner<'tcx, T: LateLintPass<'tcx>>(
 ) {
     let mut cx = LateContextAndPass { context, pass };
 
-    let (module, _span, hir_id) = tcx.hir().get_module(module_def_id);
+    let (module, _span, hir_id) = tcx.hir_get_module(module_def_id);
 
     cx.with_lint_attrs(hir_id, |cx| {
         // There is no module lint that will have the crate itself as an item, so check it here.
@@ -445,7 +445,7 @@ fn late_lint_crate_inner<'tcx, T: LateLintPass<'tcx>>(
         // Since the root module isn't visited as an item (because it isn't an
         // item), warn for it here.
         lint_callback!(cx, check_crate,);
-        tcx.hir().walk_toplevel_module(cx);
+        tcx.hir_walk_toplevel_module(cx);
         lint_callback!(cx, check_crate_post,);
     })
 }
@@ -462,7 +462,7 @@ pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx>) {
         || {
             tcx.sess.time("module_lints", || {
                 // Run per-module lints
-                tcx.hir().par_for_each_module(|module| tcx.ensure_ok().lint_mod(module));
+                tcx.par_hir_for_each_module(|module| tcx.ensure_ok().lint_mod(module));
             });
         },
     );

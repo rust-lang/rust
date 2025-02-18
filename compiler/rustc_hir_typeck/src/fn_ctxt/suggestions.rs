@@ -1811,7 +1811,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     "`{expected_ty}` does not implement `Clone`, so `{found_ty}` was cloned instead"
                 ),
             );
-            let owner = self.tcx.hir().enclosing_body_owner(expr.hir_id);
+            let owner = self.tcx.hir_enclosing_body_owner(expr.hir_id);
             if let ty::Param(param) = expected_ty.kind()
                 && let Some(generics) = self.tcx.hir_get_generics(owner)
             {
@@ -2094,9 +2094,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &hir::Expr<'tcx>,
         expected: Ty<'tcx>,
     ) -> bool {
-        let hir = self.tcx.hir();
+        let tcx = self.tcx;
+        let hir = tcx.hir();
         let enclosing_scope =
-            hir.get_enclosing_scope(expr.hir_id).map(|hir_id| self.tcx.hir_node(hir_id));
+            hir.get_enclosing_scope(expr.hir_id).map(|hir_id| tcx.hir_node(hir_id));
 
         // Get tail expr of the enclosing block or body
         let tail_expr = if let Some(Node::Block(hir::Block { expr, .. })) = enclosing_scope
@@ -2104,8 +2105,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             *expr
         } else {
-            let body_def_id = hir.enclosing_body_owner(expr.hir_id);
-            let body = hir.body_owned_by(body_def_id);
+            let body_def_id = tcx.hir_enclosing_body_owner(expr.hir_id);
+            let body = tcx.hir_body_owned_by(body_def_id);
 
             // Get tail expr of the body
             match body.value.kind {
@@ -2147,7 +2148,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ("consider returning a value here", format!("`{expected}` value"))
             };
 
-            let src_map = self.tcx.sess.source_map();
+            let src_map = tcx.sess.source_map();
             let suggestion = if src_map.is_multiline(expr.span) {
                 let indentation = src_map.indentation_before(span).unwrap_or_else(String::new);
                 format!("\n{indentation}/* {suggestion} */")

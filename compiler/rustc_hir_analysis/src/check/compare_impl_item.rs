@@ -501,7 +501,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     check_method_is_structurally_compatible(tcx, impl_m, trait_m, impl_trait_ref, true)?;
 
     let impl_m_hir_id = tcx.local_def_id_to_hir_id(impl_m_def_id);
-    let return_span = tcx.hir().fn_decl_by_hir_id(impl_m_hir_id).unwrap().output.span();
+    let return_span = tcx.hir_fn_decl_by_hir_id(impl_m_hir_id).unwrap().output.span();
     let cause = ObligationCause::new(
         return_span,
         impl_m_def_id,
@@ -1033,8 +1033,7 @@ fn report_trait_method_mismatch<'tcx>(
             // argument pattern and type.
             let (sig, body) = tcx.hir().expect_impl_item(impl_m.def_id.expect_local()).expect_fn();
             let span = tcx
-                .hir()
-                .body_param_names(body)
+                .hir_body_param_names(body)
                 .zip(sig.decl.inputs.iter())
                 .map(|(param, ty)| param.span.to(ty.span))
                 .next()

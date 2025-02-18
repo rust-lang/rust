@@ -721,7 +721,7 @@ fn stability_index(tcx: TyCtxt<'_>, (): ()) -> Index {
             InheritDeprecation::Yes,
             InheritConstStability::No,
             InheritStability::No,
-            |v| tcx.hir().walk_toplevel_module(v),
+            |v| tcx.hir_walk_toplevel_module(v),
         );
     }
     index
@@ -730,7 +730,7 @@ fn stability_index(tcx: TyCtxt<'_>, (): ()) -> Index {
 /// Cross-references the feature names of unstable APIs with enabled
 /// features and possibly prints errors.
 fn check_mod_unstable_api_usage(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
-    tcx.hir().visit_item_likes_in_module(module_def_id, &mut Checker { tcx });
+    tcx.hir_visit_item_likes_in_module(module_def_id, &mut Checker { tcx });
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
@@ -1059,8 +1059,8 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
         let effective_visibilities = &tcx.effective_visibilities(());
         let mut missing = MissingStabilityAnnotations { tcx, effective_visibilities };
         missing.check_missing_stability(CRATE_DEF_ID, tcx.hir().span(CRATE_HIR_ID));
-        tcx.hir().walk_toplevel_module(&mut missing);
-        tcx.hir().visit_all_item_likes_in_crate(&mut missing);
+        tcx.hir_walk_toplevel_module(&mut missing);
+        tcx.hir_visit_all_item_likes_in_crate(&mut missing);
     }
 
     let enabled_lang_features = tcx.features().enabled_lang_features();

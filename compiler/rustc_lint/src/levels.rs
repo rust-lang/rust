@@ -144,7 +144,7 @@ fn lints_that_dont_need_to_run(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LintId> {
 
     let mut visitor = LintLevelMaximum { tcx, dont_need_to_run };
     visitor.process_opts();
-    tcx.hir().walk_attributes(&mut visitor);
+    tcx.hir_walk_attributes(&mut visitor);
 
     visitor.dont_need_to_run
 }

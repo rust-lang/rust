@@ -217,7 +217,7 @@ impl AssocItemQSelf {
     fn to_string(&self, tcx: TyCtxt<'_>) -> String {
         match *self {
             Self::Trait(def_id) => tcx.def_path_str(def_id),
-            Self::TyParam(def_id, _) => tcx.hir().ty_param_name(def_id).to_string(),
+            Self::TyParam(def_id, _) => tcx.hir_ty_param_name(def_id).to_string(),
             Self::SelfTyAlias => kw::SelfUpper.to_string(),
         }
     }
@@ -342,8 +342,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
 
             rbv::ResolvedArg::EarlyBound(def_id) => {
-                let name = tcx.hir().ty_param_name(def_id);
-                let item_def_id = tcx.hir().ty_param_owner(def_id);
+                let name = tcx.hir_ty_param_name(def_id);
+                let item_def_id = tcx.hir_ty_param_owner(def_id);
                 let generics = tcx.generics_of(item_def_id);
                 let index = generics.param_def_id_to_index[&def_id.to_def_id()];
                 ty::Region::new_early_param(tcx, ty::EarlyParamRegion { index, name })
@@ -2070,10 +2070,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 Ty::new_bound(tcx, debruijn, br)
             }
             Some(rbv::ResolvedArg::EarlyBound(def_id)) => {
-                let item_def_id = tcx.hir().ty_param_owner(def_id);
+                let item_def_id = tcx.hir_ty_param_owner(def_id);
                 let generics = tcx.generics_of(item_def_id);
                 let index = generics.param_def_id_to_index[&def_id.to_def_id()];
-                Ty::new_param(tcx, index, tcx.hir().ty_param_name(def_id))
+                Ty::new_param(tcx, index, tcx.hir_ty_param_name(def_id))
             }
             Some(rbv::ResolvedArg::Error(guar)) => Ty::new_error(tcx, guar),
             arg => bug!("unexpected bound var resolution for {hir_id:?}: {arg:?}"),

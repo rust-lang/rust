@@ -1169,8 +1169,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
     #[allow(rustc::diagnostic_outside_of_impl)]
     fn suggest_move_on_borrowing_closure(&self, diag: &mut Diag<'_>) {
-        let map = self.infcx.tcx.hir();
-        let body = map.body_owned_by(self.mir_def_id());
+        let body = self.infcx.tcx.hir_body_owned_by(self.mir_def_id());
         let expr = &body.value.peel_blocks();
         let mut closure_span = None::<rustc_span::Span>;
         match expr.kind {

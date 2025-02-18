@@ -38,7 +38,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         body: &'tcx hir::Body<'tcx>,
     ) -> &'tcx ty::TypeckResults<'tcx> {
-        let item_def_id = self.tcx.hir().body_owner_def_id(body.id());
+        let item_def_id = self.tcx.hir_body_owner_def_id(body.id());
 
         // This attribute causes us to dump some writeback information
         // in the form of errors, which is used for unit tests.
@@ -49,7 +49,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             wbcx.visit_node_id(param.pat.span, param.hir_id);
         }
         // Type only exists for constants and statics, not functions.
-        match self.tcx.hir().body_owner_kind(item_def_id) {
+        match self.tcx.hir_body_owner_kind(item_def_id) {
             hir::BodyOwnerKind::Const { .. } | hir::BodyOwnerKind::Static(_) => {
                 let item_hir_id = self.tcx.local_def_id_to_hir_id(item_def_id);
                 wbcx.visit_node_id(body.value.span, item_hir_id);
@@ -790,7 +790,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
             self.fcx
                 .err_ctxt()
                 .emit_inference_failure_err(
-                    self.fcx.tcx.hir().body_owner_def_id(self.body.id()),
+                    self.fcx.tcx.hir_body_owner_def_id(self.body.id()),
                     self.span.to_span(self.fcx.tcx),
                     p.into(),
                     TypeAnnotationNeeded::E0282,
@@ -814,7 +814,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
         // expect that types that show up in the typeck are fully
         // normalized.
         let mut value = if self.should_normalize {
-            let body_id = tcx.hir().body_owner_def_id(self.body.id());
+            let body_id = tcx.hir_body_owner_def_id(self.body.id());
             let cause = ObligationCause::misc(self.span.to_span(tcx), body_id);
             let at = self.fcx.at(&cause, self.fcx.param_env);
             let universes = vec![None; outer_exclusive_binder(value).as_usize()];

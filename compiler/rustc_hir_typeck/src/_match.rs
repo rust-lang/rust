@@ -213,10 +213,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         arm_ty: Ty<'tcx>,
         prior_arm: Option<(Option<hir::HirId>, Ty<'tcx>, Span)>,
     ) {
-        let hir = self.tcx.hir();
-
         // First, check that we're actually in the tail of a function.
-        let Some(body) = hir.maybe_body_owned_by(self.body_id) else {
+        let Some(body) = self.tcx.hir_maybe_body_owned_by(self.body_id) else {
             return;
         };
         let hir::ExprKind::Block(block, _) = body.value.kind else {

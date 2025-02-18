@@ -237,8 +237,7 @@ pub fn is_in_const_context(cx: &LateContext<'_>) -> bool {
     debug_assert!(cx.enclosing_body.is_some(), "`LateContext` has no enclosing body");
     cx.enclosing_body.is_some_and(|id| {
         cx.tcx
-            .hir()
-            .body_const_context(cx.tcx.hir().body_owner_def_id(id))
+            .hir_body_const_context(cx.tcx.hir_body_owner_def_id(id))
             .is_some()
     })
 }
@@ -251,8 +250,7 @@ pub fn is_in_const_context(cx: &LateContext<'_>) -> bool {
 ///  * associated constants
 pub fn is_inside_always_const_context(tcx: TyCtxt<'_>, hir_id: HirId) -> bool {
     use ConstContext::{Const, ConstFn, Static};
-    let hir = tcx.hir();
-    let Some(ctx) = hir.body_const_context(hir.enclosing_body_owner(hir_id)) else {
+    let Some(ctx) = tcx.hir_body_const_context(tcx.hir_enclosing_body_owner(hir_id)) else {
         return false;
     };
     match ctx {
@@ -1648,7 +1646,7 @@ pub fn is_integer_const(cx: &LateContext<'_>, e: &Expr<'_>, value: u128) -> bool
     if is_integer_literal(e, value) {
         return true;
     }
-    let enclosing_body = cx.tcx.hir().enclosing_body_owner(e.hir_id);
+    let enclosing_body = cx.tcx.hir_enclosing_body_owner(e.hir_id);
     if let Some(Constant::Int(v)) =
         ConstEvalCtxt::with_env(cx.tcx, cx.typing_env(), cx.tcx.typeck(enclosing_body)).eval(e)
     {
@@ -2762,7 +2760,7 @@ impl<'tcx> ExprUseCtxt<'tcx> {
 
             Node::Expr(use_expr) => match use_expr.kind {
                 ExprKind::Ret(_) => ExprUseNode::Return(OwnerId {
-                    def_id: cx.tcx.hir().body_owner_def_id(cx.enclosing_body.unwrap()),
+                    def_id: cx.tcx.hir_body_owner_def_id(cx.enclosing_body.unwrap()),
                 }),
 
                 ExprKind::Closure(closure) => ExprUseNode::Return(OwnerId { def_id: closure.def_id }),

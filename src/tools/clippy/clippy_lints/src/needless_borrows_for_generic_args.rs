@@ -137,7 +137,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrowsForGenericArgs<'tcx> {
         if self
             .possible_borrowers
             .last()
-            .is_some_and(|&(local_def_id, _)| local_def_id == cx.tcx.hir().body_owner_def_id(body.id()))
+            .is_some_and(|&(local_def_id, _)| local_def_id == cx.tcx.hir_body_owner_def_id(body.id()))
         {
             self.possible_borrowers.pop();
         }
@@ -359,7 +359,7 @@ fn referent_used_exactly_once<'tcx>(
         && let StatementKind::Assign(box (_, Rvalue::Ref(_, _, place))) = statement.kind
         && !place.is_indirect_first_projection()
     {
-        let body_owner_local_def_id = cx.tcx.hir().enclosing_body_owner(reference.hir_id);
+        let body_owner_local_def_id = cx.tcx.hir_enclosing_body_owner(reference.hir_id);
         if possible_borrowers
             .last()
             .is_none_or(|&(local_def_id, _)| local_def_id != body_owner_local_def_id)
