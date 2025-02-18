@@ -828,7 +828,6 @@ impl<'tcx> ThirBuildCx<'tcx> {
             },
             hir::ExprKind::Match(discr, arms, match_source) => ExprKind::Match {
                 scrutinee: self.mirror_expr(discr),
-                scrutinee_hir_id: discr.hir_id,
                 arms: arms.iter().map(|a| self.convert_arm(a)).collect(),
                 match_source,
             },

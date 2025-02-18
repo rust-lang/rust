@@ -151,7 +151,7 @@ impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
                 }
                 return;
             }
-            ExprKind::Match { scrutinee, scrutinee_hir_id: _, box ref arms, match_source } => {
+            ExprKind::Match { scrutinee, box ref arms, match_source } => {
                 self.check_match(scrutinee, arms, match_source, ex.span);
             }
             ExprKind::Let { box ref pat, expr } => {
