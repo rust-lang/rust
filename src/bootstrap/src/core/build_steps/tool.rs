@@ -76,10 +76,15 @@ impl Step for ToolBuild {
     /// This will build the specified tool with the specified `host` compiler in
     /// `stage` into the normal cargo output directory.
     fn run(self, builder: &Builder<'_>) -> PathBuf {
-        let compiler = self.compiler;
         let target = self.target;
         let mut tool = self.tool;
         let path = self.path;
+
+        let compiler = if self.mode == Mode::ToolRustc {
+            get_tool_rustc_compiler(builder, self.compiler)
+        } else {
+            self.compiler
+        };
 
         match self.mode {
             Mode::ToolRustc => {
@@ -147,6 +152,9 @@ pub fn prepare_tool_cargo(
     source_type: SourceType,
     extra_features: &[String],
 ) -> CargoCommand {
+    let compiler =
+        if mode == Mode::ToolRustc { get_tool_rustc_compiler(builder, compiler) } else { compiler };
+
     let mut cargo = builder::Cargo::new(builder, compiler, mode, source_type, target, cmd_kind);
 
     let dir = builder.src.join(path);
@@ -238,6 +246,19 @@ pub fn prepare_tool_cargo(
     }
 
     cargo
+}
+
+fn get_tool_rustc_compiler(builder: &Builder<'_>, target_compiler: Compiler) -> Compiler {
+    if builder.download_rustc() && target_compiler.stage == 1 {
+        // We already have the stage 1 compiler, we don't need to cut the stage.
+        builder.compiler(target_compiler.stage, builder.config.build)
+    } else {
+        // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
+        // we'd have stageN/bin/rustc and stageN/bin/$rustc_tool be effectively different stage
+        // compilers, which isn't what we want. Rustc tools should be linked in the same way as the
+        // compiler it's paired with, so it must be built with the previous stage compiler.
+        builder.compiler(target_compiler.stage.saturating_sub(1), builder.config.build)
+    }
 }
 
 /// Links a built tool binary with the given `name` from the build directory to the
