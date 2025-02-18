@@ -562,5 +562,23 @@ help: make the implied reference patterns explicit
 LL |     let [&Foo(&ref a @ [ref b]), &Foo(&ref c @ [d])] = [&Foo(&[0]); 2];
    |          +                       +
 
-error: aborting due to 29 previous errors
+error: binding modifiers may only be written when the default binding mode is `move`
+  --> $DIR/migration_lint.rs:244:10
+   |
+LL |     let [migration_lint_macros::bind_ref!(a)] = &[0];
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ occurs within macro expansion
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+note: matching on a reference type with a non-reference pattern changes the default binding mode
+  --> $DIR/migration_lint.rs:244:9
+   |
+LL |     let [migration_lint_macros::bind_ref!(a)] = &[0];
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this matches on type `&_`
+   = note: this error originates in the macro `migration_lint_macros::bind_ref` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: make the implied reference pattern explicit
+   |
+LL |     let &[migration_lint_macros::bind_ref!(a)] = &[0];
+   |         +
+
+error: aborting due to 30 previous errors
 
