@@ -915,8 +915,8 @@ pub struct Intrinsic {
     /// Big endian variant for composing, this gets populated internally
     #[serde(skip)]
     pub big_endian_compose: Vec<Expression>,
-    /// Big endian sometimes needs the bits inverted from the default reverse
-    /// to work correctly
+    /// Big endian sometimes needs the bits inverted in a way that cannot be
+    /// automatically detected
     #[serde(default)]
     pub big_endian_inverse: Option<bool>,
 }
@@ -1043,9 +1043,9 @@ impl Intrinsic {
 
     /// Add a big endian implementation
     fn generate_big_endian(&self, variant: &mut Intrinsic) {
-        /* We can't always blindly reverse the bits we sometimes need a
-         * different order - thus this allows us to have the ability to do so
-         * without having to play codegolf witht the yaml AST */
+        /* We can't always blindly reverse the bits only in certain conditions
+         * do we need a different order - thus this allows us to have the
+         * ability to do so without having to play codegolf with the yaml AST */
         let should_reverse = {
             if let Some(should_reverse) = variant.big_endian_inverse {
                 should_reverse
@@ -1058,6 +1058,10 @@ impl Intrinsic {
                 false
             }
         };
+
+        if !should_reverse {
+            return;
+        }
 
         let mut big_endian_expressions: Vec<Expression> = Vec::new();
 
@@ -1087,7 +1091,6 @@ impl Intrinsic {
             if let Some(shuffle_call) = create_assigned_shuffle_call(
                 &function_parameter.name.to_string(),
                 &function_parameter.kind,
-                should_reverse,
             ) {
                 big_endian_expressions.push(shuffle_call);
             }
@@ -1144,9 +1147,7 @@ impl Intrinsic {
              * as in code we are making the final call before caputuring the return
              * value of the intrinsic that has been called.*/
             let ret_val_name = "ret_val".to_string();
-            if let Some(simd_shuffle_call) =
-                create_shuffle_call(&ret_val_name, return_type, should_reverse)
-            {
+            if let Some(simd_shuffle_call) = create_shuffle_call(&ret_val_name, return_type) {
                 /* There is a possibility that the funcion arguments did not
                  * require big endian treatment, thus we need to now add the
                  * original function body before appending the return value.*/

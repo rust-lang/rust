@@ -30,27 +30,15 @@ pub fn create_symbol_identifier(arbitrary_string: &str) -> Expression {
 /// ```
 /// [0, 1, 2, 3]
 /// ```
-fn create_array(lanes: u32, reverse: bool) -> Option<String> {
-    if reverse {
-        match lanes {
-            1 => None, /* Makes no sense to shuffle an array of size 1 */
-            2 => Some("[1, 0]".to_string()),
-            3 => Some("[2, 1, 0]".to_string()),
-            4 => Some("[3, 2, 1, 0]".to_string()),
-            8 => Some("[7, 6, 5, 4, 3, 2, 1, 0]".to_string()),
-            16 => Some("[15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]".to_string()),
-            _ => panic!("Incorrect vector number of vector lanes: {}", lanes),
-        }
-    } else {
-        match lanes {
-            1 => None, /* Makes no sense to shuffle an array of size 1 */
-            2 => Some("[0, 1]".to_string()),
-            3 => Some("[0, 1, 2]".to_string()),
-            4 => Some("[0, 1, 2, 3]".to_string()),
-            8 => Some("[0, 1, 2, 3, 4, 5, 6, 7]".to_string()),
-            16 => Some("[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]".to_string()),
-            _ => panic!("Incorrect vector number of vector lanes: {}", lanes),
-        }
+fn create_array(lanes: u32) -> Option<String> {
+    match lanes {
+        1 => None, /* Makes no sense to shuffle an array of size 1 */
+        2 => Some("[1, 0]".to_string()),
+        3 => Some("[2, 1, 0]".to_string()),
+        4 => Some("[3, 2, 1, 0]".to_string()),
+        8 => Some("[7, 6, 5, 4, 3, 2, 1, 0]".to_string()),
+        16 => Some("[15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]".to_string()),
+        _ => panic!("Incorrect vector number of vector lanes: {}", lanes),
     }
 }
 
@@ -118,7 +106,6 @@ pub fn make_variable_mutable(variable_name: &str, type_kind: &TypeKind) -> Expre
 fn create_shuffle_internal(
     variable_name: &String,
     type_kind: &TypeKind,
-    reverse: bool,
     fmt_tuple: fn(variable_name: &String, idx: u32, array_lanes: &String) -> String,
     fmt: fn(variable_name: &String, type_kind: &TypeKind, array_lanes: &String) -> String,
 ) -> Option<Expression> {
@@ -127,7 +114,7 @@ fn create_shuffle_internal(
     };
 
     let lane_count = vector_type.lanes();
-    let Some(array_lanes) = create_array(lane_count, reverse) else {
+    let Some(array_lanes) = create_array(lane_count) else {
         return None;
     };
 
@@ -194,27 +181,20 @@ fn create_shuffle_call_fmt(
 pub fn create_assigned_shuffle_call(
     variable_name: &String,
     type_kind: &TypeKind,
-    reverse: bool,
 ) -> Option<Expression> {
     create_shuffle_internal(
         variable_name,
         type_kind,
-        reverse,
         create_assigned_tuple_shuffle_call_fmt,
         create_assigned_shuffle_call_fmt,
     )
 }
 
 /// Create a `simd_shuffle!(<...>, [...])` call
-pub fn create_shuffle_call(
-    variable_name: &String,
-    type_kind: &TypeKind,
-    reverse: bool,
-) -> Option<Expression> {
+pub fn create_shuffle_call(variable_name: &String, type_kind: &TypeKind) -> Option<Expression> {
     create_shuffle_internal(
         variable_name,
         type_kind,
-        reverse,
         create_assigned_tuple_shuffle_call_fmt,
         create_shuffle_call_fmt,
     )
