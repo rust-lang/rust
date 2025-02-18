@@ -555,6 +555,7 @@ declare_features! (
     /// Allows using `#[link(kind = "link-arg", name = "...")]`
     /// to pass custom arguments to the linker.
     (unstable, link_arg_attribute, "1.76.0", Some(99427)),
+    (unstable, loop_match, "CURRENT_RUSTC_VERSION", Some(138777)),
     /// Give access to additional metadata about declarative macro meta-variables.
     (unstable, macro_metavar_expr, "1.61.0", Some(83527)),
     /// Provides a way to concatenate identifiers using metavariable expressions.

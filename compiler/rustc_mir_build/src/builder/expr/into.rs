@@ -1,5 +1,6 @@
 //! See docs in build/expr/mod.rs
 
+use rustc_abi::VariantIdx;
 use rustc_ast::{AsmMacro, InlineAsmOptions};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -8,7 +9,10 @@ use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
 use rustc_middle::thir::*;
+use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::{CanonicalUserTypeAnnotation, Ty};
+use rustc_pattern_analysis::constructor::Constructor;
+use rustc_pattern_analysis::rustc::{DeconstructedPat, RustcPatCtxt};
 use rustc_span::DUMMY_SP;
 use rustc_span::source_map::Spanned;
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -239,6 +243,188 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // Execute the body, branching back to the test.
                     let body_block_end = this.expr_into_dest(tmp, body_block, body).into_block();
                     this.cfg.goto(body_block_end, source_info, loop_block);
+
+                    // Loops are only exited by `break` expressions.
+                    None
+                })
+            }
+            ExprKind::LoopMatch { state, region_scope, ref arms, .. } => {
+                // FIXME add diagram
+
+                let dropless_arena = rustc_arena::DroplessArena::default();
+                let typeck_results = this.tcx.typeck(this.def_id);
+
+                // the PatCtxt is normally used in pattern exhaustiveness checking, but reused here
+                // because it performs normalization and const evaluation.
+                let cx = RustcPatCtxt {
+                    tcx: this.tcx,
+                    typeck_results,
+                    module: this.tcx.parent_module(this.hir_id).to_def_id(),
+                    // FIXME(#132279): We're in a body, should handle opaques.
+                    typing_env: rustc_middle::ty::TypingEnv::non_body_analysis(
+                        this.tcx,
+                        this.def_id,
+                    ),
+                    dropless_arena: &dropless_arena,
+                    match_lint_level: this.hir_id,
+                    whole_match_span: Some(rustc_span::Span::default()),
+                    scrut_span: rustc_span::Span::default(),
+                    refutable: true,
+                    known_valid_scrutinee: true,
+                };
+
+                let loop_block = this.cfg.start_new_block();
+
+                // Start the loop.
+                this.cfg.goto(block, source_info, loop_block);
+
+                // FIXME do we need the breakable scope?
+                this.in_breakable_scope(Some(loop_block), destination, expr_span, |this| {
+                    // conduct the test, if necessary
+                    let mut body_block = this.cfg.start_new_block();
+                    this.cfg.terminate(
+                        loop_block,
+                        source_info,
+                        TerminatorKind::FalseUnwind {
+                            real_target: body_block,
+                            unwind: UnwindAction::Continue,
+                        },
+                    );
+                    this.diverge_from(loop_block);
+
+                    let state_place = unpack!(body_block = this.as_place(body_block, state));
+                    let state_ty = this.thir.exprs[state].ty;
+
+                    // the type of the value that is switched on by the `SwitchInt`
+                    let discr_ty = match state_ty {
+                        ty if ty.is_enum() => ty.discriminant_ty(this.tcx),
+                        ty if ty.is_integral() => ty,
+                        other => todo!("{other:?}"),
+                    };
+
+                    let rvalue = match state_ty {
+                        ty if ty.is_enum() => Rvalue::Discriminant(state_place),
+                        ty if ty.is_integral() => Rvalue::Use(Operand::Copy(state_place)),
+                        _ => todo!(),
+                    };
+
+                    // block and arm of the wildcard pattern (if any)
+                    let mut otherwise = None;
+
+                    unpack!(
+                        body_block = this.in_scope(
+                            (region_scope, source_info),
+                            LintLevel::Inherited,
+                            move |this| {
+                                let mut arm_blocks = Vec::with_capacity(arms.len());
+                                for &arm in arms {
+                                    let pat = &this.thir[arm].pattern;
+
+                                    this.loop_match_patterns(
+                                        arm,
+                                        &cx.lower_pat(pat),
+                                        None,
+                                        &mut arm_blocks,
+                                        &mut otherwise,
+                                    );
+                                }
+
+                                // handle patterns like `None | None` or two different arms that
+                                // have the same pattern.
+                                //
+                                // NOTE: why this works is a bit subtle: we always want to pick the
+                                // first arm for a pattern, and because this is a stable sort that
+                                // works out.
+                                arm_blocks.sort_by_key(|(_, discr, _, _)| discr.val);
+                                arm_blocks.dedup_by_key(|(_, discr, _, _)| discr.val);
+
+                                // if we're matching on an enum, the discriminant order in the `SwitchInt`
+                                // targets should match the order yielded by `AdtDef::discriminants`.
+                                if state_ty.is_enum() {
+                                    arm_blocks.sort_by_key(|(variant_idx, ..)| *variant_idx);
+                                }
+
+                                let targets = SwitchTargets::new(
+                                    arm_blocks
+                                        .iter()
+                                        .map(|&(_, discr, block, _arm)| (discr.val, block)),
+                                    if let Some((block, _)) = otherwise {
+                                        block
+                                    } else {
+                                        let unreachable_block = this.cfg.start_new_block();
+                                        this.cfg.terminate(
+                                            unreachable_block,
+                                            source_info,
+                                            TerminatorKind::Unreachable,
+                                        );
+                                        unreachable_block
+                                    },
+                                );
+
+                                this.in_breakable_scope(None, state_place, expr_span, |this| {
+                                    Some(this.in_const_continuable_scope(
+                                        targets.clone(),
+                                        state_place,
+                                        expr_span,
+                                        |this| {
+                                            let discr = this.temp(discr_ty, source_info.span);
+                                            this.cfg.push_assign(
+                                                body_block,
+                                                source_info,
+                                                discr,
+                                                rvalue,
+                                            );
+                                            let discr = Operand::Copy(discr);
+                                            this.cfg.terminate(
+                                                body_block,
+                                                source_info,
+                                                TerminatorKind::SwitchInt { discr, targets },
+                                            );
+
+                                            let it = arm_blocks
+                                                .into_iter()
+                                                .map(|(_, _, block, arm)| (block, arm))
+                                                .chain(otherwise);
+
+                                            for (mut block, arm_id) in it {
+                                                if this.cfg.block_data(block).terminator.is_some() {
+                                                    continue; // this can occur with or-patterns
+                                                }
+
+                                                let arm = &this.thir[arm_id];
+                                                let arm_source_info = this.source_info(arm.span);
+                                                let arm_scope = (arm.scope, arm_source_info);
+
+                                                let empty_place = this.get_unit_temp();
+                                                unpack!(
+                                                    block = {
+                                                        this.in_scope(
+                                                            arm_scope,
+                                                            arm.lint_level,
+                                                            |this| {
+                                                                this.expr_into_dest(
+                                                                    empty_place,
+                                                                    block,
+                                                                    arm.body,
+                                                                )
+                                                            },
+                                                        )
+                                                    }
+                                                );
+                                                this.cfg.terminate(
+                                                    block,
+                                                    source_info,
+                                                    TerminatorKind::Unreachable,
+                                                );
+                                            }
+                                        },
+                                    ))
+                                })
+                            }
+                        )
+                    );
+
+                    this.cfg.goto(body_block, source_info, loop_block);
 
                     // Loops are only exited by `break` expressions.
                     None
@@ -601,6 +787,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             ExprKind::Continue { .. }
+            | ExprKind::ConstContinue { .. }
             | ExprKind::Break { .. }
             | ExprKind::Return { .. }
             | ExprKind::Become { .. } => {
@@ -706,6 +893,57 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Let { .. } => true,
             ExprKind::Scope { value, .. } => self.is_let(value),
             _ => false,
+        }
+    }
+
+    fn loop_match_patterns(
+        &mut self,
+        arm_id: ArmId,
+        pat: &DeconstructedPat<'_, 'tcx>,
+        current_block: Option<BasicBlock>,
+        result: &mut Vec<(VariantIdx, Discr<'tcx>, BasicBlock, ArmId)>,
+        otherwise: &mut Option<(BasicBlock, ArmId)>,
+    ) {
+        match pat.ctor() {
+            Constructor::Variant(variant_index) => {
+                let PatKind::Variant { adt_def, .. } = pat.data().kind else { unreachable!() };
+
+                let discr = adt_def.discriminant_for_variant(self.tcx, *variant_index);
+
+                let block = current_block.unwrap_or_else(|| self.cfg.start_new_block());
+                result.push((*variant_index, discr, block, arm_id));
+            }
+            Constructor::IntRange(int_range) => {
+                assert!(int_range.is_singleton());
+
+                let bits = pat.ty().primitive_size(self.tcx).bits();
+
+                let value = if pat.ty().is_signed() {
+                    int_range.lo.as_finite_int(bits).unwrap()
+                } else {
+                    int_range.lo.as_finite_uint().unwrap()
+                };
+
+                let discr = Discr { val: value, ty: **pat.ty() };
+
+                let block = current_block.unwrap_or_else(|| self.cfg.start_new_block());
+                result.push((VariantIdx::ZERO, discr, block, arm_id));
+            }
+            Constructor::Wildcard => {
+                // the first wildcard wins
+                if otherwise.is_none() {
+                    let block = current_block.unwrap_or_else(|| self.cfg.start_new_block());
+                    *otherwise = Some((block, arm_id))
+                }
+            }
+            Constructor::Or => {
+                let block = current_block.unwrap_or_else(|| self.cfg.start_new_block());
+
+                for indexed in pat.iter_fields() {
+                    self.loop_match_patterns(arm_id, &indexed.pat, Some(block), result, otherwise);
+                }
+            }
+            other => todo!("{:?}", other),
         }
     }
 }

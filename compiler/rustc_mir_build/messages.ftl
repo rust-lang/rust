@@ -84,6 +84,8 @@ mir_build_call_to_unsafe_fn_requires_unsafe_unsafe_op_in_unsafe_fn_allowed =
 
 mir_build_confused = missing patterns are not covered because `{$variable}` is interpreted as a constant pattern, not a new variable
 
+mir_build_const_continue_missing_value = a `const_continue` must break to a label with a value
+
 mir_build_const_defined_here = constant defined here
 
 mir_build_const_param_in_pattern = constant parameters cannot be referenced in patterns
@@ -211,6 +213,22 @@ mir_build_leading_irrefutable_let_patterns = leading irrefutable {$count ->
 mir_build_literal_in_range_out_of_bounds =
     literal out of range for `{$ty}`
     .label = this value does not fit into the type `{$ty}` whose range is `{$min}..={$max}`
+
+mir_build_loop_match_bad_rhs =
+    this expression must be a single `match` wrapped in a labelled block
+
+mir_build_loop_match_bad_statements =
+    statements are not allowed in this position within a `loop_match`
+
+mir_build_loop_match_invalid_match =
+    invalid match on `loop_match` state
+    .note = only matches on local variables are valid
+mir_build_loop_match_invalid_update =
+    invalid update of the `loop_match` state
+    .label = the assignment must update this variable
+
+mir_build_loop_match_missing_assignment =
+    expected a single assignment expression
 
 mir_build_lower_range_bound_must_be_less_than_or_equal_to_upper =
     lower range bound must be less than or equal to upper
