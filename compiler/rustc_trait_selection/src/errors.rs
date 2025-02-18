@@ -1119,22 +1119,6 @@ impl Subdiagnostic for ReqIntroducedLocations {
     }
 }
 
-pub struct MoreTargeted {
-    pub ident: Symbol,
-}
-
-impl Subdiagnostic for MoreTargeted {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        _f: &F,
-    ) {
-        diag.code(E0772);
-        diag.primary_message(fluent::trait_selection_more_targeted);
-        diag.arg("ident", self.ident);
-    }
-}
-
 #[derive(Diagnostic)]
 #[diag(trait_selection_but_needs_to_satisfy, code = E0759)]
 pub struct ButNeedsToSatisfy {
@@ -1150,9 +1134,6 @@ pub struct ButNeedsToSatisfy {
     pub require_span_as_note: Option<Span>,
     #[note(trait_selection_introduced_by_bound)]
     pub bound: Option<Span>,
-
-    #[subdiagnostic]
-    pub req_introduces_loc: Option<ReqIntroducedLocations>,
 
     pub has_param_name: bool,
     pub param_name: String,

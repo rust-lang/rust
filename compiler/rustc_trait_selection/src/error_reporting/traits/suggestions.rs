@@ -2682,7 +2682,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             | ObligationCauseCode::IntrinsicType
             | ObligationCauseCode::MethodReceiver
             | ObligationCauseCode::ReturnNoExpression
-            | ObligationCauseCode::UnifyReceiver(..)
             | ObligationCauseCode::Misc
             | ObligationCauseCode::WellFormed(..)
             | ObligationCauseCode::MatchImpl(..)
