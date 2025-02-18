@@ -88,6 +88,11 @@ static EXPRS: &[&str] = &[
     // expressions.
     "match 2 { _ => 1 - 1 }",
     "match 2 { _ => ({ 1 }) - 1 }",
+    // Expressions with an outer attr have lower precedence than expressions
+    // with an inner attr.
+    "#[attr] loop {}.field",
+    "(#[attr] loop {}).field",
+    "loop { #![attr] }.field",
     // Grammar restriction: break value starting with a labeled loop is not
     // allowed, except if the break is also labeled.
     "break 'outer 'inner: loop {} + 2",
