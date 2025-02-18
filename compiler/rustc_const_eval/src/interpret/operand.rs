@@ -385,7 +385,7 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
             (Immediate::Uninit, _) => Immediate::Uninit,
             // If the field is uninhabited, we can forget the data (can happen in ConstProp).
             // `enum S { A(!), B, C }` is an example of an enum with Scalar layout that
-            // has an `Uninhabited` variant, which means this case is possible.
+            // has an uninhabited variant, which means this case is possible.
             _ if layout.is_uninhabited() => Immediate::Uninit,
             // the field contains no information, can be left uninit
             // (Scalar/ScalarPair can contain even aligned ZST, not just 1-ZST)

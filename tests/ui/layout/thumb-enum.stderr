@@ -31,6 +31,7 @@ error: layout_of(A) = Layout {
                    valid_range: 0..=0,
                },
            ),
+           uninhabited: false,
            variants: Multiple {
                tag: Initialized {
                    value: Int(
@@ -56,6 +57,7 @@ error: layout_of(A) = Layout {
                            memory_index: [],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
@@ -107,6 +109,7 @@ error: layout_of(B) = Layout {
                    valid_range: 255..=255,
                },
            ),
+           uninhabited: false,
            variants: Multiple {
                tag: Initialized {
                    value: Int(
@@ -132,6 +135,7 @@ error: layout_of(B) = Layout {
                            memory_index: [],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
@@ -183,6 +187,7 @@ error: layout_of(C) = Layout {
                    valid_range: 256..=256,
                },
            ),
+           uninhabited: false,
            variants: Multiple {
                tag: Initialized {
                    value: Int(
@@ -208,6 +213,7 @@ error: layout_of(C) = Layout {
                            memory_index: [],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
@@ -259,6 +265,7 @@ error: layout_of(P) = Layout {
                    valid_range: 268435456..=268435456,
                },
            ),
+           uninhabited: false,
            variants: Multiple {
                tag: Initialized {
                    value: Int(
@@ -284,6 +291,7 @@ error: layout_of(P) = Layout {
                            memory_index: [],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
@@ -335,6 +343,7 @@ error: layout_of(T) = Layout {
                    valid_range: 2164260864..=2164260864,
                },
            ),
+           uninhabited: false,
            variants: Multiple {
                tag: Initialized {
                    value: Int(
@@ -360,6 +369,7 @@ error: layout_of(T) = Layout {
                            memory_index: [],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
