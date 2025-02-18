@@ -19,15 +19,6 @@ impl Statement<'_> {
     pub fn make_nop(&mut self) {
         self.kind = StatementKind::Nop
     }
-
-    /// Changes a statement to a nop and returns the original statement.
-    #[must_use = "If you don't need the statement, use `make_nop` instead"]
-    pub fn replace_nop(&mut self) -> Self {
-        Statement {
-            source_info: self.source_info,
-            kind: mem::replace(&mut self.kind, StatementKind::Nop),
-        }
-    }
 }
 
 impl<'tcx> StatementKind<'tcx> {

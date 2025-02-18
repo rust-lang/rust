@@ -393,12 +393,13 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
 
     fn visit_basic_block_data(&mut self, block: BasicBlock, data: &mut BasicBlockData<'tcx>) {
         // Remove StorageLive and StorageDead statements for remapped locals
-        data.retain_statements(|s| match s.kind {
-            StatementKind::StorageLive(l) | StatementKind::StorageDead(l) => {
-                !self.remap.contains(l)
+        for s in &mut data.statements {
+            if let StatementKind::StorageLive(l) | StatementKind::StorageDead(l) = s.kind
+                && self.remap.contains(l)
+            {
+                s.make_nop();
             }
-            _ => true,
-        });
+        }
 
         let ret_val = match data.terminator().kind {
             TerminatorKind::Return => {
