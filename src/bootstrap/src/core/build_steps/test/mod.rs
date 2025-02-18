@@ -447,7 +447,7 @@ impl Step for Rustfmt {
             &[],
         );
 
-        let dir = testdir(builder, compiler.host);
+        let dir = builder.test_out(compiler.host);
         t!(fs::create_dir_all(&dir));
         cargo.env("RUSTFMT_TEST_DIR", dir);
 
@@ -1036,10 +1036,6 @@ impl Step for RustdocGUI {
         );
         try_run_tests(builder, &mut cmd, true);
     }
-}
-
-fn testdir(builder: &Builder<'_>, host: TargetSelection) -> PathBuf {
-    builder.out.join(host).join("test")
 }
 
 /// Declares a test step that invokes compiletest on a particular test suite.
@@ -1665,7 +1661,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         }
 
         cmd.arg("--src-base").arg(builder.src.join("tests").join(suite));
-        cmd.arg("--build-base").arg(testdir(builder, compiler.host).join(suite));
+        cmd.arg("--build-base").arg(builder.test_out(compiler.host).join(suite));
 
         // When top stage is 0, that means that we're testing an externally provided compiler.
         // In that case we need to use its specific sysroot for tests to pass.
@@ -2348,7 +2344,7 @@ impl Step for ErrorIndex {
     fn run(self, builder: &Builder<'_>) {
         let compiler = self.compiler;
 
-        let dir = testdir(builder, compiler.host);
+        let dir = builder.test_out(compiler.host);
         t!(fs::create_dir_all(&dir));
         let output = dir.join("error-index.md");
 
@@ -3163,7 +3159,7 @@ impl Step for RustInstaller {
         }
 
         let mut cmd = command(builder.src.join("src/tools/rust-installer/test.sh"));
-        let tmpdir = testdir(builder, compiler.host).join("rust-installer");
+        let tmpdir = builder.test_out(compiler.host).join("rust-installer");
         let _ = std::fs::remove_dir_all(&tmpdir);
         let _ = std::fs::create_dir_all(&tmpdir);
         cmd.current_dir(&tmpdir);
