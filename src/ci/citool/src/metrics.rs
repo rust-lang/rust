@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
@@ -7,25 +8,29 @@ use build_helper::metrics::{JsonNode, JsonRoot, TestOutcome, TestSuite, TestSuit
 
 pub fn postprocess_metrics(metrics_path: &Path, summary_path: &Path) -> anyhow::Result<()> {
     let metrics = load_metrics(metrics_path)?;
-    let suites = get_test_suites(&metrics);
 
-    if suites.is_empty() {
-        eprintln!("No test suites found in {}", metrics_path.display());
-        return Ok(());
-    }
-
-    let aggregated = aggregate_test_suites(&suites);
-    let table = render_table(aggregated);
-
-    let mut file = std::fs::File::options()
+    let mut file = File::options()
         .append(true)
         .create(true)
         .open(summary_path)
         .with_context(|| format!("Cannot open summary file at {summary_path:?}"))?;
-    writeln!(file, "\n# Test results\n")?;
-    writeln!(file, "{table}")?;
 
-    eprintln!("Written test suite summary into {}", summary_path.display());
+    record_test_suites(&metrics, &mut file)?;
+
+    Ok(())
+}
+
+fn record_test_suites(metrics: &JsonRoot, file: &mut File) -> anyhow::Result<()> {
+    let suites = get_test_suites(&metrics);
+
+    if !suites.is_empty() {
+        let aggregated = aggregate_test_suites(&suites);
+        let table = render_table(aggregated);
+        writeln!(file, "\n# Test results\n")?;
+        writeln!(file, "{table}")?;
+    } else {
+        eprintln!("No test suites found in metrics");
+    }
 
     Ok(())
 }
