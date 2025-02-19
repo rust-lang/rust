@@ -111,6 +111,10 @@ pub fn get_span_and_frames<'tcx>(
             add_frame(frame);
         }
     }
+
+    // In `rustc`, we present const-eval errors from the outer-most place first to the inner-most.
+    // So we reverse the frames here. The first frame will be the same as the span from the current
+    // `TyCtxtAt<'_>`, so we remove it as it would be redundant.
     frames.reverse();
     if frames.len() > 0 {
         frames.remove(0);
