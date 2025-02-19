@@ -1394,9 +1394,8 @@ impl PlaceContext {
     pub fn is_borrow(self) -> bool {
         matches!(
             self,
-            PlaceContext::NonMutatingUse(
-                NonMutatingUseContext::SharedBorrow | NonMutatingUseContext::FakeBorrow
-            ) | PlaceContext::MutatingUse(MutatingUseContext::Borrow)
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow)
+                | PlaceContext::MutatingUse(MutatingUseContext::Borrow)
         )
     }
 
