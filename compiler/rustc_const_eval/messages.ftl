@@ -104,7 +104,7 @@ const_eval_frame_note = {$times ->
 }
 
 const_eval_frame_note_inner = {$is_last ->
-    [true] {"the evaluated program failed "}
+    [true] {"the failure occurred "}
     *[false] {""}
     }inside {$where_ ->
     [closure] closure
@@ -112,7 +112,7 @@ const_eval_frame_note_inner = {$is_last ->
     *[other] {""}
 }
 
-const_eval_frame_note_last = the evaluated program failed here
+const_eval_frame_note_last = the failure occurred here
 
 const_eval_in_bounds_test = out-of-bounds pointer use
 const_eval_incompatible_calling_conventions =
