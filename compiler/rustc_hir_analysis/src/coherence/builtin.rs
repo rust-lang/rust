@@ -240,16 +240,17 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
         (&RawPtr(_, a_mutbl), &RawPtr(_, b_mutbl)) if a_mutbl == b_mutbl => Ok(()),
         (&Adt(def_a, args_a), &Adt(def_b, args_b)) if def_a.is_struct() && def_b.is_struct() => {
             if def_a != def_b {
-                let source_path = tcx.def_path_str(def_a.did());
-                let target_path = tcx.def_path_str(def_b.did());
-
-                return Err(tcx.dcx().emit_err(errors::DispatchFromDynCoercion {
-                    span,
-                    trait_name: "DispatchFromDyn",
-                    note: true,
-                    source_path,
-                    target_path,
-                }));
+                if def_a != def_b {
+                    let source_path = tcx.def_path_str(def_a.did());
+                    let target_path = tcx.def_path_str(def_b.did());
+                    return Err(tcx.dcx().emit_err(errors::CoerceSameStruct {
+                        span,
+                        trait_name: "DispatchFromDyn",
+                        note: true,
+                        source_path,
+                        target_path,
+                    }));
+                }
             }
 
             if def_a.repr().c() || def_a.repr().packed() {
@@ -301,43 +302,33 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
 
                         None
                     } else {
-                        Some((i, ty_a, ty_b))
+                        Some((i, ty_a, ty_b, tcx.def_span(field.did)))
                     }
                 })
                 .collect::<Vec<_>>();
             res?;
 
             if coerced_fields.is_empty() {
-                return Err(tcx.dcx().emit_err(errors::DispatchFromDynSingle {
+                return Err(tcx.dcx().emit_err(errors::CoerceNoField {
                     span,
                     trait_name: "DispatchFromDyn",
                     note: true,
                 }));
             } else if coerced_fields.len() > 1 {
-                return Err(tcx.dcx().emit_err(errors::DispatchFromDynMulti {
+                return Err(tcx.dcx().emit_err(errors::CoerceMulti {
                     span,
-                    coercions_note: true,
+                    trait_name: "DispatchFromDyn",
                     number: coerced_fields.len(),
-                    coercions: coerced_fields
-                        .iter()
-                        .map(|&(i, ty_a, ty_b)| {
-                            format!("`{}` (`{}` to `{}`)", fields[i].name, ty_a, ty_b,)
-                        })
-                        .collect::<Vec<_>>()
-                        .join(", "),
+                    fields: coerced_fields.iter().map(|(_, _, _, s)| *s).collect::<Vec<_>>().into(),
                 }));
             } else {
                 let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
-                for (_, ty_a, ty_b) in coerced_fields {
+                for (_, ty_a, ty_b, _) in coerced_fields {
                     ocx.register_obligation(Obligation::new(
                         tcx,
                         cause.clone(),
                         param_env,
-                        ty::TraitRef::new(
-                            tcx,
-                            dispatch_from_dyn_trait,
-                            [ty_a, ty_b],
-                        ),
+                        ty::TraitRef::new(tcx, dispatch_from_dyn_trait, [ty_a, ty_b]),
                     ));
                 }
                 let errors = ocx.select_all_or_error();
@@ -353,7 +344,7 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
         }
         _ => Err(tcx
             .dcx()
-            .emit_err(errors::CoerceUnsizedMay { span, trait_name: "DispatchFromDyn" })),
+            .emit_err(errors::CoerceUnsizedNonStruct { span, trait_name: "DispatchFromDyn" })),
     }
 }
 
@@ -419,7 +410,7 @@ pub(crate) fn coerce_unsized_info<'tcx>(
             if def_a != def_b {
                 let source_path = tcx.def_path_str(def_a.did());
                 let target_path = tcx.def_path_str(def_b.did());
-                return Err(tcx.dcx().emit_err(errors::DispatchFromDynSame {
+                return Err(tcx.dcx().emit_err(errors::CoerceSameStruct {
                     span,
                     trait_name: "CoerceUnsized",
                     note: true,
@@ -501,12 +492,12 @@ pub(crate) fn coerce_unsized_info<'tcx>(
 
                     // Collect up all fields that were significantly changed
                     // i.e., those that contain T in coerce_unsized T -> U
-                    Some((i, a, b))
+                    Some((i, a, b, tcx.def_span(f.did)))
                 })
                 .collect::<Vec<_>>();
 
             if diff_fields.is_empty() {
-                return Err(tcx.dcx().emit_err(errors::CoerceUnsizedOneField {
+                return Err(tcx.dcx().emit_err(errors::CoerceNoField {
                     span,
                     trait_name: "CoerceUnsized",
                     note: true,
@@ -519,19 +510,15 @@ pub(crate) fn coerce_unsized_info<'tcx>(
                     tcx.def_span(impl_did)
                 };
 
-                return Err(tcx.dcx().emit_err(errors::CoerceUnsizedMulti {
+                return Err(tcx.dcx().emit_err(errors::CoerceMulti {
                     span,
-                    coercions_note: true,
+                    trait_name: "CoerceUnsized",
                     number: diff_fields.len(),
-                    coercions: diff_fields
-                        .iter()
-                        .map(|&(i, a, b)| format!("`{}` (`{}` to `{}`)", fields[i].name, a, b))
-                        .collect::<Vec<_>>()
-                        .join(", "),
+                    fields: diff_fields.iter().map(|(_, _, _, s)| *s).collect::<Vec<_>>().into(),
                 }));
             }
 
-            let (i, a, b) = diff_fields[0];
+            let (i, a, b, _) = diff_fields[0];
             let kind = ty::adjustment::CustomCoerceUnsized::Struct(i);
             (a, b, coerce_unsized_trait, Some(kind))
         }
@@ -539,7 +526,7 @@ pub(crate) fn coerce_unsized_info<'tcx>(
         _ => {
             return Err(tcx
                 .dcx()
-                .emit_err(errors::DispatchFromDynStruct { span, trait_name: "CoerceUnsized" }));
+                .emit_err(errors::CoerceUnsizedNonStruct { span, trait_name: "CoerceUnsized" }));
         }
     };
 
