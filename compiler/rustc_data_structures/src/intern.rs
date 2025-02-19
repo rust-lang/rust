@@ -98,8 +98,7 @@ where
 {
     #[inline]
     fn hash<H: Hasher>(&self, s: &mut H) {
-        // Pointer hashing is sufficient, due to the uniqueness constraint.
-        ptr::hash(self.0, s)
+        Hash::hash(&self.0, s)
     }
 }
 

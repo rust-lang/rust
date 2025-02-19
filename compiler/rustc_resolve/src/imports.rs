@@ -187,11 +187,31 @@ pub(crate) type Import<'ra> = Interned<'ra, ImportData<'ra>>;
 // FIXME: We may wish to actually have at least debug-level assertions that Interned's guarantees
 // are upheld.
 impl std::hash::Hash for ImportData<'_> {
-    fn hash<H>(&self, _: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: std::hash::Hasher,
     {
-        unreachable!()
+        let ImportData {
+            kind: _,
+            root_id,
+            use_span,
+            use_span_with_attributes,
+            has_attributes,
+            span,
+            root_span,
+            parent_scope: _,
+            module_path: _,
+            imported_module: _,
+            vis,
+        } = self;
+
+        root_id.hash(h);
+        use_span.hash(h);
+        use_span_with_attributes.hash(h);
+        has_attributes.hash(h);
+        span.hash(h);
+        root_span.hash(h);
+        vis.hash(h);
     }
 }
 
