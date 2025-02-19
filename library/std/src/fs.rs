@@ -2505,7 +2505,7 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
 /// * `from` does not exist.
 /// * The current process does not have the permission rights to read
 ///   `from` or write `to`.
-/// * The parent folder of `to` doesn't exists
+/// * The parent directory of `to` doesn't exist.
 ///
 /// # Examples
 ///
