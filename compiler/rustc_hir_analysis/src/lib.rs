@@ -80,7 +80,6 @@ This API is completely unstable and subject to change.
 pub mod check;
 
 pub mod autoderef;
-mod bounds;
 mod check_unused;
 mod coherence;
 mod collect;
@@ -93,6 +92,7 @@ mod impl_wf_check;
 mod outlives;
 mod variance;
 
+pub use errors::NoVariantNamed;
 use rustc_abi::ExternAbi;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -184,7 +184,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
         // what we are intending to discard, to help future type-based refactoring.
         type R = Result<(), ErrorGuaranteed>;
 
-        tcx.hir().par_for_each_module(|module| {
+        tcx.par_hir_for_each_module(|module| {
             let _: R = tcx.ensure_ok().check_mod_type_wf(module);
         });
 
@@ -209,7 +209,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
 
     // Make sure we evaluate all static and (non-associated) const items, even if unused.
     // If any of these fail to evaluate, we do not want this crate to pass compilation.
-    tcx.hir().par_body_owners(|item_def_id| {
+    tcx.par_hir_body_owners(|item_def_id| {
         let def_kind = tcx.def_kind(item_def_id);
         match def_kind {
             DefKind::Static { .. } => tcx.ensure_ok().eval_static_initializer(item_def_id),
@@ -227,7 +227,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
     // for anon constants during their parents' typeck.
     // Typeck all body owners in parallel will produce queries
     // cycle errors because it may typeck on anon constants directly.
-    tcx.hir().par_body_owners(|item_def_id| {
+    tcx.par_hir_body_owners(|item_def_id| {
         let def_kind = tcx.def_kind(item_def_id);
         if !matches!(def_kind, DefKind::AnonConst) {
             tcx.ensure_ok().typeck(item_def_id);

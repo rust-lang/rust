@@ -9,6 +9,7 @@ use hir_expand::name::Name;
 use intern::sym;
 use la_arena::Arena;
 use rustc_abi::{Align, Integer, IntegerType, ReprFlags, ReprOptions};
+use rustc_hashes::Hash64;
 use triomphe::Arc;
 use tt::iter::TtElement;
 
@@ -172,7 +173,7 @@ fn parse_repr_tt(tt: &TopSubtree) -> Option<ReprOptions> {
         }
     }
 
-    Some(ReprOptions { int, align: max_align, pack: min_pack, flags, field_shuffle_seed: 0 })
+    Some(ReprOptions { int, align: max_align, pack: min_pack, flags, field_shuffle_seed: Hash64::ZERO })
 }
 
 impl StructData {

@@ -1,10 +1,9 @@
 mod block;
 
+use crate::{hir::MatchArm, test_db::TestDB, ModuleDefId};
 use expect_test::{expect, Expect};
 use la_arena::RawIdx;
 use test_fixture::WithFixture;
-
-use crate::{test_db::TestDB, ModuleDefId};
 
 use super::*;
 
@@ -459,4 +458,46 @@ async fn foo(a: (), b: i32) -> u32 {
     let printed = body.pretty_print(&db, owner, Edition::CURRENT);
     expect!["fn foo(�: (), �: i32) -> impl ::core::future::Future::<Output = u32> �"]
         .assert_eq(&printed);
+}
+
+#[test]
+fn range_bounds_are_hir_exprs() {
+    let (_, body, _) = lower(
+        r#"
+pub const L: i32 = 6;
+mod x {
+    pub const R: i32 = 100;
+}
+const fn f(x: i32) -> i32 {
+    match x {
+        -1..=5 => x * 10,
+        L..=x::R => x * 100,
+        _ => x,
+    }
+}"#,
+    );
+
+    let mtch_arms = body
+        .exprs
+        .iter()
+        .find_map(|(_, expr)| {
+            if let Expr::Match { arms, .. } = expr {
+                return Some(arms);
+            }
+
+            None
+        })
+        .unwrap();
+
+    let MatchArm { pat, .. } = mtch_arms[1];
+    match body.pats[pat] {
+        Pat::Range { start, end } => {
+            let hir_start = &body.exprs[start.unwrap()];
+            let hir_end = &body.exprs[end.unwrap()];
+
+            assert!(matches!(hir_start, Expr::Path { .. }));
+            assert!(matches!(hir_end, Expr::Path { .. }));
+        }
+        _ => {}
+    }
 }

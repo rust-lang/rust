@@ -37,7 +37,7 @@ fn entry_fn(tcx: TyCtxt<'_>, (): ()) -> Option<(DefId, EntryFnType)> {
 
     let mut ctxt = EntryContext { tcx, rustc_main_fn: None, non_main_fns: Vec::new() };
 
-    for id in tcx.hir().items() {
+    for id in tcx.hir_free_items() {
         check_and_search_item(id, &mut ctxt);
     }
 

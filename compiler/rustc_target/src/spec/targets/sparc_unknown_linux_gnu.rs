@@ -1,11 +1,11 @@
 use rustc_abi::Endian;
 
-use crate::spec::{Cc, LinkerFlavor, Lld, Target, TargetOptions, base};
+use crate::spec::{Cc, LinkerFlavor, Lld, Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
         llvm_target: "sparc-unknown-linux-gnu".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("32-bit SPARC Linux".into()),
             tier: Some(3),
             host_tools: Some(false),

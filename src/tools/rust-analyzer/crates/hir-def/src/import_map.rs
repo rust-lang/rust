@@ -320,7 +320,7 @@ impl SearchMode {
                     };
                     match m {
                         Some((index, _)) => {
-                            name = &name[index + 1..];
+                            name = name[index..].strip_prefix(|_: char| true).unwrap_or_default();
                             true
                         }
                         None => false,
@@ -1037,6 +1037,24 @@ pub mod fmt {
                 dep::FMT (t)
                 dep::FMT (v)
             "#]],
+        );
+    }
+
+    #[test]
+    fn unicode_fn_name() {
+        let ra_fixture = r#"
+            //- /main.rs crate:main deps:dep
+            //- /dep.rs crate:dep
+            pub fn あい() {}
+        "#;
+
+        check_search(
+            ra_fixture,
+            "main",
+            Query::new("あ".to_owned()).fuzzy(),
+            expect![[r#"
+            dep::あい (f)
+        "#]],
         );
     }
 }

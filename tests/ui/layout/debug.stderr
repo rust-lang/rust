@@ -596,12 +596,18 @@ error: the type has an unknown layout
 LL | union EmptyUnion {}
    | ^^^^^^^^^^^^^^^^
 
+error: the type `T` does not have a fixed layout
+  --> $DIR/debug.rs:89:1
+   |
+LL | type TooGeneric<T> = T;
+   | ^^^^^^^^^^^^^^^^^^
+
 error: `#[rustc_layout]` can only be applied to `struct`/`enum`/`union` declarations and type aliases
   --> $DIR/debug.rs:75:5
    |
 LL |     const C: () = ();
    |     ^^^^^^^^^^^
 
-error: aborting due to 19 previous errors
+error: aborting due to 20 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

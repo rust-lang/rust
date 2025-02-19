@@ -22,8 +22,6 @@ fn diagnostic_hir_wf_check<'tcx>(
     tcx: TyCtxt<'tcx>,
     (predicate, loc): (ty::Predicate<'tcx>, WellFormedLoc),
 ) -> Option<ObligationCause<'tcx>> {
-    let hir = tcx.hir();
-
     let def_id = match loc {
         WellFormedLoc::Ty(def_id) => def_id,
         WellFormedLoc::Param { function, param_idx: _ } => function,
@@ -187,7 +185,7 @@ fn diagnostic_hir_wf_check<'tcx>(
             ref node => bug!("Unexpected node {:?}", node),
         },
         WellFormedLoc::Param { function: _, param_idx } => {
-            let fn_decl = hir.fn_decl_by_hir_id(hir_id).unwrap();
+            let fn_decl = tcx.hir_fn_decl_by_hir_id(hir_id).unwrap();
             // Get return type
             if param_idx as usize == fn_decl.inputs.len() {
                 match fn_decl.output {

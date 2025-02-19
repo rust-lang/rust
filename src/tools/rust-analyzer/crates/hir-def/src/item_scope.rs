@@ -18,8 +18,8 @@ use crate::{
     db::DefDatabase,
     per_ns::{Item, MacrosItem, PerNs, TypesItem, ValuesItem},
     visibility::{Visibility, VisibilityExplicitness},
-    AdtId, BuiltinType, ConstId, ExternCrateId, FxIndexMap, HasModule, ImplId, LocalModuleId,
-    Lookup, MacroId, ModuleDefId, ModuleId, TraitId, UseId,
+    AdtId, BuiltinType, ConstId, ExternBlockId, ExternCrateId, FxIndexMap, HasModule, ImplId,
+    LocalModuleId, Lookup, MacroId, ModuleDefId, ModuleId, TraitId, UseId,
 };
 
 #[derive(Debug, Default)]
@@ -158,6 +158,8 @@ pub struct ItemScope {
     declarations: Vec<ModuleDefId>,
 
     impls: Vec<ImplId>,
+    #[allow(clippy::box_collection)]
+    extern_blocks: Option<Box<Vec<ExternBlockId>>>,
     unnamed_consts: Vec<ConstId>,
     /// Traits imported via `use Trait as _;`.
     unnamed_trait_imports: FxHashMap<TraitId, Item<()>>,
@@ -319,6 +321,10 @@ impl ItemScope {
         self.extern_crate_decls.iter().copied()
     }
 
+    pub fn extern_blocks(&self) -> impl Iterator<Item = ExternBlockId> + '_ {
+        self.extern_blocks.iter().flat_map(|it| it.iter()).copied()
+    }
+
     pub fn use_decls(&self) -> impl ExactSizeIterator<Item = UseId> + '_ {
         self.use_decls.iter().copied()
     }
@@ -467,6 +473,10 @@ impl ItemScope {
 
     pub(crate) fn define_impl(&mut self, imp: ImplId) {
         self.impls.push(imp);
+    }
+
+    pub(crate) fn define_extern_block(&mut self, extern_block: ExternBlockId) {
+        self.extern_blocks.get_or_insert_default().push(extern_block);
     }
 
     pub(crate) fn define_extern_crate_decl(&mut self, extern_crate: ExternCrateId) {
@@ -806,7 +816,11 @@ impl ItemScope {
             use_imports_types,
             use_imports_macros,
             macro_invocations,
+            extern_blocks,
         } = self;
+        if let Some(it) = extern_blocks {
+            it.shrink_to_fit();
+        }
         types.shrink_to_fit();
         values.shrink_to_fit();
         macros.shrink_to_fit();

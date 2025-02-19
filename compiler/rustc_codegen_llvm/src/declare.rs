@@ -16,10 +16,11 @@ use rustc_codegen_ssa::traits::TypeMembershipCodegenMethods;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_middle::ty::{Instance, Ty};
 use rustc_sanitizers::{cfi, kcfi};
+use rustc_target::callconv::FnAbi;
 use smallvec::SmallVec;
 use tracing::debug;
 
-use crate::abi::{FnAbi, FnAbiLlvmExt};
+use crate::abi::FnAbiLlvmExt;
 use crate::common::AsCCharPtr;
 use crate::context::{CodegenCx, SimpleCx};
 use crate::llvm::AttributePlace::Function;

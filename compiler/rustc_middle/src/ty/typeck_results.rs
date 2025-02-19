@@ -147,9 +147,7 @@ pub struct TypeckResults<'tcx> {
     coercion_casts: ItemLocalSet,
 
     /// Set of trait imports actually used in the method resolution.
-    /// This is used for warning unused imports. During type
-    /// checking, this `Arc` should not be cloned: it must have a ref-count
-    /// of 1 so that we can insert things into the set mutably.
+    /// This is used for warning unused imports.
     pub used_trait_imports: UnordSet<LocalDefId>,
 
     /// If any errors occurred while type-checking this body,

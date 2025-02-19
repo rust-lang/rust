@@ -239,6 +239,7 @@ fn handle_ebadf_lazy<T>(r: io::Result<T>, default: impl FnOnce() -> T) -> io::Re
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "Stdin")]
 pub struct Stdin {
     inner: &'static Mutex<BufReader<StdinRaw>>,
 }

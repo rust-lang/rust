@@ -421,6 +421,10 @@ impl File {
         Err(Error::from_raw_os_error(22))
     }
 
+    pub fn tell(&self) -> io::Result<u64> {
+        self.seek(SeekFrom::Current(0))
+    }
+
     pub fn duplicate(&self) -> io::Result<File> {
         Err(Error::from_raw_os_error(22))
     }

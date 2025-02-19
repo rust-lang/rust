@@ -108,7 +108,7 @@ impl Definition {
                 ItemContainer::Trait(it) => Some(it.into()),
                 ItemContainer::Impl(it) => Some(it.into()),
                 ItemContainer::Module(it) => Some(it.into()),
-                ItemContainer::ExternBlock() | ItemContainer::Crate(_) => None,
+                ItemContainer::ExternBlock(_) | ItemContainer::Crate(_) => None,
             }
         }
         match self {

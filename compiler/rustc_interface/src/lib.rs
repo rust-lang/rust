@@ -10,6 +10,7 @@
 mod callbacks;
 pub mod errors;
 pub mod interface;
+mod limits;
 pub mod passes;
 mod proc_macro_decls;
 mod queries;

@@ -1,13 +1,14 @@
 // Targets the Little-endian Cortex-R4F/R5F processor (ARMv7-R)
 
 use crate::spec::{
-    Cc, FloatAbi, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions,
+    Cc, FloatAbi, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetMetadata,
+    TargetOptions,
 };
 
 pub(crate) fn target() -> Target {
     Target {
         llvm_target: "armv7r-none-eabihf".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("Armv7-R, hardfloat".into()),
             tier: Some(2),
             host_tools: Some(false),

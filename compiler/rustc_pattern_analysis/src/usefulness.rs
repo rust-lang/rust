@@ -795,20 +795,21 @@ struct UsefulnessCtxt<'a, 'p, Cx: PatCx> {
     /// Track information about the usefulness of branch patterns (see definition of "branch
     /// pattern" at [`BranchPatUsefulness`]).
     branch_usefulness: FxHashMap<PatId, BranchPatUsefulness<'p, Cx>>,
-    complexity_limit: Option<usize>,
+    // Ideally this field would have type `Limit`, but this crate is used by
+    // rust-analyzer which cannot have a dependency on `Limit`, because `Limit`
+    // is from crate `rustc_session` which uses unstable Rust features.
+    complexity_limit: usize,
     complexity_level: usize,
 }
 
 impl<'a, 'p, Cx: PatCx> UsefulnessCtxt<'a, 'p, Cx> {
     fn increase_complexity_level(&mut self, complexity_add: usize) -> Result<(), Cx::Error> {
         self.complexity_level += complexity_add;
-        if self
-            .complexity_limit
-            .is_some_and(|complexity_limit| complexity_limit < self.complexity_level)
-        {
-            return self.tycx.complexity_exceeded();
+        if self.complexity_level <= self.complexity_limit {
+            Ok(())
+        } else {
+            self.tycx.complexity_exceeded()
         }
-        Ok(())
     }
 }
 
@@ -1834,7 +1835,7 @@ pub fn compute_match_usefulness<'p, Cx: PatCx>(
     arms: &[MatchArm<'p, Cx>],
     scrut_ty: Cx::Ty,
     scrut_validity: PlaceValidity,
-    complexity_limit: Option<usize>,
+    complexity_limit: usize,
 ) -> Result<UsefulnessReport<'p, Cx>, Cx::Error> {
     let mut cx = UsefulnessCtxt {
         tycx,

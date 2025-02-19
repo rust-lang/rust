@@ -912,3 +912,36 @@ fn main() {
         "",
     );
 }
+
+#[test]
+fn regression_19021() {
+    check_pass(
+        r#"
+//- minicore: deref
+use core::ops::Deref;
+
+#[lang = "owned_box"]
+struct Box<T>(T);
+
+impl<T> Deref for Box<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+struct Foo;
+
+fn main() {
+    let x = Box(Foo);
+    let y = &Foo;
+
+    || match x {
+        ref x => x,
+        _ => y,
+    };
+}
+"#,
+    );
+}

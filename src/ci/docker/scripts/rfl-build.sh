@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-LINUX_VERSION=50e57739141b41f731ab31f8380821c7969f9dc4
+LINUX_VERSION=v6.14-rc3
 
 # Build rustc, rustdoc, cargo, clippy-driver and rustfmt
 ../x.py build --stage 2 library rustdoc clippy rustfmt
@@ -28,7 +28,7 @@ rm -rf linux || true
 # Download Linux at a specific commit
 mkdir -p linux
 git -C linux init
-git -C linux remote add origin https://github.com/Darksonn/linux.git
+git -C linux remote add origin https://github.com/Rust-for-Linux/linux.git
 git -C linux fetch --depth 1 origin ${LINUX_VERSION}
 git -C linux checkout FETCH_HEAD
 

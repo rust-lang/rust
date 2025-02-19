@@ -98,10 +98,10 @@ fn lint_impl_body(cx: &LateContext<'_>, impl_span: Span, impl_items: &[hir::Impl
 
     for impl_item in impl_items {
         if impl_item.ident.name == sym::from
-            && let ImplItemKind::Fn(_, body_id) = cx.tcx.hir().impl_item(impl_item.id).kind
+            && let ImplItemKind::Fn(_, body_id) = cx.tcx.hir_impl_item(impl_item.id).kind
         {
             // check the body for `begin_panic` or `unwrap`
-            let body = cx.tcx.hir().body(body_id);
+            let body = cx.tcx.hir_body(body_id);
             let mut fpu = FindPanicUnwrap {
                 lcx: cx,
                 typeck_results: cx.tcx.typeck(impl_item.id.owner_id.def_id),

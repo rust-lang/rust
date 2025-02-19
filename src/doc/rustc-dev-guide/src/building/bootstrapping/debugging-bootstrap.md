@@ -76,6 +76,14 @@ $ BOOTSTRAP_TRACING=CONFIG_HANDLING=TRACE ./x build library --stage 1
 
 [tracing-env-filter]: https://docs.rs/tracing-subscriber/0.3.19/tracing_subscriber/filter/struct.EnvFilter.html
 
+##### FIXME(#96176): specific tracing for `compiler()` vs `compiler_for()`
+
+The additional targets `COMPILER` and `COMPILER_FOR` are used to help trace what
+`builder.compiler()` and `builder.compiler_for()` does. They should be removed
+if [#96176][cleanup-compiler-for] is resolved.
+
+[cleanup-compiler-for]: https://github.com/rust-lang/rust/issues/96176
+
 ### Using `tracing` in bootstrap
 
 Both `tracing::*` macros and the `tracing::instrument` proc-macro attribute need to be gated behind `tracing` feature. Examples:

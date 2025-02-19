@@ -8,7 +8,7 @@ use rustc_hir::HirId;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::bug;
-use rustc_middle::ty::{self as ty, IsSuggestable, Ty, TyCtxt};
+use rustc_middle::ty::{self as ty, IsSuggestable, Ty, TyCtxt, Upcast};
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
 use rustc_trait_selection::traits;
 use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
@@ -16,7 +16,6 @@ use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
 use super::errors::GenericsArgsErrExtend;
-use crate::bounds::Bounds;
 use crate::errors;
 use crate::hir_ty_lowering::{
     AssocItemQSelf, FeedConstTy, HirTyLowerer, PredicateFilter, RegionInferReason,
@@ -28,7 +27,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// Doesn't add the bound if the HIR bounds contain any of `Sized`, `?Sized` or `!Sized`.
     pub(crate) fn add_sized_bound(
         &self,
-        bounds: &mut Bounds<'tcx>,
+        bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
         self_ty: Ty<'tcx>,
         hir_bounds: &'tcx [hir::GenericBound<'tcx>],
         self_ty_where_predicates: Option<(LocalDefId, &'tcx [hir::WherePredicate<'tcx>])>,
@@ -113,10 +112,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         if seen_sized_unbound || seen_negative_sized_bound || seen_positive_sized_bound {
             // There was in fact a `?Sized`, `!Sized` or explicit `Sized` bound;
             // we don't need to do anything.
-        } else if sized_def_id.is_some() {
+        } else if let Some(sized_def_id) = sized_def_id {
             // There was no `?Sized`, `!Sized` or explicit `Sized` bound;
             // add `Sized` if it's available.
-            bounds.push_sized(tcx, self_ty, span);
+            let trait_ref = ty::TraitRef::new(tcx, sized_def_id, [self_ty]);
+            // Preferable to put this obligation first, since we report better errors for sized ambiguity.
+            bounds.insert(0, (trait_ref.upcast(tcx), span));
         }
     }
 
@@ -146,7 +147,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         param_ty: Ty<'tcx>,
         hir_bounds: I,
-        bounds: &mut Bounds<'tcx>,
+        bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
         bound_vars: &'tcx ty::List<ty::BoundVariableKind>,
         predicate_filter: PredicateFilter,
     ) where
@@ -189,14 +190,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     }
 
                     let region = self.lower_lifetime(lifetime, RegionInferReason::OutlivesBound);
-                    bounds.push_region_bound(
-                        self.tcx(),
-                        ty::Binder::bind_with_vars(
-                            ty::OutlivesPredicate(param_ty, region),
-                            bound_vars,
-                        ),
-                        lifetime.ident.span,
+                    let bound = ty::Binder::bind_with_vars(
+                        ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(param_ty, region)),
+                        bound_vars,
                     );
+                    bounds.push((bound.upcast(self.tcx()), lifetime.ident.span));
                 }
                 hir::GenericBound::Use(..) => {
                     // We don't actually lower `use` into the type layer.
@@ -219,7 +217,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         hir_ref_id: hir::HirId,
         trait_ref: ty::PolyTraitRef<'tcx>,
         constraint: &hir::AssocItemConstraint<'tcx>,
-        bounds: &mut Bounds<'tcx>,
+        bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
         duplicates: &mut FxIndexMap<DefId, Span>,
         path_span: Span,
         predicate_filter: PredicateFilter,
@@ -389,14 +387,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     PredicateFilter::All
                     | PredicateFilter::SelfOnly
                     | PredicateFilter::SelfAndAssociatedTypeBounds => {
-                        bounds.push_projection_bound(
-                            tcx,
-                            projection_term.map_bound(|projection_term| ty::ProjectionPredicate {
+                        let bound = projection_term.map_bound(|projection_term| {
+                            ty::ClauseKind::Projection(ty::ProjectionPredicate {
                                 projection_term,
                                 term,
-                            }),
-                            constraint.span,
-                        );
+                            })
+                        });
+                        bounds.push((bound.upcast(tcx), constraint.span));
                     }
                     // SelfTraitThatDefines is only interested in trait predicates.
                     PredicateFilter::SelfTraitThatDefines(_) => {}

@@ -267,7 +267,7 @@ pub fn implements_trait_with_env_from_iter<'tcx>(
     // through calling `body_owner_kind`, which would panic if the callee
     // does not have a body.
     if let Some(callee_id) = callee_id {
-        let _ = tcx.hir().body_owner_kind(callee_id);
+        let _ = tcx.hir_body_owner_kind(callee_id);
     }
 
     let ty = tcx.erase_regions(ty);
@@ -705,7 +705,7 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
         ty::Closure(id, subs) => {
             let decl = id
                 .as_local()
-                .and_then(|id| cx.tcx.hir().fn_decl_by_hir_id(cx.tcx.local_def_id_to_hir_id(id)));
+                .and_then(|id| cx.tcx.hir_fn_decl_by_hir_id(cx.tcx.local_def_id_to_hir_id(id)));
             Some(ExprFnSig::Closure(decl, subs.as_closure().sig()))
         },
         ty::FnDef(id, subs) => Some(ExprFnSig::Sig(cx.tcx.fn_sig(id).instantiate(cx.tcx, subs), Some(id))),

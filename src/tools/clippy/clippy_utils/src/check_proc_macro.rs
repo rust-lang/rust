@@ -192,7 +192,7 @@ fn expr_search_pat(tcx: TyCtxt<'_>, e: &Expr<'_>) -> (Pat, Pat) {
             },
             ExprKind::Closure(&Closure { body, .. }) => (
                 Pat::Str(""),
-                expr_search_pat_inner(tcx, tcx.hir().body(body).value, outer_span).1,
+                expr_search_pat_inner(tcx, tcx.hir_body(body).value, outer_span).1,
             ),
             ExprKind::Block(
                 Block {

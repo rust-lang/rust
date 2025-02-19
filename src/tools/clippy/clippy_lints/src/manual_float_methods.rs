@@ -143,7 +143,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualFloatMethods {
             && exprs.iter_mut().partition_in_place(|i| path_to_local(i).is_some()) == 2
             && !expr.span.in_external_macro(cx.sess().source_map())
             && (
-                is_not_const(cx.tcx, cx.tcx.hir().enclosing_body_owner(expr.hir_id).into())
+                is_not_const(cx.tcx, cx.tcx.hir_enclosing_body_owner(expr.hir_id).into())
                     || self.msrv.meets(msrvs::CONST_FLOAT_CLASSIFY)
             )
             && let [first, second, const_1, const_2] = exprs

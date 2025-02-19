@@ -14,7 +14,8 @@ fn check(patterns: Vec<DeconstructedPat<Cx>>) -> Vec<WitnessPat<Cx>> {
     let arms: Vec<_> =
         patterns.iter().map(|pat| MatchArm { pat, has_guard: false, arm_data: () }).collect();
     let report =
-        compute_match_usefulness(arms.as_slice(), ty, PlaceValidity::ValidOnly, None).unwrap();
+        compute_match_usefulness(arms.as_slice(), ty, PlaceValidity::ValidOnly, usize::MAX)
+            .unwrap();
     report.non_exhaustiveness_witnesses
 }
 

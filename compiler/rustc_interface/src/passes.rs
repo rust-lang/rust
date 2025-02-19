@@ -39,7 +39,7 @@ use rustc_trait_selection::traits;
 use tracing::{info, instrument};
 
 use crate::interface::Compiler;
-use crate::{errors, proc_macro_decls, util};
+use crate::{errors, limits, proc_macro_decls, util};
 
 pub fn parse<'a>(sess: &'a Session) -> ast::Crate {
     let krate = sess
@@ -687,6 +687,7 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
         |tcx, _| tcx.arena.alloc_from_iter(tcx.resolutions(()).stripped_cfg_items.steal());
     providers.resolutions = |tcx, ()| tcx.resolver_for_lowering_raw(()).1;
     providers.early_lint_checks = early_lint_checks;
+    limits::provide(providers);
     proc_macro_decls::provide(providers);
     rustc_const_eval::provide(providers);
     rustc_middle::hir::provide(providers);
@@ -845,7 +846,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
                 CStore::from_tcx(tcx).report_unused_deps(tcx);
             },
             {
-                tcx.hir().par_for_each_module(|module| {
+                tcx.par_hir_for_each_module(|module| {
                     tcx.ensure_ok().check_mod_loops(module);
                     tcx.ensure_ok().check_mod_attrs(module);
                     tcx.ensure_ok().check_mod_naked_functions(module);
@@ -870,7 +871,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
 
     rustc_hir_analysis::check_crate(tcx);
     sess.time("MIR_coroutine_by_move_body", || {
-        tcx.hir().par_body_owners(|def_id| {
+        tcx.par_hir_body_owners(|def_id| {
             if tcx.needs_coroutine_by_move_body_def_id(def_id.to_def_id()) {
                 tcx.ensure_done().coroutine_by_move_body_def_id(def_id);
             }
@@ -884,7 +885,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     tcx.untracked().definitions.freeze();
 
     sess.time("MIR_borrow_checking", || {
-        tcx.hir().par_body_owners(|def_id| {
+        tcx.par_hir_body_owners(|def_id| {
             // Run unsafety check because it's responsible for stealing and
             // deallocating THIR.
             tcx.ensure_ok().check_unsafety(def_id);
@@ -892,21 +893,21 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
         });
     });
     sess.time("MIR_effect_checking", || {
-        tcx.hir().par_body_owners(|def_id| {
+        tcx.par_hir_body_owners(|def_id| {
             tcx.ensure_ok().has_ffi_unwind_calls(def_id);
 
             // If we need to codegen, ensure that we emit all errors from
             // `mir_drops_elaborated_and_const_checked` now, to avoid discovering
             // them later during codegen.
             if tcx.sess.opts.output_types.should_codegen()
-                || tcx.hir().body_const_context(def_id).is_some()
+                || tcx.hir_body_const_context(def_id).is_some()
             {
                 tcx.ensure_ok().mir_drops_elaborated_and_const_checked(def_id);
             }
         });
     });
     sess.time("coroutine_obligations", || {
-        tcx.hir().par_body_owners(|def_id| {
+        tcx.par_hir_body_owners(|def_id| {
             if tcx.is_coroutine(def_id.to_def_id()) {
                 tcx.ensure_ok().mir_coroutine_witnesses(def_id);
                 tcx.ensure_ok().check_coroutine_obligations(
@@ -930,7 +931,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     // that requires the optimized/ctfe MIR, coroutine bodies, or evaluating consts.
     if tcx.sess.opts.unstable_opts.validate_mir {
         sess.time("ensuring_final_MIR_is_computable", || {
-            tcx.hir().par_body_owners(|def_id| {
+            tcx.par_hir_body_owners(|def_id| {
                 tcx.instance_mir(ty::InstanceKind::Item(def_id.into()));
             });
         });
@@ -966,7 +967,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) {
                         tcx.ensure_ok().check_private_in_public(());
                     },
                     {
-                        tcx.hir().par_for_each_module(|module| {
+                        tcx.par_hir_for_each_module(|module| {
                             tcx.ensure_ok().check_mod_deathness(module)
                         });
                     },
@@ -982,7 +983,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) {
             },
             {
                 sess.time("privacy_checking_modules", || {
-                    tcx.hir().par_for_each_module(|module| {
+                    tcx.par_hir_for_each_module(|module| {
                         tcx.ensure_ok().check_mod_privacy(module);
                     });
                 });
@@ -1134,7 +1135,7 @@ fn get_recursion_limit(krate_attrs: &[ast::Attribute], sess: &Session) -> Limit 
     // because that would require expanding this while in the middle of expansion, which needs to
     // know the limit before expanding.
     let _ = validate_and_find_value_str_builtin_attr(sym::recursion_limit, sess, krate_attrs);
-    rustc_middle::middle::limits::get_recursion_limit(krate_attrs, sess)
+    crate::limits::get_recursion_limit(krate_attrs, sess)
 }
 
 /// Validate *all* occurrences of the given "[value-str]" built-in attribute and return the first find.

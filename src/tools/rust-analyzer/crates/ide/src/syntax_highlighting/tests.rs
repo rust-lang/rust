@@ -136,21 +136,10 @@ use self::foo as bar;
 fn test_highlighting() {
     check_highlighting(
         r#"
-//- minicore: derive, copy
+//- minicore: derive, copy, fn
 //- /main.rs crate:main deps:foo
 use inner::{self as inner_mod};
 mod inner {}
-
-pub mod ops {
-    #[lang = "fn_once"]
-    pub trait FnOnce<Args> {}
-
-    #[lang = "fn_mut"]
-    pub trait FnMut<Args>: FnOnce<Args> {}
-
-    #[lang = "fn"]
-    pub trait Fn<Args>: FnMut<Args> {}
-}
 
 struct Foo {
     x: u32,
@@ -218,7 +207,7 @@ fn const_param<const FOO: usize>() -> usize {
     FOO
 }
 
-use ops::Fn;
+use core::ops::Fn;
 fn baz<F: Fn() -> ()>(f: F) {
     f()
 }
@@ -722,6 +711,15 @@ fn test_highlight_doc_comment() {
 //! fn test() {}
 //! ```
 
+//! ```rust
+//! extern crate self;
+//! extern crate std;
+//! extern crate core;
+//! extern crate alloc;
+//! extern crate proc_macro;
+//! extern crate test;
+//! extern crate Krate;
+//! ```
 mod outline_module;
 
 /// ```
@@ -1084,6 +1082,9 @@ pub struct Struct;
     );
 }
 
+// Rainbow highlighting uses a deterministic hash (fxhash) but the hashing does differ
+// depending on the pointer width so only runs this on 64-bit targets.
+#[cfg(target_pointer_width = "64")]
 #[test]
 fn test_rainbow_highlighting() {
     check_highlighting(

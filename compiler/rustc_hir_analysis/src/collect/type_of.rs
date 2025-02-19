@@ -451,7 +451,7 @@ fn infer_placeholder_type<'tcx>(
                     );
                 } else {
                     with_forced_trimmed_paths!(err.span_note(
-                        tcx.hir().body(body_id).value.span,
+                        tcx.hir_body(body_id).value.span,
                         format!("however, the inferred type `{ty}` cannot be named"),
                     ));
                 }
@@ -494,7 +494,7 @@ fn infer_placeholder_type<'tcx>(
                     );
                 } else {
                     with_forced_trimmed_paths!(diag.span_note(
-                        tcx.hir().body(body_id).value.span,
+                        tcx.hir_body(body_id).value.span,
                         format!("however, the inferred type `{ty}` cannot be named"),
                     ));
                 }

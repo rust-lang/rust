@@ -327,8 +327,9 @@ impl Resolver {
                     | LangItemTarget::ImplDef(_)
                     | LangItemTarget::Static(_) => return None,
                 };
+                // Remaining segments start from 0 because lang paths have no segments other than the remaining.
                 return Some((
-                    ResolveValueResult::Partial(type_ns, 1, None),
+                    ResolveValueResult::Partial(type_ns, 0, None),
                     ResolvePathResultPrefixInfo::default(),
                 ));
             }
