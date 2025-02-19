@@ -209,7 +209,6 @@ impl<'tcx, Prov: Provenance> LocalState<'tcx, Prov> {
 pub struct FrameInfo<'tcx> {
     pub instance: ty::Instance<'tcx>,
     pub span: Span,
-    pub is_last: bool,
 }
 
 // FIXME: only used by miri, should be removed once translatable.
@@ -237,20 +236,14 @@ impl<'tcx> FrameInfo<'tcx> {
                 span,
                 instance: String::new(),
                 times: 0,
-                is_last: self.is_last,
+                is_last: false,
             }
         } else {
             let instance = format!("{}", self.instance);
             // Note: this triggers a `must_produce_diag` state, which means that if we ever get
             // here we must emit a diagnostic. We should never display a `FrameInfo` unless we
             // actually want to emit a warning or error to the user.
-            errors::FrameNote {
-                where_: "instance",
-                span,
-                instance,
-                times: 0,
-                is_last: self.is_last,
-            }
+            errors::FrameNote { where_: "instance", span, instance, times: 0, is_last: false }
         }
     }
 }
@@ -335,7 +328,7 @@ impl<'tcx, Prov: Provenance, Extra> Frame<'tcx, Prov, Extra> {
                     let mir::SourceInfo { mut span, scope } = *frame.body.source_info(loc);
                     let mut scope_data = &frame.body.source_scopes[scope];
                     while let Some((instance, call_span)) = scope_data.inlined {
-                        frames.push(FrameInfo { span, instance, is_last: false });
+                        frames.push(FrameInfo { span, instance });
                         span = call_span;
                         scope_data = &frame.body.source_scopes[scope_data.parent_scope.unwrap()];
                     }
@@ -343,7 +336,7 @@ impl<'tcx, Prov: Provenance, Extra> Frame<'tcx, Prov, Extra> {
                 }
                 Right(span) => span,
             };
-            frames.push(FrameInfo { span, instance: frame.instance, is_last: false });
+            frames.push(FrameInfo { span, instance: frame.instance });
         }
         trace!("generate stacktrace: {:#?}", frames);
         frames
