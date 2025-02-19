@@ -355,4 +355,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "It is now possible to configure `jemalloc` for each target",
     },
+    ChangeInfo {
+        change_id: 137215,
+        severity: ChangeSeverity::Info,
+        summary: "Added `build.test-stage = 2` to 'tools' profile defaults",
+    },
 ];
