@@ -1070,7 +1070,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 None,
             );
             if fallback_binding.ok().and_then(|b| b.res().opt_def_id()) != Some(def_id) {
-                let scope = match parent_scope.module.kind {
+                let location = match parent_scope.module.kind {
                     ModuleKind::Def(_, _, name) if name == kw::Empty => {
                         "the crate root".to_string()
                     }
@@ -1086,7 +1086,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     BuiltinLintDiag::OutOfScopeMacroCalls {
                         span: path.span,
                         path: pprust::path_to_string(path),
-                        scope,
+                        location,
                     },
                 );
             }

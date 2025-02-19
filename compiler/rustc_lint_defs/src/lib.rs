@@ -821,7 +821,7 @@ pub enum BuiltinLintDiag {
     OutOfScopeMacroCalls {
         span: Span,
         path: String,
-        scope: String,
+        location: String,
     },
     UnexpectedBuiltinCfg {
         cfg: String,

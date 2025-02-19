@@ -3111,7 +3111,7 @@ pub(crate) struct OutOfScopeMacroCalls {
     #[label]
     pub span: Span,
     pub path: String,
-    pub scope: String,
+    pub location: String,
 }
 
 #[derive(LintDiagnostic)]
