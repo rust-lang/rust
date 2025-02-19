@@ -3748,7 +3748,6 @@ dependencies = [
  "itertools",
  "rustc_abi",
  "rustc_ast",
- "rustc_ast_ir",
  "rustc_attr_parsing",
  "rustc_data_structures",
  "rustc_errors",
@@ -3813,7 +3812,6 @@ dependencies = [
 name = "rustc_infer"
 version = "0.0.0"
 dependencies = [
- "rustc_ast_ir",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_fluent_macro",
@@ -4004,7 +4002,6 @@ dependencies = [
  "rustc_apfloat",
  "rustc_arena",
  "rustc_ast",
- "rustc_ast_ir",
  "rustc_attr_parsing",
  "rustc_data_structures",
  "rustc_error_messages",
@@ -4134,7 +4131,6 @@ name = "rustc_next_trait_solver"
 version = "0.0.0"
 dependencies = [
  "derive-where",
- "rustc_ast_ir",
  "rustc_data_structures",
  "rustc_index",
  "rustc_macros",
@@ -4454,7 +4450,6 @@ dependencies = [
  "itertools",
  "rustc_abi",
  "rustc_ast",
- "rustc_ast_ir",
  "rustc_attr_parsing",
  "rustc_data_structures",
  "rustc_errors",
@@ -4493,7 +4488,6 @@ version = "0.0.0"
 dependencies = [
  "itertools",
  "rustc_abi",
- "rustc_ast_ir",
  "rustc_data_structures",
  "rustc_hir",
  "rustc_infer",
@@ -4509,7 +4503,6 @@ version = "0.0.0"
 dependencies = [
  "itertools",
  "rustc_abi",
- "rustc_ast_ir",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_fluent_macro",

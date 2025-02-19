@@ -45,8 +45,8 @@ use std::fmt;
 use std::ops::ControlFlow;
 use std::sync::Arc;
 
-use rustc_ast_ir::visit::VisitorResult;
-use rustc_ast_ir::{try_visit, walk_visitable_list};
+pub use rustc_ast_ir::visit::VisitorResult;
+pub use rustc_ast_ir::{try_visit, walk_visitable_list};
 use rustc_index::{Idx, IndexVec};
 use smallvec::SmallVec;
 use thin_vec::ThinVec;

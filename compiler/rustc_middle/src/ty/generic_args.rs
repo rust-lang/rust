@@ -6,8 +6,6 @@ use std::mem;
 use std::num::NonZero;
 use std::ptr::NonNull;
 
-use rustc_ast_ir::visit::VisitorResult;
-use rustc_ast_ir::walk_visitable_list;
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_hir::def_id::DefId;
@@ -18,7 +16,7 @@ use smallvec::SmallVec;
 
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable};
-use crate::ty::visit::{TypeVisitable, TypeVisitor};
+use crate::ty::visit::{TypeVisitable, TypeVisitor, VisitorResult, walk_visitable_list};
 use crate::ty::{
     self, ClosureArgs, CoroutineArgs, CoroutineClosureArgs, InlineConstArgs, Lift, List, Ty, TyCtxt,
 };
