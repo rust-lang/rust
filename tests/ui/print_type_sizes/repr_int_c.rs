@@ -17,3 +17,8 @@ enum Repru8 {
     A(u16),
     B,
 }
+
+fn main() {
+    let c = ReprCu8::A(0);
+    let r = Repru8::A(0);
+}

@@ -30,3 +30,14 @@ pub struct S {
     c: A,
     d: i8,
 }
+
+fn main() {
+    let s = S {
+        a: 0,
+        b: 0,
+        c: A(0),
+        d: 0,
+    };
+
+    let e = E::A(0);
+}
