@@ -195,8 +195,7 @@ fn visit_implementation_of_coerce_unsized(checker: &Checker<'_>) -> Result<(), E
     // Just compute this for the side-effects, in particular reporting
     // errors; other parts of the code may demand it for the info of
     // course.
-    let span = tcx.def_span(impl_did);
-    tcx.at(span).ensure_ok().coerce_unsized_info(impl_did)
+    tcx.ensure_ok().coerce_unsized_info(impl_did)
 }
 
 fn is_from_coerce_pointee_derive(tcx: TyCtxt<'_>, span: Span) -> bool {
@@ -218,12 +217,23 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
     let dispatch_from_dyn_trait = tcx.require_lang_item(LangItem::DispatchFromDyn, Some(span));
 
     let source = trait_ref.self_ty();
-    assert!(!source.has_escaping_bound_vars());
     let target = {
         assert_eq!(trait_ref.def_id, dispatch_from_dyn_trait);
 
         trait_ref.args.type_at(1)
     };
+
+    // Check `CoercePointee` impl is WF -- if not, then there's no reason to report
+    // redundant errors for `DispatchFromDyn`. This is best effort, though.
+    let mut res = Ok(());
+    tcx.for_each_relevant_impl(
+        tcx.require_lang_item(LangItem::CoerceUnsized, Some(span)),
+        source,
+        |impl_def_id| {
+            res = res.and(tcx.ensure_ok().coerce_unsized_info(impl_def_id));
+        },
+    );
+    res?;
 
     debug!("visit_implementation_of_dispatch_from_dyn: {:?} -> {:?}", source, target);
 
