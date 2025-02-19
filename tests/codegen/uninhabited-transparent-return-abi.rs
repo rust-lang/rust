@@ -1,3 +1,5 @@
+//@ compile-flags: -Copt-level=3
+
 // See https://github.com/rust-lang/rust/issues/135802
 
 #![crate_type = "lib"]
