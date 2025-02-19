@@ -270,10 +270,12 @@ macro_rules! make_mir_visitor {
 
             fn visit_local(
                 &mut self,
-                _local: $(& $mutability)? Local,
-                _context: PlaceContext,
-                _location: Location,
-            ) {}
+                local: $(& $mutability)? Local,
+                context: PlaceContext,
+                location: Location,
+            ) {
+                self.super_local(local, context, location)
+            }
 
             fn visit_source_scope(
                 &mut self,
@@ -866,6 +868,14 @@ macro_rules! make_mir_visitor {
                         self.visit_user_type_projection(user_ty);
                     }
                 }
+            }
+
+            fn super_local(
+                &mut self,
+                _local: $(& $mutability)? Local,
+                _context: PlaceContext,
+                _location: Location,
+            ) {
             }
 
             fn super_var_debug_info(
