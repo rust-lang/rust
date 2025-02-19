@@ -293,8 +293,13 @@ impl<'a, 'tcx> PatMigration<'a, 'tcx> {
         self.add_default_mode_label_if_needed();
         // This sets the default binding mode to by-value in the user's pattern, but we'll try to
         // suggest removing it.
-        // TODO: if this is inside a macro expansion, we won't be able to remove it.
         self.push_deref(pat_span, mutbl, PatDerefKind::Explicit { inner_span: subpat.span });
+
+        // If this is inside a macro expansion, we won't be able to remove it.
+        if pat_span.from_expansion() {
+            self.add_derefs_to_suggestion(self.innermost_deref);
+            return;
+        }
 
         // If the immediate subpattern is a binding, removing this reference pattern would change
         // its type. To avoid that, we include it and all its parents in that case.
@@ -378,8 +383,11 @@ impl<'a, 'tcx> PatMigration<'a, 'tcx> {
 
         // If `mode` doesn't match the default, we'll need to specify its binding modifiers
         // explicitly, which in turn necessitates a by-move default binding mode.
-        // TODO: if this is inside a macro expansion, we won't be able to change it.
-        let suggest = mode != BindingMode(self.sugg_default_mode(), Mutability::Not);
+        // Additionally, if this is inside a macro expansion, we won't be able to change it. If a
+        // binding modifier is missing inside the expansion, there's not much we can do, but we can
+        // avoid suggestions to elide binding modifiers that are explicit within expansions.
+        let suggest = mode != BindingMode(self.sugg_default_mode(), Mutability::Not)
+            || pat_span.from_expansion() && explicit_ba != BindingMode::NONE;
 
         // Track the binding
         let span = if explicit_ba == BindingMode::NONE {

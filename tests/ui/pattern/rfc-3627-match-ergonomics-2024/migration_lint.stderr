@@ -580,6 +580,10 @@ note: matching on a reference type with a non-reference pattern changes the defa
 LL |     let [migration_lint_macros::bind_ref!(a)] = &[0];
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this matches on type `&_`
    = note: this error originates in the macro `migration_lint_macros::bind_ref` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: make the implied reference pattern explicit
+   |
+LL |     let &[migration_lint_macros::bind_ref!(a)] = &[0];
+   |         +
 
 error: reference patterns may only be written when the default binding mode is `move` in Rust 2024
   --> $DIR/migration_lint.rs:249:10
