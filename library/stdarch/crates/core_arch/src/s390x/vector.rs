@@ -891,6 +891,63 @@ mod sealed {
     impl_rot! { verllvg fshlg u64 }
 
     impl_vec_shift! { [VectorRl vec_rl] (verllvb, verllvh, verllvf, verllvg) }
+
+    macro_rules! test_rot_imm {
+        ($fun:ident $instr:ident $intr:ident $ty:ident) => {
+            #[inline]
+            #[target_feature(enable = "vector")]
+            #[cfg_attr(test, assert_instr($instr))]
+            unsafe fn $fun(a: t_t_l!($ty), bits: core::ffi::c_ulong) -> t_t_l!($ty) {
+                // mod by the number of bits in a's element type to prevent UB
+                let bits = (bits % $ty::BITS as core::ffi::c_ulong) as $ty;
+                let a = transmute(a);
+                let b = <t_t_s!($ty)>::splat(bits);
+
+                transmute($intr(a, a, transmute(b)))
+            }
+        };
+    }
+
+    test_rot_imm! { verllvb_imm verllb fshlb u8 }
+    test_rot_imm! { verllvh_imm verllh fshlh u16 }
+    test_rot_imm! { verllvf_imm verllf fshlf u32 }
+    test_rot_imm! { verllvg_imm verllg fshlg u64 }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorRli {
+        unsafe fn vec_rli(self, bits: core::ffi::c_ulong) -> Self;
+    }
+
+    macro_rules! impl_rot_imm {
+        ($($ty:ident, $intr:ident),*) => {
+            $(
+                #[unstable(feature = "stdarch_s390x", issue = "135681")]
+                impl VectorRli for $ty {
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_rli(self, bits: core::ffi::c_ulong) -> Self {
+                        transmute($intr(transmute(self), bits))
+                    }
+                }
+
+                #[unstable(feature = "stdarch_s390x", issue = "135681")]
+                impl VectorRli for t_u!($ty) {
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_rli(self, bits: core::ffi::c_ulong) -> Self {
+                        $intr(self, bits)
+                    }
+                }
+            )*
+        }
+    }
+
+    impl_rot_imm! {
+        vector_signed_char, verllvb_imm,
+        vector_signed_short, verllvh_imm,
+        vector_signed_int, verllvf_imm,
+        vector_signed_long_long, verllvg_imm
+    }
 }
 
 /// Vector element-wise addition.
@@ -1337,6 +1394,18 @@ where
     T: sealed::VectorSral<vector_unsigned_char, Result = T>,
 {
     a.vec_sral(b)
+}
+
+/// Rotates each element of a vector left by a given number of bits. Each element of the result is obtained by rotating the corresponding element
+/// of a left by the number of bits specified by b, modulo the number of bits in the element.
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_rli<T>(a: T, bits: core::ffi::c_ulong) -> T
+where
+    T: sealed::VectorRli,
+{
+    a.vec_rli(bits)
 }
 
 #[cfg(test)]
