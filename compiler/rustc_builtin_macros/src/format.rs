@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use parse::Position::ArgumentNamed;
 use rustc_ast::ptr::P;
 use rustc_ast::tokenstream::TokenStream;
@@ -334,7 +336,7 @@ fn make_format_args(
         return ExpandResult::Ready(Err(guar));
     }
 
-    let to_span = |inner_span: parse::InnerSpan| {
+    let to_span = |inner_span: Range<usize>| {
         is_source_literal.then(|| {
             fmt_span.from_inner(InnerSpan { start: inner_span.start, end: inner_span.end })
         })
@@ -406,7 +408,7 @@ fn make_format_args(
     let mut placeholder_index = 0;
 
     for piece in &pieces {
-        match *piece {
+        match piece.clone() {
             parse::Piece::Lit(s) => {
                 unfinished_literal.push_str(s);
             }
@@ -416,7 +418,8 @@ fn make_format_args(
                     unfinished_literal.clear();
                 }
 
-                let span = parser.arg_places.get(placeholder_index).and_then(|&s| to_span(s));
+                let span =
+                    parser.arg_places.get(placeholder_index).and_then(|s| to_span(s.clone()));
                 placeholder_index += 1;
 
                 let position_span = to_span(position_span);
@@ -608,7 +611,7 @@ fn make_format_args(
 fn invalid_placeholder_type_error(
     ecx: &ExtCtxt<'_>,
     ty: &str,
-    ty_span: Option<parse::InnerSpan>,
+    ty_span: Option<Range<usize>>,
     fmt_span: Span,
 ) {
     let sp = ty_span.map(|sp| fmt_span.from_inner(InnerSpan::new(sp.start, sp.end)));
@@ -774,8 +777,12 @@ fn report_redundant_format_arguments<'a>(
     let mut fmt_spans = vec![];
 
     for (i, unnamed_arg) in args.unnamed_args().iter().enumerate().rev() {
-        let Some(ty) = unnamed_arg.expr.to_ty() else { continue };
-        let Some(argument_binding) = ty.kind.is_simple_path() else { continue };
+        let Some(ty) = unnamed_arg.expr.to_ty() else {
+            continue;
+        };
+        let Some(argument_binding) = ty.kind.is_simple_path() else {
+            continue;
+        };
         let argument_binding = argument_binding.as_str();
 
         if used[i] {
