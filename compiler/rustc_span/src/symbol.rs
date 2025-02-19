@@ -975,7 +975,6 @@ symbols! {
         forbid,
         forget,
         format,
-        format_alignment,
         format_args,
         format_args_capture,
         format_args_macro,
