@@ -73,6 +73,7 @@ impl Alignment {
     /// It must *not* be zero.
     #[unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[inline]
+    #[track_caller]
     pub const unsafe fn new_unchecked(align: usize) -> Self {
         assert_unsafe_precondition!(
             check_language_ub,

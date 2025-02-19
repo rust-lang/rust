@@ -1,10 +1,9 @@
 error[E0080]: evaluation of constant value failed
-  --> $SRC_DIR/core/src/hint.rs:LL:COL
+  --> $DIR/const_unsafe_unreachable_ub.rs:6:18
    |
-   = note: entering unreachable code
+LL |         false => std::hint::unreachable_unchecked(),
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ entering unreachable code
    |
-note: inside `unreachable_unchecked`
-  --> $SRC_DIR/core/src/hint.rs:LL:COL
 note: inside `foo`
   --> $DIR/const_unsafe_unreachable_ub.rs:6:18
    |

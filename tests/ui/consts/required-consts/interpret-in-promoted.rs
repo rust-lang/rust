@@ -4,7 +4,7 @@
 //! Make sure we evaluate const fn calls even if they get promoted and their result ignored.
 
 const unsafe fn ub() {
-    std::hint::unreachable_unchecked();
+    std::hint::unreachable_unchecked(); //~ evaluation of constant value failed
 }
 
 pub const FOO: () = unsafe {
