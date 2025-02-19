@@ -1212,6 +1212,21 @@ mod sealed {
         unsafe fn vec_reve(self) -> Self;
     }
 
+    #[repr(simd)]
+    struct ReverseMask<const N: usize>([u32; N]);
+
+    impl<const N: usize> ReverseMask<N> {
+        const fn new() -> Self {
+            let mut index = [0; N];
+            let mut i = 0;
+            while i < N {
+                index[i] = (N - i - 1) as u32;
+                i += 1;
+            }
+            ReverseMask(index)
+        }
+    }
+
     macro_rules! impl_reve {
         ($($ty:ident, $fun:ident, $instr:ident),*) => {
             $(
