@@ -346,35 +346,37 @@ fn extract_hole_spans_from_hir<'tcx>(
     body_span: Span, // Usually `hir_body.value.span`, but not always
     hir_body: &hir::Body<'tcx>,
 ) -> Vec<Span> {
-    struct HolesVisitor<'hir, F> {
-        tcx: TyCtxt<'hir>,
-        visit_hole_span: F,
+    struct HolesVisitor<'tcx> {
+        tcx: TyCtxt<'tcx>,
+        body_span: Span,
+        hole_spans: Vec<Span>,
     }
 
-    impl<'hir, F: FnMut(Span)> Visitor<'hir> for HolesVisitor<'hir, F> {
-        /// - We need `NestedFilter::INTRA = true` so that `visit_item` will be called.
-        /// - Bodies of nested items don't actually get visited, because of the
-        ///   `visit_item` override.
-        /// - For nested bodies that are not part of an item, we do want to visit any
-        ///   items contained within them.
-        type NestedFilter = nested_filter::All;
+    impl<'tcx> Visitor<'tcx> for HolesVisitor<'tcx> {
+        /// We have special handling for nested items, but we still want to
+        /// traverse into nested bodies of things that are not considered items,
+        /// such as "anon consts" (e.g. array lengths).
+        type NestedFilter = nested_filter::OnlyBodies;
 
-        fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        fn maybe_tcx(&mut self) -> TyCtxt<'tcx> {
             self.tcx
         }
 
-        fn visit_item(&mut self, item: &'hir hir::Item<'hir>) {
-            (self.visit_hole_span)(item.span);
+        /// We override `visit_nested_item` instead of `visit_item` because we
+        /// only need the item's span, not the item itself.
+        fn visit_nested_item(&mut self, id: hir::ItemId) -> Self::Result {
+            let span = self.tcx.def_span(id.owner_id.def_id);
+            self.visit_hole_span(span);
             // Having visited this item, we don't care about its children,
             // so don't call `walk_item`.
         }
 
         // We override `visit_expr` instead of the more specific expression
         // visitors, so that we have direct access to the expression span.
-        fn visit_expr(&mut self, expr: &'hir hir::Expr<'hir>) {
+        fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
             match expr.kind {
                 hir::ExprKind::Closure(_) | hir::ExprKind::ConstBlock(_) => {
-                    (self.visit_hole_span)(expr.span);
+                    self.visit_hole_span(expr.span);
                     // Having visited this expression, we don't care about its
                     // children, so don't call `walk_expr`.
                 }
@@ -384,18 +386,17 @@ fn extract_hole_spans_from_hir<'tcx>(
             }
         }
     }
-
-    let mut hole_spans = vec![];
-    let mut visitor = HolesVisitor {
-        tcx,
-        visit_hole_span: |hole_span| {
+    impl HolesVisitor<'_> {
+        fn visit_hole_span(&mut self, hole_span: Span) {
             // Discard any holes that aren't directly visible within the body span.
-            if body_span.contains(hole_span) && body_span.eq_ctxt(hole_span) {
-                hole_spans.push(hole_span);
+            if self.body_span.contains(hole_span) && self.body_span.eq_ctxt(hole_span) {
+                self.hole_spans.push(hole_span);
             }
-        },
-    };
+        }
+    }
+
+    let mut visitor = HolesVisitor { tcx, body_span, hole_spans: vec![] };
 
     visitor.visit_body(hir_body);
-    hole_spans
+    visitor.hole_spans
 }
