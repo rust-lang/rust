@@ -835,7 +835,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.add_rust_2024_migration_desugared_pat(
                         pat_info.top_info.hir_id,
                         pat,
-                        't',
+                        't', // last char of `mut`
                         def_br_mutbl,
                     );
                     BindingMode(ByRef::No, Mutability::Mut)
@@ -848,7 +848,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.add_rust_2024_migration_desugared_pat(
                         pat_info.top_info.hir_id,
                         pat,
-                        if user_br_mutbl.is_mut() { 't' } else { 'f' },
+                        match user_br_mutbl {
+                            Mutability::Not => 'f', // last char of `ref`
+                            Mutability::Mut => 't', // last char of `ref mut`
+                        },
                         def_br_mutbl,
                     );
                 }
@@ -2387,7 +2390,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.add_rust_2024_migration_desugared_pat(
                         pat_info.top_info.hir_id,
                         pat,
-                        if pat_mutbl.is_mut() { 't' } else { '&' },
+                        match pat_mutbl {
+                            Mutability::Not => '&', // last char of `&`
+                            Mutability::Mut => 't', // last char of `&mut`
+                        },
                         inh_mut,
                     )
                 }
