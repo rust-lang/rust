@@ -200,6 +200,11 @@ impl BuildMetrics {
             }
         };
         invocations.push(JsonInvocation {
+            cmdline: std::env::args_os()
+                .skip(1)
+                .map(|arg| arg.to_string_lossy().to_string())
+                .collect::<Vec<_>>()
+                .join(" "),
             start_time: state
                 .invocation_start
                 .duration_since(SystemTime::UNIX_EPOCH)
