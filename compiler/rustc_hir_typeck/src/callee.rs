@@ -223,12 +223,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             //            ^ without this hack `f` would have to be declared as mutable
             //
             // The simplest fix by far is to just ignore this case and deref again,
-            // so we wind up with `FnMut::call_mut(&mut *f, ())`.
+            // so we wind up with `FnMut::call_mut(&mut *f, ())`.  This does not 
+            // apply to structs, enums, or unions; because they should be `mut` 
+            // if they use `call_mut()`.
             ty::Ref(_, deref_ty, _) if autoderef.step_count() == 0 => {
                 match deref_ty.kind() {
-                    ty::Adt(..) => {},
-                    _ => {return None}
-                }
+                    ty::Adt(..) => {}
+                    _ => return None,
+                };
             }
 
             ty::Error(_) => {
