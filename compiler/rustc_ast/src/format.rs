@@ -160,6 +160,13 @@ impl FormatArgumentKind {
             &Self::Captured(id) => Some(id),
         }
     }
+
+    pub fn is_captured(&self) -> bool {
+        match self {
+            Self::Captured(_) => true,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, PartialEq, Eq)]

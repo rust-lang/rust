@@ -467,3 +467,10 @@ pub(crate) struct UseConstGenericArg {
     #[suggestion_part(code = "{other_args}")]
     pub call_args: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(ast_lowering_too_many_format_arguments)]
+pub(crate) struct TooManyFormatArguments {
+    #[primary_span]
+    pub span: Span,
+}

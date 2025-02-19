@@ -175,6 +175,9 @@ ast_lowering_template_modifier = template modifier
 
 ast_lowering_this_not_async = this is not `async`
 
+ast_lowering_too_many_format_arguments =
+    too many arguments used in format string
+
 ast_lowering_underscore_array_length_unstable =
     using `_` for array lengths is unstable
 
