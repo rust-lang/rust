@@ -33,7 +33,6 @@ use rustc_index::{IndexSlice, IndexVec};
 use rustc_infer::infer::{
     InferCtxt, NllRegionVariableOrigin, RegionVariableOrigin, TyCtxtInferExt,
 };
-use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::fold::fold_regions;

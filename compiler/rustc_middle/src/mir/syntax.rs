@@ -1133,7 +1133,7 @@ pub type AssertMessage<'tcx> = AssertKind<Operand<'tcx>>;
 ///
 ///  1. The address in memory that the place refers to.
 ///  2. The provenance with which the place is being accessed.
-///  3. The type of the place and an optional variant index. See [`PlaceTy`][super::tcx::PlaceTy].
+///  3. The type of the place and an optional variant index. See [`PlaceTy`][super::PlaceTy].
 ///  4. Optionally, some metadata. This exists if and only if the type of the place is not `Sized`.
 ///
 /// We'll give a description below of how all pieces of the place except for the provenance are

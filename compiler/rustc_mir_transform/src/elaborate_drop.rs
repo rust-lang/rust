@@ -185,7 +185,7 @@ where
             place.ty(self.elaborator.body(), self.tcx()).ty
         } else {
             // We don't have a slice with all the locals, since some are in the patch.
-            tcx::PlaceTy::from_ty(self.elaborator.patch_ref().local_ty(place.local))
+            PlaceTy::from_ty(self.elaborator.patch_ref().local_ty(place.local))
                 .multi_projection_ty(self.elaborator.tcx(), place.projection)
                 .ty
         }
