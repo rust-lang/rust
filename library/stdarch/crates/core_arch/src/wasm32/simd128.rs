@@ -90,9 +90,9 @@ unsafe extern "C" {
     fn llvm_narrow_i8x16_s(a: simd::i16x8, b: simd::i16x8) -> simd::i8x16;
     #[link_name = "llvm.wasm.narrow.unsigned.v16i8.v8i16"]
     fn llvm_narrow_i8x16_u(a: simd::i16x8, b: simd::i16x8) -> simd::i8x16;
-    #[link_name = "llvm.wasm.sub.sat.signed.v16i8"]
+    #[link_name = "llvm.ssub.sat.v16i8"]
     fn llvm_i8x16_sub_sat_s(a: simd::i8x16, b: simd::i8x16) -> simd::i8x16;
-    #[link_name = "llvm.wasm.sub.sat.unsigned.v16i8"]
+    #[link_name = "llvm.usub.sat.v16i8"]
     fn llvm_i8x16_sub_sat_u(a: simd::i8x16, b: simd::i8x16) -> simd::i8x16;
     #[link_name = "llvm.wasm.avgr.unsigned.v16i8"]
     fn llvm_avgr_u_i8x16(a: simd::i8x16, b: simd::i8x16) -> simd::i8x16;
@@ -111,9 +111,9 @@ unsafe extern "C" {
     fn llvm_narrow_i16x8_s(a: simd::i32x4, b: simd::i32x4) -> simd::i16x8;
     #[link_name = "llvm.wasm.narrow.unsigned.v8i16.v4i32"]
     fn llvm_narrow_i16x8_u(a: simd::i32x4, b: simd::i32x4) -> simd::i16x8;
-    #[link_name = "llvm.wasm.sub.sat.signed.v8i16"]
+    #[link_name = "llvm.ssub.sat.v8i16"]
     fn llvm_i16x8_sub_sat_s(a: simd::i16x8, b: simd::i16x8) -> simd::i16x8;
-    #[link_name = "llvm.wasm.sub.sat.unsigned.v8i16"]
+    #[link_name = "llvm.usub.sat.v8i16"]
     fn llvm_i16x8_sub_sat_u(a: simd::i16x8, b: simd::i16x8) -> simd::i16x8;
     #[link_name = "llvm.wasm.avgr.unsigned.v8i16"]
     fn llvm_avgr_u_i16x8(a: simd::i16x8, b: simd::i16x8) -> simd::i16x8;
