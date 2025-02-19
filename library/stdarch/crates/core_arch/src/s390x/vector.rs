@@ -1120,6 +1120,114 @@ mod sealed {
             transmute(transmute::<_, vector_signed_long_long>(self).vec_revb())
         }
     }
+
+    #[repr(simd)]
+    struct MergeMask<const N: usize>([u32; N]);
+
+    impl<const N: usize> MergeMask<N> {
+        const fn merge_low() -> Self {
+            let mut mask = [0; N];
+            let mut i = N / 2;
+            let mut index = 0;
+            while index < N {
+                mask[index] = i as u32;
+                mask[index + 1] = (i + N) as u32;
+
+                i += 1;
+                index += 2;
+            }
+            MergeMask(mask)
+        }
+
+        const fn merge_high() -> Self {
+            let mut mask = [0; N];
+            let mut i = 0;
+            let mut index = 0;
+            while index < N {
+                mask[index] = i as u32;
+                mask[index + 1] = (i + N) as u32;
+
+                i += 1;
+                index += 2;
+            }
+            MergeMask(mask)
+        }
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorMergel {
+        unsafe fn vec_mergel(self, other: Self) -> Self;
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorMergeh {
+        unsafe fn vec_mergeh(self, other: Self) -> Self;
+    }
+
+    macro_rules! impl_merge {
+        ($($ty:ident, $mergel:ident, $mergeh:ident),*) => {
+            $(
+                #[inline]
+                #[target_feature(enable = "vector")]
+                #[cfg_attr(test, assert_instr($mergel))]
+                unsafe fn $mergel(a: $ty, b: $ty) -> $ty {
+                    const N: usize = core::mem::size_of::<$ty>() / core::mem::size_of::<l_t_t!($ty)>();
+                    simd_shuffle(a, b, const { MergeMask::<N>::merge_low() })
+                }
+
+                #[unstable(feature = "stdarch_s390x", issue = "135681")]
+                impl VectorMergel for $ty {
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_mergel(self, other: Self) -> Self {
+                        $mergel(self, other)
+                    }
+                }
+
+                #[unstable(feature = "stdarch_s390x", issue = "135681")]
+                impl VectorMergel for t_u!($ty) {
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_mergel(self, other: Self) -> Self {
+                        transmute($mergel(transmute(self), transmute(other)))
+                    }
+                }
+
+                #[inline]
+                #[target_feature(enable = "vector")]
+                #[cfg_attr(test, assert_instr($mergeh))]
+                unsafe fn $mergeh(a: $ty, b: $ty) -> $ty {
+                    const N: usize = core::mem::size_of::<$ty>() / core::mem::size_of::<l_t_t!($ty)>();
+                    simd_shuffle(a, b, const { MergeMask::<N>::merge_high() })
+                }
+
+                #[unstable(feature = "stdarch_s390x", issue = "135681")]
+                impl VectorMergeh for $ty {
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_mergeh(self, other: Self) -> Self {
+                        $mergeh(self, other)
+                    }
+                }
+
+                #[unstable(feature = "stdarch_s390x", issue = "135681")]
+                impl VectorMergeh for t_u!($ty) {
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_mergeh(self, other: Self) -> Self {
+                        transmute($mergeh(transmute(self), transmute(other)))
+                    }
+                }
+            )*
+        }
+    }
+
+    impl_merge! {
+        vector_signed_char, vmrlb, vmrhb,
+        vector_signed_short, vmrlh, vmrhh,
+        vector_signed_int, vmrlf, vmrhf,
+        vector_signed_long_long, vmrlg, vmrhg
+    }
 }
 
 /// Vector element-wise addition.
@@ -1602,6 +1710,28 @@ where
     a.vec_revb()
 }
 
+/// Merges the most significant ("high") halves of two vectors.
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_mergeh<T>(a: T, b: T) -> T
+where
+    T: sealed::VectorMergeh,
+{
+    a.vec_mergeh(b)
+}
+
+/// Merges the least significant ("low") halves of two vectors.
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_mergel<T>(a: T, b: T) -> T
+where
+    T: sealed::VectorMergel,
+{
+    a.vec_mergel(b)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1966,5 +2096,17 @@ mod tests {
     test_vec_1! { test_vec_revb_u32, vec_revb, u32x4,
         [0xAABBCCDD, 0xEEFF0011, 0x22334455, 0x66778899],
         [0xDDCCBBAA, 0x1100FFEE, 0x55443322, 0x99887766]
+    }
+
+    test_vec_2! { test_vec_mergeh_u32, vec_mergeh, u32x4,
+        [0xAAAAAAAA, 0xBBBBBBBB, 0xCCCCCCCC, 0xDDDDDDDD],
+        [0x00000000, 0x11111111, 0x22222222, 0x33333333],
+        [0xAAAAAAAA, 0x00000000, 0xBBBBBBBB, 0x11111111]
+    }
+
+    test_vec_2! { test_vec_mergel_u32, vec_mergel, u32x4,
+        [0xAAAAAAAA, 0xBBBBBBBB, 0xCCCCCCCC, 0xDDDDDDDD],
+        [0x00000000, 0x11111111, 0x22222222, 0x33333333],
+        [0xCCCCCCCC, 0x22222222, 0xDDDDDDDD, 0x33333333]
     }
 }
