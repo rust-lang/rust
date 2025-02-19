@@ -8,7 +8,7 @@ const fn f<F>(_: &[u8], _: F) -> &[u8]
 where
     F: FnMut(&u8),
 {
-    panic!() //~ panic
+    panic!() //~ inside `f
 }
 
 fn main() {}
