@@ -95,6 +95,11 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.fshl.v8i16"] fn fshlh(a: vector_unsigned_short, b: vector_unsigned_short, c: vector_unsigned_short) -> vector_unsigned_short;
     #[link_name = "llvm.fshl.v4i32"] fn fshlf(a: vector_unsigned_int, b: vector_unsigned_int, c: vector_unsigned_int) -> vector_unsigned_int;
     #[link_name = "llvm.fshl.v2i64"] fn fshlg(a: vector_unsigned_long_long, b: vector_unsigned_long_long, c: vector_unsigned_long_long) -> vector_unsigned_long_long;
+
+    #[link_name = "llvm.s390.verimb"] fn verimb(a: vector_signed_char, b: vector_signed_char, c: vector_signed_char, d: i32) -> vector_signed_char;
+    #[link_name = "llvm.s390.verimh"] fn verimh(a: vector_signed_short, b: vector_signed_short, c: vector_signed_short, d: i32) -> vector_signed_short;
+    #[link_name = "llvm.s390.verimf"] fn verimf(a: vector_signed_int, b: vector_signed_int, c: vector_signed_int, d: i32) -> vector_signed_int;
+    #[link_name = "llvm.s390.verimg"] fn verimg(a: vector_signed_long_long, b: vector_signed_long_long, c: vector_signed_long_long, d: i32) -> vector_signed_long_long;
 }
 
 impl_from! { i8x16, u8x16,  i16x8, u16x8, i32x4, u32x4, i64x2, u64x2, f32x4, f64x2 }
@@ -947,6 +952,50 @@ mod sealed {
         vector_signed_short, verllvh_imm,
         vector_signed_int, verllvf_imm,
         vector_signed_long_long, verllvg_imm
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorRlMask<Other> {
+        unsafe fn vec_rl_mask<const IMM8: u8>(self, other: Other) -> Self;
+    }
+
+    macro_rules! impl_rl_mask {
+        ($($ty:ident, $intr:ident, $fun:ident),*) => {
+            $(
+                #[inline]
+                #[target_feature(enable = "vector")]
+                #[cfg_attr(test, assert_instr($intr, IMM8 = 6))]
+                unsafe fn $fun<const IMM8: u8>(a: $ty, b: t_u!($ty)) -> $ty {
+                    // mod by the number of bits in a's element type to prevent UB
+                    $intr(a, a, transmute(b), const { (IMM8 % <l_t_t!($ty)>::BITS as u8) as i32 })
+                }
+
+                #[unstable(feature = "stdarch_s390x", issue = "135681")]
+                impl VectorRlMask<t_u!($ty)> for $ty {
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_rl_mask<const IMM8: u8>(self, other: t_u!($ty)) -> Self {
+                        $fun::<IMM8>(self, other)
+                    }
+                }
+
+                #[unstable(feature = "stdarch_s390x", issue = "135681")]
+                impl VectorRlMask<t_u!($ty)> for t_u!($ty) {
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_rl_mask<const IMM8: u8>(self, other: t_u!($ty)) -> Self {
+                        transmute($fun::<IMM8>(transmute(self), transmute(other)))
+                    }
+                }
+            )*
+        }
+    }
+
+    impl_rl_mask! {
+        vector_signed_char, verimb, test_verimb,
+        vector_signed_short, verimh, test_verimh,
+        vector_signed_int, verimf, test_verimf,
+        vector_signed_long_long, verimg, test_verimg
     }
 }
 

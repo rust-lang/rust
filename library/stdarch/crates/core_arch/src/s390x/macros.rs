@@ -213,6 +213,41 @@ macro_rules! s_t_l {
     };
 }
 
+macro_rules! l_t_t {
+    (vector_signed_long_long) => {
+        i64
+    };
+    (vector_signed_int) => {
+        i32
+    };
+    (vector_signed_short) => {
+        i16
+    };
+    (vector_signed_char) => {
+        i8
+    };
+
+    (vector_unsigned_long_long ) => {
+        u64
+    };
+    (vector_unsigned_int ) => {
+        u32
+    };
+    (vector_unsigned_short ) => {
+        u16
+    };
+    (vector_unsigned_char ) => {
+        u8
+    };
+
+    (vector_float) => {
+        f32
+    };
+    (vector_double) => {
+        f64
+    };
+}
+
 macro_rules! t_t_l {
     (i64) => {
         vector_signed_long_long
@@ -401,6 +436,7 @@ macro_rules! impl_neg {
 pub(crate) use impl_from;
 pub(crate) use impl_neg;
 pub(crate) use impl_vec_trait;
+pub(crate) use l_t_t;
 pub(crate) use s_t_l;
 pub(crate) use t_b;
 pub(crate) use t_t_l;
