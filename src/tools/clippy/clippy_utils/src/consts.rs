@@ -351,21 +351,18 @@ pub enum FullInt {
 }
 
 impl PartialEq for FullInt {
-    #[must_use]
     fn eq(&self, other: &Self) -> bool {
         self.cmp(other) == Ordering::Equal
     }
 }
 
 impl PartialOrd for FullInt {
-    #[must_use]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
 impl Ord for FullInt {
-    #[must_use]
     fn cmp(&self, other: &Self) -> Ordering {
         use FullInt::{S, U};
 

@@ -71,6 +71,16 @@ impl char {
     #[stable(feature = "assoc_char_consts", since = "1.52.0")]
     pub const MAX: char = '\u{10FFFF}';
 
+    /// The maximum number of bytes required to [encode](char::encode_utf8) a `char` to
+    /// UTF-8 encoding.
+    #[unstable(feature = "char_max_len", issue = "121714")]
+    pub const MAX_LEN_UTF8: usize = 4;
+
+    /// The maximum number of two-byte units required to [encode](char::encode_utf16) a `char`
+    /// to UTF-16 encoding.
+    #[unstable(feature = "char_max_len", issue = "121714")]
+    pub const MAX_LEN_UTF16: usize = 2;
+
     /// `U+FFFD REPLACEMENT CHARACTER` (�) is used in Unicode to represent a
     /// decoding error.
     ///
