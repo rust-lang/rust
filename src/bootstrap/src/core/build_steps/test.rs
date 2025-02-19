@@ -2785,14 +2785,15 @@ impl Step for Crate {
             _ => panic!("can only test libraries"),
         };
 
-        run_cargo_test(
-            cargo,
-            &[],
-            &self.crates,
-            &*crate_description(&self.crates),
-            target,
-            builder,
-        );
+        let mut crates = self.crates.clone();
+        // The core crate can't directly be tested. We could silently
+        // ignore it, but adding it's own test crate is less confusing
+        // for users. We still keep core itself for doctests.
+        if crates.iter().any(|crate_| crate_ == "core") {
+            crates.push("coretests".to_owned());
+        }
+
+        run_cargo_test(cargo, &[], &crates, &*crate_description(&self.crates), target, builder);
     }
 }
 
