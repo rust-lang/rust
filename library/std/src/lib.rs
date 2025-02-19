@@ -284,6 +284,7 @@
 #![feature(cfg_sanitizer_cfi)]
 #![feature(cfg_target_thread_local)]
 #![feature(cfi_encoding)]
+#![feature(char_max_len)]
 #![feature(concat_idents)]
 #![feature(decl_macro)]
 #![feature(deprecated_suggestion)]
