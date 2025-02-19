@@ -252,16 +252,16 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
                 }));
             }
 
-            let mut res = Ok(());
             if def_a.repr().c() || def_a.repr().packed() {
-                res = Err(tcx.dcx().emit_err(errors::DispatchFromDynRepr { span }));
+                return Err(tcx.dcx().emit_err(errors::DispatchFromDynRepr { span }));
             }
 
             let fields = &def_a.non_enum_variant().fields;
 
+            let mut res = Ok(());
             let coerced_fields = fields
-                .iter()
-                .filter(|field| {
+                .iter_enumerated()
+                .filter_map(|(i, field)| {
                     // Ignore PhantomData fields
                     let unnormalized_ty = tcx.type_of(field.did).instantiate_identity();
                     if tcx
@@ -272,7 +272,7 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
                         .unwrap_or(unnormalized_ty)
                         .is_phantom_data()
                     {
-                        return false;
+                        return None;
                     }
 
                     let ty_a = field.ty(tcx, args_a);
@@ -290,7 +290,7 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
                             && !ty_a.has_non_region_param()
                         {
                             // ignore 1-ZST fields
-                            return false;
+                            return None;
                         }
 
                         res = Err(tcx.dcx().emit_err(errors::DispatchFromDynZST {
@@ -299,40 +299,36 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
                             ty: ty_a,
                         }));
 
-                        return false;
+                        None
+                    } else {
+                        Some((i, ty_a, ty_b))
                     }
-
-                    true
                 })
                 .collect::<Vec<_>>();
+            res?;
 
             if coerced_fields.is_empty() {
-                res = Err(tcx.dcx().emit_err(errors::DispatchFromDynSingle {
+                return Err(tcx.dcx().emit_err(errors::DispatchFromDynSingle {
                     span,
                     trait_name: "DispatchFromDyn",
                     note: true,
                 }));
             } else if coerced_fields.len() > 1 {
-                res = Err(tcx.dcx().emit_err(errors::DispatchFromDynMulti {
+                return Err(tcx.dcx().emit_err(errors::DispatchFromDynMulti {
                     span,
                     coercions_note: true,
                     number: coerced_fields.len(),
                     coercions: coerced_fields
                         .iter()
-                        .map(|field| {
-                            format!(
-                                "`{}` (`{}` to `{}`)",
-                                field.name,
-                                field.ty(tcx, args_a),
-                                field.ty(tcx, args_b),
-                            )
+                        .map(|&(i, ty_a, ty_b)| {
+                            format!("`{}` (`{}` to `{}`)", fields[i].name, ty_a, ty_b,)
                         })
                         .collect::<Vec<_>>()
                         .join(", "),
                 }));
             } else {
                 let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
-                for field in coerced_fields {
+                for (_, ty_a, ty_b) in coerced_fields {
                     ocx.register_obligation(Obligation::new(
                         tcx,
                         cause.clone(),
@@ -340,19 +336,20 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
                         ty::TraitRef::new(
                             tcx,
                             dispatch_from_dyn_trait,
-                            [field.ty(tcx, args_a), field.ty(tcx, args_b)],
+                            [ty_a, ty_b],
                         ),
                     ));
                 }
                 let errors = ocx.select_all_or_error();
                 if !errors.is_empty() {
-                    res = Err(infcx.err_ctxt().report_fulfillment_errors(errors));
+                    return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
                 }
 
                 // Finally, resolve all regions.
-                res = res.and(ocx.resolve_regions_and_report_errors(impl_did, param_env, []));
+                ocx.resolve_regions_and_report_errors(impl_did, param_env, [])?;
             }
-            res
+
+            Ok(())
         }
         _ => Err(tcx
             .dcx()
@@ -558,11 +555,11 @@ pub(crate) fn coerce_unsized_info<'tcx>(
     ocx.register_obligation(obligation);
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        infcx.err_ctxt().report_fulfillment_errors(errors);
+        return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
     }
 
     // Finally, resolve all regions.
-    let _ = ocx.resolve_regions_and_report_errors(impl_did, param_env, []);
+    ocx.resolve_regions_and_report_errors(impl_did, param_env, [])?;
 
     Ok(CoerceUnsizedInfo { custom_kind: kind })
 }
