@@ -76,43 +76,43 @@ LL | #[must_use]
    | ^^^^^^^^^^^
 
 error: `#[must_use]` has no effect when applied to a trait alias
-  --> $DIR/unused_attributes-must_use.rs:84:1
+  --> $DIR/unused_attributes-must_use.rs:89:1
    |
 LL | #[must_use]
    | ^^^^^^^^^^^
 
 error: `#[must_use]` has no effect when applied to a macro def
-  --> $DIR/unused_attributes-must_use.rs:87:1
+  --> $DIR/unused_attributes-must_use.rs:92:1
    |
 LL | #[must_use]
    | ^^^^^^^^^^^
 
 error: `#[must_use]` has no effect when applied to a statement
-  --> $DIR/unused_attributes-must_use.rs:95:5
+  --> $DIR/unused_attributes-must_use.rs:100:5
    |
 LL |     #[must_use]
    |     ^^^^^^^^^^^
 
 error: `#[must_use]` has no effect when applied to a closure
-  --> $DIR/unused_attributes-must_use.rs:99:13
+  --> $DIR/unused_attributes-must_use.rs:104:13
    |
 LL |     let x = #[must_use]
    |             ^^^^^^^^^^^
 
 error: `#[must_use]` has no effect when applied to an match arm
-  --> $DIR/unused_attributes-must_use.rs:121:9
+  --> $DIR/unused_attributes-must_use.rs:126:9
    |
 LL |         #[must_use]
    |         ^^^^^^^^^^^
 
 error: `#[must_use]` has no effect when applied to a struct field
-  --> $DIR/unused_attributes-must_use.rs:129:28
+  --> $DIR/unused_attributes-must_use.rs:134:28
    |
 LL |     let s = PatternField { #[must_use]  foo: 123 };
    |                            ^^^^^^^^^^^
 
 error: `#[must_use]` has no effect when applied to a pattern field
-  --> $DIR/unused_attributes-must_use.rs:130:24
+  --> $DIR/unused_attributes-must_use.rs:135:24
    |
 LL |     let PatternField { #[must_use] foo } = s;
    |                        ^^^^^^^^^^^
@@ -129,6 +129,12 @@ error: `#[must_use]` has no effect when applied to an associated type
 LL |     #[must_use]
    |     ^^^^^^^^^^^
 
+error: `#[must_use]` has no effect when applied to a provided trait method
+  --> $DIR/unused_attributes-must_use.rs:83:5
+   |
+LL |     #[must_use]
+   |     ^^^^^^^^^^^
+
 error: `#[must_use]` has no effect when applied to a foreign static item
   --> $DIR/unused_attributes-must_use.rs:50:5
    |
@@ -136,7 +142,7 @@ LL |     #[must_use]
    |     ^^^^^^^^^^^
 
 error: unused `X` that must be used
-  --> $DIR/unused_attributes-must_use.rs:103:5
+  --> $DIR/unused_attributes-must_use.rs:108:5
    |
 LL |     X;
    |     ^
@@ -152,7 +158,7 @@ LL |     let _ = X;
    |     +++++++
 
 error: unused `Y` that must be used
-  --> $DIR/unused_attributes-must_use.rs:104:5
+  --> $DIR/unused_attributes-must_use.rs:109:5
    |
 LL |     Y::Z;
    |     ^^^^
@@ -163,7 +169,7 @@ LL |     let _ = Y::Z;
    |     +++++++
 
 error: unused `U` that must be used
-  --> $DIR/unused_attributes-must_use.rs:105:5
+  --> $DIR/unused_attributes-must_use.rs:110:5
    |
 LL |     U { unit: () };
    |     ^^^^^^^^^^^^^^
@@ -174,7 +180,7 @@ LL |     let _ = U { unit: () };
    |     +++++++
 
 error: unused return value of `U::method` that must be used
-  --> $DIR/unused_attributes-must_use.rs:106:5
+  --> $DIR/unused_attributes-must_use.rs:111:5
    |
 LL |     U::method();
    |     ^^^^^^^^^^^
@@ -185,7 +191,7 @@ LL |     let _ = U::method();
    |     +++++++
 
 error: unused return value of `foo` that must be used
-  --> $DIR/unused_attributes-must_use.rs:107:5
+  --> $DIR/unused_attributes-must_use.rs:112:5
    |
 LL |     foo();
    |     ^^^^^
@@ -196,7 +202,7 @@ LL |     let _ = foo();
    |     +++++++
 
 error: unused return value of `foreign_foo` that must be used
-  --> $DIR/unused_attributes-must_use.rs:110:9
+  --> $DIR/unused_attributes-must_use.rs:115:9
    |
 LL |         foreign_foo();
    |         ^^^^^^^^^^^^^
@@ -207,7 +213,7 @@ LL |         let _ = foreign_foo();
    |         +++++++
 
 error: unused return value of `Use::get_four` that must be used
-  --> $DIR/unused_attributes-must_use.rs:118:5
+  --> $DIR/unused_attributes-must_use.rs:123:5
    |
 LL |     ().get_four();
    |     ^^^^^^^^^^^^^
@@ -217,5 +223,5 @@ help: use `let _ = ...` to ignore the resulting value
 LL |     let _ = ().get_four();
    |     +++++++
 
-error: aborting due to 28 previous errors
+error: aborting due to 29 previous errors
 

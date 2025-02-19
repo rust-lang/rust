@@ -371,7 +371,6 @@ macro_rules! impl_trait {
             }
 
             #[inline]
-            #[must_use = "method returns a new mask and does not mutate the original value"]
             fn is_normal(self) -> Self::Mask {
                 !(self.abs().simd_eq(Self::splat(0.0)) | self.is_nan() | self.is_subnormal() | self.is_infinite())
             }
