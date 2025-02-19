@@ -901,7 +901,7 @@ fn short_item_info(
             }
             DeprecatedSince::Future => String::from("Deprecating in a future version"),
             DeprecatedSince::NonStandard(since) => {
-                format!("Deprecated since {}", Escape(since.as_str()))
+                format!("Deprecated since {}", Escape(since))
             }
             DeprecatedSince::Unspecified | DeprecatedSince::Err => String::from("Deprecated"),
         };
@@ -1682,7 +1682,7 @@ fn notable_traits_button(ty: &clean::Type, cx: &Context<'_>) -> Option<impl fmt:
             write!(
                 f,
                 " <a href=\"#\" class=\"tooltip\" data-notable-ty=\"{ty}\">ⓘ</a>",
-                ty = Escape(&format!("{:#}", print_type(ty, cx))),
+                ty = Escape(format_args!("{:#}", print_type(ty, cx))),
             )
         })
     })

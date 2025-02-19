@@ -8,7 +8,7 @@ use std::fmt;
 use pulldown_cmark_escape::FmtWriter;
 use unicode_segmentation::UnicodeSegmentation;
 
-#[inline(always)]
+#[inline]
 fn escape(s: &str, mut w: impl fmt::Write, escape_quotes: bool) -> fmt::Result {
     // Because the internet is always right, turns out there's not that many
     // characters to escape: http://stackoverflow.com/questions/7381974
@@ -36,13 +36,30 @@ fn escape(s: &str, mut w: impl fmt::Write, escape_quotes: bool) -> fmt::Result {
     Ok(())
 }
 
+struct WriteEscaped<W: fmt::Write> {
+    writer: W,
+    escape_quotes: bool,
+}
+
+impl<W: fmt::Write> fmt::Write for WriteEscaped<W> {
+    #[inline]
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        escape(s, &mut self.writer, self.escape_quotes)
+    }
+}
+
 /// Wrapper struct which will emit the HTML-escaped version of the contained
 /// string when passed to a format string.
-pub(crate) struct Escape<'a>(pub &'a str);
+pub(crate) struct Escape<T>(pub T);
 
-impl fmt::Display for Escape<'_> {
+impl<T: fmt::Display> fmt::Display for Escape<T> {
+    #[inline]
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        escape(self.0, fmt, true)
+        self.0.fmt(
+            &mut fmt
+                .options()
+                .create_formatter(&mut WriteEscaped { writer: fmt, escape_quotes: true }),
+        )
     }
 }
 
@@ -52,11 +69,15 @@ impl fmt::Display for Escape<'_> {
 /// This is only safe to use for text nodes. If you need your output to be
 /// safely contained in an attribute, use [`Escape`]. If you don't know the
 /// difference, use [`Escape`].
-pub(crate) struct EscapeBodyText<'a>(pub &'a str);
+pub(crate) struct EscapeBodyText<T>(pub T);
 
-impl fmt::Display for EscapeBodyText<'_> {
+impl<T: fmt::Display> fmt::Display for EscapeBodyText<T> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        escape(self.0, fmt, false)
+        self.0.fmt(
+            &mut fmt
+                .options()
+                .create_formatter(&mut WriteEscaped { writer: fmt, escape_quotes: false }),
+        )
     }
 }
 

@@ -1,3 +1,11 @@
+use std::iter;
+
+#[test]
+fn escape() {
+    use super::Escape as E;
+    assert_eq!(format!("<Hello> {}", E("<World>")), "<Hello> &lt;World&gt;");
+}
+
 // basic examples
 #[test]
 fn escape_body_text_with_wbr() {
