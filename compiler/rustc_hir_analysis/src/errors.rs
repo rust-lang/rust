@@ -1322,6 +1322,18 @@ pub(crate) struct CoerceSameStruct {
 }
 
 #[derive(Diagnostic)]
+#[diag(hir_analysis_coerce_unsized_field_validity)]
+pub(crate) struct CoerceFieldValidity<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub ty: Ty<'tcx>,
+    pub trait_name: &'static str,
+    #[label]
+    pub field_span: Span,
+    pub field_ty: Ty<'tcx>,
+}
+
+#[derive(Diagnostic)]
 #[diag(hir_analysis_trait_cannot_impl_for_ty, code = E0204)]
 pub(crate) struct TraitCannotImplForTy {
     #[primary_span]

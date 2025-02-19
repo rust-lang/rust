@@ -99,6 +99,9 @@ hir_analysis_coerce_pointee_not_struct = `derive(CoercePointee)` is only applica
 
 hir_analysis_coerce_pointee_not_transparent = `derive(CoercePointee)` is only applicable to `struct` with `repr(transparent)` layout
 
+hir_analysis_coerce_unsized_field_validity = for `{$ty}` to have a valid implementation of `{$trait_name}`, it must be possible to coerce the field of type `{$field_ty}`
+    .label = `{$field_ty}` must be a pointer, reference, or smart pointer that is allowed to be unsized
+
 hir_analysis_coerce_unsized_may = the trait `{$trait_name}` may only be implemented for a coercion between structures
 
 hir_analysis_coerce_zero = implementing `{$trait_name}` requires a field to be coerced
