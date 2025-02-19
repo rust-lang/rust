@@ -720,7 +720,7 @@ fn short_item_info(
             }
             DeprecatedSince::Future => String::from("Deprecating in a future version"),
             DeprecatedSince::NonStandard(since) => {
-                format!("Deprecated since {}", Escape(since.as_str()))
+                format!("Deprecated since {}", Escape(since))
             }
             DeprecatedSince::Unspecified | DeprecatedSince::Err => String::from("Deprecated"),
         };
@@ -1518,8 +1518,8 @@ pub(crate) fn notable_traits_button<'a, 'tcx>(
         fmt::from_fn(|f| {
             write!(
                 f,
-                " <a href=\"#\" class=\"tooltip\" data-notable-ty=\"{ty}\">ⓘ</a>",
-                ty = Escape(&format!("{:#}", ty.print(cx))),
+                " <a href=\"#\" class=\"tooltip\" data-notable-ty=\"{ty:#}\">ⓘ</a>",
+                ty = Escape(ty.print(cx)),
             )
         })
     })

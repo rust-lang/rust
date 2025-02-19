@@ -534,12 +534,16 @@ fn extra_info_tags<'a, 'tcx: 'a>(
     import_def_id: Option<DefId>,
 ) -> impl Display + 'a + Captures<'tcx> {
     fmt::from_fn(move |f| {
-        fn tag_html<'a>(class: &'a str, title: &'a str, contents: &'a str) -> impl Display + 'a {
+        fn tag_html<'a>(
+            class: impl fmt::Display + 'a,
+            title: impl fmt::Display + 'a,
+            contents: impl fmt::Display + 'a,
+        ) -> impl Display + 'a {
             fmt::from_fn(move |f| {
                 write!(
                     f,
                     r#"<wbr><span class="stab {class}" title="{title}">{contents}</span>"#,
-                    title = Escape(title),
+                    title = Escape(&title),
                 )
             })
         }

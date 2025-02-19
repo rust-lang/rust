@@ -853,7 +853,7 @@ pub(crate) fn anchor<'a: 'cx, 'cx>(
                 f,
                 r#"<a class="{short_ty}" href="{url}" title="{short_ty} {path}">{text}</a>"#,
                 path = join_with_double_colon(&fqp),
-                text = EscapeBodyText(text.as_str()),
+                text = EscapeBodyText(text),
             )
         } else {
             f.write_str(text.as_str())
