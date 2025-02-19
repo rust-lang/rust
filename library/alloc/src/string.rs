@@ -3157,6 +3157,24 @@ impl From<String> for Vec<u8> {
     }
 }
 
+#[stable(feature = "try_from_vec_u8_for_string", since = "CURRENT_RUSTC_VERSION")]
+impl TryFrom<Vec<u8>> for String {
+    type Error = FromUtf8Error;
+    /// Converts the given [`Vec<u8>`] into a  [`String`] if it contains valid UTF-8 data.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let s1 = b"hello world".to_vec();
+    /// let v1 = String::try_from(s1).unwrap();
+    /// assert_eq!(v1, "hello world");
+    ///
+    /// ```
+    fn try_from(bytes: Vec<u8>) -> Result<Self, Self::Error> {
+        Self::from_utf8(bytes)
+    }
+}
+
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Write for String {
