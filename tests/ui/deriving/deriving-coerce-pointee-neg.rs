@@ -145,7 +145,6 @@ struct TryToWipeRepr<'a, #[pointee] T: ?Sized> {
 #[repr(transparent)]
 #[derive(CoercePointee)]
 //~^ ERROR for `RcWithId<T>` to have a valid implementation of `CoerceUnsized`, it must be possible to coerce the field of type `Rc<(i32, Box<T>)>`
-//~| ERROR for `RcWithId<T>` to have a valid implementation of `DispatchFromDyn`, it must be possible to coerce the field of type `Rc<(i32, Box<T>)>`
 struct RcWithId<T: ?Sized> {
     inner: std::rc::Rc<(i32, Box<T>)>,
 }
@@ -153,7 +152,6 @@ struct RcWithId<T: ?Sized> {
 #[repr(transparent)]
 #[derive(CoercePointee)]
 //~^ ERROR implementing `CoerceUnsized` does not allow multiple fields to be coerced
-//~| ERROR implementing `DispatchFromDyn` does not allow multiple fields to be coerced
 struct MoreThanOneField<T: ?Sized> {
     //~^ ERROR transparent struct needs at most one field with non-trivial size or alignment, but has 2
     inner1: Box<T>,
@@ -165,7 +163,6 @@ struct NotCoercePointeeData<T: ?Sized>(T);
 #[repr(transparent)]
 #[derive(CoercePointee)]
 //~^ ERROR for `UsingNonCoercePointeeData<T>` to have a valid implementation of `CoerceUnsized`, it must be possible to coerce the field of type `NotCoercePointeeData<T>`
-//~| ERROR for `UsingNonCoercePointeeData<T>` to have a valid implementation of `DispatchFromDyn`, it must be possible to coerce the field of type `NotCoercePointeeData<T>`
 struct UsingNonCoercePointeeData<T: ?Sized>(NotCoercePointeeData<T>);
 
 fn main() {}
