@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::cmp::Ordering;
 
 use rinja::Template;
 use rustc_data_structures::fx::FxHashSet;
@@ -12,6 +13,7 @@ use crate::clean;
 use crate::formats::Impl;
 use crate::formats::item_type::ItemType;
 use crate::html::markdown::{IdMap, MarkdownWithToc};
+use crate::html::render::print_item::compare_names;
 
 #[derive(Clone, Copy)]
 pub(crate) enum ModuleLike {
@@ -77,7 +79,7 @@ impl<'a> LinkBlock<'a> {
 }
 
 /// A link to an item. Content should not be escaped.
-#[derive(PartialOrd, Ord, PartialEq, Eq, Hash, Clone)]
+#[derive(Ord, PartialEq, Eq, Hash, Clone)]
 pub(crate) struct Link<'a> {
     /// The content for the anchor tag and title attr
     name: Cow<'a, str>,
@@ -87,6 +89,20 @@ pub(crate) struct Link<'a> {
     href: Cow<'a, str>,
     /// Nested list of links (used only in top-toc)
     children: Vec<Link<'a>>,
+}
+
+impl PartialOrd for Link<'_> {
+    fn partial_cmp(&self, other: &Link<'_>) -> Option<Ordering> {
+        match compare_names(&self.name, &other.name) {
+            Ordering::Equal => (),
+            result => return Some(result),
+        }
+        (&self.name_html, &self.href, &self.children).partial_cmp(&(
+            &other.name_html,
+            &other.href,
+            &other.children,
+        ))
+    }
 }
 
 impl<'a> Link<'a> {
