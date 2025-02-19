@@ -408,16 +408,21 @@ impl TargetDataLayout {
         }
     }
 
+    /// psABI-mandated alignment for a vector type, if any
     #[inline]
-    pub fn vector_align(&self, vec_size: Size) -> AbiAndPrefAlign {
-        for &(size, align) in &self.vector_align {
-            if size == vec_size {
-                return align;
-            }
-        }
-        // Default to natural alignment, which is what LLVM does.
-        // That is, use the size, rounded up to a power of 2.
-        AbiAndPrefAlign::new(Align::from_bytes(vec_size.bytes().next_power_of_two()).unwrap())
+    fn cabi_vector_align(&self, vec_size: Size) -> Option<AbiAndPrefAlign> {
+        self.vector_align
+            .iter()
+            .find(|(size, _align)| *size == vec_size)
+            .map(|(_size, align)| *align)
+    }
+
+    /// an alignment resembling the one LLVM would pick for a vector
+    #[inline]
+    pub fn llvmlike_vector_align(&self, vec_size: Size) -> AbiAndPrefAlign {
+        self.cabi_vector_align(vec_size).unwrap_or(AbiAndPrefAlign::new(
+            Align::from_bytes(vec_size.bytes().next_power_of_two()).unwrap(),
+        ))
     }
 }
 
