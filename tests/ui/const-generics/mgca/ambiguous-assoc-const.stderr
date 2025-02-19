@@ -6,8 +6,9 @@ LL | fn foo() -> Blah<{ Tr::N }> {
    |
 help: if there were a type named `Example` that implemented `Tr`, you could use the fully-qualified path
    |
-LL | fn foo() -> Blah<{ <Example as Tr>::N }> {
-   |                    ~~~~~~~~~~~~~~~~~~
+LL - fn foo() -> Blah<{ Tr::N }> {
+LL + fn foo() -> Blah<{ <Example as Tr>::N }> {
+   |
 
 error: aborting due to 1 previous error
 
