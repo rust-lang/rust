@@ -1210,7 +1210,7 @@ impl<T> Slice<T> {
 fn main() {
     let foo: Slice<u32>;
     foo.into_vec(); // we shouldn't crash on this at least
-} //^^^^^^^^^^^^^^ {unknown}
+} //^^^^^^^^^^^^^^ ()
 "#,
     );
 }

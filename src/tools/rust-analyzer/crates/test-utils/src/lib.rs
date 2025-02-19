@@ -396,10 +396,17 @@ pub fn skip_slow_tests() -> bool {
     if should_skip {
         eprintln!("ignoring slow test");
     } else {
-        let path = project_root().join("./target/.slow_tests_cookie");
+        let path = target_dir().join(".slow_tests_cookie");
         fs::write(path, ".").unwrap();
     }
     should_skip
+}
+
+pub fn target_dir() -> Utf8PathBuf {
+    match std::env::var("CARGO_TARGET_DIR") {
+        Ok(target) => Utf8PathBuf::from(target),
+        Err(_) => project_root().join("target"),
+    }
 }
 
 /// Returns the path to the root directory of `rust-analyzer` project.

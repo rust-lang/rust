@@ -65,9 +65,9 @@ macro_rules! assert_unsafe_precondition {
             #[rustc_nounwind]
             const fn precondition_check($($name:$ty),*) {
                 if !$e {
-                    ::core::panicking::panic_nounwind(
-                        concat!("unsafe precondition(s) violated: ", $message)
-                    );
+                    ::core::panicking::panic_nounwind(concat!("unsafe precondition(s) violated: ", $message,
+                        "\n\nThis indicates a bug in the program. \
+                        This Undefined Behavior check is optional, and cannot be relied on for safety."));
                 }
             }
 

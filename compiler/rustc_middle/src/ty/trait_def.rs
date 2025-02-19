@@ -235,7 +235,7 @@ pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> Trait
         }
     }
 
-    for &impl_def_id in tcx.hir().trait_impls(trait_id) {
+    for &impl_def_id in tcx.hir_trait_impls(trait_id) {
         let impl_def_id = impl_def_id.to_def_id();
 
         let impl_self_ty = tcx.type_of(impl_def_id).instantiate_identity();
@@ -267,7 +267,7 @@ pub(super) fn incoherent_impls_provider(tcx: TyCtxt<'_>, simp: SimplifiedType) -
 
 pub(super) fn traits_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> &[DefId] {
     let mut traits = Vec::new();
-    for id in tcx.hir().items() {
+    for id in tcx.hir_free_items() {
         if matches!(tcx.def_kind(id.owner_id), DefKind::Trait | DefKind::TraitAlias) {
             traits.push(id.owner_id.to_def_id())
         }
@@ -278,7 +278,7 @@ pub(super) fn traits_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> &[DefId] {
 
 pub(super) fn trait_impls_in_crate_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> &[DefId] {
     let mut trait_impls = Vec::new();
-    for id in tcx.hir().items() {
+    for id in tcx.hir_free_items() {
         if matches!(tcx.def_kind(id.owner_id), DefKind::Impl { .. })
             && tcx.impl_trait_ref(id.owner_id).is_some()
         {

@@ -495,7 +495,7 @@ impl<'tcx> GenericArgs<'tcx> {
         self.iter().filter_map(|k| k.as_const())
     }
 
-    /// Returns generic arguments that are not lifetimes or host effect params.
+    /// Returns generic arguments that are not lifetimes.
     #[inline]
     pub fn non_erasable_generics(
         &'tcx self,

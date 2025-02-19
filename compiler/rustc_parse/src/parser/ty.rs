@@ -1,5 +1,5 @@
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, BinOpToken, Delimiter, IdentIsRaw, Token, TokenKind};
+use rustc_ast::token::{self, BinOpToken, Delimiter, IdentIsRaw, MetaVarKind, Token, TokenKind};
 use rustc_ast::util::case::Case;
 use rustc_ast::{
     self as ast, BareFnTy, BoundAsyncness, BoundConstness, BoundPolarity, DUMMY_NODE_ID, FnRetTy,
@@ -18,7 +18,7 @@ use crate::errors::{
     HelpUseLatestEdition, InvalidDynKeyword, LifetimeAfterMut, NeedPlusAfterTraitObjectLifetime,
     NestedCVariadicType, ReturnTypesUseThinArrow,
 };
-use crate::{exp, maybe_recover_from_interpolated_ty_qpath, maybe_whole};
+use crate::{exp, maybe_recover_from_interpolated_ty_qpath};
 
 /// Signals whether parsing a type should allow `+`.
 ///
@@ -183,7 +183,8 @@ impl<'a> Parser<'a> {
         )
     }
 
-    /// Parse a type without recovering `:` as `->` to avoid breaking code such as `where fn() : for<'a>`
+    /// Parse a type without recovering `:` as `->` to avoid breaking code such
+    /// as `where fn() : for<'a>`.
     pub(super) fn parse_ty_for_where_clause(&mut self) -> PResult<'a, P<Ty>> {
         self.parse_ty_common(
             AllowPlus::Yes,
@@ -247,7 +248,13 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, P<Ty>> {
         let allow_qpath_recovery = recover_qpath == RecoverQPath::Yes;
         maybe_recover_from_interpolated_ty_qpath!(self, allow_qpath_recovery);
-        maybe_whole!(self, NtTy, |ty| ty);
+
+        if let Some(ty) = self.eat_metavar_seq_with_matcher(
+            |mv_kind| matches!(mv_kind, MetaVarKind::Ty { .. }),
+            |this| this.parse_ty_no_question_mark_recover(),
+        ) {
+            return Ok(ty);
+        }
 
         let lo = self.token.span;
         let mut impl_dyn_multi = false;

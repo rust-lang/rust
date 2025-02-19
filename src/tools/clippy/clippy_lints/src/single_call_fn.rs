@@ -90,8 +90,7 @@ impl SingleCallFn {
             || fn_span.in_external_macro(cx.sess().source_map())
             || cx
                 .tcx
-                .hir()
-                .maybe_body_owned_by(fn_def_id)
+                .hir_maybe_body_owned_by(fn_def_id)
                 .is_none_or(|body| is_in_test_function(cx.tcx, body.value.hir_id))
             || match cx.tcx.hir_node(fn_hir_id) {
                 Node::Item(item) => is_from_proc_macro(cx, item),

@@ -597,7 +597,7 @@ impl<'tcx> LateLintPass<'tcx> for Documentation {
                         if !(is_entrypoint_fn(cx, item.owner_id.to_def_id())
                             || item.span.in_external_macro(cx.tcx.sess.source_map()))
                         {
-                            let body = cx.tcx.hir().body(body_id);
+                            let body = cx.tcx.hir_body(body_id);
 
                             let panic_info = FindPanicUnwrap::find_span(cx, cx.tcx.typeck(item.owner_id), body.value);
                             missing_headers::check(
@@ -649,7 +649,7 @@ impl<'tcx> LateLintPass<'tcx> for Documentation {
                     && !impl_item.span.in_external_macro(cx.tcx.sess.source_map())
                     && !is_trait_impl_item(cx, impl_item.hir_id())
                 {
-                    let body = cx.tcx.hir().body(body_id);
+                    let body = cx.tcx.hir_body(body_id);
 
                     let panic_span = FindPanicUnwrap::find_span(cx, cx.tcx.typeck(impl_item.owner_id), body.value);
                     missing_headers::check(
@@ -1079,8 +1079,8 @@ impl<'tcx> Visitor<'tcx> for FindPanicUnwrap<'_, 'tcx> {
     // Panics in const blocks will cause compilation to fail.
     fn visit_anon_const(&mut self, _: &'tcx AnonConst) {}
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.cx.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.cx.tcx
     }
 }
 

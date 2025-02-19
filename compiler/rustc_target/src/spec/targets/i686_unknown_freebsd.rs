@@ -1,4 +1,4 @@
-use crate::spec::{Cc, LinkerFlavor, Lld, RustcAbi, StackProbeType, Target, base};
+use crate::spec::{Cc, LinkerFlavor, Lld, RustcAbi, StackProbeType, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::freebsd::opts();
@@ -10,7 +10,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "i686-unknown-freebsd".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("32-bit FreeBSD".into()),
             tier: Some(2),
             host_tools: Some(false),

@@ -18,6 +18,7 @@ rustc-rayon = { version = "0.5.1", features = ["indexmap"] }
 rustc-stable-hash = { version = "0.1.0", features = ["nightly"] }
 rustc_arena = { path = "../rustc_arena" }
 rustc_graphviz = { path = "../rustc_graphviz" }
+rustc_hashes = { path = "../rustc_hashes" }
 rustc_index = { path = "../rustc_index", package = "rustc_index" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_serialize = { path = "../rustc_serialize" }

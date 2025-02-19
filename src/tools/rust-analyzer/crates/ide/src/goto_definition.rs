@@ -3290,4 +3290,38 @@ fn main() {
     "#,
         );
     }
+
+    #[test]
+    fn shadow_builtin_type_by_module() {
+        check(
+            r#"
+mod Foo{
+pub mod str {
+     // ^^^
+    pub fn foo() {}
+}
+}
+
+fn main() {
+    use Foo::str;
+    let s = st$0r::foo();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn not_goto_module_because_str_is_builtin_type() {
+        check(
+            r#"
+mod str {
+pub fn foo() {}
+}
+
+fn main() {
+    let s = st$0r::f();
+}
+"#,
+        );
+    }
 }

@@ -1,6 +1,8 @@
 use rustc_abi::Endian;
 
-use crate::spec::{Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetOptions, base};
+use crate::spec::{
+    Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetMetadata, TargetOptions, base,
+};
 
 pub(crate) fn target() -> Target {
     let mut base = base::vxworks::opts();
@@ -10,7 +12,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "powerpc-unknown-linux-gnuspe".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: None,
             tier: Some(3),
             host_tools: Some(false),

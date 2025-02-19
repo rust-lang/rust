@@ -22,8 +22,7 @@ pub(crate) fn thir_body(
     tcx: TyCtxt<'_>,
     owner_def: LocalDefId,
 ) -> Result<(&Steal<Thir<'_>>, ExprId), ErrorGuaranteed> {
-    let hir = tcx.hir();
-    let body = hir.body_owned_by(owner_def);
+    let body = tcx.hir_body_owned_by(owner_def);
     let mut cx = ThirBuildCx::new(tcx, owner_def);
     if let Some(reported) = cx.typeck_results.tainted_by_errors {
         return Err(reported);
@@ -31,7 +30,7 @@ pub(crate) fn thir_body(
     let expr = cx.mirror_expr(body.value);
 
     let owner_id = tcx.local_def_id_to_hir_id(owner_def);
-    if let Some(fn_decl) = hir.fn_decl_by_hir_id(owner_id) {
+    if let Some(fn_decl) = tcx.hir_fn_decl_by_hir_id(owner_id) {
         let closure_env_param = cx.closure_env_param(owner_def, owner_id);
         let explicit_params = cx.explicit_params(owner_id, fn_decl, &body);
         cx.thir.params = closure_env_param.into_iter().chain(explicit_params).collect();
@@ -77,7 +76,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
         let hir = tcx.hir();
         let hir_id = tcx.local_def_id_to_hir_id(def);
 
-        let body_type = if hir.body_owner_kind(def).is_fn_or_closure() {
+        let body_type = if tcx.hir_body_owner_kind(def).is_fn_or_closure() {
             // fetch the fully liberated fn signature (that is, all bound
             // types/lifetimes replaced)
             BodyTy::Fn(typeck_results.liberated_fn_sigs()[hir_id])

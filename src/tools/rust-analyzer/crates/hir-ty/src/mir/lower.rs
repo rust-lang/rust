@@ -8,8 +8,8 @@ use hir_def::{
     data::adt::{StructKind, VariantData},
     expr_store::{Body, HygieneId},
     hir::{
-        ArithOp, Array, BinaryOp, BindingAnnotation, BindingId, ExprId, LabelId, Literal,
-        LiteralOrConst, MatchArm, Pat, PatId, RecordFieldPat, RecordLitField,
+        ArithOp, Array, BinaryOp, BindingAnnotation, BindingId, ExprId, LabelId, Literal, MatchArm,
+        Pat, PatId, RecordFieldPat, RecordLitField,
     },
     lang_item::{LangItem, LangItemTarget},
     path::Path,
@@ -1358,20 +1358,10 @@ impl<'ctx> MirLowerCtx<'ctx> {
         Ok(())
     }
 
-    fn lower_literal_or_const_to_operand(
-        &mut self,
-        ty: Ty,
-        loc: &LiteralOrConst,
-    ) -> Result<Operand> {
-        match loc {
-            LiteralOrConst::Literal(l) => self.lower_literal_to_operand(ty, l),
-            LiteralOrConst::Const(c) => {
-                let c = match &self.body.pats[*c] {
-                    Pat::Path(p) => p,
-                    _ => not_supported!(
-                        "only `char` and numeric types are allowed in range patterns"
-                    ),
-                };
+    fn lower_literal_or_const_to_operand(&mut self, ty: Ty, loc: &ExprId) -> Result<Operand> {
+        match &self.body.exprs[*loc] {
+            Expr::Literal(l) => self.lower_literal_to_operand(ty, l),
+            Expr::Path(c) => {
                 let edition = self.edition();
                 let unresolved_name =
                     || MirLowerError::unresolved_path(self.db, c, edition, &self.body.types);
@@ -1391,6 +1381,9 @@ impl<'ctx> MirLowerCtx<'ctx> {
                         not_supported!("associated constants in range pattern")
                     }
                 }
+            }
+            _ => {
+                not_supported!("only `char` and numeric types are allowed in range patterns");
             }
         }
     }

@@ -166,7 +166,7 @@ pub(crate) fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
         }
 
         let mut all_attrs = FindAllAttrs { tcx, found_attrs: vec![] };
-        tcx.hir().walk_attributes(&mut all_attrs);
+        tcx.hir_walk_attributes(&mut all_attrs);
 
         // Note that we cannot use the existing "unused attribute"-infrastructure
         // here, since that is running before codegen. This is also the reason why
@@ -455,8 +455,8 @@ impl<'tcx> FindAllAttrs<'tcx> {
 impl<'tcx> intravisit::Visitor<'tcx> for FindAllAttrs<'tcx> {
     type NestedFilter = nested_filter::All;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
 
     fn visit_attribute(&mut self, attr: &'tcx Attribute) {

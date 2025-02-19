@@ -82,3 +82,8 @@ type Impossible = (str, str); //~ ERROR: cannot be known at compilation time
 #[rustc_layout(debug)]
 union EmptyUnion {} //~ ERROR: has an unknown layout
 //~^ ERROR: unions cannot have zero fields
+
+// Test the error message of `LayoutError::TooGeneric`
+// (this error is never emitted to users).
+#[rustc_layout(debug)]
+type TooGeneric<T> = T; //~ ERROR: does not have a fixed layout

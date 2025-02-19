@@ -43,6 +43,7 @@ mod handlers {
     pub(crate) mod mutability_errors;
     pub(crate) mod no_such_field;
     pub(crate) mod non_exhaustive_let;
+    pub(crate) mod parenthesized_generic_args_without_fn_trait;
     pub(crate) mod private_assoc_item;
     pub(crate) mod private_field;
     pub(crate) mod remove_trailing_return;
@@ -466,7 +467,12 @@ pub fn semantic_diagnostics(
                 Some(it) => it,
                 None => continue,
             },
-            AnyDiagnostic::GenericArgsProhibited(d) => handlers::generic_args_prohibited::generic_args_prohibited(&ctx, &d)
+            AnyDiagnostic::GenericArgsProhibited(d) => {
+                handlers::generic_args_prohibited::generic_args_prohibited(&ctx, &d)
+            }
+            AnyDiagnostic::ParenthesizedGenericArgsWithoutFnTrait(d) => {
+                handlers::parenthesized_generic_args_without_fn_trait::parenthesized_generic_args_without_fn_trait(&ctx, &d)
+            }
         };
         res.push(d)
     }

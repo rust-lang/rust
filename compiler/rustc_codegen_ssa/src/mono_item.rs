@@ -35,7 +35,7 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
                 cx.codegen_static(def_id);
             }
             MonoItem::GlobalAsm(item_id) => {
-                let item = cx.tcx().hir().item(item_id);
+                let item = cx.tcx().hir_item(item_id);
                 if let hir::ItemKind::GlobalAsm(asm) = item.kind {
                     let operands: Vec<_> = asm
                         .operands

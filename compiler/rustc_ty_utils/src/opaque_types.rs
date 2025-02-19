@@ -109,7 +109,7 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
 
     #[instrument(level = "trace", skip(self))]
     fn collect_taits_declared_in_body(&mut self) {
-        let body = self.tcx.hir().body_owned_by(self.item).value;
+        let body = self.tcx.hir_body_owned_by(self.item).value;
         struct TaitInBodyFinder<'a, 'tcx> {
             collector: &'a mut OpaqueTypeCollector<'tcx>,
         }
@@ -125,7 +125,7 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
             #[instrument(level = "trace", skip(self))]
             // Recurse into these, as they are type checked with their parent
             fn visit_nested_body(&mut self, id: rustc_hir::BodyId) {
-                let body = self.collector.tcx.hir().body(id);
+                let body = self.collector.tcx.hir_body(id);
                 self.visit_body(body);
             }
         }

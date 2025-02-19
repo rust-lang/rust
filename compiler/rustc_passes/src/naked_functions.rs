@@ -45,7 +45,7 @@ fn check_mod_naked_functions(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
             _ => continue,
         };
 
-        let body = tcx.hir().body(body_id);
+        let body = tcx.hir_body(body_id);
 
         if tcx.has_attr(def_id, sym::naked) {
             check_abi(tcx, def_id, fn_header.abi);
@@ -259,8 +259,8 @@ struct CheckNakedAsmInNakedFn<'tcx> {
 impl<'tcx> Visitor<'tcx> for CheckNakedAsmInNakedFn<'tcx> {
     type NestedFilter = OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {

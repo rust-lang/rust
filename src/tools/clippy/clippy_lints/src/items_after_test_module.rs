@@ -58,7 +58,7 @@ fn cfg_test_module<'tcx>(cx: &LateContext<'tcx>, item: &Item<'tcx>) -> bool {
 
 impl LateLintPass<'_> for ItemsAfterTestModule {
     fn check_mod(&mut self, cx: &LateContext<'_>, module: &Mod<'_>, _: HirId) {
-        let mut items = module.item_ids.iter().map(|&id| cx.tcx.hir().item(id));
+        let mut items = module.item_ids.iter().map(|&id| cx.tcx.hir_item(id));
 
         let Some((mod_pos, test_mod)) = items.by_ref().enumerate().find(|(_, item)| cfg_test_module(cx, item)) else {
             return;
@@ -91,7 +91,7 @@ impl LateLintPass<'_> for ItemsAfterTestModule {
                 "items after a test module",
                 |diag| {
                     if let Some(prev) = mod_pos.checked_sub(1)
-                        && let prev = cx.tcx.hir().item(module.item_ids[prev])
+                        && let prev = cx.tcx.hir_item(module.item_ids[prev])
                         && let items_span = last.span.with_lo(test_mod.span.hi())
                         && let Some(items) = items_span.get_source_text(cx)
                     {

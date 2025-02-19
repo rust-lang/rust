@@ -205,7 +205,7 @@ impl<'tcx> LateLintPass<'tcx> for Return {
             // Ensure this is not the final stmt, otherwise removing it would cause a compile error
             && let OwnerNode::Item(item) = cx.tcx.hir_owner_node(cx.tcx.hir().get_parent_item(expr.hir_id))
             && let ItemKind::Fn { body, .. } = item.kind
-            && let block = cx.tcx.hir().body(body).value
+            && let block = cx.tcx.hir_body(body).value
             && let ExprKind::Block(block, _) = block.kind
             && !is_inside_let_else(cx.tcx, expr)
             && let [.., final_stmt] = block.stmts

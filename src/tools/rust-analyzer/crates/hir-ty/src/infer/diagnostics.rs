@@ -5,16 +5,14 @@
 use std::cell::RefCell;
 use std::ops::{Deref, DerefMut};
 
-use hir_def::expr_store::HygieneId;
-use hir_def::hir::ExprOrPatId;
-use hir_def::path::{Path, PathSegment, PathSegments};
-use hir_def::resolver::{ResolveValueResult, Resolver, TypeNs};
-use hir_def::type_ref::TypesMap;
-use hir_def::TypeOwnerId;
+use either::Either;
+use hir_def::{hir::ExprOrPatId, path::Path, resolver::Resolver, type_ref::TypesMap, TypeOwnerId};
+use la_arena::{Idx, RawIdx};
 
-use crate::db::HirDatabase;
 use crate::{
-    InferenceDiagnostic, InferenceTyDiagnosticSource, Ty, TyLoweringContext, TyLoweringDiagnostic,
+    db::HirDatabase,
+    lower::path::{PathDiagnosticCallback, PathLoweringContext},
+    InferenceDiagnostic, InferenceTyDiagnosticSource, TyLoweringContext, TyLoweringDiagnostic,
 };
 
 // Unfortunately, this struct needs to use interior mutability (but we encapsulate it)
@@ -44,6 +42,11 @@ impl Diagnostics {
     }
 }
 
+pub(crate) struct PathDiagnosticCallbackData<'a> {
+    node: ExprOrPatId,
+    diagnostics: &'a Diagnostics,
+}
+
 pub(super) struct InferenceTyLoweringContext<'a> {
     ctx: TyLoweringContext<'a>,
     diagnostics: &'a Diagnostics,
@@ -51,6 +54,7 @@ pub(super) struct InferenceTyLoweringContext<'a> {
 }
 
 impl<'a> InferenceTyLoweringContext<'a> {
+    #[inline]
     pub(super) fn new(
         db: &'a dyn HirDatabase,
         resolver: &'a Resolver,
@@ -62,65 +66,62 @@ impl<'a> InferenceTyLoweringContext<'a> {
         Self { ctx: TyLoweringContext::new(db, resolver, types_map, owner), diagnostics, source }
     }
 
-    pub(super) fn resolve_path_in_type_ns(
-        &mut self,
-        path: &Path,
+    #[inline]
+    pub(super) fn at_path<'b>(
+        &'b mut self,
+        path: &'b Path,
         node: ExprOrPatId,
-    ) -> Option<(TypeNs, Option<usize>)> {
-        let diagnostics = self.diagnostics;
-        self.ctx.resolve_path_in_type_ns(path, &mut |_, diag| {
-            diagnostics.push(InferenceDiagnostic::PathDiagnostic { node, diag })
-        })
+    ) -> PathLoweringContext<'b, 'a> {
+        let on_diagnostic = PathDiagnosticCallback {
+            data: Either::Right(PathDiagnosticCallbackData { diagnostics: self.diagnostics, node }),
+            callback: |data, _, diag| {
+                let data = data.as_ref().right().unwrap();
+                data.diagnostics
+                    .push(InferenceDiagnostic::PathDiagnostic { node: data.node, diag });
+            },
+        };
+        PathLoweringContext::new(&mut self.ctx, on_diagnostic, path)
     }
 
-    pub(super) fn resolve_path_in_value_ns(
-        &mut self,
-        path: &Path,
-        node: ExprOrPatId,
-        hygiene_id: HygieneId,
-    ) -> Option<ResolveValueResult> {
-        let diagnostics = self.diagnostics;
-        self.ctx.resolve_path_in_value_ns(path, hygiene_id, &mut |_, diag| {
-            diagnostics.push(InferenceDiagnostic::PathDiagnostic { node, diag })
-        })
+    #[inline]
+    pub(super) fn at_path_forget_diagnostics<'b>(
+        &'b mut self,
+        path: &'b Path,
+    ) -> PathLoweringContext<'b, 'a> {
+        let on_diagnostic = PathDiagnosticCallback {
+            data: Either::Right(PathDiagnosticCallbackData {
+                diagnostics: self.diagnostics,
+                node: ExprOrPatId::ExprId(Idx::from_raw(RawIdx::from_u32(0))),
+            }),
+            callback: |_data, _, _diag| {},
+        };
+        PathLoweringContext::new(&mut self.ctx, on_diagnostic, path)
     }
 
-    pub(super) fn lower_partly_resolved_path(
-        &mut self,
-        node: ExprOrPatId,
-        resolution: TypeNs,
-        resolved_segment: PathSegment<'_>,
-        remaining_segments: PathSegments<'_>,
-        resolved_segment_idx: u32,
-        infer_args: bool,
-    ) -> (Ty, Option<TypeNs>) {
-        let diagnostics = self.diagnostics;
-        self.ctx.lower_partly_resolved_path(
-            resolution,
-            resolved_segment,
-            remaining_segments,
-            resolved_segment_idx,
-            infer_args,
-            &mut |_, diag| diagnostics.push(InferenceDiagnostic::PathDiagnostic { node, diag }),
-        )
+    #[inline]
+    pub(super) fn forget_diagnostics(&mut self) {
+        self.ctx.diagnostics.clear();
     }
 }
 
 impl<'a> Deref for InferenceTyLoweringContext<'a> {
     type Target = TyLoweringContext<'a>;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.ctx
     }
 }
 
 impl DerefMut for InferenceTyLoweringContext<'_> {
+    #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.ctx
     }
 }
 
 impl Drop for InferenceTyLoweringContext<'_> {
+    #[inline]
     fn drop(&mut self) {
         self.diagnostics
             .push_ty_diagnostics(self.source, std::mem::take(&mut self.ctx.diagnostics));
