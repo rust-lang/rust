@@ -2783,10 +2783,28 @@ impl Step for Crate {
             _ => panic!("can only test libraries"),
         };
 
+        let crates = self
+            .crates
+            .iter()
+            .cloned()
+            .map(|crate_| {
+                // The core and alloc crates can't directly be tested. We could
+                // silently ignore them, but replacing them with their test crate
+                // is less confusing for users.
+                if crate_ == "core" {
+                    "coretests".to_owned()
+                } else if crate_ == "alloc" {
+                    "alloctests".to_owned()
+                } else {
+                    crate_
+                }
+            })
+            .collect::<Vec<_>>();
+
         run_cargo_test(
             cargo,
             &[],
-            &self.crates,
+            &crates,
             &self.crates[0],
             &*crate_description(&self.crates),
             target,
