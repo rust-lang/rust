@@ -44,8 +44,9 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
+use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::wf::object_region_bounds;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
@@ -1167,11 +1168,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         )? {
             LoweredAssoc::Term(def_id, args) => {
                 let assoc = tcx.associated_item(def_id);
-                let ty = if matches!(assoc, ty::AssocItem {
-                    container: ty::AssocItemContainer::Impl,
-                    trait_item_def_id: None,
-                    ..
-                }) {
+                let ty = if matches!(
+                    assoc,
+                    ty::AssocItem {
+                        container: ty::AssocItemContainer::Impl,
+                        trait_item_def_id: None,
+                        ..
+                    }
+                ) {
                     Ty::new_alias(tcx, ty::Inherent, ty::AliasTy::new_from_args(tcx, def_id, args))
                 } else {
                     Ty::new_projection_from_args(tcx, def_id, args)
@@ -1472,14 +1476,29 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) -> Result<Option<(DefId, GenericArgsRef<'tcx>)>, ErrorGuaranteed> {
         let tcx = self.tcx();
 
-        // Don't attempt to look up inherent associated types when the feature is not enabled.
-        // Theoretically it'd be fine to do so since we feature-gate their definition site.
-        // However, due to current limitations of the implementation (caused by us performing
-        // selection during HIR ty lowering instead of in the trait solver), IATs can lead to cycle
-        // errors (#108491) which mask the feature-gate error, needlessly confusing users
-        // who use IATs by accident (#113265).
-        if kind == ty::AssocKind::Type && !tcx.features().inherent_associated_types() {
-            return Ok(None);
+        if !tcx.features().inherent_associated_types() {
+            match kind {
+                // Don't attempt to look up inherent associated types when the feature is not enabled.
+                // Theoretically it'd be fine to do so since we feature-gate their definition site.
+                // However, due to current limitations of the implementation (caused by us performing
+                // selection during HIR ty lowering instead of in the trait solver), IATs can lead to cycle
+                // errors (#108491) which mask the feature-gate error, needlessly confusing users
+                // who use IATs by accident (#113265).
+                ty::AssocKind::Type => return Ok(None),
+                ty::AssocKind::Const => {
+                    // We also gate the mgca codepath for type-level uses of inherent consts
+                    // with the inherent_associated_types feature gate since it relies on the
+                    // same machinery and has similar rough edges.
+                    return Err(feature_err(
+                        &tcx.sess,
+                        sym::inherent_associated_types,
+                        span,
+                        "inherent associated types are unstable",
+                    )
+                    .emit());
+                }
+                ty::AssocKind::Fn => unreachable!(),
+            }
         }
 
         let name = segment.ident;
