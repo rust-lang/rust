@@ -310,10 +310,10 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         let mut align = if repr.pack.is_some() { dl.i8_align } else { dl.aggregate_align };
         let mut max_repr_align = repr.align;
 
-        // If all the non-ZST fields have the same ABI and union ABI optimizations aren't
-        // disabled, we can use that common ABI for the union as a whole.
+        // If all the non-ZST fields have the same repr and union repr optimizations aren't
+        // disabled, we can use that common repr for the union as a whole.
         struct AbiMismatch;
-        let mut common_non_zst_abi_and_align = if repr.inhibits_union_abi_opt() {
+        let mut common_non_zst_repr_and_align = if repr.inhibits_union_abi_opt() {
             // Can't optimize
             Err(AbiMismatch)
         } else {
@@ -337,14 +337,14 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 continue;
             }
 
-            if let Ok(common) = common_non_zst_abi_and_align {
+            if let Ok(common) = common_non_zst_repr_and_align {
                 // Discard valid range information and allow undef
                 let field_abi = field.backend_repr.to_union();
 
                 if let Some((common_abi, common_align)) = common {
                     if common_abi != field_abi {
                         // Different fields have different ABI: disable opt
-                        common_non_zst_abi_and_align = Err(AbiMismatch);
+                        common_non_zst_repr_and_align = Err(AbiMismatch);
                     } else {
                         // Fields with the same non-Aggregate ABI should also
                         // have the same alignment
@@ -357,7 +357,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                     }
                 } else {
                     // First non-ZST field: record its ABI and alignment
-                    common_non_zst_abi_and_align = Ok(Some((field_abi, field.align.abi)));
+                    common_non_zst_repr_and_align = Ok(Some((field_abi, field.align.abi)));
                 }
             }
         }
@@ -376,16 +376,25 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
 
         // If all non-ZST fields have the same ABI, we may forward that ABI
         // for the union as a whole, unless otherwise inhibited.
-        let abi = match common_non_zst_abi_and_align {
+        let backend_repr = match common_non_zst_repr_and_align {
             Err(AbiMismatch) | Ok(None) => BackendRepr::Memory { sized: true },
-            Ok(Some((abi, _))) => {
-                if abi.inherent_align(dl).map(|a| a.abi) != Some(align.abi) {
-                    // Mismatched alignment (e.g. union is #[repr(packed)]): disable opt
+            Ok(Some((repr, _))) => match repr {
+                // Mismatched alignment (e.g. union is #[repr(packed)]): disable opt
+                BackendRepr::Scalar(_) | BackendRepr::ScalarPair(_, _)
+                    if repr.scalar_align(dl).unwrap() != align.abi =>
+                {
                     BackendRepr::Memory { sized: true }
-                } else {
-                    abi
                 }
-            }
+                // Vectors require at least element alignment, else disable the opt
+                BackendRepr::Vector { element, count: _ } if element.align(dl).abi > align.abi => {
+                    BackendRepr::Memory { sized: true }
+                }
+                // the alignment tests passed and we can use this
+                BackendRepr::Scalar(..)
+                | BackendRepr::ScalarPair(..)
+                | BackendRepr::Vector { .. }
+                | BackendRepr::Memory { .. } => repr,
+            },
         };
 
         let Some(union_field_count) = NonZeroUsize::new(only_variant.len()) else {
@@ -400,7 +409,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         Ok(LayoutData {
             variants: Variants::Single { index: only_variant_idx },
             fields: FieldsShape::Union(union_field_count),
-            backend_repr: abi,
+            backend_repr,
             largest_niche: None,
             uninhabited: false,
             align,
