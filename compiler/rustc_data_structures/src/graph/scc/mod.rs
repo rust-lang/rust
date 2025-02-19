@@ -13,7 +13,7 @@ use std::fmt::Debug;
 use std::ops::Range;
 
 use rustc_index::{Idx, IndexSlice, IndexVec};
-use tracing::{debug, instrument};
+use tracing::{debug, instrument, trace};
 
 use crate::fx::FxHashSet;
 use crate::graph::vec_graph::VecGraph;
@@ -411,7 +411,7 @@ where
         // a potentially derived version of the root state for non-root nodes in the chain.
         let (root_state, assigned_state) = {
             loop {
-                debug!("find_state(r = {node:?} in state {:?})", self.node_states[node]);
+                trace!("find_state(r = {node:?} in state {:?})", self.node_states[node]);
                 match self.node_states[node] {
                     // This must have been the first and only state since it is unexplored*;
                     // no update needed! * Unless there is a bug :')
@@ -485,7 +485,7 @@ where
             if previous_node == node {
                 return root_state;
             }
-            debug!("Compressing {node:?} down to {previous_node:?} with state {assigned_state:?}");
+            trace!("Compressing {node:?} down to {previous_node:?} with state {assigned_state:?}");
 
             // Update to previous node in the link.
             match self.node_states[previous_node] {
@@ -510,9 +510,9 @@ where
     /// Call this method when `inspect_node` has returned `None`. Having the
     /// caller decide avoids mutual recursion between the two methods and allows
     /// us to maintain an allocated stack for nodes on the path between calls.
-    #[instrument(skip(self, initial), level = "debug")]
+    #[instrument(skip(self, initial), level = "trace")]
     fn walk_unvisited_node(&mut self, initial: G::Node) -> WalkReturn<S, A> {
-        debug!("Walk unvisited node: {initial:?}");
+        trace!("Walk unvisited node: {initial:?}");
         struct VisitingNodeFrame<G: DirectedGraph, Successors, A> {
             node: G::Node,
             successors: Option<Successors>,
@@ -559,7 +559,7 @@ where
             let node = *node;
             let depth = *depth;
 
-            debug!(
+            trace!(
                 "Visiting {node:?} at depth {depth:?}, annotation: {current_component_annotation:?}"
             );
 
@@ -567,7 +567,7 @@ where
                 Some(successors) => successors,
                 None => {
                     // This None marks that we still have the initialize this node's frame.
-                    debug!(?depth, ?node);
+                    trace!(?depth, ?node);
 
                     debug_assert_matches!(self.node_states[node], NodeState::NotVisited);
 
@@ -597,7 +597,7 @@ where
                 return_value.take().into_iter().map(|walk| (*successor_node, Some(walk)));
 
             let successor_walk = successors.map(|successor_node| {
-                debug!(?node, ?successor_node);
+                trace!(?node, ?successor_node);
                 (successor_node, self.inspect_node(successor_node))
             });
             for (successor_node, walk) in returned_walk.chain(successor_walk) {
@@ -608,13 +608,13 @@ where
                         min_depth: successor_min_depth,
                         annotation: successor_annotation,
                     }) => {
-                        debug!(
+                        trace!(
                             "Cycle found from {node:?}, minimum depth: {successor_min_depth:?}, annotation: {successor_annotation:?}"
                         );
                         // Track the minimum depth we can reach.
                         assert!(successor_min_depth <= depth);
                         if successor_min_depth < *min_depth {
-                            debug!(?node, ?successor_min_depth);
+                            trace!(?node, ?successor_min_depth);
                             *min_depth = successor_min_depth;
                             *min_cycle_root = successor_node;
                         }
@@ -626,20 +626,20 @@ where
                         scc_index: successor_scc_index,
                         annotation: successor_annotation,
                     }) => {
-                        debug!(
+                        trace!(
                             "Complete; {node:?} is root of complete-visited SCC idx {successor_scc_index:?} with annotation {successor_annotation:?}"
                         );
                         // Push the completed SCC indices onto
                         // the `successors_stack` for later.
-                        debug!(?node, ?successor_scc_index);
+                        trace!(?node, ?successor_scc_index);
                         successors_stack.push(successor_scc_index);
                         current_component_annotation.update_reachable(successor_annotation);
                     }
                     // `node` has no more (direct) successors; search recursively.
                     None => {
                         let depth = depth + 1;
-                        debug!("Recursing down into {successor_node:?} at depth {depth:?}");
-                        debug!(?depth, ?successor_node);
+                        trace!("Recursing down into {successor_node:?} at depth {depth:?}");
+                        trace!(?depth, ?successor_node);
                         // Remember which node the return value will come from.
                         frame.successor_node = successor_node;
                         // Start a new stack frame, then step into it.
@@ -658,7 +658,7 @@ where
                 }
             }
 
-            debug!("Finished walk from {node:?} with annotation: {current_component_annotation:?}");
+            trace!("Finished walk from {node:?} with annotation: {current_component_annotation:?}");
 
             // Completed walk, remove `node` from the stack.
             let r = self.node_stack.pop();

@@ -7,13 +7,15 @@
 
 use std::collections::VecDeque;
 
+use either::Either;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::scc::{self, Sccs};
 use rustc_index::IndexVec;
 use rustc_infer::infer::NllRegionVariableOrigin;
-use rustc_infer::infer::region_constraints::{VarInfos, VerifyBound};
+use rustc_infer::infer::region_constraints::{GenericKind, VarInfos, VerifyBound};
 use rustc_middle::ty::{Region, RegionVid, TyCtxt, UniverseIndex};
-use tracing::{debug, instrument};
+use rustc_span::Span;
+use tracing::{debug, info, instrument, trace};
 
 use crate::constraints::graph::{ConstraintGraph, Normal};
 use crate::constraints::{ConstraintSccIndex, OutlivesConstraintSet};
@@ -23,7 +25,7 @@ use crate::region_infer::{RegionDefinition, Representative, TypeTest};
 use crate::universal_regions::UniversalRegions;
 
 pub(crate) struct LoweredConstraints<'tcx> {
-    pub(crate) type_tests: Vec<TypeTest<'tcx>>,
+    pub(crate) type_tests: Vec<LoweredTypeTest<'tcx>>,
     pub(crate) sccs: Sccs<RegionVid, ConstraintSccIndex>,
     pub(crate) definitions: IndexVec<RegionVid, RegionDefinition<'tcx>>,
     pub(crate) scc_representatives: IndexVec<ConstraintSccIndex, Representative>,
@@ -108,7 +110,7 @@ struct RegionTracker {
 
 impl scc::Annotation for RegionTracker {
     fn merge_scc(self, other: Self) -> Self {
-        debug!("{:?} << {:?}", self.representative, other.representative);
+        trace!("{:?} << {:?}", self.representative, other.representative);
         let min_universe = if other.min_universe.0 < self.min_universe.0 {
             other.min_universe
         } else {
@@ -311,7 +313,7 @@ fn find_placeholder_mismatch_errors<'tcx>(
 ///
 /// Every constraint added by this method is an
 /// internal `IllegalUniverse` constraint.
-#[instrument(skip(tcx))]
+#[instrument(skip(tcx, outlives_constraints))]
 pub(crate) fn rewrite_higher_kinded_outlives_as_constraints<'tcx>(
     mut outlives_constraints: OutlivesConstraintSet<'tcx>,
     var_infos: &VarInfos,
@@ -352,7 +354,10 @@ pub(crate) fn rewrite_higher_kinded_outlives_as_constraints<'tcx>(
         );
         return (
             LoweredConstraints {
-                type_tests,
+                type_tests: type_tests
+                    .into_iter()
+                    .map(|type_test| LoweredTypeTest::Untouched(type_test))
+                    .collect(),
                 member_constraints: member_constraints.into_mapped(
                     |r| sccs.scc(r),
                     |_| true,
@@ -550,85 +555,117 @@ fn find_region<'tcx>(
     unreachable!("Should have found something!");
 }
 
+#[derive(Debug, Clone)]
+pub(crate) enum RewrittenVerifyBound<'tcx> {
+    AnyBound(Vec<Either<VerifyBound<'tcx>, RewrittenVerifyBound<'tcx>>>),
+    AllBounds(Vec<Either<VerifyBound<'tcx>, RewrittenVerifyBound<'tcx>>>),
+
+    /// Given a region `R`, true if `R: 'static`. Used during lowering
+    /// of higher-kinded constraints.
+    OutlivesStatic(Region<'tcx>),
+}
+
+#[derive(Debug, Clone)]
+pub(crate) enum LoweredTypeTest<'tcx> {
+    Untouched(TypeTest<'tcx>),
+    Rewritten {
+        rewritten_bound: RewrittenVerifyBound<'tcx>,
+        /// The type `T` that must outlive the region.
+        generic_kind: GenericKind<'tcx>,
+
+        /// The region `'x` that the type must outlive.
+        lower_bound: RegionVid,
+
+        /// The span to blame.
+        span: Span,
+    },
+}
+
 #[instrument(skip(sccs, scc_annotations, universal_regions), ret)]
-fn bound_has_universe_violation<'t>(
-    bound: &VerifyBound<'t>,
+fn rewrite_verify_bound<'t>(
+    bound: VerifyBound<'t>,
     lower_scc: ConstraintSccIndex,
     sccs: &Sccs<RegionVid, ConstraintSccIndex>,
     scc_annotations: &IndexVec<ConstraintSccIndex, RegionTracker>,
     universal_regions: &UniversalRegions<'t>,
-) -> bool {
+) -> Either<VerifyBound<'t>, RewrittenVerifyBound<'t>> {
     let lower = scc_annotations[lower_scc];
     match bound {
-        // An outlives constraint is equivalent to requiring the universe of that region.
+        // You may think that an equality bound would imply universe
+        // equality, and it does -- except that we do not track placeholders,
+        // and so in the event that you have two empty regions, one of which is
+        // in an unnameable universe, they would compare equal since they
+        // are both empty.
+        VerifyBound::IfEq(binder) => {
+            info!("Assuming, incorrectly, that Eq bound is universe-fine: {binder:?}");
+            // FIXME(amandasystems): this is not always true!!! We have to figure out if there's universe shenanigans going on here, but
+            // that's an annoying folding process so I've punted.
+            Either::Left(bound)
+        }
+        // Rewrite an outlives bound to an outlives-static bound upon referencing
+        // an unnameable universe (from a placeholder).
         VerifyBound::OutlivedBy(region) => {
-            let rvid = universal_regions.to_region_vid(*region);
-            if rvid == universal_regions.fr_static {
-                false
+            let rvid = universal_regions.to_region_vid(region);
+            if rvid == universal_regions.fr_static
+                || scc_annotations[sccs.scc(rvid)].universe_compatible_with(lower)
+            {
+                either::Left(bound)
             } else {
-                let bound = scc_annotations[sccs.scc(rvid)];
-                !bound.universe_compatible_with(lower)
+                Either::Right(RewrittenVerifyBound::OutlivesStatic(region))
             }
         }
-        // This one is not obvious, but the argument goes something like this:
-        // equality is implemented in a later check as verifying that they
-        // are in the same SCC. If they are, then they share universe,
-        // and so cannot have a universe violation. So this check is strictly
-        // weaker than the later SCC membership check, and thus unnecessary.
-        VerifyBound::IfEq(_) => false,
-        VerifyBound::IsEmpty => false,
-        // If all of them have universe violations, this one has too.
-        VerifyBound::AnyBound(terms) => {
-            !terms.is_empty()
-                && terms.iter().all(|t| {
-                    bound_has_universe_violation(
-                        t,
-                        lower_scc,
-                        sccs,
-                        scc_annotations,
-                        universal_regions,
-                    )
-                })
+        // Nothing in here to violate a universe
+        VerifyBound::IsEmpty => {
+            // FIXME(amandasystems) Otherwise we are unsound!
+            //assert!(matches!(lower.reachable_placeholders, PlaceholderReachability::NoPlaceholders));
+            Either::Left(bound)
         }
-        // If any of them has a universe violation, this one does.
-        VerifyBound::AllBounds(terms) => terms.iter().any(|t| {
-            bound_has_universe_violation(t, lower_scc, sccs, scc_annotations, universal_regions)
-        }),
+        // FIXME(amandasystems) -- check if we rewrote anything or this and the next variant LIES
+        VerifyBound::AnyBound(verify_bounds) => Either::Right(RewrittenVerifyBound::AnyBound(
+            verify_bounds
+                .into_iter()
+                .map(|bound| {
+                    rewrite_verify_bound(bound, lower_scc, sccs, scc_annotations, universal_regions)
+                })
+                .collect(),
+        )),
+        VerifyBound::AllBounds(verify_bounds) => Either::Right(RewrittenVerifyBound::AllBounds(
+            verify_bounds
+                .into_iter()
+                .map(|bound| {
+                    rewrite_verify_bound(bound, lower_scc, sccs, scc_annotations, universal_regions)
+                })
+                .collect(),
+        )),
     }
 }
 
 impl<'t> TypeTest<'t> {
-    #[instrument(skip(sccs, tcx, universal_regions, scc_annotations), ret)]
+    #[instrument(skip(sccs, _tcx, universal_regions, scc_annotations), ret)]
     fn rewrite_higher_kinded_constraints(
         self,
         sccs: &Sccs<RegionVid, ConstraintSccIndex>,
         scc_annotations: &IndexVec<ConstraintSccIndex, RegionTracker>,
         universal_regions: &UniversalRegions<'t>,
-        tcx: TyCtxt<'t>,
-    ) -> Self {
+        _tcx: TyCtxt<'t>,
+    ) -> LoweredTypeTest<'t> {
         let lower_scc = sccs.scc(self.lower_bound);
-
-        if bound_has_universe_violation(
-            &self.verify_bound,
+        match rewrite_verify_bound(
+            self.verify_bound,
             lower_scc,
             sccs,
             scc_annotations,
             universal_regions,
         ) {
-            debug!(
-                "sub universe `{lower_scc:?}` is not nameable \
-                by bound `{:?}`, promoting to 'static",
-                self.verify_bound
-            );
-            let lower_bound = Region::new_var(tcx, self.lower_bound);
-            Self {
-                lower_bound: universal_regions.fr_static,
-                verify_bound: VerifyBound::OutlivedBy(lower_bound),
-                original: Some(Box::new(self.clone())),
-                ..self
+            Either::Left(untouched_bound) => {
+                LoweredTypeTest::Untouched(TypeTest { verify_bound: untouched_bound, ..self })
             }
-        } else {
-            self
+            Either::Right(rewritten_bound) => LoweredTypeTest::Rewritten {
+                rewritten_bound,
+                generic_kind: self.generic_kind,
+                lower_bound: self.lower_bound,
+                span: self.span,
+            },
         }
     }
 }

@@ -10,6 +10,7 @@ use rustc_hir::def::Res::Def;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{PolyTraitRef, TyKind, WhereBoundPredicate};
+use rustc_infer::infer::region_constraints::GenericKind;
 use rustc_infer::infer::{NllRegionVariableOrigin, RelateParamBound};
 use rustc_middle::bug;
 use rustc_middle::hir::place::PlaceBase;
@@ -28,8 +29,8 @@ use tracing::{debug, instrument, trace};
 
 use super::{OutlivesSuggestionBuilder, RegionName, RegionNameSource};
 use crate::nll::ConstraintDescription;
+use crate::region_infer::BlameConstraint;
 use crate::region_infer::values::RegionElement;
-use crate::region_infer::{BlameConstraint, TypeTest};
 use crate::session_diagnostics::{
     FnMutError, FnMutReturnTypeErr, GenericDoesNotLiveLongEnough, LifetimeOutliveErr,
     LifetimeReturnCategoryErr, RequireStaticErr, VarHereDenote,
@@ -114,12 +115,14 @@ pub(crate) enum RegionErrorKind<'tcx> {
         origin_b: ty::PlaceholderRegion,
     },
 
-    /// A type test was rewritten into an outlives-static
-    /// constraint from Higher-ranked subtyping.
-    RewrittenTypeTestError { original_test: TypeTest<'tcx> },
-
-    /// A generic bound failure for a type test (`T: 'a`).
-    TypeTestError { type_test: TypeTest<'tcx> },
+    /// A generic bound failure for a type test (`T: 'a`). If placeholder leaks caused `'a: 'static`,
+    ///  implying `T: 'static`, `static_due_to_placeholders` is `true`, otherwise it is `false`.
+    TypeTestError {
+        lower_bound: RegionVid,
+        span: Span,
+        generic_kind: GenericKind<'tcx>,
+        failed_due_to_placeholders: bool,
+    },
 
     /// An unexpected hidden region for an opaque type.
     UnexpectedHiddenRegion {
@@ -313,8 +316,12 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             match nll_error {
                 // A type-test failed and the constraint was rewritten due
                 // to higher-ranked trait bounds.
-                RegionErrorKind::RewrittenTypeTestError { original_test } => {
-                    debug!(?original_test);
+                RegionErrorKind::TypeTestError {
+                    generic_kind,
+                    lower_bound,
+                    span,
+                    failed_due_to_placeholders,
+                } if failed_due_to_placeholders => {
                     // FIXME. We should handle this case better. It
                     // indicates that we have e.g., some region variable
                     // whose value is like `'a+'b` where `'a` and `'b` are
@@ -325,36 +332,43 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     // iterating over the universal regions and reporting
                     // an error that multiple bounds are required.
                     let mut diag = self.dcx().create_err(GenericDoesNotLiveLongEnough {
-                        kind: original_test.generic_kind.to_string(),
-                        span: original_test.span,
+                        kind: generic_kind.to_string(),
+                        span,
                     });
 
                     // Add notes and suggestions for the case of 'static lifetime
                     // implied but not specified when a generic associated types
                     // are from higher-ranked trait bounds
-                    self.suggest_static_lifetime_for_gat_from_hrtb(
-                        &mut diag,
-                        original_test.lower_bound,
-                    );
+                    self.suggest_static_lifetime_for_gat_from_hrtb(&mut diag, lower_bound);
 
                     self.buffer_error(diag);
                 }
-                RegionErrorKind::TypeTestError { type_test } => {
+                RegionErrorKind::TypeTestError {
+                    lower_bound,
+                    span,
+                    generic_kind,
+                    failed_due_to_placeholders: _,
+                } => {
                     // Try to convert the lower-bound region into something named we can print for
                     // the user.
-                    let lower_bound_region = self.to_error_region(type_test.lower_bound);
+                    let lower_bound_region = self.to_error_region(lower_bound);
 
-                    let type_test_span = type_test.span;
+                    let type_test_span = span;
 
-                    let Some(lower_bound_region) = lower_bound_region else { unreachable!() };
+                    let Some(lower_bound_region) = lower_bound_region else {
+                        eprintln!(
+                            "Found nothing good; lower bound was: {lower_bound:?} for {generic_kind:?} at {type_test_span:?}"
+                        );
+                        unreachable!();
+                    };
                     debug!(?lower_bound_region);
-                    let generic_ty = type_test.generic_kind.to_ty(self.infcx.tcx);
+                    let generic_ty = generic_kind.to_ty(self.infcx.tcx);
                     let origin = RelateParamBound(type_test_span, generic_ty, None);
                     self.buffer_error(self.infcx.err_ctxt().construct_generic_bound_failure(
                         self.body.source.def_id().expect_local(),
                         type_test_span,
                         Some(origin),
-                        type_test.generic_kind,
+                        generic_kind,
                         lower_bound_region,
                     ));
                 }
