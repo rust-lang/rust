@@ -9,9 +9,9 @@
 // Make sure that these behaviors don't get inherited to children
 // spawned via std::process, since they're needed for traditional UNIX
 // filter behavior.
-// This test checks that `while echo y ; do : ; done | head` terminates
-// (instead of running forever), and that it does not print an error
-// message about a broken pipe.
+// This test checks that `yes` or `while echo y ; do : ; done | head`
+// terminates (instead of running forever), and that it does not print an
+// error message about a broken pipe.
 
 //@ ignore-vxworks no 'sh'
 //@ ignore-fuchsia no 'sh'
@@ -22,14 +22,21 @@ use std::process;
 use std::thread;
 
 fn main() {
-    // Just in case `yes` doesn't check for EPIPE...
+    // Just in case `yes` or `while-echo` doesn't check for EPIPE...
     thread::spawn(|| {
         thread::sleep_ms(5000);
         process::exit(1);
     });
+    // QNX Neutrino does not have `yes`. Therefore, use `while-echo` for `nto`
+    // and `yes` for other platforms.
+    let command = if cfg!(target_os = "nto") {
+        "while echo y ; do : ; done | head"
+    } else {
+        "yes | head"
+    };
     let output = process::Command::new("sh")
         .arg("-c")
-        .arg("while echo y ; do : ; done | head")
+        .arg(command)
         .output()
         .unwrap();
     assert!(output.status.success());
