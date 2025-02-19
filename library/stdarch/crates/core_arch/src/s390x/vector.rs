@@ -997,6 +997,92 @@ mod sealed {
         vector_signed_int, verimf, test_verimf,
         vector_signed_long_long, verimg, test_verimg
     }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorReve {
+        unsafe fn vec_reve(self) -> Self;
+    }
+
+    #[repr(simd)]
+    struct ReverseMask<const N: usize>([u32; N]);
+
+    impl<const N: usize> ReverseMask<N> {
+        const fn new() -> Self {
+            let mut index = [0; N];
+            let mut i = 0;
+            while i < N {
+                index[i] = (N - i - 1) as u32;
+                i += 1;
+            }
+            ReverseMask(index)
+        }
+    }
+
+    macro_rules! impl_reve {
+        ($($ty:ident, $fun:ident, $instr:ident),*) => {
+            $(
+                #[inline]
+                #[target_feature(enable = "vector")]
+                #[cfg_attr(test, assert_instr($instr))]
+                unsafe fn $fun(a: $ty) -> $ty {
+                    const N: usize = core::mem::size_of::<$ty>() / core::mem::size_of::<l_t_t!($ty)>();
+                    simd_shuffle(a, a, const { ReverseMask::<N>::new() })
+                }
+
+                #[unstable(feature = "stdarch_s390x", issue = "135681")]
+                impl VectorReve for $ty {
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_reve(self) -> Self {
+                        $fun(self)
+                    }
+                }
+
+                #[unstable(feature = "stdarch_s390x", issue = "135681")]
+                impl VectorReve for t_u!($ty) {
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_reve(self) -> Self {
+                        transmute($fun(transmute(self)))
+                    }
+                }
+
+                #[unstable(feature = "stdarch_s390x", issue = "135681")]
+                impl VectorReve for t_b!($ty) {
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_reve(self) -> Self {
+                        transmute($fun(transmute(self)))
+                    }
+                }
+            )*
+        }
+    }
+
+    impl_reve! {
+        vector_signed_char, reveb, vperm,
+        vector_signed_short, reveh, vperm,
+        vector_signed_int, revef, vperm,
+        vector_signed_long_long, reveg, vpdi
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    impl VectorReve for vector_float {
+        #[inline]
+        #[target_feature(enable = "vector")]
+        unsafe fn vec_reve(self) -> Self {
+            transmute(transmute::<_, vector_signed_int>(self).vec_reve())
+        }
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    impl VectorReve for vector_double {
+        #[inline]
+        #[target_feature(enable = "vector")]
+        unsafe fn vec_reve(self) -> Self {
+            transmute(transmute::<_, vector_signed_long_long>(self).vec_reve())
+        }
+    }
 }
 
 /// Vector element-wise addition.
@@ -1457,6 +1543,17 @@ where
     a.vec_rli(bits)
 }
 
+/// Returns a vector with the elements of the input vector in reversed order.
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_reve<T>(a: T) -> T
+where
+    T: sealed::VectorReve,
+{
+    a.vec_reve()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1812,4 +1909,9 @@ mod tests {
     [0x12345678, 0x9ABCDEF0, 0x0F0F0F0F, 0x12345678],
     [4, 8, 12, 68],
     [0x23456781, 0xBCDEF09A, 0xF0F0F0F0, 0x23456781] }
+
+    test_vec_1! { test_vec_reve_f32, vec_reve, f32x4,
+        [0.1, 0.5, 0.6, 0.9],
+        [0.9, 0.6, 0.5, 0.1]
+    }
 }
