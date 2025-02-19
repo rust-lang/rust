@@ -198,8 +198,6 @@ impl str {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(inherent_str_constructors)]
-    ///
     /// // some bytes, in a vector
     /// let sparkle_heart = vec![240, 159, 146, 150];
     ///
@@ -213,8 +211,6 @@ impl str {
     /// Incorrect bytes:
     ///
     /// ```
-    /// #![feature(inherent_str_constructors)]
-    ///
     /// // some invalid bytes, in a vector
     /// let sparkle_heart = vec![0, 159, 146, 150];
     ///
@@ -227,8 +223,6 @@ impl str {
     /// A "stack allocated string":
     ///
     /// ```
-    /// #![feature(inherent_str_constructors)]
-    ///
     /// // some bytes, in a stack-allocated array
     /// let sparkle_heart = [240, 159, 146, 150];
     ///
@@ -237,7 +231,8 @@ impl str {
     ///
     /// assert_eq!("💖", sparkle_heart);
     /// ```
-    #[unstable(feature = "inherent_str_constructors", issue = "131114")]
+    #[stable(feature = "inherent_str_constructors", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "inherent_str_constructors", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_diagnostic_item = "str_inherent_from_utf8"]
     pub const fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
         converts::from_utf8(v)
@@ -250,8 +245,6 @@ impl str {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(inherent_str_constructors)]
-    ///
     /// // "Hello, Rust!" as a mutable vector
     /// let mut hellorust = vec![72, 101, 108, 108, 111, 44, 32, 82, 117, 115, 116, 33];
     ///
@@ -264,8 +257,6 @@ impl str {
     /// Incorrect bytes:
     ///
     /// ```
-    /// #![feature(inherent_str_constructors)]
-    ///
     /// // Some invalid bytes in a mutable vector
     /// let mut invalid = vec![128, 223];
     ///
@@ -273,7 +264,7 @@ impl str {
     /// ```
     /// See the docs for [`Utf8Error`] for more details on the kinds of
     /// errors that can be returned.
-    #[unstable(feature = "inherent_str_constructors", issue = "131114")]
+    #[stable(feature = "inherent_str_constructors", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_const_unstable(feature = "const_str_from_utf8", issue = "91006")]
     #[rustc_diagnostic_item = "str_inherent_from_utf8_mut"]
     pub const fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
@@ -294,8 +285,6 @@ impl str {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(inherent_str_constructors)]
-    ///
     /// // some bytes, in a vector
     /// let sparkle_heart = vec![240, 159, 146, 150];
     ///
@@ -307,7 +296,8 @@ impl str {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "inherent_str_constructors", issue = "131114")]
+    #[stable(feature = "inherent_str_constructors", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "inherent_str_constructors", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_diagnostic_item = "str_inherent_from_utf8_unchecked"]
     pub const unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
         // SAFETY: converts::from_utf8_unchecked has the same safety requirements as this function.
@@ -324,8 +314,6 @@ impl str {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(inherent_str_constructors)]
-    ///
     /// let mut heart = vec![240, 159, 146, 150];
     /// let heart = unsafe { str::from_utf8_unchecked_mut(&mut heart) };
     ///
@@ -333,7 +321,8 @@ impl str {
     /// ```
     #[inline]
     #[must_use]
-    #[unstable(feature = "inherent_str_constructors", issue = "131114")]
+    #[stable(feature = "inherent_str_constructors", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "inherent_str_constructors", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_diagnostic_item = "str_inherent_from_utf8_unchecked_mut"]
     pub const unsafe fn from_utf8_unchecked_mut(v: &mut [u8]) -> &mut str {
         // SAFETY: converts::from_utf8_unchecked_mut has the same safety requirements as this function.
