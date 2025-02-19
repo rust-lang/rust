@@ -189,14 +189,16 @@ impl Cfg {
     }
 
     /// Renders the configuration for long display, as a long plain text description.
-    pub(crate) fn render_long_plain(&self) -> String {
+    pub(crate) fn render_long_plain(&self) -> impl fmt::Display + '_ {
         let on = if self.should_use_with_in_description() { "with" } else { "on" };
 
-        let mut msg = format!("Available {on} {}", Display(self, Format::LongPlain));
-        if self.should_append_only_to_description() {
-            msg.push_str(" only");
-        }
-        msg
+        fmt::from_fn(move |f| {
+            write!(f, "Available {on} {}", Display(self, Format::LongPlain))?;
+            if self.should_append_only_to_description() {
+                f.write_str(" only")?;
+            }
+            Ok(())
+        })
     }
 
     fn should_capitalize_first_letter(&self) -> bool {
