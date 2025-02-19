@@ -53,7 +53,6 @@ pub mod pretty;
 mod query;
 mod statement;
 mod syntax;
-pub mod tcx;
 mod terminator;
 
 pub mod traversal;
