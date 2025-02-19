@@ -151,6 +151,7 @@ fn main() {
     generate_input(&path).unwrap();
     let args = vec![
         "rustc".to_string(),
+        "-Zmir-enable-passes=-GVN-partial".to_string(),
         "--crate-type=lib".to_string(),
         "--crate-name".to_string(),
         CRATE_NAME.to_string(),
