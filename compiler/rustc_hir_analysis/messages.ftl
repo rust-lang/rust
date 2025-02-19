@@ -85,11 +85,15 @@ hir_analysis_cmse_output_stack_spill =
     .note1 = functions with the `{$abi}` ABI must pass their result via the available return registers
     .note2 = the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
 
-hir_analysis_coerce_pointee_cannot_coerce_unsize = `{$ty}` cannot be coerced to an unsized type
+hir_analysis_coerce_pointee_cannot_coerce_unsized = `{$ty}` cannot be coerced to an unsized type
     .note = `derive(CoercePointee)` demands that `{$ty}` can be coerced to an unsized type
     .help = the standard pointers such as `Arc`, `Rc`, `Box`, and other types with `derive(CoercePointee)` can be coerced to their corresponding unsized types
 
-hir_analysis_coerce_pointee_cannot_unsize = `{$ty}` cannot be coerced to any unsized value
+hir_analysis_coerce_pointee_cannot_dispatch_from_dyn = `{$ty}` cannot be coerced to an unsized type, to which `dyn` methods can be dispatched
+    .note = `derive(CoercePointee)` demands that `dyn` methods can be dispatched when `{$ty}` can be coerced to an unsized type
+    .help = `dyn` methods can be dispatched to the standard pointers such as `Arc`, `Rc`, `Box`, and other types with `derive(CoercePointee)`
+
+hir_analysis_coerce_pointee_cannot_unsize = `{$ty}` cannot be coerced to an unsized value
     .note = `derive(CoercePointee)` demands that `{$ty}` can be coerced to an unsized type
     .help = `derive(CoercePointee)` requires exactly one copy of `#[pointee]` type at the end of the `struct` definition, without any further pointer or reference indirection
 

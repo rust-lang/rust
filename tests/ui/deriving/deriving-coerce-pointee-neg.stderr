@@ -7,7 +7,7 @@ LL | #[derive(CoercePointee)]
    = note: this error originates in the derive macro `CoercePointee` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0802]: `CoercePointee` can only be derived on `struct`s with at least one field
-  --> $DIR/deriving-coerce-pointee-neg.rs:15:10
+  --> $DIR/deriving-coerce-pointee-neg.rs:16:10
    |
 LL | #[derive(CoercePointee)]
    |          ^^^^^^^^^^^^^
@@ -15,7 +15,7 @@ LL | #[derive(CoercePointee)]
    = note: this error originates in the derive macro `CoercePointee` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0802]: `CoercePointee` can only be derived on `struct`s with at least one field
-  --> $DIR/deriving-coerce-pointee-neg.rs:22:10
+  --> $DIR/deriving-coerce-pointee-neg.rs:25:10
    |
 LL | #[derive(CoercePointee)]
    |          ^^^^^^^^^^^^^
@@ -23,14 +23,6 @@ LL | #[derive(CoercePointee)]
    = note: this error originates in the derive macro `CoercePointee` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0802]: `CoercePointee` can only be derived on `struct`s that are generic over at least one type
-  --> $DIR/deriving-coerce-pointee-neg.rs:29:10
-   |
-LL | #[derive(CoercePointee)]
-   |          ^^^^^^^^^^^^^
-   |
-   = note: this error originates in the derive macro `CoercePointee` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error[E0802]: exactly one generic type parameter must be marked as `#[pointee]` to derive `CoercePointee` traits
   --> $DIR/deriving-coerce-pointee-neg.rs:34:10
    |
 LL | #[derive(CoercePointee)]
@@ -38,96 +30,89 @@ LL | #[derive(CoercePointee)]
    |
    = note: this error originates in the derive macro `CoercePointee` (in Nightly builds, run with -Z macro-backtrace for more info)
 
+error[E0802]: exactly one generic type parameter must be marked as `#[pointee]` to derive `CoercePointee` traits
+  --> $DIR/deriving-coerce-pointee-neg.rs:40:10
+   |
+LL | #[derive(CoercePointee)]
+   |          ^^^^^^^^^^^^^
+   |
+   = note: this error originates in the derive macro `CoercePointee` (in Nightly builds, run with -Z macro-backtrace for more info)
+
 error[E0802]: only one type parameter can be marked as `#[pointee]` when deriving `CoercePointee` traits
-  --> $DIR/deriving-coerce-pointee-neg.rs:43:39
+  --> $DIR/deriving-coerce-pointee-neg.rs:50:39
    |
 LL | struct TooManyPointees<'a, #[pointee] A: ?Sized, #[pointee] B: ?Sized>((&'a A, &'a B));
    |                                       ^                     - here another type parameter is marked as `#[pointee]`
 
 error[E0802]: `derive(CoercePointee)` requires `T` to be marked `?Sized`
-  --> $DIR/deriving-coerce-pointee-neg.rs:54:36
+  --> $DIR/deriving-coerce-pointee-neg.rs:62:36
    |
 LL | struct NoMaybeSized<'a, #[pointee] T> {
    |                                    ^
 
 error: the `#[pointee]` attribute may only be used on generic parameters
-  --> $DIR/deriving-coerce-pointee-neg.rs:62:5
+  --> $DIR/deriving-coerce-pointee-neg.rs:70:5
    |
 LL |     #[pointee]
    |     ^^^^^^^^^^
 
 error: the `#[pointee]` attribute may only be used on generic parameters
-  --> $DIR/deriving-coerce-pointee-neg.rs:72:33
+  --> $DIR/deriving-coerce-pointee-neg.rs:80:33
    |
 LL |                     struct UhOh<#[pointee] T>(T);
    |                                 ^^^^^^^^^^
 
 error: the `#[pointee]` attribute may only be used on generic parameters
-  --> $DIR/deriving-coerce-pointee-neg.rs:86:21
+  --> $DIR/deriving-coerce-pointee-neg.rs:94:21
    |
 LL |         struct UhOh<#[pointee] T>(T);
    |                     ^^^^^^^^^^
 
 error: the `#[pointee]` attribute may only be used on generic parameters
-  --> $DIR/deriving-coerce-pointee-neg.rs:101:25
+  --> $DIR/deriving-coerce-pointee-neg.rs:109:25
    |
 LL |             struct UhOh<#[pointee] T>(T);
    |                         ^^^^^^^^^^
 
-error[E0392]: lifetime parameter `'a` is never used
-  --> $DIR/deriving-coerce-pointee-neg.rs:18:16
+error[E0392]: type parameter `T` is never used
+  --> $DIR/deriving-coerce-pointee-neg.rs:20:27
    |
-LL | struct NoField<'a, #[pointee] T: ?Sized> {}
-   |                ^^ unused lifetime parameter
+LL | struct NoField<#[pointee] T: ?Sized> {}
+   |                           ^ unused type parameter
    |
-   = help: consider removing `'a`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
 
 error[E0392]: type parameter `T` is never used
-  --> $DIR/deriving-coerce-pointee-neg.rs:18:31
+  --> $DIR/deriving-coerce-pointee-neg.rs:29:31
    |
-LL | struct NoField<'a, #[pointee] T: ?Sized> {}
+LL | struct NoFieldUnit<#[pointee] T: ?Sized>();
    |                               ^ unused type parameter
    |
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
 
-error[E0392]: lifetime parameter `'a` is never used
-  --> $DIR/deriving-coerce-pointee-neg.rs:25:20
-   |
-LL | struct NoFieldUnit<'a, #[pointee] T: ?Sized>();
-   |                    ^^ unused lifetime parameter
-   |
-   = help: consider removing `'a`, referring to it in a field, or using a marker such as `PhantomData`
-
-error[E0392]: type parameter `T` is never used
-  --> $DIR/deriving-coerce-pointee-neg.rs:25:35
-   |
-LL | struct NoFieldUnit<'a, #[pointee] T: ?Sized>();
-   |                                   ^ unused type parameter
-   |
-   = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
-
 error[E0802]: `derive(CoercePointee)` is only applicable to `struct` with `repr(transparent)` layout
-  --> $DIR/deriving-coerce-pointee-neg.rs:47:1
+  --> $DIR/deriving-coerce-pointee-neg.rs:55:1
    |
 LL | struct NotTransparent<'a, #[pointee] T: ?Sized> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0802]: `derive(CoercePointee)` is only applicable to `struct` with `repr(transparent)` layout
-  --> $DIR/deriving-coerce-pointee-neg.rs:140:1
+  --> $DIR/deriving-coerce-pointee-neg.rs:148:1
    |
 LL | struct TryToWipeRepr<'a, #[pointee] T: ?Sized> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0802]: `Box<T>` cannot be coerced to any unsized value
-  --> $DIR/deriving-coerce-pointee-neg.rs:146:10
+error[E0802]: `Box<T>` cannot be coerced to an unsized value
+  --> $DIR/deriving-coerce-pointee-neg.rs:156:5
    |
-LL | #[derive(CoercePointee)]
-   |          ^^^^^^^^^^^^^
+LL |     inner: std::rc::Rc<(i32, Box<T>)>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this error originates in the derive macro `CoercePointee` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: `derive(CoercePointee)` demands that `Box<T>` can be coerced to an unsized type
+   = help: `derive(CoercePointee)` requires exactly one copy of `#[pointee]` type at the end of the `struct` definition, without any further pointer or reference indirection
 
 error[E0802]: `derive(CoercePointee)` only admits exactly one data field, to which `dyn` methods shall be dispatched
-  --> $DIR/deriving-coerce-pointee-neg.rs:157:5
+  --> $DIR/deriving-coerce-pointee-neg.rs:171:5
    |
 LL |     inner1: Box<T>,
    |     ^^^^^^^^^^^^^^
@@ -135,17 +120,27 @@ LL |     inner1: Box<T>,
 LL |     inner2: Box<T>,
    |     ^^^^^^^^^^^^^^
 
-error[E0802]: `Box<T>` cannot be coerced to any unsized value
-  --> $DIR/deriving-coerce-pointee-neg.rs:146:10
+error[E0802]: `NotCoercePointeeData<T>` cannot be coerced to an unsized type, to which `dyn` methods can be dispatched
+  --> $DIR/deriving-coerce-pointee-neg.rs:183:45
    |
-LL | #[derive(CoercePointee)]
-   |          ^^^^^^^^^^^^^
+LL | struct UsingNonCoercePointeeData<T: ?Sized>(NotCoercePointeeData<T>);
+   |                                             ^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: `derive(CoercePointee)` demands that `dyn` methods can be dispatched when `NotCoercePointeeData<T>` can be coerced to an unsized type
+   = help: `dyn` methods can be dispatched to the standard pointers such as `Arc`, `Rc`, `Box`, and other types with `derive(CoercePointee)`
+
+error[E0802]: `Box<T>` cannot be coerced to an unsized value
+  --> $DIR/deriving-coerce-pointee-neg.rs:156:5
+   |
+LL |     inner: std::rc::Rc<(i32, Box<T>)>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `derive(CoercePointee)` demands that `Box<T>` can be coerced to an unsized type
+   = help: `derive(CoercePointee)` requires exactly one copy of `#[pointee]` type at the end of the `struct` definition, without any further pointer or reference indirection
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-   = note: this error originates in the derive macro `CoercePointee` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0802]: `derive(CoercePointee)` only admits exactly one data field, on which unsize coercion shall be performed
-  --> $DIR/deriving-coerce-pointee-neg.rs:157:5
+  --> $DIR/deriving-coerce-pointee-neg.rs:171:5
    |
 LL |     inner1: Box<T>,
    |     ^^^^^^^^^^^^^^
@@ -153,12 +148,21 @@ LL |     inner1: Box<T>,
 LL |     inner2: Box<T>,
    |     ^^^^^^^^^^^^^^
 
+error[E0802]: `NotCoercePointeeData<T>` cannot be coerced to an unsized type
+  --> $DIR/deriving-coerce-pointee-neg.rs:183:45
+   |
+LL | struct UsingNonCoercePointeeData<T: ?Sized>(NotCoercePointeeData<T>);
+   |                                             ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `derive(CoercePointee)` demands that `NotCoercePointeeData<T>` can be coerced to an unsized type
+   = help: the standard pointers such as `Arc`, `Rc`, `Box`, and other types with `derive(CoercePointee)` can be coerced to their corresponding unsized types
+
 error[E0690]: transparent struct needs at most one field with non-trivial size or alignment, but has 2
-  --> $DIR/deriving-coerce-pointee-neg.rs:155:1
+  --> $DIR/deriving-coerce-pointee-neg.rs:168:1
    |
 LL | struct MoreThanOneField<T: ?Sized> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ needs at most one field with non-trivial size or alignment, but has 2
-LL |
+...
 LL |     inner1: Box<T>,
    |     -------------- this field has non-zero size or requires alignment
 ...

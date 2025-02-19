@@ -1229,6 +1229,8 @@ pub(crate) struct CoercePointeeMultipleTargets {
 
 #[derive(Diagnostic)]
 #[diag(hir_analysis_coerce_pointee_cannot_unsize, code = E0802)]
+#[note]
+#[help]
 pub(crate) struct CoercePointeeCannotUnsize {
     #[primary_span]
     pub span: Span,
@@ -1236,8 +1238,20 @@ pub(crate) struct CoercePointeeCannotUnsize {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_coerce_pointee_cannot_coerce_unsize, code = E0802)]
+#[diag(hir_analysis_coerce_pointee_cannot_coerce_unsized, code = E0802)]
+#[note]
+#[help]
 pub(crate) struct CoercePointeeCannotCoerceUnsize {
+    #[primary_span]
+    pub span: Span,
+    pub ty: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_coerce_pointee_cannot_dispatch_from_dyn, code = E0802)]
+#[note]
+#[help]
+pub(crate) struct CoercePointeeCannotDispatchFromDyn {
     #[primary_span]
     pub span: Span,
     pub ty: String,
