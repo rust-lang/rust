@@ -86,6 +86,11 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.s390.vsra"] fn vsra(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char;
     #[link_name = "llvm.s390.vsrl"] fn vsrl(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char;
     #[link_name = "llvm.s390.vsl"] fn vsl(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char;
+
+    #[link_name = "llvm.fshl.v16i8"] fn fshlb(a: vector_unsigned_char, b: vector_unsigned_char, c: vector_unsigned_char) -> vector_unsigned_char;
+    #[link_name = "llvm.fshl.v8i16"] fn fshlh(a: vector_unsigned_short, b: vector_unsigned_short, c: vector_unsigned_short) -> vector_unsigned_short;
+    #[link_name = "llvm.fshl.v4i32"] fn fshlf(a: vector_unsigned_int, b: vector_unsigned_int, c: vector_unsigned_int) -> vector_unsigned_int;
+    #[link_name = "llvm.fshl.v2i64"] fn fshlg(a: vector_unsigned_long_long, b: vector_unsigned_long_long, c: vector_unsigned_long_long) -> vector_unsigned_long_long;
 }
 
 impl_from! { i8x16, u8x16,  i16x8, u16x8, i32x4, u32x4, i64x2, u64x2, f32x4, f64x2 }
@@ -809,6 +814,30 @@ mod sealed {
     }
 
     impl_vec_shift_long! { [VectorSll vec_sll] (vsl) }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorRl<Other> {
+        type Result;
+        unsafe fn vec_rl(self, b: Other) -> Self::Result;
+    }
+
+    macro_rules! impl_rot {
+        ($fun:ident $intr:ident $ty:ident) => {
+            #[inline]
+            #[target_feature(enable = "vector")]
+            #[cfg_attr(test, assert_instr($fun))]
+            unsafe fn $fun(a: t_t_l!($ty), b: t_t_l!($ty)) -> t_t_l!($ty) {
+                transmute($intr(transmute(a), transmute(a), transmute(b)))
+            }
+        };
+    }
+
+    impl_rot! { verllvb fshlb u8 }
+    impl_rot! { verllvh fshlh u16 }
+    impl_rot! { verllvf fshlf u32 }
+    impl_rot! { verllvg fshlg u64 }
+
+    impl_vec_shift! { [VectorRl vec_rl] (verllvb, verllvh, verllvf, verllvg) }
 }
 
 /// Vector element-wise addition.
@@ -1174,6 +1203,17 @@ where
     T: sealed::VectorSra<U>,
 {
     a.vec_sra(b)
+}
+
+/// Vector Element Rotate Left
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_rl<T, U>(a: T, b: U) -> <T as sealed::VectorRl<U>>::Result
+where
+    T: sealed::VectorRl<U>,
+{
+    a.vec_rl(b)
 }
 
 /// Performs a left shift for a vector by a given number of bits. Each element of the result is obtained by shifting the corresponding
@@ -1563,4 +1603,9 @@ mod tests {
     [-8, -8, -8, -8],
     [0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 16],
     [-4, -2, -1, -8] }
+
+    test_vec_2! { test_vec_rl, vec_rl, u32x4,
+    [0x12345678, 0x9ABCDEF0, 0x0F0F0F0F, 0x12345678],
+    [4, 8, 12, 68],
+    [0x23456781, 0xBCDEF09A, 0xF0F0F0F0, 0x23456781] }
 }
