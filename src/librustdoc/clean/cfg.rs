@@ -111,7 +111,7 @@ impl Cfg {
         msg
     }
 
-    fn render_long_inner(&self, format: Format) -> String {
+    fn render_long_inner(&self, format: Format) -> impl fmt::Display {
         let on = if self.omit_preposition() {
             " "
         } else if self.should_use_with_in_description() {
@@ -120,26 +120,26 @@ impl Cfg {
             " on "
         };
 
-        let mut msg = if matches!(format, Format::LongHtml) {
-            format!("Available{on}<strong>{}</strong>", Display(&self.0, format))
-        } else {
-            format!("Available{on}{}", Display(&self.0, format))
-        };
-        if self.should_append_only_to_description() {
-            msg.push_str(" only");
-        }
-        msg
+        fmt::from_fn(move |f| {
+            if matches!(format, Format::LongHtml) {
+                write!(f, "Available{on}<strong>{}</strong>", Display(&self.0, format))?
+            } else {
+                write!(f, "Available{on}{}", Display(&self.0, format))?
+            };
+            if self.should_append_only_to_description() {
+                f.write_str(" only")?;
+            }
+            Ok(())
+        })
     }
 
     /// Renders the configuration for long display, as a long HTML description.
-    pub(crate) fn render_long_html(&self) -> String {
-        let mut msg = self.render_long_inner(Format::LongHtml);
-        msg.push('.');
-        msg
+    pub(crate) fn render_long_html(&self) -> impl fmt::Display {
+        fmt::from_fn(|f| write!(f, "{}.", self.render_long_inner(Format::LongHtml)))
     }
 
     /// Renders the configuration for long display, as a long plain text description.
-    pub(crate) fn render_long_plain(&self) -> String {
+    pub(crate) fn render_long_plain(&self) -> impl fmt::Display {
         self.render_long_inner(Format::LongPlain)
     }
 

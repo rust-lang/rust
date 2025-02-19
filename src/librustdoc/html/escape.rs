@@ -5,7 +5,6 @@
 
 use std::fmt;
 
-use pulldown_cmark_escape::FmtWriter;
 use unicode_segmentation::UnicodeSegmentation;
 
 #[inline]

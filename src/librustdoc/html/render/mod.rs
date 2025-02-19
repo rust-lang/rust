@@ -845,7 +845,10 @@ fn document_item_info(
     ItemInfo { items }
 }
 
-fn portability(item: &clean::Item, parent: Option<&clean::Item>) -> Option<String> {
+fn portability<'a>(
+    item: &'a clean::Item,
+    parent: Option<&'a clean::Item>,
+) -> Option<impl fmt::Display + 'a> {
     let cfg = match (&item.cfg, parent.and_then(|p| p.cfg.as_ref())) {
         (Some(cfg), Some(parent_cfg)) => cfg.simplify_with(parent_cfg),
         (cfg, _) => cfg.as_deref().cloned(),
@@ -858,7 +861,7 @@ fn portability(item: &clean::Item, parent: Option<&clean::Item>) -> Option<Strin
         parent_cfg = parent.and_then(|p| p.cfg.as_ref()),
     );
 
-    Some(cfg?.render_long_html())
+    cfg.map(|cfg| fmt::from_fn(move |f| cfg.render_long_html().fmt(f)))
 }
 
 #[derive(Template)]
@@ -935,7 +938,7 @@ fn short_item_info(
     }
 
     if let Some(message) = portability(item, parent) {
-        extra_info.push(ShortItemInfo::Portability { message });
+        extra_info.push(ShortItemInfo::Portability { message: message.to_string() });
     }
 
     extra_info
