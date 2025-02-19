@@ -32,7 +32,6 @@ use tracing::{debug, trace};
 pub use self::query::*;
 use self::visit::TyContext;
 use crate::mir::interpret::{AllocRange, Scalar};
-use crate::mir::visit::MirVisitable;
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::print::{FmtPrinter, Printer, pretty_print_const, with_no_trimmed_paths};
 use crate::ty::visit::TypeVisitableExt;
@@ -1362,10 +1361,6 @@ impl<'tcx> BasicBlockData<'tcx> {
     #[inline]
     pub fn terminator_mut(&mut self) -> &mut Terminator<'tcx> {
         self.terminator.as_mut().expect("invalid terminator state")
-    }
-
-    pub fn visitable(&self, index: usize) -> &dyn MirVisitable<'tcx> {
-        if index < self.statements.len() { &self.statements[index] } else { &self.terminator }
     }
 
     /// Does the block have no statements and an unreachable terminator?
