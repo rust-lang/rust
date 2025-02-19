@@ -3,7 +3,7 @@ use span::{Edition, EditionedFileId};
 use syntax::{TextRange, TextSize};
 use test_fixture::WithFixture;
 
-use crate::{db::HirDatabase, test_db::TestDB, Interner, Substitution};
+use crate::{db::HirDatabase, mir::MirLowerError, test_db::TestDB, Interner, Substitution};
 
 use super::{interpret_mir, MirEvalError};
 
@@ -82,6 +82,16 @@ fn check_panic(#[rust_analyzer::rust_fixture] ra_fixture: &str, expected_panic: 
     let file_id = *file_ids.last().unwrap();
     let e = eval_main(&db, file_id).unwrap_err();
     assert_eq!(e.is_panic().unwrap_or_else(|| panic!("unexpected error: {e:?}")), expected_panic);
+}
+
+fn check_error_with(
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    expect_err: impl FnOnce(MirEvalError) -> bool,
+) {
+    let (db, file_ids) = TestDB::with_many_files(ra_fixture);
+    let file_id = *file_ids.last().unwrap();
+    let e = eval_main(&db, file_id).unwrap_err();
+    assert!(expect_err(e));
 }
 
 #[test]
@@ -943,5 +953,29 @@ fn main() {
     };
 }
 "#,
+    );
+}
+
+#[test]
+fn regression_19177() {
+    check_error_with(
+        r#"
+//- minicore: copy
+trait Foo {}
+trait Bar {}
+trait Baz {}
+trait Qux {
+    type Assoc;
+}
+
+fn main<'a, T: Foo + Bar + Baz>(
+    x: &T,
+    y: (),
+    z: &'a dyn Qux<Assoc = T>,
+    w: impl Foo + Bar,
+) {
+}
+"#,
+        |e| matches!(e, MirEvalError::MirLowerError(_, MirLowerError::GenericArgNotProvided(..))),
     );
 }

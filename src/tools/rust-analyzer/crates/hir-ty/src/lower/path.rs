@@ -837,15 +837,16 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                         }
                         (_, ImplTraitLoweringMode::Param | ImplTraitLoweringMode::Variable) => {
                             // Find the generic index for the target of our `bound`
-                            let target_param_idx =
-                                self.ctx.resolver.where_predicates_in_scope().find_map(|(p, _)| {
-                                    match p {
-                                        WherePredicate::TypeBound {
-                                            target: WherePredicateTypeTarget::TypeOrConstParam(idx),
-                                            bound: b,
-                                        } if b == bound => Some(idx),
-                                        _ => None,
-                                    }
+                            let target_param_idx = self
+                                .ctx
+                                .resolver
+                                .where_predicates_in_scope()
+                                .find_map(|(p, (_, types_map))| match p {
+                                    WherePredicate::TypeBound {
+                                        target: WherePredicateTypeTarget::TypeOrConstParam(idx),
+                                        bound: b,
+                                    } if b == bound && self.ctx.types_map == types_map => Some(idx),
+                                    _ => None,
                                 });
                             let ty = if let Some(target_param_idx) = target_param_idx {
                                 let mut counter = 0;
