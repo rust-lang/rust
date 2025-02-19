@@ -12,6 +12,8 @@ pub struct JsonRoot {
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct JsonInvocation {
+    // Remembers the command-line invocation with which bootstrap was invoked.
+    pub cmdline: String,
     // Unix timestamp in seconds
     //
     // This is necessary to easily correlate this invocation with logs or other data.
