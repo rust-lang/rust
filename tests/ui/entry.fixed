@@ -195,4 +195,27 @@ fn issue12489(map: &mut HashMap<u64, u64>) -> Option<()> {
     Some(())
 }
 
+mod issue13934 {
+    use std::collections::HashMap;
+
+    struct Member {}
+
+    pub struct Foo {
+        members: HashMap<u8, Member>,
+    }
+
+    impl Foo {
+        pub fn should_also_not_cause_lint(&mut self, input: u8) {
+            if self.members.contains_key(&input) {
+                todo!();
+            } else {
+                self.other();
+                self.members.insert(input, Member {});
+            }
+        }
+
+        fn other(&self) {}
+    }
+}
+
 fn main() {}
