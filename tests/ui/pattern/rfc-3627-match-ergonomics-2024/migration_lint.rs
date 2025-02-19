@@ -243,9 +243,19 @@ fn main() {
     //~^ ERROR: binding modifiers may only be written when the default binding mode is `move`
     assert_type_eq(a, &0u32);
 
+    let [migration_lint_macros::match_ref!(a)] = &[&0];
+    //~^ ERROR: reference patterns may only be written when the default binding mode is `move`
+    assert_type_eq(a, 0u32);
+
     // Test that we use the correct span when labeling a `&` whose subpattern is from an expansion.
+    // Also test that we don't simplify `&ref x` to `x` when the `ref` is from an expansion.
     let [&migration_lint_macros::bind_ref!(a)] = &[&0];
     //~^ ERROR: reference patterns may only be written when the default binding mode is `move` in Rust 2024
     //~| WARN: this changes meaning in Rust 2024
+    assert_type_eq(a, &0u32);
+
+    // Test that we don't simplify `&ref x` to `x` when the `&` is from an expansion.
+    let [migration_lint_macros::match_ref!(ref a)] = &[&0];
+    //~^ ERROR: reference patterns may only be written when the default binding mode is `move`
     assert_type_eq(a, &0u32);
 }
