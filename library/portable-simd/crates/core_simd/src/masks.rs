@@ -401,7 +401,6 @@ where
     LaneCount<N>: SupportedLaneCount,
 {
     #[inline]
-    #[must_use = "method returns a defaulted mask with all elements set to false (0)"]
     fn default() -> Self {
         Self::splat(false)
     }
@@ -413,7 +412,6 @@ where
     LaneCount<N>: SupportedLaneCount,
 {
     #[inline]
-    #[must_use = "method returns a new bool and does not mutate the original value"]
     fn eq(&self, other: &Self) -> bool {
         self.0 == other.0
     }
@@ -425,7 +423,6 @@ where
     LaneCount<N>: SupportedLaneCount,
 {
     #[inline]
-    #[must_use = "method returns a new Ordering and does not mutate the original value"]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         self.0.partial_cmp(&other.0)
     }
@@ -451,7 +448,6 @@ where
 {
     type Output = Self;
     #[inline]
-    #[must_use = "method returns a new mask and does not mutate the original value"]
     fn bitand(self, rhs: Self) -> Self {
         Self(self.0 & rhs.0)
     }
@@ -464,7 +460,6 @@ where
 {
     type Output = Self;
     #[inline]
-    #[must_use = "method returns a new mask and does not mutate the original value"]
     fn bitand(self, rhs: bool) -> Self {
         self & Self::splat(rhs)
     }
@@ -477,7 +472,6 @@ where
 {
     type Output = Mask<T, N>;
     #[inline]
-    #[must_use = "method returns a new mask and does not mutate the original value"]
     fn bitand(self, rhs: Mask<T, N>) -> Mask<T, N> {
         Mask::splat(self) & rhs
     }
@@ -490,7 +484,6 @@ where
 {
     type Output = Self;
     #[inline]
-    #[must_use = "method returns a new mask and does not mutate the original value"]
     fn bitor(self, rhs: Self) -> Self {
         Self(self.0 | rhs.0)
     }
@@ -503,7 +496,6 @@ where
 {
     type Output = Self;
     #[inline]
-    #[must_use = "method returns a new mask and does not mutate the original value"]
     fn bitor(self, rhs: bool) -> Self {
         self | Self::splat(rhs)
     }
@@ -516,7 +508,6 @@ where
 {
     type Output = Mask<T, N>;
     #[inline]
-    #[must_use = "method returns a new mask and does not mutate the original value"]
     fn bitor(self, rhs: Mask<T, N>) -> Mask<T, N> {
         Mask::splat(self) | rhs
     }
@@ -529,7 +520,6 @@ where
 {
     type Output = Self;
     #[inline]
-    #[must_use = "method returns a new mask and does not mutate the original value"]
     fn bitxor(self, rhs: Self) -> Self::Output {
         Self(self.0 ^ rhs.0)
     }
@@ -542,7 +532,6 @@ where
 {
     type Output = Self;
     #[inline]
-    #[must_use = "method returns a new mask and does not mutate the original value"]
     fn bitxor(self, rhs: bool) -> Self::Output {
         self ^ Self::splat(rhs)
     }
@@ -555,7 +544,6 @@ where
 {
     type Output = Mask<T, N>;
     #[inline]
-    #[must_use = "method returns a new mask and does not mutate the original value"]
     fn bitxor(self, rhs: Mask<T, N>) -> Self::Output {
         Mask::splat(self) ^ rhs
     }
@@ -568,7 +556,6 @@ where
 {
     type Output = Mask<T, N>;
     #[inline]
-    #[must_use = "method returns a new mask and does not mutate the original value"]
     fn not(self) -> Self::Output {
         Self(!self.0)
     }
