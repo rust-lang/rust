@@ -581,12 +581,10 @@ LL |     let &[migration_lint_macros::bind_ref!(a)] = &[0];
    |         +
 
 error: reference patterns may only be written when the default binding mode is `move` in Rust 2024
-  --> $DIR/auxiliary/migration_lint_macros.rs:15:22
+  --> $DIR/migration_lint.rs:249:10
    |
-LL |       ($foo:ident) => {
-   |  ______________________^
-LL | |         ref $foo
-   | |________________^ reference pattern not allowed under `ref` default binding mode
+LL |     let [&migration_lint_macros::bind_ref!(a)] = &[&0];
+   |          ^ reference pattern not allowed under `ref` default binding mode
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
@@ -596,7 +594,6 @@ note: matching on a reference type with a non-reference pattern changes the defa
 LL |     let [&migration_lint_macros::bind_ref!(a)] = &[&0];
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this matches on type `&_`
 help: make the implied reference pattern explicit
-  --> $DIR/migration_lint.rs:249:9
    |
 LL |     let &[&migration_lint_macros::bind_ref!(a)] = &[&0];
    |         +

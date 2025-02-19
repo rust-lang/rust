@@ -835,20 +835,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.add_rust_2024_migration_desugared_pat(
                         pat_info.top_info.hir_id,
                         pat,
-                        ident.span,
+                        't',
                         def_br_mutbl,
                     );
                     BindingMode(ByRef::No, Mutability::Mut)
                 }
             }
             BindingMode(ByRef::No, mutbl) => BindingMode(def_br, mutbl),
-            BindingMode(ByRef::Yes(_), _) => {
+            BindingMode(ByRef::Yes(user_br_mutbl), _) => {
                 if let ByRef::Yes(def_br_mutbl) = def_br {
                     // `ref`/`ref mut` overrides the binding mode on edition <= 2021
                     self.add_rust_2024_migration_desugared_pat(
                         pat_info.top_info.hir_id,
                         pat,
-                        ident.span,
+                        if user_br_mutbl.is_mut() { 't' } else { 'f' },
                         def_br_mutbl,
                     );
                 }
@@ -2387,7 +2387,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.add_rust_2024_migration_desugared_pat(
                         pat_info.top_info.hir_id,
                         pat,
-                        inner.span,
+                        if pat_mutbl.is_mut() { 't' } else { '&' },
                         inh_mut,
                     )
                 }
@@ -2779,18 +2779,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         pat_id: HirId,
         subpat: &'tcx Pat<'tcx>,
-        cutoff_span: Span,
+        final_char: char,
         def_br_mutbl: Mutability,
     ) {
         // Try to trim the span we're labeling to just the `&` or binding mode that's an issue.
         // If the subpattern's span is is from an expansion, the emitted label will not be trimmed.
-        let source_map = self.tcx.sess.source_map();
-        let cutoff_span = source_map
-            .span_extend_prev_while(cutoff_span, |c| c.is_whitespace() || c == '(')
-            .unwrap_or(cutoff_span);
-        // Ensure we use the syntax context and thus edition of `subpat.span`; this will be a hard
-        // error if the subpattern is of edition >= 2024.
-        let trimmed_span = subpat.span.until(cutoff_span).with_ctxt(subpat.span.ctxt());
+        // Importantly, the edition of the trimmed span should be the same as `subpat.span`; this
+        // will be a hard error if the subpattern is of edition >= 2024.
+        let from_expansion = subpat.span.from_expansion();
+        let trimmed_span = if from_expansion {
+            subpat.span
+        } else {
+            self.tcx.sess.source_map().span_through_char(subpat.span, final_char)
+        };
 
         let mut typeck_results = self.typeck_results.borrow_mut();
         let mut table = typeck_results.rust_2024_migration_desugared_pats_mut();
@@ -2824,7 +2825,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         // Only provide a detailed label if the problematic subpattern isn't from an expansion.
         // In the case that it's from a macro, we'll add a more detailed note in the emitter.
-        let from_expansion = subpat.span.from_expansion();
         let primary_label = if from_expansion {
             // We can't suggest eliding modifiers within expansions.
             info.suggest_eliding_modes = false;
