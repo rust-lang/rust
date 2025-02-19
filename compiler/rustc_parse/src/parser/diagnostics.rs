@@ -301,13 +301,6 @@ impl<'a> Parser<'a> {
         &mut self,
         recover: bool,
     ) -> PResult<'a, (Ident, IdentIsRaw)> {
-        if let TokenKind::DocComment(..) = self.prev_token.kind {
-            return Err(self.dcx().create_err(DocCommentDoesNotDocumentAnything {
-                span: self.prev_token.span,
-                missing_comma: None,
-            }));
-        }
-
         let valid_follow = &[
             TokenKind::Eq,
             TokenKind::Colon,
@@ -319,6 +312,15 @@ impl<'a> Parser<'a> {
             TokenKind::CloseDelim(Delimiter::Brace),
             TokenKind::CloseDelim(Delimiter::Parenthesis),
         ];
+        if let TokenKind::DocComment(..) = self.prev_token.kind
+            && valid_follow.contains(&self.token.kind)
+        {
+            let err = self.dcx().create_err(DocCommentDoesNotDocumentAnything {
+                span: self.prev_token.span,
+                missing_comma: None,
+            });
+            return Err(err);
+        }
 
         let mut recovered_ident = None;
         // we take this here so that the correct original token is retained in
