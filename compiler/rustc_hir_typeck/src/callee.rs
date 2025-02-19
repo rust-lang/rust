@@ -224,8 +224,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             //
             // The simplest fix by far is to just ignore this case and deref again,
             // so we wind up with `FnMut::call_mut(&mut *f, ())`.
-            ty::Ref(..) if autoderef.step_count() == 0 => {
-                return None;
+            ty::Ref(_, deref_ty, _) if autoderef.step_count() == 0 => {
+                match deref_ty.kind() {
+                    ty::Adt(..) => {},
+                    _ => {return None}
+                }
             }
 
             ty::Error(_) => {
