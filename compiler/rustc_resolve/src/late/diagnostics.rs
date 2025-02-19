@@ -8,7 +8,7 @@ use rustc_ast::ptr::P;
 use rustc_ast::visit::{FnCtxt, FnKind, LifetimeCtxt, Visitor, walk_ty};
 use rustc_ast::{
     self as ast, AssocItemKind, DUMMY_NODE_ID, Expr, ExprKind, GenericParam, GenericParamKind,
-    Item, ItemKind, MethodCall, NodeId, Path, Ty, TyKind,
+    Item, ItemKind, MethodCall, NodeId, Path, PathSegment, Ty, TyKind,
 };
 use rustc_ast_pretty::pprust::where_bound_predicate_to_string;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
@@ -1529,7 +1529,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     Applicability::MaybeIncorrect,
                 );
                 true
-            } else if kind == DefKind::Struct
+            } else if matches!(kind, DefKind::Struct | DefKind::TyAlias)
                 && let Some(lhs_source_span) = lhs_span.find_ancestor_inside(expr.span)
                 && let Ok(snippet) = this.r.tcx.sess.source_map().span_to_snippet(lhs_source_span)
             {
@@ -1566,7 +1566,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             }
         };
 
-        let mut bad_struct_syntax_suggestion = |this: &mut Self, def_id: DefId| {
+        let bad_struct_syntax_suggestion = |this: &mut Self, err: &mut Diag<'_>, def_id: DefId| {
             let (followed_by_brace, closing_brace) = this.followed_by_brace(span);
 
             match source {
@@ -1740,12 +1740,10 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 }
             }
             (
-                Res::Def(kind @ (DefKind::Mod | DefKind::Trait), _),
+                Res::Def(kind @ (DefKind::Mod | DefKind::Trait | DefKind::TyAlias), _),
                 PathSource::Expr(Some(parent)),
-            ) => {
-                if !path_sep(self, err, parent, kind) {
-                    return false;
-                }
+            ) if path_sep(self, err, parent, kind) => {
+                return true;
             }
             (
                 Res::Def(DefKind::Enum, def_id),
@@ -1777,13 +1775,13 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 let (ctor_def, ctor_vis, fields) = if let Some(struct_ctor) = struct_ctor {
                     if let PathSource::Expr(Some(parent)) = source {
                         if let ExprKind::Field(..) | ExprKind::MethodCall(..) = parent.kind {
-                            bad_struct_syntax_suggestion(self, def_id);
+                            bad_struct_syntax_suggestion(self, err, def_id);
                             return true;
                         }
                     }
                     struct_ctor
                 } else {
-                    bad_struct_syntax_suggestion(self, def_id);
+                    bad_struct_syntax_suggestion(self, err, def_id);
                     return true;
                 };
 
@@ -1861,7 +1859,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 err.span_label(span, "constructor is not visible here due to private fields");
             }
             (Res::Def(DefKind::Union | DefKind::Variant, def_id), _) if ns == ValueNS => {
-                bad_struct_syntax_suggestion(self, def_id);
+                bad_struct_syntax_suggestion(self, err, def_id);
             }
             (Res::Def(DefKind::Ctor(_, CtorKind::Const), def_id), _) if ns == ValueNS => {
                 match source {
@@ -2471,31 +2469,73 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         def_id: DefId,
         span: Span,
     ) {
-        let Some(variants) = self.collect_enum_ctors(def_id) else {
+        let Some(variant_ctors) = self.collect_enum_ctors(def_id) else {
             err.note("you might have meant to use one of the enum's variants");
             return;
         };
 
-        let suggest_only_tuple_variants =
-            matches!(source, PathSource::TupleStruct(..)) || source.is_call();
-        if suggest_only_tuple_variants {
+        // If the expression is a field-access or method-call, try to find a variant with the field/method name
+        // that could have been intended, and suggest replacing the `.` with `::`.
+        // Otherwise, suggest adding `::VariantName` after the enum;
+        // and if the expression is call-like, only suggest tuple variants.
+        let (suggest_path_sep_dot_span, suggest_only_tuple_variants) = match source {
+            // `Type(a, b)` in a pattern, only suggest adding a tuple variant after `Type`.
+            PathSource::TupleStruct(..) => (None, true),
+            PathSource::Expr(Some(expr)) => match &expr.kind {
+                // `Type(a, b)`, only suggest adding a tuple variant after `Type`.
+                ExprKind::Call(..) => (None, true),
+                // `Type.Foo(a, b)`, suggest replacing `.` -> `::` if variant `Foo` exists and is a tuple variant,
+                // otherwise suggest adding a variant after `Type`.
+                ExprKind::MethodCall(box MethodCall {
+                    receiver,
+                    span,
+                    seg: PathSegment { ident, .. },
+                    ..
+                }) => {
+                    let dot_span = receiver.span.between(*span);
+                    let found_tuple_variant = variant_ctors.iter().any(|(path, _, ctor_kind)| {
+                        *ctor_kind == CtorKind::Fn
+                            && path.segments.last().is_some_and(|seg| seg.ident == *ident)
+                    });
+                    (found_tuple_variant.then_some(dot_span), false)
+                }
+                // `Type.Foo`, suggest replacing `.` -> `::` if variant `Foo` exists and is a unit or tuple variant,
+                // otherwise suggest adding a variant after `Type`.
+                ExprKind::Field(base, ident) => {
+                    let dot_span = base.span.between(ident.span);
+                    let found_tuple_or_unit_variant = variant_ctors.iter().any(|(path, ..)| {
+                        path.segments.last().is_some_and(|seg| seg.ident == *ident)
+                    });
+                    (found_tuple_or_unit_variant.then_some(dot_span), false)
+                }
+                _ => (None, false),
+            },
+            _ => (None, false),
+        };
+
+        if let Some(dot_span) = suggest_path_sep_dot_span {
+            err.span_suggestion_verbose(
+                dot_span,
+                "use the path separator to refer to a variant",
+                "::",
+                Applicability::MaybeIncorrect,
+            );
+        } else if suggest_only_tuple_variants {
             // Suggest only tuple variants regardless of whether they have fields and do not
             // suggest path with added parentheses.
-            let mut suggestable_variants = variants
+            let mut suggestable_variants = variant_ctors
                 .iter()
                 .filter(|(.., kind)| *kind == CtorKind::Fn)
                 .map(|(variant, ..)| path_names_to_string(variant))
                 .collect::<Vec<_>>();
             suggestable_variants.sort();
 
-            let non_suggestable_variant_count = variants.len() - suggestable_variants.len();
+            let non_suggestable_variant_count = variant_ctors.len() - suggestable_variants.len();
 
-            let source_msg = if source.is_call() {
-                "to construct"
-            } else if matches!(source, PathSource::TupleStruct(..)) {
+            let source_msg = if matches!(source, PathSource::TupleStruct(..)) {
                 "to match against"
             } else {
-                unreachable!()
+                "to construct"
             };
 
             if !suggestable_variants.is_empty() {
@@ -2514,7 +2554,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             }
 
             // If the enum has no tuple variants..
-            if non_suggestable_variant_count == variants.len() {
+            if non_suggestable_variant_count == variant_ctors.len() {
                 err.help(format!("the enum has no tuple variants {source_msg}"));
             }
 
@@ -2537,7 +2577,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 }
             };
 
-            let mut suggestable_variants = variants
+            let mut suggestable_variants = variant_ctors
                 .iter()
                 .filter(|(_, def_id, kind)| !needs_placeholder(*def_id, *kind))
                 .map(|(variant, _, kind)| (path_names_to_string(variant), kind))
@@ -2564,7 +2604,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 );
             }
 
-            let mut suggestable_variants_with_placeholders = variants
+            let mut suggestable_variants_with_placeholders = variant_ctors
                 .iter()
                 .filter(|(_, def_id, kind)| needs_placeholder(*def_id, *kind))
                 .map(|(variant, _, kind)| (path_names_to_string(variant), kind))

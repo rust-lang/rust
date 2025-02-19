@@ -3619,7 +3619,6 @@ ui/resolve/issue-21221-1.rs
 ui/resolve/issue-21221-2.rs
 ui/resolve/issue-21221-3.rs
 ui/resolve/issue-21221-4.rs
-ui/resolve/issue-22692.rs
 ui/resolve/issue-2330.rs
 ui/resolve/issue-23305.rs
 ui/resolve/issue-2356.rs
