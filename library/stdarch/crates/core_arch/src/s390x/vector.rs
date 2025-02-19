@@ -87,6 +87,10 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.s390.vsrl"] fn vsrl(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char;
     #[link_name = "llvm.s390.vsl"] fn vsl(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char;
 
+    #[link_name = "llvm.s390.vsrab"] fn vsrab(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char;
+    #[link_name = "llvm.s390.vsrlb"] fn vsrlb(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char;
+    #[link_name = "llvm.s390.vslb"] fn vslb(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char;
+
     #[link_name = "llvm.fshl.v16i8"] fn fshlb(a: vector_unsigned_char, b: vector_unsigned_char, c: vector_unsigned_char) -> vector_unsigned_char;
     #[link_name = "llvm.fshl.v8i16"] fn fshlh(a: vector_unsigned_short, b: vector_unsigned_short, c: vector_unsigned_short) -> vector_unsigned_short;
     #[link_name = "llvm.fshl.v4i32"] fn fshlf(a: vector_unsigned_int, b: vector_unsigned_int, c: vector_unsigned_int) -> vector_unsigned_int;
@@ -778,6 +782,55 @@ mod sealed {
 
     impl_vec_shift! { [VectorSra vec_sra] (vesravb, vesravh, vesravf, vesravg) }
 
+    macro_rules! impl_vec_shift_byte {
+        ([$trait:ident $m:ident] ($f:ident)) => {
+            impl_vec_trait!{ [$trait $m]+ $f (vector_unsigned_char, vector_signed_char) -> vector_unsigned_char }
+            impl_vec_trait!{ [$trait $m]+ $f (vector_unsigned_char, vector_unsigned_char) -> vector_unsigned_char }
+            impl_vec_trait!{ [$trait $m]+ $f (vector_signed_char, vector_signed_char) -> vector_signed_char }
+            impl_vec_trait!{ [$trait $m]+ $f (vector_signed_char, vector_unsigned_char) -> vector_signed_char }
+            impl_vec_trait!{ [$trait $m]+ $f (vector_unsigned_short, vector_signed_short) -> vector_unsigned_short }
+            impl_vec_trait!{ [$trait $m]+ $f (vector_unsigned_short, vector_unsigned_short) -> vector_unsigned_short }
+            impl_vec_trait!{ [$trait $m]+ $f (vector_signed_short, vector_signed_short) -> vector_signed_short }
+            impl_vec_trait!{ [$trait $m]+ $f (vector_signed_short, vector_unsigned_short) -> vector_signed_short }
+            impl_vec_trait!{ [$trait $m]+ $f (vector_unsigned_int, vector_signed_int) -> vector_unsigned_int }
+            impl_vec_trait!{ [$trait $m]+ $f (vector_unsigned_int, vector_unsigned_int) -> vector_unsigned_int }
+            impl_vec_trait!{ [$trait $m]+ $f (vector_signed_int, vector_signed_int) -> vector_signed_int }
+            impl_vec_trait!{ [$trait $m]+ $f (vector_signed_int, vector_unsigned_int) -> vector_signed_int }
+            impl_vec_trait!{ [$trait $m]+ $f (vector_unsigned_long_long, vector_signed_long_long) -> vector_unsigned_long_long }
+            impl_vec_trait!{ [$trait $m]+ $f (vector_unsigned_long_long, vector_unsigned_long_long) -> vector_unsigned_long_long }
+            impl_vec_trait!{ [$trait $m]+ $f (vector_signed_long_long, vector_signed_long_long) -> vector_signed_long_long }
+            impl_vec_trait!{ [$trait $m]+ $f (vector_signed_long_long, vector_unsigned_long_long) -> vector_signed_long_long }
+            impl_vec_trait!{ [$trait $m]+ $f (vector_float, vector_signed_int) -> vector_float }
+            impl_vec_trait!{ [$trait $m]+ $f (vector_float, vector_unsigned_int) -> vector_float }
+            impl_vec_trait!{ [$trait $m]+ $f (vector_double, vector_signed_long_long) -> vector_double }
+            impl_vec_trait!{ [$trait $m]+ $f (vector_double, vector_unsigned_long_long) -> vector_double }
+        };
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorSlb<Other> {
+        type Result;
+        unsafe fn vec_slb(self, b: Other) -> Self::Result;
+    }
+
+    impl_vec_shift_byte! { [VectorSlb vec_slb] (vslb) }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorSrab<Other> {
+        type Result;
+        unsafe fn vec_srab(self, b: Other) -> Self::Result;
+    }
+
+    impl_vec_shift_byte! { [VectorSrab vec_srab] (vsrab) }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorSrb<Other> {
+        type Result;
+        unsafe fn vec_srb(self, b: Other) -> Self::Result;
+    }
+
+    impl_vec_shift_byte! { [VectorSrb vec_srb] (vsrlb) }
+
     macro_rules! impl_vec_shift_long {
         ([$trait:ident $m:ident] ($f:ident)) => {
             impl_vec_trait!{ [$trait $m]+ $f (vector_unsigned_char, vector_unsigned_char) -> vector_unsigned_char }
@@ -1203,6 +1256,39 @@ where
     T: sealed::VectorSra<U>,
 {
     a.vec_sra(b)
+}
+
+/// Vector Shift Left by Byte
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_slb<T, U>(a: T, b: U) -> <T as sealed::VectorSlb<U>>::Result
+where
+    T: sealed::VectorSlb<U>,
+{
+    a.vec_slb(b)
+}
+
+/// Vector Shift Right by Byte
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_srb<T, U>(a: T, b: U) -> <T as sealed::VectorSrb<U>>::Result
+where
+    T: sealed::VectorSrb<U>,
+{
+    a.vec_srb(b)
+}
+
+/// Vector Shift Right Algebraic by Byte
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_srab<T, U>(a: T, b: U) -> <T as sealed::VectorSrab<U>>::Result
+where
+    T: sealed::VectorSrab<U>,
+{
+    a.vec_srab(b)
 }
 
 /// Vector Element Rotate Left
