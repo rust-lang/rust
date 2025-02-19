@@ -237,8 +237,7 @@ pub fn is_in_const_context(cx: &LateContext<'_>) -> bool {
     debug_assert!(cx.enclosing_body.is_some(), "`LateContext` has no enclosing body");
     cx.enclosing_body.is_some_and(|id| {
         cx.tcx
-            .hir()
-            .body_const_context(cx.tcx.hir().body_owner_def_id(id))
+            .hir_body_const_context(cx.tcx.hir_body_owner_def_id(id))
             .is_some()
     })
 }
@@ -251,8 +250,7 @@ pub fn is_in_const_context(cx: &LateContext<'_>) -> bool {
 ///  * associated constants
 pub fn is_inside_always_const_context(tcx: TyCtxt<'_>, hir_id: HirId) -> bool {
     use ConstContext::{Const, ConstFn, Static};
-    let hir = tcx.hir();
-    let Some(ctx) = hir.body_const_context(hir.enclosing_body_owner(hir_id)) else {
+    let Some(ctx) = tcx.hir_body_const_context(tcx.hir_enclosing_body_owner(hir_id)) else {
         return false;
     };
     match ctx {
@@ -652,8 +650,6 @@ fn non_local_item_children_by_name(tcx: TyCtxt<'_>, def_id: DefId, name: Symbol)
 }
 
 fn local_item_children_by_name(tcx: TyCtxt<'_>, local_id: LocalDefId, name: Symbol) -> Vec<Res> {
-    let hir = tcx.hir();
-
     let root_mod;
     let item_kind = match tcx.hir_node_by_def_id(local_id) {
         Node::Crate(r#mod) => {
@@ -677,7 +673,7 @@ fn local_item_children_by_name(tcx: TyCtxt<'_>, local_id: LocalDefId, name: Symb
         ItemKind::Mod(r#mod) => r#mod
             .item_ids
             .iter()
-            .filter_map(|&item_id| res(hir.item(item_id).ident, item_id.owner_id))
+            .filter_map(|&item_id| res(tcx.hir_item(item_id).ident, item_id.owner_id))
             .collect(),
         ItemKind::Impl(r#impl) => r#impl
             .items
@@ -944,7 +940,7 @@ pub fn is_default_equivalent(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
         ExprKind::Tup(items) | ExprKind::Array(items) => items.iter().all(|x| is_default_equivalent(cx, x)),
         ExprKind::Repeat(x, len) => {
             if let ConstArgKind::Anon(anon_const) = len.kind
-                && let ExprKind::Lit(const_lit) = cx.tcx.hir().body(anon_const.body).value.kind
+                && let ExprKind::Lit(const_lit) = cx.tcx.hir_body(anon_const.body).value.kind
                 && let LitKind::Int(v, _) = const_lit.node
                 && v <= 32
                 && is_default_equivalent(cx, x)
@@ -974,7 +970,7 @@ fn is_default_equivalent_from(cx: &LateContext<'_>, from_func: &Expr<'_>, arg: &
             ExprKind::Array([]) => return is_path_diagnostic_item(cx, ty, sym::Vec),
             ExprKind::Repeat(_, len) => {
                 if let ConstArgKind::Anon(anon_const) = len.kind
-                    && let ExprKind::Lit(const_lit) = cx.tcx.hir().body(anon_const.body).value.kind
+                    && let ExprKind::Lit(const_lit) = cx.tcx.hir_body(anon_const.body).value.kind
                     && let LitKind::Int(v, _) = const_lit.node
                 {
                     return v == 0 && is_path_diagnostic_item(cx, ty, sym::Vec);
@@ -1372,8 +1368,8 @@ impl<'tcx> Visitor<'tcx> for ContainsName<'_, 'tcx> {
         }
     }
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.cx.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.cx.tcx
     }
 }
 
@@ -1424,7 +1420,7 @@ pub fn get_enclosing_block<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Optio
         | Node::ImplItem(&ImplItem {
             kind: ImplItemKind::Fn(_, eid),
             ..
-        }) => match cx.tcx.hir().body(eid).value.kind {
+        }) => match cx.tcx.hir_body(eid).value.kind {
             ExprKind::Block(block, _) => Some(block),
             _ => None,
         },
@@ -1650,7 +1646,7 @@ pub fn is_integer_const(cx: &LateContext<'_>, e: &Expr<'_>, value: u128) -> bool
     if is_integer_literal(e, value) {
         return true;
     }
-    let enclosing_body = cx.tcx.hir().enclosing_body_owner(e.hir_id);
+    let enclosing_body = cx.tcx.hir_enclosing_body_owner(e.hir_id);
     if let Some(Constant::Int(v)) =
         ConstEvalCtxt::with_env(cx.tcx, cx.typing_env(), cx.tcx.typeck(enclosing_body)).eval(e)
     {
@@ -2067,7 +2063,7 @@ pub fn get_async_fn_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'_>) -> Option<&'t
                 ..
             },
             _,
-        ) = tcx.hir().body(body).value.kind
+        ) = tcx.hir_body(body).value.kind
         {
             return Some(expr);
         }
@@ -2175,7 +2171,7 @@ pub fn is_expr_untyped_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) 
         ExprKind::Closure(&Closure { body, fn_decl, .. })
             if fn_decl.inputs.iter().all(|ty| matches!(ty.kind, TyKind::Infer(()))) =>
         {
-            is_body_identity_function(cx, cx.tcx.hir().body(body))
+            is_body_identity_function(cx, cx.tcx.hir_body(body))
         },
         ExprKind::Path(QPath::Resolved(_, path))
             if path.segments.iter().all(|seg| seg.infer_args)
@@ -2197,7 +2193,7 @@ pub fn is_expr_untyped_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) 
 /// errors.
 pub fn is_expr_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     match expr.kind {
-        ExprKind::Closure(&Closure { body, .. }) => is_body_identity_function(cx, cx.tcx.hir().body(body)),
+        ExprKind::Closure(&Closure { body, .. }) => is_body_identity_function(cx, cx.tcx.hir_body(body)),
         _ => path_def_id(cx, expr).is_some_and(|id| cx.tcx.is_diagnostic_item(sym::convert_identity, id)),
     }
 }
@@ -2552,9 +2548,9 @@ fn with_test_item_names(tcx: TyCtxt<'_>, module: LocalModDefId, f: impl Fn(&[Sym
         Entry::Occupied(entry) => f(entry.get()),
         Entry::Vacant(entry) => {
             let mut names = Vec::new();
-            for id in tcx.hir().module_items(module) {
+            for id in tcx.hir_module_free_items(module) {
                 if matches!(tcx.def_kind(id.owner_id), DefKind::Const)
-                    && let item = tcx.hir().item(id)
+                    && let item = tcx.hir_item(id)
                     && let ItemKind::Const(ty, _generics, _body) = item.kind
                 {
                     if let TyKind::Path(QPath::Resolved(_, path)) = ty.kind {
@@ -2764,7 +2760,7 @@ impl<'tcx> ExprUseCtxt<'tcx> {
 
             Node::Expr(use_expr) => match use_expr.kind {
                 ExprKind::Ret(_) => ExprUseNode::Return(OwnerId {
-                    def_id: cx.tcx.hir().body_owner_def_id(cx.enclosing_body.unwrap()),
+                    def_id: cx.tcx.hir_body_owner_def_id(cx.enclosing_body.unwrap()),
                 }),
 
                 ExprKind::Closure(closure) => ExprUseNode::Return(OwnerId { def_id: closure.def_id }),
@@ -2932,7 +2928,7 @@ pub fn expr_use_ctxt<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> ExprU
         #[allow(unreachable_patterns)]
         Some(ControlFlow::Break(_)) => unreachable!("type of node is ControlFlow<!>"),
         None => ExprUseCtxt {
-            node: Node::Crate(cx.tcx.hir().root_module()),
+            node: Node::Crate(cx.tcx.hir_root_module()),
             child_id: HirId::INVALID,
             adjustments: &[],
             is_ty_unified: true,

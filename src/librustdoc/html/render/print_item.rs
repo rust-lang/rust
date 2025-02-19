@@ -2,7 +2,6 @@ use std::cmp::Ordering;
 use std::fmt;
 use std::fmt::Display;
 
-use itertools::Itertools;
 use rinja::Template;
 use rustc_abi::VariantIdx;
 use rustc_data_structures::captures::Captures;
@@ -514,11 +513,7 @@ fn item_module(w: &mut String, cx: &Context<'_>, item: &clean::Item, items: &[cl
                         class = myitem.type_(),
                         unsafety_flag = unsafety_flag,
                         href = item_path(myitem.type_(), myitem.name.unwrap().as_str()),
-                        title = [myitem.type_().to_string(), full_path(cx, myitem)]
-                            .iter()
-                            .filter_map(|s| if !s.is_empty() { Some(s.as_str()) } else { None })
-                            .collect::<Vec<_>>()
-                            .join(" "),
+                        title = format_args!("{} {}", myitem.type_(), full_path(cx, myitem)),
                     ),
                 );
             }
@@ -915,7 +910,7 @@ fn item_trait(w: &mut String, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
                 w,
                 format_args!(
                     "<div class=\"stab must_implement\">At least one of the `{}` methods is required.</div>",
-                    list.iter().join("`, `")
+                    fmt::from_fn(|f| list.iter().joined("`, `", f))
                 ),
             );
         }
@@ -1168,17 +1163,18 @@ fn item_trait(w: &mut String, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
         js_src_path.extend(cx.current.iter().copied());
         js_src_path.push_fmt(format_args!("{}.{}.js", it.type_(), it.name.unwrap()));
     }
-    let extern_crates = extern_crates
-        .into_iter()
-        .map(|cnum| tcx.crate_name(cnum).to_string())
-        .collect::<Vec<_>>()
-        .join(",");
-    let (extern_before, extern_after) =
-        if extern_crates.is_empty() { ("", "") } else { (" data-ignore-extern-crates=\"", "\"") };
+    let extern_crates = fmt::from_fn(|f| {
+        if !extern_crates.is_empty() {
+            f.write_str(" data-ignore-extern-crates=\"")?;
+            extern_crates.iter().map(|&cnum| tcx.crate_name(cnum)).joined(",", f)?;
+            f.write_str("\"")?;
+        }
+        Ok(())
+    });
     write_str(
         w,
         format_args!(
-            "<script src=\"{src}\"{extern_before}{extern_crates}{extern_after} async></script>",
+            "<script src=\"{src}\"{extern_crates} async></script>",
             src = js_src_path.finish()
         ),
     );
@@ -1400,7 +1396,7 @@ fn item_type_alias(w: &mut String, cx: &Context<'_>, it: &clean::Item, t: &clean
             .collect();
         js_src_path.extend(target_fqp[..target_fqp.len() - 1].iter().copied());
         js_src_path.push_fmt(format_args!("{target_type}.{}.js", target_fqp.last().unwrap()));
-        let self_path = self_fqp.iter().map(Symbol::as_str).collect::<Vec<&str>>().join("::");
+        let self_path = fmt::from_fn(|f| self_fqp.iter().joined("::", f));
         write_str(
             w,
             format_args!(

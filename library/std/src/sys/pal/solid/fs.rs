@@ -452,8 +452,11 @@ impl File {
             abi::SOLID_FS_Lseek(self.fd.raw(), pos, whence)
         })
         .map_err(|e| e.as_io_error())?;
-
         // Get the new offset
+        self.tell()
+    }
+
+    pub fn tell(&self) -> io::Result<u64> {
         unsafe {
             let mut out_offset = MaybeUninit::uninit();
             error::SolidError::err_if_negative(abi::SOLID_FS_Ftell(

@@ -627,7 +627,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     fn check_object_lifetime_default(&self, hir_id: HirId) {
         let tcx = self.tcx;
         if let Some(owner_id) = hir_id.as_owner()
-            && let Some(generics) = tcx.hir().get_generics(owner_id.def_id)
+            && let Some(generics) = tcx.hir_get_generics(owner_id.def_id)
         {
             for p in generics.params {
                 let hir::GenericParamKind::Type { .. } = p.kind else { continue };
@@ -2461,7 +2461,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         if let Err(terr) = ocx.eq(&cause, param_env, expected_sig, sig) {
             let mut diag = tcx.dcx().create_err(errors::ProcMacroBadSig { span, kind });
 
-            let hir_sig = tcx.hir().fn_sig_by_hir_id(hir_id);
+            let hir_sig = tcx.hir_fn_sig_by_hir_id(hir_id);
             if let Some(hir_sig) = hir_sig {
                 #[allow(rustc::diagnostic_outside_of_impl)] // FIXME
                 match terr {
@@ -2606,8 +2606,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
 
     fn visit_item(&mut self, item: &'tcx Item<'tcx>) {
@@ -2740,9 +2740,8 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
             for attr_to_check in ATTRS_TO_CHECK {
                 if attr.has_name(*attr_to_check) {
                     let item = tcx
-                        .hir()
-                        .items()
-                        .map(|id| tcx.hir().item(id))
+                        .hir_free_items()
+                        .map(|id| tcx.hir_item(id))
                         .find(|item| !item.span.is_dummy()) // Skip prelude `use`s
                         .map(|item| errors::ItemFollowingInnerAttr {
                             span: item.ident.span,
@@ -2792,10 +2791,10 @@ fn check_non_exported_macro_for_invalid_attrs(tcx: TyCtxt<'_>, item: &Item<'_>) 
 
 fn check_mod_attrs(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
     let check_attr_visitor = &mut CheckAttrVisitor { tcx, abort: Cell::new(false) };
-    tcx.hir().visit_item_likes_in_module(module_def_id, check_attr_visitor);
+    tcx.hir_visit_item_likes_in_module(module_def_id, check_attr_visitor);
     if module_def_id.to_local_def_id().is_top_level_module() {
         check_attr_visitor.check_attributes(CRATE_HIR_ID, DUMMY_SP, Target::Mod, None);
-        check_invalid_crate_level_attr(tcx, tcx.hir().krate_attrs());
+        check_invalid_crate_level_attr(tcx, tcx.hir_krate_attrs());
     }
     if check_attr_visitor.abort.get() {
         tcx.dcx().abort_if_errors()

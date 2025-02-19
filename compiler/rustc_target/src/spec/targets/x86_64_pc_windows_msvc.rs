@@ -1,4 +1,4 @@
-use crate::spec::{SanitizerSet, Target, base};
+use crate::spec::{SanitizerSet, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::windows_msvc::opts();
@@ -10,7 +10,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "x86_64-pc-windows-msvc".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("64-bit MSVC (Windows 10+)".into()),
             tier: Some(1),
             host_tools: Some(true),

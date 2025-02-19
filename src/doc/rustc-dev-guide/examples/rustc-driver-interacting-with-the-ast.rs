@@ -75,7 +75,7 @@ impl rustc_driver::Callbacks for MyCallbacks {
             let item = hir_krate.item(id);
             // Use pattern-matching to find a specific node inside the main function.
             if let rustc_hir::ItemKind::Fn(_, _, body_id) = item.kind {
-                let expr = &tcx.hir().body(body_id).value;
+                let expr = &tcx.hir_body(body_id).value;
                 if let rustc_hir::ExprKind::Block(block, _) = expr.kind {
                     if let rustc_hir::StmtKind::Let(let_stmt) = block.stmts[0].kind {
                         if let Some(expr) = let_stmt.init {

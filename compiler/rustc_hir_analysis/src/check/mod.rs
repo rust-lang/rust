@@ -129,7 +129,7 @@ fn get_owner_return_paths(
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
     let parent_id = tcx.hir().get_parent_item(hir_id).def_id;
     tcx.hir_node_by_def_id(parent_id).body_id().map(|body_id| {
-        let body = tcx.hir().body(body_id);
+        let body = tcx.hir_body(body_id);
         let mut visitor = ReturnsVisitor::default();
         visitor.visit_body(body);
         (parent_id, visitor)

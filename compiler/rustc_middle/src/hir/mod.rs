@@ -213,7 +213,7 @@ pub fn provide(providers: &mut Providers) {
     providers.fn_arg_names = |tcx, def_id| {
         let hir = tcx.hir();
         if let Some(body_id) = tcx.hir_node_by_def_id(def_id).body_id() {
-            tcx.arena.alloc_from_iter(hir.body_param_names(body_id))
+            tcx.arena.alloc_from_iter(tcx.hir_body_param_names(body_id))
         } else if let Node::TraitItem(&TraitItem {
             kind: TraitItemKind::Fn(_, TraitFn::Required(idents)),
             ..

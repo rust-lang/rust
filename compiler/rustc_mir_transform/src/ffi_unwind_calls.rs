@@ -113,7 +113,7 @@ fn required_panic_strategy(tcx: TyCtxt<'_>, _: LocalCrate) -> Option<PanicStrate
         return Some(PanicStrategy::Abort);
     }
 
-    for def_id in tcx.hir().body_owners() {
+    for def_id in tcx.hir_body_owners() {
         if tcx.has_ffi_unwind_calls(def_id) {
             // Given that this crate is compiled in `-C panic=unwind`, the `AbortUnwindingCalls`
             // MIR pass will not be run on FFI-unwind call sites, therefore a foreign exception

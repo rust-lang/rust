@@ -9,11 +9,11 @@ use rustc_middle::ty::TyCtxt;
 pub fn check_crate(tcx: TyCtxt<'_>) {
     let errors = Lock::new(Vec::new());
 
-    tcx.hir().par_for_each_module(|module_id| {
+    tcx.par_hir_for_each_module(|module_id| {
         let mut v =
             HirIdValidator { tcx, owner: None, hir_ids_seen: Default::default(), errors: &errors };
 
-        tcx.hir().visit_item_likes_in_module(module_id, &mut v);
+        tcx.hir_visit_item_likes_in_module(module_id, &mut v);
     });
 
     let errors = errors.into_inner();
@@ -61,7 +61,7 @@ impl<'a, 'hir> HirIdValidator<'a, 'hir> {
 
         if max != self.hir_ids_seen.len() - 1 {
             let hir = self.tcx.hir();
-            let pretty_owner = hir.def_path(owner.def_id).to_string_no_crate_verbose();
+            let pretty_owner = self.tcx.hir_def_path(owner.def_id).to_string_no_crate_verbose();
 
             let missing_items: Vec<_> = (0..=max as u32)
                 .map(|i| ItemLocalId::from_u32(i))
@@ -105,8 +105,8 @@ impl<'a, 'hir> HirIdValidator<'a, 'hir> {
 impl<'a, 'hir> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
     type NestedFilter = nested_filter::OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
 
     fn visit_nested_item(&mut self, id: hir::ItemId) {
@@ -138,8 +138,8 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
                 format!(
                     "HirIdValidator: The recorded owner of {} is {} instead of {}",
                     self.tcx.hir().node_to_string(hir_id),
-                    self.tcx.hir().def_path(hir_id.owner.def_id).to_string_no_crate_verbose(),
-                    self.tcx.hir().def_path(owner.def_id).to_string_no_crate_verbose()
+                    self.tcx.hir_def_path(hir_id.owner.def_id).to_string_no_crate_verbose(),
+                    self.tcx.hir_def_path(owner.def_id).to_string_no_crate_verbose()
                 )
             });
         }

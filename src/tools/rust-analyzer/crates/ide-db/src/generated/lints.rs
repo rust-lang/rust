@@ -9107,8 +9107,8 @@ The tracking issue for this feature is: [#27721]
         deny_since: None,
     },
     Lint {
-        label: "pattern_complexity",
-        description: r##"# `pattern_complexity`
+        label: "pattern_complexity_limit",
+        description: r##"# `pattern_complexity_limit`
 
 This feature has no tracking issue, and is therefore likely internal to the compiler, not being intended for general use.
 

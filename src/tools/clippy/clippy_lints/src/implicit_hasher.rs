@@ -130,7 +130,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
                     });
 
                     let mut ctr_vis = ImplicitHasherConstructorVisitor::new(cx, target);
-                    for item in impl_.items.iter().map(|item| cx.tcx.hir().impl_item(item.id)) {
+                    for item in impl_.items.iter().map(|item| cx.tcx.hir_impl_item(item.id)) {
                         ctr_vis.visit_impl_item(item);
                     }
 
@@ -154,7 +154,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
                 body: body_id,
                 ..
             } => {
-                let body = cx.tcx.hir().body(body_id);
+                let body = cx.tcx.hir_body(body_id);
 
                 for ty in sig.decl.inputs {
                     let mut vis = ImplicitHasherTypeVisitor::new(cx);
@@ -363,7 +363,7 @@ impl<'tcx> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'_, '_, 'tcx> {
         walk_expr(self, e);
     }
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.cx.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.cx.tcx
     }
 }

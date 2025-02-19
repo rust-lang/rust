@@ -173,10 +173,7 @@ impl Path {
                 segments: path.mod_path().segments(),
                 generic_args: Some(path.generic_args()),
             },
-            Path::LangItem(_, seg) => PathSegments {
-                segments: seg.as_ref().map_or(&[], |seg| std::slice::from_ref(seg)),
-                generic_args: None,
-            },
+            Path::LangItem(_, seg) => PathSegments { segments: seg.as_slice(), generic_args: None },
         }
     }
 
@@ -238,6 +235,11 @@ impl Path {
 pub struct PathSegment<'a> {
     pub name: &'a Name,
     pub args_and_bindings: Option<&'a GenericArgs>,
+}
+
+impl PathSegment<'_> {
+    pub const MISSING: PathSegment<'static> =
+        PathSegment { name: &Name::missing(), args_and_bindings: None };
 }
 
 #[derive(Debug, Clone, Copy)]

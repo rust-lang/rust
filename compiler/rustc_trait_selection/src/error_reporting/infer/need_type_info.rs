@@ -489,7 +489,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         };
 
         let mut local_visitor = FindInferSourceVisitor::new(self, typeck_results, arg);
-        if let Some(body) = self.tcx.hir().maybe_body_owned_by(
+        if let Some(body) = self.tcx.hir_maybe_body_owned_by(
             self.tcx.typeck_root_def_id(body_def_id.to_def_id()).expect_local(),
         ) {
             let expr = body.value;
@@ -1202,8 +1202,8 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tecx.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tecx.tcx
     }
 
     fn visit_local(&mut self, local: &'tcx LetStmt<'tcx>) {
@@ -1320,7 +1320,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
             {
                 let output = args.as_closure().sig().output().skip_binder();
                 if self.generic_arg_contains_target(output.into()) {
-                    let body = self.tecx.tcx.hir().body(body);
+                    let body = self.tecx.tcx.hir_body(body);
                     let should_wrap_expr = if matches!(body.value.kind, ExprKind::Block(..)) {
                         None
                     } else {

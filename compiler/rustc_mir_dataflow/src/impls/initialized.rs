@@ -4,13 +4,14 @@ use rustc_abi::VariantIdx;
 use rustc_index::Idx;
 use rustc_index::bit_set::{DenseBitSet, MixedBitSet};
 use rustc_middle::bug;
-use rustc_middle::mir::{self, Body, CallReturnPlaces, Location, TerminatorEdges};
+use rustc_middle::mir::{
+    self, Body, CallReturnPlaces, Location, SwitchTargetValue, TerminatorEdges,
+};
 use rustc_middle::ty::util::Discr;
 use rustc_middle::ty::{self, TyCtxt};
 use tracing::{debug, instrument};
 
 use crate::drop_flag_effects::DropFlagState;
-use crate::framework::SwitchIntTarget;
 use crate::move_paths::{HasMoveData, InitIndex, InitKind, LookupResult, MoveData, MovePathIndex};
 use crate::{
     Analysis, GenKill, MaybeReachable, drop_flag_effects, drop_flag_effects_for_function_entry,
@@ -422,9 +423,9 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
         &mut self,
         data: &mut Self::SwitchIntData,
         state: &mut Self::Domain,
-        edge: SwitchIntTarget,
+        value: SwitchTargetValue,
     ) {
-        if let Some(value) = edge.value {
+        if let SwitchTargetValue::Normal(value) = value {
             // Kill all move paths that correspond to variants we know to be inactive along this
             // particular outgoing edge of a `SwitchInt`.
             drop_flag_effects::on_all_inactive_variants(
@@ -535,9 +536,9 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
         &mut self,
         data: &mut Self::SwitchIntData,
         state: &mut Self::Domain,
-        edge: SwitchIntTarget,
+        value: SwitchTargetValue,
     ) {
-        if let Some(value) = edge.value {
+        if let SwitchTargetValue::Normal(value) = value {
             // Mark all move paths that correspond to variants other than this one as maybe
             // uninitialized (in reality, they are *definitely* uninitialized).
             drop_flag_effects::on_all_inactive_variants(

@@ -4,6 +4,8 @@ use crate::core::build_steps::tool::SUBMODULES_FOR_RUSTBOOK;
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::utils::exec::command;
 
+pub const VENDOR_DIR: &str = "vendor";
+
 /// Returns the cargo workspaces to vendor for `x vendor` and dist tarballs.
 ///
 /// Returns a `Vec` of `(path_to_manifest, submodules_required)` where
@@ -29,13 +31,14 @@ pub fn default_paths_to_vendor(builder: &Builder<'_>) -> Vec<(PathBuf, Vec<&'sta
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub(crate) struct Vendor {
-    sync_args: Vec<PathBuf>,
-    versioned_dirs: bool,
-    root_dir: PathBuf,
+    pub(crate) sync_args: Vec<PathBuf>,
+    pub(crate) versioned_dirs: bool,
+    pub(crate) root_dir: PathBuf,
+    pub(crate) output_dir: PathBuf,
 }
 
 impl Step for Vendor {
-    type Output = ();
+    type Output = VendorOutput;
     const DEFAULT: bool = true;
     const ONLY_HOSTS: bool = true;
 
@@ -48,10 +51,13 @@ impl Step for Vendor {
             sync_args: run.builder.config.cmd.vendor_sync_args(),
             versioned_dirs: run.builder.config.cmd.vendor_versioned_dirs(),
             root_dir: run.builder.src.clone(),
+            output_dir: run.builder.src.join(VENDOR_DIR),
         });
     }
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
+        builder.info(&format!("Vendoring sources to {:?}", self.root_dir));
+
         let mut cmd = command(&builder.initial_cargo);
         cmd.arg("vendor");
 
@@ -81,8 +87,14 @@ impl Step for Vendor {
         // which uses the unstable `public-dependency` feature.
         cmd.env("RUSTC_BOOTSTRAP", "1");
 
-        cmd.current_dir(self.root_dir);
+        cmd.current_dir(self.root_dir).arg(&self.output_dir);
 
-        cmd.run(builder);
+        let config = cmd.run_capture_stdout(builder);
+        VendorOutput { config: config.stdout() }
     }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct VendorOutput {
+    pub(crate) config: String,
 }

@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `&str: AsExpression<<SelectInt as Expression>::SqlType>` is not satisfied
-  --> $DIR/as_expression.rs:55:21
+  --> $DIR/as_expression.rs:56:21
    |
 LL |     SelectInt.check("bar");
    |               ----- ^^^^^ the trait `AsExpression<<SelectInt as Expression>::SqlType>` is not implemented for `&str`
@@ -8,7 +8,7 @@ LL |     SelectInt.check("bar");
    |
    = help: the trait `AsExpression<Text>` is implemented for `&str`
 note: required by a bound in `Foo::check`
-  --> $DIR/as_expression.rs:46:12
+  --> $DIR/as_expression.rs:47:12
    |
 LL |     fn check<T>(&self, _: T) -> <T as AsExpression<<Self as Expression>::SqlType>>::Expression
    |        ----- required by a bound in this associated function
@@ -17,7 +17,7 @@ LL |         T: AsExpression<Self::SqlType>,
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Foo::check`
 
 error[E0271]: type mismatch resolving `<SelectInt as Expression>::SqlType == Text`
-  --> $DIR/as_expression.rs:55:5
+  --> $DIR/as_expression.rs:56:5
    |
 LL |     SelectInt.check("bar");
    |     ^^^^^^^^^^^^^^^^^^^^^^ expected `Text`, found `Integer`

@@ -15,7 +15,7 @@ use rustc_target::asm::InlineAsmArch;
 use crate::prelude::*;
 
 pub(crate) fn codegen_global_asm_item(tcx: TyCtxt<'_>, global_asm: &mut String, item_id: ItemId) {
-    let item = tcx.hir().item(item_id);
+    let item = tcx.hir_item(item_id);
     if let rustc_hir::ItemKind::GlobalAsm(asm) = item.kind {
         let is_x86 =
             matches!(tcx.sess.asm_arch.unwrap(), InlineAsmArch::X86 | InlineAsmArch::X86_64);

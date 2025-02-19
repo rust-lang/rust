@@ -27,7 +27,10 @@ use crate::{
         FetchWorkspaceResponse, GlobalState,
     },
     hack_recover_crate_name,
-    handlers::dispatch::{NotificationDispatcher, RequestDispatcher},
+    handlers::{
+        dispatch::{NotificationDispatcher, RequestDispatcher},
+        request::empty_diagnostic_report,
+    },
     lsp::{
         from_proto, to_proto,
         utils::{notification_is, Progress},
@@ -548,6 +551,9 @@ impl GlobalState {
             self.mem_docs
                 .iter()
                 .map(|path| vfs.file_id(path).unwrap())
+                .filter_map(|(file_id, excluded)| {
+                    (excluded == vfs::FileExcluded::No).then_some(file_id)
+                })
                 .filter(|&file_id| {
                     let source_root = db.file_source_root(file_id);
                     // Only publish diagnostics for files in the workspace, not from crates.io deps
@@ -632,6 +638,9 @@ impl GlobalState {
             .mem_docs
             .iter()
             .map(|path| self.vfs.read().0.file_id(path).unwrap())
+            .filter_map(|(file_id, excluded)| {
+                (excluded == vfs::FileExcluded::No).then_some(file_id)
+            })
             .filter(|&file_id| {
                 let source_root = db.file_source_root(file_id);
                 !db.source_root(source_root).is_library
@@ -879,7 +888,10 @@ impl GlobalState {
                 self.task_pool.handle.spawn_with_sender(ThreadIntent::Worker, move |sender| {
                     let _p = tracing::info_span!("GlobalState::check_if_indexed").entered();
                     tracing::debug!(?uri, "handling uri");
-                    let id = from_proto::file_id(&snap, &uri).expect("unable to get FileId");
+                    let Some(id) = from_proto::file_id(&snap, &uri).expect("unable to get FileId")
+                    else {
+                        return;
+                    };
                     if let Ok(crates) = &snap.analysis.crates_for(id) {
                         if crates.is_empty() {
                             if snap.config.discover_workspace_config().is_some() {
@@ -987,13 +999,14 @@ impl GlobalState {
                 );
                 for diag in diagnostics {
                     match url_to_file_id(&self.vfs.read().0, &diag.url) {
-                        Ok(file_id) => self.diagnostics.add_check_diagnostic(
+                        Ok(Some(file_id)) => self.diagnostics.add_check_diagnostic(
                             id,
                             &package_id,
                             file_id,
                             diag.diagnostic,
                             diag.fix,
                         ),
+                        Ok(None) => {}
                         Err(err) => {
                             error!(
                                 "flycheck {id}: File with cargo diagnostic not found in VFS: {}",
@@ -1115,17 +1128,7 @@ impl GlobalState {
             .on_latency_sensitive::<NO_RETRY, lsp_request::SemanticTokensRangeRequest>(handlers::handle_semantic_tokens_range)
             // FIXME: Some of these NO_RETRY could be retries if the file they are interested didn't change.
             // All other request handlers
-            .on_with_vfs_default::<lsp_request::DocumentDiagnosticRequest>(handlers::handle_document_diagnostics, || lsp_types::DocumentDiagnosticReportResult::Report(
-                lsp_types::DocumentDiagnosticReport::Full(
-                    lsp_types::RelatedFullDocumentDiagnosticReport {
-                        related_documents: None,
-                        full_document_diagnostic_report: lsp_types::FullDocumentDiagnosticReport {
-                            result_id: Some("rust-analyzer".to_owned()),
-                            items: vec![],
-                        },
-                    },
-                ),
-            ), || lsp_server::ResponseError {
+            .on_with_vfs_default::<lsp_request::DocumentDiagnosticRequest>(handlers::handle_document_diagnostics, empty_diagnostic_report, || lsp_server::ResponseError {
                 code: lsp_server::ErrorCode::ServerCancelled as i32,
                 message: "server cancelled the request".to_owned(),
                 data: serde_json::to_value(lsp_types::DiagnosticServerCancellationData {

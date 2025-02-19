@@ -1,4 +1,5 @@
 //@ compile-flags: -Z merge-functions=disabled
+//@ add-core-stubs
 
 //@ revisions: windows-gnu
 //@[windows-gnu] compile-flags: --target x86_64-pc-windows-gnu
@@ -13,12 +14,12 @@
 //@[linux] compile-flags: --target x86_64-unknown-linux-gnu
 //@[linux] needs-llvm-components: x86
 
-#![feature(no_core, lang_items, rustc_attrs, abi_vectorcall)]
+#![feature(no_core, rustc_attrs, abi_vectorcall)]
 #![no_core]
 #![crate_type = "lib"]
 
-#[lang = "sized"]
-trait Sized {}
+extern crate minicore;
+use minicore::*;
 
 // Make sure the argument is always passed when explicitly requesting a Windows ABI.
 // Our goal here is to match clang: <https://clang.godbolt.org/z/Wr4jMWq3P>.

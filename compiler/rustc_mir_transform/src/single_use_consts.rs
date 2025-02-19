@@ -48,9 +48,11 @@ impl<'tcx> crate::MirPass<'tcx> for SingleUseConsts {
 
             // We're only changing an operand, not the terminator kinds or successors
             let basic_blocks = body.basic_blocks.as_mut_preserves_cfg();
-            let init_statement =
-                basic_blocks[init_loc.block].statements[init_loc.statement_index].replace_nop();
-            let StatementKind::Assign(place_and_rvalue) = init_statement.kind else {
+            let init_statement_kind = std::mem::replace(
+                &mut basic_blocks[init_loc.block].statements[init_loc.statement_index].kind,
+                StatementKind::Nop,
+            );
+            let StatementKind::Assign(place_and_rvalue) = init_statement_kind else {
                 bug!("No longer an assign?");
             };
             let (place, rvalue) = *place_and_rvalue;

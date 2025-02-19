@@ -1,4 +1,6 @@
-use crate::spec::{RustcAbi, SanitizerSet, StackProbeType, Target, TargetOptions, base};
+use crate::spec::{
+    RustcAbi, SanitizerSet, StackProbeType, Target, TargetMetadata, TargetOptions, base,
+};
 
 // See https://developer.android.com/ndk/guides/abis.html#x86
 // for target ABI requirements.
@@ -16,7 +18,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "i686-linux-android".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("32-bit x86 Android".into()),
             tier: Some(2),
             host_tools: Some(false),

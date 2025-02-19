@@ -710,52 +710,6 @@ impl ast::Fn {
     }
 }
 
-impl Removable for ast::MatchArm {
-    fn remove(&self) {
-        if let Some(sibling) = self.syntax().prev_sibling_or_token() {
-            if sibling.kind() == SyntaxKind::WHITESPACE {
-                ted::remove(sibling);
-            }
-        }
-        if let Some(sibling) = self.syntax().next_sibling_or_token() {
-            if sibling.kind() == T![,] {
-                ted::remove(sibling);
-            }
-        }
-        ted::remove(self.syntax());
-    }
-}
-
-impl ast::MatchArmList {
-    pub fn add_arm(&self, arm: ast::MatchArm) {
-        normalize_ws_between_braces(self.syntax());
-        let mut elements = Vec::new();
-        let position = match self.arms().last() {
-            Some(last_arm) => {
-                if needs_comma(&last_arm) {
-                    ted::append_child(last_arm.syntax(), make::token(SyntaxKind::COMMA));
-                }
-                Position::after(last_arm.syntax().clone())
-            }
-            None => match self.l_curly_token() {
-                Some(it) => Position::after(it),
-                None => Position::last_child_of(self.syntax()),
-            },
-        };
-        let indent = IndentLevel::from_node(self.syntax()) + 1;
-        elements.push(make::tokens::whitespace(&format!("\n{indent}")).into());
-        elements.push(arm.syntax().clone().into());
-        if needs_comma(&arm) {
-            ted::append_child(arm.syntax(), make::token(SyntaxKind::COMMA));
-        }
-        ted::insert_all(position, elements);
-
-        fn needs_comma(arm: &ast::MatchArm) -> bool {
-            arm.expr().is_some_and(|e| !e.is_block_like()) && arm.comma_token().is_none()
-        }
-    }
-}
-
 impl ast::LetStmt {
     pub fn set_ty(&self, ty: Option<ast::Type>) {
         match ty {

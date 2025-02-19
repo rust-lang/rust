@@ -126,6 +126,10 @@ pub trait Ty<I: Interner<Ty = Self>>:
         matches!(self.kind(), ty::Infer(ty::TyVar(_)))
     }
 
+    fn is_ty_error(self) -> bool {
+        matches!(self.kind(), ty::Error(_))
+    }
+
     fn is_floating_point(self) -> bool {
         matches!(self.kind(), ty::Float(_) | ty::Infer(ty::FloatVar(_)))
     }
@@ -284,6 +288,10 @@ pub trait Const<I: Interner<Const = Self>>:
     fn is_ct_var(self) -> bool {
         matches!(self.kind(), ty::ConstKind::Infer(ty::InferConst::Var(_)))
     }
+
+    fn is_ct_error(self) -> bool {
+        matches!(self.kind(), ty::ConstKind::Error(_))
+    }
 }
 
 pub trait ValueConst<I: Interner<ValueConst = Self>>: Copy + Debug + Hash + Eq {
@@ -367,6 +375,13 @@ pub trait Term<I: Interner<Term = Self>>:
         match self.kind() {
             ty::TermKind::Ty(ty) => ty.is_ty_var(),
             ty::TermKind::Const(ct) => ct.is_ct_var(),
+        }
+    }
+
+    fn is_error(self) -> bool {
+        match self.kind() {
+            ty::TermKind::Ty(ty) => ty.is_ty_error(),
+            ty::TermKind::Const(ct) => ct.is_ct_error(),
         }
     }
 

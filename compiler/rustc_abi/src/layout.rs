@@ -2,6 +2,7 @@ use std::fmt::{self, Write};
 use std::ops::{Bound, Deref};
 use std::{cmp, iter};
 
+use rustc_hashes::Hash64;
 use rustc_index::Idx;
 use tracing::debug;
 
@@ -133,7 +134,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             size,
             max_repr_align: None,
             unadjusted_abi_align: align.abi,
-            randomization_seed: combined_seed,
+            randomization_seed: Hash64::new(combined_seed),
         }
     }
 
@@ -226,7 +227,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             size: Size::ZERO,
             max_repr_align: None,
             unadjusted_abi_align: dl.i8_align.abi,
-            randomization_seed: 0,
+            randomization_seed: Hash64::ZERO,
         }
     }
 
@@ -1058,7 +1059,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         // unsizable tail fields are excluded so that we use the same seed for the sized and unsized layouts.
         let field_seed = fields_excluding_tail
             .iter()
-            .fold(0u64, |acc, f| acc.wrapping_add(f.randomization_seed));
+            .fold(Hash64::ZERO, |acc, f| acc.wrapping_add(f.randomization_seed));
 
         if optimize_field_order && fields.len() > 1 {
             // If `-Z randomize-layout` was enabled for the type definition we can shuffle
@@ -1072,7 +1073,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                     // `ReprOptions.field_shuffle_seed` is a deterministic seed we can use to randomize field
                     // ordering.
                     let mut rng = rand_xoshiro::Xoshiro128StarStar::seed_from_u64(
-                        field_seed.wrapping_add(repr.field_shuffle_seed),
+                        field_seed.wrapping_add(repr.field_shuffle_seed).as_u64(),
                     );
 
                     // Shuffle the ordering of the fields.

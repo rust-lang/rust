@@ -910,6 +910,29 @@ fn qux(bar: Bar, baz: Baz) {}
 }
 
 #[test]
+fn doctest_expand_glob_reexport() {
+    check_doc_test(
+        "expand_glob_reexport",
+        r#####"
+mod foo {
+    pub struct Bar;
+    pub struct Baz;
+}
+
+pub use foo::*$0;
+"#####,
+        r#####"
+mod foo {
+    pub struct Bar;
+    pub struct Baz;
+}
+
+pub use foo::{Bar, Baz};
+"#####,
+    )
+}
+
+#[test]
 fn doctest_explicit_enum_discriminant() {
     check_doc_test(
         "explicit_enum_discriminant",

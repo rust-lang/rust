@@ -2,7 +2,7 @@ use std::mem;
 
 use ast::token::IdentIsRaw;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, Token, TokenKind};
+use rustc_ast::token::{self, Delimiter, MetaVarKind, Token, TokenKind};
 use rustc_ast::{
     self as ast, AngleBracketedArg, AngleBracketedArgs, AnonConst, AssocItemConstraint,
     AssocItemConstraintKind, BlockCheckMode, GenericArg, GenericArgs, Generics, ParenthesizedArgs,
@@ -196,14 +196,12 @@ impl<'a> Parser<'a> {
 
         maybe_whole!(self, NtPath, |path| reject_generics_if_mod_style(self, path.into_inner()));
 
-        if let token::Interpolated(nt) = &self.token.kind {
-            if let token::NtTy(ty) = &**nt {
-                if let ast::TyKind::Path(None, path) = &ty.kind {
-                    let path = path.clone();
-                    self.bump();
-                    return Ok(reject_generics_if_mod_style(self, path));
-                }
-            }
+        // If we have a `ty` metavar in the form of a path, reparse it directly as a path, instead
+        // of reparsing it as a `ty` and then extracting the path.
+        if let Some(path) = self.eat_metavar_seq(MetaVarKind::Ty { is_path: true }, |this| {
+            this.parse_path(PathStyle::Type)
+        }) {
+            return Ok(reject_generics_if_mod_style(self, path));
         }
 
         let lo = self.token.span;

@@ -76,7 +76,7 @@ pub(crate) fn assert_dep_graph(tcx: TyCtxt<'_>) {
             let mut visitor =
                 IfThisChanged { tcx, if_this_changed: vec![], then_this_would_need: vec![] };
             visitor.process_attrs(CRATE_DEF_ID);
-            tcx.hir().visit_all_item_likes_in_crate(&mut visitor);
+            tcx.hir_visit_all_item_likes_in_crate(&mut visitor);
             (visitor.if_this_changed, visitor.then_this_would_need)
         };
 
@@ -174,8 +174,8 @@ impl<'tcx> IfThisChanged<'tcx> {
 impl<'tcx> Visitor<'tcx> for IfThisChanged<'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {

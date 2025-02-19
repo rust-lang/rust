@@ -12,7 +12,7 @@
 //! nightly Rust feature `-Zbuild-std`. This target is for people who want to
 //! use stable Rust, and target a stable set pf WebAssembly features.
 
-use crate::spec::{Cc, LinkerFlavor, Target, base};
+use crate::spec::{Cc, LinkerFlavor, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut options = base::wasm::options();
@@ -43,7 +43,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "wasm32-unknown-unknown".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("WebAssembly".into()),
             tier: Some(2),
             host_tools: Some(false),

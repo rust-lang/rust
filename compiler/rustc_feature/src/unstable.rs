@@ -227,7 +227,7 @@ declare_features! (
     /// Allows using `#[omit_gdb_pretty_printer_section]`.
     (internal, omit_gdb_pretty_printer_section, "1.5.0", None),
     /// Set the maximum pattern complexity allowed (not limited by default).
-    (internal, pattern_complexity, "1.78.0", None),
+    (internal, pattern_complexity_limit, "1.78.0", None),
     /// Allows using pattern types.
     (internal, pattern_types, "1.79.0", Some(123646)),
     /// Allows using `#[prelude_import]` on glob `use` items.

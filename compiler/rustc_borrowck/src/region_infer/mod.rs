@@ -1267,6 +1267,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let sub_region_scc = self.constraint_sccs.scc(sub_region);
         let sup_region_scc = self.constraint_sccs.scc(sup_region);
 
+        if sub_region_scc == sup_region_scc {
+            debug!("{sup_region:?}: {sub_region:?} holds trivially; they are in the same SCC");
+            return true;
+        }
+
         // If we are checking that `'sup: 'sub`, and `'sub` contains
         // some placeholder that `'sup` cannot name, then this is only
         // true if `'sup` outlives static.
