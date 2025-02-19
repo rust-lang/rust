@@ -5,7 +5,6 @@ use std::{convert, fmt, mem, ops};
 
 use either::Either;
 use rustc_abi::{Align, Size, VariantIdx, WrappingRange};
-use rustc_ast_ir::Mutability;
 use rustc_data_structures::sync::Lock;
 use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, ErrorGuaranteed, IntoDiagArg};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
@@ -16,7 +15,7 @@ use rustc_span::{DUMMY_SP, Span, Symbol};
 use super::{AllocId, AllocRange, ConstAllocation, Pointer, Scalar};
 use crate::error;
 use crate::mir::{ConstAlloc, ConstValue};
-use crate::ty::{self, Ty, TyCtxt, ValTree, layout, tls};
+use crate::ty::{self, Mutability, Ty, TyCtxt, ValTree, layout, tls};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
 pub enum ErrorHandled {

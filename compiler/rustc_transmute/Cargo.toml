@@ -6,7 +6,6 @@ edition = "2021"
 [dependencies]
 # tidy-alphabetical-start
 rustc_abi = { path = "../rustc_abi", optional = true }
-rustc_ast_ir = { path = "../rustc_ast_ir", optional = true }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_hir = { path = "../rustc_hir", optional = true }
 rustc_infer = { path = "../rustc_infer", optional = true }
@@ -19,7 +18,6 @@ tracing = "0.1"
 [features]
 rustc = [
     "dep:rustc_abi",
-    "dep:rustc_ast_ir",
     "dep:rustc_hir",
     "dep:rustc_infer",
     "dep:rustc_macros",

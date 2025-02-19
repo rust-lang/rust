@@ -8,7 +8,6 @@ doctest = false
 
 [dependencies]
 # tidy-alphabetical-start
-rustc_ast_ir = { path = "../rustc_ast_ir" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_fluent_macro = { path = "../rustc_fluent_macro" }
