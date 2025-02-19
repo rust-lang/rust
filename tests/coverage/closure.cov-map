@@ -96,16 +96,14 @@ Number of file 0 mappings: 3
 Highest counter ID seen: c1
 
 Function name: closure::main::{closure#15}
-Raw bytes (37): 0x[01, 01, 01, 01, 05, 06, 01, bb, 01, 09, 00, 0a, 01, 01, 0d, 00, 15, 01, 01, 11, 01, 1b, 05, 01, 1e, 00, 25, 02, 00, 2f, 00, 33, 01, 02, 09, 00, 0a]
+Raw bytes (27): 0x[01, 01, 01, 01, 05, 04, 01, bb, 01, 09, 03, 1b, 05, 03, 1e, 00, 25, 02, 00, 2f, 00, 33, 01, 02, 09, 00, 0a]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 1
 - expression 0 operands: lhs = Counter(0), rhs = Counter(1)
-Number of file 0 mappings: 6
-- Code(Counter(0)) at (prev + 187, 9) to (start + 0, 10)
-- Code(Counter(0)) at (prev + 1, 13) to (start + 0, 21)
-- Code(Counter(0)) at (prev + 1, 17) to (start + 1, 27)
-- Code(Counter(1)) at (prev + 1, 30) to (start + 0, 37)
+Number of file 0 mappings: 4
+- Code(Counter(0)) at (prev + 187, 9) to (start + 3, 27)
+- Code(Counter(1)) at (prev + 3, 30) to (start + 0, 37)
 - Code(Expression(0, Sub)) at (prev + 0, 47) to (start + 0, 51)
     = (c0 - c1)
 - Code(Counter(0)) at (prev + 2, 9) to (start + 0, 10)
@@ -125,16 +123,14 @@ Number of file 0 mappings: 3
 Highest counter ID seen: c1
 
 Function name: closure::main::{closure#17}
-Raw bytes (37): 0x[01, 01, 01, 01, 05, 06, 01, cd, 01, 09, 00, 0a, 01, 01, 0d, 00, 15, 01, 01, 11, 01, 1b, 05, 01, 1e, 00, 25, 02, 00, 2f, 00, 33, 01, 02, 09, 00, 0a]
+Raw bytes (27): 0x[01, 01, 01, 01, 05, 04, 01, cd, 01, 09, 03, 1b, 05, 03, 1e, 00, 25, 02, 00, 2f, 00, 33, 01, 02, 09, 00, 0a]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 1
 - expression 0 operands: lhs = Counter(0), rhs = Counter(1)
-Number of file 0 mappings: 6
-- Code(Counter(0)) at (prev + 205, 9) to (start + 0, 10)
-- Code(Counter(0)) at (prev + 1, 13) to (start + 0, 21)
-- Code(Counter(0)) at (prev + 1, 17) to (start + 1, 27)
-- Code(Counter(1)) at (prev + 1, 30) to (start + 0, 37)
+Number of file 0 mappings: 4
+- Code(Counter(0)) at (prev + 205, 9) to (start + 3, 27)
+- Code(Counter(1)) at (prev + 3, 30) to (start + 0, 37)
 - Code(Expression(0, Sub)) at (prev + 0, 47) to (start + 0, 51)
     = (c0 - c1)
 - Code(Counter(0)) at (prev + 2, 9) to (start + 0, 10)

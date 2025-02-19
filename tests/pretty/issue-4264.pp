@@ -35,9 +35,23 @@ fn bar() ({
                 ((::alloc::fmt::format as
                         for<'a> fn(Arguments<'a>) -> String {format})(((format_arguments::new_const
                             as
-                            fn(&[&'static str; 1]) -> Arguments<'_> {Arguments::<'_>::new_const::<1>})((&([("test"
-                                        as &str)] as [&str; 1]) as &[&str; 1])) as Arguments<'_>))
-                    as String);
+                            fn(core::fmt::rt::Template<'_>) -> Arguments<'_> {Arguments::<'_>::new_const})((unsafe
+                            {
+                            ((format_template::new as
+                                    unsafe fn(&[core::fmt::rt::Piece; 3]) -> core::fmt::rt::Template<'_> {core::fmt::rt::Template::<'_>::new::<3>})((&([((format_piece::num
+                                                    as
+                                                    fn(u64) -> core::fmt::rt::Piece {core::fmt::rt::Piece::num})((4u64
+                                                    as u64)) as core::fmt::rt::Piece),
+                                            ((format_piece::str as
+                                                    fn(&'static str) -> core::fmt::rt::Piece {core::fmt::rt::Piece::str})(("test"
+                                                    as &str)) as core::fmt::rt::Piece),
+                                            ((format_piece::num as
+                                                    fn(u64) -> core::fmt::rt::Piece {core::fmt::rt::Piece::num})((0u64
+                                                    as u64)) as core::fmt::rt::Piece)] as
+                                        [core::fmt::rt::Piece; 3]) as &[core::fmt::rt::Piece; 3]))
+                                as core::fmt::rt::Template<'_>)
+                        } as core::fmt::rt::Template<'_>)) as Arguments<'_>)) as
+                    String);
             (res as String)
         } as String)) as String);
 } as ())
