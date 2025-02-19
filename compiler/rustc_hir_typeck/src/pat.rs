@@ -2783,14 +2783,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         def_br_mutbl: Mutability,
     ) {
         // Try to trim the span we're labeling to just the `&` or binding mode that's an issue.
-        // If the subpattern's span is is from an expansion, the emitted label will not be trimmed.
-        // Importantly, the edition of the trimmed span should be the same as `subpat.span`; this
-        // will be a hard error if the subpattern is of edition >= 2024.
         let from_expansion = subpat.span.from_expansion();
         let trimmed_span = if from_expansion {
+            // If the subpattern is from an expansion, highlight the whole macro call instead.
             subpat.span
         } else {
-            self.tcx.sess.source_map().span_through_char(subpat.span, final_char)
+            let trimmed = self.tcx.sess.source_map().span_through_char(subpat.span, final_char);
+            // The edition of the trimmed span should be the same as `subpat.span`; this will be a
+            // a hard error if the subpattern is of edition >= 2024. We set it manually to be sure:
+            trimmed.with_ctxt(subpat.span.ctxt())
         };
 
         let mut typeck_results = self.typeck_results.borrow_mut();
