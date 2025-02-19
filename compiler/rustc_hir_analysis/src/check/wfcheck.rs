@@ -16,7 +16,6 @@ use rustc_lint_defs::builtin::SUPERTRAIT_ITEM_SHADOWING_DEFINITION;
 use rustc_macros::LintDiagnostic;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
     self, AdtKind, GenericArgKind, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeFoldable,
@@ -143,33 +142,7 @@ where
         return Ok(());
     }
 
-    let is_bevy = 'is_bevy: {
-        // We don't want to emit this for dependents of Bevy, for now.
-        // See #119956
-        let is_bevy_paramset = |def: ty::AdtDef<'_>| {
-            let adt_did = with_no_trimmed_paths!(infcx.tcx.def_path_str(def.0.did));
-            adt_did.contains("ParamSet")
-        };
-        for ty in assumed_wf_types.iter() {
-            match ty.kind() {
-                ty::Adt(def, _) => {
-                    if is_bevy_paramset(*def) {
-                        break 'is_bevy true;
-                    }
-                }
-                ty::Ref(_, ty, _) => match ty.kind() {
-                    ty::Adt(def, _) => {
-                        if is_bevy_paramset(*def) {
-                            break 'is_bevy true;
-                        }
-                    }
-                    _ => {}
-                },
-                _ => {}
-            }
-        }
-        false
-    };
+    let is_bevy = assumed_wf_types.visit_with(&mut ContainsBevyParamSet { tcx }).is_break();
 
     // If we have set `no_implied_bounds_compat`, then do not attempt compatibility.
     // We could also just always enter if `is_bevy`, and call `implied_bounds_tys`,
@@ -191,6 +164,31 @@ where
         }
     } else {
         Err(infcx.err_ctxt().report_region_errors(body_def_id, &errors))
+    }
+}
+
+struct ContainsBevyParamSet<'tcx> {
+    tcx: TyCtxt<'tcx>,
+}
+
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ContainsBevyParamSet<'tcx> {
+    type Result = ControlFlow<()>;
+
+    fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
+        // We only care to match `ParamSet<T>` or `&ParamSet<T>`.
+        match t.kind() {
+            ty::Adt(def, _) => {
+                if self.tcx.item_name(def.did()) == sym::ParamSet
+                    && self.tcx.crate_name(def.did().krate) == sym::bevy_ecs
+                {
+                    return ControlFlow::Break(());
+                }
+            }
+            ty::Ref(_, ty, _) => ty.visit_with(self)?,
+            _ => {}
+        }
+
+        ControlFlow::Continue(())
     }
 }
 
