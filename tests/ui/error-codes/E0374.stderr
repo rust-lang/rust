@@ -6,7 +6,7 @@ LL | struct Foo<T: ?Sized> {
    |
    = help: consider removing `T`, referring to it in a field, or using a marker such as `PhantomData`
 
-error[E0374]: the trait `CoerceUnsized` may only be implemented for a coercion between structures
+error[E0374]: implementing `CoerceUnsized` requires a field to be coerced
   --> $DIR/E0374.rs:8:1
    |
 LL | / impl<T, U> CoerceUnsized<Foo<U>> for Foo<T>

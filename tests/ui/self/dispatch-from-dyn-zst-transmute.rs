@@ -15,7 +15,7 @@ struct Foo<'a, U: ?Sized> {
 }
 
 impl<'a, T, U> DispatchFromDyn<Foo<'a, U>> for Foo<'a, T>
-//~^ ERROR implementing the `DispatchFromDyn` trait requires multiple coercions
+//~^ ERROR implementing `DispatchFromDyn` does not allow multiple fields to be coerced
 where
     T: Unsize<U> + ?Sized,
     U: ?Sized {}

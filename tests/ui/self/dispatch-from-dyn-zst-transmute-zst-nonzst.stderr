@@ -1,4 +1,4 @@
-error[E0378]: implementing the `DispatchFromDyn` trait requires multiple coercions
+error[E0375]: implementing `DispatchFromDyn` does not allow multiple fields to be coerced
   --> $DIR/dispatch-from-dyn-zst-transmute-zst-nonzst.rs:17:1
    |
 LL | / impl<T, U> DispatchFromDyn<Dispatchable<U, i32>> for Dispatchable<T, ()>
@@ -8,9 +8,14 @@ LL | |     T: Unsize<U> + ?Sized,
 LL | |     U: ?Sized,
    | |______________^
    |
-   = note: the trait `DispatchFromDyn` may only be implemented for a coercion between structures with a single field being coerced
-   = note: currently, 2 fields need coercions: `_ptr` (`Box<T>` to `Box<U>`), `z` (`()` to `i32`)
+note: the trait `DispatchFromDyn` may only be implemented when a single field is being coerced
+  --> $DIR/dispatch-from-dyn-zst-transmute-zst-nonzst.rs:13:5
+   |
+LL |     _ptr: Box<T>,
+   |     ^^^^^^^^^^^^
+LL |     z: Z,
+   |     ^^^^
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0378`.
+For more information about this error, try `rustc --explain E0375`.
