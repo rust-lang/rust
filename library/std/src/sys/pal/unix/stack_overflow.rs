@@ -319,26 +319,29 @@ mod imp {
     ))]
     unsafe fn get_stack_start() -> Option<*mut libc::c_void> {
         let mut ret = None;
-        let attr: mem::MaybeUninit<libc::pthread_attr_t> = if cfg!(target_os = "freebsd") {
+        let mut attr: mem::MaybeUninit<libc::pthread_attr_t> = if cfg!(target_os = "freebsd") {
             let mut attr = mem::MaybeUninit::uninit();
             assert_eq!(libc::pthread_attr_init((&raw mut attr) as *mut _), 0);
             attr
         } else {
             mem::MaybeUninit::zeroed()
         };
-        let mut attr = unsafe { attr.assume_init() };
+
         #[cfg(target_os = "freebsd")]
-        let e = libc::pthread_attr_get_np(libc::pthread_self(), &mut attr);
+        let e = libc::pthread_attr_get_np(libc::pthread_self(), attr.as_mut_ptr());
         #[cfg(not(target_os = "freebsd"))]
-        let e = libc::pthread_getattr_np(libc::pthread_self(), &mut attr);
+        let e = libc::pthread_getattr_np(libc::pthread_self(), attr.as_mut_ptr());
         if e == 0 {
             let mut stackaddr = crate::ptr::null_mut();
             let mut stacksize = 0;
-            assert_eq!(libc::pthread_attr_getstack(&attr, &mut stackaddr, &mut stacksize), 0);
+            assert_eq!(
+                libc::pthread_attr_getstack(attr.as_ptr(), &mut stackaddr, &mut stacksize),
+                0
+            );
             ret = Some(stackaddr);
         }
         if e == 0 || cfg!(target_os = "freebsd") {
-            assert_eq!(libc::pthread_attr_destroy(&mut attr), 0);
+            assert_eq!(libc::pthread_attr_destroy(attr.as_mut_ptr()), 0);
         }
         ret
     }

@@ -51,7 +51,6 @@ impl Thread {
         let mut native: libc::pthread_t = mem::zeroed();
         let mut attr: mem::MaybeUninit<libc::pthread_attr_t> = mem::MaybeUninit::uninit();
         assert_eq!(libc::pthread_attr_init(attr.as_mut_ptr()), 0);
-        //let mut attr: libc::pthread_attr_t = unsafe { attr.assume_init() };
 
         #[cfg(target_os = "espidf")]
         if stack > 0 {
