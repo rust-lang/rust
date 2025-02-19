@@ -1083,6 +1083,43 @@ mod sealed {
             transmute(transmute::<_, vector_signed_long_long>(self).vec_reve())
         }
     }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorRevb {
+        unsafe fn vec_revb(self) -> Self;
+    }
+
+    test_impl! { bswapb (a: vector_signed_char) -> vector_signed_char [simd_bswap, _] }
+    test_impl! { bswaph (a: vector_signed_short) -> vector_signed_short [simd_bswap, vperm] }
+    test_impl! { bswapf (a: vector_signed_int) -> vector_signed_int [simd_bswap, vperm] }
+    test_impl! { bswapg (a: vector_signed_long_long) -> vector_signed_long_long [simd_bswap, vperm] }
+
+    impl_vec_trait! { [VectorRevb vec_revb]+ bswapb (vector_unsigned_char) }
+    impl_vec_trait! { [VectorRevb vec_revb]+ bswapb (vector_signed_char) }
+    impl_vec_trait! { [VectorRevb vec_revb]+ bswaph (vector_unsigned_short) }
+    impl_vec_trait! { [VectorRevb vec_revb]+ bswaph (vector_signed_short) }
+    impl_vec_trait! { [VectorRevb vec_revb]+ bswapf (vector_unsigned_int) }
+    impl_vec_trait! { [VectorRevb vec_revb]+ bswapf (vector_signed_int) }
+    impl_vec_trait! { [VectorRevb vec_revb]+ bswapg (vector_unsigned_long_long) }
+    impl_vec_trait! { [VectorRevb vec_revb]+ bswapg (vector_signed_long_long) }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    impl VectorRevb for vector_float {
+        #[inline]
+        #[target_feature(enable = "vector")]
+        unsafe fn vec_revb(self) -> Self {
+            transmute(transmute::<_, vector_signed_int>(self).vec_revb())
+        }
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    impl VectorRevb for vector_double {
+        #[inline]
+        #[target_feature(enable = "vector")]
+        unsafe fn vec_revb(self) -> Self {
+            transmute(transmute::<_, vector_signed_long_long>(self).vec_revb())
+        }
+    }
 }
 
 /// Vector element-wise addition.
@@ -1554,6 +1591,17 @@ where
     a.vec_reve()
 }
 
+/// Returns a vector where each vector element contains the corresponding byte-reversed vector element of the input vector.
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_revb<T>(a: T) -> T
+where
+    T: sealed::VectorRevb,
+{
+    a.vec_revb()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1913,5 +1961,10 @@ mod tests {
     test_vec_1! { test_vec_reve_f32, vec_reve, f32x4,
         [0.1, 0.5, 0.6, 0.9],
         [0.9, 0.6, 0.5, 0.1]
+    }
+
+    test_vec_1! { test_vec_revb_u32, vec_revb, u32x4,
+        [0xAABBCCDD, 0xEEFF0011, 0x22334455, 0x66778899],
+        [0xDDCCBBAA, 0x1100FFEE, 0x55443322, 0x99887766]
     }
 }

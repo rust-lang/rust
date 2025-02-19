@@ -55,6 +55,16 @@ macro_rules! impl_vec_trait {
             }
         }
     };
+    ([$Trait:ident $m:ident]+ $fun:ident ($a:ty)) => {
+        #[unstable(feature = "stdarch_s390x", issue = "135681")]
+        impl $Trait for $a {
+            #[inline]
+            #[target_feature(enable = "vector")]
+            unsafe fn $m(self) -> Self {
+                transmute($fun(transmute(self)))
+            }
+        }
+    };
     ([$Trait:ident $m:ident] $fun:ident ($a:ty) -> $r:ty) => {
         #[unstable(feature = "stdarch_s390x", issue = "135681")]
         impl $Trait for $a {
