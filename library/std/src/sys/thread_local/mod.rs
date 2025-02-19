@@ -28,6 +28,7 @@ cfg_if::cfg_if! {
         all(target_family = "wasm", not(target_feature = "atomics")),
         target_os = "uefi",
         target_os = "zkvm",
+        target_os = "trusty",
     ))] {
         mod statik;
         pub use statik::{EagerStorage, LazyStorage, thread_local_inner};
@@ -91,6 +92,7 @@ pub(crate) mod guard {
             )),
             target_os = "uefi",
             target_os = "zkvm",
+            target_os = "trusty",
         ))] {
             pub(crate) fn enable() {
                 // FIXME: Right now there is no concept of "thread exit" on
@@ -170,15 +172,6 @@ pub(crate) mod key {
             pub(crate) use xous::destroy_tls;
             pub(super) use xous::{Key, get, set};
             use xous::{create, destroy};
-        } else if #[cfg(target_os = "trusty")] {
-            #[allow(unused_unsafe)]
-            mod racy;
-            #[cfg(test)]
-            mod tests;
-            mod trusty;
-            pub(super) use racy::LazyKey;
-            pub(super) use trusty::{Key, get, set};
-            use trusty::{create, destroy};
         }
     }
 }
