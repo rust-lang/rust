@@ -1,4 +1,4 @@
-use crate::spec::{RustcAbi, Target, base};
+use crate::spec::{RustcAbi, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::windows_uwp_msvc::opts();
@@ -8,7 +8,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "i686-pc-windows-msvc".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: None,
             tier: Some(3),
             host_tools: Some(false),

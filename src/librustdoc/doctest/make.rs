@@ -1,6 +1,7 @@
 //! Logic for transforming the raw code given by the user into something actually
 //! runnable, e.g. by adding a `main` function if it doesn't already exist.
 
+use std::fmt::{self, Write as _};
 use std::io;
 use std::sync::Arc;
 
@@ -17,6 +18,7 @@ use rustc_span::symbol::sym;
 use tracing::debug;
 
 use super::GlobalTestOptions;
+use crate::display::Joined as _;
 use crate::html::markdown::LangString;
 
 /// This struct contains information about the doctest itself which is then used to generate
@@ -232,13 +234,15 @@ impl DocTestBuilder {
 
             // add extra 4 spaces for each line to offset the code block
             if opts.insert_indent_space {
-                prog.push_str(
-                    &everything_else
+                write!(
+                    prog,
+                    "{}",
+                    fmt::from_fn(|f| everything_else
                         .lines()
-                        .map(|line| format!("    {}", line))
-                        .collect::<Vec<String>>()
-                        .join("\n"),
-                );
+                        .map(|line| fmt::from_fn(move |f| write!(f, "    {line}")))
+                        .joined("\n", f))
+                )
+                .unwrap();
             } else {
                 prog.push_str(everything_else);
             };

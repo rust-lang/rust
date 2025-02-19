@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `&str: AsExpression<Integer>` is not satisfied
-  --> $DIR/as_expression.rs:55:15
+  --> $DIR/as_expression.rs:56:15
    |
 LL |     SelectInt.check("bar");
    |               ^^^^^ the trait `AsExpression<Integer>` is not implemented for `&str`

@@ -163,10 +163,27 @@ impl CoerceMany {
         // type is a type variable and the new one is `!`, trying it the other
         // way around first would mean we make the type variable `!`, instead of
         // just marking it as possibly diverging.
-        if let Ok(res) = ctx.coerce(expr, &expr_ty, &self.merged_ty(), CoerceNever::Yes) {
+        //
+        // - [Comment from rustc](https://github.com/rust-lang/rust/blob/5ff18d0eaefd1bd9ab8ec33dab2404a44e7631ed/compiler/rustc_hir_typeck/src/coercion.rs#L1334-L1335)
+        // First try to coerce the new expression to the type of the previous ones,
+        // but only if the new expression has no coercion already applied to it.
+        if expr.is_none_or(|expr| !ctx.result.expr_adjustments.contains_key(&expr)) {
+            if let Ok(res) = ctx.coerce(expr, &expr_ty, &self.merged_ty(), CoerceNever::Yes) {
+                self.final_ty = Some(res);
+                if let Some(expr) = expr {
+                    self.expressions.push(expr);
+                }
+                return;
+            }
+        }
+
+        if let Ok((adjustments, res)) =
+            ctx.coerce_inner(&self.merged_ty(), &expr_ty, CoerceNever::Yes)
+        {
             self.final_ty = Some(res);
-        } else if let Ok(res) = ctx.coerce(expr, &self.merged_ty(), &expr_ty, CoerceNever::Yes) {
-            self.final_ty = Some(res);
+            for &e in &self.expressions {
+                ctx.write_expr_adj(e, adjustments.clone());
+            }
         } else {
             match cause {
                 CoercionCause::Expr(id) => {
@@ -244,13 +261,22 @@ impl InferenceContext<'_> {
         // between places and values.
         coerce_never: CoerceNever,
     ) -> Result<Ty, TypeError> {
-        let from_ty = self.resolve_ty_shallow(from_ty);
-        let to_ty = self.resolve_ty_shallow(to_ty);
-        let (adjustments, ty) = self.table.coerce(&from_ty, &to_ty, coerce_never)?;
+        let (adjustments, ty) = self.coerce_inner(from_ty, to_ty, coerce_never)?;
         if let Some(expr) = expr {
             self.write_expr_adj(expr, adjustments);
         }
         Ok(ty)
+    }
+
+    fn coerce_inner(
+        &mut self,
+        from_ty: &Ty,
+        to_ty: &Ty,
+        coerce_never: CoerceNever,
+    ) -> Result<(Vec<Adjustment>, Ty), TypeError> {
+        let from_ty = self.resolve_ty_shallow(from_ty);
+        let to_ty = self.resolve_ty_shallow(to_ty);
+        self.table.coerce(&from_ty, &to_ty, coerce_never)
     }
 }
 

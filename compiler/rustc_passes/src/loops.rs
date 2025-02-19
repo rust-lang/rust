@@ -76,7 +76,7 @@ struct CheckLoopVisitor<'tcx> {
 fn check_mod_loops(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
     let mut check =
         CheckLoopVisitor { tcx, cx_stack: vec![Normal], block_breaks: Default::default() };
-    tcx.hir().visit_item_likes_in_module(module_def_id, &mut check);
+    tcx.hir_visit_item_likes_in_module(module_def_id, &mut check);
     check.report_outside_loop_error();
 }
 
@@ -87,8 +87,8 @@ pub(crate) fn provide(providers: &mut Providers) {
 impl<'hir> Visitor<'hir> for CheckLoopVisitor<'hir> {
     type NestedFilter = nested_filter::OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
 
     fn visit_anon_const(&mut self, c: &'hir hir::AnonConst) {

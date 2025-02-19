@@ -703,6 +703,7 @@ fn highlight_name_ref_by_syntax(
     };
 
     match parent.kind() {
+        EXTERN_CRATE => HlTag::Symbol(SymbolKind::Module) | HlMod::CrateRoot,
         METHOD_CALL_EXPR => ast::MethodCallExpr::cast(parent)
             .and_then(|it| highlight_method_call(sema, krate, &it, edition))
             .unwrap_or_else(|| SymbolKind::Method.into()),

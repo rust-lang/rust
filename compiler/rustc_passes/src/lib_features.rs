@@ -129,8 +129,8 @@ impl<'tcx> LibFeatureCollector<'tcx> {
 impl<'tcx> Visitor<'tcx> for LibFeatureCollector<'tcx> {
     type NestedFilter = nested_filter::All;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
 
     fn visit_attribute(&mut self, attr: &'tcx Attribute) {
@@ -148,7 +148,7 @@ fn lib_features(tcx: TyCtxt<'_>, LocalCrate: LocalCrate) -> LibFeatures {
     }
 
     let mut collector = LibFeatureCollector::new(tcx);
-    tcx.hir().walk_attributes(&mut collector);
+    tcx.hir_walk_attributes(&mut collector);
     collector.lib_features
 }
 

@@ -84,8 +84,8 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
     /// Because lints are scoped lexically, we want to walk nested
     /// items in the context of the outer item, so enable
     /// deep-walking.
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.context.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.context.tcx
     }
 
     fn visit_nested_body(&mut self, body_id: hir::BodyId) {
@@ -99,7 +99,7 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
             self.context.cached_typeck_results.set(None);
         }
 
-        let body = self.context.tcx.hir().body(body_id);
+        let body = self.context.tcx.hir_body(body_id);
         self.visit_body(body);
         self.context.enclosing_body = old_enclosing_body;
 
@@ -191,7 +191,7 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
         // in order for `check_fn` to be able to use them.
         let old_enclosing_body = self.context.enclosing_body.replace(body_id);
         let old_cached_typeck_results = self.context.cached_typeck_results.take();
-        let body = self.context.tcx.hir().body(body_id);
+        let body = self.context.tcx.hir_body(body_id);
         lint_callback!(self, check_fn, fk, decl, body, span, id);
         hir_visit::walk_fn(self, fk, decl, body_id, id);
         self.context.enclosing_body = old_enclosing_body;
@@ -379,7 +379,7 @@ fn late_lint_mod_inner<'tcx, T: LateLintPass<'tcx>>(
 ) {
     let mut cx = LateContextAndPass { context, pass };
 
-    let (module, _span, hir_id) = tcx.hir().get_module(module_def_id);
+    let (module, _span, hir_id) = tcx.hir_get_module(module_def_id);
 
     cx.with_lint_attrs(hir_id, |cx| {
         // There is no module lint that will have the crate itself as an item, so check it here.
@@ -445,7 +445,7 @@ fn late_lint_crate_inner<'tcx, T: LateLintPass<'tcx>>(
         // Since the root module isn't visited as an item (because it isn't an
         // item), warn for it here.
         lint_callback!(cx, check_crate,);
-        tcx.hir().walk_toplevel_module(cx);
+        tcx.hir_walk_toplevel_module(cx);
         lint_callback!(cx, check_crate_post,);
     })
 }
@@ -462,7 +462,7 @@ pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx>) {
         || {
             tcx.sess.time("module_lints", || {
                 // Run per-module lints
-                tcx.hir().par_for_each_module(|module| tcx.ensure_ok().lint_mod(module));
+                tcx.par_hir_for_each_module(|module| tcx.ensure_ok().lint_mod(module));
             });
         },
     );

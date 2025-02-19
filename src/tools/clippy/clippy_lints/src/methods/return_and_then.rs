@@ -44,7 +44,7 @@ pub(super) fn check<'tcx>(
     };
 
     let closure_arg = fn_decl.inputs[0];
-    let closure_expr = peel_blocks(cx.tcx.hir().body(body).value);
+    let closure_expr = peel_blocks(cx.tcx.hir_body(body).value);
 
     let mut applicability = Applicability::MachineApplicable;
     let arg_snip = snippet_with_applicability(cx, closure_arg.span, "_", &mut applicability);

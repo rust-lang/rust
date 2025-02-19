@@ -1,5 +1,6 @@
 use crate::spec::{
-    Cc, LinkerFlavor, Lld, PanicStrategy, RelroLevel, StackProbeType, Target, TargetOptions,
+    Cc, LinkerFlavor, Lld, PanicStrategy, RelroLevel, StackProbeType, Target, TargetMetadata,
+    TargetOptions,
 };
 
 const LINKER_SCRIPT: &str = include_str!("./aarch64_nintendo_switch_freestanding_linker_script.ld");
@@ -8,7 +9,7 @@ const LINKER_SCRIPT: &str = include_str!("./aarch64_nintendo_switch_freestanding
 pub(crate) fn target() -> Target {
     Target {
         llvm_target: "aarch64-unknown-none".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("ARM64 Nintendo Switch, Horizon".into()),
             tier: Some(3),
             host_tools: Some(false),

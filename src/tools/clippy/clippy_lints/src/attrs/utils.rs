@@ -22,7 +22,7 @@ pub(super) fn is_lint_level(symbol: Symbol, attr_id: AttrId) -> bool {
 
 pub(super) fn is_relevant_item(cx: &LateContext<'_>, item: &Item<'_>) -> bool {
     if let ItemKind::Fn { body: eid, .. } = item.kind {
-        is_relevant_expr(cx, cx.tcx.typeck_body(eid), cx.tcx.hir().body(eid).value)
+        is_relevant_expr(cx, cx.tcx.typeck_body(eid), cx.tcx.hir_body(eid).value)
     } else {
         true
     }
@@ -30,7 +30,7 @@ pub(super) fn is_relevant_item(cx: &LateContext<'_>, item: &Item<'_>) -> bool {
 
 pub(super) fn is_relevant_impl(cx: &LateContext<'_>, item: &ImplItem<'_>) -> bool {
     match item.kind {
-        ImplItemKind::Fn(_, eid) => is_relevant_expr(cx, cx.tcx.typeck_body(eid), cx.tcx.hir().body(eid).value),
+        ImplItemKind::Fn(_, eid) => is_relevant_expr(cx, cx.tcx.typeck_body(eid), cx.tcx.hir_body(eid).value),
         _ => false,
     }
 }
@@ -39,7 +39,7 @@ pub(super) fn is_relevant_trait(cx: &LateContext<'_>, item: &TraitItem<'_>) -> b
     match item.kind {
         TraitItemKind::Fn(_, TraitFn::Required(_)) => true,
         TraitItemKind::Fn(_, TraitFn::Provided(eid)) => {
-            is_relevant_expr(cx, cx.tcx.typeck_body(eid), cx.tcx.hir().body(eid).value)
+            is_relevant_expr(cx, cx.tcx.typeck_body(eid), cx.tcx.hir_body(eid).value)
         },
         _ => false,
     }

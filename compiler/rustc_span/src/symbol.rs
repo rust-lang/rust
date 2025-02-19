@@ -104,6 +104,8 @@ symbols! {
         Gen:                "gen", // >= 2024 Edition only
         Try:                "try", // >= 2018 Edition only
 
+        // NOTE: When adding new keywords, consider adding them to the ui/parser/raw/raw-idents.rs test.
+
         // "Lifetime keywords": regular keywords with a leading `'`.
         // Matching predicates: `is_any_keyword`
         UnderscoreLifetime: "'_",
@@ -190,6 +192,7 @@ symbols! {
         Capture,
         Cell,
         Center,
+        Child,
         Cleanup,
         Clone,
         CoercePointee,
@@ -334,6 +337,7 @@ symbols! {
         SliceIter,
         Some,
         SpanCtxt,
+        Stdin,
         String,
         StructuralPartialEq,
         SubdiagMessage,
@@ -597,6 +601,9 @@ symbols! {
         cfi,
         cfi_encoding,
         char,
+        char_is_ascii,
+        child_id,
+        child_kill,
         client,
         clippy,
         clobber_abi,
@@ -1466,6 +1473,7 @@ symbols! {
         panic_2015,
         panic_2021,
         panic_abort,
+        panic_any,
         panic_bounds_check,
         panic_cannot_unwind,
         panic_const_add_overflow,
@@ -1512,7 +1520,7 @@ symbols! {
         path_main_separator,
         path_to_pathbuf,
         pathbuf_as_path,
-        pattern_complexity,
+        pattern_complexity_limit,
         pattern_parentheses,
         pattern_type,
         pattern_types,
@@ -1571,6 +1579,7 @@ symbols! {
         proc_macro_mod,
         proc_macro_non_items,
         proc_macro_path_invoc,
+        process_abort,
         process_exit,
         profiler_builtins,
         profiler_runtime,
@@ -1973,6 +1982,10 @@ symbols! {
         str_from_utf8_mut,
         str_from_utf8_unchecked,
         str_from_utf8_unchecked_mut,
+        str_inherent_from_utf8,
+        str_inherent_from_utf8_mut,
+        str_inherent_from_utf8_unchecked,
+        str_inherent_from_utf8_unchecked_mut,
         str_len,
         str_split_whitespace,
         str_starts_with,

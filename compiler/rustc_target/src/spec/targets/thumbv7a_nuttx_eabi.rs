@@ -4,12 +4,12 @@
 // and will use software floating point operations. This matches the NuttX EABI
 // configuration without hardware floating point support.
 
-use crate::spec::{FloatAbi, Target, TargetOptions, base, cvs};
+use crate::spec::{FloatAbi, Target, TargetMetadata, TargetOptions, base, cvs};
 
 pub(crate) fn target() -> Target {
     Target {
         llvm_target: "thumbv7a-none-eabi".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: None,
             tier: Some(3),
             host_tools: None,

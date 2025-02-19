@@ -2,12 +2,14 @@
 //!
 //! Can be used for MIPS M4K core (e.g. on PIC32MX devices)
 
-use crate::spec::{Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions};
+use crate::spec::{
+    Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetMetadata, TargetOptions,
+};
 
 pub(crate) fn target() -> Target {
     Target {
         llvm_target: "mipsel-unknown-none".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("Bare MIPS (LE) softfloat".into()),
             tier: Some(3),
             host_tools: Some(false),

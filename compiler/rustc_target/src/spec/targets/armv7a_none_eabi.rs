@@ -15,7 +15,8 @@
 // linking. rationale: matches `thumb` targets
 
 use crate::spec::{
-    Cc, FloatAbi, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions,
+    Cc, FloatAbi, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetMetadata,
+    TargetOptions,
 };
 
 pub(crate) fn target() -> Target {
@@ -35,7 +36,7 @@ pub(crate) fn target() -> Target {
     };
     Target {
         llvm_target: "armv7a-none-eabi".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("Bare Armv7-A".into()),
             tier: Some(2),
             host_tools: Some(false),

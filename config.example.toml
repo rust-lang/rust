@@ -729,7 +729,8 @@
 #remap-debuginfo = false
 
 # Link the compiler and LLVM against `jemalloc` instead of the default libc allocator.
-# This option is only tested on Linux and OSX.
+# This option is only tested on Linux and OSX. It can also be configured per-target in the
+# [target.<tuple>] section.
 #jemalloc = false
 
 # Run tests in various test suites with the "nll compare mode" in addition to
@@ -926,6 +927,10 @@
 # Setting this to `false` generates slower code, but removes the requirement for a C toolchain in
 # order to run `x check`.
 #optimized-compiler-builtins = build.optimized-compiler-builtins (bool)
+
+# Link the compiler and LLVM against `jemalloc` instead of the default libc allocator.
+# This overrides the global `rust.jemalloc` option. See that option for more info.
+#jemalloc = rust.jemalloc (bool)
 
 # =============================================================================
 # Distribution options

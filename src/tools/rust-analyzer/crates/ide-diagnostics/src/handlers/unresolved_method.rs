@@ -1,4 +1,4 @@
-use hir::{db::ExpandDatabase, AssocItem, FileRange, HirDisplay, InFile};
+use hir::{db::ExpandDatabase, FileRange, HirDisplay, InFile};
 use ide_db::text_edit::TextEdit;
 use ide_db::{
     assists::{Assist, AssistId, AssistKind},
@@ -35,7 +35,7 @@ pub(crate) fn unresolved_method(
         ),
         adjusted_display_range(ctx, d.expr, &|expr| {
             Some(
-                match expr {
+                match expr.left()? {
                     ast::Expr::MethodCallExpr(it) => it.name_ref(),
                     ast::Expr::FieldExpr(it) => it.name_ref(),
                     _ => None,
@@ -85,7 +85,7 @@ fn field_fix(
     let expr_ptr = &d.expr;
     let root = ctx.sema.db.parse_or_expand(expr_ptr.file_id);
     let expr = expr_ptr.value.to_node(&root);
-    let (file_id, range) = match expr {
+    let (file_id, range) = match expr.left()? {
         ast::Expr::MethodCallExpr(mcall) => {
             let FileRange { range, file_id } =
                 ctx.sema.original_range_opt(mcall.receiver()?.syntax())?;
@@ -112,12 +112,12 @@ fn field_fix(
 }
 
 fn assoc_func_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedMethodCall) -> Option<Assist> {
-    if let Some(assoc_item_id) = d.assoc_func_with_same_name {
+    if let Some(f) = d.assoc_func_with_same_name {
         let db = ctx.sema.db;
 
         let expr_ptr = &d.expr;
         let root = db.parse_or_expand(expr_ptr.file_id);
-        let expr: ast::Expr = expr_ptr.value.to_node(&root);
+        let expr: ast::Expr = expr_ptr.value.to_node(&root).left()?;
 
         let call = ast::MethodCallExpr::cast(expr.syntax().clone())?;
         let range = InFile::new(expr_ptr.file_id, call.syntax().text_range())
@@ -127,30 +127,25 @@ fn assoc_func_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedMethodCall) -
         let receiver = call.receiver()?;
         let receiver_type = &ctx.sema.type_of_expr(&receiver)?.original;
 
-        let need_to_take_receiver_as_first_arg = match hir::AssocItem::from(assoc_item_id) {
-            AssocItem::Function(f) => {
-                let assoc_fn_params = f.assoc_fn_params(db);
-                if assoc_fn_params.is_empty() {
-                    false
-                } else {
-                    assoc_fn_params
-                        .first()
-                        .map(|first_arg| {
-                            // For generic type, say `Box`, take `Box::into_raw(b: Self)` as example,
-                            // type of `b` is `Self`, which is `Box<T, A>`, containing unspecified generics.
-                            // However, type of `receiver` is specified, it could be `Box<i32, Global>` or something like that,
-                            // so `first_arg.ty() == receiver_type` evaluate to `false` here.
-                            // Here add `first_arg.ty().as_adt() == receiver_type.as_adt()` as guard,
-                            // apply `.as_adt()` over `Box<T, A>` or `Box<i32, Global>` gets `Box`, so we get `true` here.
+        let assoc_fn_params = f.assoc_fn_params(db);
+        let need_to_take_receiver_as_first_arg = if assoc_fn_params.is_empty() {
+            false
+        } else {
+            assoc_fn_params
+                .first()
+                .map(|first_arg| {
+                    // For generic type, say `Box`, take `Box::into_raw(b: Self)` as example,
+                    // type of `b` is `Self`, which is `Box<T, A>`, containing unspecified generics.
+                    // However, type of `receiver` is specified, it could be `Box<i32, Global>` or something like that,
+                    // so `first_arg.ty() == receiver_type` evaluate to `false` here.
+                    // Here add `first_arg.ty().as_adt() == receiver_type.as_adt()` as guard,
+                    // apply `.as_adt()` over `Box<T, A>` or `Box<i32, Global>` gets `Box`, so we get `true` here.
 
-                            // FIXME: it fails when type of `b` is `Box` with other generic param different from `receiver`
-                            first_arg.ty() == receiver_type
-                                || first_arg.ty().as_adt() == receiver_type.as_adt()
-                        })
-                        .unwrap_or(false)
-                }
-            }
-            _ => false,
+                    // FIXME: it fails when type of `b` is `Box` with other generic param different from `receiver`
+                    first_arg.ty() == receiver_type
+                        || first_arg.ty().as_adt() == receiver_type.as_adt()
+                })
+                .unwrap_or(false)
         };
 
         let mut receiver_type_adt_name =

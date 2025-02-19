@@ -22,6 +22,7 @@ use crate::{
     mem_docs::DocumentData,
     reload,
     target_spec::TargetSpec,
+    try_default,
 };
 
 pub(crate) fn handle_cancel(state: &mut GlobalState, params: CancelParams) -> anyhow::Result<()> {
@@ -72,6 +73,14 @@ pub(crate) fn handle_did_open_text_document(
             .is_err();
         if already_exists {
             tracing::error!("duplicate DidOpenTextDocument: {}", path);
+        }
+
+        if let Some(abs_path) = path.as_path() {
+            if state.config.excluded().any(|excluded| abs_path.starts_with(&excluded)) {
+                tracing::trace!("opened excluded file {abs_path}");
+                state.vfs.write().0.insert_excluded_file(path);
+                return Ok(());
+            }
         }
 
         let contents = params.text_document.text.into_bytes();
@@ -127,7 +136,8 @@ pub(crate) fn handle_did_close_text_document(
             tracing::error!("orphan DidCloseTextDocument: {}", path);
         }
 
-        if let Some(file_id) = state.vfs.read().0.file_id(&path) {
+        // Clear diagnostics also for excluded files, just in case.
+        if let Some((file_id, _)) = state.vfs.read().0.file_id(&path) {
             state.diagnostics.clear_native_for(file_id);
         }
 
@@ -146,7 +156,7 @@ pub(crate) fn handle_did_save_text_document(
 ) -> anyhow::Result<()> {
     if let Ok(vfs_path) = from_proto::vfs_path(&params.text_document.uri) {
         let snap = state.snapshot();
-        let file_id = snap.vfs_path_to_file_id(&vfs_path)?;
+        let file_id = try_default!(snap.vfs_path_to_file_id(&vfs_path)?);
         let sr = snap.analysis.source_root_id(file_id)?;
 
         if state.config.script_rebuild_on_save(Some(sr)) && state.build_deps_changed {
@@ -290,7 +300,7 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
     let _p = tracing::info_span!("run_flycheck").entered();
 
     let file_id = state.vfs.read().0.file_id(&vfs_path);
-    if let Some(file_id) = file_id {
+    if let Some((file_id, vfs::FileExcluded::No)) = file_id {
         let world = state.snapshot();
         let invocation_strategy_once = state.config.flycheck(None).invocation_strategy_once();
         let may_flycheck_workspace = state.config.flycheck_workspace(None);

@@ -2,8 +2,11 @@
 //@ compile-flags: -Copt-level=3 -C no-prepopulate-passes
 // 32-bit x86 returns `f32` differently to avoid the x87 stack.
 // 32-bit systems will return 128bit values using a return area pointer.
-//@ revisions: x86 bit32 bit64
-//@[x86] only-x86
+//@ revisions: x86-sse x86-nosse bit32 bit64
+//@[x86-sse] only-x86
+//@[x86-sse] only-rustc_abi-x86-sse2
+//@[x86-nosse] only-x86
+//@[x86-nosse] ignore-rustc_abi-x86-sse2
 //@[bit32] ignore-x86
 //@[bit32] only-32bit
 //@[bit64] ignore-x86
@@ -75,7 +78,8 @@ pub union UnionF32 {
     a: f32,
 }
 
-// x86: define {{(dso_local )?}}i32 @test_UnionF32(float %_1)
+// x86-sse: define {{(dso_local )?}}<4 x i8> @test_UnionF32(float %_1)
+// x86-nosse: define {{(dso_local )?}}i32 @test_UnionF32(float %_1)
 // bit32: define {{(dso_local )?}}float @test_UnionF32(float %_1)
 // bit64: define {{(dso_local )?}}float @test_UnionF32(float %_1)
 #[no_mangle]
@@ -88,7 +92,8 @@ pub union UnionF32F32 {
     b: f32,
 }
 
-// x86: define {{(dso_local )?}}i32 @test_UnionF32F32(float %_1)
+// x86-sse: define {{(dso_local )?}}<4 x i8> @test_UnionF32F32(float %_1)
+// x86-nosse: define {{(dso_local )?}}i32 @test_UnionF32F32(float %_1)
 // bit32: define {{(dso_local )?}}float @test_UnionF32F32(float %_1)
 // bit64: define {{(dso_local )?}}float @test_UnionF32F32(float %_1)
 #[no_mangle]
@@ -110,7 +115,8 @@ pub fn test_UnionF32U32(_: UnionF32U32) -> UnionF32U32 {
 pub union UnionU128 {
     a: u128,
 }
-// x86: define {{(dso_local )?}}void @test_UnionU128({{.*}}sret([16 x i8]){{.*}}, i128 %_1)
+// x86-sse: define {{(dso_local )?}}void @test_UnionU128({{.*}}sret([16 x i8]){{.*}}, i128 %_1)
+// x86-nosse: define {{(dso_local )?}}void @test_UnionU128({{.*}}sret([16 x i8]){{.*}}, i128 %_1)
 // bit32: define {{(dso_local )?}}void @test_UnionU128({{.*}}sret([16 x i8]){{.*}}, i128 %_1)
 // bit64: define {{(dso_local )?}}i128 @test_UnionU128(i128 %_1)
 #[no_mangle]

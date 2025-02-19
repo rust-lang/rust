@@ -101,7 +101,7 @@ fn should_lint(cx: &LateContext<'_>, args: &[Expr<'_>], method_str: &str) -> boo
                 ExprKind::Closure(Closure { body, .. }) => {
                     if let Body {
                         params: [param], value, ..
-                    } = cx.tcx.hir().body(*body)
+                    } = cx.tcx.hir_body(*body)
                         && let ExprKind::MethodCall(method, receiver, [], _) = value.kind
                         && path_to_local_id(receiver, param.pat.hir_id)
                         && let Some(method_did) = cx.typeck_results().type_dependent_def_id(value.hir_id)

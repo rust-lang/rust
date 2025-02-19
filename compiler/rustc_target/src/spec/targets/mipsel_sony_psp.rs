@@ -1,4 +1,4 @@
-use crate::spec::{Cc, LinkerFlavor, Lld, RelocModel, Target, TargetOptions, cvs};
+use crate::spec::{Cc, LinkerFlavor, Lld, RelocModel, Target, TargetMetadata, TargetOptions, cvs};
 
 // The PSP has custom linker requirements.
 const LINKER_SCRIPT: &str = include_str!("./mipsel_sony_psp_linker_script.ld");
@@ -11,7 +11,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "mipsel-sony-psp".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("MIPS (LE) Sony PlatStation Portable (PSP)".into()),
             tier: Some(3),
             host_tools: Some(false),

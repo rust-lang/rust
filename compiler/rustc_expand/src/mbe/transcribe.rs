@@ -1,10 +1,13 @@
 use std::mem;
 use std::sync::Arc;
 
-use rustc_ast::ExprKind;
 use rustc_ast::mut_visit::{self, MutVisitor};
-use rustc_ast::token::{self, Delimiter, IdentIsRaw, Lit, LitKind, Nonterminal, Token, TokenKind};
+use rustc_ast::token::{
+    self, Delimiter, IdentIsRaw, InvisibleOrigin, Lit, LitKind, MetaVarKind, Nonterminal, Token,
+    TokenKind,
+};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
+use rustc_ast::{ExprKind, TyKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Diag, DiagCtxtHandle, PResult, pluralize};
 use rustc_parse::lexer::nfc_normalize;
@@ -274,6 +277,33 @@ pub(super) fn transcribe<'a>(
                 // some of the unnecessary whitespace.
                 let ident = MacroRulesNormalizedIdent::new(original_ident);
                 if let Some(cur_matched) = lookup_cur_matched(ident, interp, &repeats) {
+                    // We wrap the tokens in invisible delimiters, unless they are already wrapped
+                    // in invisible delimiters with the same `MetaVarKind`. Because some proc
+                    // macros can't multiple layers of invisible delimiters of the same
+                    // `MetaVarKind`. This loses some span info, though it hopefully won't matter.
+                    let mut mk_delimited = |mv_kind, mut stream: TokenStream| {
+                        if stream.len() == 1 {
+                            let tree = stream.iter().next().unwrap();
+                            if let TokenTree::Delimited(_, _, delim, inner) = tree
+                                && let Delimiter::Invisible(InvisibleOrigin::MetaVar(mvk)) = delim
+                                && mv_kind == *mvk
+                            {
+                                stream = inner.clone();
+                            }
+                        }
+
+                        // Emit as a token stream within `Delimiter::Invisible` to maintain
+                        // parsing priorities.
+                        marker.visit_span(&mut sp);
+                        // Both the open delim and close delim get the same span, which covers the
+                        // `$foo` in the decl macro RHS.
+                        TokenTree::Delimited(
+                            DelimSpan::from_single(sp),
+                            DelimSpacing::new(Spacing::Alone, Spacing::Alone),
+                            Delimiter::Invisible(InvisibleOrigin::MetaVar(mv_kind)),
+                            stream,
+                        )
+                    };
                     let tt = match cur_matched {
                         MatchedSingle(ParseNtResult::Tt(tt)) => {
                             // `tt`s are emitted into the output stream directly as "raw tokens",
@@ -291,6 +321,13 @@ pub(super) fn transcribe<'a>(
                             with_metavar_spans(|mspans| mspans.insert(ident.span, sp));
                             let kind = token::NtLifetime(*ident, *is_raw);
                             TokenTree::token_alone(kind, sp)
+                        }
+                        MatchedSingle(ParseNtResult::Ty(ty)) => {
+                            let is_path = matches!(&ty.kind, TyKind::Path(None, _path));
+                            mk_delimited(MetaVarKind::Ty { is_path }, TokenStream::from_ast(ty))
+                        }
+                        MatchedSingle(ParseNtResult::Vis(vis)) => {
+                            mk_delimited(MetaVarKind::Vis, TokenStream::from_ast(vis))
                         }
                         MatchedSingle(ParseNtResult::Nt(nt)) => {
                             // Other variables are emitted into the output stream as groups with

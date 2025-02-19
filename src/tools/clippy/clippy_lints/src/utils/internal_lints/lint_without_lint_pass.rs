@@ -108,7 +108,7 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
             if is_lint_ref_type(cx, ty) {
                 check_invalid_clippy_version_attribute(cx, item);
 
-                let expr = &cx.tcx.hir().body(body_id).value;
+                let expr = &cx.tcx.hir_body(body_id).value;
                 let fields = if let ExprKind::AddrOf(_, _, inner_exp) = expr.kind
                     && let ExprKind::Struct(_, struct_fields, _) = inner_exp.kind
                 {
@@ -156,7 +156,7 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
                     output: &mut self.registered_lints,
                     cx,
                 };
-                let body = cx.tcx.hir().body_owned_by(
+                let body = cx.tcx.hir_body_owned_by(
                     impl_item_refs
                         .iter()
                         .find(|iiref| iiref.ident.as_str() == "lint_vec")
@@ -277,7 +277,7 @@ impl<'tcx> Visitor<'tcx> for LintCollector<'_, 'tcx> {
         }
     }
 
-    fn nested_visit_map(&mut self) -> Self::Map {
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
         self.cx.tcx.hir()
     }
 }

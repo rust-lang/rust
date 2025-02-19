@@ -173,3 +173,14 @@ fn completion_item_hash(item: &CompletionItem, is_ref_completion: bool) -> [u8; 
 
     hasher.finalize()
 }
+
+#[doc(hidden)]
+macro_rules! try_default_ {
+    ($it:expr $(,)?) => {
+        match $it {
+            Some(it) => it,
+            None => return Ok(Default::default()),
+        }
+    };
+}
+pub(crate) use try_default_ as try_default;

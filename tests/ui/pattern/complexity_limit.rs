@@ -1,5 +1,5 @@
 #![feature(rustc_attrs)]
-#![pattern_complexity = "10000"]
+#![pattern_complexity_limit = "10000"]
 
 #[derive(Default)]
 struct BaseCommand {

@@ -2,6 +2,7 @@
 name = "error_index_generator"
 version = "0.0.0"
 edition = "2021"
+workspace = "../rustbook"
 
 [dependencies]
 mdbook = { version = "0.4", default-features = false, features = ["search"] }

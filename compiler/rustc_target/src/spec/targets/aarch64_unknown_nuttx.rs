@@ -8,7 +8,7 @@
 
 use crate::spec::{
     Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, SanitizerSet, StackProbeType, Target,
-    TargetOptions, cvs,
+    TargetMetadata, TargetOptions, cvs,
 };
 
 pub(crate) fn target() -> Target {
@@ -33,7 +33,7 @@ pub(crate) fn target() -> Target {
     };
     Target {
         llvm_target: "aarch64-unknown-none".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("AArch64 NuttX".into()),
             tier: Some(3),
             host_tools: Some(false),

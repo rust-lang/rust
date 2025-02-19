@@ -225,7 +225,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     && let item_def_id =
                         tcx.hir().get_parent_item(tcx.local_def_id_to_hir_id(ty_param_def_id))
                     // FIXME: ...which obviously won't have any generics.
-                    && let Some(generics) = tcx.hir().get_generics(item_def_id.def_id)
+                    && let Some(generics) = tcx.hir_get_generics(item_def_id.def_id)
                 {
                     // FIXME: Suggest adding supertrait bounds if we have a `Self` type param.
                     // FIXME(trait_alias): Suggest adding `Self: Trait` to

@@ -127,3 +127,13 @@ pub(crate) struct AbiRequiredTargetFeature<'a> {
     pub feature: &'a str,
     pub enabled: &'a str,
 }
+
+#[derive(Diagnostic)]
+#[diag(interface_limit_invalid)]
+pub(crate) struct LimitInvalid<'a> {
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub value_span: Span,
+    pub error_str: &'a str,
+}

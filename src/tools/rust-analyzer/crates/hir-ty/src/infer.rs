@@ -16,7 +16,7 @@
 pub(crate) mod cast;
 pub(crate) mod closure;
 mod coerce;
-mod diagnostics;
+pub(crate) mod diagnostics;
 mod expr;
 mod mutability;
 mod pat;
@@ -236,7 +236,7 @@ pub enum InferenceDiagnostic {
         name: Name,
         /// Contains the type the field resolves to
         field_with_same_name: Option<Ty>,
-        assoc_func_with_same_name: Option<AssocItemId>,
+        assoc_func_with_same_name: Option<FunctionId>,
     },
     UnresolvedAssocItem {
         id: ExprOrPatId,
@@ -1239,7 +1239,29 @@ impl<'a> InferenceContext<'a> {
     }
 
     fn write_expr_adj(&mut self, expr: ExprId, adjustments: Vec<Adjustment>) {
-        self.result.expr_adjustments.insert(expr, adjustments);
+        if adjustments.is_empty() {
+            return;
+        }
+        match self.result.expr_adjustments.entry(expr) {
+            std::collections::hash_map::Entry::Occupied(mut entry) => {
+                match (&mut entry.get_mut()[..], &adjustments[..]) {
+                    (
+                        [Adjustment { kind: Adjust::NeverToAny, target }],
+                        [.., Adjustment { target: new_target, .. }],
+                    ) => {
+                        // NeverToAny coercion can target any type, so instead of adding a new
+                        // adjustment on top we can change the target.
+                        *target = new_target.clone();
+                    }
+                    _ => {
+                        *entry.get_mut() = adjustments;
+                    }
+                }
+            }
+            std::collections::hash_map::Entry::Vacant(entry) => {
+                entry.insert(adjustments);
+            }
+        }
     }
 
     fn write_method_resolution(&mut self, expr: ExprId, func: FunctionId, subst: Substitution) {
@@ -1480,21 +1502,22 @@ impl<'a> InferenceContext<'a> {
             &self.diagnostics,
             InferenceTyDiagnosticSource::Body,
         );
+        let mut path_ctx = ctx.at_path(path, node);
         let (resolution, unresolved) = if value_ns {
-            let Some(res) = ctx.resolve_path_in_value_ns(path, node, HygieneId::ROOT) else {
+            let Some(res) = path_ctx.resolve_path_in_value_ns(HygieneId::ROOT) else {
                 return (self.err_ty(), None);
             };
             match res {
                 ResolveValueResult::ValueNs(value, _) => match value {
                     ValueNs::EnumVariantId(var) => {
-                        let substs = ctx.substs_from_path(path, var.into(), true);
+                        let substs = path_ctx.substs_from_path(var.into(), true);
                         drop(ctx);
                         let ty = self.db.ty(var.lookup(self.db.upcast()).parent.into());
                         let ty = self.insert_type_vars(ty.substitute(Interner, &substs));
                         return (ty, Some(var.into()));
                     }
                     ValueNs::StructId(strukt) => {
-                        let substs = ctx.substs_from_path(path, strukt.into(), true);
+                        let substs = path_ctx.substs_from_path(strukt.into(), true);
                         drop(ctx);
                         let ty = self.db.ty(strukt.into());
                         let ty = self.insert_type_vars(ty.substitute(Interner, &substs));
@@ -1509,7 +1532,7 @@ impl<'a> InferenceContext<'a> {
                 ResolveValueResult::Partial(typens, unresolved, _) => (typens, Some(unresolved)),
             }
         } else {
-            match ctx.resolve_path_in_type_ns(path, node) {
+            match path_ctx.resolve_path_in_type_ns() {
                 Some((it, idx)) => (it, idx),
                 None => return (self.err_ty(), None),
             }
@@ -1520,21 +1543,21 @@ impl<'a> InferenceContext<'a> {
         };
         return match resolution {
             TypeNs::AdtId(AdtId::StructId(strukt)) => {
-                let substs = ctx.substs_from_path(path, strukt.into(), true);
+                let substs = path_ctx.substs_from_path(strukt.into(), true);
                 drop(ctx);
                 let ty = self.db.ty(strukt.into());
                 let ty = self.insert_type_vars(ty.substitute(Interner, &substs));
                 forbid_unresolved_segments((ty, Some(strukt.into())), unresolved)
             }
             TypeNs::AdtId(AdtId::UnionId(u)) => {
-                let substs = ctx.substs_from_path(path, u.into(), true);
+                let substs = path_ctx.substs_from_path(u.into(), true);
                 drop(ctx);
                 let ty = self.db.ty(u.into());
                 let ty = self.insert_type_vars(ty.substitute(Interner, &substs));
                 forbid_unresolved_segments((ty, Some(u.into())), unresolved)
             }
             TypeNs::EnumVariantId(var) => {
-                let substs = ctx.substs_from_path(path, var.into(), true);
+                let substs = path_ctx.substs_from_path(var.into(), true);
                 drop(ctx);
                 let ty = self.db.ty(var.lookup(self.db.upcast()).parent.into());
                 let ty = self.insert_type_vars(ty.substitute(Interner, &substs));
@@ -1545,31 +1568,32 @@ impl<'a> InferenceContext<'a> {
                 let substs = generics.placeholder_subst(self.db);
                 let mut ty = self.db.impl_self_ty(impl_id).substitute(Interner, &substs);
 
-                let Some(mut remaining_idx) = unresolved else {
+                let Some(remaining_idx) = unresolved else {
                     drop(ctx);
                     return self.resolve_variant_on_alias(ty, None, mod_path);
                 };
 
                 let mut remaining_segments = path.segments().skip(remaining_idx);
 
+                if remaining_segments.len() >= 2 {
+                    path_ctx.ignore_last_segment();
+                }
+
                 // We need to try resolving unresolved segments one by one because each may resolve
                 // to a projection, which `TyLoweringContext` cannot handle on its own.
                 let mut tried_resolving_once = false;
-                while !remaining_segments.is_empty() {
-                    let resolved_segment = path.segments().get(remaining_idx - 1).unwrap();
-                    let current_segment = remaining_segments.take(1);
-
+                while let Some(current_segment) = remaining_segments.first() {
                     // If we can resolve to an enum variant, it takes priority over associated type
                     // of the same name.
                     if let Some((AdtId::EnumId(id), _)) = ty.as_adt() {
                         let enum_data = self.db.enum_data(id);
-                        let name = current_segment.first().unwrap().name;
-                        if let Some(variant) = enum_data.variant(name) {
+                        if let Some(variant) = enum_data.variant(current_segment.name) {
                             return if remaining_segments.len() == 1 {
                                 (ty, Some(variant.into()))
                             } else {
                                 // We still have unresolved paths, but enum variants never have
                                 // associated types!
+                                // FIXME: Report an error.
                                 (self.err_ty(), None)
                             };
                         }
@@ -1578,23 +1602,13 @@ impl<'a> InferenceContext<'a> {
                     if tried_resolving_once {
                         // FIXME: with `inherent_associated_types` this is allowed, but our `lower_partly_resolved_path()`
                         // will need to be updated to err at the correct segment.
-                        //
-                        // We need to stop here because otherwise the segment index passed to `lower_partly_resolved_path()`
-                        // will be incorrect, and that can mess up error reporting.
                         break;
                     }
 
                     // `lower_partly_resolved_path()` returns `None` as type namespace unless
                     // `remaining_segments` is empty, which is never the case here. We don't know
                     // which namespace the new `ty` is in until normalized anyway.
-                    (ty, _) = ctx.lower_partly_resolved_path(
-                        node,
-                        resolution,
-                        resolved_segment,
-                        current_segment,
-                        (remaining_idx - 1) as u32,
-                        false,
-                    );
+                    (ty, _) = path_ctx.lower_partly_resolved_path(resolution, false);
                     tried_resolving_once = true;
 
                     ty = self.table.insert_type_vars(ty);
@@ -1604,8 +1618,6 @@ impl<'a> InferenceContext<'a> {
                         return (self.err_ty(), None);
                     }
 
-                    // FIXME(inherent_associated_types): update `resolution` based on `ty` here.
-                    remaining_idx += 1;
                     remaining_segments = remaining_segments.skip(1);
                 }
                 drop(ctx);
@@ -1621,12 +1633,7 @@ impl<'a> InferenceContext<'a> {
                 (ty, variant)
             }
             TypeNs::TypeAliasId(it) => {
-                let resolved_seg = match unresolved {
-                    None => path.segments().last().unwrap(),
-                    Some(n) => path.segments().get(path.segments().len() - n - 1).unwrap(),
-                };
-                let substs =
-                    ctx.substs_from_path_segment(resolved_seg, Some(it.into()), true, None);
+                let substs = path_ctx.substs_from_path_segment(it.into(), true, None);
                 drop(ctx);
                 let ty = self.db.ty(it.into());
                 let ty = self.insert_type_vars(ty.substitute(Interner, &substs));

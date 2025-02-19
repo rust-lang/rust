@@ -316,6 +316,7 @@ impl GlobalState {
                             let workspace = project_model::ProjectWorkspace::load_inline(
                                 it.clone(),
                                 &cargo_config,
+                                &progress,
                             );
                             Ok(workspace)
                         }
@@ -705,7 +706,9 @@ impl GlobalState {
             let load = |path: &AbsPath| {
                 let vfs_path = vfs::VfsPath::from(path.to_path_buf());
                 self.crate_graph_file_dependencies.insert(vfs_path.clone());
-                vfs.file_id(&vfs_path)
+                vfs.file_id(&vfs_path).and_then(|(file_id, excluded)| {
+                    (excluded == vfs::FileExcluded::No).then_some(file_id)
+                })
             };
 
             ws_to_crate_graph(&self.workspaces, self.config.extra_env(None), load)
