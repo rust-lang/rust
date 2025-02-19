@@ -5,7 +5,6 @@
 ## Getting the type of an expression
 
 To get the type of an expression, use the [`after_analysis`] callback to get a [`TyCtxt`].
-The following was tested with <!-- date-check: december 2024 --> `nightly-2024-12-15`:
 
 ```rust
 {{#include ../../examples/rustc-driver-interacting-with-the-ast.rs}}
