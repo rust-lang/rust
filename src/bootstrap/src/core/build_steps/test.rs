@@ -298,6 +298,11 @@ impl Step for Cargo {
 
     /// Runs `cargo test` for `cargo` packaged with Rust.
     fn run(self, builder: &Builder<'_>) {
+        if self.stage < 2 {
+            eprintln!("WARNING: cargo tests on stage {} may not behave well.", self.stage);
+            eprintln!("HELP: consider using stage 2");
+        }
+
         let compiler = builder.compiler(self.stage, self.host);
 
         let cargo = builder.ensure(tool::Cargo { compiler, target: self.host });
@@ -742,6 +747,11 @@ impl Step for Clippy {
         let stage = self.stage;
         let host = self.host;
         let compiler = builder.compiler(stage, host);
+
+        if stage < 2 {
+            eprintln!("WARNING: clippy tests on stage {stage} may not behave well.");
+            eprintln!("HELP: consider using stage 2");
+        }
 
         let tool_result = builder.ensure(tool::Clippy { compiler, target: self.host });
         let compiler = tool_result.build_compiler;
