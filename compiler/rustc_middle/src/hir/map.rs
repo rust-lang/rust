@@ -29,21 +29,21 @@ pub struct Map<'hir> {
 
 /// An iterator that walks up the ancestor tree of a given `HirId`.
 /// Constructed using `tcx.hir().parent_iter(hir_id)`.
-struct ParentHirIterator<'hir> {
+struct ParentHirIterator<'tcx> {
     current_id: HirId,
-    map: Map<'hir>,
+    tcx: TyCtxt<'tcx>,
     // Cache the current value of `hir_owner_nodes` to avoid repeatedly calling the same query for
     // the same owner, which will uselessly record many times the same query dependency.
-    current_owner_nodes: Option<&'hir OwnerNodes<'hir>>,
+    current_owner_nodes: Option<&'tcx OwnerNodes<'tcx>>,
 }
 
-impl<'hir> ParentHirIterator<'hir> {
-    fn new(map: Map<'hir>, current_id: HirId) -> ParentHirIterator<'hir> {
-        ParentHirIterator { current_id, map, current_owner_nodes: None }
+impl<'tcx> ParentHirIterator<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>, current_id: HirId) -> ParentHirIterator<'tcx> {
+        ParentHirIterator { current_id, tcx, current_owner_nodes: None }
     }
 }
 
-impl<'hir> Iterator for ParentHirIterator<'hir> {
+impl<'tcx> Iterator for ParentHirIterator<'tcx> {
     type Item = HirId;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -56,10 +56,10 @@ impl<'hir> Iterator for ParentHirIterator<'hir> {
         let parent_id = if local_id == ItemLocalId::ZERO {
             // We go from an owner to its parent, so clear the cache.
             self.current_owner_nodes = None;
-            self.map.tcx.hir_owner_parent(owner)
+            self.tcx.hir_owner_parent(owner)
         } else {
             let owner_nodes =
-                self.current_owner_nodes.get_or_insert_with(|| self.map.tcx.hir_owner_nodes(owner));
+                self.current_owner_nodes.get_or_insert_with(|| self.tcx.hir_owner_nodes(owner));
             let parent_local_id = owner_nodes.nodes[local_id].parent;
             // HIR indexing should have checked that.
             debug_assert_ne!(parent_local_id, local_id);
@@ -75,32 +75,32 @@ impl<'hir> Iterator for ParentHirIterator<'hir> {
 
 /// An iterator that walks up the ancestor tree of a given `HirId`.
 /// Constructed using `tcx.hir().parent_owner_iter(hir_id)`.
-pub struct ParentOwnerIterator<'hir> {
+pub struct ParentOwnerIterator<'tcx> {
     current_id: HirId,
-    map: Map<'hir>,
+    tcx: TyCtxt<'tcx>,
 }
 
-impl<'hir> Iterator for ParentOwnerIterator<'hir> {
-    type Item = (OwnerId, OwnerNode<'hir>);
+impl<'tcx> Iterator for ParentOwnerIterator<'tcx> {
+    type Item = (OwnerId, OwnerNode<'tcx>);
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.current_id.local_id.index() != 0 {
             self.current_id.local_id = ItemLocalId::ZERO;
-            let node = self.map.tcx.hir_owner_node(self.current_id.owner);
+            let node = self.tcx.hir_owner_node(self.current_id.owner);
             return Some((self.current_id.owner, node));
         }
         if self.current_id == CRATE_HIR_ID {
             return None;
         }
 
-        let parent_id = self.map.tcx.hir_def_key(self.current_id.owner.def_id).parent;
+        let parent_id = self.tcx.hir_def_key(self.current_id.owner.def_id).parent;
         let parent_id = parent_id.map_or(CRATE_OWNER_ID, |local_def_index| {
             let def_id = LocalDefId { local_def_index };
-            self.map.tcx.local_def_id_to_hir_id(def_id).owner
+            self.tcx.local_def_id_to_hir_id(def_id).owner
         });
         self.current_id = HirId::make_owner(parent_id.def_id);
 
-        let node = self.map.tcx.hir_owner_node(self.current_id.owner);
+        let node = self.tcx.hir_owner_node(self.current_id.owner);
         Some((self.current_id.owner, node))
     }
 }
@@ -505,7 +505,7 @@ impl<'hir> Map<'hir> {
     /// until the crate root is reached. Prefer this over your own loop using `parent_id`.
     #[inline]
     pub fn parent_id_iter(self, current_id: HirId) -> impl Iterator<Item = HirId> + 'hir {
-        ParentHirIterator::new(self, current_id)
+        ParentHirIterator::new(self.tcx, current_id)
     }
 
     /// Returns an iterator for the nodes in the ancestor tree of the `current_id`
@@ -519,7 +519,7 @@ impl<'hir> Map<'hir> {
     /// until the crate root is reached. Prefer this over your own loop using `parent_id`.
     #[inline]
     pub fn parent_owner_iter(self, current_id: HirId) -> ParentOwnerIterator<'hir> {
-        ParentOwnerIterator { current_id, map: self }
+        ParentOwnerIterator { current_id, tcx: self.tcx }
     }
 
     /// Checks if the node is left-hand side of an assignment.
