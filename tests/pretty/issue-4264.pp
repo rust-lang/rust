@@ -40,14 +40,14 @@ fn bar() ({
                             ((format_template::new as
                                     unsafe fn(&[core::fmt::rt::Piece; 3]) -> core::fmt::rt::Template<'_> {core::fmt::rt::Template::<'_>::new::<3>})((&([((format_piece::num
                                                     as
-                                                    fn(u64) -> core::fmt::rt::Piece {core::fmt::rt::Piece::num})((4u64
-                                                    as u64)) as core::fmt::rt::Piece),
+                                                    fn(usize) -> core::fmt::rt::Piece {core::fmt::rt::Piece::num})((4usize
+                                                    as usize)) as core::fmt::rt::Piece),
                                             ((format_piece::str as
                                                     fn(&'static str) -> core::fmt::rt::Piece {core::fmt::rt::Piece::str})(("test"
                                                     as &str)) as core::fmt::rt::Piece),
                                             ((format_piece::num as
-                                                    fn(u64) -> core::fmt::rt::Piece {core::fmt::rt::Piece::num})((0u64
-                                                    as u64)) as core::fmt::rt::Piece)] as
+                                                    fn(usize) -> core::fmt::rt::Piece {core::fmt::rt::Piece::num})((0usize
+                                                    as usize)) as core::fmt::rt::Piece)] as
                                         [core::fmt::rt::Piece; 3]) as &[core::fmt::rt::Piece; 3]))
                                 as core::fmt::rt::Template<'_>)
                         } as core::fmt::rt::Template<'_>)) as Arguments<'_>)) as
