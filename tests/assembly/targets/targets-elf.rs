@@ -216,9 +216,9 @@
 //@ revisions: hexagon_unknown_none_elf
 //@ [hexagon_unknown_none_elf] compile-flags: --target hexagon-unknown-none-elf
 //@ [hexagon_unknown_none_elf] needs-llvm-components: hexagon
-//@ revisions: i586_pc_nto_qnx700
-//@ [i586_pc_nto_qnx700] compile-flags: --target i586-pc-nto-qnx700
-//@ [i586_pc_nto_qnx700] needs-llvm-components: x86
+//@ revisions: i686_pc_nto_qnx700
+//@ [i686_pc_nto_qnx700] compile-flags: --target i686-pc-nto-qnx700
+//@ [i686_pc_nto_qnx700] needs-llvm-components: x86
 //@ revisions: i586_unknown_linux_gnu
 //@ [i586_unknown_linux_gnu] compile-flags: --target i586-unknown-linux-gnu
 //@ [i586_unknown_linux_gnu] needs-llvm-components: x86
