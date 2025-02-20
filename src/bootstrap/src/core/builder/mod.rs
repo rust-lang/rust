@@ -1392,7 +1392,7 @@ impl<'a> Builder<'a> {
     }
 
     pub fn rustdoc(&self, compiler: Compiler) -> PathBuf {
-        self.ensure(tool::Rustdoc { compiler })
+        self.ensure(tool::Rustdoc { compiler }).tool_path
     }
 
     pub fn cargo_clippy_cmd(&self, run_compiler: Compiler) -> BootstrapCommand {
@@ -1408,14 +1408,13 @@ impl<'a> Builder<'a> {
             return cmd;
         }
 
-        let build_compiler = self.compiler(run_compiler.stage - 1, self.build.build);
-        self.ensure(tool::Clippy { compiler: build_compiler, target: self.build.build });
+        let _ = self.ensure(tool::Clippy { compiler: run_compiler, target: self.build.build });
         let cargo_clippy =
-            self.ensure(tool::CargoClippy { compiler: build_compiler, target: self.build.build });
+            self.ensure(tool::CargoClippy { compiler: run_compiler, target: self.build.build });
         let mut dylib_path = helpers::dylib_path();
         dylib_path.insert(0, self.sysroot(run_compiler).join("lib"));
 
-        let mut cmd = command(cargo_clippy);
+        let mut cmd = command(cargo_clippy.tool_path);
         cmd.env(helpers::dylib_path_var(), env::join_paths(&dylib_path).unwrap());
         cmd.env("CARGO", &self.initial_cargo);
         cmd
@@ -1423,23 +1422,21 @@ impl<'a> Builder<'a> {
 
     pub fn cargo_miri_cmd(&self, run_compiler: Compiler) -> BootstrapCommand {
         assert!(run_compiler.stage > 0, "miri can not be invoked at stage 0");
-        let build_compiler = self.compiler(run_compiler.stage - 1, self.build.build);
-
         // Prepare the tools
-        let miri = self.ensure(tool::Miri { compiler: build_compiler, target: self.build.build });
+        let miri = self.ensure(tool::Miri { compiler: run_compiler, target: self.build.build });
         let cargo_miri =
-            self.ensure(tool::CargoMiri { compiler: build_compiler, target: self.build.build });
+            self.ensure(tool::CargoMiri { compiler: run_compiler, target: self.build.build });
         // Invoke cargo-miri, make sure it can find miri and cargo.
-        let mut cmd = command(cargo_miri);
-        cmd.env("MIRI", &miri);
+        let mut cmd = command(cargo_miri.tool_path);
+        cmd.env("MIRI", &miri.tool_path);
         cmd.env("CARGO", &self.initial_cargo);
-        // Need to add the `run_compiler` libs. Those are the libs produces *by* `build_compiler`,
-        // so they match the Miri we just built. However this means they are actually living one
-        // stage up, i.e. we are running `stage0-tools-bin/miri` with the libraries in `stage1/lib`.
-        // This is an unfortunate off-by-1 caused (possibly) by the fact that Miri doesn't have an
-        // "assemble" step like rustc does that would cross the stage boundary. We can't use
-        // `add_rustc_lib_path` as that's a NOP on Windows but we do need these libraries added to
-        // the PATH due to the stage mismatch.
+        // Need to add the `run_compiler` libs. Those are the libs produces *by* `build_compiler`
+        // in `tool::ToolBuild` step, so they match the Miri we just built. However this means they
+        // are actually living one stage up, i.e. we are running `stage0-tools-bin/miri` with the
+        // libraries in `stage1/lib`. This is an unfortunate off-by-1 caused (possibly) by the fact
+        // that Miri doesn't have an "assemble" step like rustc does that would cross the stage boundary.
+        // We can't use `add_rustc_lib_path` as that's a NOP on Windows but we do need these libraries
+        // added to the PATH due to the stage mismatch.
         // Also see https://github.com/rust-lang/rust/pull/123192#issuecomment-2028901503.
         add_dylib_path(self.rustc_lib_paths(run_compiler), &mut cmd);
         cmd

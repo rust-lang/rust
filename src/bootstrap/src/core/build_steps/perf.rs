@@ -166,7 +166,7 @@ Consider setting `rust.debuginfo-level = 1` in `config.toml`."#);
     let results_dir = rustc_perf_dir.join("results");
     builder.create_dir(&results_dir);
 
-    let mut cmd = command(collector);
+    let mut cmd = command(collector.tool_path);
 
     // We need to set the working directory to `src/tools/rustc-perf`, so that it can find the directory
     // with compile-time benchmarks.
