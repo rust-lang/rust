@@ -723,7 +723,6 @@ impl<T: ?Sized> *const T {
     /// to [`sub`](#method.sub)).  The following are all equivalent, assuming
     /// that their safety preconditions are met:
     /// ```rust
-    /// # #![feature(ptr_sub_ptr)]
     /// # unsafe fn blah(ptr: *const i32, origin: *const i32, count: usize) -> bool { unsafe {
     /// ptr.sub_ptr(origin) == count
     /// # &&
@@ -752,8 +751,6 @@ impl<T: ?Sized> *const T {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ptr_sub_ptr)]
-    ///
     /// let a = [0; 5];
     /// let ptr1: *const i32 = &a[1];
     /// let ptr2: *const i32 = &a[3];
@@ -767,8 +764,8 @@ impl<T: ?Sized> *const T {
     /// // This would be incorrect, as the pointers are not correctly ordered:
     /// // ptr1.sub_ptr(ptr2)
     /// ```
-    #[unstable(feature = "ptr_sub_ptr", issue = "95892")]
-    #[rustc_const_unstable(feature = "const_ptr_sub_ptr", issue = "95892")]
+    #[stable(feature = "ptr_sub_ptr", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_ptr_sub_ptr", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn sub_ptr(self, origin: *const T) -> usize
@@ -812,8 +809,8 @@ impl<T: ?Sized> *const T {
     ///
     /// For non-`Sized` pointees this operation considers only the data pointers,
     /// ignoring the metadata.
-    #[unstable(feature = "ptr_sub_ptr", issue = "95892")]
-    #[rustc_const_unstable(feature = "const_ptr_sub_ptr", issue = "95892")]
+    #[stable(feature = "ptr_sub_ptr", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_ptr_sub_ptr", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub const unsafe fn byte_sub_ptr<U: ?Sized>(self, origin: *const U) -> usize {

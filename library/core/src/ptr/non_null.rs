@@ -856,7 +856,6 @@ impl<T: ?Sized> NonNull<T> {
     /// to [`sub`](#method.sub)).  The following are all equivalent, assuming
     /// that their safety preconditions are met:
     /// ```rust
-    /// # #![feature(ptr_sub_ptr)]
     /// # unsafe fn blah(ptr: std::ptr::NonNull<u32>, origin: std::ptr::NonNull<u32>, count: usize) -> bool { unsafe {
     /// ptr.sub_ptr(origin) == count
     /// # &&
@@ -885,7 +884,6 @@ impl<T: ?Sized> NonNull<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ptr_sub_ptr)]
     /// use std::ptr::NonNull;
     ///
     /// let a = [0; 5];
@@ -903,8 +901,8 @@ impl<T: ?Sized> NonNull<T> {
     /// ```
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-    #[unstable(feature = "ptr_sub_ptr", issue = "95892")]
-    #[rustc_const_unstable(feature = "const_ptr_sub_ptr", issue = "95892")]
+    #[stable(feature = "ptr_sub_ptr", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_ptr_sub_ptr", since = "CURRENT_RUSTC_VERSION")]
     pub const unsafe fn sub_ptr(self, subtracted: NonNull<T>) -> usize
     where
         T: Sized,
@@ -925,8 +923,8 @@ impl<T: ?Sized> NonNull<T> {
     /// ignoring the metadata.
     #[inline(always)]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-    #[unstable(feature = "ptr_sub_ptr", issue = "95892")]
-    #[rustc_const_unstable(feature = "const_ptr_sub_ptr", issue = "95892")]
+    #[stable(feature = "ptr_sub_ptr", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_ptr_sub_ptr", since = "CURRENT_RUSTC_VERSION")]
     pub const unsafe fn byte_sub_ptr<U: ?Sized>(self, origin: NonNull<U>) -> usize {
         // SAFETY: the caller must uphold the safety contract for `byte_sub_ptr`.
         unsafe { self.as_ptr().byte_sub_ptr(origin.as_ptr()) }

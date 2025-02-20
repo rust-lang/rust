@@ -1,8 +1,5 @@
 //@ run-pass
 
-#![feature(const_ptr_sub_ptr)]
-#![feature(ptr_sub_ptr)]
-
 struct Struct {
     field: (),
 }
