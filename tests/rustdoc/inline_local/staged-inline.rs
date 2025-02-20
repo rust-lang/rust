@@ -13,6 +13,6 @@ pub mod ffi {
 
 #[stable(feature = "v1", since = "1.0.0")]
 #[doc(inline)]
-//@ has "foo/struct.CStr.html" "//span[@class='sub-heading']/span[@class='since']" "1.0.0"
-//@ !has - "//span[@class='sub-heading']/span[@class='since']" "1.99.0"
+//@ has "foo/struct.CStr.html" "//span[@class='sub-heading']/span[@class='since']" "1.99.0"
+//@ !has - "//span[@class='sub-heading']/span[@class='since']" "1.0.0"
 pub use ffi::CStr;
