@@ -69,7 +69,7 @@ impl Step for Std {
         );
 
         std_cargo(builder, target, compiler.stage, &mut cargo);
-        if matches!(builder.config.cmd, Subcommand::Fix { .. }) {
+        if matches!(builder.config.cmd, Subcommand::Fix) {
             // By default, cargo tries to fix all targets. Tell it not to fix tests until we've added `test` to the sysroot.
             cargo.arg("--lib");
         }

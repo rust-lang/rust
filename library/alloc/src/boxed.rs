@@ -237,21 +237,11 @@ pub struct Box<
 /// the newly allocated memory. This is an intrinsic to avoid unnecessary copies.
 ///
 /// This is the surface syntax for `box <expr>` expressions.
-#[cfg(not(bootstrap))]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 #[unstable(feature = "liballoc_internals", issue = "none")]
 pub fn box_new<T>(_x: T) -> Box<T> {
     unreachable!()
-}
-
-/// Transition function for the next bootstrap bump.
-#[cfg(bootstrap)]
-#[unstable(feature = "liballoc_internals", issue = "none")]
-#[inline(always)]
-pub fn box_new<T>(x: T) -> Box<T> {
-    #[rustc_box]
-    Box::new(x)
 }
 
 impl<T> Box<T> {

@@ -1,5 +1,4 @@
 //! Unstable module containing the unstable contracts lang items and attribute macros.
-#![cfg(not(bootstrap))]
 
 pub use crate::macros::builtin::{contracts_ensures as ensures, contracts_requires as requires};
 

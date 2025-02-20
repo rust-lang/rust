@@ -1,5 +1,6 @@
 #![no_std]
 #![unstable(feature = "panic_unwind", issue = "32837")]
+#![feature(cfg_emscripten_wasm_eh)]
 #![feature(link_cfg)]
 #![feature(staged_api)]
 #![cfg_attr(not(target_env = "msvc"), feature(libc))]
@@ -8,7 +9,6 @@
     feature(simd_wasm64, wasm_exception_handling_intrinsics)
 )]
 #![allow(internal_features)]
-#![cfg_attr(not(bootstrap), feature(cfg_emscripten_wasm_eh))]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 // Force libc to be included even if unused. This is required by many platforms.

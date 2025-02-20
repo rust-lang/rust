@@ -14,6 +14,7 @@
 #![no_std]
 #![unstable(feature = "panic_unwind", issue = "32837")]
 #![doc(issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/")]
+#![feature(cfg_emscripten_wasm_eh)]
 #![feature(core_intrinsics)]
 #![feature(lang_items)]
 #![feature(panic_unwind)]
@@ -25,7 +26,6 @@
 // `real_imp` is unused with Miri, so silence warnings.
 #![cfg_attr(miri, allow(dead_code))]
 #![allow(internal_features)]
-#![cfg_attr(not(bootstrap), feature(cfg_emscripten_wasm_eh))]
 #![warn(unreachable_pub)]
 #![deny(unsafe_op_in_unsafe_fn)]
 

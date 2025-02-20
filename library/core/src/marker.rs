@@ -467,7 +467,7 @@ impl<T: ?Sized> Copy for &T {}
 ///
 /// Bikeshed name for now.
 #[unstable(feature = "bikeshed_guaranteed_no_drop", issue = "none")]
-#[cfg_attr(not(bootstrap), lang = "bikeshed_guaranteed_no_drop")]
+#[lang = "bikeshed_guaranteed_no_drop"]
 pub trait BikeshedGuaranteedNoDrop {}
 
 /// Types for which it is safe to share references between threads.
@@ -1313,7 +1313,6 @@ pub macro CoercePointee($item:item) {
 ///
 /// This trait is not intended to be implemented by users or used other than
 /// validation, so it should never be stabilized.
-#[cfg(not(bootstrap))]
 #[lang = "coerce_pointee_validated"]
 #[unstable(feature = "coerce_pointee_validated", issue = "none")]
 #[doc(hidden)]
