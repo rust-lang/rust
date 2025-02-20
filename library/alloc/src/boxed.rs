@@ -1017,7 +1017,7 @@ impl<T: ?Sized> Box<T> {
     /// resulting `Box`. Specifically, the `Box` destructor will call
     /// the destructor of `T` and free the allocated memory. For this
     /// to be safe, the memory must have been allocated in accordance
-    /// with the [memory layout] used by `Box` .
+    /// with the [memory layout] used by `Box`.
     ///
     /// # Safety
     ///
@@ -1056,8 +1056,25 @@ impl<T: ?Sized> Box<T> {
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
     #[must_use = "call `drop(Box::from_raw(ptr))` if you intend to drop the `Box`"]
-    pub unsafe fn from_raw(raw: *mut T) -> Self {
-        unsafe { Self::from_raw_in(raw, Global) }
+    pub unsafe fn from_raw(ptr: *mut T) -> Self {
+        core::assert_unsafe_precondition!(
+            check_language_ub,
+            "Box::from_raw requires that its pointer argument is properly aligned and not null",
+            (
+                ptr: *const () = ptr as *const (),
+                align: usize = align_of::<T>(),
+            ) => core::intrinsics::const_eval_select!(
+                @capture { ptr: *const (), align: usize } -> bool:
+                if const {
+                    !ptr.is_null()
+                } else {
+                    ptr.is_aligned_to(align) && !ptr.is_null()
+                }
+            )
+        );
+
+        //assert_pointer_is_aligned_and_not_null!("Box::from_raw", ptr, align_of::<T>(), T::IS_ZST);
+        unsafe { Self::from_raw_in(ptr, Global) }
     }
 
     /// Constructs a box from a `NonNull` pointer.
@@ -1111,6 +1128,12 @@ impl<T: ?Sized> Box<T> {
     #[inline]
     #[must_use = "call `drop(Box::from_non_null(ptr))` if you intend to drop the `Box`"]
     pub unsafe fn from_non_null(ptr: NonNull<T>) -> Self {
+        /*assert_pointer_is_aligned_and_not_null!(
+            "Box::from_non_null",
+            ptr,
+            align_of::<T>(),
+            T::IS_ZST
+        );*/
         unsafe { Self::from_raw(ptr.as_ptr()) }
     }
 }
@@ -1166,8 +1189,14 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[rustc_const_unstable(feature = "const_box", issue = "92521")]
     #[inline]
-    pub const unsafe fn from_raw_in(raw: *mut T, alloc: A) -> Self {
-        Box(unsafe { Unique::new_unchecked(raw) }, alloc)
+    pub const unsafe fn from_raw_in(ptr: *mut T, alloc: A) -> Self {
+        /*assert_pointer_is_aligned_and_not_null!(
+            "Box::from_raw_in",
+            ptr,
+            align_of::<T>(),
+            T::IS_ZST
+        );*/
+        Box(unsafe { Unique::new_unchecked(ptr) }, alloc)
     }
 
     /// Constructs a box from a `NonNull` pointer in the given allocator.

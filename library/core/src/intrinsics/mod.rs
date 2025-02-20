@@ -3839,7 +3839,7 @@ where
 /// markes as `#[inline]`.
 ///
 /// See [`const_eval_select()`] for the rules and requirements around that intrinsic.
-pub(crate) macro const_eval_select {
+pub macro const_eval_select {
     (
         @capture$([$($binders:tt)*])? { $($arg:ident : $ty:ty = $val:expr),* $(,)? } $( -> $ret:ty )? :
         if const
@@ -4169,7 +4169,7 @@ pub const fn size_of<T>() -> usize {
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
-pub const fn min_align_of<T>() -> usize {
+pub const fn min_align_of<T: ?Sized>() -> usize {
     unreachable!()
 }
 

@@ -90,7 +90,7 @@ pub use intrinsics::ub_checks as check_library_ub;
 /// language UB checks which generally produce better errors.
 #[inline]
 #[rustc_allow_const_fn_unstable(const_eval_select)]
-pub(crate) const fn check_language_ub() -> bool {
+pub const fn check_language_ub() -> bool {
     // Only used for UB checks so we may const_eval_select.
     intrinsics::ub_checks()
         && const_eval_select!(
@@ -127,6 +127,19 @@ pub(crate) const fn maybe_is_aligned_and_not_null(
             ptr.is_aligned_to(align) && (is_zst || !ptr.is_null())
         }
     )
+}
+
+/// Specialized version of `assert_unsafe_precondition` for checking that a pointer is properly aligned and not null
+#[macro_export]
+#[unstable(feature = "ub_checks", issue = "none")]
+macro_rules! assert_pointer_is_aligned_and_not_null {
+    ($function_name: literal, $ptr: expr, $align: expr, $is_zst: expr) => {
+        ::core::assert_unsafe_precondition!(
+            check_language_ub,
+            concat!($function_name, " requires that its pointer argument is properly aligned and not null"),
+            () => ::core::ub_checks::maybe_is_aligned_and_not_null(ptr as *const (), $align, $is_zst)
+        );
+    }
 }
 
 #[inline]
