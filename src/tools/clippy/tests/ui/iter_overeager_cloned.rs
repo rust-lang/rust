@@ -47,7 +47,7 @@ fn main() {
         iter: impl Iterator<Item = &'a (&'a u32, String)> + 'a,
         target: String,
     ) -> impl Iterator<Item = (&'a u32, String)> + 'a {
-        iter.cloned().filter(move |(&a, b)| a == 1 && b == &target)
+        iter.cloned().filter(move |(&a, b)| a == 1 && b == target)
     }
 
     {
@@ -58,7 +58,7 @@ fn main() {
         }
 
         fn bar<'a>(iter: impl Iterator<Item = &'a S<'a>> + 'a, target: String) -> impl Iterator<Item = S<'a>> + 'a {
-            iter.cloned().filter(move |S { a, b }| **a == 1 && b == &target)
+            iter.cloned().filter(move |S { a, b }| **a == 1 && b == target)
         }
     }
 

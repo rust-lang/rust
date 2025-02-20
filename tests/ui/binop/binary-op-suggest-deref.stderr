@@ -271,32 +271,8 @@ note: an implementation of `PartialEq<&&{integer}>` might be missing for `Foo`
 LL |     struct Foo;
    |     ^^^^^^^^^^ must implement `PartialEq<&&{integer}>`
 
-error[E0277]: can't compare `&String` with `str`
-  --> $DIR/binary-op-suggest-deref.rs:69:20
-   |
-LL |     _ = string_ref == partial[..3];
-   |                    ^^ no implementation for `&String == str`
-   |
-   = help: the trait `PartialEq<str>` is not implemented for `&String`
-help: consider dereferencing here
-   |
-LL |     _ = *string_ref == partial[..3];
-   |         +
-
-error[E0277]: can't compare `str` with `&String`
-  --> $DIR/binary-op-suggest-deref.rs:71:22
-   |
-LL |     _ = partial[..3] == string_ref;
-   |                      ^^ no implementation for `str == &String`
-   |
-   = help: the trait `PartialEq<&String>` is not implemented for `str`
-help: consider dereferencing here
-   |
-LL |     _ = partial[..3] == *string_ref;
-   |                         +
-
 error[E0277]: no implementation for `i32 & str`
-  --> $DIR/binary-op-suggest-deref.rs:78:17
+  --> $DIR/binary-op-suggest-deref.rs:76:17
    |
 LL |     let _ = FOO & (*"Sized".to_string().into_boxed_str());
    |                 ^ no implementation for `i32 & str`
@@ -309,14 +285,14 @@ LL |     let _ = FOO & (*"Sized".to_string().into_boxed_str());
              `i32` implements `BitAnd`
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
-  --> $DIR/binary-op-suggest-deref.rs:78:17
+  --> $DIR/binary-op-suggest-deref.rs:76:17
    |
 LL |     let _ = FOO & (*"Sized".to_string().into_boxed_str());
    |                 ^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `str`
 
-error: aborting due to 24 previous errors
+error: aborting due to 22 previous errors
 
 Some errors have detailed explanations: E0277, E0308, E0369.
 For more information about an error, try `rustc --explain E0277`.
