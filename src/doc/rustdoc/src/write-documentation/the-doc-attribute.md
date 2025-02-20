@@ -232,8 +232,6 @@ If you want to know more about inlining rules, take a look at the
 
 Any item annotated with `#[doc(hidden)]` will not appear in the documentation,
 unless the [`--document-hidden-items`](../unstable-features.md#document-hidden-items) flag is used.
-Re-exported items where one of its ancestors has
-`#[doc(hidden)]` will be considered hidden.
 
 You can find more information in the [`re-exports` chapter](./re-exports.md).
 
