@@ -217,15 +217,10 @@ fn run_tests(
         ui_test::default_file_filter,
         // This could be used to overwrite the `Config` on a per-test basis.
         |_, _| {},
-        (
-            match args.format {
-                Format::Terse => status_emitter::Text::quiet(),
-                Format::Pretty => status_emitter::Text::verbose(),
-            },
-            status_emitter::Gha::</* GHA Actions groups*/ false> {
-                name: format!("{mode:?} {path} ({target})"),
-            },
-        ),
+        match args.format {
+            Format::Terse => status_emitter::Text::quiet(),
+            Format::Pretty => status_emitter::Text::verbose(),
+        },
     )
 }
 
