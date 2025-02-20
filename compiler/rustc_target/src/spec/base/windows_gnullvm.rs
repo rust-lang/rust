@@ -1,6 +1,8 @@
 use std::borrow::Cow;
 
-use crate::spec::{Cc, DebuginfoKind, LinkerFlavor, Lld, SplitDebuginfo, TargetOptions, cvs};
+use crate::spec::{
+    BinaryFormat, Cc, DebuginfoKind, LinkerFlavor, Lld, SplitDebuginfo, TargetOptions, cvs,
+};
 
 pub(crate) fn opts() -> TargetOptions {
     // We cannot use `-nodefaultlibs` because compiler-rt has to be passed
@@ -30,6 +32,7 @@ pub(crate) fn opts() -> TargetOptions {
         exe_suffix: ".exe".into(),
         families: cvs!["windows"],
         is_like_windows: true,
+        binary_format: BinaryFormat::Coff,
         allows_weak_linkage: false,
         pre_link_args,
         late_link_args,

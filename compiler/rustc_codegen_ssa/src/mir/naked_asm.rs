@@ -8,7 +8,7 @@ use rustc_middle::ty::{Instance, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug, ty};
 use rustc_span::sym;
 use rustc_target::callconv::{ArgAbi, FnAbi, PassMode};
-use rustc_target::spec::WasmCAbi;
+use rustc_target::spec::{BinaryFormat, WasmCAbi};
 
 use crate::common;
 use crate::traits::{AsmCodegenMethods, BuilderMethods, GlobalAsmOperandRef, MiscCodegenMethods};
@@ -104,27 +104,6 @@ fn inline_to_global_operand<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     }
 }
 
-enum AsmBinaryFormat {
-    Elf,
-    Macho,
-    Coff,
-    Wasm,
-}
-
-impl AsmBinaryFormat {
-    fn from_target(target: &rustc_target::spec::Target) -> Self {
-        if target.is_like_windows {
-            Self::Coff
-        } else if target.is_like_osx {
-            Self::Macho
-        } else if target.is_like_wasm {
-            Self::Wasm
-        } else {
-            Self::Elf
-        }
-    }
-}
-
 fn prefix_and_suffix<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
@@ -134,7 +113,7 @@ fn prefix_and_suffix<'tcx>(
 ) -> (String, String) {
     use std::fmt::Write;
 
-    let asm_binary_format = AsmBinaryFormat::from_target(&tcx.sess.target);
+    let asm_binary_format = &tcx.sess.target.binary_format;
 
     let is_arm = tcx.sess.target.arch == "arm";
     let is_thumb = tcx.sess.unstable_target_features.contains(&sym::thumb_mode);
@@ -178,10 +157,13 @@ fn prefix_and_suffix<'tcx>(
             }
             Linkage::LinkOnceAny | Linkage::LinkOnceODR | Linkage::WeakAny | Linkage::WeakODR => {
                 match asm_binary_format {
-                    AsmBinaryFormat::Elf | AsmBinaryFormat::Coff | AsmBinaryFormat::Wasm => {
+                    BinaryFormat::Elf
+                    | BinaryFormat::Coff
+                    | BinaryFormat::Wasm
+                    | BinaryFormat::Xcoff => {
                         writeln!(w, ".weak {asm_name}")?;
                     }
-                    AsmBinaryFormat::Macho => {
+                    BinaryFormat::MachO => {
                         writeln!(w, ".globl {asm_name}")?;
                         writeln!(w, ".weak_definition {asm_name}")?;
                     }
@@ -207,7 +189,7 @@ fn prefix_and_suffix<'tcx>(
     let mut begin = String::new();
     let mut end = String::new();
     match asm_binary_format {
-        AsmBinaryFormat::Elf => {
+        BinaryFormat::Elf | BinaryFormat::Xcoff => {
             let section = link_section.unwrap_or(format!(".text.{asm_name}"));
 
             let progbits = match is_arm {
@@ -239,7 +221,7 @@ fn prefix_and_suffix<'tcx>(
                 writeln!(end, "{}", arch_suffix).unwrap();
             }
         }
-        AsmBinaryFormat::Macho => {
+        BinaryFormat::MachO => {
             let section = link_section.unwrap_or("__TEXT,__text".to_string());
             writeln!(begin, ".pushsection {},regular,pure_instructions", section).unwrap();
             writeln!(begin, ".balign {align}").unwrap();
@@ -255,7 +237,7 @@ fn prefix_and_suffix<'tcx>(
                 writeln!(end, "{}", arch_suffix).unwrap();
             }
         }
-        AsmBinaryFormat::Coff => {
+        BinaryFormat::Coff => {
             let section = link_section.unwrap_or(format!(".text.{asm_name}"));
             writeln!(begin, ".pushsection {},\"xr\"", section).unwrap();
             writeln!(begin, ".balign {align}").unwrap();
@@ -272,7 +254,7 @@ fn prefix_and_suffix<'tcx>(
                 writeln!(end, "{}", arch_suffix).unwrap();
             }
         }
-        AsmBinaryFormat::Wasm => {
+        BinaryFormat::Wasm => {
             let section = link_section.unwrap_or(format!(".text.{asm_name}"));
 
             writeln!(begin, ".section {section},\"\",@").unwrap();

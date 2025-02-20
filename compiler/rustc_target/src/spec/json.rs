@@ -103,6 +103,19 @@ impl Target {
                     base.$key_name = Some(s);
                 }
             } );
+            ($key_name:ident, BinaryFormat) => ( {
+                let name = (stringify!($key_name)).replace("_", "-");
+                obj.remove(&name).and_then(|f| f.as_str().and_then(|s| {
+                    match s.parse::<super::BinaryFormat>() {
+                        Ok(binary_format) => base.$key_name = binary_format,
+                        _ => return Some(Err(format!(
+                            "'{s}' is not a valid value for binary_format. \
+                            Use 'coff', 'elf', 'mach-o', 'wasm' or 'xcoff' "
+                        ))),
+                    }
+                    Some(Ok(()))
+                })).unwrap_or(Ok(()))
+            } );
             ($key_name:ident, MergeFunctions) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
                 obj.remove(&name).and_then(|o| o.as_str().and_then(|s| {
@@ -585,6 +598,7 @@ impl Target {
         key!(is_like_msvc, bool);
         key!(is_like_wasm, bool);
         key!(is_like_android, bool);
+        key!(binary_format, BinaryFormat)?;
         key!(default_dwarf_version, u32);
         key!(allows_weak_linkage, bool);
         key!(has_rpath, bool);
@@ -762,6 +776,7 @@ impl ToJson for Target {
         target_option_val!(is_like_msvc);
         target_option_val!(is_like_wasm);
         target_option_val!(is_like_android);
+        target_option_val!(binary_format);
         target_option_val!(default_dwarf_version);
         target_option_val!(allows_weak_linkage);
         target_option_val!(has_rpath);
