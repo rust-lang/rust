@@ -154,6 +154,39 @@ impl<const N: usize> ShuffleMask<N> {
     }
 }
 
+const fn genmask<const MASK: u16>() -> [u8; 16] {
+    let mut bits = MASK;
+    let mut elements = [0u8; 16];
+
+    let mut i = 0;
+    while i < 16 {
+        elements[i] = match bits & (1u16 << 15) {
+            0 => 0,
+            _ => 0xFF,
+        };
+
+        bits <<= 1;
+        i += 1;
+    }
+
+    elements
+}
+
+const fn genmasks(bit_width: u32, a: u8, b: u8) -> u64 {
+    let bit_width = bit_width as u8;
+    let a = a % bit_width;
+    let mut b = b % bit_width;
+    if a > b {
+        b = bit_width - 1;
+    }
+
+    // of course these indices start from the left
+    let a = (bit_width - 1) - a;
+    let b = (bit_width - 1) - b;
+
+    ((1u64.wrapping_shl(a as u32 + 1)) - 1) & !((1u64.wrapping_shl(b as u32)) - 1)
+}
+
 #[macro_use]
 mod sealed {
     use super::*;
@@ -1727,6 +1760,52 @@ where
     a.vec_mergel(b)
 }
 
+/// Generates byte masks for elements in the return vector. For each bit in a, if the bit is one, all bit positions
+/// in the corresponding byte element of d are set to ones. Otherwise, if the bit is zero, the corresponding byte element is set to zero.
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+#[cfg_attr(test, assert_instr(vgbm, MASK = 0x00FF))]
+pub unsafe fn vec_genmask<const MASK: u16>() -> vector_unsigned_char {
+    vector_unsigned_char(const { genmask::<MASK>() })
+}
+
+/// Vector Generate Mask (Byte)
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+#[cfg_attr(test, assert_instr(vrepib, L = 3, H = 5))]
+pub unsafe fn vec_genmasks_8<const L: u8, const H: u8>() -> vector_unsigned_char {
+    vector_unsigned_char(const { [genmasks(u8::BITS, L, H) as u8; 16] })
+}
+
+/// Vector Generate Mask (Halfword)
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+#[cfg_attr(test, assert_instr(vrepih, L = 3, H = 5))]
+pub unsafe fn vec_genmasks_16<const L: u8, const H: u8>() -> vector_unsigned_short {
+    vector_unsigned_short(const { [genmasks(u16::BITS, L, H) as u16; 8] })
+}
+
+/// Vector Generate Mask (Word)
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+#[cfg_attr(test, assert_instr(vgmf, L = 3, H = 5))]
+pub unsafe fn vec_genmasks_32<const L: u8, const H: u8>() -> vector_unsigned_int {
+    vector_unsigned_int(const { [genmasks(u32::BITS, L, H) as u32; 4] })
+}
+
+/// Vector Generate Mask (Doubleword)
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+#[cfg_attr(test, assert_instr(vgmg, L = 3, H = 5))]
+pub unsafe fn vec_genmasks_64<const L: u8, const H: u8>() -> vector_unsigned_long_long {
+    vector_unsigned_long_long(const { [genmasks(u64::BITS, L, H); 2] })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1749,6 +1828,36 @@ mod tests {
     #[test]
     fn mergeh_mask() {
         assert_eq!(ShuffleMask::<4>::merge_high().0, [0, 4, 1, 5]);
+    }
+
+    #[test]
+    fn test_vec_mask() {
+        assert_eq!(
+            genmask::<0x00FF>(),
+            [
+                0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
+            ]
+        );
+    }
+
+    #[test]
+    fn test_genmasks() {
+        assert_eq!(genmasks(u8::BITS, 3, 5), 28);
+        assert_eq!(genmasks(u8::BITS, 3, 7), 31);
+
+        // If a or b is greater than 8, the operation is performed as if the value gets modulo by 8.
+        assert_eq!(genmasks(u8::BITS, 3 + 8, 7 + 8), 31);
+        // If a is greater than b, the operation is perform as if b equals 7.
+        assert_eq!(genmasks(u8::BITS, 5, 4), genmasks(u8::BITS, 5, 7));
+
+        assert_eq!(
+            genmasks(u16::BITS, 4, 12) as u16,
+            u16::from_be_bytes([15, -8i8 as u8])
+        );
+        assert_eq!(
+            genmasks(u32::BITS, 4, 29) as u32,
+            u32::from_be_bytes([15, 0xFF, 0xFF, -4i8 as u8])
+        );
     }
 
     macro_rules! test_vec_1 {
