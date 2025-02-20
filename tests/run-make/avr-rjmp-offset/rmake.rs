@@ -23,6 +23,10 @@ fn main() {
         .opt_level("s")
         .panic("abort")
         .target("avr-none")
+        // rust-lld has some troubles understanding the -mmcu flag, so for the
+        // time being let's tell rustc to emit binary that's compatible with the
+        // target CPU that lld defaults to, i.e. just `avr` (that's simply the
+        // minimal common instruction set across all AVRs)
         .target_cpu("avr")
         // normally one links with `avr-gcc`, but this is not available in CI,
         // hence this test diverges from the default behavior to enable linking
