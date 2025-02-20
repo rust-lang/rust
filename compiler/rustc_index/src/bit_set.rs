@@ -723,7 +723,7 @@ impl<T: Idx> ChunkedBitSet<T> {
         match self.chunks.get(chunk_index) {
             Some(Zeros(_chunk_domain_size)) => ChunkIter::Zeros,
             Some(Ones(chunk_domain_size)) => ChunkIter::Ones(0..*chunk_domain_size as usize),
-            Some(Mixed(chunk_domain_size, _, ref words)) => {
+            Some(Mixed(chunk_domain_size, _, words)) => {
                 let num_words = num_words(*chunk_domain_size as usize);
                 ChunkIter::Mixed(BitIter::new(&words[0..num_words]))
             }
@@ -752,11 +752,7 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ChunkedBitSet<T> {
                     changed = true;
                 }
                 (
-                    Mixed(
-                        self_chunk_domain_size,
-                        ref mut self_chunk_count,
-                        ref mut self_chunk_words,
-                    ),
+                    Mixed(self_chunk_domain_size, self_chunk_count, self_chunk_words),
                     Mixed(_other_chunk_domain_size, _other_chunk_count, other_chunk_words),
                 ) => {
                     // First check if the operation would change
@@ -836,11 +832,7 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ChunkedBitSet<T> {
                         Mixed(*self_chunk_domain_size, self_chunk_count, Rc::new(self_chunk_words));
                 }
                 (
-                    Mixed(
-                        self_chunk_domain_size,
-                        ref mut self_chunk_count,
-                        ref mut self_chunk_words,
-                    ),
+                    Mixed(self_chunk_domain_size, self_chunk_count, self_chunk_words),
                     Mixed(_other_chunk_domain_size, _other_chunk_count, other_chunk_words),
                 ) => {
                     // See [`<Self as BitRelations<ChunkedBitSet<T>>>::union`] for the explanation
@@ -891,11 +883,7 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ChunkedBitSet<T> {
                     *self_chunk = other_chunk.clone();
                 }
                 (
-                    Mixed(
-                        self_chunk_domain_size,
-                        ref mut self_chunk_count,
-                        ref mut self_chunk_words,
-                    ),
+                    Mixed(self_chunk_domain_size, self_chunk_count, self_chunk_words),
                     Mixed(_other_chunk_domain_size, _other_chunk_count, other_chunk_words),
                 ) => {
                     // See [`<Self as BitRelations<ChunkedBitSet<T>>>::union`] for the explanation

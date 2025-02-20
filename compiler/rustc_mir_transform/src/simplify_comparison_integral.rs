@@ -89,10 +89,10 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyComparisonIntegral {
 
                 use Operand::*;
                 match rhs {
-                    Rvalue::BinaryOp(_, box (ref mut left @ Move(_), Constant(_))) => {
+                    Rvalue::BinaryOp(_, box (left @ Move(_), Constant(_))) => {
                         *left = Copy(opt.to_switch_on);
                     }
-                    Rvalue::BinaryOp(_, box (Constant(_), ref mut right @ Move(_))) => {
+                    Rvalue::BinaryOp(_, box (Constant(_), right @ Move(_))) => {
                         *right = Copy(opt.to_switch_on);
                     }
                     _ => (),

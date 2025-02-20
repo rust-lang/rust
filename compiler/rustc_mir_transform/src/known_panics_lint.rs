@@ -509,7 +509,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     // other overflow checks.
                     AssertKind::Overflow(*bin_op, eval_to_int(op1), eval_to_int(op2))
                 }
-                AssertKind::BoundsCheck { ref len, ref index } => {
+                AssertKind::BoundsCheck { len, index } => {
                     let len = eval_to_int(len);
                     let index = eval_to_int(index);
                     AssertKind::BoundsCheck { len, index }
@@ -782,10 +782,10 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
         self.super_terminator(terminator, location);
         match &terminator.kind {
-            TerminatorKind::Assert { expected, ref msg, ref cond, .. } => {
+            TerminatorKind::Assert { expected, msg, cond, .. } => {
                 self.check_assertion(*expected, msg, cond, location);
             }
-            TerminatorKind::SwitchInt { ref discr, ref targets } => {
+            TerminatorKind::SwitchInt { discr, targets } => {
                 if let Some(ref value) = self.eval_operand(discr)
                     && let Some(value_const) = self.use_ecx(|this| this.ecx.read_scalar(value))
                     && let Some(constant) = value_const.to_bits(value_const.size()).discard_err()

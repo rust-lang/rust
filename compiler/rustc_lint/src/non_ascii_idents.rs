@@ -183,7 +183,7 @@ impl EarlyLintPass for NonAsciiIdents {
         #[allow(rustc::potential_query_instability)]
         let mut symbols: Vec<_> = symbols.iter().collect();
         symbols.sort_by_key(|k| k.1);
-        for (symbol, &sp) in symbols.iter() {
+        for &(ref symbol, &sp) in symbols.iter() {
             let symbol_str = symbol.as_str();
             if symbol_str.is_ascii() {
                 continue;
@@ -242,7 +242,7 @@ impl EarlyLintPass for NonAsciiIdents {
                 UnordMap::with_capacity(symbols.len());
             let mut skeleton_buf = String::new();
 
-            for (&symbol, &sp) in symbols.iter() {
+            for &(&symbol, &sp) in symbols.iter() {
                 use unicode_security::confusable_detection::skeleton;
 
                 let symbol_str = symbol.as_str();
@@ -298,7 +298,7 @@ impl EarlyLintPass for NonAsciiIdents {
             script_states.insert(latin_augmented_script_set, ScriptSetUsage::Verified);
 
             let mut has_suspicious = false;
-            for (symbol, &sp) in symbols.iter() {
+            for &(ref symbol, &sp) in symbols.iter() {
                 let symbol_str = symbol.as_str();
                 for ch in symbol_str.chars() {
                     if ch.is_ascii() {

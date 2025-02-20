@@ -1097,7 +1097,7 @@ fn find_fallback_pattern_typo<'tcx>(
             }
         }
         if let Some((i, &const_name)) =
-            accessible.iter().enumerate().find(|(_, &const_name)| const_name == name)
+            accessible.iter().enumerate().find(|&(_, &const_name)| const_name == name)
         {
             // The pattern name is an exact match, so the pattern needed to be imported.
             lint.wanted_constant = Some(WantedConstant {
@@ -1115,7 +1115,7 @@ fn find_fallback_pattern_typo<'tcx>(
                 const_path: name.to_string(),
             });
         } else if let Some(i) =
-            imported.iter().enumerate().find(|(_, &const_name)| const_name == name).map(|(i, _)| i)
+            imported.iter().enumerate().find(|&(_, &const_name)| const_name == name).map(|(i, _)| i)
         {
             // The const with the exact name wasn't re-exported from an import in this
             // crate, we point at the import.

@@ -16,7 +16,7 @@ pub(crate) fn user_args_applied_to_ty_of_hir_id<'tcx>(
     let ty = typeck_results.node_type(hir_id);
     match ty.kind() {
         ty::Adt(adt_def, ..) => {
-            if let ty::UserTypeKind::TypeOf(ref mut did, _) = &mut user_ty.value.kind {
+            if let ty::UserTypeKind::TypeOf(did, _) = &mut user_ty.value.kind {
                 *did = adt_def.did();
             }
             Some(user_ty)

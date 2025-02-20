@@ -1191,7 +1191,7 @@ impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'r
         debug!("visit_generic_arg({:?})", arg);
         let prev = replace(&mut self.diag_metadata.currently_processing_generic_args, true);
         match arg {
-            GenericArg::Type(ref ty) => {
+            GenericArg::Type(ty) => {
                 // We parse const arguments as path types as we cannot distinguish them during
                 // parsing. We try to resolve that ambiguity by attempting resolution the type
                 // namespace first, and if that fails we try again in the value namespace. If
@@ -1583,7 +1583,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                             this.visit_param_bound(bound, BoundKind::Bound);
                         }
 
-                        if let Some(ref ty) = default {
+                        if let Some(ty) = default {
                             this.ribs[TypeNS].push(forward_ty_ban_rib);
                             this.ribs[ValueNS].push(forward_const_ban_rib);
                             this.visit_ty(ty);
@@ -1608,7 +1608,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         this.ribs[TypeNS].pop().unwrap();
                         this.ribs[ValueNS].pop().unwrap();
 
-                        if let Some(ref expr) = default {
+                        if let Some(expr) = default {
                             this.ribs[TypeNS].push(forward_ty_ban_rib);
                             this.ribs[ValueNS].push(forward_const_ban_rib);
                             this.resolve_anon_const(
@@ -5044,16 +5044,16 @@ impl ItemInfoCollector<'_, '_, '_> {
 impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, '_, '_> {
     fn visit_item(&mut self, item: &'ast Item) {
         match &item.kind {
-            ItemKind::TyAlias(box TyAlias { ref generics, .. })
-            | ItemKind::Const(box ConstItem { ref generics, .. })
-            | ItemKind::Fn(box Fn { ref generics, .. })
-            | ItemKind::Enum(_, ref generics)
-            | ItemKind::Struct(_, ref generics)
-            | ItemKind::Union(_, ref generics)
-            | ItemKind::Impl(box Impl { ref generics, .. })
-            | ItemKind::Trait(box Trait { ref generics, .. })
-            | ItemKind::TraitAlias(ref generics, _) => {
-                if let ItemKind::Fn(box Fn { ref sig, .. }) = &item.kind {
+            ItemKind::TyAlias(box TyAlias { generics, .. })
+            | ItemKind::Const(box ConstItem { generics, .. })
+            | ItemKind::Fn(box Fn { generics, .. })
+            | ItemKind::Enum(_, generics)
+            | ItemKind::Struct(_, generics)
+            | ItemKind::Union(_, generics)
+            | ItemKind::Impl(box Impl { generics, .. })
+            | ItemKind::Trait(box Trait { generics, .. })
+            | ItemKind::TraitAlias(generics, _) => {
+                if let ItemKind::Fn(box Fn { sig, .. }) = &item.kind {
                     self.collect_fn_info(sig, item.id, &item.attrs);
                 }
 
@@ -5086,7 +5086,7 @@ impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, '_, '_> {
     }
 
     fn visit_assoc_item(&mut self, item: &'ast AssocItem, ctxt: AssocCtxt) {
-        if let AssocItemKind::Fn(box Fn { ref sig, .. }) = &item.kind {
+        if let AssocItemKind::Fn(box Fn { sig, .. }) = &item.kind {
             self.collect_fn_info(sig, item.id, &item.attrs);
         }
         visit::walk_assoc_item(self, item, ctxt);

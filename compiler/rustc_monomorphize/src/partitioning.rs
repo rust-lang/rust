@@ -1269,7 +1269,7 @@ fn dump_mono_items_stats<'tcx>(
     output_directory: &Option<PathBuf>,
     crate_name: Symbol,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let output_directory = if let Some(ref directory) = output_directory {
+    let output_directory = if let Some(directory) = output_directory {
         fs::create_dir_all(directory)?;
         directory
     } else {

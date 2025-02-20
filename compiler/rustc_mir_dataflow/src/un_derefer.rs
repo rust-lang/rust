@@ -91,7 +91,7 @@ impl<T: Copy> SlicePlusOne<'_, T> {
     #[inline]
     fn advance(&mut self) {
         match self.slice {
-            [_, ref remainder @ ..] => {
+            [_, remainder @ ..] => {
                 self.slice = remainder;
             }
             [] => self.last = None,

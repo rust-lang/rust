@@ -974,7 +974,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         hir::ExprKind::MethodCall(
                             hir::PathSegment { ident, .. },
                             _receiver,
-                            &[],
+                            [],
                             call_span,
                         ),
                     hir_id,

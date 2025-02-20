@@ -51,7 +51,7 @@ impl<'tcx> Visitor<'tcx> for MentionedItemsVisitor<'_, 'tcx> {
                 let ty = place.ty(self.body, self.tcx).ty;
                 self.mentioned_items.push(Spanned { node: MentionedItem::Drop(ty), span: span() });
             }
-            mir::TerminatorKind::InlineAsm { ref operands, .. } => {
+            mir::TerminatorKind::InlineAsm { operands, .. } => {
                 for op in operands {
                     match *op {
                         mir::InlineAsmOperand::SymFn { ref value } => {

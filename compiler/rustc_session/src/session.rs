@@ -1019,8 +1019,7 @@ pub fn build_session(
 
     let self_profiler = if let SwitchWithOptPath::Enabled(ref d) = sopts.unstable_opts.self_profile
     {
-        let directory =
-            if let Some(ref directory) = d { directory } else { std::path::Path::new(".") };
+        let directory = if let Some(directory) = d { directory } else { std::path::Path::new(".") };
 
         let profiler = SelfProfiler::new(
             directory,
