@@ -29,9 +29,7 @@ use self::type_map::{DINodeCreationResult, Stub, UniqueTypeId};
 use super::CodegenUnitDebugContext;
 use super::namespace::mangled_name_of_instance;
 use super::type_names::{compute_debuginfo_type_name, compute_debuginfo_vtable_name};
-use super::utils::{
-    DIB, create_DIArray, debug_context, get_namespace_for_item, is_node_local_to_unit,
-};
+use super::utils::{DIB, debug_context, get_namespace_for_item, is_node_local_to_unit};
 use crate::common::{AsCCharPtr, CodegenCx};
 use crate::debuginfo::dwarf_const;
 use crate::debuginfo::metadata::type_map::build_type_with_children;
@@ -114,19 +112,9 @@ fn build_fixed_size_array_di_node<'ll, 'tcx>(
         .try_to_target_usize(cx.tcx)
         .expect("expected monomorphic const in codegen") as c_longlong;
 
-    let subrange =
-        unsafe { Some(llvm::LLVMRustDIBuilderGetOrCreateSubrange(DIB(cx), 0, upper_bound)) };
+    let subrange = unsafe { llvm::LLVMRustDIBuilderGetOrCreateSubrange(DIB(cx), 0, upper_bound) };
 
-    let subscripts = create_DIArray(DIB(cx), &[subrange]);
-    let di_node = unsafe {
-        llvm::LLVMRustDIBuilderCreateArrayType(
-            DIB(cx),
-            size.bits(),
-            align.bits() as u32,
-            element_type_di_node,
-            subscripts,
-        )
-    };
+    let di_node = DIB(cx).create_array_type(size, align, element_type_di_node, &[subrange]);
 
     DINodeCreationResult::new(di_node, false)
 }
@@ -168,17 +156,12 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                 "ptr_type={ptr_type}, pointee_type={pointee_type}",
             );
 
-            let di_node = unsafe {
-                llvm::LLVMRustDIBuilderCreatePointerType(
-                    DIB(cx),
-                    pointee_type_di_node,
-                    data_layout.pointer_size.bits(),
-                    data_layout.pointer_align.abi.bits() as u32,
-                    0, // Ignore DWARF address space.
-                    ptr_type_debuginfo_name.as_c_char_ptr(),
-                    ptr_type_debuginfo_name.len(),
-                )
-            };
+            let di_node = DIB(cx).create_pointer_type(
+                pointee_type_di_node,
+                data_layout.pointer_size,
+                data_layout.pointer_align.abi,
+                &ptr_type_debuginfo_name,
+            );
 
             DINodeCreationResult { di_node, already_stored_in_typemap: false }
         }
@@ -226,17 +209,12 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
 
                     // The data pointer type is a regular, thin pointer, regardless of whether this
                     // is a slice or a trait object.
-                    let data_ptr_type_di_node = unsafe {
-                        llvm::LLVMRustDIBuilderCreatePointerType(
-                            DIB(cx),
-                            pointee_type_di_node,
-                            addr_field.size.bits(),
-                            addr_field.align.abi.bits() as u32,
-                            0, // Ignore DWARF address space.
-                            std::ptr::null(),
-                            0,
-                        )
-                    };
+                    let data_ptr_type_di_node = DIB(cx).create_pointer_type(
+                        pointee_type_di_node,
+                        addr_field.size,
+                        addr_field.align.abi,
+                        "",
+                    );
 
                     smallvec![
                         build_field_di_node(
@@ -311,12 +289,7 @@ fn build_subroutine_type_di_node<'ll, 'tcx>(
 
     debug_context(cx).type_map.unique_id_to_di_node.borrow_mut().remove(&unique_type_id);
 
-    let fn_di_node = unsafe {
-        llvm::LLVMRustDIBuilderCreateSubroutineType(
-            DIB(cx),
-            create_DIArray(DIB(cx), &signature_di_nodes[..]),
-        )
-    };
+    let fn_di_node = DIB(cx).create_subroutine_type(&signature_di_nodes, DIFlags::FlagZero);
 
     // This is actually a function pointer, so wrap it in pointer DI.
     let name = compute_debuginfo_type_name(cx.tcx, fn_ty, false);
@@ -325,17 +298,7 @@ fn build_subroutine_type_di_node<'ll, 'tcx>(
         ty::FnPtr(..) => (cx.tcx.data_layout.pointer_size, cx.tcx.data_layout.pointer_align.abi),
         _ => unreachable!(),
     };
-    let di_node = unsafe {
-        llvm::LLVMRustDIBuilderCreatePointerType(
-            DIB(cx),
-            fn_di_node,
-            size.bits(),
-            align.bits() as u32,
-            0, // Ignore DWARF address space.
-            name.as_c_char_ptr(),
-            name.len(),
-        )
-    };
+    let di_node = DIB(cx).create_pointer_type(fn_di_node, size, align, &name);
 
     DINodeCreationResult::new(di_node, false)
 }
@@ -487,26 +450,22 @@ pub(crate) fn type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) ->
 // FIXME(mw): Cache this via a regular UniqueTypeId instead of an extra field in the debug context.
 fn recursion_marker_type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) -> &'ll DIType {
     *debug_context(cx).recursion_marker_type.get_or_init(move || {
-        unsafe {
-            // The choice of type here is pretty arbitrary -
-            // anything reading the debuginfo for a recursive
-            // type is going to see *something* weird - the only
-            // question is what exactly it will see.
-            //
-            // FIXME: the name `<recur_type>` does not fit the naming scheme
-            //        of other types.
-            //
-            // FIXME: it might make sense to use an actual pointer type here
-            //        so that debuggers can show the address.
-            let name = "<recur_type>";
-            llvm::LLVMRustDIBuilderCreateBasicType(
-                DIB(cx),
-                name.as_c_char_ptr(),
-                name.len(),
-                cx.tcx.data_layout.pointer_size.bits(),
-                dwarf_const::DW_ATE_unsigned,
-            )
-        }
+        // The choice of type here is pretty arbitrary -
+        // anything reading the debuginfo for a recursive
+        // type is going to see *something* weird - the only
+        // question is what exactly it will see.
+        //
+        // FIXME: the name `<recur_type>` does not fit the naming scheme
+        //        of other types.
+        //
+        // FIXME: it might make sense to use an actual pointer type here
+        //        so that debuggers can show the address.
+        DIB(cx).create_basic_type(
+            "<recur_type>",
+            cx.tcx.data_layout.pointer_size,
+            dwarf_const::DW_ATE_unsigned,
+            DIFlags::FlagZero,
+        )
     })
 }
 
@@ -788,15 +747,7 @@ fn build_basic_type_di_node<'ll, 'tcx>(
         _ => bug!("debuginfo::build_basic_type_di_node - `t` is invalid type"),
     };
 
-    let ty_di_node = unsafe {
-        llvm::LLVMRustDIBuilderCreateBasicType(
-            DIB(cx),
-            name.as_c_char_ptr(),
-            name.len(),
-            cx.size_of(t).bits(),
-            encoding,
-        )
-    };
+    let ty_di_node = DIB(cx).create_basic_type(name, cx.size_of(t), encoding, DIFlags::FlagZero);
 
     if !cpp_like_debuginfo {
         return DINodeCreationResult::new(ty_di_node, false);
