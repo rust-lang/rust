@@ -654,7 +654,12 @@ impl<'a> CrateLocator<'a> {
                     continue;
                 }
             }
-            *slot = Some((hash, metadata, lib.clone()));
+
+            if !metadata.get_header().is_reference {
+                // FIXME nicer error when only an rlib or dylib with is_reference is found
+                // and no .rmeta?
+                *slot = Some((hash, metadata, lib.clone()));
+            }
             ret = Some((lib, kind));
         }
 
@@ -728,37 +733,40 @@ impl<'a> CrateLocator<'a> {
             let Some(file) = loc_orig.file_name().and_then(|s| s.to_str()) else {
                 return Err(CrateError::ExternLocationNotFile(self.crate_name, loc_orig.clone()));
             };
-            // FnMut cannot return reference to captured value, so references
-            // must be taken outside the closure.
-            let rlibs = &mut rlibs;
-            let rmetas = &mut rmetas;
-            let dylibs = &mut dylibs;
-            let type_via_filename = (|| {
-                if file.starts_with("lib") {
-                    if file.ends_with(".rlib") {
-                        return Some(rlibs);
+            if file.starts_with("lib") {
+                if file.ends_with(".rlib") {
+                    if let Ok(rmeta_path) = try_canonicalize(
+                        loc_orig
+                            .parent()
+                            .unwrap()
+                            .join(file.strip_suffix(".rlib").unwrap().to_owned() + ".rmeta"),
+                    ) {
+                        rmetas.insert(rmeta_path, PathKind::ExternFlag);
                     }
-                    if file.ends_with(".rmeta") {
-                        return Some(rmetas);
-                    }
+                    rlibs.insert(loc_canon.clone(), PathKind::ExternFlag);
+                    continue;
                 }
-                let dll_prefix = self.target.dll_prefix.as_ref();
-                let dll_suffix = self.target.dll_suffix.as_ref();
-                if file.starts_with(dll_prefix) && file.ends_with(dll_suffix) {
-                    return Some(dylibs);
-                }
-                None
-            })();
-            match type_via_filename {
-                Some(type_via_filename) => {
-                    type_via_filename.insert(loc_canon.clone(), PathKind::ExternFlag);
-                }
-                None => {
-                    self.crate_rejections
-                        .via_filename
-                        .push(CrateMismatch { path: loc_orig.clone(), got: String::new() });
+                if file.ends_with(".rmeta") {
+                    rmetas.insert(loc_canon.clone(), PathKind::ExternFlag);
+                    continue;
                 }
             }
+            let dll_prefix = self.target.dll_prefix.as_ref();
+            let dll_suffix = self.target.dll_suffix.as_ref();
+            if file.starts_with(dll_prefix) && file.ends_with(dll_suffix) {
+                if let Ok(rmeta_path) = try_canonicalize(loc_orig.parent().unwrap().join(
+                    "lib".to_owned()
+                        + file.strip_prefix(dll_prefix).unwrap().strip_suffix(dll_suffix).unwrap()
+                        + ".rmeta",
+                )) {
+                    rmetas.insert(rmeta_path, PathKind::ExternFlag);
+                }
+                dylibs.insert(loc_canon.clone(), PathKind::ExternFlag);
+                continue;
+            }
+            self.crate_rejections
+                .via_filename
+                .push(CrateMismatch { path: loc_orig.clone(), got: String::new() });
         }
 
         // Extract the dylib/rlib/rmeta triple.
