@@ -231,7 +231,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ///
     /// Returns `None` for cases that can't work in that framework, such as for
     /// `Immediate`->`Ref` that needs an `alloc` to get the location.
-    fn codegen_transmute_operand(
+    pub(crate) fn codegen_transmute_operand(
         &mut self,
         bx: &mut Bx,
         operand: OperandRef<'tcx, Bx::Value>,
@@ -260,6 +260,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             OperandValue::Ref(source_place_val) => {
                 assert_eq!(source_place_val.llextra, None);
                 assert_matches!(operand_kind, OperandValueKind::Ref);
+                // The existing alignment is part of `source_place_val`,
+                // so that alignment will be used, not `cast`'s.
                 Some(bx.load_operand(source_place_val.with_type(cast)).val)
             }
             OperandValue::ZeroSized => {

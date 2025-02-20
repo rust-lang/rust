@@ -1,15 +1,14 @@
-use std::assert_matches::assert_matches;
 use std::fmt;
 
 use arrayvec::ArrayVec;
 use either::Either;
 use rustc_abi as abi;
 use rustc_abi::{Align, BackendRepr, Size};
-use rustc_middle::bug;
 use rustc_middle::mir::interpret::{Pointer, Scalar, alloc_range};
 use rustc_middle::mir::{self, ConstValue};
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
+use rustc_middle::{bug, span_bug};
 use tracing::debug;
 
 use super::place::{PlaceRef, PlaceValue};
@@ -352,78 +351,82 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
 
     pub(crate) fn extract_field<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         &self,
+        fx: &mut FunctionCx<'a, 'tcx, Bx>,
         bx: &mut Bx,
         i: usize,
     ) -> Self {
         let field = self.layout.field(bx.cx(), i);
         let offset = self.layout.fields.offset(i);
 
-        let mut val = match (self.val, self.layout.backend_repr) {
-            // If the field is ZST, it has no data.
-            _ if field.is_zst() => OperandValue::ZeroSized,
-
-            // Newtype of a scalar, scalar pair or vector.
-            (OperandValue::Immediate(_) | OperandValue::Pair(..), _)
-                if field.size == self.layout.size =>
-            {
-                assert_eq!(offset.bytes(), 0);
-                self.val
+        let val = if field.is_zst() {
+            OperandValue::ZeroSized
+        } else if field.size == self.layout.size {
+            assert_eq!(offset.bytes(), 0);
+            if let Some(field_val) = fx.codegen_transmute_operand(bx, *self, field) {
+                field_val
+            } else {
+                // we have to go through memory for things like
+                // Newtype vector of array, e.g. #[repr(simd)] struct S([i32; 4]);
+                let place = PlaceRef::alloca(bx, field);
+                self.val.store(bx, place.val.with_type(self.layout));
+                bx.load_operand(place).val
             }
-
-            // Extract a scalar component from a pair.
-            (OperandValue::Pair(a_llval, b_llval), BackendRepr::ScalarPair(a, b)) => {
-                if offset.bytes() == 0 {
-                    assert_eq!(field.size, a.size(bx.cx()));
-                    OperandValue::Immediate(a_llval)
-                } else {
-                    assert_eq!(offset, a.size(bx.cx()).align_to(b.align(bx.cx()).abi));
-                    assert_eq!(field.size, b.size(bx.cx()));
-                    OperandValue::Immediate(b_llval)
+        } else {
+            let (in_scalar, imm) = match (self.val, self.layout.backend_repr) {
+                // Extract a scalar component from a pair.
+                (OperandValue::Pair(a_llval, b_llval), BackendRepr::ScalarPair(a, b)) => {
+                    if offset.bytes() == 0 {
+                        assert_eq!(field.size, a.size(bx.cx()));
+                        (Some(a), a_llval)
+                    } else {
+                        assert_eq!(offset, a.size(bx.cx()).align_to(b.align(bx.cx()).abi));
+                        assert_eq!(field.size, b.size(bx.cx()));
+                        (Some(b), b_llval)
+                    }
                 }
-            }
 
-            // `#[repr(simd)]` types are also immediate.
-            (OperandValue::Immediate(llval), BackendRepr::Vector { .. }) => {
-                OperandValue::Immediate(bx.extract_element(llval, bx.cx().const_usize(i as u64)))
-            }
+                // `#[repr(simd)]` types are also immediate.
+                (OperandValue::Immediate(llval), BackendRepr::Vector { .. }) => {
+                    (None, bx.extract_element(llval, bx.cx().const_usize(i as u64)))
+                }
 
-            _ => bug!("OperandRef::extract_field({:?}): not applicable", self),
+                _ => {
+                    span_bug!(fx.mir.span, "OperandRef::extract_field({:?}): not applicable", self)
+                }
+            };
+            OperandValue::Immediate(match field.backend_repr {
+                BackendRepr::Vector { .. } => imm,
+                BackendRepr::Scalar(out_scalar) => {
+                    let Some(in_scalar) = in_scalar else {
+                        span_bug!(
+                            fx.mir.span,
+                            "OperandRef::extract_field({:?}): missing input scalar for output scalar",
+                            self
+                        )
+                    };
+                    if in_scalar != out_scalar {
+                        // If the backend and backend_immediate types might differ,
+                        // flip back to the backend type then to the new immediate.
+                        // This avoids nop truncations, but still handles things like
+                        // Bools in union fields needs to be truncated.
+                        let backend = bx.from_immediate(imm);
+                        bx.to_immediate_scalar(backend, out_scalar)
+                    } else {
+                        imm
+                    }
+                }
+                BackendRepr::Memory { sized: true } => {
+                    span_bug!(
+                        fx.mir.span,
+                        "Projecting into a simd type with padding doesn't work; \
+                         See <https://github.com/rust-lang/rust/issues/137108>",
+                    );
+                }
+                BackendRepr::Uninhabited
+                | BackendRepr::ScalarPair(_, _)
+                | BackendRepr::Memory { sized: false } => bug!(),
+            })
         };
-
-        match (&mut val, field.backend_repr) {
-            (OperandValue::ZeroSized, _) => {}
-            (
-                OperandValue::Immediate(llval),
-                BackendRepr::Scalar(_) | BackendRepr::ScalarPair(..) | BackendRepr::Vector { .. },
-            ) => {
-                // Bools in union fields needs to be truncated.
-                *llval = bx.to_immediate(*llval, field);
-            }
-            (OperandValue::Pair(a, b), BackendRepr::ScalarPair(a_abi, b_abi)) => {
-                // Bools in union fields needs to be truncated.
-                *a = bx.to_immediate_scalar(*a, a_abi);
-                *b = bx.to_immediate_scalar(*b, b_abi);
-            }
-            // Newtype vector of array, e.g. #[repr(simd)] struct S([i32; 4]);
-            (OperandValue::Immediate(llval), BackendRepr::Memory { sized: true }) => {
-                assert_matches!(self.layout.backend_repr, BackendRepr::Vector { .. });
-
-                let llfield_ty = bx.cx().backend_type(field);
-
-                // Can't bitcast an aggregate, so round trip through memory.
-                let llptr = bx.alloca(field.size, field.align.abi);
-                bx.store(*llval, llptr, field.align.abi);
-                *llval = bx.load(llfield_ty, llptr, field.align.abi);
-            }
-            (
-                OperandValue::Immediate(_),
-                BackendRepr::Uninhabited | BackendRepr::Memory { sized: false },
-            ) => {
-                bug!()
-            }
-            (OperandValue::Pair(..), _) => bug!(),
-            (OperandValue::Ref(..), _) => bug!(),
-        }
 
         OperandRef { val, layout: field }
     }
@@ -587,7 +590,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 "Bad PlaceRef: destructing pointers should use cast/PtrMetadata, \
                                  but tried to access field {f:?} of pointer {o:?}",
                             );
-                            o = o.extract_field(bx, f.index());
+                            o = o.extract_field(self, bx, f.index());
                         }
                         mir::ProjectionElem::Index(_)
                         | mir::ProjectionElem::ConstantIndex { .. } => {

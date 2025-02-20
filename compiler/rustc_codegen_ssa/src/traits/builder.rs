@@ -1,7 +1,7 @@
 use std::assert_matches::assert_matches;
 use std::ops::Deref;
 
-use rustc_abi::{Align, BackendRepr, Scalar, Size, WrappingRange};
+use rustc_abi::{Align, Scalar, Size, WrappingRange};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{Instance, Ty};
@@ -223,13 +223,6 @@ pub trait BuilderMethods<'a, 'tcx>:
     ) -> (Self::Value, Self::Value);
 
     fn from_immediate(&mut self, val: Self::Value) -> Self::Value;
-    fn to_immediate(&mut self, val: Self::Value, layout: TyAndLayout<'_>) -> Self::Value {
-        if let BackendRepr::Scalar(scalar) = layout.backend_repr {
-            self.to_immediate_scalar(val, scalar)
-        } else {
-            val
-        }
-    }
     fn to_immediate_scalar(&mut self, val: Self::Value, scalar: Scalar) -> Self::Value;
 
     fn alloca(&mut self, size: Size, align: Align) -> Self::Value;
@@ -340,6 +333,17 @@ pub trait BuilderMethods<'a, 'tcx>:
     }
 
     fn trunc(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
+    /// Produces the same value as [`Self::trunc`] (and defaults to that),
+    /// but is UB unless the *zero*-extending the result can reproduce `val`.
+    fn unchecked_utrunc(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value {
+        self.trunc(val, dest_ty)
+    }
+    /// Produces the same value as [`Self::trunc`] (and defaults to that),
+    /// but is UB unless the *sign*-extending the result can reproduce `val`.
+    fn unchecked_strunc(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value {
+        self.trunc(val, dest_ty)
+    }
+
     fn sext(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
     fn fptoui_sat(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
     fn fptosi_sat(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
