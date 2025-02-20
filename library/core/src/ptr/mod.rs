@@ -2031,8 +2031,7 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
 /// not anything that implements `PartialEq`.
 ///
 /// This can be used to compare `&T` references (which coerce to `*const T` implicitly)
-/// by their address rather than comparing the values they point to
-/// (which is what the `PartialEq for &T` implementation does).
+/// by their address rather than comparing the values they point to.
 ///
 /// When comparing wide pointers, both the address and the metadata are tested for equality.
 /// However, note that comparing trait object pointers (`*const dyn Trait`) is unreliable: pointers
