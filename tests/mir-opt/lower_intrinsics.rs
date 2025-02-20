@@ -267,3 +267,15 @@ pub fn get_metadata(a: *const i32, b: *const [u8], c: *const dyn std::fmt::Debug
     let _usize = ptr_metadata(b);
     let _vtable = ptr_metadata(c);
 }
+
+// Check that the MIR shims used for reifying intrinsics to `fn` pointers,
+// also go through the lowering pass.
+pub fn reify_intrinsics() -> impl Copy {
+    (
+        core::intrinsics::wrapping_add::<u32> as unsafe fn(_, _) -> _,
+        core::intrinsics::size_of::<u8> as unsafe fn() -> _,
+        core::intrinsics::unreachable as unsafe fn() -> !,
+        core::intrinsics::forget::<E> as unsafe fn(_),
+        core::intrinsics::discriminant_value::<E> as unsafe fn(_) -> _,
+    )
+}
