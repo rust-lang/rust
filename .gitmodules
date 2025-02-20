@@ -20,7 +20,7 @@
 	shallow = true
 [submodule "library/stdarch"]
 	path = library/stdarch
-	url = https://github.com/rust-lang/stdarch.git
+	url = https://github.com/usamoi/stdarch.git
 	shallow = true
 [submodule "src/doc/edition-guide"]
 	path = src/doc/edition-guide
