@@ -38,6 +38,18 @@ pub fn evaluate_host_effect_obligation<'tcx>(
         return Err(EvaluationFailure::Ambiguous);
     }
 
+    // FIXME: during implementation of `#![feature(sized_hierarchy)]`, when evaluating a host
+    // effect predicate on an opaque in addr2line, running `evaluate_host_effect_from_bounds` first
+    // would create an opaque type which wouldn't be removed from opaque type storage and that
+    // would cause a delayed bug - creating a small reproduction of this has been tricky but if
+    // `builtin_impls` checking is moved below `evaluate_host_effect_from_item_bounds` then it will
+    // trigger.
+    match evaluate_host_effect_from_builtin_impls(selcx, obligation) {
+        Ok(result) => return Ok(result),
+        Err(EvaluationFailure::Ambiguous) => return Err(EvaluationFailure::Ambiguous),
+        Err(EvaluationFailure::NoSolution) => {}
+    }
+
     match evaluate_host_effect_from_bounds(selcx, obligation) {
         Ok(result) => return Ok(result),
         Err(EvaluationFailure::Ambiguous) => return Err(EvaluationFailure::Ambiguous),
@@ -45,12 +57,6 @@ pub fn evaluate_host_effect_obligation<'tcx>(
     }
 
     match evaluate_host_effect_from_item_bounds(selcx, obligation) {
-        Ok(result) => return Ok(result),
-        Err(EvaluationFailure::Ambiguous) => return Err(EvaluationFailure::Ambiguous),
-        Err(EvaluationFailure::NoSolution) => {}
-    }
-
-    match evaluate_host_effect_from_builtin_impls(selcx, obligation) {
         Ok(result) => return Ok(result),
         Err(EvaluationFailure::Ambiguous) => return Err(EvaluationFailure::Ambiguous),
         Err(EvaluationFailure::NoSolution) => {}
