@@ -85,25 +85,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         })
     }
 
-    /// Resolves type and const variables in `ty` if possible. Unlike the infcx
+    /// Resolves type and const variables in `t` if possible. Unlike the infcx
     /// version (resolve_vars_if_possible), this version will
     /// also select obligations if it seems useful, in an effort
     /// to get more type information.
     // FIXME(-Znext-solver): A lot of the calls to this method should
     // probably be `try_structurally_resolve_type` or `structurally_resolve_type` instead.
     #[instrument(skip(self), level = "debug", ret)]
-    pub(crate) fn resolve_vars_with_obligations(&self, mut ty: Ty<'tcx>) -> Ty<'tcx> {
+    pub(crate) fn resolve_vars_with_obligations<T: TypeFoldable<TyCtxt<'tcx>>>(
+        &self,
+        mut t: T,
+    ) -> T {
         // No Infer()? Nothing needs doing.
-        if !ty.has_non_region_infer() {
+        if !t.has_non_region_infer() {
             debug!("no inference var, nothing needs doing");
-            return ty;
+            return t;
         }
 
-        // If `ty` is a type variable, see whether we already know what it is.
-        ty = self.resolve_vars_if_possible(ty);
-        if !ty.has_non_region_infer() {
-            debug!(?ty);
-            return ty;
+        // If `t` is a type variable, see whether we already know what it is.
+        t = self.resolve_vars_if_possible(t);
+        if !t.has_non_region_infer() {
+            debug!(?t);
+            return t;
         }
 
         // If not, try resolving pending obligations as much as
@@ -111,7 +114,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // indirect dependencies that don't seem worth tracking
         // precisely.
         self.select_obligations_where_possible(|_| {});
-        self.resolve_vars_if_possible(ty)
+        self.resolve_vars_if_possible(t)
     }
 
     pub(crate) fn record_deferred_call_resolution(
@@ -1454,7 +1457,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         sp: Span,
         ct: ty::Const<'tcx>,
     ) -> ty::Const<'tcx> {
-        // FIXME(min_const_generic_exprs): We could process obligations here if `ct` is a var.
+        let ct = self.resolve_vars_with_obligations(ct);
 
         if self.next_trait_solver()
             && let ty::ConstKind::Unevaluated(..) = ct.kind()
@@ -1507,6 +1510,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let err = Ty::new_error(self.tcx, e);
             self.demand_suptype(sp, err, ty);
             err
+        }
+    }
+
+    pub(crate) fn structurally_resolve_const(
+        &self,
+        sp: Span,
+        ct: ty::Const<'tcx>,
+    ) -> ty::Const<'tcx> {
+        let ct = self.try_structurally_resolve_const(sp, ct);
+
+        if !ct.is_ct_infer() {
+            ct
+        } else {
+            let e = self.tainted_by_errors().unwrap_or_else(|| {
+                self.err_ctxt()
+                    .emit_inference_failure_err(
+                        self.body_id,
+                        sp,
+                        ct.into(),
+                        TypeAnnotationNeeded::E0282,
+                        true,
+                    )
+                    .emit()
+            });
+            // FIXME: Infer `?ct = {const error}`?
+            ty::Const::new_error(self.tcx, e)
         }
     }
 
