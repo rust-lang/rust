@@ -10,6 +10,7 @@ bitflags = "2.4.1"
 either = "1.0"
 elsa = "1.11.0"
 ena = "0.14.3"
+hashbrown = { version = "0.15.2", default-features = false }
 indexmap = "2.4.0"
 jobserver_crate = { version = "0.1.28", package = "jobserver" }
 measureme = "11"

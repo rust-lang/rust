@@ -27,10 +27,13 @@
 #![feature(let_chains)]
 #![feature(map_try_insert)]
 #![feature(negative_impls)]
+#![feature(new_zeroed_alloc)]
 #![feature(read_buf)]
 #![feature(round_char_boundary)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
+#![feature(str_from_raw_parts)]
+#![feature(sync_unsafe_cell)]
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
