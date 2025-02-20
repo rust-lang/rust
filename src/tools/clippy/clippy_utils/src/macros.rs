@@ -178,7 +178,7 @@ pub fn first_node_in_macro(cx: &LateContext<'_>, node: &impl HirNode) -> Option<
     // get the parent node, possibly skipping over a statement
     // if the parent is not found, it is sensible to return `Some(root)`
     let hir = cx.tcx.hir();
-    let mut parent_iter = hir.parent_iter(node.hir_id());
+    let mut parent_iter = cx.tcx.hir_parent_iter(node.hir_id());
     let (parent_id, _) = match parent_iter.next() {
         None => return Some(ExpnId::root()),
         Some((_, Node::Stmt(_))) => match parent_iter.next() {

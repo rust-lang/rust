@@ -224,9 +224,9 @@ fn lint_shadow(cx: &LateContext<'_>, pat: &Pat<'_>, shadowed: HirId, span: Span)
 
 /// Returns true if the expression is a simple transformation of a local binding such as `&x`
 fn is_self_shadow(cx: &LateContext<'_>, pat: &Pat<'_>, mut expr: &Expr<'_>, hir_id: HirId) -> bool {
-    let hir = cx.tcx.hir();
-    let is_direct_binding = hir
-        .parent_iter(pat.hir_id)
+    let is_direct_binding = cx
+        .tcx
+        .hir_parent_iter(pat.hir_id)
         .map_while(|(_id, node)| match node {
             Node::Pat(pat) => Some(pat),
             _ => None,
@@ -259,14 +259,14 @@ fn is_self_shadow(cx: &LateContext<'_>, pat: &Pat<'_>, mut expr: &Expr<'_>, hir_
 /// For closure arguments passed to a method call, returns the method call, and the `HirId` of the
 /// closure (which will later be skipped). This is for <https://github.com/rust-lang/rust-clippy/issues/10780>
 fn find_init<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<(&'tcx Expr<'tcx>, Option<HirId>)> {
-    for (hir_id, node) in cx.tcx.hir().parent_iter(hir_id) {
+    for (hir_id, node) in cx.tcx.hir_parent_iter(hir_id) {
         let init = match node {
             Node::Arm(_) | Node::Pat(_) | Node::PatField(_) | Node::Param(_) => continue,
             Node::Expr(expr) => match expr.kind {
                 ExprKind::Match(e, _, _) | ExprKind::Let(&LetExpr { init: e, .. }) => Some((e, None)),
                 // If we're a closure argument, then a parent call is also an associated item.
                 ExprKind::Closure(_) => {
-                    if let Some((_, node)) = cx.tcx.hir().parent_iter(hir_id).next() {
+                    if let Some((_, node)) = cx.tcx.hir_parent_iter(hir_id).next() {
                         match node {
                             Node::Expr(expr) => match expr.kind {
                                 ExprKind::MethodCall(_, _, _, _) | ExprKind::Call(_, _) => Some((expr, Some(hir_id))),

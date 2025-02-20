@@ -736,8 +736,7 @@ fn check_assoc_const_binding_type<'tcx>(
         .map(|ty| crate::errors::TyOfAssocConstBindingNote { assoc_const, ty });
 
     let enclosing_item_owner_id = tcx
-        .hir()
-        .parent_owner_iter(hir_id)
+        .hir_parent_owner_iter(hir_id)
         .find_map(|(owner_id, parent)| parent.generics().map(|_| owner_id))
         .unwrap();
     let generics = tcx.generics_of(enclosing_item_owner_id);

@@ -308,7 +308,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
                 let mut tuple_indexes = Vec::new();
                 let mut expr_id = expr.hir_id;
-                for (parent_id, node) in self.tcx.hir().parent_iter(expr.hir_id) {
+                for (parent_id, node) in self.tcx.hir_parent_iter(expr.hir_id) {
                     match node {
                         Node::Expr(&Expr { kind: ExprKind::Tup(subs), .. }) => {
                             tuple_indexes.push(
@@ -565,7 +565,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         found: Ty<'tcx>,
     ) -> bool {
         // Do not suggest `Box::new` in const context.
-        if self.tcx.hir().is_inside_const_context(hir_id) || !expected.is_box() || found.is_box() {
+        if self.tcx.hir_is_inside_const_context(hir_id) || !expected.is_box() || found.is_box() {
             return false;
         }
         if self.may_coerce(Ty::new_box(self.tcx, found), expected) {
@@ -645,7 +645,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> bool {
         // Handle #68197.
 
-        if self.tcx.hir().is_inside_const_context(expr.hir_id) {
+        if self.tcx.hir_is_inside_const_context(expr.hir_id) {
             // Do not suggest `Box::new` in const context.
             return false;
         }
@@ -1084,8 +1084,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let in_loop = self.is_loop(id)
             || self
                 .tcx
-                .hir()
-                .parent_iter(id)
+                .hir_parent_iter(id)
                 .take_while(|(_, node)| {
                     // look at parents until we find the first body owner
                     node.body_id().is_none()
@@ -1095,8 +1094,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let in_local_statement = self.is_local_statement(id)
             || self
                 .tcx
-                .hir()
-                .parent_iter(id)
+                .hir_parent_iter(id)
                 .any(|(parent_id, _)| self.is_local_statement(parent_id));
 
         if in_loop && in_local_statement {
@@ -1111,7 +1109,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
-        let scope = self.tcx.hir().parent_iter(id).find(|(_, node)| {
+        let scope = self.tcx.hir_parent_iter(id).find(|(_, node)| {
             matches!(
                 node,
                 Node::Expr(Expr { kind: ExprKind::Closure(..), .. })
@@ -1168,7 +1166,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // -------------^^^^^^^-
             // Don't add semicolon `;` at the end of `dbg!(x)` expr
             fn is_in_arm<'tcx>(expr: &'tcx hir::Expr<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
-                for (_, node) in tcx.hir().parent_iter(expr.hir_id) {
+                for (_, node) in tcx.hir_parent_iter(expr.hir_id) {
                     match node {
                         hir::Node::Block(block) => {
                             if let Some(ret) = block.expr
@@ -1411,8 +1409,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         }
 
-        let hir = self.tcx.hir();
-        let cond_parent = hir.parent_iter(expr.hir_id).find(|(_, node)| {
+        let cond_parent = self.tcx.hir_parent_iter(expr.hir_id).find(|(_, node)| {
             !matches!(node, hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Binary(op, _, _), .. }) if op.node == hir::BinOpKind::And)
         });
         // Don't suggest:
@@ -2048,11 +2045,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
     ) -> bool {
-        let map = self.tcx.hir();
         let returned = matches!(
             self.tcx.parent_hir_node(expr.hir_id),
             hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Ret(_), .. })
-        ) || map.get_fn_id_for_return_block(expr.hir_id).is_some();
+        ) || self.tcx.hir_get_fn_id_for_return_block(expr.hir_id).is_some();
         if returned
             && let ty::Adt(e, args_e) = expected.kind()
             && let ty::Adt(f, args_f) = found.kind()
@@ -2095,9 +2091,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
     ) -> bool {
         let tcx = self.tcx;
-        let hir = tcx.hir();
         let enclosing_scope =
-            hir.get_enclosing_scope(expr.hir_id).map(|hir_id| tcx.hir_node(hir_id));
+            tcx.hir_get_enclosing_scope(expr.hir_id).map(|hir_id| tcx.hir_node(hir_id));
 
         // Get tail expr of the enclosing block or body
         let tail_expr = if let Some(Node::Block(hir::Block { expr, .. })) = enclosing_scope
@@ -3098,7 +3093,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             |expr: &hir::Expr<'_>| matches!(expr.kind, hir::ExprKind::Unary(hir::UnOp::Neg, ..));
         let is_uint = |ty: Ty<'_>| matches!(ty.kind(), ty::Uint(..));
 
-        let in_const_context = self.tcx.hir().is_inside_const_context(expr.hir_id);
+        let in_const_context = self.tcx.hir_is_inside_const_context(expr.hir_id);
 
         let suggest_fallible_into_or_lhs_from =
             |err: &mut Diag<'_>, exp_to_found_is_fallible: bool| {
@@ -3142,7 +3137,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let suggest_to_change_suffix_or_into =
             |err: &mut Diag<'_>, found_to_exp_is_fallible: bool, exp_to_found_is_fallible: bool| {
-                let exp_is_lhs = expected_ty_expr.is_some_and(|e| self.tcx.hir().is_lhs(e.hir_id));
+                let exp_is_lhs = expected_ty_expr.is_some_and(|e| self.tcx.hir_is_lhs(e.hir_id));
 
                 if exp_is_lhs {
                     return;

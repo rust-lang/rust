@@ -586,7 +586,7 @@ impl<T> Trait<T> for X {
             hir::Node::TraitItem(item) => item.hir_id(),
             _ => return false,
         };
-        let parent = tcx.hir().get_parent_item(hir_id).def_id;
+        let parent = tcx.hir_get_parent_item(hir_id).def_id;
         self.suggest_constraint(diag, msg, parent.into(), proj_ty, ty)
     }
 
@@ -820,7 +820,7 @@ fn foo(&self) -> Self::T { String::new() }
         // When `body_owner` is an `impl` or `trait` item, look in its associated types for
         // `expected` and point at it.
         let hir_id = tcx.local_def_id_to_hir_id(def_id);
-        let parent_id = tcx.hir().get_parent_item(hir_id);
+        let parent_id = tcx.hir_get_parent_item(hir_id);
         let item = tcx.hir_node_by_def_id(parent_id.def_id);
 
         debug!("expected_projection parent item {:?}", item);

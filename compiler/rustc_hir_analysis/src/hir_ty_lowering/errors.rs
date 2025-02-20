@@ -223,7 +223,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     // inside an opaque type while we're interested in the overarching type alias (TAIT).
                     // FIXME: However, for trait aliases, this incorrectly returns the enclosing module...
                     && let item_def_id =
-                        tcx.hir().get_parent_item(tcx.local_def_id_to_hir_id(ty_param_def_id))
+                        tcx.hir_get_parent_item(tcx.local_def_id_to_hir_id(ty_param_def_id))
                     // FIXME: ...which obviously won't have any generics.
                     && let Some(generics) = tcx.hir_get_generics(item_def_id.def_id)
                 {
@@ -979,7 +979,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         qself: &hir::Ty<'_>,
     ) -> Result<(), ErrorGuaranteed> {
         let tcx = self.tcx();
-        if let Some((_, node)) = tcx.hir().parent_iter(qself.hir_id).skip(1).next()
+        if let Some((_, node)) = tcx.hir_parent_iter(qself.hir_id).skip(1).next()
             && let hir::Node::Expr(hir::Expr {
                 kind:
                     hir::ExprKind::Path(hir::QPath::TypeRelative(
@@ -1278,8 +1278,7 @@ pub fn prohibit_assoc_item_constraint(
                     // Get the parent impl block based on the binding we have
                     // and the trait DefId
                     let impl_block = tcx
-                        .hir()
-                        .parent_iter(constraint.hir_id)
+                        .hir_parent_iter(constraint.hir_id)
                         .find_map(|(_, node)| node.impl_block_of_trait(def_id));
 
                     let type_with_constraints =

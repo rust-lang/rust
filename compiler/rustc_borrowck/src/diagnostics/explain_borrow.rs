@@ -117,7 +117,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                 let local_decl = &body.local_decls[dropped_local];
 
                 if let &LocalInfo::IfThenRescopeTemp { if_then } = local_decl.local_info()
-                    && let Some((_, hir::Node::Expr(expr))) = tcx.hir().parent_iter(if_then).next()
+                    && let Some((_, hir::Node::Expr(expr))) = tcx.hir_parent_iter(if_then).next()
                     && let hir::ExprKind::If(cond, conseq, alt) = expr.kind
                     && let hir::ExprKind::Let(&hir::LetExpr {
                         span: _,
@@ -522,7 +522,7 @@ fn suggest_rewrite_if_let<G: EmissionGuarantee>(
     );
     if expr.span.can_be_used_for_suggestions() && conseq.span.can_be_used_for_suggestions() {
         let needs_block = if let Some(hir::Node::Expr(expr)) =
-            alt.and_then(|alt| tcx.hir().parent_iter(alt.hir_id).next()).map(|(_, node)| node)
+            alt.and_then(|alt| tcx.hir_parent_iter(alt.hir_id).next()).map(|(_, node)| node)
         {
             matches!(expr.kind, hir::ExprKind::If(..))
         } else {

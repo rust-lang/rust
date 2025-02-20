@@ -1623,7 +1623,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
             && let hir::Node::Pat(pat) = self.ir.tcx.hir_node(var_hid)
             && let hir::Node::Param(hir::Param { ty_span, .. }) =
                 self.ir.tcx.parent_hir_node(pat.hir_id)
-            && let item_id = self.ir.tcx.hir().get_parent_item(pat.hir_id)
+            && let item_id = self.ir.tcx.hir_get_parent_item(pat.hir_id)
             && let item = self.ir.tcx.hir_owner_node(item_id)
             && let Some(fn_decl) = item.fn_decl()
             && let hir::PatKind::Binding(hir::BindingMode::MUT, _hir_id, ident, _) = pat.kind

@@ -291,7 +291,7 @@ fn expr_has_unnecessary_safety_comment<'tcx>(
     expr: &'tcx hir::Expr<'tcx>,
     comment_pos: BytePos,
 ) -> Option<Span> {
-    if cx.tcx.hir().parent_iter(expr.hir_id).any(|(_, ref node)| {
+    if cx.tcx.hir_parent_iter(expr.hir_id).any(|(_, ref node)| {
         matches!(
             node,
             Node::Block(Block {
@@ -604,10 +604,9 @@ fn span_from_macro_expansion_has_safety_comment(cx: &LateContext<'_>, span: Span
 
 fn get_body_search_span(cx: &LateContext<'_>) -> Option<Span> {
     let body = cx.enclosing_body?;
-    let map = cx.tcx.hir();
     let mut span = cx.tcx.hir_body(body).value.span;
     let mut maybe_global_var = false;
-    for (_, node) in map.parent_iter(body.hir_id) {
+    for (_, node) in cx.tcx.hir_parent_iter(body.hir_id) {
         match node {
             Node::Expr(e) => span = e.span,
             Node::Block(_) | Node::Arm(_) | Node::Stmt(_) | Node::LetStmt(_) => (),

@@ -751,7 +751,7 @@ impl UnsafeOpKind {
         span: Span,
         suggest_unsafe_block: bool,
     ) {
-        let parent_id = tcx.hir().get_parent_item(hir_id);
+        let parent_id = tcx.hir_get_parent_item(hir_id);
         let parent_owner = tcx.hir_owner_node(parent_id);
         let should_suggest = parent_owner.fn_sig().is_some_and(|sig| {
             // Do not suggest for safe target_feature functions
@@ -921,7 +921,7 @@ impl UnsafeOpKind {
         hir_context: HirId,
         unsafe_op_in_unsafe_fn_allowed: bool,
     ) {
-        let note_non_inherited = tcx.hir().parent_iter(hir_context).find(|(id, node)| {
+        let note_non_inherited = tcx.hir_parent_iter(hir_context).find(|(id, node)| {
             if let hir::Node::Expr(block) = node
                 && let hir::ExprKind::Block(block, _) = block.kind
                 && let hir::BlockCheckMode::UnsafeBlock(_) = block.rules

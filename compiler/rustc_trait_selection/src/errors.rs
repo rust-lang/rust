@@ -1880,8 +1880,7 @@ pub fn impl_trait_overcapture_suggestion<'tcx>(
     let opaque_hir_id = tcx.local_def_id_to_hir_id(opaque_def_id);
     // FIXME: This is a bit too conservative, since it ignores parens already written in AST.
     let (lparen, rparen) = match tcx
-        .hir()
-        .parent_iter(opaque_hir_id)
+        .hir_parent_iter(opaque_hir_id)
         .nth(1)
         .expect("expected ty to have a parent always")
         .1

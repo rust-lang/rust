@@ -156,7 +156,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && segment.ident.name.as_str() == name
                 && let Res::Local(hir_id) = path.res
                 && let Some((_, hir::Node::Expr(match_expr))) =
-                    self.tcx.hir().parent_iter(hir_id).nth(2)
+                    self.tcx.hir_parent_iter(hir_id).nth(2)
                 && let hir::ExprKind::Match(scrutinee, _, _) = match_expr.kind
                 && let hir::ExprKind::Tup(exprs) = scrutinee.kind
                 && let hir::ExprKind::AddrOf(_, _, macro_arg) = exprs[idx].kind
@@ -841,7 +841,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // The pattern we have is an fn argument.
             && let hir::Node::Param(hir::Param { ty_span, .. }) =
                 self.tcx.parent_hir_node(pat.hir_id)
-            && let item = self.tcx.hir().get_parent_item(pat.hir_id)
+            && let item = self.tcx.hir_get_parent_item(pat.hir_id)
             && let item = self.tcx.hir_owner_node(item)
             && let Some(fn_decl) = item.fn_decl()
 

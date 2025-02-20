@@ -28,7 +28,7 @@ pub struct Map<'hir> {
 }
 
 /// An iterator that walks up the ancestor tree of a given `HirId`.
-/// Constructed using `tcx.hir().parent_iter(hir_id)`.
+/// Constructed using `tcx.hir_parent_iter(hir_id)`.
 struct ParentHirIterator<'tcx> {
     current_id: HirId,
     tcx: TyCtxt<'tcx>,
@@ -74,7 +74,7 @@ impl<'tcx> Iterator for ParentHirIterator<'tcx> {
 }
 
 /// An iterator that walks up the ancestor tree of a given `HirId`.
-/// Constructed using `tcx.hir().parent_owner_iter(hir_id)`.
+/// Constructed using `tcx.hir_parent_owner_iter(hir_id)`.
 pub struct ParentOwnerIterator<'tcx> {
     current_id: HirId,
     tcx: TyCtxt<'tcx>,
@@ -146,7 +146,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns `HirId` of the parent HIR node of node with this `hir_id`.
     /// Returns the same `hir_id` if and only if `hir_id == CRATE_HIR_ID`.
     ///
-    /// If calling repeatedly and iterating over parents, prefer [`Map::parent_iter`].
+    /// If calling repeatedly and iterating over parents, prefer [`TyCtxt::hir_parent_iter`].
     pub fn parent_hir_id(self, hir_id: HirId) -> HirId {
         let HirId { owner, local_id } = hir_id;
         if local_id == ItemLocalId::ZERO {
@@ -242,7 +242,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[track_caller]
     pub fn hir_enclosing_body_owner(self, hir_id: HirId) -> LocalDefId {
-        for (_, node) in self.hir().parent_iter(hir_id) {
+        for (_, node) in self.hir_parent_iter(hir_id) {
             if let Some((def_id, _)) = node.associated_body() {
                 return def_id;
             }
@@ -498,33 +498,31 @@ impl<'tcx> TyCtxt<'tcx> {
             f(LocalModDefId::new_unchecked(module.def_id))
         })
     }
-}
 
-impl<'hir> Map<'hir> {
     /// Returns an iterator for the nodes in the ancestor tree of the `current_id`
     /// until the crate root is reached. Prefer this over your own loop using `parent_id`.
     #[inline]
-    pub fn parent_id_iter(self, current_id: HirId) -> impl Iterator<Item = HirId> + 'hir {
-        ParentHirIterator::new(self.tcx, current_id)
+    pub fn hir_parent_id_iter(self, current_id: HirId) -> impl Iterator<Item = HirId> + 'tcx {
+        ParentHirIterator::new(self, current_id)
     }
 
     /// Returns an iterator for the nodes in the ancestor tree of the `current_id`
     /// until the crate root is reached. Prefer this over your own loop using `parent_id`.
     #[inline]
-    pub fn parent_iter(self, current_id: HirId) -> impl Iterator<Item = (HirId, Node<'hir>)> {
-        self.parent_id_iter(current_id).map(move |id| (id, self.tcx.hir_node(id)))
+    pub fn hir_parent_iter(self, current_id: HirId) -> impl Iterator<Item = (HirId, Node<'tcx>)> {
+        self.hir_parent_id_iter(current_id).map(move |id| (id, self.hir_node(id)))
     }
 
     /// Returns an iterator for the nodes in the ancestor tree of the `current_id`
     /// until the crate root is reached. Prefer this over your own loop using `parent_id`.
     #[inline]
-    pub fn parent_owner_iter(self, current_id: HirId) -> ParentOwnerIterator<'hir> {
-        ParentOwnerIterator { current_id, tcx: self.tcx }
+    pub fn hir_parent_owner_iter(self, current_id: HirId) -> ParentOwnerIterator<'tcx> {
+        ParentOwnerIterator { current_id, tcx: self }
     }
 
     /// Checks if the node is left-hand side of an assignment.
-    pub fn is_lhs(self, id: HirId) -> bool {
-        match self.tcx.parent_hir_node(id) {
+    pub fn hir_is_lhs(self, id: HirId) -> bool {
+        match self.parent_hir_node(id) {
             Node::Expr(expr) => match expr.kind {
                 ExprKind::Assign(lhs, _rhs, _span) => lhs.hir_id == id,
                 _ => false,
@@ -535,8 +533,8 @@ impl<'hir> Map<'hir> {
 
     /// Whether the expression pointed at by `hir_id` belongs to a `const` evaluation context.
     /// Used exclusively for diagnostics, to avoid suggestion function calls.
-    pub fn is_inside_const_context(self, hir_id: HirId) -> bool {
-        self.tcx.hir_body_const_context(self.tcx.hir_enclosing_body_owner(hir_id)).is_some()
+    pub fn hir_is_inside_const_context(self, hir_id: HirId) -> bool {
+        self.hir_body_const_context(self.hir_enclosing_body_owner(hir_id)).is_some()
     }
 
     /// Retrieves the `HirId` for `id`'s enclosing function *if* the `id` block or return is
@@ -561,12 +559,11 @@ impl<'hir> Map<'hir> {
     ///     false
     /// }
     /// ```
-    pub fn get_fn_id_for_return_block(self, id: HirId) -> Option<HirId> {
-        let enclosing_body_owner =
-            self.tcx.local_def_id_to_hir_id(self.tcx.hir_enclosing_body_owner(id));
+    pub fn hir_get_fn_id_for_return_block(self, id: HirId) -> Option<HirId> {
+        let enclosing_body_owner = self.local_def_id_to_hir_id(self.hir_enclosing_body_owner(id));
 
         // Return `None` if the `id` expression is not the returned value of the enclosing body
-        let mut iter = [id].into_iter().chain(self.parent_id_iter(id)).peekable();
+        let mut iter = [id].into_iter().chain(self.hir_parent_id_iter(id)).peekable();
         while let Some(cur_id) = iter.next() {
             if enclosing_body_owner == cur_id {
                 break;
@@ -574,14 +571,16 @@ impl<'hir> Map<'hir> {
 
             // A return statement is always the value returned from the enclosing body regardless of
             // what the parent expressions are.
-            if let Node::Expr(Expr { kind: ExprKind::Ret(_), .. }) = self.tcx.hir_node(cur_id) {
+            if let Node::Expr(Expr { kind: ExprKind::Ret(_), .. }) = self.hir_node(cur_id) {
                 break;
             }
 
-            // If the current expression's value doesnt get used as the parent expressions value then return `None`
+            // If the current expression's value doesnt get used as the parent expressions value
+            // then return `None`
             if let Some(&parent_id) = iter.peek() {
-                match self.tcx.hir_node(parent_id) {
-                    // The current node is not the tail expression of the block expression parent expr.
+                match self.hir_node(parent_id) {
+                    // The current node is not the tail expression of the block expression parent
+                    // expr.
                     Node::Block(Block { expr: Some(e), .. }) if cur_id != e.hir_id => return None,
                     Node::Block(Block { expr: Some(e), .. })
                         if matches!(e.kind, ExprKind::If(_, _, None)) =>
@@ -589,7 +588,8 @@ impl<'hir> Map<'hir> {
                         return None;
                     }
 
-                    // The current expression's value does not pass up through these parent expressions
+                    // The current expression's value does not pass up through these parent
+                    // expressions.
                     Node::Block(Block { expr: None, .. })
                     | Node::Expr(Expr { kind: ExprKind::Loop(..), .. })
                     | Node::LetStmt(..) => return None,
@@ -606,11 +606,11 @@ impl<'hir> Map<'hir> {
     /// parent item is in this map. The "parent item" is the closest parent node
     /// in the HIR which is recorded by the map and is an item, either an item
     /// in a module, trait, or impl.
-    pub fn get_parent_item(self, hir_id: HirId) -> OwnerId {
+    pub fn hir_get_parent_item(self, hir_id: HirId) -> OwnerId {
         if hir_id.local_id != ItemLocalId::ZERO {
             // If this is a child of a HIR owner, return the owner.
             hir_id.owner
-        } else if let Some((def_id, _node)) = self.parent_owner_iter(hir_id).next() {
+        } else if let Some((def_id, _node)) = self.hir_parent_owner_iter(hir_id).next() {
             def_id
         } else {
             CRATE_OWNER_ID
@@ -622,8 +622,8 @@ impl<'hir> Map<'hir> {
     ///
     /// Used by error reporting when there's a type error in an if or match arm caused by the
     /// expression needing to be unit.
-    pub fn get_if_cause(self, hir_id: HirId) -> Option<&'hir Expr<'hir>> {
-        for (_, node) in self.parent_iter(hir_id) {
+    pub fn hir_get_if_cause(self, hir_id: HirId) -> Option<&'tcx Expr<'tcx>> {
+        for (_, node) in self.hir_parent_iter(hir_id) {
             match node {
                 Node::Item(_)
                 | Node::ForeignItem(_)
@@ -640,8 +640,8 @@ impl<'hir> Map<'hir> {
     }
 
     /// Returns the nearest enclosing scope. A scope is roughly an item or block.
-    pub fn get_enclosing_scope(self, hir_id: HirId) -> Option<HirId> {
-        for (hir_id, node) in self.parent_iter(hir_id) {
+    pub fn hir_get_enclosing_scope(self, hir_id: HirId) -> Option<HirId> {
+        for (hir_id, node) in self.hir_parent_iter(hir_id) {
             if let Node::Item(Item {
                 kind:
                     ItemKind::Fn { .. }
@@ -667,18 +667,20 @@ impl<'hir> Map<'hir> {
     }
 
     /// Returns the defining scope for an opaque type definition.
-    pub fn get_defining_scope(self, id: HirId) -> HirId {
+    pub fn hir_get_defining_scope(self, id: HirId) -> HirId {
         let mut scope = id;
         loop {
-            scope = self.get_enclosing_scope(scope).unwrap_or(CRATE_HIR_ID);
-            if scope == CRATE_HIR_ID || !matches!(self.tcx.hir_node(scope), Node::Block(_)) {
+            scope = self.hir_get_enclosing_scope(scope).unwrap_or(CRATE_HIR_ID);
+            if scope == CRATE_HIR_ID || !matches!(self.hir_node(scope), Node::Block(_)) {
                 return scope;
             }
         }
     }
+}
 
+impl<'hir> Map<'hir> {
     pub fn get_foreign_abi(self, hir_id: HirId) -> ExternAbi {
-        let parent = self.get_parent_item(hir_id);
+        let parent = self.tcx.hir_get_parent_item(hir_id);
         if let OwnerNode::Item(Item { kind: ItemKind::ForeignMod { abi, .. }, .. }) =
             self.tcx.hir_owner_node(parent)
         {
