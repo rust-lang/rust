@@ -1167,20 +1167,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             LowerAssocMode::Type { permit_variants },
         )? {
             LoweredAssoc::Term(def_id, args) => {
-                let assoc = tcx.associated_item(def_id);
-                let ty = if matches!(
-                    assoc,
-                    ty::AssocItem {
-                        container: ty::AssocItemContainer::Impl,
-                        trait_item_def_id: None,
-                        ..
-                    }
-                ) {
-                    Ty::new_alias(tcx, ty::Inherent, ty::AliasTy::new_from_args(tcx, def_id, args))
-                } else {
-                    Ty::new_projection_from_args(tcx, def_id, args)
-                };
-                Ok((ty, DefKind::AssocTy, def_id))
+                let alias_ty = ty::AliasTy::new_from_args(tcx, def_id, args);
+                let ty = Ty::new_alias(tcx, alias_ty.kind(tcx), alias_ty);
+                Ok((ty, tcx.def_kind(def_id), def_id))
             }
             LoweredAssoc::Variant { adt, variant_did } => Ok((adt, DefKind::Variant, variant_did)),
         }
