@@ -1057,7 +1057,7 @@ impl<'tcx> Visitor<'tcx> for FindPanicUnwrap<'_, 'tcx> {
                     "assert" | "assert_eq" | "assert_ne"
                 )
             {
-                self.is_const = self.cx.tcx.hir().is_inside_const_context(expr.hir_id);
+                self.is_const = self.cx.tcx.hir_is_inside_const_context(expr.hir_id);
                 self.panic_span = Some(macro_call.span);
             }
         }

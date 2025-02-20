@@ -232,8 +232,7 @@ impl<'ap, 'lc, 'others, 'stmt, 'tcx> StmtsChecker<'ap, 'lc, 'others, 'stmt, 'tcx
                 let block_is_ancestor = self
                     .cx
                     .tcx
-                    .hir()
-                    .parent_iter(self.ap.curr_block_hir_id)
+                    .hir_parent_iter(self.ap.curr_block_hir_id)
                     .any(|(id, _)| id == apa.first_block_hir_id);
                 if last_stmt_is_not_dummy && last_stmt_is_not_curr && (block_equals_curr || block_is_ancestor) {
                     apa.has_expensive_expr_after_last_attr = true;

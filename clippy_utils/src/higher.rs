@@ -117,7 +117,7 @@ impl<'hir> IfLet<'hir> {
             if_else,
         ) = expr.kind
         {
-            let mut iter = cx.tcx.hir().parent_iter(expr.hir_id);
+            let mut iter = cx.tcx.hir_parent_iter(expr.hir_id);
             if let Some((_, Node::Block(Block { stmts: [], .. }))) = iter.next() {
                 if let Some((
                     _,
