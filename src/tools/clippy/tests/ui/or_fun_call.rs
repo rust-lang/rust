@@ -361,7 +361,7 @@ fn fn_call_in_nested_expr() {
     let opt_foo = Some(Foo {
         val: String::from("123"),
     });
-    //~v ERROR: function call inside of `unwrap_or`
+    // ok, `String::default()` is now `const`
     let _ = opt_foo.unwrap_or(Foo { val: String::default() });
 }
 

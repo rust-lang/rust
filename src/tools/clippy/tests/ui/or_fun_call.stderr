@@ -238,11 +238,5 @@ error: use of `unwrap_or` to construct default value
 LL |     let _ = opt.unwrap_or({ i32::default() });
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_default()`
 
-error: function call inside of `unwrap_or`
-  --> tests/ui/or_fun_call.rs:365:21
-   |
-LL |     let _ = opt_foo.unwrap_or(Foo { val: String::default() });
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `unwrap_or_else(|| Foo { val: String::default() })`
-
-error: aborting due to 38 previous errors
+error: aborting due to 37 previous errors
 
