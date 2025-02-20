@@ -111,6 +111,49 @@ impl_neg! { i64x2 : 0 }
 impl_neg! { f32x4 : 0f32 }
 impl_neg! { f64x2 : 0f64 }
 
+#[repr(simd)]
+struct ShuffleMask<const N: usize>([u32; N]);
+
+impl<const N: usize> ShuffleMask<N> {
+    const fn reverse() -> Self {
+        let mut index = [0; N];
+        let mut i = 0;
+        while i < N {
+            index[i] = (N - i - 1) as u32;
+            i += 1;
+        }
+        ShuffleMask(index)
+    }
+
+    const fn merge_low() -> Self {
+        let mut mask = [0; N];
+        let mut i = N / 2;
+        let mut index = 0;
+        while index < N {
+            mask[index] = i as u32;
+            mask[index + 1] = (i + N) as u32;
+
+            i += 1;
+            index += 2;
+        }
+        ShuffleMask(mask)
+    }
+
+    const fn merge_high() -> Self {
+        let mut mask = [0; N];
+        let mut i = 0;
+        let mut index = 0;
+        while index < N {
+            mask[index] = i as u32;
+            mask[index + 1] = (i + N) as u32;
+
+            i += 1;
+            index += 2;
+        }
+        ShuffleMask(mask)
+    }
+}
+
 #[macro_use]
 mod sealed {
     use super::*;
@@ -1003,21 +1046,6 @@ mod sealed {
         unsafe fn vec_reve(self) -> Self;
     }
 
-    #[repr(simd)]
-    struct ReverseMask<const N: usize>([u32; N]);
-
-    impl<const N: usize> ReverseMask<N> {
-        const fn new() -> Self {
-            let mut index = [0; N];
-            let mut i = 0;
-            while i < N {
-                index[i] = (N - i - 1) as u32;
-                i += 1;
-            }
-            ReverseMask(index)
-        }
-    }
-
     macro_rules! impl_reve {
         ($($ty:ident, $fun:ident, $instr:ident),*) => {
             $(
@@ -1026,7 +1054,7 @@ mod sealed {
                 #[cfg_attr(test, assert_instr($instr))]
                 unsafe fn $fun(a: $ty) -> $ty {
                     const N: usize = core::mem::size_of::<$ty>() / core::mem::size_of::<l_t_t!($ty)>();
-                    simd_shuffle(a, a, const { ReverseMask::<N>::new() })
+                    simd_shuffle(a, a, const { ShuffleMask::<N>::reverse() })
                 }
 
                 #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -1121,39 +1149,6 @@ mod sealed {
         }
     }
 
-    #[repr(simd)]
-    struct MergeMask<const N: usize>([u32; N]);
-
-    impl<const N: usize> MergeMask<N> {
-        const fn merge_low() -> Self {
-            let mut mask = [0; N];
-            let mut i = N / 2;
-            let mut index = 0;
-            while index < N {
-                mask[index] = i as u32;
-                mask[index + 1] = (i + N) as u32;
-
-                i += 1;
-                index += 2;
-            }
-            MergeMask(mask)
-        }
-
-        const fn merge_high() -> Self {
-            let mut mask = [0; N];
-            let mut i = 0;
-            let mut index = 0;
-            while index < N {
-                mask[index] = i as u32;
-                mask[index + 1] = (i + N) as u32;
-
-                i += 1;
-                index += 2;
-            }
-            MergeMask(mask)
-        }
-    }
-
     #[unstable(feature = "stdarch_s390x", issue = "135681")]
     pub trait VectorMergel {
         unsafe fn vec_mergel(self, other: Self) -> Self;
@@ -1172,7 +1167,7 @@ mod sealed {
                 #[cfg_attr(test, assert_instr($mergel))]
                 unsafe fn $mergel(a: $ty, b: $ty) -> $ty {
                     const N: usize = core::mem::size_of::<$ty>() / core::mem::size_of::<l_t_t!($ty)>();
-                    simd_shuffle(a, b, const { MergeMask::<N>::merge_low() })
+                    simd_shuffle(a, b, const { ShuffleMask::<N>::merge_low() })
                 }
 
                 #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -1198,7 +1193,7 @@ mod sealed {
                 #[cfg_attr(test, assert_instr($mergeh))]
                 unsafe fn $mergeh(a: $ty, b: $ty) -> $ty {
                     const N: usize = core::mem::size_of::<$ty>() / core::mem::size_of::<l_t_t!($ty)>();
-                    simd_shuffle(a, b, const { MergeMask::<N>::merge_high() })
+                    simd_shuffle(a, b, const { ShuffleMask::<N>::merge_high() })
                 }
 
                 #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -1740,6 +1735,21 @@ mod tests {
 
     use crate::core_arch::simd::*;
     use stdarch_test::simd_test;
+
+    #[test]
+    fn reverse_mask() {
+        assert_eq!(ShuffleMask::<4>::reverse().0, [3, 2, 1, 0]);
+    }
+
+    #[test]
+    fn mergel_mask() {
+        assert_eq!(ShuffleMask::<4>::merge_low().0, [2, 6, 3, 7]);
+    }
+
+    #[test]
+    fn mergeh_mask() {
+        assert_eq!(ShuffleMask::<4>::merge_high().0, [0, 4, 1, 5]);
+    }
 
     macro_rules! test_vec_1 {
         { $name: ident, $fn:ident, f32x4, [$($a:expr),+], ~[$($d:expr),+] } => {
