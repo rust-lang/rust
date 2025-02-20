@@ -1029,6 +1029,17 @@ impl Step for PlainSourceTarball {
             ],
             plain_dst_src,
         );
+        // We keep something in src/gcc because it is a registered submodule,
+        // and if it misses completely it can cause issues elsewhere
+        // (see https://github.com/rust-lang/rust/issues/137332).
+        // We can also let others know why is the source code missing.
+        if !builder.config.dry_run() {
+            builder.create_dir(&plain_dst_src.join("src/gcc"));
+            t!(std::fs::write(
+                plain_dst_src.join("src/gcc/notice.txt"),
+                "The GCC source code is not included due to unclear licensing implications\n"
+            ));
+        }
 
         // Copy the files normally
         for item in &src_files {

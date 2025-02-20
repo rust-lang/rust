@@ -492,7 +492,7 @@ impl Build {
         }
         self.config.update_submodule(submodule);
         let absolute_path = self.config.src.join(submodule);
-        if dir_is_empty(&absolute_path) {
+        if !absolute_path.exists() || dir_is_empty(&absolute_path) {
             let maybe_enable = if !self.config.submodules()
                 && self.config.rust_info.is_managed_git_subrepository()
             {
