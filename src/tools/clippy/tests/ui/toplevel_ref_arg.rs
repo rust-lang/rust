@@ -12,17 +12,22 @@ fn main() {
     y(1u8);
 
     let ref _x = 1;
+    //~^ toplevel_ref_arg
 
     let ref _y: (&_, u8) = (&1, 2);
+    //~^ toplevel_ref_arg
 
     let ref _z = 1 + 2;
+    //~^ toplevel_ref_arg
 
     let ref mut _z = 1 + 2;
+    //~^ toplevel_ref_arg
 
     let (ref x, _) = (1, 2); // ok, not top level
     println!("The answer is {}.", x);
 
     let ref _x = vec![1, 2, 3];
+    //~^ toplevel_ref_arg
 
     // Make sure that allowing the lint works
     #[allow(clippy::toplevel_ref_arg)]
@@ -33,6 +38,7 @@ fn main() {
 
     // lint in macro
     inline!(let ref _y = 42;);
+    //~^ toplevel_ref_arg
 
     // do not lint in external macro
     external!(let ref _y = 42;);

@@ -3,13 +3,14 @@ error: all if blocks contain the same code at both the start and the end
    |
 LL | /     if x == 7 {
 LL | |
+LL | |
 LL | |         let t = 7;
 LL | |         let _overlap_start = t * 2;
 LL | |         let _overlap_end = 2 * t;
    | |_________________________________^
    |
 note: this code is shared at the end
-  --> tests/ui/branches_sharing_code/shared_at_top_and_bottom.rs:30:5
+  --> tests/ui/branches_sharing_code/shared_at_top_and_bottom.rs:31:5
    |
 LL | /         let _u = 9;
 LL | |     }
@@ -33,9 +34,10 @@ LL +     let _u = 9;
    |
 
 error: all if blocks contain the same code at both the start and the end
-  --> tests/ui/branches_sharing_code/shared_at_top_and_bottom.rs:34:5
+  --> tests/ui/branches_sharing_code/shared_at_top_and_bottom.rs:35:5
    |
 LL | /     if x == 99 {
+LL | |
 LL | |
 LL | |         let r = 7;
 LL | |         let _overlap_start = r;
@@ -43,7 +45,7 @@ LL | |         let _overlap_middle = r * r;
    | |____________________________________^
    |
 note: this code is shared at the end
-  --> tests/ui/branches_sharing_code/shared_at_top_and_bottom.rs:46:5
+  --> tests/ui/branches_sharing_code/shared_at_top_and_bottom.rs:48:5
    |
 LL | /         let _overlap_end = r * r * r;
 LL | |         let z = "end";
@@ -65,9 +67,10 @@ LL +     let z = "end";
    |
 
 error: all if blocks contain the same code at both the start and the end
-  --> tests/ui/branches_sharing_code/shared_at_top_and_bottom.rs:64:5
+  --> tests/ui/branches_sharing_code/shared_at_top_and_bottom.rs:66:5
    |
 LL | /     if (x > 7 && y < 13) || (x + y) % 2 == 1 {
+LL | |
 LL | |
 LL | |         let a = 0xcafe;
 LL | |         let b = 0xffff00ff;
@@ -75,7 +78,7 @@ LL | |         let e_id = gen_id(a, b);
    | |________________________________^
    |
 note: this code is shared at the end
-  --> tests/ui/branches_sharing_code/shared_at_top_and_bottom.rs:85:5
+  --> tests/ui/branches_sharing_code/shared_at_top_and_bottom.rs:88:5
    |
 LL | /         let pack = DataPack {
 LL | |             id: e_id,
@@ -105,15 +108,15 @@ LL +     process_data(pack);
    |
 
 error: all if blocks contain the same code at both the start and the end
-  --> tests/ui/branches_sharing_code/shared_at_top_and_bottom.rs:98:5
+  --> tests/ui/branches_sharing_code/shared_at_top_and_bottom.rs:101:5
    |
 LL | /     let _ = if x == 7 {
-LL | |
+...  |
 LL | |         let _ = 19;
    | |___________________^
    |
 note: this code is shared at the end
-  --> tests/ui/branches_sharing_code/shared_at_top_and_bottom.rs:108:5
+  --> tests/ui/branches_sharing_code/shared_at_top_and_bottom.rs:112:5
    |
 LL | /         x << 2
 LL | |     };
@@ -131,15 +134,15 @@ LL ~     x << 2;
    |
 
 error: all if blocks contain the same code at both the start and the end
-  --> tests/ui/branches_sharing_code/shared_at_top_and_bottom.rs:111:5
+  --> tests/ui/branches_sharing_code/shared_at_top_and_bottom.rs:115:5
    |
 LL | /     if x == 9 {
-LL | |
+...  |
 LL | |         let _ = 17;
    | |___________________^
    |
 note: this code is shared at the end
-  --> tests/ui/branches_sharing_code/shared_at_top_and_bottom.rs:121:5
+  --> tests/ui/branches_sharing_code/shared_at_top_and_bottom.rs:126:5
    |
 LL | /         x * 4
 LL | |     }

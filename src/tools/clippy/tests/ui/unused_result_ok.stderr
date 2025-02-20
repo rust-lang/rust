@@ -13,7 +13,7 @@ LL +     let _ = x.parse::<u32>();
    |
 
 error: ignoring a result with `.ok()` is misleading
-  --> tests/ui/unused_result_ok.rs:18:5
+  --> tests/ui/unused_result_ok.rs:19:5
    |
 LL |     x   .   parse::<i32>()   .   ok   ();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL +     let _ = x   .   parse::<i32>();
    |
 
 error: ignoring a result with `.ok()` is misleading
-  --> tests/ui/unused_result_ok.rs:34:5
+  --> tests/ui/unused_result_ok.rs:37:5
    |
 LL |     v!().ok();
    |     ^^^^^^^^^
@@ -37,7 +37,7 @@ LL +     let _ = v!();
    |
 
 error: ignoring a result with `.ok()` is misleading
-  --> tests/ui/unused_result_ok.rs:29:9
+  --> tests/ui/unused_result_ok.rs:31:9
    |
 LL |         Ok::<(), ()>(()).ok();
    |         ^^^^^^^^^^^^^^^^^^^^^

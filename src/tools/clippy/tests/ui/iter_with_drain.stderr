@@ -8,31 +8,31 @@ LL |     let mut a: BinaryHeap<_> = a.drain(..).collect();
    = help: to override `-D warnings` add `#[allow(clippy::iter_with_drain)]`
 
 error: `drain(..)` used on a `VecDeque`
-  --> tests/ui/iter_with_drain.rs:13:27
+  --> tests/ui/iter_with_drain.rs:14:27
    |
 LL |     let mut a: Vec<_> = a.drain(..).collect();
    |                           ^^^^^^^^^ help: try: `into_iter()`
 
 error: `drain(..)` used on a `Vec`
-  --> tests/ui/iter_with_drain.rs:14:34
+  --> tests/ui/iter_with_drain.rs:16:34
    |
 LL |     let mut a: HashMap<_, _> = a.drain(..).map(|x| (x.clone(), x)).collect();
    |                                  ^^^^^^^^^ help: try: `into_iter()`
 
 error: `drain(..)` used on a `Vec`
-  --> tests/ui/iter_with_drain.rs:20:34
+  --> tests/ui/iter_with_drain.rs:23:34
    |
 LL |     let mut a: BinaryHeap<_> = a.drain(0..).collect();
    |                                  ^^^^^^^^^^ help: try: `into_iter()`
 
 error: `drain(..)` used on a `VecDeque`
-  --> tests/ui/iter_with_drain.rs:23:27
+  --> tests/ui/iter_with_drain.rs:27:27
    |
 LL |     let mut a: Vec<_> = a.drain(..a.len()).collect();
    |                           ^^^^^^^^^^^^^^^^ help: try: `into_iter()`
 
 error: `drain(..)` used on a `Vec`
-  --> tests/ui/iter_with_drain.rs:24:34
+  --> tests/ui/iter_with_drain.rs:29:34
    |
 LL |     let mut a: HashMap<_, _> = a.drain(0..a.len()).map(|x| (x.clone(), x)).collect();
    |                                  ^^^^^^^^^^^^^^^^^ help: try: `into_iter()`

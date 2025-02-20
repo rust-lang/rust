@@ -9,7 +9,8 @@ fn other_function() -> Option<i32> {
 
 fn my_function() -> Option<i32> {
     other_function()?;
-    //~^ ERROR: question mark operator was used
+    //~^ question_mark_used
+
     None
 }
 

@@ -25,7 +25,7 @@ LL +     let _ = Ok(1).unwrap_or(2);
    |
 
 error: unnecessary closure used to substitute value for `Result::Err`
-  --> tests/ui/unnecessary_lazy_eval_unfixable.rs:21:13
+  --> tests/ui/unnecessary_lazy_eval_unfixable.rs:22:13
    |
 LL |     let _ = Ok(1).unwrap_or_else(|SomeStruct { .. }| 2);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -37,7 +37,7 @@ LL +     let _ = Ok(1).unwrap_or(2);
    |
 
 error: unnecessary closure used with `bool::then`
-  --> tests/ui/unnecessary_lazy_eval_unfixable.rs:31:13
+  --> tests/ui/unnecessary_lazy_eval_unfixable.rs:32:13
    |
 LL |     let _ = true.then(|| -> &[u8] { &[] });
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

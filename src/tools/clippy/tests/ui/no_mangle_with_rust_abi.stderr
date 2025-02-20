@@ -16,7 +16,7 @@ LL | extern "Rust" fn rust_abi_fn_one(arg_one: u32, arg_two: usize) {}
    | +++++++++++++
 
 error: `#[unsafe(no_mangle)]` set on a function with the default (`Rust`) ABI
-  --> tests/ui/no_mangle_with_rust_abi.rs:11:1
+  --> tests/ui/no_mangle_with_rust_abi.rs:10:1
    |
 LL | pub fn rust_abi_fn_two(arg_one: u32, arg_two: usize) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -31,7 +31,7 @@ LL | pub extern "Rust" fn rust_abi_fn_two(arg_one: u32, arg_two: usize) {}
    |     +++++++++++++
 
 error: `#[unsafe(no_mangle)]` set on a function with the default (`Rust`) ABI
-  --> tests/ui/no_mangle_with_rust_abi.rs:17:1
+  --> tests/ui/no_mangle_with_rust_abi.rs:16:1
    |
 LL | pub unsafe fn rust_abi_fn_three(arg_one: u32, arg_two: usize) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -46,7 +46,7 @@ LL | pub unsafe extern "Rust" fn rust_abi_fn_three(arg_one: u32, arg_two: usize)
    |            +++++++++++++
 
 error: `#[unsafe(no_mangle)]` set on a function with the default (`Rust`) ABI
-  --> tests/ui/no_mangle_with_rust_abi.rs:23:1
+  --> tests/ui/no_mangle_with_rust_abi.rs:22:1
    |
 LL | unsafe fn rust_abi_fn_four(arg_one: u32, arg_two: usize) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -61,7 +61,7 @@ LL | unsafe extern "Rust" fn rust_abi_fn_four(arg_one: u32, arg_two: usize) {}
    |        +++++++++++++
 
 error: `#[unsafe(no_mangle)]` set on a function with the default (`Rust`) ABI
-  --> tests/ui/no_mangle_with_rust_abi.rs:27:1
+  --> tests/ui/no_mangle_with_rust_abi.rs:26:1
    |
 LL | / fn rust_abi_multiline_function_really_long_name_to_overflow_args_to_multiple_lines(
 LL | |
@@ -80,7 +80,7 @@ LL | extern "Rust" fn rust_abi_multiline_function_really_long_name_to_overflow_a
    | +++++++++++++
 
 error: `#[unsafe(no_mangle)]` set on a function with the default (`Rust`) ABI
-  --> tests/ui/no_mangle_with_rust_abi.rs:53:5
+  --> tests/ui/no_mangle_with_rust_abi.rs:52:5
    |
 LL |     pub(in super::r#fn) fn with_some_fn_around() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

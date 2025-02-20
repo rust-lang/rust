@@ -35,7 +35,7 @@ LL +     a = a + 1 + a;
    |
 
 error: variable appears on both sides of an assignment operation
-  --> tests/ui/assign_ops2.rs:13:5
+  --> tests/ui/assign_ops2.rs:14:5
    |
 LL |     a -= a - 1;
    |     ^^^^^^^^^^
@@ -52,7 +52,7 @@ LL +     a = a - (a - 1);
    |
 
 error: variable appears on both sides of an assignment operation
-  --> tests/ui/assign_ops2.rs:15:5
+  --> tests/ui/assign_ops2.rs:17:5
    |
 LL |     a *= a * 99;
    |     ^^^^^^^^^^^
@@ -69,7 +69,7 @@ LL +     a = a * a * 99;
    |
 
 error: variable appears on both sides of an assignment operation
-  --> tests/ui/assign_ops2.rs:17:5
+  --> tests/ui/assign_ops2.rs:20:5
    |
 LL |     a *= 42 * a;
    |     ^^^^^^^^^^^
@@ -86,7 +86,7 @@ LL +     a = a * 42 * a;
    |
 
 error: variable appears on both sides of an assignment operation
-  --> tests/ui/assign_ops2.rs:19:5
+  --> tests/ui/assign_ops2.rs:23:5
    |
 LL |     a /= a / 2;
    |     ^^^^^^^^^^
@@ -103,7 +103,7 @@ LL +     a = a / (a / 2);
    |
 
 error: variable appears on both sides of an assignment operation
-  --> tests/ui/assign_ops2.rs:21:5
+  --> tests/ui/assign_ops2.rs:26:5
    |
 LL |     a %= a % 5;
    |     ^^^^^^^^^^
@@ -120,7 +120,7 @@ LL +     a = a % (a % 5);
    |
 
 error: variable appears on both sides of an assignment operation
-  --> tests/ui/assign_ops2.rs:23:5
+  --> tests/ui/assign_ops2.rs:29:5
    |
 LL |     a &= a & 1;
    |     ^^^^^^^^^^
@@ -137,7 +137,7 @@ LL +     a = a & a & 1;
    |
 
 error: variable appears on both sides of an assignment operation
-  --> tests/ui/assign_ops2.rs:25:5
+  --> tests/ui/assign_ops2.rs:32:5
    |
 LL |     a *= a * a;
    |     ^^^^^^^^^^
@@ -154,7 +154,7 @@ LL +     a = a * a * a;
    |
 
 error: manual implementation of an assign operation
-  --> tests/ui/assign_ops2.rs:63:5
+  --> tests/ui/assign_ops2.rs:71:5
    |
 LL |     buf = buf + cows.clone();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `buf += cows.clone()`

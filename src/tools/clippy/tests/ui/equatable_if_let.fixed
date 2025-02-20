@@ -62,13 +62,21 @@ fn main() {
     // true
 
     if a == 2 {}
+    //~^ equatable_if_let
     if a.cmp(&b) == Ordering::Greater {}
+    //~^ equatable_if_let
     if c == Some(2) {}
+    //~^ equatable_if_let
     if d == (Struct { a: 2, b: false }) {}
+    //~^ equatable_if_let
     if e == Enum::TupleVariant(32, 64) {}
+    //~^ equatable_if_let
     if e == (Enum::RecordVariant { a: 64, b: 32 }) {}
+    //~^ equatable_if_let
     if e == Enum::UnitVariant {}
+    //~^ equatable_if_let
     if (e, &d) == (Enum::UnitVariant, &Struct { a: 2, b: false }) {}
+    //~^ equatable_if_let
 
     // false
 
@@ -78,12 +86,18 @@ fn main() {
     if let Struct { a, b: false } = d {}
     if let Struct { a: 2, b: x } = d {}
     if matches!(f, NotPartialEq::A) {}
+    //~^ equatable_if_let
     if g == NotStructuralEq::A {}
+    //~^ equatable_if_let
     if matches!(Some(f), Some(NotPartialEq::A)) {}
+    //~^ equatable_if_let
     if Some(g) == Some(NotStructuralEq::A) {}
+    //~^ equatable_if_let
     if matches!(h, NoPartialEqStruct { a: 2, b: false }) {}
+    //~^ equatable_if_let
 
     if "abc" == inline!("abc") {
+        //~^ equatable_if_let
         println!("OK");
     }
 

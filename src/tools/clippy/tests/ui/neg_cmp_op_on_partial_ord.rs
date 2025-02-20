@@ -14,20 +14,19 @@ fn main() {
 
     // Not Less but potentially Greater, Equal or Uncomparable.
     let _not_less = !(a_value < another_value);
-    //~^ ERROR: the use of negated comparison operators on partially ordered types produce
-    //~| NOTE: `-D clippy::neg-cmp-op-on-partial-ord` implied by `-D warnings`
+    //~^ neg_cmp_op_on_partial_ord
 
     // Not Less or Equal but potentially Greater or Uncomparable.
     let _not_less_or_equal = !(a_value <= another_value);
-    //~^ ERROR: the use of negated comparison operators on partially ordered types produce
+    //~^ neg_cmp_op_on_partial_ord
 
     // Not Greater but potentially Less, Equal or Uncomparable.
     let _not_greater = !(a_value > another_value);
-    //~^ ERROR: the use of negated comparison operators on partially ordered types produce
+    //~^ neg_cmp_op_on_partial_ord
 
     // Not Greater or Equal but potentially Less or Uncomparable.
     let _not_greater_or_equal = !(a_value >= another_value);
-    //~^ ERROR: the use of negated comparison operators on partially ordered types produce
+    //~^ neg_cmp_op_on_partial_ord
 
     // --- Good ---
 

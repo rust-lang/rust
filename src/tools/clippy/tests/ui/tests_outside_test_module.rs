@@ -1,3 +1,4 @@
+//@require-annotations-for-level: WARN
 #![allow(unused)]
 #![warn(clippy::tests_outside_test_module)]
 

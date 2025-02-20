@@ -1,3 +1,4 @@
+//@ check-pass
 // This test requires a feature gated const fn and will stop working in the future.
 
 #![feature(const_btree_len)]

@@ -2,6 +2,7 @@ error: usage of `contains_key` followed by `insert` on a `HashMap`
   --> tests/ui/entry.rs:24:5
    |
 LL | /     if !m.contains_key(&k) {
+LL | |
 LL | |         m.insert(k, v);
 LL | |     }
    | |_____^ help: try: `m.entry(k).or_insert(v);`
@@ -10,12 +11,12 @@ LL | |     }
    = help: to override `-D warnings` add `#[allow(clippy::map_entry)]`
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> tests/ui/entry.rs:29:5
+  --> tests/ui/entry.rs:30:5
    |
 LL | /     if !m.contains_key(&k) {
+LL | |
 LL | |         if true {
 LL | |             m.insert(k, v);
-LL | |         } else {
 ...  |
 LL | |     }
    | |_____^
@@ -23,6 +24,7 @@ LL | |     }
 help: try
    |
 LL ~     m.entry(k).or_insert_with(|| {
+LL +
 LL +         if true {
 LL +             v
 LL +         } else {
@@ -32,13 +34,13 @@ LL +     });
    |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> tests/ui/entry.rs:38:5
+  --> tests/ui/entry.rs:40:5
    |
 LL | /     if !m.contains_key(&k) {
+LL | |
 LL | |         if true {
 LL | |             m.insert(k, v)
-LL | |         } else {
-LL | |             m.insert(k, v2)
+...  |
 LL | |         };
 LL | |     }
    | |_____^
@@ -46,6 +48,7 @@ LL | |     }
 help: try
    |
 LL ~     m.entry(k).or_insert_with(|| {
+LL +
 LL +         if true {
 LL +             v
 LL +         } else {
@@ -55,12 +58,12 @@ LL +     });
    |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> tests/ui/entry.rs:47:5
+  --> tests/ui/entry.rs:50:5
    |
 LL | /     if !m.contains_key(&k) {
+LL | |
 LL | |         if true {
 LL | |             m.insert(k, v);
-LL | |         } else {
 ...  |
 LL | |     }
    | |_____^
@@ -68,6 +71,7 @@ LL | |     }
 help: try
    |
 LL ~     if let std::collections::hash_map::Entry::Vacant(e) = m.entry(k) {
+LL +
 LL +         if true {
 LL +             e.insert(v);
 LL +         } else {
@@ -78,9 +82,10 @@ LL +     }
    |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> tests/ui/entry.rs:57:5
+  --> tests/ui/entry.rs:61:5
    |
 LL | /     if !m.contains_key(&k) {
+LL | |
 LL | |         foo();
 LL | |         m.insert(k, v);
 LL | |     }
@@ -89,18 +94,19 @@ LL | |     }
 help: try
    |
 LL ~     m.entry(k).or_insert_with(|| {
+LL +
 LL +         foo();
 LL +         v
 LL +     });
    |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> tests/ui/entry.rs:63:5
+  --> tests/ui/entry.rs:68:5
    |
 LL | /     if !m.contains_key(&k) {
+LL | |
 LL | |         match 0 {
 LL | |             1 if true => {
-LL | |                 m.insert(k, v);
 ...  |
 LL | |         };
 LL | |     }
@@ -109,6 +115,7 @@ LL | |     }
 help: try
    |
 LL ~     m.entry(k).or_insert_with(|| {
+LL +
 LL +         match 0 {
 LL +             1 if true => {
 LL +                 v
@@ -121,12 +128,12 @@ LL +     });
    |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> tests/ui/entry.rs:75:5
+  --> tests/ui/entry.rs:81:5
    |
 LL | /     if !m.contains_key(&k) {
+LL | |
 LL | |         match 0 {
 LL | |             0 => foo(),
-LL | |             _ => {
 ...  |
 LL | |         };
 LL | |     }
@@ -135,6 +142,7 @@ LL | |     }
 help: try
    |
 LL ~     if let std::collections::hash_map::Entry::Vacant(e) = m.entry(k) {
+LL +
 LL +         match 0 {
 LL +             0 => foo(),
 LL +             _ => {
@@ -145,12 +153,12 @@ LL +     }
    |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> tests/ui/entry.rs:85:5
+  --> tests/ui/entry.rs:92:5
    |
 LL | /     if !m.contains_key(&k) {
+LL | |
 LL | |         foo();
 LL | |         match 0 {
-LL | |             0 if false => {
 ...  |
 LL | |     }
    | |_____^
@@ -158,6 +166,7 @@ LL | |     }
 help: try
    |
 LL ~     m.entry(k).or_insert_with(|| {
+LL +
 LL +         foo();
 LL +         match 0 {
 LL +             0 if false => {
@@ -185,17 +194,19 @@ LL +     });
    |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> tests/ui/entry.rs:119:5
+  --> tests/ui/entry.rs:127:5
    |
 LL | /     if !m.contains_key(&m!(k)) {
+LL | |
 LL | |         m.insert(m!(k), m!(v));
 LL | |     }
    | |_____^ help: try: `m.entry(m!(k)).or_insert_with(|| m!(v));`
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> tests/ui/entry.rs:151:5
+  --> tests/ui/entry.rs:160:5
    |
 LL | /     if !m.contains_key(&k) {
+LL | |
 LL | |         let x = (String::new(), String::new());
 LL | |         let _ = x.0;
 LL | |         m.insert(k, v);
@@ -205,6 +216,7 @@ LL | |     }
 help: try
    |
 LL ~     m.entry(k).or_insert_with(|| {
+LL +
 LL +         let x = (String::new(), String::new());
 LL +         let _ = x.0;
 LL +         v
@@ -212,9 +224,10 @@ LL +     });
    |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> tests/ui/entry.rs:184:5
+  --> tests/ui/entry.rs:194:5
    |
 LL | /     if !map.contains_key(&1) {
+LL | |
 LL | |         let Some(1) = Some(2) else {
 LL | |             return None;
 LL | |         };
@@ -225,6 +238,7 @@ LL | |     }
 help: try
    |
 LL ~     if let std::collections::hash_map::Entry::Vacant(e) = map.entry(1) {
+LL +
 LL +         let Some(1) = Some(2) else {
 LL +             return None;
 LL +         };

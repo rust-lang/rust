@@ -6,4 +6,5 @@ pub struct Foo(u32);
 
 // Should warn.
 /// Blah blah blah <code>[FooBar]&lt;[FooBar]&gt;</code>[FooBar].
+//~^ doc_markdown
 pub struct FooBar(u32);

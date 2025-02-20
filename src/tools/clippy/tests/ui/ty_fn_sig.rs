@@ -1,3 +1,4 @@
+//@ check-pass
 // Regression test
 
 pub fn retry<F: Fn()>(f: F) {

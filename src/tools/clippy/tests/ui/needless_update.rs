@@ -17,8 +17,7 @@ fn main() {
     S { ..base }; // no error
     S { a: 1, ..base }; // no error
     S { a: 1, b: 1, ..base };
-    //~^ ERROR: struct update has no effect, all the fields in the struct have already bee
-    //~| NOTE: `-D clippy::needless-update` implied by `-D warnings`
+    //~^ needless_update
 
     let base = T { x: 0, y: 0 };
     T { ..base }; // no error

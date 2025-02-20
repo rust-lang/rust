@@ -25,6 +25,7 @@ fn main() {
     let x = [1, 2, 3, 4];
     let index: usize = 1;
     x[index];
+    //~^ indexing_slicing
     x[4]; // Ok, let rustc's `unconditional_panic` lint handle `usize` indexing on arrays.
     x[1 << 3]; // Ok, let rustc's `unconditional_panic` lint handle `usize` indexing on arrays.
 
@@ -40,15 +41,20 @@ fn main() {
 
     let v = vec![0; 5];
     v[0];
+    //~^ indexing_slicing
     v[10];
+    //~^ indexing_slicing
     v[1 << 3];
+    //~^ indexing_slicing
 
     const N: usize = 15; // Out of bounds
     const M: usize = 3; // In bounds
     x[N]; // Ok, let rustc's `unconditional_panic` lint handle `usize` indexing on arrays.
     x[M]; // Ok, should not produce stderr.
     v[N];
+    //~^ indexing_slicing
     v[M];
+    //~^ indexing_slicing
 }
 
 /// An opaque integer representation

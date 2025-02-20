@@ -305,7 +305,7 @@ declare_clippy_lint! {
     ///     header_version: u16
     /// }
     /// ```
-    #[clippy::version = "1.84.0"]
+    #[clippy::version = "1.85.0"]
     pub REPR_PACKED_WITHOUT_ABI,
     suspicious,
     "ensures that `repr(packed)` always comes with a qualified ABI"

@@ -4,14 +4,19 @@ use std::iter::repeat;
 
 fn main() {
     let _ = std::iter::repeat_n(10, 3);
+    //~^ manual_repeat_n
 
     let _ = std::iter::repeat_n(String::from("foo"), 4);
+    //~^ manual_repeat_n
 
     for value in std::iter::repeat_n(5, 3) {}
+    //~^ manual_repeat_n
 
     let _: Vec<_> = std::iter::repeat_n(String::from("bar"), 10).collect();
+    //~^ manual_repeat_n
 
     let _ = std::iter::repeat_n(vec![1, 2], 2);
+    //~^ manual_repeat_n
 }
 
 mod foo_lib {

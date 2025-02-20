@@ -6,7 +6,8 @@ fn main() {
             dbg!("matched a");
         },
         "bar" | _ => {
-            //~^ ERROR: wildcard pattern covers any other pattern as it will match anyway
+            //~^ wildcard_in_or_patterns
+
             dbg!("matched (bar or) wild");
         },
     };
@@ -15,7 +16,8 @@ fn main() {
             dbg!("matched a");
         },
         "bar" | "bar2" | _ => {
-            //~^ ERROR: wildcard pattern covers any other pattern as it will match anyway
+            //~^ wildcard_in_or_patterns
+
             dbg!("matched (bar or bar2 or) wild");
         },
     };
@@ -24,7 +26,8 @@ fn main() {
             dbg!("matched a");
         },
         _ | "bar" | _ => {
-            //~^ ERROR: wildcard pattern covers any other pattern as it will match anyway
+            //~^ wildcard_in_or_patterns
+
             dbg!("matched (bar or) wild");
         },
     };
@@ -33,7 +36,8 @@ fn main() {
             dbg!("matched a");
         },
         _ | "bar" => {
-            //~^ ERROR: wildcard pattern covers any other pattern as it will match anyway
+            //~^ wildcard_in_or_patterns
+
             dbg!("matched (bar or) wild");
         },
     };
@@ -67,6 +71,7 @@ fn main() {
             dbg!("Change the color");
         },
         ExhaustiveEnum::Quit | _ => {
+            //~^ wildcard_in_or_patterns
             dbg!("Quit or other");
         },
     };
@@ -102,6 +107,7 @@ fn main() {
             dbg!("On the y axis at {y}");
         },
         ExhaustiveStruct { x: 1, y: 1 } | _ => {
+            //~^ wildcard_in_or_patterns
             dbg!("On neither axis: ({x}, {y})");
         },
     }

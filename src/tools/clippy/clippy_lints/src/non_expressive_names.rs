@@ -208,7 +208,8 @@ impl SimilarNamesNameVisitor<'_, '_, '_> {
 
     fn check_ident(&mut self, ident: Ident) {
         let interned_name = ident.name.as_str();
-        if interned_name.chars().any(char::is_uppercase) {
+        // name can be empty if it comes from recovery
+        if interned_name.chars().any(char::is_uppercase) || interned_name.is_empty() {
             return;
         }
         if interned_name.chars().all(|c| c.is_ascii_digit() || c == '_') {

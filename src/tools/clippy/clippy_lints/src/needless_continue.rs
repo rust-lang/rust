@@ -356,7 +356,7 @@ fn suggestion_snippet_for_continue_inside_else(cx: &EarlyContext<'_>, data: &Lin
         .iter()
         .map(|stmt| {
             let span = cx.sess().source_map().stmt_span(stmt.span, data.loop_block.span);
-            let snip = snippet_block(cx, span, "..", None).into_owned();
+            let snip = snippet_block(cx, span, "..", None);
             snip.lines()
                 .map(|line| format!("{}{line}", " ".repeat(indent)))
                 .collect::<Vec<_>>()

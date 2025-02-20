@@ -19,7 +19,7 @@ LL +     }
    |
 
 error: this `else { if .. }` block can be collapsed
-  --> tests/ui/collapsible_else_if.rs:19:12
+  --> tests/ui/collapsible_else_if.rs:20:12
    |
 LL |       } else {
    |  ____________^
@@ -37,7 +37,7 @@ LL +     }
    |
 
 error: this `else { if .. }` block can be collapsed
-  --> tests/ui/collapsible_else_if.rs:27:12
+  --> tests/ui/collapsible_else_if.rs:29:12
    |
 LL |       } else {
    |  ____________^
@@ -58,7 +58,7 @@ LL +     }
    |
 
 error: this `else { if .. }` block can be collapsed
-  --> tests/ui/collapsible_else_if.rs:38:12
+  --> tests/ui/collapsible_else_if.rs:41:12
    |
 LL |       } else {
    |  ____________^
@@ -79,7 +79,7 @@ LL +     }
    |
 
 error: this `else { if .. }` block can be collapsed
-  --> tests/ui/collapsible_else_if.rs:49:12
+  --> tests/ui/collapsible_else_if.rs:53:12
    |
 LL |       } else {
    |  ____________^
@@ -100,7 +100,7 @@ LL +     }
    |
 
 error: this `else { if .. }` block can be collapsed
-  --> tests/ui/collapsible_else_if.rs:60:12
+  --> tests/ui/collapsible_else_if.rs:65:12
    |
 LL |       } else {
    |  ____________^
@@ -121,7 +121,7 @@ LL +     }
    |
 
 error: this `else { if .. }` block can be collapsed
-  --> tests/ui/collapsible_else_if.rs:71:12
+  --> tests/ui/collapsible_else_if.rs:77:12
    |
 LL |       } else {
    |  ____________^
@@ -142,7 +142,7 @@ LL +     }
    |
 
 error: this `else { if .. }` block can be collapsed
-  --> tests/ui/collapsible_else_if.rs:93:10
+  --> tests/ui/collapsible_else_if.rs:100:10
    |
 LL |       }else{
    |  __________^

@@ -4,6 +4,7 @@ error: this `else` block is redundant
 LL |           } else {
    |  ________________^
 LL | |
+LL | |
 LL | |             continue;
 LL | |         }
    | |_________^
@@ -27,6 +28,7 @@ LL | |         }
                        }
                        if (zero!(i % 2) || nonzero!(i % 5)) && i % 3 != 0 {
 
+                       
                            continue;
                        } else {
                            println!("Blabber");
@@ -38,13 +40,13 @@ LL | |         }
    = help: to override `-D warnings` add `#[allow(clippy::needless_continue)]`
 
 error: there is no need for an explicit `else` block for this `if` expression
-  --> tests/ui/needless_continue.rs:46:9
+  --> tests/ui/needless_continue.rs:47:9
    |
 LL | /         if (zero!(i % 2) || nonzero!(i % 5)) && i % 3 != 0 {
 LL | |
+LL | |
 LL | |             continue;
-LL | |         } else {
-LL | |             println!("Blabber");
+...  |
 LL | |             println!("Jabber");
 LL | |         }
    | |_________^
@@ -52,6 +54,7 @@ LL | |         }
    = help: consider dropping the `else` clause
                    if (zero!(i % 2) || nonzero!(i % 5)) && i % 3 != 0 {
 
+           
                        continue;
                    }
                    {
@@ -60,7 +63,7 @@ LL | |         }
                    }
 
 error: this `continue` expression is redundant
-  --> tests/ui/needless_continue.rs:60:9
+  --> tests/ui/needless_continue.rs:62:9
    |
 LL |         continue;
    |         ^^^^^^^^
@@ -68,7 +71,7 @@ LL |         continue;
    = help: consider dropping the `continue` expression
 
 error: this `continue` expression is redundant
-  --> tests/ui/needless_continue.rs:68:9
+  --> tests/ui/needless_continue.rs:70:9
    |
 LL |         continue;
    |         ^^^^^^^^
@@ -76,7 +79,7 @@ LL |         continue;
    = help: consider dropping the `continue` expression
 
 error: this `continue` expression is redundant
-  --> tests/ui/needless_continue.rs:76:9
+  --> tests/ui/needless_continue.rs:78:9
    |
 LL |         continue
    |         ^^^^^^^^
@@ -84,7 +87,7 @@ LL |         continue
    = help: consider dropping the `continue` expression
 
 error: this `continue` expression is redundant
-  --> tests/ui/needless_continue.rs:85:9
+  --> tests/ui/needless_continue.rs:88:9
    |
 LL |         continue
    |         ^^^^^^^^
@@ -92,7 +95,7 @@ LL |         continue
    = help: consider dropping the `continue` expression
 
 error: this `continue` expression is redundant
-  --> tests/ui/needless_continue.rs:93:11
+  --> tests/ui/needless_continue.rs:97:11
    |
 LL |         { continue }
    |           ^^^^^^^^
@@ -100,10 +103,11 @@ LL |         { continue }
    = help: consider dropping the `continue` expression
 
 error: this `else` block is redundant
-  --> tests/ui/needless_continue.rs:144:24
+  --> tests/ui/needless_continue.rs:148:24
    |
 LL |                   } else {
    |  ________________________^
+LL | |
 LL | |
 LL | |                     continue 'inner;
 LL | |                 }
@@ -117,6 +121,7 @@ LL | |                 }
                                update_condition();
                                if condition() {
 
+                               
                                    continue;
                                } else {
                                    println!("bar-5");
@@ -125,9 +130,10 @@ LL | |                 }
                            }
 
 error: there is no need for an explicit `else` block for this `if` expression
-  --> tests/ui/needless_continue.rs:151:17
+  --> tests/ui/needless_continue.rs:156:17
    |
 LL | /                 if condition() {
+LL | |
 LL | |
 LL | |                     continue;
 LL | |                 } else {
@@ -138,6 +144,7 @@ LL | |                 }
    = help: consider dropping the `else` clause
                            if condition() {
 
+           
                                continue;
                            }
                            {
@@ -145,7 +152,7 @@ LL | |                 }
                            }
 
 error: this `continue` expression is redundant
-  --> tests/ui/needless_continue.rs:174:13
+  --> tests/ui/needless_continue.rs:180:13
    |
 LL |             continue 'b;
    |             ^^^^^^^^^^^
@@ -153,7 +160,7 @@ LL |             continue 'b;
    = help: consider dropping the `continue` expression
 
 error: this `continue` expression is redundant
-  --> tests/ui/needless_continue.rs:190:21
+  --> tests/ui/needless_continue.rs:196:21
    |
 LL |                     continue 'inner;
    |                     ^^^^^^^^^^^^^^^
@@ -161,7 +168,7 @@ LL |                     continue 'inner;
    = help: consider dropping the `continue` expression
 
 error: this `continue` expression is redundant
-  --> tests/ui/needless_continue.rs:193:21
+  --> tests/ui/needless_continue.rs:200:21
    |
 LL |                     continue 'inner;
    |                     ^^^^^^^^^^^^^^^
@@ -169,7 +176,7 @@ LL |                     continue 'inner;
    = help: consider dropping the `continue` expression
 
 error: this `continue` expression is redundant
-  --> tests/ui/needless_continue.rs:203:21
+  --> tests/ui/needless_continue.rs:211:21
    |
 LL |                     continue;
    |                     ^^^^^^^^
@@ -177,10 +184,11 @@ LL |                     continue;
    = help: consider dropping the `continue` expression
 
 error: this `else` block is redundant
-  --> tests/ui/needless_continue.rs:210:20
+  --> tests/ui/needless_continue.rs:219:20
    |
 LL |               } else {
    |  ____________________^
+LL | |
 LL | |                 // redundant `else`
 LL | |                 continue; // redundant `continue`
 LL | |             }
@@ -193,9 +201,10 @@ LL | |             }
                        }
 
 error: there is no need for an explicit `else` block for this `if` expression
-  --> tests/ui/needless_continue.rs:217:13
+  --> tests/ui/needless_continue.rs:227:13
    |
 LL | /             if some_expr() {
+LL | |
 LL | |                 continue;
 LL | |             } else {
 LL | |                 do_something();
@@ -204,6 +213,7 @@ LL | |             }
    |
    = help: consider dropping the `else` clause
                        if some_expr() {
+
                            continue;
                        }
                        {

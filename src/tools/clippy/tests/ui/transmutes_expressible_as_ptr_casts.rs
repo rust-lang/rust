@@ -15,28 +15,33 @@ fn main() {
 
     // e is an integer and U is *U_0, while U_0: Sized; addr-ptr-cast
     let _ptr_i32_transmute = unsafe { transmute::<usize, *const i32>(usize::MAX) };
+    //~^ useless_transmute
     let ptr_i32 = usize::MAX as *const i32;
 
     // e has type *T, U is *U_0, and either U_0: Sized ...
     let _ptr_i8_transmute = unsafe { transmute::<*const i32, *const i8>(ptr_i32) };
+    //~^ transmute_ptr_to_ptr
     let _ptr_i8 = ptr_i32 as *const i8;
 
     let slice_ptr = &[0, 1, 2, 3] as *const [i32];
 
     // ... or pointer_kind(T) = pointer_kind(U_0); ptr-ptr-cast
     let _ptr_to_unsized_transmute = unsafe { transmute::<*const [i32], *const [u32]>(slice_ptr) };
+    //~^ transmute_ptr_to_ptr
     let _ptr_to_unsized = slice_ptr as *const [u32];
     // TODO: We could try testing vtable casts here too, but maybe
     // we should wait until std::raw::TraitObject is stabilized?
 
     // e has type *T and U is a numeric type, while T: Sized; ptr-addr-cast
     let _usize_from_int_ptr_transmute = unsafe { transmute::<*const i32, usize>(ptr_i32) };
+    //~^ transmutes_expressible_as_ptr_casts
     let _usize_from_int_ptr = ptr_i32 as usize;
 
     let array_ref: &[i32; 4] = &[1, 2, 3, 4];
 
     // e has type &[T; n] and U is *const T; array-ptr-cast
     let _array_ptr_transmute = unsafe { transmute::<&[i32; 4], *const [i32; 4]>(array_ref) };
+    //~^ useless_transmute
     let _array_ptr = array_ref as *const [i32; 4];
 
     fn foo(_: usize) -> u8 {
@@ -45,13 +50,16 @@ fn main() {
 
     // e is a function pointer type and U has type *T, while T: Sized; fptr-ptr-cast
     let _usize_ptr_transmute = unsafe { transmute::<fn(usize) -> u8, *const usize>(foo) };
+    //~^ transmutes_expressible_as_ptr_casts
     let _usize_ptr_transmute = foo as *const usize;
 
     // e is a function pointer type and U is an integer; fptr-addr-cast
     let _usize_from_fn_ptr_transmute = unsafe { transmute::<fn(usize) -> u8, usize>(foo) };
+    //~^ transmutes_expressible_as_ptr_casts
     let _usize_from_fn_ptr = foo as *const usize;
 
     let _usize_from_ref = unsafe { transmute::<*const u32, usize>(&1u32) };
+    //~^ transmutes_expressible_as_ptr_casts
 }
 
 // If a ref-to-ptr cast of this form where the pointer type points to a type other
@@ -63,6 +71,7 @@ fn main() {
 // fall through into `do_check`.
 fn trigger_do_check_to_emit_error(in_param: &[i32; 1]) -> *const u8 {
     unsafe { transmute::<&[i32; 1], *const u8>(in_param) }
+    //~^ useless_transmute
 }
 
 #[repr(C)]
@@ -81,6 +90,7 @@ fn issue_10449() {
     fn f() {}
 
     let _x: u8 = unsafe { *std::mem::transmute::<fn(), *const u8>(f) };
+    //~^ transmutes_expressible_as_ptr_casts
 }
 
 // Pointers cannot be cast to integers in const contexts

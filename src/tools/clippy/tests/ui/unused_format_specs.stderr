@@ -78,7 +78,7 @@ LL +     usr_println!(true, "{}.", format_args!(""));
    |
 
 error: format specifiers have no effect on `format_args!()`
-  --> tests/ui/unused_format_specs.rs:51:25
+  --> tests/ui/unused_format_specs.rs:52:25
    |
 LL |     usr_println!(true, "{:.3}", format_args!("abcde"));
    |                         ^^^^^
@@ -95,7 +95,7 @@ LL +     usr_println!(true, "{}", format_args!("abcde"));
    |
 
 error: format specifiers have no effect on `format_args!()`
-  --> tests/ui/unused_format_specs.rs:54:25
+  --> tests/ui/unused_format_specs.rs:55:25
    |
 LL |     usr_println!(true, "{:5}.", format_args_from_macro!());
    |                         ^^^^
@@ -108,7 +108,7 @@ LL +     usr_println!(true, "{}.", format_args_from_macro!());
    |
 
 error: format specifiers have no effect on `format_args!()`
-  --> tests/ui/unused_format_specs.rs:58:25
+  --> tests/ui/unused_format_specs.rs:59:25
    |
 LL |     usr_println!(true, "{args:5}");
    |                         ^^^^^^^^

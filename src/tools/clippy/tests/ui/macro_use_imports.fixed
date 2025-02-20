@@ -16,12 +16,16 @@ extern crate proc_macro_derive as mini_mac;
 
 mod a {
     use mac::{pub_macro, inner_mod_macro, function_macro, ty_macro, pub_in_private_macro};
+    //~^ macro_use_imports
     use mac;
     use mini_mac::ClippyMiniMacroTest;
+    //~^ macro_use_imports
     use mini_mac;
     use mac::{inner::mut_mut, inner::try_err};
+    //~^ macro_use_imports
     use mac::inner;
     use mac::inner::nested::string_add;
+    //~^ macro_use_imports
     use mac::inner::nested;
 
     #[derive(ClippyMiniMacroTest)]

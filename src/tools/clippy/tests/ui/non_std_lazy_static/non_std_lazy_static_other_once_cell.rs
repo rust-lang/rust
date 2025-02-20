@@ -1,3 +1,4 @@
+//@ check-pass
 //@aux-build:once_cell.rs
 
 #![warn(clippy::non_std_lazy_statics)]

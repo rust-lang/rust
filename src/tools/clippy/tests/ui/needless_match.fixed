@@ -61,6 +61,7 @@ fn result_match() {
 
 fn if_let_option() {
     let _ = Some(1);
+    //~^ needless_match
 
     fn do_something() {}
 
@@ -96,7 +97,9 @@ fn if_let_option_result() -> Result<(), ()> {
 fn if_let_result() {
     let x: Result<i32, i32> = Ok(1);
     let _: Result<i32, i32> = x;
+    //~^ needless_match
     let _: Result<i32, i32> = x;
+    //~^ needless_match
     // Input type mismatch, don't trigger
     #[allow(clippy::question_mark)]
     let _: Result<i32, i32> = if let Err(e) = Ok(1) { Err(e) } else { x };

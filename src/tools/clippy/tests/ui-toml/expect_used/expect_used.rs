@@ -1,20 +1,31 @@
 //@compile-flags: --test
+//@no-rustfix
 #![warn(clippy::expect_used)]
 #![allow(clippy::unnecessary_literal_unwrap)]
 
 fn expect_option() {
     let opt = Some(0);
     let _ = opt.expect("");
+    //~^ expect_used
 }
 
 fn expect_result() {
     let res: Result<u8, ()> = Ok(0);
     let _ = res.expect("");
+    //~^ expect_used
 }
 
 fn main() {
     expect_option();
     expect_result();
+
+    const SOME: Option<i32> = Some(3);
+    const UNWRAPPED: i32 = SOME.expect("Not three?");
+    //~^ expect_used
+    const {
+        SOME.expect("Still not three?");
+        //~^ expect_used
+    }
 }
 
 #[test]

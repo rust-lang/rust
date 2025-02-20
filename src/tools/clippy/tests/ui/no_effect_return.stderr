@@ -10,7 +10,7 @@ LL |         0u32;
    = help: to override `-D warnings` add `#[allow(clippy::no_effect)]`
 
 error: statement with no effect
-  --> tests/ui/no_effect_return.rs:18:9
+  --> tests/ui/no_effect_return.rs:17:9
    |
 LL |         0u32;
    |         -^^^^
@@ -18,7 +18,7 @@ LL |         0u32;
    |         help: did you mean to return it?: `return`
 
 error: statement with no effect
-  --> tests/ui/no_effect_return.rs:27:9
+  --> tests/ui/no_effect_return.rs:26:9
    |
 LL |         0i32 as C;
    |         -^^^^^^^^^
@@ -26,7 +26,7 @@ LL |         0i32 as C;
    |         help: did you mean to return it?: `return`
 
 error: statement with no effect
-  --> tests/ui/no_effect_return.rs:36:9
+  --> tests/ui/no_effect_return.rs:35:9
    |
 LL |         0u128;
    |         ^^^^^^

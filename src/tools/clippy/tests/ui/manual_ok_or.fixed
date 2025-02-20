@@ -9,12 +9,15 @@ fn main() {
     // basic case
     let foo: Option<i32> = None;
     foo.ok_or("error");
+    //~^ manual_ok_or
 
     // eta expansion case
     foo.ok_or("error");
+    //~^ manual_ok_or
 
     // turbo fish syntax
     None::<i32>.ok_or("error");
+    //~^ manual_ok_or
 
     // multiline case
     #[rustfmt::skip]

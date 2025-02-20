@@ -8,43 +8,43 @@ LL |     if num >= 0.0 { num } else { -num }
    = help: to override `-D warnings` add `#[allow(clippy::suboptimal_flops)]`
 
 error: manual implementation of `abs` method
-  --> tests/ui/floating_point_abs.rs:18:5
+  --> tests/ui/floating_point_abs.rs:19:5
    |
 LL |     if 0.0 < num { num } else { -num }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `num.abs()`
 
 error: manual implementation of `abs` method
-  --> tests/ui/floating_point_abs.rs:22:5
+  --> tests/ui/floating_point_abs.rs:24:5
    |
 LL |     if a.a > 0.0 { a.a } else { -a.a }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `a.a.abs()`
 
 error: manual implementation of `abs` method
-  --> tests/ui/floating_point_abs.rs:26:5
+  --> tests/ui/floating_point_abs.rs:29:5
    |
 LL |     if 0.0 >= num { -num } else { num }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `num.abs()`
 
 error: manual implementation of `abs` method
-  --> tests/ui/floating_point_abs.rs:30:5
+  --> tests/ui/floating_point_abs.rs:34:5
    |
 LL |     if a.a < 0.0 { -a.a } else { a.a }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `a.a.abs()`
 
 error: manual implementation of negation of `abs` method
-  --> tests/ui/floating_point_abs.rs:34:5
+  --> tests/ui/floating_point_abs.rs:39:5
    |
 LL |     if num < 0.0 { num } else { -num }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `-num.abs()`
 
 error: manual implementation of negation of `abs` method
-  --> tests/ui/floating_point_abs.rs:38:5
+  --> tests/ui/floating_point_abs.rs:44:5
    |
 LL |     if 0.0 >= num { num } else { -num }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `-num.abs()`
 
 error: manual implementation of negation of `abs` method
-  --> tests/ui/floating_point_abs.rs:43:12
+  --> tests/ui/floating_point_abs.rs:50:12
    |
 LL |         a: if a.a >= 0.0 { -a.a } else { a.a },
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `-a.a.abs()`
