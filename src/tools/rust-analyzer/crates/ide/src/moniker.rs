@@ -56,7 +56,6 @@ pub enum SymbolInformationKind {
 }
 
 impl From<SymbolInformationKind> for MonikerDescriptorKind {
-    /// Matches a `SymbolInformationKind` to it's corresponding `MonikerDescriptorKind`
     fn from(value: SymbolInformationKind) -> Self {
         match value {
             SymbolInformationKind::AssociatedType => Self::Type,

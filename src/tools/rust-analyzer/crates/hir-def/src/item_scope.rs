@@ -37,7 +37,6 @@ pub enum ImportOrExternCrate {
 }
 
 impl From<ImportOrGlob> for ImportOrExternCrate {
-    /// Matches a `ImportOrGlob` to it's corresponding `ImportOrExternCrate` variant, of the same name
     fn from(value: ImportOrGlob) -> Self {
         match value {
             ImportOrGlob::Glob(it) => ImportOrExternCrate::Glob(it),
@@ -102,7 +101,6 @@ pub enum ImportOrDef {
 }
 
 impl From<ImportOrExternCrate> for ImportOrDef {
-    /// Matches a `ImportOrExternCrate` to it's corresponding `ImportOrDef` variant, of the same name
     fn from(value: ImportOrExternCrate) -> Self {
         match value {
             ImportOrExternCrate::Import(it) => ImportOrDef::Import(it),
@@ -113,7 +111,6 @@ impl From<ImportOrExternCrate> for ImportOrDef {
 }
 
 impl From<ImportOrGlob> for ImportOrDef {
-    /// Matches a `ImportOrGlob` to it's corresponding `ImportOrDef` variant, of the same name
     fn from(value: ImportOrGlob) -> Self {
         match value {
             ImportOrGlob::Import(it) => ImportOrDef::Import(it),
