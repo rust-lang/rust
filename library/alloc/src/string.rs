@@ -1081,6 +1081,7 @@ impl String {
     pub const fn as_str(&self) -> &str {
         // SAFETY: String contents are stipulated to be valid UTF-8, invalid contents are an error
         // at construction.
+        // FIXME(const-hack): just deref `self` instead
         unsafe { str::from_utf8_unchecked(self.vec.as_slice()) }
     }
 
@@ -1104,6 +1105,7 @@ impl String {
     pub const fn as_mut_str(&mut self) -> &mut str {
         // SAFETY: String contents are stipulated to be valid UTF-8, invalid contents are an error
         // at construction.
+        // FIXME(const-hack): just deref `self` instead
         unsafe { str::from_utf8_unchecked_mut(self.vec.as_mut_slice()) }
     }
 
