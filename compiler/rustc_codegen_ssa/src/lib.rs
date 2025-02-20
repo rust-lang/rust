@@ -190,6 +190,7 @@ impl From<&cstore::NativeLib> for NativeLib {
 #[derive(Debug, Encodable, Decodable)]
 pub struct CrateInfo {
     pub target_cpu: String,
+    pub target_features: Vec<String>,
     pub crate_types: Vec<CrateType>,
     pub exported_symbols: UnordMap<CrateType, Vec<String>>,
     pub linked_symbols: FxIndexMap<CrateType, Vec<(String, SymbolExportKind)>>,
@@ -230,6 +231,7 @@ pub fn provide(providers: &mut Providers) {
     crate::base::provide(providers);
     crate::target_features::provide(providers);
     crate::codegen_attrs::provide(providers);
+    providers.queries.global_backend_features = |_tcx: TyCtxt<'_>, ()| vec![];
 }
 
 /// Checks if the given filename ends with the `.rcgu.o` extension that `rustc`
