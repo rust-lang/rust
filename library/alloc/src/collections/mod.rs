@@ -109,6 +109,7 @@ pub enum TryReserveErrorKind {
     issue = "48043"
 )]
 impl From<TryReserveErrorKind> for TryReserveError {
+    /// Wrap kind in `TryReserveError`.
     #[inline]
     fn from(kind: TryReserveErrorKind) -> Self {
         Self { kind }
