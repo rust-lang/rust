@@ -39,7 +39,7 @@ pub use crate::format::*;
 use crate::ptr::P;
 use crate::token::{self, CommentKind, Delimiter};
 use crate::tokenstream::{DelimSpan, LazyAttrTokenStream, TokenStream};
-use crate::util::parser::{AssocOp, ExprPrecedence};
+use crate::util::parser::{ExprPrecedence, Fixity};
 
 /// A "Label" is an identifier of some point in sources,
 /// e.g. in the following code:
@@ -937,8 +937,37 @@ impl BinOpKind {
         matches!(self, BinOpKind::And | BinOpKind::Or)
     }
 
+    pub fn precedence(&self) -> ExprPrecedence {
+        use BinOpKind::*;
+        match *self {
+            Mul | Div | Rem => ExprPrecedence::Product,
+            Add | Sub => ExprPrecedence::Sum,
+            Shl | Shr => ExprPrecedence::Shift,
+            BitAnd => ExprPrecedence::BitAnd,
+            BitXor => ExprPrecedence::BitXor,
+            BitOr => ExprPrecedence::BitOr,
+            Lt | Gt | Le | Ge | Eq | Ne => ExprPrecedence::Compare,
+            And => ExprPrecedence::LAnd,
+            Or => ExprPrecedence::LOr,
+        }
+    }
+
+    pub fn fixity(&self) -> Fixity {
+        use BinOpKind::*;
+        match self {
+            Eq | Ne | Lt | Le | Gt | Ge => Fixity::None,
+            Add | Sub | Mul | Div | Rem | And | Or | BitXor | BitAnd | BitOr | Shl | Shr => {
+                Fixity::Left
+            }
+        }
+    }
+
     pub fn is_comparison(self) -> bool {
-        crate::util::parser::AssocOp::from_ast_binop(self).is_comparison()
+        use BinOpKind::*;
+        match self {
+            Eq | Ne | Lt | Le | Gt | Ge => true,
+            Add | Sub | Mul | Div | Rem | And | Or | BitXor | BitAnd | BitOr | Shl | Shr => false,
+        }
     }
 
     /// Returns `true` if the binary operator takes its arguments by value.
@@ -1332,7 +1361,7 @@ impl Expr {
             ExprKind::Range(..) => ExprPrecedence::Range,
 
             // Binop-like expr kinds, handled by `AssocOp`.
-            ExprKind::Binary(op, ..) => AssocOp::from_ast_binop(op.node).precedence(),
+            ExprKind::Binary(op, ..) => op.node.precedence(),
             ExprKind::Cast(..) => ExprPrecedence::Cast,
 
             ExprKind::Assign(..) |
@@ -1422,6 +1451,15 @@ pub enum RangeLimits {
     HalfOpen,
     /// Inclusive at the beginning and end.
     Closed,
+}
+
+impl RangeLimits {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            RangeLimits::HalfOpen => "..",
+            RangeLimits::Closed => "..=",
+        }
+    }
 }
 
 /// A method call (e.g. `x.foo::<Bar, Baz>(a, b, c)`).
