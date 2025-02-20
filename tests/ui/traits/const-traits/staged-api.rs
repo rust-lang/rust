@@ -85,4 +85,36 @@ const fn implicitly_stable_const_context() {
     //~^ ERROR cannot use `#[feature(const_trait_impl)]`
 }
 
+// check that const stability of impls and traits must match
+#[const_trait]
+#[rustc_const_unstable(feature = "beef", issue = "none")]
+trait U {}
+
+#[const_trait]
+#[rustc_const_stable(since = "0.0.0", feature = "beef2")]
+trait S {}
+
+// implied stable
+impl const U for u8 {}
+//~^ const stability on the impl does not match the const stability on the trait
+
+#[rustc_const_stable(since = "0.0.0", feature = "beef2")]
+impl const U for u16 {}
+//~^ const stability on the impl does not match the const stability on the trait
+//~| trait implementations cannot be const stable yet
+
+#[rustc_const_unstable(feature = "beef", issue = "none")]
+impl const U for u32 {}
+
+// implied stable
+impl const S for u8 {}
+
+#[rustc_const_stable(since = "0.0.0", feature = "beef2")]
+impl const S for u16 {}
+//~^ trait implementations cannot be const stable yet
+
+#[rustc_const_unstable(feature = "beef", issue = "none")]
+impl const S for u32 {}
+//~^ const stability on the impl does not match the const stability on the trait
+
 fn main() {}
