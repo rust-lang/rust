@@ -127,15 +127,14 @@ fn get_simple_intrinsic<'ll>(
         sym::truncf64 => "llvm.trunc.f64",
         sym::truncf128 => "llvm.trunc.f128",
 
-        sym::rintf16 => "llvm.rint.f16",
-        sym::rintf32 => "llvm.rint.f32",
-        sym::rintf64 => "llvm.rint.f64",
-        sym::rintf128 => "llvm.rint.f128",
-
-        sym::nearbyintf16 => "llvm.nearbyint.f16",
-        sym::nearbyintf32 => "llvm.nearbyint.f32",
-        sym::nearbyintf64 => "llvm.nearbyint.f64",
-        sym::nearbyintf128 => "llvm.nearbyint.f128",
+        // We could use any of `rint`, `nearbyint`, or `roundeven`
+        // for this -- they are all identical in semantics when
+        // assuming the default FP environment.
+        // `rint` is what we used for $forever.
+        sym::round_ties_even_f16 => "llvm.rint.f16",
+        sym::round_ties_even_f32 => "llvm.rint.f32",
+        sym::round_ties_even_f64 => "llvm.rint.f64",
+        sym::round_ties_even_f128 => "llvm.rint.f128",
 
         sym::roundf16 => "llvm.round.f16",
         sym::roundf32 => "llvm.round.f32",
@@ -143,11 +142,6 @@ fn get_simple_intrinsic<'ll>(
         sym::roundf128 => "llvm.round.f128",
 
         sym::ptr_mask => "llvm.ptrmask",
-
-        sym::roundevenf16 => "llvm.roundeven.f16",
-        sym::roundevenf32 => "llvm.roundeven.f32",
-        sym::roundevenf64 => "llvm.roundeven.f64",
-        sym::roundevenf128 => "llvm.roundeven.f128",
 
         _ => return None,
     };

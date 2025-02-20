@@ -126,7 +126,7 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn round_ties_even(self) -> f16 {
-        unsafe { intrinsics::rintf16(self) }
+        unsafe { intrinsics::round_ties_even_f16(self) }
     }
 
     /// Returns the integer part of `self`.
