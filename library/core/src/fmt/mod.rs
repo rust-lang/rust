@@ -743,8 +743,11 @@ impl<'a> Arguments<'a> {
                         starts_with_placeholder = true;
                     }
                     has_placeholders = true;
-                    #[cfg(not(target_pointer_width = "64"))]
-                    let _ = template.next(); // Skip second half of placeholder.
+                    // Skip remainder of placeholder:
+                    #[cfg(target_pointer_width = "32")]
+                    let _ = template.next();
+                    #[cfg(target_pointer_width = "16")]
+                    let _ = (template.next(), template.next(), template.next());
                 }
             }
         }
@@ -1701,9 +1704,17 @@ pub fn write(output: &mut dyn Write, fmt: Arguments<'_>) -> Result {
             // Placeholder piece.
             #[cfg(target_pointer_width = "64")]
             let (high, low) = ((n >> 32) as u32, n as u32);
-            #[cfg(not(target_pointer_width = "64"))]
+            #[cfg(target_pointer_width = "32")]
             // SAFETY: We can assume the template is valid.
             let (high, low) = (n as u32, unsafe { template.next().i } as u32);
+            #[cfg(target_pointer_width = "16")]
+            // SAFETY: We can assume the template is valid.
+            let (high, low) = unsafe {
+                (
+                    (n as u32) << 16 | template.next().i as u32,
+                    (template.next().i as u32) << 16 | template.next().i as u32,
+                )
+            };
             let arg_index = (low & 0x3FF) as usize;
             let mut width = (low >> 10 & 0x3FF) as u16;
             let mut precision = (low >> 20 & 0x3FF) as u16;

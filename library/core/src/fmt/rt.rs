@@ -43,10 +43,7 @@ impl<'a> Template<'a> {
 #[lang = "format_piece"]
 #[derive(Copy, Clone)]
 pub union Piece {
-    #[cfg(target_pointer_width = "64")]
-    pub i: u64,
-    #[cfg(not(target_pointer_width = "64"))]
-    pub i: u32,
+    pub i: usize,
     pub p: *const u8,
 }
 
@@ -69,19 +66,10 @@ impl Piece {
         Self { p: s as *const str as *const u8 }
     }
 
-    #[cfg(target_pointer_width = "64")]
     #[rustc_promotable]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "rust1", since = "1.0.0")]
-    pub const fn num(i: u64) -> Self {
-        Self { i }
-    }
-
-    #[cfg(not(target_pointer_width = "64"))]
-    #[rustc_promotable]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "rust1", since = "1.0.0")]
-    pub const fn num(i: u32) -> Self {
+    pub const fn num(i: usize) -> Self {
         Self { i }
     }
 }

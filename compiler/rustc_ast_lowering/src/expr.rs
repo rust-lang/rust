@@ -2129,29 +2129,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.arena.alloc(self.expr(sp, hir::ExprKind::Tup(&[])))
     }
 
-    pub(super) fn expr_u64(&mut self, sp: Span, value: u64) -> hir::Expr<'hir> {
-        let lit = self.arena.alloc(hir::Lit {
-            span: sp,
-            node: ast::LitKind::Int(
-                u128::from(value).into(),
-                ast::LitIntType::Unsigned(ast::UintTy::U64),
-            ),
-        });
-        self.expr(sp, hir::ExprKind::Lit(lit))
-    }
-
-    pub(super) fn expr_u32(&mut self, sp: Span, value: u32) -> hir::Expr<'hir> {
-        let lit = self.arena.alloc(hir::Lit {
-            span: sp,
-            node: ast::LitKind::Int(
-                u128::from(value).into(),
-                ast::LitIntType::Unsigned(ast::UintTy::U32),
-            ),
-        });
-        self.expr(sp, hir::ExprKind::Lit(lit))
-    }
-
-    pub(super) fn expr_usize(&mut self, sp: Span, value: u16) -> hir::Expr<'hir> {
+    pub(super) fn expr_usize(&mut self, sp: Span, value: u64) -> hir::Expr<'hir> {
         let lit = self.arena.alloc(hir::Lit {
             span: sp,
             node: ast::LitKind::Int(

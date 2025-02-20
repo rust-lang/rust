@@ -417,11 +417,7 @@ fn expand_format_args<'hir>(
                 // ```
                 //  Piece::num(4),
                 // ```
-                let i = if ctx.tcx.sess.target.pointer_width >= 64 {
-                    ctx.expr_u64(fmt.span, len as u64)
-                } else {
-                    ctx.expr_u32(fmt.span, len as u32)
-                };
+                let i = ctx.expr_usize(macsp, len as u64);
                 pieces.push(make_piece(ctx, sym::num, i, macsp));
 
                 // ```
@@ -434,10 +430,17 @@ fn expand_format_args<'hir>(
                 // ```
                 //  Piece::num(0xE000_0020_0000_0000),
                 // ```
-                // Or, on <64 bit platforms:
+                // Or, on 32 bit platforms:
                 // ```
                 //  Piece::num(0xE000_0020),
                 //  Piece::num(0x0000_0000),
+                // ```
+                // Or, on 16 bit platforms:
+                // ```
+                //  Piece::num(0xE000),
+                //  Piece::num(0x0020),
+                //  Piece::num(0x0000),
+                //  Piece::num(0x0000),
                 // ```
 
                 let bits = make_format_spec(p, &mut argmap);
@@ -455,13 +458,22 @@ fn expand_format_args<'hir>(
                 }
 
                 if ctx.tcx.sess.target.pointer_width >= 64 {
-                    let bits = ctx.expr_u64(fmt.span, bits);
+                    let bits = ctx.expr_usize(macsp, bits);
                     pieces.push(make_piece(ctx, sym::num, bits, macsp));
-                } else {
-                    let high = ctx.expr_u32(fmt.span, (bits >> 32) as u32);
-                    let low = ctx.expr_u32(fmt.span, bits as u32);
+                } else if ctx.tcx.sess.target.pointer_width >= 32 {
+                    let high = ctx.expr_usize(macsp, bits >> 32);
+                    let low = ctx.expr_usize(macsp, bits & 0xFFFF_FFFF);
                     pieces.push(make_piece(ctx, sym::num, high, macsp));
                     pieces.push(make_piece(ctx, sym::num, low, macsp));
+                } else {
+                    let w1 = ctx.expr_usize(macsp, bits >> 48);
+                    let w2 = ctx.expr_usize(macsp, bits >> 32 & 0xFFFF);
+                    let w3 = ctx.expr_usize(macsp, bits >> 16 & 0xFFFF);
+                    let w4 = ctx.expr_usize(macsp, bits & 0xFFFF);
+                    pieces.push(make_piece(ctx, sym::num, w1, macsp));
+                    pieces.push(make_piece(ctx, sym::num, w2, macsp));
+                    pieces.push(make_piece(ctx, sym::num, w3, macsp));
+                    pieces.push(make_piece(ctx, sym::num, w4, macsp));
                 }
 
                 implicit_arg_index = (bits & 0x3FF) + 1;
@@ -476,11 +488,7 @@ fn expand_format_args<'hir>(
     // ```
     //  Piece::num(0),
     // ```
-    let zero = if ctx.tcx.sess.target.pointer_width >= 64 {
-        ctx.expr_u64(fmt.span, 0)
-    } else {
-        ctx.expr_u32(fmt.span, 0)
-    };
+    let zero = ctx.expr_usize(macsp, 0);
     pieces.push(make_piece(ctx, sym::num, zero, macsp));
 
     // ```
@@ -565,7 +573,7 @@ fn expand_format_args<'hir>(
         let elements =
             ctx.arena.alloc_from_iter(argmap.iter().map(|(&(arg_index, ty), placeholder_span)| {
                 if let ArgumentType::Constant(c) = ty {
-                    let arg = ctx.arena.alloc(ctx.expr_usize(macsp, c));
+                    let arg = ctx.arena.alloc(ctx.expr_usize(macsp, c.into()));
                     let arg = ctx.arena.alloc(ctx.expr(
                         macsp,
                         hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, arg),
@@ -609,7 +617,7 @@ fn expand_format_args<'hir>(
         let args = ctx.arena.alloc_from_iter(argmap.iter().map(
             |(&(arg_index, ty), &placeholder_span)| {
                 if let ArgumentType::Constant(c) = ty {
-                    let arg = ctx.arena.alloc(ctx.expr_usize(macsp, c));
+                    let arg = ctx.arena.alloc(ctx.expr_usize(macsp, c.into()));
                     let arg = ctx.arena.alloc(ctx.expr(
                         macsp,
                         hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, arg),
