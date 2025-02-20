@@ -85,7 +85,7 @@ fn has_ffi_unwind_calls(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
             let lint_root = body.source_scopes[terminator.source_info.scope]
                 .local_data
                 .as_ref()
-                .assert_crate_local()
+                .unwrap_crate_local()
                 .lint_root;
             let span = terminator.source_info.span;
 

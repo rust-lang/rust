@@ -205,7 +205,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
             let node = mir.source_scopes[scope]
                 .local_data
                 .as_ref()
-                .assert_crate_local()
+                .unwrap_crate_local()
                 .lint_root;
 
             if let Some(snip) = span.get_source_text(cx)

@@ -79,7 +79,7 @@ impl<'tcx> ConstMutationChecker<'_, 'tcx> {
             let lint_root = self.body.source_scopes[source_info.scope]
                 .local_data
                 .as_ref()
-                .assert_crate_local()
+                .unwrap_crate_local()
                 .lint_root;
 
             Some((lint_root, source_info.span, self.tcx.def_span(const_item)))

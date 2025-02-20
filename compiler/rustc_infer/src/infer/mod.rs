@@ -28,7 +28,6 @@ use rustc_middle::bug;
 use rustc_middle::infer::canonical::{CanonicalQueryInput, CanonicalVarValues};
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::select;
-pub use rustc_middle::ty::IntVarValue;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::{
     BoundVarReplacerDelegate, TypeFoldable, TypeFolder, TypeSuperFoldable, fold_regions,

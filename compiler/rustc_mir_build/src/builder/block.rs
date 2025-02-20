@@ -331,8 +331,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let expr = &this.thir[expr_id];
             let tail_result_is_ignored =
                 destination_ty.is_unit() || this.block_context.currently_ignores_tail_results();
-            this.block_context
-                .push(BlockFrame::TailExpr { tail_result_is_ignored, span: expr.span });
+            this.block_context.push(BlockFrame::TailExpr {
+                info: BlockTailInfo { tail_result_is_ignored, span: expr.span },
+            });
 
             block = this.expr_into_dest(destination, block, expr_id).into_block();
             let popped = this.block_context.pop();

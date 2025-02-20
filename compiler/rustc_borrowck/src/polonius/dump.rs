@@ -226,7 +226,7 @@ fn emit_polonius_mir<'tcx>(
         regioncx,
         closure_region_requirements,
         borrow_set,
-        pass_where.clone(),
+        pass_where,
         out,
     )?;
 
