@@ -819,7 +819,9 @@ pub enum BuiltinLintDiag {
         is_macro: bool,
     },
     OutOfScopeMacroCalls {
+        span: Span,
         path: String,
+        location: String,
     },
     UnexpectedBuiltinCfg {
         cfg: String,

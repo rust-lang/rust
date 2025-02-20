@@ -857,8 +857,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 ),
                 path_res @ (PathResult::NonModule(..) | PathResult::Failed { .. }) => {
                     let mut suggestion = None;
-                    let (span, label, module) =
-                        if let PathResult::Failed { span, label, module, .. } = path_res {
+                    let (span, label, module, segment) =
+                        if let PathResult::Failed { span, label, module, segment_name, .. } =
+                            path_res
+                        {
                             // try to suggest if it's not a macro, maybe a function
                             if let PathResult::NonModule(partial_res) =
                                 self.maybe_resolve_path(&path, Some(ValueNS), &parent_scope, None)
@@ -876,7 +878,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                     Applicability::MaybeIncorrect,
                                 ));
                             }
-                            (span, label, module)
+                            (span, label, module, segment_name)
                         } else {
                             (
                                 path_span,
@@ -886,12 +888,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                     kind.descr()
                                 ),
                                 None,
+                                path.last().map(|segment| segment.ident.name).unwrap(),
                             )
                         };
                     self.report_error(
                         span,
                         ResolutionError::FailedToResolve {
-                            segment: path.last().map(|segment| segment.ident.name),
+                            segment: Some(segment),
                             label,
                             suggestion,
                             module,
@@ -1067,11 +1070,24 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 None,
             );
             if fallback_binding.ok().and_then(|b| b.res().opt_def_id()) != Some(def_id) {
+                let location = match parent_scope.module.kind {
+                    ModuleKind::Def(_, _, name) if name == kw::Empty => {
+                        "the crate root".to_string()
+                    }
+                    ModuleKind::Def(kind, def_id, name) => {
+                        format!("{} `{name}`", kind.descr(def_id))
+                    }
+                    ModuleKind::Block => "this scope".to_string(),
+                };
                 self.tcx.sess.psess.buffer_lint(
                     OUT_OF_SCOPE_MACRO_CALLS,
                     path.span,
                     node_id,
-                    BuiltinLintDiag::OutOfScopeMacroCalls { path: pprust::path_to_string(path) },
+                    BuiltinLintDiag::OutOfScopeMacroCalls {
+                        span: path.span,
+                        path: pprust::path_to_string(path),
+                        location,
+                    },
                 );
             }
         }
