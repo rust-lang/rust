@@ -286,6 +286,28 @@ macro_rules! top_level_options {
                 mods.sort_by(|a, b| a.opt.cmp(&b.opt));
                 mods
             }
+
+            pub fn target_feature_flag_enabled(&self, flag: &str) -> bool {
+                match flag {
+                    "x86-retpoline" => self.unstable_opts.x86_retpoline,
+                    _ => false,
+                }
+            }
+
+            pub fn fill_target_features_by_flags(
+                unstable_opts: &UnstableOptions, cg: &mut CodegenOptions
+            ) {
+                if unstable_opts.x86_retpoline {
+                    if !cg.target_feature.is_empty() {
+                        cg.target_feature.push(',');
+                    }
+                    cg.target_feature.push_str(
+                        "+retpoline-external-thunk,\
+                        +retpoline-indirect-branches,\
+                        +retpoline-indirect-calls"
+                    );
+                }
+            }
         }
     );
 }
@@ -2608,6 +2630,9 @@ written to standard error output)"),
         "use spec-compliant C ABI for `wasm32-unknown-unknown` (default: legacy)"),
     write_long_types_to_disk: bool = (true, parse_bool, [UNTRACKED],
         "whether long type names should be written to files instead of being printed in errors"),
+    x86_retpoline: bool = (false, parse_bool, [TRACKED TARGET_MODIFIER],
+        "enable retpoline-external-thunk, retpoline-indirect-branches and retpoline-indirect-calls \
+        target features (default: no)"),
     // tidy-alphabetical-end
 
     // If you add a new option, please update:
