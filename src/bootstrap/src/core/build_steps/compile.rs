@@ -414,7 +414,7 @@ fn copy_self_contained_objects(
     } else if target.contains("-wasi") {
         let srcdir = builder.wasi_libdir(target).unwrap_or_else(|| {
             panic!(
-                "Target {:?} does not have a \"wasi-root\" key in Config.toml \
+                "Target {:?} does not have a \"wasi-root\" key in bootstrap.toml \
                     or `$WASI_SDK_PATH` set",
                 target.triple
             )
@@ -1275,7 +1275,7 @@ pub fn rustc_cargo_env(
         .env("CFG_VERSION", builder.rust_version());
 
     // Some tools like Cargo detect their own git information in build scripts. When omit-git-hash
-    // is enabled in config.toml, we pass this environment variable to tell build scripts to avoid
+    // is enabled in bootstrap.toml, we pass this environment variable to tell build scripts to avoid
     // detecting git information on their own.
     if builder.config.omit_git_hash {
         cargo.env("CFG_OMIT_GIT_HASH", "1");
@@ -1519,7 +1519,7 @@ fn is_codegen_cfg_needed(path: &TaskPath, run: &RunConfig<'_>) -> bool {
         {
             run.builder.info(
                 "WARNING: no codegen-backends config matched the requested path to build a codegen backend. \
-                HELP: add backend to codegen-backends in config.toml.",
+                HELP: add backend to codegen-backends in bootstrap.toml.",
             );
             return true;
         }
@@ -1531,7 +1531,7 @@ fn is_codegen_cfg_needed(path: &TaskPath, run: &RunConfig<'_>) -> bool {
 impl Step for CodegenBackend {
     type Output = ();
     const ONLY_HOSTS: bool = true;
-    /// Only the backends specified in the `codegen-backends` entry of `config.toml` are built.
+    /// Only the backends specified in the `codegen-backends` entry of `bootstrap.toml` are built.
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {

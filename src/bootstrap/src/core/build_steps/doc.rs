@@ -1220,7 +1220,7 @@ impl Step for RustcBook {
         cmd.env("RUSTC_BOOTSTRAP", "1");
 
         // If the lib directories are in an unusual location (changed in
-        // config.toml), then this needs to explicitly update the dylib search
+        // bootstrap.toml), then this needs to explicitly update the dylib search
         // path.
         builder.add_rustc_lib_path(self.compiler, &mut cmd);
         let doc_generator_guard = builder.msg(
