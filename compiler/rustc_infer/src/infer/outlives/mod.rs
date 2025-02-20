@@ -20,7 +20,7 @@ pub(crate) mod verify;
 #[instrument(level = "debug", skip(param_env), ret)]
 pub fn explicit_outlives_bounds<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
-) -> impl Iterator<Item = OutlivesBound<'tcx>> + 'tcx {
+) -> impl Iterator<Item = OutlivesBound<'tcx>> {
     param_env
         .caller_bounds()
         .into_iter()

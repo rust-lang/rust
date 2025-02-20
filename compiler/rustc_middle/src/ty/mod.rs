@@ -1802,7 +1802,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         did: DefId,
         attr: &'attr [Symbol],
-    ) -> impl Iterator<Item = &'tcx hir::Attribute> + 'attr
+    ) -> impl Iterator<Item = &'tcx hir::Attribute>
     where
         'tcx: 'attr,
     {

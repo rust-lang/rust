@@ -188,7 +188,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         trait_def_id: DefId,
         self_ty: Ty<'tcx>,
-    ) -> impl Iterator<Item = DefId> + 'tcx {
+    ) -> impl Iterator<Item = DefId> {
         let impls = self.trait_impls_of(trait_def_id);
         if let Some(simp) =
             fast_reject::simplify_type(self, self_ty, TreatParams::InstantiateWithInfer)
@@ -204,7 +204,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns an iterator containing all impls for `trait_def_id`.
     ///
     /// `trait_def_id` MUST BE the `DefId` of a trait.
-    pub fn all_impls(self, trait_def_id: DefId) -> impl Iterator<Item = DefId> + 'tcx {
+    pub fn all_impls(self, trait_def_id: DefId) -> impl Iterator<Item = DefId> {
         let TraitImpls { blanket_impls, non_blanket_impls } = self.trait_impls_of(trait_def_id);
 
         blanket_impls.iter().chain(non_blanket_impls.iter().flat_map(|(_, v)| v)).cloned()
