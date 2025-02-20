@@ -261,7 +261,7 @@ impl<'a, Node: Idx> SpantreeBuilder<'a, Node> {
         debug_assert!(
             span_edges
                 .iter_enumerated()
-                .all(|(node, span_edge)| { span_edge.is_some() <= self.is_supernode(node) }),
+                .all(|(node, span_edge)| span_edge.is_some() <= self.is_supernode(node)),
             "only supernodes can have a span edge",
         );
         debug_assert!(

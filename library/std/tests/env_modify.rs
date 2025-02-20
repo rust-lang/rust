@@ -91,9 +91,9 @@ fn test_env_set_var() {
     unsafe {
         set_var(&n, "VALUE");
     }
-    assert!(!e.any(|(k, v)| { &*k == &*n && &*v == "VALUE" }));
+    assert!(!e.any(|(k, v)| &*k == &*n && &*v == "VALUE"));
 
-    assert!(vars_os().any(|(k, v)| { &*k == &*n && &*v == "VALUE" }));
+    assert!(vars_os().any(|(k, v)| &*k == &*n && &*v == "VALUE"));
 }
 
 #[test]

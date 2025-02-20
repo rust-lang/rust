@@ -2029,13 +2029,13 @@ impl<'a, K, V, S> RawEntryMut<'a, K, V, S> {
     ///
     /// map.raw_entry_mut()
     ///    .from_key("poneyland")
-    ///    .and_modify(|_k, v| { *v += 1 })
+    ///    .and_modify(|_k, v| *v += 1)
     ///    .or_insert("poneyland", 42);
     /// assert_eq!(map["poneyland"], 42);
     ///
     /// map.raw_entry_mut()
     ///    .from_key("poneyland")
-    ///    .and_modify(|_k, v| { *v += 1 })
+    ///    .and_modify(|_k, v| *v += 1)
     ///    .or_insert("poneyland", 0);
     /// assert_eq!(map["poneyland"], 43);
     /// ```
@@ -2886,12 +2886,12 @@ impl<'a, K, V> Entry<'a, K, V> {
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     ///
     /// map.entry("poneyland")
-    ///    .and_modify(|e| { *e += 1 })
+    ///    .and_modify(|e| *e += 1)
     ///    .or_insert(42);
     /// assert_eq!(map["poneyland"], 42);
     ///
     /// map.entry("poneyland")
-    ///    .and_modify(|e| { *e += 1 })
+    ///    .and_modify(|e| *e += 1)
     ///    .or_insert(42);
     /// assert_eq!(map["poneyland"], 43);
     /// ```

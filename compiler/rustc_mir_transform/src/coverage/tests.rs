@@ -217,7 +217,7 @@ fn print_mir_graphviz(name: &str, mir_body: &Body<'_>) {
                         mir_body
                             .basic_blocks
                             .successors(bb)
-                            .map(|successor| { format!("    {:?} -> {:?};", bb, successor) })
+                            .map(|successor| format!("    {:?} -> {:?};", bb, successor))
                             .join("\n")
                     )
                 })
@@ -241,7 +241,7 @@ fn print_coverage_graphviz(name: &str, mir_body: &Body<'_>, graph: &graph::Cover
                         mir_body[bcb_data.last_bb()].terminator().kind.name(),
                         graph
                             .successors(bcb)
-                            .map(|successor| { format!("    {:?} -> {:?};", bcb, successor) })
+                            .map(|successor| format!("    {:?} -> {:?};", bcb, successor))
                             .join("\n")
                     )
                 })

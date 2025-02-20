@@ -4,4 +4,3 @@
 //@ pp-exact
 
 fn main() { let _a = (async { }); }
-//~^ WARNING unnecessary parentheses around assigned value
