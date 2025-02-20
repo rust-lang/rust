@@ -1,9 +1,8 @@
 //! This module ensures that if a function's ABI requires a particular target feature,
 //! that target feature is enabled both on the callee and all callers.
-use rustc_abi::{BackendRepr, RegKind};
+use rustc_abi::{BackendRepr, ExternAbi, RegKind};
 use rustc_hir::CRATE_HIR_ID;
 use rustc_middle::mir::{self, traversal};
-use rustc_middle::ty::inherent::*;
 use rustc_middle::ty::{self, Instance, InstanceKind, Ty, TyCtxt};
 use rustc_session::lint::builtin::ABI_UNSUPPORTED_VECTOR_TYPES;
 use rustc_span::def_id::DefId;
@@ -97,7 +96,7 @@ fn check_call_site_abi<'tcx>(
     span: Span,
     caller: InstanceKind<'tcx>,
 ) {
-    if callee.fn_sig(tcx).abi().is_rust() {
+    if callee.fn_sig(tcx).abi() == ExternAbi::Rust {
         // "Rust" ABI never passes arguments in vector registers.
         return;
     }

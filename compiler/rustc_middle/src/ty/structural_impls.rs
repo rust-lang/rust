@@ -7,13 +7,12 @@ use std::fmt::{self, Debug};
 
 use rustc_abi::TyAndLayout;
 use rustc_ast::InlineAsmTemplatePiece;
-use rustc_ast_ir::try_visit;
-use rustc_ast_ir::visit::VisitorResult;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::LocalDefId;
 use rustc_span::Span;
 use rustc_span::source_map::Spanned;
 use rustc_type_ir::ConstKind;
+use rustc_type_ir::visit::{VisitorResult, try_visit};
 
 use super::print::PrettyPrinter;
 use super::{GenericArg, GenericArgKind, Pattern, Region};

@@ -18,7 +18,6 @@ use rustc_middle::ty::{
     TypeFoldable, TypeFolder, TypeSuperFoldable, TypeckResults,
 };
 use rustc_span::{BytePos, DUMMY_SP, FileName, Ident, Span, sym};
-use rustc_type_ir::inherent::*;
 use rustc_type_ir::visit::TypeVisitableExt;
 use tracing::{debug, instrument, warn};
 
@@ -217,7 +216,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ClosureEraser<'a, 'tcx> {
                                 // `_` because then we'd end up with `Vec<_, _>`, instead of
                                 // `Vec<_>`.
                                 arg
-                            } else if let GenericArgKind::Type(_) = arg.kind() {
+                            } else if let GenericArgKind::Type(_) = arg.unpack() {
                                 // We don't replace lifetime or const params, only type params.
                                 self.new_infer().into()
                             } else {

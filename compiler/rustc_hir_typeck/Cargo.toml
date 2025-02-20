@@ -8,7 +8,6 @@ edition = "2021"
 itertools = "0.12"
 rustc_abi = { path = "../rustc_abi" }
 rustc_ast = { path = "../rustc_ast" }
-rustc_ast_ir = { path = "../rustc_ast_ir" }
 rustc_attr_parsing = { path = "../rustc_attr_parsing" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }

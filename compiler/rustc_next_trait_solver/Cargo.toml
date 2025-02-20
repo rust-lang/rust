@@ -6,7 +6,6 @@ edition = "2021"
 [dependencies]
 # tidy-alphabetical-start
 derive-where = "1.2.7"
-rustc_ast_ir = { path = "../rustc_ast_ir", default-features = false }
 rustc_data_structures = { path = "../rustc_data_structures", optional = true }
 rustc_index = { path = "../rustc_index", default-features = false }
 rustc_macros = { path = "../rustc_macros", optional = true }
@@ -22,7 +21,6 @@ nightly = [
     "dep:rustc_data_structures",
     "dep:rustc_macros",
     "dep:rustc_serialize",
-    "rustc_ast_ir/nightly",
     "rustc_index/nightly",
     "rustc_type_ir/nightly",
 ]
