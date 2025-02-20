@@ -6,5 +6,7 @@ extern "C" {
 }
 
 fn main() {
-    println!("C", unsafe { &symbol });
+    match &unsafe { &symbol } {
+        _x => {}
+    }
 }
