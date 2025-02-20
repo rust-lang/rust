@@ -1,3 +1,5 @@
+---
+---
 
 //@ compile-flags: -Zunpretty=normal
 //@ check-pass
