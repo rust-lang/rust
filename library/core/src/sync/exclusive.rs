@@ -164,6 +164,7 @@ impl<T: ?Sized> Exclusive<T> {
 
 #[unstable(feature = "exclusive_wrapper", issue = "98407")]
 impl<T> From<T> for Exclusive<T> {
+    /// Creates a new `Exclusive` containing [`T`], wrapping the value in an `Exclusive`
     #[inline]
     fn from(t: T) -> Self {
         Self::new(t)

@@ -189,6 +189,7 @@ impl TryFrom<usize> for Alignment {
 
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
 impl From<Alignment> for NonZero<usize> {
+    /// `Alignment` is non zero so the inner enum value is returned
     #[inline]
     fn from(align: Alignment) -> NonZero<usize> {
         align.as_nonzero()
@@ -197,6 +198,7 @@ impl From<Alignment> for NonZero<usize> {
 
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
 impl From<Alignment> for usize {
+    /// `Alignment` is unsined so the inner enum value is returned
     #[inline]
     fn from(align: Alignment) -> usize {
         align.as_usize()
