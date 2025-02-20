@@ -30,7 +30,7 @@ pub fn visit_local_usage(locals: &[Local], mir: &Body<'_>, location: Location) -
         locals.len()
     ];
 
-    traversal::Postorder::new(&mir.basic_blocks, location.block, ())
+    traversal::Postorder::new(&mir.basic_blocks, location.block, None)
         .collect::<Vec<_>>()
         .into_iter()
         .rev()
