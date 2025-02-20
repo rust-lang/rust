@@ -482,15 +482,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 }),
                             }
                         }
-                        thir::InlineAsmOperand::SymFn { value, span } => {
-                            mir::InlineAsmOperand::SymFn {
-                                value: Box::new(ConstOperand {
-                                    span,
-                                    user_ty: None,
-                                    const_: value,
-                                }),
-                            }
-                        }
+                        thir::InlineAsmOperand::SymFn { value } => mir::InlineAsmOperand::SymFn {
+                            value: Box::new(this.as_constant(&this.thir[value])),
+                        },
                         thir::InlineAsmOperand::SymStatic { def_id } => {
                             mir::InlineAsmOperand::SymStatic { def_id }
                         }
@@ -518,10 +512,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
 
                 let asm_macro = match asm_macro {
-                    AsmMacro::Asm => InlineAsmMacro::Asm,
-                    AsmMacro::GlobalAsm => {
-                        span_bug!(expr_span, "unexpected global_asm! in inline asm")
-                    }
+                    AsmMacro::Asm | AsmMacro::GlobalAsm => InlineAsmMacro::Asm,
                     AsmMacro::NakedAsm => InlineAsmMacro::NakedAsm,
                 };
 

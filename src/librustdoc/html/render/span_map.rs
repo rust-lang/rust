@@ -288,7 +288,7 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
             | ItemKind::Use(_, _)
             | ItemKind::ExternCrate(_)
             | ItemKind::ForeignMod { .. }
-            | ItemKind::GlobalAsm(_)
+            | ItemKind::GlobalAsm { .. }
             // We already have "visit_mod" above so no need to check it here.
             | ItemKind::Mod(_) => {}
         }

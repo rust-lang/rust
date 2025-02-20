@@ -48,13 +48,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         for param in body.params {
             wbcx.visit_node_id(param.pat.span, param.hir_id);
         }
-        // Type only exists for constants and statics, not functions.
         match self.tcx.hir_body_owner_kind(item_def_id) {
-            hir::BodyOwnerKind::Const { .. } | hir::BodyOwnerKind::Static(_) => {
+            // Visit the type of a const or static, which is used during THIR building.
+            hir::BodyOwnerKind::Const { .. }
+            | hir::BodyOwnerKind::Static(_)
+            | hir::BodyOwnerKind::GlobalAsm => {
                 let item_hir_id = self.tcx.local_def_id_to_hir_id(item_def_id);
                 wbcx.visit_node_id(body.value.span, item_hir_id);
             }
-            hir::BodyOwnerKind::Closure | hir::BodyOwnerKind::Fn => (),
+            // For closures and consts, we already plan to visit liberated signatures.
+            hir::BodyOwnerKind::Closure | hir::BodyOwnerKind::Fn => {}
         }
         wbcx.visit_body(body);
         wbcx.visit_min_capture_map();

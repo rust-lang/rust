@@ -189,8 +189,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     // Exclude `GlobalAsm` here which cannot have generics.
                     Node::Expr(&Expr { kind: ExprKind::InlineAsm(asm), .. })
                         if asm.operands.iter().any(|(op, _op_sp)| match op {
-                            hir::InlineAsmOperand::Const { anon_const }
-                            | hir::InlineAsmOperand::SymFn { anon_const } => {
+                            hir::InlineAsmOperand::Const { anon_const } => {
                                 anon_const.hir_id == hir_id
                             }
                             _ => false,

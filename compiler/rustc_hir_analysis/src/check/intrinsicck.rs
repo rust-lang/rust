@@ -6,7 +6,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem};
 use rustc_middle::bug;
-use rustc_middle::ty::{self, FloatTy, IntTy, Ty, TyCtxt, TypeVisitableExt, UintTy};
+use rustc_middle::ty::{self, Article, FloatTy, IntTy, Ty, TyCtxt, TypeVisitableExt, UintTy};
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Symbol, sym};
@@ -16,10 +16,11 @@ use rustc_target::asm::{
 
 use crate::errors::RegisterTypeUnstable;
 
-pub struct InlineAsmCtxt<'a, 'tcx> {
+pub struct InlineAsmCtxt<'a, 'tcx: 'a> {
     tcx: TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
-    get_operand_ty: Box<dyn Fn(&'tcx hir::Expr<'tcx>) -> Ty<'tcx> + 'a>,
+    target_features: &'tcx FxIndexSet<Symbol>,
+    expr_ty: Box<dyn Fn(&hir::Expr<'tcx>) -> Ty<'tcx> + 'a>,
 }
 
 enum NonAsmTypeReason<'tcx> {
@@ -29,25 +30,24 @@ enum NonAsmTypeReason<'tcx> {
 }
 
 impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
-    pub fn new_global_asm(tcx: TyCtxt<'tcx>) -> Self {
+    pub fn new(
+        tcx: TyCtxt<'tcx>,
+        def_id: LocalDefId,
+        get_operand_ty: impl Fn(&hir::Expr<'tcx>) -> Ty<'tcx> + 'a,
+    ) -> Self {
         InlineAsmCtxt {
             tcx,
             typing_env: ty::TypingEnv {
                 typing_mode: ty::TypingMode::non_body_analysis(),
                 param_env: ty::ParamEnv::empty(),
             },
-            get_operand_ty: Box::new(|e| bug!("asm operand in global asm: {e:?}")),
+            target_features: tcx.asm_target_features(def_id),
+            expr_ty: Box::new(get_operand_ty),
         }
     }
 
-    // FIXME(#132279): This likely causes us to incorrectly handle opaque types in their
-    // defining scope.
-    pub fn new_in_fn(
-        tcx: TyCtxt<'tcx>,
-        typing_env: ty::TypingEnv<'tcx>,
-        get_operand_ty: impl Fn(&'tcx hir::Expr<'tcx>) -> Ty<'tcx> + 'a,
-    ) -> Self {
-        InlineAsmCtxt { tcx, typing_env, get_operand_ty: Box::new(get_operand_ty) }
+    fn expr_ty(&self, expr: &hir::Expr<'tcx>) -> Ty<'tcx> {
+        (self.expr_ty)(expr)
     }
 
     // FIXME(compiler-errors): This could use `<$ty as Pointee>::Metadata == ()`
@@ -139,9 +139,8 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         template: &[InlineAsmTemplatePiece],
         is_input: bool,
         tied_input: Option<(&'tcx hir::Expr<'tcx>, Option<InlineAsmType>)>,
-        target_features: &FxIndexSet<Symbol>,
     ) -> Option<InlineAsmType> {
-        let ty = (self.get_operand_ty)(expr);
+        let ty = self.expr_ty(expr);
         if ty.has_non_region_infer() {
             bug!("inference variable in asm operand ty: {:?} {:?}", expr, ty);
         }
@@ -229,7 +228,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         if let Some((in_expr, Some(in_asm_ty))) = tied_input {
             if in_asm_ty != asm_ty {
                 let msg = "incompatible types for asm inout argument";
-                let in_expr_ty = (self.get_operand_ty)(in_expr);
+                let in_expr_ty = self.expr_ty(in_expr);
                 self.tcx
                     .dcx()
                     .struct_span_err(vec![in_expr.span, expr.span], msg)
@@ -291,7 +290,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         // (!). In that case we still need the earlier check to verify that the
         // register class is usable at all.
         if let Some(feature) = feature {
-            if !target_features.contains(feature) {
+            if !self.target_features.contains(feature) {
                 let msg = format!("`{feature}` target feature is not enabled");
                 self.tcx
                     .dcx()
@@ -351,14 +350,13 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         Some(asm_ty)
     }
 
-    pub fn check_asm(&self, asm: &hir::InlineAsm<'tcx>, enclosing_id: LocalDefId) {
-        let target_features = self.tcx.asm_target_features(enclosing_id.to_def_id());
+    pub fn check_asm(&self, asm: &hir::InlineAsm<'tcx>) {
         let Some(asm_arch) = self.tcx.sess.asm_arch else {
             self.tcx.dcx().delayed_bug("target architecture does not support asm");
             return;
         };
         let allow_experimental_reg = self.tcx.features().asm_experimental_reg();
-        for (idx, (op, op_sp)) in asm.operands.iter().enumerate() {
+        for (idx, &(op, op_sp)) in asm.operands.iter().enumerate() {
             // Validate register classes against currently enabled target
             // features. We check that at least one type is available for
             // the enabled features.
@@ -381,12 +379,12 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     if let Err(msg) = reg.validate(
                         asm_arch,
                         self.tcx.sess.relocation_model(),
-                        target_features,
+                        self.target_features,
                         &self.tcx.sess.target,
                         op.is_clobber(),
                     ) {
                         let msg = format!("cannot use register `{}`: {}", reg.name(), msg);
-                        self.tcx.dcx().span_err(*op_sp, msg);
+                        self.tcx.dcx().span_err(op_sp, msg);
                         continue;
                     }
                 }
@@ -401,7 +399,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     {
                         match feature {
                             Some(feature) => {
-                                if target_features.contains(&feature) {
+                                if self.target_features.contains(&feature) {
                                     missing_required_features.clear();
                                     break;
                                 } else {
@@ -426,7 +424,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                                 reg_class.name(),
                                 feature
                             );
-                            self.tcx.dcx().span_err(*op_sp, msg);
+                            self.tcx.dcx().span_err(op_sp, msg);
                             // register isn't enabled, don't do more checks
                             continue;
                         }
@@ -440,7 +438,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                                     .intersperse(", ")
                                     .collect::<String>(),
                             );
-                            self.tcx.dcx().span_err(*op_sp, msg);
+                            self.tcx.dcx().span_err(op_sp, msg);
                             // register isn't enabled, don't do more checks
                             continue;
                         }
@@ -448,52 +446,21 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                 }
             }
 
-            match *op {
+            match op {
                 hir::InlineAsmOperand::In { reg, expr } => {
-                    self.check_asm_operand_type(
-                        idx,
-                        reg,
-                        expr,
-                        asm.template,
-                        true,
-                        None,
-                        target_features,
-                    );
+                    self.check_asm_operand_type(idx, reg, expr, asm.template, true, None);
                 }
                 hir::InlineAsmOperand::Out { reg, late: _, expr } => {
                     if let Some(expr) = expr {
-                        self.check_asm_operand_type(
-                            idx,
-                            reg,
-                            expr,
-                            asm.template,
-                            false,
-                            None,
-                            target_features,
-                        );
+                        self.check_asm_operand_type(idx, reg, expr, asm.template, false, None);
                     }
                 }
                 hir::InlineAsmOperand::InOut { reg, late: _, expr } => {
-                    self.check_asm_operand_type(
-                        idx,
-                        reg,
-                        expr,
-                        asm.template,
-                        false,
-                        None,
-                        target_features,
-                    );
+                    self.check_asm_operand_type(idx, reg, expr, asm.template, false, None);
                 }
                 hir::InlineAsmOperand::SplitInOut { reg, late: _, in_expr, out_expr } => {
-                    let in_ty = self.check_asm_operand_type(
-                        idx,
-                        reg,
-                        in_expr,
-                        asm.template,
-                        true,
-                        None,
-                        target_features,
-                    );
+                    let in_ty =
+                        self.check_asm_operand_type(idx, reg, in_expr, asm.template, true, None);
                     if let Some(out_expr) = out_expr {
                         self.check_asm_operand_type(
                             idx,
@@ -502,7 +469,6 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                             asm.template,
                             false,
                             Some((in_expr, in_ty)),
-                            target_features,
                         );
                     }
                 }
@@ -514,11 +480,25 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     );
                 }
                 // Typeck has checked that SymFn refers to a function.
-                hir::InlineAsmOperand::SymFn { anon_const } => {
-                    debug_assert_matches!(
-                        self.tcx.type_of(anon_const.def_id).instantiate_identity().kind(),
-                        ty::Error(_) | ty::FnDef(..)
-                    );
+                hir::InlineAsmOperand::SymFn { expr } => {
+                    let ty = self.expr_ty(expr);
+                    match ty.kind() {
+                        ty::FnDef(..) => {}
+                        ty::Error(_) => {}
+                        _ => {
+                            self.tcx
+                                .dcx()
+                                .struct_span_err(op_sp, "invalid `sym` operand")
+                                .with_span_label(
+                                    expr.span,
+                                    format!("is {} `{}`", ty.kind().article(), ty),
+                                )
+                                .with_help(
+                                    "`sym` operands must refer to either a function or a static",
+                                )
+                                .emit();
+                        }
+                    }
                 }
                 // AST lowering guarantees that SymStatic points to a static.
                 hir::InlineAsmOperand::SymStatic { .. } => {}

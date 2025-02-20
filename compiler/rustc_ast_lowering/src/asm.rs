@@ -1,13 +1,12 @@
 use std::collections::hash_map::Entry;
 use std::fmt::Write;
 
-use rustc_ast::ptr::P;
 use rustc_ast::*;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_session::parse::feature_err;
-use rustc_span::{Span, kw, sym};
+use rustc_span::{Span, sym};
 use rustc_target::asm;
 
 use super::LoweringContext;
@@ -230,20 +229,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 tokens: None,
                             };
 
-                            // Wrap the expression in an AnonConst.
-                            let parent_def_id = self.current_hir_id_owner.def_id;
-                            let node_id = self.next_node_id();
-                            self.create_def(
-                                parent_def_id,
-                                node_id,
-                                kw::Empty,
-                                DefKind::AnonConst,
-                                *op_sp,
-                            );
-                            let anon_const = AnonConst { id: node_id, value: P(expr) };
-                            hir::InlineAsmOperand::SymFn {
-                                anon_const: self.lower_anon_const_to_anon_const(&anon_const),
-                            }
+                            hir::InlineAsmOperand::SymFn { expr: self.lower_expr(&expr) }
                         }
                     }
                     InlineAsmOperand::Label { block } => {

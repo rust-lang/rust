@@ -35,13 +35,6 @@ fn anon_const_type_of<'tcx>(icx: &ItemCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx
     let parent_node_id = tcx.parent_hir_id(hir_id);
     let parent_node = tcx.hir_node(parent_node_id);
 
-    let find_sym_fn = |&(op, op_sp)| match op {
-        hir::InlineAsmOperand::SymFn { anon_const } if anon_const.hir_id == hir_id => {
-            Some((anon_const, op_sp))
-        }
-        _ => None,
-    };
-
     let find_const = |&(op, op_sp)| match op {
         hir::InlineAsmOperand::Const { anon_const } if anon_const.hir_id == hir_id => {
             Some((anon_const, op_sp))
@@ -59,31 +52,7 @@ fn anon_const_type_of<'tcx>(icx: &ItemCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx
 
         // Anon consts outside the type system.
         Node::Expr(&Expr { kind: ExprKind::InlineAsm(asm), .. })
-        | Node::Item(&Item { kind: ItemKind::GlobalAsm(asm), .. })
-            if let Some((anon_const, op_sp)) = asm.operands.iter().find_map(find_sym_fn) =>
-        {
-            let ty = tcx.typeck(def_id).node_type(hir_id);
-
-            match ty.kind() {
-                ty::Error(_) => ty,
-                ty::FnDef(..) => ty,
-                _ => {
-                    let guar = tcx
-                        .dcx()
-                        .struct_span_err(op_sp, "invalid `sym` operand")
-                        .with_span_label(
-                            tcx.def_span(anon_const.def_id),
-                            format!("is {} `{}`", ty.kind().article(), ty),
-                        )
-                        .with_help("`sym` operands must refer to either a function or a static")
-                        .emit();
-
-                    Ty::new_error(tcx, guar)
-                }
-            }
-        }
-        Node::Expr(&Expr { kind: ExprKind::InlineAsm(asm), .. })
-        | Node::Item(&Item { kind: ItemKind::GlobalAsm(asm), .. })
+        | Node::Item(&Item { kind: ItemKind::GlobalAsm { asm, .. }, .. })
             if let Some((anon_const, op_sp)) = asm.operands.iter().find_map(find_const) =>
         {
             let ty = tcx.typeck(def_id).node_type(hir_id);
@@ -313,12 +282,12 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                 let args = ty::GenericArgs::identity_for_item(tcx, def_id);
                 Ty::new_adt(tcx, def, args)
             }
+            ItemKind::GlobalAsm { .. } => tcx.typeck(def_id).node_type(hir_id),
             ItemKind::Trait(..)
             | ItemKind::TraitAlias(..)
             | ItemKind::Macro(..)
             | ItemKind::Mod(..)
             | ItemKind::ForeignMod { .. }
-            | ItemKind::GlobalAsm(..)
             | ItemKind::ExternCrate(..)
             | ItemKind::Use(..) => {
                 span_bug!(item.span, "compute_type_of_item: unexpected item type: {:?}", item.kind);

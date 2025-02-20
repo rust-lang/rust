@@ -101,7 +101,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("FnCtxt::check_asm: {} deferred checks", deferred_asm_checks.len());
         for (asm, hir_id) in deferred_asm_checks.drain(..) {
             let enclosing_id = self.tcx.hir_enclosing_body_owner(hir_id);
-            let get_operand_ty = |expr| {
+            let expr_ty = |expr: &hir::Expr<'tcx>| {
                 let ty = self.typeck_results.borrow().expr_ty_adjusted(expr);
                 let ty = self.resolve_vars_if_possible(ty);
                 if ty.has_non_region_infer() {
@@ -110,12 +110,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.tcx.erase_regions(ty)
                 }
             };
-            InlineAsmCtxt::new_in_fn(
-                self.tcx,
-                self.infcx.typing_env(self.param_env),
-                get_operand_ty,
-            )
-            .check_asm(asm, enclosing_id);
+            InlineAsmCtxt::new(self.tcx, enclosing_id, expr_ty).check_asm(asm);
         }
     }
 

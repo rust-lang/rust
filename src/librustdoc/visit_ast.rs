@@ -439,7 +439,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             }
             // If we're inlining, skip private items.
             _ if self.inlining && !is_pub => {}
-            hir::ItemKind::GlobalAsm(..) => {}
+            hir::ItemKind::GlobalAsm { .. } => {}
             hir::ItemKind::Use(_, hir::UseKind::ListStem) => {}
             hir::ItemKind::Use(path, kind) => {
                 for &res in &path.res {

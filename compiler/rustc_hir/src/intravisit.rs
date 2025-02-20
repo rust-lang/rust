@@ -573,9 +573,13 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
             try_visit!(visitor.visit_id(item.hir_id()));
             walk_list!(visitor, visit_foreign_item_ref, items);
         }
-        ItemKind::GlobalAsm(asm) => {
+        ItemKind::GlobalAsm { asm: _, fake_body } => {
             try_visit!(visitor.visit_id(item.hir_id()));
-            try_visit!(visitor.visit_inline_asm(asm, item.hir_id()));
+            // Visit the fake body, which contains the asm statement.
+            // Therefore we should not visit the asm statement again
+            // outside of the body, or some visitors won't have their
+            // typeck results set correctly.
+            try_visit!(visitor.visit_nested_body(fake_body));
         }
         ItemKind::TyAlias(ref ty, ref generics) => {
             try_visit!(visitor.visit_id(item.hir_id()));
@@ -1442,9 +1446,11 @@ pub fn walk_inline_asm<'v, V: Visitor<'v>>(
                 try_visit!(visitor.visit_expr(in_expr));
                 visit_opt!(visitor, visit_expr, out_expr);
             }
-            InlineAsmOperand::Const { anon_const, .. }
-            | InlineAsmOperand::SymFn { anon_const, .. } => {
+            InlineAsmOperand::Const { anon_const, .. } => {
                 try_visit!(visitor.visit_anon_const(anon_const));
+            }
+            InlineAsmOperand::SymFn { expr, .. } => {
+                try_visit!(visitor.visit_expr(expr));
             }
             InlineAsmOperand::SymStatic { path, .. } => {
                 try_visit!(visitor.visit_qpath(path, id, *op_sp));

@@ -3763,7 +3763,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut diverge = asm.asm_macro.diverges(asm.options);
 
         for (op, _op_sp) in asm.operands {
-            match op {
+            match *op {
                 hir::InlineAsmOperand::In { expr, .. } => {
                     self.check_expr_asm_operand(expr, true);
                 }
@@ -3778,10 +3778,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.check_expr_asm_operand(out_expr, false);
                     }
                 }
+                hir::InlineAsmOperand::SymFn { expr } => {
+                    self.check_expr(expr);
+                }
                 // `AnonConst`s have their own body and is type-checked separately.
                 // As they don't flow into the type system we don't need them to
                 // be well-formed.
-                hir::InlineAsmOperand::Const { .. } | hir::InlineAsmOperand::SymFn { .. } => {}
+                hir::InlineAsmOperand::Const { .. } => {}
                 hir::InlineAsmOperand::SymStatic { .. } => {}
                 hir::InlineAsmOperand::Label { block } => {
                     let previous_diverges = self.diverges.get();

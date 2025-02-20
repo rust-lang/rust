@@ -680,7 +680,7 @@ fn lower_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
         | hir::ItemKind::Use(..)
         | hir::ItemKind::Macro(..)
         | hir::ItemKind::Mod(_)
-        | hir::ItemKind::GlobalAsm(_) => {}
+        | hir::ItemKind::GlobalAsm { .. } => {}
         hir::ItemKind::ForeignMod { items, .. } => {
             for item in *items {
                 let item = tcx.hir_foreign_item(item.id);

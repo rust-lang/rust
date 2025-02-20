@@ -261,7 +261,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
                     HirItem::ForeignMod { .. } => ("ItemForeignMod", LABELS_HIR_ONLY),
 
                     // Module-level inline assembly (from global_asm!)
-                    HirItem::GlobalAsm(..) => ("ItemGlobalAsm", LABELS_HIR_ONLY),
+                    HirItem::GlobalAsm { .. } => ("ItemGlobalAsm", LABELS_HIR_ONLY),
 
                     // A type alias, e.g., `type Foo = Bar<u8>`
                     HirItem::TyAlias(..) => ("ItemTy", LABELS_HIR_ONLY),
