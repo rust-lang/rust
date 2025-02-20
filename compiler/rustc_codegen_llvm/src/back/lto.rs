@@ -362,8 +362,8 @@ fn fat_lto(
                 ptr as *const *const libc::c_char,
                 symbols_below_threshold.len() as libc::size_t,
             );
-            save_temp_bitcode(cgcx, &module, "lto.after-restriction");
         }
+        save_temp_bitcode(cgcx, &module, "lto.after-restriction");
     }
 
     Ok(LtoModuleCodegen::Fat(module))
