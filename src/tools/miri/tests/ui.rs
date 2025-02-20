@@ -217,6 +217,7 @@ fn run_tests(
         ui_test::default_file_filter,
         // This could be used to overwrite the `Config` on a per-test basis.
         |_, _| {},
+        // No GHA output as that would also show in the main rustc repo.
         match args.format {
             Format::Terse => status_emitter::Text::quiet(),
             Format::Pretty => status_emitter::Text::verbose(),
