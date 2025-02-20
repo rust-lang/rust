@@ -522,8 +522,6 @@ fn expand_format_args<'hir>(
         // Don't care about non-arguments.
         .filter(|(&(arg, _), _)| arg != usize::MAX)
         .enumerate()
-        // Don't care about captured arguments, as their expression has no side effects.
-        .filter(|(_, (&(arg, _), _))| !arguments[arg].kind.is_captured())
         // Check that the argument indexes are used one by one in order.
         .all(|(i, (&(arg, _), _))| i == arg)
         // And check that none except possibly the first argument have a yield point.
