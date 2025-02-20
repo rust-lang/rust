@@ -2001,7 +2001,7 @@ supported_targets! {
     ("x86_64-pc-nto-qnx710", x86_64_pc_nto_qnx710),
     ("x86_64-pc-nto-qnx710_iosock", x86_64_pc_nto_qnx710_iosock),
     ("x86_64-pc-nto-qnx800", x86_64_pc_nto_qnx800),
-    ("i586-pc-nto-qnx700", i586_pc_nto_qnx700),
+    ("i686-pc-nto-qnx700", i686_pc_nto_qnx700),
 
     ("aarch64-unknown-linux-ohos", aarch64_unknown_linux_ohos),
     ("armv7-unknown-linux-ohos", armv7_unknown_linux_ohos),

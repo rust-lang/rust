@@ -31,7 +31,7 @@ Currently, the following QNX versions and compilation targets are supported:
 | `aarch64-unknown-nto-qnx710_iosock` | QNX Neutrino 7.1 with io-sock | AArch64             |      ?       |        ✓         |
 | `x86_64-pc-nto-qnx710_iosock`       | QNX Neutrino 7.1 with io-sock | x86_64              |      ?       |        ✓         |
 | `aarch64-unknown-nto-qnx700`        | QNX Neutrino 7.0              | AArch64             |      ?       |        ✓         |
-| `i586-pc-nto-qnx700`                | QNX Neutrino 7.0              | x86                 |              |        ✓         |
+| `i686-pc-nto-qnx700`                | QNX Neutrino 7.0              | x86                 |              |        ✓         |
 
 On QNX Neutrino 7.0 and 7.1, `io-pkt` is used as network stack by default.
 QNX Neutrino 7.1 includes the optional network stack `io-sock`.
