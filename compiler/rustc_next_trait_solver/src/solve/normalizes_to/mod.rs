@@ -28,7 +28,6 @@ where
         &mut self,
         goal: Goal<I, NormalizesTo<I>>,
     ) -> QueryResult<I> {
-        self.set_is_normalizes_to_goal();
         debug_assert!(self.term_is_fully_unconstrained(goal));
         let cx = self.cx();
         match goal.predicate.alias.kind(cx) {

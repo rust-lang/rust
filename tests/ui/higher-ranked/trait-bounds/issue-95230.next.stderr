@@ -1,4 +1,4 @@
-error[E0275]: overflow evaluating the requirement `for<'a> &'a mut Bar well-formed`
+error: the type `&'a mut Bar` is not well-formed
   --> $DIR/issue-95230.rs:9:13
    |
 LL |     for<'a> &'a mut Self:;
@@ -15,4 +15,3 @@ LL |     for<'a> &'a mut Self:;
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0275`.
