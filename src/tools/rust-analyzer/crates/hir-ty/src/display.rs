@@ -438,7 +438,6 @@ pub enum HirDisplayError {
     FmtError,
 }
 impl From<fmt::Error> for HirDisplayError {
-    /// Ignore the `fmt::Error` and return `Self::FmtError`
     fn from(_: fmt::Error) -> Self {
         Self::FmtError
     }
