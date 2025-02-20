@@ -18,8 +18,12 @@ struct Unitter;
 impl Unitter {
     #[allow(clippy::no_effect)]
     pub fn get_unit<F: Fn() -> (), G>(&self, f: F, _g: G) -> ()
+    //~^ unused_unit
+    //~| unused_unit
     where G: Fn() -> () {
+    //~^ unused_unit
         let _y: &dyn Fn() -> () = &f;
+        //~^ unused_unit
         (); // this should not lint, as it's not in return type position
     }
 }
@@ -27,25 +31,35 @@ impl Unitter {
 impl Into<()> for Unitter {
     #[rustfmt::skip]
     fn into(self) -> () {
+    //~^ unused_unit
         ()
+        //~^ unused_unit
     }
 }
 
 trait Trait {
     fn redundant<F: FnOnce() -> (), G, H>(&self, _f: F, _g: G, _h: H)
+    //~^ unused_unit
     where
         G: FnMut() -> (),
+        //~^ unused_unit
         H: Fn() -> ();
+        //~^ unused_unit
 }
 
 impl Trait for Unitter {
     fn redundant<F: FnOnce() -> (), G, H>(&self, _f: F, _g: G, _h: H)
+    //~^ unused_unit
     where
         G: FnMut() -> (),
+        //~^ unused_unit
         H: Fn() -> () {}
+        //~^ unused_unit
 }
 
 fn return_unit() -> () { () }
+//~^ unused_unit
+//~| unused_unit
 
 #[allow(clippy::needless_return)]
 #[allow(clippy::never_loop)]
@@ -56,8 +70,10 @@ fn main() {
     return_unit();
     loop {
         break();
+        //~^ unused_unit
     }
     return();
+    //~^ unused_unit
 }
 
 // https://github.com/rust-lang/rust-clippy/issues/4076
@@ -75,12 +91,15 @@ fn foo() {
 
 #[rustfmt::skip]
 fn test()->(){}
+//~^ unused_unit
 
 #[rustfmt::skip]
 fn test2() ->(){}
+//~^ unused_unit
 
 #[rustfmt::skip]
 fn test3()-> (){}
+//~^ unused_unit
 
 fn macro_expr() {
     macro_rules! e {

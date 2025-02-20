@@ -88,6 +88,7 @@ fn main() {
 // Lint returns and type inference
 fn some_fn(a: bool) -> u8 {
     u8::from(a)
+    //~^ bool_to_int_with_if
 }
 
 fn side_effect() {}

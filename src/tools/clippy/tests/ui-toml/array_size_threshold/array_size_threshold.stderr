@@ -10,7 +10,7 @@ LL | const ABOVE: [u8; 11] = [0; 11];
    = help: to override `-D warnings` add `#[allow(clippy::large_const_arrays)]`
 
 error: allocating a local array larger than 10 bytes
-  --> tests/ui-toml/array_size_threshold/array_size_threshold.rs:8:17
+  --> tests/ui-toml/array_size_threshold/array_size_threshold.rs:9:17
    |
 LL |     let above = [0u8; 11];
    |                 ^^^^^^^^^

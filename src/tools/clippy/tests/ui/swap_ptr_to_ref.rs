@@ -9,9 +9,13 @@ fn main() {
 
     unsafe {
         core::mem::swap(&mut *y, &mut *z);
+        //~^ swap_ptr_to_ref
         core::mem::swap(&mut *y, &mut x);
+        //~^ swap_ptr_to_ref
         core::mem::swap(&mut x, &mut *y);
+        //~^ swap_ptr_to_ref
         core::mem::swap(&mut *addr_of_mut!(x), &mut *addr_of_mut!(x));
+        //~^ swap_ptr_to_ref
     }
 
     let y = &mut x;

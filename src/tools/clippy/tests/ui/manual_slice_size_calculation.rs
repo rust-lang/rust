@@ -15,18 +15,35 @@ fn main() {
 
     // True positives:
     let _ = s_i32.len() * size_of::<i32>(); // WARNING
+    //
+    //~^^ manual_slice_size_calculation
     let _ = size_of::<i32>() * s_i32.len(); // WARNING
+    //
+    //~^^ manual_slice_size_calculation
     let _ = size_of::<i32>() * s_i32.len() * 5; // WARNING
+    //
+    //~^^ manual_slice_size_calculation
     let _ = size_of::<i32>() * s_i32_ref.len(); // WARNING
+    //
+    //~^^ manual_slice_size_calculation
     let _ = size_of::<i32>() * s_i32_ref_ref.len(); // WARNING
+    //
+    //~^^ manual_slice_size_calculation
 
     let len = s_i32.len();
     let size = size_of::<i32>();
     let _ = len * size_of::<i32>(); // WARNING
+    //
+    //~^^ manual_slice_size_calculation
     let _ = s_i32.len() * size; // WARNING
+    //
+    //~^^ manual_slice_size_calculation
     let _ = len * size; // WARNING
+    //
+    //~^^ manual_slice_size_calculation
 
     let _ = external!(&[1u64][..]).len() * size_of::<u64>();
+    //~^ manual_slice_size_calculation
 
     // True negatives:
     let _ = size_of::<i32>() + s_i32.len(); // Ok, not a multiplication

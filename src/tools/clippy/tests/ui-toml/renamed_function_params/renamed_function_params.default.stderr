@@ -20,13 +20,13 @@ LL |     fn foo(&self, i_dont_wanna_use_your_name: u8) {} // only lint in `exten
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using the default name: `val`
 
 error: renamed function parameter of trait impl
-  --> tests/ui-toml/renamed_function_params/renamed_function_params.rs:55:31
+  --> tests/ui-toml/renamed_function_params/renamed_function_params.rs:57:31
    |
 LL |     fn hash<H: Hasher>(&self, states: &mut H) {
    |                               ^^^^^^ help: consider using the default name: `state`
 
 error: renamed function parameters of trait impl
-  --> tests/ui-toml/renamed_function_params/renamed_function_params.rs:59:30
+  --> tests/ui-toml/renamed_function_params/renamed_function_params.rs:61:30
    |
 LL |     fn hash_slice<H: Hasher>(date: &[Self], states: &mut H) {
    |                              ^^^^           ^^^^^^
@@ -38,7 +38,7 @@ LL +     fn hash_slice<H: Hasher>(data: &[Self], state: &mut H) {
    |
 
 error: renamed function parameter of trait impl
-  --> tests/ui-toml/renamed_function_params/renamed_function_params.rs:80:18
+  --> tests/ui-toml/renamed_function_params/renamed_function_params.rs:82:18
    |
 LL |     fn add(self, b: B) -> C {
    |                  ^ help: consider using the default name: `rhs`

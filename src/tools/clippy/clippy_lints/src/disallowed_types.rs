@@ -1,4 +1,5 @@
 use clippy_config::Conf;
+use clippy_config::types::DisallowedPath;
 use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::Res;
@@ -31,6 +32,8 @@ declare_clippy_lint! {
     ///     # When using an inline table, can add a `reason` for why the type
     ///     # is disallowed.
     ///     { path = "std::net::Ipv4Addr", reason = "no IPv4 allowed" },
+    ///     # Can also add a `replacement` that will be offered as a suggestion.
+    ///     { path = "std::sync::Mutex", reason = "prefer faster & simpler non-poisonable mutex", replacement = "parking_lot::Mutex" },
     /// ]
     /// ```
     ///
@@ -51,24 +54,23 @@ declare_clippy_lint! {
 }
 
 pub struct DisallowedTypes {
-    def_ids: DefIdMap<(&'static str, Option<&'static str>)>,
-    prim_tys: FxHashMap<PrimTy, (&'static str, Option<&'static str>)>,
+    def_ids: DefIdMap<(&'static str, &'static DisallowedPath)>,
+    prim_tys: FxHashMap<PrimTy, (&'static str, &'static DisallowedPath)>,
 }
 
 impl DisallowedTypes {
     pub fn new(tcx: TyCtxt<'_>, conf: &'static Conf) -> Self {
         let mut def_ids = DefIdMap::default();
         let mut prim_tys = FxHashMap::default();
-        for x in &conf.disallowed_types {
-            let path: Vec<_> = x.path().split("::").collect::<Vec<_>>();
-            let reason = x.reason();
+        for disallowed_path in &conf.disallowed_types {
+            let path: Vec<_> = disallowed_path.path().split("::").collect::<Vec<_>>();
             for res in clippy_utils::def_path_res(tcx, &path) {
                 match res {
                     Res::Def(_, id) => {
-                        def_ids.insert(id, (x.path(), reason));
+                        def_ids.insert(id, (disallowed_path.path(), disallowed_path));
                     },
                     Res::PrimTy(ty) => {
-                        prim_tys.insert(ty, (x.path(), reason));
+                        prim_tys.insert(ty, (disallowed_path.path(), disallowed_path));
                     },
                     _ => {},
                 }
@@ -78,7 +80,7 @@ impl DisallowedTypes {
     }
 
     fn check_res_emit(&self, cx: &LateContext<'_>, res: &Res, span: Span) {
-        let (path, reason) = match res {
+        let (path, disallowed_path) = match res {
             Res::Def(_, did) if let Some(&x) = self.def_ids.get(did) => x,
             Res::PrimTy(prim) if let Some(&x) = self.prim_tys.get(prim) => x,
             _ => return,
@@ -88,11 +90,7 @@ impl DisallowedTypes {
             DISALLOWED_TYPES,
             span,
             format!("use of a disallowed type `{path}`"),
-            |diag| {
-                if let Some(reason) = reason {
-                    diag.note(reason);
-                }
-            },
+            disallowed_path.diag_amendment(span),
         );
     }
 }

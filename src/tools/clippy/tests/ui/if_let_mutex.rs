@@ -3,6 +3,7 @@
 //@revisions: edition2021 edition2024
 //@[edition2021] edition:2021
 //@[edition2024] edition:2024
+//@[edition2024] check-pass
 #![warn(clippy::if_let_mutex)]
 #![allow(clippy::redundant_pattern_matching)]
 
@@ -62,6 +63,7 @@ fn multiple_mutexes(m1: &Mutex<()>, m2: &Mutex<()>) {
     } else {
         m1.lock();
     }
+    //~[edition2021]^^^^^ if_let_mutex
 }
 
 fn main() {}

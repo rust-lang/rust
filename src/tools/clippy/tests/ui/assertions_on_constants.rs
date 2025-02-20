@@ -8,30 +8,35 @@ macro_rules! assert_const {
 }
 fn main() {
     assert!(true);
-    //~^ ERROR: `assert!(true)` will be optimized out by the compiler
+    //~^ assertions_on_constants
+
     assert!(false);
-    //~^ ERROR: `assert!(false)` should probably be replaced
+    //~^ assertions_on_constants
+
     assert!(true, "true message");
-    //~^ ERROR: `assert!(true)` will be optimized out by the compiler
+    //~^ assertions_on_constants
+
     assert!(false, "false message");
-    //~^ ERROR: `assert!(false, ..)` should probably be replaced
+    //~^ assertions_on_constants
 
     let msg = "panic message";
     assert!(false, "{}", msg.to_uppercase());
-    //~^ ERROR: `assert!(false, ..)` should probably be replaced
+    //~^ assertions_on_constants
 
     const B: bool = true;
     assert!(B);
-    //~^ ERROR: `assert!(true)` will be optimized out by the compiler
+    //~^ assertions_on_constants
 
     const C: bool = false;
     assert!(C);
-    //~^ ERROR: `assert!(false)` should probably be replaced
+    //~^ assertions_on_constants
+
     assert!(C, "C message");
-    //~^ ERROR: `assert!(false, ..)` should probably be replaced
+    //~^ assertions_on_constants
 
     debug_assert!(true);
-    //~^ ERROR: `debug_assert!(true)` will be optimized out by the compiler
+    //~^ assertions_on_constants
+
     // Don't lint this, since there is no better way for expressing "Only panic in debug mode".
     debug_assert!(false); // #3948
     assert_const!(3);
@@ -47,10 +52,10 @@ fn main() {
     assert!(!CFG_FLAG);
 
     const _: () = assert!(true);
-    //~^ ERROR: `assert!(true)` will be optimized out by the compiler
+    //~^ assertions_on_constants
 
     assert!(8 == (7 + 1));
-    //~^ ERROR: `assert!(true)` will be optimized out by the compiler
+    //~^ assertions_on_constants
 
     // Don't lint if the value is dependent on a defined constant:
     const N: usize = 1024;
@@ -59,6 +64,7 @@ fn main() {
 
 const _: () = {
     assert!(true);
-    //~^ ERROR: `assert!(true)` will be optimized out by the compiler
+    //~^ assertions_on_constants
+
     assert!(8 == (7 + 1));
 };

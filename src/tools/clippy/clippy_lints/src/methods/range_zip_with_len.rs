@@ -1,6 +1,7 @@
-use clippy_utils::diagnostics::span_lint;
+use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use clippy_utils::{SpanlessEq, higher, is_integer_const, is_trait_method};
+use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::LateContext;
 use rustc_span::sym;
@@ -20,14 +21,14 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, recv: &'
         && let ExprKind::Path(QPath::Resolved(_, len_path)) = len_recv.kind
         && SpanlessEq::new(cx).eq_path_segments(iter_path.segments, len_path.segments)
     {
-        span_lint(
+        span_lint_and_sugg(
             cx,
             RANGE_ZIP_WITH_LEN,
             expr.span,
-            format!(
-                "it is more idiomatic to use `{}.iter().enumerate()`",
-                snippet(cx, recv.span, "_")
-            ),
+            "using `.zip()` with a range and `.len()`",
+            "try",
+            format!("{}.iter().enumerate()", snippet(cx, recv.span, "_")),
+            Applicability::MachineApplicable,
         );
     }
 }

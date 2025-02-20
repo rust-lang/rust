@@ -2,6 +2,7 @@ error: use the question mark operator instead of an `and_then` call
   --> tests/ui/return_and_then.rs:5:9
    |
 LL | /         opt.and_then(|n| {
+LL | |
 LL | |             let mut ret = n + 1;
 LL | |             ret += n;
 LL | |             if n > 1 { Some(ret) } else { None }
@@ -13,13 +14,14 @@ LL | |         })
 help: try
    |
 LL ~         let n = opt?;
+LL +
 LL +         let mut ret = n + 1;
 LL +         ret += n;
 LL +         if n > 1 { Some(ret) } else { None }
    |
 
 error: use the question mark operator instead of an `and_then` call
-  --> tests/ui/return_and_then.rs:13:9
+  --> tests/ui/return_and_then.rs:14:9
    |
 LL |         opt.and_then(|n| test_opt_block(Some(n)))
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -31,7 +33,7 @@ LL +         test_opt_block(Some(n))
    |
 
 error: use the question mark operator instead of an `and_then` call
-  --> tests/ui/return_and_then.rs:17:9
+  --> tests/ui/return_and_then.rs:19:9
    |
 LL |         gen_option(1).and_then(|n| test_opt_block(Some(n)))
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -43,7 +45,7 @@ LL +         test_opt_block(Some(n))
    |
 
 error: use the question mark operator instead of an `and_then` call
-  --> tests/ui/return_and_then.rs:21:9
+  --> tests/ui/return_and_then.rs:24:9
    |
 LL |         opt.and_then(|n| if n > 1 { Ok(n + 1) } else { Err(n) })
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -55,7 +57,7 @@ LL +         if n > 1 { Ok(n + 1) } else { Err(n) }
    |
 
 error: use the question mark operator instead of an `and_then` call
-  --> tests/ui/return_and_then.rs:25:9
+  --> tests/ui/return_and_then.rs:29:9
    |
 LL |         opt.and_then(|n| test_res_block(Ok(n)))
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -67,7 +69,7 @@ LL +         test_res_block(Ok(n))
    |
 
 error: use the question mark operator instead of an `and_then` call
-  --> tests/ui/return_and_then.rs:30:9
+  --> tests/ui/return_and_then.rs:35:9
    |
 LL |         Some("").and_then(|x| if x.len() > 2 { Some(3) } else { None })
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -79,9 +81,10 @@ LL +         if x.len() > 2 { Some(3) } else { None }
    |
 
 error: use the question mark operator instead of an `and_then` call
-  --> tests/ui/return_and_then.rs:35:9
+  --> tests/ui/return_and_then.rs:41:9
    |
 LL | /         Some(match (vec![1, 2, 3], vec![1, 2, 4]) {
+LL | |
 LL | |             (a, _) if a.len() > 1 => a,
 LL | |             (_, b) => b,
 LL | |         })
@@ -91,6 +94,7 @@ LL | |         .and_then(|x| if x.len() > 2 { Some(3) } else { None })
 help: try
    |
 LL ~         let x = Some(match (vec![1, 2, 3], vec![1, 2, 4]) {
+LL +
 LL +             (a, _) if a.len() > 1 => a,
 LL +             (_, b) => b,
 LL +         })?;

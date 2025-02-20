@@ -8,13 +8,13 @@ LL |     let _x = println!("x");
    = help: to override `-D warnings` add `#[allow(clippy::let_unit_value)]`
 
 error: this let-binding has unit value
-  --> tests/ui/let_unit.rs:59:5
+  --> tests/ui/let_unit.rs:60:5
    |
 LL | /     let _ = v
+LL | |
 LL | |         .into_iter()
 LL | |         .map(|i| i * 2)
-LL | |         .filter(|i| i % 2 == 0)
-LL | |         .map(|_| ())
+...  |
 LL | |         .next()
 LL | |         .unwrap();
    | |__________________^
@@ -22,6 +22,7 @@ LL | |         .unwrap();
 help: omit the `let` binding
    |
 LL ~     v
+LL +
 LL +         .into_iter()
 LL +         .map(|i| i * 2)
 LL +         .filter(|i| i % 2 == 0)
@@ -31,9 +32,10 @@ LL +         .unwrap();
    |
 
 error: this let-binding has unit value
-  --> tests/ui/let_unit.rs:108:5
+  --> tests/ui/let_unit.rs:110:5
    |
 LL | /     let x = match Some(0) {
+LL | |
 LL | |         None => f2(1),
 LL | |         Some(0) => f(),
 LL | |         Some(1) => f2(3),
@@ -44,6 +46,7 @@ LL | |     };
 help: omit the `let` binding
    |
 LL ~     match Some(0) {
+LL +
 LL +         None => f2(1),
 LL +         Some(0) => f(),
 LL +         Some(1) => f2(3),
@@ -52,7 +55,7 @@ LL +     };
    |
 
 error: this let-binding has unit value
-  --> tests/ui/let_unit.rs:189:9
+  --> tests/ui/let_unit.rs:192:9
    |
 LL |         let res = returns_unit();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -60,6 +63,7 @@ LL |         let res = returns_unit();
 help: omit the `let` binding and replace variable usages with `()`
    |
 LL ~         returns_unit();
+LL |
 LL ~         returns_result(()).unwrap();
 LL ~         returns_result(()).unwrap();
    |

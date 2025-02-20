@@ -55,4 +55,10 @@ fn match_bool() {
     if !(!test && option == 5) { println!("Hello") };
 }
 
+fn issue14099() {
+    if true { 'a: {
+        break 'a;
+    } }
+}
+
 fn main() {}

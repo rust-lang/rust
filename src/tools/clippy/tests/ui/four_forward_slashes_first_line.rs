@@ -1,4 +1,5 @@
 //// borked doc comment on the first line. doesn't combust!
+//~^ four_forward_slashes
 fn a() {}
 
 // This test's entire purpose is to make sure we don't panic if the comment with four slashes

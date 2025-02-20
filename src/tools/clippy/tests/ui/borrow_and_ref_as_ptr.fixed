@@ -7,5 +7,7 @@ fn f<T>(_: T) {}
 fn main() {
     let mut val = 0;
     f(&raw const val);
+    //~^ borrow_as_ptr
     f(&raw mut val);
+    //~^ borrow_as_ptr
 }

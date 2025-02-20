@@ -21,6 +21,7 @@ fn unwrap_addr() -> Option<&'static ExprNode> {
             None
         },
     };
+    //~^^^^^^^ single_match_else
 
     // Don't lint
     with_span!(span match ExprNode::Butterflies {
@@ -86,6 +87,7 @@ fn main() {
             return
         },
     }
+    //~^^^^^^^ single_match_else
 
     // lint here
     match Some(1) {
@@ -95,6 +97,7 @@ fn main() {
             return;
         },
     }
+    //~^^^^^^^ single_match_else
 
     // lint here
     use std::convert::Infallible;
@@ -105,6 +108,7 @@ fn main() {
             return;
         }
     }
+    //~^^^^^^^ single_match_else
 
     use std::borrow::Cow;
     match Cow::from("moo") {
@@ -114,6 +118,7 @@ fn main() {
             return;
         }
     }
+    //~^^^^^^^ single_match_else
 }
 
 fn issue_10808(bar: Option<i32>) {
@@ -127,6 +132,7 @@ fn issue_10808(bar: Option<i32>) {
             println!("None2");
         },
     }
+    //~^^^^^^^^^^ single_match_else
 
     match bar {
         Some(v) => {
@@ -139,6 +145,7 @@ fn issue_10808(bar: Option<i32>) {
             println!("{}", *r);
         },
     }
+    //~^^^^^^^^^^^ single_match_else
 
     match bar {
         Some(v) => unsafe {
@@ -151,6 +158,7 @@ fn issue_10808(bar: Option<i32>) {
             println!("{}", *r);
         },
     }
+    //~^^^^^^^^^^^ single_match_else
 
     match bar {
         #[rustfmt::skip]
@@ -165,6 +173,7 @@ fn issue_10808(bar: Option<i32>) {
             println!("None");
         },
     }
+    //~^^^^^^^^^^^^^ single_match_else
 
     match bar {
         Some(v) => {
@@ -208,4 +217,5 @@ fn irrefutable_match() -> Option<&'static ExprNode> {
             None
         },
     }
+    //~^^^^^^^ single_match_else
 }

@@ -13,7 +13,7 @@ LL +     let _ = ["foo"].into_iter().any(|s| s == "foo");
    |
 
 error: usage of `.map(...).all(identity)`
-  --> tests/ui/map_all_any_identity.rs:6:33
+  --> tests/ui/map_all_any_identity.rs:7:33
    |
 LL |     let _ = ["foo"].into_iter().map(|s| s == "foo").all(std::convert::identity);
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

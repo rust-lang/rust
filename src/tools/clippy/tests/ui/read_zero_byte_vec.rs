@@ -8,6 +8,7 @@ use std::fs::File;
 use std::io;
 use std::io::prelude::*;
 //@no-rustfix
+//@require-annotations-for-level: WARN
 extern crate futures;
 use futures::io::{AsyncRead, AsyncReadExt};
 use tokio::io::{AsyncRead as TokioAsyncRead, AsyncReadExt as _, AsyncWrite as TokioAsyncWrite, AsyncWriteExt as _};

@@ -1,3 +1,5 @@
+//@ check-pass
+
 #![crate_type = "lib"]
 #![warn(clippy::imprecise_flops)]
 #![warn(clippy::suboptimal_flops)]

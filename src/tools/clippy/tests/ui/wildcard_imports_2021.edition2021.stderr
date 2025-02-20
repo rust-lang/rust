@@ -8,129 +8,130 @@ LL | use crate::fn_mod::*;
    = help: to override `-D warnings` add `#[allow(clippy::wildcard_imports)]`
 
 error: usage of wildcard import
-  --> tests/ui/wildcard_imports_2021.rs:14:5
+  --> tests/ui/wildcard_imports_2021.rs:15:5
    |
 LL | use crate::mod_mod::*;
    |     ^^^^^^^^^^^^^^^^^ help: try: `crate::mod_mod::inner_mod`
 
 error: usage of wildcard import
-  --> tests/ui/wildcard_imports_2021.rs:15:5
+  --> tests/ui/wildcard_imports_2021.rs:17:5
    |
 LL | use crate::multi_fn_mod::*;
    |     ^^^^^^^^^^^^^^^^^^^^^^ help: try: `crate::multi_fn_mod::{multi_bar, multi_foo, multi_inner_mod}`
 
 error: usage of wildcard import
-  --> tests/ui/wildcard_imports_2021.rs:16:5
+  --> tests/ui/wildcard_imports_2021.rs:19:5
    |
 LL | use crate::struct_mod::*;
    |     ^^^^^^^^^^^^^^^^^^^^ help: try: `crate::struct_mod::{A, inner_struct_mod}`
 
 error: usage of wildcard import
-  --> tests/ui/wildcard_imports_2021.rs:19:5
+  --> tests/ui/wildcard_imports_2021.rs:23:5
    |
 LL | use wildcard_imports_helper::inner::inner_for_self_import::*;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `wildcard_imports_helper::inner::inner_for_self_import::inner_extern_bar`
 
 error: usage of wildcard import
-  --> tests/ui/wildcard_imports_2021.rs:21:5
+  --> tests/ui/wildcard_imports_2021.rs:26:5
    |
 LL | use wildcard_imports_helper::*;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `wildcard_imports_helper::{ExternA, extern_foo}`
 
 error: usage of wildcard import
-  --> tests/ui/wildcard_imports_2021.rs:89:13
+  --> tests/ui/wildcard_imports_2021.rs:95:13
    |
 LL |         use exports_underscore_ish::*;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `exports_underscore_ish::{_Deref, dummy}`
 
 error: usage of wildcard import
-  --> tests/ui/wildcard_imports_2021.rs:119:13
+  --> tests/ui/wildcard_imports_2021.rs:126:13
    |
 LL |         use crate::fn_mod::*;
    |             ^^^^^^^^^^^^^^^^ help: try: `crate::fn_mod::foo`
 
 error: usage of wildcard import
-  --> tests/ui/wildcard_imports_2021.rs:125:75
+  --> tests/ui/wildcard_imports_2021.rs:133:75
    |
 LL |         use wildcard_imports_helper::inner::inner_for_self_import::{self, *};
    |                                                                           ^ help: try: `inner_extern_foo`
 
 error: usage of wildcard import
-  --> tests/ui/wildcard_imports_2021.rs:126:13
+  --> tests/ui/wildcard_imports_2021.rs:135:13
    |
 LL |         use wildcard_imports_helper::*;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `wildcard_imports_helper::{ExternA, extern_foo}`
 
 error: usage of wildcard import
-  --> tests/ui/wildcard_imports_2021.rs:138:20
+  --> tests/ui/wildcard_imports_2021.rs:148:20
    |
 LL |         use self::{inner::*, inner2::*};
    |                    ^^^^^^^^ help: try: `inner::inner_foo`
 
 error: usage of wildcard import
-  --> tests/ui/wildcard_imports_2021.rs:138:30
+  --> tests/ui/wildcard_imports_2021.rs:148:30
    |
 LL |         use self::{inner::*, inner2::*};
    |                              ^^^^^^^^^ help: try: `inner2::inner_bar`
 
 error: usage of wildcard import
-  --> tests/ui/wildcard_imports_2021.rs:145:13
+  --> tests/ui/wildcard_imports_2021.rs:157:13
    |
 LL |         use wildcard_imports_helper::*;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `wildcard_imports_helper::{ExternExportedEnum, ExternExportedStruct, extern_exported}`
 
 error: usage of wildcard import
-  --> tests/ui/wildcard_imports_2021.rs:174:9
+  --> tests/ui/wildcard_imports_2021.rs:187:9
    |
 LL |     use crate::in_fn_test::*;
    |         ^^^^^^^^^^^^^^^^^^^^ help: try: `crate::in_fn_test::{ExportedEnum, ExportedStruct, exported}`
 
 error: usage of wildcard import
-  --> tests/ui/wildcard_imports_2021.rs:183:9
+  --> tests/ui/wildcard_imports_2021.rs:197:9
    |
 LL |     use crate:: in_fn_test::  * ;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `crate:: in_fn_test::exported`
 
 error: usage of wildcard import
-  --> tests/ui/wildcard_imports_2021.rs:184:9
+  --> tests/ui/wildcard_imports_2021.rs:199:9
    |
 LL |       use crate:: fn_mod::
    |  _________^
+LL | |
 LL | |         *;
    | |_________^ help: try: `crate:: fn_mod::foo`
 
 error: usage of wildcard import
-  --> tests/ui/wildcard_imports_2021.rs:195:13
+  --> tests/ui/wildcard_imports_2021.rs:211:13
    |
 LL |         use super::*;
    |             ^^^^^^^^ help: try: `super::foofoo`
 
 error: usage of wildcard import
-  --> tests/ui/wildcard_imports_2021.rs:233:17
+  --> tests/ui/wildcard_imports_2021.rs:250:17
    |
 LL |             use super::*;
    |                 ^^^^^^^^ help: try: `super::insidefoo`
 
 error: usage of wildcard import
-  --> tests/ui/wildcard_imports_2021.rs:241:13
+  --> tests/ui/wildcard_imports_2021.rs:259:13
    |
 LL |         use crate::super_imports::*;
    |             ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `crate::super_imports::foofoo`
 
 error: usage of wildcard import
-  --> tests/ui/wildcard_imports_2021.rs:250:17
+  --> tests/ui/wildcard_imports_2021.rs:269:17
    |
 LL |             use super::super::*;
    |                 ^^^^^^^^^^^^^^^ help: try: `super::super::foofoo`
 
 error: usage of wildcard import
-  --> tests/ui/wildcard_imports_2021.rs:259:13
+  --> tests/ui/wildcard_imports_2021.rs:279:13
    |
 LL |         use super::super::super_imports::*;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `super::super::super_imports::foofoo`
 
 error: usage of wildcard import
-  --> tests/ui/wildcard_imports_2021.rs:267:13
+  --> tests/ui/wildcard_imports_2021.rs:288:13
    |
 LL |         use super::*;
    |             ^^^^^^^^ help: try: `super::foofoo`

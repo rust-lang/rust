@@ -16,6 +16,7 @@ pub async fn should_not_warn() {
 
 pub async fn bar() {
     should_warn().await;
+    //~^ large_futures
 
     async {
         let x = [0u8; 1024];

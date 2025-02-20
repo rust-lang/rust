@@ -12,17 +12,28 @@ fn main() {
     let _: f16 = -4_097.0;
 
     let _: f32 = 16_777_217.0;
+    //~^ lossy_float_literal
     let _: f32 = 16_777_219.0;
+    //~^ lossy_float_literal
     let _: f32 = 16_777_219.;
+    //~^ lossy_float_literal
     let _: f32 = 16_777_219.000;
+    //~^ lossy_float_literal
     let _ = 16_777_219f32;
+    //~^ lossy_float_literal
     let _: f32 = -16_777_219.0;
+    //~^ lossy_float_literal
 
     let _: f64 = 9_007_199_254_740_993.0;
+    //~^ lossy_float_literal
     let _: f64 = 9_007_199_254_740_993.;
+    //~^ lossy_float_literal
     let _: f64 = 9_007_199_254_740_993.00;
+    //~^ lossy_float_literal
     let _ = 9_007_199_254_740_993f64;
+    //~^ lossy_float_literal
     let _: f64 = -9_007_199_254_740_993.0;
+    //~^ lossy_float_literal
 
     let _: f128 = 10_384_593_717_069_655_257_060_992_658_440_193.0;
     let _: f128 = 10_384_593_717_069_655_257_060_992_658_440_193.;

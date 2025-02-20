@@ -27,7 +27,7 @@ pub(super) fn check<'tcx>(
         && let Some(err_arg_snippet) = err_arg.span.get_source_text(cx)
         && let Some(indent) = indent_of(cx, expr.span)
     {
-        let reindented_err_arg_snippet = reindent_multiline(err_arg_snippet.as_str().into(), true, Some(indent + 4));
+        let reindented_err_arg_snippet = reindent_multiline(err_arg_snippet.as_str(), true, Some(indent + 4));
         span_lint_and_sugg(
             cx,
             MANUAL_OK_OR,

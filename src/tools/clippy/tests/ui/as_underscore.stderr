@@ -10,7 +10,7 @@ LL |     foo(n as _);
    = help: to override `-D warnings` add `#[allow(clippy::as_underscore)]`
 
 error: using `as _` conversion
-  --> tests/ui/as_underscore.rs:10:18
+  --> tests/ui/as_underscore.rs:11:18
    |
 LL |     let _n: u8 = n as _;
    |                  ^^^^^-

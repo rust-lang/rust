@@ -22,12 +22,18 @@ fn fn_test_not_inf() -> f64 {
 fn main() {
     let x = 1.0f32;
     if x == f32::INFINITY || x == f32::NEG_INFINITY {}
+    //~^ manual_is_infinite
     if x != f32::INFINITY && x != f32::NEG_INFINITY {}
+    //~^ manual_is_finite
     if x == INFINITE || x == NEG_INFINITE {}
+    //~^ manual_is_infinite
     if x != INFINITE && x != NEG_INFINITE {}
+    //~^ manual_is_finite
     let x = 1.0f64;
     if x == f64::INFINITY || x == f64::NEG_INFINITY {}
+    //~^ manual_is_infinite
     if x != f64::INFINITY && x != f64::NEG_INFINITY {}
+    //~^ manual_is_finite
     // Don't lint
     if x.is_infinite() {}
     if x.is_finite() {}
@@ -42,6 +48,7 @@ fn main() {
     const {
         let x = 1.0f64;
         if x == f64::INFINITY || x == f64::NEG_INFINITY {}
+        //~^ manual_is_infinite
     }
     const X: f64 = 1.0f64;
     if const { X == f64::INFINITY || X == f64::NEG_INFINITY } {}

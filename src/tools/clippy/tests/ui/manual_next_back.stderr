@@ -8,7 +8,7 @@ LL |     let _ = (0..10).rev().next().unwrap();
    = help: to override `-D warnings` add `#[allow(clippy::manual_next_back)]`
 
 error: manual backwards iteration
-  --> tests/ui/manual_next_back.rs:33:32
+  --> tests/ui/manual_next_back.rs:34:32
    |
 LL |     let _ = "something".bytes().rev().next();
    |                                ^^^^^^^^^^^^^ help: use: `.next_back()`

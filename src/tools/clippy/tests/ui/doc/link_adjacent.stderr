@@ -1,0 +1,134 @@
+error: code link adjacent to code text
+  --> tests/ui/doc/link_adjacent.rs:13:14
+   |
+LL | //! This is: [`first`](x)`second`
+   |              ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: separate code snippets will be shown with a gap
+   = note: `-D clippy::doc-link-code` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::doc_link_code)]`
+help: wrap the entire group in `<code>` tags
+   |
+LL - //! This is: [`first`](x)`second`
+LL + //! This is: <code>[first](x)second</code>
+   |
+
+error: code link adjacent to code text
+  --> tests/ui/doc/link_adjacent.rs:16:16
+   |
+LL | //! So is this `first`[`second`](x)
+   |                ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: separate code snippets will be shown with a gap
+help: wrap the entire group in `<code>` tags
+   |
+LL - //! So is this `first`[`second`](x)
+LL + //! So is this <code>first[second](x)</code>
+   |
+
+error: code link adjacent to code text
+  --> tests/ui/doc/link_adjacent.rs:19:16
+   |
+LL | //! So is this [`first`](x)[`second`](x)
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: separate code snippets will be shown with a gap
+help: wrap the entire group in `<code>` tags
+   |
+LL - //! So is this [`first`](x)[`second`](x)
+LL + //! So is this <code>[first](x)[second](x)</code>
+   |
+
+error: code link adjacent to code text
+  --> tests/ui/doc/link_adjacent.rs:22:16
+   |
+LL | //! So is this [`first`](x)[`second`](x)[`third`](x)
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: separate code snippets will be shown with a gap
+help: wrap the entire group in `<code>` tags
+   |
+LL - //! So is this [`first`](x)[`second`](x)[`third`](x)
+LL + //! So is this <code>[first](x)[second](x)[third](x)</code>
+   |
+
+error: code link adjacent to code text
+  --> tests/ui/doc/link_adjacent.rs:25:16
+   |
+LL | //! So is this [`first`](x)`second`[`third`](x)
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: separate code snippets will be shown with a gap
+help: wrap the entire group in `<code>` tags
+   |
+LL - //! So is this [`first`](x)`second`[`third`](x)
+LL + //! So is this <code>[first](x)second[third](x)</code>
+   |
+
+error: code link adjacent to code text
+  --> tests/ui/doc/link_adjacent.rs:38:14
+   |
+LL | /// This is: [`first`](x)`second` arst
+   |              ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: separate code snippets will be shown with a gap
+help: wrap the entire group in `<code>` tags
+   |
+LL - /// This is: [`first`](x)`second` arst
+LL + /// This is: <code>[first](x)second</code> arst
+   |
+
+error: code link adjacent to code text
+  --> tests/ui/doc/link_adjacent.rs:41:16
+   |
+LL | /// So is this `first`[`second`](x) arst
+   |                ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: separate code snippets will be shown with a gap
+help: wrap the entire group in `<code>` tags
+   |
+LL - /// So is this `first`[`second`](x) arst
+LL + /// So is this <code>first[second](x)</code> arst
+   |
+
+error: code link adjacent to code text
+  --> tests/ui/doc/link_adjacent.rs:44:16
+   |
+LL | /// So is this [`first`](x)[`second`](x) arst
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: separate code snippets will be shown with a gap
+help: wrap the entire group in `<code>` tags
+   |
+LL - /// So is this [`first`](x)[`second`](x) arst
+LL + /// So is this <code>[first](x)[second](x)</code> arst
+   |
+
+error: code link adjacent to code text
+  --> tests/ui/doc/link_adjacent.rs:47:16
+   |
+LL | /// So is this [`first`](x)[`second`](x)[`third`](x) arst
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: separate code snippets will be shown with a gap
+help: wrap the entire group in `<code>` tags
+   |
+LL - /// So is this [`first`](x)[`second`](x)[`third`](x) arst
+LL + /// So is this <code>[first](x)[second](x)[third](x)</code> arst
+   |
+
+error: code link adjacent to code text
+  --> tests/ui/doc/link_adjacent.rs:50:16
+   |
+LL | /// So is this [`first`](x)`second`[`third`](x) arst
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: separate code snippets will be shown with a gap
+help: wrap the entire group in `<code>` tags
+   |
+LL - /// So is this [`first`](x)`second`[`third`](x) arst
+LL + /// So is this <code>[first](x)second[third](x)</code> arst
+   |
+
+error: aborting due to 10 previous errors
+

@@ -8,7 +8,7 @@ LL |     let _ptr_i32_transmute = unsafe { transmute::<usize, *const i32>(usize:
    = help: to override `-D warnings` add `#[allow(clippy::useless_transmute)]`
 
 error: transmute from a pointer to a pointer
-  --> tests/ui/transmutes_expressible_as_ptr_casts.rs:21:38
+  --> tests/ui/transmutes_expressible_as_ptr_casts.rs:22:38
    |
 LL |     let _ptr_i8_transmute = unsafe { transmute::<*const i32, *const i8>(ptr_i32) };
    |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -22,7 +22,7 @@ LL +     let _ptr_i8_transmute = unsafe { ptr_i32.cast::<i8>() };
    |
 
 error: transmute from a pointer to a pointer
-  --> tests/ui/transmutes_expressible_as_ptr_casts.rs:27:46
+  --> tests/ui/transmutes_expressible_as_ptr_casts.rs:29:46
    |
 LL |     let _ptr_to_unsized_transmute = unsafe { transmute::<*const [i32], *const [u32]>(slice_ptr) };
    |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -34,7 +34,7 @@ LL +     let _ptr_to_unsized_transmute = unsafe { slice_ptr as *const [u32] };
    |
 
 error: transmute from `*const i32` to `usize` which could be expressed as a pointer cast instead
-  --> tests/ui/transmutes_expressible_as_ptr_casts.rs:33:50
+  --> tests/ui/transmutes_expressible_as_ptr_casts.rs:36:50
    |
 LL |     let _usize_from_int_ptr_transmute = unsafe { transmute::<*const i32, usize>(ptr_i32) };
    |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `ptr_i32 as usize`
@@ -43,37 +43,37 @@ LL |     let _usize_from_int_ptr_transmute = unsafe { transmute::<*const i32, us
    = help: to override `-D warnings` add `#[allow(clippy::transmutes_expressible_as_ptr_casts)]`
 
 error: transmute from a reference to a pointer
-  --> tests/ui/transmutes_expressible_as_ptr_casts.rs:39:41
+  --> tests/ui/transmutes_expressible_as_ptr_casts.rs:43:41
    |
 LL |     let _array_ptr_transmute = unsafe { transmute::<&[i32; 4], *const [i32; 4]>(array_ref) };
    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `array_ref as *const [i32; 4]`
 
 error: transmute from `fn(usize) -> u8` to `*const usize` which could be expressed as a pointer cast instead
-  --> tests/ui/transmutes_expressible_as_ptr_casts.rs:47:41
+  --> tests/ui/transmutes_expressible_as_ptr_casts.rs:52:41
    |
 LL |     let _usize_ptr_transmute = unsafe { transmute::<fn(usize) -> u8, *const usize>(foo) };
    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `foo as *const usize`
 
 error: transmute from `fn(usize) -> u8` to `usize` which could be expressed as a pointer cast instead
-  --> tests/ui/transmutes_expressible_as_ptr_casts.rs:51:49
+  --> tests/ui/transmutes_expressible_as_ptr_casts.rs:57:49
    |
 LL |     let _usize_from_fn_ptr_transmute = unsafe { transmute::<fn(usize) -> u8, usize>(foo) };
    |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `foo as usize`
 
 error: transmute from `*const u32` to `usize` which could be expressed as a pointer cast instead
-  --> tests/ui/transmutes_expressible_as_ptr_casts.rs:54:36
+  --> tests/ui/transmutes_expressible_as_ptr_casts.rs:61:36
    |
 LL |     let _usize_from_ref = unsafe { transmute::<*const u32, usize>(&1u32) };
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&1u32 as *const u32 as usize`
 
 error: transmute from a reference to a pointer
-  --> tests/ui/transmutes_expressible_as_ptr_casts.rs:65:14
+  --> tests/ui/transmutes_expressible_as_ptr_casts.rs:73:14
    |
 LL |     unsafe { transmute::<&[i32; 1], *const u8>(in_param) }
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `in_param as *const [i32; 1] as *const u8`
 
 error: transmute from `fn()` to `*const u8` which could be expressed as a pointer cast instead
-  --> tests/ui/transmutes_expressible_as_ptr_casts.rs:83:28
+  --> tests/ui/transmutes_expressible_as_ptr_casts.rs:92:28
    |
 LL |     let _x: u8 = unsafe { *std::mem::transmute::<fn(), *const u8>(f) };
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(f as *const u8)`

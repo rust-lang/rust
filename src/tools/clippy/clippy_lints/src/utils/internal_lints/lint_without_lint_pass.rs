@@ -278,6 +278,6 @@ impl<'tcx> Visitor<'tcx> for LintCollector<'_, 'tcx> {
     }
 
     fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
-        self.cx.tcx.hir()
+        self.cx.tcx
     }
 }

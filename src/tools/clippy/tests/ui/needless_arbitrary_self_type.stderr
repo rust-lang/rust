@@ -8,43 +8,43 @@ LL |     pub fn bad(self: Self) {
    = help: to override `-D warnings` add `#[allow(clippy::needless_arbitrary_self_type)]`
 
 error: the type of the `self` parameter does not need to be arbitrary
-  --> tests/ui/needless_arbitrary_self_type.rs:18:20
+  --> tests/ui/needless_arbitrary_self_type.rs:19:20
    |
 LL |     pub fn mut_bad(mut self: Self) {
    |                    ^^^^^^^^^^^^^^ help: consider to change this parameter to: `mut self`
 
 error: the type of the `self` parameter does not need to be arbitrary
-  --> tests/ui/needless_arbitrary_self_type.rs:26:20
+  --> tests/ui/needless_arbitrary_self_type.rs:28:20
    |
 LL |     pub fn ref_bad(self: &Self) {
    |                    ^^^^^^^^^^^ help: consider to change this parameter to: `&self`
 
 error: the type of the `self` parameter does not need to be arbitrary
-  --> tests/ui/needless_arbitrary_self_type.rs:34:38
+  --> tests/ui/needless_arbitrary_self_type.rs:37:38
    |
 LL |     pub fn ref_bad_with_lifetime<'a>(self: &'a Self) {
    |                                      ^^^^^^^^^^^^^^ help: consider to change this parameter to: `&'a self`
 
 error: the type of the `self` parameter does not need to be arbitrary
-  --> tests/ui/needless_arbitrary_self_type.rs:42:24
+  --> tests/ui/needless_arbitrary_self_type.rs:46:24
    |
 LL |     pub fn mut_ref_bad(self: &mut Self) {
    |                        ^^^^^^^^^^^^^^^ help: consider to change this parameter to: `&mut self`
 
 error: the type of the `self` parameter does not need to be arbitrary
-  --> tests/ui/needless_arbitrary_self_type.rs:50:42
+  --> tests/ui/needless_arbitrary_self_type.rs:55:42
    |
 LL |     pub fn mut_ref_bad_with_lifetime<'a>(self: &'a mut Self) {
    |                                          ^^^^^^^^^^^^^^^^^^ help: consider to change this parameter to: `&'a mut self`
 
 error: the type of the `self` parameter does not need to be arbitrary
-  --> tests/ui/needless_arbitrary_self_type.rs:68:11
+  --> tests/ui/needless_arbitrary_self_type.rs:74:11
    |
 LL |     fn f1(self: &'r#struct Self) {}
    |           ^^^^^^^^^^^^^^^^^^^^^ help: consider to change this parameter to: `&'r#struct self`
 
 error: the type of the `self` parameter does not need to be arbitrary
-  --> tests/ui/needless_arbitrary_self_type.rs:69:11
+  --> tests/ui/needless_arbitrary_self_type.rs:76:11
    |
 LL |     fn f2(self: &'r#struct mut Self) {}
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider to change this parameter to: `&'r#struct mut self`

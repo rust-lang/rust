@@ -8,15 +8,21 @@ extern crate proc_macros;
 fn main() {
     let x = [1, 2];
     let x = (x[0], x[1]);
+    //~^ tuple_array_conversions
     let x = [x.0, x.1];
+    //~^ tuple_array_conversions
     let x = &[1, 2];
     let x = (x[0], x[1]);
 
     let t1: &[(u32, u32)] = &[(1, 2), (3, 4)];
     let v1: Vec<[u32; 2]> = t1.iter().map(|&(a, b)| [a, b]).collect();
+    //~^ tuple_array_conversions
     t1.iter().for_each(|&(a, b)| _ = [a, b]);
+    //~^ tuple_array_conversions
     let t2: Vec<(u32, u32)> = v1.iter().map(|&[a, b]| (a, b)).collect();
+    //~^ tuple_array_conversions
     t1.iter().for_each(|&(a, b)| _ = [a, b]);
+    //~^ tuple_array_conversions
     // Do not lint
     let v2: Vec<[u32; 2]> = t1.iter().map(|&t| t.into()).collect();
     let t3: Vec<(u32, u32)> = v2.iter().map(|&v| v.into()).collect();
@@ -55,9 +61,11 @@ fn main() {
     // FP #11082; needs discussion
     let (a, b) = (1.0f64, 2.0f64);
     let _: &[f64] = &[a, b];
+    //~^ tuple_array_conversions
     // FP #11085; impossible to fix
     let [src, dest]: [_; 2] = [1, 2];
     (src, dest);
+    //~^ tuple_array_conversions
     // FP #11100
     fn issue_11100_array_to_tuple(this: [&mut i32; 2]) -> (&i32, &mut i32) {
         let [input, output] = this;
@@ -102,7 +110,9 @@ fn msrv_too_low() {
 fn msrv_juust_right() {
     let x = [1, 2];
     let x = (x[0], x[1]);
+    //~^ tuple_array_conversions
     let x = [x.0, x.1];
+    //~^ tuple_array_conversions
     let x = &[1, 2];
     let x = (x[0], x[1]);
 }

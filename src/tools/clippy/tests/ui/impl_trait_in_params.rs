@@ -7,9 +7,10 @@ pub trait AnotherTrait<T> {}
 
 // Should warn
 pub fn a(_: impl Trait) {}
-//~^ ERROR: `impl Trait` used as a function parameter
+//~^ impl_trait_in_params
+
 pub fn c<C: Trait>(_: C, _: impl Trait) {}
-//~^ ERROR: `impl Trait` used as a function parameter
+//~^ impl_trait_in_params
 
 // Shouldn't warn
 
@@ -33,10 +34,12 @@ trait Private {
 
 struct S;
 impl S {
-    pub fn h(_: impl Trait) {} //~ ERROR: `impl Trait` used as a function parameter
+    pub fn h(_: impl Trait) {}
+    //~^ impl_trait_in_params
     fn i(_: impl Trait) {}
     pub fn j<J: Trait>(_: J) {}
-    pub fn k<K: AnotherTrait<u32>>(_: K, _: impl AnotherTrait<u32>) {} //~ ERROR: `impl Trait` used as a function parameter
+    pub fn k<K: AnotherTrait<u32>>(_: K, _: impl AnotherTrait<u32>) {}
+    //~^ impl_trait_in_params
 }
 
 // Trying with traits

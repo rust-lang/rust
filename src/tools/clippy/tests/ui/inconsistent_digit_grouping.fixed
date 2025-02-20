@@ -23,15 +23,25 @@ fn main() {
         1.123_456_7_f32,
     );
     let bad = (123_456, 12_345_678, 1_234_567, 1_234.567_8_f32, 1.234_567_8_f32);
+    //~^ inconsistent_digit_grouping
+    //~| inconsistent_digit_grouping
+    //~| inconsistent_digit_grouping
+    //~| inconsistent_digit_grouping
+    //~| inconsistent_digit_grouping
 
     // Test padding
     let _ = 0x0010_0000;
+    //~^ unreadable_literal
     let _ = 0x0100_0000;
+    //~^ unreadable_literal
     let _ = 0x1000_0000;
+    //~^ unreadable_literal
     let _ = 0x0001_0000_0000_u64;
+    //~^ unreadable_literal
 
     // Test suggestion when fraction has no digits
     let _: f32 = 123_456.;
+    //~^ inconsistent_digit_grouping
 
     // Test UUID formatted literal
     let _: u128 = 0x12345678_1234_1234_1234_123456789012;

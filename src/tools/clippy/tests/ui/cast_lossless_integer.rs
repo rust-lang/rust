@@ -7,66 +7,88 @@ fn main() {
     // Test clippy::cast_lossless with casts to integer types
     0u8 as u16;
     //~^ cast_lossless
+
     0u8 as i16;
     //~^ cast_lossless
+
     0u8 as u32;
     //~^ cast_lossless
+
     0u8 as i32;
     //~^ cast_lossless
+
     0u8 as u64;
     //~^ cast_lossless
+
     0u8 as i64;
     //~^ cast_lossless
+
     0u8 as u128;
     //~^ cast_lossless
+
     0u8 as i128;
     //~^ cast_lossless
 
     0u16 as u32;
     //~^ cast_lossless
+
     0u16 as i32;
     //~^ cast_lossless
+
     0u16 as u64;
     //~^ cast_lossless
+
     0u16 as i64;
     //~^ cast_lossless
+
     0u16 as u128;
     //~^ cast_lossless
+
     0u16 as i128;
     //~^ cast_lossless
 
     0u32 as u64;
     //~^ cast_lossless
+
     0u32 as i64;
     //~^ cast_lossless
+
     0u32 as u128;
     //~^ cast_lossless
+
     0u32 as i128;
     //~^ cast_lossless
 
     0u64 as u128;
     //~^ cast_lossless
+
     0u64 as i128;
     //~^ cast_lossless
 
     0i8 as i16;
     //~^ cast_lossless
+
     0i8 as i32;
     //~^ cast_lossless
+
     0i8 as i64;
     //~^ cast_lossless
+
     0i8 as i128;
     //~^ cast_lossless
 
     0i16 as i32;
     //~^ cast_lossless
+
     0i16 as i64;
     //~^ cast_lossless
+
     0i16 as i128;
     //~^ cast_lossless
 
     0i32 as i64;
     //~^ cast_lossless
+
     0i32 as i128;
     //~^ cast_lossless
 
@@ -82,10 +104,13 @@ fn main() {
 
     let _: u16 = 0u8 as _;
     //~^ cast_lossless
+
     let _: i16 = -1i8 as _;
     //~^ cast_lossless
+
     let _: u16 = (1u8 + 2) as _;
     //~^ cast_lossless
+
     let _: u32 = 1i8 as u16 as _;
     //~^ cast_lossless
 }
@@ -123,6 +148,7 @@ fn issue11458() {
     let x = 10_u128;
     let _ = sign_cast!(x, u8, i8) as i32;
     //~^ cast_lossless
+
     let _ = (sign_cast!(x, u8, i8) + 1) as i32;
     //~^ cast_lossless
 }
@@ -146,6 +172,7 @@ fn ty_from_macro() {
     }
 
     let _ = 0u8 as ty!();
+    //~^ cast_lossless
 }
 
 const IN_CONST: u64 = 0u8 as u64;

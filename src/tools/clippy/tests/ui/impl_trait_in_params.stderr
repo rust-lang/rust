@@ -12,7 +12,7 @@ LL | pub fn a<{ /* Generic name */ }: Trait>(_: impl Trait) {}
    |         +++++++++++++++++++++++++++++++
 
 error: `impl Trait` used as a function parameter
-  --> tests/ui/impl_trait_in_params.rs:11:29
+  --> tests/ui/impl_trait_in_params.rs:12:29
    |
 LL | pub fn c<C: Trait>(_: C, _: impl Trait) {}
    |                             ^^^^^^^^^^
@@ -23,7 +23,7 @@ LL | pub fn c<C: Trait, { /* Generic name */ }: Trait>(_: C, _: impl Trait) {}
    |                  +++++++++++++++++++++++++++++++
 
 error: `impl Trait` used as a function parameter
-  --> tests/ui/impl_trait_in_params.rs:36:17
+  --> tests/ui/impl_trait_in_params.rs:37:17
    |
 LL |     pub fn h(_: impl Trait) {}
    |                 ^^^^^^^^^^
@@ -34,7 +34,7 @@ LL |     pub fn h<{ /* Generic name */ }: Trait>(_: impl Trait) {}
    |             +++++++++++++++++++++++++++++++
 
 error: `impl Trait` used as a function parameter
-  --> tests/ui/impl_trait_in_params.rs:39:45
+  --> tests/ui/impl_trait_in_params.rs:41:45
    |
 LL |     pub fn k<K: AnotherTrait<u32>>(_: K, _: impl AnotherTrait<u32>) {}
    |                                             ^^^^^^^^^^^^^^^^^^^^^^

@@ -12,14 +12,17 @@ extern crate proc_macros;
 
 pub(self) fn a() {}
 pub(in self) fn b() {}
+//~^ pub_without_shorthand
 
 pub fn c() {}
 mod a {
     pub(in super) fn d() {}
+    //~^ pub_without_shorthand
     pub(super) fn e() {}
     pub(self) fn f() {}
     pub(crate) fn k() {}
     pub(in crate) fn m() {}
+    //~^ pub_without_shorthand
     mod b {
         pub(in crate::a) fn l() {}
     }

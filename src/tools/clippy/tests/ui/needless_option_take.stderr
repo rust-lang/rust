@@ -21,7 +21,7 @@ LL |     let y = x.as_mut().take();
    = note: `as_mut` creates a temporary value, so calling take() has no effect
 
 error: called `Option::take()` on a temporary value
-  --> tests/ui/needless_option_take.rs:33:13
+  --> tests/ui/needless_option_take.rs:34:13
    |
 LL |     let y = x.replace(289).take();
    |             ^^^^^^^^^^^^^^-------
@@ -31,7 +31,7 @@ LL |     let y = x.replace(289).take();
    = note: `replace` creates a temporary value, so calling take() has no effect
 
 error: called `Option::take()` on a temporary value
-  --> tests/ui/needless_option_take.rs:36:13
+  --> tests/ui/needless_option_take.rs:37:13
    |
 LL |     let y = Some(3).as_mut().take();
    |             ^^^^^^^^^^^^^^^^-------
@@ -41,7 +41,7 @@ LL |     let y = Some(3).as_mut().take();
    = note: `as_mut` creates a temporary value, so calling take() has no effect
 
 error: called `Option::take()` on a temporary value
-  --> tests/ui/needless_option_take.rs:39:13
+  --> tests/ui/needless_option_take.rs:40:13
    |
 LL |     let y = Option::as_mut(&mut x).take();
    |             ^^^^^^^^^^^^^^^^^^^^^^-------
@@ -51,7 +51,7 @@ LL |     let y = Option::as_mut(&mut x).take();
    = note: `as_mut` creates a temporary value, so calling take() has no effect
 
 error: called `Option::take()` on a temporary value
-  --> tests/ui/needless_option_take.rs:43:13
+  --> tests/ui/needless_option_take.rs:44:13
    |
 LL |     let x = return_option().take();
    |             ^^^^^^^^^^^^^^^-------
@@ -61,7 +61,7 @@ LL |     let x = return_option().take();
    = note: `return_option` creates a temporary value, so calling take() has no effect
 
 error: called `Option::take()` on a temporary value
-  --> tests/ui/needless_option_take.rs:47:13
+  --> tests/ui/needless_option_take.rs:48:13
    |
 LL |     let x = MyStruct::get_option().take();
    |             ^^^^^^^^^^^^^^^^^^^^^^-------
@@ -71,7 +71,7 @@ LL |     let x = MyStruct::get_option().take();
    = note: `get_option` creates a temporary value, so calling take() has no effect
 
 error: called `Option::take()` on a temporary value
-  --> tests/ui/needless_option_take.rs:53:13
+  --> tests/ui/needless_option_take.rs:54:13
    |
 LL |     let y = my_vec.first().take();
    |             ^^^^^^^^^^^^^^-------
@@ -81,7 +81,7 @@ LL |     let y = my_vec.first().take();
    = note: `first` creates a temporary value, so calling take() has no effect
 
 error: called `Option::take()` on a temporary value
-  --> tests/ui/needless_option_take.rs:56:13
+  --> tests/ui/needless_option_take.rs:57:13
    |
 LL |     let y = my_vec.first().take();
    |             ^^^^^^^^^^^^^^-------

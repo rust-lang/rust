@@ -2,6 +2,7 @@ error: needless use of `for_each`
   --> tests/ui/needless_for_each_fixable.rs:15:5
    |
 LL | /     v.iter().for_each(|elem| {
+LL | |
 LL | |         acc += elem;
 LL | |     });
    | |_______^
@@ -11,14 +12,16 @@ LL | |     });
 help: try
    |
 LL ~     for elem in v.iter() {
+LL +
 LL +         acc += elem;
 LL +     }
    |
 
 error: needless use of `for_each`
-  --> tests/ui/needless_for_each_fixable.rs:18:5
+  --> tests/ui/needless_for_each_fixable.rs:19:5
    |
 LL | /     v.into_iter().for_each(|elem| {
+LL | |
 LL | |         acc += elem;
 LL | |     });
    | |_______^
@@ -26,14 +29,16 @@ LL | |     });
 help: try
    |
 LL ~     for elem in v.into_iter() {
+LL +
 LL +         acc += elem;
 LL +     }
    |
 
 error: needless use of `for_each`
-  --> tests/ui/needless_for_each_fixable.rs:22:5
+  --> tests/ui/needless_for_each_fixable.rs:24:5
    |
 LL | /     [1, 2, 3].iter().for_each(|elem| {
+LL | |
 LL | |         acc += elem;
 LL | |     });
    | |_______^
@@ -41,14 +46,16 @@ LL | |     });
 help: try
    |
 LL ~     for elem in [1, 2, 3].iter() {
+LL +
 LL +         acc += elem;
 LL +     }
    |
 
 error: needless use of `for_each`
-  --> tests/ui/needless_for_each_fixable.rs:27:5
+  --> tests/ui/needless_for_each_fixable.rs:30:5
    |
 LL | /     hash_map.iter().for_each(|(k, v)| {
+LL | |
 LL | |         acc += k + v;
 LL | |     });
    | |_______^
@@ -56,14 +63,16 @@ LL | |     });
 help: try
    |
 LL ~     for (k, v) in hash_map.iter() {
+LL +
 LL +         acc += k + v;
 LL +     }
    |
 
 error: needless use of `for_each`
-  --> tests/ui/needless_for_each_fixable.rs:30:5
+  --> tests/ui/needless_for_each_fixable.rs:34:5
    |
 LL | /     hash_map.iter_mut().for_each(|(k, v)| {
+LL | |
 LL | |         acc += *k + *v;
 LL | |     });
    | |_______^
@@ -71,14 +80,16 @@ LL | |     });
 help: try
    |
 LL ~     for (k, v) in hash_map.iter_mut() {
+LL +
 LL +         acc += *k + *v;
 LL +     }
    |
 
 error: needless use of `for_each`
-  --> tests/ui/needless_for_each_fixable.rs:33:5
+  --> tests/ui/needless_for_each_fixable.rs:38:5
    |
 LL | /     hash_map.keys().for_each(|k| {
+LL | |
 LL | |         acc += k;
 LL | |     });
    | |_______^
@@ -86,14 +97,16 @@ LL | |     });
 help: try
    |
 LL ~     for k in hash_map.keys() {
+LL +
 LL +         acc += k;
 LL +     }
    |
 
 error: needless use of `for_each`
-  --> tests/ui/needless_for_each_fixable.rs:36:5
+  --> tests/ui/needless_for_each_fixable.rs:42:5
    |
 LL | /     hash_map.values().for_each(|v| {
+LL | |
 LL | |         acc += v;
 LL | |     });
    | |_______^
@@ -101,14 +114,16 @@ LL | |     });
 help: try
    |
 LL ~     for v in hash_map.values() {
+LL +
 LL +         acc += v;
 LL +     }
    |
 
 error: needless use of `for_each`
-  --> tests/ui/needless_for_each_fixable.rs:43:5
+  --> tests/ui/needless_for_each_fixable.rs:50:5
    |
 LL | /     my_vec().iter().for_each(|elem| {
+LL | |
 LL | |         acc += elem;
 LL | |     });
    | |_______^
@@ -116,6 +131,7 @@ LL | |     });
 help: try
    |
 LL ~     for elem in my_vec().iter() {
+LL +
 LL +         acc += elem;
 LL +     }
    |
