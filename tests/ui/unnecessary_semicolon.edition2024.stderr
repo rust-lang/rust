@@ -20,7 +20,7 @@ LL |     };
    |      ^ help: remove
 
 error: unnecessary semicolon
-  --> tests/ui/unnecessary_semicolon.rs:56:6
+  --> tests/ui/unnecessary_semicolon.rs:57:6
    |
 LL |     };
    |      ^ help: remove

@@ -8,25 +8,25 @@ LL |     let _ = x.get(0);
    = help: to override `-D warnings` add `#[allow(clippy::get_first)]`
 
 error: accessing first element with `y.get(0)`
-  --> tests/ui/get_first.rs:23:13
+  --> tests/ui/get_first.rs:24:13
    |
 LL |     let _ = y.get(0);
    |             ^^^^^^^^ help: try: `y.first()`
 
 error: accessing first element with `z.get(0)`
-  --> tests/ui/get_first.rs:29:13
+  --> tests/ui/get_first.rs:31:13
    |
 LL |     let _ = z.get(0);
    |             ^^^^^^^^ help: try: `z.first()`
 
 error: accessing first element with `vecdeque.get(0)`
-  --> tests/ui/get_first.rs:35:13
+  --> tests/ui/get_first.rs:38:13
    |
 LL |     let _ = vecdeque.get(0);
    |             ^^^^^^^^^^^^^^^ help: try: `vecdeque.front()`
 
 error: accessing first element with `non_primitives.get(0)`
-  --> tests/ui/get_first.rs:48:13
+  --> tests/ui/get_first.rs:52:13
    |
 LL |     let _ = non_primitives.get(0);
    |             ^^^^^^^^^^^^^^^^^^^^^ help: try: `non_primitives.first()`

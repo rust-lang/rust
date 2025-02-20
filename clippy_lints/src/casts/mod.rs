@@ -134,8 +134,14 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```no_run
-    /// u32::MAX as i32; // will yield a value of `-1`
+    /// let _ = u32::MAX as i32; // will yield a value of `-1`
     /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// let _ = i32::try_from(u32::MAX).ok();
+    /// ```
+    ///
     #[clippy::version = "pre 1.29.0"]
     pub CAST_POSSIBLE_WRAP,
     pedantic,

@@ -55,12 +55,19 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, call_name: &str,
         let (base_res_ty, res_depth) = walk_ptrs_ty_depth(res_ty);
         let (base_rcv_ty, rcv_depth) = walk_ptrs_ty_depth(rcv_ty);
         if base_rcv_ty == base_res_ty && rcv_depth >= res_depth {
-            // allow the `as_ref` or `as_mut` if it is followed by another method call
-            if let Some(parent) = get_parent_expr(cx, expr)
-                && let hir::ExprKind::MethodCall(segment, ..) = parent.kind
-                && segment.ident.span != expr.span
-            {
-                return;
+            if let Some(parent) = get_parent_expr(cx, expr) {
+                // allow the `as_ref` or `as_mut` if it is followed by another method call
+                if let hir::ExprKind::MethodCall(segment, ..) = parent.kind
+                    && segment.ident.span != expr.span
+                {
+                    return;
+                }
+
+                // allow the `as_ref` or `as_mut` if they belong to a closure that changes
+                // the number of references
+                if matches!(parent.kind, hir::ExprKind::Closure(..)) && rcv_depth != res_depth {
+                    return;
+                }
             }
 
             let mut applicability = Applicability::MachineApplicable;

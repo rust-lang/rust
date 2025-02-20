@@ -49,7 +49,6 @@ declare_clippy_lint! {
     "transmutes that are confusing at best, undefined behavior at worst and always useless"
 }
 
-// FIXME: Move this to `complexity` again, after #5343 is fixed
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for transmutes to the original type of the object

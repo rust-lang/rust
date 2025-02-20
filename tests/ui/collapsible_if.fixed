@@ -15,26 +15,32 @@ fn main() {
     if x == "hello" && y == "world" {
         println!("Hello world!");
     }
+    //~^^^^^ collapsible_if
 
     if (x == "hello" || x == "world") && (y == "world" || y == "hello") {
         println!("Hello world!");
     }
+    //~^^^^^ collapsible_if
 
     if x == "hello" && x == "world" && (y == "world" || y == "hello") {
         println!("Hello world!");
     }
+    //~^^^^^ collapsible_if
 
     if (x == "hello" || x == "world") && y == "world" && y == "hello" {
         println!("Hello world!");
     }
+    //~^^^^^ collapsible_if
 
     if x == "hello" && x == "world" && y == "world" && y == "hello" {
         println!("Hello world!");
     }
+    //~^^^^^ collapsible_if
 
     if 42 == 1337 && 'a' != 'A' {
         println!("world!")
     }
+    //~^^^^^ collapsible_if
 
     // Works because any if with an else statement cannot be collapsed.
     if x == "hello" {
@@ -89,6 +95,7 @@ fn main() {
     if x == "hello" && y == "world" { // Collapsible
         println!("Hello world!");
     }
+    //~^^^^^ collapsible_if
 
     if x == "hello" {
         print!("Hello ");
@@ -144,9 +151,11 @@ fn main() {
 
     // Fix #5962
     if matches!(true, true) && matches!(true, true) {}
+    //~^^^ collapsible_if
 
     // Issue #9375
     if matches!(true, true) && truth() && matches!(true, true) {}
+    //~^^^ collapsible_if
 
     if true {
         #[cfg(not(teehee))]

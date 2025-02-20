@@ -15,5 +15,6 @@
 #![warn(clippy::regex_macro)] //~ ERROR: lint `clippy::regex_macro`
 #![warn(clippy::pub_enum_variant_names)] //~ ERROR: lint `clippy::pub_enum_variant_names`
 #![warn(clippy::wrong_pub_self_convention)] //~ ERROR: lint `clippy::wrong_pub_self_convention`
+#![warn(clippy::option_map_or_err_ok)] //~ ERROR: lint `clippy::option_map_or_err_ok`
 
 fn main() {}

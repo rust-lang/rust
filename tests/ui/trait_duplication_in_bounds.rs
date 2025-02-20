@@ -5,12 +5,14 @@
 use std::any::Any;
 
 fn bad_foo<T: Clone + Clone + Clone + Copy, U: Clone + Copy>(arg0: T, argo1: U) {
+    //~^ trait_duplication_in_bounds
     unimplemented!();
 }
 
 fn bad_bar<T, U>(arg0: T, arg1: U)
 where
     T: Clone + Clone + Clone + Copy,
+    //~^ trait_duplication_in_bounds
     U: Clone + Copy,
 {
     unimplemented!();
@@ -39,6 +41,7 @@ trait GoodSelfWhereClause {
 }
 
 trait BadSelfTraitBound: Clone + Clone + Clone {
+    //~^ trait_duplication_in_bounds
     fn f();
 }
 
@@ -46,6 +49,7 @@ trait BadSelfWhereClause {
     fn f()
     where
         Self: Clone + Clone + Clone;
+    //~^ trait_duplication_in_bounds
 }
 
 trait GoodTraitBound<T: Clone + Copy, U: Clone + Copy> {
@@ -60,6 +64,7 @@ trait GoodWhereClause<T, U> {
 }
 
 trait BadTraitBound<T: Clone + Clone + Clone + Copy, U: Clone + Copy> {
+    //~^ trait_duplication_in_bounds
     fn f();
 }
 
@@ -67,6 +72,7 @@ trait BadWhereClause<T, U> {
     fn f()
     where
         T: Clone + Clone + Clone + Copy,
+        //~^ trait_duplication_in_bounds
         U: Clone + Copy;
 }
 
@@ -100,6 +106,7 @@ fn good_generic<T: GenericTrait<u64> + GenericTrait<u32>>(arg0: T) {
 }
 
 fn bad_generic<T: GenericTrait<u64> + GenericTrait<u32> + GenericTrait<u64>>(arg0: T) {
+    //~^ trait_duplication_in_bounds
     unimplemented!();
 }
 
@@ -108,6 +115,7 @@ mod foo {
 }
 
 fn qualified_path<T: std::clone::Clone + Clone + foo::Clone>(arg0: T) {
+    //~^ trait_duplication_in_bounds
     unimplemented!();
 }
 
@@ -116,6 +124,7 @@ fn good_trait_object(arg0: &(dyn Any + Send)) {
 }
 
 fn bad_trait_object(arg0: &(dyn Any + Send + Send)) {
+    //~^ trait_duplication_in_bounds
     unimplemented!();
 }
 

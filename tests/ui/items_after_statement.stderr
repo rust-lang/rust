@@ -16,14 +16,16 @@ error: adding items after statements is confusing, since items exist from the st
    |
 LL | /     fn foo() {
 LL | |
+LL | |
 LL | |         println!("foo");
 LL | |     }
    | |_____^
 
 error: adding items after statements is confusing, since items exist from the start of the scope
-  --> tests/ui/items_after_statement.rs:36:13
+  --> tests/ui/items_after_statement.rs:37:13
    |
 LL | /             fn say_something() {
+LL | |
 LL | |                 println!("something");
 LL | |             }
    | |_____________^

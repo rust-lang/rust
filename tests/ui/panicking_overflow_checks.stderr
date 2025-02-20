@@ -8,31 +8,31 @@ LL |     if a + b < a {}
    = help: to override `-D warnings` add `#[allow(clippy::panicking_overflow_checks)]`
 
 error: you are trying to use classic C overflow conditions that will fail in Rust
-  --> tests/ui/panicking_overflow_checks.rs:6:8
+  --> tests/ui/panicking_overflow_checks.rs:7:8
    |
 LL |     if a > a + b {}
    |        ^^^^^^^^^
 
 error: you are trying to use classic C overflow conditions that will fail in Rust
-  --> tests/ui/panicking_overflow_checks.rs:7:8
+  --> tests/ui/panicking_overflow_checks.rs:9:8
    |
 LL |     if a + b < b {}
    |        ^^^^^^^^^
 
 error: you are trying to use classic C overflow conditions that will fail in Rust
-  --> tests/ui/panicking_overflow_checks.rs:8:8
+  --> tests/ui/panicking_overflow_checks.rs:11:8
    |
 LL |     if b > a + b {}
    |        ^^^^^^^^^
 
 error: you are trying to use classic C overflow conditions that will fail in Rust
-  --> tests/ui/panicking_overflow_checks.rs:11:8
+  --> tests/ui/panicking_overflow_checks.rs:15:8
    |
 LL |     if a - b > a {}
    |        ^^^^^^^^^
 
 error: you are trying to use classic C overflow conditions that will fail in Rust
-  --> tests/ui/panicking_overflow_checks.rs:12:8
+  --> tests/ui/panicking_overflow_checks.rs:17:8
    |
 LL |     if a < a - b {}
    |        ^^^^^^^^^

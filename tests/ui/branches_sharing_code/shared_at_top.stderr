@@ -2,6 +2,7 @@ error: all if blocks contain the same code at the start
   --> tests/ui/branches_sharing_code/shared_at_top.rs:11:5
    |
 LL | /     if true {
+LL | |
 LL | |         println!("Hello World!");
    | |_________________________________^
    |
@@ -20,6 +21,7 @@ error: all if blocks contain the same code at the start
   --> tests/ui/branches_sharing_code/shared_at_top.rs:21:5
    |
 LL | /     if x == 0 {
+LL | |
 LL | |         let y = 9;
 LL | |         println!("The value y was set to: `{}`", y);
 LL | |         let _z = y;
@@ -38,7 +40,7 @@ error: all if blocks contain the same code at the start
   --> tests/ui/branches_sharing_code/shared_at_top.rs:43:5
    |
 LL | /     let _ = if x == 7 {
-LL | |
+...  |
 LL | |         let y = 16;
    | |___________________^
    |
@@ -49,9 +51,10 @@ LL +     let _ = if x == 7 {
    |
 
 error: all if blocks contain the same code at the start
-  --> tests/ui/branches_sharing_code/shared_at_top.rs:62:5
+  --> tests/ui/branches_sharing_code/shared_at_top.rs:63:5
    |
 LL | /     if x == 10 {
+LL | |
 LL | |         let used_value_name = "Different type";
 LL | |         println!("Str: {}", used_value_name);
    | |_____________________________________________^
@@ -65,9 +68,10 @@ LL +     if x == 10 {
    |
 
 error: all if blocks contain the same code at the start
-  --> tests/ui/branches_sharing_code/shared_at_top.rs:77:5
+  --> tests/ui/branches_sharing_code/shared_at_top.rs:79:5
    |
 LL | /     if x == 11 {
+LL | |
 LL | |
 LL | |         let can_be_overridden = "Move me";
 LL | |         println!("I'm also moveable");
@@ -82,9 +86,10 @@ LL +     if x == 11 {
    |
 
 error: all if blocks contain the same code at the start
-  --> tests/ui/branches_sharing_code/shared_at_top.rs:94:5
+  --> tests/ui/branches_sharing_code/shared_at_top.rs:97:5
    |
 LL | /     if x == 2020 {
+LL | |
 LL | |
 LL | |         println!("This should trigger the `SHARED_CODE_IN_IF_BLOCKS` lint.");
 LL | |         println!("Because `IF_SAME_THEN_ELSE` is allowed here");
@@ -98,7 +103,7 @@ LL +     if x == 2020 {
    |
 
 error: this `if` has identical blocks
-  --> tests/ui/branches_sharing_code/shared_at_top.rs:103:18
+  --> tests/ui/branches_sharing_code/shared_at_top.rs:107:18
    |
 LL |       if x == 2019 {
    |  __________________^
@@ -107,7 +112,7 @@ LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> tests/ui/branches_sharing_code/shared_at_top.rs:105:12
+  --> tests/ui/branches_sharing_code/shared_at_top.rs:109:12
    |
 LL |       } else {
    |  ____________^

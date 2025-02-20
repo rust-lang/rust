@@ -31,24 +31,32 @@ fn transmute_ptr_to_ptr() {
         // pointer-to-pointer transmutes; bad
         let _: *const f32 = ptr.cast::<f32>();
         //~^ transmute_ptr_to_ptr
+
         let _: *mut f32 = mut_ptr.cast::<f32>();
         //~^ transmute_ptr_to_ptr
+
         // ref-ref transmutes; bad
         let _: &f32 = &*(&1u32 as *const u32 as *const f32);
         //~^ transmute_ptr_to_ptr
+
         let _: &f32 = &*(&1f64 as *const f64 as *const f32);
         //~^ transmute_ptr_to_ptr
+
         //:^ this test is here because both f32 and f64 are the same TypeVariant, but they are not
         // the same type
         let _: &mut f32 = &mut *(&mut 1u32 as *mut u32 as *mut f32);
         //~^ transmute_ptr_to_ptr
+
         let _: &GenericParam<f32> = &*(&GenericParam { t: 1u32 } as *const GenericParam<u32> as *const GenericParam<f32>);
         //~^ transmute_ptr_to_ptr
+
         let u64_ref: &u64 = &0u64;
         let u8_ref: &u8 = &*(u64_ref as *const u64 as *const u8);
         //~^ transmute_ptr_to_ptr
+
         let _: *const u32 = mut_ptr.cast_const();
         //~^ transmute_ptr_to_ptr
+
         let _: *mut u32 = ptr.cast_mut();
         //~^ transmute_ptr_to_ptr
     }
@@ -77,6 +85,7 @@ const _: &() = {
 fn msrv_1_37(ptr: *const u8) {
     unsafe {
         let _: *const i8 = ptr as *const i8;
+        //~^ transmute_ptr_to_ptr
     }
 }
 
@@ -84,6 +93,7 @@ fn msrv_1_37(ptr: *const u8) {
 fn msrv_1_38(ptr: *const u8) {
     unsafe {
         let _: *const i8 = ptr.cast::<i8>();
+        //~^ transmute_ptr_to_ptr
     }
 }
 
@@ -91,7 +101,9 @@ fn msrv_1_38(ptr: *const u8) {
 fn msrv_1_64(ptr: *const u8, mut_ptr: *mut u8) {
     unsafe {
         let _: *mut u8 = ptr as *mut u8;
+        //~^ transmute_ptr_to_ptr
         let _: *const u8 = mut_ptr as *const u8;
+        //~^ transmute_ptr_to_ptr
     }
 }
 
@@ -99,7 +111,9 @@ fn msrv_1_64(ptr: *const u8, mut_ptr: *mut u8) {
 fn msrv_1_65(ptr: *const u8, mut_ptr: *mut u8) {
     unsafe {
         let _: *mut u8 = ptr.cast_mut();
+        //~^ transmute_ptr_to_ptr
         let _: *const u8 = mut_ptr.cast_const();
+        //~^ transmute_ptr_to_ptr
     }
 }
 

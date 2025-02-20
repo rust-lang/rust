@@ -4,4 +4,5 @@
 fn main() {
     let s = std::ptr::null::<()>;
     s() as *const ();
+    //~^ ptr_as_ptr
 }

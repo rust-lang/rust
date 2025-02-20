@@ -6,10 +6,13 @@ use std::convert;
 fn main() {
     let iterator = [[0, 1], [2, 3], [4, 5]].iter();
     let _ = iterator.flatten();
+    //~^ flat_map_identity
 
     let iterator = [[0, 1], [2, 3], [4, 5]].iter();
     let _ = iterator.flatten();
+    //~^ flat_map_identity
 
     let iterator = [[0, 1], [2, 3], [4, 5]].iter();
     let _ = iterator.flatten();
+    //~^ flat_map_identity
 }

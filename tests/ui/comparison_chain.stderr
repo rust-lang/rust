@@ -3,6 +3,7 @@ error: `if` chain can be rewritten with `match`
    |
 LL | /     if x > y {
 LL | |
+LL | |
 LL | |         a()
 LL | |     } else if x < y {
 LL | |         b()
@@ -13,45 +14,46 @@ LL | |     }
    = help: to override `-D warnings` add `#[allow(clippy::comparison_chain)]`
 
 error: `if` chain can be rewritten with `match`
-  --> tests/ui/comparison_chain.rs:29:5
+  --> tests/ui/comparison_chain.rs:30:5
    |
 LL | /     if x > y {
 LL | |
+LL | |
 LL | |         a()
-LL | |     } else if x < y {
 ...  |
 LL | |         c()
 LL | |     }
    | |_____^ help: consider rewriting the `if` chain with `match`: `match x.cmp(&y) {...}`
 
 error: `if` chain can be rewritten with `match`
-  --> tests/ui/comparison_chain.rs:38:5
+  --> tests/ui/comparison_chain.rs:40:5
    |
 LL | /     if x > y {
 LL | |
+LL | |
 LL | |         a()
-LL | |     } else if y > x {
 ...  |
 LL | |         c()
 LL | |     }
    | |_____^ help: consider rewriting the `if` chain with `match`: `match x.cmp(&y) {...}`
 
 error: `if` chain can be rewritten with `match`
-  --> tests/ui/comparison_chain.rs:47:5
+  --> tests/ui/comparison_chain.rs:50:5
    |
 LL | /     if x > 1 {
 LL | |
+LL | |
 LL | |         a()
-LL | |     } else if x < 1 {
 ...  |
 LL | |         c()
 LL | |     }
    | |_____^ help: consider rewriting the `if` chain with `match`: `match x.cmp(&1) {...}`
 
 error: `if` chain can be rewritten with `match`
-  --> tests/ui/comparison_chain.rs:122:5
+  --> tests/ui/comparison_chain.rs:126:5
    |
 LL | /     if x > y {
+LL | |
 LL | |
 LL | |         a()
 LL | |     } else if x < y {
@@ -60,36 +62,36 @@ LL | |     }
    | |_____^ help: consider rewriting the `if` chain with `match`: `match x.cmp(&y) {...}`
 
 error: `if` chain can be rewritten with `match`
-  --> tests/ui/comparison_chain.rs:129:5
+  --> tests/ui/comparison_chain.rs:134:5
    |
 LL | /     if x > y {
 LL | |
+LL | |
 LL | |         a()
-LL | |     } else if x < y {
 ...  |
 LL | |         c()
 LL | |     }
    | |_____^ help: consider rewriting the `if` chain with `match`: `match x.cmp(&y) {...}`
 
 error: `if` chain can be rewritten with `match`
-  --> tests/ui/comparison_chain.rs:138:5
+  --> tests/ui/comparison_chain.rs:144:5
    |
 LL | /     if x > y {
 LL | |
+LL | |
 LL | |         a()
-LL | |     } else if y > x {
 ...  |
 LL | |         c()
 LL | |     }
    | |_____^ help: consider rewriting the `if` chain with `match`: `match x.cmp(&y) {...}`
 
 error: `if` chain can be rewritten with `match`
-  --> tests/ui/comparison_chain.rs:244:5
+  --> tests/ui/comparison_chain.rs:251:5
    |
 LL | /     if x + 1 > y * 2 {
 LL | |
+LL | |
 LL | |         "aa"
-LL | |     } else if x + 1 < y * 2 {
 ...  |
 LL | |         "cc"
 LL | |     }

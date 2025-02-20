@@ -8,13 +8,13 @@ LL |     fn returns_lit(&self) -> &str {
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_literal_bound)]`
 
 error: returning a `str` unnecessarily tied to the lifetime of arguments
-  --> tests/ui/unnecessary_literal_bound.rs:29:68
+  --> tests/ui/unnecessary_literal_bound.rs:30:68
    |
 LL |     fn contionally_returns_literals_explicit(&self, cond: bool) -> &str {
    |                                                                    ^^^^ help: try: `&'static str`
 
 error: returning a `str` unnecessarily tied to the lifetime of arguments
-  --> tests/ui/unnecessary_literal_bound.rs:53:31
+  --> tests/ui/unnecessary_literal_bound.rs:55:31
    |
 LL |     fn trait_method(&self) -> &str {
    |                               ^^^^ help: try: `&'static str`

@@ -20,91 +20,91 @@ LL |         let _ = transmute::<_, VecDeque<u32>>(VecDeque::<u8>::new());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from `std::collections::VecDeque<[u8; 4]>` to `std::collections::VecDeque<u32>` with mismatched layout is unsound
-  --> tests/ui/transmute_collection.rs:21:17
+  --> tests/ui/transmute_collection.rs:22:17
    |
 LL |         let _ = transmute::<_, VecDeque<u32>>(VecDeque::<[u8; 4]>::new());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from `std::collections::BinaryHeap<u8>` to `std::collections::BinaryHeap<u32>` with mismatched layout is unsound
-  --> tests/ui/transmute_collection.rs:25:17
+  --> tests/ui/transmute_collection.rs:26:17
    |
 LL |         let _ = transmute::<_, BinaryHeap<u32>>(BinaryHeap::<u8>::new());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from `std::collections::BinaryHeap<[u8; 4]>` to `std::collections::BinaryHeap<u32>` with mismatched layout is unsound
-  --> tests/ui/transmute_collection.rs:28:17
+  --> tests/ui/transmute_collection.rs:30:17
    |
 LL |         let _ = transmute::<_, BinaryHeap<u32>>(BinaryHeap::<[u8; 4]>::new());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from `std::collections::BTreeSet<u8>` to `std::collections::BTreeSet<u32>` with mismatched layout is unsound
-  --> tests/ui/transmute_collection.rs:32:17
+  --> tests/ui/transmute_collection.rs:34:17
    |
 LL |         let _ = transmute::<_, BTreeSet<u32>>(BTreeSet::<u8>::new());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from `std::collections::BTreeSet<[u8; 4]>` to `std::collections::BTreeSet<u32>` with mismatched layout is unsound
-  --> tests/ui/transmute_collection.rs:35:17
+  --> tests/ui/transmute_collection.rs:38:17
    |
 LL |         let _ = transmute::<_, BTreeSet<u32>>(BTreeSet::<[u8; 4]>::new());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from `std::collections::HashSet<u8>` to `std::collections::HashSet<u32>` with mismatched layout is unsound
-  --> tests/ui/transmute_collection.rs:39:17
+  --> tests/ui/transmute_collection.rs:42:17
    |
 LL |         let _ = transmute::<_, HashSet<u32>>(HashSet::<u8>::new());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from `std::collections::HashSet<[u8; 4]>` to `std::collections::HashSet<u32>` with mismatched layout is unsound
-  --> tests/ui/transmute_collection.rs:42:17
+  --> tests/ui/transmute_collection.rs:46:17
    |
 LL |         let _ = transmute::<_, HashSet<u32>>(HashSet::<[u8; 4]>::new());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from `std::collections::BTreeMap<u8, u8>` to `std::collections::BTreeMap<u8, u32>` with mismatched layout is unsound
-  --> tests/ui/transmute_collection.rs:46:17
+  --> tests/ui/transmute_collection.rs:50:17
    |
 LL |         let _ = transmute::<_, BTreeMap<u8, u32>>(BTreeMap::<u8, u8>::new());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from `std::collections::BTreeMap<u32, u32>` to `std::collections::BTreeMap<u8, u32>` with mismatched layout is unsound
-  --> tests/ui/transmute_collection.rs:48:17
+  --> tests/ui/transmute_collection.rs:53:17
    |
 LL |         let _ = transmute::<_, BTreeMap<u8, u32>>(BTreeMap::<u32, u32>::new());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from `std::collections::BTreeMap<u8, [u8; 4]>` to `std::collections::BTreeMap<u8, u32>` with mismatched layout is unsound
-  --> tests/ui/transmute_collection.rs:51:17
+  --> tests/ui/transmute_collection.rs:57:17
    |
 LL |         let _ = transmute::<_, BTreeMap<u8, u32>>(BTreeMap::<u8, [u8; 4]>::new());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from `std::collections::BTreeMap<[u8; 4], u32>` to `std::collections::BTreeMap<u32, u32>` with mismatched layout is unsound
-  --> tests/ui/transmute_collection.rs:53:17
+  --> tests/ui/transmute_collection.rs:60:17
    |
 LL |         let _ = transmute::<_, BTreeMap<u32, u32>>(BTreeMap::<[u8; 4], u32>::new());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from `std::collections::HashMap<u8, u8>` to `std::collections::HashMap<u8, u32>` with mismatched layout is unsound
-  --> tests/ui/transmute_collection.rs:57:17
+  --> tests/ui/transmute_collection.rs:64:17
    |
 LL |         let _ = transmute::<_, HashMap<u8, u32>>(HashMap::<u8, u8>::new());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from `std::collections::HashMap<u32, u32>` to `std::collections::HashMap<u8, u32>` with mismatched layout is unsound
-  --> tests/ui/transmute_collection.rs:59:17
+  --> tests/ui/transmute_collection.rs:67:17
    |
 LL |         let _ = transmute::<_, HashMap<u8, u32>>(HashMap::<u32, u32>::new());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from `std::collections::HashMap<u8, [u8; 4]>` to `std::collections::HashMap<u8, u32>` with mismatched layout is unsound
-  --> tests/ui/transmute_collection.rs:62:17
+  --> tests/ui/transmute_collection.rs:71:17
    |
 LL |         let _ = transmute::<_, HashMap<u8, u32>>(HashMap::<u8, [u8; 4]>::new());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from `std::collections::HashMap<[u8; 4], u32>` to `std::collections::HashMap<u32, u32>` with mismatched layout is unsound
-  --> tests/ui/transmute_collection.rs:64:17
+  --> tests/ui/transmute_collection.rs:74:17
    |
 LL |         let _ = transmute::<_, HashMap<u32, u32>>(HashMap::<[u8; 4], u32>::new());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

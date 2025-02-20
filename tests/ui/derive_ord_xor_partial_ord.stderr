@@ -5,7 +5,7 @@ LL | #[derive(Ord, PartialEq, Eq)]
    |          ^^^
    |
 note: `PartialOrd` implemented here
-  --> tests/ui/derive_ord_xor_partial_ord.rs:26:1
+  --> tests/ui/derive_ord_xor_partial_ord.rs:27:1
    |
 LL | impl PartialOrd for DeriveOrd {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -14,49 +14,49 @@ LL | impl PartialOrd for DeriveOrd {
    = note: this error originates in the derive macro `Ord` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: you are deriving `Ord` but have implemented `PartialOrd` explicitly
-  --> tests/ui/derive_ord_xor_partial_ord.rs:32:10
+  --> tests/ui/derive_ord_xor_partial_ord.rs:33:10
    |
 LL | #[derive(Ord, PartialEq, Eq)]
    |          ^^^
    |
 note: `PartialOrd` implemented here
-  --> tests/ui/derive_ord_xor_partial_ord.rs:36:1
+  --> tests/ui/derive_ord_xor_partial_ord.rs:38:1
    |
 LL | impl PartialOrd<DeriveOrdWithExplicitTypeVariable> for DeriveOrdWithExplicitTypeVariable {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the derive macro `Ord` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: you are implementing `Ord` explicitly but have derived `PartialOrd`
-  --> tests/ui/derive_ord_xor_partial_ord.rs:45:1
+  --> tests/ui/derive_ord_xor_partial_ord.rs:47:1
    |
 LL | / impl std::cmp::Ord for DerivePartialOrd {
 LL | |
+LL | |
 LL | |     fn cmp(&self, other: &Self) -> Ordering {
-LL | |         Ordering::Less
-LL | |     }
+...  |
 LL | | }
    | |_^
    |
 note: `PartialOrd` implemented here
-  --> tests/ui/derive_ord_xor_partial_ord.rs:42:10
+  --> tests/ui/derive_ord_xor_partial_ord.rs:44:10
    |
 LL | #[derive(PartialOrd, PartialEq, Eq)]
    |          ^^^^^^^^^^
    = note: this error originates in the derive macro `PartialOrd` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: you are implementing `Ord` explicitly but have derived `PartialOrd`
-  --> tests/ui/derive_ord_xor_partial_ord.rs:66:5
+  --> tests/ui/derive_ord_xor_partial_ord.rs:69:5
    |
 LL | /     impl Ord for DerivePartialOrdInUseOrd {
 LL | |
+LL | |
 LL | |         fn cmp(&self, other: &Self) -> Ordering {
-LL | |             Ordering::Less
-LL | |         }
+...  |
 LL | |     }
    | |_____^
    |
 note: `PartialOrd` implemented here
-  --> tests/ui/derive_ord_xor_partial_ord.rs:63:14
+  --> tests/ui/derive_ord_xor_partial_ord.rs:66:14
    |
 LL |     #[derive(PartialOrd, PartialEq, Eq)]
    |              ^^^^^^^^^^

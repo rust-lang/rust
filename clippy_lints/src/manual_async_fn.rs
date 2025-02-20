@@ -62,6 +62,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
             && let Some(closure_body) = desugared_async_block(cx, block)
             && let Node::Item(Item {vis_span, ..}) | Node::ImplItem(ImplItem {vis_span, ..}) =
                 cx.tcx.hir_node_by_def_id(fn_def_id)
+            && !span.from_expansion()
         {
             let header_span = span.with_hi(ret_ty.span.hi());
 

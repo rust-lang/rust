@@ -6,6 +6,7 @@ pub mod foo {
 
     // in foo.rs
     //! A very short summary.
+    //~^ too_long_first_doc_paragraph
     //! A much longer explanation that goes into a lot more detail about
     //! how the thing works, possibly with doclinks and so one,
     //! and probably spanning a many rows. Blablabla, it needs to be over
@@ -13,6 +14,7 @@ pub mod foo {
 }
 
 /// Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nunc turpis nunc, lacinia
+//~^ too_long_first_doc_paragraph
 /// a dolor in, pellentesque aliquet enim. Cras nec maximus sem. Mauris arcu libero,
 /// gravida non lacinia at, rhoncus eu lacus.
 pub struct Bar;
@@ -34,6 +36,7 @@ pub enum Enum {
 }
 
 /// Lorem
+//~^ too_long_first_doc_paragraph
 /// ipsum dolor sit amet, consectetur adipiscing elit. Nunc turpis nunc, lacinia
 /// a dolor in, pellentesque aliquet enim. Cras nec maximus sem. Mauris arcu libero,
 /// gravida non lacinia at, rhoncus eu lacus.
