@@ -633,7 +633,7 @@ impl<'tcx> Pat<'tcx> {
     pub fn simple_ident(&self) -> Option<Symbol> {
         match self.kind {
             PatKind::Binding {
-                name, mode: BindingMode(ByRef::No, _), subpattern: None, ..
+                name, mode: BindingMode(ByRef::No, _, _), subpattern: None, ..
             } => Some(name),
             _ => None,
         }

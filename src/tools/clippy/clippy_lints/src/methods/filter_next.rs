@@ -46,7 +46,7 @@ pub(super) fn check<'tcx>(
             span_lint_and_then(cx, FILTER_NEXT, expr.span, msg, |diag| {
                 let (applicability, pat) = if let Some(id) = path_to_local(recv)
                     && let hir::Node::Pat(pat) = cx.tcx.hir_node(id)
-                    && let hir::PatKind::Binding(BindingMode(_, Mutability::Not), _, ident, _) = pat.kind
+                    && let hir::PatKind::Binding(BindingMode(_, _, Mutability::Not), _, ident, _) = pat.kind
                 {
                     (Applicability::Unspecified, Some((pat.span, ident)))
                 } else {
