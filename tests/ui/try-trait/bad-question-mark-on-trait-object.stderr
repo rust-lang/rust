@@ -4,13 +4,15 @@ error[E0277]: `?` couldn't convert the error: `E: std::error::Error` is not sati
 LL | fn foo() -> Result<(), Box<dyn std::error::Error>> {
    |             -------------------------------------- required `E: std::error::Error` because of this
 LL |     Ok(bar()?)
-   |             ^ the trait `std::error::Error` is not implemented for `E`
+   |        -----^ the trait `std::error::Error` is not implemented for `E`
+   |        |
+   |        this has type `Result<_, E>`
    |
    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
    = note: required for `Box<dyn std::error::Error>` to implement `From<E>`
 
 error[E0277]: `?` couldn't convert the error to `X`
-  --> $DIR/bad-question-mark-on-trait-object.rs:15:13
+  --> $DIR/bad-question-mark-on-trait-object.rs:16:13
    |
 LL | fn bat() -> Result<(), X> {
    |             ------------- expected `X` because of this

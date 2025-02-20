@@ -961,14 +961,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let Some(typeck) = &self.typeck_results else {
             return false;
         };
-        let Some((ObligationCauseCode::QuestionMark, Some(y))) =
-            obligation.cause.code().parent_with_predicate()
-        else {
+        let ObligationCauseCode::QuestionMark = obligation.cause.code().peel_derives() else {
             return false;
         };
-        if !self.tcx.is_diagnostic_item(sym::FromResidual, y.def_id()) {
-            return false;
-        }
         let self_ty = trait_pred.skip_binder().self_ty();
         let found_ty = trait_pred.skip_binder().trait_ref.args.get(1).and_then(|a| a.as_type());
 

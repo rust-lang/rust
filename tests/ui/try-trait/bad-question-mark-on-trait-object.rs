@@ -7,6 +7,7 @@ fn foo() -> Result<(), Box<dyn std::error::Error>> { //~ NOTE required `E: std::
     //~| NOTE the trait `std::error::Error` is not implemented for `E`
     //~| NOTE the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
     //~| NOTE required for `Box<dyn std::error::Error>` to implement `From<E>`
+    //~| NOTE this has type `Result<_, E>`
     //~| NOTE in this expansion
     //~| NOTE in this expansion
     //~| NOTE in this expansion
