@@ -60,7 +60,7 @@ pub mod crt_objects;
 mod base;
 mod json;
 
-pub use base::avr_gnu::ef_avr_arch;
+pub use base::avr::ef_avr_arch;
 
 /// Linker is called through a C/C++ compiler.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -1797,7 +1797,7 @@ supported_targets! {
     ("riscv64gc-unknown-fuchsia", riscv64gc_unknown_fuchsia),
     ("x86_64-unknown-fuchsia", x86_64_unknown_fuchsia),
 
-    ("avr-unknown-gnu-atmega328", avr_unknown_gnu_atmega328),
+    ("avr-none", avr_none),
 
     ("x86_64-unknown-l4re-uclibc", x86_64_unknown_l4re_uclibc),
 
@@ -3062,7 +3062,10 @@ impl Target {
             &self.post_link_args,
         ] {
             for (&flavor, flavor_args) in args {
-                check!(!flavor_args.is_empty(), "linker flavor args must not be empty");
+                check!(
+                    !flavor_args.is_empty() || self.arch == "avr",
+                    "linker flavor args must not be empty"
+                );
                 // Check that flavors mentioned in link args are compatible with the default flavor.
                 match self.linker_flavor {
                     LinkerFlavor::Gnu(..) => {
