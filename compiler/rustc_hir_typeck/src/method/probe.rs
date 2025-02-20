@@ -873,7 +873,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn assemble_inherent_candidates_from_object(&mut self, self_ty: Ty<'tcx>) {
         let principal = match self_ty.kind() {
-            ty::Dynamic(ref data, ..) => Some(data),
+            ty::Dynamic(data, ..) => Some(data),
             _ => None,
         }
         .and_then(|data| data.principal())

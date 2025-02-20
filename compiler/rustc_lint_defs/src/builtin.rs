@@ -2780,7 +2780,7 @@ declare_lint! {
     ///
     /// ```rust
     /// enum Void {}
-    /// extern {
+    /// unsafe extern {
     ///     static EXTERN: Void;
     /// }
     /// ```
@@ -4011,7 +4011,7 @@ declare_lint! {
     /// ```rust
     /// #![warn(ffi_unwind_calls)]
     ///
-    /// extern "C-unwind" {
+    /// unsafe extern "C-unwind" {
     ///     fn foo();
     /// }
     ///
@@ -4755,7 +4755,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust
+    /// ```rust,edition2021
     /// #![warn(missing_unsafe_on_extern)]
     /// #![allow(dead_code)]
     ///
@@ -4792,7 +4792,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust
+    /// ```rust,edition2021
     /// #![warn(unsafe_attr_outside_unsafe)]
     ///
     /// #[no_mangle]
