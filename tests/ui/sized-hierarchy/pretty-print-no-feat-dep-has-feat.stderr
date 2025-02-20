@@ -1,5 +1,14 @@
+error[E0119]: conflicting implementations of trait `ConstSizedTr` for type `X<_>`
+  --> $DIR/pretty-print-no-feat-dep-has-feat.rs:18:1
+   |
+LL | impl<T: Sized> ConstSizedTr for X<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: conflicting implementation in crate `pretty_print_dep`:
+           - impl<T> ConstSizedTr for T;
+
 error[E0119]: conflicting implementations of trait `SizedTr` for type `X<_>`
-  --> $DIR/pretty-print-no-feat-dep-has-feat.rs:16:1
+  --> $DIR/pretty-print-no-feat-dep-has-feat.rs:21:1
    |
 LL | impl<T: Sized> SizedTr for X<T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +17,7 @@ LL | impl<T: Sized> SizedTr for X<T> {}
            - impl<T> SizedTr for T;
 
 error[E0119]: conflicting implementations of trait `NegSizedTr` for type `X<_>`
-  --> $DIR/pretty-print-no-feat-dep-has-feat.rs:19:1
+  --> $DIR/pretty-print-no-feat-dep-has-feat.rs:24:1
    |
 LL | impl<T: ?Sized> NegSizedTr for X<T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -17,8 +26,18 @@ LL | impl<T: ?Sized> NegSizedTr for X<T> {}
            - impl<T> NegSizedTr for T
              where T: ?Sized;
 
+error[E0119]: conflicting implementations of trait `ConstMetaSizedTr` for type `X<_>`
+  --> $DIR/pretty-print-no-feat-dep-has-feat.rs:27:1
+   |
+LL | impl<T: ?Sized> ConstMetaSizedTr for X<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: conflicting implementation in crate `pretty_print_dep`:
+           - impl<T> ConstMetaSizedTr for T
+             where T: ?Sized;
+
 error[E0119]: conflicting implementations of trait `MetaSizedTr` for type `X<_>`
-  --> $DIR/pretty-print-no-feat-dep-has-feat.rs:22:1
+  --> $DIR/pretty-print-no-feat-dep-has-feat.rs:30:1
    |
 LL | impl<T: ?Sized> MetaSizedTr for X<T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -28,7 +47,7 @@ LL | impl<T: ?Sized> MetaSizedTr for X<T> {}
              where T: ?Sized;
 
 error[E0119]: conflicting implementations of trait `PointeeSizedTr` for type `X<_>`
-  --> $DIR/pretty-print-no-feat-dep-has-feat.rs:25:1
+  --> $DIR/pretty-print-no-feat-dep-has-feat.rs:33:1
    |
 LL | impl<T: ?Sized> PointeeSizedTr for X<T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -37,6 +56,6 @@ LL | impl<T: ?Sized> PointeeSizedTr for X<T> {}
            - impl<T> PointeeSizedTr for T
              where T: ?Sized;
 
-error: aborting due to 4 previous errors
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0119`.

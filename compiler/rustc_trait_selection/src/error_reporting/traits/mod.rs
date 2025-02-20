@@ -334,7 +334,9 @@ pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Opti
 
     #[derive(Debug, Default)]
     struct SizednessFound {
+        const_sized: bool,
         sized: bool,
+        const_meta_sized: bool,
         meta_sized: bool,
     }
 
@@ -383,20 +385,35 @@ pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Opti
             }
         }
 
+        if let Some(host_effect_clause) = p.as_host_effect_clause() {
+            let self_ty = host_effect_clause.self_ty().skip_binder();
+            let sizedness_of = types_with_sizedness_bounds.entry(self_ty).or_default();
+            if Some(host_effect_clause.def_id()) == sized_trait {
+                sizedness_of.const_sized = true;
+                continue;
+            } else if Some(host_effect_clause.def_id()) == meta_sized_trait {
+                sizedness_of.const_meta_sized = true;
+                continue;
+            }
+        }
+
         pretty_predicates.push(p.to_string());
     }
 
     for (ty, sizedness) in types_with_sizedness_bounds {
         if !tcx.features().sized_hierarchy() {
-            if sizedness.sized {
+            if sizedness.const_sized || sizedness.sized {
                 // Maybe a default bound, don't write anything.
             } else {
                 pretty_predicates.push(format!("{ty}: ?Sized"));
             }
         } else {
-            if sizedness.sized {
+            if sizedness.const_sized {
                 // Maybe a default bound, don't write anything.
+            } else if sizedness.sized {
                 pretty_predicates.push(format!("{ty}: Sized"));
+            } else if sizedness.const_meta_sized {
+                pretty_predicates.push(format!("{ty}: const MetaSized"));
             } else if sizedness.meta_sized {
                 pretty_predicates.push(format!("{ty}: MetaSized"));
             } else {
