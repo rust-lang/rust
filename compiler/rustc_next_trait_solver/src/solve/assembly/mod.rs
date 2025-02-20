@@ -819,7 +819,10 @@ where
                     .filter(|c| {
                         matches!(
                             c.source,
-                            CandidateSource::AliasBound | CandidateSource::ParamEnv(_)
+                            CandidateSource::AliasBound
+                            | CandidateSource::ParamEnv(_)
+                            // Allow trivial for `const Sized`
+                            | CandidateSource::BuiltinImpl(BuiltinImplSource::Trivial)
                         )
                     })
                     .map(|c| c.result)
