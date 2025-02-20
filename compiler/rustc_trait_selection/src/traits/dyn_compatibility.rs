@@ -485,6 +485,28 @@ fn virtual_call_violations_for_method<'tcx>(
             return false;
         }
 
+        if let ty::ClauseKind::HostEffect(ty::HostEffectPredicate {
+            trait_ref: pred_trait_ref,
+            constness: _,
+        }) = pred.kind().skip_binder()
+            && pred_trait_ref.self_ty() == tcx.types.self_param
+            && (tcx.trait_is_auto(pred_trait_ref.def_id)
+                // FIXME(sized-hierarchy): is this correct? what about `Sized`?
+                || tcx.is_lang_item(pred_trait_ref.def_id, LangItem::MetaSized))
+        {
+            // Consider bounds like `Self: Bound<Self>`. Auto traits are not
+            // allowed to have generic parameters so `auto trait Bound<T> {}`
+            // would already have reported an error at the definition of the
+            // auto trait.
+            if pred_trait_ref.args.len() != 1 {
+                assert!(
+                    tcx.dcx().has_errors().is_some(),
+                    "auto traits cannot have generic parameters"
+                );
+            }
+            return false;
+        }
+
         contains_illegal_self_type_reference(tcx, trait_def_id, pred, AllowSelfProjections::Yes)
     }) {
         errors.push(MethodViolationCode::WhereClauseReferencesSelf);
