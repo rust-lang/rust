@@ -2,7 +2,9 @@
 //@ compile-flags: --crate-type=lib
 
 extern crate pretty_print_dep;
-use pretty_print_dep::{SizedTr, NegSizedTr, MetaSizedTr, PointeeSizedTr};
+use pretty_print_dep::{
+    ConstSizedTr, SizedTr, NegSizedTr, ConstMetaSizedTr, MetaSizedTr, PointeeSizedTr
+};
 
 // Test that printing the sizedness trait bounds in the conflicting impl error without enabling
 // `sized_hierarchy` will continue to print `?Sized`, even if the dependency is compiled with
@@ -13,11 +15,17 @@ use pretty_print_dep::{SizedTr, NegSizedTr, MetaSizedTr, PointeeSizedTr};
 
 struct X<T>(T);
 
+impl<T: Sized> ConstSizedTr for X<T> {}
+//~^ ERROR conflicting implementations of trait `ConstSizedTr` for type `X<_>`
+
 impl<T: Sized> SizedTr for X<T> {}
 //~^ ERROR conflicting implementations of trait `SizedTr` for type `X<_>`
 
 impl<T: ?Sized> NegSizedTr for X<T> {}
 //~^ ERROR conflicting implementations of trait `NegSizedTr` for type `X<_>`
+
+impl<T: ?Sized> ConstMetaSizedTr for X<T> {}
+//~^ ERROR conflicting implementations of trait `ConstMetaSizedTr` for type `X<_>`
 
 impl<T: ?Sized> MetaSizedTr for X<T> {}
 //~^ ERROR conflicting implementations of trait `MetaSizedTr` for type `X<_>`
