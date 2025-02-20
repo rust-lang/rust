@@ -1572,6 +1572,7 @@ impl<T, A: Allocator> Vec<T, A> {
         // * We only construct `&mut` references to `self.buf` through `&mut self` methods; borrow-
         //   check ensures that it is not possible to mutably alias `self.buf` within the
         //   returned lifetime.
+        // FIXME(const-hack): just deref `self` instead
         unsafe { slice::from_raw_parts(self.as_ptr(), self.len) }
     }
 
@@ -1604,6 +1605,7 @@ impl<T, A: Allocator> Vec<T, A> {
         // * We only construct references to `self.buf` through `&self` and `&mut self` methods;
         //   borrow-check ensures that it is not possible to construct a reference to `self.buf`
         //   within the returned lifetime.
+        // FIXME(const-hack): just deref `self` instead
         unsafe { slice::from_raw_parts_mut(self.as_mut_ptr(), self.len) }
     }
 
