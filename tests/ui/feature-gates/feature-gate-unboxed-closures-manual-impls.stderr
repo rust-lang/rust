@@ -165,9 +165,8 @@ LL |     extern "rust-call" fn call_mut(&self, args: ()) -> () {}
               found signature `extern "rust-call" fn(&Bar, ()) -> ()`
 help: change the self-receiver type to match the trait
    |
-LL -     extern "rust-call" fn call_mut(&self, args: ()) -> () {}
-LL +     extern "rust-call" fn call_mut(&mut self, args: ()) -> () {}
-   |
+LL |     extern "rust-call" fn call_mut(&mut self, args: ()) -> () {}
+   |                                     +++
 
 error[E0046]: not all trait items implemented, missing: `Output`
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:35:1

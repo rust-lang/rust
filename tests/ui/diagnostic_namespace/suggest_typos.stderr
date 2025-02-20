@@ -11,9 +11,8 @@ LL | #![deny(unknown_or_malformed_diagnostic_attributes)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: an attribute with a similar name exists
    |
-LL - #[diagnostic::onunimplemented]
-LL + #[diagnostic::on_unimplemented]
-   |
+LL | #[diagnostic::on_unimplemented]
+   |                 +
 
 error: unknown diagnostic attribute
   --> $DIR/suggest_typos.rs:9:15
@@ -35,9 +34,8 @@ LL | #[diagnostic::on_implemented]
    |
 help: an attribute with a similar name exists
    |
-LL - #[diagnostic::on_implemented]
-LL + #[diagnostic::on_unimplemented]
-   |
+LL | #[diagnostic::on_unimplemented]
+   |                  ++
 
 error: aborting due to 3 previous errors
 
