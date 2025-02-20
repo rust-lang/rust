@@ -1,0 +1,103 @@
+warning: interior mutability in `const` item have no effect to the `const` item itself
+  --> $DIR/interior-mutable-types-in-consts-not-sync.rs:5:1
+   |
+LL | const A: Cell<i32> = Cell::new(0);
+   | ^^^^^^^^^---------^^^^^^^^^^^^^^^^
+   |          |
+   |          `Cell` is an interior mutable type
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const` item `A` will be modified
+   = help: for use as an initializer, consider using an inline-const `const { /* ... */ }` at the usage site instead
+   = note: `#[warn(interior_mutable_consts)]` on by default
+help: for a shared instance of `A`, consider using a `static` item instead
+   |
+LL | static A: Cell<i32> = Cell::new(0);
+   | ~~~~~~
+help: alternatively consider allowing the lint
+   |
+LL | #[allow(interior_mutable_consts)] const A: Cell<i32> = Cell::new(0);
+   | +++++++++++++++++++++++++++++++++
+
+warning: interior mutability in `const` item have no effect to the `const` item itself
+  --> $DIR/interior-mutable-types-in-consts-not-sync.rs:7:1
+   |
+LL | const B: RefCell<i32> = RefCell::new(0);
+   | ^^^^^^^^^------------^^^^^^^^^^^^^^^^^^^
+   |          |
+   |          `RefCell` is an interior mutable type
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const` item `B` will be modified
+   = help: for use as an initializer, consider using an inline-const `const { /* ... */ }` at the usage site instead
+help: for a shared instance of `B`, consider using a `static` item instead
+   |
+LL | static B: RefCell<i32> = RefCell::new(0);
+   | ~~~~~~
+help: alternatively consider allowing the lint
+   |
+LL | #[allow(interior_mutable_consts)] const B: RefCell<i32> = RefCell::new(0);
+   | +++++++++++++++++++++++++++++++++
+
+warning: interior mutability in `const` item have no effect to the `const` item itself
+  --> $DIR/interior-mutable-types-in-consts-not-sync.rs:9:1
+   |
+LL | const C: UnsafeCell<i32> = UnsafeCell::new(0);
+   | ^^^^^^^^^---------------^^^^^^^^^^^^^^^^^^^^^^
+   |          |
+   |          `UnsafeCell` is an interior mutable type
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const` item `C` will be modified
+   = help: for use as an initializer, consider using an inline-const `const { /* ... */ }` at the usage site instead
+help: for a shared instance of `C`, consider using a `static` item instead
+   |
+LL | static C: UnsafeCell<i32> = UnsafeCell::new(0);
+   | ~~~~~~
+help: alternatively consider allowing the lint
+   |
+LL | #[allow(interior_mutable_consts)] const C: UnsafeCell<i32> = UnsafeCell::new(0);
+   | +++++++++++++++++++++++++++++++++
+
+warning: interior mutability in `const` item have no effect to the `const` item itself
+  --> $DIR/interior-mutable-types-in-consts-not-sync.rs:11:1
+   |
+LL | const D: LazyCell<i32> = LazyCell::new(|| 0);
+   | ^^^^^^^^^-------------^^^^^^^^^^^^^^^^^^^^^^^
+   |          |
+   |          `LazyCell` is an interior mutable type
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const` item `D` will be modified
+   = help: for use as an initializer, consider using an inline-const `const { /* ... */ }` at the usage site instead
+help: for a shared instance of `D`, consider using a `static` item instead
+   |
+LL | static D: LazyCell<i32> = LazyCell::new(|| 0);
+   | ~~~~~~
+help: alternatively consider allowing the lint
+   |
+LL | #[allow(interior_mutable_consts)] const D: LazyCell<i32> = LazyCell::new(|| 0);
+   | +++++++++++++++++++++++++++++++++
+
+warning: interior mutability in `const` item have no effect to the `const` item itself
+  --> $DIR/interior-mutable-types-in-consts-not-sync.rs:13:1
+   |
+LL | const E: OnceCell<i32> = OnceCell::new();
+   | ^^^^^^^^^-------------^^^^^^^^^^^^^^^^^^^
+   |          |
+   |          `OnceCell` is an interior mutable type
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const` item `E` will be modified
+   = help: for use as an initializer, consider using an inline-const `const { /* ... */ }` at the usage site instead
+help: for a shared instance of `E`, consider using a `static` item instead
+   |
+LL | static E: OnceCell<i32> = OnceCell::new();
+   | ~~~~~~
+help: alternatively consider allowing the lint
+   |
+LL | #[allow(interior_mutable_consts)] const E: OnceCell<i32> = OnceCell::new();
+   | +++++++++++++++++++++++++++++++++
+
+warning: 5 warnings emitted
+

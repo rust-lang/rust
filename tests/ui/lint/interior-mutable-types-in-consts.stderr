@@ -1,0 +1,283 @@
+warning: interior mutability in `const` item have no effect to the `const` item itself
+  --> $DIR/interior-mutable-types-in-consts.rs:10:1
+   |
+LL | const A: Once = Once::new();
+   | ^^^^^^^^^----^^^^^^^^^^^^^^^
+   |          |
+   |          `Once` is an interior mutable type
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const` item `A` will be modified
+   = help: for use as an initializer, consider using an inline-const `const { /* ... */ }` at the usage site instead
+   = note: `#[warn(interior_mutable_consts)]` on by default
+help: for a shared instance of `A`, consider using a `static` item instead
+   |
+LL | static A: Once = Once::new();
+   | ~~~~~~
+help: alternatively consider allowing the lint
+   |
+LL | #[allow(interior_mutable_consts)] const A: Once = Once::new();
+   | +++++++++++++++++++++++++++++++++
+
+warning: interior mutability in `const` item have no effect to the `const` item itself
+  --> $DIR/interior-mutable-types-in-consts.rs:12:1
+   |
+LL | const B: Barrier = Barrier::new(0);
+   | ^^^^^^^^^-------^^^^^^^^^^^^^^^^^^^
+   |          |
+   |          `Barrier` is an interior mutable type
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const` item `B` will be modified
+   = help: for use as an initializer, consider using an inline-const `const { /* ... */ }` at the usage site instead
+help: for a shared instance of `B`, consider using a `static` item instead
+   |
+LL | static B: Barrier = Barrier::new(0);
+   | ~~~~~~
+help: alternatively consider allowing the lint
+   |
+LL | #[allow(interior_mutable_consts)] const B: Barrier = Barrier::new(0);
+   | +++++++++++++++++++++++++++++++++
+
+warning: interior mutability in `const` item have no effect to the `const` item itself
+  --> $DIR/interior-mutable-types-in-consts.rs:14:1
+   |
+LL | const C: Condvar = Condvar::new();
+   | ^^^^^^^^^-------^^^^^^^^^^^^^^^^^^
+   |          |
+   |          `Condvar` is an interior mutable type
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const` item `C` will be modified
+   = help: for use as an initializer, consider using an inline-const `const { /* ... */ }` at the usage site instead
+help: for a shared instance of `C`, consider using a `static` item instead
+   |
+LL | static C: Condvar = Condvar::new();
+   | ~~~~~~
+help: alternatively consider allowing the lint
+   |
+LL | #[allow(interior_mutable_consts)] const C: Condvar = Condvar::new();
+   | +++++++++++++++++++++++++++++++++
+
+warning: interior mutability in `const` item have no effect to the `const` item itself
+  --> $DIR/interior-mutable-types-in-consts.rs:16:1
+   |
+LL | const D: LazyLock<i32> = LazyLock::new(|| 0);
+   | ^^^^^^^^^-------------^^^^^^^^^^^^^^^^^^^^^^^
+   |          |
+   |          `LazyLock` is an interior mutable type
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const` item `D` will be modified
+   = help: for use as an initializer, consider using an inline-const `const { /* ... */ }` at the usage site instead
+help: for a shared instance of `D`, consider using a `static` item instead
+   |
+LL | static D: LazyLock<i32> = LazyLock::new(|| 0);
+   | ~~~~~~
+help: alternatively consider allowing the lint
+   |
+LL | #[allow(interior_mutable_consts)] const D: LazyLock<i32> = LazyLock::new(|| 0);
+   | +++++++++++++++++++++++++++++++++
+
+warning: interior mutability in `const` item have no effect to the `const` item itself
+  --> $DIR/interior-mutable-types-in-consts.rs:18:1
+   |
+LL | const E: Mutex<i32> = Mutex::new(0);
+   | ^^^^^^^^^----------^^^^^^^^^^^^^^^^^
+   |          |
+   |          `Mutex` is an interior mutable type
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const` item `E` will be modified
+   = help: for use as an initializer, consider using an inline-const `const { /* ... */ }` at the usage site instead
+help: for a shared instance of `E`, consider using a `static` item instead
+   |
+LL | static E: Mutex<i32> = Mutex::new(0);
+   | ~~~~~~
+help: alternatively consider allowing the lint
+   |
+LL | #[allow(interior_mutable_consts)] const E: Mutex<i32> = Mutex::new(0);
+   | +++++++++++++++++++++++++++++++++
+
+warning: interior mutability in `const` item have no effect to the `const` item itself
+  --> $DIR/interior-mutable-types-in-consts.rs:20:1
+   |
+LL | const F: OnceLock<i32> = OnceLock::new();
+   | ^^^^^^^^^-------------^^^^^^^^^^^^^^^^^^^
+   |          |
+   |          `OnceLock` is an interior mutable type
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const` item `F` will be modified
+   = help: for use as an initializer, consider using an inline-const `const { /* ... */ }` at the usage site instead
+help: for a shared instance of `F`, consider using a `static` item instead
+   |
+LL | static F: OnceLock<i32> = OnceLock::new();
+   | ~~~~~~
+help: alternatively consider allowing the lint
+   |
+LL | #[allow(interior_mutable_consts)] const F: OnceLock<i32> = OnceLock::new();
+   | +++++++++++++++++++++++++++++++++
+
+warning: interior mutability in `const` item have no effect to the `const` item itself
+  --> $DIR/interior-mutable-types-in-consts.rs:22:1
+   |
+LL | const G: ReentrantLock<i32> = ReentrantLock::new(0);
+   | ^^^^^^^^^------------------^^^^^^^^^^^^^^^^^^^^^^^^^
+   |          |
+   |          `ReentrantLock` is an interior mutable type
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const` item `G` will be modified
+   = help: for use as an initializer, consider using an inline-const `const { /* ... */ }` at the usage site instead
+help: for a shared instance of `G`, consider using a `static` item instead
+   |
+LL | static G: ReentrantLock<i32> = ReentrantLock::new(0);
+   | ~~~~~~
+help: alternatively consider allowing the lint
+   |
+LL | #[allow(interior_mutable_consts)] const G: ReentrantLock<i32> = ReentrantLock::new(0);
+   | +++++++++++++++++++++++++++++++++
+
+warning: interior mutability in `const` item have no effect to the `const` item itself
+  --> $DIR/interior-mutable-types-in-consts.rs:24:1
+   |
+LL | const H: RwLock<i32> = RwLock::new(0);
+   | ^^^^^^^^^-----------^^^^^^^^^^^^^^^^^^
+   |          |
+   |          `RwLock` is an interior mutable type
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const` item `H` will be modified
+   = help: for use as an initializer, consider using an inline-const `const { /* ... */ }` at the usage site instead
+help: for a shared instance of `H`, consider using a `static` item instead
+   |
+LL | static H: RwLock<i32> = RwLock::new(0);
+   | ~~~~~~
+help: alternatively consider allowing the lint
+   |
+LL | #[allow(interior_mutable_consts)] const H: RwLock<i32> = RwLock::new(0);
+   | +++++++++++++++++++++++++++++++++
+
+warning: interior mutability in `const` item have no effect to the `const` item itself
+  --> $DIR/interior-mutable-types-in-consts.rs:26:1
+   |
+LL | const I: AtomicBool = AtomicBool::new(false);
+   | ^^^^^^^^^----------^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |          |
+   |          `AtomicBool` is an interior mutable type
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const` item `I` will be modified
+   = help: for use as an initializer, consider using an inline-const `const { /* ... */ }` at the usage site instead
+help: for a shared instance of `I`, consider using a `static` item instead
+   |
+LL | static I: AtomicBool = AtomicBool::new(false);
+   | ~~~~~~
+help: alternatively consider allowing the lint
+   |
+LL | #[allow(interior_mutable_consts)] const I: AtomicBool = AtomicBool::new(false);
+   | +++++++++++++++++++++++++++++++++
+
+warning: interior mutability in `const` item have no effect to the `const` item itself
+  --> $DIR/interior-mutable-types-in-consts.rs:28:1
+   |
+LL | const J: AtomicPtr<i32> = AtomicPtr::new(std::ptr::null_mut());
+   | ^^^^^^^^^--------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |          |
+   |          `AtomicPtr` is an interior mutable type
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const` item `J` will be modified
+   = help: for use as an initializer, consider using an inline-const `const { /* ... */ }` at the usage site instead
+help: for a shared instance of `J`, consider using a `static` item instead
+   |
+LL | static J: AtomicPtr<i32> = AtomicPtr::new(std::ptr::null_mut());
+   | ~~~~~~
+help: alternatively consider allowing the lint
+   |
+LL | #[allow(interior_mutable_consts)] const J: AtomicPtr<i32> = AtomicPtr::new(std::ptr::null_mut());
+   | +++++++++++++++++++++++++++++++++
+
+warning: interior mutability in `const` item have no effect to the `const` item itself
+  --> $DIR/interior-mutable-types-in-consts.rs:30:1
+   |
+LL | const K: AtomicI32 = AtomicI32::new(0);
+   | ^^^^^^^^^---------^^^^^^^^^^^^^^^^^^^^^
+   |          |
+   |          `AtomicI32` is an interior mutable type
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const` item `K` will be modified
+   = help: for use as an initializer, consider using an inline-const `const { /* ... */ }` at the usage site instead
+help: for a shared instance of `K`, consider using a `static` item instead
+   |
+LL | static K: AtomicI32 = AtomicI32::new(0);
+   | ~~~~~~
+help: alternatively consider allowing the lint
+   |
+LL | #[allow(interior_mutable_consts)] const K: AtomicI32 = AtomicI32::new(0);
+   | +++++++++++++++++++++++++++++++++
+
+warning: interior mutability in `const` item have no effect to the `const` item itself
+  --> $DIR/interior-mutable-types-in-consts.rs:32:1
+   |
+LL | const L: AtomicU32 = AtomicU32::new(0);
+   | ^^^^^^^^^---------^^^^^^^^^^^^^^^^^^^^^
+   |          |
+   |          `AtomicU32` is an interior mutable type
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const` item `L` will be modified
+   = help: for use as an initializer, consider using an inline-const `const { /* ... */ }` at the usage site instead
+help: for a shared instance of `L`, consider using a `static` item instead
+   |
+LL | static L: AtomicU32 = AtomicU32::new(0);
+   | ~~~~~~
+help: alternatively consider allowing the lint
+   |
+LL | #[allow(interior_mutable_consts)] const L: AtomicU32 = AtomicU32::new(0);
+   | +++++++++++++++++++++++++++++++++
+
+warning: interior mutability in `const` item have no effect to the `const` item itself
+  --> $DIR/interior-mutable-types-in-consts.rs:35:1
+   |
+LL | pub(crate) const X: Once = Once::new();
+   | ^^^^^^^^^^^^^^^^^^^^----^^^^^^^^^^^^^^^
+   |                     |
+   |                     `Once` is an interior mutable type
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const` item `X` will be modified
+   = help: for use as an initializer, consider using an inline-const `const { /* ... */ }` at the usage site instead
+help: for a shared instance of `X`, consider using a `static` item instead
+   |
+LL | pub(crate) static X: Once = Once::new();
+   |            ~~~~~~
+help: alternatively consider allowing the lint
+   |
+LL | #[allow(interior_mutable_consts)] pub(crate) const X: Once = Once::new();
+   | +++++++++++++++++++++++++++++++++
+
+warning: interior mutability in `const` item have no effect to the `const` item itself
+  --> $DIR/interior-mutable-types-in-consts.rs:39:5
+   |
+LL |     const Z: Once = Once::new();
+   |     ^^^^^^^^^----^^^^^^^^^^^^^^^
+   |              |
+   |              `Once` is an interior mutable type
+   |
+   = note: each usage of a `const` item creates a new temporary
+   = note: only the temporaries and never the original `const` item `Z` will be modified
+   = help: for use as an initializer, consider using an inline-const `const { /* ... */ }` at the usage site instead
+help: for a shared instance of `Z`, consider using a `static` item instead
+   |
+LL |     static Z: Once = Once::new();
+   |     ~~~~~~
+help: alternatively consider allowing the lint
+   |
+LL |     #[allow(interior_mutable_consts)] const Z: Once = Once::new();
+   |     +++++++++++++++++++++++++++++++++
+
+warning: 14 warnings emitted
+
