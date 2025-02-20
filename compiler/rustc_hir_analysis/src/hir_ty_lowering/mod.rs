@@ -269,7 +269,8 @@ impl LowerAssocMode {
     fn permit_variants(self) -> bool {
         match self {
             LowerAssocMode::Type { permit_variants } => permit_variants,
-            LowerAssocMode::Const => true,
+            // FIXME(mgca): Support paths like `Option::<T>::None` or `Option::<T>::Some` which resolve to const ctors/fn items respectively
+            LowerAssocMode::Const => false,
         }
     }
 }
@@ -1204,7 +1205,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 }
                 (def_id, args)
             }
-            LoweredAssoc::Variant { adt: _, variant_did } => (variant_did, ty::List::empty()),
+            // FIXME(mgca): implement support for this once ready to support all adt ctor expressions,
+            // not just const ctors
+            LoweredAssoc::Variant { .. } => {
+                span_bug!(span, "unexpected variant res for type associated const path")
+            }
         };
         Ok(Const::new_unevaluated(tcx, ty::UnevaluatedConst::new(def_id, args)))
     }
