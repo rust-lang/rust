@@ -19,6 +19,7 @@ rustc_type_ir_macros = { path = "../rustc_type_ir_macros" }
 smallvec = { version = "1.8.1", default-features = false }
 thin-vec = "0.2.12"
 tracing = "0.1"
+triomphe = "0.1.14"
 # tidy-alphabetical-end
 
 [features]

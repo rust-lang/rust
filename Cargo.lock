@@ -3500,6 +3500,7 @@ dependencies = [
  "tempfile",
  "thin-vec",
  "tracing",
+ "triomphe",
  "windows 0.59.0",
 ]
 
@@ -4024,6 +4025,7 @@ dependencies = [
  "smallvec",
  "thin-vec",
  "tracing",
+ "triomphe",
 ]
 
 [[package]]
@@ -4335,6 +4337,7 @@ dependencies = [
  "smallvec",
  "tempfile",
  "thin-vec",
+ "triomphe",
 ]
 
 [[package]]
@@ -4538,6 +4541,7 @@ dependencies = [
  "smallvec",
  "thin-vec",
  "tracing",
+ "triomphe",
 ]
 
 [[package]]
@@ -5456,6 +5460,15 @@ dependencies = [
  "tracing-core",
  "tracing-log",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "triomphe"
+version = "0.1.14"
+source = "git+https://github.com/Manishearth/triomphe.git?rev=6ff0527036632be33a6ed45e5e8a0fb6243dee47#6ff0527036632be33a6ed45e5e8a0fb6243dee47"
+dependencies = [
+ "serde",
+ "stable_deref_trait",
 ]
 
 [[package]]

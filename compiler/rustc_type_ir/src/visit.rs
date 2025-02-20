@@ -173,6 +173,12 @@ impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Arc<T> {
     }
 }
 
+impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for triomphe::Arc<T> {
+    fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
+        (**self).visit_with(visitor)
+    }
+}
+
 impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Box<T> {
     fn visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
         (**self).visit_with(visitor)
