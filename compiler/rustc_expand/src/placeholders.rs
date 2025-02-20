@@ -188,6 +188,18 @@ pub(crate) fn placeholder(
             vis,
             is_placeholder: true,
         }]),
+        AstFragmentKind::WherePredicate => {
+            AstFragment::WherePredicate(smallvec![ast::WherePredicate {
+                attrs: Default::default(),
+                id,
+                span,
+                kind: ast::WherePredicateKind::BoundPredicate(ast::WhereBoundPredicate {
+                    bound_generic_params: Default::default(),
+                    bounded_ty: ty(),
+                    bounds: Default::default(),
+                }),
+            }])
+        }
     }
 }
 

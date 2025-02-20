@@ -401,6 +401,8 @@ declare_features! (
     (unstable, async_trait_bounds, "1.85.0", Some(62290)),
     /// Allows using C-variadics.
     (unstable, c_variadic, "1.34.0", Some(44930)),
+    /// Allows the use of `#[cfg]` in `where` clauses.
+    (unstable, cfg_attribute_in_where, "CURRENT_RUSTC_VERSION", Some(115590)),
     /// Allows the use of `#[cfg(<true/false>)]`.
     (unstable, cfg_boolean_literals, "1.83.0", Some(131204)),
     /// Allows the use of `#[cfg(contract_checks)` to check if contract checks are enabled.

@@ -53,6 +53,7 @@ pub enum Annotatable {
     FieldDef(ast::FieldDef),
     Variant(ast::Variant),
     Crate(ast::Crate),
+    WherePredicate(ast::WherePredicate),
 }
 
 impl Annotatable {
@@ -71,6 +72,7 @@ impl Annotatable {
             Annotatable::FieldDef(sf) => sf.span,
             Annotatable::Variant(v) => v.span,
             Annotatable::Crate(c) => c.spans.inner_span,
+            Annotatable::WherePredicate(wp) => wp.span,
         }
     }
 
@@ -89,6 +91,7 @@ impl Annotatable {
             Annotatable::FieldDef(sf) => sf.visit_attrs(f),
             Annotatable::Variant(v) => v.visit_attrs(f),
             Annotatable::Crate(c) => c.visit_attrs(f),
+            Annotatable::WherePredicate(wp) => wp.visit_attrs(f),
         }
     }
 
@@ -107,6 +110,7 @@ impl Annotatable {
             Annotatable::FieldDef(sf) => visitor.visit_field_def(sf),
             Annotatable::Variant(v) => visitor.visit_variant(v),
             Annotatable::Crate(c) => visitor.visit_crate(c),
+            Annotatable::WherePredicate(wp) => visitor.visit_where_predicate(wp),
         }
     }
 
@@ -127,7 +131,8 @@ impl Annotatable {
             | Annotatable::Param(..)
             | Annotatable::FieldDef(..)
             | Annotatable::Variant(..)
-            | Annotatable::Crate(..) => panic!("unexpected annotatable"),
+            | Annotatable::Crate(..)
+            | Annotatable::WherePredicate(..) => panic!("unexpected annotatable"),
         }
     }
 
@@ -226,6 +231,13 @@ impl Annotatable {
         match self {
             Annotatable::Crate(krate) => krate,
             _ => panic!("expected krate"),
+        }
+    }
+
+    pub fn expect_where_predicate(self) -> ast::WherePredicate {
+        match self {
+            Annotatable::WherePredicate(wp) => wp,
+            _ => panic!("expected where predicate"),
         }
     }
 }
@@ -448,6 +460,10 @@ pub trait MacResult {
     fn make_crate(self: Box<Self>) -> Option<ast::Crate> {
         // Fn-like macros cannot produce a crate.
         unreachable!()
+    }
+
+    fn make_where_predicates(self: Box<Self>) -> Option<SmallVec<[ast::WherePredicate; 1]>> {
+        None
     }
 }
 

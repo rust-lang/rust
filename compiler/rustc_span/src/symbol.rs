@@ -579,6 +579,7 @@ symbols! {
         cfg_accessible,
         cfg_attr,
         cfg_attr_multi,
+        cfg_attribute_in_where,
         cfg_boolean_literals,
         cfg_contract_checks,
         cfg_doctest,

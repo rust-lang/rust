@@ -784,6 +784,10 @@ passes_unstable_attr_for_already_stable_feature =
     .item = the stability attribute annotates this item
     .help = consider removing the attribute
 
+passes_unsupported_attributes_in_where =
+    attributes in `where` clauses are not supported
+    .help = only `#[cfg]` is supported in `where` clauses
+
 passes_unused =
     unused attribute
     .suggestion = remove this attribute
