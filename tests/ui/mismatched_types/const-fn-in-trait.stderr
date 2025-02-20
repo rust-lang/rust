@@ -2,19 +2,25 @@ error[E0379]: functions in traits cannot be declared const
   --> $DIR/const-fn-in-trait.rs:3:5
    |
 LL |     const fn g();
-   |     ^^^^^-
-   |     |
-   |     functions in traits cannot be const
-   |     help: remove the `const`
+   |     ^^^^^ functions in traits cannot be const
+   |
+help: remove the `const`
+   |
+LL -     const fn g();
+LL +     fn g();
+   |
 
 error[E0379]: functions in trait impls cannot be declared const
   --> $DIR/const-fn-in-trait.rs:7:5
    |
 LL |     const fn f() -> u32 { 22 }
-   |     ^^^^^-
-   |     |
-   |     functions in trait impls cannot be const
-   |     help: remove the `const`
+   |     ^^^^^ functions in trait impls cannot be const
+   |
+help: remove the `const`
+   |
+LL -     const fn f() -> u32 { 22 }
+LL +     fn f() -> u32 { 22 }
+   |
 
 error: aborting due to 2 previous errors
 

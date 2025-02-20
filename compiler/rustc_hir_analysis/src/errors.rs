@@ -51,7 +51,8 @@ pub(crate) struct AssocKindMismatch {
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(
     hir_analysis_assoc_kind_mismatch_wrap_in_braces_sugg,
-    applicability = "maybe-incorrect"
+    applicability = "maybe-incorrect",
+    style = "verbose"
 )]
 pub(crate) struct AssocKindMismatchWrapInBracesSugg {
     #[suggestion_part(code = "{{ ")]
@@ -110,7 +111,8 @@ pub(crate) enum AssocItemNotFoundSugg<'a> {
     #[suggestion(
         hir_analysis_assoc_item_not_found_similar_sugg,
         code = "{suggested_name}",
-        applicability = "maybe-incorrect"
+        applicability = "maybe-incorrect",
+        style = "verbose"
     )]
     Similar {
         #[primary_span]
@@ -150,7 +152,8 @@ pub(crate) enum AssocItemNotFoundSugg<'a> {
     #[suggestion(
         hir_analysis_assoc_item_not_found_other_sugg,
         code = "{suggested_name}",
-        applicability = "maybe-incorrect"
+        applicability = "maybe-incorrect",
+        style = "verbose"
     )]
     Other {
         #[primary_span]
@@ -607,7 +610,7 @@ pub(crate) struct WhereClauseOnMain {
 #[diag(hir_analysis_track_caller_on_main)]
 pub(crate) struct TrackCallerOnMain {
     #[primary_span]
-    #[suggestion(applicability = "maybe-incorrect", code = "")]
+    #[suggestion(applicability = "maybe-incorrect", code = "", style = "verbose")]
     pub span: Span,
     #[label(hir_analysis_track_caller_on_main)]
     pub annotated: Span,
@@ -734,7 +737,11 @@ pub(crate) struct ReturnTypeNotationOnNonRpitit<'tcx> {
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(hir_analysis_invalid_union_field_sugg, applicability = "machine-applicable")]
+#[multipart_suggestion(
+    hir_analysis_invalid_union_field_sugg,
+    applicability = "machine-applicable",
+    style = "verbose"
+)]
 pub(crate) struct InvalidUnionFieldSuggestion {
     #[suggestion_part(code = "std::mem::ManuallyDrop<")]
     pub lo: Span,
@@ -745,7 +752,8 @@ pub(crate) struct InvalidUnionFieldSuggestion {
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(
     hir_analysis_invalid_unsafe_field_sugg,
-    applicability = "machine-applicable"
+    applicability = "machine-applicable",
+    style = "verbose"
 )]
 pub(crate) struct InvalidUnsafeFieldSuggestion {
     #[suggestion_part(code = "std::mem::ManuallyDrop<")]
@@ -786,7 +794,8 @@ pub(crate) struct AssociatedItemTraitUninferredGenericParams {
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(
     hir_analysis_associated_type_trait_uninferred_generic_params_multipart_suggestion,
-    applicability = "maybe-incorrect"
+    applicability = "maybe-incorrect",
+    style = "verbose"
 )]
 pub(crate) struct AssociatedItemTraitUninferredGenericParamsMultipartSuggestion {
     #[suggestion_part(code = "{first}")]
@@ -1128,7 +1137,7 @@ pub(crate) enum LateBoundInApit {
 #[diag(hir_analysis_unused_associated_type_bounds)]
 #[note]
 pub(crate) struct UnusedAssociatedTypeBounds {
-    #[suggestion(code = "")]
+    #[suggestion(code = "", style = "verbose")]
     pub span: Span,
 }
 
@@ -1137,7 +1146,11 @@ pub(crate) struct UnusedAssociatedTypeBounds {
 #[note]
 #[note(hir_analysis_feedback_note)]
 pub(crate) struct ReturnPositionImplTraitInTraitRefined<'tcx> {
-    #[suggestion(applicability = "maybe-incorrect", code = "{pre}{return_ty}{post}")]
+    #[suggestion(
+        applicability = "maybe-incorrect",
+        code = "{pre}{return_ty}{post}",
+        style = "verbose"
+    )]
     pub impl_return_span: Span,
     #[label]
     pub trait_return_span: Option<Span>,
@@ -1154,7 +1167,7 @@ pub(crate) struct ReturnPositionImplTraitInTraitRefined<'tcx> {
 #[note]
 #[note(hir_analysis_feedback_note)]
 pub(crate) struct ReturnPositionImplTraitInTraitRefinedLifetimes {
-    #[suggestion(applicability = "maybe-incorrect", code = "{suggestion}")]
+    #[suggestion(applicability = "maybe-incorrect", code = "{suggestion}", style = "verbose")]
     pub suggestion_span: Span,
     pub suggestion: String,
 }
@@ -1527,7 +1540,8 @@ pub(crate) struct OnlyCurrentTraitsAdt {
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(
     hir_analysis_only_current_traits_pointer_sugg,
-    applicability = "maybe-incorrect"
+    applicability = "maybe-incorrect",
+    style = "verbose"
 )]
 pub(crate) struct OnlyCurrentTraitsPointerSugg<'a> {
     #[suggestion_part(code = "WrapperType")]

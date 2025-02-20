@@ -203,7 +203,12 @@ pub(crate) enum MalformedFeatureAttributeHelp {
         #[primary_span]
         span: Span,
     },
-    #[suggestion(expand_expected, code = "{suggestion}", applicability = "maybe-incorrect")]
+    #[suggestion(
+        expand_expected,
+        code = "{suggestion}",
+        applicability = "maybe-incorrect",
+        style = "verbose"
+    )]
     Suggestion {
         #[primary_span]
         span: Span,
@@ -226,7 +231,8 @@ pub(crate) enum InvalidCfg {
         #[suggestion(
             expand_invalid_cfg_expected_syntax,
             code = "cfg(/* predicate */)",
-            applicability = "has-placeholders"
+            applicability = "has-placeholders",
+            style = "verbose"
         )]
         span: Span,
     },
@@ -236,7 +242,8 @@ pub(crate) enum InvalidCfg {
         #[suggestion(
             expand_invalid_cfg_expected_syntax,
             code = "cfg(/* predicate */)",
-            applicability = "has-placeholders"
+            applicability = "has-placeholders",
+            style = "verbose"
         )]
         span: Span,
     },

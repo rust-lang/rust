@@ -2,9 +2,15 @@ error: `main` function is not allowed to be `#[track_caller]`
   --> $DIR/error-with-main.rs:1:1
    |
 LL | #[track_caller]
-   | ^^^^^^^^^^^^^^^ help: remove this annotation
+   | ^^^^^^^^^^^^^^^
 LL | fn main() {
    | --------- `main` function is not allowed to be `#[track_caller]`
+   |
+help: remove this annotation
+   |
+LL - #[track_caller]
+LL +
+   |
 
 error: aborting due to 1 previous error
 

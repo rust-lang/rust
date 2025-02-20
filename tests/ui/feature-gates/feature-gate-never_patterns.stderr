@@ -133,7 +133,13 @@ error: a guard on a never pattern will never be run
   --> $DIR/feature-gate-never_patterns.rs:54:19
    |
 LL |         Err(!) if false,
-   |                   ^^^^^ help: remove this guard
+   |                   ^^^^^
+   |
+help: remove this guard
+   |
+LL -         Err(!) if false,
+LL +         Err(!) if ,
+   |
 
 error: aborting due to 13 previous errors
 

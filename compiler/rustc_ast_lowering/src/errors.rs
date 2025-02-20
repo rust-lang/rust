@@ -14,7 +14,11 @@ pub(crate) struct GenericTypeWithParentheses {
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(ast_lowering_use_angle_brackets, applicability = "maybe-incorrect")]
+#[multipart_suggestion(
+    ast_lowering_use_angle_brackets,
+    applicability = "maybe-incorrect",
+    style = "verbose"
+)]
 pub(crate) struct UseAngleBrackets {
     #[suggestion_part(code = "<")]
     pub open_param: Span,
@@ -47,7 +51,8 @@ pub(crate) struct TupleStructWithDefault {
 #[suggestion(
     ast_lowering_invalid_abi_suggestion,
     code = "{suggestion}",
-    applicability = "maybe-incorrect"
+    applicability = "maybe-incorrect",
+    style = "verbose"
 )]
 pub(crate) struct InvalidAbiSuggestion {
     #[primary_span]
@@ -134,7 +139,7 @@ pub(crate) struct ClosureCannotBeStatic {
 #[diag(ast_lowering_functional_record_update_destructuring_assignment)]
 pub(crate) struct FunctionalRecordUpdateDestructuringAssignment {
     #[primary_span]
-    #[suggestion(code = "", applicability = "machine-applicable")]
+    #[suggestion(code = "", applicability = "machine-applicable", style = "verbose")]
     pub span: Span,
 }
 
@@ -335,7 +340,7 @@ pub(crate) struct MisplacedRelaxTraitBound {
 pub(crate) struct MatchArmWithNoBody {
     #[primary_span]
     pub span: Span,
-    #[suggestion(code = " => todo!(),", applicability = "has-placeholders")]
+    #[suggestion(code = " => todo!(),", applicability = "has-placeholders", style = "verbose")]
     pub suggestion: Span,
 }
 
@@ -344,7 +349,7 @@ pub(crate) struct MatchArmWithNoBody {
 pub(crate) struct NeverPatternWithBody {
     #[primary_span]
     #[label]
-    #[suggestion(code = "", applicability = "maybe-incorrect")]
+    #[suggestion(code = "", applicability = "maybe-incorrect", style = "verbose")]
     pub span: Span,
 }
 
@@ -352,7 +357,7 @@ pub(crate) struct NeverPatternWithBody {
 #[diag(ast_lowering_never_pattern_with_guard)]
 pub(crate) struct NeverPatternWithGuard {
     #[primary_span]
-    #[suggestion(code = "", applicability = "maybe-incorrect")]
+    #[suggestion(code = "", applicability = "maybe-incorrect", style = "verbose")]
     pub span: Span,
 }
 
@@ -377,19 +382,19 @@ pub(crate) enum BadReturnTypeNotation {
     #[diag(ast_lowering_bad_return_type_notation_inputs)]
     Inputs {
         #[primary_span]
-        #[suggestion(code = "()", applicability = "maybe-incorrect")]
+        #[suggestion(code = "()", applicability = "maybe-incorrect", style = "verbose")]
         span: Span,
     },
     #[diag(ast_lowering_bad_return_type_notation_output)]
     Output {
         #[primary_span]
-        #[suggestion(code = "", applicability = "maybe-incorrect")]
+        #[suggestion(code = "", applicability = "maybe-incorrect", style = "verbose")]
         span: Span,
     },
     #[diag(ast_lowering_bad_return_type_notation_needs_dots)]
     NeedsDots {
         #[primary_span]
-        #[suggestion(code = "(..)", applicability = "maybe-incorrect")]
+        #[suggestion(code = "(..)", applicability = "maybe-incorrect", style = "verbose")]
         span: Span,
     },
     #[diag(ast_lowering_bad_return_type_notation_position)]
@@ -457,7 +462,8 @@ pub(crate) struct InvalidLegacyConstGenericArg {
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(
     ast_lowering_invalid_legacy_const_generic_arg_suggestion,
-    applicability = "maybe-incorrect"
+    applicability = "maybe-incorrect",
+    style = "verbose"
 )]
 pub(crate) struct UseConstGenericArg {
     #[suggestion_part(code = "::<{const_args}>")]

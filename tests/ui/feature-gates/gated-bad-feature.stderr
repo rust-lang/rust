@@ -2,13 +2,25 @@ error[E0556]: malformed `feature` attribute input
   --> $DIR/gated-bad-feature.rs:1:25
    |
 LL | #![feature(foo_bar_baz, foo(bar), foo = "baz", foo)]
-   |                         ^^^^^^^^ help: expected just one word: `foo`
+   |                         ^^^^^^^^
+   |
+help: expected just one word
+   |
+LL - #![feature(foo_bar_baz, foo(bar), foo = "baz", foo)]
+LL + #![feature(foo_bar_baz, foo, foo = "baz", foo)]
+   |
 
 error[E0556]: malformed `feature` attribute input
   --> $DIR/gated-bad-feature.rs:1:35
    |
 LL | #![feature(foo_bar_baz, foo(bar), foo = "baz", foo)]
-   |                                   ^^^^^^^^^^^ help: expected just one word: `foo`
+   |                                   ^^^^^^^^^^^
+   |
+help: expected just one word
+   |
+LL - #![feature(foo_bar_baz, foo(bar), foo = "baz", foo)]
+LL + #![feature(foo_bar_baz, foo(bar), foo, foo)]
+   |
 
 error[E0557]: feature has been removed
   --> $DIR/gated-bad-feature.rs:8:12

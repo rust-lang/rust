@@ -55,12 +55,14 @@ pub(crate) struct UnstableInStableExposed {
     #[suggestion(
         const_eval_unstable_sugg,
         code = "#[rustc_const_unstable(feature = \"...\", issue = \"...\")]\n",
-        applicability = "has-placeholders"
+        applicability = "has-placeholders",
+        style = "verbose"
     )]
     #[suggestion(
         const_eval_bypass_sugg,
         code = "#[rustc_allow_const_fn_unstable({gate})]\n",
-        applicability = "has-placeholders"
+        applicability = "has-placeholders",
+        style = "verbose"
     )]
     pub attr_span: Span,
 }
@@ -138,7 +140,8 @@ pub(crate) struct UnstableIntrinsic {
     #[suggestion(
         const_eval_unstable_intrinsic_suggestion,
         code = "#![feature({feature})]\n",
-        applicability = "machine-applicable"
+        applicability = "machine-applicable",
+        style = "verbose"
     )]
     pub suggestion: Option<Span>,
     #[help(const_eval_unstable_intrinsic_suggestion)]
