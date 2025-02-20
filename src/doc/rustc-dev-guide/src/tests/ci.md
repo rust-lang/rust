@@ -28,7 +28,7 @@ Our CI is primarily executed on [GitHub Actions], with a single workflow defined
 in [`.github/workflows/ci.yml`], which contains a bunch of steps that are
 unified for all CI jobs that we execute. When a commit is pushed to a
 corresponding branch or a PR, the workflow executes the
-[`src/ci/github-actions/ci.py`] script, which dynamically generates the specific CI
+[`src/ci/citool`] crate, which dynamically generates the specific CI
 jobs that should be executed. This script uses the [`jobs.yml`] file as an
 input, which contains a declarative configuration of all our CI jobs.
 
@@ -299,7 +299,7 @@ platform’s custom [Docker container]. This has a lot of advantages for us:
 - We can avoid reinstalling tools (like QEMU or the Android emulator) every time
   thanks to Docker image caching.
 - Users can run the same tests in the same environment locally by just running
-  `python3 src/ci/github-actions/ci.py run-local <job-name>`, which is awesome to debug failures. Note that there are only linux docker images available locally due to licensing and
+  `cargo run --manifest-path src/ci/citool/Cargo.toml run-local <job-name>`, which is awesome to debug failures. Note that there are only linux docker images available locally due to licensing and
   other restrictions.
 
 The docker images prefixed with `dist-` are used for building artifacts while
@@ -443,7 +443,7 @@ this:
 [GitHub Actions]: https://github.com/rust-lang/rust/actions
 [`jobs.yml`]: https://github.com/rust-lang/rust/blob/master/src/ci/github-actions/jobs.yml
 [`.github/workflows/ci.yml`]: https://github.com/rust-lang/rust/blob/master/.github/workflows/ci.yml
-[`src/ci/github-actions/ci.py`]: https://github.com/rust-lang/rust/blob/master/src/ci/github-actions/ci.py
+[`src/ci/citool`]: https://github.com/rust-lang/rust/blob/master/src/ci/citool
 [rust-lang-ci]: https://github.com/rust-lang-ci/rust/actions
 [bors]: https://github.com/bors
 [homu]: https://github.com/rust-lang/homu
