@@ -299,9 +299,9 @@ pub macro cfg_match {
 /// # Example
 ///
 /// ```
-/// #![feature(cfg_match)]
+/// #![feature(cfg_select)]
 ///
-/// cfg_match! {
+/// cfg_select! {
 ///     unix => {
 ///         fn foo() { /* unix specific functionality */ }
 ///     }
@@ -317,19 +317,19 @@ pub macro cfg_match {
 /// If desired, it is possible to return expressions through the use of surrounding braces:
 ///
 /// ```
-/// #![feature(cfg_match)]
+/// #![feature(cfg_select)]
 ///
-/// let _some_string = cfg_match! {{
+/// let _some_string = cfg_select! {{
 ///     unix => { "With great power comes great electricity bills" }
 ///     _ => { "Behind every successful diet is an unwatched pizza" }
 /// }};
 /// ```
 #[cfg(not(bootstrap))]
-#[unstable(feature = "cfg_match", issue = "115585")]
-#[rustc_diagnostic_item = "cfg_match"]
-pub macro cfg_match {
+#[unstable(feature = "cfg_select", issue = "115585")]
+#[rustc_diagnostic_item = "cfg_select"]
+pub macro cfg_select {
     ({ $($tt:tt)* }) => {{
-        cfg_match! { $($tt)* }
+        cfg_select! { $($tt)* }
     }},
     (_ => { $($output:tt)* }) => {
         $($output)*
@@ -339,10 +339,10 @@ pub macro cfg_match {
         $($( $rest:tt )+)?
     ) => {
         #[cfg($cfg)]
-        cfg_match! { _ => $output }
+        cfg_select! { _ => $output }
         $(
             #[cfg(not($cfg))]
-            cfg_match! { $($rest)+ }
+            cfg_select! { $($rest)+ }
         )?
     },
 }

@@ -9,7 +9,7 @@ trait Trait {
 struct Struct;
 
 impl Trait for Struct {
-    cfg_match! {
+    cfg_select! {
         feature = "blah" => {
             fn blah(&self) {
                 unimplemented!();
@@ -45,22 +45,22 @@ fn matches_leading_pipe() {
 }
 
 #[test]
-fn cfg_match_basic() {
-    cfg_match! {
+fn cfg_select_basic() {
+    cfg_select! {
         target_pointer_width = "64" => { fn f0_() -> bool { true }}
     }
 
-    cfg_match! {
+    cfg_select! {
         unix => { fn f1_() -> bool { true } }
         any(target_os = "macos", target_os = "linux") => { fn f1_() -> bool { false }}
     }
 
-    cfg_match! {
+    cfg_select! {
         target_pointer_width = "32" => { fn f2_() -> bool { false } }
         target_pointer_width = "64" => { fn f2_() -> bool { true } }
     }
 
-    cfg_match! {
+    cfg_select! {
         target_pointer_width = "16" => { fn f3_() -> i32 { 1 } }
         _ => { fn f3_() -> i32 { 2 }}
     }
@@ -81,8 +81,8 @@ fn cfg_match_basic() {
 }
 
 #[test]
-fn cfg_match_debug_assertions() {
-    cfg_match! {
+fn cfg_select_debug_assertions() {
+    cfg_select! {
         debug_assertions => {
             assert!(cfg!(debug_assertions));
             assert_eq!(4, 2+2);
@@ -96,8 +96,8 @@ fn cfg_match_debug_assertions() {
 
 #[cfg(target_pointer_width = "64")]
 #[test]
-fn cfg_match_no_duplication_on_64() {
-    cfg_match! {
+fn cfg_select_no_duplication_on_64() {
+    cfg_select! {
         windows => {
             fn foo() {}
         }
@@ -112,8 +112,8 @@ fn cfg_match_no_duplication_on_64() {
 }
 
 #[test]
-fn cfg_match_options() {
-    cfg_match! {
+fn cfg_select_options() {
+    cfg_select! {
         test => {
             use core::option::Option as Option2;
             fn works1() -> Option2<u32> { Some(1) }
@@ -121,25 +121,25 @@ fn cfg_match_options() {
         _ => { fn works1() -> Option<u32> { None } }
     }
 
-    cfg_match! {
+    cfg_select! {
         feature = "foo" => { fn works2() -> bool { false } }
         test => { fn works2() -> bool { true } }
         _ => { fn works2() -> bool { false } }
     }
 
-    cfg_match! {
+    cfg_select! {
         feature = "foo" => { fn works3() -> bool { false } }
         _ => { fn works3() -> bool { true } }
     }
 
-    cfg_match! {
+    cfg_select! {
         test => {
             use core::option::Option as Option3;
             fn works4() -> Option3<u32> { Some(1) }
         }
     }
 
-    cfg_match! {
+    cfg_select! {
         feature = "foo" => { fn works5() -> bool { false } }
         test => { fn works5() -> bool { true } }
     }
@@ -152,8 +152,8 @@ fn cfg_match_options() {
 }
 
 #[test]
-fn cfg_match_two_functions() {
-    cfg_match! {
+fn cfg_select_two_functions() {
+    cfg_select! {
         target_pointer_width = "64" => {
             fn foo1() {}
             fn bar1() {}
@@ -177,7 +177,7 @@ fn cfg_match_two_functions() {
 }
 
 fn _accepts_expressions() -> i32 {
-    cfg_match! {
+    cfg_select! {
         unix => { 1 }
         _ => { 2 }
     }
@@ -188,14 +188,14 @@ fn _accepts_expressions() -> i32 {
 fn _allows_stmt_expr_attributes() {
     let one = 1;
     let two = 2;
-    cfg_match! {
+    cfg_select! {
         unix => { one * two; }
         _ => { one + two; }
     }
 }
 
 fn _expression() {
-    let _ = cfg_match!({
+    let _ = cfg_select!({
         windows => {
             " XP"
         }
