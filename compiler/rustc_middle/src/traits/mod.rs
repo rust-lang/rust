@@ -51,7 +51,7 @@ pub struct ObligationCause<'tcx> {
     /// information.
     pub body_id: LocalDefId,
 
-    code: InternedObligationCauseCode<'tcx>,
+    code: ObligationCauseCodeHandle<'tcx>,
 }
 
 // This custom hash function speeds up hashing for `Obligation` deduplication
@@ -97,7 +97,7 @@ impl<'tcx> ObligationCause<'tcx> {
 
     pub fn map_code(
         &mut self,
-        f: impl FnOnce(InternedObligationCauseCode<'tcx>) -> ObligationCauseCode<'tcx>,
+        f: impl FnOnce(ObligationCauseCodeHandle<'tcx>) -> ObligationCauseCode<'tcx>,
     ) {
         self.code = f(std::mem::take(&mut self.code)).into();
     }
@@ -152,15 +152,16 @@ pub struct UnifyReceiverContext<'tcx> {
     pub args: GenericArgsRef<'tcx>,
 }
 
+/// A compact form of `ObligationCauseCode`.
 #[derive(Clone, PartialEq, Eq, Default, HashStable)]
 #[derive(TypeVisitable, TypeFoldable, TyEncodable, TyDecodable)]
-pub struct InternedObligationCauseCode<'tcx> {
+pub struct ObligationCauseCodeHandle<'tcx> {
     /// `None` for `ObligationCauseCode::Misc` (a common case, occurs ~60% of
     /// the time). `Some` otherwise.
     code: Option<Arc<ObligationCauseCode<'tcx>>>,
 }
 
-impl<'tcx> std::fmt::Debug for InternedObligationCauseCode<'tcx> {
+impl<'tcx> std::fmt::Debug for ObligationCauseCodeHandle<'tcx> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let cause: &ObligationCauseCode<'_> = self;
         cause.fmt(f)
@@ -169,14 +170,14 @@ impl<'tcx> std::fmt::Debug for InternedObligationCauseCode<'tcx> {
 
 impl<'tcx> ObligationCauseCode<'tcx> {
     #[inline(always)]
-    fn into(self) -> InternedObligationCauseCode<'tcx> {
-        InternedObligationCauseCode {
+    fn into(self) -> ObligationCauseCodeHandle<'tcx> {
+        ObligationCauseCodeHandle {
             code: if let ObligationCauseCode::Misc = self { None } else { Some(Arc::new(self)) },
         }
     }
 }
 
-impl<'tcx> std::ops::Deref for InternedObligationCauseCode<'tcx> {
+impl<'tcx> std::ops::Deref for ObligationCauseCodeHandle<'tcx> {
     type Target = ObligationCauseCode<'tcx>;
 
     fn deref(&self) -> &Self::Target {
@@ -305,7 +306,7 @@ pub enum ObligationCauseCode<'tcx> {
         /// The node of the function call.
         call_hir_id: HirId,
         /// The obligation introduced by this argument.
-        parent_code: InternedObligationCauseCode<'tcx>,
+        parent_code: ObligationCauseCodeHandle<'tcx>,
     },
 
     /// Error derived when checking an impl item is compatible with
@@ -390,7 +391,8 @@ pub enum ObligationCauseCode<'tcx> {
     /// `WellFormed(None)`.
     WellFormed(Option<WellFormedLoc>),
 
-    /// From `match_impl`. The cause for us having to match an impl, and the DefId we are matching against.
+    /// From `match_impl`. The cause for us having to match an impl, and the DefId we are matching
+    /// against.
     MatchImpl(ObligationCause<'tcx>, DefId),
 
     BinOp {
@@ -413,7 +415,7 @@ pub enum ObligationCauseCode<'tcx> {
     ConstParam(Ty<'tcx>),
 
     /// Obligations emitted during the normalization of a weak type alias.
-    TypeAlias(InternedObligationCauseCode<'tcx>, Span, DefId),
+    TypeAlias(ObligationCauseCodeHandle<'tcx>, Span, DefId),
 }
 
 /// Whether a value can be extracted into a const.
@@ -514,12 +516,6 @@ impl<'tcx> ObligationCauseCode<'tcx> {
 #[cfg(target_pointer_width = "64")]
 rustc_data_structures::static_assert_size!(ObligationCauseCode<'_>, 48);
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum StatementAsExpression {
-    CorrectType,
-    NeedsBoxing,
-}
-
 #[derive(Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
 #[derive(TypeVisitable, TypeFoldable)]
 pub struct MatchExpressionArmCause<'tcx> {
@@ -584,7 +580,7 @@ pub struct DerivedCause<'tcx> {
     pub parent_trait_pred: ty::PolyTraitPredicate<'tcx>,
 
     /// The parent trait had this cause.
-    pub parent_code: InternedObligationCauseCode<'tcx>,
+    pub parent_code: ObligationCauseCodeHandle<'tcx>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
@@ -592,9 +588,9 @@ pub struct DerivedCause<'tcx> {
 pub struct ImplDerivedCause<'tcx> {
     pub derived: DerivedCause<'tcx>,
     /// The `DefId` of the `impl` that gave rise to the `derived` obligation.
-    /// If the `derived` obligation arose from a trait alias, which conceptually has a synthetic impl,
-    /// then this will be the `DefId` of that trait alias. Care should therefore be taken to handle
-    /// that exceptional case where appropriate.
+    /// If the `derived` obligation arose from a trait alias, which conceptually has a synthetic
+    /// impl, then this will be the `DefId` of that trait alias. Care should therefore be taken to
+    /// handle that exceptional case where appropriate.
     pub impl_or_alias_def_id: DefId,
     /// The index of the derived predicate in the parent impl's predicates.
     pub impl_def_predicate_index: Option<usize>,
@@ -611,7 +607,7 @@ pub struct DerivedHostCause<'tcx> {
     pub parent_host_pred: ty::Binder<'tcx, ty::HostEffectPredicate<'tcx>>,
 
     /// The parent trait had this cause.
-    pub parent_code: InternedObligationCauseCode<'tcx>,
+    pub parent_code: ObligationCauseCodeHandle<'tcx>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
