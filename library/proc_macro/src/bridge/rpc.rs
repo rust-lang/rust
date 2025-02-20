@@ -253,6 +253,7 @@ pub enum PanicMessage {
 }
 
 impl From<Box<dyn Any + Send>> for PanicMessage {
+    /// downcast the payload and wrap it in `StaticStr` or `String`.
     fn from(payload: Box<dyn Any + Send + 'static>) -> Self {
         if let Some(s) = payload.downcast_ref::<&'static str>() {
             return PanicMessage::StaticStr(s);
@@ -265,6 +266,10 @@ impl From<Box<dyn Any + Send>> for PanicMessage {
 }
 
 impl From<PanicMessage> for Box<dyn Any + Send> {
+    /// Return the inner wrapped in `Box`.
+    ///
+    /// ## Cost
+    /// Allocates a new `Box` on the heep
     fn from(val: PanicMessage) -> Self {
         match val {
             PanicMessage::StaticStr(s) => Box::new(s),

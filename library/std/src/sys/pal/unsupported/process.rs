@@ -111,24 +111,28 @@ impl Command {
 }
 
 impl From<AnonPipe> for Stdio {
+    /// Diverge pipe into `Stdio`
     fn from(pipe: AnonPipe) -> Stdio {
         pipe.diverge()
     }
 }
 
 impl From<io::Stdout> for Stdio {
+    /// Return a `Stdio::ParentStdout`.
     fn from(_: io::Stdout) -> Stdio {
         Stdio::ParentStdout
     }
 }
 
 impl From<io::Stderr> for Stdio {
+    /// Return a `Stdio::ParentStderr`.
     fn from(_: io::Stderr) -> Stdio {
         Stdio::ParentStderr
     }
 }
 
 impl From<File> for Stdio {
+    /// Wrap `File` in a `Stdio::InheritFile`.
     fn from(file: File) -> Stdio {
         Stdio::InheritFile(file)
     }
@@ -267,6 +271,7 @@ impl ExitCode {
 }
 
 impl From<u8> for ExitCode {
+    /// Take `u8` by wrapping it in `ExitCode`.
     fn from(code: u8) -> Self {
         Self(code)
     }

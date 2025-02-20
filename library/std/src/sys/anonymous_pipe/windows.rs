@@ -51,12 +51,14 @@ impl IntoRawHandle for PipeReader {
 
 #[unstable(feature = "anonymous_pipe", issue = "127154")]
 impl From<PipeReader> for OwnedHandle {
+    /// Get the inner `OwnedHandle` of `PipeReader`.
     fn from(pipe: PipeReader) -> Self {
         Handle::into_inner(pipe.0)
     }
 }
 #[unstable(feature = "anonymous_pipe", issue = "127154")]
 impl From<PipeReader> for Stdio {
+    /// Create a `Stdio` with `PipeReader`s inner handle.
     fn from(pipe: PipeReader) -> Self {
         Self::from(OwnedHandle::from(pipe))
     }
@@ -90,12 +92,14 @@ impl IntoRawHandle for PipeWriter {
 
 #[unstable(feature = "anonymous_pipe", issue = "127154")]
 impl From<PipeWriter> for OwnedHandle {
+    /// Get the inner `OwnedHandle` of `PipeWriter`.
     fn from(pipe: PipeWriter) -> Self {
         Handle::into_inner(pipe.0)
     }
 }
 #[unstable(feature = "anonymous_pipe", issue = "127154")]
 impl From<PipeWriter> for Stdio {
+    /// Make a `Stdio` with `PipeWriter`s inner handle.
     fn from(pipe: PipeWriter) -> Self {
         Self::from(OwnedHandle::from(pipe))
     }
@@ -103,6 +107,7 @@ impl From<PipeWriter> for Stdio {
 
 #[unstable(feature = "anonymous_pipe", issue = "127154")]
 impl From<OwnedHandle> for PipeReader {
+    /// Make a `PipeReader` with `OwnedHandle` as it's inner handle.
     fn from(owned_handle: OwnedHandle) -> Self {
         Self(Handle::from_inner(owned_handle))
     }
@@ -110,6 +115,7 @@ impl From<OwnedHandle> for PipeReader {
 
 #[unstable(feature = "anonymous_pipe", issue = "127154")]
 impl From<OwnedHandle> for PipeWriter {
+    /// Make a `PipeWriter` with `OwnedHandle` as it's inner handle.
     fn from(owned_handle: OwnedHandle) -> Self {
         Self(Handle::from_inner(owned_handle))
     }

@@ -131,12 +131,14 @@ impl AsFd for PidFd {
 }
 
 impl From<OwnedFd> for PidFd {
+    /// Make a `PidFd` from inner.
     fn from(fd: OwnedFd) -> Self {
         Self::from_inner(InnerPidFd::from_inner(FileDesc::from_inner(fd)))
     }
 }
 
 impl From<PidFd> for OwnedFd {
+    /// Get the inner of `PidFd`
     fn from(pid_fd: PidFd) -> Self {
         pid_fd.into_inner().into_inner().into_inner()
     }

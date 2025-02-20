@@ -108,6 +108,7 @@ impl PartialOrd<str> for EnvKey {
 }
 impl PartialEq<str> for EnvKey {
     fn eq(&self, other: &str) -> bool {
+        // Save an allocation if lengths are different
         if self.os_string.len() != other.len() {
             false
         } else {
@@ -119,18 +120,27 @@ impl PartialEq<str> for EnvKey {
 // Environment variable keys should preserve their original case even though
 // they are compared using a caseless string mapping.
 impl From<OsString> for EnvKey {
+    /// Create a new `EnvKey` from `OsString` and it's encode wide iter.
+    ///
+    /// ## Cost
+    /// Has to collect `OsString.encode_wide` which allocates a new `Vec`
     fn from(k: OsString) -> Self {
         EnvKey { utf16: k.encode_wide().collect(), os_string: k }
     }
 }
 
 impl From<EnvKey> for OsString {
+    /// Return the inner `OsString` of the `EnvKey`
     fn from(k: EnvKey) -> Self {
         k.os_string
     }
 }
 
 impl From<&OsStr> for EnvKey {
+    /// Uses `EnvKey::From<OsString>` to convert the `&OsStr`.
+    ///
+    /// ## Cost
+    /// Converts `&OsStr` to `OsString` which does a heep allocation
     fn from(k: &OsStr) -> Self {
         Self::from(k.to_os_string())
     }
@@ -616,24 +626,28 @@ impl Stdio {
 }
 
 impl From<AnonPipe> for Stdio {
+    /// Wrap `AnonPipe` in the `Pipe` variant
     fn from(pipe: AnonPipe) -> Stdio {
         Stdio::Pipe(pipe)
     }
 }
 
 impl From<File> for Stdio {
+    /// Wrap `File`s inner in the `Handle` variant
     fn from(file: File) -> Stdio {
         Stdio::Handle(file.into_inner())
     }
 }
 
 impl From<io::Stdout> for Stdio {
+    /// Create a new `Stdio::InheritSpecific` with `c::STD_OUTPUT_HANDLE`
     fn from(_: io::Stdout) -> Stdio {
         Stdio::InheritSpecific { from_stdio_id: c::STD_OUTPUT_HANDLE }
     }
 }
 
 impl From<io::Stderr> for Stdio {
+    /// Create a new `Stdio::InheritSpecific` with `c::STD_ERROR_HANDLE`
     fn from(_: io::Stderr) -> Stdio {
         Stdio::InheritSpecific { from_stdio_id: c::STD_ERROR_HANDLE }
     }
@@ -729,6 +743,7 @@ impl ExitStatus {
 
 /// Converts a raw `u32` to a type-safe `ExitStatus` by wrapping it without copying.
 impl From<u32> for ExitStatus {
+    /// Wrap `u32` in a type-safe `ExitStatus`
     fn from(u: u32) -> ExitStatus {
         ExitStatus(u)
     }
@@ -778,12 +793,14 @@ impl ExitCode {
 }
 
 impl From<u8> for ExitCode {
+    /// Convert the `u8` to a `u32` then wrap it in a `ExitCode`
     fn from(code: u8) -> Self {
         ExitCode(u32::from(code))
     }
 }
 
 impl From<u32> for ExitCode {
+    /// Wrap the `u32` in a `ExitCode`
     fn from(code: u32) -> Self {
         ExitCode(u32::from(code))
     }
