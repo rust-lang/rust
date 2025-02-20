@@ -3345,6 +3345,8 @@ fn add_lld_args(
         return;
     }
 
+    cmd.link_arg("-znostart-stop-gc");
+
     // 1. Implement the "self-contained" part of this feature by adding rustc distribution
     // directories to the tool's search path, depending on a mix between what users can specify on
     // the CLI, and what the target spec enables (as it can't disable components):
