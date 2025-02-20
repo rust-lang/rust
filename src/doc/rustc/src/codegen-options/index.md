@@ -562,6 +562,26 @@ Note that all three options are supported on Linux and Apple platforms,
 Attempting to use an unsupported option requires using the nightly channel
 with the `-Z unstable-options` flag.
 
+## stack-protector
+
+The option `-C stack-protector=val` controls stack smashing protection. See [Stack smashing
+protection][stack-smashing] for more details.
+
+Supported values for this option are:
+
+- `none` - no stack protectors
+- `all` - force use of stack protectors for all functions
+
+Unstable options for this value are:
+
+- `basic` - enable stack protectors for functions potentially vulnerable to stack smashing (basic
+  heuristic)
+- `strong` - enable stack protectors for functions potentially vulnerable to stack smashing (strong
+  heuristic)
+
+`basic` and `strong` values for `-C stack-protector` require using the nightly channel with the
+`-Z unstable-options` flag.
+
 ## strip
 
 The option `-C strip=val` controls stripping of debuginfo and similar auxiliary
@@ -664,3 +684,4 @@ effective only for x86 targets.
 [instrumentation-based code coverage]: ../instrument-coverage.md
 [profile-guided optimization]: ../profile-guided-optimization.md
 [option-g-debug]: ../command-line-arguments.md#option-g-debug
+[stack-smashing]: ../exploit-mitigations.md#stack-smashing-protection
