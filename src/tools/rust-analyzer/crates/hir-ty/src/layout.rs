@@ -107,7 +107,6 @@ impl fmt::Display for LayoutError {
 }
 
 impl<F> From<LayoutCalculatorError<F>> for LayoutError {
-    /// Make a `BadCalc` error from a `LayoutCalculatorError` without payload
     fn from(err: LayoutCalculatorError<F>) -> Self {
         LayoutError::BadCalc(err.without_payload())
     }

@@ -262,7 +262,6 @@ enum IntervalOrOwned {
 }
 
 impl From<Interval> for IntervalOrOwned {
-    /// Makes a `Borrowed` with an `Interval`
     fn from(it: Interval) -> IntervalOrOwned {
         IntervalOrOwned::Borrowed(it)
     }

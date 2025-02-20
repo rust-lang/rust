@@ -173,8 +173,6 @@ pub enum LangCrateOrigin {
 }
 
 impl From<&str> for LangCrateOrigin {
-    /// Match a string slice for "alloc", "core", "proc-macro", "proc_macro", "std", "test",
-    /// mapping them to variants of the same name; if none match then it's `Other`
     fn from(s: &str) -> Self {
         match s {
             "alloc" => LangCrateOrigin::Alloc,
@@ -219,10 +217,6 @@ impl CrateDisplayName {
 }
 
 impl From<CrateName> for CrateDisplayName {
-    /// Creates a `CrateDisplayName` from `crate_name` and `crate_name.0`(inner)
-    /// 
-    /// ## Cost
-    /// This clones `CrateName`
     fn from(crate_name: CrateName) -> CrateDisplayName {
         let canonical_name = crate_name.0.clone();
         CrateDisplayName { crate_name, canonical_name }
@@ -645,10 +639,6 @@ impl Env {
 }
 
 impl From<Env> for Vec<(String, String)> {
-    /// Iterates the hash map entries collects them in to a `Vec` then sorts it.
-    ///
-    /// ## Cost
-    /// This is expensive as it `collect`s and `sort`s env
     fn from(env: Env) -> Vec<(String, String)> {
         let mut entries: Vec<_> = env.entries.into_iter().collect();
         entries.sort();
