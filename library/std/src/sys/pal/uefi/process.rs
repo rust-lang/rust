@@ -388,7 +388,7 @@ mod uefi_command_internal {
             }
         }
 
-        pub fn start_image(&mut self) -> io::Result<r_efi::efi::Status> {
+        pub(crate) fn start_image(&mut self) -> io::Result<r_efi::efi::Status> {
             self.update_st_crc32()?;
 
             // Use our system table instead of the default one

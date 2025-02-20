@@ -1936,12 +1936,20 @@ impl CrateMetadata {
         self.root.needs_panic_runtime
     }
 
+    pub(crate) fn is_private_dep(&self) -> bool {
+        self.private_dep
+    }
+
     pub(crate) fn is_panic_runtime(&self) -> bool {
         self.root.panic_runtime
     }
 
     pub(crate) fn is_profiler_runtime(&self) -> bool {
         self.root.profiler_runtime
+    }
+
+    pub(crate) fn is_compiler_builtins(&self) -> bool {
+        self.root.compiler_builtins
     }
 
     pub(crate) fn needs_allocator(&self) -> bool {

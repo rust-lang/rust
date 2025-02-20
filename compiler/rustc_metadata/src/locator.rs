@@ -260,7 +260,7 @@ pub(crate) struct CrateLocator<'a> {
     crate_rejections: CrateRejections,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct CratePaths {
     pub(crate) name: Symbol,
     source: CrateSource,
@@ -272,7 +272,7 @@ impl CratePaths {
     }
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub(crate) enum CrateFlavor {
     Rlib,
     Rmeta,
@@ -893,13 +893,13 @@ fn get_flavor_from_path(path: &Path) -> CrateFlavor {
 
 // ------------------------------------------ Error reporting -------------------------------------
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct CrateMismatch {
     path: PathBuf,
     got: String,
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Debug, Default)]
 struct CrateRejections {
     via_hash: Vec<CrateMismatch>,
     via_triple: Vec<CrateMismatch>,
@@ -912,6 +912,7 @@ struct CrateRejections {
 /// Candidate rejection reasons collected during crate search.
 /// If no candidate is accepted, then these reasons are presented to the user,
 /// otherwise they are ignored.
+#[derive(Debug)]
 pub(crate) struct CombinedLocatorError {
     crate_name: Symbol,
     dep_root: Option<CratePaths>,
@@ -921,6 +922,7 @@ pub(crate) struct CombinedLocatorError {
     crate_rejections: CrateRejections,
 }
 
+#[derive(Debug)]
 pub(crate) enum CrateError {
     NonAsciiName(Symbol),
     ExternLocationNotExist(Symbol, PathBuf),

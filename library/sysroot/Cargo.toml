@@ -1,3 +1,5 @@
+cargo-features = ["public-dependency"]
+
 [package]
 name = "sysroot"
 version = "0.0.0"
@@ -5,10 +7,10 @@ edition = "2021"
 
 # this is a dummy crate to ensure that all required crates appear in the sysroot
 [dependencies]
-proc_macro = { path = "../proc_macro" }
+proc_macro = { path = "../proc_macro", public = true }
 profiler_builtins = { path = "../profiler_builtins", optional = true }
-std = { path = "../std" }
-test = { path = "../test" }
+std = { path = "../std", public = true }
+test = { path = "../test", public = true }
 
 # Forward features to the `std` crate as necessary
 [features]
