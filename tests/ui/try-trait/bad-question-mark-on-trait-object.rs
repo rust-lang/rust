@@ -1,5 +1,7 @@
 struct E;
-struct X;
+//~^ NOTE `E` needs to implement `std::error::Error`
+//~| NOTE alternatively, `E` needs to implement `Into<X>`
+struct X; //~ NOTE `X` needs to implement `From<E>`
 
 fn foo() -> Result<(), Box<dyn std::error::Error>> { //~ NOTE required `E: std::error::Error` because of this
     Ok(bar()?)

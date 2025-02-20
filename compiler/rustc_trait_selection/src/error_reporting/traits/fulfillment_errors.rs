@@ -966,6 +966,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         };
         let self_ty = trait_pred.skip_binder().self_ty();
         let found_ty = trait_pred.skip_binder().trait_ref.args.get(1).and_then(|a| a.as_type());
+        self.note_missing_impl_for_question_mark(err, self_ty, found_ty, trait_pred);
 
         let mut prev_ty = self.resolve_vars_if_possible(
             typeck.expr_ty_adjusted_opt(expr).unwrap_or(Ty::new_misc_error(self.tcx)),
@@ -1128,6 +1129,56 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             prev = Some(err_ty);
         }
         suggested
+    }
+
+    fn note_missing_impl_for_question_mark(
+        &self,
+        err: &mut Diag<'_>,
+        self_ty: Ty<'_>,
+        found_ty: Option<Ty<'_>>,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
+    ) {
+        match (self_ty.kind(), found_ty) {
+            (ty::Adt(def, _), Some(ty))
+                if let ty::Adt(found, _) = ty.kind()
+                    && def.did().is_local()
+                    && found.did().is_local() =>
+            {
+                err.span_note(
+                    self.tcx.def_span(def.did()),
+                    format!("`{self_ty}` needs to implement `From<{ty}>`"),
+                );
+                err.span_note(
+                    self.tcx.def_span(found.did()),
+                    format!("alternatively, `{ty}` needs to implement `Into<{self_ty}>`"),
+                );
+            }
+            (ty::Adt(def, _), None) if def.did().is_local() => {
+                err.span_note(
+                    self.tcx.def_span(def.did()),
+                    format!(
+                        "`{self_ty}` needs to implement `{}`",
+                        trait_pred.skip_binder().trait_ref.print_only_trait_path(),
+                    ),
+                );
+            }
+            (ty::Adt(def, _), Some(ty)) if def.did().is_local() => {
+                err.span_note(
+                    self.tcx.def_span(def.did()),
+                    format!("`{self_ty}` needs to implement `From<{ty}>`"),
+                );
+            }
+            (_, Some(ty))
+                if let ty::Adt(def, _) = ty.kind()
+                    && def.did().is_local() =>
+            {
+                err.span_note(
+                    self.tcx.def_span(def.did()),
+                    format!("`{ty}` needs to implement `Into<{self_ty}>`"),
+                );
+            }
+            _ => {}
+        }
     }
 
     fn report_const_param_not_wf(
