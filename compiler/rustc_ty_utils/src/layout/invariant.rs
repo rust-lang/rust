@@ -10,7 +10,11 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
 
     // Type-level uninhabitedness should always imply ABI uninhabitedness.
     if layout.ty.is_privately_uninhabited(tcx, cx.typing_env) {
-        assert!(layout.is_uninhabited());
+        assert!(
+            layout.is_uninhabited(),
+            "{:?} is type-level uninhabited but not ABI-uninhabited?",
+            layout.ty
+        );
     }
 
     if layout.size.bytes() % layout.align.abi.bytes() != 0 {
@@ -71,7 +75,7 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
         let Some((align, size)) = align.zip(size) else {
             assert_matches!(
                 layout.layout.backend_repr(),
-                BackendRepr::Uninhabited | BackendRepr::Memory { .. },
+                BackendRepr::Memory { .. },
                 "ABI unexpectedly missing alignment and/or size in {layout:#?}"
             );
             return;
@@ -235,7 +239,7 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                 assert!(align >= element.align(cx).abi); // just sanity-checking `vector_align`.
                 // FIXME: Do some kind of check of the inner type, like for Scalar and ScalarPair.
             }
-            BackendRepr::Uninhabited | BackendRepr::Memory { .. } => {} // Nothing to check.
+            BackendRepr::Memory { .. } => {} // Nothing to check.
         }
     }
 
@@ -291,8 +295,8 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                     || variant.is_uninhabited()
                 {
                     // These are never actually accessed anyway, so we can skip the coherence check
-                    // for them. They also fail that check, since they have
-                    // `Aggregate`/`Uninhabited` ABI even when the main type is
+                    // for them. They also fail that check, since they may have
+                    // a different ABI even when the main type is
                     // `Scalar`/`ScalarPair`. (Note that sometimes, variants with fields have size
                     // 0, and sometimes, variants without fields have non-0 size.)
                     continue;
@@ -306,7 +310,6 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                     (BackendRepr::ScalarPair(a1, b1), BackendRepr::ScalarPair(a2, b2)) => {
                         scalar_coherent(a1, a2) && scalar_coherent(b1, b2)
                     }
-                    (BackendRepr::Uninhabited, _) => true,
                     (BackendRepr::Memory { .. }, _) => true,
                     _ => false,
                 };

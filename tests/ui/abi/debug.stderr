@@ -20,6 +20,7 @@ error: fn_abi_of(test) = FnAbi {
                            ),
                            fields: Primitive,
                            largest_niche: None,
+                           uninhabited: false,
                            variants: Single {
                                index: 0,
                            },
@@ -67,6 +68,7 @@ error: fn_abi_of(test) = FnAbi {
                                valid_range: 0..=1,
                            },
                        ),
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
@@ -125,6 +127,7 @@ error: fn_abi_of(TestFnPtr) = FnAbi {
                                    valid_range: 0..=1,
                                },
                            ),
+                           uninhabited: false,
                            variants: Single {
                                index: 0,
                            },
@@ -163,6 +166,7 @@ error: fn_abi_of(TestFnPtr) = FnAbi {
                        ),
                        fields: Primitive,
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
@@ -213,6 +217,7 @@ error: fn_abi_of(test_generic) = FnAbi {
                            ),
                            fields: Primitive,
                            largest_niche: None,
+                           uninhabited: false,
                            variants: Single {
                                index: 0,
                            },
@@ -248,6 +253,7 @@ error: fn_abi_of(test_generic) = FnAbi {
                            memory_index: [],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
@@ -297,6 +303,7 @@ error: ABIs are not compatible
                            ),
                            fields: Primitive,
                            largest_niche: None,
+                           uninhabited: false,
                            variants: Single {
                                index: 0,
                            },
@@ -332,6 +339,7 @@ error: ABIs are not compatible
                            memory_index: [],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
@@ -369,6 +377,7 @@ error: ABIs are not compatible
                            ),
                            fields: Primitive,
                            largest_niche: None,
+                           uninhabited: false,
                            variants: Single {
                                index: 0,
                            },
@@ -404,6 +413,7 @@ error: ABIs are not compatible
                            memory_index: [],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
@@ -444,6 +454,7 @@ error: ABIs are not compatible
                                count: 32,
                            },
                            largest_niche: None,
+                           uninhabited: false,
                            variants: Single {
                                index: 0,
                            },
@@ -483,6 +494,7 @@ error: ABIs are not compatible
                            memory_index: [],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
@@ -517,6 +529,7 @@ error: ABIs are not compatible
                                count: 32,
                            },
                            largest_niche: None,
+                           uninhabited: false,
                            variants: Single {
                                index: 0,
                            },
@@ -556,6 +569,7 @@ error: ABIs are not compatible
                            memory_index: [],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
@@ -598,6 +612,7 @@ error: ABIs are not compatible
                            ),
                            fields: Primitive,
                            largest_niche: None,
+                           uninhabited: false,
                            variants: Single {
                                index: 0,
                            },
@@ -633,6 +648,7 @@ error: ABIs are not compatible
                            memory_index: [],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
@@ -670,6 +686,7 @@ error: ABIs are not compatible
                            ),
                            fields: Primitive,
                            largest_niche: None,
+                           uninhabited: false,
                            variants: Single {
                                index: 0,
                            },
@@ -705,6 +722,7 @@ error: ABIs are not compatible
                            memory_index: [],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
@@ -748,6 +766,7 @@ error: ABIs are not compatible
                            ),
                            fields: Primitive,
                            largest_niche: None,
+                           uninhabited: false,
                            variants: Single {
                                index: 0,
                            },
@@ -783,6 +802,7 @@ error: ABIs are not compatible
                            memory_index: [],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
@@ -820,6 +840,7 @@ error: ABIs are not compatible
                            ),
                            fields: Primitive,
                            largest_niche: None,
+                           uninhabited: false,
                            variants: Single {
                                index: 0,
                            },
@@ -855,6 +876,7 @@ error: ABIs are not compatible
                            memory_index: [],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
@@ -923,6 +945,7 @@ error: fn_abi_of(assoc_test) = FnAbi {
                                    valid_range: $NON_NULL,
                                },
                            ),
+                           uninhabited: false,
                            variants: Single {
                                index: 0,
                            },
@@ -960,6 +983,7 @@ error: fn_abi_of(assoc_test) = FnAbi {
                            memory_index: [],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },

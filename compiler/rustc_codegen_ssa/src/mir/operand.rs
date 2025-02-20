@@ -415,10 +415,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 bx.store(*llval, llptr, field.align.abi);
                 *llval = bx.load(llfield_ty, llptr, field.align.abi);
             }
-            (
-                OperandValue::Immediate(_),
-                BackendRepr::Uninhabited | BackendRepr::Memory { sized: false },
-            ) => {
+            (OperandValue::Immediate(_), BackendRepr::Memory { sized: false }) => {
                 bug!()
             }
             (OperandValue::Pair(..), _) => bug!(),

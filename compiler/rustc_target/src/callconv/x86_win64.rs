@@ -8,7 +8,7 @@ use crate::spec::{HasTargetSpec, RustcAbi};
 pub(crate) fn compute_abi_info<Ty>(cx: &impl HasTargetSpec, fn_abi: &mut FnAbi<'_, Ty>) {
     let fixup = |a: &mut ArgAbi<'_, Ty>, is_ret: bool| {
         match a.layout.backend_repr {
-            BackendRepr::Uninhabited | BackendRepr::Memory { sized: false } => {}
+            BackendRepr::Memory { sized: false } => {}
             BackendRepr::ScalarPair(..) | BackendRepr::Memory { sized: true } => {
                 match a.layout.size.bits() {
                     8 => a.cast_to(Reg::i8()),
