@@ -2,7 +2,7 @@ error[E0614]: type `!` cannot be dereferenced
   --> $DIR/expr_unary.rs:8:16
    |
 LL |     let x: ! = * { return; };
-   |                ^^^^^^^^^^^^^
+   |                ^^^^^^^^^^^^^ can't be dereferenced
 
 error: unreachable expression
   --> $DIR/expr_unary.rs:8:16

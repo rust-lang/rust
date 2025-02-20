@@ -315,8 +315,8 @@ impl<'tcx> fmt::Display for LayoutError<'tcx> {
 }
 
 impl<'tcx> IntoDiagArg for LayoutError<'tcx> {
-    fn into_diag_arg(self) -> DiagArgValue {
-        self.to_string().into_diag_arg()
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
+        self.to_string().into_diag_arg(&mut None)
     }
 }
 
