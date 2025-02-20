@@ -68,6 +68,11 @@ pub enum GoalSource {
     /// FIXME(-Znext-solver=coinductive): Explain how and why this
     /// changes whether cycles are coinductive.
     ImplWhereBound,
+    /// When eagerly replacing aliases with impl where-bounds, we also
+    /// have to consider these normalization goals to be coinductive.
+    ///
+    /// This is necessary for tests/ui/sized/coinductive-1.rs to compile.
+    NormalizeImplWhereBound,
     /// Const conditions that need to hold for `~const` alias bounds to hold.
     ///
     /// FIXME(-Znext-solver=coinductive): Are these even coinductive?
