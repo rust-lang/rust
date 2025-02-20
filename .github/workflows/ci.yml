@@ -70,6 +70,7 @@ jobs:
       HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       DOCKER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       SCCACHE_BUCKET: rust-lang-ci-sccache2
+      SCCACHE_REGION: us-west-1
       CACHE_DOMAIN: ci-caches.rust-lang.org
     continue-on-error: ${{ matrix.continue_on_error || false }}
     strategy:
