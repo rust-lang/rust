@@ -64,7 +64,6 @@ ide-db = { path = "./crates/ide-db", version = "0.0.0" }
 ide-diagnostics = { path = "./crates/ide-diagnostics", version = "0.0.0" }
 ide-ssr = { path = "./crates/ide-ssr", version = "0.0.0" }
 intern = { path = "./crates/intern", version = "0.0.0" }
-limit = { path = "./crates/limit", version = "0.0.0" }
 load-cargo = { path = "./crates/load-cargo", version = "0.0.0" }
 mbe = { path = "./crates/mbe", version = "0.0.0" }
 parser = { path = "./crates/parser", version = "0.0.0" }

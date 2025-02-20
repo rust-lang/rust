@@ -559,7 +559,6 @@ dependencies = [
  "intern",
  "itertools",
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "limit",
  "mbe",
  "ra-ap-rustc_abi",
  "ra-ap-rustc_parse_format",
@@ -591,7 +590,6 @@ dependencies = [
  "intern",
  "itertools",
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "limit",
  "mbe",
  "parser",
  "rustc-hash 2.0.0",
@@ -626,7 +624,6 @@ dependencies = [
  "intern",
  "itertools",
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "limit",
  "nohash-hasher",
  "oorandom",
  "project-model",
@@ -744,7 +741,6 @@ dependencies = [
  "hir",
  "indexmap",
  "itertools",
- "limit",
  "line-index 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "memchr",
  "nohash-hasher",
@@ -942,10 +938,6 @@ dependencies = [
  "libc",
  "redox_syscall",
 ]
-
-[[package]]
-name = "limit"
-version = "0.0.0"
 
 [[package]]
 name = "line-index"
@@ -1279,7 +1271,6 @@ dependencies = [
  "drop_bomb",
  "edition",
  "expect-test",
- "limit",
  "ra-ap-rustc_lexer",
  "stdx",
  "tracing",

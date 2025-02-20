@@ -9,7 +9,6 @@ use hir_expand::{
     attrs::RawAttrs, mod_path::ModPath, span_map::SpanMap, ExpandError, ExpandErrorKind,
     ExpandResult, HirFileId, InFile, Lookup, MacroCallId,
 };
-use limit::Limit;
 use span::{Edition, SyntaxContextId};
 use syntax::{ast, Parse};
 use triomphe::Arc;
@@ -28,18 +27,18 @@ pub struct Expander {
     pub(crate) module: ModuleId,
     /// `recursion_depth == usize::MAX` indicates that the recursion limit has been reached.
     recursion_depth: u32,
-    recursion_limit: Limit,
+    recursion_limit: usize,
 }
 
 impl Expander {
     pub fn new(db: &dyn DefDatabase, current_file_id: HirFileId, module: ModuleId) -> Expander {
         let recursion_limit = module.def_map(db).recursion_limit() as usize;
-        let recursion_limit = Limit::new(if cfg!(test) {
+        let recursion_limit = if cfg!(test) {
             // Without this, `body::tests::your_stack_belongs_to_me` stack-overflows in debug
             std::cmp::min(32, recursion_limit)
         } else {
             recursion_limit
-        });
+        };
         Expander {
             current_file_id,
             module,
@@ -194,7 +193,7 @@ impl Expander {
         let Some(call_id) = value else {
             return ExpandResult { value: None, err };
         };
-        if self.recursion_limit.check(self.recursion_depth as usize + 1).is_err() {
+        if self.recursion_depth as usize > self.recursion_limit {
             self.recursion_depth = u32::MAX;
             cov_mark::hit!(your_stack_belongs_to_me);
             return ExpandResult::only_err(ExpandError::new(

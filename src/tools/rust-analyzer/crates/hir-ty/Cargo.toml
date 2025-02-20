@@ -47,7 +47,6 @@ hir-def.workspace = true
 hir-expand.workspace = true
 base-db.workspace = true
 syntax.workspace = true
-limit.workspace = true
 span.workspace = true
 
 [dev-dependencies]
