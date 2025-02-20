@@ -1,19 +1,18 @@
 [package]
-name = "bsanrt"
+name = "bsan-rt"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 env_logger = "0.11.5"
-jemalloc-sys = "0.5.4"
+libc = "0.2.169"
 log = "0.4.22"
-macros = { path = "macros" }
 
 [lib]
-name = "bsanrt"
-crate-type = ["cdylib"] 
+name = "bsan_rt"
+crate-type = ["staticlib"] 
 test = true     # we have unit tests
 doctest = false # but no doc tests
 
 [build-dependencies]
-cbindgen = "0.27.0"
+cbindgen = "0.28.0"

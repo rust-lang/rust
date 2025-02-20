@@ -290,23 +290,26 @@ dependencies = [
 ]
 
 [[package]]
-name = "bsan"
+name = "bsan-driver"
 version = "0.1.0"
 dependencies = [
+ "colored",
  "env_logger",
  "log",
+ "regex",
  "rustc_version",
+ "tempfile",
+ "ui_test",
 ]
 
 [[package]]
-name = "bsanrt"
+name = "bsan-rt"
 version = "0.1.0"
 dependencies = [
  "cbindgen",
  "env_logger",
- "jemalloc-sys",
+ "libc",
  "log",
- "macros",
 ]
 
 [[package]]
@@ -458,9 +461,9 @@ version = "0.1.0"
 
 [[package]]
 name = "cbindgen"
-version = "0.27.0"
+version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3fce8dd7fcfcbf3a0a87d8f515194b49d6135acab73e18bd380d1d93bb1a15eb"
+checksum = "eadd868a2ce9ca38de7eeafdcec9c7065ef89b42b32f0839278d55f35c54d1ff"
 dependencies = [
  "clap",
  "heck 0.4.1",
@@ -2052,9 +2055,9 @@ checksum = "baff4b617f7df3d896f97fe922b64817f6cd9a756bb81d40f8883f2f66dcb401"
 
 [[package]]
 name = "libc"
-version = "0.2.161"
+version = "0.2.169"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e9489c2807c139ffd9c1794f4af0ebe86a828db53ecdc7fea2111d0fed085d1"
+checksum = "b5aba8db14291edd000dfcc4d620c7ebfb122c613afb886ca8803fa4e128a20a"
 
 [[package]]
 name = "libdbus-sys"
@@ -2200,14 +2203,6 @@ name = "mac"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c41e0c4fef86961ac6d6f8a82609f55f31b05e4fce149ac5710e439df7619ba4"
-
-[[package]]
-name = "macros"
-version = "0.1.0"
-dependencies = [
- "quote",
- "syn 2.0.87",
-]
 
 [[package]]
 name = "maplit"

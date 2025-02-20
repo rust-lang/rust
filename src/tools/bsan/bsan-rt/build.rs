@@ -9,5 +9,5 @@ fn main() {
         .with_crate(crate_dir.clone())
         .generate()
         .expect("Unable to generate bindings")
-        .write_to_file(Path::new(&out_dir).join("bsanrt.h"));
+        .write_to_file(Path::new(&out_dir).join(format!("bsan_rt.h")));
 }

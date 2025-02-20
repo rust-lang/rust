@@ -60,7 +60,7 @@ jobs:
       - name: Build
         run: ./x.py build --stage 1
       - name: Unit Tests
-        run: ./x.py test --stage 1 src/tools/bsan/bsanrt
+        run: ./x.py test --stage 1 src/tools/bsan/bsan-rt
       - name: UI Tests
         run: ./x.py test --stage 1 src/tools/bsan/bsan-driver
       

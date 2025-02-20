@@ -1094,7 +1094,7 @@ tool_extended!((self, builder),
     Clippy, "src/tools/clippy", "clippy-driver", stable=true, add_bins_to_sysroot = ["clippy-driver", "cargo-clippy"];
     Miri, "src/tools/miri", "miri", stable=false, add_bins_to_sysroot = ["miri"];
     CargoMiri, "src/tools/miri/cargo-miri", "cargo-miri", stable=false, add_bins_to_sysroot = ["cargo-miri"];
-    BsanDriver, "src/tools/bsan/bsan-driver/", "bsan", stable=false, add_bins_to_sysroot = ["bsan"];
+    BsanDriver, "src/tools/bsan/bsan-driver/", "bsan-driver", stable=false, add_bins_to_sysroot = ["bsan-driver"];
     CargoBsan, "src/tools/bsan/bsan-driver/cargo-bsan", "cargo-bsan", stable=false, add_bins_to_sysroot = ["cargo-bsan"];
     Rls, "src/tools/rls", "rls", stable=true;
     Rustfmt, "src/tools/rustfmt", "rustfmt", stable=true, add_bins_to_sysroot = ["rustfmt", "cargo-fmt"];

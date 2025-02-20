@@ -433,7 +433,7 @@ impl Step for BsanRTCore {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/tools/bsan/bsanrt")
+        run.path("src/tools/bsan/bsan-rt")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -454,12 +454,12 @@ impl Step for BsanRTCore {
             Mode::ToolRustc,
             host,
             Kind::Test,
-            "src/tools/bsan/bsanrt",
+            "src/tools/bsan/bsan-rt",
             SourceType::InTree,
             &[],
         );
         cargo.add_rustc_lib_path(builder);
-        run_cargo_test(cargo, &[], &[], "bsanrt", "bsanrt", compiler, host, builder);
+        run_cargo_test(cargo, &[], &[], "bsan-rt", "bsan-rt", compiler, host, builder);
     }
 }
 

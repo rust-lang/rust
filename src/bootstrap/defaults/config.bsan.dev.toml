@@ -1,19 +1,19 @@
 change-id = 132494
 
 [build]
-sanitizers = true
 build-stage = 1
 test-stage = 1
 docs = false
 extended = true
 tools = [
-    "bsanrt",
+    "bsan-rt",
     "bsan",
     "cargo-bsan",
 ]
 
 [rust]
 description = "BorrowSanitizer"
+llvm-tools = true
 
 [llvm]
 download-ci-llvm = false

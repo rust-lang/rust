@@ -1,0 +1,11 @@
+language = "C"
+sys_includes = ["stdint.h"]
+no_includes = true
+documentation = false
+include_guard = "BSANRT_H"
+namespace = "bsan_rt"
+cpp_compat = true
+
+[parse]
+parse_deps = true
+include = ["src/lib.rs"]  

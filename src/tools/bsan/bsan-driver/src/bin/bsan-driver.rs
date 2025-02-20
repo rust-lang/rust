@@ -58,5 +58,10 @@ fn main() {
     };
     let internal_features =
         rustc_driver::install_ice_hook(rustc_driver::DEFAULT_BUG_REPORT_URL, |_| ());
-    bsan::run_compiler(args, target_crate, &mut bsan::BSanCallBacks {}, internal_features)
+    bsan_driver::run_compiler(
+        args,
+        target_crate,
+        &mut bsan_driver::BSanCallBacks {},
+        internal_features,
+    )
 }
