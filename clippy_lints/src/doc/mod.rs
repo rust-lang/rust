@@ -612,7 +612,7 @@ declare_clippy_lint! {
     /// ```no_run
     /// #![cfg_attr(doc, doc = include_str!("some_file.md"))]
     /// ```
-    #[clippy::version = "1.84.0"]
+    #[clippy::version = "1.85.0"]
     pub DOC_INCLUDE_WITHOUT_CFG,
     restriction,
     "check if files included in documentation are behind `cfg(doc)`"
@@ -638,7 +638,7 @@ declare_clippy_lint! {
     /// //!
     /// //! [link]: destination (for link reference definition)
     /// ```
-    #[clippy::version = "1.84.0"]
+    #[clippy::version = "1.85.0"]
     pub DOC_NESTED_REFDEFS,
     suspicious,
     "link reference defined in list item or quote"
