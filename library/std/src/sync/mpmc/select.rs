@@ -47,6 +47,7 @@ pub enum Selected {
 }
 
 impl From<usize> for Selected {
+    /// Make a `Selected` from a `usize`, 0-2 match specific variants, the rest matches `Operation`
     #[inline]
     fn from(val: usize) -> Selected {
         match val {

@@ -109,6 +109,7 @@ pub trait Wake {
 impl<W: Wake + Send + Sync + 'static> From<Arc<W>> for Waker {
     /// Use a [`Wake`]-able type as a `Waker`.
     ///
+    /// ## Cost
     /// No heap allocations or atomic operations are used for this conversion.
     fn from(waker: Arc<W>) -> Waker {
         // SAFETY: This is safe because raw_waker safely constructs
@@ -121,6 +122,7 @@ impl<W: Wake + Send + Sync + 'static> From<Arc<W>> for Waker {
 impl<W: Wake + Send + Sync + 'static> From<Arc<W>> for RawWaker {
     /// Use a `Wake`-able type as a `RawWaker`.
     ///
+    /// ## Cost
     /// No heap allocations or atomic operations are used for this conversion.
     fn from(waker: Arc<W>) -> RawWaker {
         raw_waker(waker)
@@ -288,6 +290,7 @@ pub trait LocalWake {
 impl<W: LocalWake + 'static> From<Rc<W>> for LocalWaker {
     /// Use a `Wake`-able type as a `LocalWaker`.
     ///
+    /// ## Cost
     /// No heap allocations or atomic operations are used for this conversion.
     fn from(waker: Rc<W>) -> LocalWaker {
         // SAFETY: This is safe because raw_waker safely constructs
@@ -300,6 +303,7 @@ impl<W: LocalWake + 'static> From<Rc<W>> for LocalWaker {
 impl<W: LocalWake + 'static> From<Rc<W>> for RawWaker {
     /// Use a `Wake`-able type as a `RawWaker`.
     ///
+    /// ## Cost
     /// No heap allocations or atomic operations are used for this conversion.
     fn from(waker: Rc<W>) -> RawWaker {
         local_raw_waker(waker)

@@ -290,6 +290,7 @@ impl<T> From<NonZero<T>> for T
 where
     T: ZeroablePrimitive,
 {
+    /// Get the inner num of `NonZero`.
     #[inline]
     fn from(nonzero: NonZero<T>) -> Self {
         // Call `get` method to keep range information.

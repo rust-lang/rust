@@ -238,6 +238,7 @@ fn tree_to_bridge_tree(
 /// Creates a token stream containing a single token tree.
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl From<TokenTree> for TokenStream {
+    /// Convert the tree to a bridge tree then a `TokenStream`
     fn from(tree: TokenTree) -> TokenStream {
         TokenStream(Some(bridge::client::TokenStream::from_token_tree(tree_to_bridge_tree(tree))))
     }
@@ -721,6 +722,7 @@ impl fmt::Debug for TokenTree {
 
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl From<Group> for TokenTree {
+    /// Wrap `Group` in `TokenTree::Group`
     fn from(g: Group) -> TokenTree {
         TokenTree::Group(g)
     }
@@ -728,6 +730,7 @@ impl From<Group> for TokenTree {
 
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl From<Ident> for TokenTree {
+    /// Wrap `Ident` in `TokenTree::Ident`
     fn from(g: Ident) -> TokenTree {
         TokenTree::Ident(g)
     }
@@ -735,6 +738,7 @@ impl From<Ident> for TokenTree {
 
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl From<Punct> for TokenTree {
+    /// Wrap `Punct` in `TokenTree::Punct`
     fn from(g: Punct) -> TokenTree {
         TokenTree::Punct(g)
     }
@@ -742,6 +746,7 @@ impl From<Punct> for TokenTree {
 
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl From<Literal> for TokenTree {
+    /// Wrap `Literal` in `TokenTree::Literal`
     fn from(g: Literal) -> TokenTree {
         TokenTree::Literal(g)
     }

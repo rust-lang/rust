@@ -1047,6 +1047,7 @@ where
     LaneCount<N>: SupportedLaneCount,
     T: SimdElement,
 {
+    /// Use `from_array` to load the array into a new `Simd`
     #[inline]
     fn from(array: [T; N]) -> Self {
         Self::from_array(array)
@@ -1058,6 +1059,7 @@ where
     LaneCount<N>: SupportedLaneCount,
     T: SimdElement,
 {
+    /// Use `to_array` to store the `Simd` into a new array
     #[inline]
     fn from(vector: Simd<T, N>) -> Self {
         vector.to_array()
