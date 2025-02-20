@@ -975,10 +975,8 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// #[no_mangle]
-    /// fn foo<T>(t: T) {
-    ///
-    /// }
+    /// #[unsafe(no_mangle)]
+    /// fn foo<T>(t: T) {}
     /// ```
     ///
     /// {{produces}}

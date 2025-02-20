@@ -678,8 +678,7 @@ impl<'tcx> Pat<'tcx> {
                 subpatterns.iter().for_each(|field| field.pattern.walk_(it))
             }
             Or { pats } => pats.iter().for_each(|p| p.walk_(it)),
-            Array { box ref prefix, ref slice, box ref suffix }
-            | Slice { box ref prefix, ref slice, box ref suffix } => {
+            Array { box prefix, slice, box suffix } | Slice { box prefix, slice, box suffix } => {
                 prefix.iter().chain(slice.as_deref()).chain(suffix.iter()).for_each(|p| p.walk_(it))
             }
         }

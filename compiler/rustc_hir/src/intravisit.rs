@@ -593,9 +593,9 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
             defaultness: _,
             polarity: _,
             defaultness_span: _,
-            ref generics,
-            ref of_trait,
-            ref self_ty,
+            generics,
+            of_trait,
+            self_ty,
             items,
         }) => {
             try_visit!(visitor.visit_id(item.hir_id()));
@@ -1045,7 +1045,7 @@ pub fn walk_generic_param<'v, V: Visitor<'v>>(
         }
         GenericParamKind::Const { ref ty, ref default, synthetic: _ } => {
             try_visit!(visitor.visit_ty_unambig(ty));
-            if let Some(ref default) = default {
+            if let Some(default) = default {
                 try_visit!(visitor.visit_const_param_default(param.hir_id, default));
             }
         }
@@ -1401,8 +1401,8 @@ pub fn walk_assoc_item_constraint<'v, V: Visitor<'v>>(
     try_visit!(visitor.visit_generic_args(constraint.gen_args));
     match constraint.kind {
         AssocItemConstraintKind::Equality { ref term } => match term {
-            Term::Ty(ref ty) => try_visit!(visitor.visit_ty_unambig(ty)),
-            Term::Const(ref c) => try_visit!(visitor.visit_const_arg_unambig(c)),
+            Term::Ty(ty) => try_visit!(visitor.visit_ty_unambig(ty)),
+            Term::Const(c) => try_visit!(visitor.visit_const_arg_unambig(c)),
         },
         AssocItemConstraintKind::Bound { bounds } => {
             walk_list!(visitor, visit_param_bound, bounds)
