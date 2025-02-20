@@ -340,6 +340,7 @@ impl<T> PoisonError<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> From<PoisonError<T>> for TryLockError<T> {
+    /// Wrap `PoisonError` in `Poisoned` variant.
     fn from(err: PoisonError<T>) -> TryLockError<T> {
         TryLockError::Poisoned(err)
     }
