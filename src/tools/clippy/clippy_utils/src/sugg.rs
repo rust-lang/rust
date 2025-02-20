@@ -151,6 +151,7 @@ impl<'a> Sugg<'a> {
             | ExprKind::Become(..)
             | ExprKind::Struct(..)
             | ExprKind::Tup(..)
+            | ExprKind::Use(..)
             | ExprKind::Err(_)
             | ExprKind::UnsafeBinderCast(..) => Sugg::NonParen(get_snippet(expr.span)),
             ExprKind::DropTemps(inner) => Self::hir_from_snippet(inner, get_snippet),
@@ -223,6 +224,7 @@ impl<'a> Sugg<'a> {
             | ast::ExprKind::Try(..)
             | ast::ExprKind::TryBlock(..)
             | ast::ExprKind::Tup(..)
+            | ast::ExprKind::Use(..)
             | ast::ExprKind::Array(..)
             | ast::ExprKind::While(..)
             | ast::ExprKind::Await(..)

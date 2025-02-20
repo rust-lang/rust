@@ -1059,6 +1059,7 @@ pub fn can_move_expr_to_closure_no_visit<'tcx>(
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CaptureKind {
     Value,
+    Use,
     Ref(Mutability),
 }
 impl CaptureKind {
@@ -1071,6 +1072,7 @@ impl std::ops::BitOr for CaptureKind {
     fn bitor(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
             (CaptureKind::Value, _) | (_, CaptureKind::Value) => CaptureKind::Value,
+            (CaptureKind::Use, _) | (_, CaptureKind::Use) => CaptureKind::Use,
             (CaptureKind::Ref(Mutability::Mut), CaptureKind::Ref(_))
             | (CaptureKind::Ref(_), CaptureKind::Ref(Mutability::Mut)) => CaptureKind::Ref(Mutability::Mut),
             (CaptureKind::Ref(Mutability::Not), CaptureKind::Ref(Mutability::Not)) => CaptureKind::Ref(Mutability::Not),
@@ -1151,7 +1153,7 @@ pub fn capture_local_usage(cx: &LateContext<'_>, e: &Expr<'_>) -> CaptureKind {
                 },
                 ExprKind::Let(let_expr) => {
                     let mutability = match pat_capture_kind(cx, let_expr.pat) {
-                        CaptureKind::Value => Mutability::Not,
+                        CaptureKind::Value | CaptureKind::Use => Mutability::Not,
                         CaptureKind::Ref(m) => m,
                     };
                     return CaptureKind::Ref(mutability);
@@ -1160,7 +1162,7 @@ pub fn capture_local_usage(cx: &LateContext<'_>, e: &Expr<'_>) -> CaptureKind {
                     let mut mutability = Mutability::Not;
                     for capture in arms.iter().map(|arm| pat_capture_kind(cx, arm.pat)) {
                         match capture {
-                            CaptureKind::Value => break,
+                            CaptureKind::Value | CaptureKind::Use => break,
                             CaptureKind::Ref(Mutability::Mut) => mutability = Mutability::Mut,
                             CaptureKind::Ref(Mutability::Not) => (),
                         }
@@ -1170,7 +1172,7 @@ pub fn capture_local_usage(cx: &LateContext<'_>, e: &Expr<'_>) -> CaptureKind {
                 _ => break,
             },
             Node::LetStmt(l) => match pat_capture_kind(cx, l.pat) {
-                CaptureKind::Value => break,
+                CaptureKind::Value | CaptureKind::Use => break,
                 capture @ CaptureKind::Ref(_) => return capture,
             },
             _ => break,
@@ -1225,6 +1227,8 @@ pub fn can_move_expr_to_closure<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'
                         if !self.locals.contains(&local_id) {
                             let capture = match capture.info.capture_kind {
                                 UpvarCapture::ByValue => CaptureKind::Value,
+                                // FIXME add a CaptureKind::Use
+                                UpvarCapture::ByUse => CaptureKind::Use,
                                 UpvarCapture::ByRef(kind) => match kind {
                                     BorrowKind::Immutable => CaptureKind::Ref(Mutability::Not),
                                     BorrowKind::UniqueImmutable | BorrowKind::Mutable => {

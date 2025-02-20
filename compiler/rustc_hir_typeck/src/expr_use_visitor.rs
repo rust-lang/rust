@@ -47,6 +47,21 @@ pub trait Delegate<'tcx> {
     /// the id of the binding in the pattern `pat`.
     fn consume(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: HirId);
 
+    /// The value found at `place` is moved, depending
+    /// on `mode`. Where `diag_expr_id` is the id used for diagnostics for `place`.
+    ///
+    /// Use of a `Copy` type in a ByValue context is considered a use
+    /// by `ImmBorrow` and `borrow` is called instead. This is because
+    /// a shared borrow is the "minimum access" that would be needed
+    /// to perform a copy.
+    ///
+    ///
+    /// The parameter `diag_expr_id` indicates the HIR id that ought to be used for
+    /// diagnostics. Around pattern matching such as `let pat = expr`, the diagnostic
+    /// id will be the id of the expression `expr` but the place itself will have
+    /// the id of the binding in the pattern `pat`.
+    fn use_cloned(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: HirId);
+
     /// The value found at `place` is being borrowed with kind `bk`.
     /// `diag_expr_id` is the id used for diagnostics (see `consume` for more details).
     fn borrow(
@@ -89,6 +104,10 @@ pub trait Delegate<'tcx> {
 impl<'tcx, D: Delegate<'tcx>> Delegate<'tcx> for &mut D {
     fn consume(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
         (**self).consume(place_with_id, diag_expr_id)
+    }
+
+    fn use_cloned(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
+        (**self).use_cloned(place_with_id, diag_expr_id)
     }
 
     fn borrow(
@@ -143,6 +162,8 @@ pub trait TypeInformationCtxt<'tcx> {
 
     fn type_is_copy_modulo_regions(&self, ty: Ty<'tcx>) -> bool;
 
+    fn type_is_use_cloned_modulo_regions(&self, ty: Ty<'tcx>) -> bool;
+
     fn body_owner_def_id(&self) -> LocalDefId;
 
     fn tcx(&self) -> TyCtxt<'tcx>;
@@ -182,6 +203,10 @@ impl<'tcx> TypeInformationCtxt<'tcx> for &FnCtxt<'_, 'tcx> {
 
     fn type_is_copy_modulo_regions(&self, ty: Ty<'tcx>) -> bool {
         self.infcx.type_is_copy_modulo_regions(self.param_env, ty)
+    }
+
+    fn type_is_use_cloned_modulo_regions(&self, ty: Ty<'tcx>) -> bool {
+        self.infcx.type_is_use_cloned_modulo_regions(self.param_env, ty)
     }
 
     fn body_owner_def_id(&self) -> LocalDefId {
@@ -228,6 +253,10 @@ impl<'tcx> TypeInformationCtxt<'tcx> for (&LateContext<'tcx>, LocalDefId) {
 
     fn type_is_copy_modulo_regions(&self, ty: Ty<'tcx>) -> bool {
         self.0.type_is_copy_modulo_regions(ty)
+    }
+
+    fn type_is_use_cloned_modulo_regions(&self, ty: Ty<'tcx>) -> bool {
+        self.0.type_is_use_cloned_modulo_regions(ty)
     }
 
     fn body_owner_def_id(&self) -> LocalDefId {
@@ -313,6 +342,23 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         Ok(())
     }
 
+    pub fn consume_or_clone_expr(&self, expr: &hir::Expr<'_>) -> Result<(), Cx::Error> {
+        debug!("consume_or_clone_expr(expr={:?})", expr);
+
+        let place_with_id = self.cat_expr(expr)?;
+
+        if self.cx.type_is_copy_modulo_regions(place_with_id.place.ty()) {
+            self.delegate.borrow_mut().copy(&place_with_id, place_with_id.hir_id);
+        } else if self.cx.type_is_use_cloned_modulo_regions(place_with_id.place.ty()) {
+            self.delegate.borrow_mut().use_cloned(&place_with_id, place_with_id.hir_id);
+        } else {
+            self.delegate.borrow_mut().consume(&place_with_id, place_with_id.hir_id);
+        }
+
+        self.walk_expr(expr)?;
+        Ok(())
+    }
+
     fn mutate_expr(&self, expr: &hir::Expr<'_>) -> Result<(), Cx::Error> {
         let place_with_id = self.cat_expr(expr)?;
         self.delegate.borrow_mut().mutate(&place_with_id, place_with_id.hir_id);
@@ -364,6 +410,10 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 // callee(args)
                 self.consume_expr(callee)?;
                 self.consume_exprs(args)?;
+            }
+
+            hir::ExprKind::Use(expr, _) => {
+                self.consume_or_clone_expr(expr)?;
             }
 
             hir::ExprKind::MethodCall(.., receiver, args, _) => {
@@ -1086,7 +1136,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                     );
 
                     match capture_info.capture_kind {
-                        ty::UpvarCapture::ByValue => {
+                        ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse => {
                             self.consume_or_copy(&place_with_id, place_with_id.hir_id);
                         }
                         ty::UpvarCapture::ByRef(upvar_borrow) => {
@@ -1390,6 +1440,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
 
             hir::ExprKind::AddrOf(..)
             | hir::ExprKind::Call(..)
+            | hir::ExprKind::Use(..)
             | hir::ExprKind::Assign(..)
             | hir::ExprKind::AssignOp(..)
             | hir::ExprKind::Closure { .. }

@@ -426,6 +426,7 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
             | hir::ExprKind::Array(..)
             | hir::ExprKind::Call(..)
             | hir::ExprKind::MethodCall(..)
+            | hir::ExprKind::Use(..)
             | hir::ExprKind::Tup(..)
             | hir::ExprKind::Binary(..)
             | hir::ExprKind::AddrOf(..)
@@ -705,7 +706,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                             );
                             self.acc(self.exit_ln, var, ACC_READ | ACC_USE);
                         }
-                        ty::UpvarCapture::ByValue => {}
+                        ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse => {}
                     }
                 }
             }
@@ -1029,6 +1030,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 let succ = self.check_is_ty_uninhabited(expr, succ);
                 let succ = self.propagate_through_exprs(args, succ);
                 self.propagate_through_expr(receiver, succ)
+            }
+
+            hir::ExprKind::Use(expr, _) => {
+                let succ = self.check_is_ty_uninhabited(expr, succ);
+                self.propagate_through_expr(expr, succ)
             }
 
             hir::ExprKind::Tup(exprs) => self.propagate_through_exprs(exprs, succ),
@@ -1418,6 +1424,7 @@ fn check_expr<'tcx>(this: &mut Liveness<'_, 'tcx>, expr: &'tcx Expr<'tcx>) {
         // no correctness conditions related to liveness
         hir::ExprKind::Call(..)
         | hir::ExprKind::MethodCall(..)
+        | hir::ExprKind::Use(..)
         | hir::ExprKind::Match(..)
         | hir::ExprKind::Loop(..)
         | hir::ExprKind::Index(..)
@@ -1493,7 +1500,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
         for (&var_hir_id, min_capture_list) in closure_min_captures {
             for captured_place in min_capture_list {
                 match captured_place.info.capture_kind {
-                    ty::UpvarCapture::ByValue => {}
+                    ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse => {}
                     ty::UpvarCapture::ByRef(..) => continue,
                 };
                 let span = captured_place.get_capture_kind_span(self.ir.tcx);

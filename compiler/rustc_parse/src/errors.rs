@@ -106,6 +106,19 @@ pub(crate) struct IncorrectUseOfAwait {
     pub span: Span,
 }
 
+#[derive(Diagnostic)]
+#[diag(parse_incorrect_use_of_use)]
+pub(crate) struct IncorrectUseOfUse {
+    #[primary_span]
+    #[suggestion(
+        parse_parentheses_suggestion,
+        style = "verbose",
+        code = "",
+        applicability = "machine-applicable"
+    )]
+    pub span: Span,
+}
+
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(
     parse_incorrect_use_of_await_postfix_suggestion,
@@ -1497,6 +1510,14 @@ pub(crate) struct UnexpectedConstInGenericParam {
 pub(crate) struct AsyncMoveOrderIncorrect {
     #[primary_span]
     #[suggestion(style = "verbose", code = "async move", applicability = "maybe-incorrect")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_async_use_order_incorrect)]
+pub(crate) struct AsyncUseOrderIncorrect {
+    #[primary_span]
+    #[suggestion(style = "verbose", code = "async use", applicability = "maybe-incorrect")]
     pub span: Span,
 }
 
