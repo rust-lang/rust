@@ -226,7 +226,7 @@ impl<O> AssertKind<O> {
     {
         use AssertKind::*;
         match self {
-            BoundsCheck { ref len, ref index } => write!(
+            BoundsCheck { len, index } => write!(
                 f,
                 "\"index out of bounds: the length is {{}} but the index is {{}}\", {len:?}, {index:?}"
             ),

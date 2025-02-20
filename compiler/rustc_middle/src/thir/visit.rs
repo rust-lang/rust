@@ -194,7 +194,7 @@ pub fn walk_stmt<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
             initializer,
             remainder_scope: _,
             init_scope: _,
-            ref pattern,
+            pattern,
             lint_level: _,
             else_block,
             span: _,
