@@ -476,7 +476,11 @@ fn expand_format_args<'hir>(
     // ```
     //  Piece::num(0),
     // ```
-    let zero = ctx.expr_u64(fmt.span, 0);
+    let zero = if ctx.tcx.sess.target.pointer_width >= 64 {
+        ctx.expr_u64(fmt.span, 0)
+    } else {
+        ctx.expr_u32(fmt.span, 0)
+    };
     pieces.push(make_piece(ctx, sym::num, zero, macsp));
 
     // ```
