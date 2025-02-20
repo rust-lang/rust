@@ -496,7 +496,7 @@ fn expand_format_args<'hir>(
     // ```
     let template_new =
         ctx.expr_lang_item_type_relative(macsp, hir::LangItem::FormatTemplate, sym::new);
-    let pieces = ctx.expr_array_ref(fmt.span, ctx.arena.alloc_from_iter(pieces));
+    let pieces = ctx.expr_array_ref(macsp, ctx.arena.alloc_from_iter(pieces));
     let template = ctx.expr(
         macsp,
         hir::ExprKind::Call(ctx.arena.alloc(template_new), ctx.arena.alloc_from_iter([pieces])),
