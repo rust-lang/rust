@@ -51,6 +51,7 @@ fn associated_type_bounds<'tcx>(
                     hir_bounds,
                     None,
                     span,
+                    filter,
                 );
             }
             // `ConstIfConst` is only interested in `~const` bounds.
@@ -347,6 +348,7 @@ fn opaque_type_bounds<'tcx>(
                     hir_bounds,
                     None,
                     span,
+                    filter,
                 );
             }
             //`ConstIfConst` is only interested in `~const` bounds.
