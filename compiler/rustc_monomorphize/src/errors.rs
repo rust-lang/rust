@@ -70,37 +70,36 @@ pub(crate) struct UnknownCguCollectionMode<'a> {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(monomorphize_abi_error_disabled_vector_type_def)]
+#[diag(monomorphize_abi_error_disabled_vector_type)]
 #[help]
-pub(crate) struct AbiErrorDisabledVectorTypeDef<'a> {
+pub(crate) struct AbiErrorDisabledVectorType<'a> {
     #[label]
     pub span: Span,
     pub required_feature: &'a str,
     pub ty: Ty<'a>,
+    /// Whether this is a problem at a call site or at a declaration.
+    pub is_call: bool,
 }
 
 #[derive(LintDiagnostic)]
-#[diag(monomorphize_abi_error_disabled_vector_type_call)]
+#[diag(monomorphize_abi_error_unsupported_vector_type)]
+pub(crate) struct AbiErrorUnsupportedVectorType<'a> {
+    #[label]
+    pub span: Span,
+    pub ty: Ty<'a>,
+    /// Whether this is a problem at a call site or at a declaration.
+    pub is_call: bool,
+}
+
+#[derive(Diagnostic)]
+#[diag(monomorphize_abi_required_target_feature)]
 #[help]
-pub(crate) struct AbiErrorDisabledVectorTypeCall<'a> {
+pub(crate) struct AbiRequiredTargetFeature<'a> {
+    #[primary_span]
     #[label]
     pub span: Span,
     pub required_feature: &'a str,
-    pub ty: Ty<'a>,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(monomorphize_abi_error_unsupported_vector_type_def)]
-pub(crate) struct AbiErrorUnsupportedVectorTypeDef<'a> {
-    #[label]
-    pub span: Span,
-    pub ty: Ty<'a>,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(monomorphize_abi_error_unsupported_vector_type_call)]
-pub(crate) struct AbiErrorUnsupportedVectorTypeCall<'a> {
-    #[label]
-    pub span: Span,
-    pub ty: Ty<'a>,
+    pub abi: &'a str,
+    /// Whether this is a problem at a call site or at a declaration.
+    pub is_call: bool,
 }

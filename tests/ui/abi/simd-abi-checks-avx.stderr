@@ -1,5 +1,5 @@
 warning: this function call uses SIMD vector type `std::arch::x86_64::__m256` which (with the chosen ABI) requires the `avx` target feature, which is not enabled in the caller
-  --> $DIR/simd-abi-checks.rs:64:11
+  --> $DIR/simd-abi-checks-avx.rs:64:11
    |
 LL |         f(g());
    |           ^^^ function called here
@@ -10,7 +10,7 @@ LL |         f(g());
    = note: `#[warn(abi_unsupported_vector_types)]` on by default
 
 warning: this function call uses SIMD vector type `std::arch::x86_64::__m256` which (with the chosen ABI) requires the `avx` target feature, which is not enabled in the caller
-  --> $DIR/simd-abi-checks.rs:64:9
+  --> $DIR/simd-abi-checks-avx.rs:64:9
    |
 LL |         f(g());
    |         ^^^^^^ function called here
@@ -20,7 +20,7 @@ LL |         f(g());
    = help: consider enabling it globally (`-C target-feature=+avx`) or locally (`#[target_feature(enable="avx")]`)
 
 warning: this function call uses SIMD vector type `std::arch::x86_64::__m256` which (with the chosen ABI) requires the `avx` target feature, which is not enabled in the caller
-  --> $DIR/simd-abi-checks.rs:72:14
+  --> $DIR/simd-abi-checks-avx.rs:72:14
    |
 LL |         gavx(favx());
    |              ^^^^^^ function called here
@@ -30,7 +30,7 @@ LL |         gavx(favx());
    = help: consider enabling it globally (`-C target-feature=+avx`) or locally (`#[target_feature(enable="avx")]`)
 
 warning: this function call uses SIMD vector type `std::arch::x86_64::__m256` which (with the chosen ABI) requires the `avx` target feature, which is not enabled in the caller
-  --> $DIR/simd-abi-checks.rs:72:9
+  --> $DIR/simd-abi-checks-avx.rs:72:9
    |
 LL |         gavx(favx());
    |         ^^^^^^^^^^^^ function called here
@@ -40,7 +40,7 @@ LL |         gavx(favx());
    = help: consider enabling it globally (`-C target-feature=+avx`) or locally (`#[target_feature(enable="avx")]`)
 
 warning: this function call uses SIMD vector type `std::arch::x86_64::__m256` which (with the chosen ABI) requires the `avx` target feature, which is not enabled in the caller
-  --> $DIR/simd-abi-checks.rs:84:19
+  --> $DIR/simd-abi-checks-avx.rs:84:19
    |
 LL |         w(Wrapper(g()));
    |                   ^^^ function called here
@@ -50,7 +50,7 @@ LL |         w(Wrapper(g()));
    = help: consider enabling it globally (`-C target-feature=+avx`) or locally (`#[target_feature(enable="avx")]`)
 
 warning: this function call uses SIMD vector type `Wrapper` which (with the chosen ABI) requires the `avx` target feature, which is not enabled in the caller
-  --> $DIR/simd-abi-checks.rs:84:9
+  --> $DIR/simd-abi-checks-avx.rs:84:9
    |
 LL |         w(Wrapper(g()));
    |         ^^^^^^^^^^^^^^^ function called here
@@ -60,7 +60,7 @@ LL |         w(Wrapper(g()));
    = help: consider enabling it globally (`-C target-feature=+avx`) or locally (`#[target_feature(enable="avx")]`)
 
 warning: this function call uses SIMD vector type `std::arch::x86_64::__m256` which (with the chosen ABI) requires the `avx` target feature, which is not enabled in the caller
-  --> $DIR/simd-abi-checks.rs:100:9
+  --> $DIR/simd-abi-checks-avx.rs:100:9
    |
 LL |         some_extern();
    |         ^^^^^^^^^^^^^ function called here
@@ -70,7 +70,7 @@ LL |         some_extern();
    = help: consider enabling it globally (`-C target-feature=+avx`) or locally (`#[target_feature(enable="avx")]`)
 
 warning: this function definition uses SIMD vector type `std::arch::x86_64::__m256` which (with the chosen ABI) requires the `avx` target feature, which is not enabled
-  --> $DIR/simd-abi-checks.rs:27:1
+  --> $DIR/simd-abi-checks-avx.rs:27:1
    |
 LL | unsafe extern "C" fn g() -> __m256 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
@@ -80,7 +80,7 @@ LL | unsafe extern "C" fn g() -> __m256 {
    = help: consider enabling it globally (`-C target-feature=+avx`) or locally (`#[target_feature(enable="avx")]`)
 
 warning: this function definition uses SIMD vector type `std::arch::x86_64::__m256` which (with the chosen ABI) requires the `avx` target feature, which is not enabled
-  --> $DIR/simd-abi-checks.rs:21:1
+  --> $DIR/simd-abi-checks-avx.rs:21:1
    |
 LL | unsafe extern "C" fn f(_: __m256) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
@@ -90,7 +90,7 @@ LL | unsafe extern "C" fn f(_: __m256) {
    = help: consider enabling it globally (`-C target-feature=+avx`) or locally (`#[target_feature(enable="avx")]`)
 
 warning: this function definition uses SIMD vector type `Wrapper` which (with the chosen ABI) requires the `avx` target feature, which is not enabled
-  --> $DIR/simd-abi-checks.rs:15:1
+  --> $DIR/simd-abi-checks-avx.rs:15:1
    |
 LL | unsafe extern "C" fn w(_: Wrapper) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
@@ -100,7 +100,7 @@ LL | unsafe extern "C" fn w(_: Wrapper) {
    = help: consider enabling it globally (`-C target-feature=+avx`) or locally (`#[target_feature(enable="avx")]`)
 
 warning: this function call uses SIMD vector type `std::arch::x86_64::__m256` which (with the chosen ABI) requires the `avx` target feature, which is not enabled in the caller
-  --> $DIR/simd-abi-checks.rs:57:8
+  --> $DIR/simd-abi-checks-avx.rs:57:8
    |
 LL |     || g()
    |        ^^^ function called here
@@ -113,7 +113,7 @@ warning: 11 warnings emitted
 
 Future incompatibility report: Future breakage diagnostic:
 warning: this function call uses SIMD vector type `std::arch::x86_64::__m256` which (with the chosen ABI) requires the `avx` target feature, which is not enabled in the caller
-  --> $DIR/simd-abi-checks.rs:64:11
+  --> $DIR/simd-abi-checks-avx.rs:64:11
    |
 LL |         f(g());
    |           ^^^ function called here
@@ -125,7 +125,7 @@ LL |         f(g());
 
 Future breakage diagnostic:
 warning: this function call uses SIMD vector type `std::arch::x86_64::__m256` which (with the chosen ABI) requires the `avx` target feature, which is not enabled in the caller
-  --> $DIR/simd-abi-checks.rs:64:9
+  --> $DIR/simd-abi-checks-avx.rs:64:9
    |
 LL |         f(g());
    |         ^^^^^^ function called here
@@ -137,7 +137,7 @@ LL |         f(g());
 
 Future breakage diagnostic:
 warning: this function call uses SIMD vector type `std::arch::x86_64::__m256` which (with the chosen ABI) requires the `avx` target feature, which is not enabled in the caller
-  --> $DIR/simd-abi-checks.rs:72:14
+  --> $DIR/simd-abi-checks-avx.rs:72:14
    |
 LL |         gavx(favx());
    |              ^^^^^^ function called here
@@ -149,7 +149,7 @@ LL |         gavx(favx());
 
 Future breakage diagnostic:
 warning: this function call uses SIMD vector type `std::arch::x86_64::__m256` which (with the chosen ABI) requires the `avx` target feature, which is not enabled in the caller
-  --> $DIR/simd-abi-checks.rs:72:9
+  --> $DIR/simd-abi-checks-avx.rs:72:9
    |
 LL |         gavx(favx());
    |         ^^^^^^^^^^^^ function called here
@@ -161,7 +161,7 @@ LL |         gavx(favx());
 
 Future breakage diagnostic:
 warning: this function call uses SIMD vector type `std::arch::x86_64::__m256` which (with the chosen ABI) requires the `avx` target feature, which is not enabled in the caller
-  --> $DIR/simd-abi-checks.rs:84:19
+  --> $DIR/simd-abi-checks-avx.rs:84:19
    |
 LL |         w(Wrapper(g()));
    |                   ^^^ function called here
@@ -173,7 +173,7 @@ LL |         w(Wrapper(g()));
 
 Future breakage diagnostic:
 warning: this function call uses SIMD vector type `Wrapper` which (with the chosen ABI) requires the `avx` target feature, which is not enabled in the caller
-  --> $DIR/simd-abi-checks.rs:84:9
+  --> $DIR/simd-abi-checks-avx.rs:84:9
    |
 LL |         w(Wrapper(g()));
    |         ^^^^^^^^^^^^^^^ function called here
@@ -185,7 +185,7 @@ LL |         w(Wrapper(g()));
 
 Future breakage diagnostic:
 warning: this function call uses SIMD vector type `std::arch::x86_64::__m256` which (with the chosen ABI) requires the `avx` target feature, which is not enabled in the caller
-  --> $DIR/simd-abi-checks.rs:100:9
+  --> $DIR/simd-abi-checks-avx.rs:100:9
    |
 LL |         some_extern();
    |         ^^^^^^^^^^^^^ function called here
@@ -197,7 +197,7 @@ LL |         some_extern();
 
 Future breakage diagnostic:
 warning: this function definition uses SIMD vector type `std::arch::x86_64::__m256` which (with the chosen ABI) requires the `avx` target feature, which is not enabled
-  --> $DIR/simd-abi-checks.rs:27:1
+  --> $DIR/simd-abi-checks-avx.rs:27:1
    |
 LL | unsafe extern "C" fn g() -> __m256 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
@@ -209,7 +209,7 @@ LL | unsafe extern "C" fn g() -> __m256 {
 
 Future breakage diagnostic:
 warning: this function definition uses SIMD vector type `std::arch::x86_64::__m256` which (with the chosen ABI) requires the `avx` target feature, which is not enabled
-  --> $DIR/simd-abi-checks.rs:21:1
+  --> $DIR/simd-abi-checks-avx.rs:21:1
    |
 LL | unsafe extern "C" fn f(_: __m256) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
@@ -221,7 +221,7 @@ LL | unsafe extern "C" fn f(_: __m256) {
 
 Future breakage diagnostic:
 warning: this function definition uses SIMD vector type `Wrapper` which (with the chosen ABI) requires the `avx` target feature, which is not enabled
-  --> $DIR/simd-abi-checks.rs:15:1
+  --> $DIR/simd-abi-checks-avx.rs:15:1
    |
 LL | unsafe extern "C" fn w(_: Wrapper) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
@@ -233,7 +233,7 @@ LL | unsafe extern "C" fn w(_: Wrapper) {
 
 Future breakage diagnostic:
 warning: this function call uses SIMD vector type `std::arch::x86_64::__m256` which (with the chosen ABI) requires the `avx` target feature, which is not enabled in the caller
-  --> $DIR/simd-abi-checks.rs:57:8
+  --> $DIR/simd-abi-checks-avx.rs:57:8
    |
 LL |     || g()
    |        ^^^ function called here

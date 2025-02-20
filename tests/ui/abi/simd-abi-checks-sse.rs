@@ -6,7 +6,7 @@
 //@ build-pass
 //@ ignore-pass (test emits codegen-time warnings)
 //@ needs-llvm-components: x86
-#![feature(no_core, lang_items, repr_simd)]
+#![feature(no_core, repr_simd)]
 #![no_core]
 #![allow(improper_ctypes_definitions)]
 
