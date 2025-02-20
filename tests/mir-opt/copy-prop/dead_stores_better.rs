@@ -1,10 +1,9 @@
-// skip-filecheck
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // This is a copy of the `dead_stores_79191` test, except that we turn on DSE. This demonstrates
 // that that pass enables this one to do more optimizations.
 
 //@ test-mir-pass: CopyProp
-//@ compile-flags: -Zmir-enable-passes=+DeadStoreElimination
+//@ compile-flags: -Zmir-enable-passes=+DeadStoreElimination-initial
 
 fn id<T>(x: T) -> T {
     x
@@ -12,6 +11,14 @@ fn id<T>(x: T) -> T {
 
 // EMIT_MIR dead_stores_better.f.CopyProp.after.mir
 pub fn f(mut a: usize) -> usize {
+    // CHECK-LABEL: fn f(
+    // CHECK: debug a => [[a:_.*]];
+    // CHECK: debug b => [[b:_.*]];
+    // CHECK: [[b]] = copy [[a]];
+    // CHECK: [[a]] = const 5_usize;
+    // CHECK: [[a]] = copy [[b]];
+    // CHECK: [[c:_.*]] = copy [[a]]
+    // CHECK: id::<usize>(move [[c]])
     let b = a;
     a = 5;
     a = b;
