@@ -361,7 +361,9 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         &mut self,
         expn_id: LocalExpnId,
         force: bool,
-        derive_paths: &dyn Fn() -> Vec<DeriveResolution>,
+        derive_paths: &mut dyn FnMut(
+            &mut dyn rustc_expand::base::ResolverExpand,
+        ) -> Vec<DeriveResolution>,
     ) -> Result<(), Indeterminate> {
         // Block expansion of the container until we resolve all derives in it.
         // This is required for two reasons:
@@ -372,7 +374,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         // Temporarily take the data to avoid borrow checker conflicts.
         let mut derive_data = mem::take(&mut self.derive_data);
         let entry = derive_data.entry(expn_id).or_insert_with(|| DeriveData {
-            resolutions: derive_paths(),
+            resolutions: derive_paths(self),
             helper_attrs: Vec::new(),
             has_derive_copy: false,
         });
@@ -456,6 +458,82 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         path: &ast::Path,
     ) -> Result<bool, Indeterminate> {
         self.path_accessible(expn_id, path, &[MacroNS])
+    }
+
+    fn cfg_accessible_crate(&mut self, crate_name: Ident) -> Result<DefId, Indeterminate> {
+        let this = self;
+        let finalize = false;
+        let Some(binding) = this.extern_prelude_get(crate_name, finalize) else {
+            return Err(Indeterminate);
+        };
+        let Some(module) = binding.module() else {
+            return Err(Indeterminate);
+        };
+        Ok(module.def_id())
+    }
+    fn cfg_accessible_mod(
+        &mut self,
+        parent: DefId,
+        mod_name: Ident,
+    ) -> Result<DefId, Indeterminate> {
+        let this = self;
+        let parent = this.expect_module(parent);
+        let parent_scope = ParentScope::module(parent, this);
+        let finalize = None;
+        let ignore_binding = None;
+        let ignore_import = None;
+        let ns = Namespace::TypeNS;
+        let Ok(binding) = this.resolve_ident_in_module(
+            ModuleOrUniformRoot::Module(parent),
+            mod_name,
+            ns,
+            &parent_scope,
+            finalize,
+            ignore_binding,
+            ignore_import,
+        ) else {
+            return Err(Indeterminate);
+        };
+        if !binding.vis.is_public() {
+            return Err(Indeterminate);
+        }
+        let Some(module) = binding.module() else {
+            return Err(Indeterminate);
+        };
+        if !module.is_normal() {
+            return Err(Indeterminate);
+        }
+        Ok(module.def_id())
+    }
+    fn cfg_accessible_item(
+        &mut self,
+        parent: DefId,
+        item_name: Ident,
+    ) -> Result<(), Indeterminate> {
+        let this = self;
+        let parent = this.expect_module(parent);
+        let parent_scope = ParentScope::module(parent, this);
+        let finalize = None;
+        let ignore_binding = None;
+        let ignore_import = None;
+        for ns in [Namespace::TypeNS, Namespace::ValueNS, Namespace::MacroNS] {
+            let Ok(binding) = this.resolve_ident_in_module(
+                ModuleOrUniformRoot::Module(parent),
+                item_name,
+                ns,
+                &parent_scope,
+                finalize,
+                ignore_binding,
+                ignore_import,
+            ) else {
+                continue;
+            };
+            if !binding.vis.is_public() {
+                continue;
+            }
+            return Ok(());
+        }
+        return Err(Indeterminate);
     }
 
     fn get_proc_macro_quoted_span(&self, krate: CrateNum, id: usize) -> Span {

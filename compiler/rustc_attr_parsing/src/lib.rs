@@ -13,7 +13,7 @@
 // tidy-alphabetical-end
 
 mod attributes;
-mod session_diagnostics;
+pub mod session_diagnostics;
 
 pub use attributes::*;
 pub use rustc_attr_data_structures::*;

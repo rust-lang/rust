@@ -17,6 +17,37 @@ pub(crate) struct ExpectedOneCfgPattern {
 }
 
 #[derive(Diagnostic)]
+#[diag(attr_parsing_expected_cfg_accessible_path)]
+pub(crate) struct ExpectedCfgAccessiblePath {
+    #[primary_span]
+    pub span: Span,
+
+    #[note]
+    pub details: (),
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_incorrect_cfg_accessible_pos)]
+pub struct IncorrectCfgAccessiblePos {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_nonexistent_cfg_accessible_crate)]
+pub struct NonexistentCfgAccessibleCrate {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_incorrect_cfg_accessible_edition)]
+pub(crate) struct IncorrectCfgAccessibleEdition {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(attr_parsing_invalid_predicate, code = E0537)]
 pub(crate) struct InvalidPredicate {
     #[primary_span]

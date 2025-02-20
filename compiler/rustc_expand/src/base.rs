@@ -1032,7 +1032,7 @@ pub trait ResolverExpand {
         &mut self,
         expn_id: LocalExpnId,
         force: bool,
-        derive_paths: &dyn Fn() -> Vec<DeriveResolution>,
+        derive_paths: &mut dyn FnMut(&mut dyn ResolverExpand) -> Vec<DeriveResolution>,
     ) -> Result<(), Indeterminate>;
     /// Take resolutions for paths inside the `#[derive(...)]` attribute with the given `ExpnId`
     /// back from resolver.
@@ -1048,6 +1048,14 @@ pub trait ResolverExpand {
         expn_id: LocalExpnId,
         path: &ast::Path,
     ) -> Result<bool, Indeterminate>;
+    fn cfg_accessible_crate(&mut self, crate_name: Ident) -> Result<DefId, Indeterminate>;
+    fn cfg_accessible_mod(
+        &mut self,
+        parent: DefId,
+        mod_name: Ident,
+    ) -> Result<DefId, Indeterminate>;
+    fn cfg_accessible_item(&mut self, parent: DefId, item_name: Ident)
+    -> Result<(), Indeterminate>;
 
     /// Decodes the proc-macro quoted span in the specified crate, with the specified id.
     /// No caching is performed.
