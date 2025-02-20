@@ -198,33 +198,26 @@ pub enum CoverageLevel {
 /// The different settings that the `-Z autodiff` flag can have.
 #[derive(Clone, Copy, PartialEq, Hash, Debug)]
 pub enum AutoDiff {
+    /// Enable the autodiff opt pipeline
+    Enable,
+
     /// Print TypeAnalysis information
     PrintTA,
     /// Print ActivityAnalysis Information
     PrintAA,
     /// Print Performance Warnings from Enzyme
     PrintPerf,
-    /// Combines the three print flags above.
-    Print,
+    /// Print intermediate IR generation steps
+    PrintSteps,
     /// Print the whole module, before running opts.
     PrintModBefore,
-    /// Print the whole module just before we pass it to Enzyme.
-    /// For Debug purpose, prefer the OPT flag below
-    PrintModAfterOpts,
     /// Print the module after Enzyme differentiated everything.
-    PrintModAfterEnzyme,
+    PrintModAfter,
 
-    /// Enzyme's loose type debug helper (can cause incorrect gradients)
+    /// Enzyme's loose type debug helper (can cause incorrect gradients!!)
+    /// Usable in cases where Enzyme errors with `can not deduce type of X`.
     LooseTypes,
-
-    /// More flags
-    NoModOptAfter,
-    /// Tell Enzyme to run LLVM Opts on each function it generated. By default off,
-    /// since we already optimize the whole module after Enzyme is done.
-    EnableFncOpt,
-    NoVecUnroll,
-    RuntimeActivity,
-    /// Runs Enzyme specific Inlining
+    /// Runs Enzyme's aggressive inlining
     Inline,
 }
 

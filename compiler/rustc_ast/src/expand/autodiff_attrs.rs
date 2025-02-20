@@ -17,7 +17,6 @@ use crate::{Ty, TyKind};
 /// functions. The proper solution is to recognize and resolve this DAG of autodiff invocations,
 /// as it's already done in the C++ and Julia frontend of Enzyme.
 ///
-/// (FIXME) remove *First variants.
 /// Documentation for using [reverse](https://enzyme.mit.edu/rust/rev.html) and
 /// [forward](https://enzyme.mit.edu/rust/fwd.html) mode is available online.
 #[derive(Clone, Copy, Eq, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]

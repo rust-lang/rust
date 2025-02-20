@@ -10,7 +10,7 @@ use crate::back::write::llvm_err;
 use crate::builder::SBuilder;
 use crate::context::SimpleCx;
 use crate::declare::declare_simple_fn;
-use crate::errors::LlvmError;
+use crate::errors::{AutoDiffWithoutEnable, LlvmError};
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::{Metadata, True};
 use crate::value::Value;
@@ -46,9 +46,6 @@ fn generate_enzyme_call<'ll>(
     let output = attrs.ret_activity;
 
     // We have to pick the name depending on whether we want forward or reverse mode autodiff.
-    // FIXME(ZuseZ4): The new pass based approach should not need the {Forward/Reverse}First method anymore, since
-    // it will handle higher-order derivatives correctly automatically (in theory). Currently
-    // higher-order derivatives fail, so we should debug that before adjusting this code.
     let mut ad_name: String = match attrs.mode {
         DiffMode::Forward => "__enzyme_fwddiff",
         DiffMode::Reverse => "__enzyme_autodiff",
@@ -290,6 +287,14 @@ pub(crate) fn differentiate<'ll>(
 
     let diag_handler = cgcx.create_dcx();
     let cx = SimpleCx { llmod: module.module_llvm.llmod(), llcx: module.module_llvm.llcx };
+
+    // First of all, did the user try to use autodiff without using the -Zautodiff=Enable flag?
+    if !diff_items.is_empty()
+        && !cgcx.opts.unstable_opts.autodiff.contains(&rustc_session::config::AutoDiff::Enable)
+    {
+        let dcx = cgcx.create_dcx();
+        return Err(dcx.handle().emit_almost_fatal(AutoDiffWithoutEnable));
+    }
 
     // Before dumping the module, we want all the TypeTrees to become part of the module.
     for item in diff_items.iter() {
