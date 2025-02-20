@@ -262,6 +262,25 @@ themselves marked as unstable. To use any of these options, pass `-Z unstable-op
 the flag in question to Rustdoc on the command-line. To do this from Cargo, you can either use the
 `RUSTDOCFLAGS` environment variable or the `cargo rustdoc` command.
 
+### `--document-hidden-items`: Show items that are `#[doc(hidden)]`
+<span id="document-hidden-items"></span>
+
+By default, `rustdoc` does not document items that are annotated with
+[`#[doc(hidden)]`](write-documentation/the-doc-attribute.html#hidden).
+
+`--document-hidden-items` causes all items to be documented as if they did not have `#[doc(hidden)]`, except that hidden items will be shown with a 👻 icon.
+
+Here is a table that fully describes which items are documented with each combination of `--document-hidden-items` and `--document-private-items`:
+
+
+| rustdoc flags                   | items that will be documented         |
+|---------------------------------|---------------------------------------|
+| neither flag                    | only public items that are not hidden |
+| only `--document-hidden-items`  | all public items                      |
+| only `--document-private-items` | all items that are not hidden         |
+| both flags                      | all items                             |
+
+
 ### `--markdown-before-content`: include rendered Markdown before the content
 
  * Tracking issue: [#44027](https://github.com/rust-lang/rust/issues/44027)
