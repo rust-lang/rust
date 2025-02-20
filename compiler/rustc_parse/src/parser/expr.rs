@@ -605,7 +605,11 @@ impl<'a> Parser<'a> {
     fn parse_expr_prefix_common(&mut self, lo: Span) -> PResult<'a, (Span, P<Expr>)> {
         self.bump();
         let attrs = self.parse_outer_attributes()?;
-        let expr = self.parse_expr_prefix(attrs)?;
+        let expr = if self.token.is_range_separator() {
+            self.parse_expr_prefix_range(attrs)
+        } else {
+            self.parse_expr_prefix(attrs)
+        }?;
         let span = self.interpolated_or_expr_span(&expr);
         Ok((lo.to(span), expr))
     }
