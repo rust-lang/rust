@@ -296,7 +296,7 @@ For this reason, all path APIs generally take some existing path as a "file syst
 ### `crates/stdx`
 
 This crate contains various non-rust-analyzer specific utils, which could have been in std, as well
-as copies of unstable std items we would like to make use of already, like `std::str::split_once`.
+as copies of unstable std items we would like to make use of already.
 
 ### `crates/profile`
 
