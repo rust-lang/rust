@@ -425,6 +425,9 @@
 # a specific version.
 #ccache = false
 
+# List of tests or directories to exclude from the test suite. For example, exclude = ["tests/ui", "tests/debuginfo"];
+#exclude = []
+
 # =============================================================================
 # General install configuration options
 # =============================================================================
