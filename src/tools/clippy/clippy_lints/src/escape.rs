@@ -1,5 +1,6 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_hir;
+use rustc_abi::ExternAbi;
 use rustc_hir::{AssocItemKind, Body, FnDecl, HirId, HirIdSet, Impl, ItemKind, Node, Pat, PatKind, intravisit};
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use rustc_lint::{LateContext, LateLintPass};
@@ -10,7 +11,6 @@ use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::kw;
-use rustc_abi::ExternAbi;
 
 pub struct BoxedLocal {
     too_large_for_stack: u64,

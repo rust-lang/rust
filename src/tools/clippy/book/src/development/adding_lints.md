@@ -169,7 +169,7 @@ from the lint to the code of the test file and compare that to the contents of a
 Use `cargo bless` to automatically generate the `.fixed` file while running
 the tests.
 
-[rustfix]: https://github.com/rust-lang/rustfix
+[rustfix]: https://github.com/rust-lang/cargo/tree/master/crates/rustfix
 
 ## Testing manually
 

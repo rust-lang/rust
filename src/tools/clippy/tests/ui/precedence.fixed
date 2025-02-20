@@ -14,12 +14,19 @@ macro_rules! trip {
 
 fn main() {
     1 << (2 + 3);
+    //~^ precedence
     (1 + 2) << 3;
+    //~^ precedence
     4 >> (1 + 1);
+    //~^ precedence
     (1 + 3) >> 2;
+    //~^ precedence
     1 ^ (1 - 1);
+    //~^ precedence
     3 | (2 - 1);
+    //~^ precedence
     3 & (5 - 2);
+    //~^ precedence
     0x0F00 & 0x00F0 << 4;
     0x0F00 & 0xF000 >> 4;
     0x0F00 << 1 ^ 3;

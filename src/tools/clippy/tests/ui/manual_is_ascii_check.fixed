@@ -3,29 +3,45 @@
 
 fn main() {
     assert!('x'.is_ascii_lowercase());
+    //~^ manual_is_ascii_check
     assert!('X'.is_ascii_uppercase());
+    //~^ manual_is_ascii_check
     assert!(b'x'.is_ascii_lowercase());
+    //~^ manual_is_ascii_check
     assert!(b'X'.is_ascii_uppercase());
+    //~^ manual_is_ascii_check
 
     let num = '2';
     assert!(num.is_ascii_digit());
+    //~^ manual_is_ascii_check
     assert!(b'1'.is_ascii_digit());
+    //~^ manual_is_ascii_check
     assert!('x'.is_ascii_alphabetic());
+    //~^ manual_is_ascii_check
 
     assert!(matches!('x', 'A'..='Z' | 'a'..='z' | '_'));
 
     b'0'.is_ascii_digit();
+    //~^ manual_is_ascii_check
     b'a'.is_ascii_lowercase();
+    //~^ manual_is_ascii_check
     b'A'.is_ascii_uppercase();
+    //~^ manual_is_ascii_check
 
     '0'.is_ascii_digit();
+    //~^ manual_is_ascii_check
     'a'.is_ascii_lowercase();
+    //~^ manual_is_ascii_check
     'A'.is_ascii_uppercase();
+    //~^ manual_is_ascii_check
 
     let cool_letter = &'g';
     cool_letter.is_ascii_digit();
+    //~^ manual_is_ascii_check
     cool_letter.is_ascii_lowercase();
+    //~^ manual_is_ascii_check
     cool_letter.is_ascii_uppercase();
+    //~^ manual_is_ascii_check
 }
 
 #[clippy::msrv = "1.23"]
@@ -39,9 +55,13 @@ fn msrv_1_23() {
 #[clippy::msrv = "1.24"]
 fn msrv_1_24() {
     assert!(b'1'.is_ascii_digit());
+    //~^ manual_is_ascii_check
     assert!('X'.is_ascii_uppercase());
+    //~^ manual_is_ascii_check
     assert!('x'.is_ascii_alphabetic());
+    //~^ manual_is_ascii_check
     assert!('x'.is_ascii_hexdigit());
+    //~^ manual_is_ascii_check
 }
 
 #[clippy::msrv = "1.46"]
@@ -53,14 +73,18 @@ fn msrv_1_46() {
 #[clippy::msrv = "1.47"]
 fn msrv_1_47() {
     const FOO: bool = 'x'.is_ascii_digit();
+    //~^ manual_is_ascii_check
     const BAR: bool = 'x'.is_ascii_hexdigit();
+    //~^ manual_is_ascii_check
 }
 
 #[allow(clippy::deref_addrof, clippy::needless_borrow)]
 fn with_refs() {
     let cool_letter = &&'g';
     cool_letter.is_ascii_digit();
+    //~^ manual_is_ascii_check
     cool_letter.is_ascii_lowercase();
+    //~^ manual_is_ascii_check
 }
 
 fn generics() {
@@ -79,11 +103,16 @@ fn generics() {
     {
     }
     take_while(|c: char| c.is_ascii_uppercase());
+    //~^ manual_is_ascii_check
     take_while(|c: u8| c.is_ascii_uppercase());
+    //~^ manual_is_ascii_check
     take_while(|c: char| c.is_ascii_uppercase());
+    //~^ manual_is_ascii_check
 }
 
 fn adds_type_reference() {
     let digits: Vec<&char> = ['1', 'A'].iter().take_while(|c: &&char| c.is_ascii_digit()).collect();
+    //~^ manual_is_ascii_check
     let digits: Vec<&mut char> = ['1', 'A'].iter_mut().take_while(|c: &&mut char| c.is_ascii_digit()).collect();
+    //~^ manual_is_ascii_check
 }

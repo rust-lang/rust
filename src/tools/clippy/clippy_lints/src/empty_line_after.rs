@@ -289,10 +289,13 @@ impl EmptyLineAfter {
             format!("empty {lines} after {kind_desc}"),
             |diag| {
                 let info = self.items.last().unwrap();
-                diag.span_label(info.span, match kind {
-                    StopKind::Attr => format!("the attribute applies to this {}", info.kind),
-                    StopKind::Doc(_) => format!("the comment documents this {}", info.kind),
-                });
+                diag.span_label(
+                    info.span,
+                    match kind {
+                        StopKind::Attr => format!("the attribute applies to this {}", info.kind),
+                        StopKind::Doc(_) => format!("the comment documents this {}", info.kind),
+                    },
+                );
 
                 diag.multipart_suggestion_with_style(
                     format!("if the empty {lines} {are} unintentional, remove {them}"),

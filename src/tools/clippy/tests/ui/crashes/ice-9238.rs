@@ -1,3 +1,5 @@
+//@ check-pass
+
 #![allow(incomplete_features)]
 #![feature(generic_const_exprs)]
 #![warn(clippy::branches_sharing_code)]

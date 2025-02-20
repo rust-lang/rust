@@ -134,8 +134,14 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```no_run
-    /// u32::MAX as i32; // will yield a value of `-1`
+    /// let _ = u32::MAX as i32; // will yield a value of `-1`
     /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// let _ = i32::try_from(u32::MAX).ok();
+    /// ```
+    ///
     #[clippy::version = "pre 1.29.0"]
     pub CAST_POSSIBLE_WRAP,
     pedantic,
@@ -747,7 +753,7 @@ declare_clippy_lint! {
     ///     t as *const T as usize
     /// }
     /// ```
-    #[clippy::version = "1.81.0"]
+    #[clippy::version = "1.85.0"]
     pub AS_POINTER_UNDERSCORE,
     restriction,
     "detects `as *mut _` and `as *const _` conversion"

@@ -13,7 +13,7 @@ LL +         "bar" => {},
    |
 
 error: this `match` arm has a differing case than its expression
-  --> tests/ui/match_str_case_mismatch.rs:122:9
+  --> tests/ui/match_str_case_mismatch.rs:123:9
    |
 LL |         "~!@#$%^&*()-_=+Foo" => {},
    |         ^^^^^^^^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL +         "~!@#$%^&*()-_=+foo" => {},
    |
 
 error: this `match` arm has a differing case than its expression
-  --> tests/ui/match_str_case_mismatch.rs:134:9
+  --> tests/ui/match_str_case_mismatch.rs:136:9
    |
 LL |         "Воды" => {},
    |         ^^^^^^
@@ -37,7 +37,7 @@ LL +         "воды" => {},
    |
 
 error: this `match` arm has a differing case than its expression
-  --> tests/ui/match_str_case_mismatch.rs:145:9
+  --> tests/ui/match_str_case_mismatch.rs:148:9
    |
 LL |         "barǲ" => {},
    |         ^^^^^^
@@ -49,7 +49,7 @@ LL +         "barǳ" => {},
    |
 
 error: this `match` arm has a differing case than its expression
-  --> tests/ui/match_str_case_mismatch.rs:155:9
+  --> tests/ui/match_str_case_mismatch.rs:159:9
    |
 LL |         "bARʁ" => {},
    |         ^^^^^^
@@ -61,7 +61,7 @@ LL +         "BARʁ" => {},
    |
 
 error: this `match` arm has a differing case than its expression
-  --> tests/ui/match_str_case_mismatch.rs:165:9
+  --> tests/ui/match_str_case_mismatch.rs:170:9
    |
 LL |         "Bar" => {},
    |         ^^^^^
@@ -73,7 +73,7 @@ LL +         "bar" => {},
    |
 
 error: this `match` arm has a differing case than its expression
-  --> tests/ui/match_str_case_mismatch.rs:180:9
+  --> tests/ui/match_str_case_mismatch.rs:186:9
    |
 LL |         "bAR" => {},
    |         ^^^^^

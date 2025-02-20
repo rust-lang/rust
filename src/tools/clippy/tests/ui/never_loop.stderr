@@ -13,64 +13,49 @@ error: this loop never actually loops
   --> tests/ui/never_loop.rs:36:5
    |
 LL | /     loop {
-LL | |
-LL | |         // never loops
-LL | |         x += 1;
+...  |
 LL | |         break;
 LL | |     }
    | |_____^
 
 error: this loop never actually loops
-  --> tests/ui/never_loop.rs:57:5
+  --> tests/ui/never_loop.rs:58:5
    |
 LL | /     loop {
-LL | |
-LL | |         // never loops
-LL | |         while i == 0 {
 ...  |
 LL | |         return;
 LL | |     }
    | |_____^
 
 error: this loop never actually loops
-  --> tests/ui/never_loop.rs:60:9
+  --> tests/ui/never_loop.rs:62:9
    |
 LL | /         while i == 0 {
-LL | |
-LL | |             // never loops
-LL | |             break;
+...  |
 LL | |         }
    | |_________^
 
 error: this loop never actually loops
-  --> tests/ui/never_loop.rs:73:9
+  --> tests/ui/never_loop.rs:76:9
    |
 LL | /         loop {
-LL | |
-LL | |             // never loops
-LL | |             if x == 5 {
 ...  |
 LL | |             continue 'outer;
 LL | |         }
    | |_________^
 
 error: this loop never actually loops
-  --> tests/ui/never_loop.rs:110:5
+  --> tests/ui/never_loop.rs:114:5
    |
 LL | /     while let Some(y) = x {
-LL | |
-LL | |         // never loops
-LL | |         return;
+...  |
 LL | |     }
    | |_____^
 
 error: this loop never actually loops
-  --> tests/ui/never_loop.rs:118:5
+  --> tests/ui/never_loop.rs:123:5
    |
 LL | /     for x in 0..10 {
-LL | |
-LL | |         // never loops
-LL | |         match x {
 ...  |
 LL | |     }
    | |_____^
@@ -82,52 +67,50 @@ LL +     if let Some(x) = (0..10).next() {
    |
 
 error: this loop never actually loops
-  --> tests/ui/never_loop.rs:167:5
+  --> tests/ui/never_loop.rs:173:5
    |
 LL | /     'outer: while a {
-LL | |
-LL | |         // never loops
-LL | |         while a {
 ...  |
 LL | |         break 'outer;
 LL | |     }
    | |_____^
 
 error: this loop never actually loops
-  --> tests/ui/never_loop.rs:183:9
+  --> tests/ui/never_loop.rs:190:9
    |
 LL | /         while false {
+LL | |
 LL | |
 LL | |             break 'label;
 LL | |         }
    | |_________^
 
 error: this loop never actually loops
-  --> tests/ui/never_loop.rs:235:13
+  --> tests/ui/never_loop.rs:243:13
    |
 LL |       let _ = loop {
    |  _____________^
 LL | |
+LL | |
 LL | |         let Some(x) = x else {
-LL | |             return;
 ...  |
 LL | |         break x;
 LL | |     };
    | |_____^
 
 error: this loop never actually loops
-  --> tests/ui/never_loop.rs:257:5
+  --> tests/ui/never_loop.rs:266:5
    |
 LL | /     'a: loop {
 LL | |
+LL | |
 LL | |         'b: {
-LL | |             break 'b 'c: {
 ...  |
 LL | |     }
    | |_____^
 
 error: sub-expression diverges
-  --> tests/ui/never_loop.rs:261:17
+  --> tests/ui/never_loop.rs:271:17
    |
 LL |                 break 'a;
    |                 ^^^^^^^^
@@ -136,9 +119,10 @@ LL |                 break 'a;
    = help: to override `-D warnings` add `#[allow(clippy::diverging_sub_expression)]`
 
 error: this loop never actually loops
-  --> tests/ui/never_loop.rs:294:13
+  --> tests/ui/never_loop.rs:303:13
    |
 LL | /             for _ in 0..20 {
+LL | |
 LL | |
 LL | |                 break 'block;
 LL | |             }
@@ -151,27 +135,30 @@ LL +             if let Some(_) = (0..20).next() {
    |
 
 error: this loop never actually loops
-  --> tests/ui/never_loop.rs:378:13
+  --> tests/ui/never_loop.rs:388:13
    |
 LL | /             'c: loop {
+LL | |
 LL | |
 LL | |                 if b { break 'c } else { break 'b }
 LL | |             }
    | |_____________^
 
 error: this loop never actually loops
-  --> tests/ui/never_loop.rs:389:5
+  --> tests/ui/never_loop.rs:400:5
    |
 LL | /     loop {
+LL | |
 LL | |
 LL | |         panic!("oh no");
 LL | |     }
    | |_____^
 
 error: this loop never actually loops
-  --> tests/ui/never_loop.rs:393:5
+  --> tests/ui/never_loop.rs:405:5
    |
 LL | /     loop {
+LL | |
 LL | |
 LL | |         unimplemented!("not yet");
 LL | |     }

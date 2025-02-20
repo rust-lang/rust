@@ -13,58 +13,70 @@ fn main() {
     let mut f = 1.0f32;
 
     f * 2.0;
-    //~^ ERROR: floating-point arithmetic detected
-    //~| NOTE: `-D clippy::float-arithmetic` implied by `-D warnings`
+    //~^ float_arithmetic
+
+
 
     1.0 + f;
-    //~^ ERROR: floating-point arithmetic detected
+    //~^ float_arithmetic
+
     f * 2.0;
-    //~^ ERROR: floating-point arithmetic detected
+    //~^ float_arithmetic
+
     f / 2.0;
-    //~^ ERROR: floating-point arithmetic detected
+    //~^ float_arithmetic
+
     f - 2.0 * 4.2;
-    //~^ ERROR: floating-point arithmetic detected
+    //~^ float_arithmetic
+
     -f;
-    //~^ ERROR: floating-point arithmetic detected
+    //~^ float_arithmetic
+
 
     f += 1.0;
-    //~^ ERROR: floating-point arithmetic detected
+    //~^ float_arithmetic
+
     f -= 1.0;
-    //~^ ERROR: floating-point arithmetic detected
+    //~^ float_arithmetic
+
     f *= 2.0;
-    //~^ ERROR: floating-point arithmetic detected
+    //~^ float_arithmetic
+
     f /= 2.0;
-    //~^ ERROR: floating-point arithmetic detected
+    //~^ float_arithmetic
+
 }
 
 // also warn about floating point arith with references involved
 
 pub fn float_arith_ref() {
     3.1_f32 + &1.2_f32;
-    //~^ ERROR: floating-point arithmetic detected
+    //~^ float_arithmetic
+
     &3.4_f32 + 1.5_f32;
-    //~^ ERROR: floating-point arithmetic detected
+    //~^ float_arithmetic
+
     &3.5_f32 + &1.3_f32;
-    //~^ ERROR: floating-point arithmetic detected
+    //~^ float_arithmetic
 }
 
 pub fn float_foo(f: &f32) -> f32 {
     let a = 5.1;
     a + f
-    //~^ ERROR: floating-point arithmetic detected
+    //~^ float_arithmetic
 }
 
 pub fn float_bar(f1: &f32, f2: &f32) -> f32 {
     f1 + f2
-    //~^ ERROR: floating-point arithmetic detected
+    //~^ float_arithmetic
 }
 
 pub fn float_baz(f1: f32, f2: &f32) -> f32 {
     f1 + f2
-    //~^ ERROR: floating-point arithmetic detected
+    //~^ float_arithmetic
 }
 
 pub fn float_qux(f1: f32, f2: f32) -> f32 {
     (&f1 + &f2)
-    //~^ ERROR: floating-point arithmetic detected
+    //~^ float_arithmetic
 }

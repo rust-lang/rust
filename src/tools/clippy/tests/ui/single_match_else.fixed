@@ -18,6 +18,7 @@ fn unwrap_addr() -> Option<&'static ExprNode> {
         let x = 5;
         None
     };
+    //~^^^^^^^ single_match_else
 
     // Don't lint
     with_span!(span match ExprNode::Butterflies {
@@ -80,12 +81,14 @@ fn main() {
         println!("else block");
         return
     }
+    //~^^^^^^^ single_match_else
 
     // lint here
     if let Some(a) = Some(1) { println!("${:?}", a) } else {
         println!("else block");
         return;
     }
+    //~^^^^^^^ single_match_else
 
     // lint here
     use std::convert::Infallible;
@@ -93,12 +96,14 @@ fn main() {
         println!("else block");
         return;
     }
+    //~^^^^^^^ single_match_else
 
     use std::borrow::Cow;
     if let Cow::Owned(a) = Cow::from("moo") { println!("${:?}", a) } else {
         println!("else block");
         return;
     }
+    //~^^^^^^^ single_match_else
 }
 
 fn issue_10808(bar: Option<i32>) {
@@ -109,6 +114,7 @@ fn issue_10808(bar: Option<i32>) {
         println!("None1");
         println!("None2");
     }
+    //~^^^^^^^^^^ single_match_else
 
     if let Some(v) = bar {
         println!("Some");
@@ -118,6 +124,7 @@ fn issue_10808(bar: Option<i32>) {
         let r = &v as *const i32;
         println!("{}", *r);
     } }
+    //~^^^^^^^^^^^ single_match_else
 
     if let Some(v) = bar { unsafe {
         let r = &v as *const i32;
@@ -127,6 +134,7 @@ fn issue_10808(bar: Option<i32>) {
         let r = &v as *const i32;
         println!("{}", *r);
     } }
+    //~^^^^^^^^^^^ single_match_else
 
     if let Some(v) = bar {
         unsafe {
@@ -137,6 +145,7 @@ fn issue_10808(bar: Option<i32>) {
         println!("None");
         println!("None");
     }
+    //~^^^^^^^^^^^^^ single_match_else
 
     match bar {
         Some(v) => {
@@ -174,4 +183,5 @@ fn issue_10808(bar: Option<i32>) {
 
 fn irrefutable_match() -> Option<&'static ExprNode> {
     Some(&NODE)
+    //~^^^^^^^ single_match_else
 }

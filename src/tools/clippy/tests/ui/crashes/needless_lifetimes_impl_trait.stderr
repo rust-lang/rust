@@ -16,7 +16,7 @@ LL + impl Foo for Baz<'_> {}
    |
 
 error: the following explicit lifetimes could be elided: 'a
-  --> tests/ui/crashes/needless_lifetimes_impl_trait.rs:15:12
+  --> tests/ui/crashes/needless_lifetimes_impl_trait.rs:16:12
    |
 LL |     fn baz<'a>(&'a self) -> impl Foo + 'a {
    |            ^^   ^^                     ^^
