@@ -103,11 +103,16 @@ const_eval_frame_note = {$times ->
     *[other] [... {$times} additional calls {const_eval_frame_note_inner} ...]
 }
 
-const_eval_frame_note_inner = inside {$where_ ->
+const_eval_frame_note_inner = {$is_last ->
+    [true] {"the failure occurred "}
+    *[false] {""}
+    }inside {$where_ ->
     [closure] closure
     [instance] `{$instance}`
     *[other] {""}
 }
+
+const_eval_frame_note_last = the failure occurred here
 
 const_eval_in_bounds_test = out-of-bounds pointer use
 const_eval_incompatible_calling_conventions =
@@ -300,8 +305,7 @@ const_eval_overflow_arith =
 const_eval_overflow_shift =
     overflowing shift by {$shift_amount} in `{$intrinsic}`
 
-const_eval_panic =
-    the evaluated program panicked at '{$msg}', {$file}:{$line}:{$col}
+const_eval_panic = panic: {$msg}
 
 const_eval_panic_non_str = argument to `panic!()` in a const context must have type `&str`
 
