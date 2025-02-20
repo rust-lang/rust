@@ -125,7 +125,7 @@ pub enum GitRepo {
 /// organize).
 #[derive(Clone)]
 pub struct Build {
-    /// User-specified configuration from `config.toml`.
+    /// User-specified configuration from `bootstrap.toml`.
     config: Config,
 
     // Version information
@@ -517,7 +517,7 @@ impl Build {
     /// This avoids contributors checking in a submodule change by accident.
     fn update_existing_submodules(&self) {
         // Avoid running git when there isn't a git checkout, or the user has
-        // explicitly disabled submodules in `config.toml`.
+        // explicitly disabled submodules in `bootstrap.toml`.
         if !self.config.submodules() {
             return;
         }
@@ -650,7 +650,7 @@ impl Build {
     }
 
     /// Gets the space-separated set of activated features for the standard library.
-    /// This can be configured with the `std-features` key in config.toml.
+    /// This can be configured with the `std-features` key in bootstrap.toml.
     fn std_features(&self, target: TargetSelection) -> String {
         let mut features: BTreeSet<&str> =
             self.config.rust_std_features.iter().map(|s| s.as_str()).collect();
@@ -1894,7 +1894,7 @@ Couldn't find required command: ninja (or ninja-build)
 
 You should install ninja as described at
 <https://github.com/ninja-build/ninja/wiki/Pre-built-Ninja-packages>,
-or set `ninja = false` in the `[llvm]` section of `config.toml`.
+or set `ninja = false` in the `[llvm]` section of `bootstrap.toml`.
 Alternatively, set `download-ci-llvm = true` in that `[llvm]` section
 to download LLVM rather than building it.
 "

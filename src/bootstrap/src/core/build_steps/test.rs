@@ -1085,7 +1085,7 @@ impl Step for Tidy {
                         "\
 ERROR: no `rustfmt` binary found in {PATH}
 INFO: `rust.channel` is currently set to \"{CHAN}\"
-HELP: if you are testing a beta branch, set `rust.channel` to \"beta\" in the `config.toml` file
+HELP: if you are testing a beta branch, set `rust.channel` to \"beta\" in the `bootstrap.toml` file
 HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to `x.py test`",
                         PATH = inferred_rustfmt_dir.display(),
                         CHAN = builder.config.channel,

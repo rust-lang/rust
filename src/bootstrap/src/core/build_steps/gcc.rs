@@ -138,7 +138,7 @@ impl Step for Gcc {
             // On CI, we compile GCC with Clang.
             // The -Wno-everything flag is needed to make GCC compile with Clang 19.
             // `-g -O2` are the default flags that are otherwise used by Make.
-            // FIXME(kobzol): change the flags once we have [gcc] configuration in config.toml.
+            // FIXME(kobzol): change the flags once we have [gcc] configuration in bootstrap.toml.
             .env("CXXFLAGS", "-Wno-everything -g -O2")
             .env("CFLAGS", "-Wno-everything -g -O2")
             .arg("--enable-host-shared")

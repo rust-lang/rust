@@ -69,7 +69,7 @@ fn detect_src_and_out() {
         let expected_src = manifest_dir.ancestors().nth(2).unwrap();
         assert_eq!(&cfg.src, expected_src);
 
-        // test if build-dir was manually given in config.toml
+        // test if build-dir was manually given in bootstrap.toml
         if let Some(custom_build_dir) = build_dir {
             assert_eq!(&cfg.out, Path::new(custom_build_dir));
         }
@@ -230,7 +230,7 @@ fn override_toml_duplicate() {
 fn profile_user_dist() {
     fn get_toml(file: &Path) -> Result<TomlConfig, toml::de::Error> {
         let contents =
-            if file.ends_with("config.toml") || env::var_os("RUST_BOOTSTRAP_CONFIG").is_some() {
+            if file.ends_with("bootstrap.toml") || env::var_os("RUST_BOOTSTRAP_CONFIG").is_some() {
                 "profile = \"user\"".to_owned()
             } else {
                 assert!(file.ends_with("config.dist.toml"));
@@ -402,7 +402,7 @@ fn jobs_precedence() {
     );
     assert_eq!(config.jobs, Some(67890));
 
-    // `--set build.jobs` should take precedence over `config.toml`.
+    // `--set build.jobs` should take precedence over `bootstrap.toml`.
     let config = Config::parse_inner(
         Flags::parse(&[
             "check".to_owned(),
@@ -420,7 +420,7 @@ fn jobs_precedence() {
     );
     assert_eq!(config.jobs, Some(12345));
 
-    // `--jobs` > `--set build.jobs` > `config.toml`
+    // `--jobs` > `--set build.jobs` > `bootstrap.toml`
     let config = Config::parse_inner(
         Flags::parse(&[
             "check".to_owned(),

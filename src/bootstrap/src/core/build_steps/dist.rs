@@ -998,9 +998,9 @@ impl Step for PlainSourceTarball {
         let src_files = [
             // tidy-alphabetical-start
             ".gitmodules",
+            "bootstrap.example.toml",
             "Cargo.lock",
             "Cargo.toml",
-            "config.example.toml",
             "configure",
             "CONTRIBUTING.md",
             "COPYRIGHT",
