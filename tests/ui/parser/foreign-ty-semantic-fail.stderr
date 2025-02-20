@@ -11,9 +11,14 @@ LL | extern "C" {
    | ---------- `extern` block begins here
 ...
 LL |     type B<'a> where 'a: 'static;
-   |           ^^^^ help: remove the generic parameters
+   |           ^^^^
    |
    = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
+help: remove the generic parameters
+   |
+LL -     type B<'a> where 'a: 'static;
+LL +     type B where 'a: 'static;
+   |
 
 error: `type`s inside `extern` blocks cannot have `where` clauses
   --> $DIR/foreign-ty-semantic-fail.rs:8:16
@@ -22,9 +27,14 @@ LL | extern "C" {
    | ---------- `extern` block begins here
 ...
 LL |     type B<'a> where 'a: 'static;
-   |                ^^^^^^^^^^^^^^^^^ help: remove the `where` clause
+   |                ^^^^^^^^^^^^^^^^^
    |
    = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
+help: remove the `where` clause
+   |
+LL -     type B<'a> where 'a: 'static;
+LL +     type B<'a> ;
+   |
 
 error: `type`s inside `extern` blocks cannot have generic parameters
   --> $DIR/foreign-ty-semantic-fail.rs:11:11
@@ -33,9 +43,14 @@ LL | extern "C" {
    | ---------- `extern` block begins here
 ...
 LL |     type C<T: Ord> where T: 'static;
-   |           ^^^^^^^^ help: remove the generic parameters
+   |           ^^^^^^^^
    |
    = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
+help: remove the generic parameters
+   |
+LL -     type C<T: Ord> where T: 'static;
+LL +     type C where T: 'static;
+   |
 
 error: `type`s inside `extern` blocks cannot have `where` clauses
   --> $DIR/foreign-ty-semantic-fail.rs:11:20
@@ -44,9 +59,14 @@ LL | extern "C" {
    | ---------- `extern` block begins here
 ...
 LL |     type C<T: Ord> where T: 'static;
-   |                    ^^^^^^^^^^^^^^^^ help: remove the `where` clause
+   |                    ^^^^^^^^^^^^^^^^
    |
    = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
+help: remove the `where` clause
+   |
+LL -     type C<T: Ord> where T: 'static;
+LL +     type C<T: Ord> ;
+   |
 
 error: incorrect `type` inside `extern` block
   --> $DIR/foreign-ty-semantic-fail.rs:14:10
@@ -68,9 +88,14 @@ LL | extern "C" {
    | ---------- `extern` block begins here
 ...
 LL |     type E: where;
-   |             ^^^^^ help: remove the `where` clause
+   |             ^^^^^
    |
    = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
+help: remove the `where` clause
+   |
+LL -     type E: where;
+LL +     type E: ;
+   |
 
 error: aborting due to 7 previous errors
 

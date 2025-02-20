@@ -5,9 +5,12 @@ LL | / const _: A<
 ...  |
 LL | |     },
 LL | | >;
-   | |  ^ help: provide a definition for the constant: `= <expr>;`
-   | |__|
+   | |__^
    |
+help: provide a definition for the constant
+   |
+LL | > = <expr>;
+   |   ++++++++
 
 error[E0412]: cannot find type `A` in this scope
   --> $DIR/const_arg_trivial_macro_expansion-2.rs:12:10

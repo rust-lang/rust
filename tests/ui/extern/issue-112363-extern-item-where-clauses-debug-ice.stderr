@@ -16,9 +16,14 @@ error: `type`s inside `extern` blocks cannot have `where` clauses
 LL | extern "C" {
    | ---------- `extern` block begins here
 LL |     type Item = [T] where [T]: Sized;
-   |                     ^^^^^^^^^^^^^^^^ help: remove the `where` clause
+   |                     ^^^^^^^^^^^^^^^^
    |
    = note: for more information, visit https://doc.rust-lang.org/std/keyword.extern.html
+help: remove the `where` clause
+   |
+LL -     type Item = [T] where [T]: Sized;
+LL +     type Item = [T] ;
+   |
 
 error[E0412]: cannot find type `T` in this scope
   --> $DIR/issue-112363-extern-item-where-clauses-debug-ice.rs:2:28

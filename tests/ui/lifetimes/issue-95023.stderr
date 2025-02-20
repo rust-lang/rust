@@ -2,9 +2,13 @@ error: associated function in `impl` without body
   --> $DIR/issue-95023.rs:8:5
    |
 LL |     fn foo<const N: usize>(&self) -> Self::B<{ N }>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
-   |                                                    |
-   |                                                    help: provide a definition for the function: `{ <body> }`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: provide a definition for the function
+   |
+LL -     fn foo<const N: usize>(&self) -> Self::B<{ N }>;
+LL +     fn foo<const N: usize>(&self) -> Self::B<{ N }> { <body> }
+   |
 
 error[E0407]: method `foo` is not a member of trait `Fn`
   --> $DIR/issue-95023.rs:8:5
@@ -54,7 +58,13 @@ error[E0220]: associated type `B` not found for `Self`
   --> $DIR/issue-95023.rs:8:44
    |
 LL |     fn foo<const N: usize>(&self) -> Self::B<{ N }>;
-   |                                            ^ help: `Self` has the following associated type: `Output`
+   |                                            ^
+   |
+help: `Self` has the following associated type
+   |
+LL -     fn foo<const N: usize>(&self) -> Self::B<{ N }>;
+LL +     fn foo<const N: usize>(&self) -> Self::Output<{ N }>;
+   |
 
 error: aborting due to 7 previous errors
 

@@ -13,10 +13,13 @@ error[E0379]: functions in trait impls cannot be declared const
   --> $DIR/ice-120503-async-const-method.rs:6:11
    |
 LL |     async const fn bar(&self) {
-   |           ^^^^^-
-   |           |
-   |           functions in trait impls cannot be const
-   |           help: remove the `const`
+   |           ^^^^^ functions in trait impls cannot be const
+   |
+help: remove the `const`
+   |
+LL -     async const fn bar(&self) {
+LL +     async fn bar(&self) {
+   |
 
 error: functions cannot be both `const` and `async`
   --> $DIR/ice-120503-async-const-method.rs:6:5
