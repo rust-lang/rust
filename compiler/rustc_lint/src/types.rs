@@ -1296,10 +1296,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             // but only the base type is relevant for being representable in FFI.
             ty::Pat(base, ..) => self.check_type_for_ffi(acc, base),
 
-            ty::Int(ty::IntTy::I128) | ty::Uint(ty::UintTy::U128) => {
-                FfiUnsafe { ty, reason: fluent::lint_improper_ctypes_128bit, help: None }
-            }
-
             // Primitive types with a stable representation.
             ty::Bool | ty::Int(..) | ty::Uint(..) | ty::Float(..) | ty::Never => FfiSafe,
 
