@@ -1017,7 +1017,7 @@ impl<T: ?Sized> Box<T> {
     /// resulting `Box`. Specifically, the `Box` destructor will call
     /// the destructor of `T` and free the allocated memory. For this
     /// to be safe, the memory must have been allocated in accordance
-    /// with the [memory layout] used by `Box` .
+    /// with the [memory layout] used by `Box`.
     ///
     /// # Safety
     ///
@@ -1166,8 +1166,13 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[rustc_const_unstable(feature = "const_box", issue = "92521")]
     #[inline]
-    pub const unsafe fn from_raw_in(raw: *mut T, alloc: A) -> Self {
-        Box(unsafe { Unique::new_unchecked(raw) }, alloc)
+    pub const unsafe fn from_raw_in(ptr: *mut T, alloc: A) -> Self {
+        ub_checks::assert_unsafe_precondition!(
+            check_language_ub,
+            "Box::from_raw_in requires that the pointer is properly aligned",
+            (ptr: *mut () = ptr as *mut (), align: usize = align_of::<T>()) => ptr.is_aligned_to(align)
+        );
+        Box(unsafe { Unique::new_unchecked(ptr) }, alloc)
     }
 
     /// Constructs a box from a `NonNull` pointer in the given allocator.
