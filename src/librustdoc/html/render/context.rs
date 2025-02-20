@@ -11,7 +11,7 @@ use rustc_hir::def_id::{DefIdMap, LOCAL_CRATE};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
-use rustc_span::{FileName, Symbol, sym};
+use rustc_span::{BytePos, FileName, Symbol, sym};
 use tracing::info;
 
 use super::print_item::{full_path, item_path, print_item};
@@ -30,6 +30,7 @@ use crate::html::escape::Escape;
 use crate::html::format::join_with_double_colon;
 use crate::html::layout::{self, BufDisplay};
 use crate::html::markdown::{self, ErrorCodes, IdMap, plain_text_summary};
+use crate::html::render::ExpandedCode;
 use crate::html::render::write_shared::write_shared;
 use crate::html::url_parts_builder::UrlPartsBuilder;
 use crate::html::{sources, static_files};
@@ -140,6 +141,7 @@ pub(crate) struct SharedContext<'tcx> {
     /// Correspondence map used to link types used in the source code pages to allow to click on
     /// links to jump to the type's definition.
     pub(crate) span_correspondence_map: FxHashMap<rustc_span::Span, LinkFromSrc>,
+    pub(crate) expanded_codes: FxHashMap<BytePos, Vec<ExpandedCode>>,
     /// The [`Cache`] used during rendering.
     pub(crate) cache: Cache,
     pub(crate) call_locations: AllCallLocations,
@@ -487,6 +489,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             generate_redirect_map,
             show_type_layout,
             generate_link_to_definition,
+            generate_macro_expansion,
             call_locations,
             no_emit_shared,
             html_no_source,
@@ -545,12 +548,13 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             }
         }
 
-        let (local_sources, matches) = collect_spans_and_sources(
+        let (local_sources, matches, expanded_codes) = collect_spans_and_sources(
             tcx,
             &krate,
             &src_root,
             include_sources,
             generate_link_to_definition,
+            generate_macro_expansion,
         );
 
         let (sender, receiver) = channel();
@@ -576,6 +580,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             cache,
             call_locations,
             should_merge: options.should_merge,
+            expanded_codes,
         };
 
         let dst = output;
