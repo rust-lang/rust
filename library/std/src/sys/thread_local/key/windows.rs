@@ -126,6 +126,10 @@ impl LazyKey {
             }
         }
     }
+
+    pub fn register_process_dtor(&'static self) {
+        // On Windows destructor registration is performed in LazyKey::init.
+    }
 }
 
 unsafe impl Send for LazyKey {}

@@ -79,7 +79,11 @@ impl<T: 'static> Storage<T> {
             unsafe { &(*ptr).value }
         } else {
             // SAFETY: trivially correct.
-            unsafe { Self::try_initialize(key, ptr, i, f) }
+            let (ptr, was_null) = unsafe { Self::try_initialize(key, ptr, i, f) };
+            if was_null {
+                self.key.register_process_dtor();
+            }
+            ptr
         }
     }
 
@@ -91,10 +95,10 @@ impl<T: 'static> Storage<T> {
         ptr: *mut Value<T>,
         i: Option<&mut Option<T>>,
         f: impl FnOnce() -> T,
-    ) -> *const T {
+    ) -> (*const T, bool) {
         if ptr.addr() == 1 {
             // destructor is running
-            return ptr::null();
+            return (ptr::null(), false);
         }
 
         let value = Box::new(Value { value: i.and_then(Option::take).unwrap_or_else(f), key });
@@ -120,7 +124,7 @@ impl<T: 'static> Storage<T> {
         }
 
         // SAFETY: We just created this value above.
-        unsafe { &(*ptr).value }
+        (unsafe { &(*ptr).value }, old.is_null())
     }
 }
 

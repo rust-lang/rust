@@ -85,18 +85,16 @@ pub(crate) mod guard {
         } else if #[cfg(target_os = "windows")] {
             mod windows;
             pub(crate) use windows::enable;
-        } else if #[cfg(any(
-            all(target_family = "wasm", not(
-                all(target_os = "wasi", target_env = "p1", target_feature = "atomics")
-            )),
-            target_os = "uefi",
-            target_os = "zkvm",
+        } else if #[cfg(all(
+            target_family = "wasm",
+            target_feature = "atomics",
+            not(all(target_os = "wasi", target_env = "p1"))
         ))] {
             pub(crate) fn enable() {
                 // FIXME: Right now there is no concept of "thread exit" on
-                // wasm, but this is likely going to show up at some point in
-                // the form of an exported symbol that the wasm runtime is going
-                // to be expected to call. For now we just leak everything, but
+                // wasm-unknown-unknown, but this is likely going to show up at some
+                // point in the form of an exported symbol that the wasm runtime is
+                // going to be expected to call. For now we just leak everything, but
                 // if such a function starts to exist it will probably need to
                 // iterate the destructor list with these functions:
                 #[cfg(all(target_family = "wasm", target_feature = "atomics"))]
@@ -115,6 +113,13 @@ pub(crate) mod guard {
         } else if #[cfg(target_os = "solid_asp3")] {
             mod solid;
             pub(crate) use solid::enable;
+        } else if #[cfg(any(
+            all(target_family = "wasm", not(target_feature = "atomics")),
+            target_os = "uefi",
+            target_os = "zkvm",
+        ))] {
+            mod statik;
+            pub(crate) use statik::enable;
         } else {
             mod key;
             pub(crate) use key::enable;
@@ -144,6 +149,8 @@ pub(crate) mod key {
             #[cfg(test)]
             mod tests;
             pub(super) use racy::LazyKey;
+            #[cfg(not(target_thread_local))]
+            pub(super) use racy::run_dtors;
             pub(super) use unix::{Key, set};
             #[cfg(any(not(target_thread_local), test))]
             pub(super) use unix::get;
@@ -158,7 +165,7 @@ pub(crate) mod key {
             mod sgx;
             #[cfg(test)]
             mod tests;
-            pub(super) use racy::LazyKey;
+            pub(super) use racy::{LazyKey, run_dtors};
             pub(super) use sgx::{Key, get, set};
             use sgx::{create, destroy};
         } else if #[cfg(target_os = "xous")] {
@@ -170,6 +177,31 @@ pub(crate) mod key {
             pub(crate) use xous::destroy_tls;
             pub(super) use xous::{Key, get, set};
             use xous::{create, destroy};
+        }
+    }
+}
+
+/// Process exit callback.
+///
+/// Some platforms (POSIX) do not run TLS destructors at process exit.
+/// Thus we need to register an exit callback to run them in that case.
+pub(crate) mod exit {
+    cfg_if::cfg_if! {
+        if #[cfg(any(
+            all(
+                not(target_vendor = "apple"),
+                not(target_family = "wasm"),
+                target_family = "unix",
+            ),
+            target_os = "teeos",
+            all(target_os = "wasi", target_env = "p1"),
+        ))] {
+            mod unix;
+            pub(super) use unix::at_process_exit;
+        } else if #[cfg(target_family = "wasm")] {
+            pub unsafe fn at_process_exit(cb: unsafe extern "C" fn()) {
+                let _ = cb;
+            }
         }
     }
 }

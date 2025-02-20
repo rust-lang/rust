@@ -1,8 +1,9 @@
 //! On some targets like wasm there's no threads, so no need to generate
 //! thread locals and we can instead just use plain statics!
 
-use crate::cell::{Cell, UnsafeCell};
+use crate::cell::{Cell, RefCell, UnsafeCell};
 use crate::ptr;
+use crate::sys::thread_local::guard;
 
 #[doc(hidden)]
 #[allow_internal_unstable(thread_local_internals)]
@@ -79,6 +80,10 @@ impl<T> LazyStorage<T> {
 
     #[cold]
     fn initialize(&'static self, i: Option<&mut Option<T>>, f: impl FnOnce() -> T) -> *const T {
+        unsafe {
+            register_dtor(|| Self::destroy_value(&self.value));
+        }
+
         let value = i.and_then(Option::take).unwrap_or_else(f);
         // Destroy the old value, after updating the TLS variable as the
         // destructor might reference it.
@@ -88,6 +93,13 @@ impl<T> LazyStorage<T> {
         }
         // SAFETY: we just set this to `Some`.
         unsafe { (*self.value.get()).as_ref().unwrap_unchecked() }
+    }
+
+    /// Destroy contained value.
+    ///
+    /// Returns whether a value was contained.
+    fn destroy_value(value: &UnsafeCell<Option<T>>) -> bool {
+        unsafe { value.get().replace(None).is_some() }
     }
 }
 
@@ -123,3 +135,40 @@ impl LocalPointer {
 
 // SAFETY: the target doesn't have threads.
 unsafe impl Sync for LocalPointer {}
+
+/// Destructor list wrapper.
+struct Dtors(RefCell<Vec<Box<dyn Fn() -> bool + 'static>>>);
+// SAFETY: the target doesn't have threads.
+unsafe impl Sync for Dtors {}
+
+/// List of destructors to run at process exit.
+static DTORS: Dtors = Dtors(RefCell::new(Vec::new()));
+
+/// Registers destructor to run at process exit.
+unsafe fn register_dtor(dtor: impl Fn() -> bool + 'static) {
+    guard::enable();
+
+    DTORS.0.borrow_mut().push(Box::new(dtor));
+}
+
+/// Run destructors at process exit.
+///
+/// SAFETY: This will and must only be run by the destructor callback in [`guard`].
+pub unsafe fn run_dtors() {
+    let mut dtors = DTORS.0.take();
+
+    for _ in 0..5 {
+        let mut any_run = false;
+        for dtor in &dtors {
+            any_run |= dtor();
+        }
+
+        let mut new_dtors = DTORS.0.borrow_mut();
+
+        if !any_run && new_dtors.is_empty() {
+            break;
+        }
+
+        dtors.extend(new_dtors.drain(..));
+    }
+}
