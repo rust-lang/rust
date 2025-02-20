@@ -392,15 +392,14 @@ where
     let mut contains_nl = false;
 
     for byte in chars.as_str().bytes() {
-        match byte {
-            b' ' | b'\t' | b'\r' => {
-                spaces += 1;
-            }
-            b'\n' => {
-                spaces += 1;
-                contains_nl = true;
-            }
-            _ => break,
+        let is_space = matches!(byte, b' ' | b'\t' | b'\r' | b'\n');
+        let is_newline = byte == b'\n';
+
+        spaces += is_space as usize;
+        contains_nl |= is_newline;
+
+        if !is_space {
+            break;
         }
     }
     *chars = chars.as_str()[spaces..].chars();
