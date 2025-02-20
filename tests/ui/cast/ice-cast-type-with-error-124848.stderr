@@ -2,27 +2,34 @@ error[E0261]: use of undeclared lifetime name `'unpinned`
   --> $DIR/ice-cast-type-with-error-124848.rs:7:32
    |
 LL | struct MyType<'a>(Cell<Option<&'unpinned mut MyType<'a>>>, Pin);
-   |               -                ^^^^^^^^^ undeclared lifetime
-   |               |
-   |               help: consider introducing lifetime `'unpinned` here: `'unpinned,`
+   |                                ^^^^^^^^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'unpinned` here
+   |
+LL | struct MyType<'unpinned, 'a>(Cell<Option<&'unpinned mut MyType<'a>>>, Pin);
+   |               ++++++++++
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/ice-cast-type-with-error-124848.rs:14:53
    |
-LL | fn main() {
-   |        - help: consider introducing lifetime `'a` here: `<'a>`
-...
 LL |     let bad_addr = &unpinned as *const Cell<Option<&'a mut MyType<'a>>> as usize;
    |                                                     ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | fn main<'a>() {
+   |        ++++
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/ice-cast-type-with-error-124848.rs:14:67
    |
-LL | fn main() {
-   |        - help: consider introducing lifetime `'a` here: `<'a>`
-...
 LL |     let bad_addr = &unpinned as *const Cell<Option<&'a mut MyType<'a>>> as usize;
    |                                                                   ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | fn main<'a>() {
+   |        ++++
 
 error[E0412]: cannot find type `Pin` in this scope
   --> $DIR/ice-cast-type-with-error-124848.rs:7:60
