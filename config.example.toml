@@ -793,12 +793,12 @@
 # C compiler to be used to compile C code. Note that the
 # default value is platform specific, and if not specified it may also depend on
 # what platform is crossing to what platform.
-# See `src/bootstrap/cc_detect.rs` for details.
+# See `src/bootstrap/src/utils/cc_detect.rs` for details.
 #cc = "cc" (path)
 
 # C++ compiler to be used to compile C++ code (e.g. LLVM and our LLVM shims).
 # This is only used for host targets.
-# See `src/bootstrap/cc_detect.rs` for details.
+# See `src/bootstrap/src/utils/cc_detect.rs` for details.
 #cxx = "c++" (path)
 
 # Archiver to be used to assemble static libraries compiled from C/C++ code.
