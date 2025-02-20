@@ -14,11 +14,11 @@
 // CHECK-LABEL: @slice_iter_next(
 #[no_mangle]
 pub fn slice_iter_next<'a>(it: &mut std::slice::Iter<'a, u32>) -> Option<&'a u32> {
-    // CHECK: %[[ENDP:.+]] = getelementptr inbounds{{( nuw)?}} i8, ptr %it, {{i32 4|i64 8}}
-    // CHECK: %[[END:.+]] = load ptr, ptr %[[ENDP]]
+    // CHECK: %[[START:.+]] = load ptr, ptr %it,
     // CHECK-SAME: !nonnull
     // CHECK-SAME: !noundef
-    // CHECK: %[[START:.+]] = load ptr, ptr %it,
+    // CHECK: %[[ENDP:.+]] = getelementptr inbounds{{( nuw)?}} i8, ptr %it, {{i32 4|i64 8}}
+    // CHECK: %[[END:.+]] = load ptr, ptr %[[ENDP]]
     // CHECK-SAME: !nonnull
     // CHECK-SAME: !noundef
     // CHECK: icmp eq ptr %[[START]], %[[END]]
