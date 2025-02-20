@@ -46,6 +46,7 @@ impl<'a> Into<[usize; 5]> for LogScalar<'a> {
     }
 }
 
+#[derive(Clone, Copy)]
 pub(crate) enum LogLend {
     StandardOutput = 1,
     StandardError = 2,

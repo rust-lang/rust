@@ -23,6 +23,9 @@ pub mod thread;
 #[allow(non_upper_case_globals)]
 #[path = "../unix/time.rs"]
 pub mod time;
+#[allow(dead_code)]
+#[path = "../unsupported/stdio.rs"]
+mod unsupported_stdio;
 
 #[path = "../unix/sync"]
 pub mod sync {

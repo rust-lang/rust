@@ -6,7 +6,7 @@ use super::super::mem::{is_enclave_range, is_user_range};
 use crate::arch::asm;
 use crate::cell::UnsafeCell;
 use crate::convert::TryInto;
-use crate::mem::{self, ManuallyDrop};
+use crate::mem::{self, ManuallyDrop, MaybeUninit};
 use crate::ops::{CoerceUnsized, Deref, DerefMut, Index, IndexMut};
 use crate::pin::PinCoerceUnsized;
 use crate::ptr::{self, NonNull};
@@ -651,11 +651,27 @@ where
     /// the source. This can happen for dynamically-sized types such as slices.
     pub fn copy_to_enclave_vec(&self, dest: &mut Vec<T>) {
         if let Some(missing) = self.len().checked_sub(dest.capacity()) {
-            dest.reserve(missing)
+            dest.reserve(missing);
         }
         // SAFETY: We reserve enough space above.
         unsafe { dest.set_len(self.len()) };
         self.copy_to_enclave(&mut dest[..]);
+    }
+
+    /// Copies the value from user memory and place it into `dest`.
+    ///
+    /// # Panics
+    /// This function panics if the destination doesn't have the same length as
+    /// the source.
+    pub fn copy_to_enclave_uninit(&self, dest: &mut [MaybeUninit<T>]) {
+        unsafe {
+            assert_eq!(self.len(), dest.len());
+            copy_from_userspace(
+                self.0.get() as *const [T] as *const u8,
+                dest.as_mut_ptr() as *mut u8,
+                mem::size_of_val(dest),
+            );
+        }
     }
 
     /// Copies the value from user memory into a vector in enclave memory.

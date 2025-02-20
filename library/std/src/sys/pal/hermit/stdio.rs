@@ -1,6 +1,6 @@
 use super::hermit_abi;
 use crate::io;
-use crate::io::{IoSlice, IoSliceMut};
+use crate::io::{BorrowedCursor, IoSlice, IoSliceMut};
 use crate::mem::ManuallyDrop;
 use crate::os::hermit::io::FromRawFd;
 use crate::sys::fd::FileDesc;
@@ -18,6 +18,10 @@ impl Stdin {
 impl io::Read for Stdin {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         unsafe { ManuallyDrop::new(FileDesc::from_raw_fd(hermit_abi::STDIN_FILENO)).read(buf) }
+    }
+
+    fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+        unsafe { ManuallyDrop::new(FileDesc::from_raw_fd(hermit_abi::STDIN_FILENO)).read_buf(buf) }
     }
 
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
