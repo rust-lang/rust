@@ -8,10 +8,6 @@ help: consider specifying the generic arguments
    |
 LL |         Err::<T, MyError>(MyError);
    |            ++++++++++++++
-help: you might have meant to return this to infer its type parameters
-   |
-LL |         return Err(MyError);
-   |         ++++++
 
 error[E0282]: type annotations needed
   --> $DIR/issue-86094-suggest-add-return-to-coerce-ret-ty.rs:14:9
@@ -23,10 +19,6 @@ help: consider specifying the generic arguments
    |
 LL |         Ok::<(), E>(());
    |           +++++++++
-help: you might have meant to return this to infer its type parameters
-   |
-LL |         return Ok(());
-   |         ++++++
 
 error[E0308]: mismatched types
   --> $DIR/issue-86094-suggest-add-return-to-coerce-ret-ty.rs:21:20
