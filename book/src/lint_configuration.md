@@ -380,6 +380,7 @@ Suppress lints whenever the suggested change would cause breakage for other crat
 * [`linkedlist`](https://rust-lang.github.io/rust-clippy/master/index.html#linkedlist)
 * [`needless_pass_by_ref_mut`](https://rust-lang.github.io/rust-clippy/master/index.html#needless_pass_by_ref_mut)
 * [`option_option`](https://rust-lang.github.io/rust-clippy/master/index.html#option_option)
+* [`owned_cow`](https://rust-lang.github.io/rust-clippy/master/index.html#owned_cow)
 * [`rc_buffer`](https://rust-lang.github.io/rust-clippy/master/index.html#rc_buffer)
 * [`rc_mutex`](https://rust-lang.github.io/rust-clippy/master/index.html#rc_mutex)
 * [`redundant_allocation`](https://rust-lang.github.io/rust-clippy/master/index.html#redundant_allocation)
