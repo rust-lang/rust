@@ -966,10 +966,9 @@ impl String {
     /// This is highly unsafe, due to the number of invariants that aren't
     /// checked:
     ///
-    /// * The memory at `buf` needs to have been previously allocated by the
-    ///   same allocator the standard library uses, with a required alignment of exactly 1.
+    /// * unless `capacity` is 0, `buf` must have been allocated using the global allocator with an alignment of 1 and a capacity of `capacity`.
+    /// * `buf` must not be null.
     /// * `length` needs to be less than or equal to `capacity`.
-    /// * `capacity` needs to be the correct value.
     /// * The first `length` bytes at `buf` need to be valid UTF-8.
     ///
     /// Violating these may cause problems like corrupting the allocator's
