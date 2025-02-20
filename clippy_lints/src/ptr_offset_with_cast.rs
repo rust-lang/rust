@@ -111,7 +111,7 @@ fn is_expr_ty_usize(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 
 // Is the type of the expression a raw pointer?
 fn is_expr_ty_raw_ptr(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    cx.typeck_results().expr_ty(expr).is_unsafe_ptr()
+    cx.typeck_results().expr_ty(expr).is_raw_ptr()
 }
 
 fn build_suggestion(

@@ -506,7 +506,7 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
                     if has_lifetime(output_ty) && has_lifetime(ty) {
                         return false;
                     }
-                    let body = cx.tcx.hir().body(*body_id);
+                    let body = cx.tcx.hir_body(*body_id);
                     let body_expr = &body.value;
                     let mut count = 0;
                     return find_all_ret_expressions(cx, body_expr, |_| {

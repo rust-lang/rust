@@ -22,7 +22,7 @@ pub(crate) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>, name:
         && (is_diag_trait_item(cx, fn_id, sym::Iterator)
             || (msrv.meets(msrvs::OPTION_RESULT_INSPECT)
                 && (is_diag_item_method(cx, fn_id, sym::Option) || is_diag_item_method(cx, fn_id, sym::Result))))
-        && let body = cx.tcx.hir().body(c.body)
+        && let body = cx.tcx.hir_body(c.body)
         && let [param] = body.params
         && let PatKind::Binding(BindingMode(ByRef::No, Mutability::Not), arg_id, _, None) = param.pat.kind
         && let arg_ty = typeck.node_type(arg_id)
@@ -45,7 +45,7 @@ pub(crate) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>, name:
         let can_lint = for_each_expr_without_closures(block.stmts, |e| {
             if let ExprKind::Closure(c) = e.kind {
                 // Nested closures don't need to treat returns specially.
-                let _: Option<!> = for_each_expr(cx, cx.tcx.hir().body(c.body).value, |e| {
+                let _: Option<!> = for_each_expr(cx, cx.tcx.hir_body(c.body).value, |e| {
                     if path_to_local_id(e, arg_id) {
                         let (kind, same_ctxt) = check_use(cx, e);
                         match (kind, same_ctxt && e.span.ctxt() == ctxt) {

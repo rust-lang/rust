@@ -132,8 +132,7 @@ impl<'tcx> LateLintPass<'tcx> for Author {
 }
 
 fn check_item(cx: &LateContext<'_>, hir_id: HirId) {
-    let hir = cx.tcx.hir();
-    if let Some(body) = hir.maybe_body_owned_by(hir_id.expect_owner().def_id) {
+    if let Some(body) = cx.tcx.hir_maybe_body_owned_by(hir_id.expect_owner().def_id) {
         check_node(cx, hir_id, |v| {
             v.expr(&v.bind("expr", body.value));
         });
@@ -637,9 +636,9 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
     }
 
     fn body(&self, body_id: &Binding<hir::BodyId>) {
-        let expr = self.cx.tcx.hir().body(body_id.value).value;
+        let expr = self.cx.tcx.hir_body(body_id.value).value;
         bind!(self, expr);
-        chain!(self, "{expr} = &cx.tcx.hir().body({body_id}).value");
+        chain!(self, "{expr} = &cx.tcx.hir_body({body_id}).value");
         self.expr(expr);
     }
 

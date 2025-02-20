@@ -28,8 +28,8 @@ fn get_parent_local_binding_ty<'tcx>(cx: &LateContext<'tcx>, expr_hir_id: HirId)
 }
 
 fn is_function_block(cx: &LateContext<'_>, expr_hir_id: HirId) -> bool {
-    let def_id = cx.tcx.hir().enclosing_body_owner(expr_hir_id);
-    if let Some(body) = cx.tcx.hir().maybe_body_owned_by(def_id) {
+    let def_id = cx.tcx.hir_enclosing_body_owner(expr_hir_id);
+    if let Some(body) = cx.tcx.hir_maybe_body_owned_by(def_id) {
         return body.value.peel_blocks().hir_id == expr_hir_id;
     }
     false

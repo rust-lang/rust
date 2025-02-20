@@ -62,7 +62,7 @@ impl<'tcx> LateLintPass<'tcx> for SingleOptionMap {
                 && !matches!(args[0].kind, ExprKind::Path(_))
             {
                 if let ExprKind::Closure(closure) = args[0].kind {
-                    let Body { params: [..], value } = cx.tcx.hir().body(closure.body);
+                    let Body { params: [..], value } = cx.tcx.hir_body(closure.body);
                     if let ExprKind::Call(func, f_args) = value.kind
                         && matches!(func.kind, ExprKind::Path(_))
                         && f_args.iter().all(|arg| matches!(arg.kind, ExprKind::Path(_)))

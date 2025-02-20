@@ -1,4 +1,5 @@
 use std::ops::ControlFlow;
+use std::sync::Arc;
 
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
@@ -6,7 +7,6 @@ use clippy_utils::is_lint_allowed;
 use clippy_utils::source::walk_span_to_context;
 use clippy_utils::visitors::{Descend, for_each_expr};
 use hir::HirId;
-use rustc_data_structures::sync::Lrc;
 use rustc_hir as hir;
 use rustc_hir::{Block, BlockCheckMode, ItemKind, Node, UnsafeSource};
 use rustc_lexer::{TokenKind, tokenize};
@@ -245,7 +245,7 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
             // const and static items only need a safety comment if their body is an unsafe block, lint otherwise
             (&ItemKind::Const(.., body) | &ItemKind::Static(.., body), HasSafetyComment::Yes(pos)) => {
                 if !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, body.hir_id) {
-                    let body = cx.tcx.hir().body(body);
+                    let body = cx.tcx.hir_body(body);
                     if !matches!(
                         body.value.kind, hir::ExprKind::Block(block, _)
                         if block.rules == BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided)
@@ -480,7 +480,7 @@ fn item_has_safety_comment(cx: &LateContext<'_>, item: &hir::Item<'_>) -> HasSaf
     if let Some(comment_start) = comment_start
         && let Ok(unsafe_line) = source_map.lookup_line(item.span.lo())
         && let Ok(comment_start_line) = source_map.lookup_line(comment_start)
-        && Lrc::ptr_eq(&unsafe_line.sf, &comment_start_line.sf)
+        && Arc::ptr_eq(&unsafe_line.sf, &comment_start_line.sf)
         && let Some(src) = unsafe_line.sf.src.as_deref()
     {
         return if comment_start_line.line >= unsafe_line.line {
@@ -520,7 +520,7 @@ fn stmt_has_safety_comment(cx: &LateContext<'_>, span: Span, hir_id: HirId) -> H
     if let Some(comment_start) = comment_start
         && let Ok(unsafe_line) = source_map.lookup_line(span.lo())
         && let Ok(comment_start_line) = source_map.lookup_line(comment_start)
-        && Lrc::ptr_eq(&unsafe_line.sf, &comment_start_line.sf)
+        && Arc::ptr_eq(&unsafe_line.sf, &comment_start_line.sf)
         && let Some(src) = unsafe_line.sf.src.as_deref()
     {
         return if comment_start_line.line >= unsafe_line.line {
@@ -558,7 +558,7 @@ fn comment_start_before_item_in_mod(
                 // some_item /* comment */ unsafe impl T {}
                 // ^-------^ returns the end of this span
                 //         ^---------------^ finally checks comments in this range
-                let prev_item = cx.tcx.hir().item(parent_mod.item_ids[idx - 1]);
+                let prev_item = cx.tcx.hir_item(parent_mod.item_ids[idx - 1]);
                 if let Some(sp) = walk_span_to_context(prev_item.span, SyntaxContext::root()) {
                     return Some(sp.hi());
                 }
@@ -580,7 +580,7 @@ fn span_from_macro_expansion_has_safety_comment(cx: &LateContext<'_>, span: Span
         //     ^--------------------------------------------^
         if let Ok(unsafe_line) = source_map.lookup_line(span.lo())
             && let Ok(macro_line) = source_map.lookup_line(ctxt.outer_expn_data().def_site.lo())
-            && Lrc::ptr_eq(&unsafe_line.sf, &macro_line.sf)
+            && Arc::ptr_eq(&unsafe_line.sf, &macro_line.sf)
             && let Some(src) = unsafe_line.sf.src.as_deref()
         {
             if macro_line.line < unsafe_line.line {
@@ -605,7 +605,7 @@ fn span_from_macro_expansion_has_safety_comment(cx: &LateContext<'_>, span: Span
 fn get_body_search_span(cx: &LateContext<'_>) -> Option<Span> {
     let body = cx.enclosing_body?;
     let map = cx.tcx.hir();
-    let mut span = map.body(body).value.span;
+    let mut span = cx.tcx.hir_body(body).value.span;
     let mut maybe_global_var = false;
     for (_, node) in map.parent_iter(body.hir_id) {
         match node {
@@ -641,7 +641,7 @@ fn span_has_safety_comment(cx: &LateContext<'_>, span: Span) -> bool {
         if let Ok(unsafe_line) = source_map.lookup_line(span.lo())
             && let Some(body_span) = walk_span_to_context(search_span, SyntaxContext::root())
             && let Ok(body_line) = source_map.lookup_line(body_span.lo())
-            && Lrc::ptr_eq(&unsafe_line.sf, &body_line.sf)
+            && Arc::ptr_eq(&unsafe_line.sf, &body_line.sf)
             && let Some(src) = unsafe_line.sf.src.as_deref()
         {
             // Get the text from the start of function body to the unsafe block.

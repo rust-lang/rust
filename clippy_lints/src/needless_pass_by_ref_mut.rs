@@ -5,6 +5,7 @@ use clippy_utils::source::snippet;
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{inherits_cfg, is_from_proc_macro, is_self};
 use core::ops::ControlFlow;
+use rustc_abi::ExternAbi;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
@@ -20,7 +21,6 @@ use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::kw;
-use rustc_target::spec::abi::Abi;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -103,7 +103,6 @@ fn check_closures<'tcx>(
     checked_closures: &mut FxHashSet<LocalDefId>,
     closures: FxIndexSet<LocalDefId>,
 ) {
-    let hir = cx.tcx.hir();
     for closure in closures {
         if !checked_closures.insert(closure) {
             continue;
@@ -114,7 +113,7 @@ fn check_closures<'tcx>(
             .tcx
             .hir_node_by_def_id(closure)
             .associated_body()
-            .map(|(_, body_id)| hir.body(body_id))
+            .map(|(_, body_id)| cx.tcx.hir_body(body_id))
         {
             euv::ExprUseVisitor::for_clippy(cx, closure, &mut *ctx)
                 .consume_body(body)
@@ -149,7 +148,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
                     return;
                 }
                 let attrs = cx.tcx.hir().attrs(hir_id);
-                if header.abi != Abi::Rust || requires_exact_signature(attrs) {
+                if header.abi != ExternAbi::Rust || requires_exact_signature(attrs) {
                     return;
                 }
                 header.is_async()
@@ -353,7 +352,7 @@ impl MutablyUsedVariablesCtxt<'_> {
     fn is_in_unsafe_block(&self, item: HirId) -> bool {
         let hir = self.tcx.hir();
         for (parent, node) in hir.parent_iter(item) {
-            if let Some(fn_sig) = hir.fn_sig_by_hir_id(parent) {
+            if let Some(fn_sig) = self.tcx.hir_fn_sig_by_hir_id(parent) {
                 return fn_sig.header.is_unsafe();
             } else if let Node::Block(block) = node {
                 if matches!(block.rules, BlockCheckMode::UnsafeBlock(_)) {

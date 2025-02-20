@@ -59,7 +59,7 @@ impl LateLintPass<'_> for ItemsAfterStatements {
                 .iter()
                 .skip_while(|stmt| matches!(stmt.kind, StmtKind::Item(..)))
                 .filter_map(|stmt| match stmt.kind {
-                    StmtKind::Item(id) => Some(cx.tcx.hir().item(id)),
+                    StmtKind::Item(id) => Some(cx.tcx.hir_item(id)),
                     _ => None,
                 })
                 // Ignore macros since they can only see previously defined locals.

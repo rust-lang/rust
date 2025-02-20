@@ -4,6 +4,7 @@ use clippy_utils::sugg::Sugg;
 use clippy_utils::visitors::contains_unsafe_block;
 use clippy_utils::{get_expr_use_or_unification_node, is_lint_allowed, path_def_id, path_to_local, std_or_core};
 use hir::LifetimeName;
+use rustc_abi::ExternAbi;
 use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir::hir_id::{HirId, HirIdMap};
 use rustc_hir::intravisit::{Visitor, walk_expr};
@@ -19,7 +20,6 @@ use rustc_middle::ty::{self, Binder, ClauseKind, ExistentialPredicate, List, Pre
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, sym};
-use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use std::{fmt, iter};
@@ -160,7 +160,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
 
             check_mut_from_ref(cx, sig, None);
 
-            if !matches!(sig.header.abi, Abi::Rust) {
+            if !matches!(sig.header.abi, ExternAbi::Rust) {
                 // Ignore `extern` functions with non-Rust calling conventions
                 return;
             }
@@ -220,7 +220,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
 
         check_mut_from_ref(cx, sig, Some(body));
 
-        if !matches!(sig.header.abi, Abi::Rust) {
+        if !matches!(sig.header.abi, ExternAbi::Rust) {
             // Ignore `extern` functions with non-Rust calling conventions
             return;
         }
@@ -583,8 +583,8 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &Body<'tcx>, args: &[
     }
     impl<'tcx> Visitor<'tcx> for V<'_, 'tcx> {
         type NestedFilter = nested_filter::OnlyBodies;
-        fn nested_visit_map(&mut self) -> Self::Map {
-            self.cx.tcx.hir()
+        fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+            self.cx.tcx
         }
 
         fn visit_anon_const(&mut self, _: &'tcx AnonConst) {}

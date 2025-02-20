@@ -5,6 +5,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_in_const_context;
 use clippy_utils::macros::macro_backtrace;
 use clippy_utils::ty::{InteriorMut, implements_trait};
+use rustc_abi::VariantIdx;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{
@@ -16,7 +17,6 @@ use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::impl_lint_pass;
 use rustc_span::{DUMMY_SP, Span, sym};
-use rustc_target::abi::VariantIdx;
 
 // FIXME: this is a correctness problem but there's no suitable
 // warn-by-default category.
@@ -179,8 +179,10 @@ impl<'tcx> NonCopyConst<'tcx> {
     }
 
     fn is_value_unfrozen_raw_inner(cx: &LateContext<'tcx>, val: ty::ValTree<'tcx>, ty: Ty<'tcx>) -> bool {
-        // No branch that we check (yet) should continue if val isn't a ValTree::Branch
-        let ty::ValTree::Branch(val) = val else { return false };
+        // No branch that we check (yet) should continue if val isn't a branch
+        let Some(branched_val) = val.try_to_branch() else {
+            return false;
+        };
         match *ty.kind() {
             // the fact that we have to dig into every structs to search enums
             // leads us to the point checking `UnsafeCell` directly is the only option.
@@ -188,13 +190,14 @@ impl<'tcx> NonCopyConst<'tcx> {
             // As of 2022-09-08 miri doesn't track which union field is active so there's no safe way to check the
             // contained value.
             ty::Adt(def, ..) if def.is_union() => false,
-            ty::Array(ty, _) => val
+            ty::Array(ty, _) => branched_val
                 .iter()
                 .any(|field| Self::is_value_unfrozen_raw_inner(cx, *field, ty)),
             ty::Adt(def, args) if def.is_enum() => {
-                let Some((&ty::ValTree::Leaf(variant_index), fields)) = val.split_first() else {
+                let Some((&variant_valtree, fields)) = branched_val.split_first() else {
                     return false;
                 };
+                let variant_index = variant_valtree.unwrap_leaf();
                 let variant_index = VariantIdx::from_u32(variant_index.to_u32());
                 fields
                     .iter()
@@ -207,18 +210,16 @@ impl<'tcx> NonCopyConst<'tcx> {
                     )
                     .any(|(field, ty)| Self::is_value_unfrozen_raw_inner(cx, field, ty))
             },
-            ty::Adt(def, args) => val
+            ty::Adt(def, args) => branched_val
                 .iter()
                 .zip(def.non_enum_variant().fields.iter().map(|field| field.ty(cx.tcx, args)))
                 .any(|(field, ty)| Self::is_value_unfrozen_raw_inner(cx, *field, ty)),
-            ty::Tuple(tys) => val
+            ty::Tuple(tys) => branched_val
                 .iter()
                 .zip(tys)
                 .any(|(field, ty)| Self::is_value_unfrozen_raw_inner(cx, *field, ty)),
             ty::Alias(ty::Projection, _) => match cx.tcx.try_normalize_erasing_regions(cx.typing_env(), ty) {
-                Ok(normalized_ty) if ty != normalized_ty => {
-                    Self::is_value_unfrozen_raw_inner(cx, ty::ValTree::Branch(val), normalized_ty)
-                },
+                Ok(normalized_ty) if ty != normalized_ty => Self::is_value_unfrozen_raw_inner(cx, val, normalized_ty),
                 _ => false,
             },
             _ => false,

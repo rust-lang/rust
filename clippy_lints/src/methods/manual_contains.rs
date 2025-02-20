@@ -19,7 +19,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, clos
     if !expr.span.from_expansion()
         // check if `iter().any()` can be replaced with `contains()`
         && let ExprKind::Closure(closure) = closure_arg.kind
-        && let Body{params: [param],value} = cx.tcx.hir().body(closure.body)
+        && let Body{params: [param],value} = cx.tcx.hir_body(closure.body)
         && let ExprKind::Binary(op, lhs, rhs) = value.kind
         && let (peeled_ref_pat, _) = peel_hir_pat_refs(param.pat)
         && let Some((snip,snip_expr)) = can_replace_with_contains(cx, op, lhs, rhs, peeled_ref_pat.hir_id, &mut app)

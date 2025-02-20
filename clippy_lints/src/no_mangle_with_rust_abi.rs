@@ -1,11 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::{snippet, snippet_with_applicability};
+use rustc_abi::ExternAbi;
 use rustc_errors::Applicability;
 use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::{BytePos, Pos};
-use rustc_target::spec::abi::Abi;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -46,7 +46,7 @@ impl<'tcx> LateLintPass<'tcx> for NoMangleWithRustAbi {
             for attr in attrs {
                 if let Some(ident) = attr.ident()
                     && ident.name == rustc_span::sym::no_mangle
-                    && fn_sig.header.abi == Abi::Rust
+                    && fn_sig.header.abi == ExternAbi::Rust
                     && let Some((fn_attrs, _)) = fn_snippet.rsplit_once("fn")
                     && !fn_attrs.contains("extern")
                 {

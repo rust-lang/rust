@@ -11,7 +11,8 @@ LL | |     });
    = help: to override `-D warnings` add `#[allow(clippy::unit_arg)]`
 help: remove the semicolon from the last statement in the block
    |
-LL |         1
+LL -         1;
+LL +         1
    |
 help: or move the expression in front of the call and replace it with the unit literal `()`
    |
@@ -46,7 +47,8 @@ LL | |     });
    |
 help: remove the semicolon from the last statement in the block
    |
-LL |         foo(2)
+LL -         foo(2);
+LL +         foo(2)
    |
 help: or move the expression in front of the call and replace it with the unit literal `()`
    |
@@ -69,7 +71,8 @@ LL | |     });
    |
 help: remove the semicolon from the last statement in the block
    |
-LL |         1
+LL -         1;
+LL +         1
    |
 help: or move the expression in front of the call and replace it with the unit literal `()`
    |
@@ -105,7 +108,8 @@ LL | |     });
    |
 help: remove the semicolon from the last statement in the block
    |
-LL |         foo(2)
+LL -         foo(2);
+LL +         foo(2)
    |
 help: or move the expressions in front of the call and replace them with the unit literal `()`
    |
@@ -132,11 +136,13 @@ LL | |     );
    |
 help: remove the semicolon from the last statement in the block
    |
-LL |             foo(1)
+LL -             foo(1);
+LL +             foo(1)
    |
 help: remove the semicolon from the last statement in the block
    |
-LL |             foo(3)
+LL -             foo(3);
+LL +             foo(3)
    |
 help: or move the expressions in front of the call and replace them with the unit literal `()`
    |

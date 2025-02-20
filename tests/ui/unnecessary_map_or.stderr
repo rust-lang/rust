@@ -8,8 +8,9 @@ LL |     let _ = Some(5).map_or(false, |n| n == 5);
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_map_or)]`
 help: use a standard comparison instead
    |
-LL |     let _ = Some(5) == Some(5);
-   |             ~~~~~~~~~~~~~~~~~~
+LL -     let _ = Some(5).map_or(false, |n| n == 5);
+LL +     let _ = Some(5) == Some(5);
+   |
 
 error: this `map_or` can be simplified
   --> tests/ui/unnecessary_map_or.rs:15:13
@@ -19,8 +20,9 @@ LL |     let _ = Some(5).map_or(true, |n| n != 5);
    |
 help: use a standard comparison instead
    |
-LL |     let _ = Some(5) != Some(5);
-   |             ~~~~~~~~~~~~~~~~~~
+LL -     let _ = Some(5).map_or(true, |n| n != 5);
+LL +     let _ = Some(5) != Some(5);
+   |
 
 error: this `map_or` can be simplified
   --> tests/ui/unnecessary_map_or.rs:17:13
@@ -35,8 +37,13 @@ LL | |     });
    |
 help: use a standard comparison instead
    |
-LL |     let _ = Some(5) == Some(5);
-   |             ~~~~~~~~~~~~~~~~~~
+LL -     let _ = Some(5).map_or(false, |n| {
+LL -
+LL -         let _ = 1;
+LL -         n == 5
+LL -     });
+LL +     let _ = Some(5) == Some(5);
+   |
 
 error: this `map_or` can be simplified
   --> tests/ui/unnecessary_map_or.rs:22:13
@@ -123,8 +130,9 @@ LL |     let _ = Ok::<i32, i32>(5).map_or(false, |n| n == 5);
    |
 help: use a standard comparison instead
    |
-LL |     let _ = Ok::<i32, i32>(5) == Ok(5);
-   |             ~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     let _ = Ok::<i32, i32>(5).map_or(false, |n| n == 5);
+LL +     let _ = Ok::<i32, i32>(5) == Ok(5);
+   |
 
 error: this `map_or` can be simplified
   --> tests/ui/unnecessary_map_or.rs:39:13
@@ -134,8 +142,9 @@ LL |     let _ = Some(5).map_or(false, |n| n == 5).then(|| 1);
    |
 help: use a standard comparison instead
    |
-LL |     let _ = (Some(5) == Some(5)).then(|| 1);
-   |             ~~~~~~~~~~~~~~~~~~~~
+LL -     let _ = Some(5).map_or(false, |n| n == 5).then(|| 1);
+LL +     let _ = (Some(5) == Some(5)).then(|| 1);
+   |
 
 error: this `map_or` can be simplified
   --> tests/ui/unnecessary_map_or.rs:41:13
@@ -169,8 +178,9 @@ LL |     let _ = !Some(5).map_or(false, |n| n == 5);
    |
 help: use a standard comparison instead
    |
-LL |     let _ = !(Some(5) == Some(5));
-   |              ~~~~~~~~~~~~~~~~~~~~
+LL -     let _ = !Some(5).map_or(false, |n| n == 5);
+LL +     let _ = !(Some(5) == Some(5));
+   |
 
 error: this `map_or` can be simplified
   --> tests/ui/unnecessary_map_or.rs:47:13
@@ -180,8 +190,9 @@ LL |     let _ = Some(5).map_or(false, |n| n == 5) || false;
    |
 help: use a standard comparison instead
    |
-LL |     let _ = (Some(5) == Some(5)) || false;
-   |             ~~~~~~~~~~~~~~~~~~~~
+LL -     let _ = Some(5).map_or(false, |n| n == 5) || false;
+LL +     let _ = (Some(5) == Some(5)) || false;
+   |
 
 error: this `map_or` can be simplified
   --> tests/ui/unnecessary_map_or.rs:49:13
@@ -191,8 +202,9 @@ LL |     let _ = Some(5).map_or(false, |n| n == 5) as usize;
    |
 help: use a standard comparison instead
    |
-LL |     let _ = (Some(5) == Some(5)) as usize;
-   |             ~~~~~~~~~~~~~~~~~~~~
+LL -     let _ = Some(5).map_or(false, |n| n == 5) as usize;
+LL +     let _ = (Some(5) == Some(5)) as usize;
+   |
 
 error: this `map_or` can be simplified
   --> tests/ui/unnecessary_map_or.rs:74:13
@@ -250,8 +262,9 @@ LL |     let _ = r.map_or(false, |x| x == 8);
    |
 help: use a standard comparison instead
    |
-LL |     let _ = r == Ok(8);
-   |             ~~~~~~~~~~
+LL -     let _ = r.map_or(false, |x| x == 8);
+LL +     let _ = r == Ok(8);
+   |
 
 error: this `map_or` can be simplified
   --> tests/ui/unnecessary_map_or.rs:111:5

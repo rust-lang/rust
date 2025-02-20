@@ -138,7 +138,7 @@ fn get_char_span<'tcx>(cx: &'_ LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Optio
 
 fn check_manual_pattern_char_comparison(cx: &LateContext<'_>, method_arg: &Expr<'_>, msrv: &Msrv) {
     if let ExprKind::Closure(closure) = method_arg.kind
-        && let body = cx.tcx.hir().body(closure.body)
+        && let body = cx.tcx.hir_body(closure.body)
         && let Some(PatKind::Binding(_, binding, ..)) = body.params.first().map(|p| p.pat.kind)
     {
         let mut set_char_spans: Vec<Span> = Vec::new();

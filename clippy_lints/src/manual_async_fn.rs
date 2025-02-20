@@ -169,7 +169,7 @@ fn desugared_async_block<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>)
         && let ClosureKind::Coroutine(CoroutineKind::Desugared(CoroutineDesugaring::Async, CoroutineSource::Block)) =
             kind
     {
-        return Some(cx.tcx.hir().body(body));
+        return Some(cx.tcx.hir_body(body));
     }
 
     None

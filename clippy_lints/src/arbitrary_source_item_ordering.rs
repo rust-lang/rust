@@ -338,7 +338,7 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
             return;
         }
 
-        let items = module.item_ids.iter().map(|&id| cx.tcx.hir().item(id));
+        let items = module.item_ids.iter().map(|&id| cx.tcx.hir_item(id));
 
         // Iterates over the items within a module.
         //
