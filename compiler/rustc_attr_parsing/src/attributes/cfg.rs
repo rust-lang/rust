@@ -12,7 +12,7 @@ use rustc_session::parse::feature_err;
 use rustc_span::{Span, Symbol, kw, sym};
 
 use crate::util::UnsupportedLiteralReason;
-use crate::{fluent_generated, parse_version, session_diagnostics};
+use crate::{parse_version, session_diagnostics};
 
 #[derive(Clone, Debug)]
 pub struct Condition {
@@ -183,39 +183,6 @@ pub fn eval_condition(
                     };
 
                     !eval_condition(mi, sess, features, eval)
-                }
-                sym::target => {
-                    if let Some(features) = features
-                        && !features.cfg_target_compact()
-                    {
-                        feature_err(
-                            sess,
-                            sym::cfg_target_compact,
-                            cfg.span,
-                            fluent_generated::attr_parsing_unstable_cfg_target_compact,
-                        )
-                        .emit();
-                    }
-
-                    mis.iter().fold(true, |res, mi| {
-                        let Some(mut mi) = mi.meta_item().cloned() else {
-                            dcx.emit_err(session_diagnostics::CfgPredicateIdentifier {
-                                span: mi.span(),
-                            });
-                            return false;
-                        };
-
-                        if let [seg, ..] = &mut mi.path.segments[..] {
-                            seg.ident.name = Symbol::intern(&format!("target_{}", seg.ident.name));
-                        }
-
-                        res & eval_condition(
-                            &ast::MetaItemInner::MetaItem(mi),
-                            sess,
-                            features,
-                            eval,
-                        )
-                    })
                 }
                 _ => {
                     dcx.emit_err(session_diagnostics::InvalidPredicate {
