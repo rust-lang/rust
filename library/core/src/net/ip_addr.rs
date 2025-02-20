@@ -451,6 +451,28 @@ impl IpAddr {
             IpAddr::V6(v6) => v6.to_canonical(),
         }
     }
+
+    /// Returns the eight-bit integers this address consists of as a slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip_as_octets)]
+    ///
+    /// use std::net::{Ipv4Addr, Ipv6Addr, IpAddr};
+    ///
+    /// assert_eq!(IpAddr::V4(Ipv4Addr::LOCALHOST).as_octets(), &[127, 0, 0, 1]);
+    /// assert_eq!(IpAddr::V6(Ipv6Addr::LOCALHOST).as_octets(),
+    ///            &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1])
+    /// ```
+    #[unstable(feature = "ip_as_octets", issue = "137259")]
+    #[inline]
+    pub const fn as_octets(&self) -> &[u8] {
+        match self {
+            IpAddr::V4(ip) => ip.as_octets().as_slice(),
+            IpAddr::V6(ip) => ip.as_octets().as_slice(),
+        }
+    }
 }
 
 impl Ipv4Addr {
@@ -614,6 +636,25 @@ impl Ipv4Addr {
     #[inline]
     pub const fn from_octets(octets: [u8; 4]) -> Ipv4Addr {
         Ipv4Addr { octets }
+    }
+
+    /// Returns the four eight-bit integers that make up this address
+    /// as a slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip_as_octets)]
+    ///
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let addr = Ipv4Addr::new(127, 0, 0, 1);
+    /// assert_eq!(addr.as_octets(), &[127, 0, 0, 1]);
+    /// ```
+    #[unstable(feature = "ip_as_octets", issue = "137259")]
+    #[inline]
+    pub const fn as_octets(&self) -> &[u8; 4] {
+        &self.octets
     }
 
     /// Returns [`true`] for the special 'unspecified' address (`0.0.0.0`).
@@ -2000,6 +2041,25 @@ impl Ipv6Addr {
     #[inline]
     pub const fn from_octets(octets: [u8; 16]) -> Ipv6Addr {
         Ipv6Addr { octets }
+    }
+
+    /// Returns the sixteen eight-bit integers the IPv6 address consists of
+    /// as a slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip_as_octets)]
+    ///
+    /// use std::net::Ipv6Addr;
+    ///
+    /// assert_eq!(Ipv6Addr::new(0xff00, 0, 0, 0, 0, 0, 0, 0).as_octets(),
+    ///            &[255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    /// ```
+    #[unstable(feature = "ip_as_octets", issue = "137259")]
+    #[inline]
+    pub const fn as_octets(&self) -> &[u8; 16] {
+        &self.octets
     }
 }
 
