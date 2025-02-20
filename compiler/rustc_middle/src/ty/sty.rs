@@ -18,7 +18,7 @@ use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, extension
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 use rustc_type_ir::TyKind::*;
 use rustc_type_ir::visit::TypeVisitableExt;
-use rustc_type_ir::{self as ir, BoundVar, CollectAndApply, DynKind};
+use rustc_type_ir::{self as ir, BoundVar, CollectAndApply, DynKind, elaborate};
 use tracing::instrument;
 use ty::util::{AsyncDropGlueMorphology, IntTypeExt};
 
@@ -720,6 +720,34 @@ impl<'tcx> Ty<'tcx> {
         reg: ty::Region<'tcx>,
         repr: DynKind,
     ) -> Ty<'tcx> {
+        if cfg!(debug_assertions) {
+            let projection_count = obj.projection_bounds().count();
+            let expected_count: usize = obj
+                .principal_def_id()
+                .into_iter()
+                .flat_map(|principal_def_id| {
+                    // NOTE: This should agree with `needed_associated_types` in
+                    // dyn trait lowering, or else we'll have ICEs.
+                    elaborate::supertraits(
+                        tcx,
+                        ty::Binder::dummy(ty::TraitRef::identity(tcx, principal_def_id)),
+                    )
+                    .map(|principal| {
+                        tcx.associated_items(principal.def_id())
+                            .in_definition_order()
+                            .filter(|item| item.kind == ty::AssocKind::Type)
+                            .filter(|item| !item.is_impl_trait_in_trait())
+                            .filter(|item| !tcx.generics_require_sized_self(item.def_id))
+                            .count()
+                    })
+                })
+                .sum();
+            assert_eq!(
+                projection_count, expected_count,
+                "expected {obj:?} to have {expected_count} projections, \
+                but it has {projection_count}"
+            );
+        }
         Ty::new(tcx, Dynamic(obj, reg, repr))
     }
 
