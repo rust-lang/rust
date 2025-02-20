@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 
-use rustc_type_ir::data_structures::HashMap;
+use rustc_type_ir::data_structures::{HashMap, ensure_sufficient_stack};
 use rustc_type_ir::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::solve::{Goal, QueryInput};
@@ -389,7 +389,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             | ty::Alias(_, _)
             | ty::Bound(_, _)
             | ty::Error(_) => {
-                return t.super_fold_with(self);
+                return ensure_sufficient_stack(|| t.super_fold_with(self));
             }
         };
 
