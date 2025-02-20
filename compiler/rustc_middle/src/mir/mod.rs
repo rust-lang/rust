@@ -1494,7 +1494,7 @@ pub struct SourceScopeLocalData {
 /// &'static str`.
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct UserTypeProjections {
-    pub contents: Vec<(UserTypeProjection, Span)>,
+    pub contents: Vec<UserTypeProjection>,
 }
 
 impl<'tcx> UserTypeProjections {
@@ -1506,26 +1506,17 @@ impl<'tcx> UserTypeProjections {
         self.contents.is_empty()
     }
 
-    pub fn projections_and_spans(
-        &self,
-    ) -> impl Iterator<Item = &(UserTypeProjection, Span)> + ExactSizeIterator {
+    pub fn projections(&self) -> impl Iterator<Item = &UserTypeProjection> + ExactSizeIterator {
         self.contents.iter()
     }
 
-    pub fn projections(&self) -> impl Iterator<Item = &UserTypeProjection> + ExactSizeIterator {
-        self.contents.iter().map(|&(ref user_type, _span)| user_type)
-    }
-
-    pub fn push_projection(mut self, user_ty: &UserTypeProjection, span: Span) -> Self {
-        self.contents.push((user_ty.clone(), span));
+    pub fn push_user_type(mut self, base_user_type: UserTypeAnnotationIndex) -> Self {
+        self.contents.push(UserTypeProjection { base: base_user_type, projs: vec![] });
         self
     }
 
-    fn map_projections(
-        mut self,
-        mut f: impl FnMut(UserTypeProjection) -> UserTypeProjection,
-    ) -> Self {
-        self.contents = self.contents.into_iter().map(|(proj, span)| (f(proj), span)).collect();
+    fn map_projections(mut self, f: impl FnMut(UserTypeProjection) -> UserTypeProjection) -> Self {
+        self.contents = self.contents.into_iter().map(f).collect();
         self
     }
 

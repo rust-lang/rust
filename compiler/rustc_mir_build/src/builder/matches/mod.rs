@@ -926,12 +926,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // Note that the variance doesn't apply here, as we are tracking the effect
                 // of `user_ty` on any bindings contained with subpattern.
 
-                let projection = UserTypeProjection {
-                    base: self.canonical_user_type_annotations.push(annotation.clone()),
-                    projs: Vec::new(),
-                };
-                let subpattern_user_ty =
-                    pattern_user_ty.push_projection(&projection, annotation.span);
+                let base_user_ty = self.canonical_user_type_annotations.push(annotation.clone());
+                let subpattern_user_ty = pattern_user_ty.push_user_type(base_user_ty);
                 self.visit_primary_bindings(subpattern, subpattern_user_ty, f)
             }
 
