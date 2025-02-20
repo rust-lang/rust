@@ -59,6 +59,14 @@
                 } else {
                     removeClass(document.documentElement, "sans-serif");
                 }
+                break;
+            case "word-wrap-source-code":
+                if (value === true) {
+                    addClass(document.documentElement, "word-wrap-source-code");
+                } else {
+                    removeClass(document.documentElement, "word-wrap-source-code");
+                }
+                break;
         }
     }
 
@@ -244,6 +252,11 @@
             {
                 "name": "Use sans serif fonts",
                 "js_name": "sans-serif-fonts",
+                "default": false,
+            },
+            {
+                "name": "Word wrap source code",
+                "js_name": "word-wrap-source-code",
                 "default": false,
             },
         ];

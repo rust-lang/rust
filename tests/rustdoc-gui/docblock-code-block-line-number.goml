@@ -21,7 +21,7 @@ assert-css: (
 set-local-storage: {"rustdoc-line-numbers": "true"}
 reload:
 // We wait for the line numbers to be added into the DOM by the JS...
-wait-for: "pre.example-line-numbers"
+wait-for: ".digits-1 pre"
 
 // Otherwise, we can't check text color
 show-text: true
@@ -35,30 +35,21 @@ define-function: (
         call-function: ("switch-theme", {"theme": |theme|})
         // If the test didn't fail, it means that it was found!
         assert-css: (
-            "pre.example-line-numbers",
+            ".digits-1 pre [data-nosnippet]",
             {
                 "color": |color|,
-                "margin": "0px",
-                "padding-top": "14px",
-                "padding-bottom": "14px",
-                "padding-left": "8px",
-                "padding-right": "2px",
+                "margin-top": "0px",
+                "margin-bottom": "0px",
+                "margin-left": "0px",
+                "margin-right": "20px",
+                "padding-top": "0px",
+                "padding-bottom": "0px",
+                "padding-left": "4px",
+                "padding-right": "4px",
                 "text-align": "right",
-                // There should not be a radius on the right of the line numbers.
-                "border-top-left-radius": "6px",
-                "border-bottom-left-radius": "6px",
-                "border-top-right-radius": "0px",
-                "border-bottom-right-radius": "0px",
             },
             ALL,
         )
-        // There should not be a radius on the left of the line numbers.
-        assert-css: ("pre.example-line-numbers + .rust", {
-            "border-top-left-radius": "0px",
-            "border-bottom-left-radius": "0px",
-            "border-top-right-radius": "6px",
-            "border-bottom-right-radius": "6px",
-        })
     },
 )
 call-function: ("check-colors", {
@@ -74,9 +65,6 @@ call-function: ("check-colors", {
     "color": "#c67e2d",
 })
 
-// The first code block has two lines so let's check its `<pre>` elements lists both of them.
-assert-text: ("pre.example-line-numbers", "1\n2")
-
 // Now, try changing the setting dynamically. We'll turn it off, using the settings menu,
 // and make sure it goes away.
 
@@ -87,41 +75,16 @@ assert-css: ("#settings", {"display": "block"})
 
 // Then, click the toggle button.
 click: "input#line-numbers"
-wait-for-false: "pre.example-line-numbers"
+wait-for: ".digits-1.hide-lines"
 assert-local-storage: {"rustdoc-line-numbers": "false" }
-
-// Check that the rounded corners are back.
-assert-css: (
-    ".example-wrap .rust",
-    {
-        "border-top-left-radius": "6px",
-        "border-bottom-left-radius": "6px",
-        "border-top-right-radius": "6px",
-        "border-bottom-right-radius": "6px",
-    },
-    ALL,
-)
 
 // Finally, turn it on again.
 click: "input#line-numbers"
-wait-for: "pre.example-line-numbers"
+wait-for: ".digits-1:not(.hide-lines)"
 assert-local-storage: {"rustdoc-line-numbers": "true" }
-wait-for: "pre.example-line-numbers"
 
 // Same check with scraped examples line numbers.
 go-to: "file://" + |DOC_PATH| + "/scrape_examples/fn.test_many.html"
-
-assert-css: (
-    ".scraped-example .rust",
-    {
-        // There should not be a radius on the left of the code.
-        "border-top-left-radius": "0px",
-        "border-bottom-left-radius": "0px",
-        "border-top-right-radius": "6px",
-        "border-bottom-right-radius": "6px",
-    },
-    ALL,
-)
 
 define-function: (
     "check-padding",
@@ -203,17 +166,18 @@ assert-local-storage: {"rustdoc-line-numbers": "true" }
 assert: ".example-wrap > pre.language-txt"
 assert: ".example-wrap > pre.rust"
 assert-count: (".example-wrap", 2)
-assert-count: (".example-wrap > pre.example-line-numbers", 2)
+assert-count: (".example-wrap.digits-1", 2)
 
 click: "#settings-menu"
 wait-for: "#settings"
 
 // Then, click the toggle button.
 click: "input#line-numbers"
-wait-for-count: (".example-wrap > pre.example-line-numbers", 0)
+wait-for-count: (".example-wrap.digits-1.hide-lines", 2)
 assert-local-storage-false: {"rustdoc-line-numbers": "true" }
 
 // Now turning off the setting.
 click: "input#line-numbers"
-wait-for-count: (".example-wrap > pre.example-line-numbers", 2)
+wait-for-count: (".example-wrap.digits-1", 2)
+wait-for-count: (".example-wrap.digits-1.hide-lines", 0)
 assert-local-storage: {"rustdoc-line-numbers": "true" }

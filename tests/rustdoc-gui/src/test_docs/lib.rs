@@ -615,6 +615,15 @@ pub mod private {
     }
 }
 
+/// ```
+/// fn super_long_function_name_because_i_need_to_hit_the_limit_and_break_beyond_it() {
+/// }
+/// ```
+///
+/// ```text
+/// fn super_long_function_name_because_i_need_to_hit_the_limit_and_break_beyond_it_v2() {
+/// }
+/// ```
 pub mod trait_bounds {
     pub trait OneBound: Sized {}
     pub trait TwoBounds: Sized + Copy {}
