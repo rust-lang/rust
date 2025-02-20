@@ -436,9 +436,10 @@ fn check_specialization_on<'tcx>(
         // Global predicates are either always true or always false, so we
         // are fine to specialize on.
         _ if clause.is_global() => Ok(()),
-        // We allow specializing on explicitly marked traits with no associated
+        // We allow specializing on explicitly marked traits (and host effects) with no associated
         // items.
-        ty::ClauseKind::Trait(ty::TraitPredicate { trait_ref, polarity: _ }) => {
+        ty::ClauseKind::Trait(ty::TraitPredicate { trait_ref, polarity: _ })
+        | ty::ClauseKind::HostEffect(ty::HostEffectPredicate { trait_ref, constness: _ }) => {
             if matches!(
                 trait_specialization_kind(tcx, clause),
                 Some(TraitSpecializationKind::Marker)
@@ -487,7 +488,8 @@ fn trait_specialization_kind<'tcx>(
     clause: ty::Clause<'tcx>,
 ) -> Option<TraitSpecializationKind> {
     match clause.kind().skip_binder() {
-        ty::ClauseKind::Trait(ty::TraitPredicate { trait_ref, polarity: _ }) => {
+        ty::ClauseKind::Trait(ty::TraitPredicate { trait_ref, polarity: _ })
+        | ty::ClauseKind::HostEffect(ty::HostEffectPredicate { trait_ref, constness: _ }) => {
             Some(tcx.trait_def(trait_ref.def_id).specialization_kind)
         }
         ty::ClauseKind::RegionOutlives(_)
@@ -495,7 +497,6 @@ fn trait_specialization_kind<'tcx>(
         | ty::ClauseKind::Projection(_)
         | ty::ClauseKind::ConstArgHasType(..)
         | ty::ClauseKind::WellFormed(_)
-        | ty::ClauseKind::ConstEvaluatable(..)
-        | ty::ClauseKind::HostEffect(..) => None,
+        | ty::ClauseKind::ConstEvaluatable(..) => None,
     }
 }
