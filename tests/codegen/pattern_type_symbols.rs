@@ -16,7 +16,7 @@ pub fn bar() {
     // CHECK: call pattern_type_symbols::foo::<u32>
     // CHECK: call void @_RINvC[[CRATE_IDENT:[a-zA-Z0-9]{12}]]_20pattern_type_symbols3foomEB2_
     foo::<u32>();
-    // CHECK: call pattern_type_symbols::foo::<(u32, [(); 0], [(); 999999999], [(); true])>
-    // CHECK: call void @_RINvC[[CRATE_IDENT]]_20pattern_type_symbols3fooTmAum0_Aum3b9ac9ff_Aub1_EEB2_
+    // CHECK: call pattern_type_symbols::foo::<(u32, [(); 0], [(); 999999999])>
+    // CHECK: call void @_RINvC[[CRATE_IDENT]]_20pattern_type_symbols3fooTmAum0_Aum3b9ac9ff_EEB2_
     foo::<NanoU32>();
 }
