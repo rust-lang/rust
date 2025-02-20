@@ -27,7 +27,7 @@ pub unsafe fn offset_isize(p: *const u32, d: isize) -> *const u32 {
 // CHECK-SAME: (ptr noundef %p, [[SIZE]] noundef %d)
 #[no_mangle]
 pub unsafe fn offset_usize(p: *const u64, d: usize) -> *const u64 {
-    // CHECK: %[[R:.*]] = getelementptr inbounds i64, ptr %p, [[SIZE]] %d
+    // CHECK: %[[R:.*]] = getelementptr inbounds{{( nuw)?}} i64, ptr %p, [[SIZE]] %d
     // CHECK-NEXT: ret ptr %[[R]]
     offset(p, d)
 }

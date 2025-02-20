@@ -666,9 +666,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         lhs.layout.ty,
                     ),
 
-                    (OperandValue::Immediate(lhs_val), OperandValue::Immediate(rhs_val)) => {
-                        self.codegen_scalar_binop(bx, op, lhs_val, rhs_val, lhs.layout.ty)
-                    }
+                    (OperandValue::Immediate(lhs_val), OperandValue::Immediate(rhs_val)) => self
+                        .codegen_scalar_binop(
+                            bx,
+                            op,
+                            lhs_val,
+                            rhs_val,
+                            lhs.layout.ty,
+                            rhs.layout.ty,
+                        ),
 
                     _ => bug!(),
                 };
@@ -889,10 +895,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         op: mir::BinOp,
         lhs: Bx::Value,
         rhs: Bx::Value,
-        input_ty: Ty<'tcx>,
+        lhs_ty: Ty<'tcx>,
+        rhs_ty: Ty<'tcx>,
     ) -> Bx::Value {
-        let is_float = input_ty.is_floating_point();
-        let is_signed = input_ty.is_signed();
+        let is_float = lhs_ty.is_floating_point();
+        let is_signed = lhs_ty.is_signed();
         match op {
             mir::BinOp::Add => {
                 if is_float {
@@ -958,9 +965,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::BinOp::BitAnd => bx.and(lhs, rhs),
             mir::BinOp::BitXor => bx.xor(lhs, rhs),
             mir::BinOp::Offset => {
-                let pointee_type = input_ty
+                let pointee_type = lhs_ty
                     .builtin_deref(true)
-                    .unwrap_or_else(|| bug!("deref of non-pointer {:?}", input_ty));
+                    .unwrap_or_else(|| bug!("deref of non-pointer {:?}", lhs_ty));
                 let pointee_layout = bx.cx().layout_of(pointee_type);
                 if pointee_layout.is_zst() {
                     // `Offset` works in terms of the size of pointee,
@@ -968,7 +975,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     lhs
                 } else {
                     let llty = bx.cx().backend_type(pointee_layout);
-                    bx.inbounds_gep(llty, lhs, &[rhs])
+                    if !rhs_ty.is_signed() {
+                        bx.inbounds_nuw_gep(llty, lhs, &[rhs])
+                    } else {
+                        bx.inbounds_gep(llty, lhs, &[rhs])
+                    }
                 }
             }
             mir::BinOp::Shl | mir::BinOp::ShlUnchecked => {
