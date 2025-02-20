@@ -1,7 +1,6 @@
 use std::str::FromStr;
 
 use rustc_abi::ExternAbi;
-use rustc_ast::attr::list_contains_name;
 use rustc_ast::expand::autodiff_attrs::{
     AutoDiffAttrs, DiffActivity, DiffMode, valid_input_activity, valid_ret_activity,
 };
@@ -377,24 +376,20 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                             let segments =
                                 set.path.segments.iter().map(|x| x.ident.name).collect::<Vec<_>>();
                             match segments.as_slice() {
-                                [sym::arm, sym::a32] | [sym::arm, sym::t32] => {
-                                    if !tcx.sess.target.has_thumb_interworking {
-                                        struct_span_code_err!(
-                                            tcx.dcx(),
-                                            attr.span,
-                                            E0779,
-                                            "target does not support `#[instruction_set]`"
-                                        )
-                                        .emit();
-                                        None
-                                    } else if segments[1] == sym::a32 {
-                                        Some(InstructionSetAttr::ArmA32)
-                                    } else if segments[1] == sym::t32 {
-                                        Some(InstructionSetAttr::ArmT32)
-                                    } else {
-                                        unreachable!()
-                                    }
+                                [sym::arm, sym::a32 | sym::t32]
+                                    if !tcx.sess.target.has_thumb_interworking =>
+                                {
+                                    struct_span_code_err!(
+                                        tcx.dcx(),
+                                        attr.span,
+                                        E0779,
+                                        "target does not support `#[instruction_set]`"
+                                    )
+                                    .emit();
+                                    None
                                 }
+                                [sym::arm, sym::a32] => Some(InstructionSetAttr::ArmA32),
+                                [sym::arm, sym::t32] => Some(InstructionSetAttr::ArmT32),
                                 _ => {
                                     struct_span_code_err!(
                                         tcx.dcx(),
@@ -435,7 +430,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     && let Some((sym::align, literal)) = item.singleton_lit_list()
                 {
                     rustc_attr_parsing::parse_alignment(&literal.kind)
-                        .map_err(|msg| {
+                        .inspect_err(|msg| {
                             struct_span_code_err!(
                                 tcx.dcx(),
                                 literal.span,
@@ -536,25 +531,27 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         }
 
         if attr.is_word() {
-            InlineAttr::Hint
-        } else if let Some(ref items) = attr.meta_item_list() {
-            inline_span = Some(attr.span);
-            if items.len() != 1 {
-                struct_span_code_err!(tcx.dcx(), attr.span, E0534, "expected one argument").emit();
-                InlineAttr::None
-            } else if list_contains_name(items, sym::always) {
-                InlineAttr::Always
-            } else if list_contains_name(items, sym::never) {
-                InlineAttr::Never
-            } else {
-                struct_span_code_err!(tcx.dcx(), items[0].span(), E0535, "invalid argument")
-                    .with_help("valid inline arguments are `always` and `never`")
-                    .emit();
+            return InlineAttr::Hint;
+        }
+        let Some(ref items) = attr.meta_item_list() else {
+            return ia;
+        };
 
-                InlineAttr::None
-            }
+        inline_span = Some(attr.span);
+        let [item] = &items[..] else {
+            struct_span_code_err!(tcx.dcx(), attr.span, E0534, "expected one argument").emit();
+            return InlineAttr::None;
+        };
+        if item.has_name(sym::always) {
+            InlineAttr::Always
+        } else if item.has_name(sym::never) {
+            InlineAttr::Never
         } else {
-            ia
+            struct_span_code_err!(tcx.dcx(), item.span(), E0535, "invalid argument")
+                .with_help("valid inline arguments are `always` and `never`")
+                .emit();
+
+            InlineAttr::None
         }
     });
     codegen_fn_attrs.inline = attrs.iter().fold(codegen_fn_attrs.inline, |ia, attr| {
@@ -586,23 +583,25 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         let err = |sp, s| struct_span_code_err!(tcx.dcx(), sp, E0722, "{}", s).emit();
         if attr.is_word() {
             err(attr.span, "expected one argument");
-            ia
-        } else if let Some(ref items) = attr.meta_item_list() {
-            inline_span = Some(attr.span);
-            if items.len() != 1 {
-                err(attr.span, "expected one argument");
-                OptimizeAttr::Default
-            } else if list_contains_name(items, sym::size) {
-                OptimizeAttr::Size
-            } else if list_contains_name(items, sym::speed) {
-                OptimizeAttr::Speed
-            } else if list_contains_name(items, sym::none) {
-                OptimizeAttr::DoNotOptimize
-            } else {
-                err(items[0].span(), "invalid argument");
-                OptimizeAttr::Default
-            }
+            return ia;
+        }
+        let Some(ref items) = attr.meta_item_list() else {
+            return OptimizeAttr::Default;
+        };
+
+        inline_span = Some(attr.span);
+        let [item] = &items[..] else {
+            err(attr.span, "expected one argument");
+            return OptimizeAttr::Default;
+        };
+        if item.has_name(sym::size) {
+            OptimizeAttr::Size
+        } else if item.has_name(sym::speed) {
+            OptimizeAttr::Speed
+        } else if item.has_name(sym::none) {
+            OptimizeAttr::DoNotOptimize
         } else {
+            err(item.span(), "invalid argument");
             OptimizeAttr::Default
         }
     });
@@ -644,25 +643,20 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     // llvm/llvm-project#70563).
     if !codegen_fn_attrs.target_features.is_empty()
         && matches!(codegen_fn_attrs.inline, InlineAttr::Always)
+        && let Some(span) = inline_span
     {
-        if let Some(span) = inline_span {
-            tcx.dcx().span_err(span, "cannot use `#[inline(always)]` with `#[target_feature]`");
-        }
+        tcx.dcx().span_err(span, "cannot use `#[inline(always)]` with `#[target_feature]`");
     }
 
-    if !codegen_fn_attrs.no_sanitize.is_empty() && codegen_fn_attrs.inline.always() {
-        if let (Some(no_sanitize_span), Some(inline_span)) = (no_sanitize_span, inline_span) {
-            let hir_id = tcx.local_def_id_to_hir_id(did);
-            tcx.node_span_lint(
-                lint::builtin::INLINE_NO_SANITIZE,
-                hir_id,
-                no_sanitize_span,
-                |lint| {
-                    lint.primary_message("`no_sanitize` will have no effect after inlining");
-                    lint.span_note(inline_span, "inlining requested here");
-                },
-            )
-        }
+    if !codegen_fn_attrs.no_sanitize.is_empty()
+        && codegen_fn_attrs.inline.always()
+        && let (Some(no_sanitize_span), Some(inline_span)) = (no_sanitize_span, inline_span)
+    {
+        let hir_id = tcx.local_def_id_to_hir_id(did);
+        tcx.node_span_lint(lint::builtin::INLINE_NO_SANITIZE, hir_id, no_sanitize_span, |lint| {
+            lint.primary_message("`no_sanitize` will have no effect after inlining");
+            lint.span_note(inline_span, "inlining requested here");
+        })
     }
 
     // Weak lang items have the same semantics as "std internal" symbols in the
@@ -692,10 +686,10 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     // Any linkage to LLVM intrinsics for now forcibly marks them all as never
     // unwinds since LLVM sometimes can't handle codegen which `invoke`s
     // intrinsic functions.
-    if let Some(name) = &codegen_fn_attrs.link_name {
-        if name.as_str().starts_with("llvm.") {
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::NEVER_UNWIND;
-        }
+    if let Some(name) = &codegen_fn_attrs.link_name
+        && name.as_str().starts_with("llvm.")
+    {
+        codegen_fn_attrs.flags |= CodegenFnAttrFlags::NEVER_UNWIND;
     }
 
     if let Some(features) = check_tied_features(
@@ -756,18 +750,13 @@ fn should_inherit_track_caller(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 
 fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &hir::Attribute) -> Option<u16> {
     use rustc_ast::{LitIntType, LitKind, MetaItemLit};
-    let meta_item_list = attr.meta_item_list();
-    let meta_item_list = meta_item_list.as_deref();
-    let sole_meta_list = match meta_item_list {
-        Some([item]) => item.lit(),
-        Some(_) => {
-            tcx.dcx().emit_err(errors::InvalidLinkOrdinalNargs { span: attr.span });
-            return None;
-        }
-        _ => None,
+    let meta_item_list = attr.meta_item_list()?;
+    let [sole_meta_list] = &meta_item_list[..] else {
+        tcx.dcx().emit_err(errors::InvalidLinkOrdinalNargs { span: attr.span });
+        return None;
     };
     if let Some(MetaItemLit { kind: LitKind::Int(ordinal, LitIntType::Unsuffixed), .. }) =
-        sole_meta_list
+        sole_meta_list.lit()
     {
         // According to the table at
         // https://docs.microsoft.com/en-us/windows/win32/debug/pe-format#import-header, the
