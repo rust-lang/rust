@@ -9,170 +9,6 @@ use crate::util::{copy_dir_all, dylib_env_var};
 
 impl TestCx<'_> {
     pub(super) fn run_rmake_test(&self) {
-        let test_dir = &self.testpaths.file;
-        if test_dir.join("rmake.rs").exists() {
-            self.run_rmake_v2_test();
-        } else if test_dir.join("Makefile").exists() {
-            self.run_rmake_legacy_test();
-        } else {
-            self.fatal("failed to find either `rmake.rs` or `Makefile`")
-        }
-    }
-
-    fn run_rmake_legacy_test(&self) {
-        let cwd = env::current_dir().unwrap();
-        let src_root = self.config.src_base.parent().unwrap().parent().unwrap();
-        let src_root = cwd.join(&src_root);
-
-        // FIXME(Zalathar): This should probably be `output_base_dir` to avoid
-        // an unnecessary extra subdirectory, but since legacy Makefile tests
-        // are hopefully going away, it seems safer to leave this perilous code
-        // as-is until it can all be deleted.
-        let tmpdir = cwd.join(self.output_base_name());
-        ignore_not_found(|| recursive_remove(&tmpdir)).unwrap();
-
-        fs::create_dir_all(&tmpdir).unwrap();
-
-        let host = &self.config.host;
-        let make = if host.contains("dragonfly")
-            || host.contains("freebsd")
-            || host.contains("netbsd")
-            || host.contains("openbsd")
-            || host.contains("aix")
-        {
-            "gmake"
-        } else {
-            "make"
-        };
-
-        let mut cmd = Command::new(make);
-        cmd.current_dir(&self.testpaths.file)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .env("TARGET", &self.config.target)
-            .env("PYTHON", &self.config.python)
-            .env("S", src_root)
-            .env("RUST_BUILD_STAGE", &self.config.stage_id)
-            .env("RUSTC", cwd.join(&self.config.rustc_path))
-            .env("TMPDIR", &tmpdir)
-            .env("LD_LIB_PATH_ENVVAR", dylib_env_var())
-            .env("HOST_RPATH_DIR", cwd.join(&self.config.compile_lib_path))
-            .env("TARGET_RPATH_DIR", cwd.join(&self.config.run_lib_path))
-            .env("LLVM_COMPONENTS", &self.config.llvm_components)
-            // We for sure don't want these tests to run in parallel, so make
-            // sure they don't have access to these vars if we run via `make`
-            // at the top level
-            .env_remove("MAKEFLAGS")
-            .env_remove("MFLAGS")
-            .env_remove("CARGO_MAKEFLAGS");
-
-        if let Some(ref cargo) = self.config.cargo_path {
-            cmd.env("CARGO", cwd.join(cargo));
-        }
-
-        if let Some(ref rustdoc) = self.config.rustdoc_path {
-            cmd.env("RUSTDOC", cwd.join(rustdoc));
-        }
-
-        if let Some(ref node) = self.config.nodejs {
-            cmd.env("NODE", node);
-        }
-
-        if let Some(ref linker) = self.config.target_linker {
-            cmd.env("RUSTC_LINKER", linker);
-        }
-
-        if let Some(ref clang) = self.config.run_clang_based_tests_with {
-            cmd.env("CLANG", clang);
-        }
-
-        if let Some(ref filecheck) = self.config.llvm_filecheck {
-            cmd.env("LLVM_FILECHECK", filecheck);
-        }
-
-        if let Some(ref llvm_bin_dir) = self.config.llvm_bin_dir {
-            cmd.env("LLVM_BIN_DIR", llvm_bin_dir);
-        }
-
-        if let Some(ref remote_test_client) = self.config.remote_test_client {
-            cmd.env("REMOTE_TEST_CLIENT", remote_test_client);
-        }
-
-        // We don't want RUSTFLAGS set from the outside to interfere with
-        // compiler flags set in the test cases:
-        cmd.env_remove("RUSTFLAGS");
-
-        // Use dynamic musl for tests because static doesn't allow creating dylibs
-        if self.config.host.contains("musl") {
-            cmd.env("RUSTFLAGS", "-Ctarget-feature=-crt-static").env("IS_MUSL_HOST", "1");
-        }
-
-        if self.config.bless {
-            cmd.env("RUSTC_BLESS_TEST", "--bless");
-            // Assume this option is active if the environment variable is "defined", with _any_ value.
-            // As an example, a `Makefile` can use this option by:
-            //
-            //   ifdef RUSTC_BLESS_TEST
-            //       cp "$(TMPDIR)"/actual_something.ext expected_something.ext
-            //   else
-            //       $(DIFF) expected_something.ext "$(TMPDIR)"/actual_something.ext
-            //   endif
-        }
-
-        if self.config.target.contains("msvc") && !self.config.cc.is_empty() {
-            // We need to pass a path to `lib.exe`, so assume that `cc` is `cl.exe`
-            // and that `lib.exe` lives next to it.
-            let lib = Path::new(&self.config.cc).parent().unwrap().join("lib.exe");
-
-            // MSYS doesn't like passing flags of the form `/foo` as it thinks it's
-            // a path and instead passes `C:\msys64\foo`, so convert all
-            // `/`-arguments to MSVC here to `-` arguments.
-            let cflags = self
-                .config
-                .cflags
-                .split(' ')
-                .map(|s| s.replace("/", "-"))
-                .collect::<Vec<_>>()
-                .join(" ");
-            let cxxflags = self
-                .config
-                .cxxflags
-                .split(' ')
-                .map(|s| s.replace("/", "-"))
-                .collect::<Vec<_>>()
-                .join(" ");
-
-            cmd.env("IS_MSVC", "1")
-                .env("IS_WINDOWS", "1")
-                .env("MSVC_LIB", format!("'{}' -nologo", lib.display()))
-                .env("MSVC_LIB_PATH", format!("{}", lib.display()))
-                .env("CC", format!("'{}' {}", self.config.cc, cflags))
-                .env("CXX", format!("'{}' {}", &self.config.cxx, cxxflags));
-        } else {
-            cmd.env("CC", format!("{} {}", self.config.cc, self.config.cflags))
-                .env("CXX", format!("{} {}", self.config.cxx, self.config.cxxflags))
-                .env("AR", &self.config.ar);
-
-            if self.config.target.contains("windows") {
-                cmd.env("IS_WINDOWS", "1");
-            }
-        }
-
-        let (output, truncated) =
-            self.read2_abbreviated(cmd.spawn().expect("failed to spawn `make`"));
-        if !output.status.success() {
-            let res = ProcRes {
-                status: output.status,
-                stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
-                stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
-                truncated,
-                cmdline: format!("{:?}", cmd),
-            };
-            self.fatal_proc_rec("make failed", &res);
-        }
-    }
-
-    fn run_rmake_v2_test(&self) {
         // For `run-make` V2, we need to perform 2 steps to build and run a `run-make` V2 recipe
         // (`rmake.rs`) to run the actual tests. The support library is already built as a tool rust
         // library and is available under `build/$TARGET/stageN-tools-bin/librun_make_support.rlib`.
@@ -181,30 +17,7 @@ impl TestCx<'_> {
         //    library.
         // 2. We need to run the recipe binary.
 
-        // So we assume the rust-lang/rust project setup looks like the following (our `.` is the
-        // top-level directory, irrelevant entries to our purposes omitted):
-        //
-        // ```
-        // .                               // <- `source_root`
-        // ├── build/                      // <- `build_root`
-        // ├── compiler/
-        // ├── library/
-        // ├── src/
-        // │  └── tools/
-        // │     └── run_make_support/
-        // └── tests
-        //    └── run-make/
-        // ```
-
-        // `source_root` is the top-level directory containing the rust-lang/rust checkout.
-        let source_root =
-            self.config.find_rust_src_root().expect("could not determine rust source root");
-        // `self.config.build_base` is actually the build base folder + "test" + test suite name, it
-        // looks like `build/<host_triple>/test/run-make`. But we want `build/<host_triple>/`. Note
-        // that the `build` directory does not need to be called `build`, nor does it need to be
-        // under `source_root`, so we must compute it based off of `self.config.build_base`.
-        let build_root =
-            self.config.build_base.parent().and_then(Path::parent).unwrap().to_path_buf();
+        let host_build_root = self.config.build_root.join(&self.config.host);
 
         // We construct the following directory tree for each rmake.rs test:
         // ```
@@ -216,8 +29,6 @@ impl TestCx<'_> {
         // recipes to `remove_dir_all($TMPDIR)` without running into issues related trying to remove
         // a currently running executable because the recipe executable is not under the
         // `rmake_out/` directory.
-        //
-        // This setup intentionally diverges from legacy Makefile run-make tests.
         let base_dir = self.output_base_dir();
         ignore_not_found(|| recursive_remove(&base_dir)).unwrap();
 
@@ -262,10 +73,10 @@ impl TestCx<'_> {
 
         let stage_number = self.config.stage;
 
-        let stage_tools_bin = build_root.join(format!("stage{stage_number}-tools-bin"));
+        let stage_tools_bin = host_build_root.join(format!("stage{stage_number}-tools-bin"));
         let support_lib_path = stage_tools_bin.join("librun_make_support.rlib");
 
-        let stage_tools = build_root.join(format!("stage{stage_number}-tools"));
+        let stage_tools = host_build_root.join(format!("stage{stage_number}-tools"));
         let support_lib_deps = stage_tools.join(&self.config.host).join("release").join("deps");
         let support_lib_deps_deps = stage_tools.join("release").join("deps");
 
@@ -331,7 +142,7 @@ impl TestCx<'_> {
         // to work correctly.
         //
         // See <https://github.com/rust-lang/rust/pull/122248> for more background.
-        let stage0_sysroot = build_root.join("stage0-sysroot");
+        let stage0_sysroot = host_build_root.join("stage0-sysroot");
         if std::env::var_os("COMPILETEST_FORCE_STAGE0").is_some() {
             rustc.arg("--sysroot").arg(&stage0_sysroot);
         }
@@ -346,7 +157,7 @@ impl TestCx<'_> {
         // provided through env vars.
 
         // Compute stage-specific standard library paths.
-        let stage_std_path = build_root.join(format!("stage{stage_number}")).join("lib");
+        let stage_std_path = host_build_root.join(format!("stage{stage_number}")).join("lib");
 
         // Compute dynamic library search paths for recipes.
         let recipe_dylib_search_paths = {
@@ -389,11 +200,10 @@ impl TestCx<'_> {
             .env("TARGET", &self.config.target)
             // Some tests unfortunately still need Python, so provide path to a Python interpreter.
             .env("PYTHON", &self.config.python)
-            // Provide path to checkout root. This is the top-level directory containing
-            // rust-lang/rust checkout.
-            .env("SOURCE_ROOT", &source_root)
-            // Path to the build directory. This is usually the same as `source_root.join("build").join("host")`.
-            .env("BUILD_ROOT", &build_root)
+            // Provide path to sources root.
+            .env("SOURCE_ROOT", &self.config.src_root)
+            // Path to the host build directory.
+            .env("BUILD_ROOT", &host_build_root)
             // Provide path to stage-corresponding rustc.
             .env("RUSTC", &self.config.rustc_path)
             // Provide the directory to libraries that are needed to run the *compiler*. This is not
@@ -408,11 +218,11 @@ impl TestCx<'_> {
             .env("LLVM_COMPONENTS", &self.config.llvm_components);
 
         if let Some(ref cargo) = self.config.cargo_path {
-            cmd.env("CARGO", source_root.join(cargo));
+            cmd.env("CARGO", cargo);
         }
 
         if let Some(ref rustdoc) = self.config.rustdoc_path {
-            cmd.env("RUSTDOC", source_root.join(rustdoc));
+            cmd.env("RUSTDOC", rustdoc);
         }
 
         if let Some(ref node) = self.config.nodejs {
