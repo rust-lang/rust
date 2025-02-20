@@ -2162,6 +2162,9 @@ impl Target {
 
         Ok(dl)
     }
+    pub fn is_x86(&self) -> bool {
+        ["x86", "x86_64"].contains(&&self.arch[..])
+    }
 }
 
 pub trait HasTargetSpec {
