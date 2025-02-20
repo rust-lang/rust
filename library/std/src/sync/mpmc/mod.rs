@@ -1382,3 +1382,6 @@ impl<T> fmt::Debug for Receiver<T> {
         f.pad("Receiver { .. }")
     }
 }
+
+#[cfg(test)]
+mod tests;
