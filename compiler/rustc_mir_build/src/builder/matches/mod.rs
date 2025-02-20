@@ -5,6 +5,11 @@
 //! This also includes code for pattern bindings in `let` statements and
 //! function parameters.
 
+use std::assert_matches::assert_matches;
+use std::borrow::Borrow;
+use std::mem;
+use std::sync::Arc;
+
 use rustc_abi::VariantIdx;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -19,6 +24,7 @@ use tracing::{debug, instrument};
 
 use crate::builder::ForGuard::{self, OutsideGuard, RefWithinGuard};
 use crate::builder::expr::as_place::PlaceBuilder;
+use crate::builder::matches::user_ty::ProjectedUserTypesNode;
 use crate::builder::scope::DropKind;
 use crate::builder::{
     BlockAnd, BlockAndExtension, Builder, GuardFrame, GuardFrameLocal, LocalsForNode,
@@ -27,12 +33,8 @@ use crate::builder::{
 // helper functions, broken out by category:
 mod match_pair;
 mod test;
+mod user_ty;
 mod util;
-
-use std::assert_matches::assert_matches;
-use std::borrow::Borrow;
-use std::mem;
-use std::sync::Arc;
 
 /// Arguments to [`Builder::then_else_break_inner`] that are usually forwarded
 /// to recursive invocations.
@@ -757,11 +759,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) -> Option<SourceScope> {
         self.visit_primary_bindings_special(
             pattern,
-            UserTypeProjections::none(),
-            &mut |this, name, mode, var, span, ty, user_ty| {
+            &ProjectedUserTypesNode::None,
+            &mut |this, name, mode, var, span, ty, user_tys| {
                 let vis_scope = *visibility_scope
                     .get_or_insert_with(|| this.new_source_scope(scope_span, LintLevel::Inherited));
                 let source_info = SourceInfo { span, scope: this.source_scope };
+                let user_tys = user_tys.build_user_type_projections();
 
                 this.declare_binding(
                     source_info,
@@ -770,7 +773,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     mode,
                     var,
                     ty,
-                    user_ty,
+                    user_tys,
                     ArmHasGuard(guard.is_some()),
                     opt_match_place.map(|(x, y)| (x.cloned(), y)),
                     pattern.span,
@@ -874,7 +877,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn visit_primary_bindings_special(
         &mut self,
         pattern: &Pat<'tcx>,
-        pattern_user_ty: UserTypeProjections,
+        user_tys: &ProjectedUserTypesNode<'_>,
         f: &mut impl FnMut(
             &mut Self,
             Symbol,
@@ -882,21 +885,21 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             LocalVarId,
             Span,
             Ty<'tcx>,
-            UserTypeProjections,
+            &ProjectedUserTypesNode<'_>,
         ),
     ) {
         // Avoid having to write the full method name at each recursive call.
-        let visit_subpat = |this: &mut Self, subpat, user_tys, f: &mut _| {
+        let visit_subpat = |this: &mut Self, subpat, user_tys: &_, f: &mut _| {
             this.visit_primary_bindings_special(subpat, user_tys, f)
         };
 
         match pattern.kind {
             PatKind::Binding { name, mode, var, ty, ref subpattern, is_primary, .. } => {
                 if is_primary {
-                    f(self, name, mode, var, pattern.span, ty, pattern_user_ty.clone());
+                    f(self, name, mode, var, pattern.span, ty, user_tys);
                 }
                 if let Some(subpattern) = subpattern.as_ref() {
-                    visit_subpat(self, subpattern, pattern_user_ty, f);
+                    visit_subpat(self, subpattern, user_tys, f);
                 }
             }
 
@@ -905,13 +908,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let from = u64::try_from(prefix.len()).unwrap();
                 let to = u64::try_from(suffix.len()).unwrap();
                 for subpattern in prefix.iter() {
-                    visit_subpat(self, subpattern, pattern_user_ty.clone().index(), f);
+                    visit_subpat(self, subpattern, &user_tys.index(), f);
                 }
                 if let Some(subpattern) = slice {
-                    visit_subpat(self, subpattern, pattern_user_ty.clone().subslice(from, to), f);
+                    visit_subpat(self, subpattern, &user_tys.subslice(from, to), f);
                 }
                 for subpattern in suffix.iter() {
-                    visit_subpat(self, subpattern, pattern_user_ty.clone().index(), f);
+                    visit_subpat(self, subpattern, &user_tys.index(), f);
                 }
             }
 
@@ -922,11 +925,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | PatKind::Error(_) => {}
 
             PatKind::Deref { ref subpattern } => {
-                visit_subpat(self, subpattern, pattern_user_ty.deref(), f);
+                visit_subpat(self, subpattern, &user_tys.deref(), f);
             }
 
             PatKind::DerefPattern { ref subpattern, .. } => {
-                visit_subpat(self, subpattern, UserTypeProjections::none(), f);
+                visit_subpat(self, subpattern, &ProjectedUserTypesNode::None, f);
             }
 
             PatKind::AscribeUserType {
@@ -942,28 +945,31 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // Note that the variance doesn't apply here, as we are tracking the effect
                 // of `user_ty` on any bindings contained with subpattern.
 
+                // Caution: Pushing this user type here is load-bearing even for
+                // patterns containing no bindings, to ensure that the type ends
+                // up represented in MIR _somewhere_.
                 let base_user_ty = self.canonical_user_type_annotations.push(annotation.clone());
-                let subpattern_user_ty = pattern_user_ty.push_user_type(base_user_ty);
-                visit_subpat(self, subpattern, subpattern_user_ty, f)
+                let subpattern_user_tys = user_tys.push_user_type(base_user_ty);
+                visit_subpat(self, subpattern, &subpattern_user_tys, f)
             }
 
             PatKind::ExpandedConstant { ref subpattern, .. } => {
-                visit_subpat(self, subpattern, pattern_user_ty, f)
+                visit_subpat(self, subpattern, user_tys, f)
             }
 
             PatKind::Leaf { ref subpatterns } => {
                 for subpattern in subpatterns {
-                    let subpattern_user_ty = pattern_user_ty.clone().leaf(subpattern.field);
-                    debug!("visit_primary_bindings: subpattern_user_ty={:?}", subpattern_user_ty);
-                    visit_subpat(self, &subpattern.pattern, subpattern_user_ty, f);
+                    let subpattern_user_tys = user_tys.leaf(subpattern.field);
+                    debug!("visit_primary_bindings: subpattern_user_tys={subpattern_user_tys:?}");
+                    visit_subpat(self, &subpattern.pattern, &subpattern_user_tys, f);
                 }
             }
 
             PatKind::Variant { adt_def, args: _, variant_index, ref subpatterns } => {
                 for subpattern in subpatterns {
-                    let subpattern_user_ty =
-                        pattern_user_ty.clone().variant(adt_def, variant_index, subpattern.field);
-                    visit_subpat(self, &subpattern.pattern, subpattern_user_ty, f);
+                    let subpattern_user_tys =
+                        user_tys.variant(adt_def, variant_index, subpattern.field);
+                    visit_subpat(self, &subpattern.pattern, &subpattern_user_tys, f);
                 }
             }
             PatKind::Or { ref pats } => {
@@ -972,7 +978,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // `let (x | y) = ...`, the primary binding of `y` occurs in
                 // the right subpattern
                 for subpattern in pats.iter() {
-                    visit_subpat(self, subpattern, pattern_user_ty.clone(), f);
+                    visit_subpat(self, subpattern, user_tys, f);
                 }
             }
         }
@@ -2764,7 +2770,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         mode: BindingMode,
         var_id: LocalVarId,
         var_ty: Ty<'tcx>,
-        user_ty: UserTypeProjections,
+        user_ty: Option<Box<UserTypeProjections>>,
         has_guard: ArmHasGuard,
         opt_match_place: Option<(Option<Place<'tcx>>, Span)>,
         pat_span: Span,
@@ -2774,7 +2780,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let local = LocalDecl {
             mutability: mode.1,
             ty: var_ty,
-            user_ty: if user_ty.is_empty() { None } else { Some(Box::new(user_ty)) },
+            user_ty,
             source_info,
             local_info: ClearCrossCrate::Set(Box::new(LocalInfo::User(BindingForm::Var(
                 VarBindingForm {
