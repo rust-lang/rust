@@ -14,18 +14,21 @@ pub enum IoError {
 pub use self::IoError::*;
 
 impl From<io::Error> for IoError {
+    /// Wrap `io::Error` in `HostError`
     fn from(value: io::Error) -> Self {
         IoError::HostError(value)
     }
 }
 
 impl From<io::ErrorKind> for IoError {
+    /// Convert a `io::ErrorKind` to a `io::Error` then wrap in `HostError`
     fn from(value: io::ErrorKind) -> Self {
         IoError::HostError(value.into())
     }
 }
 
 impl From<Scalar> for IoError {
+    /// Wrap `Scalar` in `Raw`
     fn from(value: Scalar) -> Self {
         IoError::Raw(value)
     }

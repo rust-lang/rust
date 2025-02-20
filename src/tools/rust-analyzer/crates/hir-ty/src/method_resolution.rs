@@ -500,6 +500,7 @@ pub enum VisibleFromModule {
 }
 
 impl From<Option<ModuleId>> for VisibleFromModule {
+    /// If some make a `Filter` with `ModuleId`
     fn from(module: Option<ModuleId>) -> Self {
         match module {
             Some(module) => Self::Filter(module),
@@ -509,6 +510,7 @@ impl From<Option<ModuleId>> for VisibleFromModule {
 }
 
 impl From<Option<BlockId>> for VisibleFromModule {
+    /// If some make an `IncludeBlock` with `BlockId`
     fn from(block: Option<BlockId>) -> Self {
         match block {
             Some(block) => Self::IncludeBlock(block),

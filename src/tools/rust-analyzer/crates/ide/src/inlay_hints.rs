@@ -571,6 +571,7 @@ impl InlayHintLabel {
 }
 
 impl From<String> for InlayHintLabel {
+    /// Create a new smallvec with the string as the text, with no linked_location or tooltip
     fn from(s: String) -> Self {
         Self {
             parts: smallvec![InlayHintLabelPart { text: s, linked_location: None, tooltip: None }],
@@ -579,6 +580,7 @@ impl From<String> for InlayHintLabel {
 }
 
 impl From<&str> for InlayHintLabel {
+    /// Create a new smallvec with the string slice as the text, with no linked_location or tooltip
     fn from(s: &str) -> Self {
         Self {
             parts: smallvec![InlayHintLabelPart {

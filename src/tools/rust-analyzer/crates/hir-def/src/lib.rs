@@ -410,18 +410,21 @@ impl PartialEq<CrateRootModuleId> for ModuleId {
 }
 
 impl From<CrateRootModuleId> for ModuleId {
+    /// Make a `ModuleId` with a krate, no block, and local_id of `ROOT`
     fn from(CrateRootModuleId { krate }: CrateRootModuleId) -> Self {
         ModuleId { krate, block: None, local_id: DefMap::ROOT }
     }
 }
 
 impl From<CrateRootModuleId> for ModuleDefId {
+    /// Make a `ModuleId` with `CrateRootModuleId` as inner
     fn from(value: CrateRootModuleId) -> Self {
         ModuleDefId::ModuleId(value.into())
     }
 }
 
 impl From<CrateId> for CrateRootModuleId {
+    /// Create a `CrateRootModuleId` with `CrateId` as inner
     fn from(krate: CrateId) -> Self {
         CrateRootModuleId { krate }
     }
@@ -564,6 +567,7 @@ impl TypeParamId {
 }
 
 impl From<TypeParamId> for TypeOrConstParamId {
+    /// Get the inner `TypeOrConstParamId` of `TypeParamId`
     fn from(it: TypeParamId) -> Self {
         it.0
     }
@@ -590,6 +594,7 @@ impl ConstParamId {
 }
 
 impl From<ConstParamId> for TypeOrConstParamId {
+    /// Get the inner `TypeOrConstParamId` of `ConstParamId`
     fn from(it: ConstParamId) -> Self {
         it.0
     }
@@ -729,6 +734,7 @@ impl_from!(
 
 // Every `DefWithBodyId` is a type owner, since bodies can contain type (e.g. `{ let it: Type = _; }`)
 impl From<DefWithBodyId> for TypeOwnerId {
+    /// Convert `DefWithBodyId` inner into `TypeOwnerId`
     fn from(value: DefWithBodyId) -> Self {
         match value {
             DefWithBodyId::FunctionId(it) => it.into(),
@@ -741,6 +747,7 @@ impl From<DefWithBodyId> for TypeOwnerId {
 }
 
 impl From<GenericDefId> for TypeOwnerId {
+    /// Convert `GenericDefId` inner into `TypeOwnerId`
     fn from(value: GenericDefId) -> Self {
         match value {
             GenericDefId::FunctionId(it) => it.into(),
@@ -896,6 +903,7 @@ pub enum DefWithBodyId {
 impl_from!(FunctionId, ConstId, StaticId, InTypeConstId for DefWithBodyId);
 
 impl From<EnumVariantId> for DefWithBodyId {
+    /// Make a `VariantId` with `EnumVariantId`, as inner
     fn from(id: EnumVariantId) -> Self {
         DefWithBodyId::VariantId(id)
     }
@@ -1008,6 +1016,7 @@ impl GenericDefId {
 }
 
 impl From<AssocItemId> for GenericDefId {
+    /// Convert `AssocItemId` inner to `GenericDefId`
     fn from(item: AssocItemId) -> Self {
         match item {
             AssocItemId::FunctionId(f) => f.into(),
@@ -1028,6 +1037,7 @@ impl InternValueTrivial for CallableDefId {}
 
 impl_from!(FunctionId, StructId, EnumVariantId for CallableDefId);
 impl From<CallableDefId> for ModuleDefId {
+    /// Match `CallableDefId` to `ModuleDefId`
     fn from(def: CallableDefId) -> ModuleDefId {
         match def {
             CallableDefId::FunctionId(f) => ModuleDefId::FunctionId(f),
@@ -1089,6 +1099,10 @@ impl_from!(
 impl TryFrom<ModuleDefId> for AttrDefId {
     type Error = ();
 
+    /// Convert the inner of `ModuleDefId` into `Ok(AttrDefId)`
+    ///
+    /// # Errors
+    /// `BuiltinType` results in `Err`
     fn try_from(value: ModuleDefId) -> Result<Self, Self::Error> {
         match value {
             ModuleDefId::ModuleId(it) => Ok(it.into()),
@@ -1107,6 +1121,7 @@ impl TryFrom<ModuleDefId> for AttrDefId {
 }
 
 impl From<ItemContainerId> for AttrDefId {
+    /// Match `ItemContainerId` to the `AttrDefId` variant of the same name
     fn from(acid: ItemContainerId) -> Self {
         match acid {
             ItemContainerId::ModuleId(mid) => AttrDefId::ModuleId(mid),
@@ -1117,6 +1132,7 @@ impl From<ItemContainerId> for AttrDefId {
     }
 }
 impl From<AssocItemId> for AttrDefId {
+    /// Match `AssocItemId` to the `AttrDefId` variant of the same name
     fn from(assoc: AssocItemId) -> Self {
         match assoc {
             AssocItemId::FunctionId(it) => AttrDefId::FunctionId(it),
@@ -1126,6 +1142,7 @@ impl From<AssocItemId> for AttrDefId {
     }
 }
 impl From<VariantId> for AttrDefId {
+    /// Convert the inner of `VariantId` into `AttrDefId`
     fn from(vid: VariantId) -> Self {
         match vid {
             VariantId::EnumVariantId(id) => id.into(),
