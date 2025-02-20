@@ -780,11 +780,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
             // individually as it's possible to have a stable trait with unstable
             // items.
             hir::ItemKind::Impl(hir::Impl {
-                of_trait: Some(ref t),
-                self_ty,
-                items,
-                constness,
-                ..
+                of_trait: Some(t), self_ty, items, constness, ..
             }) => {
                 let features = self.tcx.features();
                 if features.staged_api() {

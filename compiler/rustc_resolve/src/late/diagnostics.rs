@@ -516,7 +516,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             let Some(params) = &segment.args else {
                 continue;
             };
-            let ast::GenericArgs::AngleBracketed(ref params) = params.deref() else {
+            let ast::GenericArgs::AngleBracketed(params) = params.deref() else {
                 continue;
             };
             for param in &params.args {
@@ -1668,7 +1668,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         );
                     }
                     if let PathSource::Expr(Some(Expr {
-                        kind: ExprKind::Call(path, ref args),
+                        kind: ExprKind::Call(path, args),
                         span: call_span,
                         ..
                     })) = source
@@ -1802,7 +1802,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     }
                     // e.g. `let _ = Enum::TupleVariant(field1, field2);`
                     PathSource::Expr(Some(Expr {
-                        kind: ExprKind::Call(path, ref args),
+                        kind: ExprKind::Call(path, args),
                         span: call_span,
                         ..
                     })) => {

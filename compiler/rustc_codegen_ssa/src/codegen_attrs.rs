@@ -894,7 +894,7 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
     let [mode, input_activities @ .., ret_activity] = &list[..] else {
         span_bug!(attr.span, "rustc_autodiff attribute must contain mode and activities");
     };
-    let mode = if let MetaItemInner::MetaItem(MetaItem { path: ref p1, .. }) = mode {
+    let mode = if let MetaItemInner::MetaItem(MetaItem { path: p1, .. }) = mode {
         p1.segments.first().unwrap().ident
     } else {
         span_bug!(attr.span, "rustc_autodiff attribute must contain mode");
@@ -910,7 +910,7 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
     };
 
     // First read the ret symbol from the attribute
-    let ret_symbol = if let MetaItemInner::MetaItem(MetaItem { path: ref p1, .. }) = ret_activity {
+    let ret_symbol = if let MetaItemInner::MetaItem(MetaItem { path: p1, .. }) = ret_activity {
         p1.segments.first().unwrap().ident
     } else {
         span_bug!(attr.span, "rustc_autodiff attribute must contain the return activity");
@@ -924,7 +924,7 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
     // Now parse all the intermediate (input) activities
     let mut arg_activities: Vec<DiffActivity> = vec![];
     for arg in input_activities {
-        let arg_symbol = if let MetaItemInner::MetaItem(MetaItem { path: ref p2, .. }) = arg {
+        let arg_symbol = if let MetaItemInner::MetaItem(MetaItem { path: p2, .. }) = arg {
             match p2.segments.first() {
                 Some(x) => x.ident,
                 None => {

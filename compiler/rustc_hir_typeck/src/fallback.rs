@@ -503,7 +503,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         let unit_errors = remaining_errors_if_fallback_to(self.tcx.types.unit);
         if unit_errors.is_empty()
             && let mut never_errors = remaining_errors_if_fallback_to(self.tcx.types.never)
-            && let [ref mut never_error, ..] = never_errors.as_mut_slice()
+            && let [never_error, ..] = never_errors.as_mut_slice()
         {
             self.adjust_fulfillment_error_for_expr_obligation(never_error);
             let sugg = self.try_to_suggest_annotations(diverging_vids, coercions);

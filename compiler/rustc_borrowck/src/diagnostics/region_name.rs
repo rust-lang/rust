@@ -681,7 +681,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         let mir_hir_id = self.mir_hir_id();
 
         let (return_span, mir_description, hir_ty) = match tcx.hir_node(mir_hir_id) {
-            hir::Node::Expr(hir::Expr {
+            hir::Node::Expr(&hir::Expr {
                 kind: hir::ExprKind::Closure(&hir::Closure { fn_decl, kind, fn_decl_span, .. }),
                 ..
             }) => {
@@ -873,7 +873,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             .name;
 
         let yield_span = match tcx.hir_node(self.mir_hir_id()) {
-            hir::Node::Expr(hir::Expr {
+            hir::Node::Expr(&hir::Expr {
                 kind: hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. }),
                 ..
             }) => tcx.sess.source_map().end_point(fn_decl_span),
