@@ -1165,18 +1165,6 @@ pub(crate) struct InherentTyOutside {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_coerce_unsized_may, code = E0378)]
-pub(crate) struct DispatchFromDynCoercion<'a> {
-    #[primary_span]
-    pub span: Span,
-    pub trait_name: &'a str,
-    #[note(hir_analysis_coercion_between_struct_same_note)]
-    pub note: bool,
-    pub source_path: String,
-    pub target_path: String,
-}
-
-#[derive(Diagnostic)]
 #[diag(hir_analysis_dispatch_from_dyn_repr, code = E0378)]
 pub(crate) struct DispatchFromDynRepr {
     #[primary_span]
@@ -1293,41 +1281,40 @@ pub(crate) struct DispatchFromDynZST<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_coerce_unsized_may, code = E0378)]
-pub(crate) struct DispatchFromDynSingle<'a> {
+#[diag(hir_analysis_coerce_zero, code = E0374)]
+pub(crate) struct CoerceNoField {
     #[primary_span]
     pub span: Span,
-    pub trait_name: &'a str,
+    pub trait_name: &'static str,
     #[note(hir_analysis_coercion_between_struct_single_note)]
     pub note: bool,
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_dispatch_from_dyn_multi, code = E0378)]
-#[note]
-pub(crate) struct DispatchFromDynMulti {
+#[diag(hir_analysis_coerce_multi, code = E0375)]
+pub(crate) struct CoerceMulti {
+    pub trait_name: &'static str,
     #[primary_span]
     pub span: Span,
-    #[note(hir_analysis_coercions_note)]
-    pub coercions_note: bool,
     pub number: usize,
-    pub coercions: String,
-}
-
-#[derive(Diagnostic)]
-#[diag(hir_analysis_coerce_unsized_may, code = E0376)]
-pub(crate) struct DispatchFromDynStruct<'a> {
-    #[primary_span]
-    pub span: Span,
-    pub trait_name: &'a str,
+    #[note]
+    pub fields: MultiSpan,
 }
 
 #[derive(Diagnostic)]
 #[diag(hir_analysis_coerce_unsized_may, code = E0377)]
-pub(crate) struct DispatchFromDynSame<'a> {
+pub(crate) struct CoerceUnsizedNonStruct {
     #[primary_span]
     pub span: Span,
-    pub trait_name: &'a str,
+    pub trait_name: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_coerce_unsized_may, code = E0377)]
+pub(crate) struct CoerceSameStruct {
+    #[primary_span]
+    pub span: Span,
+    pub trait_name: &'static str,
     #[note(hir_analysis_coercion_between_struct_same_note)]
     pub note: bool,
     pub source_path: String,
@@ -1335,34 +1322,15 @@ pub(crate) struct DispatchFromDynSame<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_coerce_unsized_may, code = E0374)]
-pub(crate) struct CoerceUnsizedOneField<'a> {
+#[diag(hir_analysis_coerce_unsized_field_validity)]
+pub(crate) struct CoerceFieldValidity<'tcx> {
     #[primary_span]
     pub span: Span,
-    pub trait_name: &'a str,
-    #[note(hir_analysis_coercion_between_struct_single_note)]
-    pub note: bool,
-}
-
-#[derive(Diagnostic)]
-#[diag(hir_analysis_coerce_unsized_multi, code = E0375)]
-#[note]
-pub(crate) struct CoerceUnsizedMulti {
-    #[primary_span]
+    pub ty: Ty<'tcx>,
+    pub trait_name: &'static str,
     #[label]
-    pub span: Span,
-    #[note(hir_analysis_coercions_note)]
-    pub coercions_note: bool,
-    pub number: usize,
-    pub coercions: String,
-}
-
-#[derive(Diagnostic)]
-#[diag(hir_analysis_coerce_unsized_may, code = E0378)]
-pub(crate) struct CoerceUnsizedMay<'a> {
-    #[primary_span]
-    pub span: Span,
-    pub trait_name: &'a str,
+    pub field_span: Span,
+    pub field_ty: Ty<'tcx>,
 }
 
 #[derive(Diagnostic)]

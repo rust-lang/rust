@@ -15,7 +15,7 @@ struct Dispatchable<T: ?Sized, Z> {
 }
 
 impl<T, U> DispatchFromDyn<Dispatchable<U, i32>> for Dispatchable<T, ()>
-//~^ ERROR implementing the `DispatchFromDyn` trait requires multiple coercions
+//~^ ERROR implementing `DispatchFromDyn` does not allow multiple fields to be coerced
 where
     T: Unsize<U> + ?Sized,
     U: ?Sized,
