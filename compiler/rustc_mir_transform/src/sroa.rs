@@ -185,7 +185,7 @@ impl<'tcx> ReplacementMap<'tcx> {
     fn place_fragments(
         &self,
         place: Place<'tcx>,
-    ) -> Option<impl Iterator<Item = (FieldIdx, Ty<'tcx>, Local)> + '_> {
+    ) -> Option<impl Iterator<Item = (FieldIdx, Ty<'tcx>, Local)>> {
         let local = place.as_local()?;
         let fields = self.fragments[local].as_ref()?;
         Some(fields.iter_enumerated().filter_map(|(field, &opt_ty_local)| {

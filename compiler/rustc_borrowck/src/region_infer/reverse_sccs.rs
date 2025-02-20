@@ -20,10 +20,7 @@ pub(crate) struct ReverseSccGraph {
 
 impl ReverseSccGraph {
     /// Find all universal regions that are required to outlive the given SCC.
-    pub(super) fn upper_bounds<'a>(
-        &'a self,
-        scc0: ConstraintSccIndex,
-    ) -> impl Iterator<Item = RegionVid> + 'a {
+    pub(super) fn upper_bounds(&self, scc0: ConstraintSccIndex) -> impl Iterator<Item = RegionVid> {
         let mut duplicates = FxIndexSet::default();
         graph::depth_first_search(&self.graph, scc0)
             .flat_map(move |scc1| {
