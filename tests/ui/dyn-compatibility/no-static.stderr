@@ -1,20 +1,12 @@
-error[E0557]: feature has been removed
-  --> $DIR/no-static.rs:6:50
-   |
-LL | #![cfg_attr(dyn_compatible_for_dispatch, feature(dyn_compatible_for_dispatch))]
-   |                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ feature has been removed
-   |
-   = note: removed, not used heavily and represented additional complexity in dyn compatibility
-
 error[E0038]: the trait `Foo` is not dyn compatible
-  --> $DIR/no-static.rs:12:22
+  --> $DIR/no-static.rs:8:22
    |
 LL | fn diverges() -> Box<dyn Foo> {
    |                      ^^^^^^^ `Foo` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/no-static.rs:9:8
+  --> $DIR/no-static.rs:5:8
    |
 LL | trait Foo {
    |       --- this trait is not dyn compatible...
@@ -31,14 +23,14 @@ LL |     fn foo() where Self: Sized {}
    |              +++++++++++++++++
 
 error[E0038]: the trait `Foo` is not dyn compatible
-  --> $DIR/no-static.rs:22:12
+  --> $DIR/no-static.rs:18:12
    |
 LL |     let b: Box<dyn Foo> = Box::new(Bar);
    |            ^^^^^^^^^^^^ `Foo` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/no-static.rs:9:8
+  --> $DIR/no-static.rs:5:8
    |
 LL | trait Foo {
    |       --- this trait is not dyn compatible...
@@ -55,14 +47,14 @@ LL |     fn foo() where Self: Sized {}
    |              +++++++++++++++++
 
 error[E0038]: the trait `Foo` is not dyn compatible
-  --> $DIR/no-static.rs:22:27
+  --> $DIR/no-static.rs:18:27
    |
 LL |     let b: Box<dyn Foo> = Box::new(Bar);
    |                           ^^^^^^^^^^^^^ `Foo` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/no-static.rs:9:8
+  --> $DIR/no-static.rs:5:8
    |
 LL | trait Foo {
    |       --- this trait is not dyn compatible...
@@ -79,7 +71,6 @@ help: alternatively, consider constraining `foo` so it does not apply to trait o
 LL |     fn foo() where Self: Sized {}
    |              +++++++++++++++++
 
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0038, E0557.
-For more information about an error, try `rustc --explain E0038`.
+For more information about this error, try `rustc --explain E0038`.
