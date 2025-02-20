@@ -3,9 +3,8 @@ use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes};
 use rustc_infer::traits::{
     ImplDerivedHostCause, ImplSource, Obligation, ObligationCauseCode, PredicateObligation,
 };
-use rustc_middle::span_bug;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
-use rustc_middle::ty::{self, TypeVisitableExt, TypingMode};
+use rustc_middle::ty::{self, TypeVisitableExt};
 use rustc_type_ir::elaborate::elaborate;
 use rustc_type_ir::solve::{NoSolution, SizedTraitKind};
 use thin_vec::{ThinVec, thin_vec};
@@ -24,13 +23,6 @@ pub fn evaluate_host_effect_obligation<'tcx>(
     selcx: &mut SelectionContext<'_, 'tcx>,
     obligation: &HostEffectObligation<'tcx>,
 ) -> Result<ThinVec<PredicateObligation<'tcx>>, EvaluationFailure> {
-    if matches!(selcx.infcx.typing_mode(), TypingMode::Coherence) {
-        span_bug!(
-            obligation.cause.span,
-            "should not select host obligation in old solver in intercrate mode"
-        );
-    }
-
     let ref obligation = selcx.infcx.resolve_vars_if_possible(obligation.clone());
 
     // Force ambiguity for infer self ty.
