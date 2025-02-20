@@ -95,13 +95,13 @@ where
             let res = unescape_char_or_byte(&mut chars, mode);
             callback(0..(src.len() - chars.as_str().len()), res);
         }
-        Str | ByteStr => unescape_non_raw_common(src, mode, callback),
-        RawStr | RawByteStr => check_raw_common(src, mode, callback),
-        RawCStr => check_raw_common(src, mode, &mut |r, mut result| {
-            if let Ok('\0') = result {
-                result = Err(EscapeError::NulInCStr);
+        Str | ByteStr => Unescape::new(src, mode).for_each(|(res, r)| callback(r, res)),
+        RawStr | RawByteStr => check_raw_common(src, mode).for_each(|(res, r)| callback(r, res)),
+        RawCStr => check_raw_common(src, mode).for_each(|(mut res, r)| {
+            if let Ok('\0') = res {
+                res = Err(EscapeError::NulInCStr);
             }
-            callback(r, result)
+            callback(r, res);
         }),
         CStr => unreachable!(),
     }
@@ -147,12 +147,13 @@ where
     F: FnMut(Range<usize>, Result<MixedUnit, EscapeError>),
 {
     match mode {
-        CStr => unescape_non_raw_common(src, mode, &mut |r, mut result| {
-            if let Ok(MixedUnit::Char('\0')) = result {
-                result = Err(EscapeError::NulInCStr);
+        CStr => Unescape::new(src, mode).for_each(|(mut res, r)| {
+            if let Ok(MixedUnit::Char('\0')) = res {
+                res = Err(EscapeError::NulInCStr);
             }
-            callback(r, result)
+            callback(r, res);
         }),
+
         Char | Byte | Str | RawStr | ByteStr | RawByteStr | RawCStr => unreachable!(),
     }
 }
@@ -301,7 +302,7 @@ fn scan_unicode(chars: &mut Chars<'_>, allow_unicode_escapes: bool) -> Result<ch
                 }
 
                 break std::char::from_u32(value).ok_or({
-                    if value > 0x10FFFF {
+                    if value > char::MAX as u32 {
                         EscapeError::OutOfRangeUnicodeEscape
                     } else {
                         EscapeError::LoneSurrogateUnicodeEscape
@@ -340,94 +341,143 @@ fn unescape_char_or_byte(chars: &mut Chars<'_>, mode: Mode) -> Result<char, Esca
     Ok(res)
 }
 
-/// Takes a contents of a string literal (without quotes) and produces a
-/// sequence of escaped characters or errors.
-fn unescape_non_raw_common<F, T: From<char> + From<u8>>(src: &str, mode: Mode, callback: &mut F)
-where
-    F: FnMut(Range<usize>, Result<T, EscapeError>),
-{
-    let mut chars = src.chars();
-    let allow_unicode_chars = mode.allow_unicode_chars(); // get this outside the loop
-
-    // The `start` and `end` computation here is complicated because
-    // `skip_ascii_whitespace` makes us to skip over chars without counting
-    // them in the range computation.
-    while let Some(c) = chars.next() {
-        let start = src.len() - chars.as_str().len() - c.len_utf8();
-        let res = match c {
-            '\\' => {
-                match chars.clone().next() {
-                    Some('\n') => {
-                        // Rust language specification requires us to skip whitespaces
-                        // if unescaped '\' character is followed by '\n'.
-                        // For details see [Rust language reference]
-                        // (https://doc.rust-lang.org/reference/tokens.html#string-literals).
-                        skip_ascii_whitespace(&mut chars, start, &mut |range, err| {
-                            callback(range, Err(err))
-                        });
-                        continue;
-                    }
-                    _ => scan_escape::<T>(&mut chars, mode),
-                }
-            }
-            '"' => Err(EscapeError::EscapeOnlyChar),
-            '\r' => Err(EscapeError::BareCarriageReturn),
-            _ => ascii_check(c, allow_unicode_chars).map(T::from),
-        };
-        let end = src.len() - chars.as_str().len();
-        callback(start..end, res);
-    }
+/// Iterator that removes string continuations and interprets other backslash-escapes
+struct Unescape<'s, T: From<char> + From<u8>> {
+    state: State,
+    chars: Chars<'s>,
+    pos: usize,
+    mode: Mode,
+    phantom: std::marker::PhantomData<T>,
 }
 
-fn skip_ascii_whitespace<F>(chars: &mut Chars<'_>, start: usize, callback: &mut F)
-where
-    F: FnMut(Range<usize>, EscapeError),
-{
-    let tail = chars.as_str();
-    let first_non_space = tail
-        .bytes()
-        .position(|b| b != b' ' && b != b'\t' && b != b'\n' && b != b'\r')
-        .unwrap_or(tail.len());
-    if tail[1..first_non_space].contains('\n') {
-        // The +1 accounts for the escaping slash.
-        let end = start + first_non_space + 1;
-        callback(start..end, EscapeError::MultipleSkippedLinesWarning);
-    }
-    let tail = &tail[first_non_space..];
-    if let Some(c) = tail.chars().next() {
-        if c.is_whitespace() {
-            // For error reporting, we would like the span to contain the character that was not
-            // skipped. The +1 is necessary to account for the leading \ that started the escape.
-            let end = start + first_non_space + c.len_utf8() + 1;
-            callback(start..end, EscapeError::UnskippedWhitespaceWarning);
+/// States for `Unescape` iterator state machine
+enum State {
+    Start,
+    UnskippedWhitespace(usize),
+}
+
+impl<T: From<char> + From<u8>> Iterator for Unescape<'_, T> {
+    type Item = (Result<T, EscapeError>, Range<usize>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.state {
+            State::Start => self.start(),
+            State::UnskippedWhitespace(end) => self.unskipped_whitespace(end),
         }
     }
-    *chars = tail.chars();
 }
 
-/// Takes a contents of a string literal (without quotes) and produces a
-/// sequence of characters or errors.
-/// NOTE: Raw strings do not perform any explicit character escaping, here we
-/// only produce errors on bare CR.
-fn check_raw_common<F>(src: &str, mode: Mode, callback: &mut F)
-where
-    F: FnMut(Range<usize>, Result<char, EscapeError>),
-{
-    let mut chars = src.chars();
+impl<'s, T: From<char> + From<u8>> Unescape<'s, T> {
+    pub(crate) fn new(s: &'s str, mode: Mode) -> Self {
+        Self {
+            state: State::Start,
+            chars: s.chars(),
+            pos: 0,
+            mode,
+            phantom: std::marker::PhantomData,
+        }
+    }
+
+    fn start(&mut self) -> Option<<Self as Iterator>::Item> {
+        if let Some(c) = self.chars.next() {
+            match c {
+                '\\' => {
+                    // peek
+                    if Some('\n') == self.chars.clone().next() {
+                        assert_eq!(Some('\n'), self.chars.next());
+                        // skip whitespace for backslash newline, see [Rust language reference]
+                        // (https://doc.rust-lang.org/reference/tokens.html#string-literals).
+                        self.skip_whitespace()
+                    } else {
+                        let mut chars_clone = self.chars.clone();
+                        let res = scan_escape(&mut chars_clone, self.mode);
+                        let bytes_diff = self.chars.as_str().len() - chars_clone.as_str().len();
+                        let end = self.pos + 1 + bytes_diff;
+                        self.chars = chars_clone;
+                        let range = self.pos..end;
+                        self.pos = end;
+                        Some((res, range))
+                    }
+                }
+                c => {
+                    let res = match c {
+                        '"' => Err(EscapeError::EscapeOnlyChar),
+                        '\r' => Err(EscapeError::BareCarriageReturn),
+                        c => ascii_check(c, self.mode.allow_unicode_chars()).map(T::from),
+                    };
+                    let end = self.pos + c.len_utf8();
+                    let range = self.pos..end;
+                    self.pos = end;
+                    Some((res, range))
+                }
+            }
+        } else {
+            None
+        }
+    }
+
+    /// Skip ASCII whitespace, except for the formfeed character
+    /// (see [this issue](https://github.com/rust-lang/rust/issues/136600)).
+    /// Warns on unescaped newline and following non-ASCII whitespace.
+    fn skip_whitespace(&mut self) -> Option<<Self as Iterator>::Item> {
+        // the escaping slash and newline characters add 2 bytes
+        let mut end = self.pos + 2;
+        let mut contains_nl = false;
+        // manual next_if loop
+        loop {
+            let mut chars_clone = self.chars.clone();
+            match chars_clone.next() {
+                Some(c) if c.is_ascii_whitespace() && c != '\x0c' => {
+                    self.chars = chars_clone;
+                    end += 1;
+                    contains_nl = contains_nl || c == '\n';
+                }
+                _ => break,
+            }
+        }
+        if contains_nl {
+            self.state = State::UnskippedWhitespace(end);
+            Some((Err(EscapeError::MultipleSkippedLinesWarning), self.pos..end))
+        } else {
+            self.unskipped_whitespace(end)
+        }
+    }
+
+    /// Helper for `skip_whitespace`
+    fn unskipped_whitespace(&mut self, end: usize) -> Option<<Self as Iterator>::Item> {
+        self.state = State::Start;
+        // peek
+        if let Some(c) = self.chars.clone().next() {
+            let range = self.pos..end + c.len_utf8();
+            self.pos = end;
+            if c.is_whitespace() {
+                // for error reporting, include the character that was not skipped in the span
+                Some((Err(EscapeError::UnskippedWhitespaceWarning), range))
+            } else {
+                self.start()
+            }
+        } else {
+            None
+        }
+    }
+}
+
+/// Takes the contents of a raw string literal (without quotes) and produces an
+/// iterator of characters or errors.
+/// NOTE: Raw strings don't do any unescaping, but do produce errors on bare CR.
+fn check_raw_common(
+    src: &str,
+    mode: Mode,
+) -> impl Iterator<Item = (Result<char, EscapeError>, Range<usize>)> + '_ {
     let allow_unicode_chars = mode.allow_unicode_chars(); // get this outside the loop
 
-    // The `start` and `end` computation here matches the one in
-    // `unescape_non_raw_common` for consistency, even though this function
-    // doesn't have to worry about skipping any chars.
-    while let Some(c) = chars.next() {
-        let start = src.len() - chars.as_str().len() - c.len_utf8();
+    src.char_indices().map(move |(pos, c)| {
         let res = match c {
             '\r' => Err(EscapeError::BareCarriageReturnInRawString),
             _ => ascii_check(c, allow_unicode_chars),
         };
-        let end = src.len() - chars.as_str().len();
-        callback(start..end, res);
-    }
+        (res, pos..pos + c.len_utf8())
+    })
 }
 
 #[inline]
