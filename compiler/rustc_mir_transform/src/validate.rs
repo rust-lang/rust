@@ -1303,7 +1303,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         }
                     }
                     CastKind::Transmute => {
-                        if let MirPhase::Runtime(..) = self.body.phase {
+                        if self.body.phase >= MirPhase::Analysis(AnalysisPhase::PostCleanup) {
                             // Unlike `mem::transmute`, a MIR `Transmute` is well-formed
                             // for any two `Sized` types, just potentially UB to run.
 
@@ -1331,7 +1331,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             self.fail(
                                 location,
                                 format!(
-                                    "Transmute is not supported in non-runtime phase {:?}.",
+                                    "Transmute is not supported until Analysis(PostCleanup), but was used in {:?}.",
                                     self.body.phase
                                 ),
                             );
