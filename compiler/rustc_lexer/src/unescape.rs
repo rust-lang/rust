@@ -356,10 +356,9 @@ where
         let start = src.len() - chars.as_str().len() - c.len_utf8();
         let res = match c {
             '\\' => {
-                let mut chars_clone = chars.clone();
-                match chars_clone.next() {
-                    Some('\n') => {
-                        chars = chars_clone;
+                match chars.as_str().as_bytes().get(1) {
+                    Some(b'\n') => {
+                        let _ = chars.next();
                         // Rust language specification requires us to skip whitespaces
                         // if unescaped '\' character is followed by '\n'.
                         // For details see [Rust language reference]
