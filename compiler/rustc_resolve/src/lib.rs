@@ -481,7 +481,7 @@ impl<'ra> PathResult<'ra> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Hash, PartialEq, Eq)]
 enum ModuleKind {
     /// An anonymous module; e.g., just a block.
     ///
@@ -594,11 +594,15 @@ struct Module<'ra>(Interned<'ra, ModuleData<'ra>>);
 // FIXME: We may wish to actually have at least debug-level assertions that Interned's guarantees
 // are upheld.
 impl std::hash::Hash for ModuleData<'_> {
-    fn hash<H>(&self, _: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: std::hash::Hasher,
     {
-        unreachable!()
+        self.parent.hash(h);
+        self.kind.hash(h);
+        self.no_implicit_prelude.hash(h);
+        self.span.hash(h);
+        self.expansion.hash(h);
     }
 }
 
@@ -757,11 +761,17 @@ type NameBinding<'ra> = Interned<'ra, NameBindingData<'ra>>;
 // FIXME: We may wish to actually have at least debug-level assertions that Interned's guarantees
 // are upheld.
 impl std::hash::Hash for NameBindingData<'_> {
-    fn hash<H>(&self, _: &mut H)
+    fn hash<H>(&self, h: &mut H)
     where
         H: std::hash::Hasher,
     {
-        unreachable!()
+        let NameBindingData { kind, ambiguity, warn_ambiguity, expansion, span, vis } = self;
+        kind.hash(h);
+        ambiguity.hash(h);
+        warn_ambiguity.hash(h);
+        expansion.hash(h);
+        span.hash(h);
+        vis.hash(h);
     }
 }
 
@@ -775,7 +785,7 @@ impl<'ra> ToNameBinding<'ra> for NameBinding<'ra> {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 enum NameBindingKind<'ra> {
     Res(Res),
     Module(Module<'ra>),
@@ -818,7 +828,7 @@ struct UseError<'a> {
     is_call: bool,
 }
 
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Debug, Eq, Hash)]
 enum AmbiguityKind {
     BuiltinAttr,
     DeriveHelper,
