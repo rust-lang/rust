@@ -68,56 +68,48 @@ impl ToChalk for TypeAliasAsValue {
 }
 
 impl From<FnDefId> for crate::db::InternedCallableDefId {
-    /// Makes a `InternedCallableDefId` from the `FnDefId`s inner intern id
     fn from(fn_def_id: FnDefId) -> Self {
         InternKey::from_intern_id(fn_def_id.0)
     }
 }
 
 impl From<crate::db::InternedCallableDefId> for FnDefId {
-    /// Makes a `FnDefId` with the `InternedCallableDefId`s intern id
     fn from(callable_def_id: crate::db::InternedCallableDefId) -> Self {
         chalk_ir::FnDefId(callable_def_id.as_intern_id())
     }
 }
 
 impl From<OpaqueTyId> for crate::db::InternedOpaqueTyId {
-    /// Makes a `InternedOpaqueTyId` from the `OpaqueTyId`s inner intern id
     fn from(id: OpaqueTyId) -> Self {
         InternKey::from_intern_id(id.0)
     }
 }
 
 impl From<crate::db::InternedOpaqueTyId> for OpaqueTyId {
-    /// Makes a `OpaqueTyId` with the `InternedOpaqueTyId`s intern id
     fn from(id: crate::db::InternedOpaqueTyId) -> Self {
         chalk_ir::OpaqueTyId(id.as_intern_id())
     }
 }
 
 impl From<chalk_ir::ClosureId<Interner>> for crate::db::InternedClosureId {
-    /// Makes a `InternedClosureId` from the `ClosureId`s inner intern id
     fn from(id: chalk_ir::ClosureId<Interner>) -> Self {
         Self::from_intern_id(id.0)
     }
 }
 
 impl From<crate::db::InternedClosureId> for chalk_ir::ClosureId<Interner> {
-    /// Makes a `ClosureId` with the `InternedClosureId`s intern id
     fn from(id: crate::db::InternedClosureId) -> Self {
         chalk_ir::ClosureId(id.as_intern_id())
     }
 }
 
 impl From<chalk_ir::CoroutineId<Interner>> for crate::db::InternedCoroutineId {
-    /// Makes a `InternedCoroutineId` from the `CoroutineId`s inner intern id
     fn from(id: chalk_ir::CoroutineId<Interner>) -> Self {
         Self::from_intern_id(id.0)
     }
 }
 
 impl From<crate::db::InternedCoroutineId> for chalk_ir::CoroutineId<Interner> {
-    /// Makes a `CoroutineId` with the `InternedCoroutineId`s intern id
     fn from(id: crate::db::InternedCoroutineId) -> Self {
         chalk_ir::CoroutineId(id.as_intern_id())
     }

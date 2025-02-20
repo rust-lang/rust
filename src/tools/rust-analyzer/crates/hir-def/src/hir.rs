@@ -146,7 +146,6 @@ impl Literal {
 }
 
 impl From<ast::LiteralKind> for Literal {
-    /// Create a `Literal` by matching `LiteralKind`
     fn from(ast_lit_kind: ast::LiteralKind) -> Self {
         use ast::LiteralKind;
         match ast_lit_kind {

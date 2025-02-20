@@ -637,8 +637,6 @@ impl LiteralConstRef {
 }
 
 impl From<Literal> for LiteralConstRef {
-    /// Make a `LiteralConstRef` from `Literal`
-    /// - Note: `Char`, `Bool`, `Int`, `Uint` match, other types are not const and return a `Unknown`
     fn from(literal: Literal) -> Self {
         match literal {
             Literal::Char(c) => Self::Char(c),

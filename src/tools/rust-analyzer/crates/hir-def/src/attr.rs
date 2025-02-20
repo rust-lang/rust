@@ -245,7 +245,6 @@ pub enum DocExpr {
 }
 
 impl From<DocAtom> for DocExpr {
-    /// Creates `Atom` with `DocAtom`
     fn from(atom: DocAtom) -> Self {
         DocExpr::Atom(atom)
     }

@@ -34,7 +34,7 @@ impl Idx for VectorIdx {
 }
 
 impl From<u32> for VectorIdx {
-    /// Create new `VectorIdx` with `u32` as inner
+    /// Create new `VectorIdx` with `u32` as inner.
     #[inline]
     fn from(id: u32) -> Self {
         Self(id)

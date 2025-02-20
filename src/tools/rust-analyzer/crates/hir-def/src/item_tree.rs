@@ -516,11 +516,6 @@ macro_rules! from_attrs {
     ( $( $var:ident($t:ty) ),+ $(,)? ) => {
         $(
             impl From<$t> for AttrOwner {
-                #[doc = concat!(
-                    "Create a `", stringify!($var), "` from a `", stringify!($t), "`",
-                    "\n\n## Cost",
-                    "This is free as it puts `", stringify!($t), "` into `", stringify!($var), "`"
-                )]
                 fn from(t: $t) -> AttrOwner {
                     AttrOwner::$var(t)
                 }
@@ -727,10 +722,6 @@ macro_rules! mod_items {
         }
 
         impl From<GenericModItem> for ModItem {
-            /// Create a `ModItem` from a `GenericModItem` variant of the same name
-            ///
-            /// ## Cost
-            /// Just a `match`
             fn from(id: GenericModItem) -> ModItem {
                 match id {
                     $(
@@ -744,10 +735,6 @@ macro_rules! mod_items {
         }
 
         impl From<GenericModItem> for AttrOwner {
-            /// Create a `AttrOwner::ModItem` with `GenericModItem` as inner
-            /// 
-            /// ## Cost
-            /// The cost is that of the `t.into()` call
             fn from(t: GenericModItem) -> AttrOwner {
                 AttrOwner::ModItem(t.into())
             }
@@ -755,7 +742,6 @@ macro_rules! mod_items {
 
         $(
             impl From<FileItemTreeId<$typ>> for ModItem {
-                #[doc = concat!("Create a `ModItem<", stringify!($typ), ">` from a `FileItemTreeId<", stringify!($typ), ">` variant of the same name")]
                 fn from(id: FileItemTreeId<$typ>) -> ModItem {
                     ModItem::$typ(id)
                 }
@@ -763,7 +749,6 @@ macro_rules! mod_items {
             $(
                 #[cfg_attr(ignore_fragment, $generic_params)]
                 impl From<FileItemTreeId<$typ>> for GenericModItem {
-                    #[doc = concat!("Create a `GenericModItem` from a `FileItemTreeId<", stringify!($typ), ">` variant of the same name")]
                     fn from(id: FileItemTreeId<$typ>) -> GenericModItem {
                         GenericModItem::$typ(id)
                     }
@@ -1263,10 +1248,6 @@ macro_rules! impl_froms {
     ($e:ident { $($v:ident ($t:ty)),* $(,)? }) => {
         $(
             impl From<$t> for $e {
-                #[doc = concat!(
-                    "Create a `", stringify!($e), "` with `", stringify!($t), "` as the inner",
-                    "\n\n## Cost\n", stringify!($t), " gets move into ", stringify!($v)
-                )]
                 fn from(it: $t) -> $e {
                     $e::$v(it)
                 }
@@ -1315,10 +1296,6 @@ impl_froms!(AssocItem {
 });
 
 impl From<AssocItem> for ModItem {
-    /// Convert the `AssocItem`s inner to a `ModItem`
-    /// 
-    /// ## Cost
-    /// The cost is that of the inner items `into` call
     fn from(item: AssocItem) -> Self {
         match item {
             AssocItem::Function(it) => it.into(),
