@@ -736,7 +736,9 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             // to 128-bit-sized vectors.
             "x86" if spec.rustc_abi == Some(RustcAbi::X86Sse2) => arg.layout.size.bits() <= 128,
             "x86_64" if spec.rustc_abi != Some(RustcAbi::X86Softfloat) => {
-                arg.layout.size.bits() <= 128
+                // FIXME once https://github.com/bytecodealliance/wasmtime/issues/10254 is fixed
+                // accept vectors up to 128bit rather than vectors of exactly 128bit.
+                arg.layout.size.bits() == 128
             }
             // So far, we haven't implemented this logic for any other target.
             _ => false,
