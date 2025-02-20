@@ -1,6 +1,6 @@
 use std::collections::hash_map::Entry::*;
 
-use rustc_ast::expand::allocator::{ALLOCATOR_METHODS, NO_ALLOC_SHIM_IS_UNSTABLE};
+use rustc_ast::expand::allocator::{ALLOCATOR_METHODS, NO_ALLOC_SHIM_IS_UNSTABLE, global_fn_name};
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE, LocalDefId};
@@ -13,6 +13,7 @@ use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, Instance, SymbolName, Ty, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_session::config::{CrateType, OomStrategy};
+use rustc_symbol_mangling::mangle_internal_symbol;
 use rustc_target::callconv::Conv;
 use rustc_target::spec::{SanitizerSet, TlsModel};
 use tracing::debug;
@@ -219,8 +220,11 @@ fn exported_symbols_provider_local(
     if allocator_kind_for_codegen(tcx).is_some() {
         for symbol_name in ALLOCATOR_METHODS
             .iter()
-            .map(|method| format!("__rust_{}", method.name))
-            .chain(["__rust_alloc_error_handler".to_string(), OomStrategy::SYMBOL.to_string()])
+            .map(|method| mangle_internal_symbol(tcx, global_fn_name(method.name).as_str()))
+            .chain([
+                mangle_internal_symbol(tcx, "__rust_alloc_error_handler"),
+                mangle_internal_symbol(tcx, OomStrategy::SYMBOL),
+            ])
         {
             let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, &symbol_name));
 
@@ -234,8 +238,10 @@ fn exported_symbols_provider_local(
             ));
         }
 
-        let exported_symbol =
-            ExportedSymbol::NoDefId(SymbolName::new(tcx, NO_ALLOC_SHIM_IS_UNSTABLE));
+        let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(
+            tcx,
+            &mangle_internal_symbol(tcx, NO_ALLOC_SHIM_IS_UNSTABLE),
+        ));
         symbols.push((
             exported_symbol,
             SymbolExportInfo {
