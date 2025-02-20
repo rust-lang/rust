@@ -613,9 +613,14 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
                 // types, so there's no guarantee that it succeeds. We also
                 // can't rely on the the `ErrorGuaranteed` from `fully_perform` here
                 // because it comes from delay_span_bug.
-                let ocx = ObligationCtxt::new_with_diagnostics(&typeck.infcx);
-                let errors =
-                    match dropck_outlives::compute_dropck_outlives_with_errors(&ocx, op, span) {
+                //
+                // Do this inside of a probe because we don't particularly care (or want)
+                // any region side-effects of this operation in our infcx.
+                typeck.infcx.probe(|_| {
+                    let ocx = ObligationCtxt::new_with_diagnostics(&typeck.infcx);
+                    let errors = match dropck_outlives::compute_dropck_outlives_with_errors(
+                        &ocx, op, span,
+                    ) {
                         Ok(_) => ocx.select_all_or_error(),
                         Err(e) => {
                             if e.is_empty() {
@@ -626,11 +631,12 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
                         }
                     };
 
-                if !errors.is_empty() {
-                    typeck.infcx.err_ctxt().report_fulfillment_errors(errors);
-                } else {
-                    span_bug!(span, "Rerunning drop data query produced no error.");
-                }
+                    if !errors.is_empty() {
+                        typeck.infcx.err_ctxt().report_fulfillment_errors(errors);
+                    } else {
+                        span_bug!(span, "Rerunning drop data query produced no error.");
+                    }
+                });
                 DropData { dropck_result: Default::default(), region_constraint_data: None }
             }
         }
