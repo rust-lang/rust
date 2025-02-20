@@ -61,11 +61,11 @@ impl HasStaticRootDefId for const_eval::CompileTimeMachine<'_> {
 /// already mutable (as a sanity check).
 ///
 /// Returns an iterator over all relocations referred to by this allocation.
-fn intern_shallow<'rt, 'tcx, T, M: CompileTimeMachine<'tcx, T>>(
-    ecx: &'rt mut InterpCx<'tcx, M>,
+fn intern_shallow<'tcx, T, M: CompileTimeMachine<'tcx, T>>(
+    ecx: &mut InterpCx<'tcx, M>,
     alloc_id: AllocId,
     mutability: Mutability,
-) -> Result<impl Iterator<Item = CtfeProvenance> + 'tcx, ()> {
+) -> Result<impl Iterator<Item = CtfeProvenance> + use<'tcx, T, M>, ()> {
     trace!("intern_shallow {:?}", alloc_id);
     // remove allocation
     // FIXME(#120456) - is `swap_remove` correct?

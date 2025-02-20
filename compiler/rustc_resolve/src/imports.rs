@@ -98,13 +98,13 @@ impl<'ra> std::fmt::Debug for ImportKind<'ra> {
         use ImportKind::*;
         match self {
             Single {
-                ref source,
-                ref target,
-                ref source_bindings,
-                ref target_bindings,
-                ref type_ns_only,
-                ref nested,
-                ref id,
+                source,
+                target,
+                source_bindings,
+                target_bindings,
+                type_ns_only,
+                nested,
+                id,
             } => f
                 .debug_struct("Single")
                 .field("source", source)
@@ -122,13 +122,13 @@ impl<'ra> std::fmt::Debug for ImportKind<'ra> {
                 .field("nested", nested)
                 .field("id", id)
                 .finish(),
-            Glob { ref is_prelude, ref max_vis, ref id } => f
+            Glob { is_prelude, max_vis, id } => f
                 .debug_struct("Glob")
                 .field("is_prelude", is_prelude)
                 .field("max_vis", max_vis)
                 .field("id", id)
                 .finish(),
-            ExternCrate { ref source, ref target, ref id } => f
+            ExternCrate { source, target, id } => f
                 .debug_struct("ExternCrate")
                 .field("source", source)
                 .field("target", target)

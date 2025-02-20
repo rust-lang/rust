@@ -696,7 +696,7 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// extern "C" {
+    /// unsafe extern "C" {
     ///     static STATIC: String;
     /// }
     /// ```
@@ -1791,7 +1791,7 @@ impl<'tcx> LateLintPass<'tcx> for VariantSizeDifferences {
             let t = cx.tcx.type_of(it.owner_id).instantiate_identity();
             let ty = cx.tcx.erase_regions(t);
             let Ok(layout) = cx.layout_of(ty) else { return };
-            let Variants::Multiple { tag_encoding: TagEncoding::Direct, tag, ref variants, .. } =
+            let Variants::Multiple { tag_encoding: TagEncoding::Direct, tag, variants, .. } =
                 &layout.variants
             else {
                 return;

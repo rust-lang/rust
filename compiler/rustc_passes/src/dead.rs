@@ -184,7 +184,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             rhs: &'tcx hir::Expr<'tcx>,
         ) -> bool {
             match (&lhs.kind, &rhs.kind) {
-                (hir::ExprKind::Path(ref qpath_l), hir::ExprKind::Path(ref qpath_r)) => {
+                (hir::ExprKind::Path(qpath_l), hir::ExprKind::Path(qpath_r)) => {
                     if let (Res::Local(id_l), Res::Local(id_r)) = (
                         typeck_results.qpath_res(qpath_l, lhs.hir_id),
                         typeck_results.qpath_res(qpath_r, rhs.hir_id),

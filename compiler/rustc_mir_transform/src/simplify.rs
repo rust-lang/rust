@@ -568,9 +568,9 @@ fn remove_unused_definitions_helper(used_locals: &mut UsedLocals, body: &mut Bod
                     }
                     StatementKind::Assign(box (place, _)) => used_locals.is_used(place.local),
 
-                    StatementKind::SetDiscriminant { ref place, .. }
-                    | StatementKind::BackwardIncompatibleDropHint { ref place, reason: _ }
-                    | StatementKind::Deinit(ref place) => used_locals.is_used(place.local),
+                    StatementKind::SetDiscriminant { place, .. }
+                    | StatementKind::BackwardIncompatibleDropHint { place, reason: _ }
+                    | StatementKind::Deinit(place) => used_locals.is_used(place.local),
                     StatementKind::Nop => false,
                     _ => true,
                 };

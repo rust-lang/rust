@@ -584,7 +584,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // Moves out of scalar and scalar pair fields are trivial.
                 for elem in place_ref.projection.iter() {
                     match elem {
-                        mir::ProjectionElem::Field(ref f, _) => {
+                        mir::ProjectionElem::Field(f, _) => {
                             assert!(
                                 !o.layout.ty.is_any_ptr(),
                                 "Bad PlaceRef: destructing pointers should use cast/PtrMetadata, \

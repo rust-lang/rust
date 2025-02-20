@@ -1944,7 +1944,7 @@ rustc_queries! {
     }
     /// For an opaque type, return the list of (captured lifetime, inner generic param).
     /// ```ignore (illustrative)
-    /// fn foo<'a: 'a, 'b, T>(&'b u8) -> impl Into<Self> + 'b { ... }
+    /// fn foo<'a: 'a, 'b, T>(&'b u8) -> impl Into<Self>  { ... }
     /// ```
     ///
     /// We would return `[('a, '_a), ('b, '_b)]`, with `'a` early-bound and `'b` late-bound.

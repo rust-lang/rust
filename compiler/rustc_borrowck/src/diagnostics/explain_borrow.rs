@@ -262,7 +262,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                             fn visit_expr(&mut self, expr: &'hir hir::Expr<'hir>) {
                                 if let hir::ExprKind::If(cond, _conseq, _alt)
                                 | hir::ExprKind::Loop(
-                                    hir::Block {
+                                    &hir::Block {
                                         expr:
                                             Some(&hir::Expr {
                                                 kind: hir::ExprKind::If(cond, _conseq, _alt),

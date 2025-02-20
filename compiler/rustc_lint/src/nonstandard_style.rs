@@ -344,7 +344,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
             ast::attr::find_by_name(cx.tcx.hir().attrs(hir::CRATE_HIR_ID), sym::crate_name)
                 .and_then(|attr| {
                     if let AttrKind::Normal(n) = &attr.kind
-                        && let AttrItem { args: AttrArgs::Eq { eq_span: _, expr: ref lit }, .. } =
+                        && let AttrItem { args: AttrArgs::Eq { eq_span: _, expr: lit }, .. } =
                             n.as_ref()
                         && let ast::LitKind::Str(name, ..) = lit.kind
                     {

@@ -134,8 +134,8 @@ impl LintExpectationId {
     }
 
     pub fn set_lint_index(&mut self, new_lint_index: Option<u16>) {
-        let (LintExpectationId::Unstable { ref mut lint_index, .. }
-        | LintExpectationId::Stable { ref mut lint_index, .. }) = self;
+        let (LintExpectationId::Unstable { lint_index, .. }
+        | LintExpectationId::Stable { lint_index, .. }) = self;
 
         *lint_index = new_lint_index
     }

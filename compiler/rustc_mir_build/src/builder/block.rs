@@ -244,7 +244,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 StmtKind::Let {
                     remainder_scope,
                     init_scope,
-                    ref pattern,
+                    pattern,
                     initializer,
                     lint_level,
                     else_block: None,

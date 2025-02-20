@@ -1226,11 +1226,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         adt_def.variants().iter().find(|s| s.name == variant_name)
                     {
                         let mut suggestion = vec![(assoc_ident.span, variant_name.to_string())];
-                        if let hir::Node::Stmt(hir::Stmt {
-                            kind: hir::StmtKind::Semi(ref expr),
-                            ..
+                        if let hir::Node::Stmt(&hir::Stmt {
+                            kind: hir::StmtKind::Semi(expr), ..
                         })
-                        | hir::Node::Expr(ref expr) = tcx.parent_hir_node(hir_ref_id)
+                        | hir::Node::Expr(expr) = tcx.parent_hir_node(hir_ref_id)
                             && let hir::ExprKind::Struct(..) = expr.kind
                         {
                             match variant.ctor {

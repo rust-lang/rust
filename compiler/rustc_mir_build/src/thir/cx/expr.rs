@@ -429,9 +429,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                         let user_provided_types = self.typeck_results.user_provided_types();
                         let user_ty =
                             user_provided_types.get(fun.hir_id).copied().map(|mut u_ty| {
-                                if let ty::UserTypeKind::TypeOf(ref mut did, _) =
-                                    &mut u_ty.value.kind
-                                {
+                                if let ty::UserTypeKind::TypeOf(did, _) = &mut u_ty.value.kind {
                                     *did = adt_def.did();
                                 }
                                 Box::new(u_ty)

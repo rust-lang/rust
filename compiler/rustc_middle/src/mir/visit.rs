@@ -443,7 +443,7 @@ macro_rules! make_mir_visitor {
                             location
                         )
                     }
-                    StatementKind::Intrinsic(box ref $($mutability)? intrinsic) => {
+                    StatementKind::Intrinsic(box intrinsic) => {
                         match intrinsic {
                             NonDivergingIntrinsic::Assume(op) => self.visit_operand(op, location),
                             NonDivergingIntrinsic::CopyNonOverlapping(CopyNonOverlapping {
@@ -886,8 +886,8 @@ macro_rules! make_mir_visitor {
                 self.visit_source_info(source_info);
                 let location = Location::START;
                 if let Some(box VarDebugInfoFragment {
-                    ref $($mutability)? ty,
-                    ref $($mutability)? projection
+                    ty,
+                    projection
                 }) = composite {
                     self.visit_ty($(& $mutability)? *ty, TyContext::Location(location));
                     for elem in projection {

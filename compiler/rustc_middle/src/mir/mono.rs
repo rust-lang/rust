@@ -243,7 +243,7 @@ impl<'tcx> MonoItem<'tcx> {
     /// Returns the item's `CrateNum`
     pub fn krate(&self) -> CrateNum {
         match self {
-            MonoItem::Fn(ref instance) => instance.def_id().krate,
+            MonoItem::Fn(instance) => instance.def_id().krate,
             MonoItem::Static(def_id) => def_id.krate,
             MonoItem::GlobalAsm(..) => LOCAL_CRATE,
         }

@@ -447,23 +447,23 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for Ty<'tcx> {
             }
             ty::Slice(typ) => typ.visit_with(visitor),
             ty::Adt(_, args) => args.visit_with(visitor),
-            ty::Dynamic(ref trait_ty, ref reg, _) => {
+            ty::Dynamic(trait_ty, reg, _) => {
                 try_visit!(trait_ty.visit_with(visitor));
                 reg.visit_with(visitor)
             }
             ty::Tuple(ts) => ts.visit_with(visitor),
             ty::FnDef(_, args) => args.visit_with(visitor),
-            ty::FnPtr(ref sig_tys, _) => sig_tys.visit_with(visitor),
-            ty::UnsafeBinder(ref f) => f.visit_with(visitor),
+            ty::FnPtr(sig_tys, _) => sig_tys.visit_with(visitor),
+            ty::UnsafeBinder(f) => f.visit_with(visitor),
             ty::Ref(r, ty, _) => {
                 try_visit!(r.visit_with(visitor));
                 ty.visit_with(visitor)
             }
-            ty::Coroutine(_did, ref args) => args.visit_with(visitor),
-            ty::CoroutineWitness(_did, ref args) => args.visit_with(visitor),
-            ty::Closure(_did, ref args) => args.visit_with(visitor),
-            ty::CoroutineClosure(_did, ref args) => args.visit_with(visitor),
-            ty::Alias(_, ref data) => data.visit_with(visitor),
+            ty::Coroutine(_did, args) => args.visit_with(visitor),
+            ty::CoroutineWitness(_did, args) => args.visit_with(visitor),
+            ty::Closure(_did, args) => args.visit_with(visitor),
+            ty::CoroutineClosure(_did, args) => args.visit_with(visitor),
+            ty::Alias(_, data) => data.visit_with(visitor),
 
             ty::Pat(ty, pat) => {
                 try_visit!(ty.visit_with(visitor));

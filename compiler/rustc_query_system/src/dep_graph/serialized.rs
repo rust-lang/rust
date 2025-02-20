@@ -98,7 +98,7 @@ impl SerializedDepGraph {
     pub fn edge_targets_from(
         &self,
         source: SerializedDepNodeIndex,
-    ) -> impl Iterator<Item = SerializedDepNodeIndex> + Clone + '_ {
+    ) -> impl Iterator<Item = SerializedDepNodeIndex> + Clone {
         let header = self.edge_list_indices[source];
         let mut raw = &self.edge_list_data[header.start()..];
         // Figure out where the edge list for `source` ends by getting the start index of the next

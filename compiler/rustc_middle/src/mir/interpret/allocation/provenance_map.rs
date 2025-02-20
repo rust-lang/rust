@@ -121,7 +121,7 @@ impl<Prov: Provenance> ProvenanceMap<Prov> {
     }
 
     /// Yields all the provenances stored in this map.
-    pub fn provenances(&self) -> impl Iterator<Item = Prov> + '_ {
+    pub fn provenances(&self) -> impl Iterator<Item = Prov> {
         let bytes = self.bytes.iter().flat_map(|b| b.values());
         self.ptrs.values().chain(bytes).copied()
     }

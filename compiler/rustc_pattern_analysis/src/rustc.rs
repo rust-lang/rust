@@ -25,7 +25,7 @@ use crate::lints::lint_nonexhaustive_missing_variants;
 use crate::pat_column::PatternColumn;
 use crate::rustc::print::EnumInfo;
 use crate::usefulness::{PlaceValidity, compute_match_usefulness};
-use crate::{Captures, PatCx, PrivateUninhabitedField, errors};
+use crate::{PatCx, PrivateUninhabitedField, errors};
 
 mod print;
 
@@ -175,8 +175,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
         &self,
         ty: RevealedTy<'tcx>,
         variant: &'tcx VariantDef,
-    ) -> impl Iterator<Item = (&'tcx FieldDef, RevealedTy<'tcx>)> + Captures<'p> + Captures<'_>
-    {
+    ) -> impl Iterator<Item = (&'tcx FieldDef, RevealedTy<'tcx>)> {
         let ty::Adt(_, args) = ty.kind() else { bug!() };
         variant.fields.iter().map(move |field| {
             let ty = field.ty(self.tcx, args);
@@ -203,13 +202,11 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
 
     /// Returns the types of the fields for a given constructor. The result must have a length of
     /// `ctor.arity()`.
-    pub(crate) fn ctor_sub_tys<'a>(
-        &'a self,
-        ctor: &'a Constructor<'p, 'tcx>,
+    pub(crate) fn ctor_sub_tys(
+        &self,
+        ctor: &Constructor<'p, 'tcx>,
         ty: RevealedTy<'tcx>,
-    ) -> impl Iterator<Item = (RevealedTy<'tcx>, PrivateUninhabitedField)>
-    + ExactSizeIterator
-    + Captures<'a> {
+    ) -> impl Iterator<Item = (RevealedTy<'tcx>, PrivateUninhabitedField)> + ExactSizeIterator {
         fn reveal_and_alloc<'a, 'tcx>(
             cx: &'a RustcPatCtxt<'_, 'tcx>,
             iter: impl Iterator<Item = Ty<'tcx>>,
@@ -936,12 +933,11 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
     fn ctor_arity(&self, ctor: &crate::constructor::Constructor<Self>, ty: &Self::Ty) -> usize {
         self.ctor_arity(ctor, *ty)
     }
-    fn ctor_sub_tys<'a>(
-        &'a self,
-        ctor: &'a crate::constructor::Constructor<Self>,
-        ty: &'a Self::Ty,
-    ) -> impl Iterator<Item = (Self::Ty, PrivateUninhabitedField)> + ExactSizeIterator + Captures<'a>
-    {
+    fn ctor_sub_tys(
+        &self,
+        ctor: &crate::constructor::Constructor<Self>,
+        ty: &Self::Ty,
+    ) -> impl Iterator<Item = (Self::Ty, PrivateUninhabitedField)> + ExactSizeIterator {
         self.ctor_sub_tys(ctor, *ty)
     }
     fn ctors_for_ty(

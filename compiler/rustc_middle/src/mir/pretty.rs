@@ -969,7 +969,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             }
             FalseEdge { .. } => write!(fmt, "falseEdge"),
             FalseUnwind { .. } => write!(fmt, "falseUnwind"),
-            InlineAsm { template, ref operands, options, .. } => {
+            InlineAsm { template, operands, options, .. } => {
                 write!(fmt, "asm!(\"{}\"", InlineAsmTemplatePiece::to_string(template))?;
                 for op in operands {
                     write!(fmt, ", ")?;
@@ -1522,7 +1522,7 @@ pub fn write_allocations<'tcx>(
 ) -> io::Result<()> {
     fn alloc_ids_from_alloc(
         alloc: ConstAllocation<'_>,
-    ) -> impl DoubleEndedIterator<Item = AllocId> + '_ {
+    ) -> impl DoubleEndedIterator<Item = AllocId> {
         alloc.inner().provenance().ptrs().values().map(|p| p.alloc_id())
     }
 

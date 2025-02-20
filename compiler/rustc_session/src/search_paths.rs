@@ -20,12 +20,11 @@ pub struct FilesIndex(Vec<(Arc<str>, SearchPathFile)>);
 
 impl FilesIndex {
     /// Look up [SearchPathFile] by (prefix, suffix) pair.
-    pub fn query<'this, 'prefix, 'suffix>(
-        &'this self,
-        prefix: &'prefix str,
-        suffix: &'suffix str,
-    ) -> Option<impl Iterator<Item = (String, &'this SearchPathFile)> + use<'this, 'prefix, 'suffix>>
-    {
+    pub fn query<'s>(
+        &'s self,
+        prefix: &str,
+        suffix: &str,
+    ) -> Option<impl Iterator<Item = (String, &'s SearchPathFile)>> {
         let start = self.0.partition_point(|(k, _)| **k < *prefix);
         if start == self.0.len() {
             return None;

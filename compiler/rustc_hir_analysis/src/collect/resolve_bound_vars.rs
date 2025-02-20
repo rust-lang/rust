@@ -160,7 +160,7 @@ enum Scope<'a> {
 
 impl<'a> Scope<'a> {
     // A helper for debugging scopes without printing parent scopes
-    fn debug_truncated(&'a self) -> impl fmt::Debug + 'a {
+    fn debug_truncated(&self) -> impl fmt::Debug {
         fmt::from_fn(move |f| match self {
             Self::Binder { bound_vars, scope_type, hir_id, where_bound_origin, s: _ } => f
                 .debug_struct("Binder")
