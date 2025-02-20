@@ -12,8 +12,7 @@ fn take(
         K = { () }
     >,
 ) {}
-//~^^^^^^ ERROR implementation of `Project` is not general enough
-//~^^^^ ERROR higher-ranked subtype error
+//~^^^ ERROR higher-ranked subtype error
 //~| ERROR higher-ranked subtype error
 
 trait Project { type Out; }
