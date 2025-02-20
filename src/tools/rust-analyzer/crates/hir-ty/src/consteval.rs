@@ -77,6 +77,11 @@ impl ConstEvalError {
 }
 
 impl From<MirLowerError> for ConstEvalError {
+    /// Convert `MirLowerError` to `ConstEvalError` by getting inner of `MirLowerError::ConstEvalError`
+    /// or wrapping it in the `MirLowerError` variant
+    ///
+    /// ## Cost
+    /// Just a `match`
     fn from(value: MirLowerError) -> Self {
         match value {
             MirLowerError::ConstEvalError(_, e) => *e,
@@ -86,6 +91,10 @@ impl From<MirLowerError> for ConstEvalError {
 }
 
 impl From<MirEvalError> for ConstEvalError {
+    /// Convert a `MirEvalError` by wrapping it in the `ConstEvalError::MirEvalError` variant
+    ///
+    /// ## Cost
+    /// Free
     fn from(value: MirEvalError) -> Self {
         ConstEvalError::MirEvalError(value)
     }

@@ -57,6 +57,7 @@ pub enum CfgExpr {
 }
 
 impl From<CfgAtom> for CfgExpr {
+    /// Wrap `CfgAtom` in `CfgExpr::Atom`
     fn from(atom: CfgAtom) -> Self {
         CfgExpr::Atom(atom)
     }

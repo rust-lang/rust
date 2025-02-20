@@ -332,6 +332,7 @@ impl GenericArgs {
 }
 
 impl From<Name> for Path {
+    /// Make a `BarePath` with a new `Interned` containing a `ModPath` using the `Name`
     fn from(name: Name) -> Path {
         Path::BarePath(Interned::new(ModPath::from_segments(PathKind::Plain, iter::once(name))))
     }

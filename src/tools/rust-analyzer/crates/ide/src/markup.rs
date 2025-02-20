@@ -11,12 +11,14 @@ pub struct Markup {
 }
 
 impl From<Markup> for String {
+    /// Returns the inner text
     fn from(markup: Markup) -> Self {
         markup.text
     }
 }
 
 impl From<String> for Markup {
+    /// Make a `Markup` with inner text of `String`
     fn from(text: String) -> Self {
         Markup { text }
     }
