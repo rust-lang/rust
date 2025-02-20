@@ -262,13 +262,31 @@ where
         self.delegate.typing_mode()
     }
 
+    #[instrument(level = "trace", skip(self), ret)]
     pub(super) fn step_kind_for_source(&self, source: GoalSource) -> PathKind {
-        match (self.current_goal_kind, source) {
-            (
-                CurrentGoalKind::CoinductiveTrait,
-                GoalSource::ImplWhereBound | GoalSource::NormalizeImplWhereBound,
-            ) => PathKind::Coinductive,
-            _ => PathKind::Inductive,
+        match source {
+            GoalSource::NormalizeGoal(path_kind) => path_kind,
+            GoalSource::ImplWhereBound => {
+                // We currently only consider a cycle coinductive if it steps
+                // into a where-clause of a coinductive trait.
+                //
+                // We probably want to make all traits coinductive in the future,
+                // so we treat cycles involving their where-clauses as ambiguous.
+                if let CurrentGoalKind::CoinductiveTrait = self.current_goal_kind {
+                    PathKind::Coinductive
+                } else {
+                    PathKind::Unknown
+                }
+            }
+            // We treat checking super trait bounds for unknowable candidates as
+            // unknown. Treating them is inductive would cause be unsound as it causes
+            // tests/ui/traits/next-solver/coherence/ambiguity-causes-visitor-hang.rs
+            // to compile.
+            GoalSource::CoherenceUnknowableSuper => PathKind::Unknown,
+            GoalSource::Misc
+            | GoalSource::AliasBoundConstCondition
+            | GoalSource::AliasWellFormed
+            | GoalSource::InstantiateHigherRanked => PathKind::Inductive,
         }
     }
 
@@ -1120,14 +1138,11 @@ where
         for_goal_source: GoalSource,
         param_env: I::ParamEnv,
     ) -> Self {
-        let normalization_goal_source = match for_goal_source {
-            GoalSource::ImplWhereBound => GoalSource::NormalizeImplWhereBound,
-            _ => GoalSource::Misc,
-        };
+        let step_kind = ecx.step_kind_for_source(for_goal_source);
         ReplaceAliasWithInfer {
             ecx,
             param_env,
-            normalization_goal_source,
+            normalization_goal_source: GoalSource::NormalizeGoal(step_kind),
             cache: Default::default(),
         }
     }

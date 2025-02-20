@@ -438,9 +438,13 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
 
             let obligation;
             match (child_mode, nested_goal.source()) {
+                // We shouldn't really care about coherence unknowable candidates
+                // as we never report fulfillment errors involving them. However, this
+                // is still reachable when building the fulfillment errors.
+                (_, GoalSource::CoherenceUnknowableSuper) => continue,
                 (
                     ChildMode::Trait(_) | ChildMode::Host(_),
-                    GoalSource::Misc | GoalSource::NormalizeImplWhereBound,
+                    GoalSource::Misc | GoalSource::NormalizeGoal(_),
                 ) => {
                     continue;
                 }

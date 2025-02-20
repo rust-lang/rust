@@ -6,19 +6,19 @@ LL | #![feature(const_trait_impl, generic_const_exprs)]
    |
    = help: remove one of these features
 
-error[E0275]: overflow evaluating the requirement `&T: ~const ConstName`
+error: the type `[(); name_len::<T>()]` is not well-formed
   --> $DIR/issue-88119.rs:19:49
    |
 LL | impl<T: ?Sized + ConstName> const ConstName for &T
    |                                                 ^^
-
-error[E0275]: overflow evaluating the requirement `&T: ConstName`
-  --> $DIR/issue-88119.rs:19:49
    |
-LL | impl<T: ?Sized + ConstName> const ConstName for &T
-   |                                                 ^^
+note: required by a bound in `<&T as ConstName>`
+  --> $DIR/issue-88119.rs:21:5
+   |
+LL |     [(); name_len::<T>()]:,
+   |     ^^^^^^^^^^^^^^^^^^^^^ required by this bound in `<&T as ConstName>`
 
-error[E0275]: overflow evaluating the requirement `[(); name_len::<T>()] well-formed`
+error: the type `[(); name_len::<T>()]` is not well-formed
   --> $DIR/issue-88119.rs:21:5
    |
 LL |     [(); name_len::<T>()]:,
@@ -30,7 +30,7 @@ note: required by a bound in `<&T as ConstName>`
 LL |     [(); name_len::<T>()]:,
    |     ^^^^^^^^^^^^^^^^^^^^^ required by this bound in `<&T as ConstName>`
 
-error[E0275]: overflow evaluating the requirement `[(); name_len::<T>()] well-formed`
+error: the type `[(); name_len::<T>()]` is not well-formed
   --> $DIR/issue-88119.rs:21:10
    |
 LL |     [(); name_len::<T>()]:,
@@ -42,19 +42,19 @@ note: required by a bound in `<&T as ConstName>`
 LL |     [(); name_len::<T>()]:,
    |     ^^^^^^^^^^^^^^^^^^^^^ required by this bound in `<&T as ConstName>`
 
-error[E0275]: overflow evaluating the requirement `&mut T: ~const ConstName`
+error: the type `[(); name_len::<T>()]` is not well-formed
   --> $DIR/issue-88119.rs:26:49
    |
 LL | impl<T: ?Sized + ConstName> const ConstName for &mut T
    |                                                 ^^^^^^
-
-error[E0275]: overflow evaluating the requirement `&mut T: ConstName`
-  --> $DIR/issue-88119.rs:26:49
    |
-LL | impl<T: ?Sized + ConstName> const ConstName for &mut T
-   |                                                 ^^^^^^
+note: required by a bound in `<&mut T as ConstName>`
+  --> $DIR/issue-88119.rs:28:5
+   |
+LL |     [(); name_len::<T>()]:,
+   |     ^^^^^^^^^^^^^^^^^^^^^ required by this bound in `<&mut T as ConstName>`
 
-error[E0275]: overflow evaluating the requirement `[(); name_len::<T>()] well-formed`
+error: the type `[(); name_len::<T>()]` is not well-formed
   --> $DIR/issue-88119.rs:28:5
    |
 LL |     [(); name_len::<T>()]:,
@@ -66,7 +66,7 @@ note: required by a bound in `<&mut T as ConstName>`
 LL |     [(); name_len::<T>()]:,
    |     ^^^^^^^^^^^^^^^^^^^^^ required by this bound in `<&mut T as ConstName>`
 
-error[E0275]: overflow evaluating the requirement `[(); name_len::<T>()] well-formed`
+error: the type `[(); name_len::<T>()]` is not well-formed
   --> $DIR/issue-88119.rs:28:10
    |
 LL |     [(); name_len::<T>()]:,
@@ -78,18 +78,29 @@ note: required by a bound in `<&mut T as ConstName>`
 LL |     [(); name_len::<T>()]:,
    |     ^^^^^^^^^^^^^^^^^^^^^ required by this bound in `<&mut T as ConstName>`
 
-error[E0275]: overflow evaluating the requirement `&&mut u8: ConstName`
-  --> $DIR/issue-88119.rs:33:35
+error: the type `[(); name_len::<T>()]` is not well-formed
+  --> $DIR/issue-88119.rs:33:34
    |
 LL | pub const ICE_1: &'static [u8] = <&&mut u8 as ConstName>::NAME_BYTES;
-   |                                   ^^^^^^^^
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: required by a bound in `<&mut T as ConstName>`
+  --> $DIR/issue-88119.rs:28:5
+   |
+LL |     [(); name_len::<T>()]:,
+   |     ^^^^^^^^^^^^^^^^^^^^^ required by this bound in `<&mut T as ConstName>`
 
-error[E0275]: overflow evaluating the requirement `&mut &u8: ConstName`
-  --> $DIR/issue-88119.rs:34:35
+error: the type `[(); name_len::<T>()]` is not well-formed
+  --> $DIR/issue-88119.rs:34:34
    |
 LL | pub const ICE_2: &'static [u8] = <&mut &u8 as ConstName>::NAME_BYTES;
-   |                                   ^^^^^^^^
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: required by a bound in `<&T as ConstName>`
+  --> $DIR/issue-88119.rs:21:5
+   |
+LL |     [(); name_len::<T>()]:,
+   |     ^^^^^^^^^^^^^^^^^^^^^ required by this bound in `<&T as ConstName>`
 
-error: aborting due to 11 previous errors
+error: aborting due to 9 previous errors
 
-For more information about this error, try `rustc --explain E0275`.
