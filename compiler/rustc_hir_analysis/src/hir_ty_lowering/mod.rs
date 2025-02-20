@@ -1769,31 +1769,19 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         trait_segment: &hir::PathSegment<'tcx>,
         item_segment: &hir::PathSegment<'tcx>,
     ) -> Ty<'tcx> {
-        let tcx = self.tcx();
-
-        let trait_def_id = tcx.parent(item_def_id);
-        debug!(?trait_def_id);
-
-        let Some(self_ty) = opt_self_ty else {
-            let guar = self.error_missing_qpath_self_ty(
-                trait_def_id,
-                span,
-                item_segment,
-                ty::AssocKind::Type,
-            );
-            return Ty::new_error(tcx, guar);
-        };
-        debug!(?self_ty);
-
-        let (item_def_id, item_args) = self.lower_qpath_shared(
+        match self.lower_qpath_shared(
             span,
-            self_ty,
-            trait_def_id,
+            opt_self_ty,
             item_def_id,
             trait_segment,
             item_segment,
-        );
-        Ty::new_projection_from_args(tcx, item_def_id, item_args)
+            ty::AssocKind::Type,
+        ) {
+            Ok((item_def_id, item_args)) => {
+                Ty::new_projection_from_args(self.tcx(), item_def_id, item_args)
+            }
+            Err(guar) => Ty::new_error(self.tcx(), guar),
+        }
     }
 
     /// Lower a qualified path to a const.
@@ -1806,44 +1794,42 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         trait_segment: &hir::PathSegment<'tcx>,
         item_segment: &hir::PathSegment<'tcx>,
     ) -> Const<'tcx> {
-        let tcx = self.tcx();
-
-        let trait_def_id = tcx.parent(item_def_id);
-        debug!(?trait_def_id);
-
-        let Some(self_ty) = opt_self_ty else {
-            let guar = self.error_missing_qpath_self_ty(
-                trait_def_id,
-                span,
-                item_segment,
-                ty::AssocKind::Const,
-            );
-            return Const::new_error(tcx, guar);
-        };
-        debug!(?self_ty);
-
-        let (item_def_id, item_args) = self.lower_qpath_shared(
+        match self.lower_qpath_shared(
             span,
-            self_ty,
-            trait_def_id,
+            opt_self_ty,
             item_def_id,
             trait_segment,
             item_segment,
-        );
-        let uv = ty::UnevaluatedConst::new(item_def_id, item_args);
-        Const::new_unevaluated(tcx, uv)
+            ty::AssocKind::Const,
+        ) {
+            Ok((item_def_id, item_args)) => {
+                let uv = ty::UnevaluatedConst::new(item_def_id, item_args);
+                Const::new_unevaluated(self.tcx(), uv)
+            }
+            Err(guar) => Const::new_error(self.tcx(), guar),
+        }
     }
 
     #[instrument(level = "debug", skip_all)]
     fn lower_qpath_shared(
         &self,
         span: Span,
-        self_ty: Ty<'tcx>,
-        trait_def_id: DefId,
+        opt_self_ty: Option<Ty<'tcx>>,
         item_def_id: DefId,
         trait_segment: &hir::PathSegment<'tcx>,
         item_segment: &hir::PathSegment<'tcx>,
-    ) -> (DefId, GenericArgsRef<'tcx>) {
+        kind: ty::AssocKind,
+    ) -> Result<(DefId, GenericArgsRef<'tcx>), ErrorGuaranteed> {
+        let tcx = self.tcx();
+
+        let trait_def_id = tcx.parent(item_def_id);
+        debug!(?trait_def_id);
+
+        let Some(self_ty) = opt_self_ty else {
+            return Err(self.error_missing_qpath_self_ty(trait_def_id, span, item_segment, kind));
+        };
+        debug!(?self_ty);
+
         let trait_ref =
             self.lower_mono_trait_ref(span, trait_def_id, self_ty, trait_segment, false);
         debug!(?trait_ref);
@@ -1851,7 +1837,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let item_args =
             self.lower_generic_args_of_assoc_item(span, item_def_id, item_segment, trait_ref.args);
 
-        (item_def_id, item_args)
+        Ok((item_def_id, item_args))
     }
 
     fn error_missing_qpath_self_ty(
