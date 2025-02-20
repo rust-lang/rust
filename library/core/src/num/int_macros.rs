@@ -183,6 +183,52 @@ macro_rules! int_impl {
             (self as $UnsignedT).trailing_ones()
         }
 
+        /// Returns `self` with only the most significant bit set, or `0` if
+        /// the input is `0`.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(isolate_most_least_significant_one)]
+        ///
+        #[doc = concat!("let n: ", stringify!($SelfT), " = 0b_01100100;")]
+        ///
+        /// assert_eq!(n.isolate_most_significant_one(), 0b_01000000);
+        #[doc = concat!("assert_eq!(0_", stringify!($SelfT), ".isolate_most_significant_one(), 0);")]
+        /// ```
+        #[unstable(feature = "isolate_most_least_significant_one", issue = "136909")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline(always)]
+        pub const fn isolate_most_significant_one(self) -> Self {
+            self & (((1 as $SelfT) << (<$SelfT>::BITS - 1)).wrapping_shr(self.leading_zeros()))
+        }
+
+        /// Returns `self` with only the least significant bit set, or `0` if
+        /// the input is `0`.
+        ///
+        /// # Examples
+        ///
+        /// Basic usage:
+        ///
+        /// ```
+        /// #![feature(isolate_most_least_significant_one)]
+        ///
+        #[doc = concat!("let n: ", stringify!($SelfT), " = 0b_01100100;")]
+        ///
+        /// assert_eq!(n.isolate_least_significant_one(), 0b_00000100);
+        #[doc = concat!("assert_eq!(0_", stringify!($SelfT), ".isolate_least_significant_one(), 0);")]
+        /// ```
+        #[unstable(feature = "isolate_most_least_significant_one", issue = "136909")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline(always)]
+        pub const fn isolate_least_significant_one(self) -> Self {
+            self & self.wrapping_neg()
+        }
+
         /// Returns the bit pattern of `self` reinterpreted as an unsigned integer of the same size.
         ///
         /// This produces the same result as an `as` cast, but ensures that the bit-width remains
