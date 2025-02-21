@@ -11,7 +11,7 @@ fn main() {
     rfs::write("archive/invalid_bitcode.o", &bitcode);
 
     llvm_ar()
-        .obj_to_thin_ar()
+        .arg("rcuS") // like obj_to_ar() except skips creating a symbol table
         .output_input(
             path("archive").join(static_lib_name("thin_archive")),
             "archive/invalid_bitcode.o",
