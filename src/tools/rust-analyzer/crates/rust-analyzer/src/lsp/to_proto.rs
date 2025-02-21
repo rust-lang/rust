@@ -1884,7 +1884,7 @@ pub(crate) fn make_update_runnable(
     r.environment.extend(update_test.env().iter().map(|(k, v)| (k.to_string(), v.to_string())));
 
     if update_test.insta {
-        r.cargo_args.insert(0, "insta".to_string());
+        r.cargo_args.insert(0, "insta".to_owned());
     }
 
     Some(runnable)
