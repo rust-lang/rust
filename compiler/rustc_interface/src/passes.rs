@@ -301,8 +301,41 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
         for (ident, mut spans) in identifiers.drain(..) {
             spans.sort();
             if ident == sym::ferris {
+                enum FerrisFix {
+                    SnakeCase,
+                    ScreamingSnakeCase,
+                    PascalCase,
+                }
+
+                impl FerrisFix {
+                    const fn as_str(self) -> &'static str {
+                        match self {
+                            FerrisFix::SnakeCase => "ferris",
+                            FerrisFix::ScreamingSnakeCase => "FERRIS",
+                            FerrisFix::PascalCase => "Ferris",
+                        }
+                    }
+                }
+
                 let first_span = spans[0];
-                sess.dcx().emit_err(errors::FerrisIdentifier { spans, first_span });
+                let prev_source = sess.psess.source_map().span_to_prev_source(first_span);
+                let ferris_fix = prev_source
+                    .map_or(FerrisFix::SnakeCase, |source| {
+                        let mut source_before_ferris = source.trim_end().split_whitespace().rev();
+                        match source_before_ferris.next() {
+                            Some("struct" | "trait" | "mod" | "union" | "type" | "enum") => {
+                                FerrisFix::PascalCase
+                            }
+                            Some("const" | "static") => FerrisFix::ScreamingSnakeCase,
+                            Some("mut") if source_before_ferris.next() == Some("static") => {
+                                FerrisFix::ScreamingSnakeCase
+                            }
+                            _ => FerrisFix::SnakeCase,
+                        }
+                    })
+                    .as_str();
+
+                sess.dcx().emit_err(errors::FerrisIdentifier { spans, first_span, ferris_fix });
             } else {
                 sess.dcx().emit_err(errors::EmojiIdentifier { spans, ident });
             }

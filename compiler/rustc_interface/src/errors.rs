@@ -24,8 +24,9 @@ pub(crate) struct CrateNameInvalid<'a> {
 pub struct FerrisIdentifier {
     #[primary_span]
     pub spans: Vec<Span>,
-    #[suggestion(code = "ferris", applicability = "maybe-incorrect")]
+    #[suggestion(code = "{ferris_fix}", applicability = "maybe-incorrect")]
     pub first_span: Span,
+    pub ferris_fix: &'static str,
 }
 
 #[derive(Diagnostic)]
