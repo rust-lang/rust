@@ -811,26 +811,40 @@ pub struct CtxtInterners<'tcx> {
 }
 
 impl<'tcx> CtxtInterners<'tcx> {
-    fn new(arena: &'tcx WorkerLocal<Arena<'tcx>>) -> CtxtInterners<'tcx> { 
+    fn new(arena: &'tcx WorkerLocal<Arena<'tcx>>) -> CtxtInterners<'tcx> {
         CtxtInterners {
             arena,
-            // There are likely to be a lot of types. This should occupy 0.4 MB.
-            type_: InternedSet::with_capacity(16384),
-            const_lists: InternedSet::with_capacity(4096),
-            args: InternedSet::with_capacity(4096),
-            type_lists: InternedSet::with_capacity(4096),
+            // From some experiments, it looks like there usualy are < 2^20 types.
+            // 2^20 * 24 bytes ~ 25 MB, which is acceptable IMHO.
+            type_: InternedSet::with_capacity(1048576),
+            // Const lists don't seem to be too common, but I still reserver 128 of them, since
+            // it is cheap anyway
+            const_lists: InternedSet::with_capacity(128),
+            // From some experiments, it looks like there usualy are < 2^20 arg lists.
+            // 2^20 * 8 bytes ~ 9 MB, which is acceptable IMHO.
+            args: InternedSet::with_capacity(1048576),
+            // From some experiments, it looks like there usualy are < 2^19 type_lists.
+            type_lists: InternedSet::with_capacity(524288),
             region: InternedSet::with_capacity(4096),
-            poly_existential_predicates: InternedSet::with_capacity(1024),
-            canonical_var_infos: InternedSet::with_capacity(1024),
-            predicate:InternedSet::with_capacity(1024),
+            // There are usually very few `poly_existential_predicates` - for cargo, there were 119.
+            // So, 256 ought to be more than enough for all cases.
+            poly_existential_predicates: InternedSet::with_capacity(256),
+            // There is usually very few `canonical_var_infos` - for cargo, there were 379.
+            // So, 512 ought to be more than enough for all cases.
+            canonical_var_infos: InternedSet::with_capacity(512),
+            predicate: InternedSet::with_capacity(1024),
             clauses: InternedSet::with_capacity(1024),
-            projs: InternedSet::with_capacity(4096),
-            place_elems: InternedSet::with_capacity(4096),
+            // Projs don't seem to be too common, but I still reserver 128 of them, since
+            // it is cheap anyway
+            projs: InternedSet::with_capacity(128),
+            // There semes to be > 2^16 place_elems.
+            place_elems: InternedSet::with_capacity(65536),
             const_: InternedSet::with_capacity(4096),
             pat: InternedSet::with_capacity(1024),
             const_allocation: InternedSet::with_capacity(1024),
-            bound_variable_kinds: InternedSet::with_capacity(1024),
-            layout: InternedSet::with_capacity(1024),
+            // There is usually < 2^13 bound_variable_kinds
+            bound_variable_kinds: InternedSet::with_capacity(8192),
+            layout: InternedSet::with_capacity(4096),
             adt_def: InternedSet::with_capacity(1024),
             external_constraints: InternedSet::with_capacity(1024),
             predefined_opaques_in_body: InternedSet::with_capacity(1024),
@@ -838,7 +852,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             local_def_ids: InternedSet::with_capacity(1024),
             captures: InternedSet::with_capacity(1024),
             offset_of: InternedSet::with_capacity(1024),
-            valtree:  InternedSet::with_capacity(1024),
+            valtree: InternedSet::with_capacity(1024),
         }
     }
 
@@ -2550,6 +2564,7 @@ macro_rules! slice_interners {
     ($($field:ident: $vis:vis $method:ident($ty:ty)),+ $(,)?) => (
         impl<'tcx> TyCtxt<'tcx> {
             $($vis fn $method(self, v: &[$ty]) -> &'tcx List<$ty> {
+                //eprintln!("{} len:{}",stringify!($field), self.interners.$field.len());
                 if v.is_empty() {
                     List::empty()
                 } else {
@@ -2848,6 +2863,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // FIXME consider asking the input slice to be sorted to avoid
         // re-interning permutations, in which case that would be asserted
         // here.
+
         self.intern_local_def_ids(clauses)
     }
 
