@@ -8,9 +8,8 @@ note: method defined here
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
 help: provide the argument
    |
-LL -     f.call_once()
-LL +     f.call_once(/* args */)
-   |
+LL |     f.call_once(/* args */)
+   |                 ++++++++++
 
 error: aborting due to 1 previous error
 

@@ -48,9 +48,8 @@ LL | struct MyType<'a>(Cell<Option<&'unpinned mut MyType<'a>>>, Pin);
    |        ^^^^^^
 help: provide the argument
    |
-LL -     let mut unpinned = MyType(Cell::new(None));
-LL +     let mut unpinned = MyType(Cell::new(None), /* value */);
-   |
+LL |     let mut unpinned = MyType(Cell::new(None), /* value */);
+   |                                              +++++++++++++
 
 error[E0606]: casting `&MyType<'_>` as `*const Cell<Option<&mut MyType<'_>>>` is invalid
   --> $DIR/ice-cast-type-with-error-124848.rs:14:20

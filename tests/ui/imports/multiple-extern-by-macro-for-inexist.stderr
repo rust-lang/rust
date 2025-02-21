@@ -20,9 +20,8 @@ LL | m!();
    = note: this error originates in the macro `m` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: you can use `as` to change the binding name of the import
    |
-LL -         extern crate std as non_existent;
-LL +         extern crate std as other_non_existent;
-   |
+LL |         extern crate std as other_non_existent;
+   |                             ++++++
 
 error: aborting due to 2 previous errors
 
