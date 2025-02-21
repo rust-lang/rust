@@ -102,6 +102,16 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.s390.verimg"] fn verimg(a: vector_signed_long_long, b: vector_signed_long_long, c: vector_signed_long_long, d: i32) -> vector_signed_long_long;
 
     #[link_name = "llvm.s390.vperm"] fn vperm(a: vector_signed_char, b: vector_signed_char, c: vector_unsigned_char) -> vector_signed_char;
+
+    #[link_name = "llvm.s390.vsumb"] fn vsumb(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_int;
+    #[link_name = "llvm.s390.vsumh"] fn vsumh(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_int;
+
+    #[link_name = "llvm.s390.vsumgh"] fn vsumgh(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_long_long;
+    #[link_name = "llvm.s390.vsumgf"] fn vsumgf(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_long_long;
+
+    #[link_name = "llvm.s390.vsumqf"] fn vsumqf(a: vector_unsigned_int, b: vector_unsigned_int) -> u128;
+    #[link_name = "llvm.s390.vsumqg"] fn vsumqg(a: vector_unsigned_long_long, b: vector_unsigned_long_long) -> u128;
+
 }
 
 impl_from! { i8x16, u8x16,  i16x8, u16x8, i32x4, u32x4, i64x2, u64x2, f32x4, f64x2 }
@@ -1295,6 +1305,95 @@ mod sealed {
         vector_float,
         vector_double
     }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorSumU128 {
+        unsafe fn vec_sum_u128(self, other: Self) -> vector_unsigned_char;
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(test, assert_instr(vsumqf))]
+    pub unsafe fn vec_vsumqf(a: vector_unsigned_int, b: vector_unsigned_int) -> u128 {
+        transmute(vsumqf(a, b))
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(test, assert_instr(vsumqg))]
+    pub unsafe fn vec_vsumqg(a: vector_unsigned_long_long, b: vector_unsigned_long_long) -> u128 {
+        transmute(vsumqg(a, b))
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    impl VectorSumU128 for vector_unsigned_int {
+        #[inline]
+        #[target_feature(enable = "vector")]
+        unsafe fn vec_sum_u128(self, other: Self) -> vector_unsigned_char {
+            transmute(vec_vsumqf(self, other))
+        }
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    impl VectorSumU128 for vector_unsigned_long_long {
+        #[inline]
+        #[target_feature(enable = "vector")]
+        unsafe fn vec_sum_u128(self, other: Self) -> vector_unsigned_char {
+            transmute(vec_vsumqg(self, other))
+        }
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorSum2 {
+        unsafe fn vec_sum2(self, other: Self) -> vector_unsigned_long_long;
+    }
+
+    test_impl! { vec_vsumgh (a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_long_long [vsumgh, vsumgh] }
+    test_impl! { vec_vsumgf (a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_long_long [vsumgf, vsumgf] }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    impl VectorSum2 for vector_unsigned_short {
+        #[inline]
+        #[target_feature(enable = "vector")]
+        unsafe fn vec_sum2(self, other: Self) -> vector_unsigned_long_long {
+            vec_vsumgh(self, other)
+        }
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    impl VectorSum2 for vector_unsigned_int {
+        #[inline]
+        #[target_feature(enable = "vector")]
+        unsafe fn vec_sum2(self, other: Self) -> vector_unsigned_long_long {
+            vec_vsumgf(self, other)
+        }
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorSum4 {
+        unsafe fn vec_sum4(self, other: Self) -> vector_unsigned_int;
+    }
+
+    test_impl! { vec_vsumb (a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_int [vsumb, vsumb] }
+    test_impl! { vec_vsumh (a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_int [vsumh, vsumh] }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    impl VectorSum4 for vector_unsigned_char {
+        #[inline]
+        #[target_feature(enable = "vector")]
+        unsafe fn vec_sum4(self, other: Self) -> vector_unsigned_int {
+            vec_vsumb(self, other)
+        }
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    impl VectorSum4 for vector_unsigned_short {
+        #[inline]
+        #[target_feature(enable = "vector")]
+        unsafe fn vec_sum4(self, other: Self) -> vector_unsigned_int {
+            vec_vsumh(self, other)
+        }
+    }
 }
 
 /// Vector element-wise addition.
@@ -1853,6 +1952,39 @@ pub unsafe fn vec_genmasks_64<const L: u8, const H: u8>() -> vector_unsigned_lon
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
 pub unsafe fn vec_perm<T: sealed::VectorPerm>(a: T, b: T, c: vector_unsigned_char) -> T {
     a.vec_perm(b, c)
+}
+
+/// Vector Sum Across Quadword
+///
+/// Returns a vector containing the results of performing a sum across all the elements in each of the quadword of vector a,
+/// and the rightmost word or doubleword element of the b. The result is an unsigned 128-bit integer.
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_sum_u128<T: sealed::VectorSumU128>(a: T, b: T) -> vector_unsigned_char {
+    a.vec_sum_u128(b)
+}
+
+/// Vector Sum Across Doubleword
+///
+/// Returns a vector containing the results of performing a sum across all the elements in each of the doubleword of vector a,
+/// and the rightmost sub-element of the corresponding doubleword of b.
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_sum2<T: sealed::VectorSum2>(a: T, b: T) -> vector_unsigned_long_long {
+    a.vec_sum2(b)
+}
+
+/// Vector Sum Across Word
+///
+/// Returns a vector containing the results of performing a sum across all the elements in each of the word of vector a,
+/// and the rightmost sub-element of the corresponding word of b.
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_sum4<T: sealed::VectorSum4>(a: T, b: T) -> vector_unsigned_int {
+    a.vec_sum4(b)
 }
 
 #[cfg(test)]
