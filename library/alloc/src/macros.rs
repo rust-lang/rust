@@ -120,7 +120,7 @@ macro_rules! vec {
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow_internal_unstable(hint_must_use, liballoc_internals)]
-#[cfg_attr(not(test), rustc_diagnostic_item = "format_macro")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "format_macro", clippy::format_args)]
 macro_rules! format {
     ($($arg:tt)*) => {
         $crate::__export::must_use({
