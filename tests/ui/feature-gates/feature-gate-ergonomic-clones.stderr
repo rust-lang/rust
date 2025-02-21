@@ -1,4 +1,4 @@
-error[E0658]: `.use` calls are experimental
+error[E0658]: ergonomic clones are experimental
   --> $DIR/feature-gate-ergonomic-clones.rs:5:7
    |
 LL |     x.use
@@ -8,7 +8,7 @@ LL |     x.use
    = help: add `#![feature(ergonomic_clones)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: `.use` calls are experimental
+error[E0658]: ergonomic clones are experimental
   --> $DIR/feature-gate-ergonomic-clones.rs:18:14
    |
 LL |     let f2 = use || {
@@ -18,7 +18,7 @@ LL |     let f2 = use || {
    = help: add `#![feature(ergonomic_clones)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: `.use` calls are experimental
+error[E0658]: ergonomic clones are experimental
   --> $DIR/feature-gate-ergonomic-clones.rs:23:14
    |
 LL |     let f3 = use || {
