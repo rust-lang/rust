@@ -100,9 +100,7 @@ impl<'a, 'll, CX: Borrow<SimpleCx<'ll>>> GenericBuilder<'a, 'll, CX> {
     }
 
     fn ret_void(&mut self) {
-        unsafe {
-            llvm::LLVMBuildRetVoid(self.llbuilder);
-        }
+        llvm::LLVMBuildRetVoid(self.llbuilder);
     }
 
     fn ret(&mut self, v: &'ll Value) {
@@ -293,9 +291,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn ret_void(&mut self) {
-        unsafe {
-            llvm::LLVMBuildRetVoid(self.llbuilder);
-        }
+        llvm::LLVMBuildRetVoid(self.llbuilder);
     }
 
     fn ret(&mut self, v: &'ll Value) {

@@ -1204,7 +1204,7 @@ unsafe extern "C" {
     pub(crate) fn LLVMGetCurrentDebugLocation2<'a>(Builder: &Builder<'a>) -> Option<&'a Metadata>;
 
     // Terminators
-    pub(crate) fn LLVMBuildRetVoid<'a>(B: &Builder<'a>) -> &'a Value;
+    pub(crate) safe fn LLVMBuildRetVoid<'a>(B: &Builder<'a>) -> &'a Value;
     pub(crate) fn LLVMBuildRet<'a>(B: &Builder<'a>, V: &'a Value) -> &'a Value;
     pub(crate) fn LLVMBuildBr<'a>(B: &Builder<'a>, Dest: &'a BasicBlock) -> &'a Value;
     pub(crate) fn LLVMBuildCondBr<'a>(
