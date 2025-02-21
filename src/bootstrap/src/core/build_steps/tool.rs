@@ -35,6 +35,12 @@ pub enum SourceType {
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub enum ToolArtifactKind {
+    Binary,
+    Library,
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 struct ToolBuild {
     compiler: Compiler,
     target: TargetSelection,
@@ -47,6 +53,8 @@ struct ToolBuild {
     allow_features: &'static str,
     /// Additional arguments to pass to the `cargo` invocation.
     cargo_args: Vec<String>,
+    /// Whether the tool builds a binary or a library.
+    artifact_kind: ToolArtifactKind,
 }
 
 impl Builder<'_> {
@@ -79,7 +87,7 @@ impl Builder<'_> {
 /// for using this type as `type Output = ToolBuildResult;`
 #[derive(Clone)]
 pub struct ToolBuildResult {
-    /// Executable path of the corresponding tool that was built.
+    /// Artifact path of the corresponding tool that was built.
     pub tool_path: PathBuf,
     /// Compiler used to build the tool. For non-`ToolRustc` tools this is equal to `target_compiler`.
     /// For `ToolRustc` this is one stage before of the `target_compiler`.
@@ -179,8 +187,14 @@ impl Step for ToolBuild {
             if tool == "tidy" {
                 tool = "rust-tidy";
             }
-            let tool_path =
-                copy_link_tool_bin(builder, self.compiler, self.target, self.mode, tool);
+            let tool_path = match self.artifact_kind {
+                ToolArtifactKind::Binary => {
+                    copy_link_tool_bin(builder, self.compiler, self.target, self.mode, tool)
+                }
+                ToolArtifactKind::Library => builder
+                    .cargo_out(self.compiler, self.mode, self.target)
+                    .join(format!("lib{tool}.rlib")),
+            };
 
             ToolBuildResult { tool_path, build_compiler: self.compiler, target_compiler }
         }
@@ -330,6 +344,7 @@ macro_rules! bootstrap_tool {
         $(,is_unstable_tool = $unstable:expr)*
         $(,allow_features = $allow_features:expr)?
         $(,submodules = $submodules:expr)?
+        $(,artifact_kind = $artifact_kind:expr)?
         ;
     )+) => {
         #[derive(PartialEq, Eq, Clone)]
@@ -389,6 +404,7 @@ macro_rules! bootstrap_tool {
                         builder.require_submodule(submodule, None);
                     }
                 )*
+
                 builder.ensure(ToolBuild {
                     compiler: self.compiler,
                     target: self.target,
@@ -407,7 +423,12 @@ macro_rules! bootstrap_tool {
                     },
                     extra_features: vec![],
                     allow_features: concat!($($allow_features)*),
-                    cargo_args: vec![]
+                    cargo_args: vec![],
+                    artifact_kind: if false $(|| $artifact_kind == ToolArtifactKind::Library)* {
+                        ToolArtifactKind::Library
+                    } else {
+                        ToolArtifactKind::Binary
+                    }
                 })
             }
         }
@@ -491,6 +512,7 @@ impl Step for RustcPerf {
             // Only build the collector package, which is used for benchmarking through
             // a CLI.
             cargo_args: vec!["-p".to_string(), "collector".to_string()],
+            artifact_kind: ToolArtifactKind::Binary,
         };
         let res = builder.ensure(tool.clone());
         // We also need to symlink the `rustc-fake` binary to the corresponding directory,
@@ -548,6 +570,7 @@ impl Step for ErrorIndex {
             extra_features: Vec::new(),
             allow_features: "",
             cargo_args: Vec::new(),
+            artifact_kind: ToolArtifactKind::Binary,
         })
     }
 }
@@ -583,6 +606,7 @@ impl Step for RemoteTestServer {
             extra_features: Vec::new(),
             allow_features: "",
             cargo_args: Vec::new(),
+            artifact_kind: ToolArtifactKind::Binary,
         })
     }
 }
@@ -687,6 +711,7 @@ impl Step for Rustdoc {
                 extra_features,
                 allow_features: "",
                 cargo_args: Vec::new(),
+                artifact_kind: ToolArtifactKind::Binary,
             });
 
         // don't create a stage0-sysroot/bin directory.
@@ -741,6 +766,7 @@ impl Step for Cargo {
             extra_features: Vec::new(),
             allow_features: "",
             cargo_args: Vec::new(),
+            artifact_kind: ToolArtifactKind::Binary,
         })
     }
 }
@@ -789,6 +815,7 @@ impl Step for LldWrapper {
             extra_features: Vec::new(),
             allow_features: "",
             cargo_args: Vec::new(),
+            artifact_kind: ToolArtifactKind::Binary,
         });
 
         let libdir_bin = builder.sysroot_target_bindir(self.target_compiler, target);
@@ -849,6 +876,7 @@ impl Step for RustAnalyzer {
             source_type: SourceType::InTree,
             allow_features: RustAnalyzer::ALLOW_FEATURES,
             cargo_args: Vec::new(),
+            artifact_kind: ToolArtifactKind::Binary,
         })
     }
 }
@@ -893,6 +921,7 @@ impl Step for RustAnalyzerProcMacroSrv {
             source_type: SourceType::InTree,
             allow_features: RustAnalyzer::ALLOW_FEATURES,
             cargo_args: Vec::new(),
+            artifact_kind: ToolArtifactKind::Binary,
         });
 
         // Copy `rust-analyzer-proc-macro-srv` to `<sysroot>/libexec/`
@@ -947,6 +976,7 @@ impl Step for LlvmBitcodeLinker {
             extra_features: self.extra_features,
             allow_features: "",
             cargo_args: Vec::new(),
+            artifact_kind: ToolArtifactKind::Binary,
         });
 
         if tool_result.target_compiler.stage > 0 {
@@ -1126,6 +1156,7 @@ fn run_tool_build_step(
             source_type: SourceType::InTree,
             allow_features: "",
             cargo_args: vec![],
+            artifact_kind: ToolArtifactKind::Binary,
         });
 
     // FIXME: This should just be an if-let-chain, but those are unstable.
@@ -1204,6 +1235,7 @@ impl Step for TestFloatParse {
             extra_features: Vec::new(),
             allow_features: "",
             cargo_args: Vec::new(),
+            artifact_kind: ToolArtifactKind::Binary,
         })
     }
 }
