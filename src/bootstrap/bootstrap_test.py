@@ -26,9 +26,9 @@ def serialize_and_parse(configure_args, bootstrap_args=None):
     if bootstrap_args is None:
         bootstrap_args = bootstrap.FakeArgs()
 
-    section_order, sections, targets = configure.parse_args(configure_args)
+    config = configure.parse_args(configure_args)
     buffer = StringIO()
-    configure.write_config_toml(buffer, section_order, targets, sections)
+    configure.write_config_toml(buffer, config)
     build = bootstrap.RustBuild(config_toml=buffer.getvalue(), args=bootstrap_args)
 
     try:
@@ -108,50 +108,69 @@ class ProgramOutOfDate(unittest.TestCase):
         )
 
 
-class ParseArgsInConfigure(unittest.TestCase):
-    """Test if `parse_args` function in `configure.py` works properly"""
+class ValidateArgsInConfigure(unittest.TestCase):
+    """Test if `validate_args` function in `configure.py` works properly"""
 
     @patch("configure.err")
     def test_unknown_args(self, err):
         # It should be print an error message if the argument doesn't start with '--'
-        configure.parse_args(["enable-full-tools"])
+        configure.validate_args(["enable-full-tools"])
         err.assert_called_with("Option 'enable-full-tools' is not recognized")
         err.reset_mock()
         # It should be print an error message if the argument is not recognized
-        configure.parse_args(["--some-random-flag"])
+        configure.validate_args(["--some-random-flag"])
         err.assert_called_with("Option '--some-random-flag' is not recognized")
 
     @patch("configure.err")
     def test_need_value_args(self, err):
         """It should print an error message if a required argument value is missing"""
-        configure.parse_args(["--target"])
+        configure.validate_args(["--target"])
         err.assert_called_with("Option '--target' needs a value (--target=val)")
+
+    @patch("configure.err")
+    def test_duplicate_args(self, err):
+        """It should print an error message if an option is passed more than once"""
+        configure.validate_args(["--enable-sccache", "--enable-sccache"])
+        err.assert_called_with("Option 'sccache' provided more than once")
+        err.reset_mock()
+
+        configure.validate_args(["--enable-sccache", "--disable-sccache"])
+        err.assert_called_with("Option 'sccache' provided more than once")
 
     @patch("configure.err")
     def test_option_checking(self, err):
         # Options should be checked even if `--enable-option-checking` is not passed
-        configure.parse_args(["--target"])
+        configure.validate_args(["--target"])
         err.assert_called_with("Option '--target' needs a value (--target=val)")
         err.reset_mock()
         # Options should be checked if `--enable-option-checking` is passed
-        configure.parse_args(["--enable-option-checking", "--target"])
+        configure.validate_args(["--enable-option-checking", "--target"])
         err.assert_called_with("Option '--target' needs a value (--target=val)")
         err.reset_mock()
         # Options should not be checked if `--disable-option-checking` is passed
-        configure.parse_args(["--disable-option-checking", "--target"])
+        configure.validate_args(["--disable-option-checking", "--target"])
         err.assert_not_called()
 
-    @patch("configure.parse_example_config", lambda known_args, _: known_args)
+    @patch("configure.p")
+    def test_warns_on_rpm_args(self, p):
+        """It should print a warning if rpm args are passed, and ignore them"""
+        configure.validate_args(["--infodir=/usr/share/info"])
+        p.assert_called_with("WARNING: infodir will be ignored")
+        p.reset_mock()
+
+        configure.validate_args(["--localstatedir=/var/lib/info"])
+        p.assert_called_with("WARNING: localstatedir will be ignored")
+
     def test_known_args(self):
         # It should contain known and correct arguments
-        known_args = configure.parse_args(["--enable-full-tools"])
+        known_args = configure.validate_args(["--enable-full-tools"])
         self.assertTrue(known_args["full-tools"][0][1])
-        known_args = configure.parse_args(["--disable-full-tools"])
+        known_args = configure.validate_args(["--disable-full-tools"])
         self.assertFalse(known_args["full-tools"][0][1])
         # It should contain known arguments and their values
-        known_args = configure.parse_args(["--target=x86_64-unknown-linux-gnu"])
+        known_args = configure.validate_args(["--target=x86_64-unknown-linux-gnu"])
         self.assertEqual(known_args["target"][0][1], "x86_64-unknown-linux-gnu")
-        known_args = configure.parse_args(["--target", "x86_64-unknown-linux-gnu"])
+        known_args = configure.validate_args(["--target", "x86_64-unknown-linux-gnu"])
         self.assertEqual(known_args["target"][0][1], "x86_64-unknown-linux-gnu")
 
 
@@ -171,6 +190,30 @@ class GenerateAndParseConfig(unittest.TestCase):
         build = serialize_and_parse(["--set", "target.x86_64-unknown-linux-gnu.cc=gcc"])
         self.assertEqual(
             build.get_toml("cc", section="target.x86_64-unknown-linux-gnu"), "gcc"
+        )
+
+    def test_set_target_option(self):
+        build = serialize_and_parse(["--build=x86_64-unknown-linux-gnu", "--llvm-config=/usr/bin/llvm-config"])
+        self.assertEqual(
+            build.get_toml("llvm-config", section="target.x86_64-unknown-linux-gnu"), "/usr/bin/llvm-config"
+        )
+
+    def test_set_targets(self):
+        # Multiple targets can be set
+        build = serialize_and_parse(["--set", "target.x86_64-unknown-linux-gnu.cc=gcc", "--set", "target.aarch64-apple-darwin.cc=clang"])
+        self.assertEqual(
+            build.get_toml("cc", section="target.x86_64-unknown-linux-gnu"), "gcc"
+        )
+        self.assertEqual(
+            build.get_toml("cc", section="target.aarch64-apple-darwin"), "clang"
+        )
+
+        build = serialize_and_parse(["--target", "x86_64-unknown-linux-gnu,aarch64-apple-darwin"])
+        self.assertNotEqual(
+            build.config_toml.find("target.aarch64-apple-darwin"), -1
+        )
+        self.assertNotEqual(
+            build.config_toml.find("target.x86_64-unknown-linux-gnu"), -1
         )
 
     def test_set_top_level(self):
