@@ -479,16 +479,15 @@ macro_rules! int_module {
             }
         }
 
-        const SHIFT_AMOUNT_OVERFLOW: $T = <$T>::BITS;
-        const SHIFT_AMOUNT_OVERFLOW2: $T = <$T>::BITS + 3;
-        const SHIFT_AMOUNT_OVERFLOW3: $T = <$T>::BITS << 2;
+        // test_unbounded_sh* constants
+        const SHIFT_AMOUNT_OVERFLOW: u32 = <$T>::BITS;
+        const SHIFT_AMOUNT_OVERFLOW2: u32 = <$T>::BITS + 3;
+        const SHIFT_AMOUNT_OVERFLOW3: u32 = <$T>::BITS << 2;
 
-
-        const SHIFT_AMOUNT_TEST_ONE: $T = <$T>::BITS >> 1;
-        const SHIFT_AMOUNT_TEST_TWO: $T = <$T>::BITS >> 3;
-        const SHIFT_AMOUNT_TEST_THREE: $T = (<$T>::BITS >> 1) - 1;
-        const SHIFT_AMOUNT_TEST_FOUR: $T = <$T>::BITS - 1;
-
+        const SHIFT_AMOUNT_TEST_ONE: u32 = <$T>::BITS >> 1;
+        const SHIFT_AMOUNT_TEST_TWO: u32 = <$T>::BITS >> 3;
+        const SHIFT_AMOUNT_TEST_THREE: u32 = (<$T>::BITS >> 1) - 1;
+        const SHIFT_AMOUNT_TEST_FOUR: u32 = <$T>::BITS - 1;
 
         test_runtime_and_compiletime! {
             fn test_unbounded_shl() {
@@ -496,7 +495,7 @@ macro_rules! int_module {
                 assert_eq_const_safe!(<$T>::unbounded_shl(<$T>::MIN, SHIFT_AMOUNT_TEST_ONE), (<$T>::MIN << SHIFT_AMOUNT_TEST_ONE));
                 assert_eq_const_safe!(<$T>::unbounded_shl(<$T>::MIN, SHIFT_AMOUNT_TEST_TWO), (<$T>::MIN << SHIFT_AMOUNT_TEST_TWO));
                 assert_eq_const_safe!(<$T>::unbounded_shl(<$T>::MIN, SHIFT_AMOUNT_TEST_THREE), (<$T>::MIN << SHIFT_AMOUNT_TEST_THREE));
-                assert_eq_const_safe!(<$T>::unbounded_shl(<$T>::MIN, SHIFT_AMOUN_TEST_FOUR), (<$T>::MIN << SHIFT_AMOUN_TEST_FOUR));
+                assert_eq_const_safe!(<$T>::unbounded_shl(<$T>::MIN, SHIFT_AMOUNT_TEST_FOUR), (<$T>::MIN << SHIFT_AMOUNT_TEST_FOUR));
                 assert_eq_const_safe!(<$T>::unbounded_shl(<$T>::MIN, 1), (<$T>::MIN << 1));
                 assert_eq_const_safe!(<$T>::unbounded_shl(<$T>::MIN, 3), (<$T>::MIN << 3));
                 assert_eq_const_safe!(<$T>::unbounded_shl(<$T>::MIN, 5), (<$T>::MIN << 5));
@@ -572,7 +571,7 @@ macro_rules! int_module {
                 assert_eq_const_safe!(<$T>::unbounded_shr(<$T>::MIN, SHIFT_AMOUNT_TEST_ONE), (<$T>::MIN >> SHIFT_AMOUNT_TEST_ONE));
                 assert_eq_const_safe!(<$T>::unbounded_shr(<$T>::MIN, SHIFT_AMOUNT_TEST_TWO), (<$T>::MIN >> SHIFT_AMOUNT_TEST_TWO));
                 assert_eq_const_safe!(<$T>::unbounded_shr(<$T>::MIN, SHIFT_AMOUNT_TEST_THREE), (<$T>::MIN >> SHIFT_AMOUNT_TEST_THREE));
-                assert_eq_const_safe!(<$T>::unbounded_shr(<$T>::MIN, SHIFT_AMOUN_TEST_FOUR), (<$T>::MIN >> SHIFT_AMOUN_TEST_FOUR));
+                assert_eq_const_safe!(<$T>::unbounded_shr(<$T>::MIN, SHIFT_AMOUNT_TEST_FOUR), (<$T>::MIN >> SHIFT_AMOUNT_TEST_FOUR));
                 assert_eq_const_safe!(<$T>::unbounded_shr(<$T>::MIN, 1), (<$T>::MIN >> 1));
                 assert_eq_const_safe!(<$T>::unbounded_shr(<$T>::MIN, 3), (<$T>::MIN >> 3));
                 assert_eq_const_safe!(<$T>::unbounded_shr(<$T>::MIN, 5), (<$T>::MIN >> 5));
