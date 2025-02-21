@@ -139,7 +139,7 @@ defined in the map. By matching on this, you can find out what sort of
 node the `HirId` referred to and also get a pointer to the data
 itself. Often, you know what sort of node `n` is – e.g. if you know
 that `n` must be some HIR expression, you can do
-[`tcx.hir().expect_expr(n)`][expect_expr], which will extract and return the
+[`tcx.hir_expect_expr(n)`][expect_expr], which will extract and return the
 [`&hir::Expr`][Expr], panicking if `n` is not in fact an expression.
 
 [find]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/hir/map/struct.Map.html#method.find
