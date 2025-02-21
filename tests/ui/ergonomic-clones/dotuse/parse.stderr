@@ -28,7 +28,7 @@ error: incorrect use of `use`
 LL |     1.use();
    |          ^^
    |
-help: `use` is not a method call, remove the parentheses
+help: `use` is not a method call, try removing the parentheses
    |
 LL -     1.use();
 LL +     1.use;
