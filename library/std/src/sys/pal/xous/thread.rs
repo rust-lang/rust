@@ -94,11 +94,11 @@ impl Thread {
                 asm!(
                     "ecall",
                     "ret",
-                                        in("a0") Syscall::UnmapMemory as usize,
-                                        in("a1") mapped_memory_base,
-                                        in("a2") mapped_memory_length,
-                                        in("ra") 0xff80_3000usize,
-                                        options(nomem, nostack, noreturn)
+                    in("a0") Syscall::UnmapMemory as usize,
+                    in("a1") mapped_memory_base,
+                    in("a2") mapped_memory_length,
+                    in("ra") 0xff80_3000usize,
+                    options(nomem, nostack, noreturn)
                 );
             }
         }

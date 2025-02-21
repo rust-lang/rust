@@ -1,4 +1,4 @@
-use crate::io;
+use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 
 pub struct Stdin;
 pub struct Stdout;
@@ -13,6 +13,19 @@ impl Stdin {
 impl io::Read for Stdin {
     fn read(&mut self, _buf: &mut [u8]) -> io::Result<usize> {
         Ok(0)
+    }
+
+    fn read_buf(&mut self, _buf: BorrowedCursor<'_>) -> io::Result<()> {
+        Ok(())
+    }
+
+    fn read_vectored(&mut self, _bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        Ok(0)
+    }
+
+    #[inline]
+    fn is_read_vectored(&self) -> bool {
+        true
     }
 }
 
@@ -30,6 +43,15 @@ impl io::Write for Stdout {
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
+
+    fn write_vectored(&mut self, _bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        Ok(0)
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        true
+    }
 }
 
 impl Stderr {
@@ -45,6 +67,15 @@ impl io::Write for Stderr {
 
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
+    }
+
+    fn write_vectored(&mut self, _bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        Ok(0)
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        true
     }
 }
 
