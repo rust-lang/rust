@@ -147,11 +147,24 @@ fn extract_const_value<'tcx>(
 ) -> Result<ty::Value<'tcx>, &'tcx LayoutError<'tcx>> {
     match ct.kind() {
         ty::ConstKind::Value(cv) => Ok(cv),
-        ty::ConstKind::Param(_) | ty::ConstKind::Expr(_) | ty::ConstKind::Unevaluated(_) => {
+        ty::ConstKind::Param(_) | ty::ConstKind::Expr(_) => {
             if !ct.has_param() {
                 bug!("failed to normalize const, but it is not generic: {ct:?}");
             }
             Err(error(cx, LayoutError::TooGeneric(ty)))
+        }
+        ty::ConstKind::Unevaluated(_) => {
+            let err = if ct.has_param() {
+                LayoutError::TooGeneric(ty)
+            } else {
+                // This case is reachable with unsatisfiable predicates and GCE (which will
+                // cause anon consts to inherit the unsatisfiable predicates). For example
+                // if we have an unsatisfiable `u8: Trait` bound, then it's not a compile
+                // error to mention `[u8; <u8 as Trait>::CONST]`, but we can't compute its
+                // layout.
+                LayoutError::Unknown(ty)
+            };
+            Err(error(cx, err))
         }
         ty::ConstKind::Infer(_)
         | ty::ConstKind::Bound(..)

@@ -12,7 +12,7 @@ use std::borrow::Cow;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 
-use rustc_errors::{Applicability, Diag, EmissionGuarantee};
+use rustc_errors::{Applicability, Diag, EmissionGuarantee, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::HirId;
 use rustc_hir::def_id::DefId;
@@ -996,4 +996,7 @@ pub enum CodegenObligationError {
     /// but was included during typeck due to the trivial_bounds feature.
     Unimplemented,
     FulfillmentError,
+    /// The selected impl has unconstrained generic parameters. This will emit an error
+    /// during impl WF checking.
+    UnconstrainedParam(ErrorGuaranteed),
 }
