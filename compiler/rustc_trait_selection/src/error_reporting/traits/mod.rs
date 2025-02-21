@@ -587,7 +587,7 @@ fn attempt_dyn_to_impl_suggestion(tcx: TyCtxt<'_>, hir_id: Option<hir::HirId>, e
     //   `type Alias = Box<dyn DynIncompatibleTrait>;` to
     //   `type Alias = Box<impl DynIncompatibleTrait>;`
     let Some((_id, first_non_type_parent_node)) =
-        tcx.hir().parent_iter(hir_id).find(|(_id, node)| !matches!(node, hir::Node::Ty(_)))
+        tcx.hir_parent_iter(hir_id).find(|(_id, node)| !matches!(node, hir::Node::Ty(_)))
     else {
         return;
     };

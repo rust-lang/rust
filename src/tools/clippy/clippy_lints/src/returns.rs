@@ -177,8 +177,7 @@ declare_lint_pass!(Return => [LET_AND_RETURN, NEEDLESS_RETURN, NEEDLESS_RETURN_W
 /// because of the never-ness of `return` expressions
 fn stmt_needs_never_type(cx: &LateContext<'_>, stmt_hir_id: HirId) -> bool {
     cx.tcx
-        .hir()
-        .parent_iter(stmt_hir_id)
+        .hir_parent_iter(stmt_hir_id)
         .find_map(|(_, node)| if let Node::Expr(expr) = node { Some(expr) } else { None })
         .is_some_and(|e| {
             cx.typeck_results()
@@ -203,7 +202,7 @@ impl<'tcx> LateLintPass<'tcx> for Return {
             && is_res_lang_ctor(cx, path_res(cx, maybe_constr), ResultErr)
 
             // Ensure this is not the final stmt, otherwise removing it would cause a compile error
-            && let OwnerNode::Item(item) = cx.tcx.hir_owner_node(cx.tcx.hir().get_parent_item(expr.hir_id))
+            && let OwnerNode::Item(item) = cx.tcx.hir_owner_node(cx.tcx.hir_get_parent_item(expr.hir_id))
             && let ItemKind::Fn { body, .. } = item.kind
             && let block = cx.tcx.hir_body(body).value
             && let ExprKind::Block(block, _) = block.kind

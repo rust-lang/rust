@@ -146,7 +146,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             if let ObligationCauseCode::ReturnValue(hir_id)
             | ObligationCauseCode::BlockTailExpression(hir_id, ..) = cause.code()
             {
-                let parent_id = tcx.hir().get_parent_item(*hir_id);
+                let parent_id = tcx.hir_get_parent_item(*hir_id);
                 if let Some(fn_decl) = tcx.hir_fn_decl_by_hir_id(parent_id.into()) {
                     let mut span: MultiSpan = fn_decl.output.span().into();
                     let mut spans = Vec::new();
@@ -472,7 +472,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     ) -> Option<(Ident, &'tcx hir::Ty<'tcx>)> {
         match tcx.hir_get_if_local(def_id)? {
             Node::ImplItem(impl_item) => {
-                let impl_did = tcx.hir().get_parent_item(impl_item.hir_id());
+                let impl_did = tcx.hir_get_parent_item(impl_item.hir_id());
                 if let hir::OwnerNode::Item(Item {
                     kind: ItemKind::Impl(hir::Impl { self_ty, .. }),
                     ..
@@ -484,7 +484,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 }
             }
             Node::TraitItem(trait_item) => {
-                let trait_id = tcx.hir().get_parent_item(trait_item.hir_id());
+                let trait_id = tcx.hir_get_parent_item(trait_item.hir_id());
                 debug_assert_eq!(tcx.def_kind(trait_id.def_id), hir::def::DefKind::Trait);
                 // The method being called is defined in the `trait`, but the `'static`
                 // obligation comes from the `impl`. Find that `impl` so that we can point

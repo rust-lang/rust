@@ -112,7 +112,7 @@ impl IndexingSlicing {
 impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Index(array, index, _) = &expr.kind
-            && (!self.suppress_restriction_lint_in_const || !cx.tcx.hir().is_inside_const_context(expr.hir_id))
+            && (!self.suppress_restriction_lint_in_const || !cx.tcx.hir_is_inside_const_context(expr.hir_id))
             && let expr_ty = cx.typeck_results().expr_ty(array)
             && let mut deref = deref_chain(cx, expr_ty)
             && deref.any(|l| {
@@ -181,7 +181,7 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
                 span_lint_and_then(cx, INDEXING_SLICING, expr.span, "slicing may panic", |diag| {
                     diag.help(help_msg);
 
-                    if cx.tcx.hir().is_inside_const_context(expr.hir_id) {
+                    if cx.tcx.hir_is_inside_const_context(expr.hir_id) {
                         diag.note(note);
                     }
                 });
@@ -223,7 +223,7 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
                 span_lint_and_then(cx, INDEXING_SLICING, expr.span, "indexing may panic", |diag| {
                     diag.help("consider using `.get(n)` or `.get_mut(n)` instead");
 
-                    if cx.tcx.hir().is_inside_const_context(expr.hir_id) {
+                    if cx.tcx.hir_is_inside_const_context(expr.hir_id) {
                         diag.note(note);
                     }
                 });

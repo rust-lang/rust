@@ -251,7 +251,7 @@ pub fn lower_ty<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
     // In case there are any projections, etc., find the "environment"
     // def-ID that will be used to determine the traits/predicates in
     // scope. This is derived from the enclosing item-like thing.
-    let env_def_id = tcx.hir().get_parent_item(hir_ty.hir_id);
+    let env_def_id = tcx.hir_get_parent_item(hir_ty.hir_id);
     collect::ItemCtxt::new(tcx, env_def_id.def_id).lower_ty(hir_ty)
 }
 
@@ -262,6 +262,6 @@ pub fn lower_const_arg_for_rustdoc<'tcx>(
     hir_ct: &hir::ConstArg<'tcx>,
     feed: FeedConstTy,
 ) -> Const<'tcx> {
-    let env_def_id = tcx.hir().get_parent_item(hir_ct.hir_id);
+    let env_def_id = tcx.hir_get_parent_item(hir_ct.hir_id);
     collect::ItemCtxt::new(tcx, env_def_id.def_id).lowerer().lower_const_arg(hir_ct, feed)
 }

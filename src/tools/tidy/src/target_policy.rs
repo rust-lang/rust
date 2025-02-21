@@ -21,7 +21,6 @@ const EXCEPTIONS: &[&str] = &[
     "xtensa_esp32s2_espidf",
     "xtensa_esp32s3_none_elf",
     "xtensa_esp32s3_espidf",
-    "i586_pc_nto_qnx700", // Renamed to i686-pc-nto-qnx700, see https://github.com/rust-lang/rust/issues/136495
 ];
 
 pub fn check(root_path: &Path, bad: &mut bool) {

@@ -469,7 +469,7 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
                     let item = self
                         .tcx
                         .hir()
-                        .expect_item(self.tcx.hir().get_parent_item(self.hir_id()).def_id);
+                        .expect_item(self.tcx.hir_get_parent_item(self.hir_id()).def_id);
                     match &item.kind {
                         hir::ItemKind::Enum(_, generics)
                         | hir::ItemKind::Struct(_, generics)
@@ -1349,7 +1349,7 @@ fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_, ty::PolyFn
         }
 
         Ctor(data) | Variant(hir::Variant { data, .. }) if data.ctor().is_some() => {
-            let adt_def_id = tcx.hir().get_parent_item(hir_id).def_id.to_def_id();
+            let adt_def_id = tcx.hir_get_parent_item(hir_id).def_id.to_def_id();
             let ty = tcx.type_of(adt_def_id).instantiate_identity();
             let inputs = data.fields().iter().map(|f| tcx.type_of(f.def_id).instantiate_identity());
             // constructors for structs with `layout_scalar_valid_range` are unsafe to call

@@ -107,7 +107,7 @@ fn anon_const_type_of<'tcx>(icx: &ItemCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx
             }
         }
         Node::Variant(Variant { disr_expr: Some(ref e), .. }) if e.hir_id == hir_id => {
-            tcx.adt_def(tcx.hir().get_parent_item(hir_id)).repr().discr_type().to_ty(tcx)
+            tcx.adt_def(tcx.hir_get_parent_item(hir_id)).repr().discr_type().to_ty(tcx)
         }
         // Sort of affects the type system, but only for the purpose of diagnostics
         // so no need for ConstArg.
@@ -257,7 +257,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                 }
             }
             ImplItemKind::Type(ty) => {
-                if tcx.impl_trait_ref(tcx.hir().get_parent_item(hir_id)).is_none() {
+                if tcx.impl_trait_ref(tcx.hir_get_parent_item(hir_id)).is_none() {
                     check_feature_inherent_assoc_ty(tcx, item.span);
                 }
 
@@ -341,7 +341,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
 
         Node::Ctor(def) | Node::Variant(Variant { data: def, .. }) => match def {
             VariantData::Unit(..) | VariantData::Struct { .. } => {
-                tcx.type_of(tcx.hir().get_parent_item(hir_id)).instantiate_identity()
+                tcx.type_of(tcx.hir_get_parent_item(hir_id)).instantiate_identity()
             }
             VariantData::Tuple(_, _, ctor) => {
                 let args = ty::GenericArgs::identity_for_item(tcx, def_id);

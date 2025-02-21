@@ -1370,7 +1370,6 @@ pub struct GlobalCtxt<'tcx> {
 
     // Internal caches for metadata decoding. No need to track deps on this.
     pub ty_rcache: Lock<FxHashMap<ty::CReaderCacheKey, Ty<'tcx>>>,
-    pub pred_rcache: Lock<FxHashMap<ty::CReaderCacheKey, Predicate<'tcx>>>,
 
     /// Caches the results of trait selection. This cache is used
     /// for things that do not have to do with the parameters in scope.
@@ -1601,7 +1600,6 @@ impl<'tcx> TyCtxt<'tcx> {
             query_system,
             query_kinds,
             ty_rcache: Default::default(),
-            pred_rcache: Default::default(),
             selection_cache: Default::default(),
             evaluation_cache: Default::default(),
             new_solver_evaluation_cache: Default::default(),
@@ -3019,7 +3017,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Find the crate root and the appropriate span where `use` and outer attributes can be
     /// inserted at.
     pub fn crate_level_attribute_injection_span(self, hir_id: HirId) -> Option<Span> {
-        for (_hir_id, node) in self.hir().parent_iter(hir_id) {
+        for (_hir_id, node) in self.hir_parent_iter(hir_id) {
             if let hir::Node::Crate(m) = node {
                 return Some(m.spans.inject_use_span.shrink_to_lo());
             }

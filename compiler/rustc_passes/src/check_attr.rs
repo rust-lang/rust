@@ -48,7 +48,7 @@ fn target_from_impl_item<'tcx>(tcx: TyCtxt<'tcx>, impl_item: &hir::ImplItem<'_>)
     match impl_item.kind {
         hir::ImplItemKind::Const(..) => Target::AssocConst,
         hir::ImplItemKind::Fn(..) => {
-            let parent_def_id = tcx.hir().get_parent_item(impl_item.hir_id()).def_id;
+            let parent_def_id = tcx.hir_get_parent_item(impl_item.hir_id()).def_id;
             let containing_item = tcx.hir().expect_item(parent_def_id);
             let containing_impl_is_for_trait = match &containing_item.kind {
                 hir::ItemKind::Impl(impl_) => impl_.of_trait.is_some(),
@@ -868,7 +868,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         let span = meta.span();
         if let Some(location) = match target {
             Target::AssocTy => {
-                let parent_def_id = self.tcx.hir().get_parent_item(hir_id).def_id;
+                let parent_def_id = self.tcx.hir_get_parent_item(hir_id).def_id;
                 let containing_item = self.tcx.hir().expect_item(parent_def_id);
                 if Target::from_item(containing_item) == Target::Impl {
                     Some("type alias in implementation block")
@@ -877,7 +877,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
             }
             Target::AssocConst => {
-                let parent_def_id = self.tcx.hir().get_parent_item(hir_id).def_id;
+                let parent_def_id = self.tcx.hir_get_parent_item(hir_id).def_id;
                 let containing_item = self.tcx.hir().expect_item(parent_def_id);
                 // We can't link to trait impl's consts.
                 let err = "associated constant in trait implementation block";
@@ -1161,7 +1161,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             // insert a bang between `#` and `[...`
             let bang_span = attr.span.lo() + BytePos(1);
             let sugg = (attr.style == AttrStyle::Outer
-                && self.tcx.hir().get_parent_item(hir_id) == CRATE_OWNER_ID)
+                && self.tcx.hir_get_parent_item(hir_id) == CRATE_OWNER_ID)
                 .then_some(errors::AttrCrateLevelOnlySugg {
                     attr: attr.span.with_lo(bang_span).with_hi(bang_span),
                 });
@@ -1449,7 +1449,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
         // `#[must_use]` can be applied to a trait method definition with a default body
         if let Target::Method(MethodKind::Trait { body: true }) = target
-            && let parent_def_id = self.tcx.hir().get_parent_item(hir_id).def_id
+            && let parent_def_id = self.tcx.hir_get_parent_item(hir_id).def_id
             && let containing_item = self.tcx.hir().expect_item(parent_def_id)
             && let hir::ItemKind::Trait(..) = containing_item.kind
         {
@@ -2580,7 +2580,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         ..
                     })
                 );
-                let parent_did = self.tcx.hir().get_parent_item(hir_id).to_def_id();
+                let parent_did = self.tcx.hir_get_parent_item(hir_id).to_def_id();
                 let parent_span = self.tcx.def_span(parent_did);
                 let parent_force_inline_attr =
                     self.tcx.get_attr(parent_did, sym::rustc_force_inline);

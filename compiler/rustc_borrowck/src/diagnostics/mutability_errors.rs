@@ -404,7 +404,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         pat.kind
                 {
                     if upvar_ident.name == kw::SelfLower {
-                        for (_, node) in self.infcx.tcx.hir().parent_iter(upvar_hir_id) {
+                        for (_, node) in self.infcx.tcx.hir_parent_iter(upvar_hir_id) {
                             if let Some(fn_decl) = node.fn_decl() {
                                 if !matches!(
                                     fn_decl.implicit_self,
@@ -934,7 +934,6 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         err.span_label(sp, format!("cannot {act}"));
 
         let tcx = self.infcx.tcx;
-        let hir = tcx.hir();
         let closure_id = self.mir_hir_id();
         let closure_span = tcx.def_span(self.mir_def_id());
         let fn_call_id = tcx.parent_hir_id(closure_id);
@@ -1017,10 +1016,10 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             }
         }
 
-        if look_at_return && hir.get_fn_id_for_return_block(closure_id).is_some() {
+        if look_at_return && tcx.hir_get_fn_id_for_return_block(closure_id).is_some() {
             // ...otherwise we are probably in the tail expression of the function, point at the
             // return type.
-            match tcx.hir_node_by_def_id(hir.get_parent_item(fn_call_id).def_id) {
+            match tcx.hir_node_by_def_id(tcx.hir_get_parent_item(fn_call_id).def_id) {
                 hir::Node::Item(hir::Item {
                     ident, kind: hir::ItemKind::Fn { sig, .. }, ..
                 })

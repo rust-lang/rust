@@ -2390,7 +2390,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         long_ty_path: &mut Option<PathBuf>,
     ) -> Result<(), ErrorGuaranteed> {
         if let SelfSource::MethodCall(expr) = source {
-            for (_, parent) in tcx.hir().parent_iter(expr.hir_id).take(5) {
+            for (_, parent) in tcx.hir_parent_iter(expr.hir_id).take(5) {
                 if let Node::Expr(parent_expr) = parent {
                     let lang_item = match parent_expr.kind {
                         ExprKind::Struct(qpath, _, _) => match *qpath {

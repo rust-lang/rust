@@ -81,7 +81,7 @@ fn is_unreachable(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
                 | sym::core_panic_2015_macro
                 | sym::std_panic_2015_macro
                 | sym::core_panic_2021_macro
-        ) && !cx.tcx.hir().is_inside_const_context(expr.hir_id))
+        ) && !cx.tcx.hir_is_inside_const_context(expr.hir_id))
             || matches!(
                 diag_name,
                 sym::unimplemented_macro | sym::todo_macro | sym::unreachable_macro | sym::unreachable_2015_macro

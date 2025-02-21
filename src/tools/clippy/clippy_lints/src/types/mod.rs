@@ -375,8 +375,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
     ) {
         let is_in_trait_impl = if let hir::Node::Item(item) = cx.tcx.hir_node_by_def_id(
             cx.tcx
-                .hir()
-                .get_parent_item(cx.tcx.local_def_id_to_hir_id(def_id))
+                .hir_get_parent_item(cx.tcx.local_def_id_to_hir_id(def_id))
                 .def_id,
         ) {
             matches!(item.kind, ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }))
@@ -420,7 +419,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
             ImplItemKind::Const(ty, _) => {
                 let is_in_trait_impl = if let hir::Node::Item(item) = cx
                     .tcx
-                    .hir_node_by_def_id(cx.tcx.hir().get_parent_item(item.hir_id()).def_id)
+                    .hir_node_by_def_id(cx.tcx.hir_get_parent_item(item.hir_id()).def_id)
                 {
                     matches!(item.kind, ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }))
                 } else {
