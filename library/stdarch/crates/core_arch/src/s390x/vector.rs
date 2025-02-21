@@ -112,6 +112,15 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.s390.vsumqf"] fn vsumqf(a: vector_unsigned_int, b: vector_unsigned_int) -> u128;
     #[link_name = "llvm.s390.vsumqg"] fn vsumqg(a: vector_unsigned_long_long, b: vector_unsigned_long_long) -> u128;
 
+    #[link_name = "llvm.s390.vscbiq"] fn vscbiq(a: u128, b: u128) -> u128;
+    #[link_name = "llvm.s390.vsbiq"] fn vsbiq(a: u128, b: u128, c: u128) -> u128;
+    #[link_name = "llvm.s390.vsbcbiq"] fn vsbcbiq(a: u128, b: u128, c: u128) -> u128;
+
+    #[link_name = "llvm.s390.vscbib"] fn vscbib(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_char;
+    #[link_name = "llvm.s390.vscbih"] fn vscbih(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_short;
+    #[link_name = "llvm.s390.vscbif"] fn vscbif(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int;
+    #[link_name = "llvm.s390.vscbig"] fn vscbig(a: vector_unsigned_long_long, b: vector_unsigned_long_long) -> vector_unsigned_long_long;
+
 }
 
 impl_from! { i8x16, u8x16,  i16x8, u16x8, i32x4, u32x4, i64x2, u64x2, f32x4, f64x2 }
@@ -1394,6 +1403,22 @@ mod sealed {
             vec_vsumh(self, other)
         }
     }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorSubc<Other> {
+        type Result;
+        unsafe fn vec_subc(self, b: Other) -> Self::Result;
+    }
+
+    test_impl! { vec_vscbib (a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_char [vscbib, vscbib] }
+    test_impl! { vec_vscbih (a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_short [vscbih, vscbih] }
+    test_impl! { vec_vscbif (a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int [vscbif, vscbif] }
+    test_impl! { vec_vscbig (a: vector_unsigned_long_long, b: vector_unsigned_long_long) -> vector_unsigned_long_long [vscbig, vscbig] }
+
+    impl_vec_trait! {[VectorSubc vec_subc] vec_vscbib (vector_unsigned_char, vector_unsigned_char) -> vector_unsigned_char }
+    impl_vec_trait! {[VectorSubc vec_subc] vec_vscbih (vector_unsigned_short, vector_unsigned_short) -> vector_unsigned_short }
+    impl_vec_trait! {[VectorSubc vec_subc] vec_vscbif (vector_unsigned_int, vector_unsigned_int) -> vector_unsigned_int }
+    impl_vec_trait! {[VectorSubc vec_subc] vec_vscbig (vector_unsigned_long_long, vector_unsigned_long_long) -> vector_unsigned_long_long }
 }
 
 /// Vector element-wise addition.
@@ -1985,6 +2010,93 @@ pub unsafe fn vec_sum2<T: sealed::VectorSum2>(a: T, b: T) -> vector_unsigned_lon
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
 pub unsafe fn vec_sum4<T: sealed::VectorSum4>(a: T, b: T) -> vector_unsigned_int {
     a.vec_sum4(b)
+}
+
+/// Vector Subtract unsigned 128-bits
+///
+/// Subtracts unsigned quadword values.
+///
+/// This function operates on the vectors as 128-bit unsigned integers. It returns low 128 bits of a - b.
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+#[cfg_attr(test, assert_instr(vsq))]
+pub unsafe fn vec_sub_u128(
+    a: vector_unsigned_char,
+    b: vector_unsigned_char,
+) -> vector_unsigned_char {
+    let a: u128 = transmute(a);
+    let b: u128 = transmute(b);
+
+    transmute(a.wrapping_sub(b))
+}
+
+/// Vector Subtract Carryout
+///
+/// Returns a vector containing the borrow produced by subtracting each of corresponding elements of b from a.
+///
+/// On each resulting element, the value is 0 if a borrow occurred, or 1 if no borrow occurred.
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_subc<T, U>(a: T, b: U) -> <T as sealed::VectorSubc<U>>::Result
+where
+    T: sealed::VectorSubc<U>,
+{
+    a.vec_subc(b)
+}
+
+/// Gets the carry bit of the 128-bit subtraction of two quadword values.
+/// This function operates on the vectors as 128-bit unsigned integers. It returns a vector containing the borrow produced by subtracting b from a, as unsigned 128-bits integers.
+/// If no borrow occurred, the bit 127 of d is 1; otherwise it is set to 0. All other bits of d are 0.
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+#[cfg_attr(test, assert_instr(vscbiq))]
+pub unsafe fn vec_subc_u128(
+    a: vector_unsigned_char,
+    b: vector_unsigned_char,
+) -> vector_unsigned_char {
+    transmute(vscbiq(transmute(a), transmute(b)))
+}
+
+/// Subtracts unsigned quadword values with carry bit from a previous operation.
+///
+/// This function operates on the vectors as 128-bit unsigned integers. It returns a vector containing the result of subtracting of b from a,
+/// and the carryout bit from a previous operation.
+///
+/// Note: Only the borrow indication bit (127-bit) of c is used, and the other bits are ignored.
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+#[cfg_attr(test, assert_instr(vsbiq))]
+pub unsafe fn vec_sube_u128(
+    a: vector_unsigned_char,
+    b: vector_unsigned_char,
+    c: vector_unsigned_char,
+) -> vector_unsigned_char {
+    transmute(vsbiq(transmute(a), transmute(b), transmute(c)))
+}
+
+/// Vector Subtract with Carryout, Carryout
+///
+/// Gets the carry bit of the 128-bit subtraction of two quadword values with carry bit from the previous operation.
+///
+/// It returns a vector containing the carryout produced from the result of subtracting of b from a,
+/// and the carryout bit from a previous operation. If no borrow occurred, the 127-bit of d is 1, otherwise 0.
+/// All other bits of d are 0.
+///
+/// Note: Only the borrow indication bit (127-bit) of c is used, and the other bits are ignored.
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+#[cfg_attr(test, assert_instr(vsbcbiq))]
+pub unsafe fn vec_subec_u128(
+    a: vector_unsigned_char,
+    b: vector_unsigned_char,
+    c: vector_unsigned_char,
+) -> vector_unsigned_char {
+    transmute(vsbcbiq(transmute(a), transmute(b), transmute(c)))
 }
 
 #[cfg(test)]
