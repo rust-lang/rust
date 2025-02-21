@@ -19,7 +19,7 @@ impl From<&AttrKind> for SimpleAttrKind {
     /// if it's a `DocComment` then `Doc` is returned with no conversion.
     ///
     /// ## Cost
-    /// If `AttrKind` is `DocComment` it's free, however if it's `Normal` their is heep allocation
+    /// If `AttrKind` is `DocComment` it's free, however if it's `Normal` their is heap allocation
     fn from(value: &AttrKind) -> Self {
         match value {
             AttrKind::Normal(attr) => {

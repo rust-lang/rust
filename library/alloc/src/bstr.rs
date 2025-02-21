@@ -642,7 +642,7 @@ impl Clone for Box<ByteStr> {
 #[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
 #[unstable(feature = "bstr", issue = "134915")]
 impl<'a> From<&'a ByteStr> for Cow<'a, ByteStr> {
-    /// Create a `Borrowed` cow from a `ByteStr`.
+    /// Wrap `ByteStr` in `Cow::Borrowed`.
     #[inline]
     fn from(s: &'a ByteStr) -> Self {
         Cow::Borrowed(s)
@@ -652,7 +652,7 @@ impl<'a> From<&'a ByteStr> for Cow<'a, ByteStr> {
 #[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
 #[unstable(feature = "bstr", issue = "134915")]
 impl From<Box<[u8]>> for Box<ByteStr> {
-    /// Create a `Box<[u8]>` from `Box<ByteStr>`s raw.
+    /// Move the bytes from `Box<ByteStr>` to `Box<[u8]>`, this does not allocate new memory.
     #[inline]
     fn from(s: Box<[u8]>) -> Box<ByteStr> {
         // SAFETY: `ByteStr` is a transparent wrapper around `[u8]`.
