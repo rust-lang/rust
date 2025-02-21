@@ -91,6 +91,8 @@ ENV RUST_CONFIGURE_ARGS \
       --set llvm.thin-lto=true \
       --set llvm.ninja=false \
       --set llvm.libzstd=true \
+      --set llvm.cflags=-O3 \
+      --set llvm.cxxflags=-O3 \
       --set rust.jemalloc \
       --set rust.use-lld=true \
       --set rust.lto=thin \
