@@ -3,10 +3,10 @@
 use core::char::MAX_LEN_UTF8;
 use core::str::utf8_char_width;
 
-use super::api::{self, WinError};
 use crate::mem::MaybeUninit;
 use crate::os::windows::io::{FromRawHandle, IntoRawHandle};
 use crate::sys::handle::Handle;
+use crate::sys::pal::api::{self, WinError};
 use crate::sys::{c, cvt};
 use crate::{cmp, io, ptr, str};
 

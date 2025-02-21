@@ -21,7 +21,6 @@ pub mod os;
 pub mod pipe;
 #[path = "../unsupported/process.rs"]
 pub mod process;
-pub mod stdio;
 #[path = "../unsupported/thread.rs"]
 pub mod thread;
 #[path = "../unsupported/time.rs"]
