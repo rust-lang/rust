@@ -1,4 +1,4 @@
-//@ known-bug: #79590
+//@ check-pass
 
 trait Database: Restriction<Inner = u32> {}
 
