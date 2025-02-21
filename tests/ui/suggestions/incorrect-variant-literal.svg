@@ -103,7 +103,7 @@
 </tspan>
     <tspan x="10px" y="748px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan>
 </tspan>
-    <tspan x="10px" y="766px"><tspan class="fg-ansi256-012 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">| </tspan><tspan>    Enum::Tuple</tspan><tspan class="fg-ansi256-010">(/* i32 */)</tspan><tspan>;</tspan>
+    <tspan x="10px" y="766px"><tspan class="fg-ansi256-012 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-012 bold">| </tspan><tspan>    Enum::Tuple(</tspan><tspan class="fg-ansi256-010">/* i32 */</tspan><tspan>);</tspan>
 </tspan>
     <tspan x="10px" y="784px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan><tspan>                 </tspan><tspan class="fg-ansi256-010">+++++++++</tspan>
 </tspan>
@@ -581,7 +581,7 @@
 </tspan>
     <tspan x="10px" y="5050px"><tspan class="fg-ansi256-012 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-009">- </tspan><tspan>    Enum::</tspan><tspan class="fg-ansi256-009">tuple</tspan><tspan>();</tspan>
 </tspan>
-    <tspan x="10px" y="5068px"><tspan class="fg-ansi256-012 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-010">+ </tspan><tspan>    Enum::</tspan><tspan class="fg-ansi256-010">Tuple(/* i32 */)</tspan><tspan>;</tspan>
+    <tspan x="10px" y="5068px"><tspan class="fg-ansi256-012 bold">LL</tspan><tspan> </tspan><tspan class="fg-ansi256-010">+ </tspan><tspan>    Enum::</tspan><tspan class="fg-ansi256-010">Tuple</tspan><tspan>(</tspan><tspan class="fg-ansi256-010">/* i32 */</tspan><tspan>);</tspan>
 </tspan>
     <tspan x="10px" y="5086px"><tspan>   </tspan><tspan class="fg-ansi256-012 bold">|</tspan>
 </tspan>

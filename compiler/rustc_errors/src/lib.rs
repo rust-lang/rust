@@ -403,7 +403,12 @@ impl CodeSuggestion {
                 // or deleted code in order to point at the correct column *after* substitution.
                 let mut acc = 0;
                 let mut only_capitalization = false;
-                for part in &substitution.parts {
+                for part in &mut substitution.parts {
+                    // If this is a replacement of, e.g. `"a"` into `"ab"`, adjust the
+                    // suggestion and snippet to look as if we just suggested to add
+                    // `"b"`, which is typically much easier for the user to understand.
+                    part.trim_trivial_replacements(sm);
+
                     only_capitalization |= is_case_difference(sm, &part.snippet, part.span);
                     let cur_lo = sm.lookup_char_pos(part.span.lo());
                     if prev_hi.line == cur_lo.line {

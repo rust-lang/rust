@@ -152,7 +152,7 @@ LL |     f as usize
 help: did you mean to invoke the function?
    |
 LL |     f() as usize
-   |
+   |      ++
 
 error: casting function pointer `T::static_method` to `usize`
   --> tests/ui/fn_to_numeric_cast_any.rs:62:5
@@ -163,7 +163,7 @@ LL |     T::static_method as usize
 help: did you mean to invoke the function?
    |
 LL |     T::static_method() as usize
-   |
+   |                     ++
 
 error: casting function pointer `(clos as fn(u32) -> u32)` to `usize`
   --> tests/ui/fn_to_numeric_cast_any.rs:69:13
