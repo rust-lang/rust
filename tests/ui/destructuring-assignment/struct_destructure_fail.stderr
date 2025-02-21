@@ -31,9 +31,8 @@ LL +     Struct { a, b } = Struct { a: 1, b: 2 };
    |
 help: if you don't care about this missing field, you can explicitly ignore it
    |
-LL -     Struct { a, _ } = Struct { a: 1, b: 2 };
-LL +     Struct { a, b: _ } = Struct { a: 1, b: 2 };
-   |
+LL |     Struct { a, b: _ } = Struct { a: 1, b: 2 };
+   |                 ++
 help: or always ignore missing fields here
    |
 LL -     Struct { a, _ } = Struct { a: 1, b: 2 };

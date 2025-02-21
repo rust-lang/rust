@@ -25,9 +25,8 @@ LL | impl FnMut<(isize,)> for S {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: provide the argument
    |
-LL -     let ans = s();
-LL +     let ans = s(/* isize */);
-   |
+LL |     let ans = s(/* isize */);
+   |                 +++++++++++
 
 error[E0057]: this function takes 1 argument but 2 arguments were supplied
   --> $DIR/overloaded-calls-bad.rs:37:15

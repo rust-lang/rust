@@ -2216,12 +2216,7 @@ impl HumanEmitter {
             if let DisplaySuggestion::Diff | DisplaySuggestion::Underline | DisplaySuggestion::Add =
                 show_code_change
             {
-                for mut part in parts {
-                    // If this is a replacement of, e.g. `"a"` into `"ab"`, adjust the
-                    // suggestion and snippet to look as if we just suggested to add
-                    // `"b"`, which is typically much easier for the user to understand.
-                    part.trim_trivial_replacements(sm);
-
+                for part in parts {
                     let snippet = if let Ok(snippet) = sm.span_to_snippet(part.span) {
                         snippet
                     } else {

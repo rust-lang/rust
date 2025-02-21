@@ -14,8 +14,8 @@ LL |     fn deserialize_token<D: Deserializer<'a>>(_x: D, _y: &'a str) -> &'a st
    |
 help: consider returning the local binding `_y`
    |
-LL ~     fn deserialize_token<D: Deserializer<'a>>(_x: D, _y: &'a str) -> &'a str {
-LL +         _y
+LL |     fn deserialize_token<D: Deserializer<'a>>(_x: D, _y: &'a str) -> &'a str {
+LL ~         _y
 LL ~
    |
 

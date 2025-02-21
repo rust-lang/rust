@@ -14,9 +14,9 @@ LL | |      };
    = help: to override `-D warnings` add `#[allow(clippy::async_yields_async)]`
 help: consider awaiting this value
    |
-LL ~         async {
-LL +             3
-LL +         }.await
+LL |         async {
+LL |             3
+LL ~         }.await
    |
 
 error: an async construct yields a type which is itself awaitable
@@ -46,9 +46,9 @@ LL | |      };
    |
 help: consider awaiting this value
    |
-LL ~         async {
-LL +             3
-LL +         }.await
+LL |         async {
+LL |             3
+LL ~         }.await
    |
 
 error: an async construct yields a type which is itself awaitable
