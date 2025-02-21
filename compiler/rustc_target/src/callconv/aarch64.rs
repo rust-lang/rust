@@ -73,7 +73,7 @@ fn softfloat_float_abi<Ty>(target: &Target, arg: &mut ArgAbi<'_, Ty>) {
     }
 }
 
-fn classify_ret<'a, Ty, C>(cx: &C, ret: &mut ArgAbi<'a, Ty>, kind: AbiKind)
+fn classify_ret<'a, Ty, C>(cx: &C, ret: &mut ArgAbi<'a, Ty>)
 where
     Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout + HasTargetSpec,
@@ -83,12 +83,10 @@ where
         return;
     }
     if !ret.layout.is_aggregate() {
-        if kind == AbiKind::DarwinPCS {
-            // On Darwin, when returning an i8/i16, it must be sign-extended to 32 bits,
-            // and likewise a u8/u16 must be zero-extended to 32-bits.
-            // See also: <https://developer.apple.com/documentation/xcode/writing-arm64-code-for-apple-platforms#Pass-Arguments-to-Functions-Correctly>
-            ret.extend_integer_width_to(32)
-        }
+        // Even if AAPCS does not demand sign extension of smaller-than-32-bit integer returns,
+        // Darwin requires it: <https://developer.apple.com/documentation/xcode/writing-arm64-code-for-apple-platforms#Pass-Arguments-to-Functions-Correctly>
+        // It is harmless to do so in every case. If you ask for only 16 bits, don't inspect the other 48!
+        ret.extend_integer_width_to(32);
         softfloat_float_abi(cx.target_spec(), ret);
         return;
     }
@@ -115,14 +113,11 @@ where
         return;
     }
     if !arg.layout.is_aggregate() {
-        if kind == AbiKind::DarwinPCS {
-            // On Darwin, when passing an i8/i16, it must be sign-extended to 32 bits,
-            // and likewise a u8/u16 must be zero-extended to 32-bits.
-            // See also: <https://developer.apple.com/documentation/xcode/writing-arm64-code-for-apple-platforms#Pass-Arguments-to-Functions-Correctly>
-            arg.extend_integer_width_to(32);
-        }
+        // Even if AAPCS does not demand sign extension of smaller-than-32-bit integer arguments,
+        // Darwin requires it: <https://developer.apple.com/documentation/xcode/writing-arm64-code-for-apple-platforms#Pass-Arguments-to-Functions-Correctly>
+        // It is harmless to do so in every case. If you ask for only 16 bits, don't inspect the other 48!
+        arg.extend_integer_width_to(32);
         softfloat_float_abi(cx.target_spec(), arg);
-
         return;
     }
     if let Some(uniform) = is_homogeneous_aggregate(cx, arg) {
@@ -156,7 +151,7 @@ where
     C: HasDataLayout + HasTargetSpec,
 {
     if !fn_abi.ret.is_ignore() {
-        classify_ret(cx, &mut fn_abi.ret, kind);
+        classify_ret(cx, &mut fn_abi.ret);
     }
 
     for arg in fn_abi.args.iter_mut() {
