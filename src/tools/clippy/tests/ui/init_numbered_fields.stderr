@@ -3,6 +3,7 @@ error: used a field initializer for a tuple struct
    |
 LL |       let _ = TupleStruct {
    |  _____________^
+LL | |
 LL | |         0: 1u32,
 LL | |         1: 42,
 LL | |         2: 23u8,
@@ -13,10 +14,11 @@ LL | |     };
    = help: to override `-D warnings` add `#[allow(clippy::init_numbered_fields)]`
 
 error: used a field initializer for a tuple struct
-  --> tests/ui/init_numbered_fields.rs:24:13
+  --> tests/ui/init_numbered_fields.rs:25:13
    |
 LL |       let _ = TupleStruct {
    |  _____________^
+LL | |
 LL | |         0: 1u32,
 LL | |         2: 2u8,
 LL | |         1: 3u32,
@@ -24,7 +26,7 @@ LL | |     };
    | |_____^ help: use tuple initialization: `TupleStruct(1u32, 3u32, 2u8)`
 
 error: used a field initializer for a tuple struct
-  --> tests/ui/init_numbered_fields.rs:49:13
+  --> tests/ui/init_numbered_fields.rs:51:13
    |
 LL |     let _ = TupleStructVec { 0: vec![0, 1, 2, 3] };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use tuple initialization: `TupleStructVec(vec![0, 1, 2, 3])`

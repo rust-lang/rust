@@ -11,17 +11,20 @@ fn main() {}
 
 /// This needs to be documented
 pub fn unwrap() {
+    //~^ missing_panics_doc
     let result = Err("Hi");
     result.unwrap()
 }
 
 /// This needs to be documented
 pub fn panic() {
+    //~^ missing_panics_doc
     panic!("This function panics")
 }
 
 /// This needs to be documented
 pub fn inner_body(opt: Option<u32>) {
+    //~^ missing_panics_doc
     opt.map(|x| {
         if x == 10 {
             panic!()
@@ -31,17 +34,20 @@ pub fn inner_body(opt: Option<u32>) {
 
 /// This needs to be documented
 pub fn unreachable_and_panic() {
+    //~^ missing_panics_doc
     if true { unreachable!() } else { panic!() }
 }
 
 /// This needs to be documented
 pub fn assert_eq() {
+    //~^ missing_panics_doc
     let x = 0;
     assert_eq!(x, 0);
 }
 
 /// This needs to be documented
 pub fn assert_ne() {
+    //~^ missing_panics_doc
     let x = 0;
     assert_ne!(x, 0);
 }
@@ -149,30 +155,36 @@ pub fn debug_assertions() {
 // `pub` is required, because the lint does not consider unreachable items
 pub mod issue10240 {
     pub fn option_unwrap<T>(v: &[T]) -> &T {
+        //~^ missing_panics_doc
         let o: Option<&T> = v.last();
         o.unwrap()
     }
 
     pub fn option_expect<T>(v: &[T]) -> &T {
+        //~^ missing_panics_doc
         let o: Option<&T> = v.last();
         o.expect("passed an empty thing")
     }
 
     pub fn result_unwrap<T>(v: &[T]) -> &T {
+        //~^ missing_panics_doc
         let res: Result<&T, &str> = v.last().ok_or("oh noes");
         res.unwrap()
     }
 
     pub fn result_expect<T>(v: &[T]) -> &T {
+        //~^ missing_panics_doc
         let res: Result<&T, &str> = v.last().ok_or("oh noes");
         res.expect("passed an empty thing")
     }
 
     pub fn last_unwrap(v: &[u32]) -> u32 {
+        //~^ missing_panics_doc
         *v.last().unwrap()
     }
 
     pub fn last_expect(v: &[u32]) -> u32 {
+        //~^ missing_panics_doc
         *v.last().expect("passed an empty thing")
     }
 }

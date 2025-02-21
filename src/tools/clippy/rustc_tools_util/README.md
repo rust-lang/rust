@@ -13,10 +13,10 @@ build = "build.rs"
 List rustc_tools_util as regular AND build dependency.
 ````toml
 [dependencies]
-rustc_tools_util = "0.4.0"
+rustc_tools_util = "0.4.2"
 
 [build-dependencies]
-rustc_tools_util = "0.4.0"
+rustc_tools_util = "0.4.2"
 ````
 
 In `build.rs`, generate the data in your `main()`

@@ -2,6 +2,7 @@ error: you don't need to add `&` to all patterns
   --> tests/ui/match_ref_pats.rs:8:9
    |
 LL | /         match v {
+LL | |
 LL | |             &Some(v) => println!("{:?}", v),
 LL | |             &None => println!("none"),
 LL | |         }
@@ -12,14 +13,16 @@ LL | |         }
 help: instead of prefixing all patterns with `&`, you can dereference the expression
    |
 LL ~         match *v {
+LL |
 LL ~             Some(v) => println!("{:?}", v),
 LL ~             None => println!("none"),
    |
 
 error: you don't need to add `&` to both the expression and the patterns
-  --> tests/ui/match_ref_pats.rs:25:5
+  --> tests/ui/match_ref_pats.rs:26:5
    |
 LL | /     match &w {
+LL | |
 LL | |         &Some(v) => println!("{:?}", v),
 LL | |         &None => println!("none"),
 LL | |     }
@@ -28,12 +31,13 @@ LL | |     }
 help: try
    |
 LL ~     match w {
+LL |
 LL ~         Some(v) => println!("{:?}", v),
 LL ~         None => println!("none"),
    |
 
 error: redundant pattern matching, consider using `is_none()`
-  --> tests/ui/match_ref_pats.rs:37:12
+  --> tests/ui/match_ref_pats.rs:39:12
    |
 LL |     if let &None = a {
    |     -------^^^^^---- help: try: `if a.is_none()`
@@ -42,15 +46,16 @@ LL |     if let &None = a {
    = help: to override `-D warnings` add `#[allow(clippy::redundant_pattern_matching)]`
 
 error: redundant pattern matching, consider using `is_none()`
-  --> tests/ui/match_ref_pats.rs:42:12
+  --> tests/ui/match_ref_pats.rs:45:12
    |
 LL |     if let &None = &b {
    |     -------^^^^^----- help: try: `if b.is_none()`
 
 error: you don't need to add `&` to all patterns
-  --> tests/ui/match_ref_pats.rs:102:9
+  --> tests/ui/match_ref_pats.rs:106:9
    |
 LL | /         match foobar_variant!(0) {
+LL | |
 LL | |             &FooBar::Foo => println!("Foo"),
 LL | |             &FooBar::Bar => println!("Bar"),
 LL | |             &FooBar::FooBar => println!("FooBar"),
@@ -61,6 +66,7 @@ LL | |         }
 help: instead of prefixing all patterns with `&`, you can dereference the expression
    |
 LL ~         match *foobar_variant!(0) {
+LL |
 LL ~             FooBar::Foo => println!("Foo"),
 LL ~             FooBar::Bar => println!("Bar"),
 LL ~             FooBar::FooBar => println!("FooBar"),

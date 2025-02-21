@@ -15,8 +15,10 @@ fn plus_one(value: usize) -> usize {
 fn option_map_unit_fn() {
 
     x.field.map(|value| { do_nothing(value); do_nothing(value) });
+    //~^ ERROR: cannot find value
 
     x.field.map(|value| if value > 0 { do_nothing(value); do_nothing(value) });
+    //~^ ERROR: cannot find value
 
     // Suggestion for the let block should be `{ ... }` as it's too difficult to build a
     // proper suggestion for these cases
@@ -24,7 +26,9 @@ fn option_map_unit_fn() {
         do_nothing(value);
         do_nothing(value)
     });
+    //~^^^^ ERROR: cannot find value
     x.field.map(|value| { do_nothing(value); do_nothing(value); });
+    //~^ ERROR: cannot find value
 
     // The following should suggest `if let Some(_X) ...` as it's difficult to generate a proper let variable name for them
     Some(42).map(diverge);

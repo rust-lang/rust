@@ -3,6 +3,7 @@ use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
 use clippy_utils::eq_expr_value;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::SpanRangeExt;
+use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use rustc_ast::ast::LitKind;
 use rustc_attr_parsing::RustcVersion;
@@ -353,7 +354,8 @@ impl SuggestContext<'_, '_, '_> {
                         self.output.push_str(&str);
                     } else {
                         self.output.push('!');
-                        self.output.push_str(&terminal.span.get_source_text(self.cx)?);
+                        self.output
+                            .push_str(&Sugg::hir_opt(self.cx, terminal)?.maybe_par().to_string());
                     }
                 },
                 True | False | Not(_) => {
@@ -553,7 +555,7 @@ impl<'tcx> NonminimalBoolVisitor<'_, 'tcx> {
                     _ => simplified.push(Bool::Not(Box::new(simple.clone()))),
                 }
                 let simple_negated = simple_negate(simple);
-                if simplified.iter().any(|s| *s == simple_negated) {
+                if simplified.contains(&simple_negated) {
                     continue;
                 }
                 simplified.push(simple_negated);

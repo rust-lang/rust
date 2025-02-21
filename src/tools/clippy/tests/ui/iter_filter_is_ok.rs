@@ -9,51 +9,54 @@
 fn main() {
     {
         let _ = vec![Ok(1), Err(2), Ok(3)].into_iter().filter(Result::is_ok);
-        //~^ HELP: consider using `flatten` instead
+        //~^ iter_filter_is_ok
+
         let _ = vec![Ok(1), Err(2), Ok(3)].into_iter().filter(|a| a.is_ok());
-        //~^ HELP: consider using `flatten` instead
+        //~^ iter_filter_is_ok
+
         #[rustfmt::skip]
         let _ = vec![Ok(1), Err(2)].into_iter().filter(|o| { o.is_ok() });
-        //~^ HELP: consider using `flatten` instead
+        //~^ iter_filter_is_ok
     }
 
     {
         let _ = vec![Ok(1), Err(2), Ok(3)].into_iter().filter(|&a| a.is_ok());
-        //~^ HELP: consider using `flatten` instead
+        //~^ iter_filter_is_ok
 
         let _ = vec![Ok(1), Err(2), Ok(3)].into_iter().filter(|&a| a.is_ok());
-        //~^ HELP: consider using `flatten` instead
+        //~^ iter_filter_is_ok
 
         #[rustfmt::skip]
         let _ = vec![Ok(1), Err(2)].into_iter().filter(|&o| { o.is_ok() });
-        //~^ HELP: consider using `flatten` instead
+        //~^ iter_filter_is_ok
     }
 
     {
         let _ = vec![Ok(1), Err(2), Ok(3)]
             .into_iter()
             .filter(std::result::Result::is_ok);
-        //~^ HELP: consider using `flatten` instead
+        //~^ iter_filter_is_ok
 
         let _ = vec![Ok(1), Err(2), Ok(3)]
             .into_iter()
             .filter(|a| std::result::Result::is_ok(a));
-        //~^ HELP: consider using `flatten` instead
+        //~^ iter_filter_is_ok
+
         #[rustfmt::skip]
         let _ = vec![Ok(1), Err(2), Ok(3)].into_iter().filter(|a| { std::result::Result::is_ok(a) });
-        //~^ HELP: consider using `flatten` instead
+        //~^ iter_filter_is_ok
     }
 
     {
         let _ = vec![Ok(1), Err(2), Ok(3)].into_iter().filter(|ref a| a.is_ok());
-        //~^ HELP: consider using `flatten` instead
+        //~^ iter_filter_is_ok
 
         let _ = vec![Ok(1), Err(2), Ok(3)].into_iter().filter(|ref a| a.is_ok());
-        //~^ HELP: consider using `flatten` instead
+        //~^ iter_filter_is_ok
 
         #[rustfmt::skip]
         let _ = vec![Ok(1), Err(2)].into_iter().filter(|ref o| { o.is_ok() });
-        //~^ HELP: consider using `flatten` instead
+        //~^ iter_filter_is_ok
     }
 }
 

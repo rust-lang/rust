@@ -9,8 +9,9 @@ fn main() {
 
     // Cyrillic is not allowed by default.
     let счётчик = 10;
-    //~^ ERROR: identifier `счётчик` has a Unicode script that is not allowed by configura
+    //~^ disallowed_script_idents
+
     // Same for japanese.
     let カウンタ = 10;
-    //~^ ERROR: identifier `カウンタ` has a Unicode script that is not allowed by configuratio
+    //~^ disallowed_script_idents
 }

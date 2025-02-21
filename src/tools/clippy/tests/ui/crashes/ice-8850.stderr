@@ -15,7 +15,7 @@ LL ~     FN() + 1
    |
 
 error: returning the result of a `let` binding from a block
-  --> tests/ui/crashes/ice-8850.rs:12:5
+  --> tests/ui/crashes/ice-8850.rs:11:5
    |
 LL |     let res = FN() + 1;
    |     ------------------- unnecessary `let` binding
@@ -29,7 +29,7 @@ LL ~     FN() + 1
    |
 
 error: returning the result of a `let` binding from a block
-  --> tests/ui/crashes/ice-8850.rs:27:5
+  --> tests/ui/crashes/ice-8850.rs:26:5
    |
 LL |     let res = FN() + 1;
    |     ------------------- unnecessary `let` binding

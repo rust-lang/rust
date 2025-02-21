@@ -8,119 +8,121 @@ LL |     Tuple(get_number());
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_operation)]`
 
 error: unnecessary operation
-  --> tests/ui/unnecessary_operation.rs:71:5
+  --> tests/ui/unnecessary_operation.rs:72:5
    |
 LL |     Struct { field: get_number() };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: statement can be reduced to: `get_number();`
 
 error: unnecessary operation
-  --> tests/ui/unnecessary_operation.rs:72:5
+  --> tests/ui/unnecessary_operation.rs:74:5
    |
 LL |     Struct { ..get_struct() };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: statement can be reduced to: `get_struct();`
 
 error: unnecessary operation
-  --> tests/ui/unnecessary_operation.rs:73:5
+  --> tests/ui/unnecessary_operation.rs:76:5
    |
 LL |     Enum::Tuple(get_number());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: statement can be reduced to: `get_number();`
 
 error: unnecessary operation
-  --> tests/ui/unnecessary_operation.rs:74:5
+  --> tests/ui/unnecessary_operation.rs:78:5
    |
 LL |     Enum::Struct { field: get_number() };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: statement can be reduced to: `get_number();`
 
 error: unnecessary operation
-  --> tests/ui/unnecessary_operation.rs:75:5
+  --> tests/ui/unnecessary_operation.rs:80:5
    |
 LL |     5 + get_number();
    |     ^^^^^^^^^^^^^^^^^ help: statement can be reduced to: `5;get_number();`
 
 error: unnecessary operation
-  --> tests/ui/unnecessary_operation.rs:76:5
+  --> tests/ui/unnecessary_operation.rs:82:5
    |
 LL |     *&get_number();
    |     ^^^^^^^^^^^^^^^ help: statement can be reduced to: `get_number();`
 
 error: unnecessary operation
-  --> tests/ui/unnecessary_operation.rs:77:5
+  --> tests/ui/unnecessary_operation.rs:84:5
    |
 LL |     &get_number();
    |     ^^^^^^^^^^^^^^ help: statement can be reduced to: `get_number();`
 
 error: unnecessary operation
-  --> tests/ui/unnecessary_operation.rs:78:5
+  --> tests/ui/unnecessary_operation.rs:86:5
    |
 LL |     (5, 6, get_number());
    |     ^^^^^^^^^^^^^^^^^^^^^ help: statement can be reduced to: `5;6;get_number();`
 
 error: unnecessary operation
-  --> tests/ui/unnecessary_operation.rs:79:5
+  --> tests/ui/unnecessary_operation.rs:88:5
    |
 LL |     get_number()..;
    |     ^^^^^^^^^^^^^^^ help: statement can be reduced to: `get_number();`
 
 error: unnecessary operation
-  --> tests/ui/unnecessary_operation.rs:80:5
+  --> tests/ui/unnecessary_operation.rs:90:5
    |
 LL |     ..get_number();
    |     ^^^^^^^^^^^^^^^ help: statement can be reduced to: `get_number();`
 
 error: unnecessary operation
-  --> tests/ui/unnecessary_operation.rs:81:5
+  --> tests/ui/unnecessary_operation.rs:92:5
    |
 LL |     5..get_number();
    |     ^^^^^^^^^^^^^^^^ help: statement can be reduced to: `5;get_number();`
 
 error: unnecessary operation
-  --> tests/ui/unnecessary_operation.rs:82:5
+  --> tests/ui/unnecessary_operation.rs:94:5
    |
 LL |     [42, get_number()];
    |     ^^^^^^^^^^^^^^^^^^^ help: statement can be reduced to: `42;get_number();`
 
 error: unnecessary operation
-  --> tests/ui/unnecessary_operation.rs:83:5
+  --> tests/ui/unnecessary_operation.rs:96:5
    |
 LL |     [42, 55][get_usize()];
    |     ^^^^^^^^^^^^^^^^^^^^^^ help: statement can be written as: `assert!([42, 55].len() > get_usize());`
 
 error: unnecessary operation
-  --> tests/ui/unnecessary_operation.rs:84:5
+  --> tests/ui/unnecessary_operation.rs:98:5
    |
 LL |     (42, get_number()).1;
    |     ^^^^^^^^^^^^^^^^^^^^^ help: statement can be reduced to: `42;get_number();`
 
 error: unnecessary operation
-  --> tests/ui/unnecessary_operation.rs:85:5
+  --> tests/ui/unnecessary_operation.rs:100:5
    |
 LL |     [get_number(); 55];
    |     ^^^^^^^^^^^^^^^^^^^ help: statement can be reduced to: `get_number();`
 
 error: unnecessary operation
-  --> tests/ui/unnecessary_operation.rs:86:5
+  --> tests/ui/unnecessary_operation.rs:102:5
    |
 LL |     [42; 55][get_usize()];
    |     ^^^^^^^^^^^^^^^^^^^^^^ help: statement can be written as: `assert!([42; 55].len() > get_usize());`
 
 error: unnecessary operation
-  --> tests/ui/unnecessary_operation.rs:87:5
+  --> tests/ui/unnecessary_operation.rs:104:5
    |
 LL | /     {
+LL | |
 LL | |         get_number()
 LL | |     };
    | |______^ help: statement can be reduced to: `get_number();`
 
 error: unnecessary operation
-  --> tests/ui/unnecessary_operation.rs:90:5
+  --> tests/ui/unnecessary_operation.rs:108:5
    |
 LL | /     FooString {
+LL | |
 LL | |         s: String::from("blah"),
 LL | |     };
    | |______^ help: statement can be reduced to: `String::from("blah");`
 
 error: unnecessary operation
-  --> tests/ui/unnecessary_operation.rs:130:5
+  --> tests/ui/unnecessary_operation.rs:149:5
    |
 LL |     [42, 55][get_usize()];
    |     ^^^^^^^^^^^^^^^^^^^^^^ help: statement can be written as: `assert!([42, 55].len() > get_usize());`

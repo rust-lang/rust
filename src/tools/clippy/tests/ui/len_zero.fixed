@@ -86,10 +86,12 @@ impl Deref for DerefToString {
 fn main() {
     let x = [1, 2];
     if x.is_empty() {
+        //~^ len_zero
         println!("This should not happen!");
     }
 
     if "".is_empty() {}
+    //~^ len_zero
 
     let s = "Hello, world!";
     let s1 = &s;
@@ -99,16 +101,24 @@ fn main() {
     let s5 = &s4;
     let s6 = &s5;
     println!("{}", s1.is_empty());
+    //~^ comparison_to_empty
     println!("{}", s2.is_empty());
+    //~^ comparison_to_empty
     println!("{}", s3.is_empty());
+    //~^ comparison_to_empty
     println!("{}", s4.is_empty());
+    //~^ comparison_to_empty
     println!("{}", s5.is_empty());
+    //~^ comparison_to_empty
     println!("{}", (s6).is_empty());
+    //~^ comparison_to_empty
 
     let d2s = DerefToDerefToString {};
     println!("{}", (**d2s).is_empty());
+    //~^ comparison_to_empty
 
     println!("{}", std::borrow::Cow::Borrowed("").is_empty());
+    //~^ comparison_to_empty
 
     let y = One;
     if y.len() == 0 {
@@ -124,18 +134,23 @@ fn main() {
 
     let has_is_empty = HasIsEmpty;
     if has_is_empty.is_empty() {
+        //~^ len_zero
         println!("Or this!");
     }
     if !has_is_empty.is_empty() {
+        //~^ len_zero
         println!("Or this!");
     }
     if !has_is_empty.is_empty() {
+        //~^ len_zero
         println!("Or this!");
     }
     if has_is_empty.is_empty() {
+        //~^ len_zero
         println!("Or this!");
     }
     if !has_is_empty.is_empty() {
+        //~^ len_zero
         println!("Or this!");
     }
     if has_is_empty.len() > 1 {
@@ -147,18 +162,23 @@ fn main() {
         println!("This can happen.");
     }
     if has_is_empty.is_empty() {
+        //~^ len_zero
         println!("Or this!");
     }
     if !has_is_empty.is_empty() {
+        //~^ len_zero
         println!("Or this!");
     }
     if !has_is_empty.is_empty() {
+        //~^ len_zero
         println!("Or this!");
     }
     if !has_is_empty.is_empty() {
+        //~^ len_zero
         println!("Or this!");
     }
     if has_is_empty.is_empty() {
+        //~^ len_zero
         println!("Or this!");
     }
     if 1 < has_is_empty.len() {
@@ -173,6 +193,7 @@ fn main() {
 
     let with_is_empty: &dyn WithIsEmpty = &Wither;
     if with_is_empty.is_empty() {
+        //~^ len_zero
         println!("Or this!");
     }
     assert!(!with_is_empty.is_empty());
@@ -185,11 +206,14 @@ fn main() {
 
     // issue #10529
     (!has_is_empty.is_empty()).then(|| println!("This can happen."));
+    //~^ len_zero
     (has_is_empty.is_empty()).then(|| println!("Or this!"));
+    //~^ len_zero
 }
 
 fn test_slice(b: &[u8]) {
     if !b.is_empty() {}
+    //~^ len_zero
 }
 
 // issue #11992
@@ -224,9 +248,12 @@ fn binop_with_macros() {
     if has_is_empty.len() == compare_to!(1) {}
 
     if has_is_empty.is_empty() {}
+    //~^ len_zero
     if has_is_empty.is_empty() {}
+    //~^ len_zero
 
     (!has_is_empty.is_empty()).then(|| println!("This can happen."));
+    //~^ len_zero
 }
 
 fn no_infinite_recursion() -> bool {

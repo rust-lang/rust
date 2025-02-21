@@ -23,13 +23,18 @@ fn binary_heap_retain() {
     let mut binary_heap = BinaryHeap::from([1, 2, 3]);
     // Do lint.
     binary_heap = binary_heap.into_iter().filter(|x| x % 2 == 0).collect();
+    //~^ manual_retain
     binary_heap = binary_heap.iter().filter(|&x| x % 2 == 0).copied().collect();
+    //~^ manual_retain
     binary_heap = binary_heap.iter().filter(|&x| x % 2 == 0).cloned().collect();
+    //~^ manual_retain
 
     // Do lint, because we use pattern matching
     let mut tuples = BinaryHeap::from([(0, 1), (1, 2), (2, 3)]);
     tuples = tuples.iter().filter(|(ref x, ref y)| *x == 0).copied().collect();
+    //~^ manual_retain
     tuples = tuples.iter().filter(|(x, y)| *x == 0).copied().collect();
+    //~^ manual_retain
 
     // Do not lint, because type conversion is performed
     binary_heap = binary_heap
@@ -60,8 +65,11 @@ fn btree_map_retain() {
     let mut btree_map: BTreeMap<i8, i8> = (0..8).map(|x| (x, x * 10)).collect();
     // Do lint.
     btree_map = btree_map.into_iter().filter(|(k, _)| k % 2 == 0).collect();
+    //~^ manual_retain
     btree_map = btree_map.into_iter().filter(|(_, v)| v % 2 == 0).collect();
+    //~^ manual_retain
     btree_map = btree_map
+        //~^ manual_retain
         .into_iter()
         .filter(|(k, v)| (k % 2 == 0) && (v % 2 == 0))
         .collect();
@@ -87,13 +95,18 @@ fn btree_set_retain() {
 
     // Do lint.
     btree_set = btree_set.iter().filter(|&x| x % 2 == 0).copied().collect();
+    //~^ manual_retain
     btree_set = btree_set.iter().filter(|&x| x % 2 == 0).cloned().collect();
+    //~^ manual_retain
     btree_set = btree_set.into_iter().filter(|x| x % 2 == 0).collect();
+    //~^ manual_retain
 
     // Do lint, because we use pattern matching
     let mut tuples = BTreeSet::from([(0, 1), (1, 2), (2, 3)]);
     tuples = tuples.iter().filter(|(ref x, ref y)| *x == 0).copied().collect();
+    //~^ manual_retain
     tuples = tuples.iter().filter(|(x, y)| *x == 0).copied().collect();
+    //~^ manual_retain
 
     // Do not lint, because type conversion is performed
     btree_set = btree_set
@@ -124,8 +137,11 @@ fn hash_map_retain() {
     let mut hash_map: HashMap<i8, i8> = (0..8).map(|x| (x, x * 10)).collect();
     // Do lint.
     hash_map = hash_map.into_iter().filter(|(k, _)| k % 2 == 0).collect();
+    //~^ manual_retain
     hash_map = hash_map.into_iter().filter(|(_, v)| v % 2 == 0).collect();
+    //~^ manual_retain
     hash_map = hash_map
+        //~^ manual_retain
         .into_iter()
         .filter(|(k, v)| (k % 2 == 0) && (v % 2 == 0))
         .collect();
@@ -150,13 +166,18 @@ fn hash_set_retain() {
     let mut hash_set = HashSet::from([1, 2, 3, 4, 5, 6]);
     // Do lint.
     hash_set = hash_set.into_iter().filter(|x| x % 2 == 0).collect();
+    //~^ manual_retain
     hash_set = hash_set.iter().filter(|&x| x % 2 == 0).copied().collect();
+    //~^ manual_retain
     hash_set = hash_set.iter().filter(|&x| x % 2 == 0).cloned().collect();
+    //~^ manual_retain
 
     // Do lint, because we use pattern matching
     let mut tuples = HashSet::from([(0, 1), (1, 2), (2, 3)]);
     tuples = tuples.iter().filter(|(ref x, ref y)| *x == 0).copied().collect();
+    //~^ manual_retain
     tuples = tuples.iter().filter(|(x, y)| *x == 0).copied().collect();
+    //~^ manual_retain
 
     // Do not lint, because type conversion is performed
     hash_set = hash_set.into_iter().filter(|x| x % 2 == 0).collect::<HashSet<i8>>();
@@ -186,6 +207,7 @@ fn string_retain() {
     let mut s = String::from("foobar");
     // Do lint.
     s = s.chars().filter(|&c| c != 'o').to_owned().collect();
+    //~^ manual_retain
 
     // Do not lint, because this expression is not assign.
     let mut bar: String = s.chars().filter(|&c| c != 'o').to_owned().collect();
@@ -198,13 +220,18 @@ fn vec_retain() {
     let mut vec = vec![0, 1, 2];
     // Do lint.
     vec = vec.iter().filter(|&x| x % 2 == 0).copied().collect();
+    //~^ manual_retain
     vec = vec.iter().filter(|&x| x % 2 == 0).cloned().collect();
+    //~^ manual_retain
     vec = vec.into_iter().filter(|x| x % 2 == 0).collect();
+    //~^ manual_retain
 
     // Do lint, because we use pattern matching
     let mut tuples = vec![(0, 1), (1, 2), (2, 3)];
     tuples = tuples.iter().filter(|(ref x, ref y)| *x == 0).copied().collect();
+    //~^ manual_retain
     tuples = tuples.iter().filter(|(x, y)| *x == 0).copied().collect();
+    //~^ manual_retain
 
     // Do not lint, because type conversion is performed
     vec = vec.into_iter().filter(|x| x % 2 == 0).collect::<Vec<i8>>();
@@ -227,8 +254,11 @@ fn vec_deque_retain() {
 
     // Do lint.
     vec_deque = vec_deque.iter().filter(|&x| x % 2 == 0).copied().collect();
+    //~^ manual_retain
     vec_deque = vec_deque.iter().filter(|&x| x % 2 == 0).cloned().collect();
+    //~^ manual_retain
     vec_deque = vec_deque.into_iter().filter(|x| x % 2 == 0).collect();
+    //~^ manual_retain
 
     // Do not lint, because type conversion is performed
     vec_deque = vec_deque
@@ -286,10 +316,12 @@ fn issue_10393() {
     // Do lint
     let mut vec = vec![(0, 1), (1, 2), (2, 3)];
     vec = vec.into_iter().filter(|(x, y)| *x == 0).collect();
+    //~^ manual_retain
 
     // Do lint
     let mut tuples = vec![(true, -2), (false, 3)];
     tuples = tuples.into_iter().filter(|(_, n)| *n > 0).collect();
+    //~^ manual_retain
 }
 
 fn issue_11457() {
@@ -307,11 +339,17 @@ fn issue_12081() {
 
     // Do lint
     vec = vec.iter().filter(|&&x| x == 0).copied().collect();
+    //~^ manual_retain
     vec = vec.iter().filter(|&&x| x == 0).cloned().collect();
+    //~^ manual_retain
     vec = vec.into_iter().filter(|&x| x == 0).collect();
+    //~^ manual_retain
 
     // Do lint
     vec = vec.iter().filter(|&x| *x == 0).copied().collect();
+    //~^ manual_retain
     vec = vec.iter().filter(|&x| *x == 0).cloned().collect();
+    //~^ manual_retain
     vec = vec.into_iter().filter(|x| *x == 0).collect();
+    //~^ manual_retain
 }

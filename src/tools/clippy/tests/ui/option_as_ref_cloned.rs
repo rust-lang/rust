@@ -5,10 +5,13 @@ fn main() {
     let mut x = Some(String::new());
 
     let _: Option<String> = x.as_ref().cloned();
+    //~^ option_as_ref_cloned
     let _: Option<String> = x.as_mut().cloned();
+    //~^ option_as_ref_cloned
 
     let y = x.as_ref();
     let _: Option<&String> = y.as_ref().cloned();
+    //~^ option_as_ref_cloned
 
     macro_rules! cloned_recv {
         () => {

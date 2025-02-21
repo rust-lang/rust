@@ -1,3 +1,4 @@
+//@ check-pass
 // Regression test for #5233
 #![warn(clippy::indexing_slicing, clippy::iter_cloned_collect)]
 

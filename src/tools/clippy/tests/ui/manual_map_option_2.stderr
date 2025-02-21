@@ -3,10 +3,10 @@ error: manual implementation of `Option::map`
    |
 LL |       let _ = match Some(0) {
    |  _____________^
+LL | |
 LL | |         Some(x) => Some({
 LL | |             let y = (String::new(), String::new());
-LL | |             (x, y.0)
-LL | |         }),
+...  |
 LL | |         None => None,
 LL | |     };
    | |_____^
@@ -22,44 +22,80 @@ LL ~         });
    |
 
 error: manual implementation of `Option::map`
-  --> tests/ui/manual_map_option_2.rs:48:13
+  --> tests/ui/manual_map_option_2.rs:49:13
    |
 LL |       let _ = match &s {
    |  _____________^
+LL | |
 LL | |         Some(x) => Some({ if let Some(ref s) = s { (x.clone(), s) } else { panic!() } }),
 LL | |         None => None,
 LL | |     };
    | |_____^ help: try: `s.as_ref().map(|x| { if let Some(ref s) = s { (x.clone(), s) } else { panic!() } })`
 
 error: manual implementation of `Option::map`
-  --> tests/ui/manual_map_option_2.rs:58:17
+  --> tests/ui/manual_map_option_2.rs:65:17
    |
 LL |           let _ = match Some(0) {
    |  _________________^
+LL | |
 LL | |             Some(x) => Some(f(x)),
 LL | |             None => None,
 LL | |         };
    | |_________^ help: try: `Some(0).map(|x| f(x))`
 
 error: manual implementation of `Option::map`
-  --> tests/ui/manual_map_option_2.rs:63:13
+  --> tests/ui/manual_map_option_2.rs:71:13
    |
 LL |       let _ = match Some(0) {
    |  _____________^
+LL | |
 LL | |         Some(x) => unsafe { Some(f(x)) },
 LL | |         None => None,
 LL | |     };
    | |_____^ help: try: `Some(0).map(|x| unsafe { f(x) })`
 
 error: manual implementation of `Option::map`
-  --> tests/ui/manual_map_option_2.rs:67:13
+  --> tests/ui/manual_map_option_2.rs:76:13
    |
 LL |       let _ = match Some(0) {
    |  _____________^
+LL | |
 LL | |         Some(x) => Some(unsafe { f(x) }),
 LL | |         None => None,
 LL | |     };
    | |_____^ help: try: `Some(0).map(|x| unsafe { f(x) })`
 
-error: aborting due to 5 previous errors
+error: manual implementation of `Option::map`
+  --> tests/ui/manual_map_option_2.rs:113:17
+   |
+LL |           let _ = match Some(0) {
+   |  _________________^
+LL | |
+LL | |             Some(_) => Some(match f() {
+LL | |                 Ok(res) => Ok(Box::new(res)),
+...  |
+LL | |             None => None,
+LL | |         };
+   | |_________^
+   |
+help: try
+   |
+LL ~         let _ = Some(0).map(|_| match f() {
+LL +                 Ok(res) => Ok(Box::new(res)),
+LL +                 _ => Err(()),
+LL ~             });
+   |
+
+error: manual implementation of `Option::map`
+  --> tests/ui/manual_map_option_2.rs:136:37
+   |
+LL |           let _: Option<Box<&[u8]>> = match Some(0) {
+   |  _____________________________________^
+LL | |
+LL | |             Some(_) => Some(g(x)),
+LL | |             None => None,
+LL | |         };
+   | |_________^ help: try: `Some(0).map(|_| g(x))`
+
+error: aborting due to 7 previous errors
 

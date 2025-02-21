@@ -8,7 +8,7 @@ LL |     let _p = &val as *const i32;
    = help: to override `-D warnings` add `#[allow(clippy::borrow_as_ptr)]`
 
 error: borrow as raw pointer
-  --> tests/ui/borrow_as_ptr_raw_ref.rs:18:18
+  --> tests/ui/borrow_as_ptr_raw_ref.rs:19:18
    |
 LL |     let _p_mut = &mut val_mut as *mut i32;
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&raw mut val_mut`

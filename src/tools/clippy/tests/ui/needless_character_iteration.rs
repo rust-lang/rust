@@ -16,33 +16,39 @@ fn magic(_: char) {}
 
 fn main() {
     "foo".chars().all(|c| c.is_ascii());
-    //~^ ERROR: checking if a string is ascii using iterators
+    //~^ needless_character_iteration
+
     "foo".chars().any(|c| !c.is_ascii());
-    //~^ ERROR: checking if a string is ascii using iterators
+    //~^ needless_character_iteration
+
     "foo".chars().all(|c| char::is_ascii(&c));
-    //~^ ERROR: checking if a string is ascii using iterators
+    //~^ needless_character_iteration
+
     "foo".chars().any(|c| !char::is_ascii(&c));
-    //~^ ERROR: checking if a string is ascii using iterators
+    //~^ needless_character_iteration
 
     let s = String::new();
     s.chars().all(|c| c.is_ascii());
-    //~^ ERROR: checking if a string is ascii using iterators
+    //~^ needless_character_iteration
+
     "foo".to_string().chars().any(|c| !c.is_ascii());
-    //~^ ERROR: checking if a string is ascii using iterators
+    //~^ needless_character_iteration
 
     "foo".chars().all(|c| {
-        //~^ ERROR: checking if a string is ascii using iterators
+        //~^ needless_character_iteration
+
         let x = c;
         x.is_ascii()
     });
     "foo".chars().any(|c| {
-        //~^ ERROR: checking if a string is ascii using iterators
+        //~^ needless_character_iteration
+
         let x = c;
         !x.is_ascii()
     });
 
     S::default().field().chars().all(|x| x.is_ascii());
-    //~^ ERROR: checking if a string is ascii using iterators
+    //~^ needless_character_iteration
 
     // Should not lint!
     "foo".chars().all(|c| {

@@ -12,13 +12,15 @@ fn main() {
     if bla() {
         println!("Bunny");
     } else {
-        //~^ ERROR: unnecessary boolean `not` operation
+        //~^ if_not_else
+
         println!("Bugs");
     }
     if 4 == 5 {
         println!("Bunny");
     } else {
-        //~^ ERROR: unnecessary `!=` operation
+        //~^ if_not_else
+
         println!("Bugs");
     }
     if !foo() {
@@ -32,6 +34,7 @@ fn main() {
     if (foo() && bla()) {
         println!("both true");
     } else {
+        //~^ if_not_else
         #[cfg(not(debug_assertions))]
         println!("not debug");
         #[cfg(debug_assertions)]
@@ -50,6 +53,7 @@ fn with_comments() {
     if foo() {
         println!("foo"); /* foo */
     } else {
+        //~^ if_not_else
         /* foo is false */
         println!("foo is false");
     }
@@ -57,6 +61,7 @@ fn with_comments() {
     if bla() {
         println!("bla"); // bla
     } else {
+        //~^ if_not_else
         // bla is false
         println!("bla");
     }
@@ -67,6 +72,7 @@ fn with_annotations() {
     if foo() {
         println!("foo"); /* foo */
     } else {
+        //~^ if_not_else
         /* foo is false */
         println!("foo is false");
     }

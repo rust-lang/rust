@@ -8,6 +8,7 @@ fn issue_11524() -> Vec<i32> {
 
     // Should lint and suggest `vec.sort_by_key(|a| a + 1);`
     vec.sort_by_key(|a| a + 1);
+    //~^ unnecessary_sort_by
     vec
 }
 
@@ -16,5 +17,6 @@ fn issue_11524_2() -> Vec<i32> {
 
     // Should lint and suggest `vec.sort_by_key(|b| core::cmp::Reverse(b + 1));`
     vec.sort_by_key(|b| core::cmp::Reverse(b + 1));
+    //~^ unnecessary_sort_by
     vec
 }

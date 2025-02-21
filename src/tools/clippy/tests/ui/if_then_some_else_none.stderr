@@ -4,9 +4,9 @@ error: this could be simplified with `bool::then`
 LL |       let _ = if foo() {
    |  _____________^
 LL | |
+LL | |
 LL | |         println!("true!");
-LL | |         Some("foo")
-LL | |     } else {
+...  |
 LL | |         None
 LL | |     };
    | |_____^ help: try: `foo().then(||  { println!("true!"); "foo" })`
@@ -15,45 +15,45 @@ LL | |     };
    = help: to override `-D warnings` add `#[allow(clippy::if_then_some_else_none)]`
 
 error: this could be simplified with `bool::then`
-  --> tests/ui/if_then_some_else_none.rs:15:13
+  --> tests/ui/if_then_some_else_none.rs:16:13
    |
 LL |       let _ = if matches!(true, true) {
    |  _____________^
 LL | |
+LL | |
 LL | |         println!("true!");
-LL | |         Some(matches!(true, false))
-LL | |     } else {
+...  |
 LL | |         None
 LL | |     };
    | |_____^ help: try: `matches!(true, true).then(||  { println!("true!"); matches!(true, false) })`
 
 error: this could be simplified with `bool::then_some`
-  --> tests/ui/if_then_some_else_none.rs:25:28
+  --> tests/ui/if_then_some_else_none.rs:27:28
    |
 LL |     let _ = x.and_then(|o| if o < 32 { Some(o) } else { None });
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(o < 32).then_some(o)`
 
 error: this could be simplified with `bool::then_some`
-  --> tests/ui/if_then_some_else_none.rs:30:13
+  --> tests/ui/if_then_some_else_none.rs:32:13
    |
 LL |     let _ = if !x { Some(0) } else { None };
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(!x).then_some(0)`
 
 error: this could be simplified with `bool::then`
-  --> tests/ui/if_then_some_else_none.rs:86:13
+  --> tests/ui/if_then_some_else_none.rs:88:13
    |
 LL |       let _ = if foo() {
    |  _____________^
 LL | |
+LL | |
 LL | |         println!("true!");
-LL | |         Some(150)
-LL | |     } else {
+...  |
 LL | |         None
 LL | |     };
    | |_____^ help: try: `foo().then(||  { println!("true!"); 150 })`
 
 error: this could be simplified with `bool::then`
-  --> tests/ui/if_then_some_else_none.rs:135:5
+  --> tests/ui/if_then_some_else_none.rs:138:5
    |
 LL |     if s == "1" { Some(true) } else { None }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(s == "1").then(|| true)`

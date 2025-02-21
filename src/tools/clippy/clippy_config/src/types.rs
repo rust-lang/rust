@@ -1,6 +1,8 @@
 use clippy_utils::def_path_def_ids;
+use rustc_errors::{Applicability, Diag};
 use rustc_hir::def_id::DefIdMap;
 use rustc_middle::ty::TyCtxt;
+use rustc_span::Span;
 use serde::de::{self, Deserializer, Visitor};
 use serde::{Deserialize, Serialize, ser};
 use std::collections::HashMap;
@@ -12,37 +14,99 @@ pub struct Rename {
     pub rename: String,
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(untagged)]
-pub enum DisallowedPath {
-    Simple(String),
-    WithReason { path: String, reason: Option<String> },
+pub type DisallowedPathWithoutReplacement = DisallowedPath<false>;
+
+#[derive(Debug, Serialize)]
+pub struct DisallowedPath<const REPLACEMENT_ALLOWED: bool = true> {
+    path: String,
+    reason: Option<String>,
+    replacement: Option<String>,
 }
 
-impl DisallowedPath {
+impl<'de, const REPLACEMENT_ALLOWED: bool> Deserialize<'de> for DisallowedPath<REPLACEMENT_ALLOWED> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let enum_ = DisallowedPathEnum::deserialize(deserializer)?;
+        if !REPLACEMENT_ALLOWED && enum_.replacement().is_some() {
+            return Err(de::Error::custom("replacement not allowed for this configuration"));
+        }
+        Ok(Self {
+            path: enum_.path().to_owned(),
+            reason: enum_.reason().map(ToOwned::to_owned),
+            replacement: enum_.replacement().map(ToOwned::to_owned),
+        })
+    }
+}
+
+// `DisallowedPathEnum` is an implementation detail to enable the `Deserialize` implementation just
+// above. `DisallowedPathEnum` is not meant to be used outside of this file.
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(untagged)]
+enum DisallowedPathEnum {
+    Simple(String),
+    WithReason {
+        path: String,
+        reason: Option<String>,
+        replacement: Option<String>,
+    },
+}
+
+impl<const REPLACEMENT_ALLOWED: bool> DisallowedPath<REPLACEMENT_ALLOWED> {
+    pub fn path(&self) -> &str {
+        &self.path
+    }
+
+    pub fn diag_amendment(&self, span: Span) -> impl FnOnce(&mut Diag<'_, ()>) + use<'_, REPLACEMENT_ALLOWED> {
+        move |diag| {
+            if let Some(replacement) = &self.replacement {
+                diag.span_suggestion(
+                    span,
+                    self.reason.as_ref().map_or_else(|| String::from("use"), Clone::clone),
+                    replacement,
+                    Applicability::MachineApplicable,
+                );
+            } else if let Some(reason) = &self.reason {
+                diag.note(reason.clone());
+            }
+        }
+    }
+}
+
+impl DisallowedPathEnum {
     pub fn path(&self) -> &str {
         let (Self::Simple(path) | Self::WithReason { path, .. }) = self;
 
         path
     }
 
-    pub fn reason(&self) -> Option<&str> {
+    fn reason(&self) -> Option<&str> {
         match &self {
             Self::WithReason { reason, .. } => reason.as_deref(),
+            Self::Simple(_) => None,
+        }
+    }
+
+    fn replacement(&self) -> Option<&str> {
+        match &self {
+            Self::WithReason { replacement, .. } => replacement.as_deref(),
             Self::Simple(_) => None,
         }
     }
 }
 
 /// Creates a map of disallowed items to the reason they were disallowed.
-pub fn create_disallowed_map(
+pub fn create_disallowed_map<const REPLACEMENT_ALLOWED: bool>(
     tcx: TyCtxt<'_>,
-    disallowed: &'static [DisallowedPath],
-) -> DefIdMap<(&'static str, Option<&'static str>)> {
+    disallowed: &'static [DisallowedPath<REPLACEMENT_ALLOWED>],
+) -> DefIdMap<(&'static str, &'static DisallowedPath<REPLACEMENT_ALLOWED>)> {
     disallowed
         .iter()
-        .map(|x| (x.path(), x.path().split("::").collect::<Vec<_>>(), x.reason()))
-        .flat_map(|(name, path, reason)| def_path_def_ids(tcx, &path).map(move |id| (id, (name, reason))))
+        .map(|x| (x.path(), x.path().split("::").collect::<Vec<_>>(), x))
+        .flat_map(|(name, path, disallowed_path)| {
+            def_path_def_ids(tcx, &path).map(move |id| (id, (name, disallowed_path)))
+        })
         .collect()
 }
 
@@ -436,7 +500,6 @@ macro_rules! unimplemented_serialize {
 }
 
 unimplemented_serialize! {
-    DisallowedPath,
     Rename,
     MacroMatcher,
 }

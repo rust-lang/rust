@@ -6,6 +6,7 @@
 fn main() {
     const A: &[for<'a> fn(&'a ())] = &[];
     for v in A {}
+    //~^ explicit_iter_loop
 }
 
 // needless_collect
@@ -13,4 +14,5 @@ trait Helper<'a>: Iterator<Item = fn()> {}
 
 fn x(w: &mut dyn for<'a> Helper<'a>) {
     w.next().is_none();
+    //~^ needless_collect
 }

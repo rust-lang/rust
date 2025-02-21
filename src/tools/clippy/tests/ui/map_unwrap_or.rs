@@ -15,25 +15,31 @@ fn option_methods() {
     // Check for `option.map(_).unwrap_or(_)` use.
     // Single line case.
     let _ = opt.map(|x| x + 1)
+    //~^ map_unwrap_or
         // Should lint even though this call is on a separate line.
         .unwrap_or(0);
     // Multi-line cases.
     let _ = opt.map(|x| {
+    //~^ map_unwrap_or
         x + 1
     }
     ).unwrap_or(0);
     let _ = opt.map(|x| x + 1)
+    //~^ map_unwrap_or
         .unwrap_or({
             0
         });
     // Single line `map(f).unwrap_or(None)` case.
     let _ = opt.map(|x| Some(x + 1)).unwrap_or(None);
+    //~^ map_unwrap_or
     // Multi-line `map(f).unwrap_or(None)` cases.
     let _ = opt.map(|x| {
+    //~^ map_unwrap_or
         Some(x + 1)
     }
     ).unwrap_or(None);
     let _ = opt
+    //~^ map_unwrap_or
         .map(|x| Some(x + 1))
         .unwrap_or(None);
     // macro case
@@ -45,20 +51,24 @@ fn option_methods() {
     // ...but DO lint if the `unwrap_or` argument is not used in the `map`
     let id: String = "identifier".to_string();
     let _ = Some("prefix").map(|p| format!("{}.", p)).unwrap_or(id);
+    //~^ map_unwrap_or
 
     // Check for `option.map(_).unwrap_or_else(_)` use.
     // Multi-line cases.
     let _ = opt.map(|x| {
+    //~^ map_unwrap_or
         x + 1
     }
     ).unwrap_or_else(|| 0);
     let _ = opt.map(|x| x + 1)
+    //~^ map_unwrap_or
         .unwrap_or_else(||
             0
         );
 
     // Check for `map(f).unwrap_or(false)` use.
     let _ = opt.map(|x| x > 5).unwrap_or(false);
+    //~^ map_unwrap_or
 
 }
 
@@ -69,10 +79,12 @@ fn result_methods() {
     // Check for `result.map(_).unwrap_or_else(_)` use.
     // multi line cases
     let _ = res.map(|x| {
+    //~^ map_unwrap_or
         x + 1
     }
     ).unwrap_or_else(|_e| 0);
     let _ = res.map(|x| x + 1)
+    //~^ map_unwrap_or
         .unwrap_or_else(|_e| {
             0
         });
@@ -97,6 +109,7 @@ fn msrv_1_41() {
     let res: Result<i32, ()> = Ok(1);
 
     let _ = res.map(|x| x + 1).unwrap_or_else(|_e| 0);
+    //~^ map_unwrap_or
 }
 
 #[clippy::msrv = "1.69"]
@@ -104,6 +117,7 @@ fn msrv_1_69() {
     let opt: Option<i32> = Some(1);
 
     let _ = opt.map(|x| x > 5).unwrap_or(false);
+    //~^ map_unwrap_or
 }
 
 #[clippy::msrv = "1.70"]
@@ -111,6 +125,7 @@ fn msrv_1_70() {
     let opt: Option<i32> = Some(1);
 
     let _ = opt.map(|x| x > 5).unwrap_or(false);
+    //~^ map_unwrap_or
 }
 
 mod issue_10579 {

@@ -1,5 +1,5 @@
 enum Tila {
-    //~^ ERROR: all variants have the same prefix: `Työ`
+    //~^ enum_variant_names
     TyöAlkoi,
     TyöKeskeytyi,
     TyöValmis,

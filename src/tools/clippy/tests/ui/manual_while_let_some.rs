@@ -19,6 +19,7 @@ fn main() {
     let mut numbers = vec![1, 2, 3, 4, 5];
     while !numbers.is_empty() {
         let number = numbers.pop().unwrap();
+        //~^ manual_while_let_some
     }
 
     let mut val = VecInStruct {
@@ -27,14 +28,17 @@ fn main() {
     };
     while !val.numbers.is_empty() {
         let number = val.numbers.pop().unwrap();
+        //~^ manual_while_let_some
     }
 
     while !numbers.is_empty() {
         accept_i32(numbers.pop().unwrap());
+        //~^ manual_while_let_some
     }
 
     while !numbers.is_empty() {
         accept_i32(numbers.pop().expect(""));
+        //~^ manual_while_let_some
     }
 
     // This should not warn. It "conditionally" pops elements.
@@ -78,14 +82,17 @@ fn main() {
     let mut numbers = vec![(0, 0), (1, 1), (2, 2)];
     while !numbers.is_empty() {
         let (a, b) = numbers.pop().unwrap();
+        //~^ manual_while_let_some
     }
 
     while !numbers.is_empty() {
         accept_i32_tuple(numbers.pop().unwrap());
+        //~^ manual_while_let_some
     }
 
     let mut results = vec![Foo { a: 1, b: 2 }, Foo { a: 3, b: 4 }];
     while !results.is_empty() {
         let Foo { a, b } = results.pop().unwrap();
+        //~^ manual_while_let_some
     }
 }

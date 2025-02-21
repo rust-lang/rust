@@ -4,10 +4,12 @@
 
 //! Real module documentation.
 //! Fake module documentation.
+//~^ suspicious_doc_comments
 fn baz() {}
 
 pub mod singleline_outer_doc {
     //! This module contains useful functions.
+    //~^ suspicious_doc_comments
 
     pub fn bar() {}
 }
@@ -21,6 +23,7 @@ pub mod singleline_inner_doc {
 pub mod multiline_outer_doc {
     /*! This module contains useful functions.
      */
+    //~^^ suspicious_doc_comments
 
     pub fn bar() {}
 }
@@ -34,6 +37,7 @@ pub mod multiline_inner_doc {
 
 pub mod multiline_outer_doc2 {
     //! This module
+    //~^ suspicious_doc_comments
     //! contains
     //! useful functions.
 
@@ -42,6 +46,7 @@ pub mod multiline_outer_doc2 {
 
 pub mod multiline_outer_doc3 {
     //! a
+    //~^ suspicious_doc_comments
     //! b
 
     /// c
@@ -50,12 +55,14 @@ pub mod multiline_outer_doc3 {
 
 pub mod multiline_outer_doc4 {
     //! a
+    //~^ suspicious_doc_comments
     /// b
     pub fn bar() {}
 }
 
 pub mod multiline_outer_doc_gap {
     //! a
+    //~^ suspicious_doc_comments
 
     //! b
     pub fn bar() {}
@@ -68,6 +75,7 @@ pub mod multiline_outer_doc_commented {
 
 pub mod outer_doc_macro {
     //! Very cool macro
+    //~^ suspicious_doc_comments
     macro_rules! x {
         () => {};
     }
@@ -75,6 +83,7 @@ pub mod outer_doc_macro {
 
 pub mod useless_outer_doc {
     //! Huh.
+    //~^ suspicious_doc_comments
     use std::mem;
 }
 

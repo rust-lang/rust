@@ -15,6 +15,7 @@ fn single_match() {
     if let Some(y) = x {
         println!("{:?}", y);
     };
+    //~^^^^^^ single_match
 
     let x = Some(1u8);
     match x {
@@ -27,6 +28,7 @@ fn single_match() {
 
     let z = (1u8, 1u8);
     if let (2..=3, 7..=9) = z { dummy() };
+    //~^^^^ single_match
 
     // Not linted (pattern guards used)
     match x {
@@ -53,12 +55,15 @@ fn single_match_know_enum() {
     let y: Result<_, i8> = Ok(1i8);
 
     if let Some(y) = x { dummy() };
+    //~^^^^ single_match
 
     if let Ok(y) = y { dummy() };
+    //~^^^^ single_match
 
     let c = Cow::Borrowed("");
 
     if let Cow::Borrowed(..) = c { dummy() };
+    //~^^^^ single_match
 
     let z = Foo::Bar;
     // no warning
@@ -77,6 +82,7 @@ fn single_match_know_enum() {
 fn if_suggestion() {
     let x = "test";
     if x == "test" { println!() }
+    //~^^^^ single_match
 
     #[derive(PartialEq, Eq)]
     enum Foo {
@@ -87,14 +93,18 @@ fn if_suggestion() {
 
     let x = Foo::A;
     if x == Foo::A { println!() }
+    //~^^^^ single_match
 
     const FOO_C: Foo = Foo::C(0);
     if x == FOO_C { println!() }
+    //~^^^^ single_match
 
     if x == Foo::A { println!() }
+    //~^^^^ single_match
 
     let x = &x;
     if x == &Foo::A { println!() }
+    //~^^^^ single_match
 
     enum Bar {
         A,
@@ -109,11 +119,13 @@ fn if_suggestion() {
 
     let x = Bar::A;
     if let Bar::A = x { println!() }
+    //~^^^^ single_match
 
     // issue #7038
     struct X;
     let x = Some(X);
     if let None = x { println!() };
+    //~^^^^ single_match
 }
 
 // See: issue #8282
@@ -133,12 +145,15 @@ fn ranges() {
 
     // lint
     if let (Some(_), _) = x {}
+    //~^^^^ single_match
 
     // lint
     if let (Some(E::V), _) = x { todo!() }
+    //~^^^^ single_match
 
     // lint
     if let (.., Some(E::V), _) = (Some(42), Some(E::V), Some(42)) {}
+    //~^^^^ single_match
 
     // Don't lint, see above.
     match (Some(E::V), Some(E::V), Some(E::V)) {
@@ -211,6 +226,7 @@ fn issue_10808(bar: Option<i32>) {
         let r = &v as *const i32;
         println!("{}", *r);
     } }
+    //~^^^^^^^ single_match
 
     if let Some(v) = bar {
         unsafe {
@@ -218,6 +234,7 @@ fn issue_10808(bar: Option<i32>) {
             println!("{}", *r);
         }
     }
+    //~^^^^^^^^^^ single_match
 }
 
 mod issue8634 {
@@ -289,6 +306,7 @@ fn issue11365() {
     }
 
     if let Ok(Some(A)) = Ok::<_, u32>(Some(A)) { println!() }
+    //~^^^^ single_match
 
     match &Some(A) {
         Some(A | B | C) => println!(),
@@ -301,10 +319,12 @@ fn issue11365() {
     }
 
     if let Some(A | B) = &Some(A) { println!() }
+    //~^^^^ single_match
 }
 
 fn issue12758(s: &[u8]) {
     if &s[0..3] == b"foo" { println!() }
+    //~^^^^ single_match
 }
 
 #[derive(Eq, PartialEq)]
@@ -315,20 +335,26 @@ const CONST_I32: i32 = 1;
 
 fn irrefutable_match() {
     println!();
+    //~^^^^ single_match
 
     println!();
+    //~^^^^ single_match
 
     let i = 0;
     {
         let a = 1;
         let b = 2;
     }
+    //~^^^^^^^ single_match
 
     
+    //~^^^^ single_match
 
     
+    //~^^^^ single_match
 
     println!();
+    //~^^^^ single_match
 
     let mut x = vec![1i8];
 

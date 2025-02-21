@@ -14,6 +14,7 @@ fn is_rust_file(filename: &str) -> bool {
     std::path::Path::new(filename)
         .extension()
         .map_or(false, |ext| ext.eq_ignore_ascii_case("rs"))
+    //~^ case_sensitive_file_extension_comparisons
 }
 
 fn main() {
@@ -21,15 +22,18 @@ fn main() {
     let _ = std::path::Path::new(&String::new())
         .extension()
         .map_or(false, |ext| ext.eq_ignore_ascii_case("ext12"));
+    //~^ case_sensitive_file_extension_comparisons
     let _ = std::path::Path::new("str")
         .extension()
         .map_or(false, |ext| ext.eq_ignore_ascii_case("ext12"));
+    //~^ case_sensitive_file_extension_comparisons
 
     // The fixup should preserve the indentation level
     {
         let _ = std::path::Path::new("str")
             .extension()
             .map_or(false, |ext| ext.eq_ignore_ascii_case("ext12"));
+        //~^ case_sensitive_file_extension_comparisons
     }
 
     // The test struct should not trigger the lint failure with .ext12
@@ -39,9 +43,11 @@ fn main() {
     let _ = std::path::Path::new(&String::new())
         .extension()
         .map_or(false, |ext| ext.eq_ignore_ascii_case("EXT12"));
+    //~^ case_sensitive_file_extension_comparisons
     let _ = std::path::Path::new("str")
         .extension()
         .map_or(false, |ext| ext.eq_ignore_ascii_case("EXT12"));
+    //~^ case_sensitive_file_extension_comparisons
 
     // Should not trigger the lint failure because of the calls to to_lowercase and to_uppercase
     let _ = String::new().to_lowercase().ends_with(".EXT12");

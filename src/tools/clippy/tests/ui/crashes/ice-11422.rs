@@ -4,6 +4,7 @@ use std::fmt::Debug;
 use std::ops::*;
 
 fn r#gen() -> impl PartialOrd + PartialEq + Debug {}
+//~^ implied_bounds_in_impls
 
 struct Bar {}
 trait Foo<T = Self> {}

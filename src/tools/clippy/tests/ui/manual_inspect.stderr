@@ -9,11 +9,12 @@ LL |     let _ = Some(0).map(|x| {
 help: try
    |
 LL ~     let _ = Some(0).inspect(|&x| {
+LL |
 LL ~         println!("{}", x);
    |
 
 error: using `map` over `inspect`
-  --> tests/ui/manual_inspect.rs:10:21
+  --> tests/ui/manual_inspect.rs:11:21
    |
 LL |     let _ = Some(0).map(|x| {
    |                     ^^^
@@ -21,11 +22,12 @@ LL |     let _ = Some(0).map(|x| {
 help: try
    |
 LL ~     let _ = Some(0).inspect(|&x| {
+LL |
 LL ~         println!("{x}");
    |
 
 error: using `map` over `inspect`
-  --> tests/ui/manual_inspect.rs:15:21
+  --> tests/ui/manual_inspect.rs:17:21
    |
 LL |     let _ = Some(0).map(|x| {
    |                     ^^^
@@ -33,11 +35,12 @@ LL |     let _ = Some(0).map(|x| {
 help: try
    |
 LL ~     let _ = Some(0).inspect(|&x| {
+LL |
 LL ~         println!("{}", x * 5 + 1);
    |
 
 error: using `map` over `inspect`
-  --> tests/ui/manual_inspect.rs:20:21
+  --> tests/ui/manual_inspect.rs:23:21
    |
 LL |     let _ = Some(0).map(|x| {
    |                     ^^^
@@ -45,13 +48,14 @@ LL |     let _ = Some(0).map(|x| {
 help: try
    |
 LL ~     let _ = Some(0).inspect(|&x| {
+LL |
 LL |         if x == 0 {
 LL |             panic!();
 LL ~         }
    |
 
 error: using `map` over `inspect`
-  --> tests/ui/manual_inspect.rs:27:21
+  --> tests/ui/manual_inspect.rs:31:21
    |
 LL |     let _ = Some(0).map(|x| {
    |                     ^^^
@@ -59,14 +63,14 @@ LL |     let _ = Some(0).map(|x| {
 help: try
    |
 LL ~     let _ = Some(0).inspect(|&x| {
-LL |         if &x == &0 {
-LL |             let _y = x;
+LL |
+...
 LL |             panic!();
 LL ~         }
    |
 
 error: using `map` over `inspect`
-  --> tests/ui/manual_inspect.rs:78:41
+  --> tests/ui/manual_inspect.rs:83:41
    |
 LL |     let _ = Some((String::new(), 0u32)).map(|x| {
    |                                         ^^^
@@ -74,14 +78,14 @@ LL |     let _ = Some((String::new(), 0u32)).map(|x| {
 help: try
    |
 LL ~     let _ = Some((String::new(), 0u32)).inspect(|x| {
-LL |         if x.1 == 0 {
-LL |             let _x = x.1;
+LL |
+...
 LL |             panic!();
 LL ~         }
    |
 
 error: using `map` over `inspect`
-  --> tests/ui/manual_inspect.rs:104:33
+  --> tests/ui/manual_inspect.rs:110:33
    |
 LL |     let _ = Some(String::new()).map(|x| {
    |                                 ^^^
@@ -89,6 +93,7 @@ LL |     let _ = Some(String::new()).map(|x| {
 help: try
    |
 LL ~     let _ = Some(String::new()).inspect(|x| {
+LL |
 LL |         if x.is_empty() {
 LL |             let _ = || {
 LL ~                 let _x = x;
@@ -99,7 +104,7 @@ LL ~         println!("test");
    |
 
 error: using `map` over `inspect`
-  --> tests/ui/manual_inspect.rs:115:21
+  --> tests/ui/manual_inspect.rs:122:21
    |
 LL |     let _ = Some(0).map(|x| {
    |                     ^^^
@@ -107,14 +112,14 @@ LL |     let _ = Some(0).map(|x| {
 help: try
    |
 LL ~     let _ = Some(0).inspect(|&x| {
-LL |         if x == 0 {
+LL |
 ...
 LL |             panic!();
 LL ~         }
    |
 
 error: using `map` over `inspect`
-  --> tests/ui/manual_inspect.rs:130:46
+  --> tests/ui/manual_inspect.rs:138:46
    |
 LL |         let _ = Some(Cell2(Cell::new(0u32))).map(|x| {
    |                                              ^^^
@@ -122,11 +127,12 @@ LL |         let _ = Some(Cell2(Cell::new(0u32))).map(|x| {
 help: try
    |
 LL ~         let _ = Some(Cell2(Cell::new(0u32))).inspect(|x| {
+LL |
 LL ~             x.0.set(1);
    |
 
 error: using `map` over `inspect`
-  --> tests/ui/manual_inspect.rs:146:34
+  --> tests/ui/manual_inspect.rs:155:34
    |
 LL |     let _: Result<_, ()> = Ok(0).map(|x| {
    |                                  ^^^
@@ -134,11 +140,12 @@ LL |     let _: Result<_, ()> = Ok(0).map(|x| {
 help: try
    |
 LL ~     let _: Result<_, ()> = Ok(0).inspect(|&x| {
+LL |
 LL ~         println!("{}", x);
    |
 
 error: using `map_err` over `inspect_err`
-  --> tests/ui/manual_inspect.rs:151:35
+  --> tests/ui/manual_inspect.rs:161:35
    |
 LL |     let _: Result<(), _> = Err(0).map_err(|x| {
    |                                   ^^^^^^^
@@ -146,18 +153,19 @@ LL |     let _: Result<(), _> = Err(0).map_err(|x| {
 help: try
    |
 LL ~     let _: Result<(), _> = Err(0).inspect_err(|&x| {
+LL |
 LL ~         println!("{}", x);
    |
 
 error: this call to `map()` won't have an effect on the call to `count()`
-  --> tests/ui/manual_inspect.rs:156:13
+  --> tests/ui/manual_inspect.rs:167:13
    |
 LL |       let _ = [0]
    |  _____________^
+LL | |
 LL | |         .into_iter()
 LL | |         .map(|x| {
-LL | |             println!("{}", x);
-LL | |             x
+...  |
 LL | |         })
 LL | |         .count();
    | |________________^
@@ -167,7 +175,7 @@ LL | |         .count();
    = help: to override `-D warnings` add `#[allow(clippy::suspicious_map)]`
 
 error: using `map` over `inspect`
-  --> tests/ui/manual_inspect.rs:158:10
+  --> tests/ui/manual_inspect.rs:170:10
    |
 LL |         .map(|x| {
    |          ^^^
@@ -175,6 +183,7 @@ LL |         .map(|x| {
 help: try
    |
 LL ~         .inspect(|&x| {
+LL |
 LL ~             println!("{}", x);
    |
 

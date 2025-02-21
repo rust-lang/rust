@@ -13,7 +13,7 @@ LL + async fn fut() -> i32 { 42 }
    |
 
 error: this function can be simplified using the `async fn` syntax
-  --> tests/ui/manual_async_fn.rs:11:1
+  --> tests/ui/manual_async_fn.rs:12:1
    |
 LL | fn fut2() ->impl Future<Output = i32> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL + async fn fut2() -> i32 { 42 }
    |
 
 error: this function can be simplified using the `async fn` syntax
-  --> tests/ui/manual_async_fn.rs:16:1
+  --> tests/ui/manual_async_fn.rs:18:1
    |
 LL | fn fut3()-> impl Future<Output = i32> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -37,7 +37,7 @@ LL + async fn fut3() -> i32 { 42 }
    |
 
 error: this function can be simplified using the `async fn` syntax
-  --> tests/ui/manual_async_fn.rs:20:1
+  --> tests/ui/manual_async_fn.rs:23:1
    |
 LL | fn empty_fut() -> impl Future<Output = ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -49,7 +49,7 @@ LL + async fn empty_fut() {}
    |
 
 error: this function can be simplified using the `async fn` syntax
-  --> tests/ui/manual_async_fn.rs:25:1
+  --> tests/ui/manual_async_fn.rs:29:1
    |
 LL | fn empty_fut2() ->impl Future<Output = ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -61,7 +61,7 @@ LL + async fn empty_fut2() {}
    |
 
 error: this function can be simplified using the `async fn` syntax
-  --> tests/ui/manual_async_fn.rs:30:1
+  --> tests/ui/manual_async_fn.rs:35:1
    |
 LL | fn empty_fut3()-> impl Future<Output = ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -73,7 +73,7 @@ LL + async fn empty_fut3() {}
    |
 
 error: this function can be simplified using the `async fn` syntax
-  --> tests/ui/manual_async_fn.rs:34:1
+  --> tests/ui/manual_async_fn.rs:40:1
    |
 LL | fn core_fut() -> impl core::future::Future<Output = i32> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -85,7 +85,7 @@ LL + async fn core_fut() -> i32 { 42 }
    |
 
 error: this function can be simplified using the `async fn` syntax
-  --> tests/ui/manual_async_fn.rs:56:5
+  --> tests/ui/manual_async_fn.rs:63:5
    |
 LL |     fn inh_fut() -> impl Future<Output = i32> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -108,7 +108,7 @@ LL +     }
    |
 
 error: this function can be simplified using the `async fn` syntax
-  --> tests/ui/manual_async_fn.rs:91:1
+  --> tests/ui/manual_async_fn.rs:99:1
    |
 LL | fn elided(_: &i32) -> impl Future<Output = i32> + '_ {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -120,7 +120,7 @@ LL + async fn elided(_: &i32) -> i32 { 42 }
    |
 
 error: this function can be simplified using the `async fn` syntax
-  --> tests/ui/manual_async_fn.rs:101:1
+  --> tests/ui/manual_async_fn.rs:110:1
    |
 LL | fn explicit<'a, 'b>(_: &'a i32, _: &'b i32) -> impl Future<Output = i32> + 'a + 'b {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -132,7 +132,7 @@ LL + async fn explicit<'a, 'b>(_: &'a i32, _: &'b i32) -> i32 { 42 }
    |
 
 error: this function can be simplified using the `async fn` syntax
-  --> tests/ui/manual_async_fn.rs:130:1
+  --> tests/ui/manual_async_fn.rs:140:1
    |
 LL | pub fn issue_10450() -> impl Future<Output = i32> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -144,7 +144,7 @@ LL + pub async fn issue_10450() -> i32 { 42 }
    |
 
 error: this function can be simplified using the `async fn` syntax
-  --> tests/ui/manual_async_fn.rs:134:1
+  --> tests/ui/manual_async_fn.rs:145:1
    |
 LL | pub(crate) fn issue_10450_2() -> impl Future<Output = i32> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -156,7 +156,7 @@ LL + pub(crate) async fn issue_10450_2() -> i32 { 42 }
    |
 
 error: this function can be simplified using the `async fn` syntax
-  --> tests/ui/manual_async_fn.rs:138:1
+  --> tests/ui/manual_async_fn.rs:150:1
    |
 LL | pub(self) fn issue_10450_3() -> impl Future<Output = i32> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

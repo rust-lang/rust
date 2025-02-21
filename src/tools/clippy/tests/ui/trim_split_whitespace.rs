@@ -59,13 +59,25 @@ impl DerefStrAndCustomTrim {
 fn main() {
     // &str
     let _ = " A B C ".trim().split_whitespace(); // should trigger lint
+    //
+    //~^^ trim_split_whitespace
     let _ = " A B C ".trim_start().split_whitespace(); // should trigger lint
+    //
+    //~^^ trim_split_whitespace
     let _ = " A B C ".trim_end().split_whitespace(); // should trigger lint
+    //
+    //~^^ trim_split_whitespace
 
     // String
     let _ = (" A B C ").to_string().trim().split_whitespace(); // should trigger lint
+    //
+    //~^^ trim_split_whitespace
     let _ = (" A B C ").to_string().trim_start().split_whitespace(); // should trigger lint
+    //
+    //~^^ trim_split_whitespace
     let _ = (" A B C ").to_string().trim_end().split_whitespace(); // should trigger lint
+    //
+    //~^^ trim_split_whitespace
 
     // Custom
     let _ = Custom.trim().split_whitespace(); // should not trigger lint
@@ -73,6 +85,8 @@ fn main() {
     // Deref<Target=str>
     let s = DerefStr(" A B C ");
     let _ = s.trim().split_whitespace(); // should trigger lint
+    //
+    //~^^ trim_split_whitespace
 
     // Deref<Target=str> + custom impl
     let s = DerefStrAndCustom(" A B C ");
@@ -81,6 +95,8 @@ fn main() {
     // Deref<Target=str> + only custom split_ws() impl
     let s = DerefStrAndCustomSplit(" A B C ");
     let _ = s.trim().split_whitespace(); // should trigger lint
+    //
+    //~^^ trim_split_whitespace
     // Expl: trim() is called on str (deref) and returns &str.
     //       Thus split_ws() is called on str as well and the custom impl on S is unused
 

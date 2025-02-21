@@ -8,13 +8,13 @@ LL |     y.to_owned() == *x;
    = help: to override `-D warnings` add `#[allow(clippy::cmp_owned)]`
 
 error: this creates an owned instance just for comparison
-  --> tests/ui/cmp_owned/without_suggestion.rs:13:5
+  --> tests/ui/cmp_owned/without_suggestion.rs:12:5
    |
 LL |     y.to_owned() == **x;
    |     ^^^^^^^^^^^^^^^^^^^ try implementing the comparison without allocating
 
 error: this creates an owned instance just for comparison
-  --> tests/ui/cmp_owned/without_suggestion.rs:25:9
+  --> tests/ui/cmp_owned/without_suggestion.rs:24:9
    |
 LL |         self.to_owned() == *other
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^ try implementing the comparison without allocating

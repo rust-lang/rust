@@ -15,6 +15,7 @@ impl Foo {
 
     fn foo2<I: Iterator<Item = usize>>(mut it: I) {
         for e in it {
+            //~^ while_let_on_iterator
             println!("{:?}", e);
         }
     }

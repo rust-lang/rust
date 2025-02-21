@@ -340,6 +340,7 @@ mod significant_drop_tightening;
 mod single_call_fn;
 mod single_char_lifetime_names;
 mod single_component_path_imports;
+mod single_option_map;
 mod single_range_in_vec_init;
 mod size_of_in_element_count;
 mod size_of_ref;
@@ -902,7 +903,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(move |_| Box::new(manual_main_separator_str::ManualMainSeparatorStr::new(conf)));
     store.register_late_pass(|_| Box::new(unnecessary_struct_initialization::UnnecessaryStruct));
     store.register_late_pass(move |_| Box::new(unnecessary_box_returns::UnnecessaryBoxReturns::new(conf)));
-    store.register_late_pass(|_| Box::new(lines_filter_map_ok::LinesFilterMapOk));
+    store.register_late_pass(move |_| Box::new(lines_filter_map_ok::LinesFilterMapOk::new(conf)));
     store.register_late_pass(|_| Box::new(tests_outside_test_module::TestsOutsideTestModule));
     store.register_late_pass(|_| Box::new(manual_slice_size_calculation::ManualSliceSizeCalculation));
     store.register_early_pass(move || Box::new(excessive_nesting::ExcessiveNesting::new(conf)));
@@ -980,5 +981,6 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::<unnecessary_semicolon::UnnecessarySemicolon>::default());
     store.register_late_pass(move |_| Box::new(non_std_lazy_statics::NonStdLazyStatic::new(conf)));
     store.register_late_pass(|_| Box::new(manual_option_as_slice::ManualOptionAsSlice::new(conf)));
+    store.register_late_pass(|_| Box::new(single_option_map::SingleOptionMap));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
