@@ -13,7 +13,6 @@
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
 #![feature(never_type)]
-#![feature(os_str_display)]
 #![feature(round_char_boundary)]
 #![feature(test)]
 #![feature(type_alias_impl_trait)]
