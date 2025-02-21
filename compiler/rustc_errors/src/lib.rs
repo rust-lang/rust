@@ -71,7 +71,7 @@ use rustc_macros::{Decodable, Encodable};
 pub use rustc_span::ErrorGuaranteed;
 pub use rustc_span::fatal_error::{FatalError, FatalErrorMarker};
 use rustc_span::source_map::SourceMap;
-use rustc_span::{DUMMY_SP, Loc, Span};
+use rustc_span::{BytePos, DUMMY_SP, Loc, Span};
 pub use snippet::Style;
 // Used by external projects such as `rust-gpu`.
 // See https://github.com/rust-lang/rust/pull/115393.
@@ -237,10 +237,9 @@ impl SubstitutionPart {
     /// it with "abx" is, since the "c" character is lost.
     pub fn is_destructive_replacement(&self, sm: &SourceMap) -> bool {
         self.is_replacement(sm)
-            && !sm.span_to_snippet(self.span).is_ok_and(|snippet| {
-                self.snippet.trim_start().starts_with(snippet.trim_start())
-                    || self.snippet.trim_end().ends_with(snippet.trim_end())
-            })
+            && !sm
+                .span_to_snippet(self.span)
+                .is_ok_and(|snippet| as_substr(snippet.trim(), self.snippet.trim()).is_some())
     }
 
     fn replaces_meaningful_content(&self, sm: &SourceMap) -> bool {
@@ -257,13 +256,37 @@ impl SubstitutionPart {
         let Ok(snippet) = sm.span_to_snippet(self.span) else {
             return;
         };
-        if self.snippet.starts_with(&snippet) {
-            self.span = self.span.shrink_to_hi();
-            self.snippet = self.snippet[snippet.len()..].to_string();
-        } else if self.snippet.ends_with(&snippet) {
-            self.span = self.span.shrink_to_lo();
-            self.snippet = self.snippet[..self.snippet.len() - snippet.len()].to_string();
+
+        if let Some((prefix, substr, suffix)) = as_substr(&snippet, &self.snippet) {
+            self.span = Span::new(
+                self.span.lo() + BytePos(prefix as u32),
+                self.span.hi() - BytePos(suffix as u32),
+                self.span.ctxt(),
+                self.span.parent(),
+            );
+            self.snippet = substr.to_string();
         }
+    }
+}
+
+/// Given an original string like `AACC`, and a suggestion like `AABBCC`, try to detect
+/// the case where a substring of the suggestion is "sandwiched" in the original, like
+/// `BB` is. Return the length of the prefix, the "trimmed" suggestion, and the length
+/// of the suffix.
+fn as_substr<'a>(original: &'a str, suggestion: &'a str) -> Option<(usize, &'a str, usize)> {
+    let common_prefix = original
+        .chars()
+        .zip(suggestion.chars())
+        .take_while(|(c1, c2)| c1 == c2)
+        .map(|(c, _)| c.len_utf8())
+        .sum();
+    let original = &original[common_prefix..];
+    let suggestion = &suggestion[common_prefix..];
+    if suggestion.ends_with(original) {
+        let common_suffix = original.len();
+        Some((common_prefix, &suggestion[..suggestion.len() - original.len()], common_suffix))
+    } else {
+        None
     }
 }
 
@@ -380,7 +403,12 @@ impl CodeSuggestion {
                 // or deleted code in order to point at the correct column *after* substitution.
                 let mut acc = 0;
                 let mut only_capitalization = false;
-                for part in &substitution.parts {
+                for part in &mut substitution.parts {
+                    // If this is a replacement of, e.g. `"a"` into `"ab"`, adjust the
+                    // suggestion and snippet to look as if we just suggested to add
+                    // `"b"`, which is typically much easier for the user to understand.
+                    part.trim_trivial_replacements(sm);
+
                     only_capitalization |= is_case_difference(sm, &part.snippet, part.span);
                     let cur_lo = sm.lookup_char_pos(part.span.lo());
                     if prev_hi.line == cur_lo.line {

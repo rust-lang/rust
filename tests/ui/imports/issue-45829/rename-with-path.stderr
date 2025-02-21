@@ -9,9 +9,8 @@ LL | use std::{collections::HashMap as A, sync::Arc as A};
    = note: `A` must be defined only once in the type namespace of this module
 help: you can use `as` to change the binding name of the import
    |
-LL - use std::{collections::HashMap as A, sync::Arc as A};
-LL + use std::{collections::HashMap as A, sync::Arc as OtherA};
-   |
+LL | use std::{collections::HashMap as A, sync::Arc as OtherA};
+   |                                                   +++++
 
 error: aborting due to 1 previous error
 

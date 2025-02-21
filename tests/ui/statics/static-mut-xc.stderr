@@ -67,9 +67,8 @@ LL |     static_bound_set(&mut static_mut_xc::a);
    = note: mutable references to mutable statics are dangerous; it's undefined behavior if any other pointer to the static is used or if any other reference is created for the static while the mutable reference lives
 help: use `&raw mut` instead to create a raw pointer
    |
-LL -     static_bound_set(&mut static_mut_xc::a);
-LL +     static_bound_set(&raw mut static_mut_xc::a);
-   |
+LL |     static_bound_set(&raw mut static_mut_xc::a);
+   |                       +++
 
 warning: 7 warnings emitted
 

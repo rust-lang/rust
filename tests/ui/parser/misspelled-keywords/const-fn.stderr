@@ -6,9 +6,8 @@ LL | cnst fn code() {}
    |
 help: there is a keyword `const` with a similar name
    |
-LL - cnst fn code() {}
-LL + const fn code() {}
-   |
+LL | const fn code() {}
+   |  +
 
 error: aborting due to 1 previous error
 

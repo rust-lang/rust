@@ -9,9 +9,8 @@ LL |     generator
    |
 help: consider changing `impl Coroutine<&'not_static str> + 'static`'s explicit `'static` bound to the lifetime of argument `s`
    |
-LL - fn demo<'not_static>(s: &'not_static str) -> Pin<Box<impl Coroutine<&'not_static str> + 'static>> {
-LL + fn demo<'not_static>(s: &'not_static str) -> Pin<Box<impl Coroutine<&'not_static str> + 'not_static>> {
-   |
+LL | fn demo<'not_static>(s: &'not_static str) -> Pin<Box<impl Coroutine<&'not_static str> + 'not_static>> {
+   |                                                                                          ++++
 help: alternatively, add an explicit `'static` bound to this reference
    |
 LL - fn demo<'not_static>(s: &'not_static str) -> Pin<Box<impl Coroutine<&'not_static str> + 'static>> {
