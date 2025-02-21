@@ -13,6 +13,7 @@ use std::sync::Arc;
 use rustc_hashes::{Hash64, Hash128};
 use smallvec::{Array, SmallVec};
 use thin_vec::ThinVec;
+use triomphe;
 
 /// A byte that [cannot occur in UTF8 sequences][utf8]. Used to mark the end of a string.
 /// This way we can skip validation and still be relatively sure that deserialization
@@ -484,6 +485,18 @@ impl<S: Encoder, T: Encodable<S>> Encodable<S> for Arc<T> {
 impl<D: Decoder, T: Decodable<D>> Decodable<D> for Arc<T> {
     fn decode(d: &mut D) -> Arc<T> {
         Arc::new(Decodable::decode(d))
+    }
+}
+
+impl<S: Encoder, T: Encodable<S>> Encodable<S> for triomphe::Arc<T> {
+    fn encode(&self, s: &mut S) {
+        (**self).encode(s);
+    }
+}
+
+impl<D: Decoder, T: Decodable<D>> Decodable<D> for triomphe::Arc<T> {
+    fn decode(d: &mut D) -> triomphe::Arc<T> {
+        triomphe::Arc::new(Decodable::decode(d))
     }
 }
 
