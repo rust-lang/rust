@@ -1234,6 +1234,14 @@ impl Step for RunMakeSupport {
             &[],
         );
 
+        let _guard = builder.msg_tool(
+            Kind::Build,
+            Mode::ToolStd,
+            "run-make-support",
+            self.compiler.stage,
+            &self.compiler.host,
+            &self.target,
+        );
         cargo.into_cmd().run(builder);
 
         let lib_name = "librun_make_support.rlib";
