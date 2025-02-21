@@ -1362,40 +1362,7 @@ test!(Pretty {
     only_hosts: true,
 });
 
-/// Special-handling is needed for `run-make`, so don't use `test!` for defining `RunMake`
-/// tests.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct RunMake {
-    pub compiler: Compiler,
-    pub target: TargetSelection,
-}
-
-impl Step for RunMake {
-    type Output = ();
-    const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = false;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.suite_path("tests/run-make")
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
-        run.builder.ensure(RunMakeSupport { compiler, target: run.build_triple() });
-        run.builder.ensure(RunMake { compiler, target: run.target });
-    }
-
-    fn run(self, builder: &Builder<'_>) {
-        builder.ensure(Compiletest {
-            compiler: self.compiler,
-            target: self.target,
-            mode: "run-make",
-            suite: "run-make",
-            path: "tests/run-make",
-            compare_mode: None,
-        });
-    }
-}
+test!(RunMake { path: "tests/run-make", mode: "run-make", suite: "run-make", default: true });
 
 test!(Assembly { path: "tests/assembly", mode: "assembly", suite: "assembly", default: true });
 
@@ -1637,6 +1604,9 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
                 sysroot: builder.sysroot(compiler).to_path_buf(),
                 host: target,
             });
+        }
+        if suite == "run-make" {
+            builder.tool_exe(Tool::RunMakeSupport);
         }
 
         // Also provide `rust_test_helpers` for the host.
