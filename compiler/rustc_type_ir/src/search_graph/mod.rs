@@ -19,6 +19,8 @@ use std::marker::PhantomData;
 
 use derive_where::derive_where;
 use rustc_index::{Idx, IndexVec};
+#[cfg(feature = "nightly")]
+use rustc_macros::HashStable_NoContext;
 use tracing::debug;
 
 use crate::data_structures::HashMap;
@@ -109,7 +111,8 @@ pub trait Delegate {
 /// In the initial iteration of a cycle, we do not yet have a provisional
 /// result. In the case we return an initial provisional result depending
 /// on the kind of cycle.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub enum PathKind {
     Coinductive,
     Inductive,

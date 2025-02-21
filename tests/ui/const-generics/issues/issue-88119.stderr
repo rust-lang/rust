@@ -6,30 +6,90 @@ LL | #![feature(const_trait_impl, generic_const_exprs)]
    |
    = help: remove one of these features
 
-error[E0284]: type annotations needed: cannot satisfy `the constant `name_len::<T>()` can be evaluated`
+error[E0275]: overflow evaluating the requirement `&T: ~const ConstName`
+  --> $DIR/issue-88119.rs:19:49
+   |
+LL | impl<T: ?Sized + ConstName> const ConstName for &T
+   |                                                 ^^
+
+error[E0275]: overflow evaluating the requirement `&T: ConstName`
+  --> $DIR/issue-88119.rs:19:49
+   |
+LL | impl<T: ?Sized + ConstName> const ConstName for &T
+   |                                                 ^^
+
+error[E0275]: overflow evaluating the requirement `[(); name_len::<T>()] well-formed`
   --> $DIR/issue-88119.rs:21:5
    |
 LL |     [(); name_len::<T>()]:,
-   |     ^^^^^^^^^^^^^^^^^^^^^ cannot satisfy `the constant `name_len::<T>()` can be evaluated`
+   |     ^^^^^^^^^^^^^^^^^^^^^
    |
 note: required by a bound in `<&T as ConstName>`
+  --> $DIR/issue-88119.rs:21:5
+   |
+LL |     [(); name_len::<T>()]:,
+   |     ^^^^^^^^^^^^^^^^^^^^^ required by this bound in `<&T as ConstName>`
+
+error[E0275]: overflow evaluating the requirement `[(); name_len::<T>()] well-formed`
   --> $DIR/issue-88119.rs:21:10
    |
 LL |     [(); name_len::<T>()]:,
-   |          ^^^^^^^^^^^^^^^ required by this bound in `<&T as ConstName>`
+   |          ^^^^^^^^^^^^^^^
+   |
+note: required by a bound in `<&T as ConstName>`
+  --> $DIR/issue-88119.rs:21:5
+   |
+LL |     [(); name_len::<T>()]:,
+   |     ^^^^^^^^^^^^^^^^^^^^^ required by this bound in `<&T as ConstName>`
 
-error[E0284]: type annotations needed: cannot satisfy `the constant `name_len::<T>()` can be evaluated`
+error[E0275]: overflow evaluating the requirement `&mut T: ~const ConstName`
+  --> $DIR/issue-88119.rs:26:49
+   |
+LL | impl<T: ?Sized + ConstName> const ConstName for &mut T
+   |                                                 ^^^^^^
+
+error[E0275]: overflow evaluating the requirement `&mut T: ConstName`
+  --> $DIR/issue-88119.rs:26:49
+   |
+LL | impl<T: ?Sized + ConstName> const ConstName for &mut T
+   |                                                 ^^^^^^
+
+error[E0275]: overflow evaluating the requirement `[(); name_len::<T>()] well-formed`
   --> $DIR/issue-88119.rs:28:5
    |
 LL |     [(); name_len::<T>()]:,
-   |     ^^^^^^^^^^^^^^^^^^^^^ cannot satisfy `the constant `name_len::<T>()` can be evaluated`
+   |     ^^^^^^^^^^^^^^^^^^^^^
    |
 note: required by a bound in `<&mut T as ConstName>`
+  --> $DIR/issue-88119.rs:28:5
+   |
+LL |     [(); name_len::<T>()]:,
+   |     ^^^^^^^^^^^^^^^^^^^^^ required by this bound in `<&mut T as ConstName>`
+
+error[E0275]: overflow evaluating the requirement `[(); name_len::<T>()] well-formed`
   --> $DIR/issue-88119.rs:28:10
    |
 LL |     [(); name_len::<T>()]:,
-   |          ^^^^^^^^^^^^^^^ required by this bound in `<&mut T as ConstName>`
+   |          ^^^^^^^^^^^^^^^
+   |
+note: required by a bound in `<&mut T as ConstName>`
+  --> $DIR/issue-88119.rs:28:5
+   |
+LL |     [(); name_len::<T>()]:,
+   |     ^^^^^^^^^^^^^^^^^^^^^ required by this bound in `<&mut T as ConstName>`
 
-error: aborting due to 3 previous errors
+error[E0275]: overflow evaluating the requirement `&&mut u8: ConstName`
+  --> $DIR/issue-88119.rs:33:35
+   |
+LL | pub const ICE_1: &'static [u8] = <&&mut u8 as ConstName>::NAME_BYTES;
+   |                                   ^^^^^^^^
 
-For more information about this error, try `rustc --explain E0284`.
+error[E0275]: overflow evaluating the requirement `&mut &u8: ConstName`
+  --> $DIR/issue-88119.rs:34:35
+   |
+LL | pub const ICE_2: &'static [u8] = <&mut &u8 as ConstName>::NAME_BYTES;
+   |                                   ^^^^^^^^
+
+error: aborting due to 11 previous errors
+
+For more information about this error, try `rustc --explain E0275`.

@@ -264,7 +264,10 @@ where
 
     pub(super) fn step_kind_for_source(&self, source: GoalSource) -> PathKind {
         match (self.current_goal_kind, source) {
-            (CurrentGoalKind::CoinductiveTrait, GoalSource::ImplWhereBound) => PathKind::Coinductive,
+            (_, GoalSource::NormalizeGoal(step_kind)) => step_kind,
+            (CurrentGoalKind::CoinductiveTrait, GoalSource::ImplWhereBound) => {
+                PathKind::Coinductive
+            }
             _ => PathKind::Inductive,
         }
     }
@@ -670,8 +673,11 @@ where
 
     #[instrument(level = "trace", skip(self))]
     pub(super) fn add_normalizes_to_goal(&mut self, mut goal: Goal<I, ty::NormalizesTo<I>>) {
-        goal.predicate =
-            goal.predicate.fold_with(&mut ReplaceAliasWithInfer::new(self, goal.param_env));
+        goal.predicate = goal.predicate.fold_with(&mut ReplaceAliasWithInfer::new(
+            self,
+            GoalSource::Misc,
+            goal.param_env,
+        ));
         self.inspect.add_normalizes_to_goal(self.delegate, self.max_input_universe, goal);
         self.nested_goals.normalizes_to_goals.push(goal);
     }
@@ -679,7 +685,7 @@ where
     #[instrument(level = "debug", skip(self))]
     pub(super) fn add_goal(&mut self, source: GoalSource, mut goal: Goal<I, I::Predicate>) {
         goal.predicate =
-            goal.predicate.fold_with(&mut ReplaceAliasWithInfer::new(self, goal.param_env));
+            goal.predicate.fold_with(&mut ReplaceAliasWithInfer::new(self, source, goal.param_env));
         self.inspect.add_goal(self.delegate, self.max_input_universe, source, goal);
         self.nested_goals.goals.push((source, goal));
     }
@@ -1100,6 +1106,7 @@ where
 {
     ecx: &'me mut EvalCtxt<'a, D>,
     param_env: I::ParamEnv,
+    normalization_goal_source: GoalSource,
     cache: HashMap<I::Ty, I::Ty>,
 }
 
@@ -1108,8 +1115,18 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    fn new(ecx: &'me mut EvalCtxt<'a, D>, param_env: I::ParamEnv) -> Self {
-        ReplaceAliasWithInfer { ecx, param_env, cache: Default::default() }
+    fn new(
+        ecx: &'me mut EvalCtxt<'a, D>,
+        for_goal_source: GoalSource,
+        param_env: I::ParamEnv,
+    ) -> Self {
+        let step_kind = ecx.step_kind_for_source(for_goal_source);
+        ReplaceAliasWithInfer {
+            ecx,
+            param_env,
+            normalization_goal_source: GoalSource::NormalizeGoal(step_kind),
+            cache: Default::default(),
+        }
     }
 }
 
@@ -1132,7 +1149,7 @@ where
                     ty::AliasRelationDirection::Equate,
                 );
                 self.ecx.add_goal(
-                    GoalSource::Misc,
+                    self.normalization_goal_source,
                     Goal::new(self.cx(), self.param_env, normalizes_to),
                 );
                 infer_ty
@@ -1161,7 +1178,7 @@ where
                     ty::AliasRelationDirection::Equate,
                 );
                 self.ecx.add_goal(
-                    GoalSource::Misc,
+                    self.normalization_goal_source,
                     Goal::new(self.cx(), self.param_env, normalizes_to),
                 );
                 infer_ct
