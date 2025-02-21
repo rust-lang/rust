@@ -212,6 +212,9 @@ Options:
                         removed, see issue #44136
                         <https://github.com/rust-lang/rust/issues/44136> for
                         more information
+        --generate-macro-expansion 
+                        Add possibility to expand macros in the HTML source
+                        code pages
 
     @path               Read newline separated options from `path`
 
