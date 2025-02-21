@@ -445,50 +445,12 @@ bootstrap_tool!(
     WasmComponentLd, "src/tools/wasm-component-ld", "wasm-component-ld", is_unstable_tool = true, allow_features = "min_specialization";
     UnicodeTableGenerator, "src/tools/unicode-table-generator", "unicode-table-generator";
     FeaturesStatusDump, "src/tools/features-status-dump", "features-status-dump";
+    OptimizedDist, "src/tools/opt-dist", "opt-dist", submodules = &["src/tools/rustc-perf"];
 );
 
 /// These are the submodules that are required for rustbook to work due to
 /// depending on mdbook plugins.
 pub static SUBMODULES_FOR_RUSTBOOK: &[&str] = &["src/doc/book", "src/doc/reference"];
-
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub struct OptimizedDist {
-    pub compiler: Compiler,
-    pub target: TargetSelection,
-}
-
-impl Step for OptimizedDist {
-    type Output = ToolBuildResult;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/tools/opt-dist")
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(OptimizedDist {
-            compiler: run.builder.compiler(0, run.builder.config.build),
-            target: run.target,
-        });
-    }
-
-    fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
-        // We need to ensure the rustc-perf submodule is initialized when building opt-dist since
-        // the tool requires it to be in place to run.
-        builder.require_submodule("src/tools/rustc-perf", None);
-
-        builder.ensure(ToolBuild {
-            compiler: self.compiler,
-            target: self.target,
-            tool: "opt-dist",
-            mode: Mode::ToolBootstrap,
-            path: "src/tools/opt-dist",
-            source_type: SourceType::InTree,
-            extra_features: Vec::new(),
-            allow_features: "",
-            cargo_args: Vec::new(),
-        })
-    }
-}
 
 /// The [rustc-perf](https://github.com/rust-lang/rustc-perf) benchmark suite, which is added
 /// as a submodule at `src/tools/rustc-perf`.
