@@ -46,15 +46,15 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 for lane_idx in 0..lane_count {
                     let src = if lane_idx < (lane_count / 2) { &left } else { &right };
-                    #[allow(clippy::arithmetic_side_effects)]
-                    let src_idx = lane_idx % (lane_count / 2);
+                    let src_idx = lane_idx.strict_rem(lane_count / 2);
 
-                    #[allow(clippy::arithmetic_side_effects)]
-                    let lhs_lane = this.read_immediate(&this.project_index(src, src_idx * 2)?)?;
-                    #[allow(clippy::arithmetic_side_effects)]
-                    let rhs_lane =
-                        this.read_immediate(&this.project_index(src, src_idx * 2 + 1)?)?;
+                    let lhs_lane =
+                        this.read_immediate(&this.project_index(src, src_idx.strict_mul(2))?)?;
+                    let rhs_lane = this.read_immediate(
+                        &this.project_index(src, src_idx.strict_mul(2).strict_add(1))?,
+                    )?;
 
+                    // Compute `if lhs > rhs { lhs } else { rhs }`, i.e., `max`.
                     let res_lane = if this
                         .binary_op(BinOp::Gt, &lhs_lane, &rhs_lane)?
                         .to_scalar()
