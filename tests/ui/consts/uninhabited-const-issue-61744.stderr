@@ -634,7 +634,7 @@ note: inside `hint_unreachable`
    |
 LL |     fake_type()
    |     ^^^^^^^^^^^
-note: the failure occurred inside `fake_type::<!>`
+note: inside `fake_type::<!>`
   --> $DIR/uninhabited-const-issue-61744.rs:4:5
    |
 LL |     hint_unreachable()

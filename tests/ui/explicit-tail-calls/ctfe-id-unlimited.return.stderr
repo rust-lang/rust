@@ -14,7 +14,7 @@ note: [... 125 additional calls inside `inner` ...]
    |
 LL |             #[cfg(r#return)] _ => return inner(acc + 1, n - 1),
    |                                          ^^^^^^^^^^^^^^^^^^^^^
-note: the failure occurred inside `inner`
+note: inside `inner`
   --> $DIR/ctfe-id-unlimited.rs:17:42
    |
 LL |             #[cfg(r#return)] _ => return inner(acc + 1, n - 1),

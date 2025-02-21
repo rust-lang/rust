@@ -9,7 +9,7 @@ note: inside `ub`
    |
 LL |     std::hint::unreachable_unchecked();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: the failure occurred inside `unreachable_unchecked`
+note: inside `unreachable_unchecked`
   --> $SRC_DIR/core/src/hint.rs:LL:COL
    |
    = note: the failure occurred here

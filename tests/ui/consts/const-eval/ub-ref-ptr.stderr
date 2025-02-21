@@ -156,7 +156,7 @@ LL |     ptr.read();
    |
 note: inside `std::ptr::const_ptr::<impl *const u32>::read`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-note: the failure occurred inside `std::ptr::read::<u32>`
+note: inside `std::ptr::read::<u32>`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
    |
    = note: the failure occurred here
