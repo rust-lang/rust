@@ -463,7 +463,7 @@ macro_rules! spec_tuple_impl {
     (
         [$($params_:tt)*],
         (
-            $params:tt, $SpecTupleExtendN:ident, $default_extend_tuple_n:ident
+            $params:tt, $SpecTupleExtendN:tt, $default_extend_tuple_n:tt
         ),
         $($remainder:tt,)*
     ) => {
@@ -480,7 +480,7 @@ macro_rules! spec_tuple_impl {
     };
     ( [$($params_:tt)*], ) => { };
     (
-        $SpecTupleExtendN:ident, $default_extend_tuple_n:ident,
+        $SpecTupleExtendN:tt, $default_extend_tuple_n:tt,
         $params:tt
     ) => {
         spec_tuple_impl!(
@@ -495,7 +495,7 @@ macro_rules! spec_tuple_impl {
         );
     };
     (
-        $SpecTupleExtendN:ident, $default_extend_tuple_n:ident,
+        $SpecTupleExtendN:tt, $default_extend_tuple_n:tt,
         $($params:tt),+
     ) => {
         spec_tuple_impl!(
@@ -507,65 +507,66 @@ macro_rules! spec_tuple_impl {
         );
     };
     (
-        $SpecTupleExtendN:ident, $default_extend_tuple_n:ident, #$maybe_special_case:tt
+        $SpecTupleExtendN:tt, $default_extend_tuple_n:tt,
+        #$skip_specialization_trait_for_1_tuple:tt
         #[$meta:meta]
         $(#[$doctext:meta])? => $(
             (
-                $Ts:ident, $var_names:ident, $ExtendTs:ident, $cnts:tt
+                $T:ident, $var_names:ident, $ExtendT:ident, $cnt:tt
             ),
         )*
     ) => {
         #[$meta]
         $(#[$doctext])?
         #[stable(feature = "extend_for_tuple", since = "1.56.0")]
-        impl<$($Ts,)* $($ExtendTs,)*> Extend<($($Ts,)*)> for ($($ExtendTs,)*)
+        impl<$($T,)* $($ExtendT,)*> Extend<($($T,)*)> for ($($ExtendT,)*)
         where
-            $($ExtendTs: Extend<$Ts>,)*
+            $($ExtendT: Extend<$T>,)*
         {
+            spec_tuple_impl!(
+                #$skip_specialization_trait_for_1_tuple
 
-            spec_tuple_impl!(#$maybe_special_case
-
-                fn extend<I: IntoIterator<Item = ($($Ts,)*)>>(&mut self, into_iter: I) {
+                fn extend<I: IntoIterator<Item = ($($T,)*)>>(&mut self, into_iter: I) {
                     let ($($var_names,)*) = self;
                     let iter = into_iter.into_iter();
                     $SpecTupleExtendN::extend(iter, $($var_names,)*);
                 }
             );
 
-            fn extend_one(&mut self, item: ($($Ts,)*)) {
-                $(self.$cnts.extend_one(item.$cnts);)*
+            fn extend_one(&mut self, item: ($($T,)*)) {
+                $(self.$cnt.extend_one(item.$cnt);)*
             }
 
             fn extend_reserve(&mut self, additional: usize) {
-                $(self.$cnts.extend_reserve(additional);)*
+                $(self.$cnt.extend_reserve(additional);)*
             }
 
-            unsafe fn extend_one_unchecked(&mut self, item: ($($Ts,)*)) {
+            unsafe fn extend_one_unchecked(&mut self, item: ($($T,)*)) {
                 // SAFETY: Those are our safety preconditions, and we correctly forward `extend_reserve`.
                 unsafe {
-                     $(self.$cnts.extend_one_unchecked(item.$cnts);)*
+                     $(self.$cnt.extend_one_unchecked(item.$cnt);)*
                 }
             }
         }
 
-        spec_tuple_impl!(#$maybe_special_case
+        spec_tuple_impl!(
+            #$skip_specialization_trait_for_1_tuple
 
-            trait $SpecTupleExtendN<$($Ts),*> {
-                fn extend(self, $($var_names: &mut $Ts,)*);
+            trait $SpecTupleExtendN<$($T),*> {
+                fn extend(self, $($var_names: &mut $T,)*);
             }
 
-            fn $default_extend_tuple_n<$($Ts,)* $($ExtendTs,)*>(
-                iter: impl Iterator<Item = ($($Ts,)*)>,
-                $($var_names: &mut $ExtendTs,)*
+            fn $default_extend_tuple_n<$($T,)* $($ExtendT,)*>(
+                iter: impl Iterator<Item = ($($T,)*)>,
+                $($var_names: &mut $ExtendT,)*
             ) where
-                $($ExtendTs: Extend<$Ts>,)*
+                $($ExtendT: Extend<$T>,)*
             {
-                fn extend<'a, $($Ts,)*>(
-                    $($var_names: &'a mut impl Extend<$Ts>,)*
-                ) -> impl FnMut((), ($($Ts,)*)) + 'a {
-                    #[allow(non_snake_case)]
-                    move |(), ($($ExtendTs,)*)| {
-                        $($var_names.extend_one($ExtendTs);)*
+                fn extend<'a, $($T,)*>(
+                    $($var_names: &'a mut impl Extend<$T>,)*
+                ) -> impl FnMut((), ($($T,)*)) + 'a {
+                    move |(), item| {
+                        $($var_names.extend_one(item.$cnt);)*
                     }
                 }
 
@@ -577,30 +578,29 @@ macro_rules! spec_tuple_impl {
                 iter.fold((), extend($($var_names,)*));
             }
 
-            impl<$($Ts,)* $($ExtendTs,)* Iter> $SpecTupleExtendN<$($ExtendTs),*> for Iter
+            impl<$($T,)* $($ExtendT,)* Iter> $SpecTupleExtendN<$($ExtendT),*> for Iter
             where
-                $($ExtendTs: Extend<$Ts>,)*
-                Iter: Iterator<Item = ($($Ts,)*)>,
+                $($ExtendT: Extend<$T>,)*
+                Iter: Iterator<Item = ($($T,)*)>,
             {
-                default fn extend(self, $($var_names: &mut $ExtendTs),*) {
+                default fn extend(self, $($var_names: &mut $ExtendT),*) {
                     $default_extend_tuple_n(self, $($var_names),*);
                 }
             }
 
-            impl<$($Ts,)* $($ExtendTs,)* Iter> $SpecTupleExtendN<$($ExtendTs),*> for Iter
+            impl<$($T,)* $($ExtendT,)* Iter> $SpecTupleExtendN<$($ExtendT),*> for Iter
             where
-                $($ExtendTs: Extend<$Ts>,)*
-                Iter: TrustedLen<Item = ($($Ts,)*)>,
+                $($ExtendT: Extend<$T>,)*
+                Iter: TrustedLen<Item = ($($T,)*)>,
             {
-                fn extend(self, $($var_names: &mut $ExtendTs,)*) {
-                    fn extend<'a, $($Ts,)*>(
-                        $($var_names: &'a mut impl Extend<$Ts>,)*
-                    ) -> impl FnMut((), ($($Ts,)*)) + 'a {
-                        #[allow(non_snake_case)]
+                fn extend(self, $($var_names: &mut $ExtendT,)*) {
+                    fn extend<'a, $($T,)*>(
+                        $($var_names: &'a mut impl Extend<$T>,)*
+                    ) -> impl FnMut((), ($($T,)*)) + 'a {
                         // SAFETY: We reserve enough space for the `size_hint`, and the iterator is
                         // `TrustedLen` so its `size_hint` is exact.
-                        move |(), ($($ExtendTs,)*)| unsafe {
-                            $($var_names.extend_one_unchecked($ExtendTs);)*
+                        move |(), item| unsafe {
+                            $($var_names.extend_one_unchecked(item.$cnt);)*
                         }
                     }
 
@@ -644,12 +644,12 @@ macro_rules! spec_tuple_impl {
         #[$meta]
         $(#[$doctext])?
         #[stable(feature = "from_iterator_for_tuple", since = "1.79.0")]
-        impl<$($Ts,)* $($ExtendTs,)*> FromIterator<($($ExtendTs,)*)> for ($($Ts,)*)
+        impl<$($T,)* $($ExtendT,)*> FromIterator<($($ExtendT,)*)> for ($($T,)*)
         where
-            $($Ts: Default + Extend<$ExtendTs>,)*
+            $($T: Default + Extend<$ExtendT>,)*
         {
-            fn from_iter<Iter: IntoIterator<Item = ($($ExtendTs,)*)>>(iter: Iter) -> Self {
-                let mut res = <($($Ts,)*)>::default();
+            fn from_iter<Iter: IntoIterator<Item = ($($ExtendT,)*)>>(iter: Iter) -> Self {
+                let mut res = <($($T,)*)>::default();
                 res.extend(iter);
 
                 res
@@ -657,8 +657,8 @@ macro_rules! spec_tuple_impl {
         }
     };
     (
-        #special_case_1_tuple fn
-        $($t:tt)*
+        #special_case_1_tuple
+        fn $($t:tt)*
     ) => {
         /// Allows to `extend` a tuple of collections that also implement `Extend`.
         ///
@@ -681,12 +681,13 @@ macro_rules! spec_tuple_impl {
         /// assert_eq!(b, [2, 5, 8]);
         /// assert_eq!(c, [3, 6, 9]);
         /// ```
-        fn extend<I: IntoIterator<Item = (T,)>>(&mut self, into_iter: I) {
-            self.0.extend(into_iter.into_iter().map(|(a,)| a));
+        fn extend<I: IntoIterator<Item = (T,)>>(&mut self, iter: I) {
+            self.0.extend(iter.into_iter().map(|(a,)| a));
         }
     };
     (
-        #special_case_1_tuple $($t:tt)*
+        #special_case_1_tuple
+        $($t:tt)*
     ) => {
         // no specialization traits
     };
@@ -700,7 +701,7 @@ macro_rules! spec_tuple_impl {
 
 spec_tuple_impl!(
     [],
-    ((T, t, ExtendT, 0), SpecTupleExtend1, default_extend_tuple_1),
+    ((T, t, ExtendT, 0), @, @),
     ((U, u, ExtendU, 1), SpecTupleExtend2, default_extend_tuple_2),
     ((V, v, ExtendV, 2), SpecTupleExtend3, default_extend_tuple_3),
     ((X, x, ExtendX, 3), SpecTupleExtend4, default_extend_tuple_4),
