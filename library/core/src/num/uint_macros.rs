@@ -3274,14 +3274,14 @@ macro_rules! uint_impl {
         /// Basic usage:
         ///
         /// ```
-        /// #![feature(unsigned_is_multiple_of)]
         #[doc = concat!("assert!(6_", stringify!($SelfT), ".is_multiple_of(2));")]
         #[doc = concat!("assert!(!5_", stringify!($SelfT), ".is_multiple_of(2));")]
         ///
         #[doc = concat!("assert!(0_", stringify!($SelfT), ".is_multiple_of(0));")]
         #[doc = concat!("assert!(!6_", stringify!($SelfT), ".is_multiple_of(0));")]
         /// ```
-        #[unstable(feature = "unsigned_is_multiple_of", issue = "128101")]
+        #[stable(feature = "unsigned_is_multiple_of", since = "CURRENT_RUSTC_VERSION")]
+        #[rustc_const_stable(feature = "unsigned_is_multiple_of", since = "CURRENT_RUSTC_VERSION")]
         #[must_use]
         #[inline]
         #[rustc_inherit_overflow_checks]
