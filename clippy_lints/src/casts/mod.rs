@@ -17,6 +17,7 @@ mod char_lit_as_u8;
 mod fn_to_numeric_cast;
 mod fn_to_numeric_cast_any;
 mod fn_to_numeric_cast_with_truncation;
+mod manual_dangling_ptr;
 mod ptr_as_ptr;
 mod ptr_cast_constness;
 mod ref_as_ptr;
@@ -759,6 +760,32 @@ declare_clippy_lint! {
     "detects `as *mut _` and `as *const _` conversion"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for casts of small constant literals or `mem::align_of` results to raw pointers.
+    ///
+    /// ### Why is this bad?
+    /// This creates a dangling pointer and is better expressed as
+    /// {`std`, `core`}`::ptr::`{`dangling`, `dangling_mut`}.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let ptr = 4 as *const u32;
+    /// let aligned = std::mem::align_of::<u32>() as *const u32;
+    /// let mut_ptr: *mut i64 = 8 as *mut _;
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let ptr = std::ptr::dangling::<u32>();
+    /// let aligned = std::ptr::dangling::<u32>();
+    /// let mut_ptr: *mut i64 = std::ptr::dangling_mut();
+    /// ```
+    #[clippy::version = "1.87.0"]
+    pub MANUAL_DANGLING_PTR,
+    style,
+    "casting small constant literals to pointers to create dangling pointers"
+}
+
 pub struct Casts {
     msrv: Msrv,
 }
@@ -795,6 +822,7 @@ impl_lint_pass!(Casts => [
     ZERO_PTR,
     REF_AS_PTR,
     AS_POINTER_UNDERSCORE,
+    MANUAL_DANGLING_PTR,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Casts {
@@ -822,6 +850,10 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
             fn_to_numeric_cast::check(cx, expr, cast_from_expr, cast_from, cast_to);
             fn_to_numeric_cast_with_truncation::check(cx, expr, cast_from_expr, cast_from, cast_to);
             zero_ptr::check(cx, expr, cast_from_expr, cast_to_hir);
+
+            if self.msrv.meets(cx, msrvs::MANUAL_DANGLING_PTR) {
+                manual_dangling_ptr::check(cx, expr, cast_from_expr, cast_to_hir);
+            }
 
             if cast_to.is_numeric() {
                 cast_possible_truncation::check(cx, expr, cast_from_expr, cast_from, cast_to, cast_to_hir.span);
