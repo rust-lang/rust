@@ -17,7 +17,7 @@ note: inside `std::ptr::drop_in_place::<Option<String>> - shim(Some(Option<Strin
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 note: inside `std::ptr::drop_in_place::<String> - shim(Some(String))`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-note: the failure occurred inside `std::ptr::drop_in_place::<Vec<u8>> - shim(Some(Vec<u8>))`
+note: inside `std::ptr::drop_in_place::<Vec<u8>> - shim(Some(Vec<u8>))`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
    |
    = note: the failure occurred here
@@ -40,7 +40,7 @@ note: inside `std::ptr::drop_in_place::<Option<String>> - shim(Some(Option<Strin
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 note: inside `std::ptr::drop_in_place::<String> - shim(Some(String))`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-note: the failure occurred inside `std::ptr::drop_in_place::<Vec<u8>> - shim(Some(Vec<u8>))`
+note: inside `std::ptr::drop_in_place::<Vec<u8>> - shim(Some(Vec<u8>))`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
    |
    = note: the failure occurred here

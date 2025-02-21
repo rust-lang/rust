@@ -7,9 +7,9 @@ const X: fn(usize) -> usize = double;
 
 const fn bar(x: fn(usize) -> usize, y: usize) -> usize {
     x(y)
-    //~^ NOTE the failure occurred inside `bar`
+    //~^ NOTE inside `bar`
     //~| NOTE the failure occurred here
-    //~| NOTE the failure occurred inside `bar`
+    //~| NOTE inside `bar`
     //~| NOTE the failure occurred here
 }
 

@@ -634,7 +634,7 @@ note: inside `b`
    |
 LL |     a()
    |     ^^^
-note: the failure occurred inside `a`
+note: inside `a`
   --> $DIR/infinite-recursion-const-fn.rs:4:5
    |
 LL |     b()

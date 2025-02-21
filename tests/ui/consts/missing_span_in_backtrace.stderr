@@ -14,7 +14,7 @@ note: inside `swap_nonoverlapping::compiletime::<MaybeUninit<u8>>`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 note: inside `std::ptr::swap_nonoverlapping_simple_untyped::<MaybeUninit<u8>>`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-note: the failure occurred inside `std::ptr::read::<MaybeUninit<MaybeUninit<u8>>>`
+note: inside `std::ptr::read::<MaybeUninit<MaybeUninit<u8>>>`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
    |
    = note: the failure occurred here

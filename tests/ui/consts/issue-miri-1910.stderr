@@ -6,7 +6,7 @@ LL |     (&foo as *const _ as *const u8).add(one_and_a_half_pointers).read();
    |
 note: inside `std::ptr::const_ptr::<impl *const u8>::read`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-note: the failure occurred inside `std::ptr::read::<u8>`
+note: inside `std::ptr::read::<u8>`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
    |
    = note: the failure occurred here

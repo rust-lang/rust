@@ -298,7 +298,6 @@ impl Subdiagnostic for FrameNote {
         diag.arg("times", self.times);
         diag.arg("where_", self.where_);
         diag.arg("instance", self.instance);
-        diag.arg("is_last", self.is_last);
         let mut span: MultiSpan = self.span.into();
         if self.is_last && !self.span.is_dummy() {
             span.push_span_label(self.span, fluent::const_eval_frame_note_last);
