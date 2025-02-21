@@ -70,8 +70,7 @@ pub(crate) fn check_pointers<'a, 'tcx, F>(
     // statements/blocks after. Iterating or visiting the MIR in order would require updating
     // our current location after every insertion. By iterating backwards, we dodge this issue:
     // The only Locations that an insertion changes have already been handled.
-    for block in (0..basic_blocks.len()).rev() {
-        let block = block.into();
+    for block in basic_blocks.indices().rev() {
         for statement_index in (0..basic_blocks[block].statements.len()).rev() {
             let location = Location { block, statement_index };
             let statement = &basic_blocks[block].statements[statement_index];
