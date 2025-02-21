@@ -8,6 +8,8 @@ name: build
       - '**/*.toml'
       - '**/*.yml'
       - src/llvm-project
+  schedule:
+    - cron: "0 0 * * *"
   workflow_dispatch: null
 permissions:
   contents: read
