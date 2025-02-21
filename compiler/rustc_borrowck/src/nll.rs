@@ -154,13 +154,16 @@ pub(crate) fn compute_regions<'a, 'tcx>(
         infcx.set_tainted_by_errors(guar);
     }
 
-    let (lowered_constraints, placeholder_errors) = rewrite_higher_kinded_outlives_as_constraints(
+    let mut placeholder_errors = RegionErrors::new(infcx.tcx);
+
+    let lowered_constraints = rewrite_higher_kinded_outlives_as_constraints(
         outlives_constraints,
         &var_infos,
         &universal_regions,
         type_tests,
         infcx.tcx,
         member_constraints,
+        &mut placeholder_errors,
     );
 
     let mut regioncx = RegionInferenceContext::new(
@@ -202,19 +205,16 @@ pub(crate) fn compute_regions<'a, 'tcx>(
     });
 
     // Solve the region constraints.
-    let (closure_region_requirements, mut nll_errors) =
+    let (closure_region_requirements, region_inference_errors) =
         regioncx.solve(infcx, body, polonius_output.clone());
 
-    // FIXME(amandasystems) -- is this too late to inject our errors? Can they help solve()?
-    if nll_errors.has_errors().is_none() {
-        for error in placeholder_errors.into_iter() {
-            nll_errors.push(error);
-        }
+    let nll_errors = if region_inference_errors.has_errors().is_some() {
+        debug!("Errors already reported, skipping these: {placeholder_errors:?}");
+        region_inference_errors
     } else {
-        debug!(
-            "Errors already reported, skipping these placeholder errors: {placeholder_errors:?}"
-        );
-    }
+        // Only flag the higher-kinded bounds errors if there are no borrowck errors.
+        placeholder_errors
+    };
 
     if let Some(guar) = nll_errors.has_errors() {
         // Suppress unhelpful extra errors in `infer_opaque_types`.

@@ -12,6 +12,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::scc::{self, Sccs};
 use rustc_index::IndexVec;
 use rustc_infer::infer::NllRegionVariableOrigin;
+use rustc_infer::infer::outlives::test_type_match;
 use rustc_infer::infer::region_constraints::{GenericKind, VarInfos, VerifyBound};
 use rustc_middle::ty::{Region, RegionVid, TyCtxt, UniverseIndex};
 use rustc_span::Span;
@@ -19,7 +20,7 @@ use tracing::{debug, info, instrument, trace};
 
 use crate::constraints::graph::{ConstraintGraph, Normal};
 use crate::constraints::{ConstraintSccIndex, OutlivesConstraintSet};
-use crate::diagnostics::RegionErrorKind;
+use crate::diagnostics::{RegionErrorKind, RegionErrors};
 use crate::member_constraints::MemberConstraintSet;
 use crate::region_infer::{RegionDefinition, Representative, TypeTest};
 use crate::universal_regions::UniversalRegions;
@@ -44,7 +45,7 @@ impl<'d, 'tcx, A: scc::Annotation> SccAnnotations<'d, 'tcx, A> {
     }
 }
 
-#[derive(Copy, Debug, Clone)]
+#[derive(Copy, Debug, Clone, PartialEq, Eq)]
 enum PlaceholderReachability {
     /// This SCC reaches no placeholders.
     NoPlaceholders,
@@ -228,50 +229,46 @@ impl scc::Annotations<RegionVid, ConstraintSccIndex, Representative>
     }
 }
 
-#[instrument(skip(definitions, sccs, annotations), ret, level = "debug")]
+#[instrument(skip(definitions, sccs, annotations, errors_buffer), level = "debug")]
 fn find_placeholder_mismatch_errors<'tcx>(
     definitions: &IndexVec<RegionVid, RegionDefinition<'tcx>>,
     sccs: &Sccs<RegionVid, ConstraintSccIndex>,
     annotations: &SccAnnotations<'_, '_, RegionTracker>,
-) -> Vec<RegionErrorKind<'tcx>> {
+    errors_buffer: &mut RegionErrors<'tcx>,
+) {
     use NllRegionVariableOrigin::Placeholder;
+    for (rvid, definition) in definitions.iter_enumerated() {
+        let Placeholder(origin_a) = definition.origin else {
+            continue;
+        };
 
-    // Note: it's possible to sort this iterator by SCC and get dependency order,
-    // which makes it easy to only add only one constraint per future cycle.
-    // However, we want to flag all errors we see, probably.
-    let placeholders_and_sccs = definitions.iter_enumerated().filter_map(|(rvid, definition)| {
-        if matches!(definition.origin, Placeholder { .. }) {
-            Some((sccs.scc(rvid), rvid))
-        } else {
-            None
-        }
-    });
+        let scc = sccs.scc(rvid);
 
-    placeholders_and_sccs.filter_map(|(scc, rvid)|{
-                let annotation = annotations.scc_to_annotation[scc];
-                annotation.reaches_other_placeholder(rvid).and_then(|other_placeholder| {
+        let Some(other_placeholder) =
+            annotations.scc_to_annotation[scc].reaches_other_placeholder(rvid)
+        else {
+            trace!("{rvid:?} reaches no other placeholders");
+            continue;
+        };
 
-                    debug!(
-                        "Placeholder {rvid:?} of SCC {scc:?} reaches other placeholder {other_placeholder:?}"
-                    );
+        debug!(
+            "Placeholder {rvid:?} of SCC {scc:?} reaches other placeholder {other_placeholder:?}"
+        );
 
-                    // FIXME(amandasystems) -- SURELY there is a neater way to do this?
-                    let (Placeholder(origin_a), Placeholder(origin_b)) =
-                    (definitions[rvid].origin, definitions[other_placeholder].origin)
-                else {
-                    unreachable!(
-                        "Region {rvid:?}, {other_placeholder:?} should be placeholders but aren't!"
-                    );
-                };
+        // FIXME SURELY there is a neater way to do this?
+        let Placeholder(origin_b) = definitions[other_placeholder].origin else {
+            unreachable!(
+                "Region {rvid:?}, {other_placeholder:?} should be placeholders but aren't!"
+            );
+        };
 
-                Some(RegionErrorKind::PlaceholderMismatch {
-                    rvid_a: rvid,
-                    rvid_b: other_placeholder,
-                    origin_a,
-                    origin_b,
-                })
-                })
-            }).collect()
+        errors_buffer.push(RegionErrorKind::PlaceholderMismatch {
+            rvid_a: rvid,
+            rvid_b: other_placeholder,
+            origin_a,
+            origin_b,
+        });
+    }
 }
 
 /// This method handles Universe errors by rewriting the constraint
@@ -321,7 +318,8 @@ pub(crate) fn rewrite_higher_kinded_outlives_as_constraints<'tcx>(
     type_tests: Vec<TypeTest<'tcx>>,
     tcx: TyCtxt<'tcx>,
     member_constraints: MemberConstraintSet<'tcx, RegionVid>,
-) -> (LoweredConstraints<'tcx>, Vec<RegionErrorKind<'tcx>>) {
+    errors_buffer: &mut RegionErrors<'tcx>,
+) -> LoweredConstraints<'tcx> {
     // Create a RegionDefinition for each inference variable. This happens here because
     // it allows us to sneak in a cheap check for placeholders. Otherwise, its proper home
     // is in `RegionInferenceContext::new()`, probably.
@@ -352,24 +350,21 @@ pub(crate) fn rewrite_higher_kinded_outlives_as_constraints<'tcx>(
             definitions.len(),
             &mut annotations,
         );
-        return (
-            LoweredConstraints {
-                type_tests: type_tests
-                    .into_iter()
-                    .map(|type_test| LoweredTypeTest::Untouched(type_test))
-                    .collect(),
-                member_constraints: member_constraints.into_mapped(
-                    |r| sccs.scc(r),
-                    |_| true,
-                    |_, _| false,
-                ),
-                sccs,
-                scc_representatives: annotations.scc_to_annotation,
-                definitions,
-                outlives_constraints,
-            },
-            Vec::default(),
-        );
+        return LoweredConstraints {
+            type_tests: type_tests
+                .into_iter()
+                .map(|type_test| LoweredTypeTest::Untouched(type_test))
+                .collect(),
+            member_constraints: member_constraints.into_mapped(
+                |r| sccs.scc(r),
+                |_| true,
+                |_, _| false,
+            ),
+            sccs,
+            scc_representatives: annotations.scc_to_annotation,
+            definitions,
+            outlives_constraints,
+        };
     }
 
     debug!("Placeholders present; activating placeholder handling logic!");
@@ -381,7 +376,7 @@ pub(crate) fn rewrite_higher_kinded_outlives_as_constraints<'tcx>(
     let outlives_static =
         rewrite_outlives(&sccs, &annotations, fr_static, &mut outlives_constraints, &definitions);
 
-    let placeholder_errors = find_placeholder_mismatch_errors(&definitions, &sccs, &annotations);
+    find_placeholder_mismatch_errors(&definitions, &sccs, &annotations, errors_buffer);
 
     let (sccs, scc_annotations) = if !outlives_static.is_empty() {
         debug!("The following SCCs had :'static constraints added: {:?}", outlives_static);
@@ -431,17 +426,14 @@ pub(crate) fn rewrite_higher_kinded_outlives_as_constraints<'tcx>(
         .map(|rich_annotation| rich_annotation.into_representative())
         .collect();
 
-    (
-        LoweredConstraints {
-            type_tests,
-            sccs,
-            definitions,
-            scc_representatives,
-            member_constraints,
-            outlives_constraints,
-        },
-        placeholder_errors,
-    )
+    LoweredConstraints {
+        type_tests,
+        sccs,
+        definitions,
+        scc_representatives,
+        member_constraints,
+        outlives_constraints,
+    }
 }
 
 fn rewrite_outlives<'tcx>(
@@ -563,6 +555,9 @@ pub(crate) enum RewrittenVerifyBound<'tcx> {
     /// Given a region `R`, true if `R: 'static`. Used during lowering
     /// of higher-kinded constraints.
     OutlivesStatic(Region<'tcx>),
+
+    /// The bottom bound, which is never satisfied.
+    Unsatisfied,
 }
 
 #[derive(Debug, Clone)]
@@ -581,13 +576,15 @@ pub(crate) enum LoweredTypeTest<'tcx> {
     },
 }
 
-#[instrument(skip(sccs, scc_annotations, universal_regions), ret)]
+#[instrument(skip(sccs, scc_annotations, universal_regions, tcx), ret)]
 fn rewrite_verify_bound<'t>(
     bound: VerifyBound<'t>,
     lower_scc: ConstraintSccIndex,
     sccs: &Sccs<RegionVid, ConstraintSccIndex>,
     scc_annotations: &IndexVec<ConstraintSccIndex, RegionTracker>,
     universal_regions: &UniversalRegions<'t>,
+    tcx: TyCtxt<'t>,
+    generic_kind: GenericKind<'t>,
 ) -> Either<VerifyBound<'t>, RewrittenVerifyBound<'t>> {
     let lower = scc_annotations[lower_scc];
     match bound {
@@ -595,12 +592,29 @@ fn rewrite_verify_bound<'t>(
         // equality, and it does -- except that we do not track placeholders,
         // and so in the event that you have two empty regions, one of which is
         // in an unnameable universe, they would compare equal since they
-        // are both empty.
+        // are both empty. This bit checks if we
         VerifyBound::IfEq(binder) => {
             info!("Assuming, incorrectly, that Eq bound is universe-fine: {binder:?}");
-            // FIXME(amandasystems): this is not always true!!! We have to figure out if there's universe shenanigans going on here, but
-            // that's an annoying folding process so I've punted.
-            Either::Left(bound)
+
+            // FIXME: does it matter that I don't normalise to SCCs?
+            match test_type_match::extract_verify_if_eq(tcx, &binder, generic_kind.to_ty(tcx)) {
+                Some(r) => {
+                    let r_vid = universal_regions.to_region_vid(r);
+                    let r_scc = scc_annotations[sccs.scc(r_vid)];
+                    let l_scc = scc_annotations[lower_scc];
+                    let in_same_universe = r_scc.universe_compatible_with(l_scc)
+                        && l_scc.universe_compatible_with(r_scc);
+                    let reaches_same_placeholders =
+                        r_scc.reachable_placeholders == l_scc.reachable_placeholders;
+
+                    if in_same_universe && reaches_same_placeholders {
+                        Either::Left(bound)
+                    } else {
+                        Either::Right(RewrittenVerifyBound::Unsatisfied)
+                    }
+                }
+                None => Either::Right(RewrittenVerifyBound::Unsatisfied),
+            }
         }
         // Rewrite an outlives bound to an outlives-static bound upon referencing
         // an unnameable universe (from a placeholder).
@@ -614,18 +628,32 @@ fn rewrite_verify_bound<'t>(
                 Either::Right(RewrittenVerifyBound::OutlivesStatic(region))
             }
         }
-        // Nothing in here to violate a universe
+        // Nothing in here to violate a universe, but since we can't detect
+        // bounds being violated by placeholders when we don't track placeholders,
+        // we ensure that we don't reach any.
         VerifyBound::IsEmpty => {
-            // FIXME(amandasystems) Otherwise we are unsound!
-            //assert!(matches!(lower.reachable_placeholders, PlaceholderReachability::NoPlaceholders));
-            Either::Left(bound)
+            if matches!(lower.reachable_placeholders, PlaceholderReachability::NoPlaceholders) {
+                Either::Left(bound)
+            } else {
+                debug!("Empty bound reaches placeholders: {:?}", lower.reachable_placeholders);
+                Either::Right(RewrittenVerifyBound::Unsatisfied)
+            }
         }
-        // FIXME(amandasystems) -- check if we rewrote anything or this and the next variant LIES
+        // Note that this (and below) claims the contents are always rewritten, even if they weren't.
+        // This does not affect correctness, but is surprising.
         VerifyBound::AnyBound(verify_bounds) => Either::Right(RewrittenVerifyBound::AnyBound(
             verify_bounds
                 .into_iter()
                 .map(|bound| {
-                    rewrite_verify_bound(bound, lower_scc, sccs, scc_annotations, universal_regions)
+                    rewrite_verify_bound(
+                        bound,
+                        lower_scc,
+                        sccs,
+                        scc_annotations,
+                        universal_regions,
+                        tcx,
+                        generic_kind,
+                    )
                 })
                 .collect(),
         )),
@@ -633,7 +661,15 @@ fn rewrite_verify_bound<'t>(
             verify_bounds
                 .into_iter()
                 .map(|bound| {
-                    rewrite_verify_bound(bound, lower_scc, sccs, scc_annotations, universal_regions)
+                    rewrite_verify_bound(
+                        bound,
+                        lower_scc,
+                        sccs,
+                        scc_annotations,
+                        universal_regions,
+                        tcx,
+                        generic_kind,
+                    )
                 })
                 .collect(),
         )),
@@ -641,13 +677,13 @@ fn rewrite_verify_bound<'t>(
 }
 
 impl<'t> TypeTest<'t> {
-    #[instrument(skip(sccs, _tcx, universal_regions, scc_annotations), ret)]
+    #[instrument(skip(sccs, tcx, universal_regions, scc_annotations), ret)]
     fn rewrite_higher_kinded_constraints(
         self,
         sccs: &Sccs<RegionVid, ConstraintSccIndex>,
         scc_annotations: &IndexVec<ConstraintSccIndex, RegionTracker>,
         universal_regions: &UniversalRegions<'t>,
-        _tcx: TyCtxt<'t>,
+        tcx: TyCtxt<'t>,
     ) -> LoweredTypeTest<'t> {
         let lower_scc = sccs.scc(self.lower_bound);
         match rewrite_verify_bound(
@@ -656,6 +692,8 @@ impl<'t> TypeTest<'t> {
             sccs,
             scc_annotations,
             universal_regions,
+            tcx,
+            self.generic_kind,
         ) {
             Either::Left(untouched_bound) => {
                 LoweredTypeTest::Untouched(TypeTest { verify_bound: untouched_bound, ..self })

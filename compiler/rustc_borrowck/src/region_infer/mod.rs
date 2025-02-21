@@ -1046,6 +1046,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             };
 
         match verify_bound {
+            // Rewritten higher-kinded concerns caused this bound to never be satisfied.
+            RewrittenVerifyBound::Unsatisfied => Some(bound_fails_due_to_static(true)),
+
             RewrittenVerifyBound::OutlivesStatic(region) => {
                 let does_not_outlive_static = !self
                     .eval_outlives(self.to_region_vid(*region), self.universal_regions().fr_static);
@@ -1529,14 +1532,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         RegionRelationCheckResult::Error
     }
 
+    #[instrument(level = "debug", skip(self, errors_buffer))]
     fn check_bound_universal_region(
         &self,
         longer_fr: RegionVid,
         placeholder: ty::PlaceholderRegion,
         errors_buffer: &mut RegionErrors<'tcx>,
     ) {
-        debug!("check_bound_universal_region(fr={:?}, placeholder={:?})", longer_fr, placeholder);
-
         let longer_fr_scc = self.constraint_sccs.scc(longer_fr);
         debug!("check_bound_universal_region: longer_fr_scc={:?}", longer_fr_scc,);
 
@@ -1544,7 +1546,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             debug!(
                 "check_bound_universal_region, error_element: {error_element:?} for placeholder {placeholder:?} in scc: {longer_fr_scc:?}"
             );
-
             errors_buffer.push(RegionErrorKind::BoundUniversalRegionError {
                 longer_fr,
                 error_element,
