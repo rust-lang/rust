@@ -30,7 +30,6 @@ use rustc_span::{DUMMY_SP, Span, Symbol};
 use tracing::{debug, trace};
 
 pub use self::query::*;
-use self::visit::TyContext;
 use crate::mir::interpret::{AllocRange, Scalar};
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::print::{FmtPrinter, Printer, pretty_print_const, with_no_trimmed_paths};
@@ -98,24 +97,17 @@ impl<'tcx> HasLocalDecls<'tcx> for Body<'tcx> {
 }
 
 impl MirPhase {
-    /// Gets the index of the current MirPhase within the set of all `MirPhase`s.
-    ///
-    /// FIXME(JakobDegen): Return a `(usize, usize)` instead.
-    pub fn phase_index(&self) -> usize {
-        const BUILT_PHASE_COUNT: usize = 1;
-        const ANALYSIS_PHASE_COUNT: usize = 2;
-        match self {
-            MirPhase::Built => 1,
-            MirPhase::Analysis(analysis_phase) => {
-                1 + BUILT_PHASE_COUNT + (*analysis_phase as usize)
-            }
-            MirPhase::Runtime(runtime_phase) => {
-                1 + BUILT_PHASE_COUNT + ANALYSIS_PHASE_COUNT + (*runtime_phase as usize)
-            }
+    /// Gets the (dialect, phase) index of the current `MirPhase`. Both numbers
+    /// are 1-indexed.
+    pub fn index(&self) -> (usize, usize) {
+        match *self {
+            MirPhase::Built => (1, 1),
+            MirPhase::Analysis(analysis_phase) => (2, 1 + analysis_phase as usize),
+            MirPhase::Runtime(runtime_phase) => (3, 1 + runtime_phase as usize),
         }
     }
 
-    /// Parses an `MirPhase` from a pair of strings. Panics if this isn't possible for any reason.
+    /// Parses a `MirPhase` from a pair of strings. Panics if this isn't possible for any reason.
     pub fn parse(dialect: String, phase: Option<String>) -> Self {
         match &*dialect.to_ascii_lowercase() {
             "built" => {
@@ -539,17 +531,6 @@ impl<'tcx> Body<'tcx> {
         }
     }
 
-    pub fn span_for_ty_context(&self, ty_context: TyContext) -> Span {
-        match ty_context {
-            TyContext::UserTy(span) => span,
-            TyContext::ReturnTy(source_info)
-            | TyContext::LocalDecl { source_info, .. }
-            | TyContext::YieldTy(source_info)
-            | TyContext::ResumeTy(source_info) => source_info.span,
-            TyContext::Location(loc) => self.source_info(loc).span,
-        }
-    }
-
     /// Returns the return type; it always return first element from `local_decls` array.
     #[inline]
     pub fn return_ty(&self) -> Ty<'tcx> {
@@ -791,7 +772,7 @@ impl<T> ClearCrossCrate<T> {
         }
     }
 
-    pub fn assert_crate_local(self) -> T {
+    pub fn unwrap_crate_local(self) -> T {
         match self {
             ClearCrossCrate::Clear => bug!("unwrapping cross-crate data"),
             ClearCrossCrate::Set(v) => v,
@@ -948,7 +929,7 @@ mod binding_form_impl {
 /// involved in borrow_check errors, e.g., explanations of where the
 /// temporaries come from, when their destructors are run, and/or how
 /// one might revise the code to satisfy the borrow checker's rules.
-#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, TyEncodable, TyDecodable, HashStable)]
 pub struct BlockTailInfo {
     /// If `true`, then the value resulting from evaluating this tail
     /// expression is ignored by the block's expression context.
@@ -972,7 +953,6 @@ pub struct LocalDecl<'tcx> {
     /// Temporaries and the return place are always mutable.
     pub mutability: Mutability,
 
-    // FIXME(matthewjasper) Don't store in this in `Body`
     pub local_info: ClearCrossCrate<Box<LocalInfo<'tcx>>>,
 
     /// The type of this local.
@@ -982,7 +962,6 @@ pub struct LocalDecl<'tcx> {
     /// e.g., via `let x: T`, then we carry that type here. The MIR
     /// borrow checker needs this information since it can affect
     /// region inference.
-    // FIXME(matthewjasper) Don't store in this in `Body`
     pub user_ty: Option<Box<UserTypeProjections>>,
 
     /// The *syntactic* (i.e., not visibility) source scope the local is defined
@@ -1090,7 +1069,6 @@ pub enum LocalInfo<'tcx> {
     AggregateTemp,
     /// A temporary created for evaluation of some subexpression of some block's tail expression
     /// (with no intervening statement context).
-    // FIXME(matthewjasper) Don't store in this in `Body`
     BlockTailTemp(BlockTailInfo),
     /// A temporary created during evaluating `if` predicate, possibly for pattern matching for `let`s,
     /// and subject to Edition 2024 temporary lifetime rules
@@ -1105,7 +1083,7 @@ pub enum LocalInfo<'tcx> {
 
 impl<'tcx> LocalDecl<'tcx> {
     pub fn local_info(&self) -> &LocalInfo<'tcx> {
-        self.local_info.as_ref().assert_crate_local()
+        self.local_info.as_ref().unwrap_crate_local()
     }
 
     /// Returns `true` only if local is a binding that can itself be

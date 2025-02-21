@@ -104,23 +104,21 @@ impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
 /// ```
 ///
 /// A Postorder traversal of this graph is `D B C A` or `D C B A`
-pub struct Postorder<'a, 'tcx, C> {
+pub struct Postorder<'a, 'tcx> {
     basic_blocks: &'a IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
     visited: DenseBitSet<BasicBlock>,
     visit_stack: Vec<(BasicBlock, Successors<'a>)>,
     root_is_start_block: bool,
-    extra: C,
+    /// A non-empty `extra` allows for a precise calculation of the successors.
+    extra: Option<(TyCtxt<'tcx>, Instance<'tcx>)>,
 }
 
-impl<'a, 'tcx, C> Postorder<'a, 'tcx, C>
-where
-    C: Customization<'tcx>,
-{
+impl<'a, 'tcx> Postorder<'a, 'tcx> {
     pub fn new(
         basic_blocks: &'a IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
         root: BasicBlock,
-        extra: C,
-    ) -> Postorder<'a, 'tcx, C> {
+        extra: Option<(TyCtxt<'tcx>, Instance<'tcx>)>,
+    ) -> Postorder<'a, 'tcx> {
         let mut po = Postorder {
             basic_blocks,
             visited: DenseBitSet::new_empty(basic_blocks.len()),
@@ -140,7 +138,11 @@ where
             return;
         }
         let data = &self.basic_blocks[bb];
-        let successors = C::successors(data, self.extra);
+        let successors = if let Some(extra) = self.extra {
+            data.mono_successors(extra.0, extra.1)
+        } else {
+            data.terminator().successors()
+        };
         self.visit_stack.push((bb, successors));
     }
 
@@ -198,10 +200,7 @@ where
     }
 }
 
-impl<'tcx, C> Iterator for Postorder<'_, 'tcx, C>
-where
-    C: Customization<'tcx>,
-{
+impl<'tcx> Iterator for Postorder<'_, 'tcx> {
     type Item = BasicBlock;
 
     fn next(&mut self) -> Option<BasicBlock> {
@@ -241,32 +240,12 @@ pub fn postorder<'a, 'tcx>(
     reverse_postorder(body).rev()
 }
 
-/// Lets us plug in some additional logic and data into a Postorder traversal. Or not.
-pub trait Customization<'tcx>: Copy {
-    fn successors<'a>(_: &'a BasicBlockData<'tcx>, _: Self) -> Successors<'a>;
-}
-
-impl<'tcx> Customization<'tcx> for () {
-    fn successors<'a>(data: &'a BasicBlockData<'tcx>, _: ()) -> Successors<'a> {
-        data.terminator().successors()
-    }
-}
-
-impl<'tcx> Customization<'tcx> for (TyCtxt<'tcx>, Instance<'tcx>) {
-    fn successors<'a>(
-        data: &'a BasicBlockData<'tcx>,
-        (tcx, instance): (TyCtxt<'tcx>, Instance<'tcx>),
-    ) -> Successors<'a> {
-        data.mono_successors(tcx, instance)
-    }
-}
-
 pub fn mono_reachable_reverse_postorder<'a, 'tcx>(
     body: &'a Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
 ) -> Vec<BasicBlock> {
-    let mut iter = Postorder::new(&body.basic_blocks, START_BLOCK, (tcx, instance));
+    let mut iter = Postorder::new(&body.basic_blocks, START_BLOCK, Some((tcx, instance)));
     let mut items = Vec::with_capacity(body.basic_blocks.len());
     while let Some(block) = iter.next() {
         items.push(block);

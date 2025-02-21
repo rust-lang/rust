@@ -28,7 +28,6 @@ use rustc_middle::bug;
 use rustc_middle::infer::canonical::{CanonicalQueryInput, CanonicalVarValues};
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::select;
-pub use rustc_middle::ty::IntVarValue;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::{
     BoundVarReplacerDelegate, TypeFoldable, TypeFolder, TypeSuperFoldable, fold_regions,
@@ -950,7 +949,7 @@ impl<'tcx> InferCtxt<'tcx> {
         let inner = self.inner.borrow();
         assert!(!UndoLogs::<UndoLog<'_>>::in_snapshot(&inner.undo_log));
         let storage = inner.region_constraint_storage.as_ref().expect("regions already resolved");
-        assert!(storage.data.is_empty());
+        assert!(storage.data.is_empty(), "{:#?}", storage.data);
         // We clone instead of taking because borrowck still wants to use the
         // inference context after calling this for diagnostics and the new
         // trait solver.
