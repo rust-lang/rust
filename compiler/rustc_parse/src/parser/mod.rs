@@ -117,14 +117,13 @@ macro_rules! maybe_recover_from_interpolated_ty_qpath {
     ($self: expr, $allow_qpath_recovery: expr) => {
         if $allow_qpath_recovery
             && $self.may_recover()
-            && let Some(token::MetaVarKind::Ty) = $self.token.is_metavar_seq()
+            && let Some(mv_kind) = $self.token.is_metavar_seq()
+            && let token::MetaVarKind::Ty { .. } = mv_kind
             && $self.check_noexpect_past_close_delim(&token::PathSep)
         {
             // Reparse the type, then move to recovery.
             let ty = $self
-                .eat_metavar_seq(token::MetaVarKind::Ty, |this| {
-                    this.parse_ty_no_question_mark_recover()
-                })
+                .eat_metavar_seq(mv_kind, |this| this.parse_ty_no_question_mark_recover())
                 .expect("metavar seq ty");
 
             return $self.maybe_recover_from_bad_qpath_stage_2($self.prev_token.span, ty);

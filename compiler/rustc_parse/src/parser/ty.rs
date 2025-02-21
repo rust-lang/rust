@@ -249,9 +249,10 @@ impl<'a> Parser<'a> {
         let allow_qpath_recovery = recover_qpath == RecoverQPath::Yes;
         maybe_recover_from_interpolated_ty_qpath!(self, allow_qpath_recovery);
 
-        if let Some(ty) =
-            self.eat_metavar_seq(MetaVarKind::Ty, |this| this.parse_ty_no_question_mark_recover())
-        {
+        if let Some(ty) = self.eat_metavar_seq_with_matcher(
+            |mv_kind| matches!(mv_kind, MetaVarKind::Ty { .. }),
+            |this| this.parse_ty_no_question_mark_recover(),
+        ) {
             return Ok(ty);
         }
 

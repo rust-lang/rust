@@ -30,7 +30,7 @@ impl<'a> Parser<'a> {
                 MetaVarKind::Stmt
                 | MetaVarKind::Pat(_)
                 | MetaVarKind::Expr { .. }
-                | MetaVarKind::Ty
+                | MetaVarKind::Ty { .. }
                 | MetaVarKind::Literal // `true`, `false`
                 | MetaVarKind::Meta
                 | MetaVarKind::Path => true,
@@ -108,7 +108,7 @@ impl<'a> Parser<'a> {
                     | MetaVarKind::Literal => true,
                     MetaVarKind::Item
                     | MetaVarKind::Pat(_)
-                    | MetaVarKind::Ty
+                    | MetaVarKind::Ty { .. }
                     | MetaVarKind::Meta
                     | MetaVarKind::Path
                     | MetaVarKind::Vis => false,

@@ -1,13 +1,13 @@
 use std::mem;
 use std::sync::Arc;
 
-use rustc_ast::ExprKind;
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::token::{
     self, Delimiter, IdentIsRaw, InvisibleOrigin, Lit, LitKind, MetaVarKind, Nonterminal, Token,
     TokenKind,
 };
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
+use rustc_ast::{ExprKind, TyKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Diag, DiagCtxtHandle, PResult, pluralize};
 use rustc_parse::lexer::nfc_normalize;
@@ -323,7 +323,8 @@ pub(super) fn transcribe<'a>(
                             TokenTree::token_alone(kind, sp)
                         }
                         MatchedSingle(ParseNtResult::Ty(ty)) => {
-                            mk_delimited(MetaVarKind::Ty, TokenStream::from_ast(ty))
+                            let is_path = matches!(&ty.kind, TyKind::Path(None, _path));
+                            mk_delimited(MetaVarKind::Ty { is_path }, TokenStream::from_ast(ty))
                         }
                         MatchedSingle(ParseNtResult::Vis(vis)) => {
                             mk_delimited(MetaVarKind::Vis, TokenStream::from_ast(vis))

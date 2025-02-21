@@ -84,7 +84,9 @@ pub enum MetaVarKind {
         // This field is needed for `Token::can_begin_string_literal`.
         can_begin_string_literal: bool,
     },
-    Ty,
+    Ty {
+        is_path: bool,
+    },
     Ident,
     Lifetime,
     Literal,
@@ -104,7 +106,7 @@ impl fmt::Display for MetaVarKind {
             MetaVarKind::Pat(PatParam { inferred: false }) => sym::pat_param,
             MetaVarKind::Expr { kind: Expr2021 { inferred: true } | Expr, .. } => sym::expr,
             MetaVarKind::Expr { kind: Expr2021 { inferred: false }, .. } => sym::expr_2021,
-            MetaVarKind::Ty => sym::ty,
+            MetaVarKind::Ty { .. } => sym::ty,
             MetaVarKind::Ident => sym::ident,
             MetaVarKind::Lifetime => sym::lifetime,
             MetaVarKind::Literal => sym::literal,
@@ -666,7 +668,7 @@ impl Token {
                 MetaVarKind::Meta |
                 MetaVarKind::Pat(_) |
                 MetaVarKind::Path |
-                MetaVarKind::Ty
+                MetaVarKind::Ty { .. }
             ))) => true,
             _ => false,
         }
@@ -689,7 +691,7 @@ impl Token {
             PathSep                      => true, // global path
             Interpolated(ref nt) => matches!(&**nt, NtPath(..)),
             OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(
-                MetaVarKind::Ty |
+                MetaVarKind::Ty { .. } |
                 MetaVarKind::Path
             ))) => true,
             // For anonymous structs or unions, which only appear in specific positions

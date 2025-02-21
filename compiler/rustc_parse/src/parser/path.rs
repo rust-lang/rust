@@ -196,15 +196,12 @@ impl<'a> Parser<'a> {
 
         maybe_whole!(self, NtPath, |path| reject_generics_if_mod_style(self, path.into_inner()));
 
-        if let Some(MetaVarKind::Ty) = self.token.is_metavar_seq() {
-            let mut snapshot = self.create_snapshot_for_diagnostic();
-            let ty = snapshot
-                .eat_metavar_seq(MetaVarKind::Ty, |this| this.parse_ty_no_question_mark_recover())
-                .expect("metavar seq ty");
-            if let ast::TyKind::Path(None, path) = ty.into_inner().kind {
-                self.restore_snapshot(snapshot);
-                return Ok(reject_generics_if_mod_style(self, path));
-            }
+        // If we have a `ty` metavar in the form of a path, reparse it directly as a path, instead
+        // of reparsing it as a `ty` and then extracting the path.
+        if let Some(path) = self.eat_metavar_seq(MetaVarKind::Ty { is_path: true }, |this| {
+            this.parse_path(PathStyle::Type)
+        }) {
+            return Ok(reject_generics_if_mod_style(self, path));
         }
 
         let lo = self.token.span;
