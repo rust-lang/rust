@@ -106,6 +106,36 @@ error: binary float literal is not supported
 LL |     0b111.101;
    |     ^^^^^^^^^
 
+error: expected at least one digit in exponent
+  --> $DIR/lex-bad-numeric-literals.rs:37:5
+   |
+LL |     1e+_2;
+   |     ^^^^^
+
+error: expected at least one digit in exponent
+  --> $DIR/lex-bad-numeric-literals.rs:38:5
+   |
+LL |     1e-_2;
+   |     ^^^^^
+
+error: expected at least one digit in exponent
+  --> $DIR/lex-bad-numeric-literals.rs:39:5
+   |
+LL |     1.2e+_3;
+   |     ^^^^^^^
+
+error: expected at least one digit in exponent
+  --> $DIR/lex-bad-numeric-literals.rs:40:5
+   |
+LL |     1.2e-_3;
+   |     ^^^^^^^
+
+error: hexadecimal float literal is not supported
+  --> $DIR/lex-bad-numeric-literals.rs:41:5
+   |
+LL |     0x539.0;
+   |     ^^^^^^^
+
 error: octal float literal is not supported
   --> $DIR/lex-bad-numeric-literals.rs:5:5
    |
@@ -164,6 +194,6 @@ error: binary float literal is not supported
 LL |     0b101f64;
    |     ^^^^^^^^ not supported
 
-error: aborting due to 26 previous errors
+error: aborting due to 31 previous errors
 
 For more information about this error, try `rustc --explain E0768`.

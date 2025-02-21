@@ -32,4 +32,11 @@ fn main() {
     0o123.456; //~ ERROR: octal float literal is not supported
     0b101f64; //~ ERROR: binary float literal is not supported
     0b111.101; //~ ERROR: binary float literal is not supported
+    1e_2; // OK for now
+    1.2e_3; // OK for now
+    1e+_2; //~ ERROR expected at least one digit in exponent
+    1e-_2; //~ ERROR expected at least one digit in exponent
+    1.2e+_3; //~ ERROR expected at least one digit in exponent
+    1.2e-_3; //~ ERROR expected at least one digit in exponent
+    0x539.0; //~ ERROR: hexadecimal float literal is not supported
 }

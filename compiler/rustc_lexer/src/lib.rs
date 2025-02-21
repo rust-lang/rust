@@ -964,6 +964,13 @@ impl Cursor<'_> {
         debug_assert!(self.prev() == 'e' || self.prev() == 'E');
         if self.first() == '-' || self.first() == '+' {
             self.bump();
+            // Reject floats like `1e+_2` and `1.2e+_3` to avoid introducing identifier
+            // tokens into the possible "fine-grained" tokenization of floats.
+            // (Note that `1e_2` and `1.2e_3` are still accepted below because
+            // they don't introduce identifiers, only suffixed integers.)
+            if self.first() == '_' {
+                return false;
+            }
         }
         self.eat_decimal_digits()
     }
