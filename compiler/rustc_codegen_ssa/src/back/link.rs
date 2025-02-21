@@ -1990,6 +1990,7 @@ fn add_pre_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor)
     if let Some(args) = sess.target.pre_link_args.get(&flavor) {
         cmd.verbatim_args(args.iter().map(Deref::deref));
     }
+
     cmd.verbatim_args(&sess.opts.unstable_opts.pre_link_args);
 }
 
@@ -2518,6 +2519,12 @@ fn add_order_independent_options(
             "--target-cpu",
             &codegen_results.crate_info.target_cpu,
         ]);
+        if codegen_results.crate_info.target_features.len() > 0 {
+            cmd.link_arg(&format!(
+                "--target-feature={}",
+                &codegen_results.crate_info.target_features.join(",")
+            ));
+        }
     } else if flavor == LinkerFlavor::Ptx {
         cmd.link_args(&["--fallback-arch", &codegen_results.crate_info.target_cpu]);
     } else if flavor == LinkerFlavor::Bpf {

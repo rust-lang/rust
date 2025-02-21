@@ -481,6 +481,10 @@ impl Build {
         ),
     )]
     pub fn require_submodule(&self, submodule: &str, err_hint: Option<&str>) {
+        if self.rust_info().is_from_tarball() {
+            return;
+        }
+
         // When testing bootstrap itself, it is much faster to ignore
         // submodules. Almost all Steps work fine without their submodules.
         if cfg!(test) && !self.config.submodules() {
@@ -488,7 +492,7 @@ impl Build {
         }
         self.config.update_submodule(submodule);
         let absolute_path = self.config.src.join(submodule);
-        if dir_is_empty(&absolute_path) {
+        if !absolute_path.exists() || dir_is_empty(&absolute_path) {
             let maybe_enable = if !self.config.submodules()
                 && self.config.rust_info.is_managed_git_subrepository()
             {

@@ -60,7 +60,7 @@ pub mod crt_objects;
 mod base;
 mod json;
 
-pub use base::avr_gnu::ef_avr_arch;
+pub use base::avr::ef_avr_arch;
 
 /// Linker is called through a C/C++ compiler.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -303,15 +303,16 @@ impl LinkerFlavor {
         }
     }
 
-    fn infer_linker_hints(linker_stem: &str) -> (Option<Cc>, Option<Lld>) {
+    fn infer_linker_hints(linker_stem: &str) -> Result<Self, (Option<Cc>, Option<Lld>)> {
         // Remove any version postfix.
         let stem = linker_stem
             .rsplit_once('-')
             .and_then(|(lhs, rhs)| rhs.chars().all(char::is_numeric).then_some(lhs))
             .unwrap_or(linker_stem);
 
-        // GCC/Clang can have an optional target prefix.
-        if stem == "emcc"
+        if stem == "llvm-bitcode-linker" {
+            Ok(Self::Llbc)
+        } else if stem == "emcc" // GCC/Clang can have an optional target prefix.
             || stem == "gcc"
             || stem.ends_with("-gcc")
             || stem == "g++"
@@ -321,7 +322,7 @@ impl LinkerFlavor {
             || stem == "clang++"
             || stem.ends_with("-clang++")
         {
-            (Some(Cc::Yes), Some(Lld::No))
+            Err((Some(Cc::Yes), Some(Lld::No)))
         } else if stem == "wasm-ld"
             || stem.ends_with("-wasm-ld")
             || stem == "ld.lld"
@@ -329,11 +330,11 @@ impl LinkerFlavor {
             || stem == "rust-lld"
             || stem == "lld-link"
         {
-            (Some(Cc::No), Some(Lld::Yes))
+            Err((Some(Cc::No), Some(Lld::Yes)))
         } else if stem == "ld" || stem.ends_with("-ld") || stem == "link" {
-            (Some(Cc::No), Some(Lld::No))
+            Err((Some(Cc::No), Some(Lld::No)))
         } else {
-            (None, None)
+            Err((None, None))
         }
     }
 
@@ -357,7 +358,10 @@ impl LinkerFlavor {
     }
 
     pub fn with_linker_hints(self, linker_stem: &str) -> LinkerFlavor {
-        self.with_hints(LinkerFlavor::infer_linker_hints(linker_stem))
+        match LinkerFlavor::infer_linker_hints(linker_stem) {
+            Ok(linker_flavor) => linker_flavor,
+            Err(hints) => self.with_hints(hints),
+        }
     }
 
     pub fn check_compatibility(self, cli: LinkerFlavorCli) -> Option<String> {
@@ -1797,7 +1801,7 @@ supported_targets! {
     ("riscv64gc-unknown-fuchsia", riscv64gc_unknown_fuchsia),
     ("x86_64-unknown-fuchsia", x86_64_unknown_fuchsia),
 
-    ("avr-unknown-gnu-atmega328", avr_unknown_gnu_atmega328),
+    ("avr-none", avr_none),
 
     ("x86_64-unknown-l4re-uclibc", x86_64_unknown_l4re_uclibc),
 
@@ -2001,7 +2005,7 @@ supported_targets! {
     ("x86_64-pc-nto-qnx710", x86_64_pc_nto_qnx710),
     ("x86_64-pc-nto-qnx710_iosock", x86_64_pc_nto_qnx710_iosock),
     ("x86_64-pc-nto-qnx800", x86_64_pc_nto_qnx800),
-    ("i586-pc-nto-qnx700", i586_pc_nto_qnx700),
+    ("i686-pc-nto-qnx700", i686_pc_nto_qnx700),
 
     ("aarch64-unknown-linux-ohos", aarch64_unknown_linux_ohos),
     ("armv7-unknown-linux-ohos", armv7_unknown_linux_ohos),
@@ -3062,7 +3066,10 @@ impl Target {
             &self.post_link_args,
         ] {
             for (&flavor, flavor_args) in args {
-                check!(!flavor_args.is_empty(), "linker flavor args must not be empty");
+                check!(
+                    !flavor_args.is_empty() || self.arch == "avr",
+                    "linker flavor args must not be empty"
+                );
                 // Check that flavors mentioned in link args are compatible with the default flavor.
                 match self.linker_flavor {
                     LinkerFlavor::Gnu(..) => {

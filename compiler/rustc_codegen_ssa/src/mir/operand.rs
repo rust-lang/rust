@@ -422,9 +422,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                          See <https://github.com/rust-lang/rust/issues/137108>",
                     );
                 }
-                BackendRepr::Uninhabited
-                | BackendRepr::ScalarPair(_, _)
-                | BackendRepr::Memory { sized: false } => bug!(),
+                BackendRepr::ScalarPair(_, _) | BackendRepr::Memory { sized: false } => bug!(),
             })
         };
 
