@@ -419,7 +419,7 @@ impl MissingDoc {
             return;
         }
 
-        let attrs = cx.tcx.hir().attrs(cx.tcx.local_def_id_to_hir_id(def_id));
+        let attrs = cx.tcx.hir_attrs(cx.tcx.local_def_id_to_hir_id(def_id));
         let has_doc = attrs.iter().any(has_doc);
         if !has_doc {
             cx.emit_span_lint(
@@ -997,7 +997,7 @@ declare_lint_pass!(InvalidNoMangleItems => [NO_MANGLE_CONST_ITEMS, NO_MANGLE_GEN
 
 impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
     fn check_item(&mut self, cx: &LateContext<'_>, it: &hir::Item<'_>) {
-        let attrs = cx.tcx.hir().attrs(it.hir_id());
+        let attrs = cx.tcx.hir_attrs(it.hir_id());
         let check_no_mangle_on_generic_fn = |no_mangle_attr: &hir::Attribute,
                                              impl_generics: Option<&hir::Generics<'_>>,
                                              generics: &hir::Generics<'_>,
@@ -1050,7 +1050,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
                 for it in *items {
                     if let hir::AssocItemKind::Fn { .. } = it.kind {
                         if let Some(no_mangle_attr) =
-                            attr::find_by_name(cx.tcx.hir().attrs(it.id.hir_id()), sym::no_mangle)
+                            attr::find_by_name(cx.tcx.hir_attrs(it.id.hir_id()), sym::no_mangle)
                         {
                             check_no_mangle_on_generic_fn(
                                 no_mangle_attr,

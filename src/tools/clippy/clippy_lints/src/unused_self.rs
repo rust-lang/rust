@@ -57,7 +57,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedSelf {
             return;
         }
         let parent = cx.tcx.hir_get_parent_item(impl_item.hir_id()).def_id;
-        let parent_item = cx.tcx.hir().expect_item(parent);
+        let parent_item = cx.tcx.hir_expect_item(parent);
         let assoc_item = cx.tcx.associated_item(impl_item.owner_id);
         let contains_todo = |cx, body: &'_ Body<'_>| -> bool {
             clippy_utils::visitors::for_each_expr_without_closures(body.value, |e| {

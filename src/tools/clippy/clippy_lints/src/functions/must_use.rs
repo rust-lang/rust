@@ -21,7 +21,7 @@ use core::ops::ControlFlow;
 use super::{DOUBLE_MUST_USE, MUST_USE_CANDIDATE, MUST_USE_UNIT};
 
 pub(super) fn check_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
-    let attrs = cx.tcx.hir().attrs(item.hir_id());
+    let attrs = cx.tcx.hir_attrs(item.hir_id());
     let attr = cx.tcx.get_attr(item.owner_id, sym::must_use);
     if let hir::ItemKind::Fn {
         ref sig,
@@ -51,7 +51,7 @@ pub(super) fn check_impl_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Imp
     if let hir::ImplItemKind::Fn(ref sig, ref body_id) = item.kind {
         let is_public = cx.effective_visibilities.is_exported(item.owner_id.def_id);
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
-        let attrs = cx.tcx.hir().attrs(item.hir_id());
+        let attrs = cx.tcx.hir_attrs(item.hir_id());
         let attr = cx.tcx.get_attr(item.owner_id, sym::must_use);
         if let Some(attr) = attr {
             check_needless_must_use(cx, sig.decl, item.owner_id, item.span, fn_header_span, attr, attrs, sig);
@@ -74,7 +74,7 @@ pub(super) fn check_trait_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Tr
         let is_public = cx.effective_visibilities.is_exported(item.owner_id.def_id);
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
 
-        let attrs = cx.tcx.hir().attrs(item.hir_id());
+        let attrs = cx.tcx.hir_attrs(item.hir_id());
         let attr = cx.tcx.get_attr(item.owner_id, sym::must_use);
         if let Some(attr) = attr {
             check_needless_must_use(cx, sig.decl, item.owner_id, item.span, fn_header_span, attr, attrs, sig);

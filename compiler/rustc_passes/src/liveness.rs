@@ -157,7 +157,7 @@ fn check_liveness(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 
     if let Some(upvars) = tcx.upvars_mentioned(def_id) {
         for &var_hir_id in upvars.keys() {
-            let var_name = tcx.hir().name(var_hir_id);
+            let var_name = tcx.hir_name(var_hir_id);
             maps.add_variable(Upvar(var_hir_id, var_name));
         }
     }

@@ -181,7 +181,7 @@ pub(crate) fn try_inline_glob(
                 .filter_map(|child| child.res.opt_def_id())
                 .filter(|def_id| !cx.tcx.is_doc_hidden(def_id))
                 .collect();
-            let attrs = cx.tcx.hir().attrs(import.hir_id());
+            let attrs = cx.tcx.hir_attrs(import.hir_id());
             let mut items = build_module_items(
                 cx,
                 did,
@@ -455,7 +455,7 @@ pub(crate) fn build_impl(
     }
 
     let impl_item = match did.as_local() {
-        Some(did) => match &tcx.hir().expect_item(did).kind {
+        Some(did) => match &tcx.hir_expect_item(did).kind {
             hir::ItemKind::Impl(impl_) => Some(impl_),
             _ => panic!("`DefID` passed to `build_impl` is not an `impl"),
         },
