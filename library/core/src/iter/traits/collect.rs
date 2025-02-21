@@ -461,7 +461,7 @@ impl Extend<()> for () {
 
 macro_rules! spec_tuple_impl {
     (
-        [$($params_:tt)*]
+        [$($params_:tt)*],
         (
             $params:tt, $SpecTupleExtendN:ident, $default_extend_tuple_n:ident
         ),
@@ -474,11 +474,11 @@ macro_rules! spec_tuple_impl {
             $params
         );
         spec_tuple_impl!(
-            [$($params_)* $params]
+            [$($params_)* $params],
             $($remainder,)*
         );
     };
-    ( [$($params_:tt)*] ) => { };
+    ( [$($params_:tt)*], ) => { };
     (
         $SpecTupleExtendN:ident, $default_extend_tuple_n:ident,
         $params:tt
@@ -698,7 +698,8 @@ macro_rules! spec_tuple_impl {
     };
 }
 
-spec_tuple_impl!([]
+spec_tuple_impl!(
+    [],
     ((T, t, ExtendT, 0), SpecTupleExtend1, default_extend_tuple_1),
     ((U, u, ExtendU, 1), SpecTupleExtend2, default_extend_tuple_2),
     ((V, v, ExtendV, 2), SpecTupleExtend3, default_extend_tuple_3),
