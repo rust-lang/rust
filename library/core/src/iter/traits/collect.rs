@@ -461,10 +461,27 @@ impl Extend<()> for () {
 
 macro_rules! spec_tuple_impl {
     (
+        [$($params_:tt)*]
         (
-            $T:ident, $var_name:ident, $ExtendT: ident,
-            $SpecTupleExtendN:ident, $default_extend_tuple_n:ident, $cnt:tt
+            $params:tt, $SpecTupleExtendN:ident, $default_extend_tuple_n:ident
         ),
+        $($remainder:tt,)*
+    ) => {
+        spec_tuple_impl!(
+            $SpecTupleExtendN,
+            $default_extend_tuple_n,
+            $($params_,)*
+            $params
+        );
+        spec_tuple_impl!(
+            [$($params_)* $params]
+            $($remainder,)*
+        );
+    };
+    ([$($params_:tt)*]) => {};
+    (
+        $SpecTupleExtendN:ident, $default_extend_tuple_n:ident,
+        $params:tt
     ) => {
         spec_tuple_impl!(
             $SpecTupleExtendN,
@@ -473,41 +490,18 @@ macro_rules! spec_tuple_impl {
             #[doc = "This trait is implemented for tuples up to twelve items long. The `impl`s for \
                      1- and 3- through 12-ary tuples were stabilized after 2-tuples, in \
                      1.85.0."]
-            => ($T, $var_name, $ExtendT, $cnt),
+            => $params,
         );
     };
     (
-        (
-            $T:ident, $var_name:ident, $ExtendT: ident,
-            $SpecTupleExtendN:ident, $default_extend_tuple_n:ident, $cnt:tt
-        ),
-        $(
-            (
-                $Ts:ident, $var_names:ident,  $ExtendTs:ident,
-                $SpecTupleExtendNs:ident, $default_extend_tuple_ns:ident, $cnts:tt
-            ),
-        )*
+        $SpecTupleExtendN:ident, $default_extend_tuple_n:ident,
+        $($params:tt),+
     ) => {
-        spec_tuple_impl!(
-            $(
-                (
-                    $Ts, $var_names, $ExtendTs,
-                    $SpecTupleExtendNs, $default_extend_tuple_ns, $cnts
-                ),
-            )*
-        );
         spec_tuple_impl!(
             $SpecTupleExtendN,
             $default_extend_tuple_n,
             #[doc(hidden)]
-            => (
-                $T, $var_name, $ExtendT, $cnt
-            ),
-            $(
-                (
-                    $Ts, $var_names, $ExtendTs, $cnts
-                ),
-            )*
+            => $($params,)+
         );
     };
     (
@@ -676,17 +670,17 @@ macro_rules! spec_tuple_impl {
     };
 }
 
-spec_tuple_impl!(
-    (L, l, ExtendL, SpecTupleExtend12, default_extend_tuple_12, 11),
-    (K, k, ExtendK, SpecTupleExtend11, default_extend_tuple_11, 10),
-    (J, j, ExtendJ, SpecTupleExtend10, default_extend_tuple_10, 9),
-    (I, i, ExtendI, SpecTupleExtend9, default_extend_tuple_9, 8),
-    (H, h, ExtendH, SpecTupleExtend8, default_extend_tuple_8, 7),
-    (G, g, ExtendG, SpecTupleExtend7, default_extend_tuple_7, 6),
-    (F, f, ExtendF, SpecTupleExtend6, default_extend_tuple_6, 5),
-    (E, e, ExtendE, SpecTupleExtend5, default_extend_tuple_5, 4),
-    (D, d, ExtendD, SpecTupleExtend4, default_extend_tuple_4, 3),
-    (C, c, ExtendC, SpecTupleExtend3, default_extend_tuple_3, 2),
-    (B, b, ExtendB, SpecTupleExtend2, default_extend_tuple_2, 1),
-    (A, a, ExtendA, SpecTupleExtend1, default_extend_tuple_1, 0),
+spec_tuple_impl!([]
+    ((A, a, ExtendA, 0), SpecTupleExtend1, default_extend_tuple_1),
+    ((B, b, ExtendB, 1), SpecTupleExtend2, default_extend_tuple_2),
+    ((C, c, ExtendC, 2), SpecTupleExtend3, default_extend_tuple_3),
+    ((D, d, ExtendD, 3), SpecTupleExtend4, default_extend_tuple_4),
+    ((E, e, ExtendE, 4), SpecTupleExtend5, default_extend_tuple_5),
+    ((F, f, ExtendF, 5), SpecTupleExtend6, default_extend_tuple_6),
+    ((G, g, ExtendG, 6), SpecTupleExtend7, default_extend_tuple_7),
+    ((H, h, ExtendH, 7), SpecTupleExtend8, default_extend_tuple_8),
+    ((I, i, ExtendI, 8), SpecTupleExtend9, default_extend_tuple_9),
+    ((J, j, ExtendJ, 9), SpecTupleExtend10, default_extend_tuple_10),
+    ((K, k, ExtendK, 10), SpecTupleExtend11, default_extend_tuple_11),
+    ((L, l, ExtendL, 11), SpecTupleExtend12, default_extend_tuple_12),
 );
