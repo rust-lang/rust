@@ -1709,10 +1709,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Otherwise you'd get an error in 2021 immediately because you'd be trying to take
             // ownership of the (borrowed) String or else you'd take ownership of b, as in 2018 and
             // before, which is also an error.
-            hir::CaptureBy::Value { .. } | hir::CaptureBy::Use { .. }
-                if !place.deref_tys().any(Ty::is_ref) =>
-            {
+            hir::CaptureBy::Value { .. } if !place.deref_tys().any(Ty::is_ref) => {
                 ty::UpvarCapture::ByValue
+            }
+            hir::CaptureBy::Use { .. } if !place.deref_tys().any(Ty::is_ref) => {
+                ty::UpvarCapture::ByUse
             }
             hir::CaptureBy::Value { .. } | hir::CaptureBy::Use { .. } | hir::CaptureBy::Ref => {
                 ty::UpvarCapture::ByRef(BorrowKind::Immutable)
@@ -2404,10 +2405,18 @@ fn determine_capture_info(
         // We select the CaptureKind which ranks higher based the following priority order:
         // (ByUse | ByValue) > MutBorrow > UniqueImmBorrow > ImmBorrow
         match (capture_info_a.capture_kind, capture_info_b.capture_kind) {
-            (ty::UpvarCapture::ByUse, _) => capture_info_a,
-            (_, ty::UpvarCapture::ByUse) => capture_info_b,
-            (ty::UpvarCapture::ByValue, _) => capture_info_a,
-            (_, ty::UpvarCapture::ByValue) => capture_info_b,
+            (ty::UpvarCapture::ByUse, ty::UpvarCapture::ByValue)
+            | (ty::UpvarCapture::ByValue, ty::UpvarCapture::ByUse) => {
+                bug!("Same capture can't be ByUse and ByValue at the same time")
+            }
+            (ty::UpvarCapture::ByValue, ty::UpvarCapture::ByValue)
+            | (ty::UpvarCapture::ByUse, ty::UpvarCapture::ByUse)
+            | (ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse, ty::UpvarCapture::ByRef(_)) => {
+                capture_info_a
+            }
+            (ty::UpvarCapture::ByRef(_), ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse) => {
+                capture_info_b
+            }
             (ty::UpvarCapture::ByRef(ref_a), ty::UpvarCapture::ByRef(ref_b)) => {
                 match (ref_a, ref_b) {
                     // Take LHS:

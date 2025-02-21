@@ -324,6 +324,18 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         }
     }
 
+    pub fn consume_clone_or_copy(&self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
+        debug!("delegate_consume_or_clone(place_with_id={:?})", place_with_id);
+
+        if self.cx.type_is_copy_modulo_regions(place_with_id.place.ty()) {
+            self.delegate.borrow_mut().copy(place_with_id, diag_expr_id);
+        } else if self.cx.type_is_use_cloned_modulo_regions(place_with_id.place.ty()) {
+            self.delegate.borrow_mut().use_cloned(place_with_id, diag_expr_id);
+        } else {
+            self.delegate.borrow_mut().consume(place_with_id, diag_expr_id);
+        }
+    }
+
     fn consume_exprs(&self, exprs: &[hir::Expr<'_>]) -> Result<(), Cx::Error> {
         for expr in exprs {
             self.consume_expr(expr)?;
@@ -346,15 +358,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         debug!("consume_or_clone_expr(expr={:?})", expr);
 
         let place_with_id = self.cat_expr(expr)?;
-
-        if self.cx.type_is_copy_modulo_regions(place_with_id.place.ty()) {
-            self.delegate.borrow_mut().copy(&place_with_id, place_with_id.hir_id);
-        } else if self.cx.type_is_use_cloned_modulo_regions(place_with_id.place.ty()) {
-            self.delegate.borrow_mut().use_cloned(&place_with_id, place_with_id.hir_id);
-        } else {
-            self.delegate.borrow_mut().consume(&place_with_id, place_with_id.hir_id);
-        }
-
+        self.consume_clone_or_copy(&place_with_id, place_with_id.hir_id);
         self.walk_expr(expr)?;
         Ok(())
     }
@@ -1132,8 +1136,11 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                     );
 
                     match capture_info.capture_kind {
-                        ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse => {
+                        ty::UpvarCapture::ByValue => {
                             self.consume_or_copy(&place_with_id, place_with_id.hir_id);
+                        }
+                        ty::UpvarCapture::ByUse => {
+                            self.consume_clone_or_copy(&place_with_id, place_with_id.hir_id);
                         }
                         ty::UpvarCapture::ByRef(upvar_borrow) => {
                             self.delegate.borrow_mut().borrow(
