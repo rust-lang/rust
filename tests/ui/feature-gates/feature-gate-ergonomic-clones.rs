@@ -3,7 +3,7 @@ use std::clone::UseCloned;
 
 fn ergonomic_clone(x: i32) -> i32 {
     x.use
-    //~^ ERROR `.use` calls are experimental [E0658]
+    //~^ ERROR ergonomic clones are experimental [E0658]
 }
 
 #[derive(Clone)]
@@ -16,12 +16,12 @@ fn ergonomic_closure_clone() {
     let f1 = Foo;
 
     let f2 = use || {
-        //~^ ERROR `.use` calls are experimental [E0658]
+        //~^ ERROR ergonomic clones are experimental [E0658]
         f1
     };
 
     let f3 = use || {
-        //~^ ERROR `.use` calls are experimental [E0658]
+        //~^ ERROR ergonomic clones are experimental [E0658]
         f1
     };
 }
