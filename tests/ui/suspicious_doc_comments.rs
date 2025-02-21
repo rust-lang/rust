@@ -87,4 +87,8 @@ pub mod useless_outer_doc {
     use std::mem;
 }
 
+// Do not lint, this is not a `///!`
+#[doc = "! here's some docs !"]
+fn issue14265() {}
+
 fn main() {}
