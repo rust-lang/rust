@@ -1983,7 +1983,7 @@ fn resolution_failure(
                                     .tcx
                                     .resolutions(())
                                     .all_macro_rules
-                                    .contains_key(&Symbol::intern(path_str))
+                                    .contains(&Symbol::intern(path_str))
                             {
                                 diag.note(format!(
                                     "`macro_rules` named `{path_str}` exists in this crate, \
