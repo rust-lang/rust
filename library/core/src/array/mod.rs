@@ -178,21 +178,9 @@ impl Error for TryFromSliceError {
 
 #[stable(feature = "try_from_slice_error", since = "1.36.0")]
 impl From<Infallible> for TryFromSliceError {
-    /// Match `Infallible` into `TryFromSliceError`.
+    /// Convert `Infallible` into an error that can happen.
     fn from(x: Infallible) -> TryFromSliceError {
         match x {}
-    }
-}
-
-#[unstable(feature = "never_type", issue = "35121")]
-impl From<!> for TryFromSliceError {
-    /// Match `!` into `TryFromSliceError`.
-    #[inline]
-    fn from(never: !) -> TryFromSliceError {
-        // Match rather than coerce to make sure that code like
-        // `From<Infallible> for TryFromSliceError` above will keep working
-        // when `Infallible` becomes an alias to `!`.
-        match never {}
     }
 }
 
