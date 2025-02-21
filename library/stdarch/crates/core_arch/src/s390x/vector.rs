@@ -100,6 +100,8 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.s390.verimh"] fn verimh(a: vector_signed_short, b: vector_signed_short, c: vector_signed_short, d: i32) -> vector_signed_short;
     #[link_name = "llvm.s390.verimf"] fn verimf(a: vector_signed_int, b: vector_signed_int, c: vector_signed_int, d: i32) -> vector_signed_int;
     #[link_name = "llvm.s390.verimg"] fn verimg(a: vector_signed_long_long, b: vector_signed_long_long, c: vector_signed_long_long, d: i32) -> vector_signed_long_long;
+
+    #[link_name = "llvm.s390.vperm"] fn vperm(a: vector_signed_char, b: vector_signed_char, c: vector_unsigned_char) -> vector_signed_char;
 }
 
 impl_from! { i8x16, u8x16,  i16x8, u16x8, i32x4, u32x4, i64x2, u64x2, f32x4, f64x2 }
@@ -1256,6 +1258,43 @@ mod sealed {
         vector_signed_int, vmrlf, vmrhf,
         vector_signed_long_long, vmrlg, vmrhg
     }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorPerm {
+        unsafe fn vec_perm(self, other: Self, c: vector_unsigned_char) -> Self;
+    }
+
+    macro_rules! impl_merge {
+        ($($ty:ident),*) => {
+            $(
+                #[unstable(feature = "stdarch_s390x", issue = "135681")]
+                impl VectorPerm for $ty {
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_perm(self, other: Self, c: vector_unsigned_char) -> Self {
+                        transmute(vperm(transmute(self), transmute(other), c))
+                    }
+                }
+            )*
+        }
+    }
+
+    impl_merge! {
+        vector_signed_char,
+        vector_signed_short,
+        vector_signed_int,
+        vector_signed_long_long,
+        vector_unsigned_char,
+        vector_unsigned_short,
+        vector_unsigned_int,
+        vector_unsigned_long_long,
+        vector_bool_char,
+        vector_bool_short,
+        vector_bool_int,
+        vector_bool_long_long,
+        vector_float,
+        vector_double
+    }
 }
 
 /// Vector element-wise addition.
@@ -1806,6 +1845,16 @@ pub unsafe fn vec_genmasks_64<const L: u8, const H: u8>() -> vector_unsigned_lon
     vector_unsigned_long_long(const { [genmasks(u64::BITS, L, H); 2] })
 }
 
+/// Returns a vector that contains some elements of two vectors, in the order specified by a third vector.
+/// Each byte of the result is selected by using the least significant 5 bits of the corresponding byte of c as an index into the concatenated bytes of a and b.
+/// Note: The vector generate mask built-in function [`vec_genmask`] could help generate the mask c.
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_perm<T: sealed::VectorPerm>(a: T, b: T, c: vector_unsigned_char) -> T {
+    a.vec_perm(b, c)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2228,4 +2277,94 @@ mod tests {
         [0x00000000, 0x11111111, 0x22222222, 0x33333333],
         [0xCCCCCCCC, 0x22222222, 0xDDDDDDDD, 0x33333333]
     }
+
+    macro_rules! test_vec_perm {
+        {$name:ident,
+         $shorttype:ident, $longtype:ident,
+         [$($a:expr),+], [$($b:expr),+], [$($c:expr),+], [$($d:expr),+]} => {
+            #[simd_test(enable = "vector")]
+            unsafe fn $name() {
+                let a: $longtype = transmute($shorttype::new($($a),+));
+                let b: $longtype = transmute($shorttype::new($($b),+));
+                let c: vector_unsigned_char = transmute(u8x16::new($($c),+));
+                let d = $shorttype::new($($d),+);
+
+                let r: $shorttype = transmute(vec_perm(a, b, c));
+                assert_eq!(d, r);
+            }
+        }
+    }
+
+    test_vec_perm! {test_vec_perm_u8x16,
+    u8x16, vector_unsigned_char,
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    [100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115],
+    [0x00, 0x01, 0x10, 0x11, 0x02, 0x03, 0x12, 0x13,
+     0x04, 0x05, 0x14, 0x15, 0x06, 0x07, 0x16, 0x17],
+    [0, 1, 100, 101, 2, 3, 102, 103, 4, 5, 104, 105, 6, 7, 106, 107]}
+    test_vec_perm! {test_vec_perm_i8x16,
+    i8x16, vector_signed_char,
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    [100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115],
+    [0x00, 0x01, 0x10, 0x11, 0x02, 0x03, 0x12, 0x13,
+     0x04, 0x05, 0x14, 0x15, 0x06, 0x07, 0x16, 0x17],
+    [0, 1, 100, 101, 2, 3, 102, 103, 4, 5, 104, 105, 6, 7, 106, 107]}
+
+    test_vec_perm! {test_vec_perm_m8x16,
+    m8x16, vector_bool_char,
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false],
+    [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true],
+    [0x00, 0x01, 0x10, 0x11, 0x02, 0x03, 0x12, 0x13,
+     0x04, 0x05, 0x14, 0x15, 0x06, 0x07, 0x16, 0x17],
+    [false, false, true, true, false, false, true, true, false, false, true, true, false, false, true, true]}
+    test_vec_perm! {test_vec_perm_u16x8,
+    u16x8, vector_unsigned_short,
+    [0, 1, 2, 3, 4, 5, 6, 7],
+    [10, 11, 12, 13, 14, 15, 16, 17],
+    [0x00, 0x01, 0x10, 0x11, 0x02, 0x03, 0x12, 0x13,
+     0x04, 0x05, 0x14, 0x15, 0x06, 0x07, 0x16, 0x17],
+    [0, 10, 1, 11, 2, 12, 3, 13]}
+    test_vec_perm! {test_vec_perm_i16x8,
+    i16x8, vector_signed_short,
+    [0, 1, 2, 3, 4, 5, 6, 7],
+    [10, 11, 12, 13, 14, 15, 16, 17],
+    [0x00, 0x01, 0x10, 0x11, 0x02, 0x03, 0x12, 0x13,
+     0x04, 0x05, 0x14, 0x15, 0x06, 0x07, 0x16, 0x17],
+    [0, 10, 1, 11, 2, 12, 3, 13]}
+    test_vec_perm! {test_vec_perm_m16x8,
+    m16x8, vector_bool_short,
+    [false, false, false, false, false, false, false, false],
+    [true, true, true, true, true, true, true, true],
+    [0x00, 0x01, 0x10, 0x11, 0x02, 0x03, 0x12, 0x13,
+     0x04, 0x05, 0x14, 0x15, 0x06, 0x07, 0x16, 0x17],
+    [false, true, false, true, false, true, false, true]}
+
+    test_vec_perm! {test_vec_perm_u32x4,
+    u32x4, vector_unsigned_int,
+    [0, 1, 2, 3],
+    [10, 11, 12, 13],
+    [0x00, 0x01, 0x02, 0x03, 0x10, 0x11, 0x12, 0x13,
+     0x04, 0x05, 0x06, 0x07, 0x14, 0x15, 0x16, 0x17],
+    [0, 10, 1, 11]}
+    test_vec_perm! {test_vec_perm_i32x4,
+    i32x4, vector_signed_int,
+    [0, 1, 2, 3],
+    [10, 11, 12, 13],
+    [0x00, 0x01, 0x02, 0x03, 0x10, 0x11, 0x12, 0x13,
+     0x04, 0x05, 0x06, 0x07, 0x14, 0x15, 0x16, 0x17],
+    [0, 10, 1, 11]}
+    test_vec_perm! {test_vec_perm_m32x4,
+    m32x4, vector_bool_int,
+    [false, false, false, false],
+    [true, true, true, true],
+    [0x00, 0x01, 0x02, 0x03, 0x10, 0x11, 0x12, 0x13,
+     0x04, 0x05, 0x06, 0x07, 0x14, 0x15, 0x16, 0x17],
+    [false, true, false, true]}
+    test_vec_perm! {test_vec_perm_f32x4,
+    f32x4, vector_float,
+    [0.0, 1.0, 2.0, 3.0],
+    [1.0, 1.1, 1.2, 1.3],
+    [0x00, 0x01, 0x02, 0x03, 0x10, 0x11, 0x12, 0x13,
+     0x04, 0x05, 0x06, 0x07, 0x14, 0x15, 0x16, 0x17],
+    [0.0, 1.0, 1.0, 1.1]}
 }
