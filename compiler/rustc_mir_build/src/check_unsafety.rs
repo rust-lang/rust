@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::mem;
 use std::ops::Bound;
 
+use rustc_ast::AsmMacro;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::DiagArgValue;
 use rustc_hir::def::DefKind;
@@ -559,7 +560,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 }
             }
             ExprKind::InlineAsm(box InlineAsmExpr {
-                asm_macro: _,
+                asm_macro: AsmMacro::Asm | AsmMacro::NakedAsm,
                 ref operands,
                 template: _,
                 options: _,
@@ -583,7 +584,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                         }
                         Out { expr: None, reg: _, late: _ }
                         | Const { value: _, span: _ }
-                        | SymFn { value: _, span: _ }
+                        | SymFn { value: _ }
                         | SymStatic { def_id: _ } => {}
                         Label { block } => {
                             // Label blocks are safe context.
