@@ -141,7 +141,7 @@ impl From<&OsStr> for EnvKey {
     /// Uses `EnvKey::From<OsString>` to convert the `&OsStr`.
     ///
     /// ## Cost
-    /// Converts `&OsStr` to `OsString` which does a heep allocation
+    /// Converts `&OsStr` to `OsString` which does a heap allocation
     fn from(k: &OsStr) -> Self {
         Self::from(k.to_os_string())
     }

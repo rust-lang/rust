@@ -269,7 +269,7 @@ impl From<PanicMessage> for Box<dyn Any + Send> {
     /// Return the inner wrapped in `Box`.
     ///
     /// ## Cost
-    /// Allocates a new `Box` on the heep
+    /// Allocates a new `Box` on the heap
     fn from(val: PanicMessage) -> Self {
         match val {
             PanicMessage::StaticStr(s) => Box::new(s),
