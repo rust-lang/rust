@@ -107,7 +107,7 @@ impl<'tcx> LateLintPass<'tcx> for AssigningClones {
             && !cx.tcx.is_builtin_derived(resolved_impl)
             // Don't suggest calling a function we're implementing.
             && resolved_impl.as_local().is_none_or(|block_id| {
-                cx.tcx.hir().parent_owner_iter(e.hir_id).all(|(id, _)| id.def_id != block_id)
+                cx.tcx.hir_parent_owner_iter(e.hir_id).all(|(id, _)| id.def_id != block_id)
             })
             && let resolved_assoc_items = cx.tcx.associated_items(resolved_impl)
             // Only suggest if `clone_from`/`clone_into` is explicitly implemented

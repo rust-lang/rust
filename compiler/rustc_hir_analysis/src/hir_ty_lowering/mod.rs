@@ -1673,8 +1673,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         debug!(item_def_id = ?def_id);
 
         // FIXME: document why/how this is different from `tcx.local_parent(def_id)`
-        let parent_def_id =
-            tcx.hir().get_parent_item(tcx.local_def_id_to_hir_id(def_id)).to_def_id();
+        let parent_def_id = tcx.hir_get_parent_item(tcx.local_def_id_to_hir_id(def_id)).to_def_id();
         debug!(?parent_def_id);
 
         // If the trait in segment is the same as the trait defining the item,

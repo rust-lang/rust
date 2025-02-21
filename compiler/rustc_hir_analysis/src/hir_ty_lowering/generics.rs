@@ -542,8 +542,7 @@ pub(crate) fn check_generic_arg_count(
             // ```
             let parent_is_impl_block = cx
                 .tcx()
-                .hir()
-                .parent_owner_iter(seg.hir_id)
+                .hir_parent_owner_iter(seg.hir_id)
                 .next()
                 .is_some_and(|(_, owner_node)| owner_node.is_impl_block());
             if parent_is_impl_block {

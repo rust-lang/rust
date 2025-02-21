@@ -83,7 +83,7 @@ pub(super) fn find_opaque_ty_constraints_for_impl_trait_in_assoc_type(
 #[instrument(skip(tcx), level = "debug")]
 pub(super) fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
-    let scope = tcx.hir().get_defining_scope(hir_id);
+    let scope = tcx.hir_get_defining_scope(hir_id);
     let mut locator = TaitConstraintLocator { def_id, tcx, found: None, typeck_types: vec![] };
 
     debug!(?scope);

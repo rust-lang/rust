@@ -71,7 +71,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         | Node::Variant(_)
         | Node::Ctor(..)
         | Node::Field(_) => {
-            let parent_id = tcx.hir().get_parent_item(hir_id);
+            let parent_id = tcx.hir_get_parent_item(hir_id);
             Some(parent_id.to_def_id())
         }
         // FIXME(#43408) always enable this once `lazy_normalization` is
@@ -90,12 +90,12 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
             let parent_did = if let DefKind::AnonConst = tcx.def_kind(parent_did) {
                 parent_did
             } else {
-                tcx.hir().get_parent_item(hir_id).to_def_id()
+                tcx.hir_get_parent_item(hir_id).to_def_id()
             };
             debug!(?parent_did);
 
             let mut in_param_ty = false;
-            for (_parent, node) in tcx.hir().parent_iter(hir_id) {
+            for (_parent, node) in tcx.hir_parent_iter(hir_id) {
                 if let Some(generics) = node.generics() {
                     let mut visitor = AnonConstInParamTyDetector { in_param_ty: false, ct: hir_id };
 
