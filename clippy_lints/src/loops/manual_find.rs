@@ -134,7 +134,7 @@ fn last_stmt_and_ret<'tcx>(
         }
         None
     }
-    let mut parent_iter = cx.tcx.hir().parent_iter(expr.hir_id);
+    let mut parent_iter = cx.tcx.hir_parent_iter(expr.hir_id);
     if let Some((node_hir, Node::Stmt(..))) = parent_iter.next()
         // This should be the loop
         // This should be the function body

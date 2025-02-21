@@ -10,7 +10,7 @@ use rustc_middle::ty::Ty;
 use super::EAGER_TRANSMUTE;
 
 fn peel_parent_unsafe_blocks<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
-    for (_, parent) in cx.tcx.hir().parent_iter(expr.hir_id) {
+    for (_, parent) in cx.tcx.hir_parent_iter(expr.hir_id) {
         match parent {
             Node::Block(_) => {},
             Node::Expr(e) if let ExprKind::Block(..) = e.kind => {},
