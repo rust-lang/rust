@@ -463,12 +463,12 @@ macro_rules! spec_tuple_impl {
     (
         (
             $ty_name:ident, $var_name:ident, $extend_ty_name: ident,
-            $trait_name:ident, $default_fn_name:ident, $cnt:tt
+            $SpecTupleExtendN:ident, $default_extend_tuple_n:ident, $cnt:tt
         ),
     ) => {
         spec_tuple_impl!(
-            $trait_name,
-            $default_fn_name,
+            $SpecTupleExtendN,
+            $default_extend_tuple_n,
             #[doc(fake_variadic)]
             #[doc = "This trait is implemented for tuples up to twelve items long. The `impl`s for \
                      1- and 3- through 12-ary tuples were stabilized after 2-tuples, in \
@@ -479,12 +479,12 @@ macro_rules! spec_tuple_impl {
     (
         (
             $ty_name:ident, $var_name:ident, $extend_ty_name: ident,
-            $trait_name:ident, $default_fn_name:ident, $cnt:tt
+            $SpecTupleExtendN:ident, $default_extend_tuple_n:ident, $cnt:tt
         ),
         $(
             (
                 $ty_names:ident, $var_names:ident,  $extend_ty_names:ident,
-                $trait_names:ident, $default_fn_names:ident, $cnts:tt
+                $SpecTupleExtendNs:ident, $default_extend_tuple_ns:ident, $cnts:tt
             ),
         )*
     ) => {
@@ -492,13 +492,13 @@ macro_rules! spec_tuple_impl {
             $(
                 (
                     $ty_names, $var_names, $extend_ty_names,
-                    $trait_names, $default_fn_names, $cnts
+                    $SpecTupleExtendNs, $default_extend_tuple_ns, $cnts
                 ),
             )*
         );
         spec_tuple_impl!(
-            $trait_name,
-            $default_fn_name,
+            $SpecTupleExtendN,
+            $default_extend_tuple_n,
             #[doc(hidden)]
             => (
                 $ty_name, $var_name, $extend_ty_name, $cnt
@@ -511,7 +511,7 @@ macro_rules! spec_tuple_impl {
         );
     };
     (
-        $trait_name:ident, $default_fn_name:ident, #[$meta:meta]
+        $SpecTupleExtendN:ident, $default_extend_tuple_n:ident, #[$meta:meta]
         $(#[$doctext:meta])? => $(
             (
                 $ty_names:ident, $var_names:ident, $extend_ty_names:ident, $cnts:tt
@@ -549,7 +549,7 @@ macro_rules! spec_tuple_impl {
             fn extend<T: IntoIterator<Item = ($($ty_names,)*)>>(&mut self, into_iter: T) {
                 let ($($var_names,)*) = self;
                 let iter = into_iter.into_iter();
-                $trait_name::extend(iter, $($var_names,)*);
+                $SpecTupleExtendN::extend(iter, $($var_names,)*);
             }
 
             fn extend_one(&mut self, item: ($($ty_names,)*)) {
@@ -568,11 +568,11 @@ macro_rules! spec_tuple_impl {
             }
         }
 
-        trait $trait_name<$($ty_names),*> {
+        trait $SpecTupleExtendN<$($ty_names),*> {
             fn extend(self, $($var_names: &mut $ty_names,)*);
         }
 
-        fn $default_fn_name<$($ty_names,)* $($extend_ty_names,)*>(
+        fn $default_extend_tuple_n<$($ty_names,)* $($extend_ty_names,)*>(
             iter: impl Iterator<Item = ($($ty_names,)*)>,
             $($var_names: &mut $extend_ty_names,)*
         ) where
@@ -595,17 +595,17 @@ macro_rules! spec_tuple_impl {
             iter.fold((), extend($($var_names,)*));
         }
 
-        impl<$($ty_names,)* $($extend_ty_names,)* Iter> $trait_name<$($extend_ty_names),*> for Iter
+        impl<$($ty_names,)* $($extend_ty_names,)* Iter> $SpecTupleExtendN<$($extend_ty_names),*> for Iter
         where
             $($extend_ty_names: Extend<$ty_names>,)*
             Iter: Iterator<Item = ($($ty_names,)*)>,
         {
             default fn extend(self, $($var_names: &mut $extend_ty_names),*) {
-                $default_fn_name(self, $($var_names),*);
+                $default_extend_tuple_n(self, $($var_names),*);
             }
         }
 
-        impl<$($ty_names,)* $($extend_ty_names,)* Iter> $trait_name<$($extend_ty_names),*> for Iter
+        impl<$($ty_names,)* $($extend_ty_names,)* Iter> $SpecTupleExtendN<$($extend_ty_names),*> for Iter
         where
             $($extend_ty_names: Extend<$ty_names>,)*
             Iter: TrustedLen<Item = ($($ty_names,)*)>,
@@ -626,7 +626,7 @@ macro_rules! spec_tuple_impl {
 
                 if upper_bound.is_none() {
                     // We cannot reserve more than `usize::MAX` items, and this is likely to go out of memory anyway.
-                    $default_fn_name(self, $($var_names,)*);
+                    $default_extend_tuple_n(self, $($var_names,)*);
                     return;
                 }
 
@@ -677,16 +677,16 @@ macro_rules! spec_tuple_impl {
 }
 
 spec_tuple_impl!(
-    (L, l, EL, TraitL, default_extend_tuple_l, 11),
-    (K, k, EK, TraitK, default_extend_tuple_k, 10),
-    (J, j, EJ, TraitJ, default_extend_tuple_j, 9),
-    (I, i, EI, TraitI, default_extend_tuple_i, 8),
-    (H, h, EH, TraitH, default_extend_tuple_h, 7),
-    (G, g, EG, TraitG, default_extend_tuple_g, 6),
-    (F, f, EF, TraitF, default_extend_tuple_f, 5),
-    (E, e, EE, TraitE, default_extend_tuple_e, 4),
-    (D, d, ED, TraitD, default_extend_tuple_d, 3),
-    (C, c, EC, TraitC, default_extend_tuple_c, 2),
-    (B, b, EB, TraitB, default_extend_tuple_b, 1),
-    (A, a, EA, TraitA, default_extend_tuple_a, 0),
+    (L, l, EL, SpecTupleExtend12, default_extend_tuple_12, 11),
+    (K, k, EK, SpecTupleExtend11, default_extend_tuple_11, 10),
+    (J, j, EJ, SpecTupleExtend10, default_extend_tuple_10, 9),
+    (I, i, EI, SpecTupleExtend9, default_extend_tuple_9, 8),
+    (H, h, EH, SpecTupleExtend8, default_extend_tuple_8, 7),
+    (G, g, EG, SpecTupleExtend7, default_extend_tuple_7, 6),
+    (F, f, EF, SpecTupleExtend6, default_extend_tuple_6, 5),
+    (E, e, EE, SpecTupleExtend5, default_extend_tuple_5, 4),
+    (D, d, ED, SpecTupleExtend4, default_extend_tuple_4, 3),
+    (C, c, EC, SpecTupleExtend3, default_extend_tuple_3, 2),
+    (B, b, EB, SpecTupleExtend2, default_extend_tuple_2, 1),
+    (A, a, EA, SpecTupleExtend1, default_extend_tuple_1, 0),
 );
