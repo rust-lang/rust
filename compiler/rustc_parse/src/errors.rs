@@ -1689,6 +1689,13 @@ pub(crate) struct AsyncMoveBlockIn2015 {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_async_use_block_in_2015)]
+pub(crate) struct AsyncUseBlockIn2015 {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_async_bound_modifier_in_2015)]
 pub(crate) struct AsyncBoundModifierIn2015 {
     #[primary_span]

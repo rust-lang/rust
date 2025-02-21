@@ -31,11 +31,11 @@ use super::{
     SeqSep, TokenType,
 };
 use crate::errors::{
-    AddParen, AmbiguousPlus, AsyncMoveBlockIn2015, AttributeOnParamType, AwaitSuggestion,
-    BadQPathStage2, BadTypePlus, BadTypePlusSub, ColonAsSemi, ComparisonOperatorsCannotBeChained,
-    ComparisonOperatorsCannotBeChainedSugg, ConstGenericWithoutBraces,
-    ConstGenericWithoutBracesSugg, DocCommentDoesNotDocumentAnything, DocCommentOnParamType,
-    DoubleColonInBound, ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg,
+    AddParen, AmbiguousPlus, AsyncMoveBlockIn2015, AsyncUseBlockIn2015, AttributeOnParamType,
+    AwaitSuggestion, BadQPathStage2, BadTypePlus, BadTypePlusSub, ColonAsSemi,
+    ComparisonOperatorsCannotBeChained, ComparisonOperatorsCannotBeChainedSugg,
+    ConstGenericWithoutBraces, ConstGenericWithoutBracesSugg, DocCommentDoesNotDocumentAnything,
+    DocCommentOnParamType, DoubleColonInBound, ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg,
     GenericParamsWithoutAngleBrackets, GenericParamsWithoutAngleBracketsSugg,
     HelpIdentifierStartsWithNumber, HelpUseLatestEdition, InInTypo, IncorrectAwait,
     IncorrectSemicolon, IncorrectUseOfAwait, IncorrectUseOfUse, PatternMethodParamWithoutBody,
@@ -572,10 +572,17 @@ impl<'a> Parser<'a> {
             return Err(self.dcx().create_err(UseEqInstead { span: self.token.span }));
         }
 
-        if self.token.is_keyword(kw::Move) && self.prev_token.is_keyword(kw::Async) {
-            // The 2015 edition is in use because parsing of `async move` has failed.
+        if (self.token.is_keyword(kw::Move) || self.token.is_keyword(kw::Use))
+            && self.prev_token.is_keyword(kw::Async)
+        {
+            // The 2015 edition is in use because parsing of `async move` or `async use` has failed.
             let span = self.prev_token.span.to(self.token.span);
-            return Err(self.dcx().create_err(AsyncMoveBlockIn2015 { span }));
+            if self.token.is_keyword(kw::Move) {
+                return Err(self.dcx().create_err(AsyncMoveBlockIn2015 { span }));
+            } else {
+                // kw::Use
+                return Err(self.dcx().create_err(AsyncUseBlockIn2015 { span }));
+            }
         }
 
         let expect = tokens_to_string(&expected);

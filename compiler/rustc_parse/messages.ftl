@@ -26,6 +26,8 @@ parse_async_move_block_in_2015 = `async move` blocks are only allowed in Rust 20
 parse_async_move_order_incorrect = the order of `move` and `async` is incorrect
     .suggestion = try switching the order
 
+parse_async_use_block_in_2015 = `async use` blocks are only allowed in Rust 2018 or later
+
 parse_async_use_order_incorrect = the order of `use` and `async` is incorrect
     .suggestion = try switching the order
 
