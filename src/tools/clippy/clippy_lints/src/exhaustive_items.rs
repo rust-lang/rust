@@ -84,7 +84,7 @@ impl LateLintPass<'_> for ExhaustiveItems {
             _ => return,
         };
         if cx.effective_visibilities.is_exported(item.owner_id.def_id)
-            && let attrs = cx.tcx.hir().attrs(item.hir_id())
+            && let attrs = cx.tcx.hir_attrs(item.hir_id())
             && !attrs.iter().any(|a| a.has_name(sym::non_exhaustive))
             && fields.iter().all(|f| cx.tcx.visibility(f.def_id).is_public())
         {

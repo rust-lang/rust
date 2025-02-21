@@ -97,7 +97,7 @@ fn is_zst<'tcx>(cx: &LateContext<'tcx>, field: &FieldDef, args: ty::GenericArgsR
 }
 
 fn has_c_repr_attr(cx: &LateContext<'_>, hir_id: HirId) -> bool {
-    cx.tcx.hir().attrs(hir_id).iter().any(|attr| {
+    cx.tcx.hir_attrs(hir_id).iter().any(|attr| {
         if attr.has_name(sym::repr) {
             if let Some(items) = attr.meta_item_list() {
                 for item in items {

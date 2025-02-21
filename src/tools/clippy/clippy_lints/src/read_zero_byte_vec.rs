@@ -93,7 +93,7 @@ impl<'tcx> LateLintPass<'tcx> for ReadZeroByteVec {
                             },
                         ),
                         VecInitKind::WithExprCapacity(hir_id) => {
-                            let e = cx.tcx.hir().expect_expr(hir_id);
+                            let e = cx.tcx.hir_expect_expr(hir_id);
                             span_lint_hir_and_then(
                                 cx,
                                 READ_ZERO_BYTE_VEC,
