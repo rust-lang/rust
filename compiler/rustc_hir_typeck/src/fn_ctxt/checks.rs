@@ -791,7 +791,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && provided_arg_tys.len() == formal_and_expected_inputs.len() - 1 + tys.len()
             {
                 // Wrap up the N provided arguments starting at this position in a tuple.
-                let provided_args_to_tuple = &provided_arg_tys.raw[mismatch_idx.idx()..];
+                let provided_args_to_tuple = &provided_arg_tys[mismatch_idx..];
                 let (provided_args_to_tuple, provided_args_after_tuple) =
                     provided_args_to_tuple.split_at(tys.len());
                 let provided_as_tuple =
