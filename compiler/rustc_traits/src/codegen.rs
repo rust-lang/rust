@@ -80,16 +80,14 @@ pub(crate) fn codegen_select_candidate<'tcx>(
         // but never resolved, causing the return value of a query to contain inference
         // vars. We do not have a concept for this and will in fact ICE in stable hashing
         // of the return value. So bail out instead.
-        match impl_source {
-            ImplSource::UserDefined(impl_) => {
-                tcx.dcx().span_delayed_bug(
-                    tcx.def_span(impl_.impl_def_id),
-                    "this impl has unconstrained generic parameters",
-                );
-            }
+        let guar = match impl_source {
+            ImplSource::UserDefined(impl_) => tcx.dcx().span_delayed_bug(
+                tcx.def_span(impl_.impl_def_id),
+                "this impl has unconstrained generic parameters",
+            ),
             _ => unreachable!(),
-        }
-        return Err(CodegenObligationError::FulfillmentError);
+        };
+        return Err(CodegenObligationError::UnconstrainedParam(guar));
     }
 
     Ok(&*tcx.arena.alloc(impl_source))
