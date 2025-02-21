@@ -112,16 +112,7 @@ enum BlockFrame {
     /// Evaluation is currently within the tail expression of a block.
     ///
     /// Example: `{ STMT_1; STMT_2; EXPR }`
-    TailExpr {
-        /// If true, then the surrounding context of the block ignores
-        /// the result of evaluating the block's tail expression.
-        ///
-        /// Example: `let _ = { STMT_1; EXPR };`
-        tail_result_is_ignored: bool,
-
-        /// `Span` of the tail expression.
-        span: Span,
-    },
+    TailExpr { info: BlockTailInfo },
 
     /// Generic mark meaning that the block occurred as a subexpression
     /// where the result might be used.
@@ -277,9 +268,7 @@ impl BlockContext {
             match bf {
                 BlockFrame::SubExpr => continue,
                 BlockFrame::Statement { .. } => break,
-                &BlockFrame::TailExpr { tail_result_is_ignored, span } => {
-                    return Some(BlockTailInfo { tail_result_is_ignored, span });
-                }
+                &BlockFrame::TailExpr { info } => return Some(info),
             }
         }
 
@@ -302,9 +291,9 @@ impl BlockContext {
 
             // otherwise: use accumulated is_ignored state.
             Some(
-                BlockFrame::TailExpr { tail_result_is_ignored: ignored, .. }
-                | BlockFrame::Statement { ignores_expr_result: ignored },
-            ) => *ignored,
+                BlockFrame::TailExpr { info: BlockTailInfo { tail_result_is_ignored: ign, .. } }
+                | BlockFrame::Statement { ignores_expr_result: ign },
+            ) => *ign,
         }
     }
 }
@@ -967,7 +956,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 } => {
                     self.local_decls[local].mutability = mutability;
                     self.local_decls[local].source_info.scope = self.source_scope;
-                    **self.local_decls[local].local_info.as_mut().assert_crate_local() =
+                    **self.local_decls[local].local_info.as_mut().unwrap_crate_local() =
                         if let Some(kind) = param.self_kind {
                             LocalInfo::User(BindingForm::ImplicitSelf(kind))
                         } else {
@@ -1032,7 +1021,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let parent_id = self.source_scopes[original_source_scope]
             .local_data
             .as_ref()
-            .assert_crate_local()
+            .unwrap_crate_local()
             .lint_root;
         self.maybe_new_source_scope(pattern_span, arg_hir_id, parent_id);
     }
