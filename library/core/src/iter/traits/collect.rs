@@ -478,7 +478,7 @@ macro_rules! spec_tuple_impl {
             $($remainder,)*
         );
     };
-    ([$($params_:tt)*]) => {};
+    ( [$($params_:tt)*] ) => { };
     (
         $SpecTupleExtendN:ident, $default_extend_tuple_n:ident,
         $params:tt
@@ -486,6 +486,7 @@ macro_rules! spec_tuple_impl {
         spec_tuple_impl!(
             $SpecTupleExtendN,
             $default_extend_tuple_n,
+            #special_case_1_tuple
             #[doc(fake_variadic)]
             #[doc = "This trait is implemented for tuples up to twelve items long. The `impl`s for \
                      1- and 3- through 12-ary tuples were stabilized after 2-tuples, in \
@@ -500,12 +501,14 @@ macro_rules! spec_tuple_impl {
         spec_tuple_impl!(
             $SpecTupleExtendN,
             $default_extend_tuple_n,
+            #normal_case
             #[doc(hidden)]
             => $($params,)+
         );
     };
     (
-        $SpecTupleExtendN:ident, $default_extend_tuple_n:ident, #[$meta:meta]
+        $SpecTupleExtendN:ident, $default_extend_tuple_n:ident, #$maybe_special_case:tt
+        #[$meta:meta]
         $(#[$doctext:meta])? => $(
             (
                 $Ts:ident, $var_names:ident, $ExtendTs:ident, $cnts:tt
@@ -519,32 +522,15 @@ macro_rules! spec_tuple_impl {
         where
             $($ExtendTs: Extend<$Ts>,)*
         {
-            /// Allows to `extend` a tuple of collections that also implement `Extend`.
-            ///
-            /// See also: [`Iterator::unzip`]
-            ///
-            /// # Examples
-            /// ```
-            /// // Example given for a 2-tuple, but 1- through 12-tuples are supported
-            /// let mut tuple = (vec![0], vec![1]);
-            /// tuple.extend([(2, 3), (4, 5), (6, 7)]);
-            /// assert_eq!(tuple.0, [0, 2, 4, 6]);
-            /// assert_eq!(tuple.1, [1, 3, 5, 7]);
-            ///
-            /// // also allows for arbitrarily nested tuples as elements
-            /// let mut nested_tuple = (vec![1], (vec![2], vec![3]));
-            /// nested_tuple.extend([(4, (5, 6)), (7, (8, 9))]);
-            ///
-            /// let (a, (b, c)) = nested_tuple;
-            /// assert_eq!(a, [1, 4, 7]);
-            /// assert_eq!(b, [2, 5, 8]);
-            /// assert_eq!(c, [3, 6, 9]);
-            /// ```
-            fn extend<I: IntoIterator<Item = ($($Ts,)*)>>(&mut self, into_iter: I) {
-                let ($($var_names,)*) = self;
-                let iter = into_iter.into_iter();
-                $SpecTupleExtendN::extend(iter, $($var_names,)*);
-            }
+
+            spec_tuple_impl!(#$maybe_special_case
+
+                fn extend<I: IntoIterator<Item = ($($Ts,)*)>>(&mut self, into_iter: I) {
+                    let ($($var_names,)*) = self;
+                    let iter = into_iter.into_iter();
+                    $SpecTupleExtendN::extend(iter, $($var_names,)*);
+                }
+            );
 
             fn extend_one(&mut self, item: ($($Ts,)*)) {
                 $(self.$cnts.extend_one(item.$cnts);)*
@@ -562,75 +548,78 @@ macro_rules! spec_tuple_impl {
             }
         }
 
-        trait $SpecTupleExtendN<$($Ts),*> {
-            fn extend(self, $($var_names: &mut $Ts,)*);
-        }
+        spec_tuple_impl!(#$maybe_special_case
 
-        fn $default_extend_tuple_n<$($Ts,)* $($ExtendTs,)*>(
-            iter: impl Iterator<Item = ($($Ts,)*)>,
-            $($var_names: &mut $ExtendTs,)*
-        ) where
-            $($ExtendTs: Extend<$Ts>,)*
-        {
-            fn extend<'a, $($Ts,)*>(
-                $($var_names: &'a mut impl Extend<$Ts>,)*
-            ) -> impl FnMut((), ($($Ts,)*)) + 'a {
-                #[allow(non_snake_case)]
-                move |(), ($($ExtendTs,)*)| {
-                    $($var_names.extend_one($ExtendTs);)*
-                }
+            trait $SpecTupleExtendN<$($Ts),*> {
+                fn extend(self, $($var_names: &mut $Ts,)*);
             }
 
-            let (lower_bound, _) = iter.size_hint();
-            if lower_bound > 0 {
-                $($var_names.extend_reserve(lower_bound);)*
-            }
-
-            iter.fold((), extend($($var_names,)*));
-        }
-
-        impl<$($Ts,)* $($ExtendTs,)* Iter> $SpecTupleExtendN<$($ExtendTs),*> for Iter
-        where
-            $($ExtendTs: Extend<$Ts>,)*
-            Iter: Iterator<Item = ($($Ts,)*)>,
-        {
-            default fn extend(self, $($var_names: &mut $ExtendTs),*) {
-                $default_extend_tuple_n(self, $($var_names),*);
-            }
-        }
-
-        impl<$($Ts,)* $($ExtendTs,)* Iter> $SpecTupleExtendN<$($ExtendTs),*> for Iter
-        where
-            $($ExtendTs: Extend<$Ts>,)*
-            Iter: TrustedLen<Item = ($($Ts,)*)>,
-        {
-            fn extend(self, $($var_names: &mut $ExtendTs,)*) {
+            fn $default_extend_tuple_n<$($Ts,)* $($ExtendTs,)*>(
+                iter: impl Iterator<Item = ($($Ts,)*)>,
+                $($var_names: &mut $ExtendTs,)*
+            ) where
+                $($ExtendTs: Extend<$Ts>,)*
+            {
                 fn extend<'a, $($Ts,)*>(
                     $($var_names: &'a mut impl Extend<$Ts>,)*
                 ) -> impl FnMut((), ($($Ts,)*)) + 'a {
                     #[allow(non_snake_case)]
-                    // SAFETY: We reserve enough space for the `size_hint`, and the iterator is
-                    // `TrustedLen` so its `size_hint` is exact.
-                    move |(), ($($ExtendTs,)*)| unsafe {
-                        $($var_names.extend_one_unchecked($ExtendTs);)*
+                    move |(), ($($ExtendTs,)*)| {
+                        $($var_names.extend_one($ExtendTs);)*
                     }
                 }
 
-                let (lower_bound, upper_bound) = self.size_hint();
-
-                if upper_bound.is_none() {
-                    // We cannot reserve more than `usize::MAX` items, and this is likely to go out of memory anyway.
-                    $default_extend_tuple_n(self, $($var_names,)*);
-                    return;
-                }
-
+                let (lower_bound, _) = iter.size_hint();
                 if lower_bound > 0 {
                     $($var_names.extend_reserve(lower_bound);)*
                 }
 
-                self.fold((), extend($($var_names,)*));
+                iter.fold((), extend($($var_names,)*));
             }
-        }
+
+            impl<$($Ts,)* $($ExtendTs,)* Iter> $SpecTupleExtendN<$($ExtendTs),*> for Iter
+            where
+                $($ExtendTs: Extend<$Ts>,)*
+                Iter: Iterator<Item = ($($Ts,)*)>,
+            {
+                default fn extend(self, $($var_names: &mut $ExtendTs),*) {
+                    $default_extend_tuple_n(self, $($var_names),*);
+                }
+            }
+
+            impl<$($Ts,)* $($ExtendTs,)* Iter> $SpecTupleExtendN<$($ExtendTs),*> for Iter
+            where
+                $($ExtendTs: Extend<$Ts>,)*
+                Iter: TrustedLen<Item = ($($Ts,)*)>,
+            {
+                fn extend(self, $($var_names: &mut $ExtendTs,)*) {
+                    fn extend<'a, $($Ts,)*>(
+                        $($var_names: &'a mut impl Extend<$Ts>,)*
+                    ) -> impl FnMut((), ($($Ts,)*)) + 'a {
+                        #[allow(non_snake_case)]
+                        // SAFETY: We reserve enough space for the `size_hint`, and the iterator is
+                        // `TrustedLen` so its `size_hint` is exact.
+                        move |(), ($($ExtendTs,)*)| unsafe {
+                            $($var_names.extend_one_unchecked($ExtendTs);)*
+                        }
+                    }
+
+                    let (lower_bound, upper_bound) = self.size_hint();
+
+                    if upper_bound.is_none() {
+                        // We cannot reserve more than `usize::MAX` items, and this is likely to go out of memory anyway.
+                        $default_extend_tuple_n(self, $($var_names,)*);
+                        return;
+                    }
+
+                    if lower_bound > 0 {
+                        $($var_names.extend_reserve(lower_bound);)*
+                    }
+
+                    self.fold((), extend($($var_names,)*));
+                }
+            }
+        );
 
         /// This implementation turns an iterator of tuples into a tuple of types which implement
         /// [`Default`] and [`Extend`].
@@ -666,7 +655,46 @@ macro_rules! spec_tuple_impl {
                 res
             }
         }
-
+    };
+    (
+        #special_case_1_tuple fn
+        $($t:tt)*
+    ) => {
+        /// Allows to `extend` a tuple of collections that also implement `Extend`.
+        ///
+        /// See also: [`Iterator::unzip`]
+        ///
+        /// # Examples
+        /// ```
+        /// // Example given for a 2-tuple, but 1- through 12-tuples are supported
+        /// let mut tuple = (vec![0], vec![1]);
+        /// tuple.extend([(2, 3), (4, 5), (6, 7)]);
+        /// assert_eq!(tuple.0, [0, 2, 4, 6]);
+        /// assert_eq!(tuple.1, [1, 3, 5, 7]);
+        ///
+        /// // also allows for arbitrarily nested tuples as elements
+        /// let mut nested_tuple = (vec![1], (vec![2], vec![3]));
+        /// nested_tuple.extend([(4, (5, 6)), (7, (8, 9))]);
+        ///
+        /// let (a, (b, c)) = nested_tuple;
+        /// assert_eq!(a, [1, 4, 7]);
+        /// assert_eq!(b, [2, 5, 8]);
+        /// assert_eq!(c, [3, 6, 9]);
+        /// ```
+        fn extend<I: IntoIterator<Item = (T,)>>(&mut self, into_iter: I) {
+            self.0.extend(into_iter.into_iter().map(|(a,)| a));
+        }
+    };
+    (
+        #special_case_1_tuple $($t:tt)*
+    ) => {
+        // no specialization traits
+    };
+    (
+        #normal_case
+        $($t:tt)*
+    ) => {
+        $($t)*
     };
 }
 
