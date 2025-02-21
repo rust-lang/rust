@@ -540,7 +540,7 @@ macro_rules! spec_tuple_impl {
             /// assert_eq!(b, [2, 5, 8]);
             /// assert_eq!(c, [3, 6, 9]);
             /// ```
-            fn extend<T: IntoIterator<Item = ($($Ts,)*)>>(&mut self, into_iter: T) {
+            fn extend<I: IntoIterator<Item = ($($Ts,)*)>>(&mut self, into_iter: I) {
                 let ($($var_names,)*) = self;
                 let iter = into_iter.into_iter();
                 $SpecTupleExtendN::extend(iter, $($var_names,)*);
@@ -671,16 +671,16 @@ macro_rules! spec_tuple_impl {
 }
 
 spec_tuple_impl!([]
-    ((A, a, ExtendA, 0), SpecTupleExtend1, default_extend_tuple_1),
-    ((B, b, ExtendB, 1), SpecTupleExtend2, default_extend_tuple_2),
-    ((C, c, ExtendC, 2), SpecTupleExtend3, default_extend_tuple_3),
-    ((D, d, ExtendD, 3), SpecTupleExtend4, default_extend_tuple_4),
-    ((E, e, ExtendE, 4), SpecTupleExtend5, default_extend_tuple_5),
-    ((F, f, ExtendF, 5), SpecTupleExtend6, default_extend_tuple_6),
-    ((G, g, ExtendG, 6), SpecTupleExtend7, default_extend_tuple_7),
-    ((H, h, ExtendH, 7), SpecTupleExtend8, default_extend_tuple_8),
-    ((I, i, ExtendI, 8), SpecTupleExtend9, default_extend_tuple_9),
-    ((J, j, ExtendJ, 9), SpecTupleExtend10, default_extend_tuple_10),
-    ((K, k, ExtendK, 10), SpecTupleExtend11, default_extend_tuple_11),
-    ((L, l, ExtendL, 11), SpecTupleExtend12, default_extend_tuple_12),
+    ((T, t, ExtendT, 0), SpecTupleExtend1, default_extend_tuple_1),
+    ((U, u, ExtendU, 1), SpecTupleExtend2, default_extend_tuple_2),
+    ((V, v, ExtendV, 2), SpecTupleExtend3, default_extend_tuple_3),
+    ((X, x, ExtendX, 3), SpecTupleExtend4, default_extend_tuple_4),
+    ((Y, y, ExtendY, 4), SpecTupleExtend5, default_extend_tuple_5),
+    ((Z, z, ExtendZ, 5), SpecTupleExtend6, default_extend_tuple_6),
+    ((A, a, ExtendA, 6), SpecTupleExtend7, default_extend_tuple_7),
+    ((B, b, ExtendB, 7), SpecTupleExtend8, default_extend_tuple_8),
+    ((C, c, ExtendC, 8), SpecTupleExtend9, default_extend_tuple_9),
+    ((D, d, ExtendD, 9), SpecTupleExtend10, default_extend_tuple_10),
+    ((E, e, ExtendE, 10), SpecTupleExtend11, default_extend_tuple_11),
+    ((F, f, ExtendF, 11), SpecTupleExtend12, default_extend_tuple_12),
 );
