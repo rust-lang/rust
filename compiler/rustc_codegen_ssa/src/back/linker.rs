@@ -5,14 +5,18 @@ use std::path::{Path, PathBuf};
 use std::{env, io, iter, mem, str};
 
 use cc::windows_registry;
+use object::read::archive::ArchiveFile;
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::memmap::Mmap;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_metadata::{
     find_native_static_library, try_find_native_dynamic_library, try_find_native_static_library,
 };
 use rustc_middle::bug;
 use rustc_middle::middle::dependency_format::Linkage;
-use rustc_middle::middle::exported_symbols;
-use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo, SymbolExportKind};
+use rustc_middle::middle::exported_symbols::{
+    self, ExportedSymbol, SymbolExportInfo, SymbolExportKind,
+};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
@@ -21,6 +25,7 @@ use rustc_target::spec::{Cc, LinkOutputKind, LinkerFlavor, Lld};
 use tracing::{debug, warn};
 
 use super::command::Command;
+use super::link::are_upstream_rust_objects_already_included;
 use super::symbol_export;
 use crate::errors;
 
@@ -1753,7 +1758,7 @@ impl<'a> Linker for AixLinker<'a> {
 fn for_each_exported_symbols_include_dep<'tcx>(
     tcx: TyCtxt<'tcx>,
     crate_type: CrateType,
-    mut callback: impl FnMut(ExportedSymbol<'tcx>, SymbolExportInfo, CrateNum),
+    mut callback: impl FnMut(&'tcx [(ExportedSymbol<'tcx>, SymbolExportInfo)], CrateNum),
 ) {
     let formats = tcx.dependency_formats(());
     let deps = &formats[&crate_type];
@@ -1761,9 +1766,7 @@ fn for_each_exported_symbols_include_dep<'tcx>(
     for (cnum, dep_format) in deps.iter_enumerated() {
         // For each dependency that we are linking to statically ...
         if *dep_format == Linkage::Static {
-            for &(symbol, info) in tcx.exported_symbols(cnum).iter() {
-                callback(symbol, info, cnum);
-            }
+            callback(tcx.exported_symbols(cnum), cnum);
         }
     }
 }
@@ -1783,12 +1786,14 @@ pub(crate) fn exported_symbols(tcx: TyCtxt<'_>, crate_type: CrateType) -> Vec<St
 fn exported_symbols_for_non_proc_macro(tcx: TyCtxt<'_>, crate_type: CrateType) -> Vec<String> {
     let mut symbols = Vec::new();
     let export_threshold = symbol_export::crates_export_threshold(&[crate_type]);
-    for_each_exported_symbols_include_dep(tcx, crate_type, |symbol, info, cnum| {
-        if info.level.is_below_threshold(export_threshold) {
-            symbols.push(symbol_export::exporting_symbol_name_for_instance_in_crate(
-                tcx, symbol, cnum,
-            ));
-            symbol_export::extend_exported_symbols(&mut symbols, tcx, symbol, cnum);
+    for_each_exported_symbols_include_dep(tcx, crate_type, |exported_symbols, cnum| {
+        for &(symbol, info) in exported_symbols {
+            if info.level.is_below_threshold(export_threshold) {
+                symbols.push(symbol_export::exporting_symbol_name_for_instance_in_crate(
+                    tcx, symbol, cnum,
+                ));
+                symbol_export::extend_exported_symbols(&mut symbols, tcx, symbol, cnum);
+            }
         }
     });
 
@@ -1808,30 +1813,97 @@ fn exported_symbols_for_proc_macro_crate(tcx: TyCtxt<'_>) -> Vec<String> {
     vec![proc_macro_decls_name, metadata_symbol_name]
 }
 
-pub(crate) fn linked_symbols(
+fn add_linked_objects(
+    archive_path: &Path,
+    linked_symbols: &mut FxHashSet<String>,
+) -> Option<FxIndexSet<u64>> {
+    let archive_map = unsafe { Mmap::map(File::open(&archive_path).unwrap()).unwrap() };
+    let archive = ArchiveFile::parse(&*archive_map)
+        .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))
+        .unwrap();
+    let Some(archive_symbols) = archive.symbols().unwrap() else {
+        return None;
+    };
+    let mut offsets = FxIndexSet::default();
+    for symbol in archive_symbols {
+        let symbol = symbol.unwrap();
+        let name = std::str::from_utf8(symbol.name()).unwrap();
+        if linked_symbols.remove(name) {
+            offsets.insert(symbol.offset().0);
+        }
+    }
+    Some(offsets)
+}
+
+pub(crate) fn linked_objects(
     tcx: TyCtxt<'_>,
     crate_type: CrateType,
-) -> Vec<(String, SymbolExportKind)> {
+    linked_symbols: &mut Vec<(String, SymbolExportKind)>,
+) -> FxIndexMap<CrateNum, FxIndexSet<u64>> {
     match crate_type {
         CrateType::Executable | CrateType::Cdylib | CrateType::Dylib => (),
         CrateType::Staticlib | CrateType::ProcMacro | CrateType::Rlib => {
-            return Vec::new();
+            return FxIndexMap::default();
         }
     }
 
-    let mut symbols = Vec::new();
-
+    let mut objects = FxIndexMap::default();
+    let upstream_rust_objects_already_included =
+        are_upstream_rust_objects_already_included(tcx.sess);
     let export_threshold = symbol_export::crates_export_threshold(&[crate_type]);
-    for_each_exported_symbols_include_dep(tcx, crate_type, |symbol, info, cnum| {
-        if info.level.is_below_threshold(export_threshold) || info.used {
-            symbols.push((
-                symbol_export::linking_symbol_name_for_instance_in_crate(tcx, symbol, cnum),
-                info.kind,
-            ));
+    for_each_exported_symbols_include_dep(tcx, crate_type, |exported_symbols, cnum| {
+        if cnum == LOCAL_CRATE {
+            // We don't know here if the symbols are undefined, so we add them all.
+            // Since the local crate is always linked directly to object files, `#[used]` works as expected.
+            linked_symbols.extend(
+                exported_symbols
+                    .iter()
+                    .filter(|(_, info)| {
+                        info.level.is_below_threshold(export_threshold) || info.used
+                    })
+                    .map(|&(symbol, info)| {
+                        (
+                            symbol_export::linking_symbol_name_for_instance_in_crate(
+                                tcx, symbol, cnum,
+                            ),
+                            info.kind,
+                        )
+                    }),
+            );
+            return;
         }
+        // TODO: let lto = upstream_rust_objects_already_included && !ignored_for_lto(tcx.sess, &codegen_results.crate_info, cnum);
+        let lto = upstream_rust_objects_already_included;
+        if lto {
+            return;
+        }
+        let symbols: Vec<_> = exported_symbols
+            .iter()
+            .filter(|(_, info)| info.level.is_below_threshold(export_threshold) || info.used)
+            .map(|&(symbol, info)| {
+                (
+                    symbol_export::linking_symbol_name_for_instance_in_crate(tcx, symbol, cnum),
+                    info.kind,
+                )
+            })
+            .collect();
+        if symbols.is_empty() {
+            return;
+        }
+        let used_crate_source = tcx.used_crate_source(cnum);
+        let cratepath = &used_crate_source.rlib.as_ref().unwrap().0;
+        let mut crate_linked_symbols: FxHashSet<_> =
+            symbols.iter().map(|(symbol, _)| symbol.to_string()).collect();
+        if let Some(archive_offsets) = add_linked_objects(cratepath, &mut crate_linked_symbols) {
+            objects.insert(cnum, archive_offsets);
+        }
+        // Unresolved symbols may come from external libraries.
+        linked_symbols.extend(
+            symbols.into_iter().filter(|(symbol, _)| crate_linked_symbols.contains(symbol)),
+        );
     });
 
-    symbols
+    objects
 }
 
 /// Much simplified and explicit CLI for the NVPTX linker. The linker operates

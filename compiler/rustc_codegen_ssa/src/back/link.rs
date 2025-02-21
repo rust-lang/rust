@@ -9,6 +9,7 @@ use std::{env, fmt, fs, io, mem, str};
 
 use cc::windows_registry;
 use itertools::Itertools;
+use object::read::archive::{ArchiveFile, ArchiveOffset};
 use regex::Regex;
 use rustc_arena::TypedArena;
 use rustc_ast::CRATE_NODE_ID;
@@ -78,6 +79,7 @@ pub fn link_binary(
     let _timer = sess.timer("link_binary");
     let output_metadata = sess.opts.output_types.contains_key(&OutputType::Metadata);
     let mut tempfiles_for_stdout_output: Vec<PathBuf> = Vec::new();
+    let mut tempfiles_for_linked_objects: Vec<PathBuf> = Vec::new();
     for &crate_type in &codegen_results.crate_info.crate_types {
         // Ignore executable crates if we have -Z no-codegen, as they will error.
         if (sess.opts.unstable_opts.no_codegen || !sess.opts.output_types.should_codegen())
@@ -142,6 +144,8 @@ pub fn link_binary(
                         &out_filename,
                         &codegen_results,
                         path.as_ref(),
+                        &mut tempfiles_for_linked_objects,
+                        outputs,
                     );
                 }
             }
@@ -211,6 +215,10 @@ pub fn link_binary(
 
         // Remove the temporary files if output goes to stdout
         for temp in tempfiles_for_stdout_output {
+            ensure_removed(sess.dcx(), &temp);
+        }
+
+        for temp in tempfiles_for_linked_objects {
             ensure_removed(sess.dcx(), &temp);
         }
 
@@ -771,6 +779,8 @@ fn link_natively(
     out_filename: &Path,
     codegen_results: &CodegenResults,
     tmpdir: &Path,
+    tempfiles_for_linked_objects: &mut Vec<PathBuf>,
+    outputs: &OutputFilenames,
 ) {
     info!("preparing {:?} to {:?}", crate_type, out_filename);
     let (linker_path, flavor) = linker_and_flavor(sess);
@@ -795,6 +805,8 @@ fn link_natively(
         temp_filename,
         codegen_results,
         self_contained_components,
+        tempfiles_for_linked_objects,
+        outputs,
     );
 
     linker::disable_localization(&mut cmd);
@@ -2254,6 +2266,8 @@ fn linker_with_args(
     out_filename: &Path,
     codegen_results: &CodegenResults,
     self_contained_components: LinkSelfContainedComponents,
+    tempfiles_for_linked_objects: &mut Vec<PathBuf>,
+    outputs: &OutputFilenames,
 ) -> Command {
     let self_contained_crt_objects = self_contained_components.is_crt_objects_enabled();
     let cmd = &mut *super::linker::get_linker(
@@ -2329,6 +2343,13 @@ fn linker_with_args(
     add_local_crate_regular_objects(cmd, codegen_results);
     add_local_crate_metadata_objects(cmd, crate_type, codegen_results);
     add_local_crate_allocator_objects(cmd, codegen_results);
+    add_local_crate_linked_objects(
+        cmd,
+        codegen_results,
+        crate_type,
+        tempfiles_for_linked_objects,
+        outputs,
+    );
 
     // Avoid linking to dynamic libraries unless they satisfy some undefined symbols
     // at the point at which they are specified on the command line.
@@ -2922,6 +2943,32 @@ fn rehome_lib_path(sess: &Session, path: &Path) -> PathBuf {
         rehome_sysroot_lib_dir(sess, dir).join(file_name)
     } else {
         fix_windows_verbatim_for_gcc(path)
+    }
+}
+
+fn add_local_crate_linked_objects(
+    cmd: &mut dyn Linker,
+    codegen_results: &CodegenResults,
+    crate_type: CrateType,
+    tempfiles_for_linked_objects: &mut Vec<PathBuf>,
+    outputs: &OutputFilenames,
+) {
+    for (cnum, offsets) in &codegen_results.crate_info.linked_objects[&crate_type] {
+        let src = &codegen_results.crate_info.used_crate_source[cnum];
+        let cratepath = &src.rlib.as_ref().unwrap().0;
+        let archive_map = unsafe { Mmap::map(File::open(cratepath).unwrap()).unwrap() };
+        let archive = ArchiveFile::parse(&*archive_map)
+            .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))
+            .unwrap();
+        for &offset in offsets {
+            let member = archive.member(ArchiveOffset(offset)).unwrap();
+            let name = std::str::from_utf8(member.name()).unwrap();
+            let data = member.data(&*archive_map).unwrap();
+            let obj = outputs.temp_path(OutputType::Object, Some(&format!("{name}.linked_object")));
+            fs::write(&obj, data).unwrap();
+            cmd.add_object(&obj);
+            tempfiles_for_linked_objects.push(obj);
+        }
     }
 }
 
