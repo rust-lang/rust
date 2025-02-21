@@ -513,7 +513,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, trait_def_id: LocalDefId) {
             continue;
         }
 
-        let gat_item_hir = tcx.hir().expect_trait_item(gat_def_id);
+        let gat_item_hir = tcx.hir_expect_trait_item(gat_def_id);
         debug!(?required_bounds);
         let param_env = tcx.param_env(gat_def_id);
 

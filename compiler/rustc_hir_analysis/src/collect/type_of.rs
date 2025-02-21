@@ -480,5 +480,5 @@ pub(crate) fn type_alias_is_lazy<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) ->
             }
         }
     }
-    HasTait.visit_ty_unambig(tcx.hir().expect_item(def_id).expect_ty_alias().0).is_break()
+    HasTait.visit_ty_unambig(tcx.hir_expect_item(def_id).expect_ty_alias().0).is_break()
 }

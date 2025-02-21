@@ -429,8 +429,7 @@ fn block_has_safety_comment(cx: &LateContext<'_>, span: Span) -> bool {
 fn include_attrs_in_span(cx: &LateContext<'_>, hir_id: HirId, span: Span) -> Span {
     span.to(cx
         .tcx
-        .hir()
-        .attrs(hir_id)
+        .hir_attrs(hir_id)
         .iter()
         .fold(span, |acc, attr| acc.to(attr.span())))
 }
