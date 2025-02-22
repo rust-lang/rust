@@ -117,12 +117,15 @@ macro_rules! maybe_recover_from_interpolated_ty_qpath {
     ($self: expr, $allow_qpath_recovery: expr) => {
         if $allow_qpath_recovery
             && $self.may_recover()
-            && $self.look_ahead(1, |t| t == &token::PathSep)
-            && let token::Interpolated(nt) = &$self.token.kind
-            && let token::NtTy(ty) = &**nt
+            && let Some(mv_kind) = $self.token.is_metavar_seq()
+            && let token::MetaVarKind::Ty { .. } = mv_kind
+            && $self.check_noexpect_past_close_delim(&token::PathSep)
         {
-            let ty = ty.clone();
-            $self.bump();
+            // Reparse the type, then move to recovery.
+            let ty = $self
+                .eat_metavar_seq(mv_kind, |this| this.parse_ty_no_question_mark_recover())
+                .expect("metavar seq ty");
+
             return $self.maybe_recover_from_bad_qpath_stage_2($self.prev_token.span, ty);
         }
     };
@@ -614,6 +617,24 @@ impl<'a> Parser<'a> {
         self.token == *tok
     }
 
+    // Check the first token after the delimiter that closes the current
+    // delimited sequence. (Panics if used in the outermost token stream, which
+    // has no delimiters.) It uses a clone of the relevant tree cursor to skip
+    // past the entire `TokenTree::Delimited` in a single step, avoiding the
+    // need for unbounded token lookahead.
+    //
+    // Primarily used when `self.token` matches
+    // `OpenDelim(Delimiter::Invisible(_))`, to look ahead through the current
+    // metavar expansion.
+    fn check_noexpect_past_close_delim(&self, tok: &TokenKind) -> bool {
+        let mut tree_cursor = self.token_cursor.stack.last().unwrap().clone();
+        tree_cursor.bump();
+        matches!(
+            tree_cursor.curr(),
+            Some(TokenTree::Token(token::Token { kind, .. }, _)) if kind == tok
+        )
+    }
+
     /// Consumes a token 'tok' if it exists. Returns whether the given token was present.
     ///
     /// the main purpose of this function is to reduce the cluttering of the suggestions list
@@ -719,6 +740,43 @@ impl<'a> Parser<'a> {
     /// Otherwise, eats it.
     pub fn expect_keyword(&mut self, exp: ExpKeywordPair) -> PResult<'a, ()> {
         if !self.eat_keyword(exp) { self.unexpected() } else { Ok(()) }
+    }
+
+    /// Consume a sequence produced by a metavar expansion, if present.
+    fn eat_metavar_seq<T>(
+        &mut self,
+        mv_kind: MetaVarKind,
+        f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
+    ) -> Option<T> {
+        self.eat_metavar_seq_with_matcher(|mvk| mvk == mv_kind, f)
+    }
+
+    /// A slightly more general form of `eat_metavar_seq`, for use with the
+    /// `MetaVarKind` variants that have parameters, where an exact match isn't
+    /// desired.
+    fn eat_metavar_seq_with_matcher<T>(
+        &mut self,
+        match_mv_kind: impl Fn(MetaVarKind) -> bool,
+        mut f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
+    ) -> Option<T> {
+        if let token::OpenDelim(delim) = self.token.kind
+            && let Delimiter::Invisible(InvisibleOrigin::MetaVar(mv_kind)) = delim
+            && match_mv_kind(mv_kind)
+        {
+            self.bump();
+            let res = f(self).expect("failed to reparse {mv_kind:?}");
+            if let token::CloseDelim(delim) = self.token.kind
+                && let Delimiter::Invisible(InvisibleOrigin::MetaVar(mv_kind)) = delim
+                && match_mv_kind(mv_kind)
+            {
+                self.bump();
+                Some(res)
+            } else {
+                panic!("no close delim when reparsing {mv_kind:?}");
+            }
+        } else {
+            None
+        }
     }
 
     /// Is the given keyword `kw` followed by a non-reserved identifier?
@@ -1455,7 +1513,11 @@ impl<'a> Parser<'a> {
     /// so emit a proper diagnostic.
     // Public for rustfmt usage.
     pub fn parse_visibility(&mut self, fbt: FollowedByType) -> PResult<'a, Visibility> {
-        maybe_whole!(self, NtVis, |vis| vis.into_inner());
+        if let Some(vis) = self
+            .eat_metavar_seq(MetaVarKind::Vis, |this| this.parse_visibility(FollowedByType::Yes))
+        {
+            return Ok(vis);
+        }
 
         if !self.eat_keyword(exp!(Pub)) {
             // We need a span for our `Spanned<VisibilityKind>`, but there's inherently no
@@ -1683,7 +1745,9 @@ pub enum ParseNtResult {
     Tt(TokenTree),
     Ident(Ident, IdentIsRaw),
     Lifetime(Ident, IdentIsRaw),
+    Ty(P<ast::Ty>),
+    Vis(P<ast::Visibility>),
 
-    /// This case will eventually be removed, along with `Token::Interpolate`.
+    /// This variant will eventually be removed, along with `Token::Interpolate`.
     Nt(Arc<Nonterminal>),
 }
