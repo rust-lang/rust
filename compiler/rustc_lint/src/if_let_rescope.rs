@@ -369,17 +369,22 @@ struct FindSignificantDropper<'a, 'tcx> {
 }
 
 impl<'tcx> FindSignificantDropper<'_, 'tcx> {
+    /// Check the scrutinee of an `if let` to see if it promotes any temporary values
+    /// that would change drop order in edition 2024. Specifically, it checks the value
+    /// of the scrutinee itself, and also recurses into the expression to find any ref
+    /// exprs (or autoref) which would promote temporaries that would be scoped to the
+    /// end of this `if`.
     fn check_if_let_scrutinee(&mut self, init: &'tcx hir::Expr<'tcx>) -> ControlFlow<Span> {
         self.check_promoted_temp_with_drop(init)?;
         self.visit_expr(init)
     }
 
-    // Check that an expression is not a promoted temporary with a significant
-    // drop impl.
-    //
-    // An expression is a promoted temporary if it has an addr taken (i.e. `&expr`)
-    // or is the scrutinee of the `if let`, *and* the expression is not a place
-    // expr, and it has a significant drop.
+    /// Check that an expression is not a promoted temporary with a significant
+    /// drop impl.
+    ///
+    /// An expression is a promoted temporary if it has an addr taken (i.e. `&expr` or autoref)
+    /// or is the scrutinee of the `if let`, *and* the expression is not a place
+    /// expr, and it has a significant drop.
     fn check_promoted_temp_with_drop(&self, expr: &'tcx hir::Expr<'tcx>) -> ControlFlow<Span> {
         if !expr.is_place_expr(|base| {
             self.cx
@@ -405,7 +410,8 @@ impl<'tcx> Visitor<'tcx> for FindSignificantDropper<'_, 'tcx> {
 
     fn visit_block(&mut self, b: &'tcx hir::Block<'tcx>) -> Self::Result {
         // Blocks introduce temporary terminating scope for all of its
-        // statements, so just visit the tail expr.
+        // statements, so just visit the tail expr, skipping over any
+        // statements. This prevents false positives like `{ let x = &Drop; }`.
         if let Some(expr) = b.expr { self.visit_expr(expr) } else { ControlFlow::Continue(()) }
     }
 
@@ -415,6 +421,7 @@ impl<'tcx> Visitor<'tcx> for FindSignificantDropper<'_, 'tcx> {
         // where `fn as_ref(&self) -> Option<...>`.
         for adj in self.cx.typeck_results().expr_adjustments(expr) {
             match adj.kind {
+                // Skip when we hit the first deref expr.
                 Adjust::Deref(_) => break,
                 Adjust::Borrow(_) => {
                     self.check_promoted_temp_with_drop(expr)?;
@@ -424,7 +431,7 @@ impl<'tcx> Visitor<'tcx> for FindSignificantDropper<'_, 'tcx> {
         }
 
         match expr.kind {
-            // Check for cases like `if let None = Some(&Drop) {} else {}`.
+            // Account for cases like `if let None = Some(&Drop) {} else {}`.
             hir::ExprKind::AddrOf(_, _, expr) => {
                 self.check_promoted_temp_with_drop(expr)?;
                 intravisit::walk_expr(self, expr)
@@ -438,6 +445,7 @@ impl<'tcx> Visitor<'tcx> for FindSignificantDropper<'_, 'tcx> {
             hir::ExprKind::Match(scrut, _, _) => self.visit_expr(scrut),
             // Self explanatory.
             hir::ExprKind::DropTemps(_) => ControlFlow::Continue(()),
+            // Otherwise, walk into the expr's parts.
             _ => intravisit::walk_expr(self, expr),
         }
     }
