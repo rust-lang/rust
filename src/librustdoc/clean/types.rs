@@ -1054,7 +1054,7 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
                     // #[doc(cfg(...))]
                     if let Some(cfg_mi) = item
                         .meta_item()
-                        .and_then(|item| rustc_expand::config::parse_cfg(item, sess))
+                        .and_then(|item| rustc_expand::config::parse_cfg(item, sess, item.span))
                     {
                         match Cfg::parse(cfg_mi) {
                             Ok(new_cfg) => cfg &= new_cfg,

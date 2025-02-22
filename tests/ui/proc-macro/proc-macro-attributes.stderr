@@ -17,10 +17,10 @@ note: `B` could refer to the derive helper attribute defined here
 LL | #[derive(B)]
    |          ^
 note: `B` could also refer to the derive macro imported here
-  --> $DIR/proc-macro-attributes.rs:3:1
+  --> $DIR/proc-macro-attributes.rs:3:3
    |
 LL | #[macro_use]
-   | ^^^^^^^^^^^^
+   |   ^^^^^^^^^
 
 error[E0659]: `B` is ambiguous
   --> $DIR/proc-macro-attributes.rs:10:3
@@ -35,10 +35,10 @@ note: `B` could refer to the derive helper attribute defined here
 LL | #[derive(B)]
    |          ^
 note: `B` could also refer to the derive macro imported here
-  --> $DIR/proc-macro-attributes.rs:3:1
+  --> $DIR/proc-macro-attributes.rs:3:3
    |
 LL | #[macro_use]
-   | ^^^^^^^^^^^^
+   |   ^^^^^^^^^
 
 error[E0659]: `B` is ambiguous
   --> $DIR/proc-macro-attributes.rs:13:3
@@ -53,10 +53,10 @@ note: `B` could refer to the derive helper attribute defined here
 LL | #[derive(B)]
    |          ^
 note: `B` could also refer to the derive macro imported here
-  --> $DIR/proc-macro-attributes.rs:3:1
+  --> $DIR/proc-macro-attributes.rs:3:3
    |
 LL | #[macro_use]
-   | ^^^^^^^^^^^^
+   |   ^^^^^^^^^
 
 error[E0659]: `B` is ambiguous
   --> $DIR/proc-macro-attributes.rs:16:3
@@ -71,10 +71,10 @@ note: `B` could refer to the derive helper attribute defined here
 LL | #[derive(B)]
    |          ^
 note: `B` could also refer to the derive macro imported here
-  --> $DIR/proc-macro-attributes.rs:3:1
+  --> $DIR/proc-macro-attributes.rs:3:3
    |
 LL | #[macro_use]
-   | ^^^^^^^^^^^^
+   |   ^^^^^^^^^
 
 warning: derive helper attribute is used before it is introduced
   --> $DIR/proc-macro-attributes.rs:6:3

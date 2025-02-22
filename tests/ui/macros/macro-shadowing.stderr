@@ -1,8 +1,8 @@
 error: `macro_two` is already in scope
-  --> $DIR/macro-shadowing.rs:12:5
+  --> $DIR/macro-shadowing.rs:12:7
    |
 LL |     #[macro_use]
-   |     ^^^^^^^^^^^^
+   |       ^^^^^^^^^
 ...
 LL | m1!();
    | ----- in this macro invocation

@@ -219,7 +219,7 @@ impl Attribute {
     /// Extracts the MetaItem from inside this Attribute.
     pub fn meta(&self) -> Option<MetaItem> {
         match &self.kind {
-            AttrKind::Normal(normal) => normal.item.meta(self.span),
+            AttrKind::Normal(normal) => normal.item.meta(),
             AttrKind::DocComment(..) => None,
         }
     }
@@ -285,12 +285,12 @@ impl AttrItem {
         }
     }
 
-    pub fn meta(&self, span: Span) -> Option<MetaItem> {
+    pub fn meta(&self) -> Option<MetaItem> {
         Some(MetaItem {
             unsafety: Safety::Default,
             path: self.path.clone(),
             kind: self.meta_kind()?,
-            span,
+            span: self.span(),
         })
     }
 
@@ -406,7 +406,7 @@ impl MetaItem {
                 Path { span, segments, tokens: None }
             }
             Some(TokenTree::Token(Token { kind: token::Interpolated(nt), .. }, _)) => match &**nt {
-                token::Nonterminal::NtMeta(item) => return item.meta(item.path.span),
+                token::Nonterminal::NtMeta(item) => return item.meta(),
                 token::Nonterminal::NtPath(path) => (**path).clone(),
                 _ => return None,
             },
@@ -620,8 +620,15 @@ pub fn mk_attr(
     path: Path,
     args: AttrArgs,
     span: Span,
+    inner_span: Span,
 ) -> Attribute {
-    mk_attr_from_item(g, AttrItem { unsafety, path, args, tokens: None }, None, style, span)
+    mk_attr_from_item(
+        g,
+        AttrItem { unsafety, path, args, tokens: None, span: inner_span },
+        None,
+        style,
+        span,
+    )
 }
 
 pub fn mk_attr_from_item(
@@ -645,10 +652,11 @@ pub fn mk_attr_word(
     unsafety: Safety,
     name: Symbol,
     span: Span,
+    inner_span: Span,
 ) -> Attribute {
     let path = Path::from_ident(Ident::new(name, span));
     let args = AttrArgs::Empty;
-    mk_attr(g, style, unsafety, path, args, span)
+    mk_attr(g, style, unsafety, path, args, span, inner_span)
 }
 
 pub fn mk_attr_nested_word(
@@ -658,6 +666,7 @@ pub fn mk_attr_nested_word(
     outer: Symbol,
     inner: Symbol,
     span: Span,
+    inner_span: Span,
 ) -> Attribute {
     let inner_tokens = TokenStream::new(vec![TokenTree::Token(
         Token::from_ast_ident(Ident::new(inner, span)),
@@ -670,7 +679,7 @@ pub fn mk_attr_nested_word(
         delim: Delimiter::Parenthesis,
         tokens: inner_tokens,
     });
-    mk_attr(g, style, unsafety, path, attr_args, span)
+    mk_attr(g, style, unsafety, path, attr_args, span, inner_span)
 }
 
 pub fn mk_attr_name_value_str(
@@ -680,6 +689,7 @@ pub fn mk_attr_name_value_str(
     name: Symbol,
     val: Symbol,
     span: Span,
+    inner_span: Span,
 ) -> Attribute {
     let lit = token::Lit::new(token::Str, escape_string_symbol(val), None);
     let expr = P(Expr {
@@ -691,7 +701,7 @@ pub fn mk_attr_name_value_str(
     });
     let path = Path::from_ident(Ident::new(name, span));
     let args = AttrArgs::Eq { eq_span: span, expr };
-    mk_attr(g, style, unsafety, path, args, span)
+    mk_attr(g, style, unsafety, path, args, span, inner_span)
 }
 
 pub fn filter_by_name<A: AttributeExt>(attrs: &[A], name: Symbol) -> impl Iterator<Item = &A> {

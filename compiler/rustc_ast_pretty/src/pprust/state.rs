@@ -257,6 +257,7 @@ pub fn print_crate<'a>(
             sym::feature,
             sym::prelude_import,
             DUMMY_SP,
+            DUMMY_SP,
         );
         s.print_attribute(&fake_attr);
 
@@ -269,6 +270,7 @@ pub fn print_crate<'a>(
                 ast::AttrStyle::Inner,
                 Safety::Default,
                 sym::no_std,
+                DUMMY_SP,
                 DUMMY_SP,
             );
             s.print_attribute(&fake_attr);

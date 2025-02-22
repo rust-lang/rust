@@ -223,22 +223,26 @@ pub(crate) enum InvalidCfg {
     #[diag(expand_invalid_cfg_no_parens)]
     NotFollowedByParens {
         #[primary_span]
+        span: Span,
         #[suggestion(
             expand_invalid_cfg_expected_syntax,
             code = "cfg(/* predicate */)",
-            applicability = "has-placeholders"
+            applicability = "has-placeholders",
+            style = "verbose"
         )]
-        span: Span,
+        suggestion_span: Span,
     },
     #[diag(expand_invalid_cfg_no_predicate)]
     NoPredicate {
         #[primary_span]
+        span: Span,
         #[suggestion(
             expand_invalid_cfg_expected_syntax,
             code = "cfg(/* predicate */)",
-            applicability = "has-placeholders"
+            applicability = "has-placeholders",
+            style = "verbose"
         )]
-        span: Span,
+        suggestion_span: Span,
     },
     #[diag(expand_invalid_cfg_multiple_predicates)]
     MultiplePredicates {
