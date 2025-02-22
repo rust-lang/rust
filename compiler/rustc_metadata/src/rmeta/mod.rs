@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 use std::num::NonZero;
 
-pub(crate) use decoder::{CrateMetadata, CrateNumMap, MetadataBlob, TargetModifiers};
+pub(crate) use decoder::{CrateMetadata, CrateNumMap, DepPrivacy, MetadataBlob, TargetModifiers};
 use decoder::{DecodeContext, Metadata};
 use def_path_hash_map::DefPathHashMapRef;
 use encoder::EncodeContext;

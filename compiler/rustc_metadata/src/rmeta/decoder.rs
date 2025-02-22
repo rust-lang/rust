@@ -122,7 +122,7 @@ pub(crate) struct CrateMetadata {
     /// Whether or not this crate should be consider a private dependency.
     /// Used by the 'exported_private_dependencies' lint, and for determining
     /// whether to emit suggestions that reference this crate.
-    private_dep: bool,
+    dep_privacy: DepPrivacy,
     /// The hash for the host proc macro. Used to support `-Z dual-proc-macro`.
     host_hash: Option<Svh>,
     /// The crate was used non-speculatively.
@@ -151,6 +151,50 @@ struct ImportedSourceFile {
     original_end_pos: rustc_span::BytePos,
     /// The imported SourceFile's representation within the local source_map
     translated_source_file: Arc<rustc_span::SourceFile>,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum DepPrivacy {
+    /// Direct dependency, with privacy of
+    Direct(bool),
+    /// This is a transitive dependency and the dep graph from `LOCAL_CRATE` to this is
+    /// all public.
+    TransitivePublic,
+    /// This is a transitive dependency and one or more edge of dep graph from `LOCAL_CRATE`
+    /// to this is private.
+    TransitivePrivate,
+    /// From `extern crate`. This is considered as public dependency unless
+    /// `--extern priv:` is set
+    ExternCrate,
+}
+
+impl DepPrivacy {
+    pub(crate) fn is_private(self) -> bool {
+        let res = match self {
+            Self::Direct(private) => private,
+            Self::TransitivePublic => false,
+            Self::TransitivePrivate => true,
+            Self::ExternCrate => false,
+        };
+        res
+    }
+
+    pub(crate) fn merge(self, other: Self) -> Self {
+        use DepPrivacy::*;
+
+        match (self, other) {
+            (Direct(a), Direct(b)) => Direct(a && b),
+            // If a dependency is directly private but is re-exported as a public dependency
+            // in a "chain of transitive public dependencies," treat it as public.
+            (Direct(true), TransitivePublic) | (TransitivePublic, Direct(true)) => TransitivePublic,
+            // Otherwise, prioritize direct privacy
+            (Direct(a), _) | (_, Direct(a)) => Direct(a),
+            // `extern crate` are public unless they are explicitly private
+            (ExternCrate, _) | (_, ExternCrate) => ExternCrate,
+            (TransitivePublic, _) | (_, TransitivePublic) => TransitivePublic,
+            _ => other,
+        }
+    }
 }
 
 pub(super) struct DecodeContext<'a, 'tcx> {
@@ -1837,7 +1881,7 @@ impl CrateMetadata {
         cnum_map: CrateNumMap,
         dep_kind: CrateDepKind,
         source: CrateSource,
-        private_dep: bool,
+        dep_privacy: DepPrivacy,
         host_hash: Option<Svh>,
     ) -> CrateMetadata {
         let trait_impls = root
@@ -1868,7 +1912,7 @@ impl CrateMetadata {
             dependencies,
             dep_kind,
             source: Arc::new(source),
-            private_dep,
+            dep_privacy,
             host_hash,
             used: false,
             extern_crate: None,
@@ -1920,8 +1964,8 @@ impl CrateMetadata {
         self.dep_kind = dep_kind;
     }
 
-    pub(crate) fn update_and_private_dep(&mut self, private_dep: bool) {
-        self.private_dep &= private_dep;
+    pub(crate) fn update_merge_dep_privacy(&mut self, dep_privacy: DepPrivacy) {
+        self.dep_privacy = self.dep_privacy.merge(dep_privacy);
     }
 
     pub(crate) fn used(&self) -> bool {
@@ -1937,7 +1981,7 @@ impl CrateMetadata {
     }
 
     pub(crate) fn is_private_dep(&self) -> bool {
-        self.private_dep
+        self.dep_privacy.is_private()
     }
 
     pub(crate) fn is_panic_runtime(&self) -> bool {

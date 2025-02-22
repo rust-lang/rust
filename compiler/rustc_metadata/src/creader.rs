@@ -39,7 +39,7 @@ use tracing::{debug, info, trace};
 use crate::errors;
 use crate::locator::{CrateError, CrateLocator, CratePaths};
 use crate::rmeta::{
-    CrateDep, CrateMetadata, CrateNumMap, CrateRoot, MetadataBlob, TargetModifiers,
+    CrateDep, CrateMetadata, CrateNumMap, CrateRoot, DepPrivacy, MetadataBlob, TargetModifiers,
 };
 
 /// The backend's way to give the crate store access to the metadata in a library.
@@ -170,8 +170,10 @@ enum CrateOrigin<'a> {
     IndirectDependency {
         /// Where this dependency was included from.
         dep_root: &'a CratePaths,
-        /// True if the parent is private, meaning the dependent should also be private.
-        parent_private: bool,
+        /// Crate number of parent dependency.
+        parent_crate: CrateNum,
+        /// Privacy of the parent dependency.
+        parent_privacy: DepPrivacy,
         /// Dependency info about this crate.
         dep: &'a CrateDep,
     },
@@ -194,17 +196,6 @@ impl<'a> CrateOrigin<'a> {
     fn dep(&self) -> Option<&'a CrateDep> {
         match self {
             CrateOrigin::IndirectDependency { dep, .. } => Some(dep),
-            _ => None,
-        }
-    }
-
-    /// `Some(true)` if the dependency is private or its parent is private, `Some(false)` if the
-    /// dependency is not private, `None` if it could not be determined.
-    fn private_dep(&self) -> Option<bool> {
-        match self {
-            CrateOrigin::IndirectDependency { parent_private, dep, .. } => {
-                Some(dep.is_private || *parent_private)
-            }
             _ => None,
         }
     }
@@ -541,24 +532,30 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
     /// Sometimes the directly dependent crate is not specified by `--extern`, in this case,
     /// `private-dep` is none during loading. This is equivalent to the scenario where the
     /// command parameter is set to `public-dependency`
-    fn is_private_dep(
-        &self,
-        name: Symbol,
-        private_dep: Option<bool>,
-        origin: CrateOrigin<'_>,
-    ) -> bool {
+    fn privacy_of_dep(&self, name: Symbol, origin: CrateOrigin<'_>) -> DepPrivacy {
         if matches!(origin, CrateOrigin::Injected) {
-            return true;
+            return DepPrivacy::Direct(true);
         }
 
         let extern_private = self.sess.opts.externs.get(name.as_str()).map(|e| e.is_private_dep);
-        match (extern_private, private_dep) {
-            // Explicit non-private via `--extern`, explicit non-private from metadata, or
-            // unspecified with default to public.
-            (Some(false), _) | (_, Some(false)) | (None, None) => false,
-            // Marked private via `--extern priv:mycrate` or in metadata.
-            (Some(true) | None, Some(true) | None) => true,
-        }
+
+        let dep_privacy = match origin {
+            CrateOrigin::IndirectDependency { dep_root: _, parent_crate, parent_privacy, dep } => {
+                let is_private = dep.is_private;
+                match parent_privacy {
+                    _ if parent_crate == LOCAL_CRATE => DepPrivacy::Direct(is_private),
+                    DepPrivacy::Direct(false) if !is_private => DepPrivacy::TransitivePublic,
+                    DepPrivacy::TransitivePublic if !is_private => DepPrivacy::TransitivePublic,
+                    DepPrivacy::ExternCrate if !is_private => DepPrivacy::TransitivePublic,
+                    _ => DepPrivacy::TransitivePrivate,
+                }
+            }
+            // Short-circuited from the very beginning of this function.
+            CrateOrigin::Injected => unreachable!(),
+            CrateOrigin::Extern => DepPrivacy::ExternCrate,
+        };
+
+        extern_private.map_or(dep_privacy, |private| dep_privacy.merge(DepPrivacy::Direct(private)))
     }
 
     fn register_crate(
@@ -568,7 +565,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         lib: Library,
         dep_kind: CrateDepKind,
         name: Symbol,
-        private_dep: Option<bool>,
+        dep_privacy: DepPrivacy,
     ) -> Result<CrateNum, CrateError> {
         let _prof_timer =
             self.sess.prof.generic_activity_with_arg("metadata_register_crate", name.as_str());
@@ -576,17 +573,16 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         let Library { source, metadata } = lib;
         let crate_root = metadata.get_root();
         let host_hash = host_lib.as_ref().map(|lib| lib.metadata.get_root().hash());
-        let private_dep = self.is_private_dep(name, private_dep, origin);
 
         // Claim this crate number and cache it
         let feed = self.cstore.intern_stable_crate_id(&crate_root, self.tcx)?;
         let cnum = feed.key();
 
         info!(
-            "register crate `{}` (cnum = {}. private_dep = {})",
+            "register crate `{}` (cnum = {}. dep_privacy = {:?})",
             crate_root.name(),
             cnum,
-            private_dep
+            dep_privacy
         );
 
         // Maintain a reference to the top most crate.
@@ -600,7 +596,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         };
 
         let cnum_map =
-            self.resolve_crate_deps(dep_root, &crate_root, &metadata, cnum, dep_kind, private_dep)?;
+            self.resolve_crate_deps(dep_root, &crate_root, &metadata, cnum, dep_kind, dep_privacy)?;
 
         let raw_proc_macros = if crate_root.is_proc_macro_crate() {
             let temp_root;
@@ -627,7 +623,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
             cnum_map,
             dep_kind,
             source,
-            private_dep,
+            dep_privacy,
             host_hash,
         );
 
@@ -720,11 +716,11 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         }
     }
 
-    fn maybe_resolve_crate<'b>(
-        &'b mut self,
+    fn maybe_resolve_crate(
+        &mut self,
         name: Symbol,
         mut dep_kind: CrateDepKind,
-        origin: CrateOrigin<'b>,
+        origin: CrateOrigin<'_>,
     ) -> Result<CrateNum, CrateError> {
         info!("resolving crate `{}`", name);
         if !name.as_str().is_ascii() {
@@ -737,7 +733,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         let host_hash = dep.map(|d| d.host_hash).flatten();
         let extra_filename = dep.map(|d| &d.extra_filename[..]);
         let path_kind = if dep.is_some() { PathKind::Dependency } else { PathKind::Crate };
-        let private_dep = origin.private_dep();
+        let dep_privacy = self.privacy_of_dep(name, origin);
 
         let result = if let Some(cnum) = self.existing_match(name, hash, path_kind) {
             (LoadResult::Previous(cnum), None)
@@ -775,18 +771,17 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                 // not specified by `--extern` on command line parameters, it may be
                 // `private-dependency` when `register_crate` is called for the first time. Then it must be updated to
                 // `public-dependency` here.
-                let private_dep = self.is_private_dep(name, private_dep, origin);
                 let data = self.cstore.get_crate_data_mut(cnum);
                 if data.is_proc_macro_crate() {
                     dep_kind = CrateDepKind::MacrosOnly;
                 }
                 data.set_dep_kind(cmp::max(data.dep_kind(), dep_kind));
-                data.update_and_private_dep(private_dep);
+                data.update_merge_dep_privacy(dep_privacy);
                 Ok(cnum)
             }
             (LoadResult::Loaded(library), host_library) => {
                 info!("register newly loaded library for `{}`", name);
-                self.register_crate(host_library, origin, library, dep_kind, name, private_dep)
+                self.register_crate(host_library, origin, library, dep_kind, name, dep_privacy)
             }
             _ => panic!(),
         }
@@ -822,7 +817,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         metadata: &MetadataBlob,
         krate: CrateNum,
         dep_kind: CrateDepKind,
-        parent_is_private: bool,
+        crate_root_privacy: DepPrivacy,
     ) -> Result<CrateNumMap, CrateError> {
         debug!(
             "resolving deps of external crate `{}` with dep root `{}`",
@@ -857,7 +852,8 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
                 dep_kind,
                 CrateOrigin::IndirectDependency {
                     dep_root,
-                    parent_private: parent_is_private,
+                    parent_crate: krate,
+                    parent_privacy: crate_root_privacy,
                     dep: &dep,
                 },
             )?;

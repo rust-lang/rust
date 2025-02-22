@@ -1,7 +1,6 @@
 //@ aux-crate:priv:shared=shared.rs
-//@ aux-crate:reexport=reexport.rs
+//@ aux-crate:priv:reexport=reexport.rs
 //@ compile-flags: -Zunstable-options
-//@ check-pass
 
 // A shared dependency, where a private dependency reexports a public dependency.
 //
@@ -21,12 +20,12 @@
 extern crate shared;
 extern crate reexport;
 
-// FIXME: This should trigger.
 pub fn leaks_priv() -> shared::Shared {
+//~^ ERROR type `Shared` from private dependency 'shared' in public interface
     shared::Shared
 }
 
-// FIXME: This should trigger.
 pub fn leaks_priv_reexport() -> reexport::Shared {
+//~^ ERROR type `Shared` from private dependency 'shared' in public interface
     reexport::Shared
 }

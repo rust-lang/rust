@@ -349,7 +349,7 @@ provide! { tcx, def_id, other, cdata,
     cross_crate_inlinable => { table_direct }
 
     dylib_dependency_formats => { cdata.get_dylib_dependency_formats(tcx) }
-    is_private_dep => { cdata.private_dep }
+    is_private_dep => { cdata.dep_privacy.is_private() }
     is_panic_runtime => { cdata.root.panic_runtime }
     is_compiler_builtins => { cdata.root.compiler_builtins }
     has_global_allocator => { cdata.root.has_global_allocator }
