@@ -179,7 +179,7 @@ fn layout_of_simd_ty(
         .size
         .checked_mul(e_len, dl)
         .ok_or(LayoutError::BadCalc(LayoutCalculatorError::SizeOverflow))?;
-    let align = dl.vector_align(size);
+    let align = dl.llvmlike_vector_align(size);
     let size = size.align_to(align.abi);
 
     // Compute the placement of the vector fields:

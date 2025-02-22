@@ -547,12 +547,15 @@ fn layout_of_uncached<'tcx>(
                 (
                     BackendRepr::Memory { sized: true },
                     AbiAndPrefAlign {
-                        abi: Align::max_for_offset(size),
-                        pref: dl.vector_align(size).pref,
+                        abi: Align::max_aligned_factor(size),
+                        pref: dl.llvmlike_vector_align(size).pref,
                     },
                 )
             } else {
-                (BackendRepr::Vector { element: e_abi, count: e_len }, dl.vector_align(size))
+                (
+                    BackendRepr::Vector { element: e_abi, count: e_len },
+                    dl.llvmlike_vector_align(size),
+                )
             };
             let size = size.align_to(align.abi);
 
