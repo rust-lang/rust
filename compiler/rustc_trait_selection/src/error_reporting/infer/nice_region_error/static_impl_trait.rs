@@ -1,27 +1,21 @@
 //! Error Reporting for static impl Traits.
 
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, Subdiagnostic};
+use rustc_errors::{Applicability, Diag, ErrorGuaranteed};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{Visitor, VisitorExt, walk_ty};
 use rustc_hir::{
     self as hir, AmbigArg, GenericBound, GenericParam, GenericParamKind, Item, ItemKind, Lifetime,
     LifetimeName, LifetimeParamKind, MissingLifetimeKind, Node, TyKind,
 };
-use rustc_middle::ty::{
-    self, AssocItemContainer, StaticLifetimeVisitor, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor,
-};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Ident, Span};
 use tracing::debug;
 
 use crate::error_reporting::infer::nice_region_error::NiceRegionError;
-use crate::errors::{
-    ButCallingIntroduces, ButNeedsToSatisfy, DynTraitConstraintSuggestion, MoreTargeted,
-    ReqIntroducedLocations,
-};
-use crate::infer::{RegionResolutionError, SubregionOrigin, TypeTrace};
-use crate::traits::{ObligationCauseCode, UnifyReceiverContext};
+use crate::errors::ButNeedsToSatisfy;
+use crate::infer::{RegionResolutionError, SubregionOrigin};
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// Print the error message for lifetime errors when the return type is a static `impl Trait`,
@@ -39,52 +33,6 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 sup_r,
                 spans,
             ) if sub_r.is_static() => (var_origin, sub_origin, sub_r, sup_origin, sup_r, spans),
-            RegionResolutionError::ConcreteFailure(
-                SubregionOrigin::Subtype(box TypeTrace { cause, .. }),
-                sub_r,
-                sup_r,
-            ) if sub_r.is_static() => {
-                // This is for an implicit `'static` requirement coming from `impl dyn Trait {}`.
-                if let ObligationCauseCode::UnifyReceiver(ctxt) = cause.code() {
-                    // This may have a closure and it would cause ICE
-                    // through `find_param_with_region` (#78262).
-                    let anon_reg_sup = tcx.is_suitable_region(self.generic_param_scope, *sup_r)?;
-                    let fn_returns = tcx.return_type_impl_or_dyn_traits(anon_reg_sup.scope);
-                    if fn_returns.is_empty() {
-                        return None;
-                    }
-
-                    let param = self.find_param_with_region(*sup_r, *sub_r)?;
-                    let simple_ident = param.param.pat.simple_ident();
-
-                    let (has_impl_path, impl_path) = match ctxt.assoc_item.container {
-                        AssocItemContainer::Trait => {
-                            let id = ctxt.assoc_item.container_id(tcx);
-                            (true, tcx.def_path_str(id))
-                        }
-                        AssocItemContainer::Impl => (false, String::new()),
-                    };
-
-                    let mut err = self.tcx().dcx().create_err(ButCallingIntroduces {
-                        param_ty_span: param.param_ty_span,
-                        cause_span: cause.span,
-                        has_param_name: simple_ident.is_some(),
-                        param_name: simple_ident.map(|x| x.to_string()).unwrap_or_default(),
-                        has_lifetime: sup_r.has_name(),
-                        lifetime: sup_r.to_string(),
-                        assoc_item: ctxt.assoc_item.name,
-                        has_impl_path,
-                        impl_path,
-                    });
-                    if self.find_impl_on_dyn_trait(&mut err, param.param_ty, ctxt) {
-                        let reported = err.emit();
-                        return Some(reported);
-                    } else {
-                        err.cancel()
-                    }
-                }
-                return None;
-            }
             _ => return None,
         };
         debug!(
@@ -140,39 +88,6 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             None
         };
 
-        let mut subdiag = None;
-
-        if let SubregionOrigin::Subtype(box TypeTrace { cause, .. }) = sub_origin {
-            if let ObligationCauseCode::ReturnValue(hir_id)
-            | ObligationCauseCode::BlockTailExpression(hir_id, ..) = cause.code()
-            {
-                let parent_id = tcx.hir_get_parent_item(*hir_id);
-                if let Some(fn_decl) = tcx.hir_fn_decl_by_hir_id(parent_id.into()) {
-                    let mut span: MultiSpan = fn_decl.output.span().into();
-                    let mut spans = Vec::new();
-                    let mut add_label = true;
-                    if let hir::FnRetTy::Return(ty) = fn_decl.output {
-                        let mut v = StaticLifetimeVisitor(vec![], tcx.hir());
-                        v.visit_ty_unambig(ty);
-                        if !v.0.is_empty() {
-                            span = v.0.clone().into();
-                            spans = v.0;
-                            add_label = false;
-                        }
-                    }
-                    let fn_decl_span = fn_decl.output.span();
-
-                    subdiag = Some(ReqIntroducedLocations {
-                        span,
-                        spans,
-                        fn_decl_span,
-                        cause_span: cause.span,
-                        add_label,
-                    });
-                }
-            }
-        }
-
         let diag = ButNeedsToSatisfy {
             sp,
             influencer_point,
@@ -183,7 +98,6 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             require_span_as_note: require_as_note.then_some(require_span),
             // We don't need a note, it's already at the end, it can be shown as a `span_label`.
             require_span_as_label: (!require_as_note).then_some(require_span),
-            req_introduces_loc: subdiag,
 
             has_lifetime: sup_r.has_name(),
             lifetime: lifetime_name.clone(),
@@ -196,45 +110,6 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let mut err = self.tcx().dcx().create_err(diag);
 
         let fn_returns = tcx.return_type_impl_or_dyn_traits(anon_reg_sup.scope);
-
-        let mut override_error_code = None;
-        if let SubregionOrigin::Subtype(box TypeTrace { cause, .. }) = &sup_origin
-            && let ObligationCauseCode::UnifyReceiver(ctxt) = cause.code()
-            // Handle case of `impl Foo for dyn Bar { fn qux(&self) {} }` introducing a
-            // `'static` lifetime when called as a method on a binding: `bar.qux()`.
-            && self.find_impl_on_dyn_trait(&mut err, param.param_ty, ctxt)
-        {
-            override_error_code = Some(ctxt.assoc_item.name);
-        }
-
-        if let SubregionOrigin::Subtype(box TypeTrace { cause, .. }) = &sub_origin
-            && let code = match cause.code() {
-                ObligationCauseCode::MatchImpl(parent, ..) => parent.code(),
-                _ => cause.code(),
-            }
-            && let (
-                &ObligationCauseCode::WhereClause(item_def_id, _)
-                | &ObligationCauseCode::WhereClauseInExpr(item_def_id, ..),
-                None,
-            ) = (code, override_error_code)
-        {
-            // Same case of `impl Foo for dyn Bar { fn qux(&self) {} }` introducing a `'static`
-            // lifetime as above, but called using a fully-qualified path to the method:
-            // `Foo::qux(bar)`.
-            let mut v = TraitObjectVisitor(FxIndexSet::default());
-            v.visit_ty(param.param_ty);
-            if let Some((ident, self_ty)) =
-                NiceRegionError::get_impl_ident_and_self_ty_from_trait(tcx, item_def_id, &v.0)
-                && self.suggest_constrain_dyn_trait_in_impl(&mut err, &v.0, ident, self_ty)
-            {
-                override_error_code = Some(ident.name);
-            }
-        }
-        if let (Some(ident), true) = (override_error_code, fn_returns.is_empty()) {
-            // Provide a more targeted error code and description.
-            let retarget_subdiag = MoreTargeted { ident };
-            retarget_subdiag.add_to_diag(&mut err);
-        }
 
         let arg = match param.param.pat.simple_ident() {
             Some(simple_ident) => format!("argument `{simple_ident}`"),
@@ -495,8 +370,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                         kind: ItemKind::Impl(hir::Impl { self_ty, .. }), ..
                     }) = tcx.hir_node_by_def_id(impl_did)
                         && trait_objects.iter().all(|did| {
-                            // FIXME: we should check `self_ty` against the receiver
-                            // type in the `UnifyReceiver` context, but for now, use
+                            // FIXME: we should check `self_ty`, but for now, use
                             // this imperfect proxy. This will fail if there are
                             // multiple `impl`s for the same trait like
                             // `impl Foo for Box<dyn Bar>` and `impl Foo for dyn Bar`.
@@ -515,62 +389,6 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             }
             _ => None,
         }
-    }
-
-    /// When we call a method coming from an `impl Foo for dyn Bar`, `dyn Bar` introduces a default
-    /// `'static` obligation. Suggest relaxing that implicit bound.
-    fn find_impl_on_dyn_trait(
-        &self,
-        err: &mut Diag<'_>,
-        ty: Ty<'_>,
-        ctxt: &UnifyReceiverContext<'tcx>,
-    ) -> bool {
-        let tcx = self.tcx();
-
-        // Find the method being called.
-        let Ok(Some(instance)) = ty::Instance::try_resolve(
-            tcx,
-            self.cx.typing_env(ctxt.param_env),
-            ctxt.assoc_item.def_id,
-            self.cx.resolve_vars_if_possible(ctxt.args),
-        ) else {
-            return false;
-        };
-
-        let mut v = TraitObjectVisitor(FxIndexSet::default());
-        v.visit_ty(ty);
-
-        // Get the `Ident` of the method being called and the corresponding `impl` (to point at
-        // `Bar` in `impl Foo for dyn Bar {}` and the definition of the method being called).
-        let Some((ident, self_ty)) =
-            NiceRegionError::get_impl_ident_and_self_ty_from_trait(tcx, instance.def_id(), &v.0)
-        else {
-            return false;
-        };
-
-        // Find the trait object types in the argument, so we point at *only* the trait object.
-        self.suggest_constrain_dyn_trait_in_impl(err, &v.0, ident, self_ty)
-    }
-
-    fn suggest_constrain_dyn_trait_in_impl(
-        &self,
-        err: &mut Diag<'_>,
-        found_dids: &FxIndexSet<DefId>,
-        ident: Ident,
-        self_ty: &hir::Ty<'_>,
-    ) -> bool {
-        let mut suggested = false;
-        for found_did in found_dids {
-            let mut traits = vec![];
-            let mut hir_v = HirTraitObjectVisitor(&mut traits, *found_did);
-            hir_v.visit_ty_unambig(self_ty);
-            for &span in &traits {
-                let subdiag = DynTraitConstraintSuggestion { span, ident };
-                subdiag.add_to_diag(err);
-                suggested = true;
-            }
-        }
-        suggested
     }
 }
 
