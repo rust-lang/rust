@@ -260,7 +260,7 @@ pub fn local_large_var_moved(f: fn(Gigastruct)) {
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
 
-    // TODO: How does the rust compiler handle moves of large structures?
+    // FIXME: How does the rust compiler handle moves of large structures?
     // rusty-NOT: __security_check_cookie
 }
 
@@ -292,7 +292,7 @@ pub fn local_large_var_cloned(f: fn(Gigastruct)) {
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
 
-    // TODO: How does the rust compiler handle moves of large structures?
+    // FIXME: How does the rust compiler handle moves of large structures?
     // rusty-NOT: __security_check_cookie
 }
 
@@ -335,7 +335,7 @@ pub fn alloca_small_compile_time_constant_arg(f: fn(*mut ())) {
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
 
-    // TODO: Rusty thinks a function that returns a mutable raw pointer may
+    // FIXME: Rusty thinks a function that returns a mutable raw pointer may
     // be a stack memory allocation function, so it performs stack smash protection.
     // Is it possible to optimize the heuristics?
     // rusty: __security_check_cookie
@@ -352,9 +352,6 @@ pub fn alloca_large_compile_time_constant_arg(f: fn(*mut ())) {
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
 
-    // TODO: Rusty thinks a function that returns a mutable raw pointer may
-    // be a stack memory allocation function, so it performs stack smash protection.
-    // Is it possible to optimize the heuristics?
     // rusty: __security_check_cookie
 }
 
@@ -369,9 +366,6 @@ pub fn alloca_dynamic_arg(f: fn(*mut ()), n: usize) {
     // none-NOT: __security_check_cookie
     // missing-NOT: __security_check_cookie
 
-    // TODO: Rusty thinks a function that returns a mutable raw pointer may
-    // be a stack memory allocation function, so it performs stack smash protection.
-    // Is it possible to optimize the heuristics?
     // rusty: __security_check_cookie
 }
 

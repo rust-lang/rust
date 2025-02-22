@@ -395,7 +395,6 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
     // stack protector
     to_add.extend(stackprotector_attr(cx, instance.def_id()));
 
-
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NO_BUILTINS) {
         to_add.push(llvm::CreateAttrString(cx.llcx, "no-builtins"));
     }
