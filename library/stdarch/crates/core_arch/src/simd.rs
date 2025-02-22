@@ -17,6 +17,10 @@ macro_rules! simd_ty {
             pub(crate) const fn new($($param_name: $elem_type),*) -> Self {
                 $id([$($param_name),*])
             }
+            #[inline(always)]
+            pub(crate) const fn from_array(elements: [$elem_type; $len]) -> Self {
+                $id(elements)
+            }
             // FIXME: Workaround rust@60637
             #[inline(always)]
             pub(crate) fn splat(value: $elem_type) -> Self {
