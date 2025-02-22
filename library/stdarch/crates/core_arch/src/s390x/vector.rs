@@ -532,6 +532,72 @@ mod sealed {
     impl_vec_trait! { [VectorNabs vec_nabs] vec_nabs_f64 (vector_double) }
 
     #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorSplat {
+        unsafe fn vec_splat<const IMM: u32>(self) -> Self;
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(test, assert_instr(vrepb, IMM2 = 1))]
+    unsafe fn vrepb<const IMM2: u32>(a: vector_signed_char) -> vector_signed_char {
+        static_assert_uimm_bits!(IMM2, 4);
+        simd_shuffle(a, a, const { u32x16::from_array([IMM2; 16]) })
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(test, assert_instr(vreph, IMM2 = 1))]
+    unsafe fn vreph<const IMM2: u32>(a: vector_signed_short) -> vector_signed_short {
+        static_assert_uimm_bits!(IMM2, 3);
+        simd_shuffle(a, a, const { u32x8::from_array([IMM2; 8]) })
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(test, assert_instr(vrepf, IMM2 = 1))]
+    unsafe fn vrepf<const IMM2: u32>(a: vector_signed_int) -> vector_signed_int {
+        static_assert_uimm_bits!(IMM2, 2);
+        simd_shuffle(a, a, const { u32x4::from_array([IMM2; 4]) })
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(test, assert_instr(vrepg, IMM2 = 1))]
+    unsafe fn vrepg<const IMM2: u32>(a: vector_signed_long_long) -> vector_signed_long_long {
+        static_assert_uimm_bits!(IMM2, 1);
+        simd_shuffle(a, a, const { u32x2::from_array([IMM2; 2]) })
+    }
+
+    macro_rules! impl_vec_splat {
+        ($ty:ty, $fun:ident) => {
+            #[unstable(feature = "stdarch_s390x", issue = "135681")]
+            impl VectorSplat for $ty {
+                #[inline]
+                #[target_feature(enable = "vector")]
+                unsafe fn vec_splat<const IMM: u32>(self) -> Self {
+                    transmute($fun::<IMM>(transmute(self)))
+                }
+            }
+        };
+    }
+
+    impl_vec_splat! { vector_signed_char, vrepb }
+    impl_vec_splat! { vector_unsigned_char, vrepb }
+    impl_vec_splat! { vector_bool_char, vrepb }
+    impl_vec_splat! { vector_signed_short, vreph }
+    impl_vec_splat! { vector_unsigned_short, vreph }
+    impl_vec_splat! { vector_bool_short, vreph }
+    impl_vec_splat! { vector_signed_int, vrepf }
+    impl_vec_splat! { vector_unsigned_int, vrepf }
+    impl_vec_splat! { vector_bool_int, vrepf }
+    impl_vec_splat! { vector_signed_long_long, vrepg }
+    impl_vec_splat! { vector_unsigned_long_long, vrepg }
+    impl_vec_splat! { vector_bool_long_long, vrepg }
+
+    impl_vec_splat! { vector_float, vrepf }
+    impl_vec_splat! { vector_double, vrepg }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
     pub trait VectorSplats<Output> {
         unsafe fn vec_splats(self) -> Output;
     }
@@ -1586,6 +1652,17 @@ where
     a.vec_sqrt()
 }
 
+/// Vector Splat
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_splat<T, const IMM: u32>(a: T) -> T
+where
+    T: sealed::VectorSplat,
+{
+    a.vec_splat::<IMM>()
+}
+
 /// Vector splats.
 #[inline]
 #[target_feature(enable = "vector")]
@@ -2155,6 +2232,78 @@ pub unsafe fn vec_subec_u128(
     c: vector_unsigned_char,
 ) -> vector_unsigned_char {
     transmute(vsbcbiq(transmute(a), transmute(b), transmute(c)))
+}
+
+/// Vector Splat Signed Byte
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+#[cfg_attr(test, assert_instr(vrepib, IMM = 42))]
+pub unsafe fn vec_splat_i8<const IMM: i8>() -> vector_signed_char {
+    vector_signed_char([IMM; 16])
+}
+
+/// Vector Splat Signed Halfword
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+#[cfg_attr(test, assert_instr(vrepih, IMM = 42))]
+pub unsafe fn vec_splat_i16<const IMM: i16>() -> vector_signed_short {
+    vector_signed_short([IMM as i16; 8])
+}
+
+/// Vector Splat Signed Word
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+#[cfg_attr(test, assert_instr(vrepif, IMM = 42))]
+pub unsafe fn vec_splat_i32<const IMM: i16>() -> vector_signed_int {
+    vector_signed_int([IMM as i32; 4])
+}
+
+/// Vector Splat Signed Doubleword
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+#[cfg_attr(test, assert_instr(vrepig, IMM = 42))]
+pub unsafe fn vec_splat_i64<const IMM: i16>() -> vector_signed_long_long {
+    vector_signed_long_long([IMM as i64; 2])
+}
+
+/// Vector Splat Unsigned Byte
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+#[cfg_attr(test, assert_instr(vrepib, IMM = 42))]
+pub unsafe fn vec_splat_u8<const IMM: u8>() -> vector_unsigned_char {
+    vector_unsigned_char([IMM; 16])
+}
+
+/// Vector Splat Unsigned Halfword
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+#[cfg_attr(test, assert_instr(vrepih, IMM = 42))]
+pub unsafe fn vec_splat_u16<const IMM: i16>() -> vector_unsigned_short {
+    vector_unsigned_short([IMM as u16; 8])
+}
+
+/// Vector Splat Unsigned Word
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+#[cfg_attr(test, assert_instr(vrepif, IMM = 42))]
+pub unsafe fn vec_splat_u32<const IMM: i16>() -> vector_unsigned_int {
+    vector_unsigned_int([IMM as u32; 4])
+}
+
+/// Vector Splat Unsigned Doubleword
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+#[cfg_attr(test, assert_instr(vrepig, IMM = 42))]
+pub unsafe fn vec_splat_u64<const IMM: i16>() -> vector_unsigned_long_long {
+    vector_unsigned_long_long([IMM as u64; 2])
 }
 
 #[cfg(test)]
