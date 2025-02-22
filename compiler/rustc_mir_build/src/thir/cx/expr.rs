@@ -737,13 +737,8 @@ impl<'tcx> ThirBuildCx<'tcx> {
 
                             InlineAsmOperand::Const { value, span }
                         }
-                        hir::InlineAsmOperand::SymFn { ref anon_const } => {
-                            let value =
-                                mir::Const::from_unevaluated(tcx, anon_const.def_id.to_def_id())
-                                    .instantiate_identity();
-                            let span = tcx.def_span(anon_const.def_id);
-
-                            InlineAsmOperand::SymFn { value, span }
+                        hir::InlineAsmOperand::SymFn { expr } => {
+                            InlineAsmOperand::SymFn { value: self.mirror_expr(expr) }
                         }
                         hir::InlineAsmOperand::SymStatic { path: _, def_id } => {
                             InlineAsmOperand::SymStatic { def_id }
