@@ -58,7 +58,6 @@ mod lint_tail_expr_drop_order;
 mod patch;
 mod shim;
 mod ssa;
-mod stack_protector;
 
 /// We import passes via this macro so that we can have a static list of pass names
 /// (used to verify CLI arguments). It takes a list of modules, followed by the passes
@@ -199,6 +198,7 @@ declare_passes! {
     mod single_use_consts : SingleUseConsts;
     mod sroa : ScalarReplacementOfAggregates;
     mod strip_debuginfo : StripDebugInfo;
+    mod stack_protector: StackProtectorFinder;
     mod unreachable_enum_branching : UnreachableEnumBranching;
     mod unreachable_prop : UnreachablePropagation;
     mod validate : Validator;
