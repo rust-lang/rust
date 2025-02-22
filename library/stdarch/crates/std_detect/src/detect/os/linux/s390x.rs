@@ -87,8 +87,45 @@ impl AtHwcap {
                 }
             };
 
+            // vector and related
+
             // bit 129 of the extended facility list
             enable_feature(Feature::vector, self.vxrs);
+
+            // bit 135 of the extended facility list
+            enable_feature(Feature::vector_enhancements_1, self.vxrs_ext);
+
+            // bit 148 of the extended facility list
+            enable_feature(Feature::vector_enhancements_2, self.vxrs_ext2);
+
+            // bit 134 of the extended facility list
+            enable_feature(Feature::vector_packed_decimal, self.vxrs_bcd);
+
+            // bit 152 of the extended facility list
+            enable_feature(Feature::vector_packed_decimal_enhancement, self.vxrs_pde);
+
+            // bit 192 of the extended facility list
+            enable_feature(Feature::vector_packed_decimal_enhancement_2, self.vxrs_pde2);
+
+            // bit 165 of the extended facility list
+            enable_feature(Feature::nnp_assist, self.nnpa);
+
+            // others
+
+            // bit 45 of the extended facility list
+            enable_feature(Feature::high_word, self.high_gprs);
+
+            // bit 73 of the extended facility list
+            enable_feature(Feature::transactional_execution, self.te);
+
+            // bit 133 of the extended facility list
+            enable_feature(Feature::guarded_storage, self.gs);
+
+            // bit 150 of the extended facility list
+            enable_feature(Feature::enhanced_sort, self.sort);
+
+            // bit 151 of the extended facility list
+            enable_feature(Feature::deflate_conversion, self.dflt);
         }
         value
     }
