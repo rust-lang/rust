@@ -1352,24 +1352,31 @@ fn report_non_exhaustive_match<'p, 'tcx>(
         }
         [only] => {
             let only = &thir[*only];
-            let (pre_indentation, is_multiline) = if let Some(snippet) =
-                sm.indentation_before(only.span)
-                && let Ok(with_trailing) =
-                    sm.span_extend_while(only.span, |c| c.is_whitespace() || c == ',')
-                && sm.is_multiline(with_trailing)
-            {
-                (format!("\n{snippet}"), true)
-            } else {
-                (" ".to_string(), false)
-            };
             let only_body = &thir[only.body];
-            let comma = if matches!(only_body.kind, ExprKind::Block { .. })
-                && only.span.eq_ctxt(only_body.span)
-                && is_multiline
+            let pre_indentation = if let Some(snippet) = sm.indentation_before(only.span)
+                && let Some(braces_span) = braces_span
+                && sm.is_multiline(braces_span)
             {
-                ""
+                format!("\n{snippet}")
             } else {
-                ","
+                " ".to_string()
+            };
+            let comma = match only_body.kind {
+                ExprKind::Block { .. } if only_body.span.eq_ctxt(sp) => "",
+                ExprKind::Scope { value, .. }
+                    if let expr = &thir[value]
+                        && let ExprKind::Block { .. } = expr.kind
+                        && expr.span.eq_ctxt(sp) =>
+                {
+                    ""
+                }
+                _ if sm
+                    .span_to_snippet(only.span)
+                    .map_or(false, |snippet| snippet.ends_with(",")) =>
+                {
+                    ""
+                }
+                _ => ",",
             };
             suggestion = Some((
                 only.span.shrink_to_hi(),
@@ -1381,12 +1388,22 @@ fn report_non_exhaustive_match<'p, 'tcx>(
             let last = &thir[*last];
             if prev.span.eq_ctxt(last.span) {
                 let last_body = &thir[last.body];
-                let comma = if matches!(last_body.kind, ExprKind::Block { .. })
-                    && last.span.eq_ctxt(last_body.span)
-                {
-                    ""
-                } else {
-                    ","
+                let comma = match last_body.kind {
+                    ExprKind::Block { .. } if last_body.span.eq_ctxt(sp) => "",
+                    ExprKind::Scope { value, .. }
+                        if let expr = &thir[value]
+                            && let ExprKind::Block { .. } = expr.kind
+                            && expr.span.eq_ctxt(sp) =>
+                    {
+                        ""
+                    }
+                    _ if sm
+                        .span_to_snippet(last.span)
+                        .map_or(false, |snippet| snippet.ends_with(",")) =>
+                    {
+                        ""
+                    }
+                    _ => ",",
                 };
                 let spacing = if sm.is_multiline(prev.span.between(last.span)) {
                     sm.indentation_before(last.span).map(|indent| format!("\n{indent}"))

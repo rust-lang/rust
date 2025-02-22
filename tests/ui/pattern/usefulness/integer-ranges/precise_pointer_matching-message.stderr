@@ -8,7 +8,7 @@ LL |     match 0usize {
    = note: `usize` does not have a fixed maximum value, so half-open ranges are necessary to match exhaustively
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
-LL ~         0..=usize::MAX => {},
+LL ~         0..=usize::MAX => {}
 LL +         usize::MAX.. => todo!()
    |
 
@@ -22,7 +22,7 @@ LL |     match 0isize {
    = note: `isize` does not have fixed minimum and maximum values, so half-open ranges are necessary to match exhaustively
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
    |
-LL ~         isize::MIN..=isize::MAX => {},
+LL ~         isize::MIN..=isize::MAX => {}
 LL +         ..isize::MIN | isize::MAX.. => todo!()
    |
 
