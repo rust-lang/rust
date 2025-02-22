@@ -1,3 +1,5 @@
+cargo-features = ["public-dependency"]
+
 [package]
 name = "alloc"
 version = "0.0.0"
@@ -9,7 +11,7 @@ autobenches = false
 edition = "2021"
 
 [dependencies]
-core = { path = "../core" }
+core = { path = "../core", public = true }
 compiler_builtins = { version = "=0.1.146", features = ['rustc-dep-of-std'] }
 
 [dev-dependencies]
