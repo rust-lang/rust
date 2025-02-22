@@ -564,19 +564,16 @@ pub(crate) unsafe fn llvm_optimize(
     // FIXME(ZuseZ4): In a future update we could figure out how to only optimize individual functions getting
     // differentiated.
 
+    let consider_ad = cfg!(llvm_enzyme) && config.autodiff.contains(&config::AutoDiff::Enable);
+    let run_enzyme = autodiff_stage == AutodiffStage::DuringAD;
     let unroll_loops;
     let vectorize_slp;
     let vectorize_loop;
-    let run_enzyme = cfg!(llvm_enzyme) && autodiff_stage == AutodiffStage::DuringAD;
 
     // When we build rustc with enzyme/autodiff support, we want to postpone size-increasing
     // optimizations until after differentiation. Our pipeline is thus: (opt + enzyme), (full opt).
     // We therefore have two calls to llvm_optimize, if autodiff is used.
-    //
-    // FIXME(ZuseZ4): Before shipping on nightly,
-    // we should make this more granular, or at least check that the user has at least one autodiff
-    // call in their code, to justify altering the compilation pipeline.
-    if cfg!(llvm_enzyme) && autodiff_stage != AutodiffStage::PostAD {
+    if consider_ad && autodiff_stage != AutodiffStage::PostAD {
         unroll_loops = false;
         vectorize_slp = false;
         vectorize_loop = false;
@@ -706,10 +703,8 @@ pub(crate) unsafe fn optimize(
 
         // If we know that we will later run AD, then we disable vectorization and loop unrolling.
         // Otherwise we pretend AD is already done and run the normal opt pipeline (=PostAD).
-        // FIXME(ZuseZ4): Make this more granular, only set PreAD if we actually have autodiff
-        // usages, not just if we build rustc with autodiff support.
-        let autodiff_stage =
-            if cfg!(llvm_enzyme) { AutodiffStage::PreAD } else { AutodiffStage::PostAD };
+        let consider_ad = cfg!(llvm_enzyme) && config.autodiff.contains(&config::AutoDiff::Enable);
+        let autodiff_stage = if consider_ad { AutodiffStage::PreAD } else { AutodiffStage::PostAD };
         return unsafe {
             llvm_optimize(cgcx, dcx, module, config, opt_level, opt_stage, autodiff_stage)
         };

@@ -405,7 +405,8 @@ fn generate_lto_work<B: ExtraBackendMethods>(
             B::run_fat_lto(cgcx, needs_fat_lto, import_only_modules).unwrap_or_else(|e| e.raise());
         if cgcx.lto == Lto::Fat && !autodiff.is_empty() {
             let config = cgcx.config(ModuleKind::Regular);
-            module = unsafe { module.autodiff(cgcx, autodiff, config).unwrap() };
+            module =
+                unsafe { module.autodiff(cgcx, autodiff, config).unwrap_or_else(|e| e.raise()) };
         }
         // We are adding a single work item, so the cost doesn't matter.
         vec![(WorkItem::LTO(module), 0)]
