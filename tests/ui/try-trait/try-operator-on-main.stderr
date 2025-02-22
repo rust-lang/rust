@@ -7,7 +7,6 @@ LL |     // error for a `Try` type on a non-`Try` fn
 LL |     std::fs::File::open("foo")?;
    |                               ^ cannot use the `?` operator in a function that returns `()`
    |
-   = help: the trait `FromResidual<Result<Infallible, std::io::Error>>` is not implemented for `()`
 help: consider adding return type
    |
 LL ~ fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -33,8 +32,6 @@ LL | fn main() {
 ...
 LL |     ()?;
    |       ^ cannot use the `?` operator in a function that returns `()`
-   |
-   = help: the trait `FromResidual<_>` is not implemented for `()`
 
 error[E0277]: the trait bound `(): Try` is not satisfied
   --> $DIR/try-operator-on-main.rs:14:25

@@ -1364,13 +1364,13 @@ impl PlaceContext {
         matches!(self, PlaceContext::MutatingUse(MutatingUseContext::Drop))
     }
 
-    /// Returns `true` if this place context represents a borrow.
+    /// Returns `true` if this place context represents a borrow, excluding fake borrows
+    /// (which are an artifact of borrowck and not actually borrows in runtime MIR).
     pub fn is_borrow(self) -> bool {
         matches!(
             self,
-            PlaceContext::NonMutatingUse(
-                NonMutatingUseContext::SharedBorrow | NonMutatingUseContext::FakeBorrow
-            ) | PlaceContext::MutatingUse(MutatingUseContext::Borrow)
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow)
+                | PlaceContext::MutatingUse(MutatingUseContext::Borrow)
         )
     }
 

@@ -305,21 +305,15 @@ fn generic_param_def_as_bound_arg(param: &ty::GenericParamDef) -> ty::BoundVaria
 }
 
 /// Whether this opaque always captures lifetimes in scope.
-/// Right now, this is all RPITIT and TAITs, and when `lifetime_capture_rules_2024`
-/// is enabled. We don't check the span of the edition, since this is done
-/// on a per-opaque basis to account for nested opaques.
-fn opaque_captures_all_in_scope_lifetimes<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    opaque: &'tcx hir::OpaqueTy<'tcx>,
-) -> bool {
+/// Right now, this is all RPITIT and TAITs, and when the opaque
+/// is coming from a span corresponding to edition 2024.
+fn opaque_captures_all_in_scope_lifetimes<'tcx>(opaque: &'tcx hir::OpaqueTy<'tcx>) -> bool {
     match opaque.origin {
         // if the opaque has the `use<...>` syntax, the user is telling us that they only want
         // to account for those lifetimes, so do not try to be clever.
         _ if opaque.bounds.iter().any(|bound| matches!(bound, hir::GenericBound::Use(..))) => false,
         hir::OpaqueTyOrigin::AsyncFn { .. } | hir::OpaqueTyOrigin::TyAlias { .. } => true,
-        _ if tcx.features().lifetime_capture_rules_2024() || opaque.span.at_least_rust_2024() => {
-            true
-        }
+        _ if opaque.span.at_least_rust_2024() => true,
         hir::OpaqueTyOrigin::FnReturn { in_trait_or_impl, .. } => in_trait_or_impl.is_some(),
     }
 }
@@ -519,8 +513,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
     fn visit_opaque_ty(&mut self, opaque: &'tcx rustc_hir::OpaqueTy<'tcx>) {
         let captures = RefCell::new(FxIndexMap::default());
 
-        let capture_all_in_scope_lifetimes =
-            opaque_captures_all_in_scope_lifetimes(self.tcx, opaque);
+        let capture_all_in_scope_lifetimes = opaque_captures_all_in_scope_lifetimes(opaque);
         if capture_all_in_scope_lifetimes {
             let lifetime_ident = |def_id: LocalDefId| {
                 let name = self.tcx.item_name(def_id.to_def_id());
@@ -2276,7 +2269,7 @@ fn is_late_bound_map(
     }
 
     let mut appears_in_output =
-        AllCollector { tcx, has_fully_capturing_opaque: false, regions: Default::default() };
+        AllCollector { has_fully_capturing_opaque: false, regions: Default::default() };
     intravisit::walk_fn_ret_ty(&mut appears_in_output, &sig.decl.output);
     if appears_in_output.has_fully_capturing_opaque {
         appears_in_output.regions.extend(generics.params.iter().map(|param| param.def_id));
@@ -2289,7 +2282,7 @@ fn is_late_bound_map(
     // Subtle point: because we disallow nested bindings, we can just
     // ignore binders here and scrape up all names we see.
     let mut appears_in_where_clause =
-        AllCollector { tcx, has_fully_capturing_opaque: true, regions: Default::default() };
+        AllCollector { has_fully_capturing_opaque: true, regions: Default::default() };
     appears_in_where_clause.visit_generics(generics);
     debug!(?appears_in_where_clause.regions);
 
@@ -2455,23 +2448,21 @@ fn is_late_bound_map(
         }
     }
 
-    struct AllCollector<'tcx> {
-        tcx: TyCtxt<'tcx>,
+    struct AllCollector {
         has_fully_capturing_opaque: bool,
         regions: FxHashSet<LocalDefId>,
     }
 
-    impl<'v> Visitor<'v> for AllCollector<'v> {
-        fn visit_lifetime(&mut self, lifetime_ref: &'v hir::Lifetime) {
+    impl<'tcx> Visitor<'tcx> for AllCollector {
+        fn visit_lifetime(&mut self, lifetime_ref: &'tcx hir::Lifetime) {
             if let hir::LifetimeName::Param(def_id) = lifetime_ref.res {
                 self.regions.insert(def_id);
             }
         }
 
-        fn visit_opaque_ty(&mut self, opaque: &'v hir::OpaqueTy<'v>) {
+        fn visit_opaque_ty(&mut self, opaque: &'tcx hir::OpaqueTy<'tcx>) {
             if !self.has_fully_capturing_opaque {
-                self.has_fully_capturing_opaque =
-                    opaque_captures_all_in_scope_lifetimes(self.tcx, opaque);
+                self.has_fully_capturing_opaque = opaque_captures_all_in_scope_lifetimes(opaque);
             }
             intravisit::walk_opaque_ty(self, opaque);
         }
