@@ -93,7 +93,7 @@ note: `Result<u32, !>` defined here
    = note: the matched value is of type `Result<u32, !>`
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
-LL ~         Err(_) => {},
+LL ~         Err(_) => {}
 LL ~         Ok(1_u32..=u32::MAX) => todo!()
    |
 
@@ -162,7 +162,7 @@ note: `Option<Void>` defined here
    = note: `Void` is uninhabited but is not being matched by value, so a wildcard `_` is required
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
-LL ~             None => {},
+LL ~             None => {}
 LL +             Some(!)
    |
 
@@ -334,7 +334,7 @@ LL |     match slice_never {
    = note: `!` is uninhabited but is not being matched by value, so a wildcard `_` is required
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
-LL ~         [] => {},
+LL ~         [] => {}
 LL +         &[!, ..]
    |
 
@@ -347,7 +347,7 @@ LL |     match slice_never {
    = note: the matched value is of type `&[!]`
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
    |
-LL ~         [_, _, _, ..] => {},
+LL ~         [_, _, _, ..] => {}
 LL +         &[] | &[!] | &[!, !] => todo!()
    |
 
@@ -361,7 +361,7 @@ LL |     match slice_never {
    = note: match arms with guards don't count towards exhaustivity
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
    |
-LL ~         &[..] if false => {},
+LL ~         &[..] if false => {}
 LL +         &[] | &[!, ..] => todo!()
    |
 
@@ -411,7 +411,7 @@ LL |     match array_0_never {
    = note: match arms with guards don't count towards exhaustivity
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
-LL ~         [..] if false => {},
+LL ~         [..] if false => {}
 LL +         [] => todo!()
    |
 
@@ -430,7 +430,7 @@ note: `Option<!>` defined here
    = note: `!` is uninhabited but is not being matched by value, so a wildcard `_` is required
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
-LL ~         &None => {},
+LL ~         &None => {}
 LL +         &Some(!)
    |
 
@@ -449,7 +449,7 @@ note: `Option<!>` defined here
    = note: `!` is uninhabited but is not being matched by value, so a wildcard `_` is required
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
-LL ~         None => {},
+LL ~         None => {}
 LL +         Some(!)
    |
 
@@ -468,7 +468,7 @@ note: `Result<!, !>` defined here
    = note: `!` is uninhabited but is not being matched by value, so a wildcard `_` is required
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
-LL ~         Ok(_) => {},
+LL ~         Ok(_) => {}
 LL +         Err(!)
    |
 
@@ -487,7 +487,7 @@ note: `Result<!, !>` defined here
    = note: `!` is uninhabited but is not being matched by value, so a wildcard `_` is required
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
-LL ~         Ok(_a) => {},
+LL ~         Ok(_a) => {}
 LL +         Err(!)
    |
 
@@ -561,7 +561,7 @@ LL |     match ref_never {
    = note: match arms with guards don't count towards exhaustivity
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
-LL ~         &_a if false => {},
+LL ~         &_a if false => {}
 LL +         &!
    |
 
@@ -580,7 +580,7 @@ note: `Result<!, !>` defined here
    = note: `!` is uninhabited but is not being matched by value, so a wildcard `_` is required
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
-LL ~         Err(_) => {},
+LL ~         Err(_) => {}
 LL +         Ok(!)
    |
 
@@ -599,7 +599,7 @@ note: `Option<Result<!, !>>` defined here
    = note: `Result<!, !>` is uninhabited but is not being matched by value, so a wildcard `_` is required
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern or an explicit pattern as shown
    |
-LL ~         None => {},
+LL ~         None => {}
 LL +         Some(!)
    |
 

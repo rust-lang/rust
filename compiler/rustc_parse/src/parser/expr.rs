@@ -3074,6 +3074,7 @@ impl<'a> Parser<'a> {
             let (pat, guard) = this.parse_match_arm_pat_and_guard()?;
 
             let span_before_body = this.prev_token.span;
+            let mut comma = None;
             let arm_body;
             let is_fat_arrow = this.check(exp!(FatArrow));
             let is_almost_fat_arrow =
@@ -3137,6 +3138,7 @@ impl<'a> Parser<'a> {
                     arm_body = Some(expr);
                     // Eat a comma if it exists, though.
                     let _ = this.eat(exp!(Comma));
+                    comma = Some(this.prev_token.span);
                     Ok(Recovered::No)
                 } else if let Some((span, guar)) =
                     this.parse_arm_body_missing_braces(&expr, arrow_span)
@@ -3184,7 +3186,8 @@ impl<'a> Parser<'a> {
                 }
             };
 
-            let hi_span = arm_body.as_ref().map_or(span_before_body, |body| body.span);
+            let hi_span =
+                comma.unwrap_or(arm_body.as_ref().map_or(span_before_body, |body| body.span));
             let arm_span = lo.to(hi_span);
 
             // We want to recover:
