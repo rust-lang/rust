@@ -1361,12 +1361,12 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                 GenericParamDefKind::Lifetime => {}
                 GenericParamDefKind::Type { has_default, .. } => {
                     if has_default {
-                        self.visit(self.tcx.type_of(param.def_id).instantiate_identity());
+                        let _ = self.visit(self.tcx.type_of(param.def_id).instantiate_identity());
                     }
                 }
                 // FIXME(generic_const_exprs): May want to look inside const here
                 GenericParamDefKind::Const { .. } => {
-                    self.visit(self.tcx.type_of(param.def_id).instantiate_identity());
+                    let _ = self.visit(self.tcx.type_of(param.def_id).instantiate_identity());
                 }
             }
         }
@@ -1381,19 +1381,19 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
         // consider the ones that the user wrote. This is important
         // for the inferred outlives rules; see
         // `tests/ui/rfc-2093-infer-outlives/privacy.rs`.
-        self.visit_predicates(self.tcx.explicit_predicates_of(self.item_def_id));
+        let _ = self.visit_predicates(self.tcx.explicit_predicates_of(self.item_def_id));
         self
     }
 
     fn bounds(&mut self) -> &mut Self {
         self.in_primary_interface = false;
-        self.visit_clauses(self.tcx.explicit_item_bounds(self.item_def_id).skip_binder());
+        let _ = self.visit_clauses(self.tcx.explicit_item_bounds(self.item_def_id).skip_binder());
         self
     }
 
     fn ty(&mut self) -> &mut Self {
         self.in_primary_interface = true;
-        self.visit(self.tcx.type_of(self.item_def_id).instantiate_identity());
+        let _ = self.visit(self.tcx.type_of(self.item_def_id).instantiate_identity());
         self
     }
 
@@ -1785,7 +1785,7 @@ fn check_mod_privacy(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
 
     let module = tcx.hir_module_items(module_def_id);
     for def_id in module.definitions() {
-        rustc_ty_utils::sig_types::walk_types(tcx, def_id, &mut visitor);
+        let _ = rustc_ty_utils::sig_types::walk_types(tcx, def_id, &mut visitor);
 
         if let Some(body_id) = tcx.hir_maybe_body_owned_by(def_id) {
             visitor.visit_nested_body(body_id.id());
@@ -1798,7 +1798,11 @@ fn check_mod_privacy(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
                 let trait_ref = tcx.impl_trait_ref(id.owner_id.def_id).unwrap();
                 let trait_ref = trait_ref.instantiate_identity();
                 visitor.span = item.path.span;
-                visitor.visit_def_id(trait_ref.def_id, "trait", &trait_ref.print_only_trait_path());
+                let _ = visitor.visit_def_id(
+                    trait_ref.def_id,
+                    "trait",
+                    &trait_ref.print_only_trait_path(),
+                );
             }
         }
     }

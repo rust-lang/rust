@@ -40,7 +40,7 @@ pub fn check(cx: &LateContext<'_>, call: &Expr<'_>, recv: &Expr<'_>, arg: &Expr<
         // We've checked that `call` is a call to `Stdin::read_line()` with the right receiver,
         // now let's check if the first use of the string passed to `::read_line()`
         // is used for operations that will always fail (e.g. parsing "6\n" into a number)
-        for_each_local_use_after_expr(cx, local_id, call.hir_id, |expr| {
+        let _ = for_each_local_use_after_expr(cx, local_id, call.hir_id, |expr| {
             if let Some(parent) = get_parent_expr(cx, expr) {
                 let data = if let ExprKind::MethodCall(segment, recv, args, span) = parent.kind {
                     if args.is_empty()
