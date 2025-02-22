@@ -298,8 +298,7 @@ macro_rules! impl_neg {
         impl crate::ops::Neg for s_t_l!($s) {
             type Output = s_t_l!($s);
             fn neg(self) -> Self::Output {
-                let zero = $s::splat($zero);
-                unsafe { transmute(simd_sub(zero, transmute(self))) }
+                unsafe { simd_neg(self) }
             }
         }
     };
