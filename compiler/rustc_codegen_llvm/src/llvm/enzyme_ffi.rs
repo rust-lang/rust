@@ -30,7 +30,7 @@ unsafe extern "C" {
 
 #[repr(C)]
 #[derive(Copy, Clone, PartialEq)]
-pub enum LLVMRustVerifierFailureAction {
+pub(crate) enum LLVMRustVerifierFailureAction {
     LLVMAbortProcessAction = 0,
     LLVMPrintMessageAction = 1,
     LLVMReturnStatusAction = 2,

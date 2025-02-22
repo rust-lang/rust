@@ -3,13 +3,13 @@
 use libc::c_uint;
 use rustc_span::InnerSpan;
 
-pub use self::Diagnostic::*;
-pub use self::OptimizationDiagnosticKind::*;
+pub(crate) use self::Diagnostic::*;
+use self::OptimizationDiagnosticKind::*;
 use super::{DiagnosticInfo, SMDiagnostic};
 use crate::value::Value;
 
 #[derive(Copy, Clone, Debug)]
-pub enum OptimizationDiagnosticKind {
+pub(crate) enum OptimizationDiagnosticKind {
     OptimizationRemark,
     OptimizationMissed,
     OptimizationAnalysis,
@@ -19,9 +19,10 @@ pub enum OptimizationDiagnosticKind {
     OptimizationRemarkOther,
 }
 
-pub struct OptimizationDiagnostic<'ll> {
+pub(crate) struct OptimizationDiagnostic<'ll> {
     pub kind: OptimizationDiagnosticKind,
     pub pass_name: String,
+    #[expect(dead_code)]
     pub function: &'ll Value,
     pub line: c_uint,
     pub column: c_uint,
@@ -73,14 +74,14 @@ impl<'ll> OptimizationDiagnostic<'ll> {
     }
 }
 
-pub struct SrcMgrDiagnostic {
+pub(crate) struct SrcMgrDiagnostic {
     pub level: super::DiagnosticLevel,
     pub message: String,
     pub source: Option<(String, Vec<InnerSpan>)>,
 }
 
 impl SrcMgrDiagnostic {
-    pub unsafe fn unpack(diag: &SMDiagnostic) -> SrcMgrDiagnostic {
+    pub(crate) unsafe fn unpack(diag: &SMDiagnostic) -> SrcMgrDiagnostic {
         // Recover the post-substitution assembly code from LLVM for better
         // diagnostics.
         let mut have_source = false;
@@ -120,7 +121,7 @@ impl SrcMgrDiagnostic {
 }
 
 #[derive(Clone)]
-pub struct InlineAsmDiagnostic {
+pub(crate) struct InlineAsmDiagnostic {
     pub level: super::DiagnosticLevel,
     pub cookie: u64,
     pub message: String,
@@ -158,7 +159,7 @@ impl InlineAsmDiagnostic {
     }
 }
 
-pub enum Diagnostic<'ll> {
+pub(crate) enum Diagnostic<'ll> {
     Optimization(OptimizationDiagnostic<'ll>),
     InlineAsm(InlineAsmDiagnostic),
     PGO(&'ll DiagnosticInfo),
@@ -166,11 +167,12 @@ pub enum Diagnostic<'ll> {
     Unsupported(&'ll DiagnosticInfo),
 
     /// LLVM has other types that we do not wrap here.
+    #[expect(dead_code)]
     UnknownDiagnostic(&'ll DiagnosticInfo),
 }
 
 impl<'ll> Diagnostic<'ll> {
-    pub unsafe fn unpack(di: &'ll DiagnosticInfo) -> Self {
+    pub(crate) unsafe fn unpack(di: &'ll DiagnosticInfo) -> Self {
         use super::DiagnosticKind as Dk;
 
         unsafe {
