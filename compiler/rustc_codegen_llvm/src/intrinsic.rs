@@ -1451,6 +1451,23 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             bx.const_i32(idx as i32),
         ));
     }
+    if name == sym::simd_insert_dyn {
+        require!(
+            in_elem == arg_tys[2],
+            InvalidMonomorphization::InsertedType {
+                span,
+                name,
+                in_elem,
+                in_ty,
+                out_ty: arg_tys[2]
+            }
+        );
+        return Ok(bx.insert_element(
+            args[0].immediate(),
+            args[2].immediate(),
+            args[1].immediate(),
+        ));
+    }
     if name == sym::simd_extract {
         require!(
             ret_ty == in_elem,
@@ -1468,6 +1485,13 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             });
         }
         return Ok(bx.extract_element(args[0].immediate(), bx.const_i32(idx as i32)));
+    }
+    if name == sym::simd_extract_dyn {
+        require!(
+            ret_ty == in_elem,
+            InvalidMonomorphization::ReturnType { span, name, in_elem, in_ty, ret_ty }
+        );
+        return Ok(bx.extract_element(args[0].immediate(), args[1].immediate()));
     }
 
     if name == sym::simd_select {
