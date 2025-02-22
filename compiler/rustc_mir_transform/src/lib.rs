@@ -44,6 +44,7 @@ mod pass_manager;
 use std::sync::LazyLock;
 
 use pass_manager::{self as pm, Lint, MirLint, MirPass, WithMinOptLevel};
+use rustc_target::spec::StackProtector;
 
 mod check_pointers;
 mod cost_checker;
@@ -57,6 +58,7 @@ mod lint_tail_expr_drop_order;
 mod patch;
 mod shim;
 mod ssa;
+mod stack_protector;
 
 /// We import passes via this macro so that we can have a static list of pass names
 /// (used to verify CLI arguments). It takes a list of modules, followed by the passes
@@ -451,6 +453,17 @@ fn mir_promoted(
     lint_tail_expr_drop_order::run_lint(tcx, def, &body);
 
     let promoted = promote_pass.promoted_fragments.into_inner();
+
+    if tcx.sess.stack_protector() == StackProtector::Rusty {
+        pm::run_passes(
+            tcx,
+            &mut body,
+            &[&stack_protector::StackProtectorFinder],
+            None,
+            pm::Optimizations::Allowed,
+        )
+    }
+
     (tcx.alloc_steal_mir(body), tcx.alloc_steal_promoted(promoted))
 }
 

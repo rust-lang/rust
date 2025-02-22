@@ -17,7 +17,7 @@ use rustc_abi::{ExternAbi, FieldIdx, Layout, LayoutData, TargetDataLayout, Varia
 use rustc_ast as ast;
 use rustc_data_structures::defer;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
@@ -1392,6 +1392,8 @@ pub struct GlobalCtxt<'tcx> {
     /// Stores memory for globals (statics/consts).
     pub(crate) alloc_map: interpret::AllocMap<'tcx>,
 
+    pub stack_protector: Lock<FxHashSet<DefId>>,
+
     current_gcx: CurrentGcx,
 }
 
@@ -1608,6 +1610,7 @@ impl<'tcx> TyCtxt<'tcx> {
             canonical_param_env_cache: Default::default(),
             data_layout,
             alloc_map: interpret::AllocMap::new(),
+            stack_protector: Default::default(),
             current_gcx,
         });
 
