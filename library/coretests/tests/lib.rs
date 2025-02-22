@@ -44,6 +44,7 @@
 #![feature(ip)]
 #![feature(ip_from)]
 #![feature(is_ascii_octdigit)]
+#![feature(isolate_most_least_significant_one)]
 #![feature(iter_advance_by)]
 #![feature(iter_array_chunks)]
 #![feature(iter_chain)]
