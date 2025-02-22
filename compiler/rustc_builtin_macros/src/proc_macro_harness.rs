@@ -372,9 +372,9 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
         cx.expr_array_ref(span, decls),
     );
     decls_static.attrs.extend([
-        cx.attr_word(sym::rustc_proc_macro_decls, span),
-        cx.attr_word(sym::used, span),
-        cx.attr_nested_word(sym::allow, sym::deprecated, span),
+        cx.attr_word(sym::rustc_proc_macro_decls, span, span),
+        cx.attr_word(sym::used, span, span),
+        cx.attr_nested_word(sym::allow, sym::deprecated, span, span),
     ]);
 
     let block = cx.expr_block(

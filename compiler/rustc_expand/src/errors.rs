@@ -213,27 +213,39 @@ pub(crate) struct RemoveExprNotSupported {
     pub span: Span,
 }
 
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    expand_invalid_cfg_expected_syntax,
+    applicability = "maybe-incorrect",
+    style = "verbose"
+)]
+pub(crate) struct NotFollowedByParens {
+    #[suggestion_part(code = "(")]
+    pub lo: Span,
+    #[suggestion_part(code = ")")]
+    pub hi: Span,
+}
+
 #[derive(Diagnostic)]
 pub(crate) enum InvalidCfg {
     #[diag(expand_invalid_cfg_no_parens)]
     NotFollowedByParens {
         #[primary_span]
-        #[suggestion(
-            expand_invalid_cfg_expected_syntax,
-            code = "cfg(/* predicate */)",
-            applicability = "has-placeholders"
-        )]
         span: Span,
+        #[subdiagnostic]
+        suggestion: NotFollowedByParens,
     },
     #[diag(expand_invalid_cfg_no_predicate)]
     NoPredicate {
         #[primary_span]
+        span: Span,
         #[suggestion(
             expand_invalid_cfg_expected_syntax,
             code = "cfg(/* predicate */)",
-            applicability = "has-placeholders"
+            applicability = "has-placeholders",
+            style = "verbose"
         )]
-        span: Span,
+        suggestion_span: Span,
     },
     #[diag(expand_invalid_cfg_multiple_predicates)]
     MultiplePredicates {

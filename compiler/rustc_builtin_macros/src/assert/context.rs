@@ -112,7 +112,12 @@ impl<'cx, 'a> Context<'cx, 'a> {
             self.span,
             self.cx.item(
                 self.span,
-                thin_vec![self.cx.attr_nested_word(sym::allow, sym::unused_imports, self.span)],
+                thin_vec![self.cx.attr_nested_word(
+                    sym::allow,
+                    sym::unused_imports,
+                    self.span,
+                    self.span
+                )],
                 ItemKind::Use(UseTree {
                     prefix: self.cx.path(self.span, self.cx.std_path(&[sym::asserting])),
                     kind: UseTreeKind::Nested {

@@ -3326,6 +3326,7 @@ impl NormalAttr {
                 path: Path::from_ident(ident),
                 args: AttrArgs::Empty,
                 tokens: None,
+                span: ident.span,
             },
             tokens: None,
         }
@@ -3339,6 +3340,7 @@ pub struct AttrItem {
     pub args: AttrArgs,
     // Tokens for the meta item, e.g. just the `foo` within `#[foo]` or `#![foo]`.
     pub tokens: Option<LazyAttrTokenStream>,
+    pub span: Span,
 }
 
 impl AttrItem {

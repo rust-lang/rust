@@ -8,7 +8,7 @@ use rustc_ast::tokenstream::{
 };
 use rustc_ast::{
     self as ast, AttrKind, AttrStyle, Attribute, HasAttrs, HasTokens, MetaItem, MetaItemInner,
-    NodeId, NormalAttr,
+    MetaItemKind, NodeId, NormalAttr,
 };
 use rustc_attr_parsing as attr;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
@@ -27,7 +27,7 @@ use tracing::instrument;
 use crate::errors::{
     CrateNameInCfgAttr, CrateTypeInCfgAttr, FeatureNotAllowed, FeatureRemoved,
     FeatureRemovedReason, InvalidCfg, MalformedFeatureAttribute, MalformedFeatureAttributeHelp,
-    RemoveExprNotSupported,
+    NotFollowedByParens, RemoveExprNotSupported,
 };
 
 /// A folder that strips out items that do not belong in the current configuration.
@@ -405,11 +405,16 @@ impl<'a> StripUnconfigured<'a> {
                 return (true, None);
             }
         };
+        let sugg_span = match (&attr.kind, &meta_item.kind) {
+            (AttrKind::Normal(attr), MetaItemKind::Word) => attr.item.span.shrink_to_hi(),
+            (AttrKind::Normal(attr), _) => attr.item.span,
+            (_, _) => meta_item.span,
+        };
 
         validate_attr::deny_builtin_meta_unsafety(&self.sess.psess, &meta_item);
 
         (
-            parse_cfg(&meta_item, self.sess).is_none_or(|meta_item| {
+            parse_cfg(&meta_item, self.sess, sugg_span).is_none_or(|meta_item| {
                 attr::cfg_matches(meta_item, &self.sess, self.lint_node_id, self.features)
             }),
             Some(meta_item),
@@ -465,15 +470,25 @@ impl<'a> StripUnconfigured<'a> {
     }
 }
 
-pub fn parse_cfg<'a>(meta_item: &'a MetaItem, sess: &Session) -> Option<&'a MetaItemInner> {
+pub fn parse_cfg<'a>(
+    meta_item: &'a MetaItem,
+    sess: &Session,
+    suggestion_span: Span,
+) -> Option<&'a MetaItemInner> {
     let span = meta_item.span;
     match meta_item.meta_item_list() {
         None => {
-            sess.dcx().emit_err(InvalidCfg::NotFollowedByParens { span });
+            sess.dcx().emit_err(InvalidCfg::NotFollowedByParens {
+                span,
+                suggestion: NotFollowedByParens {
+                    lo: suggestion_span.shrink_to_lo(),
+                    hi: suggestion_span.shrink_to_hi(),
+                },
+            });
             None
         }
         Some([]) => {
-            sess.dcx().emit_err(InvalidCfg::NoPredicate { span });
+            sess.dcx().emit_err(InvalidCfg::NoPredicate { span, suggestion_span });
             None
         }
         Some([_, .., l]) => {

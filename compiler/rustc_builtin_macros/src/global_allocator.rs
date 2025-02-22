@@ -102,7 +102,7 @@ impl AllocFnFactory<'_, '_> {
     }
 
     fn attrs(&self) -> AttrVec {
-        thin_vec![self.cx.attr_word(sym::rustc_std_internal_symbol, self.span)]
+        thin_vec![self.cx.attr_word(sym::rustc_std_internal_symbol, self.span, self.span)]
     }
 
     fn arg_ty(&self, input: &AllocatorMethodInput, args: &mut ThinVec<Param>) -> P<Expr> {

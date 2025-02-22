@@ -208,6 +208,7 @@ impl<'a> MutVisitor for EntryPointCleaner<'a> {
                     sym::allow,
                     sym::dead_code,
                     self.def_site,
+                    self.def_site,
                 );
                 item.attrs.retain(|attr| !attr.has_name(sym::rustc_main));
                 item.attrs.push(allow_dead_code);
@@ -312,11 +313,11 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
     );
 
     // #[rustc_main]
-    let main_attr = ecx.attr_word(sym::rustc_main, sp);
+    let main_attr = ecx.attr_word(sym::rustc_main, sp, sp);
     // #[coverage(off)]
-    let coverage_attr = ecx.attr_nested_word(sym::coverage, sym::off, sp);
+    let coverage_attr = ecx.attr_nested_word(sym::coverage, sym::off, sp, sp);
     // #[doc(hidden)]
-    let doc_hidden_attr = ecx.attr_nested_word(sym::doc, sym::hidden, sp);
+    let doc_hidden_attr = ecx.attr_nested_word(sym::doc, sym::hidden, sp, sp);
 
     // pub fn main() { ... }
     let main_ret_ty = ecx.ty(sp, ast::TyKind::Tup(ThinVec::new()));
