@@ -3675,6 +3675,7 @@ pub const unsafe fn ptr_offset_from<T>(_ptr: *const T, _base: *const T) -> isize
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
+#[rustc_intrinsic_const_stable_indirect]
 pub const unsafe fn ptr_offset_from_unsigned<T>(_ptr: *const T, _base: *const T) -> usize {
     unimplemented!()
 }
