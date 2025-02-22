@@ -163,8 +163,7 @@ mod sealed {
 
         #[inline]
         #[target_feature(enable = "vector")]
-        // FIXME: "vfasb" is part of vector enhancements 1, add a test for it when possible
-        // #[cfg_attr(test, assert_instr(vfasb))]
+        #[cfg_attr(all(test, target_feature = "vector-enhancements-1"), assert_instr(vfasb))]
         pub unsafe fn va_float(a: vector_float, b: vector_float) -> vector_float {
             transmute(simd_add(a, b))
         }
@@ -247,8 +246,7 @@ mod sealed {
 
         #[inline]
         #[target_feature(enable = "vector")]
-        // FIXME: "vfssb" is part of vector enhancements 1, add a test for it when possible
-        // #[cfg_attr(test, assert_instr(vfasb))]
+        #[cfg_attr(all(test, target_feature = "vector-enhancements-1"), assert_instr(vfssb))]
         pub unsafe fn vs_float(a: vector_float, b: vector_float) -> vector_float {
             transmute(simd_sub(a, b))
         }
@@ -335,9 +333,8 @@ mod sealed {
 
     impl_vec_trait! { [VectorMax vec_max] ~(vmxlb, vmxb, vmxlh, vmxh, vmxlf, vmxf, vmxlg, vmxg) }
 
-    // FIXME(vector-enhancements-1) test for the `vfmaxsb` etc. instruction
-    test_impl! { vec_vfmaxsb (a: vector_float, b: vector_float) -> vector_float [simd_fmax, _] }
-    test_impl! { vec_vfmaxdb (a: vector_double, b: vector_double) -> vector_double [simd_fmax, _] }
+    test_impl! { vec_vfmaxsb (a: vector_float, b: vector_float) -> vector_float [simd_fmax, "vector-enhancements-1" vfmaxsb ] }
+    test_impl! { vec_vfmaxdb (a: vector_double, b: vector_double) -> vector_double [simd_fmax, "vector-enhancements-1" vfmaxdb] }
 
     impl_vec_trait!([VectorMax vec_max] vec_vfmaxsb (vector_float, vector_float) -> vector_float);
     impl_vec_trait!([VectorMax vec_max] vec_vfmaxdb (vector_double, vector_double) -> vector_double);
@@ -360,9 +357,8 @@ mod sealed {
 
     impl_vec_trait! { [VectorMin vec_min] ~(vmxlb, vmxb, vmxlh, vmxh, vmxlf, vmxf, vmxlg, vmxg) }
 
-    // FIXME(vector-enhancements-1) test for the `vfminsb` etc. instruction
-    test_impl! { vec_vfminsb (a: vector_float, b: vector_float) -> vector_float [simd_fmin, _] }
-    test_impl! { vec_vfmindb (a: vector_double, b: vector_double) -> vector_double [simd_fmin, _] }
+    test_impl! { vec_vfminsb (a: vector_float, b: vector_float) -> vector_float [simd_fmin, "vector-enhancements-1" vfminsb]  }
+    test_impl! { vec_vfmindb (a: vector_double, b: vector_double) -> vector_double [simd_fmin, "vector-enhancements-1" vfmindb]  }
 
     impl_vec_trait!([VectorMin vec_min] vec_vfminsb (vector_float, vector_float) -> vector_float);
     impl_vec_trait!([VectorMin vec_min] vec_vfmindb (vector_double, vector_double) -> vector_double);
@@ -389,8 +385,7 @@ mod sealed {
     impl_abs! { vec_abs_i32, i32x4 }
     impl_abs! { vec_abs_i64, i64x2 }
 
-    // FIXME(vector-enhancements-1)
-    test_impl! { vec_abs_f32 (v: vector_float) -> vector_float [ simd_fabs, _ ] }
+    test_impl! { vec_abs_f32 (v: vector_float) -> vector_float [ simd_fabs, "vector-enhancements-1" vflpsb ] }
     test_impl! { vec_abs_f64 (v: vector_double) -> vector_double [ simd_fabs, vflpdb ] }
 
     impl_vec_trait! { [VectorAbs vec_abs] vec_abs_f32 (vector_float) }
@@ -527,10 +522,15 @@ mod sealed {
     test_impl! { vec_ctzf_unsigned +(a: vector_unsigned_int) -> vector_unsigned_int [simd_cttz, vctzf] }
     test_impl! { vec_ctzg_unsigned +(a: vector_unsigned_long_long) -> vector_unsigned_long_long [simd_cttz, vctzg] }
 
-    // FIXME(vector-enhancements-1) other integer types are emulated, but get their own
-    // instructions in later facilities. Add tests when possible.
-    test_impl! { vec_popcnt_signed +(a: vector_signed_char) -> vector_signed_char [simd_ctpop, vpopctb] }
-    test_impl! { vec_popcnt_unsigned +(a: vector_unsigned_char) -> vector_unsigned_char [simd_ctpop, vpopctb] }
+    test_impl! { vec_vpopctb_signed +(a: vector_signed_char) -> vector_signed_char [simd_ctpop, vpopctb] }
+    test_impl! { vec_vpopcth_signed +(a: vector_signed_short) -> vector_signed_short [simd_ctpop, "vector-enhancements-1" vpopcth] }
+    test_impl! { vec_vpopctf_signed +(a: vector_signed_int) -> vector_signed_int [simd_ctpop, "vector-enhancements-1" vpopctf] }
+    test_impl! { vec_vpopctg_signed +(a: vector_signed_long_long) -> vector_signed_long_long [simd_ctpop, "vector-enhancements-1" vpopctg] }
+
+    test_impl! { vec_vpopctb_unsigned +(a: vector_unsigned_char) -> vector_unsigned_char [simd_ctpop, vpopctb] }
+    test_impl! { vec_vpopcth_unsigned +(a: vector_unsigned_short) -> vector_unsigned_short [simd_ctpop, "vector-enhancements-1" vpopcth] }
+    test_impl! { vec_vpopctf_unsigned +(a: vector_unsigned_int) -> vector_unsigned_int [simd_ctpop, "vector-enhancements-1" vpopctf] }
+    test_impl! { vec_vpopctg_unsigned +(a: vector_unsigned_long_long) -> vector_unsigned_long_long [simd_ctpop, "vector-enhancements-1" vpopctg] }
 
     #[unstable(feature = "stdarch_s390x", issue = "135681")]
     pub trait VectorAnd<Other> {
@@ -558,7 +558,7 @@ mod sealed {
 
     #[inline]
     #[target_feature(enable = "vector")]
-    // FIXME(vector-enhancements-1) #[cfg_attr(test, assert_instr(vno))]
+    #[cfg_attr(all(test, target_feature = "vector-enhancements-1"), assert_instr(vno))]
     unsafe fn nor(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char {
         let a: u8x16 = transmute(a);
         let b: u8x16 = transmute(b);
@@ -575,7 +575,7 @@ mod sealed {
 
     #[inline]
     #[target_feature(enable = "vector")]
-    // FIXME(vector-enhancements-1) #[cfg_attr(test, assert_instr(vnn))]
+    #[cfg_attr(all(test, target_feature = "vector-enhancements-1"), assert_instr(vnn))]
     unsafe fn nand(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char {
         let a: u8x16 = transmute(a);
         let b: u8x16 = transmute(b);
@@ -592,7 +592,7 @@ mod sealed {
 
     #[inline]
     #[target_feature(enable = "vector")]
-    // FIXME(vector-enhancements-1) #[cfg_attr(test, assert_instr(vnx))]
+    #[cfg_attr(all(test, target_feature = "vector-enhancements-1"), assert_instr(vnx))]
     unsafe fn eqv(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char {
         let a: u8x16 = transmute(a);
         let b: u8x16 = transmute(b);
@@ -609,7 +609,7 @@ mod sealed {
 
     #[inline]
     #[target_feature(enable = "vector")]
-    // FIXME(vector-enhancements-1) #[cfg_attr(test, assert_instr(vnc))]
+    #[cfg_attr(all(test, target_feature = "vector-enhancements-1"), assert_instr(vnc))]
     unsafe fn andc(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char {
         let a = transmute(a);
         let b = transmute(b);
@@ -626,7 +626,7 @@ mod sealed {
 
     #[inline]
     #[target_feature(enable = "vector")]
-    // FIXME(vector-enhancements-1) #[cfg_attr(test, assert_instr(voc))]
+    #[cfg_attr(all(test, target_feature = "vector-enhancements-1"), assert_instr(voc))]
     unsafe fn orc(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char {
         let a = transmute(a);
         let b = transmute(b);
@@ -641,15 +641,14 @@ mod sealed {
 
     impl_vec_trait! { [VectorOrc vec_orc]+ 2c (orc) }
 
-    // FIXME(vector-enhancements-1) add instr tests for f32
-    test_impl! { vec_roundc_f32 (a: vector_float) -> vector_float [nearbyint_v4f32, _] }
+    test_impl! { vec_roundc_f32 (a: vector_float) -> vector_float [nearbyint_v4f32,  "vector-enhancements-1" vfisb] }
     test_impl! { vec_roundc_f64 (a: vector_double) -> vector_double [nearbyint_v2f64, vfidb] }
 
     // FIXME(llvm) roundeven does not yet lower to vfidb (but should in the future)
     test_impl! { vec_round_f32 (a: vector_float) -> vector_float [roundeven_v4f32, _] }
     test_impl! { vec_round_f64 (a: vector_double) -> vector_double [roundeven_v2f64, _] }
 
-    test_impl! { vec_rint_f32 (a: vector_float) -> vector_float [rint_v4f32, _] }
+    test_impl! { vec_rint_f32 (a: vector_float) -> vector_float [rint_v4f32, "vector-enhancements-1" vfisb] }
     test_impl! { vec_rint_f64 (a: vector_double) -> vector_double [rint_v2f64, vfidb] }
 
     #[unstable(feature = "stdarch_s390x", issue = "135681")]

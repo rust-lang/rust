@@ -17,6 +17,22 @@ macro_rules! test_impl {
             transmute($call ($($v),*))
         }
     };
+    ($fun:ident +($($v:ident : $ty:ty),*) -> $r:ty [$call:ident, $tf:literal $instr:ident]) => {
+        #[inline]
+        #[target_feature(enable = "vector")]
+        #[cfg_attr(all(test, target_feature = $tf), assert_instr($instr))]
+        pub unsafe fn $fun ($($v : $ty),*) -> $r {
+            transmute($call ($($v),*))
+        }
+    };
+    ($fun:ident ($($v:ident : $ty:ty),*) -> $r:ty [$call:ident, $tf:literal $instr:ident]) => {
+        #[inline]
+        #[target_feature(enable = "vector")]
+        #[cfg_attr(all(test, target_feature = $tf), assert_instr($instr))]
+        pub unsafe fn $fun ($($v : $ty),*) -> $r {
+            $call ($($v),*)
+        }
+    };
     ($fun:ident ($($v:ident : $ty:ty),*) -> $r:ty [$call:ident, $instr:ident]) => {
         #[inline]
         #[target_feature(enable = "vector")]

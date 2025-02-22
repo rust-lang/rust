@@ -124,6 +124,10 @@ case ${TARGET} in
         export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+msa"
         cargo_test "${PROFILE}"
 	      ;;
+    s390x*)
+        export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+vector-enhancements-1"
+        cargo_test "${PROFILE}"
+	      ;;
     powerpc64*)
         # We don't build the ppc 32-bit targets with these - these targets
         # are mostly unsupported for now.
