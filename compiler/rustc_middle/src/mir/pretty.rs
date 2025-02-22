@@ -970,7 +970,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             }
             FalseEdge { .. } => write!(fmt, "falseEdge"),
             FalseUnwind { .. } => write!(fmt, "falseUnwind"),
-            InlineAsm { template, ref operands, options, .. } => {
+            InlineAsm { template, operands, options, .. } => {
                 write!(fmt, "asm!(\"{}\"", InlineAsmTemplatePiece::to_string(template))?;
                 for op in operands {
                     write!(fmt, ", ")?;

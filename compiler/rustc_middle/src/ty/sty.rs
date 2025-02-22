@@ -1149,7 +1149,7 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn is_param(self, index: u32) -> bool {
         match self.kind() {
-            ty::Param(ref data) => data.index == index,
+            ty::Param(data) => data.index == index,
             _ => false,
         }
     }

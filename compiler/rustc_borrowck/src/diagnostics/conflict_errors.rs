@@ -2617,7 +2617,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 if let hir::Pat { kind: hir::PatKind::Binding(_, hir_id, _ident, _), .. } =
                     local.pat
                     && let Some(init) = local.init
-                    && let hir::Expr {
+                    && let &hir::Expr {
                         kind:
                             hir::ExprKind::Closure(&hir::Closure {
                                 kind: hir::ClosureKind::Closure,

@@ -720,14 +720,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // Put together the arguments to the panic entry point.
         let (lang_item, args) = match msg {
-            AssertKind::BoundsCheck { ref len, ref index } => {
+            AssertKind::BoundsCheck { len, index } => {
                 let len = self.codegen_operand(bx, len).immediate();
                 let index = self.codegen_operand(bx, index).immediate();
                 // It's `fn panic_bounds_check(index: usize, len: usize)`,
                 // and `#[track_caller]` adds an implicit third argument.
                 (LangItem::PanicBoundsCheck, vec![index, len, location])
             }
-            AssertKind::MisalignedPointerDereference { ref required, ref found } => {
+            AssertKind::MisalignedPointerDereference { required, found } => {
                 let required = self.codegen_operand(bx, required).immediate();
                 let found = self.codegen_operand(bx, found).immediate();
                 // It's `fn panic_misaligned_pointer_dereference(required: usize, found: usize)`,
