@@ -410,6 +410,8 @@ impl Cursor<'_> {
             // Numeric literal.
             c @ '0'..='9' => {
                 let (literal_kind, suffix_start) = self.number(c);
+                let suffix_start = suffix_start.unwrap_or(self.pos_within_token());
+                self.eat_literal_suffix();
                 TokenKind::Literal { kind: literal_kind, suffix_start }
             }
 
@@ -604,9 +606,9 @@ impl Cursor<'_> {
         }
     }
 
-    /// Parses a number and in `.1` returns the offset of the literal suffix
-    /// (this will be at the end of the token if there is no suffix)
-    fn number(&mut self, first_digit: char) -> (LiteralKind, u32) {
+    /// Parses a number and in `.1` returns the offset of the literal suffix if
+    /// different from the current position on return.
+    fn number(&mut self, first_digit: char) -> (LiteralKind, Option<u32>) {
         debug_assert!('0' <= self.prev() && self.prev() <= '9');
         let mut base = Base::Decimal;
         if first_digit == '0' {
@@ -616,27 +618,21 @@ impl Cursor<'_> {
                     base = Base::Binary;
                     self.bump();
                     if !self.eat_decimal_digits() {
-                        let suffix_start = self.pos_within_token();
-                        self.eat_literal_suffix();
-                        return (Int { base, empty_int: true }, suffix_start);
+                        return (Int { base, empty_int: true }, None);
                     }
                 }
                 'o' => {
                     base = Base::Octal;
                     self.bump();
                     if !self.eat_decimal_digits() {
-                        let suffix_start = self.pos_within_token();
-                        self.eat_literal_suffix();
-                        return (Int { base, empty_int: true }, suffix_start);
+                        return (Int { base, empty_int: true }, None);
                     }
                 }
                 'x' => {
                     base = Base::Hexadecimal;
                     self.bump();
                     if !self.eat_hexadecimal_digits() {
-                        let suffix_start = self.pos_within_token();
-                        self.eat_literal_suffix();
-                        return (Int { base, empty_int: true }, suffix_start);
+                        return (Int { base, empty_int: true }, None);
                     }
                 }
                 // Not a base prefix; consume additional digits.
@@ -649,9 +645,7 @@ impl Cursor<'_> {
 
                 // Just a 0.
                 _ => {
-                    let suffix_start = self.pos_within_token();
-                    self.eat_literal_suffix();
-                    return (Int { base, empty_int: false }, suffix_start);
+                    return (Int { base, empty_int: false }, None);
                 }
             }
         } else {
@@ -668,11 +662,11 @@ impl Cursor<'_> {
                 // with a number
                 self.bump();
                 let mut empty_exponent = false;
-                let mut suffix_start = self.pos_within_token();
+                let mut suffix_start = None;
                 if self.first().is_ascii_digit() {
                     self.eat_decimal_digits();
                     // This will be the start of the suffix if there is no exponent
-                    suffix_start = self.pos_within_token();
+                    suffix_start = Some(self.pos_within_token());
                     match (self.first(), self.second()) {
                         ('e' | 'E', '_') => {
                             // check if series of `_` is ended by a digit. If yes
@@ -682,21 +676,22 @@ impl Cursor<'_> {
                             while matches!(self.first(), '_') {
                                 self.bump();
                             }
+                            // If we find a digit, then the exponential was valid
+                            // so the suffix will start at the cursor as usual.
                             if self.first().is_ascii_digit() {
                                 self.eat_decimal_digits();
-                                suffix_start = self.pos_within_token();
+                                suffix_start = None;
                             }
                         }
                         ('e' | 'E', '0'..='9' | '+' | '-') => {
                             // Definitely an exponent (which still can be empty).
                             self.bump();
                             empty_exponent = !self.eat_float_exponent();
-                            suffix_start = self.pos_within_token();
+                            suffix_start = None;
                         }
                         _ => (),
                     }
                 }
-                self.eat_literal_suffix();
                 (Float { base, empty_exponent }, suffix_start)
             }
             ('e' | 'E', '_') => {
@@ -708,28 +703,20 @@ impl Cursor<'_> {
                 }
                 if self.first().is_ascii_digit() {
                     self.eat_decimal_digits();
-                    let suffix_start = self.pos_within_token();
-                    self.eat_literal_suffix();
-                    (Float { base, empty_exponent: false }, suffix_start)
+                    (Float { base, empty_exponent: false }, None)
                 } else {
-                    // No digit means suffix, and therefore int
-                    self.eat_literal_suffix();
-                    (Int { base, empty_int: false }, non_exponent_suffix_start)
+                    // No digit means the suffix begins at `e`, meaning the number
+                    // is an integer.
+                    (Int { base, empty_int: false }, Some(non_exponent_suffix_start))
                 }
             }
             ('e' | 'E', '0'..='9' | '+' | '-') => {
                 // // Definitely an exponent (which still can be empty).
                 self.bump();
                 let empty_exponent = !self.eat_float_exponent();
-                let suffix_start = self.pos_within_token();
-                self.eat_literal_suffix();
-                (Float { base, empty_exponent }, suffix_start)
+                (Float { base, empty_exponent }, None)
             }
-            _ => {
-                let suffix_start = self.pos_within_token();
-                self.eat_literal_suffix();
-                (Int { base, empty_int: false }, suffix_start)
-            }
+            _ => (Int { base, empty_int: false }, None),
         }
     }
 
@@ -1023,19 +1010,24 @@ impl Cursor<'_> {
         self.eat_decimal_digits()
     }
 
-    // Eats the suffix of the literal, e.g. "u8".
-    fn eat_literal_suffix(&mut self) {
-        self.eat_identifier();
+    /// Eats the suffix of the literal, e.g. "u8".
+    ///
+    /// Returns `true` if anything was eaten.
+    fn eat_literal_suffix(&mut self) -> bool {
+        self.eat_identifier()
     }
 
-    // Eats the identifier. Note: succeeds on `_`, which isn't a valid
-    // identifier.
-    fn eat_identifier(&mut self) {
+    /// Eats the identifier. Note: succeeds on `_`, which isn't a valid
+    /// identifier.
+    ///
+    /// Returns `true` if anything was eaten.
+    fn eat_identifier(&mut self) -> bool {
         if !is_id_start(self.first()) {
-            return;
+            return false;
         }
         self.bump();
 
         self.eat_while(is_id_continue);
+        true
     }
 }
