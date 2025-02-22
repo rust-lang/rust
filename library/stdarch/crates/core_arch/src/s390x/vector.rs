@@ -1444,6 +1444,17 @@ mod sealed {
     impl_vec_trait! {[VectorSubc vec_subc] vec_vscbih (vector_unsigned_short, vector_unsigned_short) -> vector_unsigned_short }
     impl_vec_trait! {[VectorSubc vec_subc] vec_vscbif (vector_unsigned_int, vector_unsigned_int) -> vector_unsigned_int }
     impl_vec_trait! {[VectorSubc vec_subc] vec_vscbig (vector_unsigned_long_long, vector_unsigned_long_long) -> vector_unsigned_long_long }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorSqrt {
+        unsafe fn vec_sqrt(self) -> Self;
+    }
+
+    test_impl! { vec_sqrt_f32 (v: vector_float) -> vector_float [ simd_fsqrt, "vector-enhancements-1" vfsqsb ] }
+    test_impl! { vec_sqrt_f64 (v: vector_double) -> vector_double [ simd_fsqrt, vfsqdb ] }
+
+    impl_vec_trait! { [VectorSqrt vec_sqrt] vec_sqrt_f32 (vector_float) }
+    impl_vec_trait! { [VectorSqrt vec_sqrt] vec_sqrt_f64 (vector_double) }
 }
 
 /// Vector element-wise addition.
@@ -1562,6 +1573,17 @@ where
     T: sealed::VectorNabs,
 {
     a.vec_nabs()
+}
+
+/// Vector square root.
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_sqrt<T>(a: T) -> T
+where
+    T: sealed::VectorSqrt,
+{
+    a.vec_sqrt()
 }
 
 /// Vector splats.
@@ -2651,4 +2673,8 @@ mod tests {
     [0x00, 0x01, 0x02, 0x03, 0x10, 0x11, 0x12, 0x13,
      0x04, 0x05, 0x06, 0x07, 0x14, 0x15, 0x16, 0x17],
     [0.0, 1.0, 1.0, 1.1]}
+
+    test_vec_1! { test_vec_sqrt, vec_sqrt, f32x4,
+    [core::f32::consts::PI, 1.0, 25.0, 2.0],
+    [core::f32::consts::PI.sqrt(), 1.0, 5.0, core::f32::consts::SQRT_2] }
 }
