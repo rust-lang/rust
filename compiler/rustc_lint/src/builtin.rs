@@ -2907,7 +2907,13 @@ enum AsmLabelKind {
 impl<'tcx> LateLintPass<'tcx> for AsmLabels {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
         if let hir::Expr {
-            kind: hir::ExprKind::InlineAsm(hir::InlineAsm { template_strs, options, .. }),
+            kind:
+                hir::ExprKind::InlineAsm(hir::InlineAsm {
+                    asm_macro: AsmMacro::Asm | AsmMacro::NakedAsm,
+                    template_strs,
+                    options,
+                    ..
+                }),
             ..
         } = expr
         {

@@ -1913,13 +1913,18 @@ pub enum BodyOwnerKind {
 
     /// Initializer of a `static` item.
     Static(Mutability),
+
+    /// Fake body for a global asm to store its const-like value types.
+    GlobalAsm,
 }
 
 impl BodyOwnerKind {
     pub fn is_fn_or_closure(self) -> bool {
         match self {
             BodyOwnerKind::Fn | BodyOwnerKind::Closure => true,
-            BodyOwnerKind::Const { .. } | BodyOwnerKind::Static(_) => false,
+            BodyOwnerKind::Const { .. } | BodyOwnerKind::Static(_) | BodyOwnerKind::GlobalAsm => {
+                false
+            }
         }
     }
 }
@@ -3420,7 +3425,7 @@ pub enum InlineAsmOperand<'hir> {
         anon_const: &'hir AnonConst,
     },
     SymFn {
-        anon_const: &'hir AnonConst,
+        expr: &'hir Expr<'hir>,
     },
     SymStatic {
         path: QPath<'hir>,
@@ -3848,7 +3853,7 @@ impl<'hir> Item<'hir> {
         expect_foreign_mod, (ExternAbi, &'hir [ForeignItemRef]),
             ItemKind::ForeignMod { abi, items }, (*abi, items);
 
-        expect_global_asm, &'hir InlineAsm<'hir>, ItemKind::GlobalAsm(asm), asm;
+        expect_global_asm, &'hir InlineAsm<'hir>, ItemKind::GlobalAsm { asm, .. }, asm;
 
         expect_ty_alias, (&'hir Ty<'hir>, &'hir Generics<'hir>),
             ItemKind::TyAlias(ty, generics), (ty, generics);
@@ -4015,7 +4020,15 @@ pub enum ItemKind<'hir> {
     /// An external module, e.g. `extern { .. }`.
     ForeignMod { abi: ExternAbi, items: &'hir [ForeignItemRef] },
     /// Module-level inline assembly (from `global_asm!`).
-    GlobalAsm(&'hir InlineAsm<'hir>),
+    GlobalAsm {
+        asm: &'hir InlineAsm<'hir>,
+        /// A fake body which stores typeck results for the global asm's sym_fn
+        /// operands, which are represented as path expressions. This body contains
+        /// a single [`ExprKind::InlineAsm`] which points to the asm in the field
+        /// above, and which is typechecked like a inline asm expr just for the
+        /// typeck results.
+        fake_body: BodyId,
+    },
     /// A type alias, e.g., `type Foo = Bar<u8>`.
     TyAlias(&'hir Ty<'hir>, &'hir Generics<'hir>),
     /// An enum definition, e.g., `enum Foo<A, B> {C<A>, D<B>}`.
@@ -4081,7 +4094,7 @@ impl ItemKind<'_> {
             ItemKind::Macro(..) => "macro",
             ItemKind::Mod(..) => "module",
             ItemKind::ForeignMod { .. } => "extern block",
-            ItemKind::GlobalAsm(..) => "global asm item",
+            ItemKind::GlobalAsm { .. } => "global asm item",
             ItemKind::TyAlias(..) => "type alias",
             ItemKind::Enum(..) => "enum",
             ItemKind::Struct(..) => "struct",
@@ -4539,6 +4552,10 @@ impl<'hir> Node<'hir> {
                 kind: ImplItemKind::Const(_, body) | ImplItemKind::Fn(_, body),
                 ..
             }) => Some((owner_id.def_id, *body)),
+
+            Node::Item(Item {
+                owner_id, kind: ItemKind::GlobalAsm { asm: _, fake_body }, ..
+            }) => Some((owner_id.def_id, *fake_body)),
 
             Node::Expr(Expr { kind: ExprKind::Closure(Closure { def_id, body, .. }), .. }) => {
                 Some((*def_id, *body))

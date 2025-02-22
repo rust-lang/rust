@@ -172,7 +172,7 @@ pub fn walk_expr<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
                     }
                     Out { expr: None, reg: _, late: _ }
                     | Const { value: _, span: _ }
-                    | SymFn { value: _, span: _ }
+                    | SymFn { value: _ }
                     | SymStatic { def_id: _ } => {}
                     Label { block } => visitor.visit_block(&visitor.thir()[*block]),
                 }

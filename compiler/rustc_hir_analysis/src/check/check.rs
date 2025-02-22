@@ -15,7 +15,6 @@ use rustc_lint_defs::builtin::{
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
 use rustc_middle::middle::stability::EvalResult;
-use rustc_middle::span_bug;
 use rustc_middle::ty::error::TypeErrorToStringExt;
 use rustc_middle::ty::fold::{BottomUpFolder, fold_regions};
 use rustc_middle::ty::layout::{LayoutError, MAX_SIMD_LANES};
@@ -35,7 +34,6 @@ use {rustc_attr_parsing as attr, rustc_hir as hir};
 
 use super::compare_impl_item::check_type_bounds;
 use super::*;
-use crate::check::intrinsicck::InlineAsmCtxt;
 
 pub fn check_abi(tcx: TyCtxt<'_>, span: Span, abi: ExternAbi) {
     if !tcx.sess.target.is_abi_supported(abi) {
@@ -894,13 +892,6 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     }
                 }
             }
-        }
-        DefKind::GlobalAsm => {
-            let it = tcx.hir().expect_item(def_id);
-            let hir::ItemKind::GlobalAsm(asm) = it.kind else {
-                span_bug!(it.span, "DefKind::GlobalAsm but got {:#?}", it)
-            };
-            InlineAsmCtxt::new_global_asm(tcx).check_asm(asm, def_id);
         }
         _ => {}
     }
