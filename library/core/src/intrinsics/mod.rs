@@ -2748,13 +2748,13 @@ pub unsafe fn truncf128(_x: f128) -> f128 {
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 #[cfg(not(bootstrap))]
-pub unsafe fn round_ties_even_f16(_x: f16) -> f16 {
+pub fn round_ties_even_f16(_x: f16) -> f16 {
     unreachable!()
 }
 
 /// To be removed on next bootstrap bump.
 #[cfg(bootstrap)]
-pub unsafe fn round_ties_even_f16(x: f16) -> f16 {
+pub fn round_ties_even_f16(x: f16) -> f16 {
     #[rustc_intrinsic]
     #[rustc_intrinsic_must_be_overridden]
     #[rustc_nounwind]
@@ -2775,13 +2775,13 @@ pub unsafe fn round_ties_even_f16(x: f16) -> f16 {
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 #[cfg(not(bootstrap))]
-pub unsafe fn round_ties_even_f32(_x: f32) -> f32 {
+pub fn round_ties_even_f32(_x: f32) -> f32 {
     unreachable!()
 }
 
 /// To be removed on next bootstrap bump.
 #[cfg(bootstrap)]
-pub unsafe fn round_ties_even_f32(x: f32) -> f32 {
+pub fn round_ties_even_f32(x: f32) -> f32 {
     #[rustc_intrinsic]
     #[rustc_intrinsic_must_be_overridden]
     #[rustc_nounwind]
@@ -2802,13 +2802,13 @@ pub unsafe fn round_ties_even_f32(x: f32) -> f32 {
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 #[cfg(not(bootstrap))]
-pub unsafe fn round_ties_even_f64(_x: f64) -> f64 {
+pub fn round_ties_even_f64(_x: f64) -> f64 {
     unreachable!()
 }
 
 /// To be removed on next bootstrap bump.
 #[cfg(bootstrap)]
-pub unsafe fn round_ties_even_f64(x: f64) -> f64 {
+pub fn round_ties_even_f64(x: f64) -> f64 {
     #[rustc_intrinsic]
     #[rustc_intrinsic_must_be_overridden]
     #[rustc_nounwind]
@@ -2829,13 +2829,13 @@ pub unsafe fn round_ties_even_f64(x: f64) -> f64 {
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 #[cfg(not(bootstrap))]
-pub unsafe fn round_ties_even_f128(_x: f128) -> f128 {
+pub fn round_ties_even_f128(_x: f128) -> f128 {
     unreachable!()
 }
 
 /// To be removed on next bootstrap bump.
 #[cfg(bootstrap)]
-pub unsafe fn round_ties_even_f128(x: f128) -> f128 {
+pub fn round_ties_even_f128(x: f128) -> f128 {
     #[rustc_intrinsic]
     #[rustc_intrinsic_must_be_overridden]
     #[rustc_nounwind]

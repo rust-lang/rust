@@ -137,6 +137,10 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -
         | sym::fmul_algebraic
         | sym::fdiv_algebraic
         | sym::frem_algebraic
+        | sym::round_ties_even_f16
+        | sym::round_ties_even_f32
+        | sym::round_ties_even_f64
+        | sym::round_ties_even_f128
         | sym::const_eval_select => hir::Safety::Safe,
         _ => hir::Safety::Unsafe,
     };
