@@ -5,14 +5,14 @@ LL |     let _: &[i8] = data.into();
    |                         ^^^^ the trait `From<&[u8]>` is not implemented for `&[i8]`
    |
    = help: the following other types implement trait `From<T>`:
-             `[T; 10]` implements `From<(T, T, T, T, T, T, T, T, T, T)>`
-             `[T; 11]` implements `From<(T, T, T, T, T, T, T, T, T, T, T)>`
-             `[T; 12]` implements `From<(T, T, T, T, T, T, T, T, T, T, T, T)>`
              `[T; 1]` implements `From<(T,)>`
              `[T; 2]` implements `From<(T, T)>`
              `[T; 3]` implements `From<(T, T, T)>`
              `[T; 4]` implements `From<(T, T, T, T)>`
              `[T; 5]` implements `From<(T, T, T, T, T)>`
+             `[T; 6]` implements `From<(T, T, T, T, T, T)>`
+             `[T; 7]` implements `From<(T, T, T, T, T, T, T)>`
+             `[T; 8]` implements `From<(T, T, T, T, T, T, T, T)>`
            and 6 others
    = note: required for `&[u8]` to implement `Into<&[i8]>`
 
