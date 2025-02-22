@@ -415,6 +415,16 @@ For internal testing only, ignores the current `publish` settings in the Cargo m
 * [`cargo_common_metadata`](https://rust-lang.github.io/rust-clippy/master/index.html#cargo_common_metadata)
 
 
+## `check-incompatible-msrv-in-tests`
+Whether to check MSRV compatibility in `#[test]` and `#[cfg(test)]` code.
+
+**Default Value:** `false`
+
+---
+**Affected lints:**
+* [`incompatible_msrv`](https://rust-lang.github.io/rust-clippy/master/index.html#incompatible_msrv)
+
+
 ## `check-private-items`
 Whether to also run the listed lints on private items.
 
