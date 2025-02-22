@@ -381,7 +381,7 @@ impl UnconditionalRecursion {
                 implemented_ty_id,
                 method_span,
             };
-            walk_body(&mut c, body);
+            let _ = walk_body(&mut c, body);
         }
     }
 }
