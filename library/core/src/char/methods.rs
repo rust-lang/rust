@@ -1202,6 +1202,20 @@ impl char {
         }
     }
 
+    /// Converts this char into an [ASCII character](`ascii::Char`), without
+    /// checking whether it is valid.
+    ///
+    /// # Safety
+    ///
+    /// This char must be within the ASCII range, or else this is UB.
+    #[must_use]
+    #[unstable(feature = "ascii_char", issue = "110998")]
+    #[inline]
+    pub const unsafe fn as_ascii_unchecked(&self) -> ascii::Char {
+        // SAFETY: the caller promised that this char is ASCII.
+        unsafe { ascii::Char::from_u8_unchecked(*self as u8) }
+    }
+
     /// Makes a copy of the value in its ASCII upper case equivalent.
     ///
     /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',

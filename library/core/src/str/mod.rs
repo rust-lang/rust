@@ -2634,6 +2634,21 @@ impl str {
         self.as_bytes().as_ascii()
     }
 
+    /// Converts this string slice into a slice of [ASCII characters](ascii::Char),
+    /// without checking whether they are valid.
+    ///
+    /// # Safety
+    ///
+    /// Every character in this string must be ASCII, or else this is UB.
+    #[unstable(feature = "ascii_char", issue = "110998")]
+    #[must_use]
+    #[inline]
+    pub const unsafe fn as_ascii_unchecked(&self) -> &[ascii::Char] {
+        // SAFETY: the caller promised that every byte of this string slice
+        // is ASCII.
+        unsafe { self.as_bytes().as_ascii_unchecked() }
+    }
+
     /// Checks that two strings are an ASCII case-insensitive match.
     ///
     /// Same as `to_ascii_lowercase(a) == to_ascii_lowercase(b)`,
