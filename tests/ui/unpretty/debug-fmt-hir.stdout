@@ -13,7 +13,7 @@ struct Bar {
 }
 
 impl fmt::Debug for Bar {
-    fn fmt(self: &'_ Self, f: &'_ mut fmt::Formatter<'_>)
+    fn fmt(&self, f: &'_ mut fmt::Formatter<'_>)
         ->
             fmt::Result {
         debug_struct_field2_finish(f, "Bar", "a", &self.a, "b", &&self.b)
