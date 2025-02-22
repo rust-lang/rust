@@ -125,7 +125,7 @@ impl<V: Clone + HasBottom> State<V> {
     pub fn all_bottom(&self) -> bool {
         match self {
             State::Unreachable => false,
-            State::Reachable(ref values) =>
+            State::Reachable(values) =>
             {
                 #[allow(rustc::potential_query_instability)]
                 values.map.values().all(V::is_bottom)
@@ -349,7 +349,7 @@ impl<V: JoinSemiLattice + Clone> JoinSemiLattice for State<V> {
                 *self = other.clone();
                 true
             }
-            (State::Reachable(this), State::Reachable(ref other)) => this.join(other),
+            (State::Reachable(this), State::Reachable(other)) => this.join(other),
         }
     }
 }

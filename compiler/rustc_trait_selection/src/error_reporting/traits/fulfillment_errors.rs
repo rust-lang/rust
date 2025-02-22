@@ -2437,7 +2437,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         obligated_types: &mut Vec<Ty<'tcx>>,
         cause_code: &ObligationCauseCode<'tcx>,
     ) -> bool {
-        if let ObligationCauseCode::BuiltinDerived(ref data) = cause_code {
+        if let ObligationCauseCode::BuiltinDerived(data) = cause_code {
             let parent_trait_ref = self.resolve_vars_if_possible(data.parent_trait_pred);
             let self_ty = parent_trait_ref.skip_binder().self_ty();
             if obligated_types.iter().any(|ot| ot == &self_ty) {

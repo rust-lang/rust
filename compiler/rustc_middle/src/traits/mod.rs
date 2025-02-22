@@ -776,7 +776,7 @@ impl DynCompatibilityViolation {
     pub fn error_msg(&self) -> Cow<'static, str> {
         match self {
             DynCompatibilityViolation::SizedSelf(_) => "it requires `Self: Sized`".into(),
-            DynCompatibilityViolation::SupertraitSelf(ref spans) => {
+            DynCompatibilityViolation::SupertraitSelf(spans) => {
                 if spans.iter().any(|sp| *sp != DUMMY_SP) {
                     "it uses `Self` as a type parameter".into()
                 } else {
