@@ -3138,13 +3138,13 @@ impl<'a> Parser<'a> {
                     arm_body = Some(expr);
                     // Eat a comma if it exists, though.
                     let _ = this.eat(exp!(Comma));
-                    comma = Some(this.prev_token.span);
                     Ok(Recovered::No)
                 } else if let Some((span, guar)) =
                     this.parse_arm_body_missing_braces(&expr, arrow_span)
                 {
                     let body = this.mk_expr_err(span, guar);
                     arm_body = Some(body);
+                    let _ = this.eat(exp!(Comma));
                     Ok(Recovered::Yes(guar))
                 } else {
                     let expr_span = expr.span;
@@ -3185,6 +3185,9 @@ impl<'a> Parser<'a> {
                     })
                 }
             };
+            if let TokenKind::Comma = this.prev_token.kind {
+                comma = Some(this.prev_token.span);
+            }
 
             let hi_span =
                 comma.unwrap_or(arm_body.as_ref().map_or(span_before_body, |body| body.span));
