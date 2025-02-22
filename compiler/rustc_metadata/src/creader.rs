@@ -762,29 +762,17 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         // against a hash, we could load a crate which has the same hash
         // as an already loaded crate. If this is the case prevent
         // duplicates by just using the first crate.
-        //
-        // Note that we only do this for target triple crates, though, as we
-        // don't want to match a host crate against an equivalent target one
-        // already loaded.
         let root = library.metadata.get_root();
-        // FIXME: why is this condition necessary? It was adding in #33625 but I
-        // don't know why and the original author doesn't remember ...
-        let can_reuse_cratenum =
-            locator.tuple == self.sess.opts.target_triple || locator.is_proc_macro;
-        Ok(Some(if can_reuse_cratenum {
-            let mut result = LoadResult::Loaded(library);
-            for (cnum, data) in self.cstore.iter_crate_data() {
-                if data.name() == root.name() && root.hash() == data.hash() {
-                    assert!(locator.hash.is_none());
-                    info!("load success, going to previous cnum: {}", cnum);
-                    result = LoadResult::Previous(cnum);
-                    break;
-                }
+        let mut result = LoadResult::Loaded(library);
+        for (cnum, data) in self.cstore.iter_crate_data() {
+            if data.name() == root.name() && root.hash() == data.hash() {
+                assert!(locator.hash.is_none());
+                info!("load success, going to previous cnum: {}", cnum);
+                result = LoadResult::Previous(cnum);
+                break;
             }
-            result
-        } else {
-            LoadResult::Loaded(library)
-        }))
+        }
+        Ok(Some(result))
     }
 
     /// Go through the crate metadata and load any crates that it references.

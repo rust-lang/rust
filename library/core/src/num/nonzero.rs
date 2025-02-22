@@ -605,6 +605,70 @@ macro_rules! nonzero_integer {
                 }
             }
 
+            /// Returns `self` with only the most significant bit set.
+            ///
+            /// # Example
+            ///
+            /// Basic usage:
+            ///
+            /// ```
+            /// #![feature(isolate_most_least_significant_one)]
+            ///
+            /// # use core::num::NonZero;
+            /// # fn main() { test().unwrap(); }
+            /// # fn test() -> Option<()> {
+            #[doc = concat!("let a = NonZero::<", stringify!($Int), ">::new(0b_01100100)?;")]
+            #[doc = concat!("let b = NonZero::<", stringify!($Int), ">::new(0b_01000000)?;")]
+            ///
+            /// assert_eq!(a.isolate_most_significant_one(), b);
+            /// # Some(())
+            /// # }
+            /// ```
+            #[unstable(feature = "isolate_most_least_significant_one", issue = "136909")]
+            #[must_use = "this returns the result of the operation, \
+                        without modifying the original"]
+            #[inline(always)]
+            pub const fn isolate_most_significant_one(self) -> Self {
+                let n = self.get() & (((1 as $Int) << (<$Int>::BITS - 1)).wrapping_shr(self.leading_zeros()));
+
+                // SAFETY:
+                // `self` is non-zero, so masking to preserve only the most
+                // significant set bit will result in a non-zero `n`.
+                unsafe { NonZero::new_unchecked(n) }
+            }
+
+            /// Returns `self` with only the least significant bit set.
+            ///
+            /// # Example
+            ///
+            /// Basic usage:
+            ///
+            /// ```
+            /// #![feature(isolate_most_least_significant_one)]
+            ///
+            /// # use core::num::NonZero;
+            /// # fn main() { test().unwrap(); }
+            /// # fn test() -> Option<()> {
+            #[doc = concat!("let a = NonZero::<", stringify!($Int), ">::new(0b_01100100)?;")]
+            #[doc = concat!("let b = NonZero::<", stringify!($Int), ">::new(0b_00000100)?;")]
+            ///
+            /// assert_eq!(a.isolate_least_significant_one(), b);
+            /// # Some(())
+            /// # }
+            /// ```
+            #[unstable(feature = "isolate_most_least_significant_one", issue = "136909")]
+            #[must_use = "this returns the result of the operation, \
+                        without modifying the original"]
+            #[inline(always)]
+            pub const fn isolate_least_significant_one(self) -> Self {
+                let n = self.get();
+                let n = n & n.wrapping_neg();
+
+                // SAFETY: `self` is non-zero, so `self` with only its least
+                // significant set bit will remain non-zero.
+                unsafe { NonZero::new_unchecked(n) }
+            }
+
             /// Returns the number of ones in the binary representation of `self`.
             ///
             /// # Examples

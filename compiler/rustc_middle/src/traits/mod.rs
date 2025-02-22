@@ -144,14 +144,6 @@ impl<'tcx> ObligationCause<'tcx> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
-#[derive(TypeVisitable, TypeFoldable)]
-pub struct UnifyReceiverContext<'tcx> {
-    pub assoc_item: ty::AssocItem,
-    pub param_env: ty::ParamEnv<'tcx>,
-    pub args: GenericArgsRef<'tcx>,
-}
-
 /// A compact form of `ObligationCauseCode`.
 #[derive(Clone, PartialEq, Eq, Default, HashStable)]
 #[derive(TypeVisitable, TypeFoldable, TyEncodable, TyDecodable)]
@@ -359,8 +351,6 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// Method receiver
     MethodReceiver,
-
-    UnifyReceiver(Box<UnifyReceiverContext<'tcx>>),
 
     /// `return` with no expression
     ReturnNoExpression,
@@ -786,7 +776,7 @@ impl DynCompatibilityViolation {
     pub fn error_msg(&self) -> Cow<'static, str> {
         match self {
             DynCompatibilityViolation::SizedSelf(_) => "it requires `Self: Sized`".into(),
-            DynCompatibilityViolation::SupertraitSelf(ref spans) => {
+            DynCompatibilityViolation::SupertraitSelf(spans) => {
                 if spans.iter().any(|sp| *sp != DUMMY_SP) {
                     "it uses `Self` as a type parameter".into()
                 } else {

@@ -7,7 +7,7 @@ use super::ffi::{BasicBlock, Metadata, Module, Type, Value};
 use crate::llvm::Bool;
 
 #[link(name = "llvm-wrapper", kind = "static")]
-extern "C" {
+unsafe extern "C" {
     // Enzyme
     pub(crate) fn LLVMRustHasMetadata(I: &Value, KindID: c_uint) -> bool;
     pub(crate) fn LLVMRustEraseInstUntilInclusive(BB: &BasicBlock, I: &Value);
@@ -18,7 +18,7 @@ extern "C" {
     pub(crate) fn LLVMRustVerifyFunction(V: &Value, action: LLVMRustVerifierFailureAction) -> Bool;
 }
 
-extern "C" {
+unsafe extern "C" {
     // Enzyme
     pub(crate) fn LLVMDumpModule(M: &Module);
     pub(crate) fn LLVMDumpValue(V: &Value);

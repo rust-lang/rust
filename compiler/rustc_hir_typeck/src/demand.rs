@@ -577,9 +577,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut parent;
         'outer: loop {
             // Climb the HIR tree to see if the current `Expr` is part of a `break;` statement.
-            let (hir::Node::Stmt(hir::Stmt { kind: hir::StmtKind::Semi(&ref p), .. })
-            | hir::Node::Block(hir::Block { expr: Some(&ref p), .. })
-            | hir::Node::Expr(&ref p)) = self.tcx.hir_node(parent_id)
+            let (hir::Node::Stmt(&hir::Stmt { kind: hir::StmtKind::Semi(p), .. })
+            | hir::Node::Block(&hir::Block { expr: Some(p), .. })
+            | hir::Node::Expr(p)) = self.tcx.hir_node(parent_id)
             else {
                 break;
             };
@@ -593,13 +593,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             loop {
                 // Climb the HIR tree to find the (desugared) `loop` this `break` corresponds to.
                 let parent = match self.tcx.hir_node(parent_id) {
-                    hir::Node::Expr(&ref parent) => {
+                    hir::Node::Expr(parent) => {
                         parent_id = self.tcx.parent_hir_id(parent.hir_id);
                         parent
                     }
                     hir::Node::Stmt(hir::Stmt {
                         hir_id,
-                        kind: hir::StmtKind::Semi(&ref parent) | hir::StmtKind::Expr(&ref parent),
+                        kind: hir::StmtKind::Semi(parent) | hir::StmtKind::Expr(parent),
                         ..
                     }) => {
                         parent_id = self.tcx.parent_hir_id(*hir_id);

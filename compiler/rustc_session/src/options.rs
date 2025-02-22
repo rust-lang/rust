@@ -1,5 +1,4 @@
 use std::collections::BTreeMap;
-use std::hash::{DefaultHasher, Hasher};
 use std::num::{IntErrorKind, NonZero};
 use std::path::PathBuf;
 use std::str;
@@ -7,6 +6,7 @@ use std::str;
 use rustc_abi::Align;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::profiling::TimePassesFormat;
+use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_errors::{ColorConfig, LanguageIdentifier, TerminalUrl};
 use rustc_feature::UnstableFeatures;
 use rustc_hashes::Hash64;
@@ -251,7 +251,7 @@ macro_rules! top_level_options {
         }
 
         impl Options {
-            pub fn dep_tracking_hash(&self, for_crate_hash: bool) -> u64 {
+            pub fn dep_tracking_hash(&self, for_crate_hash: bool) -> Hash64 {
                 let mut sub_hashes = BTreeMap::new();
                 $({
                     hash_opt!($opt,
@@ -260,7 +260,7 @@ macro_rules! top_level_options {
                                 for_crate_hash,
                                 [$dep_tracking_marker]);
                 })*
-                let mut hasher = DefaultHasher::new();
+                let mut hasher = StableHasher::new();
                 dep_tracking::stable_hash(sub_hashes,
                                           &mut hasher,
                                           self.error_format,
@@ -545,7 +545,7 @@ macro_rules! options {
             build_options(early_dcx, matches, target_modifiers, $stat, $prefix, $outputname)
         }
 
-        fn dep_tracking_hash(&self, for_crate_hash: bool, error_format: ErrorOutputType) -> u64 {
+        fn dep_tracking_hash(&self, for_crate_hash: bool, error_format: ErrorOutputType) -> Hash64 {
             let mut sub_hashes = BTreeMap::new();
             $({
                 hash_opt!($opt,
@@ -554,7 +554,7 @@ macro_rules! options {
                             for_crate_hash,
                             [$dep_tracking_marker]);
             })*
-            let mut hasher = DefaultHasher::new();
+            let mut hasher = StableHasher::new();
             dep_tracking::stable_hash(sub_hashes,
                                         &mut hasher,
                                         error_format,
