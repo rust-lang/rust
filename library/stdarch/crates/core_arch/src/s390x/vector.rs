@@ -507,6 +507,31 @@ mod sealed {
     impl_vec_trait! { [VectorAbs vec_abs] vec_abs_f64 (vector_double) }
 
     #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorNabs {
+        unsafe fn vec_nabs(self) -> Self;
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(
+        all(test, target_feature = "vector-enhancements-1"),
+        assert_instr(vflnsb)
+    )]
+    unsafe fn vec_nabs_f32(a: vector_float) -> vector_float {
+        simd_neg(simd_fabs(a))
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(test, assert_instr(vflndb))]
+    unsafe fn vec_nabs_f64(a: vector_double) -> vector_double {
+        simd_neg(simd_fabs(a))
+    }
+
+    impl_vec_trait! { [VectorNabs vec_nabs] vec_nabs_f32 (vector_float) }
+    impl_vec_trait! { [VectorNabs vec_nabs] vec_nabs_f64 (vector_double) }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
     pub trait VectorSplats<Output> {
         unsafe fn vec_splats(self) -> Output;
     }
@@ -1528,6 +1553,17 @@ where
     a.vec_abs()
 }
 
+/// Vector negative abs.
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_nabs<T>(a: T) -> T
+where
+    T: sealed::VectorNabs,
+{
+    a.vec_nabs()
+}
+
 /// Vector splats.
 #[inline]
 #[target_feature(enable = "vector")]
@@ -2350,6 +2386,10 @@ mod tests {
     test_vec_abs! { test_vec_abs_i64, i64x2, -42i64, 42i64 }
     test_vec_abs! { test_vec_abs_f32, f32x4, -42f32, 42f32 }
     test_vec_abs! { test_vec_abs_f64, f64x2, -42f64, 42f64 }
+
+    test_vec_1! { test_vec_nabs, vec_nabs, f32x4,
+    [core::f32::consts::PI, 1.0, 0.0, -1.0],
+    [-core::f32::consts::PI, -1.0, 0.0, -1.0] }
 
     test_vec_2! { test_vec_andc, vec_andc, i32x4,
     [0b11001100, 0b11001100, 0b11001100, 0b11001100],
