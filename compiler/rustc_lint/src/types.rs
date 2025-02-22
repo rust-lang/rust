@@ -1587,7 +1587,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
 
         impl<'a, 'b, 'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for FnPtrFinder<'a, 'b, 'tcx> {
-            type Result = ControlFlow<Ty<'tcx>>;
+            type Result = ();
 
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
                 if let ty::FnPtr(_, hdr) = ty.kind()
