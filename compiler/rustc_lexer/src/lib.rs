@@ -688,7 +688,7 @@ impl Cursor<'_> {
                             }
                         }
                         ('e' | 'E', '0'..='9' | '+' | '-') => {
-                            // definitely an exponent
+                            // Definitely an exponent (which still can be empty).
                             self.bump();
                             empty_exponent = !self.eat_float_exponent();
                             suffix_start = self.pos_within_token();
@@ -700,7 +700,7 @@ impl Cursor<'_> {
                 (Float { base, empty_exponent }, suffix_start)
             }
             ('e' | 'E', '_') => {
-                // see above bock for similar apporach
+                // See above block for similar approach.
                 let non_exponent_suffix_start = self.pos_within_token();
                 self.bump();
                 while matches!(self.first(), '_') {
@@ -718,7 +718,7 @@ impl Cursor<'_> {
                 }
             }
             ('e' | 'E', '0'..='9' | '+' | '-') => {
-                // definitely an exponent
+                // // Definitely an exponent (which still can be empty).
                 self.bump();
                 let empty_exponent = !self.eat_float_exponent();
                 let suffix_start = self.pos_within_token();
@@ -978,7 +978,7 @@ impl Cursor<'_> {
         }
     }
 
-    /// Returns `true` if a digit was consumed (rather than just '_')
+    /// Returns `true` if a digit was consumed (rather than just '_'s).
     fn eat_decimal_digits(&mut self) -> bool {
         let mut has_digits = false;
         loop {

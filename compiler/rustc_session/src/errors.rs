@@ -377,7 +377,7 @@ pub fn report_lit_error(
         s.len() > 1 && s.starts_with(first_chars) && s[1..].chars().all(|c| c.is_ascii_digit())
     }
 
-    fn looks_like_exponent(s: &str) -> bool {
+    fn looks_like_empty_exponent(s: &str) -> bool {
         s.len() == 1 && matches!(s.chars().next(), Some('e' | 'E'))
     }
 
@@ -413,7 +413,7 @@ pub fn report_lit_error(
             if looks_like_width_suffix(&['i', 'u'], suf) {
                 // If it looks like a width, try to be helpful.
                 dcx.emit_err(InvalidIntLiteralWidth { span, width: suf[1..].into() })
-            } else if looks_like_exponent(suf) {
+            } else if looks_like_empty_exponent(suf) {
                 dcx.emit_err(EmptyFloatExponent { span })
             } else if let Some(fixed) = fix_base_capitalisation(lit.symbol.as_str(), suf) {
                 dcx.emit_err(InvalidNumLiteralBasePrefix { span, fixed })
@@ -426,7 +426,7 @@ pub fn report_lit_error(
             if looks_like_width_suffix(&['f'], suf) {
                 // If it looks like a width, try to be helpful.
                 dcx.emit_err(InvalidFloatLiteralWidth { span, width: suf[1..].to_string() })
-            } else if looks_like_exponent(suf) {
+            } else if looks_like_empty_exponent(suf) {
                 dcx.emit_err(EmptyFloatExponent { span })
             } else {
                 dcx.emit_err(InvalidFloatLiteralSuffix { span, suffix: suf.to_string() })
