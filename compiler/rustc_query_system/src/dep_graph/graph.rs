@@ -7,7 +7,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxBuildHasher, FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::{QueryInvocationId, SelfProfilerRef};
 use rustc_data_structures::sharded::{self, Sharded};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -1299,7 +1299,7 @@ impl Default for TaskDeps {
             #[cfg(debug_assertions)]
             node: None,
             reads: EdgesVec::new(),
-            read_set: FxHashSet::default(),
+            read_set: FxHashSet::with_capacity_and_hasher(1024, FxBuildHasher::default()),
             phantom_data: PhantomData,
         }
     }
