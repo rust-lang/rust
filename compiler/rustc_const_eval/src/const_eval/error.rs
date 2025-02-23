@@ -34,7 +34,17 @@ impl MachineStopType for ConstEvalErrKind {
         match self {
             ConstAccessesMutGlobal => const_eval_const_accesses_mut_global,
             ModifiedGlobal => const_eval_modified_global,
-            Panic { .. } => const_eval_panic,
+            Panic { msg, .. } => {
+                let msg = msg.as_str();
+                match msg {
+                    "explicit panic"
+                    | "not implemented"
+                    | "not yet implemented"
+                    | "internal error: entered unreachable code" => msg.to_string().into(),
+                    _ if msg.starts_with("assertion failed: ") => msg.to_string().into(),
+                    _ => const_eval_panic,
+                }
+            }
             RecursiveStatic => const_eval_recursive_static,
             AssertFailure(x) => x.diagnostic_message(),
             WriteThroughImmutablePointer => const_eval_write_through_immutable_pointer,
@@ -48,11 +58,8 @@ impl MachineStopType for ConstEvalErrKind {
             | ModifiedGlobal
             | WriteThroughImmutablePointer => {}
             AssertFailure(kind) => kind.add_args(adder),
-            Panic { msg, line, col, file } => {
+            Panic { msg, .. } => {
                 adder("msg".into(), msg.into_diag_arg());
-                adder("file".into(), file.into_diag_arg());
-                adder("line".into(), line.into_diag_arg());
-                adder("col".into(), col.into_diag_arg());
             }
         }
     }
@@ -72,7 +79,7 @@ pub fn get_span_and_frames<'tcx>(
     let mut stacktrace = Frame::generate_stacktrace_from_stack(stack);
     // Filter out `requires_caller_location` frames.
     stacktrace.retain(|frame| !frame.instance.def.requires_caller_location(*tcx));
-    let span = stacktrace.first().map(|f| f.span).unwrap_or(tcx.span);
+    let span = stacktrace.last().map(|f| f.span).unwrap_or(tcx.span);
 
     let mut frames = Vec::new();
 
@@ -113,6 +120,17 @@ pub fn get_span_and_frames<'tcx>(
         if let Some(frame) = last_frame {
             add_frame(frame);
         }
+    }
+
+    // In `rustc`, we present const-eval errors from the outer-most place first to the inner-most.
+    // So we reverse the frames here. The first frame will be the same as the span from the current
+    // `TyCtxtAt<'_>`, so we remove it as it would be redundant.
+    frames.reverse();
+    if frames.len() > 0 {
+        frames.remove(0);
+    }
+    if let Some(last) = frames.last_mut() {
+        last.is_last = true;
     }
 
     (span, frames)
