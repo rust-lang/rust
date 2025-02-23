@@ -4,7 +4,13 @@ error: functions in `extern` blocks cannot have `const` qualifier
 LL | extern "C" {
    | ---------- in this `extern` block
 LL |     const fn foo();
-   |     ^^^^^ help: remove the `const` qualifier
+   |     ^^^^^
+   |
+help: remove the `const` qualifier
+   |
+LL -     const fn foo();
+LL +      fn foo();
+   |
 
 error: functions in `extern` blocks cannot have `const` qualifier
   --> $DIR/no-const-fn-in-extern-block.rs:4:5
@@ -13,7 +19,13 @@ LL | extern "C" {
    | ---------- in this `extern` block
 ...
 LL |     const unsafe fn bar();
-   |     ^^^^^ help: remove the `const` qualifier
+   |     ^^^^^
+   |
+help: remove the `const` qualifier
+   |
+LL -     const unsafe fn bar();
+LL +      unsafe fn bar();
+   |
 
 error: items in `extern` blocks without an `unsafe` qualifier cannot have safety qualifiers
   --> $DIR/no-const-fn-in-extern-block.rs:4:5

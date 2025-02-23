@@ -5,10 +5,13 @@ LL | #[const_trait]
    | -------------- this declares all associated functions implicitly const
 LL | trait Trait {
 LL |     const fn fun();
-   |     ^^^^^-
-   |     |
-   |     functions in traits cannot be const
-   |     help: remove the `const`
+   |     ^^^^^ functions in traits cannot be const
+   |
+help: remove the `const`
+   |
+LL -     const fn fun();
+LL +     fn fun();
+   |
 
 error[E0379]: functions in trait impls cannot be declared const
   --> $DIR/trait-fn-const.rs:10:5
@@ -16,10 +19,13 @@ error[E0379]: functions in trait impls cannot be declared const
 LL | impl const Trait for () {
    |      ----- this declares all associated functions implicitly const
 LL |     const fn fun() {}
-   |     ^^^^^-
-   |     |
-   |     functions in trait impls cannot be const
-   |     help: remove the `const`
+   |     ^^^^^ functions in trait impls cannot be const
+   |
+help: remove the `const`
+   |
+LL -     const fn fun() {}
+LL +     fn fun() {}
+   |
 
 error[E0379]: functions in trait impls cannot be declared const
   --> $DIR/trait-fn-const.rs:14:5

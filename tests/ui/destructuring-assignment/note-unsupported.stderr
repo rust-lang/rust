@@ -2,7 +2,13 @@ error: functional record updates are not allowed in destructuring assignments
   --> $DIR/note-unsupported.rs:20:17
    |
 LL |     S { x: a, ..s } = S { x: 3, y: 4 };
-   |                 ^ help: consider removing the trailing pattern
+   |                 ^
+   |
+help: consider removing the trailing pattern
+   |
+LL -     S { x: a, ..s } = S { x: 3, y: 4 };
+LL +     S { x: a, .. } = S { x: 3, y: 4 };
+   |
 
 error[E0368]: binary assignment operation `+=` cannot be applied to type `({integer}, {integer})`
   --> $DIR/note-unsupported.rs:7:5

@@ -32,9 +32,12 @@ error: associated constant in `impl` without body
   --> $DIR/typeck_type_placeholder_item.rs:206:5
    |
 LL |     const C: _;
-   |     ^^^^^^^^^^-
-   |               |
-   |               help: provide a definition for the constant: `= <expr>;`
+   |     ^^^^^^^^^^^
+   |
+help: provide a definition for the constant
+   |
+LL |     const C: _ = <expr>;
+   |                ++++++++
 
 error[E0403]: the name `_` is already used for a generic parameter in this item's generic parameters
   --> $DIR/typeck_type_placeholder_item.rs:167:22

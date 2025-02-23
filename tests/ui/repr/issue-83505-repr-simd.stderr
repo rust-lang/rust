@@ -2,9 +2,12 @@ error: free static item without body
   --> $DIR/issue-83505-repr-simd.rs:11:1
    |
 LL | static CLs: Es;
-   | ^^^^^^^^^^^^^^-
-   |               |
-   |               help: provide a definition for the static: `= <expr>;`
+   | ^^^^^^^^^^^^^^^
+   |
+help: provide a definition for the static
+   |
+LL | static CLs: Es = <expr>;
+   |                ++++++++
 
 error[E0658]: SIMD types are experimental and possibly buggy
   --> $DIR/issue-83505-repr-simd.rs:5:1

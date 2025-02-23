@@ -15,17 +15,25 @@ error: associated function in `impl` without body
   --> $DIR/issue-105226.rs:7:5
    |
 LL |     fn hello<P>(&self, val: &P) where P: fmt::Display; {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
-   |                                                      |
-   |                                                      help: provide a definition for the function: `{ <body> }`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: provide a definition for the function
+   |
+LL -     fn hello<P>(&self, val: &P) where P: fmt::Display; {
+LL +     fn hello<P>(&self, val: &P) where P: fmt::Display { <body> } {
+   |
 
 error: associated function in `impl` without body
   --> $DIR/issue-105226.rs:15:5
    |
 LL |     fn hello_empty<P>(&self, val: &P) where P: fmt::Display;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-
-   |                                                            |
-   |                                                            help: provide a definition for the function: `{ <body> }`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: provide a definition for the function
+   |
+LL -     fn hello_empty<P>(&self, val: &P) where P: fmt::Display;
+LL +     fn hello_empty<P>(&self, val: &P) where P: fmt::Display { <body> }
+   |
 
 error: aborting due to 3 previous errors
 

@@ -41,7 +41,7 @@ pub(crate) struct AssertRequiresBoolean {
 pub(crate) struct AssertRequiresExpression {
     #[primary_span]
     pub(crate) span: Span,
-    #[suggestion(code = "", applicability = "maybe-incorrect")]
+    #[suggestion(code = "", applicability = "maybe-incorrect", style = "verbose")]
     pub(crate) token: Span,
 }
 
@@ -231,7 +231,8 @@ pub(crate) enum ConcatBytesInvalidSuggestion {
     #[suggestion(
         builtin_macros_byte_char,
         code = "b{snippet}",
-        applicability = "machine-applicable"
+        applicability = "machine-applicable",
+        style = "verbose"
     )]
     CharLit {
         #[primary_span]
@@ -241,7 +242,8 @@ pub(crate) enum ConcatBytesInvalidSuggestion {
     #[suggestion(
         builtin_macros_byte_str,
         code = "b{snippet}",
-        applicability = "machine-applicable"
+        applicability = "machine-applicable",
+        style = "verbose"
     )]
     StrLit {
         #[primary_span]
@@ -251,7 +253,8 @@ pub(crate) enum ConcatBytesInvalidSuggestion {
     #[suggestion(
         builtin_macros_number_array,
         code = "[{snippet}]",
-        applicability = "machine-applicable"
+        applicability = "machine-applicable",
+        style = "verbose"
     )]
     IntLit {
         #[primary_span]
@@ -355,7 +358,7 @@ pub(crate) enum BadDeriveLitHelp {
 #[derive(Diagnostic)]
 #[diag(builtin_macros_derive_path_args_list)]
 pub(crate) struct DerivePathArgsList {
-    #[suggestion(code = "", applicability = "machine-applicable")]
+    #[suggestion(code = "", applicability = "machine-applicable", style = "verbose")]
     #[primary_span]
     pub(crate) span: Span,
 }
@@ -363,7 +366,7 @@ pub(crate) struct DerivePathArgsList {
 #[derive(Diagnostic)]
 #[diag(builtin_macros_derive_path_args_value)]
 pub(crate) struct DerivePathArgsValue {
-    #[suggestion(code = "", applicability = "machine-applicable")]
+    #[suggestion(code = "", applicability = "machine-applicable", style = "verbose")]
     #[primary_span]
     pub(crate) span: Span,
 }
@@ -380,7 +383,12 @@ pub(crate) struct NoDefaultVariant {
 }
 
 #[derive(Subdiagnostic)]
-#[suggestion(builtin_macros_suggestion, code = "#[default] ", applicability = "maybe-incorrect")]
+#[suggestion(
+    builtin_macros_suggestion,
+    code = "#[default] ",
+    applicability = "maybe-incorrect",
+    style = "verbose"
+)]
 pub(crate) struct NoDefaultVariantSugg {
     #[primary_span]
     pub(crate) span: Span,
@@ -612,7 +620,8 @@ pub(crate) enum InvalidFormatStringSuggestion {
     #[suggestion(
         builtin_macros_format_remove_raw_ident,
         code = "",
-        applicability = "machine-applicable"
+        applicability = "machine-applicable",
+        style = "verbose"
     )]
     RemoveRawIdent {
         #[primary_span]
