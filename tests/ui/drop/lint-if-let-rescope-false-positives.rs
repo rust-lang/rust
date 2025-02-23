@@ -26,4 +26,8 @@ fn main() {
 
     // Make sure we don't lint if we consume the droppy value.
     if let None = consume(Drop) {} else {}
+
+    // Make sure we don't lint on field exprs of place exprs.
+    let tup_place = (Drop, ());
+    if let None = consume(tup_place.1) {} else {}
 }

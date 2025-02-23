@@ -436,6 +436,14 @@ impl<'tcx> Visitor<'tcx> for FindSignificantDropper<'_, 'tcx> {
                 self.check_promoted_temp_with_drop(expr)?;
                 intravisit::walk_expr(self, expr)
             }
+            // `(Drop, ()).1` introduces a temporary and then moves out of
+            // part of it, therefore we should check it for temporaries.
+            // FIXME: This may have false positives if we move the part
+            // that actually has drop, but oh well.
+            hir::ExprKind::Index(expr, _, _) | hir::ExprKind::Field(expr, _) => {
+                self.check_promoted_temp_with_drop(expr)?;
+                intravisit::walk_expr(self, expr)
+            }
             // If always introduces a temporary terminating scope for its cond and arms,
             // so don't visit them.
             hir::ExprKind::If(..) => ControlFlow::Continue(()),
