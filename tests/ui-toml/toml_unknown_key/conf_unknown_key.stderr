@@ -32,6 +32,7 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            blacklisted-names
            cargo-ignore-publish
            check-incompatible-msrv-in-tests
+           check-inconsistent-struct-field-initializers
            check-private-items
            cognitive-complexity-threshold
            cyclomatic-complexity-threshold
@@ -126,6 +127,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            blacklisted-names
            cargo-ignore-publish
            check-incompatible-msrv-in-tests
+           check-inconsistent-struct-field-initializers
            check-private-items
            cognitive-complexity-threshold
            cyclomatic-complexity-threshold
@@ -220,6 +222,7 @@ error: error reading Clippy's configuration file: unknown field `allow_mixed_uni
            blacklisted-names
            cargo-ignore-publish
            check-incompatible-msrv-in-tests
+           check-inconsistent-struct-field-initializers
            check-private-items
            cognitive-complexity-threshold
            cyclomatic-complexity-threshold
