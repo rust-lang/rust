@@ -1739,7 +1739,11 @@ struct JoinInner<'scope, T> {
 impl<'scope, T> JoinInner<'scope, T> {
     fn join(mut self) -> Result<T> {
         self.native.join();
-        Arc::get_mut(&mut self.packet).unwrap().result.get_mut().take().unwrap()
+        if let Some(packet) = Arc::get_mut(&mut self.packet) {
+            packet.result.get_mut().take().unwrap()
+        } else {
+            Err(Box::new("thread terminated unexpectedly (e.g. due to OS intervention)"))
+        }
     }
 }
 
