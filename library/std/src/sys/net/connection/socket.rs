@@ -557,10 +557,13 @@ impl TcpListener {
     }
 
     pub fn accept(&self) -> io::Result<(TcpStream, SocketAddr)> {
-        let mut storage: c::sockaddr_storage = unsafe { mem::zeroed() };
+        // The `accept` function will fill in the storage with the address,
+        // so we don't need to zero it here.
+        // reference: https://linux.die.net/man/2/accept4
+        let mut storage: mem::MaybeUninit<c::sockaddr_storage> = mem::MaybeUninit::uninit();
         let mut len = mem::size_of_val(&storage) as c::socklen_t;
-        let sock = self.inner.accept((&raw mut storage) as *mut _, &mut len)?;
-        let addr = unsafe { socket_addr_from_c(&storage, len as usize)? };
+        let sock = self.inner.accept(storage.as_mut_ptr() as *mut _, &mut len)?;
+        let addr = unsafe { socket_addr_from_c(storage.as_ptr(), len as usize)? };
         Ok((TcpStream { inner: sock }, addr))
     }
 
