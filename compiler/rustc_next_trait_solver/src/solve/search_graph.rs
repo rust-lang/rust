@@ -2,9 +2,8 @@ use std::convert::Infallible;
 use std::marker::PhantomData;
 
 use rustc_type_ir::Interner;
-use rustc_type_ir::inherent::*;
 use rustc_type_ir::search_graph::{self, PathKind};
-use rustc_type_ir::solve::{CanonicalInput, Certainty, QueryResult};
+use rustc_type_ir::solve::{CanonicalInput, Certainty, NoSolution, QueryResult};
 
 use super::inspect::ProofTreeBuilder;
 use super::{FIXPOINT_STEP_LIMIT, has_no_inference_or_external_constraints};
@@ -48,7 +47,8 @@ where
     ) -> QueryResult<I> {
         match kind {
             PathKind::Coinductive => response_no_constraints(cx, input, Certainty::Yes),
-            PathKind::Inductive => response_no_constraints(cx, input, Certainty::overflow(false)),
+            PathKind::Unknown => response_no_constraints(cx, input, Certainty::overflow(false)),
+            PathKind::Inductive => Err(NoSolution),
         }
     }
 
@@ -58,12 +58,7 @@ where
         input: CanonicalInput<I>,
         result: QueryResult<I>,
     ) -> bool {
-        match kind {
-            PathKind::Coinductive => response_no_constraints(cx, input, Certainty::Yes) == result,
-            PathKind::Inductive => {
-                response_no_constraints(cx, input, Certainty::overflow(false)) == result
-            }
-        }
+        Self::initial_provisional_result(cx, kind, input) == result
     }
 
     fn on_stack_overflow(
@@ -93,10 +88,6 @@ where
     ) -> QueryResult<I> {
         let certainty = from_result.unwrap().value.certainty;
         response_no_constraints(cx, for_input, certainty)
-    }
-
-    fn step_is_coinductive(cx: I, input: CanonicalInput<I>) -> bool {
-        input.canonical.value.goal.predicate.is_coinductive(cx)
     }
 }
 

@@ -16,7 +16,7 @@ rustc_macros = { path = "../rustc_macros", optional = true }
 rustc_serialize = { path = "../rustc_serialize", optional = true }
 rustc_span = { path = "../rustc_span", optional = true }
 rustc_type_ir_macros = { path = "../rustc_type_ir_macros" }
-smallvec = { version = "1.8.1", default-features = false }
+smallvec = { version = "1.8.1", default-features = false, features = ["const_generics"] }
 thin-vec = "0.2.12"
 tracing = "0.1"
 # tidy-alphabetical-end

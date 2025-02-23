@@ -740,7 +740,7 @@ where
                 // We skip the goal itself as that one would cycle.
                 let predicate: I::Predicate = trait_ref.upcast(cx);
                 ecx.add_goals(
-                    GoalSource::Misc,
+                    GoalSource::CoherenceUnknowableSuper,
                     elaborate::elaborate(cx, [predicate])
                         .skip(1)
                         .map(|predicate| goal.with(cx, predicate)),
