@@ -174,7 +174,9 @@
 //!
 //! - after-main use of thread-locals, which also affects additional features:
 //!   - [`thread::current()`]
-//! - before-main stdio file descriptors are not guaranteed to be open on unix platforms
+//! - under UNIX, before main, file descriptors 0, 1, and 2 may be unchanged
+//!   (they are guaranteed to be open during main,
+//!    and are opened to /dev/null O_RDWR if they weren't open on program start)
 //!
 //!
 //! [I/O]: io
