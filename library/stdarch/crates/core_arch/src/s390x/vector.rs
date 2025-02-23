@@ -131,9 +131,17 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.s390.vfaeh"] fn vfaeh(a: vector_signed_short, b: vector_signed_short, c: i32) -> vector_signed_short;
     #[link_name = "llvm.s390.vfaef"] fn vfaef(a: vector_signed_int, b: vector_signed_int, c: i32) -> vector_signed_int;
 
+    #[link_name = "llvm.s390.vfaezb"] fn vfaezb(a: vector_signed_char, b: vector_signed_char, c: i32) -> vector_signed_char;
+    #[link_name = "llvm.s390.vfaezh"] fn vfaezh(a: vector_signed_short, b: vector_signed_short, c: i32) -> vector_signed_short;
+    #[link_name = "llvm.s390.vfaezf"] fn vfaezf(a: vector_signed_int, b: vector_signed_int, c: i32) -> vector_signed_int;
+
     #[link_name = "llvm.s390.vfaebs"] fn vfaebs(a: vector_signed_char, b: vector_signed_char, c: i32) -> PackedTuple<vector_signed_char, i32>;
     #[link_name = "llvm.s390.vfaehs"] fn vfaehs(a: vector_signed_short, b: vector_signed_short, c: i32) -> PackedTuple<vector_signed_short, i32>;
     #[link_name = "llvm.s390.vfaefs"] fn vfaefs(a: vector_signed_int, b: vector_signed_int, c: i32) -> PackedTuple<vector_signed_int, i32>;
+
+    #[link_name = "llvm.s390.vfaezbs"] fn vfaezbs(a: vector_signed_char, b: vector_signed_char, c: i32) -> PackedTuple<vector_signed_char, i32>;
+    #[link_name = "llvm.s390.vfaezhs"] fn vfaezhs(a: vector_signed_short, b: vector_signed_short, c: i32) -> PackedTuple<vector_signed_short, i32>;
+    #[link_name = "llvm.s390.vfaezfs"] fn vfaezfs(a: vector_signed_int, b: vector_signed_int, c: i32) -> PackedTuple<vector_signed_int, i32>;
 }
 
 impl_from! { i8x16, u8x16,  i16x8, u16x8, i32x4, u32x4, i64x2, u64x2, f32x4, f64x2 }
@@ -1535,36 +1543,49 @@ mod sealed {
     impl_vec_trait! { [VectorSqrt vec_sqrt] vec_sqrt_f32 (vector_float) }
     impl_vec_trait! { [VectorSqrt vec_sqrt] vec_sqrt_f64 (vector_double) }
 
-    #[inline]
-    #[target_feature(enable = "vector")]
-    #[cfg_attr(test, assert_instr(vfaeb, IMM = 0))]
-    unsafe fn vfaeb<const IMM: i32>(
-        a: vector_signed_char,
-        b: vector_signed_char,
-    ) -> vector_signed_char {
-        super::vfaeb(a, b, IMM)
-    }
-    #[inline]
-    #[target_feature(enable = "vector")]
-    #[cfg_attr(test, assert_instr(vfaeh, IMM = 0))]
-    unsafe fn vfaeh<const IMM: i32>(
-        a: vector_signed_short,
-        b: vector_signed_short,
-    ) -> vector_signed_short {
-        super::vfaeh(a, b, IMM)
-    }
-    #[inline]
-    #[target_feature(enable = "vector")]
-    #[cfg_attr(test, assert_instr(vfaef, IMM = 0))]
-    unsafe fn vfaef<const IMM: i32>(
-        a: vector_signed_int,
-        b: vector_signed_int,
-    ) -> vector_signed_int {
-        super::vfaef(a, b, IMM)
+    macro_rules! vfae_wrapper {
+        ($($name:ident $ty:ident)*) => {
+            $(
+                #[inline]
+                #[target_feature(enable = "vector")]
+                #[cfg_attr(test, assert_instr($name, IMM = 0))]
+                unsafe fn $name<const IMM: i32>(
+                    a: $ty,
+                    b: $ty,
+                ) -> $ty {
+                    super::$name(a, b, IMM)
+                }
+            )*
+        }
+     }
+
+    vfae_wrapper! {
+       vfaeb vector_signed_char
+       vfaeh vector_signed_short
+       vfaef vector_signed_int
+
+       vfaezb vector_signed_char
+       vfaezh vector_signed_short
+       vfaezf vector_signed_int
     }
 
     macro_rules! impl_vfae {
-        ([cc $Trait:ident $m:ident] $imm:literal $($fun:ident $ty:ident)*) => {
+        ([idx_cc $Trait:ident $m:ident] $imm:ident $($fun:ident $ty:ident $r:ident)*) => {
+            $(
+                #[unstable(feature = "stdarch_s390x", issue = "135681")]
+                impl $Trait<Self> for $ty {
+                    type Result = $r;
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn $m(self, b: Self, c: *mut i32) -> Self::Result {
+                        let PackedTuple { x, y } = $fun::<{ FindImm::$imm as i32 }>(transmute(self), transmute(b));
+                        c.write(y);
+                        transmute(x)
+                    }
+                }
+            )*
+        };
+        ([cc $Trait:ident $m:ident] $imm:ident $($fun:ident $ty:ident)*) => {
             $(
                 #[unstable(feature = "stdarch_s390x", issue = "135681")]
                 impl $Trait<Self> for $ty {
@@ -1572,14 +1593,14 @@ mod sealed {
                     #[inline]
                     #[target_feature(enable = "vector")]
                     unsafe fn $m(self, b: Self, c: *mut i32) -> Self::Result {
-                        let PackedTuple { x, y } = $fun::<$imm>(transmute(self), transmute(b));
+                        let PackedTuple { x, y } = $fun::<{ FindImm::$imm as i32 }>(transmute(self), transmute(b));
                         c.write(y);
                         transmute(x)
                     }
                 }
             )*
         };
-        ([idx $Trait:ident $m:ident] $imm:literal $($fun:ident $ty:ident $r:ident)*) => {
+        ([idx $Trait:ident $m:ident] $imm:ident $($fun:ident $ty:ident $r:ident)*) => {
             $(
                 #[unstable(feature = "stdarch_s390x", issue = "135681")]
                 impl $Trait<Self> for $ty {
@@ -1587,12 +1608,12 @@ mod sealed {
                     #[inline]
                     #[target_feature(enable = "vector")]
                     unsafe fn $m(self, b: Self) -> Self::Result {
-                        transmute($fun::<$imm>(transmute(self), transmute(b)))
+                        transmute($fun::<{ FindImm::$imm as i32 }>(transmute(self), transmute(b)))
                     }
                 }
             )*
         };
-        ([$Trait:ident $m:ident] $imm:literal $($fun:ident $ty:ident)*) => {
+        ([$Trait:ident $m:ident] $imm:ident $($fun:ident $ty:ident)*) => {
             $(
                 #[unstable(feature = "stdarch_s390x", issue = "135681")]
                 impl $Trait<Self> for $ty {
@@ -1600,11 +1621,18 @@ mod sealed {
                     #[inline]
                     #[target_feature(enable = "vector")]
                     unsafe fn $m(self, b: Self) -> Self::Result {
-                        transmute($fun::<$imm>(transmute(self), transmute(b)))
+                        transmute($fun::<{ FindImm::$imm as i32 }>(transmute(self), transmute(b)))
                     }
                 }
             )*
         };
+    }
+
+    enum FindImm {
+        Eq = 4,
+        Ne = 12,
+        EqIdx = 0,
+        NeIdx = 8,
     }
 
     #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -1613,7 +1641,7 @@ mod sealed {
         unsafe fn vec_find_any_eq(self, other: Other) -> Self::Result;
     }
 
-    impl_vfae! { [VectorFindAnyEq vec_find_any_eq] 4
+    impl_vfae! { [VectorFindAnyEq vec_find_any_eq] Eq
         vfaeb vector_signed_char
         vfaeb vector_unsigned_char
         vfaeb vector_bool_char
@@ -1633,7 +1661,7 @@ mod sealed {
         unsafe fn vec_find_any_ne(self, other: Other) -> Self::Result;
     }
 
-    impl_vfae! { [VectorFindAnyNe vec_find_any_ne] 12
+    impl_vfae! { [VectorFindAnyNe vec_find_any_ne] Ne
         vfaeb vector_signed_char
         vfaeb vector_unsigned_char
         vfaeb vector_bool_char
@@ -1648,12 +1676,52 @@ mod sealed {
     }
 
     #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorFindAnyEqOrZeroIdx<Other> {
+        type Result;
+        unsafe fn vec_find_any_eq_or_0_idx(self, other: Other) -> Self::Result;
+    }
+
+    impl_vfae! { [idx VectorFindAnyEqOrZeroIdx vec_find_any_eq_or_0_idx] Eq
+        vfaezb vector_signed_char vector_signed_char
+        vfaezb vector_unsigned_char vector_unsigned_char
+        vfaezb vector_bool_char vector_unsigned_char
+
+        vfaezh vector_signed_short vector_signed_short
+        vfaezh vector_unsigned_short vector_unsigned_short
+        vfaezh vector_bool_short vector_unsigned_short
+
+        vfaezf vector_signed_int vector_signed_int
+        vfaezf vector_unsigned_int vector_unsigned_int
+        vfaezf vector_bool_int vector_unsigned_int
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorFindAnyNeOrZeroIdx<Other> {
+        type Result;
+        unsafe fn vec_find_any_ne_or_0_idx(self, other: Other) -> Self::Result;
+    }
+
+    impl_vfae! { [idx VectorFindAnyNeOrZeroIdx vec_find_any_ne_or_0_idx] Ne
+        vfaezb vector_signed_char vector_signed_char
+        vfaezb vector_unsigned_char vector_unsigned_char
+        vfaezb vector_bool_char vector_unsigned_char
+
+        vfaezh vector_signed_short vector_signed_short
+        vfaezh vector_unsigned_short vector_unsigned_short
+        vfaezh vector_bool_short vector_unsigned_short
+
+        vfaezf vector_signed_int vector_signed_int
+        vfaezf vector_unsigned_int vector_unsigned_int
+        vfaezf vector_bool_int vector_unsigned_int
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
     pub trait VectorFindAnyEqIdx<Other> {
         type Result;
         unsafe fn vec_find_any_eq_idx(self, other: Other) -> Self::Result;
     }
 
-    impl_vfae! { [idx VectorFindAnyEqIdx vec_find_any_eq_idx] 0
+    impl_vfae! { [idx VectorFindAnyEqIdx vec_find_any_eq_idx] EqIdx
         vfaeb vector_signed_char vector_signed_char
         vfaeb vector_unsigned_char vector_unsigned_char
         vfaeb vector_bool_char vector_unsigned_char
@@ -1673,7 +1741,7 @@ mod sealed {
         unsafe fn vec_find_any_ne_idx(self, other: Other) -> Self::Result;
     }
 
-    impl_vfae! { [idx VectorFindAnyNeIdx vec_find_any_ne_idx] 8
+    impl_vfae! { [idx VectorFindAnyNeIdx vec_find_any_ne_idx] NeIdx
         vfaeb vector_signed_char vector_signed_char
         vfaeb vector_unsigned_char vector_unsigned_char
         vfaeb vector_bool_char vector_unsigned_char
@@ -1721,7 +1789,7 @@ mod sealed {
         unsafe fn vec_find_any_eq_cc(self, other: Other, c: *mut i32) -> Self::Result;
     }
 
-    impl_vfae! { [cc VectorFindAnyEqCC vec_find_any_eq_cc] 4
+    impl_vfae! { [cc VectorFindAnyEqCC vec_find_any_eq_cc] Eq
         vfaebs vector_signed_char
         vfaebs vector_unsigned_char
         vfaebs vector_bool_char
@@ -1741,7 +1809,7 @@ mod sealed {
         unsafe fn vec_find_any_ne_cc(self, other: Other, c: *mut i32) -> Self::Result;
     }
 
-    impl_vfae! { [cc VectorFindAnyNeCC vec_find_any_ne_cc] 12
+    impl_vfae! { [cc VectorFindAnyNeCC vec_find_any_ne_cc] Ne
         vfaebs vector_signed_char
         vfaebs vector_unsigned_char
         vfaebs vector_bool_char
@@ -1753,6 +1821,46 @@ mod sealed {
         vfaefs vector_signed_int
         vfaefs vector_unsigned_int
         vfaefs vector_bool_int
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorFindAnyEqIdxCC<Other> {
+        type Result;
+        unsafe fn vec_find_any_eq_idx_cc(self, other: Other, c: *mut i32) -> Self::Result;
+    }
+
+    impl_vfae! { [idx_cc VectorFindAnyEqIdxCC vec_find_any_eq_idx_cc] EqIdx
+        vfaebs vector_signed_char vector_signed_char
+        vfaebs vector_unsigned_char vector_unsigned_char
+        vfaebs vector_bool_char vector_unsigned_char
+
+        vfaehs vector_signed_short vector_signed_short
+        vfaehs vector_unsigned_short vector_unsigned_short
+        vfaehs vector_bool_short vector_unsigned_short
+
+        vfaefs vector_signed_int vector_signed_int
+        vfaefs vector_unsigned_int vector_unsigned_int
+        vfaefs vector_bool_int vector_unsigned_int
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorFindAnyNeIdxCC<Other> {
+        type Result;
+        unsafe fn vec_find_any_ne_idx_cc(self, other: Other, c: *mut i32) -> Self::Result;
+    }
+
+    impl_vfae! { [idx_cc VectorFindAnyNeIdxCC vec_find_any_ne_idx_cc] NeIdx
+        vfaebs vector_signed_char vector_signed_char
+        vfaebs vector_unsigned_char vector_unsigned_char
+        vfaebs vector_bool_char vector_unsigned_char
+
+        vfaehs vector_signed_short vector_signed_short
+        vfaehs vector_unsigned_short vector_unsigned_short
+        vfaehs vector_bool_short vector_unsigned_short
+
+        vfaefs vector_signed_int vector_signed_int
+        vfaefs vector_unsigned_int vector_unsigned_int
+        vfaefs vector_bool_int vector_unsigned_int
     }
 }
 
