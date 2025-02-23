@@ -525,7 +525,7 @@ mod dist {
             first(cache.all::<compile::Rustc>()),
             &[
                 rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 0),
-                rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_2, stage = 0),
+                rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 1),
                 rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_2, stage = 1),
             ]
         );

@@ -1262,6 +1262,9 @@ impl<'a> Builder<'a> {
             ),
         ),
     )]
+
+    /// FIXME: This function is unnecessary (and dangerous, see <https://github.com/rust-lang/rust/issues/137469>).
+    /// We already have uplifting logic for the compiler, so remove this.
     pub fn compiler_for(
         &self,
         stage: u32,
