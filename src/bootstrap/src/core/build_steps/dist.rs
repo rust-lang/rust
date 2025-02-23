@@ -421,11 +421,7 @@ impl Step for Rustc {
 
             if let Some(ra_proc_macro_srv) = builder.ensure_if_default(
                 tool::RustAnalyzerProcMacroSrv {
-                    compiler: builder.compiler_for(
-                        compiler.stage,
-                        builder.config.build,
-                        compiler.host,
-                    ),
+                    compiler: builder.compiler(compiler.stage, builder.config.build),
                     target: compiler.host,
                 },
                 builder.kind,
@@ -775,11 +771,7 @@ impl Step for Analysis {
             // Find the actual compiler (handling the full bootstrap option) which
             // produced the save-analysis data because that data isn't copied
             // through the sysroot uplifting.
-            compiler: run.builder.compiler_for(
-                run.builder.top_stage,
-                run.builder.config.build,
-                run.target,
-            ),
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
             target: run.target,
         });
     }
@@ -1124,11 +1116,7 @@ impl Step for Cargo {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Cargo {
-            compiler: run.builder.compiler_for(
-                run.builder.top_stage,
-                run.builder.config.build,
-                run.target,
-            ),
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
             target: run.target,
         });
     }
@@ -1173,11 +1161,7 @@ impl Step for Rls {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Rls {
-            compiler: run.builder.compiler_for(
-                run.builder.top_stage,
-                run.builder.config.build,
-                run.target,
-            ),
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
             target: run.target,
         });
     }
@@ -1215,11 +1199,7 @@ impl Step for RustAnalyzer {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(RustAnalyzer {
-            compiler: run.builder.compiler_for(
-                run.builder.top_stage,
-                run.builder.config.build,
-                run.target,
-            ),
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
             target: run.target,
         });
     }
@@ -1257,11 +1237,7 @@ impl Step for Clippy {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Clippy {
-            compiler: run.builder.compiler_for(
-                run.builder.top_stage,
-                run.builder.config.build,
-                run.target,
-            ),
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
             target: run.target,
         });
     }
@@ -1304,11 +1280,7 @@ impl Step for Miri {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Miri {
-            compiler: run.builder.compiler_for(
-                run.builder.top_stage,
-                run.builder.config.build,
-                run.target,
-            ),
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
             target: run.target,
         });
     }
@@ -1442,11 +1414,7 @@ impl Step for Rustfmt {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Rustfmt {
-            compiler: run.builder.compiler_for(
-                run.builder.top_stage,
-                run.builder.config.build,
-                run.target,
-            ),
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
             target: run.target,
         });
     }
@@ -1496,7 +1464,7 @@ impl Step for Extended {
     fn run(self, builder: &Builder<'_>) {
         let target = self.target;
         let stage = self.stage;
-        let compiler = builder.compiler_for(self.stage, self.host, self.target);
+        let compiler = builder.compiler(self.stage, self.host);
 
         builder.info(&format!("Dist extended stage{} ({})", compiler.stage, target));
 
@@ -2260,11 +2228,7 @@ impl Step for LlvmBitcodeLinker {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(LlvmBitcodeLinker {
-            compiler: run.builder.compiler_for(
-                run.builder.top_stage,
-                run.builder.config.build,
-                run.target,
-            ),
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
             target: run.target,
         });
     }
