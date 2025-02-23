@@ -54,7 +54,7 @@ macro_rules! len {
                 // To get rid of some bounds checks (see `position`), we use ptr_sub instead of
                 // offset_from (Tested by `codegen/slice-position-bounds-check`.)
                 // SAFETY: by the type invariant pointers are aligned and `start <= end`
-                unsafe { end.sub_ptr($self.ptr) }
+                unsafe { end.offset_from_unsigned($self.ptr) }
             },
         )
     }};

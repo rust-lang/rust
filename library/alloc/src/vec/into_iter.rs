@@ -179,7 +179,7 @@ impl<T, A: Allocator> IntoIter<T, A> {
                 // say that they're all at the beginning of the "allocation".
                 0..this.len()
             } else {
-                this.ptr.sub_ptr(this.buf)..this.end.sub_ptr(buf)
+                this.ptr.offset_from_unsigned(this.buf)..this.end.offset_from_unsigned(buf)
             };
             let cap = this.cap;
             let alloc = ManuallyDrop::take(&mut this.alloc);
@@ -230,7 +230,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
         let exact = if T::IS_ZST {
             self.end.addr().wrapping_sub(self.ptr.as_ptr().addr())
         } else {
-            unsafe { non_null!(self.end, T).sub_ptr(self.ptr) }
+            unsafe { non_null!(self.end, T).offset_from_unsigned(self.ptr) }
         };
         (exact, Some(exact))
     }
