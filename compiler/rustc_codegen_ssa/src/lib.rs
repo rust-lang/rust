@@ -36,7 +36,6 @@ use rustc_middle::dep_graph::WorkProduct;
 use rustc_middle::lint::LintLevelSource;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Dependencies;
-use rustc_middle::middle::exported_symbols::SymbolExportKind;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
 use rustc_serialize::opaque::{FileEncoder, MemDecoder};
@@ -193,7 +192,6 @@ pub struct CrateInfo {
     pub target_features: Vec<String>,
     pub crate_types: Vec<CrateType>,
     pub exported_symbols: UnordMap<CrateType, Vec<String>>,
-    pub linked_symbols: FxIndexMap<CrateType, Vec<(String, SymbolExportKind)>>,
     pub local_crate_name: Symbol,
     pub compiler_builtins: Option<CrateNum>,
     pub profiler_runtime: Option<CrateNum>,

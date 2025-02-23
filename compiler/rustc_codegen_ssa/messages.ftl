@@ -66,8 +66,6 @@ codegen_ssa_extract_bundled_libs_write_file = failed to write file '{$rlib}': {$
 
 codegen_ssa_failed_to_get_layout = failed to get layout for {$ty}: {$err}
 
-codegen_ssa_failed_to_write = failed to write {$path}: {$error}
-
 codegen_ssa_field_associated_value_expected = associated value expected for `{$name}`
 
 codegen_ssa_forbidden_target_feature_attr =

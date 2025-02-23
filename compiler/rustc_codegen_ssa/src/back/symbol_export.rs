@@ -621,60 +621,6 @@ fn calling_convention_for_symbol<'tcx>(
         .unwrap_or((Conv::Rust, &[]))
 }
 
-/// This is the symbol name of the given instance as seen by the linker.
-///
-/// On 32-bit Windows symbols are decorated according to their calling conventions.
-pub(crate) fn linking_symbol_name_for_instance_in_crate<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    symbol: ExportedSymbol<'tcx>,
-    instantiating_crate: CrateNum,
-) -> String {
-    let mut undecorated = symbol_name_for_instance_in_crate(tcx, symbol, instantiating_crate);
-
-    // thread local will not be a function call,
-    // so it is safe to return before windows symbol decoration check.
-    if let Some(name) = maybe_emutls_symbol_name(tcx, symbol, &undecorated) {
-        return name;
-    }
-
-    let target = &tcx.sess.target;
-    if !target.is_like_windows {
-        // Mach-O has a global "_" suffix and `object` crate will handle it.
-        // ELF does not have any symbol decorations.
-        return undecorated;
-    }
-
-    let prefix = match &target.arch[..] {
-        "x86" => Some('_'),
-        "x86_64" => None,
-        "arm64ec" => Some('#'),
-        // Only x86/64 use symbol decorations.
-        _ => return undecorated,
-    };
-
-    let (conv, args) = calling_convention_for_symbol(tcx, symbol);
-
-    // Decorate symbols with prefixes, suffixes and total number of bytes of arguments.
-    // Reference: https://docs.microsoft.com/en-us/cpp/build/reference/decorated-names?view=msvc-170
-    let (prefix, suffix) = match conv {
-        Conv::X86Fastcall => ("@", "@"),
-        Conv::X86Stdcall => ("_", "@"),
-        Conv::X86VectorCall => ("", "@@"),
-        _ => {
-            if let Some(prefix) = prefix {
-                undecorated.insert(0, prefix);
-            }
-            return undecorated;
-        }
-    };
-
-    let args_in_bytes: u64 = args
-        .iter()
-        .map(|abi| abi.layout.size.bytes().next_multiple_of(target.pointer_width as u64 / 8))
-        .sum();
-    format!("{prefix}{undecorated}{suffix}{args_in_bytes}")
-}
-
 pub(crate) fn exporting_symbol_name_for_instance_in_crate<'tcx>(
     tcx: TyCtxt<'tcx>,
     symbol: ExportedSymbol<'tcx>,

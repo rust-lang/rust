@@ -25,7 +25,6 @@ use rustc_middle::bug;
 use rustc_middle::lint::lint_level;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Linkage;
-use rustc_middle::middle::exported_symbols::SymbolExportKind;
 use rustc_session::config::{
     self, CFGuard, CrateType, DebugInfo, LinkerFeaturesCli, OutFileName, OutputFilenames,
     OutputType, PrintKind, SplitDwarfKind, Strip,
@@ -2054,84 +2053,6 @@ fn add_post_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor
     }
 }
 
-/// Add a synthetic object file that contains reference to all symbols that we want to expose to
-/// the linker.
-///
-/// Background: we implement rlibs as static library (archives). Linkers treat archives
-/// differently from object files: all object files participate in linking, while archives will
-/// only participate in linking if they can satisfy at least one undefined reference (version
-/// scripts doesn't count). This causes `#[no_mangle]` or `#[used]` items to be ignored by the
-/// linker, and since they never participate in the linking, using `KEEP` in the linker scripts
-/// can't keep them either. This causes #47384.
-///
-/// To keep them around, we could use `--whole-archive` and equivalents to force rlib to
-/// participate in linking like object files, but this proves to be expensive (#93791). Therefore
-/// we instead just introduce an undefined reference to them. This could be done by `-u` command
-/// line option to the linker or `EXTERN(...)` in linker scripts, however they does not only
-/// introduce an undefined reference, but also make them the GC roots, preventing `--gc-sections`
-/// from removing them, and this is especially problematic for embedded programming where every
-/// byte counts.
-///
-/// This method creates a synthetic object file, which contains undefined references to all symbols
-/// that are necessary for the linking. They are only present in symbol table but not actually
-/// used in any sections, so the linker will therefore pick relevant rlibs for linking, but
-/// unused `#[no_mangle]` or `#[used]` can still be discard by GC sections.
-///
-/// There's a few internal crates in the standard library (aka libcore and
-/// libstd) which actually have a circular dependence upon one another. This
-/// currently arises through "weak lang items" where libcore requires things
-/// like `rust_begin_unwind` but libstd ends up defining it. To get this
-/// circular dependence to work correctly we declare some of these things
-/// in this synthetic object.
-fn add_linked_symbol_object(
-    cmd: &mut dyn Linker,
-    sess: &Session,
-    tmpdir: &Path,
-    symbols: &[(String, SymbolExportKind)],
-) {
-    if symbols.is_empty() {
-        return;
-    }
-
-    let Some(mut file) = super::metadata::create_object_file(sess) else {
-        return;
-    };
-
-    if file.format() == object::BinaryFormat::Coff {
-        // NOTE(nbdd0121): MSVC will hang if the input object file contains no sections,
-        // so add an empty section.
-        file.add_section(Vec::new(), ".text".into(), object::SectionKind::Text);
-
-        // We handle the name decoration of COFF targets in `symbol_export.rs`, so disable the
-        // default mangler in `object` crate.
-        file.set_mangling(object::write::Mangling::None);
-    }
-
-    for (sym, kind) in symbols.iter() {
-        file.add_symbol(object::write::Symbol {
-            name: sym.clone().into(),
-            value: 0,
-            size: 0,
-            kind: match kind {
-                SymbolExportKind::Text => object::SymbolKind::Text,
-                SymbolExportKind::Data => object::SymbolKind::Data,
-                SymbolExportKind::Tls => object::SymbolKind::Tls,
-            },
-            scope: object::SymbolScope::Unknown,
-            weak: false,
-            section: object::write::SymbolSection::Undefined,
-            flags: object::SymbolFlags::None,
-        });
-    }
-
-    let path = tmpdir.join("symbols.o");
-    let result = std::fs::write(&path, file.write().unwrap());
-    if let Err(error) = result {
-        sess.dcx().emit_fatal(errors::FailedToWrite { path, error });
-    }
-    cmd.add_object(&path);
-}
-
 /// Add object files containing code from the current crate.
 fn add_local_crate_regular_objects(cmd: &mut dyn Linker, codegen_results: &CodegenResults) {
     for obj in codegen_results.modules.iter().filter_map(|m| m.object.as_ref()) {
@@ -2288,13 +2209,6 @@ fn linker_with_args(
 
     // Pre-link CRT objects.
     add_pre_link_objects(cmd, sess, flavor, link_output_kind, self_contained_crt_objects);
-
-    add_linked_symbol_object(
-        cmd,
-        sess,
-        tmpdir,
-        &codegen_results.crate_info.linked_symbols[&crate_type],
-    );
 
     // Sanitizer libraries.
     add_sanitizer_libraries(sess, flavor, crate_type, cmd);
