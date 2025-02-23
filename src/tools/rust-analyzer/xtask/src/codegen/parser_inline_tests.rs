@@ -18,23 +18,21 @@ use crate::{
     util::list_rust_files,
 };
 
-const PARSER_CRATE_ROOT: &str = "crates/parser";
-const PARSER_TEST_DATA: &str = "crates/parser/test_data";
-const PARSER_TEST_DATA_INLINE: &str = "crates/parser/test_data/parser/inline";
-
 pub(crate) fn generate(check: bool) {
-    let tests = tests_from_dir(
-        &project_root().join(Path::new(&format!("{PARSER_CRATE_ROOT}/src/grammar"))),
-    );
+    let parser_crate_root = project_root().join("crates/parser");
+    let parser_test_data = parser_crate_root.join("test_data");
+    let parser_test_data_inline = parser_test_data.join("parser/inline");
+
+    let tests = tests_from_dir(&parser_crate_root.join("src/grammar"));
 
     let mut some_file_was_updated = false;
     some_file_was_updated |=
-        install_tests(&tests.ok, &format!("{PARSER_TEST_DATA_INLINE}/ok"), check).unwrap();
+        install_tests(&tests.ok, parser_test_data_inline.join("ok"), check).unwrap();
     some_file_was_updated |=
-        install_tests(&tests.err, &format!("{PARSER_TEST_DATA_INLINE}/err"), check).unwrap();
+        install_tests(&tests.err, parser_test_data_inline.join("err"), check).unwrap();
 
     if some_file_was_updated {
-        let _ = fs::File::open(format!("{PARSER_CRATE_ROOT}/src/tests.rs"))
+        let _ = fs::File::open(parser_crate_root.join("src/tests.rs"))
             .unwrap()
             .set_modified(SystemTime::now());
 
@@ -95,15 +93,14 @@ pub(crate) fn generate(check: bool) {
         let pretty = reformat(output.to_string());
         ensure_file_contents(
             crate::flags::CodegenType::ParserTests,
-            format!("{PARSER_TEST_DATA}/generated/runner.rs").as_ref(),
+            parser_test_data.join("generated/runner.rs").as_ref(),
             &pretty,
             check,
         );
     }
 }
 
-fn install_tests(tests: &HashMap<String, Test>, into: &str, check: bool) -> Result<bool> {
-    let tests_dir = project_root().join(into);
+fn install_tests(tests: &HashMap<String, Test>, tests_dir: PathBuf, check: bool) -> Result<bool> {
     if !tests_dir.is_dir() {
         fs::create_dir_all(&tests_dir)?;
     }
