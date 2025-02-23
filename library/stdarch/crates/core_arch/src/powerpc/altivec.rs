@@ -674,15 +674,9 @@ mod sealed {
             pub unsafe fn $fun(a: isize, b: *const $ty) -> t_t_l!($ty) {
                 let addr = (b as *const u8).offset(a);
 
-                // Workaround ptr::copy_nonoverlapping not being inlined
-                unsafe extern "rust-intrinsic" {
-                    #[rustc_nounwind]
-                    pub fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
-                }
-
                 let mut r = mem::MaybeUninit::uninit();
 
-                copy_nonoverlapping(
+                crate::ptr::copy_nonoverlapping(
                     addr,
                     r.as_mut_ptr() as *mut u8,
                     mem::size_of::<t_t_l!($ty)>(),
@@ -729,13 +723,7 @@ mod sealed {
             pub unsafe fn $fun(s: t_t_l!($ty), a: isize, b: *mut $ty) {
                 let addr = (b as *mut u8).offset(a);
 
-                // Workaround ptr::copy_nonoverlapping not being inlined
-                unsafe extern "rust-intrinsic" {
-                    #[rustc_nounwind]
-                    pub fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
-                }
-
-                copy_nonoverlapping(
+                crate::ptr::copy_nonoverlapping(
                     &s as *const _ as *const u8,
                     addr,
                     mem::size_of::<t_t_l!($ty)>(),
