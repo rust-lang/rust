@@ -525,6 +525,7 @@ mod dist {
             first(cache.all::<compile::Rustc>()),
             &[
                 rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 0),
+                rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_2, stage = 0),
                 rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_2, stage = 1),
             ]
         );
@@ -1083,4 +1084,34 @@ fn test_is_builder_target() {
         assert!(builder.is_builder_target(target1));
         assert!(!builder.is_builder_target(target2));
     }
+}
+
+#[test]
+fn test_get_tool_rustc_compiler() {
+    let mut config = configure("build", &[], &[]);
+    config.download_rustc_commit = None;
+    let build = Build::new(config);
+    let builder = Builder::new(&build);
+
+    let target_triple_1 = TargetSelection::from_user(TEST_TRIPLE_1);
+
+    let compiler = Compiler { stage: 2, host: target_triple_1 };
+    let expected = Compiler { stage: 1, host: target_triple_1 };
+    let actual = tool::get_tool_rustc_compiler(&builder, compiler);
+    assert_eq!(expected, actual);
+
+    let compiler = Compiler { stage: 1, host: target_triple_1 };
+    let expected = Compiler { stage: 0, host: target_triple_1 };
+    let actual = tool::get_tool_rustc_compiler(&builder, compiler);
+    assert_eq!(expected, actual);
+
+    let mut config = configure("build", &[], &[]);
+    config.download_rustc_commit = Some("".to_owned());
+    let build = Build::new(config);
+    let builder = Builder::new(&build);
+
+    let compiler = Compiler { stage: 1, host: target_triple_1 };
+    let expected = Compiler { stage: 1, host: target_triple_1 };
+    let actual = tool::get_tool_rustc_compiler(&builder, compiler);
+    assert_eq!(expected, actual);
 }

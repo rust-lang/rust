@@ -126,11 +126,7 @@ impl Step for Miri {
 
         // This compiler runs on the host, we'll just use it for the target.
         let target_compiler = builder.compiler(stage, host);
-        // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
-        // we'd have stageN/bin/rustc and stageN/bin/rustdoc be effectively different stage
-        // compilers, which isn't what we want. Rustdoc should be linked in the same way as the
-        // rustc compiler it's paired with, so it must be built with the previous stage compiler.
-        let host_compiler = builder.compiler(stage - 1, host);
+        let host_compiler = tool::get_tool_rustc_compiler(builder, target_compiler);
 
         // Get a target sysroot for Miri.
         let miri_sysroot = test::Miri::build_miri_sysroot(builder, target_compiler, target);

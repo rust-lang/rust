@@ -1983,13 +1983,14 @@ impl Step for Assemble {
         let maybe_install_llvm_bitcode_linker = |compiler| {
             if builder.config.llvm_bitcode_linker_enabled {
                 trace!("llvm-bitcode-linker enabled, installing");
-                let src_path = builder.ensure(crate::core::build_steps::tool::LlvmBitcodeLinker {
-                    compiler,
-                    target: target_compiler.host,
-                    extra_features: vec![],
-                });
+                let llvm_bitcode_linker =
+                    builder.ensure(crate::core::build_steps::tool::LlvmBitcodeLinker {
+                        compiler,
+                        target: target_compiler.host,
+                        extra_features: vec![],
+                    });
                 let tool_exe = exe("llvm-bitcode-linker", target_compiler.host);
-                builder.copy_link(&src_path, &libdir_bin.join(tool_exe));
+                builder.copy_link(&llvm_bitcode_linker.tool_path, &libdir_bin.join(tool_exe));
             }
         };
 
@@ -2181,14 +2182,13 @@ impl Step for Assemble {
         // logic to create the final binary. This is used by the
         // `wasm32-wasip2` target of Rust.
         if builder.tool_enabled("wasm-component-ld") {
-            let wasm_component_ld_exe =
-                builder.ensure(crate::core::build_steps::tool::WasmComponentLd {
-                    compiler: build_compiler,
-                    target: target_compiler.host,
-                });
+            let wasm_component = builder.ensure(crate::core::build_steps::tool::WasmComponentLd {
+                compiler: build_compiler,
+                target: target_compiler.host,
+            });
             builder.copy_link(
-                &wasm_component_ld_exe,
-                &libdir_bin.join(wasm_component_ld_exe.file_name().unwrap()),
+                &wasm_component.tool_path,
+                &libdir_bin.join(wasm_component.tool_path.file_name().unwrap()),
             );
         }
 

@@ -430,7 +430,7 @@ impl Step for Rustc {
                 },
                 builder.kind,
             ) {
-                builder.install(&ra_proc_macro_srv, &image.join("libexec"), 0o755);
+                builder.install(&ra_proc_macro_srv.tool_path, &image.join("libexec"), 0o755);
             }
 
             let libdir_relative = builder.libdir_relative(compiler);
@@ -1145,7 +1145,7 @@ impl Step for Cargo {
         let mut tarball = Tarball::new(builder, "cargo", &target.triple);
         tarball.set_overlay(OverlayKind::Cargo);
 
-        tarball.add_file(cargo, "bin", 0o755);
+        tarball.add_file(cargo.tool_path, "bin", 0o755);
         tarball.add_file(etc.join("_cargo"), "share/zsh/site-functions", 0o644);
         tarball.add_renamed_file(etc.join("cargo.bashcomp.sh"), "etc/bash_completion.d", "cargo");
         tarball.add_dir(etc.join("man"), "share/man/man1");
@@ -1191,7 +1191,7 @@ impl Step for Rls {
         let mut tarball = Tarball::new(builder, "rls", &target.triple);
         tarball.set_overlay(OverlayKind::Rls);
         tarball.is_preview(true);
-        tarball.add_file(rls, "bin", 0o755);
+        tarball.add_file(rls.tool_path, "bin", 0o755);
         tarball.add_legal_and_readme_to("share/doc/rls");
         Some(tarball.generate())
     }
@@ -1233,7 +1233,7 @@ impl Step for RustAnalyzer {
         let mut tarball = Tarball::new(builder, "rust-analyzer", &target.triple);
         tarball.set_overlay(OverlayKind::RustAnalyzer);
         tarball.is_preview(true);
-        tarball.add_file(rust_analyzer, "bin", 0o755);
+        tarball.add_file(rust_analyzer.tool_path, "bin", 0o755);
         tarball.add_legal_and_readme_to("share/doc/rust-analyzer");
         Some(tarball.generate())
     }
@@ -1279,8 +1279,8 @@ impl Step for Clippy {
         let mut tarball = Tarball::new(builder, "clippy", &target.triple);
         tarball.set_overlay(OverlayKind::Clippy);
         tarball.is_preview(true);
-        tarball.add_file(clippy, "bin", 0o755);
-        tarball.add_file(cargoclippy, "bin", 0o755);
+        tarball.add_file(clippy.tool_path, "bin", 0o755);
+        tarball.add_file(cargoclippy.tool_path, "bin", 0o755);
         tarball.add_legal_and_readme_to("share/doc/clippy");
         Some(tarball.generate())
     }
@@ -1329,8 +1329,8 @@ impl Step for Miri {
         let mut tarball = Tarball::new(builder, "miri", &target.triple);
         tarball.set_overlay(OverlayKind::Miri);
         tarball.is_preview(true);
-        tarball.add_file(miri, "bin", 0o755);
-        tarball.add_file(cargomiri, "bin", 0o755);
+        tarball.add_file(miri.tool_path, "bin", 0o755);
+        tarball.add_file(cargomiri.tool_path, "bin", 0o755);
         tarball.add_legal_and_readme_to("share/doc/miri");
         Some(tarball.generate())
     }
@@ -1460,8 +1460,8 @@ impl Step for Rustfmt {
         let mut tarball = Tarball::new(builder, "rustfmt", &target.triple);
         tarball.set_overlay(OverlayKind::Rustfmt);
         tarball.is_preview(true);
-        tarball.add_file(rustfmt, "bin", 0o755);
-        tarball.add_file(cargofmt, "bin", 0o755);
+        tarball.add_file(rustfmt.tool_path, "bin", 0o755);
+        tarball.add_file(cargofmt.tool_path, "bin", 0o755);
         tarball.add_legal_and_readme_to("share/doc/rustfmt");
         Some(tarball.generate())
     }
@@ -2283,7 +2283,7 @@ impl Step for LlvmBitcodeLinker {
         tarball.set_overlay(OverlayKind::LlvmBitcodeLinker);
         tarball.is_preview(true);
 
-        tarball.add_file(llbc_linker, self_contained_bin_dir, 0o755);
+        tarball.add_file(llbc_linker.tool_path, self_contained_bin_dir, 0o755);
 
         Some(tarball.generate())
     }

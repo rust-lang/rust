@@ -263,7 +263,7 @@ impl Step for Cargotest {
 
         let _time = helpers::timeit(builder);
         let mut cmd = builder.tool_cmd(Tool::CargoTest);
-        cmd.arg(&cargo)
+        cmd.arg(&cargo.tool_path)
             .arg(&out_dir)
             .args(builder.config.test_args())
             .env("RUSTC", builder.rustc(compiler))
@@ -298,9 +298,16 @@ impl Step for Cargo {
 
     /// Runs `cargo test` for `cargo` packaged with Rust.
     fn run(self, builder: &Builder<'_>) {
+        if self.stage < 2 {
+            eprintln!("WARNING: cargo tests on stage {} may not behave well.", self.stage);
+            eprintln!("HELP: consider using stage 2");
+        }
+
         let compiler = builder.compiler(self.stage, self.host);
 
-        builder.ensure(tool::Cargo { compiler, target: self.host });
+        let cargo = builder.ensure(tool::Cargo { compiler, target: self.host });
+        let compiler = cargo.build_compiler;
+
         let cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
@@ -367,6 +374,7 @@ impl Step for RustAnalyzer {
         let stage = self.stage;
         let host = self.host;
         let compiler = builder.compiler(stage, host);
+        let compiler = tool::get_tool_rustc_compiler(builder, compiler);
 
         // We don't need to build the whole Rust Analyzer for the proc-macro-srv test suite,
         // but we do need the standard library to be present.
@@ -427,7 +435,8 @@ impl Step for Rustfmt {
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
-        builder.ensure(tool::Rustfmt { compiler, target: self.host });
+        let tool_result = builder.ensure(tool::Rustfmt { compiler, target: self.host });
+        let compiler = tool_result.build_compiler;
 
         let mut cargo = tool::prepare_tool_cargo(
             builder,
@@ -522,16 +531,11 @@ impl Step for Miri {
 
         // This compiler runs on the host, we'll just use it for the target.
         let target_compiler = builder.compiler(stage, host);
-        // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
-        // we'd have stageN/bin/rustc and stageN/bin/rustdoc be effectively different stage
-        // compilers, which isn't what we want. Rustdoc should be linked in the same way as the
-        // rustc compiler it's paired with, so it must be built with the previous stage compiler.
-        let host_compiler = builder.compiler(stage - 1, host);
 
         // Build our tools.
-        let miri = builder.ensure(tool::Miri { compiler: host_compiler, target: host });
+        let miri = builder.ensure(tool::Miri { compiler: target_compiler, target: host });
         // the ui tests also assume cargo-miri has been built
-        builder.ensure(tool::CargoMiri { compiler: host_compiler, target: host });
+        builder.ensure(tool::CargoMiri { compiler: target_compiler, target: host });
 
         // We also need sysroots, for Miri and for the host (the latter for build scripts).
         // This is for the tests so everything is done with the target compiler.
@@ -542,7 +546,8 @@ impl Step for Miri {
         // Miri has its own "target dir" for ui test dependencies. Make sure it gets cleared when
         // the sysroot gets rebuilt, to avoid "found possibly newer version of crate `std`" errors.
         if !builder.config.dry_run() {
-            let ui_test_dep_dir = builder.stage_out(host_compiler, Mode::ToolStd).join("miri_ui");
+            let ui_test_dep_dir =
+                builder.stage_out(miri.build_compiler, Mode::ToolStd).join("miri_ui");
             // The mtime of `miri_sysroot` changes when the sysroot gets rebuilt (also see
             // <https://github.com/RalfJung/rustc-build-sysroot/commit/10ebcf60b80fe2c3dc765af0ff19fdc0da4b7466>).
             // We can hence use that directly as a signal to clear the ui test dir.
@@ -553,7 +558,7 @@ impl Step for Miri {
         // This is with the Miri crate, so it uses the host compiler.
         let mut cargo = tool::prepare_tool_cargo(
             builder,
-            host_compiler,
+            miri.build_compiler,
             Mode::ToolRustc,
             host,
             Kind::Test,
@@ -571,7 +576,7 @@ impl Step for Miri {
         // miri tests need to know about the stage sysroot
         cargo.env("MIRI_SYSROOT", &miri_sysroot);
         cargo.env("MIRI_HOST_SYSROOT", &host_sysroot);
-        cargo.env("MIRI", &miri);
+        cargo.env("MIRI", &miri.tool_path);
 
         // Set the target.
         cargo.env("MIRI_TEST_TARGET", target.rustc_target_arg());
@@ -743,7 +748,13 @@ impl Step for Clippy {
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
-        builder.ensure(tool::Clippy { compiler, target: self.host });
+        if stage < 2 {
+            eprintln!("WARNING: clippy tests on stage {stage} may not behave well.");
+            eprintln!("HELP: consider using stage 2");
+        }
+
+        let tool_result = builder.ensure(tool::Clippy { compiler, target: self.host });
+        let compiler = tool_result.build_compiler;
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
@@ -1728,18 +1739,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
                 // If we're using `--stage 0`, we should provide the bootstrap cargo.
                 builder.initial_cargo.clone()
             } else {
-                // We need to properly build cargo using the suitable stage compiler.
-
-                let compiler = builder.download_rustc().then_some(compiler).unwrap_or_else(||
-                    // HACK: currently tool stages are off-by-one compared to compiler stages, i.e. if
-                    // you give `tool::Cargo` a stage 1 rustc, it will cause stage 2 rustc to be built
-                    // and produce a cargo built with stage 2 rustc. To fix this, we need to chop off
-                    // the compiler stage by 1 to align with expected `./x test run-make --stage N`
-                    // behavior, i.e. we need to pass `N - 1` compiler stage to cargo. See also Miri
-                    // which does a similar hack.
-                    builder.compiler(builder.top_stage - 1, compiler.host));
-
-                builder.ensure(tool::Cargo { compiler, target: compiler.host })
+                builder.ensure(tool::Cargo { compiler, target: compiler.host }).tool_path
             };
 
             cmd.arg("--cargo-path").arg(cargo_path);
@@ -1760,9 +1760,10 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             // Use the beta compiler for jsondocck
             let json_compiler = compiler.with_stage(0);
             cmd.arg("--jsondocck-path")
-                .arg(builder.ensure(tool::JsonDocCk { compiler: json_compiler, target }));
-            cmd.arg("--jsondoclint-path")
-                .arg(builder.ensure(tool::JsonDocLint { compiler: json_compiler, target }));
+                .arg(builder.ensure(tool::JsonDocCk { compiler: json_compiler, target }).tool_path);
+            cmd.arg("--jsondoclint-path").arg(
+                builder.ensure(tool::JsonDocLint { compiler: json_compiler, target }).tool_path,
+            );
         }
 
         if matches!(mode, "coverage-map" | "coverage-run") {
@@ -2999,12 +3000,15 @@ impl Step for RemoteCopyLibs {
 
         builder.info(&format!("REMOTE copy libs to emulator ({target})"));
 
-        let server = builder.ensure(tool::RemoteTestServer { compiler, target });
+        let remote_test_server = builder.ensure(tool::RemoteTestServer { compiler, target });
 
         // Spawn the emulator and wait for it to come online
         let tool = builder.tool_exe(Tool::RemoteTestClient);
         let mut cmd = command(&tool);
-        cmd.arg("spawn-emulator").arg(target.triple).arg(&server).arg(builder.tempdir());
+        cmd.arg("spawn-emulator")
+            .arg(target.triple)
+            .arg(&remote_test_server.tool_path)
+            .arg(builder.tempdir());
         if let Some(rootfs) = builder.qemu_rootfs(target) {
             cmd.arg(rootfs);
         }
