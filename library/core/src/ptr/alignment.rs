@@ -198,7 +198,7 @@ impl From<Alignment> for NonZero<usize> {
 
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
 impl From<Alignment> for usize {
-    /// `Alignment` is unsined so the inner value is returned
+    /// `Alignment` is unsigned so the inner value is returned
     #[inline]
     fn from(align: Alignment) -> usize {
         align.as_usize()
