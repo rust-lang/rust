@@ -86,7 +86,7 @@ pub fn f32_trunc(a: f32) -> f32 {
 #[must_use = "method returns a new number and does not mutate the original value"]
 #[unstable(feature = "wasm_numeric_instr", issue = "133908")]
 pub fn f32_nearest(a: f32) -> f32 {
-    unsafe { crate::intrinsics::rintf32(a) }
+    crate::intrinsics::round_ties_even_f32(a)
 }
 
 /// Generates the [`f32.sqrt`] instruction, returning the square root of the number `a`.
@@ -157,7 +157,7 @@ pub fn f64_trunc(a: f64) -> f64 {
 #[must_use = "method returns a new number and does not mutate the original value"]
 #[unstable(feature = "wasm_numeric_instr", issue = "133908")]
 pub fn f64_nearest(a: f64) -> f64 {
-    unsafe { crate::intrinsics::rintf64(a) }
+    crate::intrinsics::round_ties_even_f64(a)
 }
 
 /// Generates the [`f64.sqrt`] instruction, returning the square root of the number `a`.
