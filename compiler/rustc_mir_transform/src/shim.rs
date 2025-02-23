@@ -6,13 +6,14 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::{Idx, IndexVec};
+use rustc_middle::mir::visit::{MutVisitor, PlaceContext};
 use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
     self, CoroutineArgs, CoroutineArgsExt, EarlyBinder, GenericArgs, Ty, TyCtxt,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_span::source_map::Spanned;
+use rustc_span::source_map::{Spanned, dummy_spanned};
 use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument};
 
@@ -20,11 +21,48 @@ use crate::elaborate_drop::{DropElaborator, DropFlagMode, DropStyle, Unwind, ela
 use crate::patch::MirPatch;
 use crate::{
     abort_unwinding_calls, add_call_guards, add_moves_for_packed_drops, deref_separator, inline,
-    instsimplify, mentioned_items, pass_manager as pm, remove_noop_landing_pads, simplify,
+    instsimplify, mentioned_items, pass_manager as pm, remove_noop_landing_pads,
+    run_optimization_passes, simplify,
 };
+
+mod async_destructor_ctor;
 
 pub(super) fn provide(providers: &mut Providers) {
     providers.mir_shims = make_shim;
+}
+
+// Replace Pin<&mut ImplCoroutine> accesses (_1.0) into Pin<&mut ProxyCoroutine> acceses
+struct FixProxyFutureDropVisitor<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    replace_to: Local,
+}
+
+impl<'tcx> MutVisitor<'tcx> for FixProxyFutureDropVisitor<'tcx> {
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn visit_place(
+        &mut self,
+        place: &mut Place<'tcx>,
+        _context: PlaceContext,
+        _location: Location,
+    ) {
+        if place.local == Local::from_u32(1) {
+            if place.projection.len() == 1 {
+                assert!(matches!(
+                    place.projection.first(),
+                    Some(ProjectionElem::Field(FieldIdx::ZERO, _))
+                ));
+                *place = Place::from(self.replace_to);
+            } else if place.projection.len() == 2 {
+                assert!(matches!(place.projection[0], ProjectionElem::Field(FieldIdx::ZERO, _)));
+                assert!(matches!(place.projection[1], ProjectionElem::Deref));
+                *place =
+                    Place::from(self.replace_to).project_deeper(&[ProjectionElem::Deref], self.tcx);
+            }
+        }
+    }
 }
 
 fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<'tcx> {
@@ -127,14 +165,47 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceKind<'tcx>) -> Body<
         ty::InstanceKind::ThreadLocalShim(..) => build_thread_local_shim(tcx, instance),
         ty::InstanceKind::CloneShim(def_id, ty) => build_clone_shim(tcx, def_id, ty),
         ty::InstanceKind::FnPtrAddrShim(def_id, ty) => build_fn_ptr_addr_shim(tcx, def_id, ty),
-        ty::InstanceKind::FutureDropPollShim(_def_id, _proxy_ty, _impl_ty) => {
-            todo!()
+        ty::InstanceKind::FutureDropPollShim(def_id, proxy_ty, impl_ty) => {
+            let mut body =
+                async_destructor_ctor::build_future_drop_poll_shim(tcx, def_id, proxy_ty, impl_ty);
+
+            pm::run_passes(
+                tcx,
+                &mut body,
+                &[
+                    &mentioned_items::MentionedItems,
+                    &abort_unwinding_calls::AbortUnwindingCalls,
+                    &add_call_guards::CriticalCallEdges,
+                ],
+                Some(MirPhase::Runtime(RuntimePhase::Optimized)),
+                pm::Optimizations::Allowed,
+            );
+            debug!("make_shim({:?}) = {:?}", instance, body);
+            return body;
         }
-        ty::InstanceKind::AsyncDropGlue(_def_id, _ty) => {
-            todo!()
+        ty::InstanceKind::AsyncDropGlue(def_id, ty) => {
+            let mut body = async_destructor_ctor::build_async_drop_shim(tcx, def_id, ty);
+
+            pm::run_passes(
+                tcx,
+                &mut body,
+                &[
+                    &mentioned_items::MentionedItems,
+                    &simplify::SimplifyCfg::MakeShim,
+                    &crate::coroutine::StateTransform,
+                ],
+                Some(MirPhase::Runtime(RuntimePhase::PostCleanup)),
+                pm::Optimizations::Allowed,
+            );
+            run_optimization_passes(tcx, &mut body);
+            debug!("make_shim({:?}) = {:?}", instance, body);
+            return body;
         }
-        ty::InstanceKind::AsyncDropGlueCtorShim(_def_id, _ty) => {
-            bug!("AsyncDropGlueCtorShim in re-working ({:?})", instance)
+
+        ty::InstanceKind::AsyncDropGlueCtorShim(def_id, ty) => {
+            let body = async_destructor_ctor::build_async_destructor_ctor_shim(tcx, def_id, ty);
+            debug!("make_shim({:?}) = {:?}", instance, body);
+            return body;
         }
         ty::InstanceKind::Virtual(..) => {
             bug!("InstanceKind::Virtual ({:?}) is for direct calls only", instance)
