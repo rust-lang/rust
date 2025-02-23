@@ -29,7 +29,7 @@ cfg_match! {
 }
 
 #[cfg(not(bootstrap))]
-cfg_match! {
+cfg_select! {
     target_os = "linux" => {
         mod linux;
         use linux as imp;

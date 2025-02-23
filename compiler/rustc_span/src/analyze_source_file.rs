@@ -155,7 +155,7 @@ cfg_match! {
 }
 
 #[cfg(not(bootstrap))]
-cfg_match! {
+cfg_select! {
     any(target_arch = "x86", target_arch = "x86_64") => {
         fn analyze_source_file_dispatch(
             src: &str,
