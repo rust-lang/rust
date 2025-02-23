@@ -1,4 +1,4 @@
-//@ compile-flags: -Copt-level=3
+//@ compile-flags: -Copt-level=3 -Zmir-enable-passes=-InstSimplify-post-mono
 //@ min-llvm-version: 19
 
 #![crate_type = "lib"]
