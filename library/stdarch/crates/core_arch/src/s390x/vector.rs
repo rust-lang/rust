@@ -121,6 +121,9 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.s390.vscbif"] fn vscbif(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int;
     #[link_name = "llvm.s390.vscbig"] fn vscbig(a: vector_unsigned_long_long, b: vector_unsigned_long_long) -> vector_unsigned_long_long;
 
+    #[link_name = "llvm.s390.vfaeb"] fn vfaeb(a: vector_signed_char, b: vector_signed_char, c: i32) -> vector_signed_char;
+    #[link_name = "llvm.s390.vfaeh"] fn vfaeh(a: vector_signed_short, b: vector_signed_short, c: i32) -> vector_signed_short;
+    #[link_name = "llvm.s390.vfaef"] fn vfaef(a: vector_signed_int, b: vector_signed_int, c: i32) -> vector_signed_int;
 }
 
 impl_from! { i8x16, u8x16,  i16x8, u16x8, i32x4, u32x4, i64x2, u64x2, f32x4, f64x2 }
@@ -1521,6 +1524,90 @@ mod sealed {
 
     impl_vec_trait! { [VectorSqrt vec_sqrt] vec_sqrt_f32 (vector_float) }
     impl_vec_trait! { [VectorSqrt vec_sqrt] vec_sqrt_f64 (vector_double) }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(test, assert_instr(vfaeb, IMM = 0))]
+    unsafe fn vfaeb<const IMM: i32>(
+        a: vector_signed_char,
+        b: vector_signed_char,
+    ) -> vector_signed_char {
+        super::vfaeb(a, b, IMM)
+    }
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(test, assert_instr(vfaeh, IMM = 0))]
+    unsafe fn vfaeh<const IMM: i32>(
+        a: vector_signed_short,
+        b: vector_signed_short,
+    ) -> vector_signed_short {
+        super::vfaeh(a, b, IMM)
+    }
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(test, assert_instr(vfaef, IMM = 0))]
+    unsafe fn vfaef<const IMM: i32>(
+        a: vector_signed_int,
+        b: vector_signed_int,
+    ) -> vector_signed_int {
+        super::vfaef(a, b, IMM)
+    }
+
+    macro_rules! impl_vfae {
+        ([$Trait:ident $m:ident] $imm:literal $($fun:ident $ty:ident)*) => {
+            $(
+                #[unstable(feature = "stdarch_s390x", issue = "135681")]
+                impl $Trait<Self> for $ty {
+                    type Result = t_b!($ty);
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn $m(self, b: Self) -> Self::Result {
+                        transmute($fun::<$imm>(transmute(self), transmute(b)))
+                    }
+                }
+            )*
+        };
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorFindAnyEq<Other> {
+        type Result;
+        unsafe fn vec_find_any_eq(self, other: Other) -> Self::Result;
+    }
+
+    impl_vfae! { [VectorFindAnyEq vec_find_any_eq] 4
+        vfaeb vector_signed_char
+        vfaeb vector_unsigned_char
+        vfaeb vector_bool_char
+
+        vfaeh vector_signed_short
+        vfaeh vector_unsigned_short
+        vfaeh vector_bool_short
+
+        vfaef vector_signed_int
+        vfaef vector_unsigned_int
+        vfaef vector_bool_int
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorFindAnyNe<Other> {
+        type Result;
+        unsafe fn vec_find_any_ne(self, other: Other) -> Self::Result;
+    }
+
+    impl_vfae! { [VectorFindAnyNe vec_find_any_ne] 12
+        vfaeb vector_signed_char
+        vfaeb vector_unsigned_char
+        vfaeb vector_bool_char
+
+        vfaeh vector_signed_short
+        vfaeh vector_unsigned_short
+        vfaeh vector_bool_short
+
+        vfaef vector_signed_int
+        vfaef vector_unsigned_int
+        vfaef vector_bool_int
+    }
 }
 
 /// Vector element-wise addition.
@@ -2306,6 +2393,26 @@ pub unsafe fn vec_splat_u64<const IMM: i16>() -> vector_unsigned_long_long {
     vector_unsigned_long_long([IMM as u64; 2])
 }
 
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_find_any_eq<T, U>(a: T, b: U) -> <T as sealed::VectorFindAnyEq<U>>::Result
+where
+    T: sealed::VectorFindAnyEq<U>,
+{
+    a.vec_find_any_eq(b)
+}
+
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_find_any_ne<T, U>(a: T, b: U) -> <T as sealed::VectorFindAnyNe<U>>::Result
+where
+    T: sealed::VectorFindAnyNe<U>,
+{
+    a.vec_find_any_ne(b)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2826,4 +2933,16 @@ mod tests {
     test_vec_1! { test_vec_sqrt, vec_sqrt, f32x4,
     [core::f32::consts::PI, 1.0, 25.0, 2.0],
     [core::f32::consts::PI.sqrt(), 1.0, 5.0, core::f32::consts::SQRT_2] }
+
+    test_vec_2! { test_vec_find_any_eq, vec_find_any_eq, i32x4, i32x4 -> u32x4,
+        [1, -2, 3, -4],
+        [-5, 3, -7, 8],
+        [0, 0, 0xFFFFFFFF, 0]
+    }
+
+    test_vec_2! { test_vec_find_any_ne, vec_find_any_ne, i32x4, i32x4 -> u32x4,
+        [1, -2, 3, -4],
+        [-5, 3, -7, 8],
+        [0xFFFFFFFF, 0xFFFFFFFF, 0, 0xFFFFFFFF]
+    }
 }
