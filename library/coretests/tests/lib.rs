@@ -153,10 +153,7 @@ mod intrinsics;
 mod io;
 mod iter;
 mod lazy;
-#[cfg(not(bootstrap))]
 mod macros;
-#[cfg(bootstrap)]
-mod macros_bootstrap;
 mod manually_drop;
 mod mem;
 mod net;

@@ -895,8 +895,6 @@ fn test_needs_target_has_atomic() {
 }
 
 #[test]
-// FIXME: this test will fail against stage 0 until #137037 changes reach beta.
-#[cfg_attr(bootstrap, ignore)]
 fn test_rustc_abi() {
     let config = cfg().target("i686-unknown-linux-gnu").build();
     assert_eq!(config.target_cfg().rustc_abi, Some("x86-sse2".to_string()));

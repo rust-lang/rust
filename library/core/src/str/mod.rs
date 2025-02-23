@@ -354,7 +354,7 @@ impl str {
     /// ```
     #[must_use]
     #[stable(feature = "is_char_boundary", since = "1.9.0")]
-    #[rustc_const_stable(feature = "const_is_char_boundary", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_is_char_boundary", since = "1.86.0")]
     #[inline]
     pub const fn is_char_boundary(&self, index: usize) -> bool {
         // 0 is always ok.
@@ -811,7 +811,7 @@ impl str {
     #[inline]
     #[must_use]
     #[stable(feature = "str_split_at", since = "1.4.0")]
-    #[rustc_const_stable(feature = "const_str_split_at", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_str_split_at", since = "1.86.0")]
     pub const fn split_at(&self, mid: usize) -> (&str, &str) {
         match self.split_at_checked(mid) {
             None => slice_error_fail(self, 0, mid),
@@ -852,7 +852,7 @@ impl str {
     #[inline]
     #[must_use]
     #[stable(feature = "str_split_at", since = "1.4.0")]
-    #[rustc_const_stable(feature = "const_str_split_at", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_str_split_at", since = "1.86.0")]
     pub const fn split_at_mut(&mut self, mid: usize) -> (&mut str, &mut str) {
         // is_char_boundary checks that the index is in [0, .len()]
         if self.is_char_boundary(mid) {
@@ -892,7 +892,7 @@ impl str {
     #[inline]
     #[must_use]
     #[stable(feature = "split_at_checked", since = "1.80.0")]
-    #[rustc_const_stable(feature = "const_str_split_at", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_str_split_at", since = "1.86.0")]
     pub const fn split_at_checked(&self, mid: usize) -> Option<(&str, &str)> {
         // is_char_boundary checks that the index is in [0, .len()]
         if self.is_char_boundary(mid) {
@@ -933,7 +933,7 @@ impl str {
     #[inline]
     #[must_use]
     #[stable(feature = "split_at_checked", since = "1.80.0")]
-    #[rustc_const_stable(feature = "const_str_split_at", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_str_split_at", since = "1.86.0")]
     pub const fn split_at_mut_checked(&mut self, mid: usize) -> Option<(&mut str, &mut str)> {
         // is_char_boundary checks that the index is in [0, .len()]
         if self.is_char_boundary(mid) {

@@ -2330,21 +2330,21 @@ impl Config {
             Subcommand::Doc { .. } => {
                 flags.stage.or(doc_stage).unwrap_or(if download_rustc { 2 } else { 0 })
             }
-            Subcommand::Build { .. } => {
+            Subcommand::Build => {
                 flags.stage.or(build_stage).unwrap_or(if download_rustc { 2 } else { 1 })
             }
             Subcommand::Test { .. } | Subcommand::Miri { .. } => {
                 flags.stage.or(test_stage).unwrap_or(if download_rustc { 2 } else { 1 })
             }
             Subcommand::Bench { .. } => flags.stage.or(bench_stage).unwrap_or(2),
-            Subcommand::Dist { .. } => flags.stage.or(dist_stage).unwrap_or(2),
-            Subcommand::Install { .. } => flags.stage.or(install_stage).unwrap_or(2),
+            Subcommand::Dist => flags.stage.or(dist_stage).unwrap_or(2),
+            Subcommand::Install => flags.stage.or(install_stage).unwrap_or(2),
             Subcommand::Perf { .. } => flags.stage.unwrap_or(1),
             // These are all bootstrap tools, which don't depend on the compiler.
             // The stage we pass shouldn't matter, but use 0 just in case.
             Subcommand::Clean { .. }
             | Subcommand::Clippy { .. }
-            | Subcommand::Fix { .. }
+            | Subcommand::Fix
             | Subcommand::Run { .. }
             | Subcommand::Setup { .. }
             | Subcommand::Format { .. }
@@ -2359,10 +2359,10 @@ impl Config {
                 Subcommand::Test { .. }
                 | Subcommand::Miri { .. }
                 | Subcommand::Doc { .. }
-                | Subcommand::Build { .. }
+                | Subcommand::Build
                 | Subcommand::Bench { .. }
-                | Subcommand::Dist { .. }
-                | Subcommand::Install { .. } => {
+                | Subcommand::Dist
+                | Subcommand::Install => {
                     assert_eq!(
                         config.stage, 2,
                         "x.py should be run with `--stage 2` on CI, but was run with `--stage {}`",
@@ -2372,7 +2372,7 @@ impl Config {
                 Subcommand::Clean { .. }
                 | Subcommand::Check { .. }
                 | Subcommand::Clippy { .. }
-                | Subcommand::Fix { .. }
+                | Subcommand::Fix
                 | Subcommand::Run { .. }
                 | Subcommand::Setup { .. }
                 | Subcommand::Format { .. }

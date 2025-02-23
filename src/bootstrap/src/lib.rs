@@ -637,7 +637,7 @@ impl Build {
 
         // Check for postponed failures from `test --no-fail-fast`.
         let failures = self.delayed_failures.borrow();
-        if failures.len() > 0 {
+        if !failures.is_empty() {
             eprintln!("\n{} command(s) did not execute successfully:\n", failures.len());
             for failure in failures.iter() {
                 eprintln!("  - {failure}\n");

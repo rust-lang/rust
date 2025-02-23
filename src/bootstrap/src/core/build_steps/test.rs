@@ -1858,10 +1858,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         }
 
         // FIXME(136096): on macOS, we get linker warnings about duplicate `-lm` flags.
-        // NOTE: `stage > 1` here because `test --stage 1 ui-fulldeps` is a hack that compiles
-        // with stage 0, but links the tests against stage 1.
-        // cfg(bootstrap) - remove only the `stage > 1` check, leave everything else.
-        if suite == "ui-fulldeps" && compiler.stage > 1 && target.ends_with("darwin") {
+        if suite == "ui-fulldeps" && target.ends_with("darwin") {
             flags.push("-Alinker_messages".into());
         }
 
@@ -3636,7 +3633,7 @@ impl Step for TestFloatParse {
         let bootstrap_host = builder.config.build;
         let compiler = builder.compiler(builder.top_stage, bootstrap_host);
         let path = self.path.to_str().unwrap();
-        let crate_name = self.path.components().last().unwrap().as_os_str().to_str().unwrap();
+        let crate_name = self.path.iter().next_back().unwrap().to_str().unwrap();
 
         builder.ensure(tool::TestFloatParse { host: self.host });
 

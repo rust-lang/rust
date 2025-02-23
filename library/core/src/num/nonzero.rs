@@ -689,8 +689,8 @@ macro_rules! nonzero_integer {
             /// # }
             /// ```
             ///
-            #[stable(feature = "non_zero_count_ones", since = "CURRENT_RUSTC_VERSION")]
-            #[rustc_const_stable(feature = "non_zero_count_ones", since = "CURRENT_RUSTC_VERSION")]
+            #[stable(feature = "non_zero_count_ones", since = "1.86.0")]
+            #[rustc_const_stable(feature = "non_zero_count_ones", since = "1.86.0")]
             #[doc(alias = "popcount")]
             #[doc(alias = "popcnt")]
             #[must_use = "this returns the result of the operation, \
