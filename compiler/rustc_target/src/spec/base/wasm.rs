@@ -1,6 +1,6 @@
 use crate::spec::{
-    Cc, LinkSelfContainedDefault, LinkerFlavor, PanicStrategy, RelocModel, TargetOptions, TlsModel,
-    add_link_args, cvs,
+    BinaryFormat, Cc, LinkSelfContainedDefault, LinkerFlavor, PanicStrategy, RelocModel,
+    TargetOptions, TlsModel, add_link_args, cvs,
 };
 
 pub(crate) fn options() -> TargetOptions {
@@ -53,6 +53,7 @@ pub(crate) fn options() -> TargetOptions {
 
     TargetOptions {
         is_like_wasm: true,
+        binary_format: BinaryFormat::Wasm,
         families: cvs!["wasm"],
 
         // we allow dynamic linking, but only cdylibs. Basically we allow a

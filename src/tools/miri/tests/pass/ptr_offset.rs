@@ -21,7 +21,7 @@ fn smoke() {
     let _val = ptr.wrapping_sub(0);
     let _val = unsafe { ptr.sub(0) };
     let _val = unsafe { ptr.offset_from(ptr) };
-    let _val = unsafe { ptr.sub_ptr(ptr) };
+    let _val = unsafe { ptr.offset_from_unsigned(ptr) };
 }
 
 fn test_offset_from() {
@@ -32,14 +32,14 @@ fn test_offset_from() {
         let y = x.offset(12);
 
         assert_eq!(y.offset_from(x), 12);
-        assert_eq!(y.sub_ptr(x), 12);
+        assert_eq!(y.offset_from_unsigned(x), 12);
         assert_eq!(x.offset_from(y), -12);
         assert_eq!((y as *const u32).offset_from(x as *const u32), 12 / 4);
         assert_eq!((x as *const u32).offset_from(y as *const u32), -12 / 4);
 
         let x = (((x as usize) * 2) / 2) as *const u8;
         assert_eq!(y.offset_from(x), 12);
-        assert_eq!(y.sub_ptr(x), 12);
+        assert_eq!(y.offset_from_unsigned(x), 12);
         assert_eq!(x.offset_from(y), -12);
     }
 }

@@ -1644,6 +1644,55 @@ impl fmt::Display for StackProtector {
     }
 }
 
+#[derive(PartialEq, Clone, Debug)]
+pub enum BinaryFormat {
+    Coff,
+    Elf,
+    MachO,
+    Wasm,
+    Xcoff,
+}
+
+impl BinaryFormat {
+    /// Returns [`object::BinaryFormat`] for given `BinaryFormat`
+    pub fn to_object(&self) -> object::BinaryFormat {
+        match self {
+            Self::Coff => object::BinaryFormat::Coff,
+            Self::Elf => object::BinaryFormat::Elf,
+            Self::MachO => object::BinaryFormat::MachO,
+            Self::Wasm => object::BinaryFormat::Wasm,
+            Self::Xcoff => object::BinaryFormat::Xcoff,
+        }
+    }
+}
+
+impl FromStr for BinaryFormat {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "coff" => Ok(Self::Coff),
+            "elf" => Ok(Self::Elf),
+            "mach-o" => Ok(Self::MachO),
+            "wasm" => Ok(Self::Wasm),
+            "xcoff" => Ok(Self::Xcoff),
+            _ => Err(()),
+        }
+    }
+}
+
+impl ToJson for BinaryFormat {
+    fn to_json(&self) -> Json {
+        match self {
+            Self::Coff => "coff",
+            Self::Elf => "elf",
+            Self::MachO => "mach-o",
+            Self::Wasm => "wasm",
+            Self::Xcoff => "xcoff",
+        }
+        .to_json()
+    }
+}
+
 macro_rules! supported_targets {
     ( $(($tuple:literal, $module:ident),)+ ) => {
         mod targets {
@@ -2381,6 +2430,8 @@ pub struct TargetOptions {
     pub is_like_wasm: bool,
     /// Whether a target toolchain is like Android, implying a Linux kernel and a Bionic libc
     pub is_like_android: bool,
+    /// Target's binary file format. Defaults to BinaryFormat::Elf
+    pub binary_format: BinaryFormat,
     /// Default supported version of DWARF on this platform.
     /// Useful because some platforms (osx, bsd) only want up to DWARF2.
     pub default_dwarf_version: u32,
@@ -2756,6 +2807,7 @@ impl Default for TargetOptions {
             is_like_msvc: false,
             is_like_wasm: false,
             is_like_android: false,
+            binary_format: BinaryFormat::Elf,
             default_dwarf_version: 4,
             allows_weak_linkage: true,
             has_rpath: false,
