@@ -51,6 +51,12 @@ types! {
     pub struct vector_double(2 x f64);
 }
 
+#[repr(packed)]
+struct PackedTuple<T, U> {
+    x: T,
+    y: U,
+}
+
 #[allow(improper_ctypes)]
 #[rustfmt::skip]
 unsafe extern "unadjusted" {
@@ -124,6 +130,10 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.s390.vfaeb"] fn vfaeb(a: vector_signed_char, b: vector_signed_char, c: i32) -> vector_signed_char;
     #[link_name = "llvm.s390.vfaeh"] fn vfaeh(a: vector_signed_short, b: vector_signed_short, c: i32) -> vector_signed_short;
     #[link_name = "llvm.s390.vfaef"] fn vfaef(a: vector_signed_int, b: vector_signed_int, c: i32) -> vector_signed_int;
+
+    #[link_name = "llvm.s390.vfaebs"] fn vfaebs(a: vector_signed_char, b: vector_signed_char, c: i32) -> PackedTuple<vector_signed_char, i32>;
+    #[link_name = "llvm.s390.vfaehs"] fn vfaehs(a: vector_signed_short, b: vector_signed_short, c: i32) -> PackedTuple<vector_signed_short, i32>;
+    #[link_name = "llvm.s390.vfaefs"] fn vfaefs(a: vector_signed_int, b: vector_signed_int, c: i32) -> PackedTuple<vector_signed_int, i32>;
 }
 
 impl_from! { i8x16, u8x16,  i16x8, u16x8, i32x4, u32x4, i64x2, u64x2, f32x4, f64x2 }
@@ -1554,6 +1564,21 @@ mod sealed {
     }
 
     macro_rules! impl_vfae {
+        ([cc $Trait:ident $m:ident] $imm:literal $($fun:ident $ty:ident)*) => {
+            $(
+                #[unstable(feature = "stdarch_s390x", issue = "135681")]
+                impl $Trait<Self> for $ty {
+                    type Result = t_b!($ty);
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn $m(self, b: Self, c: *mut i32) -> Self::Result {
+                        let PackedTuple { x, y } = $fun::<$imm>(transmute(self), transmute(b));
+                        c.write(y);
+                        transmute(x)
+                    }
+                }
+            )*
+        };
         ([idx $Trait:ident $m:ident] $imm:literal $($fun:ident $ty:ident $r:ident)*) => {
             $(
                 #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -1660,6 +1685,74 @@ mod sealed {
         vfaef vector_signed_int vector_signed_int
         vfaef vector_unsigned_int vector_unsigned_int
         vfaef vector_bool_int vector_unsigned_int
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(test, assert_instr(vfaebs, IMM = 0))]
+    unsafe fn vfaebs<const IMM: i32>(
+        a: vector_signed_char,
+        b: vector_signed_char,
+    ) -> PackedTuple<vector_signed_char, i32> {
+        super::vfaebs(a, b, IMM)
+    }
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(test, assert_instr(vfaehs, IMM = 0))]
+    unsafe fn vfaehs<const IMM: i32>(
+        a: vector_signed_short,
+        b: vector_signed_short,
+    ) -> PackedTuple<vector_signed_short, i32> {
+        super::vfaehs(a, b, IMM)
+    }
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(test, assert_instr(vfaefs, IMM = 0))]
+    unsafe fn vfaefs<const IMM: i32>(
+        a: vector_signed_int,
+        b: vector_signed_int,
+    ) -> PackedTuple<vector_signed_int, i32> {
+        super::vfaefs(a, b, IMM)
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorFindAnyEqCC<Other> {
+        type Result;
+        unsafe fn vec_find_any_eq_cc(self, other: Other, c: *mut i32) -> Self::Result;
+    }
+
+    impl_vfae! { [cc VectorFindAnyEqCC vec_find_any_eq_cc] 4
+        vfaebs vector_signed_char
+        vfaebs vector_unsigned_char
+        vfaebs vector_bool_char
+
+        vfaehs vector_signed_short
+        vfaehs vector_unsigned_short
+        vfaehs vector_bool_short
+
+        vfaefs vector_signed_int
+        vfaefs vector_unsigned_int
+        vfaefs vector_bool_int
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorFindAnyNeCC<Other> {
+        type Result;
+        unsafe fn vec_find_any_ne_cc(self, other: Other, c: *mut i32) -> Self::Result;
+    }
+
+    impl_vfae! { [cc VectorFindAnyNeCC vec_find_any_ne_cc] 12
+        vfaebs vector_signed_char
+        vfaebs vector_unsigned_char
+        vfaebs vector_bool_char
+
+        vfaehs vector_signed_short
+        vfaehs vector_unsigned_short
+        vfaehs vector_bool_short
+
+        vfaefs vector_signed_int
+        vfaefs vector_unsigned_int
+        vfaefs vector_bool_int
     }
 }
 
@@ -2486,6 +2579,34 @@ where
     a.vec_find_any_ne_idx(b)
 }
 
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_find_any_eq_cc<T, U>(
+    a: T,
+    b: U,
+    c: *mut i32,
+) -> <T as sealed::VectorFindAnyEqCC<U>>::Result
+where
+    T: sealed::VectorFindAnyEqCC<U>,
+{
+    a.vec_find_any_eq_cc(b, c)
+}
+
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_find_any_ne_cc<T, U>(
+    a: T,
+    b: U,
+    c: *mut i32,
+) -> <T as sealed::VectorFindAnyNeCC<U>>::Result
+where
+    T: sealed::VectorFindAnyNeCC<U>,
+{
+    a.vec_find_any_ne_cc(b, c)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -3039,5 +3160,41 @@ mod tests {
         [1, 2, 3, 4],
         [1, 2, 3, 4],
         [0, 16, 0, 0]
+    }
+
+    #[simd_test(enable = "vector")]
+    fn test_vec_find_any_eq_cc() {
+        let mut c = 0i32;
+
+        let a = vector_unsigned_int([1, 2, 3, 4]);
+        let b = vector_unsigned_int([5, 3, 7, 8]);
+
+        let d = unsafe { vec_find_any_eq_cc(a, b, &mut c) };
+        assert_eq!(c, 1);
+        assert_eq!(d.as_array(), &[0, 0, -1, 0]);
+
+        let a = vector_unsigned_int([1, 2, 3, 4]);
+        let b = vector_unsigned_int([5, 6, 7, 8]);
+        let d = unsafe { vec_find_any_eq_cc(a, b, &mut c) };
+        assert_eq!(c, 3);
+        assert_eq!(d.as_array(), &[0, 0, 0, 0]);
+    }
+
+    #[simd_test(enable = "vector")]
+    fn test_vec_find_any_ne_cc() {
+        let mut c = 0i32;
+
+        let a = vector_unsigned_int([1, 2, 3, 4]);
+        let b = vector_unsigned_int([5, 3, 7, 8]);
+
+        let d = unsafe { vec_find_any_ne_cc(a, b, &mut c) };
+        assert_eq!(c, 1);
+        assert_eq!(d.as_array(), &[-1, -1, 0, -1]);
+
+        let a = vector_unsigned_int([1, 2, 3, 4]);
+        let b = vector_unsigned_int([1, 2, 3, 4]);
+        let d = unsafe { vec_find_any_ne_cc(a, b, &mut c) };
+        assert_eq!(c, 3);
+        assert_eq!(d.as_array(), &[0, 0, 0, 0]);
     }
 }
