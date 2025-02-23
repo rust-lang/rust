@@ -3125,10 +3125,11 @@ impl<'a> Parser<'a> {
             let mut result = if armless {
                 // A pattern without a body, allowed for never patterns.
                 arm_body = None;
+                let span = lo.to(this.prev_token.span);
                 this.expect_one_of(&[exp!(Comma)], &[exp!(CloseBrace)]).map(|x| {
                     // Don't gate twice
                     if !pat.contains_never_pattern() {
-                        this.psess.gated_spans.gate(sym::never_patterns, pat.span);
+                        this.psess.gated_spans.gate(sym::never_patterns, span);
                     }
                     x
                 })
