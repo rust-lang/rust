@@ -2793,6 +2793,12 @@ pub fn round_ties_even_f32(x: f32) -> f32 {
     unsafe { rintf32(x) }
 }
 
+/// Provided for compatibility with stdarch. DO NOT USE.
+#[inline(always)]
+pub unsafe fn rintf32(x: f32) -> f32 {
+    round_ties_even_f32(x)
+}
+
 /// Returns the nearest integer to an `f64`. Rounds half-way cases to the number with an even
 /// least significant digit.
 ///
@@ -2818,6 +2824,12 @@ pub fn round_ties_even_f64(x: f64) -> f64 {
 
     // SAFETY: this intrinsic isn't actually unsafe
     unsafe { rintf64(x) }
+}
+
+/// Provided for compatibility with stdarch. DO NOT USE.
+#[inline(always)]
+pub unsafe fn rintf64(x: f64) -> f64 {
+    round_ties_even_f64(x)
 }
 
 /// Returns the nearest integer to an `f128`. Rounds half-way cases to the number with an even
