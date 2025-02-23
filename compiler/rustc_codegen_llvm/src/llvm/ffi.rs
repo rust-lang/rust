@@ -1774,7 +1774,6 @@ unsafe extern "C" {
     ) -> &'ll Metadata;
 }
 
-#[link(name = "llvm-wrapper", kind = "static")]
 unsafe extern "C" {
     pub(crate) fn LLVMRustInstallErrorHandlers();
     pub(crate) fn LLVMRustDisableSystemDialogsOnCrash();
