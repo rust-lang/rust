@@ -9,7 +9,6 @@ use std::ops::{ControlFlow, Range};
 
 use hir::def::{CtorKind, DefKind};
 use rustc_abi::{ExternAbi, FIRST_VARIANT, FieldIdx, VariantIdx};
-use rustc_data_structures::captures::Captures;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::LangItem;
@@ -105,7 +104,7 @@ impl<'tcx> ty::CoroutineArgs<TyCtxt<'tcx>> {
         self,
         def_id: DefId,
         tcx: TyCtxt<'tcx>,
-    ) -> impl Iterator<Item = (VariantIdx, Discr<'tcx>)> + Captures<'tcx> {
+    ) -> impl Iterator<Item = (VariantIdx, Discr<'tcx>)> {
         self.variant_range(def_id, tcx).map(move |index| {
             (index, Discr { val: index.as_usize() as u128, ty: self.discr_ty(tcx) })
         })
@@ -139,7 +138,7 @@ impl<'tcx> ty::CoroutineArgs<TyCtxt<'tcx>> {
         self,
         def_id: DefId,
         tcx: TyCtxt<'tcx>,
-    ) -> impl Iterator<Item: Iterator<Item = Ty<'tcx>> + Captures<'tcx>> {
+    ) -> impl Iterator<Item: Iterator<Item = Ty<'tcx>>> {
         let layout = tcx.coroutine_layout(def_id, self.kind_ty()).unwrap();
         layout.variant_fields.iter().map(move |variant| {
             variant.iter().map(move |field| {

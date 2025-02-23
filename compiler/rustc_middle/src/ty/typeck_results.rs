@@ -575,7 +575,7 @@ impl<'a, V> LocalTableInContext<'a, V> {
     }
 
     pub fn items(
-        &'a self,
+        &self,
     ) -> UnordItems<(hir::ItemLocalId, &'a V), impl Iterator<Item = (hir::ItemLocalId, &'a V)>>
     {
         self.data.items().map(|(id, value)| (*id, value))

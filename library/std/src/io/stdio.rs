@@ -20,7 +20,7 @@ type LocalStream = Arc<Mutex<Vec<u8>>>;
 
 thread_local! {
     /// Used by the test crate to capture the output of the print macros and panics.
-    static OUTPUT_CAPTURE: Cell<Option<LocalStream>> = {
+    static OUTPUT_CAPTURE: Cell<Option<LocalStream>> = const {
         Cell::new(None)
     }
 }

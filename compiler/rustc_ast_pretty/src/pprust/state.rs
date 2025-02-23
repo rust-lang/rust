@@ -424,20 +424,23 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         self.ann_post(ident)
     }
 
-    fn strsep<T, F>(
+    fn strsep<'x, T: 'x, F, I>(
         &mut self,
         sep: &'static str,
         space_before: bool,
         b: Breaks,
-        elts: &[T],
+        elts: I,
         mut op: F,
     ) where
         F: FnMut(&mut Self, &T),
+        I: IntoIterator<Item = &'x T>,
     {
+        let mut it = elts.into_iter();
+
         self.rbox(0, b);
-        if let Some((first, rest)) = elts.split_first() {
+        if let Some(first) = it.next() {
             op(self, first);
-            for elt in rest {
+            for elt in it {
                 if space_before {
                     self.space();
                 }
@@ -448,9 +451,10 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         self.end();
     }
 
-    fn commasep<T, F>(&mut self, b: Breaks, elts: &[T], op: F)
+    fn commasep<'x, T: 'x, F, I>(&mut self, b: Breaks, elts: I, op: F)
     where
         F: FnMut(&mut Self, &T),
+        I: IntoIterator<Item = &'x T>,
     {
         self.strsep(",", false, b, elts, op)
     }

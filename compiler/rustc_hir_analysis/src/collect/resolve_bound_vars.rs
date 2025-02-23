@@ -160,7 +160,7 @@ enum Scope<'a> {
 
 impl<'a> Scope<'a> {
     // A helper for debugging scopes without printing parent scopes
-    fn debug_truncated(&'a self) -> impl fmt::Debug + 'a {
+    fn debug_truncated(&self) -> impl fmt::Debug {
         fmt::from_fn(move |f| match self {
             Self::Binder { bound_vars, scope_type, hir_id, where_bound_origin, s: _ } => f
                 .debug_struct("Binder")
@@ -2159,10 +2159,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
 
     /// Walk the generics of the item for a trait bound whose self type
     /// corresponds to the expected res, and return the trait def id.
-    fn for_each_trait_bound_on_res(
-        &self,
-        expected_res: Res,
-    ) -> impl Iterator<Item = DefId> + use<'tcx, '_> {
+    fn for_each_trait_bound_on_res(&self, expected_res: Res) -> impl Iterator<Item = DefId> {
         std::iter::from_coroutine(
             #[coroutine]
             move || {
