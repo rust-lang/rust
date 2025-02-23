@@ -1,6 +1,8 @@
 use rustc_abi::Endian;
 
-use crate::spec::{Cc, CodeModel, LinkOutputKind, LinkerFlavor, TargetOptions, crt_objects, cvs};
+use crate::spec::{
+    BinaryFormat, Cc, CodeModel, LinkOutputKind, LinkerFlavor, TargetOptions, crt_objects, cvs,
+};
 
 pub(crate) fn opts() -> TargetOptions {
     TargetOptions {
@@ -21,6 +23,7 @@ pub(crate) fn opts() -> TargetOptions {
         linker: Some("ld".into()),
         eh_frame_header: false,
         is_like_aix: true,
+        binary_format: BinaryFormat::Xcoff,
         default_dwarf_version: 3,
         function_sections: true,
         pre_link_objects: crt_objects::new(&[
