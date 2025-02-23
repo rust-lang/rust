@@ -6,6 +6,17 @@ pub fn main() {
     let _ = || (0 == 0); //~ ERROR unnecessary parentheses around closure body
     let _ = (0..).find(|n| (n % 2 == 0)); //~ ERROR unnecessary parentheses around closure body
     let _ = (0..).find(|n| {n % 2 == 0}); //~ ERROR unnecessary braces around closure body
+
+    // multiple lines of code will not lint with braces
+    let _ = (0..).find(|n| {
+        n % 2 == 0
+    });
+
+    // multiple lines of code will lint with parentheses
+    let _ = (0..).find(|n| ( //~ ERROR unnecessary parentheses around closure body
+        n % 2 == 0
+    ));
+
     let _ = || {
         _ = 0;
         (0 == 0) //~ ERROR unnecessary parentheses around block return value

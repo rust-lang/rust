@@ -56,8 +56,27 @@ LL -     let _ = (0..).find(|n| {n % 2 == 0});
 LL +     let _ = (0..).find(|n| n % 2 == 0);
    |
 
+error: unnecessary parentheses around closure body
+  --> $DIR/closure-body-issue-136741.rs:16:28
+   |
+LL |        let _ = (0..).find(|n| (
+   |  _____________________________^
+LL | |          n % 2 == 0
+   | | ________^__________^
+   | ||________|
+   |  |
+LL |  |     ));
+   |  |_____^
+   |
+help: remove these parentheses
+   |
+LL -     let _ = (0..).find(|n| (
+LL -         n % 2 == 0
+LL +     let _ = (0..).find(|n| n % 2 == 0);
+   |
+
 error: unnecessary parentheses around block return value
-  --> $DIR/closure-body-issue-136741.rs:11:9
+  --> $DIR/closure-body-issue-136741.rs:22:9
    |
 LL |         (0 == 0)
    |         ^      ^
@@ -68,5 +87,5 @@ LL -         (0 == 0)
 LL +         0 == 0
    |
 
-error: aborting due to 5 previous errors
+error: aborting due to 6 previous errors
 
