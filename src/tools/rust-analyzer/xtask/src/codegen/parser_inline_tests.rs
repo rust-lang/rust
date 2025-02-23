@@ -35,69 +35,67 @@ pub(crate) fn generate(check: bool) {
         let _ = fs::File::open(parser_crate_root.join("src/tests.rs"))
             .unwrap()
             .set_modified(SystemTime::now());
-
-        let ok_tests = tests.ok.values().sorted_by(|a, b| a.name.cmp(&b.name)).map(|test| {
-            let test_name = quote::format_ident!("{}", test.name);
-            let test_file = format!("test_data/parser/inline/ok/{test_name}.rs");
-            let (test_func, args) = match &test.edition {
-                Some(edition) => {
-                    let edition = quote::format_ident!("Edition{edition}");
-                    (
-                        quote::format_ident!("run_and_expect_no_errors_with_edition"),
-                        quote::quote! {#test_file, crate::Edition::#edition},
-                    )
-                }
-                None => {
-                    (quote::format_ident!("run_and_expect_no_errors"), quote::quote! {#test_file})
-                }
-            };
-            quote::quote! {
-                #[test]
-                fn #test_name() {
-                    #test_func(#args);
-                }
-            }
-        });
-        let err_tests = tests.err.values().sorted_by(|a, b| a.name.cmp(&b.name)).map(|test| {
-            let test_name = quote::format_ident!("{}", test.name);
-            let test_file = format!("test_data/parser/inline/err/{test_name}.rs");
-            let (test_func, args) = match &test.edition {
-                Some(edition) => {
-                    let edition = quote::format_ident!("Edition{edition}");
-                    (
-                        quote::format_ident!("run_and_expect_errors_with_edition"),
-                        quote::quote! {#test_file, crate::Edition::#edition},
-                    )
-                }
-                None => (quote::format_ident!("run_and_expect_errors"), quote::quote! {#test_file}),
-            };
-            quote::quote! {
-                #[test]
-                fn #test_name() {
-                    #test_func(#args);
-                }
-            }
-        });
-
-        let output = quote::quote! {
-            mod ok {
-                use crate::tests::*;
-                #(#ok_tests)*
-            }
-            mod err {
-                use crate::tests::*;
-                #(#err_tests)*
-            }
-        };
-
-        let pretty = reformat(output.to_string());
-        ensure_file_contents(
-            crate::flags::CodegenType::ParserTests,
-            parser_test_data.join("generated/runner.rs").as_ref(),
-            &pretty,
-            check,
-        );
     }
+
+    let ok_tests = tests.ok.values().sorted_by(|a, b| a.name.cmp(&b.name)).map(|test| {
+        let test_name = quote::format_ident!("{}", test.name);
+        let test_file = format!("test_data/parser/inline/ok/{test_name}.rs");
+        let (test_func, args) = match &test.edition {
+            Some(edition) => {
+                let edition = quote::format_ident!("Edition{edition}");
+                (
+                    quote::format_ident!("run_and_expect_no_errors_with_edition"),
+                    quote::quote! {#test_file, crate::Edition::#edition},
+                )
+            }
+            None => (quote::format_ident!("run_and_expect_no_errors"), quote::quote! {#test_file}),
+        };
+        quote::quote! {
+            #[test]
+            fn #test_name() {
+                #test_func(#args);
+            }
+        }
+    });
+    let err_tests = tests.err.values().sorted_by(|a, b| a.name.cmp(&b.name)).map(|test| {
+        let test_name = quote::format_ident!("{}", test.name);
+        let test_file = format!("test_data/parser/inline/err/{test_name}.rs");
+        let (test_func, args) = match &test.edition {
+            Some(edition) => {
+                let edition = quote::format_ident!("Edition{edition}");
+                (
+                    quote::format_ident!("run_and_expect_errors_with_edition"),
+                    quote::quote! {#test_file, crate::Edition::#edition},
+                )
+            }
+            None => (quote::format_ident!("run_and_expect_errors"), quote::quote! {#test_file}),
+        };
+        quote::quote! {
+            #[test]
+            fn #test_name() {
+                #test_func(#args);
+            }
+        }
+    });
+
+    let output = quote::quote! {
+        mod ok {
+            use crate::tests::*;
+            #(#ok_tests)*
+        }
+        mod err {
+            use crate::tests::*;
+            #(#err_tests)*
+        }
+    };
+
+    let pretty = reformat(output.to_string());
+    ensure_file_contents(
+        crate::flags::CodegenType::ParserTests,
+        parser_test_data.join("generated/runner.rs").as_ref(),
+        &pretty,
+        check,
+    );
 }
 
 fn install_tests(tests: &HashMap<String, Test>, tests_dir: PathBuf, check: bool) -> Result<bool> {
