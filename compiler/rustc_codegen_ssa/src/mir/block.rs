@@ -1003,8 +1003,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let destination = target.map(|target| (return_dest, target));
 
         // Split the rust-call tupled arguments off.
-        let (first_args, untuple) = if abi == ExternAbi::RustCall && !args.is_empty() {
-            let (tup, args) = args.split_last().unwrap();
+        let (first_args, untuple) = if abi == ExternAbi::RustCall
+            && let Some((tup, args)) = args.split_last()
+        {
             (args, Some(tup))
         } else {
             (args, None)

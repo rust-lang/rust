@@ -244,22 +244,17 @@ pub fn each_linked_rlib(
 
         fmts
     } else {
-        for combination in info.dependency_formats.iter().combinations(2) {
-            let (ty1, list1) = &combination[0];
-            let (ty2, list2) = &combination[1];
-            if list1 != list2 {
-                return Err(errors::LinkRlibError::IncompatibleDependencyFormats {
-                    ty1: format!("{ty1:?}"),
-                    ty2: format!("{ty2:?}"),
-                    list1: format!("{list1:?}"),
-                    list2: format!("{list2:?}"),
-                });
-            }
+        let mut dep_formats = info.dependency_formats.iter();
+        let (ty1, list1) = dep_formats.next().ok_or(errors::LinkRlibError::MissingFormat)?;
+        if let Some((ty2, list2)) = dep_formats.find(|(_, list2)| list1 != *list2) {
+            return Err(errors::LinkRlibError::IncompatibleDependencyFormats {
+                ty1: format!("{ty1:?}"),
+                ty2: format!("{ty2:?}"),
+                list1: format!("{list1:?}"),
+                list2: format!("{list2:?}"),
+            });
         }
-        if info.dependency_formats.is_empty() {
-            return Err(errors::LinkRlibError::MissingFormat);
-        }
-        info.dependency_formats.first().unwrap().1
+        list1
     };
 
     let used_dep_crates = info.used_crates.iter();
@@ -626,10 +621,9 @@ fn link_staticlib(
 
     let mut all_rust_dylibs = vec![];
     for &cnum in crates {
-        match fmts.get(cnum) {
-            Some(&Linkage::Dynamic) => {}
-            _ => continue,
-        }
+        let Some(Linkage::Dynamic) = fmts.get(cnum) else {
+            continue;
+        };
         let crate_name = codegen_results.crate_info.crate_name[&cnum];
         let used_crate_source = &codegen_results.crate_info.used_crate_source[&cnum];
         if let Some((path, _)) = &used_crate_source.dylib {
