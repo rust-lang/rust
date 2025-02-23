@@ -991,7 +991,23 @@ impl serde::de::Error for FieldError {
         // set and allows it.
         use fmt::Write;
 
-        let mut expected = expected.to_vec();
+        let metadata = get_configuration_metadata();
+        let deprecated = metadata
+            .iter()
+            .filter_map(|conf| {
+                if conf.deprecation_reason.is_some() {
+                    Some(conf.name.as_str())
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+
+        let mut expected = expected
+            .iter()
+            .copied()
+            .filter(|name| !deprecated.contains(name))
+            .collect::<Vec<_>>();
         expected.sort_unstable();
 
         let (rows, column_widths) = calculate_dimensions(&expected);
