@@ -1,4 +1,5 @@
 #![cfg_attr(feature = "compiler-builtins", compiler_builtins)]
+#![cfg_attr(all(target_family = "wasm"), feature(wasm_numeric_instr))]
 #![feature(abi_unadjusted)]
 #![feature(asm_experimental_arch)]
 #![feature(cfg_target_has_atomic)]
@@ -58,6 +59,20 @@ pub mod int;
     all(target_family = "wasm", not(target_os = "unknown"))
 )))]
 pub mod math;
+
+// `libm` expects its `support` module to be available in the crate root. This config can be
+// cleaned up once `libm` is made always available.
+#[cfg(not(any(
+    all(
+        target_arch = "x86",
+        not(target_feature = "sse2"),
+        not(target_os = "uefi"),
+    ),
+    unix,
+    all(target_family = "wasm", not(target_os = "unknown"))
+)))]
+use math::libm::support;
+
 pub mod mem;
 
 #[cfg(target_arch = "arm")]

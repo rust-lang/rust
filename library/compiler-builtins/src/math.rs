@@ -3,7 +3,7 @@
 #[allow(unused_imports)]
 #[allow(clippy::all)]
 #[path = "../libm/src/math/mod.rs"]
-mod libm;
+pub(crate) mod libm;
 
 #[allow(unused_macros)]
 macro_rules! no_mangle {
