@@ -440,10 +440,11 @@ impl<'tcx> rustc_type_ir::inherent::IntoKind for Ty<'tcx> {
 }
 
 impl<'tcx> rustc_type_ir::visit::Flags for Ty<'tcx> {
+    #[inline]
     fn flags(&self) -> TypeFlags {
         self.0.flags
     }
-
+    #[inline]
     fn outer_exclusive_binder(&self) -> DebruijnIndex {
         self.0.outer_exclusive_binder
     }

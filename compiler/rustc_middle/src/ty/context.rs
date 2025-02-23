@@ -2425,6 +2425,7 @@ impl<'tcx, T: 'tcx + ?Sized> IntoPointer for InternedInSet<'tcx, T> {
 
 #[allow(rustc::usage_of_ty_tykind)]
 impl<'tcx, T> Borrow<T> for InternedInSet<'tcx, WithCachedTypeInfo<T>> {
+    #[inline]
     fn borrow(&self) -> &T {
         &self.0.internee
     }
