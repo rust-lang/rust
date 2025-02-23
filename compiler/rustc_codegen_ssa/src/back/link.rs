@@ -2956,7 +2956,7 @@ fn add_static_crate(
     let cratepath = &src.rlib.as_ref().unwrap().0;
 
     let mut link_upstream =
-        |path: &Path| cmd.link_staticlib_by_path(&rehome_lib_path(sess, path), false);
+        |path: &Path| cmd.link_staticlib_by_path(&rehome_lib_path(sess, path), true);
 
     if !are_upstream_rust_objects_already_included(sess)
         || ignored_for_lto(sess, &codegen_results.crate_info, cnum)
