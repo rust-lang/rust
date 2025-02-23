@@ -396,7 +396,6 @@
 //
 // Only for re-exporting:
 // tidy-alphabetical-start
-#![feature(assert_matches)]
 #![feature(async_iterator)]
 #![feature(c_variadic)]
 #![feature(cfg_accessible)]
@@ -468,7 +467,7 @@ extern crate std as realstd;
 
 // The standard macros that are not built-in to the compiler.
 #[macro_use]
-mod macros;
+mod std_macros;
 
 // The runtime entry point and a few unstable public functions used by the
 // compiler
@@ -705,8 +704,8 @@ pub use core::primitive;
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[allow(deprecated)]
 pub use core::{
-    assert, assert_matches, cfg, column, compile_error, concat, concat_idents, const_format_args,
-    env, file, format_args, format_args_nl, include, include_bytes, include_str, line, log_syntax,
+    assert, cfg, column, compile_error, concat, concat_idents, const_format_args, env, file,
+    format_args, format_args_nl, include, include_bytes, include_str, line, log_syntax, macros,
     module_path, option_env, stringify, trace_macros,
 };
 // Re-export macros defined in core.

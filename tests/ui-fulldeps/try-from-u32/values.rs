@@ -1,4 +1,3 @@
-#![feature(assert_matches)]
 #![feature(rustc_private)]
 //@ edition: 2021
 //@ run-pass
@@ -7,7 +6,7 @@
 
 extern crate rustc_macros;
 
-use core::assert_matches::assert_matches;
+use core::macros::assert_matches;
 use rustc_macros::TryFromU32;
 
 #[derive(TryFromU32, Debug, PartialEq)]

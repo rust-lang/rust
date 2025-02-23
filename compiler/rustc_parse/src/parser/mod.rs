@@ -11,7 +11,7 @@ mod stmt;
 pub mod token_type;
 mod ty;
 
-use std::assert_matches::debug_assert_matches;
+use std::macros::debug_assert_matches;
 use std::ops::Range;
 use std::sync::Arc;
 use std::{fmt, mem, slice};

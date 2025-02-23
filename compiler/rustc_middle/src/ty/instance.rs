@@ -1,5 +1,5 @@
-use std::assert_matches::assert_matches;
 use std::fmt;
+use std::macros::assert_matches;
 use std::path::PathBuf;
 
 use rustc_data_structures::fx::FxHashMap;

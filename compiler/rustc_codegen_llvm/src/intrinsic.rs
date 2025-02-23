@@ -1,5 +1,5 @@
-use std::assert_matches::assert_matches;
 use std::cmp::Ordering;
+use std::macros::assert_matches;
 
 use rustc_abi::{Align, BackendRepr, ExternAbi, Float, HasDataLayout, Primitive, Size};
 use rustc_codegen_ssa::base::{compare_simd_types, wants_msvc_seh, wants_wasm_eh};

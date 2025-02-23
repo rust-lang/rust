@@ -20,7 +20,7 @@ pub mod errors;
 pub mod generics;
 mod lint;
 
-use std::assert_matches::assert_matches;
+use std::macros::assert_matches;
 use std::slice;
 
 use rustc_ast::TraitObjectSyntax;

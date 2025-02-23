@@ -30,8 +30,8 @@ mod simplify;
 mod test;
 mod util;
 
-use std::assert_matches::assert_matches;
 use std::borrow::Borrow;
+use std::macros::assert_matches;
 use std::mem;
 use std::sync::Arc;
 

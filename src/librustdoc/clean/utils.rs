@@ -1,5 +1,5 @@
-use std::assert_matches::debug_assert_matches;
 use std::fmt::{self, Display, Write as _};
+use std::macros::debug_assert_matches;
 use std::mem;
 use std::sync::LazyLock as Lazy;
 

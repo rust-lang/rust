@@ -1,4 +1,4 @@
-use std::assert_matches::assert_matches;
+use std::macros::assert_matches;
 
 use rustc_abi::{BackendRepr, FieldsShape, Scalar, Size, TagEncoding, Variants};
 use rustc_middle::bug;

@@ -1,5 +1,5 @@
 use std::any::Any;
-use std::assert_matches::assert_matches;
+use std::macros::assert_matches;
 use std::marker::PhantomData;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;

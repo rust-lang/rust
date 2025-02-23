@@ -2,9 +2,9 @@
 
 #![allow(rustc::usage_of_ty_tykind)]
 
-use std::assert_matches::debug_assert_matches;
 use std::borrow::Cow;
 use std::iter;
+use std::macros::debug_assert_matches;
 use std::ops::{ControlFlow, Range};
 
 use hir::def::{CtorKind, DefKind};

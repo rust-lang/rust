@@ -1,7 +1,7 @@
 //! Manages calling a concrete function (with known MIR body) with argument passing,
 //! and returning the return value to the caller.
-use std::assert_matches::assert_matches;
 use std::borrow::Cow;
+use std::macros::assert_matches;
 
 use either::{Left, Right};
 use rustc_abi::{self as abi, ExternAbi, FieldIdx, Integer, VariantIdx};

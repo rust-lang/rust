@@ -99,7 +99,6 @@
 #![feature(array_into_iter_constructors)]
 #![feature(array_windows)]
 #![feature(ascii_char)]
-#![feature(assert_matches)]
 #![feature(async_fn_traits)]
 #![feature(async_iterator)]
 #![feature(box_uninit_write)]

@@ -8,7 +8,6 @@
 //@ edition: 2021
 
 #![feature(rustc_private)]
-#![feature(assert_matches)]
 #![feature(ascii_char, ascii_char_variants)]
 
 extern crate rustc_hir;
@@ -27,7 +26,7 @@ use stable_mir::mir::{Body, TerminatorKind};
 use stable_mir::ty::{Allocation, ConstantKind, RigidTy, TyKind};
 use stable_mir::{CrateItem, CrateItems, ItemKind};
 use std::ascii::Char;
-use std::assert_matches::assert_matches;
+use std::macros::assert_matches;
 use std::cmp::{max, min};
 use std::collections::HashMap;
 use std::ffi::CStr;

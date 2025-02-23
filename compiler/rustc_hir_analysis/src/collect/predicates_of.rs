@@ -1,4 +1,4 @@
-use std::assert_matches::assert_matches;
+use std::macros::assert_matches;
 
 use hir::Node;
 use rustc_data_structures::fx::FxIndexSet;

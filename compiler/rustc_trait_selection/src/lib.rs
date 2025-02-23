@@ -16,7 +16,6 @@
 #![allow(rustc::untranslatable_diagnostic)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
-#![feature(assert_matches)]
 #![feature(associated_type_defaults)]
 #![feature(box_patterns)]
 #![feature(cfg_version)]

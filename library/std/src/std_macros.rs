@@ -5,7 +5,7 @@
 //! library.
 // ignore-tidy-dbg
 
-#[doc = include_str!("../../core/src/macros/panic.md")]
+#[doc = include_str!("../../core/src/core_macros/panic.md")]
 #[macro_export]
 #[rustc_builtin_macro(std_panic)]
 #[stable(feature = "rust1", since = "1.0.0")]

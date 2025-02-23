@@ -6,9 +6,9 @@
 //! integer. It is crucial that these operations call `check_align` *before*
 //! short-circuiting the empty case!
 
-use std::assert_matches::assert_matches;
 use std::borrow::{Borrow, Cow};
 use std::collections::VecDeque;
+use std::macros::assert_matches;
 use std::{fmt, mem, ptr};
 
 use rustc_abi::{Align, HasDataLayout, Size};

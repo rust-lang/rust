@@ -227,16 +227,16 @@ use prelude::rust_2021::*;
 
 #[cfg(not(test))] // See #65860
 #[macro_use]
-mod macros;
+mod core_macros;
 
 // We don't export this through #[macro_export] for now, to avoid breakage.
 // See https://github.com/rust-lang/rust/issues/82913
 #[cfg(not(test))]
-#[unstable(feature = "assert_matches", issue = "82775")]
-/// Unstable module containing the unstable `assert_matches` macro.
-pub mod assert_matches {
-    #[unstable(feature = "assert_matches", issue = "82775")]
-    pub use crate::macros::{assert_matches, debug_assert_matches};
+#[stable(feature = "assert_matches", since = "CURRENT_RUSTC_VERSION")]
+/// Module that contains macros that can't be part of the prelude for compatibility reasons.
+pub mod macros {
+    #[stable(feature = "assert_matches", since = "CURRENT_RUSTC_VERSION")]
+    pub use crate::core_macros::{assert_matches, debug_assert_matches};
 }
 
 // We don't export this through #[macro_export] for now, to avoid breakage.
@@ -244,14 +244,14 @@ pub mod assert_matches {
 /// Unstable module containing the unstable `autodiff` macro.
 pub mod autodiff {
     #[unstable(feature = "autodiff", issue = "124509")]
-    pub use crate::macros::builtin::autodiff;
+    pub use crate::core_macros::builtin::autodiff;
 }
 
 #[unstable(feature = "contracts", issue = "128044")]
 pub mod contracts;
 
 #[unstable(feature = "cfg_match", issue = "115585")]
-pub use crate::macros::cfg_match;
+pub use crate::core_macros::cfg_match;
 
 #[macro_use]
 mod internal_macros;

@@ -1,7 +1,7 @@
 //! Functions concerning immediate values and operands, and reading from operands.
 //! All high-level functions to read from memory work on operands as sources.
 
-use std::assert_matches::assert_matches;
+use std::macros::assert_matches;
 
 use either::{Either, Left, Right};
 use rustc_abi as abi;
