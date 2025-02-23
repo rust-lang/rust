@@ -479,25 +479,23 @@ impl<'tcx> GenericArgs<'tcx> {
     }
 
     #[inline]
-    pub fn types(&'tcx self) -> impl DoubleEndedIterator<Item = Ty<'tcx>> + 'tcx {
+    pub fn types(&self) -> impl DoubleEndedIterator<Item = Ty<'tcx>> {
         self.iter().filter_map(|k| k.as_type())
     }
 
     #[inline]
-    pub fn regions(&'tcx self) -> impl DoubleEndedIterator<Item = ty::Region<'tcx>> + 'tcx {
+    pub fn regions(&self) -> impl DoubleEndedIterator<Item = ty::Region<'tcx>> {
         self.iter().filter_map(|k| k.as_region())
     }
 
     #[inline]
-    pub fn consts(&'tcx self) -> impl DoubleEndedIterator<Item = ty::Const<'tcx>> + 'tcx {
+    pub fn consts(&self) -> impl DoubleEndedIterator<Item = ty::Const<'tcx>> {
         self.iter().filter_map(|k| k.as_const())
     }
 
     /// Returns generic arguments that are not lifetimes.
     #[inline]
-    pub fn non_erasable_generics(
-        &'tcx self,
-    ) -> impl DoubleEndedIterator<Item = GenericArgKind<'tcx>> + 'tcx {
+    pub fn non_erasable_generics(&self) -> impl DoubleEndedIterator<Item = GenericArgKind<'tcx>> {
         self.iter().filter_map(|k| match k.unpack() {
             ty::GenericArgKind::Lifetime(_) => None,
             generic => Some(generic),

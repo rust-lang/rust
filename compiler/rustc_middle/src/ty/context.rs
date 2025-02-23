@@ -1943,7 +1943,7 @@ impl<'tcx> TyCtxt<'tcx> {
         Ok(TyCtxtFeed { key: num, tcx: self })
     }
 
-    pub fn iter_local_def_id(self) -> impl Iterator<Item = LocalDefId> + 'tcx {
+    pub fn iter_local_def_id(self) -> impl Iterator<Item = LocalDefId> {
         // Create a dependency to the red node to be sure we re-execute this when the amount of
         // definitions change.
         self.dep_graph.read_index(DepNodeIndex::FOREVER_RED_NODE);
@@ -2175,14 +2175,14 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// All traits in the crate graph, including those not visible to the user.
-    pub fn all_traits(self) -> impl Iterator<Item = DefId> + 'tcx {
+    pub fn all_traits(self) -> impl Iterator<Item = DefId> {
         iter::once(LOCAL_CRATE)
             .chain(self.crates(()).iter().copied())
             .flat_map(move |cnum| self.traits(cnum).iter().copied())
     }
 
     /// All traits that are visible within the crate graph (i.e. excluding private dependencies).
-    pub fn visible_traits(self) -> impl Iterator<Item = DefId> + 'tcx {
+    pub fn visible_traits(self) -> impl Iterator<Item = DefId> {
         let visible_crates =
             self.crates(()).iter().copied().filter(move |cnum| self.is_user_visible_dep(*cnum));
 
@@ -2367,7 +2367,7 @@ macro_rules! sty_debug_print {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
-    pub fn debug_stats(self) -> impl fmt::Debug + 'tcx {
+    pub fn debug_stats(self) -> impl fmt::Debug {
         fmt::from_fn(move |fmt| {
             sty_debug_print!(
                 fmt,

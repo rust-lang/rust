@@ -809,7 +809,7 @@ impl AdtDef {
     }
 
     /// Iterate over the variants in this ADT.
-    pub fn variants_iter(&self) -> impl Iterator<Item = VariantDef> + '_ {
+    pub fn variants_iter(&self) -> impl Iterator<Item = VariantDef> {
         (0..self.num_variants())
             .map(|idx| VariantDef { idx: VariantIdx::to_val(idx), adt_def: *self })
     }

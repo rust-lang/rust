@@ -2,7 +2,6 @@ use std::cmp::Ordering;
 use std::ops::{Index, IndexMut};
 use std::{mem, slice};
 
-use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_data_structures::graph::{self, DirectedGraph, StartNode};
@@ -218,7 +217,7 @@ impl CoverageGraph {
     pub(crate) fn reloop_predecessors(
         &self,
         to_bcb: BasicCoverageBlock,
-    ) -> impl Iterator<Item = BasicCoverageBlock> + Captures<'_> {
+    ) -> impl Iterator<Item = BasicCoverageBlock> {
         self.predecessors[to_bcb].iter().copied().filter(move |&pred| self.dominates(to_bcb, pred))
     }
 }

@@ -323,7 +323,7 @@ impl<'tcx> MonoItems<'tcx> {
         self.items.entry(item.node).or_insert(item.span);
     }
 
-    fn items(&self) -> impl Iterator<Item = MonoItem<'tcx>> + '_ {
+    fn items(&self) -> impl Iterator<Item = MonoItem<'tcx>> {
         self.items.keys().cloned()
     }
 }

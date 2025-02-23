@@ -28,7 +28,7 @@ impl<'tcx> UnDerefer<'tcx> {
     pub(crate) fn iter_projections(
         &self,
         place: PlaceRef<'tcx>,
-    ) -> impl Iterator<Item = (PlaceRef<'tcx>, PlaceElem<'tcx>)> + '_ {
+    ) -> impl Iterator<Item = (PlaceRef<'tcx>, PlaceElem<'tcx>)> {
         ProjectionIter::new(self.deref_chain(place.local), place)
     }
 }

@@ -1657,7 +1657,7 @@ impl<'a> Parser<'a> {
     // Debug view of the parser's token stream, up to `{lookahead}` tokens.
     // Only used when debugging.
     #[allow(unused)]
-    pub(crate) fn debug_lookahead(&self, lookahead: usize) -> impl fmt::Debug + '_ {
+    pub(crate) fn debug_lookahead(&self, lookahead: usize) -> impl fmt::Debug {
         fmt::from_fn(move |f| {
             let mut dbg_fmt = f.debug_struct("Parser"); // or at least, one view of
 

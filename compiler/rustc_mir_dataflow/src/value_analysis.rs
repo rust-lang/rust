@@ -2,7 +2,6 @@ use std::fmt::{Debug, Formatter};
 use std::ops::Range;
 
 use rustc_abi::{FieldIdx, VariantIdx};
-use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet, StdEntry};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_index::IndexVec;
@@ -676,10 +675,7 @@ impl<'tcx> Map<'tcx> {
     }
 
     /// Iterate over all direct children.
-    fn children(
-        &self,
-        parent: PlaceIndex,
-    ) -> impl Iterator<Item = PlaceIndex> + Captures<'_> + Captures<'tcx> {
+    fn children(&self, parent: PlaceIndex) -> impl Iterator<Item = PlaceIndex> {
         Children::new(self, parent)
     }
 

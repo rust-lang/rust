@@ -33,7 +33,7 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
     fn non_zst_fields<'tcx, 'a>(
         cx: &'a LayoutCx<'tcx>,
         layout: &'a TyAndLayout<'tcx>,
-    ) -> impl Iterator<Item = (Size, TyAndLayout<'tcx>)> + 'a {
+    ) -> impl Iterator<Item = (Size, TyAndLayout<'tcx>)> {
         (0..layout.layout.fields().count()).filter_map(|i| {
             let field = layout.field(cx, i);
             // Also checking `align == 1` here leads to test failures in

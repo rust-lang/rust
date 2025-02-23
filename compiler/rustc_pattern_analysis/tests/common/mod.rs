@@ -2,7 +2,7 @@ use rustc_pattern_analysis::constructor::{
     Constructor, ConstructorSet, IntRange, MaybeInfiniteInt, RangeEnd, VariantVisibility,
 };
 use rustc_pattern_analysis::usefulness::{PlaceValidity, UsefulnessReport};
-use rustc_pattern_analysis::{Captures, MatchArm, PatCx, PrivateUninhabitedField};
+use rustc_pattern_analysis::{MatchArm, PatCx, PrivateUninhabitedField};
 
 /// Sets up `tracing` for easier debugging. Tries to look like the `rustc` setup.
 pub fn init_tracing() {
@@ -156,12 +156,11 @@ impl PatCx for Cx {
         ty.sub_tys(ctor).len()
     }
 
-    fn ctor_sub_tys<'a>(
-        &'a self,
-        ctor: &'a Constructor<Self>,
-        ty: &'a Self::Ty,
-    ) -> impl Iterator<Item = (Self::Ty, PrivateUninhabitedField)> + ExactSizeIterator + Captures<'a>
-    {
+    fn ctor_sub_tys(
+        &self,
+        ctor: &Constructor<Self>,
+        ty: &Self::Ty,
+    ) -> impl Iterator<Item = (Self::Ty, PrivateUninhabitedField)> + ExactSizeIterator {
         ty.sub_tys(ctor).into_iter().map(|ty| (ty, PrivateUninhabitedField(false)))
     }
 
