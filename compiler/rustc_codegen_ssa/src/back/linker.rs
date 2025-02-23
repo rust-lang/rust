@@ -1828,9 +1828,11 @@ pub(crate) fn linked_objects(
         are_upstream_rust_objects_already_included(tcx.sess);
     let export_threshold = symbol_export::crates_export_threshold(&[crate_type]);
     for_each_exported_symbols_include_dep(tcx, crate_type, |exported_symbols, cnum| {
-        let exported_symbols = exported_symbols
-            .iter()
-            .filter(|(_, info)| info.level.is_below_threshold(export_threshold) || info.used);
+        let exported_symbols = exported_symbols.iter().filter(|(_, info)| {
+            (!matches!(crate_type, CrateType::Executable)
+                && info.level.is_below_threshold(export_threshold))
+                || info.used
+        });
         if cnum == LOCAL_CRATE {
             // Since the local crate is always linked directly to object files, `#[used]` works as expected,
             // we only need add undefined symbols.
@@ -1855,7 +1857,9 @@ pub(crate) fn linked_objects(
             );
             return;
         }
-        // FIXME: should be `let lto = upstream_rust_objects_already_included && !ignored_for_lto(tcx.sess, &codegen_results.crate_info, cnum);`
+        if matches!(crate_type, CrateType::Executable) && tcx.is_compiler_builtins(cnum) {
+            return;
+        }
         let lto = upstream_rust_objects_already_included;
         let mut cgus = FxHashSet::default();
         for &(symbol, info) in exported_symbols {
