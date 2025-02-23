@@ -10,6 +10,8 @@ pub mod args;
 pub mod env;
 pub mod fd;
 pub mod fs;
+#[cfg(target_os = "fuchsia")]
+pub mod fuchsia;
 pub mod futex;
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub mod kernel_copy;
@@ -17,7 +19,6 @@ pub mod kernel_copy;
 pub mod linux;
 pub mod os;
 pub mod pipe;
-pub mod process;
 pub mod stack_overflow;
 pub mod stdio;
 pub mod sync;
@@ -421,7 +422,7 @@ cfg_if::cfg_if! {
 }
 
 #[cfg(any(target_os = "espidf", target_os = "horizon", target_os = "vita", target_os = "nuttx"))]
-mod unsupported {
+pub mod unsupported {
     use crate::io;
 
     pub fn unsupported<T>() -> io::Result<T> {

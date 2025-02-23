@@ -8,8 +8,6 @@ pub mod fs;
 pub mod os;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;
-#[path = "../unsupported/process.rs"]
-pub mod process;
 pub mod stdio;
 pub mod thread;
 pub mod time;
