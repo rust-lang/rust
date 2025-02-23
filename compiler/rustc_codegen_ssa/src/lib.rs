@@ -27,7 +27,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use rustc_ast as ast;
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::def_id::CrateNum;
@@ -194,7 +194,7 @@ pub struct CrateInfo {
     pub crate_types: Vec<CrateType>,
     pub exported_symbols: UnordMap<CrateType, Vec<String>>,
     pub linked_symbols: FxIndexMap<CrateType, Vec<(String, SymbolExportKind)>>,
-    pub linked_objects: FxIndexMap<CrateType, FxIndexMap<CrateNum, FxIndexSet<u64>>>,
+    pub linked_objects: FxIndexMap<CrateType, FxIndexMap<CrateNum, FxHashSet<String>>>,
     pub local_crate_name: Symbol,
     pub compiler_builtins: Option<CrateNum>,
     pub profiler_runtime: Option<CrateNum>,

@@ -367,7 +367,7 @@ provide! { tcx, def_id, other, cdata,
             .exported_symbols(cdata.cnum)
             .iter()
             .filter_map(|&(exported_symbol, export_info)| {
-                if let ExportedSymbol::NonGeneric(def_id) = exported_symbol {
+                if let ExportedSymbol::NonGeneric { def_id, .. } = exported_symbol {
                     Some((def_id, export_info))
                 } else {
                     None

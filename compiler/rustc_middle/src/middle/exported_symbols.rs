@@ -1,5 +1,6 @@
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_macros::{Decodable, Encodable, HashStable, TyDecodable, TyEncodable};
+use rustc_span::Symbol;
 
 use crate::ty::{self, GenericArgsRef, Ty, TyCtxt};
 
@@ -40,7 +41,7 @@ pub struct SymbolExportInfo {
 
 #[derive(Eq, PartialEq, Debug, Copy, Clone, TyEncodable, TyDecodable, HashStable)]
 pub enum ExportedSymbol<'tcx> {
-    NonGeneric(DefId),
+    NonGeneric { def_id: DefId, cgu: Option<Symbol> },
     Generic(DefId, GenericArgsRef<'tcx>),
     DropGlue(Ty<'tcx>),
     AsyncDropGlueCtorShim(Ty<'tcx>),
@@ -53,7 +54,9 @@ impl<'tcx> ExportedSymbol<'tcx> {
     /// local crate.
     pub fn symbol_name_for_local_instance(&self, tcx: TyCtxt<'tcx>) -> ty::SymbolName<'tcx> {
         match *self {
-            ExportedSymbol::NonGeneric(def_id) => tcx.symbol_name(ty::Instance::mono(tcx, def_id)),
+            ExportedSymbol::NonGeneric { def_id, .. } => {
+                tcx.symbol_name(ty::Instance::mono(tcx, def_id))
+            }
             ExportedSymbol::Generic(def_id, args) => {
                 tcx.symbol_name(ty::Instance::new(def_id, args))
             }

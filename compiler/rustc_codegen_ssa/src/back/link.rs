@@ -9,7 +9,7 @@ use std::{env, fmt, fs, io, mem, str};
 
 use cc::windows_registry;
 use itertools::Itertools;
-use object::read::archive::{ArchiveFile, ArchiveOffset};
+use object::read::archive::ArchiveFile;
 use regex::Regex;
 use rustc_arena::TypedArena;
 use rustc_ast::CRATE_NODE_ID;
@@ -2953,21 +2953,24 @@ fn add_local_crate_linked_objects(
     tempfiles_for_linked_objects: &mut Vec<PathBuf>,
     outputs: &OutputFilenames,
 ) {
-    for (cnum, offsets) in &codegen_results.crate_info.linked_objects[&crate_type] {
+    for (cnum, objects) in &codegen_results.crate_info.linked_objects[&crate_type] {
         let src = &codegen_results.crate_info.used_crate_source[cnum];
         let cratepath = &src.rlib.as_ref().unwrap().0;
         let archive_map = unsafe { Mmap::map(File::open(cratepath).unwrap()).unwrap() };
         let archive = ArchiveFile::parse(&*archive_map)
             .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))
             .unwrap();
-        for &offset in offsets {
-            let member = archive.member(ArchiveOffset(offset)).unwrap();
+        for member in archive.members() {
+            let member = member.unwrap();
             let name = std::str::from_utf8(member.name()).unwrap();
-            let data = member.data(&*archive_map).unwrap();
-            let obj = outputs.temp_path(OutputType::Object, Some(&format!("{name}.linked_object")));
-            fs::write(&obj, data).unwrap();
-            cmd.add_object(&obj);
-            tempfiles_for_linked_objects.push(obj);
+            if objects.contains(name) {
+                let data = member.data(&*archive_map).unwrap();
+                let obj =
+                    outputs.temp_path(OutputType::Object, Some(&format!("{name}.linked_object")));
+                fs::write(&obj, data).unwrap();
+                cmd.add_object(&obj);
+                tempfiles_for_linked_objects.push(obj);
+            }
         }
     }
 }
