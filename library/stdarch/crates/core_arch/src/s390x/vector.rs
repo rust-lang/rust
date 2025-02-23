@@ -1554,6 +1554,19 @@ mod sealed {
     }
 
     macro_rules! impl_vfae {
+        ([idx $Trait:ident $m:ident] $imm:literal $($fun:ident $ty:ident $r:ident)*) => {
+            $(
+                #[unstable(feature = "stdarch_s390x", issue = "135681")]
+                impl $Trait<Self> for $ty {
+                    type Result = $r;
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn $m(self, b: Self) -> Self::Result {
+                        transmute($fun::<$imm>(transmute(self), transmute(b)))
+                    }
+                }
+            )*
+        };
         ([$Trait:ident $m:ident] $imm:literal $($fun:ident $ty:ident)*) => {
             $(
                 #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -1607,6 +1620,46 @@ mod sealed {
         vfaef vector_signed_int
         vfaef vector_unsigned_int
         vfaef vector_bool_int
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorFindAnyEqIdx<Other> {
+        type Result;
+        unsafe fn vec_find_any_eq_idx(self, other: Other) -> Self::Result;
+    }
+
+    impl_vfae! { [idx VectorFindAnyEqIdx vec_find_any_eq_idx] 0
+        vfaeb vector_signed_char vector_signed_char
+        vfaeb vector_unsigned_char vector_unsigned_char
+        vfaeb vector_bool_char vector_unsigned_char
+
+        vfaeh vector_signed_short vector_signed_short
+        vfaeh vector_unsigned_short vector_unsigned_short
+        vfaeh vector_bool_short vector_unsigned_short
+
+        vfaef vector_signed_int vector_signed_int
+        vfaef vector_unsigned_int vector_unsigned_int
+        vfaef vector_bool_int vector_unsigned_int
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorFindAnyNeIdx<Other> {
+        type Result;
+        unsafe fn vec_find_any_ne_idx(self, other: Other) -> Self::Result;
+    }
+
+    impl_vfae! { [idx VectorFindAnyNeIdx vec_find_any_ne_idx] 8
+        vfaeb vector_signed_char vector_signed_char
+        vfaeb vector_unsigned_char vector_unsigned_char
+        vfaeb vector_bool_char vector_unsigned_char
+
+        vfaeh vector_signed_short vector_signed_short
+        vfaeh vector_unsigned_short vector_unsigned_short
+        vfaeh vector_bool_short vector_unsigned_short
+
+        vfaef vector_signed_int vector_signed_int
+        vfaef vector_unsigned_int vector_unsigned_int
+        vfaef vector_bool_int vector_unsigned_int
     }
 }
 
@@ -2413,6 +2466,26 @@ where
     a.vec_find_any_ne(b)
 }
 
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_find_any_eq_idx<T, U>(a: T, b: U) -> <T as sealed::VectorFindAnyEqIdx<U>>::Result
+where
+    T: sealed::VectorFindAnyEqIdx<U>,
+{
+    a.vec_find_any_eq_idx(b)
+}
+
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_find_any_ne_idx<T, U>(a: T, b: U) -> <T as sealed::VectorFindAnyNeIdx<U>>::Result
+where
+    T: sealed::VectorFindAnyNeIdx<U>,
+{
+    a.vec_find_any_ne_idx(b)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2944,5 +3017,27 @@ mod tests {
         [1, -2, 3, -4],
         [-5, 3, -7, 8],
         [0xFFFFFFFF, 0xFFFFFFFF, 0, 0xFFFFFFFF]
+    }
+
+    test_vec_2! { test_vec_find_any_eq_idx_1, vec_find_any_eq_idx, i32x4, i32x4 -> u32x4,
+        [1, 2, 3, 4],
+        [5, 3, 7, 8],
+        [0, 8, 0, 0]
+    }
+    test_vec_2! { test_vec_find_any_eq_idx_2, vec_find_any_eq_idx, i32x4, i32x4 -> u32x4,
+        [1, 2, 3, 4],
+        [5, 6, 7, 8],
+        [0, 16, 0, 0]
+    }
+
+    test_vec_2! { test_vec_find_any_ne_idx_1, vec_find_any_ne_idx, i32x4, i32x4 -> u32x4,
+        [1, 2, 3, 4],
+        [1, 5, 3, 4],
+        [0, 4, 0, 0]
+    }
+    test_vec_2! { test_vec_find_any_ne_idx_2, vec_find_any_ne_idx, i32x4, i32x4 -> u32x4,
+        [1, 2, 3, 4],
+        [1, 2, 3, 4],
+        [0, 16, 0, 0]
     }
 }
