@@ -2684,7 +2684,7 @@ fn add_native_libs_from_crate(
             NativeLibKind::Static { bundle, whole_archive } => {
                 if link_static {
                     let bundle = bundle.unwrap_or(true);
-                    let whole_archive = whole_archive == Some(true);
+                    let whole_archive = whole_archive.unwrap_or(link_output_kind.is_dylib());
                     if bundle && cnum != LOCAL_CRATE {
                         if let Some(filename) = lib.filename {
                             // If rlib contains native libs as archives, they are unpacked to tmpdir.
@@ -2706,7 +2706,7 @@ fn add_native_libs_from_crate(
                 // link kind is unspecified.
                 if !link_output_kind.can_link_dylib() && !sess.target.crt_static_allows_dylibs {
                     if link_static {
-                        cmd.link_staticlib_by_name(name, verbatim, false);
+                        cmd.link_staticlib_by_name(name, verbatim, link_output_kind.is_dylib());
                     }
                 } else if link_dynamic {
                     cmd.link_dylib_by_name(name, verbatim, true);
