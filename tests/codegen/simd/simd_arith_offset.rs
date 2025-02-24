@@ -5,9 +5,7 @@
 #![crate_type = "lib"]
 #![feature(repr_simd, intrinsics)]
 
-extern "rust-intrinsic" {
-    pub(crate) fn simd_arith_offset<T, U>(ptrs: T, offsets: U) -> T;
-}
+use std::intrinsics::simd::simd_arith_offset;
 
 /// A vector of *const T.
 #[derive(Debug, Copy, Clone)]

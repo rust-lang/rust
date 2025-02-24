@@ -2,9 +2,10 @@
 //
 
 #![crate_type = "lib"]
-
-#![feature(repr_simd, intrinsics)]
+#![feature(repr_simd, core_intrinsics)]
 #![allow(non_camel_case_types)]
+
+use std::intrinsics::simd::simd_bitmask;
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
@@ -17,10 +18,6 @@ pub struct i32x2([i32; 2]);
 #[repr(simd)]
 #[derive(Copy, Clone)]
 pub struct i8x16([i8; 16]);
-
-extern "rust-intrinsic" {
-    fn simd_bitmask<T, U>(x: T) -> U;
-}
 
 // NOTE(eddyb) `%{{x|1}}` is used because on some targets (e.g. WASM)
 // SIMD vectors are passed directly, resulting in `%x` being a vector,
