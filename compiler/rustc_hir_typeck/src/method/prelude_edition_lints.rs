@@ -363,7 +363,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let import_items: Vec<_> = applicable_trait
             .import_ids
             .iter()
-            .map(|&import_id| self.tcx.hir().expect_item(import_id))
+            .map(|&import_id| self.tcx.hir_expect_item(import_id))
             .collect();
 
         // Find an identifier with which this trait was imported (note that `_` doesn't count).

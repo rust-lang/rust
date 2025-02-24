@@ -63,7 +63,7 @@ pub fn assert_module_sources(tcx: TyCtxt<'_>, set_reuse: &dyn Fn(&mut CguReuseTr
             },
         };
 
-        for attr in tcx.hir().attrs(rustc_hir::CRATE_HIR_ID) {
+        for attr in tcx.hir_attrs(rustc_hir::CRATE_HIR_ID) {
             ams.check_attr(attr);
         }
 

@@ -343,7 +343,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                         }
                     };
                     let hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. }) =
-                        tcx.hir().expect_expr(self.mir_hir_id()).kind
+                        tcx.hir_expect_expr(self.mir_hir_id()).kind
                     else {
                         bug!("Closure is not defined by a closure expr");
                     };

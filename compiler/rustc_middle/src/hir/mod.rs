@@ -202,13 +202,13 @@ pub fn provide(providers: &mut Providers) {
             }
         })
     };
-    providers.hir_attrs = |tcx, id| {
+    providers.hir_attr_map = |tcx, id| {
         tcx.hir_crate(()).owners[id.def_id].as_owner().map_or(AttributeMap::EMPTY, |o| &o.attrs)
     };
     providers.def_span = |tcx, def_id| tcx.hir().span(tcx.local_def_id_to_hir_id(def_id));
     providers.def_ident_span = |tcx, def_id| {
         let hir_id = tcx.local_def_id_to_hir_id(def_id);
-        tcx.hir().opt_ident_span(hir_id)
+        tcx.hir_opt_ident_span(hir_id)
     };
     providers.fn_arg_names = |tcx, def_id| {
         let hir = tcx.hir();

@@ -268,7 +268,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let filter_fn =
             move |a: &&rustc_hir::Attribute| matches!(a.kind, rustc_hir::AttrKind::Normal(_));
         let attrs_iter = if let Some(did) = did.as_local() {
-            tcx.hir().attrs(tcx.local_def_id_to_hir_id(did)).iter().filter(filter_fn)
+            tcx.hir_attrs(tcx.local_def_id_to_hir_id(did)).iter().filter(filter_fn)
         } else {
             tcx.attrs_for_def(did).iter().filter(filter_fn)
         };

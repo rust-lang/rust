@@ -794,7 +794,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // type definitions themselves, but rather variables *of* that type.
                         Res::Local(hir_id) => Some(format!(
                             "`{}` has type `{}`",
-                            self.tcx.hir().name(hir_id),
+                            self.tcx.hir_name(hir_id),
                             callee_ty
                         )),
                         Res::Def(kind, def_id) if kind.ns() == Some(Namespace::ValueNS) => {
