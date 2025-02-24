@@ -32,8 +32,10 @@ impl MultiItemModifier for Expander {
         }
 
         let (sess, features) = (ecx.sess, ecx.ecfg.features);
-        let result =
-            ecx.resolver.resolve_derives(ecx.current_expansion.id, ecx.force_mode, &|| {
+        let result = ecx.resolver.resolve_derives(
+            ecx.current_expansion.id,
+            ecx.force_mode,
+            &mut |resolver| {
                 let template =
                     AttributeTemplate { list: Some("Trait1, Trait2, ..."), ..Default::default() };
                 validate_attr::check_builtin_meta_item(
@@ -82,6 +84,7 @@ impl MultiItemModifier for Expander {
                             features,
                             item.clone(),
                             ecx.current_expansion.lint_node_id,
+                            resolver,
                         );
                         for other in others {
                             other.item = first.item.clone();
@@ -90,7 +93,8 @@ impl MultiItemModifier for Expander {
                 }
 
                 resolutions
-            });
+            },
+        );
 
         match result {
             Ok(()) => ExpandResult::Ready(vec![item]),

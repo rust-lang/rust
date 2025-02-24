@@ -6,6 +6,7 @@ use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_errors::PResult;
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacEager, MacroExpanderResult};
+use rustc_expand::config::StripUnconfiguredCfgEval;
 use rustc_parse::exp;
 use rustc_span::Span;
 use {rustc_ast as ast, rustc_attr_parsing as attr};
@@ -21,11 +22,15 @@ pub(crate) fn expand_cfg(
 
     ExpandResult::Ready(match parse_cfg(cx, sp, tts) {
         Ok(cfg) => {
-            let matches_cfg = attr::cfg_matches(
+            let matches_cfg = attr::eval_condition(
                 &cfg,
                 &cx.sess,
-                cx.current_expansion.lint_node_id,
                 Some(cx.ecfg.features),
+                &mut StripUnconfiguredCfgEval::new(
+                    &cx.sess,
+                    Some(cx.resolver),
+                    cx.current_expansion.lint_node_id,
+                ),
             );
             MacEager::expr(cx.expr_bool(sp, matches_cfg))
         }

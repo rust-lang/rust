@@ -426,14 +426,60 @@ impl<'tcx> OnUnimplementedDirective {
                 .ok_or_else(|| tcx.dcx().emit_err(EmptyOnClauseInOnUnimplemented { span }))?
                 .meta_item_or_bool()
                 .ok_or_else(|| tcx.dcx().emit_err(InvalidOnClauseInOnUnimplemented { span }))?;
-            attr::eval_condition(cond, &tcx.sess, Some(tcx.features()), &mut |cfg| {
-                if let Some(value) = cfg.value
-                    && let Err(guar) = parse_value(value, cfg.span)
-                {
-                    errored = Some(guar);
+
+            struct CollectErrored<'tcx, 'a> {
+                errored: &'a mut Option<ErrorGuaranteed>,
+                tcx: TyCtxt<'tcx>,
+                item_def_id: DefId,
+                is_diagnostic_namespace_variant: bool,
+            }
+
+            impl attr::CfgEval for CollectErrored<'_, '_> {
+                fn eval_individual(
+                    &mut self,
+                    condition: attr::Condition,
+                    _features: Option<&rustc_feature::Features>,
+                ) -> bool {
+                    let parse_value = |value_str, value_span| {
+                        OnUnimplementedFormatString::try_parse(
+                            self.tcx,
+                            self.item_def_id,
+                            value_str,
+                            value_span,
+                            self.is_diagnostic_namespace_variant,
+                        )
+                        .map(Some)
+                    };
+
+                    if let Some(value) = condition.value
+                        && let Err(guar) = parse_value(value, condition.span)
+                    {
+                        *self.errored = Some(guar);
+                    }
+                    true
                 }
-                true
-            });
+
+                fn eval_accessible_path(
+                    &mut self,
+                    _target_crate: rustc_span::Ident,
+                    _target_path_segs: impl Iterator<Item = rustc_span::Ident>,
+                ) -> Option<bool> {
+                    // FIXME: Is this correct?
+                    Some(true)
+                }
+            }
+
+            attr::eval_condition(
+                cond,
+                &tcx.sess,
+                Some(tcx.features()),
+                &mut CollectErrored {
+                    errored: &mut errored,
+                    tcx,
+                    item_def_id,
+                    is_diagnostic_namespace_variant,
+                },
+            );
             Some(cond.clone())
         };
 
@@ -708,30 +754,66 @@ impl<'tcx> OnUnimplementedDirective {
         let options_map: FxHashMap<Symbol, String> =
             options.iter().filter_map(|(k, v)| v.clone().map(|v| (*k, v))).collect();
 
+        struct EvalIndividual<'tcx, 'a> {
+            tcx: TyCtxt<'tcx>,
+            trait_ref: ty::TraitRef<'tcx>,
+            options: &'a [(Symbol, Option<String>)],
+            long_ty_file: &'a mut Option<PathBuf>,
+            options_map: &'a FxHashMap<Symbol, String>,
+        }
+
+        impl attr::CfgEval for EvalIndividual<'_, '_> {
+            fn eval_individual(
+                &mut self,
+                condition: attr::Condition,
+                _features: Option<&rustc_feature::Features>,
+            ) -> bool {
+                let value = condition.value.map(|v| {
+                    // `with_no_visible_paths` is also used when generating the options,
+                    // so we need to match it here.
+                    ty::print::with_no_visible_paths!(
+                        OnUnimplementedFormatString {
+                            symbol: v,
+                            span: condition.span,
+                            is_diagnostic_namespace_variant: false
+                        }
+                        .format(
+                            self.tcx,
+                            self.trait_ref,
+                            self.options_map,
+                            self.long_ty_file
+                        )
+                    )
+                });
+
+                self.options.contains(&(condition.name, value))
+            }
+
+            fn eval_accessible_path(
+                &mut self,
+                _target_crate: rustc_span::Ident,
+                _target_path_segs: impl Iterator<Item = rustc_span::Ident>,
+            ) -> Option<bool> {
+                // FIXME: Is this correct?
+                Some(true)
+            }
+        }
+
         for command in self.subcommands.iter().chain(Some(self)).rev() {
             debug!(?command);
             if let Some(ref condition) = command.condition
-                && !attr::eval_condition(condition, &tcx.sess, Some(tcx.features()), &mut |cfg| {
-                    let value = cfg.value.map(|v| {
-                        // `with_no_visible_paths` is also used when generating the options,
-                        // so we need to match it here.
-                        ty::print::with_no_visible_paths!(
-                            OnUnimplementedFormatString {
-                                symbol: v,
-                                span: cfg.span,
-                                is_diagnostic_namespace_variant: false
-                            }
-                            .format(
-                                tcx,
-                                trait_ref,
-                                &options_map,
-                                long_ty_file
-                            )
-                        )
-                    });
-
-                    options.contains(&(cfg.name, value))
-                })
+                && !attr::eval_condition(
+                    condition,
+                    &tcx.sess,
+                    Some(tcx.features()),
+                    &mut EvalIndividual {
+                        tcx,
+                        trait_ref,
+                        options,
+                        long_ty_file,
+                        options_map: &options_map,
+                    },
+                )
             {
                 debug!("evaluate: skipping {:?} due to condition", command);
                 continue;

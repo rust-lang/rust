@@ -1,0 +1,8 @@
+error: `cfg(accessible(..))` cannot be used as crate attribute
+  --> $DIR/cfg-accessible-4.rs:3:21
+   |
+LL | #![cfg(accessible(::std::boxed::Box))]
+   |                     ^^^
+
+error: aborting due to 1 previous error
+
