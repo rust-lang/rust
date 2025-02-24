@@ -198,7 +198,7 @@ rustc_queries! {
     ///
     /// This can be conveniently accessed by methods on `tcx.hir()`.
     /// Avoid calling this query directly.
-    query hir_attrs(key: hir::OwnerId) -> &'tcx hir::AttributeMap<'tcx> {
+    query hir_attr_map(key: hir::OwnerId) -> &'tcx hir::AttributeMap<'tcx> {
         desc { |tcx| "getting HIR owner attributes in `{}`", tcx.def_path_str(key) }
         feedable
     }
