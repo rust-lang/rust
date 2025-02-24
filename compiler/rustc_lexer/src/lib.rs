@@ -645,7 +645,7 @@ impl Cursor<'_> {
 
                 // Just a 0.
                 _ => {
-                    return (Int { base, empty_int: false }, None);
+                    return (Int { base, empty_int: false }, None)
                 }
             }
         } else {
