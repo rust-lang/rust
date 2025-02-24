@@ -8,8 +8,6 @@ use rustc_ast::expand::autodiff_attrs::{
 use rustc_ast::{MetaItem, MetaItemInner, attr};
 use rustc_attr_parsing::{InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::codes::*;
-use rustc_errors::{DiagMessage, SubdiagMessage, struct_span_code_err};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::weak_lang_items::WEAK_LANG_ITEMS;
@@ -222,13 +220,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     && let Some(fn_sig) = fn_sig()
                     && fn_sig.skip_binder().abi() != ExternAbi::Rust
                 {
-                    struct_span_code_err!(
-                        tcx.dcx(),
-                        attr.span,
-                        E0737,
-                        "`#[track_caller]` requires Rust ABI"
-                    )
-                    .emit();
+                    tcx.dcx().emit_err(errors::RequiresRustAbi { span: attr.span });
                 }
                 if is_closure
                     && !tcx.features().closure_track_caller()
@@ -249,13 +241,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     if s.as_str().contains('\0') {
                         // `#[export_name = ...]` will be converted to a null-terminated string,
                         // so it may not contain any null characters.
-                        struct_span_code_err!(
-                            tcx.dcx(),
-                            attr.span,
-                            E0648,
-                            "`export_name` may not contain null characters"
-                        )
-                        .emit();
+                        tcx.dcx().emit_err(errors::NullOnExport { span: attr.span });
                     }
                     codegen_fn_attrs.export_name = Some(s);
                     mixed_export_name_no_mangle_lint_state.track_export_name(attr.span);
@@ -379,13 +365,9 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                             match segments.as_slice() {
                                 [sym::arm, sym::a32] | [sym::arm, sym::t32] => {
                                     if !tcx.sess.target.has_thumb_interworking {
-                                        struct_span_code_err!(
-                                            tcx.dcx(),
-                                            attr.span,
-                                            E0779,
-                                            "target does not support `#[instruction_set]`"
-                                        )
-                                        .emit();
+                                        tcx.dcx().emit_err(errors::UnsuportedInstructionSet {
+                                            span: attr.span,
+                                        });
                                         None
                                     } else if segments[1] == sym::a32 {
                                         Some(InstructionSetAttr::ArmA32)
@@ -396,35 +378,19 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                                     }
                                 }
                                 _ => {
-                                    struct_span_code_err!(
-                                        tcx.dcx(),
-                                        attr.span,
-                                        E0779,
-                                        "invalid instruction set specified",
-                                    )
-                                    .emit();
+                                    tcx.dcx().emit_err(errors::InvalidInstructionSet {
+                                        span: attr.span,
+                                    });
                                     None
                                 }
                             }
                         }
                         [] => {
-                            struct_span_code_err!(
-                                tcx.dcx(),
-                                attr.span,
-                                E0778,
-                                "`#[instruction_set]` requires an argument"
-                            )
-                            .emit();
+                            tcx.dcx().emit_err(errors::BareInstructionSet { span: attr.span });
                             None
                         }
                         _ => {
-                            struct_span_code_err!(
-                                tcx.dcx(),
-                                attr.span,
-                                E0779,
-                                "cannot specify more than one instruction set"
-                            )
-                            .emit();
+                            tcx.dcx().emit_err(errors::MultipleInstructionSet { span: attr.span });
                             None
                         }
                     })
@@ -436,14 +402,8 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                 {
                     rustc_attr_parsing::parse_alignment(&literal.kind)
                         .map_err(|msg| {
-                            struct_span_code_err!(
-                                tcx.dcx(),
-                                literal.span,
-                                E0589,
-                                "invalid `repr(align)` attribute: {}",
-                                msg
-                            )
-                            .emit();
+                            tcx.dcx()
+                                .emit_err(errors::InvalidReprAlignAttr { span: literal.span, msg });
                         })
                         .ok()
                 } else {
@@ -456,58 +416,38 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     let mut entry = None;
                     for item in l {
                         let Some(meta_item) = item.meta_item() else {
-                            tcx.dcx().span_err(item.span(), "expected name value pair");
+                            tcx.dcx().emit_err(errors::ExpectedNameValuePair { span: item.span() });
                             continue;
                         };
 
                         let Some(name_value_lit) = meta_item.name_value_literal() else {
-                            tcx.dcx().span_err(item.span(), "expected name value pair");
+                            tcx.dcx().emit_err(errors::ExpectedNameValuePair { span: item.span() });
                             continue;
                         };
-
-                        fn emit_error_with_label(
-                            tcx: TyCtxt<'_>,
-                            span: Span,
-                            error: impl Into<DiagMessage>,
-                            label: impl Into<SubdiagMessage>,
-                        ) {
-                            let mut err: rustc_errors::Diag<'_, _> =
-                                tcx.dcx().struct_span_err(span, error);
-                            err.span_label(span, label);
-                            err.emit();
-                        }
 
                         let attrib_to_write = match meta_item.name_or_empty() {
                             sym::prefix_nops => &mut prefix,
                             sym::entry_nops => &mut entry,
                             _ => {
-                                emit_error_with_label(
-                                    tcx,
-                                    item.span(),
-                                    "unexpected parameter name",
-                                    format!("expected {} or {}", sym::prefix_nops, sym::entry_nops),
-                                );
+                                tcx.dcx().emit_err(errors::UnexpectedParameterName {
+                                    span: item.span(),
+                                    prefix_nops: sym::prefix_nops,
+                                    entry_nops: sym::entry_nops,
+                                });
                                 continue;
                             }
                         };
 
                         let rustc_ast::LitKind::Int(val, _) = name_value_lit.kind else {
-                            emit_error_with_label(
-                                tcx,
-                                name_value_lit.span,
-                                "invalid literal value",
-                                "value must be an integer between `0` and `255`",
-                            );
+                            tcx.dcx().emit_err(errors::InvalidLiteralValue {
+                                span: name_value_lit.span,
+                            });
                             continue;
                         };
 
                         let Ok(val) = val.get().try_into() else {
-                            emit_error_with_label(
-                                tcx,
-                                name_value_lit.span,
-                                "integer value out of range",
-                                "value must be between `0` and `255`",
-                            );
+                            tcx.dcx()
+                                .emit_err(errors::OutOfRangeInteger { span: name_value_lit.span });
                             continue;
                         };
 
@@ -540,16 +480,14 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         } else if let Some(ref items) = attr.meta_item_list() {
             inline_span = Some(attr.span);
             if items.len() != 1 {
-                struct_span_code_err!(tcx.dcx(), attr.span, E0534, "expected one argument").emit();
+                tcx.dcx().emit_err(errors::ExpectedOneArgument { span: attr.span });
                 InlineAttr::None
             } else if list_contains_name(items, sym::always) {
                 InlineAttr::Always
             } else if list_contains_name(items, sym::never) {
                 InlineAttr::Never
             } else {
-                struct_span_code_err!(tcx.dcx(), items[0].span(), E0535, "invalid argument")
-                    .with_help("valid inline arguments are `always` and `never`")
-                    .emit();
+                tcx.dcx().emit_err(errors::InvalidArgument { span: items[0].span() });
 
                 InlineAttr::None
             }
@@ -583,14 +521,13 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         if !attr.has_name(sym::optimize) {
             return ia;
         }
-        let err = |sp, s| struct_span_code_err!(tcx.dcx(), sp, E0722, "{}", s).emit();
         if attr.is_word() {
-            err(attr.span, "expected one argument");
+            tcx.dcx().emit_err(errors::ExpectedOneArgumentOptimize { span: attr.span });
             ia
         } else if let Some(ref items) = attr.meta_item_list() {
             inline_span = Some(attr.span);
             if items.len() != 1 {
-                err(attr.span, "expected one argument");
+                tcx.dcx().emit_err(errors::ExpectedOneArgumentOptimize { span: attr.span });
                 OptimizeAttr::Default
             } else if list_contains_name(items, sym::size) {
                 OptimizeAttr::Size
@@ -599,7 +536,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             } else if list_contains_name(items, sym::none) {
                 OptimizeAttr::DoNotOptimize
             } else {
-                err(items[0].span(), "invalid argument");
+                tcx.dcx().emit_err(errors::InvalidArgumentOptimize { span: items[0].span() });
                 OptimizeAttr::Default
             }
         } else {
