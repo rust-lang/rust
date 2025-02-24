@@ -1,8 +1,8 @@
 // ignore-tidy-filelength
 
-use std::assert_matches::debug_assert_matches;
 use std::borrow::Cow;
 use std::iter;
+use std::macros::debug_assert_matches;
 
 use itertools::{EitherOrBoth, Itertools};
 use rustc_abi::ExternAbi;

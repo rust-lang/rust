@@ -7,7 +7,6 @@
 #![feature(let_chains)]
 #![feature(never_type)]
 #![feature(rustc_private)]
-#![feature(assert_matches)]
 #![feature(unwrap_infallible)]
 #![feature(array_windows)]
 #![recursion_limit = "512"]

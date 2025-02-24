@@ -509,7 +509,7 @@ impl Command {
                             return Ok(None);
                         }
                     }
-                    core::assert_matches::debug_assert_matches!(support, SPAWN | NO);
+                    core::macros::debug_assert_matches!(support, SPAWN | NO);
                 }
             } else {
                 if self.get_create_pidfd() {

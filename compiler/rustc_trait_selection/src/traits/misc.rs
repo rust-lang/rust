@@ -1,6 +1,6 @@
 //! Miscellaneous type-system utilities that are too small to deserve their own modules.
 
-use std::assert_matches::assert_matches;
+use std::macros::assert_matches;
 
 use hir::LangItem;
 use rustc_ast::Mutability;

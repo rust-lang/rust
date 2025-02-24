@@ -2,9 +2,9 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/traits/resolution.html#selection
 
-use std::assert_matches::assert_matches;
 use std::cell::{Cell, RefCell};
 use std::fmt::{self, Display};
+use std::macros::assert_matches;
 use std::ops::ControlFlow;
 use std::{cmp, iter};
 

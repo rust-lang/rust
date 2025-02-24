@@ -1,4 +1,4 @@
-use std::assert_matches::assert_matches;
+use std::macros::assert_matches;
 
 use rustc_abi::VariantIdx;
 use rustc_index::Idx;

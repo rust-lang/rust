@@ -1,4 +1,4 @@
-use std::assert_matches::debug_assert_matches;
+use std::macros::debug_assert_matches;
 
 use rustc_abi::FieldIdx;
 use rustc_ast::InlineAsmTemplatePiece;

@@ -1,7 +1,7 @@
 //! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
 
-use std::assert_matches::assert_matches;
 use std::borrow::Cow;
+use std::macros::assert_matches;
 use std::mem;
 use std::num::NonZero;
 use std::ops::Deref;

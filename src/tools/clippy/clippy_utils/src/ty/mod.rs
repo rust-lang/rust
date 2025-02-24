@@ -27,7 +27,7 @@ use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
 use rustc_trait_selection::traits::{Obligation, ObligationCause};
-use std::assert_matches::debug_assert_matches;
+use std::macros::debug_assert_matches;
 use std::collections::hash_map::Entry;
 use std::iter;
 
