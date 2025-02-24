@@ -38,3 +38,11 @@ fn main() {
         .run();
 }
 ```
+
+## `tests/run-make/version-verbose-commit-hash`
+
+This is a special `run-make` test that checks if git hash info is available with
+`rustc -vV` and `rustdoc -vV`. It must not trust bootstrap's reporting of
+whether git hash is available, as bootstrap may be bugged. Instead, this test
+directly checks for `COMPILETEST_HAS_GIT_HASH=1` being set in CI, otherwise this
+test is a no-op locally.
