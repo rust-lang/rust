@@ -1,5 +1,7 @@
 use crate::cmp;
-use crate::io::{Error as IoError, ErrorKind, IoSlice, IoSliceMut, Result as IoResult};
+use crate::io::{
+    BorrowedCursor, Error as IoError, ErrorKind, IoSlice, IoSliceMut, Result as IoResult,
+};
 use crate::random::{DefaultRandomSource, Random};
 use crate::time::{Duration, Instant};
 
@@ -12,11 +14,36 @@ mod tests;
 use self::raw::*;
 
 /// Usercall `read`. See the ABI documentation for more information.
+#[unstable(feature = "sgx_platform", issue = "56975")]
+pub fn read(fd: Fd, buf: &mut [u8]) -> IoResult<usize> {
+    unsafe {
+        let mut userbuf = alloc::User::<[u8]>::uninitialized(buf.len());
+        let len = raw::read(fd, userbuf.as_mut_ptr(), userbuf.len()).from_sgx_result()?;
+        userbuf[..len].copy_to_enclave(&mut buf[..len]);
+        Ok(len)
+    }
+}
+
+/// Usercall `read` with an uninitialized buffer. See the ABI documentation for
+/// more information.
+#[unstable(feature = "sgx_platform", issue = "56975")]
+pub fn read_buf(fd: Fd, mut buf: BorrowedCursor<'_>) -> IoResult<()> {
+    unsafe {
+        let mut userbuf = alloc::User::<[u8]>::uninitialized(buf.capacity());
+        let len = raw::read(fd, userbuf.as_mut_ptr().cast(), userbuf.len()).from_sgx_result()?;
+        userbuf[..len].copy_to_enclave_uninit(&mut buf.as_mut()[..len]);
+        buf.advance_unchecked(len);
+        Ok(())
+    }
+}
+
+/// Usercall `read` with a slice of buffers. See the ABI documentation for more
+/// information.
 ///
 /// This will do a single `read` usercall and scatter the read data among
-/// `bufs`. To read to a single buffer, just pass a slice of length one.
+/// `bufs`.
 #[unstable(feature = "sgx_platform", issue = "56975")]
-pub fn read(fd: Fd, bufs: &mut [IoSliceMut<'_>]) -> IoResult<usize> {
+pub fn read_vectored(fd: Fd, bufs: &mut [IoSliceMut<'_>]) -> IoResult<usize> {
     unsafe {
         let total_len = bufs.iter().fold(0usize, |sum, buf| sum.saturating_add(buf.len()));
         let mut userbuf = alloc::User::<[u8]>::uninitialized(total_len);
@@ -48,11 +75,21 @@ pub fn read_alloc(fd: Fd) -> IoResult<Vec<u8>> {
 }
 
 /// Usercall `write`. See the ABI documentation for more information.
+#[unstable(feature = "sgx_platform", issue = "56975")]
+pub fn write(fd: Fd, buf: &[u8]) -> IoResult<usize> {
+    unsafe {
+        let userbuf = alloc::User::new_from_enclave(buf);
+        raw::write(fd, userbuf.as_ptr(), userbuf.len()).from_sgx_result()
+    }
+}
+
+/// Usercall `write` with a slice of buffers. See the ABI documentation for more
+/// information.
 ///
 /// This will do a single `write` usercall and gather the written data from
-/// `bufs`. To write from a single buffer, just pass a slice of length one.
+/// `bufs`.
 #[unstable(feature = "sgx_platform", issue = "56975")]
-pub fn write(fd: Fd, bufs: &[IoSlice<'_>]) -> IoResult<usize> {
+pub fn write_vectored(fd: Fd, bufs: &[IoSlice<'_>]) -> IoResult<usize> {
     unsafe {
         let total_len = bufs.iter().fold(0usize, |sum, buf| sum.saturating_add(buf.len()));
         let mut userbuf = alloc::User::<[u8]>::uninitialized(total_len);
