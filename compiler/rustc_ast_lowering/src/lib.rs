@@ -31,8 +31,8 @@
 //! in the HIR, especially for multiple identifiers.
 
 // tidy-alphabetical-start
-#![allow(internal_features)]
 #![doc(rust_logo)]
+#![allow(internal_features)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
