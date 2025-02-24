@@ -2,9 +2,12 @@ error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/impl-block-params-declared-in-wrong-spot-issue-113073.rs:7:13
    |
 LL | impl Foo<T: 'a + Default> for u8 {}
-   |     -       ^^ undeclared lifetime
-   |     |
-   |     help: consider introducing lifetime `'a` here: `<'a>`
+   |             ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | impl<'a> Foo<T: 'a + Default> for u8 {}
+   |     ++++
 
 error[E0229]: associated item constraints are not allowed here
   --> $DIR/impl-block-params-declared-in-wrong-spot-issue-113073.rs:3:10
