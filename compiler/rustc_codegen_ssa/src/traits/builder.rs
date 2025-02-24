@@ -325,6 +325,14 @@ pub trait BuilderMethods<'a, 'tcx>:
         ptr: Self::Value,
         indices: &[Self::Value],
     ) -> Self::Value;
+    fn inbounds_nuw_gep(
+        &mut self,
+        ty: Self::Type,
+        ptr: Self::Value,
+        indices: &[Self::Value],
+    ) -> Self::Value {
+        self.inbounds_gep(ty, ptr, indices)
+    }
     fn ptradd(&mut self, ptr: Self::Value, offset: Self::Value) -> Self::Value {
         self.gep(self.cx().type_i8(), ptr, &[offset])
     }

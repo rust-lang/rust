@@ -31,7 +31,9 @@ use tracing::{debug, instrument};
 use crate::abi::FnAbiLlvmExt;
 use crate::common::Funclet;
 use crate::context::{CodegenCx, SimpleCx};
-use crate::llvm::{self, AtomicOrdering, AtomicRmwBinOp, BasicBlock, False, Metadata, True};
+use crate::llvm::{
+    self, AtomicOrdering, AtomicRmwBinOp, BasicBlock, False, GEPNoWrapFlags, Metadata, True,
+};
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
@@ -910,13 +912,14 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
     fn gep(&mut self, ty: &'ll Type, ptr: &'ll Value, indices: &[&'ll Value]) -> &'ll Value {
         unsafe {
-            llvm::LLVMBuildGEP2(
+            llvm::LLVMBuildGEPWithNoWrapFlags(
                 self.llbuilder,
                 ty,
                 ptr,
                 indices.as_ptr(),
                 indices.len() as c_uint,
                 UNNAMED,
+                GEPNoWrapFlags::default(),
             )
         }
     }
@@ -928,13 +931,33 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         indices: &[&'ll Value],
     ) -> &'ll Value {
         unsafe {
-            llvm::LLVMBuildInBoundsGEP2(
+            llvm::LLVMBuildGEPWithNoWrapFlags(
                 self.llbuilder,
                 ty,
                 ptr,
                 indices.as_ptr(),
                 indices.len() as c_uint,
                 UNNAMED,
+                GEPNoWrapFlags::InBounds,
+            )
+        }
+    }
+
+    fn inbounds_nuw_gep(
+        &mut self,
+        ty: &'ll Type,
+        ptr: &'ll Value,
+        indices: &[&'ll Value],
+    ) -> &'ll Value {
+        unsafe {
+            llvm::LLVMBuildGEPWithNoWrapFlags(
+                self.llbuilder,
+                ty,
+                ptr,
+                indices.as_ptr(),
+                indices.len() as c_uint,
+                UNNAMED,
+                GEPNoWrapFlags::InBounds | GEPNoWrapFlags::NUW,
             )
         }
     }
