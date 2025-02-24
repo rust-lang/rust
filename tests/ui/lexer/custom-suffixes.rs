@@ -1,4 +1,4 @@
-//@ run-pass
+//@ check-pass
 
 // This tests different kinds of valid suffixes.
 
