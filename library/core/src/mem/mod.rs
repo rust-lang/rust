@@ -1067,6 +1067,20 @@ impl<T> fmt::Debug for Discriminant<T> {
     }
 }
 
+#[stable(feature = "discriminant_ord", since = "CURRENT_RUSTC_VERSION")]
+impl<T> cmp::PartialOrd for Discriminant<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        self.0.partial_cmp(&other.0)
+    }
+}
+
+#[stable(feature = "discriminant_ord", since = "CURRENT_RUSTC_VERSION")]
+impl<T> cmp::Ord for Discriminant<T> {
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
+        self.0.cmp(&other.0)
+    }
+}
+
 /// Returns a value uniquely identifying the enum variant in `v`.
 ///
 /// If `T` is not an enum, calling this function will not result in undefined behavior, but the
@@ -1074,9 +1088,8 @@ impl<T> fmt::Debug for Discriminant<T> {
 ///
 /// # Stability
 ///
-/// The discriminant of an enum variant may change if the enum definition changes. A discriminant
-/// of some variant will not change between compilations with the same compiler. See the [Reference]
-/// for more information.
+/// `Discriminant` is an opaque wrapper around the enum discriminant, therefore its value will
+/// change when the enum definition changes. See the [Reference] for more information.
 ///
 /// [Reference]: ../../reference/items/enumerations.html#custom-discriminant-values-for-fieldless-enumerations
 ///
