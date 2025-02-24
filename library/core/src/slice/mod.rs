@@ -1043,9 +1043,10 @@ impl<T> [T] {
     /// assert_eq!(iterator.next(), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
     #[rustc_diagnostic_item = "slice_iter"]
-    pub fn iter(&self) -> Iter<'_, T> {
+    pub const fn iter(&self) -> Iter<'_, T> {
         Iter::new(self)
     }
 
@@ -1062,9 +1063,10 @@ impl<T> [T] {
     /// }
     /// assert_eq!(x, &[3, 4, 6]);
     /// ```
+    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn iter_mut(&mut self) -> IterMut<'_, T> {
+    pub const fn iter_mut(&mut self) -> IterMut<'_, T> {
         IterMut::new(self)
     }
 
@@ -1116,9 +1118,10 @@ impl<T> [T] {
     /// assert_eq!(array, ['s', 't', ' ', '2', '0', '1', '5', 'u', 'R']);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
     #[track_caller]
-    pub fn windows(&self, size: usize) -> Windows<'_, T> {
+    pub const fn windows(&self, size: usize) -> Windows<'_, T> {
         let size = NonZero::new(size).expect("window size must be non-zero");
         Windows::new(self, size)
     }
@@ -1151,9 +1154,10 @@ impl<T> [T] {
     /// [`chunks_exact`]: slice::chunks_exact
     /// [`rchunks`]: slice::rchunks
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
     #[track_caller]
-    pub fn chunks(&self, chunk_size: usize) -> Chunks<'_, T> {
+    pub const fn chunks(&self, chunk_size: usize) -> Chunks<'_, T> {
         assert!(chunk_size != 0, "chunk size must be non-zero");
         Chunks::new(self, chunk_size)
     }
@@ -1190,9 +1194,10 @@ impl<T> [T] {
     /// [`chunks_exact_mut`]: slice::chunks_exact_mut
     /// [`rchunks_mut`]: slice::rchunks_mut
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
     #[track_caller]
-    pub fn chunks_mut(&mut self, chunk_size: usize) -> ChunksMut<'_, T> {
+    pub const fn chunks_mut(&mut self, chunk_size: usize) -> ChunksMut<'_, T> {
         assert!(chunk_size != 0, "chunk size must be non-zero");
         ChunksMut::new(self, chunk_size)
     }
@@ -1228,9 +1233,10 @@ impl<T> [T] {
     /// [`chunks`]: slice::chunks
     /// [`rchunks_exact`]: slice::rchunks_exact
     #[stable(feature = "chunks_exact", since = "1.31.0")]
+    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
     #[track_caller]
-    pub fn chunks_exact(&self, chunk_size: usize) -> ChunksExact<'_, T> {
+    pub const fn chunks_exact(&self, chunk_size: usize) -> ChunksExact<'_, T> {
         assert!(chunk_size != 0, "chunk size must be non-zero");
         ChunksExact::new(self, chunk_size)
     }
@@ -1271,9 +1277,10 @@ impl<T> [T] {
     /// [`chunks_mut`]: slice::chunks_mut
     /// [`rchunks_exact_mut`]: slice::rchunks_exact_mut
     #[stable(feature = "chunks_exact", since = "1.31.0")]
+    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
     #[track_caller]
-    pub fn chunks_exact_mut(&mut self, chunk_size: usize) -> ChunksExactMut<'_, T> {
+    pub const fn chunks_exact_mut(&mut self, chunk_size: usize) -> ChunksExactMut<'_, T> {
         assert!(chunk_size != 0, "chunk size must be non-zero");
         ChunksExactMut::new(self, chunk_size)
     }
@@ -1429,9 +1436,10 @@ impl<T> [T] {
     ///
     /// [`chunks_exact`]: slice::chunks_exact
     #[unstable(feature = "array_chunks", issue = "74985")]
+    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
     #[track_caller]
-    pub fn array_chunks<const N: usize>(&self) -> ArrayChunks<'_, T, N> {
+    pub const fn array_chunks<const N: usize>(&self) -> ArrayChunks<'_, T, N> {
         assert!(N != 0, "chunk size must be non-zero");
         ArrayChunks::new(self)
     }
@@ -1592,9 +1600,10 @@ impl<T> [T] {
     ///
     /// [`chunks_exact_mut`]: slice::chunks_exact_mut
     #[unstable(feature = "array_chunks", issue = "74985")]
+    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
     #[track_caller]
-    pub fn array_chunks_mut<const N: usize>(&mut self) -> ArrayChunksMut<'_, T, N> {
+    pub const fn array_chunks_mut<const N: usize>(&mut self) -> ArrayChunksMut<'_, T, N> {
         assert!(N != 0, "chunk size must be non-zero");
         ArrayChunksMut::new(self)
     }
@@ -1625,9 +1634,10 @@ impl<T> [T] {
     ///
     /// [`windows`]: slice::windows
     #[unstable(feature = "array_windows", issue = "75027")]
+    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
     #[track_caller]
-    pub fn array_windows<const N: usize>(&self) -> ArrayWindows<'_, T, N> {
+    pub const fn array_windows<const N: usize>(&self) -> ArrayWindows<'_, T, N> {
         assert!(N != 0, "window size must be non-zero");
         ArrayWindows::new(self)
     }
@@ -1660,9 +1670,10 @@ impl<T> [T] {
     /// [`rchunks_exact`]: slice::rchunks_exact
     /// [`chunks`]: slice::chunks
     #[stable(feature = "rchunks", since = "1.31.0")]
+    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
     #[track_caller]
-    pub fn rchunks(&self, chunk_size: usize) -> RChunks<'_, T> {
+    pub const fn rchunks(&self, chunk_size: usize) -> RChunks<'_, T> {
         assert!(chunk_size != 0, "chunk size must be non-zero");
         RChunks::new(self, chunk_size)
     }
@@ -1699,9 +1710,10 @@ impl<T> [T] {
     /// [`rchunks_exact_mut`]: slice::rchunks_exact_mut
     /// [`chunks_mut`]: slice::chunks_mut
     #[stable(feature = "rchunks", since = "1.31.0")]
+    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
     #[track_caller]
-    pub fn rchunks_mut(&mut self, chunk_size: usize) -> RChunksMut<'_, T> {
+    pub const fn rchunks_mut(&mut self, chunk_size: usize) -> RChunksMut<'_, T> {
         assert!(chunk_size != 0, "chunk size must be non-zero");
         RChunksMut::new(self, chunk_size)
     }
@@ -1739,9 +1751,10 @@ impl<T> [T] {
     /// [`rchunks`]: slice::rchunks
     /// [`chunks_exact`]: slice::chunks_exact
     #[stable(feature = "rchunks", since = "1.31.0")]
+    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
     #[track_caller]
-    pub fn rchunks_exact(&self, chunk_size: usize) -> RChunksExact<'_, T> {
+    pub const fn rchunks_exact(&self, chunk_size: usize) -> RChunksExact<'_, T> {
         assert!(chunk_size != 0, "chunk size must be non-zero");
         RChunksExact::new(self, chunk_size)
     }
@@ -1783,9 +1796,10 @@ impl<T> [T] {
     /// [`rchunks_mut`]: slice::rchunks_mut
     /// [`chunks_exact_mut`]: slice::chunks_exact_mut
     #[stable(feature = "rchunks", since = "1.31.0")]
+    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
     #[track_caller]
-    pub fn rchunks_exact_mut(&mut self, chunk_size: usize) -> RChunksExactMut<'_, T> {
+    pub const fn rchunks_exact_mut(&mut self, chunk_size: usize) -> RChunksExactMut<'_, T> {
         assert!(chunk_size != 0, "chunk size must be non-zero");
         RChunksExactMut::new(self, chunk_size)
     }
@@ -1823,8 +1837,9 @@ impl<T> [T] {
     /// assert_eq!(iter.next(), None);
     /// ```
     #[stable(feature = "slice_group_by", since = "1.77.0")]
+    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
-    pub fn chunk_by<F>(&self, pred: F) -> ChunkBy<'_, T, F>
+    pub const fn chunk_by<F>(&self, pred: F) -> ChunkBy<'_, T, F>
     where
         F: FnMut(&T, &T) -> bool,
     {
@@ -1864,8 +1879,9 @@ impl<T> [T] {
     /// assert_eq!(iter.next(), None);
     /// ```
     #[stable(feature = "slice_group_by", since = "1.77.0")]
+    #[rustc_const_unstable(feature = "const_slice_make_iter", issue = "137737")]
     #[inline]
-    pub fn chunk_by_mut<F>(&mut self, pred: F) -> ChunkByMut<'_, T, F>
+    pub const fn chunk_by_mut<F>(&mut self, pred: F) -> ChunkByMut<'_, T, F>
     where
         F: FnMut(&T, &T) -> bool,
     {
