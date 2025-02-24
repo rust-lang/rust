@@ -9,7 +9,7 @@ use rustc_index::Idx;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::Obligation;
 use rustc_middle::mir::interpret::ErrorHandled;
-use rustc_middle::thir::{FieldPat, Pat, PatKind};
+use rustc_middle::thir::{FieldPat, Pat, PatKind, Thir};
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitableExt, TypeVisitor, ValTree,
 };
@@ -36,7 +36,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     /// so we have to carry one ourselves.
     #[instrument(level = "debug", skip(self), ret)]
     pub(super) fn const_to_pat(
-        &self,
+        &mut self,
         c: ty::Const<'tcx>,
         ty: Ty<'tcx>,
         id: hir::HirId,
@@ -52,8 +52,9 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     }
 }
 
-struct ConstToPat<'tcx> {
+struct ConstToPat<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
+    thir: &'a mut Thir<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
     span: Span,
     id: hir::HirId,
@@ -63,11 +64,17 @@ struct ConstToPat<'tcx> {
     c: ty::Const<'tcx>,
 }
 
-impl<'tcx> ConstToPat<'tcx> {
-    fn new(pat_ctxt: &PatCtxt<'_, 'tcx>, id: hir::HirId, span: Span, c: ty::Const<'tcx>) -> Self {
+impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
+    fn new(
+        pat_ctxt: &'a mut PatCtxt<'_, 'tcx>,
+        id: hir::HirId,
+        span: Span,
+        c: ty::Const<'tcx>,
+    ) -> Self {
         trace!(?pat_ctxt.typeck_results.hir_owner);
         ConstToPat {
             tcx: pat_ctxt.tcx,
+            thir: pat_ctxt.thir,
             typing_env: pat_ctxt.typing_env,
             span,
             id,
