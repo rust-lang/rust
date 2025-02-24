@@ -247,6 +247,7 @@ pub(crate) struct CrateLocator<'a> {
 
     // Immutable per-search configuration.
     crate_name: Symbol,
+    // Dependency paths passed through --extern
     exact_paths: Vec<CanonicalizedPath>,
     pub hash: Option<Svh>,
     extra_filename: Option<&'a str>,
@@ -511,6 +512,8 @@ impl<'a> CrateLocator<'a> {
             rlib: self.extract_one(rlibs, CrateFlavor::Rlib, &mut slot)?,
             dylib: self.extract_one(dylibs, CrateFlavor::Dylib, &mut slot)?,
         };
+        // Question: check if we have no rmeta, but rlib/dylib with is_stub, and in that case
+        // invoke `find_library`?
         Ok(slot.map(|(svh, metadata, _)| (svh, Library { source, metadata })))
     }
 
@@ -730,6 +733,14 @@ impl<'a> CrateLocator<'a> {
             };
             if file.starts_with("lib") {
                 if file.ends_with(".rlib") {
+                    // In case the .rlib contains only stub metadata, we will most likely
+                    // need to load a corresponding .rmeta file. Since it will often be
+                    // located right next to the .rlib path, directly add it to the candidate
+                    // paths as a "fast-path".
+                    let possible_rmeta_path = loc_orig.with_extension("rmeta");
+                    if let Ok(rmeta_path) = try_canonicalize(possible_rmeta_path) {
+                        rmetas.insert(rmeta_path, PathKind::ExternFlag);
+                    }
                     rlibs.insert(loc_canon.clone(), PathKind::ExternFlag);
                     continue;
                 }
@@ -740,7 +751,15 @@ impl<'a> CrateLocator<'a> {
             }
             let dll_prefix = self.target.dll_prefix.as_ref();
             let dll_suffix = self.target.dll_suffix.as_ref();
-            if file.starts_with(dll_prefix) && file.ends_with(dll_suffix) {
+            if let Some(stem) =
+                file.strip_prefix(dll_prefix).and_then(|name| name.strip_suffix(dll_suffix))
+            {
+                // See comment above about stub metadata, it applies also here for dylibs
+                let possible_rmeta_path =
+                    loc_orig.parent().unwrap().join(format!("lib{stem}.rmeta"));
+                if let Ok(rmeta_path) = try_canonicalize(possible_rmeta_path) {
+                    rmetas.insert(rmeta_path, PathKind::ExternFlag);
+                }
                 dylibs.insert(loc_canon.clone(), PathKind::ExternFlag);
                 continue;
             }
