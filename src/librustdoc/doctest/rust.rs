@@ -123,7 +123,7 @@ impl HirCollector<'_> {
                     .iter()
                     .find(|attr| attr.doc_str().is_some())
                     .map(|attr| {
-                        attr.span.ctxt().outer_expn().expansion_cause().unwrap_or(attr.span)
+                        attr.span().ctxt().outer_expn().expansion_cause().unwrap_or(attr.span())
                     })
                     .unwrap_or(DUMMY_SP)
             };

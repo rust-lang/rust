@@ -2737,13 +2737,13 @@ fn add_without_unwanted_attributes<'hir>(
     import_parent: Option<DefId>,
 ) {
     for attr in new_attrs {
-        if matches!(attr.kind, hir::AttrKind::DocComment(..)) {
+        if attr.is_doc_comment() {
             attrs.push((Cow::Borrowed(attr), import_parent));
             continue;
         }
         let mut attr = attr.clone();
-        match attr.kind {
-            hir::AttrKind::Normal(ref mut normal) => {
+        match attr {
+            hir::Attribute::Unparsed(ref mut normal) => {
                 if let [ident] = &*normal.path.segments {
                     let ident = ident.name;
                     if ident == sym::doc {
@@ -2755,7 +2755,11 @@ fn add_without_unwanted_attributes<'hir>(
                     }
                 }
             }
-            _ => unreachable!(),
+            hir::Attribute::Parsed(..) => {
+                if is_inline {
+                    attrs.push((Cow::Owned(attr), import_parent));
+                }
+            }
         }
     }
 }

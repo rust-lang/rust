@@ -3,17 +3,17 @@ use std::collections::hash_map::Entry;
 use std::{mem, slice};
 
 use ast::token::IdentIsRaw;
-use rustc_ast::attr::AttributeExt;
 use rustc_ast::token::NtPatKind::*;
 use rustc_ast::token::TokenKind::*;
 use rustc_ast::token::{self, Delimiter, NonterminalKind, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream};
 use rustc_ast::{self as ast, DUMMY_NODE_ID, NodeId};
 use rustc_ast_pretty::pprust;
-use rustc_attr_parsing::{self as attr, TransparencyError};
+use rustc_attr_parsing::{AttributeKind, find_attr};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::{Applicability, ErrorGuaranteed};
 use rustc_feature::Features;
+use rustc_hir as hir;
 use rustc_lint_defs::BuiltinLintDiag;
 use rustc_lint_defs::builtin::{
     RUST_2021_INCOMPATIBLE_OR_PATTERNS, SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
@@ -371,7 +371,7 @@ pub fn compile_declarative_macro(
     features: &Features,
     macro_def: &ast::MacroDef,
     ident: Ident,
-    attrs: &[impl AttributeExt],
+    attrs: &[hir::Attribute],
     span: Span,
     node_id: NodeId,
     edition: Edition,
@@ -379,7 +379,6 @@ pub fn compile_declarative_macro(
     let mk_syn_ext = |expander| {
         SyntaxExtension::new(
             sess,
-            features,
             SyntaxExtensionKind::LegacyBang(expander),
             span,
             Vec::new(),
@@ -391,7 +390,6 @@ pub fn compile_declarative_macro(
     };
     let dummy_syn_ext = |guar| (mk_syn_ext(Box::new(DummyExpander(guar))), Vec::new());
 
-    let dcx = sess.dcx();
     let lhs_nm = Ident::new(sym::lhs, span);
     let rhs_nm = Ident::new(sym::rhs, span);
     let tt_spec = Some(NonterminalKind::TT);
@@ -542,16 +540,8 @@ pub fn compile_declarative_macro(
 
     check_emission(macro_check::check_meta_variables(&sess.psess, node_id, span, &lhses, &rhses));
 
-    let (transparency, transparency_error) = attr::find_transparency(attrs, macro_rules);
-    match transparency_error {
-        Some(TransparencyError::UnknownTransparency(value, span)) => {
-            dcx.span_err(span, format!("unknown macro transparency: `{value}`"));
-        }
-        Some(TransparencyError::MultipleTransparencyAttrs(old_span, new_span)) => {
-            dcx.span_err(vec![old_span, new_span], "multiple macro transparency attributes");
-        }
-        None => {}
-    }
+    let transparency = find_attr!(attrs, AttributeKind::MacroTransparency(x) => *x)
+        .unwrap_or(Transparency::fallback(macro_rules));
 
     if let Some(guar) = guar {
         // To avoid warning noise, only consider the rules of this

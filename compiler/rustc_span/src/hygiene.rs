@@ -175,6 +175,12 @@ pub enum Transparency {
     Opaque,
 }
 
+impl Transparency {
+    pub fn fallback(macro_rules: bool) -> Self {
+        if macro_rules { Transparency::SemiTransparent } else { Transparency::Opaque }
+    }
+}
+
 impl LocalExpnId {
     /// The ID of the theoretical expansion that generates freshly parsed, unexpanded AST.
     pub const ROOT: LocalExpnId = LocalExpnId::ZERO;

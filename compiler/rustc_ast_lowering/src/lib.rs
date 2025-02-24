@@ -45,6 +45,7 @@ use std::sync::Arc;
 
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::{self as ast, *};
+use rustc_attr_parsing::{AttributeParser, OmitDoc};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -60,7 +61,8 @@ use rustc_macros::extension;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_session::parse::{add_feature_diagnostics, feature_err};
-use rustc_span::{DUMMY_SP, DesugaringKind, Ident, Span, Symbol, kw, sym};
+use rustc_span::symbol::{Ident, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, DesugaringKind, Span};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 use tracing::{debug, instrument, trace};
@@ -137,10 +139,13 @@ struct LoweringContext<'a, 'hir> {
     allow_async_iterator: Arc<[Symbol]>,
     allow_for_await: Arc<[Symbol]>,
     allow_async_fn_traits: Arc<[Symbol]>,
+
+    attribute_parser: AttributeParser<'hir>,
 }
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn new(tcx: TyCtxt<'hir>, resolver: &'a mut ResolverAstLowering) -> Self {
+        let registered_tools = tcx.registered_tools(()).iter().map(|x| x.name).collect();
         Self {
             // Pseudo-globals.
             tcx,
@@ -181,6 +186,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // FIXME(gen_blocks): how does `closure_track_caller`/`async_fn_track_caller`
             // interact with `gen`/`async gen` blocks
             allow_async_iterator: [sym::gen_future, sym::async_iterator].into(),
+
+            attribute_parser: AttributeParser::new(tcx.sess, tcx.features(), registered_tools),
         }
     }
 
@@ -216,7 +223,6 @@ impl ResolverAstLowering {
         None
     }
 
-    /// Obtains resolution for a `NodeId` with a single resolution.
     fn get_partial_res(&self, id: NodeId) -> Option<PartialRes> {
         self.partial_res_map.get(&id).copied()
     }
@@ -855,45 +861,38 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         ret
     }
 
-    fn lower_attrs(&mut self, id: HirId, attrs: &[Attribute]) -> &'hir [hir::Attribute] {
+    fn lower_attrs(
+        &mut self,
+        id: HirId,
+        attrs: &[Attribute],
+        target_span: Span,
+    ) -> &'hir [hir::Attribute] {
         if attrs.is_empty() {
             &[]
         } else {
+            let lowered_attrs = self.lower_attrs_vec(attrs, self.lower_span(target_span));
+
             debug_assert_eq!(id.owner, self.current_hir_id_owner);
-            let ret = self.arena.alloc_from_iter(attrs.iter().map(|a| self.lower_attr(a)));
-            debug_assert!(!ret.is_empty());
-            self.attrs.insert(id.local_id, ret);
-            ret
+            let ret = self.arena.alloc_from_iter(lowered_attrs);
+
+            // this is possible if an item contained syntactical attribute,
+            // but none of them parse succesfully or all of them were ignored
+            // for not being built-in attributes at all. They could be remaining
+            // unexpanded attributes used as markers in proc-macro derives for example.
+            // This will have emitted some diagnostics for the misparse, but will then
+            // not emit the attribute making the list empty.
+            if ret.is_empty() {
+                &[]
+            } else {
+                self.attrs.insert(id.local_id, ret);
+                ret
+            }
         }
     }
 
-    fn lower_attr(&self, attr: &Attribute) -> hir::Attribute {
-        // Note that we explicitly do not walk the path. Since we don't really
-        // lower attributes (we use the AST version) there is nowhere to keep
-        // the `HirId`s. We don't actually need HIR version of attributes anyway.
-        // Tokens are also not needed after macro expansion and parsing.
-        let kind = match attr.kind {
-            AttrKind::Normal(ref normal) => hir::AttrKind::Normal(Box::new(hir::AttrItem {
-                unsafety: self.lower_safety(normal.item.unsafety, hir::Safety::Safe),
-                path: hir::AttrPath {
-                    segments: normal
-                        .item
-                        .path
-                        .segments
-                        .iter()
-                        .map(|i| i.ident)
-                        .collect::<Vec<_>>()
-                        .into_boxed_slice(),
-                    span: normal.item.path.span,
-                },
-                args: self.lower_attr_args(&normal.item.args),
-            })),
-            AttrKind::DocComment(comment_kind, data) => {
-                hir::AttrKind::DocComment(comment_kind, data)
-            }
-        };
-
-        hir::Attribute { kind, id: attr.id, style: attr.style, span: self.lower_span(attr.span) }
+    fn lower_attrs_vec(&self, attrs: &[Attribute], target_span: Span) -> Vec<hir::Attribute> {
+        self.attribute_parser
+            .parse_attribute_list(attrs, target_span, OmitDoc::Lower, |s| self.lower_span(s))
     }
 
     fn alias_attrs(&mut self, id: HirId, target_id: HirId) {
@@ -902,34 +901,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         if let Some(&a) = self.attrs.get(&target_id.local_id) {
             debug_assert!(!a.is_empty());
             self.attrs.insert(id.local_id, a);
-        }
-    }
-
-    fn lower_attr_args(&self, args: &AttrArgs) -> hir::AttrArgs {
-        match args {
-            AttrArgs::Empty => hir::AttrArgs::Empty,
-            AttrArgs::Delimited(args) => hir::AttrArgs::Delimited(self.lower_delim_args(args)),
-            // This is an inert key-value attribute - it will never be visible to macros
-            // after it gets lowered to HIR. Therefore, we can extract literals to handle
-            // nonterminals in `#[doc]` (e.g. `#[doc = $e]`).
-            &AttrArgs::Eq { eq_span, ref expr } => {
-                // In valid code the value always ends up as a single literal. Otherwise, a dummy
-                // literal suffices because the error is handled elsewhere.
-                let lit = if let ExprKind::Lit(token_lit) = expr.kind
-                    && let Ok(lit) = MetaItemLit::from_token_lit(token_lit, expr.span)
-                {
-                    lit
-                } else {
-                    let guar = self.dcx().has_errors().unwrap();
-                    MetaItemLit {
-                        symbol: kw::Empty,
-                        suffix: None,
-                        kind: LitKind::Err(guar),
-                        span: DUMMY_SP,
-                    }
-                };
-                hir::AttrArgs::Eq { eq_span, expr: lit }
-            }
         }
     }
 
@@ -1845,7 +1816,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let (name, kind) = self.lower_generic_param_kind(param, source);
 
         let hir_id = self.lower_node_id(param.id);
-        self.lower_attrs(hir_id, &param.attrs);
+        self.lower_attrs(hir_id, &param.attrs, param.span());
         hir::GenericParam {
             hir_id,
             def_id: self.local_def_id(param.id),

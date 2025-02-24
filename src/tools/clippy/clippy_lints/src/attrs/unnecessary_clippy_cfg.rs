@@ -15,7 +15,7 @@ pub(super) fn check(
 ) {
     if cfg_attr.has_name(sym::clippy)
         && let Some(ident) = behind_cfg_attr.ident()
-        && Level::from_symbol(ident.name, Some(attr.id)).is_some()
+        && Level::from_symbol(ident.name, || Some(attr.id)).is_some()
         && let Some(items) = behind_cfg_attr.meta_item_list()
     {
         let nb_items = items.len();

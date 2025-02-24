@@ -178,18 +178,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 );
             }
         }
-
-        // Emit errors for non-staged-api crates.
-        if !self.features.staged_api() {
-            if attr.has_name(sym::unstable)
-                || attr.has_name(sym::stable)
-                || attr.has_name(sym::rustc_const_unstable)
-                || attr.has_name(sym::rustc_const_stable)
-                || attr.has_name(sym::rustc_default_body_unstable)
-            {
-                self.sess.dcx().emit_err(errors::StabilityOutsideStd { span: attr.span });
-            }
-        }
     }
 
     fn visit_item(&mut self, i: &'a ast::Item) {

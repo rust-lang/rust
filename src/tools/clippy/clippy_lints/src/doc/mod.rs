@@ -20,7 +20,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{AnonConst, Attribute, Expr, ImplItemKind, ItemKind, Node, Safety, TraitItemKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty;
 use rustc_resolve::rustdoc::{
@@ -577,6 +577,13 @@ impl_lint_pass!(Documentation => [
     DOC_INCLUDE_WITHOUT_CFG,
 ]);
 
+
+impl EarlyLintPass for Documentation {
+    fn check_attributes(&mut self, cx: &EarlyContext<'_>, attrs: &[rustc_ast::Attribute]) {
+        include_in_doc_without_cfg::check(cx, attrs);
+    }
+}
+
 impl<'tcx> LateLintPass<'tcx> for Documentation {
     fn check_attributes(&mut self, cx: &LateContext<'tcx>, attrs: &'tcx [Attribute]) {
         let Some(headers) = check_attrs(cx, &self.valid_idents, attrs) else {
@@ -704,14 +711,13 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
         Some(("fake".into(), "fake".into()))
     }
 
-    include_in_doc_without_cfg::check(cx, attrs);
     if suspicious_doc_comments::check(cx, attrs) || is_doc_hidden(attrs) {
         return None;
     }
 
     let (fragments, _) = attrs_to_doc_fragments(
         attrs.iter().filter_map(|attr| {
-            if attr.span.in_external_macro(cx.sess().source_map()) {
+            if !attr.doc_str_and_comment_kind().is_some() || attr.span().in_external_macro(cx.sess().source_map()) {
                 None
             } else {
                 Some((attr, None))

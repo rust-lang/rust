@@ -65,7 +65,7 @@ fn coverage_attr_on(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
             Some(_) | None => {
                 // Other possibilities should have been rejected by `rustc_parse::validate_attr`.
                 // Use `span_delayed_bug` to avoid an ICE in failing builds (#127880).
-                tcx.dcx().span_delayed_bug(attr.span, "unexpected value of coverage attribute");
+                tcx.dcx().span_delayed_bug(attr.span(), "unexpected value of coverage attribute");
             }
         }
     }

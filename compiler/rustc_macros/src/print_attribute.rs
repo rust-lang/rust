@@ -1,0 +1,145 @@
+use proc_macro2::TokenStream;
+use quote::{format_ident, quote, quote_spanned};
+use syn::spanned::Spanned;
+use syn::{Data, Fields, Ident};
+use synstructure::Structure;
+
+fn print_fields(name: &Ident, fields: &Fields) -> (TokenStream, TokenStream, TokenStream) {
+    let string_name = name.to_string();
+    let mut disps = vec![quote! {let mut __printed_anything = false;}];
+
+    match fields {
+        Fields::Named(fields_named) => {
+            let mut field_names = Vec::new();
+
+            for field in &fields_named.named {
+                let name = field.ident.as_ref().unwrap();
+                let string_name = name.to_string();
+                disps.push(quote! {
+                    if __printed_anything && #name.print_something() {
+                        __p.word_space(",");
+                        __printed_anything = true;
+                    }
+                    __p.word(#string_name);
+                    __p.word_space(":");
+                    #name.print_attribute(__p);
+                });
+                field_names.push(name);
+            }
+
+            (
+                quote! { {#(#field_names),*} },
+                quote! {
+                    __p.word(#string_name);
+                    if true #(&& !#field_names.print_something())* {
+                        return;
+                    }
+
+                    __p.word("{");
+                    #(#disps)*
+                    __p.word("}");
+                },
+                quote! { true },
+            )
+        }
+        Fields::Unnamed(fields_unnamed) => {
+            let mut field_names = Vec::new();
+
+            for idx in 0..fields_unnamed.unnamed.len() {
+                let name = format_ident!("f{idx}");
+                disps.push(quote! {
+                    if __printed_anything && #name.print_something() {
+                        __p.word_space(",");
+                        __printed_anything = true;
+                    }
+                    #name.print_attribute(__p);
+                });
+                field_names.push(name);
+            }
+
+            (
+                quote! { (#(#field_names),*) },
+                quote! {
+                    __p.word(#string_name);
+
+                    if true #(&& !#field_names.print_something())* {
+                        return;
+                    }
+
+                    __p.word("(");
+                    #(#disps)*
+                    __p.word(")");
+                },
+                quote! { true },
+            )
+        }
+        Fields::Unit => (quote! {}, quote! { __p.word(#string_name) }, quote! { true }),
+    }
+}
+
+pub(crate) fn print_attribute(input: Structure<'_>) -> TokenStream {
+    let span_error = |span, message: &str| {
+        quote_spanned! { span => const _: () = ::core::compile_error!(#message); }
+    };
+
+    // Must be applied to an enum type.
+    let (code, printed) = match &input.ast().data {
+        Data::Enum(e) => {
+            let (arms, printed) = e
+                .variants
+                .iter()
+                .map(|x| {
+                    let ident = &x.ident;
+                    let (pat, code, printed) = print_fields(ident, &x.fields);
+
+                    (
+                        quote! {
+                            Self::#ident #pat => {#code}
+                        },
+                        quote! {
+                            Self::#ident #pat => {#printed}
+                        },
+                    )
+                })
+                .unzip::<_, _, Vec<_>, Vec<_>>();
+
+            (
+                quote! {
+                    match self {
+                        #(#arms)*
+                    }
+                },
+                quote! {
+                    match self {
+                        #(#printed)*
+                    }
+                },
+            )
+        }
+        Data::Struct(s) => {
+            let (pat, code, printed) = print_fields(&input.ast().ident, &s.fields);
+            (
+                quote! {
+                    let Self #pat = self;
+                    #code
+                },
+                quote! {
+                    let Self #pat = self;
+                    #printed
+                },
+            )
+        }
+        Data::Union(u) => {
+            return span_error(u.union_token.span(), "can't derive PrintAttribute on unions");
+        }
+    };
+
+    #[allow(keyword_idents_2024)]
+    input.gen_impl(quote! {
+        #[allow(unused)]
+        gen impl PrintAttribute for @Self {
+            fn print_something(&self) -> bool { #printed }
+            fn print_attribute(&self, __p: &mut rustc_ast_pretty::pp::Printer) { #code }
+        }
+    })
+}

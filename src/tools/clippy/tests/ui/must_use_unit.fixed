@@ -24,8 +24,3 @@ fn main() {
     );
 }
 
-#[cfg_attr(all(), deprecated)]
-fn issue_12320() {}
-
-#[cfg_attr(all(), deprecated, doc = "foo")]
-fn issue_12320_2() {}

@@ -54,7 +54,7 @@ impl<'tcx> LateLintPass<'tcx> for NoMangleWithRustAbi {
                         .span
                         .with_lo(fn_sig.span.lo() + BytePos::from_usize(fn_attrs.len()))
                         .shrink_to_lo();
-                    let attr_snippet = snippet(cx, attr.span, "..");
+                    let attr_snippet = snippet(cx, attr.span(), "..");
 
                     span_lint_and_then(
                         cx,

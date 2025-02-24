@@ -27,6 +27,7 @@ pub use intrinsic::IntrinsicDef;
 use rustc_abi::{Align, FieldIdx, Integer, IntegerType, ReprFlags, ReprOptions, VariantIdx};
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::node_id::NodeMap;
+use rustc_attr_parsing::AttributeKind;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -1495,9 +1496,10 @@ impl<'tcx> TyCtxt<'tcx> {
             field_shuffle_seed ^= user_seed;
         }
 
-        for attr in self.get_attrs(did, sym::repr) {
-            for r in attr::parse_repr_attr(self.sess, attr) {
-                flags.insert(match r {
+        if let Some(reprs) = attr::find_attr!(self.get_all_attrs(did), AttributeKind::Repr(r) => r)
+        {
+            for (r, _) in reprs {
+                flags.insert(match *r {
                     attr::ReprRust => ReprFlags::empty(),
                     attr::ReprC => ReprFlags::IS_C,
                     attr::ReprPacked(pack) => {
@@ -1533,6 +1535,10 @@ impl<'tcx> TyCtxt<'tcx> {
                     }
                     attr::ReprAlign(align) => {
                         max_align = max_align.max(Some(align));
+                        ReprFlags::empty()
+                    }
+                    attr::ReprEmpty => {
+                        /* skip these, they're just for diagnostics */
                         ReprFlags::empty()
                     }
                 });
@@ -1757,13 +1763,21 @@ impl<'tcx> TyCtxt<'tcx> {
         did: impl Into<DefId>,
         attr: Symbol,
     ) -> impl Iterator<Item = &'tcx hir::Attribute> {
+        self.get_all_attrs(did).filter(move |a: &&hir::Attribute| a.has_name(attr))
+    }
+
+    /// Gets all attributes.
+    ///
+    /// To see if an item has a specific attribute, you should use [`rustc_attr_parsing::find_attr!`] so you can use matching.
+    pub fn get_all_attrs(
+        self,
+        did: impl Into<DefId>,
+    ) -> impl Iterator<Item = &'tcx hir::Attribute> {
         let did: DefId = did.into();
-        let filter_fn = move |a: &&hir::Attribute| a.has_name(attr);
         if let Some(did) = did.as_local() {
-            self.hir().attrs(self.local_def_id_to_hir_id(did)).iter().filter(filter_fn)
+            self.hir().attrs(self.local_def_id_to_hir_id(did)).iter()
         } else {
-            debug_assert!(rustc_feature::encode_cross_crate(attr));
-            self.attrs_for_def(did).iter().filter(filter_fn)
+            self.attrs_for_def(did).iter()
         }
     }
 

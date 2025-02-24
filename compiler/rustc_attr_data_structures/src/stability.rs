@@ -1,9 +1,9 @@
 use std::num::NonZero;
 
-use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+use rustc_macros::{Decodable, Encodable, HashStable_Generic, PrintAttribute};
 use rustc_span::{Symbol, sym};
 
-use crate::RustcVersion;
+use crate::{PrintAttribute, RustcVersion};
 
 /// The version placeholder that recently stabilized features contain inside the
 /// `since` field of the `#[stable]` attribute.
@@ -21,7 +21,7 @@ pub const VERSION_PLACEHOLDER: &str = concat!("CURRENT_RUSTC_VERSIO", "N");
 /// - `#[stable]`
 /// - `#[unstable]`
 #[derive(Encodable, Decodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
-#[derive(HashStable_Generic)]
+#[derive(HashStable_Generic, PrintAttribute)]
 pub struct Stability {
     pub level: StabilityLevel,
     pub feature: Symbol,
@@ -43,7 +43,7 @@ impl Stability {
 
 /// Represents the `#[rustc_const_unstable]` and `#[rustc_const_stable]` attributes.
 #[derive(Encodable, Decodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
-#[derive(HashStable_Generic)]
+#[derive(HashStable_Generic, PrintAttribute)]
 pub struct ConstStability {
     pub level: StabilityLevel,
     pub feature: Symbol,
@@ -83,7 +83,7 @@ impl ConstStability {
 /// Excludes `const_stable_indirect`. This is necessary because when `-Zforce-unstable-if-unmarked`
 /// is set, we need to encode standalone `#[rustc_const_stable_indirect]` attributes
 #[derive(Encodable, Decodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
-#[derive(HashStable_Generic)]
+#[derive(HashStable_Generic, PrintAttribute)]
 pub struct PartialConstStability {
     pub level: StabilityLevel,
     pub feature: Symbol,
@@ -103,7 +103,7 @@ impl PartialConstStability {
 
 /// The available stability levels.
 #[derive(Encodable, Decodable, PartialEq, Copy, Clone, Debug, Eq, Hash)]
-#[derive(HashStable_Generic)]
+#[derive(HashStable_Generic, PrintAttribute)]
 pub enum StabilityLevel {
     /// `#[unstable]`
     Unstable {
@@ -145,7 +145,7 @@ pub enum StabilityLevel {
 
 /// Rust release in which a feature is stabilized.
 #[derive(Encodable, Decodable, PartialEq, Copy, Clone, Debug, Eq, PartialOrd, Ord, Hash)]
-#[derive(HashStable_Generic)]
+#[derive(HashStable_Generic, PrintAttribute)]
 pub enum StableSince {
     /// also stores the original symbol for printing
     Version(RustcVersion),
@@ -171,7 +171,7 @@ impl StabilityLevel {
 }
 
 #[derive(Encodable, Decodable, PartialEq, Copy, Clone, Debug, Eq, Hash)]
-#[derive(HashStable_Generic)]
+#[derive(HashStable_Generic, PrintAttribute)]
 pub enum UnstableReason {
     None,
     Default,
@@ -180,7 +180,7 @@ pub enum UnstableReason {
 
 /// Represents the `#[rustc_default_body_unstable]` attribute.
 #[derive(Encodable, Decodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
-#[derive(HashStable_Generic)]
+#[derive(HashStable_Generic, PrintAttribute)]
 pub struct DefaultBodyStability {
     pub level: StabilityLevel,
     pub feature: Symbol,

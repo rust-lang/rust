@@ -1806,7 +1806,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             && !def_id.is_local()
             && let Some(attr) = self.tcx.get_attr(def_id, sym::non_exhaustive)
         {
-            non_exhaustive = Some(attr.span);
+            non_exhaustive = Some(attr.span());
         } else if let Some(span) = ctor_fields_span {
             let label = errors::ConstructorPrivateIfAnyFieldPrivate { span };
             err.subdiagnostic(label);

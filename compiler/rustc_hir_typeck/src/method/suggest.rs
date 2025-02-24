@@ -9,7 +9,7 @@ use std::path::PathBuf;
 
 use hir::Expr;
 use rustc_ast::ast::Mutability;
-use rustc_attr_parsing::parse_confusables;
+use rustc_attr_parsing::{AttributeKind, find_attr};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::unord::UnordSet;
@@ -1884,9 +1884,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 for inherent_method in
                     self.tcx.associated_items(inherent_impl_did).in_definition_order()
                 {
-                    if let Some(attr) =
-                        self.tcx.get_attr(inherent_method.def_id, sym::rustc_confusables)
-                        && let Some(candidates) = parse_confusables(attr)
+                    if let Some(candidates) = find_attr!(self.tcx.get_all_attrs(inherent_method.def_id), AttributeKind::Confusables{symbols, ..} => symbols)
                         && candidates.contains(&item_name.name)
                         && let ty::AssocKind::Fn = inherent_method.kind
                     {

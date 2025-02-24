@@ -93,6 +93,7 @@ use std::sync::{Mutex, MutexGuard, OnceLock};
 
 use itertools::Itertools;
 use rustc_ast::ast::{self, LitKind, RangeLimits};
+use rustc_attr_parsing::{find_attr, AttributeKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::unhash::UnhashMap;
@@ -1949,7 +1950,7 @@ pub fn has_attr(attrs: &[hir::Attribute], symbol: Symbol) -> bool {
 }
 
 pub fn has_repr_attr(cx: &LateContext<'_>, hir_id: HirId) -> bool {
-    has_attr(cx.tcx.hir().attrs(hir_id), sym::repr)
+    find_attr!(cx.tcx.hir().attrs(hir_id), AttributeKind::Repr(..))
 }
 
 pub fn any_parent_has_attr(tcx: TyCtxt<'_>, node: HirId, symbol: Symbol) -> bool {

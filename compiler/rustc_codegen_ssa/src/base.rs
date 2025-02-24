@@ -5,7 +5,9 @@ use std::time::{Duration, Instant};
 
 use itertools::Itertools;
 use rustc_abi::FIRST_VARIANT;
+use rustc_ast as ast;
 use rustc_ast::expand::allocator::{ALLOCATOR_METHODS, AllocatorKind, global_fn_name};
+use rustc_attr_parsing::OptimizeAttr;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_data_structures::sync::par_map;
@@ -29,7 +31,6 @@ use rustc_span::{DUMMY_SP, Symbol, sym};
 use rustc_trait_selection::infer::{BoundRegionConversionTime, TyCtxtInferExt};
 use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
 use tracing::{debug, info};
-use {rustc_ast as ast, rustc_attr_parsing as attr};
 
 use crate::assert_module_sources::CguReuse;
 use crate::back::link::are_upstream_rust_objects_already_included;
@@ -1061,7 +1062,7 @@ pub(crate) fn provide(providers: &mut Providers) {
 
         let any_for_speed = defids.items().any(|id| {
             let CodegenFnAttrs { optimize, .. } = tcx.codegen_fn_attrs(*id);
-            matches!(optimize, attr::OptimizeAttr::Speed)
+            matches!(optimize, OptimizeAttr::Speed)
         });
 
         if any_for_speed {

@@ -94,7 +94,7 @@ impl LateLintPass<'_> for MacroUseImports {
         {
             for kid in cx.tcx.module_children(id) {
                 if let Res::Def(DefKind::Macro(_mac_type), mac_id) = kid.res {
-                    let span = mac_attr.span;
+                    let span = mac_attr.span();
                     let def_path = cx.tcx.def_path_str(mac_id);
                     self.imports.push((def_path, span, hir_id));
                 }
@@ -104,8 +104,8 @@ impl LateLintPass<'_> for MacroUseImports {
         }
     }
     fn check_attribute(&mut self, cx: &LateContext<'_>, attr: &hir::Attribute) {
-        if attr.span.from_expansion() {
-            self.push_unique_macro(cx, attr.span);
+        if attr.span().from_expansion() {
+            self.push_unique_macro(cx, attr.span());
         }
     }
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &hir::Expr<'_>) {
