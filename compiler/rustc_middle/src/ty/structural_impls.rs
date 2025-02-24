@@ -261,6 +261,7 @@ TrivialTypeTraversalImpls! {
     crate::mir::SourceScope,
     crate::mir::SourceScopeLocalData,
     crate::mir::SwitchTargets,
+    crate::thir::PatId,
     crate::traits::IsConstable,
     crate::traits::OverflowError,
     crate::ty::abstract_const::NotConstEvaluatable,
