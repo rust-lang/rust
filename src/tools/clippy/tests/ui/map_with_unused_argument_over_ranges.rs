@@ -14,7 +14,7 @@ fn do_something_interesting(x: usize, y: usize) -> usize {
     todo!()
 }
 
-macro_rules! gen {
+macro_rules! r#gen {
     () => {
         (0..10).map(|_| do_something());
     };
@@ -45,7 +45,7 @@ fn main() {
     (9..=9).map(|_| do_something());
     (1..=1 << 4).map(|_| do_something());
     // These should not be raised
-    gen!();
+    r#gen!();
     let lower = 2;
     let lower_fn = || 2;
     (lower..upper_fn()).map(|_| do_something()); // Ranges not starting at zero not yet handled

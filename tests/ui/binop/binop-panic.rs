@@ -1,6 +1,6 @@
 //@ run-fail
 //@ error-pattern:quux
-//@ ignore-emscripten no processes
+//@ needs-subprocess
 
 fn my_err(s: String) -> ! {
     println!("{}", s);

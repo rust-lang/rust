@@ -1,8 +1,10 @@
-error[E0433]: failed to resolve: use of undeclared crate or module `aaa`
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `aaa`
   --> $DIR/issue-33293.rs:3:9
    |
 LL |         aaa::bbb(_) => ()
-   |         ^^^ use of undeclared crate or module `aaa`
+   |         ^^^ use of unresolved module or unlinked crate `aaa`
+   |
+   = help: you might be missing a crate named `aaa`
 
 error: aborting due to 1 previous error
 

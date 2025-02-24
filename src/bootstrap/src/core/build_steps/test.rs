@@ -12,6 +12,7 @@ use clap_complete::shells;
 
 use crate::core::build_steps::compile::run_cargo;
 use crate::core::build_steps::doc::DocumentationFormat;
+use crate::core::build_steps::llvm::get_llvm_version;
 use crate::core::build_steps::synthetic_targets::MirOptPanicAbortSyntheticTarget;
 use crate::core::build_steps::tool::{self, SourceType, Tool};
 use crate::core::build_steps::toolstate::ToolState;
@@ -86,6 +87,7 @@ impl Step for CrateBootstrap {
             SourceType::InTree,
             &[],
         );
+
         let crate_name = path.rsplit_once('/').unwrap().1;
         run_cargo_test(cargo, &[], &[], crate_name, crate_name, bootstrap_host, builder);
     }
@@ -261,7 +263,7 @@ impl Step for Cargotest {
 
         let _time = helpers::timeit(builder);
         let mut cmd = builder.tool_cmd(Tool::CargoTest);
-        cmd.arg(&cargo)
+        cmd.arg(&cargo.tool_path)
             .arg(&out_dir)
             .args(builder.config.test_args())
             .env("RUSTC", builder.rustc(compiler))
@@ -296,9 +298,16 @@ impl Step for Cargo {
 
     /// Runs `cargo test` for `cargo` packaged with Rust.
     fn run(self, builder: &Builder<'_>) {
+        if self.stage < 2 {
+            eprintln!("WARNING: cargo tests on stage {} may not behave well.", self.stage);
+            eprintln!("HELP: consider using stage 2");
+        }
+
         let compiler = builder.compiler(self.stage, self.host);
 
-        builder.ensure(tool::Cargo { compiler, target: self.host });
+        let cargo = builder.ensure(tool::Cargo { compiler, target: self.host });
+        let compiler = cargo.build_compiler;
+
         let cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
@@ -365,6 +374,7 @@ impl Step for RustAnalyzer {
         let stage = self.stage;
         let host = self.host;
         let compiler = builder.compiler(stage, host);
+        let compiler = tool::get_tool_rustc_compiler(builder, compiler);
 
         // We don't need to build the whole Rust Analyzer for the proc-macro-srv test suite,
         // but we do need the standard library to be present.
@@ -425,7 +435,8 @@ impl Step for Rustfmt {
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
-        builder.ensure(tool::Rustfmt { compiler, target: self.host });
+        let tool_result = builder.ensure(tool::Rustfmt { compiler, target: self.host });
+        let compiler = tool_result.build_compiler;
 
         let mut cargo = tool::prepare_tool_cargo(
             builder,
@@ -520,16 +531,11 @@ impl Step for Miri {
 
         // This compiler runs on the host, we'll just use it for the target.
         let target_compiler = builder.compiler(stage, host);
-        // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
-        // we'd have stageN/bin/rustc and stageN/bin/rustdoc be effectively different stage
-        // compilers, which isn't what we want. Rustdoc should be linked in the same way as the
-        // rustc compiler it's paired with, so it must be built with the previous stage compiler.
-        let host_compiler = builder.compiler(stage - 1, host);
 
         // Build our tools.
-        let miri = builder.ensure(tool::Miri { compiler: host_compiler, target: host });
+        let miri = builder.ensure(tool::Miri { compiler: target_compiler, target: host });
         // the ui tests also assume cargo-miri has been built
-        builder.ensure(tool::CargoMiri { compiler: host_compiler, target: host });
+        builder.ensure(tool::CargoMiri { compiler: target_compiler, target: host });
 
         // We also need sysroots, for Miri and for the host (the latter for build scripts).
         // This is for the tests so everything is done with the target compiler.
@@ -540,7 +546,8 @@ impl Step for Miri {
         // Miri has its own "target dir" for ui test dependencies. Make sure it gets cleared when
         // the sysroot gets rebuilt, to avoid "found possibly newer version of crate `std`" errors.
         if !builder.config.dry_run() {
-            let ui_test_dep_dir = builder.stage_out(host_compiler, Mode::ToolStd).join("miri_ui");
+            let ui_test_dep_dir =
+                builder.stage_out(miri.build_compiler, Mode::ToolStd).join("miri_ui");
             // The mtime of `miri_sysroot` changes when the sysroot gets rebuilt (also see
             // <https://github.com/RalfJung/rustc-build-sysroot/commit/10ebcf60b80fe2c3dc765af0ff19fdc0da4b7466>).
             // We can hence use that directly as a signal to clear the ui test dir.
@@ -551,7 +558,7 @@ impl Step for Miri {
         // This is with the Miri crate, so it uses the host compiler.
         let mut cargo = tool::prepare_tool_cargo(
             builder,
-            host_compiler,
+            miri.build_compiler,
             Mode::ToolRustc,
             host,
             Kind::Test,
@@ -569,7 +576,7 @@ impl Step for Miri {
         // miri tests need to know about the stage sysroot
         cargo.env("MIRI_SYSROOT", &miri_sysroot);
         cargo.env("MIRI_HOST_SYSROOT", &host_sysroot);
-        cargo.env("MIRI", &miri);
+        cargo.env("MIRI", &miri.tool_path);
 
         // Set the target.
         cargo.env("MIRI_TEST_TARGET", target.rustc_target_arg());
@@ -741,7 +748,13 @@ impl Step for Clippy {
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
-        builder.ensure(tool::Clippy { compiler, target: self.host });
+        if stage < 2 {
+            eprintln!("WARNING: clippy tests on stage {stage} may not behave well.");
+            eprintln!("HELP: consider using stage 2");
+        }
+
+        let tool_result = builder.ensure(tool::Clippy { compiler, target: self.host });
+        let compiler = tool_result.build_compiler;
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
@@ -1232,6 +1245,14 @@ impl Step for RunMakeSupport {
             &[],
         );
 
+        let _guard = builder.msg_tool(
+            Kind::Build,
+            Mode::ToolStd,
+            "run-make-support",
+            self.compiler.stage,
+            &self.compiler.host,
+            &self.target,
+        );
         cargo.into_cmd().run(builder);
 
         let lib_name = "librun_make_support.rlib";
@@ -1647,16 +1668,17 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         // bootstrap compiler.
         // NOTE: Only stage 1 is special cased because we need the rustc_private artifacts to match the
         // running compiler in stage 2 when plugins run.
-        let stage_id = if suite == "ui-fulldeps" && compiler.stage == 1 {
-            // At stage 0 (stage - 1) we are using the beta compiler. Using `self.target` can lead finding
-            // an incorrect compiler path on cross-targets, as the stage 0 beta compiler is always equal
-            // to `build.build` in the configuration.
+        let (stage, stage_id) = if suite == "ui-fulldeps" && compiler.stage == 1 {
+            // At stage 0 (stage - 1) we are using the beta compiler. Using `self.target` can lead
+            // finding an incorrect compiler path on cross-targets, as the stage 0 beta compiler is
+            // always equal to `build.build` in the configuration.
             let build = builder.build.build;
-
             compiler = builder.compiler(compiler.stage - 1, build);
-            format!("stage{}-{}", compiler.stage + 1, build)
+            let test_stage = compiler.stage + 1;
+            (test_stage, format!("stage{}-{}", test_stage, build))
         } else {
-            format!("stage{}-{}", compiler.stage, target)
+            let stage = compiler.stage;
+            (stage, format!("stage{}-{}", stage, target))
         };
 
         if suite.ends_with("fulldeps") {
@@ -1698,6 +1720,9 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         // compiletest currently has... a lot of arguments, so let's just pass all
         // of them!
 
+        cmd.arg("--stage").arg(stage.to_string());
+        cmd.arg("--stage-id").arg(stage_id);
+
         cmd.arg("--compile-lib-path").arg(builder.rustc_libdir(compiler));
         cmd.arg("--run-lib-path").arg(builder.sysroot_target_libdir(compiler, target));
         cmd.arg("--rustc-path").arg(builder.rustc(compiler));
@@ -1714,18 +1739,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
                 // If we're using `--stage 0`, we should provide the bootstrap cargo.
                 builder.initial_cargo.clone()
             } else {
-                // We need to properly build cargo using the suitable stage compiler.
-
-                let compiler = builder.download_rustc().then_some(compiler).unwrap_or_else(||
-                    // HACK: currently tool stages are off-by-one compared to compiler stages, i.e. if
-                    // you give `tool::Cargo` a stage 1 rustc, it will cause stage 2 rustc to be built
-                    // and produce a cargo built with stage 2 rustc. To fix this, we need to chop off
-                    // the compiler stage by 1 to align with expected `./x test run-make --stage N`
-                    // behavior, i.e. we need to pass `N - 1` compiler stage to cargo. See also Miri
-                    // which does a similar hack.
-                    builder.compiler(builder.top_stage - 1, compiler.host));
-
-                builder.ensure(tool::Cargo { compiler, target: compiler.host })
+                builder.ensure(tool::Cargo { compiler, target: compiler.host }).tool_path
             };
 
             cmd.arg("--cargo-path").arg(cargo_path);
@@ -1746,9 +1760,10 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             // Use the beta compiler for jsondocck
             let json_compiler = compiler.with_stage(0);
             cmd.arg("--jsondocck-path")
-                .arg(builder.ensure(tool::JsonDocCk { compiler: json_compiler, target }));
-            cmd.arg("--jsondoclint-path")
-                .arg(builder.ensure(tool::JsonDocLint { compiler: json_compiler, target }));
+                .arg(builder.ensure(tool::JsonDocCk { compiler: json_compiler, target }).tool_path);
+            cmd.arg("--jsondoclint-path").arg(
+                builder.ensure(tool::JsonDocLint { compiler: json_compiler, target }).tool_path,
+            );
         }
 
         if matches!(mode, "coverage-map" | "coverage-run") {
@@ -1756,7 +1771,9 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             cmd.arg("--coverage-dump-path").arg(coverage_dump);
         }
 
-        cmd.arg("--src-base").arg(builder.src.join("tests").join(suite));
+        cmd.arg("--src-root").arg(&builder.src);
+        cmd.arg("--src-test-suite-root").arg(builder.src.join("tests").join(suite));
+
         cmd.arg("--build-base").arg(testdir(builder, compiler.host).join(suite));
 
         // When top stage is 0, that means that we're testing an externally provided compiler.
@@ -1766,8 +1783,9 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         } else {
             builder.sysroot(compiler).to_path_buf()
         };
+
         cmd.arg("--sysroot-base").arg(sysroot);
-        cmd.arg("--stage-id").arg(stage_id);
+
         cmd.arg("--suite").arg(suite);
         cmd.arg("--mode").arg(mode);
         cmd.arg("--target").arg(target.rustc_target_arg());
@@ -1839,15 +1857,21 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             }
         }
 
+        // FIXME(136096): on macOS, we get linker warnings about duplicate `-lm` flags.
+        if suite == "ui-fulldeps" && target.ends_with("darwin") {
+            flags.push("-Alinker_messages".into());
+        }
+
         let mut hostflags = flags.clone();
         hostflags.push(format!("-Lnative={}", builder.test_helpers_out(compiler.host).display()));
         hostflags.extend(linker_flags(builder, compiler.host, LldThreads::No));
-        for flag in hostflags {
-            cmd.arg("--host-rustcflags").arg(flag);
-        }
 
         let mut targetflags = flags;
         targetflags.push(format!("-Lnative={}", builder.test_helpers_out(target).display()));
+
+        for flag in hostflags {
+            cmd.arg("--host-rustcflags").arg(flag);
+        }
         for flag in targetflags {
             cmd.arg("--target-rustcflags").arg(flag);
         }
@@ -1932,8 +1956,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             let llvm::LlvmResult { llvm_config, .. } =
                 builder.ensure(llvm::Llvm { target: builder.config.build });
             if !builder.config.dry_run() {
-                let llvm_version =
-                    command(&llvm_config).arg("--version").run_capture_stdout(builder).stdout();
+                let llvm_version = get_llvm_version(builder, &llvm_config);
                 let llvm_components =
                     command(&llvm_config).arg("--components").run_capture_stdout(builder).stdout();
                 // Remove trailing newline from llvm-config output.
@@ -1956,13 +1979,12 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             if !builder.config.dry_run() && suite.ends_with("fulldeps") {
                 let llvm_libdir =
                     command(&llvm_config).arg("--libdir").run_capture_stdout(builder).stdout();
-                let mut rustflags = env::var("RUSTFLAGS").unwrap_or_default();
-                if target.is_msvc() {
-                    rustflags.push_str(&format!("-Clink-arg=-LIBPATH:{llvm_libdir}"));
+                let link_llvm = if target.is_msvc() {
+                    format!("-Clink-arg=-LIBPATH:{llvm_libdir}")
                 } else {
-                    rustflags.push_str(&format!("-Clink-arg=-L{llvm_libdir}"));
-                }
-                cmd.env("RUSTFLAGS", rustflags);
+                    format!("-Clink-arg=-L{llvm_libdir}")
+                };
+                cmd.arg("--host-rustcflags").arg(link_llvm);
             }
 
             if !builder.config.dry_run() && matches!(mode, "run-make" | "coverage-run") {
@@ -1998,14 +2020,18 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         // Only pass correct values for these flags for the `run-make` suite as it
         // requires that a C++ compiler was configured which isn't always the case.
         if !builder.config.dry_run() && mode == "run-make" {
+            let mut cflags = builder.cc_handled_clags(target, CLang::C);
+            cflags.extend(builder.cc_unhandled_cflags(target, GitRepo::Rustc, CLang::C));
+            let mut cxxflags = builder.cc_handled_clags(target, CLang::Cxx);
+            cxxflags.extend(builder.cc_unhandled_cflags(target, GitRepo::Rustc, CLang::Cxx));
             cmd.arg("--cc")
                 .arg(builder.cc(target))
                 .arg("--cxx")
                 .arg(builder.cxx(target).unwrap())
                 .arg("--cflags")
-                .arg(builder.cflags(target, GitRepo::Rustc, CLang::C).join(" "))
+                .arg(cflags.join(" "))
                 .arg("--cxxflags")
-                .arg(builder.cflags(target, GitRepo::Rustc, CLang::Cxx).join(" "));
+                .arg(cxxflags.join(" "));
             copts_passed = true;
             if let Some(ar) = builder.ar(target) {
                 cmd.arg("--ar").arg(ar);
@@ -2651,7 +2677,7 @@ impl Step for Crate {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.crate_or_deps("sysroot")
+        run.crate_or_deps("sysroot").crate_or_deps("coretests")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -2725,7 +2751,7 @@ impl Step for Crate {
             cargo
         } else {
             // Also prepare a sysroot for the target.
-            if builder.config.build != target {
+            if !builder.is_builder_target(target) {
                 builder.ensure(compile::Std::new(compiler, target).force_recompile(true));
                 builder.ensure(RemoteCopyLibs { compiler, target });
             }
@@ -2971,12 +2997,15 @@ impl Step for RemoteCopyLibs {
 
         builder.info(&format!("REMOTE copy libs to emulator ({target})"));
 
-        let server = builder.ensure(tool::RemoteTestServer { compiler, target });
+        let remote_test_server = builder.ensure(tool::RemoteTestServer { compiler, target });
 
         // Spawn the emulator and wait for it to come online
         let tool = builder.tool_exe(Tool::RemoteTestClient);
         let mut cmd = command(&tool);
-        cmd.arg("spawn-emulator").arg(target.triple).arg(&server).arg(builder.tempdir());
+        cmd.arg("spawn-emulator")
+            .arg(target.triple)
+            .arg(&remote_test_server.tool_path)
+            .arg(builder.tempdir());
         if let Some(rootfs) = builder.qemu_rootfs(target) {
             cmd.arg(rootfs);
         }
@@ -3098,6 +3127,8 @@ impl Step for Bootstrap {
             SourceType::InTree,
             &[],
         );
+
+        cargo.release_build(false);
 
         cargo
             .rustflag("-Cdebuginfo=2")
@@ -3554,6 +3585,8 @@ impl Step for CodegenGCC {
         let mut cargo = build_cargo();
 
         cargo
+            // cg_gcc's build system ignores RUSTFLAGS. pass some flags through CG_RUSTFLAGS instead.
+            .env("CG_RUSTFLAGS", "-Alinker-messages")
             .arg("--")
             .arg("test")
             .arg("--use-system-gcc")
@@ -3600,7 +3633,7 @@ impl Step for TestFloatParse {
         let bootstrap_host = builder.config.build;
         let compiler = builder.compiler(builder.top_stage, bootstrap_host);
         let path = self.path.to_str().unwrap();
-        let crate_name = self.path.components().last().unwrap().as_os_str().to_str().unwrap();
+        let crate_name = self.path.iter().next_back().unwrap().to_str().unwrap();
 
         builder.ensure(tool::TestFloatParse { host: self.host });
 

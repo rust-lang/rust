@@ -59,7 +59,7 @@ mod range_exclusive;
 //
 // Note: inlay hints for function argument names are heuristically omitted to reduce noise and will not appear if
 // any of the
-// link:https://github.com/rust-lang/rust-analyzer/blob/6b8b8ff4c56118ddee6c531cde06add1aad4a6af/crates/ide/src/inlay_hints/param_name.rs#L92-L99[following criteria]
+// [following criteria](https://github.com/rust-lang/rust-analyzer/blob/6b8b8ff4c56118ddee6c531cde06add1aad4a6af/crates/ide/src/inlay_hints/param_name.rs#L92-L99)
 // are met:
 //
 // * the parameter name is a suffix of the function's name
@@ -68,13 +68,13 @@ mod range_exclusive;
 //   of argument with _ splitting it off
 // * the parameter name starts with `ra_fixture`
 // * the parameter name is a
-// link:https://github.com/rust-lang/rust-analyzer/blob/6b8b8ff4c56118ddee6c531cde06add1aad4a6af/crates/ide/src/inlay_hints/param_name.rs#L200[well known name]
+// [well known name](https://github.com/rust-lang/rust-analyzer/blob/6b8b8ff4c56118ddee6c531cde06add1aad4a6af/crates/ide/src/inlay_hints/param_name.rs#L200)
 // in a unary function
 // * the parameter name is a
-// link:https://github.com/rust-lang/rust-analyzer/blob/6b8b8ff4c56118ddee6c531cde06add1aad4a6af/crates/ide/src/inlay_hints/param_name.rs#L201[single character]
+// [single character](https://github.com/rust-lang/rust-analyzer/blob/6b8b8ff4c56118ddee6c531cde06add1aad4a6af/crates/ide/src/inlay_hints/param_name.rs#L201)
 // in a unary function
 //
-// image::https://user-images.githubusercontent.com/48062697/113020660-b5f98b80-917a-11eb-8d70-3be3fd558cdd.png[]
+// ![Inlay hints](https://user-images.githubusercontent.com/48062697/113020660-b5f98b80-917a-11eb-8d70-3be3fd558cdd.png)
 pub(crate) fn inlay_hints(
     db: &RootDatabase,
     file_id: FileId,
@@ -209,7 +209,7 @@ fn hints(
 ) {
     closing_brace::hints(hints, sema, config, file_id, node.clone());
     if let Some(any_has_generic_args) = ast::AnyHasGenericArgs::cast(node.clone()) {
-        generic_param::hints(hints, sema, config, any_has_generic_args);
+        generic_param::hints(hints, famous_defs, config, any_has_generic_args);
     }
 
     match_ast! {
@@ -294,28 +294,30 @@ pub struct InlayHintsConfig {
     pub param_names_for_lifetime_elision_hints: bool,
     pub hide_named_constructor_hints: bool,
     pub hide_closure_initialization_hints: bool,
+    pub hide_closure_parameter_hints: bool,
     pub range_exclusive_hints: bool,
     pub closure_style: ClosureStyle,
     pub max_length: Option<usize>,
     pub closing_brace_hints_min_lines: Option<usize>,
     pub fields_to_resolve: InlayFieldsToResolve,
 }
+
 impl InlayHintsConfig {
-    fn lazy_text_edit(&self, finish: impl FnOnce() -> TextEdit) -> Lazy<TextEdit> {
+    fn lazy_text_edit(&self, finish: impl FnOnce() -> TextEdit) -> LazyProperty<TextEdit> {
         if self.fields_to_resolve.resolve_text_edits {
-            Lazy::Lazy
+            LazyProperty::Lazy
         } else {
             let edit = finish();
             never!(edit.is_empty(), "inlay hint produced an empty text edit");
-            Lazy::Computed(edit)
+            LazyProperty::Computed(edit)
         }
     }
 
-    fn lazy_tooltip(&self, finish: impl FnOnce() -> InlayTooltip) -> Lazy<InlayTooltip> {
+    fn lazy_tooltip(&self, finish: impl FnOnce() -> InlayTooltip) -> LazyProperty<InlayTooltip> {
         if self.fields_to_resolve.resolve_hint_tooltip
             && self.fields_to_resolve.resolve_label_tooltip
         {
-            Lazy::Lazy
+            LazyProperty::Lazy
         } else {
             let tooltip = finish();
             never!(
@@ -326,7 +328,20 @@ impl InlayHintsConfig {
                 .is_empty(),
                 "inlay hint produced an empty tooltip"
             );
-            Lazy::Computed(tooltip)
+            LazyProperty::Computed(tooltip)
+        }
+    }
+
+    /// This always reports a resolvable location, so only use this when it is very likely for a
+    /// location link to actually resolve but where computing `finish` would be costly.
+    fn lazy_location_opt(
+        &self,
+        finish: impl FnOnce() -> Option<FileRange>,
+    ) -> Option<LazyProperty<FileRange>> {
+        if self.fields_to_resolve.resolve_label_location {
+            Some(LazyProperty::Lazy)
+        } else {
+            finish().map(LazyProperty::Computed)
         }
     }
 }
@@ -441,7 +456,7 @@ pub struct InlayHint {
     /// The actual label to show in the inlay hint.
     pub label: InlayHintLabel,
     /// Text edit to apply when "accepting" this inlay hint.
-    pub text_edit: Option<Lazy<TextEdit>>,
+    pub text_edit: Option<LazyProperty<TextEdit>>,
     /// Range to recompute inlay hints when trying to resolve for this hint. If this is none, the
     /// hint does not support resolving.
     pub resolve_parent: Option<TextRange>,
@@ -449,15 +464,15 @@ pub struct InlayHint {
 
 /// A type signaling that a value is either computed, or is available for computation.
 #[derive(Clone, Debug)]
-pub enum Lazy<T> {
+pub enum LazyProperty<T> {
     Computed(T),
     Lazy,
 }
 
-impl<T> Lazy<T> {
+impl<T> LazyProperty<T> {
     pub fn computed(self) -> Option<T> {
         match self {
-            Lazy::Computed(it) => Some(it),
+            LazyProperty::Computed(it) => Some(it),
             _ => None,
         }
     }
@@ -508,8 +523,8 @@ pub struct InlayHintLabel {
 impl InlayHintLabel {
     pub fn simple(
         s: impl Into<String>,
-        tooltip: Option<Lazy<InlayTooltip>>,
-        linked_location: Option<FileRange>,
+        tooltip: Option<LazyProperty<InlayTooltip>>,
+        linked_location: Option<LazyProperty<FileRange>>,
     ) -> InlayHintLabel {
         InlayHintLabel {
             parts: smallvec![InlayHintLabelPart { text: s.into(), linked_location, tooltip }],
@@ -593,16 +608,16 @@ pub struct InlayHintLabelPart {
     /// refers to (not necessarily the location itself).
     /// When setting this, no tooltip must be set on the containing hint, or VS Code will display
     /// them both.
-    pub linked_location: Option<FileRange>,
+    pub linked_location: Option<LazyProperty<FileRange>>,
     /// The tooltip to show when hovering over the inlay hint, this may invoke other actions like
     /// hover requests to show.
-    pub tooltip: Option<Lazy<InlayTooltip>>,
+    pub tooltip: Option<LazyProperty<InlayTooltip>>,
 }
 
 impl std::hash::Hash for InlayHintLabelPart {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.text.hash(state);
-        self.linked_location.hash(state);
+        self.linked_location.is_some().hash(state);
         self.tooltip.is_some().hash(state);
     }
 }
@@ -610,7 +625,9 @@ impl std::hash::Hash for InlayHintLabelPart {
 impl fmt::Debug for InlayHintLabelPart {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self { text, linked_location: None, tooltip: None | Some(Lazy::Lazy) } => text.fmt(f),
+            Self { text, linked_location: None, tooltip: None | Some(LazyProperty::Lazy) } => {
+                text.fmt(f)
+            }
             Self { text, linked_location, tooltip } => f
                 .debug_struct("InlayHintLabelPart")
                 .field("text", text)
@@ -618,8 +635,10 @@ impl fmt::Debug for InlayHintLabelPart {
                 .field(
                     "tooltip",
                     &tooltip.as_ref().map_or("", |it| match it {
-                        Lazy::Computed(InlayTooltip::String(it) | InlayTooltip::Markdown(it)) => it,
-                        Lazy::Lazy => "",
+                        LazyProperty::Computed(
+                            InlayTooltip::String(it) | InlayTooltip::Markdown(it),
+                        ) => it,
+                        LazyProperty::Lazy => "",
                     }),
                 )
                 .finish(),
@@ -632,7 +651,8 @@ struct InlayHintLabelBuilder<'a> {
     db: &'a RootDatabase,
     result: InlayHintLabel,
     last_part: String,
-    location: Option<FileRange>,
+    resolve: bool,
+    location: Option<LazyProperty<FileRange>>,
 }
 
 impl fmt::Write for InlayHintLabelBuilder<'_> {
@@ -645,11 +665,16 @@ impl HirWrite for InlayHintLabelBuilder<'_> {
     fn start_location_link(&mut self, def: ModuleDefId) {
         never!(self.location.is_some(), "location link is already started");
         self.make_new_part();
-        let Some(location) = ModuleDef::from(def).try_to_nav(self.db) else { return };
-        let location = location.call_site();
-        let location =
-            FileRange { file_id: location.file_id, range: location.focus_or_full_range() };
-        self.location = Some(location);
+
+        self.location = Some(if self.resolve {
+            LazyProperty::Lazy
+        } else {
+            LazyProperty::Computed({
+                let Some(location) = ModuleDef::from(def).try_to_nav(self.db) else { return };
+                let location = location.call_site();
+                FileRange { file_id: location.file_id, range: location.focus_or_full_range() }
+            })
+        });
     }
 
     fn end_location_link(&mut self) {
@@ -735,6 +760,7 @@ fn label_of_ty(
         last_part: String::new(),
         location: None,
         result: InlayHintLabel::default(),
+        resolve: config.fields_to_resolve.resolve_label_location,
     };
     let _ = rec(sema, famous_defs, config.max_length, ty, &mut label_builder, config, edition);
     let r = label_builder.finish();
@@ -783,7 +809,7 @@ fn ty_to_text_edit(
     ty: &hir::Type,
     offset_to_insert: TextSize,
     prefix: impl Into<String>,
-) -> Option<Lazy<TextEdit>> {
+) -> Option<LazyProperty<TextEdit>> {
     // FIXME: Limit the length and bail out on excess somehow?
     let rendered = sema
         .scope(node_for_hint)
@@ -835,6 +861,7 @@ mod tests {
         binding_mode_hints: false,
         hide_named_constructor_hints: false,
         hide_closure_initialization_hints: false,
+        hide_closure_parameter_hints: false,
         closure_style: ClosureStyle::ImplFn,
         param_names_for_lifetime_elision_hints: false,
         max_length: None,

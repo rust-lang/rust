@@ -1,5 +1,4 @@
 mod builtin_type_shadow;
-mod double_neg;
 mod literal_suffix;
 mod mixed_case_hex_literals;
 mod redundant_at_rest_pattern;
@@ -15,7 +14,6 @@ use rustc_ast::token;
 use rustc_ast::visit::FnKind;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 
@@ -83,25 +81,6 @@ declare_clippy_lint! {
     pub DUPLICATE_UNDERSCORE_ARGUMENT,
     style,
     "function arguments having names which only differ by an underscore"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Detects expressions of the form `--x`.
-    ///
-    /// ### Why is this bad?
-    /// It can mislead C/C++ programmers to think `x` was
-    /// decremented.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// let mut x = 3;
-    /// --x;
-    /// ```
-    #[clippy::version = "pre 1.29.0"]
-    pub DOUBLE_NEG,
-    style,
-    "`--x`, which is a double negation of `x` and not a pre-decrement as in C/C++"
 }
 
 declare_clippy_lint! {
@@ -352,7 +331,6 @@ declare_clippy_lint! {
 declare_lint_pass!(MiscEarlyLints => [
     UNNEEDED_FIELD_PATTERN,
     DUPLICATE_UNDERSCORE_ARGUMENT,
-    DOUBLE_NEG,
     MIXED_CASE_HEX_LITERALS,
     UNSEPARATED_LITERAL_SUFFIX,
     SEPARATED_LITERAL_SUFFIX,
@@ -371,7 +349,7 @@ impl EarlyLintPass for MiscEarlyLints {
     }
 
     fn check_pat(&mut self, cx: &EarlyContext<'_>, pat: &Pat) {
-        if in_external_macro(cx.sess(), pat.span) {
+        if pat.span.in_external_macro(cx.sess().source_map()) {
             return;
         }
 
@@ -408,14 +386,13 @@ impl EarlyLintPass for MiscEarlyLints {
     }
 
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
-        if in_external_macro(cx.sess(), expr.span) {
+        if expr.span.in_external_macro(cx.sess().source_map()) {
             return;
         }
 
         if let ExprKind::Lit(lit) = expr.kind {
             MiscEarlyLints::check_lit(cx, lit, expr.span);
         }
-        double_neg::check(cx, expr);
     }
 }
 

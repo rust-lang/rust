@@ -118,7 +118,7 @@ pub struct HoverResult {
 // Shows additional information, like the type of an expression or the documentation for a definition when "focusing" code.
 // Focusing is usually hovering with a mouse, but can also be triggered with a shortcut.
 //
-// image::https://user-images.githubusercontent.com/48062697/113020658-b5f98b80-917a-11eb-9f88-3dbc27320c95.gif[]
+// ![Hover](https://user-images.githubusercontent.com/48062697/113020658-b5f98b80-917a-11eb-9f88-3dbc27320c95.gif)
 pub(crate) fn hover(
     db: &RootDatabase,
     frange @ FileRange { file_id, range }: FileRange,
@@ -346,7 +346,7 @@ fn hover_offset(
         .unique()
         .reduce(|mut acc: HoverResult, HoverResult { markup, actions }| {
             acc.actions.extend(actions);
-            acc.markup = Markup::from(format!("{}\n---\n{markup}", acc.markup));
+            acc.markup = Markup::from(format!("{}\n\n---\n{markup}", acc.markup));
             acc
         })
         .map(|mut res: HoverResult| {

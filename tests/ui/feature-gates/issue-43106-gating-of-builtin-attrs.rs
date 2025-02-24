@@ -81,19 +81,10 @@
 #![crate_name = "0900"]
 #![crate_type = "bin"] // cannot pass "0800" here
 
-#![crate_id = "10"]
-//~^ WARN use of deprecated attribute
-//~| HELP remove this attribute
-//~| NOTE `#[warn(deprecated)]` on by default
-
 // FIXME(#44232) we should warn that this isn't used.
 #![feature(rust1)]
 //~^ WARN no longer requires an attribute to enable
 //~| NOTE `#[warn(stable_features)]` on by default
-
-#![no_start]
-//~^ WARN use of deprecated attribute
-//~| HELP remove this attribute
 
 // (cannot easily gating state of crate-level #[no_main]; but non crate-level is below at "0400")
 #![no_builtins]

@@ -397,7 +397,7 @@ impl CString {
         // information about the size of the allocation is correct on Rust's
         // side.
         unsafe {
-            extern "C" {
+            unsafe extern "C" {
                 /// Provided by libc or compiler_builtins.
                 fn strlen(s: *const c_char) -> usize;
             }
@@ -965,8 +965,9 @@ impl Default for Rc<CStr> {
     /// This may or may not share an allocation with other Rcs on the same thread.
     #[inline]
     fn default() -> Self {
-        let c_str: &CStr = Default::default();
-        Rc::from(c_str)
+        let rc = Rc::<[u8]>::from(*b"\0");
+        // `[u8]` has the same layout as `CStr`, and it is `NUL` terminated.
+        unsafe { Rc::from_raw(Rc::into_raw(rc) as *const CStr) }
     }
 }
 

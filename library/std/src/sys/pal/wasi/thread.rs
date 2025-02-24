@@ -35,7 +35,7 @@ cfg_if::cfg_if! {
 
             pub const _SC_NPROCESSORS_ONLN: ffi::c_int = 84;
 
-            extern "C" {
+            unsafe extern "C" {
                 pub fn pthread_create(
                     native: *mut pthread_t,
                     attr: *const pthread_attr_t,

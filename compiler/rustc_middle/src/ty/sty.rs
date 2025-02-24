@@ -9,7 +9,6 @@ use std::ops::{ControlFlow, Range};
 
 use hir::def::{CtorKind, DefKind};
 use rustc_abi::{ExternAbi, FIRST_VARIANT, FieldIdx, VariantIdx};
-use rustc_data_structures::captures::Captures;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::LangItem;
@@ -18,7 +17,7 @@ use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, extension
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 use rustc_type_ir::TyKind::*;
 use rustc_type_ir::visit::TypeVisitableExt;
-use rustc_type_ir::{self as ir, BoundVar, CollectAndApply, DynKind};
+use rustc_type_ir::{self as ir, BoundVar, CollectAndApply, DynKind, elaborate};
 use tracing::instrument;
 use ty::util::{AsyncDropGlueMorphology, IntTypeExt};
 
@@ -105,7 +104,7 @@ impl<'tcx> ty::CoroutineArgs<TyCtxt<'tcx>> {
         self,
         def_id: DefId,
         tcx: TyCtxt<'tcx>,
-    ) -> impl Iterator<Item = (VariantIdx, Discr<'tcx>)> + Captures<'tcx> {
+    ) -> impl Iterator<Item = (VariantIdx, Discr<'tcx>)> {
         self.variant_range(def_id, tcx).map(move |index| {
             (index, Discr { val: index.as_usize() as u128, ty: self.discr_ty(tcx) })
         })
@@ -139,7 +138,7 @@ impl<'tcx> ty::CoroutineArgs<TyCtxt<'tcx>> {
         self,
         def_id: DefId,
         tcx: TyCtxt<'tcx>,
-    ) -> impl Iterator<Item: Iterator<Item = Ty<'tcx>> + Captures<'tcx>> {
+    ) -> impl Iterator<Item: Iterator<Item = Ty<'tcx>>> {
         let layout = tcx.coroutine_layout(def_id, self.kind_ty()).unwrap();
         layout.variant_fields.iter().map(move |variant| {
             variant.iter().map(move |field| {
@@ -720,6 +719,34 @@ impl<'tcx> Ty<'tcx> {
         reg: ty::Region<'tcx>,
         repr: DynKind,
     ) -> Ty<'tcx> {
+        if cfg!(debug_assertions) {
+            let projection_count = obj.projection_bounds().count();
+            let expected_count: usize = obj
+                .principal_def_id()
+                .into_iter()
+                .flat_map(|principal_def_id| {
+                    // NOTE: This should agree with `needed_associated_types` in
+                    // dyn trait lowering, or else we'll have ICEs.
+                    elaborate::supertraits(
+                        tcx,
+                        ty::Binder::dummy(ty::TraitRef::identity(tcx, principal_def_id)),
+                    )
+                    .map(|principal| {
+                        tcx.associated_items(principal.def_id())
+                            .in_definition_order()
+                            .filter(|item| item.kind == ty::AssocKind::Type)
+                            .filter(|item| !item.is_impl_trait_in_trait())
+                            .filter(|item| !tcx.generics_require_sized_self(item.def_id))
+                            .count()
+                    })
+                })
+                .sum();
+            assert_eq!(
+                projection_count, expected_count,
+                "expected {obj:?} to have {expected_count} projections, \
+                but it has {projection_count}"
+            );
+        }
         Ty::new(tcx, Dynamic(obj, reg, repr))
     }
 
@@ -1121,7 +1148,7 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn is_param(self, index: u32) -> bool {
         match self.kind() {
-            ty::Param(ref data) => data.index == index,
+            ty::Param(data) => data.index == index,
             _ => false,
         }
     }
@@ -1199,7 +1226,7 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
-    pub fn is_unsafe_ptr(self) -> bool {
+    pub fn is_raw_ptr(self) -> bool {
         matches!(self.kind(), RawPtr(_, _))
     }
 
@@ -1207,7 +1234,7 @@ impl<'tcx> Ty<'tcx> {
     /// `Box` is *not* considered a pointer here!
     #[inline]
     pub fn is_any_ptr(self) -> bool {
-        self.is_ref() || self.is_unsafe_ptr() || self.is_fn_ptr()
+        self.is_ref() || self.is_raw_ptr() || self.is_fn_ptr()
     }
 
     #[inline]
@@ -1394,7 +1421,7 @@ impl<'tcx> Ty<'tcx> {
     /// Returns the type and mutability of `*ty`.
     ///
     /// The parameter `explicit` indicates if this is an *explicit* dereference.
-    /// Some types -- notably unsafe ptrs -- can only be dereferenced explicitly.
+    /// Some types -- notably raw ptrs -- can only be dereferenced explicitly.
     pub fn builtin_deref(self, explicit: bool) -> Option<Ty<'tcx>> {
         match *self.kind() {
             _ if let Some(boxed) = self.boxed_ty() => Some(boxed),

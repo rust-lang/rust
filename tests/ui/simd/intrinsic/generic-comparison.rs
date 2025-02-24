@@ -11,14 +11,24 @@ struct i32x4([i32; 4]);
 #[allow(non_camel_case_types)]
 struct i16x8([i16; 8]);
 
-extern "rust-intrinsic" {
-    fn simd_eq<T, U>(x: T, y: T) -> U;
-    fn simd_ne<T, U>(x: T, y: T) -> U;
-    fn simd_lt<T, U>(x: T, y: T) -> U;
-    fn simd_le<T, U>(x: T, y: T) -> U;
-    fn simd_gt<T, U>(x: T, y: T) -> U;
-    fn simd_ge<T, U>(x: T, y: T) -> U;
-}
+
+#[rustc_intrinsic]
+unsafe fn simd_eq<T, U>(x: T, y: T) -> U;
+
+#[rustc_intrinsic]
+unsafe fn simd_ne<T, U>(x: T, y: T) -> U;
+
+#[rustc_intrinsic]
+unsafe fn simd_lt<T, U>(x: T, y: T) -> U;
+
+#[rustc_intrinsic]
+unsafe fn simd_le<T, U>(x: T, y: T) -> U;
+
+#[rustc_intrinsic]
+unsafe fn simd_gt<T, U>(x: T, y: T) -> U;
+
+#[rustc_intrinsic]
+unsafe fn simd_ge<T, U>(x: T, y: T) -> U;
 
 fn main() {
     let x = i32x4([0, 0, 0, 0]);

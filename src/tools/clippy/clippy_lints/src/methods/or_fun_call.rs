@@ -92,7 +92,7 @@ pub(super) fn check<'tcx>(
         let in_sugg_method_implementation = {
             matches!(
                 suggested_method_def_id.as_local(),
-                Some(local_def_id) if local_def_id == cx.tcx.hir().get_parent_item(receiver.hir_id).def_id
+                Some(local_def_id) if local_def_id == cx.tcx.hir_get_parent_item(receiver.hir_id).def_id
             )
         };
         if in_sugg_method_implementation {
@@ -253,7 +253,7 @@ pub(super) fn check<'tcx>(
 
 fn closure_body_returns_empty_to_string(cx: &LateContext<'_>, e: &hir::Expr<'_>) -> bool {
     if let hir::ExprKind::Closure(&hir::Closure { body, .. }) = e.kind {
-        let body = cx.tcx.hir().body(body);
+        let body = cx.tcx.hir_body(body);
 
         if body.params.is_empty()
             && let hir::Expr { kind, .. } = &body.value

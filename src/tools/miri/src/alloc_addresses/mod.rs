@@ -217,7 +217,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // We have to pick a fresh address.
             // Leave some space to the previous allocation, to give it some chance to be less aligned.
             // We ensure that `(global_state.next_base_addr + slack) % 16` is uniformly distributed.
-            let slack = rng.gen_range(0..16);
+            let slack = rng.random_range(0..16);
             // From next_base_addr + slack, round up to adjust for alignment.
             let base_addr = global_state
                 .next_base_addr

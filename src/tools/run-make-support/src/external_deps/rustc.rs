@@ -1,5 +1,6 @@
 use std::ffi::{OsStr, OsString};
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::str::FromStr as _;
 
 use crate::command::Command;
 use crate::env::env_var;
@@ -83,7 +84,7 @@ impl Rustc {
         self
     }
 
-    /// Specify default optimization level `-O` (alias for `-C opt-level=2`).
+    /// Specify default optimization level `-O` (alias for `-C opt-level=3`).
     pub fn opt(&mut self) -> &mut Self {
         self.cmd.arg("-O");
         self
@@ -215,6 +216,18 @@ impl Rustc {
         self
     }
 
+    /// Specify option of `-C symbol-mangling-version`.
+    pub fn symbol_mangling_version(&mut self, option: &str) -> &mut Self {
+        self.cmd.arg(format!("-Csymbol-mangling-version={option}"));
+        self
+    }
+
+    /// Specify `-C prefer-dynamic`.
+    pub fn prefer_dynamic(&mut self) -> &mut Self {
+        self.cmd.arg(format!("-Cprefer-dynamic"));
+        self
+    }
+
     /// Specify error format to use
     pub fn error_format(&mut self, format: &str) -> &mut Self {
         self.cmd.arg(format!("--error-format={format}"));
@@ -237,6 +250,13 @@ impl Rustc {
     pub fn target<S: AsRef<str>>(&mut self, target: S) -> &mut Self {
         let target = target.as_ref();
         self.cmd.arg(format!("--target={target}"));
+        self
+    }
+
+    /// Specify the target CPU.
+    pub fn target_cpu<S: AsRef<str>>(&mut self, target_cpu: S) -> &mut Self {
+        let target_cpu = target_cpu.as_ref();
+        self.cmd.arg(format!("-Ctarget-cpu={target_cpu}"));
         self
     }
 
@@ -325,6 +345,18 @@ impl Rustc {
         self
     }
 
+    /// Specify `-C debuginfo=...`.
+    pub fn debuginfo(&mut self, level: &str) -> &mut Self {
+        self.cmd.arg(format!("-Cdebuginfo={level}"));
+        self
+    }
+
+    /// Specify `-C split-debuginfo={packed,unpacked,off}`.
+    pub fn split_debuginfo(&mut self, split_kind: &str) -> &mut Self {
+        self.cmd.arg(format!("-Csplit-debuginfo={split_kind}"));
+        self
+    }
+
     /// Pass the `--verbose` flag.
     pub fn verbose(&mut self) -> &mut Self {
         self.cmd.arg("--verbose");
@@ -389,4 +421,11 @@ impl Rustc {
         };
         self
     }
+}
+
+/// Query the sysroot path corresponding `rustc --print=sysroot`.
+#[track_caller]
+pub fn sysroot() -> PathBuf {
+    let path = rustc().print("sysroot").run().stdout_utf8();
+    PathBuf::from_str(path.trim()).unwrap()
 }

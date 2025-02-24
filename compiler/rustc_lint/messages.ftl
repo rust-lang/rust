@@ -69,14 +69,17 @@ lint_builtin_const_no_mangle = const items should never be `#[no_mangle]`
 
 lint_builtin_decl_unsafe_fn = declaration of an `unsafe` function
 lint_builtin_decl_unsafe_method = declaration of an `unsafe` method
-lint_builtin_deprecated_attr_default_suggestion = remove this attribute
 
 lint_builtin_deprecated_attr_link = use of deprecated attribute `{$name}`: {$reason}. See {$link}
     .msg_suggestion = {$msg}
     .default_suggestion = remove this attribute
-lint_builtin_deprecated_attr_used = use of deprecated attribute `{$name}`: no longer used
 lint_builtin_deref_nullptr = dereferencing a null pointer
     .label = this code causes undefined behavior when executed
+
+lint_builtin_double_negations = use of a double negation
+    .note = the prefix `--` could be misinterpreted as a decrement operator which exists in other languages
+    .note_decrement = use `-= 1` if you meant to decrement the value
+    .add_parens_suggestion = add parentheses for clarity
 
 lint_builtin_ellipsis_inclusive_range_patterns = `...` range patterns are deprecated
     .suggestion = use `..=` for an inclusive range
@@ -387,9 +390,6 @@ lint_improper_ctypes_only_phantomdata = composed only of `PhantomData`
 
 lint_improper_ctypes_opaque = opaque types have no C equivalent
 
-lint_improper_ctypes_pat_help = consider using the base type instead
-
-lint_improper_ctypes_pat_reason = pattern types have no C equivalent
 lint_improper_ctypes_slice_help = consider using a raw pointer instead
 
 lint_improper_ctypes_slice_reason = slices have no C equivalent
@@ -439,11 +439,11 @@ lint_invalid_crate_type_value = invalid `crate_type` value
     .suggestion = did you mean
 
 # FIXME: we should ordinalize $valid_up_to when we add support for doing so
-lint_invalid_from_utf8_checked = calls to `{$method}` with a invalid literal always return an error
+lint_invalid_from_utf8_checked = calls to `{$method}` with an invalid literal always return an error
     .label = the literal was valid UTF-8 up to the {$valid_up_to} bytes
 
 # FIXME: we should ordinalize $valid_up_to when we add support for doing so
-lint_invalid_from_utf8_unchecked = calls to `{$method}` with a invalid literal are undefined behavior
+lint_invalid_from_utf8_unchecked = calls to `{$method}` with an invalid literal are undefined behavior
     .label = the literal was valid UTF-8 up to the {$valid_up_to} bytes
 
 lint_invalid_nan_comparisons_eq_ne = incorrect NaN comparison, NaN cannot be directly compared to itself
@@ -630,7 +630,8 @@ lint_opaque_hidden_inferred_bound_sugg = add this bound
 lint_or_patterns_back_compat = the meaning of the `pat` fragment specifier is changing in Rust 2021, which may affect this macro
     .suggestion = use pat_param to preserve semantics
 
-lint_out_of_scope_macro_calls = cannot find macro `{$path}` in this scope
+lint_out_of_scope_macro_calls = cannot find macro `{$path}` in the current scope when looking from {$location}
+    .label = not found from {$location}
     .help = import `macro_rules` with `use` to make it callable above its definition
 
 lint_overflowing_bin_hex = literal out of range for `{$ty}`
@@ -976,6 +977,3 @@ lint_uses_power_alignment = repr(C) does not follow the power alignment rule. Th
 
 lint_variant_size_differences =
     enum variant is more than three times larger ({$largest} bytes) than the next largest
-
-lint_wasm_c_abi =
-    older versions of the `wasm-bindgen` crate will be incompatible with future versions of Rust; please update to `wasm-bindgen` v0.2.88

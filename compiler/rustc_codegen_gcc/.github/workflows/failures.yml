@@ -13,7 +13,7 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     strategy:
       fail-fast: false
@@ -56,12 +56,12 @@ jobs:
 
     - name: Download artifact
       if: matrix.libgccjit_version.gcc != 'libgccjit12.so'
-      run: curl -LO https://github.com/rust-lang/gcc/releases/latest/download/gcc-13.deb
+      run: curl -LO https://github.com/rust-lang/gcc/releases/latest/download/gcc-15.deb
 
     - name: Setup path to libgccjit
       if: matrix.libgccjit_version.gcc != 'libgccjit12.so'
       run: |
-          sudo dpkg --force-overwrite -i gcc-13.deb
+          sudo dpkg --force-overwrite -i gcc-15.deb
           echo 'gcc-path = "/usr/lib"' > config.toml
           echo "LIBRARY_PATH=/usr/lib" >> $GITHUB_ENV
           echo "LD_LIBRARY_PATH=/usr/lib" >> $GITHUB_ENV

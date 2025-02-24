@@ -12,6 +12,7 @@
 //! code was written, and check if the span contains that text. Note this will only work correctly
 //! if the span is not from a `macro_rules` based macro.
 
+use rustc_abi::ExternAbi;
 use rustc_ast::AttrStyle;
 use rustc_ast::ast::{AttrKind, Attribute, IntTy, LitIntType, LitKind, StrStyle, TraitObjectSyntax, UintTy};
 use rustc_ast::token::CommentKind;
@@ -26,7 +27,6 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::symbol::{Ident, kw};
 use rustc_span::{Span, Symbol};
-use rustc_target::spec::abi::Abi;
 
 /// The search pattern to look for. Used by `span_matches_pat`
 #[derive(Clone)]
@@ -192,7 +192,7 @@ fn expr_search_pat(tcx: TyCtxt<'_>, e: &Expr<'_>) -> (Pat, Pat) {
             },
             ExprKind::Closure(&Closure { body, .. }) => (
                 Pat::Str(""),
-                expr_search_pat_inner(tcx, tcx.hir().body(body).value, outer_span).1,
+                expr_search_pat_inner(tcx, tcx.hir_body(body).value, outer_span).1,
             ),
             ExprKind::Block(
                 Block {
@@ -233,7 +233,7 @@ fn fn_header_search_pat(header: FnHeader) -> Pat {
         Pat::Str("const")
     } else if header.is_unsafe() {
         Pat::Str("unsafe")
-    } else if header.abi != Abi::Rust {
+    } else if header.abi != ExternAbi::Rust {
         Pat::Str("extern")
     } else {
         Pat::MultiStr(&["fn", "extern"])
@@ -375,7 +375,7 @@ fn ty_search_pat(ty: &Ty<'_>) -> (Pat, Pat) {
         TyKind::BareFn(bare_fn) => (
             if bare_fn.safety.is_unsafe() {
                 Pat::Str("unsafe")
-            } else if bare_fn.abi != Abi::Rust {
+            } else if bare_fn.abi != ExternAbi::Rust {
                 Pat::Str("extern")
             } else {
                 Pat::MultiStr(&["fn", "extern"])
@@ -399,8 +399,10 @@ fn ty_search_pat(ty: &Ty<'_>) -> (Pat, Pat) {
         TyKind::Tup([head, .., tail]) => (ty_search_pat(head).0, ty_search_pat(tail).1),
         TyKind::OpaqueDef(..) => (Pat::Str("impl"), Pat::Str("")),
         TyKind::Path(qpath) => qpath_search_pat(&qpath),
-        TyKind::Infer => (Pat::Str("_"), Pat::Str("_")),
-        TyKind::TraitObject(_, _, TraitObjectSyntax::Dyn) => (Pat::Str("dyn"), Pat::Str("")),
+        TyKind::Infer(()) => (Pat::Str("_"), Pat::Str("_")),
+        TyKind::TraitObject(_, tagged_ptr) if let TraitObjectSyntax::Dyn = tagged_ptr.tag() => {
+            (Pat::Str("dyn"), Pat::Str(""))
+        },
         // NOTE: `TraitObject` is incomplete. It will always return true then.
         _ => (Pat::Str(""), Pat::Str("")),
     }

@@ -8,7 +8,6 @@ use rustc_data_structures::undo_log::UndoLogs;
 use rustc_data_structures::unify as ut;
 use rustc_index::IndexVec;
 use rustc_macros::{TypeFoldable, TypeVisitable};
-use rustc_middle::infer::unify_key::{RegionVariableValue, RegionVidKey};
 use rustc_middle::ty::{self, ReBound, ReStatic, ReVar, Region, RegionVid, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use tracing::{debug, instrument};
@@ -17,6 +16,7 @@ use self::CombineMapType::*;
 use self::UndoLog::*;
 use super::{MiscVariable, RegionVariableOrigin, Rollback, SubregionOrigin};
 use crate::infer::snapshot::undo_log::{InferCtxtUndoLogs, Snapshot};
+use crate::infer::unify_key::{RegionVariableValue, RegionVidKey};
 
 mod leak_check;
 

@@ -5,7 +5,7 @@ LL | fn foo(b: &dyn Bar) {
    |            ^^^^^^^ `Bar` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/issue-18959.rs:1:20
    |
 LL | pub trait Foo { fn foo<T>(&self, ext_thing: &T); }
@@ -21,7 +21,7 @@ LL |     b.foo(&0)
    |     ^^^^^^^^^ `Bar` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/issue-18959.rs:1:20
    |
 LL | pub trait Foo { fn foo<T>(&self, ext_thing: &T); }
@@ -37,7 +37,7 @@ LL |     let test: &dyn Bar = &mut thing;
    |               ^^^^^^^^ `Bar` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/issue-18959.rs:1:20
    |
 LL | pub trait Foo { fn foo<T>(&self, ext_thing: &T); }
@@ -53,7 +53,7 @@ LL |     let test: &dyn Bar = &mut thing;
    |                          ^^^^^^^^^^ `Bar` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/issue-18959.rs:1:20
    |
 LL | pub trait Foo { fn foo<T>(&self, ext_thing: &T); }
@@ -70,7 +70,7 @@ LL |     foo(test);
    |         ^^^^ `Bar` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/issue-18959.rs:1:20
    |
 LL | pub trait Foo { fn foo<T>(&self, ext_thing: &T); }

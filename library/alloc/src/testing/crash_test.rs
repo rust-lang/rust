@@ -11,7 +11,7 @@ use crate::fmt::Debug; // the `Debug` trait is the only thing we use from `crate
 /// Crash test dummies are identified and ordered by an id, so they can be used
 /// as keys in a BTreeMap.
 #[derive(Debug)]
-pub struct CrashTestDummy {
+pub(crate) struct CrashTestDummy {
     pub id: usize,
     cloned: AtomicUsize,
     dropped: AtomicUsize,
@@ -20,7 +20,7 @@ pub struct CrashTestDummy {
 
 impl CrashTestDummy {
     /// Creates a crash test dummy design. The `id` determines order and equality of instances.
-    pub fn new(id: usize) -> CrashTestDummy {
+    pub(crate) fn new(id: usize) -> CrashTestDummy {
         CrashTestDummy {
             id,
             cloned: AtomicUsize::new(0),
@@ -31,34 +31,34 @@ impl CrashTestDummy {
 
     /// Creates an instance of a crash test dummy that records what events it experiences
     /// and optionally panics.
-    pub fn spawn(&self, panic: Panic) -> Instance<'_> {
+    pub(crate) fn spawn(&self, panic: Panic) -> Instance<'_> {
         Instance { origin: self, panic }
     }
 
     /// Returns how many times instances of the dummy have been cloned.
-    pub fn cloned(&self) -> usize {
+    pub(crate) fn cloned(&self) -> usize {
         self.cloned.load(SeqCst)
     }
 
     /// Returns how many times instances of the dummy have been dropped.
-    pub fn dropped(&self) -> usize {
+    pub(crate) fn dropped(&self) -> usize {
         self.dropped.load(SeqCst)
     }
 
     /// Returns how many times instances of the dummy have had their `query` member invoked.
-    pub fn queried(&self) -> usize {
+    pub(crate) fn queried(&self) -> usize {
         self.queried.load(SeqCst)
     }
 }
 
 #[derive(Debug)]
-pub struct Instance<'a> {
+pub(crate) struct Instance<'a> {
     origin: &'a CrashTestDummy,
     panic: Panic,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum Panic {
+pub(crate) enum Panic {
     Never,
     InClone,
     InDrop,
@@ -66,12 +66,12 @@ pub enum Panic {
 }
 
 impl Instance<'_> {
-    pub fn id(&self) -> usize {
+    pub(crate) fn id(&self) -> usize {
         self.origin.id
     }
 
     /// Some anonymous query, the result of which is already given.
-    pub fn query<R>(&self, result: R) -> R {
+    pub(crate) fn query<R>(&self, result: R) -> R {
         self.origin.queried.fetch_add(1, SeqCst);
         if self.panic == Panic::InQuery {
             panic!("panic in `query`");

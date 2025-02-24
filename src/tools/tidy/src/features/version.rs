@@ -8,6 +8,7 @@ mod tests;
 pub const VERSION_PLACEHOLDER: &str = "CURRENT_RUSTC_VERSION";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "build-metrics", derive(serde::Serialize))]
 pub enum Version {
     Explicit { parts: [u32; 3] },
     CurrentPlaceholder,

@@ -3,6 +3,7 @@ resolver = "1"
 members = [
   "std",
   "sysroot",
+  "coretests",
 ]
 
 exclude = [

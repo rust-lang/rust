@@ -4,7 +4,7 @@ use std::iter;
 use std::ops::{Range, RangeFrom};
 
 use rustc_abi::{ExternAbi, FieldIdx};
-use rustc_attr_parsing::InlineAttr;
+use rustc_attr_parsing::{InlineAttr, OptimizeAttr};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_index::Idx;
@@ -49,8 +49,7 @@ impl<'tcx> crate::MirPass<'tcx> for Inline {
         match sess.mir_opt_level() {
             0 | 1 => false,
             2 => {
-                (sess.opts.optimize == OptLevel::Default
-                    || sess.opts.optimize == OptLevel::Aggressive)
+                (sess.opts.optimize == OptLevel::More || sess.opts.optimize == OptLevel::Aggressive)
                     && sess.opts.incremental == None
             }
             _ => true,
@@ -65,6 +64,10 @@ impl<'tcx> crate::MirPass<'tcx> for Inline {
             simplify_cfg(body);
             deref_finder(tcx, body);
         }
+    }
+
+    fn is_required(&self) -> bool {
+        false
     }
 }
 
@@ -83,6 +86,10 @@ impl<'tcx> crate::MirPass<'tcx> for ForceInline {
 
     fn can_be_overridden(&self) -> bool {
         false
+    }
+
+    fn is_required(&self) -> bool {
+        true
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -456,7 +463,7 @@ fn inline<'tcx, T: Inliner<'tcx>>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> b
     let def_id = body.source.def_id();
 
     // Only do inlining into fn bodies.
-    if !tcx.hir().body_owner_kind(def_id).is_fn_or_closure() {
+    if !tcx.hir_body_owner_kind(def_id).is_fn_or_closure() {
         return false;
     }
 
@@ -760,6 +767,10 @@ fn check_codegen_attributes<'tcx, I: Inliner<'tcx>>(
     let tcx = inliner.tcx();
     if let InlineAttr::Never = callee_attrs.inline {
         return Err("never inline attribute");
+    }
+
+    if let OptimizeAttr::DoNotOptimize = callee_attrs.optimize {
+        return Err("has DoNotOptimize attribute");
     }
 
     // Reachability pass defines which functions are eligible for inlining. Generally inlining
@@ -1099,10 +1110,13 @@ fn new_call_temp<'tcx>(
     });
 
     if let Some(block) = return_block {
-        caller_body[block].statements.insert(0, Statement {
-            source_info: callsite.source_info,
-            kind: StatementKind::StorageDead(local),
-        });
+        caller_body[block].statements.insert(
+            0,
+            Statement {
+                source_info: callsite.source_info,
+                kind: StatementKind::StorageDead(local),
+            },
+        );
     }
 
     local
@@ -1242,6 +1256,8 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
         // replaced down below anyways).
         if !matches!(terminator.kind, TerminatorKind::Return) {
             self.super_terminator(terminator, loc);
+        } else {
+            self.visit_source_info(&mut terminator.source_info);
         }
 
         match terminator.kind {

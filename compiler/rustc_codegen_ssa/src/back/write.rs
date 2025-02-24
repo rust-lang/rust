@@ -7,6 +7,7 @@ use std::sync::mpsc::{Receiver, Sender, channel};
 use std::{fs, io, mem, str, thread};
 
 use rustc_ast::attr;
+use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::jobserver::{self, Acquired};
 use rustc_data_structures::memmap::Mmap;
@@ -40,7 +41,7 @@ use tracing::debug;
 use super::link::{self, ensure_removed};
 use super::lto::{self, SerializedModule};
 use super::symbol_export::symbol_name_for_instance_in_crate;
-use crate::errors::ErrorCreatingRemarkDir;
+use crate::errors::{AutodiffWithoutLto, ErrorCreatingRemarkDir};
 use crate::traits::*;
 use crate::{
     CachedModuleCodegen, CodegenResults, CompiledModule, CrateInfo, ModuleCodegen, ModuleKind,
@@ -118,6 +119,7 @@ pub struct ModuleConfig {
     pub merge_functions: bool,
     pub emit_lifetime_markers: bool,
     pub llvm_plugins: Vec<String>,
+    pub autodiff: Vec<config::AutoDiff>,
 }
 
 impl ModuleConfig {
@@ -234,7 +236,7 @@ impl ModuleConfig {
             // Copy what clang does by turning on loop vectorization at O2 and
             // slp vectorization at O3.
             vectorize_loop: !sess.opts.cg.no_vectorize_loops
-                && (sess.opts.optimize == config::OptLevel::Default
+                && (sess.opts.optimize == config::OptLevel::More
                     || sess.opts.optimize == config::OptLevel::Aggressive),
             vectorize_slp: !sess.opts.cg.no_vectorize_slp
                 && sess.opts.optimize == config::OptLevel::Aggressive,
@@ -258,7 +260,7 @@ impl ModuleConfig {
                 MergeFunctions::Trampolines | MergeFunctions::Aliases => {
                     use config::OptLevel::*;
                     match sess.opts.optimize {
-                        Aggressive | Default | SizeMin | Size => true,
+                        Aggressive | More | SizeMin | Size => true,
                         Less | No => false,
                     }
                 }
@@ -266,6 +268,7 @@ impl ModuleConfig {
 
             emit_lifetime_markers: sess.emit_lifetime_markers(),
             llvm_plugins: if_regular!(sess.opts.unstable_opts.llvm_plugins.clone(), vec![]),
+            autodiff: if_regular!(sess.opts.unstable_opts.autodiff.clone(), vec![]),
         }
     }
 
@@ -389,6 +392,7 @@ impl<B: WriteBackendMethods> CodegenContext<B> {
 
 fn generate_lto_work<B: ExtraBackendMethods>(
     cgcx: &CodegenContext<B>,
+    autodiff: Vec<AutoDiffItem>,
     needs_fat_lto: Vec<FatLtoInput<B>>,
     needs_thin_lto: Vec<(String, B::ThinBuffer)>,
     import_only_modules: Vec<(SerializedModule<B::ModuleBuffer>, WorkProduct)>,
@@ -397,11 +401,20 @@ fn generate_lto_work<B: ExtraBackendMethods>(
 
     if !needs_fat_lto.is_empty() {
         assert!(needs_thin_lto.is_empty());
-        let module =
+        let mut module =
             B::run_fat_lto(cgcx, needs_fat_lto, import_only_modules).unwrap_or_else(|e| e.raise());
+        if cgcx.lto == Lto::Fat && !autodiff.is_empty() {
+            let config = cgcx.config(ModuleKind::Regular);
+            module =
+                unsafe { module.autodiff(cgcx, autodiff, config).unwrap_or_else(|e| e.raise()) };
+        }
         // We are adding a single work item, so the cost doesn't matter.
         vec![(WorkItem::LTO(module), 0)]
     } else {
+        if !autodiff.is_empty() {
+            let dcx = cgcx.create_dcx();
+            dcx.handle().emit_fatal(AutodiffWithoutLto {});
+        }
         assert!(needs_fat_lto.is_empty());
         let (lto_modules, copy_jobs) = B::run_thin_lto(cgcx, needs_thin_lto, import_only_modules)
             .unwrap_or_else(|e| e.raise());
@@ -560,10 +573,10 @@ fn produce_final_output_artifacts(
     };
 
     let copy_if_one_unit = |output_type: OutputType, keep_numbered: bool| {
-        if compiled_modules.modules.len() == 1 {
+        if let [module] = &compiled_modules.modules[..] {
             // 1) Only one codegen unit. In this case it's no difficulty
             //    to copy `foo.0.x` to `foo.x`.
-            let module_name = Some(&compiled_modules.modules[0].name[..]);
+            let module_name = Some(&module.name[..]);
             let path = crate_output.temp_path(output_type, module_name);
             let output = crate_output.path(output_type);
             if !output_type.is_text_output() && output.is_tty() {
@@ -695,8 +708,8 @@ fn produce_final_output_artifacts(
     }
 
     if sess.opts.json_artifact_notifications {
-        if compiled_modules.modules.len() == 1 {
-            compiled_modules.modules[0].for_each_output(|_path, ty| {
+        if let [module] = &compiled_modules.modules[..] {
+            module.for_each_output(|_path, ty| {
                 if sess.opts.output_types.contains_key(&ty) {
                     let descr = ty.shorthand();
                     // for single cgu file is renamed to drop cgu specific suffix
@@ -852,7 +865,7 @@ pub(crate) fn compute_per_cgu_lto_type(
     // require LTO so the request for LTO is always unconditionally
     // passed down to the backend, but we don't actually want to do
     // anything about it yet until we've got a final product.
-    let is_rlib = sess_crate_types.len() == 1 && sess_crate_types[0] == CrateType::Rlib;
+    let is_rlib = matches!(sess_crate_types, [CrateType::Rlib]);
 
     match sess_lto {
         Lto::ThinLocal if !linker_does_lto && !is_allocator => ComputedLtoType::Thin,
@@ -1020,6 +1033,9 @@ pub(crate) enum Message<B: WriteBackendMethods> {
     /// The backend has finished processing a work item for a codegen unit.
     /// Sent from a backend worker thread.
     WorkItem { result: Result<WorkItemResult<B>, Option<WorkerFatalError>>, worker_id: usize },
+
+    /// A vector containing all the AutoDiff tasks that we have to pass to Enzyme.
+    AddAutoDiffItems(Vec<AutoDiffItem>),
 
     /// The frontend has finished generating something (backend IR or a
     /// post-LTO artifact) for a codegen unit, and it should be passed to the
@@ -1348,6 +1364,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
 
         // This is where we collect codegen units that have gone all the way
         // through codegen and LLVM.
+        let mut autodiff_items = Vec::new();
         let mut compiled_modules = vec![];
         let mut compiled_allocator_module = None;
         let mut needs_link = Vec::new();
@@ -1459,9 +1476,13 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     let needs_thin_lto = mem::take(&mut needs_thin_lto);
                     let import_only_modules = mem::take(&mut lto_import_only_modules);
 
-                    for (work, cost) in
-                        generate_lto_work(&cgcx, needs_fat_lto, needs_thin_lto, import_only_modules)
-                    {
+                    for (work, cost) in generate_lto_work(
+                        &cgcx,
+                        autodiff_items.clone(),
+                        needs_fat_lto,
+                        needs_thin_lto,
+                        import_only_modules,
+                    ) {
                         let insertion_index = work_items
                             .binary_search_by_key(&cost, |&(_, cost)| cost)
                             .unwrap_or_else(|e| e);
@@ -1517,8 +1538,9 @@ fn start_executing_work<B: ExtraBackendMethods>(
             // Spin up what work we can, only doing this while we've got available
             // parallelism slots and work left to spawn.
             if codegen_state != Aborted {
-                while !work_items.is_empty() && running_with_own_token < tokens.len() {
-                    let (item, _) = work_items.pop().unwrap();
+                while running_with_own_token < tokens.len()
+                    && let Some((item, _)) = work_items.pop()
+                {
                     spawn_work(
                         &cgcx,
                         &mut llvm_start_time,
@@ -1594,6 +1616,10 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     }
                     assert_eq!(main_thread_state, MainThreadState::Codegenning);
                     main_thread_state = MainThreadState::Idle;
+                }
+
+                Message::AddAutoDiffItems(mut items) => {
+                    autodiff_items.append(&mut items);
                 }
 
                 Message::CodegenComplete => {
@@ -2068,6 +2094,10 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
         self.wait_for_signal_to_codegen_item();
         self.check_for_errors(tcx.sess);
         drop(self.coordinator.sender.send(Box::new(Message::CodegenComplete::<B>)));
+    }
+
+    pub(crate) fn submit_autodiff_items(&self, items: Vec<AutoDiffItem>) {
+        drop(self.coordinator.sender.send(Box::new(Message::<B>::AddAutoDiffItems(items))));
     }
 
     pub(crate) fn check_for_errors(&self, sess: &Session) {

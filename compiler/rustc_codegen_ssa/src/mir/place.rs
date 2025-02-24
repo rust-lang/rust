@@ -1,7 +1,7 @@
 use rustc_abi::Primitive::{Int, Pointer};
 use rustc_abi::{Align, BackendRepr, FieldsShape, Size, TagEncoding, VariantIdx, Variants};
+use rustc_middle::mir::PlaceTy;
 use rustc_middle::mir::interpret::Scalar;
-use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
 use rustc_middle::{bug, mir};
@@ -423,7 +423,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
             layout.size
         };
 
-        let llval = bx.inbounds_gep(bx.cx().backend_type(layout), self.val.llval, &[llindex]);
+        let llval = bx.inbounds_nuw_gep(bx.cx().backend_type(layout), self.val.llval, &[llindex]);
         let align = self.val.align.restrict_for_offset(offset);
         PlaceValue::new_sized(llval, align).with_type(layout)
     }
@@ -474,10 +474,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             LocalRef::Operand(..) => {
                 if place_ref.is_indirect_first_projection() {
                     base = 1;
-                    let cg_base = self.codegen_consume(bx, mir::PlaceRef {
-                        projection: &place_ref.projection[..0],
-                        ..place_ref
-                    });
+                    let cg_base = self.codegen_consume(
+                        bx,
+                        mir::PlaceRef { projection: &place_ref.projection[..0], ..place_ref },
+                    );
                     cg_base.deref(bx.cx())
                 } else {
                     bug!("using operand local {:?} as place", place_ref);
@@ -502,6 +502,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     bug!("encountered OpaqueCast({ty}) in codegen")
                 }
                 mir::ProjectionElem::Subtype(ty) => cg_base.project_type(bx, self.monomorphize(ty)),
+                mir::ProjectionElem::UnwrapUnsafeBinder(ty) => {
+                    cg_base.project_type(bx, self.monomorphize(ty))
+                }
                 mir::ProjectionElem::Index(index) => {
                     let index = &mir::Operand::Copy(mir::Place::from(index));
                     let index = self.codegen_operand(bx, index);

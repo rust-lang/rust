@@ -59,7 +59,7 @@ pub(crate) struct NameAlreadyUsedInParameterList {
     pub(crate) span: Span,
     #[label(resolve_first_use_of_name)]
     pub(crate) first_use_span: Span,
-    pub(crate) name: Symbol,
+    pub(crate) name: Ident,
 }
 
 #[derive(Diagnostic)]
@@ -142,7 +142,7 @@ pub(crate) struct VariableBoundWithDifferentMode {
     pub(crate) span: Span,
     #[label(resolve_first_binding_span)]
     pub(crate) first_binding_span: Span,
-    pub(crate) variable_name: Symbol,
+    pub(crate) variable_name: Ident,
 }
 
 #[derive(Diagnostic)]
@@ -151,7 +151,7 @@ pub(crate) struct IdentifierBoundMoreThanOnceInParameterList {
     #[primary_span]
     #[label]
     pub(crate) span: Span,
-    pub(crate) identifier: Symbol,
+    pub(crate) identifier: Ident,
 }
 
 #[derive(Diagnostic)]
@@ -160,7 +160,7 @@ pub(crate) struct IdentifierBoundMoreThanOnceInSamePattern {
     #[primary_span]
     #[label]
     pub(crate) span: Span,
-    pub(crate) identifier: Symbol,
+    pub(crate) identifier: Ident,
 }
 
 #[derive(Diagnostic)]
@@ -478,7 +478,7 @@ pub(crate) struct TraitImplDuplicate {
     pub(crate) old_span: Span,
     #[label(resolve_trait_item_span)]
     pub(crate) trait_item_span: Span,
-    pub(crate) name: Symbol,
+    pub(crate) name: Ident,
 }
 
 #[derive(Diagnostic)]
@@ -976,7 +976,7 @@ pub(crate) struct AttemptToDefineBuiltinMacroTwice {
 pub(crate) struct VariableIsNotBoundInAllPatterns {
     #[primary_span]
     pub(crate) multispan: MultiSpan,
-    pub(crate) name: Symbol,
+    pub(crate) name: Ident,
 }
 
 #[derive(Subdiagnostic, Debug, Clone)]
@@ -984,7 +984,7 @@ pub(crate) struct VariableIsNotBoundInAllPatterns {
 pub(crate) struct PatternDoesntBindName {
     #[primary_span]
     pub(crate) span: Span,
-    pub(crate) name: Symbol,
+    pub(crate) name: Ident,
 }
 
 #[derive(Subdiagnostic, Debug, Clone)]
@@ -1260,7 +1260,7 @@ pub(crate) struct TraitImplMismatch {
     #[primary_span]
     #[label]
     pub(crate) span: Span,
-    pub(crate) name: Symbol,
+    pub(crate) name: Ident,
     pub(crate) kind: &'static str,
     pub(crate) trait_path: String,
     #[label(resolve_trait_impl_mismatch_label_item)]

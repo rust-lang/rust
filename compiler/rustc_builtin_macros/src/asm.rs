@@ -651,7 +651,7 @@ fn expand_preparsed_asm(
             .map(|span| template_span.from_inner(InnerSpan::new(span.start, span.end)));
         for piece in unverified_pieces {
             match piece {
-                parse::Piece::String(s) => {
+                parse::Piece::Lit(s) => {
                     template.push(ast::InlineAsmTemplatePiece::String(s.to_string().into()))
                 }
                 parse::Piece::NextArgument(arg) => {

@@ -129,6 +129,8 @@ declare_with_version! { RENAMED(RENAMED_VERSION): &[(&str, &str)] = &[
     ("clippy::clone_double_ref", "suspicious_double_ref_op"),
     #[clippy::version = ""]
     ("clippy::cmp_nan", "invalid_nan_comparisons"),
+    #[clippy::version = "1.86.0"]
+    ("clippy::double_neg", "double_negations"),
     #[clippy::version = ""]
     ("clippy::drop_bounds", "drop_bounds"),
     #[clippy::version = ""]

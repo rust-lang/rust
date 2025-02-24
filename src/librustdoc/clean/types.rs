@@ -5,9 +5,7 @@ use std::{fmt, iter};
 
 use arrayvec::ArrayVec;
 use rustc_abi::{ExternAbi, VariantIdx};
-use rustc_attr_parsing::{
-    AllowedThroughUnstableModules, ConstStability, Deprecation, Stability, StableSince,
-};
+use rustc_attr_parsing::{ConstStability, Deprecation, Stability, StableSince};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
@@ -222,12 +220,11 @@ impl ExternalCrate {
             None
         };
         if root.is_local() {
-            tcx.hir()
-                .root_module()
+            tcx.hir_root_module()
                 .item_ids
                 .iter()
                 .filter_map(|&id| {
-                    let item = tcx.hir().item(id);
+                    let item = tcx.hir_item(id);
                     match item.kind {
                         hir::ItemKind::Mod(_) => {
                             as_keyword(Res::Def(DefKind::Mod, id.owner_id.to_def_id()))
@@ -279,12 +276,11 @@ impl ExternalCrate {
         };
 
         if root.is_local() {
-            tcx.hir()
-                .root_module()
+            tcx.hir_root_module()
                 .item_ids
                 .iter()
                 .filter_map(|&id| {
-                    let item = tcx.hir().item(id);
+                    let item = tcx.hir_item(id);
                     match item.kind {
                         hir::ItemKind::Mod(_) => {
                             as_primitive(Res::Def(DefKind::Mod, id.owner_id.to_def_id()))
@@ -411,15 +407,9 @@ impl Item {
                 ..
             } = stab.level
             {
-                let note = match note {
-                    AllowedThroughUnstableModules::WithDeprecation(note) => Some(note),
-                    // FIXME: Would be better to say *something* here about the *path* being
-                    // deprecated rather than the item.
-                    AllowedThroughUnstableModules::WithoutDeprecation => None,
-                };
                 Some(Deprecation {
                     since: rustc_attr_parsing::DeprecatedSince::Unspecified,
-                    note,
+                    note: Some(note),
                     suggestion: None,
                 })
             } else {
@@ -1261,10 +1251,13 @@ impl GenericBound {
     }
 
     pub(crate) fn maybe_sized(cx: &mut DocContext<'_>) -> GenericBound {
-        Self::sized_with(cx, hir::TraitBoundModifiers {
-            polarity: hir::BoundPolarity::Maybe(DUMMY_SP),
-            constness: hir::BoundConstness::Never,
-        })
+        Self::sized_with(
+            cx,
+            hir::TraitBoundModifiers {
+                polarity: hir::BoundPolarity::Maybe(DUMMY_SP),
+                constness: hir::BoundConstness::Never,
+            },
+        )
     }
 
     fn sized_with(cx: &mut DocContext<'_>, modifiers: hir::TraitBoundModifiers) -> GenericBound {
@@ -2127,9 +2120,8 @@ impl Discriminant {
     /// Will be `None` in the case of cross-crate reexports, and may be
     /// simplified
     pub(crate) fn expr(&self, tcx: TyCtxt<'_>) -> Option<String> {
-        self.expr.map(|body| {
-            rendered_const(tcx, tcx.hir().body(body), tcx.hir().body_owner_def_id(body))
-        })
+        self.expr
+            .map(|body| rendered_const(tcx, tcx.hir_body(body), tcx.hir_body_owner_def_id(body)))
     }
     pub(crate) fn value(&self, tcx: TyCtxt<'_>, with_underscores: bool) -> String {
         print_evaluated_const(tcx, self.value, with_underscores, false).unwrap()
@@ -2254,8 +2246,8 @@ impl GenericArg {
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) enum GenericArgs {
-    AngleBracketed { args: Box<[GenericArg]>, constraints: ThinVec<AssocItemConstraint> },
-    Parenthesized { inputs: Box<[Type]>, output: Option<Box<Type>> },
+    AngleBracketed { args: ThinVec<GenericArg>, constraints: ThinVec<AssocItemConstraint> },
+    Parenthesized { inputs: ThinVec<Type>, output: Option<Box<Type>> },
 }
 
 impl GenericArgs {
@@ -2279,7 +2271,7 @@ impl GenericArgs {
                         assoc: PathSegment {
                             name: sym::Output,
                             args: GenericArgs::AngleBracketed {
-                                args: Vec::new().into_boxed_slice(),
+                                args: ThinVec::new(),
                                 constraints: ThinVec::new(),
                             },
                         },
@@ -2425,7 +2417,7 @@ impl ConstantKind {
             ConstantKind::Path { ref path } => path.to_string(),
             ConstantKind::Extern { def_id } => print_inlined_const(tcx, def_id),
             ConstantKind::Local { body, .. } | ConstantKind::Anonymous { body } => {
-                rendered_const(tcx, tcx.hir().body(body), tcx.hir().body_owner_def_id(body))
+                rendered_const(tcx, tcx.hir_body(body), tcx.hir_body_owner_def_id(body))
             }
             ConstantKind::Infer { .. } => "_".to_string(),
         }
@@ -2596,12 +2588,12 @@ mod size_asserts {
     static_assert_size!(Crate, 56); // frequently moved by-value
     static_assert_size!(DocFragment, 32);
     static_assert_size!(GenericArg, 32);
-    static_assert_size!(GenericArgs, 32);
+    static_assert_size!(GenericArgs, 24);
     static_assert_size!(GenericParamDef, 40);
     static_assert_size!(Generics, 16);
     static_assert_size!(Item, 48);
     static_assert_size!(ItemKind, 48);
-    static_assert_size!(PathSegment, 40);
+    static_assert_size!(PathSegment, 32);
     static_assert_size!(Type, 32);
     // tidy-alphabetical-end
 }

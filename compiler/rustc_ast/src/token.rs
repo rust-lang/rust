@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::fmt;
+use std::sync::Arc;
 
 pub use BinOpToken::*;
 pub use LitKind::*;
@@ -8,7 +9,6 @@ pub use NtExprKind::*;
 pub use NtPatKind::*;
 pub use TokenKind::*;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::Lrc;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::edition::Edition;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, kw, sym};
@@ -84,7 +84,9 @@ pub enum MetaVarKind {
         // This field is needed for `Token::can_begin_string_literal`.
         can_begin_string_literal: bool,
     },
-    Ty,
+    Ty {
+        is_path: bool,
+    },
     Ident,
     Lifetime,
     Literal,
@@ -104,7 +106,7 @@ impl fmt::Display for MetaVarKind {
             MetaVarKind::Pat(PatParam { inferred: false }) => sym::pat_param,
             MetaVarKind::Expr { kind: Expr2021 { inferred: true } | Expr, .. } => sym::expr,
             MetaVarKind::Expr { kind: Expr2021 { inferred: false }, .. } => sym::expr_2021,
-            MetaVarKind::Ty => sym::ty,
+            MetaVarKind::Ty { .. } => sym::ty,
             MetaVarKind::Ident => sym::ident,
             MetaVarKind::Lifetime => sym::lifetime,
             MetaVarKind::Literal => sym::literal,
@@ -451,7 +453,7 @@ pub enum TokenKind {
     /// The span in the surrounding `Token` is that of the metavariable in the
     /// macro's RHS. The span within the Nonterminal is that of the fragment
     /// passed to the macro at the call site.
-    Interpolated(Lrc<Nonterminal>),
+    Interpolated(Arc<Nonterminal>),
 
     /// A doc comment token.
     /// `Symbol` is the doc comment's data excluding its "quotes" (`///`, `/**`, etc)
@@ -469,7 +471,7 @@ impl Clone for TokenKind {
         // a copy. This is faster than the `derive(Clone)` version which has a
         // separate path for every variant.
         match self {
-            Interpolated(nt) => Interpolated(Lrc::clone(nt)),
+            Interpolated(nt) => Interpolated(Arc::clone(nt)),
             _ => unsafe { std::ptr::read(self) },
         }
     }
@@ -527,13 +529,13 @@ impl TokenKind {
 
     /// Returns tokens that are likely to be typed accidentally instead of the current token.
     /// Enables better error recovery when the wrong token is found.
-    pub fn similar_tokens(&self) -> Option<Vec<TokenKind>> {
-        match *self {
-            Comma => Some(vec![Dot, Lt, Semi]),
-            Semi => Some(vec![Colon, Comma]),
-            Colon => Some(vec![Semi]),
-            FatArrow => Some(vec![Eq, RArrow, Ge, Gt]),
-            _ => None,
+    pub fn similar_tokens(&self) -> &[TokenKind] {
+        match self {
+            Comma => &[Dot, Lt, Semi],
+            Semi => &[Colon, Comma],
+            Colon => &[Semi],
+            FatArrow => &[Eq, RArrow, Ge, Gt],
+            _ => &[],
         }
     }
 
@@ -659,7 +661,6 @@ impl Token {
                     | NtMeta(..)
                     | NtPat(..)
                     | NtPath(..)
-                    | NtTy(..)
                 ),
             OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(
                 MetaVarKind::Expr { .. } |
@@ -667,7 +668,7 @@ impl Token {
                 MetaVarKind::Meta |
                 MetaVarKind::Pat(_) |
                 MetaVarKind::Path |
-                MetaVarKind::Ty
+                MetaVarKind::Ty { .. }
             ))) => true,
             _ => false,
         }
@@ -688,9 +689,9 @@ impl Token {
             Lifetime(..)                | // lifetime bound in trait object
             Lt | BinOp(Shl)             | // associated path
             PathSep                      => true, // global path
-            Interpolated(ref nt) => matches!(&**nt, NtTy(..) | NtPath(..)),
+            Interpolated(ref nt) => matches!(&**nt, NtPath(..)),
             OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(
-                MetaVarKind::Ty |
+                MetaVarKind::Ty { .. } |
                 MetaVarKind::Path
             ))) => true,
             // For anonymous structs or unions, which only appear in specific positions
@@ -969,6 +970,15 @@ impl Token {
         }
     }
 
+    /// Is this an invisible open delimiter at the start of a token sequence
+    /// from an expanded metavar?
+    pub fn is_metavar_seq(&self) -> Option<MetaVarKind> {
+        match self.kind {
+            OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(kind))) => Some(kind),
+            _ => None,
+        }
+    }
+
     pub fn glue(&self, joint: &Token) -> Option<Token> {
         let kind = match self.kind {
             Eq => match joint.kind {
@@ -1067,12 +1077,10 @@ pub enum Nonterminal {
     NtStmt(P<ast::Stmt>),
     NtPat(P<ast::Pat>),
     NtExpr(P<ast::Expr>),
-    NtTy(P<ast::Ty>),
     NtLiteral(P<ast::Expr>),
     /// Stuff inside brackets for attributes
     NtMeta(P<ast::AttrItem>),
     NtPath(P<ast::Path>),
-    NtVis(P<ast::Visibility>),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Encodable, Decodable, Hash, HashStable_Generic)]
@@ -1166,10 +1174,8 @@ impl Nonterminal {
             NtStmt(stmt) => stmt.span,
             NtPat(pat) => pat.span,
             NtExpr(expr) | NtLiteral(expr) => expr.span,
-            NtTy(ty) => ty.span,
             NtMeta(attr_item) => attr_item.span(),
             NtPath(path) => path.span,
-            NtVis(vis) => vis.span,
         }
     }
 
@@ -1181,10 +1187,8 @@ impl Nonterminal {
             NtPat(..) => "pattern",
             NtExpr(..) => "expression",
             NtLiteral(..) => "literal",
-            NtTy(..) => "type",
             NtMeta(..) => "attribute",
             NtPath(..) => "path",
-            NtVis(..) => "visibility",
         }
     }
 }
@@ -1207,11 +1211,9 @@ impl fmt::Debug for Nonterminal {
             NtStmt(..) => f.pad("NtStmt(..)"),
             NtPat(..) => f.pad("NtPat(..)"),
             NtExpr(..) => f.pad("NtExpr(..)"),
-            NtTy(..) => f.pad("NtTy(..)"),
             NtLiteral(..) => f.pad("NtLiteral(..)"),
             NtMeta(..) => f.pad("NtMeta(..)"),
             NtPath(..) => f.pad("NtPath(..)"),
-            NtVis(..) => f.pad("NtVis(..)"),
         }
     }
 }

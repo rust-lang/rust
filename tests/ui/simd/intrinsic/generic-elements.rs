@@ -29,13 +29,20 @@ struct f32x4([f32; 4]);
 #[allow(non_camel_case_types)]
 struct f32x8([f32; 8]);
 
-extern "rust-intrinsic" {
-    fn simd_insert<T, E>(x: T, idx: u32, y: E) -> T;
-    fn simd_extract<T, E>(x: T, idx: u32) -> E;
 
-    fn simd_shuffle<T, I, U>(x: T, y: T, idx: I) -> U;
-    fn simd_shuffle_generic<T, U, const IDX: &'static [u32]>(x: T, y: T) -> U;
-}
+#[rustc_intrinsic]
+unsafe fn simd_insert<T, E>(x: T, idx: u32, y: E) -> T;
+
+#[rustc_intrinsic]
+unsafe fn simd_extract<T, E>(x: T, idx: u32) -> E;
+
+
+#[rustc_intrinsic]
+unsafe fn simd_shuffle<T, I, U>(x: T, y: T, idx: I) -> U;
+
+#[rustc_intrinsic]
+unsafe fn simd_shuffle_generic<T, U, const IDX: &'static [u32]>(x: T, y: T) -> U;
+
 
 #[repr(simd)]
 struct SimdShuffleIdx<const LEN: usize>([u32; LEN]);

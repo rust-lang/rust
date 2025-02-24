@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-46112.rs:9:21
+  --> $DIR/issue-46112.rs:8:21
    |
 LL | fn main() { test(Ok(())); }
    |                  -- ^^ expected `Option<()>`, found `()`
@@ -9,7 +9,7 @@ LL | fn main() { test(Ok(())); }
    = note:   expected enum `Option<()>`
            found unit type `()`
 help: the type constructed contains `()` due to the type of the argument passed
-  --> $DIR/issue-46112.rs:9:18
+  --> $DIR/issue-46112.rs:8:18
    |
 LL | fn main() { test(Ok(())); }
    |                  ^^^--^

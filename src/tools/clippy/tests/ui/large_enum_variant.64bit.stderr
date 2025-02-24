@@ -13,8 +13,9 @@ LL | | }
    = help: to override `-D warnings` add `#[allow(clippy::large_enum_variant)]`
 help: consider boxing the large fields to reduce the total size of the enum
    |
-LL |     B(Box<[i32; 8000]>),
-   |       ~~~~~~~~~~~~~~~~
+LL -     B([i32; 8000]),
+LL +     B(Box<[i32; 8000]>),
+   |
 
 error: large size difference between variants
   --> tests/ui/large_enum_variant.rs:35:1
@@ -29,8 +30,9 @@ LL | | }
    |
 help: consider boxing the large fields to reduce the total size of the enum
    |
-LL |     ContainingLargeEnum(Box<LargeEnum>),
-   |                         ~~~~~~~~~~~~~~
+LL -     ContainingLargeEnum(LargeEnum),
+LL +     ContainingLargeEnum(Box<LargeEnum>),
+   |
 
 error: large size difference between variants
   --> tests/ui/large_enum_variant.rs:40:1
@@ -46,8 +48,9 @@ LL | | }
    |
 help: consider boxing the large fields to reduce the total size of the enum
    |
-LL |     ContainingMoreThanOneField(i32, Box<[i32; 8000]>, Box<[i32; 9500]>),
-   |                                     ~~~~~~~~~~~~~~~~  ~~~~~~~~~~~~~~~~
+LL -     ContainingMoreThanOneField(i32, [i32; 8000], [i32; 9500]),
+LL +     ContainingMoreThanOneField(i32, Box<[i32; 8000]>, Box<[i32; 9500]>),
+   |
 
 error: large size difference between variants
   --> tests/ui/large_enum_variant.rs:46:1
@@ -62,8 +65,9 @@ LL | | }
    |
 help: consider boxing the large fields to reduce the total size of the enum
    |
-LL |     StructLikeLarge { x: Box<[i32; 8000]>, y: i32 },
-   |                          ~~~~~~~~~~~~~~~~
+LL -     StructLikeLarge { x: [i32; 8000], y: i32 },
+LL +     StructLikeLarge { x: Box<[i32; 8000]>, y: i32 },
+   |
 
 error: large size difference between variants
   --> tests/ui/large_enum_variant.rs:51:1
@@ -78,8 +82,9 @@ LL | | }
    |
 help: consider boxing the large fields to reduce the total size of the enum
    |
-LL |     StructLikeLarge2 { x: Box<[i32; 8000]> },
-   |                           ~~~~~~~~~~~~~~~~
+LL -     StructLikeLarge2 { x: [i32; 8000] },
+LL +     StructLikeLarge2 { x: Box<[i32; 8000]> },
+   |
 
 error: large size difference between variants
   --> tests/ui/large_enum_variant.rs:67:1
@@ -95,8 +100,9 @@ LL | | }
    |
 help: consider boxing the large fields to reduce the total size of the enum
    |
-LL |     B(Box<[u8; 1255]>),
-   |       ~~~~~~~~~~~~~~~
+LL -     B([u8; 1255]),
+LL +     B(Box<[u8; 1255]>),
+   |
 
 error: large size difference between variants
   --> tests/ui/large_enum_variant.rs:73:1
@@ -111,8 +117,9 @@ LL | | }
    |
 help: consider boxing the large fields to reduce the total size of the enum
    |
-LL |     ContainingMoreThanOneField(Box<[i32; 8000]>, [i32; 2], Box<[i32; 9500]>, [i32; 30]),
-   |                                ~~~~~~~~~~~~~~~~            ~~~~~~~~~~~~~~~~
+LL -     ContainingMoreThanOneField([i32; 8000], [i32; 2], [i32; 9500], [i32; 30]),
+LL +     ContainingMoreThanOneField(Box<[i32; 8000]>, [i32; 2], Box<[i32; 9500]>, [i32; 30]),
+   |
 
 error: large size difference between variants
   --> tests/ui/large_enum_variant.rs:78:1
@@ -127,8 +134,9 @@ LL | | }
    |
 help: consider boxing the large fields to reduce the total size of the enum
    |
-LL |     B(Box<Struct2>),
-   |       ~~~~~~~~~~~~
+LL -     B(Struct2),
+LL +     B(Box<Struct2>),
+   |
 
 error: large size difference between variants
   --> tests/ui/large_enum_variant.rs:83:1
@@ -143,8 +151,9 @@ LL | | }
    |
 help: consider boxing the large fields to reduce the total size of the enum
    |
-LL |     B(Box<Struct2>),
-   |       ~~~~~~~~~~~~
+LL -     B(Struct2),
+LL +     B(Box<Struct2>),
+   |
 
 error: large size difference between variants
   --> tests/ui/large_enum_variant.rs:88:1
@@ -159,8 +168,9 @@ LL | | }
    |
 help: consider boxing the large fields to reduce the total size of the enum
    |
-LL |     B(Box<Struct2>),
-   |       ~~~~~~~~~~~~
+LL -     B(Struct2),
+LL +     B(Box<Struct2>),
+   |
 
 error: large size difference between variants
   --> tests/ui/large_enum_variant.rs:103:1
@@ -241,8 +251,9 @@ LL | | }
    |
 help: consider boxing the large fields to reduce the total size of the enum
    |
-LL |     Large(Box<(T, [u8; 512])>),
-   |           ~~~~~~~~~~~~~~~~~~~
+LL -     Large((T, [u8; 512])),
+LL +     Large(Box<(T, [u8; 512])>),
+   |
 
 error: large size difference between variants
   --> tests/ui/large_enum_variant.rs:143:1
@@ -257,8 +268,9 @@ LL | | }
    |
 help: consider boxing the large fields to reduce the total size of the enum
    |
-LL |     Large(Box<[Foo<u64>; 64]>),
-   |           ~~~~~~~~~~~~~~~~~~~
+LL -     Large([Foo<u64>; 64]),
+LL +     Large(Box<[Foo<u64>; 64]>),
+   |
 
 error: large size difference between variants
   --> tests/ui/large_enum_variant.rs:153:1
@@ -273,8 +285,9 @@ LL | | }
    |
 help: consider boxing the large fields to reduce the total size of the enum
    |
-LL |     Error(Box<PossiblyLargeEnumWithConst<256>>),
-   |           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     Error(PossiblyLargeEnumWithConst<256>),
+LL +     Error(Box<PossiblyLargeEnumWithConst<256>>),
+   |
 
 error: aborting due to 16 previous errors
 

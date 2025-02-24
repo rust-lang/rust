@@ -14,7 +14,7 @@ macro_rules! declare_features {
         $(#[doc = $doc:tt])* (removed, $feature:ident, $ver:expr, $issue:expr, $reason:expr),
     )+) => {
         /// Formerly unstable features that have now been removed.
-        pub const REMOVED_LANG_FEATURES: &[RemovedFeature] = &[
+        pub static REMOVED_LANG_FEATURES: &[RemovedFeature] = &[
             $(RemovedFeature {
                 feature: Feature {
                     name: sym::$feature,
@@ -135,6 +135,8 @@ declare_features! (
      Some("removed as it caused some confusion and discussion was inactive for years")),
     /// Lazily evaluate constants. This allows constants to depend on type parameters.
     (removed, lazy_normalization_consts, "1.46.0", Some(72219), Some("superseded by `generic_const_exprs`")),
+    /// Changes `impl Trait` to capture all lifetimes in scope.
+    (removed, lifetime_capture_rules_2024, "1.76.0", None, Some("unnecessary -- use edition 2024 instead")),
     /// Allows using the `#[link_args]` attribute.
     (removed, link_args, "1.53.0", Some(29596),
      Some("removed in favor of using `-C link-arg=ARG` on command line, \

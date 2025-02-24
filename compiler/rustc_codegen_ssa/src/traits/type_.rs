@@ -1,8 +1,8 @@
-use rustc_abi::{AddressSpace, Float, Integer};
+use rustc_abi::{AddressSpace, Float, Integer, Reg};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, TyAndLayout};
 use rustc_middle::ty::{self, Ty};
-use rustc_target::callconv::{ArgAbi, CastTarget, FnAbi, Reg};
+use rustc_target::callconv::{ArgAbi, CastTarget, FnAbi};
 
 use super::BackendTypes;
 use super::misc::MiscCodegenMethods;

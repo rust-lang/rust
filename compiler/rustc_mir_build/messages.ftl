@@ -285,7 +285,16 @@ mir_build_pointer_pattern = function pointers and raw pointers not derived from 
 
 mir_build_privately_uninhabited = pattern `{$witness_1}` is currently uninhabited, but this variant contains private fields which may become inhabited in the future
 
-mir_build_rust_2024_incompatible_pat = this pattern relies on behavior which may change in edition 2024
+mir_build_rust_2024_incompatible_pat = {$bad_modifiers ->
+        *[true] binding modifiers{$bad_ref_pats ->
+            *[true] {" "}and reference patterns
+            [false] {""}
+        }
+        [false] reference patterns
+    } may only be written when the default binding mode is `move`{$is_hard_error ->
+        *[true] {""}
+        [false] {" "}in Rust 2024
+    }
 
 mir_build_static_in_pattern = statics cannot be referenced in patterns
     .label = can't be used in patterns
@@ -358,6 +367,18 @@ mir_build_unreachable_pattern = unreachable pattern
     .unreachable_pattern_const_inaccessible = there is a constant of the same name, which could have been used to pattern match against its value instead of introducing a new catch-all binding, but it is not accessible from this scope
     .unreachable_pattern_let_binding = there is a binding of the same name; if you meant to pattern match against the value of that binding, that is a feature of constants that is not available for `let` bindings
     .suggestion = remove the match arm
+
+mir_build_unsafe_binder_cast_requires_unsafe =
+    unsafe binder cast is unsafe and requires unsafe block
+    .label = unsafe binder cast
+    .note = casting to or from an `unsafe<...>` binder type is unsafe since it erases lifetime
+        information that may be required to uphold safety guarantees of a type
+
+mir_build_unsafe_binder_cast_requires_unsafe_unsafe_op_in_unsafe_fn_allowed =
+    unsafe binder cast is unsafe and requires unsafe block or unsafe fn
+    .label = unsafe binder cast
+    .note = casting to or from an `unsafe<...>` binder type is unsafe since it erases lifetime
+        information that may be required to uphold safety guarantees of a type
 
 mir_build_unsafe_field_requires_unsafe =
     use of unsafe field is unsafe and requires unsafe block

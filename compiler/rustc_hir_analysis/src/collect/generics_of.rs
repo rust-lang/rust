@@ -3,9 +3,10 @@ use std::ops::ControlFlow;
 
 use hir::intravisit::{self, Visitor};
 use hir::{GenericParamKind, HirId, Node};
-use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
+use rustc_hir::intravisit::VisitorExt;
+use rustc_hir::{self as hir, AmbigArg};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint;
 use rustc_span::{Span, Symbol, kw};
@@ -70,7 +71,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         | Node::Variant(_)
         | Node::Ctor(..)
         | Node::Field(_) => {
-            let parent_id = tcx.hir().get_parent_item(hir_id);
+            let parent_id = tcx.hir_get_parent_item(hir_id);
             Some(parent_id.to_def_id())
         }
         // FIXME(#43408) always enable this once `lazy_normalization` is
@@ -89,12 +90,12 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
             let parent_did = if let DefKind::AnonConst = tcx.def_kind(parent_did) {
                 parent_did
             } else {
-                tcx.hir().get_parent_item(hir_id).to_def_id()
+                tcx.hir_get_parent_item(hir_id).to_def_id()
             };
             debug!(?parent_did);
 
             let mut in_param_ty = false;
-            for (_parent, node) in tcx.hir().parent_iter(hir_id) {
+            for (_parent, node) in tcx.hir_parent_iter(hir_id) {
                 if let Some(generics) = node.generics() {
                     let mut visitor = AnonConstInParamTyDetector { in_param_ty: false, ct: hir_id };
 
@@ -188,8 +189,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     // Exclude `GlobalAsm` here which cannot have generics.
                     Node::Expr(&Expr { kind: ExprKind::InlineAsm(asm), .. })
                         if asm.operands.iter().any(|(op, _op_sp)| match op {
-                            hir::InlineAsmOperand::Const { anon_const }
-                            | hir::InlineAsmOperand::SymFn { anon_const } => {
+                            hir::InlineAsmOperand::Const { anon_const } => {
                                 anon_const.hir_id == hir_id
                             }
                             _ => false,
@@ -197,6 +197,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     {
                         Some(parent_did)
                     }
+                    Node::TyPat(_) => Some(parent_did),
                     _ => None,
                 }
             }
@@ -461,7 +462,7 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
 
     impl<'tcx> Visitor<'tcx> for LateBoundRegionsDetector<'tcx> {
         type Result = ControlFlow<Span>;
-        fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) -> ControlFlow<Span> {
+        fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx, AmbigArg>) -> ControlFlow<Span> {
             match ty.kind {
                 hir::TyKind::BareFn(..) => {
                     self.outer_index.shift_in(1);
@@ -539,7 +540,7 @@ impl<'v> Visitor<'v> for AnonConstInParamTyDetector {
         if let GenericParamKind::Const { ty, default: _, synthetic: _ } = p.kind {
             let prev = self.in_param_ty;
             self.in_param_ty = true;
-            let res = self.visit_ty(ty);
+            let res = self.visit_ty_unambig(ty);
             self.in_param_ty = prev;
             res
         } else {

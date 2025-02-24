@@ -16,6 +16,7 @@ pub struct JsonInvocation {
     //
     // This is necessary to easily correlate this invocation with logs or other data.
     pub start_time: u64,
+    #[serde(deserialize_with = "null_as_f64_nan")]
     pub duration_including_children_sec: f64,
     pub children: Vec<JsonNode>,
 }
@@ -28,6 +29,7 @@ pub enum JsonNode {
         type_: String,
         debug_repr: String,
 
+        #[serde(deserialize_with = "null_as_f64_nan")]
         duration_excluding_children_sec: f64,
         system_stats: JsonStepSystemStats,
 
@@ -88,5 +90,11 @@ pub struct JsonInvocationSystemStats {
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub struct JsonStepSystemStats {
+    #[serde(deserialize_with = "null_as_f64_nan")]
     pub cpu_utilization_percent: f64,
+}
+
+fn null_as_f64_nan<'de, D: serde::Deserializer<'de>>(d: D) -> Result<f64, D::Error> {
+    use serde::Deserialize as _;
+    Option::<f64>::deserialize(d).map(|f| f.unwrap_or(f64::NAN))
 }

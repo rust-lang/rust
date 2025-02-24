@@ -42,7 +42,7 @@ format is specific to `rustc`, and may change over time. This file contains:
 ### dylib
 
 A `dylib` is a platform-specific shared library. It includes the `rustc`
-[metadata] in a special link section called `.rustc` in a compressed format.
+[metadata] in a special link section called `.rustc`.
 
 ### rmeta
 

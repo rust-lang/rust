@@ -23,15 +23,6 @@ pub struct ModPath {
     segments: SmallVec<[Name; 1]>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct UnescapedModPath<'a>(&'a ModPath);
-
-impl<'a> UnescapedModPath<'a> {
-    pub fn display(&'a self, db: &'a dyn crate::db::ExpandDatabase) -> impl fmt::Display + 'a {
-        UnescapedDisplay { db, path: self }
-    }
-}
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum PathKind {
     Plain,
@@ -135,9 +126,11 @@ impl ModPath {
             _ => None,
         }
     }
-
-    pub fn unescaped(&self) -> UnescapedModPath<'_> {
-        UnescapedModPath(self)
+    pub fn display_verbatim<'a>(
+        &'a self,
+        db: &'a dyn crate::db::ExpandDatabase,
+    ) -> impl fmt::Display + 'a {
+        Display { db, path: self, edition: None }
     }
 
     pub fn display<'a>(
@@ -145,7 +138,7 @@ impl ModPath {
         db: &'a dyn crate::db::ExpandDatabase,
         edition: Edition,
     ) -> impl fmt::Display + 'a {
-        Display { db, path: self, edition }
+        Display { db, path: self, edition: Some(edition) }
     }
 }
 
@@ -158,23 +151,12 @@ impl Extend<Name> for ModPath {
 struct Display<'a> {
     db: &'a dyn ExpandDatabase,
     path: &'a ModPath,
-    edition: Edition,
+    edition: Option<Edition>,
 }
 
 impl fmt::Display for Display<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        display_fmt_path(self.db, self.path, f, Escape::IfNeeded(self.edition))
-    }
-}
-
-struct UnescapedDisplay<'a> {
-    db: &'a dyn ExpandDatabase,
-    path: &'a UnescapedModPath<'a>,
-}
-
-impl fmt::Display for UnescapedDisplay<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        display_fmt_path(self.db, self.path.0, f, Escape::No)
+        display_fmt_path(self.db, self.path, f, self.edition)
     }
 }
 
@@ -184,16 +166,11 @@ impl From<Name> for ModPath {
     }
 }
 
-enum Escape {
-    No,
-    IfNeeded(Edition),
-}
-
 fn display_fmt_path(
     db: &dyn ExpandDatabase,
     path: &ModPath,
     f: &mut fmt::Formatter<'_>,
-    escaped: Escape,
+    edition: Option<Edition>,
 ) -> fmt::Result {
     let mut first_segment = true;
     let mut add_segment = |s| -> fmt::Result {
@@ -221,10 +198,10 @@ fn display_fmt_path(
             f.write_str("::")?;
         }
         first_segment = false;
-        match escaped {
-            Escape::IfNeeded(edition) => segment.display(db, edition).fmt(f)?,
-            Escape::No => segment.unescaped().display(db).fmt(f)?,
-        }
+        match edition {
+            Some(edition) => segment.display(db, edition).fmt(f)?,
+            None => fmt::Display::fmt(segment.as_str(), f)?,
+        };
     }
     Ok(())
 }

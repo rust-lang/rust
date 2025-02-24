@@ -1,14 +1,11 @@
-// We specify incremental here because we want to test the partitioning for incremental compilation
 //@ incremental
-//@ compile-flags:-Zprint-mono-items=lazy
-//@ compile-flags:-Zinline-in-all-cgus
 // Need to disable optimizations to ensure consistent output across all CI runners.
-//@ compile-flags:-Copt-level=0
+//@ compile-flags: -Zprint-mono-items=lazy -Copt-level=0
 
-// This test case makes sure, that references made through constants are
-// recorded properly in the InliningMap.
+#![crate_type = "rlib"]
 
-#![crate_type = "lib"]
+// This test case makes sure that references made through constants cause trait associated methods
+// to be monomorphized when required.
 
 mod mod1 {
     struct NeedsDrop;
@@ -43,7 +40,7 @@ mod mod1 {
         x
     }
 
-    // These are referenced, so they produce mono-items (see start())
+    // These are referenced, so they produce mono-items (see main)
     pub const TRAIT1_REF: &'static Trait1 = &NeedsDrop as &Trait1;
     pub const TRAIT1_GEN_REF: &'static Trait1Gen<u8> = &NeedsDrop as &Trait1Gen<u8>;
     pub const ID_CHAR: fn(char) -> char = id::<char>;
@@ -77,9 +74,8 @@ mod mod1 {
     pub const ID_I64: fn(i64) -> i64 = id::<i64>;
 }
 
-//~ MONO_ITEM fn start
-#[no_mangle]
-pub fn start(_: isize, _: *const *const u8) -> isize {
+//~ MONO_ITEM fn main @@ vtable_through_const[External]
+pub fn main() {
     //~ MONO_ITEM fn <mod1::NeedsDrop as std::ops::Drop>::drop @@ vtable_through_const-fallback.cgu[External]
     //~ MONO_ITEM fn std::ptr::drop_in_place::<mod1::NeedsDrop> - shim(Some(mod1::NeedsDrop)) @@ vtable_through_const-fallback.cgu[External]
 
@@ -103,6 +99,4 @@ pub fn start(_: isize, _: *const *const u8) -> isize {
 
     //~ MONO_ITEM fn mod1::id::<char> @@ vtable_through_const-mod1.volatile[External]
     mod1::ID_CHAR('x');
-
-    0
 }

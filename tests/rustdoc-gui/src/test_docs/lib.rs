@@ -691,3 +691,43 @@ impl ImplDoc {
 impl ImplDoc {
     pub fn bar5() {}
 }
+
+pub trait ItemsTrait {
+    /// You want doc, here is doc!
+    ///
+    /// blablala
+    type F;
+
+    /// You want doc, here is doc!
+    ///
+    /// blablala
+    const X: u32;
+
+    /// You want doc, here is doc!
+    ///
+    /// blablala
+    fn foo() {}
+
+    /// You want doc, here is doc!
+    ///
+    /// blablala
+    fn bar();
+}
+
+pub mod SidebarSort {
+    use std::cell::Cell;
+    use std::sync::atomic::*;
+    pub trait Sort {}
+
+    impl Sort for u32 {}
+    impl Sort for u8 {}
+    impl Sort for u16 {}
+    impl Sort for usize {}
+    impl Sort for AtomicU32 {}
+    impl Sort for AtomicU16 {}
+    impl Sort for AtomicU8 {}
+    impl Sort for AtomicBool {}
+    impl Sort for Cell<u16> {}
+    impl Sort for Cell<u8> {}
+    impl<'a> Sort for &'a str {}
+}

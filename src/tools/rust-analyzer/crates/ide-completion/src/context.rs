@@ -442,8 +442,12 @@ pub(crate) struct CompletionContext<'a> {
     pub(crate) krate: hir::Crate,
     /// The module of the `scope`.
     pub(crate) module: hir::Module,
+    /// The function where we're completing, if inside a function.
+    pub(crate) containing_function: Option<hir::Function>,
     /// Whether nightly toolchain is used. Cached since this is looked up a lot.
-    is_nightly: bool,
+    pub(crate) is_nightly: bool,
+    /// The edition of the current crate
+    // FIXME: This should probably be the crate of the current token?
     pub(crate) edition: Edition,
 
     /// The expected name of what we are completing.
@@ -532,7 +536,7 @@ impl CompletionContext<'_> {
         }
     }
 
-    /// Checks if an item is visible and not `doc(hidden)` at the completion site.
+    /// Checks if an item is visible, not `doc(hidden)` and stable at the completion site.
     pub(crate) fn is_visible<I>(&self, item: &I) -> Visible
     where
         I: hir::HasVisibility + hir::HasAttrs + hir::HasCrate + Copy,
@@ -566,6 +570,15 @@ impl CompletionContext<'_> {
             return true;
         };
         !attrs.is_unstable() || self.is_nightly
+    }
+
+    pub(crate) fn check_stability_and_hidden<I>(&self, item: I) -> bool
+    where
+        I: hir::HasAttrs + hir::HasCrate,
+    {
+        let defining_crate = item.krate(self.db);
+        let attrs = item.attrs(self.db);
+        self.check_stability(Some(&attrs)) && !self.is_doc_hidden(&attrs, defining_crate)
     }
 
     /// Whether the given trait is an operator trait or not.
@@ -645,6 +658,10 @@ impl CompletionContext<'_> {
         attrs: &hir::Attrs,
         defining_crate: hir::Crate,
     ) -> Visible {
+        if !self.check_stability(Some(attrs)) {
+            return Visible::No;
+        }
+
         if !vis.is_visible_from(self.db, self.module.into()) {
             if !self.config.enable_private_editable {
                 return Visible::No;
@@ -664,7 +681,7 @@ impl CompletionContext<'_> {
         }
     }
 
-    fn is_doc_hidden(&self, attrs: &hir::Attrs, defining_crate: hir::Crate) -> bool {
+    pub(crate) fn is_doc_hidden(&self, attrs: &hir::Attrs, defining_crate: hir::Crate) -> bool {
         // `doc(hidden)` items are only completed within the defining crate.
         self.krate != defining_crate && attrs.has_doc_hidden()
     }
@@ -745,6 +762,7 @@ impl<'a> CompletionContext<'a> {
 
         let krate = scope.krate();
         let module = scope.module();
+        let containing_function = scope.containing_function();
         let edition = krate.edition(db);
 
         let toolchain = db.toolchain_channel(krate.into());
@@ -859,6 +877,7 @@ impl<'a> CompletionContext<'a> {
             token,
             krate,
             module,
+            containing_function,
             is_nightly,
             edition,
             expected_name,

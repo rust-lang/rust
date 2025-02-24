@@ -1,5 +1,6 @@
-use clippy_utils::diagnostics::span_lint_and_note;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::ty::is_type_diagnostic_item;
+use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::LateContext;
 use rustc_span::sym;
@@ -10,13 +11,22 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, recv: &'
     // Checks if expression type is equal to sym::Option and if the expr is not a syntactic place
     if !recv.is_syntactic_place_expr() && is_expr_option(cx, recv) {
         if let Some(function_name) = source_of_temporary_value(recv) {
-            span_lint_and_note(
+            span_lint_and_then(
                 cx,
                 NEEDLESS_OPTION_TAKE,
                 expr.span,
                 "called `Option::take()` on a temporary value",
-                None,
-                format!("`{function_name}` creates a temporary value, so calling take() has no effect"),
+                |diag| {
+                    diag.note(format!(
+                        "`{function_name}` creates a temporary value, so calling take() has no effect"
+                    ));
+                    diag.span_suggestion(
+                        expr.span.with_lo(recv.span.hi()),
+                        "remove",
+                        "",
+                        Applicability::MachineApplicable,
+                    );
+                },
             );
         }
     }

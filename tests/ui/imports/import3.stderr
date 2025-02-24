@@ -2,9 +2,9 @@ error[E0432]: unresolved import `main`
   --> $DIR/import3.rs:2:5
    |
 LL | use main::bar;
-   |     ^^^^ you might be missing crate `main`
+   |     ^^^^ use of unresolved module or unlinked crate `main`
    |
-help: consider importing the `main` crate
+help: you might be missing a crate named `main`, add it to your project and import it in your code
    |
 LL + extern crate main;
    |

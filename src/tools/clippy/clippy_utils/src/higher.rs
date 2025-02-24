@@ -117,7 +117,7 @@ impl<'hir> IfLet<'hir> {
             if_else,
         ) = expr.kind
         {
-            let mut iter = cx.tcx.hir().parent_iter(expr.hir_id);
+            let mut iter = cx.tcx.hir_parent_iter(expr.hir_id);
             if let Some((_, Node::Block(Block { stmts: [], .. }))) = iter.next() {
                 if let Some((
                     _,
@@ -475,7 +475,7 @@ pub fn get_vec_init_kind<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -
                         Some(Constant::Int(num)) => Some(VecInitKind::WithConstCapacity(num)),
                         _ => Some(VecInitKind::WithExprCapacity(arg.hir_id)),
                     };
-                };
+                }
             },
             ExprKind::Path(QPath::Resolved(_, path))
                 if cx.tcx.is_diagnostic_item(sym::default_fn, path.res.opt_def_id()?)

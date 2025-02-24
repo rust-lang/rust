@@ -9,6 +9,8 @@ error: the constant `N` is not of type `usize`
    |
 LL |     fn func<const N: u32>() -> [(); N];
    |                                ^^^^^^^ expected `usize`, found `u32`
+   |
+   = note: the length of array `[(); N]` must be type `usize`
 
 error: aborting due to 2 previous errors
 

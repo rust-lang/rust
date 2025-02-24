@@ -1229,8 +1229,11 @@ pub fn run() -> Result<(), String> {
 
     if !args.use_system_gcc {
         args.config_info.setup_gcc_path()?;
-        env.insert("LIBRARY_PATH".to_string(), args.config_info.gcc_path.clone());
-        env.insert("LD_LIBRARY_PATH".to_string(), args.config_info.gcc_path.clone());
+        let gcc_path = args.config_info.gcc_path.clone().expect(
+            "The config module should have emitted an error if the GCC path wasn't provided",
+        );
+        env.insert("LIBRARY_PATH".to_string(), gcc_path.clone());
+        env.insert("LD_LIBRARY_PATH".to_string(), gcc_path);
     }
 
     build_if_no_backend(&env, &args)?;

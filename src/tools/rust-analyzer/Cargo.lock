@@ -846,7 +846,6 @@ dependencies = [
  "dashmap",
  "hashbrown",
  "rustc-hash 2.0.0",
- "sptr",
  "triomphe",
 ]
 
@@ -1409,9 +1408,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.86"
+version = "1.0.93"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5e719e8df665df0d1c8fbfd238015744736151d4445ec0836b8e628aae103b77"
+checksum = "60946a68e5f9d28b0dc1c21bb8a97ee7d018a8b322fa57838ba31cc878e22d99"
 dependencies = [
  "unicode-ident",
 ]
@@ -1515,9 +1514,9 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_abi"
-version = "0.91.0"
+version = "0.95.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d5246e9e1f450333a990877eabbc36fe0567e7cedd56d5365db319e14079cf2a"
+checksum = "b40c4e339b71a8f075a829b1acaf32f870a11b466d9b8623d50b0ce33e65af95"
 dependencies = [
  "bitflags 2.7.0",
  "ra-ap-rustc_index",
@@ -1526,9 +1525,9 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_index"
-version = "0.91.0"
+version = "0.95.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59fd8e4f5b34c434ec111efb0e0614954db048b9307d3b2e4cc3c915da9d2160"
+checksum = "872072e2ba11d11147ebe9fde1608fe7f7d9b5c51dac524af28ee07c6dade468"
 dependencies = [
  "ra-ap-rustc_index_macros",
  "smallvec",
@@ -1536,9 +1535,9 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_index_macros"
-version = "0.91.0"
+version = "0.95.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d34973fe081392bd1edb022e865e9952fcaa093f9cdae183edce64472e5e889"
+checksum = "ffcd77debcaf2ad690a57c2d041c11eb33fe66869754b2c5f35c52954b46af0c"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1547,19 +1546,20 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_lexer"
-version = "0.91.0"
+version = "0.95.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "52fa42c582e21b35e8f61a5afe3c63a9c722d995826762eb19b18beeccf5157f"
+checksum = "49265cdf8823f8d246e476c79c60bd6e5b551c81ae76e1c8d6a5e0dc73df0bca"
 dependencies = [
+ "memchr",
  "unicode-properties",
  "unicode-xid",
 ]
 
 [[package]]
 name = "ra-ap-rustc_parse_format"
-version = "0.91.0"
+version = "0.95.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "740383328d7033393e5385f4a6073b880d5811b0fc0fd2559e481f905940f2f8"
+checksum = "b3da239fdc971176de0db45cb631d71475b52033a3d0027d91964da7be89eee6"
 dependencies = [
  "ra-ap-rustc_index",
  "ra-ap-rustc_lexer",
@@ -1567,9 +1567,9 @@ dependencies = [
 
 [[package]]
 name = "ra-ap-rustc_pattern_analysis"
-version = "0.91.0"
+version = "0.95.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c39f544728f32cebffb1a8b92ba3c1f3dcb4144081438d192137ed197d479a9d"
+checksum = "56057d08fdfa0d95494e461bbdd5d4b3fdb349cca6be05ad7759bc964be1b8d4"
 dependencies = [
  "ra-ap-rustc_index",
  "rustc-hash 2.0.0",
@@ -1928,12 +1928,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sptr"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3b9b39299b249ad65f3b7e96443bad61c02ca5cd3589f46cb6d610a0fd6c0d6a"
-
-[[package]]
 name = "stdx"
 version = "0.0.0"
 dependencies = [
@@ -2008,9 +2002,9 @@ dependencies = [
 
 [[package]]
 name = "tenthash"
-version = "0.4.0"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d67f9f3cf70e0852941d7bc3cb884b49b24b8ee956baf91ad0abae31f5ef11fb"
+checksum = "2d092d622df8bb64e5de8dc86a3667702d5f1e0fe2f0604c6035540703c8cd1e"
 
 [[package]]
 name = "test-fixture"

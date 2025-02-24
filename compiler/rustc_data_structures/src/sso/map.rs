@@ -165,7 +165,7 @@ impl<K, V> SsoHashMap<K, V> {
 
     /// Clears the map, returning all key-value pairs as an iterator. Keeps the
     /// allocated memory for reuse.
-    pub fn drain(&mut self) -> impl Iterator<Item = (K, V)> + '_ {
+    pub fn drain(&mut self) -> impl Iterator<Item = (K, V)> {
         match self {
             SsoHashMap::Array(array) => Either::Left(array.drain(..)),
             SsoHashMap::Map(map) => Either::Right(map.drain()),

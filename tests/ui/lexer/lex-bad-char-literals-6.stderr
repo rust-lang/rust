@@ -6,8 +6,9 @@ LL |     let x: &str = 'ab';
    |
 help: if you meant to write a string literal, use double quotes
    |
-LL |     let x: &str = "ab";
-   |                   ~  ~
+LL -     let x: &str = 'ab';
+LL +     let x: &str = "ab";
+   |
 
 error: character literal may only contain one codepoint
   --> $DIR/lex-bad-char-literals-6.rs:4:19
@@ -17,8 +18,9 @@ LL |     let y: char = 'cd';
    |
 help: if you meant to write a string literal, use double quotes
    |
-LL |     let y: char = "cd";
-   |                   ~  ~
+LL -     let y: char = 'cd';
+LL +     let y: char = "cd";
+   |
 
 error: character literal may only contain one codepoint
   --> $DIR/lex-bad-char-literals-6.rs:6:13
@@ -28,8 +30,9 @@ LL |     let z = 'ef';
    |
 help: if you meant to write a string literal, use double quotes
    |
-LL |     let z = "ef";
-   |             ~  ~
+LL -     let z = 'ef';
+LL +     let z = "ef";
+   |
 
 error[E0308]: mismatched types
   --> $DIR/lex-bad-char-literals-6.rs:13:20

@@ -10,7 +10,7 @@ LL |     fn test() -> impl Sized + use<> {}
 help: modify the `use<..>` bound to capture the same lifetimes that the trait does
    |
 LL |     fn test() -> impl Sized + use<'a> {}
-   |                               ~~~~~~~
+   |                                   ++
 
 warning: impl trait in impl method captures fewer lifetimes than in trait
   --> $DIR/refine-captures.rs:22:31
@@ -23,7 +23,7 @@ LL |     fn test() -> impl Sized + use<> {}
 help: modify the `use<..>` bound to capture the same lifetimes that the trait does
    |
 LL |     fn test() -> impl Sized + use<'a> {}
-   |                               ~~~~~~~
+   |                                   ++
 
 warning: impl trait in impl method captures fewer lifetimes than in trait
   --> $DIR/refine-captures.rs:27:31
@@ -36,7 +36,7 @@ LL |     fn test() -> impl Sized + use<'b> {}
 help: modify the `use<..>` bound to capture the same lifetimes that the trait does
    |
 LL |     fn test() -> impl Sized + use<'a, 'b> {}
-   |                               ~~~~~~~~~~~
+   |                                    ++++
 
 error: `impl Trait` must mention all type parameters in scope in `use<...>`
   --> $DIR/refine-captures.rs:32:18

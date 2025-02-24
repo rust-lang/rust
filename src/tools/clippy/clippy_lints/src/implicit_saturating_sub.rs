@@ -350,7 +350,7 @@ fn check_with_condition<'tcx>(
                     if cx.typeck_results().expr_ty(cond_left).is_signed() {
                     } else {
                         print_lint_and_sugg(cx, var_name, expr);
-                    };
+                    }
                 }
             },
             ExprKind::Path(QPath::TypeRelative(_, name)) => {

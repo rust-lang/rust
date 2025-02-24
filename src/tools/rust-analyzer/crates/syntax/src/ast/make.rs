@@ -411,6 +411,11 @@ pub fn path_from_text(text: &str) -> ast::Path {
     ast_from_text(&format!("fn main() {{ let test: {text}; }}"))
 }
 
+// FIXME: should not be pub
+pub fn path_from_text_with_edition(text: &str, edition: Edition) -> ast::Path {
+    ast_from_text_with_edition(&format!("fn main() {{ let test: {text}; }}"), edition)
+}
+
 pub fn use_tree_glob() -> ast::UseTree {
     ast_from_text("use *;")
 }
@@ -832,7 +837,8 @@ pub fn match_guard(condition: ast::Expr) -> ast::MatchGuard {
 
 pub fn match_arm_list(arms: impl IntoIterator<Item = ast::MatchArm>) -> ast::MatchArmList {
     let arms_str = arms.into_iter().fold(String::new(), |mut acc, arm| {
-        let needs_comma = arm.expr().is_none_or(|it| !it.is_block_like());
+        let needs_comma =
+            arm.comma_token().is_none() && arm.expr().is_none_or(|it| !it.is_block_like());
         let comma = if needs_comma { "," } else { "" };
         let arm = arm.syntax();
         format_to_acc!(acc, "    {arm}{comma}\n")
@@ -1230,7 +1236,12 @@ pub fn token_tree(
 
 #[track_caller]
 fn ast_from_text<N: AstNode>(text: &str) -> N {
-    let parse = SourceFile::parse(text, Edition::CURRENT);
+    ast_from_text_with_edition(text, Edition::CURRENT)
+}
+
+#[track_caller]
+fn ast_from_text_with_edition<N: AstNode>(text: &str, edition: Edition) -> N {
+    let parse = SourceFile::parse(text, edition);
     let node = match parse.tree().syntax().descendants().find_map(N::cast) {
         Some(it) => it,
         None => {

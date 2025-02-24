@@ -1,5 +1,5 @@
 
-thread 'main' panicked at $DIR/runtime-switch.rs:29:5:
+thread 'main' panicked at $DIR/runtime-switch.rs:28:5:
 explicit panic
 stack backtrace:
    0: std::panicking::begin_panic

@@ -71,7 +71,7 @@ class StdOsStringProvider(printer_base):
         self._valobj = valobj
         buf = self._valobj["inner"]["inner"]
         is_windows = "Wtf8Buf" in buf.type.name
-        vec = buf[ZERO_FIELD] if is_windows else buf
+        vec = buf["bytes"] if is_windows else buf
 
         self._length = int(vec["len"])
         self._data_ptr = unwrap_unique_or_non_null(vec["buf"]["inner"]["ptr"])

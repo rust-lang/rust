@@ -444,7 +444,6 @@ impl WriteBackendMethods for GccCodegenBackend {
     }
     fn autodiff(
         _cgcx: &CodegenContext<Self>,
-        _tcx: TyCtxt<'_>,
         _module: &ModuleCodegen<Self::Module>,
         _diff_fncs: Vec<AutoDiffItem>,
         _config: &ModuleConfig,
@@ -477,7 +476,7 @@ fn to_gcc_opt_level(optlevel: Option<OptLevel>) -> OptimizationLevel {
         Some(level) => match level {
             OptLevel::No => OptimizationLevel::None,
             OptLevel::Less => OptimizationLevel::Limited,
-            OptLevel::Default => OptimizationLevel::Standard,
+            OptLevel::More => OptimizationLevel::Standard,
             OptLevel::Aggressive => OptimizationLevel::Aggressive,
             OptLevel::Size | OptLevel::SizeMin => OptimizationLevel::Limited,
         },
@@ -494,9 +493,10 @@ fn target_features_cfg(
     sess.target
         .rust_target_features()
         .iter()
-        .filter(|&&(_, gate, _)| gate.in_cfg())
         .filter_map(|&(feature, gate, _)| {
-            if sess.is_nightly_build() || allow_unstable || gate.requires_nightly().is_none() {
+            if allow_unstable
+                || (gate.in_cfg() && (sess.is_nightly_build() || gate.requires_nightly().is_none()))
+            {
                 Some(feature)
             } else {
                 None

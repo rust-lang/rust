@@ -302,7 +302,7 @@ impl AttrItem {
 impl MetaItem {
     /// For a single-segment meta item, returns its name; otherwise, returns `None`.
     pub fn ident(&self) -> Option<Ident> {
-        if self.path.segments.len() == 1 { Some(self.path.segments[0].ident) } else { None }
+        if let [PathSegment { ident, .. }] = self.path.segments[..] { Some(ident) } else { None }
     }
 
     pub fn name_or_empty(&self) -> Symbol {

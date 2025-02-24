@@ -1,7 +1,7 @@
 use rustc_abi::ExternAbi;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{AttrArgs, AttrItem, AttrKind, GenericParamKind, PatKind};
+use rustc_hir::{AttrArgs, AttrItem, AttrKind, GenericParamKind, PatExprKind, PatKind};
 use rustc_middle::ty;
 use rustc_session::config::CrateType;
 use rustc_session::{declare_lint, declare_lint_pass};
@@ -150,11 +150,11 @@ impl NonCamelCaseTypes {
             } else {
                 NonCamelCaseTypeSub::Label { span: ident.span }
             };
-            cx.emit_span_lint(NON_CAMEL_CASE_TYPES, ident.span, NonCamelCaseType {
-                sort,
-                name,
-                sub,
-            });
+            cx.emit_span_lint(
+                NON_CAMEL_CASE_TYPES,
+                ident.span,
+                NonCamelCaseType { sort, name, sub },
+            );
         }
     }
 }
@@ -344,7 +344,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
             ast::attr::find_by_name(cx.tcx.hir().attrs(hir::CRATE_HIR_ID), sym::crate_name)
                 .and_then(|attr| {
                     if let AttrKind::Normal(n) = &attr.kind
-                        && let AttrItem { args: AttrArgs::Eq { eq_span: _, expr: ref lit }, .. } =
+                        && let AttrItem { args: AttrArgs::Eq { eq_span: _, expr: lit }, .. } =
                             n.as_ref()
                         && let ast::LitKind::Str(name, ..) = lit.kind
                     {
@@ -488,11 +488,11 @@ impl NonUpperCaseGlobals {
             } else {
                 NonUpperCaseGlobalSub::Label { span: ident.span }
             };
-            cx.emit_span_lint(NON_UPPER_CASE_GLOBALS, ident.span, NonUpperCaseGlobal {
-                sort,
-                name,
-                sub,
-            });
+            cx.emit_span_lint(
+                NON_UPPER_CASE_GLOBALS,
+                ident.span,
+                NonUpperCaseGlobal { sort, name, sub },
+            );
         }
     }
 }
@@ -527,7 +527,11 @@ impl<'tcx> LateLintPass<'tcx> for NonUpperCaseGlobals {
 
     fn check_pat(&mut self, cx: &LateContext<'_>, p: &hir::Pat<'_>) {
         // Lint for constants that look like binding identifiers (#7526)
-        if let PatKind::Path(hir::QPath::Resolved(None, path)) = p.kind {
+        if let PatKind::Expr(hir::PatExpr {
+            kind: PatExprKind::Path(hir::QPath::Resolved(None, path)),
+            ..
+        }) = p.kind
+        {
             if let Res::Def(DefKind::Const, _) = path.res {
                 if let [segment] = path.segments {
                     NonUpperCaseGlobals::check_upper_case(

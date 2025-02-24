@@ -4,7 +4,7 @@
 
 //@ run-fail
 //@ error-pattern:wooooo
-//@ ignore-emscripten no processes
+//@ needs-subprocess
 
 fn main() {
     let mut a = 1;

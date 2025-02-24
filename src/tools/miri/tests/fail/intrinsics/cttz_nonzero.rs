@@ -1,4 +1,3 @@
-
 #![feature(intrinsics)]
 
 mod rusti {

@@ -3,7 +3,6 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_from_proc_macro;
 use rustc_ast::{MetaItemInner, MetaItemKind};
 use rustc_lint::{EarlyContext, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_span::sym;
 use rustc_span::symbol::Symbol;
 
@@ -17,7 +16,7 @@ pub(super) fn check<'cx>(cx: &EarlyContext<'cx>, name: Symbol, items: &[MetaItem
     }
 
     // Check if the attribute is in an external macro and therefore out of the developer's control
-    if in_external_macro(cx.sess(), attr.span) || is_from_proc_macro(cx, attr) {
+    if attr.span.in_external_macro(cx.sess().source_map()) || is_from_proc_macro(cx, attr) {
         return;
     }
 

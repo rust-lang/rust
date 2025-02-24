@@ -44,7 +44,7 @@ note: function defined here
   --> $DIR/extra_arguments.rs:2:4
    |
 LL | fn one_arg<T>(_a: T) {}
-   |    ^^^^^^^    -----
+   |    ^^^^^^^
 help: remove the extra argument
    |
 LL -   one_arg(1, 1);
@@ -61,7 +61,7 @@ note: function defined here
   --> $DIR/extra_arguments.rs:2:4
    |
 LL | fn one_arg<T>(_a: T) {}
-   |    ^^^^^^^    -----
+   |    ^^^^^^^
 help: remove the extra argument
    |
 LL -   one_arg(1, "");
@@ -80,7 +80,7 @@ note: function defined here
   --> $DIR/extra_arguments.rs:2:4
    |
 LL | fn one_arg<T>(_a: T) {}
-   |    ^^^^^^^    -----
+   |    ^^^^^^^
 help: remove the extra arguments
    |
 LL -   one_arg(1, "", 1.0);
@@ -97,7 +97,7 @@ note: function defined here
   --> $DIR/extra_arguments.rs:3:4
    |
 LL | fn two_arg_same(_a: i32, _b: i32) {}
-   |    ^^^^^^^^^^^^ -------  -------
+   |    ^^^^^^^^^^^^
 help: remove the extra argument
    |
 LL -   two_arg_same(1, 1, 1);
@@ -114,7 +114,7 @@ note: function defined here
   --> $DIR/extra_arguments.rs:3:4
    |
 LL | fn two_arg_same(_a: i32, _b: i32) {}
-   |    ^^^^^^^^^^^^ -------  -------
+   |    ^^^^^^^^^^^^
 help: remove the extra argument
    |
 LL -   two_arg_same(1, 1, 1.0);
@@ -131,7 +131,7 @@ note: function defined here
   --> $DIR/extra_arguments.rs:4:4
    |
 LL | fn two_arg_diff(_a: i32, _b: &str) {}
-   |    ^^^^^^^^^^^^ -------  --------
+   |    ^^^^^^^^^^^^
 help: remove the extra argument
    |
 LL -   two_arg_diff(1, 1, "");
@@ -148,7 +148,7 @@ note: function defined here
   --> $DIR/extra_arguments.rs:4:4
    |
 LL | fn two_arg_diff(_a: i32, _b: &str) {}
-   |    ^^^^^^^^^^^^ -------  --------
+   |    ^^^^^^^^^^^^
 help: remove the extra argument
    |
 LL -   two_arg_diff(1, "", "");
@@ -167,7 +167,7 @@ note: function defined here
   --> $DIR/extra_arguments.rs:4:4
    |
 LL | fn two_arg_diff(_a: i32, _b: &str) {}
-   |    ^^^^^^^^^^^^ -------  --------
+   |    ^^^^^^^^^^^^
 help: remove the extra arguments
    |
 LL -   two_arg_diff(1, 1, "", "");
@@ -186,7 +186,7 @@ note: function defined here
   --> $DIR/extra_arguments.rs:4:4
    |
 LL | fn two_arg_diff(_a: i32, _b: &str) {}
-   |    ^^^^^^^^^^^^ -------  --------
+   |    ^^^^^^^^^^^^
 help: remove the extra arguments
    |
 LL -   two_arg_diff(1, "", 1, "");
@@ -203,7 +203,7 @@ note: function defined here
   --> $DIR/extra_arguments.rs:3:4
    |
 LL | fn two_arg_same(_a: i32, _b: i32) {}
-   |    ^^^^^^^^^^^^ -------  -------
+   |    ^^^^^^^^^^^^
 help: remove the extra argument
    |
 LL -   two_arg_same(1, 1,     "");
@@ -220,7 +220,7 @@ note: function defined here
   --> $DIR/extra_arguments.rs:4:4
    |
 LL | fn two_arg_diff(_a: i32, _b: &str) {}
-   |    ^^^^^^^^^^^^ -------  --------
+   |    ^^^^^^^^^^^^
 help: remove the extra argument
    |
 LL -   two_arg_diff(1, 1,     "");
@@ -240,7 +240,7 @@ note: function defined here
   --> $DIR/extra_arguments.rs:3:4
    |
 LL | fn two_arg_same(_a: i32, _b: i32) {}
-   |    ^^^^^^^^^^^^ -------  -------
+   |    ^^^^^^^^^^^^
 help: remove the extra argument
    |
 LL -     1,
@@ -261,7 +261,7 @@ note: function defined here
   --> $DIR/extra_arguments.rs:4:4
    |
 LL | fn two_arg_diff(_a: i32, _b: &str) {}
-   |    ^^^^^^^^^^^^ -------  --------
+   |    ^^^^^^^^^^^^
 help: remove the extra argument
    |
 LL -     1,
@@ -335,7 +335,7 @@ note: function defined here
   --> $DIR/extra_arguments.rs:2:4
    |
 LL | fn one_arg<T>(_a: T) {}
-   |    ^^^^^^^    -----
+   |    ^^^^^^^
 help: remove the extra argument
    |
 LL -   one_arg(1, panic!());
@@ -352,7 +352,7 @@ note: function defined here
   --> $DIR/extra_arguments.rs:2:4
    |
 LL | fn one_arg<T>(_a: T) {}
-   |    ^^^^^^^    -----
+   |    ^^^^^^^
 help: remove the extra argument
    |
 LL -   one_arg(panic!(), 1);
@@ -369,7 +369,7 @@ note: function defined here
   --> $DIR/extra_arguments.rs:2:4
    |
 LL | fn one_arg<T>(_a: T) {}
-   |    ^^^^^^^    -----
+   |    ^^^^^^^
 help: remove the extra argument
    |
 LL -   one_arg(stringify!($e), 1);
@@ -386,7 +386,7 @@ note: function defined here
   --> $DIR/extra_arguments.rs:2:4
    |
 LL | fn one_arg<T>(_a: T) {}
-   |    ^^^^^^^    -----
+   |    ^^^^^^^
 help: remove the extra argument
    |
 LL -   one_arg(for _ in 1.. {}, 1);

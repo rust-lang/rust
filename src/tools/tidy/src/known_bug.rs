@@ -14,13 +14,10 @@ pub fn check(filepath: &Path, bad: &mut bool) {
         let test_path_segments_str =
             test_path_segments.iter().map(|s| s.as_str()).collect::<Vec<&str>>();
 
-        if !matches!(test_path_segments_str[..], [
-            ..,
-            "tests",
-            "crashes",
-            "auxiliary",
-            _aux_file_rs
-        ]) && !contents.lines().any(|line| line.starts_with("//@ known-bug: "))
+        if !matches!(
+            test_path_segments_str[..],
+            [.., "tests", "crashes", "auxiliary", _aux_file_rs]
+        ) && !contents.lines().any(|line| line.starts_with("//@ known-bug: "))
         {
             tidy_error!(
                 bad,

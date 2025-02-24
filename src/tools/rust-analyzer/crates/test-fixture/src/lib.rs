@@ -17,7 +17,7 @@ use hir_expand::{
     tt::{Leaf, TokenTree, TopSubtree, TopSubtreeBuilder, TtElement, TtIter},
     FileRange,
 };
-use intern::Symbol;
+use intern::{sym, Symbol};
 use rustc_hash::FxHashMap;
 use span::{Edition, EditionedFileId, FileId, Span};
 use stdx::itertools::Itertools;
@@ -258,15 +258,7 @@ impl ChangeFixture {
                 let to_id = crates[&to];
                 let sysroot = crate_graph[to_id].origin.is_lang();
                 crate_graph
-                    .add_dep(
-                        from_id,
-                        Dependency::with_prelude(
-                            CrateName::new(&to).unwrap(),
-                            to_id,
-                            prelude,
-                            sysroot,
-                        ),
-                    )
+                    .add_dep(from_id, Dependency::with_prelude(to.clone(), to_id, prelude, sysroot))
                     .unwrap();
             }
         }
@@ -516,6 +508,21 @@ pub fn issue_18898(_attr: TokenStream, input: TokenStream) -> TokenStream {
                 name: Symbol::intern("issue_18898"),
                 kind: ProcMacroKind::Bang,
                 expander: sync::Arc::new(Issue18898ProcMacroExpander),
+                disabled: false,
+            },
+        ),
+        (
+            r#"
+#[proc_macro_attribute]
+pub fn disallow_cfg(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    input
+}
+"#
+            .into(),
+            ProcMacro {
+                name: Symbol::intern("disallow_cfg"),
+                kind: ProcMacroKind::Attr,
+                expander: sync::Arc::new(DisallowCfgProcMacroExpander),
                 disabled: false,
             },
         ),
@@ -871,5 +878,32 @@ impl ProcMacroExpander for Issue18898ProcMacroExpander {
                 #overly_long_subtree
             }
         })
+    }
+}
+
+// Reads ident type within string quotes, for issue #17479.
+#[derive(Debug)]
+struct DisallowCfgProcMacroExpander;
+impl ProcMacroExpander for DisallowCfgProcMacroExpander {
+    fn expand(
+        &self,
+        subtree: &TopSubtree,
+        _: Option<&TopSubtree>,
+        _: &Env,
+        _: Span,
+        _: Span,
+        _: Span,
+        _: Option<String>,
+    ) -> Result<TopSubtree, ProcMacroExpansionError> {
+        for tt in subtree.token_trees().flat_tokens() {
+            if let tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) = tt {
+                if ident.sym == sym::cfg || ident.sym == sym::cfg_attr {
+                    return Err(ProcMacroExpansionError::Panic(
+                        "cfg or cfg_attr found in DisallowCfgProcMacroExpander".to_owned(),
+                    ));
+                }
+            }
+        }
+        Ok(subtree.clone())
     }
 }

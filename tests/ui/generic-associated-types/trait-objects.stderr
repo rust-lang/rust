@@ -5,7 +5,7 @@ LL | fn min_size(x: &mut dyn for<'a> StreamingIterator<Item<'a> = &'a i32>) -> u
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `StreamingIterator` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/trait-objects.rs:2:10
    |
 LL | trait StreamingIterator {
@@ -21,7 +21,7 @@ LL |     x.size_hint().0
    |       ^^^^^^^^^ `StreamingIterator` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/trait-objects.rs:2:10
    |
 LL | trait StreamingIterator {
@@ -37,7 +37,7 @@ LL |     x.size_hint().0
    |     ^^^^^^^^^^^^^ `StreamingIterator` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/trait-objects.rs:2:10
    |
 LL | trait StreamingIterator {

@@ -3,8 +3,7 @@
 #![allow(stable_features)]
 #![allow(overflowing_literals)]
 
-//@ ignore-wasm32 no subprocess support
-//@ ignore-sgx no processes
+//@ needs-subprocess
 //@ ignore-fuchsia must translate zircon signal to SIGILL, FIXME (#58590)
 
 #![feature(repr_simd, target_feature, cfg_target_feature)]

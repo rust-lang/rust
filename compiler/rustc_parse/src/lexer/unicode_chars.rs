@@ -8,7 +8,7 @@ use crate::errors::TokenSubstitution;
 use crate::token::{self, Delimiter};
 
 #[rustfmt::skip] // for line breaks
-pub(super) const UNICODE_ARRAY: &[(char, &str, &str)] = &[
+pub(super) static UNICODE_ARRAY: &[(char, &str, &str)] = &[
     (' ', "Line Separator", " "),
     (' ', "Paragraph Separator", " "),
     (' ', "Ogham Space mark", " "),

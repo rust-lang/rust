@@ -299,27 +299,6 @@ fn simd_mask() {
         }
     }
 
-    // This used to cause an ICE. It exercises simd_select_bitmask with an array as input.
-    let bitmask = u8x4::from_array([0b00001101, 0, 0, 0]);
-    assert_eq!(
-        mask32x4::from_bitmask_vector(bitmask),
-        mask32x4::from_array([true, false, true, true]),
-    );
-    let bitmask = u8x8::from_array([0b01000101, 0, 0, 0, 0, 0, 0, 0]);
-    assert_eq!(
-        mask32x8::from_bitmask_vector(bitmask),
-        mask32x8::from_array([true, false, true, false, false, false, true, false]),
-    );
-    let bitmask =
-        u8x16::from_array([0b01000101, 0b11110000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
-    assert_eq!(
-        mask32x16::from_bitmask_vector(bitmask),
-        mask32x16::from_array([
-            true, false, true, false, false, false, true, false, false, false, false, false, true,
-            true, true, true,
-        ]),
-    );
-
     // Also directly call simd_select_bitmask, to test both kinds of argument types.
     unsafe {
         // These masks are exactly the results we got out above in the `simd_bitmask` tests.

@@ -6,7 +6,7 @@ src = "src"
 title = "Clippy Documentation"
 
 [rust]
-edition = "2018"
+edition = "2024"
 
 [output.html]
 edit-url-template = "https://github.com/rust-lang/rust-clippy/edit/master/book/{path}"

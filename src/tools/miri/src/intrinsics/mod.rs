@@ -141,11 +141,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // FIXME: should we check for validity here? It's tricky because we do not have a
                 // place. Codegen does not seem to set any attributes like `noundef` for intrinsic
                 // calls, so we don't *have* to do anything.
-                let branch: bool = this.machine.rng.get_mut().gen();
+                let branch: bool = this.machine.rng.get_mut().random();
                 this.write_scalar(Scalar::from_bool(branch), dest)?;
             }
 
-            "floorf16" | "ceilf16" | "truncf16" | "roundf16" | "rintf16" => {
+            "floorf16" | "ceilf16" | "truncf16" | "roundf16" | "round_ties_even_f16" => {
                 let [f] = check_arg_count(args)?;
                 let f = this.read_scalar(f)?.to_f16()?;
                 let mode = match intrinsic_name {
@@ -153,14 +153,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "ceilf16" => Round::TowardPositive,
                     "truncf16" => Round::TowardZero,
                     "roundf16" => Round::NearestTiesToAway,
-                    "rintf16" => Round::NearestTiesToEven,
+                    "round_ties_even_f16" => Round::NearestTiesToEven,
                     _ => bug!(),
                 };
                 let res = f.round_to_integral(mode).value;
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
-            "floorf32" | "ceilf32" | "truncf32" | "roundf32" | "rintf32" => {
+            "floorf32" | "ceilf32" | "truncf32" | "roundf32" | "round_ties_even_f32" => {
                 let [f] = check_arg_count(args)?;
                 let f = this.read_scalar(f)?.to_f32()?;
                 let mode = match intrinsic_name {
@@ -168,14 +168,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "ceilf32" => Round::TowardPositive,
                     "truncf32" => Round::TowardZero,
                     "roundf32" => Round::NearestTiesToAway,
-                    "rintf32" => Round::NearestTiesToEven,
+                    "round_ties_even_f32" => Round::NearestTiesToEven,
                     _ => bug!(),
                 };
                 let res = f.round_to_integral(mode).value;
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
-            "floorf64" | "ceilf64" | "truncf64" | "roundf64" | "rintf64" => {
+            "floorf64" | "ceilf64" | "truncf64" | "roundf64" | "round_ties_even_f64" => {
                 let [f] = check_arg_count(args)?;
                 let f = this.read_scalar(f)?.to_f64()?;
                 let mode = match intrinsic_name {
@@ -183,14 +183,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "ceilf64" => Round::TowardPositive,
                     "truncf64" => Round::TowardZero,
                     "roundf64" => Round::NearestTiesToAway,
-                    "rintf64" => Round::NearestTiesToEven,
+                    "round_ties_even_f64" => Round::NearestTiesToEven,
                     _ => bug!(),
                 };
                 let res = f.round_to_integral(mode).value;
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
-            "floorf128" | "ceilf128" | "truncf128" | "roundf128" | "rintf128" => {
+            "floorf128" | "ceilf128" | "truncf128" | "roundf128" | "round_ties_even_f128" => {
                 let [f] = check_arg_count(args)?;
                 let f = this.read_scalar(f)?.to_f128()?;
                 let mode = match intrinsic_name {
@@ -198,7 +198,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "ceilf128" => Round::TowardPositive,
                     "truncf128" => Round::TowardZero,
                     "roundf128" => Round::NearestTiesToAway,
-                    "rintf128" => Round::NearestTiesToEven,
+                    "round_ties_even_f128" => Round::NearestTiesToEven,
                     _ => bug!(),
                 };
                 let res = f.round_to_integral(mode).value;
@@ -289,7 +289,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let a = this.read_scalar(a)?.to_f32()?;
                 let b = this.read_scalar(b)?.to_f32()?;
                 let c = this.read_scalar(c)?.to_f32()?;
-                let fuse: bool = this.machine.rng.get_mut().gen();
+                let fuse: bool = this.machine.rng.get_mut().random();
                 let res = if fuse {
                     // FIXME: Using host floats, to work around https://github.com/rust-lang/rustc_apfloat/issues/11
                     a.to_host().mul_add(b.to_host(), c.to_host()).to_soft()
@@ -304,7 +304,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let a = this.read_scalar(a)?.to_f64()?;
                 let b = this.read_scalar(b)?.to_f64()?;
                 let c = this.read_scalar(c)?.to_f64()?;
-                let fuse: bool = this.machine.rng.get_mut().gen();
+                let fuse: bool = this.machine.rng.get_mut().random();
                 let res = if fuse {
                     // FIXME: Using host floats, to work around https://github.com/rust-lang/rustc_apfloat/issues/11
                     a.to_host().mul_add(b.to_host(), c.to_host()).to_soft()

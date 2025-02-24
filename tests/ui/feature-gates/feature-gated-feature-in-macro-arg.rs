@@ -5,7 +5,7 @@
 fn main() {
     let a = &[1, 2, 3];
     println!("{}", {
-        extern "rust-intrinsic" { //~ ERROR intrinsics are subject to change
+        extern "rust-intrinsic" { //~ ERROR "rust-intrinsic" ABI is an implementation detail
             fn atomic_fence();
         }
         atomic_fence(); //~ ERROR: is unsafe

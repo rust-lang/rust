@@ -7,7 +7,7 @@
     <meta name="description" content="{{page.description}}"> {# #}
     <title>{{page.title}}</title> {# #}
     <script>if(window.location.protocol!=="file:") {# Hack to skip preloading fonts locally - see #98769 #}
-    document.head.insertAdjacentHTML("beforeend","{{files.source_serif_4_regular}},{{files.fira_sans_regular}},{{files.fira_sans_medium}},{{files.source_code_pro_regular}},{{files.source_code_pro_semibold}}".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="{{static_root_path|safe}}${f}">`).join("")) {# #}
+    document.head.insertAdjacentHTML("beforeend","{{files.source_serif_4_regular}},{{files.fira_sans_italic}},{{files.fira_sans_regular}},{{files.fira_sans_medium_italic}},{{files.fira_sans_medium}},{{files.source_code_pro_regular}},{{files.source_code_pro_semibold}}".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="{{static_root_path|safe}}${f}">`).join("")) {# #}
     </script> {# #}
     <link rel="stylesheet" {#+ #}
           href="{{static_root_path|safe}}{{files.normalize_css}}"> {# #}

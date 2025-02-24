@@ -7,7 +7,7 @@ use rustc_arena::DroplessArena;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{Arm, Expr, HirId, HirIdMap, HirIdMapEntry, HirIdSet, Pat, PatExprKind, PatKind, RangeEnd};
+use rustc_hir::{Arm, Expr, HirId, HirIdMap, HirIdMapEntry, HirIdSet, Pat, PatExpr, PatExprKind, PatKind, RangeEnd};
 use rustc_lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty;
@@ -292,7 +292,11 @@ impl<'a> NormalizedPat<'a> {
                 Self::Tuple(var_id, pats)
             },
             PatKind::Or(pats) => Self::Or(arena.alloc_from_iter(pats.iter().map(|pat| Self::from_pat(cx, arena, pat)))),
-            PatKind::Path(ref path) => Self::Path(cx.qpath_res(path, pat.hir_id).opt_def_id()),
+            PatKind::Expr(PatExpr {
+                kind: PatExprKind::Path(path),
+                hir_id,
+                ..
+            }) => Self::Path(cx.qpath_res(path, *hir_id).opt_def_id()),
             PatKind::Tuple(pats, wild_idx) => {
                 let field_count = match cx.typeck_results().pat_ty(pat).kind() {
                     ty::Tuple(subs) => subs.len(),

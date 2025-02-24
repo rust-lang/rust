@@ -1,7 +1,7 @@
 //@ run-pass
 //@ check-run-results
+//@ needs-subprocess
 //@ ignore-windows
-//@ ignore-wasm32
 //@ ignore-fuchsia
 //@ ignore-horizon
 //@ ignore-android

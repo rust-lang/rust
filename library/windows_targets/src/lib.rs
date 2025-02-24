@@ -39,4 +39,4 @@ pub macro link {
 #[link(name = "userenv")]
 #[link(name = "ws2_32")]
 #[link(name = "dbghelp")] // required for backtrace-rs symbolization
-extern "C" {}
+unsafe extern "C" {}

@@ -37,7 +37,7 @@ pub(super) fn check(
             let _ = write!(sugg, r#".extension().is_some_and(|ext| ext == "{path}")"#);
         } else {
             let _ = write!(sugg, r#".extension().map_or(false, |ext| ext == "{path}")"#);
-        };
+        }
 
         span_lint_and_sugg(
             cx,

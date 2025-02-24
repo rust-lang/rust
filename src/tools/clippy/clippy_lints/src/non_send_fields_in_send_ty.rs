@@ -7,7 +7,6 @@ use rustc_ast::ImplPolarity;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{FieldDef, Item, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, GenericArgKind, Ty};
 use rustc_session::impl_lint_pass;
 use rustc_span::sym;
@@ -81,7 +80,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSendFieldInSendTy {
         // We start from `Send` impl instead of `check_field_def()` because
         // single `AdtDef` may have multiple `Send` impls due to generic
         // parameters, and the lint is much easier to implement in this way.
-        if !in_external_macro(cx.tcx.sess, item.span)
+        if !item.span.in_external_macro(cx.tcx.sess.source_map())
             && let Some(send_trait) = cx.tcx.get_diagnostic_item(sym::Send)
             && let ItemKind::Impl(hir_impl) = &item.kind
             && let Some(trait_ref) = &hir_impl.of_trait

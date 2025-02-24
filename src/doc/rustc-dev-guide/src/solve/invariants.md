@@ -23,9 +23,6 @@ well-formed after normalizing said aliases. We rely on this as
 otherwise we would have to re-check for well-formedness for these
 types.
 
-This is unfortunately broken for `<fndef as FnOnce<..>>::Output` due to implied bounds,
-resulting in [#114936].
-
 ### Structural equality modulo regions implies semantic equality ✅
 
 If you have a some type and equate it to itself after replacing any regions with unique
@@ -33,7 +30,7 @@ inference variables in both the lhs and rhs, the now potentially structurally di
 types should still be equal to each other.
 
 Needed to prevent goals from succeeding in HIR typeck and then failing in MIR borrowck.
-If this does invariant is broken MIR typeck ends up failing with an ICE.
+If this invariant is broken MIR typeck ends up failing with an ICE.
 
 ### Applying inference results from a goal does not change its result ❌
 
@@ -91,7 +88,7 @@ it can easily result in unsoundness, e.g. [#57893](https://github.com/rust-lang/
 
 If a trait goal holds with an empty environment, there should be a unique `impl`,
 either user-defined or builtin, which is used to prove that goal. This is
-necessary to select a unique method. It 
+necessary to select a unique method.
 
 We do however break this invariant in few cases, some of which are due to bugs,
 some by design:

@@ -80,6 +80,6 @@ impl LateLintPass<'_> for DefaultConstructedUnitStructs {
                 String::new(),
                 Applicability::MachineApplicable,
             );
-        };
+        }
     }
 }

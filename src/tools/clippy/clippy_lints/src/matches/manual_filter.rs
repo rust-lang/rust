@@ -34,7 +34,7 @@ fn get_cond_expr<'tcx>(
             needs_negated: is_none_expr(cx, then_expr), /* if the `then_expr` resolves to `None`, need to negate the
                                                          * cond */
         });
-    };
+    }
     None
 }
 
@@ -45,7 +45,7 @@ fn peels_blocks_incl_unsafe_opt<'a>(expr: &'a Expr<'a>) -> Option<&'a Expr<'a>> 
         if block.stmts.is_empty() {
             return block.expr;
         }
-    };
+    }
     None
 }
 
@@ -68,14 +68,14 @@ fn is_some_expr(cx: &LateContext<'_>, target: HirId, ctxt: SyntaxContext, expr: 
                 && is_res_lang_ctor(cx, path_res(cx, callee), OptionSome)
                 && path_to_local_id(arg, target);
         }
-    };
+    }
     false
 }
 
 fn is_none_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     if let Some(inner_expr) = peels_blocks_incl_unsafe_opt(expr) {
         return is_res_lang_ctor(cx, path_res(cx, inner_expr), OptionNone);
-    };
+    }
     false
 }
 

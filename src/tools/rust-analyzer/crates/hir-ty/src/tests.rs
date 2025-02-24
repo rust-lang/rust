@@ -18,8 +18,8 @@ use std::sync::LazyLock;
 use base_db::SourceDatabaseFileInputExt as _;
 use expect_test::Expect;
 use hir_def::{
-    body::{Body, BodySourceMap},
     db::DefDatabase,
+    expr_store::{Body, BodySourceMap},
     hir::{ExprId, Pat, PatId},
     item_scope::ItemScope,
     nameres::DefMap,
@@ -117,7 +117,7 @@ fn check_impl(
                     expected.trim_start_matches("adjustments:").trim().to_owned(),
                 );
             } else {
-                panic!("unexpected annotation: {expected}");
+                panic!("unexpected annotation: {expected} @ {range:?}");
             }
             had_annotations = true;
         }

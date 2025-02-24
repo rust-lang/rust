@@ -3,7 +3,7 @@
 //@[aarch64] only-aarch64
 //@[x32] only-x86
 //@[x64] only-x86_64
-//@ ignore-sgx no processes
+//@ needs-subprocess
 //@ ignore-musl FIXME #31506
 //@ ignore-fuchsia no exception handler registered for segfault
 //@ compile-flags: -C lto

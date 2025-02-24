@@ -6,35 +6,29 @@ LL | #![feature(const_trait_impl, generic_const_exprs)]
    |
    = help: remove one of these features
 
-error[E0284]: type annotations needed: cannot normalize `<&T as ConstName>::{constant#0}`
-  --> $DIR/issue-88119.rs:19:49
+error[E0284]: type annotations needed: cannot satisfy `the constant `name_len::<T>()` can be evaluated`
+  --> $DIR/issue-88119.rs:21:5
    |
-LL | impl<T: ?Sized + ConstName> const ConstName for &T
-   |                                                 ^^ cannot normalize `<&T as ConstName>::{constant#0}`
-   |
-note: required for `&T` to implement `~const ConstName`
-  --> $DIR/issue-88119.rs:19:35
-   |
-LL | impl<T: ?Sized + ConstName> const ConstName for &T
-   |                                   ^^^^^^^^^     ^^
-LL | where
 LL |     [(); name_len::<T>()]:,
-   |     --------------------- unsatisfied trait bound introduced here
+   |     ^^^^^^^^^^^^^^^^^^^^^ cannot satisfy `the constant `name_len::<T>()` can be evaluated`
+   |
+note: required by a bound in `<&T as ConstName>`
+  --> $DIR/issue-88119.rs:21:10
+   |
+LL |     [(); name_len::<T>()]:,
+   |          ^^^^^^^^^^^^^^^ required by this bound in `<&T as ConstName>`
 
-error[E0284]: type annotations needed: cannot normalize `<&mut T as ConstName>::{constant#0}`
-  --> $DIR/issue-88119.rs:26:49
+error[E0284]: type annotations needed: cannot satisfy `the constant `name_len::<T>()` can be evaluated`
+  --> $DIR/issue-88119.rs:28:5
    |
-LL | impl<T: ?Sized + ConstName> const ConstName for &mut T
-   |                                                 ^^^^^^ cannot normalize `<&mut T as ConstName>::{constant#0}`
-   |
-note: required for `&mut T` to implement `~const ConstName`
-  --> $DIR/issue-88119.rs:26:35
-   |
-LL | impl<T: ?Sized + ConstName> const ConstName for &mut T
-   |                                   ^^^^^^^^^     ^^^^^^
-LL | where
 LL |     [(); name_len::<T>()]:,
-   |     --------------------- unsatisfied trait bound introduced here
+   |     ^^^^^^^^^^^^^^^^^^^^^ cannot satisfy `the constant `name_len::<T>()` can be evaluated`
+   |
+note: required by a bound in `<&mut T as ConstName>`
+  --> $DIR/issue-88119.rs:28:10
+   |
+LL |     [(); name_len::<T>()]:,
+   |          ^^^^^^^^^^^^^^^ required by this bound in `<&mut T as ConstName>`
 
 error: aborting due to 3 previous errors
 

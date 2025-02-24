@@ -27,9 +27,6 @@ mod solve;
 
 pub(crate) mod dump;
 
-/// Code for transforming variances.
-mod xform;
-
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { variances_of, crate_variances, ..*providers };
 }

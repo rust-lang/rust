@@ -16,12 +16,14 @@ LL | trait Foo { fn method(&self) {} }
    |             ^^^^^^^^^^^^^^^^
 help: disambiguate the method for candidate #1
    |
-LL |     Bar::method(&1_usize);
-   |     ~~~~~~~~~~~~~~~~~~~~~
+LL -     1_usize.method();
+LL +     Bar::method(&1_usize);
+   |
 help: disambiguate the method for candidate #2
    |
-LL |     Foo::method(&1_usize);
-   |     ~~~~~~~~~~~~~~~~~~~~~
+LL -     1_usize.method();
+LL +     Foo::method(&1_usize);
+   |
 
 error: aborting due to 1 previous error
 

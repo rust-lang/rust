@@ -192,5 +192,41 @@ LL -     println!("mixed: {} {world}", "{hello}");
 LL +     println!("mixed: {{hello}} {world}");
    |
 
-error: aborting due to 16 previous errors
+error: literal with an empty format string
+  --> tests/ui/print_literal.rs:71:20
+   |
+LL |     println!("{}", r#"""#);
+   |                    ^^^^^^
+   |
+help: try
+   |
+LL -     println!("{}", r#"""#);
+LL +     println!("\"");
+   |
+
+error: literal with an empty format string
+  --> tests/ui/print_literal.rs:74:9
+   |
+LL | /         r#"
+LL | |         foo
+LL | |         \
+LL | |         \\
+...  |
+LL | |         bar
+LL | | "#
+   | |__^
+   |
+help: try
+   |
+LL ~         "
+LL +         foo
+LL +         \\
+LL +         \\\\
+LL +         \"
+LL +         \\\"
+LL +         bar
+LL ~ "
+   |
+
+error: aborting due to 18 previous errors
 

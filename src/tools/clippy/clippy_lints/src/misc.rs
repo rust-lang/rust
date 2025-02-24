@@ -13,7 +13,6 @@ use rustc_hir::{
     BinOpKind, BindingMode, Body, ByRef, Expr, ExprKind, FnDecl, Mutability, PatKind, QPath, Stmt, StmtKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
@@ -162,14 +161,14 @@ impl<'tcx> LateLintPass<'tcx> for LintPass {
             for arg in iter_input_pats(decl, body) {
                 if let PatKind::Binding(BindingMode(ByRef::Yes(_), _), ..) = arg.pat.kind
                     && is_lint_allowed(cx, REF_PATTERNS, arg.pat.hir_id)
-                    && !in_external_macro(cx.tcx.sess, arg.span)
+                    && !arg.span.in_external_macro(cx.tcx.sess.source_map())
                 {
                     span_lint_hir(
                         cx,
                         TOPLEVEL_REF_ARG,
                         arg.hir_id,
                         arg.pat.span,
-                        "`ref` directly on a function argument is ignored. \
+                        "`ref` directly on a function parameter does not prevent taking ownership of the passed argument. \
                         Consider using a reference type instead",
                     );
                 }
@@ -183,7 +182,7 @@ impl<'tcx> LateLintPass<'tcx> for LintPass {
             && let Some(init) = local.init
             // Do not emit if clippy::ref_patterns is not allowed to avoid having two lints for the same issue.
             && is_lint_allowed(cx, REF_PATTERNS, local.pat.hir_id)
-            && !in_external_macro(cx.tcx.sess, stmt.span)
+            && !stmt.span.in_external_macro(cx.tcx.sess.source_map())
         {
             let ctxt = local.span.ctxt();
             let mut app = Applicability::MachineApplicable;
@@ -214,11 +213,12 @@ impl<'tcx> LateLintPass<'tcx> for LintPass {
                     );
                 },
             );
-        };
+        }
         if let StmtKind::Semi(expr) = stmt.kind
-            && let ExprKind::Binary(ref binop, a, b) = expr.kind
-            && (binop.node == BinOpKind::And || binop.node == BinOpKind::Or)
-            && let Some(sugg) = Sugg::hir_opt(cx, a)
+            && let ExprKind::Binary(binop, a, b) = &expr.kind
+            && matches!(binop.node, BinOpKind::And | BinOpKind::Or)
+            && !stmt.span.from_expansion()
+            && expr.span.eq_ctxt(stmt.span)
         {
             span_lint_hir_and_then(
                 cx,
@@ -227,20 +227,18 @@ impl<'tcx> LateLintPass<'tcx> for LintPass {
                 stmt.span,
                 "boolean short circuit operator in statement may be clearer using an explicit test",
                 |diag| {
-                    let sugg = if binop.node == BinOpKind::Or { !sugg } else { sugg };
-                    diag.span_suggestion(
-                        stmt.span,
-                        "replace it with",
-                        format!("if {sugg} {{ {}; }}", &snippet(cx, b.span, ".."),),
-                        Applicability::MachineApplicable, // snippet
-                    );
+                    let mut app = Applicability::MachineApplicable;
+                    let test = Sugg::hir_with_context(cx, a, expr.span.ctxt(), "_", &mut app);
+                    let test = if binop.node == BinOpKind::Or { !test } else { test };
+                    let then = Sugg::hir_with_context(cx, b, expr.span.ctxt(), "_", &mut app);
+                    diag.span_suggestion(stmt.span, "replace it with", format!("if {test} {{ {then}; }}"), app);
                 },
             );
-        };
+        }
     }
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if in_external_macro(cx.sess(), expr.span)
+        if expr.span.in_external_macro(cx.sess().source_map())
             || expr.span.desugaring_kind().is_some()
             || in_automatically_derived(cx.tcx, expr.hir_id)
         {

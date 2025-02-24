@@ -1,6 +1,6 @@
 //@ run-fail
 //@ error-pattern:assertion failed: false
-//@ ignore-emscripten no processes
+//@ needs-subprocess
 
 fn main() {
     assert!(false);

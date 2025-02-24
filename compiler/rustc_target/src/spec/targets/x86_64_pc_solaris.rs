@@ -1,4 +1,4 @@
-use crate::spec::{Cc, LinkerFlavor, SanitizerSet, StackProbeType, Target, base};
+use crate::spec::{Cc, LinkerFlavor, SanitizerSet, StackProbeType, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::solaris::opts();
@@ -12,7 +12,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "x86_64-pc-solaris".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("64-bit Solaris 11.4".into()),
             tier: Some(2),
             host_tools: Some(false),

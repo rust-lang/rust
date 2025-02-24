@@ -71,6 +71,16 @@ impl char {
     #[stable(feature = "assoc_char_consts", since = "1.52.0")]
     pub const MAX: char = '\u{10FFFF}';
 
+    /// The maximum number of bytes required to [encode](char::encode_utf8) a `char` to
+    /// UTF-8 encoding.
+    #[unstable(feature = "char_max_len", issue = "121714")]
+    pub const MAX_LEN_UTF8: usize = 4;
+
+    /// The maximum number of two-byte units required to [encode](char::encode_utf16) a `char`
+    /// to UTF-16 encoding.
+    #[unstable(feature = "char_max_len", issue = "121714")]
+    pub const MAX_LEN_UTF16: usize = 2;
+
     /// `U+FFFD REPLACEMENT CHARACTER` (�) is used in Unicode to represent a
     /// decoding error.
     ///
@@ -92,7 +102,7 @@ impl char {
     #[stable(feature = "assoc_char_consts", since = "1.52.0")]
     pub const UNICODE_VERSION: (u8, u8, u8) = crate::unicode::UNICODE_VERSION;
 
-    /// Creates an iterator over the UTF-16 encoded code points in `iter`,
+    /// Creates an iterator over the native endian UTF-16 encoded code points in `iter`,
     /// returning unpaired surrogates as `Err`s.
     ///
     /// # Examples
@@ -704,7 +714,7 @@ impl char {
         unsafe { from_utf8_unchecked_mut(encode_utf8_raw(self as u32, dst)) }
     }
 
-    /// Encodes this character as UTF-16 into the provided `u16` buffer,
+    /// Encodes this character as native endian UTF-16 into the provided `u16` buffer,
     /// and then returns the subslice of the buffer that contains the encoded character.
     ///
     /// # Panics
@@ -1168,6 +1178,7 @@ impl char {
     #[must_use]
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[rustc_const_stable(feature = "const_char_is_ascii", since = "1.32.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "char_is_ascii")]
     #[inline]
     pub const fn is_ascii(&self) -> bool {
         *self as u32 <= 0x7F
@@ -1828,7 +1839,7 @@ pub const fn encode_utf8_raw(code: u32, dst: &mut [u8]) -> &mut [u8] {
     unsafe { slice::from_raw_parts_mut(dst.as_mut_ptr(), len) }
 }
 
-/// Encodes a raw `u32` value as UTF-16 into the provided `u16` buffer,
+/// Encodes a raw `u32` value as native endian UTF-16 into the provided `u16` buffer,
 /// and then returns the subslice of the buffer that contains the encoded character.
 ///
 /// Unlike `char::encode_utf16`, this method also handles codepoints in the surrogate range.

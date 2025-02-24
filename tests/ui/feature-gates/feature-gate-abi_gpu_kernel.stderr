@@ -1,4 +1,4 @@
-error[E0658]: gpu-kernel ABI is experimental and subject to change
+error[E0658]: the extern "gpu-kernel" ABI is experimental and subject to change
   --> $DIR/feature-gate-abi_gpu_kernel.rs:13:8
    |
 LL | extern "gpu-kernel" fn f1(_: ()) {}
@@ -8,7 +8,7 @@ LL | extern "gpu-kernel" fn f1(_: ()) {}
    = help: add `#![feature(abi_gpu_kernel)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: gpu-kernel ABI is experimental and subject to change
+error[E0658]: the extern "gpu-kernel" ABI is experimental and subject to change
   --> $DIR/feature-gate-abi_gpu_kernel.rs:18:12
    |
 LL |     extern "gpu-kernel" fn m1(_: ());
@@ -18,7 +18,7 @@ LL |     extern "gpu-kernel" fn m1(_: ());
    = help: add `#![feature(abi_gpu_kernel)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: gpu-kernel ABI is experimental and subject to change
+error[E0658]: the extern "gpu-kernel" ABI is experimental and subject to change
   --> $DIR/feature-gate-abi_gpu_kernel.rs:20:12
    |
 LL |     extern "gpu-kernel" fn dm1(_: ()) {}
@@ -28,7 +28,7 @@ LL |     extern "gpu-kernel" fn dm1(_: ()) {}
    = help: add `#![feature(abi_gpu_kernel)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: gpu-kernel ABI is experimental and subject to change
+error[E0658]: the extern "gpu-kernel" ABI is experimental and subject to change
   --> $DIR/feature-gate-abi_gpu_kernel.rs:28:12
    |
 LL |     extern "gpu-kernel" fn m1(_: ()) {}
@@ -38,7 +38,7 @@ LL |     extern "gpu-kernel" fn m1(_: ()) {}
    = help: add `#![feature(abi_gpu_kernel)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: gpu-kernel ABI is experimental and subject to change
+error[E0658]: the extern "gpu-kernel" ABI is experimental and subject to change
   --> $DIR/feature-gate-abi_gpu_kernel.rs:34:12
    |
 LL |     extern "gpu-kernel" fn im1(_: ()) {}
@@ -48,7 +48,7 @@ LL |     extern "gpu-kernel" fn im1(_: ()) {}
    = help: add `#![feature(abi_gpu_kernel)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: gpu-kernel ABI is experimental and subject to change
+error[E0658]: the extern "gpu-kernel" ABI is experimental and subject to change
   --> $DIR/feature-gate-abi_gpu_kernel.rs:39:18
    |
 LL | type A1 = extern "gpu-kernel" fn(_: ());
@@ -58,7 +58,7 @@ LL | type A1 = extern "gpu-kernel" fn(_: ());
    = help: add `#![feature(abi_gpu_kernel)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: gpu-kernel ABI is experimental and subject to change
+error[E0658]: the extern "gpu-kernel" ABI is experimental and subject to change
   --> $DIR/feature-gate-abi_gpu_kernel.rs:44:8
    |
 LL | extern "gpu-kernel" {}

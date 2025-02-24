@@ -392,12 +392,12 @@ impl server::Span for RaSpanServer {
 
     fn line(&mut self, _span: Self::Span) -> usize {
         // FIXME requires db to resolve line index, THIS IS NOT INCREMENTAL
-        0
+        1
     }
 
     fn column(&mut self, _span: Self::Span) -> usize {
         // FIXME requires db to resolve line index, THIS IS NOT INCREMENTAL
-        0
+        1
     }
 }
 

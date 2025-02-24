@@ -22,6 +22,7 @@ env:
 
 jobs:
   dist:
+    if: ${{ github.repository == 'rust-lang/rust-analyzer' || github.event.action == 'workflow_dispatch' }}
     strategy:
       matrix:
         include:
@@ -138,6 +139,7 @@ jobs:
           path: ./dist
 
   dist-x86_64-unknown-linux-musl:
+    if: ${{ github.repository == 'rust-lang/rust-analyzer' || github.event.action == 'workflow_dispatch' }}
     name: dist (x86_64-unknown-linux-musl)
     runs-on: ubuntu-latest
     env:
@@ -183,6 +185,7 @@ jobs:
           path: ./dist
 
   publish:
+    if: ${{ github.repository == 'rust-lang/rust-analyzer' || github.event.action == 'workflow_dispatch' }}
     name: publish
     runs-on: ubuntu-latest
     needs: ["dist", "dist-x86_64-unknown-linux-musl"]
@@ -257,24 +260,24 @@ jobs:
         working-directory: ./editors/code
 
       - name: Publish Extension (Code Marketplace, release)
-        if: github.ref == 'refs/heads/release' && (github.repository == 'rust-analyzer/rust-analyzer' || github.repository == 'rust-lang/rust-analyzer')
+        if: github.ref == 'refs/heads/release' && github.repository == 'rust-lang/rust-analyzer'
         working-directory: ./editors/code
         # token from https://dev.azure.com/rust-analyzer/
         run: npx vsce publish --pat ${{ secrets.MARKETPLACE_TOKEN }} --packagePath ../../dist/rust-analyzer-*.vsix
 
       - name: Publish Extension (OpenVSX, release)
-        if: github.ref == 'refs/heads/release' && (github.repository == 'rust-analyzer/rust-analyzer' || github.repository == 'rust-lang/rust-analyzer')
+        if: github.ref == 'refs/heads/release' && github.repository == 'rust-lang/rust-analyzer'
         working-directory: ./editors/code
         run: npx ovsx publish --pat ${{ secrets.OPENVSX_TOKEN }} --packagePath ../../dist/rust-analyzer-*.vsix
         timeout-minutes: 2
 
       - name: Publish Extension (Code Marketplace, nightly)
-        if: github.ref != 'refs/heads/release' && (github.repository == 'rust-analyzer/rust-analyzer' || github.repository == 'rust-lang/rust-analyzer')
+        if: github.ref != 'refs/heads/release' && github.repository == 'rust-lang/rust-analyzer'
         working-directory: ./editors/code
         run: npx vsce publish --pat ${{ secrets.MARKETPLACE_TOKEN }} --packagePath ../../dist/rust-analyzer-*.vsix --pre-release
 
       - name: Publish Extension (OpenVSX, nightly)
-        if: github.ref != 'refs/heads/release' && (github.repository == 'rust-analyzer/rust-analyzer' || github.repository == 'rust-lang/rust-analyzer')
+        if: github.ref != 'refs/heads/release' && github.repository == 'rust-lang/rust-analyzer'
         working-directory: ./editors/code
         run: npx ovsx publish --pat ${{ secrets.OPENVSX_TOKEN }} --packagePath ../../dist/rust-analyzer-*.vsix
         timeout-minutes: 2

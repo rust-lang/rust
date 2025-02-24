@@ -15,27 +15,59 @@
 #[derive(Copy, Clone, PartialEq, Debug)]
 struct f32x4(pub [f32; 4]);
 
-extern "rust-intrinsic" {
-    fn simd_fsqrt<T>(x: T) -> T;
-    fn simd_fabs<T>(x: T) -> T;
-    fn simd_fsin<T>(x: T) -> T;
-    fn simd_fcos<T>(x: T) -> T;
-    fn simd_fexp<T>(x: T) -> T;
-    fn simd_fexp2<T>(x: T) -> T;
-    fn simd_fma<T>(x: T, y: T, z: T) -> T;
-    fn simd_relaxed_fma<T>(x: T, y: T, z: T) -> T;
-    fn simd_flog<T>(x: T) -> T;
-    fn simd_flog10<T>(x: T) -> T;
-    fn simd_flog2<T>(x: T) -> T;
-    fn simd_fpow<T>(x: T, y: T) -> T;
-    fn simd_fpowi<T>(x: T, y: i32) -> T;
+#[rustc_intrinsic]
+unsafe fn simd_fsqrt<T>(x: T) -> T;
 
-    // rounding functions
-    fn simd_ceil<T>(x: T) -> T;
-    fn simd_floor<T>(x: T) -> T;
-    fn simd_round<T>(x: T) -> T;
-    fn simd_trunc<T>(x: T) -> T;
-}
+#[rustc_intrinsic]
+unsafe fn simd_fabs<T>(x: T) -> T;
+
+#[rustc_intrinsic]
+unsafe fn simd_fsin<T>(x: T) -> T;
+
+#[rustc_intrinsic]
+unsafe fn simd_fcos<T>(x: T) -> T;
+
+#[rustc_intrinsic]
+unsafe fn simd_fexp<T>(x: T) -> T;
+
+#[rustc_intrinsic]
+unsafe fn simd_fexp2<T>(x: T) -> T;
+
+#[rustc_intrinsic]
+unsafe fn simd_fma<T>(x: T, y: T, z: T) -> T;
+
+#[rustc_intrinsic]
+unsafe fn simd_relaxed_fma<T>(x: T, y: T, z: T) -> T;
+
+#[rustc_intrinsic]
+unsafe fn simd_flog<T>(x: T) -> T;
+
+#[rustc_intrinsic]
+unsafe fn simd_flog10<T>(x: T) -> T;
+
+#[rustc_intrinsic]
+unsafe fn simd_flog2<T>(x: T) -> T;
+
+#[rustc_intrinsic]
+unsafe fn simd_fpow<T>(x: T, y: T) -> T;
+
+#[rustc_intrinsic]
+unsafe fn simd_fpowi<T>(x: T, y: i32) -> T;
+
+
+// rounding functions
+#[rustc_intrinsic]
+unsafe fn simd_ceil<T>(x: T) -> T;
+
+#[rustc_intrinsic]
+unsafe fn simd_floor<T>(x: T) -> T;
+
+#[rustc_intrinsic]
+unsafe fn simd_round<T>(x: T) -> T;
+
+#[rustc_intrinsic]
+unsafe fn simd_trunc<T>(x: T) -> T;
+
 
 macro_rules! assert_approx_eq_f32 {
     ($a:expr, $b:expr) => ({

@@ -101,6 +101,7 @@ trivially_parameterized_over_tcx! {
     rustc_session::cstore::ForeignModule,
     rustc_session::cstore::LinkagePreference,
     rustc_session::cstore::NativeLib,
+    rustc_session::config::TargetModifier,
     rustc_span::ExpnData,
     rustc_span::ExpnHash,
     rustc_span::ExpnId,

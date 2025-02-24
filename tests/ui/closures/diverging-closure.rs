@@ -1,6 +1,6 @@
 //@ run-fail
 //@ error-pattern:oops
-//@ ignore-emscripten no processes
+//@ needs-subprocess
 
 fn main() {
     let func = || -> ! {

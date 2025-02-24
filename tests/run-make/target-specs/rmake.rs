@@ -63,4 +63,17 @@ fn main() {
         .crate_type("lib")
         .run_fail()
         .assert_stderr_contains("data-layout for target");
+    rustc()
+        .input("foo.rs")
+        .target("require-explicit-cpu")
+        .crate_type("lib")
+        .run_fail()
+        .assert_stderr_contains("target requires explicitly specifying a cpu");
+    rustc()
+        .input("foo.rs")
+        .target("require-explicit-cpu")
+        .crate_type("lib")
+        .arg("-Ctarget-cpu=generic")
+        .run();
+    rustc().target("require-explicit-cpu").arg("--print=target-cpus").run();
 }

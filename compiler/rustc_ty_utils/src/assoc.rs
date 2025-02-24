@@ -1,8 +1,8 @@
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::{self as hir, AmbigArg};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, ImplTraitInTraitData, TyCtxt};
 use rustc_middle::{bug, span_bug};
@@ -95,7 +95,7 @@ fn impl_item_implementor_ids(tcx: TyCtxt<'_>, impl_id: DefId) -> DefIdMap<DefId>
 
 fn associated_item(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AssocItem {
     let id = tcx.local_def_id_to_hir_id(def_id);
-    let parent_def_id = tcx.hir().get_parent_item(id);
+    let parent_def_id = tcx.hir_get_parent_item(id);
     let parent_item = tcx.hir().expect_item(parent_def_id.def_id);
     match parent_item.kind {
         hir::ItemKind::Impl(impl_) => {
@@ -187,7 +187,7 @@ fn associated_types_for_impl_traits_in_associated_fn(
             }
 
             impl<'tcx> Visitor<'tcx> for RPITVisitor {
-                fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
+                fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx, AmbigArg>) {
                     if let hir::TyKind::OpaqueDef(opaq) = ty.kind
                         && self.rpits.insert(opaq.def_id)
                     {

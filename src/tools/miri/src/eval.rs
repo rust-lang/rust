@@ -558,15 +558,15 @@ where
 
                 match chars.next() {
                     Some('"') => {
-                        cmd.extend(iter::repeat('\\').take(nslashes * 2 + 1));
+                        cmd.extend(iter::repeat_n('\\', nslashes * 2 + 1));
                         cmd.push('"');
                     }
                     Some(c) => {
-                        cmd.extend(iter::repeat('\\').take(nslashes));
+                        cmd.extend(iter::repeat_n('\\', nslashes));
                         cmd.push(c);
                     }
                     None => {
-                        cmd.extend(iter::repeat('\\').take(nslashes * 2));
+                        cmd.extend(iter::repeat_n('\\', nslashes * 2));
                         break;
                     }
                 }

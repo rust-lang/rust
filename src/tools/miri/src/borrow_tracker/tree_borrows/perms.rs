@@ -379,14 +379,18 @@ pub mod diagnostics {
     use super::*;
     impl fmt::Display for PermissionPriv {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            write!(f, "{}", match self {
-                ReservedFrz { conflicted: false } => "Reserved",
-                ReservedFrz { conflicted: true } => "Reserved (conflicted)",
-                ReservedIM => "Reserved (interior mutable)",
-                Active => "Active",
-                Frozen => "Frozen",
-                Disabled => "Disabled",
-            })
+            write!(
+                f,
+                "{}",
+                match self {
+                    ReservedFrz { conflicted: false } => "Reserved",
+                    ReservedFrz { conflicted: true } => "Reserved (conflicted)",
+                    ReservedIM => "Reserved (interior mutable)",
+                    Active => "Active",
+                    Frozen => "Frozen",
+                    Disabled => "Disabled",
+                }
+            )
         }
     }
 

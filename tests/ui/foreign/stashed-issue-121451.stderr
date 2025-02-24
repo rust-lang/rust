@@ -1,8 +1,10 @@
-error[E0433]: failed to resolve: use of undeclared crate or module `libc`
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `libc`
   --> $DIR/stashed-issue-121451.rs:1:23
    |
 LL | extern "C" fn _f() -> libc::uintptr_t {}
-   |                       ^^^^ use of undeclared crate or module `libc`
+   |                       ^^^^ use of unresolved module or unlinked crate `libc`
+   |
+   = help: you might be missing a crate named `libc`
 
 error: aborting due to 1 previous error
 

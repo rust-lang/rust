@@ -22,6 +22,7 @@ use crate::{
     mem_docs::DocumentData,
     reload,
     target_spec::TargetSpec,
+    try_default,
 };
 
 pub(crate) fn handle_cancel(state: &mut GlobalState, params: CancelParams) -> anyhow::Result<()> {
@@ -74,7 +75,16 @@ pub(crate) fn handle_did_open_text_document(
             tracing::error!("duplicate DidOpenTextDocument: {}", path);
         }
 
-        state.vfs.write().0.set_file_contents(path, Some(params.text_document.text.into_bytes()));
+        if let Some(abs_path) = path.as_path() {
+            if state.config.excluded().any(|excluded| abs_path.starts_with(&excluded)) {
+                tracing::trace!("opened excluded file {abs_path}");
+                state.vfs.write().0.insert_excluded_file(path);
+                return Ok(());
+            }
+        }
+
+        let contents = params.text_document.text.into_bytes();
+        state.vfs.write().0.set_file_contents(path, Some(contents));
         if state.config.discover_workspace_config().is_some() {
             tracing::debug!("queuing task");
             let _ = state
@@ -126,7 +136,8 @@ pub(crate) fn handle_did_close_text_document(
             tracing::error!("orphan DidCloseTextDocument: {}", path);
         }
 
-        if let Some(file_id) = state.vfs.read().0.file_id(&path) {
+        // Clear diagnostics also for excluded files, just in case.
+        if let Some((file_id, _)) = state.vfs.read().0.file_id(&path) {
             state.diagnostics.clear_native_for(file_id);
         }
 
@@ -145,7 +156,7 @@ pub(crate) fn handle_did_save_text_document(
 ) -> anyhow::Result<()> {
     if let Ok(vfs_path) = from_proto::vfs_path(&params.text_document.uri) {
         let snap = state.snapshot();
-        let file_id = snap.vfs_path_to_file_id(&vfs_path)?;
+        let file_id = try_default!(snap.vfs_path_to_file_id(&vfs_path)?);
         let sr = snap.analysis.source_root_id(file_id)?;
 
         if state.config.script_rebuild_on_save(Some(sr)) && state.build_deps_changed {
@@ -289,11 +300,17 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
     let _p = tracing::info_span!("run_flycheck").entered();
 
     let file_id = state.vfs.read().0.file_id(&vfs_path);
-    if let Some(file_id) = file_id {
+    if let Some((file_id, vfs::FileExcluded::No)) = file_id {
         let world = state.snapshot();
+        let invocation_strategy_once = state.config.flycheck(None).invocation_strategy_once();
         let may_flycheck_workspace = state.config.flycheck_workspace(None);
         let mut updated = false;
         let task = move || -> std::result::Result<(), ide::Cancelled> {
+            if invocation_strategy_once {
+                let saved_file = vfs_path.as_path().map(|p| p.to_owned());
+                world.flycheck[0].restart_workspace(saved_file.clone());
+            }
+
             let target = TargetSpec::for_file(&world, file_id)?.and_then(|it| {
                 let tgt_kind = it.target_kind();
                 let (tgt_name, root, package) = match it {
@@ -320,16 +337,15 @@ fn run_flycheck(state: &mut GlobalState, vfs_path: VfsPath) -> bool {
                 // the user opted into package checks then
                 let package_check_allowed = target.is_some() || !may_flycheck_workspace;
                 if package_check_allowed {
-                    let workspace =
-                        world.workspaces.iter().enumerate().find(|(_, ws)| match &ws.kind {
-                            project_model::ProjectWorkspaceKind::Cargo { cargo, .. }
-                            | project_model::ProjectWorkspaceKind::DetachedFile {
-                                cargo: Some((cargo, _, _)),
-                                ..
-                            } => *cargo.workspace_root() == root,
-                            _ => false,
-                        });
-                    if let Some((idx, _)) = workspace {
+                    let workspace = world.workspaces.iter().position(|ws| match &ws.kind {
+                        project_model::ProjectWorkspaceKind::Cargo { cargo, .. }
+                        | project_model::ProjectWorkspaceKind::DetachedFile {
+                            cargo: Some((cargo, _, _)),
+                            ..
+                        } => *cargo.workspace_root() == root,
+                        _ => false,
+                    });
+                    if let Some(idx) = workspace {
                         world.flycheck[idx].restart_for_package(package, target);
                     }
                 }

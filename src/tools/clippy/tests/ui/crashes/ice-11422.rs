@@ -3,7 +3,7 @@
 use std::fmt::Debug;
 use std::ops::*;
 
-fn gen() -> impl PartialOrd + PartialEq + Debug {}
+fn r#gen() -> impl PartialOrd + PartialEq + Debug {}
 
 struct Bar {}
 trait Foo<T = Self> {}

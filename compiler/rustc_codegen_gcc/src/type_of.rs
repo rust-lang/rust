@@ -3,7 +3,9 @@ use std::fmt::Write;
 use gccjit::{Struct, Type};
 use rustc_abi as abi;
 use rustc_abi::Primitive::*;
-use rustc_abi::{BackendRepr, FieldsShape, Integer, PointeeInfo, Size, Variants};
+use rustc_abi::{
+    BackendRepr, FieldsShape, Integer, PointeeInfo, Reg, Size, TyAbiInterface, Variants,
+};
 use rustc_codegen_ssa::traits::{
     BaseTypeCodegenMethods, DerivedTypeCodegenMethods, LayoutTypeCodegenMethods,
 };
@@ -11,8 +13,7 @@ use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, CoroutineArgsExt, Ty, TypeVisitableExt};
-use rustc_target::abi::TyAbiInterface;
-use rustc_target::abi::call::{CastTarget, FnAbi, Reg};
+use rustc_target::callconv::{CastTarget, FnAbi};
 
 use crate::abi::{FnAbiGcc, FnAbiGccExt, GccType};
 use crate::context::CodegenCx;
@@ -83,7 +84,7 @@ fn uncached_gcc_type<'gcc, 'tcx>(
                 false,
             );
         }
-        BackendRepr::Uninhabited | BackendRepr::Memory { .. } => {}
+        BackendRepr::Memory { .. } => {}
     }
 
     let name = match *layout.ty.kind() {
@@ -178,19 +179,16 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
     fn is_gcc_immediate(&self) -> bool {
         match self.backend_repr {
             BackendRepr::Scalar(_) | BackendRepr::Vector { .. } => true,
-            BackendRepr::ScalarPair(..) | BackendRepr::Uninhabited | BackendRepr::Memory { .. } => {
-                false
-            }
+            BackendRepr::ScalarPair(..) | BackendRepr::Memory { .. } => false,
         }
     }
 
     fn is_gcc_scalar_pair(&self) -> bool {
         match self.backend_repr {
             BackendRepr::ScalarPair(..) => true,
-            BackendRepr::Uninhabited
-            | BackendRepr::Scalar(_)
-            | BackendRepr::Vector { .. }
-            | BackendRepr::Memory { .. } => false,
+            BackendRepr::Scalar(_) | BackendRepr::Vector { .. } | BackendRepr::Memory { .. } => {
+                false
+            }
         }
     }
 

@@ -1,33 +1,29 @@
-//@ build-fail
 #![feature(rustc_attrs)]
 
-#[rustc_dump_vtable]
 trait A {
     fn foo_a(&self) {}
 }
 
-#[rustc_dump_vtable]
 trait B {
-    //~^ error vtable
     fn foo_b(&self) {}
 }
 
-#[rustc_dump_vtable]
 trait C: A + B {
-    //~^ error vtable
     fn foo_c(&self) {}
 }
 
 struct S;
 
+#[rustc_dump_vtable]
 impl A for S {}
+//~^ error vtable
+
+#[rustc_dump_vtable]
 impl B for S {}
+//~^ error vtable
+
+#[rustc_dump_vtable]
 impl C for S {}
+//~^ error vtable
 
-fn foo(c: &dyn C) {}
-fn bar(c: &dyn B) {}
-
-fn main() {
-    foo(&S);
-    bar(&S);
-}
+fn main() {}

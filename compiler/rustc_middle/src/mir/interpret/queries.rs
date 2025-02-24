@@ -9,7 +9,7 @@ use super::{
     ReportedErrorInfo,
 };
 use crate::mir;
-use crate::query::TyCtxtEnsure;
+use crate::query::TyCtxtEnsureOk;
 use crate::ty::visit::TypeVisitableExt;
 use crate::ty::{self, GenericArgs, TyCtxt};
 
@@ -198,7 +198,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
-impl<'tcx> TyCtxtEnsure<'tcx> {
+impl<'tcx> TyCtxtEnsureOk<'tcx> {
     /// Evaluates a constant without providing any generic parameters. This is useful to evaluate consts
     /// that can't take any generic arguments like const items or enum discriminants. If a
     /// generic parameter is used within the constant `ErrorHandled::TooGeneric` will be returned.

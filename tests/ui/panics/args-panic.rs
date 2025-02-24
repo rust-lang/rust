@@ -1,6 +1,6 @@
 //@ run-fail
 //@ error-pattern:meep
-//@ ignore-emscripten no processes
+//@ needs-subprocess
 
 fn f(_a: isize, _b: isize, _c: Box<isize>) {
     panic!("moop");

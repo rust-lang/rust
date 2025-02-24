@@ -1,6 +1,7 @@
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::rc::Rc;
+use std::sync::Arc;
 use std::{iter, mem};
 
 use rustc_ast as ast;
@@ -16,7 +17,6 @@ use rustc_ast::{
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::PResult;
 use rustc_feature::Features;
 use rustc_parse::parser::{
@@ -579,7 +579,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         &mut self,
         mut fragment: AstFragment,
         extra_placeholders: &[NodeId],
-    ) -> (AstFragment, Vec<(Invocation, Option<Lrc<SyntaxExtension>>)>) {
+    ) -> (AstFragment, Vec<(Invocation, Option<Arc<SyntaxExtension>>)>) {
         // Resolve `$crate`s in the fragment for pretty-printing.
         self.cx.resolver.resolve_dollar_crates();
 
@@ -1774,7 +1774,7 @@ fn build_single_delegations<'a, Node: InvocationCollectorNode>(
 
 struct InvocationCollector<'a, 'b> {
     cx: &'a mut ExtCtxt<'b>,
-    invocations: Vec<(Invocation, Option<Lrc<SyntaxExtension>>)>,
+    invocations: Vec<(Invocation, Option<Arc<SyntaxExtension>>)>,
     monotonic: bool,
 }
 

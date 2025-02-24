@@ -15,37 +15,7 @@ defaults:
     shell: bash
 
 jobs:
-  changelog:
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        ref: ${{ github.ref }}
-        # Unsetting this would make so that any malicious package could get our Github Token
-        persist-credentials: false
-
-    # Run
-    - name: Check Changelog
-      run: |
-        MESSAGE=$(git log --format=%B -n 1)
-        PR=$(echo "$MESSAGE" | grep -o "#[0-9]*" | head -1 | sed -e 's/^#//')
-        body=$(curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -s "https://api.github.com/repos/rust-lang/rust-clippy/pulls/$PR" | \
-          python -c "import sys, json; print(json.load(sys.stdin)['body'])")
-        output=$(grep "^changelog:\s*\S" <<< "$body" | sed "s/changelog:\s*//g") || {
-          echo "ERROR: PR body must contain 'changelog: ...'"
-          exit 1
-        }
-        if [[ "$output" = "none" ]]; then
-          echo "WARNING: changelog is 'none'"
-        else
-          echo "changelog: $output"
-        fi
-      env:
-        PYTHONIOENCODING: 'utf-8'
   base:
-    needs: changelog
     strategy:
       matrix:
         include:
@@ -119,7 +89,6 @@ jobs:
         OS: ${{ runner.os }}
 
   metadata_collection:
-    needs: changelog
     runs-on: ubuntu-latest
 
     steps:
@@ -138,7 +107,6 @@ jobs:
       run: cargo collect-metadata
 
   integration_build:
-    needs: changelog
     runs-on: ubuntu-latest
 
     steps:
@@ -228,7 +196,7 @@ jobs:
         INTEGRATION: ${{ matrix.integration }}
 
   conclusion:
-    needs: [ changelog, base, metadata_collection, integration_build, integration ]
+    needs: [ base, metadata_collection, integration_build, integration ]
     # We need to ensure this job does *not* get skipped if its dependencies fail,
     # because a skipped job is considered a success by GitHub. So we have to
     # overwrite `if:`. We use `!cancelled()` to ensure the job does still not get run

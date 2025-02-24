@@ -1,14 +1,13 @@
 use std::mem;
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 
 use rustc_ast::{Attribute, Crate};
-use rustc_data_structures::sync::Lrc;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 
 #[derive(Clone, Default)]
-pub struct AttrStorage(pub Lrc<OnceLock<Vec<Span>>>);
+pub struct AttrStorage(pub Arc<OnceLock<Vec<Span>>>);
 
 pub struct AttrCollector {
     storage: AttrStorage,

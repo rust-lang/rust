@@ -1,19 +1,20 @@
-//! This module defines the `DepNode` type which the compiler uses to represent
-//! nodes in the dependency graph. A `DepNode` consists of a `DepKind` (which
-//! specifies the kind of thing it represents, like a piece of HIR, MIR, etc)
-//! and a `Fingerprint`, a 128 bit hash value the exact meaning of which
+//! This module defines the [`DepNode`] type which the compiler uses to represent
+//! nodes in the [dependency graph]. A `DepNode` consists of a [`DepKind`] (which
+//! specifies the kind of thing it represents, like a piece of HIR, MIR, etc.)
+//! and a [`Fingerprint`], a 128-bit hash value, the exact meaning of which
 //! depends on the node's `DepKind`. Together, the kind and the fingerprint
 //! fully identify a dependency node, even across multiple compilation sessions.
 //! In other words, the value of the fingerprint does not depend on anything
 //! that is specific to a given compilation session, like an unpredictable
-//! interning key (e.g., NodeId, DefId, Symbol) or the numeric value of a
+//! interning key (e.g., `NodeId`, `DefId`, `Symbol`) or the numeric value of a
 //! pointer. The concept behind this could be compared to how git commit hashes
-//! uniquely identify a given commit and has a few advantages:
+//! uniquely identify a given commit. The fingerprinting approach has
+//! a few advantages:
 //!
 //! * A `DepNode` can simply be serialized to disk and loaded in another session
-//!   without the need to do any "rebasing (like we have to do for Spans and
-//!   NodeIds) or "retracing" like we had to do for `DefId` in earlier
-//!   implementations of the dependency graph.
+//!   without the need to do any "rebasing" (like we have to do for Spans and
+//!   NodeIds) or "retracing" (like we had to do for `DefId` in earlier
+//!   implementations of the dependency graph).
 //! * A `Fingerprint` is just a bunch of bits, which allows `DepNode` to
 //!   implement `Copy`, `Sync`, `Send`, `Freeze`, etc.
 //! * Since we just have a bit pattern, `DepNode` can be mapped from disk into
@@ -26,10 +27,12 @@
 //!   could not be instantiated because the current compilation session
 //!   contained no `DefId` for thing that had been removed.
 //!
-//! `DepNode` definition happens in `rustc_middle` with the `define_dep_nodes!()` macro.
-//! This macro defines the `DepKind` enum and a corresponding `DepConstructor` enum. The
-//! `DepConstructor` enum links a `DepKind` to the parameters that are needed at runtime in order
-//! to construct a valid `DepNode` fingerprint.
+//! `DepNode` definition happens in `rustc_middle` with the
+//! `define_dep_nodes!()` macro. This macro defines the `DepKind` enum. Each
+//! `DepKind` has its own parameters that are needed at runtime in order to
+//! construct a valid `DepNode` fingerprint. However, only `CompileCodegenUnit`
+//! and `CompileMonoItem` are constructed explicitly (with
+//! `make_compile_codegen_unit` and `make_compile_mono_item`).
 //!
 //! Because the macro sees what parameters a given `DepKind` requires, it can
 //! "infer" some properties for each kind of `DepNode`:
@@ -41,6 +44,16 @@
 //!   in which case it is possible to map the node's fingerprint back to the
 //!   `DefId` it was computed from. In other cases, too much information gets
 //!   lost during fingerprint computation.
+//!
+//! `make_compile_codegen_unit` and `make_compile_mono_items`, together with
+//! `DepNode::new()`, ensure that only valid `DepNode` instances can be
+//! constructed. For example, the API does not allow for constructing
+//! parameterless `DepNode`s with anything other than a zeroed out fingerprint.
+//! More generally speaking, it relieves the user of the `DepNode` API of
+//! having to know how to compute the expected fingerprint for a given set of
+//! node parameters.
+//!
+//! [dependency graph]: https://rustc-dev-guide.rust-lang.org/query.html
 
 use std::fmt;
 use std::hash::Hash;

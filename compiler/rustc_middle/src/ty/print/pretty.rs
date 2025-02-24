@@ -232,7 +232,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         f: F,
     ) -> Result<(), PrintError>
     where
-        T: Print<'tcx, Self> + TypeFoldable<TyCtxt<'tcx>>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         f(value.as_ref().skip_binder(), self)
     }
@@ -865,7 +865,6 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 p!(write("{{"));
                 if !self.tcx().sess.verbose_internals() {
                     p!("coroutine witness");
-                    // FIXME(eddyb) should use `def_span`.
                     if let Some(did) = did.as_local() {
                         let span = self.tcx().def_span(did);
                         p!(write(
@@ -887,26 +886,30 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 p!(write("{{"));
                 if !self.should_print_verbose() {
                     p!(write("closure"));
-                    // FIXME(eddyb) should use `def_span`.
-                    if let Some(did) = did.as_local() {
-                        if self.tcx().sess.opts.unstable_opts.span_free_formats {
-                            p!("@", print_def_path(did.to_def_id(), args));
-                        } else {
-                            let span = self.tcx().def_span(did);
-                            let preference = if with_forced_trimmed_paths() {
-                                FileNameDisplayPreference::Short
-                            } else {
-                                FileNameDisplayPreference::Remapped
-                            };
-                            p!(write(
-                                "@{}",
-                                // This may end up in stderr diagnostics but it may also be emitted
-                                // into MIR. Hence we use the remapped path if available
-                                self.tcx().sess.source_map().span_to_string(span, preference)
-                            ));
-                        }
+                    if self.should_truncate() {
+                        write!(self, "@...}}")?;
+                        return Ok(());
                     } else {
-                        p!(write("@"), print_def_path(did, args));
+                        if let Some(did) = did.as_local() {
+                            if self.tcx().sess.opts.unstable_opts.span_free_formats {
+                                p!("@", print_def_path(did.to_def_id(), args));
+                            } else {
+                                let span = self.tcx().def_span(did);
+                                let preference = if with_forced_trimmed_paths() {
+                                    FileNameDisplayPreference::Short
+                                } else {
+                                    FileNameDisplayPreference::Remapped
+                                };
+                                p!(write(
+                                    "@{}",
+                                    // This may end up in stderr diagnostics but it may also be emitted
+                                    // into MIR. Hence we use the remapped path if available
+                                    self.tcx().sess.source_map().span_to_string(span, preference)
+                                ));
+                            }
+                        } else {
+                            p!(write("@"), print_def_path(did, args));
+                        }
                     }
                 } else {
                     p!(print_def_path(did, args));
@@ -942,7 +945,6 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                             "coroutine from coroutine-closure should have CoroutineSource::Closure"
                         ),
                     }
-                    // FIXME(eddyb) should use `def_span`.
                     if let Some(did) = did.as_local() {
                         if self.tcx().sess.opts.unstable_opts.span_free_formats {
                             p!("@", print_def_path(did.to_def_id(), args));
@@ -1054,7 +1056,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         // Insert parenthesis around (Fn(A, B) -> C) if the opaque ty has more than one other trait
         let paren_needed = fn_traits.len() > 1 || traits.len() > 0 || !has_sized_bound;
 
-        for ((bound_args, is_async), entry) in fn_traits {
+        for ((bound_args_and_self_ty, is_async), entry) in fn_traits {
             write!(self, "{}", if first { "" } else { " + " })?;
             write!(self, "{}", if paren_needed { "(" } else { "" })?;
 
@@ -1065,7 +1067,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             };
 
             if let Some(return_ty) = entry.return_ty {
-                self.wrap_binder(&bound_args, |args, cx| {
+                self.wrap_binder(&bound_args_and_self_ty, |(args, _), cx| {
                     define_scoped_cx!(cx);
                     p!(write("{}", tcx.item_name(trait_def_id)));
                     p!("(");
@@ -1091,9 +1093,13 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             } else {
                 // Otherwise, render this like a regular trait.
                 traits.insert(
-                    bound_args.map_bound(|args| ty::TraitPredicate {
+                    bound_args_and_self_ty.map_bound(|(args, self_ty)| ty::TraitPredicate {
                         polarity: ty::PredicatePolarity::Positive,
-                        trait_ref: ty::TraitRef::new(tcx, trait_def_id, [Ty::new_tup(tcx, args)]),
+                        trait_ref: ty::TraitRef::new(
+                            tcx,
+                            trait_def_id,
+                            [self_ty, Ty::new_tup(tcx, args)],
+                        ),
                     }),
                     FxIndexMap::default(),
                 );
@@ -1227,7 +1233,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             FxIndexMap<DefId, ty::Binder<'tcx, Term<'tcx>>>,
         >,
         fn_traits: &mut FxIndexMap<
-            (ty::Binder<'tcx, &'tcx ty::List<Ty<'tcx>>>, bool),
+            (ty::Binder<'tcx, (&'tcx ty::List<Ty<'tcx>>, Ty<'tcx>)>, bool),
             OpaqueFnEntry<'tcx>,
         >,
     ) {
@@ -1247,7 +1253,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             && let ty::Tuple(types) = *trait_pred.skip_binder().trait_ref.args.type_at(1).kind()
         {
             let entry = fn_traits
-                .entry((trait_pred.rebind(types), is_async))
+                .entry((trait_pred.rebind((types, trait_pred.skip_binder().self_ty())), is_async))
                 .or_insert_with(|| OpaqueFnEntry { kind, return_ty: None });
             if kind.extends(entry.kind) {
                 entry.kind = kind;
@@ -1484,8 +1490,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 _ => write!(self, "_")?,
             },
             ty::ConstKind::Param(ParamConst { name, .. }) => p!(write("{}", name)),
-            ty::ConstKind::Value(ty, value) => {
-                return self.pretty_print_const_valtree(value, ty, print_ty);
+            ty::ConstKind::Value(cv) => {
+                return self.pretty_print_const_valtree(cv, print_ty);
             }
 
             ty::ConstKind::Bound(debruijn, bound_var) => {
@@ -1510,7 +1516,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             ty::ExprKind::Binop(op) => {
                 let (_, _, c1, c2) = expr.binop_args();
 
-                let precedence = |binop: rustc_middle::mir::BinOp| {
+                let precedence = |binop: crate::mir::BinOp| {
                     use rustc_ast::util::parser::AssocOp;
                     AssocOp::from_ast_binop(binop.to_hir_binop()).precedence()
                 };
@@ -1556,7 +1562,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             ty::ExprKind::UnOp(op) => {
                 let (_, ct) = expr.unop_args();
 
-                use rustc_middle::mir::UnOp;
+                use crate::mir::UnOp;
                 let formatted_op = match op {
                     UnOp::Not => "!",
                     UnOp::Neg => "-",
@@ -1637,33 +1643,30 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         match ty.kind() {
             // Byte strings (&[u8; N])
             ty::Ref(_, inner, _) => {
-                if let ty::Array(elem, len) = inner.kind() {
-                    if let ty::Uint(ty::UintTy::U8) = elem.kind() {
-                        if let ty::ConstKind::Value(_, ty::ValTree::Leaf(int)) = len.kind() {
-                            match self.tcx().try_get_global_alloc(prov.alloc_id()) {
-                                Some(GlobalAlloc::Memory(alloc)) => {
-                                    let len = int.to_bits(self.tcx().data_layout.pointer_size);
-                                    let range =
-                                        AllocRange { start: offset, size: Size::from_bytes(len) };
-                                    if let Ok(byte_str) =
-                                        alloc.inner().get_bytes_strip_provenance(&self.tcx(), range)
-                                    {
-                                        p!(pretty_print_byte_str(byte_str))
-                                    } else {
-                                        p!("<too short allocation>")
-                                    }
-                                }
-                                // FIXME: for statics, vtables, and functions, we could in principle print more detail.
-                                Some(GlobalAlloc::Static(def_id)) => {
-                                    p!(write("<static({:?})>", def_id))
-                                }
-                                Some(GlobalAlloc::Function { .. }) => p!("<function>"),
-                                Some(GlobalAlloc::VTable(..)) => p!("<vtable>"),
-                                None => p!("<dangling pointer>"),
+                if let ty::Array(elem, ct_len) = inner.kind()
+                    && let ty::Uint(ty::UintTy::U8) = elem.kind()
+                    && let Some(len) = ct_len.try_to_target_usize(self.tcx())
+                {
+                    match self.tcx().try_get_global_alloc(prov.alloc_id()) {
+                        Some(GlobalAlloc::Memory(alloc)) => {
+                            let range = AllocRange { start: offset, size: Size::from_bytes(len) };
+                            if let Ok(byte_str) =
+                                alloc.inner().get_bytes_strip_provenance(&self.tcx(), range)
+                            {
+                                p!(pretty_print_byte_str(byte_str))
+                            } else {
+                                p!("<too short allocation>")
                             }
-                            return Ok(());
                         }
+                        // FIXME: for statics, vtables, and functions, we could in principle print more detail.
+                        Some(GlobalAlloc::Static(def_id)) => {
+                            p!(write("<static({:?})>", def_id))
+                        }
+                        Some(GlobalAlloc::Function { .. }) => p!("<function>"),
+                        Some(GlobalAlloc::VTable(..)) => p!("<vtable>"),
+                        None => p!("<dangling pointer>"),
                     }
+                    return Ok(());
                 }
             }
             ty::FnPtr(..) => {
@@ -1740,6 +1743,10 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     " as ",
                 )?;
             }
+            ty::Pat(base_ty, pat) if self.tcx().validate_scalar_in_layout(int, ty) => {
+                self.pretty_print_const_scalar_int(int, *base_ty, print_ty)?;
+                p!(write(" is {pat:?}"));
+            }
             // Nontrivial types with scalar bit representation
             _ => {
                 let print = |this: &mut Self| {
@@ -1784,45 +1791,45 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
     fn pretty_print_const_valtree(
         &mut self,
-        valtree: ty::ValTree<'tcx>,
-        ty: Ty<'tcx>,
+        cv: ty::Value<'tcx>,
         print_ty: bool,
     ) -> Result<(), PrintError> {
         define_scoped_cx!(self);
 
         if self.should_print_verbose() {
-            p!(write("ValTree({:?}: ", valtree), print(ty), ")");
+            p!(write("ValTree({:?}: ", cv.valtree), print(cv.ty), ")");
             return Ok(());
         }
 
         let u8_type = self.tcx().types.u8;
-        match (valtree, ty.kind()) {
-            (ty::ValTree::Branch(_), ty::Ref(_, inner_ty, _)) => match inner_ty.kind() {
+        match (*cv.valtree, *cv.ty.kind()) {
+            (ty::ValTreeKind::Branch(_), ty::Ref(_, inner_ty, _)) => match inner_ty.kind() {
                 ty::Slice(t) if *t == u8_type => {
-                    let bytes = valtree.try_to_raw_bytes(self.tcx(), ty).unwrap_or_else(|| {
+                    let bytes = cv.try_to_raw_bytes(self.tcx()).unwrap_or_else(|| {
                         bug!(
                             "expected to convert valtree {:?} to raw bytes for type {:?}",
-                            valtree,
+                            cv.valtree,
                             t
                         )
                     });
                     return self.pretty_print_byte_str(bytes);
                 }
                 ty::Str => {
-                    let bytes = valtree.try_to_raw_bytes(self.tcx(), ty).unwrap_or_else(|| {
-                        bug!("expected to convert valtree to raw bytes for type {:?}", ty)
+                    let bytes = cv.try_to_raw_bytes(self.tcx()).unwrap_or_else(|| {
+                        bug!("expected to convert valtree to raw bytes for type {:?}", cv.ty)
                     });
                     p!(write("{:?}", String::from_utf8_lossy(bytes)));
                     return Ok(());
                 }
                 _ => {
+                    let cv = ty::Value { valtree: cv.valtree, ty: inner_ty };
                     p!("&");
-                    p!(pretty_print_const_valtree(valtree, *inner_ty, print_ty));
+                    p!(pretty_print_const_valtree(cv, print_ty));
                     return Ok(());
                 }
             },
-            (ty::ValTree::Branch(_), ty::Array(t, _)) if *t == u8_type => {
-                let bytes = valtree.try_to_raw_bytes(self.tcx(), ty).unwrap_or_else(|| {
+            (ty::ValTreeKind::Branch(_), ty::Array(t, _)) if t == u8_type => {
+                let bytes = cv.try_to_raw_bytes(self.tcx()).unwrap_or_else(|| {
                     bug!("expected to convert valtree to raw bytes for type {:?}", t)
                 });
                 p!("*");
@@ -1830,11 +1837,14 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 return Ok(());
             }
             // Aggregates, printed as array/tuple/struct/variant construction syntax.
-            (ty::ValTree::Branch(_), ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) => {
-                let contents =
-                    self.tcx().destructure_const(ty::Const::new_value(self.tcx(), valtree, ty));
+            (ty::ValTreeKind::Branch(_), ty::Array(..) | ty::Tuple(..) | ty::Adt(..)) => {
+                let contents = self.tcx().destructure_const(ty::Const::new_value(
+                    self.tcx(),
+                    cv.valtree,
+                    cv.ty,
+                ));
                 let fields = contents.fields.iter().copied();
-                match *ty.kind() {
+                match *cv.ty.kind() {
                     ty::Array(..) => {
                         p!("[", comma_sep(fields), "]");
                     }
@@ -1851,7 +1861,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                                 write!(this, "unreachable()")?;
                                 Ok(())
                             },
-                            |this| this.print_type(ty),
+                            |this| this.print_type(cv.ty),
                             ": ",
                         )?;
                     }
@@ -1883,12 +1893,17 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 }
                 return Ok(());
             }
-            (ty::ValTree::Leaf(leaf), ty::Ref(_, inner_ty, _)) => {
+            (ty::ValTreeKind::Leaf(leaf), ty::Ref(_, inner_ty, _)) => {
                 p!(write("&"));
-                return self.pretty_print_const_scalar_int(leaf, *inner_ty, print_ty);
+                return self.pretty_print_const_scalar_int(*leaf, inner_ty, print_ty);
             }
-            (ty::ValTree::Leaf(leaf), _) => {
-                return self.pretty_print_const_scalar_int(leaf, ty, print_ty);
+            (ty::ValTreeKind::Leaf(leaf), _) => {
+                return self.pretty_print_const_scalar_int(*leaf, cv.ty, print_ty);
+            }
+            (_, ty::FnDef(def_id, args)) => {
+                // Never allowed today, but we still encounter them in invalid const args.
+                p!(print_value_path(def_id, args));
+                return Ok(());
             }
             // FIXME(oli-obk): also pretty print arrays and other aggregate constants by reading
             // their fields instead of just dumping the memory.
@@ -1896,13 +1911,13 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         }
 
         // fallback
-        if valtree == ty::ValTree::zst() {
+        if cv.valtree.is_zst() {
             p!(write("<ZST>"));
         } else {
-            p!(write("{:?}", valtree));
+            p!(write("{:?}", cv.valtree));
         }
         if print_ty {
-            p!(": ", print(ty));
+            p!(": ", print(cv.ty));
         }
         Ok(())
     }
@@ -1990,7 +2005,6 @@ pub struct FmtPrinterData<'a, 'tcx> {
     binder_depth: usize,
     printed_type_count: usize,
     type_length_limit: Limit,
-    truncated: bool,
 
     pub region_highlight_mode: RegionHighlightMode<'tcx>,
 
@@ -2042,7 +2056,6 @@ impl<'a, 'tcx> FmtPrinter<'a, 'tcx> {
             binder_depth: 0,
             printed_type_count: 0,
             type_length_limit,
-            truncated: false,
             region_highlight_mode: RegionHighlightMode::default(),
             ty_infer_name_resolver: None,
             const_infer_name_resolver: None,
@@ -2179,14 +2192,47 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
     }
 
     fn print_type(&mut self, ty: Ty<'tcx>) -> Result<(), PrintError> {
-        if self.type_length_limit.value_within_limit(self.printed_type_count) {
-            self.printed_type_count += 1;
-            self.pretty_print_type(ty)
-        } else {
-            self.truncated = true;
-            write!(self, "...")?;
-            Ok(())
+        match ty.kind() {
+            ty::Tuple(tys) if tys.len() == 0 && self.should_truncate() => {
+                // Don't truncate `()`.
+                self.printed_type_count += 1;
+                self.pretty_print_type(ty)
+            }
+            ty::Adt(..)
+            | ty::Foreign(_)
+            | ty::Pat(..)
+            | ty::RawPtr(..)
+            | ty::Ref(..)
+            | ty::FnDef(..)
+            | ty::FnPtr(..)
+            | ty::UnsafeBinder(..)
+            | ty::Dynamic(..)
+            | ty::Closure(..)
+            | ty::CoroutineClosure(..)
+            | ty::Coroutine(..)
+            | ty::CoroutineWitness(..)
+            | ty::Tuple(_)
+            | ty::Alias(..)
+            | ty::Param(_)
+            | ty::Bound(..)
+            | ty::Placeholder(_)
+            | ty::Error(_)
+                if self.should_truncate() =>
+            {
+                // We only truncate types that we know are likely to be much longer than 3 chars.
+                // There's no point in replacing `i32` or `!`.
+                write!(self, "...")?;
+                Ok(())
+            }
+            _ => {
+                self.printed_type_count += 1;
+                self.pretty_print_type(ty)
+            }
         }
+    }
+
+    fn should_truncate(&mut self) -> bool {
+        !self.type_length_limit.value_within_limit(self.printed_type_count)
     }
 
     fn print_dyn_existential(
@@ -2337,7 +2383,7 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
         f: C,
     ) -> Result<(), PrintError>
     where
-        T: Print<'tcx, Self> + TypeFoldable<TyCtxt<'tcx>>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         self.pretty_wrap_binder(value, f)
     }
@@ -2591,7 +2637,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
         value: &ty::Binder<'tcx, T>,
     ) -> Result<(T, UnordMap<ty::BoundRegion, ty::Region<'tcx>>), fmt::Error>
     where
-        T: Print<'tcx, Self> + TypeFoldable<TyCtxt<'tcx>>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         fn name_by_region_index(
             index: usize,
@@ -2772,7 +2818,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
         f: C,
     ) -> Result<(), fmt::Error>
     where
-        T: Print<'tcx, Self> + TypeFoldable<TyCtxt<'tcx>>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         let old_region_index = self.region_index;
         let (new_value, _) = self.name_all_regions(value)?;
@@ -2938,7 +2984,7 @@ impl<'tcx> ty::TraitPredicate<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, TypeFoldable, TypeVisitable, Lift)]
+#[derive(Copy, Clone, TypeFoldable, TypeVisitable, Lift, Hash)]
 pub struct TraitPredPrintWithBoundConstness<'tcx>(
     ty::TraitPredicate<'tcx>,
     Option<ty::BoundConstness>,
@@ -3257,13 +3303,12 @@ define_print_and_forward_display! {
 
 fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, Namespace, DefId)) {
     // Iterate all local crate items no matter where they are defined.
-    let hir = tcx.hir();
-    for id in hir.items() {
+    for id in tcx.hir_free_items() {
         if matches!(tcx.def_kind(id.owner_id), DefKind::Use) {
             continue;
         }
 
-        let item = hir.item(id);
+        let item = tcx.hir_item(id);
         if item.ident.name == kw::Empty {
             continue;
         }

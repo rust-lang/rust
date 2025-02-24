@@ -117,7 +117,7 @@ where
             if let ty::Ref(..) = cx.typeck_results().expr_ty(ex_inner).kind() {
                 ex_new = ex_inner;
             }
-        };
+        }
         span_lint_and_sugg(
             cx,
             MATCH_LIKE_MATCHES_MACRO,

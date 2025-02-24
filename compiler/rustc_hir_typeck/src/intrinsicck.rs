@@ -122,7 +122,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     format!("generic size {size}")
                 }
             }
-            Err(LayoutError::Unknown(bad)) => {
+            Err(LayoutError::TooGeneric(bad)) => {
                 if *bad == ty {
                     "this type does not have a fixed size".to_owned()
                 } else {

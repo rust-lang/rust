@@ -25,7 +25,7 @@ LL | fn make_baz<T:Baz>(t: &T) -> &dyn Baz {
    |                                   ^^^ `Baz` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/supertrait-mentions-Self.rs:8:13
    |
 LL | trait Baz : Bar<Self> {
@@ -34,8 +34,9 @@ LL | trait Baz : Bar<Self> {
    |       this trait is not dyn compatible...
 help: consider using an opaque type instead
    |
-LL | fn make_baz<T:Baz>(t: &T) -> &impl Baz {
-   |                               ~~~~
+LL - fn make_baz<T:Baz>(t: &T) -> &dyn Baz {
+LL + fn make_baz<T:Baz>(t: &T) -> &impl Baz {
+   |
 
 error: aborting due to 2 previous errors
 

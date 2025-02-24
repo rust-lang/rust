@@ -581,15 +581,18 @@ impl Tree {
             let mut debug_info = NodeDebugInfo::new(root_tag, root_default_perm, span);
             // name the root so that all allocations contain one named pointer
             debug_info.add_name("root of the allocation");
-            nodes.insert(root_idx, Node {
-                tag: root_tag,
-                parent: None,
-                children: SmallVec::default(),
-                default_initial_perm: root_default_perm,
-                // The root may never be skipped, all accesses will be local.
-                default_initial_idempotent_foreign_access: IdempotentForeignAccess::None,
-                debug_info,
-            });
+            nodes.insert(
+                root_idx,
+                Node {
+                    tag: root_tag,
+                    parent: None,
+                    children: SmallVec::default(),
+                    default_initial_perm: root_default_perm,
+                    // The root may never be skipped, all accesses will be local.
+                    default_initial_idempotent_foreign_access: IdempotentForeignAccess::None,
+                    debug_info,
+                },
+            );
             nodes
         };
         let rperms = {
@@ -624,14 +627,17 @@ impl<'tcx> Tree {
         let parent_idx = self.tag_mapping.get(&parent_tag).unwrap();
         let strongest_idempotent = default_initial_perm.strongest_idempotent_foreign_access(prot);
         // Create the node
-        self.nodes.insert(idx, Node {
-            tag: new_tag,
-            parent: Some(parent_idx),
-            children: SmallVec::default(),
-            default_initial_perm,
-            default_initial_idempotent_foreign_access: strongest_idempotent,
-            debug_info: NodeDebugInfo::new(new_tag, default_initial_perm, span),
-        });
+        self.nodes.insert(
+            idx,
+            Node {
+                tag: new_tag,
+                parent: Some(parent_idx),
+                children: SmallVec::default(),
+                default_initial_perm,
+                default_initial_idempotent_foreign_access: strongest_idempotent,
+                debug_info: NodeDebugInfo::new(new_tag, default_initial_perm, span),
+            },
+        );
         // Register new_tag as a child of parent_tag
         self.nodes.get_mut(parent_idx).unwrap().children.push(idx);
         // Initialize perms

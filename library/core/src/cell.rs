@@ -1590,10 +1590,10 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     {
         let (a, b) = f(&*orig);
         let borrow = orig.borrow.clone();
-        (Ref { value: NonNull::from(a), borrow }, Ref {
-            value: NonNull::from(b),
-            borrow: orig.borrow,
-        })
+        (
+            Ref { value: NonNull::from(a), borrow },
+            Ref { value: NonNull::from(b), borrow: orig.borrow },
+        )
     }
 
     /// Converts into a reference to the underlying data.
@@ -1758,11 +1758,10 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     {
         let borrow = orig.borrow.clone();
         let (a, b) = f(&mut *orig);
-        (RefMut { value: NonNull::from(a), borrow, marker: PhantomData }, RefMut {
-            value: NonNull::from(b),
-            borrow: orig.borrow,
-            marker: PhantomData,
-        })
+        (
+            RefMut { value: NonNull::from(a), borrow, marker: PhantomData },
+            RefMut { value: NonNull::from(b), borrow: orig.borrow, marker: PhantomData },
+        )
     }
 
     /// Converts into a mutable reference to the underlying data.
@@ -2118,6 +2117,35 @@ impl<T> UnsafeCell<T> {
     pub const fn into_inner(self) -> T {
         self.value
     }
+
+    /// Replace the value in this `UnsafeCell` and return the old value.
+    ///
+    /// # Safety
+    ///
+    /// The caller must take care to avoid aliasing and data races.
+    ///
+    /// - It is Undefined Behavior to allow calls to race with
+    ///   any other access to the wrapped value.
+    /// - It is Undefined Behavior to call this while any other
+    ///   reference(s) to the wrapped value are alive.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unsafe_cell_access)]
+    /// use std::cell::UnsafeCell;
+    ///
+    /// let uc = UnsafeCell::new(5);
+    ///
+    /// let old = unsafe { uc.replace(10) };
+    /// assert_eq!(old, 5);
+    /// ```
+    #[inline]
+    #[unstable(feature = "unsafe_cell_access", issue = "136327")]
+    pub const unsafe fn replace(&self, value: T) -> T {
+        // SAFETY: pointer comes from `&self` so naturally satisfies invariants.
+        unsafe { ptr::replace(self.get(), value) }
+    }
 }
 
 impl<T: ?Sized> UnsafeCell<T> {
@@ -2229,6 +2257,61 @@ impl<T: ?Sized> UnsafeCell<T> {
         // #[repr(transparent)]. This exploits std's special status, there is
         // no guarantee for user code that this will work in future versions of the compiler!
         this as *const T as *mut T
+    }
+
+    /// Get a shared reference to the value within the `UnsafeCell`.
+    ///
+    /// # Safety
+    ///
+    /// - It is Undefined Behavior to call this while any mutable
+    ///   reference to the wrapped value is alive.
+    /// - Mutating the wrapped value while the returned
+    ///   reference is alive is Undefined Behavior.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unsafe_cell_access)]
+    /// use std::cell::UnsafeCell;
+    ///
+    /// let uc = UnsafeCell::new(5);
+    ///
+    /// let val = unsafe { uc.as_ref_unchecked() };
+    /// assert_eq!(val, &5);
+    /// ```
+    #[inline]
+    #[unstable(feature = "unsafe_cell_access", issue = "136327")]
+    pub const unsafe fn as_ref_unchecked(&self) -> &T {
+        // SAFETY: pointer comes from `&self` so naturally satisfies ptr-to-ref invariants.
+        unsafe { self.get().as_ref_unchecked() }
+    }
+
+    /// Get an exclusive reference to the value within the `UnsafeCell`.
+    ///
+    /// # Safety
+    ///
+    /// - It is Undefined Behavior to call this while any other
+    ///   reference(s) to the wrapped value are alive.
+    /// - Mutating the wrapped value through other means while the
+    ///   returned reference is alive is Undefined Behavior.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(unsafe_cell_access)]
+    /// use std::cell::UnsafeCell;
+    ///
+    /// let uc = UnsafeCell::new(5);
+    ///
+    /// unsafe { *uc.as_mut_unchecked() += 1; }
+    /// assert_eq!(uc.into_inner(), 6);
+    /// ```
+    #[inline]
+    #[unstable(feature = "unsafe_cell_access", issue = "136327")]
+    #[allow(clippy::mut_from_ref)]
+    pub const unsafe fn as_mut_unchecked(&self) -> &mut T {
+        // SAFETY: pointer comes from `&self` so naturally satisfies ptr-to-ref invariants.
+        unsafe { self.get().as_mut_unchecked() }
     }
 }
 

@@ -56,10 +56,10 @@ impl EarlyLintPass for MultiAssignments {
         if let ExprKind::Assign(target, source, _) = &expr.kind {
             if let ExprKind::Assign(_target, _source, _) = &strip_paren_blocks(target).kind {
                 span_lint(cx, MULTI_ASSIGNMENTS, expr.span, "assignments don't nest intuitively");
-            };
+            }
             if let ExprKind::Assign(_target, _source, _) = &strip_paren_blocks(source).kind {
                 span_lint(cx, MULTI_ASSIGNMENTS, expr.span, "assignments don't nest intuitively");
             }
-        };
+        }
     }
 }

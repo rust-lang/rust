@@ -36,7 +36,7 @@ included, and carry their own copyright notices and license terms:
     See SourceCodePro-LICENSE.txt.
 
 * Source Serif 4 (SourceSerif4-Regular.ttf.woff2, SourceSerif4-Bold.ttf.woff2,
-    SourceSerif4-It.ttf.woff2):
+    SourceSerif4-It.ttf.woff2, SourceSerif4-Semibold.ttf.woff2):
 
     Copyright 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name
     'Source'. All Rights Reserved. Source is a trademark of Adobe in the United

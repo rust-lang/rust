@@ -11,8 +11,8 @@ use rustc_errors::{
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::{
-    self as hir, BindingMode, ByRef, ExprKind, HirId, LangItem, Mutability, Pat, PatKind,
-    expr_needs_parens,
+    self as hir, BindingMode, ByRef, ExprKind, HirId, LangItem, Mutability, Pat, PatExpr,
+    PatExprKind, PatKind, expr_needs_parens,
 };
 use rustc_infer::infer;
 use rustc_middle::traits::PatternOriginExpr;
@@ -230,10 +230,19 @@ enum InheritedRefMatchRule {
     /// underlying type is not a reference type, the inherited reference will be consumed.
     EatInner,
     /// When the underlying type is a reference type, reference patterns consume both layers of
-    /// reference, i.e. they both reset the binding mode and consume the reference type. Reference
-    /// patterns are not permitted when there is no underlying reference type, i.e. they can't eat
-    /// only an inherited reference. This is the current stable Rust behavior.
-    EatBoth,
+    /// reference, i.e. they both reset the binding mode and consume the reference type.
+    EatBoth {
+        /// If `true`, an inherited reference will be considered when determining whether a reference
+        /// pattern matches a given type:
+        /// - If the underlying type is not a reference, a reference pattern may eat the inherited reference;
+        /// - If the underlying type is a reference, a reference pattern matches if it can eat either one
+        ///    of the underlying and inherited references. E.g. a `&mut` pattern is allowed if either the
+        ///    underlying type is `&mut` or the inherited reference is `&mut`.
+        /// If `false`, a reference pattern is only matched against the underlying type.
+        /// This is `false` for stable Rust and `true` for both the `ref_pat_eat_one_layer_2024` and
+        /// `ref_pat_eat_one_layer_2024_structural` feature gates.
+        consider_inherited_ref: bool,
+    },
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -243,8 +252,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn downgrade_mut_inside_shared(&self) -> bool {
         // NB: RFC 3627 proposes stabilizing Rule 3 in all editions. If we adopt the same behavior
         // across all editions, this may be removed.
-        self.tcx.features().ref_pat_eat_one_layer_2024()
-            || self.tcx.features().ref_pat_eat_one_layer_2024_structural()
+        self.tcx.features().ref_pat_eat_one_layer_2024_structural()
     }
 
     /// Experimental pattern feature: when do reference patterns match against inherited references?
@@ -260,10 +268,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             } else {
                 // Currently, matching against an inherited ref on edition 2024 is an error.
                 // Use `EatBoth` as a fallback to be similar to stable Rust.
-                InheritedRefMatchRule::EatBoth
+                InheritedRefMatchRule::EatBoth { consider_inherited_ref: false }
             }
         } else {
-            InheritedRefMatchRule::EatBoth
+            InheritedRefMatchRule::EatBoth {
+                consider_inherited_ref: self.tcx.features().ref_pat_eat_one_layer_2024()
+                    || self.tcx.features().ref_pat_eat_one_layer_2024_structural(),
+            }
         }
     }
 
@@ -312,9 +323,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_pat(&self, pat: &'tcx Pat<'tcx>, expected: Ty<'tcx>, pat_info: PatInfo<'_, 'tcx>) {
         let PatInfo { binding_mode, max_ref_mutbl, top_info: ti, current_depth, .. } = pat_info;
 
-        let path_res = match &pat.kind {
-            PatKind::Path(qpath) => {
-                Some(self.resolve_ty_and_res_fully_qualified_call(qpath, pat.hir_id, pat.span))
+        let path_res = match pat.kind {
+            PatKind::Expr(PatExpr { kind: PatExprKind::Path(qpath), hir_id, span }) => {
+                Some(self.resolve_ty_and_res_fully_qualified_call(qpath, *hir_id, *span))
             }
             _ => None,
         };
@@ -333,6 +344,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             PatKind::Wild | PatKind::Err(_) => expected,
             // We allow any type here; we ensure that the type is uninhabited during match checking.
             PatKind::Never => expected,
+            PatKind::Expr(PatExpr { kind: PatExprKind::Path(qpath), hir_id, span }) => {
+                let ty = self.check_pat_path(
+                    *hir_id,
+                    pat.hir_id,
+                    *span,
+                    qpath,
+                    path_res.unwrap(),
+                    expected,
+                    ti,
+                );
+                self.write_ty(*hir_id, ty);
+                ty
+            }
             PatKind::Expr(lt) => self.check_pat_lit(pat.span, lt, expected, ti),
             PatKind::Range(lhs, rhs, _) => self.check_pat_range(pat.span, lhs, rhs, expected, ti),
             PatKind::Binding(ba, var_id, ident, sub) => {
@@ -340,9 +364,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             PatKind::TupleStruct(ref qpath, subpats, ddpos) => {
                 self.check_pat_tuple_struct(pat, qpath, subpats, ddpos, expected, pat_info)
-            }
-            PatKind::Path(ref qpath) => {
-                self.check_pat_path(pat.hir_id, pat.span, qpath, path_res.unwrap(), expected, ti)
             }
             PatKind::Struct(ref qpath, fields, has_rest_pat) => {
                 self.check_pat_struct(pat, qpath, fields, has_rest_pat, expected, pat_info)
@@ -425,7 +446,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         max_ref_mutbl: MutblCap,
     ) -> (Ty<'tcx>, ByRef, MutblCap) {
         #[cfg(debug_assertions)]
-        if def_br == ByRef::Yes(Mutability::Mut) && max_ref_mutbl != MutblCap::Mut {
+        if def_br == ByRef::Yes(Mutability::Mut)
+            && max_ref_mutbl != MutblCap::Mut
+            && self.downgrade_mut_inside_shared()
+        {
             span_bug!(pat.span, "Pattern mutability cap violated!");
         }
         match adjust_mode {
@@ -456,16 +480,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | PatKind::Slice(..) => AdjustMode::Peel,
             // A never pattern behaves somewhat like a literal or unit variant.
             PatKind::Never => AdjustMode::Peel,
-            // String and byte-string literals result in types `&str` and `&[u8]` respectively.
-            // All other literals result in non-reference types.
-            // As a result, we allow `if let 0 = &&0 {}` but not `if let "foo" = &&"foo" {}`.
-            //
-            // Call `resolve_vars_if_possible` here for inline const blocks.
-            PatKind::Expr(lt) => match self.resolve_vars_if_possible(self.check_pat_expr_unadjusted(lt)).kind() {
-                ty::Ref(..) => AdjustMode::Pass,
-                _ => AdjustMode::Peel,
-            },
-            PatKind::Path(_) => match opt_path_res.unwrap() {
+            PatKind::Expr(PatExpr { kind: PatExprKind::Path(_), .. }) => match opt_path_res.unwrap() {
                 // These constants can be of a reference type, e.g. `const X: &u8 = &0;`.
                 // Peeling the reference types too early will cause type checking failures.
                 // Although it would be possible to *also* peel the types of the constants too.
@@ -476,6 +491,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // a reference type wherefore peeling doesn't give up any expressiveness.
                 _ => AdjustMode::Peel,
             },
+
+            // String and byte-string literals result in types `&str` and `&[u8]` respectively.
+            // All other literals result in non-reference types.
+            // As a result, we allow `if let 0 = &&0 {}` but not `if let "foo" = &&"foo" {}`.
+            //
+            // Call `resolve_vars_if_possible` here for inline const blocks.
+            PatKind::Expr(lt) => match self.resolve_vars_if_possible(self.check_pat_expr_unadjusted(lt)).kind() {
+                ty::Ref(..) => AdjustMode::Pass,
+                _ => AdjustMode::Peel,
+            },
+
             // Ref patterns are complicated, we handle them in `check_pat_ref`.
             PatKind::Ref(..) => AdjustMode::Pass,
             // A `_` pattern works with any expected type, so there's no need to do anything.
@@ -556,8 +582,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn check_pat_expr_unadjusted(&self, lt: &'tcx hir::PatExpr<'tcx>) -> Ty<'tcx> {
         let ty = match &lt.kind {
-            rustc_hir::PatExprKind::Lit { lit, .. } => {
-                self.check_expr_lit(lit, Expectation::NoExpectation)
+            rustc_hir::PatExprKind::Lit { lit, negated } => {
+                let ty = self.check_expr_lit(lit, Expectation::NoExpectation);
+                if *negated {
+                    self.register_bound(
+                        ty,
+                        self.tcx.require_lang_item(LangItem::Neg, Some(lt.span)),
+                        ObligationCause::dummy_with_span(lt.span),
+                    );
+                }
+                ty
             }
             rustc_hir::PatExprKind::ConstBlock(c) => {
                 self.check_expr_const_block(c, Expectation::NoExpectation)
@@ -790,7 +824,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Determine the binding mode...
         let bm = match user_bind_annot {
-            BindingMode(ByRef::No, Mutability::Mut) if matches!(def_br, ByRef::Yes(_)) => {
+            BindingMode(ByRef::No, Mutability::Mut) if let ByRef::Yes(def_br_mutbl) = def_br => {
                 // Only mention the experimental `mut_ref` feature if if we're in edition 2024 and
                 // using other experimental matching features compatible with it.
                 if pat.span.at_least_rust_2024()
@@ -812,22 +846,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // `mut` resets the binding mode on edition <= 2021
                     self.add_rust_2024_migration_desugared_pat(
                         pat_info.top_info.hir_id,
-                        pat.span,
-                        ident.span,
-                        "requires binding by-value, but the implicit default is by-reference",
+                        pat,
+                        't', // last char of `mut`
+                        def_br_mutbl,
                     );
                     BindingMode(ByRef::No, Mutability::Mut)
                 }
             }
             BindingMode(ByRef::No, mutbl) => BindingMode(def_br, mutbl),
-            BindingMode(ByRef::Yes(_), _) => {
-                if matches!(def_br, ByRef::Yes(_)) {
+            BindingMode(ByRef::Yes(user_br_mutbl), _) => {
+                if let ByRef::Yes(def_br_mutbl) = def_br {
                     // `ref`/`ref mut` overrides the binding mode on edition <= 2021
                     self.add_rust_2024_migration_desugared_pat(
                         pat_info.top_info.hir_id,
-                        pat.span,
-                        ident.span,
-                        "cannot override to bind by-reference when that is the implicit default",
+                        pat,
+                        match user_br_mutbl {
+                            Mutability::Not => 'f', // last char of `ref`
+                            Mutability::Mut => 't', // last char of `ref mut`
+                        },
+                        def_br_mutbl,
                     );
                 }
                 user_bind_annot
@@ -909,7 +946,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let var_ty = self.resolve_vars_if_possible(var_ty);
             let msg = format!("first introduced with type `{var_ty}` here");
             err.span_label(hir.span(var_id), msg);
-            let in_match = hir.parent_iter(var_id).any(|(_, n)| {
+            let in_match = self.tcx.hir_parent_iter(var_id).any(|(_, n)| {
                 matches!(
                     n,
                     hir::Node::Expr(hir::Expr {
@@ -1001,7 +1038,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         PatKind::Wild
                         | PatKind::Never
                         | PatKind::Binding(..)
-                        | PatKind::Path(..)
                         | PatKind::Box(..)
                         | PatKind::Deref(_)
                         | PatKind::Ref(..)
@@ -1139,7 +1175,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn check_pat_path(
         &self,
-        hir_id: HirId,
+        path_id: HirId,
+        pat_id_for_diag: HirId,
         span: Span,
         qpath: &hir::QPath<'_>,
         path_resolution: (Res, Option<LoweredTy<'tcx>>, &'tcx [hir::PathSegment<'tcx>]),
@@ -1193,11 +1230,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Type-check the path.
         let (pat_ty, pat_res) =
-            self.instantiate_value_path(segments, opt_ty, res, span, span, hir_id);
+            self.instantiate_value_path(segments, opt_ty, res, span, span, path_id);
         if let Err(err) =
             self.demand_suptype_with_origin(&self.pattern_cause(ti, span), expected, pat_ty)
         {
-            self.emit_bad_pat_path(err, hir_id, span, res, pat_res, pat_ty, segments);
+            self.emit_bad_pat_path(err, pat_id_for_diag, span, res, pat_res, pat_ty, segments);
         }
         pat_ty
     }
@@ -1209,7 +1246,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ident: Ident,
     ) -> bool {
         match opt_def_id {
-            Some(def_id) => match self.tcx.hir().get_if_local(def_id) {
+            Some(def_id) => match self.tcx.hir_get_if_local(def_id) {
                 Some(hir::Node::Item(hir::Item {
                     kind: hir::ItemKind::Const(_, _, body_id),
                     ..
@@ -2316,22 +2353,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // (RFC 3627, Rule 5). If we implement a pattern typing ruleset with Rule 4E
                         // but not Rule 5, we'll need to check that here.
                         debug_assert!(ref_pat_matches_mut_ref);
-                        let err_msg = "mismatched types";
-                        let err = if let Some(span) = pat_prefix_span {
-                            let mut err = self.dcx().struct_span_err(span, err_msg);
-                            err.code(E0308);
-                            err.note("cannot match inherited `&` with `&mut` pattern");
-                            err.span_suggestion_verbose(
-                                span,
-                                "replace this `&mut` pattern with `&`",
-                                "&",
-                                Applicability::MachineApplicable,
-                            );
-                            err
-                        } else {
-                            self.dcx().struct_span_err(pat.span, err_msg)
-                        };
-                        err.emit();
+                        self.error_inherited_ref_mutability_mismatch(pat, pat_prefix_span);
                     }
 
                     pat_info.binding_mode = ByRef::No;
@@ -2340,38 +2362,92 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return expected;
                 }
                 InheritedRefMatchRule::EatInner => {
-                    if let ty::Ref(_, _, r_mutbl) = *expected.kind() {
+                    if let ty::Ref(_, _, r_mutbl) = *expected.kind()
+                        && pat_mutbl <= r_mutbl
+                    {
                         // Match against the reference type; don't consume the inherited ref.
-                        pat_info.binding_mode = pat_info.binding_mode.cap_ref_mutability(r_mutbl);
+                        // NB: The check for compatible pattern and ref type mutability assumes that
+                        // `&` patterns can match against mutable references (RFC 3627, Rule 5). If
+                        // we implement a pattern typing ruleset with Rule 4 (including the fallback
+                        // to matching the inherited ref when the inner ref can't match) but not
+                        // Rule 5, we'll need to check that here.
+                        debug_assert!(ref_pat_matches_mut_ref);
+                        // NB: For RFC 3627's Rule 3, we limit the default binding mode's ref
+                        // mutability to `pat_info.max_ref_mutbl`. If we implement a pattern typing
+                        // ruleset with Rule 4 but not Rule 3, we'll need to check that here.
+                        debug_assert!(self.downgrade_mut_inside_shared());
+                        let mutbl_cap = cmp::min(r_mutbl, pat_info.max_ref_mutbl.as_mutbl());
+                        pat_info.binding_mode = pat_info.binding_mode.cap_ref_mutability(mutbl_cap);
                     } else {
-                        // The expected type isn't a reference, so match against the inherited ref.
+                        // The reference pattern can't match against the expected type, so try
+                        // matching against the inherited ref instead.
                         if pat_mutbl > inh_mut {
-                            // We can't match an inherited shared reference with `&mut`. This will
-                            // be a type error later, since we're matching a reference pattern
-                            // against a non-reference type.
+                            // We can't match an inherited shared reference with `&mut`.
                             // NB: This assumes that `&` patterns can match against mutable
                             // references (RFC 3627, Rule 5). If we implement a pattern typing
                             // ruleset with Rule 4 but not Rule 5, we'll need to check that here.
+                            // FIXME(ref_pat_eat_one_layer_2024_structural): If we already tried
+                            // matching the real reference, the error message should explain that
+                            // falling back to the inherited reference didn't work. This should be
+                            // the same error as the old-Edition version below.
                             debug_assert!(ref_pat_matches_mut_ref);
-                        } else {
-                            pat_info.binding_mode = ByRef::No;
-                            self.typeck_results
-                                .borrow_mut()
-                                .skipped_ref_pats_mut()
-                                .insert(pat.hir_id);
-                            self.check_pat(inner, expected, pat_info);
-                            return expected;
+                            self.error_inherited_ref_mutability_mismatch(pat, pat_prefix_span);
                         }
+
+                        pat_info.binding_mode = ByRef::No;
+                        self.typeck_results.borrow_mut().skipped_ref_pats_mut().insert(pat.hir_id);
+                        self.check_pat(inner, expected, pat_info);
+                        return expected;
                     }
                 }
-                InheritedRefMatchRule::EatBoth => {
+                InheritedRefMatchRule::EatBoth { consider_inherited_ref: true } => {
                     // Reset binding mode on old editions
+                    pat_info.binding_mode = ByRef::No;
+
+                    if let ty::Ref(_, inner_ty, _) = *expected.kind() {
+                        // Consume both the inherited and inner references.
+                        if pat_mutbl.is_mut() && inh_mut.is_mut() {
+                            // As a special case, a `&mut` reference pattern will be able to match
+                            // against a reference type of any mutability if the inherited ref is
+                            // mutable. Since this allows us to match against a shared reference
+                            // type, we refer to this as "falling back" to matching the inherited
+                            // reference, though we consume the real reference as well. We handle
+                            // this here to avoid adding this case to the common logic below.
+                            self.check_pat(inner, inner_ty, pat_info);
+                            return expected;
+                        } else {
+                            // Otherwise, use the common logic below for matching the inner
+                            // reference type.
+                            // FIXME(ref_pat_eat_one_layer_2024_structural): If this results in a
+                            // mutability mismatch, the error message should explain that falling
+                            // back to the inherited reference didn't work. This should be the same
+                            // error as the Edition 2024 version above.
+                        }
+                    } else {
+                        // The expected type isn't a reference type, so only match against the
+                        // inherited reference.
+                        if pat_mutbl > inh_mut {
+                            // We can't match a lone inherited shared reference with `&mut`.
+                            self.error_inherited_ref_mutability_mismatch(pat, pat_prefix_span);
+                        }
+
+                        self.typeck_results.borrow_mut().skipped_ref_pats_mut().insert(pat.hir_id);
+                        self.check_pat(inner, expected, pat_info);
+                        return expected;
+                    }
+                }
+                InheritedRefMatchRule::EatBoth { consider_inherited_ref: false } => {
+                    // Reset binding mode on stable Rust. This will be a type error below if
+                    // `expected` is not a reference type.
                     pat_info.binding_mode = ByRef::No;
                     self.add_rust_2024_migration_desugared_pat(
                         pat_info.top_info.hir_id,
-                        pat.span,
-                        inner.span,
-                        "cannot implicitly match against multiple layers of reference",
+                        pat,
+                        match pat_mutbl {
+                            Mutability::Not => '&', // last char of `&`
+                            Mutability::Mut => 't', // last char of `&mut`
+                        },
+                        inh_mut,
                     )
                 }
             }
@@ -2433,6 +2509,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn new_ref_ty(&self, span: Span, mutbl: Mutability, ty: Ty<'tcx>) -> Ty<'tcx> {
         let region = self.next_region_var(infer::PatternRegion(span));
         Ty::new_ref(self.tcx, region, ty, mutbl)
+    }
+
+    fn error_inherited_ref_mutability_mismatch(
+        &self,
+        pat: &'tcx Pat<'tcx>,
+        pat_prefix_span: Option<Span>,
+    ) -> ErrorGuaranteed {
+        let err_msg = "mismatched types";
+        let err = if let Some(span) = pat_prefix_span {
+            let mut err = self.dcx().struct_span_err(span, err_msg);
+            err.code(E0308);
+            err.note("cannot match inherited `&` with `&mut` pattern");
+            err.span_suggestion_verbose(
+                span,
+                "replace this `&mut` pattern with `&`",
+                "&",
+                Applicability::MachineApplicable,
+            );
+            err
+        } else {
+            self.dcx().struct_span_err(pat.span, err_msg)
+        };
+        err.emit()
     }
 
     fn try_resolve_slice_ty_to_array_ty(
@@ -2738,33 +2837,68 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn add_rust_2024_migration_desugared_pat(
         &self,
         pat_id: HirId,
-        subpat_span: Span,
-        cutoff_span: Span,
-        detailed_label: &str,
+        subpat: &'tcx Pat<'tcx>,
+        final_char: char,
+        def_br_mutbl: Mutability,
     ) {
         // Try to trim the span we're labeling to just the `&` or binding mode that's an issue.
-        // If the subpattern's span is is from an expansion, the emitted label will not be trimmed.
-        let source_map = self.tcx.sess.source_map();
-        let cutoff_span = source_map
-            .span_extend_prev_while(cutoff_span, char::is_whitespace)
-            .unwrap_or(cutoff_span);
-        // Ensure we use the syntax context and thus edition of `subpat_span`; this will be a hard
-        // error if the subpattern is of edition >= 2024.
-        let trimmed_span = subpat_span.until(cutoff_span).with_ctxt(subpat_span.ctxt());
-
-        // Only provide a detailed label if the problematic subpattern isn't from an expansion.
-        // In the case that it's from a macro, we'll add a more detailed note in the emitter.
-        let desc = if subpat_span.from_expansion() {
-            "default binding mode is reset within expansion"
+        let from_expansion = subpat.span.from_expansion();
+        let trimmed_span = if from_expansion {
+            // If the subpattern is from an expansion, highlight the whole macro call instead.
+            subpat.span
         } else {
-            detailed_label
+            let trimmed = self.tcx.sess.source_map().span_through_char(subpat.span, final_char);
+            // The edition of the trimmed span should be the same as `subpat.span`; this will be a
+            // a hard error if the subpattern is of edition >= 2024. We set it manually to be sure:
+            trimmed.with_ctxt(subpat.span.ctxt())
         };
 
-        self.typeck_results
-            .borrow_mut()
-            .rust_2024_migration_desugared_pats_mut()
-            .entry(pat_id)
-            .or_default()
-            .push((trimmed_span, desc.to_owned()));
+        let mut typeck_results = self.typeck_results.borrow_mut();
+        let mut table = typeck_results.rust_2024_migration_desugared_pats_mut();
+        // FIXME(ref_pat_eat_one_layer_2024): The migration diagnostic doesn't know how to track the
+        // default binding mode in the presence of Rule 3 or Rule 5. As a consequence, the labels it
+        // gives for default binding modes are wrong, as well as suggestions based on the default
+        // binding mode. This keeps it from making those suggestions, as doing so could panic.
+        let info = table.entry(pat_id).or_insert_with(|| ty::Rust2024IncompatiblePatInfo {
+            primary_labels: Vec::new(),
+            bad_modifiers: false,
+            bad_ref_pats: false,
+            suggest_eliding_modes: !self.tcx.features().ref_pat_eat_one_layer_2024()
+                && !self.tcx.features().ref_pat_eat_one_layer_2024_structural(),
+        });
+
+        let pat_kind = if let PatKind::Binding(user_bind_annot, _, _, _) = subpat.kind {
+            info.bad_modifiers = true;
+            // If the user-provided binding modifier doesn't match the default binding mode, we'll
+            // need to suggest reference patterns, which can affect other bindings.
+            // For simplicity, we opt to suggest making the pattern fully explicit.
+            info.suggest_eliding_modes &=
+                user_bind_annot == BindingMode(ByRef::Yes(def_br_mutbl), Mutability::Not);
+            "binding modifier"
+        } else {
+            info.bad_ref_pats = true;
+            // For simplicity, we don't try to suggest eliding reference patterns. Thus, we'll
+            // suggest adding them instead, which can affect the types assigned to bindings.
+            // As such, we opt to suggest making the pattern fully explicit.
+            info.suggest_eliding_modes = false;
+            "reference pattern"
+        };
+        // Only provide a detailed label if the problematic subpattern isn't from an expansion.
+        // In the case that it's from a macro, we'll add a more detailed note in the emitter.
+        let primary_label = if from_expansion {
+            // We can't suggest eliding modifiers within expansions.
+            info.suggest_eliding_modes = false;
+            // NB: This wording assumes the only expansions that can produce problematic reference
+            // patterns and bindings are macros. If a desugaring or AST pass is added that can do
+            // so, we may want to inspect the span's source callee or macro backtrace.
+            "occurs within macro expansion".to_owned()
+        } else {
+            let dbm_str = match def_br_mutbl {
+                Mutability::Not => "ref",
+                Mutability::Mut => "ref mut",
+            };
+            format!("{pat_kind} not allowed under `{dbm_str}` default binding mode")
+        };
+        info.primary_labels.push((trimmed_span, primary_label));
     }
 }

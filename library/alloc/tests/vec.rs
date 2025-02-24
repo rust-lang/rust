@@ -1587,9 +1587,7 @@ fn extract_if_complex() {
     }
 }
 
-// FIXME: re-enable emscripten once it can unwind again
 #[test]
-#[cfg(not(target_os = "emscripten"))]
 #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn extract_if_consumed_panic() {
     use std::rc::Rc;
@@ -1640,9 +1638,7 @@ fn extract_if_consumed_panic() {
     }
 }
 
-// FIXME: Re-enable emscripten once it can catch panics
 #[test]
-#[cfg(not(target_os = "emscripten"))]
 #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn extract_if_unconsumed_panic() {
     use std::rc::Rc;

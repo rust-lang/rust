@@ -10,8 +10,8 @@ use rustc_data_structures::unhash::UnhashMap;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{
-    BoundPolarity, GenericBound, Generics, Item, ItemKind, LangItem, Node, Path, PathSegment, PredicateOrigin, QPath,
-    TraitBoundModifiers, TraitItem, TraitRef, Ty, TyKind, WherePredicateKind,
+    AmbigArg, BoundPolarity, GenericBound, Generics, Item, ItemKind, LangItem, Node, Path, PathSegment,
+    PredicateOrigin, QPath, TraitBoundModifiers, TraitItem, TraitRef, Ty, TyKind, WherePredicateKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
@@ -135,7 +135,7 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
                 && let Some(Node::Item(Item {
                     kind: ItemKind::Trait(_, _, _, self_bounds, _),
                     ..
-                })) = cx.tcx.hir().get_if_local(*def_id)
+                })) = cx.tcx.hir_get_if_local(*def_id)
             {
                 if self_bounds_map.is_empty() {
                     for bound in *self_bounds {
@@ -171,7 +171,7 @@ impl<'tcx> LateLintPass<'tcx> for TraitBounds {
         }
     }
 
-    fn check_ty(&mut self, cx: &LateContext<'tcx>, ty: &'tcx Ty<'tcx>) {
+    fn check_ty(&mut self, cx: &LateContext<'tcx>, ty: &'tcx Ty<'tcx, AmbigArg>) {
         if let TyKind::Ref(.., mut_ty) = &ty.kind
             && let TyKind::TraitObject(bounds, ..) = mut_ty.ty.kind
             && bounds.len() > 2

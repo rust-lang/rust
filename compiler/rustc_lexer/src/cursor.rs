@@ -103,4 +103,11 @@ impl<'a> Cursor<'a> {
             self.bump();
         }
     }
+
+    pub(crate) fn eat_until(&mut self, byte: u8) {
+        self.chars = match memchr::memchr(byte, self.as_str().as_bytes()) {
+            Some(index) => self.as_str()[index..].chars(),
+            None => "".chars(),
+        }
+    }
 }

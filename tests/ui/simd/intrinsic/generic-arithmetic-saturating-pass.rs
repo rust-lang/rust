@@ -12,10 +12,12 @@ struct u32x4(pub [u32; 4]);
 #[derive(Copy, Clone)]
 struct I32<const N: usize>([i32; N]);
 
-extern "rust-intrinsic" {
-    fn simd_saturating_add<T>(x: T, y: T) -> T;
-    fn simd_saturating_sub<T>(x: T, y: T) -> T;
-}
+#[rustc_intrinsic]
+unsafe fn simd_saturating_add<T>(x: T, y: T) -> T;
+
+#[rustc_intrinsic]
+unsafe fn simd_saturating_sub<T>(x: T, y: T) -> T;
+
 
 fn main() {
     // unsigned

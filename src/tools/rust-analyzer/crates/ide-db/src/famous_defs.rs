@@ -46,12 +46,24 @@ impl FamousDefs<'_, '_> {
         self.find_trait("core:cmp:Ord")
     }
 
+    pub fn core_convert_FromStr(&self) -> Option<Trait> {
+        self.find_trait("core:str:FromStr")
+    }
+
     pub fn core_convert_From(&self) -> Option<Trait> {
         self.find_trait("core:convert:From")
     }
 
     pub fn core_convert_Into(&self) -> Option<Trait> {
         self.find_trait("core:convert:Into")
+    }
+
+    pub fn core_convert_TryFrom(&self) -> Option<Trait> {
+        self.find_trait("core:convert:TryFrom")
+    }
+
+    pub fn core_convert_TryInto(&self) -> Option<Trait> {
+        self.find_trait("core:convert:TryInto")
     }
 
     pub fn core_convert_Index(&self) -> Option<Trait> {
@@ -130,6 +142,13 @@ impl FamousDefs<'_, '_> {
         self.find_macro("core:unimplemented")
     }
 
+    pub fn core_fmt_Display(&self) -> Option<Trait> {
+        self.find_trait("core:fmt:Display")
+    }
+
+    pub fn alloc_string_ToString(&self) -> Option<Trait> {
+        self.find_trait("alloc:string:ToString")
+    }
     pub fn builtin_crates(&self) -> impl Iterator<Item = Crate> {
         IntoIterator::into_iter([
             self.std(),
@@ -202,14 +221,15 @@ impl FamousDefs<'_, '_> {
         for segment in path {
             module = module.children(db).find_map(|child| {
                 let name = child.name(db)?;
-                if name.eq_ident(segment) {
+                if name.as_str() == segment {
                     Some(child)
                 } else {
                     None
                 }
             })?;
         }
-        let def = module.scope(db, None).into_iter().find(|(name, _def)| name.eq_ident(trait_))?.1;
+        let def =
+            module.scope(db, None).into_iter().find(|(name, _def)| name.as_str() == trait_)?.1;
         Some(def)
     }
 }

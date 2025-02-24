@@ -6,8 +6,9 @@ LL | fn code() -> Impl Display {}
    |
 help: write keyword `impl` in lowercase (notice the capitalization difference)
    |
-LL | fn code() -> impl Display {}
-   |              ~~~~
+LL - fn code() -> Impl Display {}
+LL + fn code() -> impl Display {}
+   |
 
 error: aborting due to 1 previous error
 

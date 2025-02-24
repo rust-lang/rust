@@ -1,6 +1,7 @@
 // Copied from tests/pass/no-std.rs
 
 #![no_std]
+#![no_main]
 
 // Plumbing to let us use `writeln!` to host stdout:
 

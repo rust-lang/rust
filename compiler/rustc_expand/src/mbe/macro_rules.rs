@@ -405,26 +405,35 @@ pub fn compile_declarative_macro(
     // ...quasiquoting this would be nice.
     // These spans won't matter, anyways
     let argument_gram = vec![
-        mbe::TokenTree::Sequence(DelimSpan::dummy(), mbe::SequenceRepetition {
-            tts: vec![
-                mbe::TokenTree::MetaVarDecl(span, lhs_nm, tt_spec),
-                mbe::TokenTree::token(token::FatArrow, span),
-                mbe::TokenTree::MetaVarDecl(span, rhs_nm, tt_spec),
-            ],
-            separator: Some(Token::new(if macro_rules { token::Semi } else { token::Comma }, span)),
-            kleene: mbe::KleeneToken::new(mbe::KleeneOp::OneOrMore, span),
-            num_captures: 2,
-        }),
+        mbe::TokenTree::Sequence(
+            DelimSpan::dummy(),
+            mbe::SequenceRepetition {
+                tts: vec![
+                    mbe::TokenTree::MetaVarDecl(span, lhs_nm, tt_spec),
+                    mbe::TokenTree::token(token::FatArrow, span),
+                    mbe::TokenTree::MetaVarDecl(span, rhs_nm, tt_spec),
+                ],
+                separator: Some(Token::new(
+                    if macro_rules { token::Semi } else { token::Comma },
+                    span,
+                )),
+                kleene: mbe::KleeneToken::new(mbe::KleeneOp::OneOrMore, span),
+                num_captures: 2,
+            },
+        ),
         // to phase into semicolon-termination instead of semicolon-separation
-        mbe::TokenTree::Sequence(DelimSpan::dummy(), mbe::SequenceRepetition {
-            tts: vec![mbe::TokenTree::token(
-                if macro_rules { token::Semi } else { token::Comma },
-                span,
-            )],
-            separator: None,
-            kleene: mbe::KleeneToken::new(mbe::KleeneOp::ZeroOrMore, span),
-            num_captures: 0,
-        }),
+        mbe::TokenTree::Sequence(
+            DelimSpan::dummy(),
+            mbe::SequenceRepetition {
+                tts: vec![mbe::TokenTree::token(
+                    if macro_rules { token::Semi } else { token::Comma },
+                    span,
+                )],
+                separator: None,
+                kleene: mbe::KleeneToken::new(mbe::KleeneOp::ZeroOrMore, span),
+                num_captures: 0,
+            },
+        ),
     ];
     // Convert it into `MatcherLoc` form.
     let argument_gram = mbe::macro_parser::compute_locs(&argument_gram);

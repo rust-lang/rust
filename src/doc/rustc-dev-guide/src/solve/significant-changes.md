@@ -42,7 +42,7 @@ old implementation structurally relates the aliases instead. This enables the
 new solver to stall equality until it is able to normalize the related aliases.
 
 The behavior of the old solver is incomplete and relies on eager normalization
-which replaces ambiguous aliases with inference variables. As this is not
+which replaces ambiguous aliases with inference variables. As this is
 not possible for aliases containing bound variables, the old implementation does
 not handle aliases inside of binders correctly, e.g. [#102048]. See the chapter on
 [normalization] for more details.

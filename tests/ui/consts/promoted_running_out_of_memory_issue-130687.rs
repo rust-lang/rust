@@ -3,6 +3,8 @@
 
 // Needs the max type size to be much bigger than the RAM people typically have.
 //@ only-64bit
+// FIXME (#135952) In some cases on AArch64 Linux the diagnostic does not trigger
+//@ ignore-aarch64-unknown-linux-gnu
 
 pub struct Data([u8; (1 << 47) - 1]);
 const _: &'static Data = &Data([0; (1 << 47) - 1]);

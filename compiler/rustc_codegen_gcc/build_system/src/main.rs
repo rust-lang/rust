@@ -34,11 +34,11 @@ Options:
         --help    : Displays this help message.
 
 Commands:
-        cargo     : Executes a cargo command. 
+        cargo     : Executes a cargo command.
         rustc     : Compiles the program using the GCC compiler.
         clean     : Cleans the build directory, removing all compiled files and artifacts.
         prepare   : Prepares the environment for building, including fetching dependencies and setting up configurations.
-        build     : Compiles the project. 
+        build     : Compiles the project.
         test      : Runs tests for the project.
         info      : Displays information about the build environment and project configuration.
         clone-gcc : Clones the GCC compiler from a specified source.

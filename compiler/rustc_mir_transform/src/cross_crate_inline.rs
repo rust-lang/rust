@@ -69,7 +69,7 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     // Don't do any inference if codegen optimizations are disabled and also MIR inlining is not
     // enabled. This ensures that we do inference even if someone only passes -Zinline-mir,
     // which is less confusing than having to also enable -Copt-level=1.
-    let inliner_will_run = pm::should_run_pass(tcx, &inline::Inline)
+    let inliner_will_run = pm::should_run_pass(tcx, &inline::Inline, pm::Optimizations::Allowed)
         || inline::ForceInline::should_run_pass_for_callee(tcx, def_id.to_def_id());
     if matches!(tcx.sess.opts.optimize, OptLevel::No) && !inliner_will_run {
         return false;

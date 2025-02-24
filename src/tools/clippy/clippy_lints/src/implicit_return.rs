@@ -7,7 +7,6 @@ use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Block, Body, Expr, ExprKind, FnDecl, FnRetTy, HirId};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, SyntaxContext};
@@ -227,7 +226,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitReturn {
     ) {
         if (!matches!(kind, FnKind::Closure) && matches!(decl.output, FnRetTy::DefaultReturn(_)))
             || !span.eq_ctxt(body.value.span)
-            || in_external_macro(cx.sess(), span)
+            || span.in_external_macro(cx.sess().source_map())
         {
             return;
         }

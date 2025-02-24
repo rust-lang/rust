@@ -21,7 +21,7 @@ Creating an env from an arbitrary set of where clauses is usually unnecessary an
 
 Creating an empty environment via `ParamEnv::empty` is almost always wrong. There are very few places where we actually know that the environment should be empty. One of the only places where we do actually know this is after monomorphization, however the `ParamEnv` there should be constructed via `ParamEnv::reveal_all` instead as at this point we should be able to determine the hidden type of opaque types. Codegen/Post-mono is one of the only places that should be using `ParamEnv::reveal_all`.
 
-An additional piece of complexity here is specifying the [`Reveal`][reveal] (see linked docs for explanation of what reveal does) used for the `ParamEnv`. When constructing a param env using the `param_env` query it will have `Reveal::UserFacing`, if `Reveal::All` is desired then the [`tcx.param_env_reveal_all_normalized`][env_reveal_all_normalized] query can be used instead.
+An additional piece of complexity here is specifying the `Reveal` (see linked docs for explanation of what reveal does) used for the `ParamEnv`. When constructing a param env using the `param_env` query it will have `Reveal::UserFacing`, if `Reveal::All` is desired then the [`tcx.param_env_reveal_all_normalized`][env_reveal_all_normalized] query can be used instead.
 
 The `ParamEnv` type has a method [`ParamEnv::with_reveal_all_normalized`][with_reveal_all] which converts an existing `ParamEnv` into one with `Reveal::All` specified. Where possible the previously mentioned query should be preferred as it is more efficient.
 
@@ -38,7 +38,6 @@ The `ParamEnv` type has a method [`ParamEnv::with_reveal_all_normalized`][with_r
 [with_reveal_all]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.ParamEnv.html#method.with_reveal_all_normalized
 [env_reveal_all]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.ParamEnv.html#method.reveal_all
 [env_empty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.ParamEnv.html#method.empty
-[reveal]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/traits/enum.Reveal.html
 [pe]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.ParamEnv.html
 [param_env_query]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/fn_ctxt/struct.FnCtxt.html#structfield.param_env
 [method_pred_entailment]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/check/compare_impl_item/fn.compare_method_predicate_entailment.html

@@ -80,7 +80,7 @@ impl ZipfDistribution {
 
         loop {
             use std::cmp;
-            let u: f64 = hnum + rng.gen::<f64>() * (self.h_integral_x1 - hnum);
+            let u: f64 = hnum + rng.random::<f64>() * (self.h_integral_x1 - hnum);
             // u is uniformly distributed in (h_integral_x1, h_integral_num_elements]
 
             let x: f64 = ZipfDistribution::h_integral_inv(u, self.exponent);
@@ -145,7 +145,7 @@ impl ZipfDistribution {
     }
 }
 
-impl rand::distributions::Distribution<usize> for ZipfDistribution {
+impl rand::distr::Distribution<usize> for ZipfDistribution {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> usize {
         self.next(rng)
     }

@@ -1,7 +1,7 @@
 //@ run-fail
 //@ error-pattern:returned Box<Error> from main()
 //@ failure-status: 1
-//@ ignore-emscripten no processes
+//@ needs-subprocess
 
 use std::io::{Error, ErrorKind};
 

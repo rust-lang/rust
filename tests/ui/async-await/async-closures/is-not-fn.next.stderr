@@ -1,4 +1,4 @@
-error[E0271]: expected `{async closure@is-not-fn.rs:8:14}` to be a closure that returns `()`, but it returns `{async closure body@$DIR/is-not-fn.rs:8:23: 8:25}`
+error[E0271]: expected `{async closure@is-not-fn.rs:8:14}` to return `()`, but it returns `{async closure body@$DIR/is-not-fn.rs:8:23: 8:25}`
   --> $DIR/is-not-fn.rs:8:14
    |
 LL |     needs_fn(async || {});

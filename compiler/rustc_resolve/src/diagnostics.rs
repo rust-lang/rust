@@ -24,6 +24,7 @@ use rustc_session::lint::builtin::{
     MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
 };
 use rustc_session::lint::{AmbiguityErrorDiag, BuiltinLintDiag};
+use rustc_session::utils::was_invoked_from_cargo;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
@@ -676,7 +677,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
                 if could_be_path {
                     let import_suggestions = self.lookup_import_candidates(
-                        Ident::with_dummy_span(name),
+                        name,
                         Namespace::ValueNS,
                         &parent_scope,
                         &|res: Res| {
@@ -800,7 +801,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
                     err.multipart_suggestion(msg, suggestions, applicability);
                 }
-
                 if let Some(ModuleOrUniformRoot::Module(module)) = module
                     && let Some(module) = module.opt_def_id()
                     && let Some(segment) = segment
@@ -990,14 +990,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             VisResolutionError::AncestorOnly(span) => {
                 self.dcx().create_err(errs::AncestorOnly(span))
             }
-            VisResolutionError::FailedToResolve(span, label, suggestion) => {
-                self.into_struct_error(span, ResolutionError::FailedToResolve {
-                    segment: None,
-                    label,
-                    suggestion,
-                    module: None,
-                })
-            }
+            VisResolutionError::FailedToResolve(span, label, suggestion) => self.into_struct_error(
+                span,
+                ResolutionError::FailedToResolve { segment: None, label, suggestion, module: None },
+            ),
             VisResolutionError::ExpectedFound(span, path_str, res) => {
                 self.dcx().create_err(errs::ExpectedModuleFound { span, res, path_str })
             }
@@ -1131,7 +1127,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         });
 
         // Make sure error reporting is deterministic.
-        suggestions.sort_by(|a, b| a.candidate.as_str().partial_cmp(b.candidate.as_str()).unwrap());
+        suggestions.sort_by(|a, b| a.candidate.as_str().cmp(b.candidate.as_str()));
 
         match find_best_match_for_name(
             &suggestions.iter().map(|suggestion| suggestion.candidate).collect::<Vec<Symbol>>(),
@@ -2034,13 +2030,23 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 (format!("`_` is not a valid crate or module name"), None)
             } else if self.tcx.sess.is_rust_2015() {
                 (
-                    format!("you might be missing crate `{ident}`"),
+                    format!("use of unresolved module or unlinked crate `{ident}`"),
                     Some((
                         vec![(
                             self.current_crate_outer_attr_insert_span,
                             format!("extern crate {ident};\n"),
                         )],
-                        format!("consider importing the `{ident}` crate"),
+                        if was_invoked_from_cargo() {
+                            format!(
+                                "if you wanted to use a crate named `{ident}`, use `cargo add {ident}` \
+                             to add it to your `Cargo.toml` and import it in your code",
+                            )
+                        } else {
+                            format!(
+                                "you might be missing a crate named `{ident}`, add it to your \
+                                 project and import it in your code",
+                            )
+                        },
                         Applicability::MaybeIncorrect,
                     )),
                 )
@@ -2219,7 +2225,25 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 let descr = binding.res().descr();
                 (format!("{descr} `{ident}` is not a crate or module"), suggestion)
             } else {
-                (format!("use of undeclared crate or module `{ident}`"), suggestion)
+                let suggestion = if suggestion.is_some() {
+                    suggestion
+                } else if was_invoked_from_cargo() {
+                    Some((
+                        vec![],
+                        format!(
+                            "if you wanted to use a crate named `{ident}`, use `cargo add {ident}` \
+                             to add it to your `Cargo.toml`",
+                        ),
+                        Applicability::MaybeIncorrect,
+                    ))
+                } else {
+                    Some((
+                        vec![],
+                        format!("you might be missing a crate named `{ident}`",),
+                        Applicability::MaybeIncorrect,
+                    ))
+                };
+                (format!("use of unresolved module or unlinked crate `{ident}`"), suggestion)
             }
         }
     }
@@ -2232,14 +2256,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'ra>,
     ) -> Option<(Vec<Segment>, Option<String>)> {
-        match (path.get(0), path.get(1)) {
+        match path[..] {
             // `{{root}}::ident::...` on both editions.
             // On 2015 `{{root}}` is usually added implicitly.
-            (Some(fst), Some(snd))
-                if fst.ident.name == kw::PathRoot && !snd.ident.is_path_segment_keyword() => {}
+            [first, second, ..]
+                if first.ident.name == kw::PathRoot && !second.ident.is_path_segment_keyword() => {}
             // `ident::...` on 2018.
-            (Some(fst), _)
-                if fst.ident.span.at_least_rust_2018() && !fst.ident.is_path_segment_keyword() =>
+            [first, ..]
+                if first.ident.span.at_least_rust_2018()
+                    && !first.ident.is_path_segment_keyword() =>
             {
                 // Insert a placeholder that's later replaced by `self`/`super`/etc.
                 path.insert(0, Segment::from_ident(Ident::empty()));
@@ -2350,7 +2375,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // 2) `std` suggestions before `core` suggestions.
         let mut extern_crate_names =
             self.extern_prelude.keys().map(|ident| ident.name).collect::<Vec<_>>();
-        extern_crate_names.sort_by(|a, b| b.as_str().partial_cmp(a.as_str()).unwrap());
+        extern_crate_names.sort_by(|a, b| b.as_str().cmp(a.as_str()));
 
         for name in extern_crate_names.into_iter() {
             // Replace first ident with a crate name and check if that is valid.

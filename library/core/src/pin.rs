@@ -156,8 +156,8 @@
 //!
 //! In order to implement the second option, we must in some way enforce its key invariant,
 //! *i.e.* prevent the value from being *moved* or otherwise invalidated (you may notice this
-//! sounds an awful lot like the definition of *pinning* a value). There a few ways one might be
-//! able to enforce this invariant in Rust:
+//! sounds an awful lot like the definition of *pinning* a value). There are a few ways one might
+//! be able to enforce this invariant in Rust:
 //!
 //! 1. Offer a wholly `unsafe` API to interact with the object, thus requiring every caller to
 //! uphold the invariant themselves

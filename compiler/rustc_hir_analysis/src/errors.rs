@@ -1,8 +1,10 @@
 //! Errors emitted by `rustc_hir_analysis`.
 
+use rustc_abi::ExternAbi;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level, MultiSpan,
+    Applicability, Diag, DiagCtxtHandle, DiagSymbolList, Diagnostic, EmissionGuarantee, Level,
+    MultiSpan,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
@@ -217,7 +219,7 @@ pub(crate) struct DropImplOnWrongItem {
 pub(crate) enum FieldAlreadyDeclared {
     #[diag(hir_analysis_field_already_declared, code = E0124)]
     NotNested {
-        field_name: Symbol,
+        field_name: Ident,
         #[primary_span]
         #[label]
         span: Span,
@@ -226,7 +228,7 @@ pub(crate) enum FieldAlreadyDeclared {
     },
     #[diag(hir_analysis_field_already_declared_current_nested)]
     CurrentNested {
-        field_name: Symbol,
+        field_name: Ident,
         #[primary_span]
         #[label]
         span: Span,
@@ -239,7 +241,7 @@ pub(crate) enum FieldAlreadyDeclared {
     },
     #[diag(hir_analysis_field_already_declared_previous_nested)]
     PreviousNested {
-        field_name: Symbol,
+        field_name: Ident,
         #[primary_span]
         #[label]
         span: Span,
@@ -252,7 +254,7 @@ pub(crate) enum FieldAlreadyDeclared {
     },
     #[diag(hir_analysis_field_already_declared_both_nested)]
     BothNested {
-        field_name: Symbol,
+        field_name: Ident,
         #[primary_span]
         #[label]
         span: Span,
@@ -418,7 +420,7 @@ pub(crate) struct ValueOfAssociatedStructAlreadySpecified {
 pub(crate) struct UnconstrainedOpaqueType {
     #[primary_span]
     pub span: Span,
-    pub name: Symbol,
+    pub name: Ident,
     pub what: &'static str,
 }
 
@@ -646,10 +648,11 @@ pub(crate) struct MainFunctionGenericParameters {
 
 #[derive(Diagnostic)]
 #[diag(hir_analysis_variadic_function_compatible_convention, code = E0045)]
-pub(crate) struct VariadicFunctionCompatibleConvention {
+pub(crate) struct VariadicFunctionCompatibleConvention<'a> {
     #[primary_span]
     #[label]
     pub span: Span,
+    pub conventions: &'a str,
 }
 
 #[derive(Diagnostic)]
@@ -802,7 +805,7 @@ pub(crate) struct EnumDiscriminantOverflowed {
     #[label]
     pub span: Span,
     pub discr: String,
-    pub item_name: Symbol,
+    pub item_name: Ident,
     pub wrapped_discr: String,
 }
 
@@ -893,7 +896,7 @@ pub(crate) enum ImplNotMarkedDefault {
         span: Span,
         #[label(hir_analysis_ok_label)]
         ok_label: Span,
-        ident: Symbol,
+        ident: Ident,
     },
     #[diag(hir_analysis_impl_not_marked_default_err, code = E0520)]
     #[note]
@@ -901,7 +904,7 @@ pub(crate) enum ImplNotMarkedDefault {
         #[primary_span]
         span: Span,
         cname: Symbol,
-        ident: Symbol,
+        ident: Ident,
     },
 }
 
@@ -977,7 +980,7 @@ pub(crate) struct MissingTraitItemUnstable {
     pub some_note: bool,
     #[note(hir_analysis_none_note)]
     pub none_note: bool,
-    pub missing_item_name: Symbol,
+    pub missing_item_name: Ident,
     pub feature: Symbol,
     pub reason: String,
 }
@@ -1181,6 +1184,42 @@ pub(crate) struct DispatchFromDynRepr {
 }
 
 #[derive(Diagnostic)]
+#[diag(hir_analysis_coerce_pointee_not_struct, code = E0802)]
+pub(crate) struct CoercePointeeNotStruct {
+    #[primary_span]
+    pub span: Span,
+    pub kind: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_coerce_pointee_not_concrete_ty, code = E0802)]
+pub(crate) struct CoercePointeeNotConcreteType {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_coerce_pointee_no_user_validity_assertion, code = E0802)]
+pub(crate) struct CoercePointeeNoUserValidityAssertion {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_coerce_pointee_not_transparent, code = E0802)]
+pub(crate) struct CoercePointeeNotTransparent {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_coerce_pointee_no_field, code = E0802)]
+pub(crate) struct CoercePointeeNoField {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(hir_analysis_inherent_ty_outside_relevant, code = E0390)]
 #[help]
 pub(crate) struct InherentTyOutsideRelevant {
@@ -1249,7 +1288,7 @@ pub(crate) struct InherentNominal {
 pub(crate) struct DispatchFromDynZST<'a> {
     #[primary_span]
     pub span: Span,
-    pub name: Symbol,
+    pub name: Ident,
     pub ty: Ty<'a>,
 }
 
@@ -1378,6 +1417,15 @@ pub(crate) struct CrossCrateTraitsDefined {
     pub traits: String,
 }
 
+#[derive(Diagnostic)]
+#[diag(hir_analysis_no_variant_named, code = E0599)]
+pub struct NoVariantNamed<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub ident: Ident,
+    pub ty: Ty<'tcx>,
+}
+
 // FIXME(fmease): Deduplicate:
 
 #[derive(Diagnostic)]
@@ -1389,7 +1437,7 @@ pub(crate) struct TyParamFirstLocal<'tcx> {
     pub span: Span,
     #[note(hir_analysis_case_note)]
     pub note: (),
-    pub param: Symbol,
+    pub param: Ident,
     pub local_type: Ty<'tcx>,
 }
 
@@ -1401,7 +1449,7 @@ pub(crate) struct TyParamFirstLocalLint<'tcx> {
     pub span: Span,
     #[note(hir_analysis_case_note)]
     pub note: (),
-    pub param: Symbol,
+    pub param: Ident,
     pub local_type: Ty<'tcx>,
 }
 
@@ -1414,7 +1462,7 @@ pub(crate) struct TyParamSome {
     pub span: Span,
     #[note(hir_analysis_only_note)]
     pub note: (),
-    pub param: Symbol,
+    pub param: Ident,
 }
 
 #[derive(LintDiagnostic)]
@@ -1425,7 +1473,7 @@ pub(crate) struct TyParamSomeLint {
     pub span: Span,
     #[note(hir_analysis_only_note)]
     pub note: (),
-    pub param: Symbol,
+    pub param: Ident,
 }
 
 #[derive(Diagnostic)]
@@ -1533,7 +1581,7 @@ pub(crate) struct UnsupportedDelegation<'a> {
 pub(crate) struct MethodShouldReturnFuture {
     #[primary_span]
     pub span: Span,
-    pub method_name: Symbol,
+    pub method_name: Ident,
     #[note]
     pub trait_item_span: Option<Span>,
 }
@@ -1585,7 +1633,7 @@ pub(crate) struct UnconstrainedGenericParameter {
     #[primary_span]
     #[label]
     pub span: Span,
-    pub param_name: Symbol,
+    pub param_name: Ident,
     pub param_def_kind: &'static str,
     #[note(hir_analysis_const_param_note)]
     pub const_param_note: bool,
@@ -1603,13 +1651,6 @@ pub(crate) struct OpaqueCapturesHigherRankedLifetime {
     #[note]
     pub decl_span: Span,
     pub bad_place: &'static str,
-}
-
-#[derive(Diagnostic)]
-#[diag(hir_analysis_pattern_type_non_const_range)]
-pub(crate) struct NonConstRange {
-    #[primary_span]
-    pub span: Span,
 }
 
 #[derive(Subdiagnostic)]
@@ -1660,7 +1701,7 @@ pub(crate) struct CmseInputsStackSpill {
     #[label]
     pub span: Span,
     pub plural: bool,
-    pub abi_name: &'static str,
+    pub abi: ExternAbi,
 }
 
 #[derive(Diagnostic)]
@@ -1671,7 +1712,7 @@ pub(crate) struct CmseOutputStackSpill {
     #[primary_span]
     #[label]
     pub span: Span,
-    pub abi_name: &'static str,
+    pub abi: ExternAbi,
 }
 
 #[derive(Diagnostic)]
@@ -1701,4 +1742,29 @@ pub(crate) struct RegisterTypeUnstable<'a> {
     #[primary_span]
     pub span: Span,
     pub ty: Ty<'a>,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(hir_analysis_supertrait_item_shadowing)]
+pub(crate) struct SupertraitItemShadowing {
+    pub item: Symbol,
+    pub subtrait: Symbol,
+    #[subdiagnostic]
+    pub shadowee: SupertraitItemShadowee,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum SupertraitItemShadowee {
+    #[note(hir_analysis_supertrait_item_shadowee)]
+    Labeled {
+        #[primary_span]
+        span: Span,
+        supertrait: Symbol,
+    },
+    #[note(hir_analysis_supertrait_item_multiple_shadowee)]
+    Several {
+        #[primary_span]
+        spans: MultiSpan,
+        traits: DiagSymbolList,
+    },
 }

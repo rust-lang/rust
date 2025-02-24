@@ -1,7 +1,8 @@
-use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
+
+use crate::patch::MirPatch;
 
 pub(super) struct Subtyper;
 
@@ -60,5 +61,9 @@ impl<'tcx> crate::MirPass<'tcx> for Subtyper {
             checker.visit_basic_block_data(bb, data);
         }
         checker.patcher.apply(body);
+    }
+
+    fn is_required(&self) -> bool {
+        true
     }
 }

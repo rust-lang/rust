@@ -58,7 +58,7 @@ pub(super) fn check<'tcx>(
             if ty.is_str() && can_be_static_str(cx, arg) {
                 return false;
             }
-        };
+        }
         true
     }
 

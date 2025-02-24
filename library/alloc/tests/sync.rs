@@ -128,6 +128,7 @@ fn try_unwrap() {
 }
 
 #[test]
+#[cfg_attr(any(target_os = "emscripten", target_os = "wasi"), ignore)] // no threads
 fn into_inner() {
     for _ in 0..100
     // ^ Increase chances of hitting potential race conditions

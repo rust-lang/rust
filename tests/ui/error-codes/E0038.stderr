@@ -5,7 +5,7 @@ LL | fn call_foo(x: Box<dyn Trait>) {
    |                    ^^^^^^^^^ `Trait` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/E0038.rs:2:22
    |
 LL | trait Trait {
@@ -21,7 +21,7 @@ LL |     let y = x.foo();
    |             ^^^^^^^ `Trait` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/E0038.rs:2:22
    |
 LL | trait Trait {

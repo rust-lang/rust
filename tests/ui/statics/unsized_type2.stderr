@@ -11,6 +11,12 @@ note: required because it appears within the type `Foo`
 LL | pub struct Foo {
    |            ^^^
 
+error[E0308]: mismatched types
+  --> $DIR/unsized_type2.rs:14:45
+   |
+LL | pub static WITH_ERROR: Foo = Foo { version: 0 };
+   |                                             ^ expected `str`, found integer
+
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/unsized_type2.rs:14:30
    |
@@ -23,13 +29,7 @@ note: required because it appears within the type `Foo`
    |
 LL | pub struct Foo {
    |            ^^^
-   = note: constant expressions must have a statically known size
-
-error[E0308]: mismatched types
-  --> $DIR/unsized_type2.rs:14:45
-   |
-LL | pub static WITH_ERROR: Foo = Foo { version: 0 };
-   |                                             ^ expected `str`, found integer
+   = note: structs must have a statically known size to be initialized
 
 error: aborting due to 3 previous errors
 

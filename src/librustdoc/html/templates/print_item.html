@@ -1,13 +1,13 @@
 <div class="main-heading">
     {% if !path_components.is_empty() %}
-    <span class="rustdoc-breadcrumbs">
+    <div class="rustdoc-breadcrumbs">
         {% for (i, component) in path_components.iter().enumerate() %}
             {% if i != 0 %}
                 ::<wbr>
             {% endif %}
             <a href="{{component.path|safe}}index.html">{{component.name}}</a>
         {% endfor %}
-    </span>
+    </div>
     {% endif %}
     <h1>
         {{typ}}

@@ -25,7 +25,7 @@ pub(crate) struct TerseFormatter<T> {
 }
 
 impl<T: Write> TerseFormatter<T> {
-    pub fn new(
+    pub(crate) fn new(
         out: OutputLocation<T>,
         use_color: bool,
         max_name_len: usize,
@@ -42,11 +42,11 @@ impl<T: Write> TerseFormatter<T> {
         }
     }
 
-    pub fn write_ok(&mut self) -> io::Result<()> {
+    pub(crate) fn write_ok(&mut self) -> io::Result<()> {
         self.write_short_result(".", term::color::GREEN)
     }
 
-    pub fn write_failed(&mut self, name: &str) -> io::Result<()> {
+    pub(crate) fn write_failed(&mut self, name: &str) -> io::Result<()> {
         // Put failed tests on their own line and include the test name, so that it's faster
         // to see which test failed without having to wait for them all to run.
 
@@ -62,15 +62,15 @@ impl<T: Write> TerseFormatter<T> {
         self.write_plain("\n")
     }
 
-    pub fn write_ignored(&mut self) -> io::Result<()> {
+    pub(crate) fn write_ignored(&mut self) -> io::Result<()> {
         self.write_short_result("i", term::color::YELLOW)
     }
 
-    pub fn write_bench(&mut self) -> io::Result<()> {
+    pub(crate) fn write_bench(&mut self) -> io::Result<()> {
         self.write_pretty("bench", term::color::CYAN)
     }
 
-    pub fn write_short_result(
+    pub(crate) fn write_short_result(
         &mut self,
         result: &str,
         color: term::color::Color,
@@ -95,7 +95,7 @@ impl<T: Write> TerseFormatter<T> {
         Ok(())
     }
 
-    pub fn write_pretty(&mut self, word: &str, color: term::color::Color) -> io::Result<()> {
+    pub(crate) fn write_pretty(&mut self, word: &str, color: term::color::Color) -> io::Result<()> {
         match self.out {
             OutputLocation::Pretty(ref mut term) => {
                 if self.use_color {
@@ -114,13 +114,13 @@ impl<T: Write> TerseFormatter<T> {
         }
     }
 
-    pub fn write_plain<S: AsRef<str>>(&mut self, s: S) -> io::Result<()> {
+    pub(crate) fn write_plain<S: AsRef<str>>(&mut self, s: S) -> io::Result<()> {
         let s = s.as_ref();
         self.out.write_all(s.as_bytes())?;
         self.out.flush()
     }
 
-    pub fn write_outputs(&mut self, state: &ConsoleTestState) -> io::Result<()> {
+    pub(crate) fn write_outputs(&mut self, state: &ConsoleTestState) -> io::Result<()> {
         self.write_plain("\nsuccesses:\n")?;
         let mut successes = Vec::new();
         let mut stdouts = String::new();
@@ -146,7 +146,7 @@ impl<T: Write> TerseFormatter<T> {
         Ok(())
     }
 
-    pub fn write_failures(&mut self, state: &ConsoleTestState) -> io::Result<()> {
+    pub(crate) fn write_failures(&mut self, state: &ConsoleTestState) -> io::Result<()> {
         self.write_plain("\nfailures:\n")?;
         let mut failures = Vec::new();
         let mut fail_out = String::new();

@@ -7,8 +7,7 @@ fn main() -> () {
     let mut _5: u32;
     let mut _6: *mut usize;
     let _7: usize;
-    let mut _8: usize;
-    let mut _9: bool;
+    let mut _8: bool;
     scope 1 {
         debug x => _1;
         let mut _2: usize;
@@ -41,9 +40,8 @@ fn main() -> () {
         StorageDead(_6);
         StorageLive(_7);
         _7 = copy _2;
-        _8 = Len(_1);
-        _9 = Lt(copy _7, copy _8);
-        assert(move _9, "index out of bounds: the length is {} but the index is {}", move _8, copy _7) -> [success: bb2, unwind continue];
+        _8 = Lt(copy _7, const 3_usize);
+        assert(move _8, "index out of bounds: the length is {} but the index is {}", const 3_usize, copy _7) -> [success: bb2, unwind continue];
     }
 
     bb2: {

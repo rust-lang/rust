@@ -712,8 +712,8 @@ impl String {
         }
     }
 
-    /// Decode a UTF-16–encoded vector `v` into a `String`, returning [`Err`]
-    /// if `v` contains any invalid data.
+    /// Decode a native endian UTF-16–encoded vector `v` into a `String`,
+    /// returning [`Err`] if `v` contains any invalid data.
     ///
     /// # Examples
     ///
@@ -745,8 +745,8 @@ impl String {
         Ok(ret)
     }
 
-    /// Decode a UTF-16–encoded slice `v` into a `String`, replacing
-    /// invalid data with [the replacement character (`U+FFFD`)][U+FFFD].
+    /// Decode a native endian UTF-16–encoded slice `v` into a `String`,
+    /// replacing invalid data with [the replacement character (`U+FFFD`)][U+FFFD].
     ///
     /// Unlike [`from_utf8_lossy`] which returns a [`Cow<'a, str>`],
     /// `from_utf16_lossy` returns a `String` since the UTF-16 to UTF-8
@@ -777,8 +777,8 @@ impl String {
             .collect()
     }
 
-    /// Decode a UTF-16LE–encoded vector `v` into a `String`, returning [`Err`]
-    /// if `v` contains any invalid data.
+    /// Decode a UTF-16LE–encoded vector `v` into a `String`,
+    /// returning [`Err`] if `v` contains any invalid data.
     ///
     /// # Examples
     ///
@@ -852,8 +852,8 @@ impl String {
         }
     }
 
-    /// Decode a UTF-16BE–encoded vector `v` into a `String`, returning [`Err`]
-    /// if `v` contains any invalid data.
+    /// Decode a UTF-16BE–encoded vector `v` into a `String`,
+    /// returning [`Err`] if `v` contains any invalid data.
     ///
     /// # Examples
     ///
@@ -1419,7 +1419,9 @@ impl String {
     pub fn push(&mut self, ch: char) {
         match ch.len_utf8() {
             1 => self.vec.push(ch as u8),
-            _ => self.vec.extend_from_slice(ch.encode_utf8(&mut [0; 4]).as_bytes()),
+            _ => {
+                self.vec.extend_from_slice(ch.encode_utf8(&mut [0; char::MAX_LEN_UTF8]).as_bytes())
+            }
         }
     }
 
@@ -1716,7 +1718,7 @@ impl String {
     #[rustc_confusables("set")]
     pub fn insert(&mut self, idx: usize, ch: char) {
         assert!(self.is_char_boundary(idx));
-        let mut bits = [0; 4];
+        let mut bits = [0; char::MAX_LEN_UTF8];
         let bits = ch.encode_utf8(&mut bits).as_bytes();
 
         unsafe {
@@ -2442,6 +2444,32 @@ impl<'a> Extend<Cow<'a, str>> for String {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
+#[unstable(feature = "ascii_char", issue = "110998")]
+impl Extend<core::ascii::Char> for String {
+    fn extend<I: IntoIterator<Item = core::ascii::Char>>(&mut self, iter: I) {
+        self.vec.extend(iter.into_iter().map(|c| c.to_u8()));
+    }
+
+    #[inline]
+    fn extend_one(&mut self, c: core::ascii::Char) {
+        self.vec.push(c.to_u8());
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[unstable(feature = "ascii_char", issue = "110998")]
+impl<'a> Extend<&'a core::ascii::Char> for String {
+    fn extend<I: IntoIterator<Item = &'a core::ascii::Char>>(&mut self, iter: I) {
+        self.extend(iter.into_iter().cloned());
+    }
+
+    #[inline]
+    fn extend_one(&mut self, c: &'a core::ascii::Char) {
+        self.vec.push(c.to_u8());
+    }
+}
+
 /// A convenience impl that delegates to the impl for `&str`.
 ///
 /// # Examples
@@ -2771,7 +2799,7 @@ impl SpecToString for core::ascii::Char {
 impl SpecToString for char {
     #[inline]
     fn spec_to_string(&self) -> String {
-        String::from(self.encode_utf8(&mut [0; 4]))
+        String::from(self.encode_utf8(&mut [0; char::MAX_LEN_UTF8]))
     }
 }
 
@@ -3126,6 +3154,24 @@ impl From<String> for Vec<u8> {
     /// ```
     fn from(string: String) -> Vec<u8> {
         string.into_bytes()
+    }
+}
+
+#[stable(feature = "try_from_vec_u8_for_string", since = "CURRENT_RUSTC_VERSION")]
+impl TryFrom<Vec<u8>> for String {
+    type Error = FromUtf8Error;
+    /// Converts the given [`Vec<u8>`] into a  [`String`] if it contains valid UTF-8 data.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let s1 = b"hello world".to_vec();
+    /// let v1 = String::try_from(s1).unwrap();
+    /// assert_eq!(v1, "hello world");
+    ///
+    /// ```
+    fn try_from(bytes: Vec<u8>) -> Result<Self, Self::Error> {
+        Self::from_utf8(bytes)
     }
 }
 

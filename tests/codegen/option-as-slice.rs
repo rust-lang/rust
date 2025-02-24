@@ -1,4 +1,4 @@
-//@ compile-flags: -O -Z randomize-layout=no
+//@ compile-flags: -Copt-level=3 -Z randomize-layout=no
 //@ only-x86_64
 #![crate_type = "lib"]
 

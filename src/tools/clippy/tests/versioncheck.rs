@@ -88,5 +88,5 @@ fn check_that_clippy_has_the_same_major_version_as_rustc() {
         _ => {
             panic!("Failed to parse rustc version: {vsplit:?}");
         },
-    };
+    }
 }

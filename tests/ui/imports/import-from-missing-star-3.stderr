@@ -2,9 +2,9 @@ error[E0432]: unresolved import `spam`
   --> $DIR/import-from-missing-star-3.rs:2:9
    |
 LL |     use spam::*;
-   |         ^^^^ you might be missing crate `spam`
+   |         ^^^^ use of unresolved module or unlinked crate `spam`
    |
-help: consider importing the `spam` crate
+help: you might be missing a crate named `spam`, add it to your project and import it in your code
    |
 LL + extern crate spam;
    |
@@ -13,9 +13,9 @@ error[E0432]: unresolved import `spam`
   --> $DIR/import-from-missing-star-3.rs:27:13
    |
 LL |         use spam::*;
-   |             ^^^^ you might be missing crate `spam`
+   |             ^^^^ use of unresolved module or unlinked crate `spam`
    |
-help: consider importing the `spam` crate
+help: you might be missing a crate named `spam`, add it to your project and import it in your code
    |
 LL + extern crate spam;
    |

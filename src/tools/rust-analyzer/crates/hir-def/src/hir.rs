@@ -19,7 +19,7 @@ use std::fmt;
 
 use hir_expand::{name::Name, MacroDefId};
 use intern::Symbol;
-use la_arena::{Idx, RawIdx};
+use la_arena::Idx;
 use rustc_apfloat::ieee::{Half as f16, Quad as f128};
 use syntax::ast;
 use type_ref::TypeRefId;
@@ -37,13 +37,10 @@ pub type BindingId = Idx<Binding>;
 
 pub type ExprId = Idx<Expr>;
 
-/// FIXME: this is a hacky function which should be removed
-pub(crate) fn dummy_expr_id() -> ExprId {
-    ExprId::from_raw(RawIdx::from(u32::MAX))
-}
-
 pub type PatId = Idx<Pat>;
 
+// FIXME: Encode this as a single u32, we won't ever reach all 32 bits especially given these counts
+// are local to the body.
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum ExprOrPatId {
     ExprId(ExprId),
@@ -58,11 +55,19 @@ impl ExprOrPatId {
         }
     }
 
+    pub fn is_expr(&self) -> bool {
+        matches!(self, Self::ExprId(_))
+    }
+
     pub fn as_pat(self) -> Option<PatId> {
         match self {
             Self::PatId(v) => Some(v),
             _ => None,
         }
+    }
+
+    pub fn is_pat(&self) -> bool {
+        matches!(self, Self::PatId(_))
     }
 }
 stdx::impl_from!(ExprId, PatId for ExprOrPatId);
@@ -574,8 +579,8 @@ pub enum Pat {
         ellipsis: bool,
     },
     Range {
-        start: Option<Box<LiteralOrConst>>,
-        end: Option<Box<LiteralOrConst>>,
+        start: Option<ExprId>,
+        end: Option<ExprId>,
     },
     Slice {
         prefix: Box<[PatId]>,

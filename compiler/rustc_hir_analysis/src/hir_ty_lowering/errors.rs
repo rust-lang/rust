@@ -3,12 +3,13 @@ use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, ErrorGuaranteed, MultiSpan, pluralize, struct_span_code_err,
+    Applicability, Diag, ErrorGuaranteed, MultiSpan, listify, pluralize, struct_span_code_err,
 };
 use rustc_hir as hir;
-use rustc_hir::def::{DefKind, Res};
+use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
+use rustc_middle::ty::fast_reject::{TreatParams, simplify_type};
 use rustc_middle::ty::print::{PrintPolyTraitRefExt as _, PrintTraitRefExt as _};
 use rustc_middle::ty::{
     self, AdtDef, GenericParamDefKind, Ty, TyCtxt, TypeVisitableExt,
@@ -222,9 +223,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     // inside an opaque type while we're interested in the overarching type alias (TAIT).
                     // FIXME: However, for trait aliases, this incorrectly returns the enclosing module...
                     && let item_def_id =
-                        tcx.hir().get_parent_item(tcx.local_def_id_to_hir_id(ty_param_def_id))
+                        tcx.hir_get_parent_item(tcx.local_def_id_to_hir_id(ty_param_def_id))
                     // FIXME: ...which obviously won't have any generics.
-                    && let Some(generics) = tcx.hir().get_generics(item_def_id.def_id)
+                    && let Some(generics) = tcx.hir_get_generics(item_def_id.def_id)
                 {
                     // FIXME: Suggest adding supertrait bounds if we have a `Self` type param.
                     // FIXME(trait_alias): Suggest adding `Self: Trait` to
@@ -807,14 +808,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .map(|(trait_, mut assocs)| {
                 assocs.sort();
                 let trait_ = trait_.print_trait_sugared();
-                format!("{} in `{trait_}`", match &assocs[..] {
-                    [] => String::new(),
-                    [only] => format!("`{only}`"),
-                    [assocs @ .., last] => format!(
-                        "{} and `{last}`",
-                        assocs.iter().map(|a| format!("`{a}`")).collect::<Vec<_>>().join(", ")
-                    ),
-                })
+                format!(
+                    "{} in `{trait_}`",
+                    listify(&assocs[..], |a| format!("`{a}`")).unwrap_or_default()
+                )
             })
             .collect::<Vec<String>>();
         names.sort();
@@ -982,7 +979,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         qself: &hir::Ty<'_>,
     ) -> Result<(), ErrorGuaranteed> {
         let tcx = self.tcx();
-        if let Some((_, node)) = tcx.hir().parent_iter(qself.hir_id).skip(1).next()
+        if let Some((_, node)) = tcx.hir_parent_iter(qself.hir_id).skip(1).next()
             && let hir::Node::Expr(hir::Expr {
                 kind:
                     hir::ExprKind::Path(hir::QPath::TypeRelative(
@@ -998,12 +995,19 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     )),
                 ..
             }) = node
-            && let Some(adt_def) = qself_ty.ty_adt_def()
-            && let [inherent_impl] = tcx.inherent_impls(adt_def.did())
-            && let name = format!("{ident2}_{ident3}")
-            && let Some(ty::AssocItem { kind: ty::AssocKind::Fn, .. }) = tcx
-                .associated_items(inherent_impl)
-                .filter_by_name_unhygienic(Symbol::intern(&name))
+            && let Some(inherent_impls) = qself_ty
+                .ty_adt_def()
+                .map(|adt_def| tcx.inherent_impls(adt_def.did()))
+                .or_else(|| {
+                    simplify_type(tcx, qself_ty, TreatParams::InstantiateWithInfer)
+                        .map(|simple_ty| tcx.incoherent_impls(simple_ty))
+                })
+            && let name = Symbol::intern(&format!("{ident2}_{ident3}"))
+            && let Some(ty::AssocItem { kind: ty::AssocKind::Fn, .. }) = inherent_impls
+                .iter()
+                .flat_map(|inherent_impl| {
+                    tcx.associated_items(inherent_impl).filter_by_name_unhygienic(name)
+                })
                 .next()
         {
             Err(struct_span_code_err!(self.dcx(), span, E0223, "ambiguous associated type")
@@ -1023,7 +1027,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         &self,
         segments: impl Iterator<Item = &'a hir::PathSegment<'a>> + Clone,
         args_visitors: impl Iterator<Item = &'a hir::GenericArg<'a>> + Clone,
-        err_extend: GenericsArgsErrExtend<'_>,
+        err_extend: GenericsArgsErrExtend<'a>,
     ) -> ErrorGuaranteed {
         #[derive(PartialEq, Eq, Hash)]
         enum ProhibitGenericsArg {
@@ -1043,23 +1047,24 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             };
         });
 
+        let segments: Vec<_> = segments.collect();
         let types_and_spans: Vec<_> = segments
-            .clone()
+            .iter()
             .flat_map(|segment| {
                 if segment.args().args.is_empty() {
                     None
                 } else {
                     Some((
                         match segment.res {
-                            hir::def::Res::PrimTy(ty) => {
+                            Res::PrimTy(ty) => {
                                 format!("{} `{}`", segment.res.descr(), ty.name())
                             }
-                            hir::def::Res::Def(_, def_id)
+                            Res::Def(_, def_id)
                                 if let Some(name) = self.tcx().opt_item_name(def_id) =>
                             {
                                 format!("{} `{name}`", segment.res.descr())
                             }
-                            hir::def::Res::Err => "this type".to_string(),
+                            Res::Err => "this type".to_string(),
                             _ => segment.res.descr().to_string(),
                         },
                         segment.ident.span,
@@ -1067,24 +1072,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 }
             })
             .collect();
-        let this_type = match &types_and_spans[..] {
-            [.., _, (last, _)] => format!(
-                "{} and {last}",
-                types_and_spans[..types_and_spans.len() - 1]
-                    .iter()
-                    .map(|(x, _)| x.as_str())
-                    .intersperse(", ")
-                    .collect::<String>()
-            ),
-            [(only, _)] => only.to_string(),
-            [] => bug!("expected one segment to deny"),
-        };
+        let this_type = listify(&types_and_spans, |(t, _)| t.to_string())
+            .expect("expected one segment to deny");
 
-        let arg_spans: Vec<Span> = segments
-            .clone()
-            .flat_map(|segment| segment.args().args)
-            .map(|arg| arg.span())
-            .collect();
+        let arg_spans: Vec<Span> =
+            segments.iter().flat_map(|segment| segment.args().args).map(|arg| arg.span()).collect();
 
         let mut kinds = Vec::with_capacity(4);
         prohibit_args.iter().for_each(|arg| match arg {
@@ -1094,21 +1086,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             ProhibitGenericsArg::Infer => kinds.push("generic"),
         });
 
-        let (kind, s) = match kinds[..] {
-            [.., _, last] => (
-                format!(
-                    "{} and {last}",
-                    kinds[..kinds.len() - 1]
-                        .iter()
-                        .map(|&x| x)
-                        .intersperse(", ")
-                        .collect::<String>()
-                ),
-                "s",
-            ),
-            [only] => (only.to_string(), ""),
-            [] => bug!("expected at least one generic to prohibit"),
-        };
+        let s = pluralize!(kinds.len());
+        let kind =
+            listify(&kinds, |k| k.to_string()).expect("expected at least one generic to prohibit");
         let last_span = *arg_spans.last().unwrap();
         let span: MultiSpan = arg_spans.into();
         let mut err = struct_span_code_err!(
@@ -1121,7 +1101,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         for (what, span) in types_and_spans {
             err.span_label(span, format!("not allowed on {what}"));
         }
-        generics_args_err_extend(self.tcx(), segments, &mut err, err_extend);
+        generics_args_err_extend(self.tcx(), segments.into_iter(), &mut err, err_extend);
         err.emit()
     }
 
@@ -1298,8 +1278,7 @@ pub fn prohibit_assoc_item_constraint(
                     // Get the parent impl block based on the binding we have
                     // and the trait DefId
                     let impl_block = tcx
-                        .hir()
-                        .parent_iter(constraint.hir_id)
+                        .hir_parent_iter(constraint.hir_id)
                         .find_map(|(_, node)| node.impl_block_of_trait(def_id));
 
                     let type_with_constraints =
@@ -1418,7 +1397,7 @@ pub enum GenericsArgsErrExtend<'tcx> {
     },
     SelfTyParam(Span),
     Param(DefId),
-    DefVariant,
+    DefVariant(&'tcx [hir::PathSegment<'tcx>]),
     None,
 }
 
@@ -1426,7 +1405,7 @@ fn generics_args_err_extend<'a>(
     tcx: TyCtxt<'_>,
     segments: impl Iterator<Item = &'a hir::PathSegment<'a>> + Clone,
     err: &mut Diag<'_>,
-    err_extend: GenericsArgsErrExtend<'_>,
+    err_extend: GenericsArgsErrExtend<'a>,
 ) {
     match err_extend {
         GenericsArgsErrExtend::EnumVariant { qself, assoc_segment, adt_def } => {
@@ -1514,6 +1493,32 @@ fn generics_args_err_extend<'a>(
             ];
             err.multipart_suggestion_verbose(msg, suggestion, Applicability::MaybeIncorrect);
         }
+        GenericsArgsErrExtend::DefVariant(segments) => {
+            let args: Vec<Span> = segments
+                .iter()
+                .filter_map(|segment| match segment.res {
+                    Res::Def(
+                        DefKind::Ctor(CtorOf::Variant, _) | DefKind::Variant | DefKind::Enum,
+                        _,
+                    ) => segment.args().span_ext().map(|s| s.with_lo(segment.ident.span.hi())),
+                    _ => None,
+                })
+                .collect();
+            if args.len() > 1
+                && let Some(span) = args.into_iter().last()
+            {
+                err.note(
+                    "generic arguments are not allowed on both an enum and its variant's path \
+                     segments simultaneously; they are only valid in one place or the other",
+                );
+                err.span_suggestion_verbose(
+                    span,
+                    "remove the generics arguments from one of the path segments",
+                    String::new(),
+                    Applicability::MaybeIncorrect,
+                );
+            }
+        }
         GenericsArgsErrExtend::PrimTy(prim_ty) => {
             let name = prim_ty.name_str();
             for segment in segments {
@@ -1529,9 +1534,6 @@ fn generics_args_err_extend<'a>(
         }
         GenericsArgsErrExtend::OpaqueTy => {
             err.note("`impl Trait` types can't have type parameters");
-        }
-        GenericsArgsErrExtend::DefVariant => {
-            err.note("enum variants can't have type parameters");
         }
         GenericsArgsErrExtend::Param(def_id) => {
             let span = tcx.def_ident_span(def_id).unwrap();

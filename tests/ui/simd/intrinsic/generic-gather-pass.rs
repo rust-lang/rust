@@ -10,10 +10,11 @@
 #[derive(Copy, Clone, PartialEq, Debug)]
 struct x4<T>(pub [T; 4]);
 
-extern "rust-intrinsic" {
-    fn simd_gather<T, U, V>(x: T, y: U, z: V) -> T;
-    fn simd_scatter<T, U, V>(x: T, y: U, z: V) -> ();
-}
+#[rustc_intrinsic]
+unsafe fn simd_gather<T, U, V>(x: T, y: U, z: V) -> T;
+
+#[rustc_intrinsic]
+unsafe fn simd_scatter<T, U, V>(x: T, y: U, z: V) -> ();
 
 fn main() {
     let mut x = [0_f32, 1., 2., 3., 4., 5., 6., 7.];

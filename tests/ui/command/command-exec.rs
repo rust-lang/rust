@@ -1,12 +1,8 @@
 //@ run-pass
 
-#![allow(stable_features)]
-//@ ignore-windows - this is a unix-specific test
-//@ ignore-wasm32 no processes
-//@ ignore-sgx no processes
+//@ only-unix (this is a unix-specific test)
+//@ needs-subprocess
 //@ ignore-fuchsia no execvp syscall provided
-
-#![feature(process_exec)]
 
 use std::env;
 use std::os::unix::process::CommandExt;

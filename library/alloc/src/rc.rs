@@ -1462,18 +1462,18 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// Provides a raw pointer to the data.
     ///
     /// The counts are not affected in any way and the `Rc` is not consumed. The pointer is valid
-    /// for as long there are strong counts in the `Rc`.
+    /// for as long as there are strong counts in the `Rc`.
     ///
     /// # Examples
     ///
     /// ```
     /// use std::rc::Rc;
     ///
-    /// let x = Rc::new("hello".to_owned());
+    /// let x = Rc::new(0);
     /// let y = Rc::clone(&x);
     /// let x_ptr = Rc::as_ptr(&x);
     /// assert_eq!(x_ptr, Rc::as_ptr(&y));
-    /// assert_eq!(unsafe { &*x_ptr }, "hello");
+    /// assert_eq!(unsafe { *x_ptr }, 0);
     /// ```
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
     #[rustc_never_returns_null_ptr]
@@ -2350,11 +2350,10 @@ impl<T: Default> Default for Rc<T> {
     fn default() -> Rc<T> {
         unsafe {
             Self::from_inner(
-                Box::leak(Box::write(Box::new_uninit(), RcInner {
-                    strong: Cell::new(1),
-                    weak: Cell::new(1),
-                    value: T::default(),
-                }))
+                Box::leak(Box::write(
+                    Box::new_uninit(),
+                    RcInner { strong: Cell::new(1), weak: Cell::new(1), value: T::default() },
+                ))
                 .into(),
             )
         }
@@ -2369,7 +2368,9 @@ impl Default for Rc<str> {
     /// This may or may not share an allocation with other Rcs on the same thread.
     #[inline]
     fn default() -> Self {
-        Rc::from("")
+        let rc = Rc::<[u8]>::default();
+        // `[u8]` has the same layout as `str`.
+        unsafe { Rc::from_raw(Rc::into_raw(rc) as *const str) }
     }
 }
 

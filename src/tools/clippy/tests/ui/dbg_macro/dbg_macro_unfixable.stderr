@@ -19,8 +19,9 @@ LL |     dbg!(dbg!(dbg!(42)));
    |
 help: remove the invocation before committing it to a version control system
    |
-LL |     dbg!(dbg!(42));
-   |     ~~~~~~~~~~~~~~
+LL -     dbg!(dbg!(dbg!(42)));
+LL +     dbg!(dbg!(42));
+   |
 
 error: the `dbg!` macro is intended as a debugging tool
   --> tests/ui/dbg_macro/dbg_macro_unfixable.rs:8:10
@@ -30,8 +31,9 @@ LL |     dbg!(dbg!(dbg!(42)));
    |
 help: remove the invocation before committing it to a version control system
    |
-LL |     dbg!(dbg!(42));
-   |          ~~~~~~~~
+LL -     dbg!(dbg!(dbg!(42)));
+LL +     dbg!(dbg!(42));
+   |
 
 error: the `dbg!` macro is intended as a debugging tool
   --> tests/ui/dbg_macro/dbg_macro_unfixable.rs:8:15
@@ -41,8 +43,9 @@ LL |     dbg!(dbg!(dbg!(42)));
    |
 help: remove the invocation before committing it to a version control system
    |
-LL |     dbg!(dbg!(42));
-   |               ~~
+LL -     dbg!(dbg!(dbg!(42)));
+LL +     dbg!(dbg!(42));
+   |
 
 error: the `dbg!` macro is intended as a debugging tool
   --> tests/ui/dbg_macro/dbg_macro_unfixable.rs:10:5
@@ -52,8 +55,9 @@ LL |     dbg!(1, 2, dbg!(3, 4));
    |
 help: remove the invocation before committing it to a version control system
    |
-LL |     (1, 2, dbg!(3, 4));
-   |     ~~~~~~~~~~~~~~~~~~
+LL -     dbg!(1, 2, dbg!(3, 4));
+LL +     (1, 2, dbg!(3, 4));
+   |
 
 error: the `dbg!` macro is intended as a debugging tool
   --> tests/ui/dbg_macro/dbg_macro_unfixable.rs:10:16
@@ -63,8 +67,9 @@ LL |     dbg!(1, 2, dbg!(3, 4));
    |
 help: remove the invocation before committing it to a version control system
    |
-LL |     dbg!(1, 2, (3, 4));
-   |                ~~~~~~
+LL -     dbg!(1, 2, dbg!(3, 4));
+LL +     dbg!(1, 2, (3, 4));
+   |
 
 error: aborting due to 6 previous errors
 

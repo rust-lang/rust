@@ -12,6 +12,8 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::OnceLock;
 
+use build_helper::ci::CiEnv;
+
 use crate::Kind;
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
@@ -112,16 +114,60 @@ impl Step for Gcc {
             return true;
         }
 
-        command(root.join("contrib/download_prerequisites")).current_dir(&root).run(builder);
-        command(root.join("configure"))
+        // GCC creates files (e.g. symlinks to the downloaded dependencies)
+        // in the source directory, which does not work with our CI setup, where we mount
+        // source directories as read-only on Linux.
+        // Therefore, as a part of the build in CI, we first copy the whole source directory
+        // to the build directory, and perform the build from there.
+        let src_dir = if CiEnv::is_ci() {
+            let src_dir = builder.gcc_out(target).join("src");
+            if src_dir.exists() {
+                builder.remove_dir(&src_dir);
+            }
+            builder.create_dir(&src_dir);
+            builder.cp_link_r(&root, &src_dir);
+            src_dir
+        } else {
+            root
+        };
+
+        command(src_dir.join("contrib/download_prerequisites")).current_dir(&src_dir).run(builder);
+        let mut configure_cmd = command(src_dir.join("configure"));
+        configure_cmd
             .current_dir(&out_dir)
+            // On CI, we compile GCC with Clang.
+            // The -Wno-everything flag is needed to make GCC compile with Clang 19.
+            // `-g -O2` are the default flags that are otherwise used by Make.
+            // FIXME(kobzol): change the flags once we have [gcc] configuration in config.toml.
+            .env("CXXFLAGS", "-Wno-everything -g -O2")
+            .env("CFLAGS", "-Wno-everything -g -O2")
             .arg("--enable-host-shared")
             .arg("--enable-languages=jit")
             .arg("--enable-checking=release")
             .arg("--disable-bootstrap")
             .arg("--disable-multilib")
-            .arg(format!("--prefix={}", install_dir.display()))
-            .run(builder);
+            .arg(format!("--prefix={}", install_dir.display()));
+        let cc = builder.build.cc(target).display().to_string();
+        let cc = builder
+            .build
+            .config
+            .ccache
+            .as_ref()
+            .map_or_else(|| cc.clone(), |ccache| format!("{ccache} {cc}"));
+        configure_cmd.env("CC", cc);
+
+        if let Ok(ref cxx) = builder.build.cxx(target) {
+            let cxx = cxx.display().to_string();
+            let cxx = builder
+                .build
+                .config
+                .ccache
+                .as_ref()
+                .map_or_else(|| cxx.clone(), |ccache| format!("{ccache} {cxx}"));
+            configure_cmd.env("CXX", cxx);
+        }
+        configure_cmd.run(builder);
+
         command("make").current_dir(&out_dir).arg(format!("-j{}", builder.jobs())).run(builder);
         command("make").current_dir(&out_dir).arg("install").run(builder);
 

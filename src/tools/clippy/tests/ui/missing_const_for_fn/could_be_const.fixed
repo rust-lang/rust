@@ -213,3 +213,8 @@ mod extern_fn {
     const extern "system-unwind" fn system_unwind() {}
     //~^ ERROR: this could be a `const fn`
 }
+
+const fn mut_add(x: &mut i32) {
+    //~^ ERROR: this could be a `const fn`
+    *x += 1;
+}

@@ -1,9 +1,5 @@
 blockquote { font-size: 1em; }
 
-[ng\:cloak], [ng-cloak], [data-ng-cloak], [x-ng-cloak], .ng-cloak, .x-ng-cloak {
-    display: none !important;
-}
-
 .dropdown-menu {
     color: var(--fg);
     background: var(--theme-popup-bg);
@@ -188,8 +184,8 @@ details {
     padding: .5em .5em 0;
 }
 
-code {
-    white-space: pre !important;
+pre {
+    padding: 0;
 }
 
 summary {

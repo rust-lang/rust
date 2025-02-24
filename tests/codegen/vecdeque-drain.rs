@@ -1,6 +1,6 @@
 // Check that draining at the front or back doesn't copy memory.
 
-//@ compile-flags: -O
+//@ compile-flags: -Copt-level=3
 //@ needs-deterministic-layouts
 //@ ignore-std-debug-assertions (FIXME: checks for call detect scoped noalias metadata)
 

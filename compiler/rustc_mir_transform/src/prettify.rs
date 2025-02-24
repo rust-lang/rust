@@ -35,6 +35,10 @@ impl<'tcx> crate::MirPass<'tcx> for ReorderBasicBlocks {
 
         permute(body.basic_blocks.as_mut(), &updater.map);
     }
+
+    fn is_required(&self) -> bool {
+        false
+    }
 }
 
 /// Rearranges the locals into *use* order.
@@ -84,6 +88,10 @@ impl<'tcx> crate::MirPass<'tcx> for ReorderLocals {
         updater.visit_body_preserves_cfg(body);
 
         permute(&mut body.local_decls, &updater.map);
+    }
+
+    fn is_required(&self) -> bool {
+        false
     }
 }
 

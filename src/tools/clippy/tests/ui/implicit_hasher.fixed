@@ -70,7 +70,7 @@ pub fn map<S: ::std::hash::BuildHasher>(map: &mut HashMap<i32, i32, S>) {}
 pub fn set<S: ::std::hash::BuildHasher>(set: &mut HashSet<i32, S>) {}
 
 #[inline_macros]
-pub mod gen {
+pub mod gen_ {
     use super::*;
     inline! {
         impl<K: Hash + Eq, V, S: ::std::hash::BuildHasher + Default> Foo<u8> for HashMap<K, V, S> {

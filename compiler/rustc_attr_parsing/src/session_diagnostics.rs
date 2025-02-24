@@ -204,21 +204,27 @@ pub(crate) struct UnsupportedLiteral {
 
 impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for UnsupportedLiteral {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
-        let mut diag = Diag::new(dcx, level, match self.reason {
-            UnsupportedLiteralReason::Generic => fluent::attr_parsing_unsupported_literal_generic,
-            UnsupportedLiteralReason::CfgString => {
-                fluent::attr_parsing_unsupported_literal_cfg_string
-            }
-            UnsupportedLiteralReason::CfgBoolean => {
-                fluent::attr_parsing_unsupported_literal_cfg_boolean
-            }
-            UnsupportedLiteralReason::DeprecatedString => {
-                fluent::attr_parsing_unsupported_literal_deprecated_string
-            }
-            UnsupportedLiteralReason::DeprecatedKvPair => {
-                fluent::attr_parsing_unsupported_literal_deprecated_kv_pair
-            }
-        });
+        let mut diag = Diag::new(
+            dcx,
+            level,
+            match self.reason {
+                UnsupportedLiteralReason::Generic => {
+                    fluent::attr_parsing_unsupported_literal_generic
+                }
+                UnsupportedLiteralReason::CfgString => {
+                    fluent::attr_parsing_unsupported_literal_cfg_string
+                }
+                UnsupportedLiteralReason::CfgBoolean => {
+                    fluent::attr_parsing_unsupported_literal_cfg_boolean
+                }
+                UnsupportedLiteralReason::DeprecatedString => {
+                    fluent::attr_parsing_unsupported_literal_deprecated_string
+                }
+                UnsupportedLiteralReason::DeprecatedKvPair => {
+                    fluent::attr_parsing_unsupported_literal_deprecated_kv_pair
+                }
+            },
+        );
         diag.span(self.span);
         diag.code(E0565);
         if self.is_bytestr {

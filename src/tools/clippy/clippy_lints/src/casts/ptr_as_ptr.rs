@@ -43,9 +43,9 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: &Msrv) {
     {
         let mut app = Applicability::MachineApplicable;
         let turbofish = match &cast_to_hir_ty.kind {
-            TyKind::Infer => String::new(),
+            TyKind::Infer(()) => String::new(),
             TyKind::Ptr(mut_ty) => {
-                if matches!(mut_ty.ty.kind, TyKind::Infer) {
+                if matches!(mut_ty.ty.kind, TyKind::Infer(())) {
                     String::new()
                 } else {
                     format!(

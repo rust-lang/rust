@@ -1,5 +1,5 @@
 error: target feature `d` cannot be enabled with `#[target_feature]`: this feature is incompatible with the target ABI
-  --> $DIR/forbidden-hardfloat-target-feature-attribute.rs:9:18
+  --> $DIR/forbidden-hardfloat-target-feature-attribute.rs:10:18
    |
 LL | #[target_feature(enable = "d")]
    |                  ^^^^^^^^^^^^

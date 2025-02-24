@@ -1,6 +1,5 @@
 //@ run-pass
-//@ ignore-wasm32 spawning processes is not supported
-//@ ignore-sgx no processes
+//@ needs-subprocess
 
 use std::{env, process};
 

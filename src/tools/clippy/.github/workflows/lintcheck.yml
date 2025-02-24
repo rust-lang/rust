@@ -1,6 +1,12 @@
 name: Lintcheck
 
-on: pull_request
+on:
+  pull_request:
+    paths-ignore:
+      - 'book/**'
+      - 'util/**'
+      - 'tests/**'
+      - '*.md'
 
 env:
   RUST_BACKTRACE: 1

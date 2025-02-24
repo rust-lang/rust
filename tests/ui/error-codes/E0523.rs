@@ -2,7 +2,7 @@
 //@ aux-build:crateresolve1-2.rs
 //@ aux-build:crateresolve1-3.rs
 
-//@ normalize-stderr: "\.nll/" -> "/"
+//@ normalize-stderr: "E0523\..+/auxiliary/" -> "E0523/auxiliary/"
 //@ normalize-stderr: "\\\?\\" -> ""
 //@ normalize-stderr: "(lib)?crateresolve1-([123])\.[a-z]+" -> "libcrateresolve1-$2.somelib"
 

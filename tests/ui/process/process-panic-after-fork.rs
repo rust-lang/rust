@@ -1,8 +1,7 @@
 //@ run-pass
 //@ no-prefer-dynamic
-//@ ignore-windows
-//@ ignore-wasm32 no processes
-//@ ignore-sgx no processes
+//@ only-unix
+//@ needs-subprocess
 //@ ignore-fuchsia no fork
 
 #![feature(rustc_private)]

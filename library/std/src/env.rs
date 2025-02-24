@@ -10,9 +10,6 @@
 
 #![stable(feature = "env", since = "1.0.0")]
 
-#[cfg(test)]
-mod tests;
-
 use crate::error::Error;
 use crate::ffi::{OsStr, OsString};
 use crate::path::{Path, PathBuf};
@@ -571,7 +568,7 @@ pub struct JoinPathsError {
 ///         let mut paths = env::split_paths(&path).collect::<Vec<_>>();
 ///         paths.push(PathBuf::from("/home/xyz/bin"));
 ///         let new_path = env::join_paths(paths)?;
-///         env::set_var("PATH", &new_path);
+///         unsafe { env::set_var("PATH", &new_path); }
 ///     }
 ///
 ///     Ok(())

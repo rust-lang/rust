@@ -29,8 +29,8 @@ fn main() {
     //~| NOTE use of undeclared type `Struc`
 
     modul::foo();
-    //~^ ERROR failed to resolve: use of undeclared crate or module `modul`
-    //~| NOTE use of undeclared crate or module `modul`
+    //~^ ERROR failed to resolve: use of unresolved module or unlinked crate `modul`
+    //~| NOTE use of unresolved module or unlinked crate `modul`
 
     module::Struc::foo();
     //~^ ERROR failed to resolve: could not find `Struc` in `module`

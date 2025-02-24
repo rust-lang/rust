@@ -12,8 +12,9 @@ LL | |     })
    |
 help: to declare that the trait object captures data from argument `x`, you can add a lifetime parameter `'a` in the type alias
    |
-LL | type Lazy<'a, T> = Box<dyn Fn() -> T + 'a>;
-   |           +++                          ~~
+LL - type Lazy<T> = Box<dyn Fn() -> T + 'static>;
+LL + type Lazy<'a, T> = Box<dyn Fn() -> T + 'a>;
+   |
 
 error[E0373]: closure may outlive the current function, but it borrows `x`, which is owned by the current function
   --> $DIR/suggest-lt-on-ty-alias-w-generics.rs:4:14

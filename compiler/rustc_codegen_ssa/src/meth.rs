@@ -1,5 +1,5 @@
 use rustc_middle::bug;
-use rustc_middle::ty::{self, GenericArgKind, Ty};
+use rustc_middle::ty::{self, GenericArgKind, Ty, TyCtxt};
 use rustc_session::config::Lto;
 use rustc_symbol_mangling::typeid_for_trait_ref;
 use rustc_target::callconv::FnAbi;
@@ -72,12 +72,19 @@ impl<'a, 'tcx> VirtualIndex {
 
 /// This takes a valid `self` receiver type and extracts the principal trait
 /// ref of the type. Return `None` if there is no principal trait.
-fn dyn_trait_in_self(ty: Ty<'_>) -> Option<ty::PolyExistentialTraitRef<'_>> {
+fn dyn_trait_in_self<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ty: Ty<'tcx>,
+) -> Option<ty::ExistentialTraitRef<'tcx>> {
     for arg in ty.peel_refs().walk() {
         if let GenericArgKind::Type(ty) = arg.unpack()
             && let ty::Dynamic(data, _, _) = ty.kind()
         {
-            return data.principal();
+            // FIXME(arbitrary_self_types): This is likely broken for receivers which
+            // have a "non-self" trait objects as a generic argument.
+            return data
+                .principal()
+                .map(|principal| tcx.instantiate_bound_regions_with_erased(principal));
         }
     }
 
@@ -96,7 +103,7 @@ fn dyn_trait_in_self(ty: Ty<'_>) -> Option<ty::PolyExistentialTraitRef<'_>> {
 pub(crate) fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
     cx: &Cx,
     ty: Ty<'tcx>,
-    trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
+    trait_ref: Option<ty::ExistentialTraitRef<'tcx>>,
 ) -> Cx::Value {
     let tcx = cx.tcx();
 
@@ -131,7 +138,7 @@ pub(crate) fn load_vtable<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     if bx.cx().sess().opts.unstable_opts.virtual_function_elimination
         && bx.cx().sess().lto() == Lto::Fat
     {
-        if let Some(trait_ref) = dyn_trait_in_self(ty) {
+        if let Some(trait_ref) = dyn_trait_in_self(bx.tcx(), ty) {
             let typeid = bx.typeid_metadata(typeid_for_trait_ref(bx.tcx(), trait_ref)).unwrap();
             let func = bx.type_checked_load(llvtable, vtable_byte_offset, typeid);
             return func;

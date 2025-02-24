@@ -36,6 +36,9 @@ pub(super) fn hints(
                 if it.ty().is_some() {
                     return None;
                 }
+                if config.hide_closure_parameter_hints && it.syntax().ancestors().nth(2).is_none_or(|n| matches!(ast::Expr::cast(n), Some(ast::Expr::ClosureExpr(_)))) {
+                    return None;
+                }
                 Some(it.colon_token())
             },
             ast::LetStmt(it) => {
@@ -950,6 +953,36 @@ fn bar(f: impl FnOnce(u8) -> u8) -> impl FnOnce(u8) -> u8 {
     }
 
     #[test]
+    fn skip_closure_parameter_hints() {
+        check_with_config(
+            InlayHintsConfig {
+                type_hints: true,
+                hide_closure_parameter_hints: true,
+                ..DISABLED_CONFIG
+            },
+            r#"
+//- minicore: fn
+struct Foo;
+impl Foo {
+    fn foo(self: Self) {}
+    fn bar(self: &Self) {}
+}
+fn main() {
+    let closure = |x, y| x + y;
+    //  ^^^^^^^ impl Fn(i32, i32) -> {unknown}
+    closure(2, 3);
+    let point = (10, 20);
+    //  ^^^^^ (i32, i32)
+    let (x,      y) = point;
+      // ^ i32   ^ i32
+    Foo::foo(Foo);
+    Foo::bar(&Foo);
+}
+"#,
+        );
+    }
+
+    #[test]
     fn hint_truncation() {
         check_with_config(
             InlayHintsConfig { max_length: Some(8), ..TEST_CONFIG },
@@ -1202,6 +1235,40 @@ fn f4<G: T<Assoc: T2 + T3<()>>>(it: G) {
 fn f5<G: T<Assoc = ()>>(it: G) {
     let l = it.f();
       //^ ()
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn regression_19007() {
+        check_types(
+            r#"
+trait Foo {
+    type Assoc;
+
+    fn foo(&self) -> Self::Assoc;
+}
+
+trait Bar {
+    type Target;
+}
+
+trait Baz<T> {}
+
+struct Struct<T: Foo> {
+    field: T,
+}
+
+impl<T> Struct<T>
+where
+    T: Foo,
+    T::Assoc: Baz<<T::Assoc as Bar>::Target> + Bar,
+{
+    fn f(&self) {
+        let x = self.field.foo();
+          //^ impl Baz<<<T as Foo>::Assoc as Bar>::Target> + Bar
+    }
 }
 "#,
         );

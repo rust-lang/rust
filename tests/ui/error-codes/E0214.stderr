@@ -6,8 +6,9 @@ LL |     let v: Vec(&str) = vec!["foo"];
    |
 help: use angle brackets instead
    |
-LL |     let v: Vec<&str> = vec!["foo"];
-   |               ~    ~
+LL -     let v: Vec(&str) = vec!["foo"];
+LL +     let v: Vec<&str> = vec!["foo"];
+   |
 
 error: aborting due to 1 previous error
 

@@ -15,7 +15,7 @@ use crate::{utils::invert_boolean_expression, AssistContext, AssistId, AssistKin
 
 // Assist: apply_demorgan
 //
-// Apply https://en.wikipedia.org/wiki/De_Morgan%27s_laws[De Morgan's law].
+// Apply [De Morgan's law](https://en.wikipedia.org/wiki/De_Morgan%27s_laws).
 // This transforms expressions of the form `!l || !r` into `!(l && r)`.
 // This also works with `&&`. This assist can only be applied with the cursor
 // on either `||` or `&&`.
@@ -131,7 +131,7 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
 
 // Assist: apply_demorgan_iterator
 //
-// Apply https://en.wikipedia.org/wiki/De_Morgan%27s_laws[De Morgan's law] to
+// Apply [De Morgan's law](https://en.wikipedia.org/wiki/De_Morgan%27s_laws) to
 // `Iterator::all` and `Iterator::any`.
 //
 // This transforms expressions of the form `!iter.any(|x| predicate(x))` into

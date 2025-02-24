@@ -27,7 +27,6 @@ pub use intrinsic::IntrinsicDef;
 use rustc_abi::{Align, FieldIdx, Integer, IntegerType, ReprFlags, ReprOptions, VariantIdx};
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::node_id::NodeMap;
-pub use rustc_ast_ir::{Movability, Mutability, try_visit};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -48,7 +47,7 @@ pub use rustc_session::lint::RegisteredTools;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::{ExpnId, ExpnKind, Ident, Span, Symbol, kw, sym};
 pub use rustc_type_ir::relate::VarianceDiagInfo;
-pub use rustc_type_ir::*;
+pub use rustc_type_ir::{Movability, Mutability, *};
 use tracing::{debug, instrument};
 pub use vtable::*;
 use {rustc_ast as ast, rustc_attr_parsing as attr, rustc_hir as hir};
@@ -60,7 +59,8 @@ pub use self::closure::{
     place_to_string_for_capture,
 };
 pub use self::consts::{
-    Const, ConstInt, ConstKind, Expr, ExprKind, ScalarInt, UnevaluatedConst, ValTree,
+    Const, ConstInt, ConstKind, Expr, ExprKind, ScalarInt, UnevaluatedConst, ValTree, ValTreeKind,
+    Value,
 };
 pub use self::context::{
     CtxtInterners, CurrentGcx, DeducedParamAttrs, Feed, FreeRegionInfo, GlobalCtxt, Lift, TyCtxt,
@@ -94,7 +94,7 @@ pub use self::sty::{
 pub use self::trait_def::TraitDef;
 pub use self::typeck_results::{
     CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, IsIdentity,
-    TypeckResults, UserType, UserTypeAnnotationIndex, UserTypeKind,
+    Rust2024IncompatiblePatInfo, TypeckResults, UserType, UserTypeAnnotationIndex, UserTypeKind,
 };
 pub use self::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
 use crate::error::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
@@ -179,7 +179,7 @@ pub struct ResolverGlobalCtxt {
     pub confused_type_with_std_module: FxIndexMap<Span, Span>,
     pub doc_link_resolutions: FxIndexMap<LocalDefId, DocLinkResMap>,
     pub doc_link_traits_in_scope: FxIndexMap<LocalDefId, Vec<DefId>>,
-    pub all_macro_rules: FxHashMap<Symbol, Res<ast::NodeId>>,
+    pub all_macro_rules: FxHashSet<Symbol>,
     pub stripped_cfg_items: Steal<Vec<StrippedCfgItem>>,
 }
 
@@ -1469,7 +1469,7 @@ pub enum ImplTraitInTraitData {
 
 impl<'tcx> TyCtxt<'tcx> {
     pub fn typeck_body(self, body: hir::BodyId) -> &'tcx TypeckResults<'tcx> {
-        self.typeck(self.hir().body_owner_def_id(body))
+        self.typeck(self.hir_body_owner_def_id(body))
     }
 
     pub fn provided_trait_methods(self, id: DefId) -> impl 'tcx + Iterator<Item = &'tcx AssocItem> {
@@ -1486,8 +1486,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         // Generate a deterministically-derived seed from the item's path hash
         // to allow for cross-crate compilation to actually work
-        let mut field_shuffle_seed =
-            self.def_path_hash(did.to_def_id()).0.to_smaller_hash().as_u64();
+        let mut field_shuffle_seed = self.def_path_hash(did.to_def_id()).0.to_smaller_hash();
 
         // If the user defined a custom seed for layout randomization, xor the item's
         // path hash with the user defined seed, this will allowing determinism while
@@ -1594,6 +1593,15 @@ impl<'tcx> TyCtxt<'tcx> {
             .def_ident_span(def_id)
             .unwrap_or_else(|| bug!("missing ident span for {def_id:?}"));
         Some(Ident::new(def, span))
+    }
+
+    /// Look up the name and span of a definition.
+    ///
+    /// See [`item_name`][Self::item_name] for more information.
+    pub fn item_ident(self, def_id: DefId) -> Ident {
+        self.opt_item_ident(def_id).unwrap_or_else(|| {
+            bug!("item_ident: no name for {:?}", self.def_path(def_id));
+        })
     }
 
     pub fn opt_associated_item(self, def_id: DefId) -> Option<AssocItem> {
@@ -1790,14 +1798,11 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn get_attrs_by_path<'attr>(
+    pub fn get_attrs_by_path(
         self,
         did: DefId,
-        attr: &'attr [Symbol],
-    ) -> impl Iterator<Item = &'tcx hir::Attribute> + 'attr
-    where
-        'tcx: 'attr,
-    {
+        attr: &[Symbol],
+    ) -> impl Iterator<Item = &'tcx hir::Attribute> {
         let filter_fn = move |a: &&hir::Attribute| a.path_matches(attr);
         if let Some(did) = did.as_local() {
             self.hir().attrs(self.local_def_id_to_hir_id(did)).iter().filter(filter_fn)
@@ -2158,7 +2163,6 @@ pub fn provide(providers: &mut Providers) {
     util::provide(providers);
     print::provide(providers);
     super::util::bug::provide(providers);
-    super::middle::provide(providers);
     *providers = Providers {
         trait_impls_of: trait_def::trait_impls_of_provider,
         incoherent_impls: trait_def::incoherent_impls_provider,

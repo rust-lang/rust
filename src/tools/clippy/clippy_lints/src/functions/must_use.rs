@@ -5,7 +5,6 @@ use rustc_hir::def_id::DefIdSet;
 use rustc_hir::{self as hir, Attribute, QPath};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::{Span, sym};
 
@@ -38,7 +37,7 @@ pub(super) fn check_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>
             check_must_use_candidate(
                 cx,
                 sig.decl,
-                cx.tcx.hir().body(*body_id),
+                cx.tcx.hir_body(*body_id),
                 item.span,
                 item.owner_id,
                 item.span.with_hi(sig.decl.output.span().hi()),
@@ -60,7 +59,7 @@ pub(super) fn check_impl_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Imp
             check_must_use_candidate(
                 cx,
                 sig.decl,
-                cx.tcx.hir().body(*body_id),
+                cx.tcx.hir_body(*body_id),
                 item.span,
                 item.owner_id,
                 item.span.with_hi(sig.decl.output.span().hi()),
@@ -80,7 +79,7 @@ pub(super) fn check_trait_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Tr
         if let Some(attr) = attr {
             check_needless_must_use(cx, sig.decl, item.owner_id, item.span, fn_header_span, attr, attrs, sig);
         } else if let hir::TraitFn::Provided(eid) = *eid {
-            let body = cx.tcx.hir().body(eid);
+            let body = cx.tcx.hir_body(eid);
             if attr.is_none() && is_public && !is_proc_macro(attrs) {
                 check_must_use_candidate(
                     cx,
@@ -107,7 +106,7 @@ fn check_needless_must_use(
     attrs: &[Attribute],
     sig: &FnSig<'_>,
 ) {
-    if in_external_macro(cx.sess(), item_span) {
+    if item_span.in_external_macro(cx.sess().source_map()) {
         return;
     }
     if returns_unit(decl) {
@@ -160,7 +159,7 @@ fn check_needless_must_use(
                 && !is_must_use_ty(cx, future_ty)
             {
                 return;
-            };
+            }
         }
 
         span_lint_and_help(
@@ -185,7 +184,7 @@ fn check_must_use_candidate<'tcx>(
 ) {
     if has_mutable_arg(cx, body)
         || mutates_static(cx, body)
-        || in_external_macro(cx.sess(), item_span)
+        || item_span.in_external_macro(cx.sess().source_map())
         || returns_unit(decl)
         || !cx.effective_visibilities.is_exported(item_id.def_id)
         || is_must_use_ty(cx, return_ty(cx, item_id))

@@ -66,7 +66,7 @@ impl<'tcx> Visitor<'tcx> for ReachableContext<'tcx> {
     fn visit_nested_body(&mut self, body: hir::BodyId) {
         let old_maybe_typeck_results =
             self.maybe_typeck_results.replace(self.tcx.typeck_body(body));
-        let body = self.tcx.hir().body(body);
+        let body = self.tcx.hir_body(body);
         self.visit_body(body);
         self.maybe_typeck_results = old_maybe_typeck_results;
     }
@@ -246,7 +246,7 @@ impl<'tcx> ReachableContext<'tcx> {
                     | hir::ItemKind::Struct(..)
                     | hir::ItemKind::Enum(..)
                     | hir::ItemKind::Union(..)
-                    | hir::ItemKind::GlobalAsm(..) => {}
+                    | hir::ItemKind::GlobalAsm { .. } => {}
                 }
             }
             Node::TraitItem(trait_method) => {

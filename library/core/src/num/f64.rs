@@ -758,8 +758,8 @@ impl f64 {
     /// [`MAX`]: Self::MAX
     #[inline]
     #[doc(alias = "nextUp")]
-    #[stable(feature = "float_next_up_down", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "float_next_up_down", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "float_next_up_down", since = "1.86.0")]
+    #[rustc_const_stable(feature = "float_next_up_down", since = "1.86.0")]
     pub const fn next_up(self) -> Self {
         // Some targets violate Rust's assumption of IEEE semantics, e.g. by flushing
         // denormals to zero. This is in general unsound and unsupported, but here
@@ -809,8 +809,8 @@ impl f64 {
     /// [`MAX`]: Self::MAX
     #[inline]
     #[doc(alias = "nextDown")]
-    #[stable(feature = "float_next_up_down", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_stable(feature = "float_next_up_down", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "float_next_up_down", since = "1.86.0")]
+    #[rustc_const_stable(feature = "float_next_up_down", since = "1.86.0")]
     pub const fn next_down(self) -> Self {
         // Some targets violate Rust's assumption of IEEE semantics, e.g. by flushing
         // denormals to zero. This is in general unsound and unsupported, but here
@@ -892,7 +892,8 @@ impl f64 {
     /// If one of the arguments is NaN, then the other argument is returned.
     /// This follows the IEEE 754-2008 semantics for maxNum, except for handling of signaling NaNs;
     /// this function handles all NaNs the same way and avoids maxNum's problems with associativity.
-    /// This also matches the behavior of libm’s fmax.
+    /// This also matches the behavior of libm’s fmax. In particular, if the inputs compare equal
+    /// (such as for the case of `+0.0` and `-0.0`), either input may be returned non-deterministically.
     ///
     /// ```
     /// let x = 1.0_f64;
@@ -913,7 +914,8 @@ impl f64 {
     /// If one of the arguments is NaN, then the other argument is returned.
     /// This follows the IEEE 754-2008 semantics for minNum, except for handling of signaling NaNs;
     /// this function handles all NaNs the same way and avoids minNum's problems with associativity.
-    /// This also matches the behavior of libm’s fmin.
+    /// This also matches the behavior of libm’s fmin. In particular, if the inputs compare equal
+    /// (such as for the case of `+0.0` and `-0.0`), either input may be returned non-deterministically.
     ///
     /// ```
     /// let x = 1.0_f64;

@@ -15,7 +15,7 @@ LL |         MyTrait::foo(&self)
    |         ^^^^^^^^^^^^ `MyTrait` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/cycle-effective-visibilities-during-dyn-compatibility-check.rs:5:22
    |
 LL | trait MyTrait {
@@ -40,7 +40,7 @@ LL | impl dyn MyTrait {
    |      ^^^^^^^^^^^ `MyTrait` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/cycle-effective-visibilities-during-dyn-compatibility-check.rs:5:22
    |
 LL | trait MyTrait {
@@ -57,7 +57,7 @@ LL |     fn other(&self) -> impl Marker {
    |               ^^^^ `MyTrait` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/cycle-effective-visibilities-during-dyn-compatibility-check.rs:5:22
    |
 LL | trait MyTrait {

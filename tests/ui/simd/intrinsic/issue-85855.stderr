@@ -1,20 +1,20 @@
 error[E0094]: intrinsic has wrong number of lifetime parameters: found 1, expected 0
-  --> $DIR/issue-85855.rs:9:27
+  --> $DIR/issue-85855.rs:10:30
    |
-LL |     fn simd_saturating_add<'a, T: 'a>(x: T, y: T);
-   |                           ^^^^^^^^^^^ expected 0 lifetime parameters
+LL | unsafe fn simd_saturating_add<'a, T: 'a>(x: T, y: T);
+   |                              ^^^^^^^^^^^ expected 0 lifetime parameters
 
 error[E0094]: intrinsic has wrong number of type parameters: found 2, expected 1
-  --> $DIR/issue-85855.rs:14:16
+  --> $DIR/issue-85855.rs:17:19
    |
-LL |     fn simd_sub<T, U>(x: T, y: U);
-   |                ^^^^^^ expected 1 type parameter
+LL | unsafe fn simd_sub<T, U>(x: T, y: U);
+   |                   ^^^^^^ expected 1 type parameter
 
 error[E0094]: intrinsic has wrong number of const parameters: found 1, expected 0
-  --> $DIR/issue-85855.rs:17:16
+  --> $DIR/issue-85855.rs:21:19
    |
-LL |     fn simd_mul<T, const N: usize>(x: T, y: T);
-   |                ^^^^^^^^^^^^^^^^^^^ expected 0 const parameters
+LL | unsafe fn simd_mul<T, const N: usize>(x: T, y: T);
+   |                   ^^^^^^^^^^^^^^^^^^^ expected 0 const parameters
 
 error: aborting due to 3 previous errors
 

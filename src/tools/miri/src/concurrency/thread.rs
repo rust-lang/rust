@@ -1138,7 +1138,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         use rand::Rng as _;
 
         let this = self.eval_context_mut();
-        if this.machine.rng.get_mut().gen_bool(this.machine.preemption_rate) {
+        if this.machine.rng.get_mut().random_bool(this.machine.preemption_rate) {
             this.yield_active_thread();
         }
     }

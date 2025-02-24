@@ -183,7 +183,7 @@ impl EarlyLintPass for NonAsciiIdents {
         #[allow(rustc::potential_query_instability)]
         let mut symbols: Vec<_> = symbols.iter().collect();
         symbols.sort_by_key(|k| k.1);
-        for (symbol, &sp) in symbols.iter() {
+        for &(ref symbol, &sp) in symbols.iter() {
             let symbol_str = symbol.as_str();
             if symbol_str.is_ascii() {
                 continue;
@@ -209,22 +209,30 @@ impl EarlyLintPass for NonAsciiIdents {
                     if codepoints.is_empty() {
                         continue;
                     }
-                    cx.emit_span_lint(UNCOMMON_CODEPOINTS, sp, IdentifierUncommonCodepoints {
-                        codepoints_len: codepoints.len(),
-                        codepoints: codepoints.into_iter().map(|(c, _)| c).collect(),
-                        identifier_type: id_ty_descr,
-                    });
+                    cx.emit_span_lint(
+                        UNCOMMON_CODEPOINTS,
+                        sp,
+                        IdentifierUncommonCodepoints {
+                            codepoints_len: codepoints.len(),
+                            codepoints: codepoints.into_iter().map(|(c, _)| c).collect(),
+                            identifier_type: id_ty_descr,
+                        },
+                    );
                 }
 
                 let remaining = chars
                     .extract_if(.., |(c, _)| !GeneralSecurityProfile::identifier_allowed(*c))
                     .collect::<Vec<_>>();
                 if !remaining.is_empty() {
-                    cx.emit_span_lint(UNCOMMON_CODEPOINTS, sp, IdentifierUncommonCodepoints {
-                        codepoints_len: remaining.len(),
-                        codepoints: remaining.into_iter().map(|(c, _)| c).collect(),
-                        identifier_type: "Restricted",
-                    });
+                    cx.emit_span_lint(
+                        UNCOMMON_CODEPOINTS,
+                        sp,
+                        IdentifierUncommonCodepoints {
+                            codepoints_len: remaining.len(),
+                            codepoints: remaining.into_iter().map(|(c, _)| c).collect(),
+                            identifier_type: "Restricted",
+                        },
+                    );
                 }
             }
         }
@@ -234,7 +242,7 @@ impl EarlyLintPass for NonAsciiIdents {
                 UnordMap::with_capacity(symbols.len());
             let mut skeleton_buf = String::new();
 
-            for (&symbol, &sp) in symbols.iter() {
+            for &(&symbol, &sp) in symbols.iter() {
                 use unicode_security::confusable_detection::skeleton;
 
                 let symbol_str = symbol.as_str();
@@ -253,12 +261,16 @@ impl EarlyLintPass for NonAsciiIdents {
                     .entry(skeleton_sym)
                     .and_modify(|(existing_symbol, existing_span, existing_is_ascii)| {
                         if !*existing_is_ascii || !is_ascii {
-                            cx.emit_span_lint(CONFUSABLE_IDENTS, sp, ConfusableIdentifierPair {
-                                existing_sym: *existing_symbol,
-                                sym: symbol,
-                                label: *existing_span,
-                                main_label: sp,
-                            });
+                            cx.emit_span_lint(
+                                CONFUSABLE_IDENTS,
+                                sp,
+                                ConfusableIdentifierPair {
+                                    existing_sym: *existing_symbol,
+                                    sym: symbol,
+                                    label: *existing_span,
+                                    main_label: sp,
+                                },
+                            );
                         }
                         if *existing_is_ascii && !is_ascii {
                             *existing_symbol = symbol;
@@ -286,7 +298,7 @@ impl EarlyLintPass for NonAsciiIdents {
             script_states.insert(latin_augmented_script_set, ScriptSetUsage::Verified);
 
             let mut has_suspicious = false;
-            for (symbol, &sp) in symbols.iter() {
+            for &(ref symbol, &sp) in symbols.iter() {
                 let symbol_str = symbol.as_str();
                 for ch in symbol_str.chars() {
                     if ch.is_ascii() {
@@ -370,10 +382,11 @@ impl EarlyLintPass for NonAsciiIdents {
                         let char_info = format!("'{}' (U+{:04X})", ch, ch as u32);
                         includes += &char_info;
                     }
-                    cx.emit_span_lint(MIXED_SCRIPT_CONFUSABLES, sp, MixedScriptConfusables {
-                        set: script_set.to_string(),
-                        includes,
-                    });
+                    cx.emit_span_lint(
+                        MIXED_SCRIPT_CONFUSABLES,
+                        sp,
+                        MixedScriptConfusables { set: script_set.to_string(), includes },
+                    );
                 }
             }
         }

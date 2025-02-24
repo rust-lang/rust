@@ -13,7 +13,7 @@ impl Owner {
 }
 
 // Make sure we handle bound vars correctly.
-//@ has 'inherent_projections/fn.user.html' '//pre[@class="rust item-decl"]' "user(_: for<'a> fn(_: Carrier<'a>::Focus))"
+//@ has 'inherent_projections/fn.user.html' '//pre[@class="rust item-decl"]' "user(_: for<'a> fn(Carrier<'a>::Focus))"
 pub fn user(_: for<'a> fn(Carrier<'a>::Focus)) {}
 
 pub struct Carrier<'a>(&'a ());

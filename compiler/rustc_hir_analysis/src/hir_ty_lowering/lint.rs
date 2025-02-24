@@ -23,9 +23,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) -> Option<ErrorGuaranteed> {
         let tcx = self.tcx();
 
-        let hir::TyKind::TraitObject([poly_trait_ref, ..], _, TraitObjectSyntax::None) =
+        let poly_trait_ref = if let hir::TyKind::TraitObject([poly_trait_ref, ..], tagged_ptr) =
             self_ty.kind
-        else {
+            && let TraitObjectSyntax::None = tagged_ptr.tag()
+        {
+            poly_trait_ref
+        } else {
             return None;
         };
 
@@ -38,8 +41,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 kind: hir::ExprKind::Path(hir::QPath::TypeRelative(qself, _)),
                 ..
             })
-            | hir::Node::Pat(hir::Pat {
-                kind: hir::PatKind::Path(hir::QPath::TypeRelative(qself, _)),
+            | hir::Node::PatExpr(hir::PatExpr {
+                kind: hir::PatExprKind::Path(hir::QPath::TypeRelative(qself, _)),
                 ..
             }) if qself.hir_id == self_ty.hir_id => true,
             _ => false,
@@ -127,7 +130,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         diag: &mut Diag<'_, G>,
     ) {
         let tcx = self.tcx();
-        let parent_id = tcx.hir().get_parent_item(self_ty.hir_id).def_id;
+        let parent_id = tcx.hir_get_parent_item(self_ty.hir_id).def_id;
         if let hir::Node::Item(hir::Item {
             kind: hir::ItemKind::Impl(hir::Impl { self_ty: impl_self_ty, of_trait, generics, .. }),
             ..
@@ -188,7 +191,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// Make sure that we are in the condition to suggest `impl Trait`.
     fn maybe_suggest_impl_trait(&self, self_ty: &hir::Ty<'_>, diag: &mut Diag<'_>) -> bool {
         let tcx = self.tcx();
-        let parent_id = tcx.hir().get_parent_item(self_ty.hir_id).def_id;
+        let parent_id = tcx.hir_get_parent_item(self_ty.hir_id).def_id;
         // FIXME: If `type_alias_impl_trait` is enabled, also look for `Trait0<Ty = Trait1>`
         //        and suggest `Trait0<Ty = impl Trait1>`.
         // Functions are found in three different contexts.
@@ -294,7 +297,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let (dyn_str, paren_dyn_str) =
                     if borrowed { ("dyn ", "(dyn ") } else { ("&dyn ", "&(dyn ") };
 
-                let sugg = if let hir::TyKind::TraitObject([_, _, ..], _, _) = self_ty.kind {
+                let sugg = if let hir::TyKind::TraitObject([_, _, ..], _) = self_ty.kind {
                     // There are more than one trait bound, we need surrounding parentheses.
                     vec![
                         (self_ty.span.shrink_to_lo(), paren_dyn_str.to_string()),
@@ -318,7 +321,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     }
 
     fn maybe_suggest_assoc_ty_bound(&self, self_ty: &hir::Ty<'_>, diag: &mut Diag<'_>) {
-        let mut parents = self.tcx().hir().parent_iter(self_ty.hir_id);
+        let mut parents = self.tcx().hir_parent_iter(self_ty.hir_id);
 
         if let Some((_, hir::Node::AssocItemConstraint(constraint))) = parents.next()
             && let Some(obj_ty) = constraint.ty()

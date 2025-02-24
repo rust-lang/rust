@@ -57,6 +57,9 @@ impl<T: ?Sized> LegacyReceiver for Box<T> {}
 #[lang = "copy"]
 pub trait Copy {}
 
+#[lang = "bikeshed_guaranteed_no_drop"]
+pub trait BikeshedGuaranteedNoDrop {}
+
 impl Copy for bool {}
 impl Copy for u8 {}
 impl Copy for u16 {}

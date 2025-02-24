@@ -151,7 +151,7 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
         apply_patches(
             &runner.dirs,
             "coretests",
-            &runner.stdlib_source.join("library/core/tests"),
+            &runner.stdlib_source.join("library/coretests"),
             &LIBCORE_TESTS_SRC.to_path(&runner.dirs),
         );
 
@@ -329,14 +329,6 @@ impl<'a> TestRunner<'a> {
     ) -> Self {
         target_compiler.rustflags.extend(rustflags_from_env("RUSTFLAGS"));
         target_compiler.rustdocflags.extend(rustflags_from_env("RUSTDOCFLAGS"));
-
-        // FIXME fix `#[linkage = "extern_weak"]` without this
-        if target_compiler.triple.contains("darwin") {
-            target_compiler.rustflags.extend([
-                "-Clink-arg=-undefined".to_owned(),
-                "-Clink-arg=dynamic_lookup".to_owned(),
-            ]);
-        }
 
         let jit_supported = use_unstable_features
             && is_native

@@ -1,4 +1,4 @@
-error[E0271]: expected `foo` to be a fn item that returns `i32`, but it returns `()`
+error[E0271]: expected `foo` to return `i32`, but it returns `()`
   --> $DIR/issue-106991.rs:5:13
    |
 LL | fn bar() -> impl Iterator<Item = i32> {

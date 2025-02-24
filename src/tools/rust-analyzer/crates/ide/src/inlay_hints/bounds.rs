@@ -22,11 +22,7 @@ pub(super) fn hints(
         return None;
     }
 
-    let linked_location =
-        famous_defs.core_marker_Sized().and_then(|it| it.try_to_nav(sema.db)).map(|it| {
-            let n = it.call_site();
-            FileRange { file_id: n.file_id, range: n.focus_or_full_range() }
-        });
+    let sized_trait = famous_defs.core_marker_Sized();
 
     for param in params.type_or_const_params() {
         match param {
@@ -48,7 +44,17 @@ pub(super) fn hints(
                         }
                         hint.parts.push(InlayHintLabelPart {
                             text: "Sized".to_owned(),
-                            linked_location,
+                            linked_location: sized_trait.and_then(|it| {
+                                config.lazy_location_opt(|| {
+                                    it.try_to_nav(sema.db).map(|it| {
+                                        let n = it.call_site();
+                                        FileRange {
+                                            file_id: n.file_id,
+                                            range: n.focus_or_full_range(),
+                                        }
+                                    })
+                                })
+                            }),
                             tooltip: None,
                         });
                         if has_bounds {
@@ -134,12 +140,14 @@ fn foo<T>() {}
                             InlayHintLabelPart {
                                 text: "Sized",
                                 linked_location: Some(
-                                    FileRangeWrapper {
-                                        file_id: FileId(
-                                            1,
-                                        ),
-                                        range: 135..140,
-                                    },
+                                    Computed(
+                                        FileRangeWrapper {
+                                            file_id: FileId(
+                                                1,
+                                            ),
+                                            range: 135..140,
+                                        },
+                                    ),
                                 ),
                                 tooltip: "",
                             },

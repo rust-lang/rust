@@ -1,5 +1,6 @@
 use crate::spec::{
-    Cc, LinkerFlavor, Lld, SanitizerSet, StackProbeType, Target, TargetOptions, base,
+    Cc, LinkerFlavor, Lld, SanitizerSet, StackProbeType, Target, TargetMetadata, TargetOptions,
+    base,
 };
 
 pub(crate) fn target() -> Target {
@@ -18,7 +19,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "x86_64-unknown-netbsd".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("NetBSD/amd64".into()),
             tier: Some(2),
             host_tools: Some(true),

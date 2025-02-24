@@ -186,7 +186,7 @@ fn true_significant_drop_ty<'tcx>(
         debug!(?name_str);
         match name_str[..] {
             // These are the types from Rust core ecosystem
-            ["sym" | "proc_macro2", ..]
+            ["syn" | "proc_macro2", ..]
             | ["core" | "std", "task", "LocalWaker" | "Waker"]
             | ["core" | "std", "task", "wake", "LocalWaker" | "Waker"] => Some(smallvec![]),
             // These are important types from Rust ecosystem

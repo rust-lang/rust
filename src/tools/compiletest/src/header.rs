@@ -882,14 +882,6 @@ fn iter_header(
         }
         let ln = ln.trim();
 
-        // Assume that any directives will be found before the first module or function. This
-        // doesn't seem to be an optimization with a warm page cache. Maybe with a cold one.
-        // FIXME(jieyouxu): this will cause `//@` directives in the rest of the test file to
-        // not be checked.
-        if ln.starts_with("fn") || ln.starts_with("mod") {
-            return;
-        }
-
         let Some(directive_line) = line_directive(line_number, comment, ln) else {
             continue;
         };
@@ -1034,19 +1026,6 @@ impl Config {
         }
     }
 
-    pub fn find_rust_src_root(&self) -> Option<PathBuf> {
-        let mut path = self.src_base.clone();
-        let path_postfix = Path::new("src/etc/lldb_batchmode.py");
-
-        while path.pop() {
-            if path.join(&path_postfix).is_file() {
-                return Some(path);
-            }
-        }
-
-        None
-    }
-
     fn parse_edition(&self, line: &str) -> Option<String> {
         self.parse_name_value_directive(line, "edition")
     }
@@ -1106,7 +1085,7 @@ fn expand_variables(mut value: String, config: &Config) -> String {
     }
 
     if value.contains(SRC_BASE) {
-        value = value.replace(SRC_BASE, &config.src_base.to_string_lossy());
+        value = value.replace(SRC_BASE, &config.src_test_suite_root.to_str().unwrap());
     }
 
     if value.contains(BUILD_BASE) {

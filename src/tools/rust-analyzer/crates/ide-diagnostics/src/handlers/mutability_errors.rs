@@ -831,13 +831,14 @@ fn f() {
 
     #[test]
     fn or_pattern() {
-        // FIXME: `None` is inferred as unknown here for some reason
         check_diagnostics(
             r#"
 //- minicore: option
 fn f(_: i32) {}
 fn main() {
     let ((Some(mut x), None) | (_, Some(mut x))) = (None, Some(7)) else { return };
+             //^^^^^ 💡 warn: variable does not need to be mutable
+
     f(x);
 }
 "#,

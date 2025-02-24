@@ -469,6 +469,17 @@ impl AliasTermKind {
     }
 }
 
+impl From<ty::AliasTyKind> for AliasTermKind {
+    fn from(value: ty::AliasTyKind) -> Self {
+        match value {
+            ty::Projection => AliasTermKind::ProjectionTy,
+            ty::Opaque => AliasTermKind::OpaqueTy,
+            ty::Weak => AliasTermKind::WeakTy,
+            ty::Inherent => AliasTermKind::InherentTy,
+        }
+    }
+}
+
 /// Represents the unprojected term of a projection goal.
 ///
 /// * For a projection, this would be `<Ty as Trait<...>>::N<...>`.
@@ -541,35 +552,29 @@ impl<I: Interner> AliasTerm<I> {
 
     pub fn to_term(self, interner: I) -> I::Term {
         match self.kind(interner) {
-            AliasTermKind::ProjectionTy => {
-                Ty::new_alias(interner, ty::AliasTyKind::Projection, ty::AliasTy {
-                    def_id: self.def_id,
-                    args: self.args,
-                    _use_alias_ty_new_instead: (),
-                })
-                .into()
-            }
-            AliasTermKind::InherentTy => {
-                Ty::new_alias(interner, ty::AliasTyKind::Inherent, ty::AliasTy {
-                    def_id: self.def_id,
-                    args: self.args,
-                    _use_alias_ty_new_instead: (),
-                })
-                .into()
-            }
-            AliasTermKind::OpaqueTy => {
-                Ty::new_alias(interner, ty::AliasTyKind::Opaque, ty::AliasTy {
-                    def_id: self.def_id,
-                    args: self.args,
-                    _use_alias_ty_new_instead: (),
-                })
-                .into()
-            }
-            AliasTermKind::WeakTy => Ty::new_alias(interner, ty::AliasTyKind::Weak, ty::AliasTy {
-                def_id: self.def_id,
-                args: self.args,
-                _use_alias_ty_new_instead: (),
-            })
+            AliasTermKind::ProjectionTy => Ty::new_alias(
+                interner,
+                ty::AliasTyKind::Projection,
+                ty::AliasTy { def_id: self.def_id, args: self.args, _use_alias_ty_new_instead: () },
+            )
+            .into(),
+            AliasTermKind::InherentTy => Ty::new_alias(
+                interner,
+                ty::AliasTyKind::Inherent,
+                ty::AliasTy { def_id: self.def_id, args: self.args, _use_alias_ty_new_instead: () },
+            )
+            .into(),
+            AliasTermKind::OpaqueTy => Ty::new_alias(
+                interner,
+                ty::AliasTyKind::Opaque,
+                ty::AliasTy { def_id: self.def_id, args: self.args, _use_alias_ty_new_instead: () },
+            )
+            .into(),
+            AliasTermKind::WeakTy => Ty::new_alias(
+                interner,
+                ty::AliasTyKind::Weak,
+                ty::AliasTy { def_id: self.def_id, args: self.args, _use_alias_ty_new_instead: () },
+            )
             .into(),
             AliasTermKind::UnevaluatedConst | AliasTermKind::ProjectionConst => {
                 I::Const::new_unevaluated(

@@ -397,6 +397,9 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
         if "{}[]()".contains(token) {
             let c = token.chars().next().unwrap();
             quote! { #c }
+            // underscore is an identifier in the proc-macro api
+        } else if *token == "_" {
+            quote! { _ }
         } else {
             let cs = token.chars().map(|c| Punct::new(c, Spacing::Joint));
             quote! { #(#cs)* }

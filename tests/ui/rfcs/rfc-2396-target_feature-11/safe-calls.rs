@@ -2,8 +2,6 @@
 // Set the base cpu explicitly, in case the default has been changed.
 //@ compile-flags: -C target-cpu=x86-64
 
-#![feature(target_feature_11)]
-
 #[target_feature(enable = "sse2")]
 const fn sse2() {}
 

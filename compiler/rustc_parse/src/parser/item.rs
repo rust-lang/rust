@@ -213,9 +213,12 @@ impl<'a> Parser<'a> {
             self.parse_use_item()?
         } else if self.check_fn_front_matter(check_pub, case) {
             // FUNCTION ITEM
-            let (ident, sig, generics, body) =
+            let (ident, sig, generics, contract, body) =
                 self.parse_fn(attrs, fn_parse_mode, lo, vis, case)?;
-            (ident, ItemKind::Fn(Box::new(Fn { defaultness: def_(), sig, generics, body })))
+            (
+                ident,
+                ItemKind::Fn(Box::new(Fn { defaultness: def_(), sig, generics, contract, body })),
+            )
         } else if self.eat_keyword(exp!(Extern)) {
             if self.eat_keyword(exp!(Crate)) {
                 // EXTERN CRATE
@@ -1951,10 +1954,10 @@ impl<'a> Parser<'a> {
                 // Try to recover extra trailing angle brackets
                 if let TyKind::Path(_, Path { segments, .. }) = &a_var.ty.kind {
                     if let Some(last_segment) = segments.last() {
-                        let guar = self.check_trailing_angle_brackets(last_segment, &[
-                            exp!(Comma),
-                            exp!(CloseBrace),
-                        ]);
+                        let guar = self.check_trailing_angle_brackets(
+                            last_segment,
+                            &[exp!(Comma), exp!(CloseBrace)],
+                        );
                         if let Some(_guar) = guar {
                             // Handle a case like `Vec<u8>>,` where we can continue parsing fields
                             // after the comma
@@ -2040,9 +2043,6 @@ impl<'a> Parser<'a> {
         }
         self.expect_field_ty_separator()?;
         let ty = self.parse_ty()?;
-        if self.token == token::Colon && self.look_ahead(1, |t| *t != token::Colon) {
-            self.dcx().emit_err(errors::SingleColonStructType { span: self.token.span });
-        }
         let default = if self.token == token::Eq {
             self.bump();
             let const_expr = self.parse_expr_anon_const()?;
@@ -2372,7 +2372,7 @@ impl<'a> Parser<'a> {
         sig_lo: Span,
         vis: &Visibility,
         case: Case,
-    ) -> PResult<'a, (Ident, FnSig, Generics, Option<P<Block>>)> {
+    ) -> PResult<'a, (Ident, FnSig, Generics, Option<P<FnContract>>, Option<P<Block>>)> {
         let fn_span = self.token.span;
         let header = self.parse_fn_front_matter(vis, case)?; // `const ... fn`
         let ident = self.parse_ident()?; // `foo`
@@ -2398,6 +2398,8 @@ impl<'a> Parser<'a> {
         // inside `parse_fn_body()`.
         let fn_params_end = self.prev_token.span.shrink_to_hi();
 
+        let contract = self.parse_contract()?;
+
         generics.where_clause = self.parse_where_clause()?; // `where T: Ord`
 
         // `fn_params_end` is needed only when it's followed by a where clause.
@@ -2409,7 +2411,7 @@ impl<'a> Parser<'a> {
         let body =
             self.parse_fn_body(attrs, &ident, &mut sig_hi, fn_parse_mode.req_body, fn_params_end)?;
         let fn_sig_span = sig_lo.to(sig_hi);
-        Ok((ident, FnSig { header, decl, span: fn_sig_span }, generics, body))
+        Ok((ident, FnSig { header, decl, span: fn_sig_span }, generics, contract, body))
     }
 
     /// Provide diagnostics when function body is not found

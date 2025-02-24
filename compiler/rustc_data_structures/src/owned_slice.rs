@@ -1,15 +1,10 @@
 use std::borrow::Borrow;
 use std::ops::Deref;
-
-// Use our fake Send/Sync traits when on not parallel compiler,
-// so that `OwnedSlice` only implements/requires Send/Sync
-// for parallel compiler builds.
-use crate::sync;
-use crate::sync::Lrc;
+use std::sync::Arc;
 
 /// An owned slice.
 ///
-/// This is similar to `Lrc<[u8]>` but allows slicing and using anything as the
+/// This is similar to `Arc<[u8]>` but allows slicing and using anything as the
 /// backing buffer.
 ///
 /// See [`slice_owned`] for `OwnedSlice` construction and examples.
@@ -34,7 +29,7 @@ pub struct OwnedSlice {
     //       \/
     //      ⊂(´･◡･⊂ )∘˚˳° (I am the phantom remnant of #97770)
     #[expect(dead_code)]
-    owner: Lrc<dyn sync::Send + sync::Sync>,
+    owner: Arc<dyn Send + Sync>,
 }
 
 /// Makes an [`OwnedSlice`] out of an `owner` and a `slicer` function.
@@ -61,7 +56,7 @@ pub struct OwnedSlice {
 /// ```
 pub fn slice_owned<O, F>(owner: O, slicer: F) -> OwnedSlice
 where
-    O: sync::Send + sync::Sync + 'static,
+    O: Send + Sync + 'static,
     F: FnOnce(&O) -> &[u8],
 {
     try_slice_owned(owner, |x| Ok::<_, !>(slicer(x))).into_ok()
@@ -72,7 +67,7 @@ where
 /// See [`slice_owned`] for the infallible version.
 pub fn try_slice_owned<O, F, E>(owner: O, slicer: F) -> Result<OwnedSlice, E>
 where
-    O: sync::Send + sync::Sync + 'static,
+    O: Send + Sync + 'static,
     F: FnOnce(&O) -> Result<&[u8], E>,
 {
     // We wrap the owner of the bytes in, so it doesn't move.
@@ -86,7 +81,7 @@ where
     // N.B. the HRTB on the `slicer` is important — without it the caller could provide
     // a short lived slice, unrelated to the owner.
 
-    let owner = Lrc::new(owner);
+    let owner = Arc::new(owner);
     let bytes = slicer(&*owner)?;
 
     Ok(OwnedSlice { bytes, owner })
@@ -139,10 +134,10 @@ impl Borrow<[u8]> for OwnedSlice {
 }
 
 // Safety: `OwnedSlice` is conceptually `(&'self.1 [u8], Arc<dyn Send + Sync>)`, which is `Send`
-unsafe impl sync::Send for OwnedSlice {}
+unsafe impl Send for OwnedSlice {}
 
 // Safety: `OwnedSlice` is conceptually `(&'self.1 [u8], Arc<dyn Send + Sync>)`, which is `Sync`
-unsafe impl sync::Sync for OwnedSlice {}
+unsafe impl Sync for OwnedSlice {}
 
 #[cfg(test)]
 mod tests;

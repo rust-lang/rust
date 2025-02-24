@@ -13,9 +13,9 @@ error[E0432]: unresolved import `r#extern`
   --> $DIR/keyword-extern-as-identifier-use.rs:1:5
    |
 LL | use extern::foo;
-   |     ^^^^^^ you might be missing crate `r#extern`
+   |     ^^^^^^ use of unresolved module or unlinked crate `r#extern`
    |
-help: consider importing the `r#extern` crate
+help: you might be missing a crate named `r#extern`, add it to your project and import it in your code
    |
 LL + extern crate r#extern;
    |

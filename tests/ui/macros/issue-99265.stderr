@@ -74,8 +74,9 @@ LL |     println!("Hello {:1$}!", "x", width = 5);
    |
 help: use the named argument by name to avoid ambiguity
    |
-LL |     println!("Hello {:width$}!", "x", width = 5);
-   |                       ~~~~~~
+LL -     println!("Hello {:1$}!", "x", width = 5);
+LL +     println!("Hello {:width$}!", "x", width = 5);
+   |
 
 warning: named argument `f` is not used by name
   --> $DIR/issue-99265.rs:23:33
@@ -100,8 +101,9 @@ LL |     println!("Hello {:1$.2$}!", f = 0.02f32, width = 5, precision = 2);
    |
 help: use the named argument by name to avoid ambiguity
    |
-LL |     println!("Hello {:1$.precision$}!", f = 0.02f32, width = 5, precision = 2);
-   |                          ~~~~~~~~~~
+LL -     println!("Hello {:1$.2$}!", f = 0.02f32, width = 5, precision = 2);
+LL +     println!("Hello {:1$.precision$}!", f = 0.02f32, width = 5, precision = 2);
+   |
 
 warning: named argument `width` is not used by name
   --> $DIR/issue-99265.rs:23:46
@@ -113,8 +115,9 @@ LL |     println!("Hello {:1$.2$}!", f = 0.02f32, width = 5, precision = 2);
    |
 help: use the named argument by name to avoid ambiguity
    |
-LL |     println!("Hello {:width$.2$}!", f = 0.02f32, width = 5, precision = 2);
-   |                       ~~~~~~
+LL -     println!("Hello {:1$.2$}!", f = 0.02f32, width = 5, precision = 2);
+LL +     println!("Hello {:width$.2$}!", f = 0.02f32, width = 5, precision = 2);
+   |
 
 warning: named argument `f` is not used by name
   --> $DIR/issue-99265.rs:31:34
@@ -126,8 +129,9 @@ LL |     println!("Hello {0:1$.2$}!", f = 0.02f32, width = 5, precision = 2);
    |
 help: use the named argument by name to avoid ambiguity
    |
-LL |     println!("Hello {f:1$.2$}!", f = 0.02f32, width = 5, precision = 2);
-   |                      ~
+LL -     println!("Hello {0:1$.2$}!", f = 0.02f32, width = 5, precision = 2);
+LL +     println!("Hello {f:1$.2$}!", f = 0.02f32, width = 5, precision = 2);
+   |
 
 warning: named argument `precision` is not used by name
   --> $DIR/issue-99265.rs:31:58
@@ -139,8 +143,9 @@ LL |     println!("Hello {0:1$.2$}!", f = 0.02f32, width = 5, precision = 2);
    |
 help: use the named argument by name to avoid ambiguity
    |
-LL |     println!("Hello {0:1$.precision$}!", f = 0.02f32, width = 5, precision = 2);
-   |                           ~~~~~~~~~~
+LL -     println!("Hello {0:1$.2$}!", f = 0.02f32, width = 5, precision = 2);
+LL +     println!("Hello {0:1$.precision$}!", f = 0.02f32, width = 5, precision = 2);
+   |
 
 warning: named argument `width` is not used by name
   --> $DIR/issue-99265.rs:31:47
@@ -152,8 +157,9 @@ LL |     println!("Hello {0:1$.2$}!", f = 0.02f32, width = 5, precision = 2);
    |
 help: use the named argument by name to avoid ambiguity
    |
-LL |     println!("Hello {0:width$.2$}!", f = 0.02f32, width = 5, precision = 2);
-   |                        ~~~~~~
+LL -     println!("Hello {0:1$.2$}!", f = 0.02f32, width = 5, precision = 2);
+LL +     println!("Hello {0:width$.2$}!", f = 0.02f32, width = 5, precision = 2);
+   |
 
 warning: named argument `f` is not used by name
   --> $DIR/issue-99265.rs:49:9
@@ -166,8 +172,9 @@ LL |         f = 0.02f32,
    |
 help: use the named argument by name to avoid ambiguity
    |
-LL |         "{}, Hello {f:2$.3$} {4:5$.6$}! {1}",
-   |                     ~
+LL -         "{}, Hello {1:2$.3$} {4:5$.6$}! {1}",
+LL +         "{}, Hello {f:2$.3$} {4:5$.6$}! {1}",
+   |
 
 warning: named argument `precision` is not used by name
   --> $DIR/issue-99265.rs:54:9
@@ -180,8 +187,9 @@ LL |         precision = 2,
    |
 help: use the named argument by name to avoid ambiguity
    |
-LL |         "{}, Hello {1:2$.precision$} {4:5$.6$}! {1}",
-   |                          ~~~~~~~~~~
+LL -         "{}, Hello {1:2$.3$} {4:5$.6$}! {1}",
+LL +         "{}, Hello {1:2$.precision$} {4:5$.6$}! {1}",
+   |
 
 warning: named argument `width` is not used by name
   --> $DIR/issue-99265.rs:52:9
@@ -194,8 +202,9 @@ LL |         width = 5,
    |
 help: use the named argument by name to avoid ambiguity
    |
-LL |         "{}, Hello {1:width$.3$} {4:5$.6$}! {1}",
-   |                       ~~~~~~
+LL -         "{}, Hello {1:2$.3$} {4:5$.6$}! {1}",
+LL +         "{}, Hello {1:width$.3$} {4:5$.6$}! {1}",
+   |
 
 warning: named argument `g` is not used by name
   --> $DIR/issue-99265.rs:56:9
@@ -208,8 +217,9 @@ LL |         g = 0.02f32,
    |
 help: use the named argument by name to avoid ambiguity
    |
-LL |         "{}, Hello {1:2$.3$} {g:5$.6$}! {1}",
-   |                               ~
+LL -         "{}, Hello {1:2$.3$} {4:5$.6$}! {1}",
+LL +         "{}, Hello {1:2$.3$} {g:5$.6$}! {1}",
+   |
 
 warning: named argument `precision2` is not used by name
   --> $DIR/issue-99265.rs:60:9
@@ -222,8 +232,9 @@ LL |         precision2 = 2
    |
 help: use the named argument by name to avoid ambiguity
    |
-LL |         "{}, Hello {1:2$.3$} {4:5$.precision2$}! {1}",
-   |                                    ~~~~~~~~~~~
+LL -         "{}, Hello {1:2$.3$} {4:5$.6$}! {1}",
+LL +         "{}, Hello {1:2$.3$} {4:5$.precision2$}! {1}",
+   |
 
 warning: named argument `width2` is not used by name
   --> $DIR/issue-99265.rs:58:9
@@ -236,8 +247,9 @@ LL |         width2 = 5,
    |
 help: use the named argument by name to avoid ambiguity
    |
-LL |         "{}, Hello {1:2$.3$} {4:width2$.6$}! {1}",
-   |                                 ~~~~~~~
+LL -         "{}, Hello {1:2$.3$} {4:5$.6$}! {1}",
+LL +         "{}, Hello {1:2$.3$} {4:width2$.6$}! {1}",
+   |
 
 warning: named argument `f` is not used by name
   --> $DIR/issue-99265.rs:49:9
@@ -250,8 +262,9 @@ LL |         f = 0.02f32,
    |
 help: use the named argument by name to avoid ambiguity
    |
-LL |         "{}, Hello {1:2$.3$} {4:5$.6$}! {f}",
-   |                                          ~
+LL -         "{}, Hello {1:2$.3$} {4:5$.6$}! {1}",
+LL +         "{}, Hello {1:2$.3$} {4:5$.6$}! {f}",
+   |
 
 warning: named argument `f` is not used by name
   --> $DIR/issue-99265.rs:64:31
@@ -276,8 +289,9 @@ LL |     println!("Hello {0:0.1}!", f = 0.02f32);
    |
 help: use the named argument by name to avoid ambiguity
    |
-LL |     println!("Hello {f:0.1}!", f = 0.02f32);
-   |                      ~
+LL -     println!("Hello {0:0.1}!", f = 0.02f32);
+LL +     println!("Hello {f:0.1}!", f = 0.02f32);
+   |
 
 warning: named argument `v` is not used by name
   --> $DIR/issue-99265.rs:79:23
@@ -302,8 +316,9 @@ LL |     println!("{:0$}", v = val);
    |
 help: use the named argument by name to avoid ambiguity
    |
-LL |     println!("{:v$}", v = val);
-   |                 ~~
+LL -     println!("{:0$}", v = val);
+LL +     println!("{:v$}", v = val);
+   |
 
 warning: named argument `v` is not used by name
   --> $DIR/issue-99265.rs:84:24
@@ -315,8 +330,9 @@ LL |     println!("{0:0$}", v = val);
    |
 help: use the named argument by name to avoid ambiguity
    |
-LL |     println!("{v:0$}", v = val);
-   |                ~
+LL -     println!("{0:0$}", v = val);
+LL +     println!("{v:0$}", v = val);
+   |
 
 warning: named argument `v` is not used by name
   --> $DIR/issue-99265.rs:84:24
@@ -328,8 +344,9 @@ LL |     println!("{0:0$}", v = val);
    |
 help: use the named argument by name to avoid ambiguity
    |
-LL |     println!("{0:v$}", v = val);
-   |                  ~~
+LL -     println!("{0:0$}", v = val);
+LL +     println!("{0:v$}", v = val);
+   |
 
 warning: named argument `v` is not used by name
   --> $DIR/issue-99265.rs:89:26
@@ -354,8 +371,9 @@ LL |     println!("{:0$.0$}", v = val);
    |
 help: use the named argument by name to avoid ambiguity
    |
-LL |     println!("{:0$.v$}", v = val);
-   |                    ~~
+LL -     println!("{:0$.0$}", v = val);
+LL +     println!("{:0$.v$}", v = val);
+   |
 
 warning: named argument `v` is not used by name
   --> $DIR/issue-99265.rs:89:26
@@ -367,8 +385,9 @@ LL |     println!("{:0$.0$}", v = val);
    |
 help: use the named argument by name to avoid ambiguity
    |
-LL |     println!("{:v$.0$}", v = val);
-   |                 ~~
+LL -     println!("{:0$.0$}", v = val);
+LL +     println!("{:v$.0$}", v = val);
+   |
 
 warning: named argument `v` is not used by name
   --> $DIR/issue-99265.rs:96:27
@@ -380,8 +399,9 @@ LL |     println!("{0:0$.0$}", v = val);
    |
 help: use the named argument by name to avoid ambiguity
    |
-LL |     println!("{v:0$.0$}", v = val);
-   |                ~
+LL -     println!("{0:0$.0$}", v = val);
+LL +     println!("{v:0$.0$}", v = val);
+   |
 
 warning: named argument `v` is not used by name
   --> $DIR/issue-99265.rs:96:27
@@ -393,8 +413,9 @@ LL |     println!("{0:0$.0$}", v = val);
    |
 help: use the named argument by name to avoid ambiguity
    |
-LL |     println!("{0:0$.v$}", v = val);
-   |                     ~~
+LL -     println!("{0:0$.0$}", v = val);
+LL +     println!("{0:0$.v$}", v = val);
+   |
 
 warning: named argument `v` is not used by name
   --> $DIR/issue-99265.rs:96:27
@@ -406,8 +427,9 @@ LL |     println!("{0:0$.0$}", v = val);
    |
 help: use the named argument by name to avoid ambiguity
    |
-LL |     println!("{0:v$.0$}", v = val);
-   |                  ~~
+LL -     println!("{0:0$.0$}", v = val);
+LL +     println!("{0:v$.0$}", v = val);
+   |
 
 warning: named argument `a` is not used by name
   --> $DIR/issue-99265.rs:104:28
@@ -432,8 +454,9 @@ LL |     println!("{} {a} {0}", a = 1);
    |
 help: use the named argument by name to avoid ambiguity
    |
-LL |     println!("{} {a} {a}", a = 1);
-   |                       ~
+LL -     println!("{} {a} {0}", a = 1);
+LL +     println!("{} {a} {a}", a = 1);
+   |
 
 warning: named argument `a` is not used by name
   --> $DIR/issue-99265.rs:115:14
@@ -460,8 +483,9 @@ LL |              a = 1.0, b = 1, c = 2,
    |
 help: use the named argument by name to avoid ambiguity
    |
-LL |                 {:1$.c$}",
-   |                      ~~
+LL -                 {:1$.2$}",
+LL +                 {:1$.c$}",
+   |
 
 warning: named argument `b` is not used by name
   --> $DIR/issue-99265.rs:115:23
@@ -474,8 +498,9 @@ LL |              a = 1.0, b = 1, c = 2,
    |
 help: use the named argument by name to avoid ambiguity
    |
-LL |                 {:b$.2$}",
-   |                   ~~
+LL -                 {:1$.2$}",
+LL +                 {:b$.2$}",
+   |
 
 warning: named argument `a` is not used by name
   --> $DIR/issue-99265.rs:126:14
@@ -488,8 +513,9 @@ LL |              a = 1.0, b = 1, c = 2,
    |
 help: use the named argument by name to avoid ambiguity
    |
-LL |                 {a:1$.2$}",
-   |                  ~
+LL -                 {0:1$.2$}",
+LL +                 {a:1$.2$}",
+   |
 
 warning: named argument `c` is not used by name
   --> $DIR/issue-99265.rs:126:30
@@ -502,8 +528,9 @@ LL |              a = 1.0, b = 1, c = 2,
    |
 help: use the named argument by name to avoid ambiguity
    |
-LL |                 {0:1$.c$}",
-   |                       ~~
+LL -                 {0:1$.2$}",
+LL +                 {0:1$.c$}",
+   |
 
 warning: named argument `b` is not used by name
   --> $DIR/issue-99265.rs:126:23
@@ -516,8 +543,9 @@ LL |              a = 1.0, b = 1, c = 2,
    |
 help: use the named argument by name to avoid ambiguity
    |
-LL |                 {0:b$.2$}",
-   |                    ~~
+LL -                 {0:1$.2$}",
+LL +                 {0:b$.2$}",
+   |
 
 warning: named argument `x` is not used by name
   --> $DIR/issue-99265.rs:132:30
@@ -542,8 +570,9 @@ LL |     println!("{{{:1$.2$}}}", x = 1.0, width = 3, precision = 2);
    |
 help: use the named argument by name to avoid ambiguity
    |
-LL |     println!("{{{:1$.precision$}}}", x = 1.0, width = 3, precision = 2);
-   |                      ~~~~~~~~~~
+LL -     println!("{{{:1$.2$}}}", x = 1.0, width = 3, precision = 2);
+LL +     println!("{{{:1$.precision$}}}", x = 1.0, width = 3, precision = 2);
+   |
 
 warning: named argument `width` is not used by name
   --> $DIR/issue-99265.rs:132:39
@@ -555,8 +584,9 @@ LL |     println!("{{{:1$.2$}}}", x = 1.0, width = 3, precision = 2);
    |
 help: use the named argument by name to avoid ambiguity
    |
-LL |     println!("{{{:width$.2$}}}", x = 1.0, width = 3, precision = 2);
-   |                   ~~~~~~
+LL -     println!("{{{:1$.2$}}}", x = 1.0, width = 3, precision = 2);
+LL +     println!("{{{:width$.2$}}}", x = 1.0, width = 3, precision = 2);
+   |
 
 warning: 42 warnings emitted
 

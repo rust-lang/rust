@@ -1,6 +1,6 @@
 use std::path::PathBuf;
+use std::sync::Arc;
 
-use rustc_data_structures::sync::Lrc;
 use rustc_macros::{Decodable, Encodable, HashStable};
 
 #[derive(HashStable)]
@@ -15,7 +15,7 @@ pub enum DebuggerVisualizerType {
 #[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord, Encodable, Decodable)]
 pub struct DebuggerVisualizerFile {
     /// The complete debugger visualizer source.
-    pub src: Lrc<[u8]>,
+    pub src: Arc<[u8]>,
     /// Indicates which visualizer type this targets.
     pub visualizer_type: DebuggerVisualizerType,
     /// The file path to the visualizer file. This is used for reporting
@@ -26,13 +26,13 @@ pub struct DebuggerVisualizerFile {
 }
 
 impl DebuggerVisualizerFile {
-    pub fn new(src: Lrc<[u8]>, visualizer_type: DebuggerVisualizerType, path: PathBuf) -> Self {
+    pub fn new(src: Arc<[u8]>, visualizer_type: DebuggerVisualizerType, path: PathBuf) -> Self {
         DebuggerVisualizerFile { src, visualizer_type, path: Some(path) }
     }
 
     pub fn path_erased(&self) -> Self {
         DebuggerVisualizerFile {
-            src: Lrc::clone(&self.src),
+            src: Arc::clone(&self.src),
             visualizer_type: self.visualizer_type,
             path: None,
         }

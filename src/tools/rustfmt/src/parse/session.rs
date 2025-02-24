@@ -1,7 +1,8 @@
 use std::path::Path;
+use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use rustc_data_structures::sync::{IntoDynSyncSend, Lrc};
+use rustc_data_structures::sync::IntoDynSyncSend;
 use rustc_errors::emitter::{DynEmitter, Emitter, HumanEmitter, SilentEmitter, stderr_destination};
 use rustc_errors::registry::Registry;
 use rustc_errors::translation::Translate;
@@ -25,17 +26,17 @@ use crate::{Config, ErrorKind, FileName};
 /// ParseSess holds structs necessary for constructing a parser.
 pub(crate) struct ParseSess {
     raw_psess: RawParseSess,
-    ignore_path_set: Lrc<IgnorePathSet>,
-    can_reset_errors: Lrc<AtomicBool>,
+    ignore_path_set: Arc<IgnorePathSet>,
+    can_reset_errors: Arc<AtomicBool>,
 }
 
 /// Emit errors against every files expect ones specified in the `ignore_path_set`.
 struct SilentOnIgnoredFilesEmitter {
-    ignore_path_set: IntoDynSyncSend<Lrc<IgnorePathSet>>,
-    source_map: Lrc<SourceMap>,
+    ignore_path_set: IntoDynSyncSend<Arc<IgnorePathSet>>,
+    source_map: Arc<SourceMap>,
     emitter: Box<DynEmitter>,
     has_non_ignorable_parser_errors: bool,
-    can_reset: Lrc<AtomicBool>,
+    can_reset: Arc<AtomicBool>,
 }
 
 impl SilentOnIgnoredFilesEmitter {
@@ -96,9 +97,9 @@ impl From<Color> for ColorConfig {
 }
 
 fn default_dcx(
-    source_map: Lrc<SourceMap>,
-    ignore_path_set: Lrc<IgnorePathSet>,
-    can_reset: Lrc<AtomicBool>,
+    source_map: Arc<SourceMap>,
+    ignore_path_set: Arc<IgnorePathSet>,
+    can_reset: Arc<AtomicBool>,
     show_parse_errors: bool,
     color: Color,
 ) -> DiagCtxt {
@@ -114,14 +115,13 @@ fn default_dcx(
         false,
     );
     let emitter = Box::new(
-        HumanEmitter::new(stderr_destination(emit_color), fallback_bundle.clone())
+        HumanEmitter::new(stderr_destination(emit_color), fallback_bundle)
             .sm(Some(source_map.clone())),
     );
 
     let emitter: Box<DynEmitter> = if !show_parse_errors {
         Box::new(SilentEmitter {
-            fallback_bundle,
-            fatal_dcx: DiagCtxt::new(emitter),
+            fatal_emitter: emitter,
             fatal_note: None,
             emit_fatal_diagnostic: false,
         })
@@ -140,16 +140,16 @@ fn default_dcx(
 impl ParseSess {
     pub(crate) fn new(config: &Config) -> Result<ParseSess, ErrorKind> {
         let ignore_path_set = match IgnorePathSet::from_ignore_list(&config.ignore()) {
-            Ok(ignore_path_set) => Lrc::new(ignore_path_set),
+            Ok(ignore_path_set) => Arc::new(ignore_path_set),
             Err(e) => return Err(ErrorKind::InvalidGlobPattern(e)),
         };
-        let source_map = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-        let can_reset_errors = Lrc::new(AtomicBool::new(false));
+        let source_map = Arc::new(SourceMap::new(FilePathMapping::empty()));
+        let can_reset_errors = Arc::new(AtomicBool::new(false));
 
         let dcx = default_dcx(
-            Lrc::clone(&source_map),
-            Lrc::clone(&ignore_path_set),
-            Lrc::clone(&can_reset_errors),
+            Arc::clone(&source_map),
+            Arc::clone(&ignore_path_set),
+            Arc::clone(&can_reset_errors),
             config.show_parse_errors(),
             config.color(),
         );
@@ -205,23 +205,14 @@ impl ParseSess {
     }
 
     pub(crate) fn set_silent_emitter(&mut self) {
-        // Ideally this invocation wouldn't be necessary and the fallback bundle in
-        // `self.parse_sess.dcx` could be used, but the lock in `DiagCtxt` prevents this.
-        // See `<rustc_errors::SilentEmitter as Translate>::fallback_fluent_bundle`.
-        let fallback_bundle = rustc_errors::fallback_fluent_bundle(
-            rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(),
-            false,
-        );
-        self.raw_psess
-            .dcx()
-            .make_silent(fallback_bundle, None, false);
+        self.raw_psess.dcx().make_silent(None, false);
     }
 
     pub(crate) fn span_to_filename(&self, span: Span) -> FileName {
         self.raw_psess.source_map().span_to_filename(span).into()
     }
 
-    pub(crate) fn span_to_file_contents(&self, span: Span) -> Lrc<rustc_span::SourceFile> {
+    pub(crate) fn span_to_file_contents(&self, span: Span) -> Arc<rustc_span::SourceFile> {
         self.raw_psess
             .source_map()
             .lookup_source_file(span.data().lo)
@@ -265,11 +256,11 @@ impl ParseSess {
         SnippetProvider::new(
             source_file.start_pos,
             source_file.end_position(),
-            Lrc::clone(source_file.src.as_ref().unwrap()),
+            Arc::clone(source_file.src.as_ref().unwrap()),
         )
     }
 
-    pub(crate) fn get_original_snippet(&self, file_name: &FileName) -> Option<Lrc<String>> {
+    pub(crate) fn get_original_snippet(&self, file_name: &FileName) -> Option<Arc<String>> {
         self.raw_psess
             .source_map()
             .get_source_file(&file_name.into())
@@ -341,7 +332,7 @@ mod tests {
         use std::sync::atomic::AtomicU32;
 
         struct TestEmitter {
-            num_emitted_errors: Lrc<AtomicU32>,
+            num_emitted_errors: Arc<AtomicU32>,
         }
 
         impl Translate for TestEmitter {
@@ -375,15 +366,15 @@ mod tests {
         }
 
         fn build_emitter(
-            num_emitted_errors: Lrc<AtomicU32>,
-            can_reset: Lrc<AtomicBool>,
-            source_map: Option<Lrc<SourceMap>>,
+            num_emitted_errors: Arc<AtomicU32>,
+            can_reset: Arc<AtomicBool>,
+            source_map: Option<Arc<SourceMap>>,
             ignore_list: Option<IgnoreList>,
         ) -> SilentOnIgnoredFilesEmitter {
             let emitter_writer = TestEmitter { num_emitted_errors };
             let source_map =
-                source_map.unwrap_or_else(|| Lrc::new(SourceMap::new(FilePathMapping::empty())));
-            let ignore_path_set = Lrc::new(
+                source_map.unwrap_or_else(|| Arc::new(SourceMap::new(FilePathMapping::empty())));
+            let ignore_path_set = Arc::new(
                 IgnorePathSet::from_ignore_list(&ignore_list.unwrap_or_default()).unwrap(),
             );
             SilentOnIgnoredFilesEmitter {
@@ -403,10 +394,10 @@ mod tests {
 
         #[test]
         fn handles_fatal_parse_error_in_ignored_file() {
-            let num_emitted_errors = Lrc::new(AtomicU32::new(0));
-            let can_reset_errors = Lrc::new(AtomicBool::new(false));
+            let num_emitted_errors = Arc::new(AtomicU32::new(0));
+            let can_reset_errors = Arc::new(AtomicBool::new(false));
             let ignore_list = get_ignore_list(r#"ignore = ["foo.rs"]"#);
-            let source_map = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+            let source_map = Arc::new(SourceMap::new(FilePathMapping::empty()));
             let source =
                 String::from(r#"extern "system" fn jni_symbol!( funcName ) ( ... ) -> {} "#);
             source_map.new_source_file(
@@ -415,9 +406,9 @@ mod tests {
             );
             let registry = Registry::new(&[]);
             let mut emitter = build_emitter(
-                Lrc::clone(&num_emitted_errors),
-                Lrc::clone(&can_reset_errors),
-                Some(Lrc::clone(&source_map)),
+                Arc::clone(&num_emitted_errors),
+                Arc::clone(&can_reset_errors),
+                Some(Arc::clone(&source_map)),
                 Some(ignore_list),
             );
             let span = MultiSpan::from_span(mk_sp(BytePos(0), BytePos(1)));
@@ -430,10 +421,10 @@ mod tests {
         #[nightly_only_test]
         #[test]
         fn handles_recoverable_parse_error_in_ignored_file() {
-            let num_emitted_errors = Lrc::new(AtomicU32::new(0));
-            let can_reset_errors = Lrc::new(AtomicBool::new(false));
+            let num_emitted_errors = Arc::new(AtomicU32::new(0));
+            let can_reset_errors = Arc::new(AtomicBool::new(false));
             let ignore_list = get_ignore_list(r#"ignore = ["foo.rs"]"#);
-            let source_map = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+            let source_map = Arc::new(SourceMap::new(FilePathMapping::empty()));
             let source = String::from(r#"pub fn bar() { 1x; }"#);
             source_map.new_source_file(
                 SourceMapFileName::Real(RealFileName::LocalPath(PathBuf::from("foo.rs"))),
@@ -441,9 +432,9 @@ mod tests {
             );
             let registry = Registry::new(&[]);
             let mut emitter = build_emitter(
-                Lrc::clone(&num_emitted_errors),
-                Lrc::clone(&can_reset_errors),
-                Some(Lrc::clone(&source_map)),
+                Arc::clone(&num_emitted_errors),
+                Arc::clone(&can_reset_errors),
+                Some(Arc::clone(&source_map)),
                 Some(ignore_list),
             );
             let span = MultiSpan::from_span(mk_sp(BytePos(0), BytePos(1)));
@@ -456,9 +447,9 @@ mod tests {
         #[nightly_only_test]
         #[test]
         fn handles_recoverable_parse_error_in_non_ignored_file() {
-            let num_emitted_errors = Lrc::new(AtomicU32::new(0));
-            let can_reset_errors = Lrc::new(AtomicBool::new(false));
-            let source_map = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+            let num_emitted_errors = Arc::new(AtomicU32::new(0));
+            let can_reset_errors = Arc::new(AtomicBool::new(false));
+            let source_map = Arc::new(SourceMap::new(FilePathMapping::empty()));
             let source = String::from(r#"pub fn bar() { 1x; }"#);
             source_map.new_source_file(
                 SourceMapFileName::Real(RealFileName::LocalPath(PathBuf::from("foo.rs"))),
@@ -466,9 +457,9 @@ mod tests {
             );
             let registry = Registry::new(&[]);
             let mut emitter = build_emitter(
-                Lrc::clone(&num_emitted_errors),
-                Lrc::clone(&can_reset_errors),
-                Some(Lrc::clone(&source_map)),
+                Arc::clone(&num_emitted_errors),
+                Arc::clone(&can_reset_errors),
+                Some(Arc::clone(&source_map)),
                 None,
             );
             let span = MultiSpan::from_span(mk_sp(BytePos(0), BytePos(1)));
@@ -481,9 +472,9 @@ mod tests {
         #[nightly_only_test]
         #[test]
         fn handles_mix_of_recoverable_parse_error() {
-            let num_emitted_errors = Lrc::new(AtomicU32::new(0));
-            let can_reset_errors = Lrc::new(AtomicBool::new(false));
-            let source_map = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+            let num_emitted_errors = Arc::new(AtomicU32::new(0));
+            let can_reset_errors = Arc::new(AtomicBool::new(false));
+            let source_map = Arc::new(SourceMap::new(FilePathMapping::empty()));
             let ignore_list = get_ignore_list(r#"ignore = ["foo.rs"]"#);
             let bar_source = String::from(r#"pub fn bar() { 1x; }"#);
             let foo_source = String::from(r#"pub fn foo() { 1x; }"#);
@@ -503,9 +494,9 @@ mod tests {
             );
             let registry = Registry::new(&[]);
             let mut emitter = build_emitter(
-                Lrc::clone(&num_emitted_errors),
-                Lrc::clone(&can_reset_errors),
-                Some(Lrc::clone(&source_map)),
+                Arc::clone(&num_emitted_errors),
+                Arc::clone(&can_reset_errors),
+                Some(Arc::clone(&source_map)),
                 Some(ignore_list),
             );
             let bar_span = MultiSpan::from_span(mk_sp(BytePos(0), BytePos(1)));

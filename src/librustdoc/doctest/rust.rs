@@ -1,9 +1,9 @@
 //! Doctest functionality used only for doctests in `.rs` source files.
 
 use std::env;
+use std::sync::Arc;
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::sync::Lrc;
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_hir::{self as hir, CRATE_HIR_ID, intravisit};
 use rustc_middle::hir::nested_filter;
@@ -17,7 +17,7 @@ use crate::clean::{Attributes, extract_cfg_from_attrs};
 use crate::html::markdown::{self, ErrorCodes, LangString, MdRelLine};
 
 struct RustCollector {
-    source_map: Lrc<SourceMap>,
+    source_map: Arc<SourceMap>,
     tests: Vec<ScrapedDocTest>,
     cur_path: Vec<String>,
     position: Span,
@@ -81,7 +81,7 @@ impl<'tcx> HirCollector<'tcx> {
     pub fn collect_crate(mut self) -> Vec<ScrapedDocTest> {
         let tcx = self.tcx;
         self.visit_testable("".to_string(), CRATE_DEF_ID, tcx.hir().span(CRATE_HIR_ID), |this| {
-            tcx.hir().walk_toplevel_module(this)
+            tcx.hir_walk_toplevel_module(this)
         });
         self.collector.tests
     }
@@ -147,14 +147,14 @@ impl HirCollector<'_> {
 impl<'tcx> intravisit::Visitor<'tcx> for HirCollector<'tcx> {
     type NestedFilter = nested_filter::All;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item<'_>) {
         let name = match &item.kind {
             hir::ItemKind::Impl(impl_) => {
-                rustc_hir_pretty::id_to_string(&self.tcx.hir(), impl_.self_ty.hir_id)
+                rustc_hir_pretty::id_to_string(&self.tcx, impl_.self_ty.hir_id)
             }
             _ => item.ident.to_string(),
         };

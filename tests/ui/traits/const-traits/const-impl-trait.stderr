@@ -100,29 +100,39 @@ note: `PartialEq` can't be used with `~const` because it isn't annotated with `#
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-impl-trait.rs:23:22
-   |
-LL |     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy;
-   |                      ^^^^^^ can't be applied to `PartialEq`
-   |
-note: `PartialEq` can't be used with `~const` because it isn't annotated with `#[const_trait]`
-  --> $SRC_DIR/core/src/cmp.rs:LL:COL
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-impl-trait.rs:23:22
-   |
-LL |     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy;
-   |                      ^^^^^^ can't be applied to `PartialEq`
-   |
-note: `PartialEq` can't be used with `~const` because it isn't annotated with `#[const_trait]`
-  --> $SRC_DIR/core/src/cmp.rs:LL:COL
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/const-impl-trait.rs:27:22
    |
 LL |     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy {
+   |                      ^^^^^^ can't be applied to `PartialEq`
+   |
+note: `PartialEq` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/const-impl-trait.rs:23:22
+   |
+LL |     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy;
+   |                      ^^^^^^ can't be applied to `PartialEq`
+   |
+note: `PartialEq` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/const-impl-trait.rs:23:22
+   |
+LL |     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy;
+   |                      ^^^^^^ can't be applied to `PartialEq`
+   |
+note: `PartialEq` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+  --> $SRC_DIR/core/src/cmp.rs:LL:COL
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: `~const` can only be applied to `#[const_trait]` traits
+  --> $DIR/const-impl-trait.rs:23:22
+   |
+LL |     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy;
    |                      ^^^^^^ can't be applied to `PartialEq`
    |
 note: `PartialEq` can't be used with `~const` because it isn't annotated with `#[const_trait]`
@@ -181,7 +191,7 @@ LL |     a == a
    |
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
-error: aborting due to 20 previous errors
+error: aborting due to 21 previous errors
 
 Some errors have detailed explanations: E0015, E0635.
 For more information about an error, try `rustc --explain E0015`.

@@ -14,20 +14,11 @@ LL |     convert_result(foo())
    |     |
    |     arguments to this function are incorrect
    |
-note: calling an async function returns a future
-  --> $DIR/issue-102605.rs:13:20
-   |
-LL |     convert_result(foo())
-   |                    ^^^^^
 note: function defined here
   --> $DIR/issue-102605.rs:7:4
    |
 LL | fn convert_result<T, E>(r: Result<T, E>) -> Option<T> {
    |    ^^^^^^^^^^^^^^       ---------------
-help: consider `await`ing on the `Future`
-   |
-LL |     convert_result(foo().await)
-   |                         ++++++
 help: try wrapping the expression in `Err`
    |
 LL |     convert_result(Err(foo()))

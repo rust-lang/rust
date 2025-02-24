@@ -268,11 +268,14 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 .iter()
                 .chain(&self.cache.external_paths)
                 .map(|(&k, &(ref path, kind))| {
-                    (self.id_from_item_default(k.into()), types::ItemSummary {
-                        crate_id: k.krate.as_u32(),
-                        path: path.iter().map(|s| s.to_string()).collect(),
-                        kind: kind.into_json(self),
-                    })
+                    (
+                        self.id_from_item_default(k.into()),
+                        types::ItemSummary {
+                            crate_id: k.krate.as_u32(),
+                            path: path.iter().map(|s| s.to_string()).collect(),
+                            kind: kind.into_json(self),
+                        },
+                    )
                 })
                 .collect(),
             external_crates: self
@@ -281,13 +284,16 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 .iter()
                 .map(|(crate_num, external_location)| {
                     let e = ExternalCrate { crate_num: *crate_num };
-                    (crate_num.as_u32(), types::ExternalCrate {
-                        name: e.name(self.tcx).to_string(),
-                        html_root_url: match external_location {
-                            ExternalLocation::Remote(s) => Some(s.clone()),
-                            _ => None,
+                    (
+                        crate_num.as_u32(),
+                        types::ExternalCrate {
+                            name: e.name(self.tcx).to_string(),
+                            html_root_url: match external_location {
+                                ExternalLocation::Remote(s) => Some(s.clone()),
+                                _ => None,
+                            },
                         },
-                    })
+                    )
                 })
                 .collect(),
             format_version: types::FORMAT_VERSION,

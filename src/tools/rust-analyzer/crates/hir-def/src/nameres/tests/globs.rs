@@ -18,9 +18,9 @@ pub struct Baz;
 "#,
         expect![[r#"
             crate
-            Baz: t v
-            Foo: t v
-            bar: t
+            Baz: tg vg
+            Foo: tg vg
+            bar: tg
             foo: t
 
             crate::foo
@@ -53,20 +53,20 @@ pub use super::*;
 "#,
         expect![[r#"
             crate
-            Baz: t v
-            Foo: t v
-            bar: t
+            Baz: tg vg
+            Foo: tg vg
+            bar: tg
             foo: t
 
             crate::foo
-            Baz: t v
+            Baz: tg vg
             Foo: t v
             bar: t
 
             crate::foo::bar
             Baz: t v
-            Foo: t v
-            bar: t
+            Foo: tg vg
+            bar: tg
         "#]],
     );
 }
@@ -91,20 +91,20 @@ pub use super::*;
 ",
         expect![[r#"
             crate
-            Baz: t v
-            bar: t
+            Baz: tg vg
+            bar: tg
             foo: t
 
             crate::foo
-            Baz: t v
+            Baz: tg vg
             PrivateStructFoo: t v
             bar: t
 
             crate::foo::bar
             Baz: t v
             PrivateStructBar: t v
-            PrivateStructFoo: t v
-            bar: t
+            PrivateStructFoo: tg vg
+            bar: tg
         "#]],
     );
 }
@@ -130,9 +130,9 @@ pub(crate) struct PubCrateStruct;
 ",
         expect![[r#"
             crate
-            Foo: t
-            PubCrateStruct: t v
-            bar: t
+            Foo: tg
+            PubCrateStruct: tg vg
+            bar: tg
             foo: t
 
             crate::foo
@@ -160,7 +160,7 @@ pub struct Baz;
 "#,
         expect![[r#"
             crate
-            Baz: t v
+            Baz: tg vg
         "#]],
     );
 }
@@ -178,7 +178,7 @@ struct Foo;
 "#,
         expect![[r#"
             crate
-            Baz: t v
+            Baz: tg vg
         "#]],
     );
 }
@@ -193,8 +193,8 @@ use self::Foo::*;
 "#,
         expect![[r#"
             crate
-            Bar: t v
-            Baz: t v
+            Bar: tg vg
+            Baz: tg vg
             Foo: t
         "#]],
     );
@@ -210,8 +210,8 @@ use self::Foo::{*};
 "#,
         expect![[r#"
             crate
-            Bar: t v
-            Baz: t v
+            Bar: tg vg
+            Baz: tg vg
             Foo: t
         "#]],
     );
@@ -359,7 +359,7 @@ use event::Event;
             event: t
 
             crate::event
-            Event: t v
+            Event: t vg
             serenity: t
 
             crate::event::serenity
@@ -388,10 +388,10 @@ use reexport::*;
 "#,
         expect![[r#"
             crate
-            Trait: t
+            Trait: tg
             defs: t
-            function: v
-            makro: m
+            function: vg
+            makro: mg
             reexport: t
 
             crate::defs
@@ -400,10 +400,10 @@ use reexport::*;
             makro: m
 
             crate::reexport
-            Trait: t
-            function: v
+            Trait: tg
+            function: vg
             inner: t
-            makro: m
+            makro: mg
 
             crate::reexport::inner
             Trait: ti
@@ -442,12 +442,12 @@ mod glob_target {
             ShouldBePrivate: t v
 
             crate::outer
-            ShouldBePrivate: t v
+            ShouldBePrivate: tg vg
             inner_superglob: t
 
             crate::outer::inner_superglob
-            ShouldBePrivate: t v
-            inner_superglob: t
+            ShouldBePrivate: tg vg
+            inner_superglob: tg
         "#]],
     );
 }
@@ -473,20 +473,20 @@ use reexport_2::*;
 "#,
         expect![[r#"
             crate
-            Placeholder: t v
+            Placeholder: tg vg
             libs: t
-            reexport_1: t
+            reexport_1: tg
             reexport_2: t
 
             crate::libs
             Placeholder: t v
 
             crate::reexport_2
-            Placeholder: t v
+            Placeholder: tg vg
             reexport_1: t
 
             crate::reexport_2::reexport_1
-            Placeholder: t v
+            Placeholder: tg vg
         "#]],
     );
 }

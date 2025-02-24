@@ -7,5 +7,5 @@
 pub(crate) mod constant;
 pub(crate) mod cx;
 pub(crate) mod pattern;
-pub(crate) mod print;
+pub mod print;
 mod util;

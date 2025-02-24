@@ -319,7 +319,25 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 // Check that the memory between them is dereferenceable at all, starting from the
                 // origin pointer: `dist` is `a - b`, so it is based on `b`.
-                self.check_ptr_access_signed(b, dist, CheckInAllocMsg::OffsetFromTest)?;
+                self.check_ptr_access_signed(b, dist, CheckInAllocMsg::OffsetFromTest)
+                    .map_err_kind(|_| {
+                        // This could mean they point to different allocations, or they point to the same allocation
+                        // but not the entire range between the pointers is in-bounds.
+                        if let Ok((a_alloc_id, ..)) = self.ptr_try_get_alloc_id(a, 0)
+                            && let Ok((b_alloc_id, ..)) = self.ptr_try_get_alloc_id(b, 0)
+                            && a_alloc_id == b_alloc_id
+                        {
+                            err_ub_custom!(
+                                fluent::const_eval_offset_from_out_of_bounds,
+                                name = intrinsic_name,
+                            )
+                        } else {
+                            err_ub_custom!(
+                                fluent::const_eval_offset_from_different_allocations,
+                                name = intrinsic_name,
+                            )
+                        }
+                    })?;
                 // Then check that this is also dereferenceable from `a`. This ensures that they are
                 // derived from the same allocation.
                 self.check_ptr_access_signed(
@@ -747,7 +765,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     {
         let a: F = self.read_scalar(&args[0])?.to_float()?;
         let b: F = self.read_scalar(&args[1])?.to_float()?;
-        let res = self.adjust_nan(a.min(b), &[a, b]);
+        let res = if a == b {
+            // They are definitely not NaN (those are never equal), but they could be `+0` and `-0`.
+            // Let the machine decide which one to return.
+            M::equal_float_min_max(self, a, b)
+        } else {
+            self.adjust_nan(a.min(b), &[a, b])
+        };
         self.write_scalar(res, dest)?;
         interp_ok(())
     }
@@ -762,7 +786,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     {
         let a: F = self.read_scalar(&args[0])?.to_float()?;
         let b: F = self.read_scalar(&args[1])?.to_float()?;
-        let res = self.adjust_nan(a.max(b), &[a, b]);
+        let res = if a == b {
+            // They are definitely not NaN (those are never equal), but they could be `+0` and `-0`.
+            // Let the machine decide which one to return.
+            M::equal_float_min_max(self, a, b)
+        } else {
+            self.adjust_nan(a.max(b), &[a, b])
+        };
         self.write_scalar(res, dest)?;
         interp_ok(())
     }

@@ -4,7 +4,7 @@ struct Struct<T>(T);
 impl<T> std::ops::Deref for Struct<T> {
     type Target = dyn Fn(T);
     fn deref(&self) -> &assert_mem_uninitialized_valid::Target {
-        //~^ERROR: undeclared crate or module
+        //~^ERROR: use of unresolved module or unlinked crate
         unimplemented!()
     }
 }

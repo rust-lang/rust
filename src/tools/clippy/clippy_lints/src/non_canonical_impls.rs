@@ -5,7 +5,6 @@ use rustc_errors::Applicability;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{Expr, ExprKind, ImplItem, ImplItemKind, LangItem, Node, UnOp};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::EarlyBinder;
 use rustc_session::declare_lint_pass;
 use rustc_span::sym;
@@ -122,14 +121,14 @@ impl LateLintPass<'_> for NonCanonicalImpls {
         if cx.tcx.is_automatically_derived(item.owner_id.to_def_id()) {
             return;
         }
-        let ImplItemKind::Fn(_, impl_item_id) = cx.tcx.hir().impl_item(impl_item.impl_item_id()).kind else {
+        let ImplItemKind::Fn(_, impl_item_id) = cx.tcx.hir_impl_item(impl_item.impl_item_id()).kind else {
             return;
         };
-        let body = cx.tcx.hir().body(impl_item_id);
+        let body = cx.tcx.hir_body(impl_item_id);
         let ExprKind::Block(block, ..) = body.value.kind else {
             return;
         };
-        if in_external_macro(cx.sess(), block.span) || is_from_proc_macro(cx, impl_item) {
+        if block.span.in_external_macro(cx.sess().source_map()) || is_from_proc_macro(cx, impl_item) {
             return;
         }
 

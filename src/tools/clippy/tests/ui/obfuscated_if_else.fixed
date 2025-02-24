@@ -1,5 +1,18 @@
 #![warn(clippy::obfuscated_if_else)]
+#![allow(clippy::unnecessary_lazy_evaluations, clippy::unit_arg, clippy::unused_unit)]
 
 fn main() {
     if true { "a" } else { "b" };
+    if true { "a" } else { "b" };
+
+    let a = 1;
+    if a == 1 { "a" } else { "b" };
+    if a == 1 { "a" } else { "b" };
+
+    let partial = (a == 1).then_some("a");
+    partial.unwrap_or("b"); // not lint
+
+    let mut a = 0;
+    if true { a += 1 } else { () };
+    if true { () } else { a += 2 };
 }

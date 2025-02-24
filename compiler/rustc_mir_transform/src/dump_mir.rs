@@ -15,6 +15,10 @@ impl<'tcx> crate::MirPass<'tcx> for Marker {
     }
 
     fn run_pass(&self, _tcx: TyCtxt<'tcx>, _body: &mut Body<'tcx>) {}
+
+    fn is_required(&self) -> bool {
+        false
+    }
 }
 
 pub fn emit_mir(tcx: TyCtxt<'_>) -> io::Result<()> {

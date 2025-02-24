@@ -804,7 +804,14 @@ pub(crate) struct NegativeBoundWithParentheticalNotation {
 pub(crate) struct MatchArmWithNoBody {
     #[primary_span]
     pub span: Span,
-    #[suggestion(code = " => todo!(),", applicability = "has-placeholders")]
+    // We include the braces around `todo!()` so that a comma is optional, and we don't have to have
+    // any logic looking at the arm being replaced if there was a comma already or not for the
+    // resulting code to be correct.
+    #[suggestion(
+        code = " => {{ todo!() }}",
+        applicability = "has-placeholders",
+        style = "verbose"
+    )]
     pub suggestion: Span,
 }
 

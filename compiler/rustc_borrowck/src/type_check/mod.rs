@@ -19,7 +19,6 @@ use rustc_infer::infer::{
     BoundRegion, BoundRegionConversionTime, InferCtxt, NllRegionVariableOrigin,
 };
 use rustc_infer::traits::PredicateObligations;
-use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::traits::query::NoSolution;
@@ -48,8 +47,8 @@ use crate::borrow_set::BorrowSet;
 use crate::constraints::{OutlivesConstraint, OutlivesConstraintSet};
 use crate::diagnostics::UniverseInfo;
 use crate::member_constraints::MemberConstraintSet;
-use crate::polonius::PoloniusContext;
 use crate::polonius::legacy::{PoloniusFacts, PoloniusLocationTable};
+use crate::polonius::{PoloniusContext, PoloniusLivenessContext};
 use crate::region_infer::TypeTest;
 use crate::region_infer::values::{LivenessValues, PlaceholderIndex, PlaceholderIndices};
 use crate::renumber::RegionCtxt;
@@ -148,8 +147,8 @@ pub(crate) fn type_check<'a, 'tcx>(
 
     debug!(?normalized_inputs_and_output);
 
-    let mut polonius_context = if infcx.tcx.sess.opts.unstable_opts.polonius.is_next_enabled() {
-        Some(PoloniusContext::new())
+    let polonius_liveness = if infcx.tcx.sess.opts.unstable_opts.polonius.is_next_enabled() {
+        Some(PoloniusLivenessContext::default())
     } else {
         None
     };
@@ -168,7 +167,7 @@ pub(crate) fn type_check<'a, 'tcx>(
         polonius_facts,
         borrow_set,
         constraints: &mut constraints,
-        polonius_context: &mut polonius_context,
+        polonius_liveness,
     };
 
     typeck.check_user_type_annotations();
@@ -185,11 +184,14 @@ pub(crate) fn type_check<'a, 'tcx>(
     let opaque_type_values =
         opaque_types::take_opaques_and_register_member_constraints(&mut typeck);
 
-    if let Some(polonius_context) = typeck.polonius_context.as_mut() {
-        let num_regions = infcx.num_region_vars();
-        let points_per_live_region = typeck.constraints.liveness_constraints.points();
-        polonius_context.record_live_regions_per_point(num_regions, points_per_live_region);
-    }
+    // We're done with typeck, we can finalize the polonius liveness context for region inference.
+    let polonius_context = typeck.polonius_liveness.take().map(|liveness_context| {
+        PoloniusContext::create_from_liveness(
+            liveness_context,
+            infcx.num_region_vars(),
+            typeck.constraints.liveness_constraints.points(),
+        )
+    });
 
     MirTypeckResults {
         constraints,
@@ -302,6 +304,25 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                     )
                     .unwrap();
             }
+            ProjectionElem::UnwrapUnsafeBinder(ty) => {
+                let ty::UnsafeBinder(binder_ty) = *base_ty.ty.kind() else {
+                    unreachable!();
+                };
+                let found_ty = self.typeck.infcx.instantiate_binder_with_fresh_vars(
+                    self.body().source_info(location).span,
+                    BoundRegionConversionTime::HigherRankedType,
+                    binder_ty.into(),
+                );
+                self.typeck
+                    .relate_types(
+                        ty,
+                        context.ambient_variance(),
+                        found_ty,
+                        location.to_locations(),
+                        ConstraintCategory::Boring,
+                    )
+                    .unwrap();
+            }
             ProjectionElem::Subtype(_) => {
                 bug!("ProjectionElem::Subtype shouldn't exist in borrowck")
             }
@@ -349,8 +370,8 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
             let tcx = self.tcx();
             let maybe_uneval = match constant.const_ {
                 Const::Ty(_, ct) => match ct.kind() {
-                    ty::ConstKind::Unevaluated(_) => {
-                        bug!("should not encounter unevaluated Const::Ty here, got {:?}", ct)
+                    ty::ConstKind::Unevaluated(uv) => {
+                        Some(UnevaluatedConst { def: uv.def, args: uv.args, promoted: None })
                     }
                     _ => None,
                 },
@@ -389,10 +410,10 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                 } else {
                     self.typeck.ascribe_user_type(
                         constant.const_.ty(),
-                        ty::UserType::new(ty::UserTypeKind::TypeOf(uv.def, UserArgs {
-                            args: uv.args,
-                            user_self_ty: None,
-                        })),
+                        ty::UserType::new(ty::UserTypeKind::TypeOf(
+                            uv.def,
+                            UserArgs { args: uv.args, user_self_ty: None },
+                        )),
                         locations.span(self.typeck.body),
                     );
                 }
@@ -435,38 +456,38 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
     fn visit_local_decl(&mut self, local: Local, local_decl: &LocalDecl<'tcx>) {
         self.super_local_decl(local, local_decl);
 
-        if let Some(user_ty) = &local_decl.user_ty {
-            for (user_ty, span) in user_ty.projections_and_spans() {
-                let ty = if !local_decl.is_nonref_binding() {
-                    // If we have a binding of the form `let ref x: T = ..`
-                    // then remove the outermost reference so we can check the
-                    // type annotation for the remaining type.
-                    if let ty::Ref(_, rty, _) = local_decl.ty.kind() {
-                        *rty
-                    } else {
-                        bug!("{:?} with ref binding has wrong type {}", local, local_decl.ty);
-                    }
-                } else {
-                    local_decl.ty
-                };
+        for user_ty in
+            local_decl.user_ty.as_deref().into_iter().flat_map(UserTypeProjections::projections)
+        {
+            let span = self.typeck.user_type_annotations[user_ty.base].span;
 
-                if let Err(terr) = self.typeck.relate_type_and_user_type(
-                    ty,
-                    ty::Invariant,
-                    user_ty,
-                    Locations::All(*span),
-                    ConstraintCategory::TypeAnnotation(AnnotationSource::Declaration),
-                ) {
-                    span_mirbug!(
-                        self,
-                        local,
-                        "bad user type on variable {:?}: {:?} != {:?} ({:?})",
-                        local,
-                        local_decl.ty,
-                        local_decl.user_ty,
-                        terr,
-                    );
-                }
+            let ty = if local_decl.is_nonref_binding() {
+                local_decl.ty
+            } else if let &ty::Ref(_, rty, _) = local_decl.ty.kind() {
+                // If we have a binding of the form `let ref x: T = ..`
+                // then remove the outermost reference so we can check the
+                // type annotation for the remaining type.
+                rty
+            } else {
+                bug!("{:?} with ref binding has wrong type {}", local, local_decl.ty);
+            };
+
+            if let Err(terr) = self.typeck.relate_type_and_user_type(
+                ty,
+                ty::Invariant,
+                user_ty,
+                Locations::All(span),
+                ConstraintCategory::TypeAnnotation(AnnotationSource::Declaration),
+            ) {
+                span_mirbug!(
+                    self,
+                    local,
+                    "bad user type on variable {:?}: {:?} != {:?} ({:?})",
+                    local,
+                    local_decl.ty,
+                    local_decl.user_ty,
+                    terr,
+                );
             }
         }
     }
@@ -564,8 +585,8 @@ struct TypeChecker<'a, 'tcx> {
     polonius_facts: &'a mut Option<PoloniusFacts>,
     borrow_set: &'a BorrowSet<'tcx>,
     constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
-    /// When using `-Zpolonius=next`, the helper data used to create polonius constraints.
-    polonius_context: &'a mut Option<PoloniusContext>,
+    /// When using `-Zpolonius=next`, the liveness helper data used to create polonius constraints.
+    polonius_liveness: Option<PoloniusLivenessContext>,
 }
 
 /// Holder struct for passing results from MIR typeck to the rest of the non-lexical regions
@@ -1094,7 +1115,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     ConstraintCategory::Boring,
                 );
 
-                let sig = self.normalize(unnormalized_sig, term_location);
+                let sig = self.deeply_normalize(unnormalized_sig, term_location);
                 // HACK(#114936): `WF(sig)` does not imply `WF(normalized(sig))`
                 // with built-in `Fn` implementations, since the impl may not be
                 // well-formed itself.
@@ -1620,10 +1641,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
 
             &Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, ty) => {
-                let trait_ref =
-                    ty::TraitRef::new(tcx, tcx.require_lang_item(LangItem::Sized, Some(span)), [
-                        ty,
-                    ]);
+                let trait_ref = ty::TraitRef::new(
+                    tcx,
+                    tcx.require_lang_item(LangItem::Sized, Some(span)),
+                    [ty],
+                );
 
                 self.prove_trait_ref(
                     trait_ref,
@@ -1631,15 +1653,17 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     ConstraintCategory::SizedBound,
                 );
             }
+            &Rvalue::NullaryOp(NullOp::ContractChecks, _) => {}
             &Rvalue::NullaryOp(NullOp::UbChecks, _) => {}
 
             Rvalue::ShallowInitBox(operand, ty) => {
                 self.check_operand(operand, location);
 
-                let trait_ref =
-                    ty::TraitRef::new(tcx, tcx.require_lang_item(LangItem::Sized, Some(span)), [
-                        *ty,
-                    ]);
+                let trait_ref = ty::TraitRef::new(
+                    tcx,
+                    tcx.require_lang_item(LangItem::Sized, Some(span)),
+                    [*ty],
+                );
 
                 self.prove_trait_ref(
                     trait_ref,
@@ -2233,6 +2257,27 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 self.check_operand(right, location);
             }
 
+            Rvalue::WrapUnsafeBinder(op, ty) => {
+                self.check_operand(op, location);
+                let operand_ty = op.ty(self.body, self.tcx());
+
+                let ty::UnsafeBinder(binder_ty) = *ty.kind() else {
+                    unreachable!();
+                };
+                let expected_ty = self.infcx.instantiate_binder_with_fresh_vars(
+                    self.body().source_info(location).span,
+                    BoundRegionConversionTime::HigherRankedType,
+                    binder_ty.into(),
+                );
+                self.sub_types(
+                    operand_ty,
+                    expected_ty,
+                    location.to_locations(),
+                    ConstraintCategory::Boring,
+                )
+                .unwrap();
+            }
+
             Rvalue::RawPtr(..)
             | Rvalue::ThreadLocalRef(..)
             | Rvalue::Len(..)
@@ -2258,7 +2303,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             | Rvalue::NullaryOp(..)
             | Rvalue::CopyForDeref(..)
             | Rvalue::UnaryOp(..)
-            | Rvalue::Discriminant(..) => None,
+            | Rvalue::Discriminant(..)
+            | Rvalue::WrapUnsafeBinder(..) => None,
 
             Rvalue::Aggregate(aggregate, _) => match **aggregate {
                 AggregateKind::Adt(_, _, _, user_ty, _) => user_ty,
@@ -2450,7 +2496,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 | ProjectionElem::OpaqueCast(..)
                 | ProjectionElem::Index(..)
                 | ProjectionElem::ConstantIndex { .. }
-                | ProjectionElem::Subslice { .. } => {
+                | ProjectionElem::Subslice { .. }
+                | ProjectionElem::UnwrapUnsafeBinder(_) => {
                     // other field access
                 }
                 ProjectionElem::Subtype(_) => {

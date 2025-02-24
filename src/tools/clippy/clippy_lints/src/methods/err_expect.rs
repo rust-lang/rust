@@ -37,7 +37,7 @@ pub(super) fn check(
             "expect_err".to_string(),
             Applicability::MachineApplicable,
         );
-    };
+    }
 }
 
 /// Given a `Result<T, E>` type, return its data (`T`).

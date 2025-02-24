@@ -99,7 +99,6 @@ const EXCEPTIONS: ExceptionList = &[
     ("dissimilar", "Apache-2.0"),                            // rustdoc, rustc_lexer (few tests) via expect-test, (dev deps)
     ("fluent-langneg", "Apache-2.0"),                        // rustc (fluent translations)
     ("foldhash", "Zlib"),                                    // rustc
-    ("mdbook", "MPL-2.0"),                                   // mdbook
     ("option-ext", "MPL-2.0"),                               // cargo-miri (via `directories`)
     ("rustc_apfloat", "Apache-2.0 WITH LLVM-exception"),     // rustc (license is the same as LLVM uses)
     ("ryu", "Apache-2.0 OR BSL-1.0"), // BSL is not acceptble, but we use it under Apache-2.0                       // cargo/... (because of serde)
@@ -132,6 +131,7 @@ const EXCEPTIONS_CARGO: ExceptionList = &[
     ("dunce", "CC0-1.0 OR MIT-0 OR Apache-2.0"),
     ("encoding_rs", "(Apache-2.0 OR MIT) AND BSD-3-Clause"),
     ("fiat-crypto", "MIT OR Apache-2.0 OR BSD-1-Clause"),
+    ("foldhash", "Zlib"),
     ("im-rc", "MPL-2.0+"),
     ("normalize-line-endings", "Apache-2.0"),
     ("openssl", "Apache-2.0"),
@@ -253,6 +253,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "bitflags",
     "blake3",
     "block-buffer",
+    "bstr",
     "byteorder", // via ruzstd in object in thorin-dwp
     "cc",
     "cfg-if",
@@ -284,7 +285,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "expect-test",
     "fallible-iterator", // dependency of `thorin`
     "fastrand",
-    "field-offset",
     "flate2",
     "fluent-bundle",
     "fluent-langneg",
@@ -326,7 +326,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "measureme",
     "memchr",
     "memmap2",
-    "memoffset",
     "miniz_oxide",
     "nix",
     "nu-ansi-term",
@@ -366,14 +365,12 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "rustc-rayon-core",
     "rustc-stable-hash",
     "rustc_apfloat",
-    "rustc_version",
     "rustix",
     "ruzstd", // via object in thorin-dwp
     "ryu",
     "scoped-tls",
     "scopeguard",
     "self_cell",
-    "semver",
     "serde",
     "serde_derive",
     "serde_json",
@@ -479,6 +476,8 @@ const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     "memchr",
     "miniz_oxide",
     "object",
+    "proc-macro2",
+    "quote",
     "r-efi",
     "r-efi-alloc",
     "rand",
@@ -486,6 +485,8 @@ const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     "rand_xorshift",
     "rustc-demangle",
     "shlex",
+    "syn",
+    "unicode-ident",
     "unicode-width",
     "unwinding",
     "wasi",
@@ -499,6 +500,8 @@ const PERMITTED_STDLIB_DEPENDENCIES: &[&str] = &[
     "windows_x86_64_gnu",
     "windows_x86_64_gnullvm",
     "windows_x86_64_msvc",
+    "zerocopy",
+    "zerocopy-derive",
     // tidy-alphabetical-end
 ];
 
@@ -663,7 +666,7 @@ pub static CRATES: &[&str] = &[
         for extra in expected.difference(&proc_macro_deps) {
             tidy_error!(
                 bad,
-                "`{extra}` is not registered in `src/bootstrap/src/utils/proc_macro_deps.rs`, but is not a proc-macro crate dependency",
+                "`{extra}` is registered in `src/bootstrap/src/utils/proc_macro_deps.rs`, but is not a proc-macro crate dependency",
             );
         }
         if *bad != old_bad {

@@ -1,10 +1,12 @@
 //@run-pass
 #![feature(repr_simd, intrinsics)]
 
-extern "rust-intrinsic" {
-    fn simd_bitmask<T, U>(v: T) -> U;
-    fn simd_select_bitmask<T, U>(m: T, a: U, b: U) -> U;
-}
+#[rustc_intrinsic]
+unsafe fn simd_bitmask<T, U>(v: T) -> U;
+
+#[rustc_intrinsic]
+unsafe fn simd_select_bitmask<T, U>(m: T, a: U, b: U) -> U;
+
 
 #[derive(Copy, Clone)]
 #[repr(simd)]

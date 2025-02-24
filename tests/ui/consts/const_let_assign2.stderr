@@ -10,7 +10,7 @@ LL |     let ptr = unsafe { &mut BB };
 help: use `&raw mut` instead to create a raw pointer
    |
 LL |     let ptr = unsafe { &raw mut BB };
-   |                        ~~~~~~~~
+   |                         +++
 
 warning: 1 warning emitted
 

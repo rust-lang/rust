@@ -1,14 +1,15 @@
-//@ build-fail
 #![feature(rustc_attrs)]
 
 // Ensure that dyn-incompatible methods in Iterator does not generate
 // vtable entries.
 
-#[rustc_dump_vtable]
 trait A: Iterator {}
-//~^ error vtable
 
 impl<T> A for T where T: Iterator {}
+
+#[rustc_dump_vtable]
+type Test = dyn A<Item=u8>;
+//~^ error vtable
 
 fn foo(_a: &mut dyn A<Item=u8>) {
 }

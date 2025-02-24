@@ -49,9 +49,7 @@ pub fn global_linkage_to_gcc(linkage: Linkage) -> GlobalKind {
         Linkage::LinkOnceODR => unimplemented!(),
         Linkage::WeakAny => unimplemented!(),
         Linkage::WeakODR => unimplemented!(),
-        Linkage::Appending => unimplemented!(),
         Linkage::Internal => GlobalKind::Internal,
-        Linkage::Private => GlobalKind::Internal,
         Linkage::ExternalWeak => GlobalKind::Imported, // TODO(antoyo): should be weak linkage.
         Linkage::Common => unimplemented!(),
     }
@@ -66,9 +64,7 @@ pub fn linkage_to_gcc(linkage: Linkage) -> FunctionType {
         Linkage::LinkOnceODR => unimplemented!(),
         Linkage::WeakAny => FunctionType::Exported, // FIXME(antoyo): should be similar to linkonce.
         Linkage::WeakODR => unimplemented!(),
-        Linkage::Appending => unimplemented!(),
         Linkage::Internal => FunctionType::Internal,
-        Linkage::Private => FunctionType::Internal,
         Linkage::ExternalWeak => unimplemented!(),
         Linkage::Common => unimplemented!(),
     }

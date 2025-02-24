@@ -30,9 +30,11 @@ LL | #[must_use = "string"suffix]
    |
 help: the following are the possible correct uses
    |
-LL | #[must_use = "reason"]
+LL - #[must_use = "string"suffix]
+LL + #[must_use = "reason"]
    |
-LL | #[must_use]
+LL - #[must_use = "string"suffix]
+LL + #[must_use]
    |
 
 error: suffixes on string literals are invalid
@@ -53,7 +55,7 @@ warning: extern declarations without an explicit ABI are deprecated
   --> $DIR/bad-lit-suffixes.rs:3:1
    |
 LL | extern
-   | ^^^^^^ help: explicitly specify the C ABI: `extern "C"`
+   | ^^^^^^ help: explicitly specify the "C" ABI: `extern "C"`
    |
    = note: `#[warn(missing_abi)]` on by default
 
@@ -61,7 +63,7 @@ warning: extern declarations without an explicit ABI are deprecated
   --> $DIR/bad-lit-suffixes.rs:7:1
    |
 LL | extern
-   | ^^^^^^ help: explicitly specify the C ABI: `extern "C"`
+   | ^^^^^^ help: explicitly specify the "C" ABI: `extern "C"`
 
 error: suffixes on string literals are invalid
   --> $DIR/bad-lit-suffixes.rs:12:5

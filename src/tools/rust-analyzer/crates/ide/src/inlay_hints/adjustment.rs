@@ -13,11 +13,7 @@ use ide_db::famous_defs::FamousDefs;
 
 use ide_db::text_edit::TextEditBuilder;
 use span::EditionedFileId;
-use stdx::never;
-use syntax::{
-    ast::{self, make, AstNode},
-    ted,
-};
+use syntax::ast::{self, prec::ExprPrecedence, AstNode};
 
 use crate::{
     AdjustmentHints, AdjustmentHintsMode, InlayHint, InlayHintLabel, InlayHintLabelPart,
@@ -104,12 +100,14 @@ pub(super) fn hints(
     };
     let iter: &mut dyn Iterator<Item = _> = iter.as_mut().either(|it| it as _, |it| it as _);
 
+    let mut has_adjustments = false;
     let mut allow_edit = !postfix;
     for Adjustment { source, target, kind } in iter {
         if source == target {
             cov_mark::hit!(same_type_adjustment);
             continue;
         }
+        has_adjustments = true;
 
         // FIXME: Add some nicer tooltips to each of these
         let (text, coercion) = match kind {
@@ -172,6 +170,10 @@ pub(super) fn hints(
         };
         if postfix { &mut post } else { &mut pre }.label.append_part(label);
     }
+    if !has_adjustments {
+        return None;
+    }
+
     if !postfix && needs_inner_parens {
         pre.label.append_str("(");
     }
@@ -254,71 +256,31 @@ fn mode_and_needs_parens_for_adjustment_hints(
 /// Returns whatever we need to add parentheses on the inside and/or outside of `expr`,
 /// if we are going to add (`postfix`) adjustments hints to it.
 fn needs_parens_for_adjustment_hints(expr: &ast::Expr, postfix: bool) -> (bool, bool) {
-    // This is a very miserable pile of hacks...
-    //
-    // `Expr::needs_parens_in` requires that the expression is the child of the other expression,
-    // that is supposed to be its parent.
-    //
-    // But we want to check what would happen if we add `*`/`.*` to the inner expression.
-    // To check for inner we need `` expr.needs_parens_in(`*expr`) ``,
-    // to check for outer we need `` `*expr`.needs_parens_in(parent) ``,
-    // where "expr" is the `expr` parameter, `*expr` is the edited `expr`,
-    // and "parent" is the parent of the original expression...
-    //
-    // For this we utilize mutable trees, which is a HACK, but it works.
-    //
-    // FIXME: comeup with a better API for `needs_parens_in`, so that we don't have to do *this*
-
-    // Make `&expr`/`expr?`
-    let dummy_expr = {
-        // `make::*` function go through a string, so they parse wrongly.
-        // for example `` make::expr_try(`|| a`) `` would result in a
-        // `|| (a?)` and not `(|| a)?`.
-        //
-        // Thus we need dummy parens to preserve the relationship we want.
-        // The parens are then simply ignored by the following code.
-        let dummy_paren = make::expr_paren(expr.clone());
-        if postfix {
-            make::expr_try(dummy_paren)
-        } else {
-            make::expr_ref(dummy_paren, false)
-        }
-    };
-
-    // Do the dark mutable tree magic.
-    // This essentially makes `dummy_expr` and `expr` switch places (families),
-    // so that `expr`'s parent is not `dummy_expr`'s parent.
-    let dummy_expr = dummy_expr.clone_for_update();
-    let expr = expr.clone_for_update();
-    ted::replace(expr.syntax(), dummy_expr.syntax());
-
-    let parent = dummy_expr.syntax().parent();
-    let Some(expr) = (|| {
-        if postfix {
-            let ast::Expr::TryExpr(e) = &dummy_expr else { return None };
-            let Some(ast::Expr::ParenExpr(e)) = e.expr() else { return None };
-
-            e.expr()
-        } else {
-            let ast::Expr::RefExpr(e) = &dummy_expr else { return None };
-            let Some(ast::Expr::ParenExpr(e)) = e.expr() else { return None };
-
-            e.expr()
-        }
-    })() else {
-        never!("broken syntax tree?\n{:?}\n{:?}", expr, dummy_expr);
-        return (true, true);
-    };
-
-    // At this point
-    // - `parent`     is the parent of the original expression
-    // - `dummy_expr` is the original expression wrapped in the operator we want (`*`/`.*`)
-    // - `expr`       is the clone of the original expression (with `dummy_expr` as the parent)
-
-    let needs_outer_parens = parent.is_some_and(|p| dummy_expr.needs_parens_in(p));
-    let needs_inner_parens = expr.needs_parens_in(dummy_expr.syntax().clone());
-
-    (needs_outer_parens, needs_inner_parens)
+    let prec = expr.precedence();
+    if postfix {
+        // postfix ops have higher precedence than any other operator, so we need to wrap
+        // any inner expression that is below (except for jumps if they don't have a value)
+        let needs_inner_parens = prec < ExprPrecedence::Unambiguous && {
+            prec != ExprPrecedence::Jump || !expr.is_ret_like_with_no_value()
+        };
+        // given we are the higher precedence, no parent expression will have stronger requirements
+        let needs_outer_parens = false;
+        (needs_outer_parens, needs_inner_parens)
+    } else {
+        // We need to wrap all binary like things, thats everything below prefix except for jumps
+        let needs_inner_parens = prec < ExprPrecedence::Prefix && prec != ExprPrecedence::Jump;
+        let parent = expr
+            .syntax()
+            .parent()
+            .and_then(ast::Expr::cast)
+            // if we are already wrapped, great, no need to wrap again
+            .filter(|it| !matches!(it, ast::Expr::ParenExpr(_)))
+            .map(|it| it.precedence());
+        // if we have no parent, we don't need outer parens to disambiguate
+        // otherwise anything with higher precedence than what we insert needs to wrap us
+        let needs_outer_parens = parent.is_some_and(|prec| prec > ExprPrecedence::Prefix);
+        (needs_outer_parens, needs_inner_parens)
+    }
 }
 
 #[cfg(test)]

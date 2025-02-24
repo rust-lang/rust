@@ -1,4 +1,4 @@
-use rustc_errors::{Applicability, Diag, MultiSpan};
+use rustc_errors::{Applicability, Diag, MultiSpan, listify};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::Visitor;
@@ -156,7 +156,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && segment.ident.name.as_str() == name
                 && let Res::Local(hir_id) = path.res
                 && let Some((_, hir::Node::Expr(match_expr))) =
-                    self.tcx.hir().parent_iter(hir_id).nth(2)
+                    self.tcx.hir_parent_iter(hir_id).nth(2)
                 && let hir::ExprKind::Match(scrutinee, _, _) = match_expr.kind
                 && let hir::ExprKind::Tup(exprs) = scrutinee.kind
                 && let hir::ExprKind::AddrOf(_, _, macro_arg) = exprs[idx].kind
@@ -293,8 +293,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &hir::Expr<'_>,
         source: TypeMismatchSource<'tcx>,
     ) -> bool {
-        let hir = self.tcx.hir();
-
         let hir::ExprKind::Path(hir::QPath::Resolved(None, p)) = expr.kind else {
             return false;
         };
@@ -334,7 +332,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let mut expr_finder = FindExprs { hir_id: local_hir_id, uses: init.into_iter().collect() };
-        let body = hir.body_owned_by(self.body_id);
+        let body = self.tcx.hir_body_owned_by(self.body_id);
         expr_finder.visit_expr(body.value);
 
         // Replaces all of the variables in the given type with a fresh inference variable.
@@ -579,9 +577,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut parent;
         'outer: loop {
             // Climb the HIR tree to see if the current `Expr` is part of a `break;` statement.
-            let (hir::Node::Stmt(hir::Stmt { kind: hir::StmtKind::Semi(&ref p), .. })
-            | hir::Node::Block(hir::Block { expr: Some(&ref p), .. })
-            | hir::Node::Expr(&ref p)) = self.tcx.hir_node(parent_id)
+            let (hir::Node::Stmt(&hir::Stmt { kind: hir::StmtKind::Semi(p), .. })
+            | hir::Node::Block(&hir::Block { expr: Some(p), .. })
+            | hir::Node::Expr(p)) = self.tcx.hir_node(parent_id)
             else {
                 break;
             };
@@ -595,13 +593,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             loop {
                 // Climb the HIR tree to find the (desugared) `loop` this `break` corresponds to.
                 let parent = match self.tcx.hir_node(parent_id) {
-                    hir::Node::Expr(&ref parent) => {
+                    hir::Node::Expr(parent) => {
                         parent_id = self.tcx.parent_hir_id(parent.hir_id);
                         parent
                     }
                     hir::Node::Stmt(hir::Stmt {
                         hir_id,
-                        kind: hir::StmtKind::Semi(&ref parent) | hir::StmtKind::Expr(&ref parent),
+                        kind: hir::StmtKind::Semi(parent) | hir::StmtKind::Expr(parent),
                         ..
                     }) => {
                         parent_id = self.tcx.parent_hir_id(*hir_id);
@@ -727,7 +725,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             ident,
                             kind: hir::ItemKind::Static(ty, ..) | hir::ItemKind::Const(ty, ..),
                             ..
-                        })) = self.tcx.hir().get_if_local(*def_id)
+                        })) = self.tcx.hir_get_if_local(*def_id)
                         {
                             primary_span = ty.span;
                             secondary_span = ident.span;
@@ -843,7 +841,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // The pattern we have is an fn argument.
             && let hir::Node::Param(hir::Param { ty_span, .. }) =
                 self.tcx.parent_hir_node(pat.hir_id)
-            && let item = self.tcx.hir().get_parent_item(pat.hir_id)
+            && let item = self.tcx.hir_get_parent_item(pat.hir_id)
             && let item = self.tcx.hir_owner_node(item)
             && let Some(fn_decl) = item.fn_decl()
 
@@ -851,32 +849,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && let hir::PatKind::Binding(hir::BindingMode::MUT, _hir_id, ident, _) = pat.kind
 
             // Look for the type corresponding to the argument pattern we have in the argument list.
-            && let Some(ty_sugg) = fn_decl
+            && let Some(ty_ref) = fn_decl
                 .inputs
                 .iter()
-                .filter_map(|ty| {
-                    if ty.span == *ty_span
-                        && let hir::TyKind::Ref(lt, x) = ty.kind
-                    {
-                        // `&'name Ty` -> `&'name mut Ty` or `&Ty` -> `&mut Ty`
-                        Some((
-                            x.ty.span.shrink_to_lo(),
-                            format!(
-                                "{}mut ",
-                                if lt.ident.span.lo() == lt.ident.span.hi() { "" } else { " " }
-                            ),
-                        ))
-                    } else {
-                        None
-                    }
+                .filter_map(|ty| match ty.kind {
+                    hir::TyKind::Ref(lt, mut_ty) if ty.span == *ty_span => Some((lt, mut_ty)),
+                    _ => None,
                 })
                 .next()
         {
-            let sugg = vec![
-                ty_sugg,
+            let mut sugg = if ty_ref.1.mutbl.is_mut() {
+                // Leave `&'name mut Ty` and `&mut Ty` as they are (#136028).
+                vec![]
+            } else {
+                // `&'name Ty` -> `&'name mut Ty` or `&Ty` -> `&mut Ty`
+                vec![(
+                    ty_ref.1.ty.span.shrink_to_lo(),
+                    format!(
+                        "{}mut ",
+                        if ty_ref.0.ident.span.lo() == ty_ref.0.ident.span.hi() { "" } else { " " },
+                    ),
+                )]
+            };
+            sugg.extend([
                 (pat.span.until(ident.span), String::new()),
                 (lhs.span.shrink_to_lo(), "*".to_string()),
-            ];
+            ]);
             // We suggest changing the argument from `mut ident: &Ty` to `ident: &'_ mut Ty` and the
             // assignment from `ident = val;` to `*ident = val;`.
             err.multipart_suggestion_verbose(
@@ -1016,18 +1014,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 },
                 self.tcx.def_path_str(candidate.item.container_id(self.tcx))
             ),
-            [.., last] if other_methods_in_scope.len() < 5 => {
+            _ if other_methods_in_scope.len() < 5 => {
                 format!(
-                    "the methods of the same name on {} and `{}`",
-                    other_methods_in_scope[..other_methods_in_scope.len() - 1]
-                        .iter()
-                        .map(|c| format!(
-                            "`{}`",
-                            self.tcx.def_path_str(c.item.container_id(self.tcx))
-                        ))
-                        .collect::<Vec<String>>()
-                        .join(", "),
-                    self.tcx.def_path_str(last.item.container_id(self.tcx))
+                    "the methods of the same name on {}",
+                    listify(
+                        &other_methods_in_scope[..other_methods_in_scope.len() - 1],
+                        |c| format!("`{}`", self.tcx.def_path_str(c.item.container_id(self.tcx)))
+                    )
+                    .unwrap_or_default(),
                 )
             }
             _ => format!(
@@ -1177,7 +1171,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let Some(hir::Node::Item(hir::Item {
                     kind: hir::ItemKind::Impl(hir::Impl { self_ty, .. }),
                     ..
-                })) = self.tcx.hir().get_if_local(*alias_to)
+                })) = self.tcx.hir_get_if_local(*alias_to)
                 {
                     err.span_label(self_ty.span, "this is the type of the `Self` literal");
                 }

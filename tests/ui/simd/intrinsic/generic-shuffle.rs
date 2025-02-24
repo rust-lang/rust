@@ -9,9 +9,9 @@
 #[derive(Copy, Clone)]
 pub struct Simd<T, const N: usize>([T; N]);
 
-extern "rust-intrinsic" {
-    fn simd_shuffle<T, I, U>(a: T, b: T, i: I) -> U;
-}
+#[rustc_intrinsic]
+unsafe fn simd_shuffle<T, I, U>(a: T, b: T, i: I) -> U;
+
 
 fn main() {
     const I: Simd<u32, 2> = Simd([0; 2]);

@@ -72,4 +72,8 @@ impl<'tcx> crate::MirPass<'tcx> for CleanupPostBorrowck {
             decl.user_ty = None;
         }
     }
+
+    fn is_required(&self) -> bool {
+        true
+    }
 }

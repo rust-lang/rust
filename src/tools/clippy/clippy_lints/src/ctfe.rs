@@ -21,6 +21,6 @@ impl<'tcx> LateLintPass<'tcx> for ClippyCtfe {
         _: Span,
         defid: LocalDefId,
     ) {
-        cx.tcx.ensure().mir_drops_elaborated_and_const_checked(defid); // Lint
+        cx.tcx.ensure_ok().mir_drops_elaborated_and_const_checked(defid); // Lint
     }
 }

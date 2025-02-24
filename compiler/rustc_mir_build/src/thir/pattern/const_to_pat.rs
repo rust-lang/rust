@@ -46,7 +46,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
         match c.kind() {
             ty::ConstKind::Unevaluated(uv) => convert.unevaluated_to_pat(uv, ty),
-            ty::ConstKind::Value(_, val) => convert.valtree_to_pat(val, ty),
+            ty::ConstKind::Value(cv) => convert.valtree_to_pat(cv.valtree, cv.ty),
             _ => span_bug!(span, "Invalid `ConstKind` for `const_to_pat`: {:?}", c),
         }
     }
@@ -148,7 +148,7 @@ impl<'tcx> ConstToPat<'tcx> {
                     if let ty::GenericArgKind::Type(ty) = arg.unpack()
                         && let ty::Param(param_ty) = ty.kind()
                     {
-                        let def_id = self.tcx.hir().enclosing_body_owner(self.id);
+                        let def_id = self.tcx.hir_enclosing_body_owner(self.id);
                         let generics = self.tcx.generics_of(def_id);
                         let param = generics.type_param(*param_ty, self.tcx);
                         let span = self.tcx.def_span(param.def_id);
@@ -208,12 +208,13 @@ impl<'tcx> ConstToPat<'tcx> {
                 let field = FieldIdx::new(idx);
                 // Patterns can only use monomorphic types.
                 let ty = self.tcx.normalize_erasing_regions(self.typing_env, ty);
-                FieldPat { field, pattern: self.valtree_to_pat(val, ty) }
+                FieldPat { field, pattern: *self.valtree_to_pat(val, ty) }
             })
             .collect()
     }
 
     // Recursive helper for `to_pat`; invoke that (instead of calling this directly).
+    // FIXME(valtrees): Accept `ty::Value` instead of `Ty` and `ty::ValTree` separately.
     #[instrument(skip(self), level = "debug")]
     fn valtree_to_pat(&self, cv: ValTree<'tcx>, ty: Ty<'tcx>) -> Box<Pat<'tcx>> {
         let span = self.span;
@@ -276,7 +277,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 prefix: cv
                     .unwrap_branch()
                     .iter()
-                    .map(|val| self.valtree_to_pat(*val, *elem_ty))
+                    .map(|val| *self.valtree_to_pat(*val, *elem_ty))
                     .collect(),
                 slice: None,
                 suffix: Box::new([]),
@@ -285,7 +286,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 prefix: cv
                     .unwrap_branch()
                     .iter()
-                    .map(|val| self.valtree_to_pat(*val, *elem_ty))
+                    .map(|val| *self.valtree_to_pat(*val, *elem_ty))
                     .collect(),
                 slice: None,
                 suffix: Box::new([]),

@@ -1,0 +1,9 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/uncomputable-due-to-trivial-bounds-ice-135138.rs:7:16
+   |
+LL |     [(); { let _a: Option<str> = None; 0 }];
+   |                ^^ the type `Option<str>` has an unknown layout
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.

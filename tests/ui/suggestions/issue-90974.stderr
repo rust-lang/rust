@@ -6,8 +6,9 @@ LL |     println!("{}", (3.).recip());
    |
 help: you must specify a concrete type for this numeric value, like `f32`
    |
-LL |     println!("{}", (3_f32).recip());
-   |                     ~~~~~
+LL -     println!("{}", (3.).recip());
+LL +     println!("{}", (3_f32).recip());
+   |
 
 error: aborting due to 1 previous error
 

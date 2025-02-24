@@ -7,7 +7,7 @@ use rustc_middle::ty;
 use super::AS_UNDERSCORE;
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, ty: &'tcx Ty<'_>) {
-    if matches!(ty.kind, TyKind::Infer) {
+    if matches!(ty.kind, TyKind::Infer(())) {
         span_lint_and_then(cx, AS_UNDERSCORE, expr.span, "using `as _` conversion", |diag| {
             let ty_resolved = cx.typeck_results().expr_ty(expr);
             if let ty::Error(_) = ty_resolved.kind() {

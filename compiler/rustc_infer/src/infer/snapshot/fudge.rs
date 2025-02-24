@@ -1,7 +1,6 @@
 use std::ops::Range;
 
 use rustc_data_structures::{snapshot_vec as sv, unify as ut};
-use rustc_middle::infer::unify_key::{ConstVariableValue, ConstVidKey};
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::{self, ConstVid, FloatVid, IntVid, RegionVid, Ty, TyCtxt, TyVid};
 use rustc_type_ir::visit::TypeVisitableExt;
@@ -10,6 +9,7 @@ use ut::UnifyKey;
 
 use super::VariableLengths;
 use crate::infer::type_variable::TypeVariableOrigin;
+use crate::infer::unify_key::{ConstVariableValue, ConstVidKey};
 use crate::infer::{ConstVariableOrigin, InferCtxt, RegionVariableOrigin, UnificationTable};
 
 fn vars_since_snapshot<'tcx, T>(

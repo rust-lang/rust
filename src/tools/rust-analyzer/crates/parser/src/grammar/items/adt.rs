@@ -135,6 +135,11 @@ pub(crate) fn record_field_list(p: &mut Parser<'_>) {
             name(p);
             p.expect(T![:]);
             types::type_(p);
+            // test record_field_default_values
+            // struct S { f: f32 = 0.0 }
+            if p.eat(T![=]) {
+                expressions::expr(p);
+            }
             m.complete(p, RECORD_FIELD);
         } else {
             m.abandon(p);

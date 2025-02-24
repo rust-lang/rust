@@ -88,6 +88,17 @@ pub(crate) enum FlycheckConfig {
     },
 }
 
+impl FlycheckConfig {
+    pub(crate) fn invocation_strategy_once(&self) -> bool {
+        match self {
+            FlycheckConfig::CargoCommand { .. } => false,
+            FlycheckConfig::CustomCommand { invocation_strategy, .. } => {
+                *invocation_strategy == InvocationStrategy::Once
+            }
+        }
+    }
+}
+
 impl fmt::Display for FlycheckConfig {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

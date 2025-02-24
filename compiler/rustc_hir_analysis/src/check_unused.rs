@@ -13,11 +13,11 @@ pub(crate) fn provide(providers: &mut Providers) {
 fn check_unused_traits(tcx: TyCtxt<'_>, (): ()) {
     let mut used_trait_imports = UnordSet::<LocalDefId>::default();
 
-    // FIXME: Use `tcx.hir().par_body_owners()` when we implement creating `DefId`s
+    // FIXME: Use `tcx.hir_par_body_owners()` when we implement creating `DefId`s
     // for anon constants during their parents' typeck.
     // Doing so at current will produce queries cycle errors because it may typeck
     // on anon constants directly.
-    for item_def_id in tcx.hir().body_owners() {
+    for item_def_id in tcx.hir_body_owners() {
         let imports = tcx.used_trait_imports(item_def_id);
         debug!("GatherVisitor: item_def_id={:?} with imports {:#?}", item_def_id, imports);
         used_trait_imports.extend_unord(imports.items().copied());

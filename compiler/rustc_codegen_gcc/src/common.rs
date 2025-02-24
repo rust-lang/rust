@@ -234,7 +234,12 @@ impl<'gcc, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                     GlobalAlloc::VTable(ty, dyn_ty) => {
                         let alloc = self
                             .tcx
-                            .global_alloc(self.tcx.vtable_allocation((ty, dyn_ty.principal())))
+                            .global_alloc(self.tcx.vtable_allocation((
+                                ty,
+                                dyn_ty.principal().map(|principal| {
+                                    self.tcx.instantiate_bound_regions_with_erased(principal)
+                                }),
+                            )))
                             .unwrap_memory();
                         let init = const_alloc_to_gcc(self, alloc);
                         self.static_addr_of(init, alloc.inner().align, None)

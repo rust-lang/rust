@@ -1,5 +1,9 @@
 ## `dwarf-version`
 
+The tracking issue for this feature is: <https://github.com/rust-lang/rust/issues/103057>
+
+----------------------------
+
 This option controls the version of DWARF that the compiler emits, on platforms
 that use DWARF to encode debug information. It takes one of the following
 values:

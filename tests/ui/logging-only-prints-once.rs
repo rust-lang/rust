@@ -1,5 +1,4 @@
 //@ run-pass
-//@ ignore-windows
 //@ needs-threads
 
 use std::cell::Cell;

@@ -1228,6 +1228,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
 /// assert_eq!(format!("{:?}", wrapped), "'a'");
 /// ```
 #[unstable(feature = "debug_closure_helpers", issue = "117729")]
+#[must_use = "returns a type implementing Debug and Display, which do not have any effects unless they are used"]
 pub fn from_fn<F: Fn(&mut fmt::Formatter<'_>) -> fmt::Result>(f: F) -> FromFn<F> {
     FromFn(f)
 }

@@ -86,7 +86,7 @@ impl SwitchTargets {
         self.iter().find_map(|(v, t)| (v == value).then_some(t)).unwrap_or_else(|| self.otherwise())
     }
 
-    /// Adds a new target to the switch. But You cannot add an already present value.
+    /// Adds a new target to the switch. Panics if you add an already present value.
     #[inline]
     pub fn add_target(&mut self, value: u128, bb: BasicBlock) {
         let value = Pu128(value);
@@ -206,6 +206,7 @@ impl<O> AssertKind<O> {
             ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::Gen, _)) => {
                 LangItem::PanicGenFnNonePanic
             }
+            NullPointerDereference => LangItem::PanicNullPointerDereference,
 
             BoundsCheck { .. } | MisalignedPointerDereference { .. } => {
                 bug!("Unexpected AssertKind")
@@ -225,7 +226,7 @@ impl<O> AssertKind<O> {
     {
         use AssertKind::*;
         match self {
-            BoundsCheck { ref len, ref index } => write!(
+            BoundsCheck { len, index } => write!(
                 f,
                 "\"index out of bounds: the length is {{}} but the index is {{}}\", {len:?}, {index:?}"
             ),
@@ -271,6 +272,7 @@ impl<O> AssertKind<O> {
                     "\"misaligned pointer dereference: address must be a multiple of {{}} but is {{}}\", {required:?}, {found:?}"
                 )
             }
+            NullPointerDereference => write!(f, "\"null pointer dereference occurred\""),
             ResumedAfterReturn(CoroutineKind::Coroutine(_)) => {
                 write!(f, "\"coroutine resumed after completion\"")
             }
@@ -341,7 +343,7 @@ impl<O> AssertKind<O> {
             ResumedAfterPanic(CoroutineKind::Coroutine(_)) => {
                 middle_assert_coroutine_resume_after_panic
             }
-
+            NullPointerDereference => middle_assert_null_ptr_deref,
             MisalignedPointerDereference { .. } => middle_assert_misaligned_ptr_deref,
         }
     }
@@ -374,7 +376,7 @@ impl<O> AssertKind<O> {
                 add!("left", format!("{left:#?}"));
                 add!("right", format!("{right:#?}"));
             }
-            ResumedAfterReturn(_) | ResumedAfterPanic(_) => {}
+            ResumedAfterReturn(_) | ResumedAfterPanic(_) | NullPointerDereference => {}
             MisalignedPointerDereference { required, found } => {
                 add!("required", format!("{required:#?}"));
                 add!("found", format!("{found:#?}"));
@@ -581,9 +583,11 @@ impl<'tcx> TerminatorKind<'tcx> {
 pub enum TerminatorEdges<'mir, 'tcx> {
     /// For terminators that have no successor, like `return`.
     None,
-    /// For terminators that a single successor, like `goto`, and `assert` without cleanup block.
+    /// For terminators that have a single successor, like `goto`, and `assert` without a cleanup
+    /// block.
     Single(BasicBlock),
-    /// For terminators that two successors, `assert` with cleanup block and `falseEdge`.
+    /// For terminators that have two successors, like `assert` with a cleanup block, and
+    /// `falseEdge`.
     Double(BasicBlock, BasicBlock),
     /// Special action for `Yield`, `Call` and `InlineAsm` terminators.
     AssignOnReturn {

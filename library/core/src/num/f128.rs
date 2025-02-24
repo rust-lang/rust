@@ -670,7 +670,8 @@ impl f128 {
     /// If one of the arguments is NaN, then the other argument is returned.
     /// This follows the IEEE 754-2008 semantics for maxNum, except for handling of signaling NaNs;
     /// this function handles all NaNs the same way and avoids maxNum's problems with associativity.
-    /// This also matches the behavior of libm’s fmax.
+    /// This also matches the behavior of libm’s fmax. In particular, if the inputs compare equal
+    /// (such as for the case of `+0.0` and `-0.0`), either input may be returned non-deterministically.
     ///
     /// ```
     /// #![feature(f128)]
@@ -696,7 +697,8 @@ impl f128 {
     /// If one of the arguments is NaN, then the other argument is returned.
     /// This follows the IEEE 754-2008 semantics for minNum, except for handling of signaling NaNs;
     /// this function handles all NaNs the same way and avoids minNum's problems with associativity.
-    /// This also matches the behavior of libm’s fmin.
+    /// This also matches the behavior of libm’s fmin. In particular, if the inputs compare equal
+    /// (such as for the case of `+0.0` and `-0.0`), either input may be returned non-deterministically.
     ///
     /// ```
     /// #![feature(f128)]

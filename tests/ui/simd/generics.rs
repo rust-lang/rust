@@ -21,9 +21,8 @@ struct B<T>([T; 4]);
 struct C<T, const N: usize>([T; N]);
 
 
-extern "rust-intrinsic" {
-    fn simd_add<T>(x: T, y: T) -> T;
-}
+#[rustc_intrinsic]
+unsafe fn simd_add<T>(x: T, y: T) -> T;
 
 fn add<T: ops::Add<Output=T>>(lhs: T, rhs: T) -> T {
     lhs + rhs

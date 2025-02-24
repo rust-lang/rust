@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::source::{snippet, snippet_with_applicability, snippet_with_context};
+use clippy_utils::source::{snippet, snippet_with_context};
 use clippy_utils::sugg::{DiagExt as _, Sugg};
 use clippy_utils::ty::{is_copy, is_type_diagnostic_item, same_type_and_consts};
 use clippy_utils::{
@@ -12,6 +12,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::Obligation;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::traits::ObligationCause;
+use rustc_middle::ty::adjustment::{Adjust, AutoBorrow, AutoBorrowMutability};
 use rustc_middle::ty::{self, AdtDef, EarlyBinder, GenericArg, GenericArgsRef, Ty, TypeVisitableExt};
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, sym};
@@ -251,26 +252,25 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                             //  ^^^
                             let (into_iter_recv, depth) = into_iter_deep_call(cx, into_iter_recv);
 
-                            let plural = if depth == 0 { "" } else { "s" };
-                            let mut applicability = Applicability::MachineApplicable;
-                            let sugg = snippet_with_applicability(
-                                cx,
-                                into_iter_recv.span.source_callsite(),
-                                "<expr>",
-                                &mut applicability,
-                            )
-                            .into_owned();
                             span_lint_and_then(
                                 cx,
                                 USELESS_CONVERSION,
                                 e.span,
                                 "explicit call to `.into_iter()` in function argument accepting `IntoIterator`",
                                 |diag| {
-                                    diag.span_suggestion(
-                                        e.span,
+                                    let receiver_span = into_iter_recv.span.source_callsite();
+                                    let adjustments = adjustments(cx, into_iter_recv);
+                                    let mut sugg = if adjustments.is_empty() {
+                                        vec![]
+                                    } else {
+                                        vec![(receiver_span.shrink_to_lo(), adjustments)]
+                                    };
+                                    let plural = if depth == 0 { "" } else { "s" };
+                                    sugg.push((e.span.with_lo(receiver_span.hi()), String::new()));
+                                    diag.multipart_suggestion(
                                         format!("consider removing the `.into_iter()`{plural}"),
                                         sugg,
-                                        applicability,
+                                        Applicability::MachineApplicable,
                                     );
                                     diag.span_note(span, "this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`");
                                 },
@@ -430,4 +430,17 @@ fn has_eligible_receiver(cx: &LateContext<'_>, recv: &Expr<'_>, expr: &Expr<'_>)
         return true;
     }
     false
+}
+
+fn adjustments(cx: &LateContext<'_>, expr: &Expr<'_>) -> String {
+    let mut prefix = String::new();
+    for adj in cx.typeck_results().expr_adjustments(expr) {
+        match adj.kind {
+            Adjust::Deref(_) => prefix = format!("*{prefix}"),
+            Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Mut { .. })) => prefix = format!("&mut {prefix}"),
+            Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Not)) => prefix = format!("&{prefix}"),
+            _ => {},
+        }
+    }
+    prefix
 }

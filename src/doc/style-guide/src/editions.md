@@ -36,10 +36,6 @@ For a full history of changes in the Rust 2024 style edition, see the git
 history of the style guide. Notable changes in the Rust 2024 style edition
 include:
 
-- [#114764](https://github.com/rust-lang/rust/pull/114764) As the last member
-  of a delimited expression, delimited expressions are generally combinable,
-  regardless of the number of members. Previously only applied with exactly
-  one member (except for closures with explicit blocks).
 - Miscellaneous `rustfmt` bugfixes.
 - Use version-sort (sort `x8`, `x16`, `x32`, `x64`, `x128` in that order).
 - Change "ASCIIbetical" sort to Unicode-aware "non-lowercase before lowercase".

@@ -373,7 +373,7 @@ fn drop_tys_helper<'tcx>(
 
 fn adt_consider_insignificant_dtor<'tcx>(
     tcx: TyCtxt<'tcx>,
-) -> impl Fn(ty::AdtDef<'tcx>) -> Option<DtorType> + 'tcx {
+) -> impl Fn(ty::AdtDef<'tcx>) -> Option<DtorType> {
     move |adt_def: ty::AdtDef<'tcx>| {
         let is_marked_insig = tcx.has_attr(adt_def.did(), sym::rustc_insignificant_dtor);
         if is_marked_insig {

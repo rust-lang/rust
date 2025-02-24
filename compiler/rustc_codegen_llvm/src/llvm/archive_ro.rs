@@ -26,7 +26,7 @@ impl ArchiveRO {
     ///
     /// If this archive is used with a mutable method, then an error will be
     /// raised.
-    pub fn open(dst: &Path) -> Result<ArchiveRO, String> {
+    pub(crate) fn open(dst: &Path) -> Result<ArchiveRO, String> {
         unsafe {
             let s = path_to_c_string(dst);
             let ar = super::LLVMRustOpenArchive(s.as_ptr()).ok_or_else(|| {
@@ -36,7 +36,7 @@ impl ArchiveRO {
         }
     }
 
-    pub fn iter(&self) -> Iter<'_> {
+    pub(crate) fn iter(&self) -> Iter<'_> {
         unsafe { Iter { raw: super::LLVMRustArchiveIteratorNew(self.raw) } }
     }
 }
@@ -71,7 +71,7 @@ impl<'a> Drop for Iter<'a> {
 }
 
 impl<'a> Child<'a> {
-    pub fn name(&self) -> Option<&'a str> {
+    pub(crate) fn name(&self) -> Option<&'a str> {
         unsafe {
             let mut name_len = 0;
             let name_ptr = super::LLVMRustArchiveChildName(self.raw, &mut name_len);

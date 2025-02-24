@@ -252,15 +252,7 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
         // Unsupported architecture.
         _ => return None,
     };
-    let binary_format = if sess.target.is_like_osx {
-        BinaryFormat::MachO
-    } else if sess.target.is_like_windows {
-        BinaryFormat::Coff
-    } else if sess.target.is_like_aix {
-        BinaryFormat::Xcoff
-    } else {
-        BinaryFormat::Elf
-    };
+    let binary_format = sess.target.binary_format.to_object();
 
     let mut file = write::Object::new(binary_format, architecture, endianness);
     file.set_sub_architecture(sub_architecture);
@@ -704,13 +696,17 @@ pub fn create_metadata_file_for_wasm(sess: &Session, data: &[u8], section_name: 
     let mut imports = wasm_encoder::ImportSection::new();
 
     if sess.target.pointer_width == 64 {
-        imports.import("env", "__linear_memory", wasm_encoder::MemoryType {
-            minimum: 0,
-            maximum: None,
-            memory64: true,
-            shared: false,
-            page_size_log2: None,
-        });
+        imports.import(
+            "env",
+            "__linear_memory",
+            wasm_encoder::MemoryType {
+                minimum: 0,
+                maximum: None,
+                memory64: true,
+                shared: false,
+                page_size_log2: None,
+            },
+        );
     }
 
     if imports.len() > 0 {

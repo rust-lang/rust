@@ -30,7 +30,7 @@ pub(super) fn check<'tcx>(
         } else {
             check_non_const_operands(cx, e, lhs);
         }
-    };
+    }
 }
 
 fn used_in_comparison_with_zero(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {

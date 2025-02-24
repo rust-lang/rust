@@ -31,12 +31,12 @@ use crate::{CoroutineTypes, Diverges, EnclosingBreakables, TypeckRootCtxt};
 /// functions, closures, and `const`s, including performing type inference
 /// with [`InferCtxt`].
 ///
-/// This is in contrast to [`ItemCtxt`], which is used to type-check item *signatures*
-/// and thus does not perform type inference.
+/// This is in contrast to `rustc_hir_analysis::collect::ItemCtxt`, which is
+/// used to type-check item *signatures* and thus does not perform type
+/// inference.
 ///
-/// See [`ItemCtxt`]'s docs for more.
+/// See `ItemCtxt`'s docs for more.
 ///
-/// [`ItemCtxt`]: rustc_hir_analysis::collect::ItemCtxt
 /// [`InferCtxt`]: infer::InferCtxt
 pub(crate) struct FnCtxt<'a, 'tcx> {
     pub(super) body_id: LocalDefId,
@@ -290,7 +290,7 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
         _: Ident,
     ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
         let tcx = self.tcx;
-        let item_def_id = tcx.hir().ty_param_owner(def_id);
+        let item_def_id = tcx.hir_ty_param_owner(def_id);
         let generics = tcx.generics_of(item_def_id);
         let index = generics.param_def_id_to_index[&def_id.to_def_id()];
         // HACK(eddyb) should get the original `Span`.

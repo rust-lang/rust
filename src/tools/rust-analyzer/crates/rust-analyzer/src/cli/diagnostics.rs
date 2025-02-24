@@ -4,7 +4,7 @@
 use project_model::{CargoConfig, RustLibSource};
 use rustc_hash::FxHashSet;
 
-use hir::{db::HirDatabase, Crate, HirFileIdExt, Module};
+use hir::{db::HirDatabase, sym, Crate, HirFileIdExt, Module};
 use ide::{AnalysisHost, AssistResolveStrategy, Diagnostic, DiagnosticsConfig, Severity};
 use ide_db::{base_db::SourceRootDatabase, LineIndexDatabase};
 use load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice};
@@ -60,7 +60,7 @@ impl flags::Diagnostics {
             let file_id = module.definition_source_file_id(db).original_file(db);
             if !visited_files.contains(&file_id) {
                 let crate_name =
-                    module.krate().display_name(db).as_deref().unwrap_or("unknown").to_owned();
+                    module.krate().display_name(db).as_deref().unwrap_or(&sym::unknown).to_owned();
                 println!(
                     "processing crate: {crate_name}, module: {}",
                     _vfs.file_path(file_id.into())

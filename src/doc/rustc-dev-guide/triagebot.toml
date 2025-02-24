@@ -6,3 +6,6 @@ allow-unauthenticated = [
     "waiting-on-author",
     "blocked",
 ]
+
+# Automatically close and reopen PRs made by bots to run CI on them
+[bot-pull-requests]

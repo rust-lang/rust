@@ -1672,8 +1672,8 @@ macro_rules! vec {
     () => {Vec}
 }
 fn main() {
-    let $0vec = vec![];
-    let _ = vec;
+    let $0items = vec![];
+    let _ = items;
 }
 "#,
             "Extract into variable",
@@ -1696,8 +1696,8 @@ macro_rules! vec {
     () => {Vec}
 }
 fn main() {
-    const $0VEC: Vec = vec![];
-    let _ = VEC;
+    const $0ITEMS: Vec = vec![];
+    let _ = ITEMS;
 }
 "#,
             "Extract into constant",
@@ -1720,8 +1720,8 @@ macro_rules! vec {
     () => {Vec}
 }
 fn main() {
-    static $0VEC: Vec = vec![];
-    let _ = VEC;
+    static $0ITEMS: Vec = vec![];
+    let _ = ITEMS;
 }
 "#,
             "Extract into static",
@@ -2019,8 +2019,8 @@ impl<T> Vec<T> {
 }
 
 fn foo(s: &mut S) {
-    let $0vec = &mut s.vec;
-    vec.push(0);
+    let $0items = &mut s.vec;
+    items.push(0);
 }"#,
             "Extract into variable",
         );
@@ -2106,8 +2106,8 @@ impl<T> Vec<T> {
 }
 
 fn foo(f: &mut Y) {
-    let $0vec = &mut f.field.field.vec;
-    vec.push(0);
+    let $0items = &mut f.field.field.vec;
+    items.push(0);
 }"#,
             "Extract into variable",
         );

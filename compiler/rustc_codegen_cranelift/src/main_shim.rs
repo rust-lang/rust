@@ -15,9 +15,12 @@ pub(crate) fn maybe_create_entry_wrapper(
     is_primary_cgu: bool,
 ) {
     let (main_def_id, sigpipe) = match tcx.entry_fn(()) {
-        Some((def_id, entry_ty)) => (def_id, match entry_ty {
-            EntryFnType::Main { sigpipe } => sigpipe,
-        }),
+        Some((def_id, entry_ty)) => (
+            def_id,
+            match entry_ty {
+                EntryFnType::Main { sigpipe } => sigpipe,
+            },
+        ),
         None => return,
     };
 

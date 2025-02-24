@@ -1,12 +1,12 @@
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
+use std::sync::Arc;
 
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast_pretty::pprust;
-use rustc_data_structures::sync::Lrc;
 use rustc_expand::base::{
     DummyResult, ExpandResult, ExtCtxt, MacEager, MacResult, MacroExpanderResult, resolve_path,
 };
@@ -249,7 +249,7 @@ fn load_binary_file(
     original_path: &Path,
     macro_span: Span,
     path_span: Span,
-) -> Result<(Lrc<[u8]>, Span), Box<dyn MacResult>> {
+) -> Result<(Arc<[u8]>, Span), Box<dyn MacResult>> {
     let resolved_path = match resolve_path(&cx.sess, original_path, macro_span) {
         Ok(path) => path,
         Err(err) => {

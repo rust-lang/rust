@@ -1,13 +1,13 @@
 warning: use of deprecated module `allowed_through_unstable_core::unstable_module`: use the new path instead
-  --> $DIR/allowed-through-unstable.rs:9:53
+  --> $DIR/allowed-through-unstable.rs:8:53
    |
-LL | use allowed_through_unstable_core::unstable_module::OldStableTraitAllowedThoughUnstableWithDeprecation;
-   |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | use allowed_through_unstable_core::unstable_module::OldStableTraitAllowedThoughUnstable;
+   |                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `#[warn(deprecated)]` on by default
 
 error[E0658]: use of unstable library feature `unstable_test_feature`
-  --> $DIR/allowed-through-unstable.rs:10:5
+  --> $DIR/allowed-through-unstable.rs:9:5
    |
 LL | use allowed_through_unstable_core::unstable_module::NewStableTraitNotAllowedThroughUnstable;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

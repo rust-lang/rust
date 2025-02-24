@@ -258,6 +258,10 @@ impl File {
         self.0
     }
 
+    pub fn tell(&self) -> io::Result<u64> {
+        self.0
+    }
+
     pub fn duplicate(&self) -> io::Result<File> {
         self.0
     }

@@ -157,9 +157,7 @@ pub(crate) fn linkage_to_llvm(linkage: Linkage) -> llvm::Linkage {
         Linkage::LinkOnceODR => llvm::Linkage::LinkOnceODRLinkage,
         Linkage::WeakAny => llvm::Linkage::WeakAnyLinkage,
         Linkage::WeakODR => llvm::Linkage::WeakODRLinkage,
-        Linkage::Appending => llvm::Linkage::AppendingLinkage,
         Linkage::Internal => llvm::Linkage::InternalLinkage,
-        Linkage::Private => llvm::Linkage::PrivateLinkage,
         Linkage::ExternalWeak => llvm::Linkage::ExternalWeakLinkage,
         Linkage::Common => llvm::Linkage::CommonLinkage,
     }

@@ -10,7 +10,7 @@ impl<'a, K: 'a, V: 'a> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInter
     /// the leaf edge corresponding to that former pair. It's possible this empties
     /// a root node that is internal, which the caller should pop from the map
     /// holding the tree. The caller should also decrement the map's length.
-    pub fn remove_kv_tracking<F: FnOnce(), A: Allocator + Clone>(
+    pub(super) fn remove_kv_tracking<F: FnOnce(), A: Allocator + Clone>(
         self,
         handle_emptied_internal_root: F,
         alloc: A,

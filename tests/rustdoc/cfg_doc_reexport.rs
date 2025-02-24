@@ -1,8 +1,11 @@
 #![feature(doc_cfg)]
-#![feature(no_core)]
+#![feature(no_core, lang_items)]
 
 #![crate_name = "foo"]
 #![no_core]
+
+#[lang = "sized"]
+trait Sized {}
 
 //@ has 'foo/index.html'
 //@ has - '//dt/*[@class="stab portability"]' 'foobar'

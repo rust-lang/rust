@@ -354,6 +354,7 @@ impl Definition {
                 hir::GenericDef::TypeAlias(it) => it.source(db).map(|src| src.syntax().cloned()),
                 hir::GenericDef::Impl(it) => it.source(db).map(|src| src.syntax().cloned()),
                 hir::GenericDef::Const(it) => it.source(db).map(|src| src.syntax().cloned()),
+                hir::GenericDef::Static(it) => it.source(db).map(|src| src.syntax().cloned()),
             };
             return match def {
                 Some(def) => SearchScope::file_range(
@@ -625,7 +626,7 @@ impl<'a> FindUsages<'a> {
             let _p = tracing::info_span!("collect_possible_aliases").entered();
 
             let db = sema.db;
-            let container_name = container.name(db).unescaped().display(db).to_smolstr();
+            let container_name = container.name(db).as_str().to_smolstr();
             let search_scope = Definition::from(container).search_scope(db);
             let mut seen = FxHashSet::default();
             let mut completed = FxHashSet::default();
@@ -925,12 +926,8 @@ impl<'a> FindUsages<'a> {
                             .or_else(|| ty.as_builtin().map(|builtin| builtin.name()))
                     })
                 };
-                // We need to unescape the name in case it is written without "r#" in earlier
-                // editions of Rust where it isn't a keyword.
-                self.def
-                    .name(sema.db)
-                    .or_else(self_kw_refs)
-                    .map(|it| it.unescaped().display(sema.db).to_smolstr())
+                // We need to search without the `r#`, hence `as_str` access.
+                self.def.name(sema.db).or_else(self_kw_refs).map(|it| it.as_str().to_smolstr())
             }
         };
         let name = match &name {

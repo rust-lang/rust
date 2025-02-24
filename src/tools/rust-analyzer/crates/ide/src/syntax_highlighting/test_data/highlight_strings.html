@@ -82,6 +82,10 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="parenthesis">(</span><span class="punctuation">$</span>literal<span class="colon">:</span>literal<span class="parenthesis">)</span> <span class="operator">=</span><span class="operator">&gt;</span> <span class="brace">{</span><span class="brace">{</span>stringify<span class="punctuation">!</span><span class="parenthesis">(</span><span class="punctuation">$</span>literal<span class="parenthesis">)</span><span class="semicolon">;</span> format_args<span class="punctuation">!</span><span class="parenthesis">(</span><span class="punctuation">$</span>literal<span class="parenthesis">)</span><span class="brace">}</span><span class="brace">}</span><span class="semicolon">;</span>
 <span class="brace">}</span>
 
+<span class="keyword">use</span> <span class="unresolved_reference">foo</span><span class="operator">::</span><span class="unresolved_reference">bar</span> <span class="keyword">as</span> <span class="variable declaration">baz</span><span class="semicolon">;</span>
+<span class="keyword">trait</span> <span class="trait_alias declaration">Bar</span> <span class="operator">=</span> <span class="unresolved_reference">Baz</span><span class="semicolon">;</span>
+<span class="keyword">trait</span> <span class="trait_alias declaration">Foo</span> <span class="operator">=</span> <span class="trait_alias">Bar</span><span class="semicolon">;</span>
+
 <span class="keyword">fn</span> <span class="function declaration">main</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="brace">{</span>
     <span class="keyword">let</span> <span class="variable declaration">a</span> <span class="operator">=</span> <span class="char_literal">'</span><span class="escape_sequence">\n</span><span class="char_literal">'</span><span class="semicolon">;</span>
     <span class="keyword">let</span> <span class="variable declaration">a</span> <span class="operator">=</span> <span class="char_literal">'</span><span class="escape_sequence">\t</span><span class="char_literal">'</span><span class="semicolon">;</span>

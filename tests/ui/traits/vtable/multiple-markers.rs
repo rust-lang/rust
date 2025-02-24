@@ -2,8 +2,7 @@
 //
 // This test makes sure that multiple marker (method-less) traits can reuse the
 // same pointer for upcasting.
-//
-//@ build-fail
+
 #![crate_type = "lib"]
 #![feature(rustc_attrs)]
 
@@ -17,17 +16,13 @@ trait T {
     fn method(&self) {}
 }
 
-#[rustc_dump_vtable]
-trait A: M0 + M1 + M2 + T {} //~ error: vtable entries for `<S as A>`:
+trait A: M0 + M1 + M2 + T {}
 
-#[rustc_dump_vtable]
-trait B: M0 + M1 + T + M2 {} //~ error: vtable entries for `<S as B>`:
+trait B: M0 + M1 + T + M2 {}
 
-#[rustc_dump_vtable]
-trait C: M0 + T + M1 + M2 {} //~ error: vtable entries for `<S as C>`:
+trait C: M0 + T + M1 + M2 {}
 
-#[rustc_dump_vtable]
-trait D: T + M0 + M1 + M2 {} //~ error: vtable entries for `<S as D>`:
+trait D: T + M0 + M1 + M2 {}
 
 struct S;
 
@@ -35,13 +30,21 @@ impl M0 for S {}
 impl M1 for S {}
 impl M2 for S {}
 impl T for S {}
+
+#[rustc_dump_vtable]
 impl A for S {}
+//~^ ERROR vtable entries
+
+#[rustc_dump_vtable]
 impl B for S {}
+//~^ ERROR vtable entries
+
+#[rustc_dump_vtable]
 impl C for S {}
+//~^ ERROR vtable entries
+
+#[rustc_dump_vtable]
 impl D for S {}
+//~^ ERROR vtable entries
 
-pub fn require_vtables() {
-    fn require_vtables(_: &dyn A, _: &dyn B, _: &dyn C, _: &dyn D) {}
-
-    require_vtables(&S, &S, &S, &S)
-}
+fn main() {}

@@ -1,6 +1,3 @@
-#[cfg(test)]
-mod tests;
-
 use crate::fmt;
 use crate::sync::poison::{self, LockResult, MutexGuard, PoisonError, mutex};
 use crate::sys::sync as sys;

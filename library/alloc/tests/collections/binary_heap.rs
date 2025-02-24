@@ -502,9 +502,7 @@ fn test_retain_catch_unwind() {
 // even if the order might not be correct.
 //
 // Destructors must be called exactly once per element.
-// FIXME: re-enable emscripten once it can unwind again
 #[test]
-#[cfg(not(target_os = "emscripten"))]
 #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn panic_safe() {
     use std::cmp;

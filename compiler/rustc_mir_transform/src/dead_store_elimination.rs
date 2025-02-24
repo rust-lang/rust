@@ -147,4 +147,8 @@ impl<'tcx> crate::MirPass<'tcx> for DeadStoreElimination {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         eliminate(tcx, body);
     }
+
+    fn is_required(&self) -> bool {
+        false
+    }
 }

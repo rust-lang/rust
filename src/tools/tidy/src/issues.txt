@@ -409,7 +409,6 @@ ui/closure_context/issue-26046-fn-once.rs
 ui/closure_context/issue-42065.rs
 ui/closures/2229_closure_analysis/issue-118144.rs
 ui/closures/2229_closure_analysis/issue-87378.rs
-ui/closures/2229_closure_analysis/issue-87987.rs
 ui/closures/2229_closure_analysis/issue-88118-2.rs
 ui/closures/2229_closure_analysis/issue-88476.rs
 ui/closures/2229_closure_analysis/issue-89606.rs
@@ -1386,7 +1385,6 @@ ui/issue-18502.rs
 ui/issue-24106.rs
 ui/issue-76387-llvm-miscompile.rs
 ui/issues-71798.rs
-ui/issues/auxiliary/issue-111011.rs
 ui/issues/auxiliary/issue-11224.rs
 ui/issues/auxiliary/issue-11508.rs
 ui/issues/auxiliary/issue-11529.rs
@@ -2204,7 +2202,6 @@ ui/issues/issue-3895.rs
 ui/issues/issue-38954.rs
 ui/issues/issue-38987.rs
 ui/issues/issue-39089.rs
-ui/issues/issue-39175.rs
 ui/issues/issue-39211.rs
 ui/issues/issue-39367.rs
 ui/issues/issue-39548.rs
@@ -2221,26 +2218,12 @@ ui/issues/issue-3993.rs
 ui/issues/issue-39970.rs
 ui/issues/issue-39984.rs
 ui/issues/issue-40000.rs
-ui/issues/issue-40136.rs
-ui/issues/issue-40235.rs
 ui/issues/issue-4025.rs
 ui/issues/issue-40288-2.rs
 ui/issues/issue-40288.rs
-ui/issues/issue-40350.rs
-ui/issues/issue-40408.rs
-ui/issues/issue-40610.rs
-ui/issues/issue-40749.rs
-ui/issues/issue-40782.rs
-ui/issues/issue-40827.rs
-ui/issues/issue-40845.rs
-ui/issues/issue-40861.rs
-ui/issues/issue-40883.rs
 ui/issues/issue-40951.rs
 ui/issues/issue-41053.rs
-ui/issues/issue-41139.rs
-ui/issues/issue-41213.rs
 ui/issues/issue-41229-ref-str.rs
-ui/issues/issue-41272.rs
 ui/issues/issue-41298.rs
 ui/issues/issue-41479.rs
 ui/issues/issue-41498.rs
@@ -2363,7 +2346,6 @@ ui/issues/issue-4830.rs
 ui/issues/issue-48364.rs
 ui/issues/issue-48728.rs
 ui/issues/issue-4875.rs
-ui/issues/issue-48838.rs
 ui/issues/issue-48984.rs
 ui/issues/issue-49298.rs
 ui/issues/issue-4935.rs
@@ -3149,7 +3131,6 @@ ui/nll/issue-97997.rs
 ui/nll/issue-98170.rs
 ui/nll/issue-98589-closures-relate-named-regions.rs
 ui/nll/issue-98693.rs
-ui/nll/polonius/issue-46589.rs
 ui/nll/relate_tys/issue-48071.rs
 ui/nll/ty-outlives/issue-53789-1.rs
 ui/nll/ty-outlives/issue-53789-2.rs
@@ -3638,7 +3619,6 @@ ui/resolve/issue-21221-1.rs
 ui/resolve/issue-21221-2.rs
 ui/resolve/issue-21221-3.rs
 ui/resolve/issue-21221-4.rs
-ui/resolve/issue-22692.rs
 ui/resolve/issue-2330.rs
 ui/resolve/issue-23305.rs
 ui/resolve/issue-2356.rs
@@ -3857,7 +3837,6 @@ ui/suggestions/issue-106443-sugg-clone-for-arg.rs
 ui/suggestions/issue-106443-sugg-clone-for-bound.rs
 ui/suggestions/issue-107860.rs
 ui/suggestions/issue-108470.rs
-ui/suggestions/issue-109195.rs
 ui/suggestions/issue-109291.rs
 ui/suggestions/issue-109396.rs
 ui/suggestions/issue-109436.rs

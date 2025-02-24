@@ -7,9 +7,7 @@ However, using the suite manually can be a bit cumbersome. To make this easier f
 the compiler build system (`bootstrap`) also provides built-in integration with the benchmarking suite,
 which will download and build the suite for you, build a local compiler toolchain and let you profile it using a simplified command-line interface.
 
-You can use the `./x perf -- <command> [options]` command to use this integration.
-
-> Note that you need to specify arguments after `--` in the `x perf` command! You will not be able to pass arguments without the double dashes.
+You can use the `./x perf <command> [options]` command to use this integration.
 
 You can use normal bootstrap flags for this command, such as `--stage 1` or `--stage 2`, for example to modify the stage of the created sysroot. It might also be useful to configure `config.toml` to better support profiling, e.g. set `rust.debuginfo-level = 1` to add source line information to the built compiler.
 

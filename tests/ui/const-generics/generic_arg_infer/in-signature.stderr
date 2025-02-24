@@ -34,8 +34,9 @@ LL | const ARR_CT: [u8; _] = [0; 3];
    |
 help: replace this with a fully-specified type
    |
-LL | const ARR_CT: [u8; 3] = [0; 3];
-   |               ~~~~~~~
+LL - const ARR_CT: [u8; _] = [0; 3];
+LL + const ARR_CT: [u8; 3] = [0; 3];
+   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for static variables
   --> $DIR/in-signature.rs:24:25
@@ -45,8 +46,9 @@ LL | static ARR_STATIC: [u8; _] = [0; 3];
    |
 help: replace this with a fully-specified type
    |
-LL | static ARR_STATIC: [u8; 3] = [0; 3];
-   |                    ~~~~~~~
+LL - static ARR_STATIC: [u8; _] = [0; 3];
+LL + static ARR_STATIC: [u8; 3] = [0; 3];
+   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
   --> $DIR/in-signature.rs:26:23
@@ -56,8 +58,9 @@ LL | const TY_CT: Bar<i32, _> = Bar::<i32, 3>(0);
    |
 help: replace this with a fully-specified type
    |
-LL | const TY_CT: Bar<i32, 3> = Bar::<i32, 3>(0);
-   |              ~~~~~~~~~~~
+LL - const TY_CT: Bar<i32, _> = Bar::<i32, 3>(0);
+LL + const TY_CT: Bar<i32, 3> = Bar::<i32, 3>(0);
+   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for static variables
   --> $DIR/in-signature.rs:28:28
@@ -67,8 +70,9 @@ LL | static TY_STATIC: Bar<i32, _> = Bar::<i32, 3>(0);
    |
 help: replace this with a fully-specified type
    |
-LL | static TY_STATIC: Bar<i32, 3> = Bar::<i32, 3>(0);
-   |                   ~~~~~~~~~~~
+LL - static TY_STATIC: Bar<i32, _> = Bar::<i32, 3>(0);
+LL + static TY_STATIC: Bar<i32, 3> = Bar::<i32, 3>(0);
+   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
   --> $DIR/in-signature.rs:30:24
@@ -80,8 +84,9 @@ LL | const TY_CT_MIXED: Bar<_, _> = Bar::<i32, 3>(0);
    |
 help: replace this with a fully-specified type
    |
-LL | const TY_CT_MIXED: Bar<i32, 3> = Bar::<i32, 3>(0);
-   |                    ~~~~~~~~~~~
+LL - const TY_CT_MIXED: Bar<_, _> = Bar::<i32, 3>(0);
+LL + const TY_CT_MIXED: Bar<i32, 3> = Bar::<i32, 3>(0);
+   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for static variables
   --> $DIR/in-signature.rs:32:29
@@ -93,8 +98,9 @@ LL | static TY_STATIC_MIXED: Bar<_, _> = Bar::<i32, 3>(0);
    |
 help: replace this with a fully-specified type
    |
-LL | static TY_STATIC_MIXED: Bar<i32, 3> = Bar::<i32, 3>(0);
-   |                         ~~~~~~~~~~~
+LL - static TY_STATIC_MIXED: Bar<_, _> = Bar::<i32, 3>(0);
+LL + static TY_STATIC_MIXED: Bar<i32, 3> = Bar::<i32, 3>(0);
+   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated types
   --> $DIR/in-signature.rs:51:23

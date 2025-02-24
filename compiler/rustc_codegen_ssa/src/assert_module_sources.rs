@@ -46,8 +46,12 @@ pub fn assert_module_sources(tcx: TyCtxt<'_>, set_reuse: &dyn Fn(&mut CguReuseTr
             return;
         }
 
-        let available_cgus =
-            tcx.collect_and_partition_mono_items(()).1.iter().map(|cgu| cgu.name()).collect();
+        let available_cgus = tcx
+            .collect_and_partition_mono_items(())
+            .codegen_units
+            .iter()
+            .map(|cgu| cgu.name())
+            .collect();
 
         let mut ams = AssertModuleSource {
             tcx,

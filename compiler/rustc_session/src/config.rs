@@ -86,12 +86,18 @@ pub enum CFProtection {
 
 #[derive(Clone, Copy, Debug, PartialEq, Hash, HashStable_Generic)]
 pub enum OptLevel {
-    No,         // -O0
-    Less,       // -O1
-    Default,    // -O2
-    Aggressive, // -O3
-    Size,       // -Os
-    SizeMin,    // -Oz
+    /// `-Copt-level=0`
+    No,
+    /// `-Copt-level=1`
+    Less,
+    /// `-Copt-level=2`
+    More,
+    /// `-Copt-level=3` / `-O`
+    Aggressive,
+    /// `-Copt-level=s`
+    Size,
+    /// `-Copt-level=z`
+    SizeMin,
 }
 
 /// This is what the `LtoCli` values get mapped to after resolving defaults and
@@ -187,6 +193,32 @@ pub enum CoverageLevel {
     /// Instrument for MC/DC. Mostly a superset of condition coverage, but might
     /// differ in some corner cases.
     Mcdc,
+}
+
+/// The different settings that the `-Z autodiff` flag can have.
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum AutoDiff {
+    /// Enable the autodiff opt pipeline
+    Enable,
+
+    /// Print TypeAnalysis information
+    PrintTA,
+    /// Print ActivityAnalysis Information
+    PrintAA,
+    /// Print Performance Warnings from Enzyme
+    PrintPerf,
+    /// Print intermediate IR generation steps
+    PrintSteps,
+    /// Print the whole module, before running opts.
+    PrintModBefore,
+    /// Print the module after Enzyme differentiated everything.
+    PrintModAfter,
+
+    /// Enzyme's loose type debug helper (can cause incorrect gradients!!)
+    /// Usable in cases where Enzyme errors with `can not deduce type of X`.
+    LooseTypes,
+    /// Runs Enzyme's aggressive inlining
+    Inline,
 }
 
 /// Settings for `-Z instrument-xray` flag.
@@ -1191,6 +1223,7 @@ impl Default for Options {
             color: ColorConfig::Auto,
             logical_env: FxIndexMap::default(),
             verbose: false,
+            target_modifiers: BTreeMap::default(),
         }
     }
 }
@@ -1219,7 +1252,7 @@ impl Options {
             Some(setting) => setting,
             None => match self.optimize {
                 OptLevel::No | OptLevel::Less | OptLevel::Size | OptLevel::SizeMin => true,
-                OptLevel::Default | OptLevel::Aggressive => false,
+                OptLevel::More | OptLevel::Aggressive => false,
             },
         }
     }
@@ -1538,7 +1571,7 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
              stack-protector-strategies|link-args|deployment-target]",
         ),
         opt(Stable, FlagMulti, "g", "", "Equivalent to -C debuginfo=2", ""),
-        opt(Stable, FlagMulti, "O", "", "Equivalent to -C opt-level=2", ""),
+        opt(Stable, FlagMulti, "O", "", "Equivalent to -C opt-level=3", ""),
         opt(Stable, Opt, "o", "", "Write output to <filename>", "FILENAME"),
         opt(Stable, Opt, "", "out-dir", "Write output to compiler-chosen filename in <dir>", "DIR"),
         opt(
@@ -1786,7 +1819,7 @@ pub fn parse_error_format(
                 ErrorOutputType::HumanReadable(HumanReadableErrorType::Unicode, color)
             }
             Some(arg) => {
-                early_dcx.abort_if_error_and_set_error_format(ErrorOutputType::HumanReadable(
+                early_dcx.set_error_format(ErrorOutputType::HumanReadable(
                     HumanReadableErrorType::Default,
                     color,
                 ));
@@ -2093,12 +2126,12 @@ fn parse_opt_level(
         })
         .max();
     if max_o > max_c {
-        OptLevel::Default
+        OptLevel::Aggressive
     } else {
         match cg.opt_level.as_ref() {
             "0" => OptLevel::No,
             "1" => OptLevel::Less,
-            "2" => OptLevel::Default,
+            "2" => OptLevel::More,
             "3" => OptLevel::Aggressive,
             "s" => OptLevel::Size,
             "z" => OptLevel::SizeMin,
@@ -2327,7 +2360,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
 
     let error_format = parse_error_format(early_dcx, matches, color, json_color, json_rendered);
 
-    early_dcx.abort_if_error_and_set_error_format(error_format);
+    early_dcx.set_error_format(error_format);
 
     let diagnostic_width = matches.opt_get("diagnostic-width").unwrap_or_else(|_| {
         early_dcx.early_fatal("`--diagnostic-width` must be an positive integer");
@@ -2337,14 +2370,16 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     let crate_types = parse_crate_types_from_list(unparsed_crate_types)
         .unwrap_or_else(|e| early_dcx.early_fatal(e));
 
-    let mut unstable_opts = UnstableOptions::build(early_dcx, matches);
+    let mut target_modifiers = BTreeMap::<OptionsTargetModifiers, String>::new();
+
+    let mut unstable_opts = UnstableOptions::build(early_dcx, matches, &mut target_modifiers);
     let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(early_dcx, matches);
 
     check_error_format_stability(early_dcx, &unstable_opts, error_format);
 
     let output_types = parse_output_types(early_dcx, &unstable_opts, matches);
 
-    let mut cg = CodegenOptions::build(early_dcx, matches);
+    let mut cg = CodegenOptions::build(early_dcx, matches, &mut target_modifiers);
     let (disable_local_thinlto, codegen_units) = should_override_cgus_and_disable_thinlto(
         early_dcx,
         &output_types,
@@ -2615,6 +2650,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         color,
         logical_env,
         verbose,
+        target_modifiers,
     }
 }
 
@@ -2737,6 +2773,7 @@ pub mod nightly_options {
                         "the option `{}` is only accepted on the nightly compiler",
                         opt.name
                     );
+                    // The non-zero nightly_options_on_stable will force an early_fatal eventually.
                     let _ = early_dcx.early_err(msg);
                 }
                 OptionStability::Stable => {}
@@ -2884,15 +2921,16 @@ pub enum WasiExecModel {
 /// how the hash should be calculated when adding a new command-line argument.
 pub(crate) mod dep_tracking {
     use std::collections::BTreeMap;
-    use std::hash::{DefaultHasher, Hash};
+    use std::hash::Hash;
     use std::num::NonZero;
     use std::path::PathBuf;
 
     use rustc_abi::Align;
     use rustc_data_structures::fx::FxIndexMap;
-    use rustc_data_structures::stable_hasher::Hash64;
+    use rustc_data_structures::stable_hasher::StableHasher;
     use rustc_errors::LanguageIdentifier;
     use rustc_feature::UnstableFeatures;
+    use rustc_hashes::Hash64;
     use rustc_span::RealFileName;
     use rustc_span::edition::Edition;
     use rustc_target::spec::{
@@ -2902,7 +2940,7 @@ pub(crate) mod dep_tracking {
     };
 
     use super::{
-        BranchProtection, CFGuard, CFProtection, CollapseMacroDebuginfo, CoverageOptions,
+        AutoDiff, BranchProtection, CFGuard, CFProtection, CollapseMacroDebuginfo, CoverageOptions,
         CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug, FunctionReturn,
         InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto, LocationDetail,
         LtoCli, MirStripDebugInfo, NextSolverConfig, OomStrategy, OptLevel, OutFileName,
@@ -2916,7 +2954,7 @@ pub(crate) mod dep_tracking {
     pub(crate) trait DepTrackingHash {
         fn hash(
             &self,
-            hasher: &mut DefaultHasher,
+            hasher: &mut StableHasher,
             error_format: ErrorOutputType,
             for_crate_hash: bool,
         );
@@ -2925,7 +2963,7 @@ pub(crate) mod dep_tracking {
     macro_rules! impl_dep_tracking_hash_via_hash {
         ($($t:ty),+ $(,)?) => {$(
             impl DepTrackingHash for $t {
-                fn hash(&self, hasher: &mut DefaultHasher, _: ErrorOutputType, _for_crate_hash: bool) {
+                fn hash(&self, hasher: &mut StableHasher, _: ErrorOutputType, _for_crate_hash: bool) {
                     Hash::hash(self, hasher);
                 }
             }
@@ -2935,7 +2973,7 @@ pub(crate) mod dep_tracking {
     impl<T: DepTrackingHash> DepTrackingHash for Option<T> {
         fn hash(
             &self,
-            hasher: &mut DefaultHasher,
+            hasher: &mut StableHasher,
             error_format: ErrorOutputType,
             for_crate_hash: bool,
         ) {
@@ -2950,6 +2988,7 @@ pub(crate) mod dep_tracking {
     }
 
     impl_dep_tracking_hash_via_hash!(
+        AutoDiff,
         bool,
         usize,
         NonZero<usize>,
@@ -3019,7 +3058,7 @@ pub(crate) mod dep_tracking {
     {
         fn hash(
             &self,
-            hasher: &mut DefaultHasher,
+            hasher: &mut StableHasher,
             error_format: ErrorOutputType,
             for_crate_hash: bool,
         ) {
@@ -3038,7 +3077,7 @@ pub(crate) mod dep_tracking {
     {
         fn hash(
             &self,
-            hasher: &mut DefaultHasher,
+            hasher: &mut StableHasher,
             error_format: ErrorOutputType,
             for_crate_hash: bool,
         ) {
@@ -3054,7 +3093,7 @@ pub(crate) mod dep_tracking {
     impl<T: DepTrackingHash> DepTrackingHash for Vec<T> {
         fn hash(
             &self,
-            hasher: &mut DefaultHasher,
+            hasher: &mut StableHasher,
             error_format: ErrorOutputType,
             for_crate_hash: bool,
         ) {
@@ -3069,7 +3108,7 @@ pub(crate) mod dep_tracking {
     impl<T: DepTrackingHash, V: DepTrackingHash> DepTrackingHash for FxIndexMap<T, V> {
         fn hash(
             &self,
-            hasher: &mut DefaultHasher,
+            hasher: &mut StableHasher,
             error_format: ErrorOutputType,
             for_crate_hash: bool,
         ) {
@@ -3084,7 +3123,7 @@ pub(crate) mod dep_tracking {
     impl DepTrackingHash for OutputTypes {
         fn hash(
             &self,
-            hasher: &mut DefaultHasher,
+            hasher: &mut StableHasher,
             error_format: ErrorOutputType,
             for_crate_hash: bool,
         ) {
@@ -3101,7 +3140,7 @@ pub(crate) mod dep_tracking {
     // This is a stable hash because BTreeMap is a sorted container
     pub(crate) fn stable_hash(
         sub_hashes: BTreeMap<&'static str, &dyn DepTrackingHash>,
-        hasher: &mut DefaultHasher,
+        hasher: &mut StableHasher,
         error_format: ErrorOutputType,
         for_crate_hash: bool,
     ) {

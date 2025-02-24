@@ -502,10 +502,10 @@ fn make_attr_token_stream(
     for flat_token in iter {
         match flat_token {
             FlatToken::Token((Token { kind: TokenKind::OpenDelim(delim), span }, spacing)) => {
-                stack_rest.push(mem::replace(&mut stack_top, FrameData {
-                    open_delim_sp: Some((delim, span, spacing)),
-                    inner: vec![],
-                }));
+                stack_rest.push(mem::replace(
+                    &mut stack_top,
+                    FrameData { open_delim_sp: Some((delim, span, spacing)), inner: vec![] },
+                ));
             }
             FlatToken::Token((Token { kind: TokenKind::CloseDelim(delim), span }, spacing)) => {
                 let frame_data = mem::replace(&mut stack_top, stack_rest.pop().unwrap());

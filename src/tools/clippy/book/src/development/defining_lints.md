@@ -139,10 +139,10 @@ Untracked files:
 ```
 
 
-## The `define_clippy_lints` macro
+## The `declare_clippy_lint` macro
 
 After `cargo dev new_lint`, you should see a macro with the name
-`define_clippy_lints`. It will be in the same file if you defined a standalone
+`declare_clippy_lint`. It will be in the same file if you defined a standalone
 lint, and it will be in `mod.rs` if you defined a type-specific lint.
 
 The macro looks something like this:

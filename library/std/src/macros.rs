@@ -372,18 +372,3 @@ macro_rules! dbg {
         ($($crate::dbg!($val)),+,)
     };
 }
-
-/// Verify that floats are within a tolerance of each other, 1.0e-6 by default.
-#[cfg(test)]
-macro_rules! assert_approx_eq {
-    ($a:expr, $b:expr) => {{ assert_approx_eq!($a, $b, 1.0e-6) }};
-    ($a:expr, $b:expr, $lim:expr) => {{
-        let (a, b) = (&$a, &$b);
-        let diff = (*a - *b).abs();
-        assert!(
-            diff < $lim,
-            "{a:?} is not approximately equal to {b:?} (threshold {lim:?}, difference {diff:?})",
-            lim = $lim
-        );
-    }};
-}

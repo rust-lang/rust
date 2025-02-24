@@ -547,6 +547,11 @@ fn bench_in_place_collect_droppable(b: &mut Bencher) {
     })
 }
 
+// node.js gives out of memory error to use with length 1_100_000
+#[cfg(target_os = "emscripten")]
+const LEN: usize = 4096;
+
+#[cfg(not(target_os = "emscripten"))]
 const LEN: usize = 16384;
 
 #[bench]

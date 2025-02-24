@@ -3,7 +3,6 @@
 // functions. Failure results in a linker error.
 
 //@ ignore-emscripten no weak symbol support
-//@ ignore-windows no extern_weak linkage
 //@ ignore-apple no extern_weak linkage
 
 //@ aux-build:lib.rs

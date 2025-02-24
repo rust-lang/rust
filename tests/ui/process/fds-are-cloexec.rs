@@ -1,9 +1,8 @@
 //@ run-pass
-//@ ignore-windows
+//@ only-unix
 //@ ignore-android
-//@ ignore-wasm32 no processes
+//@ needs-subprocess
 //@ ignore-haiku
-//@ ignore-sgx no processes
 
 #![feature(rustc_private)]
 

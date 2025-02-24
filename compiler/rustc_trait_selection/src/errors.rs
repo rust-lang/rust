@@ -6,14 +6,13 @@ use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, DiagMessage, DiagStyledString, Diagnostic,
     EmissionGuarantee, IntoDiagArg, Level, MultiSpan, SubdiagMessageOp, Subdiagnostic,
 };
-use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::intravisit::{Visitor, walk_ty};
-use rustc_hir::{FnRetTy, GenericParamKind, Node};
+use rustc_hir::intravisit::{Visitor, VisitorExt, walk_ty};
+use rustc_hir::{self as hir, AmbigArg, FnRetTy, GenericParamKind, Node};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::print::{PrintTraitRefExt as _, TraitRefPrintOnlyTraitPath};
-use rustc_middle::ty::{self, Binder, ClosureKind, FnSig, PolyTraitRef, Region, Ty, TyCtxt};
+use rustc_middle::ty::{self, Binder, ClosureKind, FnSig, Region, Ty, TyCtxt};
 use rustc_span::{BytePos, Ident, Span, Symbol, kw};
 
 use crate::error_reporting::infer::ObligationCauseAsDiagArg;
@@ -22,15 +21,6 @@ use crate::error_reporting::infer::nice_region_error::placeholder_error::Highlig
 use crate::fluent_generated as fluent;
 
 pub mod note_and_explain;
-
-#[derive(Diagnostic)]
-#[diag(trait_selection_dump_vtable_entries)]
-pub struct DumpVTableEntries<'a> {
-    #[primary_span]
-    pub span: Span,
-    pub trait_ref: PolyTraitRef<'a>,
-    pub entries: String,
-}
 
 #[derive(Diagnostic)]
 #[diag(trait_selection_unable_to_construct_constant_value)]
@@ -519,21 +509,18 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
             let node = self.tcx.hir_node_by_def_id(anon_reg.scope);
             let is_impl = matches!(&node, hir::Node::ImplItem(_));
             let (generics, parent_generics) = match node {
-                hir::Node::Item(&hir::Item {
-                    kind: hir::ItemKind::Fn { ref generics, .. },
-                    ..
-                })
-                | hir::Node::TraitItem(&hir::TraitItem { ref generics, .. })
-                | hir::Node::ImplItem(&hir::ImplItem { ref generics, .. }) => (
+                hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn { generics, .. }, .. })
+                | hir::Node::TraitItem(hir::TraitItem { generics, .. })
+                | hir::Node::ImplItem(hir::ImplItem { generics, .. }) => (
                     generics,
                     match self.tcx.parent_hir_node(self.tcx.local_def_id_to_hir_id(anon_reg.scope))
                     {
                         hir::Node::Item(hir::Item {
-                            kind: hir::ItemKind::Trait(_, _, ref generics, ..),
+                            kind: hir::ItemKind::Trait(_, _, generics, ..),
                             ..
                         })
                         | hir::Node::Item(hir::Item {
-                            kind: hir::ItemKind::Impl(hir::Impl { ref generics, .. }),
+                            kind: hir::ItemKind::Impl(hir::Impl { generics, .. }),
                             ..
                         }) => Some(generics),
                         _ => None,
@@ -579,7 +566,7 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
             }
 
             impl<'v> Visitor<'v> for ImplicitLifetimeFinder {
-                fn visit_ty(&mut self, ty: &'v hir::Ty<'v>) {
+                fn visit_ty(&mut self, ty: &'v hir::Ty<'v, AmbigArg>) {
                     let make_suggestion = |ident: Ident| {
                         if ident.name == kw::Empty && ident.span.is_empty() {
                             format!("{}, ", self.suggestion_param_name)
@@ -642,16 +629,16 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
             if let Some(fn_decl) = node.fn_decl()
                 && let hir::FnRetTy::Return(ty) = fn_decl.output
             {
-                visitor.visit_ty(ty);
+                visitor.visit_ty_unambig(ty);
             }
             if visitor.suggestions.is_empty() {
                 // Do not suggest constraining the `&self` param, but rather the return type.
                 // If that is wrong (because it is not sufficient), a follow up error will tell the
                 // user to fix it. This way we lower the chances of *over* constraining, but still
                 // get the cake of "correctly" contrained in two steps.
-                visitor.visit_ty(self.ty_sup);
+                visitor.visit_ty_unambig(self.ty_sup);
             }
-            visitor.visit_ty(self.ty_sub);
+            visitor.visit_ty_unambig(self.ty_sub);
             if visitor.suggestions.is_empty() {
                 return false;
             }
@@ -1129,22 +1116,6 @@ impl Subdiagnostic for ReqIntroducedLocations {
     }
 }
 
-pub struct MoreTargeted {
-    pub ident: Symbol,
-}
-
-impl Subdiagnostic for MoreTargeted {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        _f: &F,
-    ) {
-        diag.code(E0772);
-        diag.primary_message(fluent::trait_selection_more_targeted);
-        diag.arg("ident", self.ident);
-    }
-}
-
 #[derive(Diagnostic)]
 #[diag(trait_selection_but_needs_to_satisfy, code = E0759)]
 pub struct ButNeedsToSatisfy {
@@ -1160,9 +1131,6 @@ pub struct ButNeedsToSatisfy {
     pub require_span_as_note: Option<Span>,
     #[note(trait_selection_introduced_by_bound)]
     pub bound: Option<Span>,
-
-    #[subdiagnostic]
-    pub req_introduces_loc: Option<ReqIntroducedLocations>,
 
     pub has_param_name: bool,
     pub param_name: String,
@@ -1401,15 +1369,13 @@ pub struct OpaqueCapturesLifetime<'tcx> {
 pub enum FunctionPointerSuggestion<'a> {
     #[suggestion(
         trait_selection_fps_use_ref,
-        code = "&{fn_name}",
+        code = "&",
         style = "verbose",
         applicability = "maybe-incorrect"
     )]
     UseRef {
         #[primary_span]
         span: Span,
-        #[skip_arg]
-        fn_name: String,
     },
     #[suggestion(
         trait_selection_fps_remove_ref,
@@ -1439,7 +1405,7 @@ pub enum FunctionPointerSuggestion<'a> {
     },
     #[suggestion(
         trait_selection_fps_cast,
-        code = "{fn_name} as {sig}",
+        code = " as {sig}",
         style = "verbose",
         applicability = "maybe-incorrect"
     )]
@@ -1447,21 +1413,17 @@ pub enum FunctionPointerSuggestion<'a> {
         #[primary_span]
         span: Span,
         #[skip_arg]
-        fn_name: String,
-        #[skip_arg]
         sig: Binder<'a, FnSig<'a>>,
     },
     #[suggestion(
         trait_selection_fps_cast_both,
-        code = "{fn_name} as {found_sig}",
+        code = " as {found_sig}",
         style = "hidden",
         applicability = "maybe-incorrect"
     )]
     CastBoth {
         #[primary_span]
         span: Span,
-        #[skip_arg]
-        fn_name: String,
         #[skip_arg]
         found_sig: Binder<'a, FnSig<'a>>,
         expected_sig: Binder<'a, FnSig<'a>>,
@@ -1495,6 +1457,12 @@ pub struct FnUniqTypes;
 #[help(trait_selection_fn_consider_casting)]
 pub struct FnConsiderCasting {
     pub casting: String,
+}
+
+#[derive(Subdiagnostic)]
+#[help(trait_selection_fn_consider_casting_both)]
+pub struct FnConsiderCastingBoth<'a> {
+    pub sig: Binder<'a, FnSig<'a>>,
 }
 
 #[derive(Subdiagnostic)]
@@ -1867,7 +1835,7 @@ pub fn impl_trait_overcapture_suggestion<'tcx>(
             new_params += name_as_bounds;
         }
 
-        let Some(generics) = tcx.hir().get_generics(fn_def_id) else {
+        let Some(generics) = tcx.hir_get_generics(fn_def_id) else {
             // This shouldn't happen, but don't ICE.
             return None;
         };
@@ -1890,8 +1858,7 @@ pub fn impl_trait_overcapture_suggestion<'tcx>(
     let opaque_hir_id = tcx.local_def_id_to_hir_id(opaque_def_id);
     // FIXME: This is a bit too conservative, since it ignores parens already written in AST.
     let (lparen, rparen) = match tcx
-        .hir()
-        .parent_iter(opaque_hir_id)
+        .hir_parent_iter(opaque_hir_id)
         .nth(1)
         .expect("expected ty to have a parent always")
         .1

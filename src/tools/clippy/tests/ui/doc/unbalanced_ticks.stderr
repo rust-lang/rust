@@ -29,8 +29,9 @@ LL | /// This paragraph is fine and should_be linted normally.
    |
 help: try
    |
-LL | /// This paragraph is fine and `should_be` linted normally.
-   |                                ~~~~~~~~~~~
+LL - /// This paragraph is fine and should_be linted normally.
+LL + /// This paragraph is fine and `should_be` linted normally.
+   |
 
 error: backticks are unbalanced
   --> tests/ui/doc/unbalanced_ticks.rs:20:5
@@ -48,8 +49,9 @@ LL | /// ## not_fine
    |
 help: try
    |
-LL | /// ## `not_fine`
-   |        ~~~~~~~~~~
+LL - /// ## not_fine
+LL + /// ## `not_fine`
+   |
 
 error: backticks are unbalanced
   --> tests/ui/doc/unbalanced_ticks.rs:37:5
@@ -75,8 +77,9 @@ LL | /// - This item needs backticks_here
    |
 help: try
    |
-LL | /// - This item needs `backticks_here`
-   |                       ~~~~~~~~~~~~~~~~
+LL - /// - This item needs backticks_here
+LL + /// - This item needs `backticks_here`
+   |
 
 error: backticks are unbalanced
   --> tests/ui/doc/unbalanced_ticks.rs:53:5
@@ -94,5 +97,17 @@ LL | /// Escaped \` ` backticks don't count, but unescaped backticks do.
    |
    = help: a backtick may be missing a pair
 
-error: aborting due to 10 previous errors
+error: backticks are unbalanced
+  --> tests/ui/doc/unbalanced_ticks.rs:79:9
+   |
+LL |       /// `Month::from_i64(n: i64)`: | `1`                  | `2`                   | ... | `12`
+   |  _________^
+LL | |     /// ---------------------------| -------------------- | --------------------- | ... | -----
+LL | |     /// ``:                        | Some(Month::January) | Some(Month::February) | ... |
+LL | |     /// Some(Month::December)
+   | |_____________________________^
+   |
+   = help: a backtick may be missing a pair
+
+error: aborting due to 11 previous errors
 

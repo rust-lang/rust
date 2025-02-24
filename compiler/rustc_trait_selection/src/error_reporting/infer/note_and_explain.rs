@@ -293,7 +293,7 @@ impl<T> Trait<T> for X {
                     (ty::Dynamic(t, _, ty::DynKind::Dyn), ty::Alias(ty::Opaque, alias))
                         if let Some(def_id) = t.principal_def_id()
                             && tcx
-                                .explicit_item_super_predicates(alias.def_id)
+                                .explicit_item_self_bounds(alias.def_id)
                                 .skip_binder()
                                 .iter()
                                 .any(|(pred, _span)| match pred.kind().skip_binder() {
@@ -422,7 +422,7 @@ impl<T> Trait<T> for X {
                             ty::Alias(..) => values.expected,
                             _ => values.found,
                         };
-                        let preds = tcx.explicit_item_super_predicates(opaque_ty.def_id);
+                        let preds = tcx.explicit_item_self_bounds(opaque_ty.def_id);
                         for (pred, _span) in preds.skip_binder() {
                             let ty::ClauseKind::Trait(trait_predicate) = pred.kind().skip_binder()
                             else {
@@ -543,7 +543,7 @@ impl<T> Trait<T> for X {
         let tcx = self.tcx;
         let assoc = tcx.associated_item(proj_ty.def_id);
         let (trait_ref, assoc_args) = proj_ty.trait_ref_and_own_args(tcx);
-        let Some(item) = tcx.hir().get_if_local(body_owner_def_id) else {
+        let Some(item) = tcx.hir_get_if_local(body_owner_def_id) else {
             return false;
         };
         let Some(hir_generics) = item.generics() else {
@@ -586,7 +586,7 @@ impl<T> Trait<T> for X {
             hir::Node::TraitItem(item) => item.hir_id(),
             _ => return false,
         };
-        let parent = tcx.hir().get_parent_item(hir_id).def_id;
+        let parent = tcx.hir_get_parent_item(hir_id).def_id;
         self.suggest_constraint(diag, msg, parent.into(), proj_ty, ty)
     }
 
@@ -625,7 +625,7 @@ impl<T> Trait<T> for X {
             )
         };
 
-        let body_owner = tcx.hir().get_if_local(body_owner_def_id);
+        let body_owner = tcx.hir_get_if_local(body_owner_def_id);
         let current_method_ident = body_owner.and_then(|n| n.ident()).map(|i| i.name);
 
         // We don't want to suggest calling an assoc fn in a scope where that isn't feasible.
@@ -820,7 +820,7 @@ fn foo(&self) -> Self::T { String::new() }
         // When `body_owner` is an `impl` or `trait` item, look in its associated types for
         // `expected` and point at it.
         let hir_id = tcx.local_def_id_to_hir_id(def_id);
-        let parent_id = tcx.hir().get_parent_item(hir_id);
+        let parent_id = tcx.hir_get_parent_item(hir_id);
         let item = tcx.hir_node_by_def_id(parent_id.def_id);
 
         debug!("expected_projection parent item {:?}", item);

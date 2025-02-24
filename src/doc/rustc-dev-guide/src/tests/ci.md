@@ -28,7 +28,7 @@ Our CI is primarily executed on [GitHub Actions], with a single workflow defined
 in [`.github/workflows/ci.yml`], which contains a bunch of steps that are
 unified for all CI jobs that we execute. When a commit is pushed to a
 corresponding branch or a PR, the workflow executes the
-[`ci.py`] script, which dynamically generates the specific CI
+[`src/ci/github-actions/ci.py`] script, which dynamically generates the specific CI
 jobs that should be executed. This script uses the [`jobs.yml`] file as an
 input, which contains a declarative configuration of all our CI jobs.
 
@@ -322,7 +322,7 @@ Our CI workflow uses various caching mechanisms, mainly for two things:
 ### Docker images caching
 
 The Docker images we use to run most of the Linux-based builders take a *long*
-time to fully build. To speed up the build, we cache it using [Docker registry
+time to fully build. To speed up the build, we cache them using [Docker registry
 caching], with the intermediate artifacts being stored on [ghcr.io]. We also
 push the built Docker images to ghcr, so that they can be reused by other tools
 (rustup) or by developers running the Docker build locally (to speed up their
@@ -334,6 +334,13 @@ override the cache for the others. Instead, we store the images under different
 tags, identifying them with a custom hash made from the contents of all the
 Dockerfiles and related scripts.
 
+The CI calculates a hash key, so that the cache of a Docker image is
+invalidated if one of the following changes:
+
+- Dockerfile
+- Files copied into the Docker image in the Dockerfile
+- The architecture of the GitHub runner (x86 or ARM)
+
 [ghcr.io]: https://github.com/rust-lang-ci/rust/pkgs/container/rust-ci
 [Docker registry caching]: https://docs.docker.com/build/cache/backends/registry/
 
@@ -341,9 +348,18 @@ Dockerfiles and related scripts.
 
 We build some C/C++ stuff in various CI jobs, and we rely on [sccache] to cache
 the intermediate LLVM artifacts. Sccache is a distributed ccache developed by
-Mozilla, which can use an object storage bucket as the storage backend. In our
-case, the artefacts are uploaded to an S3 bucket that we control
-(`rust-lang-ci-sccache2`).
+Mozilla, which can use an object storage bucket as the storage backend.
+
+With sccache there's no need to calculate the hash key ourselves. Sccache
+invalidates the cache automatically when it detects changes to relevant inputs,
+such as the source code, the version of the compiler, and important environment
+variables.
+So we just pass the sccache wrapper on top of cargo and sccache does the rest.
+
+We store the persistent artifacts on the S3 bucket `rust-lang-ci-sccache2`. So
+when the CI runs, if sccache sees that LLVM is being compiled with the same C/C++
+compiler and the LLVM source code is the same, sccache retrieves the individual
+compiled translation units from S3.
 
 [sccache]: https://github.com/mozilla/sccache
 
@@ -409,10 +425,25 @@ To learn more about the dashboard, see the [Datadog CI docs].
 [Datadog CI docs]: https://docs.datadoghq.com/continuous_integration/
 [public dashboard]: https://p.datadoghq.com/sb/3a172e20-e9e1-11ed-80e3-da7ad0900002-b5f7bb7e08b664a06b08527da85f7e30
 
+## Determining the CI configuration
+
+If you want to determine which `config.toml` settings are used in CI for a
+particular job, it is probably easiest to just look at the build log. To do
+this:
+
+1. Go to
+   <https://github.com/rust-lang-ci/rust/actions?query=branch%3Aauto+is%3Asuccess>
+   to find the most recently successful build, and click on it.
+2. Choose the job you are interested in on the left-hand side.
+3. Click on the gear icon and choose "View raw logs"
+4. Search for the string "Configure the build"
+5. All of the build settings are listed below that starting with the
+   `configure:` prefix.
+
 [GitHub Actions]: https://github.com/rust-lang/rust/actions
 [`jobs.yml`]: https://github.com/rust-lang/rust/blob/master/src/ci/github-actions/jobs.yml
 [`.github/workflows/ci.yml`]: https://github.com/rust-lang/rust/blob/master/.github/workflows/ci.yml
-[`ci.py`]: https://github.com/rust-lang/rust/blob/master/src/ci/github-actions/ci.py
+[`src/ci/github-actions/ci.py`]: https://github.com/rust-lang/rust/blob/master/src/ci/github-actions/ci.py
 [rust-lang-ci]: https://github.com/rust-lang-ci/rust/actions
 [bors]: https://github.com/bors
 [homu]: https://github.com/rust-lang/homu

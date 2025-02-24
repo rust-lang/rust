@@ -46,7 +46,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, scrutine
             err_ty = ty;
         } else {
             return;
-        };
+        }
 
         span_lint_and_then(
             cx,

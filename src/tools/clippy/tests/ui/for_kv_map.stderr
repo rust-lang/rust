@@ -8,8 +8,9 @@ LL |     for (_, v) in &m {
    = help: to override `-D warnings` add `#[allow(clippy::for_kv_map)]`
 help: use the corresponding method
    |
-LL |     for v in m.values() {
-   |         ~    ~~~~~~~~~~
+LL -     for (_, v) in &m {
+LL +     for v in m.values() {
+   |
 
 error: you seem to want to iterate on a map's values
   --> tests/ui/for_kv_map.rs:16:19
@@ -19,8 +20,9 @@ LL |     for (_, v) in &*m {
    |
 help: use the corresponding method
    |
-LL |     for v in (*m).values() {
-   |         ~    ~~~~~~~~~~~~~
+LL -     for (_, v) in &*m {
+LL +     for v in (*m).values() {
+   |
 
 error: you seem to want to iterate on a map's values
   --> tests/ui/for_kv_map.rs:25:19
@@ -30,8 +32,9 @@ LL |     for (_, v) in &mut m {
    |
 help: use the corresponding method
    |
-LL |     for v in m.values_mut() {
-   |         ~    ~~~~~~~~~~~~~~
+LL -     for (_, v) in &mut m {
+LL +     for v in m.values_mut() {
+   |
 
 error: you seem to want to iterate on a map's values
   --> tests/ui/for_kv_map.rs:31:19
@@ -41,8 +44,9 @@ LL |     for (_, v) in &mut *m {
    |
 help: use the corresponding method
    |
-LL |     for v in (*m).values_mut() {
-   |         ~    ~~~~~~~~~~~~~~~~~
+LL -     for (_, v) in &mut *m {
+LL +     for v in (*m).values_mut() {
+   |
 
 error: you seem to want to iterate on a map's keys
   --> tests/ui/for_kv_map.rs:38:24
@@ -52,8 +56,9 @@ LL |     for (k, _value) in rm {
    |
 help: use the corresponding method
    |
-LL |     for k in rm.keys() {
-   |         ~    ~~~~~~~~~
+LL -     for (k, _value) in rm {
+LL +     for k in rm.keys() {
+   |
 
 error: you seem to want to iterate on a map's keys
   --> tests/ui/for_kv_map.rs:45:32
@@ -63,8 +68,9 @@ LL |     'label: for (k, _value) in rm {
    |
 help: use the corresponding method
    |
-LL |     'label: for k in rm.keys() {
-   |                 ~    ~~~~~~~~~
+LL -     'label: for (k, _value) in rm {
+LL +     'label: for k in rm.keys() {
+   |
 
 error: aborting due to 6 previous errors
 

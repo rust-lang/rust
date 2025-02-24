@@ -12,7 +12,7 @@ LL |     let _: fn(isize) -> usize = callee;
 help: consider casting to a fn pointer
    |
 LL |     let _: fn(isize) -> usize = callee as fn(isize) -> usize;
-   |                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |                                        +++++++++++++++++++++
 
 error[E0605]: non-primitive cast: `fn(isize) -> usize {callee}` as `fn(isize) -> usize`
   --> $DIR/cast.rs:15:13
@@ -32,7 +32,7 @@ LL |         callee,
 help: consider casting to a fn pointer
    |
 LL |         callee as fn(isize) -> usize,
-   |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   |                +++++++++++++++++++++
 
 error: aborting due to 3 previous errors
 

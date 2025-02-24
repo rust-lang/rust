@@ -83,7 +83,7 @@ LL |     smart_ptr.get::<&Foo>();
    |     ^^^^^^^^^ expected `&Foo`, found `SmartPtr<'_, Foo>`
    |
    = note: expected reference `&Foo`
-                 found struct `SmartPtr<'_, Foo, >`
+                 found struct `SmartPtr<'_, Foo>`
 
 error[E0271]: type mismatch resolving `<Silly as FindReceiver>::Receiver == Foo`
   --> $DIR/arbitrary-self-from-method-substs.rs:92:9

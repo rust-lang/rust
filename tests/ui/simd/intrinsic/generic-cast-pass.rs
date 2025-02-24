@@ -3,9 +3,9 @@
 
 #![feature(repr_simd, intrinsics)]
 
-extern "rust-intrinsic" {
-    fn simd_cast<T, U>(x: T) -> U;
-}
+
+#[rustc_intrinsic]
+unsafe fn simd_cast<T, U>(x: T) -> U;
 
 use std::cmp::{max, min};
 

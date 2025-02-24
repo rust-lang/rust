@@ -108,7 +108,7 @@ impl Definition {
                 ItemContainer::Trait(it) => Some(it.into()),
                 ItemContainer::Impl(it) => Some(it.into()),
                 ItemContainer::Module(it) => Some(it.into()),
-                ItemContainer::ExternBlock() | ItemContainer::Crate(_) => None,
+                ItemContainer::ExternBlock(_) | ItemContainer::Crate(_) => None,
             }
         }
         match self {
@@ -794,7 +794,7 @@ impl NameRefClass {
                                 hir::AssocItem::TypeAlias(it) => Some(it),
                                 _ => None,
                             })
-                            .find(|alias| alias.name(sema.db).eq_ident(name_ref.text().as_str()))
+                            .find(|alias| alias.name(sema.db).as_str() == name_ref.text().trim_start_matches("r#"))
                         {
                             // No substitution, this can only occur in type position.
                             return Some(NameRefClass::Definition(Definition::TypeAlias(ty), None));
@@ -986,6 +986,7 @@ impl From<GenericDef> for Definition {
             GenericDef::TypeAlias(it) => it.into(),
             GenericDef::Impl(it) => it.into(),
             GenericDef::Const(it) => it.into(),
+            GenericDef::Static(it) => it.into(),
         }
     }
 }

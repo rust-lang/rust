@@ -30,8 +30,6 @@ impl From<ErrorGuaranteed> for NotConstEvaluatable {
     }
 }
 
-TrivialTypeTraversalImpls! { NotConstEvaluatable }
-
 pub type BoundAbstractConst<'tcx> =
     Result<Option<EarlyBinder<'tcx, ty::Const<'tcx>>>, ErrorGuaranteed>;
 

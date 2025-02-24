@@ -33,6 +33,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_middle::util::Providers;
 use rustc_middle::{bug, query, span_bug};
+use rustc_mir_build::builder::build_mir;
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, sym};
 use tracing::debug;
@@ -44,13 +45,16 @@ use std::sync::LazyLock;
 
 use pass_manager::{self as pm, Lint, MirLint, MirPass, WithMinOptLevel};
 
+mod check_pointers;
 mod cost_checker;
 mod cross_crate_inline;
 mod deduce_param_attrs;
+mod elaborate_drop;
 mod errors;
 mod ffi_unwind_calls;
 mod lint;
 mod lint_tail_expr_drop_order;
+mod patch;
 mod shim;
 mod ssa;
 
@@ -118,6 +122,7 @@ declare_passes! {
     mod check_call_recursion : CheckCallRecursion, CheckDropRecursion;
     mod check_alignment : CheckAlignment;
     mod check_const_item_mutation : CheckConstItemMutation;
+    mod check_null : CheckNull;
     mod check_packed_ref : CheckPackedRef;
     mod check_undefined_transmutes : CheckUndefinedTransmutes;
     // This pass is public to allow external drivers to perform MIR cleanup
@@ -132,7 +137,6 @@ declare_passes! {
         Initial,
         Final
     };
-    mod deduplicate_blocks : DeduplicateBlocks;
     mod deref_separator : Derefer;
     mod dest_prop : DestinationPropagation;
     pub mod dump_mir : Marker;
@@ -310,11 +314,11 @@ fn is_mir_available(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 /// MIR associated with them.
 fn mir_keys(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LocalDefId> {
     // All body-owners have MIR associated with them.
-    let mut set: FxIndexSet<_> = tcx.hir().body_owners().collect();
+    let mut set: FxIndexSet<_> = tcx.hir_body_owners().collect();
 
     // Coroutine-closures (e.g. async closures) have an additional by-move MIR
     // body that isn't in the HIR.
-    for body_owner in tcx.hir().body_owners() {
+    for body_owner in tcx.hir_body_owners() {
         if let DefKind::Closure = tcx.def_kind(body_owner)
             && tcx.needs_coroutine_by_move_body_def_id(body_owner.to_def_id())
         {
@@ -368,7 +372,7 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def: LocalDefId) -> ConstQualifs {
 }
 
 fn mir_built(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
-    let mut body = tcx.build_mir(def);
+    let mut body = build_mir(tcx, def);
 
     pass_manager::dump_mir_for_phase_change(tcx, &body);
 
@@ -388,6 +392,7 @@ fn mir_built(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
             &Lint(sanity_check::SanityCheck),
         ],
         None,
+        pm::Optimizations::Allowed,
     );
     tcx.alloc_steal_mir(body)
 }
@@ -417,11 +422,11 @@ fn mir_promoted(
     };
 
     // the `has_ffi_unwind_calls` query uses the raw mir, so make sure it is run.
-    tcx.ensure_with_value().has_ffi_unwind_calls(def);
+    tcx.ensure_done().has_ffi_unwind_calls(def);
 
     // the `by_move_body` query uses the raw mir, so make sure it is run.
     if tcx.needs_coroutine_by_move_body_def_id(def.to_def_id()) {
-        tcx.ensure_with_value().coroutine_by_move_body_def_id(def);
+        tcx.ensure_done().coroutine_by_move_body_def_id(def);
     }
 
     let mut body = tcx.mir_built(def).steal();
@@ -440,6 +445,7 @@ fn mir_promoted(
         &mut body,
         &[&promote_pass, &simplify::SimplifyCfg::PromoteConsts, &coverage::InstrumentCoverage],
         Some(MirPhase::Analysis(AnalysisPhase::Initial)),
+        pm::Optimizations::Allowed,
     );
 
     lint_tail_expr_drop_order::run_lint(tcx, def, &body);
@@ -464,7 +470,7 @@ fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: LocalDefId) -> Body<'_> {
     }
 
     let body = tcx.mir_drops_elaborated_and_const_checked(def);
-    let body = match tcx.hir().body_const_context(def) {
+    let body = match tcx.hir_body_const_context(def) {
         // consts and statics do not have `optimized_mir`, so we can steal the body instead of
         // cloning it.
         Some(hir::ConstContext::Const { .. } | hir::ConstContext::Static(_)) => body.steal(),
@@ -473,7 +479,7 @@ fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: LocalDefId) -> Body<'_> {
     };
 
     let mut body = remap_mir_for_const_eval_select(tcx, body, hir::Constness::Const);
-    pm::run_passes(tcx, &mut body, &[&ctfe_limit::CtfeLimit], None);
+    pm::run_passes(tcx, &mut body, &[&ctfe_limit::CtfeLimit], None, pm::Optimizations::Allowed);
 
     body
 }
@@ -483,7 +489,7 @@ fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: LocalDefId) -> Body<'_> {
 /// end up missing the source MIR due to stealing happening.
 fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
     if tcx.is_coroutine(def.to_def_id()) {
-        tcx.ensure_with_value().mir_coroutine_witnesses(def);
+        tcx.ensure_done().mir_coroutine_witnesses(def);
     }
 
     // We only need to borrowck non-synthetic MIR.
@@ -493,10 +499,10 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
     let is_fn_like = tcx.def_kind(def).is_fn_like();
     if is_fn_like {
         // Do not compute the mir call graph without said call graph actually being used.
-        if pm::should_run_pass(tcx, &inline::Inline)
+        if pm::should_run_pass(tcx, &inline::Inline, pm::Optimizations::Allowed)
             || inline::ForceInline::should_run_pass_for_callee(tcx, def.to_def_id())
         {
-            tcx.ensure_with_value().mir_inliner_callees(ty::InstanceKind::Item(def.to_def_id()));
+            tcx.ensure_done().mir_inliner_callees(ty::InstanceKind::Item(def.to_def_id()));
         }
     }
 
@@ -533,6 +539,7 @@ pub fn run_analysis_to_runtime_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
                 &Lint(post_drop_elaboration::CheckLiveDrops),
             ],
             None,
+            pm::Optimizations::Allowed,
         );
     }
 
@@ -557,7 +564,13 @@ fn run_analysis_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         &deref_separator::Derefer,
     ];
 
-    pm::run_passes(tcx, body, passes, Some(MirPhase::Analysis(AnalysisPhase::PostCleanup)));
+    pm::run_passes(
+        tcx,
+        body,
+        passes,
+        Some(MirPhase::Analysis(AnalysisPhase::PostCleanup)),
+        pm::Optimizations::Allowed,
+    );
 }
 
 /// Returns the sequence of passes that lowers analysis to runtime MIR.
@@ -597,7 +610,13 @@ fn run_runtime_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         &simplify::SimplifyCfg::PreOptimizations,
     ];
 
-    pm::run_passes(tcx, body, passes, Some(MirPhase::Runtime(RuntimePhase::PostCleanup)));
+    pm::run_passes(
+        tcx,
+        body,
+        passes,
+        Some(MirPhase::Runtime(RuntimePhase::PostCleanup)),
+        pm::Optimizations::Allowed,
+    );
 
     // Clear this by anticipation. Optimizations and runtime MIR have no reason to look
     // into this information, which is meant for borrowck diagnostics.
@@ -611,6 +630,15 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         WithMinOptLevel(1, x)
     }
 
+    let def_id = body.source.def_id();
+    let optimizations = if tcx.def_kind(def_id).has_codegen_attrs()
+        && tcx.codegen_fn_attrs(def_id).optimize.do_not_optimize()
+    {
+        pm::Optimizations::Suppressed
+    } else {
+        pm::Optimizations::Allowed
+    };
+
     // The main optimizations that we do on MIR.
     pm::run_passes(
         tcx,
@@ -618,6 +646,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         &[
             // Add some UB checks before any UB gets optimized away.
             &check_alignment::CheckAlignment,
+            &check_null::CheckNull,
             // Before inlining: trim down MIR with passes to reduce inlining work.
 
             // Has to be done before inlining, otherwise actual call will be almost always inlined.
@@ -672,7 +701,6 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &nrvo::RenameReturnPlace,
             &simplify::SimplifyLocals::Final,
             &multiple_return_terminators::MultipleReturnTerminators,
-            &deduplicate_blocks::DeduplicateBlocks,
             &large_enums::EnumSizeOpt { discrepancy: 128 },
             // Some cleanup necessary at least for LLVM and potentially other codegen backends.
             &add_call_guards::CriticalCallEdges,
@@ -683,6 +711,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &dump_mir::Marker("PreCodegen"),
         ],
         Some(MirPhase::Runtime(RuntimePhase::Optimized)),
+        optimizations,
     );
 }
 
@@ -700,11 +729,11 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
         return shim::build_adt_ctor(tcx, did.to_def_id());
     }
 
-    match tcx.hir().body_const_context(did) {
+    match tcx.hir_body_const_context(did) {
         // Run the `mir_for_ctfe` query, which depends on `mir_drops_elaborated_and_const_checked`
         // which we are going to steal below. Thus we need to run `mir_for_ctfe` first, so it
         // computes and caches its result.
-        Some(hir::ConstContext::ConstFn) => tcx.ensure_with_value().mir_for_ctfe(did),
+        Some(hir::ConstContext::ConstFn) => tcx.ensure_done().mir_for_ctfe(did),
         None => {}
         Some(other) => panic!("do not use `optimized_mir` for constants: {other:?}"),
     }
@@ -743,7 +772,7 @@ fn promoted_mir(tcx: TyCtxt<'_>, def: LocalDefId) -> &IndexVec<Promoted, Body<'_
     }
 
     if !tcx.is_synthetic_mir(def) {
-        tcx.ensure_with_value().mir_borrowck(def);
+        tcx.ensure_done().mir_borrowck(def);
     }
     let mut promoted = tcx.mir_promoted(def).1.steal();
 

@@ -375,8 +375,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
     ) {
         let is_in_trait_impl = if let hir::Node::Item(item) = cx.tcx.hir_node_by_def_id(
             cx.tcx
-                .hir()
-                .get_parent_item(cx.tcx.local_def_id_to_hir_id(def_id))
+                .hir_get_parent_item(cx.tcx.local_def_id_to_hir_id(def_id))
                 .def_id,
         ) {
             matches!(item.kind, ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }))
@@ -386,22 +385,30 @@ impl<'tcx> LateLintPass<'tcx> for Types {
 
         let is_exported = cx.effective_visibilities.is_exported(def_id);
 
-        self.check_fn_decl(cx, decl, CheckTyContext {
-            is_in_trait_impl,
-            in_body: matches!(fn_kind, FnKind::Closure),
-            is_exported,
-            ..CheckTyContext::default()
-        });
+        self.check_fn_decl(
+            cx,
+            decl,
+            CheckTyContext {
+                is_in_trait_impl,
+                in_body: matches!(fn_kind, FnKind::Closure),
+                is_exported,
+                ..CheckTyContext::default()
+            },
+        );
     }
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         let is_exported = cx.effective_visibilities.is_exported(item.owner_id.def_id);
 
         match item.kind {
-            ItemKind::Static(ty, _, _) | ItemKind::Const(ty, _, _) => self.check_ty(cx, ty, CheckTyContext {
-                is_exported,
-                ..CheckTyContext::default()
-            }),
+            ItemKind::Static(ty, _, _) | ItemKind::Const(ty, _, _) => self.check_ty(
+                cx,
+                ty,
+                CheckTyContext {
+                    is_exported,
+                    ..CheckTyContext::default()
+                },
+            ),
             // functions, enums, structs, impls and traits are covered
             _ => (),
         }
@@ -412,17 +419,21 @@ impl<'tcx> LateLintPass<'tcx> for Types {
             ImplItemKind::Const(ty, _) => {
                 let is_in_trait_impl = if let hir::Node::Item(item) = cx
                     .tcx
-                    .hir_node_by_def_id(cx.tcx.hir().get_parent_item(item.hir_id()).def_id)
+                    .hir_node_by_def_id(cx.tcx.hir_get_parent_item(item.hir_id()).def_id)
                 {
                     matches!(item.kind, ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }))
                 } else {
                     false
                 };
 
-                self.check_ty(cx, ty, CheckTyContext {
-                    is_in_trait_impl,
-                    ..CheckTyContext::default()
-                });
+                self.check_ty(
+                    cx,
+                    ty,
+                    CheckTyContext {
+                        is_in_trait_impl,
+                        ..CheckTyContext::default()
+                    },
+                );
             },
             // Methods are covered by check_fn.
             // Type aliases are ignored because oftentimes it's impossible to
@@ -438,10 +449,14 @@ impl<'tcx> LateLintPass<'tcx> for Types {
 
         let is_exported = cx.effective_visibilities.is_exported(field.def_id);
 
-        self.check_ty(cx, field.ty, CheckTyContext {
-            is_exported,
-            ..CheckTyContext::default()
-        });
+        self.check_ty(
+            cx,
+            field.ty,
+            CheckTyContext {
+                is_exported,
+                ..CheckTyContext::default()
+            },
+        );
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &TraitItem<'tcx>) {
@@ -469,10 +484,14 @@ impl<'tcx> LateLintPass<'tcx> for Types {
 
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &LetStmt<'tcx>) {
         if let Some(ty) = local.ty {
-            self.check_ty(cx, ty, CheckTyContext {
-                in_body: true,
-                ..CheckTyContext::default()
-            });
+            self.check_ty(
+                cx,
+                ty,
+                CheckTyContext {
+                    in_body: true,
+                    ..CheckTyContext::default()
+                },
+            );
         }
     }
 }
@@ -560,7 +579,7 @@ impl Types {
                                     _ => None,
                                 })
                         }) {
-                            self.check_ty(cx, ty, context);
+                            self.check_ty(cx, ty.as_unambig_ty(), context);
                         }
                     },
                     QPath::Resolved(None, p) => {
@@ -574,7 +593,7 @@ impl Types {
                                     _ => None,
                                 })
                         }) {
-                            self.check_ty(cx, ty, context);
+                            self.check_ty(cx, ty.as_unambig_ty(), context);
                         }
                     },
                     QPath::TypeRelative(ty, seg) => {
@@ -585,7 +604,7 @@ impl Types {
                                 GenericArg::Type(ty) => Some(ty),
                                 _ => None,
                             }) {
-                                self.check_ty(cx, ty, context);
+                                self.check_ty(cx, ty.as_unambig_ty(), context);
                             }
                         }
                     },

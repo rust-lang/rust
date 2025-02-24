@@ -19,7 +19,7 @@ pub fn get(
     let rustc_cfgs = match rustc_cfgs {
         Ok(cfgs) => cfgs,
         Err(e) => {
-            tracing::error!(?e, "failed to get rustc cfgs");
+            tracing::warn!(?e, "failed to get rustc cfgs");
             return vec![];
         }
     };

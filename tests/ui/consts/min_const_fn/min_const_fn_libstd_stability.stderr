@@ -4,7 +4,7 @@ error: const function that might be (indirectly) exposed to stable cannot use `#
 LL | const fn bar() -> u32 { foo() }
    |                         ^^^^^
    |
-   = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unsafe features
+   = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unstable features
 help: if the caller is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
@@ -22,7 +22,7 @@ error: const function that might be (indirectly) exposed to stable cannot use `#
 LL | const fn bar2() -> u32 { foo2() }
    |                          ^^^^^^
    |
-   = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unsafe features
+   = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unstable features
 help: if the caller is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
@@ -57,7 +57,7 @@ error: const function that might be (indirectly) exposed to stable cannot use `#
 LL |     foo()
    |     ^^^^^
    |
-   = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unsafe features
+   = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unstable features
 help: if the caller is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
@@ -75,7 +75,7 @@ error: const function that might be (indirectly) exposed to stable cannot use `#
 LL | const fn bar2_gated() -> u32 { foo2_gated() }
    |                                ^^^^^^^^^^^^
    |
-   = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unsafe features
+   = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unstable features
 help: if the caller is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]
@@ -93,7 +93,7 @@ error: const function that might be (indirectly) exposed to stable cannot use `#
 LL |     pub(crate) const fn bar2_gated_stable_indirect() -> u32 { super::foo2_gated() }
    |                                                               ^^^^^^^^^^^^^^^^^^^
    |
-   = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unsafe features
+   = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unstable features
 help: if the caller is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
    |
 LL +     #[rustc_const_unstable(feature = "...", issue = "...")]
@@ -111,7 +111,7 @@ error: const function that might be (indirectly) exposed to stable cannot use `#
 LL | const fn stable_indirect() -> u32 { foo2_gated() }
    |                                     ^^^^^^^^^^^^
    |
-   = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unsafe features
+   = help: mark the callee as `#[rustc_const_stable_indirect]` if it does not itself require any unstable features
 help: if the caller is not (yet) meant to be exposed to stable, add `#[rustc_const_unstable]` (this is what you probably want to do)
    |
 LL + #[rustc_const_unstable(feature = "...", issue = "...")]

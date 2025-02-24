@@ -2,9 +2,9 @@ error[E0432]: unresolved import `inner`
   --> $DIR/ice-unresolved-import-100241.rs:9:13
    |
 LL |     pub use inner::S;
-   |             ^^^^^ you might be missing crate `inner`
+   |             ^^^^^ use of unresolved module or unlinked crate `inner`
    |
-help: consider importing the `inner` crate
+help: you might be missing a crate named `inner`, add it to your project and import it in your code
    |
 LL + extern crate inner;
    |

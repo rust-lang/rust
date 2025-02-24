@@ -20,4 +20,8 @@ impl<'tcx> crate::MirPass<'tcx> for RemovePlaceMention {
             })
         }
     }
+
+    fn is_required(&self) -> bool {
+        true
+    }
 }

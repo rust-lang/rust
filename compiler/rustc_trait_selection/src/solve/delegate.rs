@@ -1,7 +1,7 @@
 use std::ops::Deref;
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
 use rustc_infer::infer::canonical::{
     Canonical, CanonicalExt as _, CanonicalQueryInput, CanonicalVarInfo, CanonicalVarValues,
@@ -42,8 +42,6 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
     fn cx(&self) -> TyCtxt<'tcx> {
         self.0.tcx
     }
-
-    type Span = Span;
 
     fn build_with_canonical<V>(
         interner: TyCtxt<'tcx>,
@@ -98,9 +96,10 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         param_env: ty::ParamEnv<'tcx>,
         arg: ty::GenericArg<'tcx>,
     ) -> Option<Vec<Goal<'tcx, ty::Predicate<'tcx>>>> {
-        crate::traits::wf::unnormalized_obligations(&self.0, param_env, arg).map(|obligations| {
-            obligations.into_iter().map(|obligation| obligation.into()).collect()
-        })
+        crate::traits::wf::unnormalized_obligations(&self.0, param_env, arg, DUMMY_SP, CRATE_DEF_ID)
+            .map(|obligations| {
+                obligations.into_iter().map(|obligation| obligation.into()).collect()
+            })
     }
 
     fn clone_opaque_types_for_query_response(&self) -> Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)> {
@@ -146,9 +145,10 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
     fn instantiate_canonical_var_with_infer(
         &self,
         cv_info: CanonicalVarInfo<'tcx>,
+        span: Span,
         universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
     ) -> ty::GenericArg<'tcx> {
-        self.0.instantiate_canonical_var(DUMMY_SP, cv_info, universe_map)
+        self.0.instantiate_canonical_var(span, cv_info, universe_map)
     }
 
     fn insert_hidden_type(
@@ -174,11 +174,13 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         self.0.add_item_bounds_for_hidden_type(def_id, args, param_env, hidden_ty, goals);
     }
 
-    fn inject_new_hidden_type_unchecked(&self, key: ty::OpaqueTypeKey<'tcx>, hidden_ty: Ty<'tcx>) {
-        self.0.inject_new_hidden_type_unchecked(key, ty::OpaqueHiddenType {
-            ty: hidden_ty,
-            span: DUMMY_SP,
-        })
+    fn inject_new_hidden_type_unchecked(
+        &self,
+        key: ty::OpaqueTypeKey<'tcx>,
+        hidden_ty: Ty<'tcx>,
+        span: Span,
+    ) {
+        self.0.inject_new_hidden_type_unchecked(key, ty::OpaqueHiddenType { ty: hidden_ty, span })
     }
 
     fn reset_opaque_types(&self) {

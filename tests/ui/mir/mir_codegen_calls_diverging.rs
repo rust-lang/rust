@@ -1,6 +1,6 @@
 //@ run-fail
 //@ error-pattern:diverging_fn called
-//@ ignore-emscripten no processes
+//@ needs-subprocess
 
 fn diverging_fn() -> ! {
     panic!("diverging_fn called")

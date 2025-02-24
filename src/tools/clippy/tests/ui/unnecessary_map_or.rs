@@ -85,3 +85,20 @@ fn msrv_1_81() {
     // is_none_or added in 1.82.0
     let _ = Some(5).map_or(true, |n| n == if 2 > 1 { n } else { 0 });
 }
+
+fn with_refs(o: &mut Option<u32>) -> bool {
+    o.map_or(true, |n| n > 5) || (o as &Option<u32>).map_or(true, |n| n < 5)
+}
+
+struct S;
+
+impl std::ops::Deref for S {
+    type Target = Option<u32>;
+    fn deref(&self) -> &Self::Target {
+        &Some(0)
+    }
+}
+
+fn with_deref(o: &S) -> bool {
+    o.map_or(true, |n| n > 5)
+}

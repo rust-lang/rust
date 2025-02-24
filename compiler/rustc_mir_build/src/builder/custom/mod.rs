@@ -6,7 +6,7 @@
 //! present, and if so we branch off into this module, which implements the attribute by
 //! implementing a custom lowering from THIR to MIR.
 //!
-//! The result of this lowering is returned "normally" from the `build_mir` hook, with the only
+//! The result of this lowering is returned "normally" from `build_mir`, with the only
 //! notable difference being that the `injected` field in the body is set. Various components of the
 //! MIR pipeline, like borrowck and the pass manager will then consult this field (via
 //! `body.should_skip()`) to skip the parts of the MIR pipeline that precede the MIR phase the user

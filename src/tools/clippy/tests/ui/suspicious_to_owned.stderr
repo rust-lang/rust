@@ -9,11 +9,12 @@ LL |     let _ = cow.to_owned();
 help: depending on intent, either make the Cow an Owned variant
    |
 LL |     let _ = cow.into_owned();
-   |             ~~~~~~~~~~~~~~~~
+   |                 ++
 help: or clone the Cow itself
    |
-LL |     let _ = cow.clone();
-   |             ~~~~~~~~~~~
+LL -     let _ = cow.to_owned();
+LL +     let _ = cow.clone();
+   |
 
 error: this `to_owned` call clones the Cow<'_, [char; 3]> itself and does not cause the Cow<'_, [char; 3]> contents to become owned
   --> tests/ui/suspicious_to_owned.rs:29:13
@@ -24,11 +25,12 @@ LL |     let _ = cow.to_owned();
 help: depending on intent, either make the Cow an Owned variant
    |
 LL |     let _ = cow.into_owned();
-   |             ~~~~~~~~~~~~~~~~
+   |                 ++
 help: or clone the Cow itself
    |
-LL |     let _ = cow.clone();
-   |             ~~~~~~~~~~~
+LL -     let _ = cow.to_owned();
+LL +     let _ = cow.clone();
+   |
 
 error: this `to_owned` call clones the Cow<'_, Vec<char>> itself and does not cause the Cow<'_, Vec<char>> contents to become owned
   --> tests/ui/suspicious_to_owned.rs:40:13
@@ -39,11 +41,12 @@ LL |     let _ = cow.to_owned();
 help: depending on intent, either make the Cow an Owned variant
    |
 LL |     let _ = cow.into_owned();
-   |             ~~~~~~~~~~~~~~~~
+   |                 ++
 help: or clone the Cow itself
    |
-LL |     let _ = cow.clone();
-   |             ~~~~~~~~~~~
+LL -     let _ = cow.to_owned();
+LL +     let _ = cow.clone();
+   |
 
 error: this `to_owned` call clones the Cow<'_, str> itself and does not cause the Cow<'_, str> contents to become owned
   --> tests/ui/suspicious_to_owned.rs:51:13
@@ -54,11 +57,12 @@ LL |     let _ = cow.to_owned();
 help: depending on intent, either make the Cow an Owned variant
    |
 LL |     let _ = cow.into_owned();
-   |             ~~~~~~~~~~~~~~~~
+   |                 ++
 help: or clone the Cow itself
    |
-LL |     let _ = cow.clone();
-   |             ~~~~~~~~~~~
+LL -     let _ = cow.to_owned();
+LL +     let _ = cow.clone();
+   |
 
 error: implicitly cloning a `String` by calling `to_owned` on its dereferenced type
   --> tests/ui/suspicious_to_owned.rs:66:13

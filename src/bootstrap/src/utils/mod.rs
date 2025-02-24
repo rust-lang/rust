@@ -14,6 +14,8 @@ pub(crate) mod render_tests;
 pub(crate) mod shared_helpers;
 pub(crate) mod tarball;
 
+pub(crate) mod tracing;
+
 #[cfg(feature = "build-metrics")]
 pub(crate) mod metrics;
 

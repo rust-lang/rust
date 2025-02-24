@@ -45,7 +45,7 @@ impl Step for Std {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.crate_or_deps("sysroot").path("library")
+        run.crate_or_deps("sysroot").crate_or_deps("coretests").path("library")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -69,7 +69,7 @@ impl Step for Std {
         );
 
         std_cargo(builder, target, compiler.stage, &mut cargo);
-        if matches!(builder.config.cmd, Subcommand::Fix { .. }) {
+        if matches!(builder.config.cmd, Subcommand::Fix) {
             // By default, cargo tries to fix all targets. Tell it not to fix tests until we've added `test` to the sysroot.
             cargo.arg("--lib");
         }
@@ -455,6 +455,7 @@ tool_check_step!(Rls { path: "src/tools/rls" });
 tool_check_step!(Rustfmt { path: "src/tools/rustfmt" });
 tool_check_step!(MiroptTestTools { path: "src/tools/miropt-test-tools" });
 tool_check_step!(TestFloatParse { path: "src/etc/test-float-parse" });
+tool_check_step!(FeaturesStatusDump { path: "src/tools/features-status-dump" });
 
 tool_check_step!(Bootstrap { path: "src/bootstrap", default: false });
 

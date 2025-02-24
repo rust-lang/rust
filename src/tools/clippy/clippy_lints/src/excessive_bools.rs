@@ -7,7 +7,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
-use rustc_target::spec::abi::Abi;
+use rustc_abi::ExternAbi;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -145,7 +145,7 @@ impl<'tcx> LateLintPass<'tcx> for ExcessiveBools {
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, trait_item: &'tcx TraitItem<'tcx>) {
         // functions with a body are already checked by `check_fn`
         if let TraitItemKind::Fn(fn_sig, TraitFn::Required(_)) = &trait_item.kind
-            && fn_sig.header.abi == Abi::Rust
+            && fn_sig.header.abi == ExternAbi::Rust
             && fn_sig.decl.inputs.len() as u64 > self.max_fn_params_bools
         {
             check_fn_decl(cx, fn_sig.decl, fn_sig.span, self.max_fn_params_bools);
@@ -162,7 +162,7 @@ impl<'tcx> LateLintPass<'tcx> for ExcessiveBools {
         def_id: LocalDefId,
     ) {
         if let Some(fn_header) = fn_kind.header()
-            && fn_header.abi == Abi::Rust
+            && fn_header.abi == ExternAbi::Rust
             && fn_decl.inputs.len() as u64 > self.max_fn_params_bools
             && get_parent_as_impl(cx.tcx, cx.tcx.local_def_id_to_hir_id(def_id))
                 .is_none_or(|impl_item| impl_item.of_trait.is_none())

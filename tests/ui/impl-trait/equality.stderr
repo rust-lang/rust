@@ -19,8 +19,9 @@ LL |     0_u32
    |
 help: change the type of the numeric literal from `u32` to `i32`
    |
-LL |     0_i32
-   |       ~~~
+LL -     0_u32
+LL +     0_i32
+   |
 
 error[E0277]: cannot add `impl Foo` to `u32`
   --> $DIR/equality.rs:24:11

@@ -70,7 +70,7 @@ pub fn map(map: &mut HashMap<i32, i32>) {}
 pub fn set(set: &mut HashSet<i32>) {}
 
 #[inline_macros]
-pub mod gen {
+pub mod gen_ {
     use super::*;
     inline! {
         impl<K: Hash + Eq, V> Foo<u8> for HashMap<K, V> {

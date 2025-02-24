@@ -4,7 +4,7 @@ use crate::ty::{self, ExistentialPredicateStableCmpExt, TyCtxt};
 
 impl<'tcx> TyCtxt<'tcx> {
     /// Given a `def_id` of a trait or impl method, compute whether that method needs to
-    /// have an RPITIT shim applied to it for it to be object safe. If so, return the
+    /// have an RPITIT shim applied to it for it to be dyn compatible. If so, return the
     /// `def_id` of the RPITIT, and also the args of trait method that returns the RPITIT.
     ///
     /// NOTE that these args are not, in general, the same as than the RPITIT's args. They
@@ -64,7 +64,7 @@ impl<'tcx> TyCtxt<'tcx> {
         args: ty::GenericArgsRef<'tcx>,
     ) -> &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>> {
         let mut bounds: Vec<_> = self
-            .item_super_predicates(def_id)
+            .item_self_bounds(def_id)
             .iter_instantiated(self, args)
             .filter_map(|clause| {
                 clause

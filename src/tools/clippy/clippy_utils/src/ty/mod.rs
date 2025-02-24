@@ -4,6 +4,7 @@
 
 use core::ops::ControlFlow;
 use itertools::Itertools;
+use rustc_abi::VariantIdx;
 use rustc_ast::ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
@@ -23,7 +24,6 @@ use rustc_middle::ty::{
 };
 use rustc_span::symbol::Ident;
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
-use rustc_target::abi::VariantIdx;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::normalize::QueryNormalizeExt;
 use rustc_trait_selection::traits::{Obligation, ObligationCause};
@@ -96,7 +96,7 @@ pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'
                         return false;
                     }
 
-                    for (predicate, _span) in cx.tcx.explicit_item_super_predicates(def_id).iter_identity_copied() {
+                    for (predicate, _span) in cx.tcx.explicit_item_self_bounds(def_id).iter_identity_copied() {
                         match predicate.kind().skip_binder() {
                             // For `impl Trait<U>`, it will register a predicate of `T: Trait<U>`, so we go through
                             // and check substitutions to find `U`.
@@ -118,7 +118,7 @@ pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'
                                     if contains_ty_adt_constructor_opaque_inner(cx, ty, needle, seen) {
                                         return true;
                                     }
-                                };
+                                }
                             },
                             _ => (),
                         }
@@ -267,7 +267,7 @@ pub fn implements_trait_with_env_from_iter<'tcx>(
     // through calling `body_owner_kind`, which would panic if the callee
     // does not have a body.
     if let Some(callee_id) = callee_id {
-        let _ = tcx.hir().body_owner_kind(callee_id);
+        let _ = tcx.hir_body_owner_kind(callee_id);
     }
 
     let ty = tcx.erase_regions(ty);
@@ -322,7 +322,7 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
         },
         ty::Tuple(args) => args.iter().any(|ty| is_must_use_ty(cx, ty)),
         ty::Alias(ty::Opaque, AliasTy { def_id, .. }) => {
-            for (predicate, _) in cx.tcx.explicit_item_super_predicates(def_id).skip_binder() {
+            for (predicate, _) in cx.tcx.explicit_item_self_bounds(def_id).skip_binder() {
                 if let ty::ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder() {
                     if cx.tcx.has_attr(trait_predicate.trait_ref.def_id, sym::must_use) {
                         return true;
@@ -705,14 +705,14 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
         ty::Closure(id, subs) => {
             let decl = id
                 .as_local()
-                .and_then(|id| cx.tcx.hir().fn_decl_by_hir_id(cx.tcx.local_def_id_to_hir_id(id)));
+                .and_then(|id| cx.tcx.hir_fn_decl_by_hir_id(cx.tcx.local_def_id_to_hir_id(id)));
             Some(ExprFnSig::Closure(decl, subs.as_closure().sig()))
         },
         ty::FnDef(id, subs) => Some(ExprFnSig::Sig(cx.tcx.fn_sig(id).instantiate(cx.tcx, subs), Some(id))),
         ty::Alias(ty::Opaque, AliasTy { def_id, args, .. }) => sig_from_bounds(
             cx,
             ty,
-            cx.tcx.item_super_predicates(def_id).iter_instantiated(cx.tcx, args),
+            cx.tcx.item_self_bounds(def_id).iter_instantiated(cx.tcx, args),
             cx.tcx.opt_parent(def_id),
         ),
         ty::FnPtr(sig_tys, hdr) => Some(ExprFnSig::Sig(sig_tys.with(hdr), None)),
@@ -1338,6 +1338,17 @@ pub fn get_field_by_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, name: Symbol) ->
             .find(|f| f.name == name)
             .map(|f| f.ty(tcx, args)),
         ty::Tuple(args) => name.as_str().parse::<usize>().ok().and_then(|i| args.get(i).copied()),
+        _ => None,
+    }
+}
+
+/// Check if `ty` is an `Option` and return its argument type if it is.
+pub fn option_arg_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
+    match ty.kind() {
+        ty::Adt(adt, args) => cx
+            .tcx
+            .is_diagnostic_item(sym::Option, adt.did())
+            .then(|| args.type_at(0)),
         _ => None,
     }
 }

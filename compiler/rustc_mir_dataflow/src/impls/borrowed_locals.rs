@@ -97,7 +97,8 @@ where
             | Rvalue::UnaryOp(..)
             | Rvalue::Discriminant(..)
             | Rvalue::Aggregate(..)
-            | Rvalue::CopyForDeref(..) => {}
+            | Rvalue::CopyForDeref(..)
+            | Rvalue::WrapUnsafeBinder(..) => {}
         }
     }
 

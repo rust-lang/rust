@@ -42,6 +42,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::{fmt, io};
 
+use rustc_abi::{Endian, ExternAbi, Integer, Size, TargetDataLayout, TargetDataLayoutErrors};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_fs_util::try_canonicalize;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
@@ -50,25 +51,16 @@ use rustc_span::{Symbol, kw, sym};
 use serde_json::Value;
 use tracing::debug;
 
-use crate::abi::call::Conv;
-use crate::abi::{Endian, Integer, Size, TargetDataLayout, TargetDataLayoutErrors};
+use crate::callconv::Conv;
 use crate::json::{Json, ToJson};
-use crate::spec::abi::Abi;
 use crate::spec::crt_objects::CrtObjects;
 
 pub mod crt_objects;
 
-pub mod abi {
-    pub use rustc_abi::{
-        AbiDisabled, AbiUnsupported, ExternAbi as Abi, all_names, enabled_names, is_enabled,
-        is_stable, lookup,
-    };
-}
-
 mod base;
 mod json;
 
-pub use base::avr_gnu::ef_avr_arch;
+pub use base::avr::ef_avr_arch;
 
 /// Linker is called through a C/C++ compiler.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -311,15 +303,16 @@ impl LinkerFlavor {
         }
     }
 
-    fn infer_linker_hints(linker_stem: &str) -> (Option<Cc>, Option<Lld>) {
+    fn infer_linker_hints(linker_stem: &str) -> Result<Self, (Option<Cc>, Option<Lld>)> {
         // Remove any version postfix.
         let stem = linker_stem
             .rsplit_once('-')
             .and_then(|(lhs, rhs)| rhs.chars().all(char::is_numeric).then_some(lhs))
             .unwrap_or(linker_stem);
 
-        // GCC/Clang can have an optional target prefix.
-        if stem == "emcc"
+        if stem == "llvm-bitcode-linker" {
+            Ok(Self::Llbc)
+        } else if stem == "emcc" // GCC/Clang can have an optional target prefix.
             || stem == "gcc"
             || stem.ends_with("-gcc")
             || stem == "g++"
@@ -329,7 +322,7 @@ impl LinkerFlavor {
             || stem == "clang++"
             || stem.ends_with("-clang++")
         {
-            (Some(Cc::Yes), Some(Lld::No))
+            Err((Some(Cc::Yes), Some(Lld::No)))
         } else if stem == "wasm-ld"
             || stem.ends_with("-wasm-ld")
             || stem == "ld.lld"
@@ -337,11 +330,11 @@ impl LinkerFlavor {
             || stem == "rust-lld"
             || stem == "lld-link"
         {
-            (Some(Cc::No), Some(Lld::Yes))
+            Err((Some(Cc::No), Some(Lld::Yes)))
         } else if stem == "ld" || stem.ends_with("-ld") || stem == "link" {
-            (Some(Cc::No), Some(Lld::No))
+            Err((Some(Cc::No), Some(Lld::No)))
         } else {
-            (None, None)
+            Err((None, None))
         }
     }
 
@@ -365,7 +358,10 @@ impl LinkerFlavor {
     }
 
     pub fn with_linker_hints(self, linker_stem: &str) -> LinkerFlavor {
-        self.with_hints(LinkerFlavor::infer_linker_hints(linker_stem))
+        match LinkerFlavor::infer_linker_hints(linker_stem) {
+            Ok(linker_flavor) => linker_flavor,
+            Err(hints) => self.with_hints(hints),
+        }
     }
 
     pub fn check_compatibility(self, cli: LinkerFlavorCli) -> Option<String> {
@@ -1114,6 +1110,37 @@ impl ToJson for FloatAbi {
     }
 }
 
+/// The Rustc-specific variant of the ABI used for this target.
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum RustcAbi {
+    /// On x86-32 only: make use of SSE and SSE2 for ABI purposes.
+    X86Sse2,
+    /// On x86-32/64 only: do not use any FPU or SIMD registers for the ABI.
+    X86Softfloat,
+}
+
+impl FromStr for RustcAbi {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<RustcAbi, ()> {
+        Ok(match s {
+            "x86-sse2" => RustcAbi::X86Sse2,
+            "x86-softfloat" => RustcAbi::X86Softfloat,
+            _ => return Err(()),
+        })
+    }
+}
+
+impl ToJson for RustcAbi {
+    fn to_json(&self) -> Json {
+        match *self {
+            RustcAbi::X86Sse2 => "x86-sse2",
+            RustcAbi::X86Softfloat => "x86-softfloat",
+        }
+        .to_json()
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Hash, Debug)]
 pub enum TlsModel {
     GeneralDynamic,
@@ -1617,6 +1644,55 @@ impl fmt::Display for StackProtector {
     }
 }
 
+#[derive(PartialEq, Clone, Debug)]
+pub enum BinaryFormat {
+    Coff,
+    Elf,
+    MachO,
+    Wasm,
+    Xcoff,
+}
+
+impl BinaryFormat {
+    /// Returns [`object::BinaryFormat`] for given `BinaryFormat`
+    pub fn to_object(&self) -> object::BinaryFormat {
+        match self {
+            Self::Coff => object::BinaryFormat::Coff,
+            Self::Elf => object::BinaryFormat::Elf,
+            Self::MachO => object::BinaryFormat::MachO,
+            Self::Wasm => object::BinaryFormat::Wasm,
+            Self::Xcoff => object::BinaryFormat::Xcoff,
+        }
+    }
+}
+
+impl FromStr for BinaryFormat {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "coff" => Ok(Self::Coff),
+            "elf" => Ok(Self::Elf),
+            "mach-o" => Ok(Self::MachO),
+            "wasm" => Ok(Self::Wasm),
+            "xcoff" => Ok(Self::Xcoff),
+            _ => Err(()),
+        }
+    }
+}
+
+impl ToJson for BinaryFormat {
+    fn to_json(&self) -> Json {
+        match self {
+            Self::Coff => "coff",
+            Self::Elf => "elf",
+            Self::MachO => "mach-o",
+            Self::Wasm => "wasm",
+            Self::Xcoff => "xcoff",
+        }
+        .to_json()
+    }
+}
+
 macro_rules! supported_targets {
     ( $(($tuple:literal, $module:ident),)+ ) => {
         mod targets {
@@ -1624,7 +1700,7 @@ macro_rules! supported_targets {
         }
 
         /// List of supported targets
-        pub const TARGETS: &[&str] = &[$($tuple),+];
+        pub static TARGETS: &[&str] = &[$($tuple),+];
 
         fn load_builtin(target: &str) -> Option<Target> {
             let t = match target {
@@ -1633,6 +1709,14 @@ macro_rules! supported_targets {
             };
             debug!("got builtin target: {:?}", t);
             Some(t)
+        }
+
+        fn load_all_builtins() -> impl Iterator<Item = Target> {
+            [
+                $( targets::$module::target, )+
+            ]
+            .into_iter()
+            .map(|f| f())
         }
 
         #[cfg(test)]
@@ -1766,12 +1850,12 @@ supported_targets! {
     ("riscv64gc-unknown-fuchsia", riscv64gc_unknown_fuchsia),
     ("x86_64-unknown-fuchsia", x86_64_unknown_fuchsia),
 
-    ("avr-unknown-gnu-atmega328", avr_unknown_gnu_atmega328),
+    ("avr-none", avr_none),
 
     ("x86_64-unknown-l4re-uclibc", x86_64_unknown_l4re_uclibc),
 
     ("aarch64-unknown-redox", aarch64_unknown_redox),
-    ("i686-unknown-redox", i686_unknown_redox),
+    ("i586-unknown-redox", i586_unknown_redox),
     ("x86_64-unknown-redox", x86_64_unknown_redox),
 
     ("i386-apple-ios", i386_apple_ios),
@@ -1853,6 +1937,8 @@ supported_targets! {
 
     ("armv7a-none-eabi", armv7a_none_eabi),
     ("armv7a-none-eabihf", armv7a_none_eabihf),
+    ("armv7a-nuttx-eabi", armv7a_nuttx_eabi),
+    ("armv7a-nuttx-eabihf", armv7a_nuttx_eabihf),
 
     ("msp430-none-elf", msp430_none_elf),
 
@@ -1896,6 +1982,7 @@ supported_targets! {
 
     ("aarch64-unknown-none", aarch64_unknown_none),
     ("aarch64-unknown-none-softfloat", aarch64_unknown_none_softfloat),
+    ("aarch64-unknown-nuttx", aarch64_unknown_nuttx),
 
     ("x86_64-fortanix-unknown-sgx", x86_64_fortanix_unknown_sgx),
 
@@ -1904,6 +1991,8 @@ supported_targets! {
     ("aarch64-unknown-uefi", aarch64_unknown_uefi),
 
     ("nvptx64-nvidia-cuda", nvptx64_nvidia_cuda),
+
+    ("amdgcn-amd-amdhsa", amdgcn_amd_amdhsa),
 
     ("xtensa-esp32-none-elf", xtensa_esp32_none_elf),
     ("xtensa-esp32-espidf", xtensa_esp32_espidf),
@@ -1960,8 +2049,12 @@ supported_targets! {
 
     ("aarch64-unknown-nto-qnx700", aarch64_unknown_nto_qnx700),
     ("aarch64-unknown-nto-qnx710", aarch64_unknown_nto_qnx710),
+    ("aarch64-unknown-nto-qnx710_iosock", aarch64_unknown_nto_qnx710_iosock),
+    ("aarch64-unknown-nto-qnx800", aarch64_unknown_nto_qnx800),
     ("x86_64-pc-nto-qnx710", x86_64_pc_nto_qnx710),
-    ("i586-pc-nto-qnx700", i586_pc_nto_qnx700),
+    ("x86_64-pc-nto-qnx710_iosock", x86_64_pc_nto_qnx710_iosock),
+    ("x86_64-pc-nto-qnx800", x86_64_pc_nto_qnx800),
+    ("i686-pc-nto-qnx700", i686_pc_nto_qnx700),
 
     ("aarch64-unknown-linux-ohos", aarch64_unknown_linux_ohos),
     ("armv7-unknown-linux-ohos", armv7_unknown_linux_ohos),
@@ -1971,6 +2064,8 @@ supported_targets! {
     ("x86_64-unknown-linux-none", x86_64_unknown_linux_none),
 
     ("thumbv6m-nuttx-eabi", thumbv6m_nuttx_eabi),
+    ("thumbv7a-nuttx-eabi", thumbv7a_nuttx_eabi),
+    ("thumbv7a-nuttx-eabihf", thumbv7a_nuttx_eabihf),
     ("thumbv7m-nuttx-eabi", thumbv7m_nuttx_eabi),
     ("thumbv7em-nuttx-eabi", thumbv7em_nuttx_eabi),
     ("thumbv7em-nuttx-eabihf", thumbv7em_nuttx_eabihf),
@@ -1983,6 +2078,7 @@ supported_targets! {
     ("riscv64imac-unknown-nuttx-elf", riscv64imac_unknown_nuttx_elf),
     ("riscv64gc-unknown-nuttx-elf", riscv64gc_unknown_nuttx_elf),
 
+    ("x86_64-pc-cygwin", x86_64_pc_cygwin),
 }
 
 /// Cow-Vec-Str: Cow<'static, [Cow<'static, str>]>
@@ -2245,6 +2341,9 @@ pub struct TargetOptions {
     /// Default CPU to pass to LLVM. Corresponds to `llc -mcpu=$cpu`. Defaults
     /// to "generic".
     pub cpu: StaticCow<str>,
+    /// Whether a cpu needs to be explicitly set.
+    /// Set to true if there is no default cpu. Defaults to false.
+    pub need_explicit_cpu: bool,
     /// Default target features to pass to LLVM. These features overwrite
     /// `-Ctarget-cpu` but can be overwritten with `-Ctarget-features`.
     /// Corresponds to `llc -mattr=$features`.
@@ -2331,6 +2430,8 @@ pub struct TargetOptions {
     pub is_like_wasm: bool,
     /// Whether a target toolchain is like Android, implying a Linux kernel and a Bionic libc
     pub is_like_android: bool,
+    /// Target's binary file format. Defaults to BinaryFormat::Elf
+    pub binary_format: BinaryFormat,
     /// Default supported version of DWARF on this platform.
     /// Useful because some platforms (osx, bsd) only want up to DWARF2.
     pub default_dwarf_version: u32,
@@ -2493,6 +2594,12 @@ pub struct TargetOptions {
     /// If not provided, LLVM will infer the float ABI from the target triple (`llvm_target`).
     pub llvm_floatabi: Option<FloatAbi>,
 
+    /// Picks a specific ABI for this target. This is *not* just for "Rust" ABI functions,
+    /// it can also affect "C" ABI functions; the point is that this flag is interpreted by
+    /// rustc and not forwarded to LLVM.
+    /// So far, this is only used on x86.
+    pub rustc_abi: Option<RustcAbi>,
+
     /// Whether or not RelaxElfRelocation flag will be passed to the linker
     pub relax_elf_relocations: bool,
 
@@ -2652,10 +2759,6 @@ impl TargetOptions {
                 .collect();
         }
     }
-
-    pub(crate) fn has_feature(&self, search_feature: &str) -> bool {
-        self.features.split(',').any(|f| f.strip_prefix('+').is_some_and(|f| f == search_feature))
-    }
 }
 
 impl Default for TargetOptions {
@@ -2677,6 +2780,7 @@ impl Default for TargetOptions {
             link_script: None,
             asm_args: cvs![],
             cpu: "generic".into(),
+            need_explicit_cpu: false,
             features: "".into(),
             direct_access_external_data: None,
             dynamic_linking: false,
@@ -2703,6 +2807,7 @@ impl Default for TargetOptions {
             is_like_msvc: false,
             is_like_wasm: false,
             is_like_android: false,
+            binary_format: BinaryFormat::Elf,
             default_dwarf_version: 4,
             allows_weak_linkage: true,
             has_rpath: false,
@@ -2761,6 +2866,7 @@ impl Default for TargetOptions {
             llvm_mcount_intrinsic: None,
             llvm_abiname: "".into(),
             llvm_floatabi: None,
+            rustc_abi: None,
             relax_elf_relocations: false,
             llvm_args: cvs![],
             use_ctors_section: false,
@@ -2802,44 +2908,40 @@ impl DerefMut for Target {
 
 impl Target {
     /// Given a function ABI, turn it into the correct ABI for this target.
-    pub fn adjust_abi(&self, abi: Abi, c_variadic: bool) -> Abi {
+    pub fn adjust_abi(&self, abi: ExternAbi, c_variadic: bool) -> ExternAbi {
+        use ExternAbi::*;
         match abi {
             // On Windows, `extern "system"` behaves like msvc's `__stdcall`.
             // `__stdcall` only applies on x86 and on non-variadic functions:
             // https://learn.microsoft.com/en-us/cpp/cpp/stdcall?view=msvc-170
-            Abi::System { unwind } if self.is_like_windows && self.arch == "x86" && !c_variadic => {
-                Abi::Stdcall { unwind }
+            System { unwind } if self.is_like_windows && self.arch == "x86" && !c_variadic => {
+                Stdcall { unwind }
             }
-            Abi::System { unwind } => Abi::C { unwind },
-            Abi::EfiApi if self.arch == "arm" => Abi::Aapcs { unwind: false },
-            Abi::EfiApi if self.arch == "x86_64" => Abi::Win64 { unwind: false },
-            Abi::EfiApi => Abi::C { unwind: false },
+            System { unwind } => C { unwind },
+            EfiApi if self.arch == "arm" => Aapcs { unwind: false },
+            EfiApi if self.arch == "x86_64" => Win64 { unwind: false },
+            EfiApi => C { unwind: false },
 
-            // See commentary in `is_abi_supported`: we map these ABIs to "C" when they do not make sense.
-            Abi::Stdcall { .. } | Abi::Thiscall { .. } | Abi::Fastcall { .. }
-                if self.arch == "x86" =>
-            {
-                abi
-            }
-            Abi::Vectorcall { .. } if ["x86", "x86_64"].contains(&&self.arch[..]) => abi,
-            Abi::Stdcall { unwind }
-            | Abi::Thiscall { unwind }
-            | Abi::Fastcall { unwind }
-            | Abi::Vectorcall { unwind } => Abi::C { unwind },
+            // See commentary in `is_abi_supported`.
+            Stdcall { .. } | Thiscall { .. } if self.arch == "x86" => abi,
+            Stdcall { unwind } | Thiscall { unwind } => C { unwind },
+            Fastcall { .. } if self.arch == "x86" => abi,
+            Vectorcall { .. } if ["x86", "x86_64"].contains(&&self.arch[..]) => abi,
+            Fastcall { unwind } | Vectorcall { unwind } => C { unwind },
 
             // The Windows x64 calling convention we use for `extern "Rust"`
             // <https://learn.microsoft.com/en-us/cpp/build/x64-software-conventions#register-volatility-and-preservation>
             // expects the callee to save `xmm6` through `xmm15`, but `PreserveMost`
             // (that we use by default for `extern "rust-cold"`) doesn't save any of those.
             // So to avoid bloating callers, just use the Rust convention here.
-            Abi::RustCold if self.is_like_windows && self.arch == "x86_64" => Abi::Rust,
+            RustCold if self.is_like_windows && self.arch == "x86_64" => Rust,
 
             abi => abi,
         }
     }
 
-    pub fn is_abi_supported(&self, abi: Abi) -> bool {
-        use Abi::*;
+    pub fn is_abi_supported(&self, abi: ExternAbi) -> bool {
+        use ExternAbi::*;
         match abi {
             Rust
             | C { .. }
@@ -2961,8 +3063,8 @@ impl Target {
         );
         check_eq!(
             self.is_like_windows,
-            self.os == "windows" || self.os == "uefi",
-            "`is_like_windows` must be set if and only if `os` is `windows` or `uefi`"
+            self.os == "windows" || self.os == "uefi" || self.os == "cygwin",
+            "`is_like_windows` must be set if and only if `os` is `windows`, `uefi` or `cygwin`"
         );
         check_eq!(
             self.is_like_wasm,
@@ -3016,7 +3118,10 @@ impl Target {
             &self.post_link_args,
         ] {
             for (&flavor, flavor_args) in args {
-                check!(!flavor_args.is_empty(), "linker flavor args must not be empty");
+                check!(
+                    !flavor_args.is_empty() || self.arch == "avr",
+                    "linker flavor args must not be empty"
+                );
                 // Check that flavors mentioned in link args are compatible with the default flavor.
                 match self.linker_flavor {
                     LinkerFlavor::Gnu(..) => {
@@ -3227,6 +3332,22 @@ impl Target {
             _ => {}
         }
 
+        // Check consistency of Rust ABI declaration.
+        if let Some(rust_abi) = self.rustc_abi {
+            match rust_abi {
+                RustcAbi::X86Sse2 => check_matches!(
+                    &*self.arch,
+                    "x86",
+                    "`x86-sse2` ABI is only valid for x86-32 targets"
+                ),
+                RustcAbi::X86Softfloat => check_matches!(
+                    &*self.arch,
+                    "x86" | "x86_64",
+                    "`x86-softfloat` ABI is only valid for x86 targets"
+                ),
+            }
+        }
+
         // Check that the given target-features string makes some basic sense.
         if !self.features.is_empty() {
             let mut features_enabled = FxHashSet::default();
@@ -3304,6 +3425,11 @@ impl Target {
                 panic!("built-in targets doesn't support target-paths")
             }
         }
+    }
+
+    /// Load all built-in targets
+    pub fn builtins() -> impl Iterator<Item = Target> {
+        load_all_builtins()
     }
 
     /// Search for a JSON file specifying the given target tuple.

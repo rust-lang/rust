@@ -53,7 +53,7 @@ Concretely given the `ty::Generics` for the item the parameter is defined on, if
 
 The index fully defines the `Ty` and is the only part of `TyKind::Param` that matters for reasoning about the code we are compiling. 
 
-Generally we do not care what the name is and only use the index is included for diagnostics and debug logs as otherwise it would be
+Generally we do not care what the name is and only use the index. The name is included for diagnostics and debug logs as otherwise it would be
 incredibly difficult to understand the output, i.e. `Vec<Param(0)>: Sized` vs `Vec<T>: Sized`. In debug output, parameter types are
 often printed out as `{name}/#{index}`, for example in the function `foo` if we were to debug print `Vec<T>` it would be written as `Vec<T/#0>`.
 
@@ -65,7 +65,7 @@ The rules against shadowing make this difficult but those language rules could c
 
 ### Lifetime parameters
 
-In contrast to `Ty`/`Const`'s `Param` singular `Param` variant, lifetimes have two variants for representing region parameters: [`RegionKind::EarlyParam`] and [`RegionKind::LateParam`]. The reason for this is due to function's distinguishing between [early and late bound parameters](../early-late-bound-params/early-late-bound-summary.md) which is discussed in an earlier chapter (see link).
+In contrast to `Ty`/`Const`'s `Param` singular `Param` variant, lifetimes have two variants for representing region parameters: [`RegionKind::EarlyParam`] and [`RegionKind::LateParam`]. The reason for this is due to function's distinguishing between [early and late bound parameters][ch_early_late_bound] which is discussed in an earlier chapter (see link).
 
 `RegionKind::EarlyParam` is structured identically to `Ty/Const`'s `Param` variant, it is simply a `u32` index and a `Symbol`. For lifetime parameters defined on non-function items we always use `ReEarlyParam`. For functions we use `ReEarlyParam` for any early bound parameters and `ReLateParam` for any late bound parameters. Note that just like `Ty` and `Const` params we often debug format them as `'SYMBOL/#INDEX`, see for example:
 
@@ -85,7 +85,7 @@ fn foo<'a, 'b, T: 'a>(one: T, two: &'a &'b u32) -> &'b u32 {
 
 `RegionKind::LateParam` will be discussed more in the chapter on [instantiating binders][ch_instantiating_binders].
 
-[ch_early_late_bound]: ../early-late-bound-params/early-late-bound-summary.md
+[ch_early_late_bound]: ../early_late_parameters.md
 [ch_binders]: ./binders.md
 [ch_instantiating_binders]: ./instantiating_binders.md
 [`BoundRegionKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/enum.BoundRegionKind.html

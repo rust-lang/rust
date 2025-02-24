@@ -104,7 +104,7 @@ fn check_op(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>, left: bool)
             } else {
                 expr_snip = arg_snip.to_string();
                 eq_impl = without_deref;
-            };
+            }
 
             let span;
             let hint;

@@ -106,12 +106,6 @@ pub struct WorkerLocal<T> {
     registry: Registry,
 }
 
-// This is safe because the `deref` call will return a reference to a `T` unique to each thread
-// or it will panic for threads without an associated local. So there isn't a need for `T` to do
-// it's own synchronization. The `verify` method on `RegistryId` has an issue where the id
-// can be reused, but `WorkerLocal` has a reference to `Registry` which will prevent any reuse.
-unsafe impl<T: Send> Sync for WorkerLocal<T> {}
-
 impl<T> WorkerLocal<T> {
     /// Creates a new worker local where the `initial` closure computes the
     /// value this worker local should take for each thread in the registry.
@@ -138,6 +132,11 @@ impl<T> Deref for WorkerLocal<T> {
     fn deref(&self) -> &T {
         // This is safe because `verify` will only return values less than
         // `self.registry.thread_limit` which is the size of the `self.locals` array.
+
+        // The `deref` call will return a reference to a `T` unique to each thread
+        // or it will panic for threads without an associated local. So there isn't a need for `T` to do
+        // it's own synchronization. The `verify` method on `RegistryId` has an issue where the id
+        // can be reused, but `WorkerLocal` has a reference to `Registry` which will prevent any reuse.
         unsafe { &self.locals.get_unchecked(self.registry.id().verify()).0 }
     }
 }

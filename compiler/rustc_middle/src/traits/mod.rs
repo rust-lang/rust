@@ -10,9 +10,9 @@ mod structural_impls;
 
 use std::borrow::Cow;
 use std::hash::{Hash, Hasher};
+use std::sync::Arc;
 
-use rustc_data_structures::sync::Lrc;
-use rustc_errors::{Applicability, Diag, EmissionGuarantee};
+use rustc_errors::{Applicability, Diag, EmissionGuarantee, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::HirId;
 use rustc_hir::def_id::DefId;
@@ -21,13 +21,12 @@ use rustc_macros::{
 };
 use rustc_span::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_span::{DUMMY_SP, Span, Symbol};
-// FIXME: Remove this import and import via `solve::`
-pub use rustc_type_ir::solve::BuiltinImplSource;
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 
 pub use self::select::{EvaluationCache, EvaluationResult, OverflowError, SelectionCache};
 use crate::mir::ConstraintCategory;
+pub use crate::traits::solve::BuiltinImplSource;
 use crate::ty::abstract_const::NotConstEvaluatable;
 use crate::ty::{self, AdtKind, GenericArgsRef, Ty};
 
@@ -52,7 +51,7 @@ pub struct ObligationCause<'tcx> {
     /// information.
     pub body_id: LocalDefId,
 
-    code: InternedObligationCauseCode<'tcx>,
+    code: ObligationCauseCodeHandle<'tcx>,
 }
 
 // This custom hash function speeds up hashing for `Obligation` deduplication
@@ -98,7 +97,7 @@ impl<'tcx> ObligationCause<'tcx> {
 
     pub fn map_code(
         &mut self,
-        f: impl FnOnce(InternedObligationCauseCode<'tcx>) -> ObligationCauseCode<'tcx>,
+        f: impl FnOnce(ObligationCauseCodeHandle<'tcx>) -> ObligationCauseCode<'tcx>,
     ) {
         self.code = f(std::mem::take(&mut self.code)).into();
     }
@@ -145,23 +144,16 @@ impl<'tcx> ObligationCause<'tcx> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
-#[derive(TypeVisitable, TypeFoldable)]
-pub struct UnifyReceiverContext<'tcx> {
-    pub assoc_item: ty::AssocItem,
-    pub param_env: ty::ParamEnv<'tcx>,
-    pub args: GenericArgsRef<'tcx>,
-}
-
+/// A compact form of `ObligationCauseCode`.
 #[derive(Clone, PartialEq, Eq, Default, HashStable)]
 #[derive(TypeVisitable, TypeFoldable, TyEncodable, TyDecodable)]
-pub struct InternedObligationCauseCode<'tcx> {
+pub struct ObligationCauseCodeHandle<'tcx> {
     /// `None` for `ObligationCauseCode::Misc` (a common case, occurs ~60% of
     /// the time). `Some` otherwise.
-    code: Option<Lrc<ObligationCauseCode<'tcx>>>,
+    code: Option<Arc<ObligationCauseCode<'tcx>>>,
 }
 
-impl<'tcx> std::fmt::Debug for InternedObligationCauseCode<'tcx> {
+impl<'tcx> std::fmt::Debug for ObligationCauseCodeHandle<'tcx> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let cause: &ObligationCauseCode<'_> = self;
         cause.fmt(f)
@@ -170,14 +162,14 @@ impl<'tcx> std::fmt::Debug for InternedObligationCauseCode<'tcx> {
 
 impl<'tcx> ObligationCauseCode<'tcx> {
     #[inline(always)]
-    fn into(self) -> InternedObligationCauseCode<'tcx> {
-        InternedObligationCauseCode {
-            code: if let ObligationCauseCode::Misc = self { None } else { Some(Lrc::new(self)) },
+    fn into(self) -> ObligationCauseCodeHandle<'tcx> {
+        ObligationCauseCodeHandle {
+            code: if let ObligationCauseCode::Misc = self { None } else { Some(Arc::new(self)) },
         }
     }
 }
 
-impl<'tcx> std::ops::Deref for InternedObligationCauseCode<'tcx> {
+impl<'tcx> std::ops::Deref for ObligationCauseCodeHandle<'tcx> {
     type Target = ObligationCauseCode<'tcx>;
 
     fn deref(&self) -> &Self::Target {
@@ -193,6 +185,9 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// A slice or array is WF only if `T: Sized`.
     SliceOrArrayElem,
+
+    /// An array `[T; N]` can only be indexed (and is only well-formed if) `N` has type usize.
+    ArrayLen(Ty<'tcx>),
 
     /// A tuple is WF only if its middle elements are `Sized`.
     TupleElem,
@@ -303,7 +298,7 @@ pub enum ObligationCauseCode<'tcx> {
         /// The node of the function call.
         call_hir_id: HirId,
         /// The obligation introduced by this argument.
-        parent_code: InternedObligationCauseCode<'tcx>,
+        parent_code: ObligationCauseCodeHandle<'tcx>,
     },
 
     /// Error derived when checking an impl item is compatible with
@@ -357,8 +352,6 @@ pub enum ObligationCauseCode<'tcx> {
     /// Method receiver
     MethodReceiver,
 
-    UnifyReceiver(Box<UnifyReceiverContext<'tcx>>),
-
     /// `return` with no expression
     ReturnNoExpression,
 
@@ -388,7 +381,8 @@ pub enum ObligationCauseCode<'tcx> {
     /// `WellFormed(None)`.
     WellFormed(Option<WellFormedLoc>),
 
-    /// From `match_impl`. The cause for us having to match an impl, and the DefId we are matching against.
+    /// From `match_impl`. The cause for us having to match an impl, and the DefId we are matching
+    /// against.
     MatchImpl(ObligationCause<'tcx>, DefId),
 
     BinOp {
@@ -411,7 +405,7 @@ pub enum ObligationCauseCode<'tcx> {
     ConstParam(Ty<'tcx>),
 
     /// Obligations emitted during the normalization of a weak type alias.
-    TypeAlias(InternedObligationCauseCode<'tcx>, Span, DefId),
+    TypeAlias(ObligationCauseCodeHandle<'tcx>, Span, DefId),
 }
 
 /// Whether a value can be extracted into a const.
@@ -423,10 +417,6 @@ pub enum IsConstable {
     Fn,
     /// Use of a const ctor
     Ctor,
-}
-
-crate::TrivialTypeTraversalAndLiftImpls! {
-    IsConstable,
 }
 
 /// The 'location' at which we try to perform HIR-based wf checking.
@@ -516,12 +506,6 @@ impl<'tcx> ObligationCauseCode<'tcx> {
 #[cfg(target_pointer_width = "64")]
 rustc_data_structures::static_assert_size!(ObligationCauseCode<'_>, 48);
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum StatementAsExpression {
-    CorrectType,
-    NeedsBoxing,
-}
-
 #[derive(Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
 #[derive(TypeVisitable, TypeFoldable)]
 pub struct MatchExpressionArmCause<'tcx> {
@@ -586,7 +570,7 @@ pub struct DerivedCause<'tcx> {
     pub parent_trait_pred: ty::PolyTraitPredicate<'tcx>,
 
     /// The parent trait had this cause.
-    pub parent_code: InternedObligationCauseCode<'tcx>,
+    pub parent_code: ObligationCauseCodeHandle<'tcx>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
@@ -594,9 +578,9 @@ pub struct DerivedCause<'tcx> {
 pub struct ImplDerivedCause<'tcx> {
     pub derived: DerivedCause<'tcx>,
     /// The `DefId` of the `impl` that gave rise to the `derived` obligation.
-    /// If the `derived` obligation arose from a trait alias, which conceptually has a synthetic impl,
-    /// then this will be the `DefId` of that trait alias. Care should therefore be taken to handle
-    /// that exceptional case where appropriate.
+    /// If the `derived` obligation arose from a trait alias, which conceptually has a synthetic
+    /// impl, then this will be the `DefId` of that trait alias. Care should therefore be taken to
+    /// handle that exceptional case where appropriate.
     pub impl_or_alias_def_id: DefId,
     /// The index of the derived predicate in the parent impl's predicates.
     pub impl_def_predicate_index: Option<usize>,
@@ -613,7 +597,7 @@ pub struct DerivedHostCause<'tcx> {
     pub parent_host_pred: ty::Binder<'tcx, ty::HostEffectPredicate<'tcx>>,
 
     /// The parent trait had this cause.
-    pub parent_code: InternedObligationCauseCode<'tcx>,
+    pub parent_code: ObligationCauseCodeHandle<'tcx>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
@@ -792,7 +776,7 @@ impl DynCompatibilityViolation {
     pub fn error_msg(&self) -> Cow<'static, str> {
         match self {
             DynCompatibilityViolation::SizedSelf(_) => "it requires `Self: Sized`".into(),
-            DynCompatibilityViolation::SupertraitSelf(ref spans) => {
+            DynCompatibilityViolation::SupertraitSelf(spans) => {
                 if spans.iter().any(|sp| *sp != DUMMY_SP) {
                     "it uses `Self` as a type parameter".into()
                 } else {
@@ -1002,4 +986,7 @@ pub enum CodegenObligationError {
     /// but was included during typeck due to the trivial_bounds feature.
     Unimplemented,
     FulfillmentError,
+    /// The selected impl has unconstrained generic parameters. This will emit an error
+    /// during impl WF checking.
+    UnconstrainedParam(ErrorGuaranteed),
 }

@@ -112,6 +112,7 @@ fn resolve_associated_item<'tcx>(
             | CodegenObligationError::Unimplemented
             | CodegenObligationError::FulfillmentError,
         ) => return Ok(None),
+        Err(CodegenObligationError::UnconstrainedParam(guar)) => return Err(guar),
     };
 
     // Now that we know which impl is being used, we can dispatch to
@@ -225,7 +226,7 @@ fn resolve_associated_item<'tcx>(
             if trait_item_id != leaf_def.item.def_id
                 && let Some(leaf_def_item) = leaf_def.item.def_id.as_local()
             {
-                tcx.ensure().compare_impl_item(leaf_def_item)?;
+                tcx.ensure_ok().compare_impl_item(leaf_def_item)?;
             }
 
             Some(ty::Instance::new(leaf_def.item.def_id, args))

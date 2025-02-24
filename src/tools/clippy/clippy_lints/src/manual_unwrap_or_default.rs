@@ -1,6 +1,6 @@
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
-use rustc_hir::{Arm, Expr, ExprKind, HirId, LangItem, MatchSource, Pat, PatKind, QPath};
+use rustc_hir::{Arm, Expr, ExprKind, HirId, LangItem, MatchSource, Pat, PatExpr, PatExprKind, PatKind, QPath};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::GenericArgKind;
 use rustc_session::declare_lint_pass;
@@ -9,8 +9,8 @@ use rustc_span::sym;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::higher::IfLetOrMatch;
 use clippy_utils::sugg::Sugg;
-use clippy_utils::ty::implements_trait;
-use clippy_utils::{is_default_equivalent, is_in_const_context, peel_blocks, span_contains_comment};
+use clippy_utils::ty::{expr_type_is_certain, implements_trait};
+use clippy_utils::{is_default_equivalent, is_in_const_context, path_res, peel_blocks, span_contains_comment};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -68,7 +68,7 @@ fn get_some<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'tcx>) -> Option<HirId> {
 }
 
 fn get_none<'tcx>(cx: &LateContext<'tcx>, arm: &Arm<'tcx>) -> Option<&'tcx Expr<'tcx>> {
-    if let PatKind::Path(QPath::Resolved(_, path)) = arm.pat.kind
+    if let PatKind::Expr(PatExpr { kind: PatExprKind::Path(QPath::Resolved(_, path)), .. }) = arm.pat.kind
         && let Some(def_id) = path.res.opt_def_id()
         // Since it comes from a pattern binding, we need to get the parent to actually match
         // against it.
@@ -158,6 +158,36 @@ fn handle<'tcx>(cx: &LateContext<'tcx>, if_let_or_match: IfLetOrMatch<'tcx>, exp
         } else {
             Applicability::MachineApplicable
         };
+
+        // We now check if the condition is a None variant, in which case we need to specify the type
+        if path_res(cx, condition)
+            .opt_def_id()
+            .is_some_and(|id| Some(cx.tcx.parent(id)) == cx.tcx.lang_items().option_none_variant())
+        {
+            return span_lint_and_sugg(
+                cx,
+                MANUAL_UNWRAP_OR_DEFAULT,
+                expr.span,
+                format!("{expr_name} can be simplified with `.unwrap_or_default()`"),
+                "replace it with",
+                format!("{receiver}::<{expr_type}>.unwrap_or_default()"),
+                applicability,
+            );
+        }
+
+        // We check if the expression type is still uncertain, in which case we ask the user to specify it
+        if !expr_type_is_certain(cx, condition) {
+            return span_lint_and_sugg(
+                cx,
+                MANUAL_UNWRAP_OR_DEFAULT,
+                expr.span,
+                format!("{expr_name} can be simplified with `.unwrap_or_default()`"),
+                format!("ascribe the type {expr_type} and replace your expression with"),
+                format!("{receiver}.unwrap_or_default()"),
+                Applicability::Unspecified,
+            );
+        }
+
         span_lint_and_sugg(
             cx,
             MANUAL_UNWRAP_OR_DEFAULT,

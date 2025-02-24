@@ -10,16 +10,16 @@ use smallvec::{smallvec, SmallVec};
 use triomphe::Arc;
 
 use crate::{
-    body::{
-        scope::{ExprScopes, ScopeId},
-        HygieneId,
-    },
     builtin_type::BuiltinType,
     data::ExternCrateDeclData,
     db::DefDatabase,
+    expr_store::{
+        scope::{ExprScopes, ScopeId},
+        HygieneId,
+    },
     generics::{GenericParams, TypeOrConstParamData},
     hir::{BindingId, ExprId, LabelId},
-    item_scope::{BuiltinShadowMode, ImportId, ImportOrExternCrate, BUILTIN_SCOPE},
+    item_scope::{BuiltinShadowMode, ImportOrExternCrate, ImportOrGlob, BUILTIN_SCOPE},
     lang_item::LangItemTarget,
     nameres::{DefMap, MacroSubNs, ResolvePathResultPrefixInfo},
     path::{ModPath, Path, PathKind},
@@ -107,7 +107,7 @@ pub enum TypeNs {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ResolveValueResult {
-    ValueNs(ValueNs, Option<ImportId>),
+    ValueNs(ValueNs, Option<ImportOrGlob>),
     Partial(TypeNs, usize, Option<ImportOrExternCrate>),
 }
 
@@ -327,8 +327,9 @@ impl Resolver {
                     | LangItemTarget::ImplDef(_)
                     | LangItemTarget::Static(_) => return None,
                 };
+                // Remaining segments start from 0 because lang paths have no segments other than the remaining.
                 return Some((
-                    ResolveValueResult::Partial(type_ns, 1, None),
+                    ResolveValueResult::Partial(type_ns, 0, None),
                     ResolvePathResultPrefixInfo::default(),
                 ));
             }
@@ -485,7 +486,7 @@ impl Resolver {
         db: &dyn DefDatabase,
         path: &ModPath,
         expected_macro_kind: Option<MacroSubNs>,
-    ) -> Option<(MacroId, Option<ImportId>)> {
+    ) -> Option<(MacroId, Option<ImportOrGlob>)> {
         let (item_map, module) = self.item_scope();
         item_map
             .resolve_path(db, module, path, BuiltinShadowMode::Other, expected_macro_kind)
@@ -1014,7 +1015,7 @@ impl ModuleItemMap {
     }
 }
 
-fn to_value_ns(per_ns: PerNs) -> Option<(ValueNs, Option<ImportId>)> {
+fn to_value_ns(per_ns: PerNs) -> Option<(ValueNs, Option<ImportOrGlob>)> {
     let (def, import) = per_ns.take_values_import()?;
     let res = match def {
         ModuleDefId::FunctionId(it) => ValueNs::FunctionId(it),
@@ -1264,6 +1265,7 @@ impl HasResolver for GenericDefId {
             GenericDefId::TypeAliasId(inner) => inner.resolver(db),
             GenericDefId::ImplId(inner) => inner.resolver(db),
             GenericDefId::ConstId(inner) => inner.resolver(db),
+            GenericDefId::StaticId(inner) => inner.resolver(db),
         }
     }
 }

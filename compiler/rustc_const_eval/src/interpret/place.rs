@@ -12,9 +12,9 @@ use rustc_middle::{bug, mir, span_bug};
 use tracing::{instrument, trace};
 
 use super::{
-    AllocRef, AllocRefMut, CheckAlignMsg, CtfeProvenance, ImmTy, Immediate, InterpCx, InterpResult,
-    Machine, MemoryKind, Misalignment, OffsetMode, OpTy, Operand, Pointer, Projectable, Provenance,
-    Scalar, alloc_range, interp_ok, mir_assign_valid_types,
+    AllocInit, AllocRef, AllocRefMut, CheckAlignMsg, CtfeProvenance, ImmTy, Immediate, InterpCx,
+    InterpResult, Machine, MemoryKind, Misalignment, OffsetMode, OpTy, Operand, Pointer,
+    Projectable, Provenance, Scalar, alloc_range, interp_ok, mir_assign_valid_types,
 };
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
@@ -983,7 +983,7 @@ where
         let Some((size, align)) = self.size_and_align_of(&meta, &layout)? else {
             span_bug!(self.cur_span(), "cannot allocate space for `extern` type, size is not known")
         };
-        let ptr = self.allocate_ptr(size, align, kind)?;
+        let ptr = self.allocate_ptr(size, align, kind, AllocInit::Uninit)?;
         interp_ok(self.ptr_with_meta_to_mplace(ptr.into(), meta, layout, /*unaligned*/ false))
     }
 

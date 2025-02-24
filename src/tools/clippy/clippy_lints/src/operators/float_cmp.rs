@@ -120,7 +120,7 @@ fn is_float(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 
     if let ty::Array(arr_ty, _) = value {
         return matches!(arr_ty.kind(), ty::Float(_));
-    };
+    }
 
     matches!(value, ty::Float(_))
 }

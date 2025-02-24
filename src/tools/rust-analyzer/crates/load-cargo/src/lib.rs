@@ -94,7 +94,9 @@ pub fn load_workspace(
             let contents = loader.load_sync(path);
             let path = vfs::VfsPath::from(path.to_path_buf());
             vfs.set_file_contents(path.clone(), contents);
-            vfs.file_id(&path)
+            vfs.file_id(&path).and_then(|(file_id, excluded)| {
+                (excluded == vfs::FileExcluded::No).then_some(file_id)
+            })
         },
         extra_env,
     );
@@ -254,6 +256,24 @@ impl ProjectFolders {
                 local_filesets.push(fsc.len() as u64);
             }
             fsc.add_file_set(file_set_roots)
+        }
+
+        for ws in workspaces.iter() {
+            let mut file_set_roots: Vec<VfsPath> = vec![];
+            let mut entries = vec![];
+
+            for buildfile in ws.buildfiles() {
+                file_set_roots.push(VfsPath::from(buildfile.to_owned()));
+                entries.push(buildfile.to_owned());
+            }
+
+            if !file_set_roots.is_empty() {
+                let entry = vfs::loader::Entry::Files(entries);
+                res.watch.push(res.load.len());
+                res.load.push(entry);
+                local_filesets.push(fsc.len() as u64);
+                fsc.add_file_set(file_set_roots)
+            }
         }
 
         if let Some(user_config_path) = user_config_dir_path {

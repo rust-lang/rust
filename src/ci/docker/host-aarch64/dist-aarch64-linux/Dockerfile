@@ -20,6 +20,7 @@ RUN yum upgrade -y && \
       gcc-c++ \
       git \
       glibc-devel \
+      glibc-static \
       libedit-devel \
       libstdc++-devel \
       make \

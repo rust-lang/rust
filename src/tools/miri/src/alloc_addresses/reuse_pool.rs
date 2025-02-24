@@ -58,7 +58,7 @@ impl ReusePool {
         // We don't remember stack addresses: there's a lot of them (so the perf impact is big),
         // and we only want to reuse stack slots within the same thread or else we'll add a lot of
         // undesired synchronization.
-        if kind == MemoryKind::Stack || !rng.gen_bool(self.address_reuse_rate) {
+        if kind == MemoryKind::Stack || !rng.random_bool(self.address_reuse_rate) {
             return;
         }
         let clock = clock();
@@ -88,10 +88,10 @@ impl ReusePool {
         thread: ThreadId,
     ) -> Option<(u64, Option<VClock>)> {
         // Determine whether we'll even attempt a reuse. As above, we don't do reuse for stack addresses.
-        if kind == MemoryKind::Stack || !rng.gen_bool(self.address_reuse_rate) {
+        if kind == MemoryKind::Stack || !rng.random_bool(self.address_reuse_rate) {
             return None;
         }
-        let cross_thread_reuse = rng.gen_bool(self.address_reuse_cross_thread_rate);
+        let cross_thread_reuse = rng.random_bool(self.address_reuse_cross_thread_rate);
         // Determine the pool to take this from.
         let subpool = self.subpool(align);
         // Let's see if we can find something of the right size. We want to find the full range of
@@ -118,7 +118,7 @@ impl ReusePool {
             return None;
         }
         // Pick a random element with the desired size.
-        let idx = rng.gen_range(begin..end);
+        let idx = rng.random_range(begin..end);
         // Remove it from the pool and return.
         let (chosen_addr, chosen_size, chosen_thread, clock) = subpool.remove(idx);
         debug_assert!(chosen_size >= size && chosen_addr % align.bytes() == 0);

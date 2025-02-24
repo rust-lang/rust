@@ -7,8 +7,7 @@ fn main() -> () {
     let mut _4: Foo;
     let mut _5: u64;
     let _6: usize;
-    let mut _7: usize;
-    let mut _8: bool;
+    let mut _7: bool;
     scope 1 {
         let _2: [Foo; 2];
         scope 2 {
@@ -38,9 +37,9 @@ fn main() -> () {
         StorageLive(_5);
         StorageLive(_6);
         _6 = const 0_usize;
-        _7 = Len(_2);
-        _8 = Lt(copy _6, copy _7);
-        assert(move _8, "index out of bounds: the length is {} but the index is {}", move _7, copy _6) -> [success: bb3, unwind: bb5];
+        FakeRead(ForIndex, _2);
+        _7 = Lt(copy _6, const 2_usize);
+        assert(move _7, "index out of bounds: the length is {} but the index is {}", const 2_usize, copy _6) -> [success: bb3, unwind: bb5];
     }
 
     bb2: {

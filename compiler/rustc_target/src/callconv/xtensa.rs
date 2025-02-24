@@ -5,8 +5,9 @@
 //! Section 8.1.4 & 8.1.5 of the Xtensa ISA reference manual, as well as snippets from
 //! Section 2.3 from the Xtensa programmers guide.
 
-use crate::abi::call::{ArgAbi, FnAbi, Reg, Uniform};
-use crate::abi::{BackendRepr, HasDataLayout, Size, TyAbiInterface};
+use rustc_abi::{BackendRepr, HasDataLayout, Size, TyAbiInterface};
+
+use crate::callconv::{ArgAbi, FnAbi, Reg, Uniform};
 use crate::spec::HasTargetSpec;
 
 const NUM_ARG_GPRS: u64 = 6;

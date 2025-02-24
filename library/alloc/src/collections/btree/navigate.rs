@@ -7,7 +7,7 @@ use super::node::{Handle, NodeRef, marker};
 use super::search::SearchBound;
 use crate::alloc::Allocator;
 // `front` and `back` are always both `None` or both `Some`.
-pub struct LeafRange<BorrowType, K, V> {
+pub(super) struct LeafRange<BorrowType, K, V> {
     front: Option<Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>>,
     back: Option<Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>>,
 }
@@ -25,7 +25,7 @@ impl<B, K, V> Default for LeafRange<B, K, V> {
 }
 
 impl<BorrowType, K, V> LeafRange<BorrowType, K, V> {
-    pub fn none() -> Self {
+    pub(super) fn none() -> Self {
         LeafRange { front: None, back: None }
     }
 
@@ -34,7 +34,7 @@ impl<BorrowType, K, V> LeafRange<BorrowType, K, V> {
     }
 
     /// Temporarily takes out another, immutable equivalent of the same range.
-    pub fn reborrow(&self) -> LeafRange<marker::Immut<'_>, K, V> {
+    pub(super) fn reborrow(&self) -> LeafRange<marker::Immut<'_>, K, V> {
         LeafRange {
             front: self.front.as_ref().map(|f| f.reborrow()),
             back: self.back.as_ref().map(|b| b.reborrow()),
@@ -44,24 +44,24 @@ impl<BorrowType, K, V> LeafRange<BorrowType, K, V> {
 
 impl<'a, K, V> LeafRange<marker::Immut<'a>, K, V> {
     #[inline]
-    pub fn next_checked(&mut self) -> Option<(&'a K, &'a V)> {
+    pub(super) fn next_checked(&mut self) -> Option<(&'a K, &'a V)> {
         self.perform_next_checked(|kv| kv.into_kv())
     }
 
     #[inline]
-    pub fn next_back_checked(&mut self) -> Option<(&'a K, &'a V)> {
+    pub(super) fn next_back_checked(&mut self) -> Option<(&'a K, &'a V)> {
         self.perform_next_back_checked(|kv| kv.into_kv())
     }
 }
 
 impl<'a, K, V> LeafRange<marker::ValMut<'a>, K, V> {
     #[inline]
-    pub fn next_checked(&mut self) -> Option<(&'a K, &'a mut V)> {
+    pub(super) fn next_checked(&mut self) -> Option<(&'a K, &'a mut V)> {
         self.perform_next_checked(|kv| unsafe { ptr::read(kv) }.into_kv_valmut())
     }
 
     #[inline]
-    pub fn next_back_checked(&mut self) -> Option<(&'a K, &'a mut V)> {
+    pub(super) fn next_back_checked(&mut self) -> Option<(&'a K, &'a mut V)> {
         self.perform_next_back_checked(|kv| unsafe { ptr::read(kv) }.into_kv_valmut())
     }
 }
@@ -124,7 +124,7 @@ impl<BorrowType, K, V> LazyLeafHandle<BorrowType, K, V> {
 }
 
 // `front` and `back` are always both `None` or both `Some`.
-pub struct LazyLeafRange<BorrowType, K, V> {
+pub(super) struct LazyLeafRange<BorrowType, K, V> {
     front: Option<LazyLeafHandle<BorrowType, K, V>>,
     back: Option<LazyLeafHandle<BorrowType, K, V>>,
 }
@@ -142,12 +142,12 @@ impl<'a, K: 'a, V: 'a> Clone for LazyLeafRange<marker::Immut<'a>, K, V> {
 }
 
 impl<BorrowType, K, V> LazyLeafRange<BorrowType, K, V> {
-    pub fn none() -> Self {
+    pub(super) fn none() -> Self {
         LazyLeafRange { front: None, back: None }
     }
 
     /// Temporarily takes out another, immutable equivalent of the same range.
-    pub fn reborrow(&self) -> LazyLeafRange<marker::Immut<'_>, K, V> {
+    pub(super) fn reborrow(&self) -> LazyLeafRange<marker::Immut<'_>, K, V> {
         LazyLeafRange {
             front: self.front.as_ref().map(|f| f.reborrow()),
             back: self.back.as_ref().map(|b| b.reborrow()),
@@ -157,24 +157,24 @@ impl<BorrowType, K, V> LazyLeafRange<BorrowType, K, V> {
 
 impl<'a, K, V> LazyLeafRange<marker::Immut<'a>, K, V> {
     #[inline]
-    pub unsafe fn next_unchecked(&mut self) -> (&'a K, &'a V) {
+    pub(super) unsafe fn next_unchecked(&mut self) -> (&'a K, &'a V) {
         unsafe { self.init_front().unwrap().next_unchecked() }
     }
 
     #[inline]
-    pub unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a V) {
+    pub(super) unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a V) {
         unsafe { self.init_back().unwrap().next_back_unchecked() }
     }
 }
 
 impl<'a, K, V> LazyLeafRange<marker::ValMut<'a>, K, V> {
     #[inline]
-    pub unsafe fn next_unchecked(&mut self) -> (&'a K, &'a mut V) {
+    pub(super) unsafe fn next_unchecked(&mut self) -> (&'a K, &'a mut V) {
         unsafe { self.init_front().unwrap().next_unchecked() }
     }
 
     #[inline]
-    pub unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a mut V) {
+    pub(super) unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a mut V) {
         unsafe { self.init_back().unwrap().next_back_unchecked() }
     }
 }
@@ -190,7 +190,7 @@ impl<K, V> LazyLeafRange<marker::Dying, K, V> {
     }
 
     #[inline]
-    pub unsafe fn deallocating_next_unchecked<A: Allocator + Clone>(
+    pub(super) unsafe fn deallocating_next_unchecked<A: Allocator + Clone>(
         &mut self,
         alloc: A,
     ) -> Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV> {
@@ -200,7 +200,7 @@ impl<K, V> LazyLeafRange<marker::Dying, K, V> {
     }
 
     #[inline]
-    pub unsafe fn deallocating_next_back_unchecked<A: Allocator + Clone>(
+    pub(super) unsafe fn deallocating_next_back_unchecked<A: Allocator + Clone>(
         &mut self,
         alloc: A,
     ) -> Handle<NodeRef<marker::Dying, K, V, marker::LeafOrInternal>, marker::KV> {
@@ -210,7 +210,7 @@ impl<K, V> LazyLeafRange<marker::Dying, K, V> {
     }
 
     #[inline]
-    pub fn deallocating_end<A: Allocator + Clone>(&mut self, alloc: A) {
+    pub(super) fn deallocating_end<A: Allocator + Clone>(&mut self, alloc: A) {
         if let Some(front) = self.take_front() {
             front.deallocating_end(alloc)
         }
@@ -313,7 +313,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> 
     ///
     /// The result is meaningful only if the tree is ordered by key, like the tree
     /// in a `BTreeMap` is.
-    pub fn range_search<Q, R>(self, range: R) -> LeafRange<marker::Immut<'a>, K, V>
+    pub(super) fn range_search<Q, R>(self, range: R) -> LeafRange<marker::Immut<'a>, K, V>
     where
         Q: ?Sized + Ord,
         K: Borrow<Q>,
@@ -324,7 +324,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> 
     }
 
     /// Finds the pair of leaf edges delimiting an entire tree.
-    pub fn full_range(self) -> LazyLeafRange<marker::Immut<'a>, K, V> {
+    pub(super) fn full_range(self) -> LazyLeafRange<marker::Immut<'a>, K, V> {
         full_range(self, self)
     }
 }
@@ -339,7 +339,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::ValMut<'a>, K, V, marker::LeafOrInternal>
     ///
     /// # Safety
     /// Do not use the duplicate handles to visit the same KV twice.
-    pub fn range_search<Q, R>(self, range: R) -> LeafRange<marker::ValMut<'a>, K, V>
+    pub(super) fn range_search<Q, R>(self, range: R) -> LeafRange<marker::ValMut<'a>, K, V>
     where
         Q: ?Sized + Ord,
         K: Borrow<Q>,
@@ -351,7 +351,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::ValMut<'a>, K, V, marker::LeafOrInternal>
     /// Splits a unique reference into a pair of leaf edges delimiting the full range of the tree.
     /// The results are non-unique references allowing mutation (of values only), so must be used
     /// with care.
-    pub fn full_range(self) -> LazyLeafRange<marker::ValMut<'a>, K, V> {
+    pub(super) fn full_range(self) -> LazyLeafRange<marker::ValMut<'a>, K, V> {
         // We duplicate the root NodeRef here -- we will never visit the same KV
         // twice, and never end up with overlapping value references.
         let self2 = unsafe { ptr::read(&self) };
@@ -363,7 +363,7 @@ impl<K, V> NodeRef<marker::Dying, K, V, marker::LeafOrInternal> {
     /// Splits a unique reference into a pair of leaf edges delimiting the full range of the tree.
     /// The results are non-unique references allowing massively destructive mutation, so must be
     /// used with the utmost care.
-    pub fn full_range(self) -> LazyLeafRange<marker::Dying, K, V> {
+    pub(super) fn full_range(self) -> LazyLeafRange<marker::Dying, K, V> {
         // We duplicate the root NodeRef here -- we will never access it in a way
         // that overlaps references obtained from the root.
         let self2 = unsafe { ptr::read(&self) };
@@ -377,7 +377,7 @@ impl<BorrowType: marker::BorrowType, K, V>
     /// Given a leaf edge handle, returns [`Result::Ok`] with a handle to the neighboring KV
     /// on the right side, which is either in the same leaf node or in an ancestor node.
     /// If the leaf edge is the last one in the tree, returns [`Result::Err`] with the root node.
-    pub fn next_kv(
+    pub(super) fn next_kv(
         self,
     ) -> Result<
         Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::KV>,
@@ -398,7 +398,7 @@ impl<BorrowType: marker::BorrowType, K, V>
     /// Given a leaf edge handle, returns [`Result::Ok`] with a handle to the neighboring KV
     /// on the left side, which is either in the same leaf node or in an ancestor node.
     /// If the leaf edge is the first one in the tree, returns [`Result::Err`] with the root node.
-    pub fn next_back_kv(
+    pub(super) fn next_back_kv(
         self,
     ) -> Result<
         Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::KV>,
@@ -627,7 +627,9 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
     /// Returns the leftmost leaf edge in or underneath a node - in other words, the edge
     /// you need first when navigating forward (or last when navigating backward).
     #[inline]
-    pub fn first_leaf_edge(self) -> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge> {
+    pub(super) fn first_leaf_edge(
+        self,
+    ) -> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge> {
         let mut node = self;
         loop {
             match node.force() {
@@ -640,7 +642,9 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
     /// Returns the rightmost leaf edge in or underneath a node - in other words, the edge
     /// you need last when navigating forward (or first when navigating backward).
     #[inline]
-    pub fn last_leaf_edge(self) -> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge> {
+    pub(super) fn last_leaf_edge(
+        self,
+    ) -> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge> {
         let mut node = self;
         loop {
             match node.force() {
@@ -651,7 +655,7 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
     }
 }
 
-pub enum Position<BorrowType, K, V> {
+pub(super) enum Position<BorrowType, K, V> {
     Leaf(NodeRef<BorrowType, K, V, marker::Leaf>),
     Internal(NodeRef<BorrowType, K, V, marker::Internal>),
     InternalKV,
@@ -661,7 +665,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> 
     /// Visits leaf nodes and internal KVs in order of ascending keys, and also
     /// visits internal nodes as a whole in a depth first order, meaning that
     /// internal nodes precede their individual KVs and their child nodes.
-    pub fn visit_nodes_in_order<F>(self, mut visit: F)
+    pub(super) fn visit_nodes_in_order<F>(self, mut visit: F)
     where
         F: FnMut(Position<marker::Immut<'a>, K, V>),
     {
@@ -693,7 +697,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> 
     }
 
     /// Calculates the number of elements in a (sub)tree.
-    pub fn calc_length(self) -> usize {
+    pub(super) fn calc_length(self) -> usize {
         let mut result = 0;
         self.visit_nodes_in_order(|pos| match pos {
             Position::Leaf(node) => result += node.len(),
@@ -708,7 +712,9 @@ impl<BorrowType: marker::BorrowType, K, V>
     Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::KV>
 {
     /// Returns the leaf edge closest to a KV for forward navigation.
-    pub fn next_leaf_edge(self) -> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge> {
+    pub(super) fn next_leaf_edge(
+        self,
+    ) -> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge> {
         match self.force() {
             Leaf(leaf_kv) => leaf_kv.right_edge(),
             Internal(internal_kv) => {
@@ -719,7 +725,7 @@ impl<BorrowType: marker::BorrowType, K, V>
     }
 
     /// Returns the leaf edge closest to a KV for backward navigation.
-    pub fn next_back_leaf_edge(
+    pub(super) fn next_back_leaf_edge(
         self,
     ) -> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge> {
         match self.force() {
@@ -735,7 +741,7 @@ impl<BorrowType: marker::BorrowType, K, V>
 impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
     /// Returns the leaf edge corresponding to the first point at which the
     /// given bound is true.
-    pub fn lower_bound<Q: ?Sized>(
+    pub(super) fn lower_bound<Q: ?Sized>(
         self,
         mut bound: SearchBound<&Q>,
     ) -> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>
@@ -758,7 +764,7 @@ impl<BorrowType: marker::BorrowType, K, V> NodeRef<BorrowType, K, V, marker::Lea
 
     /// Returns the leaf edge corresponding to the last point at which the
     /// given bound is true.
-    pub fn upper_bound<Q: ?Sized>(
+    pub(super) fn upper_bound<Q: ?Sized>(
         self,
         mut bound: SearchBound<&Q>,
     ) -> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>

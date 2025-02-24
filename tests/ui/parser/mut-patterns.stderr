@@ -33,8 +33,9 @@ LL |     let mut (x @ y) = 0;
    = note: `mut` may be followed by `variable` and `variable @ pattern`
 help: add `mut` to each binding
    |
-LL |     let (mut x @ mut y) = 0;
-   |         ~~~~~~~~~~~~~~~
+LL -     let mut (x @ y) = 0;
+LL +     let (mut x @ mut y) = 0;
+   |
 
 error: `mut` on a binding may not be repeated
   --> $DIR/mut-patterns.rs:14:13
@@ -69,8 +70,9 @@ LL |     let mut Foo { x: x } = Foo { x: 3 };
    = note: `mut` may be followed by `variable` and `variable @ pattern`
 help: add `mut` to each binding
    |
-LL |     let Foo { x: mut x } = Foo { x: 3 };
-   |         ~~~~~~~~~~~~~~~~
+LL -     let mut Foo { x: x } = Foo { x: 3 };
+LL +     let Foo { x: mut x } = Foo { x: 3 };
+   |
 
 error: `mut` must be attached to each individual binding
   --> $DIR/mut-patterns.rs:27:9
@@ -81,8 +83,9 @@ LL |     let mut Foo { x } = Foo { x: 3 };
    = note: `mut` may be followed by `variable` and `variable @ pattern`
 help: add `mut` to each binding
    |
-LL |     let Foo { mut x } = Foo { x: 3 };
-   |         ~~~~~~~~~~~~~
+LL -     let mut Foo { x } = Foo { x: 3 };
+LL +     let Foo { mut x } = Foo { x: 3 };
+   |
 
 error: `mut` on a binding may not be repeated
   --> $DIR/mut-patterns.rs:32:13
@@ -151,8 +154,9 @@ LL |     let mut W(mut a, W(b, W(ref c, W(d, B { box f }))))
    = note: `mut` may be followed by `variable` and `variable @ pattern`
 help: add `mut` to each binding
    |
-LL |     let W(mut a, W(mut b, W(ref c, W(mut d, B { box mut f }))))
-   |         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     let mut W(mut a, W(b, W(ref c, W(d, B { box f }))))
+LL +     let W(mut a, W(mut b, W(ref c, W(mut d, B { box mut f }))))
+   |
 
 error: expected identifier, found `x`
   --> $DIR/mut-patterns.rs:48:21

@@ -1,6 +1,6 @@
 // Verify that debuginfo column numbers are 1-based byte offsets.
 //
-//@ ignore-windows
+//@ ignore-msvc
 //@ compile-flags: -C debuginfo=2
 
 #[rustfmt::skip]

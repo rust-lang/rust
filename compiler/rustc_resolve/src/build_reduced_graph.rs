@@ -6,6 +6,7 @@
 //! Imports are also considered items and placed into modules here, but not resolved yet.
 
 use std::cell::Cell;
+use std::sync::Arc;
 
 use rustc_ast::visit::{self, AssocCtxt, Visitor, WalkItemKind};
 use rustc_ast::{
@@ -13,7 +14,6 @@ use rustc_ast::{
     ItemKind, MetaItemKind, NodeId, StmtKind,
 };
 use rustc_attr_parsing as attr;
-use rustc_data_structures::sync::Lrc;
 use rustc_expand::base::ResolverExpand;
 use rustc_expand::expand::AstFragment;
 use rustc_hir::def::{self, *};
@@ -179,7 +179,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             LoadedMacro::MacroDef { def, ident, attrs, span, edition } => {
                 self.compile_macro(&def, ident, &attrs, span, ast::DUMMY_NODE_ID, edition)
             }
-            LoadedMacro::ProcMacro(ext) => MacroData::new(Lrc::new(ext)),
+            LoadedMacro::ProcMacro(ext) => MacroData::new(Arc::new(ext)),
         };
 
         self.macro_map.entry(def_id).or_insert(macro_data)
@@ -567,10 +567,13 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                             Some(rename) => source.ident.span.to(rename.span),
                             None => source.ident.span,
                         };
-                        self.r.report_error(span, ResolutionError::SelfImportsOnlyAllowedWithin {
-                            root: parent.is_none(),
-                            span_with_rename,
-                        });
+                        self.r.report_error(
+                            span,
+                            ResolutionError::SelfImportsOnlyAllowedWithin {
+                                root: parent.is_none(),
+                                span_with_rename,
+                            },
+                        );
 
                         // Error recovery: replace `use foo::self;` with `use foo;`
                         if let Some(parent) = module_path.pop() {
@@ -1238,7 +1241,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             };
             let binding = (res, vis, span, expansion).to_name_binding(self.r.arenas);
             self.r.set_binding_parent_module(binding, parent_scope.module);
-            self.r.all_macro_rules.insert(ident.name, res);
+            self.r.all_macro_rules.insert(ident.name);
             if is_macro_export {
                 let import = self.r.arenas.alloc_import(ImportData {
                     kind: ImportKind::MacroExport,

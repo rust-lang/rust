@@ -333,19 +333,19 @@ impl<'a> FnSig<'a> {
         defaultness: ast::Defaultness,
     ) -> FnSig<'a> {
         match *fn_kind {
-            visit::FnKind::Fn(visit::FnCtxt::Assoc(..), _, fn_sig, vis, generics, _) => {
-                let mut fn_sig = FnSig::from_method_sig(fn_sig, generics, vis);
+            visit::FnKind::Fn(visit::FnCtxt::Assoc(..), _, vis, ast::Fn { sig, generics, .. }) => {
+                let mut fn_sig = FnSig::from_method_sig(sig, generics, vis);
                 fn_sig.defaultness = defaultness;
                 fn_sig
             }
-            visit::FnKind::Fn(_, _, fn_sig, vis, generics, _) => FnSig {
+            visit::FnKind::Fn(_, _, vis, ast::Fn { sig, generics, .. }) => FnSig {
                 decl,
                 generics,
-                ext: fn_sig.header.ext,
-                constness: fn_sig.header.constness,
-                coroutine_kind: Cow::Borrowed(&fn_sig.header.coroutine_kind),
+                ext: sig.header.ext,
+                constness: sig.header.constness,
+                coroutine_kind: Cow::Borrowed(&sig.header.coroutine_kind),
                 defaultness,
-                safety: fn_sig.header.safety,
+                safety: sig.header.safety,
                 visibility: vis,
             },
             _ => unreachable!(),
@@ -3453,6 +3453,7 @@ impl Rewrite for ast::ForeignItem {
                     ref sig,
                     ref generics,
                     ref body,
+                    ..
                 } = **fn_kind;
                 if body.is_some() {
                     let mut visitor = FmtVisitor::from_context(context);
@@ -3461,7 +3462,7 @@ impl Rewrite for ast::ForeignItem {
                     let inner_attrs = inner_attributes(&self.attrs);
                     let fn_ctxt = visit::FnCtxt::Foreign;
                     visitor.visit_fn(
-                        visit::FnKind::Fn(fn_ctxt, &self.ident, sig, &self.vis, generics, body),
+                        visit::FnKind::Fn(fn_ctxt, &self.ident, &self.vis, fn_kind),
                         &sig.decl,
                         self.span,
                         defaultness,

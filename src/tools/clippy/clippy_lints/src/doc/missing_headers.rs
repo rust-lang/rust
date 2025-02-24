@@ -24,8 +24,7 @@ pub fn check(
     if !check_private_items
         && cx
             .tcx
-            .hir()
-            .parent_iter(owner_id.into())
+            .hir_parent_iter(owner_id.into())
             .any(|(id, _node)| is_doc_hidden(cx.tcx.hir().attrs(id)))
     {
         return;
@@ -68,7 +67,7 @@ pub fn check(
         } else if let Some(body_id) = body_id
             && let Some(future) = cx.tcx.lang_items().future_trait()
             && let typeck = cx.tcx.typeck_body(body_id)
-            && let body = cx.tcx.hir().body(body_id)
+            && let body = cx.tcx.hir_body(body_id)
             && let ret_ty = typeck.expr_ty(body.value)
             && implements_trait_with_env(
                 cx.tcx,

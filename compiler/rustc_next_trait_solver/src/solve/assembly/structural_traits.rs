@@ -2,12 +2,11 @@
 //! traits, `Copy`/`Clone`.
 
 use derive_where::derive_where;
-use rustc_ast_ir::{Movability, Mutability};
 use rustc_type_ir::data_structures::HashMap;
 use rustc_type_ir::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
-use rustc_type_ir::{self as ty, Interner, Upcast as _, elaborate};
+use rustc_type_ir::{self as ty, Interner, Movability, Mutability, Upcast as _, elaborate};
 use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
 use tracing::instrument;
 
@@ -514,10 +513,11 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
                 // will project to the right upvars for the generator, appending the inputs and
                 // coroutine upvars respecting the closure kind.
                 nested.push(
-                    ty::TraitRef::new(cx, async_fn_kind_trait_def_id, [
-                        kind_ty,
-                        Ty::from_closure_kind(cx, goal_kind),
-                    ])
+                    ty::TraitRef::new(
+                        cx,
+                        async_fn_kind_trait_def_id,
+                        [kind_ty, Ty::from_closure_kind(cx, goal_kind)],
+                    )
                     .upcast(cx),
                 );
             }
@@ -624,14 +624,18 @@ fn coroutine_closure_to_ambiguous_coroutine<I: Interner>(
     sig: ty::CoroutineClosureSignature<I>,
 ) -> I::Ty {
     let upvars_projection_def_id = cx.require_lang_item(TraitSolverLangItem::AsyncFnKindUpvars);
-    let tupled_upvars_ty = Ty::new_projection(cx, upvars_projection_def_id, [
-        I::GenericArg::from(args.kind_ty()),
-        Ty::from_closure_kind(cx, goal_kind).into(),
-        goal_region.into(),
-        sig.tupled_inputs_ty.into(),
-        args.tupled_upvars_ty().into(),
-        args.coroutine_captures_by_ref_ty().into(),
-    ]);
+    let tupled_upvars_ty = Ty::new_projection(
+        cx,
+        upvars_projection_def_id,
+        [
+            I::GenericArg::from(args.kind_ty()),
+            Ty::from_closure_kind(cx, goal_kind).into(),
+            goal_region.into(),
+            sig.tupled_inputs_ty.into(),
+            args.tupled_upvars_ty().into(),
+            args.coroutine_captures_by_ref_ty().into(),
+        ],
+    );
     sig.to_coroutine(
         cx,
         args.parent_args(),

@@ -3,8 +3,7 @@
 #![allow(unused_must_use)]
 #![allow(unconditional_recursion)]
 //@ ignore-android: FIXME (#20004)
-//@ ignore-wasm32 no processes
-//@ ignore-sgx no processes
+//@ needs-subprocess
 //@ ignore-fuchsia must translate zircon signal to SIGABRT, FIXME (#58590)
 //@ ignore-nto no stack overflow handler used (no alternate stack available)
 //@ ignore-ios stack overflow handlers aren't enabled

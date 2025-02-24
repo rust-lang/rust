@@ -4,17 +4,16 @@ use core::iter;
 use hir::def_id::LocalDefId;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::packed::Pu128;
-use rustc_errors::{Applicability, Diag, MultiSpan};
-use rustc_hir as hir;
+use rustc_errors::{Applicability, Diag, MultiSpan, listify};
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
-    Arm, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind, GenericBound, HirId,
-    Node, Path, QPath, Stmt, StmtKind, TyKind, WherePredicateKind, expr_needs_parens,
+    self as hir, Arm, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind,
+    GenericBound, HirId, Node, PatExpr, PatExprKind, Path, QPath, Stmt, StmtKind, TyKind,
+    WherePredicateKind, expr_needs_parens,
 };
-use rustc_hir_analysis::collect::suggest_impl_trait;
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
-use rustc_middle::lint::in_external_macro;
+use rustc_hir_analysis::suggest_impl_trait;
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::span_bug;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -185,6 +184,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         rhs_ty: Ty<'tcx>,
         can_satisfy: impl FnOnce(Ty<'tcx>, Ty<'tcx>) -> bool,
     ) -> bool {
+        if lhs_expr.span.in_derive_expansion() || rhs_expr.span.in_derive_expansion() {
+            return false;
+        }
         let Some((_, lhs_output_ty, lhs_inputs)) = self.extract_callable_info(lhs_ty) else {
             return false;
         };
@@ -306,7 +308,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
                 let mut tuple_indexes = Vec::new();
                 let mut expr_id = expr.hir_id;
-                for (parent_id, node) in self.tcx.hir().parent_iter(expr.hir_id) {
+                for (parent_id, node) in self.tcx.hir_parent_iter(expr.hir_id) {
                     match node {
                         Node::Expr(&Expr { kind: ExprKind::Tup(subs), .. }) => {
                             tuple_indexes.push(
@@ -563,7 +565,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         found: Ty<'tcx>,
     ) -> bool {
         // Do not suggest `Box::new` in const context.
-        if self.tcx.hir().is_inside_const_context(hir_id) || !expected.is_box() || found.is_box() {
+        if self.tcx.hir_is_inside_const_context(hir_id) || !expected.is_box() || found.is_box() {
             return false;
         }
         if self.may_coerce(Ty::new_box(self.tcx, found), expected) {
@@ -643,7 +645,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> bool {
         // Handle #68197.
 
-        if self.tcx.hir().is_inside_const_context(expr.hir_id) {
+        if self.tcx.hir_is_inside_const_context(expr.hir_id) {
             // Do not suggest `Box::new` in const context.
             return false;
         }
@@ -767,7 +769,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // If the expression is from an external macro, then do not suggest
                         // adding a semicolon, because there's nowhere to put it.
                         // See issue #81943.
-                        && !in_external_macro(self.tcx.sess, expression.span) =>
+                        && !expression.span.in_external_macro(self.tcx.sess.source_map()) =>
                 {
                     if needs_block {
                         err.multipart_suggestion(
@@ -1082,8 +1084,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let in_loop = self.is_loop(id)
             || self
                 .tcx
-                .hir()
-                .parent_iter(id)
+                .hir_parent_iter(id)
                 .take_while(|(_, node)| {
                     // look at parents until we find the first body owner
                     node.body_id().is_none()
@@ -1093,8 +1094,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let in_local_statement = self.is_local_statement(id)
             || self
                 .tcx
-                .hir()
-                .parent_iter(id)
+                .hir_parent_iter(id)
                 .any(|(parent_id, _)| self.is_local_statement(parent_id));
 
         if in_loop && in_local_statement {
@@ -1109,7 +1109,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
-        let scope = self.tcx.hir().parent_iter(id).find(|(_, node)| {
+        let scope = self.tcx.hir_parent_iter(id).find(|(_, node)| {
             matches!(
                 node,
                 Node::Expr(Expr { kind: ExprKind::Closure(..), .. })
@@ -1166,7 +1166,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // -------------^^^^^^^-
             // Don't add semicolon `;` at the end of `dbg!(x)` expr
             fn is_in_arm<'tcx>(expr: &'tcx hir::Expr<'tcx>, tcx: TyCtxt<'tcx>) -> bool {
-                for (_, node) in tcx.hir().parent_iter(expr.hir_id) {
+                for (_, node) in tcx.hir_parent_iter(expr.hir_id) {
                     match node {
                         hir::Node::Block(block) => {
                             if let Some(ret) = block.expr
@@ -1409,8 +1409,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         }
 
-        let hir = self.tcx.hir();
-        let cond_parent = hir.parent_iter(expr.hir_id).find(|(_, node)| {
+        let cond_parent = self.tcx.hir_parent_iter(expr.hir_id).find(|(_, node)| {
             !matches!(node, hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Binary(op, _, _), .. }) if op.node == hir::BinOpKind::And)
         });
         // Don't suggest:
@@ -1419,8 +1418,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // since the user probably just misunderstood how `let else`
         // and `&&` work together.
         if let Some((_, hir::Node::LetStmt(local))) = cond_parent
-            && let hir::PatKind::Path(qpath) | hir::PatKind::TupleStruct(qpath, _, _) =
-                &local.pat.kind
+            && let hir::PatKind::Expr(PatExpr { kind: PatExprKind::Path(qpath), .. })
+            | hir::PatKind::TupleStruct(qpath, _, _) = &local.pat.kind
             && let hir::QPath::Resolved(None, path) = qpath
             && let Some(did) = path
                 .res
@@ -1809,9 +1808,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     "`{expected_ty}` does not implement `Clone`, so `{found_ty}` was cloned instead"
                 ),
             );
-            let owner = self.tcx.hir().enclosing_body_owner(expr.hir_id);
+            let owner = self.tcx.hir_enclosing_body_owner(expr.hir_id);
             if let ty::Param(param) = expected_ty.kind()
-                && let Some(generics) = self.tcx.hir().get_generics(owner)
+                && let Some(generics) = self.tcx.hir_get_generics(owner)
             {
                 suggest_constraining_type_params(
                     self.tcx,
@@ -1833,16 +1832,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 error.obligation.predicate,
                             ));
                         }
-                        [errors @ .., last] => {
+                        _ => {
                             diag.help(format!(
                                 "`Clone` is not implemented because the following trait bounds \
-                                 could not be satisfied: {} and `{}`",
-                                errors
-                                    .iter()
-                                    .map(|e| format!("`{}`", e.obligation.predicate))
-                                    .collect::<Vec<_>>()
-                                    .join(", "),
-                                last.obligation.predicate,
+                                 could not be satisfied: {}",
+                                listify(&errors, |e| format!("`{}`", e.obligation.predicate))
+                                    .unwrap(),
                             ));
                         }
                     }
@@ -1935,7 +1930,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ..
                     } = init
                 {
-                    let hir::Body { value: body_expr, .. } = self.tcx.hir().body(*body_id);
+                    let hir::Body { value: body_expr, .. } = self.tcx.hir_body(*body_id);
                     self.note_type_is_not_clone_inner_expr(body_expr)
                 } else {
                     expr
@@ -1990,17 +1985,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             expr.kind,
             hir::ExprKind::Call(
                 hir::Expr {
-                    kind: hir::ExprKind::Path(hir::QPath::Resolved(None, hir::Path {
-                        res: Res::Def(hir::def::DefKind::Ctor(_, _), _),
-                        ..
-                    },)),
+                    kind: hir::ExprKind::Path(hir::QPath::Resolved(
+                        None,
+                        hir::Path { res: Res::Def(hir::def::DefKind::Ctor(_, _), _), .. },
+                    )),
                     ..
                 },
                 ..,
-            ) | hir::ExprKind::Path(hir::QPath::Resolved(None, hir::Path {
-                res: Res::Def(hir::def::DefKind::Ctor(_, _), _),
-                ..
-            },)),
+            ) | hir::ExprKind::Path(hir::QPath::Resolved(
+                None,
+                hir::Path { res: Res::Def(hir::def::DefKind::Ctor(_, _), _), .. },
+            )),
         );
 
         let (article, kind, variant, sugg_operator) =
@@ -2050,11 +2045,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
     ) -> bool {
-        let map = self.tcx.hir();
         let returned = matches!(
             self.tcx.parent_hir_node(expr.hir_id),
             hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Ret(_), .. })
-        ) || map.get_fn_id_for_return_block(expr.hir_id).is_some();
+        ) || self.tcx.hir_get_fn_id_for_return_block(expr.hir_id).is_some();
         if returned
             && let ty::Adt(e, args_e) = expected.kind()
             && let ty::Adt(f, args_f) = found.kind()
@@ -2096,9 +2090,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &hir::Expr<'tcx>,
         expected: Ty<'tcx>,
     ) -> bool {
-        let hir = self.tcx.hir();
+        let tcx = self.tcx;
         let enclosing_scope =
-            hir.get_enclosing_scope(expr.hir_id).map(|hir_id| self.tcx.hir_node(hir_id));
+            tcx.hir_get_enclosing_scope(expr.hir_id).map(|hir_id| tcx.hir_node(hir_id));
 
         // Get tail expr of the enclosing block or body
         let tail_expr = if let Some(Node::Block(hir::Block { expr, .. })) = enclosing_scope
@@ -2106,8 +2100,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             *expr
         } else {
-            let body_def_id = hir.enclosing_body_owner(expr.hir_id);
-            let body = hir.body_owned_by(body_def_id);
+            let body_def_id = tcx.hir_enclosing_body_owner(expr.hir_id);
+            let body = tcx.hir_body_owned_by(body_def_id);
 
             // Get tail expr of the body
             match body.value.kind {
@@ -2149,7 +2143,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ("consider returning a value here", format!("`{expected}` value"))
             };
 
-            let src_map = self.tcx.sess.source_map();
+            let src_map = tcx.sess.source_map();
             let suggestion = if src_map.is_multiline(expr.span) {
                 let indentation = src_map.indentation_before(span).unwrap_or_else(String::new);
                 format!("\n{indentation}/* {suggestion} */")
@@ -2262,7 +2256,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         expr_ty: Ty<'tcx>,
     ) -> bool {
-        if in_external_macro(self.tcx.sess, expr.span) {
+        if expr.span.in_external_macro(self.tcx.sess.source_map()) {
             return false;
         }
         if let ty::Adt(expected_adt, args) = expected.kind() {
@@ -2590,13 +2584,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     )> {
         let sess = self.sess();
         let sp = expr.span;
+        let sm = sess.source_map();
 
         // If the span is from an external macro, there's no suggestion we can make.
-        if in_external_macro(sess, sp) {
+        if sp.in_external_macro(sm) {
             return None;
         }
-
-        let sm = sess.source_map();
 
         let replace_prefix = |s: &str, old: &str, new: &str| {
             s.strip_prefix(old).map(|stripped| new.to_string() + stripped)
@@ -3100,7 +3093,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             |expr: &hir::Expr<'_>| matches!(expr.kind, hir::ExprKind::Unary(hir::UnOp::Neg, ..));
         let is_uint = |ty: Ty<'_>| matches!(ty.kind(), ty::Uint(..));
 
-        let in_const_context = self.tcx.hir().is_inside_const_context(expr.hir_id);
+        let in_const_context = self.tcx.hir_is_inside_const_context(expr.hir_id);
 
         let suggest_fallible_into_or_lhs_from =
             |err: &mut Diag<'_>, exp_to_found_is_fallible: bool| {
@@ -3144,7 +3137,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let suggest_to_change_suffix_or_into =
             |err: &mut Diag<'_>, found_to_exp_is_fallible: bool, exp_to_found_is_fallible: bool| {
-                let exp_is_lhs = expected_ty_expr.is_some_and(|e| self.tcx.hir().is_lhs(e.hir_id));
+                let exp_is_lhs = expected_ty_expr.is_some_and(|e| self.tcx.hir_is_lhs(e.hir_id));
 
                 if exp_is_lhs {
                     return;

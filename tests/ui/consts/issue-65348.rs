@@ -9,15 +9,17 @@ impl<T> Generic<T> {
 }
 
 pub const fn array<T>() -> &'static T {
-    #[allow(unconditional_panic)]
+    #[expect(unconditional_panic)]
     &Generic::<T>::ARRAY[0]
 }
 
 pub const fn newtype_array<T>() -> &'static T {
+    #[expect(unconditional_panic)]
     &Generic::<T>::NEWTYPE_ARRAY.0[0]
 }
 
 pub const fn array_field<T>() -> &'static T {
+    #[expect(unconditional_panic)]
     &(Generic::<T>::ARRAY_FIELD.0).1[0]
 }
 

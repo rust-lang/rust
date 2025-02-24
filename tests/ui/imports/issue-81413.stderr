@@ -2,9 +2,9 @@ error[E0432]: unresolved import `doesnt_exist`
   --> $DIR/issue-81413.rs:7:9
    |
 LL | pub use doesnt_exist::*;
-   |         ^^^^^^^^^^^^ you might be missing crate `doesnt_exist`
+   |         ^^^^^^^^^^^^ use of unresolved module or unlinked crate `doesnt_exist`
    |
-help: consider importing the `doesnt_exist` crate
+help: you might be missing a crate named `doesnt_exist`, add it to your project and import it in your code
    |
 LL + extern crate doesnt_exist;
    |

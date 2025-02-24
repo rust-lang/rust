@@ -29,7 +29,7 @@ ENV PATH="/node/bin:${PATH}"
 
 # Install es-check
 # Pin its version to prevent unrelated CI failures due to future es-check versions.
-RUN npm install es-check@6.1.1 eslint@8.6.0 -g
+RUN npm install es-check@6.1.1 eslint@8.6.0 typescript@5.7.3 -g
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
@@ -68,4 +68,5 @@ ENV SCRIPT \
            es-check es2019 ../src/librustdoc/html/static/js/*.js && \
            eslint -c ../src/librustdoc/html/static/.eslintrc.js ../src/librustdoc/html/static/js/*.js && \
            eslint -c ../src/tools/rustdoc-js/.eslintrc.js ../src/tools/rustdoc-js/tester.js && \
-           eslint -c ../src/tools/rustdoc-gui/.eslintrc.js ../src/tools/rustdoc-gui/tester.js
+           eslint -c ../src/tools/rustdoc-gui/.eslintrc.js ../src/tools/rustdoc-gui/tester.js && \
+           tsc --project ../src/librustdoc/html/static/js/tsconfig.json

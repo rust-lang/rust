@@ -1,6 +1,6 @@
 use rustc_errors::MultiSpan;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::intravisit::{self, Visitor, VisitorExt};
 use rustc_hir::{Body, HirId, Item, ItemKind, Node, Path, TyKind};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::{declare_lint, impl_lint_pass};
@@ -126,7 +126,7 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                 // 1. We collect all the `hir::Path` from the `Self` type and `Trait` ref
                 // of the `impl` definition
                 let mut collector = PathCollector { paths: Vec::new() };
-                collector.visit_ty(&impl_.self_ty);
+                collector.visit_ty_unambig(&impl_.self_ty);
                 if let Some(of_trait) = &impl_.of_trait {
                     collector.visit_trait_ref(of_trait);
                 }
@@ -222,17 +222,21 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                         None
                     };
 
-                cx.emit_span_lint(NON_LOCAL_DEFINITIONS, ms, NonLocalDefinitionsDiag::Impl {
-                    depth: self.body_depth,
-                    body_kind_descr: cx.tcx.def_kind_descr(parent_def_kind, parent),
-                    body_name: parent_opt_item_name
-                        .map(|s| s.to_ident_string())
-                        .unwrap_or_else(|| "<unnameable>".to_string()),
-                    cargo_update: cargo_update(),
-                    const_anon,
-                    doctest,
-                    macro_to_change,
-                })
+                cx.emit_span_lint(
+                    NON_LOCAL_DEFINITIONS,
+                    ms,
+                    NonLocalDefinitionsDiag::Impl {
+                        depth: self.body_depth,
+                        body_kind_descr: cx.tcx.def_kind_descr(parent_def_kind, parent),
+                        body_name: parent_opt_item_name
+                            .map(|s| s.to_ident_string())
+                            .unwrap_or_else(|| "<unnameable>".to_string()),
+                        cargo_update: cargo_update(),
+                        const_anon,
+                        doctest,
+                        macro_to_change,
+                    },
+                )
             }
             ItemKind::Macro(_macro, MacroKind::Bang)
                 if cx.tcx.has_attr(item.owner_id.def_id, sym::macro_export) =>
@@ -343,5 +347,5 @@ fn path_span_without_args(path: &Path<'_>) -> Span {
 
 /// Return a "error message-able" ident for the last segment of the `Path`
 fn path_name_to_string(path: &Path<'_>) -> String {
-    path.segments.last().unwrap().ident.name.to_ident_string()
+    path.segments.last().unwrap().ident.to_string()
 }

@@ -22,7 +22,7 @@ impl const MyTrait for Foo {
     fn func() {}
 }
 
-#[rustc_allow_const_fn_unstable(const_trait_impl)]
+#[rustc_allow_const_fn_unstable(const_trait_impl, unstable)]
 const fn conditionally_const<T: ~const MyTrait>() {
     T::func();
 }
@@ -37,10 +37,13 @@ fn non_const_context() {
 const fn const_context() {
     Unstable::func();
     //~^ ERROR cannot use `#[feature(const_trait_impl)]`
+    //~| ERROR cannot use `#[feature(unstable)]`
     Foo::func();
     //~^ ERROR cannot use `#[feature(const_trait_impl)]`
+    //~| ERROR cannot use `#[feature(unstable)]`
     Unstable2::func();
     //~^ ERROR cannot use `#[feature(const_trait_impl)]`
+    //~| ERROR cannot use `#[feature(unstable)]`
     conditionally_const::<Foo>();
     //~^ ERROR cannot use `#[feature(const_trait_impl)]`
 }
@@ -59,8 +62,23 @@ pub const fn const_context_not_const_stable() {
 const fn stable_const_context() {
     Unstable::func();
     //~^ ERROR cannot use `#[feature(const_trait_impl)]`
+    //~| ERROR cannot use `#[feature(unstable)]`
     Foo::func();
     //~^ ERROR cannot use `#[feature(const_trait_impl)]`
+    //~| ERROR cannot use `#[feature(unstable)]`
+    const_context_not_const_stable();
+    //~^ ERROR cannot use `#[feature(local_feature)]`
+    conditionally_const::<Foo>();
+    //~^ ERROR cannot use `#[feature(const_trait_impl)]`
+}
+
+const fn implicitly_stable_const_context() {
+    Unstable::func();
+    //~^ ERROR cannot use `#[feature(const_trait_impl)]`
+    //~| ERROR cannot use `#[feature(unstable)]`
+    Foo::func();
+    //~^ ERROR cannot use `#[feature(const_trait_impl)]`
+    //~| ERROR cannot use `#[feature(unstable)]`
     const_context_not_const_stable();
     //~^ ERROR cannot use `#[feature(local_feature)]`
     conditionally_const::<Foo>();

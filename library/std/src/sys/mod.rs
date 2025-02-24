@@ -12,6 +12,8 @@ pub mod anonymous_pipe;
 pub mod backtrace;
 pub mod cmath;
 pub mod exit_guard;
+pub mod io;
+pub mod net;
 pub mod os_str;
 pub mod path;
 pub mod random;

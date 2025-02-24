@@ -308,7 +308,7 @@ A synonym for [`-C debuginfo=2`](codegen-options/index.md#debuginfo).
 <a id="option-o-optimize"></a>
 ## `-O`: optimize your code
 
-A synonym for [`-C opt-level=2`](codegen-options/index.md#opt-level).
+A synonym for [`-C opt-level=3`](codegen-options/index.md#opt-level).
 
 <a id="option-o-output"></a>
 ## `-o`: filename of the output

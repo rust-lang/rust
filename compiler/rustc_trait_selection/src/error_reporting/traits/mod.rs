@@ -11,7 +11,7 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{Applicability, Diag, E0038, E0276, MultiSpan, struct_span_code_err};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{self as hir, LangItem};
+use rustc_hir::{self as hir, AmbigArg, LangItem};
 use rustc_infer::traits::{
     DynCompatibilityViolation, Obligation, ObligationCause, ObligationCauseCode,
     PredicateObligation, SelectionError,
@@ -68,8 +68,8 @@ impl<'hir> FindExprBySpan<'hir> {
 impl<'v> Visitor<'v> for FindExprBySpan<'v> {
     type NestedFilter = rustc_middle::hir::nested_filter::OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
 
     fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
@@ -87,9 +87,9 @@ impl<'v> Visitor<'v> for FindExprBySpan<'v> {
         }
     }
 
-    fn visit_ty(&mut self, ty: &'v hir::Ty<'v>) {
+    fn visit_ty(&mut self, ty: &'v hir::Ty<'v, AmbigArg>) {
         if self.span == ty.span {
-            self.ty_result = Some(ty);
+            self.ty_result = Some(ty.as_unambig_ty());
         } else {
             hir::intravisit::walk_ty(self, ty);
         }
@@ -172,8 +172,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             {
                 1
             }
-            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => 3,
             ty::PredicateKind::Coerce(_) => 2,
+            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => 3,
             _ => 0,
         });
 
@@ -306,7 +306,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 if let ObligationCauseCode::WhereClause(..)
                 | ObligationCauseCode::WhereClauseInExpr(..) = code
                 {
-                    let mut long_ty_file = None;
                     self.note_obligation_cause_code(
                         error.obligation.cause.body_id,
                         &mut diag,
@@ -315,17 +314,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         code,
                         &mut vec![],
                         &mut Default::default(),
-                        &mut long_ty_file,
                     );
-                    if let Some(file) = long_ty_file {
-                        diag.note(format!(
-                            "the full name for the type has been written to '{}'",
-                            file.display(),
-                        ));
-                        diag.note(
-                            "consider using `--verbose` to print the full type name to the console",
-                        );
-                    }
                 }
                 diag.emit()
             }
@@ -429,7 +418,7 @@ pub fn report_dyn_incompatibility<'tcx>(
     violations: &[DynCompatibilityViolation],
 ) -> Diag<'tcx> {
     let trait_str = tcx.def_path_str(trait_def_id);
-    let trait_span = tcx.hir().get_if_local(trait_def_id).and_then(|node| match node {
+    let trait_span = tcx.hir_get_if_local(trait_def_id).and_then(|node| match node {
         hir::Node::Item(item) => Some(item.ident.span),
         _ => None,
     });
@@ -482,11 +471,10 @@ pub fn report_dyn_incompatibility<'tcx>(
     for (span, msg) in iter::zip(multi_span, messages) {
         note_span.push_span_label(span, msg);
     }
-    // FIXME(dyn_compat_renaming): Update the URL.
     err.span_note(
         note_span,
         "for a trait to be dyn compatible it needs to allow building a vtable\n\
-        for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>",
+        for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>",
     );
 
     // Only provide the help if its a local trait, otherwise it's not actionable.
@@ -599,7 +587,7 @@ fn attempt_dyn_to_impl_suggestion(tcx: TyCtxt<'_>, hir_id: Option<hir::HirId>, e
     //   `type Alias = Box<dyn DynIncompatibleTrait>;` to
     //   `type Alias = Box<impl DynIncompatibleTrait>;`
     let Some((_id, first_non_type_parent_node)) =
-        tcx.hir().parent_iter(hir_id).find(|(_id, node)| !matches!(node, hir::Node::Ty(_)))
+        tcx.hir_parent_iter(hir_id).find(|(_id, node)| !matches!(node, hir::Node::Ty(_)))
     else {
         return;
     };

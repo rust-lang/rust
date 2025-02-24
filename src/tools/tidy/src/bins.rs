@@ -134,7 +134,7 @@ mod os_impl {
             &mut |entry| {
                 let file = entry.path();
                 let extension = file.extension();
-                let scripts = ["py", "sh", "ps1"];
+                let scripts = ["py", "sh", "ps1", "woff2"];
                 if scripts.into_iter().any(|e| extension == Some(OsStr::new(e))) {
                     return;
                 }

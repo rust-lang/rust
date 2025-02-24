@@ -677,9 +677,11 @@ pub(crate) struct CannotCastToBool<'tcx> {
     pub help: CannotCastToBoolHelp,
 }
 
-#[derive(LintDiagnostic)]
+#[derive(Diagnostic)]
 #[diag(hir_typeck_cast_enum_drop)]
 pub(crate) struct CastEnumDrop<'tcx> {
+    #[primary_span]
+    pub span: Span,
     pub expr_ty: Ty<'tcx>,
     pub cast_ty: Ty<'tcx>,
 }
@@ -865,4 +867,39 @@ pub(crate) struct ReplaceCommaWithSemicolon {
     #[primary_span]
     pub comma_span: Span,
     pub descr: &'static str,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(hir_typeck_supertrait_item_shadowing)]
+pub(crate) struct SupertraitItemShadowing {
+    pub item: Symbol,
+    pub subtrait: Symbol,
+    #[subdiagnostic]
+    pub shadower: SupertraitItemShadower,
+    #[subdiagnostic]
+    pub shadowee: SupertraitItemShadowee,
+}
+
+#[derive(Subdiagnostic)]
+#[note(hir_typeck_supertrait_item_shadower)]
+pub(crate) struct SupertraitItemShadower {
+    pub subtrait: Symbol,
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum SupertraitItemShadowee {
+    #[note(hir_typeck_supertrait_item_shadowee)]
+    Labeled {
+        #[primary_span]
+        span: Span,
+        supertrait: Symbol,
+    },
+    #[note(hir_typeck_supertrait_item_multiple_shadowee)]
+    Several {
+        #[primary_span]
+        spans: MultiSpan,
+        traits: DiagSymbolList,
+    },
 }

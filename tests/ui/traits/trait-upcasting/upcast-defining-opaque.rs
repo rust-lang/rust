@@ -3,7 +3,7 @@
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@check-pass
 
-#![feature(trait_upcasting, type_alias_impl_trait)]
+#![feature(type_alias_impl_trait)]
 
 trait Super {
     type Assoc;

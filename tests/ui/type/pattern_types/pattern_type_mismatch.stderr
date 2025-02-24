@@ -1,0 +1,37 @@
+error[E0308]: mismatched types
+  --> $DIR/pattern_type_mismatch.rs:8:41
+   |
+LL | const BAD_NESTING4: pattern_type!(u8 is 'a'..='a') = todo!();
+   |                                         ^^^ expected `u8`, found `char`
+   |
+help: if you meant to write a byte literal, prefix with `b`
+   |
+LL | const BAD_NESTING4: pattern_type!(u8 is b'a'..='a') = todo!();
+   |                                         +
+
+error[E0308]: mismatched types
+  --> $DIR/pattern_type_mismatch.rs:8:47
+   |
+LL | const BAD_NESTING4: pattern_type!(u8 is 'a'..='a') = todo!();
+   |                                               ^^^ expected `u8`, found `char`
+   |
+help: if you meant to write a byte literal, prefix with `b`
+   |
+LL | const BAD_NESTING4: pattern_type!(u8 is 'a'..=b'a') = todo!();
+   |                                               +
+
+error[E0308]: mismatched types
+  --> $DIR/pattern_type_mismatch.rs:12:43
+   |
+LL | const BAD_NESTING5: pattern_type!(char is 1..=1) = todo!();
+   |                                           ^ expected `char`, found `u8`
+
+error[E0308]: mismatched types
+  --> $DIR/pattern_type_mismatch.rs:12:47
+   |
+LL | const BAD_NESTING5: pattern_type!(char is 1..=1) = todo!();
+   |                                               ^ expected `char`, found `u8`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

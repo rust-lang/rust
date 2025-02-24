@@ -1,8 +1,10 @@
 error[E0080]: evaluation of constant value failed
   --> $SRC_DIR/core/src/num/mod.rs:LL:COL
    |
-   = note: the evaluated program panicked at 'from_str_radix_int: must lie in the range `[2, 36]`', $SRC_DIR/core/src/num/mod.rs:LL:COL
+   = note: the evaluated program panicked at 'from_ascii_radix: radix must lie in the range `[2, 36]`', $SRC_DIR/core/src/num/mod.rs:LL:COL
    |
+note: inside `core::num::<impl u64>::from_ascii_radix`
+  --> $SRC_DIR/core/src/num/mod.rs:LL:COL
 note: inside `core::num::<impl u64>::from_str_radix`
   --> $SRC_DIR/core/src/num/mod.rs:LL:COL
 note: inside `_TOO_LOW`
@@ -10,13 +12,15 @@ note: inside `_TOO_LOW`
    |
 LL | const _TOO_LOW: () = { u64::from_str_radix("12345ABCD", 1); };
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: this error originates in the macro `from_str_radix` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `from_str_int_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation of constant value failed
   --> $SRC_DIR/core/src/num/mod.rs:LL:COL
    |
-   = note: the evaluated program panicked at 'from_str_radix_int: must lie in the range `[2, 36]`', $SRC_DIR/core/src/num/mod.rs:LL:COL
+   = note: the evaluated program panicked at 'from_ascii_radix: radix must lie in the range `[2, 36]`', $SRC_DIR/core/src/num/mod.rs:LL:COL
    |
+note: inside `core::num::<impl u64>::from_ascii_radix`
+  --> $SRC_DIR/core/src/num/mod.rs:LL:COL
 note: inside `core::num::<impl u64>::from_str_radix`
   --> $SRC_DIR/core/src/num/mod.rs:LL:COL
 note: inside `_TOO_HIGH`
@@ -24,7 +28,7 @@ note: inside `_TOO_HIGH`
    |
 LL | const _TOO_HIGH: () = { u64::from_str_radix("12345ABCD", 37); };
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: this error originates in the macro `from_str_radix` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `from_str_int_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

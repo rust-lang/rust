@@ -53,6 +53,7 @@
 //!     pin:
 //!     pointee: copy, send, sync, ord, hash, unpin
 //!     range:
+//!     receiver: deref
 //!     result:
 //!     send: sized
 //!     size_of: sized
@@ -513,10 +514,26 @@ pub mod ops {
             fn deref_mut(&mut self) -> &mut Self::Target;
         }
         // endregion:deref_mut
+
+        // region:receiver
+        #[lang = "receiver"]
+        pub trait Receiver {
+            #[lang = "receiver_target"]
+            type Target: ?Sized;
+        }
+
+        impl<P: ?Sized, T: ?Sized> Receiver for P
+        where
+            P: Deref<Target = T>,
+        {
+            type Target = T;
+        }
+        // endregion:receiver
     }
     pub use self::deref::{
         Deref,
         DerefMut, // :deref_mut
+        Receiver, // :receiver
     };
     // endregion:deref
 
@@ -630,18 +647,21 @@ pub mod ops {
 
         #[lang = "fn"]
         #[fundamental]
+        #[rustc_paren_sugar]
         pub trait Fn<Args: Tuple>: FnMut<Args> {
             extern "rust-call" fn call(&self, args: Args) -> Self::Output;
         }
 
         #[lang = "fn_mut"]
         #[fundamental]
+        #[rustc_paren_sugar]
         pub trait FnMut<Args: Tuple>: FnOnce<Args> {
             extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output;
         }
 
         #[lang = "fn_once"]
         #[fundamental]
+        #[rustc_paren_sugar]
         pub trait FnOnce<Args: Tuple> {
             #[lang = "fn_once_output"]
             type Output;
@@ -719,12 +739,14 @@ pub mod ops {
 
         #[lang = "async_fn"]
         #[fundamental]
+        #[rustc_paren_sugar]
         pub trait AsyncFn<Args: Tuple>: AsyncFnMut<Args> {
             extern "rust-call" fn async_call(&self, args: Args) -> Self::CallRefFuture<'_>;
         }
 
         #[lang = "async_fn_mut"]
         #[fundamental]
+        #[rustc_paren_sugar]
         pub trait AsyncFnMut<Args: Tuple>: AsyncFnOnce<Args> {
             #[lang = "call_ref_future"]
             type CallRefFuture<'a>: Future<Output = Self::Output>
@@ -735,6 +757,7 @@ pub mod ops {
 
         #[lang = "async_fn_once"]
         #[fundamental]
+        #[rustc_paren_sugar]
         pub trait AsyncFnOnce<Args: Tuple> {
             #[lang = "async_fn_once_output"]
             type Output;

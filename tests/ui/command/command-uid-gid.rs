@@ -1,8 +1,7 @@
 //@ run-pass
 //@ ignore-android
-//@ ignore-emscripten
-//@ ignore-sgx
 //@ ignore-fuchsia no '/bin/sh', '/bin/ls'
+//@ needs-subprocess
 
 #![feature(rustc_private)]
 

@@ -5,7 +5,7 @@ LL |     let test: &mut dyn Bar = &mut thing;
    |               ^^^^^^^^^^^^ `Bar` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/mention-correct-dyn-incompatible-trait.rs:4:8
    |
 LL |     fn foo<T>(&self, val: T);
@@ -23,7 +23,7 @@ LL |     let test: &mut dyn Bar = &mut thing;
    |                              ^^^^^^^^^^ `Bar` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/mention-correct-dyn-incompatible-trait.rs:4:8
    |
 LL |     fn foo<T>(&self, val: T);

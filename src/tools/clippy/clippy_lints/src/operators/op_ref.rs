@@ -190,7 +190,8 @@ fn in_impl<'tcx>(
         && let Some(generic_args) = seg.args
         && let Some(GenericArg::Type(other_ty)) = generic_args.args.last()
     {
-        Some((item.self_ty, other_ty))
+        // `_` is not permitted in impl headers
+        Some((item.self_ty, other_ty.as_unambig_ty()))
     } else {
         None
     }

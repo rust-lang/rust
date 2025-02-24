@@ -268,6 +268,8 @@ Controls the format of the output. Valid options:
 
 Writes the results of the tests to the given file.
 
+This option is deprecated.
+
 #### `--report-time`
 
 ⚠️ 🚧 This option is [unstable](#unstable-options), and requires the `-Z

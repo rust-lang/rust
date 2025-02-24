@@ -71,6 +71,10 @@ impl<'tcx> crate::MirPass<'tcx> for RenameReturnPlace {
         // The return place is always mutable.
         ret_decl.mutability = Mutability::Mut;
     }
+
+    fn is_required(&self) -> bool {
+        false
+    }
 }
 
 /// MIR that is eligible for the NRVO must fulfill two conditions:

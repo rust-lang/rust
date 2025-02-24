@@ -1,6 +1,6 @@
-//@ check-fail
 //@ compile-flags: --crate-type=lib
 //@ edition: 2021
+
 #![allow(internal_features)]
 #![feature(rustc_attrs)]
 
@@ -20,5 +20,7 @@ pub fn callee_justified() {
 
 async fn async_caller() {
     callee();
+    //~^ ERROR `callee` could not be inlined
     callee_justified();
+    //~^ ERROR `callee_justified` could not be inlined
 }

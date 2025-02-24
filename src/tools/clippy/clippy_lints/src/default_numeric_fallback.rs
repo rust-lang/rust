@@ -9,7 +9,6 @@ use rustc_hir::{
     StructTailExpr,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, FloatTy, IntTy, PolyFnSig, Ty};
 use rustc_session::declare_lint_pass;
 use std::iter;
@@ -53,11 +52,10 @@ declare_lint_pass!(DefaultNumericFallback => [DEFAULT_NUMERIC_FALLBACK]);
 
 impl<'tcx> LateLintPass<'tcx> for DefaultNumericFallback {
     fn check_body(&mut self, cx: &LateContext<'tcx>, body: &Body<'tcx>) {
-        let hir = cx.tcx.hir();
         // NOTE: this is different from `clippy_utils::is_inside_always_const_context`.
         // Inline const supports type inference.
         let is_parent_const = matches!(
-            hir.body_const_context(hir.body_owner_def_id(body.id())),
+            cx.tcx.hir_body_const_context(cx.tcx.hir_body_owner_def_id(body.id())),
             Some(ConstContext::Const { inline: false } | ConstContext::Static(_))
         );
         let mut visitor = NumericFallbackVisitor::new(cx, is_parent_const);
@@ -86,7 +84,7 @@ impl<'a, 'tcx> NumericFallbackVisitor<'a, 'tcx> {
 
     /// Check whether a passed literal has potential to cause fallback or not.
     fn check_lit(&self, lit: &Lit, lit_ty: Ty<'tcx>, emit_hir_id: HirId) {
-        if !in_external_macro(self.cx.sess(), lit.span)
+        if !lit.span.in_external_macro(self.cx.sess().source_map())
             && matches!(self.ty_bounds.last(), Some(ExplicitTyBound(false)))
             && matches!(
                 lit.node,
@@ -223,19 +221,17 @@ impl<'tcx> Visitor<'tcx> for NumericFallbackVisitor<'_, 'tcx> {
     }
 
     fn visit_pat(&mut self, pat: &'tcx Pat<'_>) {
-        match pat.kind {
-            PatKind::Expr(&PatExpr {
-                hir_id,
-                kind: PatExprKind::Lit { lit, .. },
-                ..
-            }) => {
-                let ty = self.cx.typeck_results().node_type(hir_id);
-                self.check_lit(lit, ty, hir_id);
-                return;
-            },
-            _ => {},
+        if let PatKind::Expr(&PatExpr {
+            hir_id,
+            kind: PatExprKind::Lit { lit, .. },
+            ..
+        }) = pat.kind
+        {
+            let ty = self.cx.typeck_results().node_type(hir_id);
+            self.check_lit(lit, ty, hir_id);
+            return;
         }
-        walk_pat(self, pat)
+        walk_pat(self, pat);
     }
 
     fn visit_stmt(&mut self, stmt: &'tcx Stmt<'_>) {

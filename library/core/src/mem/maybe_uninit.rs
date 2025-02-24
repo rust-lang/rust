@@ -98,7 +98,7 @@ use crate::{fmt, intrinsics, ptr, slice};
 ///
 /// unsafe fn make_vec(out: *mut Vec<i32>) {
 ///     // `write` does not drop the old contents, which is important.
-///     out.write(vec![1, 2, 3]);
+///     unsafe { out.write(vec![1, 2, 3]); }
 /// }
 ///
 /// let mut v = MaybeUninit::uninit();
@@ -276,10 +276,9 @@ impl<T: Copy> Clone for MaybeUninit<T> {
 impl<T> fmt::Debug for MaybeUninit<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // NB: there is no `.pad_fmt` so we can't use a simpler `format_args!("MaybeUninit<{..}>").
-        // This needs to be adjusted if `MaybeUninit` moves modules.
         let full_name = type_name::<Self>();
-        let short_name = full_name.split_once("mem::maybe_uninit::").unwrap().1;
-        f.pad(short_name)
+        let prefix_len = full_name.find("MaybeUninit").unwrap();
+        f.pad(&full_name[prefix_len..])
     }
 }
 
@@ -346,7 +345,7 @@ impl<T> MaybeUninit<T> {
     ///
     /// use std::mem::MaybeUninit;
     ///
-    /// extern "C" {
+    /// unsafe extern "C" {
     ///     fn read_into_buffer(ptr: *mut u8, max_len: usize) -> usize;
     /// }
     ///
@@ -845,7 +844,7 @@ impl<T> MaybeUninit<T> {
     /// # #![allow(unexpected_cfgs)]
     /// use std::mem::MaybeUninit;
     ///
-    /// # unsafe extern "C" fn initialize_buffer(buf: *mut [u8; 1024]) { *buf = [0; 1024] }
+    /// # unsafe extern "C" fn initialize_buffer(buf: *mut [u8; 1024]) { unsafe { *buf = [0; 1024] } }
     /// # #[cfg(FALSE)]
     /// extern "C" {
     ///     /// Initializes *all* the bytes of the input buffer.

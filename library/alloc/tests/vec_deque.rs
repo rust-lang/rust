@@ -81,6 +81,45 @@ fn test_parameterized<T: Clone + PartialEq + Debug>(a: T, b: T, c: T, d: T) {
 }
 
 #[test]
+fn test_pop_if() {
+    let mut deq: VecDeque<_> = vec![0, 1, 2, 3, 4].into();
+    let pred = |x: &mut i32| *x % 2 == 0;
+
+    assert_eq!(deq.pop_front_if(pred), Some(0));
+    assert_eq!(deq, [1, 2, 3, 4]);
+
+    assert_eq!(deq.pop_front_if(pred), None);
+    assert_eq!(deq, [1, 2, 3, 4]);
+
+    assert_eq!(deq.pop_back_if(pred), Some(4));
+    assert_eq!(deq, [1, 2, 3]);
+
+    assert_eq!(deq.pop_back_if(pred), None);
+    assert_eq!(deq, [1, 2, 3]);
+}
+
+#[test]
+fn test_pop_if_empty() {
+    let mut deq = VecDeque::<i32>::new();
+    assert_eq!(deq.pop_front_if(|_| true), None);
+    assert_eq!(deq.pop_back_if(|_| true), None);
+    assert!(deq.is_empty());
+}
+
+#[test]
+fn test_pop_if_mutates() {
+    let mut v: VecDeque<_> = vec![-1, 1].into();
+    let pred = |x: &mut i32| {
+        *x *= 2;
+        false
+    };
+    assert_eq!(v.pop_front_if(pred), None);
+    assert_eq!(v, [-2, 1]);
+    assert_eq!(v.pop_back_if(pred), None);
+    assert_eq!(v, [-2, 2]);
+}
+
+#[test]
 fn test_push_front_grow() {
     let mut deq = VecDeque::new();
     for i in 0..66 {

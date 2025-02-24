@@ -6,7 +6,7 @@ use std::io::ErrorKind;
 
 use rustc_abi::Size;
 
-use crate::helpers::check_min_arg_count;
+use crate::helpers::check_min_vararg_count;
 use crate::shims::files::FileDescription;
 use crate::shims::unix::linux_like::epoll::EpollReadyEvents;
 use crate::shims::unix::*;
@@ -30,8 +30,8 @@ pub trait UnixFileDescription: FileDescription {
         _offset: u64,
         _ptr: Pointer,
         _len: usize,
-        _dest: &MPlaceTy<'tcx>,
         _ecx: &mut MiriInterpCx<'tcx>,
+        _finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
         throw_unsup_format!("cannot pread from {}", self.name());
     }
@@ -46,8 +46,8 @@ pub trait UnixFileDescription: FileDescription {
         _ptr: Pointer,
         _len: usize,
         _offset: u64,
-        _dest: &MPlaceTy<'tcx>,
         _ecx: &mut MiriInterpCx<'tcx>,
+        _finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
         throw_unsup_format!("cannot pwrite to {}", self.name());
     }
@@ -127,10 +127,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(Scalar::from_i32(this.try_unwrap_io_result(result)?))
     }
 
-    fn fcntl(&mut self, args: &[OpTy<'tcx>]) -> InterpResult<'tcx, Scalar> {
+    fn fcntl(
+        &mut self,
+        fd_num: &OpTy<'tcx>,
+        cmd: &OpTy<'tcx>,
+        varargs: &[OpTy<'tcx>],
+    ) -> InterpResult<'tcx, Scalar> {
         let this = self.eval_context_mut();
-
-        let [fd_num, cmd] = check_min_arg_count("fcntl", args)?;
 
         let fd_num = this.read_scalar(fd_num)?.to_i32()?;
         let cmd = this.read_scalar(cmd)?.to_i32()?;
@@ -163,7 +166,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "fcntl(fd, F_DUPFD_CLOEXEC, ...)"
                 };
 
-                let [_, _, start] = check_min_arg_count(cmd_name, args)?;
+                let [start] = check_min_vararg_count(cmd_name, varargs)?;
                 let start = this.read_scalar(start)?.to_i32()?;
 
                 if let Some(fd) = this.machine.fds.get(fd_num) {
@@ -233,7 +236,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let count = usize::try_from(count).unwrap(); // now it fits in a `usize`
         let communicate = this.machine.communicate();
 
-        // We temporarily dup the FD to be able to retain mutable access to `this`.
+        // Get the FD.
         let Some(fd) = this.machine.fds.get(fd_num) else {
             trace!("read: FD not found");
             return this.set_last_error_and_return(LibcError("EBADF"), dest);
@@ -244,13 +247,33 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // because it was a target's `usize`. Also we are sure that its smaller than
         // `usize::MAX` because it is bounded by the host's `isize`.
 
+        let finish = {
+            let dest = dest.clone();
+            callback!(
+                @capture<'tcx> {
+                    count: usize,
+                    dest: MPlaceTy<'tcx>,
+                }
+                |this, result: Result<usize, IoError>| {
+                    match result {
+                        Ok(read_size) => {
+                            assert!(read_size <= count);
+                            // This must fit since `count` fits.
+                            this.write_int(u64::try_from(read_size).unwrap(), &dest)
+                        }
+                        Err(e) => {
+                            this.set_last_error_and_return(e, &dest)
+                        }
+                }}
+            )
+        };
         match offset {
-            None => fd.read(communicate, buf, count, dest, this)?,
+            None => fd.read(communicate, buf, count, this, finish)?,
             Some(offset) => {
                 let Ok(offset) = u64::try_from(offset) else {
                     return this.set_last_error_and_return(LibcError("EINVAL"), dest);
                 };
-                fd.as_unix().pread(communicate, offset, buf, count, dest, this)?
+                fd.as_unix().pread(communicate, offset, buf, count, this, finish)?
             }
         };
         interp_ok(())
@@ -284,13 +307,33 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return this.set_last_error_and_return(LibcError("EBADF"), dest);
         };
 
+        let finish = {
+            let dest = dest.clone();
+            callback!(
+                @capture<'tcx> {
+                    count: usize,
+                    dest: MPlaceTy<'tcx>,
+                }
+                |this, result: Result<usize, IoError>| {
+                    match result {
+                        Ok(write_size) => {
+                            assert!(write_size <= count);
+                            // This must fit since `count` fits.
+                            this.write_int(u64::try_from(write_size).unwrap(), &dest)
+                        }
+                        Err(e) => {
+                            this.set_last_error_and_return(e, &dest)
+                        }
+                }}
+            )
+        };
         match offset {
-            None => fd.write(communicate, buf, count, dest, this)?,
+            None => fd.write(communicate, buf, count, this, finish)?,
             Some(offset) => {
                 let Ok(offset) = u64::try_from(offset) else {
                     return this.set_last_error_and_return(LibcError("EINVAL"), dest);
                 };
-                fd.as_unix().pwrite(communicate, buf, count, offset, dest, this)?
+                fd.as_unix().pwrite(communicate, buf, count, offset, this, finish)?
             }
         };
         interp_ok(())

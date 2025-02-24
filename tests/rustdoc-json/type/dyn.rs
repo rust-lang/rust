@@ -10,7 +10,7 @@ use std::fmt::Debug;
 //@ has    "$.index[*][?(@.name=='SyncIntGen')].inner.type_alias"
 //@ is    "$.index[*][?(@.name=='SyncIntGen')].inner.type_alias.generics" '{"params": [], "where_predicates": []}'
 //@ has    "$.index[*][?(@.name=='SyncIntGen')].inner.type_alias.type.resolved_path"
-//@ is    "$.index[*][?(@.name=='SyncIntGen')].inner.type_alias.type.resolved_path.name" \"Box\"
+//@ is    "$.index[*][?(@.name=='SyncIntGen')].inner.type_alias.type.resolved_path.path" \"Box\"
 //@ is    "$.index[*][?(@.name=='SyncIntGen')].inner.type_alias.type.resolved_path.args.angle_bracketed.constraints" []
 //@ count "$.index[*][?(@.name=='SyncIntGen')].inner.type_alias.type.resolved_path.args.angle_bracketed.args" 1
 //@ has    "$.index[*][?(@.name=='SyncIntGen')].inner.type_alias.type.resolved_path.args.angle_bracketed.args[0].type.dyn_trait"
@@ -19,9 +19,9 @@ use std::fmt::Debug;
 //@ is    "$.index[*][?(@.name=='SyncIntGen')].inner.type_alias.type.resolved_path.args.angle_bracketed.args[0].type.dyn_trait.traits[0].generic_params" []
 //@ is    "$.index[*][?(@.name=='SyncIntGen')].inner.type_alias.type.resolved_path.args.angle_bracketed.args[0].type.dyn_trait.traits[1].generic_params" []
 //@ is    "$.index[*][?(@.name=='SyncIntGen')].inner.type_alias.type.resolved_path.args.angle_bracketed.args[0].type.dyn_trait.traits[2].generic_params" []
-//@ is    "$.index[*][?(@.name=='SyncIntGen')].inner.type_alias.type.resolved_path.args.angle_bracketed.args[0].type.dyn_trait.traits[0].trait.name" '"Fn"'
-//@ is    "$.index[*][?(@.name=='SyncIntGen')].inner.type_alias.type.resolved_path.args.angle_bracketed.args[0].type.dyn_trait.traits[1].trait.name" '"Send"'
-//@ is    "$.index[*][?(@.name=='SyncIntGen')].inner.type_alias.type.resolved_path.args.angle_bracketed.args[0].type.dyn_trait.traits[2].trait.name" '"Sync"'
+//@ is    "$.index[*][?(@.name=='SyncIntGen')].inner.type_alias.type.resolved_path.args.angle_bracketed.args[0].type.dyn_trait.traits[0].trait.path" '"Fn"'
+//@ is    "$.index[*][?(@.name=='SyncIntGen')].inner.type_alias.type.resolved_path.args.angle_bracketed.args[0].type.dyn_trait.traits[1].trait.path" '"Send"'
+//@ is    "$.index[*][?(@.name=='SyncIntGen')].inner.type_alias.type.resolved_path.args.angle_bracketed.args[0].type.dyn_trait.traits[2].trait.path" '"Sync"'
 //@ is    "$.index[*][?(@.name=='SyncIntGen')].inner.type_alias.type.resolved_path.args.angle_bracketed.args[0].type.dyn_trait.traits[0].trait.args" '{"parenthesized": {"inputs": [],"output": {"primitive": "i32"}}}'
 pub type SyncIntGen = Box<dyn Fn() -> i32 + Send + Sync + 'static>;
 
@@ -34,13 +34,13 @@ pub type SyncIntGen = Box<dyn Fn() -> i32 + Send + Sync + 'static>;
 //@ is "$.index[*][?(@.name=='RefFn')].inner.type_alias.type.borrowed_ref.type.dyn_trait.lifetime" null
 //@ count "$.index[*][?(@.name=='RefFn')].inner.type_alias.type.borrowed_ref.type.dyn_trait.traits[*]" 1
 //@ is "$.index[*][?(@.name=='RefFn')].inner.type_alias.type.borrowed_ref.type.dyn_trait.traits[0].generic_params" '[{"kind": {"lifetime": {"outlives": []}},"name": "'\''b"}]'
-//@ is "$.index[*][?(@.name=='RefFn')].inner.type_alias.type.borrowed_ref.type.dyn_trait.traits[0].trait.name" '"Fn"'
+//@ is "$.index[*][?(@.name=='RefFn')].inner.type_alias.type.borrowed_ref.type.dyn_trait.traits[0].trait.path" '"Fn"'
 //@ has "$.index[*][?(@.name=='RefFn')].inner.type_alias.type.borrowed_ref.type.dyn_trait.traits[0].trait.args.parenthesized.inputs[0].borrowed_ref"
 //@ is "$.index[*][?(@.name=='RefFn')].inner.type_alias.type.borrowed_ref.type.dyn_trait.traits[0].trait.args.parenthesized.inputs[0].borrowed_ref.lifetime" "\"'b\""
 //@ has "$.index[*][?(@.name=='RefFn')].inner.type_alias.type.borrowed_ref.type.dyn_trait.traits[0].trait.args.parenthesized.output.borrowed_ref"
 //@ is "$.index[*][?(@.name=='RefFn')].inner.type_alias.type.borrowed_ref.type.dyn_trait.traits[0].trait.args.parenthesized.output.borrowed_ref.lifetime" "\"'b\""
 pub type RefFn<'a> = &'a dyn for<'b> Fn(&'b i32) -> &'b i32;
 
-//@ is    "$.index[*][?(@.name=='WeirdOrder')].inner.type_alias.type.resolved_path.args.angle_bracketed.args[0].type.dyn_trait.traits[0].trait.name" '"Send"'
-//@ is    "$.index[*][?(@.name=='WeirdOrder')].inner.type_alias.type.resolved_path.args.angle_bracketed.args[0].type.dyn_trait.traits[1].trait.name" '"Debug"'
+//@ is    "$.index[*][?(@.name=='WeirdOrder')].inner.type_alias.type.resolved_path.args.angle_bracketed.args[0].type.dyn_trait.traits[0].trait.path" '"Send"'
+//@ is    "$.index[*][?(@.name=='WeirdOrder')].inner.type_alias.type.resolved_path.args.angle_bracketed.args[0].type.dyn_trait.traits[1].trait.path" '"Debug"'
 pub type WeirdOrder = Box<dyn Send + Debug>;

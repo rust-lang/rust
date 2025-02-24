@@ -67,7 +67,6 @@ use rustc_middle::ty::{
     self, GenericArgKind, GenericArgsRef, PolyTypeOutlivesPredicate, Region, Ty, TyCtxt,
     TypeFoldable as _, TypeVisitableExt,
 };
-use rustc_span::DUMMY_SP;
 use rustc_type_ir::outlives::{Component, push_outlives_components};
 use smallvec::smallvec;
 use tracing::{debug, instrument};
@@ -101,16 +100,20 @@ impl<'tcx> InferCtxt<'tcx> {
     ) {
         debug!(?sup_type, ?sub_region, ?cause);
         let origin = SubregionOrigin::from_obligation_cause(cause, || {
-            infer::RelateParamBound(cause.span, sup_type, match cause.code().peel_derives() {
-                ObligationCauseCode::WhereClause(_, span)
-                | ObligationCauseCode::WhereClauseInExpr(_, span, ..)
-                | ObligationCauseCode::OpaqueTypeBound(span, _)
-                    if !span.is_dummy() =>
-                {
-                    Some(*span)
-                }
-                _ => None,
-            })
+            infer::RelateParamBound(
+                cause.span,
+                sup_type,
+                match cause.code().peel_derives() {
+                    ObligationCauseCode::WhereClause(_, span)
+                    | ObligationCauseCode::WhereClauseInExpr(_, span, ..)
+                    | ObligationCauseCode::OpaqueTypeBound(span, _)
+                        if !span.is_dummy() =>
+                    {
+                        Some(*span)
+                    }
+                    _ => None,
+                },
+            )
         });
 
         self.register_region_obligation(RegionObligation { sup_type, sub_region, origin });
@@ -141,25 +144,6 @@ impl<'tcx> InferCtxt<'tcx> {
             -> Result<PolyTypeOutlivesPredicate<'tcx>, NoSolution>,
     ) -> Result<(), (PolyTypeOutlivesPredicate<'tcx>, SubregionOrigin<'tcx>)> {
         assert!(!self.in_snapshot(), "cannot process registered region obligations in a snapshot");
-
-        let normalized_caller_bounds: Vec<_> = outlives_env
-            .param_env
-            .caller_bounds()
-            .iter()
-            .filter_map(|clause| {
-                let outlives = clause.as_type_outlives_clause()?;
-                Some(
-                    deeply_normalize_ty(
-                        outlives,
-                        SubregionOrigin::AscribeUserTypeProvePredicate(DUMMY_SP),
-                    )
-                    // FIXME(-Znext-solver): How do we accurately report an error span here :(
-                    .map_err(|NoSolution| {
-                        (outlives, SubregionOrigin::AscribeUserTypeProvePredicate(DUMMY_SP))
-                    }),
-                )
-            })
-            .try_collect()?;
 
         // Must loop since the process of normalizing may itself register region obligations.
         for iteration in 0.. {
@@ -194,7 +178,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     self.tcx,
                     outlives_env.region_bound_pairs(),
                     None,
-                    &normalized_caller_bounds,
+                    outlives_env.known_type_outlives(),
                 );
                 let category = origin.to_constraint_category();
                 outlives.type_must_outlive(origin, sup_type, sub_region, category);
@@ -412,13 +396,13 @@ where
         // the problem is to add `T: 'r`, which isn't true. So, if there are no
         // inference variables, we use a verify constraint instead of adding
         // edges, which winds up enforcing the same condition.
-        let is_opaque = alias_ty.kind(self.tcx) == ty::Opaque;
+        let kind = alias_ty.kind(self.tcx);
         if approx_env_bounds.is_empty()
             && trait_bounds.is_empty()
-            && (alias_ty.has_infer_regions() || is_opaque)
+            && (alias_ty.has_infer_regions() || kind == ty::Opaque)
         {
             debug!("no declared bounds");
-            let opt_variances = is_opaque.then(|| self.tcx.variances_of(alias_ty.def_id));
+            let opt_variances = self.tcx.opt_alias_variances(kind, alias_ty.def_id);
             self.args_must_outlive(alias_ty.args, origin, region, opt_variances);
             return;
         }

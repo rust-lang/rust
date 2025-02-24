@@ -84,6 +84,6 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_from: Ty<'_>, ca
             diag
                 .note("`usize` and `isize` may be as small as 16 bits on some platforms")
                 .note("for more information see https://doc.rust-lang.org/reference/types/numeric.html#machine-dependent-integer-types");
-        };
+        }
     });
 }

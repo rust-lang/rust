@@ -300,7 +300,9 @@ fn run_ui_cargo(cx: &TestContext) {
 }
 
 fn main() {
-    set_var("CLIPPY_DISABLE_DOCS_LINKS", "true");
+    unsafe {
+        set_var("CLIPPY_DISABLE_DOCS_LINKS", "true");
+    }
 
     let cx = TestContext::new();
 

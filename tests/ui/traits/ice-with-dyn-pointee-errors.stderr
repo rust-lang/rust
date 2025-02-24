@@ -2,7 +2,7 @@ error[E0271]: type mismatch resolving `<dyn Pointee<Metadata = ()> as Pointee>::
   --> $DIR/ice-with-dyn-pointee-errors.rs:9:33
    |
 LL |     unknown_sized_object_ptr_in(x)
-   |     --------------------------- ^ expected `()`, found `DynMetadata<dyn Pointee<Metadata = ...>>`
+   |     --------------------------- ^ expected `()`, found `DynMetadata<dyn Pointee<Metadata = ()>>`
    |     |
    |     required by a bound introduced by this call
    |

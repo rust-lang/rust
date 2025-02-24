@@ -3,7 +3,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::cell::{Cell, Ref, RefCell, RefMut, SyncUnsafeCell, UnsafeCell};
-use crate::char::EscapeDebugExtArgs;
+use crate::char::{EscapeDebugExtArgs, MAX_LEN_UTF8};
 use crate::marker::PhantomData;
 use crate::num::fmt as numfmt;
 use crate::ops::Deref;
@@ -187,7 +187,7 @@ pub trait Write {
     /// ```
     #[stable(feature = "fmt_write_char", since = "1.1.0")]
     fn write_char(&mut self, c: char) -> Result {
-        self.write_str(c.encode_utf8(&mut [0; 4]))
+        self.write_str(c.encode_utf8(&mut [0; MAX_LEN_UTF8]))
     }
 
     /// Glue for usage of the [`write!`] macro with implementors of this trait.
@@ -288,7 +288,7 @@ pub enum DebugAsHex {
 ///
 /// `FormattingOptions` is a [`Formatter`] without an attached [`Write`] trait.
 /// It is mainly used to construct `Formatter` instances.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[unstable(feature = "formatting_options", issue = "118117")]
 pub struct FormattingOptions {
     flags: u32,
@@ -505,6 +505,15 @@ impl FormattingOptions {
     /// Flags for formatting
     pub fn get_flags(&self) -> u32 {
         self.flags
+    }
+}
+
+#[unstable(feature = "formatting_options", issue = "118117")]
+impl Default for FormattingOptions {
+    /// Same as [`FormattingOptions::new()`].
+    fn default() -> Self {
+        // The `#[derive(Default)]` implementation would set `fill` to `\0` instead of space.
+        Self::new()
     }
 }
 
@@ -2759,7 +2768,7 @@ impl Display for char {
         if f.options.width.is_none() && f.options.precision.is_none() {
             f.write_char(*self)
         } else {
-            f.pad(self.encode_utf8(&mut [0; 4]))
+            f.pad(self.encode_utf8(&mut [0; MAX_LEN_UTF8]))
         }
     }
 }

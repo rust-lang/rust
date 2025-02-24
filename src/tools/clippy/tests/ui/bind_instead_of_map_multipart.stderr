@@ -11,8 +11,9 @@ LL | #![deny(clippy::bind_instead_of_map)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: use `map` instead
    |
-LL |     let _ = Some("42").map(|s| if s.len() < 42 { 0 } else { s.len() });
-   |                        ~~~                       ~          ~~~~~~~
+LL -     let _ = Some("42").and_then(|s| if s.len() < 42 { Some(0) } else { Some(s.len()) });
+LL +     let _ = Some("42").map(|s| if s.len() < 42 { 0 } else { s.len() });
+   |
 
 error: using `Result.and_then(|x| Ok(y))`, which is more succinctly expressed as `map(|x| y)`
   --> tests/ui/bind_instead_of_map_multipart.rs:8:13
@@ -22,8 +23,9 @@ LL |     let _ = Ok::<_, ()>("42").and_then(|s| if s.len() < 42 { Ok(0) } else {
    |
 help: use `map` instead
    |
-LL |     let _ = Ok::<_, ()>("42").map(|s| if s.len() < 42 { 0 } else { s.len() });
-   |                               ~~~                       ~          ~~~~~~~
+LL -     let _ = Ok::<_, ()>("42").and_then(|s| if s.len() < 42 { Ok(0) } else { Ok(s.len()) });
+LL +     let _ = Ok::<_, ()>("42").map(|s| if s.len() < 42 { 0 } else { s.len() });
+   |
 
 error: using `Result.or_else(|x| Err(y))`, which is more succinctly expressed as `map_err(|x| y)`
   --> tests/ui/bind_instead_of_map_multipart.rs:11:13
@@ -33,8 +35,9 @@ LL |     let _ = Err::<(), _>("42").or_else(|s| if s.len() < 42 { Err(s.len() + 
    |
 help: use `map_err` instead
    |
-LL |     let _ = Err::<(), _>("42").map_err(|s| if s.len() < 42 { s.len() + 20 } else { s.len() });
-   |                                ~~~~~~~                       ~~~~~~~~~~~~          ~~~~~~~
+LL -     let _ = Err::<(), _>("42").or_else(|s| if s.len() < 42 { Err(s.len() + 20) } else { Err(s.len()) });
+LL +     let _ = Err::<(), _>("42").map_err(|s| if s.len() < 42 { s.len() + 20 } else { s.len() });
+   |
 
 error: using `Option.and_then(|x| Some(y))`, which is more succinctly expressed as `map(|x| y)`
   --> tests/ui/bind_instead_of_map_multipart.rs:19:5
@@ -83,8 +86,9 @@ LL |     let _ = Some("").and_then(|s| if s.len() == 20 { Some(m!()) } else { So
    |
 help: use `map` instead
    |
-LL |     let _ = Some("").map(|s| if s.len() == 20 { m!() } else { Some(20) });
-   |                      ~~~                        ~~~~          ~~~~~~~~
+LL -     let _ = Some("").and_then(|s| if s.len() == 20 { Some(m!()) } else { Some(Some(20)) });
+LL +     let _ = Some("").map(|s| if s.len() == 20 { m!() } else { Some(20) });
+   |
 
 error: aborting due to 5 previous errors
 

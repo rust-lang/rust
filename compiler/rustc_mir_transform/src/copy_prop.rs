@@ -56,6 +56,10 @@ impl<'tcx> crate::MirPass<'tcx> for CopyProp {
             crate::simplify::remove_unused_definitions(body);
         }
     }
+
+    fn is_required(&self) -> bool {
+        false
+    }
 }
 
 /// `SsaLocals` computed equivalence classes between locals considering copy/move assignments.

@@ -200,15 +200,12 @@ impl<'tcx> Children {
     }
 }
 
-fn iter_children(children: &Children) -> impl Iterator<Item = DefId> + '_ {
+fn iter_children(children: &Children) -> impl Iterator<Item = DefId> {
     let nonblanket = children.non_blanket_impls.iter().flat_map(|(_, v)| v.iter());
     children.blanket_impls.iter().chain(nonblanket).cloned()
 }
 
-fn filtered_children(
-    children: &mut Children,
-    st: SimplifiedType,
-) -> impl Iterator<Item = DefId> + '_ {
+fn filtered_children(children: &mut Children, st: SimplifiedType) -> impl Iterator<Item = DefId> {
     let nonblanket = children.non_blanket_impls.entry(st).or_default().iter();
     children.blanket_impls.iter().chain(nonblanket).cloned()
 }
@@ -379,7 +376,7 @@ pub(crate) fn assoc_def(
         // Ensure that the impl is constrained, otherwise projection may give us
         // bad unconstrained infer vars.
         if let Some(impl_def_id) = impl_def_id.as_local() {
-            tcx.ensure().enforce_impl_non_lifetime_params_are_constrained(impl_def_id)?;
+            tcx.ensure_ok().enforce_impl_non_lifetime_params_are_constrained(impl_def_id)?;
         }
 
         let item = tcx.associated_item(impl_item_id);
@@ -402,7 +399,7 @@ pub(crate) fn assoc_def(
         if assoc_item.item.container == ty::AssocItemContainer::Impl
             && let Some(impl_def_id) = assoc_item.item.container_id(tcx).as_local()
         {
-            tcx.ensure().enforce_impl_non_lifetime_params_are_constrained(impl_def_id)?;
+            tcx.ensure_ok().enforce_impl_non_lifetime_params_are_constrained(impl_def_id)?;
         }
 
         Ok(assoc_item)

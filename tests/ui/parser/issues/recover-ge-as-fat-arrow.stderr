@@ -17,8 +17,9 @@ LL |         _ => { let _: u16 = 2u8; }
    |
 help: change the type of the numeric literal from `u8` to `u16`
    |
-LL |         _ => { let _: u16 = 2u16; }
-   |                              ~~~
+LL -         _ => { let _: u16 = 2u8; }
+LL +         _ => { let _: u16 = 2u16; }
+   |
 
 error: aborting due to 2 previous errors
 

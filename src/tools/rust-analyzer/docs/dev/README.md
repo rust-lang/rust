@@ -269,19 +269,13 @@ Note: we tag releases by dates, releasing a patch release on the same day should
 
 ## Permissions
 
-There are three sets of people with extra permissions:
+There are two sets of people with extra permissions:
 
-* rust-analyzer GitHub organization [**admins**](https://github.com/orgs/rust-analyzer/people?query=role:owner) (which include current t-compiler leads).
-  Admins have full access to the org.
-* [**review**](https://github.com/orgs/rust-analyzer/teams/review) team in the organization.
-  Reviewers have `r+` access to all of organization's repositories and publish rights on crates.io.
-  They also have direct commit access, but all changes should via bors queue.
+* The [rust-lang](https://github.com/rust-lang) team [t-rust-analyzer](https://github.com/rust-lang/team/blob/master/teams/rust-analyzer.toml).
+  This team has write access to the repository and merge queue permissions (note the repo itself is managed by infra admins).
   It's ok to self-approve if you think you know what you are doing!
-  bors should automatically sync the permissions.
   Feel free to request a review or assign any PR to a reviewer with the relevant expertise to bring the work to their attention.
   Don't feel pressured to review assigned PRs though.
-  If you don't feel like reviewing for whatever reason, someone else will pick the review up!
-* [**triage**](https://github.com/orgs/rust-analyzer/teams/triage) team in the organization.
-  This team can label and close issues.
-
-Note that at the time being you need to be a member of the org yourself to view the links.
+  If you don't feel like reviewing for whatever reason, someone else will pick the review up (but please speak up if you don't feel like it)!
+* The [rust-lang](https://github.com/rust-lang) team [t-rust-analyzer-contributors]([https://github.com/orgs/rust-analyzer/teams/triage](https://github.com/rust-lang/team/blob/master/teams/rust-analyzer-contributors.toml)).
+  This team has general triaging permissions allowing to label, close and re-open issues.

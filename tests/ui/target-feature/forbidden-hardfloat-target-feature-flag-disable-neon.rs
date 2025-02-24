@@ -3,6 +3,7 @@
 //@ compile-flags: -Ctarget-feature=-neon
 // For now this is just a warning.
 //@ build-pass
+//@error-pattern: must be enabled to ensure that the ABI
 #![feature(no_core, lang_items)]
 #![no_core]
 

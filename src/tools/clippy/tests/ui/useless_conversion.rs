@@ -342,3 +342,56 @@ fn gen_identity<T>(x: [T; 3]) -> Vec<T> {
     x.into_iter().map(Into::into).collect()
     //~^ useless_conversion
 }
+
+mod issue11819 {
+    fn takes_into_iter(_: impl IntoIterator<Item = String>) {}
+
+    pub struct MyStruct<T> {
+        my_field: T,
+    }
+
+    impl<T> MyStruct<T> {
+        pub fn with_ref<'a>(&'a mut self)
+        where
+            &'a T: IntoIterator<Item = String>,
+        {
+            takes_into_iter(self.my_field.into_iter());
+            //~^ useless_conversion
+        }
+
+        pub fn with_ref_mut<'a>(&'a mut self)
+        where
+            &'a mut T: IntoIterator<Item = String>,
+        {
+            takes_into_iter(self.my_field.into_iter());
+            //~^ useless_conversion
+        }
+
+        pub fn with_deref<Y>(&mut self)
+        where
+            T: std::ops::Deref<Target = Y>,
+            Y: IntoIterator<Item = String> + Copy,
+        {
+            takes_into_iter(self.my_field.into_iter());
+            //~^ useless_conversion
+        }
+
+        pub fn with_reborrow<'a, Y: 'a>(&'a mut self)
+        where
+            T: std::ops::Deref<Target = Y>,
+            &'a Y: IntoIterator<Item = String>,
+        {
+            takes_into_iter(self.my_field.into_iter());
+            //~^ useless_conversion
+        }
+
+        pub fn with_reborrow_mut<'a, Y: 'a>(&'a mut self)
+        where
+            T: std::ops::Deref<Target = Y> + std::ops::DerefMut,
+            &'a mut Y: IntoIterator<Item = String>,
+        {
+            takes_into_iter(self.my_field.into_iter());
+            //~^ useless_conversion
+        }
+    }
+}

@@ -1,6 +1,6 @@
 //@ run-fail
 //@ error-pattern:explicit panic
-//@ ignore-emscripten no processes
+//@ needs-subprocess
 
 #![allow(unreachable_code)]
 #![allow(unused_variables)]

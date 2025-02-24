@@ -1,8 +1,7 @@
 //@ run-pass
 
-//@ ignore-windows - this is a unix-specific test
-//@ ignore-wasm32 no processes
-//@ ignore-sgx no processes
+//@ only-unix (this is a unix-specific test)
+//@ needs-subprocess
 use std::env;
 use std::os::unix::process::CommandExt;
 use std::process::Command;

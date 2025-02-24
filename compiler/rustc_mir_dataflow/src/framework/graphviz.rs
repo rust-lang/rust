@@ -670,10 +670,10 @@ where
                 r#"<td colspan="{colspan}" {fmt} align="left">{state}</td>"#,
                 colspan = this.style.num_state_columns(),
                 fmt = fmt,
-                state = dot::escape_html(&format!("{:?}", DebugWithAdapter {
-                    this: state,
-                    ctxt: analysis
-                })),
+                state = dot::escape_html(&format!(
+                    "{:?}",
+                    DebugWithAdapter { this: state, ctxt: analysis }
+                )),
             )
         })
     }

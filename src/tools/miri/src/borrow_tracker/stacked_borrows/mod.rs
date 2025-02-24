@@ -865,7 +865,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         let new_perm = NewPermission::from_ref_ty(val.layout.ty, kind, this);
         let cause = match kind {
-            RetagKind::TwoPhase { .. } => RetagCause::TwoPhase,
+            RetagKind::TwoPhase => RetagCause::TwoPhase,
             RetagKind::FnEntry => unreachable!(),
             RetagKind::Raw | RetagKind::Default => RetagCause::Normal,
         };
@@ -880,7 +880,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         let retag_fields = this.machine.borrow_tracker.as_mut().unwrap().get_mut().retag_fields;
         let retag_cause = match kind {
-            RetagKind::TwoPhase { .. } => unreachable!(), // can only happen in `retag_ptr_value`
+            RetagKind::TwoPhase => unreachable!(), // can only happen in `retag_ptr_value`
             RetagKind::FnEntry => RetagCause::FnEntry,
             RetagKind::Default | RetagKind::Raw => RetagCause::Normal,
         };
@@ -904,10 +904,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 new_perm: NewPermission,
             ) -> InterpResult<'tcx> {
                 let val = self.ecx.read_immediate(&self.ecx.place_to_op(place)?)?;
-                let val = self.ecx.sb_retag_reference(&val, new_perm, RetagInfo {
-                    cause: self.retag_cause,
-                    in_field: self.in_field,
-                })?;
+                let val = self.ecx.sb_retag_reference(
+                    &val,
+                    new_perm,
+                    RetagInfo { cause: self.retag_cause, in_field: self.in_field },
+                )?;
                 self.ecx.write_immediate(*val, place)?;
                 interp_ok(())
             }
@@ -996,10 +997,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             access: Some(AccessKind::Write),
             protector: Some(ProtectorKind::StrongProtector),
         };
-        this.sb_retag_place(place, new_perm, RetagInfo {
-            cause: RetagCause::InPlaceFnPassing,
-            in_field: false,
-        })
+        this.sb_retag_place(
+            place,
+            new_perm,
+            RetagInfo { cause: RetagCause::InPlaceFnPassing, in_field: false },
+        )
     }
 
     /// Mark the given tag as exposed. It was found on a pointer with the given AllocId.

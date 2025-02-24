@@ -18,6 +18,7 @@ use rustc_middle::ty::{
     TypeFoldable, TypeFolder, TypeSuperFoldable, TypeckResults,
 };
 use rustc_span::{BytePos, DUMMY_SP, FileName, Ident, Span, sym};
+use rustc_type_ir::visit::TypeVisitableExt;
 use tracing::{debug, instrument, warn};
 
 use super::nice_region_error::placeholder_error::Highlighted;
@@ -155,26 +156,91 @@ impl UnderspecifiedArgKind {
     }
 }
 
-struct ClosureEraser<'tcx> {
-    tcx: TyCtxt<'tcx>,
+struct ClosureEraser<'a, 'tcx> {
+    infcx: &'a InferCtxt<'tcx>,
 }
 
-impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ClosureEraser<'tcx> {
+impl<'a, 'tcx> ClosureEraser<'a, 'tcx> {
+    fn new_infer(&mut self) -> Ty<'tcx> {
+        self.infcx.next_ty_var(DUMMY_SP)
+    }
+}
+
+impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ClosureEraser<'a, 'tcx> {
     fn cx(&self) -> TyCtxt<'tcx> {
-        self.tcx
+        self.infcx.tcx
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         match ty.kind() {
             ty::Closure(_, args) => {
+                // For a closure type, we turn it into a function pointer so that it gets rendered
+                // as `fn(args) -> Ret`.
                 let closure_sig = args.as_closure().sig();
                 Ty::new_fn_ptr(
-                    self.tcx,
-                    self.tcx.signature_unclosure(closure_sig, hir::Safety::Safe),
+                    self.cx(),
+                    self.cx().signature_unclosure(closure_sig, hir::Safety::Safe),
                 )
             }
-            _ => ty.super_fold_with(self),
+            ty::Adt(_, args) if !args.iter().any(|a| a.has_infer()) => {
+                // We have a type that doesn't have any inference variables, so we replace
+                // the whole thing with `_`. The type system already knows about this type in
+                // its entirety and it is redundant to specify it for the user. The user only
+                // needs to specify the type parameters that we *couldn't* figure out.
+                self.new_infer()
+            }
+            ty::Adt(def, args) => {
+                let generics = self.cx().generics_of(def.did());
+                let generics: Vec<bool> = generics
+                    .own_params
+                    .iter()
+                    .map(|param| param.default_value(self.cx()).is_some())
+                    .collect();
+                let ty = Ty::new_adt(
+                    self.cx(),
+                    *def,
+                    self.cx().mk_args_from_iter(generics.into_iter().zip(args.iter()).map(
+                        |(has_default, arg)| {
+                            if arg.has_infer() {
+                                // This param has an unsubstituted type variable, meaning that this
+                                // type has a (potentially deeply nested) type parameter from the
+                                // corresponding type's definition. We have explicitly asked this
+                                // type to not be hidden. In either case, we keep the type and don't
+                                // substitute with `_` just yet.
+                                arg.fold_with(self)
+                            } else if has_default {
+                                // We have a type param that has a default type, like the allocator
+                                // in Vec. We decided to show `Vec` itself, because it hasn't yet
+                                // been replaced by an `_` `Infer`, but we want to ensure that the
+                                // type parameter with default types does *not* get replaced with
+                                // `_` because then we'd end up with `Vec<_, _>`, instead of
+                                // `Vec<_>`.
+                                arg
+                            } else if let GenericArgKind::Type(_) = arg.unpack() {
+                                // We don't replace lifetime or const params, only type params.
+                                self.new_infer().into()
+                            } else {
+                                arg.fold_with(self)
+                            }
+                        },
+                    )),
+                );
+                ty
+            }
+            _ if ty.has_infer() => {
+                // This type has a (potentially nested) type parameter that we couldn't figure out.
+                // We will print this depth of type, so at least the type name and at least one of
+                // its type parameters.
+                ty.super_fold_with(self)
+            }
+            // We don't have an unknown type parameter anywhere, replace with `_`.
+            _ => self.new_infer(),
         }
+    }
+
+    fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx> {
+        // Avoid accidentally erasing the type of the const.
+        c
     }
 }
 
@@ -219,9 +285,9 @@ fn ty_to_string<'tcx>(
 ) -> String {
     let mut printer = fmt_printer(infcx, Namespace::TypeNS);
     let ty = infcx.resolve_vars_if_possible(ty);
-    // We use `fn` ptr syntax for closures, but this only works when the closure
-    // does not capture anything.
-    let ty = ty.fold_with(&mut ClosureEraser { tcx: infcx.tcx });
+    // We use `fn` ptr syntax for closures, but this only works when the closure does not capture
+    // anything. We also remove all type parameters that are fully known to the type system.
+    let ty = ty.fold_with(&mut ClosureEraser { infcx });
 
     match (ty.kind(), called_method_def_id) {
         // We don't want the regular output for `fn`s because it includes its path in
@@ -422,7 +488,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         };
 
         let mut local_visitor = FindInferSourceVisitor::new(self, typeck_results, arg);
-        if let Some(body) = self.tcx.hir().maybe_body_owned_by(
+        if let Some(body) = self.tcx.hir_maybe_body_owned_by(
             self.tcx.typeck_root_def_id(body_def_id.to_def_id()).expect_local(),
         ) {
             let expr = body.value;
@@ -713,7 +779,7 @@ impl<'tcx> InferSourceKind<'tcx> {
                 if ty.is_closure() {
                     ("closure", closure_as_fn_str(infcx, ty), path)
                 } else if !ty.is_ty_or_numeric_infer() {
-                    ("normal", infcx.tcx.short_ty_string(ty, &mut path), path)
+                    ("normal", infcx.tcx.short_string(ty, &mut path), path)
                 } else {
                     ("other", String::new(), path)
                 }
@@ -1008,7 +1074,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
         &self,
         path: &'tcx hir::Path<'tcx>,
         args: GenericArgsRef<'tcx>,
-    ) -> impl Iterator<Item = InsertableGenericArgs<'tcx>> + 'a {
+    ) -> impl Iterator<Item = InsertableGenericArgs<'tcx>> + 'tcx {
         let tcx = self.tecx.tcx;
         let have_turbofish = path.segments.iter().any(|segment| {
             segment.args.is_some_and(|args| args.args.iter().any(|arg| arg.is_ty_or_const()))
@@ -1135,8 +1201,8 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tecx.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tecx.tcx
     }
 
     fn visit_local(&mut self, local: &'tcx LetStmt<'tcx>) {
@@ -1253,7 +1319,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
             {
                 let output = args.as_closure().sig().output().skip_binder();
                 if self.generic_arg_contains_target(output.into()) {
-                    let body = self.tecx.tcx.hir().body(body);
+                    let body = self.tecx.tcx.hir_body(body);
                     let should_wrap_expr = if matches!(body.value.kind, ExprKind::Block(..)) {
                         None
                     } else {

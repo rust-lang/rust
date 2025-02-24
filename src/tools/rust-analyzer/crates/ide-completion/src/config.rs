@@ -14,6 +14,8 @@ pub struct CompletionConfig<'a> {
     pub enable_postfix_completions: bool,
     pub enable_imports_on_the_fly: bool,
     pub enable_self_on_the_fly: bool,
+    pub enable_auto_iter: bool,
+    pub enable_auto_await: bool,
     pub enable_private_editable: bool,
     pub enable_term_search: bool,
     pub term_search_fuel: u64,
@@ -57,11 +59,12 @@ impl CompletionConfig<'_> {
             .flat_map(|snip| snip.prefix_triggers.iter().map(move |trigger| (&**trigger, snip)))
     }
 
-    pub fn import_path_config(&self) -> ImportPathConfig {
+    pub fn import_path_config(&self, allow_unstable: bool) -> ImportPathConfig {
         ImportPathConfig {
             prefer_no_std: self.prefer_no_std,
             prefer_prelude: self.prefer_prelude,
             prefer_absolute: self.prefer_absolute,
+            allow_unstable,
         }
     }
 }

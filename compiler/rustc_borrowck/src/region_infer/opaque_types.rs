@@ -1,6 +1,8 @@
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::ErrorGuaranteed;
+use rustc_hir::OpaqueTyOrigin;
 use rustc_hir::def_id::LocalDefId;
+use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin, TyCtxtInferExt as _};
 use rustc_macros::extension;
 use rustc_middle::ty::fold::fold_regions;
@@ -10,6 +12,7 @@ use rustc_middle::ty::{
     TypingMode,
 };
 use rustc_span::Span;
+use rustc_trait_selection::regions::OutlivesEnvironmentBuildExt;
 use rustc_trait_selection::traits::ObligationCtxt;
 use tracing::{debug, instrument};
 
@@ -163,10 +166,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // FIXME(oli-obk): collect multiple spans for better diagnostics down the road.
                 prev.span = prev.span.substitute_dummy(concrete_type.span);
             } else {
-                result.insert(opaque_type_key.def_id, OpaqueHiddenType {
-                    ty,
-                    span: concrete_type.span,
-                });
+                result.insert(
+                    opaque_type_key.def_id,
+                    OpaqueHiddenType { ty, span: concrete_type.span },
+                );
             }
 
             // Check that all opaque types have the same region parameters if they have the same
@@ -201,7 +204,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// that the regions produced are in fact equal to the named region they are
     /// replaced with. This is fine because this function is only to improve the
     /// region names in error messages.
-    pub(crate) fn name_regions<T>(&self, tcx: TyCtxt<'tcx>, ty: T) -> T
+    ///
+    /// This differs from `MirBorrowckCtxt::name_regions` since it is particularly
+    /// lax with mapping region vids that are *shorter* than a universal region to
+    /// that universal region. This is useful for member region constraints since
+    /// we want to suggest a universal region name to capture even if it's technically
+    /// not equal to the error region.
+    pub(crate) fn name_regions_for_member_constraint<T>(&self, tcx: TyCtxt<'tcx>, ty: T) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
@@ -406,10 +415,6 @@ impl<'tcx> LazyOpaqueTyEnv<'tcx> {
     }
 
     fn get_canonical_args(&self) -> ty::GenericArgsRef<'tcx> {
-        use rustc_hir as hir;
-        use rustc_infer::infer::outlives::env::OutlivesEnvironment;
-        use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
-
         if let Some(&canonical_args) = self.canonical_args.get() {
             return canonical_args;
         }
@@ -417,9 +422,9 @@ impl<'tcx> LazyOpaqueTyEnv<'tcx> {
         let &Self { tcx, def_id, .. } = self;
         let origin = tcx.local_opaque_ty_origin(def_id);
         let parent = match origin {
-            hir::OpaqueTyOrigin::FnReturn { parent, .. }
-            | hir::OpaqueTyOrigin::AsyncFn { parent, .. }
-            | hir::OpaqueTyOrigin::TyAlias { parent, .. } => parent,
+            OpaqueTyOrigin::FnReturn { parent, .. }
+            | OpaqueTyOrigin::AsyncFn { parent, .. }
+            | OpaqueTyOrigin::TyAlias { parent, .. } => parent,
         };
         let param_env = tcx.param_env(parent);
         let args = GenericArgs::identity_for_item(tcx, parent).extend_to(
@@ -439,8 +444,7 @@ impl<'tcx> LazyOpaqueTyEnv<'tcx> {
             tcx.dcx().span_delayed_bug(tcx.def_span(def_id), "error getting implied bounds");
             Default::default()
         });
-        let implied_bounds = infcx.implied_bounds_tys(param_env, parent, &wf_tys);
-        let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
+        let outlives_env = OutlivesEnvironment::new(&infcx, parent, param_env, wf_tys);
 
         let mut seen = vec![tcx.lifetimes.re_static];
         let canonical_args = fold_regions(tcx, args, |r1, _| {

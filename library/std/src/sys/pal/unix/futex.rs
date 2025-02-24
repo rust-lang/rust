@@ -219,7 +219,7 @@ pub fn futex_wake_all(futex: &AtomicU32) {
 }
 
 #[cfg(target_os = "emscripten")]
-extern "C" {
+unsafe extern "C" {
     fn emscripten_futex_wake(addr: *const AtomicU32, count: libc::c_int) -> libc::c_int;
     fn emscripten_futex_wait(
         addr: *const AtomicU32,
@@ -267,7 +267,7 @@ pub mod zircon {
     pub const ZX_ERR_BAD_STATE: zx_status_t = -20;
     pub const ZX_ERR_TIMED_OUT: zx_status_t = -21;
 
-    extern "C" {
+    unsafe extern "C" {
         pub fn zx_clock_get_monotonic() -> zx_time_t;
         pub fn zx_futex_wait(
             value_ptr: *const zx_futex_t,

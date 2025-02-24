@@ -150,6 +150,8 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
         "debug"
     };
 
+    // We have a different environment variable than RUSTFLAGS to make sure those flags are only
+    // sent to rustc_codegen_gcc and not the LLVM backend.
     if let Ok(cg_rustflags) = std::env::var("CG_RUSTFLAGS") {
         rustflags.push(' ');
         rustflags.push_str(&cg_rustflags);
@@ -184,8 +186,12 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
 fn build_codegen(args: &mut BuildArg) -> Result<(), String> {
     let mut env = HashMap::new();
 
-    env.insert("LD_LIBRARY_PATH".to_string(), args.config_info.gcc_path.clone());
-    env.insert("LIBRARY_PATH".to_string(), args.config_info.gcc_path.clone());
+    let gcc_path =
+        args.config_info.gcc_path.clone().expect(
+            "The config module should have emitted an error if the GCC path wasn't provided",
+        );
+    env.insert("LD_LIBRARY_PATH".to_string(), gcc_path.clone());
+    env.insert("LIBRARY_PATH".to_string(), gcc_path);
 
     if args.config_info.no_default_features {
         env.insert("RUSTFLAGS".to_string(), "-Csymbol-mangling-version=v0".to_string());

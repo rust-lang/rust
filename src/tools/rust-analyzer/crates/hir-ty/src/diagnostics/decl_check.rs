@@ -231,8 +231,7 @@ impl<'a> DeclValidator<'a> {
             .filter_map(|(pat_id, pat)| match pat {
                 Pat::Bind { id, .. } => {
                     let bind_name = &body.bindings[*id].name;
-                    let mut suggested_text =
-                        to_lower_snake_case(&bind_name.unescaped().display_no_db().to_smolstr())?;
+                    let mut suggested_text = to_lower_snake_case(bind_name.as_str())?;
                     if is_raw_identifier(&suggested_text, edition) {
                         suggested_text.insert_str(0, "r#");
                     }

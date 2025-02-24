@@ -68,8 +68,9 @@ LL |     (0..10).map(|_| 3);
    |
 help: remove the explicit range and use `repeat_n`
    |
-LL |     std::iter::repeat_n(3, 10);
-   |     ~~~~~~~~~~~~~~~~~~~ ~~~~~
+LL -     (0..10).map(|_| 3);
+LL +     std::iter::repeat_n(3, 10);
+   |
 
 error: map of a closure that does not depend on its parameter over a range
   --> tests/ui/map_with_unused_argument_over_ranges.rs:31:5
@@ -216,8 +217,9 @@ LL |     (0..10).map(|_| 3);
    |
 help: remove the explicit range and use `repeat` and `take`
    |
-LL |     std::iter::repeat(3).take(10);
-   |     ~~~~~~~~~~~~~~~~~ ~ +++++++++
+LL -     (0..10).map(|_| 3);
+LL +     std::iter::repeat(3).take(10);
+   |
 
 error: aborting due to 18 previous errors
 

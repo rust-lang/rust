@@ -15,8 +15,9 @@ LL | const TEST2: _ = 42u32;
    |
 help: replace this with a fully-specified type
    |
-LL | const TEST2: u32 = 42u32;
-   |              ~~~
+LL - const TEST2: _ = 42u32;
+LL + const TEST2: u32 = 42u32;
+   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
   --> $DIR/typeck_type_placeholder_item_help.rs:10:14
@@ -26,8 +27,9 @@ LL | const TEST3: _ = Some(42);
    |
 help: replace this with a fully-specified type
    |
-LL | const TEST3: Option<i32> = Some(42);
-   |              ~~~~~~~~~~~
+LL - const TEST3: _ = Some(42);
+LL + const TEST3: Option<i32> = Some(42);
+   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
   --> $DIR/typeck_type_placeholder_item_help.rs:13:22
@@ -49,8 +51,9 @@ LL |     const TEST6: _ = 13;
    |
 help: replace this with a fully-specified type
    |
-LL |     const TEST6: i32 = 13;
-   |                  ~~~
+LL -     const TEST6: _ = 13;
+LL +     const TEST6: i32 = 13;
+   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated constants
   --> $DIR/typeck_type_placeholder_item_help.rs:18:18
@@ -60,8 +63,9 @@ LL |     const TEST5: _ = 42;
    |
 help: replace this with a fully-specified type
    |
-LL |     const TEST5: i32 = 42;
-   |                  ~~~
+LL -     const TEST5: _ = 42;
+LL +     const TEST5: i32 = 42;
+   |
 
 error[E0308]: mismatched types
   --> $DIR/typeck_type_placeholder_item_help.rs:30:28

@@ -4,6 +4,7 @@
 //! and the corresponding code mostly in rustc_hir_analysis/check/method/probe.rs.
 use std::ops::ControlFlow;
 
+use arrayvec::ArrayVec;
 use base_db::CrateId;
 use chalk_ir::{cast::Cast, UniverseIndex, WithKind};
 use hir_def::{
@@ -528,7 +529,7 @@ impl ReceiverAdjustments {
         let mut ty = table.resolve_ty_shallow(&ty);
         let mut adjust = Vec::new();
         for _ in 0..self.autoderefs {
-            match autoderef::autoderef_step(table, ty.clone(), true) {
+            match autoderef::autoderef_step(table, ty.clone(), true, false) {
                 None => {
                     never!("autoderef not possible for {:?}", ty);
                     ty = TyKind::Error.intern(Interner);
@@ -732,15 +733,27 @@ fn lookup_impl_assoc_item_for_trait_ref(
     let self_ty = trait_ref.self_type_parameter(Interner);
     let self_ty_fp = TyFingerprint::for_trait_impl(&self_ty)?;
     let impls = db.trait_impls_in_deps(env.krate);
-    let self_impls = match self_ty.kind(Interner) {
-        TyKind::Adt(id, _) => {
-            id.0.module(db.upcast()).containing_block().and_then(|it| db.trait_impls_in_block(it))
+
+    let trait_module = hir_trait_id.module(db.upcast());
+    let type_module = match self_ty_fp {
+        TyFingerprint::Adt(adt_id) => Some(adt_id.module(db.upcast())),
+        TyFingerprint::ForeignType(type_id) => {
+            Some(from_foreign_def_id(type_id).module(db.upcast()))
         }
+        TyFingerprint::Dyn(trait_id) => Some(trait_id.module(db.upcast())),
         _ => None,
     };
+
+    let def_blocks: ArrayVec<_, 2> =
+        [trait_module.containing_block(), type_module.and_then(|it| it.containing_block())]
+            .into_iter()
+            .flatten()
+            .filter_map(|block_id| db.trait_impls_in_block(block_id))
+            .collect();
+
     let impls = impls
         .iter()
-        .chain(self_impls.as_ref())
+        .chain(&def_blocks)
         .flat_map(|impls| impls.for_trait_and_self_ty(hir_trait_id, self_ty_fp));
 
     let table = InferenceTable::new(db, env);
@@ -1106,7 +1119,8 @@ fn iterate_method_candidates_by_receiver(
     // be found in any of the derefs of receiver_ty, so we have to go through
     // that, including raw derefs.
     table.run_in_snapshot(|table| {
-        let mut autoderef = autoderef::Autoderef::new_no_tracking(table, receiver_ty.clone(), true);
+        let mut autoderef =
+            autoderef::Autoderef::new_no_tracking(table, receiver_ty.clone(), true, true);
         while let Some((self_ty, _)) = autoderef.next() {
             iterate_inherent_methods(
                 &self_ty,
@@ -1123,7 +1137,8 @@ fn iterate_method_candidates_by_receiver(
         ControlFlow::Continue(())
     })?;
     table.run_in_snapshot(|table| {
-        let mut autoderef = autoderef::Autoderef::new_no_tracking(table, receiver_ty.clone(), true);
+        let mut autoderef =
+            autoderef::Autoderef::new_no_tracking(table, receiver_ty.clone(), true, true);
         while let Some((self_ty, _)) = autoderef.next() {
             if matches!(self_ty.kind(Interner), TyKind::InferenceVar(_, TyVariableKind::General)) {
                 // don't try to resolve methods on unknown types
@@ -1709,7 +1724,7 @@ fn autoderef_method_receiver(
     ty: Ty,
 ) -> Vec<(Canonical<Ty>, ReceiverAdjustments)> {
     let mut deref_chain: Vec<_> = Vec::new();
-    let mut autoderef = autoderef::Autoderef::new_no_tracking(table, ty, false);
+    let mut autoderef = autoderef::Autoderef::new_no_tracking(table, ty, false, true);
     while let Some((ty, derefs)) = autoderef.next() {
         deref_chain.push((
             autoderef.table.canonicalize(ty),

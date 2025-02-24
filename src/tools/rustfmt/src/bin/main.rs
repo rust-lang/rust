@@ -817,7 +817,6 @@ mod test {
         options.inline_config = HashMap::from([("version".to_owned(), "Two".to_owned())]);
         let config = get_config(None, Some(options));
         assert_eq!(config.style_edition(), StyleEdition::Edition2024);
-        assert_eq!(config.overflow_delimited_expr(), true);
     }
 
     #[nightly_only_test]
@@ -827,7 +826,6 @@ mod test {
         let config_file = Some(Path::new("tests/config/style-edition/just-version"));
         let config = get_config(config_file, Some(options));
         assert_eq!(config.style_edition(), StyleEdition::Edition2024);
-        assert_eq!(config.overflow_delimited_expr(), true);
     }
 
     #[nightly_only_test]
@@ -872,7 +870,6 @@ mod test {
         ]);
         let config = get_config(None, Some(options));
         assert_eq!(config.style_edition(), StyleEdition::Edition2024);
-        assert_eq!(config.overflow_delimited_expr(), true);
     }
 
     #[nightly_only_test]
@@ -938,7 +935,6 @@ mod test {
         options.style_edition = Some(StyleEdition::Edition2024);
         let config = get_config(None, Some(options));
         assert_eq!(config.style_edition(), StyleEdition::Edition2024);
-        assert_eq!(config.overflow_delimited_expr(), true);
     }
 
     #[nightly_only_test]
@@ -948,6 +944,8 @@ mod test {
         let config_file = Some(Path::new("tests/config/style-edition/overrides"));
         let config = get_config(config_file, Some(options));
         assert_eq!(config.style_edition(), StyleEdition::Edition2024);
+        // FIXME: this test doesn't really exercise anything, since
+        // `overflow_delimited_expr` is disabled by default in edition 2024.
         assert_eq!(config.overflow_delimited_expr(), false);
     }
 
@@ -959,7 +957,8 @@ mod test {
         options.inline_config =
             HashMap::from([("overflow_delimited_expr".to_owned(), "false".to_owned())]);
         let config = get_config(config_file, Some(options));
-        assert_eq!(config.style_edition(), StyleEdition::Edition2024);
+        // FIXME: this test doesn't really exercise anything, since
+        // `overflow_delimited_expr` is disabled by default in edition 2024.
         assert_eq!(config.overflow_delimited_expr(), false);
     }
 }

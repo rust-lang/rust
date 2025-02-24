@@ -107,11 +107,10 @@ const LABELS_FN_IN_TRAIT: &[&[&str]] =
 const LABELS_HIR_ONLY: &[&[&str]] = &[BASE_HIR];
 
 /// Impl `DepNode`s.
-const LABELS_TRAIT: &[&[&str]] = &[BASE_HIR, &[
-    label_strs::associated_item_def_ids,
-    label_strs::predicates_of,
-    label_strs::generics_of,
-]];
+const LABELS_TRAIT: &[&[&str]] = &[
+    BASE_HIR,
+    &[label_strs::associated_item_def_ids, label_strs::predicates_of, label_strs::generics_of],
+];
 
 /// Impl `DepNode`s.
 const LABELS_IMPL: &[&[&str]] = &[BASE_HIR, BASE_IMPL];
@@ -167,7 +166,7 @@ pub(crate) fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
         }
 
         let mut all_attrs = FindAllAttrs { tcx, found_attrs: vec![] };
-        tcx.hir().walk_attributes(&mut all_attrs);
+        tcx.hir_walk_attributes(&mut all_attrs);
 
         // Note that we cannot use the existing "unused attribute"-infrastructure
         // here, since that is running before codegen. This is also the reason why
@@ -262,7 +261,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
                     HirItem::ForeignMod { .. } => ("ItemForeignMod", LABELS_HIR_ONLY),
 
                     // Module-level inline assembly (from global_asm!)
-                    HirItem::GlobalAsm(..) => ("ItemGlobalAsm", LABELS_HIR_ONLY),
+                    HirItem::GlobalAsm { .. } => ("ItemGlobalAsm", LABELS_HIR_ONLY),
 
                     // A type alias, e.g., `type Foo = Bar<u8>`
                     HirItem::TyAlias(..) => ("ItemTy", LABELS_HIR_ONLY),
@@ -456,8 +455,8 @@ impl<'tcx> FindAllAttrs<'tcx> {
 impl<'tcx> intravisit::Visitor<'tcx> for FindAllAttrs<'tcx> {
     type NestedFilter = nested_filter::All;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
 
     fn visit_attribute(&mut self, attr: &'tcx Attribute) {

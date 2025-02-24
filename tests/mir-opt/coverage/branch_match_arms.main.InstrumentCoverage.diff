@@ -27,18 +27,15 @@
       }
   
 +     coverage body span: $DIR/branch_match_arms.rs:14:11: 21:2 (#0)
-+     coverage ExpressionId(0) => Expression { lhs: Counter(1), op: Add, rhs: Counter(2) };
-+     coverage ExpressionId(1) => Expression { lhs: Expression(0), op: Add, rhs: Counter(3) };
-+     coverage ExpressionId(2) => Expression { lhs: Counter(0), op: Subtract, rhs: Expression(1) };
-+     coverage Code(Counter(0)) => $DIR/branch_match_arms.rs:14:1: 15:21 (#0);
-+     coverage Code(Counter(1)) => $DIR/branch_match_arms.rs:16:17: 16:33 (#0);
-+     coverage Code(Counter(2)) => $DIR/branch_match_arms.rs:17:17: 17:33 (#0);
-+     coverage Code(Counter(3)) => $DIR/branch_match_arms.rs:18:17: 18:33 (#0);
-+     coverage Code(Expression(2)) => $DIR/branch_match_arms.rs:19:17: 19:33 (#0);
-+     coverage Code(Counter(0)) => $DIR/branch_match_arms.rs:21:2: 21:2 (#0);
++     coverage Code { bcb: bcb0 } => $DIR/branch_match_arms.rs:14:1: 15:21 (#0);
++     coverage Code { bcb: bcb1 } => $DIR/branch_match_arms.rs:16:17: 16:33 (#0);
++     coverage Code { bcb: bcb3 } => $DIR/branch_match_arms.rs:17:17: 17:33 (#0);
++     coverage Code { bcb: bcb4 } => $DIR/branch_match_arms.rs:18:17: 18:33 (#0);
++     coverage Code { bcb: bcb5 } => $DIR/branch_match_arms.rs:19:17: 19:33 (#0);
++     coverage Code { bcb: bcb2 } => $DIR/branch_match_arms.rs:21:2: 21:2 (#0);
 + 
       bb0: {
-+         Coverage::CounterIncrement(0);
++         Coverage::VirtualCounter(bcb0);
           StorageLive(_1);
           _1 = Enum::A(const 0_u32);
           PlaceMention(_1);
@@ -52,22 +49,22 @@
       }
   
       bb2: {
-+         Coverage::CounterIncrement(1);
++         Coverage::VirtualCounter(bcb1);
           falseEdge -> [real: bb8, imaginary: bb3];
       }
   
       bb3: {
-+         Coverage::CounterIncrement(2);
++         Coverage::VirtualCounter(bcb3);
           falseEdge -> [real: bb7, imaginary: bb4];
       }
   
       bb4: {
-+         Coverage::CounterIncrement(3);
++         Coverage::VirtualCounter(bcb4);
           falseEdge -> [real: bb6, imaginary: bb5];
       }
   
       bb5: {
-+         Coverage::ExpressionUsed(2);
++         Coverage::VirtualCounter(bcb5);
           StorageLive(_9);
           _9 = copy ((_1 as A).0: u32);
           StorageLive(_10);
@@ -124,6 +121,7 @@
       }
   
       bb13: {
++         Coverage::VirtualCounter(bcb2);
           StorageDead(_1);
           return;
       }

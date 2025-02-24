@@ -66,3 +66,19 @@ fn escape_3() {}
 
 /// Backslashes ` \` within code blocks don't count.
 fn escape_4() {}
+
+trait Foo {
+    fn bar();
+}
+
+struct Bar;
+impl Foo for Bar {
+    // NOTE: false positive
+    /// Returns an `Option<Month>` from a i64, assuming a 1-index, January = 1.
+    ///
+    /// `Month::from_i64(n: i64)`: | `1`                  | `2`                   | ... | `12`
+    /// ---------------------------| -------------------- | --------------------- | ... | -----
+    /// ``:                        | Some(Month::January) | Some(Month::February) | ... |
+    /// Some(Month::December)
+    fn bar() {}
+}

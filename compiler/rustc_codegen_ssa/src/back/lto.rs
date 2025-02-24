@@ -4,7 +4,6 @@ use std::sync::Arc;
 use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
 use rustc_data_structures::memmap::Mmap;
 use rustc_errors::FatalError;
-use rustc_middle::ty::TyCtxt;
 
 use super::write::CodegenContext;
 use crate::ModuleCodegen;
@@ -89,13 +88,12 @@ impl<B: WriteBackendMethods> LtoModuleCodegen<B> {
     pub unsafe fn autodiff(
         self,
         cgcx: &CodegenContext<B>,
-        tcx: TyCtxt<'_>,
         diff_fncs: Vec<AutoDiffItem>,
         config: &ModuleConfig,
     ) -> Result<LtoModuleCodegen<B>, FatalError> {
         match &self {
             LtoModuleCodegen::Fat(module) => {
-                B::autodiff(cgcx, tcx, &module, diff_fncs, config)?;
+                B::autodiff(cgcx, &module, diff_fncs, config)?;
             }
             _ => panic!("autodiff called with non-fat LTO module"),
         }

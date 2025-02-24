@@ -257,7 +257,7 @@ struct SharedState<'tcx> {
 
 pub(crate) struct UsageMap<'tcx> {
     // Maps every mono item to the mono items used by it.
-    used_map: UnordMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>>,
+    pub used_map: UnordMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>>,
 
     // Maps every mono item to the mono items that use it.
     user_map: UnordMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>>,
@@ -323,7 +323,7 @@ impl<'tcx> MonoItems<'tcx> {
         self.items.entry(item.node).or_insert(item.span);
     }
 
-    fn items(&self) -> impl Iterator<Item = MonoItem<'tcx>> + '_ {
+    fn items(&self) -> impl Iterator<Item = MonoItem<'tcx>> {
         self.items.keys().cloned()
     }
 }
@@ -478,25 +478,24 @@ fn collect_items_rec<'tcx>(
             );
             recursion_depth_reset = None;
 
-            let item = tcx.hir().item(item_id);
-            if let hir::ItemKind::GlobalAsm(asm) = item.kind {
+            let item = tcx.hir_item(item_id);
+            if let hir::ItemKind::GlobalAsm { asm, .. } = item.kind {
                 for (op, op_sp) in asm.operands {
-                    match op {
+                    match *op {
                         hir::InlineAsmOperand::Const { .. } => {
                             // Only constants which resolve to a plain integer
                             // are supported. Therefore the value should not
                             // depend on any other items.
                         }
-                        hir::InlineAsmOperand::SymFn { anon_const } => {
-                            let fn_ty =
-                                tcx.typeck_body(anon_const.body).node_type(anon_const.hir_id);
+                        hir::InlineAsmOperand::SymFn { expr } => {
+                            let fn_ty = tcx.typeck(item_id.owner_id).expr_ty(expr);
                             visit_fn_use(tcx, fn_ty, false, *op_sp, &mut used_items);
                         }
                         hir::InlineAsmOperand::SymStatic { path: _, def_id } => {
-                            let instance = Instance::mono(tcx, *def_id);
+                            let instance = Instance::mono(tcx, def_id);
                             if tcx.should_codegen_locally(instance) {
                                 trace!("collecting static {:?}", def_id);
-                                used_items.push(dummy_spanned(MonoItem::Static(*def_id)));
+                                used_items.push(dummy_spanned(MonoItem::Static(def_id)));
                             }
                         }
                         hir::InlineAsmOperand::In { .. }
@@ -814,6 +813,9 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 mir::AssertKind::MisalignedPointerDereference { .. } => {
                     push_mono_lang_item(self, LangItem::PanicMisalignedPointerDereference);
                 }
+                mir::AssertKind::NullPointerDereference => {
+                    push_mono_lang_item(self, LangItem::PanicNullPointerDereference);
+                }
                 _ => {
                     push_mono_lang_item(self, msg.panic_function());
                 }
@@ -950,7 +952,7 @@ fn visit_instance_use<'tcx>(
 
 /// Returns `true` if we should codegen an instance in the local crate, or returns `false` if we
 /// can just link to the upstream crate and therefore don't need a mono item.
-fn should_codegen_locally<'tcx>(tcx: TyCtxtAt<'tcx>, instance: Instance<'tcx>) -> bool {
+fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> bool {
     let Some(def_id) = instance.def.def_id_if_not_guaranteed_local_codegen() else {
         return true;
     };
@@ -973,7 +975,7 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxtAt<'tcx>, instance: Instance<'tcx>) -
         return true;
     }
 
-    if tcx.is_reachable_non_generic(def_id) || instance.upstream_monomorphization(*tcx).is_some() {
+    if tcx.is_reachable_non_generic(def_id) || instance.upstream_monomorphization(tcx).is_some() {
         // We can link to the item in question, no instance needed in this crate.
         return false;
     }
@@ -1138,11 +1140,12 @@ fn create_mono_items_for_vtable_methods<'tcx>(
         bug!("create_mono_items_for_vtable_methods: {trait_ty:?} not a trait type");
     };
     if let Some(principal) = trait_ty.principal() {
-        let poly_trait_ref = principal.with_self_ty(tcx, impl_ty);
-        assert!(!poly_trait_ref.has_escaping_bound_vars());
+        let trait_ref =
+            tcx.instantiate_bound_regions_with_erased(principal.with_self_ty(tcx, impl_ty));
+        assert!(!trait_ref.has_escaping_bound_vars());
 
         // Walk all methods of the trait, including those of its supertraits
-        let entries = tcx.vtable_entries(poly_trait_ref);
+        let entries = tcx.vtable_entries(trait_ref);
         debug!(?entries);
         let methods = entries
             .iter()
@@ -1197,7 +1200,12 @@ fn collect_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIt
             }
         }
         GlobalAlloc::VTable(ty, dyn_ty) => {
-            let alloc_id = tcx.vtable_allocation((ty, dyn_ty.principal()));
+            let alloc_id = tcx.vtable_allocation((
+                ty,
+                dyn_ty
+                    .principal()
+                    .map(|principal| tcx.instantiate_bound_regions_with_erased(principal)),
+            ));
             collect_alloc(tcx, alloc_id, output)
         }
     }
@@ -1213,7 +1221,7 @@ fn collect_items_of_instance<'tcx>(
     mode: CollectionMode,
 ) -> (MonoItems<'tcx>, MonoItems<'tcx>) {
     // This item is getting monomorphized, do mono-time checks.
-    tcx.ensure().check_mono_item(instance);
+    tcx.ensure_ok().check_mono_item(instance);
 
     let body = tcx.instance_mir(instance.def);
     // Naively, in "used" collection mode, all functions get added to *both* `used_items` and
@@ -1454,11 +1462,14 @@ impl<'v> RootCollector<'_, 'v> {
                 self.output.push(dummy_spanned(MonoItem::Static(def_id)));
             }
             DefKind::Const => {
-                // const items only generate mono items if they are
-                // actually used somewhere. Just declaring them is insufficient.
+                // Const items only generate mono items if they are actually used somewhere.
+                // Just declaring them is insufficient.
 
-                // but even just declaring them must collect the items they refer to
-                if let Ok(val) = self.tcx.const_eval_poly(id.owner_id.to_def_id()) {
+                // But even just declaring them must collect the items they refer to
+                // unless their generics require monomorphization.
+                if !self.tcx.generics_of(id.owner_id).requires_monomorphization(self.tcx)
+                    && let Ok(val) = self.tcx.const_eval_poly(id.owner_id.to_def_id())
+                {
                     collect_const_value(self.tcx, val, self.output);
                 }
             }
@@ -1496,6 +1507,13 @@ impl<'v> RootCollector<'_, 'v> {
                             Instance::new(def_id, self.tcx.erase_regions(args))
                         }
                         _ => unreachable!(),
+                    };
+                    let Ok(instance) = self.tcx.try_normalize_erasing_regions(
+                        ty::TypingEnv::fully_monomorphized(),
+                        instance,
+                    ) else {
+                        // Don't ICE on an impossible-to-normalize closure.
+                        return;
                     };
                     let mono_item = create_fn_mono_item(self.tcx, instance, DUMMY_SP);
                     if mono_item.node.is_instantiable(self.tcx) {

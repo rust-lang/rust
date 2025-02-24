@@ -8,7 +8,6 @@ use rustc_infer::infer::at::ToTrace;
 use rustc_infer::infer::canonical::{
     Canonical, CanonicalQueryResponse, CanonicalVarValues, QueryResponse,
 };
-use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk, RegionResolutionError, TypeTrace};
 use rustc_infer::traits::PredicateObligations;
 use rustc_macros::extension;
@@ -217,14 +216,15 @@ where
     /// will result in region constraints getting ignored.
     pub fn resolve_regions_and_report_errors(
         self,
-        generic_param_scope: LocalDefId,
-        outlives_env: &OutlivesEnvironment<'tcx>,
+        body_id: LocalDefId,
+        param_env: ty::ParamEnv<'tcx>,
+        assumed_wf_tys: impl IntoIterator<Item = Ty<'tcx>>,
     ) -> Result<(), ErrorGuaranteed> {
-        let errors = self.infcx.resolve_regions(outlives_env);
+        let errors = self.infcx.resolve_regions(body_id, param_env, assumed_wf_tys);
         if errors.is_empty() {
             Ok(())
         } else {
-            Err(self.infcx.err_ctxt().report_region_errors(generic_param_scope, &errors))
+            Err(self.infcx.err_ctxt().report_region_errors(body_id, &errors))
         }
     }
 
@@ -235,9 +235,11 @@ where
     #[must_use]
     pub fn resolve_regions(
         self,
-        outlives_env: &OutlivesEnvironment<'tcx>,
+        body_id: LocalDefId,
+        param_env: ty::ParamEnv<'tcx>,
+        assumed_wf_tys: impl IntoIterator<Item = Ty<'tcx>>,
     ) -> Vec<RegionResolutionError<'tcx>> {
-        self.infcx.resolve_regions(outlives_env)
+        self.infcx.resolve_regions(body_id, param_env, assumed_wf_tys)
     }
 }
 

@@ -1,4 +1,4 @@
-error[E0271]: expected `hi` to be a fn item that returns `Box<u8>`, but it returns `impl Sized`
+error[E0271]: expected `hi` to return `Box<u8>`, but it returns `impl Sized`
   --> $DIR/issue-98608.rs:6:39
    |
 LL | fn hi() -> impl Sized {

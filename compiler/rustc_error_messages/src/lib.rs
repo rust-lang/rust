@@ -10,7 +10,7 @@
 use std::borrow::Cow;
 use std::error::Error;
 use std::path::{Path, PathBuf};
-use std::sync::LazyLock;
+use std::sync::{Arc, LazyLock};
 use std::{fmt, fs, io};
 
 use fluent_bundle::FluentResource;
@@ -19,7 +19,7 @@ pub use fluent_bundle::{self, FluentArgs, FluentError, FluentValue};
 use fluent_syntax::parser::ParserError;
 use icu_provider_adapters::fallback::{LocaleFallbackProvider, LocaleFallbacker};
 use intl_memoizer::concurrent::IntlLangMemoizer;
-use rustc_data_structures::sync::{IntoDynSyncSend, Lrc};
+use rustc_data_structures::sync::IntoDynSyncSend;
 use rustc_macros::{Decodable, Encodable};
 use rustc_span::Span;
 use tracing::{instrument, trace};
@@ -112,7 +112,7 @@ pub fn fluent_bundle(
     requested_locale: Option<LanguageIdentifier>,
     additional_ftl_path: Option<&Path>,
     with_directionality_markers: bool,
-) -> Result<Option<Lrc<FluentBundle>>, TranslationBundleError> {
+) -> Result<Option<Arc<FluentBundle>>, TranslationBundleError> {
     if requested_locale.is_none() && additional_ftl_path.is_none() {
         return Ok(None);
     }
@@ -190,7 +190,7 @@ pub fn fluent_bundle(
         bundle.add_resource_overriding(resource);
     }
 
-    let bundle = Lrc::new(bundle);
+    let bundle = Arc::new(bundle);
     Ok(Some(bundle))
 }
 
@@ -205,7 +205,7 @@ fn register_functions(bundle: &mut FluentBundle) {
 
 /// Type alias for the result of `fallback_fluent_bundle` - a reference-counted pointer to a lazily
 /// evaluated fluent bundle.
-pub type LazyFallbackBundle = Lrc<LazyLock<FluentBundle, impl FnOnce() -> FluentBundle>>;
+pub type LazyFallbackBundle = Arc<LazyLock<FluentBundle, impl FnOnce() -> FluentBundle>>;
 
 /// Return the default `FluentBundle` with standard "en-US" diagnostic messages.
 #[instrument(level = "trace", skip(resources))]
@@ -213,7 +213,7 @@ pub fn fallback_fluent_bundle(
     resources: Vec<&'static str>,
     with_directionality_markers: bool,
 ) -> LazyFallbackBundle {
-    Lrc::new(LazyLock::new(move || {
+    Arc::new(LazyLock::new(move || {
         let mut fallback_bundle = new_bundle(vec![langid!("en-US")]);
 
         register_functions(&mut fallback_bundle);

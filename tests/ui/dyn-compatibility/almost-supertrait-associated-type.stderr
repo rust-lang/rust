@@ -5,7 +5,7 @@ LL | impl<T, U> Dyn for dyn Foo<T, U> + '_ {
    |                    ^^^^^^^^^^^^^^^^^^ `Foo` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/almost-supertrait-associated-type.rs:33:34
    |
 LL | trait Foo<T, U>: Super<ActuallySuper, Assoc = T>
@@ -22,7 +22,7 @@ LL |     (&PhantomData::<T> as &dyn Foo<T, U>).transmute(t)
    |                           ^^^^^^^^^^^^^^ `Foo` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/almost-supertrait-associated-type.rs:33:34
    |
 LL | trait Foo<T, U>: Super<ActuallySuper, Assoc = T>
@@ -39,7 +39,7 @@ LL |     (&PhantomData::<T> as &dyn Foo<T, U>).transmute(t)
    |      ^^^^^^^^^^^^^^^^^ `Foo` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/almost-supertrait-associated-type.rs:33:34
    |
 LL | trait Foo<T, U>: Super<ActuallySuper, Assoc = T>

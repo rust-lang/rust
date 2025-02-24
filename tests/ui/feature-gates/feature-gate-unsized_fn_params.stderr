@@ -8,8 +8,9 @@ LL | fn foo(x: dyn Foo) {
    = help: unsized fn params are gated as an unstable feature
 help: you can use `impl Trait` as the argument type
    |
-LL | fn foo(x: impl Foo) {
-   |           ~~~~
+LL - fn foo(x: dyn Foo) {
+LL + fn foo(x: impl Foo) {
+   |
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
 LL | fn foo(x: &dyn Foo) {

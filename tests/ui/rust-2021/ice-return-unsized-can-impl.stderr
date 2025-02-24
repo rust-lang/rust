@@ -7,8 +7,9 @@ LL |     fn g(new: B) -> B;
    = note: `B` it is dyn-incompatible, so it can't be `dyn`
 help: use a new generic type parameter, constrained by `B`
    |
-LL |     fn g<T: B>(new: T) -> B;
-   |         ++++++      ~
+LL -     fn g(new: B) -> B;
+LL +     fn g<T: B>(new: T) -> B;
+   |
 help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
    |
 LL |     fn g(new: impl B) -> B;

@@ -18,8 +18,7 @@
       let mut _15: !;
       let mut _17: i32;
       let _18: usize;
-      let mut _19: usize;
-      let mut _20: bool;
+      let mut _19: bool;
       scope 1 {
           debug sum => _1;
           let _2: [i32; 4];
@@ -92,11 +91,10 @@
           StorageLive(_17);
 -         StorageLive(_18);
 -         _18 = copy _16;
-          _19 = Len(_2);
--         _20 = Lt(copy _18, copy _19);
--         assert(move _20, "index out of bounds: the length is {} but the index is {}", move _19, copy _18) -> [success: bb8, unwind continue];
-+         _20 = Lt(copy _16, copy _19);
-+         assert(move _20, "index out of bounds: the length is {} but the index is {}", move _19, copy _16) -> [success: bb8, unwind continue];
+-         _19 = Lt(copy _18, const 4_usize);
+-         assert(move _19, "index out of bounds: the length is {} but the index is {}", const 4_usize, copy _18) -> [success: bb8, unwind continue];
++         _19 = Lt(copy _16, const 4_usize);
++         assert(move _19, "index out of bounds: the length is {} but the index is {}", const 4_usize, copy _16) -> [success: bb8, unwind continue];
       }
   
       bb7: {

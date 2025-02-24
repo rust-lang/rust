@@ -1,6 +1,6 @@
 //@ run-fail
 //@ error-pattern:explicit panic
-//@ ignore-emscripten no processes
+//@ needs-subprocess
 
 fn failfn() {
     panic!();

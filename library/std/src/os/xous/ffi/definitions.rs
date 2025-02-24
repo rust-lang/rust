@@ -126,36 +126,42 @@ impl From<i32> for Error {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl core::fmt::Display for Error {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "{}", match self {
-            Error::NoError => "no error occurred",
-            Error::BadAlignment => "memory was not properly aligned",
-            Error::BadAddress => "an invalid address was supplied",
-            Error::OutOfMemory => "the process or service has run out of memory",
-            Error::MemoryInUse => "the requested address is in use",
-            Error::InterruptNotFound => "the requested interrupt does not exist on this platform",
-            Error::InterruptInUse => "the requested interrupt is currently in use",
-            Error::InvalidString => "the specified string was not formatted correctly",
-            Error::ServerExists => "a server with that address already exists",
-            Error::ServerNotFound => "the requetsed server could not be found",
-            Error::ProcessNotFound => "the target process does not exist",
-            Error::ProcessNotChild => "the requested operation can only be done on child processes",
-            Error::ProcessTerminated => "the target process has crashed",
-            Error::Timeout => "the requested operation timed out",
-            Error::InternalError => "an internal error occurred",
-            Error::ServerQueueFull => "the server has too many pending messages",
-            Error::ThreadNotAvailable => "the specified thread does not exist",
-            Error::UnhandledSyscall => "the kernel did not recognize that syscall",
-            Error::InvalidSyscall => "the syscall had incorrect parameters",
-            Error::ShareViolation => "an attempt was made to share memory twice",
-            Error::InvalidThread => "tried to resume a thread that was not ready",
-            Error::InvalidPid => "kernel attempted to use a pid that was not valid",
-            Error::AccessDenied => "no permission to perform the requested operation",
-            Error::UseBeforeInit => "attempt to use a service before initialization finished",
-            Error::DoubleFree => "the requested resource was freed twice",
-            Error::DebugInProgress => "kernel attempted to activate a thread being debugged",
-            Error::InvalidLimit => "process attempted to adjust an invalid limit",
-            Error::UnknownError => "an unknown error occurred",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                Error::NoError => "no error occurred",
+                Error::BadAlignment => "memory was not properly aligned",
+                Error::BadAddress => "an invalid address was supplied",
+                Error::OutOfMemory => "the process or service has run out of memory",
+                Error::MemoryInUse => "the requested address is in use",
+                Error::InterruptNotFound =>
+                    "the requested interrupt does not exist on this platform",
+                Error::InterruptInUse => "the requested interrupt is currently in use",
+                Error::InvalidString => "the specified string was not formatted correctly",
+                Error::ServerExists => "a server with that address already exists",
+                Error::ServerNotFound => "the requetsed server could not be found",
+                Error::ProcessNotFound => "the target process does not exist",
+                Error::ProcessNotChild =>
+                    "the requested operation can only be done on child processes",
+                Error::ProcessTerminated => "the target process has crashed",
+                Error::Timeout => "the requested operation timed out",
+                Error::InternalError => "an internal error occurred",
+                Error::ServerQueueFull => "the server has too many pending messages",
+                Error::ThreadNotAvailable => "the specified thread does not exist",
+                Error::UnhandledSyscall => "the kernel did not recognize that syscall",
+                Error::InvalidSyscall => "the syscall had incorrect parameters",
+                Error::ShareViolation => "an attempt was made to share memory twice",
+                Error::InvalidThread => "tried to resume a thread that was not ready",
+                Error::InvalidPid => "kernel attempted to use a pid that was not valid",
+                Error::AccessDenied => "no permission to perform the requested operation",
+                Error::UseBeforeInit => "attempt to use a service before initialization finished",
+                Error::DoubleFree => "the requested resource was freed twice",
+                Error::DebugInProgress => "kernel attempted to activate a thread being debugged",
+                Error::InvalidLimit => "process attempted to adjust an invalid limit",
+                Error::UnknownError => "an unknown error occurred",
+            }
+        )
     }
 }
 

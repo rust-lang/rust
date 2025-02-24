@@ -103,7 +103,7 @@ fn encode_args<'tcx>(
 /// <https://itanium-cxx-abi.github.io/cxx-abi/abi.html#mangling.literal>).
 fn encode_const<'tcx>(
     tcx: TyCtxt<'tcx>,
-    c: Const<'tcx>,
+    ct: Const<'tcx>,
     ct_ty: Ty<'tcx>,
     dict: &mut FxHashMap<DictKey<'tcx>, usize>,
     options: EncodeTyOptions,
@@ -111,7 +111,7 @@ fn encode_const<'tcx>(
     // L<element-type>[n][<element-value>]E as literal argument
     let mut s = String::from('L');
 
-    match c.kind() {
+    match ct.kind() {
         // Const parameters
         ty::ConstKind::Param(..) => {
             // L<element-type>E as literal argument
@@ -121,18 +121,18 @@ fn encode_const<'tcx>(
         }
 
         // Literal arguments
-        ty::ConstKind::Value(ct_ty, ..) => {
+        ty::ConstKind::Value(cv) => {
             // L<element-type>[n]<element-value>E as literal argument
 
             // Element type
-            s.push_str(&encode_ty(tcx, ct_ty, dict, options));
+            s.push_str(&encode_ty(tcx, cv.ty, dict, options));
 
             // The only allowed types of const values are bool, u8, u16, u32,
             // u64, u128, usize i8, i16, i32, i64, i128, isize, and char. The
             // bool value false is encoded as 0 and true as 1.
-            match ct_ty.kind() {
+            match cv.ty.kind() {
                 ty::Int(ity) => {
-                    let bits = c
+                    let bits = cv
                         .try_to_bits(tcx, ty::TypingEnv::fully_monomorphized())
                         .expect("expected monomorphic const in cfi");
                     let val = Integer::from_int_ty(&tcx, *ity).size().sign_extend(bits) as i128;
@@ -142,30 +142,30 @@ fn encode_const<'tcx>(
                     let _ = write!(s, "{val}");
                 }
                 ty::Uint(_) => {
-                    let val = c
+                    let val = cv
                         .try_to_bits(tcx, ty::TypingEnv::fully_monomorphized())
                         .expect("expected monomorphic const in cfi");
                     let _ = write!(s, "{val}");
                 }
                 ty::Bool => {
-                    let val = c.try_to_bool().expect("expected monomorphic const in cfi");
+                    let val = cv.try_to_bool().expect("expected monomorphic const in cfi");
                     let _ = write!(s, "{val}");
                 }
                 _ => {
-                    bug!("encode_const: unexpected type `{:?}`", ct_ty);
+                    bug!("encode_const: unexpected type `{:?}`", cv.ty);
                 }
             }
         }
 
         _ => {
-            bug!("encode_const: unexpected kind `{:?}`", c.kind());
+            bug!("encode_const: unexpected kind `{:?}`", ct.kind());
         }
     }
 
     // Close the "L..E" pair
     s.push('E');
 
-    compress(dict, DictKey::Const(c), &mut s);
+    compress(dict, DictKey::Const(ct), &mut s);
 
     s
 }

@@ -1,6 +1,6 @@
 //@ run-fail
 //@ error-pattern:oh, dear
-//@ ignore-emscripten no processes
+//@ needs-subprocess
 
 fn main() -> ! {
     panic!("oh, dear");

@@ -11,7 +11,6 @@ use rustc_errors::Applicability;
 use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 
 declare_clippy_lint! {
@@ -79,7 +78,7 @@ impl<'tcx> LateLintPass<'tcx> for IfThenSomeElseNone {
             && is_res_lang_ctor(cx, path_res(cx, peel_blocks(els)), OptionNone)
             && !is_else_clause(cx.tcx, expr)
             && !is_in_const_context(cx)
-            && !in_external_macro(cx.sess(), expr.span)
+            && !expr.span.in_external_macro(cx.sess().source_map())
             && self.msrv.meets(msrvs::BOOL_THEN)
             && !contains_return(then_block.stmts)
         {

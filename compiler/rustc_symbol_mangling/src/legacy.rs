@@ -1,7 +1,8 @@
 use std::fmt::{self, Write};
 use std::mem::{self, discriminant};
 
-use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_hashes::Hash64;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_middle::bug;
@@ -274,14 +275,15 @@ impl<'tcx> Printer<'tcx> for SymbolPrinter<'tcx> {
     fn print_const(&mut self, ct: ty::Const<'tcx>) -> Result<(), PrintError> {
         // only print integers
         match ct.kind() {
-            ty::ConstKind::Value(ty, ty::ValTree::Leaf(scalar)) if ty.is_integral() => {
+            ty::ConstKind::Value(cv) if cv.ty.is_integral() => {
                 // The `pretty_print_const` formatting depends on -Zverbose-internals
                 // flag, so we cannot reuse it here.
-                let signed = matches!(ty.kind(), ty::Int(_));
+                let scalar = cv.valtree.unwrap_leaf();
+                let signed = matches!(cv.ty.kind(), ty::Int(_));
                 write!(
                     self,
                     "{:#?}",
-                    ty::ConstInt::new(scalar, signed, ty.is_ptr_sized_integral())
+                    ty::ConstInt::new(scalar, signed, cv.ty.is_ptr_sized_integral())
                 )?;
             }
             _ => self.write_str("_")?,

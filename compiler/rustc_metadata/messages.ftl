@@ -47,6 +47,9 @@ metadata_crate_dep_rustc_driver =
 metadata_crate_location_unknown_type =
     extern location for {$crate_name} is of an unknown type: {$path}
 
+metadata_crate_not_compiler_builtins =
+    the crate `{$crate_name}` resolved as `compiler_builtins` but is not `#![compiler_builtins]`
+
 metadata_crate_not_panic_runtime =
     the crate `{$crate_name}` is not a panic runtime
 
@@ -112,6 +115,14 @@ metadata_incompatible_panic_in_drop_strategy =
 metadata_incompatible_rustc =
     found crate `{$crate_name}` compiled by an incompatible version of rustc{$add_info}
     .help = please recompile that crate using this compiler ({$rustc_version}) (consider running `cargo clean` first)
+
+metadata_incompatible_target_modifiers =
+    mixing `{$flag_name_prefixed}` will cause an ABI mismatch in crate `{$local_crate}`
+    .note = `{$flag_name_prefixed}={$flag_local_value}` in this crate is incompatible with `{$flag_name_prefixed}={$flag_extern_value}` in dependency `{$extern_crate}`
+    .help = the `{$flag_name_prefixed}` flag modifies the ABI so Rust crates compiled with different values of this flag cannot be used together safely
+
+metadata_incompatible_target_modifiers_help_allow = if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch={$flag_name}` to silence this error
+metadata_incompatible_target_modifiers_help_fix = set `{$flag_name_prefixed}={$flag_extern_value}` in this crate or `{$flag_name_prefixed}={$flag_local_value}` in `{$extern_crate}`
 
 metadata_incompatible_wasm_link =
     `wasm_import_module` is incompatible with other arguments in `#[link]` attributes
@@ -284,11 +295,16 @@ metadata_unknown_link_kind =
 metadata_unknown_link_modifier =
     unknown linking modifier `{$modifier}`, expected one of: bundle, verbatim, whole-archive, as-needed
 
+metadata_unknown_target_modifier_unsafe_allowed = unknown target modifier `{$flag_name}`, requested by `-Cunsafe-allow-abi-mismatch={$flag_name}`
+
 metadata_unsupported_abi =
     ABI not supported by `#[link(kind = "raw-dylib")]` on this architecture
 
 metadata_unsupported_abi_i686 =
     ABI not supported by `#[link(kind = "raw-dylib")]` on i686
+
+metadata_wasm_c_abi =
+    older versions of the `wasm-bindgen` crate are incompatible with current versions of Rust; please update to `wasm-bindgen` v0.2.88
 
 metadata_wasm_import_form =
     wasm import module must be of the form `wasm_import_module = "string"`

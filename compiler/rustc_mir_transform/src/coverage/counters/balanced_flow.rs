@@ -20,8 +20,6 @@ use rustc_data_structures::graph::reversed::ReversedGraph;
 use rustc_index::Idx;
 use rustc_index::bit_set::DenseBitSet;
 
-use crate::coverage::counters::iter_nodes::IterNodes;
-
 /// A view of an underlying graph that has been augmented to have “balanced flow”.
 /// This means that the flow (execution count) of each node is equal to the
 /// sum of its in-edge flows, and also equal to the sum of its out-edge flows.

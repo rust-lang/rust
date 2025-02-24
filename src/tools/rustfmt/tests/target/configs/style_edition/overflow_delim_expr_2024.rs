@@ -25,10 +25,13 @@ fn combine_blocklike() {
         y: value2,
     });
 
-    do_thing(x, Bar {
-        x: value,
-        y: value2,
-    });
+    do_thing(
+        x,
+        Bar {
+            x: value,
+            y: value2,
+        },
+    );
 
     do_thing(
         x,
@@ -46,12 +49,15 @@ fn combine_blocklike() {
         value4_with_longer_name,
     ]);
 
-    do_thing(x, &[
-        value_with_longer_name,
-        value2_with_longer_name,
-        value3_with_longer_name,
-        value4_with_longer_name,
-    ]);
+    do_thing(
+        x,
+        &[
+            value_with_longer_name,
+            value2_with_longer_name,
+            value3_with_longer_name,
+            value4_with_longer_name,
+        ],
+    );
 
     do_thing(
         x,
@@ -71,12 +77,15 @@ fn combine_blocklike() {
         value4_with_longer_name,
     ]);
 
-    do_thing(x, vec![
-        value_with_longer_name,
-        value2_with_longer_name,
-        value3_with_longer_name,
-        value4_with_longer_name,
-    ]);
+    do_thing(
+        x,
+        vec![
+            value_with_longer_name,
+            value2_with_longer_name,
+            value3_with_longer_name,
+            value4_with_longer_name,
+        ],
+    );
 
     do_thing(
         x,
@@ -99,22 +108,28 @@ fn combine_blocklike() {
 }
 
 fn combine_struct_sample() {
-    let identity = verify(&ctx, VerifyLogin {
-        type_: LoginType::Username,
-        username: args.username.clone(),
-        password: Some(args.password.clone()),
-        domain: None,
-    })?;
+    let identity = verify(
+        &ctx,
+        VerifyLogin {
+            type_: LoginType::Username,
+            username: args.username.clone(),
+            password: Some(args.password.clone()),
+            domain: None,
+        },
+    )?;
 }
 
 fn combine_macro_sample() {
     rocket::ignite()
-        .mount("/", routes![
-            http::auth::login,
-            http::auth::logout,
-            http::cors::options,
-            http::action::dance,
-            http::action::sleep,
-        ])
+        .mount(
+            "/",
+            routes![
+                http::auth::login,
+                http::auth::logout,
+                http::cors::options,
+                http::action::dance,
+                http::action::sleep,
+            ],
+        )
         .launch();
 }

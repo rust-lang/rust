@@ -17,19 +17,19 @@ LL | const priv_const: isize = 0;
    |       ^^^^^^^^^^
 
 error: struct `PrivStruct` is never constructed
-  --> $DIR/lint-dead-code-1.rs:35:8
+  --> $DIR/lint-dead-code-1.rs:36:8
    |
 LL | struct PrivStruct;
    |        ^^^^^^^^^^
 
 error: enum `priv_enum` is never used
-  --> $DIR/lint-dead-code-1.rs:64:6
+  --> $DIR/lint-dead-code-1.rs:65:6
    |
 LL | enum priv_enum { foo2, bar2 }
    |      ^^^^^^^^^
 
 error: variant `bar3` is never constructed
-  --> $DIR/lint-dead-code-1.rs:67:5
+  --> $DIR/lint-dead-code-1.rs:68:5
    |
 LL | enum used_enum {
    |      --------- variant in this enum
@@ -38,25 +38,25 @@ LL |     bar3
    |     ^^^^
 
 error: function `priv_fn` is never used
-  --> $DIR/lint-dead-code-1.rs:88:4
+  --> $DIR/lint-dead-code-1.rs:90:4
    |
 LL | fn priv_fn() {
    |    ^^^^^^^
 
 error: function `foo` is never used
-  --> $DIR/lint-dead-code-1.rs:93:4
+  --> $DIR/lint-dead-code-1.rs:95:4
    |
 LL | fn foo() {
    |    ^^^
 
 error: function `bar` is never used
-  --> $DIR/lint-dead-code-1.rs:98:4
+  --> $DIR/lint-dead-code-1.rs:100:4
    |
 LL | fn bar() {
    |    ^^^
 
 error: function `baz` is never used
-  --> $DIR/lint-dead-code-1.rs:102:4
+  --> $DIR/lint-dead-code-1.rs:104:4
    |
 LL | fn baz() -> impl Copy {
    |    ^^^

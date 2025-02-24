@@ -5,7 +5,7 @@ LL |     let i = Box::new(42_u32) as Box<dyn Foo>;
    |                                 ^^^^^^^^^^^^ `Foo` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/dyn-compatibility.rs:4:22
    |
 LL | trait Foo {
@@ -22,7 +22,7 @@ LL |     let s = i.baz();
    |               ^^^ `Foo` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/dyn-compatibility.rs:4:22
    |
 LL | trait Foo {
@@ -39,7 +39,7 @@ LL |     let s = i.baz();
    |             ^^^^^^^ `Foo` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/dyn-compatibility.rs:4:22
    |
 LL | trait Foo {
@@ -56,7 +56,7 @@ LL |     let i = Box::new(42_u32) as Box<dyn Foo>;
    |             ^^^^^^^^^^^^^^^^ `Foo` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/dyn-compatibility.rs:4:22
    |
 LL | trait Foo {

@@ -1,5 +1,6 @@
 use std::iter;
 
+use either::Either;
 use hir::{db::ExpandDatabase, Adt, FileRange, HasSource, HirDisplay, InFile, Struct, Union};
 use ide_db::text_edit::TextEdit;
 use ide_db::{
@@ -41,7 +42,7 @@ pub(crate) fn unresolved_field(
         ),
         adjusted_display_range(ctx, d.expr, &|expr| {
             Some(
-                match expr {
+                match expr.left()? {
                     ast::Expr::MethodCallExpr(it) => it.name_ref(),
                     ast::Expr::FieldExpr(it) => it.name_ref(),
                     _ => None,
@@ -72,7 +73,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedField) -> Option<Vec<A
 fn field_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedField) -> Option<Assist> {
     // Get the FileRange of the invalid field access
     let root = ctx.sema.db.parse_or_expand(d.expr.file_id);
-    let expr = d.expr.value.to_node(&root);
+    let expr = d.expr.value.to_node(&root).left()?;
 
     let error_range = ctx.sema.original_range_opt(expr.syntax())?;
     let field_name = d.name.as_str();
@@ -263,7 +264,7 @@ fn record_field_layout(
 // FIXME: We should fill out the call here, move the cursor and trigger signature help
 fn method_fix(
     ctx: &DiagnosticsContext<'_>,
-    expr_ptr: &InFile<AstPtr<ast::Expr>>,
+    expr_ptr: &InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
 ) -> Option<Assist> {
     let root = ctx.sema.db.parse_or_expand(expr_ptr.file_id);
     let expr = expr_ptr.value.to_node(&root);

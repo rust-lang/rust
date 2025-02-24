@@ -188,8 +188,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # FIXME update at some point in the future once most distros use a newer glibc
-          - os: ubuntu-20.04
+          # Intentionally using an older ubuntu version to lower the glibc requirements of the distributed cg_clif
+          - os: ubuntu-22.04
             env:
               TARGET_TRIPLE: x86_64-unknown-linux-gnu
           - os: macos-latest

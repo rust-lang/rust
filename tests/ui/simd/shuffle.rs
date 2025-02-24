@@ -8,9 +8,8 @@
 
 use std::marker::ConstParamTy;
 
-extern "rust-intrinsic" {
-    fn simd_shuffle<T, I, U>(a: T, b: T, i: I) -> U;
-}
+#[rustc_intrinsic]
+unsafe fn simd_shuffle<T, I, U>(a: T, b: T, i: I) -> U;
 
 #[derive(Copy, Clone, ConstParamTy, PartialEq, Eq)]
 #[repr(simd)]

@@ -4,7 +4,7 @@
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
-use rustc_hir::intravisit::Visitor;
+use rustc_hir::intravisit::VisitorExt;
 use rustc_middle::bug;
 use rustc_middle::ty::TypeVisitor;
 use tracing::debug;
@@ -33,11 +33,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         };
         // If we added a "points at argument expression" obligation, we remove it here, we care
         // about the original obligation only.
-        let code = match cause.code() {
-            ObligationCauseCode::FunctionArg { parent_code, .. } => &*parent_code,
-            code => code,
-        };
-        let ObligationCauseCode::MatchImpl(parent, impl_def_id) = code else {
+        let ObligationCauseCode::MatchImpl(parent, impl_def_id) = cause.code() else {
             return None;
         };
         let (ObligationCauseCode::WhereClause(_, binding_span)
@@ -66,7 +62,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         );
         let mut impl_span = None;
         let mut implicit_static_lifetimes = Vec::new();
-        if let Some(impl_node) = self.tcx().hir().get_if_local(*impl_def_id) {
+        if let Some(impl_node) = self.tcx().hir_get_if_local(*impl_def_id) {
             // If an impl is local, then maybe this isn't what they want. Try to
             // be as helpful as possible with implicit lifetimes.
 
@@ -87,7 +83,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             for matching_def_id in v.0 {
                 let mut hir_v =
                     super::static_impl_trait::HirTraitObjectVisitor(&mut traits, matching_def_id);
-                hir_v.visit_ty(impl_self_ty);
+                hir_v.visit_ty_unambig(impl_self_ty);
             }
 
             if traits.is_empty() {

@@ -6,6 +6,7 @@ use std::iter;
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet, IndexEntry};
 use rustc_data_structures::unord::UnordSet;
+use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_middle::ty::{Region, RegionVid};
 use tracing::debug;
@@ -13,6 +14,7 @@ use tracing::debug;
 use super::*;
 use crate::errors::UnableToConstructConstantValue;
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
+use crate::regions::OutlivesEnvironmentBuildExt;
 use crate::traits::project::ProjectAndUnifyResult;
 
 // FIXME(twk): this is obviously not nice to duplicate like that
@@ -158,7 +160,7 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             panic!("Unable to fulfill trait {trait_did:?} for '{ty:?}': {errors:?}");
         }
 
-        let outlives_env = OutlivesEnvironment::new(full_env);
+        let outlives_env = OutlivesEnvironment::new(&infcx, CRATE_DEF_ID, full_env, []);
         let _ = infcx.process_registered_region_obligations(&outlives_env, |ty, _| Ok(ty));
 
         let region_data = infcx.inner.borrow_mut().unwrap_region_constraints().data().clone();

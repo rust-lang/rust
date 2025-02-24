@@ -3,6 +3,8 @@ error: the constant `N` is not of type `usize`
    |
 LL | fn bar<const N: u8>() -> [u8; N] {}
    |                          ^^^^^^^ expected `usize`, found `u8`
+   |
+   = note: the length of array `[u8; N]` must be type `usize`
 
 error: the constant `N` is not of type `u8`
   --> $DIR/type_mismatch.rs:2:11

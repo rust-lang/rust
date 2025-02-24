@@ -66,6 +66,10 @@ impl<'tcx> Iterator for Prefixes<'tcx> {
                             self.next = Some(cursor_base);
                             return Some(cursor);
                         }
+                        ProjectionElem::UnwrapUnsafeBinder(_) => {
+                            self.next = Some(cursor_base);
+                            return Some(cursor);
+                        }
                         ProjectionElem::Downcast(..)
                         | ProjectionElem::Subslice { .. }
                         | ProjectionElem::OpaqueCast { .. }

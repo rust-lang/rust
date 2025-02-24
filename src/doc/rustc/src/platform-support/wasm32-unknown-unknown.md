@@ -129,6 +129,8 @@ As of the time of this writing the proposals that are enabled by default (the
 * `mutable-globals`
 * `reference-types`
 * `sign-ext`
+* `nontrapping-fptoint` (Rust 1.87.0+, LLVM 20+)
+* `bulk-memory` (Rust 1.87.0+, LLVM 20+)
 
 If you're compiling WebAssembly code for an engine that does not support a
 feature in LLVM's default feature set then the feature must be disabled at

@@ -350,6 +350,3 @@ unsafe impl<T: Sync + Send, F: Send> Sync for LazyLock<T, F> {}
 impl<T: RefUnwindSafe + UnwindSafe, F: UnwindSafe> RefUnwindSafe for LazyLock<T, F> {}
 #[stable(feature = "lazy_cell", since = "1.80.0")]
 impl<T: UnwindSafe, F: UnwindSafe> UnwindSafe for LazyLock<T, F> {}
-
-#[cfg(test)]
-mod tests;

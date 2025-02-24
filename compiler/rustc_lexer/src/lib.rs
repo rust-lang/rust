@@ -291,7 +291,7 @@ pub fn validate_raw_str(input: &str, prefix_len: u32) -> Result<(), RawStrError>
 }
 
 /// Creates an iterator that produces tokens from the input string.
-pub fn tokenize(input: &str) -> impl Iterator<Item = Token> + '_ {
+pub fn tokenize(input: &str) -> impl Iterator<Item = Token> {
     let mut cursor = Cursor::new(input);
     std::iter::from_fn(move || {
         let token = cursor.advance_token();
@@ -483,7 +483,7 @@ impl Cursor<'_> {
             _ => None,
         };
 
-        self.eat_while(|c| c != '\n');
+        self.eat_until(b'\n');
         LineComment { doc_style }
     }
 
@@ -888,7 +888,7 @@ impl Cursor<'_> {
         // Skip the string contents and on each '#' character met, check if this is
         // a raw string termination.
         loop {
-            self.eat_while(|c| c != '"');
+            self.eat_until(b'"');
 
             if self.is_eof() {
                 return Err(RawStrError::NoTerminator {

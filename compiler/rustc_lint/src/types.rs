@@ -4,7 +4,8 @@ use std::ops::ControlFlow;
 use rustc_abi::{BackendRepr, ExternAbi, TagEncoding, VariantIdx, Variants, WrappingRange};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::DiagMessage;
-use rustc_hir::{Expr, ExprKind, LangItem};
+use rustc_hir::intravisit::VisitorExt;
+use rustc_hir::{AmbigArg, Expr, ExprKind, HirId, LangItem};
 use rustc_middle::bug;
 use rustc_middle::ty::layout::{LayoutOf, SizeSkeleton};
 use rustc_middle::ty::{
@@ -535,6 +536,20 @@ fn lint_fn_pointer<'tcx>(
 }
 
 impl<'tcx> LateLintPass<'tcx> for TypeLimits {
+    fn check_lit(
+        &mut self,
+        cx: &LateContext<'tcx>,
+        hir_id: HirId,
+        lit: &'tcx hir::Lit,
+        negated: bool,
+    ) {
+        if negated {
+            self.negated_expr_id = Some(hir_id);
+            self.negated_expr_span = Some(lit.span);
+        }
+        lint_literal(cx, self, hir_id, lit.span, lit, negated);
+    }
+
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx hir::Expr<'tcx>) {
         match e.kind {
             hir::ExprKind::Unary(hir::UnOp::Neg, expr) => {
@@ -556,7 +571,6 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
                     }
                 }
             }
-            hir::ExprKind::Lit(lit) => lint_literal(cx, self, e, lit),
             hir::ExprKind::Call(path, [l, r])
                 if let ExprKind::Path(ref qpath) = path.kind
                     && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
@@ -589,13 +603,16 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
         }
 
         fn rev_binop(binop: hir::BinOp) -> hir::BinOp {
-            source_map::respan(binop.span, match binop.node {
-                hir::BinOpKind::Lt => hir::BinOpKind::Gt,
-                hir::BinOpKind::Le => hir::BinOpKind::Ge,
-                hir::BinOpKind::Gt => hir::BinOpKind::Lt,
-                hir::BinOpKind::Ge => hir::BinOpKind::Le,
-                _ => return binop,
-            })
+            source_map::respan(
+                binop.span,
+                match binop.node {
+                    hir::BinOpKind::Lt => hir::BinOpKind::Gt,
+                    hir::BinOpKind::Le => hir::BinOpKind::Ge,
+                    hir::BinOpKind::Gt => hir::BinOpKind::Lt,
+                    hir::BinOpKind::Ge => hir::BinOpKind::Le,
+                    _ => return binop,
+                },
+            )
         }
 
         fn check_limits(
@@ -679,7 +696,7 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// extern "C" {
+    /// unsafe extern "C" {
     ///     static STATIC: String;
     /// }
     /// ```
@@ -860,6 +877,37 @@ fn ty_is_known_nonnull<'tcx>(
                 .filter_map(|variant| transparent_newtype_field(tcx, variant))
                 .any(|field| ty_is_known_nonnull(tcx, typing_env, field.ty(tcx, args), mode))
         }
+        ty::Pat(base, pat) => {
+            ty_is_known_nonnull(tcx, typing_env, *base, mode)
+                || Option::unwrap_or_default(
+                    try {
+                        match **pat {
+                            ty::PatternKind::Range { start, end, include_end } => {
+                                match (start, end) {
+                                    (Some(start), None) => {
+                                        start.try_to_value()?.try_to_bits(tcx, typing_env)? > 0
+                                    }
+                                    (Some(start), Some(end)) => {
+                                        let start =
+                                            start.try_to_value()?.try_to_bits(tcx, typing_env)?;
+                                        let end =
+                                            end.try_to_value()?.try_to_bits(tcx, typing_env)?;
+
+                                        if include_end {
+                                            // This also works for negative numbers, as we just need
+                                            // to ensure we aren't wrapping over zero.
+                                            start > 0 && end >= start
+                                        } else {
+                                            start > 0 && end > start
+                                        }
+                                    }
+                                    _ => false,
+                                }
+                            }
+                        }
+                    },
+                )
+        }
         _ => false,
     }
 }
@@ -890,9 +938,8 @@ fn get_nullable_type<'tcx>(
             };
             return get_nullable_type(tcx, typing_env, inner_field_ty);
         }
-        ty::Int(ty) => Ty::new_int(tcx, ty),
-        ty::Uint(ty) => Ty::new_uint(tcx, ty),
-        ty::RawPtr(ty, mutbl) => Ty::new_ptr(tcx, ty, mutbl),
+        ty::Pat(base, ..) => return get_nullable_type(tcx, typing_env, base),
+        ty::Int(_) | ty::Uint(_) | ty::RawPtr(..) => ty,
         // As these types are always non-null, the nullable equivalent of
         // `Option<T>` of these types are their raw pointer counterparts.
         ty::Ref(_region, ty, mutbl) => Ty::new_ptr(tcx, ty, mutbl),
@@ -948,63 +995,69 @@ pub(crate) fn repr_nullable_ptr<'tcx>(
     ckind: CItemKind,
 ) -> Option<Ty<'tcx>> {
     debug!("is_repr_nullable_ptr(tcx, ty = {:?})", ty);
-    if let ty::Adt(ty_def, args) = ty.kind() {
-        let field_ty = match &ty_def.variants().raw[..] {
-            [var_one, var_two] => match (&var_one.fields.raw[..], &var_two.fields.raw[..]) {
-                ([], [field]) | ([field], []) => field.ty(tcx, args),
-                ([field1], [field2]) => {
-                    let ty1 = field1.ty(tcx, args);
-                    let ty2 = field2.ty(tcx, args);
+    match ty.kind() {
+        ty::Adt(ty_def, args) => {
+            let field_ty = match &ty_def.variants().raw[..] {
+                [var_one, var_two] => match (&var_one.fields.raw[..], &var_two.fields.raw[..]) {
+                    ([], [field]) | ([field], []) => field.ty(tcx, args),
+                    ([field1], [field2]) => {
+                        let ty1 = field1.ty(tcx, args);
+                        let ty2 = field2.ty(tcx, args);
 
-                    if is_niche_optimization_candidate(tcx, typing_env, ty1) {
-                        ty2
-                    } else if is_niche_optimization_candidate(tcx, typing_env, ty2) {
-                        ty1
-                    } else {
-                        return None;
+                        if is_niche_optimization_candidate(tcx, typing_env, ty1) {
+                            ty2
+                        } else if is_niche_optimization_candidate(tcx, typing_env, ty2) {
+                            ty1
+                        } else {
+                            return None;
+                        }
                     }
-                }
+                    _ => return None,
+                },
                 _ => return None,
-            },
-            _ => return None,
-        };
-
-        if !ty_is_known_nonnull(tcx, typing_env, field_ty, ckind) {
-            return None;
-        }
-
-        // At this point, the field's type is known to be nonnull and the parent enum is Option-like.
-        // If the computed size for the field and the enum are different, the nonnull optimization isn't
-        // being applied (and we've got a problem somewhere).
-        let compute_size_skeleton = |t| SizeSkeleton::compute(t, tcx, typing_env).ok();
-        if !compute_size_skeleton(ty)?.same_size(compute_size_skeleton(field_ty)?) {
-            bug!("improper_ctypes: Option nonnull optimization not applied?");
-        }
-
-        // Return the nullable type this Option-like enum can be safely represented with.
-        let field_ty_layout = tcx.layout_of(typing_env.as_query_input(field_ty));
-        if field_ty_layout.is_err() && !field_ty.has_non_region_param() {
-            bug!("should be able to compute the layout of non-polymorphic type");
-        }
-
-        let field_ty_abi = &field_ty_layout.ok()?.backend_repr;
-        if let BackendRepr::Scalar(field_ty_scalar) = field_ty_abi {
-            match field_ty_scalar.valid_range(&tcx) {
-                WrappingRange { start: 0, end }
-                    if end == field_ty_scalar.size(&tcx).unsigned_int_max() - 1 =>
-                {
-                    return Some(get_nullable_type(tcx, typing_env, field_ty).unwrap());
-                }
-                WrappingRange { start: 1, .. } => {
-                    return Some(get_nullable_type(tcx, typing_env, field_ty).unwrap());
-                }
-                WrappingRange { start, end } => {
-                    unreachable!("Unhandled start and end range: ({}, {})", start, end)
-                }
             };
+
+            if !ty_is_known_nonnull(tcx, typing_env, field_ty, ckind) {
+                return None;
+            }
+
+            // At this point, the field's type is known to be nonnull and the parent enum is Option-like.
+            // If the computed size for the field and the enum are different, the nonnull optimization isn't
+            // being applied (and we've got a problem somewhere).
+            let compute_size_skeleton = |t| SizeSkeleton::compute(t, tcx, typing_env).ok();
+            if !compute_size_skeleton(ty)?.same_size(compute_size_skeleton(field_ty)?) {
+                bug!("improper_ctypes: Option nonnull optimization not applied?");
+            }
+
+            // Return the nullable type this Option-like enum can be safely represented with.
+            let field_ty_layout = tcx.layout_of(typing_env.as_query_input(field_ty));
+            if field_ty_layout.is_err() && !field_ty.has_non_region_param() {
+                bug!("should be able to compute the layout of non-polymorphic type");
+            }
+
+            let field_ty_abi = &field_ty_layout.ok()?.backend_repr;
+            if let BackendRepr::Scalar(field_ty_scalar) = field_ty_abi {
+                match field_ty_scalar.valid_range(&tcx) {
+                    WrappingRange { start: 0, end }
+                        if end == field_ty_scalar.size(&tcx).unsigned_int_max() - 1 =>
+                    {
+                        return Some(get_nullable_type(tcx, typing_env, field_ty).unwrap());
+                    }
+                    WrappingRange { start: 1, .. } => {
+                        return Some(get_nullable_type(tcx, typing_env, field_ty).unwrap());
+                    }
+                    WrappingRange { start, end } => {
+                        unreachable!("Unhandled start and end range: ({}, {})", start, end)
+                    }
+                };
+            }
+            None
         }
+        ty::Pat(base, pat) => match **pat {
+            ty::PatternKind::Range { .. } => get_nullable_type(tcx, typing_env, *base),
+        },
+        _ => None,
     }
-    None
 }
 
 impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
@@ -1239,11 +1292,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 help: Some(fluent::lint_improper_ctypes_char_help),
             },
 
-            ty::Pat(..) => FfiUnsafe {
-                ty,
-                reason: fluent::lint_improper_ctypes_pat_reason,
-                help: Some(fluent::lint_improper_ctypes_pat_help),
-            },
+            // It's just extra invariants on the type that you need to uphold,
+            // but only the base type is relevant for being representable in FFI.
+            ty::Pat(base, ..) => self.check_type_for_ffi(acc, base),
 
             ty::Int(ty::IntTy::I128) | ty::Uint(ty::UintTy::U128) => {
                 FfiUnsafe { ty, reason: fluent::lint_improper_ctypes_128bit, help: None }
@@ -1376,14 +1427,11 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         } else {
             None
         };
-        self.cx.emit_span_lint(lint, sp, ImproperCTypes {
-            ty,
-            desc,
-            label: sp,
-            help,
-            note,
-            span_note,
-        });
+        self.cx.emit_span_lint(
+            lint,
+            sp,
+            ImproperCTypes { ty, desc, label: sp, help, note, span_note },
+        );
     }
 
     fn check_for_opaque_ty(&mut self, sp: Span, ty: Ty<'tcx>) -> bool {
@@ -1526,7 +1574,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
 
         impl<'a, 'b, 'tcx> hir::intravisit::Visitor<'_> for FnPtrFinder<'a, 'b, 'tcx> {
-            fn visit_ty(&mut self, ty: &'_ hir::Ty<'_>) {
+            fn visit_ty(&mut self, ty: &'_ hir::Ty<'_, AmbigArg>) {
                 debug!(?ty);
                 if let hir::TyKind::BareFn(hir::BareFnTy { abi, .. }) = ty.kind
                     && !self.visitor.is_internal_abi(*abi)
@@ -1539,7 +1587,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
 
         impl<'a, 'b, 'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for FnPtrFinder<'a, 'b, 'tcx> {
-            type Result = ControlFlow<Ty<'tcx>>;
+            type Result = ();
 
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
                 if let ty::FnPtr(_, hdr) = ty.kind()
@@ -1554,7 +1602,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
         let mut visitor = FnPtrFinder { visitor: self, spans: Vec::new(), tys: Vec::new() };
         ty.visit_with(&mut visitor);
-        hir::intravisit::Visitor::visit_ty(&mut visitor, hir_ty);
+        visitor.visit_ty_unambig(hir_ty);
 
         iter::zip(visitor.tys.drain(..), visitor.spans.drain(..)).collect()
     }
@@ -1692,7 +1740,7 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDefinitions {
             hir::ItemKind::Impl(..)
             | hir::ItemKind::TraitAlias(..)
             | hir::ItemKind::Trait(..)
-            | hir::ItemKind::GlobalAsm(..)
+            | hir::ItemKind::GlobalAsm { .. }
             | hir::ItemKind::ForeignMod { .. }
             | hir::ItemKind::Mod(..)
             | hir::ItemKind::Macro(..)
@@ -1743,7 +1791,7 @@ impl<'tcx> LateLintPass<'tcx> for VariantSizeDifferences {
             let t = cx.tcx.type_of(it.owner_id).instantiate_identity();
             let ty = cx.tcx.erase_regions(t);
             let Ok(layout) = cx.layout_of(ty) else { return };
-            let Variants::Multiple { tag_encoding: TagEncoding::Direct, tag, ref variants, .. } =
+            let Variants::Multiple { tag_encoding: TagEncoding::Direct, tag, variants, .. } =
                 &layout.variants
             else {
                 return;
@@ -1920,11 +1968,11 @@ impl InvalidAtomicOrdering {
     }
 
     fn check_atomic_compare_exchange(cx: &LateContext<'_>, expr: &Expr<'_>) {
-        let Some((method, args)) = Self::inherent_atomic_method_call(cx, expr, &[
-            sym::fetch_update,
-            sym::compare_exchange,
-            sym::compare_exchange_weak,
-        ]) else {
+        let Some((method, args)) = Self::inherent_atomic_method_call(
+            cx,
+            expr,
+            &[sym::fetch_update, sym::compare_exchange, sym::compare_exchange_weak],
+        ) else {
             return;
         };
 

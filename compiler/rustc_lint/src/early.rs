@@ -246,6 +246,14 @@ impl<'ast, 'ecx, 'tcx, T: EarlyLintPass> ast_visit::Visitor<'ast>
                 }
             }
             ast_visit::walk_assoc_item(cx, item, ctxt);
+            match ctxt {
+                ast_visit::AssocCtxt::Trait => {
+                    lint_callback!(cx, check_trait_item_post, item);
+                }
+                ast_visit::AssocCtxt::Impl => {
+                    lint_callback!(cx, check_impl_item_post, item);
+                }
+            }
         });
     }
 

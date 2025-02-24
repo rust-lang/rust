@@ -24,10 +24,12 @@ pub struct T<S: Simd>([S::Lane; S::SIZE]);
 //~| ERROR SIMD vector element type should be a primitive scalar
 //~| ERROR unconstrained generic constant
 
-extern "rust-intrinsic" {
-    fn simd_insert<T, E>(x: T, idx: u32, y: E) -> T;
-    fn simd_extract<T, E>(x: T, idx: u32) -> E;
-}
+#[rustc_intrinsic]
+unsafe fn simd_insert<T, E>(x: T, idx: u32, y: E) -> T;
+
+#[rustc_intrinsic]
+unsafe fn simd_extract<T, E>(x: T, idx: u32) -> E;
+
 
 pub fn main() {
     let mut t = T::<i32x4>([0; 4]);

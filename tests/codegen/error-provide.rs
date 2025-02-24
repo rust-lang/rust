@@ -1,6 +1,6 @@
 // Codegen test for #126242
 
-//@ compile-flags: -O
+//@ compile-flags: -Copt-level=3
 #![crate_type = "lib"]
 #![feature(error_generic_member_access)]
 use std::error::Request;

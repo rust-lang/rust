@@ -812,6 +812,9 @@ passes_unused_duplicate =
 passes_unused_empty_lints_note =
     attribute `{$name}` with an empty list has no effect
 
+passes_unused_linker_warnings_note =
+    the `linker_warnings` lint can only be controlled at the root of a crate that needs to be linked
+
 passes_unused_multiple =
     multiple `{$name}` attributes
     .suggestion = remove this attribute

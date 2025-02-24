@@ -44,9 +44,13 @@ pub use core::builder::PathSet;
 pub use core::config::Config;
 pub use core::config::flags::{Flags, Subcommand};
 
+#[cfg(feature = "tracing")]
+use tracing::{instrument, span};
 pub use utils::change_tracker::{
     CONFIG_CHANGE_HISTORY, find_recent_config_change_ids, human_readable_changes,
 };
+
+use crate::core::build_steps::vendor::VENDOR_DIR;
 
 const LLVM_TOOLS: &[&str] = &[
     "llvm-cov",      // used to generate coverage report
@@ -152,6 +156,7 @@ pub struct Build {
     targets: Vec<TargetSelection>,
 
     initial_rustc: PathBuf,
+    initial_rustdoc: PathBuf,
     initial_cargo: PathBuf,
     initial_lld: PathBuf,
     initial_relative_libdir: PathBuf,
@@ -246,6 +251,7 @@ impl Mode {
     }
 }
 
+#[derive(Debug, Hash, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum CLang {
     C,
     Cxx,
@@ -352,6 +358,7 @@ impl Build {
             initial_lld,
             initial_relative_libdir,
             initial_rustc: config.initial_rustc.clone(),
+            initial_rustdoc: config.initial_rustc.with_file_name(exe("rustdoc", config.build)),
             initial_cargo: config.initial_cargo.clone(),
             initial_sysroot: config.initial_sysroot.clone(),
             local_rebuild: config.local_rebuild,
@@ -464,7 +471,20 @@ impl Build {
     ///
     /// The given `err_hint` will be shown to the user if the submodule is not
     /// checked out and submodule management is disabled.
+    #[cfg_attr(
+        feature = "tracing",
+        instrument(
+            level = "trace",
+            name = "Build::require_submodule",
+            skip_all,
+            fields(submodule = submodule),
+        ),
+    )]
     pub fn require_submodule(&self, submodule: &str, err_hint: Option<&str>) {
+        if self.rust_info().is_from_tarball() {
+            return;
+        }
+
         // When testing bootstrap itself, it is much faster to ignore
         // submodules. Almost all Steps work fine without their submodules.
         if cfg!(test) && !self.config.submodules() {
@@ -472,7 +492,7 @@ impl Build {
         }
         self.config.update_submodule(submodule);
         let absolute_path = self.config.src.join(submodule);
-        if dir_is_empty(&absolute_path) {
+        if !absolute_path.exists() || dir_is_empty(&absolute_path) {
             let maybe_enable = if !self.config.submodules()
                 && self.config.rust_info.is_managed_git_subrepository()
             {
@@ -537,52 +557,87 @@ impl Build {
     }
 
     /// Executes the entire build, as configured by the flags and configuration.
+    #[cfg_attr(feature = "tracing", instrument(level = "debug", name = "Build::build", skip_all))]
     pub fn build(&mut self) {
+        trace!("setting up job management");
         unsafe {
             crate::utils::job::setup(self);
         }
 
         // Download rustfmt early so that it can be used in rust-analyzer configs.
+        trace!("downloading rustfmt early");
         let _ = &builder::Builder::new(self).initial_rustfmt();
 
-        // hardcoded subcommands
-        match &self.config.cmd {
-            Subcommand::Format { check, all } => {
-                return core::build_steps::format::format(
-                    &builder::Builder::new(self),
-                    *check,
-                    *all,
-                    &self.config.paths,
-                );
+        // Handle hard-coded subcommands.
+        {
+            #[cfg(feature = "tracing")]
+            let _hardcoded_span = span!(
+                tracing::Level::DEBUG,
+                "handling hardcoded subcommands (Format, Suggest, Perf)"
+            )
+            .entered();
+
+            match &self.config.cmd {
+                Subcommand::Format { check, all } => {
+                    return core::build_steps::format::format(
+                        &builder::Builder::new(self),
+                        *check,
+                        *all,
+                        &self.config.paths,
+                    );
+                }
+                Subcommand::Suggest { run } => {
+                    return core::build_steps::suggest::suggest(&builder::Builder::new(self), *run);
+                }
+                Subcommand::Perf(args) => {
+                    return core::build_steps::perf::perf(&builder::Builder::new(self), args);
+                }
+                _cmd => {
+                    debug!(cmd = ?_cmd, "not a hardcoded subcommand; returning to normal handling");
+                }
             }
-            Subcommand::Suggest { run } => {
-                return core::build_steps::suggest::suggest(&builder::Builder::new(self), *run);
-            }
-            Subcommand::Perf { .. } => {
-                return core::build_steps::perf::perf(&builder::Builder::new(self));
-            }
-            _ => (),
+
+            debug!("handling subcommand normally");
         }
 
         if !self.config.dry_run() {
+            #[cfg(feature = "tracing")]
+            let _real_run_span = span!(tracing::Level::DEBUG, "executing real run").entered();
+
+            // We first do a dry-run. This is a sanity-check to ensure that
+            // steps don't do anything expensive in the dry-run.
             {
-                // We first do a dry-run. This is a sanity-check to ensure that
-                // steps don't do anything expensive in the dry-run.
+                #[cfg(feature = "tracing")]
+                let _sanity_check_span =
+                    span!(tracing::Level::DEBUG, "(1) executing dry-run sanity-check").entered();
                 self.config.dry_run = DryRun::SelfCheck;
                 let builder = builder::Builder::new(self);
                 builder.execute_cli();
             }
-            self.config.dry_run = DryRun::Disabled;
-            let builder = builder::Builder::new(self);
-            builder.execute_cli();
+
+            // Actual run.
+            {
+                #[cfg(feature = "tracing")]
+                let _actual_run_span =
+                    span!(tracing::Level::DEBUG, "(2) executing actual run").entered();
+                self.config.dry_run = DryRun::Disabled;
+                let builder = builder::Builder::new(self);
+                builder.execute_cli();
+            }
         } else {
+            #[cfg(feature = "tracing")]
+            let _dry_run_span = span!(tracing::Level::DEBUG, "executing dry run").entered();
+
             let builder = builder::Builder::new(self);
             builder.execute_cli();
         }
 
+        #[cfg(feature = "tracing")]
+        debug!("checking for postponed test failures from `test  --no-fail-fast`");
+
         // Check for postponed failures from `test --no-fail-fast`.
         let failures = self.delayed_failures.borrow();
-        if failures.len() > 0 {
+        if !failures.is_empty() {
             eprintln!("\n{} command(s) did not execute successfully:\n", failures.len());
             for failure in failures.iter() {
                 eprintln!("  - {failure}\n");
@@ -637,7 +692,7 @@ impl Build {
             crates.is_empty() || possible_features_by_crates.contains(feature)
         };
         let mut features = vec![];
-        if self.config.jemalloc && check("jemalloc") {
+        if self.config.jemalloc(target) && check("jemalloc") {
             features.push("jemalloc");
         }
         if (self.config.llvm_enabled(target) || kind == Kind::Check) && check("llvm") {
@@ -699,7 +754,7 @@ impl Build {
     /// Note that if LLVM is configured externally then the directory returned
     /// will likely be empty.
     fn llvm_out(&self, target: TargetSelection) -> PathBuf {
-        if self.config.llvm_from_ci && self.config.build == target {
+        if self.config.llvm_from_ci && self.is_builder_target(target) {
             self.config.ci_llvm_root()
         } else {
             self.out.join(target).join("llvm")
@@ -742,6 +797,11 @@ impl Build {
         self.out.join(target).join("md-doc")
     }
 
+    /// Path to the vendored Rust crates.
+    fn vendored_crates_path(&self) -> Option<PathBuf> {
+        if self.config.vendor { Some(self.src.join(VENDOR_DIR)) } else { None }
+    }
+
     /// Returns `true` if this is an external version of LLVM not managed by bootstrap.
     /// In particular, we expect llvm sources to be available when this is false.
     ///
@@ -749,7 +809,7 @@ impl Build {
     fn is_system_llvm(&self, target: TargetSelection) -> bool {
         match self.config.target_config.get(&target) {
             Some(Target { llvm_config: Some(_), .. }) => {
-                let ci_llvm = self.config.llvm_from_ci && target == self.config.build;
+                let ci_llvm = self.config.llvm_from_ci && self.is_builder_target(target);
                 !ci_llvm
             }
             // We're building from the in-tree src/llvm-project sources.
@@ -864,6 +924,9 @@ impl Build {
         if self.config.dry_run() && !command.run_always {
             return CommandOutput::default();
         }
+
+        #[cfg(feature = "tracing")]
+        let _run_span = trace_cmd!(command);
 
         let created_at = command.get_created_location();
         let executed_at = std::panic::Location::caller();
@@ -1139,9 +1202,9 @@ Executed at: {executed_at}"#,
         self.cc.borrow()[&target].path().into()
     }
 
-    /// Returns a list of flags to pass to the C compiler for the target
-    /// specified.
-    fn cflags(&self, target: TargetSelection, which: GitRepo, c: CLang) -> Vec<String> {
+    /// Returns C flags that `cc-rs` thinks should be enabled for the
+    /// specified target by default.
+    fn cc_handled_clags(&self, target: TargetSelection, c: CLang) -> Vec<String> {
         if self.config.dry_run() {
             return Vec::new();
         }
@@ -1150,14 +1213,23 @@ Executed at: {executed_at}"#,
             CLang::Cxx => self.cxx.borrow()[&target].clone(),
         };
 
-        // Filter out -O and /O (the optimization flags) that we picked up from
-        // cc-rs because the build scripts will determine that for themselves.
-        let mut base = base
-            .args()
+        // Filter out -O and /O (the optimization flags) that we picked up
+        // from cc-rs, that's up to the caller to figure out.
+        base.args()
             .iter()
             .map(|s| s.to_string_lossy().into_owned())
             .filter(|s| !s.starts_with("-O") && !s.starts_with("/O"))
-            .collect::<Vec<String>>();
+            .collect::<Vec<String>>()
+    }
+
+    /// Returns extra C flags that `cc-rs` doesn't handle.
+    fn cc_unhandled_cflags(
+        &self,
+        target: TargetSelection,
+        which: GitRepo,
+        c: CLang,
+    ) -> Vec<String> {
+        let mut base = Vec::new();
 
         // If we're compiling C++ on macOS then we add a flag indicating that
         // we want libc++ (more filled out than libstdc++), ensuring that
@@ -1225,7 +1297,7 @@ Executed at: {executed_at}"#,
             // need to use CXX compiler as linker to resolve the exception functions
             // that are only existed in CXX libraries
             Some(self.cxx.borrow()[&target].path().into())
-        } else if target != self.config.build
+        } else if !self.is_builder_target(target)
             && helpers::use_host_linker(target)
             && !target.is_msvc()
         {
@@ -1875,6 +1947,11 @@ to download LLVM rather than building it.
         let result = f(&mut stream);
         stream.reset().unwrap();
         result
+    }
+
+    /// Checks if the given target is the same as the builder target.
+    fn is_builder_target(&self, target: TargetSelection) -> bool {
+        self.config.build == target
     }
 }
 

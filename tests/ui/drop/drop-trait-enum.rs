@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 #![allow(unused_assignments)]
 #![allow(unused_variables)]
-//@ ignore-emscripten no threads support
+//@ needs-threads
 //@ needs-unwind
 
 use std::thread;

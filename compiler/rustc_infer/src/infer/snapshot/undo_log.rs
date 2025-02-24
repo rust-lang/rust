@@ -2,10 +2,10 @@ use std::marker::PhantomData;
 
 use rustc_data_structures::undo_log::{Rollback, UndoLogs};
 use rustc_data_structures::{snapshot_vec as sv, unify as ut};
-use rustc_middle::infer::unify_key::{ConstVidKey, RegionVidKey};
 use rustc_middle::ty::{self, OpaqueHiddenType, OpaqueTypeKey};
 use tracing::debug;
 
+use crate::infer::unify_key::{ConstVidKey, RegionVidKey};
 use crate::infer::{InferCtxtInner, region_constraints, type_variable};
 use crate::traits;
 

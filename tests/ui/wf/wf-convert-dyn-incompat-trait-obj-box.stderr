@@ -5,7 +5,7 @@ LL |     let t_box: Box<dyn Trait> = Box::new(S);
    |                                 ^^^^^^^^^^^ `Trait` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/wf-convert-dyn-incompat-trait-obj-box.rs:6:14
    |
 LL | trait Trait: Sized {}
@@ -22,7 +22,7 @@ LL |     takes_box(Box::new(S));
    |               ^^^^^^^^^^^ `Trait` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/wf-convert-dyn-incompat-trait-obj-box.rs:6:14
    |
 LL | trait Trait: Sized {}
@@ -39,7 +39,7 @@ LL |     Box::new(S) as Box<dyn Trait>;
    |     ^^^^^^^^^^^ `Trait` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
-      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
   --> $DIR/wf-convert-dyn-incompat-trait-obj-box.rs:6:14
    |
 LL | trait Trait: Sized {}
