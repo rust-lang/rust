@@ -976,6 +976,16 @@ pub type SelfProfileAfterPassCallback = unsafe extern "C" fn(*mut c_void);
 pub type GetSymbolsCallback = unsafe extern "C" fn(*mut c_void, *const c_char) -> *mut c_void;
 pub type GetSymbolsErrorCallback = unsafe extern "C" fn(*const c_char) -> *mut c_void;
 
+#[derive(Copy, Clone)]
+#[repr(transparent)]
+pub struct MetadataKindId(c_uint);
+
+impl From<MetadataType> for MetadataKindId {
+    fn from(value: MetadataType) -> Self {
+        Self(value as c_uint)
+    }
+}
+
 unsafe extern "C" {
     // Create and destroy contexts.
     pub(crate) fn LLVMContextDispose(C: &'static mut Context);
@@ -983,7 +993,7 @@ unsafe extern "C" {
         C: &Context,
         Name: *const c_char,
         SLen: c_uint,
-    ) -> c_uint;
+    ) -> MetadataKindId;
 
     // Create modules.
     pub(crate) fn LLVMModuleCreateWithNameInContext(
@@ -1051,9 +1061,9 @@ unsafe extern "C" {
     pub(crate) fn LLVMGetValueName2(Val: &Value, Length: *mut size_t) -> *const c_char;
     pub(crate) fn LLVMSetValueName2(Val: &Value, Name: *const c_char, NameLen: size_t);
     pub(crate) fn LLVMReplaceAllUsesWith<'a>(OldVal: &'a Value, NewVal: &'a Value);
-    pub(crate) fn LLVMSetMetadata<'a>(Val: &'a Value, KindID: c_uint, Node: &'a Value);
+    pub(crate) safe fn LLVMSetMetadata<'a>(Val: &'a Value, KindID: MetadataKindId, Node: &'a Value);
     pub(crate) fn LLVMGlobalSetMetadata<'a>(Val: &'a Value, KindID: c_uint, Metadata: &'a Metadata);
-    pub(crate) fn LLVMValueAsMetadata(Node: &Value) -> &Metadata;
+    pub(crate) safe fn LLVMValueAsMetadata(Node: &Value) -> &Metadata;
 
     // Operations on constants of any type
     pub(crate) fn LLVMConstNull(Ty: &Type) -> &Value;

@@ -311,8 +311,8 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         // This function handles switch instructions with more than 2 targets and it needs to
         // emit branch weights metadata instead of using the intrinsic.
         // The values 1 and 2000 are the same as the values used by the `llvm.expect` intrinsic.
-        let cold_weight = unsafe { llvm::LLVMValueAsMetadata(self.cx.const_u32(1)) };
-        let hot_weight = unsafe { llvm::LLVMValueAsMetadata(self.cx.const_u32(2000)) };
+        let cold_weight = llvm::LLVMValueAsMetadata(self.cx.const_u32(1));
+        let hot_weight = llvm::LLVMValueAsMetadata(self.cx.const_u32(2000));
         let weight =
             |is_cold: bool| -> &Metadata { if is_cold { cold_weight } else { hot_weight } };
 
