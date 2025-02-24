@@ -636,26 +636,22 @@ impl TypeAliasPart {
                         } else {
                             AssocItemLink::Anchor(None)
                         };
-                        let text = {
-                            let mut buf = String::new();
-                            super::render_impl(
-                                &mut buf,
-                                cx,
-                                impl_,
-                                type_alias_item,
-                                assoc_link,
-                                RenderMode::Normal,
-                                None,
-                                &[],
-                                ImplRenderingParameters {
-                                    show_def_docs: true,
-                                    show_default_items: true,
-                                    show_non_assoc_items: true,
-                                    toggle_open_by_default: true,
-                                },
-                            );
-                            buf
-                        };
+                        let text = super::render_impl(
+                            cx,
+                            impl_,
+                            type_alias_item,
+                            assoc_link,
+                            RenderMode::Normal,
+                            None,
+                            &[],
+                            ImplRenderingParameters {
+                                show_def_docs: true,
+                                show_default_items: true,
+                                show_non_assoc_items: true,
+                                toggle_open_by_default: true,
+                            },
+                        )
+                        .to_string();
                         let type_alias_fqp = (*type_alias_fqp).iter().join("::");
                         if Some(&text) == ret.last().map(|s: &AliasSerializableImpl| &s.text) {
                             ret.last_mut()
