@@ -1041,7 +1041,6 @@ impl<T> MaybeUninit<T> {
 
     /// Deprecated version of [`slice::assume_init_ref`].
     #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
-    #[rustc_const_unstable(feature = "maybe_uninit_slice", issue = "63569")]
     #[deprecated(
         note = "replaced by inherent assume_init_ref method; will eventually be removed",
         since = "1.83.0"
@@ -1053,7 +1052,6 @@ impl<T> MaybeUninit<T> {
 
     /// Deprecated version of [`slice::assume_init_mut`].
     #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
-    #[rustc_const_unstable(feature = "maybe_uninit_slice", issue = "63569")]
     #[deprecated(
         note = "replaced by inherent assume_init_mut method; will eventually be removed",
         since = "1.83.0"
@@ -1326,7 +1324,6 @@ impl<T> [MaybeUninit<T>] {
     ///
     /// [`write_clone_of_slice`]: slice::write_clone_of_slice
     #[unstable(feature = "maybe_uninit_write_slice", issue = "79995")]
-    #[rustc_const_unstable(feature = "maybe_uninit_write_slice", issue = "79995")]
     pub const fn write_copy_of_slice(&mut self, src: &[T]) -> &mut [T]
     where
         T: Copy,

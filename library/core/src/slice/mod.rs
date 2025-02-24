@@ -956,7 +956,6 @@ impl<T> [T] {
     /// [`swap`]: slice::swap
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[unstable(feature = "slice_swap_unchecked", issue = "88539")]
-    #[rustc_const_unstable(feature = "slice_swap_unchecked", issue = "88539")]
     pub const unsafe fn swap_unchecked(&mut self, a: usize, b: usize) {
         assert_unsafe_precondition!(
             check_library_ub,
@@ -3716,6 +3715,7 @@ impl<T> [T] {
     #[inline]
     #[stable(feature = "copy_from_slice", since = "1.9.0")]
     #[rustc_const_unstable(feature = "const_copy_from_slice", issue = "131415")]
+    #[rustc_const_stable_indirect]
     #[track_caller]
     pub const fn copy_from_slice(&mut self, src: &[T])
     where
