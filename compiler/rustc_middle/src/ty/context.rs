@@ -812,32 +812,35 @@ pub struct CtxtInterners<'tcx> {
 
 impl<'tcx> CtxtInterners<'tcx> {
     fn new(arena: &'tcx WorkerLocal<Arena<'tcx>>) -> CtxtInterners<'tcx> {
+        // Default interner size - this value has been chosen empirically, and may need to be adjusted
+        // as the compiler evolves.  
+        const DEF_INTERN_SIZE:usize = 2048;
         CtxtInterners {
             arena,
-            type_: Default::default(),
-            const_lists: Default::default(),
-            args: Default::default(),
-            type_lists: Default::default(),
-            region: Default::default(),
-            poly_existential_predicates: Default::default(),
-            canonical_var_infos: Default::default(),
-            predicate: Default::default(),
-            clauses: Default::default(),
-            projs: Default::default(),
-            place_elems: Default::default(),
-            const_: Default::default(),
-            pat: Default::default(),
-            const_allocation: Default::default(),
-            bound_variable_kinds: Default::default(),
-            layout: Default::default(),
-            adt_def: Default::default(),
-            external_constraints: Default::default(),
-            predefined_opaques_in_body: Default::default(),
-            fields: Default::default(),
-            local_def_ids: Default::default(),
-            captures: Default::default(),
-            offset_of: Default::default(),
-            valtree: Default::default(),
+            type_: InternedSet::with_capacity(DEF_INTERN_SIZE * 16),
+            const_lists: InternedSet::with_capacity(DEF_INTERN_SIZE * 4),
+            args: InternedSet::with_capacity(DEF_INTERN_SIZE * 4),
+            type_lists: InternedSet::with_capacity(DEF_INTERN_SIZE * 4),
+            region: InternedSet::with_capacity(DEF_INTERN_SIZE * 4),
+            poly_existential_predicates: InternedSet::with_capacity(DEF_INTERN_SIZE/4),
+            canonical_var_infos: InternedSet::with_capacity(DEF_INTERN_SIZE/2),
+            predicate: InternedSet::with_capacity(DEF_INTERN_SIZE),
+            clauses: InternedSet::with_capacity(DEF_INTERN_SIZE),
+            projs: InternedSet::with_capacity(DEF_INTERN_SIZE*4),
+            place_elems: InternedSet::with_capacity(DEF_INTERN_SIZE*2),
+            const_: InternedSet::with_capacity(DEF_INTERN_SIZE*2),
+            pat: InternedSet::with_capacity(DEF_INTERN_SIZE),
+            const_allocation: InternedSet::with_capacity(DEF_INTERN_SIZE),
+            bound_variable_kinds: InternedSet::with_capacity(DEF_INTERN_SIZE*2),
+            layout: InternedSet::with_capacity(DEF_INTERN_SIZE),
+            adt_def: InternedSet::with_capacity(DEF_INTERN_SIZE),
+            external_constraints: InternedSet::with_capacity(DEF_INTERN_SIZE),
+            predefined_opaques_in_body: InternedSet::with_capacity(DEF_INTERN_SIZE),
+            fields: InternedSet::with_capacity(DEF_INTERN_SIZE*4),
+            local_def_ids: InternedSet::with_capacity(DEF_INTERN_SIZE),
+            captures: InternedSet::with_capacity(DEF_INTERN_SIZE),
+            offset_of: InternedSet::with_capacity(DEF_INTERN_SIZE),
+            valtree: InternedSet::with_capacity(DEF_INTERN_SIZE),
         }
     }
 
@@ -2551,6 +2554,7 @@ macro_rules! slice_interners {
     ($($field:ident: $vis:vis $method:ident($ty:ty)),+ $(,)?) => (
         impl<'tcx> TyCtxt<'tcx> {
             $($vis fn $method(self, v: &[$ty]) -> &'tcx List<$ty> {
+                //eprintln!("{} len:{}",stringify!($field), self.interners.$field.len());
                 if v.is_empty() {
                     List::empty()
                 } else {
@@ -2849,6 +2853,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // FIXME consider asking the input slice to be sorted to avoid
         // re-interning permutations, in which case that would be asserted
         // here.
+
         self.intern_local_def_ids(clauses)
     }
 
