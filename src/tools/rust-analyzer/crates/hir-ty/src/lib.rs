@@ -30,6 +30,7 @@ extern crate ra_ap_rustc_hashes as rustc_hashes;
 mod builder;
 mod chalk_db;
 mod chalk_ext;
+mod drop;
 mod infer;
 mod inhabitedness;
 mod interner;
@@ -87,6 +88,7 @@ use crate::{
 pub use autoderef::autoderef;
 pub use builder::{ParamKind, TyBuilder};
 pub use chalk_ext::*;
+pub use drop::DropGlue;
 pub use infer::{
     cast::CastError,
     closure::{CaptureKind, CapturedItem},
