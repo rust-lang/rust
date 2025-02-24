@@ -1041,7 +1041,7 @@ fn find_fallback_pattern_typo<'tcx>(
         let mut imported = vec![];
         let mut imported_spans = vec![];
         let (infcx, param_env) = cx.tcx.infer_ctxt().build_with_typing_env(cx.typing_env);
-        let parent = cx.tcx.hir().get_parent_item(hir_id);
+        let parent = cx.tcx.hir_get_parent_item(hir_id);
 
         for item in cx.tcx.hir_crate_items(()).free_items() {
             if let DefKind::Use = cx.tcx.def_kind(item.owner_id) {
@@ -1097,7 +1097,7 @@ fn find_fallback_pattern_typo<'tcx>(
             }
         }
         if let Some((i, &const_name)) =
-            accessible.iter().enumerate().find(|(_, &const_name)| const_name == name)
+            accessible.iter().enumerate().find(|&(_, &const_name)| const_name == name)
         {
             // The pattern name is an exact match, so the pattern needed to be imported.
             lint.wanted_constant = Some(WantedConstant {
@@ -1115,7 +1115,7 @@ fn find_fallback_pattern_typo<'tcx>(
                 const_path: name.to_string(),
             });
         } else if let Some(i) =
-            imported.iter().enumerate().find(|(_, &const_name)| const_name == name).map(|(i, _)| i)
+            imported.iter().enumerate().find(|&(_, &const_name)| const_name == name).map(|(i, _)| i)
         {
             // The const with the exact name wasn't re-exported from an import in this
             // crate, we point at the import.
@@ -1137,7 +1137,7 @@ fn find_fallback_pattern_typo<'tcx>(
         } else {
             // Look for local bindings for people that might have gotten confused with how
             // `let` and `const` works.
-            for (_, node) in cx.tcx.hir().parent_iter(hir_id) {
+            for (_, node) in cx.tcx.hir_parent_iter(hir_id) {
                 match node {
                     hir::Node::Stmt(hir::Stmt { kind: hir::StmtKind::Let(let_stmt), .. }) => {
                         if let hir::PatKind::Binding(_, _, binding_name, _) = let_stmt.pat.kind {

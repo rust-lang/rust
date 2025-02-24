@@ -25,19 +25,16 @@ LL |         Dog { name: x, } => {}
    |
 help: include the missing field in the pattern
    |
-LL -         Dog { name: x, } => {}
-LL +         Dog { name: x, age } => {}
-   |
+LL |         Dog { name: x, age } => {}
+   |                        +++
 help: if you don't care about this missing field, you can explicitly ignore it
    |
-LL -         Dog { name: x, } => {}
-LL +         Dog { name: x, age: _ } => {}
-   |
+LL |         Dog { name: x, age: _ } => {}
+   |                        ++++++
 help: or always ignore missing fields here
    |
-LL -         Dog { name: x, } => {}
-LL +         Dog { name: x, .. } => {}
-   |
+LL |         Dog { name: x, .. } => {}
+   |                        ++
 
 error[E0027]: pattern does not mention field `age`
   --> $DIR/E0027.rs:19:9
@@ -47,19 +44,16 @@ LL |         Dog { name: x  , } => {}
    |
 help: include the missing field in the pattern
    |
-LL -         Dog { name: x  , } => {}
-LL +         Dog { name: x, age } => {}
-   |
+LL |         Dog { name: x, age } => {}
+   |                      ~~~~~~~
 help: if you don't care about this missing field, you can explicitly ignore it
    |
-LL -         Dog { name: x  , } => {}
-LL +         Dog { name: x, age: _ } => {}
-   |
+LL |         Dog { name: x, age: _ } => {}
+   |                      ~~~~~~~~~~
 help: or always ignore missing fields here
    |
-LL -         Dog { name: x  , } => {}
-LL +         Dog { name: x, .. } => {}
-   |
+LL |         Dog { name: x, .. } => {}
+   |                      ~~~~~~
 
 error[E0027]: pattern does not mention fields `name`, `age`
   --> $DIR/E0027.rs:22:9
@@ -69,19 +63,16 @@ LL |         Dog {} => {}
    |
 help: include the missing fields in the pattern
    |
-LL -         Dog {} => {}
-LL +         Dog { name, age } => {}
-   |
+LL |         Dog { name, age } => {}
+   |               +++++++++
 help: if you don't care about these missing fields, you can explicitly ignore them
    |
-LL -         Dog {} => {}
-LL +         Dog { name: _, age: _ } => {}
-   |
+LL |         Dog { name: _, age: _ } => {}
+   |               +++++++++++++++
 help: or always ignore missing fields here
    |
-LL -         Dog {} => {}
-LL +         Dog { .. } => {}
-   |
+LL |         Dog { .. } => {}
+   |               ++
 
 error: aborting due to 4 previous errors
 

@@ -16,12 +16,10 @@ LL |     const ID: i32 = 1;
    |     ^^^^^^^^^^^^^
 help: use fully-qualified syntax to disambiguate
    |
-LL - const X: i32 = <i32>::ID;
-LL + const X: i32 = <i32 as Bar>::ID;
-   |
-LL - const X: i32 = <i32>::ID;
-LL + const X: i32 = <i32 as Foo>::ID;
-   |
+LL | const X: i32 = <i32 as Bar>::ID;
+   |                     ++++++
+LL | const X: i32 = <i32 as Foo>::ID;
+   |                     ++++++
 
 error: aborting due to 1 previous error
 

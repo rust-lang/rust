@@ -108,9 +108,7 @@ where
                 Ty: TyAbiInterface<'a, C> + Copy,
             {
                 match layout.backend_repr {
-                    BackendRepr::Uninhabited
-                    | BackendRepr::Scalar(_)
-                    | BackendRepr::ScalarPair(..) => false,
+                    BackendRepr::Scalar(_) | BackendRepr::ScalarPair(..) => false,
                     BackendRepr::Vector { .. } => true,
                     BackendRepr::Memory { .. } => {
                         for i in 0..layout.fields.count() {

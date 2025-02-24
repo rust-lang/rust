@@ -111,13 +111,15 @@ fn check_validity_requirement_lax<'tcx>(
     };
 
     // Check the ABI.
-    let valid = match this.backend_repr {
-        BackendRepr::Uninhabited => false, // definitely UB
-        BackendRepr::Scalar(s) => scalar_allows_raw_init(s),
-        BackendRepr::ScalarPair(s1, s2) => scalar_allows_raw_init(s1) && scalar_allows_raw_init(s2),
-        BackendRepr::Vector { element: s, count } => count == 0 || scalar_allows_raw_init(s),
-        BackendRepr::Memory { .. } => true, // Fields are checked below.
-    };
+    let valid = !this.is_uninhabited() // definitely UB if uninhabited
+        && match this.backend_repr {
+            BackendRepr::Scalar(s) => scalar_allows_raw_init(s),
+            BackendRepr::ScalarPair(s1, s2) => {
+                scalar_allows_raw_init(s1) && scalar_allows_raw_init(s2)
+            }
+            BackendRepr::Vector { element: s, count } => count == 0 || scalar_allows_raw_init(s),
+            BackendRepr::Memory { .. } => true, // Fields are checked below.
+        };
     if !valid {
         // This is definitely not okay.
         return Ok(false);

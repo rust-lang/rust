@@ -22,8 +22,8 @@ LL | |     } else {
    |
 help: consider returning the local binding `s`
    |
-LL ~     let s: String = if let Some(s) = opt_str {
-LL +         s
+LL |     let s: String = if let Some(s) = opt_str {
+LL ~         s
 LL ~
    |
 
@@ -54,8 +54,8 @@ LL | |     } else {
    |
 help: consider returning the local binding `s`
    |
-LL ~     let s: String = if let Some(s) = opt_str {
-LL +         s
+LL |     let s: String = if let Some(s) = opt_str {
+LL ~         s
 LL ~
    |
 
@@ -71,8 +71,8 @@ LL |           String::new()
    |
 help: consider returning the local binding `s`
    |
-LL ~     let s = if let Some(s) = opt_str {
-LL +         s
+LL |     let s = if let Some(s) = opt_str {
+LL ~         s
 LL ~     } else {
    |
 

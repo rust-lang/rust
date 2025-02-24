@@ -142,4 +142,4 @@ pub union UnionBool {
 pub fn test_UnionBool(b: UnionBool) -> bool {
     unsafe { b.b }
 }
-// CHECK: %_0 = trunc i8 %b to i1
+// CHECK: %_0 = trunc{{( nuw)?}} i8 %b to i1

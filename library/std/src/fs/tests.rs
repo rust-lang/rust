@@ -1,5 +1,6 @@
 use rand::RngCore;
 
+use crate::char::MAX_LEN_UTF8;
 use crate::fs::{self, File, FileTimes, OpenOptions};
 use crate::io::prelude::*;
 use crate::io::{BorrowedBuf, ErrorKind, SeekFrom};
@@ -155,7 +156,7 @@ fn file_test_io_non_positional_read() {
 #[test]
 fn file_test_io_seek_and_tell_smoke_test() {
     let message = "ten-four";
-    let mut read_mem = [0; 4];
+    let mut read_mem = [0; MAX_LEN_UTF8];
     let set_cursor = 4 as u64;
     let tell_pos_pre_read;
     let tell_pos_post_read;
@@ -356,7 +357,7 @@ fn file_test_io_seek_shakedown() {
     let chunk_one: &str = "qwer";
     let chunk_two: &str = "asdf";
     let chunk_three: &str = "zxcv";
-    let mut read_mem = [0; 4];
+    let mut read_mem = [0; MAX_LEN_UTF8];
     let tmpdir = tmpdir();
     let filename = &tmpdir.join("file_rt_io_file_test_seek_shakedown.txt");
     {
@@ -621,7 +622,7 @@ fn file_test_directoryinfo_readdir() {
         check!(w.write(msg));
     }
     let files = check!(fs::read_dir(dir));
-    let mut mem = [0; 4];
+    let mut mem = [0; MAX_LEN_UTF8];
     for f in files {
         let f = f.unwrap().path();
         {
@@ -1913,8 +1914,11 @@ fn test_hidden_file_truncation() {
     assert_eq!(metadata.len(), 0);
 }
 
+// See https://github.com/rust-lang/rust/pull/131072 for more details about why
+// these two tests are disabled under Windows 7 here.
 #[cfg(windows)]
 #[test]
+#[cfg_attr(target_vendor = "win7", ignore = "Unsupported under Windows 7.")]
 fn test_rename_file_over_open_file() {
     // Make sure that std::fs::rename works if the target file is already opened with FILE_SHARE_DELETE. See #123985.
     let tmpdir = tmpdir();
@@ -1939,6 +1943,7 @@ fn test_rename_file_over_open_file() {
 
 #[test]
 #[cfg(windows)]
+#[cfg_attr(target_vendor = "win7", ignore = "Unsupported under Windows 7.")]
 fn test_rename_directory_to_non_empty_directory() {
     // Renaming a directory over a non-empty existing directory should fail on Windows.
     let tmpdir: TempDir = tmpdir();

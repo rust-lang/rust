@@ -56,7 +56,7 @@ pub(super) fn check<'tcx>(
 
                 // ensure that the indexed variable was declared before the loop, see #601
                 if let Some(indexed_extent) = indexed_extent {
-                    let parent_def_id = cx.tcx.hir().get_parent_item(expr.hir_id);
+                    let parent_def_id = cx.tcx.hir_get_parent_item(expr.hir_id);
                     let region_scope_tree = cx.tcx.region_scope_tree(parent_def_id);
                     let pat_extent = region_scope_tree.var_scope(pat.hir_id.local_id).unwrap();
                     if region_scope_tree.is_subscope_of(indexed_extent, pat_extent) {
@@ -256,7 +256,7 @@ impl<'tcx> VarVisitor<'_, 'tcx> {
             let res = self.cx.qpath_res(seqpath, seqexpr.hir_id);
             match res {
                 Res::Local(hir_id) => {
-                    let parent_def_id = self.cx.tcx.hir().get_parent_item(expr.hir_id);
+                    let parent_def_id = self.cx.tcx.hir_get_parent_item(expr.hir_id);
                     let extent = self
                         .cx
                         .tcx

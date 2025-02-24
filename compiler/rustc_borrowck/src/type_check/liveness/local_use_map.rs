@@ -54,7 +54,7 @@ rustc_index::newtype_index! {
 fn appearances_iter(
     first: Option<AppearanceIndex>,
     appearances: &Appearances,
-) -> impl Iterator<Item = AppearanceIndex> + '_ {
+) -> impl Iterator<Item = AppearanceIndex> {
     AppearancesIter { appearances, current: first }
 }
 
@@ -107,17 +107,17 @@ impl LocalUseMap {
         local_use_map
     }
 
-    pub(crate) fn defs(&self, local: Local) -> impl Iterator<Item = PointIndex> + '_ {
+    pub(crate) fn defs(&self, local: Local) -> impl Iterator<Item = PointIndex> {
         appearances_iter(self.first_def_at[local], &self.appearances)
             .map(move |aa| self.appearances[aa].point_index)
     }
 
-    pub(crate) fn uses(&self, local: Local) -> impl Iterator<Item = PointIndex> + '_ {
+    pub(crate) fn uses(&self, local: Local) -> impl Iterator<Item = PointIndex> {
         appearances_iter(self.first_use_at[local], &self.appearances)
             .map(move |aa| self.appearances[aa].point_index)
     }
 
-    pub(crate) fn drops(&self, local: Local) -> impl Iterator<Item = PointIndex> + '_ {
+    pub(crate) fn drops(&self, local: Local) -> impl Iterator<Item = PointIndex> {
         appearances_iter(self.first_drop_at[local], &self.appearances)
             .map(move |aa| self.appearances[aa].point_index)
     }

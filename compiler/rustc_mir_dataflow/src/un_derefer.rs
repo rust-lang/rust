@@ -28,7 +28,7 @@ impl<'tcx> UnDerefer<'tcx> {
     pub(crate) fn iter_projections(
         &self,
         place: PlaceRef<'tcx>,
-    ) -> impl Iterator<Item = (PlaceRef<'tcx>, PlaceElem<'tcx>)> + '_ {
+    ) -> impl Iterator<Item = (PlaceRef<'tcx>, PlaceElem<'tcx>)> {
         ProjectionIter::new(self.deref_chain(place.local), place)
     }
 }
@@ -91,7 +91,7 @@ impl<T: Copy> SlicePlusOne<'_, T> {
     #[inline]
     fn advance(&mut self) {
         match self.slice {
-            [_, ref remainder @ ..] => {
+            [_, remainder @ ..] => {
                 self.slice = remainder;
             }
             [] => self.last = None,

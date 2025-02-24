@@ -9,6 +9,7 @@ fn main() {
     drop_principal();
     modulo_binder();
     modulo_assoc();
+    bidirectional_subtyping();
 }
 
 fn vtable_nop_cast() {
@@ -530,4 +531,33 @@ fn modulo_assoc() {
     impl Trait for () {}
 
     (&() as &dyn Trait as &dyn Middle<()>).say_hello(&0);
+}
+
+fn bidirectional_subtyping() {
+    // Test that transmuting between subtypes of dyn traits is fine, even in the
+    // "wrong direction", i.e. going from a lower-ranked to a higher-ranked dyn trait.
+    // Note that compared to the `dyn-transmute-inner-binder` test, the `for` is on the
+    // *outside* here!
+
+    trait Trait<U: ?Sized> {}
+    impl<T, U: ?Sized> Trait<U> for T {}
+
+    struct Wrapper<T: ?Sized>(T);
+
+    let x: &dyn Trait<fn(&'static ())> = &();
+    let _y: &dyn for<'a> Trait<fn(&'a ())> = unsafe { std::mem::transmute(x) };
+
+    let x: &dyn for<'a> Trait<fn(&'a ())> = &();
+    let _y: &dyn Trait<fn(&'static ())> = unsafe { std::mem::transmute(x) };
+
+    let x: &dyn Trait<dyn Trait<fn(&'static ())>> = &();
+    let _y: &dyn for<'a> Trait<dyn Trait<fn(&'a ())>> = unsafe { std::mem::transmute(x) };
+
+    let x: &dyn for<'a> Trait<dyn Trait<fn(&'a ())>> = &();
+    let _y: &dyn Trait<dyn Trait<fn(&'static ())>> = unsafe { std::mem::transmute(x) };
+
+    // This lowers to a ptr-to-ptr cast (which behaves like a transmute)
+    // and not an unsizing coercion:
+    let x: *const dyn for<'a> Trait<&'a ()> = &();
+    let _y: *const Wrapper<dyn Trait<&'static ()>> = x as _;
 }

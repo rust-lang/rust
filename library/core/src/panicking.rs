@@ -294,7 +294,7 @@ fn panic_misaligned_pointer_dereference(required: usize, found: usize) -> ! {
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold, optimize(size))]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[track_caller]
-#[cfg_attr(not(bootstrap), lang = "panic_null_pointer_dereference")] // needed by codegen for panic on null pointer deref
+#[lang = "panic_null_pointer_dereference"] // needed by codegen for panic on null pointer deref
 #[rustc_nounwind] // `CheckNull` MIR pass requires this function to never unwind
 fn panic_null_pointer_dereference() -> ! {
     if cfg!(feature = "panic_immediate_abort") {

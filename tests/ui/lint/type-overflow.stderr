@@ -26,9 +26,8 @@ LL +     let fail = 0b1000_0001u8;
    |
 help: to use as a negative number (decimal `-127`), consider using the type `u8` for the literal and cast it to `i8`
    |
-LL -     let fail = 0b1000_0001i8;
-LL +     let fail = 0b1000_0001u8 as i8;
-   |
+LL |     let fail = 0b1000_0001u8 as i8;
+   |                           +++++
 
 warning: literal out of range for `i64`
   --> $DIR/type-overflow.rs:15:16
@@ -44,9 +43,8 @@ LL +     let fail = 0x8000_0000_0000_0000u64;
    |
 help: to use as a negative number (decimal `-9223372036854775808`), consider using the type `u64` for the literal and cast it to `i64`
    |
-LL -     let fail = 0x8000_0000_0000_0000i64;
-LL +     let fail = 0x8000_0000_0000_0000u64 as i64;
-   |
+LL |     let fail = 0x8000_0000_0000_0000u64 as i64;
+   |                                     ++++++
 
 warning: literal out of range for `u32`
   --> $DIR/type-overflow.rs:19:16

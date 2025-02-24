@@ -13,7 +13,7 @@ LL |     x.use_mut();
 help: consider consuming the `Vec<i32>` when turning it into an `Iterator`
    |
 LL |     let mut x = vec![1].into_iter();
-   |                         +++++
+   |                          +++++
 help: consider using a `let` binding to create a longer lived value
    |
 LL ~     let binding = vec![1];

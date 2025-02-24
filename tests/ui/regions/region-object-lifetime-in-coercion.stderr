@@ -13,9 +13,8 @@ LL + fn a(v: &[u8]) -> Box<dyn Foo + '_> {
    |
 help: alternatively, add an explicit `'static` bound to this reference
    |
-LL - fn a(v: &[u8]) -> Box<dyn Foo + 'static> {
-LL + fn a(v: &'static [u8]) -> Box<dyn Foo + 'static> {
-   |
+LL | fn a(v: &'static [u8]) -> Box<dyn Foo + 'static> {
+   |          +++++++
 
 error: lifetime may not live long enough
   --> $DIR/region-object-lifetime-in-coercion.rs:14:5
@@ -32,9 +31,8 @@ LL + fn b(v: &[u8]) -> Box<dyn Foo + '_> {
    |
 help: alternatively, add an explicit `'static` bound to this reference
    |
-LL - fn b(v: &[u8]) -> Box<dyn Foo + 'static> {
-LL + fn b(v: &'static [u8]) -> Box<dyn Foo + 'static> {
-   |
+LL | fn b(v: &'static [u8]) -> Box<dyn Foo + 'static> {
+   |          +++++++
 
 error: lifetime may not live long enough
   --> $DIR/region-object-lifetime-in-coercion.rs:21:5

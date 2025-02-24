@@ -253,6 +253,13 @@ impl Rustc {
         self
     }
 
+    /// Specify the target CPU.
+    pub fn target_cpu<S: AsRef<str>>(&mut self, target_cpu: S) -> &mut Self {
+        let target_cpu = target_cpu.as_ref();
+        self.cmd.arg(format!("-Ctarget-cpu={target_cpu}"));
+        self
+    }
+
     /// Specify the crate type.
     pub fn crate_type(&mut self, crate_type: &str) -> &mut Self {
         self.cmd.arg("--crate-type");

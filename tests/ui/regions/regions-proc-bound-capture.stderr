@@ -14,9 +14,8 @@ LL + fn static_proc(x: &isize) -> Box<dyn FnMut() -> (isize) + '_> {
    |
 help: alternatively, add an explicit `'static` bound to this reference
    |
-LL - fn static_proc(x: &isize) -> Box<dyn FnMut() -> (isize) + 'static> {
-LL + fn static_proc(x: &'static isize) -> Box<dyn FnMut() -> (isize) + 'static> {
-   |
+LL | fn static_proc(x: &'static isize) -> Box<dyn FnMut() -> (isize) + 'static> {
+   |                    +++++++
 
 error: aborting due to 1 previous error
 

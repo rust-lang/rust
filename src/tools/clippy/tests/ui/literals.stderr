@@ -99,9 +99,8 @@ LL +     let fail8 = 123;
    |
 help: if you mean to use an octal constant, use `0o`
    |
-LL -     let fail8 = 0123;
-LL +     let fail8 = 0o123;
-   |
+LL |     let fail8 = 0o123;
+   |                  +
 
 error: integer type suffix should not be separated by an underscore
   --> tests/ui/literals.rs:48:16

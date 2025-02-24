@@ -247,7 +247,6 @@ pub mod autodiff {
     pub use crate::macros::builtin::autodiff;
 }
 
-#[cfg(not(bootstrap))]
 #[unstable(feature = "contracts", issue = "128044")]
 pub mod contracts;
 

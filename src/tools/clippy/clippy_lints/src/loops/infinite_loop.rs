@@ -61,7 +61,7 @@ pub(super) fn check<'tcx>(
 }
 
 fn get_parent_fn_ret_ty<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) -> Option<FnRetTy<'tcx>> {
-    for (_, parent_node) in cx.tcx.hir().parent_iter(expr.hir_id) {
+    for (_, parent_node) in cx.tcx.hir_parent_iter(expr.hir_id) {
         match parent_node {
             // Skip `Coroutine` closures, these are the body of `async fn`, not async closures.
             // This is because we still need to backtrack one parent node to get the `OpaqueDef` ty.

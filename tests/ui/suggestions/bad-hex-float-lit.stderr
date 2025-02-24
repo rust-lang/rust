@@ -8,9 +8,8 @@ LL |     let _f: f32 = 0xAAf32;
    |
 help: rewrite this as a decimal floating point literal, or use `as` to turn a hex literal into a float
    |
-LL -     let _f: f32 = 0xAAf32;
-LL +     let _f: f32 = 0xAA as f32;
-   |
+LL |     let _f: f32 = 0xAA as f32;
+   |                        ++
 LL -     let _f: f32 = 0xAAf32;
 LL +     let _f: f32 = 170_f32;
    |

@@ -100,7 +100,8 @@ mod private { // this item is private and will not be documented
 }
 ```
 
-`--document-private-items` documents all items, even if they're not public.
+`--document-private-items` includes all non-public items in the generated documentation except for `#[doc(hidden)]` items.  Private items will be shown with a 🔒 icon.
+
 
 ## `-L`/`--library-path`: where to look for dependencies
 

@@ -66,7 +66,7 @@ pub(crate) fn find_autodiff_source_functions<'tcx>(
     let mut autodiff_items: Vec<AutoDiffItem> = vec![];
     for (item, instance) in autodiff_mono_items {
         let target_id = instance.def_id();
-        let cg_fn_attr = tcx.codegen_fn_attrs(target_id).autodiff_item.clone();
+        let cg_fn_attr = &tcx.codegen_fn_attrs(target_id).autodiff_item;
         let Some(target_attrs) = cg_fn_attr else {
             continue;
         };

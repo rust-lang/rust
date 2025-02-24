@@ -760,8 +760,8 @@ impl SubdiagnosticVariant {
                 }
                 (
                     "applicability",
-                    SubdiagnosticKind::Suggestion { ref mut applicability, .. }
-                    | SubdiagnosticKind::MultipartSuggestion { ref mut applicability, .. },
+                    SubdiagnosticKind::Suggestion { applicability, .. }
+                    | SubdiagnosticKind::MultipartSuggestion { applicability, .. },
                 ) => {
                     let value = get_string!();
                     let value = Applicability::from_str(&value.value()).unwrap_or_else(|()| {

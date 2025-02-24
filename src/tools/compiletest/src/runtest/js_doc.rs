@@ -9,12 +9,11 @@ impl TestCx<'_> {
 
             self.document(&out_dir, &self.testpaths);
 
-            let root = self.config.find_rust_src_root().unwrap();
             let file_stem =
                 self.testpaths.file.file_stem().and_then(|f| f.to_str()).expect("no file stem");
             let res = self.run_command_to_procres(
                 Command::new(&nodejs)
-                    .arg(root.join("src/tools/rustdoc-js/tester.js"))
+                    .arg(self.config.src_root.join("src/tools/rustdoc-js/tester.js"))
                     .arg("--doc-folder")
                     .arg(out_dir)
                     .arg("--crate-name")

@@ -8,9 +8,8 @@ note: tuple variant defined here
   --> $SRC_DIR/core/src/result.rs:LL:COL
 help: provide the argument
    |
-LL -     let _: Result<(), String> = Ok();
-LL +     let _: Result<(), String> = Ok(());
-   |
+LL |     let _: Result<(), String> = Ok(());
+   |                                    ++
 
 error[E0061]: this function takes 2 arguments but 0 arguments were supplied
   --> $DIR/missing-unit-argument.rs:12:5
@@ -25,9 +24,8 @@ LL | fn foo(():(), ():()) {}
    |    ^^^ -----  -----
 help: provide the arguments
    |
-LL -     foo();
-LL +     foo((), ());
-   |
+LL |     foo((), ());
+   |         ++++++
 
 error[E0061]: this function takes 2 arguments but 1 argument was supplied
   --> $DIR/missing-unit-argument.rs:13:5
@@ -42,9 +40,8 @@ LL | fn foo(():(), ():()) {}
    |    ^^^        -----
 help: provide the argument
    |
-LL -     foo(());
-LL +     foo((), ());
-   |
+LL |     foo((), ());
+   |           ++++
 
 error[E0061]: this function takes 1 argument but 0 arguments were supplied
   --> $DIR/missing-unit-argument.rs:14:5
@@ -59,9 +56,8 @@ LL | fn bar(():()) {}
    |    ^^^ -----
 help: provide the argument
    |
-LL -     bar();
-LL +     bar(());
-   |
+LL |     bar(());
+   |         ++
 
 error[E0061]: this method takes 1 argument but 0 arguments were supplied
   --> $DIR/missing-unit-argument.rs:15:7
@@ -76,9 +72,8 @@ LL |     fn baz(self, (): ()) { }
    |        ^^^       ------
 help: provide the argument
    |
-LL -     S.baz();
-LL +     S.baz(());
-   |
+LL |     S.baz(());
+   |           ++
 
 error[E0061]: this method takes 1 argument but 0 arguments were supplied
   --> $DIR/missing-unit-argument.rs:16:7
@@ -93,9 +88,8 @@ LL |     fn generic<T>(self, _: T) { }
    |        ^^^^^^^          ----
 help: provide the argument
    |
-LL -     S.generic::<()>();
-LL +     S.generic::<()>(());
-   |
+LL |     S.generic::<()>(());
+   |                     ++
 
 error: aborting due to 6 previous errors
 
