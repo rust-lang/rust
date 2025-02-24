@@ -14,6 +14,7 @@ impl Foo<u32> {
 //@ has foo/struct.Bar.html
 //@ has - '//a[@href="#method.get_i32"]' 'get_i32'
 //@ !has - '//a[@href="#method.get_u32"]' 'get_u32'
+//@ count - '//a[@class="method"]' 1
 pub struct Bar(Foo<i32>);
 impl Deref for Bar {
     type Target = Foo<i32>;
