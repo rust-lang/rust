@@ -23,10 +23,7 @@ macro_rules! all_eq {
     }};
 }
 
-use std::intrinsics::simd::{
-    simd_add, simd_and, simd_bitreverse, simd_bswap, simd_ctlz, simd_ctpop, simd_cttz, simd_div,
-    simd_mul, simd_neg, simd_or, simd_rem, simd_shl, simd_shr, simd_sub, simd_xor,
-};
+use std::intrinsics::simd::*;
 
 fn main() {
     let x1 = i32x4([1, 2, 3, 4]);
