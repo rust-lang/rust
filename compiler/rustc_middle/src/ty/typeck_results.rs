@@ -77,8 +77,8 @@ pub struct TypeckResults<'tcx> {
     /// to a form valid in all Editions, either as a lint diagnostic or hard error.
     rust_2024_migration_desugared_pats: ItemLocalMap<Rust2024IncompatiblePatInfo>,
 
-    /// Stores the types which were implicitly dereferenced in pattern binding modes
-    /// for later usage in THIR lowering. For example,
+    /// Stores the types which were implicitly dereferenced in pattern binding modes or deref
+    /// patterns for later usage in THIR lowering. For example,
     ///
     /// ```
     /// match &&Some(5i32) {
@@ -86,7 +86,16 @@ pub struct TypeckResults<'tcx> {
     ///     _ => {},
     /// }
     /// ```
-    /// leads to a `vec![&&Option<i32>, &Option<i32>]`. Empty vectors are not stored.
+    /// leads to a `vec![&&Option<i32>, &Option<i32>]` and
+    ///
+    /// ```
+    /// #![feature(deref_patterns)]
+    /// match &Box::new(Some(5i32)) {
+    ///     Some(n) => {},
+    ///     _ => {},
+    /// }
+    /// ```
+    /// leads to a `vec![&Box<Option<i32>>, Box<Option<i32>>]`. Empty vectors are not stored.
     ///
     /// See:
     /// <https://github.com/rust-lang/rfcs/blob/master/text/2005-match-ergonomics.md#definitions>
