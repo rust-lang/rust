@@ -355,11 +355,20 @@ mod spec_extend;
 /// and it may prove desirable to use a non-constant growth factor. Whatever
 /// strategy is used will of course guarantee *O*(1) amortized [`push`].
 ///
-/// `vec![x; n]`, `vec![a, b, c, d]`, and
-/// [`Vec::with_capacity(n)`][`Vec::with_capacity`], will all produce a `Vec`
-/// with at least the requested capacity. If <code>[len] == [capacity]</code>,
-/// (as is the case for the [`vec!`] macro), then a `Vec<T>` can be converted to
-/// and from a [`Box<[T]>`][owned slice] without reallocating or moving the elements.
+/// It is guaranteed, in order to respect the intentions of the programmer, that
+/// all of `vec![e_1, e_2, ..., e_n]`, `vec![x; n]`, and [`Vec::with_capacity(n)`] produce a `Vec`
+/// that requests an allocation of the exact size needed for precisely `n` elements from the allocator,
+/// and no other size (such as, for example: a size rounded up to the nearest power of 2).
+/// The allocator will return an allocation that is at least as large as requested, but it may be larger.
+///
+/// It is guaranteed that the [`Vec::capacity`] method returns a value that is at least the requested capacity
+/// and not more than the allocated capacity.
+///
+/// The method [`Vec::shrink_to_fit`] will attempt to discard excess capacity an allocator has given to a `Vec`.
+/// If <code>[len] == [capacity]</code>, then a `Vec<T>` can be converted
+/// to and from a [`Box<[T]>`][owned slice] without reallocating or moving the elements.
+/// `Vec` exploits this fact as much as reasonable when implementing common conversions
+/// such as [`into_boxed_slice`].
 ///
 /// `Vec` will not specifically overwrite any data that is removed from it,
 /// but also won't specifically preserve it. Its uninitialized memory is
@@ -383,14 +392,17 @@ mod spec_extend;
 /// [`shrink_to`]: Vec::shrink_to
 /// [capacity]: Vec::capacity
 /// [`capacity`]: Vec::capacity
+/// [`Vec::capacity`]: Vec::capacity
 /// [mem::size_of::\<T>]: core::mem::size_of
 /// [len]: Vec::len
 /// [`len`]: Vec::len
 /// [`push`]: Vec::push
 /// [`insert`]: Vec::insert
 /// [`reserve`]: Vec::reserve
+/// [`Vec::with_capacity(n)`]: Vec::with_capacity
 /// [`MaybeUninit`]: core::mem::MaybeUninit
 /// [owned slice]: Box
+/// [`into_boxed_slice`]: Vec::into_boxed_slice
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Vec")]
 #[rustc_insignificant_dtor]
