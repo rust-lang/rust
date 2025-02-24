@@ -1074,7 +1074,6 @@ fn lower_variant<'tcx>(
         def.ctor().map(|(kind, _, def_id)| (kind, def_id.to_def_id())),
         discr,
         fields,
-        adt_kind,
         parent_did.to_def_id(),
         recovered,
         adt_kind == AdtKind::Struct && tcx.has_attr(parent_did, sym::non_exhaustive)

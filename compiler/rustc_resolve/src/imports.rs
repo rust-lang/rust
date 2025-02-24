@@ -955,11 +955,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     } else {
                         None
                     };
-                    let err = match self.make_path_suggestion(
-                        span,
-                        import.module_path.clone(),
-                        &import.parent_scope,
-                    ) {
+                    let err = match self
+                        .make_path_suggestion(import.module_path.clone(), &import.parent_scope)
+                    {
                         Some((suggestion, note)) => UnresolvedImportError {
                             span,
                             label: None,

@@ -648,7 +648,7 @@ impl<'a, 'tcx> ResultsVisitor<'a, 'tcx, Borrowck<'a, 'tcx>> for MirBorrowckCtxt<
             | StatementKind::StorageLive(..) => {}
             // This does not affect borrowck
             StatementKind::BackwardIncompatibleDropHint { place, reason: BackwardIncompatibleDropReason::Edition2024 } => {
-                self.check_backward_incompatible_drop(location, (**place, span), state);
+                self.check_backward_incompatible_drop(location, **place, state);
             }
             StatementKind::StorageDead(local) => {
                 self.access_place(
@@ -1174,7 +1174,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
     fn check_backward_incompatible_drop(
         &mut self,
         location: Location,
-        (place, place_span): (Place<'tcx>, Span),
+        place: Place<'tcx>,
         state: &BorrowckDomain,
     ) {
         let tcx = self.infcx.tcx;
