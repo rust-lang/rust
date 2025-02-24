@@ -305,25 +305,16 @@ impl<'f> Drop for VaListImpl<'f> {
 /// Destroy the arglist `ap` after initialization with `va_start` or
 /// `va_copy`.
 #[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
-unsafe fn va_end(_ap: &mut VaListImpl<'_>) {
-    unreachable!()
-}
+unsafe fn va_end(_ap: &mut VaListImpl<'_>);
 
 /// Copies the current location of arglist `src` to the arglist `dst`.
 #[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
-unsafe fn va_copy<'f>(_dest: *mut VaListImpl<'f>, _src: &VaListImpl<'f>) {
-    unreachable!()
-}
+unsafe fn va_copy<'f>(_dest: *mut VaListImpl<'f>, _src: &VaListImpl<'f>);
 
 /// Loads an argument of type `T` from the `va_list` `ap` and increment the
 /// argument `ap` points to.
 #[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
-unsafe fn va_arg<T: sealed_trait::VaArgSafe>(_ap: &mut VaListImpl<'_>) -> T {
-    unreachable!()
-}
+unsafe fn va_arg<T: sealed_trait::VaArgSafe>(_ap: &mut VaListImpl<'_>) -> T;
