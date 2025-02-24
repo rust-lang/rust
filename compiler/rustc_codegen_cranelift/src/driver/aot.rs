@@ -103,12 +103,14 @@ impl OngoingCodegen {
                             ("o", &module_regular.object.as_ref().unwrap()),
                             ("asm.o", &module_global_asm.object.as_ref().unwrap()),
                         ],
+                        &[],
                     )
                 } else {
                     rustc_incremental::copy_cgu_workproduct_to_incr_comp_cache_dir(
                         sess,
                         &module_regular.name,
                         &[("o", &module_regular.object.as_ref().unwrap())],
+                        &[],
                     )
                 };
                 if let Some((work_product_id, work_product)) = work_product {
@@ -381,6 +383,7 @@ fn emit_cgu(
             bytecode: None,
             assembly: None,
             llvm_ir: None,
+            links_from_incr_cache: Vec::new(),
         }),
         existing_work_product: None,
     })
@@ -437,6 +440,7 @@ fn emit_module(
         bytecode: None,
         assembly: None,
         llvm_ir: None,
+        links_from_incr_cache: Vec::new(),
     })
 }
 
@@ -487,6 +491,7 @@ fn reuse_workproduct_for_cgu(
             bytecode: None,
             assembly: None,
             llvm_ir: None,
+            links_from_incr_cache: Vec::new(),
         },
         module_global_asm: has_global_asm.then(|| CompiledModule {
             name: cgu.name().to_string(),
@@ -496,6 +501,7 @@ fn reuse_workproduct_for_cgu(
             bytecode: None,
             assembly: None,
             llvm_ir: None,
+            links_from_incr_cache: Vec::new(),
         }),
         existing_work_product: Some((cgu.work_product_id(), work_product)),
     })
@@ -637,6 +643,7 @@ fn emit_metadata_module(tcx: TyCtxt<'_>, metadata: &EncodedMetadata) -> Compiled
         bytecode: None,
         assembly: None,
         llvm_ir: None,
+        links_from_incr_cache: Vec::new(),
     }
 }
 
@@ -745,7 +752,6 @@ pub(crate) fn run_aot(
 
     let metadata_module =
         if need_metadata_module { Some(emit_metadata_module(tcx, &metadata)) } else { None };
-
     Box::new(OngoingCodegen {
         modules,
         allocator_module,
