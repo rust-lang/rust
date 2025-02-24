@@ -6,7 +6,6 @@ use libc::{c_char, c_uint};
 use super::ffi::{BasicBlock, Metadata, Module, Type, Value};
 use crate::llvm::Bool;
 
-#[link(name = "llvm-wrapper", kind = "static")]
 unsafe extern "C" {
     // Enzyme
     pub(crate) fn LLVMRustHasMetadata(I: &Value, KindID: c_uint) -> bool;

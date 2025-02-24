@@ -1235,6 +1235,17 @@ impl LinkOutputKind {
             | LinkOutputKind::WasiReactorExe => true,
         }
     }
+
+    pub fn is_dylib(self) -> bool {
+        match self {
+            LinkOutputKind::DynamicDylib | LinkOutputKind::StaticDylib => true,
+            LinkOutputKind::StaticNoPicExe
+            | LinkOutputKind::DynamicNoPicExe
+            | LinkOutputKind::DynamicPicExe
+            | LinkOutputKind::WasiReactorExe
+            | LinkOutputKind::StaticPicExe => false,
+        }
+    }
 }
 
 impl fmt::Display for LinkOutputKind {

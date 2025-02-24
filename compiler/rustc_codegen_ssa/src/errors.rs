@@ -587,13 +587,6 @@ pub(crate) struct LinkScriptWriteFailure {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_ssa_failed_to_write)]
-pub(crate) struct FailedToWrite {
-    pub path: PathBuf,
-    pub error: Error,
-}
-
-#[derive(Diagnostic)]
 #[diag(codegen_ssa_unable_to_write_debugger_visualizer)]
 pub(crate) struct UnableToWriteDebuggerVisualizer {
     pub path: PathBuf,

@@ -5,8 +5,8 @@ use std::time::{Duration, Instant};
 
 use itertools::Itertools;
 use rustc_abi::FIRST_VARIANT;
-use rustc_ast::expand::allocator::{ALLOCATOR_METHODS, AllocatorKind, global_fn_name};
-use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
+use rustc_ast::expand::allocator::AllocatorKind;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_data_structures::sync::par_map;
 use rustc_data_structures::unord::UnordMap;
@@ -16,8 +16,7 @@ use rustc_metadata::EncodedMetadata;
 use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::middle::debugger_visualizer::{DebuggerVisualizerFile, DebuggerVisualizerType};
-use rustc_middle::middle::exported_symbols::SymbolExportKind;
-use rustc_middle::middle::{exported_symbols, lang_items};
+use rustc_middle::middle::exported_symbols;
 use rustc_middle::mir::BinOp;
 use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem, MonoItemPartitions};
 use rustc_middle::query::Providers;
@@ -25,14 +24,13 @@ use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_session::config::{self, CrateType, EntryFnType, OutputType};
-use rustc_span::{DUMMY_SP, Symbol, sym};
+use rustc_span::{DUMMY_SP, sym};
 use rustc_trait_selection::infer::{BoundRegionConversionTime, TyCtxtInferExt};
 use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
 use tracing::{debug, info};
 use {rustc_ast as ast, rustc_attr_parsing as attr};
 
 use crate::assert_module_sources::CguReuse;
-use crate::back::link::are_upstream_rust_objects_already_included;
 use crate::back::metadata::create_compressed_metadata_file;
 use crate::back::write::{
     ComputedLtoType, OngoingCodegen, compute_per_cgu_lto_type, start_async_codegen,
@@ -872,8 +870,6 @@ impl CrateInfo {
             .iter()
             .map(|&c| (c, crate::back::linker::exported_symbols(tcx, c)))
             .collect();
-        let linked_symbols =
-            crate_types.iter().map(|&c| (c, crate::back::linker::linked_symbols(tcx, c))).collect();
         let local_crate_name = tcx.crate_name(LOCAL_CRATE);
         let crate_attrs = tcx.hir().attrs(rustc_hir::CRATE_HIR_ID);
         let subsystem =
@@ -918,7 +914,6 @@ impl CrateInfo {
             target_features: tcx.global_backend_features(()).clone(),
             crate_types,
             exported_symbols,
-            linked_symbols,
             local_crate_name,
             compiler_builtins,
             profiler_runtime: None,
@@ -960,55 +955,6 @@ impl CrateInfo {
         // and we assume that they cannot define weak lang items. This is not currently enforced
         // by the compiler, but that's ok because all this stuff is unstable anyway.
         let target = &tcx.sess.target;
-        if !are_upstream_rust_objects_already_included(tcx.sess) {
-            let missing_weak_lang_items: FxIndexSet<Symbol> = info
-                .used_crates
-                .iter()
-                .flat_map(|&cnum| tcx.missing_lang_items(cnum))
-                .filter(|l| l.is_weak())
-                .filter_map(|&l| {
-                    let name = l.link_name()?;
-                    lang_items::required(tcx, l).then_some(name)
-                })
-                .collect();
-            let prefix = match (target.is_like_windows, target.arch.as_ref()) {
-                (true, "x86") => "_",
-                (true, "arm64ec") => "#",
-                _ => "",
-            };
-
-            // This loop only adds new items to values of the hash map, so the order in which we
-            // iterate over the values is not important.
-            #[allow(rustc::potential_query_instability)]
-            info.linked_symbols
-                .iter_mut()
-                .filter(|(crate_type, _)| {
-                    !matches!(crate_type, CrateType::Rlib | CrateType::Staticlib)
-                })
-                .for_each(|(_, linked_symbols)| {
-                    let mut symbols = missing_weak_lang_items
-                        .iter()
-                        .map(|item| (format!("{prefix}{item}"), SymbolExportKind::Text))
-                        .collect::<Vec<_>>();
-                    symbols.sort_unstable_by(|a, b| a.0.cmp(&b.0));
-                    linked_symbols.extend(symbols);
-                    if tcx.allocator_kind(()).is_some() {
-                        // At least one crate needs a global allocator. This crate may be placed
-                        // after the crate that defines it in the linker order, in which case some
-                        // linkers return an error. By adding the global allocator shim methods to
-                        // the linked_symbols list, linking the generated symbols.o will ensure that
-                        // circular dependencies involving the global allocator don't lead to linker
-                        // errors.
-                        linked_symbols.extend(ALLOCATOR_METHODS.iter().map(|method| {
-                            (
-                                format!("{prefix}{}", global_fn_name(method.name).as_str()),
-                                SymbolExportKind::Text,
-                            )
-                        }));
-                    }
-                });
-        }
-
         let embed_visualizers = tcx.crate_types().iter().any(|&crate_type| match crate_type {
             CrateType::Executable | CrateType::Dylib | CrateType::Cdylib => {
                 // These are crate types for which we invoke the linker and can embed

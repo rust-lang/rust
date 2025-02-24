@@ -12,7 +12,7 @@ use rustc_metadata::{
 use rustc_middle::bug;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols;
-use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo, SymbolExportKind};
+use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
@@ -1806,32 +1806,6 @@ fn exported_symbols_for_proc_macro_crate(tcx: TyCtxt<'_>) -> Vec<String> {
     let metadata_symbol_name = exported_symbols::metadata_symbol_name(tcx);
 
     vec![proc_macro_decls_name, metadata_symbol_name]
-}
-
-pub(crate) fn linked_symbols(
-    tcx: TyCtxt<'_>,
-    crate_type: CrateType,
-) -> Vec<(String, SymbolExportKind)> {
-    match crate_type {
-        CrateType::Executable | CrateType::Cdylib | CrateType::Dylib => (),
-        CrateType::Staticlib | CrateType::ProcMacro | CrateType::Rlib => {
-            return Vec::new();
-        }
-    }
-
-    let mut symbols = Vec::new();
-
-    let export_threshold = symbol_export::crates_export_threshold(&[crate_type]);
-    for_each_exported_symbols_include_dep(tcx, crate_type, |symbol, info, cnum| {
-        if info.level.is_below_threshold(export_threshold) || info.used {
-            symbols.push((
-                symbol_export::linking_symbol_name_for_instance_in_crate(tcx, symbol, cnum),
-                info.kind,
-            ));
-        }
-    });
-
-    symbols
 }
 
 /// Much simplified and explicit CLI for the NVPTX linker. The linker operates
