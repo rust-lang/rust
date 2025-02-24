@@ -172,7 +172,7 @@ impl<'hir> IfLetOrMatch<'hir> {
                      if_then,
                      if_else,
                      let_span,
-                 }| { Self::IfLet(let_expr, let_pat, if_then, if_else, let_span) },
+                 }| Self::IfLet(let_expr, let_pat, if_then, if_else, let_span),
             ),
         }
     }

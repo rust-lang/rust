@@ -641,7 +641,7 @@ impl<'tcx> ThreadManager<'tcx> {
         assert!(
             self.threads
                 .iter()
-                .all(|thread| { !thread.state.is_blocked_on(BlockReason::Join(joined_thread_id)) }),
+                .all(|thread| !thread.state.is_blocked_on(BlockReason::Join(joined_thread_id))),
             "this thread already has threads waiting for its termination"
         );
 
