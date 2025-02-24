@@ -1,0 +1,450 @@
+error: expected non-macro attribute, found attribute macro `derive`
+  --> $DIR/unsupported_attribute.rs:34:7
+   |
+LL |     #[derive(Clone)] T: Trait,
+   |       ^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive`
+  --> $DIR/unsupported_attribute.rs:37:7
+   |
+LL |     #[derive(Clone)] 'a: 'static,
+   |       ^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `global_allocator`
+  --> $DIR/unsupported_attribute.rs:40:7
+   |
+LL |     #[global_allocator] T: Trait,
+   |       ^^^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `global_allocator`
+  --> $DIR/unsupported_attribute.rs:43:7
+   |
+LL |     #[global_allocator] 'a: 'static,
+   |       ^^^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/unsupported_attribute.rs:46:7
+   |
+LL |     #[test] T: Trait,
+   |       ^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/unsupported_attribute.rs:49:7
+   |
+LL |     #[test] 'a: 'static,
+   |       ^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `alloc_error_handler`
+  --> $DIR/unsupported_attribute.rs:52:7
+   |
+LL |     #[alloc_error_handler] T: Trait,
+   |       ^^^^^^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `alloc_error_handler`
+  --> $DIR/unsupported_attribute.rs:55:7
+   |
+LL |     #[alloc_error_handler] 'a: 'static,
+   |       ^^^^^^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `bench`
+  --> $DIR/unsupported_attribute.rs:58:7
+   |
+LL |     #[bench] T: Trait,
+   |       ^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `bench`
+  --> $DIR/unsupported_attribute.rs:61:7
+   |
+LL |     #[bench] 'a: 'static,
+   |       ^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `cfg_accessible`
+  --> $DIR/unsupported_attribute.rs:64:7
+   |
+LL |     #[cfg_accessible] T: Trait,
+   |       ^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `cfg_accessible`
+  --> $DIR/unsupported_attribute.rs:67:7
+   |
+LL |     #[cfg_accessible] 'a: 'static,
+   |       ^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `cfg_eval`
+  --> $DIR/unsupported_attribute.rs:70:7
+   |
+LL |     #[cfg_eval] T: Trait,
+   |       ^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `cfg_eval`
+  --> $DIR/unsupported_attribute.rs:73:7
+   |
+LL |     #[cfg_eval] 'a: 'static,
+   |       ^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive_const`
+  --> $DIR/unsupported_attribute.rs:76:7
+   |
+LL |     #[derive_const(Clone)] T: Trait,
+   |       ^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive_const`
+  --> $DIR/unsupported_attribute.rs:79:7
+   |
+LL |     #[derive_const(Clone)] 'a: 'static,
+   |       ^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test_case`
+  --> $DIR/unsupported_attribute.rs:82:7
+   |
+LL |     #[test_case] T: Trait,
+   |       ^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test_case`
+  --> $DIR/unsupported_attribute.rs:85:7
+   |
+LL |     #[test_case] 'a: 'static,
+   |       ^^^^^^^^^ not a non-macro attribute
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:14:5
+   |
+LL |     #[doc = "doc"] T: Trait,
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:15:5
+   |
+LL |     #[doc = "doc"] 'a: 'static,
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:16:5
+   |
+LL |     #[ignore] T: Trait,
+   |     ^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:17:5
+   |
+LL |     #[ignore] 'a: 'static,
+   |     ^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:18:5
+   |
+LL |     #[should_panic] T: Trait,
+   |     ^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:19:5
+   |
+LL |     #[should_panic] 'a: 'static,
+   |     ^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:20:5
+   |
+LL |     #[macro_use] T: Trait,
+   |     ^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:21:5
+   |
+LL |     #[macro_use] 'a: 'static,
+   |     ^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:22:5
+   |
+LL |     #[allow(unused)] T: Trait,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:23:5
+   |
+LL |     #[allow(unused)] 'a: 'static,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:24:5
+   |
+LL |     #[warn(unused)] T: Trait,
+   |     ^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:25:5
+   |
+LL |     #[warn(unused)] 'a: 'static,
+   |     ^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:26:5
+   |
+LL |     #[deny(unused)] T: Trait,
+   |     ^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:27:5
+   |
+LL |     #[deny(unused)] 'a: 'static,
+   |     ^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:28:5
+   |
+LL |     #[forbid(unused)] T: Trait,
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:29:5
+   |
+LL |     #[forbid(unused)] 'a: 'static,
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:30:5
+   |
+LL |     #[deprecated] T: Trait,
+   |     ^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:31:5
+   |
+LL |     #[deprecated] 'a: 'static,
+   |     ^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:32:5
+   |
+LL |     #[automatically_derived] T: Trait,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:33:5
+   |
+LL |     #[automatically_derived] 'a: 'static,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:34:5
+   |
+LL |     #[derive(Clone)] T: Trait,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:37:5
+   |
+LL |     #[derive(Clone)] 'a: 'static,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:40:5
+   |
+LL |     #[global_allocator] T: Trait,
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:43:5
+   |
+LL |     #[global_allocator] 'a: 'static,
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:46:5
+   |
+LL |     #[test] T: Trait,
+   |     ^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:49:5
+   |
+LL |     #[test] 'a: 'static,
+   |     ^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:52:5
+   |
+LL |     #[alloc_error_handler] T: Trait,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:55:5
+   |
+LL |     #[alloc_error_handler] 'a: 'static,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:58:5
+   |
+LL |     #[bench] T: Trait,
+   |     ^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:61:5
+   |
+LL |     #[bench] 'a: 'static,
+   |     ^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:64:5
+   |
+LL |     #[cfg_accessible] T: Trait,
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:67:5
+   |
+LL |     #[cfg_accessible] 'a: 'static,
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:70:5
+   |
+LL |     #[cfg_eval] T: Trait,
+   |     ^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:73:5
+   |
+LL |     #[cfg_eval] 'a: 'static,
+   |     ^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:76:5
+   |
+LL |     #[derive_const(Clone)] T: Trait,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:79:5
+   |
+LL |     #[derive_const(Clone)] 'a: 'static,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:82:5
+   |
+LL |     #[test_case] T: Trait,
+   |     ^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:85:5
+   |
+LL |     #[test_case] 'a: 'static,
+   |     ^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:88:5
+   |
+LL |     #[rustfmt::skip] T: Trait,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/unsupported_attribute.rs:89:5
+   |
+LL |     #[rustfmt::skip] 'a: 'static,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: aborting due to 58 previous errors
+
+Future incompatibility report: Future breakage diagnostic:
+warning: use of unstable library feature `test`: `bench` is a part of custom test frameworks which are unstable
+  --> $DIR/unsupported_attribute.rs:58:7
+   |
+LL |     #[bench] T: Trait,
+   |       ^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #64266 <https://github.com/rust-lang/rust/issues/64266>
+
+Future breakage diagnostic:
+warning: use of unstable library feature `test`: `bench` is a part of custom test frameworks which are unstable
+  --> $DIR/unsupported_attribute.rs:61:7
+   |
+LL |     #[bench] 'a: 'static,
+   |       ^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #64266 <https://github.com/rust-lang/rust/issues/64266>
+

@@ -300,13 +300,15 @@ pub(crate) fn expand_deriving_coerce_pointee(
                 to_ty: &s_ty,
                 rewritten: false,
             };
-            let mut predicate = ast::WherePredicate {
-                kind: ast::WherePredicateKind::BoundPredicate(bound.clone()),
-                span: predicate.span,
-                id: ast::DUMMY_NODE_ID,
-            };
-            substitution.visit_where_predicate(&mut predicate);
+            let mut kind = ast::WherePredicateKind::BoundPredicate(bound.clone());
+            substitution.visit_where_predicate_kind(&mut kind);
             if substitution.rewritten {
+                let predicate = ast::WherePredicate {
+                    attrs: predicate.attrs.clone(),
+                    kind,
+                    span: predicate.span,
+                    id: ast::DUMMY_NODE_ID,
+                };
                 impl_generics.where_clause.predicates.push(predicate);
             }
         }
@@ -388,8 +390,8 @@ impl<'a> ast::mut_visit::MutVisitor for TypeSubstitution<'a> {
         }
     }
 
-    fn visit_where_predicate(&mut self, where_predicate: &mut ast::WherePredicate) {
-        match &mut where_predicate.kind {
+    fn visit_where_predicate_kind(&mut self, kind: &mut ast::WherePredicateKind) {
+        match kind {
             rustc_ast::WherePredicateKind::BoundPredicate(bound) => {
                 bound
                     .bound_generic_params
@@ -400,7 +402,8 @@ impl<'a> ast::mut_visit::MutVisitor for TypeSubstitution<'a> {
                 }
             }
             rustc_ast::WherePredicateKind::RegionPredicate(_)
-            | rustc_ast::WherePredicateKind::EqPredicate(_) => {}
+            | rustc_ast::WherePredicateKind::EqPredicate(_)
+            | rustc_ast::WherePredicateKind::MacCall(_) => {}
         }
     }
 }

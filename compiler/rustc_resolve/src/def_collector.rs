@@ -268,6 +268,13 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
         });
     }
 
+    fn visit_where_predicate(&mut self, pred: &'a WherePredicate) {
+        match pred.kind {
+            WherePredicateKind::MacCall(_) => self.visit_macro_invoc(pred.id),
+            _ => visit::walk_where_predicate(self, pred),
+        }
+    }
+
     fn visit_variant_data(&mut self, data: &'a VariantData) {
         // The assumption here is that non-`cfg` macro expansion cannot change field indices.
         // It currently holds because only inert attributes are accepted on fields,

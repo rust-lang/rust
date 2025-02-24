@@ -735,7 +735,8 @@ impl<'a> State<'a> {
     }
 
     pub fn print_where_predicate(&mut self, predicate: &ast::WherePredicate) {
-        let ast::WherePredicate { kind, id: _, span: _ } = predicate;
+        let ast::WherePredicate { attrs, kind, id: _, span: _ } = predicate;
+        self.print_outer_attributes(attrs);
         match kind {
             ast::WherePredicateKind::BoundPredicate(where_bound_predicate) => {
                 self.print_where_bound_predicate(where_bound_predicate);
@@ -759,6 +760,12 @@ impl<'a> State<'a> {
                 self.space();
                 self.word_space("=");
                 self.print_type(rhs_ty);
+            }
+            ast::WherePredicateKind::MacCall(m) => {
+                self.print_mac(m);
+                if m.args.need_semicolon() {
+                    self.word(";");
+                }
             }
         }
     }

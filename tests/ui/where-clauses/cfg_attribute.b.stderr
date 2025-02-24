@@ -1,0 +1,1874 @@
+error: expected non-macro attribute, found attribute macro `derive`
+  --> $DIR/cfg_attribute.rs:32:7
+   |
+LL |     #[derive(Clone)] ():,
+   |       ^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `global_allocator`
+  --> $DIR/cfg_attribute.rs:35:7
+   |
+LL |     #[global_allocator] ():,
+   |       ^^^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/cfg_attribute.rs:38:7
+   |
+LL |     #[test] ():,
+   |       ^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `alloc_error_handler`
+  --> $DIR/cfg_attribute.rs:41:7
+   |
+LL |     #[alloc_error_handler] ():,
+   |       ^^^^^^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `bench`
+  --> $DIR/cfg_attribute.rs:44:7
+   |
+LL |     #[bench] ():,
+   |       ^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `cfg_accessible`
+  --> $DIR/cfg_attribute.rs:47:7
+   |
+LL |     #[cfg_accessible] ():,
+   |       ^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `cfg_eval`
+  --> $DIR/cfg_attribute.rs:50:7
+   |
+LL |     #[cfg_eval] ():,
+   |       ^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive_const`
+  --> $DIR/cfg_attribute.rs:53:7
+   |
+LL |     #[derive_const(Clone)] ():,
+   |       ^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test_case`
+  --> $DIR/cfg_attribute.rs:56:7
+   |
+LL |     #[test_case] ():,
+   |       ^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive`
+  --> $DIR/cfg_attribute.rs:67:11
+   |
+LL |         #[derive(Clone)] ():,
+   |           ^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `global_allocator`
+  --> $DIR/cfg_attribute.rs:70:11
+   |
+LL |         #[global_allocator] ():,
+   |           ^^^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/cfg_attribute.rs:73:11
+   |
+LL |         #[test] ():,
+   |           ^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `alloc_error_handler`
+  --> $DIR/cfg_attribute.rs:76:11
+   |
+LL |         #[alloc_error_handler] ():,
+   |           ^^^^^^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `bench`
+  --> $DIR/cfg_attribute.rs:79:11
+   |
+LL |         #[bench] ():,
+   |           ^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `cfg_accessible`
+  --> $DIR/cfg_attribute.rs:82:11
+   |
+LL |         #[cfg_accessible] ():,
+   |           ^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `cfg_eval`
+  --> $DIR/cfg_attribute.rs:85:11
+   |
+LL |         #[cfg_eval] ():,
+   |           ^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive_const`
+  --> $DIR/cfg_attribute.rs:88:11
+   |
+LL |         #[derive_const(Clone)] ():,
+   |           ^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test_case`
+  --> $DIR/cfg_attribute.rs:91:11
+   |
+LL |         #[test_case] ():,
+   |           ^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive`
+  --> $DIR/cfg_attribute.rs:102:11
+   |
+LL |         #[derive(Clone)] ():,
+   |           ^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `global_allocator`
+  --> $DIR/cfg_attribute.rs:105:11
+   |
+LL |         #[global_allocator] ():,
+   |           ^^^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/cfg_attribute.rs:108:11
+   |
+LL |         #[test] ():,
+   |           ^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `alloc_error_handler`
+  --> $DIR/cfg_attribute.rs:111:11
+   |
+LL |         #[alloc_error_handler] ():,
+   |           ^^^^^^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `bench`
+  --> $DIR/cfg_attribute.rs:114:11
+   |
+LL |         #[bench] ():,
+   |           ^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `cfg_accessible`
+  --> $DIR/cfg_attribute.rs:117:11
+   |
+LL |         #[cfg_accessible] ():,
+   |           ^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `cfg_eval`
+  --> $DIR/cfg_attribute.rs:120:11
+   |
+LL |         #[cfg_eval] ():,
+   |           ^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive_const`
+  --> $DIR/cfg_attribute.rs:123:11
+   |
+LL |         #[derive_const(Clone)] ():,
+   |           ^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test_case`
+  --> $DIR/cfg_attribute.rs:126:11
+   |
+LL |         #[test_case] ():,
+   |           ^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive`
+  --> $DIR/cfg_attribute.rs:138:7
+   |
+LL |     #[derive(Clone)] ():,
+   |       ^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `global_allocator`
+  --> $DIR/cfg_attribute.rs:141:7
+   |
+LL |     #[global_allocator] ():,
+   |       ^^^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/cfg_attribute.rs:144:7
+   |
+LL |     #[test] ():,
+   |       ^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `alloc_error_handler`
+  --> $DIR/cfg_attribute.rs:147:7
+   |
+LL |     #[alloc_error_handler] ():,
+   |       ^^^^^^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `bench`
+  --> $DIR/cfg_attribute.rs:150:7
+   |
+LL |     #[bench] ():,
+   |       ^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `cfg_accessible`
+  --> $DIR/cfg_attribute.rs:153:7
+   |
+LL |     #[cfg_accessible] ():,
+   |       ^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `cfg_eval`
+  --> $DIR/cfg_attribute.rs:156:7
+   |
+LL |     #[cfg_eval] ():,
+   |       ^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive_const`
+  --> $DIR/cfg_attribute.rs:159:7
+   |
+LL |     #[derive_const(Clone)] ():,
+   |       ^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test_case`
+  --> $DIR/cfg_attribute.rs:162:7
+   |
+LL |     #[test_case] ():,
+   |       ^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive`
+  --> $DIR/cfg_attribute.rs:172:11
+   |
+LL |         #[derive(Clone)] ():,
+   |           ^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `global_allocator`
+  --> $DIR/cfg_attribute.rs:175:11
+   |
+LL |         #[global_allocator] ():,
+   |           ^^^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/cfg_attribute.rs:178:11
+   |
+LL |         #[test] ():,
+   |           ^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `alloc_error_handler`
+  --> $DIR/cfg_attribute.rs:181:11
+   |
+LL |         #[alloc_error_handler] ():,
+   |           ^^^^^^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `bench`
+  --> $DIR/cfg_attribute.rs:184:11
+   |
+LL |         #[bench] ():,
+   |           ^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `cfg_accessible`
+  --> $DIR/cfg_attribute.rs:187:11
+   |
+LL |         #[cfg_accessible] ():,
+   |           ^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `cfg_eval`
+  --> $DIR/cfg_attribute.rs:190:11
+   |
+LL |         #[cfg_eval] ():,
+   |           ^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive_const`
+  --> $DIR/cfg_attribute.rs:193:11
+   |
+LL |         #[derive_const(Clone)] ():,
+   |           ^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test_case`
+  --> $DIR/cfg_attribute.rs:196:11
+   |
+LL |         #[test_case] ():,
+   |           ^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive`
+  --> $DIR/cfg_attribute.rs:207:11
+   |
+LL |         #[derive(Clone)] ():,
+   |           ^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `global_allocator`
+  --> $DIR/cfg_attribute.rs:210:11
+   |
+LL |         #[global_allocator] ():,
+   |           ^^^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/cfg_attribute.rs:213:11
+   |
+LL |         #[test] ():,
+   |           ^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `alloc_error_handler`
+  --> $DIR/cfg_attribute.rs:216:11
+   |
+LL |         #[alloc_error_handler] ():,
+   |           ^^^^^^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `bench`
+  --> $DIR/cfg_attribute.rs:219:11
+   |
+LL |         #[bench] ():,
+   |           ^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `cfg_accessible`
+  --> $DIR/cfg_attribute.rs:222:11
+   |
+LL |         #[cfg_accessible] ():,
+   |           ^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `cfg_eval`
+  --> $DIR/cfg_attribute.rs:225:11
+   |
+LL |         #[cfg_eval] ():,
+   |           ^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive_const`
+  --> $DIR/cfg_attribute.rs:228:11
+   |
+LL |         #[derive_const(Clone)] ():,
+   |           ^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test_case`
+  --> $DIR/cfg_attribute.rs:231:11
+   |
+LL |         #[test_case] ():,
+   |           ^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive`
+  --> $DIR/cfg_attribute.rs:244:7
+   |
+LL |     #[derive(Clone)] ():,
+   |       ^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `global_allocator`
+  --> $DIR/cfg_attribute.rs:247:7
+   |
+LL |     #[global_allocator] ():,
+   |       ^^^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/cfg_attribute.rs:250:7
+   |
+LL |     #[test] ():,
+   |       ^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `alloc_error_handler`
+  --> $DIR/cfg_attribute.rs:253:7
+   |
+LL |     #[alloc_error_handler] ():,
+   |       ^^^^^^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `bench`
+  --> $DIR/cfg_attribute.rs:256:7
+   |
+LL |     #[bench] ():,
+   |       ^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `cfg_accessible`
+  --> $DIR/cfg_attribute.rs:259:7
+   |
+LL |     #[cfg_accessible] ():,
+   |       ^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `cfg_eval`
+  --> $DIR/cfg_attribute.rs:262:7
+   |
+LL |     #[cfg_eval] ():,
+   |       ^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive_const`
+  --> $DIR/cfg_attribute.rs:265:7
+   |
+LL |     #[derive_const(Clone)] ():,
+   |       ^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test_case`
+  --> $DIR/cfg_attribute.rs:268:7
+   |
+LL |     #[test_case] ():,
+   |       ^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive`
+  --> $DIR/cfg_attribute.rs:282:7
+   |
+LL |     #[derive(Clone)] ():,
+   |       ^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `global_allocator`
+  --> $DIR/cfg_attribute.rs:285:7
+   |
+LL |     #[global_allocator] ():,
+   |       ^^^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/cfg_attribute.rs:288:7
+   |
+LL |     #[test] ():,
+   |       ^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `alloc_error_handler`
+  --> $DIR/cfg_attribute.rs:291:7
+   |
+LL |     #[alloc_error_handler] ():,
+   |       ^^^^^^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `bench`
+  --> $DIR/cfg_attribute.rs:294:7
+   |
+LL |     #[bench] ():,
+   |       ^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `cfg_accessible`
+  --> $DIR/cfg_attribute.rs:297:7
+   |
+LL |     #[cfg_accessible] ():,
+   |       ^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `cfg_eval`
+  --> $DIR/cfg_attribute.rs:300:7
+   |
+LL |     #[cfg_eval] ():,
+   |       ^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive_const`
+  --> $DIR/cfg_attribute.rs:303:7
+   |
+LL |     #[derive_const(Clone)] ():,
+   |       ^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test_case`
+  --> $DIR/cfg_attribute.rs:306:7
+   |
+LL |     #[test_case] ():,
+   |       ^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive`
+  --> $DIR/cfg_attribute.rs:321:7
+   |
+LL |     #[derive(Clone)] ():,
+   |       ^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `global_allocator`
+  --> $DIR/cfg_attribute.rs:324:7
+   |
+LL |     #[global_allocator] ():,
+   |       ^^^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/cfg_attribute.rs:327:7
+   |
+LL |     #[test] ():,
+   |       ^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `alloc_error_handler`
+  --> $DIR/cfg_attribute.rs:330:7
+   |
+LL |     #[alloc_error_handler] ():,
+   |       ^^^^^^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `bench`
+  --> $DIR/cfg_attribute.rs:333:7
+   |
+LL |     #[bench] ():,
+   |       ^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `cfg_accessible`
+  --> $DIR/cfg_attribute.rs:336:7
+   |
+LL |     #[cfg_accessible] ():,
+   |       ^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `cfg_eval`
+  --> $DIR/cfg_attribute.rs:339:7
+   |
+LL |     #[cfg_eval] ():,
+   |       ^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive_const`
+  --> $DIR/cfg_attribute.rs:342:7
+   |
+LL |     #[derive_const(Clone)] ():,
+   |       ^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test_case`
+  --> $DIR/cfg_attribute.rs:345:7
+   |
+LL |     #[test_case] ():,
+   |       ^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive`
+  --> $DIR/cfg_attribute.rs:360:7
+   |
+LL |     #[derive(Clone)] ():,
+   |       ^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `global_allocator`
+  --> $DIR/cfg_attribute.rs:363:7
+   |
+LL |     #[global_allocator] ():,
+   |       ^^^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/cfg_attribute.rs:366:7
+   |
+LL |     #[test] ():,
+   |       ^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `alloc_error_handler`
+  --> $DIR/cfg_attribute.rs:369:7
+   |
+LL |     #[alloc_error_handler] ():,
+   |       ^^^^^^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `bench`
+  --> $DIR/cfg_attribute.rs:372:7
+   |
+LL |     #[bench] ():,
+   |       ^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `cfg_accessible`
+  --> $DIR/cfg_attribute.rs:375:7
+   |
+LL |     #[cfg_accessible] ():,
+   |       ^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `cfg_eval`
+  --> $DIR/cfg_attribute.rs:378:7
+   |
+LL |     #[cfg_eval] ():,
+   |       ^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive_const`
+  --> $DIR/cfg_attribute.rs:381:7
+   |
+LL |     #[derive_const(Clone)] ():,
+   |       ^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test_case`
+  --> $DIR/cfg_attribute.rs:384:7
+   |
+LL |     #[test_case] ():,
+   |       ^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive`
+  --> $DIR/cfg_attribute.rs:395:7
+   |
+LL |     #[derive(Clone)] ():,
+   |       ^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `global_allocator`
+  --> $DIR/cfg_attribute.rs:398:7
+   |
+LL |     #[global_allocator] ():,
+   |       ^^^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/cfg_attribute.rs:401:7
+   |
+LL |     #[test] ():,
+   |       ^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `alloc_error_handler`
+  --> $DIR/cfg_attribute.rs:404:7
+   |
+LL |     #[alloc_error_handler] ():,
+   |       ^^^^^^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `bench`
+  --> $DIR/cfg_attribute.rs:407:7
+   |
+LL |     #[bench] ():,
+   |       ^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `cfg_accessible`
+  --> $DIR/cfg_attribute.rs:410:7
+   |
+LL |     #[cfg_accessible] ():,
+   |       ^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `cfg_eval`
+  --> $DIR/cfg_attribute.rs:413:7
+   |
+LL |     #[cfg_eval] ():,
+   |       ^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive_const`
+  --> $DIR/cfg_attribute.rs:416:7
+   |
+LL |     #[derive_const(Clone)] ():,
+   |       ^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test_case`
+  --> $DIR/cfg_attribute.rs:419:7
+   |
+LL |     #[test_case] ():,
+   |       ^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive`
+  --> $DIR/cfg_attribute.rs:429:11
+   |
+LL |         #[derive(Clone)] ():,
+   |           ^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `global_allocator`
+  --> $DIR/cfg_attribute.rs:432:11
+   |
+LL |         #[global_allocator] ():,
+   |           ^^^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/cfg_attribute.rs:435:11
+   |
+LL |         #[test] ():,
+   |           ^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `alloc_error_handler`
+  --> $DIR/cfg_attribute.rs:438:11
+   |
+LL |         #[alloc_error_handler] ():,
+   |           ^^^^^^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `bench`
+  --> $DIR/cfg_attribute.rs:441:11
+   |
+LL |         #[bench] ():,
+   |           ^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `cfg_accessible`
+  --> $DIR/cfg_attribute.rs:444:11
+   |
+LL |         #[cfg_accessible] ():,
+   |           ^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `cfg_eval`
+  --> $DIR/cfg_attribute.rs:447:11
+   |
+LL |         #[cfg_eval] ():,
+   |           ^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive_const`
+  --> $DIR/cfg_attribute.rs:450:11
+   |
+LL |         #[derive_const(Clone)] ():,
+   |           ^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test_case`
+  --> $DIR/cfg_attribute.rs:453:11
+   |
+LL |         #[test_case] ():,
+   |           ^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive`
+  --> $DIR/cfg_attribute.rs:466:7
+   |
+LL |     #[derive(Clone)] ():,
+   |       ^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `global_allocator`
+  --> $DIR/cfg_attribute.rs:469:7
+   |
+LL |     #[global_allocator] ():,
+   |       ^^^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test`
+  --> $DIR/cfg_attribute.rs:472:7
+   |
+LL |     #[test] ():,
+   |       ^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `alloc_error_handler`
+  --> $DIR/cfg_attribute.rs:475:7
+   |
+LL |     #[alloc_error_handler] ():,
+   |       ^^^^^^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `bench`
+  --> $DIR/cfg_attribute.rs:478:7
+   |
+LL |     #[bench] ():,
+   |       ^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `cfg_accessible`
+  --> $DIR/cfg_attribute.rs:481:7
+   |
+LL |     #[cfg_accessible] ():,
+   |       ^^^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `cfg_eval`
+  --> $DIR/cfg_attribute.rs:484:7
+   |
+LL |     #[cfg_eval] ():,
+   |       ^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive_const`
+  --> $DIR/cfg_attribute.rs:487:7
+   |
+LL |     #[derive_const(Clone)] ():,
+   |       ^^^^^^^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `test_case`
+  --> $DIR/cfg_attribute.rs:490:7
+   |
+LL |     #[test_case] ():,
+   |       ^^^^^^^^^ not a non-macro attribute
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:32:5
+   |
+LL |     #[derive(Clone)] ():,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:35:5
+   |
+LL |     #[global_allocator] ():,
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:38:5
+   |
+LL |     #[test] ():,
+   |     ^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:41:5
+   |
+LL |     #[alloc_error_handler] ():,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:44:5
+   |
+LL |     #[bench] ():,
+   |     ^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:47:5
+   |
+LL |     #[cfg_accessible] ():,
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:50:5
+   |
+LL |     #[cfg_eval] ():,
+   |     ^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:53:5
+   |
+LL |     #[derive_const(Clone)] ():,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:56:5
+   |
+LL |     #[test_case] ():,
+   |     ^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:59:5
+   |
+LL |     #[rustfmt::skip] ():,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:138:5
+   |
+LL |     #[derive(Clone)] ():,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:141:5
+   |
+LL |     #[global_allocator] ():,
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:144:5
+   |
+LL |     #[test] ():,
+   |     ^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:147:5
+   |
+LL |     #[alloc_error_handler] ():,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:150:5
+   |
+LL |     #[bench] ():,
+   |     ^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:153:5
+   |
+LL |     #[cfg_accessible] ():,
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:156:5
+   |
+LL |     #[cfg_eval] ():,
+   |     ^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:159:5
+   |
+LL |     #[derive_const(Clone)] ():,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:162:5
+   |
+LL |     #[test_case] ():,
+   |     ^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:165:5
+   |
+LL |     #[rustfmt::skip] ():,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:244:5
+   |
+LL |     #[derive(Clone)] ():,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:247:5
+   |
+LL |     #[global_allocator] ():,
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:250:5
+   |
+LL |     #[test] ():,
+   |     ^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:253:5
+   |
+LL |     #[alloc_error_handler] ():,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:256:5
+   |
+LL |     #[bench] ():,
+   |     ^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:259:5
+   |
+LL |     #[cfg_accessible] ():,
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:262:5
+   |
+LL |     #[cfg_eval] ():,
+   |     ^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:265:5
+   |
+LL |     #[derive_const(Clone)] ():,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:268:5
+   |
+LL |     #[test_case] ():,
+   |     ^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:271:5
+   |
+LL |     #[rustfmt::skip] ():,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:282:5
+   |
+LL |     #[derive(Clone)] ():,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:285:5
+   |
+LL |     #[global_allocator] ():,
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:288:5
+   |
+LL |     #[test] ():,
+   |     ^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:291:5
+   |
+LL |     #[alloc_error_handler] ():,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:294:5
+   |
+LL |     #[bench] ():,
+   |     ^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:297:5
+   |
+LL |     #[cfg_accessible] ():,
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:300:5
+   |
+LL |     #[cfg_eval] ():,
+   |     ^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:303:5
+   |
+LL |     #[derive_const(Clone)] ():,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:306:5
+   |
+LL |     #[test_case] ():,
+   |     ^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:309:5
+   |
+LL |     #[rustfmt::skip] ():,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:321:5
+   |
+LL |     #[derive(Clone)] ():,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:324:5
+   |
+LL |     #[global_allocator] ():,
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:327:5
+   |
+LL |     #[test] ():,
+   |     ^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:330:5
+   |
+LL |     #[alloc_error_handler] ():,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:333:5
+   |
+LL |     #[bench] ():,
+   |     ^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:336:5
+   |
+LL |     #[cfg_accessible] ():,
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:339:5
+   |
+LL |     #[cfg_eval] ():,
+   |     ^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:342:5
+   |
+LL |     #[derive_const(Clone)] ():,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:345:5
+   |
+LL |     #[test_case] ():,
+   |     ^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:348:5
+   |
+LL |     #[rustfmt::skip] ():,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:360:5
+   |
+LL |     #[derive(Clone)] ():,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:363:5
+   |
+LL |     #[global_allocator] ():,
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:366:5
+   |
+LL |     #[test] ():,
+   |     ^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:369:5
+   |
+LL |     #[alloc_error_handler] ():,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:372:5
+   |
+LL |     #[bench] ():,
+   |     ^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:375:5
+   |
+LL |     #[cfg_accessible] ():,
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:378:5
+   |
+LL |     #[cfg_eval] ():,
+   |     ^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:381:5
+   |
+LL |     #[derive_const(Clone)] ():,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:384:5
+   |
+LL |     #[test_case] ():,
+   |     ^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:387:5
+   |
+LL |     #[rustfmt::skip] ():,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:395:5
+   |
+LL |     #[derive(Clone)] ():,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:398:5
+   |
+LL |     #[global_allocator] ():,
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:401:5
+   |
+LL |     #[test] ():,
+   |     ^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:404:5
+   |
+LL |     #[alloc_error_handler] ():,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:407:5
+   |
+LL |     #[bench] ():,
+   |     ^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:410:5
+   |
+LL |     #[cfg_accessible] ():,
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:413:5
+   |
+LL |     #[cfg_eval] ():,
+   |     ^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:416:5
+   |
+LL |     #[derive_const(Clone)] ():,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:419:5
+   |
+LL |     #[test_case] ():,
+   |     ^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:422:5
+   |
+LL |     #[rustfmt::skip] ():,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:466:5
+   |
+LL |     #[derive(Clone)] ():,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:469:5
+   |
+LL |     #[global_allocator] ():,
+   |     ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:472:5
+   |
+LL |     #[test] ():,
+   |     ^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:475:5
+   |
+LL |     #[alloc_error_handler] ():,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:478:5
+   |
+LL |     #[bench] ():,
+   |     ^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:481:5
+   |
+LL |     #[cfg_accessible] ():,
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:484:5
+   |
+LL |     #[cfg_eval] ():,
+   |     ^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:487:5
+   |
+LL |     #[derive_const(Clone)] ():,
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:490:5
+   |
+LL |     #[test_case] ():,
+   |     ^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:493:5
+   |
+LL |     #[rustfmt::skip] ():,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:67:9
+   |
+LL |         #[derive(Clone)] ():,
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:70:9
+   |
+LL |         #[global_allocator] ():,
+   |         ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:73:9
+   |
+LL |         #[test] ():,
+   |         ^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:76:9
+   |
+LL |         #[alloc_error_handler] ():,
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:79:9
+   |
+LL |         #[bench] ():,
+   |         ^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:82:9
+   |
+LL |         #[cfg_accessible] ():,
+   |         ^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:85:9
+   |
+LL |         #[cfg_eval] ():,
+   |         ^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:88:9
+   |
+LL |         #[derive_const(Clone)] ():,
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:91:9
+   |
+LL |         #[test_case] ():,
+   |         ^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:94:9
+   |
+LL |         #[rustfmt::skip] ():;
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:102:9
+   |
+LL |         #[derive(Clone)] ():,
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:105:9
+   |
+LL |         #[global_allocator] ():,
+   |         ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:108:9
+   |
+LL |         #[test] ():,
+   |         ^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:111:9
+   |
+LL |         #[alloc_error_handler] ():,
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:114:9
+   |
+LL |         #[bench] ():,
+   |         ^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:117:9
+   |
+LL |         #[cfg_accessible] ():,
+   |         ^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:120:9
+   |
+LL |         #[cfg_eval] ():,
+   |         ^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:123:9
+   |
+LL |         #[derive_const(Clone)] ():,
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:126:9
+   |
+LL |         #[test_case] ():,
+   |         ^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:129:9
+   |
+LL |         #[rustfmt::skip] ():;
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:172:9
+   |
+LL |         #[derive(Clone)] ():,
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:175:9
+   |
+LL |         #[global_allocator] ():,
+   |         ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:178:9
+   |
+LL |         #[test] ():,
+   |         ^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:181:9
+   |
+LL |         #[alloc_error_handler] ():,
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:184:9
+   |
+LL |         #[bench] ():,
+   |         ^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:187:9
+   |
+LL |         #[cfg_accessible] ():,
+   |         ^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:190:9
+   |
+LL |         #[cfg_eval] ():,
+   |         ^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:193:9
+   |
+LL |         #[derive_const(Clone)] ():,
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:196:9
+   |
+LL |         #[test_case] ():,
+   |         ^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:199:9
+   |
+LL |         #[rustfmt::skip] ():;
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:207:9
+   |
+LL |         #[derive(Clone)] ():,
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:210:9
+   |
+LL |         #[global_allocator] ():,
+   |         ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:213:9
+   |
+LL |         #[test] ():,
+   |         ^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:216:9
+   |
+LL |         #[alloc_error_handler] ():,
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:219:9
+   |
+LL |         #[bench] ():,
+   |         ^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:222:9
+   |
+LL |         #[cfg_accessible] ():,
+   |         ^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:225:9
+   |
+LL |         #[cfg_eval] ():,
+   |         ^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:228:9
+   |
+LL |         #[derive_const(Clone)] ():,
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:231:9
+   |
+LL |         #[test_case] ():,
+   |         ^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:234:9
+   |
+LL |         #[rustfmt::skip] ():,
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:429:9
+   |
+LL |         #[derive(Clone)] ():,
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:432:9
+   |
+LL |         #[global_allocator] ():,
+   |         ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:435:9
+   |
+LL |         #[test] ():,
+   |         ^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:438:9
+   |
+LL |         #[alloc_error_handler] ():,
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:441:9
+   |
+LL |         #[bench] ():,
+   |         ^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:444:9
+   |
+LL |         #[cfg_accessible] ():,
+   |         ^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:447:9
+   |
+LL |         #[cfg_eval] ():,
+   |         ^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:450:9
+   |
+LL |         #[derive_const(Clone)] ():,
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:453:9
+   |
+LL |         #[test_case] ():,
+   |         ^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes in `where` clauses are not supported
+  --> $DIR/cfg_attribute.rs:456:9
+   |
+LL |         #[rustfmt::skip] ():,
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: aborting due to 247 previous errors
+
+Future incompatibility report: Future breakage diagnostic:
+warning: use of unstable library feature `test`: `bench` is a part of custom test frameworks which are unstable
+  --> $DIR/cfg_attribute.rs:44:7
+   |
+LL |     #[bench] ():,
+   |       ^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #64266 <https://github.com/rust-lang/rust/issues/64266>
+
+Future breakage diagnostic:
+warning: use of unstable library feature `test`: `bench` is a part of custom test frameworks which are unstable
+  --> $DIR/cfg_attribute.rs:79:11
+   |
+LL |         #[bench] ():,
+   |           ^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #64266 <https://github.com/rust-lang/rust/issues/64266>
+
+Future breakage diagnostic:
+warning: use of unstable library feature `test`: `bench` is a part of custom test frameworks which are unstable
+  --> $DIR/cfg_attribute.rs:114:11
+   |
+LL |         #[bench] ():,
+   |           ^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #64266 <https://github.com/rust-lang/rust/issues/64266>
+
+Future breakage diagnostic:
+warning: use of unstable library feature `test`: `bench` is a part of custom test frameworks which are unstable
+  --> $DIR/cfg_attribute.rs:150:7
+   |
+LL |     #[bench] ():,
+   |       ^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #64266 <https://github.com/rust-lang/rust/issues/64266>
+
+Future breakage diagnostic:
+warning: use of unstable library feature `test`: `bench` is a part of custom test frameworks which are unstable
+  --> $DIR/cfg_attribute.rs:184:11
+   |
+LL |         #[bench] ():,
+   |           ^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #64266 <https://github.com/rust-lang/rust/issues/64266>
+
+Future breakage diagnostic:
+warning: use of unstable library feature `test`: `bench` is a part of custom test frameworks which are unstable
+  --> $DIR/cfg_attribute.rs:219:11
+   |
+LL |         #[bench] ():,
+   |           ^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #64266 <https://github.com/rust-lang/rust/issues/64266>
+
+Future breakage diagnostic:
+warning: use of unstable library feature `test`: `bench` is a part of custom test frameworks which are unstable
+  --> $DIR/cfg_attribute.rs:256:7
+   |
+LL |     #[bench] ():,
+   |       ^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #64266 <https://github.com/rust-lang/rust/issues/64266>
+
+Future breakage diagnostic:
+warning: use of unstable library feature `test`: `bench` is a part of custom test frameworks which are unstable
+  --> $DIR/cfg_attribute.rs:294:7
+   |
+LL |     #[bench] ():,
+   |       ^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #64266 <https://github.com/rust-lang/rust/issues/64266>
+
+Future breakage diagnostic:
+warning: use of unstable library feature `test`: `bench` is a part of custom test frameworks which are unstable
+  --> $DIR/cfg_attribute.rs:333:7
+   |
+LL |     #[bench] ():,
+   |       ^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #64266 <https://github.com/rust-lang/rust/issues/64266>
+
+Future breakage diagnostic:
+warning: use of unstable library feature `test`: `bench` is a part of custom test frameworks which are unstable
+  --> $DIR/cfg_attribute.rs:372:7
+   |
+LL |     #[bench] ():,
+   |       ^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #64266 <https://github.com/rust-lang/rust/issues/64266>
+
+Future breakage diagnostic:
+warning: use of unstable library feature `test`: `bench` is a part of custom test frameworks which are unstable
+  --> $DIR/cfg_attribute.rs:407:7
+   |
+LL |     #[bench] ():,
+   |       ^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #64266 <https://github.com/rust-lang/rust/issues/64266>
+
+Future breakage diagnostic:
+warning: use of unstable library feature `test`: `bench` is a part of custom test frameworks which are unstable
+  --> $DIR/cfg_attribute.rs:441:11
+   |
+LL |         #[bench] ():,
+   |           ^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #64266 <https://github.com/rust-lang/rust/issues/64266>
+
+Future breakage diagnostic:
+warning: use of unstable library feature `test`: `bench` is a part of custom test frameworks which are unstable
+  --> $DIR/cfg_attribute.rs:478:7
+   |
+LL |     #[bench] ():,
+   |       ^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #64266 <https://github.com/rust-lang/rust/issues/64266>
+

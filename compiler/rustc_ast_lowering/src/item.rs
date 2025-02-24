@@ -1727,6 +1727,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_where_predicate(&mut self, pred: &WherePredicate) -> hir::WherePredicate<'hir> {
         let hir_id = self.lower_node_id(pred.id);
         let span = self.lower_span(pred.span);
+        self.lower_attrs(hir_id, &pred.attrs);
         let kind = self.arena.alloc(match &pred.kind {
             WherePredicateKind::BoundPredicate(WhereBoundPredicate {
                 bound_generic_params,
@@ -1761,6 +1762,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         .lower_ty(rhs_ty, ImplTraitContext::Disallowed(ImplTraitPosition::Bound)),
                 })
             }
+            WherePredicateKind::MacCall(_) => panic!("macro shouldn't exist here"),
         });
         hir::WherePredicate { hir_id, span, kind }
     }
