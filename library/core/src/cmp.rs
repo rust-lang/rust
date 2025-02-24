@@ -1369,7 +1369,7 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_diagnostic_item = "cmp_partialord_lt"]
     fn lt(&self, other: &Rhs) -> bool {
-        matches!(self.partial_cmp(other), Some(Less))
+        self.partial_cmp(other).is_some_and(Ordering::is_lt)
     }
 
     /// Tests less than or equal to (for `self` and `other`) and is used by the
@@ -1387,7 +1387,7 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_diagnostic_item = "cmp_partialord_le"]
     fn le(&self, other: &Rhs) -> bool {
-        matches!(self.partial_cmp(other), Some(Less | Equal))
+        self.partial_cmp(other).is_some_and(Ordering::is_le)
     }
 
     /// Tests greater than (for `self` and `other`) and is used by the `>`
@@ -1405,7 +1405,7 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_diagnostic_item = "cmp_partialord_gt"]
     fn gt(&self, other: &Rhs) -> bool {
-        matches!(self.partial_cmp(other), Some(Greater))
+        self.partial_cmp(other).is_some_and(Ordering::is_gt)
     }
 
     /// Tests greater than or equal to (for `self` and `other`) and is used by
@@ -1423,7 +1423,7 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_diagnostic_item = "cmp_partialord_ge"]
     fn ge(&self, other: &Rhs) -> bool {
-        matches!(self.partial_cmp(other), Some(Greater | Equal))
+        self.partial_cmp(other).is_some_and(Ordering::is_ge)
     }
 }
 
