@@ -1,5 +1,5 @@
 //@ compile-flags: -Copt-level=3 --crate-type=rlib
-#![feature(intrinsics, repr_simd)]
+#![feature(core_intrinsics, repr_simd)]
 
 use std::intrinsics::simd::{simd_eq, simd_fabs};
 
