@@ -1,7 +1,5 @@
-#![feature(rustc_private)]
-
 #[cfg(unix)]
-extern crate libc;
+use run_make_support::libc;
 
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
