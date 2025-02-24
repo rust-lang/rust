@@ -1057,6 +1057,29 @@ impl Span {
         }
     }
 
+    /// Returns the `Span` within the syntax context of "within". This is useful when
+    /// "self" is an expansion from a macro variable, since this can be used for
+    /// providing extra macro expansion context for certain errors.
+    ///
+    /// ```text
+    /// macro_rules! m {
+    ///     ($ident:ident) => { ($ident,) }
+    /// }
+    ///
+    /// m!(outer_ident);
+    /// ```
+    ///
+    /// If "self" is the span of the outer_ident, and "within" is the span of the `($ident,)`
+    /// expr, then this will return the span of the `$ident` macro variable.
+    pub fn within_macro(self, within: Span) -> Option<Span> {
+        match Span::prepare_to_combine(self, within) {
+            Ok((self_, _, parent)) if self_.lo != self.lo() && self.hi() != self_.hi => {
+                Some(Span::new(self_.lo, self_.hi, self_.ctxt, parent))
+            }
+            _ => None,
+        }
+    }
+
     pub fn from_inner(self, inner: InnerSpan) -> Span {
         let span = self.data();
         Span::new(
