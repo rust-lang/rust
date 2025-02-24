@@ -147,15 +147,6 @@ unsafe extern "C" {
     fn llvm_f64x2_min(x: simd::f64x2, y: simd::f64x2) -> simd::f64x2;
     #[link_name = "llvm.maximum.v2f64"]
     fn llvm_f64x2_max(x: simd::f64x2, y: simd::f64x2) -> simd::f64x2;
-
-    #[link_name = "llvm.fptosi.sat.v4i32.v4f32"]
-    fn llvm_i32x4_trunc_sat_f32x4_s(x: simd::f32x4) -> simd::i32x4;
-    #[link_name = "llvm.fptoui.sat.v4i32.v4f32"]
-    fn llvm_i32x4_trunc_sat_f32x4_u(x: simd::f32x4) -> simd::i32x4;
-    #[link_name = "llvm.fptosi.sat.v2i32.v2f64"]
-    fn llvm_i32x2_trunc_sat_f64x2_s(x: simd::f64x2) -> simd::i32x2;
-    #[link_name = "llvm.fptoui.sat.v2i32.v2f64"]
-    fn llvm_i32x2_trunc_sat_f64x2_u(x: simd::f64x2) -> simd::i32x2;
 }
 
 #[repr(packed)]
@@ -4059,7 +4050,7 @@ pub fn f64x2_pmax(a: v128, b: v128) -> v128 {
 #[doc(alias("i32x4.trunc_sat_f32x4_s"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i32x4_trunc_sat_f32x4(a: v128) -> v128 {
-    unsafe { llvm_i32x4_trunc_sat_f32x4_s(a.as_f32x4()).v128() }
+    unsafe { simd_as::<simd::f32x4, simd::i32x4>(a.as_f32x4()).v128() }
 }
 
 /// Converts a 128-bit vector interpreted as four 32-bit floating point numbers
@@ -4073,7 +4064,7 @@ pub fn i32x4_trunc_sat_f32x4(a: v128) -> v128 {
 #[doc(alias("i32x4.trunc_sat_f32x4_u"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn u32x4_trunc_sat_f32x4(a: v128) -> v128 {
-    unsafe { llvm_i32x4_trunc_sat_f32x4_u(a.as_f32x4()).v128() }
+    unsafe { simd_as::<simd::f32x4, simd::u32x4>(a.as_f32x4()).v128() }
 }
 
 /// Converts a 128-bit vector interpreted as four 32-bit signed integers into a
@@ -4114,7 +4105,7 @@ pub fn f32x4_convert_u32x4(a: v128) -> v128 {
 pub fn i32x4_trunc_sat_f64x2_zero(a: v128) -> v128 {
     let ret: simd::i32x4 = unsafe {
         simd_shuffle!(
-            llvm_i32x2_trunc_sat_f64x2_s(a.as_f64x2()),
+            simd_as::<simd::f64x2, simd::i32x2>(a.as_f64x2()),
             simd::i32x2::ZERO,
             [0, 1, 2, 3],
         )
@@ -4136,10 +4127,10 @@ pub fn i32x4_trunc_sat_f64x2_zero(a: v128) -> v128 {
 #[doc(alias("i32x4.trunc_sat_f64x2_u_zero"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn u32x4_trunc_sat_f64x2_zero(a: v128) -> v128 {
-    let ret: simd::i32x4 = unsafe {
+    let ret: simd::u32x4 = unsafe {
         simd_shuffle!(
-            llvm_i32x2_trunc_sat_f64x2_u(a.as_f64x2()),
-            simd::i32x2::ZERO,
+            simd_as::<simd::f64x2, simd::u32x2>(a.as_f64x2()),
+            simd::u32x2::ZERO,
             [0, 1, 2, 3],
         )
     };
