@@ -94,7 +94,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                                             annotation,
                                             variance: ty::Covariant,
                                         },
-                                        subpattern: pattern,
+                                        subpattern: self.thir.pats.push(*pattern),
                                     },
                                 });
                             }
@@ -111,7 +111,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                                     local_id: hir_id.local_id,
                                     data: region::ScopeData::Node,
                                 },
-                                pattern,
+                                pattern: self.thir.pats.push(*pattern),
                                 initializer: local.init.map(|init| self.mirror_expr(init)),
                                 else_block,
                                 lint_level: LintLevel::Explicit(local.hir_id),

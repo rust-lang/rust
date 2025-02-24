@@ -199,6 +199,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
             };
 
             let pat = self.pattern_from_hir(param.pat);
+            let pat = self.thir.pats.push(*pat);
             Param { pat: Some(pat), ty, ty_span, self_kind, hir_id: Some(param.hir_id) }
         })
     }

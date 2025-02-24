@@ -205,15 +205,16 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
     }
 
     fn field_pats(
-        &self,
+        &mut self,
         vals: impl Iterator<Item = (ValTree<'tcx>, Ty<'tcx>)>,
-    ) -> Vec<FieldPat<'tcx>> {
+    ) -> Vec<FieldPat> {
         vals.enumerate()
             .map(|(idx, (val, ty))| {
                 let field = FieldIdx::new(idx);
                 // Patterns can only use monomorphic types.
                 let ty = self.tcx.normalize_erasing_regions(self.typing_env, ty);
-                FieldPat { field, pattern: *self.valtree_to_pat(val, ty) }
+                let pattern = self.valtree_to_pat(val, ty);
+                FieldPat { field, pattern: self.thir.pats.push(*pattern) }
             })
             .collect()
     }
@@ -221,7 +222,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
     // Recursive helper for `to_pat`; invoke that (instead of calling this directly).
     // FIXME(valtrees): Accept `ty::Value` instead of `Ty` and `ty::ValTree` separately.
     #[instrument(skip(self), level = "debug")]
-    fn valtree_to_pat(&self, cv: ValTree<'tcx>, ty: Ty<'tcx>) -> Box<Pat<'tcx>> {
+    fn valtree_to_pat(&mut self, cv: ValTree<'tcx>, ty: Ty<'tcx>) -> Box<Pat<'tcx>> {
         let span = self.span;
         let tcx = self.tcx;
         let kind = match ty.kind() {
@@ -282,7 +283,10 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 prefix: cv
                     .unwrap_branch()
                     .iter()
-                    .map(|val| *self.valtree_to_pat(*val, *elem_ty))
+                    .map(|&val| {
+                        let pat = self.valtree_to_pat(val, *elem_ty);
+                        self.thir.pats.push(*pat)
+                    })
                     .collect(),
                 slice: None,
                 suffix: Box::new([]),
@@ -291,7 +295,10 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 prefix: cv
                     .unwrap_branch()
                     .iter()
-                    .map(|val| *self.valtree_to_pat(*val, *elem_ty))
+                    .map(|&val| {
+                        let pat = self.valtree_to_pat(val, *elem_ty);
+                        self.thir.pats.push(*pat)
+                    })
                     .collect(),
                 slice: None,
                 suffix: Box::new([]),
@@ -326,7 +333,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                         };
                         // References have the same valtree representation as their pointee.
                         let subpattern = self.valtree_to_pat(cv, pointee_ty);
-                        PatKind::Deref { subpattern }
+                        PatKind::Deref { subpattern: self.thir.pats.push(*subpattern) }
                     }
                 }
             },

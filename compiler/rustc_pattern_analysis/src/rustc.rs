@@ -448,21 +448,25 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
     /// `rustc_mir_build::thir::pattern::check_match::MatchVisitor::lower_pattern`.
     pub fn lower_pat(&self, pat: &'p Pat<'tcx>) -> DeconstructedPat<'p, 'tcx> {
         let cx = self;
+        let thir = cx.thir;
         let ty = cx.reveal_opaque_ty(pat.ty);
         let ctor;
         let arity;
         let fields: Vec<_>;
         match &pat.kind {
             PatKind::AscribeUserType { subpattern, .. }
-            | PatKind::ExpandedConstant { subpattern, .. } => return self.lower_pat(subpattern),
-            PatKind::Binding { subpattern: Some(subpat), .. } => return self.lower_pat(subpat),
+            | PatKind::ExpandedConstant { subpattern, .. }
+            | PatKind::Binding { subpattern: Some(subpattern), .. } => {
+                return self.lower_pat(&thir[*subpattern]);
+            }
+
             PatKind::Binding { subpattern: None, .. } | PatKind::Wild => {
                 ctor = Wildcard;
                 fields = vec![];
                 arity = 0;
             }
             PatKind::Deref { subpattern } => {
-                fields = vec![self.lower_pat(subpattern).at_index(0)];
+                fields = vec![self.lower_pat(&thir[*subpattern]).at_index(0)];
                 arity = 1;
                 ctor = match ty.kind() {
                     // This is a box pattern.
@@ -489,7 +493,10 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                         arity = fs.len();
                         fields = subpatterns
                             .iter()
-                            .map(|ipat| self.lower_pat(&ipat.pattern).at_index(ipat.field.index()))
+                            .map(|ipat| {
+                                let pat = &self.thir[ipat.pattern];
+                                self.lower_pat(pat).at_index(ipat.field.index())
+                            })
                             .collect();
                     }
                     ty::Adt(adt, _) if adt.is_box() => {
@@ -507,7 +514,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                         // prevent mixing of those two options.
                         let pattern = subpatterns.into_iter().find(|pat| pat.field.index() == 0);
                         if let Some(pat) = pattern {
-                            fields = vec![self.lower_pat(&pat.pattern).at_index(0)];
+                            fields = vec![self.lower_pat(&self.thir[pat.pattern]).at_index(0)];
                         } else {
                             fields = vec![];
                         }
@@ -526,7 +533,10 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                         arity = variant.fields.len();
                         fields = subpatterns
                             .iter()
-                            .map(|ipat| self.lower_pat(&ipat.pattern).at_index(ipat.field.index()))
+                            .map(|ipat| {
+                                let pat = &self.thir[ipat.pattern];
+                                self.lower_pat(pat).at_index(ipat.field.index())
+                            })
                             .collect();
                     }
                     _ => span_bug!(
@@ -704,7 +714,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 fields = prefix
                     .iter()
                     .chain(suffix.iter())
-                    .map(|p| self.lower_pat(&*p))
+                    .map(|&p| self.lower_pat(&self.thir[p]))
                     .enumerate()
                     .map(|(i, p)| p.at_index(i))
                     .collect();
@@ -712,7 +722,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             }
             PatKind::Or { .. } => {
                 ctor = Or;
-                let pats = expand_or_pat(pat);
+                let pats = expand_or_pat(self.thir, pat);
                 fields = pats
                     .into_iter()
                     .map(|p| self.lower_pat(p))
@@ -1059,11 +1069,11 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
 }
 
 /// Recursively expand this pattern into its subpatterns. Only useful for or-patterns.
-fn expand_or_pat<'p, 'tcx>(pat: &'p Pat<'tcx>) -> Vec<&'p Pat<'tcx>> {
-    fn expand<'p, 'tcx>(pat: &'p Pat<'tcx>, vec: &mut Vec<&'p Pat<'tcx>>) {
+fn expand_or_pat<'p, 'tcx>(thir: &'p Thir<'tcx>, pat: &'p Pat<'tcx>) -> Vec<&'p Pat<'tcx>> {
+    fn expand<'p, 'tcx>(thir: &'p Thir<'tcx>, pat: &'p Pat<'tcx>, vec: &mut Vec<&'p Pat<'tcx>>) {
         if let PatKind::Or { pats } = &pat.kind {
-            for pat in pats.iter() {
-                expand(pat, vec);
+            for &pat in pats.iter() {
+                expand(thir, &thir[pat], vec);
             }
         } else {
             vec.push(pat)
@@ -1071,7 +1081,7 @@ fn expand_or_pat<'p, 'tcx>(pat: &'p Pat<'tcx>) -> Vec<&'p Pat<'tcx>> {
     }
 
     let mut pats = Vec::new();
-    expand(pat, &mut pats);
+    expand(thir, pat, &mut pats);
     pats
 }
 

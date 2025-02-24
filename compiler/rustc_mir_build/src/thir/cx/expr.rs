@@ -802,7 +802,10 @@ impl<'tcx> ThirBuildCx<'tcx> {
             },
             hir::ExprKind::Let(let_expr) => ExprKind::Let {
                 expr: self.mirror_expr(let_expr.init),
-                pat: self.pattern_from_hir(let_expr.pat),
+                pat: {
+                    let pat = self.pattern_from_hir(let_expr.pat);
+                    self.thir.pats.push(*pat)
+                },
             },
             hir::ExprKind::If(cond, then, else_opt) => ExprKind::If {
                 if_then_scope: region::Scope {
@@ -998,7 +1001,10 @@ impl<'tcx> ThirBuildCx<'tcx> {
 
     fn convert_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) -> ArmId {
         let arm = Arm {
-            pattern: self.pattern_from_hir(&arm.pat),
+            pattern: {
+                let pat = self.pattern_from_hir(&arm.pat);
+                self.thir.pats.push(*pat)
+            },
             guard: arm.guard.as_ref().map(|g| self.mirror_expr(g)),
             body: self.mirror_expr(arm.body),
             lint_level: LintLevel::Explicit(arm.hir_id),
