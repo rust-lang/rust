@@ -22,7 +22,7 @@ env:
 
 jobs:
   dist:
-    if: ${{ github.repository == 'rust-lang/rust-analyzer' || github.event.action == 'workflow_dispatch' }}
+    if: ${{ github.repository == 'rust-lang/rust-analyzer' || github.event_name == 'workflow_dispatch' }}
     strategy:
       matrix:
         include:
@@ -139,7 +139,7 @@ jobs:
           path: ./dist
 
   dist-x86_64-unknown-linux-musl:
-    if: ${{ github.repository == 'rust-lang/rust-analyzer' || github.event.action == 'workflow_dispatch' }}
+    if: ${{ github.repository == 'rust-lang/rust-analyzer' || github.event_name == 'workflow_dispatch' }}
     name: dist (x86_64-unknown-linux-musl)
     runs-on: ubuntu-latest
     env:
@@ -185,7 +185,7 @@ jobs:
           path: ./dist
 
   publish:
-    if: ${{ github.repository == 'rust-lang/rust-analyzer' || github.event.action == 'workflow_dispatch' }}
+    if: ${{ github.repository == 'rust-lang/rust-analyzer' || github.event_name == 'workflow_dispatch' }}
     name: publish
     runs-on: ubuntu-latest
     needs: ["dist", "dist-x86_64-unknown-linux-musl"]
