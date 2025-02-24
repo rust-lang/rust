@@ -3,7 +3,6 @@
 //@ ignore-nvptx64
 //@ ignore-spirv
 
-#![feature(naked_functions)]
 #![crate_type = "lib"]
 
 use std::arch::naked_asm;
