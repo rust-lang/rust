@@ -185,7 +185,7 @@ where
             place.ty(self.elaborator.body(), self.tcx()).ty
         } else {
             // We don't have a slice with all the locals, since some are in the patch.
-            tcx::PlaceTy::from_ty(self.elaborator.patch_ref().local_ty(place.local))
+            PlaceTy::from_ty(self.elaborator.patch_ref().local_ty(place.local))
                 .multi_projection_ty(self.elaborator.tcx(), place.projection)
                 .ty
         }
@@ -266,8 +266,21 @@ where
                 let tcx = self.tcx();
 
                 assert_eq!(self.elaborator.typing_env().typing_mode, ty::TypingMode::PostAnalysis);
-                let field_ty =
-                    tcx.normalize_erasing_regions(self.elaborator.typing_env(), f.ty(tcx, args));
+                // The type error for normalization may have been in dropck: see
+                // `compute_drop_data` in rustc_borrowck, in which case we wouldn't have
+                // deleted the MIR body and could have an error here as well.
+                let field_ty = match tcx
+                    .try_normalize_erasing_regions(self.elaborator.typing_env(), f.ty(tcx, args))
+                {
+                    Ok(t) => t,
+                    Err(_) => Ty::new_error(
+                        self.tcx(),
+                        self.elaborator
+                            .body()
+                            .tainted_by_errors
+                            .expect("Error in drop elaboration not found by dropck."),
+                    ),
+                };
 
                 (tcx.mk_place_field(base_place, field, field_ty), subpath)
             })

@@ -78,9 +78,8 @@ LL | pub fn map(map: &mut HashMap<i32, i32>) {}
    |
 help: add a type parameter for `BuildHasher`
    |
-LL - pub fn map(map: &mut HashMap<i32, i32>) {}
-LL + pub fn map<S: ::std::hash::BuildHasher>(map: &mut HashMap<i32, i32, S>) {}
-   |
+LL | pub fn map<S: ::std::hash::BuildHasher>(map: &mut HashMap<i32, i32, S>) {}
+   |           +++++++++++++++++++++++++++++                           +++
 
 error: parameter of type `HashSet` should be generalized over different hashers
   --> tests/ui/implicit_hasher.rs:70:22
@@ -90,9 +89,8 @@ LL | pub fn set(set: &mut HashSet<i32>) {}
    |
 help: add a type parameter for `BuildHasher`
    |
-LL - pub fn set(set: &mut HashSet<i32>) {}
-LL + pub fn set<S: ::std::hash::BuildHasher>(set: &mut HashSet<i32, S>) {}
-   |
+LL | pub fn set<S: ::std::hash::BuildHasher>(set: &mut HashSet<i32, S>) {}
+   |           +++++++++++++++++++++++++++++                      +++
 
 error: impl for `HashMap` should be generalized over different hashers
   --> tests/ui/implicit_hasher.rs:76:43
@@ -116,9 +114,8 @@ LL | pub async fn election_vote(_data: HashMap<i32, i32>) {}
    |
 help: add a type parameter for `BuildHasher`
    |
-LL - pub async fn election_vote(_data: HashMap<i32, i32>) {}
-LL + pub async fn election_vote<S: ::std::hash::BuildHasher>(_data: HashMap<i32, i32, S>) {}
-   |
+LL | pub async fn election_vote<S: ::std::hash::BuildHasher>(_data: HashMap<i32, i32, S>) {}
+   |                           +++++++++++++++++++++++++++++                        +++
 
 error: aborting due to 9 previous errors
 

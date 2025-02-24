@@ -1,13 +1,14 @@
 [package]
 name = "rustc_query_impl"
 version = "0.0.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 # tidy-alphabetical-start
 measureme = "11"
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
+rustc_hashes = { path = "../rustc_hashes" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_index = { path = "../rustc_index" }
 rustc_middle = { path = "../rustc_middle" }

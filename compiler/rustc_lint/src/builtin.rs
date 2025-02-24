@@ -466,7 +466,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             MethodLateContext::TraitAutoImpl => {}
             // If the method is an impl for an item with docs_hidden, don't doc.
             MethodLateContext::PlainImpl => {
-                let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id());
+                let parent = cx.tcx.hir_get_parent_item(impl_item.hir_id());
                 let impl_ty = cx.tcx.type_of(parent).instantiate_identity();
                 let outerdef = match impl_ty.kind() {
                     ty::Adt(def, _) => Some(def.did()),
@@ -975,10 +975,8 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// #[no_mangle]
-    /// fn foo<T>(t: T) {
-    ///
-    /// }
+    /// #[unsafe(no_mangle)]
+    /// fn foo<T>(t: T) {}
     /// ```
     ///
     /// {{produces}}
@@ -2909,7 +2907,13 @@ enum AsmLabelKind {
 impl<'tcx> LateLintPass<'tcx> for AsmLabels {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
         if let hir::Expr {
-            kind: hir::ExprKind::InlineAsm(hir::InlineAsm { template_strs, options, .. }),
+            kind:
+                hir::ExprKind::InlineAsm(hir::InlineAsm {
+                    asm_macro: AsmMacro::Asm | AsmMacro::NakedAsm,
+                    template_strs,
+                    options,
+                    ..
+                }),
             ..
         } = expr
         {

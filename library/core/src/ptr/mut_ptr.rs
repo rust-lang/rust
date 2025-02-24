@@ -895,9 +895,8 @@ impl<T: ?Sized> *mut T {
     /// to [`sub`](#method.sub)).  The following are all equivalent, assuming
     /// that their safety preconditions are met:
     /// ```rust
-    /// # #![feature(ptr_sub_ptr)]
     /// # unsafe fn blah(ptr: *mut i32, origin: *mut i32, count: usize) -> bool { unsafe {
-    /// ptr.sub_ptr(origin) == count
+    /// ptr.offset_from_unsigned(origin) == count
     /// # &&
     /// origin.add(count) == ptr
     /// # &&
@@ -924,32 +923,30 @@ impl<T: ?Sized> *mut T {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ptr_sub_ptr)]
-    ///
     /// let mut a = [0; 5];
     /// let p: *mut i32 = a.as_mut_ptr();
     /// unsafe {
     ///     let ptr1: *mut i32 = p.add(1);
     ///     let ptr2: *mut i32 = p.add(3);
     ///
-    ///     assert_eq!(ptr2.sub_ptr(ptr1), 2);
+    ///     assert_eq!(ptr2.offset_from_unsigned(ptr1), 2);
     ///     assert_eq!(ptr1.add(2), ptr2);
     ///     assert_eq!(ptr2.sub(2), ptr1);
-    ///     assert_eq!(ptr2.sub_ptr(ptr2), 0);
+    ///     assert_eq!(ptr2.offset_from_unsigned(ptr2), 0);
     /// }
     ///
     /// // This would be incorrect, as the pointers are not correctly ordered:
     /// // ptr1.offset_from(ptr2)
-    #[unstable(feature = "ptr_sub_ptr", issue = "95892")]
-    #[rustc_const_unstable(feature = "const_ptr_sub_ptr", issue = "95892")]
+    #[stable(feature = "ptr_sub_ptr", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_ptr_sub_ptr", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-    pub const unsafe fn sub_ptr(self, origin: *const T) -> usize
+    pub const unsafe fn offset_from_unsigned(self, origin: *const T) -> usize
     where
         T: Sized,
     {
         // SAFETY: the caller must uphold the safety contract for `sub_ptr`.
-        unsafe { (self as *const T).sub_ptr(origin) }
+        unsafe { (self as *const T).offset_from_unsigned(origin) }
     }
 
     /// Calculates the distance between two pointers within the same allocation, *where it's known that
@@ -957,18 +954,18 @@ impl<T: ?Sized> *mut T {
     /// units of **bytes**.
     ///
     /// This is purely a convenience for casting to a `u8` pointer and
-    /// using [`sub_ptr`][pointer::sub_ptr] on it. See that method for
+    /// using [`sub_ptr`][pointer::offset_from_unsigned] on it. See that method for
     /// documentation and safety requirements.
     ///
     /// For non-`Sized` pointees this operation considers only the data pointers,
     /// ignoring the metadata.
-    #[unstable(feature = "ptr_sub_ptr", issue = "95892")]
-    #[rustc_const_unstable(feature = "const_ptr_sub_ptr", issue = "95892")]
+    #[stable(feature = "ptr_sub_ptr", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_ptr_sub_ptr", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-    pub const unsafe fn byte_sub_ptr<U: ?Sized>(self, origin: *mut U) -> usize {
+    pub const unsafe fn byte_offset_from_unsigned<U: ?Sized>(self, origin: *mut U) -> usize {
         // SAFETY: the caller must uphold the safety contract for `byte_sub_ptr`.
-        unsafe { (self as *const T).byte_sub_ptr(origin) }
+        unsafe { (self as *const T).byte_offset_from_unsigned(origin) }
     }
 
     /// Adds an unsigned offset to a pointer.

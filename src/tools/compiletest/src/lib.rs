@@ -61,7 +61,8 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .optopt("", "jsondoclint-path", "path to jsondoclint to use for doc tests", "PATH")
         .optopt("", "run-clang-based-tests-with", "path to Clang executable", "PATH")
         .optopt("", "llvm-filecheck", "path to LLVM's FileCheck binary", "DIR")
-        .reqopt("", "src-base", "directory to scan for test files", "PATH")
+        .reqopt("", "src-root", "directory containing sources", "PATH")
+        .reqopt("", "src-test-suite-root", "directory containing test suite sources", "PATH")
         .reqopt("", "build-base", "directory to deposit test outputs", "PATH")
         .reqopt("", "sysroot-base", "directory containing the compiler sysroot", "PATH")
         .reqopt("", "stage", "stage number under test", "N")
@@ -243,7 +244,6 @@ pub fn parse_config(args: Vec<String>) -> Config {
             || header::extract_llvm_version_from_binary(&matches.opt_str("llvm-filecheck")?),
         );
 
-    let src_base = opt_path(matches, "src-base");
     let run_ignored = matches.opt_present("ignored");
     let with_rustc_debug_assertions = matches.opt_present("with-rustc-debug-assertions");
     let with_std_debug_assertions = matches.opt_present("with-std-debug-assertions");
@@ -300,6 +300,15 @@ pub fn parse_config(args: Vec<String>) -> Config {
         None => panic!("`--stage` is required"),
     };
 
+    let src_root = opt_path(matches, "src-root");
+    let src_test_suite_root = opt_path(matches, "src-test-suite-root");
+    assert!(
+        src_test_suite_root.starts_with(&src_root),
+        "`src-root` must be a parent of `src-test-suite-root`: `src-root`=`{}`, `src-test-suite-root` = `{}`",
+        src_root.display(),
+        src_test_suite_root.display()
+    );
+
     Config {
         bless: matches.opt_present("bless"),
         compile_lib_path: make_absolute(opt_path(matches, "compile-lib-path")),
@@ -314,7 +323,10 @@ pub fn parse_config(args: Vec<String>) -> Config {
         run_clang_based_tests_with: matches.opt_str("run-clang-based-tests-with"),
         llvm_filecheck: matches.opt_str("llvm-filecheck").map(PathBuf::from),
         llvm_bin_dir: matches.opt_str("llvm-bin-dir").map(PathBuf::from),
-        src_base,
+
+        src_root,
+        src_test_suite_root,
+
         build_base: opt_path(matches, "build-base"),
         sysroot_base: opt_path(matches, "sysroot-base"),
 
@@ -422,7 +434,10 @@ pub fn log_config(config: &Config) {
     logv(c, format!("rustc_path: {:?}", config.rustc_path.display()));
     logv(c, format!("cargo_path: {:?}", config.cargo_path));
     logv(c, format!("rustdoc_path: {:?}", config.rustdoc_path));
-    logv(c, format!("src_base: {:?}", config.src_base.display()));
+
+    logv(c, format!("src_root: {}", config.src_root.display()));
+    logv(c, format!("src_test_suite_root: {}", config.src_test_suite_root.display()));
+
     logv(c, format!("build_base: {:?}", config.build_base.display()));
     logv(c, format!("stage: {}", config.stage));
     logv(c, format!("stage_id: {}", config.stage_id));
@@ -620,20 +635,29 @@ struct TestCollector {
 /// regardless of whether any filters/tests were specified on the command-line,
 /// because filtering is handled later by libtest.
 pub fn collect_and_make_tests(config: Arc<Config>) -> Vec<test::TestDescAndFn> {
-    debug!("making tests from {:?}", config.src_base.display());
+    debug!("making tests from {}", config.src_test_suite_root.display());
     let common_inputs_stamp = common_inputs_stamp(&config);
-    let modified_tests = modified_tests(&config, &config.src_base).unwrap_or_else(|err| {
-        panic!("modified_tests got error from dir: {}, error: {}", config.src_base.display(), err)
-    });
+    let modified_tests =
+        modified_tests(&config, &config.src_test_suite_root).unwrap_or_else(|err| {
+            panic!(
+                "modified_tests got error from dir: {}, error: {}",
+                config.src_test_suite_root.display(),
+                err
+            )
+        });
     let cache = HeadersCache::load(&config);
 
     let cx = TestCollectorCx { config, cache, common_inputs_stamp, modified_tests };
     let mut collector =
         TestCollector { tests: vec![], found_path_stems: HashSet::new(), poisoned: false };
 
-    collect_tests_from_dir(&cx, &mut collector, &cx.config.src_base, Path::new("")).unwrap_or_else(
-        |reason| panic!("Could not read tests from {}: {reason}", cx.config.src_base.display()),
-    );
+    collect_tests_from_dir(&cx, &mut collector, &cx.config.src_test_suite_root, Path::new(""))
+        .unwrap_or_else(|reason| {
+            panic!(
+                "Could not read tests from {}: {reason}",
+                cx.config.src_test_suite_root.display()
+            )
+        });
 
     let TestCollector { tests, found_path_stems, poisoned } = collector;
 
@@ -655,7 +679,7 @@ pub fn collect_and_make_tests(config: Arc<Config>) -> Vec<test::TestDescAndFn> {
 /// common to some subset of tests, and are hopefully unlikely to be modified
 /// while working on other tests.)
 fn common_inputs_stamp(config: &Config) -> Stamp {
-    let rust_src_dir = config.find_rust_src_root().expect("Could not find Rust source root");
+    let src_root = &config.src_root;
 
     let mut stamp = Stamp::from_path(&config.rustc_path);
 
@@ -670,17 +694,17 @@ fn common_inputs_stamp(config: &Config) -> Stamp {
         "src/etc/lldb_providers.py",
     ];
     for file in &pretty_printer_files {
-        let path = rust_src_dir.join(file);
+        let path = src_root.join(file);
         stamp.add_path(&path);
     }
 
-    stamp.add_dir(&rust_src_dir.join("src/etc/natvis"));
+    stamp.add_dir(&src_root.join("src/etc/natvis"));
 
     stamp.add_dir(&config.run_lib_path);
 
     if let Some(ref rustdoc_path) = config.rustdoc_path {
         stamp.add_path(&rustdoc_path);
-        stamp.add_path(&rust_src_dir.join("src/etc/htmldocck.py"));
+        stamp.add_path(&src_root.join("src/etc/htmldocck.py"));
     }
 
     // Re-run coverage tests if the `coverage-dump` tool was modified,
@@ -689,10 +713,10 @@ fn common_inputs_stamp(config: &Config) -> Stamp {
         stamp.add_path(coverage_dump_path)
     }
 
-    stamp.add_dir(&rust_src_dir.join("src/tools/run-make-support"));
+    stamp.add_dir(&src_root.join("src/tools/run-make-support"));
 
     // Compiletest itself.
-    stamp.add_dir(&rust_src_dir.join("src/tools/compiletest/"));
+    stamp.add_dir(&src_root.join("src/tools/compiletest"));
 
     stamp
 }
@@ -933,10 +957,7 @@ fn files_related_to_test(
     }
 
     // `minicore.rs` test auxiliary: we need to make sure tests get rerun if this changes.
-    //
-    // FIXME(jieyouxu): untangle these paths, we should provide both a path to root `tests/` or
-    // `tests/auxiliary/` and the test suite in question. `src_base` is also a terrible name.
-    related.push(config.src_base.parent().unwrap().join("auxiliary").join("minicore.rs"));
+    related.push(config.src_root.join("tests").join("auxiliary").join("minicore.rs"));
 
     related
 }
@@ -1026,10 +1047,8 @@ fn make_test_name(
     testpaths: &TestPaths,
     revision: Option<&str>,
 ) -> test::TestName {
-    // Print the name of the file, relative to the repository root.
-    // `src_base` looks like `/path/to/rust/tests/ui`
-    let root_directory = config.src_base.parent().unwrap().parent().unwrap();
-    let path = testpaths.file.strip_prefix(root_directory).unwrap();
+    // Print the name of the file, relative to the sources root.
+    let path = testpaths.file.strip_prefix(&config.src_root).unwrap();
     let debugger = match config.debugger {
         Some(d) => format!("-{}", d),
         None => String::new(),

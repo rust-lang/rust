@@ -94,6 +94,7 @@ thir_with_elements! {
 pub enum BodyTy<'tcx> {
     Const(Ty<'tcx>),
     Fn(FnSig<'tcx>),
+    GlobalAsm(Ty<'tcx>),
 }
 
 /// Description of a type-checked function parameter.
@@ -376,7 +377,6 @@ pub enum ExprKind<'tcx> {
     /// A `match` expression.
     Match {
         scrutinee: ExprId,
-        scrutinee_hir_id: HirId,
         arms: Box<[ArmId]>,
         match_source: MatchSource,
     },
@@ -606,8 +606,7 @@ pub enum InlineAsmOperand<'tcx> {
         span: Span,
     },
     SymFn {
-        value: mir::Const<'tcx>,
-        span: Span,
+        value: ExprId,
     },
     SymStatic {
         def_id: DefId,
@@ -679,8 +678,7 @@ impl<'tcx> Pat<'tcx> {
                 subpatterns.iter().for_each(|field| field.pattern.walk_(it))
             }
             Or { pats } => pats.iter().for_each(|p| p.walk_(it)),
-            Array { box ref prefix, ref slice, box ref suffix }
-            | Slice { box ref prefix, ref slice, box ref suffix } => {
+            Array { box prefix, slice, box suffix } | Slice { box prefix, slice, box suffix } => {
                 prefix.iter().chain(slice.as_deref()).chain(suffix.iter()).for_each(|p| p.walk_(it))
             }
         }

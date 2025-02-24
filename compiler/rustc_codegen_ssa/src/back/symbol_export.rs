@@ -183,11 +183,11 @@ fn exported_symbols_provider_local(
     });
 
     let mut symbols: Vec<_> =
-        sorted.iter().map(|(&def_id, &info)| (ExportedSymbol::NonGeneric(def_id), info)).collect();
+        sorted.iter().map(|&(&def_id, &info)| (ExportedSymbol::NonGeneric(def_id), info)).collect();
 
     // Export TLS shims
     if !tcx.sess.target.dll_tls_export {
-        symbols.extend(sorted.iter().filter_map(|(&def_id, &info)| {
+        symbols.extend(sorted.iter().filter_map(|&(&def_id, &info)| {
             tcx.needs_thread_local_shim(def_id).then(|| {
                 (
                     ExportedSymbol::ThreadLocalShim(def_id),

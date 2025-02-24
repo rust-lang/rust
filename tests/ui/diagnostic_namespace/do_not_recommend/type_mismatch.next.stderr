@@ -1,11 +1,11 @@
 error[E0277]: Very important message!
-  --> $DIR/type_mismatch.rs:23:14
+  --> $DIR/type_mismatch.rs:24:14
    |
 LL |     verify::<u8>();
    |              ^^ the trait `TheImportantOne` is not implemented for `u8`
    |
 note: required by a bound in `verify`
-  --> $DIR/type_mismatch.rs:20:14
+  --> $DIR/type_mismatch.rs:21:14
    |
 LL | fn verify<T: TheImportantOne>() {}
    |              ^^^^^^^^^^^^^^^ required by this bound in `verify`

@@ -13,9 +13,8 @@ LL +     format_args!("{}", 0x8f_u8); // issue #115423
    |
 help: to use as a negative number (decimal `-113`), consider using the type `u8` for the literal and cast it to `i8`
    |
-LL -     format_args!("{}", 0x8f_i8); // issue #115423
-LL +     format_args!("{}", 0x8f_u8 as i8); // issue #115423
-   |
+LL |     format_args!("{}", 0x8f_u8 as i8); // issue #115423
+   |                             +++++
 
 error: literal out of range for `u8`
   --> $DIR/no-inline-literals-out-of-range.rs:6:24

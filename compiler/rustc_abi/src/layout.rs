@@ -2,6 +2,7 @@ use std::fmt::{self, Write};
 use std::ops::{Bound, Deref};
 use std::{cmp, iter};
 
+use rustc_hashes::Hash64;
 use rustc_index::Idx;
 use tracing::debug;
 
@@ -129,11 +130,12 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             },
             backend_repr: BackendRepr::ScalarPair(a, b),
             largest_niche,
+            uninhabited: false,
             align,
             size,
             max_repr_align: None,
             unadjusted_abi_align: align.abi,
-            randomization_seed: combined_seed,
+            randomization_seed: Hash64::new(combined_seed),
         }
     }
 
@@ -220,13 +222,14 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         LayoutData {
             variants: Variants::Empty,
             fields: FieldsShape::Primitive,
-            backend_repr: BackendRepr::Uninhabited,
+            backend_repr: BackendRepr::Memory { sized: true },
             largest_niche: None,
+            uninhabited: true,
             align: dl.i8_align,
             size: Size::ZERO,
             max_repr_align: None,
             unadjusted_abi_align: dl.i8_align.abi,
-            randomization_seed: 0,
+            randomization_seed: Hash64::ZERO,
         }
     }
 
@@ -307,10 +310,10 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         let mut align = if repr.pack.is_some() { dl.i8_align } else { dl.aggregate_align };
         let mut max_repr_align = repr.align;
 
-        // If all the non-ZST fields have the same ABI and union ABI optimizations aren't
-        // disabled, we can use that common ABI for the union as a whole.
+        // If all the non-ZST fields have the same repr and union repr optimizations aren't
+        // disabled, we can use that common repr for the union as a whole.
         struct AbiMismatch;
-        let mut common_non_zst_abi_and_align = if repr.inhibits_union_abi_opt() {
+        let mut common_non_zst_repr_and_align = if repr.inhibits_union_abi_opt() {
             // Can't optimize
             Err(AbiMismatch)
         } else {
@@ -334,14 +337,14 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 continue;
             }
 
-            if let Ok(common) = common_non_zst_abi_and_align {
+            if let Ok(common) = common_non_zst_repr_and_align {
                 // Discard valid range information and allow undef
                 let field_abi = field.backend_repr.to_union();
 
                 if let Some((common_abi, common_align)) = common {
                     if common_abi != field_abi {
                         // Different fields have different ABI: disable opt
-                        common_non_zst_abi_and_align = Err(AbiMismatch);
+                        common_non_zst_repr_and_align = Err(AbiMismatch);
                     } else {
                         // Fields with the same non-Aggregate ABI should also
                         // have the same alignment
@@ -354,7 +357,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                     }
                 } else {
                     // First non-ZST field: record its ABI and alignment
-                    common_non_zst_abi_and_align = Ok(Some((field_abi, field.align.abi)));
+                    common_non_zst_repr_and_align = Ok(Some((field_abi, field.align.abi)));
                 }
             }
         }
@@ -373,16 +376,25 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
 
         // If all non-ZST fields have the same ABI, we may forward that ABI
         // for the union as a whole, unless otherwise inhibited.
-        let abi = match common_non_zst_abi_and_align {
+        let backend_repr = match common_non_zst_repr_and_align {
             Err(AbiMismatch) | Ok(None) => BackendRepr::Memory { sized: true },
-            Ok(Some((abi, _))) => {
-                if abi.inherent_align(dl).map(|a| a.abi) != Some(align.abi) {
-                    // Mismatched alignment (e.g. union is #[repr(packed)]): disable opt
+            Ok(Some((repr, _))) => match repr {
+                // Mismatched alignment (e.g. union is #[repr(packed)]): disable opt
+                BackendRepr::Scalar(_) | BackendRepr::ScalarPair(_, _)
+                    if repr.scalar_align(dl).unwrap() != align.abi =>
+                {
                     BackendRepr::Memory { sized: true }
-                } else {
-                    abi
                 }
-            }
+                // Vectors require at least element alignment, else disable the opt
+                BackendRepr::Vector { element, count: _ } if element.align(dl).abi > align.abi => {
+                    BackendRepr::Memory { sized: true }
+                }
+                // the alignment tests passed and we can use this
+                BackendRepr::Scalar(..)
+                | BackendRepr::ScalarPair(..)
+                | BackendRepr::Vector { .. }
+                | BackendRepr::Memory { .. } => repr,
+            },
         };
 
         let Some(union_field_count) = NonZeroUsize::new(only_variant.len()) else {
@@ -397,8 +409,9 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         Ok(LayoutData {
             variants: Variants::Single { index: only_variant_idx },
             fields: FieldsShape::Union(union_field_count),
-            backend_repr: abi,
+            backend_repr,
             largest_niche: None,
+            uninhabited: false,
             align,
             size: size.align_to(align.abi),
             max_repr_align,
@@ -446,7 +459,6 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 Scalar::Union { .. } => {}
             };
             match &mut st.backend_repr {
-                BackendRepr::Uninhabited => {}
                 BackendRepr::Scalar(scalar) => hide_niches(scalar),
                 BackendRepr::ScalarPair(a, b) => {
                     hide_niches(a);
@@ -638,9 +650,8 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             let same_size = size == variant_layouts[largest_variant_index].size;
             let same_align = align == variant_layouts[largest_variant_index].align;
 
-            let abi = if variant_layouts.iter().all(|v| v.is_uninhabited()) {
-                BackendRepr::Uninhabited
-            } else if same_size && same_align && others_zst {
+            let uninhabited = variant_layouts.iter().all(|v| v.is_uninhabited());
+            let abi = if same_size && same_align && others_zst {
                 match variant_layouts[largest_variant_index].backend_repr {
                     // When the total alignment and size match, we can use the
                     // same ABI as the scalar variant with the reserved niche.
@@ -682,6 +693,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 },
                 backend_repr: abi,
                 largest_niche,
+                uninhabited,
                 size,
                 align,
                 max_repr_align,
@@ -852,9 +864,8 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         };
         let mut abi = BackendRepr::Memory { sized: true };
 
-        if layout_variants.iter().all(|v| v.is_uninhabited()) {
-            abi = BackendRepr::Uninhabited;
-        } else if tag.size(dl) == size {
+        let uninhabited = layout_variants.iter().all(|v| v.is_uninhabited());
+        if tag.size(dl) == size {
             // Make sure we only use scalar layout when the enum is entirely its
             // own tag (i.e. it has no padding nor any non-ZST variant fields).
             abi = BackendRepr::Scalar(tag);
@@ -994,6 +1005,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 memory_index: [0].into(),
             },
             largest_niche,
+            uninhabited,
             backend_repr: abi,
             align,
             size,
@@ -1058,7 +1070,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         // unsizable tail fields are excluded so that we use the same seed for the sized and unsized layouts.
         let field_seed = fields_excluding_tail
             .iter()
-            .fold(0u64, |acc, f| acc.wrapping_add(f.randomization_seed));
+            .fold(Hash64::ZERO, |acc, f| acc.wrapping_add(f.randomization_seed));
 
         if optimize_field_order && fields.len() > 1 {
             // If `-Z randomize-layout` was enabled for the type definition we can shuffle
@@ -1072,7 +1084,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                     // `ReprOptions.field_shuffle_seed` is a deterministic seed we can use to randomize field
                     // ordering.
                     let mut rng = rand_xoshiro::Xoshiro128StarStar::seed_from_u64(
-                        field_seed.wrapping_add(repr.field_shuffle_seed),
+                        field_seed.wrapping_add(repr.field_shuffle_seed).as_u64(),
                     );
 
                     // Shuffle the ordering of the fields.
@@ -1354,9 +1366,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 _ => {}
             }
         }
-        if fields.iter().any(|f| f.is_uninhabited()) {
-            abi = BackendRepr::Uninhabited;
-        }
+        let uninhabited = fields.iter().any(|f| f.is_uninhabited());
 
         let unadjusted_abi_align = if repr.transparent() {
             match layout_of_single_non_zst_field {
@@ -1377,6 +1387,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             fields: FieldsShape::Arbitrary { offsets, memory_index },
             backend_repr: abi,
             largest_niche,
+            uninhabited,
             align,
             size,
             max_repr_align,

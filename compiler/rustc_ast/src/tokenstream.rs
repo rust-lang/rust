@@ -469,10 +469,8 @@ impl TokenStream {
             }
             Nonterminal::NtStmt(stmt) => TokenStream::from_ast(stmt),
             Nonterminal::NtPat(pat) => TokenStream::from_ast(pat),
-            Nonterminal::NtTy(ty) => TokenStream::from_ast(ty),
             Nonterminal::NtMeta(attr) => TokenStream::from_ast(attr),
             Nonterminal::NtPath(path) => TokenStream::from_ast(path),
-            Nonterminal::NtVis(vis) => TokenStream::from_ast(vis),
             Nonterminal::NtExpr(expr) | Nonterminal::NtLiteral(expr) => TokenStream::from_ast(expr),
         }
     }

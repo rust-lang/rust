@@ -856,7 +856,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Option<(LocalDefId, &'tcx hir::FnDecl<'tcx>)> {
         // Get enclosing Fn, if it is a function or a trait method, unless there's a `loop` or
         // `while` before reaching it, as block tail returns are not available in them.
-        self.tcx.hir().get_fn_id_for_return_block(blk_id).and_then(|item_id| {
+        self.tcx.hir_get_fn_id_for_return_block(blk_id).and_then(|item_id| {
             match self.tcx.hir_node(item_id) {
                 Node::Item(&hir::Item {
                     kind: hir::ItemKind::Fn { sig, .. }, owner_id, ..

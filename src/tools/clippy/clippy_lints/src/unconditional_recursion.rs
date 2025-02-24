@@ -111,7 +111,7 @@ fn get_impl_trait_def_id(cx: &LateContext<'_>, method_def_id: LocalDefId) -> Opt
             owner_id,
             ..
         }),
-    )) = cx.tcx.hir().parent_iter(hir_id).next()
+    )) = cx.tcx.hir_parent_iter(hir_id).next()
         // We exclude `impl` blocks generated from rustc's proc macros.
         && !cx.tcx.has_attr(*owner_id, sym::automatically_derived)
         // It is a implementation of a trait.
@@ -216,7 +216,7 @@ fn check_to_string(cx: &LateContext<'_>, method_span: Span, method_def_id: Local
                 owner_id,
                 ..
             }),
-        )) = cx.tcx.hir().parent_iter(hir_id).next()
+        )) = cx.tcx.hir_parent_iter(hir_id).next()
         // We exclude `impl` blocks generated from rustc's proc macros.
         && !cx.tcx.has_attr(*owner_id, sym::automatically_derived)
         // It is a implementation of a trait.
@@ -331,8 +331,8 @@ impl UnconditionalRecursion {
                         && let [return_expr] = get_return_calls_in_body(body).as_slice()
                         && let ExprKind::Call(call_expr, _) = return_expr.kind
                         // We need to use typeck here to infer the actual function being called.
-                        && let body_def_id = cx.tcx.hir().enclosing_body_owner(call_expr.hir_id)
-                        && let Some(body_owner) = cx.tcx.hir().maybe_body_owned_by(body_def_id)
+                        && let body_def_id = cx.tcx.hir_enclosing_body_owner(call_expr.hir_id)
+                        && let Some(body_owner) = cx.tcx.hir_maybe_body_owned_by(body_def_id)
                         && let typeck = cx.tcx.typeck_body(body_owner.id())
                         && let Some(call_def_id) = typeck.type_dependent_def_id(call_expr.hir_id)
                     {
@@ -367,7 +367,7 @@ impl UnconditionalRecursion {
                 kind: ItemKind::Impl(impl_),
                 ..
             }),
-        )) = cx.tcx.hir().parent_iter(hir_id).next()
+        )) = cx.tcx.hir_parent_iter(hir_id).next()
             && let Some(implemented_ty_id) = get_hir_ty_def_id(cx.tcx, *impl_.self_ty)
             && {
                 self.init_default_impl_for_type_if_needed(cx);

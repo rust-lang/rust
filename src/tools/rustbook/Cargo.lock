@@ -447,6 +447,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "error_index_generator"
+version = "0.0.0"
+dependencies = [
+ "mdbook",
+]
+
+[[package]]
 name = "fastrand"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -867,9 +874,9 @@ dependencies = [
 
 [[package]]
 name = "mdbook"
-version = "0.4.44"
+version = "0.4.45"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9da1e54401fe5d45a664c57e112e70f18e8c5a73e268c179305b932ee864574"
+checksum = "b07d36d96ffe1b5b16ddf2bc80b3b26bb7a498b2a6591061250bf0af8e8095ad"
 dependencies = [
  "ammonia",
  "anyhow",

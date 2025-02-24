@@ -75,12 +75,6 @@ pub type CanonicalPredicateGoal<'tcx> =
 pub type CanonicalTypeOpAscribeUserTypeGoal<'tcx> =
     CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, type_op::AscribeUserType<'tcx>>>;
 
-pub type CanonicalTypeOpEqGoal<'tcx> =
-    CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, type_op::Eq<'tcx>>>;
-
-pub type CanonicalTypeOpSubtypeGoal<'tcx> =
-    CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, type_op::Subtype<'tcx>>>;
-
 pub type CanonicalTypeOpProvePredicateGoal<'tcx> =
     CanonicalQueryInput<'tcx, ty::ParamEnvAnd<'tcx, type_op::ProvePredicate<'tcx>>>;
 

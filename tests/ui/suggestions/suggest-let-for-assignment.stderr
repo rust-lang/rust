@@ -58,9 +58,8 @@ LL |     letother_variable = 6;
    |
 help: you might have meant to introduce a new binding
    |
-LL -     letother_variable = 6;
-LL +     let other_variable = 6;
-   |
+LL |     let other_variable = 6;
+   |        +
 
 error[E0425]: cannot find value `other_variable` in this scope
   --> $DIR/suggest-let-for-assignment.rs:14:36

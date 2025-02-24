@@ -35,7 +35,7 @@ pub(super) fn check(
     };
     let manual = count == 2 && msrv.meets(msrvs::STR_SPLIT_ONCE);
 
-    match parse_iter_usage(cx, expr.span.ctxt(), cx.tcx.hir().parent_iter(expr.hir_id)) {
+    match parse_iter_usage(cx, expr.span.ctxt(), cx.tcx.hir_parent_iter(expr.hir_id)) {
         Some(usage) if needless(usage.kind) => lint_needless(cx, method_name, expr, self_arg, pat_arg),
         Some(usage) if manual => check_manual_split_once(cx, method_name, expr, self_arg, pat_arg, &usage),
         None if manual => {
@@ -127,7 +127,7 @@ fn check_manual_split_once_indirect(
     pat_arg: &Expr<'_>,
 ) -> Option<()> {
     let ctxt = expr.span.ctxt();
-    let mut parents = cx.tcx.hir().parent_iter(expr.hir_id);
+    let mut parents = cx.tcx.hir_parent_iter(expr.hir_id);
     if let (_, Node::LetStmt(local)) = parents.next()?
         && let PatKind::Binding(BindingMode::MUT, iter_binding_id, _, None) = local.pat.kind
         && let (iter_stmt_id, Node::Stmt(_)) = parents.next()?
@@ -220,7 +220,7 @@ fn indirect_usage<'tcx>(
             ControlFlow::Continue(Descend::from(path_to_binding.is_none()))
         });
 
-        let mut parents = cx.tcx.hir().parent_iter(path_to_binding?.hir_id);
+        let mut parents = cx.tcx.hir_parent_iter(path_to_binding?.hir_id);
         let iter_usage = parse_iter_usage(cx, ctxt, &mut parents)?;
 
         let (parent_id, _) = parents.find(|(_, node)| {

@@ -13,10 +13,9 @@ use rustc_infer::infer::{
 };
 use rustc_infer::traits::SelectionError;
 use rustc_middle::bug;
-use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::{
     AggregateKind, CallSource, ConstOperand, ConstraintCategory, FakeReadCause, Local, LocalInfo,
-    LocalKind, Location, Operand, Place, PlaceRef, ProjectionElem, Rvalue, Statement,
+    LocalKind, Location, Operand, Place, PlaceRef, PlaceTy, ProjectionElem, Rvalue, Statement,
     StatementKind, Terminator, TerminatorKind, find_self_call,
 };
 use rustc_middle::ty::print::Print;
@@ -1127,7 +1126,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let hir_id = self.infcx.tcx.local_def_id_to_hir_id(def_id);
         let expr = &self.infcx.tcx.hir().expect_expr(hir_id).kind;
         debug!("closure_span: hir_id={:?} expr={:?}", hir_id, expr);
-        if let hir::ExprKind::Closure(&hir::Closure { kind, fn_decl_span, .. }) = expr {
+        if let &hir::ExprKind::Closure(&hir::Closure { kind, fn_decl_span, .. }) = expr {
             for (captured_place, place) in
                 self.infcx.tcx.closure_captures(def_id).iter().zip(places)
             {

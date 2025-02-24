@@ -84,7 +84,6 @@ pub mod vec_cache;
 pub mod work_queue;
 
 mod atomic_ref;
-mod hashes;
 
 /// This calls the passed function while ensuring it won't be inlined into the caller.
 #[inline(never)]

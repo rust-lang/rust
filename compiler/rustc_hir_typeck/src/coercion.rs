@@ -1752,7 +1752,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                                 return false;
                             }
                             let Some((_, hir::Node::Expr(expr))) =
-                                fcx.tcx.hir().parent_iter(id).nth(1)
+                                fcx.tcx.hir_parent_iter(id).nth(1)
                             else {
                                 return false;
                             };
@@ -1887,7 +1887,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         let parent_id = fcx.tcx.parent_hir_id(block_or_return_id);
         let parent = fcx.tcx.hir_node(parent_id);
         if let Some(expr) = expression
-            && let hir::Node::Expr(hir::Expr {
+            && let hir::Node::Expr(&hir::Expr {
                 kind: hir::ExprKind::Closure(&hir::Closure { body, .. }),
                 ..
             }) = parent
@@ -1909,7 +1909,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 found,
                 block_or_return_id,
             );
-            if let Some(cond_expr) = fcx.tcx.hir().get_if_cause(expr.hir_id)
+            if let Some(cond_expr) = fcx.tcx.hir_get_if_cause(expr.hir_id)
                 && expected.is_unit()
                 && !pointing_at_return_type
                 // If the block is from an external macro or try (`?`) desugaring, then
@@ -1943,7 +1943,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         if due_to_block
             && let Some(expr) = expression
             && let Some(parent_fn_decl) =
-                fcx.tcx.hir().fn_decl_by_hir_id(fcx.tcx.local_def_id_to_hir_id(fcx.body_id))
+                fcx.tcx.hir_fn_decl_by_hir_id(fcx.tcx.local_def_id_to_hir_id(fcx.body_id))
         {
             fcx.suggest_missing_break_or_return_expr(
                 &mut err,

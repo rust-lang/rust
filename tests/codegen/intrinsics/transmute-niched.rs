@@ -170,7 +170,7 @@ pub unsafe fn check_bool_from_ordering(x: std::cmp::Ordering) -> bool {
     // OPT: call void @llvm.assume(i1 %2)
     // CHECK-NOT: icmp
     // CHECK-NOT: assume
-    // CHECK: %[[R:.+]] = trunc i8 %x to i1
+    // CHECK: %[[R:.+]] = trunc{{( nuw)?}} i8 %x to i1
     // CHECK: ret i1 %[[R]]
 
     transmute(x)

@@ -39,7 +39,7 @@ fn report(cx: &LateContext<'_>, param: &GenericParam<'_>, generics: &Generics<'_
 
 pub(super) fn check_fn<'tcx>(cx: &LateContext<'_>, kind: &'tcx FnKind<'_>, body: &'tcx Body<'_>, hir_id: HirId) {
     if let FnKind::ItemFn(_, generics, _) = kind
-        && cx.tcx.visibility(cx.tcx.hir().body_owner_def_id(body.id())).is_public()
+        && cx.tcx.visibility(cx.tcx.hir_body_owner_def_id(body.id())).is_public()
         && !is_in_test(cx.tcx, hir_id)
     {
         for param in generics.params {
@@ -57,7 +57,7 @@ pub(super) fn check_impl_item(cx: &LateContext<'_>, impl_item: &ImplItem<'_>) {
         && let hir::Impl { of_trait, .. } = *impl_
         && of_trait.is_none()
         && let body = cx.tcx.hir_body(body_id)
-        && cx.tcx.visibility(cx.tcx.hir().body_owner_def_id(body.id())).is_public()
+        && cx.tcx.visibility(cx.tcx.hir_body_owner_def_id(body.id())).is_public()
         && !is_in_test(cx.tcx, impl_item.hir_id())
     {
         for param in impl_item.generics.params {

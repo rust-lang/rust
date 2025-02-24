@@ -4671,7 +4671,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             return;
         }
         let name = impl_item.ident.name.as_str();
-        let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id()).def_id;
+        let parent = cx.tcx.hir_get_parent_item(impl_item.hir_id()).def_id;
         let item = cx.tcx.hir().expect_item(parent);
         let self_ty = cx.tcx.type_of(item.owner_id).instantiate_identity();
 

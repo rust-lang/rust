@@ -9,11 +9,11 @@ use rustc_middle::ty::TyCtxt;
 pub fn check_crate(tcx: TyCtxt<'_>) {
     let errors = Lock::new(Vec::new());
 
-    tcx.hir().par_for_each_module(|module_id| {
+    tcx.par_hir_for_each_module(|module_id| {
         let mut v =
             HirIdValidator { tcx, owner: None, hir_ids_seen: Default::default(), errors: &errors };
 
-        tcx.hir().visit_item_likes_in_module(module_id, &mut v);
+        tcx.hir_visit_item_likes_in_module(module_id, &mut v);
     });
 
     let errors = errors.into_inner();

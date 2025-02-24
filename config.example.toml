@@ -729,7 +729,8 @@
 #remap-debuginfo = false
 
 # Link the compiler and LLVM against `jemalloc` instead of the default libc allocator.
-# This option is only tested on Linux and OSX.
+# This option is only tested on Linux and OSX. It can also be configured per-target in the
+# [target.<tuple>] section.
 #jemalloc = false
 
 # Run tests in various test suites with the "nll compare mode" in addition to
@@ -792,12 +793,12 @@
 # C compiler to be used to compile C code. Note that the
 # default value is platform specific, and if not specified it may also depend on
 # what platform is crossing to what platform.
-# See `src/bootstrap/cc_detect.rs` for details.
+# See `src/bootstrap/src/utils/cc_detect.rs` for details.
 #cc = "cc" (path)
 
 # C++ compiler to be used to compile C++ code (e.g. LLVM and our LLVM shims).
 # This is only used for host targets.
-# See `src/bootstrap/cc_detect.rs` for details.
+# See `src/bootstrap/src/utils/cc_detect.rs` for details.
 #cxx = "c++" (path)
 
 # Archiver to be used to assemble static libraries compiled from C/C++ code.
@@ -926,6 +927,10 @@
 # Setting this to `false` generates slower code, but removes the requirement for a C toolchain in
 # order to run `x check`.
 #optimized-compiler-builtins = build.optimized-compiler-builtins (bool)
+
+# Link the compiler and LLVM against `jemalloc` instead of the default libc allocator.
+# This overrides the global `rust.jemalloc` option. See that option for more info.
+#jemalloc = rust.jemalloc (bool)
 
 # =============================================================================
 # Distribution options

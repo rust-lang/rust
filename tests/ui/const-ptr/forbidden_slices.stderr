@@ -104,7 +104,7 @@ error[E0080]: could not evaluate static initializer
    |
    = note: the evaluated program panicked at 'assertion failed: 0 < pointee_size && pointee_size <= isize::MAX as usize', $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
-note: inside `std::ptr::const_ptr::<impl *const ()>::sub_ptr`
+note: inside `std::ptr::const_ptr::<impl *const ()>::offset_from_unsigned`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `from_ptr_range::<'_, ()>`
   --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
@@ -192,7 +192,7 @@ error[E0080]: could not evaluate static initializer
    |
    = note: `ptr_offset_from_unsigned` called on two different pointers that are not both derived from the same allocation
    |
-note: inside `std::ptr::const_ptr::<impl *const u32>::sub_ptr`
+note: inside `std::ptr::const_ptr::<impl *const u32>::offset_from_unsigned`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `from_ptr_range::<'_, u32>`
   --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
@@ -207,7 +207,7 @@ error[E0080]: could not evaluate static initializer
    |
    = note: `ptr_offset_from_unsigned` called on two different pointers that are not both derived from the same allocation
    |
-note: inside `std::ptr::const_ptr::<impl *const u32>::sub_ptr`
+note: inside `std::ptr::const_ptr::<impl *const u32>::offset_from_unsigned`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `from_ptr_range::<'_, u32>`
   --> $SRC_DIR/core/src/slice/raw.rs:LL:COL

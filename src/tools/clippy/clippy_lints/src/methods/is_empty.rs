@@ -40,8 +40,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &'_ Expr<'_>, receiver: &Expr<'_
 
 fn is_under_cfg(cx: &LateContext<'_>, id: HirId) -> bool {
     cx.tcx
-        .hir()
-        .parent_id_iter(id)
+        .hir_parent_id_iter(id)
         .any(|id| cx.tcx.hir().attrs(id).iter().any(|attr| attr.has_name(sym::cfg)))
 }
 

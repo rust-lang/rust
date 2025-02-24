@@ -1,6 +1,8 @@
 use std::borrow::Cow;
 
-use crate::spec::{Cc, DebuginfoKind, LinkerFlavor, Lld, SplitDebuginfo, TargetOptions, cvs};
+use crate::spec::{
+    BinaryFormat, Cc, DebuginfoKind, LinkerFlavor, Lld, SplitDebuginfo, TargetOptions, cvs,
+};
 
 pub(crate) fn opts() -> TargetOptions {
     let mut pre_link_args = TargetOptions::link_args(
@@ -32,6 +34,7 @@ pub(crate) fn opts() -> TargetOptions {
         exe_suffix: ".exe".into(),
         families: cvs!["unix"],
         is_like_windows: true,
+        binary_format: BinaryFormat::Coff,
         allows_weak_linkage: false,
         pre_link_args,
         late_link_args,

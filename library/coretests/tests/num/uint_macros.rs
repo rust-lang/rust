@@ -141,6 +141,40 @@ macro_rules! uint_module {
             }
         }
 
+        #[test]
+        fn test_isolate_most_significant_one() {
+            const BITS: $T = <$T>::MAX;
+            const MOST_SIG_ONE: $T = 1 << (<$T>::BITS - 1);
+
+            // Right shift the most significant one through each
+            // bit position, starting with all bits set
+            let mut i = 0;
+            while i < <$T>::BITS {
+                assert_eq!(
+                    (BITS >> i).isolate_most_significant_one(),
+                    (MOST_SIG_ONE >> i).isolate_most_significant_one(),
+                );
+                i += 1;
+            }
+        }
+
+        #[test]
+        fn test_isolate_least_significant_one() {
+            const BITS: $T = <$T>::MAX;
+            const LEAST_SIG_ONE: $T = 1;
+
+            // Left shift the least significant one through each
+            // bit position, starting with all bits set
+            let mut i = 0;
+            while i < <$T>::BITS {
+                assert_eq!(
+                    (BITS << i).isolate_least_significant_one(),
+                    (LEAST_SIG_ONE << i).isolate_least_significant_one(),
+                );
+                i += 1;
+            }
+        }
+
         fn from_str<T: core::str::FromStr>(t: &str) -> Option<T> {
             core::str::FromStr::from_str(t).ok()
         }

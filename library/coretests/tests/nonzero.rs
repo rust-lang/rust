@@ -322,6 +322,106 @@ fn nonzero_trailing_zeros() {
 }
 
 #[test]
+fn test_nonzero_isolate_most_significant_one() {
+    // Signed most significant one
+    macro_rules! nonzero_int_impl {
+        ($($T:ty),+) => {
+            $(
+                {
+                    const BITS: $T = -1;
+                    const MOST_SIG_ONE: $T = 1 << (<$T>::BITS - 1);
+
+                    // Right shift the most significant one through each
+                    // bit position, starting with all bits set
+                    let mut i = 0;
+                    while i < <$T>::BITS {
+                        assert_eq!(
+                            NonZero::<$T>::new(BITS >> i).unwrap().isolate_most_significant_one(),
+                            NonZero::<$T>::new(MOST_SIG_ONE >> i).unwrap().isolate_most_significant_one()
+                        );
+                        i += 1;
+                    }
+                }
+            )+
+        };
+    }
+
+    // Unsigned most significant one
+    macro_rules! nonzero_uint_impl {
+        ($($T:ty),+) => {
+            $(
+                {
+                    const BITS: $T = <$T>::MAX;
+                    const MOST_SIG_ONE: $T = 1 << (<$T>::BITS - 1);
+
+                    let mut i = 0;
+                    while i < <$T>::BITS {
+                        assert_eq!(
+                            NonZero::<$T>::new(BITS >> i).unwrap().isolate_most_significant_one(),
+                            NonZero::<$T>::new(MOST_SIG_ONE >> i).unwrap().isolate_most_significant_one(),
+                        );
+                        i += 1;
+                    }
+                }
+            )+
+        };
+    }
+
+    nonzero_int_impl!(i8, i16, i32, i64, i128, isize);
+    nonzero_uint_impl!(u8, u16, u32, u64, u128, usize);
+}
+
+#[test]
+fn test_nonzero_isolate_least_significant_one() {
+    // Signed least significant one
+    macro_rules! nonzero_int_impl {
+        ($($T:ty),+) => {
+            $(
+                {
+                    const BITS: $T = -1;
+                    const LEAST_SIG_ONE: $T = 1;
+
+                    // Left shift the least significant one through each
+                    // bit position, starting with all bits set
+                    let mut i = 0;
+                    while i < <$T>::BITS {
+                        assert_eq!(
+                            NonZero::<$T>::new(BITS << i).unwrap().isolate_least_significant_one(),
+                            NonZero::<$T>::new(LEAST_SIG_ONE << i).unwrap().isolate_least_significant_one()
+                        );
+                        i += 1;
+                    }
+                }
+            )+
+        };
+    }
+
+    // Unsigned least significant one
+    macro_rules! nonzero_uint_impl {
+        ($($T:ty),+) => {
+            $(
+                {
+                    const BITS: $T = <$T>::MAX;
+                    const LEAST_SIG_ONE: $T = 1;
+
+                    let mut i = 0;
+                    while i < <$T>::BITS {
+                        assert_eq!(
+                            NonZero::<$T>::new(BITS << i).unwrap().isolate_least_significant_one(),
+                            NonZero::<$T>::new(LEAST_SIG_ONE << i).unwrap().isolate_least_significant_one(),
+                        );
+                        i += 1;
+                    }
+                }
+            )+
+        };
+    }
+
+    nonzero_int_impl!(i8, i16, i32, i64, i128, isize);
+    nonzero_uint_impl!(u8, u16, u32, u64, u128, usize);
+}
+
+#[test]
 fn test_nonzero_uint_div() {
     let nz = NonZero::new(1).unwrap();
 

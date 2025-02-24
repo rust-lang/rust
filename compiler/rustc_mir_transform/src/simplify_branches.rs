@@ -24,7 +24,7 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyConstCondition {
                 // Simplify `assume` of a known value: either a NOP or unreachable.
                 if let StatementKind::Intrinsic(box ref intrinsic) = stmt.kind
                     && let NonDivergingIntrinsic::Assume(discr) = intrinsic
-                    && let Operand::Constant(ref c) = discr
+                    && let Operand::Constant(c) = discr
                     && let Some(constant) = c.const_.try_eval_bool(tcx, typing_env)
                 {
                     if constant {

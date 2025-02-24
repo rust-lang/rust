@@ -1,25 +1,25 @@
-error[E0508]: cannot move out of type `[&mut u32; 1]`, a non-copy array
-  --> $DIR/borrowck-errors.rs:13:16
+error[E0508]: cannot move out of type `[&mut i32; 1]`, a non-copy array
+  --> $DIR/borrowck-errors.rs:15:16
    |
 LL |     let [&x] = &[&mut 0];
    |           -    ^^^^^^^^^ cannot move out of here
    |           |
    |           data moved here
-   |           move occurs because `x` has type `&mut u32`, which does not implement the `Copy` trait
+   |           move occurs because `x` has type `&mut i32`, which does not implement the `Copy` trait
    |
 help: consider borrowing the pattern binding
    |
 LL |     let [&ref x] = &[&mut 0];
    |           +++
 
-error[E0508]: cannot move out of type `[&mut u32; 1]`, a non-copy array
-  --> $DIR/borrowck-errors.rs:19:16
+error[E0508]: cannot move out of type `[&mut i32; 1]`, a non-copy array
+  --> $DIR/borrowck-errors.rs:22:16
    |
 LL |     let [&x] = &mut [&mut 0];
    |           -    ^^^^^^^^^^^^^ cannot move out of here
    |           |
    |           data moved here
-   |           move occurs because `x` has type `&mut u32`, which does not implement the `Copy` trait
+   |           move occurs because `x` has type `&mut i32`, which does not implement the `Copy` trait
    |
 help: consider borrowing the pattern binding
    |
@@ -27,7 +27,7 @@ LL |     let [&ref x] = &mut [&mut 0];
    |           +++
 
 error[E0507]: cannot move out of a shared reference
-  --> $DIR/borrowck-errors.rs:27:29
+  --> $DIR/borrowck-errors.rs:31:29
    |
 LL |     if let Some(&Some(x)) = Some(&Some(&mut 0)) {
    |                       -     ^^^^^^^^^^^^^^^^^^^
@@ -42,25 +42,25 @@ LL +     if let Some(Some(x)) = Some(&Some(&mut 0)) {
    |
 
 error[E0596]: cannot borrow data in a `&` reference as mutable
-  --> $DIR/borrowck-errors.rs:32:10
+  --> $DIR/borrowck-errors.rs:36:10
    |
 LL |     let &ref mut x = &0;
    |          ^^^^^^^^^ cannot borrow as mutable
 
 error[E0596]: cannot borrow data in a `&` reference as mutable
-  --> $DIR/borrowck-errors.rs:37:23
+  --> $DIR/borrowck-errors.rs:41:23
    |
 LL |     if let &Some(Some(x)) = &Some(&mut Some(0)) {
    |                       ^ cannot borrow as mutable
 
 error[E0596]: cannot borrow data in a `&` reference as mutable
-  --> $DIR/borrowck-errors.rs:42:11
+  --> $DIR/borrowck-errors.rs:46:11
    |
 LL |     let &[x] = &&mut [0];
    |           ^ cannot borrow as mutable
 
 error[E0508]: cannot move out of type `[&mut i32; 1]`, a non-copy array
-  --> $DIR/borrowck-errors.rs:46:20
+  --> $DIR/borrowck-errors.rs:50:20
    |
 LL |     let [&mut x] = &mut [&mut 0];
    |               -    ^^^^^^^^^^^^^ cannot move out of here

@@ -18,7 +18,6 @@ use rustc_middle::ty::{
     TypeFoldable, TypeFolder, TypeSuperFoldable, TypeckResults,
 };
 use rustc_span::{BytePos, DUMMY_SP, FileName, Ident, Span, sym};
-use rustc_type_ir::inherent::*;
 use rustc_type_ir::visit::TypeVisitableExt;
 use tracing::{debug, instrument, warn};
 
@@ -217,7 +216,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ClosureEraser<'a, 'tcx> {
                                 // `_` because then we'd end up with `Vec<_, _>`, instead of
                                 // `Vec<_>`.
                                 arg
-                            } else if let GenericArgKind::Type(_) = arg.kind() {
+                            } else if let GenericArgKind::Type(_) = arg.unpack() {
                                 // We don't replace lifetime or const params, only type params.
                                 self.new_infer().into()
                             } else {
@@ -489,7 +488,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         };
 
         let mut local_visitor = FindInferSourceVisitor::new(self, typeck_results, arg);
-        if let Some(body) = self.tcx.hir().maybe_body_owned_by(
+        if let Some(body) = self.tcx.hir_maybe_body_owned_by(
             self.tcx.typeck_root_def_id(body_def_id.to_def_id()).expect_local(),
         ) {
             let expr = body.value;
@@ -1075,7 +1074,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
         &self,
         path: &'tcx hir::Path<'tcx>,
         args: GenericArgsRef<'tcx>,
-    ) -> impl Iterator<Item = InsertableGenericArgs<'tcx>> + 'a {
+    ) -> impl Iterator<Item = InsertableGenericArgs<'tcx>> + 'tcx {
         let tcx = self.tecx.tcx;
         let have_turbofish = path.segments.iter().any(|segment| {
             segment.args.is_some_and(|args| args.args.iter().any(|arg| arg.is_ty_or_const()))

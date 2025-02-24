@@ -876,7 +876,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             span.remove_mark();
         }
         let mut expr_finder = FindExprBySpan::new(span, self.tcx);
-        let Some(body) = self.tcx.hir().maybe_body_owned_by(obligation.cause.body_id) else {
+        let Some(body) = self.tcx.hir_maybe_body_owned_by(obligation.cause.body_id) else {
             return;
         };
         expr_finder.visit_expr(body.value);
@@ -974,7 +974,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         hir::ExprKind::MethodCall(
                             hir::PathSegment { ident, .. },
                             _receiver,
-                            &[],
+                            [],
                             call_span,
                         ),
                     hir_id,
@@ -1347,8 +1347,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         // Issue #104961, we need to add parentheses properly for compound expressions
                         // for example, `x.starts_with("hi".to_string() + "you")`
                         // should be `x.starts_with(&("hi".to_string() + "you"))`
-                        let Some(body) =
-                            self.tcx.hir().maybe_body_owned_by(obligation.cause.body_id)
+                        let Some(body) = self.tcx.hir_maybe_body_owned_by(obligation.cause.body_id)
                         else {
                             return false;
                         };
@@ -1447,7 +1446,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             span.remove_mark();
         }
         let mut expr_finder = super::FindExprBySpan::new(span, self.tcx);
-        let Some(body) = self.tcx.hir().maybe_body_owned_by(obligation.cause.body_id) else {
+        let Some(body) = self.tcx.hir_maybe_body_owned_by(obligation.cause.body_id) else {
             return false;
         };
         expr_finder.visit_expr(body.value);
@@ -1553,7 +1552,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
         err: &mut Diag<'_>,
     ) {
-        let hir = self.tcx.hir();
         if let ObligationCauseCode::AwaitableExpr(hir_id) = obligation.cause.code().peel_derives()
             && let hir::Node::Expr(expr) = self.tcx.hir_node(*hir_id)
         {
@@ -1563,7 +1561,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // it is from the local crate.
 
             // use nth(1) to skip one layer of desugaring from `IntoIter::into_iter`
-            if let Some((_, hir::Node::Expr(await_expr))) = hir.parent_iter(*hir_id).nth(1)
+            if let Some((_, hir::Node::Expr(await_expr))) = self.tcx.hir_parent_iter(*hir_id).nth(1)
                 && let Some(expr_span) = expr.span.find_ancestor_inside_same_ctxt(await_expr.span)
             {
                 let removal_span = self
@@ -1766,7 +1764,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         err.children.clear();
 
         let span = obligation.cause.span;
-        let body = self.tcx.hir().body_owned_by(obligation.cause.body_id);
+        let body = self.tcx.hir_body_owned_by(obligation.cause.body_id);
 
         let mut visitor = ReturnsVisitor::default();
         visitor.visit_body(&body);
@@ -2300,7 +2298,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         );
 
         let coroutine_body =
-            coroutine_did.as_local().and_then(|def_id| hir.maybe_body_owned_by(def_id));
+            coroutine_did.as_local().and_then(|def_id| self.tcx.hir_maybe_body_owned_by(def_id));
         let mut visitor = AwaitsVisitor::default();
         if let Some(body) = coroutine_body {
             visitor.visit_body(&body);
@@ -2682,7 +2680,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             | ObligationCauseCode::IntrinsicType
             | ObligationCauseCode::MethodReceiver
             | ObligationCauseCode::ReturnNoExpression
-            | ObligationCauseCode::UnifyReceiver(..)
             | ObligationCauseCode::Misc
             | ObligationCauseCode::WellFormed(..)
             | ObligationCauseCode::MatchImpl(..)
@@ -3290,6 +3287,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let mut parent_trait_pred =
                     self.resolve_vars_if_possible(data.derived.parent_trait_pred);
                 let parent_def_id = parent_trait_pred.def_id();
+                if tcx.is_diagnostic_item(sym::FromResidual, parent_def_id)
+                    && !tcx.features().enabled(sym::try_trait_v2)
+                {
+                    // If `#![feature(try_trait_v2)]` is not enabled, then there's no point on
+                    // talking about `FromResidual<Result<A, B>>`, as the end user has nothing they
+                    // can do about it. As far as they are concerned, `?` is compiler magic.
+                    return;
+                }
                 let self_ty_str =
                     tcx.short_string(parent_trait_pred.skip_binder().self_ty(), err.long_ty_path());
                 let trait_name = parent_trait_pred.print_modifiers_and_trait_path().to_string();
@@ -4111,8 +4116,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         let ty::Param(..) = ty.kind() else {
                             continue;
                         };
-                        let hir = tcx.hir();
-                        let node = tcx.hir_node_by_def_id(hir.get_parent_item(expr.hir_id).def_id);
+                        let node =
+                            tcx.hir_node_by_def_id(tcx.hir_get_parent_item(expr.hir_id).def_id);
 
                         let pred = ty::Binder::dummy(ty::TraitPredicate {
                             trait_ref: ty::TraitRef::new(
@@ -4130,7 +4135,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         };
                         suggest_restriction(
                             tcx,
-                            hir.body_owner_def_id(body_id),
+                            tcx.hir_body_owner_def_id(body_id),
                             generics,
                             &format!("type parameter `{ty}`"),
                             err,
@@ -4352,7 +4357,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     term: ty.into(),
                 }),
             ));
-            let body_def_id = self.tcx.hir().enclosing_body_owner(body_id);
+            let body_def_id = self.tcx.hir_enclosing_body_owner(body_id);
             // Add `<ExprTy as Iterator>::Item = _` obligation.
             ocx.register_obligation(Obligation::misc(
                 self.tcx,

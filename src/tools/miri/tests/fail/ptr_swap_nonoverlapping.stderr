@@ -1,6 +1,8 @@
 
 thread 'main' panicked at RUSTLIB/core/src/panicking.rs:LL:CC:
 unsafe precondition(s) violated: ptr::swap_nonoverlapping requires that both pointer arguments are aligned and non-null and the specified memory ranges do not overlap
+
+This indicates a bug in the program. This Undefined Behavior check is optional, and cannot be relied on for safety.
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 note: in Miri, you may have to set `MIRIFLAGS=-Zmiri-env-forward=RUST_BACKTRACE` for the environment variable to have an effect
 thread caused non-unwinding panic. aborting.

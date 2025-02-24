@@ -429,9 +429,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                         let user_provided_types = self.typeck_results.user_provided_types();
                         let user_ty =
                             user_provided_types.get(fun.hir_id).copied().map(|mut u_ty| {
-                                if let ty::UserTypeKind::TypeOf(ref mut did, _) =
-                                    &mut u_ty.value.kind
-                                {
+                                if let ty::UserTypeKind::TypeOf(did, _) = &mut u_ty.value.kind {
                                     *did = adt_def.did();
                                 }
                                 Box::new(u_ty)
@@ -739,13 +737,8 @@ impl<'tcx> ThirBuildCx<'tcx> {
 
                             InlineAsmOperand::Const { value, span }
                         }
-                        hir::InlineAsmOperand::SymFn { ref anon_const } => {
-                            let value =
-                                mir::Const::from_unevaluated(tcx, anon_const.def_id.to_def_id())
-                                    .instantiate_identity();
-                            let span = tcx.def_span(anon_const.def_id);
-
-                            InlineAsmOperand::SymFn { value, span }
+                        hir::InlineAsmOperand::SymFn { expr } => {
+                            InlineAsmOperand::SymFn { value: self.mirror_expr(expr) }
                         }
                         hir::InlineAsmOperand::SymStatic { path: _, def_id } => {
                             InlineAsmOperand::SymStatic { def_id }
@@ -828,7 +821,6 @@ impl<'tcx> ThirBuildCx<'tcx> {
             },
             hir::ExprKind::Match(discr, arms, match_source) => ExprKind::Match {
                 scrutinee: self.mirror_expr(discr),
-                scrutinee_hir_id: discr.hir_id,
                 arms: arms.iter().map(|a| self.convert_arm(a)).collect(),
                 match_source,
             },

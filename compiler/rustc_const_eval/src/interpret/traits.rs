@@ -86,21 +86,15 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             throw_ub!(InvalidVTableTrait { vtable_dyn_type, expected_dyn_type });
         }
 
+        // This checks whether there is a subtyping relation between the predicates in either direction.
+        // For example:
+        // - casting between `dyn for<'a> Trait<fn(&'a u8)>` and `dyn Trait<fn(&'static u8)>` is OK
+        // - casting between `dyn Trait<for<'a> fn(&'a u8)>` and either of the above is UB
         for (a_pred, b_pred) in std::iter::zip(sorted_vtable, sorted_expected) {
-            let is_eq = match (a_pred.skip_binder(), b_pred.skip_binder()) {
-                (
-                    ty::ExistentialPredicate::Trait(a_data),
-                    ty::ExistentialPredicate::Trait(b_data),
-                ) => self.eq_in_param_env(a_pred.rebind(a_data), b_pred.rebind(b_data)),
+            let a_pred = self.tcx.normalize_erasing_late_bound_regions(self.typing_env, a_pred);
+            let b_pred = self.tcx.normalize_erasing_late_bound_regions(self.typing_env, b_pred);
 
-                (
-                    ty::ExistentialPredicate::Projection(a_data),
-                    ty::ExistentialPredicate::Projection(b_data),
-                ) => self.eq_in_param_env(a_pred.rebind(a_data), b_pred.rebind(b_data)),
-
-                _ => false,
-            };
-            if !is_eq {
+            if a_pred != b_pred {
                 throw_ub!(InvalidVTableTrait { vtable_dyn_type, expected_dyn_type });
             }
         }

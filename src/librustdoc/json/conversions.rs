@@ -846,7 +846,7 @@ fn convert_static(
         is_unsafe: safety.is_unsafe(),
         expr: stat
             .expr
-            .map(|e| rendered_const(tcx, tcx.hir_body(e), tcx.hir().body_owner_def_id(e)))
+            .map(|e| rendered_const(tcx, tcx.hir_body(e), tcx.hir_body_owner_def_id(e)))
             .unwrap_or_default(),
     }
 }

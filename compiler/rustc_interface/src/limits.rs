@@ -20,21 +20,21 @@ use crate::errors::LimitInvalid;
 
 pub(crate) fn provide(providers: &mut Providers) {
     providers.limits = |tcx, ()| Limits {
-        recursion_limit: get_recursion_limit(tcx.hir().krate_attrs(), tcx.sess),
+        recursion_limit: get_recursion_limit(tcx.hir_krate_attrs(), tcx.sess),
         move_size_limit: get_limit(
-            tcx.hir().krate_attrs(),
+            tcx.hir_krate_attrs(),
             tcx.sess,
             sym::move_size_limit,
             Limit::new(tcx.sess.opts.unstable_opts.move_size_limit.unwrap_or(0)),
         ),
         type_length_limit: get_limit(
-            tcx.hir().krate_attrs(),
+            tcx.hir_krate_attrs(),
             tcx.sess,
             sym::type_length_limit,
             Limit::new(2usize.pow(24)),
         ),
         pattern_complexity_limit: get_limit(
-            tcx.hir().krate_attrs(),
+            tcx.hir_krate_attrs(),
             tcx.sess,
             sym::pattern_complexity_limit,
             Limit::unlimited(),

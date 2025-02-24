@@ -424,7 +424,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         &self,
         argument_index: usize,
     ) -> Option<&hir::Ty<'tcx>> {
-        let fn_decl = self.infcx.tcx.hir().fn_decl_by_hir_id(self.mir_hir_id())?;
+        let fn_decl = self.infcx.tcx.hir_fn_decl_by_hir_id(self.mir_hir_id())?;
         let argument_hir_ty: &hir::Ty<'_> = fn_decl.inputs.get(argument_index)?;
         match argument_hir_ty.kind {
             // This indicates a variable with no type annotation, like
@@ -671,7 +671,6 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
     #[instrument(level = "trace", skip(self))]
     fn give_name_if_anonymous_region_appears_in_output(&self, fr: RegionVid) -> Option<RegionName> {
         let tcx = self.infcx.tcx;
-        let hir = tcx.hir();
 
         let return_ty = self.regioncx.universal_regions().unnormalized_output_ty;
         debug!("give_name_if_anonymous_region_appears_in_output: return_ty = {:?}", return_ty);
@@ -682,7 +681,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         let mir_hir_id = self.mir_hir_id();
 
         let (return_span, mir_description, hir_ty) = match tcx.hir_node(mir_hir_id) {
-            hir::Node::Expr(hir::Expr {
+            hir::Node::Expr(&hir::Expr {
                 kind: hir::ExprKind::Closure(&hir::Closure { fn_decl, kind, fn_decl_span, .. }),
                 ..
             }) => {
@@ -711,7 +710,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                         hir::CoroutineSource::Fn,
                     )) => {
                         let parent_item =
-                            tcx.hir_node_by_def_id(hir.get_parent_item(mir_hir_id).def_id);
+                            tcx.hir_node_by_def_id(tcx.hir_get_parent_item(mir_hir_id).def_id);
                         let output = &parent_item
                             .fn_decl()
                             .expect("coroutine lowered from async fn should be in fn")
@@ -741,7 +740,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                         hir::CoroutineSource::Fn,
                     )) => {
                         let parent_item =
-                            tcx.hir_node_by_def_id(hir.get_parent_item(mir_hir_id).def_id);
+                            tcx.hir_node_by_def_id(tcx.hir_get_parent_item(mir_hir_id).def_id);
                         let output = &parent_item
                             .fn_decl()
                             .expect("coroutine lowered from gen fn should be in fn")
@@ -768,7 +767,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                         hir::CoroutineSource::Fn,
                     )) => {
                         let parent_item =
-                            tcx.hir_node_by_def_id(hir.get_parent_item(mir_hir_id).def_id);
+                            tcx.hir_node_by_def_id(tcx.hir_get_parent_item(mir_hir_id).def_id);
                         let output = &parent_item
                             .fn_decl()
                             .expect("coroutine lowered from async gen fn should be in fn")
@@ -874,7 +873,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             .name;
 
         let yield_span = match tcx.hir_node(self.mir_hir_id()) {
-            hir::Node::Expr(hir::Expr {
+            hir::Node::Expr(&hir::Expr {
                 kind: hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. }),
                 ..
             }) => tcx.sess.source_map().end_point(fn_decl_span),

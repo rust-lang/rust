@@ -50,6 +50,7 @@ use std::str::FromStr;
 use bitflags::bitflags;
 #[cfg(feature = "nightly")]
 use rustc_data_structures::stable_hasher::StableOrd;
+use rustc_hashes::Hash64;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 #[cfg(feature = "nightly")]
 use rustc_macros::{Decodable_Generic, Encodable_Generic, HashStable_Generic};
@@ -140,7 +141,7 @@ pub struct ReprOptions {
     /// hash without loss, but it does pay the price of being larger.
     /// Everything's a tradeoff, a 64-bit seed should be sufficient for our
     /// purposes (primarily `-Z randomize-layout`)
-    pub field_shuffle_seed: u64,
+    pub field_shuffle_seed: Hash64,
 }
 
 impl ReprOptions {
@@ -328,19 +329,19 @@ impl TargetDataLayout {
                 [p] if p.starts_with('P') => {
                     dl.instruction_address_space = parse_address_space(&p[1..], "P")?
                 }
-                ["a", ref a @ ..] => dl.aggregate_align = parse_align(a, "a")?,
-                ["f16", ref a @ ..] => dl.f16_align = parse_align(a, "f16")?,
-                ["f32", ref a @ ..] => dl.f32_align = parse_align(a, "f32")?,
-                ["f64", ref a @ ..] => dl.f64_align = parse_align(a, "f64")?,
-                ["f128", ref a @ ..] => dl.f128_align = parse_align(a, "f128")?,
+                ["a", a @ ..] => dl.aggregate_align = parse_align(a, "a")?,
+                ["f16", a @ ..] => dl.f16_align = parse_align(a, "f16")?,
+                ["f32", a @ ..] => dl.f32_align = parse_align(a, "f32")?,
+                ["f64", a @ ..] => dl.f64_align = parse_align(a, "f64")?,
+                ["f128", a @ ..] => dl.f128_align = parse_align(a, "f128")?,
                 // FIXME(erikdesjardins): we should be parsing nonzero address spaces
                 // this will require replacing TargetDataLayout::{pointer_size,pointer_align}
                 // with e.g. `fn pointer_size_in(AddressSpace)`
-                [p @ "p", s, ref a @ ..] | [p @ "p0", s, ref a @ ..] => {
+                [p @ "p", s, a @ ..] | [p @ "p0", s, a @ ..] => {
                     dl.pointer_size = parse_size(s, p)?;
                     dl.pointer_align = parse_align(a, p)?;
                 }
-                [s, ref a @ ..] if s.starts_with('i') => {
+                [s, a @ ..] if s.starts_with('i') => {
                     let Ok(bits) = s[1..].parse::<u64>() else {
                         parse_size(&s[1..], "i")?; // For the user error.
                         continue;
@@ -361,7 +362,7 @@ impl TargetDataLayout {
                         dl.i128_align = a;
                     }
                 }
-                [s, ref a @ ..] if s.starts_with('v') => {
+                [s, a @ ..] if s.starts_with('v') => {
                     let v_size = parse_size(&s[1..], "v")?;
                     let a = parse_align(a, s)?;
                     if let Some(v) = dl.vector_align.iter_mut().find(|v| v.0 == v_size) {
@@ -407,16 +408,21 @@ impl TargetDataLayout {
         }
     }
 
+    /// psABI-mandated alignment for a vector type, if any
     #[inline]
-    pub fn vector_align(&self, vec_size: Size) -> AbiAndPrefAlign {
-        for &(size, align) in &self.vector_align {
-            if size == vec_size {
-                return align;
-            }
-        }
-        // Default to natural alignment, which is what LLVM does.
-        // That is, use the size, rounded up to a power of 2.
-        AbiAndPrefAlign::new(Align::from_bytes(vec_size.bytes().next_power_of_two()).unwrap())
+    fn cabi_vector_align(&self, vec_size: Size) -> Option<AbiAndPrefAlign> {
+        self.vector_align
+            .iter()
+            .find(|(size, _align)| *size == vec_size)
+            .map(|(_size, align)| *align)
+    }
+
+    /// an alignment resembling the one LLVM would pick for a vector
+    #[inline]
+    pub fn llvmlike_vector_align(&self, vec_size: Size) -> AbiAndPrefAlign {
+        self.cabi_vector_align(vec_size).unwrap_or(AbiAndPrefAlign::new(
+            Align::from_bytes(vec_size.bytes().next_power_of_two()).unwrap(),
+        ))
     }
 }
 
@@ -809,20 +815,19 @@ impl Align {
         self.bits().try_into().unwrap()
     }
 
-    /// Computes the best alignment possible for the given offset
-    /// (the largest power of two that the offset is a multiple of).
+    /// Obtain the greatest factor of `size` that is an alignment
+    /// (the largest power of two the Size is a multiple of).
     ///
-    /// N.B., for an offset of `0`, this happens to return `2^64`.
+    /// Note that all numbers are factors of 0
     #[inline]
-    pub fn max_for_offset(offset: Size) -> Align {
-        Align { pow2: offset.bytes().trailing_zeros() as u8 }
+    pub fn max_aligned_factor(size: Size) -> Align {
+        Align { pow2: size.bytes().trailing_zeros() as u8 }
     }
 
-    /// Lower the alignment, if necessary, such that the given offset
-    /// is aligned to it (the offset is a multiple of the alignment).
+    /// Reduces Align to an aligned factor of `size`.
     #[inline]
-    pub fn restrict_for_offset(self, offset: Size) -> Align {
-        self.min(Align::max_for_offset(offset))
+    pub fn restrict_for_offset(self, size: Size) -> Align {
+        self.min(Align::max_aligned_factor(size))
     }
 }
 
@@ -1344,7 +1349,7 @@ impl<FieldIdx: Idx> FieldsShape<FieldIdx> {
 
     /// Gets source indices of the fields by increasing offsets.
     #[inline]
-    pub fn index_by_increasing_offset(&self) -> impl ExactSizeIterator<Item = usize> + '_ {
+    pub fn index_by_increasing_offset(&self) -> impl ExactSizeIterator<Item = usize> {
         let mut inverse_small = [0u8; 64];
         let mut inverse_big = IndexVec::new();
         let use_small = self.count() <= inverse_small.len();
@@ -1403,7 +1408,6 @@ impl AddressSpace {
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 #[cfg_attr(feature = "nightly", derive(HashStable_Generic))]
 pub enum BackendRepr {
-    Uninhabited,
     Scalar(Scalar),
     ScalarPair(Scalar, Scalar),
     Vector {
@@ -1422,10 +1426,9 @@ impl BackendRepr {
     #[inline]
     pub fn is_unsized(&self) -> bool {
         match *self {
-            BackendRepr::Uninhabited
-            | BackendRepr::Scalar(_)
-            | BackendRepr::ScalarPair(..)
-            | BackendRepr::Vector { .. } => false,
+            BackendRepr::Scalar(_) | BackendRepr::ScalarPair(..) | BackendRepr::Vector { .. } => {
+                false
+            }
             BackendRepr::Memory { sized } => !sized,
         }
     }
@@ -1444,12 +1447,6 @@ impl BackendRepr {
         }
     }
 
-    /// Returns `true` if this is an uninhabited type
-    #[inline]
-    pub fn is_uninhabited(&self) -> bool {
-        matches!(*self, BackendRepr::Uninhabited)
-    }
-
     /// Returns `true` if this is a scalar type
     #[inline]
     pub fn is_scalar(&self) -> bool {
@@ -1462,37 +1459,38 @@ impl BackendRepr {
         matches!(*self, BackendRepr::Scalar(s) if s.is_bool())
     }
 
-    /// Returns the fixed alignment of this ABI, if any is mandated.
-    pub fn inherent_align<C: HasDataLayout>(&self, cx: &C) -> Option<AbiAndPrefAlign> {
-        Some(match *self {
-            BackendRepr::Scalar(s) => s.align(cx),
-            BackendRepr::ScalarPair(s1, s2) => s1.align(cx).max(s2.align(cx)),
-            BackendRepr::Vector { element, count } => {
-                cx.data_layout().vector_align(element.size(cx) * count)
-            }
-            BackendRepr::Uninhabited | BackendRepr::Memory { .. } => return None,
-        })
+    /// The psABI alignment for a `Scalar` or `ScalarPair`
+    ///
+    /// `None` for other variants.
+    pub fn scalar_align<C: HasDataLayout>(&self, cx: &C) -> Option<Align> {
+        match *self {
+            BackendRepr::Scalar(s) => Some(s.align(cx).abi),
+            BackendRepr::ScalarPair(s1, s2) => Some(s1.align(cx).max(s2.align(cx)).abi),
+            // The align of a Vector can vary in surprising ways
+            BackendRepr::Vector { .. } | BackendRepr::Memory { .. } => None,
+        }
     }
 
-    /// Returns the fixed size of this ABI, if any is mandated.
-    pub fn inherent_size<C: HasDataLayout>(&self, cx: &C) -> Option<Size> {
-        Some(match *self {
-            BackendRepr::Scalar(s) => {
-                // No padding in scalars.
-                s.size(cx)
-            }
+    /// The psABI size for a `Scalar` or `ScalarPair`
+    ///
+    /// `None` for other variants
+    pub fn scalar_size<C: HasDataLayout>(&self, cx: &C) -> Option<Size> {
+        match *self {
+            // No padding in scalars.
+            BackendRepr::Scalar(s) => Some(s.size(cx)),
+            // May have some padding between the pair.
             BackendRepr::ScalarPair(s1, s2) => {
-                // May have some padding between the pair.
                 let field2_offset = s1.size(cx).align_to(s2.align(cx).abi);
-                (field2_offset + s2.size(cx)).align_to(self.inherent_align(cx)?.abi)
+                let size = (field2_offset + s2.size(cx)).align_to(
+                    self.scalar_align(cx)
+                        // We absolutely must have an answer here or everything is FUBAR.
+                        .unwrap(),
+                );
+                Some(size)
             }
-            BackendRepr::Vector { element, count } => {
-                // No padding in vectors, except possibly for trailing padding
-                // to make the size a multiple of align (e.g. for vectors of size 3).
-                (element.size(cx) * count).align_to(self.inherent_align(cx)?.abi)
-            }
-            BackendRepr::Uninhabited | BackendRepr::Memory { .. } => return None,
-        })
+            // The size of a Vector can vary in surprising ways
+            BackendRepr::Vector { .. } | BackendRepr::Memory { .. } => None,
+        }
     }
 
     /// Discard validity range information and allow undef.
@@ -1505,9 +1503,7 @@ impl BackendRepr {
             BackendRepr::Vector { element, count } => {
                 BackendRepr::Vector { element: element.to_union(), count }
             }
-            BackendRepr::Uninhabited | BackendRepr::Memory { .. } => {
-                BackendRepr::Memory { sized: true }
-            }
+            BackendRepr::Memory { .. } => BackendRepr::Memory { sized: true },
         }
     }
 
@@ -1703,6 +1699,11 @@ pub struct LayoutData<FieldIdx: Idx, VariantIdx: Idx> {
     /// The leaf scalar with the largest number of invalid values
     /// (i.e. outside of its `valid_range`), if it exists.
     pub largest_niche: Option<Niche>,
+    /// Is this type known to be uninhabted?
+    ///
+    /// This is separate from BackendRepr because uninhabited return types can affect ABI,
+    /// especially in the case of by-pointer struct returns, which allocate stack even when unused.
+    pub uninhabited: bool,
 
     pub align: AbiAndPrefAlign,
     pub size: Size,
@@ -1727,21 +1728,21 @@ pub struct LayoutData<FieldIdx: Idx, VariantIdx: Idx> {
     /// transmuted to `Foo<U>` we aim to create probalistically distinct seeds so that Foo can choose
     /// to reorder its fields based on that information. The current implementation is a conservative
     /// approximation of this goal.
-    pub randomization_seed: u64,
+    pub randomization_seed: Hash64,
 }
 
 impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
     /// Returns `true` if this is an aggregate type (including a ScalarPair!)
     pub fn is_aggregate(&self) -> bool {
         match self.backend_repr {
-            BackendRepr::Uninhabited | BackendRepr::Scalar(_) | BackendRepr::Vector { .. } => false,
+            BackendRepr::Scalar(_) | BackendRepr::Vector { .. } => false,
             BackendRepr::ScalarPair(..) | BackendRepr::Memory { .. } => true,
         }
     }
 
     /// Returns `true` if this is an uninhabited type
     pub fn is_uninhabited(&self) -> bool {
-        self.backend_repr.is_uninhabited()
+        self.uninhabited
     }
 
     pub fn scalar<C: HasDataLayout>(cx: &C, scalar: Scalar) -> Self {
@@ -1777,11 +1778,12 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             fields: FieldsShape::Primitive,
             backend_repr: BackendRepr::Scalar(scalar),
             largest_niche,
+            uninhabited: false,
             size,
             align,
             max_repr_align: None,
             unadjusted_abi_align: align.abi,
-            randomization_seed,
+            randomization_seed: Hash64::new(randomization_seed),
         }
     }
 }
@@ -1801,10 +1803,11 @@ where
             backend_repr,
             fields,
             largest_niche,
+            uninhabited,
             variants,
             max_repr_align,
             unadjusted_abi_align,
-            ref randomization_seed,
+            randomization_seed,
         } = self;
         f.debug_struct("Layout")
             .field("size", size)
@@ -1812,6 +1815,7 @@ where
             .field("abi", backend_repr)
             .field("fields", fields)
             .field("largest_niche", largest_niche)
+            .field("uninhabited", uninhabited)
             .field("variants", variants)
             .field("max_repr_align", max_repr_align)
             .field("unadjusted_abi_align", unadjusted_abi_align)
@@ -1876,7 +1880,6 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
             BackendRepr::Scalar(_) | BackendRepr::ScalarPair(..) | BackendRepr::Vector { .. } => {
                 false
             }
-            BackendRepr::Uninhabited => self.size.bytes() == 0,
             BackendRepr::Memory { sized } => sized && self.size.bytes() == 0,
         }
     }

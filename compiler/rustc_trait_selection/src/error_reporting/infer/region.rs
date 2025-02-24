@@ -2,7 +2,7 @@ use std::iter;
 
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{
-    Applicability, Diag, E0309, E0310, E0311, E0495, Subdiagnostic, struct_span_code_err,
+    Applicability, Diag, E0309, E0310, E0311, E0803, Subdiagnostic, struct_span_code_err,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -1032,7 +1032,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         struct_span_code_err!(
             self.dcx(),
             var_origin.span(),
-            E0495,
+            E0803,
             "cannot infer an appropriate lifetime{} due to conflicting requirements",
             var_description
         )
