@@ -711,7 +711,7 @@ impl Cursor<'_> {
                 }
             }
             ('e' | 'E', '0'..='9' | '+' | '-') => {
-                // // Definitely an exponent (which still can be empty).
+                // Definitely an exponent (which still can be empty).
                 self.bump();
                 let empty_exponent = !self.eat_float_exponent();
                 (Float { base, empty_exponent }, None)
