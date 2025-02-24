@@ -290,9 +290,14 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `xsavec`
 `xsaveopt`
 `xsaves`
+`za128rs`
+`za64rs`
 `zaamo`
 `zabha`
+`zacas`
 `zalrsc`
+`zama16b`
+`zawrs`
 `zba`
 `zbb`
 `zbc`

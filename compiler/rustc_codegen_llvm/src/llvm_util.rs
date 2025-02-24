@@ -281,6 +281,8 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         ("riscv32" | "riscv64", "zaamo") if get_version().0 < 19 => None,
         ("riscv32" | "riscv64", "zabha") if get_version().0 < 19 => None,
         ("riscv32" | "riscv64", "zalrsc") if get_version().0 < 19 => None,
+        ("riscv32" | "riscv64", "zama16b") if get_version().0 < 19 => None,
+        ("riscv32" | "riscv64", "zacas") if get_version().0 < 20 => None,
         // Enable the evex512 target feature if an avx512 target feature is enabled.
         ("x86", s) if s.starts_with("avx512") => {
             Some(LLVMFeature::with_dependency(s, TargetFeatureFoldStrength::EnableOnly("evex512")))
