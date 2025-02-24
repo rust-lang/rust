@@ -830,3 +830,7 @@ will be split as follows:
     "you today?",
 ]
 ```
+
+## `--generate-macro-expansion`: Generate macros expansion toggles in source code
+
+This flag enables the generation of toggles to expand macros in the HTML source code pages,
