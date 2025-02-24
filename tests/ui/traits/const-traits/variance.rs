@@ -8,7 +8,6 @@ trait Foo {}
 impl const Foo for () {}
 
 fn foo<'a: 'a>() -> impl const Foo {}
-//~^ ERROR ['a: o]
+//~^ ERROR ['a: *]
 
 fn main() {}
-
