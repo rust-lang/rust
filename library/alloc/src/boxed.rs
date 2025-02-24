@@ -238,11 +238,8 @@ pub struct Box<
 ///
 /// This is the surface syntax for `box <expr>` expressions.
 #[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
 #[unstable(feature = "liballoc_internals", issue = "none")]
-pub fn box_new<T>(_x: T) -> Box<T> {
-    unreachable!()
-}
+pub fn box_new<T>(_x: T) -> Box<T>;
 
 impl<T> Box<T> {
     /// Allocates memory on the heap and then places `x` into it.
