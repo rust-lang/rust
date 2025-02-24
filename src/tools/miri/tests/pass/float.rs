@@ -1327,15 +1327,24 @@ fn test_non_determinism() {
         ensure_nondet(|| 3.0f32.hypot(4.0f32));
         ensure_nondet(|| 1f32.sin());
         ensure_nondet(|| 0f32.cos());
-        ensure_nondet(|| 1.0f32.sinh());
+        // On i686-pc-windows-msvc , these functions are implemented by calling the `f64` version,
+        // which means the little rounding errors Miri introduces are discard by the cast down to `f32`.
+        // Just skip the test for them.
+        if !cfg!(all(target_os = "windows", target_env = "msvc", target_arch = "x86")) {
+            ensure_nondet(|| 1.0f32.tan());
+            ensure_nondet(|| 1.0f32.asin());
+            ensure_nondet(|| 5.0f32.acos());
+            ensure_nondet(|| 1.0f32.atan());
+            ensure_nondet(|| 1.0f32.atan2(2.0f32));
+            ensure_nondet(|| 1.0f32.sinh());
+            ensure_nondet(|| 1.0f32.cosh());
+            ensure_nondet(|| 1.0f32.tanh());
+        }
         ensure_nondet(|| 1.0f32.asinh());
-        ensure_nondet(|| 1.0f32.cosh());
         ensure_nondet(|| 2.0f32.acosh());
-        ensure_nondet(|| 1.0f32.tan());
-        ensure_nondet(|| 1.0f32.tanh());
-        ensure_nondet(|| 1.0f32.atan2(2.0f32));
         ensure_nondet(|| 0.5f32.atanh());
         ensure_nondet(|| 5.0f32.gamma());
+        ensure_nondet(|| 5.0f32.ln_gamma());
         ensure_nondet(|| 5.0f32.erf());
         ensure_nondet(|| 5.0f32.erfc());
     }
@@ -1348,18 +1357,23 @@ fn test_non_determinism() {
         ensure_nondet(|| 1f64.ln_1p());
         ensure_nondet(|| f64::consts::E.log10());
         ensure_nondet(|| f64::consts::E.log2());
-        ensure_nondet(|| 1f64.sin());
-        ensure_nondet(|| 0f64.cos());
         ensure_nondet(|| 27.0f64.cbrt());
         ensure_nondet(|| 3.0f64.hypot(4.0f64));
-        ensure_nondet(|| 1.0f64.sinh());
-        ensure_nondet(|| 1.0f64.asinh());
-        ensure_nondet(|| 1.0f64.cosh());
-        ensure_nondet(|| 3.0f64.acosh());
+        ensure_nondet(|| 1f64.sin());
+        ensure_nondet(|| 0f64.cos());
         ensure_nondet(|| 1.0f64.tan());
+        ensure_nondet(|| 1.0f64.asin());
+        ensure_nondet(|| 5.0f64.acos());
+        ensure_nondet(|| 1.0f64.atan());
+        ensure_nondet(|| 1.0f64.atan2(2.0f64));
+        ensure_nondet(|| 1.0f64.sinh());
+        ensure_nondet(|| 1.0f64.cosh());
         ensure_nondet(|| 1.0f64.tanh());
+        ensure_nondet(|| 1.0f64.asinh());
+        ensure_nondet(|| 3.0f64.acosh());
         ensure_nondet(|| 0.5f64.atanh());
         ensure_nondet(|| 5.0f64.gamma());
+        ensure_nondet(|| 5.0f64.ln_gamma());
         ensure_nondet(|| 5.0f64.erf());
         ensure_nondet(|| 5.0f64.erfc());
     }
