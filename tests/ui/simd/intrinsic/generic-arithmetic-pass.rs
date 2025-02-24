@@ -1,6 +1,5 @@
 //@ run-pass
 #![allow(non_camel_case_types)]
-//@ ignore-emscripten FIXME(#45351) hits an LLVM assert
 #![feature(repr_simd, intrinsics)]
 
 #[repr(simd)]
@@ -52,7 +51,6 @@ unsafe fn simd_or<T>(x: T, y: T) -> T;
 
 #[rustc_intrinsic]
 unsafe fn simd_xor<T>(x: T, y: T) -> T;
-
 
 #[rustc_intrinsic]
 unsafe fn simd_neg<T>(x: T) -> T;
