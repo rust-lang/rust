@@ -2419,6 +2419,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 &mut vec![],
                 &mut Default::default(),
             );
+            self.suggest_swapping_lhs_and_rhs(
+                err,
+                obligation.predicate,
+                obligation.param_env,
+                obligation.cause.code(),
+            );
             self.suggest_unsized_bound_if_applicable(err, obligation);
             if let Some(span) = err.span.primary_span()
                 && let Some(mut diag) =
