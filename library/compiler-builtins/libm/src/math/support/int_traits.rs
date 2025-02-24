@@ -394,6 +394,7 @@ macro_rules! cast_into {
             fn cast(self) -> $into {
                 // All we can really do to enforce casting rules is check the rules when in
                 // debug mode.
+                #[cfg(not(feature = "compiler-builtins"))]
                 debug_assert!(<$into>::try_from(self).is_ok(), "failed cast from {self}");
                 self as $into
             }
