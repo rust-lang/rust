@@ -10,9 +10,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::Obligation;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::thir::{FieldPat, Pat, PatKind, Thir};
-use rustc_middle::ty::{
-    self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitableExt, TypeVisitor, ValTree,
-};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor, ValTree};
 use rustc_middle::{mir, span_bug};
 use rustc_span::def_id::DefId;
 use rustc_span::{Span, sym};
@@ -194,7 +192,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
         // Convert the valtree to a const.
         let inlined_const_as_pat = self.valtree_to_pat(valtree, ty);
 
-        if !inlined_const_as_pat.references_error() {
+        if !self.thir.pat_references_error(&inlined_const_as_pat) {
             // Always check for `PartialEq` if we had no other errors yet.
             if !type_has_partial_eq_impl(self.tcx, typing_env, ty).has_impl {
                 let mut err = self.tcx.dcx().create_err(TypeNotPartialEq { span: self.span, ty });

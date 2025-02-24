@@ -689,6 +689,19 @@ impl<'tcx> Thir<'tcx> {
         }
     }
 
+    pub fn pat_references_error(&self, pat: &Pat<'tcx>) -> bool {
+        use rustc_type_ir::visit::TypeVisitableExt;
+
+        let mut references_error = TypeVisitableExt::references_error(pat);
+        if !references_error {
+            for_each_immediate_subpat(self, pat, |p| {
+                references_error = references_error || self.pat_references_error(p);
+            });
+        }
+
+        references_error
+    }
+
     /// Walk the pattern in left-to-right order.
     ///
     /// If you always want to recurse, prefer this method over `walk`.
