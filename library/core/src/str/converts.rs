@@ -126,7 +126,7 @@ pub const fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
 /// See the docs for [`Utf8Error`] for more details on the kinds of
 /// errors that can be returned.
 #[stable(feature = "str_mut_extras", since = "1.20.0")]
-#[rustc_const_unstable(feature = "const_str_from_utf8", issue = "91006")]
+#[rustc_const_stable(feature = "const_str_from_utf8", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_diagnostic_item = "str_from_utf8_mut"]
 pub const fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
     // FIXME(const-hack): This should use `?` again, once it's `const`

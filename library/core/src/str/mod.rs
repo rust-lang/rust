@@ -265,7 +265,7 @@ impl str {
     /// See the docs for [`Utf8Error`] for more details on the kinds of
     /// errors that can be returned.
     #[stable(feature = "inherent_str_constructors", since = "CURRENT_RUSTC_VERSION")]
-    #[rustc_const_unstable(feature = "const_str_from_utf8", issue = "91006")]
+    #[rustc_const_stable(feature = "const_str_from_utf8", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_diagnostic_item = "str_inherent_from_utf8_mut"]
     pub const fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
         converts::from_utf8_mut(v)

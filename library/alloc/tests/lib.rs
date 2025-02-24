@@ -29,7 +29,6 @@
 #![feature(string_remove_matches)]
 #![feature(const_btree_len)]
 #![feature(const_trait_impl)]
-#![feature(const_str_from_utf8)]
 #![feature(panic_update_hook)]
 #![feature(pointer_is_aligned_to)]
 #![feature(test)]
