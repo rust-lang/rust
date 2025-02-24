@@ -821,6 +821,7 @@ impl From<Vec<NonZero<u8>>> for CString {
     }
 }
 
+#[stable(feature = "c_string_from_str", since = "1.85.0")]
 impl FromStr for CString {
     type Err = NulError;
 
@@ -833,6 +834,7 @@ impl FromStr for CString {
     }
 }
 
+#[stable(feature = "c_string_from_str", since = "1.85.0")]
 impl TryFrom<CString> for String {
     type Error = IntoStringError;
 
