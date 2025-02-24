@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use rustc_middle::mir::*;
-use rustc_middle::thir::{self, *};
+use rustc_middle::thir::*;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 
 use crate::builder::Builder;
@@ -134,7 +134,7 @@ impl<'tcx> MatchPairTree<'tcx> {
             PatKind::Constant { value } => TestCase::Constant { value },
 
             PatKind::AscribeUserType {
-                ascription: thir::Ascription { ref annotation, variance },
+                ascription: Ascription { ref annotation, variance },
                 ref subpattern,
                 ..
             } => {

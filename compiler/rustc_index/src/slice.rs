@@ -1,8 +1,9 @@
+use std::fmt;
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
-use std::{fmt, slice};
+use std::slice::{self, SliceIndex};
 
-use crate::{Idx, IndexVec};
+use crate::{Idx, IndexVec, IntoSliceIdx};
 
 /// A view into contiguous `T`s, indexed by `I` rather than by `usize`.
 ///
@@ -97,13 +98,19 @@ impl<I: Idx, T> IndexSlice<I, T> {
     }
 
     #[inline]
-    pub fn get(&self, index: I) -> Option<&T> {
-        self.raw.get(index.index())
+    pub fn get<R: IntoSliceIdx<I, [T]>>(
+        &self,
+        index: R,
+    ) -> Option<&<R::Output as SliceIndex<[T]>>::Output> {
+        self.raw.get(index.into_slice_idx())
     }
 
     #[inline]
-    pub fn get_mut(&mut self, index: I) -> Option<&mut T> {
-        self.raw.get_mut(index.index())
+    pub fn get_mut<R: IntoSliceIdx<I, [T]>>(
+        &mut self,
+        index: R,
+    ) -> Option<&mut <R::Output as SliceIndex<[T]>>::Output> {
+        self.raw.get_mut(index.into_slice_idx())
     }
 
     /// Returns mutable references to two distinct elements, `a` and `b`.
@@ -184,19 +191,19 @@ impl<I: Idx, T: fmt::Debug> fmt::Debug for IndexSlice<I, T> {
     }
 }
 
-impl<I: Idx, T> Index<I> for IndexSlice<I, T> {
-    type Output = T;
+impl<I: Idx, T, R: IntoSliceIdx<I, [T]>> Index<R> for IndexSlice<I, T> {
+    type Output = <R::Output as SliceIndex<[T]>>::Output;
 
     #[inline]
-    fn index(&self, index: I) -> &T {
-        &self.raw[index.index()]
+    fn index(&self, index: R) -> &Self::Output {
+        &self.raw[index.into_slice_idx()]
     }
 }
 
-impl<I: Idx, T> IndexMut<I> for IndexSlice<I, T> {
+impl<I: Idx, T, R: IntoSliceIdx<I, [T]>> IndexMut<R> for IndexSlice<I, T> {
     #[inline]
-    fn index_mut(&mut self, index: I) -> &mut T {
-        &mut self.raw[index.index()]
+    fn index_mut(&mut self, index: R) -> &mut Self::Output {
+        &mut self.raw[index.into_slice_idx()]
     }
 }
 

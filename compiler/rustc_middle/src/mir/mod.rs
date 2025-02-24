@@ -96,6 +96,17 @@ impl<'tcx> HasLocalDecls<'tcx> for Body<'tcx> {
 }
 
 impl MirPhase {
+    pub fn name(&self) -> &'static str {
+        match *self {
+            MirPhase::Built => "built",
+            MirPhase::Analysis(AnalysisPhase::Initial) => "analysis",
+            MirPhase::Analysis(AnalysisPhase::PostCleanup) => "analysis-post-cleanup",
+            MirPhase::Runtime(RuntimePhase::Initial) => "runtime",
+            MirPhase::Runtime(RuntimePhase::PostCleanup) => "runtime-post-cleanup",
+            MirPhase::Runtime(RuntimePhase::Optimized) => "runtime-optimized",
+        }
+    }
+
     /// Gets the (dialect, phase) index of the current `MirPhase`. Both numbers
     /// are 1-indexed.
     pub fn index(&self) -> (usize, usize) {

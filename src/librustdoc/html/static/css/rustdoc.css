@@ -41,6 +41,7 @@ xmlns="http://www.w3.org/2000/svg" fill="black" height="18px">\
 	--font-family: "Source Serif 4", NanumBarunGothic, serif;
 	--font-family-code: "Source Code Pro", monospace;
 	--line-number-padding: 4px;
+	--line-number-right-margin: 20px;
 	/* scraped examples icons (34x33px) */
 	--prev-arrow-image: url('data:image/svg+xml,<svg width="16" height="16" viewBox="0 0 16 16" \
 	enable-background="new 0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path fill="none" \
@@ -848,22 +849,6 @@ ul.block, .block li, .block ul {
 	border-radius: 6px;
 }
 
-/*
-If the code example line numbers are displayed, there will be a weird radius in the middle from
-both the code example and the line numbers, so we need to remove the radius in this case.
-*/
-.rustdoc .example-wrap > .example-line-numbers,
-.rustdoc .scraped-example .src-line-numbers,
-.rustdoc .scraped-example .src-line-numbers > pre {
-	border-top-right-radius: 0;
-	border-bottom-right-radius: 0;
-}
-.rustdoc .example-wrap > .example-line-numbers + pre,
-.rustdoc .scraped-example .rust {
-	border-top-left-radius: 0;
-	border-bottom-left-radius: 0;
-}
-
 .rustdoc .scraped-example {
 	position: relative;
 }
@@ -908,45 +893,31 @@ both the code example and the line numbers, so we need to remove the radius in t
 	overflow: auto;
 }
 
-.rustdoc .example-wrap pre.example-line-numbers,
-.rustdoc .example-wrap .src-line-numbers {
-	min-width: fit-content; /* prevent collapsing into nothing in truncated scraped examples */
-	flex-grow: 0;
-	text-align: right;
-	-moz-user-select: none;
-	-webkit-user-select: none;
-	-ms-user-select: none;
-	user-select: none;
-	padding: 14px 8px;
-	padding-right: 2px;
-	color: var(--src-line-numbers-span-color);
-}
-
-.example-wrap.digits-1 [data-nosnippet] {
+.example-wrap.digits-1:not(.hide-lines) [data-nosnippet] {
 	width: calc(1ch + var(--line-number-padding) * 2);
 }
-.example-wrap.digits-2 [data-nosnippet] {
+.example-wrap.digits-2:not(.hide-lines) [data-nosnippet] {
 	width: calc(2ch + var(--line-number-padding) * 2);
 }
-.example-wrap.digits-3 [data-nosnippet] {
+.example-wrap.digits-3:not(.hide-lines) [data-nosnippet] {
 	width: calc(3ch + var(--line-number-padding) * 2);
 }
-.example-wrap.digits-4 [data-nosnippet] {
+.example-wrap.digits-4:not(.hide-lines) [data-nosnippet] {
 	width: calc(4ch + var(--line-number-padding) * 2);
 }
-.example-wrap.digits-5 [data-nosnippet] {
+.example-wrap.digits-5:not(.hide-lines) [data-nosnippet] {
 	width: calc(5ch + var(--line-number-padding) * 2);
 }
-.example-wrap.digits-6 [data-nosnippet] {
+.example-wrap.digits-6:not(.hide-lines) [data-nosnippet] {
 	width: calc(6ch + var(--line-number-padding) * 2);
 }
-.example-wrap.digits-7 [data-nosnippet] {
+.example-wrap.digits-7:not(.hide-lines) [data-nosnippet] {
 	width: calc(7ch + var(--line-number-padding) * 2);
 }
-.example-wrap.digits-8 [data-nosnippet] {
+.example-wrap.digits-8:not(.hide-lines) [data-nosnippet] {
 	width: calc(8ch + var(--line-number-padding) * 2);
 }
-.example-wrap.digits-9 [data-nosnippet] {
+.example-wrap.digits-9:not(.hide-lines) [data-nosnippet] {
 	width: calc(9ch + var(--line-number-padding) * 2);
 }
 
@@ -954,18 +925,72 @@ both the code example and the line numbers, so we need to remove the radius in t
 	color: var(--src-line-numbers-span-color);
 	text-align: right;
 	display: inline-block;
-	margin-right: 20px;
+	margin-right: var(--line-number-right-margin);
 	-moz-user-select: none;
 	-webkit-user-select: none;
 	-ms-user-select: none;
 	user-select: none;
-	padding: 0 4px;
+	padding: 0 var(--line-number-padding);
 }
 .example-wrap [data-nosnippet]:target {
 	border-right: none;
 }
 .example-wrap .line-highlighted[data-nosnippet] {
 	background-color: var(--src-line-number-highlighted-background-color);
+}
+:root.word-wrap-source-code .example-wrap [data-nosnippet] {
+	position: absolute;
+	left: 0;
+}
+.word-wrap-source-code .example-wrap pre > code {
+	position: relative;
+	word-break: break-all;
+}
+:root.word-wrap-source-code .example-wrap pre > code {
+	display: block;
+	white-space: pre-wrap;
+}
+:root.word-wrap-source-code .example-wrap pre > code * {
+	word-break: break-all;
+}
+:root.word-wrap-source-code .example-wrap.digits-1 pre > code {
+	padding-left: calc(
+		1ch + var(--line-number-padding) * 2 + var(--line-number-right-margin));
+}
+:root.word-wrap-source-code .example-wrap.digits-2 pre > code {
+	padding-left: calc(
+		2ch + var(--line-number-padding) * 2 + var(--line-number-right-margin));
+}
+:root.word-wrap-source-code .example-wrap.digits-3 pre > code {
+	padding-left: calc(
+		3ch + var(--line-number-padding) * 2 + var(--line-number-right-margin));
+}
+:root.word-wrap-source-code .example-wrap.digits-4 pre > code {
+	padding-left: calc(
+		4ch + var(--line-number-padding) * 2 + var(--line-number-right-margin));
+}
+:root.word-wrap-source-code .example-wrap.digits-5 pre > code {
+	padding-left: calc(
+		5ch + var(--line-number-padding) * 2 + var(--line-number-right-margin));
+}
+:root.word-wrap-source-code .example-wrap.digits-6 pre > code {
+	padding-left: calc(
+		6ch + var(--line-number-padding) * 2 + var(--line-number-right-margin));
+}
+:root.word-wrap-source-code .example-wrap.digits-7 pre > code {
+	padding-left: calc(
+		7ch + var(--line-number-padding) * 2 + var(--line-number-right-margin));
+}
+:root.word-wrap-source-code .example-wrap.digits-8 pre > code {
+	padding-left: calc(
+		8ch + var(--line-number-padding) * 2 + var(--line-number-right-margin));
+}
+:root.word-wrap-source-code .example-wrap.digits-9 pre > code {
+	padding-left: calc(
+		9ch + var(--line-number-padding) * 2 + var(--line-number-right-margin));
+}
+.example-wrap.hide-lines [data-nosnippet] {
+	display: none;
 }
 
 .search-loading {
