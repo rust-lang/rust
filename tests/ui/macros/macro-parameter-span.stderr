@@ -1,6 +1,9 @@
 error[E0425]: cannot find value `x` in this scope
   --> $DIR/macro-parameter-span.rs:11:9
    |
+LL |         $id
+   |         --- within this macro
+...
 LL |         x
    |         ^ not found in this scope
 
