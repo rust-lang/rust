@@ -2,6 +2,7 @@
 // - float structure members are passes in floating point registers
 // (#86163)
 
+//@ add-core-stubs
 //@ assembly-output: emit-asm
 //@ needs-llvm-components: sparc
 //@ compile-flags: --target=sparcv9-sun-solaris -Copt-level=3
@@ -9,11 +10,8 @@
 #![feature(no_core, lang_items)]
 #![no_core]
 
-#[lang = "sized"]
-pub trait Sized {}
-#[lang = "copy"]
-pub trait Copy {}
-impl Copy for f32 {}
+extern crate minicore;
+use minicore::*;
 
 #[repr(C)]
 pub struct Franta {

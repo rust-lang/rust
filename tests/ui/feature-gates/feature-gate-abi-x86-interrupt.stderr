@@ -1,5 +1,5 @@
 error[E0658]: the extern "x86-interrupt" ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi-x86-interrupt.rs:8:8
+  --> $DIR/feature-gate-abi-x86-interrupt.rs:10:8
    |
 LL | extern "x86-interrupt" fn f7() {}
    |        ^^^^^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL | extern "x86-interrupt" fn f7() {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the extern "x86-interrupt" ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi-x86-interrupt.rs:10:12
+  --> $DIR/feature-gate-abi-x86-interrupt.rs:12:12
    |
 LL |     extern "x86-interrupt" fn m7();
    |            ^^^^^^^^^^^^^^^
@@ -19,7 +19,7 @@ LL |     extern "x86-interrupt" fn m7();
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the extern "x86-interrupt" ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi-x86-interrupt.rs:11:12
+  --> $DIR/feature-gate-abi-x86-interrupt.rs:13:12
    |
 LL |     extern "x86-interrupt" fn dm7() {}
    |            ^^^^^^^^^^^^^^^
@@ -29,7 +29,7 @@ LL |     extern "x86-interrupt" fn dm7() {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the extern "x86-interrupt" ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi-x86-interrupt.rs:18:12
+  --> $DIR/feature-gate-abi-x86-interrupt.rs:20:12
    |
 LL |     extern "x86-interrupt" fn m7() {}
    |            ^^^^^^^^^^^^^^^
@@ -39,7 +39,7 @@ LL |     extern "x86-interrupt" fn m7() {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the extern "x86-interrupt" ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi-x86-interrupt.rs:23:12
+  --> $DIR/feature-gate-abi-x86-interrupt.rs:25:12
    |
 LL |     extern "x86-interrupt" fn im7() {}
    |            ^^^^^^^^^^^^^^^
@@ -49,7 +49,7 @@ LL |     extern "x86-interrupt" fn im7() {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the extern "x86-interrupt" ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi-x86-interrupt.rs:26:18
+  --> $DIR/feature-gate-abi-x86-interrupt.rs:28:18
    |
 LL | type A7 = extern "x86-interrupt" fn();
    |                  ^^^^^^^^^^^^^^^
@@ -59,7 +59,7 @@ LL | type A7 = extern "x86-interrupt" fn();
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the extern "x86-interrupt" ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi-x86-interrupt.rs:28:8
+  --> $DIR/feature-gate-abi-x86-interrupt.rs:30:8
    |
 LL | extern "x86-interrupt" {}
    |        ^^^^^^^^^^^^^^^

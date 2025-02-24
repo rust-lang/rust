@@ -1,15 +1,12 @@
+//@ add-core-stubs
 //@ compile-flags: --target aarch64-unknown-none-softfloat -Zmerge-functions=disabled
 //@ needs-llvm-components: aarch64
 #![crate_type = "lib"]
 #![feature(no_core, lang_items)]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
-#[lang = "copy"]
-trait Copy {}
-impl Copy for f32 {}
-impl Copy for f64 {}
+extern crate minicore;
+use minicore::*;
 
 // CHECK: i64 @pass_f64_C(i64 {{[^,]*}})
 #[no_mangle]
