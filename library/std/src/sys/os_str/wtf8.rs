@@ -41,13 +41,13 @@ impl AsInner<Wtf8> for Buf {
 
 impl fmt::Debug for Buf {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(self.as_slice(), f)
+        fmt::Debug::fmt(&self.inner, f)
     }
 }
 
 impl fmt::Display for Buf {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(self.as_slice(), f)
+        fmt::Display::fmt(&self.inner, f)
     }
 }
 
