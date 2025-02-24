@@ -45,6 +45,7 @@ use tracing::{debug, instrument};
 
 use crate::check::intrinsic::intrinsic_operation_unsafety;
 use crate::errors;
+use crate::hir_ty_lowering::errors::assoc_kind_str;
 use crate::hir_ty_lowering::{FeedConstTy, HirTyLowerer, RegionInferReason};
 
 pub(crate) mod dump;
@@ -443,13 +444,14 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
         self.tcx.at(span).type_param_predicates((self.item_def_id, def_id, assoc_name))
     }
 
-    fn lower_assoc_ty(
+    fn lower_assoc_shared(
         &self,
         span: Span,
         item_def_id: DefId,
-        item_segment: &hir::PathSegment<'tcx>,
+        item_segment: &rustc_hir::PathSegment<'tcx>,
         poly_trait_ref: ty::PolyTraitRef<'tcx>,
-    ) -> Ty<'tcx> {
+        kind: ty::AssocKind,
+    ) -> Result<(DefId, ty::GenericArgsRef<'tcx>), ErrorGuaranteed> {
         if let Some(trait_ref) = poly_trait_ref.no_bound_vars() {
             let item_args = self.lowerer().lower_generic_args_of_assoc_item(
                 span,
@@ -457,7 +459,7 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
                 item_segment,
                 trait_ref.args,
             );
-            Ty::new_projection_from_args(self.tcx(), item_def_id, item_args)
+            Ok((item_def_id, item_args))
         } else {
             // There are no late-bound regions; we can just ignore the binder.
             let (mut mpart_sugg, mut inferred_sugg) = (None, None);
@@ -518,16 +520,14 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
                 }
                 _ => {}
             }
-            Ty::new_error(
-                self.tcx(),
-                self.tcx().dcx().emit_err(errors::AssociatedItemTraitUninferredGenericParams {
-                    span,
-                    inferred_sugg,
-                    bound,
-                    mpart_sugg,
-                    what: "type",
-                }),
-            )
+
+            Err(self.tcx().dcx().emit_err(errors::AssociatedItemTraitUninferredGenericParams {
+                span,
+                inferred_sugg,
+                bound,
+                mpart_sugg,
+                what: assoc_kind_str(kind),
+            }))
         }
     }
 
