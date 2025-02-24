@@ -7,15 +7,20 @@
 // See https://github.com/rust-lang/rust/pull/95604
 // See https://github.com/rust-lang/rust/issues/47384
 
-//@ only-linux
-// Reason: differences in object file formats on OSX and Windows
-// causes errors in the llvm_objdump step
+//@ ignore-wasm differences in object file formats causes errors in the llvm_objdump step.
+//@ ignore-windows differences in object file formats causes errors in the llvm_objdump step.
 
-use run_make_support::{dynamic_lib_name, llvm_objdump, llvm_readobj, rustc};
+use run_make_support::{dynamic_lib_name, llvm_objdump, llvm_readobj, rustc, target};
 
 fn main() {
     rustc().crate_type("lib").input("lib.rs").run();
-    rustc().crate_type("cdylib").link_args("-Tlinker.ld").input("main.rs").run();
+    let mut main = rustc();
+    main.crate_type("cdylib");
+    if target().contains("linux") {
+        main.link_args("-Tlinker.ld");
+    }
+    main.input("main.rs").run();
+
     // Ensure `#[used]` and `KEEP`-ed section is there
     llvm_objdump()
         .arg("--full-contents")
