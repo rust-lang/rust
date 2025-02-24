@@ -1,10 +1,10 @@
 use std::ffi::OsStr;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::{env, panic};
 
 use crate::command::{Command, CompletedProcess};
-use crate::util::{handle_failed_output, set_host_rpath};
-use crate::{cwd, env_var, is_windows};
+use crate::util::handle_failed_output;
+use crate::{cwd, env_var};
 
 #[track_caller]
 fn run_common(name: &str, args: Option<&[&str]>) -> Command {
@@ -18,10 +18,11 @@ fn run_common(name: &str, args: Option<&[&str]>) -> Command {
             cmd.arg(arg);
         }
     }
+
     cmd.env(&ld_lib_path_envvar, {
         let mut paths = vec![];
         paths.push(cwd());
-        for p in env::split_paths(&env_var("TARGET_RPATH_ENV")) {
+        for p in env::split_paths(&env_var("TARGET_EXE_DYLIB_PATH")) {
             paths.push(p.to_path_buf());
         }
         for p in env::split_paths(&env_var(&ld_lib_path_envvar)) {
@@ -30,15 +31,6 @@ fn run_common(name: &str, args: Option<&[&str]>) -> Command {
         env::join_paths(paths.iter()).unwrap()
     });
     cmd.env("LC_ALL", "C"); // force english locale
-
-    if is_windows() {
-        let mut paths = vec![];
-        for p in env::split_paths(&std::env::var("PATH").unwrap_or(String::new())) {
-            paths.push(p.to_path_buf());
-        }
-        paths.push(Path::new(&env_var("TARGET_RPATH_DIR")).to_path_buf());
-        cmd.env("PATH", env::join_paths(paths.iter()).unwrap());
-    }
 
     cmd
 }
@@ -84,7 +76,6 @@ pub fn run_fail(name: &str) -> CompletedProcess {
 #[track_caller]
 pub fn cmd<S: AsRef<OsStr>>(program: S) -> Command {
     let mut command = Command::new(program);
-    set_host_rpath(&mut command);
     command.env("LC_ALL", "C"); // force english locale
     command
 }
