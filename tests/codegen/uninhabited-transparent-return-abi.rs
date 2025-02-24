@@ -1,4 +1,7 @@
 //@ compile-flags: -Copt-level=3
+//@ revisions: LLVM20 LLVM21
+//@[LLVM20] exact-llvm-major-version: 20
+//@[LLVM21] min-llvm-version: 21
 
 // See https://github.com/rust-lang/rust/issues/135802
 
@@ -24,7 +27,8 @@ extern "Rust" {
 pub fn test_uninhabited_ret_by_ref() {
     // CHECK: %_1 = alloca [24 x i8], align {{8|4}}
     // CHECK-NEXT: call void @llvm.lifetime.start.p0(i64 24, ptr nonnull %_1)
-    // CHECK-NEXT: call void @opaque(ptr noalias nocapture noundef nonnull sret([24 x i8]) align {{8|4}} dereferenceable(24) %_1) #2
+    // LLVM20-NEXT: call void @opaque(ptr noalias nocapture noundef nonnull sret([24 x i8]) align {{8|4}} dereferenceable(24) %_1) #2
+    // LLVM21-NEXT: call void @opaque(ptr noalias noundef nonnull sret([24 x i8]) align {{8|4}} captures(none) dereferenceable(24) %_1) #2
     // CHECK-NEXT: unreachable
     unsafe {
         opaque();
@@ -36,7 +40,8 @@ pub fn test_uninhabited_ret_by_ref() {
 pub fn test_uninhabited_ret_by_ref_with_arg(rsi: u32) {
     // CHECK: %_2 = alloca [24 x i8], align {{8|4}}
     // CHECK-NEXT: call void @llvm.lifetime.start.p0(i64 24, ptr nonnull %_2)
-    // CHECK-NEXT: call void @opaque_with_arg(ptr noalias nocapture noundef nonnull sret([24 x i8]) align {{8|4}} dereferenceable(24) %_2, i32 noundef %rsi) #2
+    // LLVM20-NEXT: call void @opaque_with_arg(ptr noalias nocapture noundef nonnull sret([24 x i8]) align {{8|4}} dereferenceable(24) %_2, i32 noundef %rsi) #2
+    // LLVM21-NEXT: call void @opaque_with_arg(ptr noalias noundef nonnull sret([24 x i8]) align {{8|4}} captures(none) dereferenceable(24) %_2, i32 noundef %rsi) #2
     // CHECK-NEXT: unreachable
     unsafe {
         opaque_with_arg(rsi);
