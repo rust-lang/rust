@@ -1174,9 +1174,15 @@ pub fn rustc_cargo(
     // We want to link against registerEnzyme and in the future we want to use additional
     // functionality from Enzyme core. For that we need to link against Enzyme.
     if builder.config.llvm_enzyme {
-        let llvm_config = builder.llvm_config(builder.config.build).unwrap();
-        let llvm_version_major = llvm::get_llvm_version_major(builder, &llvm_config);
-        cargo.rustflag("-l").rustflag(&format!("Enzyme-{llvm_version_major}"));
+        let arch = builder.build.build;
+        let enzyme_dir = builder.build.out.join(arch).join("enzyme").join("lib");
+        cargo.rustflag("-L").rustflag(enzyme_dir.to_str().expect("Invalid path"));
+
+        if !builder.config.dry_run() {
+            let llvm_config = builder.llvm_config(builder.config.build).unwrap();
+            let llvm_version_major = llvm::get_llvm_version_major(builder, &llvm_config);
+            cargo.rustflag("-l").rustflag(&format!("Enzyme-{llvm_version_major}"));
+        }
     }
 
     // Building with protected visibility reduces the number of dynamic relocations needed, giving
@@ -1977,13 +1983,14 @@ impl Step for Assemble {
         let maybe_install_llvm_bitcode_linker = |compiler| {
             if builder.config.llvm_bitcode_linker_enabled {
                 trace!("llvm-bitcode-linker enabled, installing");
-                let src_path = builder.ensure(crate::core::build_steps::tool::LlvmBitcodeLinker {
-                    compiler,
-                    target: target_compiler.host,
-                    extra_features: vec![],
-                });
+                let llvm_bitcode_linker =
+                    builder.ensure(crate::core::build_steps::tool::LlvmBitcodeLinker {
+                        compiler,
+                        target: target_compiler.host,
+                        extra_features: vec![],
+                    });
                 let tool_exe = exe("llvm-bitcode-linker", target_compiler.host);
-                builder.copy_link(&src_path, &libdir_bin.join(tool_exe));
+                builder.copy_link(&llvm_bitcode_linker.tool_path, &libdir_bin.join(tool_exe));
             }
         };
 
@@ -2028,16 +2035,20 @@ impl Step for Assemble {
         let mut build_compiler = builder.compiler(target_compiler.stage - 1, builder.config.build);
 
         // Build enzyme
-        if builder.config.llvm_enzyme {
+        if builder.config.llvm_enzyme && !builder.config.dry_run() {
             debug!("`llvm_enzyme` requested");
             let enzyme_install = builder.ensure(llvm::Enzyme { target: build_compiler.host });
+            let llvm_config = builder.llvm_config(builder.config.build).unwrap();
+            let llvm_version_major = llvm::get_llvm_version_major(builder, &llvm_config);
             let lib_ext = std::env::consts::DLL_EXTENSION;
-            let src_lib = enzyme_install.join("build/Enzyme/libEnzyme-19").with_extension(lib_ext);
+            let libenzyme = format!("libEnzyme-{llvm_version_major}");
+            let src_lib =
+                enzyme_install.join("build/Enzyme").join(&libenzyme).with_extension(lib_ext);
             let libdir = builder.sysroot_target_libdir(build_compiler, build_compiler.host);
             let target_libdir =
                 builder.sysroot_target_libdir(target_compiler, target_compiler.host);
-            let dst_lib = libdir.join("libEnzyme-19").with_extension(lib_ext);
-            let target_dst_lib = target_libdir.join("libEnzyme-19").with_extension(lib_ext);
+            let dst_lib = libdir.join(&libenzyme).with_extension(lib_ext);
+            let target_dst_lib = target_libdir.join(&libenzyme).with_extension(lib_ext);
             builder.copy_link(&src_lib, &dst_lib);
             builder.copy_link(&src_lib, &target_dst_lib);
         }
@@ -2171,14 +2182,13 @@ impl Step for Assemble {
         // logic to create the final binary. This is used by the
         // `wasm32-wasip2` target of Rust.
         if builder.tool_enabled("wasm-component-ld") {
-            let wasm_component_ld_exe =
-                builder.ensure(crate::core::build_steps::tool::WasmComponentLd {
-                    compiler: build_compiler,
-                    target: target_compiler.host,
-                });
+            let wasm_component = builder.ensure(crate::core::build_steps::tool::WasmComponentLd {
+                compiler: build_compiler,
+                target: target_compiler.host,
+            });
             builder.copy_link(
-                &wasm_component_ld_exe,
-                &libdir_bin.join(wasm_component_ld_exe.file_name().unwrap()),
+                &wasm_component.tool_path,
+                &libdir_bin.join(wasm_component.tool_path.file_name().unwrap()),
             );
         }
 

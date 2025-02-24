@@ -1220,7 +1220,7 @@ pub struct Resolver<'ra, 'tcx> {
     effective_visibilities: EffectiveVisibilities,
     doc_link_resolutions: FxIndexMap<LocalDefId, DocLinkResMap>,
     doc_link_traits_in_scope: FxIndexMap<LocalDefId, Vec<DefId>>,
-    all_macro_rules: FxHashMap<Symbol, Res>,
+    all_macro_rules: FxHashSet<Symbol>,
 
     /// Invocation ids of all glob delegations.
     glob_delegation_invoc_ids: FxHashSet<LocalExpnId>,

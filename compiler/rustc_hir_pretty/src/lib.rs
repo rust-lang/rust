@@ -693,7 +693,7 @@ impl<'a> State<'a> {
                 }
                 self.bclose(item.span);
             }
-            hir::ItemKind::GlobalAsm(asm) => {
+            hir::ItemKind::GlobalAsm { asm, .. } => {
                 self.head("global_asm!");
                 self.print_inline_asm(asm);
                 self.end()
@@ -1432,10 +1432,10 @@ impl<'a> State<'a> {
                     s.space();
                     s.print_anon_const(anon_const);
                 }
-                hir::InlineAsmOperand::SymFn { ref anon_const } => {
+                hir::InlineAsmOperand::SymFn { ref expr } => {
                     s.word("sym_fn");
                     s.space();
-                    s.print_anon_const(anon_const);
+                    s.print_expr(expr);
                 }
                 hir::InlineAsmOperand::SymStatic { ref path, def_id: _ } => {
                     s.word("sym_static");
@@ -1857,7 +1857,7 @@ impl<'a> State<'a> {
                 self.word_space("=");
                 match term {
                     Term::Ty(ty) => self.print_type(ty),
-                    Term::Const(ref c) => self.print_const_arg(c),
+                    Term::Const(c) => self.print_const_arg(c),
                 }
             }
             hir::AssocItemConstraintKind::Bound { bounds } => {

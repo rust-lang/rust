@@ -4,9 +4,7 @@ use rustc_abi::{BackendRepr, ExternAbi, HasDataLayout, Reg, WrappingRange};
 use rustc_ast as ast;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir::lang_items::LangItem;
-use rustc_middle::mir::{
-    self, AssertKind, BasicBlock, InlineAsmMacro, SwitchTargets, UnwindTerminateReason,
-};
+use rustc_middle::mir::{self, AssertKind, InlineAsmMacro, SwitchTargets, UnwindTerminateReason};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, ValidityRequirement};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Instance, Ty};
@@ -722,14 +720,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // Put together the arguments to the panic entry point.
         let (lang_item, args) = match msg {
-            AssertKind::BoundsCheck { ref len, ref index } => {
+            AssertKind::BoundsCheck { len, index } => {
                 let len = self.codegen_operand(bx, len).immediate();
                 let index = self.codegen_operand(bx, index).immediate();
                 // It's `fn panic_bounds_check(index: usize, len: usize)`,
                 // and `#[track_caller]` adds an implicit third argument.
                 (LangItem::PanicBoundsCheck, vec![index, len, location])
             }
-            AssertKind::MisalignedPointerDereference { ref required, ref found } => {
+            AssertKind::MisalignedPointerDereference { required, found } => {
                 let required = self.codegen_operand(bx, required).immediate();
                 let found = self.codegen_operand(bx, found).immediate();
                 // It's `fn panic_misaligned_pointer_dereference(required: usize, found: usize)`,
@@ -942,7 +940,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     &fn_abi.ret,
                     &mut llargs,
                     Some(intrinsic),
-                    target,
                 );
                 let dest = match ret_dest {
                     _ if fn_abi.ret.is_indirect() => llargs[0],
@@ -998,23 +995,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         };
 
         let mut llargs = Vec::with_capacity(arg_count);
-        let destination = target.as_ref().map(|&target| {
-            (
-                self.make_return_dest(
-                    bx,
-                    destination,
-                    &fn_abi.ret,
-                    &mut llargs,
-                    None,
-                    Some(target),
-                ),
-                target,
-            )
-        });
+
+        // We still need to call `make_return_dest` even if there's no `target`, since
+        // `fn_abi.ret` could be `PassMode::Indirect`, even if it is uninhabited,
+        // and `make_return_dest` adds the return-place indirect pointer to `llargs`.
+        let return_dest = self.make_return_dest(bx, destination, &fn_abi.ret, &mut llargs, None);
+        let destination = target.map(|target| (return_dest, target));
 
         // Split the rust-call tupled arguments off.
-        let (first_args, untuple) = if abi == ExternAbi::RustCall && !args.is_empty() {
-            let (tup, args) = args.split_last().unwrap();
+        let (first_args, untuple) = if abi == ExternAbi::RustCall
+            && let Some((tup, args)) = args.split_last()
+        {
             (args, Some(tup))
         } else {
             (args, None)
@@ -1040,7 +1031,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             let (idx, _) = op.layout.non_1zst_field(bx).expect(
                                 "not exactly one non-1-ZST field in a `DispatchFromDyn` type",
                             );
-                            op = op.extract_field(bx, idx);
+                            op = op.extract_field(self, bx, idx);
                         }
 
                         // Now that we have `*dyn Trait` or `&dyn Trait`, split it up into its
@@ -1072,7 +1063,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             let (idx, _) = op.layout.non_1zst_field(bx).expect(
                                 "not exactly one non-1-ZST field in a `DispatchFromDyn` type",
                             );
-                            op = op.extract_field(bx, idx);
+                            op = op.extract_field(self, bx, idx);
                         }
 
                         // Make sure that we've actually unwrapped the rcvr down
@@ -1572,9 +1563,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     if scalar.is_bool() {
                         bx.range_metadata(llval, WrappingRange { start: 0, end: 1 });
                     }
+                    // We store bools as `i8` so we need to truncate to `i1`.
+                    llval = bx.to_immediate_scalar(llval, scalar);
                 }
-                // We store bools as `i8` so we need to truncate to `i1`.
-                llval = bx.to_immediate(llval, arg.layout);
             }
         }
 
@@ -1604,7 +1595,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         } else {
             // If the tuple is immediate, the elements are as well.
             for i in 0..tuple.layout.fields.count() {
-                let op = tuple.extract_field(bx, i);
+                let op = tuple.extract_field(self, bx, i);
                 self.codegen_argument(bx, op, llargs, &args[i]);
             }
         }
@@ -1813,11 +1804,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         fn_ret: &ArgAbi<'tcx, Ty<'tcx>>,
         llargs: &mut Vec<Bx::Value>,
         intrinsic: Option<ty::IntrinsicDef>,
-        target: Option<BasicBlock>,
     ) -> ReturnDest<'tcx, Bx::Value> {
-        if target.is_none() {
-            return ReturnDest::Nothing;
-        }
         // If the return is ignored, we can just return a do-nothing `ReturnDest`.
         if fn_ret.is_ignore() {
             return ReturnDest::Nothing;

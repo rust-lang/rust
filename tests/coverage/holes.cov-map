@@ -1,52 +1,57 @@
 Function name: <holes::main::MyStruct>::_method (unused)
-Raw bytes (9): 0x[01, 01, 00, 01, 00, 25, 09, 00, 1d]
+Raw bytes (9): 0x[01, 01, 00, 01, 00, 2b, 09, 00, 1d]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 1
-- Code(Zero) at (prev + 37, 9) to (start + 0, 29)
+- Code(Zero) at (prev + 43, 9) to (start + 0, 29)
 Highest counter ID seen: (none)
 
 Function name: holes::main
-Raw bytes (44): 0x[01, 01, 00, 08, 01, 08, 01, 06, 11, 01, 0f, 05, 00, 12, 01, 04, 05, 00, 12, 01, 07, 05, 00, 12, 01, 06, 05, 00, 12, 01, 06, 05, 03, 0f, 01, 0a, 05, 03, 0f, 01, 0a, 05, 01, 02]
+Raw bytes (69): 0x[01, 01, 00, 0d, 01, 08, 01, 01, 12, 01, 05, 05, 00, 12, 01, 07, 09, 00, 11, 01, 09, 05, 00, 12, 01, 04, 05, 00, 12, 01, 07, 05, 00, 12, 01, 06, 05, 00, 12, 01, 04, 05, 00, 12, 01, 04, 05, 00, 12, 01, 06, 05, 03, 0f, 01, 0a, 05, 03, 0f, 01, 0a, 05, 0c, 0d, 01, 0f, 0e, 05, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
-Number of file 0 mappings: 8
-- Code(Counter(0)) at (prev + 8, 1) to (start + 6, 17)
-- Code(Counter(0)) at (prev + 15, 5) to (start + 0, 18)
+Number of file 0 mappings: 13
+- Code(Counter(0)) at (prev + 8, 1) to (start + 1, 18)
+- Code(Counter(0)) at (prev + 5, 5) to (start + 0, 18)
+- Code(Counter(0)) at (prev + 7, 9) to (start + 0, 17)
+- Code(Counter(0)) at (prev + 9, 5) to (start + 0, 18)
 - Code(Counter(0)) at (prev + 4, 5) to (start + 0, 18)
 - Code(Counter(0)) at (prev + 7, 5) to (start + 0, 18)
 - Code(Counter(0)) at (prev + 6, 5) to (start + 0, 18)
+- Code(Counter(0)) at (prev + 4, 5) to (start + 0, 18)
+- Code(Counter(0)) at (prev + 4, 5) to (start + 0, 18)
 - Code(Counter(0)) at (prev + 6, 5) to (start + 3, 15)
 - Code(Counter(0)) at (prev + 10, 5) to (start + 3, 15)
-- Code(Counter(0)) at (prev + 10, 5) to (start + 1, 2)
+- Code(Counter(0)) at (prev + 10, 5) to (start + 12, 13)
+- Code(Counter(0)) at (prev + 15, 14) to (start + 5, 2)
 Highest counter ID seen: c0
 
 Function name: holes::main::_unused_fn (unused)
-Raw bytes (9): 0x[01, 01, 00, 01, 00, 19, 05, 00, 17]
+Raw bytes (9): 0x[01, 01, 00, 01, 00, 1f, 05, 00, 17]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 1
-- Code(Zero) at (prev + 25, 5) to (start + 0, 23)
+- Code(Zero) at (prev + 31, 5) to (start + 0, 23)
 Highest counter ID seen: (none)
 
 Function name: holes::main::{closure#0} (unused)
-Raw bytes (9): 0x[01, 01, 00, 01, 00, 12, 09, 02, 0a]
+Raw bytes (9): 0x[01, 01, 00, 01, 00, 18, 09, 02, 0a]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 1
-- Code(Zero) at (prev + 18, 9) to (start + 2, 10)
+- Code(Zero) at (prev + 24, 9) to (start + 2, 10)
 Highest counter ID seen: (none)
 
 Function name: holes::main::{closure#1} (unused)
-Raw bytes (9): 0x[01, 01, 00, 01, 00, 3d, 09, 02, 0a]
+Raw bytes (9): 0x[01, 01, 00, 01, 00, 4b, 09, 02, 0a]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 1
-- Code(Zero) at (prev + 61, 9) to (start + 2, 10)
+- Code(Zero) at (prev + 75, 9) to (start + 2, 10)
 Highest counter ID seen: (none)
 

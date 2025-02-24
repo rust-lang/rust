@@ -232,7 +232,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         f: F,
     ) -> Result<(), PrintError>
     where
-        T: Print<'tcx, Self> + TypeFoldable<TyCtxt<'tcx>>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         f(value.as_ref().skip_binder(), self)
     }
@@ -1056,7 +1056,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         // Insert parenthesis around (Fn(A, B) -> C) if the opaque ty has more than one other trait
         let paren_needed = fn_traits.len() > 1 || traits.len() > 0 || !has_sized_bound;
 
-        for ((bound_args, is_async), entry) in fn_traits {
+        for ((bound_args_and_self_ty, is_async), entry) in fn_traits {
             write!(self, "{}", if first { "" } else { " + " })?;
             write!(self, "{}", if paren_needed { "(" } else { "" })?;
 
@@ -1067,7 +1067,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             };
 
             if let Some(return_ty) = entry.return_ty {
-                self.wrap_binder(&bound_args, |args, cx| {
+                self.wrap_binder(&bound_args_and_self_ty, |(args, _), cx| {
                     define_scoped_cx!(cx);
                     p!(write("{}", tcx.item_name(trait_def_id)));
                     p!("(");
@@ -1093,9 +1093,13 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             } else {
                 // Otherwise, render this like a regular trait.
                 traits.insert(
-                    bound_args.map_bound(|args| ty::TraitPredicate {
+                    bound_args_and_self_ty.map_bound(|(args, self_ty)| ty::TraitPredicate {
                         polarity: ty::PredicatePolarity::Positive,
-                        trait_ref: ty::TraitRef::new(tcx, trait_def_id, [Ty::new_tup(tcx, args)]),
+                        trait_ref: ty::TraitRef::new(
+                            tcx,
+                            trait_def_id,
+                            [self_ty, Ty::new_tup(tcx, args)],
+                        ),
                     }),
                     FxIndexMap::default(),
                 );
@@ -1229,7 +1233,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             FxIndexMap<DefId, ty::Binder<'tcx, Term<'tcx>>>,
         >,
         fn_traits: &mut FxIndexMap<
-            (ty::Binder<'tcx, &'tcx ty::List<Ty<'tcx>>>, bool),
+            (ty::Binder<'tcx, (&'tcx ty::List<Ty<'tcx>>, Ty<'tcx>)>, bool),
             OpaqueFnEntry<'tcx>,
         >,
     ) {
@@ -1249,7 +1253,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             && let ty::Tuple(types) = *trait_pred.skip_binder().trait_ref.args.type_at(1).kind()
         {
             let entry = fn_traits
-                .entry((trait_pred.rebind(types), is_async))
+                .entry((trait_pred.rebind((types, trait_pred.skip_binder().self_ty())), is_async))
                 .or_insert_with(|| OpaqueFnEntry { kind, return_ty: None });
             if kind.extends(entry.kind) {
                 entry.kind = kind;
@@ -2379,7 +2383,7 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
         f: C,
     ) -> Result<(), PrintError>
     where
-        T: Print<'tcx, Self> + TypeFoldable<TyCtxt<'tcx>>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         self.pretty_wrap_binder(value, f)
     }
@@ -2633,7 +2637,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
         value: &ty::Binder<'tcx, T>,
     ) -> Result<(T, UnordMap<ty::BoundRegion, ty::Region<'tcx>>), fmt::Error>
     where
-        T: Print<'tcx, Self> + TypeFoldable<TyCtxt<'tcx>>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         fn name_by_region_index(
             index: usize,
@@ -2814,7 +2818,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
         f: C,
     ) -> Result<(), fmt::Error>
     where
-        T: Print<'tcx, Self> + TypeFoldable<TyCtxt<'tcx>>,
+        T: TypeFoldable<TyCtxt<'tcx>>,
     {
         let old_region_index = self.region_index;
         let (new_value, _) = self.name_all_regions(value)?;

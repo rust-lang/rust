@@ -196,7 +196,7 @@ fn own_existential_vtable_entries(tcx: TyCtxt<'_>, trait_def_id: DefId) -> &[Def
 fn own_existential_vtable_entries_iter(
     tcx: TyCtxt<'_>,
     trait_def_id: DefId,
-) -> impl Iterator<Item = DefId> + '_ {
+) -> impl Iterator<Item = DefId> {
     let trait_methods = tcx
         .associated_items(trait_def_id)
         .in_definition_order()

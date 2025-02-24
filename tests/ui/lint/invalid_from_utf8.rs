@@ -1,7 +1,6 @@
 //@ check-pass
 
 #![feature(concat_bytes)]
-#![feature(inherent_str_constructors)]
 #![warn(invalid_from_utf8_unchecked)]
 #![warn(invalid_from_utf8)]
 

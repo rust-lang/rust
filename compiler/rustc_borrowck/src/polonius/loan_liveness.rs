@@ -175,7 +175,7 @@ impl LocalizedConstraintGraph {
     }
 
     /// Returns the outgoing edges of a given node, not its transitive closure.
-    fn outgoing_edges(&self, node: LocalizedNode) -> impl Iterator<Item = LocalizedNode> + use<'_> {
+    fn outgoing_edges(&self, node: LocalizedNode) -> impl Iterator<Item = LocalizedNode> {
         // The outgoing edges are:
         // - the physical edges present at this node,
         // - the materialized logical edges that exist virtually at all points for this node's

@@ -93,7 +93,7 @@ impl DefPathTable {
 
     pub fn enumerated_keys_and_path_hashes(
         &self,
-    ) -> impl Iterator<Item = (DefIndex, &DefKey, DefPathHash)> + ExactSizeIterator + '_ {
+    ) -> impl Iterator<Item = (DefIndex, &DefKey, DefPathHash)> + ExactSizeIterator {
         self.index_to_key
             .iter_enumerated()
             .map(move |(index, key)| (index, key, self.def_path_hash(index)))

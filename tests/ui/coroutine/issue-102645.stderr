@@ -8,9 +8,8 @@ note: method defined here
   --> $SRC_DIR/core/src/ops/coroutine.rs:LL:COL
 help: provide the argument
    |
-LL -     Pin::new(&mut b).resume();
-LL +     Pin::new(&mut b).resume(());
-   |
+LL |     Pin::new(&mut b).resume(());
+   |                             ++
 
 error: aborting due to 1 previous error
 

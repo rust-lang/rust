@@ -36,12 +36,12 @@ pub(super) fn type_visitable_derive(
     s.add_bounds(synstructure::AddBounds::Generics);
     let body_visit = s.each(|bind| {
         quote! {
-            match ::rustc_ast_ir::visit::VisitorResult::branch(
+            match ::rustc_middle::ty::visit::VisitorResult::branch(
                 ::rustc_middle::ty::visit::TypeVisitable::visit_with(#bind, __visitor)
             ) {
                 ::core::ops::ControlFlow::Continue(()) => {},
                 ::core::ops::ControlFlow::Break(r) => {
-                    return ::rustc_ast_ir::visit::VisitorResult::from_residual(r);
+                    return ::rustc_middle::ty::visit::VisitorResult::from_residual(r);
                 },
             }
         }
@@ -56,7 +56,7 @@ pub(super) fn type_visitable_derive(
                 __visitor: &mut __V
             ) -> __V::Result {
                 match *self { #body_visit }
-                <__V::Result as ::rustc_ast_ir::visit::VisitorResult>::output()
+                <__V::Result as ::rustc_middle::ty::visit::VisitorResult>::output()
             }
         },
     )

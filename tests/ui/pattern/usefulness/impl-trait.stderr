@@ -36,7 +36,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
    |
 LL ~     match return_never_rpit(x) {
 LL +         _ => todo!(),
-LL +     }
+LL ~     }
    |
 
 error: unreachable pattern
@@ -118,7 +118,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
    |
 LL ~     match return_never_tait(x) {
 LL +         _ => todo!(),
-LL +     }
+LL ~     }
    |
 
 error: unreachable pattern

@@ -167,9 +167,7 @@ a new unstable feature:
 
 1. Prevent usage of the new feature unless the feature gate is set.
    You can check it in most places in the compiler using the
-   expression `tcx.features().$feature_name` (or
-   `sess.features_untracked().$feature_name` if the
-   tcx is unavailable)
+   expression `tcx.features().$feature_name()`
 
     If the feature gate is not set, you should either maintain
     the pre-feature behavior or raise an error, depending on

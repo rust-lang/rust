@@ -6,9 +6,8 @@ LL | extern crate self;
    |
 help: rename the `self` crate to be able to import it
    |
-LL - extern crate self;
-LL + extern crate self as name;
-   |
+LL | extern crate self as name;
+   |                   +++++++
 
 error: `#[macro_use]` is not supported on `extern crate self`
   --> $DIR/extern-crate-self-fail.rs:3:1

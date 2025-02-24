@@ -1558,8 +1558,11 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             return true;
         };
 
+        if layout.uninhabited {
+            return true;
+        }
+
         match layout.backend_repr {
-            BackendRepr::Uninhabited => true,
             BackendRepr::Scalar(a) => !a.is_always_valid(&self.ecx),
             BackendRepr::ScalarPair(a, b) => {
                 !a.is_always_valid(&self.ecx) || !b.is_always_valid(&self.ecx)

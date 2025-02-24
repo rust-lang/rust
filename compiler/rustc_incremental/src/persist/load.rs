@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::unord::UnordMap;
+use rustc_hashes::Hash64;
 use rustc_middle::dep_graph::{DepGraph, DepsType, SerializedDepGraph, WorkProductMap};
 use rustc_middle::query::on_disk_cache::OnDiskCache;
 use rustc_serialize::Decodable;
@@ -154,7 +155,7 @@ fn load_dep_graph(sess: &Session) -> LoadResult<(Arc<SerializedDepGraph>, WorkPr
                 sess.dcx().emit_warn(errors::CorruptFile { path: &path });
                 return LoadResult::DataOutOfDate;
             };
-            let prev_commandline_args_hash = u64::decode(&mut decoder);
+            let prev_commandline_args_hash = Hash64::decode(&mut decoder);
 
             if prev_commandline_args_hash != expected_hash {
                 if sess.opts.unstable_opts.incremental_info {

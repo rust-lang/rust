@@ -692,9 +692,12 @@ struct LLVMRustSanitizerOptions {
   bool SanitizeKernelAddressRecover;
 };
 
-// This symbol won't be available or used when Enzyme is not enabled
+// This symbol won't be available or used when Enzyme is not enabled.
+// Always set AugmentPassBuilder to true, since it registers optimizations which
+// will improve the performance for Enzyme.
 #ifdef ENZYME
-extern "C" void registerEnzyme(llvm::PassBuilder &PB);
+extern "C" void registerEnzymeAndPassPipeline(llvm::PassBuilder &PB,
+                                              /* augmentPassBuilder */ bool);
 #endif
 
 extern "C" LLVMRustResult LLVMRustOptimize(
@@ -1023,7 +1026,7 @@ extern "C" LLVMRustResult LLVMRustOptimize(
   // now load "-enzyme" pass:
 #ifdef ENZYME
   if (RunEnzyme) {
-    registerEnzyme(PB);
+    registerEnzymeAndPassPipeline(PB, true);
     if (auto Err = PB.parsePassPipeline(MPM, "enzyme")) {
       std::string ErrMsg = toString(std::move(Err));
       LLVMRustSetLastError(ErrMsg.c_str());

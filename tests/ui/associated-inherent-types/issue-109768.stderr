@@ -43,9 +43,8 @@ LL | struct Wrapper<T>(T);
    |        ^^^^^^^
 help: provide the argument
    |
-LL -     const WRAPPED_ASSOC_3: Wrapper<Self::AssocType3> = Wrapper();
-LL +     const WRAPPED_ASSOC_3: Wrapper<Self::AssocType3> = Wrapper(/* value */);
-   |
+LL |     const WRAPPED_ASSOC_3: Wrapper<Self::AssocType3> = Wrapper(/* value */);
+   |                                                                +++++++++++
 
 error: aborting due to 4 previous errors
 

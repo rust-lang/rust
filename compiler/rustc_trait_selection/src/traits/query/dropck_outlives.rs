@@ -2,12 +2,13 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_infer::traits::query::type_op::DropckOutlives;
 use rustc_middle::traits::query::{DropckConstraint, DropckOutlivesResult};
 use rustc_middle::ty::{self, EarlyBinder, ParamEnvAnd, Ty, TyCtxt};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::Span;
 use tracing::{debug, instrument};
 
+use crate::solve::NextSolverError;
 use crate::traits::query::NoSolution;
 use crate::traits::query::normalize::QueryNormalizeExt;
-use crate::traits::{Normalized, ObligationCause, ObligationCtxt};
+use crate::traits::{FromSolverError, Normalized, ObligationCause, ObligationCtxt};
 
 /// This returns true if the type `ty` is "trivial" for
 /// dropck-outlives -- that is, if it doesn't require any types to
@@ -93,6 +94,20 @@ pub fn compute_dropck_outlives_inner<'tcx>(
     goal: ParamEnvAnd<'tcx, DropckOutlives<'tcx>>,
     span: Span,
 ) -> Result<DropckOutlivesResult<'tcx>, NoSolution> {
+    match compute_dropck_outlives_with_errors(ocx, goal, span) {
+        Ok(r) => Ok(r),
+        Err(_) => Err(NoSolution),
+    }
+}
+
+pub fn compute_dropck_outlives_with_errors<'tcx, E>(
+    ocx: &ObligationCtxt<'_, 'tcx, E>,
+    goal: ParamEnvAnd<'tcx, DropckOutlives<'tcx>>,
+    span: Span,
+) -> Result<DropckOutlivesResult<'tcx>, Vec<E>>
+where
+    E: FromSolverError<'tcx, NextSolverError<'tcx>>,
+{
     let tcx = ocx.infcx.tcx;
     let ParamEnvAnd { param_env, value: DropckOutlives { dropped_ty } } = goal;
 
@@ -149,11 +164,11 @@ pub fn compute_dropck_outlives_inner<'tcx>(
         dtorck_constraint_for_ty_inner(
             tcx,
             ocx.infcx.typing_env(param_env),
-            DUMMY_SP,
+            span,
             depth,
             ty,
             &mut constraints,
-        )?;
+        );
 
         // "outlives" represent types/regions that may be touched
         // by a destructor.
@@ -173,11 +188,20 @@ pub fn compute_dropck_outlives_inner<'tcx>(
         // do not themselves define a destructor", more or less. We have
         // to push them onto the stack to be expanded.
         for ty in constraints.dtorck_types.drain(..) {
-            let Normalized { value: ty, obligations } =
-                ocx.infcx.at(&cause, param_env).query_normalize(ty)?;
-            ocx.register_obligations(obligations);
+            let ty = if let Ok(Normalized { value: ty, obligations }) =
+                ocx.infcx.at(&cause, param_env).query_normalize(ty)
+            {
+                ocx.register_obligations(obligations);
 
-            debug!("dropck_outlives: ty from dtorck_types = {:?}", ty);
+                debug!("dropck_outlives: ty from dtorck_types = {:?}", ty);
+                ty
+            } else {
+                ocx.deeply_normalize(&cause, param_env, ty)?;
+
+                let errors = ocx.select_where_possible();
+                debug!("normalize errors: {ty} ~> {errors:#?}");
+                return Err(errors);
+            };
 
             match ty.kind() {
                 // All parameters live for the duration of the
@@ -213,14 +237,14 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
     depth: usize,
     ty: Ty<'tcx>,
     constraints: &mut DropckConstraint<'tcx>,
-) -> Result<(), NoSolution> {
+) {
     if !tcx.recursion_limit().value_within_limit(depth) {
         constraints.overflows.push(ty);
-        return Ok(());
+        return;
     }
 
     if trivial_dropck_outlives(tcx, ty) {
-        return Ok(());
+        return;
     }
 
     match ty.kind() {
@@ -244,22 +268,20 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
             // single-element containers, behave like their element
             rustc_data_structures::stack::ensure_sufficient_stack(|| {
                 dtorck_constraint_for_ty_inner(tcx, typing_env, span, depth + 1, *ety, constraints)
-            })?;
+            });
         }
 
         ty::Tuple(tys) => rustc_data_structures::stack::ensure_sufficient_stack(|| {
             for ty in tys.iter() {
-                dtorck_constraint_for_ty_inner(tcx, typing_env, span, depth + 1, ty, constraints)?;
+                dtorck_constraint_for_ty_inner(tcx, typing_env, span, depth + 1, ty, constraints);
             }
-            Ok::<_, NoSolution>(())
-        })?,
+        }),
 
         ty::Closure(_, args) => rustc_data_structures::stack::ensure_sufficient_stack(|| {
             for ty in args.as_closure().upvar_tys() {
-                dtorck_constraint_for_ty_inner(tcx, typing_env, span, depth + 1, ty, constraints)?;
+                dtorck_constraint_for_ty_inner(tcx, typing_env, span, depth + 1, ty, constraints);
             }
-            Ok::<_, NoSolution>(())
-        })?,
+        }),
 
         ty::CoroutineClosure(_, args) => {
             rustc_data_structures::stack::ensure_sufficient_stack(|| {
@@ -271,10 +293,9 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
                         depth + 1,
                         ty,
                         constraints,
-                    )?;
+                    );
                 }
-                Ok::<_, NoSolution>(())
-            })?
+            })
         }
 
         ty::Coroutine(_, args) => {
@@ -313,7 +334,7 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
 
         ty::Adt(def, args) => {
             let DropckConstraint { dtorck_types, outlives, overflows } =
-                tcx.at(span).adt_dtorck_constraint(def.did())?;
+                tcx.at(span).adt_dtorck_constraint(def.did());
             // FIXME: we can try to recursively `dtorck_constraint_on_ty`
             // there, but that needs some way to handle cycles.
             constraints
@@ -346,9 +367,7 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
         ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) | ty::Error(_) => {
             // By the time this code runs, all type variables ought to
             // be fully resolved.
-            return Err(NoSolution);
+            tcx.dcx().span_delayed_bug(span, format!("Unresolved type in dropck: {:?}.", ty));
         }
     }
-
-    Ok(())
 }

@@ -26,7 +26,7 @@ pub fn bool_to_byte(b: bool) -> u8 {
 }
 
 // CHECK-LABEL: define{{.*}}zeroext i1 @byte_to_bool(i8{{.*}} %byte)
-// CHECK: %_0 = trunc i8 %byte to i1
+// CHECK: %_0 = trunc{{( nuw)?}} i8 %byte to i1
 // CHECK-NEXT: ret i1 %_0
 #[no_mangle]
 pub unsafe fn byte_to_bool(byte: u8) -> bool {

@@ -147,7 +147,7 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
             let is_copy = cx.type_is_copy_modulo_regions(arg_ty);
             let drop_is_single_call_in_arm = is_single_call_in_arm(cx, arg, expr);
             let let_underscore_ignore_sugg = || {
-                if let Some((_, node)) = cx.tcx.hir().parent_iter(expr.hir_id).nth(0)
+                if let Some((_, node)) = cx.tcx.hir_parent_iter(expr.hir_id).nth(0)
                     && let Node::Stmt(stmt) = node
                     && let StmtKind::Semi(e) = stmt.kind
                     && e.hir_id == expr.hir_id

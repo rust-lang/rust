@@ -494,7 +494,7 @@ fn get_input_traits_and_projections<'tcx>(
 
 #[expect(clippy::too_many_lines)]
 fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<'a>) -> bool {
-    for (_, node) in cx.tcx.hir().parent_iter(expr.hir_id) {
+    for (_, node) in cx.tcx.hir_parent_iter(expr.hir_id) {
         match node {
             Node::Stmt(_) => return true,
             Node::Block(..) => {},

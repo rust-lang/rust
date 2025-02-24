@@ -68,7 +68,7 @@ impl<'tcx> LateLintPass<'tcx> for UnqualifiedLocalImports {
             return;
         }
 
-        let encl_item_id = cx.tcx.hir().get_parent_item(item.hir_id());
+        let encl_item_id = cx.tcx.hir_get_parent_item(item.hir_id());
         let encl_item = cx.tcx.hir_node_by_def_id(encl_item_id.def_id);
         if encl_item.fn_kind().is_some() {
             // `use` in a method -- don't lint, that leads to too many undesirable lints

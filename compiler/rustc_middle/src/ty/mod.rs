@@ -27,7 +27,6 @@ pub use intrinsic::IntrinsicDef;
 use rustc_abi::{Align, FieldIdx, Integer, IntegerType, ReprFlags, ReprOptions, VariantIdx};
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::node_id::NodeMap;
-pub use rustc_ast_ir::{Movability, Mutability, try_visit};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -48,7 +47,7 @@ pub use rustc_session::lint::RegisteredTools;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::{ExpnId, ExpnKind, Ident, Span, Symbol, kw, sym};
 pub use rustc_type_ir::relate::VarianceDiagInfo;
-pub use rustc_type_ir::*;
+pub use rustc_type_ir::{Movability, Mutability, *};
 use tracing::{debug, instrument};
 pub use vtable::*;
 use {rustc_ast as ast, rustc_attr_parsing as attr, rustc_hir as hir};
@@ -180,7 +179,7 @@ pub struct ResolverGlobalCtxt {
     pub confused_type_with_std_module: FxIndexMap<Span, Span>,
     pub doc_link_resolutions: FxIndexMap<LocalDefId, DocLinkResMap>,
     pub doc_link_traits_in_scope: FxIndexMap<LocalDefId, Vec<DefId>>,
-    pub all_macro_rules: FxHashMap<Symbol, Res<ast::NodeId>>,
+    pub all_macro_rules: FxHashSet<Symbol>,
     pub stripped_cfg_items: Steal<Vec<StrippedCfgItem>>,
 }
 
@@ -1799,14 +1798,11 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn get_attrs_by_path<'attr>(
+    pub fn get_attrs_by_path(
         self,
         did: DefId,
-        attr: &'attr [Symbol],
-    ) -> impl Iterator<Item = &'tcx hir::Attribute> + 'attr
-    where
-        'tcx: 'attr,
-    {
+        attr: &[Symbol],
+    ) -> impl Iterator<Item = &'tcx hir::Attribute> {
         let filter_fn = move |a: &&hir::Attribute| a.path_matches(attr);
         if let Some(did) = did.as_local() {
             self.hir().attrs(self.local_def_id_to_hir_id(did)).iter().filter(filter_fn)

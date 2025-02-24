@@ -21,7 +21,6 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![cfg_attr(bootstrap, feature(trait_upcasting))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(array_windows)]
@@ -641,6 +640,7 @@ fn register_internals(store: &mut LintStore) {
             LintId::of(LINT_PASS_IMPL_WITHOUT_MACRO),
             LintId::of(USAGE_OF_QUALIFIED_TY),
             LintId::of(NON_GLOB_IMPORT_OF_TYPE_IR_INHERENT),
+            LintId::of(USAGE_OF_TYPE_IR_INHERENT),
             LintId::of(BAD_OPT_ACCESS),
             LintId::of(SPAN_USE_EQ_CTXT),
         ],
