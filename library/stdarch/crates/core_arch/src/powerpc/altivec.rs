@@ -234,9 +234,6 @@ unsafe extern "C" {
     #[link_name = "llvm.ppc.altivec.vavguw"]
     fn vavguw(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int;
 
-    #[link_name = "llvm.ceil.v4f32"]
-    fn vceil(a: vector_float) -> vector_float;
-
     #[link_name = "llvm.ppc.altivec.vcmpbfp"]
     fn vcmpbfp(a: vector_float, b: vector_float) -> vector_signed_int;
 
@@ -273,9 +270,6 @@ unsafe extern "C" {
 
     #[link_name = "llvm.ppc.altivec.vexptefp"]
     fn vexptefp(a: vector_float) -> vector_float;
-
-    #[link_name = "llvm.floor.v4f32"]
-    fn vfloor(a: vector_float) -> vector_float;
 
     #[link_name = "llvm.ppc.altivec.vcmpequb.p"]
     fn vcmpequb_p(cr: i32, a: vector_unsigned_char, b: vector_unsigned_char) -> i32;
@@ -768,7 +762,7 @@ mod sealed {
     impl_vec_xst! { vec_xst_u32 stxvd2x / stxv u32 }
     impl_vec_xst! { vec_xst_f32 stxvd2x / stxv f32 }
 
-    test_impl! { vec_floor(a: vector_float) -> vector_float [ vfloor, vrfim / xvrspim ] }
+    test_impl! { vec_floor(a: vector_float) -> vector_float [ simd_floor, vrfim / xvrspim ] }
 
     test_impl! { vec_vexptefp(a: vector_float) -> vector_float [ vexptefp, vexptefp ] }
 
@@ -1302,7 +1296,7 @@ mod sealed {
         }
     }
 
-    test_impl! { vec_vceil(a: vector_float) -> vector_float [vceil, vrfip / xvrspip ] }
+    test_impl! { vec_vceil(a: vector_float) -> vector_float [simd_ceil, vrfip / xvrspip ] }
 
     test_impl! { vec_vavgsb(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char [ vavgsb, vavgsb ] }
     test_impl! { vec_vavgsh(a: vector_signed_short, b: vector_signed_short) -> vector_signed_short [ vavgsh, vavgsh ] }
