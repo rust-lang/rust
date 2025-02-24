@@ -61,16 +61,20 @@ fn weak_self_cyclic() {
 
 #[test]
 fn is_unique() {
+    fn rc_is_unique(rc: &Rc<i32>) -> bool {
+        unsafe { <RcOps as crate::raw_rc::RcOps>::is_unique(rc.raw_rc.ref_counts()) }
+    }
+
     let x = Rc::new(3);
-    assert!(Rc::is_unique(&x));
+    assert!(rc_is_unique(&x));
     let y = x.clone();
-    assert!(!Rc::is_unique(&x));
+    assert!(!rc_is_unique(&x));
     drop(y);
-    assert!(Rc::is_unique(&x));
+    assert!(rc_is_unique(&x));
     let w = Rc::downgrade(&x);
-    assert!(!Rc::is_unique(&x));
+    assert!(!rc_is_unique(&x));
     drop(w);
-    assert!(Rc::is_unique(&x));
+    assert!(rc_is_unique(&x));
 }
 
 #[test]
