@@ -19,6 +19,12 @@ vrnd32xq_f64
 vrnd32zq_f64
 vrnd64xq_f64
 vrnd64zq_f64
+vamin_f32
+vaminq_f32
+vaminq_f64
+vamax_f32
+vamaxq_f32
+vamaxq_f64
 # LLVM select error, and missing in Clang.
 vrnd32x_f64
 vrnd32z_f64
