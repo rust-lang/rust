@@ -2,7 +2,7 @@
 //! from various crates in no particular order.
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_hir as hir;
+use rustc_hir::{self as hir, HashIgnoredAttrId};
 use rustc_span::SourceFile;
 use smallvec::SmallVec;
 
@@ -23,6 +23,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for [hir::Attribute] {
             .iter()
             .filter(|attr| {
                 !attr.is_doc_comment()
+                    // FIXME(jdonszelmann) have a better way to handle ignored attrs
                     && !attr.ident().is_some_and(|ident| hcx.is_ignored_attr(ident.name))
             })
             .collect();
@@ -35,19 +36,8 @@ impl<'a> HashStable<StableHashingContext<'a>> for [hir::Attribute] {
 }
 
 impl<'ctx> rustc_hir::HashStableContext for StableHashingContext<'ctx> {
-    fn hash_attr(&mut self, attr: &hir::Attribute, hasher: &mut StableHasher) {
-        // Make sure that these have been filtered out.
-        debug_assert!(!attr.ident().is_some_and(|ident| self.is_ignored_attr(ident.name)));
-        debug_assert!(!attr.is_doc_comment());
-
-        let hir::Attribute { kind, id: _, style, span } = attr;
-        if let hir::AttrKind::Normal(item) = kind {
-            item.hash_stable(self, hasher);
-            style.hash_stable(self, hasher);
-            span.hash_stable(self, hasher);
-        } else {
-            unreachable!();
-        }
+    fn hash_attr_id(&mut self, _id: &HashIgnoredAttrId, _hasher: &mut StableHasher) {
+        /* we don't hash HashIgnoredAttrId, we ignore them */
     }
 }
 

@@ -5,7 +5,6 @@ use std::cell::Cell;
 use std::mem;
 use std::sync::Arc;
 
-use rustc_ast::attr::AttributeExt;
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::{self as ast, Crate, NodeId, attr};
 use rustc_ast_pretty::pprust;
@@ -1112,7 +1111,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         &mut self,
         macro_def: &ast::MacroDef,
         ident: Ident,
-        attrs: &[impl AttributeExt],
+        attrs: &[rustc_hir::Attribute],
         span: Span,
         node_id: NodeId,
         edition: Edition,

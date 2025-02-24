@@ -26,10 +26,10 @@ LL | enum Es {}
    | ---------- not a struct
 
 error[E0084]: unsupported representation for zero-variant enum
-  --> $DIR/issue-83505-repr-simd.rs:5:1
+  --> $DIR/issue-83505-repr-simd.rs:5:8
    |
 LL | #[repr(simd)]
-   | ^^^^^^^^^^^^^
+   |        ^^^^
 ...
 LL | enum Es {}
    | ------- zero-variant enum
