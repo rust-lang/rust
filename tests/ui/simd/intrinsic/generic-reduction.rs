@@ -7,10 +7,7 @@
 #![feature(repr_simd, core_intrinsics)]
 #![allow(non_camel_case_types)]
 
-use std::intrinsics::simd::{
-    simd_reduce_add_ordered, simd_reduce_all, simd_reduce_and, simd_reduce_any,
-    simd_reduce_mul_ordered, simd_reduce_or, simd_reduce_xor,
-};
+use std::intrinsics::simd::*;
 
 #[repr(simd)]
 #[derive(Copy, Clone)]

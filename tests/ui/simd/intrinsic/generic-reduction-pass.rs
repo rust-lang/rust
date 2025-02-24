@@ -5,11 +5,7 @@
 // Test that the simd_reduce_{op} intrinsics produce the correct results.
 #![feature(repr_simd, core_intrinsics)]
 
-use std::intrinsics::simd::{
-    simd_reduce_add_ordered, simd_reduce_add_unordered, simd_reduce_all, simd_reduce_and,
-    simd_reduce_any, simd_reduce_max, simd_reduce_min, simd_reduce_mul_ordered,
-    simd_reduce_mul_unordered, simd_reduce_or, simd_reduce_xor,
-};
+use std::intrinsics::simd::*;
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
