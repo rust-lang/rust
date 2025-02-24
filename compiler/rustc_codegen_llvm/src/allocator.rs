@@ -3,33 +3,31 @@ use rustc_ast::expand::allocator::{
     ALLOCATOR_METHODS, AllocatorKind, AllocatorTy, NO_ALLOC_SHIM_IS_UNSTABLE,
     alloc_error_handler_name, default_fn_name, global_fn_name,
 };
+use rustc_codegen_ssa::traits::BaseTypeCodegenMethods as _;
 use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{DebugInfo, OomStrategy};
 
-use crate::common::AsCCharPtr;
-use crate::llvm::{self, Context, False, Module, True, Type};
-use crate::{ModuleLlvm, attributes, debuginfo};
+use crate::builder::SBuilder;
+use crate::declare::declare_simple_fn;
+use crate::llvm::{self, False, True, Type};
+use crate::{SimpleCx, attributes, debuginfo};
 
 pub(crate) unsafe fn codegen(
     tcx: TyCtxt<'_>,
-    module_llvm: &mut ModuleLlvm,
+    cx: SimpleCx<'_>,
     module_name: &str,
     kind: AllocatorKind,
     alloc_error_handler_kind: AllocatorKind,
 ) {
-    let llcx = &*module_llvm.llcx;
-    let llmod = module_llvm.llmod();
-    let usize = unsafe {
-        match tcx.sess.target.pointer_width {
-            16 => llvm::LLVMInt16TypeInContext(llcx),
-            32 => llvm::LLVMInt32TypeInContext(llcx),
-            64 => llvm::LLVMInt64TypeInContext(llcx),
-            tws => bug!("Unsupported target word size for int: {}", tws),
-        }
+    let usize = match tcx.sess.target.pointer_width {
+        16 => cx.type_i16(),
+        32 => cx.type_i32(),
+        64 => cx.type_i64(),
+        tws => bug!("Unsupported target word size for int: {}", tws),
     };
-    let i8 = unsafe { llvm::LLVMInt8TypeInContext(llcx) };
-    let i8p = unsafe { llvm::LLVMPointerTypeInContext(llcx, 0) };
+    let i8 = cx.type_i8();
+    let i8p = cx.type_ptr();
 
     if kind == AllocatorKind::Default {
         for method in ALLOCATOR_METHODS {
@@ -58,15 +56,14 @@ pub(crate) unsafe fn codegen(
             let from_name = global_fn_name(method.name);
             let to_name = default_fn_name(method.name);
 
-            create_wrapper_function(tcx, llcx, llmod, &from_name, &to_name, &args, output, false);
+            create_wrapper_function(tcx, &cx, &from_name, &to_name, &args, output, false);
         }
     }
 
     // rust alloc error handler
     create_wrapper_function(
         tcx,
-        llcx,
-        llmod,
+        &cx,
         "__rust_alloc_error_handler",
         alloc_error_handler_name(alloc_error_handler_kind),
         &[usize, usize], // size, align
@@ -77,21 +74,21 @@ pub(crate) unsafe fn codegen(
     unsafe {
         // __rust_alloc_error_handler_should_panic
         let name = OomStrategy::SYMBOL;
-        let ll_g = llvm::LLVMRustGetOrInsertGlobal(llmod, name.as_c_char_ptr(), name.len(), i8);
+        let ll_g = cx.declare_global(name, i8);
         llvm::set_visibility(ll_g, llvm::Visibility::from_generic(tcx.sess.default_visibility()));
         let val = tcx.sess.opts.unstable_opts.oom.should_panic();
         let llval = llvm::LLVMConstInt(i8, val as u64, False);
         llvm::set_initializer(ll_g, llval);
 
         let name = NO_ALLOC_SHIM_IS_UNSTABLE;
-        let ll_g = llvm::LLVMRustGetOrInsertGlobal(llmod, name.as_c_char_ptr(), name.len(), i8);
+        let ll_g = cx.declare_global(name, i8);
         llvm::set_visibility(ll_g, llvm::Visibility::from_generic(tcx.sess.default_visibility()));
         let llval = llvm::LLVMConstInt(i8, 0, False);
         llvm::set_initializer(ll_g, llval);
     }
 
     if tcx.sess.opts.debuginfo != DebugInfo::None {
-        let dbg_cx = debuginfo::CodegenUnitDebugContext::new(llmod);
+        let dbg_cx = debuginfo::CodegenUnitDebugContext::new(cx.llmod);
         debuginfo::metadata::build_compile_unit_di_node(tcx, module_name, &dbg_cx);
         dbg_cx.finalize(tcx.sess);
     }
@@ -99,77 +96,64 @@ pub(crate) unsafe fn codegen(
 
 fn create_wrapper_function(
     tcx: TyCtxt<'_>,
-    llcx: &Context,
-    llmod: &Module,
+    cx: &SimpleCx<'_>,
     from_name: &str,
     to_name: &str,
     args: &[&Type],
     output: Option<&Type>,
     no_return: bool,
 ) {
-    unsafe {
-        let ty = llvm::LLVMFunctionType(
-            output.unwrap_or_else(|| llvm::LLVMVoidTypeInContext(llcx)),
-            args.as_ptr(),
-            args.len() as c_uint,
-            False,
-        );
-        let llfn = llvm::LLVMRustGetOrInsertFunction(
-            llmod,
-            from_name.as_c_char_ptr(),
-            from_name.len(),
-            ty,
-        );
-        let no_return = if no_return {
-            // -> ! DIFlagNoReturn
-            let no_return = llvm::AttributeKind::NoReturn.create_attr(llcx);
-            attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &[no_return]);
-            Some(no_return)
-        } else {
-            None
-        };
+    let ty = cx.type_func(args, output.unwrap_or_else(|| cx.type_void()));
+    let llfn = declare_simple_fn(
+        &cx,
+        from_name,
+        llvm::CallConv::CCallConv,
+        llvm::UnnamedAddr::Global,
+        llvm::Visibility::from_generic(tcx.sess.default_visibility()),
+        ty,
+    );
+    let no_return = if no_return {
+        // -> ! DIFlagNoReturn
+        let no_return = llvm::AttributeKind::NoReturn.create_attr(cx.llcx);
+        attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &[no_return]);
+        Some(no_return)
+    } else {
+        None
+    };
 
-        llvm::set_visibility(llfn, llvm::Visibility::from_generic(tcx.sess.default_visibility()));
+    if tcx.sess.must_emit_unwind_tables() {
+        let uwtable =
+            attributes::uwtable_attr(cx.llcx, tcx.sess.opts.unstable_opts.use_sync_unwind);
+        attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &[uwtable]);
+    }
 
-        if tcx.sess.must_emit_unwind_tables() {
-            let uwtable =
-                attributes::uwtable_attr(llcx, tcx.sess.opts.unstable_opts.use_sync_unwind);
-            attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &[uwtable]);
-        }
+    let callee = declare_simple_fn(
+        &cx,
+        to_name,
+        llvm::CallConv::CCallConv,
+        llvm::UnnamedAddr::Global,
+        llvm::Visibility::Hidden,
+        ty,
+    );
+    if let Some(no_return) = no_return {
+        // -> ! DIFlagNoReturn
+        attributes::apply_to_llfn(callee, llvm::AttributePlace::Function, &[no_return]);
+    }
+    llvm::set_visibility(callee, llvm::Visibility::Hidden);
 
-        let callee =
-            llvm::LLVMRustGetOrInsertFunction(llmod, to_name.as_c_char_ptr(), to_name.len(), ty);
-        if let Some(no_return) = no_return {
-            // -> ! DIFlagNoReturn
-            attributes::apply_to_llfn(callee, llvm::AttributePlace::Function, &[no_return]);
-        }
-        llvm::set_visibility(callee, llvm::Visibility::Hidden);
+    let llbb = unsafe { llvm::LLVMAppendBasicBlockInContext(cx.llcx, llfn, c"entry".as_ptr()) };
 
-        let llbb = llvm::LLVMAppendBasicBlockInContext(llcx, llfn, c"entry".as_ptr());
-
-        let llbuilder = llvm::LLVMCreateBuilderInContext(llcx);
-        llvm::LLVMPositionBuilderAtEnd(llbuilder, llbb);
-        let args = args
-            .iter()
-            .enumerate()
-            .map(|(i, _)| llvm::LLVMGetParam(llfn, i as c_uint))
-            .collect::<Vec<_>>();
-        let ret = llvm::LLVMBuildCallWithOperandBundles(
-            llbuilder,
-            ty,
-            callee,
-            args.as_ptr(),
-            args.len() as c_uint,
-            [].as_ptr(),
-            0 as c_uint,
-            c"".as_ptr(),
-        );
-        llvm::LLVMSetTailCall(ret, True);
-        if output.is_some() {
-            llvm::LLVMBuildRet(llbuilder, ret);
-        } else {
-            llvm::LLVMBuildRetVoid(llbuilder);
-        }
-        llvm::LLVMDisposeBuilder(llbuilder);
+    let mut bx = SBuilder::build(&cx, llbb);
+    let args = args
+        .iter()
+        .enumerate()
+        .map(|(i, _)| llvm::get_param(llfn, i as c_uint))
+        .collect::<Vec<_>>();
+    let ret = bx.call(ty, callee, &args, None);
+    llvm::LLVMSetTailCall(ret, True);
+    if output.is_some() {
+        bx.ret(ret);
+    } else {
+        bx.ret_void()
     }
 }

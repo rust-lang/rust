@@ -1147,7 +1147,7 @@ unsafe extern "C" {
     pub(crate) fn LLVMSetThreadLocalMode(GlobalVar: &Value, Mode: ThreadLocalMode);
     pub(crate) fn LLVMIsGlobalConstant(GlobalVar: &Value) -> Bool;
     pub(crate) fn LLVMSetGlobalConstant(GlobalVar: &Value, IsConstant: Bool);
-    pub(crate) fn LLVMSetTailCall(CallInst: &Value, IsTailCall: Bool);
+    pub(crate) safe fn LLVMSetTailCall(CallInst: &Value, IsTailCall: Bool);
 
     // Operations on attributes
     pub(crate) fn LLVMCreateStringAttribute(

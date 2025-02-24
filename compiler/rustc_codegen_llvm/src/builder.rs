@@ -57,7 +57,7 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> Drop for GenericBuilder<'a, 'll, CX> {
 }
 
 impl<'a, 'll> SBuilder<'a, 'll> {
-    fn call(
+    pub(crate) fn call(
         &mut self,
         llty: &'ll Type,
         llfn: &'ll Value,
@@ -100,17 +100,17 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
         unsafe { llvm::LLVMBuildBitCast(self.llbuilder, val, dest_ty, UNNAMED) }
     }
 
-    fn ret_void(&mut self) {
+    pub(crate) fn ret_void(&mut self) {
         llvm::LLVMBuildRetVoid(self.llbuilder);
     }
 
-    fn ret(&mut self, v: &'ll Value) {
+    pub(crate) fn ret(&mut self, v: &'ll Value) {
         unsafe {
             llvm::LLVMBuildRet(self.llbuilder, v);
         }
     }
 
-    fn build(cx: &'a GenericCx<'ll, CX>, llbb: &'ll BasicBlock) -> Self {
+    pub(crate) fn build(cx: &'a GenericCx<'ll, CX>, llbb: &'ll BasicBlock) -> Self {
         let bx = Self::with_cx(cx);
         unsafe {
             llvm::LLVMPositionBuilderAtEnd(bx.llbuilder, llbb);
