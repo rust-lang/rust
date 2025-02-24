@@ -241,7 +241,6 @@ fn compile_c(
         "-march=armv8.6-a+crypto+crc+dotprod+fp16"
     } else {
         "-march=armv8.6-a+crypto+sha3+crc+dotprod+fp16+faminmax"
-    } else {
     };
 
     let intrinsic_name = &intrinsic.name;
