@@ -8,18 +8,19 @@ It goes deeper than what is covered in this document, but will take some time to
 
 See also these implementation-related blog posts:
 
-* https://rust-analyzer.github.io/blog/2019/11/13/find-usages.html
-* https://rust-analyzer.github.io/blog/2020/07/20/three-architectures-for-responsive-ide.html
-* https://rust-analyzer.github.io/blog/2020/09/16/challeging-LR-parsing.html
-* https://rust-analyzer.github.io/blog/2020/09/28/how-to-make-a-light-bulb.html
-* https://rust-analyzer.github.io/blog/2020/10/24/introducing-ungrammar.html
+* <https://rust-analyzer.github.io/blog/2019/11/13/find-usages.html>
+* <https://rust-analyzer.github.io/blog/2020/07/20/three-architectures-for-responsive-ide.html>
+* <https://rust-analyzer.github.io/blog/2020/09/16/challeging-LR-parsing.html>
+* <https://rust-analyzer.github.io/blog/2020/09/28/how-to-make-a-light-bulb.html>
+* <https://rust-analyzer.github.io/blog/2020/10/24/introducing-ungrammar.html>
 
 For older, by now mostly outdated stuff, see the [guide](./guide.md) and [another playlist](https://www.youtube.com/playlist?list=PL85XCvVPmGQho7MZkdW-wtPtuJcFpzycE).
-
 
 ## Bird's Eye View
 
 ![](https://user-images.githubusercontent.com/4789492/107129398-0ab70f00-687a-11eb-9bfc-d4eb023aec06.png)
+
+<!-- toc -->
 
 On the highest level, rust-analyzer is a thing which accepts input source code from the client and produces a structured semantic model of the code.
 
@@ -295,7 +296,7 @@ For this reason, all path APIs generally take some existing path as a "file syst
 ### `crates/stdx`
 
 This crate contains various non-rust-analyzer specific utils, which could have been in std, as well
-as copies of unstable std items we would like to make use of already, like `std::str::split_once`.
+as copies of unstable std items we would like to make use of already.
 
 ### `crates/profile`
 

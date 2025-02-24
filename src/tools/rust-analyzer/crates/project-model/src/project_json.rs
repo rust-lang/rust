@@ -164,6 +164,7 @@ impl ProjectJson {
                         is_proc_macro: crate_data.is_proc_macro,
                         repository: crate_data.repository,
                         build,
+                        proc_macro_cwd: crate_data.proc_macro_cwd.map(absolutize_on_base),
                     }
                 })
                 .collect(),
@@ -240,6 +241,8 @@ pub struct Crate {
     pub(crate) include: Vec<AbsPathBuf>,
     pub(crate) exclude: Vec<AbsPathBuf>,
     pub(crate) is_proc_macro: bool,
+    /// The working directory to run proc-macros in. This is usually the workspace root of cargo workspaces.
+    pub(crate) proc_macro_cwd: Option<AbsPathBuf>,
     pub(crate) repository: Option<String>,
     pub build: Option<Build>,
 }
@@ -362,6 +365,8 @@ struct CrateData {
     repository: Option<String>,
     #[serde(default)]
     build: Option<BuildData>,
+    #[serde(default)]
+    proc_macro_cwd: Option<Utf8PathBuf>,
 }
 
 mod cfg_ {

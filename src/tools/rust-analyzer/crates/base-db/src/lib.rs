@@ -10,7 +10,7 @@ use rustc_hash::FxHashMap;
 use span::EditionedFileId;
 use syntax::{ast, Parse, SourceFile, SyntaxError};
 use triomphe::Arc;
-use vfs::{AbsPathBuf, FileId};
+use vfs::FileId;
 
 pub use crate::{
     change::FileChange,
@@ -85,8 +85,6 @@ pub trait SourceDatabase: FileLoader + std::fmt::Debug {
 /// Crate related data shared by the whole workspace.
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct CrateWorkspaceData {
-    /// The working directory to run proc-macros in. This is usually the workspace root of cargo workspaces.
-    pub proc_macro_cwd: Option<AbsPathBuf>,
     // FIXME: Consider removing this, making HirDatabase::target_data_layout an input query
     pub data_layout: TargetLayoutLoadResult,
     /// Toolchain version used to compile the crate.

@@ -15,7 +15,6 @@ doctest = false
 [dependencies]
 drop_bomb = "0.1.5"
 ra-ap-rustc_lexer.workspace = true
-limit.workspace = true
 tracing = { workspace = true, optional = true }
 
 edition.workspace = true

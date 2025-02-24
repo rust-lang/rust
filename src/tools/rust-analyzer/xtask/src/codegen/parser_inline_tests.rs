@@ -18,92 +18,87 @@ use crate::{
     util::list_rust_files,
 };
 
-const PARSER_CRATE_ROOT: &str = "crates/parser";
-const PARSER_TEST_DATA: &str = "crates/parser/test_data";
-const PARSER_TEST_DATA_INLINE: &str = "crates/parser/test_data/parser/inline";
-
 pub(crate) fn generate(check: bool) {
-    let tests = tests_from_dir(
-        &project_root().join(Path::new(&format!("{PARSER_CRATE_ROOT}/src/grammar"))),
-    );
+    let parser_crate_root = project_root().join("crates/parser");
+    let parser_test_data = parser_crate_root.join("test_data");
+    let parser_test_data_inline = parser_test_data.join("parser/inline");
+
+    let tests = tests_from_dir(&parser_crate_root.join("src/grammar"));
 
     let mut some_file_was_updated = false;
     some_file_was_updated |=
-        install_tests(&tests.ok, &format!("{PARSER_TEST_DATA_INLINE}/ok"), check).unwrap();
+        install_tests(&tests.ok, parser_test_data_inline.join("ok"), check).unwrap();
     some_file_was_updated |=
-        install_tests(&tests.err, &format!("{PARSER_TEST_DATA_INLINE}/err"), check).unwrap();
+        install_tests(&tests.err, parser_test_data_inline.join("err"), check).unwrap();
 
     if some_file_was_updated {
-        let _ = fs::File::open(format!("{PARSER_CRATE_ROOT}/src/tests.rs"))
+        let _ = fs::File::open(parser_crate_root.join("src/tests.rs"))
             .unwrap()
             .set_modified(SystemTime::now());
-
-        let ok_tests = tests.ok.values().sorted_by(|a, b| a.name.cmp(&b.name)).map(|test| {
-            let test_name = quote::format_ident!("{}", test.name);
-            let test_file = format!("test_data/parser/inline/ok/{test_name}.rs");
-            let (test_func, args) = match &test.edition {
-                Some(edition) => {
-                    let edition = quote::format_ident!("Edition{edition}");
-                    (
-                        quote::format_ident!("run_and_expect_no_errors_with_edition"),
-                        quote::quote! {#test_file, crate::Edition::#edition},
-                    )
-                }
-                None => {
-                    (quote::format_ident!("run_and_expect_no_errors"), quote::quote! {#test_file})
-                }
-            };
-            quote::quote! {
-                #[test]
-                fn #test_name() {
-                    #test_func(#args);
-                }
-            }
-        });
-        let err_tests = tests.err.values().sorted_by(|a, b| a.name.cmp(&b.name)).map(|test| {
-            let test_name = quote::format_ident!("{}", test.name);
-            let test_file = format!("test_data/parser/inline/err/{test_name}.rs");
-            let (test_func, args) = match &test.edition {
-                Some(edition) => {
-                    let edition = quote::format_ident!("Edition{edition}");
-                    (
-                        quote::format_ident!("run_and_expect_errors_with_edition"),
-                        quote::quote! {#test_file, crate::Edition::#edition},
-                    )
-                }
-                None => (quote::format_ident!("run_and_expect_errors"), quote::quote! {#test_file}),
-            };
-            quote::quote! {
-                #[test]
-                fn #test_name() {
-                    #test_func(#args);
-                }
-            }
-        });
-
-        let output = quote::quote! {
-            mod ok {
-                use crate::tests::*;
-                #(#ok_tests)*
-            }
-            mod err {
-                use crate::tests::*;
-                #(#err_tests)*
-            }
-        };
-
-        let pretty = reformat(output.to_string());
-        ensure_file_contents(
-            crate::flags::CodegenType::ParserTests,
-            format!("{PARSER_TEST_DATA}/generated/runner.rs").as_ref(),
-            &pretty,
-            check,
-        );
     }
+
+    let ok_tests = tests.ok.values().sorted_by(|a, b| a.name.cmp(&b.name)).map(|test| {
+        let test_name = quote::format_ident!("{}", test.name);
+        let test_file = format!("test_data/parser/inline/ok/{test_name}.rs");
+        let (test_func, args) = match &test.edition {
+            Some(edition) => {
+                let edition = quote::format_ident!("Edition{edition}");
+                (
+                    quote::format_ident!("run_and_expect_no_errors_with_edition"),
+                    quote::quote! {#test_file, crate::Edition::#edition},
+                )
+            }
+            None => (quote::format_ident!("run_and_expect_no_errors"), quote::quote! {#test_file}),
+        };
+        quote::quote! {
+            #[test]
+            fn #test_name() {
+                #test_func(#args);
+            }
+        }
+    });
+    let err_tests = tests.err.values().sorted_by(|a, b| a.name.cmp(&b.name)).map(|test| {
+        let test_name = quote::format_ident!("{}", test.name);
+        let test_file = format!("test_data/parser/inline/err/{test_name}.rs");
+        let (test_func, args) = match &test.edition {
+            Some(edition) => {
+                let edition = quote::format_ident!("Edition{edition}");
+                (
+                    quote::format_ident!("run_and_expect_errors_with_edition"),
+                    quote::quote! {#test_file, crate::Edition::#edition},
+                )
+            }
+            None => (quote::format_ident!("run_and_expect_errors"), quote::quote! {#test_file}),
+        };
+        quote::quote! {
+            #[test]
+            fn #test_name() {
+                #test_func(#args);
+            }
+        }
+    });
+
+    let output = quote::quote! {
+        mod ok {
+            use crate::tests::*;
+            #(#ok_tests)*
+        }
+        mod err {
+            use crate::tests::*;
+            #(#err_tests)*
+        }
+    };
+
+    let pretty = reformat(output.to_string());
+    ensure_file_contents(
+        crate::flags::CodegenType::ParserTests,
+        parser_test_data.join("generated/runner.rs").as_ref(),
+        &pretty,
+        check,
+    );
 }
 
-fn install_tests(tests: &HashMap<String, Test>, into: &str, check: bool) -> Result<bool> {
-    let tests_dir = project_root().join(into);
+fn install_tests(tests: &HashMap<String, Test>, tests_dir: PathBuf, check: bool) -> Result<bool> {
     if !tests_dir.is_dir() {
         fs::create_dir_all(&tests_dir)?;
     }

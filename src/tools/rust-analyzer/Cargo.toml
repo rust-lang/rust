@@ -64,7 +64,6 @@ ide-db = { path = "./crates/ide-db", version = "0.0.0" }
 ide-diagnostics = { path = "./crates/ide-diagnostics", version = "0.0.0" }
 ide-ssr = { path = "./crates/ide-ssr", version = "0.0.0" }
 intern = { path = "./crates/intern", version = "0.0.0" }
-limit = { path = "./crates/limit", version = "0.0.0" }
 load-cargo = { path = "./crates/load-cargo", version = "0.0.0" }
 mbe = { path = "./crates/mbe", version = "0.0.0" }
 parser = { path = "./crates/parser", version = "0.0.0" }
@@ -87,11 +86,12 @@ vfs-notify = { path = "./crates/vfs-notify", version = "0.0.0" }
 vfs = { path = "./crates/vfs", version = "0.0.0" }
 edition = { path = "./crates/edition", version = "0.0.0" }
 
-ra-ap-rustc_lexer = { version = "0.95", default-features = false }
-ra-ap-rustc_parse_format = { version = "0.95", default-features = false }
-ra-ap-rustc_index = { version = "0.95", default-features = false }
-ra-ap-rustc_abi = { version = "0.95", default-features = false }
-ra-ap-rustc_pattern_analysis = { version = "0.95", default-features = false }
+ra-ap-rustc_hashes = { version = "0.97", default-features = false }
+ra-ap-rustc_lexer = { version = "0.97", default-features = false }
+ra-ap-rustc_parse_format = { version = "0.97", default-features = false }
+ra-ap-rustc_index = { version = "0.97", default-features = false }
+ra-ap-rustc_abi = { version = "0.97", default-features = false }
+ra-ap-rustc_pattern_analysis = { version = "0.97", default-features = false }
 
 # local crates that aren't published to crates.io. These should not have versions.
 

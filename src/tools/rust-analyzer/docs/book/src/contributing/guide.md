@@ -12,6 +12,8 @@ https://youtu.be/ANKBNiSWyfc.
 [guide-2019-01]: https://github.com/rust-lang/rust-analyzer/tree/guide-2019-01
 [2024-01-01]: https://github.com/rust-lang/rust-analyzer/tree/2024-01-01
 
+<!-- toc -->
+
 ## The big picture
 
 On the highest possible level, rust-analyzer is a stateful component. A client may
@@ -76,10 +78,10 @@ to study its methods to understand all the input data.
 
 The `change_file` method controls the set of the input files, where each file
 has an integer id (`FileId`, picked by the client) and text (`Option<Arc<str>>`).
-Paths are tricky; they'll be explained below, in source roots section, 
+Paths are tricky; they'll be explained below, in source roots section,
 together with the `set_roots` method. The "source root" [`is_library`] flag
-along with the concept of [`durability`] allows us to add a group of files which 
-are assumed to rarely change. It's mostly an optimization and does not change 
+along with the concept of [`durability`] allows us to add a group of files which
+are assumed to rarely change. It's mostly an optimization and does not change
 the fundamental picture.
 
 [`is_library`]: https://github.com/rust-lang/rust-analyzer/blob/2024-01-01/crates/base-db/src/input.rs#L38
@@ -141,7 +143,7 @@ the source root, even `/dev/random`.
 
 ## Language Server Protocol
 
-Now let's see how the `Analysis` API is exposed via the JSON RPC based language server protocol. 
+Now let's see how the `Analysis` API is exposed via the JSON RPC based language server protocol.
 The hard part here is managing changes (which can come either from the file system
 or from the editor) and concurrency (we want to spawn background jobs for things
 like syntax highlighting). We use the event loop pattern to manage the zoo, and
@@ -152,13 +154,12 @@ the loop is the [`GlobalState::run`] function initiated by [`main_loop`] after
 [`GlobalState::new`]: https://github.com/rust-lang/rust-analyzer/blob/2024-01-01/crates/rust-analyzer/src/global_state.rs#L148-L215
 [`GlobalState::run`]: https://github.com/rust-lang/rust-analyzer/blob/2024-01-01/crates/rust-analyzer/src/main_loop.rs#L114-L140
 
-
 Let's walk through a typical analyzer session!
 
 First, we need to figure out what to analyze. To do this, we run `cargo
 metadata` to learn about Cargo packages for current workspace and dependencies,
 and we run `rustc --print sysroot` and scan the "sysroot"
-(the directory containing the current Rust toolchain's files) to learn about crates 
+(the directory containing the current Rust toolchain's files) to learn about crates
 like `std`. This happens in the [`GlobalState::fetch_workspaces`] method.
 We load this configuration at the start of the server in [`GlobalState::new`],
 but it's also triggered by workspace change events and requests to reload the

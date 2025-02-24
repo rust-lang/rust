@@ -1,3 +1,5 @@
+# Style
+
 Our approach to "clean code" is two-fold:
 
 * We generally don't block PRs on style changes.
@@ -274,7 +276,7 @@ fn f() {
 Assert liberally.
 Prefer [`stdx::never!`](https://docs.rs/always-assert/0.1.2/always_assert/macro.never.html) to standard `assert!`.
 
-**Rationale:** See [cross cutting concern: error handling](https://github.com/rust-lang/rust-analyzer/blob/master/docs/dev/architecture.md#error-handling).
+**Rationale:** See [cross cutting concern: error handling](https://github.com/rust-lang/rust-analyzer/blob/master/docs/book/src/contributing/architecture.md#error-handling).
 
 ## Getters & Setters
 

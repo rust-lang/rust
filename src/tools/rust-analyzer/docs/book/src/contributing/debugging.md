@@ -8,6 +8,7 @@
   <img height=150px src="https://user-images.githubusercontent.com/36276403/74611090-92ec5380-5101-11ea-8a41-598f51f3f3e3.png" alt="Debug options view">
 
 - Install all TypeScript dependencies
+
   ```bash
   cd editors/code
   npm ci
@@ -18,7 +19,6 @@
 * All debug configurations open a new `[Extension Development Host]` VSCode instance
 where **only** the `rust-analyzer` extension being debugged is enabled.
 * To activate the extension you need to open any Rust project folder in `[Extension Development Host]`.
-
 
 ## Debug TypeScript VSCode extension
 
@@ -36,12 +36,12 @@ To apply changes to an already running debug process, press <kbd>Ctrl+Shift+P</k
 
 - When attaching a debugger to an already running `rust-analyzer` server on Linux you might need to enable `ptrace` for unrelated processes by running:
 
-  ```
+  ```bash
   echo 0 | sudo tee /proc/sys/kernel/yama/ptrace_scope
   ```
 
-
 - By default, the LSP server is built without debug information. To enable it, you'll need to change `Cargo.toml`:
+
   ```toml
     [profile.dev]
     debug = 2
@@ -58,6 +58,7 @@ To apply changes to an already running debug process, press <kbd>Ctrl+Shift+P</k
 - Go back to the `[Extension Development Host]` instance and hover over a Rust variable and your breakpoint should hit.
 
 If you need to debug the server from the very beginning, including its initialization code, you can use the `--wait-dbg` command line argument or `RA_WAIT_DBG` environment variable. The server will spin at the beginning of the `try_main` function (see `crates\rust-analyzer\src\bin\main.rs`)
+
 ```rust
     let mut d = 4;
     while d == 4 { // set a breakpoint here and change the value
@@ -66,6 +67,7 @@ If you need to debug the server from the very beginning, including its initializ
 ```
 
 However for this to work, you will need to enable debug_assertions in your build
+
 ```rust
 RUSTFLAGS='--cfg debug_assertions' cargo build --release
 ```
