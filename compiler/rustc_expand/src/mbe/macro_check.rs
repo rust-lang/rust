@@ -112,9 +112,8 @@ use rustc_ast::{DUMMY_NODE_ID, NodeId};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::MultiSpan;
 use rustc_lint_defs::BuiltinLintDiag;
-use rustc_session::lint::builtin::{META_VARIABLE_MISUSE, MISSING_FRAGMENT_SPECIFIER};
+use rustc_session::lint::builtin::META_VARIABLE_MISUSE;
 use rustc_session::parse::ParseSess;
-use rustc_span::edition::Edition;
 use rustc_span::{ErrorGuaranteed, MacroRulesNormalizedIdent, Span, kw};
 use smallvec::SmallVec;
 
@@ -266,23 +265,11 @@ fn check_binders(
         // Similarly, this can only happen when checking a toplevel macro.
         TokenTree::MetaVarDecl(span, name, kind) => {
             if kind.is_none() && node_id != DUMMY_NODE_ID {
-                // FIXME: Report this as a hard error eventually and remove equivalent errors from
-                // `parse_tt_inner` and `nameize`. Until then the error may be reported twice, once
-                // as a hard error and then once as a buffered lint.
-                if span.edition() >= Edition::Edition2024 {
-                    psess.dcx().emit_err(errors::MissingFragmentSpecifier {
-                        span,
-                        add_span: span.shrink_to_hi(),
-                        valid: VALID_FRAGMENT_NAMES_MSG,
-                    });
-                } else {
-                    psess.buffer_lint(
-                        MISSING_FRAGMENT_SPECIFIER,
-                        span,
-                        node_id,
-                        BuiltinLintDiag::MissingFragmentSpecifier,
-                    );
-                }
+                psess.dcx().emit_err(errors::MissingFragmentSpecifier {
+                    span,
+                    add_span: span.shrink_to_hi(),
+                    valid: VALID_FRAGMENT_NAMES_MSG,
+                });
             }
             if !macros.is_empty() {
                 psess.dcx().span_bug(span, "unexpected MetaVarDecl in nested lhs");
