@@ -837,9 +837,9 @@ fn visit_lazy_tts<T: MutVisitor>(vis: &mut T, lazy_tts: &mut Option<LazyAttrToke
     visit_lazy_tts_opt_mut(vis, lazy_tts.as_mut());
 }
 
-/// Applies ident visitor if it's an ident; applies other visits to interpolated nodes.
-/// In practice the ident part is not actually used by specific visitors right now,
-/// but there's a test below checking that it works.
+/// Applies ident visitor if it's an ident. In practice this is not actually
+/// used by specific visitors right now, but there's a test below checking that
+/// it works.
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
 pub fn visit_token<T: MutVisitor>(vis: &mut T, t: &mut Token) {
     let Token { kind, span } = t;
@@ -857,65 +857,9 @@ pub fn visit_token<T: MutVisitor>(vis: &mut T, t: &mut Token) {
         token::NtLifetime(ident, _is_raw) => {
             vis.visit_ident(ident);
         }
-        token::Interpolated(nt) => {
-            let nt = Arc::make_mut(nt);
-            visit_nonterminal(vis, nt);
-        }
         _ => {}
     }
     vis.visit_span(span);
-}
-
-// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
-/// Applies the visitor to elements of interpolated nodes.
-//
-// N.B., this can occur only when applying a visitor to partially expanded
-// code, where parsed pieces have gotten implanted ito *other* macro
-// invocations. This is relevant for macro hygiene, but possibly not elsewhere.
-//
-// One problem here occurs because the types for flat_map_item, flat_map_stmt,
-// etc., allow the visitor to return *multiple* items; this is a problem for the
-// nodes here, because they insist on having exactly one piece. One solution
-// would be to mangle the MutVisitor trait to include one-to-many and
-// one-to-one versions of these entry points, but that would probably confuse a
-// lot of people and help very few. Instead, I'm just going to put in dynamic
-// checks. I think the performance impact of this will be pretty much
-// nonexistent. The danger is that someone will apply a `MutVisitor` to a
-// partially expanded node, and will be confused by the fact that their
-// `flat_map_item` or `flat_map_stmt` isn't getting called on `NtItem` or `NtStmt`
-// nodes. Hopefully they'll wind up reading this comment, and doing something
-// appropriate.
-//
-// BTW, design choice: I considered just changing the type of, e.g., `NtItem` to
-// contain multiple items, but decided against it when I looked at
-// `parse_item_or_view_item` and tried to figure out what I would do with
-// multiple items there....
-fn visit_nonterminal<T: MutVisitor>(vis: &mut T, nt: &mut token::Nonterminal) {
-    match nt {
-        token::NtItem(item) => visit_clobber(item, |item| {
-            // This is probably okay, because the only visitors likely to
-            // peek inside interpolated nodes will be renamings/markings,
-            // which map single items to single items.
-            vis.flat_map_item(item).expect_one("expected visitor to produce exactly one item")
-        }),
-        token::NtBlock(block) => vis.visit_block(block),
-        token::NtStmt(stmt) => visit_clobber(stmt, |stmt| {
-            // See reasoning above.
-            stmt.map(|stmt| {
-                vis.flat_map_stmt(stmt).expect_one("expected visitor to produce exactly one item")
-            })
-        }),
-        token::NtPat(pat) => vis.visit_pat(pat),
-        token::NtExpr(expr) => vis.visit_expr(expr),
-        token::NtLiteral(expr) => vis.visit_expr(expr),
-        token::NtMeta(item) => {
-            let AttrItem { unsafety: _, path, args, tokens } = item.deref_mut();
-            vis.visit_path(path);
-            visit_attr_args(vis, args);
-            visit_lazy_tts(vis, tokens);
-        }
-        token::NtPath(path) => vis.visit_path(path),
-    }
 }
 
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.

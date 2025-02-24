@@ -15,11 +15,11 @@ LL -         let mut $eval = ();
 LL +         let $eval = ();
    |
 
-error: expected identifier, found `does_not_exist!()`
+error: expected identifier, found metavariable
   --> $DIR/issue-65122-mac-invoc-in-mut-patterns.rs:13:17
    |
 LL |         let mut $eval = ();
-   |                 ^^^^^ expected identifier
+   |                 ^^^^^ expected identifier, found metavariable
 ...
 LL |     mac2! { does_not_exist!() }
    |     --------------------------- in this macro invocation

@@ -15,9 +15,9 @@ use tracing::debug;
 
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{Parser, Restrictions, TokenType};
-use crate::errors::{PathSingleColon, PathTripleColon};
+use crate::errors::{self, PathSingleColon, PathTripleColon};
+use crate::exp;
 use crate::parser::{CommaRecoveryMode, RecoverColon, RecoverComma};
-use crate::{errors, exp, maybe_whole};
 
 /// Specifies how to parse a path.
 #[derive(Copy, Clone, PartialEq)]
@@ -194,7 +194,11 @@ impl<'a> Parser<'a> {
             }
         };
 
-        maybe_whole!(self, NtPath, |path| reject_generics_if_mod_style(self, path.into_inner()));
+        if let Some(path) =
+            self.eat_metavar_seq(MetaVarKind::Path, |this| this.parse_path(PathStyle::Type))
+        {
+            return Ok(reject_generics_if_mod_style(self, path));
+        }
 
         // If we have a `ty` metavar in the form of a path, reparse it directly as a path, instead
         // of reparsing it as a `ty` and then extracting the path.
@@ -389,8 +393,8 @@ impl<'a> Parser<'a> {
                 } else {
                     // `(T, U) -> R`
 
-                    let prev_token_before_parsing = self.prev_token.clone();
-                    let token_before_parsing = self.token.clone();
+                    let prev_token_before_parsing = self.prev_token;
+                    let token_before_parsing = self.token;
                     let mut snapshot = None;
                     if self.may_recover()
                         && prev_token_before_parsing == token::PathSep
