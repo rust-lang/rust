@@ -418,6 +418,7 @@ macro_rules! cast_into_float {
     ($ty:ty; $($into:ty),*) => {$(
         impl CastInto<$into> for $ty {
             fn cast(self) -> $into {
+                #[cfg(not(feature = "compiler-builtins"))]
                 debug_assert_eq!(self as $into as $ty, self, "inexact float cast");
                 self as $into
             }

@@ -61,6 +61,13 @@ exclude = [
 [dev-dependencies]
 no-panic = "0.1.33"
 
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = [
+  # compiler-builtins sets this feature, but we use it in `libm`
+  'cfg(feature, values("compiler-builtins"))',
+] }
+
 # The default release profile is unchanged.
 
 # Release mode with debug assertions

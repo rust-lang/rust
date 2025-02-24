@@ -246,7 +246,13 @@ fn fmt_any_hex<F: Float>(x: &F, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 
 impl<F: Float> fmt::LowerHex for Hexf<F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt_any_hex(&self.0, f)
+        cfg_if! {
+            if #[cfg(feature = "compiler-builtins")] {
+                unreachable!()
+            } else {
+                fmt_any_hex(&self.0, f)
+            }
+        }
     }
 }
 
@@ -264,7 +270,13 @@ impl<F: Float> fmt::LowerHex for Hexf<(F, i32)> {
 
 impl fmt::LowerHex for Hexf<i32> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::LowerHex::fmt(&self.0, f)
+        cfg_if! {
+            if #[cfg(feature = "compiler-builtins")] {
+                unreachable!()
+            } else {
+                fmt::LowerHex::fmt(&self.0, f)
+            }
+        }
     }
 }
 
