@@ -184,6 +184,10 @@ impl Default for ByteString {
 // #[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
 // #[unstable(feature = "bstr", issue = "134915")]
 // impl<'a, const N: usize> From<&'a [u8; N]> for ByteString {
+//     /// Make a `ByteString` from a byte array ref.
+//     ///
+//     /// ## Cost
+//     /// Allocates a new `Vec`
 //     #[inline]
 //     fn from(s: &'a [u8; N]) -> Self {
 //         ByteString(s.as_slice().to_vec())
@@ -193,6 +197,10 @@ impl Default for ByteString {
 // #[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
 // #[unstable(feature = "bstr", issue = "134915")]
 // impl<const N: usize> From<[u8; N]> for ByteString {
+//     /// Make a `ByteString` from a byte array.
+//     ///
+//     /// ## Cost
+//     /// Allocates a new `Vec`
 //     #[inline]
 //     fn from(s: [u8; N]) -> Self {
 //         ByteString(s.as_slice().to_vec())
@@ -202,6 +210,10 @@ impl Default for ByteString {
 // #[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
 // #[unstable(feature = "bstr", issue = "134915")]
 // impl<'a> From<&'a [u8]> for ByteString {
+//     /// Make a `ByteString` from a byte slice.
+//     ///
+//     /// ## Cost
+//     /// Allocates a new `Vec`
 //     #[inline]
 //     fn from(s: &'a [u8]) -> Self {
 //         ByteString(s.to_vec())
@@ -210,6 +222,7 @@ impl Default for ByteString {
 //
 // #[unstable(feature = "bstr", issue = "134915")]
 // impl From<Vec<u8>> for ByteString {
+//     /// Make a `ByteString` with `Vec<u8>` as inner
 //     #[inline]
 //     fn from(s: Vec<u8>) -> Self {
 //         ByteString(s)
@@ -218,6 +231,7 @@ impl Default for ByteString {
 
 #[unstable(feature = "bstr", issue = "134915")]
 impl From<ByteString> for Vec<u8> {
+    /// Return the inner `Vec` of the byte string.
     #[inline]
     fn from(s: ByteString) -> Self {
         s.0
@@ -229,6 +243,10 @@ impl From<ByteString> for Vec<u8> {
 // #[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
 // #[unstable(feature = "bstr", issue = "134915")]
 // impl<'a> From<&'a str> for ByteString {
+//     /// Make a `ByteString` from a string slices bytes.
+//     ///
+//     /// ## Cost
+//     /// Allocates a new `Vec`
 //     #[inline]
 //     fn from(s: &'a str) -> Self {
 //         ByteString(s.as_bytes().to_vec())
@@ -237,6 +255,7 @@ impl From<ByteString> for Vec<u8> {
 //
 // #[unstable(feature = "bstr", issue = "134915")]
 // impl From<String> for ByteString {
+//     /// Create a `ByteString` from a `String`s bytes
 //     #[inline]
 //     fn from(s: String) -> Self {
 //         ByteString(s.into_bytes())
@@ -246,6 +265,10 @@ impl From<ByteString> for Vec<u8> {
 #[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
 #[unstable(feature = "bstr", issue = "134915")]
 impl<'a> From<&'a ByteStr> for ByteString {
+    /// Convert the `ByteStr` to a `Vec` then wrap it in a `ByteString`.
+    ///
+    /// ## Cost
+    /// Allocates a new `Vec`
     #[inline]
     fn from(s: &'a ByteStr) -> Self {
         ByteString(s.0.to_vec())
@@ -255,6 +278,7 @@ impl<'a> From<&'a ByteStr> for ByteString {
 #[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
 #[unstable(feature = "bstr", issue = "134915")]
 impl<'a> From<ByteString> for Cow<'a, ByteStr> {
+    /// Wrap `ByteString` in `Cow::Owned`.
     #[inline]
     fn from(s: ByteString) -> Self {
         Cow::Owned(s)
@@ -264,6 +288,7 @@ impl<'a> From<ByteString> for Cow<'a, ByteStr> {
 #[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
 #[unstable(feature = "bstr", issue = "134915")]
 impl<'a> From<&'a ByteString> for Cow<'a, ByteStr> {
+    /// Wrap `ByteString` as byte str in `Cow::Borrowed`.
     #[inline]
     fn from(s: &'a ByteString) -> Self {
         Cow::Borrowed(s.as_bytestr())
@@ -617,6 +642,7 @@ impl Clone for Box<ByteStr> {
 #[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
 #[unstable(feature = "bstr", issue = "134915")]
 impl<'a> From<&'a ByteStr> for Cow<'a, ByteStr> {
+    /// Wrap `ByteStr` in `Cow::Borrowed`.
     #[inline]
     fn from(s: &'a ByteStr) -> Self {
         Cow::Borrowed(s)
@@ -626,6 +652,7 @@ impl<'a> From<&'a ByteStr> for Cow<'a, ByteStr> {
 #[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
 #[unstable(feature = "bstr", issue = "134915")]
 impl From<Box<[u8]>> for Box<ByteStr> {
+    /// Move the bytes from `Box<ByteStr>` to `Box<[u8]>`, this does not allocate new memory.
     #[inline]
     fn from(s: Box<[u8]>) -> Box<ByteStr> {
         // SAFETY: `ByteStr` is a transparent wrapper around `[u8]`.
@@ -636,6 +663,7 @@ impl From<Box<[u8]>> for Box<ByteStr> {
 #[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
 #[unstable(feature = "bstr", issue = "134915")]
 impl From<Box<ByteStr>> for Box<[u8]> {
+    /// Create a `Box<ByteStr>` from `Box<[u8]>`s raw.
     #[inline]
     fn from(s: Box<ByteStr>) -> Box<[u8]> {
         // SAFETY: `ByteStr` is a transparent wrapper around `[u8]`.
@@ -646,6 +674,7 @@ impl From<Box<ByteStr>> for Box<[u8]> {
 #[unstable(feature = "bstr", issue = "134915")]
 #[cfg(not(no_rc))]
 impl From<Rc<[u8]>> for Rc<ByteStr> {
+    /// Create a `Rc<[u8]>` from `Rc<ByteStr>`s raw.
     #[inline]
     fn from(s: Rc<[u8]>) -> Rc<ByteStr> {
         // SAFETY: `ByteStr` is a transparent wrapper around `[u8]`.
@@ -656,6 +685,7 @@ impl From<Rc<[u8]>> for Rc<ByteStr> {
 #[unstable(feature = "bstr", issue = "134915")]
 #[cfg(not(no_rc))]
 impl From<Rc<ByteStr>> for Rc<[u8]> {
+    /// Create a `Rc<ByteStr>` from `Rc<[u8]>`s raw.
     #[inline]
     fn from(s: Rc<ByteStr>) -> Rc<[u8]> {
         // SAFETY: `ByteStr` is a transparent wrapper around `[u8]`.
@@ -666,6 +696,7 @@ impl From<Rc<ByteStr>> for Rc<[u8]> {
 #[unstable(feature = "bstr", issue = "134915")]
 #[cfg(all(not(no_rc), not(no_sync), target_has_atomic = "ptr"))]
 impl From<Arc<[u8]>> for Arc<ByteStr> {
+    /// Create a `Arc<ByteStr>` from `Arc<[u8]>`s raw.
     #[inline]
     fn from(s: Arc<[u8]>) -> Arc<ByteStr> {
         // SAFETY: `ByteStr` is a transparent wrapper around `[u8]`.
@@ -676,6 +707,7 @@ impl From<Arc<[u8]>> for Arc<ByteStr> {
 #[unstable(feature = "bstr", issue = "134915")]
 #[cfg(all(not(no_rc), not(no_sync), target_has_atomic = "ptr"))]
 impl From<Arc<ByteStr>> for Arc<[u8]> {
+    /// Create a `Arc<ByteStr>` from `Arc<[u8]>`s raw.
     #[inline]
     fn from(s: Arc<ByteStr>) -> Arc<[u8]> {
         // SAFETY: `ByteStr` is a transparent wrapper around `[u8]`.
@@ -695,6 +727,10 @@ impl_partial_eq_ord_cow!(&'a ByteStr, Cow<'a, [u8]>);
 impl<'a> TryFrom<&'a ByteStr> for String {
     type Error = core::str::Utf8Error;
 
+    /// Convert `ByteStr`s bytes to a utf-8 `String`.
+    ///
+    /// # Errors
+    /// If `ByteStr` is not valid utf-8
     #[inline]
     fn try_from(s: &'a ByteStr) -> Result<Self, Self::Error> {
         Ok(core::str::from_utf8(&s.0)?.into())

@@ -41,6 +41,7 @@ impl<T> error::Error for SendTimeoutError<T> {}
 
 #[unstable(feature = "mpmc_channel", issue = "126840")]
 impl<T> From<SendError<T>> for SendTimeoutError<T> {
+    /// Make a `SendTimeoutError::Disconnected` with `SendError`s inner
     fn from(err: SendError<T>) -> SendTimeoutError<T> {
         match err {
             SendError(e) => SendTimeoutError::Disconnected(e),
