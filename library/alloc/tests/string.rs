@@ -912,3 +912,83 @@ fn test_str_concat() {
     let s: String = format!("{a}{b}");
     assert_eq!(s.as_bytes()[9], 'd' as u8);
 }
+
+#[test]
+fn make_uppercase() {
+    fn test(s: &str) {
+        let ground_truth = s.to_uppercase();
+        let mut tested = s.to_owned();
+        tested.make_uppercase();
+        assert!(
+            tested == ground_truth,
+            r#"When uppercased "{s}" gave "{tested}" while "{ground_truth}" was expected"#
+        );
+    }
+    test("");
+    test("abcde");
+    // 4 to 9 bytes
+    test("ǰΐ");
+    // 10*3 to 10*2 bytes
+    test("ⱥⱥⱥⱥⱥⱥⱥⱥⱥⱥ");
+    test("aéǅßﬁᾀ");
+}
+
+#[test]
+fn make_lowercase() {
+    fn test(s: &str) {
+        let ground_truth = s.to_lowercase();
+        let mut tested = s.to_owned();
+        tested.make_lowercase();
+        assert!(
+            tested == ground_truth,
+            r#"When lowercased "{s}" gave "{tested}" while "{ground_truth}" was expected"#
+        );
+    }
+    test("");
+    test("AÉǅaé ");
+
+    // https://github.com/rust-lang/rust/issues/26035
+    test("ΑΣ");
+    test("Α'Σ");
+    test("Α''Σ");
+
+    test("ΑΣ Α");
+    test("Α'Σ Α");
+    test("Α''Σ Α");
+
+    test("ΑΣ' Α");
+    test("ΑΣ'' Α");
+
+    test("Α'Σ' Α");
+    test("Α''Σ'' Α");
+
+    test("Α Σ");
+    test("Α 'Σ");
+    test("Α ''Σ");
+
+    test("Σ");
+    test("'Σ");
+    test("''Σ");
+
+    test("ΑΣΑ");
+    test("ΑΣ'Α");
+    test("ΑΣ''Α");
+
+    // https://github.com/rust-lang/rust/issues/124714
+    // input lengths around the boundary of the chunk size used by the ascii prefix optimization
+    test("abcdefghijklmnoΣ");
+    test("abcdefghijklmnopΣ");
+    test("abcdefghijklmnopqΣ");
+
+    // a really long string that has it's lowercase form
+    // even longer. this tests that implementations don't assume
+    // an incorrect upper bound on allocations
+    let upper = str::repeat("İ", 512);
+    test(&upper);
+
+    // a really long ascii-only string.
+    // This test that the ascii hot-path
+    // functions correctly
+    let upper = str::repeat("A", 511);
+    test(&upper);
+}
