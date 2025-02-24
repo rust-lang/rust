@@ -25,7 +25,6 @@ salsa.opt-level = 3
 miniz_oxide.opt-level = 3
 
 [profile.release]
-incremental = true
 # Set this to 1 or 2 to get more useful backtraces in debugger.
 debug = 0
 
