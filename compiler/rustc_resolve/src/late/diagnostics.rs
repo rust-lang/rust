@@ -431,7 +431,9 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
         // Try to get the span of the identifier within the path's syntax context
         // (if that's different).
-        if let Some(within_macro_span) = base_error.span.within_macro(span) {
+        if let Some(within_macro_span) =
+            base_error.span.within_macro(span, self.r.tcx.sess.source_map())
+        {
             err.span_label(within_macro_span, "within this macro");
         }
 
