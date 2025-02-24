@@ -1574,8 +1574,9 @@ impl<T: ?Sized> *mut T {
     ///
     /// [`ptr::replace`]: crate::ptr::replace()
     #[stable(feature = "pointer_methods", since = "1.26.0")]
+    #[rustc_const_stable(feature = "const_inherent_ptr_replace", since = "CURRENT_RUSTC_VERSION")]
     #[inline(always)]
-    pub unsafe fn replace(self, src: T) -> T
+    pub const unsafe fn replace(self, src: T) -> T
     where
         T: Sized,
     {
