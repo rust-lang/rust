@@ -9,10 +9,12 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::exported_symbols::{
     ExportedSymbol, SymbolExportInfo, SymbolExportKind, SymbolExportLevel, metadata_symbol_name,
 };
+use rustc_middle::mir::mono::{CodegenUnit, MonoItem};
 use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, Instance, SymbolName, Ty, TyCtxt};
 use rustc_middle::util::Providers;
-use rustc_session::config::{CrateType, OomStrategy};
+use rustc_session::config::{CrateType, OomStrategy, OutputFilenames, OutputType};
+use rustc_span::Symbol;
 use rustc_target::callconv::Conv;
 use rustc_target::spec::{SanitizerSet, TlsModel};
 use tracing::debug;
@@ -168,6 +170,36 @@ fn is_reachable_non_generic_provider_extern(tcx: TyCtxt<'_>, def_id: DefId) -> b
     tcx.reachable_non_generics(def_id.krate).contains_key(&def_id)
 }
 
+fn find_codegen_unit<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    codegen_units: &'tcx [CodegenUnit<'tcx>],
+    outputs: &'tcx OutputFilenames,
+    def_id: DefId,
+) -> Option<Symbol> {
+    if !tcx.is_codegened_item(def_id) {
+        return None;
+    }
+    let item = if tcx.is_static(def_id) {
+        MonoItem::Static(def_id)
+    } else {
+        MonoItem::Fn(Instance::mono(tcx, def_id))
+    };
+    codegen_units.iter().find_map(|cgu| {
+        if cgu.contains_item(&item) {
+            Some(Symbol::intern(
+                outputs
+                    .temp_path(OutputType::Object, Some(cgu.name().as_str()))
+                    .file_name()
+                    .unwrap()
+                    .to_str()
+                    .unwrap(),
+            ))
+        } else {
+            None
+        }
+    })
+}
+
 fn exported_symbols_provider_local(
     tcx: TyCtxt<'_>,
     _: LocalCrate,
@@ -182,8 +214,20 @@ fn exported_symbols_provider_local(
         tcx.reachable_non_generics(LOCAL_CRATE).to_sorted(&hcx, true)
     });
 
-    let mut symbols: Vec<_> =
-        sorted.iter().map(|&(&def_id, &info)| (ExportedSymbol::NonGeneric(def_id), info)).collect();
+    let outputs = tcx.output_filenames(());
+    let codegen_units = tcx.collect_and_partition_mono_items(()).codegen_units;
+    let mut symbols: Vec<_> = sorted
+        .iter()
+        .map(|&(&def_id, &info)| {
+            (
+                ExportedSymbol::NonGeneric {
+                    def_id,
+                    cgu: find_codegen_unit(tcx, codegen_units, outputs, def_id),
+                },
+                info,
+            )
+        })
+        .collect();
 
     // Export TLS shims
     if !tcx.sess.target.dll_tls_export {
@@ -433,7 +477,7 @@ fn upstream_monomorphizations_provider(
                         continue;
                     }
                 }
-                ExportedSymbol::NonGeneric(..)
+                ExportedSymbol::NonGeneric { .. }
                 | ExportedSymbol::ThreadLocalShim(..)
                 | ExportedSymbol::NoDefId(..) => {
                     // These are no monomorphizations
@@ -545,7 +589,7 @@ pub(crate) fn symbol_name_for_instance_in_crate<'tcx>(
     // This is something instantiated in an upstream crate, so we have to use
     // the slower (because uncached) version of computing the symbol name.
     match symbol {
-        ExportedSymbol::NonGeneric(def_id) => {
+        ExportedSymbol::NonGeneric { def_id, .. } => {
             rustc_symbol_mangling::symbol_name_for_instance_in_crate(
                 tcx,
                 Instance::mono(tcx, def_id),
@@ -590,12 +634,12 @@ fn calling_convention_for_symbol<'tcx>(
     symbol: ExportedSymbol<'tcx>,
 ) -> (Conv, &'tcx [rustc_target::callconv::ArgAbi<'tcx, Ty<'tcx>>]) {
     let instance = match symbol {
-        ExportedSymbol::NonGeneric(def_id) | ExportedSymbol::Generic(def_id, _)
+        ExportedSymbol::NonGeneric { def_id, .. } | ExportedSymbol::Generic(def_id, _)
             if tcx.is_static(def_id) =>
         {
             None
         }
-        ExportedSymbol::NonGeneric(def_id) => Some(Instance::mono(tcx, def_id)),
+        ExportedSymbol::NonGeneric { def_id, .. } => Some(Instance::mono(tcx, def_id)),
         ExportedSymbol::Generic(def_id, args) => Some(Instance::new(def_id, args)),
         // DropGlue always use the Rust calling convention and thus follow the target's default
         // symbol decoration scheme.
@@ -711,7 +755,7 @@ fn maybe_emutls_symbol_name<'tcx>(
     undecorated: &str,
 ) -> Option<String> {
     if matches!(tcx.sess.tls_model(), TlsModel::Emulated)
-        && let ExportedSymbol::NonGeneric(def_id) = symbol
+        && let ExportedSymbol::NonGeneric { def_id, .. } = symbol
         && tcx.is_thread_local_static(def_id)
     {
         // When using emutls, LLVM will add the `__emutls_v.` prefix to thread local symbols,

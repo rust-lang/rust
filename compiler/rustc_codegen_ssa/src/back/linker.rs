@@ -5,14 +5,16 @@ use std::path::{Path, PathBuf};
 use std::{env, io, iter, mem, str};
 
 use cc::windows_registry;
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_metadata::{
     find_native_static_library, try_find_native_dynamic_library, try_find_native_static_library,
 };
 use rustc_middle::bug;
 use rustc_middle::middle::dependency_format::Linkage;
-use rustc_middle::middle::exported_symbols;
-use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo, SymbolExportKind};
+use rustc_middle::middle::exported_symbols::{
+    self, ExportedSymbol, SymbolExportInfo, SymbolExportKind,
+};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
@@ -21,6 +23,7 @@ use rustc_target::spec::{Cc, LinkOutputKind, LinkerFlavor, Lld};
 use tracing::{debug, warn};
 
 use super::command::Command;
+use super::link::are_upstream_rust_objects_already_included;
 use super::symbol_export;
 use crate::errors;
 
@@ -1753,7 +1756,7 @@ impl<'a> Linker for AixLinker<'a> {
 fn for_each_exported_symbols_include_dep<'tcx>(
     tcx: TyCtxt<'tcx>,
     crate_type: CrateType,
-    mut callback: impl FnMut(ExportedSymbol<'tcx>, SymbolExportInfo, CrateNum),
+    mut callback: impl FnMut(&'tcx [(ExportedSymbol<'tcx>, SymbolExportInfo)], CrateNum),
 ) {
     let formats = tcx.dependency_formats(());
     let deps = &formats[&crate_type];
@@ -1761,9 +1764,7 @@ fn for_each_exported_symbols_include_dep<'tcx>(
     for (cnum, dep_format) in deps.iter_enumerated() {
         // For each dependency that we are linking to statically ...
         if *dep_format == Linkage::Static {
-            for &(symbol, info) in tcx.exported_symbols(cnum).iter() {
-                callback(symbol, info, cnum);
-            }
+            callback(tcx.exported_symbols(cnum), cnum);
         }
     }
 }
@@ -1783,12 +1784,14 @@ pub(crate) fn exported_symbols(tcx: TyCtxt<'_>, crate_type: CrateType) -> Vec<St
 fn exported_symbols_for_non_proc_macro(tcx: TyCtxt<'_>, crate_type: CrateType) -> Vec<String> {
     let mut symbols = Vec::new();
     let export_threshold = symbol_export::crates_export_threshold(&[crate_type]);
-    for_each_exported_symbols_include_dep(tcx, crate_type, |symbol, info, cnum| {
-        if info.level.is_below_threshold(export_threshold) {
-            symbols.push(symbol_export::exporting_symbol_name_for_instance_in_crate(
-                tcx, symbol, cnum,
-            ));
-            symbol_export::extend_exported_symbols(&mut symbols, tcx, symbol, cnum);
+    for_each_exported_symbols_include_dep(tcx, crate_type, |exported_symbols, cnum| {
+        for &(symbol, info) in exported_symbols {
+            if info.level.is_below_threshold(export_threshold) {
+                symbols.push(symbol_export::exporting_symbol_name_for_instance_in_crate(
+                    tcx, symbol, cnum,
+                ));
+                symbol_export::extend_exported_symbols(&mut symbols, tcx, symbol, cnum);
+            }
         }
     });
 
@@ -1808,30 +1811,84 @@ fn exported_symbols_for_proc_macro_crate(tcx: TyCtxt<'_>) -> Vec<String> {
     vec![proc_macro_decls_name, metadata_symbol_name]
 }
 
-pub(crate) fn linked_symbols(
+pub(crate) fn linked_objects(
     tcx: TyCtxt<'_>,
     crate_type: CrateType,
-) -> Vec<(String, SymbolExportKind)> {
+    linked_symbols: &mut Vec<(String, SymbolExportKind)>,
+) -> FxIndexMap<CrateNum, FxHashSet<String>> {
     match crate_type {
         CrateType::Executable | CrateType::Cdylib | CrateType::Dylib => (),
         CrateType::Staticlib | CrateType::ProcMacro | CrateType::Rlib => {
-            return Vec::new();
+            return FxIndexMap::default();
         }
     }
 
-    let mut symbols = Vec::new();
-
+    let mut objects = FxIndexMap::default();
+    let upstream_rust_objects_already_included =
+        are_upstream_rust_objects_already_included(tcx.sess);
     let export_threshold = symbol_export::crates_export_threshold(&[crate_type]);
-    for_each_exported_symbols_include_dep(tcx, crate_type, |symbol, info, cnum| {
-        if info.level.is_below_threshold(export_threshold) || info.used {
-            symbols.push((
-                symbol_export::linking_symbol_name_for_instance_in_crate(tcx, symbol, cnum),
-                info.kind,
-            ));
+    for_each_exported_symbols_include_dep(tcx, crate_type, |exported_symbols, cnum| {
+        let exported_symbols = exported_symbols.iter().filter(|(_, info)| {
+            (!matches!(crate_type, CrateType::Executable)
+                && info.level.is_below_threshold(export_threshold))
+                || info.used
+        });
+        if cnum == LOCAL_CRATE {
+            // Since the local crate is always linked directly to object files, `#[used]` works as expected,
+            // we only need add undefined symbols.
+            linked_symbols.extend(
+                exported_symbols
+                    .filter(|(symbol, _)| match symbol {
+                        ExportedSymbol::NonGeneric { cgu, .. } => cgu.is_none(),
+                        ExportedSymbol::Generic(..)
+                        | ExportedSymbol::DropGlue(..)
+                        | ExportedSymbol::AsyncDropGlueCtorShim(..) => false,
+                        ExportedSymbol::ThreadLocalShim(_def_id) => false,
+                        ExportedSymbol::NoDefId(..) => true,
+                    })
+                    .map(|&(symbol, info)| {
+                        (
+                            symbol_export::linking_symbol_name_for_instance_in_crate(
+                                tcx, symbol, cnum,
+                            ),
+                            info.kind,
+                        )
+                    }),
+            );
+            return;
         }
+        if matches!(crate_type, CrateType::Executable) && tcx.is_compiler_builtins(cnum) {
+            return;
+        }
+        let lto = upstream_rust_objects_already_included;
+        let mut cgus = FxHashSet::default();
+        for &(symbol, info) in exported_symbols {
+            match symbol {
+                ExportedSymbol::NonGeneric { cgu: Some(cgu), .. } => {
+                    if !lto {
+                        cgus.insert(cgu.as_str().to_string());
+                    }
+                }
+                ExportedSymbol::NonGeneric { cgu: None, .. } | ExportedSymbol::NoDefId(..) => {
+                    // Unresolved symbols may come from external libraries.
+                    linked_symbols.push((
+                        symbol_export::linking_symbol_name_for_instance_in_crate(tcx, symbol, cnum),
+                        info.kind,
+                    ));
+                }
+                ExportedSymbol::Generic(..)
+                | ExportedSymbol::DropGlue(..)
+                | ExportedSymbol::AsyncDropGlueCtorShim(..)
+                | ExportedSymbol::ThreadLocalShim(..) => {}
+            };
+        }
+        if cgus.is_empty() {
+            return;
+        }
+        objects.insert(cnum, cgus);
     });
 
-    symbols
+    objects
 }
 
 /// Much simplified and explicit CLI for the NVPTX linker. The linker operates

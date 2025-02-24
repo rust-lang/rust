@@ -194,6 +194,7 @@ pub struct CrateInfo {
     pub crate_types: Vec<CrateType>,
     pub exported_symbols: UnordMap<CrateType, Vec<String>>,
     pub linked_symbols: FxIndexMap<CrateType, Vec<(String, SymbolExportKind)>>,
+    pub linked_objects: FxIndexMap<CrateType, FxIndexMap<CrateNum, FxHashSet<String>>>,
     pub local_crate_name: Symbol,
     pub compiler_builtins: Option<CrateNum>,
     pub profiler_runtime: Option<CrateNum>,
