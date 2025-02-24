@@ -33,14 +33,12 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
     pub fn new(
         tcx: TyCtxt<'tcx>,
         def_id: LocalDefId,
+        typing_env: ty::TypingEnv<'tcx>,
         get_operand_ty: impl Fn(&hir::Expr<'tcx>) -> Ty<'tcx> + 'a,
     ) -> Self {
         InlineAsmCtxt {
             tcx,
-            typing_env: ty::TypingEnv {
-                typing_mode: ty::TypingMode::non_body_analysis(),
-                param_env: ty::ParamEnv::empty(),
-            },
+            typing_env,
             target_features: tcx.asm_target_features(def_id),
             expr_ty: Box::new(get_operand_ty),
         }
