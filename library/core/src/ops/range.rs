@@ -771,13 +771,11 @@ pub trait RangeBounds<T: ?Sized> {
     /// # Examples
     ///
     /// ```
-    /// # fn main() {
     /// use std::ops::Bound::*;
     /// use std::ops::RangeBounds;
     ///
     /// assert_eq!((..10).start_bound(), Unbounded);
     /// assert_eq!((3..10).start_bound(), Included(&3));
-    /// # }
     /// ```
     #[stable(feature = "collections_range", since = "1.28.0")]
     fn start_bound(&self) -> Bound<&T>;
@@ -789,13 +787,11 @@ pub trait RangeBounds<T: ?Sized> {
     /// # Examples
     ///
     /// ```
-    /// # fn main() {
     /// use std::ops::Bound::*;
     /// use std::ops::RangeBounds;
     ///
     /// assert_eq!((3..).end_bound(), Unbounded);
     /// assert_eq!((3..10).end_bound(), Excluded(&10));
-    /// # }
     /// ```
     #[stable(feature = "collections_range", since = "1.28.0")]
     fn end_bound(&self) -> Bound<&T>;
@@ -829,6 +825,71 @@ pub trait RangeBounds<T: ?Sized> {
             Unbounded => true,
         })
     }
+
+    /// Returns `true` if the range contains no items.
+    /// One-sided ranges (`RangeFrom`, etc) always return `true`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(range_bounds_is_empty)]
+    /// use std::ops::RangeBounds;
+    ///
+    /// assert!(!(3..).is_empty());
+    /// assert!(!(..2).is_empty());
+    /// assert!(!RangeBounds::is_empty(&(3..5)));
+    /// assert!( RangeBounds::is_empty(&(3..3)));
+    /// assert!( RangeBounds::is_empty(&(3..2)));
+    /// ```
+    ///
+    /// The range is empty if either side is incomparable:
+    ///
+    /// ```
+    /// #![feature(range_bounds_is_empty)]
+    /// use std::ops::RangeBounds;
+    ///
+    /// assert!(!RangeBounds::is_empty(&(3.0..5.0)));
+    /// assert!( RangeBounds::is_empty(&(3.0..f32::NAN)));
+    /// assert!( RangeBounds::is_empty(&(f32::NAN..5.0)));
+    /// ```
+    ///
+    /// But never empty is either side is unbounded:
+    ///
+    /// ```
+    /// #![feature(range_bounds_is_empty)]
+    /// use std::ops::RangeBounds;
+    ///
+    /// assert!(!(..0).is_empty());
+    /// assert!(!(i32::MAX..).is_empty());
+    /// assert!(!RangeBounds::<u8>::is_empty(&(..)));
+    /// ```
+    ///
+    /// `(Excluded(a), Excluded(b))` is only empty if `a >= b`:
+    ///
+    /// ```
+    /// #![feature(range_bounds_is_empty)]
+    /// use std::ops::Bound::*;
+    /// use std::ops::RangeBounds;
+    ///
+    /// assert!(!(Excluded(1), Excluded(3)).is_empty());
+    /// assert!(!(Excluded(1), Excluded(2)).is_empty());
+    /// assert!( (Excluded(1), Excluded(1)).is_empty());
+    /// assert!( (Excluded(2), Excluded(1)).is_empty());
+    /// assert!( (Excluded(3), Excluded(1)).is_empty());
+    /// ```
+    #[unstable(feature = "range_bounds_is_empty", issue = "137300")]
+    fn is_empty(&self) -> bool
+    where
+        T: PartialOrd,
+    {
+        !match (self.start_bound(), self.end_bound()) {
+            (Unbounded, _) | (_, Unbounded) => true,
+            (Included(start), Excluded(end))
+            | (Excluded(start), Included(end))
+            | (Excluded(start), Excluded(end)) => start < end,
+            (Included(start), Included(end)) => start <= end,
+        }
+    }
 }
 
 /// Used to convert a range into start and end bounds, consuming the
@@ -845,7 +906,6 @@ pub trait IntoBounds<T>: RangeBounds<T> {
     ///
     /// ```
     /// #![feature(range_into_bounds)]
-    ///
     /// use std::ops::Bound::*;
     /// use std::ops::IntoBounds;
     ///
@@ -853,6 +913,76 @@ pub trait IntoBounds<T>: RangeBounds<T> {
     /// assert_eq!((..=7).into_bounds(), (Unbounded, Included(7)));
     /// ```
     fn into_bounds(self) -> (Bound<T>, Bound<T>);
+
+    /// Compute the intersection of  `self` and `other`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(range_into_bounds)]
+    /// use std::ops::Bound::*;
+    /// use std::ops::IntoBounds;
+    ///
+    /// assert_eq!((3..).intersect(..5), (Included(3), Excluded(5)));
+    /// assert_eq!((-12..387).intersect(0..256), (Included(0), Excluded(256)));
+    /// assert_eq!((1..5).intersect(..), (Included(1), Excluded(5)));
+    /// assert_eq!((1..=9).intersect(0..10), (Included(1), Included(9)));
+    /// assert_eq!((7..=13).intersect(8..13), (Included(8), Excluded(13)));
+    /// ```
+    ///
+    /// Combine with `is_empty` to determine if two ranges overlap.
+    ///
+    /// ```
+    /// #![feature(range_into_bounds)]
+    /// #![feature(range_bounds_is_empty)]
+    /// use std::ops::{RangeBounds, IntoBounds};
+    ///
+    /// assert!(!(3..).intersect(..5).is_empty());
+    /// assert!(!(-12..387).intersect(0..256).is_empty());
+    /// assert!((1..5).intersect(6..).is_empty());
+    /// ```
+    fn intersect<R>(self, other: R) -> (Bound<T>, Bound<T>)
+    where
+        Self: Sized,
+        T: Ord,
+        R: Sized + IntoBounds<T>,
+    {
+        let (self_start, self_end) = IntoBounds::into_bounds(self);
+        let (other_start, other_end) = IntoBounds::into_bounds(other);
+
+        let start = match (self_start, other_start) {
+            (Included(a), Included(b)) => Included(Ord::max(a, b)),
+            (Excluded(a), Excluded(b)) => Excluded(Ord::max(a, b)),
+            (Unbounded, Unbounded) => Unbounded,
+
+            (x, Unbounded) | (Unbounded, x) => x,
+
+            (Included(i), Excluded(e)) | (Excluded(e), Included(i)) => {
+                if i > e {
+                    Included(i)
+                } else {
+                    Excluded(e)
+                }
+            }
+        };
+        let end = match (self_end, other_end) {
+            (Included(a), Included(b)) => Included(Ord::min(a, b)),
+            (Excluded(a), Excluded(b)) => Excluded(Ord::min(a, b)),
+            (Unbounded, Unbounded) => Unbounded,
+
+            (x, Unbounded) | (Unbounded, x) => x,
+
+            (Included(i), Excluded(e)) | (Excluded(e), Included(i)) => {
+                if i < e {
+                    Included(i)
+                } else {
+                    Excluded(e)
+                }
+            }
+        };
+
+        (start, end)
+    }
 }
 
 use self::Bound::{Excluded, Included, Unbounded};
