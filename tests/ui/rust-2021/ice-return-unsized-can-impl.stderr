@@ -1,5 +1,5 @@
 error[E0782]: expected a type, found a trait
-  --> $DIR/ice-return-unsized-can-impl.rs:11:15
+  --> $DIR/ice-return-unsized-can-impl.rs:10:15
    |
 LL |     fn g(new: B) -> B;
    |               ^
@@ -16,7 +16,7 @@ LL |     fn g(new: impl B) -> B;
    |               ++++
 
 error[E0782]: expected a type, found a trait
-  --> $DIR/ice-return-unsized-can-impl.rs:11:21
+  --> $DIR/ice-return-unsized-can-impl.rs:10:21
    |
 LL |     fn g(new: B) -> B;
    |                     ^

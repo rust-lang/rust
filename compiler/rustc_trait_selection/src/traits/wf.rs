@@ -904,19 +904,14 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 // FIXME(#27579) RFC also considers adding trait
                 // obligations that don't refer to Self and
                 // checking those
-
-                let defer_to_coercion = tcx.features().dyn_compatible_for_dispatch();
-
-                if !defer_to_coercion {
-                    if let Some(principal) = data.principal_def_id() {
-                        self.out.push(traits::Obligation::with_depth(
-                            tcx,
-                            self.cause(ObligationCauseCode::WellFormed(None)),
-                            self.recursion_depth,
-                            self.param_env,
-                            ty::Binder::dummy(ty::PredicateKind::DynCompatible(principal)),
-                        ));
-                    }
+                if let Some(principal) = data.principal_def_id() {
+                    self.out.push(traits::Obligation::with_depth(
+                        tcx,
+                        self.cause(ObligationCauseCode::WellFormed(None)),
+                        self.recursion_depth,
+                        self.param_env,
+                        ty::Binder::dummy(ty::PredicateKind::DynCompatible(principal)),
+                    ));
                 }
             }
 

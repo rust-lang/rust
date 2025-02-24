@@ -3827,7 +3827,6 @@ ui/suggestions/issue-103646.rs
 ui/suggestions/issue-104086-suggest-let.rs
 ui/suggestions/issue-104287.rs
 ui/suggestions/issue-104327.rs
-ui/suggestions/issue-104328.rs
 ui/suggestions/issue-104961.rs
 ui/suggestions/issue-105226.rs
 ui/suggestions/issue-105494.rs
