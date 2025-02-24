@@ -66,7 +66,7 @@ use core::ptr::{self, NonNull};
 use core::slice::{self, SliceIndex};
 use core::{fmt, intrinsics};
 
-#[unstable(feature = "extract_if", reason = "recently added", issue = "43244")]
+#[stable(feature = "extract_if", since = "CURRENT_RUSTC_VERSION")]
 pub use self::extract_if::ExtractIf;
 use crate::alloc::{Allocator, Global};
 use crate::borrow::{Cow, ToOwned};
@@ -3684,7 +3684,6 @@ impl<T, A: Allocator> Vec<T, A> {
     /// Splitting an array into evens and odds, reusing the original allocation:
     ///
     /// ```
-    /// #![feature(extract_if)]
     /// let mut numbers = vec![1, 2, 3, 4, 5, 6, 8, 9, 11, 13, 14, 15];
     ///
     /// let evens = numbers.extract_if(.., |x| *x % 2 == 0).collect::<Vec<_>>();
@@ -3697,13 +3696,12 @@ impl<T, A: Allocator> Vec<T, A> {
     /// Using the range argument to only process a part of the vector:
     ///
     /// ```
-    /// #![feature(extract_if)]
     /// let mut items = vec![0, 0, 0, 0, 0, 0, 0, 1, 2, 1, 2, 1, 2];
     /// let ones = items.extract_if(7.., |x| *x == 1).collect::<Vec<_>>();
     /// assert_eq!(items, vec![0, 0, 0, 0, 0, 0, 0, 2, 2, 2]);
     /// assert_eq!(ones.len(), 3);
     /// ```
-    #[unstable(feature = "extract_if", reason = "recently added", issue = "43244")]
+    #[stable(feature = "extract_if", since = "CURRENT_RUSTC_VERSION")]
     pub fn extract_if<F, R>(&mut self, range: R, filter: F) -> ExtractIf<'_, T, F, A>
     where
         F: FnMut(&mut T) -> bool,

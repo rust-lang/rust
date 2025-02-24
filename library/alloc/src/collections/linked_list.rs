@@ -1140,7 +1140,6 @@ impl<T, A: Allocator> LinkedList<T, A> {
     /// Splitting a list into evens and odds, reusing the original list:
     ///
     /// ```
-    /// #![feature(extract_if)]
     /// use std::collections::LinkedList;
     ///
     /// let mut numbers: LinkedList<u32> = LinkedList::new();
@@ -1152,7 +1151,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
     /// assert_eq!(evens.into_iter().collect::<Vec<_>>(), vec![2, 4, 6, 8, 14]);
     /// assert_eq!(odds.into_iter().collect::<Vec<_>>(), vec![1, 3, 5, 9, 11, 13, 15]);
     /// ```
-    #[unstable(feature = "extract_if", reason = "recently added", issue = "43244")]
+    #[stable(feature = "extract_if", since = "CURRENT_RUSTC_VERSION")]
     pub fn extract_if<F>(&mut self, filter: F) -> ExtractIf<'_, T, F, A>
     where
         F: FnMut(&mut T) -> bool,
@@ -1932,7 +1931,7 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
 }
 
 /// An iterator produced by calling `extract_if` on LinkedList.
-#[unstable(feature = "extract_if", reason = "recently added", issue = "43244")]
+#[stable(feature = "extract_if", since = "CURRENT_RUSTC_VERSION")]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct ExtractIf<
     'a,
@@ -1947,7 +1946,7 @@ pub struct ExtractIf<
     old_len: usize,
 }
 
-#[unstable(feature = "extract_if", reason = "recently added", issue = "43244")]
+#[stable(feature = "extract_if", since = "CURRENT_RUSTC_VERSION")]
 impl<T, F, A: Allocator> Iterator for ExtractIf<'_, T, F, A>
 where
     F: FnMut(&mut T) -> bool,
@@ -1976,7 +1975,7 @@ where
     }
 }
 
-#[unstable(feature = "extract_if", reason = "recently added", issue = "43244")]
+#[stable(feature = "extract_if", since = "CURRENT_RUSTC_VERSION")]
 impl<T: fmt::Debug, F> fmt::Debug for ExtractIf<'_, T, F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("ExtractIf").field(&self.list).finish()
