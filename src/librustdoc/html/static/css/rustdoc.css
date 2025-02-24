@@ -970,10 +970,10 @@ ul.block, .block li, .block ul {
 	display: none;
 }
 
-.src .example-wrap [data-nosnippet] {
+.example-wrap [data-nosnippet] {
 	width: calc(var(--example-wrap-digits-count) + var(--line-number-padding) * 2);
 }
-.src .example-wrap pre > code {
+.example-wrap pre > code {
 	padding-left: calc(
 		var(--example-wrap-digits-count) + var(--line-number-padding) * 2
 		+ var(--line-number-right-margin));
@@ -999,11 +999,13 @@ ul.block, .block li, .block ul {
 }
 .example-wrap pre > code {
 	position: relative;
-	word-break: break-all;
 	display: block;
+}
+:root.word-wrap-source-code .example-wrap pre > code {
+	word-break: break-all;
 	white-space: pre-wrap;
 }
-.example-wrap pre > code * {
+:root.word-wrap-source-code .example-wrap pre > code * {
 	word-break: break-all;
 }
 .example-wrap [data-nosnippet]:target {
