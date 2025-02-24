@@ -147,7 +147,10 @@ pub(crate) fn complete_expr_path(
             });
             match resolution {
                 hir::PathResolution::Def(hir::ModuleDef::Module(module)) => {
-                    let module_scope = module.scope(ctx.db, Some(ctx.module));
+                    // Set visible_from to None so private items are returned.
+                    // They will be possibly filtered out in add_path_resolution()
+                    // via def_is_visible().
+                    let module_scope = module.scope(ctx.db, None);
                     for (name, def) in module_scope {
                         if scope_def_applicable(def) {
                             acc.add_path_resolution(
