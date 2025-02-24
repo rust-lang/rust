@@ -17,7 +17,7 @@ pub(super) struct Closure<'a, A, R> {
 struct Env;
 
 impl<'a, A, R, F: FnMut(A) -> R> From<&'a mut F> for Closure<'a, A, R> {
-    /// Create a `Closure` from a function
+    /// Create a `Closure` from an `FnMut` eg.(function, `||` closure)
     fn from(f: &'a mut F) -> Self {
         unsafe extern "C" fn call<A, R, F: FnMut(A) -> R>(env: *mut Env, arg: A) -> R {
             unsafe { (*(env as *mut _ as *mut F))(arg) }
