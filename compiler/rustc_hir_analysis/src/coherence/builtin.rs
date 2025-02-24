@@ -1,9 +1,12 @@
 //! Check properties that are required by built-in traits and set
 //! up data structures required by type-checking/codegen.
 
+mod diagnostics;
+
 use std::assert_matches::assert_matches;
 use std::collections::BTreeMap;
 
+use diagnostics::{extract_coerce_pointee_data, redact_fulfillment_err_for_coerce_pointee};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
@@ -12,6 +15,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::{self, RegionResolutionError, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
+use rustc_middle::bug;
 use rustc_middle::ty::adjustment::CoerceUnsizedInfo;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{
@@ -307,46 +311,85 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
                 .collect::<Vec<_>>();
 
             if coerced_fields.is_empty() {
-                res = Err(tcx.dcx().emit_err(errors::DispatchFromDynSingle {
-                    span,
-                    trait_name: "DispatchFromDyn",
-                    note: true,
-                }));
+                if extract_coerce_pointee_data(tcx, def_a.did()).is_some() {
+                    res = Err(tcx.dcx().span_delayed_bug(
+                        span,
+                        "a specialised diagnostics emitted from CoercePointee \
+                        on missing data field is expected but none is found",
+                    ));
+                } else {
+                    res = Err(tcx.dcx().emit_err(errors::DispatchFromDynSingle {
+                        span,
+                        trait_name: "DispatchFromDyn",
+                        note: true,
+                    }));
+                }
             } else if coerced_fields.len() > 1 {
-                res = Err(tcx.dcx().emit_err(errors::DispatchFromDynMulti {
-                    span,
-                    coercions_note: true,
-                    number: coerced_fields.len(),
-                    coercions: coerced_fields
-                        .iter()
-                        .map(|field| {
-                            format!(
-                                "`{}` (`{}` to `{}`)",
-                                field.name,
-                                field.ty(tcx, args_a),
-                                field.ty(tcx, args_b),
-                            )
-                        })
-                        .collect::<Vec<_>>()
-                        .join(", "),
-                }));
+                if extract_coerce_pointee_data(tcx, def_a.did()).is_some() {
+                    let spans =
+                        coerced_fields.iter().map(|field| tcx.def_span(field.did)).collect();
+                    res = Err(tcx.dcx().emit_err(errors::CoercePointeeMultipleTargets {
+                        spans,
+                        diag_trait: "DispatchFromDyn",
+                    }));
+                } else {
+                    res = Err(tcx.dcx().emit_err(errors::DispatchFromDynMulti {
+                        span,
+                        coercions_note: true,
+                        number: coerced_fields.len(),
+                        coercions: coerced_fields
+                            .iter()
+                            .map(|field| {
+                                format!(
+                                    "`{}` (`{}` to `{}`)",
+                                    field.name,
+                                    field.ty(tcx, args_a),
+                                    field.ty(tcx, args_b),
+                                )
+                            })
+                            .collect::<Vec<_>>()
+                            .join(", "),
+                    }));
+                }
             } else {
                 let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
-                for field in coerced_fields {
-                    ocx.register_obligation(Obligation::new(
+                debug_assert_eq!(coerced_fields.len(), 1);
+                let field = coerced_fields[0];
+                ocx.register_obligation(Obligation::new(
+                    tcx,
+                    cause.clone(),
+                    param_env,
+                    ty::TraitRef::new(
                         tcx,
-                        cause.clone(),
-                        param_env,
-                        ty::TraitRef::new(
-                            tcx,
-                            dispatch_from_dyn_trait,
-                            [field.ty(tcx, args_a), field.ty(tcx, args_b)],
-                        ),
-                    ));
-                }
-                let errors = ocx.select_all_or_error();
+                        dispatch_from_dyn_trait,
+                        [field.ty(tcx, args_a), field.ty(tcx, args_b)],
+                    ),
+                ));
+                let mut errors = ocx.select_all_or_error();
                 if !errors.is_empty() {
-                    res = Err(infcx.err_ctxt().report_fulfillment_errors(errors));
+                    if let Some(pointee_idx) = extract_coerce_pointee_data(tcx, def_a.did()) {
+                        let target_pointee = args_b.type_at(pointee_idx);
+
+                        errors = errors
+                            .into_iter()
+                            .filter_map(|err| {
+                                redact_fulfillment_err_for_coerce_pointee(
+                                    tcx,
+                                    err,
+                                    target_pointee,
+                                    tcx.def_span(field.did),
+                                )
+                            })
+                            .collect();
+                    }
+                    if errors.is_empty() {
+                        res = Err(tcx.dcx().span_delayed_bug(
+                            span,
+                            "a specialised CoercePointee error is expected",
+                        ));
+                    } else {
+                        res = Err(infcx.err_ctxt().report_fulfillment_errors(errors));
+                    }
                 }
 
                 // Finally, resolve all regions.
@@ -371,16 +414,16 @@ pub(crate) fn coerce_unsized_info<'tcx>(
 
     let unsize_trait = tcx.require_lang_item(LangItem::Unsize, Some(span));
 
-    let source = tcx.type_of(impl_did).instantiate_identity();
+    let self_ty = tcx.type_of(impl_did).instantiate_identity();
     let trait_ref = tcx.impl_trait_ref(impl_did).unwrap().instantiate_identity();
     assert_eq!(trait_ref.def_id, coerce_unsized_trait);
-    let target = trait_ref.args.type_at(1);
-    debug!("visit_implementation_of_coerce_unsized: {:?} -> {:?} (bound)", source, target);
+    let coerced_ty = trait_ref.args.type_at(1);
+    debug!("visit_implementation_of_coerce_unsized: {:?} -> {:?} (bound)", self_ty, coerced_ty);
 
     let param_env = tcx.param_env(impl_did);
-    assert!(!source.has_escaping_bound_vars());
+    assert!(!self_ty.has_escaping_bound_vars());
 
-    debug!("visit_implementation_of_coerce_unsized: {:?} -> {:?} (free)", source, target);
+    debug!("visit_implementation_of_coerce_unsized: {:?} -> {:?} (free)", self_ty, coerced_ty);
 
     let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let cause = ObligationCause::misc(span, impl_did);
@@ -394,159 +437,186 @@ pub(crate) fn coerce_unsized_info<'tcx>(
                     &cause,
                     param_env,
                     mk_ptr(mt_b.ty),
-                    target,
+                    coerced_ty,
                     ty::error::TypeError::Mutability,
                 )
                 .emit();
         }
-        (mt_a.ty, mt_b.ty, unsize_trait, None)
+        (mt_a.ty, mt_b.ty, unsize_trait, None, DUMMY_SP)
     };
-    let (source, target, trait_def_id, kind) = match (source.kind(), target.kind()) {
-        (&ty::Ref(r_a, ty_a, mutbl_a), &ty::Ref(r_b, ty_b, mutbl_b)) => {
-            infcx.sub_regions(infer::RelateObjectBound(span), r_b, r_a);
-            let mt_a = ty::TypeAndMut { ty: ty_a, mutbl: mutbl_a };
-            let mt_b = ty::TypeAndMut { ty: ty_b, mutbl: mutbl_b };
-            check_mutbl(mt_a, mt_b, &|ty| Ty::new_imm_ref(tcx, r_b, ty))
-        }
-
-        (&ty::Ref(_, ty_a, mutbl_a), &ty::RawPtr(ty_b, mutbl_b))
-        | (&ty::RawPtr(ty_a, mutbl_a), &ty::RawPtr(ty_b, mutbl_b)) => {
-            let mt_a = ty::TypeAndMut { ty: ty_a, mutbl: mutbl_a };
-            let mt_b = ty::TypeAndMut { ty: ty_b, mutbl: mutbl_b };
-            check_mutbl(mt_a, mt_b, &|ty| Ty::new_imm_ptr(tcx, ty))
-        }
-
-        (&ty::Adt(def_a, args_a), &ty::Adt(def_b, args_b))
-            if def_a.is_struct() && def_b.is_struct() =>
-        {
-            if def_a != def_b {
-                let source_path = tcx.def_path_str(def_a.did());
-                let target_path = tcx.def_path_str(def_b.did());
-                return Err(tcx.dcx().emit_err(errors::DispatchFromDynSame {
-                    span,
-                    trait_name: "CoerceUnsized",
-                    note: true,
-                    source_path,
-                    target_path,
-                }));
+    let (source, target, trait_def_id, kind, coercion_span) =
+        match (self_ty.kind(), coerced_ty.kind()) {
+            (&ty::Ref(r_a, ty_a, mutbl_a), &ty::Ref(r_b, ty_b, mutbl_b)) => {
+                infcx.sub_regions(infer::RelateObjectBound(span), r_b, r_a);
+                let mt_a = ty::TypeAndMut { ty: ty_a, mutbl: mutbl_a };
+                let mt_b = ty::TypeAndMut { ty: ty_b, mutbl: mutbl_b };
+                check_mutbl(mt_a, mt_b, &|ty| Ty::new_imm_ref(tcx, r_b, ty))
             }
 
-            // Here we are considering a case of converting
-            // `S<P0...Pn>` to `S<Q0...Qn>`. As an example, let's imagine a struct `Foo<T, U>`,
-            // which acts like a pointer to `U`, but carries along some extra data of type `T`:
-            //
-            //     struct Foo<T, U> {
-            //         extra: T,
-            //         ptr: *mut U,
-            //     }
-            //
-            // We might have an impl that allows (e.g.) `Foo<T, [i32; 3]>` to be unsized
-            // to `Foo<T, [i32]>`. That impl would look like:
-            //
-            //   impl<T, U: Unsize<V>, V> CoerceUnsized<Foo<T, V>> for Foo<T, U> {}
-            //
-            // Here `U = [i32; 3]` and `V = [i32]`. At runtime,
-            // when this coercion occurs, we would be changing the
-            // field `ptr` from a thin pointer of type `*mut [i32;
-            // 3]` to a wide pointer of type `*mut [i32]` (with
-            // extra data `3`). **The purpose of this check is to
-            // make sure that we know how to do this conversion.**
-            //
-            // To check if this impl is legal, we would walk down
-            // the fields of `Foo` and consider their types with
-            // both generic parameters. We are looking to find that
-            // exactly one (non-phantom) field has changed its
-            // type, which we will expect to be the pointer that
-            // is becoming fat (we could probably generalize this
-            // to multiple thin pointers of the same type becoming
-            // fat, but we don't). In this case:
-            //
-            // - `extra` has type `T` before and type `T` after
-            // - `ptr` has type `*mut U` before and type `*mut V` after
-            //
-            // Since just one field changed, we would then check
-            // that `*mut U: CoerceUnsized<*mut V>` is implemented
-            // (in other words, that we know how to do this
-            // conversion). This will work out because `U:
-            // Unsize<V>`, and we have a builtin rule that `*mut
-            // U` can be coerced to `*mut V` if `U: Unsize<V>`.
-            let fields = &def_a.non_enum_variant().fields;
-            let diff_fields = fields
-                .iter_enumerated()
-                .filter_map(|(i, f)| {
-                    let (a, b) = (f.ty(tcx, args_a), f.ty(tcx, args_b));
-
-                    // Ignore PhantomData fields
-                    let unnormalized_ty = tcx.type_of(f.did).instantiate_identity();
-                    if tcx
-                        .try_normalize_erasing_regions(
-                            ty::TypingEnv::non_body_analysis(tcx, def_a.did()),
-                            unnormalized_ty,
-                        )
-                        .unwrap_or(unnormalized_ty)
-                        .is_phantom_data()
-                    {
-                        return None;
-                    }
-
-                    // Ignore fields that aren't changed; it may
-                    // be that we could get away with subtyping or
-                    // something more accepting, but we use
-                    // equality because we want to be able to
-                    // perform this check without computing
-                    // variance or constraining opaque types' hidden types.
-                    // (This is because we may have to evaluate constraint
-                    // expressions in the course of execution.)
-                    // See e.g., #41936.
-                    if a == b {
-                        return None;
-                    }
-
-                    // Collect up all fields that were significantly changed
-                    // i.e., those that contain T in coerce_unsized T -> U
-                    Some((i, a, b))
-                })
-                .collect::<Vec<_>>();
-
-            if diff_fields.is_empty() {
-                return Err(tcx.dcx().emit_err(errors::CoerceUnsizedOneField {
-                    span,
-                    trait_name: "CoerceUnsized",
-                    note: true,
-                }));
-            } else if diff_fields.len() > 1 {
-                let item = tcx.hir().expect_item(impl_did);
-                let span = if let ItemKind::Impl(hir::Impl { of_trait: Some(t), .. }) = &item.kind {
-                    t.path.span
-                } else {
-                    tcx.def_span(impl_did)
-                };
-
-                return Err(tcx.dcx().emit_err(errors::CoerceUnsizedMulti {
-                    span,
-                    coercions_note: true,
-                    number: diff_fields.len(),
-                    coercions: diff_fields
-                        .iter()
-                        .map(|&(i, a, b)| format!("`{}` (`{}` to `{}`)", fields[i].name, a, b))
-                        .collect::<Vec<_>>()
-                        .join(", "),
-                }));
+            (&ty::Ref(_, ty_a, mutbl_a), &ty::RawPtr(ty_b, mutbl_b))
+            | (&ty::RawPtr(ty_a, mutbl_a), &ty::RawPtr(ty_b, mutbl_b)) => {
+                let mt_a = ty::TypeAndMut { ty: ty_a, mutbl: mutbl_a };
+                let mt_b = ty::TypeAndMut { ty: ty_b, mutbl: mutbl_b };
+                check_mutbl(mt_a, mt_b, &|ty| Ty::new_imm_ptr(tcx, ty))
             }
 
-            let (i, a, b) = diff_fields[0];
-            let kind = ty::adjustment::CustomCoerceUnsized::Struct(i);
-            (a, b, coerce_unsized_trait, Some(kind))
-        }
+            (&ty::Adt(def_a, args_a), &ty::Adt(def_b, args_b))
+                if def_a.is_struct() && def_b.is_struct() =>
+            {
+                if def_a != def_b {
+                    let source_path = tcx.def_path_str(def_a.did());
+                    let target_path = tcx.def_path_str(def_b.did());
+                    return Err(tcx.dcx().emit_err(errors::DispatchFromDynSame {
+                        span,
+                        trait_name: "CoerceUnsized",
+                        note: true,
+                        source_path,
+                        target_path,
+                    }));
+                }
 
-        _ => {
-            return Err(tcx
-                .dcx()
-                .emit_err(errors::DispatchFromDynStruct { span, trait_name: "CoerceUnsized" }));
-        }
-    };
+                // Here we are considering a case of converting
+                // `S<P0...Pn>` to `S<Q0...Qn>`. As an example, let's imagine a struct `Foo<T, U>`,
+                // which acts like a pointer to `U`, but carries along some extra data of type `T`:
+                //
+                //     struct Foo<T, U> {
+                //         extra: T,
+                //         ptr: *mut U,
+                //     }
+                //
+                // We might have an impl that allows (e.g.) `Foo<T, [i32; 3]>` to be unsized
+                // to `Foo<T, [i32]>`. That impl would look like:
+                //
+                //   impl<T, U: Unsize<V>, V> CoerceUnsized<Foo<T, V>> for Foo<T, U> {}
+                //
+                // Here `U = [i32; 3]` and `V = [i32]`. At runtime,
+                // when this coercion occurs, we would be changing the
+                // field `ptr` from a thin pointer of type `*mut [i32;
+                // 3]` to a wide pointer of type `*mut [i32]` (with
+                // extra data `3`). **The purpose of this check is to
+                // make sure that we know how to do this conversion.**
+                //
+                // To check if this impl is legal, we would walk down
+                // the fields of `Foo` and consider their types with
+                // both generic parameters. We are looking to find that
+                // exactly one (non-phantom) field has changed its
+                // type, which we will expect to be the pointer that
+                // is becoming fat (we could probably generalize this
+                // to multiple thin pointers of the same type becoming
+                // fat, but we don't). In this case:
+                //
+                // - `extra` has type `T` before and type `T` after
+                // - `ptr` has type `*mut U` before and type `*mut V` after
+                //
+                // Since just one field changed, we would then check
+                // that `*mut U: CoerceUnsized<*mut V>` is implemented
+                // (in other words, that we know how to do this
+                // conversion). This will work out because `U:
+                // Unsize<V>`, and we have a builtin rule that `*mut
+                // U` can be coerced to `*mut V` if `U: Unsize<V>`.
+                let fields = &def_a.non_enum_variant().fields;
+                let diff_fields = fields
+                    .iter_enumerated()
+                    .filter_map(|(i, f)| {
+                        let (a, b) = (f.ty(tcx, args_a), f.ty(tcx, args_b));
+
+                        // Ignore PhantomData fields
+                        let unnormalized_ty = tcx.type_of(f.did).instantiate_identity();
+                        if tcx
+                            .try_normalize_erasing_regions(
+                                ty::TypingEnv::non_body_analysis(tcx, def_a.did()),
+                                unnormalized_ty,
+                            )
+                            .unwrap_or(unnormalized_ty)
+                            .is_phantom_data()
+                        {
+                            return None;
+                        }
+
+                        // Ignore fields that aren't changed; it may
+                        // be that we could get away with subtyping or
+                        // something more accepting, but we use
+                        // equality because we want to be able to
+                        // perform this check without computing
+                        // variance or constraining opaque types' hidden types.
+                        // (This is because we may have to evaluate constraint
+                        // expressions in the course of execution.)
+                        // See e.g., #41936.
+                        if a == b {
+                            return None;
+                        }
+
+                        // Collect up all fields that were significantly changed
+                        // i.e., those that contain T in coerce_unsized T -> U
+                        Some((i, a, b))
+                    })
+                    .collect::<Vec<_>>();
+
+                if diff_fields.is_empty() {
+                    if extract_coerce_pointee_data(tcx, def_a.did()).is_some() {
+                        return Err(tcx.dcx().span_delayed_bug(
+                            span,
+                            "a specialised diagnostic on multiple fields \
+                        to be unsize-coerced is expected from CoercePointee \
+                        but none was emitted",
+                        ));
+                    }
+                    return Err(tcx.dcx().emit_err(errors::CoerceUnsizedOneField {
+                        span,
+                        trait_name: "CoerceUnsized",
+                        note: true,
+                    }));
+                } else if diff_fields.len() > 1 {
+                    if extract_coerce_pointee_data(tcx, def_a.did()).is_some() {
+                        let spans = diff_fields
+                            .iter()
+                            .map(|&(idx, _, _)| tcx.def_span(fields[idx].did))
+                            .collect();
+                        return Err(tcx.dcx().emit_err(errors::CoercePointeeMultipleTargets {
+                            spans,
+                            diag_trait: "CoerceUnsized",
+                        }));
+                    }
+                    let item = tcx.hir().expect_item(impl_did);
+                    let span =
+                        if let ItemKind::Impl(hir::Impl { of_trait: Some(t), .. }) = &item.kind {
+                            t.path.span
+                        } else {
+                            tcx.def_span(impl_did)
+                        };
+
+                    return Err(tcx.dcx().emit_err(errors::CoerceUnsizedMulti {
+                        span,
+                        coercions_note: true,
+                        number: diff_fields.len(),
+                        coercions: diff_fields
+                            .iter()
+                            .map(|&(i, a, b)| format!("`{}` (`{}` to `{}`)", fields[i].name, a, b))
+                            .collect::<Vec<_>>()
+                            .join(", "),
+                    }));
+                }
+
+                let (i, a, b) = diff_fields[0];
+                let kind = ty::adjustment::CustomCoerceUnsized::Struct(i);
+                let source_span = tcx.def_span(fields[i].did);
+                (a, b, coerce_unsized_trait, Some(kind), source_span)
+            }
+
+            _ => {
+                return Err(tcx.dcx().emit_err(errors::DispatchFromDynStruct {
+                    span,
+                    trait_name: "CoerceUnsized",
+                }));
+            }
+        };
 
     // Register an obligation for `A: Trait<B>`.
+    let coerce_pointee_data = if let ty::Adt(def, _) = self_ty.kind() {
+        extract_coerce_pointee_data(tcx, def.did())
+    } else {
+        None
+    };
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
     let cause = traits::ObligationCause::misc(span, impl_did);
     let obligation = Obligation::new(
@@ -556,9 +626,33 @@ pub(crate) fn coerce_unsized_info<'tcx>(
         ty::TraitRef::new(tcx, trait_def_id, [source, target]),
     );
     ocx.register_obligation(obligation);
-    let errors = ocx.select_all_or_error();
+    let mut errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        infcx.err_ctxt().report_fulfillment_errors(errors);
+        if let Some(pointee) = coerce_pointee_data {
+            let ty::Adt(_def, args) = coerced_ty.kind() else { bug!() };
+            let target_pointee = args.type_at(pointee);
+            let ty::Adt(_def, _) = self_ty.kind() else { bug!() };
+            errors = errors
+                .into_iter()
+                .filter_map(|err| {
+                    redact_fulfillment_err_for_coerce_pointee(
+                        tcx,
+                        err,
+                        target_pointee,
+                        coercion_span,
+                    )
+                })
+                .collect();
+        }
+        if errors.is_empty() {
+            tcx.dcx().span_delayed_bug(
+                span,
+                "all unstable trait fulfillment errors are redacted \
+                    but those specialised diagnostics are not emitted",
+            );
+        } else {
+            infcx.err_ctxt().report_fulfillment_errors(errors);
+        }
     }
 
     // Finally, resolve all regions.
