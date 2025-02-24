@@ -1742,7 +1742,7 @@ impl<'scope, T> JoinInner<'scope, T> {
         if let Some(packet) = Arc::get_mut(&mut self.packet) {
             packet.result.get_mut().take().unwrap()
         } else {
-            Err(Box::new("thread terminated unexpectedly (e.g. due to OS intervention)"))
+            Err(Box::new("thread terminated unexpectedly"))
         }
     }
 }
