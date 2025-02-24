@@ -1,3 +1,4 @@
+#![allow(redundant_transmutation)]
 use std::mem;
 
 static FOO: bool = unsafe { mem::transmute(3u8) };
