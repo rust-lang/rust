@@ -11,18 +11,18 @@ test = false
 bench = false
 
 [features]
-default = ["arch", "unstable-float"]
+default = ["arch", "compiler-builtins", "unstable-float"]
 
 # Copied from `libm`'s root `Cargo.toml`'
-unstable-float = []
 arch = []
+compiler-builtins = []
+unstable-float = []
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = [
   "cfg(arch_enabled)",
   "cfg(assert_no_panic)",
   "cfg(intrinsics_enabled)",
-  'cfg(feature, values("compiler-builtins"))',
   'cfg(feature, values("force-soft-floats"))',
   'cfg(feature, values("unstable"))',
   'cfg(feature, values("unstable-intrinsics"))',
