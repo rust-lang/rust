@@ -85,7 +85,7 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
 
         if let Some(pat) = pat {
             print_indented!(self, "param: Some( ", depth_lvl + 1);
-            self.print_pat(pat, depth_lvl + 2);
+            self.print_pat(*pat, depth_lvl + 2);
             print_indented!(self, ")", depth_lvl + 1);
         } else {
             print_indented!(self, "param: None", depth_lvl + 1);
@@ -155,7 +155,7 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 print_indented!(self, format!("init_scope: {:?}", init_scope), depth_lvl + 2);
 
                 print_indented!(self, "pattern: ", depth_lvl + 2);
-                self.print_pat(pattern, depth_lvl + 3);
+                self.print_pat(*pattern, depth_lvl + 3);
                 print_indented!(self, ",", depth_lvl + 2);
 
                 if let Some(init) = initializer {
@@ -626,7 +626,7 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
         let Arm { pattern, guard, body, lint_level, scope, span } = arm;
 
         print_indented!(self, "pattern: ", depth_lvl + 1);
-        self.print_pat(pattern, depth_lvl + 2);
+        self.print_pat(*pattern, depth_lvl + 2);
 
         if let Some(guard) = *guard {
             print_indented!(self, "guard: ", depth_lvl + 1);
@@ -643,8 +643,8 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
         print_indented!(self, "}", depth_lvl);
     }
 
-    fn print_pat(&mut self, pat: &Pat<'tcx>, depth_lvl: usize) {
-        let &Pat { ty, span, ref kind } = pat;
+    fn print_pat(&mut self, pat_id: PatId, depth_lvl: usize) {
+        let &Pat { ty, span, ref kind } = &self.thir[pat_id];
 
         print_indented!(self, "Pat: {", depth_lvl);
         print_indented!(self, format!("ty: {:?}", ty), depth_lvl + 1);
@@ -667,7 +667,7 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 print_indented!(self, "AscribeUserType: {", depth_lvl + 1);
                 print_indented!(self, format!("ascription: {:?}", ascription), depth_lvl + 2);
                 print_indented!(self, "subpattern: ", depth_lvl + 2);
-                self.print_pat(subpattern, depth_lvl + 3);
+                self.print_pat(*subpattern, depth_lvl + 3);
                 print_indented!(self, "}", depth_lvl + 1);
             }
             PatKind::Binding { name, mode, var, ty, subpattern, is_primary } => {
@@ -680,7 +680,7 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
 
                 if let Some(subpattern) = subpattern {
                     print_indented!(self, "subpattern: Some( ", depth_lvl + 2);
-                    self.print_pat(subpattern, depth_lvl + 3);
+                    self.print_pat(*subpattern, depth_lvl + 3);
                     print_indented!(self, ")", depth_lvl + 2);
                 } else {
                     print_indented!(self, "subpattern: None", depth_lvl + 2);
@@ -698,7 +698,7 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 if subpatterns.len() > 0 {
                     print_indented!(self, "subpatterns: [", depth_lvl + 2);
                     for field_pat in subpatterns.iter() {
-                        self.print_pat(&field_pat.pattern, depth_lvl + 3);
+                        self.print_pat(field_pat.pattern, depth_lvl + 3);
                     }
                     print_indented!(self, "]", depth_lvl + 2);
                 } else {
@@ -711,7 +711,7 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 print_indented!(self, "Leaf { ", depth_lvl + 1);
                 print_indented!(self, "subpatterns: [", depth_lvl + 2);
                 for field_pat in subpatterns.iter() {
-                    self.print_pat(&field_pat.pattern, depth_lvl + 3);
+                    self.print_pat(field_pat.pattern, depth_lvl + 3);
                 }
                 print_indented!(self, "]", depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl + 1);
@@ -719,13 +719,13 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
             PatKind::Deref { subpattern } => {
                 print_indented!(self, "Deref { ", depth_lvl + 1);
                 print_indented!(self, "subpattern:", depth_lvl + 2);
-                self.print_pat(subpattern, depth_lvl + 2);
+                self.print_pat(*subpattern, depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl + 1);
             }
             PatKind::DerefPattern { subpattern, .. } => {
                 print_indented!(self, "DerefPattern { ", depth_lvl + 1);
                 print_indented!(self, "subpattern:", depth_lvl + 2);
-                self.print_pat(subpattern, depth_lvl + 2);
+                self.print_pat(*subpattern, depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl + 1);
             }
             PatKind::Constant { value } => {
@@ -738,7 +738,7 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 print_indented!(self, format!("def_id: {def_id:?}"), depth_lvl + 2);
                 print_indented!(self, format!("is_inline: {is_inline:?}"), depth_lvl + 2);
                 print_indented!(self, "subpattern:", depth_lvl + 2);
-                self.print_pat(subpattern, depth_lvl + 2);
+                self.print_pat(*subpattern, depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl + 1);
             }
             PatKind::Range(pat_range) => {
@@ -749,18 +749,18 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
 
                 print_indented!(self, "prefix: [", depth_lvl + 2);
                 for prefix_pat in prefix.iter() {
-                    self.print_pat(prefix_pat, depth_lvl + 3);
+                    self.print_pat(*prefix_pat, depth_lvl + 3);
                 }
                 print_indented!(self, "]", depth_lvl + 2);
 
                 if let Some(slice) = slice {
                     print_indented!(self, "slice: ", depth_lvl + 2);
-                    self.print_pat(slice, depth_lvl + 3);
+                    self.print_pat(*slice, depth_lvl + 3);
                 }
 
                 print_indented!(self, "suffix: [", depth_lvl + 2);
                 for suffix_pat in suffix.iter() {
-                    self.print_pat(suffix_pat, depth_lvl + 3);
+                    self.print_pat(*suffix_pat, depth_lvl + 3);
                 }
                 print_indented!(self, "]", depth_lvl + 2);
 
@@ -771,18 +771,18 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
 
                 print_indented!(self, "prefix: [", depth_lvl + 2);
                 for prefix_pat in prefix.iter() {
-                    self.print_pat(prefix_pat, depth_lvl + 3);
+                    self.print_pat(*prefix_pat, depth_lvl + 3);
                 }
                 print_indented!(self, "]", depth_lvl + 2);
 
                 if let Some(slice) = slice {
                     print_indented!(self, "slice: ", depth_lvl + 2);
-                    self.print_pat(slice, depth_lvl + 3);
+                    self.print_pat(*slice, depth_lvl + 3);
                 }
 
                 print_indented!(self, "suffix: [", depth_lvl + 2);
                 for suffix_pat in suffix.iter() {
-                    self.print_pat(suffix_pat, depth_lvl + 3);
+                    self.print_pat(*suffix_pat, depth_lvl + 3);
                 }
                 print_indented!(self, "]", depth_lvl + 2);
 
@@ -792,7 +792,7 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 print_indented!(self, "Or {", depth_lvl + 1);
                 print_indented!(self, "pats: [", depth_lvl + 2);
                 for pat in pats.iter() {
-                    self.print_pat(pat, depth_lvl + 3);
+                    self.print_pat(*pat, depth_lvl + 3);
                 }
                 print_indented!(self, "]", depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl + 1);

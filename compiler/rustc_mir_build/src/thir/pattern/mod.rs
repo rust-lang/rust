@@ -5,6 +5,7 @@ mod const_to_pat;
 mod migration;
 
 use std::cmp::Ordering;
+use std::mem;
 use std::sync::Arc;
 
 use rustc_abi::{FieldIdx, Integer};
@@ -15,7 +16,7 @@ use rustc_hir::{self as hir, RangeEnd};
 use rustc_index::Idx;
 use rustc_middle::mir::interpret::LitToConstInput;
 use rustc_middle::thir::{
-    Ascription, FieldPat, LocalVarId, Pat, PatKind, PatRange, PatRangeBoundary,
+    Ascription, FieldPat, LocalVarId, Pat, PatId, PatKind, PatRange, PatRangeBoundary, Thir,
 };
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, TyCtxt, TypeVisitableExt};
@@ -30,6 +31,7 @@ use crate::errors::*;
 
 struct PatCtxt<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
+    thir: &'a mut Thir<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
     typeck_results: &'a ty::TypeckResults<'tcx>,
 
@@ -39,12 +41,14 @@ struct PatCtxt<'a, 'tcx> {
 
 pub(super) fn pat_from_hir<'a, 'tcx>(
     tcx: TyCtxt<'tcx>,
+    thir: &'a mut Thir<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
     typeck_results: &'a ty::TypeckResults<'tcx>,
     pat: &'tcx hir::Pat<'tcx>,
 ) -> Box<Pat<'tcx>> {
     let mut pcx = PatCtxt {
         tcx,
+        thir,
         typing_env,
         typeck_results,
         rust_2024_migration: typeck_results
@@ -106,7 +110,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             Box::new(Pat {
                 span: thir_pat.span,
                 ty: *ref_ty,
-                kind: PatKind::Deref { subpattern: thir_pat },
+                kind: PatKind::Deref { subpattern: self.thir.pats.push(*thir_pat) },
             })
         });
 
@@ -137,13 +141,13 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             match kind {
                 PatKind::AscribeUserType { ascription, subpattern } => {
                     ascriptions.push(ascription);
-                    kind = subpattern.kind;
+                    kind = mem::replace(&mut self.thir.pats[subpattern].kind, PatKind::Wild);
                 }
                 PatKind::ExpandedConstant { is_inline, def_id, subpattern } => {
                     if is_inline {
                         inline_consts.extend(def_id.as_local());
                     }
-                    kind = subpattern.kind;
+                    kind = mem::replace(&mut self.thir.pats[subpattern].kind, PatKind::Wild);
                 }
                 _ => break,
             }
@@ -271,14 +275,14 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         for ascription in ascriptions {
             kind = PatKind::AscribeUserType {
                 ascription,
-                subpattern: Box::new(Pat { span, ty, kind }),
+                subpattern: self.thir.pats.push(Pat { span, ty, kind }),
             };
         }
         for def in inline_consts {
             kind = PatKind::ExpandedConstant {
                 def_id: def.to_def_id(),
                 is_inline: true,
-                subpattern: Box::new(Pat { span, ty, kind }),
+                subpattern: self.thir.pats.push(Pat { span, ty, kind }),
             };
         }
         Ok(kind)
@@ -305,7 +309,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             hir::PatKind::Deref(subpattern) => {
                 let mutable = self.typeck_results.pat_has_ref_mut_binding(subpattern);
                 let mutability = if mutable { hir::Mutability::Mut } else { hir::Mutability::Not };
-                PatKind::DerefPattern { subpattern: self.lower_pattern(subpattern), mutability }
+                let subpattern = self.lower_pattern(subpattern);
+                PatKind::DerefPattern { subpattern: self.thir.pats.push(*subpattern), mutability }
             }
             hir::PatKind::Ref(subpattern, _) => {
                 // Track the default binding mode for the Rust 2024 migration suggestion.
@@ -315,10 +320,11 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 if let Some(s) = &mut self.rust_2024_migration {
                     s.leave_ref(opt_old_mode_span);
                 }
-                PatKind::Deref { subpattern }
+                PatKind::Deref { subpattern: self.thir.pats.push(*subpattern) }
             }
             hir::PatKind::Box(subpattern) => {
-                PatKind::Deref { subpattern: self.lower_pattern(subpattern) }
+                let subpattern = self.lower_pattern(subpattern);
+                PatKind::Deref { subpattern: self.thir.pats.push(*subpattern) }
             }
 
             hir::PatKind::Slice(prefix, slice, suffix) => {
@@ -359,12 +365,13 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     }
                 };
 
+                let subpattern = self.lower_opt_pattern(sub);
                 PatKind::Binding {
                     mode,
                     name: ident.name,
                     var: LocalVarId(id),
                     ty: var_ty,
-                    subpattern: self.lower_opt_pattern(sub),
+                    subpattern: try { self.thir.pats.push(*subpattern?) },
                     is_primary: id == pat.hir_id,
                 }
             }
@@ -385,7 +392,10 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     .iter()
                     .map(|field| FieldPat {
                         field: self.typeck_results.field_index(field.hir_id),
-                        pattern: *self.lower_pattern(field.pat),
+                        pattern: {
+                            let pat = self.lower_pattern(field.pat);
+                            self.thir.pats.push(*pat)
+                        },
                     })
                     .collect();
 
@@ -408,18 +418,26 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         pats: &'tcx [hir::Pat<'tcx>],
         expected_len: usize,
         gap_pos: hir::DotDotPos,
-    ) -> Vec<FieldPat<'tcx>> {
+    ) -> Vec<FieldPat> {
         pats.iter()
             .enumerate_and_adjust(expected_len, gap_pos)
             .map(|(i, subpattern)| FieldPat {
                 field: FieldIdx::new(i),
-                pattern: *self.lower_pattern(subpattern),
+                pattern: {
+                    let pat = self.lower_pattern(subpattern);
+                    self.thir.pats.push(*pat)
+                },
             })
             .collect()
     }
 
-    fn lower_patterns(&mut self, pats: &'tcx [hir::Pat<'tcx>]) -> Box<[Pat<'tcx>]> {
-        pats.iter().map(|p| *self.lower_pattern(p)).collect()
+    fn lower_patterns(&mut self, pats: &'tcx [hir::Pat<'tcx>]) -> Box<[PatId]> {
+        pats.iter()
+            .map(|p| {
+                let pat = self.lower_pattern(p);
+                self.thir.pats.push(*pat)
+            })
+            .collect()
     }
 
     fn lower_opt_pattern(&mut self, pat: Option<&'tcx hir::Pat<'tcx>>) -> Option<Box<Pat<'tcx>>> {
@@ -435,7 +453,10 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         suffix: &'tcx [hir::Pat<'tcx>],
     ) -> PatKind<'tcx> {
         let prefix = self.lower_patterns(prefix);
-        let slice = self.lower_opt_pattern(slice);
+        let slice = try {
+            let slice = self.lower_pattern(slice?);
+            self.thir.pats.push(*slice)
+        };
         let suffix = self.lower_patterns(suffix);
         match ty.kind() {
             // Matching a slice, `[T]`.
@@ -458,7 +479,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         hir_id: hir::HirId,
         span: Span,
         ty: Ty<'tcx>,
-        subpatterns: Vec<FieldPat<'tcx>>,
+        subpatterns: Vec<FieldPat>,
     ) -> PatKind<'tcx> {
         let res = match res {
             Res::Def(DefKind::Ctor(CtorOf::Variant, ..), variant_ctor_id) => {
@@ -527,7 +548,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 inferred_ty: self.typeck_results.node_type(hir_id),
             };
             kind = PatKind::AscribeUserType {
-                subpattern: Box::new(Pat { span, ty, kind }),
+                subpattern: self.thir.pats.push(Pat { span, ty, kind }),
                 ascription: Ascription { annotation, variance: ty::Covariant },
             };
         }
@@ -573,6 +594,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         // of lowering a named constant. This marker is used for improved
         // diagnostics in some situations, but has no effect at runtime.
         let mut pattern = {
+            let subpattern = self.thir.pats.push(*subpattern);
             let kind = PatKind::ExpandedConstant { subpattern, def_id, is_inline: false };
             Box::new(Pat { span, ty, kind })
         };
@@ -586,7 +608,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 inferred_ty: self.typeck_results.node_type(id),
             };
             let kind = PatKind::AscribeUserType {
-                subpattern: pattern,
+                subpattern: self.thir.pats.push(*pattern),
                 ascription: Ascription {
                     annotation,
                     // Note that we use `Contravariant` here. See the
@@ -620,6 +642,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
         let ct = ty::UnevaluatedConst { def: def_id.to_def_id(), args };
         let subpattern = self.const_to_pat(ty::Const::new_unevaluated(self.tcx, ct), ty, id, span);
+        let subpattern = self.thir.pats.push(*subpattern);
 
         // Wrap the pattern in a marker node to indicate that it is the result
         // of lowering an inline const block.

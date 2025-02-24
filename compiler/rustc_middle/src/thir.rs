@@ -28,6 +28,7 @@ use tracing::instrument;
 use crate::middle::region;
 use crate::mir::interpret::AllocId;
 use crate::mir::{self, BinOp, BorrowKind, FakeReadCause, UnOp};
+use crate::thir::visit::for_each_immediate_subpat;
 use crate::ty::adjustment::PointerCoercion;
 use crate::ty::layout::IntegerExt;
 use crate::ty::{
@@ -83,11 +84,12 @@ macro_rules! thir_with_elements {
 }
 
 thir_with_elements! {
-    arms: ArmId => Arm<'tcx> => "a{}",
+    arms: ArmId => Arm => "a{}",
     blocks: BlockId => Block => "b{}",
     exprs: ExprId => Expr<'tcx> => "e{}",
-    stmts: StmtId => Stmt<'tcx> => "s{}",
+    stmts: StmtId => Stmt => "s{}",
     params: ParamId => Param<'tcx> => "p{}",
+    pats: PatId => Pat<'tcx> => "pat{}",
 }
 
 #[derive(Debug, HashStable)]
@@ -101,7 +103,7 @@ pub enum BodyTy<'tcx> {
 #[derive(Debug, HashStable)]
 pub struct Param<'tcx> {
     /// The pattern that appears in the parameter list, or None for implicit parameters.
-    pub pat: Option<Box<Pat<'tcx>>>,
+    pub pat: Option<PatId>,
     /// The possibly inferred type.
     pub ty: Ty<'tcx>,
     /// Span of the explicitly provided type, or None if inferred for closures.
@@ -196,12 +198,12 @@ pub enum BlockSafety {
 }
 
 #[derive(Debug, HashStable)]
-pub struct Stmt<'tcx> {
-    pub kind: StmtKind<'tcx>,
+pub struct Stmt {
+    pub kind: StmtKind,
 }
 
 #[derive(Debug, HashStable)]
-pub enum StmtKind<'tcx> {
+pub enum StmtKind {
     /// An expression with a trailing semicolon.
     Expr {
         /// The scope for this statement; may be used as lifetime of temporaries.
@@ -224,7 +226,7 @@ pub enum StmtKind<'tcx> {
         /// `let <PAT> = ...`
         ///
         /// If a type annotation is included, it is added as an ascription pattern.
-        pattern: Box<Pat<'tcx>>,
+        pattern: PatId,
 
         /// `let pat: ty = <INIT>`
         initializer: Option<ExprId>,
@@ -372,7 +374,7 @@ pub enum ExprKind<'tcx> {
     /// (Not to be confused with [`StmtKind::Let`], which is a normal `let` statement.)
     Let {
         expr: ExprId,
-        pat: Box<Pat<'tcx>>,
+        pat: PatId,
     },
     /// A `match` expression.
     Match {
@@ -562,8 +564,8 @@ pub struct FruInfo<'tcx> {
 
 /// A `match` arm.
 #[derive(Debug, HashStable)]
-pub struct Arm<'tcx> {
-    pub pattern: Box<Pat<'tcx>>,
+pub struct Arm {
+    pub pattern: PatId,
     pub guard: Option<ExprId>,
     pub body: ExprId,
     pub lint_level: LintLevel,
@@ -617,9 +619,9 @@ pub enum InlineAsmOperand<'tcx> {
 }
 
 #[derive(Debug, HashStable, TypeVisitable)]
-pub struct FieldPat<'tcx> {
+pub struct FieldPat {
     pub field: FieldIdx,
-    pub pattern: Pat<'tcx>,
+    pub pattern: PatId,
 }
 
 #[derive(Debug, HashStable, TypeVisitable)]
@@ -638,11 +640,17 @@ impl<'tcx> Pat<'tcx> {
             _ => None,
         }
     }
+}
 
+impl<'tcx> Thir<'tcx> {
     /// Call `f` on every "binding" in a pattern, e.g., on `a` in
     /// `match foo() { Some(a) => (), None => () }`
-    pub fn each_binding(&self, mut f: impl FnMut(Symbol, ByRef, Ty<'tcx>, Span)) {
-        self.walk_always(|p| {
+    pub fn for_each_binding_in_pat(
+        &self,
+        pat: &Pat<'tcx>,
+        mut f: impl FnMut(Symbol, ByRef, Ty<'tcx>, Span),
+    ) {
+        self.walk_pat_always(pat, |p| {
             if let PatKind::Binding { name, mode, ty, .. } = p.kind {
                 f(name, mode.0, ty, p.span);
             }
@@ -652,42 +660,22 @@ impl<'tcx> Pat<'tcx> {
     /// Walk the pattern in left-to-right order.
     ///
     /// If `it(pat)` returns `false`, the children are not visited.
-    pub fn walk(&self, mut it: impl FnMut(&Pat<'tcx>) -> bool) {
-        self.walk_(&mut it)
+    pub fn walk_pat(&self, pat: &Pat<'tcx>, mut it: impl FnMut(&Pat<'tcx>) -> bool) {
+        self.walk_pat_inner(pat, &mut it)
     }
 
-    fn walk_(&self, it: &mut impl FnMut(&Pat<'tcx>) -> bool) {
-        if !it(self) {
+    fn walk_pat_inner(&self, pat: &Pat<'tcx>, it: &mut impl FnMut(&Pat<'tcx>) -> bool) {
+        if !it(pat) {
             return;
         }
 
-        use PatKind::*;
-        match &self.kind {
-            Wild
-            | Never
-            | Range(..)
-            | Binding { subpattern: None, .. }
-            | Constant { .. }
-            | Error(_) => {}
-            AscribeUserType { subpattern, .. }
-            | Binding { subpattern: Some(subpattern), .. }
-            | Deref { subpattern }
-            | DerefPattern { subpattern, .. }
-            | ExpandedConstant { subpattern, .. } => subpattern.walk_(it),
-            Leaf { subpatterns } | Variant { subpatterns, .. } => {
-                subpatterns.iter().for_each(|field| field.pattern.walk_(it))
-            }
-            Or { pats } => pats.iter().for_each(|p| p.walk_(it)),
-            Array { box prefix, slice, box suffix } | Slice { box prefix, slice, box suffix } => {
-                prefix.iter().chain(slice.as_deref()).chain(suffix.iter()).for_each(|p| p.walk_(it))
-            }
-        }
+        for_each_immediate_subpat(self, pat, |p| self.walk_pat_inner(p, it));
     }
 
     /// Whether the pattern has a `PatKind::Error` nested within.
-    pub fn pat_error_reported(&self) -> Result<(), ErrorGuaranteed> {
+    pub fn pat_error_reported(&self, pat: &Pat<'tcx>) -> Result<(), ErrorGuaranteed> {
         let mut error = None;
-        self.walk(|pat| {
+        self.walk_pat(pat, |pat| {
             if let PatKind::Error(e) = pat.kind
                 && error.is_none()
             {
@@ -701,26 +689,39 @@ impl<'tcx> Pat<'tcx> {
         }
     }
 
+    pub fn pat_references_error(&self, pat: &Pat<'tcx>) -> bool {
+        use rustc_type_ir::visit::TypeVisitableExt;
+
+        let mut references_error = TypeVisitableExt::references_error(pat);
+        if !references_error {
+            for_each_immediate_subpat(self, pat, |p| {
+                references_error = references_error || self.pat_references_error(p);
+            });
+        }
+
+        references_error
+    }
+
     /// Walk the pattern in left-to-right order.
     ///
     /// If you always want to recurse, prefer this method over `walk`.
-    pub fn walk_always(&self, mut it: impl FnMut(&Pat<'tcx>)) {
-        self.walk(|p| {
+    pub fn walk_pat_always(&self, pat: &Pat<'tcx>, mut it: impl FnMut(&Pat<'tcx>)) {
+        self.walk_pat(pat, |p| {
             it(p);
             true
         })
     }
 
     /// Whether this a never pattern.
-    pub fn is_never_pattern(&self) -> bool {
+    pub fn is_never_pattern(&self, pat: &Pat<'tcx>) -> bool {
         let mut is_never_pattern = false;
-        self.walk(|pat| match &pat.kind {
+        self.walk_pat(pat, |pat| match &pat.kind {
             PatKind::Never => {
                 is_never_pattern = true;
                 false
             }
             PatKind::Or { pats } => {
-                is_never_pattern = pats.iter().all(|p| p.is_never_pattern());
+                is_never_pattern = pats.iter().all(|&p| self.is_never_pattern(&self[p]));
                 false
             }
             _ => true,
@@ -760,7 +761,7 @@ pub enum PatKind<'tcx> {
 
     AscribeUserType {
         ascription: Ascription<'tcx>,
-        subpattern: Box<Pat<'tcx>>,
+        subpattern: PatId,
     },
 
     /// `x`, `ref x`, `x @ P`, etc.
@@ -771,9 +772,13 @@ pub enum PatKind<'tcx> {
         #[type_visitable(ignore)]
         var: LocalVarId,
         ty: Ty<'tcx>,
-        subpattern: Option<Box<Pat<'tcx>>>,
+        subpattern: Option<PatId>,
+
         /// Is this the leftmost occurrence of the binding, i.e., is `var` the
         /// `HirId` of this pattern?
+        ///
+        /// (The same binding can occur multiple times in different branches of
+        /// an or-pattern, but only one of them will be primary.)
         is_primary: bool,
     },
 
@@ -783,23 +788,23 @@ pub enum PatKind<'tcx> {
         adt_def: AdtDef<'tcx>,
         args: GenericArgsRef<'tcx>,
         variant_index: VariantIdx,
-        subpatterns: Vec<FieldPat<'tcx>>,
+        subpatterns: Vec<FieldPat>,
     },
 
     /// `(...)`, `Foo(...)`, `Foo{...}`, or `Foo`, where `Foo` is a variant name from an ADT with
     /// a single variant.
     Leaf {
-        subpatterns: Vec<FieldPat<'tcx>>,
+        subpatterns: Vec<FieldPat>,
     },
 
     /// `box P`, `&P`, `&mut P`, etc.
     Deref {
-        subpattern: Box<Pat<'tcx>>,
+        subpattern: PatId,
     },
 
     /// Deref pattern, written `box P` for now.
     DerefPattern {
-        subpattern: Box<Pat<'tcx>>,
+        subpattern: PatId,
         mutability: hir::Mutability,
     },
 
@@ -833,7 +838,7 @@ pub enum PatKind<'tcx> {
         /// Otherwise, the actual pattern that the constant lowered to. As with
         /// other constants, inline constants are matched structurally where
         /// possible.
-        subpattern: Box<Pat<'tcx>>,
+        subpattern: PatId,
     },
 
     Range(Arc<PatRange<'tcx>>),
@@ -842,22 +847,22 @@ pub enum PatKind<'tcx> {
     /// irrefutable when there is a slice pattern and both `prefix` and `suffix` are empty.
     /// e.g., `&[ref xs @ ..]`.
     Slice {
-        prefix: Box<[Pat<'tcx>]>,
-        slice: Option<Box<Pat<'tcx>>>,
-        suffix: Box<[Pat<'tcx>]>,
+        prefix: Box<[PatId]>,
+        slice: Option<PatId>,
+        suffix: Box<[PatId]>,
     },
 
     /// Fixed match against an array; irrefutable.
     Array {
-        prefix: Box<[Pat<'tcx>]>,
-        slice: Option<Box<Pat<'tcx>>>,
-        suffix: Box<[Pat<'tcx>]>,
+        prefix: Box<[PatId]>,
+        slice: Option<PatId>,
+        suffix: Box<[PatId]>,
     },
 
     /// An or-pattern, e.g. `p | q`.
     /// Invariant: `pats.len() >= 2`.
     Or {
-        pats: Box<[Pat<'tcx>]>,
+        pats: Box<[PatId]>,
     },
 
     /// A never pattern `!`.
@@ -1123,7 +1128,7 @@ mod size_asserts {
     static_assert_size!(ExprKind<'_>, 40);
     static_assert_size!(Pat<'_>, 64);
     static_assert_size!(PatKind<'_>, 48);
-    static_assert_size!(Stmt<'_>, 48);
-    static_assert_size!(StmtKind<'_>, 48);
+    static_assert_size!(Stmt, 44);
+    static_assert_size!(StmtKind, 44);
     // tidy-alphabetical-end
 }
