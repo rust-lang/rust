@@ -8,12 +8,8 @@ use crate::intrinsics::simd::*;
 
 #[allow(improper_ctypes)]
 unsafe extern "C" {
-    #[link_name = "llvm.minnum.v2f16"]
-    fn llvm_f16x2_minnum(a: f16x2, b: f16x2) -> f16x2;
     #[link_name = "llvm.minimum.v2f16"]
     fn llvm_f16x2_minimum(a: f16x2, b: f16x2) -> f16x2;
-    #[link_name = "llvm.maxnum.v2f16"]
-    fn llvm_f16x2_maxnum(a: f16x2, b: f16x2) -> f16x2;
     #[link_name = "llvm.maximum.v2f16"]
     fn llvm_f16x2_maximum(a: f16x2, b: f16x2) -> f16x2;
 }
@@ -103,7 +99,7 @@ pub unsafe fn f16x2_neg(a: f16x2) -> f16x2 {
 #[cfg_attr(test, assert_instr(min.f16x2))]
 #[unstable(feature = "stdarch_nvptx", issue = "111199")]
 pub unsafe fn f16x2_min(a: f16x2, b: f16x2) -> f16x2 {
-    llvm_f16x2_minnum(a, b)
+    simd_fmin(a, b)
 }
 
 /// Find the minimum of two values, NaNs pass through.
@@ -127,7 +123,7 @@ pub unsafe fn f16x2_min_nan(a: f16x2, b: f16x2) -> f16x2 {
 #[cfg_attr(test, assert_instr(max.f16x2))]
 #[unstable(feature = "stdarch_nvptx", issue = "111199")]
 pub unsafe fn f16x2_max(a: f16x2, b: f16x2) -> f16x2 {
-    llvm_f16x2_maxnum(a, b)
+    simd_fmax(a, b)
 }
 
 /// Find the maximum of two values, NaNs pass through.
