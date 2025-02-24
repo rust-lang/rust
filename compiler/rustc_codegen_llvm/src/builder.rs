@@ -119,49 +119,6 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
     }
 }
 
-impl<'a, 'll> SBuilder<'a, 'll> {
-    fn check_call<'b>(
-        &mut self,
-        typ: &str,
-        fn_ty: &'ll Type,
-        llfn: &'ll Value,
-        args: &'b [&'ll Value],
-    ) -> Cow<'b, [&'ll Value]> {
-        assert!(
-            self.cx.type_kind(fn_ty) == TypeKind::Function,
-            "builder::{typ} not passed a function, but {fn_ty:?}"
-        );
-
-        let param_tys = self.cx.func_params_types(fn_ty);
-
-        let all_args_match = iter::zip(&param_tys, args.iter().map(|&v| self.cx.val_ty(v)))
-            .all(|(expected_ty, actual_ty)| *expected_ty == actual_ty);
-
-        if all_args_match {
-            return Cow::Borrowed(args);
-        }
-
-        let casted_args: Vec<_> = iter::zip(param_tys, args)
-            .enumerate()
-            .map(|(i, (expected_ty, &actual_val))| {
-                let actual_ty = self.cx.val_ty(actual_val);
-                if expected_ty != actual_ty {
-                    debug!(
-                        "type mismatch in function call of {:?}. \
-                            Expected {:?} for param {}, got {:?}; injecting bitcast",
-                        llfn, expected_ty, i, actual_ty
-                    );
-                    self.bitcast(actual_val, expected_ty)
-                } else {
-                    actual_val
-                }
-            })
-            .collect();
-
-        Cow::Owned(casted_args)
-    }
-}
-
 /// Empty string, to be used where LLVM expects an instruction name, indicating
 /// that the instruction is to be left unnamed (i.e. numbered, in textual IR).
 // FIXME(eddyb) pass `&CStr` directly to FFI once it's a thin pointer.
@@ -1610,9 +1567,7 @@ impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
         let ret = unsafe { llvm::LLVMBuildCatchRet(self.llbuilder, funclet.cleanuppad(), unwind) };
         ret.expect("LLVM does not have support for catchret")
     }
-}
 
-impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     fn check_call<'b>(
         &mut self,
         typ: &str,
@@ -1627,7 +1582,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
 
         let param_tys = self.cx.func_params_types(fn_ty);
 
-        let all_args_match = iter::zip(&param_tys, args.iter().map(|&v| self.val_ty(v)))
+        let all_args_match = iter::zip(&param_tys, args.iter().map(|&v| self.cx.val_ty(v)))
             .all(|(expected_ty, actual_ty)| *expected_ty == actual_ty);
 
         if all_args_match {
@@ -1637,7 +1592,7 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
         let casted_args: Vec<_> = iter::zip(param_tys, args)
             .enumerate()
             .map(|(i, (expected_ty, &actual_val))| {
-                let actual_ty = self.val_ty(actual_val);
+                let actual_ty = self.cx.val_ty(actual_val);
                 if expected_ty != actual_ty {
                     debug!(
                         "type mismatch in function call of {:?}. \
@@ -1653,12 +1608,12 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
 
         Cow::Owned(casted_args)
     }
-}
-impl<'a, 'll, CX: Borrow<SCx<'ll>>> GenericBuilder<'a, 'll, CX> {
+
     pub(crate) fn va_arg(&mut self, list: &'ll Value, ty: &'ll Type) -> &'ll Value {
         unsafe { llvm::LLVMBuildVAArg(self.llbuilder, list, ty, UNNAMED) }
     }
 }
+
 impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
     pub(crate) fn call_intrinsic(&mut self, intrinsic: &str, args: &[&'ll Value]) -> &'ll Value {
         let (ty, f) = self.cx.get_intrinsic(intrinsic);
