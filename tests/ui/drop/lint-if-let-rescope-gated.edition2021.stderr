@@ -8,6 +8,15 @@ LL |     if let Some(_value) = Droppy.get() {
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-if-let-scope.html>
+note: value invokes this custom destructor
+  --> $DIR/lint-if-let-rescope-gated.rs:14:1
+   |
+LL | / impl Drop for Droppy {
+LL | |     fn drop(&mut self) {
+LL | |         println!("dropped");
+LL | |     }
+LL | | }
+   | |_^
 help: the value is now dropped here in Edition 2024
   --> $DIR/lint-if-let-rescope-gated.rs:30:5
    |
