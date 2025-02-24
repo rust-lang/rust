@@ -7,7 +7,6 @@
 #![feature(cow_is_borrowed)]
 #![feature(core_intrinsics)]
 #![feature(downcast_unchecked)]
-#![feature(extract_if)]
 #![feature(exact_size_is_empty)]
 #![feature(hashmap_internals)]
 #![feature(linked_list_cursors)]
