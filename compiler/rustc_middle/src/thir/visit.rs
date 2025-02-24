@@ -237,11 +237,11 @@ pub fn walk_pat<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
     visitor: &mut V,
     pat: &'thir Pat<'tcx>,
 ) {
-    for_each_immediate_subpat(pat, |p| visitor.visit_pat(p));
+    for_each_immediate_subpat(visitor.thir(), pat, |p| visitor.visit_pat(p));
 }
 
-/// Invokes `callback` on each immediate subpattern of `pat`, if any.
 pub(crate) fn for_each_immediate_subpat<'a, 'tcx>(
+    _thir: &'a Thir<'tcx>,
     pat: &'a Pat<'tcx>,
     mut callback: impl FnMut(&'a Pat<'tcx>),
 ) {
