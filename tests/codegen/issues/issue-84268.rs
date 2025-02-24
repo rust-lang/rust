@@ -1,10 +1,7 @@
 //@ compile-flags: -Copt-level=3 --crate-type=rlib
-#![feature(intrinsics, repr_simd)]
+#![feature(core_intrinsics, repr_simd)]
 
-extern "rust-intrinsic" {
-    fn simd_fabs<T>(x: T) -> T;
-    fn simd_eq<T, U>(x: T, y: T) -> U;
-}
+use std::intrinsics::simd::{simd_eq, simd_fabs};
 
 #[repr(simd)]
 pub struct V([f32; 4]);

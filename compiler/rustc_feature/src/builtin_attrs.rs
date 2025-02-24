@@ -1005,10 +1005,6 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_intrinsic, Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::Yes, intrinsics,
         "the `#[rustc_intrinsic]` attribute is used to declare intrinsics as function items",
     ),
-    gated!(
-        rustc_intrinsic_must_be_overridden, Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::Yes, intrinsics,
-        "the `#[rustc_intrinsic_must_be_overridden]` attribute is used to declare intrinsics without real bodies",
-    ),
     rustc_attr!(
         rustc_no_mir_inline, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::Yes,
         "#[rustc_no_mir_inline] prevents the MIR inliner from inlining a function while not affecting codegen"

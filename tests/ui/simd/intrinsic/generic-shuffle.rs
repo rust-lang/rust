@@ -3,15 +3,13 @@
 // Test that the simd_shuffle intrinsic produces ok-ish error
 // messages when misused.
 
-#![feature(repr_simd, intrinsics)]
+#![feature(repr_simd, core_intrinsics)]
+
+use std::intrinsics::simd::simd_shuffle;
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
 pub struct Simd<T, const N: usize>([T; N]);
-
-#[rustc_intrinsic]
-unsafe fn simd_shuffle<T, I, U>(a: T, b: T, i: I) -> U;
-
 
 fn main() {
     const I: Simd<u32, 2> = Simd([0; 2]);
