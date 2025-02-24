@@ -11,7 +11,7 @@ LL |         assert_foo(a);
    |
 help: consider using a `let` binding to create a longer lived value
    |
-LL ~         let binding = true;
+LL ~         let mut binding = true;
 LL ~         let a = A(&mut binding, &mut true, No);
    |
 
@@ -28,7 +28,7 @@ LL |         assert_foo(a);
    |
 help: consider using a `let` binding to create a longer lived value
    |
-LL ~         let binding = true;
+LL ~         let mut binding = true;
 LL ~         let a = A(&mut true, &mut binding, No);
    |
 
