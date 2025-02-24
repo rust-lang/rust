@@ -1,4 +1,4 @@
-//@ known-bug
+//@ known-bug: #24686
 #![crate_name = "foo"]
 
 // test for https://github.com/rust-lang/rust/issues/24686
