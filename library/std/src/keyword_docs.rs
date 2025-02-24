@@ -2121,8 +2121,8 @@ mod unsafe_keyword {}
 
 #[doc(keyword = "use")]
 //
-/// Import or rename items from other crates or modules, or specify precise capturing
-/// with `use<..>`.
+/// Import or rename items from other crates or modules, use values under ergonomic clones
+/// semantic, or specify precise capturing with `use<..>`.
 ///
 /// ## Importing items
 ///
@@ -2176,6 +2176,11 @@ mod unsafe_keyword {}
 ///
 /// The differences about paths and the `use` keyword between the 2015 and 2018 editions
 /// can also be found in the [Reference][ref-use-decls].
+///
+/// ## Ergonomic clones
+///
+/// Use a values, copying its content if the value implements `Copy`, cloning the contents if the
+/// value implements `UseCloned` or moving it otherwise.
 ///
 /// ## Precise capturing
 ///
