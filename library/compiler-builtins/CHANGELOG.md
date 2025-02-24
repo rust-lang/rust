@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.148](https://github.com/rust-lang/compiler-builtins/compare/compiler_builtins-v0.1.147...compiler_builtins-v0.1.148) - 2025-02-24
+
+### Other
+
+- Update the `libm` submodule
+- Enable `f16` for MIPS
+- Eliminate the use of `public_test_dep!` for a third time
+
 ## [0.1.147](https://github.com/rust-lang/compiler-builtins/compare/compiler_builtins-v0.1.146...compiler_builtins-v0.1.147) - 2025-02-19
 
 ### Other
