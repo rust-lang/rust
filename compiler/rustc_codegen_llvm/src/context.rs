@@ -5,7 +5,7 @@ use std::marker::PhantomData;
 use std::ops::Deref;
 use std::str;
 
-use rustc_abi::{HasDataLayout, TargetDataLayout, VariantIdx};
+use rustc_abi::{HasDataLayout, Size, TargetDataLayout, VariantIdx};
 use rustc_codegen_ssa::back::versioned_llvm_target;
 use rustc_codegen_ssa::base::{wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::common::TypeKind;
@@ -47,6 +47,7 @@ use crate::{attributes, coverageinfo, debuginfo, llvm, llvm_util};
 pub(crate) struct SCx<'ll> {
     pub llmod: &'ll llvm::Module,
     pub llcx: &'ll llvm::Context,
+    pub isize_ty: &'ll Type,
 }
 
 impl<'ll> Borrow<SCx<'ll>> for FullCx<'ll, '_> {
@@ -119,8 +120,6 @@ pub(crate) struct FullCx<'ll, 'tcx> {
 
     /// Mapping of scalar types to llvm types.
     pub scalar_lltypes: RefCell<FxHashMap<Ty<'tcx>, &'ll Type>>,
-
-    pub isize_ty: &'ll Type,
 
     /// Extra per-CGU codegen state needed when coverage instrumentation is enabled.
     pub coverage_cx: Option<coverageinfo::CguCoverageContext<'ll, 'tcx>>,
@@ -595,12 +594,10 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             None
         };
 
-        let isize_ty = Type::ix_llcx(llcx, tcx.data_layout.pointer_size.bits());
-
         GenericCx(
             FullCx {
                 tcx,
-                scx: SimpleCx::new(llmod, llcx),
+                scx: SimpleCx::new(llmod, llcx, tcx.data_layout.pointer_size),
                 use_dll_storage_attrs,
                 tls_model,
                 codegen_unit,
@@ -613,7 +610,6 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                 compiler_used_statics: RefCell::new(Vec::new()),
                 type_lowering: Default::default(),
                 scalar_lltypes: Default::default(),
-                isize_ty,
                 coverage_cx,
                 dbg_cx,
                 eh_personality: Cell::new(None),
@@ -649,8 +645,13 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 }
 
 impl<'ll> SimpleCx<'ll> {
-    pub(crate) fn new(llmod: &'ll llvm::Module, llcx: &'ll llvm::Context) -> Self {
-        Self(SCx { llmod, llcx }, PhantomData)
+    pub(crate) fn new(
+        llmod: &'ll llvm::Module,
+        llcx: &'ll llvm::Context,
+        pointer_size: Size,
+    ) -> Self {
+        let isize_ty = llvm::Type::ix_llcx(llcx, pointer_size.bits());
+        Self(SCx { llmod, llcx, isize_ty }, PhantomData)
     }
 
     pub(crate) fn val_ty(&self, v: &'ll Value) -> &'ll Type {

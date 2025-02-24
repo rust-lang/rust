@@ -286,7 +286,8 @@ pub(crate) fn differentiate<'ll>(
     }
 
     let diag_handler = cgcx.create_dcx();
-    let cx = SimpleCx::new(module.module_llvm.llmod(), module.module_llvm.llcx);
+
+    let cx = SimpleCx::new(module.module_llvm.llmod(), module.module_llvm.llcx, cgcx.pointer_size);
 
     // First of all, did the user try to use autodiff without using the -Zautodiff=Enable flag?
     if !diff_items.is_empty()

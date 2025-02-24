@@ -128,6 +128,10 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         (**self).borrow().llcx
     }
 
+    pub(crate) fn isize_ty(&self) -> &'ll Type {
+        (**self).borrow().isize_ty
+    }
+
     pub(crate) fn type_variadic_func(&self, args: &[&'ll Type], ret: &'ll Type) -> &'ll Type {
         unsafe { llvm::LLVMFunctionType(ret, args.as_ptr(), args.len() as c_uint, True) }
     }
@@ -148,45 +152,45 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     }
 }
 
-impl<'ll, 'tcx> BaseTypeCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
+impl<'ll, CX: Borrow<SCx<'ll>>> BaseTypeCodegenMethods for GenericCx<'ll, CX> {
     fn type_i8(&self) -> &'ll Type {
-        unsafe { llvm::LLVMInt8TypeInContext(self.llcx) }
+        unsafe { llvm::LLVMInt8TypeInContext(self.llcx()) }
     }
 
     fn type_i16(&self) -> &'ll Type {
-        unsafe { llvm::LLVMInt16TypeInContext(self.llcx) }
+        unsafe { llvm::LLVMInt16TypeInContext(self.llcx()) }
     }
 
     fn type_i32(&self) -> &'ll Type {
-        unsafe { llvm::LLVMInt32TypeInContext(self.llcx) }
+        unsafe { llvm::LLVMInt32TypeInContext(self.llcx()) }
     }
 
     fn type_i64(&self) -> &'ll Type {
-        unsafe { llvm::LLVMInt64TypeInContext(self.llcx) }
+        unsafe { llvm::LLVMInt64TypeInContext(self.llcx()) }
     }
 
     fn type_i128(&self) -> &'ll Type {
-        unsafe { llvm::LLVMIntTypeInContext(self.llcx, 128) }
+        unsafe { llvm::LLVMIntTypeInContext(self.llcx(), 128) }
     }
 
     fn type_isize(&self) -> &'ll Type {
-        self.isize_ty
+        self.isize_ty()
     }
 
     fn type_f16(&self) -> &'ll Type {
-        unsafe { llvm::LLVMHalfTypeInContext(self.llcx) }
+        unsafe { llvm::LLVMHalfTypeInContext(self.llcx()) }
     }
 
     fn type_f32(&self) -> &'ll Type {
-        unsafe { llvm::LLVMFloatTypeInContext(self.llcx) }
+        unsafe { llvm::LLVMFloatTypeInContext(self.llcx()) }
     }
 
     fn type_f64(&self) -> &'ll Type {
-        unsafe { llvm::LLVMDoubleTypeInContext(self.llcx) }
+        unsafe { llvm::LLVMDoubleTypeInContext(self.llcx()) }
     }
 
     fn type_f128(&self) -> &'ll Type {
-        unsafe { llvm::LLVMFP128TypeInContext(self.llcx) }
+        unsafe { llvm::LLVMFP128TypeInContext(self.llcx()) }
     }
 
     fn type_func(&self, args: &[&'ll Type], ret: &'ll Type) -> &'ll Type {
@@ -202,7 +206,7 @@ impl<'ll, 'tcx> BaseTypeCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 
     fn type_ptr_ext(&self, address_space: AddressSpace) -> &'ll Type {
-        unsafe { llvm::LLVMPointerTypeInContext(self.llcx, address_space.0) }
+        unsafe { llvm::LLVMPointerTypeInContext(self.llcx(), address_space.0) }
     }
 
     fn element_type(&self, ty: &'ll Type) -> &'ll Type {
