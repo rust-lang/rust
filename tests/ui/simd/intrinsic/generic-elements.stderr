@@ -70,59 +70,59 @@ error[E0511]: invalid monomorphization of `simd_shuffle` intrinsic: expected ret
 LL |         simd_shuffle::<_, _, i32x2>(x, x, IDX8);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0511]: invalid monomorphization of `simd_shuffle_generic` intrinsic: expected SIMD input type, found non-SIMD `i32`
+error[E0511]: invalid monomorphization of `simd_shuffle_const_generic` intrinsic: expected SIMD input type, found non-SIMD `i32`
   --> $DIR/generic-elements.rs:86:9
    |
-LL |         simd_shuffle_generic::<i32, i32, I2>(0, 0);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         simd_shuffle_const_generic::<i32, i32, I2>(0, 0);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0511]: invalid monomorphization of `simd_shuffle_generic` intrinsic: expected SIMD input type, found non-SIMD `i32`
+error[E0511]: invalid monomorphization of `simd_shuffle_const_generic` intrinsic: expected SIMD input type, found non-SIMD `i32`
   --> $DIR/generic-elements.rs:89:9
    |
-LL |         simd_shuffle_generic::<i32, i32, I4>(0, 0);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         simd_shuffle_const_generic::<i32, i32, I4>(0, 0);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0511]: invalid monomorphization of `simd_shuffle_generic` intrinsic: expected SIMD input type, found non-SIMD `i32`
+error[E0511]: invalid monomorphization of `simd_shuffle_const_generic` intrinsic: expected SIMD input type, found non-SIMD `i32`
   --> $DIR/generic-elements.rs:92:9
    |
-LL |         simd_shuffle_generic::<i32, i32, I8>(0, 0);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         simd_shuffle_const_generic::<i32, i32, I8>(0, 0);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0511]: invalid monomorphization of `simd_shuffle_generic` intrinsic: expected return element type `i32` (element of input `i32x4`), found `f32x2` with element type `f32`
+error[E0511]: invalid monomorphization of `simd_shuffle_const_generic` intrinsic: expected return element type `i32` (element of input `i32x4`), found `f32x2` with element type `f32`
   --> $DIR/generic-elements.rs:95:9
    |
-LL |         simd_shuffle_generic::<_, f32x2, I2>(x, x);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         simd_shuffle_const_generic::<_, f32x2, I2>(x, x);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0511]: invalid monomorphization of `simd_shuffle_generic` intrinsic: expected return element type `i32` (element of input `i32x4`), found `f32x4` with element type `f32`
+error[E0511]: invalid monomorphization of `simd_shuffle_const_generic` intrinsic: expected return element type `i32` (element of input `i32x4`), found `f32x4` with element type `f32`
   --> $DIR/generic-elements.rs:97:9
    |
-LL |         simd_shuffle_generic::<_, f32x4, I4>(x, x);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         simd_shuffle_const_generic::<_, f32x4, I4>(x, x);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0511]: invalid monomorphization of `simd_shuffle_generic` intrinsic: expected return element type `i32` (element of input `i32x4`), found `f32x8` with element type `f32`
+error[E0511]: invalid monomorphization of `simd_shuffle_const_generic` intrinsic: expected return element type `i32` (element of input `i32x4`), found `f32x8` with element type `f32`
   --> $DIR/generic-elements.rs:99:9
    |
-LL |         simd_shuffle_generic::<_, f32x8, I8>(x, x);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         simd_shuffle_const_generic::<_, f32x8, I8>(x, x);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0511]: invalid monomorphization of `simd_shuffle_generic` intrinsic: expected return type of length 2, found `i32x8` with length 8
+error[E0511]: invalid monomorphization of `simd_shuffle_const_generic` intrinsic: expected return type of length 2, found `i32x8` with length 8
   --> $DIR/generic-elements.rs:102:9
    |
-LL |         simd_shuffle_generic::<_, i32x8, I2>(x, x);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         simd_shuffle_const_generic::<_, i32x8, I2>(x, x);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0511]: invalid monomorphization of `simd_shuffle_generic` intrinsic: expected return type of length 4, found `i32x8` with length 8
+error[E0511]: invalid monomorphization of `simd_shuffle_const_generic` intrinsic: expected return type of length 4, found `i32x8` with length 8
   --> $DIR/generic-elements.rs:104:9
    |
-LL |         simd_shuffle_generic::<_, i32x8, I4>(x, x);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         simd_shuffle_const_generic::<_, i32x8, I4>(x, x);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0511]: invalid monomorphization of `simd_shuffle_generic` intrinsic: expected return type of length 8, found `i32x2` with length 2
+error[E0511]: invalid monomorphization of `simd_shuffle_const_generic` intrinsic: expected return type of length 8, found `i32x2` with length 2
   --> $DIR/generic-elements.rs:106:9
    |
-LL |         simd_shuffle_generic::<_, i32x2, I8>(x, x);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         simd_shuffle_const_generic::<_, i32x2, I8>(x, x);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 21 previous errors
 
