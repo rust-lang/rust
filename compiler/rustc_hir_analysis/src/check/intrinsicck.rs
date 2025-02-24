@@ -27,6 +27,7 @@ enum NonAsmTypeReason<'tcx> {
     UnevaluatedSIMDArrayLength(DefId, ty::Const<'tcx>),
     Invalid(Ty<'tcx>),
     InvalidElement(DefId, Ty<'tcx>),
+    NotSizedPtr(Ty<'tcx>),
 }
 
 impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
@@ -81,7 +82,13 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             ty::Float(FloatTy::F64) => Ok(InlineAsmType::F64),
             ty::Float(FloatTy::F128) => Ok(InlineAsmType::F128),
             ty::FnPtr(..) => Ok(asm_ty_isize),
-            ty::RawPtr(ty, _) if self.is_thin_ptr_ty(ty) => Ok(asm_ty_isize),
+            ty::RawPtr(elem_ty, _) => {
+                if self.is_thin_ptr_ty(elem_ty) {
+                    Ok(asm_ty_isize)
+                } else {
+                    Err(NonAsmTypeReason::NotSizedPtr(ty))
+                }
+            }
             ty::Adt(adt, args) if adt.repr().simd() => {
                 let fields = &adt.non_enum_variant().fields;
                 let field = &fields[FieldIdx::ZERO];
@@ -186,6 +193,16 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                             "only integers, floats, SIMD vectors, pointers and function pointers \
                             can be used as arguments for inline assembly",
                         ).emit();
+                    }
+                    NonAsmTypeReason::NotSizedPtr(ty) => {
+                        let msg = format!(
+                            "cannot use value of unsized pointer type `{ty}` for inline assembly"
+                        );
+                        self.tcx
+                            .dcx()
+                            .struct_span_err(expr.span, msg)
+                            .with_note("only sized pointers can be used in inline assembly")
+                            .emit();
                     }
                     NonAsmTypeReason::InvalidElement(did, ty) => {
                         let msg = format!(
