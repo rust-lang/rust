@@ -776,6 +776,6 @@ if __name__ == "__main__":
         f.write(contents)
 
     p("")
-    p("run `python {}/x.py --help`".format(rust_dir))
+    p("run `{} {}/x.py --help`".format(os.path.basename(sys.executable), rust_dir))
     if "GITHUB_ACTIONS" in os.environ:
         print("::endgroup::")
