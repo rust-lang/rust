@@ -178,7 +178,7 @@ impl<'sess> AttributeParser<'sess> {
             parse_only: Some(sym),
             limit_diagnostics,
         }
-        .parse_attribute_list(attrs, target_span, OmitDoc::Skip);
+        .parse_attribute_list(attrs, target_span, OmitDoc::Skip, std::convert::identity);
 
         assert!(parsed.len() <= 1);
 
@@ -210,6 +210,8 @@ impl<'sess> AttributeParser<'sess> {
         attrs: &'a [ast::Attribute],
         target_span: Span,
         omit_doc: OmitDoc,
+
+        lower_span: impl Copy + Fn(Span) -> Span,
     ) -> Vec<Attribute> {
         let mut attributes = Vec::new();
 
@@ -242,7 +244,7 @@ impl<'sess> AttributeParser<'sess> {
                     attributes.push(Attribute::Parsed(AttributeKind::DocComment {
                         style: attr.style,
                         kind: *comment_kind,
-                        span: attr.span,
+                        span: lower_span(attr.span),
                         comment: *symbol,
                     }))
                 }
@@ -264,7 +266,10 @@ impl<'sess> AttributeParser<'sess> {
 
                     if let Some(accepts) = ATTRIBUTE_MAPPING.0.get(parts.as_slice()) {
                         for f in accepts {
-                            let cx = AcceptContext { group_cx: &group_cx, attr_span: attr.span };
+                            let cx = AcceptContext {
+                                group_cx: &group_cx,
+                                attr_span: lower_span(attr.span),
+                            };
 
                             f(&cx, &args)
                         }
@@ -286,10 +291,10 @@ impl<'sess> AttributeParser<'sess> {
 
                         attributes.push(Attribute::Unparsed(Box::new(AttrItem {
                             path: AttrPath::from_ast(&n.item.path),
-                            args: self.lower_attr_args(&n.item.args),
+                            args: self.lower_attr_args(&n.item.args, lower_span),
                             id: HashIgnoredAttrId { attr_id: attr.id },
                             style: attr.style,
-                            span: attr.span,
+                            span: lower_span(attr.span),
                         })));
                     }
                 }
@@ -308,7 +313,7 @@ impl<'sess> AttributeParser<'sess> {
         attributes
     }
 
-    fn lower_attr_args(&self, args: &ast::AttrArgs) -> AttrArgs {
+    fn lower_attr_args(&self, args: &ast::AttrArgs, lower_span: impl Fn(Span) -> Span) -> AttrArgs {
         match args {
             ast::AttrArgs::Empty => AttrArgs::Empty,
             ast::AttrArgs::Delimited(args) => AttrArgs::Delimited(DelimArgs {
@@ -323,7 +328,8 @@ impl<'sess> AttributeParser<'sess> {
                 // In valid code the value always ends up as a single literal. Otherwise, a dummy
                 // literal suffices because the error is handled elsewhere.
                 let lit = if let ast::ExprKind::Lit(token_lit) = expr.kind
-                    && let Ok(lit) = ast::MetaItemLit::from_token_lit(token_lit, expr.span)
+                    && let Ok(lit) =
+                        ast::MetaItemLit::from_token_lit(token_lit, lower_span(expr.span))
                 {
                     lit
                 } else {
@@ -335,7 +341,7 @@ impl<'sess> AttributeParser<'sess> {
                         span: DUMMY_SP,
                     }
                 };
-                AttrArgs::Eq { eq_span: *eq_span, expr: lit }
+                AttrArgs::Eq { eq_span: lower_span(*eq_span), expr: lit }
             }
         }
     }

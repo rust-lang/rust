@@ -2732,7 +2732,6 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
             continue;
         };
 
-
         let item = tcx
             .hir_free_items()
             .map(|id| tcx.hir_item(id))

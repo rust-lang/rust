@@ -142,7 +142,12 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                     self.resolver.tcx.features(),
                     Vec::new(),
                 );
-                let attrs = parser.parse_attribute_list(&i.attrs, i.span, OmitDoc::Skip);
+                let attrs = parser.parse_attribute_list(
+                    &i.attrs,
+                    i.span,
+                    OmitDoc::Skip,
+                    std::convert::identity,
+                );
 
                 let macro_data =
                     self.resolver.compile_macro(def, i.ident, &attrs, i.span, i.id, edition);

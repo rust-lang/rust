@@ -1093,6 +1093,7 @@ impl Attribute {
 }
 
 impl AttributeExt for Attribute {
+    #[inline]
     fn id(&self) -> AttrId {
         match &self {
             Attribute::Unparsed(u) => u.id.attr_id,
@@ -1100,6 +1101,7 @@ impl AttributeExt for Attribute {
         }
     }
 
+    #[inline]
     fn meta_item_list(&self) -> Option<ThinVec<ast::MetaItemInner>> {
         match &self {
             Attribute::Unparsed(n) => match n.as_ref() {
@@ -1112,15 +1114,18 @@ impl AttributeExt for Attribute {
         }
     }
 
+    #[inline]
     fn value_str(&self) -> Option<Symbol> {
         self.value_lit().and_then(|x| x.value_str())
     }
 
+    #[inline]
     fn value_span(&self) -> Option<Span> {
         self.value_lit().map(|i| i.span)
     }
 
     /// For a single-segment attribute, returns its name; otherwise, returns `None`.
+    #[inline]
     fn ident(&self) -> Option<Ident> {
         match &self {
             Attribute::Unparsed(n) => {
@@ -1134,6 +1139,7 @@ impl AttributeExt for Attribute {
         }
     }
 
+    #[inline]
     fn path_matches(&self, name: &[Symbol]) -> bool {
         match &self {
             Attribute::Unparsed(n) => {
@@ -1144,11 +1150,12 @@ impl AttributeExt for Attribute {
         }
     }
 
+    #[inline]
     fn is_doc_comment(&self) -> bool {
-        // FIXME(jdonszelmann): make the 2nd check unnecessary here
         matches!(self, Attribute::Parsed(AttributeKind::DocComment { .. }))
     }
 
+    #[inline]
     fn span(&self) -> Span {
         match &self {
             Attribute::Unparsed(u) => u.span,
@@ -1159,6 +1166,7 @@ impl AttributeExt for Attribute {
         }
     }
 
+    #[inline]
     fn is_word(&self) -> bool {
         match &self {
             Attribute::Unparsed(n) => {
@@ -1168,6 +1176,7 @@ impl AttributeExt for Attribute {
         }
     }
 
+    #[inline]
     fn ident_path(&self) -> Option<SmallVec<[Ident; 1]>> {
         match &self {
             Attribute::Unparsed(n) => Some(n.path.segments.iter().copied().collect()),
@@ -1175,6 +1184,7 @@ impl AttributeExt for Attribute {
         }
     }
 
+    #[inline]
     fn doc_str(&self) -> Option<Symbol> {
         match &self {
             Attribute::Parsed(AttributeKind::DocComment { comment, .. }) => Some(*comment),
@@ -1182,6 +1192,7 @@ impl AttributeExt for Attribute {
             _ => None,
         }
     }
+    #[inline]
     fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)> {
         match &self {
             Attribute::Parsed(AttributeKind::DocComment { kind, comment, .. }) => {
@@ -1194,6 +1205,7 @@ impl AttributeExt for Attribute {
         }
     }
 
+    #[inline]
     fn style(&self) -> AttrStyle {
         match &self {
             Attribute::Unparsed(u) => u.style,
@@ -1205,34 +1217,42 @@ impl AttributeExt for Attribute {
 
 // FIXME(fn_delegation): use function delegation instead of manually forwarding
 impl Attribute {
+    #[inline]
     pub fn id(&self) -> AttrId {
         AttributeExt::id(self)
     }
 
+    #[inline]
     pub fn name_or_empty(&self) -> Symbol {
         AttributeExt::name_or_empty(self)
     }
 
+    #[inline]
     pub fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
         AttributeExt::meta_item_list(self)
     }
 
+    #[inline]
     pub fn value_str(&self) -> Option<Symbol> {
         AttributeExt::value_str(self)
     }
 
+    #[inline]
     pub fn value_span(&self) -> Option<Span> {
         AttributeExt::value_span(self)
     }
 
+    #[inline]
     pub fn ident(&self) -> Option<Ident> {
         AttributeExt::ident(self)
     }
 
+    #[inline]
     pub fn path_matches(&self, name: &[Symbol]) -> bool {
         AttributeExt::path_matches(self, name)
     }
 
+    #[inline]
     pub fn is_doc_comment(&self) -> bool {
         AttributeExt::is_doc_comment(self)
     }
@@ -1242,34 +1262,42 @@ impl Attribute {
         AttributeExt::has_name(self, name)
     }
 
+    #[inline]
     pub fn span(&self) -> Span {
         AttributeExt::span(self)
     }
 
+    #[inline]
     pub fn is_word(&self) -> bool {
         AttributeExt::is_word(self)
     }
 
+    #[inline]
     pub fn path(&self) -> SmallVec<[Symbol; 1]> {
         AttributeExt::path(self)
     }
 
+    #[inline]
     pub fn ident_path(&self) -> Option<SmallVec<[Ident; 1]>> {
         AttributeExt::ident_path(self)
     }
 
+    #[inline]
     pub fn doc_str(&self) -> Option<Symbol> {
         AttributeExt::doc_str(self)
     }
 
+    #[inline]
     pub fn is_proc_macro_attr(&self) -> bool {
         AttributeExt::is_proc_macro_attr(self)
     }
 
+    #[inline]
     pub fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)> {
         AttributeExt::doc_str_and_comment_kind(self)
     }
 
+    #[inline]
     pub fn style(&self) -> AttrStyle {
         AttributeExt::style(self)
     }
