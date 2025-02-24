@@ -8,6 +8,8 @@
 // trying to get assert failure messages that at least identify which case
 // failed.
 
+#![allow(unpredictable_function_pointer_comparisons)]
+
 enum E<T> { Thing(isize, T), #[allow(dead_code)] Nothing((), ((), ()), [i8; 0]) }
 impl<T> E<T> {
     fn is_none(&self) -> bool {
