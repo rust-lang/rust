@@ -272,14 +272,25 @@ fn empty_line_number(out: &mut impl Write, _: u32, extra: &'static str) {
     out.write_str(extra).unwrap();
 }
 
+fn get_next_expansion<'a>(
+    expanded_codes: Option<&'a Vec<ExpandedCode>>,
+    line: u32,
+    span: Span,
+) -> Option<&'a ExpandedCode> {
+    if let Some(expanded_codes) = expanded_codes {
+        expanded_codes.iter().find(|code| code.start_line == line && code.span.lo() >= span.lo())
+    } else {
+        None
+    }
+}
+
 fn get_expansion<'a, W: Write>(
     token_handler: &mut TokenHandler<'_, '_, W>,
     expanded_codes: Option<&'a Vec<ExpandedCode>>,
     line: u32,
+    span: Span,
 ) -> Option<&'a ExpandedCode> {
-    if let Some(expanded_codes) = expanded_codes
-        && let Some(expanded_code) = expanded_codes.iter().find(|code| code.start_line == line)
-    {
+    if let Some(expanded_code) = get_next_expansion(expanded_codes, line, span) {
         let (closing, reopening) = if let Some(current_class) = token_handler.current_class
             && let class = current_class.as_html()
             && !class.is_empty()
@@ -314,10 +325,21 @@ fn start_expansion(out: &mut Vec<(Cow<'_, str>, Option<Class>)>, expanded_code: 
     ));
 }
 
-fn end_expansion<W: Write>(token_handler: &mut TokenHandler<'_, '_, W>, level: usize) {
+fn end_expansion<'a, W: Write>(
+    token_handler: &mut TokenHandler<'_, '_, W>,
+    expanded_codes: Option<&'a Vec<ExpandedCode>>,
+    level: usize,
+    line: u32,
+    span: Span,
+) -> Option<&'a ExpandedCode> {
+    if let Some(expanded_code) = get_next_expansion(expanded_codes, line, span) {
+        // We close the current "original" content.
+        token_handler.pending_elems.push((Cow::Borrowed("</span>"), Some(Class::Expansion)));
+        return Some(expanded_code);
+    }
     if level == 0 {
         token_handler.pending_elems.push((Cow::Borrowed("</span></span>"), Some(Class::Expansion)));
-        return;
+        return None;
     }
     let mut out = String::new();
     let mut end = String::new();
@@ -330,6 +352,7 @@ fn end_expansion<W: Write>(token_handler: &mut TokenHandler<'_, '_, W>, level: u
     token_handler
         .pending_elems
         .push((Cow::Owned(format!("</span></span>{out}{end}")), Some(Class::Expansion)));
+    None
 }
 
 #[derive(Clone, Copy)]
@@ -399,11 +422,14 @@ pub(super) fn write_code(
         (0, u32::MAX)
     };
 
-    let expanded_codes = token_handler
-        .href_context
-        .as_ref()
-        .and_then(|c| c.context.shared.expanded_codes.get(&c.file_span.lo()));
-    let mut current_expansion = get_expansion(&mut token_handler, expanded_codes, line);
+    let (expanded_codes, file_span) = match token_handler.href_context.as_ref().and_then(|c| {
+        let expanded_codes = c.context.shared.expanded_codes.get(&c.file_span.lo())?;
+        Some((expanded_codes, c.file_span))
+    }) {
+        Some((expanded_codes, file_span)) => (Some(expanded_codes), file_span),
+        None => (None, DUMMY_SP),
+    };
+    let mut current_expansion = get_expansion(&mut token_handler, expanded_codes, line, file_span);
     token_handler.write_pending_elems(None);
     let mut level = 0;
 
@@ -443,7 +469,8 @@ pub(super) fn write_code(
                             .push((Cow::Borrowed(text), Some(Class::Backline(line))));
                     }
                     if current_expansion.is_none() {
-                        current_expansion = get_expansion(&mut token_handler, expanded_codes, line);
+                        current_expansion =
+                            get_expansion(&mut token_handler, expanded_codes, line, span);
                     }
                 } else {
                     token_handler.pending_elems.push((Cow::Borrowed(text), class));
@@ -459,9 +486,11 @@ pub(super) fn write_code(
                         }
                     }
                     if need_end {
-                        end_expansion(&mut token_handler, level);
-                        current_expansion = None;
-                        level = 0;
+                        current_expansion =
+                            end_expansion(&mut token_handler, expanded_codes, level, line, span);
+                        if current_expansion.is_none() {
+                            level = 0;
+                        }
                     }
                 }
             }
