@@ -38,10 +38,10 @@ jobs:
             target: x86_64-unknown-linux-gnu
             code-target: linux-x64
             container: rockylinux:8
-          - os: ubuntu-latest
+          - os: ubuntu-22.04
             target: aarch64-unknown-linux-gnu
             code-target: linux-arm64
-          - os: ubuntu-latest
+          - os: ubuntu-22.04
             target: arm-unknown-linux-gnueabihf
             code-target: linux-armhf
           - os: macos-13
