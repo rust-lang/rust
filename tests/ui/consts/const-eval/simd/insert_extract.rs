@@ -5,22 +5,7 @@
 #![stable(feature = "foo", since = "1.3.37")]
 #![allow(non_camel_case_types)]
 
-// FIXME these intrinsics are not marked as const fn
-// use std::intrinsics::simd::{simd_extract, simd_insert};
-
-#[stable(feature = "foo", since = "1.3.37")]
-#[rustc_const_stable(feature = "foo", since = "1.3.37")]
-#[rustc_intrinsic]
-const unsafe fn simd_insert<T, U>(_x: T, _idx: u32, _val: U) -> T {
-    unimplemented!()
-}
-
-#[stable(feature = "foo", since = "1.3.37")]
-#[rustc_const_stable(feature = "foo", since = "1.3.37")]
-#[rustc_intrinsic]
-const unsafe fn simd_extract<T, U>(_x: T, _idx: u32) -> U {
-    unimplemented!()
-}
+use std::intrinsics::simd::{simd_extract, simd_insert};
 
 // repr(simd) now only supports array types
 #[repr(simd)]
