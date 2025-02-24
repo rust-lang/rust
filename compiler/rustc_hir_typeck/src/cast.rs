@@ -38,7 +38,6 @@ use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::cast::{CastKind, CastTy};
-use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeAndMut, TypeVisitableExt, VariantDef};
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
@@ -748,9 +747,6 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                             AllowTwoPhase::No,
                             None,
                         );
-                        if let Err(TypeError::IntrinsicCast) = res {
-                            return Err(CastError::IllegalCast);
-                        }
                         if res.is_err() {
                             return Err(CastError::NonScalar);
                         }
