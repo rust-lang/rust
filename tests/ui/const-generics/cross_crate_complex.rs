@@ -11,7 +11,7 @@ async fn foo() {
     async_in_foo(async_out_foo::<4>().await).await;
 }
 
-struct Faz<const N: usize>;
+struct Faz<const N: usize>; //~ WARN struct `Faz` is never constructed
 
 impl<const N: usize> Foo<N> for Faz<N> {}
 impl<const N: usize> Bar<N> for Faz<N> {
