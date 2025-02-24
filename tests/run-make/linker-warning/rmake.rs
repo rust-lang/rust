@@ -60,6 +60,8 @@ fn main() {
                 regex::escape(run_make_support::build_root().to_str().unwrap()),
                 "/build-root",
             )
+            .normalize(r#""[^"]*\/symbols.o""#, "\"/symbols.o\"")
+            .normalize(r#""[^"]*\/raw-dylibs""#, "\"/raw-dylibs\"")
             .run();
     }
 
