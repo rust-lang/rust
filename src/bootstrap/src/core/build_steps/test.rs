@@ -1679,6 +1679,11 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             };
 
             cmd.arg("--cargo-path").arg(cargo_path);
+
+            // We need to pass the compiler that was used to compile run-make-support,
+            // because we have to use the same compiler to compile rmake.rs recipes.
+            let stage0_rustc_path = builder.compiler(0, compiler.host);
+            cmd.arg("--stage0-rustc-path").arg(builder.rustc(stage0_rustc_path));
         }
 
         // Avoid depending on rustdoc when we don't need it.
