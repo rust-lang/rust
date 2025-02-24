@@ -663,6 +663,8 @@ parse_note_mut_pattern_usage = `mut` may be followed by `variable` and `variable
 
 parse_note_pattern_alternatives_use_single_vert = alternatives in or-patterns are separated with `|`, not `||`
 
+parse_note_pin_pattern_usage = `pin mut` or `pin const` may be followed by `variable` and `variable @ pattern`
+
 parse_nul_in_c_str = null characters in C string literals are not supported
 
 parse_or_pattern_not_allowed_in_fn_parameters = top-level or-patterns are not allowed in function parameters
@@ -697,6 +699,11 @@ parse_pattern_on_wrong_side_of_at = pattern on wrong side of `@`
     .label_pattern = pattern on the left, should be on the right
     .label_binding = binding on the right, should be on the left
     .suggestion = switch the order
+
+parse_pin_on_nested_ident_pattern = `pin {$mutbl}` must be attached to each individual binding
+    .suggestion = add `pin {$mutbl}` to each binding
+parse_pin_on_non_ident_pattern = `pin {$mutbl}` must be followed by a named binding
+    .suggestion = remove the `pin {$mutbl}` prefix
 
 parse_question_mark_in_type = invalid `?` in type
     .label = `?` is only allowed on expressions, not types

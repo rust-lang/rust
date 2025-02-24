@@ -871,7 +871,7 @@ fn check_for_bindings_named_same_as_variants(
 ) {
     if let PatKind::Binding {
         name,
-        mode: BindingMode(ByRef::No, Mutability::Not),
+        mode: BindingMode(ByRef::No, _, Mutability::Not),
         subpattern: None,
         ty,
         ..

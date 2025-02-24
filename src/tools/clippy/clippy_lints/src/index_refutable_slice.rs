@@ -94,7 +94,7 @@ fn find_slice_values(cx: &LateContext<'_>, pat: &hir::Pat<'_>) -> FxIndexMap<Hir
     let mut slices: FxIndexMap<HirId, SliceLintInformation> = FxIndexMap::default();
     pat.walk_always(|pat| {
         // We'll just ignore mut and ref mut for simplicity sake right now
-        if let hir::PatKind::Binding(hir::BindingMode(by_ref, hir::Mutability::Not), value_hir_id, ident, sub_pat) =
+        if let hir::PatKind::Binding(hir::BindingMode(by_ref, _, hir::Mutability::Not), value_hir_id, ident, sub_pat) =
             pat.kind
             && by_ref != hir::ByRef::Yes(hir::Mutability::Mut)
         {

@@ -18,7 +18,9 @@ use crate::shape::Shape;
 use crate::source_map::SpanUtils;
 use crate::spanned::Spanned;
 use crate::types::{PathContext, rewrite_path};
-use crate::utils::{format_mutability, mk_sp, mk_sp_lo_plus_one, rewrite_ident};
+use crate::utils::{
+    format_mutability, format_pin_and_mut, mk_sp, mk_sp_lo_plus_one, rewrite_ident,
+};
 
 /// Returns `true` if the given pattern is "short".
 /// A short pattern is defined by the following grammar:
@@ -129,8 +131,9 @@ impl Rewrite for Pat {
                 write_list(&items, &fmt)
             }
             PatKind::Box(ref pat) => rewrite_unary_prefix(context, "box ", &**pat, shape),
-            PatKind::Ident(BindingMode(by_ref, mutability), ident, ref sub_pat) => {
-                let mut_prefix = format_mutability(mutability).trim();
+            PatKind::Ident(BindingMode(by_ref, pinnedness, mutability), ident, ref sub_pat) => {
+                let (pin_prefix, mut_prefix) = format_pin_and_mut(pinnedness, mutability);
+                let (pin_prefix, mut_prefix) = (pin_prefix.trim(), mut_prefix.trim());
 
                 let (ref_kw, mut_infix) = match by_ref {
                     ByRef::Yes(rmutbl) => ("ref", format_mutability(rmutbl).trim()),
@@ -143,7 +146,8 @@ impl Rewrite for Pat {
                         let width = shape
                             .width
                             .checked_sub(
-                                mut_prefix.len()
+                                pin_prefix.len()
+                                    + mut_prefix.len()
                                     + ref_kw.len()
                                     + mut_infix.len()
                                     + id_str.len()
@@ -163,27 +167,48 @@ impl Rewrite for Pat {
                     None => "".to_owned(),
                 };
 
-                // combine prefix and ref
-                let (first_lo, first) = match (mut_prefix.is_empty(), ref_kw.is_empty()) {
+                // combine pin and mut
+                let (pin_mut_lo, pin_mut) = match (pin_prefix.is_empty(), mut_prefix.is_empty()) {
                     (false, false) => {
-                        let lo = context.snippet_provider.span_after(self.span, "mut");
-                        let hi = context.snippet_provider.span_before(self.span, "ref");
+                        let lo = context.snippet_provider.span_after(self.span, "pin");
+                        let hi = context.snippet_provider.span_before(self.span, mut_prefix);
                         (
-                            context.snippet_provider.span_after(self.span, "ref"),
+                            context.snippet_provider.span_after(self.span, mut_prefix),
                             combine_strs_with_missing_comments(
                                 context,
+                                pin_prefix,
                                 mut_prefix,
-                                ref_kw,
                                 mk_sp(lo, hi),
                                 shape,
                                 true,
                             )?,
                         )
                     }
-                    (false, true) => (
-                        context.snippet_provider.span_after(self.span, "mut"),
+                    (false, true) => unreachable!("mut_prefix necessarily follows a pin_prefix"),
+                    (true, false) => (
+                        context.snippet_provider.span_after(self.span, mut_prefix),
                         mut_prefix.to_owned(),
                     ),
+                    (true, true) => (self.span.lo(), "".to_owned()),
+                };
+
+                // combine prefix and ref
+                let (first_lo, first) = match (pin_mut.is_empty(), ref_kw.is_empty()) {
+                    (false, false) => {
+                        let hi = context.snippet_provider.span_before(self.span, "ref");
+                        (
+                            context.snippet_provider.span_after(self.span, "ref"),
+                            combine_strs_with_missing_comments(
+                                context,
+                                &pin_mut,
+                                ref_kw,
+                                mk_sp(pin_mut_lo, hi),
+                                shape,
+                                true,
+                            )?,
+                        )
+                    }
+                    (false, true) => (pin_mut_lo, pin_mut),
                     (true, false) => (
                         context.snippet_provider.span_after(self.span, "ref"),
                         ref_kw.to_owned(),

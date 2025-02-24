@@ -183,7 +183,7 @@ pub(crate) use SubstructureFields::*;
 use rustc_ast::ptr::P;
 use rustc_ast::{
     self as ast, AnonConst, BindingMode, ByRef, EnumDef, Expr, GenericArg, GenericParamKind,
-    Generics, Mutability, PatKind, VariantData,
+    Generics, Mutability, PatKind, Pinnedness, VariantData,
 };
 use rustc_attr_parsing as attr;
 use rustc_expand::base::{Annotatable, ExtCtxt};
@@ -1470,7 +1470,11 @@ impl<'a> TraitDef<'a> {
                             struct_field.ident,
                             cx.pat(
                                 path.span,
-                                PatKind::Ident(BindingMode(by_ref, Mutability::Not), path, None),
+                                PatKind::Ident(
+                                    BindingMode(by_ref, Pinnedness::Not, Mutability::Not),
+                                    path,
+                                    None,
+                                ),
                             ),
                         )
                     });

@@ -305,7 +305,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 {
                     match *decl.local_info() {
                         LocalInfo::User(BindingForm::Var(mir::VarBindingForm {
-                            binding_mode: BindingMode(ByRef::No, Mutability::Not),
+                            binding_mode: BindingMode(ByRef::No, _, Mutability::Not),
                             opt_ty_info: Some(sp),
                             opt_match_place: _,
                             pat_span: _,
@@ -732,7 +732,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         debug!("local_decl: {:?}", local_decl);
         let pat_span = match *local_decl.local_info() {
             LocalInfo::User(BindingForm::Var(mir::VarBindingForm {
-                binding_mode: BindingMode(ByRef::No, Mutability::Not),
+                binding_mode: BindingMode(ByRef::No, _, Mutability::Not),
                 opt_ty_info: _,
                 opt_match_place: _,
                 pat_span,
@@ -1144,7 +1144,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             }
 
             LocalInfo::User(mir::BindingForm::Var(mir::VarBindingForm {
-                binding_mode: BindingMode(ByRef::No, _),
+                binding_mode: BindingMode(ByRef::No, _, _),
                 opt_ty_info,
                 ..
             })) => {
@@ -1223,7 +1223,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             }
 
             LocalInfo::User(mir::BindingForm::Var(mir::VarBindingForm {
-                binding_mode: BindingMode(ByRef::Yes(_), _),
+                binding_mode: BindingMode(ByRef::Yes(_), _, _),
                 ..
             })) => {
                 let pattern_span: Span = local_decl.source_info.span;
@@ -1438,7 +1438,7 @@ fn mut_borrow_of_mutable_ref(local_decl: &LocalDecl<'_>, local_name: Option<Symb
     match *local_decl.local_info() {
         // Check if mutably borrowing a mutable reference.
         LocalInfo::User(mir::BindingForm::Var(mir::VarBindingForm {
-            binding_mode: BindingMode(ByRef::No, Mutability::Not),
+            binding_mode: BindingMode(ByRef::No, _, Mutability::Not),
             ..
         })) => matches!(local_decl.ty.kind(), ty::Ref(_, _, hir::Mutability::Mut)),
         LocalInfo::User(mir::BindingForm::ImplicitSelf(kind)) => {

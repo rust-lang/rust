@@ -19,6 +19,7 @@ use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::{
     self as hir, BindingMode, ByRef, CoroutineDesugaring, CoroutineKind, HirId, ImplicitSelfKind,
+    Pinnedness,
 };
 use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
@@ -1105,7 +1106,8 @@ impl<'tcx> LocalDecl<'tcx> {
             self.local_info(),
             LocalInfo::User(
                 BindingForm::Var(VarBindingForm {
-                    binding_mode: BindingMode(ByRef::No, _),
+                    // FIXME(pin_ergonomics): `pin const` can also be made mutable, but needs special handling.
+                    binding_mode: BindingMode(ByRef::No, Pinnedness::Not, _),
                     opt_ty_info: _,
                     opt_match_place: _,
                     pat_span: _,
@@ -1122,7 +1124,7 @@ impl<'tcx> LocalDecl<'tcx> {
             self.local_info(),
             LocalInfo::User(
                 BindingForm::Var(VarBindingForm {
-                    binding_mode: BindingMode(ByRef::No, _),
+                    binding_mode: BindingMode(ByRef::No, _, _),
                     opt_ty_info: _,
                     opt_match_place: _,
                     pat_span: _,

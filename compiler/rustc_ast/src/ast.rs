@@ -720,18 +720,22 @@ impl ByRef {
 /// Used for both the explicit binding annotations given in the HIR for a binding
 /// and the final binding mode that we infer after type inference/match ergonomics.
 /// `.0` is the by-reference mode (`ref`, `ref mut`, or by value),
-/// `.1` is the mutability of the binding.
+/// `.1` is the pinnedness of the binding,
+/// `.2` is the mutability of the binding.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[derive(Encodable, Decodable, HashStable_Generic)]
-pub struct BindingMode(pub ByRef, pub Mutability);
+pub struct BindingMode(pub ByRef, pub Pinnedness, pub Mutability);
 
 impl BindingMode {
-    pub const NONE: Self = Self(ByRef::No, Mutability::Not);
-    pub const REF: Self = Self(ByRef::Yes(Mutability::Not), Mutability::Not);
-    pub const MUT: Self = Self(ByRef::No, Mutability::Mut);
-    pub const REF_MUT: Self = Self(ByRef::Yes(Mutability::Mut), Mutability::Not);
-    pub const MUT_REF: Self = Self(ByRef::Yes(Mutability::Not), Mutability::Mut);
-    pub const MUT_REF_MUT: Self = Self(ByRef::Yes(Mutability::Mut), Mutability::Mut);
+    pub const NONE: Self = Self(ByRef::No, Pinnedness::Not, Mutability::Not);
+    pub const REF: Self = Self(ByRef::Yes(Mutability::Not), Pinnedness::Not, Mutability::Not);
+    pub const MUT: Self = Self(ByRef::No, Pinnedness::Not, Mutability::Mut);
+    pub const REF_MUT: Self = Self(ByRef::Yes(Mutability::Mut), Pinnedness::Not, Mutability::Not);
+    pub const MUT_REF: Self = Self(ByRef::Yes(Mutability::Not), Pinnedness::Not, Mutability::Mut);
+    pub const MUT_REF_MUT: Self =
+        Self(ByRef::Yes(Mutability::Mut), Pinnedness::Not, Mutability::Mut);
+    pub const PIN_CONST: Self = Self(ByRef::No, Pinnedness::Pinned, Mutability::Not);
+    pub const PIN_MUT: Self = Self(ByRef::No, Pinnedness::Pinned, Mutability::Mut);
 
     pub fn prefix_str(self) -> &'static str {
         match self {
@@ -741,6 +745,9 @@ impl BindingMode {
             Self::REF_MUT => "ref mut ",
             Self::MUT_REF => "mut ref ",
             Self::MUT_REF_MUT => "mut ref mut ",
+            Self::PIN_CONST => "pin const ",
+            Self::PIN_MUT => "pin mut ",
+            Self(_, Pinnedness::Pinned, _) => panic!("unsupported pinned binding mode"),
         }
     }
 }
@@ -2604,7 +2611,9 @@ pub type ExplicitSelf = Spanned<SelfKind>;
 impl Param {
     /// Attempts to cast parameter to `ExplicitSelf`.
     pub fn to_self(&self) -> Option<ExplicitSelf> {
-        if let PatKind::Ident(BindingMode(ByRef::No, mutbl), ident, _) = self.pat.kind {
+        if let PatKind::Ident(BindingMode(ByRef::No, Pinnedness::Not, mutbl), ident, _) =
+            self.pat.kind
+        {
             if ident.name == kw::SelfLower {
                 return match self.ty.kind {
                     TyKind::ImplicitSelf => Some(respan(self.pat.span, SelfKind::Value(mutbl))),
@@ -2659,7 +2668,11 @@ impl Param {
             attrs,
             pat: P(Pat {
                 id: DUMMY_NODE_ID,
-                kind: PatKind::Ident(BindingMode(ByRef::No, mutbl), eself_ident, None),
+                kind: PatKind::Ident(
+                    BindingMode(ByRef::No, Pinnedness::Not, mutbl),
+                    eself_ident,
+                    None,
+                ),
                 span,
                 tokens: None,
             }),
