@@ -212,7 +212,10 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
     tcx.par_hir_body_owners(|item_def_id| {
         let def_kind = tcx.def_kind(item_def_id);
         match def_kind {
-            DefKind::Static { .. } => tcx.ensure_ok().eval_static_initializer(item_def_id),
+            DefKind::Static { .. } => {
+                tcx.ensure_ok().eval_static_initializer(item_def_id);
+                check::maybe_check_static_with_link_section(tcx, item_def_id);
+            }
             DefKind::Const if tcx.generics_of(item_def_id).is_empty() => {
                 let instance = ty::Instance::new(item_def_id.into(), ty::GenericArgs::empty());
                 let cid = GlobalId { instance, promoted: None };
@@ -223,12 +226,9 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
         }
     });
 
-    // FIXME: Remove this when we implement creating `DefId`s
-    // for anon constants during their parents' typeck.
-    // Typeck all body owners in parallel will produce queries
-    // cycle errors because it may typeck on anon constants directly.
     tcx.par_hir_body_owners(|item_def_id| {
         let def_kind = tcx.def_kind(item_def_id);
+        // Skip `AnonConst`s because we feed their `type_of`.
         if !matches!(def_kind, DefKind::AnonConst) {
             tcx.ensure_ok().typeck(item_def_id);
         }

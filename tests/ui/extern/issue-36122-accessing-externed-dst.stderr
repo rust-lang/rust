@@ -5,6 +5,7 @@ LL |         static symbol: [usize];
    |                        ^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[usize]`
+   = note: statics and constants must have a statically known size
 
 error[E0133]: use of extern static is unsafe and requires unsafe function or block
   --> $DIR/issue-36122-accessing-externed-dst.rs:5:20
