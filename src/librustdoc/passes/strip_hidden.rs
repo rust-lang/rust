@@ -89,6 +89,10 @@ impl Stripper<'_, '_> {
 impl DocFolder for Stripper<'_, '_> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         let has_doc_hidden = i.is_doc_hidden();
+        debug!(
+            "item: {:?}, has_doc_hidden: {}, is_in_hidden_item: {}",
+            i, has_doc_hidden, self.is_in_hidden_item
+        );
         let is_impl_or_exported_macro = match i.kind {
             clean::ImplItem(..) => true,
             // If the macro has the `#[macro_export]` attribute, it means it's accessible at the
@@ -119,7 +123,7 @@ impl DocFolder for Stripper<'_, '_> {
                     .unwrap_or(false);
             }
         }
-        if !is_hidden {
+        if !is_hidden || i.inline_stmt_id.is_some() {
             if self.update_retained {
                 self.retained.insert(i.item_id);
             }
@@ -144,23 +148,26 @@ impl DocFolder for Stripper<'_, '_> {
                 // strip things like impl methods but when doing so
                 // we must not add any items to the `retained` set.
                 let old = mem::replace(&mut self.update_retained, false);
-                let ret = self.set_is_in_hidden_item_and_fold(true, i);
+                let ret = self.set_is_in_hidden_item_and_fold(true, i.clone());
                 self.update_retained = old;
                 if ret.item_id == clean::ItemId::DefId(CRATE_DEF_ID.into()) {
                     // We don't strip the current crate, even if it has `#[doc(hidden)]`.
-                    debug!("strip_hidden: Not strippping local crate");
+                    debug!("strip_hidden0: Not strippping local crate");
                     Some(ret)
                 } else {
+                    debug!("strip_hidden1: stripping(strip_item) {:?} {:?}", i.type_(), i.name);
                     Some(strip_item(ret))
                 }
             }
             _ => {
-                let ret = self.set_is_in_hidden_item_and_fold(true, i);
+                let ret = self.set_is_in_hidden_item_and_fold(true, i.clone());
                 if has_doc_hidden {
                     // If the item itself has `#[doc(hidden)]`, then we simply remove it.
+                    debug!("strip_hidden2: stripping(remove) {:?} {:?}", i.type_(), i.name);
                     None
                 } else {
                     // However if it's a "descendant" of a `#[doc(hidden)]` item, then we strip it.
+                    debug!("strip_hidden3: stripping(strip_item) {:?} {:?}", i.type_(), i.name);
                     Some(strip_item(ret))
                 }
             }
