@@ -118,7 +118,7 @@ impl std::fmt::Debug for ConstInt {
 impl IntoDiagArg for ConstInt {
     // FIXME this simply uses the Debug impl, but we could probably do better by converting both
     // to an inherent method that returns `Cow`.
-    fn into_diag_arg(self) -> DiagArgValue {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
         DiagArgValue::Str(format!("{self:?}").into())
     }
 }

@@ -23,7 +23,7 @@ use tracing::{debug, instrument};
 use super::method::MethodCallee;
 use super::method::probe::ProbeScope;
 use super::{Expectation, FnCtxt, TupleArgumentsFlag};
-use crate::errors;
+use crate::{errors, fluent_generated};
 
 /// Checks that it is legal to call methods of the trait corresponding
 /// to `trait_id` (this only cares about the trait, not the specific
@@ -674,13 +674,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let callee_ty = self.resolve_vars_if_possible(callee_ty);
+        let mut path = None;
         let mut err = self.dcx().create_err(errors::InvalidCallee {
             span: callee_expr.span,
-            ty: match &unit_variant {
+            ty: callee_ty,
+            found: match &unit_variant {
                 Some((_, kind, path)) => format!("{kind} `{path}`"),
-                None => format!("`{callee_ty}`"),
+                None => format!("`{}`", self.tcx.short_string(callee_ty, &mut path)),
             },
         });
+        *err.long_ty_path() = path;
         if callee_ty.references_error() {
             err.downgrade_to_delayed_bug();
         }
@@ -780,27 +783,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let Some(span) = self.tcx.hir().res_span(def) {
             let callee_ty = callee_ty.to_string();
             let label = match (unit_variant, inner_callee_path) {
-                (Some((_, kind, path)), _) => Some(format!("{kind} `{path}` defined here")),
-                (_, Some(hir::QPath::Resolved(_, path))) => self
-                    .tcx
-                    .sess
-                    .source_map()
-                    .span_to_snippet(path.span)
-                    .ok()
-                    .map(|p| format!("`{p}` defined here returns `{callee_ty}`")),
+                (Some((_, kind, path)), _) => {
+                    err.arg("kind", kind);
+                    err.arg("path", path);
+                    Some(fluent_generated::hir_typeck_invalid_defined_kind)
+                }
+                (_, Some(hir::QPath::Resolved(_, path))) => {
+                    self.tcx.sess.source_map().span_to_snippet(path.span).ok().map(|p| {
+                        err.arg("func", p);
+                        fluent_generated::hir_typeck_invalid_fn_defined
+                    })
+                }
                 _ => {
                     match def {
                         // Emit a different diagnostic for local variables, as they are not
                         // type definitions themselves, but rather variables *of* that type.
-                        Res::Local(hir_id) => Some(format!(
-                            "`{}` has type `{}`",
-                            self.tcx.hir().name(hir_id),
-                            callee_ty
-                        )),
-                        Res::Def(kind, def_id) if kind.ns() == Some(Namespace::ValueNS) => {
-                            Some(format!("`{}` defined here", self.tcx.def_path_str(def_id),))
+                        Res::Local(hir_id) => {
+                            err.arg("local_name", self.tcx.hir().name(hir_id));
+                            Some(fluent_generated::hir_typeck_invalid_local)
                         }
-                        _ => Some(format!("`{callee_ty}` defined here")),
+                        Res::Def(kind, def_id) if kind.ns() == Some(Namespace::ValueNS) => {
+                            err.arg("path", self.tcx.def_path_str(def_id));
+                            Some(fluent_generated::hir_typeck_invalid_defined)
+                        }
+                        _ => {
+                            err.arg("path", callee_ty);
+                            Some(fluent_generated::hir_typeck_invalid_defined)
+                        }
                     }
                 }
             };

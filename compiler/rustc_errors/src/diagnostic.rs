@@ -148,11 +148,17 @@ where
 /// converted rather than on `DiagArgValue`, which enables types from other `rustc_*` crates to
 /// implement this.
 pub trait IntoDiagArg {
-    fn into_diag_arg(self) -> DiagArgValue;
+    /// Convert `Self` into a `DiagArgValue` suitable for rendering in a diagnostic.
+    ///
+    /// It takes a `path` where "long values" could be written to, if the `DiagArgValue` is too big
+    /// for displaying on the terminal. This path comes from the `Diag` itself. When rendering
+    /// values that come from `TyCtxt`, like `Ty<'_>`, they can use `TyCtxt::short_string`. If a
+    /// value has no shortening logic that could be used, the argument can be safely ignored.
+    fn into_diag_arg(self, path: &mut Option<std::path::PathBuf>) -> DiagArgValue;
 }
 
 impl IntoDiagArg for DiagArgValue {
-    fn into_diag_arg(self) -> DiagArgValue {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
         self
     }
 }
@@ -395,7 +401,7 @@ impl DiagInner {
     }
 
     pub(crate) fn arg(&mut self, name: impl Into<DiagArgName>, arg: impl IntoDiagArg) {
-        self.args.insert(name.into(), arg.into_diag_arg());
+        self.args.insert(name.into(), arg.into_diag_arg(&mut self.long_ty_path));
     }
 
     /// Fields used for Hash, and PartialEq trait.

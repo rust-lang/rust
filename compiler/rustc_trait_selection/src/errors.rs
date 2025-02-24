@@ -784,10 +784,10 @@ pub enum TyOrSig<'tcx> {
 }
 
 impl IntoDiagArg for TyOrSig<'_> {
-    fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
+    fn into_diag_arg(self, path: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
         match self {
-            TyOrSig::Ty(ty) => ty.into_diag_arg(),
-            TyOrSig::ClosureSig(sig) => sig.into_diag_arg(),
+            TyOrSig::Ty(ty) => ty.into_diag_arg(path),
+            TyOrSig::ClosureSig(sig) => sig.into_diag_arg(path),
         }
     }
 }
