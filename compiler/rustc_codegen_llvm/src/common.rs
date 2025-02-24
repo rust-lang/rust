@@ -1,5 +1,7 @@
 //! Code that is useful in various codegen modules.
 
+use std::borrow::Borrow;
+
 use libc::{c_char, c_uint};
 use rustc_abi as abi;
 use rustc_abi::Primitive::Pointer;
@@ -18,6 +20,7 @@ use tracing::debug;
 
 use crate::consts::const_alloc_to_llvm;
 pub(crate) use crate::context::CodegenCx;
+use crate::context::{GenericCx, SCx};
 use crate::llvm::{self, BasicBlock, Bool, ConstantInt, False, Metadata, True};
 use crate::type_::Type;
 use crate::value::Value;
@@ -81,7 +84,7 @@ impl<'ll> Funclet<'ll> {
     }
 }
 
-impl<'ll> BackendTypes for CodegenCx<'ll, '_> {
+impl<'ll, CX: Borrow<SCx<'ll>>> BackendTypes for GenericCx<'ll, CX> {
     type Value = &'ll Value;
     type Metadata = &'ll Metadata;
     // FIXME(eddyb) replace this with a `Function` "subclass" of `Value`.

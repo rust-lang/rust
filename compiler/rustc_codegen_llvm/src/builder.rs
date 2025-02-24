@@ -167,17 +167,17 @@ impl<'a, 'll> SBuilder<'a, 'll> {
 // FIXME(eddyb) pass `&CStr` directly to FFI once it's a thin pointer.
 const UNNAMED: *const c_char = c"".as_ptr();
 
-impl<'ll, 'tcx> BackendTypes for Builder<'_, 'll, 'tcx> {
-    type Value = <CodegenCx<'ll, 'tcx> as BackendTypes>::Value;
-    type Metadata = <CodegenCx<'ll, 'tcx> as BackendTypes>::Metadata;
-    type Function = <CodegenCx<'ll, 'tcx> as BackendTypes>::Function;
-    type BasicBlock = <CodegenCx<'ll, 'tcx> as BackendTypes>::BasicBlock;
-    type Type = <CodegenCx<'ll, 'tcx> as BackendTypes>::Type;
-    type Funclet = <CodegenCx<'ll, 'tcx> as BackendTypes>::Funclet;
+impl<'ll, CX: Borrow<SCx<'ll>>> BackendTypes for GenericBuilder<'_, 'll, CX> {
+    type Value = <GenericCx<'ll, CX> as BackendTypes>::Value;
+    type Metadata = <GenericCx<'ll, CX> as BackendTypes>::Metadata;
+    type Function = <GenericCx<'ll, CX> as BackendTypes>::Function;
+    type BasicBlock = <GenericCx<'ll, CX> as BackendTypes>::BasicBlock;
+    type Type = <GenericCx<'ll, CX> as BackendTypes>::Type;
+    type Funclet = <GenericCx<'ll, CX> as BackendTypes>::Funclet;
 
-    type DIScope = <CodegenCx<'ll, 'tcx> as BackendTypes>::DIScope;
-    type DILocation = <CodegenCx<'ll, 'tcx> as BackendTypes>::DILocation;
-    type DIVariable = <CodegenCx<'ll, 'tcx> as BackendTypes>::DIVariable;
+    type DIScope = <GenericCx<'ll, CX> as BackendTypes>::DIScope;
+    type DILocation = <GenericCx<'ll, CX> as BackendTypes>::DILocation;
+    type DIVariable = <GenericCx<'ll, CX> as BackendTypes>::DIVariable;
 }
 
 impl abi::HasDataLayout for Builder<'_, '_, '_> {
