@@ -1732,7 +1732,7 @@ impl<T, A> RawRc<[T], A> {
         impl<T> Drop for Guard<T> {
             fn drop(&mut self) {
                 unsafe {
-                    let length = self.tail.sub_ptr(self.head);
+                    let length = self.tail.offset_from_unsigned(self.head);
 
                     NonNull::<[T]>::slice_from_raw_parts(self.head, length).drop_in_place();
                 }
