@@ -2168,7 +2168,7 @@ fn add_library_search_dirs(
         return;
     }
 
-    walk_native_lib_search_dirs(
+    let _ = walk_native_lib_search_dirs(
         sess,
         self_contained_components,
         apple_sdk_root,

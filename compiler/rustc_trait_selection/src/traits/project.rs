@@ -743,7 +743,7 @@ fn assemble_candidates_from_trait_def<'cx, 'tcx>(
 ) {
     debug!("assemble_candidates_from_trait_def(..)");
     let mut ambiguous = false;
-    selcx.for_each_item_bound(
+    let _ = selcx.for_each_item_bound(
         obligation.predicate.self_ty(),
         |selcx, clause, _| {
             let Some(clause) = clause.as_projection_clause() else {
