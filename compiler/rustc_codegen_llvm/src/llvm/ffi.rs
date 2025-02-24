@@ -1680,7 +1680,7 @@ unsafe extern "C" {
         Packed: Bool,
     );
 
-    pub(crate) fn LLVMMetadataAsValue<'a>(C: &'a Context, MD: &'a Metadata) -> &'a Value;
+    pub(crate) safe fn LLVMMetadataAsValue<'a>(C: &'a Context, MD: &'a Metadata) -> &'a Value;
 
     pub(crate) fn LLVMSetUnnamedAddress(Global: &Value, UnnamedAddr: UnnamedAddr);
 

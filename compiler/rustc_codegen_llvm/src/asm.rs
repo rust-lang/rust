@@ -533,7 +533,7 @@ pub(crate) fn inline_asm_call<'ll>(
                 ))
             }));
             let md = llvm::LLVMMDNodeInContext2(bx.llcx, srcloc.as_ptr(), srcloc.len());
-            let md = llvm::LLVMMetadataAsValue(&bx.llcx, md);
+            let md = bx.get_metadata_value(md);
             llvm::LLVMSetMetadata(call, kind, md);
 
             Some(call)
