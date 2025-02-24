@@ -2129,30 +2129,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.arena.alloc(self.expr(sp, hir::ExprKind::Tup(&[])))
     }
 
-    pub(super) fn expr_usize(&mut self, sp: Span, value: usize) -> hir::Expr<'hir> {
-        let lit = self.arena.alloc(hir::Lit {
-            span: sp,
-            node: ast::LitKind::Int(
-                (value as u128).into(),
-                ast::LitIntType::Unsigned(ast::UintTy::Usize),
-            ),
-        });
-        self.expr(sp, hir::ExprKind::Lit(lit))
-    }
-
-    pub(super) fn expr_u32(&mut self, sp: Span, value: u32) -> hir::Expr<'hir> {
+    pub(super) fn expr_usize(&mut self, sp: Span, value: u64) -> hir::Expr<'hir> {
         let lit = self.arena.alloc(hir::Lit {
             span: sp,
             node: ast::LitKind::Int(
                 u128::from(value).into(),
-                ast::LitIntType::Unsigned(ast::UintTy::U32),
+                ast::LitIntType::Unsigned(ast::UintTy::Usize),
             ),
         });
-        self.expr(sp, hir::ExprKind::Lit(lit))
-    }
-
-    pub(super) fn expr_char(&mut self, sp: Span, value: char) -> hir::Expr<'hir> {
-        let lit = self.arena.alloc(hir::Lit { span: sp, node: ast::LitKind::Char(value) });
         self.expr(sp, hir::ExprKind::Lit(lit))
     }
 
@@ -2279,6 +2263,22 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     pub(super) fn expr_block(&mut self, b: &'hir hir::Block<'hir>) -> hir::Expr<'hir> {
         self.expr(b.span, hir::ExprKind::Block(b, None))
+    }
+
+    pub(super) fn expr_unsafe_block(
+        &mut self,
+        span: Span,
+        expr: &'hir hir::Expr<'hir>,
+    ) -> hir::Expr<'hir> {
+        let hir_id = self.next_id();
+        self.expr_block(self.arena.alloc(hir::Block {
+            stmts: &[],
+            expr: Some(expr),
+            hir_id,
+            rules: hir::BlockCheckMode::UnsafeBlock(hir::UnsafeSource::CompilerGenerated),
+            span,
+            targeted_by_break: false,
+        }))
     }
 
     pub(super) fn expr_array_ref(

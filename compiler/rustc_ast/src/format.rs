@@ -160,6 +160,13 @@ impl FormatArgumentKind {
             &Self::Captured(id) => Some(id),
         }
     }
+
+    pub fn is_captured(&self) -> bool {
+        match self {
+            Self::Captured(_) => true,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, PartialEq, Eq)]
@@ -266,7 +273,7 @@ pub enum FormatAlignment {
 #[derive(Clone, Encodable, Decodable, Debug, PartialEq, Eq)]
 pub enum FormatCount {
     /// `{:5}` or `{:.5}`
-    Literal(usize),
+    Literal(u16),
     /// `{:.*}`, `{:.5$}`, or `{:a$}`, etc.
     Argument(FormatArgPosition),
 }
