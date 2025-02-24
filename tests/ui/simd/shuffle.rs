@@ -2,14 +2,13 @@
 //@ revisions: opt noopt
 //@[noopt] compile-flags: -Copt-level=0
 //@[opt] compile-flags: -O
-#![feature(repr_simd, intrinsics)]
+#![feature(repr_simd, core_intrinsics)]
 #![allow(incomplete_features)]
 #![feature(adt_const_params)]
 
 use std::marker::ConstParamTy;
 
-#[rustc_intrinsic]
-unsafe fn simd_shuffle<T, I, U>(a: T, b: T, i: I) -> U;
+use std::intrinsics::simd::simd_shuffle;
 
 #[derive(Copy, Clone, ConstParamTy, PartialEq, Eq)]
 #[repr(simd)]

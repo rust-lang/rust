@@ -1,9 +1,10 @@
 //@ compile-flags: -C no-prepopulate-passes
 
 #![crate_type = "lib"]
-
-#![feature(repr_simd, intrinsics)]
+#![feature(repr_simd, core_intrinsics)]
 #![allow(non_camel_case_types)]
+
+use std::intrinsics::simd::simd_masked_store;
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -12,10 +13,6 @@ pub struct Vec2<T>(pub [T; 2]);
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct Vec4<T>(pub [T; 4]);
-
-extern "rust-intrinsic" {
-    fn simd_masked_store<M, P, T>(mask: M, pointer: P, values: T) -> ();
-}
 
 // CHECK-LABEL: @store_f32x2
 #[no_mangle]

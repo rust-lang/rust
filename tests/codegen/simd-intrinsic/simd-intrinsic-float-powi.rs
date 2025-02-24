@@ -1,9 +1,14 @@
 //@ compile-flags: -C no-prepopulate-passes
 
 #![crate_type = "lib"]
-
-#![feature(repr_simd, intrinsics)]
+#![feature(repr_simd, core_intrinsics, intrinsics)]
 #![allow(non_camel_case_types)]
+
+// use std::intrinsics::simd::simd_fpowi; FIXME this intrinsic is not defined
+
+extern "rust-intrinsic" {
+    fn simd_fpowi<T>(x: T, b: i32) -> T;
+}
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -20,10 +25,6 @@ pub struct f32x8(pub [f32; 8]);
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct f32x16(pub [f32; 16]);
-
-extern "rust-intrinsic" {
-    fn simd_fpowi<T>(x: T, b: i32) -> T;
-}
 
 // CHECK-LABEL: @fpowi_32x2
 #[no_mangle]

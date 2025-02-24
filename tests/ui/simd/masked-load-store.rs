@@ -1,11 +1,7 @@
 //@ run-pass
-#![feature(repr_simd, intrinsics)]
+#![feature(repr_simd, core_intrinsics)]
 
-#[rustc_intrinsic]
-unsafe fn simd_masked_load<M, P, T>(mask: M, pointer: P, values: T) -> T;
-
-#[rustc_intrinsic]
-unsafe fn simd_masked_store<M, P, T>(mask: M, pointer: P, values: T) -> ();
+use std::intrinsics::simd::{simd_masked_load, simd_masked_store};
 
 #[derive(Copy, Clone)]
 #[repr(simd)]
@@ -16,11 +12,8 @@ fn main() {
         let a = Simd::<u8, 4>([0, 1, 2, 3]);
         let b_src = [4u8, 5, 6, 7];
         let b_default = Simd::<u8, 4>([9; 4]);
-        let b: Simd::<u8, 4> = simd_masked_load(
-            Simd::<i8, 4>([-1, 0, -1, -1]),
-            b_src.as_ptr(),
-            b_default
-        );
+        let b: Simd<u8, 4> =
+            simd_masked_load(Simd::<i8, 4>([-1, 0, -1, -1]), b_src.as_ptr(), b_default);
 
         assert_eq!(&b.0, &[4, 9, 6, 7]);
 
