@@ -1289,7 +1289,7 @@ impl<'tcx> TyCtxtFeed<'tcx, LocalDefId> {
             ),
             bodies,
         })));
-        self.feed_owner_id().hir_attrs(attrs);
+        self.feed_owner_id().hir_attr_map(attrs);
     }
 }
 

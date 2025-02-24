@@ -908,7 +908,7 @@ impl<'hir> Map<'hir> {
     /// Given a node ID, gets a list of attributes associated with the AST
     /// corresponding to the node-ID.
     pub fn attrs(self, id: HirId) -> &'hir [Attribute] {
-        self.tcx.hir_attrs(id.owner).get(id.local_id)
+        self.tcx.hir_attr_map(id.owner).get(id.local_id)
     }
 
     /// Gets the span of the definition of the specified HIR node.
