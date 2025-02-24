@@ -194,7 +194,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             node => unreachable!("{node:?}"),
         };
 
-        // Try to get the span of the identifier within the expression's syntax context (if that's different).
+        // Try to get the span of the identifier within the expression's syntax context
+        // (if that's different).
         let within_macro_span = span.within_macro(expr_span);
 
         // Avoid suggestions when we don't know what's going on.
