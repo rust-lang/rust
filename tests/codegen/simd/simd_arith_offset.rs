@@ -3,7 +3,7 @@
 //
 
 #![crate_type = "lib"]
-#![feature(repr_simd, intrinsics)]
+#![feature(repr_simd, core_intrinsics)]
 
 use std::intrinsics::simd::simd_arith_offset;
 
