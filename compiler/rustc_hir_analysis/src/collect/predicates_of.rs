@@ -382,8 +382,7 @@ fn const_evaluatable_predicates_of<'tcx>(
     fn is_const_param_default(tcx: TyCtxt<'_>, def: LocalDefId) -> bool {
         let hir_id = tcx.local_def_id_to_hir_id(def);
         let (_, parent_node) = tcx
-            .hir()
-            .parent_iter(hir_id)
+            .hir_parent_iter(hir_id)
             .skip_while(|(_, n)| matches!(n, Node::ConstArg(..)))
             .next()
             .unwrap();

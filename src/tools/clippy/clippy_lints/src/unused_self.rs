@@ -56,7 +56,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedSelf {
         if impl_item.span.from_expansion() {
             return;
         }
-        let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id()).def_id;
+        let parent = cx.tcx.hir_get_parent_item(impl_item.hir_id()).def_id;
         let parent_item = cx.tcx.hir().expect_item(parent);
         let assoc_item = cx.tcx.associated_item(impl_item.owner_id);
         let contains_todo = |cx, body: &'_ Body<'_>| -> bool {

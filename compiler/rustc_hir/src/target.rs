@@ -110,7 +110,7 @@ impl Target {
             ItemKind::Macro(..) => Target::MacroDef,
             ItemKind::Mod(..) => Target::Mod,
             ItemKind::ForeignMod { .. } => Target::ForeignMod,
-            ItemKind::GlobalAsm(..) => Target::GlobalAsm,
+            ItemKind::GlobalAsm { .. } => Target::GlobalAsm,
             ItemKind::TyAlias(..) => Target::TyAlias,
             ItemKind::Enum(..) => Target::Enum,
             ItemKind::Struct(..) => Target::Struct,

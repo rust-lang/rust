@@ -346,8 +346,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         };
 
-        let hir = self.tcx.hir();
-        let fn_decl_span = if let hir::Node::Expr(hir::Expr {
+        let fn_decl_span = if let hir::Node::Expr(&hir::Expr {
             kind: hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. }),
             ..
         }) = self.tcx.parent_hir_node(hir_id)
@@ -368,11 +367,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }),
                 ..
             }),
-        )) = hir.parent_iter(hir_id).nth(3)
+        )) = self.tcx.hir_parent_iter(hir_id).nth(3)
         {
             // Actually need to unwrap one more layer of HIR to get to
             // the _real_ closure...
-            if let hir::Node::Expr(hir::Expr {
+            if let hir::Node::Expr(&hir::Expr {
                 kind: hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. }),
                 ..
             }) = self.tcx.parent_hir_node(parent_hir_id)

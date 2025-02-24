@@ -83,7 +83,7 @@ macro_rules! TrivialTypeTraversalImpls {
                     _: &mut F)
                     -> F::Result
                 {
-                    <F::Result as ::rustc_ast_ir::visit::VisitorResult>::output()
+                    <F::Result as ::rustc_middle::ty::visit::VisitorResult>::output()
                 }
             }
         )+

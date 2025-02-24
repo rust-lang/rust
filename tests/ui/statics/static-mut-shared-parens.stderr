@@ -22,9 +22,8 @@ LL |     let _ = unsafe { ((&mut TEST)) as *const usize };
    = note: mutable references to mutable statics are dangerous; it's undefined behavior if any other pointer to the static is used or if any other reference is created for the static while the mutable reference lives
 help: use `&raw mut` instead to create a raw pointer
    |
-LL -     let _ = unsafe { ((&mut TEST)) as *const usize };
-LL +     let _ = unsafe { ((&raw mut TEST)) as *const usize };
-   |
+LL |     let _ = unsafe { ((&raw mut TEST)) as *const usize };
+   |                         +++
 
 warning: 2 warnings emitted
 

@@ -347,7 +347,7 @@ fn check<'tcx>(
 
 impl<'tcx> LateLintPass<'tcx> for NeedlessLateInit {
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx LetStmt<'tcx>) {
-        let mut parents = cx.tcx.hir().parent_iter(local.hir_id);
+        let mut parents = cx.tcx.hir_parent_iter(local.hir_id);
         if let LetStmt {
             init: None,
             pat:

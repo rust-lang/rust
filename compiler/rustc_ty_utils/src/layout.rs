@@ -147,11 +147,24 @@ fn extract_const_value<'tcx>(
 ) -> Result<ty::Value<'tcx>, &'tcx LayoutError<'tcx>> {
     match ct.kind() {
         ty::ConstKind::Value(cv) => Ok(cv),
-        ty::ConstKind::Param(_) | ty::ConstKind::Expr(_) | ty::ConstKind::Unevaluated(_) => {
+        ty::ConstKind::Param(_) | ty::ConstKind::Expr(_) => {
             if !ct.has_param() {
                 bug!("failed to normalize const, but it is not generic: {ct:?}");
             }
             Err(error(cx, LayoutError::TooGeneric(ty)))
+        }
+        ty::ConstKind::Unevaluated(_) => {
+            let err = if ct.has_param() {
+                LayoutError::TooGeneric(ty)
+            } else {
+                // This case is reachable with unsatisfiable predicates and GCE (which will
+                // cause anon consts to inherit the unsatisfiable predicates). For example
+                // if we have an unsatisfiable `u8: Trait` bound, then it's not a compile
+                // error to mention `[u8; <u8 as Trait>::CONST]`, but we can't compute its
+                // layout.
+                LayoutError::Unknown(ty)
+            };
+            Err(error(cx, err))
         }
         ty::ConstKind::Infer(_)
         | ty::ConstKind::Bound(..)
@@ -348,19 +361,17 @@ fn layout_of_uncached<'tcx>(
                 .checked_mul(count, dl)
                 .ok_or_else(|| error(cx, LayoutError::SizeOverflow(ty)))?;
 
-            let abi = if count != 0 && ty.is_privately_uninhabited(tcx, cx.typing_env) {
-                BackendRepr::Uninhabited
-            } else {
-                BackendRepr::Memory { sized: true }
-            };
+            let abi = BackendRepr::Memory { sized: true };
 
             let largest_niche = if count != 0 { element.largest_niche } else { None };
+            let uninhabited = if count != 0 { element.uninhabited } else { false };
 
             tcx.mk_layout(LayoutData {
                 variants: Variants::Single { index: FIRST_VARIANT },
                 fields: FieldsShape::Array { stride: element.size, count },
                 backend_repr: abi,
                 largest_niche,
+                uninhabited,
                 align: element.align,
                 size,
                 max_repr_align: None,
@@ -375,6 +386,7 @@ fn layout_of_uncached<'tcx>(
                 fields: FieldsShape::Array { stride: element.size, count: 0 },
                 backend_repr: BackendRepr::Memory { sized: false },
                 largest_niche: None,
+                uninhabited: false,
                 align: element.align,
                 size: Size::ZERO,
                 max_repr_align: None,
@@ -390,6 +402,7 @@ fn layout_of_uncached<'tcx>(
             fields: FieldsShape::Array { stride: Size::from_bytes(1), count: 0 },
             backend_repr: BackendRepr::Memory { sized: false },
             largest_niche: None,
+            uninhabited: false,
             align: dl.i8_align,
             size: Size::ZERO,
             max_repr_align: None,
@@ -534,12 +547,15 @@ fn layout_of_uncached<'tcx>(
                 (
                     BackendRepr::Memory { sized: true },
                     AbiAndPrefAlign {
-                        abi: Align::max_for_offset(size),
-                        pref: dl.vector_align(size).pref,
+                        abi: Align::max_aligned_factor(size),
+                        pref: dl.llvmlike_vector_align(size).pref,
                     },
                 )
             } else {
-                (BackendRepr::Vector { element: e_abi, count: e_len }, dl.vector_align(size))
+                (
+                    BackendRepr::Vector { element: e_abi, count: e_len },
+                    dl.llvmlike_vector_align(size),
+                )
             };
             let size = size.align_to(align.abi);
 
@@ -555,6 +571,7 @@ fn layout_of_uncached<'tcx>(
                 fields,
                 backend_repr: abi,
                 largest_niche: e_ly.largest_niche,
+                uninhabited: false,
                 size,
                 align,
                 max_repr_align: None,
@@ -1014,13 +1031,8 @@ fn coroutine_layout<'tcx>(
 
     size = size.align_to(align.abi);
 
-    let abi = if prefix.backend_repr.is_uninhabited()
-        || variants.iter().all(|v| v.backend_repr.is_uninhabited())
-    {
-        BackendRepr::Uninhabited
-    } else {
-        BackendRepr::Memory { sized: true }
-    };
+    let uninhabited = prefix.uninhabited || variants.iter().all(|v| v.is_uninhabited());
+    let abi = BackendRepr::Memory { sized: true };
 
     // this is similar to how ReprOptions populates its field_shuffle_seed
     let def_hash = tcx.def_path_hash(def_id).0.to_smaller_hash();
@@ -1041,6 +1053,7 @@ fn coroutine_layout<'tcx>(
         // See <https://github.com/rust-lang/rust/issues/63818>, <https://github.com/rust-lang/miri/issues/3780>.
         // FIXME: Remove when <https://github.com/rust-lang/rust/issues/125735> is implemented and aliased coroutine fields are wrapped in `UnsafePinned`.
         largest_niche: None,
+        uninhabited,
         size,
         align,
         max_repr_align: None,

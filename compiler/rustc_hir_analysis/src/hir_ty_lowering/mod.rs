@@ -1226,11 +1226,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         adt_def.variants().iter().find(|s| s.name == variant_name)
                     {
                         let mut suggestion = vec![(assoc_ident.span, variant_name.to_string())];
-                        if let hir::Node::Stmt(hir::Stmt {
-                            kind: hir::StmtKind::Semi(ref expr),
-                            ..
+                        if let hir::Node::Stmt(&hir::Stmt {
+                            kind: hir::StmtKind::Semi(expr), ..
                         })
-                        | hir::Node::Expr(ref expr) = tcx.parent_hir_node(hir_ref_id)
+                        | hir::Node::Expr(expr) = tcx.parent_hir_node(hir_ref_id)
                             && let hir::ExprKind::Struct(..) = expr.kind
                         {
                             match variant.ctor {
@@ -1673,8 +1672,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         debug!(item_def_id = ?def_id);
 
         // FIXME: document why/how this is different from `tcx.local_parent(def_id)`
-        let parent_def_id =
-            tcx.hir().get_parent_item(tcx.local_def_id_to_hir_id(def_id)).to_def_id();
+        let parent_def_id = tcx.hir_get_parent_item(tcx.local_def_id_to_hir_id(def_id)).to_def_id();
         debug!(?parent_def_id);
 
         // If the trait in segment is the same as the trait defining the item,

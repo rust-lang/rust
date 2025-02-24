@@ -456,38 +456,38 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
     fn visit_local_decl(&mut self, local: Local, local_decl: &LocalDecl<'tcx>) {
         self.super_local_decl(local, local_decl);
 
-        if let Some(user_ty) = &local_decl.user_ty {
-            for (user_ty, span) in user_ty.projections_and_spans() {
-                let ty = if !local_decl.is_nonref_binding() {
-                    // If we have a binding of the form `let ref x: T = ..`
-                    // then remove the outermost reference so we can check the
-                    // type annotation for the remaining type.
-                    if let ty::Ref(_, rty, _) = local_decl.ty.kind() {
-                        *rty
-                    } else {
-                        bug!("{:?} with ref binding has wrong type {}", local, local_decl.ty);
-                    }
-                } else {
-                    local_decl.ty
-                };
+        for user_ty in
+            local_decl.user_ty.as_deref().into_iter().flat_map(UserTypeProjections::projections)
+        {
+            let span = self.typeck.user_type_annotations[user_ty.base].span;
 
-                if let Err(terr) = self.typeck.relate_type_and_user_type(
-                    ty,
-                    ty::Invariant,
-                    user_ty,
-                    Locations::All(*span),
-                    ConstraintCategory::TypeAnnotation(AnnotationSource::Declaration),
-                ) {
-                    span_mirbug!(
-                        self,
-                        local,
-                        "bad user type on variable {:?}: {:?} != {:?} ({:?})",
-                        local,
-                        local_decl.ty,
-                        local_decl.user_ty,
-                        terr,
-                    );
-                }
+            let ty = if local_decl.is_nonref_binding() {
+                local_decl.ty
+            } else if let &ty::Ref(_, rty, _) = local_decl.ty.kind() {
+                // If we have a binding of the form `let ref x: T = ..`
+                // then remove the outermost reference so we can check the
+                // type annotation for the remaining type.
+                rty
+            } else {
+                bug!("{:?} with ref binding has wrong type {}", local, local_decl.ty);
+            };
+
+            if let Err(terr) = self.typeck.relate_type_and_user_type(
+                ty,
+                ty::Invariant,
+                user_ty,
+                Locations::All(span),
+                ConstraintCategory::TypeAnnotation(AnnotationSource::Declaration),
+            ) {
+                span_mirbug!(
+                    self,
+                    local,
+                    "bad user type on variable {:?}: {:?} != {:?} ({:?})",
+                    local,
+                    local_decl.ty,
+                    local_decl.user_ty,
+                    terr,
+                );
             }
         }
     }

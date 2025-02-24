@@ -4,7 +4,6 @@ use std::ops::Range;
 use std::str;
 
 use rustc_abi::{FIRST_VARIANT, ReprOptions, VariantIdx};
-use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
@@ -540,7 +539,7 @@ impl<'tcx> AdtDef<'tcx> {
     pub fn discriminants(
         self,
         tcx: TyCtxt<'tcx>,
-    ) -> impl Iterator<Item = (VariantIdx, Discr<'tcx>)> + Captures<'tcx> {
+    ) -> impl Iterator<Item = (VariantIdx, Discr<'tcx>)> {
         assert!(self.is_enum());
         let repr_type = self.repr().discr_type();
         let initial = repr_type.initial_discriminant(tcx);

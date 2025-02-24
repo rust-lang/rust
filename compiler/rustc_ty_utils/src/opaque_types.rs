@@ -98,10 +98,10 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
         let opaque_hir_id = self.tcx.local_def_id_to_hir_id(opaque_def_id);
 
         // Named opaque types can be defined by any siblings or children of siblings.
-        let scope = self.tcx.hir().get_defining_scope(opaque_hir_id);
+        let scope = self.tcx.hir_get_defining_scope(opaque_hir_id);
         // We walk up the node tree until we hit the root or the scope of the opaque type.
         while hir_id != scope && hir_id != CRATE_HIR_ID {
-            hir_id = self.tcx.hir().get_parent_item(hir_id).into();
+            hir_id = self.tcx.hir_get_parent_item(hir_id).into();
         }
         // Syntactically, we are allowed to define the concrete type if:
         hir_id == scope

@@ -123,7 +123,7 @@ pub(crate) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>, name:
                     };
                     let mut prev_expr = e;
 
-                    for (_, parent) in cx.tcx.hir().parent_iter(e.hir_id) {
+                    for (_, parent) in cx.tcx.hir_parent_iter(e.hir_id) {
                         if let Node::Expr(e) = parent {
                             match e.kind {
                                 ExprKind::Field(_, name)

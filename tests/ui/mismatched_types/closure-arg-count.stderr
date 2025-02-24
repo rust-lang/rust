@@ -8,9 +8,8 @@ LL |     [1, 2, 3].sort_by(|| panic!());
    |
 help: consider changing the closure to take and ignore the expected arguments
    |
-LL -     [1, 2, 3].sort_by(|| panic!());
-LL +     [1, 2, 3].sort_by(|_, _| panic!());
-   |
+LL |     [1, 2, 3].sort_by(|_, _| panic!());
+   |                        ++++
 
 error[E0593]: closure is expected to take 2 arguments, but it takes 1 argument
   --> $DIR/closure-arg-count.rs:7:15
@@ -64,9 +63,8 @@ LL | fn f<F: Fn<(usize,)>>(_: F) {}
    |         ^^^^^^^^^^^^ required by this bound in `f`
 help: consider changing the closure to take and ignore the expected argument
    |
-LL -     f(|| panic!());
-LL +     f(|_| panic!());
-   |
+LL |     f(|_| panic!());
+   |        +
 
 error[E0593]: closure is expected to take 1 argument, but it takes 0 arguments
   --> $DIR/closure-arg-count.rs:15:5
@@ -84,9 +82,8 @@ LL | fn f<F: Fn<(usize,)>>(_: F) {}
    |         ^^^^^^^^^^^^ required by this bound in `f`
 help: consider changing the closure to take and ignore the expected argument
    |
-LL -     f(  move    || panic!());
-LL +     f(  move    |_| panic!());
-   |
+LL |     f(  move    |_| panic!());
+   |                  +
 
 error[E0593]: closure is expected to take a single 2-tuple as argument, but it takes 2 distinct arguments
   --> $DIR/closure-arg-count.rs:18:53

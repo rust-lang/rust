@@ -156,7 +156,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && segment.ident.name.as_str() == name
                 && let Res::Local(hir_id) = path.res
                 && let Some((_, hir::Node::Expr(match_expr))) =
-                    self.tcx.hir().parent_iter(hir_id).nth(2)
+                    self.tcx.hir_parent_iter(hir_id).nth(2)
                 && let hir::ExprKind::Match(scrutinee, _, _) = match_expr.kind
                 && let hir::ExprKind::Tup(exprs) = scrutinee.kind
                 && let hir::ExprKind::AddrOf(_, _, macro_arg) = exprs[idx].kind
@@ -577,9 +577,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut parent;
         'outer: loop {
             // Climb the HIR tree to see if the current `Expr` is part of a `break;` statement.
-            let (hir::Node::Stmt(hir::Stmt { kind: hir::StmtKind::Semi(&ref p), .. })
-            | hir::Node::Block(hir::Block { expr: Some(&ref p), .. })
-            | hir::Node::Expr(&ref p)) = self.tcx.hir_node(parent_id)
+            let (hir::Node::Stmt(&hir::Stmt { kind: hir::StmtKind::Semi(p), .. })
+            | hir::Node::Block(&hir::Block { expr: Some(p), .. })
+            | hir::Node::Expr(p)) = self.tcx.hir_node(parent_id)
             else {
                 break;
             };
@@ -593,13 +593,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             loop {
                 // Climb the HIR tree to find the (desugared) `loop` this `break` corresponds to.
                 let parent = match self.tcx.hir_node(parent_id) {
-                    hir::Node::Expr(&ref parent) => {
+                    hir::Node::Expr(parent) => {
                         parent_id = self.tcx.parent_hir_id(parent.hir_id);
                         parent
                     }
                     hir::Node::Stmt(hir::Stmt {
                         hir_id,
-                        kind: hir::StmtKind::Semi(&ref parent) | hir::StmtKind::Expr(&ref parent),
+                        kind: hir::StmtKind::Semi(parent) | hir::StmtKind::Expr(parent),
                         ..
                     }) => {
                         parent_id = self.tcx.parent_hir_id(*hir_id);
@@ -841,7 +841,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // The pattern we have is an fn argument.
             && let hir::Node::Param(hir::Param { ty_span, .. }) =
                 self.tcx.parent_hir_node(pat.hir_id)
-            && let item = self.tcx.hir().get_parent_item(pat.hir_id)
+            && let item = self.tcx.hir_get_parent_item(pat.hir_id)
             && let item = self.tcx.hir_owner_node(item)
             && let Some(fn_decl) = item.fn_decl()
 

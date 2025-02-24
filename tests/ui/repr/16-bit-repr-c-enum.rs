@@ -2,7 +2,7 @@
 //@ revisions: avr msp430
 //
 //@ [avr] needs-llvm-components: avr
-//@ [avr] compile-flags: --target=avr-unknown-gnu-atmega328 --crate-type=rlib
+//@ [avr] compile-flags: --target=avr-none -C target-cpu=atmega328p --crate-type=rlib
 //@ [msp430] needs-llvm-components: msp430
 //@ [msp430] compile-flags: --target=msp430-none-elf --crate-type=rlib
 #![feature(no_core, lang_items, intrinsics, staged_api, rustc_attrs)]

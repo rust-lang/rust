@@ -172,11 +172,11 @@ impl HasBottom for ConditionSet<'_> {
 }
 
 impl<'a> ConditionSet<'a> {
-    fn iter(self) -> impl Iterator<Item = Condition> + 'a {
+    fn iter(self) -> impl Iterator<Item = Condition> {
         self.0.iter().copied()
     }
 
-    fn iter_matches(self, value: ScalarInt) -> impl Iterator<Item = Condition> + 'a {
+    fn iter_matches(self, value: ScalarInt) -> impl Iterator<Item = Condition> {
         self.iter().filter(move |c| c.matches(value))
     }
 
@@ -467,7 +467,7 @@ impl<'a, 'tcx> TOFinder<'a, 'tcx> {
                 state.insert_place_idx(rhs, lhs, &self.map);
             }
             // If we expect `lhs ?= A`, we have an opportunity if we assume `constant == A`.
-            Rvalue::Aggregate(box ref kind, ref operands) => {
+            Rvalue::Aggregate(box kind, operands) => {
                 let agg_ty = lhs_place.ty(self.body, self.tcx).ty;
                 let lhs = match kind {
                     // Do not support unions.

@@ -70,6 +70,7 @@ jobs:
       HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       DOCKER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       SCCACHE_BUCKET: rust-lang-ci-sccache2
+      SCCACHE_REGION: us-west-1
       CACHE_DOMAIN: ci-caches.rust-lang.org
     continue-on-error: ${{ matrix.continue_on_error || false }}
     strategy:
@@ -172,6 +173,11 @@ jobs:
 
       - name: ensure the stable version number is correct
         run: src/ci/scripts/verify-stable-version-number.sh
+
+      # Show the environment just before we run the build
+      # This makes it easier to diagnose problems with the above install scripts.
+      - name: show the current environment
+        run: src/ci/scripts/dump-environment.sh
 
       - name: run the build
         # Redirect stderr to stdout to avoid reordering the two streams in the GHA logs.

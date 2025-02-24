@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:54:10
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:58:10
    |
 LL |     let [&mut ref x] = &[&mut 0];
    |          ^^^^^
@@ -12,14 +12,14 @@ LL +     let [&ref x] = &[&mut 0];
    |
 
 error: binding modifiers may only be written when the default binding mode is `move`
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:67:10
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:71:10
    |
 LL |     let [ref mut x] = &[0];
    |          ^^^^^^^ binding modifier not allowed under `ref` default binding mode
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 note: matching on a reference type with a non-reference pattern changes the default binding mode
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:67:9
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:71:9
    |
 LL |     let [ref mut x] = &[0];
    |         ^^^^^^^^^^^ this matches on type `&_`
@@ -29,20 +29,20 @@ LL |     let &[ref mut x] = &[0];
    |         +
 
 error[E0596]: cannot borrow data in a `&` reference as mutable
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:67:10
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:71:10
    |
 LL |     let [ref mut x] = &[0];
    |          ^^^^^^^^^ cannot borrow as mutable
 
 error: binding modifiers may only be written when the default binding mode is `move`
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:75:10
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:79:10
    |
 LL |     let [ref x] = &[0];
    |          ^^^ binding modifier not allowed under `ref` default binding mode
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 note: matching on a reference type with a non-reference pattern changes the default binding mode
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:75:9
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:79:9
    |
 LL |     let [ref x] = &[0];
    |         ^^^^^^^ this matches on type `&_`
@@ -52,14 +52,14 @@ LL |     let &[ref x] = &[0];
    |         +
 
 error: binding modifiers may only be written when the default binding mode is `move`
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:79:10
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:83:10
    |
 LL |     let [ref x] = &mut [0];
    |          ^^^ binding modifier not allowed under `ref mut` default binding mode
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 note: matching on a reference type with a non-reference pattern changes the default binding mode
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:79:9
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:83:9
    |
 LL |     let [ref x] = &mut [0];
    |         ^^^^^^^ this matches on type `&mut _`
@@ -69,14 +69,14 @@ LL |     let &mut [ref x] = &mut [0];
    |         ++++
 
 error: binding modifiers may only be written when the default binding mode is `move`
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:83:10
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:87:10
    |
 LL |     let [ref mut x] = &mut [0];
    |          ^^^^^^^ binding modifier not allowed under `ref mut` default binding mode
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 note: matching on a reference type with a non-reference pattern changes the default binding mode
-  --> $DIR/ref-binding-on-inh-ref-errors.rs:83:9
+  --> $DIR/ref-binding-on-inh-ref-errors.rs:87:9
    |
 LL |     let [ref mut x] = &mut [0];
    |         ^^^^^^^^^^^ this matches on type `&mut _`

@@ -4,19 +4,68 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     debug slice => _1;
     debug f => _2;
     let mut _0: ();
-    let mut _11: std::slice::Iter<'_, T>;
-    let mut _12: std::slice::Iter<'_, T>;
-    let mut _13: &mut std::slice::Iter<'_, T>;
-    let mut _14: std::option::Option<&T>;
-    let mut _15: isize;
-    let mut _17: &impl Fn(&T);
-    let mut _18: (&T,);
-    let _19: ();
+    let mut _11: std::ptr::NonNull<T>;
+    let mut _12: *const T;
+    let mut _26: std::option::Option<&T>;
+    let mut _28: &impl Fn(&T);
+    let mut _29: (&T,);
+    let _30: ();
     scope 1 {
-        debug iter => _12;
-        let _16: &T;
+        debug ((iter: std::slice::Iter<'_, T>).0: std::ptr::NonNull<T>) => _11;
+        debug ((iter: std::slice::Iter<'_, T>).1: *const T) => _12;
+        debug ((iter: std::slice::Iter<'_, T>).2: std::marker::PhantomData<&T>) => const ZeroSized: PhantomData<&T>;
+        let _27: &T;
         scope 2 {
-            debug x => _16;
+            debug x => _27;
+        }
+        scope 17 (inlined <std::slice::Iter<'_, T> as Iterator>::next) {
+            let _13: std::ptr::NonNull<T>;
+            let _15: std::ptr::NonNull<T>;
+            let mut _18: bool;
+            let mut _21: std::ptr::NonNull<T>;
+            let mut _23: usize;
+            let _25: &T;
+            scope 18 {
+                let _14: *const T;
+                scope 19 {
+                    let _22: usize;
+                    scope 20 {
+                        scope 23 (inlined core::num::<impl usize>::unchecked_sub) {
+                            scope 24 (inlined core::ub_checks::check_language_ub) {
+                                scope 25 (inlined core::ub_checks::check_language_ub::runtime) {
+                                }
+                            }
+                        }
+                        scope 26 (inlined without_provenance_mut::<T>) {
+                        }
+                    }
+                    scope 21 (inlined std::ptr::const_ptr::<impl *const T>::addr) {
+                        scope 22 (inlined std::ptr::const_ptr::<impl *const T>::cast::<()>) {
+                        }
+                    }
+                    scope 27 (inlined <NonNull<T> as PartialEq>::eq) {
+                        let mut _16: *mut T;
+                        let mut _17: *mut T;
+                        scope 28 (inlined NonNull::<T>::as_ptr) {
+                        }
+                        scope 29 (inlined NonNull::<T>::as_ptr) {
+                        }
+                    }
+                    scope 30 (inlined NonNull::<T>::add) {
+                        let mut _19: *const T;
+                        let mut _20: *const T;
+                        scope 31 (inlined NonNull::<T>::as_ptr) {
+                        }
+                    }
+                    scope 32 (inlined NonNull::<T>::as_ref::<'_>) {
+                        let _24: *const T;
+                        scope 33 (inlined NonNull::<T>::as_ptr) {
+                        }
+                        scope 34 (inlined std::ptr::mut_ptr::<impl *mut T>::cast_const) {
+                        }
+                    }
+                }
+            }
         }
     }
     scope 3 (inlined core::slice::<impl [T]>::iter) {
@@ -58,7 +107,6 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
 
     bb0: {
         StorageLive(_3);
-        StorageLive(_6);
         StorageLive(_4);
         _3 = PtrMetadata(copy _1);
         _4 = &raw const (*_1);
@@ -87,57 +135,125 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     }
 
     bb3: {
-        StorageLive(_10);
         _10 = copy _9;
-        _11 = std::slice::Iter::<'_, T> { ptr: copy _6, end_or_len: move _10, _marker: const ZeroSized: PhantomData<&T> };
-        StorageDead(_10);
         StorageDead(_9);
         StorageDead(_4);
-        StorageDead(_6);
         StorageDead(_3);
+        StorageLive(_11);
         StorageLive(_12);
-        _12 = copy _11;
+        _11 = copy _6;
+        _12 = copy _10;
         goto -> bb4;
     }
 
     bb4: {
+        StorageLive(_26);
+        StorageLive(_13);
         StorageLive(_14);
-        _13 = &mut _12;
-        _14 = <std::slice::Iter<'_, T> as Iterator>::next(move _13) -> [return: bb5, unwind unreachable];
+        StorageLive(_22);
+        StorageLive(_23);
+        StorageLive(_15);
+        StorageLive(_25);
+        _13 = copy _11;
+        _14 = copy _12;
+        switchInt(const <T as std::mem::SizedTypeProperties>::IS_ZST) -> [0: bb5, otherwise: bb8];
     }
 
     bb5: {
-        _15 = discriminant(_14);
-        switchInt(move _15) -> [0: bb6, 1: bb8, otherwise: bb10];
+        StorageLive(_18);
+        _15 = copy _14 as std::ptr::NonNull<T> (Transmute);
+        StorageLive(_16);
+        _16 = copy _13 as *mut T (Transmute);
+        StorageLive(_17);
+        _17 = copy _15 as *mut T (Transmute);
+        _18 = Eq(move _16, move _17);
+        StorageDead(_17);
+        StorageDead(_16);
+        switchInt(move _18) -> [0: bb6, otherwise: bb7];
     }
 
     bb6: {
-        StorageDead(_14);
-        StorageDead(_12);
-        drop(_2) -> [return: bb7, unwind unreachable];
+        StorageDead(_18);
+        StorageLive(_21);
+        StorageLive(_20);
+        StorageLive(_19);
+        _19 = copy _13 as *const T (Transmute);
+        _20 = Offset(move _19, const 1_usize);
+        StorageDead(_19);
+        _21 = NonNull::<T> { pointer: move _20 };
+        StorageDead(_20);
+        _11 = move _21;
+        StorageDead(_21);
+        goto -> bb13;
     }
 
     bb7: {
-        return;
+        StorageDead(_18);
+        StorageDead(_25);
+        StorageDead(_15);
+        StorageDead(_23);
+        StorageDead(_22);
+        StorageDead(_14);
+        StorageDead(_13);
+        goto -> bb10;
     }
 
     bb8: {
-        _16 = copy ((_14 as Some).0: &T);
-        StorageLive(_17);
-        _17 = &_2;
-        StorageLive(_18);
-        _18 = (copy _16,);
-        _19 = <impl Fn(&T) as Fn<(&T,)>>::call(move _17, move _18) -> [return: bb9, unwind unreachable];
+        _22 = copy _14 as usize (Transmute);
+        switchInt(copy _22) -> [0: bb9, otherwise: bb12];
     }
 
     bb9: {
-        StorageDead(_18);
-        StorageDead(_17);
+        StorageDead(_25);
+        StorageDead(_15);
+        StorageDead(_23);
+        StorageDead(_22);
         StorageDead(_14);
-        goto -> bb4;
+        StorageDead(_13);
+        goto -> bb10;
     }
 
     bb10: {
-        unreachable;
+        StorageDead(_26);
+        StorageDead(_11);
+        StorageDead(_12);
+        drop(_2) -> [return: bb11, unwind unreachable];
+    }
+
+    bb11: {
+        return;
+    }
+
+    bb12: {
+        _23 = SubUnchecked(copy _22, const 1_usize);
+        _12 = copy _23 as *const T (Transmute);
+        goto -> bb13;
+    }
+
+    bb13: {
+        StorageLive(_24);
+        _24 = copy _13 as *const T (Transmute);
+        _25 = &(*_24);
+        StorageDead(_24);
+        _26 = Option::<&T>::Some(copy _25);
+        StorageDead(_25);
+        StorageDead(_15);
+        StorageDead(_23);
+        StorageDead(_22);
+        StorageDead(_14);
+        StorageDead(_13);
+        _27 = copy ((_26 as Some).0: &T);
+        StorageLive(_28);
+        _28 = &_2;
+        StorageLive(_29);
+        _29 = (copy _27,);
+        _30 = <impl Fn(&T) as Fn<(&T,)>>::call(move _28, move _29) -> [return: bb14, unwind unreachable];
+    }
+
+    bb14: {
+        StorageDead(_29);
+        StorageDead(_28);
+        StorageDead(_26);
+        goto -> bb4;
     }
 }

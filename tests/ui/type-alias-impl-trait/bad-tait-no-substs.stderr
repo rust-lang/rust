@@ -69,7 +69,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
    |
 LL ~     match x {
 LL +         UninhabitedVariants::Tuple(_) => todo!(),
-LL +     }
+LL ~     }
    |
 
 error: aborting due to 5 previous errors

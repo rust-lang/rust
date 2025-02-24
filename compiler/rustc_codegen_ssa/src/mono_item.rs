@@ -36,7 +36,7 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
             }
             MonoItem::GlobalAsm(item_id) => {
                 let item = cx.tcx().hir_item(item_id);
-                if let hir::ItemKind::GlobalAsm(asm) = item.kind {
+                if let hir::ItemKind::GlobalAsm { asm, .. } = item.kind {
                     let operands: Vec<_> = asm
                         .operands
                         .iter()
@@ -71,11 +71,8 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
                                     }
                                 }
                             }
-                            hir::InlineAsmOperand::SymFn { ref anon_const } => {
-                                let ty = cx
-                                    .tcx()
-                                    .typeck_body(anon_const.body)
-                                    .node_type(anon_const.hir_id);
+                            hir::InlineAsmOperand::SymFn { expr } => {
+                                let ty = cx.tcx().typeck(item_id.owner_id).expr_ty(expr);
                                 let instance = match ty.kind() {
                                     &ty::FnDef(def_id, args) => Instance::new(def_id, args),
                                     _ => span_bug!(*op_sp, "asm sym is not a function"),

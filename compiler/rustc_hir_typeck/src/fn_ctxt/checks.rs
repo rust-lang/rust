@@ -101,7 +101,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("FnCtxt::check_asm: {} deferred checks", deferred_asm_checks.len());
         for (asm, hir_id) in deferred_asm_checks.drain(..) {
             let enclosing_id = self.tcx.hir_enclosing_body_owner(hir_id);
-            let get_operand_ty = |expr| {
+            let expr_ty = |expr: &hir::Expr<'tcx>| {
                 let ty = self.typeck_results.borrow().expr_ty_adjusted(expr);
                 let ty = self.resolve_vars_if_possible(ty);
                 if ty.has_non_region_infer() {
@@ -110,12 +110,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.tcx.erase_regions(ty)
                 }
             };
-            InlineAsmCtxt::new_in_fn(
-                self.tcx,
-                self.infcx.typing_env(self.param_env),
-                get_operand_ty,
-            )
-            .check_asm(asm, enclosing_id);
+            InlineAsmCtxt::new(self.tcx, enclosing_id, expr_ty).check_asm(asm);
         }
     }
 
@@ -2052,7 +2047,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn parent_item_span(&self, id: HirId) -> Option<Span> {
-        let node = self.tcx.hir_node_by_def_id(self.tcx.hir().get_parent_item(id).def_id);
+        let node = self.tcx.hir_node_by_def_id(self.tcx.hir_get_parent_item(id).def_id);
         match node {
             Node::Item(&hir::Item { kind: hir::ItemKind::Fn { body: body_id, .. }, .. })
             | Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Fn(_, body_id), .. }) => {
@@ -2179,7 +2174,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 {
                     let mut block_num = 0;
                     let mut found_semi = false;
-                    for (hir_id, node) in self.tcx.hir().parent_iter(binding_hir_id) {
+                    for (hir_id, node) in self.tcx.hir_parent_iter(binding_hir_id) {
                         // Don't proceed into parent bodies
                         if hir_id.owner != binding_hir_id.owner {
                             break;
@@ -2521,7 +2516,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Try to find earlier invocations of this closure to find if the type mismatch
                 // is because of inference. If we find one, point at them.
                 let mut call_finder = FindClosureArg { tcx: self.tcx, calls: vec![] };
-                let parent_def_id = self.tcx.hir().get_parent_item(call_expr.hir_id).def_id;
+                let parent_def_id = self.tcx.hir_get_parent_item(call_expr.hir_id).def_id;
                 match self.tcx.hir_node_by_def_id(parent_def_id) {
                     hir::Node::Item(item) => call_finder.visit_item(item),
                     hir::Node::TraitItem(item) => call_finder.visit_trait_item(item),
