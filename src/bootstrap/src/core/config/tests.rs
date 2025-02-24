@@ -471,6 +471,7 @@ fn test_explicit_stage() {
 
     assert!(!config.explicit_stage_from_cli);
     assert!(config.explicit_stage_from_config);
+    assert!(config.is_explicit_stage());
 
     let config = Config::parse_inner(
         Flags::parse(&[
@@ -483,6 +484,7 @@ fn test_explicit_stage() {
 
     assert!(config.explicit_stage_from_cli);
     assert!(!config.explicit_stage_from_config);
+    assert!(config.is_explicit_stage());
 
     let config = Config::parse_inner(
         Flags::parse(&[
@@ -502,6 +504,7 @@ fn test_explicit_stage() {
 
     assert!(config.explicit_stage_from_cli);
     assert!(config.explicit_stage_from_config);
+    assert!(config.is_explicit_stage());
 
     let config = Config::parse_inner(
         Flags::parse(&["check".to_owned(), "--config=/does/not/exist".to_owned()]),
@@ -510,4 +513,5 @@ fn test_explicit_stage() {
 
     assert!(!config.explicit_stage_from_cli);
     assert!(!config.explicit_stage_from_config);
+    assert!(!config.is_explicit_stage());
 }
