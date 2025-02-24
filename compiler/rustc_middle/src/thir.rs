@@ -88,6 +88,7 @@ thir_with_elements! {
     exprs: ExprId => Expr<'tcx> => "e{}",
     stmts: StmtId => Stmt<'tcx> => "s{}",
     params: ParamId => Param<'tcx> => "p{}",
+    pats: PatId => Pat<'tcx> => "pat{}",
 }
 
 #[derive(Debug, HashStable)]

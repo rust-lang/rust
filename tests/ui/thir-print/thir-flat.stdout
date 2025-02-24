@@ -48,5 +48,6 @@ Thir {
     ],
     stmts: [],
     params: [],
+    pats: [],
 }
 
