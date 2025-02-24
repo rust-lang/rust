@@ -5,7 +5,7 @@ LL | macro_rules! unknown { () => () }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0773]: attempted to define built-in macro more than once
-  --> $SRC_DIR/core/src/macros/mod.rs:LL:COL
+  --> $SRC_DIR/core/src/core_macros/mod.rs:LL:COL
    |
 note: previously defined here
   --> $DIR/unknown-builtin.rs:9:1

@@ -33,9 +33,9 @@ Definitions of non-builtin attributes take two forms:
 1. Proc-macro attributes, defined via a function annotated with `#[proc_macro_attribute]` in a
    proc-macro crate.
 2. AST-based attributes, defined in the standard library. These attributes have special 'stub'
-   macros defined in places like [`library/core/src/macros/mod.rs`][core_macros].
+   macros defined in places like [`library/core/src/core_macros/mod.rs`][core_macros].
 
-[core_macros]:  https://github.com/rust-lang/rust/blob/master/library/core/src/macros/mod.rs
+[core_macros]:  https://github.com/rust-lang/rust/blob/master/library/core/src/core_macros/mod.rs
 
 These definitions exist to allow the macros to participate in typical path-based resolution - they
 can be imported, re-exported, and renamed just like any other item definition. However, the body of
