@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 /* origin: musl src/math/fmaf.c. Ported to generic Rust algorithm in 2025, TG. */
 
-use super::super::support::{FpResult, IntTy, Round, Status};
+use super::support::{FpResult, IntTy, Round, Status};
 use super::{CastFrom, CastInto, DFloat, Float, HFloat, MinInt};
 
 // Placeholder so we can have `fmaf16` in the `Float` trait.

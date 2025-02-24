@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 /* origin: musl src/math/fma.c. Ported to generic Rust algorithm in 2025, TG. */
 
-use super::super::support::{DInt, FpResult, HInt, IntTy, Round, Status};
+use super::support::{DInt, FpResult, HInt, IntTy, Round, Status};
 use super::{CastFrom, CastInto, Float, Int, MinInt};
 
 /// Fused multiply add (f64)
