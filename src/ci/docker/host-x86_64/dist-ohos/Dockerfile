@@ -60,7 +60,10 @@ ENV \
 
 ENV RUST_CONFIGURE_ARGS \
     --enable-profiler \
-    --disable-docs
+    --disable-docs \
+    --enable-full-tools \
+    --enable-extended \
+    --enable-sanitizers
 
 ENV SCRIPT python3 ../x.py dist --host=$TARGETS --target $TARGETS
 

@@ -1997,22 +1997,22 @@ dependencies = [
 ]
 
 [[package]]
-name = "libffi"
-version = "3.2.0"
+name = "libffi-sys2"
+version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce826c243048e3d5cec441799724de52e2d42f820468431fc3fceee2341871e2"
+checksum = "47aedd9774ffb3dcab5c96f593cb5a0caf421a5e38b16bab3b8cdef5facb6ea2"
 dependencies = [
- "libc",
- "libffi-sys",
+ "cc",
 ]
 
 [[package]]
-name = "libffi-sys"
-version = "2.3.0"
+name = "libffi2"
+version = "3.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f36115160c57e8529781b4183c2bb51fdc1f6d6d1ed345591d84be7703befb3c"
+checksum = "c88a3402cad8ff58216ec6d07e5ecfa9e15fc36613c0a832db541e4e1a718a7b"
 dependencies = [
- "cc",
+ "libc",
+ "libffi-sys2",
 ]
 
 [[package]]
@@ -2166,20 +2166,6 @@ dependencies = [
 
 [[package]]
 name = "measureme"
-version = "11.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dfa4a40f09af7aa6faef38285402a78847d0d72bf8827006cd2a332e1e6e4a8d"
-dependencies = [
- "log",
- "memmap2",
- "parking_lot",
- "perf-event-open-sys",
- "rustc-hash 1.1.0",
- "smallvec",
-]
-
-[[package]]
-name = "measureme"
 version = "12.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "570a507d8948a66a97f42cbbaf8a6bb9516a51017d4ee949502ad7a10a864395"
@@ -2273,15 +2259,15 @@ dependencies = [
  "directories",
  "getrandom 0.3.1",
  "libc",
- "libffi",
+ "libffi2",
  "libloading",
- "measureme 11.0.1",
+ "measureme",
  "rand 0.9.0",
  "regex",
  "rustc_version",
  "smallvec",
  "tempfile",
- "tikv-jemalloc-sys",
+ "tikv-jemalloc-sys2",
  "ui_test 0.28.0",
  "windows-sys 0.52.0",
 ]
@@ -3109,7 +3095,7 @@ dependencies = [
  "rustc_driver_impl",
  "rustc_smir",
  "stable_mir",
- "tikv-jemalloc-sys",
+ "tikv-jemalloc-sys2",
 ]
 
 [[package]]
@@ -3379,7 +3365,7 @@ dependencies = [
  "gimli 0.30.0",
  "itertools",
  "libc",
- "measureme 12.0.1",
+ "measureme",
  "object 0.36.7",
  "rustc-demangle",
  "rustc_abi",
@@ -3497,7 +3483,7 @@ dependencies = [
  "indexmap",
  "jobserver",
  "libc",
- "measureme 12.0.1",
+ "measureme",
  "memmap2",
  "parking_lot",
  "portable-atomic",
@@ -4262,7 +4248,7 @@ dependencies = [
 name = "rustc_query_impl"
 version = "0.0.0"
 dependencies = [
- "measureme 12.0.1",
+ "measureme",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hashes",
@@ -5278,10 +5264,10 @@ name = "tier-check"
 version = "0.1.0"
 
 [[package]]
-name = "tikv-jemalloc-sys"
-version = "0.6.0+5.3.0-1-ge13ca993e8ccb9ba9847cc330696e02839f328f7"
+name = "tikv-jemalloc-sys2"
+version = "0.6.2+5.3.0-1-g298687593109d2a574b4d6db33025f935fd5e974"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd3c60906412afa9c2b5b5a48ca6a5abe5736aec9eb48ad05037a677e52e4e2d"
+checksum = "9f2527dc9cad3897a96975c4821ec077ebf35ad465d5875fb48ae9dcc8cde93b"
 dependencies = [
  "cc",
  "libc",

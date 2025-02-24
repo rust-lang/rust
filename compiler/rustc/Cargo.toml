@@ -20,8 +20,10 @@ rustc_smir = { path = "../rustc_smir" }
 stable_mir = { path = "../stable_mir" }
 # tidy-alphabetical-end
 
+# tikv-jemalloc-sys2-0.6.2 is a fork of tikv-jemalloc-sys-0.6.1 with OpenHarmony (OHOS) support.
 [dependencies.tikv-jemalloc-sys]
-version = "0.6.0"
+version = "0.6.2"
+package = "tikv-jemalloc-sys2"
 optional = true
 features = ['unprefixed_malloc_on_supported_platforms']
 
