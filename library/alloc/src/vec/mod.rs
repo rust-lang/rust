@@ -1442,20 +1442,26 @@ impl<T, A: Allocator> Vec<T, A> {
 
     /// Converts the vector into [`Box<[T]>`][owned slice].
     ///
-    /// Before doing the conversion, this method discards excess capacity like [`shrink_to_fit`].
+    /// This method may shrink the vector to fit, similar to [`shrink_to_fit`], and the exact
+    /// behavior also depends on the allocator implementation. The returned slice will have a length
+    /// matching the element count, but the allocator may preserve additional capacity according to
+    /// its memory layout requirements.
+    ///
+    /// For details about how allocators handle memory fitting and when shrinking occurs, see
+    /// [the "Memory Fitting" section in `Allocator`][memory-fitting] and [`Allocator::shrink`].
     ///
     /// [owned slice]: Box
     /// [`shrink_to_fit`]: Vec::shrink_to_fit
+    /// [memory-fitting]: Allocator#memory-fitting
     ///
     /// # Examples
     ///
     /// ```
     /// let v = vec![1, 2, 3];
-    ///
     /// let slice = v.into_boxed_slice();
     /// ```
     ///
-    /// Any excess capacity is removed:
+    /// Excess capacity may be preserved:
     ///
     /// ```
     /// let mut vec = Vec::with_capacity(10);
@@ -1463,7 +1469,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// assert!(vec.capacity() >= 10);
     /// let slice = vec.into_boxed_slice();
-    /// assert_eq!(slice.into_vec().capacity(), 3);
+    /// assert!(slice.into_vec().capacity() >= 3);
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
