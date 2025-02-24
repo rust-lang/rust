@@ -2,6 +2,7 @@
 
 use crate::cmp::Ordering::{self, *};
 use crate::marker::{ConstParamTy_, StructuralPartialEq, UnsizedConstParamTy};
+use crate::random::{Random, RandomSource};
 
 // Recursive macro for implementing n-ary tuple functions and operations
 //
@@ -118,6 +119,16 @@ macro_rules! tuple_impls {
                 #[inline]
                 fn default() -> ($($T,)+) {
                     ($({ let x: $T = Default::default(); x},)+)
+                }
+            }
+        }
+
+        maybe_tuple_doc! {
+            $($T)+ @
+            #[unstable(feature = "random", issue = "130703")]
+            impl<$($T: Random),+> Random for ($($T,)+) {
+                fn random(source: &mut (impl RandomSource + ?Sized)) -> Self {
+                    ($({ let x: $T = Random::random(source); x},)+)
                 }
             }
         }
