@@ -32,7 +32,7 @@ use smallvec::SmallVec;
 
 use crate::back::write::to_llvm_code_model;
 use crate::callee::get_fn;
-use crate::common::{self, AsCCharPtr};
+use crate::common::AsCCharPtr;
 use crate::debuginfo::metadata::apply_vcall_visibility_metadata;
 use crate::llvm::{Metadata, MetadataType};
 use crate::type_::Type;
@@ -652,24 +652,22 @@ impl<'ll> SimpleCx<'ll> {
         let isize_ty = llvm::Type::ix_llcx(llcx, pointer_size.bits());
         Self(SCx { llmod, llcx, isize_ty }, PhantomData)
     }
+}
 
-    pub(crate) fn val_ty(&self, v: &'ll Value) -> &'ll Type {
-        common::val_ty(v)
-    }
-
+impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     pub(crate) fn get_metadata_value(&self, metadata: &'ll Metadata) -> &'ll Value {
-        unsafe { llvm::LLVMMetadataAsValue(self.llcx, metadata) }
+        unsafe { llvm::LLVMMetadataAsValue(self.llcx(), metadata) }
     }
 
     pub(crate) fn get_function(&self, name: &str) -> Option<&'ll Value> {
         let name = SmallCStr::new(name);
-        unsafe { llvm::LLVMGetNamedFunction(self.llmod, name.as_ptr()) }
+        unsafe { llvm::LLVMGetNamedFunction((**self).borrow().llmod, name.as_ptr()) }
     }
 
     pub(crate) fn get_md_kind_id(&self, name: &str) -> u32 {
         unsafe {
             llvm::LLVMGetMDKindIDInContext(
-                self.llcx,
+                self.llcx(),
                 name.as_ptr() as *const c_char,
                 name.len() as c_uint,
             )
@@ -678,7 +676,7 @@ impl<'ll> SimpleCx<'ll> {
 
     pub(crate) fn create_metadata(&self, name: String) -> Option<&'ll Metadata> {
         Some(unsafe {
-            llvm::LLVMMDStringInContext2(self.llcx, name.as_ptr() as *const c_char, name.len())
+            llvm::LLVMMDStringInContext2(self.llcx(), name.as_ptr() as *const c_char, name.len())
         })
     }
 }

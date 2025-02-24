@@ -3,6 +3,7 @@ use std::ptr;
 use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, AutoDiffItem, DiffActivity, DiffMode};
 use rustc_codegen_ssa::ModuleCodegen;
 use rustc_codegen_ssa::back::write::ModuleConfig;
+use rustc_codegen_ssa::traits::BaseTypeCodegenMethods as _;
 use rustc_errors::FatalError;
 use tracing::{debug, trace};
 

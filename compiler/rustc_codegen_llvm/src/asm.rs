@@ -1,6 +1,5 @@
 use std::assert_matches::assert_matches;
 
-use libc::{c_char, c_uint};
 use rustc_abi::{BackendRepr, Float, Integer, Primitive, Scalar};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_codegen_ssa::mir::operand::OperandValue;
@@ -512,11 +511,7 @@ pub(crate) fn inline_asm_call<'ll>(
             // Store mark in a metadata node so we can map LLVM errors
             // back to source locations. See #17552.
             let key = "srcloc";
-            let kind = llvm::LLVMGetMDKindIDInContext(
-                bx.llcx,
-                key.as_ptr().cast::<c_char>(),
-                key.len() as c_uint,
-            );
+            let kind = bx.get_md_kind_id(key);
 
             // `srcloc` contains one 64-bit integer for each line of assembly code,
             // where the lower 32 bits hold the lo byte position and the upper 32 bits
