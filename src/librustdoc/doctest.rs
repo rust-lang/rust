@@ -248,7 +248,8 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
         compiler.sess.dcx().abort_if_errors();
 
         collector
-    });
+    })
+    .unwrap();
 
     let CreateRunnableDocTests {
         standalone_tests,
