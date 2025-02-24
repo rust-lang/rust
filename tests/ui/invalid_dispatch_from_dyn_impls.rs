@@ -8,9 +8,10 @@ use std::{
 struct WrapperWithExtraField<T>(T, i32);
 
 impl<T, U> DispatchFromDyn<WrapperWithExtraField<U>> for WrapperWithExtraField<T>
+//~^ ERROR [E0378]
 where
     T: DispatchFromDyn<U>,
-{} //~^^^ ERROR [E0378]
+{}
 
 
 struct MultiplePointers<T: ?Sized>{
@@ -19,9 +20,10 @@ struct MultiplePointers<T: ?Sized>{
 }
 
 impl<T: ?Sized, U: ?Sized> DispatchFromDyn<MultiplePointers<U>> for MultiplePointers<T>
+//~^ implementing `DispatchFromDyn` does not allow multiple fields to be coerced
 where
     T: Unsize<U>,
-{} //~^^^ ERROR [E0378]
+{}
 
 
 struct NothingToCoerce<T: ?Sized> {
@@ -29,23 +31,25 @@ struct NothingToCoerce<T: ?Sized> {
 }
 
 impl<T: ?Sized, U: ?Sized> DispatchFromDyn<NothingToCoerce<T>> for NothingToCoerce<U> {}
-//~^ ERROR [E0378]
+//~^ ERROR implementing `DispatchFromDyn` requires a field to be coerced
 
 #[repr(C)]
 struct HasReprC<T: ?Sized>(Box<T>);
 
 impl<T: ?Sized, U: ?Sized> DispatchFromDyn<HasReprC<U>> for HasReprC<T>
+//~^ ERROR [E0378]
 where
     T: Unsize<U>,
-{} //~^^^ ERROR [E0378]
+{}
 
 #[repr(align(64))]
 struct OverAlignedZst;
 struct OverAligned<T: ?Sized>(Box<T>, OverAlignedZst);
 
 impl<T: ?Sized, U: ?Sized> DispatchFromDyn<OverAligned<U>> for OverAligned<T>
+//~^ ERROR [E0378]
     where
         T: Unsize<U>,
-{} //~^^^ ERROR [E0378]
+{}
 
 fn main() {}

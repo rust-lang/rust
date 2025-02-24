@@ -1302,6 +1302,7 @@ pub trait FnPtr: Copy + Clone {
 /// ```
 #[rustc_builtin_macro(CoercePointee, attributes(pointee))]
 #[allow_internal_unstable(dispatch_from_dyn, coerce_unsized, unsize, coerce_pointee_validated)]
+#[cfg_attr(not(test), rustc_diagnostic_item = "CoercePointee")]
 #[unstable(feature = "derive_coerce_pointee", issue = "123430")]
 pub macro CoercePointee($item:item) {
     /* compiler built-in */
