@@ -13,7 +13,7 @@ use syntax::{
 
 use crate::{
     assist_context::{AssistContext, Assists},
-    utils::invert_boolean_expression,
+    utils::invert_boolean_expression_legacy,
     AssistId, AssistKind,
 };
 
@@ -63,7 +63,7 @@ pub(crate) fn convert_while_to_loop(acc: &mut Assists, ctx: &AssistContext<'_>) 
                 let stmts = iter::once(make::expr_stmt(if_expr.into()).into());
                 make::block_expr(stmts, None)
             } else {
-                let if_cond = invert_boolean_expression(while_cond);
+                let if_cond = invert_boolean_expression_legacy(while_cond);
                 let if_expr = make::expr_if(if_cond, break_block, None).syntax().clone().into();
                 let elements = while_body.stmt_list().map_or_else(
                     || Either::Left(iter::empty()),

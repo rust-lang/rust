@@ -3,12 +3,12 @@ use std::collections::VecDeque;
 use ide_db::{
     assists::GroupLabel,
     famous_defs::FamousDefs,
-    source_change::SourceChangeBuilder,
     syntax_helpers::node_ext::{for_each_tail_expr, walk_expr},
 };
 use syntax::{
-    ast::{self, make, AstNode, Expr::BinExpr, HasArgList},
-    ted, SyntaxKind, T,
+    ast::{self, syntax_factory::SyntaxFactory, AstNode, Expr::BinExpr, HasArgList},
+    syntax_editor::{Position, SyntaxEditor},
+    SyntaxKind, SyntaxNode, T,
 };
 
 use crate::{utils::invert_boolean_expression, AssistContext, AssistId, AssistKind, Assists};
@@ -58,9 +58,12 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
         _ => return None,
     };
 
-    let demorganed = bin_expr.clone_subtree().clone_for_update();
+    let make = SyntaxFactory::new();
 
-    ted::replace(demorganed.op_token()?, ast::make::token(inv_token));
+    let demorganed = bin_expr.clone_subtree();
+    let mut editor = SyntaxEditor::new(demorganed.syntax().clone());
+    editor.replace(demorganed.op_token()?, make.token(inv_token));
+
     let mut exprs = VecDeque::from([
         (bin_expr.lhs()?, demorganed.lhs()?),
         (bin_expr.rhs()?, demorganed.rhs()?),
@@ -70,35 +73,39 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
         if let BinExpr(bin_expr) = &expr {
             if let BinExpr(cbin_expr) = &dm {
                 if op == bin_expr.op_kind()? {
-                    ted::replace(cbin_expr.op_token()?, ast::make::token(inv_token));
+                    editor.replace(cbin_expr.op_token()?, make.token(inv_token));
                     exprs.push_back((bin_expr.lhs()?, cbin_expr.lhs()?));
                     exprs.push_back((bin_expr.rhs()?, cbin_expr.rhs()?));
                 } else {
-                    let mut inv = invert_boolean_expression(expr);
-                    if inv.needs_parens_in(dm.syntax().parent()?) {
-                        inv = ast::make::expr_paren(inv).clone_for_update();
+                    let mut inv = invert_boolean_expression(&make, expr);
+                    if needs_parens_in_place_of(&inv, &dm.syntax().parent()?, &dm) {
+                        inv = make.expr_paren(inv).into();
                     }
-                    ted::replace(dm.syntax(), inv.syntax());
+                    editor.replace(dm.syntax(), inv.syntax());
                 }
             } else {
                 return None;
             }
         } else {
-            let mut inv = invert_boolean_expression(dm.clone_subtree()).clone_for_update();
-            if inv.needs_parens_in(dm.syntax().parent()?) {
-                inv = ast::make::expr_paren(inv).clone_for_update();
+            let mut inv = invert_boolean_expression(&make, dm.clone());
+            if needs_parens_in_place_of(&inv, &dm.syntax().parent()?, &dm) {
+                inv = make.expr_paren(inv).into();
             }
-            ted::replace(dm.syntax(), inv.syntax());
+            editor.replace(dm.syntax(), inv.syntax());
         }
     }
+
+    editor.add_mappings(make.finish_with_mappings());
+    let edit = editor.finish();
+    let demorganed = ast::Expr::cast(edit.new_root().clone())?;
 
     acc.add_group(
         &GroupLabel("Apply De Morgan's law".to_owned()),
         AssistId("apply_demorgan", AssistKind::RefactorRewrite),
         "Apply De Morgan's law",
         op_range,
-        |edit| {
-            let demorganed = ast::Expr::BinExpr(demorganed);
+        |builder| {
+            let make = SyntaxFactory::new();
             let paren_expr = bin_expr.syntax().parent().and_then(ast::ParenExpr::cast);
             let neg_expr = paren_expr
                 .clone()
@@ -107,24 +114,32 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
                 .filter(|prefix_expr| matches!(prefix_expr.op_kind(), Some(ast::UnaryOp::Not)))
                 .map(ast::Expr::PrefixExpr);
 
+            let mut editor;
             if let Some(paren_expr) = paren_expr {
                 if let Some(neg_expr) = neg_expr {
                     cov_mark::hit!(demorgan_double_negation);
                     let parent = neg_expr.syntax().parent();
+                    editor = builder.make_editor(neg_expr.syntax());
 
                     if parent.is_some_and(|parent| demorganed.needs_parens_in(parent)) {
                         cov_mark::hit!(demorgan_keep_parens_for_op_precedence2);
-                        edit.replace_ast(neg_expr, make::expr_paren(demorganed));
+                        editor.replace(neg_expr.syntax(), make.expr_paren(demorganed).syntax());
                     } else {
-                        edit.replace_ast(neg_expr, demorganed);
+                        editor.replace(neg_expr.syntax(), demorganed.syntax());
                     };
                 } else {
                     cov_mark::hit!(demorgan_double_parens);
-                    edit.replace_ast(paren_expr.into(), add_bang_paren(demorganed));
+                    editor = builder.make_editor(paren_expr.syntax());
+
+                    editor.replace(paren_expr.syntax(), add_bang_paren(&make, demorganed).syntax());
                 }
             } else {
-                edit.replace_ast(bin_expr.into(), add_bang_paren(demorganed));
+                editor = builder.make_editor(bin_expr.syntax());
+                editor.replace(bin_expr.syntax(), add_bang_paren(&make, demorganed).syntax());
             }
+
+            editor.add_mappings(make.finish_with_mappings());
+            builder.add_file_edits(ctx.file_id(), editor);
         },
     )
 }
@@ -161,7 +176,7 @@ pub(crate) fn apply_demorgan_iterator(acc: &mut Assists, ctx: &AssistContext<'_>
     let (name, arg_expr) = validate_method_call_expr(ctx, &method_call)?;
 
     let ast::Expr::ClosureExpr(closure_expr) = arg_expr else { return None };
-    let closure_body = closure_expr.body()?;
+    let closure_body = closure_expr.body()?.clone_for_update();
 
     let op_range = method_call.syntax().text_range();
     let label = format!("Apply De Morgan's law to `Iterator::{}`", name.text().as_str());
@@ -170,18 +185,19 @@ pub(crate) fn apply_demorgan_iterator(acc: &mut Assists, ctx: &AssistContext<'_>
         AssistId("apply_demorgan_iterator", AssistKind::RefactorRewrite),
         label,
         op_range,
-        |edit| {
+        |builder| {
+            let make = SyntaxFactory::new();
+            let mut editor = builder.make_editor(method_call.syntax());
             // replace the method name
             let new_name = match name.text().as_str() {
-                "all" => make::name_ref("any"),
-                "any" => make::name_ref("all"),
+                "all" => make.name_ref("any"),
+                "any" => make.name_ref("all"),
                 _ => unreachable!(),
-            }
-            .clone_for_update();
-            edit.replace_ast(name, new_name);
+            };
+            editor.replace(name.syntax(), new_name.syntax());
 
             // negate all tail expressions in the closure body
-            let tail_cb = &mut |e: &_| tail_cb_impl(edit, e);
+            let tail_cb = &mut |e: &_| tail_cb_impl(&mut editor, &make, e);
             walk_expr(&closure_body, &mut |expr| {
                 if let ast::Expr::ReturnExpr(ret_expr) = expr {
                     if let Some(ret_expr_arg) = &ret_expr.expr() {
@@ -198,15 +214,15 @@ pub(crate) fn apply_demorgan_iterator(acc: &mut Assists, ctx: &AssistContext<'_>
                 .and_then(ast::PrefixExpr::cast)
                 .filter(|prefix_expr| matches!(prefix_expr.op_kind(), Some(ast::UnaryOp::Not)))
             {
-                edit.delete(
-                    prefix_expr
-                        .op_token()
-                        .expect("prefix expression always has an operator")
-                        .text_range(),
+                editor.delete(
+                    prefix_expr.op_token().expect("prefix expression always has an operator"),
                 );
             } else {
-                edit.insert(method_call.syntax().text_range().start(), "!");
+                editor.insert(Position::before(method_call.syntax()), make.token(SyntaxKind::BANG));
             }
+
+            editor.add_mappings(make.finish_with_mappings());
+            builder.add_file_edits(ctx.file_id(), editor);
         },
     )
 }
@@ -233,26 +249,50 @@ fn validate_method_call_expr(
     it_type.impls_trait(sema.db, iter_trait, &[]).then_some((name_ref, arg_expr))
 }
 
-fn tail_cb_impl(edit: &mut SourceChangeBuilder, e: &ast::Expr) {
+fn tail_cb_impl(editor: &mut SyntaxEditor, make: &SyntaxFactory, e: &ast::Expr) {
     match e {
         ast::Expr::BreakExpr(break_expr) => {
             if let Some(break_expr_arg) = break_expr.expr() {
-                for_each_tail_expr(&break_expr_arg, &mut |e| tail_cb_impl(edit, e))
+                for_each_tail_expr(&break_expr_arg, &mut |e| tail_cb_impl(editor, make, e))
             }
         }
         ast::Expr::ReturnExpr(_) => {
             // all return expressions have already been handled by the walk loop
         }
         e => {
-            let inverted_body = invert_boolean_expression(e.clone());
-            edit.replace(e.syntax().text_range(), inverted_body.syntax().text());
+            let inverted_body = invert_boolean_expression(make, e.clone());
+            editor.replace(e.syntax(), inverted_body.syntax());
         }
     }
 }
 
 /// Add bang and parentheses to the expression.
-fn add_bang_paren(expr: ast::Expr) -> ast::Expr {
-    make::expr_prefix(T![!], make::expr_paren(expr)).into()
+fn add_bang_paren(make: &SyntaxFactory, expr: ast::Expr) -> ast::Expr {
+    make.expr_prefix(T![!], make.expr_paren(expr).into()).into()
+}
+
+fn needs_parens_in_place_of(
+    this: &ast::Expr,
+    parent: &SyntaxNode,
+    in_place_of: &ast::Expr,
+) -> bool {
+    assert_eq!(Some(parent), in_place_of.syntax().parent().as_ref());
+
+    let child_idx = parent
+        .children()
+        .enumerate()
+        .find_map(|(i, it)| if &it == in_place_of.syntax() { Some(i) } else { None })
+        .unwrap();
+    let parent = parent.clone_subtree();
+    let subtree_place = parent.children().nth(child_idx).unwrap();
+
+    let mut editor = SyntaxEditor::new(parent);
+    editor.replace(subtree_place, this.syntax());
+    let edit = editor.finish();
+
+    let replaced = edit.new_root().children().nth(child_idx).unwrap();
+    let replaced = ast::Expr::cast(replaced).unwrap();
+    replaced.needs_parens_in(edit.new_root().clone())
 }
 
 #[cfg(test)]
