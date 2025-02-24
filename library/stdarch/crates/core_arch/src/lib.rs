@@ -37,7 +37,8 @@
     sha512_sm_x86,
     x86_amx_intrinsics,
     f16,
-    keylocker_x86
+    keylocker_x86,
+    aarch64_unstable_target_feature
 )]
 #![cfg_attr(test, feature(test, abi_vectorcall, stdarch_internal))]
 #![deny(clippy::missing_inline_in_public_items)]

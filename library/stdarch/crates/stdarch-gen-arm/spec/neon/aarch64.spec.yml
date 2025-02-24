@@ -13980,7 +13980,7 @@ intrinsics:
     return_type: "{neon_type}"
     attr:
       - FnCall: [target_feature, ['enable = "neon,faminmax"']]
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [famax]]}]]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [nop]]}]]
       - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
     safety:
       unsafe: [neon]
@@ -14001,7 +14001,7 @@ intrinsics:
     return_type: "{neon_type}"
     attr:
       - FnCall: [target_feature, ['enable = "neon,faminmax"']]
-      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [famin]]}]]
+      - FnCall: [cfg_attr, [test, {FnCall: [assert_instr, [nop]]}]]
       - FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
     safety:
       unsafe: [neon]
