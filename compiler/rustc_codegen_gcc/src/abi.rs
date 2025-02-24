@@ -16,7 +16,7 @@ use crate::context::CodegenCx;
 use crate::intrinsic::ArgAbiExt;
 use crate::type_of::LayoutGccExt;
 
-impl<'a, 'gcc, 'tcx> AbiBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
+impl AbiBuilderMethods for Builder<'_, '_, '_> {
     fn get_param(&mut self, index: usize) -> Self::Value {
         let func = self.current_func();
         let param = func.get_param(index as i32);
