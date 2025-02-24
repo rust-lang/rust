@@ -174,7 +174,7 @@ impl TestCx<'_> {
         // For `run-make` V2, we need to perform 2 steps to build and run a `run-make` V2 recipe
         // (`rmake.rs`) to run the actual tests. The support library is already built as a tool rust
         // library and is available under
-        // `build/$TARGET/stage0-bootstrap-tools/$HOST/release/librun_make_support.rlib`.
+        // `build/$HOST/stage0-bootstrap-tools/$TARGET/release/librun_make_support.rlib`.
         //
         // 1. We need to build the recipe `rmake.rs` as a binary and link in the `run_make_support`
         //    library.
