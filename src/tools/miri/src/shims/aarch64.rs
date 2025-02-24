@@ -33,7 +33,8 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
 
             // Used to implement the vpmaxq_u8 function.
-            // Folding maximum of adjacent pairs.
+            // Computes the maximum of adjacent pairs; the first half of the output is produced from the
+            // `left` input, the second half of the output from the `right` input.
             // https://developer.arm.com/architectures/instruction-sets/intrinsics/vpmaxq_u8
             "neon.umaxp.v16i8" => {
                 let [left, right] = this.check_shim(abi, Conv::C, link_name, args)?;
