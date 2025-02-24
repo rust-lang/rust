@@ -54,6 +54,13 @@ LL | impl<'a, T, const N: usize> Iterator for ConstChunksExact<'a, T, {}> {
    |
    = note: expressions using a const parameter must map each value to a distinct output value
    = note: proving the result of expressions other than the parameter are unique is not supported
+help: either remove the type parameter N, or make use of it, for example
+   |
+LL - impl<'a, T, const N: usize> Iterator for ConstChunksExact<'a, T, {}> {
+LL + impl<'a, T> Iterator for ConstChunksExact<'a, T, {}> {
+   |
+LL | impl<'a, T, const N: usize> Iterator for ConstChunksExact<'a, T, {}, N> {
+   |                                                                    +++
 
 error[E0308]: mismatched types
   --> $DIR/ice-unexpected-inference-var-122549.rs:15:66
