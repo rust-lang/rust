@@ -11,9 +11,8 @@ LL |     fn printf(_: *const u8, ...) -> u32;
    |        ^^^^^^ -
 help: provide the argument
    |
-LL -     unsafe { printf(); }
-LL +     unsafe { printf(/* *const u8 */); }
-   |
+LL |     unsafe { printf(/* *const u8 */); }
+   |                     +++++++++++++++
 
 error: aborting due to 1 previous error
 

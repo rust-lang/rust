@@ -14,9 +14,20 @@
 //! <https://github.com/rust-lang/rust/blob/c0b5cc9003f6464c11ae1c0662c6a7e06f6f5cab/compiler/rustc_codegen_cranelift/example/mini_core.rs>.
 // ignore-tidy-linelength
 
-#![feature(no_core, lang_items, rustc_attrs, decl_macro, naked_functions, f16, f128)]
+#![feature(
+    no_core,
+    lang_items,
+    auto_traits,
+    freeze_impls,
+    negative_impls,
+    rustc_attrs,
+    decl_macro,
+    naked_functions,
+    f16,
+    f128,
+    asm_experimental_arch
+)]
 #![allow(unused, improper_ctypes_definitions, internal_features)]
-#![feature(asm_experimental_arch)]
 #![no_std]
 #![no_core]
 
@@ -41,6 +52,12 @@ pub trait Copy: Sized {}
 
 #[lang = "bikeshed_guaranteed_no_drop"]
 pub trait BikeshedGuaranteedNoDrop {}
+
+#[lang = "freeze"]
+pub unsafe auto trait Freeze {}
+
+#[lang = "unpin"]
+pub auto trait Unpin {}
 
 impl_marker_trait!(
     Copy => [
@@ -83,6 +100,7 @@ impl<T: Copy + ?Sized> Copy for ManuallyDrop<T> {}
 pub struct UnsafeCell<T: ?Sized> {
     value: T,
 }
+impl<T: ?Sized> !Freeze for UnsafeCell<T> {}
 
 #[rustc_builtin_macro]
 pub macro asm("assembly template", $(operands,)* $(options($(option),*))?) {

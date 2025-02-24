@@ -164,8 +164,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         }
                     }
                     this.block_context.push(BlockFrame::TailExpr {
-                        tail_result_is_ignored: true,
-                        span: expr.span,
+                        info: BlockTailInfo { tail_result_is_ignored: true, span: expr.span },
                     });
                     Some(expr.span)
                 } else {

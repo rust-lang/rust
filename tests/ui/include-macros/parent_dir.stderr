@@ -20,9 +20,8 @@ LL |     let _ = include_str!("hello.rs");
    = note: this error originates in the macro `include_str` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: there is a file with the same name in a different directory
    |
-LL -     let _ = include_str!("hello.rs");
-LL +     let _ = include_str!("../hello.rs");
-   |
+LL |     let _ = include_str!("../hello.rs");
+   |                           +++
 
 error: couldn't read `$DIR/../../data.bin`: $FILE_NOT_FOUND_MSG
   --> $DIR/parent_dir.rs:8:13

@@ -7,9 +7,8 @@ LL | #[cfg_attr]
    = note: for more information, visit <https://doc.rust-lang.org/reference/conditional-compilation.html#the-cfg_attr-attribute>
 help: missing condition and attribute
    |
-LL - #[cfg_attr]
-LL + #[cfg_attr(condition, attribute, other_attribute, ...)]
-   |
+LL | #[cfg_attr(condition, attribute, other_attribute, ...)]
+   |           ++++++++++++++++++++++++++++++++++++++++++++
 
 error: malformed `cfg_attr` attribute input
   --> $DIR/malformed-special-attrs.rs:4:1

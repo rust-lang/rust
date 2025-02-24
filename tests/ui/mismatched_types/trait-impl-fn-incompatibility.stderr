@@ -32,9 +32,8 @@ LL |     fn bar(&mut self, bar: &mut Bar);
               found signature `fn(&mut Bar, &Bar)`
 help: change the parameter type to match the trait
    |
-LL -     fn bar(&mut self, bar: &Bar) { }
-LL +     fn bar(&mut self, bar: &mut Bar) { }
-   |
+LL |     fn bar(&mut self, bar: &mut Bar) { }
+   |                             +++
 
 error: aborting due to 2 previous errors
 

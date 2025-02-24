@@ -24,8 +24,7 @@ pub fn check(
     if !check_private_items
         && cx
             .tcx
-            .hir()
-            .parent_iter(owner_id.into())
+            .hir_parent_iter(owner_id.into())
             .any(|(id, _node)| is_doc_hidden(cx.tcx.hir().attrs(id)))
     {
         return;

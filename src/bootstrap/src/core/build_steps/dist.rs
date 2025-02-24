@@ -21,7 +21,7 @@ use tracing::instrument;
 
 use crate::core::build_steps::doc::DocumentationFormat;
 use crate::core::build_steps::tool::{self, Tool};
-use crate::core::build_steps::vendor::default_paths_to_vendor;
+use crate::core::build_steps::vendor::{VENDOR_DIR, Vendor};
 use crate::core::build_steps::{compile, llvm};
 use crate::core::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
@@ -421,16 +421,12 @@ impl Step for Rustc {
 
             if let Some(ra_proc_macro_srv) = builder.ensure_if_default(
                 tool::RustAnalyzerProcMacroSrv {
-                    compiler: builder.compiler_for(
-                        compiler.stage,
-                        builder.config.build,
-                        compiler.host,
-                    ),
+                    compiler: builder.compiler(compiler.stage, builder.config.build),
                     target: compiler.host,
                 },
                 builder.kind,
             ) {
-                builder.install(&ra_proc_macro_srv, &image.join("libexec"), 0o755);
+                builder.install(&ra_proc_macro_srv.tool_path, &image.join("libexec"), 0o755);
             }
 
             let libdir_relative = builder.libdir_relative(compiler);
@@ -775,11 +771,7 @@ impl Step for Analysis {
             // Find the actual compiler (handling the full bootstrap option) which
             // produced the save-analysis data because that data isn't copied
             // through the sysroot uplifting.
-            compiler: run.builder.compiler_for(
-                run.builder.top_stage,
-                run.builder.config.build,
-                run.target,
-            ),
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
             target: run.target,
         });
     }
@@ -1029,6 +1021,17 @@ impl Step for PlainSourceTarball {
             ],
             plain_dst_src,
         );
+        // We keep something in src/gcc because it is a registered submodule,
+        // and if it misses completely it can cause issues elsewhere
+        // (see https://github.com/rust-lang/rust/issues/137332).
+        // We can also let others know why is the source code missing.
+        if !builder.config.dry_run() {
+            builder.create_dir(&plain_dst_src.join("src/gcc"));
+            t!(std::fs::write(
+                plain_dst_src.join("src/gcc/notice.txt"),
+                "The GCC source code is not included due to unclear licensing implications\n"
+            ));
+        }
 
         // Copy the files normally
         for item in &src_files {
@@ -1052,19 +1055,6 @@ impl Step for PlainSourceTarball {
         if builder.config.dist_vendor {
             builder.require_and_update_all_submodules();
 
-            // Vendor all Cargo dependencies
-            let mut cmd = command(&builder.initial_cargo);
-            cmd.arg("vendor").arg("--versioned-dirs");
-
-            for (p, _) in default_paths_to_vendor(builder) {
-                cmd.arg("--sync").arg(p);
-            }
-
-            cmd
-                // Will read the libstd Cargo.toml which uses the unstable `public-dependency` feature.
-                .env("RUSTC_BOOTSTRAP", "1")
-                .current_dir(plain_dst_src);
-
             // Vendor packages that are required by opt-dist to collect PGO profiles.
             let pkgs_for_pgo_training = build_helper::LLVM_PGO_CRATES
                 .iter()
@@ -1076,15 +1066,18 @@ impl Step for PlainSourceTarball {
                     manifest_path.push("Cargo.toml");
                     manifest_path
                 });
-            for manifest_path in pkgs_for_pgo_training {
-                cmd.arg("--sync").arg(manifest_path);
-            }
 
-            let config = cmd.run_capture(builder).stdout();
+            // Vendor all Cargo dependencies
+            let vendor = builder.ensure(Vendor {
+                sync_args: pkgs_for_pgo_training.collect(),
+                versioned_dirs: true,
+                root_dir: plain_dst_src.into(),
+                output_dir: VENDOR_DIR.into(),
+            });
 
             let cargo_config_dir = plain_dst_src.join(".cargo");
             builder.create_dir(&cargo_config_dir);
-            builder.create(&cargo_config_dir.join("config.toml"), &config);
+            builder.create(&cargo_config_dir.join("config.toml"), &vendor.config);
         }
 
         // Delete extraneous directories
@@ -1123,11 +1116,7 @@ impl Step for Cargo {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Cargo {
-            compiler: run.builder.compiler_for(
-                run.builder.top_stage,
-                run.builder.config.build,
-                run.target,
-            ),
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
             target: run.target,
         });
     }
@@ -1144,7 +1133,7 @@ impl Step for Cargo {
         let mut tarball = Tarball::new(builder, "cargo", &target.triple);
         tarball.set_overlay(OverlayKind::Cargo);
 
-        tarball.add_file(cargo, "bin", 0o755);
+        tarball.add_file(cargo.tool_path, "bin", 0o755);
         tarball.add_file(etc.join("_cargo"), "share/zsh/site-functions", 0o644);
         tarball.add_renamed_file(etc.join("cargo.bashcomp.sh"), "etc/bash_completion.d", "cargo");
         tarball.add_dir(etc.join("man"), "share/man/man1");
@@ -1172,11 +1161,7 @@ impl Step for Rls {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Rls {
-            compiler: run.builder.compiler_for(
-                run.builder.top_stage,
-                run.builder.config.build,
-                run.target,
-            ),
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
             target: run.target,
         });
     }
@@ -1190,7 +1175,7 @@ impl Step for Rls {
         let mut tarball = Tarball::new(builder, "rls", &target.triple);
         tarball.set_overlay(OverlayKind::Rls);
         tarball.is_preview(true);
-        tarball.add_file(rls, "bin", 0o755);
+        tarball.add_file(rls.tool_path, "bin", 0o755);
         tarball.add_legal_and_readme_to("share/doc/rls");
         Some(tarball.generate())
     }
@@ -1214,11 +1199,7 @@ impl Step for RustAnalyzer {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(RustAnalyzer {
-            compiler: run.builder.compiler_for(
-                run.builder.top_stage,
-                run.builder.config.build,
-                run.target,
-            ),
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
             target: run.target,
         });
     }
@@ -1232,7 +1213,7 @@ impl Step for RustAnalyzer {
         let mut tarball = Tarball::new(builder, "rust-analyzer", &target.triple);
         tarball.set_overlay(OverlayKind::RustAnalyzer);
         tarball.is_preview(true);
-        tarball.add_file(rust_analyzer, "bin", 0o755);
+        tarball.add_file(rust_analyzer.tool_path, "bin", 0o755);
         tarball.add_legal_and_readme_to("share/doc/rust-analyzer");
         Some(tarball.generate())
     }
@@ -1256,11 +1237,7 @@ impl Step for Clippy {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Clippy {
-            compiler: run.builder.compiler_for(
-                run.builder.top_stage,
-                run.builder.config.build,
-                run.target,
-            ),
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
             target: run.target,
         });
     }
@@ -1278,8 +1255,8 @@ impl Step for Clippy {
         let mut tarball = Tarball::new(builder, "clippy", &target.triple);
         tarball.set_overlay(OverlayKind::Clippy);
         tarball.is_preview(true);
-        tarball.add_file(clippy, "bin", 0o755);
-        tarball.add_file(cargoclippy, "bin", 0o755);
+        tarball.add_file(clippy.tool_path, "bin", 0o755);
+        tarball.add_file(cargoclippy.tool_path, "bin", 0o755);
         tarball.add_legal_and_readme_to("share/doc/clippy");
         Some(tarball.generate())
     }
@@ -1303,11 +1280,7 @@ impl Step for Miri {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Miri {
-            compiler: run.builder.compiler_for(
-                run.builder.top_stage,
-                run.builder.config.build,
-                run.target,
-            ),
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
             target: run.target,
         });
     }
@@ -1328,8 +1301,8 @@ impl Step for Miri {
         let mut tarball = Tarball::new(builder, "miri", &target.triple);
         tarball.set_overlay(OverlayKind::Miri);
         tarball.is_preview(true);
-        tarball.add_file(miri, "bin", 0o755);
-        tarball.add_file(cargomiri, "bin", 0o755);
+        tarball.add_file(miri.tool_path, "bin", 0o755);
+        tarball.add_file(cargomiri.tool_path, "bin", 0o755);
         tarball.add_legal_and_readme_to("share/doc/miri");
         Some(tarball.generate())
     }
@@ -1441,11 +1414,7 @@ impl Step for Rustfmt {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Rustfmt {
-            compiler: run.builder.compiler_for(
-                run.builder.top_stage,
-                run.builder.config.build,
-                run.target,
-            ),
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
             target: run.target,
         });
     }
@@ -1459,8 +1428,8 @@ impl Step for Rustfmt {
         let mut tarball = Tarball::new(builder, "rustfmt", &target.triple);
         tarball.set_overlay(OverlayKind::Rustfmt);
         tarball.is_preview(true);
-        tarball.add_file(rustfmt, "bin", 0o755);
-        tarball.add_file(cargofmt, "bin", 0o755);
+        tarball.add_file(rustfmt.tool_path, "bin", 0o755);
+        tarball.add_file(cargofmt.tool_path, "bin", 0o755);
         tarball.add_legal_and_readme_to("share/doc/rustfmt");
         Some(tarball.generate())
     }
@@ -1495,7 +1464,7 @@ impl Step for Extended {
     fn run(self, builder: &Builder<'_>) {
         let target = self.target;
         let stage = self.stage;
-        let compiler = builder.compiler_for(self.stage, self.host, self.target);
+        let compiler = builder.compiler(self.stage, self.host);
 
         builder.info(&format!("Dist extended stage{} ({})", compiler.stage, target));
 
@@ -2259,11 +2228,7 @@ impl Step for LlvmBitcodeLinker {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(LlvmBitcodeLinker {
-            compiler: run.builder.compiler_for(
-                run.builder.top_stage,
-                run.builder.config.build,
-                run.target,
-            ),
+            compiler: run.builder.compiler(run.builder.top_stage, run.builder.config.build),
             target: run.target,
         });
     }
@@ -2282,7 +2247,7 @@ impl Step for LlvmBitcodeLinker {
         tarball.set_overlay(OverlayKind::LlvmBitcodeLinker);
         tarball.is_preview(true);
 
-        tarball.add_file(llbc_linker, self_contained_bin_dir, 0o755);
+        tarball.add_file(llbc_linker.tool_path, self_contained_bin_dir, 0o755);
 
         Some(tarball.generate())
     }

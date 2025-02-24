@@ -6,9 +6,8 @@ LL | extern crte foo;
    |
 help: there is a keyword `crate` with a similar name
    |
-LL - extern crte foo;
-LL + extern crate foo;
-   |
+LL | extern crate foo;
+   |          +
 
 error: aborting due to 1 previous error
 

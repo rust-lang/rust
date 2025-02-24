@@ -22,9 +22,8 @@ LL |         let _y = &mut X;
    = note: mutable references to mutable statics are dangerous; it's undefined behavior if any other pointer to the static is used or if any other reference is created for the static while the mutable reference lives
 help: use `&raw mut` instead to create a raw pointer
    |
-LL -         let _y = &mut X;
-LL +         let _y = &raw mut X;
-   |
+LL |         let _y = &raw mut X;
+   |                   +++
 
 warning: creating a shared reference to mutable static is discouraged
   --> $DIR/static-mut-refs.rs:50:22

@@ -9,9 +9,8 @@ LL |         let sfoo: *mut Foo = &mut SFOO;
    = note: `#[warn(static_mut_refs)]` on by default
 help: use `&raw mut` instead to create a raw pointer
    |
-LL -         let sfoo: *mut Foo = &mut SFOO;
-LL +         let sfoo: *mut Foo = &raw mut SFOO;
-   |
+LL |         let sfoo: *mut Foo = &raw mut SFOO;
+   |                               +++
 
 warning: 1 warning emitted
 

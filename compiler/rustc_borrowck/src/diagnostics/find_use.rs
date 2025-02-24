@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_middle::mir::visit::{MirVisitable, PlaceContext, Visitor};
+use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::{self, Body, Local, Location};
 use rustc_middle::ty::{RegionVid, TyCtxt};
 
@@ -45,7 +45,22 @@ impl<'a, 'tcx> UseFinder<'a, 'tcx> {
 
             let block_data = &self.body[p.block];
 
-            match self.def_use(p, block_data.visitable(p.statement_index)) {
+            let mut visitor = DefUseVisitor {
+                body: self.body,
+                tcx: self.tcx,
+                region_vid: self.region_vid,
+                def_use_result: None,
+            };
+
+            let is_statement = p.statement_index < block_data.statements.len();
+
+            if is_statement {
+                visitor.visit_statement(&block_data.statements[p.statement_index], p);
+            } else {
+                visitor.visit_terminator(block_data.terminator.as_ref().unwrap(), p);
+            }
+
+            match visitor.def_use_result {
                 Some(DefUseResult::Def) => {}
 
                 Some(DefUseResult::UseLive { local }) => {
@@ -57,7 +72,7 @@ impl<'a, 'tcx> UseFinder<'a, 'tcx> {
                 }
 
                 None => {
-                    if p.statement_index < block_data.statements.len() {
+                    if is_statement {
                         queue.push_back(p.successor_within_block());
                     } else {
                         queue.extend(
@@ -76,19 +91,6 @@ impl<'a, 'tcx> UseFinder<'a, 'tcx> {
         }
 
         None
-    }
-
-    fn def_use(&self, location: Location, thing: &dyn MirVisitable<'tcx>) -> Option<DefUseResult> {
-        let mut visitor = DefUseVisitor {
-            body: self.body,
-            tcx: self.tcx,
-            region_vid: self.region_vid,
-            def_use_result: None,
-        };
-
-        thing.apply(location, &mut visitor);
-
-        visitor.def_use_result
     }
 }
 

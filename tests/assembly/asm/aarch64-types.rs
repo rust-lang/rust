@@ -11,8 +11,6 @@
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register, non_camel_case_types)]
-// FIXME(f16_f128): Only needed for FIXME in check! and check_reg!
-#![feature(auto_traits, lang_items)]
 
 extern crate minicore;
 use minicore::*;
@@ -62,12 +60,6 @@ impl Copy for i64x2 {}
 impl Copy for f16x8 {}
 impl Copy for f32x4 {}
 impl Copy for f64x2 {}
-
-// FIXME(f16_f128): Only needed for FIXME in check! and check_reg!
-#[lang = "freeze"]
-unsafe auto trait Freeze {}
-#[lang = "unpin"]
-auto trait Unpin {}
 
 extern "C" {
     fn extern_func();

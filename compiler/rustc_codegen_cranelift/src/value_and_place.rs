@@ -638,9 +638,7 @@ impl<'tcx> CPlace<'tcx> {
             }
             CPlaceInner::Addr(_, Some(_)) => bug!("Can't write value to unsized place {:?}", self),
             CPlaceInner::Addr(to_ptr, None) => {
-                if dst_layout.size == Size::ZERO
-                    || dst_layout.backend_repr == BackendRepr::Uninhabited
-                {
+                if dst_layout.size == Size::ZERO {
                     return;
                 }
 

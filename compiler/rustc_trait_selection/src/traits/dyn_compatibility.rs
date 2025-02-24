@@ -698,11 +698,11 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IllegalSelfTypeVisitor<'tcx> {
                     ControlFlow::Continue(())
                 }
             }
-            ty::Alias(ty::Projection, ref data) if self.tcx.is_impl_trait_in_trait(data.def_id) => {
+            ty::Alias(ty::Projection, data) if self.tcx.is_impl_trait_in_trait(data.def_id) => {
                 // We'll deny these later in their own pass
                 ControlFlow::Continue(())
             }
-            ty::Alias(ty::Projection, ref data) => {
+            ty::Alias(ty::Projection, data) => {
                 match self.allow_self_projections {
                     AllowSelfProjections::Yes => {
                         // This is a projected type `<Foo as SomeTrait>::X`.

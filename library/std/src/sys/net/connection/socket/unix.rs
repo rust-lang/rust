@@ -322,7 +322,10 @@ impl Socket {
         buf: &mut [u8],
         flags: c_int,
     ) -> io::Result<(usize, SocketAddr)> {
-        let mut storage: libc::sockaddr_storage = unsafe { mem::zeroed() };
+        // The `recvfrom` function will fill in the storage with the address,
+        // so we don't need to zero it here.
+        // reference: https://linux.die.net/man/2/recvfrom
+        let mut storage: mem::MaybeUninit<libc::sockaddr_storage> = mem::MaybeUninit::uninit();
         let mut addrlen = mem::size_of_val(&storage) as libc::socklen_t;
 
         let n = cvt(unsafe {
@@ -335,7 +338,7 @@ impl Socket {
                 &mut addrlen,
             )
         })?;
-        Ok((n as usize, unsafe { socket_addr_from_c(&storage, addrlen as usize)? }))
+        Ok((n as usize, unsafe { socket_addr_from_c(storage.as_ptr(), addrlen as usize)? }))
     }
 
     pub fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {

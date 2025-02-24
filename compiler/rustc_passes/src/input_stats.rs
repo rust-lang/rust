@@ -63,8 +63,8 @@ struct StatCollector<'k> {
 pub fn print_hir_stats(tcx: TyCtxt<'_>) {
     let mut collector =
         StatCollector { tcx: Some(tcx), nodes: FxHashMap::default(), seen: FxHashSet::default() };
-    tcx.hir().walk_toplevel_module(&mut collector);
-    tcx.hir().walk_attributes(&mut collector);
+    tcx.hir_walk_toplevel_module(&mut collector);
+    tcx.hir_walk_attributes(&mut collector);
     collector.print("HIR STATS", "hir-stats");
 }
 

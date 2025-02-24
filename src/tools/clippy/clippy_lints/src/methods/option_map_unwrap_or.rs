@@ -58,8 +58,7 @@ pub(super) fn check<'tcx>(
                 unwrap_or_span: unwrap_arg.span,
             };
 
-            let map = cx.tcx.hir();
-            let body = map.body_owned_by(map.enclosing_body_owner(expr.hir_id));
+            let body = cx.tcx.hir_body_owned_by(cx.tcx.hir_enclosing_body_owner(expr.hir_id));
 
             // Visit the body, and return if we've found a reference
             if reference_visitor.visit_body(body).is_break() {

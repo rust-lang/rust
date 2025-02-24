@@ -251,7 +251,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     .arena
                     .alloc_from_iter(fm.items.iter().map(|x| self.lower_foreign_item_ref(x))),
             },
-            ItemKind::GlobalAsm(asm) => hir::ItemKind::GlobalAsm(self.lower_inline_asm(span, asm)),
+            ItemKind::GlobalAsm(asm) => {
+                let asm = self.lower_inline_asm(span, asm);
+                let fake_body =
+                    self.lower_body(|this| (&[], this.expr(span, hir::ExprKind::InlineAsm(asm))));
+                hir::ItemKind::GlobalAsm { asm, fake_body }
+            }
             ItemKind::TyAlias(box TyAlias { generics, where_clauses, ty, .. }) => {
                 // We lower
                 //

@@ -291,7 +291,7 @@ pub fn validate_raw_str(input: &str, prefix_len: u32) -> Result<(), RawStrError>
 }
 
 /// Creates an iterator that produces tokens from the input string.
-pub fn tokenize(input: &str) -> impl Iterator<Item = Token> + '_ {
+pub fn tokenize(input: &str) -> impl Iterator<Item = Token> {
     let mut cursor = Cursor::new(input);
     std::iter::from_fn(move || {
         let token = cursor.advance_token();

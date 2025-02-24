@@ -86,7 +86,7 @@ impl SwitchTargets {
         self.iter().find_map(|(v, t)| (v == value).then_some(t)).unwrap_or_else(|| self.otherwise())
     }
 
-    /// Adds a new target to the switch. But You cannot add an already present value.
+    /// Adds a new target to the switch. Panics if you add an already present value.
     #[inline]
     pub fn add_target(&mut self, value: u128, bb: BasicBlock) {
         let value = Pu128(value);
@@ -226,7 +226,7 @@ impl<O> AssertKind<O> {
     {
         use AssertKind::*;
         match self {
-            BoundsCheck { ref len, ref index } => write!(
+            BoundsCheck { len, index } => write!(
                 f,
                 "\"index out of bounds: the length is {{}} but the index is {{}}\", {len:?}, {index:?}"
             ),

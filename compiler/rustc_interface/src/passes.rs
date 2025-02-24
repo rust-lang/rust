@@ -171,13 +171,15 @@ fn configure_and_expand(
                     new_path.push(path);
                 }
             }
-            env::set_var(
-                "PATH",
-                &env::join_paths(
-                    new_path.iter().filter(|p| env::join_paths(iter::once(p)).is_ok()),
-                )
-                .unwrap(),
-            );
+            unsafe {
+                env::set_var(
+                    "PATH",
+                    &env::join_paths(
+                        new_path.iter().filter(|p| env::join_paths(iter::once(p)).is_ok()),
+                    )
+                    .unwrap(),
+                );
+            }
         }
 
         // Create the config for macro expansion
@@ -216,7 +218,9 @@ fn configure_and_expand(
         }
 
         if cfg!(windows) {
-            env::set_var("PATH", &old_path);
+            unsafe {
+                env::set_var("PATH", &old_path);
+            }
         }
 
         krate
@@ -301,8 +305,41 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
         for (ident, mut spans) in identifiers.drain(..) {
             spans.sort();
             if ident == sym::ferris {
+                enum FerrisFix {
+                    SnakeCase,
+                    ScreamingSnakeCase,
+                    PascalCase,
+                }
+
+                impl FerrisFix {
+                    const fn as_str(self) -> &'static str {
+                        match self {
+                            FerrisFix::SnakeCase => "ferris",
+                            FerrisFix::ScreamingSnakeCase => "FERRIS",
+                            FerrisFix::PascalCase => "Ferris",
+                        }
+                    }
+                }
+
                 let first_span = spans[0];
-                sess.dcx().emit_err(errors::FerrisIdentifier { spans, first_span });
+                let prev_source = sess.psess.source_map().span_to_prev_source(first_span);
+                let ferris_fix = prev_source
+                    .map_or(FerrisFix::SnakeCase, |source| {
+                        let mut source_before_ferris = source.trim_end().split_whitespace().rev();
+                        match source_before_ferris.next() {
+                            Some("struct" | "trait" | "mod" | "union" | "type" | "enum") => {
+                                FerrisFix::PascalCase
+                            }
+                            Some("const" | "static") => FerrisFix::ScreamingSnakeCase,
+                            Some("mut") if source_before_ferris.next() == Some("static") => {
+                                FerrisFix::ScreamingSnakeCase
+                            }
+                            _ => FerrisFix::SnakeCase,
+                        }
+                    })
+                    .as_str();
+
+                sess.dcx().emit_err(errors::FerrisIdentifier { spans, first_span, ferris_fix });
             } else {
                 sess.dcx().emit_err(errors::EmojiIdentifier { spans, ident });
             }
@@ -846,7 +883,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
                 CStore::from_tcx(tcx).report_unused_deps(tcx);
             },
             {
-                tcx.hir().par_for_each_module(|module| {
+                tcx.par_hir_for_each_module(|module| {
                     tcx.ensure_ok().check_mod_loops(module);
                     tcx.ensure_ok().check_mod_attrs(module);
                     tcx.ensure_ok().check_mod_naked_functions(module);
@@ -871,7 +908,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
 
     rustc_hir_analysis::check_crate(tcx);
     sess.time("MIR_coroutine_by_move_body", || {
-        tcx.hir().par_body_owners(|def_id| {
+        tcx.par_hir_body_owners(|def_id| {
             if tcx.needs_coroutine_by_move_body_def_id(def_id.to_def_id()) {
                 tcx.ensure_done().coroutine_by_move_body_def_id(def_id);
             }
@@ -885,7 +922,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     tcx.untracked().definitions.freeze();
 
     sess.time("MIR_borrow_checking", || {
-        tcx.hir().par_body_owners(|def_id| {
+        tcx.par_hir_body_owners(|def_id| {
             // Run unsafety check because it's responsible for stealing and
             // deallocating THIR.
             tcx.ensure_ok().check_unsafety(def_id);
@@ -893,21 +930,21 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
         });
     });
     sess.time("MIR_effect_checking", || {
-        tcx.hir().par_body_owners(|def_id| {
+        tcx.par_hir_body_owners(|def_id| {
             tcx.ensure_ok().has_ffi_unwind_calls(def_id);
 
             // If we need to codegen, ensure that we emit all errors from
             // `mir_drops_elaborated_and_const_checked` now, to avoid discovering
             // them later during codegen.
             if tcx.sess.opts.output_types.should_codegen()
-                || tcx.hir().body_const_context(def_id).is_some()
+                || tcx.hir_body_const_context(def_id).is_some()
             {
                 tcx.ensure_ok().mir_drops_elaborated_and_const_checked(def_id);
             }
         });
     });
     sess.time("coroutine_obligations", || {
-        tcx.hir().par_body_owners(|def_id| {
+        tcx.par_hir_body_owners(|def_id| {
             if tcx.is_coroutine(def_id.to_def_id()) {
                 tcx.ensure_ok().mir_coroutine_witnesses(def_id);
                 tcx.ensure_ok().check_coroutine_obligations(
@@ -931,7 +968,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
     // that requires the optimized/ctfe MIR, coroutine bodies, or evaluating consts.
     if tcx.sess.opts.unstable_opts.validate_mir {
         sess.time("ensuring_final_MIR_is_computable", || {
-            tcx.hir().par_body_owners(|def_id| {
+            tcx.par_hir_body_owners(|def_id| {
                 tcx.instance_mir(ty::InstanceKind::Item(def_id.into()));
             });
         });
@@ -967,7 +1004,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) {
                         tcx.ensure_ok().check_private_in_public(());
                     },
                     {
-                        tcx.hir().par_for_each_module(|module| {
+                        tcx.par_hir_for_each_module(|module| {
                             tcx.ensure_ok().check_mod_deathness(module)
                         });
                     },
@@ -983,7 +1020,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) {
             },
             {
                 sess.time("privacy_checking_modules", || {
-                    tcx.hir().par_for_each_module(|module| {
+                    tcx.par_hir_for_each_module(|module| {
                         tcx.ensure_ok().check_mod_privacy(module);
                     });
                 });

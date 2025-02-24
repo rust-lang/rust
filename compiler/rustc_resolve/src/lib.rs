@@ -589,6 +589,19 @@ struct ModuleData<'ra> {
 #[rustc_pass_by_value]
 struct Module<'ra>(Interned<'ra, ModuleData<'ra>>);
 
+// Allows us to use Interned without actually enforcing (via Hash/PartialEq/...) uniqueness of the
+// contained data.
+// FIXME: We may wish to actually have at least debug-level assertions that Interned's guarantees
+// are upheld.
+impl std::hash::Hash for ModuleData<'_> {
+    fn hash<H>(&self, _: &mut H)
+    where
+        H: std::hash::Hasher,
+    {
+        unreachable!()
+    }
+}
+
 impl<'ra> ModuleData<'ra> {
     fn new(
         parent: Option<Module<'ra>>,
@@ -738,6 +751,19 @@ struct NameBindingData<'ra> {
 /// All name bindings are unique and allocated on a same arena,
 /// so we can use referential equality to compare them.
 type NameBinding<'ra> = Interned<'ra, NameBindingData<'ra>>;
+
+// Allows us to use Interned without actually enforcing (via Hash/PartialEq/...) uniqueness of the
+// contained data.
+// FIXME: We may wish to actually have at least debug-level assertions that Interned's guarantees
+// are upheld.
+impl std::hash::Hash for NameBindingData<'_> {
+    fn hash<H>(&self, _: &mut H)
+    where
+        H: std::hash::Hasher,
+    {
+        unreachable!()
+    }
+}
 
 trait ToNameBinding<'ra> {
     fn to_name_binding(self, arenas: &'ra ResolverArenas<'ra>) -> NameBinding<'ra>;
@@ -1194,7 +1220,7 @@ pub struct Resolver<'ra, 'tcx> {
     effective_visibilities: EffectiveVisibilities,
     doc_link_resolutions: FxIndexMap<LocalDefId, DocLinkResMap>,
     doc_link_traits_in_scope: FxIndexMap<LocalDefId, Vec<DefId>>,
-    all_macro_rules: FxHashMap<Symbol, Res>,
+    all_macro_rules: FxHashSet<Symbol>,
 
     /// Invocation ids of all glob delegations.
     glob_delegation_invoc_ids: FxHashSet<LocalExpnId>,

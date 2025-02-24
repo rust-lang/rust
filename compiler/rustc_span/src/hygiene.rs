@@ -33,9 +33,10 @@ use std::sync::Arc;
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::stable_hasher::{Hash64, HashStable, HashingControls, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, HashingControls, StableHasher};
 use rustc_data_structures::sync::{Lock, WorkerLocal};
 use rustc_data_structures::unhash::UnhashMap;
+use rustc_hashes::Hash64;
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};

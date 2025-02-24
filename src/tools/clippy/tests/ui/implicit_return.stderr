@@ -9,7 +9,7 @@ LL |     true
 help: add `return` as shown
    |
 LL |     return true
-   |
+   |     ++++++
 
 error: missing `return` statement
   --> tests/ui/implicit_return.rs:19:15
@@ -122,7 +122,7 @@ LL |     format!("test {}", "test")
 help: add `return` as shown
    |
 LL |     return format!("test {}", "test")
-   |
+   |     ++++++
 
 error: missing `return` statement
   --> tests/ui/implicit_return.rs:90:5
@@ -133,7 +133,7 @@ LL |     m!(true, false)
 help: add `return` as shown
    |
 LL |     return m!(true, false)
-   |
+   |     ++++++
 
 error: missing `return` statement
   --> tests/ui/implicit_return.rs:96:13
@@ -169,10 +169,8 @@ LL | |     }
    |
 help: add `return` as shown
    |
-LL ~     return loop {
-LL +         m!(true);
-LL +     }
-   |
+LL |     return loop {
+   |     ++++++
 
 error: missing `return` statement
   --> tests/ui/implicit_return.rs:130:5
@@ -183,7 +181,7 @@ LL |     true
 help: add `return` as shown
    |
 LL |     return true
-   |
+   |     ++++++
 
 error: aborting due to 16 previous errors
 

@@ -11,9 +11,8 @@ LL | fn one_arg(_a: i32) {}
    |    ^^^^^^^ -------
 help: provide the argument
    |
-LL -   one_arg();
-LL +   one_arg(/* i32 */);
-   |
+LL |   one_arg(/* i32 */);
+   |           +++++++++
 
 error[E0061]: this function takes 2 arguments but 0 arguments were supplied
   --> $DIR/missing_arguments.rs:14:3

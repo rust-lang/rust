@@ -19,16 +19,12 @@ pub fn inject(
     let edition = sess.psess.edition;
 
     // the first name in this list is the crate name of the crate with the prelude
-    let names: &[Symbol] = if attr::contains_name(pre_configured_attrs, sym::no_core) {
+    let name: Symbol = if attr::contains_name(pre_configured_attrs, sym::no_core) {
         return 0;
     } else if attr::contains_name(pre_configured_attrs, sym::no_std) {
-        if attr::contains_name(pre_configured_attrs, sym::compiler_builtins) {
-            &[sym::core]
-        } else {
-            &[sym::core, sym::compiler_builtins]
-        }
+        sym::core
     } else {
-        &[sym::std]
+        sym::std
     };
 
     let expn_id = resolver.expansion_for_ast_pass(
@@ -43,36 +39,16 @@ pub fn inject(
     let ecfg = ExpansionConfig::default("std_lib_injection".to_string(), features);
     let cx = ExtCtxt::new(sess, ecfg, resolver, None);
 
-    // .rev() to preserve ordering above in combination with insert(0, ...)
-    for &name in names.iter().rev() {
-        let ident_span = if edition >= Edition2018 { span } else { call_site };
-        let item = if name == sym::compiler_builtins {
-            // compiler_builtins is a private implementation detail. We only
-            // need to insert it into the crate graph for linking and should not
-            // expose any of its public API.
-            //
-            // FIXME(#113634) We should inject this during post-processing like
-            // we do for the panic runtime, profiler runtime, etc.
-            cx.item(
-                span,
-                Ident::new(kw::Underscore, ident_span),
-                thin_vec![],
-                ast::ItemKind::ExternCrate(Some(name)),
-            )
-        } else {
-            cx.item(
-                span,
-                Ident::new(name, ident_span),
-                thin_vec![cx.attr_word(sym::macro_use, span)],
-                ast::ItemKind::ExternCrate(None),
-            )
-        };
-        krate.items.insert(0, item);
-    }
+    let ident_span = if edition >= Edition2018 { span } else { call_site };
 
-    // The crates have been injected, the assumption is that the first one is
-    // the one with the prelude.
-    let name = names[0];
+    let item = cx.item(
+        span,
+        Ident::new(name, ident_span),
+        thin_vec![cx.attr_word(sym::macro_use, span)],
+        ast::ItemKind::ExternCrate(None),
+    );
+
+    krate.items.insert(0, item);
 
     let root = (edition == Edition2015).then_some(kw::PathRoot);
 
@@ -88,6 +64,7 @@ pub fn inject(
         .map(|&symbol| Ident::new(symbol, span))
         .collect();
 
+    // Inject the relevant crate's prelude.
     let use_item = cx.item(
         span,
         Ident::empty(),

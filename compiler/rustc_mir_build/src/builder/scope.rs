@@ -604,7 +604,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let source_scope = self.source_scope;
         if let LintLevel::Explicit(current_hir_id) = lint_level {
             let parent_id =
-                self.source_scopes[source_scope].local_data.as_ref().assert_crate_local().lint_root;
+                self.source_scopes[source_scope].local_data.as_ref().unwrap_crate_local().lint_root;
             self.maybe_new_source_scope(region_scope.1.span, current_hir_id, parent_id);
         }
         self.push_scope(region_scope);
@@ -992,7 +992,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             lint_root: if let LintLevel::Explicit(lint_root) = lint_level {
                 lint_root
             } else {
-                self.source_scopes[parent].local_data.as_ref().assert_crate_local().lint_root
+                self.source_scopes[parent].local_data.as_ref().unwrap_crate_local().lint_root
             },
         };
         self.source_scopes.push(SourceScopeData {

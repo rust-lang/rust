@@ -1,11 +1,13 @@
-//@ revisions: stable2021 classic2024 structural2024
+//@ revisions: stable2021 classic2021 structural2021 classic2024 structural2024
 //@[stable2021] edition: 2021
+//@[classic2021] edition: 2021
+//@[structural2021] edition: 2021
 //@[classic2024] edition: 2024
 //@[structural2024] edition: 2024
 //! Tests for pattern errors not handled by the pattern typing rules, but by borrowck.
 #![allow(incomplete_features)]
-#![cfg_attr(classic2024, feature(ref_pat_eat_one_layer_2024))]
-#![cfg_attr(structural2024, feature(ref_pat_eat_one_layer_2024_structural))]
+#![cfg_attr(any(classic2021, classic2024), feature(ref_pat_eat_one_layer_2024))]
+#![cfg_attr(any(structural2021, structural2024), feature(ref_pat_eat_one_layer_2024_structural))]
 
 /// These patterns additionally use `&` to match a `&mut` reference type, which causes compilation
 /// to fail in HIR typeck on stable. As such, they need to be separate from the other tests.
@@ -14,13 +16,15 @@ fn errors_caught_in_hir_typeck_on_stable() {
     //[stable2021]~^ mismatched types
     //[stable2021]~| types differ in mutability
     //[classic2024]~^^^ ERROR: cannot move out of type
-    let _: &u32 = x;
+    #[cfg(any(classic2021, structural2021))] let _: u32 = x;
+    #[cfg(structural2024)] let _: &u32 = x;
 
     let [&x] = &mut [&mut 0];
     //[stable2021]~^ mismatched types
     //[stable2021]~| types differ in mutability
     //[classic2024]~^^^ ERROR: cannot move out of type
-    let _: &u32 = x;
+    #[cfg(any(classic2021, structural2021))] let _: u32 = x;
+    #[cfg(structural2024)] let _: &u32 = x;
 }
 
 pub fn main() {
@@ -35,16 +39,16 @@ pub fn main() {
     // For 2021 edition, this is also a regression test for #136223
     // since the maximum mutability is downgraded during the pattern check process.
     if let &Some(Some(x)) = &Some(&mut Some(0)) {
-        //[stable2021,classic2024]~^ ERROR: cannot borrow data in a `&` reference as mutable
-        let _: &u32 = x;
+        //[stable2021,classic2021,classic2024]~^ ERROR: cannot borrow data in a `&` reference as mutable
+        #[cfg(any(structural2021, structural2024))] let _: &u32 = x;
     }
 
     let &[x] = &&mut [0];
-    //[stable2021,classic2024]~^ ERROR: cannot borrow data in a `&` reference as mutable
-    let _: &u32 = x;
+    //[stable2021,classic2021,classic2024]~^ ERROR: cannot borrow data in a `&` reference as mutable
+    #[cfg(any(structural2021, structural2024))] let _: &u32 = x;
 
     let [&mut x] = &mut [&mut 0];
     //[classic2024]~^ ERROR: cannot move out of type
-    #[cfg(stable2021)] let _: u32 = x;
+    #[cfg(any(stable2021, classic2021, structural2021))] let _: u32 = x;
     #[cfg(structural2024)] let _: &mut u32 = x;
 }

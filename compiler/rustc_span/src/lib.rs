@@ -87,9 +87,10 @@ use std::sync::Arc;
 use std::{fmt, iter};
 
 use md5::{Digest, Md5};
-use rustc_data_structures::stable_hasher::{Hash64, Hash128, HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{FreezeLock, FreezeWriteGuard, Lock};
 use rustc_data_structures::unord::UnordMap;
+use rustc_hashes::{Hash64, Hash128};
 use sha1::Sha1;
 use sha2::Sha256;
 
@@ -403,7 +404,7 @@ impl fmt::Display for FileNameDisplay<'_> {
 impl<'a> FileNameDisplay<'a> {
     pub fn to_string_lossy(&self) -> Cow<'a, str> {
         match self.inner {
-            FileName::Real(ref inner) => inner.to_string_lossy(self.display_pref),
+            FileName::Real(inner) => inner.to_string_lossy(self.display_pref),
             _ => Cow::from(self.to_string()),
         }
     }
@@ -1441,7 +1442,7 @@ pub enum ExternalSourceKind {
 impl ExternalSource {
     pub fn get_source(&self) -> Option<&str> {
         match self {
-            ExternalSource::Foreign { kind: ExternalSourceKind::Present(ref src), .. } => Some(src),
+            ExternalSource::Foreign { kind: ExternalSourceKind::Present(src), .. } => Some(src),
             _ => None,
         }
     }

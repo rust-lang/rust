@@ -22,7 +22,7 @@ pub(crate) const ALIGN: usize = 40;
 
 /// An indication of where we are in the control flow graph. Used for printing
 /// extra information in `dump_mir`
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub enum PassWhere {
     /// We have not started dumping the control flow graph, but we are about to.
     BeforeCFG,
@@ -231,7 +231,8 @@ fn dump_path<'tcx>(
     let pass_num = if tcx.sess.opts.unstable_opts.dump_mir_exclude_pass_number {
         String::new()
     } else if pass_num {
-        format!(".{:03}-{:03}", body.phase.phase_index(), body.pass_count)
+        let (dialect_index, phase_index) = body.phase.index();
+        format!(".{}-{}-{:03}", dialect_index, phase_index, body.pass_count)
     } else {
         ".-------".to_string()
     };
@@ -969,7 +970,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             }
             FalseEdge { .. } => write!(fmt, "falseEdge"),
             FalseUnwind { .. } => write!(fmt, "falseUnwind"),
-            InlineAsm { template, ref operands, options, .. } => {
+            InlineAsm { template, operands, options, .. } => {
                 write!(fmt, "asm!(\"{}\"", InlineAsmTemplatePiece::to_string(template))?;
                 for op in operands {
                     write!(fmt, ", ")?;
@@ -1522,7 +1523,7 @@ pub fn write_allocations<'tcx>(
 ) -> io::Result<()> {
     fn alloc_ids_from_alloc(
         alloc: ConstAllocation<'_>,
-    ) -> impl DoubleEndedIterator<Item = AllocId> + '_ {
+    ) -> impl DoubleEndedIterator<Item = AllocId> {
         alloc.inner().provenance().ptrs().values().map(|p| p.alloc_id())
     }
 
@@ -1588,7 +1589,7 @@ pub fn write_allocations<'tcx>(
             Some(GlobalAlloc::Static(did)) if !tcx.is_foreign_item(did) => {
                 write!(w, " (static: {}", tcx.def_path_str(did))?;
                 if body.phase <= MirPhase::Runtime(RuntimePhase::PostCleanup)
-                    && tcx.hir().body_const_context(body.source.def_id()).is_some()
+                    && tcx.hir_body_const_context(body.source.def_id()).is_some()
                 {
                     // Statics may be cyclic and evaluating them too early
                     // in the MIR pipeline may cause cycle errors even though

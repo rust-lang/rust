@@ -723,9 +723,8 @@ impl<T: ?Sized> *const T {
     /// to [`sub`](#method.sub)).  The following are all equivalent, assuming
     /// that their safety preconditions are met:
     /// ```rust
-    /// # #![feature(ptr_sub_ptr)]
     /// # unsafe fn blah(ptr: *const i32, origin: *const i32, count: usize) -> bool { unsafe {
-    /// ptr.sub_ptr(origin) == count
+    /// ptr.offset_from_unsigned(origin) == count
     /// # &&
     /// origin.add(count) == ptr
     /// # &&
@@ -752,26 +751,24 @@ impl<T: ?Sized> *const T {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ptr_sub_ptr)]
-    ///
     /// let a = [0; 5];
     /// let ptr1: *const i32 = &a[1];
     /// let ptr2: *const i32 = &a[3];
     /// unsafe {
-    ///     assert_eq!(ptr2.sub_ptr(ptr1), 2);
+    ///     assert_eq!(ptr2.offset_from_unsigned(ptr1), 2);
     ///     assert_eq!(ptr1.add(2), ptr2);
     ///     assert_eq!(ptr2.sub(2), ptr1);
-    ///     assert_eq!(ptr2.sub_ptr(ptr2), 0);
+    ///     assert_eq!(ptr2.offset_from_unsigned(ptr2), 0);
     /// }
     ///
     /// // This would be incorrect, as the pointers are not correctly ordered:
-    /// // ptr1.sub_ptr(ptr2)
+    /// // ptr1.offset_from_unsigned(ptr2)
     /// ```
-    #[unstable(feature = "ptr_sub_ptr", issue = "95892")]
-    #[rustc_const_unstable(feature = "const_ptr_sub_ptr", issue = "95892")]
+    #[stable(feature = "ptr_sub_ptr", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_ptr_sub_ptr", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-    pub const unsafe fn sub_ptr(self, origin: *const T) -> usize
+    pub const unsafe fn offset_from_unsigned(self, origin: *const T) -> usize
     where
         T: Sized,
     {
@@ -789,7 +786,7 @@ impl<T: ?Sized> *const T {
 
         ub_checks::assert_unsafe_precondition!(
             check_language_ub,
-            "ptr::sub_ptr requires `self >= origin`",
+            "ptr::offset_from_unsigned requires `self >= origin`",
             (
                 this: *const () = self as *const (),
                 origin: *const () = origin as *const (),
@@ -807,18 +804,18 @@ impl<T: ?Sized> *const T {
     /// units of **bytes**.
     ///
     /// This is purely a convenience for casting to a `u8` pointer and
-    /// using [`sub_ptr`][pointer::sub_ptr] on it. See that method for
+    /// using [`sub_ptr`][pointer::offset_from_unsigned] on it. See that method for
     /// documentation and safety requirements.
     ///
     /// For non-`Sized` pointees this operation considers only the data pointers,
     /// ignoring the metadata.
-    #[unstable(feature = "ptr_sub_ptr", issue = "95892")]
-    #[rustc_const_unstable(feature = "const_ptr_sub_ptr", issue = "95892")]
+    #[stable(feature = "ptr_sub_ptr", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_ptr_sub_ptr", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-    pub const unsafe fn byte_sub_ptr<U: ?Sized>(self, origin: *const U) -> usize {
+    pub const unsafe fn byte_offset_from_unsigned<U: ?Sized>(self, origin: *const U) -> usize {
         // SAFETY: the caller must uphold the safety contract for `sub_ptr`.
-        unsafe { self.cast::<u8>().sub_ptr(origin.cast::<u8>()) }
+        unsafe { self.cast::<u8>().offset_from_unsigned(origin.cast::<u8>()) }
     }
 
     /// Returns whether two pointers are guaranteed to be equal.

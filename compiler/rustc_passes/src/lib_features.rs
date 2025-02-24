@@ -148,7 +148,7 @@ fn lib_features(tcx: TyCtxt<'_>, LocalCrate: LocalCrate) -> LibFeatures {
     }
 
     let mut collector = LibFeatureCollector::new(tcx);
-    tcx.hir().walk_attributes(&mut collector);
+    tcx.hir_walk_attributes(&mut collector);
     collector.lib_features
 }
 

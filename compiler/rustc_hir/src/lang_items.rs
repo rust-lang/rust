@@ -60,7 +60,7 @@ impl LanguageItems {
         self.reverse_items.get(&def_id).copied()
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (LangItem, DefId)> + '_ {
+    pub fn iter(&self) -> impl Iterator<Item = (LangItem, DefId)> {
         self.items
             .iter()
             .enumerate()

@@ -130,7 +130,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         diag: &mut Diag<'_, G>,
     ) {
         let tcx = self.tcx();
-        let parent_id = tcx.hir().get_parent_item(self_ty.hir_id).def_id;
+        let parent_id = tcx.hir_get_parent_item(self_ty.hir_id).def_id;
         if let hir::Node::Item(hir::Item {
             kind: hir::ItemKind::Impl(hir::Impl { self_ty: impl_self_ty, of_trait, generics, .. }),
             ..
@@ -191,7 +191,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// Make sure that we are in the condition to suggest `impl Trait`.
     fn maybe_suggest_impl_trait(&self, self_ty: &hir::Ty<'_>, diag: &mut Diag<'_>) -> bool {
         let tcx = self.tcx();
-        let parent_id = tcx.hir().get_parent_item(self_ty.hir_id).def_id;
+        let parent_id = tcx.hir_get_parent_item(self_ty.hir_id).def_id;
         // FIXME: If `type_alias_impl_trait` is enabled, also look for `Trait0<Ty = Trait1>`
         //        and suggest `Trait0<Ty = impl Trait1>`.
         // Functions are found in three different contexts.
@@ -321,7 +321,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     }
 
     fn maybe_suggest_assoc_ty_bound(&self, self_ty: &hir::Ty<'_>, diag: &mut Diag<'_>) {
-        let mut parents = self.tcx().hir().parent_iter(self_ty.hir_id);
+        let mut parents = self.tcx().hir_parent_iter(self_ty.hir_id);
 
         if let Some((_, hir::Node::AssocItemConstraint(constraint))) = parents.next()
             && let Some(obj_ty) = constraint.ty()

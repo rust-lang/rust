@@ -19,7 +19,7 @@
 //!    - Example: Examine each expression to look for its type and do some check or other.
 //!    - How: Implement `intravisit::Visitor` and override the `NestedFilter` type to
 //!      `nested_filter::OnlyBodies` (and implement `maybe_tcx`), and use
-//!      `tcx.hir().visit_all_item_likes_in_crate(&mut visitor)`. Within your
+//!      `tcx.hir_visit_all_item_likes_in_crate(&mut visitor)`. Within your
 //!      `intravisit::Visitor` impl, implement methods like `visit_expr()` (don't forget to invoke
 //!      `intravisit::walk_expr()` to keep walking the subparts).
 //!    - Pro: Visitor methods for any kind of HIR node, not just item-like things.
@@ -31,7 +31,7 @@
 //!      impl into scope while visiting the impl-items, and then back out again.
 //!    - How: Implement `intravisit::Visitor` and override the `NestedFilter` type to
 //!      `nested_filter::All` (and implement `maybe_tcx`). Walk your crate with
-//!      `tcx.hir().walk_toplevel_module(visitor)` invoked on `tcx.hir().krate()`.
+//!      `tcx.hir_walk_toplevel_module(visitor)`.
 //!    - Pro: Visitor methods for any kind of HIR node, not just item-like things.
 //!    - Pro: Preserves nesting information
 //!    - Con: Does not integrate well into dependency tracking.
@@ -193,7 +193,7 @@ use nested_filter::NestedFilter;
 /// (this is why the module is called `intravisit`, to distinguish it
 /// from the AST's `visit` module, which acts differently). If you
 /// simply want to visit all items in the crate in some order, you
-/// should call `tcx.hir().visit_all_item_likes_in_crate`. Otherwise, see the comment
+/// should call `tcx.hir_visit_all_item_likes_in_crate`. Otherwise, see the comment
 /// on `visit_nested_item` for details on how to visit nested items.
 ///
 /// If you want to ensure that your code handles every variant
@@ -573,9 +573,13 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
             try_visit!(visitor.visit_id(item.hir_id()));
             walk_list!(visitor, visit_foreign_item_ref, items);
         }
-        ItemKind::GlobalAsm(asm) => {
+        ItemKind::GlobalAsm { asm: _, fake_body } => {
             try_visit!(visitor.visit_id(item.hir_id()));
-            try_visit!(visitor.visit_inline_asm(asm, item.hir_id()));
+            // Visit the fake body, which contains the asm statement.
+            // Therefore we should not visit the asm statement again
+            // outside of the body, or some visitors won't have their
+            // typeck results set correctly.
+            try_visit!(visitor.visit_nested_body(fake_body));
         }
         ItemKind::TyAlias(ref ty, ref generics) => {
             try_visit!(visitor.visit_id(item.hir_id()));
@@ -593,9 +597,9 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
             defaultness: _,
             polarity: _,
             defaultness_span: _,
-            ref generics,
-            ref of_trait,
-            ref self_ty,
+            generics,
+            of_trait,
+            self_ty,
             items,
         }) => {
             try_visit!(visitor.visit_id(item.hir_id()));
@@ -1045,7 +1049,7 @@ pub fn walk_generic_param<'v, V: Visitor<'v>>(
         }
         GenericParamKind::Const { ref ty, ref default, synthetic: _ } => {
             try_visit!(visitor.visit_ty_unambig(ty));
-            if let Some(ref default) = default {
+            if let Some(default) = default {
                 try_visit!(visitor.visit_const_param_default(param.hir_id, default));
             }
         }
@@ -1401,8 +1405,8 @@ pub fn walk_assoc_item_constraint<'v, V: Visitor<'v>>(
     try_visit!(visitor.visit_generic_args(constraint.gen_args));
     match constraint.kind {
         AssocItemConstraintKind::Equality { ref term } => match term {
-            Term::Ty(ref ty) => try_visit!(visitor.visit_ty_unambig(ty)),
-            Term::Const(ref c) => try_visit!(visitor.visit_const_arg_unambig(c)),
+            Term::Ty(ty) => try_visit!(visitor.visit_ty_unambig(ty)),
+            Term::Const(c) => try_visit!(visitor.visit_const_arg_unambig(c)),
         },
         AssocItemConstraintKind::Bound { bounds } => {
             walk_list!(visitor, visit_param_bound, bounds)
@@ -1442,9 +1446,11 @@ pub fn walk_inline_asm<'v, V: Visitor<'v>>(
                 try_visit!(visitor.visit_expr(in_expr));
                 visit_opt!(visitor, visit_expr, out_expr);
             }
-            InlineAsmOperand::Const { anon_const, .. }
-            | InlineAsmOperand::SymFn { anon_const, .. } => {
+            InlineAsmOperand::Const { anon_const, .. } => {
                 try_visit!(visitor.visit_anon_const(anon_const));
+            }
+            InlineAsmOperand::SymFn { expr, .. } => {
+                try_visit!(visitor.visit_expr(expr));
             }
             InlineAsmOperand::SymStatic { path, .. } => {
                 try_visit!(visitor.visit_qpath(path, id, *op_sp));

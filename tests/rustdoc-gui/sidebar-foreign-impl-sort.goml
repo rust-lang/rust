@@ -1,0 +1,15 @@
+// Checks sidebar resizing close the Settings popover
+go-to: "file://" + |DOC_PATH| + "/test_docs/SidebarSort/trait.Sort.html#foreign-impls"
+
+// Check that the sidebar contains the expected foreign implementations
+assert-text: (".sidebar-elems section ul > li:nth-child(1)", "&'a str")
+assert-text: (".sidebar-elems section ul > li:nth-child(2)", "AtomicBool")
+assert-text: (".sidebar-elems section ul > li:nth-child(3)", "AtomicU8")
+assert-text: (".sidebar-elems section ul > li:nth-child(4)", "AtomicU16")
+assert-text: (".sidebar-elems section ul > li:nth-child(5)", "AtomicU32")
+assert-text: (".sidebar-elems section ul > li:nth-child(6)", "Cell<u8>")
+assert-text: (".sidebar-elems section ul > li:nth-child(7)", "Cell<u16>")
+assert-text: (".sidebar-elems section ul > li:nth-child(8)", "u8")
+assert-text: (".sidebar-elems section ul > li:nth-child(9)", "u16")
+assert-text: (".sidebar-elems section ul > li:nth-child(10)", "u32")
+assert-text: (".sidebar-elems section ul > li:nth-child(11)", "usize")

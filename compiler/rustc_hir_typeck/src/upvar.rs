@@ -196,7 +196,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let args = self.resolve_vars_if_possible(args);
         let closure_def_id = closure_def_id.expect_local();
 
-        assert_eq!(self.tcx.hir().body_owner_def_id(body.id()), closure_def_id);
+        assert_eq!(self.tcx.hir_body_owner_def_id(body.id()), closure_def_id);
         let mut delegate = InferBorrowKind {
             closure_def_id,
             capture_information: Default::default(),
@@ -1934,7 +1934,7 @@ fn apply_capture_kind_on_capture_ty<'tcx>(
 
 /// Returns the Span of where the value with the provided HirId would be dropped
 fn drop_location_span(tcx: TyCtxt<'_>, hir_id: HirId) -> Span {
-    let owner_id = tcx.hir().get_enclosing_scope(hir_id).unwrap();
+    let owner_id = tcx.hir_get_enclosing_scope(hir_id).unwrap();
 
     let owner_node = tcx.hir_node(owner_id);
     let owner_span = match owner_node {

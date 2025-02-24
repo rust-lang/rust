@@ -128,7 +128,7 @@ impl<'tcx> LateLintPass<'tcx> for ShadowedIntoIter {
         // we should just suggest removing the `.into_iter()` or changing it to `.iter()`
         // to disambiguate if we want to iterate by-value or by-ref.
         let sub = if let Some((_, hir::Node::Expr(parent_expr))) =
-            cx.tcx.hir().parent_iter(expr.hir_id).nth(1)
+            cx.tcx.hir_parent_iter(expr.hir_id).nth(1)
             && let hir::ExprKind::Match(arg, [_], hir::MatchSource::ForLoopDesugar) =
                 &parent_expr.kind
             && let hir::ExprKind::Call(path, [_]) = &arg.kind
