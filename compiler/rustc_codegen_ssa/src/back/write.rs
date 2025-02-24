@@ -1459,6 +1459,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     if needs_fat_lto.is_empty()
                         && needs_thin_lto.is_empty()
                         && lto_import_only_modules.is_empty()
+                        && autodiff_items.is_empty()
                     {
                         // Nothing more to do!
                         break;
