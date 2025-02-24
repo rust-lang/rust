@@ -83,12 +83,12 @@ use crate::vec::Vec;
 /// The return value type for `RcOps::make_mut`.
 #[cfg(not(no_global_oom_handling))]
 pub(crate) enum MakeMutStrategy {
-    /// This `RawRc` is the only strong pointer that reference to the value, but there are weak
-    /// pointers also reference to the value. Before returning, the strong reference count has been
+    /// This `RawRc` is the only strong pointer that references the value, but there are weak
+    /// pointers also referencing the value. Before returning, the strong reference count has been
     /// set to zero to prevent new strong pointers being created through upgrading from weak
     /// pointers.
     Move,
-    /// There is more than one strong pointers reference to the value.
+    /// There is more than one strong pointer that references the value.
     Clone,
 }
 
