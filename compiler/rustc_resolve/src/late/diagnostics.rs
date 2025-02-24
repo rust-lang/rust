@@ -431,8 +431,10 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
         // Try to get the span of the identifier within the path's syntax context
         // (if that's different).
-        if let Some(within_macro_span) = base_error.span.within_macro(span) {
-            err.span_label(within_macro_span, "within this macro");
+        if let Some(within_macro_span) =
+            base_error.span.within_macro(span, self.r.tcx.sess.source_map())
+        {
+            err.span_label(within_macro_span, "due to this macro variable");
         }
 
         self.detect_missing_binding_available_from_pattern(&mut err, path, following_seg);
