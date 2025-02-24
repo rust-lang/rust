@@ -238,7 +238,7 @@ fn tree_to_bridge_tree(
 /// Creates a token stream containing a single token tree.
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl From<TokenTree> for TokenStream {
-    /// Convert the tree to a bridge tree then a `TokenStream`
+    /// Convert the tree to a `TokenStream`
     fn from(tree: TokenTree) -> TokenStream {
         TokenStream(Some(bridge::client::TokenStream::from_token_tree(tree_to_bridge_tree(tree))))
     }
