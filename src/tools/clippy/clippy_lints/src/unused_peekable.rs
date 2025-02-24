@@ -118,7 +118,7 @@ impl<'tcx> Visitor<'tcx> for PeekableVisitor<'_, 'tcx> {
 
     fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) -> ControlFlow<()> {
         if path_to_local_id(ex, self.expected_hir_id) {
-            for (_, node) in self.cx.tcx.hir().parent_iter(ex.hir_id) {
+            for (_, node) in self.cx.tcx.hir_parent_iter(ex.hir_id) {
                 match node {
                     Node::Expr(expr) => {
                         match expr.kind {

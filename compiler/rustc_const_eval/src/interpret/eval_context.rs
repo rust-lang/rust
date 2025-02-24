@@ -4,9 +4,6 @@ use either::{Left, Right};
 use rustc_abi::{Align, HasDataLayout, Size, TargetDataLayout};
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir::def_id::DefId;
-use rustc_infer::infer::TyCtxtInferExt;
-use rustc_infer::infer::at::ToTrace;
-use rustc_infer::traits::ObligationCause;
 use rustc_middle::mir::interpret::{ErrorHandled, InvalidMetaKind, ReportedErrorInfo};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{
@@ -17,8 +14,7 @@ use rustc_middle::{mir, span_bug};
 use rustc_session::Limit;
 use rustc_span::Span;
 use rustc_target::callconv::FnAbi;
-use rustc_trait_selection::traits::ObligationCtxt;
-use tracing::{debug, instrument, trace};
+use tracing::{debug, trace};
 
 use super::{
     Frame, FrameInfo, GlobalId, InterpErrorInfo, InterpErrorKind, InterpResult, MPlaceTy, Machine,
@@ -318,40 +314,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 ReportedErrorInfo::non_const_eval_error(error_guaranteed)
             )),
         }
-    }
-
-    /// Check if the two things are equal in the current param_env, using an infcx to get proper
-    /// equality checks.
-    #[instrument(level = "trace", skip(self), ret)]
-    pub(super) fn eq_in_param_env<T>(&self, a: T, b: T) -> bool
-    where
-        T: PartialEq + TypeFoldable<TyCtxt<'tcx>> + ToTrace<'tcx>,
-    {
-        // Fast path: compare directly.
-        if a == b {
-            return true;
-        }
-        // Slow path: spin up an inference context to check if these traits are sufficiently equal.
-        let (infcx, param_env) = self.tcx.infer_ctxt().build_with_typing_env(self.typing_env);
-        let ocx = ObligationCtxt::new(&infcx);
-        let cause = ObligationCause::dummy_with_span(self.cur_span());
-        // equate the two trait refs after normalization
-        let a = ocx.normalize(&cause, param_env, a);
-        let b = ocx.normalize(&cause, param_env, b);
-
-        if let Err(terr) = ocx.eq(&cause, param_env, a, b) {
-            trace!(?terr);
-            return false;
-        }
-
-        let errors = ocx.select_all_or_error();
-        if !errors.is_empty() {
-            trace!(?errors);
-            return false;
-        }
-
-        // All good.
-        true
     }
 
     /// Walks up the callstack from the intrinsic's callsite, searching for the first callsite in a

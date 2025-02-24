@@ -1,3 +1,10 @@
+//! Common utilities shared by both `rustc_ast` and `rustc_type_ir`.
+//!
+//! Don't depend on this crate directly; both of those crates should re-export
+//! the functionality. Additionally, if you're in scope of `rustc_middle`, then
+//! prefer imports via that too, to avoid needing to directly depend on (e.g.)
+//! `rustc_type_ir` for a single import.
+
 // tidy-alphabetical-start
 #![cfg_attr(feature = "nightly", allow(internal_features))]
 #![cfg_attr(feature = "nightly", feature(never_type))]

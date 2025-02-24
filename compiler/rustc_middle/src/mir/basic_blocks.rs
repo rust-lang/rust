@@ -79,7 +79,7 @@ impl<'tcx> BasicBlocks<'tcx> {
     #[inline]
     pub fn reverse_postorder(&self) -> &[BasicBlock] {
         self.cache.reverse_postorder.get_or_init(|| {
-            let mut rpo: Vec<_> = Postorder::new(&self.basic_blocks, START_BLOCK, ()).collect();
+            let mut rpo: Vec<_> = Postorder::new(&self.basic_blocks, START_BLOCK, None).collect();
             rpo.reverse();
             rpo
         })

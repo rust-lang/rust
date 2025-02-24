@@ -120,7 +120,7 @@ fn needs_parenthesis(cx: &LateContext<'_>, binary: &Expr<'_>, child: &Expr<'_>) 
             // the parent HIR node is an expression, or if the parent HIR node
             // is a Block or Stmt, and the new left hand side would need
             // parenthesis be treated as a statement rather than an expression.
-            if let Some((_, parent)) = cx.tcx.hir().parent_iter(binary.hir_id).next() {
+            if let Some((_, parent)) = cx.tcx.hir_parent_iter(binary.hir_id).next() {
                 match parent {
                     Node::Expr(_) => return Parens::Needed,
                     Node::Block(_) | Node::Stmt(_) => {
@@ -142,7 +142,7 @@ fn needs_parenthesis(cx: &LateContext<'_>, binary: &Expr<'_>, child: &Expr<'_>) 
             // This would mean that the rustfix suggestion will appear at the start of a line, which causes
             // these expressions to be interpreted as statements if they do not have parenthesis.
             let mut prev_id = binary.hir_id;
-            for (_, parent) in cx.tcx.hir().parent_iter(binary.hir_id) {
+            for (_, parent) in cx.tcx.hir_parent_iter(binary.hir_id) {
                 if let Node::Expr(expr) = parent
                     && let ExprKind::Binary(_, lhs, _) | ExprKind::Cast(lhs, _) | ExprKind::Unary(_, lhs) = expr.kind
                     && lhs.hir_id == prev_id

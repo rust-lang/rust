@@ -41,9 +41,8 @@ LL + fn elided2(x: &i32) -> impl Copy + '_ { x }
    |
 help: alternatively, add an explicit `'static` bound to this reference
    |
-LL - fn elided2(x: &i32) -> impl Copy + 'static { x }
-LL + fn elided2(x: &'static i32) -> impl Copy + 'static { x }
-   |
+LL | fn elided2(x: &'static i32) -> impl Copy + 'static { x }
+   |                +++++++
 
 error: lifetime may not live long enough
   --> $DIR/must_outlive_least_region_or_bound.rs:12:55
@@ -172,9 +171,8 @@ LL + fn elided4(x: &i32) -> Box<dyn Debug + '_> { Box::new(x) }
    |
 help: alternatively, add an explicit `'static` bound to this reference
    |
-LL - fn elided4(x: &i32) -> Box<dyn Debug + 'static> { Box::new(x) }
-LL + fn elided4(x: &'static i32) -> Box<dyn Debug + 'static> { Box::new(x) }
-   |
+LL | fn elided4(x: &'static i32) -> Box<dyn Debug + 'static> { Box::new(x) }
+   |                +++++++
 
 error: lifetime may not live long enough
   --> $DIR/must_outlive_least_region_or_bound.rs:27:60

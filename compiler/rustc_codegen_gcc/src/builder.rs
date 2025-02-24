@@ -989,10 +989,14 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             OperandValue::Ref(place.val)
         } else if place.layout.is_gcc_immediate() {
             let load = self.load(place.layout.gcc_type(self), place.val.llval, place.val.align);
-            if let abi::BackendRepr::Scalar(ref scalar) = place.layout.backend_repr {
-                scalar_load_metadata(self, load, scalar);
-            }
-            OperandValue::Immediate(self.to_immediate(load, place.layout))
+            OperandValue::Immediate(
+                if let abi::BackendRepr::Scalar(ref scalar) = place.layout.backend_repr {
+                    scalar_load_metadata(self, load, scalar);
+                    self.to_immediate_scalar(load, *scalar)
+                } else {
+                    load
+                },
+            )
         } else if let abi::BackendRepr::ScalarPair(ref a, ref b) = place.layout.backend_repr {
             let b_offset = a.size(self).align_to(b.align(self).abi);
 
@@ -1694,7 +1698,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
     fn to_immediate_scalar(&mut self, val: Self::Value, scalar: abi::Scalar) -> Self::Value {
         if scalar.is_bool() {
-            return self.trunc(val, self.cx().type_i1());
+            return self.unchecked_utrunc(val, self.cx().type_i1());
         }
         val
     }

@@ -1,9 +1,14 @@
+//! Handles the vendoring process for the bootstrap system.
+//!
+//! This module ensures that all required Cargo dependencies are gathered
+//! and stored in the `<src>/<VENDOR_DIR>` directory.
 use std::path::PathBuf;
 
 use crate::core::build_steps::tool::SUBMODULES_FOR_RUSTBOOK;
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::utils::exec::command;
 
+/// The name of the directory where vendored dependencies are stored.
 pub const VENDOR_DIR: &str = "vendor";
 
 /// Returns the cargo workspaces to vendor for `x vendor` and dist tarballs.
@@ -29,11 +34,19 @@ pub fn default_paths_to_vendor(builder: &Builder<'_>) -> Vec<(PathBuf, Vec<&'sta
     .collect()
 }
 
+/// Defines the vendoring step in the bootstrap process.
+///
+/// This step executes `cargo vendor` to collect all dependencies
+/// and store them in the `<src>/<VENDOR_DIR>` directory.
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub(crate) struct Vendor {
+    /// Additional paths to synchronize during vendoring.
     pub(crate) sync_args: Vec<PathBuf>,
+    /// Determines whether vendored dependencies use versioned directories.
     pub(crate) versioned_dirs: bool,
+    /// The root directory of the source code.
     pub(crate) root_dir: PathBuf,
+    /// The target directory for storing vendored dependencies.
     pub(crate) output_dir: PathBuf,
 }
 
@@ -55,6 +68,10 @@ impl Step for Vendor {
         });
     }
 
+    /// Executes the vendoring process.
+    ///
+    /// This function runs `cargo vendor` and ensures all required submodules
+    /// are initialized before vendoring begins.
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         builder.info(&format!("Vendoring sources to {:?}", self.root_dir));
 
@@ -94,6 +111,7 @@ impl Step for Vendor {
     }
 }
 
+/// Stores the result of the vendoring step.
 #[derive(Debug, Clone)]
 pub(crate) struct VendorOutput {
     pub(crate) config: String,

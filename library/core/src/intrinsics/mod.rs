@@ -78,11 +78,7 @@ pub mod simd;
 use crate::sync::atomic::{self, AtomicBool, AtomicI32, AtomicIsize, AtomicU32, Ordering};
 
 #[stable(feature = "drop_in_place", since = "1.8.0")]
-#[cfg_attr(bootstrap, rustc_allowed_through_unstable_modules)]
-#[cfg_attr(
-    not(bootstrap),
-    rustc_allowed_through_unstable_modules = "import this function via `std::ptr` instead"
-)]
+#[rustc_allowed_through_unstable_modules = "import this function via `std::ptr` instead"]
 #[deprecated(note = "no longer an intrinsic - use `ptr::drop_in_place` directly", since = "1.52.0")]
 #[inline]
 pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
@@ -1901,11 +1897,7 @@ pub const fn forget<T: ?Sized>(_: T) {
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(bootstrap, rustc_allowed_through_unstable_modules)]
-#[cfg_attr(
-    not(bootstrap),
-    rustc_allowed_through_unstable_modules = "import this function via `std::mem` instead"
-)]
+#[rustc_allowed_through_unstable_modules = "import this function via `std::mem` instead"]
 #[rustc_const_stable(feature = "const_transmute", since = "1.56.0")]
 #[rustc_diagnostic_item = "transmute"]
 #[rustc_nounwind]
@@ -2739,110 +2731,124 @@ pub unsafe fn truncf128(_x: f128) -> f128 {
     unreachable!()
 }
 
-/// Returns the nearest integer to an `f16`. Changing the rounding mode is not possible in Rust,
-/// so this rounds half-way cases to the number with an even least significant digit.
-///
-/// May raise an inexact floating-point exception if the argument is not an integer.
-/// However, Rust assumes floating-point exceptions cannot be observed, so these exceptions
-/// cannot actually be utilized from Rust code.
-/// In other words, this intrinsic is equivalent in behavior to `nearbyintf16` and `roundevenf16`.
+/// Returns the nearest integer to an `f16`. Rounds half-way cases to the number with an even
+/// least significant digit.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f16::round_ties_even`](../../std/primitive.f16.html#method.round_ties_even)
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
-pub unsafe fn rintf16(_x: f16) -> f16 {
+#[cfg(not(bootstrap))]
+pub fn round_ties_even_f16(_x: f16) -> f16 {
     unreachable!()
 }
-/// Returns the nearest integer to an `f32`. Changing the rounding mode is not possible in Rust,
-/// so this rounds half-way cases to the number with an even least significant digit.
-///
-/// May raise an inexact floating-point exception if the argument is not an integer.
-/// However, Rust assumes floating-point exceptions cannot be observed, so these exceptions
-/// cannot actually be utilized from Rust code.
-/// In other words, this intrinsic is equivalent in behavior to `nearbyintf32` and `roundevenf32`.
+
+/// To be removed on next bootstrap bump.
+#[cfg(bootstrap)]
+pub fn round_ties_even_f16(x: f16) -> f16 {
+    #[rustc_intrinsic]
+    #[rustc_intrinsic_must_be_overridden]
+    #[rustc_nounwind]
+    unsafe fn rintf16(_x: f16) -> f16 {
+        unreachable!()
+    }
+
+    // SAFETY: this intrinsic isn't actually unsafe
+    unsafe { rintf16(x) }
+}
+
+/// Returns the nearest integer to an `f32`. Rounds half-way cases to the number with an even
+/// least significant digit.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f32::round_ties_even`](../../std/primitive.f32.html#method.round_ties_even)
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
-pub unsafe fn rintf32(_x: f32) -> f32 {
+#[cfg(not(bootstrap))]
+pub fn round_ties_even_f32(_x: f32) -> f32 {
     unreachable!()
 }
-/// Returns the nearest integer to an `f64`. Changing the rounding mode is not possible in Rust,
-/// so this rounds half-way cases to the number with an even least significant digit.
-///
-/// May raise an inexact floating-point exception if the argument is not an integer.
-/// However, Rust assumes floating-point exceptions cannot be observed, so these exceptions
-/// cannot actually be utilized from Rust code.
-/// In other words, this intrinsic is equivalent in behavior to `nearbyintf64` and `roundevenf64`.
+
+/// To be removed on next bootstrap bump.
+#[cfg(bootstrap)]
+pub fn round_ties_even_f32(x: f32) -> f32 {
+    #[rustc_intrinsic]
+    #[rustc_intrinsic_must_be_overridden]
+    #[rustc_nounwind]
+    unsafe fn rintf32(_x: f32) -> f32 {
+        unreachable!()
+    }
+
+    // SAFETY: this intrinsic isn't actually unsafe
+    unsafe { rintf32(x) }
+}
+
+/// Provided for compatibility with stdarch. DO NOT USE.
+#[inline(always)]
+pub unsafe fn rintf32(x: f32) -> f32 {
+    round_ties_even_f32(x)
+}
+
+/// Returns the nearest integer to an `f64`. Rounds half-way cases to the number with an even
+/// least significant digit.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f64::round_ties_even`](../../std/primitive.f64.html#method.round_ties_even)
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
-pub unsafe fn rintf64(_x: f64) -> f64 {
+#[cfg(not(bootstrap))]
+pub fn round_ties_even_f64(_x: f64) -> f64 {
     unreachable!()
 }
-/// Returns the nearest integer to an `f128`. Changing the rounding mode is not possible in Rust,
-/// so this rounds half-way cases to the number with an even least significant digit.
-///
-/// May raise an inexact floating-point exception if the argument is not an integer.
-/// However, Rust assumes floating-point exceptions cannot be observed, so these exceptions
-/// cannot actually be utilized from Rust code.
-/// In other words, this intrinsic is equivalent in behavior to `nearbyintf128` and `roundevenf128`.
+
+/// To be removed on next bootstrap bump.
+#[cfg(bootstrap)]
+pub fn round_ties_even_f64(x: f64) -> f64 {
+    #[rustc_intrinsic]
+    #[rustc_intrinsic_must_be_overridden]
+    #[rustc_nounwind]
+    unsafe fn rintf64(_x: f64) -> f64 {
+        unreachable!()
+    }
+
+    // SAFETY: this intrinsic isn't actually unsafe
+    unsafe { rintf64(x) }
+}
+
+/// Provided for compatibility with stdarch. DO NOT USE.
+#[inline(always)]
+pub unsafe fn rintf64(x: f64) -> f64 {
+    round_ties_even_f64(x)
+}
+
+/// Returns the nearest integer to an `f128`. Rounds half-way cases to the number with an even
+/// least significant digit.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f128::round_ties_even`](../../std/primitive.f128.html#method.round_ties_even)
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
-pub unsafe fn rintf128(_x: f128) -> f128 {
+#[cfg(not(bootstrap))]
+pub fn round_ties_even_f128(_x: f128) -> f128 {
     unreachable!()
 }
 
-/// Returns the nearest integer to an `f16`. Changing the rounding mode is not possible in Rust,
-/// so this rounds half-way cases to the number with an even least significant digit.
-///
-/// This intrinsic does not have a stable counterpart.
-#[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
-#[rustc_nounwind]
-pub unsafe fn nearbyintf16(_x: f16) -> f16 {
-    unreachable!()
-}
-/// Returns the nearest integer to an `f32`. Changing the rounding mode is not possible in Rust,
-/// so this rounds half-way cases to the number with an even least significant digit.
-///
-/// This intrinsic does not have a stable counterpart.
-#[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
-#[rustc_nounwind]
-pub unsafe fn nearbyintf32(_x: f32) -> f32 {
-    unreachable!()
-}
-/// Returns the nearest integer to an `f64`. Changing the rounding mode is not possible in Rust,
-/// so this rounds half-way cases to the number with an even least significant digit.
-///
-/// This intrinsic does not have a stable counterpart.
-#[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
-#[rustc_nounwind]
-pub unsafe fn nearbyintf64(_x: f64) -> f64 {
-    unreachable!()
-}
-/// Returns the nearest integer to an `f128`. Changing the rounding mode is not possible in Rust,
-/// so this rounds half-way cases to the number with an even least significant digit.
-///
-/// This intrinsic does not have a stable counterpart.
-#[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
-#[rustc_nounwind]
-pub unsafe fn nearbyintf128(_x: f128) -> f128 {
-    unreachable!()
+/// To be removed on next bootstrap bump.
+#[cfg(bootstrap)]
+pub fn round_ties_even_f128(x: f128) -> f128 {
+    #[rustc_intrinsic]
+    #[rustc_intrinsic_must_be_overridden]
+    #[rustc_nounwind]
+    unsafe fn rintf128(_x: f128) -> f128 {
+        unreachable!()
+    }
+
+    // SAFETY: this intrinsic isn't actually unsafe
+    unsafe { rintf128(x) }
 }
 
 /// Returns the nearest integer to an `f16`. Rounds half-way cases away from zero.
@@ -2883,47 +2889,6 @@ pub unsafe fn roundf64(_x: f64) -> f64 {
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
 pub unsafe fn roundf128(_x: f128) -> f128 {
-    unreachable!()
-}
-
-/// Returns the nearest integer to an `f16`. Rounds half-way cases to the number
-/// with an even least significant digit.
-///
-/// This intrinsic does not have a stable counterpart.
-#[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
-#[rustc_nounwind]
-pub unsafe fn roundevenf16(_x: f16) -> f16 {
-    unreachable!()
-}
-/// Returns the nearest integer to an `f32`. Rounds half-way cases to the number
-/// with an even least significant digit.
-///
-/// This intrinsic does not have a stable counterpart.
-#[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
-#[rustc_nounwind]
-pub unsafe fn roundevenf32(_x: f32) -> f32 {
-    unreachable!()
-}
-/// Returns the nearest integer to an `f64`. Rounds half-way cases to the number
-/// with an even least significant digit.
-///
-/// This intrinsic does not have a stable counterpart.
-#[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
-#[rustc_nounwind]
-pub unsafe fn roundevenf64(_x: f64) -> f64 {
-    unreachable!()
-}
-/// Returns the nearest integer to an `f128`. Rounds half-way cases to the number
-/// with an even least significant digit.
-///
-/// This intrinsic does not have a stable counterpart.
-#[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
-#[rustc_nounwind]
-pub unsafe fn roundevenf128(_x: f128) -> f128 {
     unreachable!()
 }
 
@@ -3260,7 +3225,7 @@ pub const fn three_way_compare<T: Copy>(_lhs: T, _rhss: T) -> crate::cmp::Orderi
 /// Otherwise it's immediate UB.
 #[rustc_const_unstable(feature = "disjoint_bitor", issue = "135758")]
 #[rustc_nounwind]
-#[cfg_attr(not(bootstrap), rustc_intrinsic)]
+#[rustc_intrinsic]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 #[miri::intrinsic_fallback_is_spec] // the fallbacks all `assume` to tell Miri
 pub const unsafe fn disjoint_bitor<T: ~const fallback::DisjointBitOr>(a: T, b: T) -> T {
@@ -3675,6 +3640,7 @@ pub const unsafe fn ptr_offset_from<T>(_ptr: *const T, _base: *const T) -> isize
 #[rustc_nounwind]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
+#[rustc_intrinsic_const_stable_indirect]
 pub const unsafe fn ptr_offset_from_unsigned<T>(_ptr: *const T, _base: *const T) -> usize {
     unimplemented!()
 }
@@ -4070,7 +4036,6 @@ pub const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize)
 /// of not prematurely commiting at compile-time to whether contract
 /// checking is turned on, so that we can specify contracts in libstd
 /// and let an end user opt into turning them on.
-#[cfg(not(bootstrap))]
 #[rustc_const_unstable(feature = "contracts_internals", issue = "128044" /* compiler-team#759 */)]
 #[unstable(feature = "contracts_internals", issue = "128044" /* compiler-team#759 */)]
 #[inline(always)]
@@ -4086,7 +4051,6 @@ pub const fn contract_checks() -> bool {
 ///
 /// By default, if `contract_checks` is enabled, this will panic with no unwind if the condition
 /// returns false.
-#[cfg(not(bootstrap))]
 #[unstable(feature = "contracts_internals", issue = "128044" /* compiler-team#759 */)]
 #[lang = "contract_check_requires"]
 #[rustc_intrinsic]
@@ -4101,7 +4065,6 @@ pub fn contract_check_requires<C: Fn() -> bool>(cond: C) {
 ///
 /// By default, if `contract_checks` is enabled, this will panic with no unwind if the condition
 /// returns false.
-#[cfg(not(bootstrap))]
 #[unstable(feature = "contracts_internals", issue = "128044" /* compiler-team#759 */)]
 #[rustc_intrinsic]
 pub fn contract_check_ensures<'a, Ret, C: Fn(&'a Ret) -> bool>(ret: &'a Ret, cond: C) {
@@ -4400,11 +4363,7 @@ pub const fn ptr_metadata<P: ptr::Pointee<Metadata = M> + ?Sized, M>(_ptr: *cons
 /// [`Vec::append`]: ../../std/vec/struct.Vec.html#method.append
 #[doc(alias = "memcpy")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(bootstrap, rustc_allowed_through_unstable_modules)]
-#[cfg_attr(
-    not(bootstrap),
-    rustc_allowed_through_unstable_modules = "import this function via `std::mem` instead"
-)]
+#[rustc_allowed_through_unstable_modules = "import this function via `std::mem` instead"]
 #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
 #[inline(always)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -4508,11 +4467,7 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 /// ```
 #[doc(alias = "memmove")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(bootstrap, rustc_allowed_through_unstable_modules)]
-#[cfg_attr(
-    not(bootstrap),
-    rustc_allowed_through_unstable_modules = "import this function via `std::mem` instead"
-)]
+#[rustc_allowed_through_unstable_modules = "import this function via `std::mem` instead"]
 #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.83.0")]
 #[inline(always)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -4595,11 +4550,7 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 /// ```
 #[doc(alias = "memset")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(bootstrap, rustc_allowed_through_unstable_modules)]
-#[cfg_attr(
-    not(bootstrap),
-    rustc_allowed_through_unstable_modules = "import this function via `std::mem` instead"
-)]
+#[rustc_allowed_through_unstable_modules = "import this function via `std::mem` instead"]
 #[rustc_const_stable(feature = "const_ptr_write", since = "1.83.0")]
 #[inline(always)]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces

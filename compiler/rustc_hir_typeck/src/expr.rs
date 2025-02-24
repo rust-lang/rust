@@ -1130,7 +1130,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             statement_kind: kind,
         };
 
-        let encl_item_id = self.tcx.hir().get_parent_item(expr.hir_id);
+        let encl_item_id = self.tcx.hir_get_parent_item(expr.hir_id);
 
         if let hir::Node::Item(hir::Item {
             kind: hir::ItemKind::Fn { .. },
@@ -1279,7 +1279,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // Check if our original expression is a child of the condition of a while loop.
                     // If it is, then we have a situation like `while Some(0) = value.get(0) {`,
                     // where `while let` was more likely intended.
-                    if self.tcx.hir().parent_id_iter(original_expr_id).any(|id| id == expr.hir_id) {
+                    if self.tcx.hir_parent_id_iter(original_expr_id).any(|id| id == expr.hir_id) {
                         then(expr);
                     }
                     break;
@@ -1774,7 +1774,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn suggest_array_len(&self, expr: &'tcx hir::Expr<'tcx>, array_len: u64) {
-        let parent_node = self.tcx.hir().parent_iter(expr.hir_id).find(|(_, node)| {
+        let parent_node = self.tcx.hir_parent_iter(expr.hir_id).find(|(_, node)| {
             !matches!(node, hir::Node::Expr(hir::Expr { kind: hir::ExprKind::AddrOf(..), .. }))
         });
         let Some((_, hir::Node::LetStmt(hir::LetStmt { ty: Some(ty), .. }))) = parent_node else {
@@ -3763,7 +3763,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut diverge = asm.asm_macro.diverges(asm.options);
 
         for (op, _op_sp) in asm.operands {
-            match op {
+            match *op {
                 hir::InlineAsmOperand::In { expr, .. } => {
                     self.check_expr_asm_operand(expr, true);
                 }
@@ -3778,10 +3778,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.check_expr_asm_operand(out_expr, false);
                     }
                 }
+                hir::InlineAsmOperand::SymFn { expr } => {
+                    self.check_expr(expr);
+                }
                 // `AnonConst`s have their own body and is type-checked separately.
                 // As they don't flow into the type system we don't need them to
                 // be well-formed.
-                hir::InlineAsmOperand::Const { .. } | hir::InlineAsmOperand::SymFn { .. } => {}
+                hir::InlineAsmOperand::Const { .. } => {}
                 hir::InlineAsmOperand::SymStatic { .. } => {}
                 hir::InlineAsmOperand::Label { block } => {
                     let previous_diverges = self.diverges.get();

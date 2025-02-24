@@ -111,7 +111,7 @@ fn get_impl_trait_def_id(cx: &LateContext<'_>, method_def_id: LocalDefId) -> Opt
             owner_id,
             ..
         }),
-    )) = cx.tcx.hir().parent_iter(hir_id).next()
+    )) = cx.tcx.hir_parent_iter(hir_id).next()
         // We exclude `impl` blocks generated from rustc's proc macros.
         && !cx.tcx.has_attr(*owner_id, sym::automatically_derived)
         // It is a implementation of a trait.
@@ -216,7 +216,7 @@ fn check_to_string(cx: &LateContext<'_>, method_span: Span, method_def_id: Local
                 owner_id,
                 ..
             }),
-        )) = cx.tcx.hir().parent_iter(hir_id).next()
+        )) = cx.tcx.hir_parent_iter(hir_id).next()
         // We exclude `impl` blocks generated from rustc's proc macros.
         && !cx.tcx.has_attr(*owner_id, sym::automatically_derived)
         // It is a implementation of a trait.
@@ -367,7 +367,7 @@ impl UnconditionalRecursion {
                 kind: ItemKind::Impl(impl_),
                 ..
             }),
-        )) = cx.tcx.hir().parent_iter(hir_id).next()
+        )) = cx.tcx.hir_parent_iter(hir_id).next()
             && let Some(implemented_ty_id) = get_hir_ty_def_id(cx.tcx, *impl_.self_ty)
             && {
                 self.init_default_impl_for_type_if_needed(cx);

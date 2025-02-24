@@ -7,7 +7,7 @@ use rustc_middle::ty::Ty;
 use crate::transmute::MISSING_TRANSMUTE_ANNOTATIONS;
 
 fn get_parent_local_binding_ty<'tcx>(cx: &LateContext<'tcx>, expr_hir_id: HirId) -> Option<LetStmt<'tcx>> {
-    let mut parent_iter = cx.tcx.hir().parent_iter(expr_hir_id);
+    let mut parent_iter = cx.tcx.hir_parent_iter(expr_hir_id);
     if let Some((_, node)) = parent_iter.next() {
         match node {
             Node::LetStmt(local) => Some(*local),

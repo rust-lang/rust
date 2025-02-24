@@ -172,7 +172,7 @@ impl UniversalRegionRelations<'_> {
     }
 
     /// Returns the _non-transitive_ set of known `outlives` constraints between free regions.
-    pub(crate) fn known_outlives(&self) -> impl Iterator<Item = (RegionVid, RegionVid)> + '_ {
+    pub(crate) fn known_outlives(&self) -> impl Iterator<Item = (RegionVid, RegionVid)> {
         self.outlives.base_edges()
     }
 }

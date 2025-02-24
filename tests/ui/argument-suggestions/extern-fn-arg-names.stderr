@@ -17,9 +17,8 @@ LL |     fn dstfn(src: i32, dst: err);
    |        ^^^^^           ---
 help: provide the argument
    |
-LL -     dstfn(1);
-LL +     dstfn(1, /* dst */);
-   |
+LL |     dstfn(1, /* dst */);
+   |            +++++++++++
 
 error: aborting due to 2 previous errors
 

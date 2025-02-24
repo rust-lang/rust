@@ -4569,7 +4569,7 @@ impl<T> [T] {
     ///
     /// [`get_disjoint_mut`]: slice::get_disjoint_mut
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
-    #[stable(feature = "get_many_mut", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "get_many_mut", since = "1.86.0")]
     #[inline]
     pub unsafe fn get_disjoint_unchecked_mut<I, const N: usize>(
         &mut self,
@@ -4636,7 +4636,7 @@ impl<T> [T] {
     /// }
     /// assert_eq!(v, &[1, 11, 111]);
     /// ```
-    #[stable(feature = "get_many_mut", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "get_many_mut", since = "1.86.0")]
     #[inline]
     pub fn get_disjoint_mut<I, const N: usize>(
         &mut self,
@@ -4796,7 +4796,7 @@ impl<T, const N: usize> [[T; N]] {
     /// assert!(empty_slice_of_arrays.as_flattened().is_empty());
     /// ```
     #[stable(feature = "slice_flatten", since = "1.80.0")]
-    #[rustc_const_unstable(feature = "const_slice_flatten", issue = "95629")]
+    #[rustc_const_stable(feature = "const_slice_flatten", since = "CURRENT_RUSTC_VERSION")]
     pub const fn as_flattened(&self) -> &[T] {
         let len = if T::IS_ZST {
             self.len().checked_mul(N).expect("slice len overflow")
@@ -4833,7 +4833,7 @@ impl<T, const N: usize> [[T; N]] {
     /// assert_eq!(array, [[6, 7, 8], [9, 10, 11], [12, 13, 14]]);
     /// ```
     #[stable(feature = "slice_flatten", since = "1.80.0")]
-    #[rustc_const_unstable(feature = "const_slice_flatten", issue = "95629")]
+    #[rustc_const_stable(feature = "const_slice_flatten", since = "CURRENT_RUSTC_VERSION")]
     pub const fn as_flattened_mut(&mut self) -> &mut [T] {
         let len = if T::IS_ZST {
             self.len().checked_mul(N).expect("slice len overflow")
@@ -5025,7 +5025,7 @@ fn get_disjoint_check_valid<I: GetDisjointMutIndex, const N: usize>(
 /// assert_eq!(v.get_disjoint_mut([0, 999]), Err(GetDisjointMutError::IndexOutOfBounds));
 /// assert_eq!(v.get_disjoint_mut([1, 1]), Err(GetDisjointMutError::OverlappingIndices));
 /// ```
-#[stable(feature = "get_many_mut", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "get_many_mut", since = "1.86.0")]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GetDisjointMutError {
     /// An index provided was out-of-bounds for the slice.
@@ -5034,7 +5034,7 @@ pub enum GetDisjointMutError {
     OverlappingIndices,
 }
 
-#[stable(feature = "get_many_mut", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "get_many_mut", since = "1.86.0")]
 impl fmt::Display for GetDisjointMutError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let msg = match self {

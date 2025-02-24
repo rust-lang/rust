@@ -154,7 +154,7 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
         let lint_root = self.body.source_scopes[source_info.scope]
             .local_data
             .as_ref()
-            .assert_crate_local()
+            .unwrap_crate_local()
             .lint_root;
         // FIXME: use existing printing routines to print the function signature
         let fn_sig = self.tcx.fn_sig(fn_id).instantiate(self.tcx, fn_args);

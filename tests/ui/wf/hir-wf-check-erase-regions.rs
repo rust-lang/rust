@@ -8,7 +8,9 @@ impl<'a, T, const N: usize> IntoIterator for &'a Table<T, N> {
     //~^ ERROR `&'a T` is not an iterator
     type Item = &'a T;
 
-    fn into_iter(self) -> Self::IntoIter { //~ ERROR `&'a T` is not an iterator
+    fn into_iter(self) -> Self::IntoIter {
+        //~^ ERROR `&'a T` is not an iterator
+        //~| ERROR `&T` is not an iterator
         unimplemented!()
     }
 }

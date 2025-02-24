@@ -11,9 +11,8 @@ LL | fn f(a: u16, b: &str) {}
    |    ^         -------
 help: provide the argument
    |
-LL -     f(0);
-LL +     f(0, /* &str */);
-   |
+LL |     f(0, /* &str */);
+   |        ++++++++++++
 
 error[E0061]: this function takes 1 argument but 0 arguments were supplied
   --> $DIR/E0061.rs:9:5
@@ -28,9 +27,8 @@ LL | fn f2(a: u16) {}
    |    ^^ ------
 help: provide the argument
    |
-LL -     f2();
-LL +     f2(/* u16 */);
-   |
+LL |     f2(/* u16 */);
+   |        +++++++++
 
 error: aborting due to 2 previous errors
 

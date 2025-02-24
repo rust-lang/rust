@@ -6,9 +6,8 @@ LL |     let foo::Foo {} = foo::Foo::default();
    |
 help: ignore the inaccessible and unused fields
    |
-LL -     let foo::Foo {} = foo::Foo::default();
-LL +     let foo::Foo { .. } = foo::Foo::default();
-   |
+LL |     let foo::Foo { .. } = foo::Foo::default();
+   |                    ++
 
 error: pattern requires `..` due to inaccessible fields
   --> $DIR/issue-76077-1.rs:16:9

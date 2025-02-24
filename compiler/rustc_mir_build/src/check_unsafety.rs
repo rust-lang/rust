@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::mem;
 use std::ops::Bound;
 
+use rustc_ast::AsmMacro;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::DiagArgValue;
 use rustc_hir::def::DefKind;
@@ -559,7 +560,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 }
             }
             ExprKind::InlineAsm(box InlineAsmExpr {
-                asm_macro: _,
+                asm_macro: AsmMacro::Asm | AsmMacro::NakedAsm,
                 ref operands,
                 template: _,
                 options: _,
@@ -583,7 +584,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                         }
                         Out { expr: None, reg: _, late: _ }
                         | Const { value: _, span: _ }
-                        | SymFn { value: _, span: _ }
+                        | SymFn { value: _ }
                         | SymStatic { def_id: _ } => {}
                         Label { block } => {
                             // Label blocks are safe context.
@@ -751,7 +752,7 @@ impl UnsafeOpKind {
         span: Span,
         suggest_unsafe_block: bool,
     ) {
-        let parent_id = tcx.hir().get_parent_item(hir_id);
+        let parent_id = tcx.hir_get_parent_item(hir_id);
         let parent_owner = tcx.hir_owner_node(parent_id);
         let should_suggest = parent_owner.fn_sig().is_some_and(|sig| {
             // Do not suggest for safe target_feature functions
@@ -921,7 +922,7 @@ impl UnsafeOpKind {
         hir_context: HirId,
         unsafe_op_in_unsafe_fn_allowed: bool,
     ) {
-        let note_non_inherited = tcx.hir().parent_iter(hir_context).find(|(id, node)| {
+        let note_non_inherited = tcx.hir_parent_iter(hir_context).find(|(id, node)| {
             if let hir::Node::Expr(block) = node
                 && let hir::ExprKind::Block(block, _) = block.kind
                 && let hir::BlockCheckMode::UnsafeBlock(_) = block.rules

@@ -323,7 +323,7 @@ impl<'tcx> MonoItems<'tcx> {
         self.items.entry(item.node).or_insert(item.span);
     }
 
-    fn items(&self) -> impl Iterator<Item = MonoItem<'tcx>> + '_ {
+    fn items(&self) -> impl Iterator<Item = MonoItem<'tcx>> {
         self.items.keys().cloned()
     }
 }
@@ -479,24 +479,23 @@ fn collect_items_rec<'tcx>(
             recursion_depth_reset = None;
 
             let item = tcx.hir_item(item_id);
-            if let hir::ItemKind::GlobalAsm(asm) = item.kind {
+            if let hir::ItemKind::GlobalAsm { asm, .. } = item.kind {
                 for (op, op_sp) in asm.operands {
-                    match op {
+                    match *op {
                         hir::InlineAsmOperand::Const { .. } => {
                             // Only constants which resolve to a plain integer
                             // are supported. Therefore the value should not
                             // depend on any other items.
                         }
-                        hir::InlineAsmOperand::SymFn { anon_const } => {
-                            let fn_ty =
-                                tcx.typeck_body(anon_const.body).node_type(anon_const.hir_id);
+                        hir::InlineAsmOperand::SymFn { expr } => {
+                            let fn_ty = tcx.typeck(item_id.owner_id).expr_ty(expr);
                             visit_fn_use(tcx, fn_ty, false, *op_sp, &mut used_items);
                         }
                         hir::InlineAsmOperand::SymStatic { path: _, def_id } => {
-                            let instance = Instance::mono(tcx, *def_id);
+                            let instance = Instance::mono(tcx, def_id);
                             if tcx.should_codegen_locally(instance) {
                                 trace!("collecting static {:?}", def_id);
-                                used_items.push(dummy_spanned(MonoItem::Static(*def_id)));
+                                used_items.push(dummy_spanned(MonoItem::Static(def_id)));
                             }
                         }
                         hir::InlineAsmOperand::In { .. }

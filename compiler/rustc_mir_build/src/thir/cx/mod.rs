@@ -76,23 +76,29 @@ impl<'tcx> ThirBuildCx<'tcx> {
         let hir = tcx.hir();
         let hir_id = tcx.local_def_id_to_hir_id(def);
 
-        let body_type = if tcx.hir_body_owner_kind(def).is_fn_or_closure() {
-            // fetch the fully liberated fn signature (that is, all bound
-            // types/lifetimes replaced)
-            BodyTy::Fn(typeck_results.liberated_fn_sigs()[hir_id])
-        } else {
-            // Get the revealed type of this const. This is *not* the adjusted
-            // type of its body, which may be a subtype of this type. For
-            // example:
-            //
-            // fn foo(_: &()) {}
-            // static X: fn(&'static ()) = foo;
-            //
-            // The adjusted type of the body of X is `for<'a> fn(&'a ())` which
-            // is not the same as the type of X. We need the type of the return
-            // place to be the type of the constant because NLL typeck will
-            // equate them.
-            BodyTy::Const(typeck_results.node_type(hir_id))
+        let body_type = match tcx.hir_body_owner_kind(def) {
+            rustc_hir::BodyOwnerKind::Fn | rustc_hir::BodyOwnerKind::Closure => {
+                // fetch the fully liberated fn signature (that is, all bound
+                // types/lifetimes replaced)
+                BodyTy::Fn(typeck_results.liberated_fn_sigs()[hir_id])
+            }
+            rustc_hir::BodyOwnerKind::Const { .. } | rustc_hir::BodyOwnerKind::Static(_) => {
+                // Get the revealed type of this const. This is *not* the adjusted
+                // type of its body, which may be a subtype of this type. For
+                // example:
+                //
+                // fn foo(_: &()) {}
+                // static X: fn(&'static ()) = foo;
+                //
+                // The adjusted type of the body of X is `for<'a> fn(&'a ())` which
+                // is not the same as the type of X. We need the type of the return
+                // place to be the type of the constant because NLL typeck will
+                // equate them.
+                BodyTy::Const(typeck_results.node_type(hir_id))
+            }
+            rustc_hir::BodyOwnerKind::GlobalAsm => {
+                BodyTy::GlobalAsm(typeck_results.node_type(hir_id))
+            }
         };
 
         Self {
@@ -159,12 +165,12 @@ impl<'tcx> ThirBuildCx<'tcx> {
         })
     }
 
-    fn explicit_params<'a>(
-        &'a mut self,
+    fn explicit_params(
+        &mut self,
         owner_id: HirId,
         fn_decl: &'tcx hir::FnDecl<'tcx>,
         body: &'tcx hir::Body<'tcx>,
-    ) -> impl Iterator<Item = Param<'tcx>> + 'a {
+    ) -> impl Iterator<Item = Param<'tcx>> {
         let fn_sig = self.typeck_results.liberated_fn_sigs()[owner_id];
 
         body.params.iter().enumerate().map(move |(index, param)| {

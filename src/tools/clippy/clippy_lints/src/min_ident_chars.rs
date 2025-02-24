@@ -121,9 +121,9 @@ impl Visitor<'_> for IdentVisitor<'_, '_> {
             // Check whether the node is part of a `use` statement. We don't want to emit a warning if the user
             // has no control over the type.
             let usenode = opt_as_use_node(node).or_else(|| {
-                cx.tcx
-                    .hir()
-                    .parent_iter(hir_id)
+                cx
+                    .tcx
+                    .hir_parent_iter(hir_id)
                     .find_map(|(_, node)| opt_as_use_node(node))
             });
 

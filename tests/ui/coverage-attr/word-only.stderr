@@ -6,12 +6,10 @@ LL | #[coverage]
    |
 help: the following are the possible correct uses
    |
-LL - #[coverage]
-LL + #[coverage(off)]
-   |
-LL - #[coverage]
-LL + #[coverage(on)]
-   |
+LL | #[coverage(off)]
+   |           +++++
+LL | #[coverage(on)]
+   |           ++++
 
 error: malformed `coverage` attribute input
   --> $DIR/word-only.rs:17:5
@@ -21,12 +19,10 @@ LL |     #![coverage]
    |
 help: the following are the possible correct uses
    |
-LL -     #![coverage]
-LL +     #![coverage(off)]
-   |
-LL -     #![coverage]
-LL +     #![coverage(on)]
-   |
+LL |     #![coverage(off)]
+   |                +++++
+LL |     #![coverage(on)]
+   |                ++++
 
 error: malformed `coverage` attribute input
   --> $DIR/word-only.rs:21:1
@@ -36,12 +32,10 @@ LL | #[coverage]
    |
 help: the following are the possible correct uses
    |
-LL - #[coverage]
-LL + #[coverage(off)]
-   |
-LL - #[coverage]
-LL + #[coverage(on)]
-   |
+LL | #[coverage(off)]
+   |           +++++
+LL | #[coverage(on)]
+   |           ++++
 
 error: malformed `coverage` attribute input
   --> $DIR/word-only.rs:29:5
@@ -51,12 +45,10 @@ LL |     #[coverage]
    |
 help: the following are the possible correct uses
    |
-LL -     #[coverage]
-LL +     #[coverage(off)]
-   |
-LL -     #[coverage]
-LL +     #[coverage(on)]
-   |
+LL |     #[coverage(off)]
+   |               +++++
+LL |     #[coverage(on)]
+   |               ++++
 
 error: malformed `coverage` attribute input
   --> $DIR/word-only.rs:26:1
@@ -66,12 +58,10 @@ LL | #[coverage]
    |
 help: the following are the possible correct uses
    |
-LL - #[coverage]
-LL + #[coverage(off)]
-   |
-LL - #[coverage]
-LL + #[coverage(on)]
-   |
+LL | #[coverage(off)]
+   |           +++++
+LL | #[coverage(on)]
+   |           ++++
 
 error: malformed `coverage` attribute input
   --> $DIR/word-only.rs:39:5
@@ -81,12 +71,10 @@ LL |     #[coverage]
    |
 help: the following are the possible correct uses
    |
-LL -     #[coverage]
-LL +     #[coverage(off)]
-   |
-LL -     #[coverage]
-LL +     #[coverage(on)]
-   |
+LL |     #[coverage(off)]
+   |               +++++
+LL |     #[coverage(on)]
+   |               ++++
 
 error: malformed `coverage` attribute input
   --> $DIR/word-only.rs:44:5
@@ -96,12 +84,10 @@ LL |     #[coverage]
    |
 help: the following are the possible correct uses
    |
-LL -     #[coverage]
-LL +     #[coverage(off)]
-   |
-LL -     #[coverage]
-LL +     #[coverage(on)]
-   |
+LL |     #[coverage(off)]
+   |               +++++
+LL |     #[coverage(on)]
+   |               ++++
 
 error: malformed `coverage` attribute input
   --> $DIR/word-only.rs:35:1
@@ -111,12 +97,10 @@ LL | #[coverage]
    |
 help: the following are the possible correct uses
    |
-LL - #[coverage]
-LL + #[coverage(off)]
-   |
-LL - #[coverage]
-LL + #[coverage(on)]
-   |
+LL | #[coverage(off)]
+   |           +++++
+LL | #[coverage(on)]
+   |           ++++
 
 error: malformed `coverage` attribute input
   --> $DIR/word-only.rs:53:5
@@ -126,12 +110,10 @@ LL |     #[coverage]
    |
 help: the following are the possible correct uses
    |
-LL -     #[coverage]
-LL +     #[coverage(off)]
-   |
-LL -     #[coverage]
-LL +     #[coverage(on)]
-   |
+LL |     #[coverage(off)]
+   |               +++++
+LL |     #[coverage(on)]
+   |               ++++
 
 error: malformed `coverage` attribute input
   --> $DIR/word-only.rs:58:5
@@ -141,12 +123,10 @@ LL |     #[coverage]
    |
 help: the following are the possible correct uses
    |
-LL -     #[coverage]
-LL +     #[coverage(off)]
-   |
-LL -     #[coverage]
-LL +     #[coverage(on)]
-   |
+LL |     #[coverage(off)]
+   |               +++++
+LL |     #[coverage(on)]
+   |               ++++
 
 error: malformed `coverage` attribute input
   --> $DIR/word-only.rs:50:1
@@ -156,12 +136,10 @@ LL | #[coverage]
    |
 help: the following are the possible correct uses
    |
-LL - #[coverage]
-LL + #[coverage(off)]
-   |
-LL - #[coverage]
-LL + #[coverage(on)]
-   |
+LL | #[coverage(off)]
+   |           +++++
+LL | #[coverage(on)]
+   |           ++++
 
 error: malformed `coverage` attribute input
   --> $DIR/word-only.rs:64:1
@@ -171,12 +149,10 @@ LL | #[coverage]
    |
 help: the following are the possible correct uses
    |
-LL - #[coverage]
-LL + #[coverage(off)]
-   |
-LL - #[coverage]
-LL + #[coverage(on)]
-   |
+LL | #[coverage(off)]
+   |           +++++
+LL | #[coverage(on)]
+   |           ++++
 
 error[E0788]: coverage attribute not allowed here
   --> $DIR/word-only.rs:21:1

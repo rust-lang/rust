@@ -388,7 +388,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
         // Search for an appropriate place for the structured `.clone()` suggestion to be applied.
         // If we encounter a statement before the borrow error, we insert a statement there.
-        for (_, node) in tcx.hir().parent_iter(closure_expr.hir_id) {
+        for (_, node) in tcx.hir_parent_iter(closure_expr.hir_id) {
             if let Node::Stmt(stmt) = node {
                 let padding = tcx
                     .sess
