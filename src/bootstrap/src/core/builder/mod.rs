@@ -890,6 +890,7 @@ impl<'a> Builder<'a> {
                 gcc::Gcc,
                 llvm::Sanitizers,
                 tool::Rustfmt,
+                tool::Cargofmt,
                 tool::Miri,
                 tool::CargoMiri,
                 llvm::Lld,
