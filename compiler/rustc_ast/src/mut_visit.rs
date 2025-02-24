@@ -1745,6 +1745,10 @@ pub fn walk_expr<T: MutVisitor>(vis: &mut T, Expr { kind, id, span, attrs, token
             vis.visit_expr(expr);
             vis.visit_span(await_kw_span);
         }
+        ExprKind::Use(expr, use_kw_span) => {
+            vis.visit_expr(expr);
+            vis.visit_span(use_kw_span);
+        }
         ExprKind::Assign(el, er, span) => {
             vis.visit_expr(el);
             vis.visit_expr(er);
@@ -1894,6 +1898,9 @@ fn walk_capture_by<T: MutVisitor>(vis: &mut T, capture_by: &mut CaptureBy) {
         CaptureBy::Ref => {}
         CaptureBy::Value { move_kw } => {
             vis.visit_span(move_kw);
+        }
+        CaptureBy::Use { use_kw } => {
+            vis.visit_span(use_kw);
         }
     }
 }
