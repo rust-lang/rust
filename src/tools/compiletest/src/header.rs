@@ -1070,10 +1070,11 @@ impl Config {
     }
 }
 
+// FIXME(jieyouxu): fix some of these variable names to more accurately reflect what they do.
 fn expand_variables(mut value: String, config: &Config) -> String {
     const CWD: &str = "{{cwd}}";
     const SRC_BASE: &str = "{{src-base}}";
-    const BUILD_BASE: &str = "{{build-base}}";
+    const TEST_SUITE_BUILD_BASE: &str = "{{build-base}}";
     const RUST_SRC_BASE: &str = "{{rust-src-base}}";
     const SYSROOT_BASE: &str = "{{sysroot-base}}";
     const TARGET_LINKER: &str = "{{target-linker}}";
@@ -1088,12 +1089,13 @@ fn expand_variables(mut value: String, config: &Config) -> String {
         value = value.replace(SRC_BASE, &config.src_test_suite_root.to_str().unwrap());
     }
 
-    if value.contains(BUILD_BASE) {
-        value = value.replace(BUILD_BASE, &config.build_base.to_string_lossy());
+    if value.contains(TEST_SUITE_BUILD_BASE) {
+        value =
+            value.replace(TEST_SUITE_BUILD_BASE, &config.build_test_suite_root.to_str().unwrap());
     }
 
     if value.contains(SYSROOT_BASE) {
-        value = value.replace(SYSROOT_BASE, &config.sysroot_base.to_string_lossy());
+        value = value.replace(SYSROOT_BASE, &config.sysroot_base.to_str().unwrap());
     }
 
     if value.contains(TARGET_LINKER) {
