@@ -30,6 +30,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/workflows/setup
+        with:
+          toolchain_flags: "--host ${{ matrix.host_target }}"
 
       # The `style` job only runs on Linux; this makes sure the Windows-host-specific
       # code is also covered by clippy.

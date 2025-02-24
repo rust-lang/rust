@@ -1,5 +1,9 @@
 name: "Miri CI setup"
 description: "Sets up Miri CI"
+inputs:
+  toolchain_flags:
+    required: false
+    default: ''
 runs:
   using: "composite"
   steps:
@@ -45,7 +49,7 @@ runs:
             echo "Building against latest rustc git version"
             git ls-remote https://github.com/rust-lang/rust/ HEAD | cut -f 1 > rust-version
           fi
-          ./miri toolchain
+          ./miri toolchain ${{ inputs.toolchain_flags }}
         shell: bash
 
       - name: Show Rust version (miri toolchain)

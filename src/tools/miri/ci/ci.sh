@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail
+set -eu
 
 function begingroup {
   echo "::group::$@"
@@ -10,6 +10,17 @@ function endgroup {
   set +x
   echo "::endgroup"
 }
+
+begingroup "Sanity-check environment"
+
+# Ensure the HOST_TARGET is what it should be.
+if ! rustc -vV | grep -q "^host: $HOST_TARGET\$"; then
+  echo "This runner should be using host target $HOST_TARGET but rustc disagrees:"
+  rustc -vV
+  exit 1
+fi
+
+endgroup
 
 begingroup "Building Miri"
 
