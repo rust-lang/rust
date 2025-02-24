@@ -120,10 +120,35 @@ create a `.vim/coc-settings.json`. The settings can be edited with
 [`src/etc/rust_analyzer_settings.json`].
 
 Another way is without a plugin, and creating your own logic in your
-configuration. To do this you must translate the JSON to Lua yourself. The
-translation is 1:1 and fairly straight-forward. It must be put in the
-`["rust-analyzer"]` key of the setup table, which is [shown
-here](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#rust_analyzer).
+configuration. The following code will work for any checkout of rust-lang/rust (newer than Febuary 2025):
+
+```lua
+lspconfig.rust_analyzer.setup {
+    root_dir = function()
+        local default = lspconfig.rust_analyzer.config_def.default_config.root_dir()
+        -- the default root detection uses the cargo workspace root.
+        -- but for rust-lang/rust, the standard library is in its own workspace.
+        -- use the git root instead.
+        local compiler_config = vim.fs.joinpath(default, "../src/bootstrap/defaults/config.compiler.toml")
+        if vim.fs.basename(default) == "library" and vim.uv.fs_stat(compiler_config) then
+            return vim.fs.dirname(default)
+        end
+        return default
+    end,
+    on_init = function(client)
+        local path = client.workspace_folders[1].name
+        local config = vim.fs.joinpath(path, "src/etc/rust_analyzer_zed.json")
+        if vim.uv.fs_stat(config) then
+            -- load rust-lang/rust settings
+            local file = io.open(config)
+            local json = vim.json.decode(file:read("*a"))
+            client.config.settings["rust-analyzer"] = json.lsp["rust-analyzer"].initialization_options
+            client.notify("workspace/didChangeConfiguration", { settings = client.config.settings })
+        end
+        return true
+    end
+}
+```
 
 If you would like to use the build task that is described above, you may either
 make your own command in your config, or you can install a plugin such as
