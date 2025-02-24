@@ -1,6 +1,7 @@
 use std::borrow::Borrow;
 use std::cell::{Cell, RefCell};
 use std::ffi::{CStr, c_char, c_uint};
+use std::marker::PhantomData;
 use std::ops::Deref;
 use std::str;
 
@@ -43,18 +44,18 @@ use crate::{attributes, coverageinfo, debuginfo, llvm, llvm_util};
 /// However, there are various cx related functions which we want to be available to the builder and
 /// other compiler pieces. Here we define a small subset which has enough information and can be
 /// moved around more freely.
-pub(crate) struct SimpleCx<'ll> {
+pub(crate) struct SCx<'ll> {
     pub llmod: &'ll llvm::Module,
     pub llcx: &'ll llvm::Context,
 }
 
-impl<'ll> Borrow<SimpleCx<'ll>> for CodegenCx<'ll, '_> {
-    fn borrow(&self) -> &SimpleCx<'ll> {
+impl<'ll> Borrow<SCx<'ll>> for FullCx<'ll, '_> {
+    fn borrow(&self) -> &SCx<'ll> {
         &self.scx
     }
 }
 
-impl<'ll, 'tcx> Deref for CodegenCx<'ll, 'tcx> {
+impl<'ll, 'tcx> Deref for FullCx<'ll, 'tcx> {
     type Target = SimpleCx<'ll>;
 
     #[inline]
@@ -63,10 +64,25 @@ impl<'ll, 'tcx> Deref for CodegenCx<'ll, 'tcx> {
     }
 }
 
+pub(crate) struct GenericCx<'ll, T: Borrow<SCx<'ll>>>(T, PhantomData<SCx<'ll>>);
+
+impl<'ll, T: Borrow<SCx<'ll>>> Deref for GenericCx<'ll, T> {
+    type Target = T;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+pub(crate) type SimpleCx<'ll> = GenericCx<'ll, SCx<'ll>>;
+
 /// There is one `CodegenCx` per codegen unit. Each one has its own LLVM
 /// `llvm::Context` so that several codegen units may be processed in parallel.
 /// All other LLVM data structures in the `CodegenCx` are tied to that `llvm::Context`.
-pub(crate) struct CodegenCx<'ll, 'tcx> {
+pub(crate) type CodegenCx<'ll, 'tcx> = GenericCx<'ll, FullCx<'ll, 'tcx>>;
+
+pub(crate) struct FullCx<'ll, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
     pub scx: SimpleCx<'ll>,
     pub use_dll_storage_attrs: bool,
@@ -581,31 +597,34 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
 
         let isize_ty = Type::ix_llcx(llcx, tcx.data_layout.pointer_size.bits());
 
-        CodegenCx {
-            tcx,
-            scx: SimpleCx { llcx, llmod },
-            use_dll_storage_attrs,
-            tls_model,
-            codegen_unit,
-            instances: Default::default(),
-            vtables: Default::default(),
-            const_str_cache: Default::default(),
-            const_globals: Default::default(),
-            statics_to_rauw: RefCell::new(Vec::new()),
-            used_statics: RefCell::new(Vec::new()),
-            compiler_used_statics: RefCell::new(Vec::new()),
-            type_lowering: Default::default(),
-            scalar_lltypes: Default::default(),
-            isize_ty,
-            coverage_cx,
-            dbg_cx,
-            eh_personality: Cell::new(None),
-            eh_catch_typeinfo: Cell::new(None),
-            rust_try_fn: Cell::new(None),
-            intrinsics: Default::default(),
-            local_gen_sym_counter: Cell::new(0),
-            renamed_statics: Default::default(),
-        }
+        GenericCx(
+            FullCx {
+                tcx,
+                scx: SimpleCx::new(llmod, llcx),
+                use_dll_storage_attrs,
+                tls_model,
+                codegen_unit,
+                instances: Default::default(),
+                vtables: Default::default(),
+                const_str_cache: Default::default(),
+                const_globals: Default::default(),
+                statics_to_rauw: RefCell::new(Vec::new()),
+                used_statics: RefCell::new(Vec::new()),
+                compiler_used_statics: RefCell::new(Vec::new()),
+                type_lowering: Default::default(),
+                scalar_lltypes: Default::default(),
+                isize_ty,
+                coverage_cx,
+                dbg_cx,
+                eh_personality: Cell::new(None),
+                eh_catch_typeinfo: Cell::new(None),
+                rust_try_fn: Cell::new(None),
+                intrinsics: Default::default(),
+                local_gen_sym_counter: Cell::new(0),
+                renamed_statics: Default::default(),
+            },
+            PhantomData,
+        )
     }
 
     pub(crate) fn statics_to_rauw(&self) -> &RefCell<Vec<(&'ll Value, &'ll Value)>> {
@@ -628,7 +647,12 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         llvm::set_section(g, c"llvm.metadata");
     }
 }
+
 impl<'ll> SimpleCx<'ll> {
+    pub(crate) fn new(llmod: &'ll llvm::Module, llcx: &'ll llvm::Context) -> Self {
+        Self(SCx { llmod, llcx }, PhantomData)
+    }
+
     pub(crate) fn val_ty(&self, v: &'ll Value) -> &'ll Type {
         common::val_ty(v)
     }
@@ -1203,25 +1227,13 @@ impl CodegenCx<'_, '_> {
         name.push_str(&(idx as u64).to_base(ALPHANUMERIC_ONLY));
         name
     }
-
-    /// A wrapper for [`llvm::LLVMSetMetadata`], but it takes `Metadata` as a parameter instead of `Value`.
-    pub(crate) fn set_metadata<'a>(&self, val: &'a Value, kind_id: MetadataType, md: &'a Metadata) {
-        unsafe {
-            let node = llvm::LLVMMetadataAsValue(&self.llcx, md);
-            llvm::LLVMSetMetadata(val, kind_id as c_uint, node);
-        }
-    }
 }
 
-// This is a duplication of the set_metadata function above. However, so far it's the only one
-// shared between both contexts, so it doesn't seem worth it to make the Cx generic like we did it
-// for the Builder.
-impl SimpleCx<'_> {
-    #[allow(unused)]
+impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     /// A wrapper for [`llvm::LLVMSetMetadata`], but it takes `Metadata` as a parameter instead of `Value`.
     pub(crate) fn set_metadata<'a>(&self, val: &'a Value, kind_id: MetadataType, md: &'a Metadata) {
         unsafe {
-            let node = llvm::LLVMMetadataAsValue(&self.llcx, md);
+            let node = llvm::LLVMMetadataAsValue(self.llcx(), md);
             llvm::LLVMSetMetadata(val, kind_id as c_uint, node);
         }
     }

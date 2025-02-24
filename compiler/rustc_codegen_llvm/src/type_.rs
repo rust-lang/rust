@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::{fmt, ptr};
 
 use libc::{c_char, c_uint};
@@ -11,7 +12,7 @@ use rustc_middle::ty::{self, Ty};
 use rustc_target::callconv::{CastTarget, FnAbi};
 
 use crate::abi::{FnAbiLlvmExt, LlvmType};
-use crate::context::{CodegenCx, SimpleCx};
+use crate::context::{CodegenCx, GenericCx, SCx};
 pub(crate) use crate::llvm::Type;
 use crate::llvm::{Bool, False, Metadata, True};
 use crate::type_of::LayoutLlvmExt;
@@ -36,29 +37,29 @@ impl fmt::Debug for Type {
 }
 
 impl<'ll> CodegenCx<'ll, '_> {}
-impl<'ll> SimpleCx<'ll> {
+impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     pub(crate) fn type_named_struct(&self, name: &str) -> &'ll Type {
         let name = SmallCStr::new(name);
-        unsafe { llvm::LLVMStructCreateNamed(self.llcx, name.as_ptr()) }
+        unsafe { llvm::LLVMStructCreateNamed(self.llcx(), name.as_ptr()) }
     }
 
     pub(crate) fn set_struct_body(&self, ty: &'ll Type, els: &[&'ll Type], packed: bool) {
         unsafe { llvm::LLVMStructSetBody(ty, els.as_ptr(), els.len() as c_uint, packed as Bool) }
     }
     pub(crate) fn type_void(&self) -> &'ll Type {
-        unsafe { llvm::LLVMVoidTypeInContext(self.llcx) }
+        unsafe { llvm::LLVMVoidTypeInContext(self.llcx()) }
     }
     pub(crate) fn type_token(&self) -> &'ll Type {
-        unsafe { llvm::LLVMTokenTypeInContext(self.llcx) }
+        unsafe { llvm::LLVMTokenTypeInContext(self.llcx()) }
     }
 
     pub(crate) fn type_metadata(&self) -> &'ll Type {
-        unsafe { llvm::LLVMMetadataTypeInContext(self.llcx) }
+        unsafe { llvm::LLVMMetadataTypeInContext(self.llcx()) }
     }
 
     ///x Creates an integer type with the given number of bits, e.g., i24
     pub(crate) fn type_ix(&self, num_bits: u64) -> &'ll Type {
-        unsafe { llvm::LLVMIntTypeInContext(self.llcx, num_bits as c_uint) }
+        unsafe { llvm::LLVMIntTypeInContext(self.llcx(), num_bits as c_uint) }
     }
 
     pub(crate) fn type_vector(&self, ty: &'ll Type, len: u64) -> &'ll Type {
@@ -121,19 +122,24 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         self.type_array(self.type_from_integer(unit), size / unit_size)
     }
 }
-impl<'ll> SimpleCx<'ll> {
+
+impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
+    pub(crate) fn llcx(&self) -> &'ll llvm::Context {
+        (**self).borrow().llcx
+    }
+
     pub(crate) fn type_variadic_func(&self, args: &[&'ll Type], ret: &'ll Type) -> &'ll Type {
         unsafe { llvm::LLVMFunctionType(ret, args.as_ptr(), args.len() as c_uint, True) }
     }
 
     pub(crate) fn type_i1(&self) -> &'ll Type {
-        unsafe { llvm::LLVMInt1TypeInContext(self.llcx) }
+        unsafe { llvm::LLVMInt1TypeInContext(self.llcx()) }
     }
 
     pub(crate) fn type_struct(&self, els: &[&'ll Type], packed: bool) -> &'ll Type {
         unsafe {
             llvm::LLVMStructTypeInContext(
-                self.llcx,
+                self.llcx(),
                 els.as_ptr(),
                 els.len() as c_uint,
                 packed as Bool,
