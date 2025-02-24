@@ -1,0 +1,43 @@
+error[E0606]: casting `*const W<(dyn A<F> + 'static)>` as `*const dyn A<G>` is invalid
+  --> $DIR/ptr-to-trait-obj-wrap-different-args.rs:13:5
+   |
+LL |     a as _
+   |     ^^^^^^
+   |
+   = note: the trait objects may have different vtables
+
+error[E0606]: casting `*const W<W<(dyn A<F> + 'static)>>` as `*const W<dyn A<G>>` is invalid
+  --> $DIR/ptr-to-trait-obj-wrap-different-args.rs:18:5
+   |
+LL |     a as _
+   |     ^^^^^^
+   |
+   = note: the trait objects may have different vtables
+
+error[E0606]: casting `*const W<(dyn A<F> + 'static)>` as `*const X<dyn A<G>>` is invalid
+  --> $DIR/ptr-to-trait-obj-wrap-different-args.rs:23:5
+   |
+LL |     a as _
+   |     ^^^^^^
+   |
+   = note: the trait objects may have different vtables
+
+error[E0606]: casting `*const W<W<(dyn A<F> + 'static)>>` as `*const W<X<dyn A<G>>>` is invalid
+  --> $DIR/ptr-to-trait-obj-wrap-different-args.rs:28:5
+   |
+LL |     a as _
+   |     ^^^^^^
+   |
+   = note: the trait objects may have different vtables
+
+error[E0606]: casting `*const (dyn A<F> + 'static)` as `*const W<dyn A<G>>` is invalid
+  --> $DIR/ptr-to-trait-obj-wrap-different-args.rs:33:5
+   |
+LL |     a as _
+   |     ^^^^^^
+   |
+   = note: the trait objects may have different vtables
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0606`.
