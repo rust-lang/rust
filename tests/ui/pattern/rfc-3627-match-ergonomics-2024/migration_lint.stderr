@@ -215,10 +215,11 @@ note: matching on a reference type with a non-reference pattern changes the defa
    |
 LL |     if let Some(&mut Some(Some(x))) = &mut Some(&mut Some(&mut Some(0u8))) {
    |            ^^^^^^^^^^^^^^^^^^^^^^^^ this matches on type `&mut _`
-help: make the implied reference patterns and variable binding mode explicit
+help: remove the unnecessary reference pattern
    |
-LL |     if let &mut Some(&mut Some(&mut Some(ref mut x))) = &mut Some(&mut Some(&mut Some(0u8))) {
-   |            ++++                ++++      +++++++
+LL -     if let Some(&mut Some(Some(x))) = &mut Some(&mut Some(&mut Some(0u8))) {
+LL +     if let Some(Some(Some(x))) = &mut Some(&mut Some(&mut Some(0u8))) {
+   |
 
 error: binding modifiers may only be written when the default binding mode is `move` in Rust 2024
   --> $DIR/migration_lint.rs:111:21
@@ -273,10 +274,10 @@ note: matching on a reference type with a non-reference pattern changes the defa
    |
 LL |     if let Struct { a: &Some(a), b: Some(&b), c: Some(c) } =
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this matches on type `&_`
-help: make the implied reference patterns and variable binding mode explicit
+help: make the implied reference patterns explicit
    |
-LL |     if let &Struct { a: &Some(a), b: &Some(&b), c: &Some(ref c) } =
-   |            +                         +             +     +++
+LL |     if let &Struct { a: &Some(a), b: &Some(&b), c: Some(c) } =
+   |            +                         +
 
 error: binding modifiers may only be written when the default binding mode is `move`
   --> $DIR/migration_lint.rs:137:15
@@ -318,10 +319,11 @@ note: matching on a reference type with a non-reference pattern changes the defa
    |
 LL |     let [&mut [ref a]] = &mut [&mut &[0]];
    |         ^^^^^^^^^^^^^^ this matches on type `&mut _`
-help: make the implied reference patterns explicit
+help: remove the unnecessary reference pattern and binding modifier
    |
-LL |     let &mut [&mut &[ref a]] = &mut [&mut &[0]];
-   |         ++++       +
+LL -     let [&mut [ref a]] = &mut [&mut &[0]];
+LL +     let [[a]] = &mut [&mut &[0]];
+   |
 
 error: reference patterns may only be written when the default binding mode is `move` in Rust 2024
   --> $DIR/migration_lint.rs:150:10
@@ -336,13 +338,14 @@ note: matching on a reference type with a non-reference pattern changes the defa
    |
 LL |     let [&(_)] = &[&0];
    |         ^^^^^^ this matches on type `&_`
-help: make the implied reference pattern explicit
+help: remove the unnecessary reference pattern
    |
-LL |     let &[&(_)] = &[&0];
-   |         +
+LL -     let [&(_)] = &[&0];
+LL +     let [(_)] = &[&0];
+   |
 
 error: binding modifiers may only be written when the default binding mode is `move` in Rust 2024
-  --> $DIR/migration_lint.rs:157:18
+  --> $DIR/migration_lint.rs:155:18
    |
 LL |     let Struct { ref a, ref b, c } = &Struct { a: 0, b: 0, c: 0 };
    |                  ^^^    ^^^ binding modifier not allowed under `ref` default binding mode
@@ -352,7 +355,7 @@ LL |     let Struct { ref a, ref b, c } = &Struct { a: 0, b: 0, c: 0 };
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 note: matching on a reference type with a non-reference pattern changes the default binding mode
-  --> $DIR/migration_lint.rs:157:9
+  --> $DIR/migration_lint.rs:155:9
    |
 LL |     let Struct { ref a, ref b, c } = &Struct { a: 0, b: 0, c: 0 };
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ this matches on type `&_`
@@ -363,7 +366,7 @@ LL +     let Struct { a, b, c } = &Struct { a: 0, b: 0, c: 0 };
    |
 
 error: binding modifiers may only be written when the default binding mode is `move` in Rust 2024
-  --> $DIR/migration_lint.rs:164:18
+  --> $DIR/migration_lint.rs:162:18
    |
 LL |     let Struct { ref a, ref mut b, c } = &mut Struct { a: 0, b: 0, c: 0 };
    |                  ^^^    ^^^^^^^ binding modifier not allowed under `ref mut` default binding mode
@@ -373,7 +376,7 @@ LL |     let Struct { ref a, ref mut b, c } = &mut Struct { a: 0, b: 0, c: 0 };
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 note: matching on a reference type with a non-reference pattern changes the default binding mode
-  --> $DIR/migration_lint.rs:164:9
+  --> $DIR/migration_lint.rs:162:9
    |
 LL |     let Struct { ref a, ref mut b, c } = &mut Struct { a: 0, b: 0, c: 0 };
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this matches on type `&mut _`
@@ -383,7 +386,7 @@ LL |     let &mut Struct { ref a, ref mut b, ref mut c } = &mut Struct { a: 0, b
    |         ++++                            +++++++
 
 error: reference patterns may only be written when the default binding mode is `move` in Rust 2024
-  --> $DIR/migration_lint.rs:172:21
+  --> $DIR/migration_lint.rs:170:21
    |
 LL |     let Struct { a: &[ref a], b: &mut [[b]], c } = &mut &Struct { a: &[0], b: &mut [&[0]], c: 0 };
    |                     ^            ^^^^ reference pattern not allowed under `ref` default binding mode
@@ -393,17 +396,18 @@ LL |     let Struct { a: &[ref a], b: &mut [[b]], c } = &mut &Struct { a: &[0], 
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 note: matching on a reference type with a non-reference pattern changes the default binding mode
-  --> $DIR/migration_lint.rs:172:9
+  --> $DIR/migration_lint.rs:170:9
    |
 LL |     let Struct { a: &[ref a], b: &mut [[b]], c } = &mut &Struct { a: &[0], b: &mut [&[0]], c: 0 };
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this matches on type `&_`
-help: make the implied reference patterns and variable binding modes explicit
+help: remove the unnecessary reference patterns and binding modifier
    |
-LL |     let &mut &Struct { a: &[ref a], b: &mut [&[ref b]], ref c } = &mut &Struct { a: &[0], b: &mut [&[0]], c: 0 };
-   |         ++++++                               + +++      +++
+LL -     let Struct { a: &[ref a], b: &mut [[b]], c } = &mut &Struct { a: &[0], b: &mut [&[0]], c: 0 };
+LL +     let Struct { a: [a], b: [[b]], c } = &mut &Struct { a: &[0], b: &mut [&[0]], c: 0 };
+   |
 
 error: reference patterns may only be written when the default binding mode is `move` in Rust 2024
-  --> $DIR/migration_lint.rs:180:13
+  --> $DIR/migration_lint.rs:178:13
    |
 LL |     let Foo(&ref a) = &Foo(&0);
    |             ^ reference pattern not allowed under `ref` default binding mode
@@ -411,17 +415,18 @@ LL |     let Foo(&ref a) = &Foo(&0);
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 note: matching on a reference type with a non-reference pattern changes the default binding mode
-  --> $DIR/migration_lint.rs:180:9
+  --> $DIR/migration_lint.rs:178:9
    |
 LL |     let Foo(&ref a) = &Foo(&0);
    |         ^^^^^^^^^^^ this matches on type `&_`
-help: make the implied reference pattern explicit
+help: rewrite the pattern
    |
-LL |     let &Foo(&ref a) = &Foo(&0);
-   |         +
+LL -     let Foo(&ref a) = &Foo(&0);
+LL +     let &Foo(a) = &Foo(&0);
+   |
 
 error: reference patterns may only be written when the default binding mode is `move` in Rust 2024
-  --> $DIR/migration_lint.rs:186:10
+  --> $DIR/migration_lint.rs:184:10
    |
 LL |     let (&a, b, [c], [(d, [e])]) = &(&0, 0, &[0], &mut [&mut (0, &[0])]);
    |          ^ reference pattern not allowed under `ref` default binding mode
@@ -429,17 +434,17 @@ LL |     let (&a, b, [c], [(d, [e])]) = &(&0, 0, &[0], &mut [&mut (0, &[0])]);
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 note: matching on a reference type with a non-reference pattern changes the default binding mode
-  --> $DIR/migration_lint.rs:186:9
+  --> $DIR/migration_lint.rs:184:9
    |
 LL |     let (&a, b, [c], [(d, [e])]) = &(&0, 0, &[0], &mut [&mut (0, &[0])]);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^ this matches on type `&_`
 help: make the implied reference patterns and variable binding modes explicit
    |
-LL |     let &(&a, ref b, &[ref c], &mut [&mut (ref d, &[ref e])]) = &(&0, 0, &[0], &mut [&mut (0, &[0])]);
-   |         +     +++    + +++     ++++  ++++  +++    + +++
+LL |     let &(&a, ref b, [c], &mut [&mut (ref d, [e])]) = &(&0, 0, &[0], &mut [&mut (0, &[0])]);
+   |         +     +++         ++++  ++++  +++
 
 error: binding modifiers may only be written when the default binding mode is `move` in Rust 2024
-  --> $DIR/migration_lint.rs:196:19
+  --> $DIR/migration_lint.rs:194:19
    |
 LL |     let (a, [b], [mut c]) = &(0, &mut [0], &[0]);
    |                   ^^^ binding modifier not allowed under `ref` default binding mode
@@ -447,7 +452,7 @@ LL |     let (a, [b], [mut c]) = &(0, &mut [0], &[0]);
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 note: matching on a reference type with a non-reference pattern changes the default binding mode
-  --> $DIR/migration_lint.rs:196:9
+  --> $DIR/migration_lint.rs:194:9
    |
 LL |     let (a, [b], [mut c]) = &(0, &mut [0], &[0]);
    |         ^^^^^^^^^^^^^^^^^ this matches on type `&_`
@@ -457,7 +462,7 @@ LL |     let &(ref a, &mut [ref b], &[mut c]) = &(0, &mut [0], &[0]);
    |         + +++    ++++  +++     +
 
 error: reference patterns may only be written when the default binding mode is `move` in Rust 2024
-  --> $DIR/migration_lint.rs:204:10
+  --> $DIR/migration_lint.rs:202:10
    |
 LL |     let (&a, (b, &[ref c])) = &(&0, &mut (0, &[0]));
    |          ^       ^ reference pattern not allowed under `ref` default binding mode
@@ -467,17 +472,18 @@ LL |     let (&a, (b, &[ref c])) = &(&0, &mut (0, &[0]));
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 note: matching on a reference type with a non-reference pattern changes the default binding mode
-  --> $DIR/migration_lint.rs:204:9
+  --> $DIR/migration_lint.rs:202:9
    |
 LL |     let (&a, (b, &[ref c])) = &(&0, &mut (0, &[0]));
    |         ^^^^^^^^^^^^^^^^^^^ this matches on type `&_`
-help: make the implied reference patterns and variable binding mode explicit
+help: rewrite the pattern
    |
-LL |     let &(&a, &mut (ref b, &[ref c])) = &(&0, &mut (0, &[0]));
-   |         +     ++++  +++
+LL -     let (&a, (b, &[ref c])) = &(&0, &mut (0, &[0]));
+LL +     let &(&a, &mut (ref b, [c])) = &(&0, &mut (0, &[0]));
+   |
 
 error: binding modifiers may only be written when the default binding mode is `move` in Rust 2024
-  --> $DIR/migration_lint.rs:212:10
+  --> $DIR/migration_lint.rs:210:10
    |
 LL |     let [mut a @ b] = &[0];
    |          ^^^ binding modifier not allowed under `ref` default binding mode
@@ -485,7 +491,7 @@ LL |     let [mut a @ b] = &[0];
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 note: matching on a reference type with a non-reference pattern changes the default binding mode
-  --> $DIR/migration_lint.rs:212:9
+  --> $DIR/migration_lint.rs:210:9
    |
 LL |     let [mut a @ b] = &[0];
    |         ^^^^^^^^^^^ this matches on type `&_`
@@ -495,7 +501,7 @@ LL |     let &[mut a @ ref b] = &[0];
    |         +         +++
 
 error: binding modifiers may only be written when the default binding mode is `move` in Rust 2024
-  --> $DIR/migration_lint.rs:219:14
+  --> $DIR/migration_lint.rs:217:14
    |
 LL |     let [a @ mut b] = &[0];
    |              ^^^ binding modifier not allowed under `ref` default binding mode
@@ -503,7 +509,7 @@ LL |     let [a @ mut b] = &[0];
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 note: matching on a reference type with a non-reference pattern changes the default binding mode
-  --> $DIR/migration_lint.rs:219:9
+  --> $DIR/migration_lint.rs:217:9
    |
 LL |     let [a @ mut b] = &[0];
    |         ^^^^^^^^^^^ this matches on type `&_`
@@ -513,7 +519,7 @@ LL |     let &[ref a @ mut b] = &[0];
    |         + +++
 
 error: reference patterns may only be written when the default binding mode is `move` in Rust 2024
-  --> $DIR/migration_lint.rs:226:14
+  --> $DIR/migration_lint.rs:224:14
    |
 LL |     let [Foo(&ref a @ ref b), Foo(&ref c @ d)] = [&Foo(&0); 2];
    |              ^                    ^ reference pattern not allowed under `ref` default binding mode
@@ -523,22 +529,23 @@ LL |     let [Foo(&ref a @ ref b), Foo(&ref c @ d)] = [&Foo(&0); 2];
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 note: matching on a reference type with a non-reference pattern changes the default binding mode
-  --> $DIR/migration_lint.rs:226:31
+  --> $DIR/migration_lint.rs:224:31
    |
 LL |     let [Foo(&ref a @ ref b), Foo(&ref c @ d)] = [&Foo(&0); 2];
    |                               ^^^^^^^^^^^^^^^ this matches on type `&_`
 note: matching on a reference type with a non-reference pattern changes the default binding mode
-  --> $DIR/migration_lint.rs:226:10
+  --> $DIR/migration_lint.rs:224:10
    |
 LL |     let [Foo(&ref a @ ref b), Foo(&ref c @ d)] = [&Foo(&0); 2];
    |          ^^^^^^^^^^^^^^^^^^^ this matches on type `&_`
-help: make the implied reference patterns explicit
+help: rewrite the pattern
    |
-LL |     let [&Foo(&ref a @ ref b), &Foo(&ref c @ d)] = [&Foo(&0); 2];
-   |          +                     +
+LL -     let [Foo(&ref a @ ref b), Foo(&ref c @ d)] = [&Foo(&0); 2];
+LL +     let [&Foo(a @ b), &Foo(&ref c @ d)] = [&Foo(&0); 2];
+   |
 
 error: reference patterns may only be written when the default binding mode is `move` in Rust 2024
-  --> $DIR/migration_lint.rs:235:14
+  --> $DIR/migration_lint.rs:233:14
    |
 LL |     let [Foo(&ref a @ [ref b]), Foo(&ref c @ [d])] = [&Foo(&[0]); 2];
    |              ^                      ^ reference pattern not allowed under `ref` default binding mode
@@ -548,29 +555,30 @@ LL |     let [Foo(&ref a @ [ref b]), Foo(&ref c @ [d])] = [&Foo(&[0]); 2];
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 note: matching on a reference type with a non-reference pattern changes the default binding mode
-  --> $DIR/migration_lint.rs:235:33
+  --> $DIR/migration_lint.rs:233:33
    |
 LL |     let [Foo(&ref a @ [ref b]), Foo(&ref c @ [d])] = [&Foo(&[0]); 2];
    |                                 ^^^^^^^^^^^^^^^^^ this matches on type `&_`
 note: matching on a reference type with a non-reference pattern changes the default binding mode
-  --> $DIR/migration_lint.rs:235:10
+  --> $DIR/migration_lint.rs:233:10
    |
 LL |     let [Foo(&ref a @ [ref b]), Foo(&ref c @ [d])] = [&Foo(&[0]); 2];
    |          ^^^^^^^^^^^^^^^^^^^^^ this matches on type `&_`
-help: make the implied reference patterns explicit
+help: rewrite the pattern
    |
-LL |     let [&Foo(&ref a @ [ref b]), &Foo(&ref c @ [d])] = [&Foo(&[0]); 2];
-   |          +                       +
+LL -     let [Foo(&ref a @ [ref b]), Foo(&ref c @ [d])] = [&Foo(&[0]); 2];
+LL +     let [&Foo(a @ [b]), &Foo(&ref c @ [d])] = [&Foo(&[0]); 2];
+   |
 
 error: binding modifiers may only be written when the default binding mode is `move`
-  --> $DIR/migration_lint.rs:244:10
+  --> $DIR/migration_lint.rs:242:10
    |
 LL |     let [migration_lint_macros::bind_ref!(a)] = &[0];
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ occurs within macro expansion
    |
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 note: matching on a reference type with a non-reference pattern changes the default binding mode
-  --> $DIR/migration_lint.rs:244:9
+  --> $DIR/migration_lint.rs:242:9
    |
 LL |     let [migration_lint_macros::bind_ref!(a)] = &[0];
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this matches on type `&_`
@@ -580,8 +588,26 @@ help: make the implied reference pattern explicit
 LL |     let &[migration_lint_macros::bind_ref!(a)] = &[0];
    |         +
 
+error: reference patterns may only be written when the default binding mode is `move`
+  --> $DIR/migration_lint.rs:246:10
+   |
+LL |     let [migration_lint_macros::match_ref!(a)] = &[&0];
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ occurs within macro expansion
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+note: matching on a reference type with a non-reference pattern changes the default binding mode
+  --> $DIR/migration_lint.rs:246:9
+   |
+LL |     let [migration_lint_macros::match_ref!(a)] = &[&0];
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this matches on type `&_`
+   = note: this error originates in the macro `migration_lint_macros::match_ref` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: make the implied reference pattern explicit
+   |
+LL |     let &[migration_lint_macros::match_ref!(a)] = &[&0];
+   |         +
+
 error: reference patterns may only be written when the default binding mode is `move` in Rust 2024
-  --> $DIR/migration_lint.rs:249:10
+  --> $DIR/migration_lint.rs:252:10
    |
 LL |     let [&migration_lint_macros::bind_ref!(a)] = &[&0];
    |          ^ reference pattern not allowed under `ref` default binding mode
@@ -589,7 +615,7 @@ LL |     let [&migration_lint_macros::bind_ref!(a)] = &[&0];
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
 note: matching on a reference type with a non-reference pattern changes the default binding mode
-  --> $DIR/migration_lint.rs:249:9
+  --> $DIR/migration_lint.rs:252:9
    |
 LL |     let [&migration_lint_macros::bind_ref!(a)] = &[&0];
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this matches on type `&_`
@@ -598,5 +624,23 @@ help: make the implied reference pattern explicit
 LL |     let &[&migration_lint_macros::bind_ref!(a)] = &[&0];
    |         +
 
-error: aborting due to 31 previous errors
+error: reference patterns may only be written when the default binding mode is `move`
+  --> $DIR/migration_lint.rs:258:10
+   |
+LL |     let [migration_lint_macros::match_ref!(ref a)] = &[&0];
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ occurs within macro expansion
+   |
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/match-ergonomics.html>
+note: matching on a reference type with a non-reference pattern changes the default binding mode
+  --> $DIR/migration_lint.rs:258:9
+   |
+LL |     let [migration_lint_macros::match_ref!(ref a)] = &[&0];
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this matches on type `&_`
+   = note: this error originates in the macro `migration_lint_macros::match_ref` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: make the implied reference pattern explicit
+   |
+LL |     let &[migration_lint_macros::match_ref!(ref a)] = &[&0];
+   |         +
+
+error: aborting due to 33 previous errors
 
