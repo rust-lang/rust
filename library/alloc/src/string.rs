@@ -966,8 +966,8 @@ impl String {
     /// This is highly unsafe, due to the number of invariants that aren't
     /// checked:
     ///
-    /// * all safety requirements for [`Vec::<u8>::from_raw_parts`]
-    /// * all safety requirements for [`String::from_utf8_unchecked`]
+    /// * all safety requirements for [`Vec::<u8>::from_raw_parts`].
+    /// * all safety requirements for [`String::from_utf8_unchecked`].
     ///
     /// Violating these may cause problems like corrupting the allocator's
     /// internal data structures. For example, it is normally **not** safe to
