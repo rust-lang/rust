@@ -183,7 +183,7 @@ pub(crate) use SubstructureFields::*;
 use rustc_ast::ptr::P;
 use rustc_ast::{
     self as ast, AnonConst, BindingMode, ByRef, EnumDef, Expr, GenericArg, GenericParamKind,
-    Generics, Mutability, PatKind, VariantData,
+    Generics, Mutability, PatKind, Safety, VariantData,
 };
 use rustc_attr_parsing as attr;
 use rustc_expand::base::{Annotatable, ExtCtxt};
@@ -220,6 +220,9 @@ pub(crate) struct TraitDef<'a> {
     pub associated_types: Vec<(Ident, Ty)>,
 
     pub is_const: bool,
+
+    /// The safety of the `impl`.
+    pub safety: Safety,
 }
 
 pub(crate) struct MethodDef<'a> {
@@ -788,7 +791,7 @@ impl<'a> TraitDef<'a> {
             Ident::empty(),
             attrs,
             ast::ItemKind::Impl(Box::new(ast::Impl {
-                safety: ast::Safety::Default,
+                safety: self.safety,
                 polarity: ast::ImplPolarity::Positive,
                 defaultness: ast::Defaultness::Final,
                 constness: if self.is_const { ast::Const::Yes(DUMMY_SP) } else { ast::Const::No },
