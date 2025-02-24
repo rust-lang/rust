@@ -280,7 +280,7 @@ fn main() {
 
 
 ### `apply_demorgan_iterator`
-**Source:**  [apply_demorgan.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/apply_demorgan.rs#L132) 
+**Source:**  [apply_demorgan.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/apply_demorgan.rs#L147) 
 
 Apply [De Morgan's law](https://en.wikipedia.org/wiki/De_Morgan%27s_laws) to
 `Iterator::all` and `Iterator::any`.
@@ -2161,7 +2161,7 @@ struct Ctx<T: Clone> {
     data: T,
 }
 
-impl<T: Clone> ${0:_} for Ctx<T> {}
+impl<T: Clone> ${1:_} for Ctx<T> {┃}
 ```
 
 

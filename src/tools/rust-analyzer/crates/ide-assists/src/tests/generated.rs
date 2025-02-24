@@ -1961,7 +1961,7 @@ struct Ctx<T: Clone> {
     data: T,
 }
 
-impl<T: Clone> ${0:_} for Ctx<T> {}
+impl<T: Clone> ${1:_} for Ctx<T> {$0}
 "#####,
     )
 }
