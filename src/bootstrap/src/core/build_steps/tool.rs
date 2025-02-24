@@ -1186,7 +1186,12 @@ fn run_tool_build_step(
     }
 }
 
-tool_extended!(Cargofmt { path: "src/tools/rustfmt", tool_name: "cargo-fmt", stable: true });
+tool_extended!(Cargofmt {
+    path: "src/tools/rustfmt",
+    tool_name: "cargo-fmt",
+    stable: true,
+    add_bins_to_sysroot: ["cargo-fmt"]
+});
 tool_extended!(CargoClippy {
     path: "src/tools/clippy",
     tool_name: "cargo-clippy",
@@ -1216,7 +1221,7 @@ tool_extended!(Rustfmt {
     path: "src/tools/rustfmt",
     tool_name: "rustfmt",
     stable: true,
-    add_bins_to_sysroot: ["rustfmt", "cargo-fmt"]
+    add_bins_to_sysroot: ["rustfmt"]
 });
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
