@@ -9,6 +9,7 @@ use crate::RustcVersion;
 pub enum InlineAttr {
     None,
     Hint,
+    Usually,
     Always,
     Never,
     /// `#[rustc_force_inline]` forces inlining to happen in the MIR inliner - it reports an error
@@ -24,7 +25,7 @@ impl InlineAttr {
     pub fn always(&self) -> bool {
         match self {
             InlineAttr::Always | InlineAttr::Force { .. } => true,
-            InlineAttr::None | InlineAttr::Hint | InlineAttr::Never => false,
+            InlineAttr::None | InlineAttr::Hint | InlineAttr::Usually | InlineAttr::Never => false,
         }
     }
 }
