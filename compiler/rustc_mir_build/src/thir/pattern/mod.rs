@@ -15,7 +15,7 @@ use rustc_hir::{self as hir, RangeEnd};
 use rustc_index::Idx;
 use rustc_middle::mir::interpret::LitToConstInput;
 use rustc_middle::thir::{
-    Ascription, FieldPat, LocalVarId, Pat, PatKind, PatRange, PatRangeBoundary,
+    Ascription, FieldPat, LocalVarId, Pat, PatKind, PatRange, PatRangeBoundary, Thir,
 };
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, TyCtxt, TypeVisitableExt};
@@ -30,6 +30,7 @@ use crate::errors::*;
 
 struct PatCtxt<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
+    thir: &'a Thir<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
     typeck_results: &'a ty::TypeckResults<'tcx>,
 
@@ -39,12 +40,14 @@ struct PatCtxt<'a, 'tcx> {
 
 pub(super) fn pat_from_hir<'a, 'tcx>(
     tcx: TyCtxt<'tcx>,
+    thir: &'a Thir<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
     typeck_results: &'a ty::TypeckResults<'tcx>,
     pat: &'tcx hir::Pat<'tcx>,
 ) -> Box<Pat<'tcx>> {
     let mut pcx = PatCtxt {
         tcx,
+        thir,
         typing_env,
         typeck_results,
         rust_2024_migration: typeck_results

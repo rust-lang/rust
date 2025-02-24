@@ -640,11 +640,17 @@ impl<'tcx> Pat<'tcx> {
             _ => None,
         }
     }
+}
 
+impl<'tcx> Thir<'tcx> {
     /// Call `f` on every "binding" in a pattern, e.g., on `a` in
     /// `match foo() { Some(a) => (), None => () }`
-    pub fn each_binding(&self, mut f: impl FnMut(Symbol, ByRef, Ty<'tcx>, Span)) {
-        self.walk_always(|p| {
+    pub fn for_each_binding_in_pat(
+        &self,
+        pat: &Pat<'tcx>,
+        mut f: impl FnMut(Symbol, ByRef, Ty<'tcx>, Span),
+    ) {
+        self.walk_pat_always(pat, |p| {
             if let PatKind::Binding { name, mode, ty, .. } = p.kind {
                 f(name, mode.0, ty, p.span);
             }
@@ -654,22 +660,22 @@ impl<'tcx> Pat<'tcx> {
     /// Walk the pattern in left-to-right order.
     ///
     /// If `it(pat)` returns `false`, the children are not visited.
-    pub fn walk(&self, mut it: impl FnMut(&Pat<'tcx>) -> bool) {
-        self.walk_(&mut it)
+    pub fn walk_pat(&self, pat: &Pat<'tcx>, mut it: impl FnMut(&Pat<'tcx>) -> bool) {
+        self.walk_pat_inner(pat, &mut it)
     }
 
-    fn walk_(&self, it: &mut impl FnMut(&Pat<'tcx>) -> bool) {
-        if !it(self) {
+    fn walk_pat_inner(&self, pat: &Pat<'tcx>, it: &mut impl FnMut(&Pat<'tcx>) -> bool) {
+        if !it(pat) {
             return;
         }
 
-        for_each_immediate_subpat(self, |p| p.walk_(it));
+        for_each_immediate_subpat(pat, |p| self.walk_pat_inner(p, it));
     }
 
     /// Whether the pattern has a `PatKind::Error` nested within.
-    pub fn pat_error_reported(&self) -> Result<(), ErrorGuaranteed> {
+    pub fn pat_error_reported(&self, pat: &Pat<'tcx>) -> Result<(), ErrorGuaranteed> {
         let mut error = None;
-        self.walk(|pat| {
+        self.walk_pat(pat, |pat| {
             if let PatKind::Error(e) = pat.kind
                 && error.is_none()
             {
@@ -683,26 +689,39 @@ impl<'tcx> Pat<'tcx> {
         }
     }
 
+    pub fn pat_references_error(&self, pat: &Pat<'tcx>) -> bool {
+        use rustc_type_ir::visit::TypeVisitableExt;
+
+        let mut references_error = TypeVisitableExt::references_error(pat);
+        if !references_error {
+            for_each_immediate_subpat(pat, |p| {
+                references_error = references_error || self.pat_references_error(p);
+            });
+        }
+
+        references_error
+    }
+
     /// Walk the pattern in left-to-right order.
     ///
     /// If you always want to recurse, prefer this method over `walk`.
-    pub fn walk_always(&self, mut it: impl FnMut(&Pat<'tcx>)) {
-        self.walk(|p| {
+    pub fn walk_pat_always(&self, pat: &Pat<'tcx>, mut it: impl FnMut(&Pat<'tcx>)) {
+        self.walk_pat(pat, |p| {
             it(p);
             true
         })
     }
 
     /// Whether this a never pattern.
-    pub fn is_never_pattern(&self) -> bool {
+    pub fn is_never_pattern(&self, pat: &Pat<'tcx>) -> bool {
         let mut is_never_pattern = false;
-        self.walk(|pat| match &pat.kind {
+        self.walk_pat(pat, |pat| match &pat.kind {
             PatKind::Never => {
                 is_never_pattern = true;
                 false
             }
             PatKind::Or { pats } => {
-                is_never_pattern = pats.iter().all(|p| p.is_never_pattern());
+                is_never_pattern = pats.iter().all(|p| self.is_never_pattern(p));
                 false
             }
             _ => true,

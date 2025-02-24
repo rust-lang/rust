@@ -9,10 +9,8 @@ use rustc_index::Idx;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::Obligation;
 use rustc_middle::mir::interpret::ErrorHandled;
-use rustc_middle::thir::{FieldPat, Pat, PatKind};
-use rustc_middle::ty::{
-    self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitableExt, TypeVisitor, ValTree,
-};
+use rustc_middle::thir::{FieldPat, Pat, PatKind, Thir};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor, ValTree};
 use rustc_middle::{mir, span_bug};
 use rustc_span::def_id::DefId;
 use rustc_span::{Span, sym};
@@ -36,7 +34,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     /// so we have to carry one ourselves.
     #[instrument(level = "debug", skip(self), ret)]
     pub(super) fn const_to_pat(
-        &self,
+        &mut self,
         c: ty::Const<'tcx>,
         ty: Ty<'tcx>,
         id: hir::HirId,
@@ -52,8 +50,9 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     }
 }
 
-struct ConstToPat<'tcx> {
+struct ConstToPat<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
+    thir: &'a Thir<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
     span: Span,
     id: hir::HirId,
@@ -63,11 +62,17 @@ struct ConstToPat<'tcx> {
     c: ty::Const<'tcx>,
 }
 
-impl<'tcx> ConstToPat<'tcx> {
-    fn new(pat_ctxt: &PatCtxt<'_, 'tcx>, id: hir::HirId, span: Span, c: ty::Const<'tcx>) -> Self {
+impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
+    fn new(
+        pat_ctxt: &'a PatCtxt<'_, 'tcx>,
+        id: hir::HirId,
+        span: Span,
+        c: ty::Const<'tcx>,
+    ) -> Self {
         trace!(?pat_ctxt.typeck_results.hir_owner);
         ConstToPat {
             tcx: pat_ctxt.tcx,
+            thir: pat_ctxt.thir,
             typing_env: pat_ctxt.typing_env,
             span,
             id,
@@ -187,7 +192,7 @@ impl<'tcx> ConstToPat<'tcx> {
         // Convert the valtree to a const.
         let inlined_const_as_pat = self.valtree_to_pat(valtree, ty);
 
-        if !inlined_const_as_pat.references_error() {
+        if !self.thir.pat_references_error(&inlined_const_as_pat) {
             // Always check for `PartialEq` if we had no other errors yet.
             if !type_has_partial_eq_impl(self.tcx, typing_env, ty).has_impl {
                 let mut err = self.tcx.dcx().create_err(TypeNotPartialEq { span: self.span, ty });
