@@ -2914,20 +2914,35 @@ impl Target {
             // On Windows, `extern "system"` behaves like msvc's `__stdcall`.
             // `__stdcall` only applies on x86 and on non-variadic functions:
             // https://learn.microsoft.com/en-us/cpp/cpp/stdcall?view=msvc-170
-            System { unwind } if self.is_like_windows && self.arch == "x86" && !c_variadic => {
-                Stdcall { unwind }
+            System { unwind } => {
+                if self.is_like_windows && self.arch == "x86" && !c_variadic {
+                    Stdcall { unwind }
+                } else {
+                    C { unwind }
+                }
             }
-            System { unwind } => C { unwind },
-            EfiApi if self.arch == "arm" => Aapcs { unwind: false },
-            EfiApi if self.arch == "x86_64" => Win64 { unwind: false },
-            EfiApi => C { unwind: false },
+
+            EfiApi => {
+                if self.arch == "arm" {
+                    Aapcs { unwind: false }
+                } else if self.arch == "x86_64" {
+                    Win64 { unwind: false }
+                } else {
+                    C { unwind: false }
+                }
+            }
 
             // See commentary in `is_abi_supported`.
-            Stdcall { .. } | Thiscall { .. } if self.arch == "x86" => abi,
-            Stdcall { unwind } | Thiscall { unwind } => C { unwind },
-            Fastcall { .. } if self.arch == "x86" => abi,
-            Vectorcall { .. } if ["x86", "x86_64"].contains(&&self.arch[..]) => abi,
-            Fastcall { unwind } | Vectorcall { unwind } => C { unwind },
+            Stdcall { unwind } | Thiscall { unwind } | Fastcall { unwind } => {
+                if self.arch == "x86" { abi } else { C { unwind } }
+            }
+            Vectorcall { unwind } => {
+                if ["x86", "x86_64"].contains(&&*self.arch) {
+                    abi
+                } else {
+                    C { unwind }
+                }
+            }
 
             // The Windows x64 calling convention we use for `extern "Rust"`
             // <https://learn.microsoft.com/en-us/cpp/build/x64-software-conventions#register-volatility-and-preservation>
