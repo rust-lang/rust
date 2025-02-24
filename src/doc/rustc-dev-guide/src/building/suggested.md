@@ -125,11 +125,11 @@ configuration. The following code will work for any checkout of rust-lang/rust (
 ```lua
 lspconfig.rust_analyzer.setup {
     root_dir = function()
-        default = lspconfig.rust_analyzer.config_def.default_config.root_dir()
+        local default = lspconfig.rust_analyzer.config_def.default_config.root_dir()
         -- the default root detection uses the cargo workspace root.
         -- but for rust-lang/rust, the standard library is in its own workspace.
         -- use the git root instead.
-        compiler_config = vim.fs.joinpath(default, "../src/bootstrap/defaults/config.compiler.toml")
+        local compiler_config = vim.fs.joinpath(default, "../src/bootstrap/defaults/config.compiler.toml")
         if vim.fs.basename(default) == "library" and vim.uv.fs_stat(compiler_config) then
             return vim.fs.dirname(default)
         end
@@ -137,11 +137,11 @@ lspconfig.rust_analyzer.setup {
     end,
     on_init = function(client)
         local path = client.workspace_folders[1].name
-        config = vim.fs.joinpath(path, "src/etc/rust_analyzer_zed.json")
+        local config = vim.fs.joinpath(path, "src/etc/rust_analyzer_zed.json")
         if vim.uv.fs_stat(config) then
             -- load rust-lang/rust settings
-            file = io.open(config)
-            json = vim.json.decode(file:read("*a"))
+            local file = io.open(config)
+            local json = vim.json.decode(file:read("*a"))
             client.config.settings["rust-analyzer"] = json.lsp["rust-analyzer"].initialization_options
             client.notify("workspace/didChangeConfiguration", { settings = client.config.settings })
         end
