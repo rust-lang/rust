@@ -3069,7 +3069,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             "ban_nonexisting_field: field={:?}, base={:?}, expr={:?}, base_ty={:?}",
             ident, base, expr, base_ty
         );
-        let mut err = self.no_such_field_err(ident, base_ty, base.hir_id);
+        let mut err = self.no_such_field_err(ident, base_ty, expr);
 
         match *base_ty.peel_refs().kind() {
             ty::Array(_, len) => {
@@ -3282,18 +3282,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
     }
 
-    fn no_such_field_err(&self, field: Ident, expr_t: Ty<'tcx>, id: HirId) -> Diag<'_> {
+    fn no_such_field_err(
+        &self,
+        field: Ident,
+        base_ty: Ty<'tcx>,
+        expr: &hir::Expr<'tcx>,
+    ) -> Diag<'_> {
         let span = field.span;
-        debug!("no_such_field_err(span: {:?}, field: {:?}, expr_t: {:?})", span, field, expr_t);
+        debug!("no_such_field_err(span: {:?}, field: {:?}, expr_t: {:?})", span, field, base_ty);
 
-        let mut err = self.dcx().create_err(NoFieldOnType { span, ty: expr_t, field });
-        if expr_t.references_error() {
+        let mut err = self.dcx().create_err(NoFieldOnType { span, ty: base_ty, field });
+        if base_ty.references_error() {
             err.downgrade_to_delayed_bug();
         }
 
+        if let Some(within_macro_span) = span.within_macro(expr.span, self.tcx.sess.source_map()) {
+            err.span_label(within_macro_span, "due to this macro variable");
+        }
+
         // try to add a suggestion in case the field is a nested field of a field of the Adt
-        let mod_id = self.tcx.parent_module(id).to_def_id();
-        let (ty, unwrap) = if let ty::Adt(def, args) = expr_t.kind()
+        let mod_id = self.tcx.parent_module(expr.hir_id).to_def_id();
+        let (ty, unwrap) = if let ty::Adt(def, args) = base_ty.kind()
             && (self.tcx.is_diagnostic_item(sym::Result, def.did())
                 || self.tcx.is_diagnostic_item(sym::Option, def.did()))
             && let Some(arg) = args.get(0)
@@ -3301,10 +3310,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             (ty, "unwrap().")
         } else {
-            (expr_t, "")
+            (base_ty, "")
         };
         for (found_fields, args) in
-            self.get_field_candidates_considering_privacy_for_diag(span, ty, mod_id, id)
+            self.get_field_candidates_considering_privacy_for_diag(span, ty, mod_id, expr.hir_id)
         {
             let field_names = found_fields.iter().map(|field| field.name).collect::<Vec<_>>();
             let mut candidate_fields: Vec<_> = found_fields
@@ -3317,7 +3326,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         args,
                         vec![],
                         mod_id,
-                        id,
+                        expr.hir_id,
                     )
                 })
                 .map(|mut field_path| {
@@ -3328,7 +3337,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             candidate_fields.sort();
 
             let len = candidate_fields.len();
-            if len > 0 {
+            // Don't suggest `.field` if the base expr is from a different
+            // syntax context than the field.
+            if len > 0 && expr.span.eq_ctxt(field.span) {
                 err.span_suggestions(
                     field.span.shrink_to_lo(),
                     format!(
@@ -3963,7 +3974,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => (),
             };
 
-            self.no_such_field_err(field, container, expr.hir_id).emit();
+            self.no_such_field_err(field, container, expr).emit();
 
             break;
         }

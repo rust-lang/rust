@@ -196,7 +196,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Try to get the span of the identifier within the expression's syntax context
         // (if that's different).
-        let within_macro_span = span.within_macro(expr_span);
+        let within_macro_span = span.within_macro(expr_span, self.tcx.sess.source_map());
 
         // Avoid suggestions when we don't know what's going on.
         if let Err(guar) = rcvr_ty.error_reported() {
