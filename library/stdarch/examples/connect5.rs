@@ -29,7 +29,6 @@
 //! each move.
 
 #![allow(internal_features)]
-#![allow(unsafe_op_in_unsafe_fn)]
 #![feature(avx512_target_feature)]
 #![cfg_attr(target_arch = "x86", feature(stdarch_x86_avx512, stdarch_internal))]
 #![cfg_attr(target_arch = "x86_64", feature(stdarch_x86_avx512, stdarch_internal))]
@@ -419,12 +418,12 @@ fn pos_is_draw(pos: &Pos) -> bool {
     found && !pos_is_winner(pos)
 }
 
-#[target_feature(enable = "avx512f,avx512bw")]
+#[target_feature(enable = "avx512f,avx512bw,popcnt")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-unsafe fn pos_is_draw_avx512(pos: &Pos) -> bool {
+fn pos_is_draw_avx512(pos: &Pos) -> bool {
     let empty = Color::Empty as usize;
 
-    let board0org = _mm512_loadu_epi32(&pos.bitboard[empty][0][0]);
+    let board0org = unsafe { _mm512_loadu_epi32(&pos.bitboard[empty][0][0]) };
 
     let answer = _mm512_set1_epi32(0);
 
@@ -481,7 +480,7 @@ fn search(pos: &Pos, alpha: i32, beta: i32, depth: i32, _ply: i32) -> i32 {
 
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     {
-        if is_x86_feature_detected!("avx512bw") {
+        if check_x86_avx512_features() {
             unsafe {
                 if pos_is_winner_avx512(pos) {
                     return -EVAL_INF + _ply;
@@ -571,7 +570,7 @@ fn eval(pos: &Pos, _ply: i32) -> i32 {
     // check if opp has live4 which will win playing next move
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     {
-        if is_x86_feature_detected!("avx512bw") {
+        if check_x86_avx512_features() {
             unsafe {
                 if check_patternlive4_avx512(pos, def) {
                     return -4096;
@@ -594,7 +593,7 @@ fn eval(pos: &Pos, _ply: i32) -> i32 {
     // check if self has live4 which will win playing next move
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     {
-        if is_x86_feature_detected!("avx512bw") {
+        if check_x86_avx512_features() {
             unsafe {
                 if check_patternlive4_avx512(pos, atk) {
                     return 2560;
@@ -617,7 +616,7 @@ fn eval(pos: &Pos, _ply: i32) -> i32 {
     // check if self has dead4 which will win playing next move
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     {
-        if is_x86_feature_detected!("avx512bw") {
+        if check_x86_avx512_features() {
             unsafe {
                 if check_patterndead4_avx512(pos, atk) > 0 {
                     return 2560;
@@ -639,7 +638,7 @@ fn eval(pos: &Pos, _ply: i32) -> i32 {
 
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     {
-        if is_x86_feature_detected!("avx512bw") {
+        if check_x86_avx512_features() {
             unsafe {
                 let n_c4: i32 = check_patterndead4_avx512(pos, def);
                 let n_c3: i32 = check_patternlive3_avx512(pos, def);
@@ -854,16 +853,18 @@ fn check_patternlive3(pos: &Pos, sd: Side) -> i32 {
     n
 }
 
-#[target_feature(enable = "avx512f,avx512bw")]
+#[target_feature(enable = "avx512f,avx512bw,popcnt")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-unsafe fn pos_is_winner_avx512(pos: &Pos) -> bool {
+fn pos_is_winner_avx512(pos: &Pos) -> bool {
     let current_side = side_opp(pos.p_turn);
     let coloridx = current_side as usize;
 
-    let board0org: [__m512i; 2] = [
-        _mm512_loadu_epi32(&pos.bitboard[coloridx][0][0]),
-        _mm512_loadu_epi32(&pos.bitboard[coloridx][1][0]),
-    ]; // load states from bitboard
+    let board0org: [__m512i; 2] = unsafe {
+        [
+            _mm512_loadu_epi32(&pos.bitboard[coloridx][0][0]),
+            _mm512_loadu_epi32(&pos.bitboard[coloridx][1][0]),
+        ]
+    }; // load states from bitboard
 
     #[rustfmt::skip]
     let answer = _mm512_set1_epi16((1<<15)|(1<<14)|(1<<13)|(1<<12)|(1<<11)); // an unbroken chain of five moves
@@ -928,9 +929,9 @@ unsafe fn pos_is_winner_avx512(pos: &Pos) -> bool {
     count_match > 0
 }
 
-#[target_feature(enable = "avx512f,avx512bw")]
+#[target_feature(enable = "avx512f,avx512bw,popcnt")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-unsafe fn check_patternlive4_avx512(pos: &Pos, sd: Side) -> bool {
+fn check_patternlive4_avx512(pos: &Pos, sd: Side) -> bool {
     let coloridx = sd as usize;
     let emptyidx = Color::Empty as usize;
 
@@ -952,14 +953,18 @@ unsafe fn check_patternlive4_avx512(pos: &Pos, sd: Side) -> bool {
                                         0b00_10_10_11_11_11_11_11_10_10_10_10_10_11_11_10,
                                         0b00_10_10_10_11_11_11_10_10_10_10_10_11_11_11_10,
                                         0b00_10_10_10_10_11_10_10_10_10_10_11_11_11_11_10];
-    let board0org: [__m512i; 2] = [
-        _mm512_loadu_epi32(&pos.bitboard[coloridx][0][0]),
-        _mm512_loadu_epi32(&pos.bitboard[coloridx][1][0]),
-    ];
-    let board1org: [__m512i; 2] = [
-        _mm512_loadu_epi32(&pos.bitboard[emptyidx][0][0]),
-        _mm512_loadu_epi32(&pos.bitboard[emptyidx][1][0]),
-    ];
+    let board0org: [__m512i; 2] = unsafe {
+        [
+            _mm512_loadu_epi32(&pos.bitboard[coloridx][0][0]),
+            _mm512_loadu_epi32(&pos.bitboard[coloridx][1][0]),
+        ]
+    };
+    let board1org: [__m512i; 2] = unsafe {
+        [
+            _mm512_loadu_epi32(&pos.bitboard[emptyidx][0][0]),
+            _mm512_loadu_epi32(&pos.bitboard[emptyidx][1][0]),
+        ]
+    };
 
     let mut count_match: i32 = 0;
 
@@ -990,9 +995,9 @@ unsafe fn check_patternlive4_avx512(pos: &Pos, sd: Side) -> bool {
     count_match > 0
 }
 
-#[target_feature(enable = "avx512f,avx512bw")]
+#[target_feature(enable = "avx512f,avx512bw,popcnt")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-unsafe fn check_patterndead4_avx512(pos: &Pos, sd: Side) -> i32 {
+fn check_patterndead4_avx512(pos: &Pos, sd: Side) -> i32 {
     let coloridx = sd as usize;
     let emptyidx = Color::Empty as usize;
 
@@ -1023,14 +1028,18 @@ unsafe fn check_patterndead4_avx512(pos: &Pos, sd: Side) -> i32 {
                                         0b00_10_10_11_11_11_11_11_10_10_10_10_11_11_11_10,
                                         0b00_10_10_10_11_11_11_10_10_10_10_11_11_11_11_10,
                                         0b00_10_10_10_10_11_10_10_10_10_11_11_11_11_11_10];
-    let board0org: [__m512i; 2] = [
-        _mm512_loadu_epi32(&pos.bitboard[coloridx][0][0]),
-        _mm512_loadu_epi32(&pos.bitboard[coloridx][1][0]),
-    ];
-    let board1org: [__m512i; 2] = [
-        _mm512_loadu_epi32(&pos.bitboard[emptyidx][0][0]),
-        _mm512_loadu_epi32(&pos.bitboard[emptyidx][1][0]),
-    ];
+    let board0org: [__m512i; 2] = unsafe {
+        [
+            _mm512_loadu_epi32(&pos.bitboard[coloridx][0][0]),
+            _mm512_loadu_epi32(&pos.bitboard[coloridx][1][0]),
+        ]
+    };
+    let board1org: [__m512i; 2] = unsafe {
+        [
+            _mm512_loadu_epi32(&pos.bitboard[emptyidx][0][0]),
+            _mm512_loadu_epi32(&pos.bitboard[emptyidx][1][0]),
+        ]
+    };
 
     let mut count_match: i32 = 0;
 
@@ -1063,16 +1072,16 @@ unsafe fn check_patterndead4_avx512(pos: &Pos, sd: Side) -> i32 {
     count_match
 }
 
-#[target_feature(enable = "avx512f,avx512bw")]
+#[target_feature(enable = "avx512f,avx512bw,popcnt")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-unsafe fn check_patternlive3_avx512(pos: &Pos, sd: Side) -> i32 {
+fn check_patternlive3_avx512(pos: &Pos, sd: Side) -> i32 {
     let coloridx = sd as usize;
     let emptyidx = Color::Empty as usize;
 
     #[rustfmt::skip]
-    let board0org: [__m512i; 2]  = [_mm512_loadu_epi32(&pos.bitboard[coloridx][0][0]), _mm512_loadu_epi32(&pos.bitboard[coloridx][1][0])];
+    let board0org: [__m512i; 2] = unsafe { [_mm512_loadu_epi32(&pos.bitboard[coloridx][0][0]), _mm512_loadu_epi32(&pos.bitboard[coloridx][1][0])] };
     #[rustfmt::skip]
-    let board1org: [__m512i; 2]  = [_mm512_loadu_epi32(&pos.bitboard[emptyidx][0][0]), _mm512_loadu_epi32(&pos.bitboard[emptyidx][1][0])];
+    let board1org: [__m512i; 2] = unsafe { [_mm512_loadu_epi32(&pos.bitboard[emptyidx][0][0]), _mm512_loadu_epi32(&pos.bitboard[emptyidx][1][0])] };
 
     #[rustfmt::skip]
     let answer_color: [__m512i; 1] = [_mm512_set1_epi16(         (1<<14)|(1<<13)|(1<<12)         )];
@@ -1170,10 +1179,15 @@ unsafe fn check_patternlive3_avx512(pos: &Pos, sd: Side) -> i32 {
     count_match
 }
 
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+fn check_x86_avx512_features() -> bool {
+    is_x86_feature_detected!("avx512bw") && is_x86_feature_detected!("popcnt")
+}
+
 fn main() {
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     {
-        if is_x86_feature_detected!("avx512bw") {
+        if check_x86_avx512_features() {
             println!("\n\nThe program is running with avx512f and avx512bw intrinsics\n\n");
         } else {
             println!("\n\nThe program is running with NO intrinsics.\n\n");

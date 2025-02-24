@@ -29,7 +29,6 @@
     clippy::cast_sign_loss,
     clippy::missing_docs_in_private_items
 )]
-#![allow(unsafe_op_in_unsafe_fn)]
 
 use std::{
     io::{self, Read},
@@ -67,7 +66,7 @@ fn hex_encode<'a>(src: &[u8], dst: &'a mut [u8]) -> Result<&'a str, usize> {
     #[cfg(target_arch = "wasm32")]
     {
         if true {
-            return unsafe { hex_encode_simd128(src, dst) };
+            return hex_encode_simd128(src, dst);
         }
     }
 
@@ -76,7 +75,9 @@ fn hex_encode<'a>(src: &[u8], dst: &'a mut [u8]) -> Result<&'a str, usize> {
 
 #[target_feature(enable = "avx2")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-unsafe fn hex_encode_avx2<'a>(mut src: &[u8], dst: &'a mut [u8]) -> Result<&'a str, usize> {
+fn hex_encode_avx2<'a>(mut src: &[u8], dst: &'a mut [u8]) -> Result<&'a str, usize> {
+    assert!(dst.len() >= src.len().checked_mul(2).unwrap());
+
     let ascii_zero = _mm256_set1_epi8(b'0' as i8);
     let nines = _mm256_set1_epi8(9);
     let ascii_a = _mm256_set1_epi8((b'a' - 9 - 1) as i8);
@@ -84,7 +85,8 @@ unsafe fn hex_encode_avx2<'a>(mut src: &[u8], dst: &'a mut [u8]) -> Result<&'a s
 
     let mut i = 0_usize;
     while src.len() >= 32 {
-        let invec = _mm256_loadu_si256(src.as_ptr() as *const _);
+        // SAFETY: the loop condition ensures that we have at least 32 bytes
+        let invec = unsafe { _mm256_loadu_si256(src.as_ptr() as *const _) };
 
         let masked1 = _mm256_and_si256(invec, and4bits);
         let masked2 = _mm256_and_si256(_mm256_srli_epi64(invec, 4), and4bits);
@@ -102,26 +104,34 @@ unsafe fn hex_encode_avx2<'a>(mut src: &[u8], dst: &'a mut [u8]) -> Result<&'a s
         let res2 = _mm256_unpackhi_epi8(masked2, masked1);
 
         // Store everything into the right destination now
-        let base = dst.as_mut_ptr().add(i * 2);
-        let base1 = base.add(0) as *mut _;
-        let base2 = base.add(16) as *mut _;
-        let base3 = base.add(32) as *mut _;
-        let base4 = base.add(48) as *mut _;
-        _mm256_storeu2_m128i(base3, base1, res1);
-        _mm256_storeu2_m128i(base4, base2, res2);
+        unsafe {
+            // SAFETY: the assertion at the beginning of the function ensures
+            // that `dst` is large enough.
+            let base = dst.as_mut_ptr().add(i * 2);
+            let base1 = base.add(0) as *mut _;
+            let base2 = base.add(16) as *mut _;
+            let base3 = base.add(32) as *mut _;
+            let base4 = base.add(48) as *mut _;
+            _mm256_storeu2_m128i(base3, base1, res1);
+            _mm256_storeu2_m128i(base4, base2, res2);
+        }
+
         src = &src[32..];
         i += 32;
     }
 
     let _ = hex_encode_sse41(src, &mut dst[i * 2..]);
 
-    Ok(str::from_utf8_unchecked(&dst[..src.len() * 2 + i * 2]))
+    // SAFETY: `dst` only contains ASCII characters
+    unsafe { Ok(str::from_utf8_unchecked(&dst[..src.len() * 2 + i * 2])) }
 }
 
 // copied from https://github.com/Matherunner/bin2hex-sse/blob/master/base16_sse4.cpp
 #[target_feature(enable = "sse4.1")]
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-unsafe fn hex_encode_sse41<'a>(mut src: &[u8], dst: &'a mut [u8]) -> Result<&'a str, usize> {
+fn hex_encode_sse41<'a>(mut src: &[u8], dst: &'a mut [u8]) -> Result<&'a str, usize> {
+    assert!(dst.len() >= src.len().checked_mul(2).unwrap());
+
     let ascii_zero = _mm_set1_epi8(b'0' as i8);
     let nines = _mm_set1_epi8(9);
     let ascii_a = _mm_set1_epi8((b'a' - 9 - 1) as i8);
@@ -129,7 +139,8 @@ unsafe fn hex_encode_sse41<'a>(mut src: &[u8], dst: &'a mut [u8]) -> Result<&'a 
 
     let mut i = 0_usize;
     while src.len() >= 16 {
-        let invec = _mm_loadu_si128(src.as_ptr() as *const _);
+        // SAFETY: the loop condition ensures that we have at least 16 bytes
+        let invec = unsafe { _mm_loadu_si128(src.as_ptr() as *const _) };
 
         let masked1 = _mm_and_si128(invec, and4bits);
         let masked2 = _mm_and_si128(_mm_srli_epi64(invec, 4), and4bits);
@@ -146,20 +157,27 @@ unsafe fn hex_encode_sse41<'a>(mut src: &[u8], dst: &'a mut [u8]) -> Result<&'a 
         let res1 = _mm_unpacklo_epi8(masked2, masked1);
         let res2 = _mm_unpackhi_epi8(masked2, masked1);
 
-        _mm_storeu_si128(dst.as_mut_ptr().add(i * 2) as *mut _, res1);
-        _mm_storeu_si128(dst.as_mut_ptr().add(i * 2 + 16) as *mut _, res2);
+        unsafe {
+            // SAFETY: the assertion at the beginning of the function ensures
+            // that `dst` is large enough.
+            _mm_storeu_si128(dst.as_mut_ptr().add(i * 2) as *mut _, res1);
+            _mm_storeu_si128(dst.as_mut_ptr().add(i * 2 + 16) as *mut _, res2);
+        }
         src = &src[16..];
         i += 16;
     }
 
     let _ = hex_encode_fallback(src, &mut dst[i * 2..]);
 
-    Ok(str::from_utf8_unchecked(&dst[..src.len() * 2 + i * 2]))
+    // SAFETY: `dst` only contains ASCII characters
+    unsafe { Ok(str::from_utf8_unchecked(&dst[..src.len() * 2 + i * 2])) }
 }
 
 #[cfg(target_arch = "wasm32")]
 #[target_feature(enable = "simd128")]
-unsafe fn hex_encode_simd128<'a>(mut src: &[u8], dst: &'a mut [u8]) -> Result<&'a str, usize> {
+fn hex_encode_simd128<'a>(mut src: &[u8], dst: &'a mut [u8]) -> Result<&'a str, usize> {
+    assert!(dst.len() >= src.len().checked_mul(2).unwrap());
+
     use core_arch::arch::wasm32::*;
 
     let ascii_zero = u8x16_splat(b'0');
@@ -169,7 +187,8 @@ unsafe fn hex_encode_simd128<'a>(mut src: &[u8], dst: &'a mut [u8]) -> Result<&'
 
     let mut i = 0_usize;
     while src.len() >= 16 {
-        let invec = v128_load(src.as_ptr() as *const _);
+        // SAFETY: the loop condition ensures that we have at least 16 bytes
+        let invec = unsafe { v128_load(src.as_ptr() as *const _) };
 
         let masked1 = v128_and(invec, and4bits);
         let masked2 = v128_and(u8x16_shr(invec, 4), and4bits);
@@ -193,15 +212,20 @@ unsafe fn hex_encode_simd128<'a>(mut src: &[u8], dst: &'a mut [u8]) -> Result<&'
             masked2, masked1,
         );
 
-        v128_store(dst.as_mut_ptr().add(i * 2) as *mut _, res1);
-        v128_store(dst.as_mut_ptr().add(i * 2 + 16) as *mut _, res2);
+        unsafe {
+            // SAFETY: the assertion at the beginning of the function ensures
+            // that `dst` is large enough.
+            v128_store(dst.as_mut_ptr().add(i * 2) as *mut _, res1);
+            v128_store(dst.as_mut_ptr().add(i * 2 + 16) as *mut _, res2);
+        }
         src = &src[16..];
         i += 16;
     }
 
     let _ = hex_encode_fallback(src, &mut dst[i * 2..]);
 
-    Ok(str::from_utf8_unchecked(&dst[..src.len() * 2 + i * 2]))
+    // SAFETY: `dst` only contains ASCII characters
+    unsafe { Ok(str::from_utf8_unchecked(&dst[..src.len() * 2 + i * 2])) }
 }
 
 fn hex_encode_fallback<'a>(src: &[u8], dst: &'a mut [u8]) -> Result<&'a str, usize> {
