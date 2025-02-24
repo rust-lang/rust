@@ -3,8 +3,7 @@
 // that no ICE occurs in these cases.
 
 #![feature(intrinsics)]
-#![crate_type="lib"]
-
+#![crate_type = "lib"]
 
 #[rustc_intrinsic]
 unsafe fn simd_saturating_add<'a, T: 'a>(x: T, y: T);
