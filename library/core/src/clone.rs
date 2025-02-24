@@ -196,6 +196,25 @@ pub macro Clone($item:item) {
 ///
 /// The `UseCloned` trait does not provide a method; instead, it indicates that
 /// `Clone::clone` is lightweight, and allows the use of the `.use` syntax.
+///
+/// ## .use postfix syntax
+///
+/// Values can be `.use`d by adding `.use` postfix to the value you want to use.
+///
+/// ```ignore (this won't work until we land use)
+/// fn foo(f: Foo) {
+///     // if `Foo` implements `Copy` f would be copied into x.
+///     // if `Foo` implements `UseCloned` f would be cloned into x.
+///     // otherwise f would be moved into x.
+///     let x = f.use;
+///     // ...
+/// }
+/// ```
+///
+/// ## use closures
+///
+/// Use closures allow captured values to be automatically used.
+/// This is similar to have a closure that you would call `.use` over each captured value.
 #[unstable(feature = "ergonomic_clones", issue = "132290")]
 #[cfg_attr(not(bootstrap), lang = "use_cloned")]
 pub trait UseCloned: Clone {
