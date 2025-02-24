@@ -171,7 +171,7 @@ impl<'a> Parser<'a> {
                 break;
             }
             // Check for deprecated `...` syntax
-            if self.token == token::DotDotDot && op.node == AssocOp::DotDotEq {
+            if self.token == token::DotDotDot && op.node == AssocOp::Range(RangeLimits::Closed) {
                 self.err_dotdotdot_syntax(self.token.span);
             }
 
@@ -188,17 +188,12 @@ impl<'a> Parser<'a> {
             }
 
             // Look for JS' `===` and `!==` and recover
-            if (op.node == AssocOp::Equal || op.node == AssocOp::NotEqual)
+            if let AssocOp::Binary(bop @ BinOpKind::Eq | bop @ BinOpKind::Ne) = op.node
                 && self.token == token::Eq
                 && self.prev_token.span.hi() == self.token.span.lo()
             {
                 let sp = op.span.to(self.token.span);
-                let sugg = match op.node {
-                    AssocOp::Equal => "==",
-                    AssocOp::NotEqual => "!=",
-                    _ => unreachable!(),
-                }
-                .into();
+                let sugg = bop.as_str().into();
                 let invalid = format!("{sugg}=");
                 self.dcx().emit_err(errors::InvalidComparisonOperator {
                     span: sp,
@@ -213,7 +208,7 @@ impl<'a> Parser<'a> {
             }
 
             // Look for PHP's `<>` and recover
-            if op.node == AssocOp::Less
+            if op.node == AssocOp::Binary(BinOpKind::Lt)
                 && self.token == token::Gt
                 && self.prev_token.span.hi() == self.token.span.lo()
             {
@@ -231,7 +226,7 @@ impl<'a> Parser<'a> {
             }
 
             // Look for C++'s `<=>` and recover
-            if op.node == AssocOp::LessEqual
+            if op.node == AssocOp::Binary(BinOpKind::Le)
                 && self.token == token::Gt
                 && self.prev_token.span.hi() == self.token.span.lo()
             {
@@ -269,13 +264,13 @@ impl<'a> Parser<'a> {
 
             let op = op.node;
             // Special cases:
-            if op == AssocOp::As {
+            if op == AssocOp::Cast {
                 lhs = self.parse_assoc_op_cast(lhs, lhs_span, ExprKind::Cast)?;
                 continue;
-            } else if op == AssocOp::DotDot || op == AssocOp::DotDotEq {
+            } else if let AssocOp::Range(limits) = op {
                 // If we didn't have to handle `x..`/`x..=`, it would be pretty easy to
                 // generalise it to the Fixity::None code.
-                lhs = self.parse_expr_range(prec, lhs, op, cur_op_span)?;
+                lhs = self.parse_expr_range(prec, lhs, limits, cur_op_span)?;
                 break;
             }
 
@@ -290,46 +285,16 @@ impl<'a> Parser<'a> {
 
             let span = self.mk_expr_sp(&lhs, lhs_span, rhs.span);
             lhs = match op {
-                AssocOp::Add
-                | AssocOp::Subtract
-                | AssocOp::Multiply
-                | AssocOp::Divide
-                | AssocOp::Modulus
-                | AssocOp::LAnd
-                | AssocOp::LOr
-                | AssocOp::BitXor
-                | AssocOp::BitAnd
-                | AssocOp::BitOr
-                | AssocOp::ShiftLeft
-                | AssocOp::ShiftRight
-                | AssocOp::Equal
-                | AssocOp::Less
-                | AssocOp::LessEqual
-                | AssocOp::NotEqual
-                | AssocOp::Greater
-                | AssocOp::GreaterEqual => {
-                    let ast_op = op.to_ast_binop().unwrap();
+                AssocOp::Binary(ast_op) => {
                     let binary = self.mk_binary(source_map::respan(cur_op_span, ast_op), lhs, rhs);
                     self.mk_expr(span, binary)
                 }
                 AssocOp::Assign => self.mk_expr(span, ExprKind::Assign(lhs, rhs, cur_op_span)),
-                AssocOp::AssignOp(k) => {
-                    let aop = match k {
-                        token::Plus => BinOpKind::Add,
-                        token::Minus => BinOpKind::Sub,
-                        token::Star => BinOpKind::Mul,
-                        token::Slash => BinOpKind::Div,
-                        token::Percent => BinOpKind::Rem,
-                        token::Caret => BinOpKind::BitXor,
-                        token::And => BinOpKind::BitAnd,
-                        token::Or => BinOpKind::BitOr,
-                        token::Shl => BinOpKind::Shl,
-                        token::Shr => BinOpKind::Shr,
-                    };
+                AssocOp::AssignOp(aop) => {
                     let aopexpr = self.mk_assign_op(source_map::respan(cur_op_span, aop), lhs, rhs);
                     self.mk_expr(span, aopexpr)
                 }
-                AssocOp::As | AssocOp::DotDot | AssocOp::DotDotEq => {
+                AssocOp::Cast | AssocOp::Range(_) => {
                     self.dcx().span_bug(span, "AssocOp should have been handled by special case")
                 }
             };
@@ -347,13 +312,14 @@ impl<'a> Parser<'a> {
             // An exhaustive check is done in the following block, but these are checked first
             // because they *are* ambiguous but also reasonable looking incorrect syntax, so we
             // want to keep their span info to improve diagnostics in these cases in a later stage.
-            (true, Some(AssocOp::Multiply)) | // `{ 42 } *foo = bar;` or `{ 42 } * 3`
-            (true, Some(AssocOp::Subtract)) | // `{ 42 } -5`
-            (true, Some(AssocOp::Add)) | // `{ 42 } + 42` (unary plus)
-            (true, Some(AssocOp::LAnd)) | // `{ 42 } &&x` (#61475) or `{ 42 } && if x { 1 } else { 0 }`
-            (true, Some(AssocOp::LOr)) | // `{ 42 } || 42` ("logical or" or closure)
-            (true, Some(AssocOp::BitOr)) // `{ 42 } | 42` or `{ 42 } |x| 42`
-            => {
+            (true, Some(AssocOp::Binary(
+                BinOpKind::Mul | // `{ 42 } *foo = bar;` or `{ 42 } * 3`
+                BinOpKind::Sub | // `{ 42 } -5`
+                BinOpKind::Add | // `{ 42 } + 42` (unary plus)
+                BinOpKind::And | // `{ 42 } &&x` (#61475) or `{ 42 } && if x { 1 } else { 0 }`
+                BinOpKind::Or | // `{ 42 } || 42` ("logical or" or closure)
+                BinOpKind::BitOr // `{ 42 } | 42` or `{ 42 } |x| 42`
+            ))) => {
                 // These cases are ambiguous and can't be identified in the parser alone.
                 //
                 // Bitwise AND is left out because guessing intent is hard. We can make
@@ -392,23 +358,21 @@ impl<'a> Parser<'a> {
             // When parsing const expressions, stop parsing when encountering `>`.
             (
                 Some(
-                    AssocOp::ShiftRight
-                    | AssocOp::Greater
-                    | AssocOp::GreaterEqual
-                    | AssocOp::AssignOp(token::BinOpToken::Shr),
+                    AssocOp::Binary(BinOpKind::Shr | BinOpKind::Gt | BinOpKind::Ge)
+                    | AssocOp::AssignOp(BinOpKind::Shr),
                 ),
                 _,
             ) if self.restrictions.contains(Restrictions::CONST_EXPR) => {
                 return None;
             }
-            // When recovering patterns as expressions, stop parsing when encountering an assignment `=`, an alternative `|`, or a range `..`.
+            // When recovering patterns as expressions, stop parsing when encountering an
+            // assignment `=`, an alternative `|`, or a range `..`.
             (
                 Some(
                     AssocOp::Assign
                     | AssocOp::AssignOp(_)
-                    | AssocOp::BitOr
-                    | AssocOp::DotDot
-                    | AssocOp::DotDotEq,
+                    | AssocOp::Binary(BinOpKind::BitOr)
+                    | AssocOp::Range(_),
                 ),
                 _,
             ) if self.restrictions.contains(Restrictions::IS_PAT) => {
@@ -423,7 +387,7 @@ impl<'a> Parser<'a> {
                     incorrect: "and".into(),
                     sub: errors::InvalidLogicalOperatorSub::Conjunction(self.token.span),
                 });
-                (AssocOp::LAnd, span)
+                (AssocOp::Binary(BinOpKind::And), span)
             }
             (None, Some((Ident { name: sym::or, span }, IdentIsRaw::No))) if self.may_recover() => {
                 self.dcx().emit_err(errors::InvalidLogicalOperator {
@@ -431,7 +395,7 @@ impl<'a> Parser<'a> {
                     incorrect: "or".into(),
                     sub: errors::InvalidLogicalOperatorSub::Disjunction(self.token.span),
                 });
-                (AssocOp::LOr, span)
+                (AssocOp::Binary(BinOpKind::Or), span)
             }
             _ => return None,
         };
@@ -449,7 +413,7 @@ impl<'a> Parser<'a> {
         &mut self,
         prec: ExprPrecedence,
         lhs: P<Expr>,
-        op: AssocOp,
+        limits: RangeLimits,
         cur_op_span: Span,
     ) -> PResult<'a, P<Expr>> {
         let rhs = if self.is_at_start_of_range_notation_rhs() {
@@ -465,8 +429,6 @@ impl<'a> Parser<'a> {
         };
         let rhs_span = rhs.as_ref().map_or(cur_op_span, |x| x.span);
         let span = self.mk_expr_sp(&lhs, lhs.span, rhs_span);
-        let limits =
-            if op == AssocOp::DotDot { RangeLimits::HalfOpen } else { RangeLimits::Closed };
         let range = self.mk_range(Some(lhs), rhs, limits);
         Ok(self.mk_expr(span, range))
     }
