@@ -165,9 +165,13 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         if let Some(instance) = instance {
             if is_call_from_compiler_builtins_to_upstream_monomorphization(tcx, instance) {
                 if destination.is_some() {
-                    let caller = with_no_trimmed_paths!(tcx.def_path_str(fx.instance.def_id()));
-                    let callee = with_no_trimmed_paths!(tcx.def_path_str(instance.def_id()));
-                    tcx.dcx().emit_err(CompilerBuiltinsCannotCall { caller, callee });
+                    let caller_def = fx.instance.def_id();
+                    let e = CompilerBuiltinsCannotCall {
+                        span: tcx.def_span(caller_def),
+                        caller: with_no_trimmed_paths!(tcx.def_path_str(caller_def)),
+                        callee: with_no_trimmed_paths!(tcx.def_path_str(instance.def_id())),
+                    };
+                    tcx.dcx().emit_err(e);
                 } else {
                     info!(
                         "compiler_builtins call to diverging function {:?} replaced with abort",
