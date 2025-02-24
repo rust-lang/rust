@@ -211,6 +211,7 @@ const fn u128_ilog2(v: u128) -> u32 {
 pub struct Hexf<F>(pub F);
 
 // Adapted from https://github.com/ericseppanen/hexfloat2/blob/a5c27932f0ff/src/format.rs
+#[cfg(not(feature = "compiler-builtins"))]
 fn fmt_any_hex<F: Float>(x: &F, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     if x.is_sign_negative() {
         write!(f, "-")?;
@@ -244,6 +245,11 @@ fn fmt_any_hex<F: Float>(x: &F, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     write!(f, "0x{leading}{sig:0mwidth$x}p{exponent:+}")
 }
 
+#[cfg(feature = "compiler-builtins")]
+fn fmt_any_hex<F: Float>(_x: &F, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    unimplemented!()
+}
+
 impl<F: Float> fmt::LowerHex for Hexf<F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         cfg_if! {
@@ -259,13 +265,27 @@ impl<F: Float> fmt::LowerHex for Hexf<F> {
 
 impl<F: Float> fmt::LowerHex for Hexf<(F, F)> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "({:x}, {:x})", Hexf(self.0.0), Hexf(self.0.1))
+        cfg_if! {
+            if #[cfg(feature = "compiler-builtins")] {
+                let _ = f;
+                unimplemented!()
+            } else {
+                write!(f, "({:x}, {:x})", Hexf(self.0.0), Hexf(self.0.1))
+            }
+        }
     }
 }
 
 impl<F: Float> fmt::LowerHex for Hexf<(F, i32)> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "({:x}, {:x})", Hexf(self.0.0), Hexf(self.0.1))
+        cfg_if! {
+            if #[cfg(feature = "compiler-builtins")] {
+                let _ = f;
+                unimplemented!()
+            } else {
+                write!(f, "({:x}, {:x})", Hexf(self.0.0), Hexf(self.0.1))
+            }
+        }
     }
 }
 
@@ -287,7 +307,14 @@ where
     Hexf<T>: fmt::LowerHex,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::LowerHex::fmt(self, f)
+        cfg_if! {
+            if #[cfg(feature = "compiler-builtins")] {
+                let _ = f;
+                unimplemented!()
+            } else {
+                fmt::LowerHex::fmt(self, f)
+            }
+        }
     }
 }
 
@@ -296,7 +323,14 @@ where
     Hexf<T>: fmt::LowerHex,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::LowerHex::fmt(self, f)
+        cfg_if! {
+            if #[cfg(feature = "compiler-builtins")] {
+                let _ = f;
+                unimplemented!()
+            } else {
+                fmt::LowerHex::fmt(self, f)
+            }
+        }
     }
 }
 
