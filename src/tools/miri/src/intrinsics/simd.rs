@@ -633,7 +633,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.write_immediate(*val, &dest)?;
                 }
             }
-            "shuffle_generic" => {
+            "shuffle_const_generic" => {
                 let [left, right] = check_arg_count(args)?;
                 let (left, left_len) = this.project_to_simd(left)?;
                 let (right, right_len) = this.project_to_simd(right)?;
@@ -657,7 +657,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         this.read_immediate(&this.project_index(&right, right_idx)?)?
                     } else {
                         throw_ub_format!(
-                            "`simd_shuffle_generic` index {src_index} is out-of-bounds for 2 vectors with length {dest_len}"
+                            "`simd_shuffle_const_generic` index {src_index} is out-of-bounds for 2 vectors with length {dest_len}"
                         );
                     };
                     this.write_immediate(*val, &dest)?;
