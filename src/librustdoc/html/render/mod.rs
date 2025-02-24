@@ -1472,57 +1472,60 @@ pub(crate) fn notable_traits_button<'a, 'tcx>(
     ty: &'a clean::Type,
     cx: &'a Context<'tcx>,
 ) -> Option<impl fmt::Display + 'a + Captures<'tcx>> {
-    let mut has_notable_trait = false;
-
     if ty.is_unit() {
         // Very common fast path.
         return None;
     }
 
-    let did = ty.def_id(cx.cache())?;
+    let has_notable_trait = || {
+        let Some(did) = ty.def_id(cx.cache()) else {
+            return false;
+        };
 
-    // Box has pass-through impls for Read, Write, Iterator, and Future when the
-    // boxed type implements one of those. We don't want to treat every Box return
-    // as being notably an Iterator (etc), though, so we exempt it. Pin has the same
-    // issue, with a pass-through impl for Future.
-    if Some(did) == cx.tcx().lang_items().owned_box()
-        || Some(did) == cx.tcx().lang_items().pin_type()
-    {
-        return None;
-    }
+        // Box has pass-through impls for Read, Write, Iterator, and Future when the
+        // boxed type implements one of those. We don't want to treat every Box return
+        // as being notably an Iterator (etc), though, so we exempt it. Pin has the same
+        // issue, with a pass-through impl for Future.
+        if Some(did) == cx.tcx().lang_items().owned_box()
+            || Some(did) == cx.tcx().lang_items().pin_type()
+        {
+            return false;
+        }
 
-    if let Some(impls) = cx.cache().impls.get(&did) {
-        for i in impls {
-            let impl_ = i.inner_impl();
-            if impl_.polarity != ty::ImplPolarity::Positive {
-                continue;
-            }
+        let Some(impls) = cx.cache().impls.get(&did) else {
+            return false;
+        };
 
-            if !ty.is_doc_subtype_of(&impl_.for_, cx.cache()) {
-                // Two different types might have the same did,
-                // without actually being the same.
-                continue;
-            }
-            if let Some(trait_) = &impl_.trait_ {
-                let trait_did = trait_.def_id();
+        impls
+            .iter()
+            .map(Impl::inner_impl)
+            .filter(|impl_| {
+                impl_.polarity == ty::ImplPolarity::Positive
+                    // Two different types might have the same did,
+                    // without actually being the same.
+                    && ty.is_doc_subtype_of(&impl_.for_, cx.cache())
+            })
+            .filter_map(|impl_| impl_.trait_.as_ref())
+            .filter_map(|trait_| cx.cache().traits.get(&trait_.def_id()))
+            .any(|t| t.is_notable_trait(cx.tcx()))
+    };
 
-                if cx.cache().traits.get(&trait_did).is_some_and(|t| t.is_notable_trait(cx.tcx())) {
-                    has_notable_trait = true;
-                }
-            }
+    let mut types_with_notable_traits = cx.types_with_notable_traits.borrow_mut();
+    if !types_with_notable_traits.contains(ty) {
+        if has_notable_trait() {
+            types_with_notable_traits.insert(ty.clone());
+        } else {
+            return None;
         }
     }
 
-    has_notable_trait.then(|| {
-        cx.types_with_notable_traits.borrow_mut().insert(ty.clone());
-        fmt::from_fn(|f| {
-            write!(
-                f,
-                " <a href=\"#\" class=\"tooltip\" data-notable-ty=\"{ty}\">ⓘ</a>",
-                ty = Escape(&format!("{:#}", ty.print(cx))),
-            )
-        })
-    })
+    Some(fmt::from_fn(|f| {
+        write!(
+            f,
+            " <a href=\"#\" class=\"tooltip\" data-notable-ty=\"{ty}\">ⓘ</a>",
+            ty = Escape(&format!("{:#}", ty.print(cx))),
+        )
+    }))
 }
 
 fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
@@ -1590,10 +1593,10 @@ fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
     (format!("{:#}", ty.print(cx)), out)
 }
 
-pub(crate) fn notable_traits_json<'a>(
-    tys: impl Iterator<Item = &'a clean::Type>,
-    cx: &Context<'_>,
-) -> String {
+pub(crate) fn notable_traits_json(tys: &FxHashSet<clean::Type>, cx: &Context<'_>) -> String {
+    #[expect(rustc::potential_query_instability, reason = "items are sorted by name")]
+    let tys = tys.iter();
+
     let mut mp: Vec<(String, String)> = tys.map(|ty| notable_traits_decl(ty, cx)).collect();
     mp.sort_by(|(name1, _html1), (name2, _html2)| name1.cmp(name2));
     struct NotableTraitsMap(Vec<(String, String)>);
