@@ -606,7 +606,7 @@ declare_features! (
     /// Allows using the `#[register_tool]` attribute.
     (unstable, register_tool, "1.41.0", Some(66079)),
     /// Allows the `#[repr(i128)]` attribute for enums.
-    (incomplete, repr128, "1.16.0", Some(56071)),
+    (unstable, repr128, "1.16.0", Some(56071)),
     /// Allows `repr(simd)` and importing the various simd intrinsics.
     (unstable, repr_simd, "1.4.0", Some(27731)),
     /// Allows bounding the return type of AFIT/RPITIT.

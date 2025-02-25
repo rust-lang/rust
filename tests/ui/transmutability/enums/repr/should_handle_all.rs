@@ -2,7 +2,7 @@
 #![crate_type = "lib"]
 #![feature(repr128)]
 #![feature(transmutability)]
-#![allow(dead_code, incomplete_features, non_camel_case_types)]
+#![allow(dead_code, non_camel_case_types)]
 
 mod assert {
     use std::mem::{Assume, TransmuteFrom};
