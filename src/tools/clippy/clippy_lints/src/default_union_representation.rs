@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use rustc_attr_parsing::{find_attr, AttributeKind, ReprAttr};
 use rustc_hir::{HirId, Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, FieldDef};
 use rustc_session::declare_lint_pass;
-use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -97,16 +97,7 @@ fn is_zst<'tcx>(cx: &LateContext<'tcx>, field: &FieldDef, args: ty::GenericArgsR
 }
 
 fn has_c_repr_attr(cx: &LateContext<'_>, hir_id: HirId) -> bool {
-    cx.tcx.hir().attrs(hir_id).iter().any(|attr| {
-        if attr.has_name(sym::repr) {
-            if let Some(items) = attr.meta_item_list() {
-                for item in items {
-                    if item.is_word() && matches!(item.name_or_empty(), sym::C) {
-                        return true;
-                    }
-                }
-            }
-        }
-        false
-    })
+    let attrs = cx.tcx.hir().attrs(hir_id);
+
+    find_attr!(attrs, AttributeKind::Repr(r) if r.iter().any(|(x, _)| *x == ReprAttr::ReprC))
 }

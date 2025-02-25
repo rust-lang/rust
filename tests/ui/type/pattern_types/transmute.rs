@@ -1,5 +1,5 @@
-#![feature(pattern_types)]
-#![feature(pattern_type_macro)]
+#![feature(pattern_types, pattern_type_macro, generic_pattern_types)]
+#![expect(incomplete_features)]
 
 use std::pat::pattern_type;
 

@@ -20,7 +20,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{AnonConst, Attribute, Expr, ImplItemKind, ItemKind, Node, Safety, TraitItemKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty;
 use rustc_resolve::rustdoc::{
@@ -577,6 +577,13 @@ impl_lint_pass!(Documentation => [
     DOC_INCLUDE_WITHOUT_CFG,
 ]);
 
+
+impl EarlyLintPass for Documentation {
+    fn check_attributes(&mut self, cx: &EarlyContext<'_>, attrs: &[rustc_ast::Attribute]) {
+        include_in_doc_without_cfg::check(cx, attrs);
+    }
+}
+
 impl<'tcx> LateLintPass<'tcx> for Documentation {
     fn check_attributes(&mut self, cx: &LateContext<'tcx>, attrs: &'tcx [Attribute]) {
         let Some(headers) = check_attrs(cx, &self.valid_idents, attrs) else {
@@ -597,7 +604,7 @@ impl<'tcx> LateLintPass<'tcx> for Documentation {
                         if !(is_entrypoint_fn(cx, item.owner_id.to_def_id())
                             || item.span.in_external_macro(cx.tcx.sess.source_map()))
                         {
-                            let body = cx.tcx.hir().body(body_id);
+                            let body = cx.tcx.hir_body(body_id);
 
                             let panic_info = FindPanicUnwrap::find_span(cx, cx.tcx.typeck(item.owner_id), body.value);
                             missing_headers::check(
@@ -649,7 +656,7 @@ impl<'tcx> LateLintPass<'tcx> for Documentation {
                     && !impl_item.span.in_external_macro(cx.tcx.sess.source_map())
                     && !is_trait_impl_item(cx, impl_item.hir_id())
                 {
-                    let body = cx.tcx.hir().body(body_id);
+                    let body = cx.tcx.hir_body(body_id);
 
                     let panic_span = FindPanicUnwrap::find_span(cx, cx.tcx.typeck(impl_item.owner_id), body.value);
                     missing_headers::check(
@@ -704,14 +711,13 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
         Some(("fake".into(), "fake".into()))
     }
 
-    include_in_doc_without_cfg::check(cx, attrs);
     if suspicious_doc_comments::check(cx, attrs) || is_doc_hidden(attrs) {
         return None;
     }
 
     let (fragments, _) = attrs_to_doc_fragments(
         attrs.iter().filter_map(|attr| {
-            if attr.span.in_external_macro(cx.sess().source_map()) {
+            if !attr.doc_str_and_comment_kind().is_some() || attr.span().in_external_macro(cx.sess().source_map()) {
                 None
             } else {
                 Some((attr, None))
@@ -1057,7 +1063,7 @@ impl<'tcx> Visitor<'tcx> for FindPanicUnwrap<'_, 'tcx> {
                     "assert" | "assert_eq" | "assert_ne"
                 )
             {
-                self.is_const = self.cx.tcx.hir().is_inside_const_context(expr.hir_id);
+                self.is_const = self.cx.tcx.hir_is_inside_const_context(expr.hir_id);
                 self.panic_span = Some(macro_call.span);
             }
         }
@@ -1079,8 +1085,8 @@ impl<'tcx> Visitor<'tcx> for FindPanicUnwrap<'_, 'tcx> {
     // Panics in const blocks will cause compilation to fail.
     fn visit_anon_const(&mut self, _: &'tcx AnonConst) {}
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.cx.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.cx.tcx
     }
 }
 

@@ -311,9 +311,6 @@ passes_duplicate_lang_item_crate_depends =
     .first_definition_path = first definition in `{$orig_crate_name}` loaded from {$orig_path}
     .second_definition_path = second definition in `{$crate_name}` loaded from {$path}
 
-passes_empty_confusables =
-    expected at least one confusable name
-
 passes_export_name =
     attribute should be applied to a free function, impl method or static
     .label = not a free function, impl method or static
@@ -364,9 +361,6 @@ passes_incorrect_do_not_recommend_args =
 
 passes_incorrect_do_not_recommend_location =
     `#[diagnostic::do_not_recommend]` can only be placed on trait implementations
-
-passes_incorrect_meta_item = expected a quoted string literal
-passes_incorrect_meta_item_suggestion = consider surrounding this with quotes
 
 passes_incorrect_target =
     `{$name}` lang item must be applied to a {$kind} with {$at_least ->
@@ -641,13 +635,12 @@ passes_repr_align_greater_than_target_max =
 passes_repr_conflicting =
     conflicting representation hints
 
-passes_repr_ident =
-    meta item in `repr` must be an identifier
-
 passes_rustc_allow_const_fn_unstable =
     attribute should be applied to `const fn`
     .label = not a `const fn`
 
+passes_rustc_const_stable_indirect_pairing =
+    `const_stable_indirect` attribute does not make sense on `rustc_const_stable` function, its behavior is already implied
 passes_rustc_dirty_clean =
     attribute requires -Z query-dep-graph to be enabled
 
@@ -773,10 +766,6 @@ passes_unreachable_due_to_uninhabited = unreachable {$descr}
 
 passes_unrecognized_field =
     unrecognized field name `{$name}`
-
-passes_unrecognized_repr_hint =
-    unrecognized representation hint
-    .help = valid reprs are `Rust` (default), `C`, `align`, `packed`, `transparent`, `simd`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize`, `usize`
 
 passes_unstable_attr_for_already_stable_feature =
     can't mark as unstable using an already stable feature

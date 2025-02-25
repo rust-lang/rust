@@ -272,6 +272,8 @@
 //
 // Language features:
 // tidy-alphabetical-start
+
+// stabilization was reverted after it hit beta
 #![feature(alloc_error_handler)]
 #![feature(allocator_internals)]
 #![feature(allow_internal_unsafe)]
@@ -281,6 +283,7 @@
 #![feature(cfg_sanitizer_cfi)]
 #![feature(cfg_target_thread_local)]
 #![feature(cfi_encoding)]
+#![feature(char_max_len)]
 #![feature(concat_idents)]
 #![feature(decl_macro)]
 #![feature(deprecated_suggestion)]
@@ -289,6 +292,7 @@
 #![feature(doc_masked)]
 #![feature(doc_notable_trait)]
 #![feature(dropck_eyepatch)]
+#![feature(extended_varargs_abi_support)]
 #![feature(f128)]
 #![feature(f16)]
 #![feature(formatting_options)]
@@ -299,6 +303,7 @@
 #![feature(link_cfg)]
 #![feature(linkage)]
 #![feature(macro_metavar_expr_concat)]
+#![feature(maybe_uninit_fill)]
 #![feature(min_specialization)]
 #![feature(must_not_suspend)]
 #![feature(needs_panic_runtime)]
@@ -401,7 +406,6 @@
 #![feature(custom_test_frameworks)]
 #![feature(edition_panic)]
 #![feature(format_args_nl)]
-#![feature(get_many_mut)]
 #![feature(log_syntax)]
 #![feature(test)]
 #![feature(trace_macros)]

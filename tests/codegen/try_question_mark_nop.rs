@@ -1,4 +1,4 @@
-//@ compile-flags: -O -Z merge-functions=disabled --edition=2021
+//@ compile-flags: -Copt-level=3 -Z merge-functions=disabled --edition=2021
 //@ only-x86_64
 // FIXME: Remove the `min-llvm-version`.
 //@ revisions: NINETEEN TWENTY

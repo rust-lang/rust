@@ -232,7 +232,7 @@ impl DocVisitor<'_> for CoverageCalculator<'_, '_> {
                     .item_id
                     .as_def_id()
                     .and_then(|def_id| self.ctx.tcx.opt_parent(def_id))
-                    .and_then(|def_id| self.ctx.tcx.hir().get_if_local(def_id))
+                    .and_then(|def_id| self.ctx.tcx.hir_get_if_local(def_id))
                     .map(|node| {
                         matches!(
                             node,

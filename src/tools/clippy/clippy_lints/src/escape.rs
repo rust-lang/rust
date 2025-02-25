@@ -80,8 +80,7 @@ impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
 
         let parent_id = cx
             .tcx
-            .hir()
-            .get_parent_item(cx.tcx.local_def_id_to_hir_id(fn_def_id))
+            .hir_get_parent_item(cx.tcx.local_def_id_to_hir_id(fn_def_id))
             .def_id;
 
         let mut trait_self_ty = None;

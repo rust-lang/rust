@@ -1145,14 +1145,14 @@ fn clean_args_from_types_and_body_id<'tcx>(
     types: &[hir::Ty<'tcx>],
     body_id: hir::BodyId,
 ) -> Arguments {
-    let body = cx.tcx.hir().body(body_id);
+    let body = cx.tcx.hir_body(body_id);
 
     Arguments {
         values: types
             .iter()
-            .enumerate()
-            .map(|(i, ty)| Argument {
-                name: name_from_pat(body.params[i].pat),
+            .zip(body.params)
+            .map(|(ty, param)| Argument {
+                name: name_from_pat(param.pat),
                 type_: clean_ty(ty, cx),
                 is_const: false,
             })
@@ -2737,13 +2737,13 @@ fn add_without_unwanted_attributes<'hir>(
     import_parent: Option<DefId>,
 ) {
     for attr in new_attrs {
-        if matches!(attr.kind, hir::AttrKind::DocComment(..)) {
+        if attr.is_doc_comment() {
             attrs.push((Cow::Borrowed(attr), import_parent));
             continue;
         }
         let mut attr = attr.clone();
-        match attr.kind {
-            hir::AttrKind::Normal(ref mut normal) => {
+        match attr {
+            hir::Attribute::Unparsed(ref mut normal) => {
                 if let [ident] = &*normal.path.segments {
                     let ident = ident.name;
                     if ident == sym::doc {
@@ -2755,7 +2755,11 @@ fn add_without_unwanted_attributes<'hir>(
                     }
                 }
             }
-            _ => unreachable!(),
+            hir::Attribute::Parsed(..) => {
+                if is_inline {
+                    attrs.push((Cow::Owned(attr), import_parent));
+                }
+            }
         }
     }
 }
@@ -2845,7 +2849,7 @@ fn clean_maybe_renamed_item<'tcx>(
             ItemKind::Trait(_, _, generics, bounds, item_ids) => {
                 let items = item_ids
                     .iter()
-                    .map(|ti| clean_trait_item(cx.tcx.hir().trait_item(ti.id), cx))
+                    .map(|ti| clean_trait_item(cx.tcx.hir_trait_item(ti.id), cx))
                     .collect();
 
                 TraitItem(Box::new(Trait {
@@ -2891,7 +2895,7 @@ fn clean_impl<'tcx>(
     let items = impl_
         .items
         .iter()
-        .map(|ii| clean_impl_item(tcx.hir().impl_item(ii.id), cx))
+        .map(|ii| clean_impl_item(tcx.hir_impl_item(ii.id), cx))
         .collect::<Vec<_>>();
 
     // If this impl block is an implementation of the Deref trait, then we

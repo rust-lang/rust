@@ -12,8 +12,9 @@ LL | #![deny(fuzzy_provenance_casts)]
    |         ^^^^^^^^^^^^^^^^^^^^^^
 help: use `.with_addr()` to adjust a valid pointer in the same allocation, to this address
    |
-LL |     let dangling = (...).with_addr(16_usize);
-   |                    ++++++++++++++++        ~
+LL -     let dangling = 16_usize as *const u8;
+LL +     let dangling = (...).with_addr(16_usize);
+   |
 
 error: aborting due to 1 previous error
 

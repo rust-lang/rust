@@ -5318,8 +5318,9 @@ function registerSearchEvents() {
 
     // @ts-expect-error
     searchState.input.addEventListener("blur", () => {
-        // @ts-expect-error
-        searchState.input.placeholder = searchState.input.origPlaceholder;
+        if (window.searchState.input) {
+            window.searchState.input.placeholder = window.searchState.origPlaceholder;
+        }
     });
 
     // Push and pop states are used to add search results to the browser

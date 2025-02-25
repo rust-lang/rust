@@ -9,19 +9,22 @@ use chalk_ir::{
     DebruijnIndex,
 };
 use hir_def::{
+    attr::Attrs,
     db::DefDatabase,
     generics::{WherePredicate, WherePredicateTypeTarget},
     lang_item::LangItem,
     resolver::{HasResolver, TypeNs},
+    tt,
     type_ref::{TraitBoundModifier, TypeRef},
     EnumId, EnumVariantId, FunctionId, Lookup, OpaqueInternableThing, TraitId, TypeAliasId,
     TypeOrConstParamId,
 };
 use hir_expand::name::Name;
-use intern::sym;
+use intern::{sym, Symbol};
 use rustc_abi::TargetDataLayout;
 use rustc_hash::FxHashSet;
 use smallvec::{smallvec, SmallVec};
+use span::Edition;
 use stdx::never;
 
 use crate::{
@@ -264,10 +267,65 @@ impl<'a> ClosureSubst<'a> {
     }
 }
 
-pub fn is_fn_unsafe_to_call(db: &dyn HirDatabase, func: FunctionId) -> bool {
+#[derive(Debug, Default)]
+pub struct TargetFeatures {
+    enabled: FxHashSet<Symbol>,
+}
+
+impl TargetFeatures {
+    pub fn from_attrs(attrs: &Attrs) -> Self {
+        let enabled = attrs
+            .by_key(&sym::target_feature)
+            .tt_values()
+            .filter_map(|tt| {
+                match tt.token_trees().flat_tokens() {
+                    [
+                        tt::TokenTree::Leaf(tt::Leaf::Ident(enable_ident)),
+                        tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct { char: '=', .. })),
+                        tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal { kind: tt::LitKind::Str, symbol: features, .. })),
+                    ] if enable_ident.sym == sym::enable => Some(features),
+                    _ => None,
+                }
+            })
+            .flat_map(|features| features.as_str().split(',').map(Symbol::intern))
+            .collect();
+        Self { enabled }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Unsafety {
+    Safe,
+    Unsafe,
+    /// A lint.
+    DeprecatedSafe2024,
+}
+
+pub fn is_fn_unsafe_to_call(
+    db: &dyn HirDatabase,
+    func: FunctionId,
+    caller_target_features: &TargetFeatures,
+    call_edition: Edition,
+) -> Unsafety {
     let data = db.function_data(func);
     if data.is_unsafe() {
-        return true;
+        return Unsafety::Unsafe;
+    }
+
+    if data.has_target_feature() {
+        // RFC 2396 <https://rust-lang.github.io/rfcs/2396-target-feature-1.1.html>.
+        let callee_target_features = TargetFeatures::from_attrs(&db.attrs(func.into()));
+        if !caller_target_features.enabled.is_superset(&callee_target_features.enabled) {
+            return Unsafety::Unsafe;
+        }
+    }
+
+    if data.is_deprecated_safe_2024() {
+        if call_edition.at_least_2024() {
+            return Unsafety::Unsafe;
+        } else {
+            return Unsafety::DeprecatedSafe2024;
+        }
     }
 
     let loc = func.lookup(db.upcast());
@@ -279,14 +337,22 @@ pub fn is_fn_unsafe_to_call(db: &dyn HirDatabase, func: FunctionId) -> bool {
             if is_intrinsic_block {
                 // legacy intrinsics
                 // extern "rust-intrinsic" intrinsics are unsafe unless they have the rustc_safe_intrinsic attribute
-                !db.attrs(func.into()).by_key(&sym::rustc_safe_intrinsic).exists()
+                if db.attrs(func.into()).by_key(&sym::rustc_safe_intrinsic).exists() {
+                    Unsafety::Safe
+                } else {
+                    Unsafety::Unsafe
+                }
             } else {
                 // Function in an `extern` block are always unsafe to call, except when
                 // it is marked as `safe`.
-                !data.is_safe()
+                if data.is_safe() {
+                    Unsafety::Safe
+                } else {
+                    Unsafety::Unsafe
+                }
             }
         }
-        _ => false,
+        _ => Unsafety::Safe,
     }
 }
 

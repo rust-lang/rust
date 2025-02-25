@@ -6,8 +6,9 @@ LL |     let _: [u8; foo];
    |
 help: consider using `const` instead of `let`
    |
-LL |     const foo: usize = 42;
-   |     ~~~~~
+LL -     let foo: usize = 42;
+LL +     const foo: usize = 42;
+   |
 
 error: aborting due to 1 previous error
 

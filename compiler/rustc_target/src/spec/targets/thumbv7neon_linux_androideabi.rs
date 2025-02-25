@@ -1,4 +1,4 @@
-use crate::spec::{Cc, FloatAbi, LinkerFlavor, Lld, Target, TargetOptions, base};
+use crate::spec::{Cc, FloatAbi, LinkerFlavor, Lld, Target, TargetMetadata, TargetOptions, base};
 
 // This target if is for the Android v7a ABI in thumb mode with
 // NEON unconditionally enabled and, therefore, with 32 FPU registers
@@ -13,7 +13,7 @@ pub(crate) fn target() -> Target {
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-march=armv7-a"]);
     Target {
         llvm_target: "armv7-none-linux-android".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("Thumb2-mode ARMv7-A Android with NEON".into()),
             tier: Some(2),
             host_tools: Some(false),

@@ -83,7 +83,7 @@ impl Error {
 
     pub(crate) const UNKNOWN_THREAD_COUNT: Self = const_error!(
         ErrorKind::NotFound,
-        "The number of hardware threads is not known for the target platform"
+        "The number of hardware threads is not known for the target platform",
     );
 
     pub(crate) const UNSUPPORTED_PLATFORM: Self =

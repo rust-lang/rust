@@ -106,11 +106,13 @@ impl CompletionFieldsToResolve {
 //
 // There also snippet completions:
 //
-// .Expressions
+// #### Expressions
+//
 // - `pd` -> `eprintln!(" = {:?}", );`
 // - `ppd` -> `eprintln!(" = {:#?}", );`
 //
-// .Items
+// #### Items
+//
 // - `tfn` -> `#[test] fn feature(){}`
 // - `tmod` ->
 // ```rust
@@ -127,7 +129,7 @@ impl CompletionFieldsToResolve {
 // Those are the additional completion options with automatic `use` import and options from all project importable items,
 // fuzzy matched against the completion input.
 //
-// image::https://user-images.githubusercontent.com/48062697/113020667-b72ab880-917a-11eb-8778-716cf26a0eb3.gif[]
+// ![Magic Completions](https://user-images.githubusercontent.com/48062697/113020667-b72ab880-917a-11eb-8778-716cf26a0eb3.gif)
 
 /// Main entry point for completion. We run completion as a two-phase process.
 ///

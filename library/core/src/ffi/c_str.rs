@@ -731,7 +731,7 @@ const unsafe fn strlen(ptr: *const c_char) -> usize {
 
             len
         } else {
-            extern "C" {
+            unsafe extern "C" {
                 /// Provided by libc or compiler_builtins.
                 fn strlen(s: *const c_char) -> usize;
             }

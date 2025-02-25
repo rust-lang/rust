@@ -67,7 +67,7 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
         {
             for assoc_item in *items {
                 if assoc_item.kind == (hir::AssocItemKind::Fn { has_self: false }) {
-                    let impl_item = cx.tcx.hir().impl_item(assoc_item.id);
+                    let impl_item = cx.tcx.hir_impl_item(assoc_item.id);
                     if impl_item.span.in_external_macro(cx.sess().source_map()) {
                         return;
                     }
@@ -90,7 +90,7 @@ impl<'tcx> LateLintPass<'tcx> for NewWithoutDefault {
                         if sig.decl.inputs.is_empty()
                             && name == sym::new
                             && cx.effective_visibilities.is_reachable(impl_item.owner_id.def_id)
-                            && let self_def_id = cx.tcx.hir().get_parent_item(id.into())
+                            && let self_def_id = cx.tcx.hir_get_parent_item(id.into())
                             && let self_ty = cx.tcx.type_of(self_def_id).instantiate_identity()
                             && self_ty == return_ty(cx, id)
                             && let Some(default_trait_id) = cx.tcx.get_diagnostic_item(sym::Default)

@@ -2249,7 +2249,7 @@ pub enum TyKind {
     CVarArgs,
     /// Pattern types like `pattern_type!(u32 is 1..=)`, which is the same as `NonZero<u32>`,
     /// just as part of the type system.
-    Pat(P<Ty>, P<Pat>),
+    Pat(P<Ty>, P<TyPat>),
     /// Sometimes we need a dummy value when no error has occurred.
     Dummy,
     /// Placeholder for a kind that has failed to be defined.
@@ -2275,6 +2275,27 @@ impl TyKind {
             None
         }
     }
+}
+
+/// A pattern type pattern.
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub struct TyPat {
+    pub id: NodeId,
+    pub kind: TyPatKind,
+    pub span: Span,
+    pub tokens: Option<LazyAttrTokenStream>,
+}
+
+/// All the different flavors of pattern that Rust recognizes.
+//
+// Adding a new variant? Please update `test_pat` in `tests/ui/macros/stringify.rs`.
+#[derive(Clone, Encodable, Decodable, Debug)]
+pub enum TyPatKind {
+    /// A range pattern (e.g., `1...2`, `1..2`, `1..`, `..2`, `1..=2`, `..=2`).
+    Range(Option<P<AnonConst>>, Option<P<AnonConst>>, Spanned<RangeEnd>),
+
+    /// Placeholder for a pattern that wasn't syntactically well formed in some way.
+    Err(ErrorGuaranteed),
 }
 
 /// Syntax used to declare a trait object.

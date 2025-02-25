@@ -6,8 +6,9 @@ LL | struct S(S::P);
    |
 help: if there were a trait named `Example` with associated type `P` implemented for `S`, you could use the fully-qualified path
    |
-LL | struct S(<S as Example>::P);
-   |          ~~~~~~~~~~~~~~~~~
+LL - struct S(S::P);
+LL + struct S(<S as Example>::P);
+   |
 
 error[E0658]: inherent associated types are unstable
   --> $DIR/dont-select-if-disabled.rs:15:10

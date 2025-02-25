@@ -466,7 +466,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             MethodLateContext::TraitAutoImpl => {}
             // If the method is an impl for an item with docs_hidden, don't doc.
             MethodLateContext::PlainImpl => {
-                let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id());
+                let parent = cx.tcx.hir_get_parent_item(impl_item.hir_id());
                 let impl_ty = cx.tcx.type_of(parent).instantiate_identity();
                 let outerdef = match impl_ty.kind() {
                     ty::Adt(def, _) => Some(def.did()),
@@ -576,7 +576,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
         // and recommending Copy might be a bad idea.
         for field in def.all_fields() {
             let did = field.did;
-            if cx.tcx.type_of(did).instantiate_identity().is_unsafe_ptr() {
+            if cx.tcx.type_of(did).instantiate_identity().is_raw_ptr() {
                 return;
             }
         }
@@ -975,10 +975,8 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// #[no_mangle]
-    /// fn foo<T>(t: T) {
-    ///
-    /// }
+    /// #[unsafe(no_mangle)]
+    /// fn foo<T>(t: T) {}
     /// ```
     ///
     /// {{produces}}
@@ -1013,7 +1011,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
                         cx.emit_span_lint(
                             NO_MANGLE_GENERIC_ITEMS,
                             span,
-                            BuiltinNoMangleGeneric { suggestion: no_mangle_attr.span },
+                            BuiltinNoMangleGeneric { suggestion: no_mangle_attr.span() },
                         );
                         break;
                     }
@@ -1057,7 +1055,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
                             check_no_mangle_on_generic_fn(
                                 no_mangle_attr,
                                 Some(generics),
-                                cx.tcx.hir().get_generics(it.id.owner_id.def_id).unwrap(),
+                                cx.tcx.hir_get_generics(it.id.owner_id.def_id).unwrap(),
                                 it.span,
                             );
                         }
@@ -1228,7 +1226,7 @@ impl<'tcx> LateLintPass<'tcx> for UngatedAsyncFnTrackCaller {
         {
             cx.emit_span_lint(
                 UNGATED_ASYNC_FN_TRACK_CALLER,
-                attr.span,
+                attr.span(),
                 BuiltinUngatedAsyncFnTrackCaller { label: span, session: &cx.tcx.sess },
             );
         }
@@ -2909,7 +2907,13 @@ enum AsmLabelKind {
 impl<'tcx> LateLintPass<'tcx> for AsmLabels {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
         if let hir::Expr {
-            kind: hir::ExprKind::InlineAsm(hir::InlineAsm { template_strs, options, .. }),
+            kind:
+                hir::ExprKind::InlineAsm(hir::InlineAsm {
+                    asm_macro: AsmMacro::Asm | AsmMacro::NakedAsm,
+                    template_strs,
+                    options,
+                    ..
+                }),
             ..
         } = expr
         {

@@ -89,7 +89,7 @@ pub(crate) fn complete_dot(
         acc.add_method(ctx, dot_access, func, None, None)
     });
 
-    if ctx.config.enable_auto_iter {
+    if ctx.config.enable_auto_iter && !receiver_ty.strip_references().impls_iterator(ctx.db) {
         // FIXME:
         // Checking for the existence of `iter()` is complicated in our setup, because we need to substitute
         // its return type, so we instead check for `<&Self as IntoIterator>::IntoIter`.
@@ -1500,9 +1500,31 @@ fn main() {
     bar.$0
 }
 "#,
+            expect![[r#""#]],
+        );
+    }
+
+    #[test]
+    fn no_iter_suggestion_on_iterator() {
+        check_no_kw(
+            r#"
+//- minicore: iterator
+struct MyIter;
+impl Iterator for MyIter {
+    type Item = ();
+    fn next(&mut self) -> Option<Self::Item> { None }
+}
+
+fn main() {
+    MyIter.$0
+}
+"#,
             expect![[r#"
-    me foo() fn(self: Bar)
-"#]],
+                me by_ref() (as Iterator)                             fn(&mut self) -> &mut Self
+                me into_iter() (as IntoIterator)    fn(self) -> <Self as IntoIterator>::IntoIter
+                me next() (as Iterator)        fn(&mut self) -> Option<<Self as Iterator>::Item>
+                me nth(…) (as Iterator) fn(&mut self, usize) -> Option<<Self as Iterator>::Item>
+            "#]],
         );
     }
 }

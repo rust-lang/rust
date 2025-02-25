@@ -12,7 +12,7 @@ LL | | /// 200 characters so I needed to write something longeeeeeeer.
    = help: to override `-D warnings` add `#[allow(clippy::too_long_first_doc_paragraph)]`
 help: add an empty line
    |
-LL ~ /// A very short summary.
+LL | /// A very short summary.
 LL + ///
    |
 

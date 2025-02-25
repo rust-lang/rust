@@ -2,6 +2,7 @@
 #![allow(rustc::untranslatable_diagnostic)]
 use std::num::NonZero;
 
+use rustc_abi::ExternAbi;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagMessage, DiagStyledString, ElidedLifetimeInPathSubdiag,
@@ -2833,9 +2834,9 @@ pub(crate) struct PatternsInFnsWithoutBodySub {
 #[derive(LintDiagnostic)]
 #[diag(lint_extern_without_abi)]
 pub(crate) struct MissingAbi {
-    #[suggestion(code = "extern \"{default_abi}\"", applicability = "machine-applicable")]
+    #[suggestion(code = "extern {default_abi}", applicability = "machine-applicable")]
     pub span: Span,
-    pub default_abi: &'static str,
+    pub default_abi: ExternAbi,
 }
 
 #[derive(LintDiagnostic)]
@@ -3107,7 +3108,10 @@ pub(crate) struct UnsafeAttrOutsideUnsafeSuggestion {
 #[diag(lint_out_of_scope_macro_calls)]
 #[help]
 pub(crate) struct OutOfScopeMacroCalls {
+    #[label]
+    pub span: Span,
     pub path: String,
+    pub location: String,
 }
 
 #[derive(LintDiagnostic)]

@@ -5,9 +5,10 @@ use std::{fmt, iter};
 use rustc_abi::{ExternAbi, Float, Integer, IntegerType, Size};
 use rustc_apfloat::Float as _;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::stable_hasher::{Hash128, HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorGuaranteed;
+use rustc_hashes::Hash128;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
@@ -1754,13 +1755,12 @@ pub fn intrinsic_raw(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::Intrinsi
         && (matches!(tcx.fn_sig(def_id).skip_binder().abi(), ExternAbi::RustIntrinsic)
             || tcx.has_attr(def_id, sym::rustc_intrinsic))
     {
-        let must_be_overridden = tcx.has_attr(def_id, sym::rustc_intrinsic_must_be_overridden)
-            || match tcx.hir_node_by_def_id(def_id) {
-                hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn { has_body, .. }, .. }) => {
-                    !has_body
-                }
-                _ => true,
-            };
+        let must_be_overridden = match tcx.hir_node_by_def_id(def_id) {
+            hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn { has_body, .. }, .. }) => {
+                !has_body
+            }
+            _ => true,
+        };
         Some(ty::IntrinsicDef {
             name: tcx.item_name(def_id.into()),
             must_be_overridden,

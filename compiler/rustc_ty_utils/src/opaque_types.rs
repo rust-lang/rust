@@ -98,10 +98,10 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
         let opaque_hir_id = self.tcx.local_def_id_to_hir_id(opaque_def_id);
 
         // Named opaque types can be defined by any siblings or children of siblings.
-        let scope = self.tcx.hir().get_defining_scope(opaque_hir_id);
+        let scope = self.tcx.hir_get_defining_scope(opaque_hir_id);
         // We walk up the node tree until we hit the root or the scope of the opaque type.
         while hir_id != scope && hir_id != CRATE_HIR_ID {
-            hir_id = self.tcx.hir().get_parent_item(hir_id).into();
+            hir_id = self.tcx.hir_get_parent_item(hir_id).into();
         }
         // Syntactically, we are allowed to define the concrete type if:
         hir_id == scope
@@ -109,7 +109,7 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
 
     #[instrument(level = "trace", skip(self))]
     fn collect_taits_declared_in_body(&mut self) {
-        let body = self.tcx.hir().body_owned_by(self.item).value;
+        let body = self.tcx.hir_body_owned_by(self.item).value;
         struct TaitInBodyFinder<'a, 'tcx> {
             collector: &'a mut OpaqueTypeCollector<'tcx>,
         }
@@ -125,7 +125,7 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
             #[instrument(level = "trace", skip(self))]
             // Recurse into these, as they are type checked with their parent
             fn visit_nested_body(&mut self, id: rustc_hir::BodyId) {
-                let body = self.collector.tcx.hir().body(id);
+                let body = self.collector.tcx.hir_body(id);
                 self.visit_body(body);
             }
         }

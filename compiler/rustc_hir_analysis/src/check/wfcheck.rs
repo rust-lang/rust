@@ -12,10 +12,10 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{AmbigArg, ItemKind};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
+use rustc_lint_defs::builtin::SUPERTRAIT_ITEM_SHADOWING_DEFINITION;
 use rustc_macros::LintDiagnostic;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
     self, AdtKind, GenericArgKind, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeFoldable,
@@ -142,33 +142,7 @@ where
         return Ok(());
     }
 
-    let is_bevy = 'is_bevy: {
-        // We don't want to emit this for dependents of Bevy, for now.
-        // See #119956
-        let is_bevy_paramset = |def: ty::AdtDef<'_>| {
-            let adt_did = with_no_trimmed_paths!(infcx.tcx.def_path_str(def.0.did));
-            adt_did.contains("ParamSet")
-        };
-        for ty in assumed_wf_types.iter() {
-            match ty.kind() {
-                ty::Adt(def, _) => {
-                    if is_bevy_paramset(*def) {
-                        break 'is_bevy true;
-                    }
-                }
-                ty::Ref(_, ty, _) => match ty.kind() {
-                    ty::Adt(def, _) => {
-                        if is_bevy_paramset(*def) {
-                            break 'is_bevy true;
-                        }
-                    }
-                    _ => {}
-                },
-                _ => {}
-            }
-        }
-        false
-    };
+    let is_bevy = assumed_wf_types.visit_with(&mut ContainsBevyParamSet { tcx }).is_break();
 
     // If we have set `no_implied_bounds_compat`, then do not attempt compatibility.
     // We could also just always enter if `is_bevy`, and call `implied_bounds_tys`,
@@ -190,6 +164,31 @@ where
         }
     } else {
         Err(infcx.err_ctxt().report_region_errors(body_def_id, &errors))
+    }
+}
+
+struct ContainsBevyParamSet<'tcx> {
+    tcx: TyCtxt<'tcx>,
+}
+
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ContainsBevyParamSet<'tcx> {
+    type Result = ControlFlow<()>;
+
+    fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
+        // We only care to match `ParamSet<T>` or `&ParamSet<T>`.
+        match t.kind() {
+            ty::Adt(def, _) => {
+                if self.tcx.item_name(def.did()) == sym::ParamSet
+                    && self.tcx.crate_name(def.did().krate) == sym::bevy_ecs
+                {
+                    return ControlFlow::Break(());
+                }
+            }
+            ty::Ref(_, ty, _) => ty.visit_with(self)?,
+            _ => {}
+        }
+
+        ControlFlow::Continue(())
     }
 }
 
@@ -388,7 +387,12 @@ fn check_trait_item<'tcx>(
         hir::TraitItemKind::Type(_bounds, Some(ty)) => (None, ty.span),
         _ => (None, trait_item.span),
     };
+
     check_dyn_incompatible_self_trait_by_name(tcx, trait_item);
+
+    // Check that an item definition in a subtrait is shadowing a supertrait item.
+    lint_item_shadowing_supertrait_item(tcx, def_id);
+
     let mut res = check_associated_item(tcx, def_id, span, method_sig);
 
     if matches!(trait_item.kind, hir::TraitItemKind::Fn(..)) {
@@ -849,7 +853,7 @@ fn could_be_self(trait_def_id: LocalDefId, ty: &hir::Ty<'_>) -> bool {
 /// In such cases, suggest using `Self` instead.
 fn check_dyn_incompatible_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem<'_>) {
     let (trait_name, trait_def_id) =
-        match tcx.hir_node_by_def_id(tcx.hir().get_parent_item(item.hir_id()).def_id) {
+        match tcx.hir_node_by_def_id(tcx.hir_get_parent_item(item.hir_id()).def_id) {
             hir::Node::Item(item) => match item.kind {
                 hir::ItemKind::Trait(..) => (item.ident, item.owner_id),
                 _ => return,
@@ -895,6 +899,45 @@ fn check_dyn_incompatible_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitI
                 Applicability::MachineApplicable,
             )
             .emit();
+    }
+}
+
+fn lint_item_shadowing_supertrait_item<'tcx>(tcx: TyCtxt<'tcx>, trait_item_def_id: LocalDefId) {
+    let item_name = tcx.item_name(trait_item_def_id.to_def_id());
+    let trait_def_id = tcx.local_parent(trait_item_def_id);
+
+    let shadowed: Vec<_> = traits::supertrait_def_ids(tcx, trait_def_id.to_def_id())
+        .skip(1)
+        .flat_map(|supertrait_def_id| {
+            tcx.associated_items(supertrait_def_id).filter_by_name_unhygienic(item_name)
+        })
+        .collect();
+    if !shadowed.is_empty() {
+        let shadowee = if let [shadowed] = shadowed[..] {
+            errors::SupertraitItemShadowee::Labeled {
+                span: tcx.def_span(shadowed.def_id),
+                supertrait: tcx.item_name(shadowed.trait_container(tcx).unwrap()),
+            }
+        } else {
+            let (traits, spans): (Vec<_>, Vec<_>) = shadowed
+                .iter()
+                .map(|item| {
+                    (tcx.item_name(item.trait_container(tcx).unwrap()), tcx.def_span(item.def_id))
+                })
+                .unzip();
+            errors::SupertraitItemShadowee::Several { traits: traits.into(), spans: spans.into() }
+        };
+
+        tcx.emit_node_span_lint(
+            SUPERTRAIT_ITEM_SHADOWING_DEFINITION,
+            tcx.local_def_id_to_hir_id(trait_item_def_id),
+            tcx.def_span(trait_item_def_id),
+            errors::SupertraitItemShadowing {
+                item: item_name,
+                subtrait: tcx.item_name(trait_def_id.to_def_id()),
+                shadowee,
+            },
+        );
     }
 }
 
@@ -1118,7 +1161,7 @@ fn check_type_defn<'tcx>(
                     // be refactored to check the instantiate-ability of the code better.
                     if let Some(def_id) = def_id.as_local()
                         && let hir::Node::AnonConst(anon) = tcx.hir_node_by_def_id(def_id)
-                        && let expr = &tcx.hir().body(anon.body).value
+                        && let expr = &tcx.hir_body(anon.body).value
                         && let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
                         && let Res::Def(DefKind::ConstParam, _def_id) = path.res
                     {
@@ -1665,7 +1708,7 @@ fn check_sized_if_body<'tcx>(
     maybe_span: Option<Span>,
 ) {
     let tcx = wfcx.tcx();
-    if let Some(body) = tcx.hir().maybe_body_owned_by(def_id) {
+    if let Some(body) = tcx.hir_maybe_body_owned_by(def_id) {
         let span = maybe_span.unwrap_or(body.value.span);
 
         wfcx.register_bound(

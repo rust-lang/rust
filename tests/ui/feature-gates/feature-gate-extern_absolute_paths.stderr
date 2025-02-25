@@ -15,8 +15,9 @@ LL |     let _: u8 = ::core::default::Default();
    |
 help: try using `std` instead of `core`
    |
-LL |     let _: u8 = ::std::default::Default();
-   |                   ~~~
+LL -     let _: u8 = ::core::default::Default();
+LL +     let _: u8 = ::std::default::Default();
+   |
 help: consider importing this module
    |
 LL + use std::default;

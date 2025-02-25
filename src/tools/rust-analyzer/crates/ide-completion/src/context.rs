@@ -442,6 +442,8 @@ pub(crate) struct CompletionContext<'a> {
     pub(crate) krate: hir::Crate,
     /// The module of the `scope`.
     pub(crate) module: hir::Module,
+    /// The function where we're completing, if inside a function.
+    pub(crate) containing_function: Option<hir::Function>,
     /// Whether nightly toolchain is used. Cached since this is looked up a lot.
     pub(crate) is_nightly: bool,
     /// The edition of the current crate
@@ -760,6 +762,7 @@ impl<'a> CompletionContext<'a> {
 
         let krate = scope.krate();
         let module = scope.module();
+        let containing_function = scope.containing_function();
         let edition = krate.edition(db);
 
         let toolchain = db.toolchain_channel(krate.into());
@@ -874,6 +877,7 @@ impl<'a> CompletionContext<'a> {
             token,
             krate,
             module,
+            containing_function,
             is_nightly,
             edition,
             expected_name,

@@ -11,15 +11,15 @@ use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::span_bug;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_span::edit_distance::find_best_match_for_name;
-use rustc_span::{DesugaringKind, Ident, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, DesugaringKind, Ident, Span, Symbol, kw, sym};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 use tracing::instrument;
 
 use super::errors::{
-    InvalidAbi, InvalidAbiReason, InvalidAbiSuggestion, MisplacedRelaxTraitBound,
-    TupleStructWithDefault,
+    InvalidAbi, InvalidAbiSuggestion, MisplacedRelaxTraitBound, TupleStructWithDefault,
 };
+use super::stability::{enabled_names, gate_unstable_abi};
 use super::{
     AstOwner, FnDeclKind, ImplTraitContext, ImplTraitPosition, LoweringContext, ParamMode,
     ResolverAstLoweringExt,
@@ -93,7 +93,8 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
         debug_assert_eq!(self.resolver.node_id_to_def_id[&CRATE_NODE_ID], CRATE_DEF_ID);
         self.with_lctx(CRATE_NODE_ID, |lctx| {
             let module = lctx.lower_mod(&c.items, &c.spans);
-            lctx.lower_attrs(hir::CRATE_HIR_ID, &c.attrs);
+            // FIXME(jdonszelman): is dummy span ever a problem here?
+            lctx.lower_attrs(hir::CRATE_HIR_ID, &c.attrs, DUMMY_SP);
             hir::OwnerNode::Crate(module)
         })
     }
@@ -157,7 +158,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let mut ident = i.ident;
         let vis_span = self.lower_span(i.vis.span);
         let hir_id = hir::HirId::make_owner(self.current_hir_id_owner.def_id);
-        let attrs = self.lower_attrs(hir_id, &i.attrs);
+        let attrs = self.lower_attrs(hir_id, &i.attrs, i.span);
         let kind = self.lower_item_kind(i.span, i.id, hir_id, &mut ident, attrs, vis_span, &i.kind);
         let item = hir::Item {
             owner_id: hir_id.expect_owner(),
@@ -211,36 +212,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ..
             }) => {
                 self.with_new_scopes(*fn_sig_span, |this| {
-                    assert!(this.contract.is_none());
-                    if let Some(contract) = contract {
-                        let requires = contract.requires.clone();
-                        let ensures = contract.ensures.clone();
-                        let ensures = ensures.map(|ens| {
-                            // FIXME: this needs to be a fresh (or illegal) identifier to prevent
-                            // accidental capture of a parameter or global variable.
-                            let checker_ident: Ident =
-                                Ident::from_str_and_span("__ensures_checker", ens.span);
-                            let (checker_pat, checker_hir_id) = this.pat_ident_binding_mode_mut(
-                                ens.span,
-                                checker_ident,
-                                hir::BindingMode::NONE,
-                            );
-
-                            crate::FnContractLoweringEnsures {
-                                expr: ens,
-                                fresh_ident: (checker_ident, checker_pat, checker_hir_id),
-                            }
-                        });
-
-                        // Note: `with_new_scopes` will reinstall the outer
-                        // item's contract (if any) after its callback finishes.
-                        this.contract.replace(crate::FnContractLoweringInfo {
-                            span,
-                            requires,
-                            ensures,
-                        });
-                    }
-
                     // Note: we don't need to change the return type from `T` to
                     // `impl Future<Output = T>` here because lower_body
                     // only cares about the input argument patterns in the function
@@ -254,6 +225,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         coroutine_kind,
                         body.as_deref(),
                         attrs,
+                        contract.as_deref(),
                     );
 
                     let itctx = ImplTraitContext::Universal;
@@ -280,7 +252,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     .arena
                     .alloc_from_iter(fm.items.iter().map(|x| self.lower_foreign_item_ref(x))),
             },
-            ItemKind::GlobalAsm(asm) => hir::ItemKind::GlobalAsm(self.lower_inline_asm(span, asm)),
+            ItemKind::GlobalAsm(asm) => {
+                let asm = self.lower_inline_asm(span, asm);
+                let fake_body =
+                    self.lower_body(|this| (&[], this.expr(span, hir::ExprKind::InlineAsm(asm))));
+                hir::ItemKind::GlobalAsm { asm, fake_body }
+            }
             ItemKind::TyAlias(box TyAlias { generics, where_clauses, ty, .. }) => {
                 // We lower
                 //
@@ -644,7 +621,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_foreign_item(&mut self, i: &ForeignItem) -> &'hir hir::ForeignItem<'hir> {
         let hir_id = hir::HirId::make_owner(self.current_hir_id_owner.def_id);
         let owner_id = hir_id.expect_owner();
-        let attrs = self.lower_attrs(hir_id, &i.attrs);
+        let attrs = self.lower_attrs(hir_id, &i.attrs, i.span);
         let item = hir::ForeignItem {
             owner_id,
             ident: self.lower_ident(i.ident),
@@ -702,7 +679,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_variant(&mut self, v: &Variant) -> hir::Variant<'hir> {
         let hir_id = self.lower_node_id(v.id);
-        self.lower_attrs(hir_id, &v.attrs);
+        self.lower_attrs(hir_id, &v.attrs, v.span);
         hir::Variant {
             hir_id,
             def_id: self.local_def_id(v.id),
@@ -764,7 +741,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> hir::FieldDef<'hir> {
         let ty = self.lower_ty(&f.ty, ImplTraitContext::Disallowed(ImplTraitPosition::FieldTy));
         let hir_id = self.lower_node_id(f.id);
-        self.lower_attrs(hir_id, &f.attrs);
+        self.lower_attrs(hir_id, &f.attrs, f.span);
         hir::FieldDef {
             span: self.lower_span(f.span),
             hir_id,
@@ -783,7 +760,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_trait_item(&mut self, i: &AssocItem) -> &'hir hir::TraitItem<'hir> {
         let hir_id = hir::HirId::make_owner(self.current_hir_id_owner.def_id);
-        let attrs = self.lower_attrs(hir_id, &i.attrs);
+        let attrs = self.lower_attrs(hir_id, &i.attrs, i.span);
         let trait_item_def_id = hir_id.expect_owner();
 
         let (generics, kind, has_default) = match &i.kind {
@@ -803,6 +780,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 (generics, kind, expr.is_some())
             }
             AssocItemKind::Fn(box Fn { sig, generics, body: None, .. }) => {
+                // FIXME(contracts): Deny contract here since it won't apply to
+                // any impl method or callees.
                 let names = self.lower_fn_params_to_names(&sig.decl);
                 let (generics, sig) = self.lower_method_sig(
                     generics,
@@ -814,7 +793,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 );
                 (generics, hir::TraitItemKind::Fn(sig, hir::TraitFn::Required(names)), false)
             }
-            AssocItemKind::Fn(box Fn { sig, generics, body: Some(body), .. }) => {
+            AssocItemKind::Fn(box Fn { sig, generics, body: Some(body), contract, .. }) => {
                 let body_id = self.lower_maybe_coroutine_body(
                     sig.span,
                     i.span,
@@ -823,6 +802,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     sig.header.coroutine_kind,
                     Some(body),
                     attrs,
+                    contract.as_deref(),
                 );
                 let (generics, sig) = self.lower_method_sig(
                     generics,
@@ -916,7 +896,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let has_value = true;
         let (defaultness, _) = self.lower_defaultness(i.kind.defaultness(), has_value);
         let hir_id = hir::HirId::make_owner(self.current_hir_id_owner.def_id);
-        let attrs = self.lower_attrs(hir_id, &i.attrs);
+        let attrs = self.lower_attrs(hir_id, &i.attrs, i.span);
 
         let (generics, kind) = match &i.kind {
             AssocItemKind::Const(box ConstItem { generics, ty, expr, .. }) => self.lower_generics(
@@ -931,7 +911,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::ImplItemKind::Const(ty, body)
                 },
             ),
-            AssocItemKind::Fn(box Fn { sig, generics, body, .. }) => {
+            AssocItemKind::Fn(box Fn { sig, generics, body, contract, .. }) => {
                 let body_id = self.lower_maybe_coroutine_body(
                     sig.span,
                     i.span,
@@ -940,6 +920,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     sig.header.coroutine_kind,
                     body.as_deref(),
                     attrs,
+                    contract.as_deref(),
                 );
                 let (generics, sig) = self.lower_method_sig(
                     generics,
@@ -1076,7 +1057,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_param(&mut self, param: &Param) -> hir::Param<'hir> {
         let hir_id = self.lower_node_id(param.id);
-        self.lower_attrs(hir_id, &param.attrs);
+        self.lower_attrs(hir_id, &param.attrs, param.span);
         hir::Param {
             hir_id,
             pat: self.lower_pat(&param.pat),
@@ -1088,72 +1069,89 @@ impl<'hir> LoweringContext<'_, 'hir> {
     pub(super) fn lower_fn_body(
         &mut self,
         decl: &FnDecl,
+        contract: Option<&FnContract>,
         body: impl FnOnce(&mut Self) -> hir::Expr<'hir>,
     ) -> hir::BodyId {
         self.lower_body(|this| {
             let params =
                 this.arena.alloc_from_iter(decl.inputs.iter().map(|x| this.lower_param(x)));
-            let result = body(this);
 
-            let opt_contract = this.contract.take();
-
+            // Optionally lower the fn contract, which turns:
+            //
             // { body }
-            // ==>
-            // { contract_requires(PRECOND); { body } }
-            let Some(contract) = opt_contract else { return (params, result) };
-            let result_ref = this.arena.alloc(result);
-            let lit_unit = |this: &mut LoweringContext<'_, 'hir>| {
-                this.expr(contract.span, hir::ExprKind::Tup(&[]))
-            };
-
-            let precond: hir::Stmt<'hir> = if let Some(req) = contract.requires {
-                let lowered_req = this.lower_expr_mut(&req);
-                let precond = this.expr_call_lang_item_fn_mut(
-                    req.span,
-                    hir::LangItem::ContractCheckRequires,
-                    &*arena_vec![this; lowered_req],
-                );
-                this.stmt_expr(req.span, precond)
-            } else {
-                let u = lit_unit(this);
-                this.stmt_expr(contract.span, u)
-            };
-
-            let (postcond_checker, result) = if let Some(ens) = contract.ensures {
-                let crate::FnContractLoweringEnsures { expr: ens, fresh_ident } = ens;
-                let lowered_ens: hir::Expr<'hir> = this.lower_expr_mut(&ens);
-                let postcond_checker = this.expr_call_lang_item_fn(
-                    ens.span,
-                    hir::LangItem::ContractBuildCheckEnsures,
-                    &*arena_vec![this; lowered_ens],
-                );
-                let checker_binding_pat = fresh_ident.1;
-                (
-                    this.stmt_let_pat(
+            //
+            // into:
+            //
+            // { contract_requires(PRECOND); let __postcond = |ret_val| POSTCOND; postcond({ body }) }
+            if let Some(contract) = contract {
+                let precond = if let Some(req) = &contract.requires {
+                    // Lower the precondition check intrinsic.
+                    let lowered_req = this.lower_expr_mut(&req);
+                    let precond = this.expr_call_lang_item_fn_mut(
+                        req.span,
+                        hir::LangItem::ContractCheckRequires,
+                        &*arena_vec![this; lowered_req],
+                    );
+                    Some(this.stmt_expr(req.span, precond))
+                } else {
+                    None
+                };
+                let (postcond, body) = if let Some(ens) = &contract.ensures {
+                    let ens_span = this.lower_span(ens.span);
+                    // Set up the postcondition `let` statement.
+                    let check_ident: Ident =
+                        Ident::from_str_and_span("__ensures_checker", ens_span);
+                    let (checker_pat, check_hir_id) = this.pat_ident_binding_mode_mut(
+                        ens_span,
+                        check_ident,
+                        hir::BindingMode::NONE,
+                    );
+                    let lowered_ens = this.lower_expr_mut(&ens);
+                    let postcond_checker = this.expr_call_lang_item_fn(
+                        ens_span,
+                        hir::LangItem::ContractBuildCheckEnsures,
+                        &*arena_vec![this; lowered_ens],
+                    );
+                    let postcond = this.stmt_let_pat(
                         None,
-                        ens.span,
+                        ens_span,
                         Some(postcond_checker),
-                        this.arena.alloc(checker_binding_pat),
+                        this.arena.alloc(checker_pat),
                         hir::LocalSource::Contract,
-                    ),
-                    this.inject_ensures_check(result_ref, ens.span, fresh_ident.0, fresh_ident.2),
-                )
-            } else {
-                let u = lit_unit(this);
-                (this.stmt_expr(contract.span, u), &*result_ref)
-            };
+                    );
 
-            let block = this.block_all(
-                contract.span,
-                arena_vec![this; precond, postcond_checker],
-                Some(result),
-            );
-            (params, this.expr_block(block))
+                    // Install contract_ensures so we will intercept `return` statements,
+                    // then lower the body.
+                    this.contract_ensures = Some((ens_span, check_ident, check_hir_id));
+                    let body = this.arena.alloc(body(this));
+
+                    // Finally, inject an ensures check on the implicit return of the body.
+                    let body = this.inject_ensures_check(body, ens_span, check_ident, check_hir_id);
+                    (Some(postcond), body)
+                } else {
+                    let body = &*this.arena.alloc(body(this));
+                    (None, body)
+                };
+                // Flatten the body into precond, then postcond, then wrapped body.
+                let wrapped_body = this.block_all(
+                    body.span,
+                    this.arena.alloc_from_iter([precond, postcond].into_iter().flatten()),
+                    Some(body),
+                );
+                (params, this.expr_block(wrapped_body))
+            } else {
+                (params, body(this))
+            }
         })
     }
 
-    fn lower_fn_body_block(&mut self, decl: &FnDecl, body: &Block) -> hir::BodyId {
-        self.lower_fn_body(decl, |this| this.lower_block_expr(body))
+    fn lower_fn_body_block(
+        &mut self,
+        decl: &FnDecl,
+        body: &Block,
+        contract: Option<&FnContract>,
+    ) -> hir::BodyId {
+        self.lower_fn_body(decl, contract, |this| this.lower_block_expr(body))
     }
 
     pub(super) fn lower_const_body(&mut self, span: Span, expr: Option<&Expr>) -> hir::BodyId {
@@ -1179,12 +1177,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         coroutine_kind: Option<CoroutineKind>,
         body: Option<&Block>,
         attrs: &'hir [hir::Attribute],
+        contract: Option<&FnContract>,
     ) -> hir::BodyId {
         let Some(body) = body else {
             // Functions without a body are an error, except if this is an intrinsic. For those we
             // create a fake body so that the entire rest of the compiler doesn't have to deal with
             // this as a special case.
-            return self.lower_fn_body(decl, |this| {
+            return self.lower_fn_body(decl, contract, |this| {
                 if attrs.iter().any(|a| a.name_or_empty() == sym::rustc_intrinsic) {
                     let span = this.lower_span(span);
                     let empty_block = hir::Block {
@@ -1209,8 +1208,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
         let Some(coroutine_kind) = coroutine_kind else {
             // Typical case: not a coroutine.
-            return self.lower_fn_body_block(decl, body);
+            return self.lower_fn_body_block(decl, body, contract);
         };
+        // FIXME(contracts): Support contracts on async fn.
         self.lower_body(|this| {
             let (parameters, expr) = this.lower_coroutine_body_with_moved_arguments(
                 decl,
@@ -1479,11 +1479,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    pub(super) fn lower_abi(&mut self, abi: StrLit) -> ExternAbi {
-        rustc_abi::lookup(abi.symbol_unescaped.as_str()).unwrap_or_else(|err| {
-            self.error_on_invalid_abi(abi, err);
+    pub(super) fn lower_abi(&mut self, abi_str: StrLit) -> ExternAbi {
+        let ast::StrLit { symbol_unescaped, span, .. } = abi_str;
+        let extern_abi = symbol_unescaped.as_str().parse().unwrap_or_else(|_| {
+            self.error_on_invalid_abi(abi_str);
             ExternAbi::Rust
-        })
+        });
+        let sess = self.tcx.sess;
+        let features = self.tcx.features();
+        gate_unstable_abi(sess, features, span, extern_abi);
+        extern_abi
     }
 
     pub(super) fn lower_extern(&mut self, ext: Extern) -> ExternAbi {
@@ -1494,8 +1499,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn error_on_invalid_abi(&self, abi: StrLit, err: rustc_abi::AbiUnsupported) {
-        let abi_names = rustc_abi::enabled_names(self.tcx.features(), abi.span)
+    fn error_on_invalid_abi(&self, abi: StrLit) {
+        let abi_names = enabled_names(self.tcx.features(), abi.span)
             .iter()
             .map(|s| Symbol::intern(s))
             .collect::<Vec<_>>();
@@ -1503,10 +1508,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.dcx().emit_err(InvalidAbi {
             abi: abi.symbol_unescaped,
             span: abi.span,
-            explain: match err {
-                rustc_abi::AbiUnsupported::Reason { explain } => Some(InvalidAbiReason(explain)),
-                _ => None,
-            },
             suggestion: suggested_name.map(|suggested_name| InvalidAbiSuggestion {
                 span: abi.span,
                 suggestion: format!("\"{suggested_name}\""),

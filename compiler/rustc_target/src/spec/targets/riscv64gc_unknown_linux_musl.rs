@@ -1,11 +1,11 @@
 use std::borrow::Cow;
 
-use crate::spec::{CodeModel, SplitDebuginfo, Target, TargetOptions, base};
+use crate::spec::{CodeModel, SplitDebuginfo, Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
         llvm_target: "riscv64-unknown-linux-musl".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("RISC-V Linux (kernel 4.20, musl 1.2.3)".into()),
             tier: Some(3),
             host_tools: Some(false),

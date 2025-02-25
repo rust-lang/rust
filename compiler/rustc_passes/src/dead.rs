@@ -184,7 +184,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             rhs: &'tcx hir::Expr<'tcx>,
         ) -> bool {
             match (&lhs.kind, &rhs.kind) {
-                (hir::ExprKind::Path(ref qpath_l), hir::ExprKind::Path(ref qpath_r)) => {
+                (hir::ExprKind::Path(qpath_l), hir::ExprKind::Path(qpath_r)) => {
                     if let (Res::Local(id_l), Res::Local(id_r)) = (
                         typeck_results.qpath_res(qpath_l, lhs.hir_id),
                         typeck_results.qpath_res(qpath_r, rhs.hir_id),
@@ -358,7 +358,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             if let Some(local_impl_of) = impl_of.as_local()
                 && let Some(local_def_id) = def_id.as_local()
                 && let Some(fn_sig) =
-                    self.tcx.hir().fn_sig_by_hir_id(self.tcx.local_def_id_to_hir_id(local_def_id))
+                    self.tcx.hir_fn_sig_by_hir_id(self.tcx.local_def_id_to_hir_id(local_def_id))
                 && matches!(fn_sig.decl.implicit_self, hir::ImplicitSelfKind::None)
                 && let TyKind::Path(hir::QPath::Resolved(_, path)) =
                     self.tcx.hir().expect_item(local_impl_of).expect_impl().self_ty.kind
@@ -531,7 +531,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
 
     fn impl_item_with_used_self(&mut self, impl_id: hir::ItemId, impl_item_id: LocalDefId) -> bool {
         if let TyKind::Path(hir::QPath::Resolved(_, path)) =
-            self.tcx.hir().item(impl_id).expect_impl().self_ty.kind
+            self.tcx.hir_item(impl_id).expect_impl().self_ty.kind
             && let Res::Def(def_kind, def_id) = path.res
             && let Some(local_def_id) = def_id.as_local()
             && matches!(def_kind, DefKind::Struct | DefKind::Enum | DefKind::Union)
@@ -559,7 +559,7 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
     fn visit_nested_body(&mut self, body: hir::BodyId) {
         let old_maybe_typeck_results =
             self.maybe_typeck_results.replace(self.tcx.typeck_body(body));
-        let body = self.tcx.hir().body(body);
+        let body = self.tcx.hir_body(body);
         self.visit_body(body);
         self.maybe_typeck_results = old_maybe_typeck_results;
     }
@@ -750,7 +750,7 @@ fn check_item<'tcx>(
 
     match tcx.def_kind(id.owner_id) {
         DefKind::Enum => {
-            let item = tcx.hir().item(id);
+            let item = tcx.hir_item(id);
             if let hir::ItemKind::Enum(ref enum_def, _) = item.kind {
                 if let Some(comes_from_allow) = allow_dead_code {
                     worklist.extend(
@@ -772,14 +772,14 @@ fn check_item<'tcx>(
                 .iter()
                 .filter_map(|def_id| def_id.as_local());
 
-            let ty_is_pub = ty_ref_to_pub_struct(tcx, tcx.hir().item(id).expect_impl().self_ty);
+            let ty_is_pub = ty_ref_to_pub_struct(tcx, tcx.hir_item(id).expect_impl().self_ty);
 
             // And we access the Map here to get HirId from LocalDefId
             for local_def_id in local_def_ids {
                 // check the function may construct Self
                 let mut may_construct_self = false;
                 if let Some(fn_sig) =
-                    tcx.hir().fn_sig_by_hir_id(tcx.local_def_id_to_hir_id(local_def_id))
+                    tcx.hir_fn_sig_by_hir_id(tcx.local_def_id_to_hir_id(local_def_id))
                 {
                     may_construct_self =
                         matches!(fn_sig.decl.implicit_self, hir::ImplicitSelfKind::None);
@@ -805,7 +805,7 @@ fn check_item<'tcx>(
             }
         }
         DefKind::Struct => {
-            let item = tcx.hir().item(id);
+            let item = tcx.hir_item(id);
             if let hir::ItemKind::Struct(ref variant_data, _) = item.kind
                 && let Some(ctor_def_id) = variant_data.ctor_def_id()
             {
@@ -827,7 +827,7 @@ fn check_trait_item(
 ) {
     use hir::TraitItemKind::{Const, Fn};
     if matches!(tcx.def_kind(id.owner_id), DefKind::AssocConst | DefKind::AssocFn) {
-        let trait_item = tcx.hir().trait_item(id);
+        let trait_item = tcx.hir_trait_item(id);
         if matches!(trait_item.kind, Const(_, Some(_)) | Fn(..))
             && let Some(comes_from_allow) =
                 has_allow_dead_code_or_lang_attr(tcx, trait_item.owner_id.def_id)

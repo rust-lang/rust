@@ -25,8 +25,9 @@ LL +     }
    |
 help: ...and replace `return` with `continue`
    |
-LL |             continue;
-   |             ~~~~~~~~
+LL -             return;
+LL +             continue;
+   |
 
 error: aborting due to 1 previous error
 

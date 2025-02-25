@@ -302,26 +302,16 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_contract(
         &mut self,
     ) -> PResult<'a, Option<rustc_ast::ptr::P<ast::FnContract>>> {
-        let gate = |span| {
-            if self.psess.contract_attribute_spans.contains(span) {
-                // span was generated via a builtin contracts attribute, so gate as end-user visible
-                self.psess.gated_spans.gate(sym::contracts, span);
-            } else {
-                // span was not generated via a builtin contracts attribute, so gate as internal machinery
-                self.psess.gated_spans.gate(sym::contracts_internals, span);
-            }
-        };
-
         let requires = if self.eat_keyword_noexpect(exp!(ContractRequires).kw) {
+            self.psess.gated_spans.gate(sym::contracts_internals, self.prev_token.span);
             let precond = self.parse_expr()?;
-            gate(precond.span);
             Some(precond)
         } else {
             None
         };
         let ensures = if self.eat_keyword_noexpect(exp!(ContractEnsures).kw) {
+            self.psess.gated_spans.gate(sym::contracts_internals, self.prev_token.span);
             let postcond = self.parse_expr()?;
-            gate(postcond.span);
             Some(postcond)
         } else {
             None

@@ -8,8 +8,9 @@ LL |     (op < 4).then_some(unsafe { std::mem::transmute(op) })
    = help: to override `-D warnings` add `#[allow(clippy::eager_transmute)]`
 help: consider using `bool::then` to only transmute if the condition holds
    |
-LL |     (op < 4).then(|| unsafe { std::mem::transmute(op) })
-   |              ~~~~ ++
+LL -     (op < 4).then_some(unsafe { std::mem::transmute(op) })
+LL +     (op < 4).then(|| unsafe { std::mem::transmute(op) })
+   |
 
 error: this transmute is always evaluated eagerly, even if the condition is false
   --> tests/ui/eager_transmute.rs:27:33
@@ -19,8 +20,9 @@ LL |     (op < 4).then_some(unsafe { std::mem::transmute::<_, Opcode>(op) });
    |
 help: consider using `bool::then` to only transmute if the condition holds
    |
-LL |     (op < 4).then(|| unsafe { std::mem::transmute::<_, Opcode>(op) });
-   |              ~~~~ ++
+LL -     (op < 4).then_some(unsafe { std::mem::transmute::<_, Opcode>(op) });
+LL +     (op < 4).then(|| unsafe { std::mem::transmute::<_, Opcode>(op) });
+   |
 
 error: this transmute is always evaluated eagerly, even if the condition is false
   --> tests/ui/eager_transmute.rs:28:33
@@ -30,8 +32,9 @@ LL |     (op > 4).then_some(unsafe { std::mem::transmute::<_, Opcode>(op) });
    |
 help: consider using `bool::then` to only transmute if the condition holds
    |
-LL |     (op > 4).then(|| unsafe { std::mem::transmute::<_, Opcode>(op) });
-   |              ~~~~ ++
+LL -     (op > 4).then_some(unsafe { std::mem::transmute::<_, Opcode>(op) });
+LL +     (op > 4).then(|| unsafe { std::mem::transmute::<_, Opcode>(op) });
+   |
 
 error: this transmute is always evaluated eagerly, even if the condition is false
   --> tests/ui/eager_transmute.rs:29:34
@@ -41,8 +44,9 @@ LL |     (op == 0).then_some(unsafe { std::mem::transmute::<_, Opcode>(op) });
    |
 help: consider using `bool::then` to only transmute if the condition holds
    |
-LL |     (op == 0).then(|| unsafe { std::mem::transmute::<_, Opcode>(op) });
-   |               ~~~~ ++
+LL -     (op == 0).then_some(unsafe { std::mem::transmute::<_, Opcode>(op) });
+LL +     (op == 0).then(|| unsafe { std::mem::transmute::<_, Opcode>(op) });
+   |
 
 error: this transmute is always evaluated eagerly, even if the condition is false
   --> tests/ui/eager_transmute.rs:31:68
@@ -52,8 +56,9 @@ LL |     let _: Option<Opcode> = (op > 0 && op < 10).then_some(unsafe { std::mem
    |
 help: consider using `bool::then` to only transmute if the condition holds
    |
-LL |     let _: Option<Opcode> = (op > 0 && op < 10).then(|| unsafe { std::mem::transmute(op) });
-   |                                                 ~~~~ ++
+LL -     let _: Option<Opcode> = (op > 0 && op < 10).then_some(unsafe { std::mem::transmute(op) });
+LL +     let _: Option<Opcode> = (op > 0 && op < 10).then(|| unsafe { std::mem::transmute(op) });
+   |
 
 error: this transmute is always evaluated eagerly, even if the condition is false
   --> tests/ui/eager_transmute.rs:32:86
@@ -63,8 +68,9 @@ LL |     let _: Option<Opcode> = (op > 0 && op < 10 && unrelated == 0).then_some
    |
 help: consider using `bool::then` to only transmute if the condition holds
    |
-LL |     let _: Option<Opcode> = (op > 0 && op < 10 && unrelated == 0).then(|| unsafe { std::mem::transmute(op) });
-   |                                                                   ~~~~ ++
+LL -     let _: Option<Opcode> = (op > 0 && op < 10 && unrelated == 0).then_some(unsafe { std::mem::transmute(op) });
+LL +     let _: Option<Opcode> = (op > 0 && op < 10 && unrelated == 0).then(|| unsafe { std::mem::transmute(op) });
+   |
 
 error: this transmute is always evaluated eagerly, even if the condition is false
   --> tests/ui/eager_transmute.rs:35:84
@@ -74,8 +80,9 @@ LL |     let _: Option<Opcode> = (op2.foo[0] > 0 && op2.foo[0] < 10).then_some(u
    |
 help: consider using `bool::then` to only transmute if the condition holds
    |
-LL |     let _: Option<Opcode> = (op2.foo[0] > 0 && op2.foo[0] < 10).then(|| unsafe { std::mem::transmute(op2.foo[0]) });
-   |                                                                 ~~~~ ++
+LL -     let _: Option<Opcode> = (op2.foo[0] > 0 && op2.foo[0] < 10).then_some(unsafe { std::mem::transmute(op2.foo[0]) });
+LL +     let _: Option<Opcode> = (op2.foo[0] > 0 && op2.foo[0] < 10).then(|| unsafe { std::mem::transmute(op2.foo[0]) });
+   |
 
 error: this transmute is always evaluated eagerly, even if the condition is false
   --> tests/ui/eager_transmute.rs:47:70
@@ -85,8 +92,9 @@ LL |     let _: Option<Opcode> = (1..=3).contains(&op).then_some(unsafe { std::m
    |
 help: consider using `bool::then` to only transmute if the condition holds
    |
-LL |     let _: Option<Opcode> = (1..=3).contains(&op).then(|| unsafe { std::mem::transmute(op) });
-   |                                                   ~~~~ ++
+LL -     let _: Option<Opcode> = (1..=3).contains(&op).then_some(unsafe { std::mem::transmute(op) });
+LL +     let _: Option<Opcode> = (1..=3).contains(&op).then(|| unsafe { std::mem::transmute(op) });
+   |
 
 error: this transmute is always evaluated eagerly, even if the condition is false
   --> tests/ui/eager_transmute.rs:48:83
@@ -96,8 +104,9 @@ LL |     let _: Option<Opcode> = ((1..=3).contains(&op) || op == 4).then_some(un
    |
 help: consider using `bool::then` to only transmute if the condition holds
    |
-LL |     let _: Option<Opcode> = ((1..=3).contains(&op) || op == 4).then(|| unsafe { std::mem::transmute(op) });
-   |                                                                ~~~~ ++
+LL -     let _: Option<Opcode> = ((1..=3).contains(&op) || op == 4).then_some(unsafe { std::mem::transmute(op) });
+LL +     let _: Option<Opcode> = ((1..=3).contains(&op) || op == 4).then(|| unsafe { std::mem::transmute(op) });
+   |
 
 error: this transmute is always evaluated eagerly, even if the condition is false
   --> tests/ui/eager_transmute.rs:49:69
@@ -107,8 +116,9 @@ LL |     let _: Option<Opcode> = (1..3).contains(&op).then_some(unsafe { std::me
    |
 help: consider using `bool::then` to only transmute if the condition holds
    |
-LL |     let _: Option<Opcode> = (1..3).contains(&op).then(|| unsafe { std::mem::transmute(op) });
-   |                                                  ~~~~ ++
+LL -     let _: Option<Opcode> = (1..3).contains(&op).then_some(unsafe { std::mem::transmute(op) });
+LL +     let _: Option<Opcode> = (1..3).contains(&op).then(|| unsafe { std::mem::transmute(op) });
+   |
 
 error: this transmute is always evaluated eagerly, even if the condition is false
   --> tests/ui/eager_transmute.rs:50:68
@@ -118,8 +128,9 @@ LL |     let _: Option<Opcode> = (1..).contains(&op).then_some(unsafe { std::mem
    |
 help: consider using `bool::then` to only transmute if the condition holds
    |
-LL |     let _: Option<Opcode> = (1..).contains(&op).then(|| unsafe { std::mem::transmute(op) });
-   |                                                 ~~~~ ++
+LL -     let _: Option<Opcode> = (1..).contains(&op).then_some(unsafe { std::mem::transmute(op) });
+LL +     let _: Option<Opcode> = (1..).contains(&op).then(|| unsafe { std::mem::transmute(op) });
+   |
 
 error: this transmute is always evaluated eagerly, even if the condition is false
   --> tests/ui/eager_transmute.rs:51:68
@@ -129,8 +140,9 @@ LL |     let _: Option<Opcode> = (..3).contains(&op).then_some(unsafe { std::mem
    |
 help: consider using `bool::then` to only transmute if the condition holds
    |
-LL |     let _: Option<Opcode> = (..3).contains(&op).then(|| unsafe { std::mem::transmute(op) });
-   |                                                 ~~~~ ++
+LL -     let _: Option<Opcode> = (..3).contains(&op).then_some(unsafe { std::mem::transmute(op) });
+LL +     let _: Option<Opcode> = (..3).contains(&op).then(|| unsafe { std::mem::transmute(op) });
+   |
 
 error: this transmute is always evaluated eagerly, even if the condition is false
   --> tests/ui/eager_transmute.rs:52:69
@@ -140,8 +152,9 @@ LL |     let _: Option<Opcode> = (..=3).contains(&op).then_some(unsafe { std::me
    |
 help: consider using `bool::then` to only transmute if the condition holds
    |
-LL |     let _: Option<Opcode> = (..=3).contains(&op).then(|| unsafe { std::mem::transmute(op) });
-   |                                                  ~~~~ ++
+LL -     let _: Option<Opcode> = (..=3).contains(&op).then_some(unsafe { std::mem::transmute(op) });
+LL +     let _: Option<Opcode> = (..=3).contains(&op).then(|| unsafe { std::mem::transmute(op) });
+   |
 
 error: this transmute is always evaluated eagerly, even if the condition is false
   --> tests/ui/eager_transmute.rs:61:24
@@ -151,8 +164,9 @@ LL |     (op < 4).then_some(std::mem::transmute::<_, Opcode>(op));
    |
 help: consider using `bool::then` to only transmute if the condition holds
    |
-LL |     (op < 4).then(|| std::mem::transmute::<_, Opcode>(op));
-   |              ~~~~ ++
+LL -     (op < 4).then_some(std::mem::transmute::<_, Opcode>(op));
+LL +     (op < 4).then(|| std::mem::transmute::<_, Opcode>(op));
+   |
 
 error: this transmute is always evaluated eagerly, even if the condition is false
   --> tests/ui/eager_transmute.rs:90:62
@@ -162,8 +176,9 @@ LL |     let _: Option<NonZero<u8>> = (v1 > 0).then_some(unsafe { std::mem::tran
    |
 help: consider using `bool::then` to only transmute if the condition holds
    |
-LL |     let _: Option<NonZero<u8>> = (v1 > 0).then(|| unsafe { std::mem::transmute(v1) });
-   |                                           ~~~~ ++
+LL -     let _: Option<NonZero<u8>> = (v1 > 0).then_some(unsafe { std::mem::transmute(v1) });
+LL +     let _: Option<NonZero<u8>> = (v1 > 0).then(|| unsafe { std::mem::transmute(v1) });
+   |
 
 error: this transmute is always evaluated eagerly, even if the condition is false
   --> tests/ui/eager_transmute.rs:96:86
@@ -173,8 +188,9 @@ LL |     let _: Option<NonMaxU8> = (v2 < NonZero::new(255u8).unwrap()).then_some
    |
 help: consider using `bool::then` to only transmute if the condition holds
    |
-LL |     let _: Option<NonMaxU8> = (v2 < NonZero::new(255u8).unwrap()).then(|| unsafe { std::mem::transmute(v2) });
-   |                                                                   ~~~~ ++
+LL -     let _: Option<NonMaxU8> = (v2 < NonZero::new(255u8).unwrap()).then_some(unsafe { std::mem::transmute(v2) });
+LL +     let _: Option<NonMaxU8> = (v2 < NonZero::new(255u8).unwrap()).then(|| unsafe { std::mem::transmute(v2) });
+   |
 
 error: this transmute is always evaluated eagerly, even if the condition is false
   --> tests/ui/eager_transmute.rs:102:93
@@ -184,8 +200,9 @@ LL |     let _: Option<NonZeroNonMaxU8> = (v2 < NonZero::new(255u8).unwrap()).th
    |
 help: consider using `bool::then` to only transmute if the condition holds
    |
-LL |     let _: Option<NonZeroNonMaxU8> = (v2 < NonZero::new(255u8).unwrap()).then(|| unsafe { std::mem::transmute(v2) });
-   |                                                                          ~~~~ ++
+LL -     let _: Option<NonZeroNonMaxU8> = (v2 < NonZero::new(255u8).unwrap()).then_some(unsafe { std::mem::transmute(v2) });
+LL +     let _: Option<NonZeroNonMaxU8> = (v2 < NonZero::new(255u8).unwrap()).then(|| unsafe { std::mem::transmute(v2) });
+   |
 
 error: aborting due to 17 previous errors
 

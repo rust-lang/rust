@@ -158,7 +158,7 @@ pub struct fd_set {
     pub fds: [c_int; SOLID_NET_FD_SETSIZE],
 }
 
-extern "C" {
+unsafe extern "C" {
     #[link_name = "SOLID_NET_StrError"]
     pub fn strerror(errnum: c_int) -> *const c_char;
 

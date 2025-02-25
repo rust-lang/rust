@@ -8,7 +8,7 @@
 //@ revisions: DEBUG NOCHECKS
 //@ [DEBUG] compile-flags:
 //@ [NOCHECKS] compile-flags: -Zub-checks=no
-//@ compile-flags: -O -Cdebug-assertions=yes
+//@ compile-flags: -Copt-level=3 -Cdebug-assertions=yes
 
 #![crate_type = "lib"]
 

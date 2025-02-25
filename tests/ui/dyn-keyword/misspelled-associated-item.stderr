@@ -10,8 +10,9 @@ LL |     let () = <dyn Trait>::typoe();
    |              ++++      +
 help: you may have misspelled this associated item, causing `Trait` to be interpreted as a type rather than a trait
    |
-LL |     let () = Trait::typo();
-   |                     ~~~~
+LL -     let () = Trait::typoe();
+LL +     let () = Trait::typo();
+   |
 
 error: aborting due to 1 previous error
 

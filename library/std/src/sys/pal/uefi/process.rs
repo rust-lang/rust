@@ -154,8 +154,8 @@ impl Command {
         if let Some(e) = &env {
             for (k, (_, v)) in e {
                 match v {
-                    Some(v) => crate::env::set_var(k, v),
-                    None => crate::env::remove_var(k),
+                    Some(v) => unsafe { crate::env::set_var(k, v) },
+                    None => unsafe { crate::env::remove_var(k) },
                 }
             }
         }
@@ -166,8 +166,8 @@ impl Command {
         if let Some(e) = env {
             for (k, (v, _)) in e {
                 match v {
-                    Some(v) => crate::env::set_var(k, v),
-                    None => crate::env::remove_var(k),
+                    Some(v) => unsafe { crate::env::set_var(k, v) },
+                    None => unsafe { crate::env::remove_var(k) },
                 }
             }
         }
@@ -388,7 +388,7 @@ mod uefi_command_internal {
             }
         }
 
-        pub fn start_image(&mut self) -> io::Result<r_efi::efi::Status> {
+        pub(crate) fn start_image(&mut self) -> io::Result<r_efi::efi::Status> {
             self.update_st_crc32()?;
 
             // Use our system table instead of the default one

@@ -10,8 +10,9 @@ LL |     vec: Vec<usize>,
    = help: enum variants can be `Variant`, `Variant = <integer>`, `Variant(Type, ..., TypeN)` or `Variant { fields: Types }`
 help: perhaps you meant to use `struct` here
    |
-LL | struct VecOrMap {
-   | ~~~~~~
+LL - enum VecOrMap {
+LL + struct VecOrMap {
+   |
 
 error: aborting due to 1 previous error
 

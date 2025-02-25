@@ -497,7 +497,7 @@ impl Diagnostics {
             return;
         };
 
-        for (hir_id, _parent) in cx.tcx.hir().parent_iter(current_id) {
+        for (hir_id, _parent) in cx.tcx.hir_parent_iter(current_id) {
             if let Some(owner_did) = hir_id.as_owner()
                 && cx.tcx.has_attr(owner_did, sym::rustc_lint_diagnostics)
             {
@@ -512,7 +512,7 @@ impl Diagnostics {
         //
         // Otherwise, emit a `DIAGNOSTIC_OUTSIDE_OF_IMPL` lint.
         let mut is_inside_appropriate_impl = false;
-        for (_hir_id, parent) in cx.tcx.hir().parent_iter(current_id) {
+        for (_hir_id, parent) in cx.tcx.hir_parent_iter(current_id) {
             debug!(?parent);
             if let Node::Item(Item { kind: ItemKind::Impl(impl_), .. }) = parent
                 && let Impl { of_trait: Some(of_trait), .. } = impl_

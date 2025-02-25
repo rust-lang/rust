@@ -58,12 +58,11 @@ impl BorrowedSocket<'_> {
     /// the returned `BorrowedSocket`, and it must not have the value
     /// `INVALID_SOCKET`.
     #[inline]
+    #[track_caller]
     #[rustc_const_stable(feature = "io_safety", since = "1.63.0")]
     #[stable(feature = "io_safety", since = "1.63.0")]
     pub const unsafe fn borrow_raw(socket: RawSocket) -> Self {
-        assert!(socket != sys::c::INVALID_SOCKET as RawSocket);
-        let socket = unsafe { ValidRawSocket::new_unchecked(socket) };
-        Self { socket, _phantom: PhantomData }
+        Self { socket: ValidRawSocket::new(socket).expect("socket != -1"), _phantom: PhantomData }
     }
 }
 
@@ -185,10 +184,9 @@ impl IntoRawSocket for OwnedSocket {
 #[stable(feature = "io_safety", since = "1.63.0")]
 impl FromRawSocket for OwnedSocket {
     #[inline]
+    #[track_caller]
     unsafe fn from_raw_socket(socket: RawSocket) -> Self {
-        debug_assert_ne!(socket, sys::c::INVALID_SOCKET as RawSocket);
-        let socket = unsafe { ValidRawSocket::new_unchecked(socket) };
-        Self { socket }
+        Self { socket: ValidRawSocket::new(socket).expect("socket != -1") }
     }
 }
 

@@ -4,12 +4,13 @@ use rustc_hir::LangItem;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::{DenseBitSet, GrowableBitSet};
 use rustc_middle::bug;
-use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::value_analysis::{excluded_locals, iter_fields};
 use tracing::{debug, instrument};
+
+use crate::patch::MirPatch;
 
 pub(super) struct ScalarReplacementOfAggregates;
 
@@ -184,7 +185,7 @@ impl<'tcx> ReplacementMap<'tcx> {
     fn place_fragments(
         &self,
         place: Place<'tcx>,
-    ) -> Option<impl Iterator<Item = (FieldIdx, Ty<'tcx>, Local)> + '_> {
+    ) -> Option<impl Iterator<Item = (FieldIdx, Ty<'tcx>, Local)>> {
         let local = place.as_local()?;
         let fields = self.fragments[local].as_ref()?;
         Some(fields.iter_enumerated().filter_map(|(field, &opt_ty_local)| {

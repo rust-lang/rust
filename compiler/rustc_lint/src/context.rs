@@ -139,9 +139,7 @@ impl LintStore {
         &self.lints
     }
 
-    pub fn get_lint_groups<'t>(
-        &'t self,
-    ) -> impl Iterator<Item = (&'static str, Vec<LintId>, bool)> + 't {
+    pub fn get_lint_groups(&self) -> impl Iterator<Item = (&'static str, Vec<LintId>, bool)> {
         self.lint_groups
             .iter()
             .filter(|(_, LintGroup { depr, .. })| {
@@ -928,7 +926,7 @@ impl<'tcx> LateContext<'tcx> {
         while let hir::ExprKind::Path(ref qpath) = expr.kind
             && let Some(parent_node) = match self.qpath_res(qpath, expr.hir_id) {
                 Res::Local(hir_id) => Some(self.tcx.parent_hir_node(hir_id)),
-                Res::Def(_, def_id) => self.tcx.hir().get_if_local(def_id),
+                Res::Def(_, def_id) => self.tcx.hir_get_if_local(def_id),
                 _ => None,
             }
             && let Some(init) = match parent_node {
@@ -936,7 +934,7 @@ impl<'tcx> LateContext<'tcx> {
                 hir::Node::LetStmt(hir::LetStmt { init, .. }) => *init,
                 hir::Node::Item(item) => match item.kind {
                     hir::ItemKind::Const(.., body_id) | hir::ItemKind::Static(.., body_id) => {
-                        Some(self.tcx.hir().body(body_id).value)
+                        Some(self.tcx.hir_body(body_id).value)
                     }
                     _ => None,
                 },

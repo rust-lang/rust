@@ -314,9 +314,10 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
     let mut st = ConsoleTestState::new(opts)?;
 
     // Prevent the usage of `Instant` in some cases:
-    // - It's currently not supported for wasm targets.
+    // - It's currently not supported for wasm targets without Emscripten nor WASI.
+    // - It's currently not supported for zkvm targets.
     let is_instant_unsupported =
-        (cfg!(target_family = "wasm") && !cfg!(target_os = "wasi")) || cfg!(target_os = "zkvm");
+        (cfg!(target_family = "wasm") && cfg!(target_os = "unknown")) || cfg!(target_os = "zkvm");
 
     let start_time = (!is_instant_unsupported).then(Instant::now);
     run_tests(opts, tests, |x| on_test_event(&x, &mut st, &mut *out))?;

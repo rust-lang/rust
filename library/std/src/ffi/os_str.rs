@@ -1204,13 +1204,12 @@ impl OsStr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(os_str_display)]
     /// use std::ffi::OsStr;
     ///
     /// let s = OsStr::new("Hello, world!");
     /// println!("{}", s.display());
     /// ```
-    #[unstable(feature = "os_str_display", issue = "120048")]
+    #[stable(feature = "os_str_display", since = "CURRENT_RUSTC_VERSION")]
     #[must_use = "this does not display the `OsStr`; \
                   it returns an object that can be displayed"]
     #[inline]
@@ -1559,7 +1558,6 @@ impl fmt::Debug for OsStr {
 /// # Examples
 ///
 /// ```
-/// #![feature(os_str_display)]
 /// use std::ffi::OsStr;
 ///
 /// let s = OsStr::new("Hello, world!");
@@ -1568,19 +1566,19 @@ impl fmt::Debug for OsStr {
 ///
 /// [`Display`]: fmt::Display
 /// [`format!`]: crate::format
-#[unstable(feature = "os_str_display", issue = "120048")]
+#[stable(feature = "os_str_display", since = "CURRENT_RUSTC_VERSION")]
 pub struct Display<'a> {
     os_str: &'a OsStr,
 }
 
-#[unstable(feature = "os_str_display", issue = "120048")]
+#[stable(feature = "os_str_display", since = "CURRENT_RUSTC_VERSION")]
 impl fmt::Debug for Display<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&self.os_str, f)
     }
 }
 
-#[unstable(feature = "os_str_display", issue = "120048")]
+#[stable(feature = "os_str_display", since = "CURRENT_RUSTC_VERSION")]
 impl fmt::Display for Display<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.os_str.inner, f)

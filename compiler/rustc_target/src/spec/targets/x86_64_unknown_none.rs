@@ -6,7 +6,7 @@
 
 use crate::spec::{
     Cc, CodeModel, LinkerFlavor, Lld, PanicStrategy, RelroLevel, RustcAbi, SanitizerSet,
-    StackProbeType, Target, TargetOptions,
+    StackProbeType, Target, TargetMetadata, TargetOptions,
 };
 
 pub(crate) fn target() -> Target {
@@ -30,7 +30,7 @@ pub(crate) fn target() -> Target {
     };
     Target {
         llvm_target: "x86_64-unknown-none-elf".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("Freestanding/bare-metal x86_64 softfloat".into()),
             tier: Some(2),
             host_tools: Some(false),

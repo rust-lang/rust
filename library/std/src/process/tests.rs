@@ -323,9 +323,13 @@ fn test_capture_env_at_spawn() {
 
     // This variable will not be present if the environment has already
     // been captured above.
-    env::set_var("RUN_TEST_NEW_ENV2", "456");
+    unsafe {
+        env::set_var("RUN_TEST_NEW_ENV2", "456");
+    }
     let result = cmd.output().unwrap();
-    env::remove_var("RUN_TEST_NEW_ENV2");
+    unsafe {
+        env::remove_var("RUN_TEST_NEW_ENV2");
+    }
 
     let output = String::from_utf8_lossy(&result.stdout).to_string();
 

@@ -7,8 +7,9 @@ LL |     let _: Option<()> = do catch {};
    = note: following RFC #2388, the new non-placeholder syntax is `try`
 help: replace with the new syntax
    |
-LL |     let _: Option<()> = try {};
-   |                         ~~~
+LL -     let _: Option<()> = do catch {};
+LL +     let _: Option<()> = try {};
+   |
 
 error[E0308]: mismatched types
   --> $DIR/do-catch-suggests-try.rs:9:33

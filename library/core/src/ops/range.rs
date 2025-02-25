@@ -831,6 +831,30 @@ pub trait RangeBounds<T: ?Sized> {
     }
 }
 
+/// Used to convert a range into start and end bounds, consuming the
+/// range by value.
+///
+/// `IntoBounds` is implemented by Rust’s built-in range types, produced
+/// by range syntax like `..`, `a..`, `..b`, `..=c`, `d..e`, or `f..=g`.
+#[unstable(feature = "range_into_bounds", issue = "136903")]
+pub trait IntoBounds<T>: RangeBounds<T> {
+    /// Convert this range into the start and end bounds.
+    /// Returns `(start_bound, end_bound)`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(range_into_bounds)]
+    ///
+    /// use std::ops::Bound::*;
+    /// use std::ops::IntoBounds;
+    ///
+    /// assert_eq!((0..5).into_bounds(), (Included(0), Excluded(5)));
+    /// assert_eq!((..=7).into_bounds(), (Unbounded, Included(7)));
+    /// ```
+    fn into_bounds(self) -> (Bound<T>, Bound<T>);
+}
+
 use self::Bound::{Excluded, Included, Unbounded};
 
 #[stable(feature = "collections_range", since = "1.28.0")]
@@ -840,6 +864,13 @@ impl<T: ?Sized> RangeBounds<T> for RangeFull {
     }
     fn end_bound(&self) -> Bound<&T> {
         Unbounded
+    }
+}
+
+#[unstable(feature = "range_into_bounds", issue = "136903")]
+impl<T> IntoBounds<T> for RangeFull {
+    fn into_bounds(self) -> (Bound<T>, Bound<T>) {
+        (Unbounded, Unbounded)
     }
 }
 
@@ -853,6 +884,13 @@ impl<T> RangeBounds<T> for RangeFrom<T> {
     }
 }
 
+#[unstable(feature = "range_into_bounds", issue = "136903")]
+impl<T> IntoBounds<T> for RangeFrom<T> {
+    fn into_bounds(self) -> (Bound<T>, Bound<T>) {
+        (Included(self.start), Unbounded)
+    }
+}
+
 #[stable(feature = "collections_range", since = "1.28.0")]
 impl<T> RangeBounds<T> for RangeTo<T> {
     fn start_bound(&self) -> Bound<&T> {
@@ -863,6 +901,13 @@ impl<T> RangeBounds<T> for RangeTo<T> {
     }
 }
 
+#[unstable(feature = "range_into_bounds", issue = "136903")]
+impl<T> IntoBounds<T> for RangeTo<T> {
+    fn into_bounds(self) -> (Bound<T>, Bound<T>) {
+        (Unbounded, Excluded(self.end))
+    }
+}
+
 #[stable(feature = "collections_range", since = "1.28.0")]
 impl<T> RangeBounds<T> for Range<T> {
     fn start_bound(&self) -> Bound<&T> {
@@ -870,6 +915,13 @@ impl<T> RangeBounds<T> for Range<T> {
     }
     fn end_bound(&self) -> Bound<&T> {
         Excluded(&self.end)
+    }
+}
+
+#[unstable(feature = "range_into_bounds", issue = "136903")]
+impl<T> IntoBounds<T> for Range<T> {
+    fn into_bounds(self) -> (Bound<T>, Bound<T>) {
+        (Included(self.start), Excluded(self.end))
     }
 }
 
@@ -889,6 +941,22 @@ impl<T> RangeBounds<T> for RangeInclusive<T> {
     }
 }
 
+#[unstable(feature = "range_into_bounds", issue = "136903")]
+impl<T> IntoBounds<T> for RangeInclusive<T> {
+    fn into_bounds(self) -> (Bound<T>, Bound<T>) {
+        (
+            Included(self.start),
+            if self.exhausted {
+                // When the iterator is exhausted, we usually have start == end,
+                // but we want the range to appear empty, containing nothing.
+                Excluded(self.end)
+            } else {
+                Included(self.end)
+            },
+        )
+    }
+}
+
 #[stable(feature = "collections_range", since = "1.28.0")]
 impl<T> RangeBounds<T> for RangeToInclusive<T> {
     fn start_bound(&self) -> Bound<&T> {
@@ -896,6 +964,13 @@ impl<T> RangeBounds<T> for RangeToInclusive<T> {
     }
     fn end_bound(&self) -> Bound<&T> {
         Included(&self.end)
+    }
+}
+
+#[unstable(feature = "range_into_bounds", issue = "136903")]
+impl<T> IntoBounds<T> for RangeToInclusive<T> {
+    fn into_bounds(self) -> (Bound<T>, Bound<T>) {
+        (Unbounded, Included(self.end))
     }
 }
 
@@ -915,6 +990,13 @@ impl<T> RangeBounds<T> for (Bound<T>, Bound<T>) {
             (_, Excluded(ref end)) => Excluded(end),
             (_, Unbounded) => Unbounded,
         }
+    }
+}
+
+#[unstable(feature = "range_into_bounds", issue = "136903")]
+impl<T> IntoBounds<T> for (Bound<T>, Bound<T>) {
+    fn into_bounds(self) -> (Bound<T>, Bound<T>) {
+        self
     }
 }
 

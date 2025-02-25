@@ -1259,7 +1259,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
         let layout = self.ecx.layout_of(lhs_ty).ok()?;
 
-        let as_bits = |value| {
+        let as_bits = |value: VnIndex| {
             let constant = self.evaluated[value].as_ref()?;
             if layout.backend_repr.is_scalar() {
                 let scalar = self.ecx.read_scalar(constant).discard_err()?;
@@ -1397,8 +1397,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             // or `*mut [i32]` <=> `*const [u64]`), including the common special
             // case of `*const T` <=> `*mut T`.
             if let Transmute = kind
-                && from.is_unsafe_ptr()
-                && to.is_unsafe_ptr()
+                && from.is_raw_ptr()
+                && to.is_raw_ptr()
                 && self.pointers_have_same_metadata(from, to)
             {
                 kind = PtrToPtr;
@@ -1558,8 +1558,11 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             return true;
         };
 
+        if layout.uninhabited {
+            return true;
+        }
+
         match layout.backend_repr {
-            BackendRepr::Uninhabited => true,
             BackendRepr::Scalar(a) => !a.is_always_valid(&self.ecx),
             BackendRepr::ScalarPair(a, b) => {
                 !a.is_always_valid(&self.ecx) || !b.is_always_valid(&self.ecx)

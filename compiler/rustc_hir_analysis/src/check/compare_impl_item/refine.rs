@@ -96,7 +96,7 @@ pub(crate) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
 
         // This opaque also needs to be from the impl method -- otherwise,
         // it's a refinement to a TAIT.
-        if !tcx.hir().get_if_local(impl_opaque.def_id).is_some_and(|node| {
+        if !tcx.hir_get_if_local(impl_opaque.def_id).is_some_and(|node| {
             matches!(
                 node.expect_opaque_ty().origin,
                 hir::OpaqueTyOrigin::AsyncFn { parent, .. }  | hir::OpaqueTyOrigin::FnReturn { parent, .. }
@@ -327,7 +327,7 @@ fn report_mismatched_rpitit_signature<'tcx>(
             hir::FnRetTy::Return(ty) => (ty.span, ty.span, "", ""),
         };
     let trait_return_span =
-        tcx.hir().get_if_local(trait_m_def_id).map(|node| match node.fn_decl().unwrap().output {
+        tcx.hir_get_if_local(trait_m_def_id).map(|node| match node.fn_decl().unwrap().output {
             hir::FnRetTy::DefaultReturn(_) => tcx.def_span(trait_m_def_id),
             hir::FnRetTy::Return(ty) => ty.span,
         });

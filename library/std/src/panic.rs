@@ -255,6 +255,7 @@ pub use crate::panicking::{set_hook, take_hook};
 #[stable(feature = "panic_any", since = "1.51.0")]
 #[inline]
 #[track_caller]
+#[cfg_attr(not(test), rustc_diagnostic_item = "panic_any")]
 pub fn panic_any<M: 'static + Any + Send>(msg: M) -> ! {
     crate::panicking::begin_panic(msg);
 }
@@ -376,7 +377,9 @@ pub fn catch_unwind<F: FnOnce() -> R + UnwindSafe, R>(f: F) -> Result<R> {
 /// use std::panic;
 ///
 /// let result = panic::catch_unwind(|| {
-///     panic!("oh no!");
+///     if 1 != 2 {
+///         panic!("oh no!");
+///     }
 /// });
 ///
 /// if let Err(err) = result {

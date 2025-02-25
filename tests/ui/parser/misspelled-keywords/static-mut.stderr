@@ -6,8 +6,9 @@ LL | static muta a: u8 = 0;
    |
 help: there is a keyword `mut` with a similar name
    |
-LL | static mut a: u8 = 0;
-   |        ~~~
+LL - static muta a: u8 = 0;
+LL + static mut a: u8 = 0;
+   |
 
 error: missing type for `static` item
   --> $DIR/static-mut.rs:1:12

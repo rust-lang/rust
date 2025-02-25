@@ -6,8 +6,9 @@ LL |         asm!("{}", const x);
    |
 help: consider using `const` instead of `let`
    |
-LL |         const x: /* Type */ = 0;
-   |         ~~~~~  ++++++++++++
+LL -         let x = 0;
+LL +         const x: /* Type */ = 0;
+   |
 
 error[E0435]: attempt to use a non-constant value in a constant
   --> $DIR/invalid-const-operand.rs:43:36
@@ -17,8 +18,9 @@ LL |         asm!("{}", const const_foo(x));
    |
 help: consider using `const` instead of `let`
    |
-LL |         const x: /* Type */ = 0;
-   |         ~~~~~  ++++++++++++
+LL -         let x = 0;
+LL +         const x: /* Type */ = 0;
+   |
 
 error[E0435]: attempt to use a non-constant value in a constant
   --> $DIR/invalid-const-operand.rs:46:36
@@ -28,8 +30,9 @@ LL |         asm!("{}", const const_bar(x));
    |
 help: consider using `const` instead of `let`
    |
-LL |         const x: /* Type */ = 0;
-   |         ~~~~~  ++++++++++++
+LL -         let x = 0;
+LL +         const x: /* Type */ = 0;
+   |
 
 error: invalid type for `const` operand
   --> $DIR/invalid-const-operand.rs:12:19

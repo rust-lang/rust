@@ -6,8 +6,9 @@ LL |     const Foo: [i32; _] = [1, 2, 3];
    |
 help: replace this with a fully-specified type
    |
-LL |     const Foo: [i32; 3] = [1, 2, 3];
-   |                ~~~~~~~~
+LL -     const Foo: [i32; _] = [1, 2, 3];
+LL +     const Foo: [i32; 3] = [1, 2, 3];
+   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
   --> $DIR/suggest-array-length.rs:7:26
@@ -17,8 +18,9 @@ LL |     const REF_FOO: &[u8; _] = &[1];
    |
 help: replace this with a fully-specified type
    |
-LL |     const REF_FOO: &[u8; 1] = &[1];
-   |                    ~~~~~~~~
+LL -     const REF_FOO: &[u8; _] = &[1];
+LL +     const REF_FOO: &[u8; 1] = &[1];
+   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for static variables
   --> $DIR/suggest-array-length.rs:9:26
@@ -28,8 +30,9 @@ LL |     static Statik: [i32; _] = [1, 2, 3];
    |
 help: replace this with a fully-specified type
    |
-LL |     static Statik: [i32; 3] = [1, 2, 3];
-   |                    ~~~~~~~~
+LL -     static Statik: [i32; _] = [1, 2, 3];
+LL +     static Statik: [i32; 3] = [1, 2, 3];
+   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for static variables
   --> $DIR/suggest-array-length.rs:11:30
@@ -39,8 +42,9 @@ LL |     static REF_STATIK: &[u8; _] = &[1];
    |
 help: replace this with a fully-specified type
    |
-LL |     static REF_STATIK: &[u8; 1] = &[1];
-   |                        ~~~~~~~~
+LL -     static REF_STATIK: &[u8; _] = &[1];
+LL +     static REF_STATIK: &[u8; 1] = &[1];
+   |
 
 error[E0658]: using `_` for array lengths is unstable
   --> $DIR/suggest-array-length.rs:13:20

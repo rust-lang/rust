@@ -6,8 +6,9 @@ LL |         || self.b()
    |
 help: there is a method `a` with a similar name
    |
-LL |         || self.a()
-   |                 ~
+LL -         || self.b()
+LL +         || self.a()
+   |
 
 error: aborting due to 1 previous error
 

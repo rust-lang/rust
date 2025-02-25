@@ -131,8 +131,9 @@ LL |       fn first_in_module() {}
    = help: if the empty line is unintentional, remove it
 help: if the comment should document the parent module use an inner doc comment
    |
-LL |     /*!
-   |       ~
+LL -     /**
+LL +     /*!
+   |
 
 error: empty line after doc comment
   --> tests/ui/empty_line_after/doc_comments.rs:85:5

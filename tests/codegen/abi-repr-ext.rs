@@ -1,4 +1,4 @@
-//@ compile-flags: -O
+//@ compile-flags: -Copt-level=3
 
 //@ revisions:x86_64 i686 aarch64-apple aarch64-windows aarch64-linux arm riscv
 

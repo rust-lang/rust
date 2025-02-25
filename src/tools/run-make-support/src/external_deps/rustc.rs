@@ -84,7 +84,7 @@ impl Rustc {
         self
     }
 
-    /// Specify default optimization level `-O` (alias for `-C opt-level=2`).
+    /// Specify default optimization level `-O` (alias for `-C opt-level=3`).
     pub fn opt(&mut self) -> &mut Self {
         self.cmd.arg("-O");
         self
@@ -250,6 +250,13 @@ impl Rustc {
     pub fn target<S: AsRef<str>>(&mut self, target: S) -> &mut Self {
         let target = target.as_ref();
         self.cmd.arg(format!("--target={target}"));
+        self
+    }
+
+    /// Specify the target CPU.
+    pub fn target_cpu<S: AsRef<str>>(&mut self, target_cpu: S) -> &mut Self {
+        let target_cpu = target_cpu.as_ref();
+        self.cmd.arg(format!("-Ctarget-cpu={target_cpu}"));
         self
     }
 

@@ -6,7 +6,8 @@ LL | struct Struct<S: Strings>(S);
    |
 help: you might have meant to use `#![feature(trait_alias)]` instead of a `type` alias
    |
-LL | trait Strings = Iterator<Item=String>;
+LL - type Strings = Iterator<Item=String>;
+LL + trait Strings = Iterator<Item=String>;
    |
 
 error: aborting due to 1 previous error

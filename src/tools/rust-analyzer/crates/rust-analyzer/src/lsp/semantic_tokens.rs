@@ -24,7 +24,7 @@ macro_rules! define_semantic_token_types {
         }
 
         pub(crate) const SUPPORTED_TYPES: &[SemanticTokenType] = &[
-            $(SemanticTokenType::$standard,)*
+            $(self::types::$standard,)*
             $(self::types::$custom),*
         ];
 
@@ -32,7 +32,7 @@ macro_rules! define_semantic_token_types {
             use self::types::*;
             $(
                 if token == $custom {
-                    None $(.or(Some(SemanticTokenType::$fallback)))?
+                    None $(.or(Some(self::types::$fallback)))?
                 } else
             )*
             { Some(token )}
@@ -60,6 +60,7 @@ define_semantic_token_types![
         STRUCT,
         TYPE_PARAMETER,
         VARIABLE,
+        TYPE,
     }
 
     custom {

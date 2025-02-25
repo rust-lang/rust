@@ -2,12 +2,12 @@ use std::cmp::Ordering;
 use std::ops::{Index, IndexMut};
 use std::{mem, slice};
 
-use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_data_structures::graph::{self, DirectedGraph, StartNode};
 use rustc_index::IndexVec;
 use rustc_index::bit_set::DenseBitSet;
+pub(crate) use rustc_middle::mir::coverage::{BasicCoverageBlock, START_BCB};
 use rustc_middle::mir::{self, BasicBlock, Terminator, TerminatorKind};
 use tracing::debug;
 
@@ -42,7 +42,7 @@ impl CoverageGraph {
         // `SwitchInt` to have multiple targets to the same destination `BasicBlock`, so
         // de-duplication is required. This is done without reordering the successors.
 
-        let successors = IndexVec::from_fn_n(
+        let successors = IndexVec::<BasicCoverageBlock, _>::from_fn_n(
             |bcb| {
                 let mut seen_bcbs = FxHashSet::default();
                 let terminator = mir_body[bcbs[bcb].last_bb()].terminator();
@@ -217,7 +217,7 @@ impl CoverageGraph {
     pub(crate) fn reloop_predecessors(
         &self,
         to_bcb: BasicCoverageBlock,
-    ) -> impl Iterator<Item = BasicCoverageBlock> + Captures<'_> {
+    ) -> impl Iterator<Item = BasicCoverageBlock> {
         self.predecessors[to_bcb].iter().copied().filter(move |&pred| self.dominates(to_bcb, pred))
     }
 }
@@ -266,15 +266,6 @@ impl graph::Predecessors for CoverageGraph {
     #[inline]
     fn predecessors(&self, node: Self::Node) -> impl Iterator<Item = Self::Node> {
         self.predecessors[node].iter().copied()
-    }
-}
-
-rustc_index::newtype_index! {
-    /// A node in the control-flow graph of CoverageGraph.
-    #[orderable]
-    #[debug_format = "bcb{}"]
-    pub(crate) struct BasicCoverageBlock {
-        const START_BCB = 0;
     }
 }
 

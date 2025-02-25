@@ -21,18 +21,16 @@ pub(crate) fn run() -> io::Result<()> {
         }
     }
 
-    let read_request =
-        |buf: &mut String| msg::Request::read(read_json, &mut io::stdin().lock(), buf);
-
+    let mut buf = String::new();
+    let mut read_request = || msg::Request::read(read_json, &mut io::stdin().lock(), &mut buf);
     let write_response = |msg: msg::Response| msg.write(write_json, &mut io::stdout().lock());
 
     let env = EnvSnapshot::default();
-    let mut srv = proc_macro_srv::ProcMacroSrv::new(&env);
-    let mut buf = String::new();
+    let srv = proc_macro_srv::ProcMacroSrv::new(&env);
 
     let mut span_mode = SpanMode::Id;
 
-    while let Some(req) = read_request(&mut buf)? {
+    while let Some(req) = read_request()? {
         let res = match req {
             msg::Request::ListMacros { dylib_path } => {
                 msg::Response::ListMacros(srv.list_macros(&dylib_path).map(|macros| {

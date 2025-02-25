@@ -3,7 +3,7 @@
 // but leaves the statements that were added by InstrumentCoverage.
 //
 // Removed statement kinds: BlockMarker, SpanMarker
-// Retained statement kinds: CounterIncrement, ExpressionUsed
+// Retained statement kinds: VirtualCounter
 
 //@ test-mir-pass: InstrumentCoverage
 //@ compile-flags: -Cinstrument-coverage -Zcoverage-options=branch -Zno-profiler-runtime
@@ -16,6 +16,6 @@ fn main() {
 
 // CHECK-NOT: Coverage::BlockMarker
 // CHECK-NOT: Coverage::SpanMarker
-// CHECK:     Coverage::CounterIncrement
+// CHECK:     Coverage::VirtualCounter
 // CHECK-NOT: Coverage::BlockMarker
 // CHECK-NOT: Coverage::SpanMarker

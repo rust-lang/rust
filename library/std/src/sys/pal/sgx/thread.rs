@@ -46,7 +46,7 @@ mod task_queue {
     }
 
     #[cfg_attr(test, linkage = "available_externally")]
-    #[export_name = "_ZN16__rust_internals3std3sys3sgx6thread10TASK_QUEUEE"]
+    #[unsafe(export_name = "_ZN16__rust_internals3std3sys3sgx6thread10TASK_QUEUEE")]
     static TASK_QUEUE: Mutex<Vec<Task>> = Mutex::new(Vec::new());
 
     pub(super) fn lock() -> MutexGuard<'static, Vec<Task>> {

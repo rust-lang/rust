@@ -13,8 +13,9 @@ LL | fn foo(a: u32) -> u32 { a }
    |    ^^^ ------
 help: change the type of the numeric literal from `i32` to `u32`
    |
-LL |     println!("{}", foo(10u32));
-   |                          ~~~
+LL -     println!("{}", foo(10i32));
+LL +     println!("{}", foo(10u32));
+   |
 
 error: aborting due to 1 previous error
 

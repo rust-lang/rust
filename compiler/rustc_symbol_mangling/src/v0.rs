@@ -480,7 +480,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                         ExternAbi::C { unwind: false } => cx.push("KC"),
                         abi => {
                             cx.push("K");
-                            let name = abi.name();
+                            let name = abi.as_str();
                             if name.contains('-') {
                                 cx.push_ident(&name.replace('-', "_"));
                             } else {

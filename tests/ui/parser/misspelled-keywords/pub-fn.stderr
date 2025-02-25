@@ -6,8 +6,9 @@ LL | puB fn code() {}
    |
 help: write keyword `pub` in lowercase
    |
-LL | pub fn code() {}
-   | ~~~
+LL - puB fn code() {}
+LL + pub fn code() {}
+   |
 
 error: aborting due to 1 previous error
 

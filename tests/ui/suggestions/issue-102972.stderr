@@ -32,8 +32,9 @@ note: `into_iter` takes ownership of the receiver `self`, which moves `iter`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
 help: if you want to call `next` on a iterator within the loop, consider using `while let`
    |
-LL |     while let Some(_i) = iter.next() {
-   |     ~~~~~~~~~~~~~~~  ~~~     +++++++
+LL -     for _i in iter {
+LL +     while let Some(_i) = iter.next() {
+   |
 
 error[E0499]: cannot borrow `i` as mutable more than once at a time
   --> $DIR/issue-102972.rs:22:9
@@ -69,8 +70,9 @@ note: `into_iter` takes ownership of the receiver `self`, which moves `iter`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
 help: if you want to call `next` on a iterator within the loop, consider using `while let`
    |
-LL |     while let Some(()) = iter.next() {
-   |     ~~~~~~~~~~~~~~~  ~~~     +++++++
+LL -     for () in iter {
+LL +     while let Some(()) = iter.next() {
+   |
 
 error: aborting due to 4 previous errors
 

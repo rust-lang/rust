@@ -361,10 +361,7 @@ export function syntaxTreeReveal(): Cmd {
         const activeEditor = vscode.window.activeTextEditor;
 
         if (activeEditor !== undefined) {
-            const start = activeEditor.document.positionAt(element.start);
-            const end = activeEditor.document.positionAt(element.end);
-
-            const newSelection = new vscode.Selection(start, end);
+            const newSelection = new vscode.Selection(element.range.start, element.range.end);
 
             activeEditor.selection = newSelection;
             activeEditor.revealRange(newSelection);
@@ -378,15 +375,12 @@ function elementToString(
     depth: number = 0,
 ): string {
     let result = "  ".repeat(depth);
-    const start = element.istart ?? element.start;
-    const end = element.iend ?? element.end;
+    const offsets = element.inner?.offsets ?? element.offsets;
 
-    result += `${element.kind}@${start}..${end}`;
+    result += `${element.kind}@${offsets.start}..${offsets.end}`;
 
     if (element.type === "Token") {
-        const startPosition = activeDocument.positionAt(element.start);
-        const endPosition = activeDocument.positionAt(element.end);
-        const text = activeDocument.getText(new vscode.Range(startPosition, endPosition));
+        const text = activeDocument.getText(element.range).replaceAll("\r\n", "\n");
         // JSON.stringify quotes and escapes the string for us.
         result += ` ${JSON.stringify(text)}\n`;
     } else {

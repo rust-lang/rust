@@ -143,7 +143,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InferBorrowKindVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         match expr.kind {
             hir::ExprKind::Closure(&hir::Closure { capture_clause, body: body_id, .. }) => {
-                let body = self.fcx.tcx.hir().body(body_id);
+                let body = self.fcx.tcx.hir_body(body_id);
                 self.visit_body(body);
                 self.fcx.analyze_closure(expr.hir_id, expr.span, body_id, body, capture_clause);
             }
@@ -154,7 +154,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InferBorrowKindVisitor<'a, 'tcx> {
     }
 
     fn visit_inline_const(&mut self, c: &'tcx hir::ConstBlock) {
-        let body = self.fcx.tcx.hir().body(c.body);
+        let body = self.fcx.tcx.hir_body(c.body);
         self.visit_body(body);
     }
 }
@@ -196,7 +196,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let args = self.resolve_vars_if_possible(args);
         let closure_def_id = closure_def_id.expect_local();
 
-        assert_eq!(self.tcx.hir().body_owner_def_id(body.id()), closure_def_id);
+        assert_eq!(self.tcx.hir_body_owner_def_id(body.id()), closure_def_id);
         let mut delegate = InferBorrowKind {
             closure_def_id,
             capture_information: Default::default(),
@@ -1934,7 +1934,7 @@ fn apply_capture_kind_on_capture_ty<'tcx>(
 
 /// Returns the Span of where the value with the provided HirId would be dropped
 fn drop_location_span(tcx: TyCtxt<'_>, hir_id: HirId) -> Span {
-    let owner_id = tcx.hir().get_enclosing_scope(hir_id).unwrap();
+    let owner_id = tcx.hir_get_enclosing_scope(hir_id).unwrap();
 
     let owner_node = tcx.hir_node(owner_id);
     let owner_span = match owner_node {
@@ -1991,17 +1991,18 @@ struct InferBorrowKind<'tcx> {
 impl<'tcx> euv::Delegate<'tcx> for InferBorrowKind<'tcx> {
     fn fake_read(
         &mut self,
-        place: &PlaceWithHirId<'tcx>,
+        place_with_id: &PlaceWithHirId<'tcx>,
         cause: FakeReadCause,
         diag_expr_id: HirId,
     ) {
-        let PlaceBase::Upvar(_) = place.place.base else { return };
+        let PlaceBase::Upvar(_) = place_with_id.place.base else { return };
 
         // We need to restrict Fake Read precision to avoid fake reading unsafe code,
         // such as deref of a raw pointer.
         let dummy_capture_kind = ty::UpvarCapture::ByRef(ty::BorrowKind::Immutable);
 
-        let (place, _) = restrict_capture_precision(place.place.clone(), dummy_capture_kind);
+        let (place, _) =
+            restrict_capture_precision(place_with_id.place.clone(), dummy_capture_kind);
 
         let (place, _) = restrict_repr_packed_field_ref_capture(place, dummy_capture_kind);
         self.fake_reads.push((place, cause, diag_expr_id));
@@ -2042,7 +2043,7 @@ impl<'tcx> euv::Delegate<'tcx> for InferBorrowKind<'tcx> {
             restrict_repr_packed_field_ref_capture(place_with_id.place.clone(), capture_kind);
 
         // Raw pointers don't inherit mutability
-        if place_with_id.place.deref_tys().any(Ty::is_unsafe_ptr) {
+        if place_with_id.place.deref_tys().any(Ty::is_raw_ptr) {
             capture_kind = ty::UpvarCapture::ByRef(ty::BorrowKind::Immutable);
         }
 
@@ -2093,7 +2094,7 @@ fn restrict_precision_for_unsafe(
     mut place: Place<'_>,
     mut curr_mode: ty::UpvarCapture,
 ) -> (Place<'_>, ty::UpvarCapture) {
-    if place.base_ty.is_unsafe_ptr() {
+    if place.base_ty.is_raw_ptr() {
         truncate_place_to_len_and_update_capture_kind(&mut place, &mut curr_mode, 0);
     }
 
@@ -2102,8 +2103,8 @@ fn restrict_precision_for_unsafe(
     }
 
     for (i, proj) in place.projections.iter().enumerate() {
-        if proj.ty.is_unsafe_ptr() {
-            // Don't apply any projections on top of an unsafe ptr.
+        if proj.ty.is_raw_ptr() {
+            // Don't apply any projections on top of a raw ptr.
             truncate_place_to_len_and_update_capture_kind(&mut place, &mut curr_mode, i + 1);
             break;
         }

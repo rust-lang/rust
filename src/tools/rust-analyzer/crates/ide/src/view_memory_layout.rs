@@ -75,11 +75,9 @@ impl FieldOrTupleIdx {
 //
 // Displays the recursive memory layout of a datatype.
 //
-// |===
-// | Editor  | Action Name
-//
-// | VS Code | **rust-analyzer: View Memory Layout**
-// |===
+// | Editor  | Action Name |
+// |---------|-------------|
+// | VS Code | **rust-analyzer: View Memory Layout** |
 pub(crate) fn view_memory_layout(
     db: &RootDatabase,
     position: FilePosition,

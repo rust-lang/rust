@@ -1210,7 +1210,7 @@ impl<T> Slice<T> {
 fn main() {
     let foo: Slice<u32>;
     foo.into_vec(); // we shouldn't crash on this at least
-} //^^^^^^^^^^^^^^ {unknown}
+} //^^^^^^^^^^^^^^ ()
 "#,
     );
 }
@@ -2163,9 +2163,9 @@ impl Receiver for Bar {
 fn main() {
     let bar = Bar;
     let _v1 = bar.foo1();
-      //^^^ type: i32
+      //^^^ type: {unknown}
     let _v2 = bar.foo2();
-      //^^^ type: bool
+      //^^^ type: {unknown}
 }
 "#,
     );

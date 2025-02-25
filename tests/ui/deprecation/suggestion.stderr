@@ -11,8 +11,9 @@ LL | #![deny(deprecated)]
    |         ^^^^^^^^^^
 help: replace the use of the deprecated function
    |
-LL |     bar::replacement();
-   |          ~~~~~~~~~~~
+LL -     bar::deprecated();
+LL +     bar::replacement();
+   |
 
 error: use of deprecated method `Foo::deprecated`: replaced by `replacement`
   --> $DIR/suggestion.rs:40:9
@@ -22,8 +23,9 @@ LL |     foo.deprecated();
    |
 help: replace the use of the deprecated method
    |
-LL |     foo.replacement();
-   |         ~~~~~~~~~~~
+LL -     foo.deprecated();
+LL +     foo.replacement();
+   |
 
 error: aborting due to 2 previous errors
 

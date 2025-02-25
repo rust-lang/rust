@@ -67,13 +67,11 @@ impl BorrowedFd<'_> {
     /// The resource pointed to by `fd` must remain open for the duration of
     /// the returned `BorrowedFd`, and it must not have the value `-1`.
     #[inline]
+    #[track_caller]
     #[rustc_const_stable(feature = "io_safety", since = "1.63.0")]
     #[stable(feature = "io_safety", since = "1.63.0")]
     pub const unsafe fn borrow_raw(fd: RawFd) -> Self {
-        assert!(fd != u32::MAX as RawFd);
-        // SAFETY: we just asserted that the value is in the valid range and isn't `-1` (the only value bigger than `0xFF_FF_FF_FE` unsigned)
-        let fd = unsafe { ValidRawFd::new_unchecked(fd) };
-        Self { fd, _phantom: PhantomData }
+        Self { fd: ValidRawFd::new(fd).expect("fd != -1"), _phantom: PhantomData }
     }
 }
 
@@ -154,11 +152,9 @@ impl FromRawFd for OwnedFd {
     ///
     /// [io-safety]: io#io-safety
     #[inline]
+    #[track_caller]
     unsafe fn from_raw_fd(fd: RawFd) -> Self {
-        assert_ne!(fd, u32::MAX as RawFd);
-        // SAFETY: we just asserted that the value is in the valid range and isn't `-1` (the only value bigger than `0xFF_FF_FF_FE` unsigned)
-        let fd = unsafe { ValidRawFd::new_unchecked(fd) };
-        Self { fd }
+        Self { fd: ValidRawFd::new(fd).expect("fd != -1") }
     }
 }
 

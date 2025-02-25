@@ -509,21 +509,18 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
             let node = self.tcx.hir_node_by_def_id(anon_reg.scope);
             let is_impl = matches!(&node, hir::Node::ImplItem(_));
             let (generics, parent_generics) = match node {
-                hir::Node::Item(&hir::Item {
-                    kind: hir::ItemKind::Fn { ref generics, .. },
-                    ..
-                })
-                | hir::Node::TraitItem(&hir::TraitItem { ref generics, .. })
-                | hir::Node::ImplItem(&hir::ImplItem { ref generics, .. }) => (
+                hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn { generics, .. }, .. })
+                | hir::Node::TraitItem(hir::TraitItem { generics, .. })
+                | hir::Node::ImplItem(hir::ImplItem { generics, .. }) => (
                     generics,
                     match self.tcx.parent_hir_node(self.tcx.local_def_id_to_hir_id(anon_reg.scope))
                     {
                         hir::Node::Item(hir::Item {
-                            kind: hir::ItemKind::Trait(_, _, ref generics, ..),
+                            kind: hir::ItemKind::Trait(_, _, generics, ..),
                             ..
                         })
                         | hir::Node::Item(hir::Item {
-                            kind: hir::ItemKind::Impl(hir::Impl { ref generics, .. }),
+                            kind: hir::ItemKind::Impl(hir::Impl { generics, .. }),
                             ..
                         }) => Some(generics),
                         _ => None,
@@ -1119,22 +1116,6 @@ impl Subdiagnostic for ReqIntroducedLocations {
     }
 }
 
-pub struct MoreTargeted {
-    pub ident: Symbol,
-}
-
-impl Subdiagnostic for MoreTargeted {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        _f: &F,
-    ) {
-        diag.code(E0772);
-        diag.primary_message(fluent::trait_selection_more_targeted);
-        diag.arg("ident", self.ident);
-    }
-}
-
 #[derive(Diagnostic)]
 #[diag(trait_selection_but_needs_to_satisfy, code = E0759)]
 pub struct ButNeedsToSatisfy {
@@ -1150,9 +1131,6 @@ pub struct ButNeedsToSatisfy {
     pub require_span_as_note: Option<Span>,
     #[note(trait_selection_introduced_by_bound)]
     pub bound: Option<Span>,
-
-    #[subdiagnostic]
-    pub req_introduces_loc: Option<ReqIntroducedLocations>,
 
     pub has_param_name: bool,
     pub param_name: String,
@@ -1857,7 +1835,7 @@ pub fn impl_trait_overcapture_suggestion<'tcx>(
             new_params += name_as_bounds;
         }
 
-        let Some(generics) = tcx.hir().get_generics(fn_def_id) else {
+        let Some(generics) = tcx.hir_get_generics(fn_def_id) else {
             // This shouldn't happen, but don't ICE.
             return None;
         };
@@ -1880,8 +1858,7 @@ pub fn impl_trait_overcapture_suggestion<'tcx>(
     let opaque_hir_id = tcx.local_def_id_to_hir_id(opaque_def_id);
     // FIXME: This is a bit too conservative, since it ignores parens already written in AST.
     let (lparen, rparen) = match tcx
-        .hir()
-        .parent_iter(opaque_hir_id)
+        .hir_parent_iter(opaque_hir_id)
         .nth(1)
         .expect("expected ty to have a parent always")
         .1

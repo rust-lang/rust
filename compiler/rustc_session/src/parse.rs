@@ -208,10 +208,6 @@ pub struct ParseSess {
     pub config: Cfg,
     pub check_config: CheckCfg,
     pub edition: Edition,
-    /// Places where contract attributes were expanded into unstable AST forms.
-    /// This is used to allowlist those spans (so that we only check them against the feature
-    /// gate for the externally visible interface, and not internal implmentation machinery).
-    pub contract_attribute_spans: AppendOnlyVec<Span>,
     /// Places where raw identifiers were used. This is used to avoid complaining about idents
     /// clashing with keywords in new editions.
     pub raw_identifier_spans: AppendOnlyVec<Span>,
@@ -260,7 +256,6 @@ impl ParseSess {
             config: Cfg::default(),
             check_config: CheckCfg::default(),
             edition: ExpnId::root().expn_data().edition,
-            contract_attribute_spans: Default::default(),
             raw_identifier_spans: Default::default(),
             bad_unicode_identifiers: Lock::new(Default::default()),
             source_map,
@@ -334,7 +329,7 @@ impl ParseSess {
         self.proc_macro_quoted_spans.push(span)
     }
 
-    pub fn proc_macro_quoted_spans(&self) -> impl Iterator<Item = (usize, Span)> + '_ {
+    pub fn proc_macro_quoted_spans(&self) -> impl Iterator<Item = (usize, Span)> {
         // This is equivalent to `.iter().copied().enumerate()`, but that isn't possible for
         // AppendOnlyVec, so we resort to this scheme.
         self.proc_macro_quoted_spans.iter_enumerated()

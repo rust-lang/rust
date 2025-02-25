@@ -7,6 +7,7 @@ use crate::fmt;
 use crate::io::{
     self, BorrowedCursor, BufRead, IoSlice, IoSliceMut, Read, Seek, SeekFrom, SizeHint, Write,
 };
+use crate::mem::MaybeUninit;
 
 /// `Empty` ignores any data written via [`Write`], and will always be empty
 /// (returning zero bytes) when read via [`Read`].
@@ -182,26 +183,28 @@ pub const fn repeat(byte: u8) -> Repeat {
 impl Read for Repeat {
     #[inline]
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        for slot in &mut *buf {
-            *slot = self.byte;
-        }
+        buf.fill(self.byte);
         Ok(buf.len())
     }
 
-    fn read_buf(&mut self, mut buf: BorrowedCursor<'_>) -> io::Result<()> {
-        // SAFETY: No uninit bytes are being written
-        for slot in unsafe { buf.as_mut() } {
-            slot.write(self.byte);
-        }
-
-        let remaining = buf.capacity();
-
-        // SAFETY: the entire unfilled portion of buf has been initialized
-        unsafe {
-            buf.advance_unchecked(remaining);
-        }
-
+    #[inline]
+    fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
+        buf.fill(self.byte);
         Ok(())
+    }
+
+    #[inline]
+    fn read_buf(&mut self, mut buf: BorrowedCursor<'_>) -> io::Result<()> {
+        // SAFETY: No uninit bytes are being written.
+        MaybeUninit::fill(unsafe { buf.as_mut() }, self.byte);
+        // SAFETY: the entire unfilled portion of buf has been initialized.
+        unsafe { buf.advance_unchecked(buf.capacity()) };
+        Ok(())
+    }
+
+    #[inline]
+    fn read_buf_exact(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+        self.read_buf(buf)
     }
 
     /// This function is not supported by `io::Repeat`, because there's no end of its data

@@ -6,8 +6,9 @@ LL | struct Baz<'a>(&'_ &'a u8);
    |
 help: consider using the `'a` lifetime
    |
-LL | struct Baz<'a>(&'a &'a u8);
-   |                 ~~
+LL - struct Baz<'a>(&'_ &'a u8);
+LL + struct Baz<'a>(&'a &'a u8);
+   |
 
 error[E0637]: `'_` cannot be used here
   --> $DIR/underscore-lifetime-binders.rs:4:8
@@ -30,8 +31,9 @@ LL | fn meh() -> Box<dyn for<'_> Meh<'_>>
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
 help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`, or if you will only have owned values
    |
-LL | fn meh() -> Box<dyn for<'_> Meh<'static>>
-   |                                 ~~~~~~~
+LL - fn meh() -> Box<dyn for<'_> Meh<'_>>
+LL + fn meh() -> Box<dyn for<'_> Meh<'static>>
+   |
 
 error[E0106]: missing lifetime specifier
   --> $DIR/underscore-lifetime-binders.rs:16:35
@@ -42,8 +44,9 @@ LL | fn foo2(_: &'_ u8, y: &'_ u8) -> &'_ u8 { y }
    = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from argument 1 or `y`
 help: consider introducing a named lifetime parameter
    |
-LL | fn foo2<'a>(_: &'a u8, y: &'a u8) -> &'a u8 { y }
-   |        ++++     ~~         ~~         ~~
+LL - fn foo2(_: &'_ u8, y: &'_ u8) -> &'_ u8 { y }
+LL + fn foo2<'a>(_: &'a u8, y: &'a u8) -> &'a u8 { y }
+   |
 
 error: aborting due to 5 previous errors
 

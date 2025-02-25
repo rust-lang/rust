@@ -76,7 +76,7 @@ pub fn panic_output() -> Option<impl io::Write> {
 // This function is needed by libunwind. The symbol is named in pre-link args
 // for the target specification, so keep that in sync.
 #[cfg(not(test))]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn __rust_print_err(m: *mut u8, s: i32) {
     if s < 0 {
         return;

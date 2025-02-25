@@ -59,7 +59,7 @@ mod range_exclusive;
 //
 // Note: inlay hints for function argument names are heuristically omitted to reduce noise and will not appear if
 // any of the
-// link:https://github.com/rust-lang/rust-analyzer/blob/6b8b8ff4c56118ddee6c531cde06add1aad4a6af/crates/ide/src/inlay_hints/param_name.rs#L92-L99[following criteria]
+// [following criteria](https://github.com/rust-lang/rust-analyzer/blob/6b8b8ff4c56118ddee6c531cde06add1aad4a6af/crates/ide/src/inlay_hints/param_name.rs#L92-L99)
 // are met:
 //
 // * the parameter name is a suffix of the function's name
@@ -68,13 +68,13 @@ mod range_exclusive;
 //   of argument with _ splitting it off
 // * the parameter name starts with `ra_fixture`
 // * the parameter name is a
-// link:https://github.com/rust-lang/rust-analyzer/blob/6b8b8ff4c56118ddee6c531cde06add1aad4a6af/crates/ide/src/inlay_hints/param_name.rs#L200[well known name]
+// [well known name](https://github.com/rust-lang/rust-analyzer/blob/6b8b8ff4c56118ddee6c531cde06add1aad4a6af/crates/ide/src/inlay_hints/param_name.rs#L200)
 // in a unary function
 // * the parameter name is a
-// link:https://github.com/rust-lang/rust-analyzer/blob/6b8b8ff4c56118ddee6c531cde06add1aad4a6af/crates/ide/src/inlay_hints/param_name.rs#L201[single character]
+// [single character](https://github.com/rust-lang/rust-analyzer/blob/6b8b8ff4c56118ddee6c531cde06add1aad4a6af/crates/ide/src/inlay_hints/param_name.rs#L201)
 // in a unary function
 //
-// image::https://user-images.githubusercontent.com/48062697/113020660-b5f98b80-917a-11eb-8d70-3be3fd558cdd.png[]
+// ![Inlay hints](https://user-images.githubusercontent.com/48062697/113020660-b5f98b80-917a-11eb-8d70-3be3fd558cdd.png)
 pub(crate) fn inlay_hints(
     db: &RootDatabase,
     file_id: FileId,
@@ -294,6 +294,7 @@ pub struct InlayHintsConfig {
     pub param_names_for_lifetime_elision_hints: bool,
     pub hide_named_constructor_hints: bool,
     pub hide_closure_initialization_hints: bool,
+    pub hide_closure_parameter_hints: bool,
     pub range_exclusive_hints: bool,
     pub closure_style: ClosureStyle,
     pub max_length: Option<usize>,
@@ -860,6 +861,7 @@ mod tests {
         binding_mode_hints: false,
         hide_named_constructor_hints: false,
         hide_closure_initialization_hints: false,
+        hide_closure_parameter_hints: false,
         closure_style: ClosureStyle::ImplFn,
         param_names_for_lifetime_elision_hints: false,
         max_length: None,

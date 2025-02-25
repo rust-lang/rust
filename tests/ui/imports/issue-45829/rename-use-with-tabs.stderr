@@ -9,8 +9,9 @@ LL | use foo::{A, bar::B    as    A};
    = note: `A` must be defined only once in the type namespace of this module
 help: you can use `as` to change the binding name of the import
    |
-LL | use foo::{A, bar::B as OtherA};
-   |                     ~~~~~~~~~
+LL - use foo::{A, bar::B    as    A};
+LL + use foo::{A, bar::B as OtherA};
+   |
 
 error: aborting due to 1 previous error
 

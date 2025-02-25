@@ -6,8 +6,9 @@ LL | (; {`
    |
 help: Unicode character '`' (Grave Accent) looks like ''' (Single Quote), but it is not
    |
-LL | (; {'
-   |     ~
+LL - (; {`
+LL + (; {'
+   |
 
 error: mismatched closing delimiter: `]`
   --> $DIR/issue-94171.rs:1:5

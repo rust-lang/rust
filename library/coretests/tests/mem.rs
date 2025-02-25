@@ -648,7 +648,7 @@ fn offset_of_dst() {
         z: dyn Trait,
     }
 
-    extern "C" {
+    unsafe extern "C" {
         type Extern;
     }
 

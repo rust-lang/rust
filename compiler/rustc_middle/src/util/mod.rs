@@ -2,9 +2,9 @@ pub mod bug;
 
 #[derive(Default, Copy, Clone)]
 pub struct Providers {
-    pub queries: rustc_middle::query::Providers,
-    pub extern_queries: rustc_middle::query::ExternProviders,
-    pub hooks: rustc_middle::hooks::Providers,
+    pub queries: crate::query::Providers,
+    pub extern_queries: crate::query::ExternProviders,
+    pub hooks: crate::hooks::Providers,
 }
 
 /// Backwards compatibility hack to keep the diff small. This
@@ -17,7 +17,7 @@ impl std::ops::DerefMut for Providers {
 }
 
 impl std::ops::Deref for Providers {
-    type Target = rustc_middle::query::Providers;
+    type Target = crate::query::Providers;
 
     fn deref(&self) -> &Self::Target {
         &self.queries

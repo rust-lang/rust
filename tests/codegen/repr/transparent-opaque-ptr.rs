@@ -1,5 +1,5 @@
 //@ revisions: aarch64-linux aarch64-darwin wasm32-wasip1
-//@ compile-flags: -O -C no-prepopulate-passes
+//@ compile-flags: -Copt-level=3 -C no-prepopulate-passes
 
 //@[aarch64-linux] compile-flags: --target aarch64-unknown-linux-gnu
 //@[aarch64-linux] needs-llvm-components: aarch64

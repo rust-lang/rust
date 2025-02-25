@@ -435,9 +435,7 @@ fn resolve_exe<'a>(
 ) -> io::Result<Vec<u16>> {
     // Early return if there is no filename.
     if exe_path.is_empty() || path::has_trailing_slash(exe_path) {
-        return Err(
-            io::const_error!(io::ErrorKind::InvalidInput, "program path has no file name",),
-        );
+        return Err(io::const_error!(io::ErrorKind::InvalidInput, "program path has no file name"));
     }
     // Test if the file name has the `exe` extension.
     // This does a case-insensitive `ends_with`.

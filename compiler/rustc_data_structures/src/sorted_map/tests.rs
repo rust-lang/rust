@@ -24,7 +24,7 @@ fn test_sorted_index_multi_map() {
     // `get_by_key` returns items in insertion order.
     let twos: Vec<_> = set.get_by_key_enumerated(2).collect();
     let idxs: Vec<usize> = twos.iter().map(|(i, _)| *i).collect();
-    let values: Vec<usize> = twos.iter().map(|(_, &v)| v).collect();
+    let values: Vec<usize> = twos.iter().map(|&(_, &v)| v).collect();
 
     assert_eq!(idxs, vec![0, 2, 4]);
     assert_eq!(values, vec![0, 1, 2]);

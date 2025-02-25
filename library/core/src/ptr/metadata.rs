@@ -155,7 +155,7 @@ pub struct DynMetadata<Dyn: ?Sized> {
     _phantom: crate::marker::PhantomData<Dyn>,
 }
 
-extern "C" {
+unsafe extern "C" {
     /// Opaque type for accessing vtables.
     ///
     /// Private implementation detail of `DynMetadata::size_of` etc.

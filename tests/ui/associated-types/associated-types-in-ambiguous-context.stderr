@@ -6,8 +6,9 @@ LL | fn get<T:Get,U:Get>(x: T, y: U) -> Get::Value {}
    |
 help: if there were a type named `Example` that implemented `Get`, you could use the fully-qualified path
    |
-LL | fn get<T:Get,U:Get>(x: T, y: U) -> <Example as Get>::Value {}
-   |                                    ~~~~~~~~~~~~~~~~~~~~~~~
+LL - fn get<T:Get,U:Get>(x: T, y: U) -> Get::Value {}
+LL + fn get<T:Get,U:Get>(x: T, y: U) -> <Example as Get>::Value {}
+   |
 
 error[E0223]: ambiguous associated type
   --> $DIR/associated-types-in-ambiguous-context.rs:13:23
@@ -23,8 +24,9 @@ LL |     fn get(&self) -> Get::Value;
    |
 help: if there were a type named `Example` that implemented `Get`, you could use the fully-qualified path
    |
-LL |     fn get(&self) -> <Example as Get>::Value;
-   |                      ~~~~~~~~~~~~~~~~~~~~~~~
+LL -     fn get(&self) -> Get::Value;
+LL +     fn get(&self) -> <Example as Get>::Value;
+   |
 
 error[E0223]: ambiguous associated type
   --> $DIR/associated-types-in-ambiguous-context.rs:22:17
@@ -40,14 +42,18 @@ LL | type X = std::ops::Deref::Target;
    |
 help: use fully-qualified syntax
    |
-LL | type X = <ByteStr as Deref>::Target;
-   |          ~~~~~~~~~~~~~~~~~~~~~~~~~~
-LL | type X = <ByteString as Deref>::Target;
-   |          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-LL | type X = <CString as Deref>::Target;
-   |          ~~~~~~~~~~~~~~~~~~~~~~~~~~
-LL | type X = <IoSlice<'_> as Deref>::Target;
-   |          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL - type X = std::ops::Deref::Target;
+LL + type X = <ByteStr as Deref>::Target;
+   |
+LL - type X = std::ops::Deref::Target;
+LL + type X = <ByteString as Deref>::Target;
+   |
+LL - type X = std::ops::Deref::Target;
+LL + type X = <CString as Deref>::Target;
+   |
+LL - type X = std::ops::Deref::Target;
+LL + type X = <IoSlice<'_> as Deref>::Target;
+   |
      and N other candidates
 
 error: aborting due to 5 previous errors

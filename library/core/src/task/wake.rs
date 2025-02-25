@@ -40,17 +40,14 @@ impl RawWaker {
     /// of the `vtable` as the first parameter.
     ///
     /// It is important to consider that the `data` pointer must point to a
-    /// thread safe type such as an `[Arc]<T: Send + Sync>`
+    /// thread safe type such as an `Arc<T: Send + Sync>`
     /// when used to construct a [`Waker`]. This restriction is lifted when
     /// constructing a [`LocalWaker`], which allows using types that do not implement
-    /// <code>[Send] + [Sync]</code> like `[Rc]<T>`.
+    /// <code>[Send] + [Sync]</code> like `Rc<T>`.
     ///
     /// The `vtable` customizes the behavior of a `Waker` which gets created
     /// from a `RawWaker`. For each operation on the `Waker`, the associated
     /// function in the `vtable` of the underlying `RawWaker` will be called.
-    ///
-    /// [`Arc`]: std::sync::Arc
-    /// [`Rc`]: std::rc::Rc
     #[inline]
     #[rustc_promotable]
     #[stable(feature = "futures_api", since = "1.36.0")]

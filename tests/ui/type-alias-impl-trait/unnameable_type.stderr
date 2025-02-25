@@ -16,8 +16,9 @@ LL |         fn dont_define_this(_private: Private) {}
               found signature `fn(MyPrivate)`
 help: change the parameter type to match the trait
    |
-LL |     fn dont_define_this(private: Private) {
-   |                                  ~~~~~~~
+LL -     fn dont_define_this(private: MyPrivate) {
+LL +     fn dont_define_this(private: Private) {
+   |
 
 error: aborting due to 1 previous error
 

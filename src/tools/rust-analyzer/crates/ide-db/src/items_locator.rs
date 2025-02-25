@@ -6,7 +6,6 @@ use std::ops::ControlFlow;
 
 use either::Either;
 use hir::{import_map, Crate, ItemInNs, Module, Semantics};
-use limit::Limit;
 
 use crate::{
     imports::import_assets::NameToImport,
@@ -15,7 +14,7 @@ use crate::{
 };
 
 /// A value to use, when uncertain which limit to pick.
-pub static DEFAULT_QUERY_SEARCH_LIMIT: Limit = Limit::new(100);
+pub const DEFAULT_QUERY_SEARCH_LIMIT: usize = 100;
 
 pub use import_map::AssocSearchMode;
 

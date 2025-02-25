@@ -393,12 +393,13 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
 
     fn visit_basic_block_data(&mut self, block: BasicBlock, data: &mut BasicBlockData<'tcx>) {
         // Remove StorageLive and StorageDead statements for remapped locals
-        data.retain_statements(|s| match s.kind {
-            StatementKind::StorageLive(l) | StatementKind::StorageDead(l) => {
-                !self.remap.contains(l)
+        for s in &mut data.statements {
+            if let StatementKind::StorageLive(l) | StatementKind::StorageDead(l) = s.kind
+                && self.remap.contains(l)
+            {
+                s.make_nop();
             }
-            _ => true,
-        });
+        }
 
         let ret_val = match data.terminator().kind {
             TerminatorKind::Return => {
@@ -944,7 +945,7 @@ fn compute_layout<'tcx>(
         let decl = &body.local_decls[local];
         debug!(?decl);
 
-        // Do not `assert_crate_local` here, as post-borrowck cleanup may have already cleared
+        // Do not `unwrap_crate_local` here, as post-borrowck cleanup may have already cleared
         // the information. This is alright, since `ignore_for_traits` is only relevant when
         // this code runs on pre-cleanup MIR, and `ignore_for_traits = false` is the safer
         // default.
@@ -1061,9 +1062,8 @@ fn insert_switch<'tcx>(
 }
 
 fn elaborate_coroutine_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    use rustc_middle::mir::patch::MirPatch;
-    use rustc_mir_dataflow::elaborate_drops::{Unwind, elaborate_drop};
-
+    use crate::elaborate_drop::{Unwind, elaborate_drop};
+    use crate::patch::MirPatch;
     use crate::shim::DropShimElaborator;
 
     // Note that `elaborate_drops` only drops the upvars of a coroutine, and

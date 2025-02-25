@@ -38,7 +38,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists, GroupLabel};
 // use super::AssistContext;
 // ```
 //
-// .Import Granularity
+// #### Import Granularity
 //
 // It is possible to configure how use-trees are merged with the `imports.granularity.group` setting.
 // It has the following configurations:
@@ -54,7 +54,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists, GroupLabel};
 //
 // In `VS Code` the configuration for this is `rust-analyzer.imports.granularity.group`.
 //
-// .Import Prefix
+// #### Import Prefix
 //
 // The style of imports in the same crate is configurable through the `imports.prefix` setting.
 // It has the following configurations:
@@ -68,7 +68,7 @@ use crate::{AssistContext, AssistId, AssistKind, Assists, GroupLabel};
 //
 // In `VS Code` the configuration for this is `rust-analyzer.imports.prefix`.
 //
-// image::https://user-images.githubusercontent.com/48062697/113020673-b85be580-917a-11eb-9022-59585f35d4f8.gif[]
+// ![Auto Import](https://user-images.githubusercontent.com/48062697/113020673-b85be580-917a-11eb-9022-59585f35d4f8.gif)
 
 // Assist: auto_import
 //

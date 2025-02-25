@@ -56,7 +56,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedSelf {
         if impl_item.span.from_expansion() {
             return;
         }
-        let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id()).def_id;
+        let parent = cx.tcx.hir_get_parent_item(impl_item.hir_id()).def_id;
         let parent_item = cx.tcx.hir().expect_item(parent);
         let assoc_item = cx.tcx.associated_item(impl_item.owner_id);
         let contains_todo = |cx, body: &'_ Body<'_>| -> bool {
@@ -77,7 +77,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedSelf {
             && assoc_item.fn_has_self_parameter
             && let ImplItemKind::Fn(.., body_id) = &impl_item.kind
             && (!cx.effective_visibilities.is_exported(impl_item.owner_id.def_id) || !self.avoid_breaking_exported_api)
-            && let body = cx.tcx.hir().body(*body_id)
+            && let body = cx.tcx.hir_body(*body_id)
             && let [self_param, ..] = body.params
             && !is_local_used(cx, body, self_param.pat.hir_id)
             && !contains_todo(cx, body)

@@ -1,19 +1,15 @@
 //! This module ensures that if a function's ABI requires a particular target feature,
 //! that target feature is enabled both on the callee and all callers.
-use rustc_abi::{BackendRepr, RegKind};
+use rustc_abi::{BackendRepr, ExternAbi, RegKind};
 use rustc_hir::CRATE_HIR_ID;
 use rustc_middle::mir::{self, traversal};
-use rustc_middle::ty::inherent::*;
 use rustc_middle::ty::{self, Instance, InstanceKind, Ty, TyCtxt};
 use rustc_session::lint::builtin::ABI_UNSUPPORTED_VECTOR_TYPES;
 use rustc_span::def_id::DefId;
-use rustc_span::{DUMMY_SP, Span, Symbol};
-use rustc_target::callconv::{FnAbi, PassMode};
+use rustc_span::{DUMMY_SP, Span, Symbol, sym};
+use rustc_target::callconv::{Conv, FnAbi, PassMode};
 
-use crate::errors::{
-    AbiErrorDisabledVectorTypeCall, AbiErrorDisabledVectorTypeDef,
-    AbiErrorUnsupportedVectorTypeCall, AbiErrorUnsupportedVectorTypeDef,
-};
+use crate::errors;
 
 fn uses_vector_registers(mode: &PassMode, repr: &BackendRepr) -> bool {
     match mode {
@@ -28,16 +24,21 @@ fn uses_vector_registers(mode: &PassMode, repr: &BackendRepr) -> bool {
 
 /// Checks whether a certain function ABI is compatible with the target features currently enabled
 /// for a certain function.
-/// If not, `emit_err` is called, with `Some(feature)` if a certain feature should be enabled and
-/// with `None` if no feature is known that would make the ABI compatible.
+/// `is_call` indicates whether this is a call-site check or a definition-site check;
+/// this is only relevant for the wording in the emitted error.
 fn do_check_abi<'tcx>(
     tcx: TyCtxt<'tcx>,
     abi: &FnAbi<'tcx, Ty<'tcx>>,
-    target_feature_def: DefId,
-    mut emit_err: impl FnMut(Option<&'static str>),
+    def_id: DefId,
+    is_call: bool,
+    span: impl Fn() -> Span,
 ) {
     let feature_def = tcx.sess.target.features_for_correct_vector_abi();
-    let codegen_attrs = tcx.codegen_fn_attrs(target_feature_def);
+    let codegen_attrs = tcx.codegen_fn_attrs(def_id);
+    let have_feature = |feat: Symbol| {
+        tcx.sess.unstable_target_features.contains(&feat)
+            || codegen_attrs.target_features.iter().any(|x| x.name == feat)
+    };
     for arg_abi in abi.args.iter().chain(std::iter::once(&abi.ret)) {
         let size = arg_abi.layout.size;
         if uses_vector_registers(&arg_abi.mode, &arg_abi.layout.backend_repr) {
@@ -45,17 +46,45 @@ fn do_check_abi<'tcx>(
             let feature = match feature_def.iter().find(|(bits, _)| size.bits() <= *bits) {
                 Some((_, feature)) => feature,
                 None => {
-                    emit_err(None);
+                    let span = span();
+                    tcx.emit_node_span_lint(
+                        ABI_UNSUPPORTED_VECTOR_TYPES,
+                        CRATE_HIR_ID,
+                        span,
+                        errors::AbiErrorUnsupportedVectorType {
+                            span,
+                            ty: arg_abi.layout.ty,
+                            is_call,
+                        },
+                    );
                     continue;
                 }
             };
-            let feature_sym = Symbol::intern(feature);
-            if !tcx.sess.unstable_target_features.contains(&feature_sym)
-                && !codegen_attrs.target_features.iter().any(|x| x.name == feature_sym)
-            {
-                emit_err(Some(&feature));
+            if !have_feature(Symbol::intern(feature)) {
+                // Emit error.
+                let span = span();
+                tcx.emit_node_span_lint(
+                    ABI_UNSUPPORTED_VECTOR_TYPES,
+                    CRATE_HIR_ID,
+                    span,
+                    errors::AbiErrorDisabledVectorType {
+                        span,
+                        required_feature: feature,
+                        ty: arg_abi.layout.ty,
+                        is_call,
+                    },
+                );
             }
         }
+    }
+    // The `vectorcall` ABI is special in that it requires SSE2 no matter which types are being passed.
+    if abi.conv == Conv::X86VectorCall && !have_feature(sym::sse2) {
+        tcx.dcx().emit_err(errors::AbiRequiredTargetFeature {
+            span: span(),
+            required_feature: "sse2",
+            abi: "vectorcall",
+            is_call,
+        });
     }
 }
 
@@ -69,24 +98,13 @@ fn check_instance_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
         // function.
         return;
     };
-    do_check_abi(tcx, abi, instance.def_id(), |required_feature| {
-        let span = tcx.def_span(instance.def_id());
-        if let Some(required_feature) = required_feature {
-            tcx.emit_node_span_lint(
-                ABI_UNSUPPORTED_VECTOR_TYPES,
-                CRATE_HIR_ID,
-                span,
-                AbiErrorDisabledVectorTypeDef { span, required_feature },
-            );
-        } else {
-            tcx.emit_node_span_lint(
-                ABI_UNSUPPORTED_VECTOR_TYPES,
-                CRATE_HIR_ID,
-                span,
-                AbiErrorUnsupportedVectorTypeDef { span },
-            );
-        }
-    })
+    do_check_abi(
+        tcx,
+        abi,
+        instance.def_id(),
+        /*is_call*/ false,
+        || tcx.def_span(instance.def_id()),
+    )
 }
 
 /// Checks that a call expression does not try to pass a vector-passed argument which requires a
@@ -97,7 +115,7 @@ fn check_call_site_abi<'tcx>(
     span: Span,
     caller: InstanceKind<'tcx>,
 ) {
-    if callee.fn_sig(tcx).abi().is_rust() {
+    if callee.fn_sig(tcx).abi() == ExternAbi::Rust {
         // "Rust" ABI never passes arguments in vector registers.
         return;
     }
@@ -123,23 +141,7 @@ fn check_call_site_abi<'tcx>(
         // ABI failed to compute; this will not get through codegen.
         return;
     };
-    do_check_abi(tcx, callee_abi, caller.def_id(), |required_feature| {
-        if let Some(required_feature) = required_feature {
-            tcx.emit_node_span_lint(
-                ABI_UNSUPPORTED_VECTOR_TYPES,
-                CRATE_HIR_ID,
-                span,
-                AbiErrorDisabledVectorTypeCall { span, required_feature },
-            );
-        } else {
-            tcx.emit_node_span_lint(
-                ABI_UNSUPPORTED_VECTOR_TYPES,
-                CRATE_HIR_ID,
-                span,
-                AbiErrorUnsupportedVectorTypeCall { span },
-            );
-        }
-    });
+    do_check_abi(tcx, callee_abi, caller.def_id(), /*is_call*/ true, || span);
 }
 
 fn check_callees_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>, body: &mir::Body<'tcx>) {

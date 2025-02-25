@@ -62,8 +62,9 @@ LL |     let _val = None::<()>.expect("this always happens");
    |
 help: remove the `None` and `expect()`
    |
-LL |     let _val = panic!("this always happens");
-   |                ~~~~~~~
+LL -     let _val = None::<()>.expect("this always happens");
+LL +     let _val = panic!("this always happens");
+   |
 
 error: used `unwrap_or_default()` on `None` value
   --> tests/ui/unnecessary_literal_unwrap.rs:22:24
@@ -133,8 +134,9 @@ LL |     None::<()>.expect("this always happens");
    |
 help: remove the `None` and `expect()`
    |
-LL |     panic!("this always happens");
-   |     ~~~~~~~
+LL -     None::<()>.expect("this always happens");
+LL +     panic!("this always happens");
+   |
 
 error: used `unwrap_or_default()` on `None` value
   --> tests/ui/unnecessary_literal_unwrap.rs:30:5
@@ -222,8 +224,9 @@ LL |     let _val = Ok::<_, ()>(1).unwrap_err();
    |
 help: remove the `Ok` and `unwrap_err()`
    |
-LL |     let _val = panic!("{:?}", 1);
-   |                ~~~~~~~~~~~~~~  ~
+LL -     let _val = Ok::<_, ()>(1).unwrap_err();
+LL +     let _val = panic!("{:?}", 1);
+   |
 
 error: used `expect_err()` on `Ok` value
   --> tests/ui/unnecessary_literal_unwrap.rs:41:16
@@ -233,8 +236,9 @@ LL |     let _val = Ok::<_, ()>(1).expect_err("this always happens");
    |
 help: remove the `Ok` and `expect_err()`
    |
-LL |     let _val = panic!("{1}: {:?}", 1, "this always happens");
-   |                ~~~~~~~~~~~~~~~~~~~  ~
+LL -     let _val = Ok::<_, ()>(1).expect_err("this always happens");
+LL +     let _val = panic!("{1}: {:?}", 1, "this always happens");
+   |
 
 error: used `unwrap()` on `Ok` value
   --> tests/ui/unnecessary_literal_unwrap.rs:43:5
@@ -268,8 +272,9 @@ LL |     Ok::<_, ()>(1).unwrap_err();
    |
 help: remove the `Ok` and `unwrap_err()`
    |
-LL |     panic!("{:?}", 1);
-   |     ~~~~~~~~~~~~~~  ~
+LL -     Ok::<_, ()>(1).unwrap_err();
+LL +     panic!("{:?}", 1);
+   |
 
 error: used `expect_err()` on `Ok` value
   --> tests/ui/unnecessary_literal_unwrap.rs:46:5
@@ -279,8 +284,9 @@ LL |     Ok::<_, ()>(1).expect_err("this always happens");
    |
 help: remove the `Ok` and `expect_err()`
    |
-LL |     panic!("{1}: {:?}", 1, "this always happens");
-   |     ~~~~~~~~~~~~~~~~~~~  ~
+LL -     Ok::<_, ()>(1).expect_err("this always happens");
+LL +     panic!("{1}: {:?}", 1, "this always happens");
+   |
 
 error: used `unwrap_err()` on `Err` value
   --> tests/ui/unnecessary_literal_unwrap.rs:50:16
@@ -314,8 +320,9 @@ LL |     let _val = Err::<(), _>(1).unwrap();
    |
 help: remove the `Err` and `unwrap()`
    |
-LL |     let _val = panic!("{:?}", 1);
-   |                ~~~~~~~~~~~~~~  ~
+LL -     let _val = Err::<(), _>(1).unwrap();
+LL +     let _val = panic!("{:?}", 1);
+   |
 
 error: used `expect()` on `Err` value
   --> tests/ui/unnecessary_literal_unwrap.rs:53:16
@@ -325,8 +332,9 @@ LL |     let _val = Err::<(), _>(1).expect("this always happens");
    |
 help: remove the `Err` and `expect()`
    |
-LL |     let _val = panic!("{1}: {:?}", 1, "this always happens");
-   |                ~~~~~~~~~~~~~~~~~~~  ~
+LL -     let _val = Err::<(), _>(1).expect("this always happens");
+LL +     let _val = panic!("{1}: {:?}", 1, "this always happens");
+   |
 
 error: used `unwrap_err()` on `Err` value
   --> tests/ui/unnecessary_literal_unwrap.rs:55:5
@@ -360,8 +368,9 @@ LL |     Err::<(), _>(1).unwrap();
    |
 help: remove the `Err` and `unwrap()`
    |
-LL |     panic!("{:?}", 1);
-   |     ~~~~~~~~~~~~~~  ~
+LL -     Err::<(), _>(1).unwrap();
+LL +     panic!("{:?}", 1);
+   |
 
 error: used `expect()` on `Err` value
   --> tests/ui/unnecessary_literal_unwrap.rs:58:5
@@ -371,8 +380,9 @@ LL |     Err::<(), _>(1).expect("this always happens");
    |
 help: remove the `Err` and `expect()`
    |
-LL |     panic!("{1}: {:?}", 1, "this always happens");
-   |     ~~~~~~~~~~~~~~~~~~~  ~
+LL -     Err::<(), _>(1).expect("this always happens");
+LL +     panic!("{1}: {:?}", 1, "this always happens");
+   |
 
 error: used `unwrap_or()` on `Some` value
   --> tests/ui/unnecessary_literal_unwrap.rs:62:16

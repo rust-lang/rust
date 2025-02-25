@@ -140,6 +140,10 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -
         | sym::fmul_algebraic
         | sym::fdiv_algebraic
         | sym::frem_algebraic
+        | sym::round_ties_even_f16
+        | sym::round_ties_even_f32
+        | sym::round_ties_even_f64
+        | sym::round_ties_even_f128
         | sym::const_eval_select => hir::Safety::Safe,
         _ => hir::Safety::Unsafe,
     };
@@ -416,25 +420,15 @@ pub fn check_intrinsic_type(
             sym::truncf64 => (0, 0, vec![tcx.types.f64], tcx.types.f64),
             sym::truncf128 => (0, 0, vec![tcx.types.f128], tcx.types.f128),
 
-            sym::rintf16 => (0, 0, vec![tcx.types.f16], tcx.types.f16),
-            sym::rintf32 => (0, 0, vec![tcx.types.f32], tcx.types.f32),
-            sym::rintf64 => (0, 0, vec![tcx.types.f64], tcx.types.f64),
-            sym::rintf128 => (0, 0, vec![tcx.types.f128], tcx.types.f128),
-
-            sym::nearbyintf16 => (0, 0, vec![tcx.types.f16], tcx.types.f16),
-            sym::nearbyintf32 => (0, 0, vec![tcx.types.f32], tcx.types.f32),
-            sym::nearbyintf64 => (0, 0, vec![tcx.types.f64], tcx.types.f64),
-            sym::nearbyintf128 => (0, 0, vec![tcx.types.f128], tcx.types.f128),
+            sym::round_ties_even_f16 => (0, 0, vec![tcx.types.f16], tcx.types.f16),
+            sym::round_ties_even_f32 => (0, 0, vec![tcx.types.f32], tcx.types.f32),
+            sym::round_ties_even_f64 => (0, 0, vec![tcx.types.f64], tcx.types.f64),
+            sym::round_ties_even_f128 => (0, 0, vec![tcx.types.f128], tcx.types.f128),
 
             sym::roundf16 => (0, 0, vec![tcx.types.f16], tcx.types.f16),
             sym::roundf32 => (0, 0, vec![tcx.types.f32], tcx.types.f32),
             sym::roundf64 => (0, 0, vec![tcx.types.f64], tcx.types.f64),
             sym::roundf128 => (0, 0, vec![tcx.types.f128], tcx.types.f128),
-
-            sym::roundevenf16 => (0, 0, vec![tcx.types.f16], tcx.types.f16),
-            sym::roundevenf32 => (0, 0, vec![tcx.types.f32], tcx.types.f32),
-            sym::roundevenf64 => (0, 0, vec![tcx.types.f64], tcx.types.f64),
-            sym::roundevenf128 => (0, 0, vec![tcx.types.f128], tcx.types.f128),
 
             sym::volatile_load | sym::unaligned_volatile_load => {
                 (1, 0, vec![Ty::new_imm_ptr(tcx, param(0))], param(0))
@@ -705,7 +699,7 @@ pub fn check_intrinsic_type(
             | sym::simd_reduce_min
             | sym::simd_reduce_max => (2, 0, vec![param(0)], param(1)),
             sym::simd_shuffle => (3, 0, vec![param(0), param(0), param(1)], param(2)),
-            sym::simd_shuffle_generic => (2, 1, vec![param(0), param(0)], param(1)),
+            sym::simd_shuffle_const_generic => (2, 1, vec![param(0), param(0)], param(1)),
 
             other => {
                 tcx.dcx().emit_err(UnrecognizedIntrinsicFunction { span, name: other });

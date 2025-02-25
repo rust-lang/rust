@@ -160,8 +160,7 @@ pub(super) fn decorate_lint(
             .decorate_lint(diag);
         }
         BuiltinLintDiag::MissingAbi(label_span, default_abi) => {
-            lints::MissingAbi { span: label_span, default_abi: default_abi.name() }
-                .decorate_lint(diag);
+            lints::MissingAbi { span: label_span, default_abi }.decorate_lint(diag);
         }
         BuiltinLintDiag::LegacyDeriveHelpers(label_span) => {
             lints::LegacyDeriveHelpers { span: label_span }.decorate_lint(diag);
@@ -445,8 +444,8 @@ pub(super) fn decorate_lint(
             lints::InnerAttributeUnstable::CustomInnerAttribute
         }
         .decorate_lint(diag),
-        BuiltinLintDiag::OutOfScopeMacroCalls { path } => {
-            lints::OutOfScopeMacroCalls { path }.decorate_lint(diag)
+        BuiltinLintDiag::OutOfScopeMacroCalls { span, path, location } => {
+            lints::OutOfScopeMacroCalls { span, path, location }.decorate_lint(diag)
         }
         BuiltinLintDiag::UnexpectedBuiltinCfg { cfg, cfg_name, controlled_by } => {
             lints::UnexpectedBuiltinCfg { cfg, cfg_name, controlled_by }.decorate_lint(diag)

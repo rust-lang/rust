@@ -36,6 +36,9 @@ pub(super) fn hints(
                 if it.ty().is_some() {
                     return None;
                 }
+                if config.hide_closure_parameter_hints && it.syntax().ancestors().nth(2).is_none_or(|n| matches!(ast::Expr::cast(n), Some(ast::Expr::ClosureExpr(_)))) {
+                    return None;
+                }
                 Some(it.colon_token())
             },
             ast::LetStmt(it) => {
@@ -944,6 +947,36 @@ fn foo(f: impl FnOnce(u8) -> u8) {}
 
 fn bar(f: impl FnOnce(u8) -> u8) -> impl FnOnce(u8) -> u8 {
     move |x: u8| f(x) * 2
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn skip_closure_parameter_hints() {
+        check_with_config(
+            InlayHintsConfig {
+                type_hints: true,
+                hide_closure_parameter_hints: true,
+                ..DISABLED_CONFIG
+            },
+            r#"
+//- minicore: fn
+struct Foo;
+impl Foo {
+    fn foo(self: Self) {}
+    fn bar(self: &Self) {}
+}
+fn main() {
+    let closure = |x, y| x + y;
+    //  ^^^^^^^ impl Fn(i32, i32) -> {unknown}
+    closure(2, 3);
+    let point = (10, 20);
+    //  ^^^^^ (i32, i32)
+    let (x,      y) = point;
+      // ^ i32   ^ i32
+    Foo::foo(Foo);
+    Foo::bar(&Foo);
 }
 "#,
         );

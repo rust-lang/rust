@@ -5,12 +5,14 @@ use std::sync::Arc;
 
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::unord::UnordMap;
+use rustc_hashes::Hash64;
 use rustc_middle::dep_graph::{DepGraph, DepsType, SerializedDepGraph, WorkProductMap};
 use rustc_middle::query::on_disk_cache::OnDiskCache;
 use rustc_serialize::Decodable;
 use rustc_serialize::opaque::MemDecoder;
 use rustc_session::Session;
 use rustc_session::config::IncrementalStateAssertion;
+use rustc_span::Symbol;
 use tracing::{debug, warn};
 
 use super::data::*;
@@ -153,7 +155,7 @@ fn load_dep_graph(sess: &Session) -> LoadResult<(Arc<SerializedDepGraph>, WorkPr
                 sess.dcx().emit_warn(errors::CorruptFile { path: &path });
                 return LoadResult::DataOutOfDate;
             };
-            let prev_commandline_args_hash = u64::decode(&mut decoder);
+            let prev_commandline_args_hash = Hash64::decode(&mut decoder);
 
             if prev_commandline_args_hash != expected_hash {
                 if sess.opts.unstable_opts.incremental_info {
@@ -203,9 +205,9 @@ pub fn load_query_result_cache(sess: &Session) -> Option<OnDiskCache> {
 
 /// Setups the dependency graph by loading an existing graph from disk and set up streaming of a
 /// new graph to an incremental session directory.
-pub fn setup_dep_graph(sess: &Session) -> DepGraph {
+pub fn setup_dep_graph(sess: &Session, crate_name: Symbol) -> DepGraph {
     // `load_dep_graph` can only be called after `prepare_session_directory`.
-    prepare_session_directory(sess);
+    prepare_session_directory(sess, crate_name);
 
     let res = sess.opts.build_dep_graph().then(|| load_dep_graph(sess));
 

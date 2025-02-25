@@ -678,6 +678,8 @@ fn path_expr(p: &mut Parser<'_>, r: Restrictions) -> (CompletedMarker, BlockLike
 //     S { x };
 //     S { x, y: 32, };
 //     S { x, y: 32, ..Default::default() };
+//     S { x, y: 32, .. };
+//     S { .. };
 //     S { x: ::default() };
 //     TupleStruct { 0: 1 };
 // }
@@ -709,6 +711,8 @@ pub(crate) fn record_expr_field_list(p: &mut Parser<'_>) {
                 // fn main() {
                 //     S { field ..S::default() }
                 //     S { 0 ..S::default() }
+                //     S { field .. }
+                //     S { 0 .. }
                 // }
                 name_ref_or_index(p);
                 p.error("expected `:`");
@@ -739,7 +743,13 @@ pub(crate) fn record_expr_field_list(p: &mut Parser<'_>) {
                 //     S { .. } = S {};
                 // }
 
-                // We permit `.. }` on the left-hand side of a destructuring assignment.
+                // test struct_initializer_with_defaults
+                // fn foo() {
+                //     let _s = S { .. };
+                // }
+
+                // We permit `.. }` on the left-hand side of a destructuring assignment
+                // or defaults values.
                 if !p.at(T!['}']) {
                     expr(p);
 
@@ -748,6 +758,12 @@ pub(crate) fn record_expr_field_list(p: &mut Parser<'_>) {
                         // fn foo() {
                         //     S { ..x, };
                         //     S { ..x, a: 0 }
+                        // }
+
+                        // test_err comma_after_default_values_syntax
+                        // fn foo() {
+                        //     S { .., };
+                        //     S { .., a: 0 }
                         // }
 
                         // Do not bump, so we can support additional fields after this comma.

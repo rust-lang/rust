@@ -160,7 +160,7 @@ enum Scope<'a> {
 
 impl<'a> Scope<'a> {
     // A helper for debugging scopes without printing parent scopes
-    fn debug_truncated(&'a self) -> impl fmt::Debug + 'a {
+    fn debug_truncated(&self) -> impl fmt::Debug {
         fmt::from_fn(move |f| match self {
             Self::Binder { bound_vars, scope_type, hir_id, where_bound_origin, s: _ } => f
                 .debug_struct("Binder")
@@ -305,21 +305,15 @@ fn generic_param_def_as_bound_arg(param: &ty::GenericParamDef) -> ty::BoundVaria
 }
 
 /// Whether this opaque always captures lifetimes in scope.
-/// Right now, this is all RPITIT and TAITs, and when `lifetime_capture_rules_2024`
-/// is enabled. We don't check the span of the edition, since this is done
-/// on a per-opaque basis to account for nested opaques.
-fn opaque_captures_all_in_scope_lifetimes<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    opaque: &'tcx hir::OpaqueTy<'tcx>,
-) -> bool {
+/// Right now, this is all RPITIT and TAITs, and when the opaque
+/// is coming from a span corresponding to edition 2024.
+fn opaque_captures_all_in_scope_lifetimes<'tcx>(opaque: &'tcx hir::OpaqueTy<'tcx>) -> bool {
     match opaque.origin {
         // if the opaque has the `use<...>` syntax, the user is telling us that they only want
         // to account for those lifetimes, so do not try to be clever.
         _ if opaque.bounds.iter().any(|bound| matches!(bound, hir::GenericBound::Use(..))) => false,
         hir::OpaqueTyOrigin::AsyncFn { .. } | hir::OpaqueTyOrigin::TyAlias { .. } => true,
-        _ if tcx.features().lifetime_capture_rules_2024() || opaque.span.at_least_rust_2024() => {
-            true
-        }
+        _ if opaque.span.at_least_rust_2024() => true,
         hir::OpaqueTyOrigin::FnReturn { in_trait_or_impl, .. } => in_trait_or_impl.is_some(),
     }
 }
@@ -422,12 +416,12 @@ enum NonLifetimeBinderAllowed {
 impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
 
     fn visit_nested_body(&mut self, body: hir::BodyId) {
-        let body = self.tcx.hir().body(body);
+        let body = self.tcx.hir_body(body);
         self.with(Scope::Body { id: body.id(), s: self.scope }, |this| {
             this.visit_body(body);
         });
@@ -519,8 +513,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
     fn visit_opaque_ty(&mut self, opaque: &'tcx rustc_hir::OpaqueTy<'tcx>) {
         let captures = RefCell::new(FxIndexMap::default());
 
-        let capture_all_in_scope_lifetimes =
-            opaque_captures_all_in_scope_lifetimes(self.tcx, opaque);
+        let capture_all_in_scope_lifetimes = opaque_captures_all_in_scope_lifetimes(opaque);
         if capture_all_in_scope_lifetimes {
             let lifetime_ident = |def_id: LocalDefId| {
                 let name = self.tcx.item_name(def_id.to_def_id());
@@ -630,7 +623,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             | hir::ItemKind::Mod(..)
             | hir::ItemKind::ForeignMod { .. }
             | hir::ItemKind::Static(..)
-            | hir::ItemKind::GlobalAsm(..) => {
+            | hir::ItemKind::GlobalAsm { .. } => {
                 // These sorts of items have no lifetime parameters at all.
                 intravisit::walk_item(self, item);
             }
@@ -1049,7 +1042,7 @@ fn object_lifetime_default(tcx: TyCtxt<'_>, param_def_id: LocalDefId) -> ObjectL
     match param.source {
         hir::GenericParamSource::Generics => {
             let parent_def_id = tcx.local_parent(param_def_id);
-            let generics = tcx.hir().get_generics(parent_def_id).unwrap();
+            let generics = tcx.hir_get_generics(parent_def_id).unwrap();
             let param_hir_id = tcx.local_def_id_to_hir_id(param_def_id);
             let param = generics.params.iter().find(|p| p.hir_id == param_hir_id).unwrap();
 
@@ -1250,7 +1243,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     if let Some(hir::PredicateOrigin::ImplTrait) = where_bound_origin
                         && let hir::LifetimeName::Param(param_id) = lifetime_ref.res
                         && let Some(generics) =
-                            self.tcx.hir().get_generics(self.tcx.local_parent(param_id))
+                            self.tcx.hir_get_generics(self.tcx.local_parent(param_id))
                         && let Some(param) = generics.params.iter().find(|p| p.def_id == param_id)
                         && param.is_elided_lifetime()
                         && !self.tcx.asyncness(lifetime_ref.hir_id.owner.def_id).is_async()
@@ -1264,7 +1257,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                         );
 
                         if let Some(generics) =
-                            self.tcx.hir().get_generics(lifetime_ref.hir_id.owner.def_id)
+                            self.tcx.hir_get_generics(lifetime_ref.hir_id.owner.def_id)
                         {
                             let new_param_sugg =
                                 if let Some(span) = generics.span_for_lifetime_suggestion() {
@@ -1340,7 +1333,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 };
                 def = ResolvedArg::Error(guar);
             } else if let Some(body_id) = outermost_body {
-                let fn_id = self.tcx.hir().body_owner(body_id);
+                let fn_id = self.tcx.hir_body_owner(body_id);
                 match self.tcx.hir_node(fn_id) {
                     Node::Item(hir::Item { owner_id, kind: hir::ItemKind::Fn { .. }, .. })
                     | Node::TraitItem(hir::TraitItem {
@@ -2166,10 +2159,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
 
     /// Walk the generics of the item for a trait bound whose self type
     /// corresponds to the expected res, and return the trait def id.
-    fn for_each_trait_bound_on_res(
-        &self,
-        expected_res: Res,
-    ) -> impl Iterator<Item = DefId> + use<'tcx, '_> {
+    fn for_each_trait_bound_on_res(&self, expected_res: Res) -> impl Iterator<Item = DefId> {
         std::iter::from_coroutine(
             #[coroutine]
             move || {
@@ -2265,8 +2255,8 @@ fn is_late_bound_map(
     tcx: TyCtxt<'_>,
     owner_id: hir::OwnerId,
 ) -> Option<&FxIndexSet<hir::ItemLocalId>> {
-    let sig = tcx.hir().fn_sig_by_hir_id(owner_id.into())?;
-    let generics = tcx.hir().get_generics(owner_id.def_id)?;
+    let sig = tcx.hir_fn_sig_by_hir_id(owner_id.into())?;
+    let generics = tcx.hir_get_generics(owner_id.def_id)?;
 
     let mut late_bound = FxIndexSet::default();
 
@@ -2276,7 +2266,7 @@ fn is_late_bound_map(
     }
 
     let mut appears_in_output =
-        AllCollector { tcx, has_fully_capturing_opaque: false, regions: Default::default() };
+        AllCollector { has_fully_capturing_opaque: false, regions: Default::default() };
     intravisit::walk_fn_ret_ty(&mut appears_in_output, &sig.decl.output);
     if appears_in_output.has_fully_capturing_opaque {
         appears_in_output.regions.extend(generics.params.iter().map(|param| param.def_id));
@@ -2289,7 +2279,7 @@ fn is_late_bound_map(
     // Subtle point: because we disallow nested bindings, we can just
     // ignore binders here and scrape up all names we see.
     let mut appears_in_where_clause =
-        AllCollector { tcx, has_fully_capturing_opaque: true, regions: Default::default() };
+        AllCollector { has_fully_capturing_opaque: true, regions: Default::default() };
     appears_in_where_clause.visit_generics(generics);
     debug!(?appears_in_where_clause.regions);
 
@@ -2455,23 +2445,21 @@ fn is_late_bound_map(
         }
     }
 
-    struct AllCollector<'tcx> {
-        tcx: TyCtxt<'tcx>,
+    struct AllCollector {
         has_fully_capturing_opaque: bool,
         regions: FxHashSet<LocalDefId>,
     }
 
-    impl<'v> Visitor<'v> for AllCollector<'v> {
-        fn visit_lifetime(&mut self, lifetime_ref: &'v hir::Lifetime) {
+    impl<'tcx> Visitor<'tcx> for AllCollector {
+        fn visit_lifetime(&mut self, lifetime_ref: &'tcx hir::Lifetime) {
             if let hir::LifetimeName::Param(def_id) = lifetime_ref.res {
                 self.regions.insert(def_id);
             }
         }
 
-        fn visit_opaque_ty(&mut self, opaque: &'v hir::OpaqueTy<'v>) {
+        fn visit_opaque_ty(&mut self, opaque: &'tcx hir::OpaqueTy<'tcx>) {
             if !self.has_fully_capturing_opaque {
-                self.has_fully_capturing_opaque =
-                    opaque_captures_all_in_scope_lifetimes(self.tcx, opaque);
+                self.has_fully_capturing_opaque = opaque_captures_all_in_scope_lifetimes(opaque);
             }
             intravisit::walk_opaque_ty(self, opaque);
         }

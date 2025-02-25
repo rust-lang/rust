@@ -196,11 +196,9 @@ LL | |         }
    | |_________^
 help: try
    |
-LL ~     for n in vec![
-LL +
-LL +         Some(1),
-LL +         Some(2),
-LL +         Some(3)
+LL |     for n in vec![
+...
+LL |         Some(3)
 LL ~     ].iter().flatten() {
    |
 

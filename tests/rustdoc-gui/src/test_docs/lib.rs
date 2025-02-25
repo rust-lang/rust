@@ -615,6 +615,15 @@ pub mod private {
     }
 }
 
+/// ```
+/// fn super_long_function_name_because_i_need_to_hit_the_limit_and_break_beyond_it() {
+/// }
+/// ```
+///
+/// ```text
+/// fn super_long_function_name_because_i_need_to_hit_the_limit_and_break_beyond_it_v2() {
+/// }
+/// ```
 pub mod trait_bounds {
     pub trait OneBound: Sized {}
     pub trait TwoBounds: Sized + Copy {}
@@ -712,4 +721,22 @@ pub trait ItemsTrait {
     ///
     /// blablala
     fn bar();
+}
+
+pub mod SidebarSort {
+    use std::cell::Cell;
+    use std::sync::atomic::*;
+    pub trait Sort {}
+
+    impl Sort for u32 {}
+    impl Sort for u8 {}
+    impl Sort for u16 {}
+    impl Sort for usize {}
+    impl Sort for AtomicU32 {}
+    impl Sort for AtomicU16 {}
+    impl Sort for AtomicU8 {}
+    impl Sort for AtomicBool {}
+    impl Sort for Cell<u16> {}
+    impl Sort for Cell<u8> {}
+    impl<'a> Sort for &'a str {}
 }

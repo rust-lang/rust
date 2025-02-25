@@ -15,7 +15,8 @@ use std::fmt::Write;
 
 use rustc_abi::Integer;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_hashes::Hash64;
 use rustc_hir::def_id::DefId;
 use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData};
 use rustc_hir::{CoroutineDesugaring, CoroutineKind, CoroutineSource, Mutability};
@@ -367,9 +368,7 @@ fn push_debuginfo_type_name<'tcx>(
                 output.push_str(sig.safety.prefix_str());
 
                 if sig.abi != rustc_abi::ExternAbi::Rust {
-                    output.push_str("extern \"");
-                    output.push_str(sig.abi.name());
-                    output.push_str("\" ");
+                    let _ = write!(output, "extern {} ", sig.abi);
                 }
 
                 output.push_str("fn(");

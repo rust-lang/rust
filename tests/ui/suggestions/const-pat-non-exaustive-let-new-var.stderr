@@ -13,7 +13,7 @@ LL |     const A: i32 = 2;
 help: introduce a variable instead
    |
 LL |     let A_var = 3;
-   |         ~~~~~
+   |          ++++
 
 error: aborting due to 1 previous error
 

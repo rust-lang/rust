@@ -41,8 +41,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrowedRef {
             && !ref_pat.span.from_expansion()
             && cx
                 .tcx
-                .hir()
-                .parent_iter(ref_pat.hir_id)
+                .hir_parent_iter(ref_pat.hir_id)
                 .map_while(|(_, parent)| if let Node::Pat(pat) = parent { Some(pat) } else { None })
                 // Do not lint patterns that are part of an OR `|` pattern, the binding mode must match in all arms
                 .all(|pat| !matches!(pat.kind, PatKind::Or(_)))

@@ -192,6 +192,14 @@ hir_typeck_suggest_boxing_when_appropriate = store this in the heap by calling `
 
 hir_typeck_suggest_ptr_null_mut = consider using `core::ptr::null_mut` instead
 
+hir_typeck_supertrait_item_multiple_shadowee = items from several supertraits are shadowed: {$traits}
+
+hir_typeck_supertrait_item_shadowee = item from `{$supertrait}` is shadowed by a subtrait item
+
+hir_typeck_supertrait_item_shadower = item from `{$subtrait}` shadows a supertrait item
+
+hir_typeck_supertrait_item_shadowing = trait item `{$item}` from `{$subtrait}` shadows identically named item from supertrait
+
 hir_typeck_trivial_cast = trivial {$numeric ->
     [true] numeric cast
     *[false] cast

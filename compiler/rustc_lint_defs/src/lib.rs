@@ -134,8 +134,8 @@ impl LintExpectationId {
     }
 
     pub fn set_lint_index(&mut self, new_lint_index: Option<u16>) {
-        let (LintExpectationId::Unstable { ref mut lint_index, .. }
-        | LintExpectationId::Stable { ref mut lint_index, .. }) = self;
+        let (LintExpectationId::Unstable { lint_index, .. }
+        | LintExpectationId::Stable { lint_index, .. }) = self;
 
         *lint_index = new_lint_index
     }
@@ -251,19 +251,23 @@ impl Level {
 
     /// Converts an `Attribute` to a level.
     pub fn from_attr(attr: &impl AttributeExt) -> Option<Self> {
-        Self::from_symbol(attr.name_or_empty(), Some(attr.id()))
+        Self::from_symbol(attr.name_or_empty(), || Some(attr.id()))
     }
 
     /// Converts a `Symbol` to a level.
-    pub fn from_symbol(s: Symbol, id: Option<AttrId>) -> Option<Self> {
-        match (s, id) {
-            (sym::allow, _) => Some(Level::Allow),
-            (sym::expect, Some(attr_id)) => {
-                Some(Level::Expect(LintExpectationId::Unstable { attr_id, lint_index: None }))
+    pub fn from_symbol(s: Symbol, id: impl FnOnce() -> Option<AttrId>) -> Option<Self> {
+        match s {
+            sym::allow => Some(Level::Allow),
+            sym::expect => {
+                if let Some(attr_id) = id() {
+                    Some(Level::Expect(LintExpectationId::Unstable { attr_id, lint_index: None }))
+                } else {
+                    None
+                }
             }
-            (sym::warn, _) => Some(Level::Warn),
-            (sym::deny, _) => Some(Level::Deny),
-            (sym::forbid, _) => Some(Level::Forbid),
+            sym::warn => Some(Level::Warn),
+            sym::deny => Some(Level::Deny),
+            sym::forbid => Some(Level::Forbid),
             _ => None,
         }
     }
@@ -819,7 +823,9 @@ pub enum BuiltinLintDiag {
         is_macro: bool,
     },
     OutOfScopeMacroCalls {
+        span: Span,
         path: String,
+        location: String,
     },
     UnexpectedBuiltinCfg {
         cfg: String,

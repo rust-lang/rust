@@ -1,5 +1,6 @@
 // skip-filecheck
 //@ compile-flags: -Zmir-enable-passes=+Inline,+GVN --crate-type lib
+// EMIT_MIR_FOR_EACH_BIT_WIDTH
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // EMIT_MIR dont_reset_cast_kind_without_updating_operand.test.GVN.diff
 

@@ -47,11 +47,11 @@ pub fn expand_trait_aliases<'tcx>(
                     queue.extend(
                         tcx.explicit_super_predicates_of(trait_pred.def_id())
                             .iter_identity_copied()
-                            .map(|(clause, span)| {
+                            .map(|(super_clause, span)| {
                                 let mut spans = spans.clone();
                                 spans.push(span);
                                 (
-                                    clause.instantiate_supertrait(
+                                    super_clause.instantiate_supertrait(
                                         tcx,
                                         clause.kind().rebind(trait_pred.trait_ref),
                                     ),

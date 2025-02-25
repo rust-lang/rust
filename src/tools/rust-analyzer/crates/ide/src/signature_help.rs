@@ -321,7 +321,9 @@ fn signature_help_for_generics(
             format_to!(res.signature, "type {}", it.name(db).display(db, edition));
         }
         // These don't have generic args that can be specified
-        hir::GenericDef::Impl(_) | hir::GenericDef::Const(_) => return None,
+        hir::GenericDef::Impl(_) | hir::GenericDef::Const(_) | hir::GenericDef::Static(_) => {
+            return None
+        }
     }
 
     let params = generics_def.params(sema.db);

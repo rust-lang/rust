@@ -199,11 +199,7 @@ fn check_object_overlap<'tcx>(
 
         for component_def_id in component_def_ids {
             if !tcx.is_dyn_compatible(component_def_id) {
-                // Without the 'dyn_compatible_for_dispatch' feature this is an error
-                // which will be reported by wfcheck. Ignore it here.
-                // This is tested by `coherence-impl-trait-for-trait-dyn-compatible.rs`.
-                // With the feature enabled, the trait is not implemented automatically,
-                // so this is valid.
+                // This is a WF error tested by `coherence-impl-trait-for-trait-dyn-compatible.rs`.
             } else {
                 let mut supertrait_def_ids = elaborate::supertrait_def_ids(tcx, component_def_id);
                 if supertrait_def_ids

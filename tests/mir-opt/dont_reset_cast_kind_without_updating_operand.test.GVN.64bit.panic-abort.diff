@@ -1,0 +1,180 @@
+- // MIR for `test` before GVN
++ // MIR for `test` after GVN
+  
+  fn test() -> () {
+      let mut _0: ();
+      let _1: &std::boxed::Box<()>;
+      let _2: &std::boxed::Box<()>;
+      let _3: std::boxed::Box<()>;
+      let mut _6: *const ();
+      let mut _8: *const [()];
+      let mut _9: std::boxed::Box<()>;
+      let mut _10: *const ();
+      let mut _23: usize;
+      scope 1 {
+          debug vp_ctx => _1;
+          let _4: *const ();
+          scope 2 {
+              debug slf => _10;
+              let _5: *const [()];
+              scope 3 {
+                  debug bytes => _5;
+                  let _7: *mut ();
+                  scope 4 {
+                      debug _x => _7;
+                  }
+                  scope 18 (inlined foo) {
+                  }
+              }
+              scope 16 (inlined slice_from_raw_parts::<()>) {
+                  scope 17 (inlined std::ptr::from_raw_parts::<[()], ()>) {
+                  }
+              }
+          }
+      }
+      scope 5 (inlined Box::<()>::new) {
+          let mut _11: usize;
+          let mut _12: usize;
+          let mut _13: *mut u8;
+          scope 6 (inlined alloc::alloc::exchange_malloc) {
+              let _14: std::alloc::Layout;
+              let mut _15: std::result::Result<std::ptr::NonNull<[u8]>, std::alloc::AllocError>;
+              let mut _16: isize;
+              let mut _18: !;
+              scope 7 {
+                  let _17: std::ptr::NonNull<[u8]>;
+                  scope 8 {
+                      scope 11 (inlined NonNull::<[u8]>::as_mut_ptr) {
+                          scope 12 (inlined NonNull::<[u8]>::as_non_null_ptr) {
+                              scope 13 (inlined NonNull::<[u8]>::cast::<u8>) {
+                                  let mut _22: *mut [u8];
+                                  scope 14 (inlined NonNull::<[u8]>::as_ptr) {
+                                  }
+                              }
+                          }
+                          scope 15 (inlined NonNull::<u8>::as_ptr) {
+                          }
+                      }
+                  }
+                  scope 10 (inlined <std::alloc::Global as Allocator>::allocate) {
+                  }
+              }
+              scope 9 (inlined Layout::from_size_align_unchecked) {
+                  let mut _19: bool;
+                  let _20: ();
+                  let mut _21: std::ptr::Alignment;
+              }
+          }
+      }
+  
+      bb0: {
+          StorageLive(_1);
+-         StorageLive(_2);
++         nop;
+          StorageLive(_3);
+          StorageLive(_11);
+          StorageLive(_12);
+          StorageLive(_13);
+-         _11 = SizeOf(());
+-         _12 = AlignOf(());
++         _11 = const 0_usize;
++         _12 = const 1_usize;
+          StorageLive(_14);
+          StorageLive(_16);
+          StorageLive(_17);
+          StorageLive(_19);
+          _19 = const false;
+-         switchInt(move _19) -> [0: bb6, otherwise: bb5];
++         switchInt(const false) -> [0: bb6, otherwise: bb5];
+      }
+  
+      bb1: {
+          StorageDead(_3);
+          StorageDead(_1);
+          return;
+      }
+  
+      bb2: {
+          unreachable;
+      }
+  
+      bb3: {
+-         _18 = handle_alloc_error(move _14) -> unwind unreachable;
++         _18 = handle_alloc_error(const Layout {{ size: 0_usize, align: std::ptr::Alignment(std::ptr::alignment::AlignmentEnum::_Align1Shl0) }}) -> unwind unreachable;
+      }
+  
+      bb4: {
+          _17 = copy ((_15 as Ok).0: std::ptr::NonNull<[u8]>);
+          StorageLive(_22);
+          _22 = copy _17 as *mut [u8] (Transmute);
+          _13 = copy _22 as *mut u8 (PtrToPtr);
+          StorageDead(_22);
+          StorageDead(_15);
+          StorageDead(_17);
+          StorageDead(_16);
+          StorageDead(_14);
+          _3 = ShallowInitBox(move _13, ());
+          StorageDead(_13);
+          StorageDead(_12);
+          StorageDead(_11);
+          _2 = &_3;
+          _1 = copy _2;
+-         StorageDead(_2);
++         nop;
+          StorageLive(_4);
+-         _9 = deref_copy _3;
++         _9 = copy _3;
+          _10 = copy ((_9.0: std::ptr::Unique<()>).0: std::ptr::NonNull<()>) as *const () (Transmute);
+          _4 = copy _10;
+-         StorageLive(_5);
++         nop;
+          StorageLive(_6);
+-         _6 = copy _4;
++         _6 = copy _10;
+          StorageLive(_23);
+          _23 = const 1_usize;
+-         _5 = *const [()] from (copy _6, copy _23);
++         _5 = *const [()] from (copy _10, const 1_usize);
+          StorageDead(_23);
+          StorageDead(_6);
+          StorageLive(_7);
+          StorageLive(_8);
+          _8 = copy _5;
+-         _7 = copy _8 as *mut () (PtrToPtr);
++         _7 = copy _5 as *mut () (PtrToPtr);
+          StorageDead(_8);
+          StorageDead(_7);
+-         StorageDead(_5);
++         nop;
+          StorageDead(_4);
+          drop(_3) -> [return: bb1, unwind unreachable];
+      }
+  
+      bb5: {
+-         _20 = Layout::from_size_align_unchecked::precondition_check(copy _11, copy _12) -> [return: bb6, unwind unreachable];
++         _20 = Layout::from_size_align_unchecked::precondition_check(const 0_usize, const 1_usize) -> [return: bb6, unwind unreachable];
+      }
+  
+      bb6: {
+          StorageDead(_19);
+          StorageLive(_21);
+-         _21 = copy _12 as std::ptr::Alignment (Transmute);
+-         _14 = Layout { size: copy _11, align: move _21 };
++         _21 = const std::ptr::Alignment(std::ptr::alignment::AlignmentEnum::_Align1Shl0);
++         _14 = const Layout {{ size: 0_usize, align: std::ptr::Alignment(std::ptr::alignment::AlignmentEnum::_Align1Shl0) }};
+          StorageDead(_21);
+          StorageLive(_15);
+-         _15 = std::alloc::Global::alloc_impl(const alloc::alloc::exchange_malloc::promoted[0], copy _14, const false) -> [return: bb7, unwind unreachable];
++         _15 = std::alloc::Global::alloc_impl(const alloc::alloc::exchange_malloc::promoted[0], const Layout {{ size: 0_usize, align: std::ptr::Alignment(std::ptr::alignment::AlignmentEnum::_Align1Shl0) }}, const false) -> [return: bb7, unwind unreachable];
+      }
+  
+      bb7: {
+          _16 = discriminant(_15);
+          switchInt(move _16) -> [0: bb4, 1: bb3, otherwise: bb2];
+      }
++ }
++ 
++ ALLOC0 (size: 16, align: 8) {
++     01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 │ ................
+  }
+  

@@ -19,13 +19,11 @@ pub struct ExpandedMacro {
 //
 // Shows the full macro expansion of the macro at the current caret position.
 //
-// |===
-// | Editor  | Action Name
+// | Editor  | Action Name |
+// |---------|-------------|
+// | VS Code | **rust-analyzer: Expand macro recursively at caret** |
 //
-// | VS Code | **rust-analyzer: Expand macro recursively at caret**
-// |===
-//
-// image::https://user-images.githubusercontent.com/48062697/113020648-b3973180-917a-11eb-84a9-ecb921293dc5.gif[]
+// ![Expand Macro Recursively](https://user-images.githubusercontent.com/48062697/113020648-b3973180-917a-11eb-84a9-ecb921293dc5.gif)
 pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<ExpandedMacro> {
     let sema = Semantics::new(db);
     let file = sema.parse_guess_edition(position.file_id);

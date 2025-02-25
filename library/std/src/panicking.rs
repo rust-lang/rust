@@ -54,11 +54,11 @@ pub static EMPTY_PANIC: fn(&'static str) -> ! =
 // One day this may look a little less ad-hoc with the compiler helping out to
 // hook up these functions, but it is not this day!
 #[allow(improper_ctypes)]
-extern "C" {
+unsafe extern "C" {
     fn __rust_panic_cleanup(payload: *mut u8) -> *mut (dyn Any + Send + 'static);
 }
 
-extern "Rust" {
+unsafe extern "Rust" {
     /// `PanicPayload` lazily performs allocation only when needed (this avoids
     /// allocations when using the "abort" panic runtime).
     fn __rust_start_panic(payload: &mut dyn PanicPayload) -> u32;

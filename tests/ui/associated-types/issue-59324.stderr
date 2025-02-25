@@ -87,8 +87,9 @@ LL | fn with_factory<H>(factory: dyn ThriftService<()>) {}
    = help: unsized fn params are gated as an unstable feature
 help: you can use `impl Trait` as the argument type
    |
-LL | fn with_factory<H>(factory: impl ThriftService<()>) {}
-   |                             ~~~~
+LL - fn with_factory<H>(factory: dyn ThriftService<()>) {}
+LL + fn with_factory<H>(factory: impl ThriftService<()>) {}
+   |
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
 LL | fn with_factory<H>(factory: &dyn ThriftService<()>) {}

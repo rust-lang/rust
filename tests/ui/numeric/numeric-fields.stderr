@@ -9,8 +9,9 @@ LL |     let s = S{0b1: 10, 0: 11};
    |
 help: `S` is a tuple struct, use the appropriate syntax
    |
-LL |     let s = S(/* u8 */, /* u16 */);
-   |             ~~~~~~~~~~~~~~~~~~~~~~
+LL -     let s = S{0b1: 10, 0: 11};
+LL +     let s = S(/* u8 */, /* u16 */);
+   |
 
 error[E0026]: struct `S` does not have a field named `0x1`
   --> $DIR/numeric-fields.rs:7:17

@@ -1,0 +1,30 @@
+error[E0034]: multiple applicable items in scope
+  --> $DIR/no-common-ancestor.rs:18:8
+   |
+LL |     ().hello();
+   |        ^^^^^ multiple `hello` found
+   |
+note: candidate #1 is defined in an impl of the trait `A` for the type `T`
+  --> $DIR/no-common-ancestor.rs:4:5
+   |
+LL |     fn hello(&self) {
+   |     ^^^^^^^^^^^^^^^
+note: candidate #2 is defined in an impl of the trait `B` for the type `T`
+  --> $DIR/no-common-ancestor.rs:11:5
+   |
+LL |     fn hello(&self) {
+   |     ^^^^^^^^^^^^^^^
+help: disambiguate the method for candidate #1
+   |
+LL -     ().hello();
+LL +     A::hello(&());
+   |
+help: disambiguate the method for candidate #2
+   |
+LL -     ().hello();
+LL +     B::hello(&());
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0034`.

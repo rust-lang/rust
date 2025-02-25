@@ -97,7 +97,7 @@ impl<'tcx> Place<'tcx> {
     /// The types are in the reverse order that they are applied. So if
     /// `x: &*const u32` and the `Place` is `**x`, then the types returned are
     ///`*const u32` then `&*const u32`.
-    pub fn deref_tys(&self) -> impl Iterator<Item = Ty<'tcx>> + '_ {
+    pub fn deref_tys(&self) -> impl Iterator<Item = Ty<'tcx>> {
         self.projections.iter().enumerate().rev().filter_map(move |(index, proj)| {
             if ProjectionKind::Deref == proj.kind {
                 Some(self.ty_before_projection(index))

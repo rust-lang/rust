@@ -128,8 +128,7 @@ fn sized_trait_bound_spans<'tcx>(
 }
 
 fn get_sized_bounds(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SmallVec<[Span; 1]> {
-    tcx.hir()
-        .get_if_local(trait_def_id)
+    tcx.hir_get_if_local(trait_def_id)
         .and_then(|node| match node {
             hir::Node::Item(hir::Item {
                 kind: hir::ItemKind::Trait(.., generics, bounds, _),
@@ -187,7 +186,10 @@ fn predicates_reference_self(
 fn bounds_reference_self(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SmallVec<[Span; 1]> {
     tcx.associated_items(trait_def_id)
         .in_definition_order()
+        // We're only looking at associated type bounds
         .filter(|item| item.kind == ty::AssocKind::Type)
+        // Ignore GATs with `Self: Sized`
+        .filter(|item| !tcx.generics_require_sized_self(item.def_id))
         .flat_map(|item| tcx.explicit_item_bounds(item.def_id).iter_identity_copied())
         .filter_map(|(clause, sp)| {
             // Item bounds *can* have self projections, since they never get
@@ -301,7 +303,7 @@ pub fn dyn_compatibility_violations_for_assoc_item(
         ty::AssocKind::Fn => virtual_call_violations_for_method(tcx, trait_def_id, item)
             .into_iter()
             .map(|v| {
-                let node = tcx.hir().get_if_local(item.def_id);
+                let node = tcx.hir_get_if_local(item.def_id);
                 // Get an accurate span depending on the violation.
                 let span = match (&v, node) {
                     (MethodViolationCode::ReferencesSelfInput(Some(span)), _) => *span,
@@ -346,7 +348,7 @@ fn virtual_call_violations_for_method<'tcx>(
             generics,
             kind: hir::TraitItemKind::Fn(sig, _),
             ..
-        })) = tcx.hir().get_if_local(method.def_id).as_ref()
+        })) = tcx.hir_get_if_local(method.def_id).as_ref()
         {
             let sm = tcx.sess.source_map();
             Some((
@@ -380,7 +382,7 @@ fn virtual_call_violations_for_method<'tcx>(
             let span = if let Some(hir::Node::TraitItem(hir::TraitItem {
                 kind: hir::TraitItemKind::Fn(sig, _),
                 ..
-            })) = tcx.hir().get_if_local(method.def_id).as_ref()
+            })) = tcx.hir_get_if_local(method.def_id).as_ref()
             {
                 Some(sig.decl.inputs[i].span)
             } else {
@@ -418,7 +420,7 @@ fn virtual_call_violations_for_method<'tcx>(
             let span = if let Some(hir::Node::TraitItem(hir::TraitItem {
                 kind: hir::TraitItemKind::Fn(sig, _),
                 ..
-            })) = tcx.hir().get_if_local(method.def_id).as_ref()
+            })) = tcx.hir_get_if_local(method.def_id).as_ref()
             {
                 Some(sig.decl.inputs[0].span)
             } else {
@@ -536,10 +538,10 @@ fn receiver_for_self_ty<'tcx>(
 /// a pointer.
 ///
 /// In practice, we cannot use `dyn Trait` explicitly in the obligation because it would result in
-/// a new check that `Trait` is dyn-compatible, creating a cycle (until dyn_compatible_for_dispatch
-/// is stabilized, see tracking issue <https://github.com/rust-lang/rust/issues/43561>).
-/// Instead, we fudge a little by introducing a new type parameter `U` such that
+/// a new check that `Trait` is dyn-compatible, creating a cycle.
+/// Instead, we emulate a placeholder by introducing a new type parameter `U` such that
 /// `Self: Unsize<U>` and `U: Trait + ?Sized`, and use `U` in place of `dyn Trait`.
+///
 /// Written as a chalk-style query:
 /// ```ignore (not-rust)
 /// forall (U: Trait + ?Sized) {
@@ -570,8 +572,6 @@ fn receiver_is_dispatchable<'tcx>(
 
     // the type `U` in the query
     // use a bogus type parameter to mimic a forall(U) query using u32::MAX for now.
-    // FIXME(mikeyhew) this is a total hack. Once dyn_compatible_for_dispatch is stabilized, we can
-    // replace this with `dyn Trait`
     let unsized_self_ty: Ty<'tcx> =
         Ty::new_param(tcx, u32::MAX, rustc_span::sym::RustaceansAreAwesome);
 
@@ -696,11 +696,11 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IllegalSelfTypeVisitor<'tcx> {
                     ControlFlow::Continue(())
                 }
             }
-            ty::Alias(ty::Projection, ref data) if self.tcx.is_impl_trait_in_trait(data.def_id) => {
+            ty::Alias(ty::Projection, data) if self.tcx.is_impl_trait_in_trait(data.def_id) => {
                 // We'll deny these later in their own pass
                 ControlFlow::Continue(())
             }
-            ty::Alias(ty::Projection, ref data) => {
+            ty::Alias(ty::Projection, data) => {
                 match self.allow_self_projections {
                     AllowSelfProjections::Yes => {
                         // This is a projected type `<Foo as SomeTrait>::X`.

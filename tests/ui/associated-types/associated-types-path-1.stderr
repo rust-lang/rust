@@ -18,12 +18,14 @@ LL | pub fn f2<T: Foo + Bar>(a: T, x: T::A) {}
    |
 help: use fully-qualified syntax to disambiguate
    |
-LL | pub fn f2<T: Foo + Bar>(a: T, x: <T as Bar>::A) {}
-   |                                  ~~~~~~~~~~~~
+LL - pub fn f2<T: Foo + Bar>(a: T, x: T::A) {}
+LL + pub fn f2<T: Foo + Bar>(a: T, x: <T as Bar>::A) {}
+   |
 help: use fully-qualified syntax to disambiguate
    |
-LL | pub fn f2<T: Foo + Bar>(a: T, x: <T as Foo>::A) {}
-   |                                  ~~~~~~~~~~~~
+LL - pub fn f2<T: Foo + Bar>(a: T, x: T::A) {}
+LL + pub fn f2<T: Foo + Bar>(a: T, x: <T as Foo>::A) {}
+   |
 
 error: aborting due to 2 previous errors
 

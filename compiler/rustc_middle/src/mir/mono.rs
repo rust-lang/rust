@@ -6,8 +6,9 @@ use rustc_attr_parsing::InlineAttr;
 use rustc_data_structures::base_n::{BaseNString, CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::stable_hasher::{Hash128, HashStable, StableHasher, ToStableHashKey};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_data_structures::unord::UnordMap;
+use rustc_hashes::Hash128;
 use rustc_hir::ItemId;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdSet, LOCAL_CRATE};
 use rustc_index::Idx;
@@ -242,7 +243,7 @@ impl<'tcx> MonoItem<'tcx> {
     /// Returns the item's `CrateNum`
     pub fn krate(&self) -> CrateNum {
         match self {
-            MonoItem::Fn(ref instance) => instance.def_id().krate,
+            MonoItem::Fn(instance) => instance.def_id().krate,
             MonoItem::Static(def_id) => def_id.krate,
             MonoItem::GlobalAsm(..) => LOCAL_CRATE,
         }

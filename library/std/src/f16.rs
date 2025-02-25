@@ -1,4 +1,4 @@
-//! Constants for the `f16` double-precision floating point type.
+//! Constants for the `f16` half-precision floating point type.
 //!
 //! *[See also the `f16` primitive type](primitive@f16).*
 //!
@@ -126,7 +126,7 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn round_ties_even(self) -> f16 {
-        unsafe { intrinsics::rintf16(self) }
+        intrinsics::round_ties_even_f16(self)
     }
 
     /// Returns the integer part of `self`.
@@ -1224,6 +1224,7 @@ impl f16 {
     #[inline]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f16", issue = "116909")]
+    // #[unstable(feature = "float_gamma", issue = "99842")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn gamma(self) -> f16 {
         (unsafe { cmath::tgammaf(self as f32) }) as f16
@@ -1258,10 +1259,83 @@ impl f16 {
     #[inline]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f16", issue = "116909")]
+    // #[unstable(feature = "float_gamma", issue = "99842")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn ln_gamma(self) -> (f16, i32) {
         let mut signgamp: i32 = 0;
         let x = (unsafe { cmath::lgammaf_r(self as f32, &mut signgamp) }) as f16;
         (x, signgamp)
+    }
+
+    /// Error function.
+    ///
+    /// # Unspecified precision
+    ///
+    /// The precision of this function is non-deterministic. This means it varies by platform,
+    /// Rust version, and can even differ within the same execution from one invocation to the next.
+    ///
+    /// This function currently corresponds to the `erff` from libc on Unix
+    /// and Windows. Note that this might change in the future.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(f16)]
+    /// #![feature(float_erf)]
+    /// # #[cfg(reliable_f16_math)] {
+    /// /// The error function relates what percent of a normal distribution lies
+    /// /// within `x` standard deviations (scaled by `1/sqrt(2)`).
+    /// fn within_standard_deviations(x: f16) -> f16 {
+    ///     (x * std::f16::consts::FRAC_1_SQRT_2).erf() * 100.0
+    /// }
+    ///
+    /// // 68% of a normal distribution is within one standard deviation
+    /// assert!((within_standard_deviations(1.0) - 68.269).abs() < 0.1);
+    /// // 95% of a normal distribution is within two standard deviations
+    /// assert!((within_standard_deviations(2.0) - 95.450).abs() < 0.1);
+    /// // 99.7% of a normal distribution is within three standard deviations
+    /// assert!((within_standard_deviations(3.0) - 99.730).abs() < 0.1);
+    /// # }
+    /// ```
+    #[rustc_allow_incoherent_impl]
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "f16", issue = "116909")]
+    // #[unstable(feature = "float_erf", issue = "136321")]
+    #[inline]
+    pub fn erf(self) -> f16 {
+        (unsafe { cmath::erff(self as f32) }) as f16
+    }
+
+    /// Complementary error function.
+    ///
+    /// # Unspecified precision
+    ///
+    /// The precision of this function is non-deterministic. This means it varies by platform,
+    /// Rust version, and can even differ within the same execution from one invocation to the next.
+    ///
+    /// This function currently corresponds to the `erfcf` from libc on Unix
+    /// and Windows. Note that this might change in the future.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(f16)]
+    /// #![feature(float_erf)]
+    /// # #[cfg(reliable_f16_math)] {
+    /// let x: f16 = 0.123;
+    ///
+    /// let one = x.erf() + x.erfc();
+    /// let abs_difference = (one - 1.0).abs();
+    ///
+    /// assert!(abs_difference <= f16::EPSILON);
+    /// # }
+    /// ```
+    #[rustc_allow_incoherent_impl]
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "f16", issue = "116909")]
+    // #[unstable(feature = "float_erf", issue = "136321")]
+    #[inline]
+    pub fn erfc(self) -> f16 {
+        (unsafe { cmath::erfcf(self as f32) }) as f16
     }
 }

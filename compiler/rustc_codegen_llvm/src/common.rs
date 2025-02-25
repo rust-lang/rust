@@ -7,7 +7,8 @@ use rustc_abi::{AddressSpace, HasDataLayout};
 use rustc_ast::Mutability;
 use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::*;
-use rustc_data_structures::stable_hasher::{Hash128, HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_hashes::Hash128;
 use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::{ConstAllocation, GlobalAlloc, Scalar};
@@ -219,8 +220,8 @@ impl<'ll, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 let g = self.define_global(&sym, self.val_ty(sc)).unwrap_or_else(|| {
                     bug!("symbol `{}` is already defined", sym);
                 });
+                llvm::set_initializer(g, sc);
                 unsafe {
-                    llvm::LLVMSetInitializer(g, sc);
                     llvm::LLVMSetGlobalConstant(g, True);
                     llvm::LLVMSetUnnamedAddress(g, llvm::UnnamedAddr::Global);
                 }

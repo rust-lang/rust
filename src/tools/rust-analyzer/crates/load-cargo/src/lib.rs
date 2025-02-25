@@ -94,7 +94,9 @@ pub fn load_workspace(
             let contents = loader.load_sync(path);
             let path = vfs::VfsPath::from(path.to_path_buf());
             vfs.set_file_contents(path.clone(), contents);
-            vfs.file_id(&path)
+            vfs.file_id(&path).and_then(|(file_id, excluded)| {
+                (excluded == vfs::FileExcluded::No).then_some(file_id)
+            })
         },
         extra_env,
     );
@@ -454,7 +456,6 @@ fn load_crate_graph(
     let ws_data = crate_graph
         .iter()
         .zip(iter::repeat(From::from(CrateWorkspaceData {
-            proc_macro_cwd: None,
             data_layout: target_layout.clone(),
             toolchain: toolchain.clone(),
         })))

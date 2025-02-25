@@ -1,6 +1,8 @@
 use rustc_abi::Endian;
 
-use crate::spec::{Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetOptions, base};
+use crate::spec::{
+    Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetMetadata, TargetOptions, base,
+};
 
 pub(crate) fn target() -> Target {
     let mut base = base::freebsd::opts();
@@ -11,7 +13,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "powerpc64-unknown-freebsd".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("PPC64 FreeBSD (ELFv2)".into()),
             tier: Some(3),
             host_tools: Some(true),

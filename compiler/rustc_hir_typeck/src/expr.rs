@@ -19,6 +19,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, HirId, QPath};
+use rustc_hir_analysis::NoVariantNamed;
 use rustc_hir_analysis::hir_ty_lowering::{FeedConstTy, HirTyLowerer as _};
 use rustc_infer::infer;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk};
@@ -1129,7 +1130,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             statement_kind: kind,
         };
 
-        let encl_item_id = self.tcx.hir().get_parent_item(expr.hir_id);
+        let encl_item_id = self.tcx.hir_get_parent_item(expr.hir_id);
 
         if let hir::Node::Item(hir::Item {
             kind: hir::ItemKind::Fn { .. },
@@ -1150,13 +1151,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // We are inside a function body, so reporting "return statement
             // outside of function body" needs an explanation.
 
-            let encl_body_owner_id = self.tcx.hir().enclosing_body_owner(expr.hir_id);
+            let encl_body_owner_id = self.tcx.hir_enclosing_body_owner(expr.hir_id);
 
             // If this didn't hold, we would not have to report an error in
             // the first place.
             assert_ne!(encl_item_id.def_id, encl_body_owner_id);
 
-            let encl_body = self.tcx.hir().body_owned_by(encl_body_owner_id);
+            let encl_body = self.tcx.hir_body_owned_by(encl_body_owner_id);
 
             err.encl_body_span = Some(encl_body.value.span);
             err.encl_fn_span = Some(*encl_fn_span);
@@ -1278,7 +1279,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // Check if our original expression is a child of the condition of a while loop.
                     // If it is, then we have a situation like `while Some(0) = value.get(0) {`,
                     // where `while let` was more likely intended.
-                    if self.tcx.hir().parent_id_iter(original_expr_id).any(|id| id == expr.hir_id) {
+                    if self.tcx.hir_parent_id_iter(original_expr_id).any(|id| id == expr.hir_id) {
                         then(expr);
                     }
                     break;
@@ -1655,13 +1656,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_expr_unsafe_binder_cast(
         &self,
         span: Span,
-        kind: hir::UnsafeBinderCastKind,
+        kind: ast::UnsafeBinderCastKind,
         inner_expr: &'tcx hir::Expr<'tcx>,
         hir_ty: Option<&'tcx hir::Ty<'tcx>>,
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
         match kind {
-            hir::UnsafeBinderCastKind::Wrap => {
+            ast::UnsafeBinderCastKind::Wrap => {
                 let ascribed_ty =
                     hir_ty.map(|hir_ty| self.lower_ty_saving_user_provided_ty(hir_ty));
                 let expected_ty = expected.only_has_type(self);
@@ -1705,7 +1706,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 binder_ty
             }
-            hir::UnsafeBinderCastKind::Unwrap => {
+            ast::UnsafeBinderCastKind::Unwrap => {
                 let ascribed_ty =
                     hir_ty.map(|hir_ty| self.lower_ty_saving_user_provided_ty(hir_ty));
                 let hint_ty = ascribed_ty.unwrap_or_else(|| self.next_ty_var(inner_expr.span));
@@ -1773,7 +1774,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn suggest_array_len(&self, expr: &'tcx hir::Expr<'tcx>, array_len: u64) {
-        let parent_node = self.tcx.hir().parent_iter(expr.hir_id).find(|(_, node)| {
+        let parent_node = self.tcx.hir_parent_iter(expr.hir_id).find(|(_, node)| {
             !matches!(node, hir::Node::Expr(hir::Expr { kind: hir::ExprKind::AddrOf(..), .. }))
         });
         let Some((_, hir::Node::LetStmt(hir::LetStmt { ty: Some(ty), .. }))) = parent_node else {
@@ -1801,7 +1802,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         block: &'tcx hir::ConstBlock,
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
-        let body = self.tcx.hir().body(block.body);
+        let body = self.tcx.hir_body(block.body);
 
         // Create a new function context.
         let def_id = block.def_id;
@@ -3229,7 +3230,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             None => return,
         };
         let param_span = self.tcx.hir().span(param_hir_id);
-        let param_name = self.tcx.hir().ty_param_name(param_def_id.expect_local());
+        let param_name = self.tcx.hir_ty_param_name(param_def_id.expect_local());
 
         err.span_label(param_span, format!("type parameter '{param_name}' declared here"));
     }
@@ -3556,7 +3557,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
 
-                    if base_t.is_unsafe_ptr() && idx_t.is_integral() {
+                    if base_t.is_raw_ptr() && idx_t.is_integral() {
                         err.multipart_suggestion(
                             "consider using `wrapping_add` or `add` for indexing into raw pointer",
                             vec![
@@ -3762,7 +3763,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut diverge = asm.asm_macro.diverges(asm.options);
 
         for (op, _op_sp) in asm.operands {
-            match op {
+            match *op {
                 hir::InlineAsmOperand::In { expr, .. } => {
                     self.check_expr_asm_operand(expr, true);
                 }
@@ -3777,10 +3778,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.check_expr_asm_operand(out_expr, false);
                     }
                 }
+                hir::InlineAsmOperand::SymFn { expr } => {
+                    self.check_expr(expr);
+                }
                 // `AnonConst`s have their own body and is type-checked separately.
                 // As they don't flow into the type system we don't need them to
                 // be well-formed.
-                hir::InlineAsmOperand::Const { .. } | hir::InlineAsmOperand::SymFn { .. } => {}
+                hir::InlineAsmOperand::Const { .. } => {}
                 hir::InlineAsmOperand::SymStatic { .. } => {}
                 hir::InlineAsmOperand::Label { block } => {
                     let previous_diverges = self.diverges.get();
@@ -3837,15 +3841,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .iter_enumerated()
                         .find(|(_, v)| v.ident(self.tcx).normalize_to_macros_2_0() == ident)
                     else {
-                        type_error_struct!(
-                            self.dcx(),
-                            ident.span,
-                            container,
-                            E0599,
-                            "no variant named `{ident}` found for enum `{container}`",
-                        )
-                        .with_span_label(field.span, "variant not found")
-                        .emit();
+                        self.dcx()
+                            .create_err(NoVariantNamed { span: ident.span, ident, ty: container })
+                            .with_span_label(field.span, "variant not found")
+                            .emit_unless(container.references_error());
                         break;
                     };
                     let Some(&subfield) = fields.next() else {

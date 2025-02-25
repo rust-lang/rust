@@ -354,6 +354,7 @@ impl Definition {
                 hir::GenericDef::TypeAlias(it) => it.source(db).map(|src| src.syntax().cloned()),
                 hir::GenericDef::Impl(it) => it.source(db).map(|src| src.syntax().cloned()),
                 hir::GenericDef::Const(it) => it.source(db).map(|src| src.syntax().cloned()),
+                hir::GenericDef::Static(it) => it.source(db).map(|src| src.syntax().cloned()),
             };
             return match def {
                 Some(def) => SearchScope::file_range(

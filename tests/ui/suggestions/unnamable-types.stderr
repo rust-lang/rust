@@ -12,8 +12,9 @@ LL | static B: _ = "abc";
    |
 help: replace this with a fully-specified type
    |
-LL | static B: &str = "abc";
-   |           ~~~~
+LL - static B: _ = "abc";
+LL + static B: &str = "abc";
+   |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
   --> $DIR/unnamable-types.rs:17:10

@@ -10,13 +10,13 @@ use smallvec::{smallvec, SmallVec};
 use triomphe::Arc;
 
 use crate::{
-    body::{
-        scope::{ExprScopes, ScopeId},
-        HygieneId,
-    },
     builtin_type::BuiltinType,
     data::ExternCrateDeclData,
     db::DefDatabase,
+    expr_store::{
+        scope::{ExprScopes, ScopeId},
+        HygieneId,
+    },
     generics::{GenericParams, TypeOrConstParamData},
     hir::{BindingId, ExprId, LabelId},
     item_scope::{BuiltinShadowMode, ImportOrExternCrate, ImportOrGlob, BUILTIN_SCOPE},
@@ -327,8 +327,9 @@ impl Resolver {
                     | LangItemTarget::ImplDef(_)
                     | LangItemTarget::Static(_) => return None,
                 };
+                // Remaining segments start from 0 because lang paths have no segments other than the remaining.
                 return Some((
-                    ResolveValueResult::Partial(type_ns, 1, None),
+                    ResolveValueResult::Partial(type_ns, 0, None),
                     ResolvePathResultPrefixInfo::default(),
                 ));
             }
@@ -1264,6 +1265,7 @@ impl HasResolver for GenericDefId {
             GenericDefId::TypeAliasId(inner) => inner.resolver(db),
             GenericDefId::ImplId(inner) => inner.resolver(db),
             GenericDefId::ConstId(inner) => inner.resolver(db),
+            GenericDefId::StaticId(inner) => inner.resolver(db),
         }
     }
 }

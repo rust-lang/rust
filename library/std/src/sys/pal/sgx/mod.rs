@@ -123,7 +123,7 @@ pub fn abort_internal() -> ! {
 // This function is needed by the panic runtime. The symbol is named in
 // pre-link args for the target specification, so keep that in sync.
 #[cfg(not(test))]
-#[no_mangle]
+#[unsafe(no_mangle)]
 // NB. used by both libunwind and libpanic_abort
 pub extern "C" fn __rust_abort() {
     abort_internal();

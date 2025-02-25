@@ -6,8 +6,9 @@ LL |     let _ = "foo".iter();
    |
 help: because of the in-memory representation of `&str`, to obtain an `Iterator` over each of its codepoint use method `chars`
    |
-LL |     let _ = "foo".chars();
-   |                   ~~~~~
+LL -     let _ = "foo".iter();
+LL +     let _ = "foo".chars();
+   |
 
 error[E0599]: no method named `foo` found for reference `&'static str` in the current scope
   --> $DIR/suggest-using-chars.rs:3:19
@@ -23,8 +24,9 @@ LL |     let _ = String::from("bar").iter();
    |
 help: because of the in-memory representation of `&str`, to obtain an `Iterator` over each of its codepoint use method `chars`
    |
-LL |     let _ = String::from("bar").chars();
-   |                                 ~~~~~
+LL -     let _ = String::from("bar").iter();
+LL +     let _ = String::from("bar").chars();
+   |
 
 error[E0599]: no method named `iter` found for reference `&String` in the current scope
   --> $DIR/suggest-using-chars.rs:5:36
@@ -34,8 +36,9 @@ LL |     let _ = (&String::from("bar")).iter();
    |
 help: because of the in-memory representation of `&str`, to obtain an `Iterator` over each of its codepoint use method `chars`
    |
-LL |     let _ = (&String::from("bar")).chars();
-   |                                    ~~~~~
+LL -     let _ = (&String::from("bar")).iter();
+LL +     let _ = (&String::from("bar")).chars();
+   |
 
 error[E0599]: no method named `iter` found for type `{integer}` in the current scope
   --> $DIR/suggest-using-chars.rs:6:15

@@ -20,12 +20,14 @@ LL |     fn foo() {}
    |     ^^^^^^^^
 help: disambiguate the associated function for candidate #1
    |
-LL |     <Qux as Foo>::foo();
-   |     ~~~~~~~~~~~~~~~~~~~
+LL -     Qux.foo();
+LL +     <Qux as Foo>::foo();
+   |
 help: disambiguate the associated function for candidate #2
    |
-LL |     <Qux as FooBar>::foo();
-   |     ~~~~~~~~~~~~~~~~~~~~~~
+LL -     Qux.foo();
+LL +     <Qux as FooBar>::foo();
+   |
 
 error: aborting due to 1 previous error
 

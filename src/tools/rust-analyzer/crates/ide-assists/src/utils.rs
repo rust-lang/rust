@@ -793,8 +793,8 @@ pub(crate) fn convert_reference_type(
 }
 
 fn could_deref_to_target(ty: &hir::Type, target: &hir::Type, db: &dyn HirDatabase) -> bool {
-    let ty_ref = hir::Type::reference(ty, hir::Mutability::Shared);
-    let target_ref = hir::Type::reference(target, hir::Mutability::Shared);
+    let ty_ref = ty.add_reference(hir::Mutability::Shared);
+    let target_ref = target.add_reference(hir::Mutability::Shared);
     ty_ref.could_coerce_to(db, &target_ref)
 }
 

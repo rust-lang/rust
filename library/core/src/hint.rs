@@ -52,7 +52,7 @@ use crate::{intrinsics, ub_checks};
 ///             // Safety: `divisor` can't be zero because of `prepare_inputs`,
 ///             // but the compiler does not know about this. We *promise*
 ///             // that we always call `prepare_inputs`.
-///             std::hint::unreachable_unchecked()
+///             unsafe { std::hint::unreachable_unchecked() }
 ///         }
 ///         // The compiler would normally introduce a check here that prevents
 ///         // a division by zero. However, if `divisor` was zero, the branch
@@ -472,7 +472,7 @@ pub fn spin_loop() {
 /// During constant evaluation, `black_box` is treated as a no-op.
 #[inline]
 #[stable(feature = "bench_black_box", since = "1.66.0")]
-#[rustc_const_stable(feature = "const_black_box", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "const_black_box", since = "1.86.0")]
 pub const fn black_box<T>(dummy: T) -> T {
     crate::intrinsics::black_box(dummy)
 }
@@ -646,7 +646,7 @@ pub const fn must_use<T>(value: T) -> T {
 /// ```
 ///
 ///
-#[unstable(feature = "likely_unlikely", issue = "26179")]
+#[unstable(feature = "likely_unlikely", issue = "136873")]
 #[inline(always)]
 pub const fn likely(b: bool) -> bool {
     crate::intrinsics::likely(b)
@@ -696,7 +696,7 @@ pub const fn likely(b: bool) -> bool {
 ///     }
 /// }
 /// ```
-#[unstable(feature = "likely_unlikely", issue = "26179")]
+#[unstable(feature = "likely_unlikely", issue = "136873")]
 #[inline(always)]
 pub const fn unlikely(b: bool) -> bool {
     crate::intrinsics::unlikely(b)
@@ -729,7 +729,7 @@ pub const fn unlikely(b: bool) -> bool {
 ///     }
 /// }
 /// ```
-#[unstable(feature = "cold_path", issue = "26179")]
+#[unstable(feature = "cold_path", issue = "136873")]
 #[inline(always)]
 pub const fn cold_path() {
     crate::intrinsics::cold_path()

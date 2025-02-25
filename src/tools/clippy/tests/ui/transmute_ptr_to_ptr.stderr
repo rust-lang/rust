@@ -8,8 +8,9 @@ LL |         let _: *const f32 = transmute(ptr);
    = help: to override `-D warnings` add `#[allow(clippy::transmute_ptr_to_ptr)]`
 help: use `pointer::cast` instead
    |
-LL |         let _: *const f32 = ptr.cast::<f32>();
-   |                             ~~~~~~~~~~~~~~~~~
+LL -         let _: *const f32 = transmute(ptr);
+LL +         let _: *const f32 = ptr.cast::<f32>();
+   |
 
 error: transmute from a pointer to a pointer
   --> tests/ui/transmute_ptr_to_ptr.rs:34:27
@@ -19,8 +20,9 @@ LL |         let _: *mut f32 = transmute(mut_ptr);
    |
 help: use `pointer::cast` instead
    |
-LL |         let _: *mut f32 = mut_ptr.cast::<f32>();
-   |                           ~~~~~~~~~~~~~~~~~~~~~
+LL -         let _: *mut f32 = transmute(mut_ptr);
+LL +         let _: *mut f32 = mut_ptr.cast::<f32>();
+   |
 
 error: transmute from a reference to a reference
   --> tests/ui/transmute_ptr_to_ptr.rs:37:23
@@ -60,8 +62,9 @@ LL |         let _: *const u32 = transmute(mut_ptr);
    |
 help: use `pointer::cast_const` instead
    |
-LL |         let _: *const u32 = mut_ptr.cast_const();
-   |                             ~~~~~~~~~~~~~~~~~~~~
+LL -         let _: *const u32 = transmute(mut_ptr);
+LL +         let _: *const u32 = mut_ptr.cast_const();
+   |
 
 error: transmute from a pointer to a pointer
   --> tests/ui/transmute_ptr_to_ptr.rs:52:27
@@ -71,8 +74,9 @@ LL |         let _: *mut u32 = transmute(ptr);
    |
 help: use `pointer::cast_mut` instead
    |
-LL |         let _: *mut u32 = ptr.cast_mut();
-   |                           ~~~~~~~~~~~~~~
+LL -         let _: *mut u32 = transmute(ptr);
+LL +         let _: *mut u32 = ptr.cast_mut();
+   |
 
 error: transmute from a pointer to a pointer
   --> tests/ui/transmute_ptr_to_ptr.rs:64:14
@@ -82,8 +86,9 @@ LL |     unsafe { transmute(v) }
    |
 help: use an `as` cast instead
    |
-LL |     unsafe { v as *const &() }
-   |              ~~~~~~~~~~~~~~~
+LL -     unsafe { transmute(v) }
+LL +     unsafe { v as *const &() }
+   |
 
 error: transmute from a pointer to a pointer
   --> tests/ui/transmute_ptr_to_ptr.rs:79:28
@@ -93,8 +98,9 @@ LL |         let _: *const i8 = transmute(ptr);
    |
 help: use an `as` cast instead
    |
-LL |         let _: *const i8 = ptr as *const i8;
-   |                            ~~~~~~~~~~~~~~~~
+LL -         let _: *const i8 = transmute(ptr);
+LL +         let _: *const i8 = ptr as *const i8;
+   |
 
 error: transmute from a pointer to a pointer
   --> tests/ui/transmute_ptr_to_ptr.rs:86:28
@@ -104,8 +110,9 @@ LL |         let _: *const i8 = transmute(ptr);
    |
 help: use `pointer::cast` instead
    |
-LL |         let _: *const i8 = ptr.cast::<i8>();
-   |                            ~~~~~~~~~~~~~~~~
+LL -         let _: *const i8 = transmute(ptr);
+LL +         let _: *const i8 = ptr.cast::<i8>();
+   |
 
 error: transmute from a pointer to a pointer
   --> tests/ui/transmute_ptr_to_ptr.rs:93:26
@@ -115,8 +122,9 @@ LL |         let _: *mut u8 = transmute(ptr);
    |
 help: use an `as` cast instead
    |
-LL |         let _: *mut u8 = ptr as *mut u8;
-   |                          ~~~~~~~~~~~~~~
+LL -         let _: *mut u8 = transmute(ptr);
+LL +         let _: *mut u8 = ptr as *mut u8;
+   |
 
 error: transmute from a pointer to a pointer
   --> tests/ui/transmute_ptr_to_ptr.rs:94:28
@@ -126,8 +134,9 @@ LL |         let _: *const u8 = transmute(mut_ptr);
    |
 help: use an `as` cast instead
    |
-LL |         let _: *const u8 = mut_ptr as *const u8;
-   |                            ~~~~~~~~~~~~~~~~~~~~
+LL -         let _: *const u8 = transmute(mut_ptr);
+LL +         let _: *const u8 = mut_ptr as *const u8;
+   |
 
 error: transmute from a pointer to a pointer
   --> tests/ui/transmute_ptr_to_ptr.rs:101:26
@@ -137,8 +146,9 @@ LL |         let _: *mut u8 = transmute(ptr);
    |
 help: use `pointer::cast_mut` instead
    |
-LL |         let _: *mut u8 = ptr.cast_mut();
-   |                          ~~~~~~~~~~~~~~
+LL -         let _: *mut u8 = transmute(ptr);
+LL +         let _: *mut u8 = ptr.cast_mut();
+   |
 
 error: transmute from a pointer to a pointer
   --> tests/ui/transmute_ptr_to_ptr.rs:102:28
@@ -148,8 +158,9 @@ LL |         let _: *const u8 = transmute(mut_ptr);
    |
 help: use `pointer::cast_const` instead
    |
-LL |         let _: *const u8 = mut_ptr.cast_const();
-   |                            ~~~~~~~~~~~~~~~~~~~~
+LL -         let _: *const u8 = transmute(mut_ptr);
+LL +         let _: *const u8 = mut_ptr.cast_const();
+   |
 
 error: aborting due to 16 previous errors
 

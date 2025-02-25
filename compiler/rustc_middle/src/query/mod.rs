@@ -116,7 +116,7 @@ rustc_queries! {
     }
 
     query early_lint_checks(_: ()) {
-        desc { "perform lints prior to macro expansion" }
+        desc { "perform lints prior to AST lowering" }
     }
 
     query resolutions(_: ()) -> &'tcx ty::ResolverGlobalCtxt {
@@ -163,7 +163,7 @@ rustc_queries! {
 
     /// The items in a module.
     ///
-    /// This can be conveniently accessed by `tcx.hir().visit_item_likes_in_module`.
+    /// This can be conveniently accessed by `tcx.hir_visit_item_likes_in_module`.
     /// Avoid calling this query directly.
     query hir_module_items(key: LocalModDefId) -> &'tcx rustc_middle::hir::ModuleItems {
         arena_cache
@@ -614,9 +614,16 @@ rustc_queries! {
         feedable
     }
 
-    /// Summarizes coverage IDs inserted by the `InstrumentCoverage` MIR pass
-    /// (for compiler option `-Cinstrument-coverage`), after MIR optimizations
-    /// have had a chance to potentially remove some of them.
+    /// Scans through a function's MIR after MIR optimizations, to prepare the
+    /// information needed by codegen when `-Cinstrument-coverage` is active.
+    ///
+    /// This includes the details of where to insert `llvm.instrprof.increment`
+    /// intrinsics, and the expression tables to be embedded in the function's
+    /// coverage metadata.
+    ///
+    /// FIXME(Zalathar): This query's purpose has drifted a bit and should
+    /// probably be renamed, but that can wait until after the potential
+    /// follow-ups to #136053 have settled down.
     ///
     /// Returns `None` for functions that were not instrumented.
     query coverage_ids_info(key: ty::InstanceKind<'tcx>) -> Option<&'tcx mir::coverage::CoverageIdsInfo> {
@@ -764,7 +771,7 @@ rustc_queries! {
     query type_param_predicates(
         key: (LocalDefId, LocalDefId, rustc_span::Ident)
     ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
-        desc { |tcx| "computing the bounds for type parameter `{}`", tcx.hir().ty_param_name(key.1) }
+        desc { |tcx| "computing the bounds for type parameter `{}`", tcx.hir_ty_param_name(key.1) }
     }
 
     query trait_def(key: DefId) -> &'tcx ty::TraitDef {
@@ -795,7 +802,7 @@ rustc_queries! {
 
     query adt_dtorck_constraint(
         key: DefId
-    ) -> Result<&'tcx DropckConstraint<'tcx>, NoSolution> {
+    ) -> &'tcx DropckConstraint<'tcx> {
         desc { |tcx| "computing drop-check constraints for `{}`", tcx.def_path_str(key) }
     }
 

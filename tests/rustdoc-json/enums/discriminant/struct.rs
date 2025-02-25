@@ -1,7 +1,7 @@
 // ignore-tidy-linelength
 
 #[repr(i32)]
-//@ is "$.index[*][?(@.name=='Foo')].attrs" '["#[repr(i32)]"]'
+//@ is "$.index[*][?(@.name=='Foo')].attrs" '["#[attr=\"Repr([ReprInt(SignedInt(I32))])\")]\n"]'
 pub enum Foo {
     //@ is    "$.index[*][?(@.name=='Struct')].inner.variant.discriminant" null
     //@ count "$.index[*][?(@.name=='Struct')].inner.variant.kind.struct.fields[*]" 0

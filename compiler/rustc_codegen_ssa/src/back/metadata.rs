@@ -252,15 +252,7 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
         // Unsupported architecture.
         _ => return None,
     };
-    let binary_format = if sess.target.is_like_osx {
-        BinaryFormat::MachO
-    } else if sess.target.is_like_windows {
-        BinaryFormat::Coff
-    } else if sess.target.is_like_aix {
-        BinaryFormat::Xcoff
-    } else {
-        BinaryFormat::Elf
-    };
+    let binary_format = sess.target.binary_format.to_object();
 
     let mut file = write::Object::new(binary_format, architecture, endianness);
     file.set_sub_architecture(sub_architecture);

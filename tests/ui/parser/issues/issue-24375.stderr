@@ -7,8 +7,9 @@ LL |         tmp[0] => {}
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == tmp[0] => {}
-   |         ~~~ ++++++++++++++++
+LL -         tmp[0] => {}
+LL +         val if val == tmp[0] => {}
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = tmp[0];

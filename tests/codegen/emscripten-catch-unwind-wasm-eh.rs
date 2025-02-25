@@ -1,4 +1,4 @@
-//@ compile-flags: -O --target wasm32-unknown-emscripten -Z emscripten-wasm-eh
+//@ compile-flags: -Copt-level=3 --target wasm32-unknown-emscripten -Z emscripten-wasm-eh
 //@ needs-llvm-components: webassembly
 
 // Emscripten catch_unwind using wasm exceptions

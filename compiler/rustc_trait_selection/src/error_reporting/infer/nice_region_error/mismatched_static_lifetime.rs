@@ -33,11 +33,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         };
         // If we added a "points at argument expression" obligation, we remove it here, we care
         // about the original obligation only.
-        let code = match cause.code() {
-            ObligationCauseCode::FunctionArg { parent_code, .. } => &*parent_code,
-            code => code,
-        };
-        let ObligationCauseCode::MatchImpl(parent, impl_def_id) = code else {
+        let ObligationCauseCode::MatchImpl(parent, impl_def_id) = cause.code() else {
             return None;
         };
         let (ObligationCauseCode::WhereClause(_, binding_span)
@@ -66,7 +62,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         );
         let mut impl_span = None;
         let mut implicit_static_lifetimes = Vec::new();
-        if let Some(impl_node) = self.tcx().hir().get_if_local(*impl_def_id) {
+        if let Some(impl_node) = self.tcx().hir_get_if_local(*impl_def_id) {
             // If an impl is local, then maybe this isn't what they want. Try to
             // be as helpful as possible with implicit lifetimes.
 

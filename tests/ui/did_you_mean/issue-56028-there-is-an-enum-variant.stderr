@@ -6,14 +6,18 @@ LL | fn setup() -> Set { Set }
    |
 help: there is an enum variant `AffixHeart::Set` and 7 others; try using the variant's enum
    |
-LL | fn setup() -> AffixHeart { Set }
-   |               ~~~~~~~~~~
-LL | fn setup() -> CauseToBe { Set }
-   |               ~~~~~~~~~
-LL | fn setup() -> Determine { Set }
-   |               ~~~~~~~~~
-LL | fn setup() -> PutDown { Set }
-   |               ~~~~~~~
+LL - fn setup() -> Set { Set }
+LL + fn setup() -> AffixHeart { Set }
+   |
+LL - fn setup() -> Set { Set }
+LL + fn setup() -> CauseToBe { Set }
+   |
+LL - fn setup() -> Set { Set }
+LL + fn setup() -> Determine { Set }
+   |
+LL - fn setup() -> Set { Set }
+LL + fn setup() -> PutDown { Set }
+   |
      and 3 other candidates
 
 error[E0425]: cannot find value `Set` in this scope

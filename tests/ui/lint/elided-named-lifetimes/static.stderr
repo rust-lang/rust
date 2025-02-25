@@ -44,8 +44,9 @@ LL | fn underscore(x: &'static u8) -> &'_ u8 {
    |
 help: consider specifying it explicitly
    |
-LL | fn underscore(x: &'static u8) -> &'static u8 {
-   |                                   ~~~~~~~
+LL - fn underscore(x: &'static u8) -> &'_ u8 {
+LL + fn underscore(x: &'static u8) -> &'static u8 {
+   |
 
 error: aborting due to 4 previous errors
 

@@ -19,8 +19,8 @@ use rustc_hir::{
     WherePredicateKind, lang_items,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter as middle_nested_filter;
+use rustc_middle::ty::TyCtxt;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
@@ -275,7 +275,7 @@ fn could_use_elision<'tcx>(
     }
 
     if let Some(body_id) = body {
-        let body = cx.tcx.hir().body(body_id);
+        let body = cx.tcx.hir_body(body_id);
 
         let first_ident = body.params.first().and_then(|param| param.pat.simple_ident());
         if non_elidable_self_type(cx, func, first_ident, msrv) {
@@ -582,7 +582,7 @@ impl<'tcx, F> Visitor<'tcx> for LifetimeChecker<'_, 'tcx, F>
 where
     F: NestedFilter<'tcx>,
 {
-    type Map = Map<'tcx>;
+    type MaybeTyCtxt = TyCtxt<'tcx>;
     type NestedFilter = F;
 
     // for lifetimes as parameters of generics
@@ -628,8 +628,8 @@ where
         self.lifetime_elision_impossible = false;
     }
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.cx.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.cx.tcx
     }
 }
 

@@ -4,9 +4,7 @@ use rustc_abi::{BackendRepr, ExternAbi, HasDataLayout, Reg, WrappingRange};
 use rustc_ast as ast;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir::lang_items::LangItem;
-use rustc_middle::mir::{
-    self, AssertKind, BasicBlock, InlineAsmMacro, SwitchTargets, UnwindTerminateReason,
-};
+use rustc_middle::mir::{self, AssertKind, InlineAsmMacro, SwitchTargets, UnwindTerminateReason};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, ValidityRequirement};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Instance, Ty};
@@ -167,9 +165,13 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         if let Some(instance) = instance {
             if is_call_from_compiler_builtins_to_upstream_monomorphization(tcx, instance) {
                 if destination.is_some() {
-                    let caller = with_no_trimmed_paths!(tcx.def_path_str(fx.instance.def_id()));
-                    let callee = with_no_trimmed_paths!(tcx.def_path_str(instance.def_id()));
-                    tcx.dcx().emit_err(CompilerBuiltinsCannotCall { caller, callee });
+                    let caller_def = fx.instance.def_id();
+                    let e = CompilerBuiltinsCannotCall {
+                        span: tcx.def_span(caller_def),
+                        caller: with_no_trimmed_paths!(tcx.def_path_str(caller_def)),
+                        callee: with_no_trimmed_paths!(tcx.def_path_str(instance.def_id())),
+                    };
+                    tcx.dcx().emit_err(e);
                 } else {
                     info!(
                         "compiler_builtins call to diverging function {:?} replaced with abort",
@@ -429,11 +431,34 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let cmp = bx.icmp(IntPredicate::IntEQ, discr_value, llval);
             bx.cond_br(cmp, ll1, ll2);
         } else {
-            bx.switch(
-                discr_value,
-                helper.llbb_with_cleanup(self, targets.otherwise()),
-                target_iter.map(|(value, target)| (value, helper.llbb_with_cleanup(self, target))),
-            );
+            let otherwise = targets.otherwise();
+            let otherwise_cold = self.cold_blocks[otherwise];
+            let otherwise_unreachable = self.mir[otherwise].is_empty_unreachable();
+            let cold_count = targets.iter().filter(|(_, target)| self.cold_blocks[*target]).count();
+            let none_cold = cold_count == 0;
+            let all_cold = cold_count == targets.iter().len();
+            if (none_cold && (!otherwise_cold || otherwise_unreachable))
+                || (all_cold && (otherwise_cold || otherwise_unreachable))
+            {
+                // All targets have the same weight,
+                // or `otherwise` is unreachable and it's the only target with a different weight.
+                bx.switch(
+                    discr_value,
+                    helper.llbb_with_cleanup(self, targets.otherwise()),
+                    target_iter
+                        .map(|(value, target)| (value, helper.llbb_with_cleanup(self, target))),
+                );
+            } else {
+                // Targets have different weights
+                bx.switch_with_weights(
+                    discr_value,
+                    helper.llbb_with_cleanup(self, targets.otherwise()),
+                    otherwise_cold,
+                    target_iter.map(|(value, target)| {
+                        (value, helper.llbb_with_cleanup(self, target), self.cold_blocks[target])
+                    }),
+                );
+            }
         }
     }
 
@@ -699,14 +724,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // Put together the arguments to the panic entry point.
         let (lang_item, args) = match msg {
-            AssertKind::BoundsCheck { ref len, ref index } => {
+            AssertKind::BoundsCheck { len, index } => {
                 let len = self.codegen_operand(bx, len).immediate();
                 let index = self.codegen_operand(bx, index).immediate();
                 // It's `fn panic_bounds_check(index: usize, len: usize)`,
                 // and `#[track_caller]` adds an implicit third argument.
                 (LangItem::PanicBoundsCheck, vec![index, len, location])
             }
-            AssertKind::MisalignedPointerDereference { ref required, ref found } => {
+            AssertKind::MisalignedPointerDereference { required, found } => {
                 let required = self.codegen_operand(bx, required).immediate();
                 let found = self.codegen_operand(bx, found).immediate();
                 // It's `fn panic_misaligned_pointer_dereference(required: usize, found: usize)`,
@@ -919,7 +944,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     &fn_abi.ret,
                     &mut llargs,
                     Some(intrinsic),
-                    target,
                 );
                 let dest = match ret_dest {
                     _ if fn_abi.ret.is_indirect() => llargs[0],
@@ -975,23 +999,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         };
 
         let mut llargs = Vec::with_capacity(arg_count);
-        let destination = target.as_ref().map(|&target| {
-            (
-                self.make_return_dest(
-                    bx,
-                    destination,
-                    &fn_abi.ret,
-                    &mut llargs,
-                    None,
-                    Some(target),
-                ),
-                target,
-            )
-        });
+
+        // We still need to call `make_return_dest` even if there's no `target`, since
+        // `fn_abi.ret` could be `PassMode::Indirect`, even if it is uninhabited,
+        // and `make_return_dest` adds the return-place indirect pointer to `llargs`.
+        let return_dest = self.make_return_dest(bx, destination, &fn_abi.ret, &mut llargs, None);
+        let destination = target.map(|target| (return_dest, target));
 
         // Split the rust-call tupled arguments off.
-        let (first_args, untuple) = if abi == ExternAbi::RustCall && !args.is_empty() {
-            let (tup, args) = args.split_last().unwrap();
+        let (first_args, untuple) = if abi == ExternAbi::RustCall
+            && let Some((tup, args)) = args.split_last()
+        {
             (args, Some(tup))
         } else {
             (args, None)
@@ -1013,11 +1031,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         //
                         // This is also relevant for `Pin<&mut Self>`, where we need to peel the
                         // `Pin`.
-                        while !op.layout.ty.is_unsafe_ptr() && !op.layout.ty.is_ref() {
+                        while !op.layout.ty.is_raw_ptr() && !op.layout.ty.is_ref() {
                             let (idx, _) = op.layout.non_1zst_field(bx).expect(
                                 "not exactly one non-1-ZST field in a `DispatchFromDyn` type",
                             );
-                            op = op.extract_field(bx, idx);
+                            op = op.extract_field(self, bx, idx);
                         }
 
                         // Now that we have `*dyn Trait` or `&dyn Trait`, split it up into its
@@ -1045,11 +1063,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                     Immediate(_) => {
                         // See comment above explaining why we peel these newtypes
-                        while !op.layout.ty.is_unsafe_ptr() && !op.layout.ty.is_ref() {
+                        while !op.layout.ty.is_raw_ptr() && !op.layout.ty.is_ref() {
                             let (idx, _) = op.layout.non_1zst_field(bx).expect(
                                 "not exactly one non-1-ZST field in a `DispatchFromDyn` type",
                             );
-                            op = op.extract_field(bx, idx);
+                            op = op.extract_field(self, bx, idx);
                         }
 
                         // Make sure that we've actually unwrapped the rcvr down
@@ -1549,9 +1567,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     if scalar.is_bool() {
                         bx.range_metadata(llval, WrappingRange { start: 0, end: 1 });
                     }
+                    // We store bools as `i8` so we need to truncate to `i1`.
+                    llval = bx.to_immediate_scalar(llval, scalar);
                 }
-                // We store bools as `i8` so we need to truncate to `i1`.
-                llval = bx.to_immediate(llval, arg.layout);
             }
         }
 
@@ -1581,7 +1599,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         } else {
             // If the tuple is immediate, the elements are as well.
             for i in 0..tuple.layout.fields.count() {
-                let op = tuple.extract_field(bx, i);
+                let op = tuple.extract_field(self, bx, i);
                 self.codegen_argument(bx, op, llargs, &args[i]);
             }
         }
@@ -1790,11 +1808,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         fn_ret: &ArgAbi<'tcx, Ty<'tcx>>,
         llargs: &mut Vec<Bx::Value>,
         intrinsic: Option<ty::IntrinsicDef>,
-        target: Option<BasicBlock>,
     ) -> ReturnDest<'tcx, Bx::Value> {
-        if target.is_none() {
-            return ReturnDest::Nothing;
-        }
         // If the return is ignored, we can just return a do-nothing `ReturnDest`.
         if fn_ret.is_ignore() {
             return ReturnDest::Nothing;

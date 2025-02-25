@@ -118,7 +118,7 @@ impl RequestDispatcher<'_> {
             }
             return self;
         }
-        self.on_with_thread_intent::<true, ALLOW_RETRYING, R>(
+        self.on_with_thread_intent::<false, ALLOW_RETRYING, R>(
             ThreadIntent::Worker,
             f,
             Self::content_modified_error,
@@ -147,7 +147,7 @@ impl RequestDispatcher<'_> {
             }
             return self;
         }
-        self.on_with_thread_intent::<true, false, R>(ThreadIntent::Worker, f, on_cancelled)
+        self.on_with_thread_intent::<false, false, R>(ThreadIntent::Worker, f, on_cancelled)
     }
 
     /// Dispatches a non-latency-sensitive request onto the thread pool. When the VFS is marked not
@@ -166,7 +166,7 @@ impl RequestDispatcher<'_> {
             }
             return self;
         }
-        self.on_with_thread_intent::<true, ALLOW_RETRYING, R>(
+        self.on_with_thread_intent::<false, ALLOW_RETRYING, R>(
             ThreadIntent::Worker,
             f,
             Self::content_modified_error,
@@ -193,7 +193,7 @@ impl RequestDispatcher<'_> {
             }
             return self;
         }
-        self.on_with_thread_intent::<true, ALLOW_RETRYING, R>(
+        self.on_with_thread_intent::<false, ALLOW_RETRYING, R>(
             ThreadIntent::LatencySensitive,
             f,
             Self::content_modified_error,
@@ -212,7 +212,7 @@ impl RequestDispatcher<'_> {
         R::Params: DeserializeOwned + panic::UnwindSafe + Send + fmt::Debug,
         R::Result: Serialize,
     {
-        self.on_with_thread_intent::<false, false, R>(
+        self.on_with_thread_intent::<true, false, R>(
             ThreadIntent::LatencySensitive,
             f,
             Self::content_modified_error,
@@ -231,7 +231,7 @@ impl RequestDispatcher<'_> {
         }
     }
 
-    fn on_with_thread_intent<const MAIN_POOL: bool, const ALLOW_RETRYING: bool, R>(
+    fn on_with_thread_intent<const RUSTFMT: bool, const ALLOW_RETRYING: bool, R>(
         &mut self,
         intent: ThreadIntent,
         f: fn(GlobalStateSnapshot, R::Params) -> anyhow::Result<R::Result>,
@@ -251,10 +251,10 @@ impl RequestDispatcher<'_> {
         tracing::debug!(?params);
 
         let world = self.global_state.snapshot();
-        if MAIN_POOL {
-            &mut self.global_state.task_pool.handle
-        } else {
+        if RUSTFMT {
             &mut self.global_state.fmt_pool.handle
+        } else {
+            &mut self.global_state.task_pool.handle
         }
         .spawn(intent, move || {
             let result = panic::catch_unwind(move || {

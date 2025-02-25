@@ -17,8 +17,9 @@ LL |     #[warn(refining_impl_trait)]
    = note: `#[warn(refining_impl_trait_reachable)]` implied by `#[warn(refining_impl_trait)]`
 help: replace the return type so that it matches the trait
    |
-LL |     fn foo(&self) -> impl Future<Output = i32> {
-   |                      ~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     fn foo(&self) -> Pin<Box<dyn Future<Output = i32> + '_>> {
+LL +     fn foo(&self) -> impl Future<Output = i32> {
+   |
 
 warning: 1 warning emitted
 

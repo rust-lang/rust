@@ -12,7 +12,7 @@ pub trait SimdPartialEq {
     #[must_use = "method returns a new mask and does not mutate the original value"]
     fn simd_eq(self, other: Self) -> Self::Mask;
 
-    /// Test if each element is equal to the corresponding element in `other`.
+    /// Test if each element is not equal to the corresponding element in `other`.
     #[must_use = "method returns a new mask and does not mutate the original value"]
     fn simd_ne(self, other: Self) -> Self::Mask;
 }

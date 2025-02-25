@@ -23,7 +23,7 @@ mod zircon {
     type zx_status_t = i32;
     pub const ZX_PROP_NAME: u32 = 3;
 
-    extern "C" {
+    unsafe extern "C" {
         pub fn zx_object_set_property(
             handle: zx_handle_t,
             property: u32,
@@ -49,24 +49,27 @@ impl Thread {
     pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
         let p = Box::into_raw(Box::new(p));
         let mut native: libc::pthread_t = mem::zeroed();
-        let mut attr: libc::pthread_attr_t = mem::zeroed();
-        assert_eq!(libc::pthread_attr_init(&mut attr), 0);
+        let mut attr: mem::MaybeUninit<libc::pthread_attr_t> = mem::MaybeUninit::uninit();
+        assert_eq!(libc::pthread_attr_init(attr.as_mut_ptr()), 0);
 
         #[cfg(target_os = "espidf")]
         if stack > 0 {
             // Only set the stack if a non-zero value is passed
             // 0 is used as an indication that the default stack size configured in the ESP-IDF menuconfig system should be used
             assert_eq!(
-                libc::pthread_attr_setstacksize(&mut attr, cmp::max(stack, min_stack_size(&attr))),
+                libc::pthread_attr_setstacksize(
+                    attr.as_mut_ptr(),
+                    cmp::max(stack, min_stack_size(&attr))
+                ),
                 0
             );
         }
 
         #[cfg(not(target_os = "espidf"))]
         {
-            let stack_size = cmp::max(stack, min_stack_size(&attr));
+            let stack_size = cmp::max(stack, min_stack_size(attr.as_ptr()));
 
-            match libc::pthread_attr_setstacksize(&mut attr, stack_size) {
+            match libc::pthread_attr_setstacksize(attr.as_mut_ptr(), stack_size) {
                 0 => {}
                 n => {
                     assert_eq!(n, libc::EINVAL);
@@ -77,16 +80,16 @@ impl Thread {
                     let page_size = os::page_size();
                     let stack_size =
                         (stack_size + page_size - 1) & (-(page_size as isize - 1) as usize - 1);
-                    assert_eq!(libc::pthread_attr_setstacksize(&mut attr, stack_size), 0);
+                    assert_eq!(libc::pthread_attr_setstacksize(attr.as_mut_ptr(), stack_size), 0);
                 }
             };
         }
 
-        let ret = libc::pthread_create(&mut native, &attr, thread_start, p as *mut _);
+        let ret = libc::pthread_create(&mut native, attr.as_ptr(), thread_start, p as *mut _);
         // Note: if the thread creation fails and this assert fails, then p will
         // be leaked. However, an alternative design could cause double-free
         // which is clearly worse.
-        assert_eq!(libc::pthread_attr_destroy(&mut attr), 0);
+        assert_eq!(libc::pthread_attr_destroy(attr.as_mut_ptr()), 0);
 
         return if ret != 0 {
             // The thread failed to start and as a result p was not consumed. Therefore, it is
@@ -144,7 +147,7 @@ impl Thread {
                     const TASK_COMM_LEN: usize = 16;
                     let name = truncate_cstr::<{ TASK_COMM_LEN }>(name);
                 } else {
-                    // FreeBSD, DragonFly, FreeBSD and NuttX do not enforce length limits.
+                    // FreeBSD, DragonFly BSD and NuttX do not enforce length limits.
                 }
             };
             // Available since glibc 2.12, musl 1.1.16, and uClibc 1.0.20 for Linux,
@@ -230,7 +233,7 @@ impl Thread {
     #[cfg(target_os = "vxworks")]
     pub fn set_name(name: &CStr) {
         // FIXME(libc): adding real STATUS, ERROR type eventually.
-        extern "C" {
+        unsafe extern "C" {
             fn taskNameSet(task_id: libc::TASK_ID, task_name: *mut libc::c_char) -> libc::c_int;
         }
 
@@ -506,7 +509,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
         } else if #[cfg(target_os = "vxworks")] {
             // Note: there is also `vxCpuConfiguredGet`, closer to _SC_NPROCESSORS_CONF
             // expectations than the actual cores availability.
-            extern "C" {
+            unsafe extern "C" {
                 fn vxCpuEnabledGet() -> libc::cpuset_t;
             }
 

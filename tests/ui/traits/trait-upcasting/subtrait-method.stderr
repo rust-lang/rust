@@ -12,8 +12,9 @@ LL | trait Baz: Bar {
    | ^^^^^^^^^^^^^^
 help: there is a method `a` with a similar name
    |
-LL |     bar.a();
-   |         ~
+LL -     bar.c();
+LL +     bar.a();
+   |
 
 error[E0599]: no method named `b` found for reference `&dyn Foo` in the current scope
   --> $DIR/subtrait-method.rs:57:9
@@ -29,8 +30,9 @@ LL | trait Bar: Foo {
    | ^^^^^^^^^^^^^^
 help: there is a method `a` with a similar name
    |
-LL |     foo.a();
-   |         ~
+LL -     foo.b();
+LL +     foo.a();
+   |
 
 error[E0599]: no method named `c` found for reference `&dyn Foo` in the current scope
   --> $DIR/subtrait-method.rs:59:9
@@ -46,8 +48,9 @@ LL | trait Baz: Bar {
    | ^^^^^^^^^^^^^^
 help: there is a method `a` with a similar name
    |
-LL |     foo.a();
-   |         ~
+LL -     foo.c();
+LL +     foo.a();
+   |
 
 error[E0599]: no method named `b` found for reference `&dyn Foo` in the current scope
   --> $DIR/subtrait-method.rs:63:9
@@ -63,8 +66,9 @@ LL | trait Bar: Foo {
    | ^^^^^^^^^^^^^^
 help: there is a method `a` with a similar name
    |
-LL |     foo.a();
-   |         ~
+LL -     foo.b();
+LL +     foo.a();
+   |
 
 error[E0599]: no method named `c` found for reference `&dyn Foo` in the current scope
   --> $DIR/subtrait-method.rs:65:9
@@ -80,8 +84,9 @@ LL | trait Baz: Bar {
    | ^^^^^^^^^^^^^^
 help: there is a method `a` with a similar name
    |
-LL |     foo.a();
-   |         ~
+LL -     foo.c();
+LL +     foo.a();
+   |
 
 error: aborting due to 5 previous errors
 

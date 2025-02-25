@@ -100,8 +100,9 @@ LL | fn apit(_: &impl Sized) -> impl Sized {}
    |             ^^^^^^^^^^
 help: use the precise capturing `use<...>` syntax to make the captures explicit
    |
-LL | fn apit<T: Sized>(_: &T) -> impl Sized + use<T> {}
-   |        ++++++++++     ~                ++++++++
+LL - fn apit(_: &impl Sized) -> impl Sized {}
+LL + fn apit<T: Sized>(_: &T) -> impl Sized + use<T> {}
+   |
 
 error: `impl Sized` will capture more lifetimes than possibly intended in edition 2024
   --> $DIR/overcaptures-2024.rs:37:38
@@ -124,8 +125,9 @@ LL | fn apit2<U>(_: &impl Sized, _: U) -> impl Sized {}
    |                 ^^^^^^^^^^
 help: use the precise capturing `use<...>` syntax to make the captures explicit
    |
-LL | fn apit2<U, T: Sized>(_: &T, _: U) -> impl Sized + use<U, T> {}
-   |           ++++++++++      ~                      +++++++++++
+LL - fn apit2<U>(_: &impl Sized, _: U) -> impl Sized {}
+LL + fn apit2<U, T: Sized>(_: &T, _: U) -> impl Sized + use<U, T> {}
+   |
 
 error: `impl Sized` will capture more lifetimes than possibly intended in edition 2024
   --> $DIR/overcaptures-2024.rs:41:37

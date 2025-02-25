@@ -237,11 +237,11 @@ impl<'ll, 'tcx> BaseTypeCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
 impl Type {
     /// Creates an integer type with the given number of bits, e.g., i24
-    pub fn ix_llcx(llcx: &llvm::Context, num_bits: u64) -> &Type {
+    pub(crate) fn ix_llcx(llcx: &llvm::Context, num_bits: u64) -> &Type {
         unsafe { llvm::LLVMIntTypeInContext(llcx, num_bits as c_uint) }
     }
 
-    pub fn ptr_llcx(llcx: &llvm::Context) -> &Type {
+    pub(crate) fn ptr_llcx(llcx: &llvm::Context) -> &Type {
         unsafe { llvm::LLVMPointerTypeInContext(llcx, AddressSpace::DATA.0) }
     }
 }

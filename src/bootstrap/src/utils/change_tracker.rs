@@ -345,4 +345,19 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "Rustdoc now respects the value of rust.lto.",
     },
+    ChangeInfo {
+        change_id: 136941,
+        severity: ChangeSeverity::Info,
+        summary: "The llvm.ccache option has moved to build.ccache. llvm.ccache is now deprecated.",
+    },
+    ChangeInfo {
+        change_id: 137170,
+        severity: ChangeSeverity::Info,
+        summary: "It is now possible to configure `jemalloc` for each target",
+    },
+    ChangeInfo {
+        change_id: 137215,
+        severity: ChangeSeverity::Info,
+        summary: "Added `build.test-stage = 2` to 'tools' profile defaults",
+    },
 ];
