@@ -626,7 +626,6 @@ pub enum StashKey {
     MaybeFruTypo,
     CallAssocMethod,
     AssociatedTypeSuggestion,
-    MaybeForgetReturn,
     /// Query cycle detected, stashing in favor of a better error.
     Cycle,
     UndeterminedMacroResolution,
