@@ -5,6 +5,7 @@
 //! docs for usage and details.
 
 mod conversions;
+mod ids;
 mod import_finder;
 
 use std::cell::RefCell;
@@ -16,7 +17,6 @@ use std::rc::Rc;
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
-use rustc_span::Symbol;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustdoc_json_types as types;
 // It's important to use the FxHashMap from rustdoc_json_types here, instead of
@@ -35,14 +35,6 @@ use crate::formats::cache::Cache;
 use crate::json::conversions::IntoJson;
 use crate::{clean, try_err};
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
-struct FullItemId {
-    def_id: DefId,
-    name: Option<Symbol>,
-    /// Used to distinguish imports of different items with the same name
-    extra: Option<types::Id>,
-}
-
 #[derive(Clone)]
 pub(crate) struct JsonRenderer<'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -55,7 +47,7 @@ pub(crate) struct JsonRenderer<'tcx> {
     out_dir: Option<PathBuf>,
     cache: Rc<Cache>,
     imported_items: DefIdSet,
-    id_interner: Rc<RefCell<FxHashMap<(FullItemId, Option<FullItemId>), types::Id>>>,
+    id_interner: Rc<RefCell<ids::IdInterner>>,
 }
 
 impl<'tcx> JsonRenderer<'tcx> {
