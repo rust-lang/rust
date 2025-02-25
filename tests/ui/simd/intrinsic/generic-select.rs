@@ -3,8 +3,10 @@
 // Test that the simd_select intrinsic produces ok-ish error
 // messages when misused.
 
-#![feature(repr_simd, intrinsics)]
+#![feature(repr_simd, core_intrinsics)]
 #![allow(non_camel_case_types)]
+
+use std::intrinsics::simd::{simd_select, simd_select_bitmask};
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
@@ -21,14 +23,6 @@ struct b8x4(pub [i8; 4]);
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq)]
 struct b8x8(pub [i8; 8]);
-
-
-#[rustc_intrinsic]
-unsafe fn simd_select<T, U>(x: T, a: U, b: U) -> U;
-
-#[rustc_intrinsic]
-unsafe fn simd_select_bitmask<T, U>(x: T, a: U, b: U) -> U;
-
 
 fn main() {
     let m4 = b8x4([0, 0, 0, 0]);

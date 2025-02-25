@@ -3,10 +3,9 @@
 //
 //@ run-pass
 //@ compile-flags: -Zmir-opt-level=4
-#![feature(intrinsics, repr_simd)]
+#![feature(core_intrinsics, repr_simd)]
 
-#[rustc_intrinsic]
-unsafe fn simd_shuffle<T, I, U>(x: T, y: T, idx: I) -> U;
+use std::intrinsics::simd::simd_shuffle;
 
 #[repr(simd)]
 #[derive(Debug, PartialEq)]
@@ -35,7 +34,6 @@ fn assert_10_11(x: Simd2) {
 fn assert_10_13(x: Simd2) {
     assert_eq!(x, Simd2([10, 13]));
 }
-
 
 #[inline(always)]
 unsafe fn inline_me() -> Simd2 {

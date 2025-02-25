@@ -1,12 +1,11 @@
 //@ run-pass
 #![allow(non_camel_case_types)]
-
 //@ ignore-emscripten
 
 // Test that the simd_reduce_{op} intrinsics produce the correct results.
+#![feature(repr_simd, core_intrinsics)]
 
-#![feature(repr_simd, intrinsics)]
-#[allow(non_camel_case_types)]
+use std::intrinsics::simd::*;
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
@@ -23,39 +22,6 @@ struct f32x4(pub [f32; 4]);
 #[repr(simd)]
 #[derive(Copy, Clone)]
 struct b8x4(pub [i8; 4]);
-
-#[rustc_intrinsic]
-unsafe fn simd_reduce_add_unordered<T, U>(x: T) -> U;
-
-#[rustc_intrinsic]
-unsafe fn simd_reduce_mul_unordered<T, U>(x: T) -> U;
-
-#[rustc_intrinsic]
-unsafe fn simd_reduce_add_ordered<T, U>(x: T, acc: U) -> U;
-
-#[rustc_intrinsic]
-unsafe fn simd_reduce_mul_ordered<T, U>(x: T, acc: U) -> U;
-
-#[rustc_intrinsic]
-unsafe fn simd_reduce_min<T, U>(x: T) -> U;
-
-#[rustc_intrinsic]
-unsafe fn simd_reduce_max<T, U>(x: T) -> U;
-
-#[rustc_intrinsic]
-unsafe fn simd_reduce_and<T, U>(x: T) -> U;
-
-#[rustc_intrinsic]
-unsafe fn simd_reduce_or<T, U>(x: T) -> U;
-
-#[rustc_intrinsic]
-unsafe fn simd_reduce_xor<T, U>(x: T) -> U;
-
-#[rustc_intrinsic]
-unsafe fn simd_reduce_all<T>(x: T) -> bool;
-
-#[rustc_intrinsic]
-unsafe fn simd_reduce_any<T>(x: T) -> bool;
 
 fn main() {
     unsafe {
