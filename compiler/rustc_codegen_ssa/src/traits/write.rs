@@ -40,7 +40,7 @@ pub trait WriteBackendMethods: 'static + Sized + Clone {
     unsafe fn optimize(
         cgcx: &CodegenContext<Self>,
         dcx: DiagCtxtHandle<'_>,
-        module: &ModuleCodegen<Self::Module>,
+        module: &mut ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) -> Result<(), FatalError>;
     fn optimize_fat(
