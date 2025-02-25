@@ -25,15 +25,15 @@ impl FileDesc {
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
-        usercalls::read(self.fd, &mut [IoSliceMut::new(buf)])
+        usercalls::read(self.fd, buf)
     }
 
     pub fn read_buf(&self, buf: BorrowedCursor<'_>) -> io::Result<()> {
-        crate::io::default_read_buf(|b| self.read(b), buf)
+        usercalls::read_buf(self.fd, buf)
     }
 
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        usercalls::read(self.fd, bufs)
+        usercalls::read_vectored(self.fd, bufs)
     }
 
     #[inline]
@@ -42,11 +42,11 @@ impl FileDesc {
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
-        usercalls::write(self.fd, &[IoSlice::new(buf)])
+        usercalls::write(self.fd, buf)
     }
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        usercalls::write(self.fd, bufs)
+        usercalls::write_vectored(self.fd, bufs)
     }
 
     #[inline]
