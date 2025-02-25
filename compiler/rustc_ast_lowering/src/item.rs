@@ -11,6 +11,7 @@ use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::span_bug;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_span::edit_distance::find_best_match_for_name;
+use rustc_span::source_map::{Spanned, respan};
 use rustc_span::{DUMMY_SP, DesugaringKind, Ident, Span, Symbol, kw, sym};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
@@ -1678,7 +1679,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     pub(super) fn lower_define_opaques(
         &mut self,
         define_opaques: &Option<ThinVec<(NodeId, Path)>>,
-    ) -> Option<&'hir [LocalDefId]> {
+    ) -> Option<&'hir [Spanned<LocalDefId>]> {
         define_opaques.as_ref().map(|d| {
             &*self.arena.alloc_from_iter(d.iter().filter_map(|(id, path)| {
                 let res = self.resolver.get_partial_res(*id).unwrap();
@@ -1693,7 +1694,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     );
                     return None;
                 };
-                Some(did)
+                Some(respan(self.lower_span(path.span), did))
             }))
         })
     }

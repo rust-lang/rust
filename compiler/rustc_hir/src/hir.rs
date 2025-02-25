@@ -704,7 +704,7 @@ pub struct Generics<'hir> {
     pub has_where_clause_predicates: bool,
     pub where_clause_span: Span,
     pub span: Span,
-    pub define_opaques: Option<&'hir [LocalDefId]>,
+    pub define_opaques: Option<&'hir [Spanned<LocalDefId>]>,
 }
 
 impl<'hir> Generics<'hir> {
@@ -1436,7 +1436,7 @@ pub struct Closure<'hir> {
     /// The span of the argument block `|...|`
     pub fn_arg_span: Option<Span>,
     pub kind: ClosureKind,
-    pub define_opaques: Option<&'hir [LocalDefId]>,
+    pub define_opaques: Option<&'hir [Spanned<LocalDefId>]>,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Copy, Hash, HashStable_Generic, Encodable, Decodable)]
@@ -4087,7 +4087,7 @@ pub enum ItemKind<'hir> {
     Use(&'hir UsePath<'hir>, UseKind),
 
     /// A `static` item.
-    Static(&'hir Ty<'hir>, Mutability, BodyId, Option<&'hir [LocalDefId]>),
+    Static(&'hir Ty<'hir>, Mutability, BodyId, Option<&'hir [Spanned<LocalDefId>]>),
     /// A `const` item.
     Const(&'hir Ty<'hir>, &'hir Generics<'hir>, BodyId),
     /// A function declaration.
@@ -4619,7 +4619,7 @@ impl<'hir> Node<'hir> {
         }
     }
 
-    pub fn define_opaques(&self) -> Option<&'hir [LocalDefId]> {
+    pub fn define_opaques(&self) -> Option<&'hir [Spanned<LocalDefId>]> {
         match self {
             Node::Item(Item { kind: ItemKind::Static(.., define_opaques), .. }) => *define_opaques,
             Node::Expr(Expr { kind: ExprKind::Closure(c), .. }) => c.define_opaques,

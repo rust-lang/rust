@@ -181,11 +181,13 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
             return;
         };
         for &define in defines {
-            // TODO: check that `define` is a type alias (and add tests)
             trace!(?define);
             let mode = std::mem::replace(&mut self.mode, CollectionMode::Taits);
-            // TODO: check that opaque types were introduced and error otherwise (also add tests)
-            super::sig_types::walk_types(self.tcx, define, self);
+            let n = self.opaques.len();
+            super::sig_types::walk_types(self.tcx, define.node, self);
+            if n == self.opaques.len() {
+                self.tcx.dcx().span_err(define.span, "item does not contain any opaque types");
+            }
             self.mode = mode;
         }
         // Allow using `#[defines]` on assoc methods and type aliases to override the default collection mode in
