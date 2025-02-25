@@ -397,12 +397,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         expr: &'hir hir::Expr<'hir>,
         span: Span,
-        check_ident: Ident,
-        check_hir_id: HirId,
+        cond_ident: Ident,
+        cond_hir_id: HirId,
     ) -> &'hir hir::Expr<'hir> {
-        let checker_fn = self.expr_ident(span, check_ident, check_hir_id);
+        let cond_fn = self.expr_ident(span, cond_ident, cond_hir_id);
         let span = self.mark_span_with_reason(DesugaringKind::Contract, span, None);
-        self.expr_call(span, checker_fn, std::slice::from_ref(expr))
+        let call_expr = self.expr_call_lang_item_fn_mut(
+            span,
+            hir::LangItem::ContractCheckEnsures,
+            arena_vec![self; *expr, *cond_fn],
+        );
+        self.arena.alloc(call_expr)
     }
 
     pub(crate) fn lower_const_block(&mut self, c: &AnonConst) -> hir::ConstBlock {

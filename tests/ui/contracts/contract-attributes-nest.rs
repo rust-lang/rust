@@ -21,6 +21,7 @@
 
 #[core::contracts::requires(x.baz > 0)]
 #[core::contracts::ensures(|ret| *ret > 100)]
+//~^ WARN unreachable expression [unreachable_code]
 fn nest(x: Baz) -> i32
 {
     loop {
