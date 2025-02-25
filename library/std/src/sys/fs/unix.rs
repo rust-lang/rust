@@ -543,7 +543,12 @@ impl FileAttr {
         SystemTime::new(self.stat.st_atim.tv_sec as i64, self.stat.st_atim.tv_nsec as i64)
     }
 
-    #[cfg(any(target_os = "freebsd", target_os = "openbsd", target_vendor = "apple", target_os = "cygwin"))]
+    #[cfg(any(
+        target_os = "freebsd",
+        target_os = "openbsd",
+        target_vendor = "apple",
+        target_os = "cygwin",
+    ))]
     pub fn created(&self) -> io::Result<SystemTime> {
         SystemTime::new(self.stat.st_birthtime as i64, self.stat.st_birthtime_nsec as i64)
     }
