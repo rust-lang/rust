@@ -98,7 +98,7 @@ into_diag_arg_using_display!(
 );
 
 impl IntoDiagArg for RustcVersion {
-    fn into_diag_arg(self) -> DiagArgValue {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
         DiagArgValue::Str(Cow::Owned(self.to_string()))
     }
 }
