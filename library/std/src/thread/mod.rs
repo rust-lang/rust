@@ -1739,7 +1739,16 @@ struct JoinInner<'scope, T> {
 impl<'scope, T> JoinInner<'scope, T> {
     fn join(mut self) -> Result<T> {
         self.native.join();
-        Arc::get_mut(&mut self.packet).unwrap().result.get_mut().take().unwrap()
+        Arc::get_mut(&mut self.packet)
+            // FIXME(fuzzypixelz): returning an error instead of panicking here
+            // would require updating the documentation of
+            // `std::thread::Result`; currently we can return `Err` if and only
+            // if the thread had panicked.
+            .expect("threads should not terminate unexpectedly")
+            .result
+            .get_mut()
+            .take()
+            .unwrap()
     }
 }
 
