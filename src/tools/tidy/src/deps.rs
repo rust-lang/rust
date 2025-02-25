@@ -328,6 +328,8 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "memmap2",
     "miniz_oxide",
     "nix",
+    "non_structural_derive",
+    "non_structural_derive_macro",
     "nu-ansi-term",
     "num-conv",
     "num_cpus",

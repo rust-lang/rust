@@ -2305,6 +2305,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "non_structural_derive"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aed7569875af28b9afd5a1345c46e0783fb089513900e82b9e9772655052e06b"
+dependencies = [
+ "non_structural_derive_macro",
+]
+
+[[package]]
+name = "non_structural_derive_macro"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "31f21ad3edbb941ca9c7b62117ecc8da48b2052d905f9fb206256543c6341506"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.96",
+ "synstructure",
+]
+
+[[package]]
 name = "normpath"
 version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3998,6 +4019,7 @@ dependencies = [
  "bitflags",
  "either",
  "gsgdt",
+ "non_structural_derive",
  "polonius-engine",
  "rustc-rayon-core",
  "rustc_abi",

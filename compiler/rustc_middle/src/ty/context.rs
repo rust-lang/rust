@@ -13,6 +13,7 @@ use std::ops::{Bound, Deref};
 use std::sync::{Arc, OnceLock};
 use std::{fmt, iter, mem};
 
+use non_structural_derive::non_structural_derive;
 use rustc_abi::{ExternAbi, FieldIdx, Layout, LayoutData, TargetDataLayout, VariantIdx};
 use rustc_ast as ast;
 use rustc_data_structures::defer;
@@ -23,9 +24,7 @@ use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::sync::{
-    self, DynSend, DynSync, FreezeReadGuard, Lock, RwLock, WorkerLocal,
-};
+use rustc_data_structures::sync::{DynSend, DynSync, FreezeReadGuard, Lock, RwLock, WorkerLocal};
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, LintDiagnostic, MultiSpan,
@@ -1317,13 +1316,12 @@ impl<'tcx> TyCtxtFeed<'tcx, LocalDefId> {
 #[derive(Copy, Clone)]
 #[rustc_diagnostic_item = "TyCtxt"]
 #[rustc_pass_by_value]
+// We avoid the structural builtin auto-trait impls here
+// as recursing into the fields of the `TyCtxt` is quite
+// expensive and causes overflow errors with the new solver.
+#[non_structural_derive(DynSend, DynSync)]
 pub struct TyCtxt<'tcx> {
     gcx: &'tcx GlobalCtxt<'tcx>,
-}
-
-fn _assert_tcx_fields() {
-    sync::assert_dyn_sync::<&'_ GlobalCtxt<'_>>();
-    sync::assert_dyn_send::<&'_ GlobalCtxt<'_>>();
 }
 
 impl<'tcx> Deref for TyCtxt<'tcx> {
