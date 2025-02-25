@@ -1,3 +1,5 @@
+#![feature(f16, f128, float_gamma, float_minimum_maximum)]
+
 use std::fmt;
 use std::ops::{Add, Div, Mul, Rem, Sub};
 
@@ -8,7 +10,7 @@ macro_rules! assert_approx_eq {
         let (a, b) = (&$a, &$b);
         let diff = (*a - *b).abs();
         assert!(
-            diff <= $lim,
+            diff < $lim,
             "{a:?} is not approximately equal to {b:?} (threshold {lim:?}, difference {diff:?})",
             lim = $lim
         );
