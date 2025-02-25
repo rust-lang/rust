@@ -2,9 +2,12 @@ error[E0261]: use of undeclared lifetime name `'reborrow`
   --> $DIR/missing_lifetime.rs:4:15
    |
 LL | struct Slice(&'reborrow [&'static [u8]]);
-   |             - ^^^^^^^^^ undeclared lifetime
-   |             |
-   |             help: consider introducing lifetime `'reborrow` here: `<'reborrow>`
+   |               ^^^^^^^^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'reborrow` here
+   |
+LL | struct Slice<'reborrow>(&'reborrow [&'static [u8]]);
+   |             +++++++++++
 
 error: aborting due to 1 previous error
 

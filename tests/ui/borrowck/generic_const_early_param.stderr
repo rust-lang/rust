@@ -7,19 +7,24 @@ LL | struct DataWrapper<'static> {
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/generic_const_early_param.rs:6:12
    |
-LL | struct DataWrapper<'static> {
-   |                    - help: consider introducing lifetime `'a` here: `'a,`
-LL |
 LL |     data: &'a [u8; Self::SIZE],
    |            ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | struct DataWrapper<'a, 'static> {
+   |                    +++
 
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/generic_const_early_param.rs:10:18
    |
 LL | impl DataWrapper<'a> {
-   |     -            ^^ undeclared lifetime
-   |     |
-   |     help: consider introducing lifetime `'a` here: `<'a>`
+   |                  ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | impl<'a> DataWrapper<'a> {
+   |     ++++
 
 warning: the feature `generic_const_exprs` is incomplete and may not be safe to use and/or cause compiler crashes
   --> $DIR/generic_const_early_param.rs:1:12
