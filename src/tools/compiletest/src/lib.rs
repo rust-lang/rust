@@ -63,7 +63,8 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .optopt("", "llvm-filecheck", "path to LLVM's FileCheck binary", "DIR")
         .reqopt("", "src-root", "directory containing sources", "PATH")
         .reqopt("", "src-test-suite-root", "directory containing test suite sources", "PATH")
-        .reqopt("", "build-base", "directory to deposit test outputs", "PATH")
+        .reqopt("", "build-root", "path to root build directory", "PATH")
+        .reqopt("", "build-test-suite-root", "path to test suite specific build directory", "PATH")
         .reqopt("", "sysroot-base", "directory containing the compiler sysroot", "PATH")
         .reqopt("", "stage", "stage number under test", "N")
         .reqopt("", "stage-id", "the target-stage identifier", "stageN-TARGET")
@@ -157,7 +158,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "",
             "rustfix-coverage",
             "enable this to generate a Rustfix coverage file, which is saved in \
-            `./<build_base>/rustfix_missing_coverage.txt`",
+            `./<build_test_suite_root>/rustfix_missing_coverage.txt`",
         )
         .optflag("", "force-rerun", "rerun tests even if the inputs are unchanged")
         .optflag("", "only-modified", "only run tests that result been modified")
@@ -309,6 +310,10 @@ pub fn parse_config(args: Vec<String>) -> Config {
         src_test_suite_root.display()
     );
 
+    let build_root = opt_path(matches, "build-root");
+    let build_test_suite_root = opt_path(matches, "build-test-suite-root");
+    assert!(build_test_suite_root.starts_with(&build_root));
+
     Config {
         bless: matches.opt_present("bless"),
         compile_lib_path: make_absolute(opt_path(matches, "compile-lib-path")),
@@ -327,7 +332,9 @@ pub fn parse_config(args: Vec<String>) -> Config {
         src_root,
         src_test_suite_root,
 
-        build_base: opt_path(matches, "build-base"),
+        build_root,
+        build_test_suite_root,
+
         sysroot_base: opt_path(matches, "sysroot-base"),
 
         stage,
@@ -438,7 +445,11 @@ pub fn log_config(config: &Config) {
     logv(c, format!("src_root: {}", config.src_root.display()));
     logv(c, format!("src_test_suite_root: {}", config.src_test_suite_root.display()));
 
-    logv(c, format!("build_base: {:?}", config.build_base.display()));
+    logv(c, format!("build_root: {}", config.build_root.display()));
+    logv(c, format!("build_test_suite_root: {}", config.build_test_suite_root.display()));
+
+    logv(c, format!("sysroot_base: {}", config.sysroot_base.display()));
+
     logv(c, format!("stage: {}", config.stage));
     logv(c, format!("stage_id: {}", config.stage_id));
     logv(c, format!("mode: {}", config.mode));
@@ -488,7 +499,7 @@ pub fn run_tests(config: Arc<Config>) {
     // we first make sure that the coverage file does not exist.
     // It will be created later on.
     if config.rustfix_coverage {
-        let mut coverage_file_path = config.build_base.clone();
+        let mut coverage_file_path = config.build_test_suite_root.clone();
         coverage_file_path.push("rustfix_missing_coverage.txt");
         if coverage_file_path.exists() {
             if let Err(e) = fs::remove_file(&coverage_file_path) {
