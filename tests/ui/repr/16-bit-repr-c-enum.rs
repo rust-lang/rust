@@ -24,10 +24,7 @@ enum Foo {
 #[stable(feature = "intrinsics_for_test", since = "3.3.3")]
 #[rustc_const_stable(feature = "intrinsics_for_test", since = "3.3.3")]
 #[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
-const fn size_of<T>() -> usize {
-    loop {}
-}
+const fn size_of<T>() -> usize;
 
 #[lang="sized"]
 trait Sized {}
