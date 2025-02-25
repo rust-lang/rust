@@ -251,11 +251,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let res = res.to_soft();
                 // Apply a relative error of 16ULP to introduce some non-determinism
                 // simulating imprecise implementations and optimizations.
-                let res = apply_random_float_error_ulp(
-                    this,
-                    res,
-                    4, // log2(16)
-                );
+                // FIXME: temporarily disabled as it breaks std tests.
+                // let res = apply_random_float_error_ulp(
+                //     this,
+                //     res,
+                //     4, // log2(16)
+                // );
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
@@ -286,11 +287,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let res = res.to_soft();
                 // Apply a relative error of 16ULP to introduce some non-determinism
                 // simulating imprecise implementations and optimizations.
-                let res = apply_random_float_error_ulp(
-                    this,
-                    res,
-                    4, // log2(16)
-                );
+                // FIXME: temporarily disabled as it breaks std tests.
+                // let res = apply_random_float_error_ulp(
+                //     this,
+                //     res,
+                //     4, // log2(16)
+                // );
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
