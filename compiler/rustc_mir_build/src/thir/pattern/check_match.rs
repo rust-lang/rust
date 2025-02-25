@@ -24,7 +24,7 @@ use rustc_session::lint::builtin::{
 };
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::DesugaringKind;
-use rustc_span::{Ident, Span};
+use rustc_span::{ExpnKind, Ident, Span};
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::instrument;
 
@@ -543,6 +543,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
                     witnesses,
                     arms,
                     braces_span,
+                    expr_span,
                 ));
             }
         }
@@ -1210,6 +1211,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
     witnesses: Vec<WitnessPat<'p, 'tcx>>,
     arms: &[ArmId],
     braces_span: Option<Span>,
+    expr_span: Span,
 ) -> ErrorGuaranteed {
     let is_empty_match = arms.is_empty();
     let non_empty_enum = match scrut_ty.kind() {
@@ -1350,11 +1352,10 @@ fn report_non_exhaustive_match<'p, 'tcx>(
                 format!(" {{{indentation}{more}{suggested_arm},{indentation}}}",),
             ));
         }
-        [only] => {
+        [only] if let Some(braces_span) = braces_span => {
             let only = &thir[*only];
             let only_body = &thir[only.body];
             let pre_indentation = if let Some(snippet) = sm.indentation_before(only.span)
-                && let Some(braces_span) = braces_span
                 && sm.is_multiline(braces_span)
             {
                 format!("\n{snippet}")
@@ -1383,7 +1384,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
                 format!("{comma}{pre_indentation}{suggested_arm}"),
             ));
         }
-        [.., prev, last] => {
+        [.., prev, last] if braces_span.is_some() => {
             let prev = &thir[*prev];
             let last = &thir[*last];
             if prev.span.eq_ctxt(last.span) {
@@ -1418,7 +1419,25 @@ fn report_non_exhaustive_match<'p, 'tcx>(
                 }
             }
         }
-        _ => {}
+        _ => {
+            if let Some(data) = expr_span.macro_backtrace().next()
+                && let ExpnKind::Macro(macro_kind, name) = data.kind
+            {
+                let macro_kind = macro_kind.descr();
+                // We don't want to point at the macro invocation place as that is already shown
+                // or talk about macro-backtrace and the macro's name, as we are already doing
+                // that as part of this note.
+                let mut span: MultiSpan = expr_span.with_ctxt(data.call_site.ctxt()).into();
+                span.push_span_label(data.def_site, "");
+                err.span_note(
+                    span,
+                    format!(
+                        "within {macro_kind} `{name}`, this `match` expression doesn't expand to \
+                         cover all patterns",
+                    ),
+                );
+            }
+        }
     }
 
     let msg = format!(
