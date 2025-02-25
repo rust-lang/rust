@@ -35,7 +35,6 @@ impl<F: Float> Generator<F> for FewOnesInt<F>
 where
     <F::Int as TryFrom<u128>>::Error: std::fmt::Debug,
 {
-    const NAME: &'static str = "few ones int";
     const SHORT_NAME: &'static str = "few ones int";
 
     type WriteCtx = F::Int;

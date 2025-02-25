@@ -177,7 +177,7 @@ impl_float!(f32, u32, 32; f64, u64, 64);
 /// allocations (which otherwise turn out to be a pretty expensive part of these tests).
 pub trait Generator<F: Float>: Iterator<Item = Self::WriteCtx> + Send + 'static {
     /// Full display and filtering name
-    const NAME: &'static str;
+    const NAME: &'static str = Self::SHORT_NAME;
 
     /// Name for display with the progress bar
     const SHORT_NAME: &'static str;
