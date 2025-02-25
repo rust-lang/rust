@@ -130,7 +130,14 @@ impl<'a> Parser<'a> {
             let style =
                 if this.eat(exp!(Not)) { ast::AttrStyle::Inner } else { ast::AttrStyle::Outer };
 
-            this.expect(exp!(OpenBracket))?;
+            let bracket_res = this.expect(exp!(OpenBracket));
+            // If `#!` is not followed by `[`
+            if bracket_res.is_err() && style == ast::AttrStyle::Inner {
+                return Err(bracket_res
+                    .unwrap_err()
+                    .with_note("shebangs `#!` must be at the start of the file"));
+            }
+            bracket_res?;
             let item = this.parse_attr_item(ForceCollect::No)?;
             this.expect(exp!(CloseBracket))?;
             let attr_sp = lo.to(this.prev_token.span);
