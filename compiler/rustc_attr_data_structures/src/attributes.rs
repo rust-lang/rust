@@ -177,7 +177,7 @@ pub enum AttributeKind {
     },
     ConstStabilityIndirect,
     /// List of type aliases that contain the opaque types that can be defined by the current item.
-    DefineOpaques(ThinVec<LocalDefId>),
+    DefineOpaques(ThinVec<(Span, LocalDefId)>),
     Deprecation {
         deprecation: Deprecation,
         span: Span,

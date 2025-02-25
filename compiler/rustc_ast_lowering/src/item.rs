@@ -1691,7 +1691,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     );
                     return None;
                 };
-                Some(did)
+                Some((self.lower_span(path.span), did))
             })
             .collect();
         Some(hir::Attribute::Parsed(AttributeKind::DefineOpaques(define_opaques)))
