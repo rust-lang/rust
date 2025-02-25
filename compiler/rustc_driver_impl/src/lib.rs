@@ -271,7 +271,7 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
 
     let registered_lints = config.register_lints.is_some();
 
-    interface::run_compiler(config, |compiler| {
+    if let Err(error_msg) = interface::run_compiler(config, |compiler| {
         let sess = &compiler.sess;
         let codegen_backend = &*compiler.codegen_backend;
 
@@ -379,7 +379,9 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
         if let Some(linker) = linker {
             linker.link(sess, codegen_backend);
         }
-    })
+    }) {
+        eprintln!("Error: {error_msg}");
+    }
 }
 
 fn dump_feature_usage_metrics(tcxt: TyCtxt<'_>, metrics_dir: &Path) {
