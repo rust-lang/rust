@@ -77,7 +77,7 @@ macro_rules! panic {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "print_macro")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "print_macro", clippy::format_args)]
 #[allow_internal_unstable(print_internals)]
 macro_rules! print {
     ($($arg:tt)*) => {{
@@ -133,7 +133,7 @@ macro_rules! print {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "println_macro")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "println_macro", clippy::format_args)]
 #[allow_internal_unstable(print_internals, format_args_nl)]
 macro_rules! println {
     () => {
@@ -173,7 +173,7 @@ macro_rules! println {
 /// ```
 #[macro_export]
 #[stable(feature = "eprint", since = "1.19.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "eprint_macro")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "eprint_macro", clippy::format_args)]
 #[allow_internal_unstable(print_internals)]
 macro_rules! eprint {
     ($($arg:tt)*) => {{
@@ -211,7 +211,7 @@ macro_rules! eprint {
 /// ```
 #[macro_export]
 #[stable(feature = "eprint", since = "1.19.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "eprintln_macro")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "eprintln_macro", clippy::format_args)]
 #[allow_internal_unstable(print_internals, format_args_nl)]
 macro_rules! eprintln {
     () => {
