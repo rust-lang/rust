@@ -7,12 +7,16 @@ use rustc_errors::{
     Applicability, Diag, EmissionGuarantee, SubdiagMessageOp, Subdiagnostic, SuggestionStyle,
 };
 use rustc_hir::{self as hir, HirIdSet};
-use rustc_macros::LintDiagnostic;
-use rustc_middle::ty::TyCtxt;
+use rustc_macros::{LintDiagnostic, Subdiagnostic};
+use rustc_middle::ty::significant_drop_order::{
+    extract_component_with_significant_dtor, ty_dtor_span,
+};
+use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::lint::{FutureIncompatibilityReason, LintId};
 use rustc_session::{declare_lint, impl_lint_pass};
-use rustc_span::Span;
 use rustc_span::edition::Edition;
+use rustc_span::{DUMMY_SP, Span};
+use smallvec::SmallVec;
 
 use crate::{LateContext, LateLintPass};
 
@@ -129,6 +133,7 @@ impl IfLetRescope {
             hir::ExprKind::If(_cond, _conseq, Some(alt)) => alt.span.shrink_to_hi(),
             _ => return,
         };
+        let mut seen_dyn = false;
         let mut add_bracket_to_match_head = match_head_needs_bracket(tcx, expr);
         let mut significant_droppers = vec![];
         let mut lifetime_ends = vec![];
@@ -136,6 +141,7 @@ impl IfLetRescope {
         let mut alt_heads = vec![];
         let mut match_heads = vec![];
         let mut consequent_heads = vec![];
+        let mut destructors = vec![];
         let mut first_if_to_lint = None;
         let mut first_if_to_rewrite = false;
         let mut empty_alt = false;
@@ -159,11 +165,25 @@ impl IfLetRescope {
                 let before_conseq = conseq.span.shrink_to_lo();
                 let lifetime_end = source_map.end_point(conseq.span);
 
-                if let ControlFlow::Break(significant_dropper) =
+                if let ControlFlow::Break((drop_span, drop_tys)) =
                     (FindSignificantDropper { cx }).visit_expr(init)
                 {
+                    destructors.extend(drop_tys.into_iter().filter_map(|ty| {
+                        if let Some(span) = ty_dtor_span(tcx, ty) {
+                            Some(DestructorLabel { span, dtor_kind: "concrete" })
+                        } else if matches!(ty.kind(), ty::Dynamic(..)) {
+                            if seen_dyn {
+                                None
+                            } else {
+                                seen_dyn = true;
+                                Some(DestructorLabel { span: DUMMY_SP, dtor_kind: "dyn" })
+                            }
+                        } else {
+                            None
+                        }
+                    }));
                     first_if_to_lint = first_if_to_lint.or_else(|| Some((span, expr.hir_id)));
-                    significant_droppers.push(significant_dropper);
+                    significant_droppers.push(drop_span);
                     lifetime_ends.push(lifetime_end);
                     if ty_ascription.is_some()
                         || !expr.span.can_be_used_for_suggestions()
@@ -226,6 +246,7 @@ impl IfLetRescope {
                 hir_id,
                 span,
                 IfLetRescopeLint {
+                    destructors,
                     significant_droppers,
                     lifetime_ends,
                     rewrite: first_if_to_rewrite.then_some(IfLetRescopeRewrite {
@@ -287,6 +308,8 @@ impl<'tcx> LateLintPass<'tcx> for IfLetRescope {
 #[derive(LintDiagnostic)]
 #[diag(lint_if_let_rescope)]
 struct IfLetRescopeLint {
+    #[subdiagnostic]
+    destructors: Vec<DestructorLabel>,
     #[label]
     significant_droppers: Vec<Span>,
     #[help]
@@ -346,6 +369,14 @@ impl Subdiagnostic for IfLetRescopeRewrite {
     }
 }
 
+#[derive(Subdiagnostic)]
+#[note(lint_if_let_dtor)]
+struct DestructorLabel {
+    #[primary_span]
+    span: Span,
+    dtor_kind: &'static str,
+}
+
 struct AltHead(Span);
 
 struct ConsequentRewrite {
@@ -368,16 +399,16 @@ struct FindSignificantDropper<'tcx, 'a> {
 }
 
 impl<'tcx, 'a> Visitor<'tcx> for FindSignificantDropper<'tcx, 'a> {
-    type Result = ControlFlow<Span>;
+    type Result = ControlFlow<(Span, SmallVec<[Ty<'tcx>; 4]>)>;
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> Self::Result {
-        if self
-            .cx
-            .typeck_results()
-            .expr_ty(expr)
-            .has_significant_drop(self.cx.tcx, self.cx.typing_env())
-        {
-            return ControlFlow::Break(expr.span);
+        let drop_tys = extract_component_with_significant_dtor(
+            self.cx.tcx,
+            self.cx.typing_env(),
+            self.cx.typeck_results().expr_ty(expr),
+        );
+        if !drop_tys.is_empty() {
+            return ControlFlow::Break((expr.span, drop_tys));
         }
         match expr.kind {
             hir::ExprKind::ConstBlock(_)

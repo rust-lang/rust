@@ -333,6 +333,11 @@ lint_identifier_uncommon_codepoints = identifier contains {$codepoints_len ->
         *[other] {" "}{$identifier_type}
     } Unicode general security profile
 
+lint_if_let_dtor = {$dtor_kind ->
+    [dyn] value may invoke a custom destructor because it contains a trait object
+    *[concrete] value invokes this custom destructor
+    }
+
 lint_if_let_rescope = `if let` assigns a shorter lifetime since Edition 2024
     .label = this value has a significant drop implementation which may observe a major change in drop order and requires your discretion
     .help = the value is now dropped here in Edition 2024

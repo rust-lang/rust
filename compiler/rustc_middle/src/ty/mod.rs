@@ -122,6 +122,7 @@ pub mod normalize_erasing_regions;
 pub mod pattern;
 pub mod print;
 pub mod relate;
+pub mod significant_drop_order;
 pub mod trait_def;
 pub mod util;
 pub mod visit;
