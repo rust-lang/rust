@@ -1,7 +1,7 @@
-- // MIR for `<impl at $DIR/gvn_clone.rs:14:10: 14:15>::clone` before GVN
-+ // MIR for `<impl at $DIR/gvn_clone.rs:14:10: 14:15>::clone` after GVN
+- // MIR for `<impl at $DIR/gvn_clone.rs:12:10: 12:15>::clone` before GVN
++ // MIR for `<impl at $DIR/gvn_clone.rs:12:10: 12:15>::clone` after GVN
   
-  fn <impl at $DIR/gvn_clone.rs:14:10: 14:15>::clone(_1: &AllCopy) -> AllCopy {
+  fn <impl at $DIR/gvn_clone.rs:12:10: 12:15>::clone(_1: &AllCopy) -> AllCopy {
       debug self => _1;
       let mut _0: AllCopy;
       let mut _2: i32;

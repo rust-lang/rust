@@ -32,12 +32,6 @@ pub(super) struct SsaLocals {
     borrowed_locals: DenseBitSet<Local>,
 }
 
-pub(super) enum AssignedValue<'a, 'tcx> {
-    Arg,
-    Rvalue(&'a mut Rvalue<'tcx>),
-    Terminator,
-}
-
 impl SsaLocals {
     pub(super) fn new<'tcx>(
         tcx: TyCtxt<'tcx>,
@@ -150,38 +144,6 @@ impl SsaLocals {
                 None
             }
         })
-    }
-
-    pub(super) fn for_each_assignment_mut<'tcx>(
-        &self,
-        basic_blocks: &mut IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
-        mut f: impl FnMut(Local, AssignedValue<'_, 'tcx>, Location),
-    ) {
-        for &local in &self.assignment_order {
-            match self.assignments[local] {
-                Set1::One(DefLocation::Argument) => f(
-                    local,
-                    AssignedValue::Arg,
-                    Location { block: START_BLOCK, statement_index: 0 },
-                ),
-                Set1::One(DefLocation::Assignment(loc)) => {
-                    let bb = &mut basic_blocks[loc.block];
-                    // `loc` must point to a direct assignment to `local`.
-                    let stmt = &mut bb.statements[loc.statement_index];
-                    let StatementKind::Assign(box (target, ref mut rvalue)) = stmt.kind else {
-                        bug!()
-                    };
-                    assert_eq!(target.as_local(), Some(local));
-                    f(local, AssignedValue::Rvalue(rvalue), loc)
-                }
-                Set1::One(DefLocation::CallReturn { call, .. }) => {
-                    let bb = &mut basic_blocks[call];
-                    let loc = Location { block: call, statement_index: bb.statements.len() };
-                    f(local, AssignedValue::Terminator, loc)
-                }
-                _ => {}
-            }
-        }
     }
 
     /// Compute the equivalence classes for locals, based on copy statements.

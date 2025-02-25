@@ -17,15 +17,16 @@
           StorageLive(_3);
           _5 = const f::promoted[0];
           _3 = &(*_5);
-          _2 = copy ((*_3).1: E);
--         StorageLive(_1);
-+         nop;
-          _1 = copy ((_2 as A).1: u32);
+-         _2 = copy ((*_3).1: E);
++         _2 = const Scalar(0x00000000): E;
+          StorageLive(_1);
+-         _1 = copy ((_2 as A).1: u32);
++         _1 = const 0_u32;
           StorageDead(_3);
           StorageDead(_2);
-          _0 = copy _1;
--         StorageDead(_1);
-+         nop;
+-         _0 = copy _1;
++         _0 = const 0_u32;
+          StorageDead(_1);
           return;
       }
   }

@@ -1,5 +1,3 @@
-//@ compile-flags: -Zunsound-mir-opts
-// FIXME: see <https://github.com/rust-lang/rust/issues/132353>
 //@ compile-flags: -Cdebuginfo=full
 
 // Check if we have transformed the nested clone to the copy in the complete pipeline.
