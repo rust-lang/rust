@@ -133,7 +133,7 @@ mod llvm_enzyme {
         let dcx = ecx.sess.dcx();
         // first get the annotable item:
         let (sig, is_impl): (FnSig, bool) = match &item {
-            Annotatable::Item(ref iitem) => {
+            Annotatable::Item(iitem) => {
                 let sig = match &iitem.kind {
                     ItemKind::Fn(box ast::Fn { sig, .. }) => sig,
                     _ => {
@@ -143,7 +143,7 @@ mod llvm_enzyme {
                 };
                 (sig.clone(), false)
             }
-            Annotatable::AssocItem(ref assoc_item, _) => {
+            Annotatable::AssocItem(assoc_item, _) => {
                 let sig = match &assoc_item.kind {
                     ast::AssocItemKind::Fn(box ast::Fn { sig, .. }) => sig,
                     _ => {
@@ -171,8 +171,8 @@ mod llvm_enzyme {
         let sig_span = ecx.with_call_site_ctxt(sig.span);
 
         let (vis, primal) = match &item {
-            Annotatable::Item(ref iitem) => (iitem.vis.clone(), iitem.ident.clone()),
-            Annotatable::AssocItem(ref assoc_item, _) => {
+            Annotatable::Item(iitem) => (iitem.vis.clone(), iitem.ident.clone()),
+            Annotatable::AssocItem(assoc_item, _) => {
                 (assoc_item.vis.clone(), assoc_item.ident.clone())
             }
             _ => {
