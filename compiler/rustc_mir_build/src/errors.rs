@@ -1097,34 +1097,41 @@ pub(crate) enum MiscPatternSuggestion {
 
 #[derive(LintDiagnostic)]
 #[diag(mir_build_rust_2024_incompatible_pat)]
-pub(crate) struct Rust2024IncompatiblePat {
+pub(crate) struct Rust2024IncompatiblePat<'m> {
     #[subdiagnostic]
-    pub(crate) sugg: Rust2024IncompatiblePatSugg,
+    pub(crate) sugg: Rust2024IncompatiblePatSugg<'m>,
     pub(crate) bad_modifiers: bool,
     pub(crate) bad_ref_pats: bool,
     pub(crate) is_hard_error: bool,
 }
 
-pub(crate) struct Rust2024IncompatiblePatSugg {
-    /// If true, our suggestion is to elide explicit binding modifiers.
-    /// If false, our suggestion is to make the pattern fully explicit.
-    pub(crate) suggest_eliding_modes: bool,
+pub(crate) struct Rust2024IncompatiblePatSugg<'m> {
     pub(crate) suggestion: Vec<(Span, String)>,
+    /// If `Some(..)`, we provide a suggestion about either adding or removing syntax.
+    /// If `None`, we suggest both additions and removals; use a generic wording for simplicity.
+    pub(crate) kind: Option<Rust2024IncompatiblePatSuggKind>,
     pub(crate) ref_pattern_count: usize,
     pub(crate) binding_mode_count: usize,
     /// Labels for where incompatibility-causing by-ref default binding modes were introduced.
-    pub(crate) default_mode_labels: FxIndexMap<Span, ty::Mutability>,
+    pub(crate) default_mode_labels: &'m FxIndexMap<Span, ty::Mutability>,
 }
 
-impl Subdiagnostic for Rust2024IncompatiblePatSugg {
+pub(crate) enum Rust2024IncompatiblePatSuggKind {
+    Subtractive,
+    Additive,
+}
+
+impl<'m> Subdiagnostic for Rust2024IncompatiblePatSugg<'m> {
     fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
         self,
         diag: &mut Diag<'_, G>,
         _f: &F,
     ) {
+        use Rust2024IncompatiblePatSuggKind::*;
+
         // Format and emit explanatory notes about default binding modes. Reversing the spans' order
         // means if we have nested spans, the innermost ones will be visited first.
-        for (span, def_br_mutbl) in self.default_mode_labels.into_iter().rev() {
+        for (&span, &def_br_mutbl) in self.default_mode_labels.iter().rev() {
             // Don't point to a macro call site.
             if !span.from_expansion() {
                 let note_msg = "matching on a reference type with a non-reference pattern changes the default binding mode";
@@ -1143,17 +1150,33 @@ impl Subdiagnostic for Rust2024IncompatiblePatSugg {
             } else {
                 Applicability::MaybeIncorrect
             };
-        let msg = if self.suggest_eliding_modes {
-            let plural_modes = pluralize!(self.binding_mode_count);
-            format!("remove the unnecessary binding modifier{plural_modes}")
-        } else {
-            let plural_derefs = pluralize!(self.ref_pattern_count);
-            let and_modes = if self.binding_mode_count > 0 {
-                format!(" and variable binding mode{}", pluralize!(self.binding_mode_count))
+        let msg = if let Some(kind) = self.kind {
+            let derefs = if self.ref_pattern_count > 0 {
+                format!("reference pattern{}", pluralize!(self.ref_pattern_count))
             } else {
                 String::new()
             };
-            format!("make the implied reference pattern{plural_derefs}{and_modes} explicit")
+            let modes = if self.binding_mode_count > 0 {
+                match kind {
+                    Subtractive => {
+                        format!("binding modifier{}", pluralize!(self.binding_mode_count))
+                    }
+                    Additive => {
+                        format!("variable binding mode{}", pluralize!(self.binding_mode_count))
+                    }
+                }
+            } else {
+                String::new()
+            };
+            let and = if !derefs.is_empty() && !modes.is_empty() { " and " } else { "" };
+            match kind {
+                Subtractive => format!("remove the unnecessary {derefs}{and}{modes}"),
+                Additive => {
+                    format!("make the implied {derefs}{and}{modes} explicit")
+                }
+            }
+        } else {
+            "rewrite the pattern".to_owned()
         };
         // FIXME(dianne): for peace of mind, don't risk emitting a 0-part suggestion (that panics!)
         if !self.suggestion.is_empty() {
