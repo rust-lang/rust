@@ -599,6 +599,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         macro_rules! stat {
             ($label:literal, $f:expr) => {{
                 let orig_pos = self.position();
+                $label.encode(&mut self.opaque);
                 let res = $f();
                 stats.push(($label, self.position() - orig_pos));
                 res
