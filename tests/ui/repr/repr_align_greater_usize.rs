@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions: msp430 aarch32
 //@[msp430] needs-llvm-components: msp430
 //@[msp430] compile-flags: --target=msp430-none-elf
@@ -12,8 +13,8 @@
 #![no_core]
 #![crate_type = "lib"]
 
-#[lang = "sized"]
-trait Sized {}
+extern crate minicore;
+use minicore::*;
 
 #[repr(align(16384))]
 struct Kitten;

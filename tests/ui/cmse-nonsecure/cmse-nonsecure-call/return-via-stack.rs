@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ compile-flags: --target thumbv8m.main-none-eabi --crate-type lib
 //@ needs-llvm-components: arm
 //@ add-core-stubs

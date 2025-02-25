@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions: COMPAT INCOMPAT
 //@ needs-llvm-components: x86
 //@ compile-flags: --target=x86_64-unknown-linux-gnu -Copt-level=3
@@ -9,10 +10,8 @@
 #![crate_type = "lib"]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 extern "C" {
     fn peach() -> u32;

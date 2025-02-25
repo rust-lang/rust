@@ -1,9 +1,11 @@
+//@ add-core-stubs
 //@ needs-llvm-components: avr
 //@ compile-flags: --target=avr-none -C target-cpu=atmega328p --crate-type=rlib
 #![no_core]
 #![feature(no_core, lang_items)]
-#[lang="sized"]
-trait Sized { }
+
+extern crate minicore;
+use minicore::*;
 
 // Test that the AVR interrupt ABI cannot be used when avr_interrupt
 // feature gate is not used.

@@ -1,5 +1,5 @@
 error[E0703]: invalid ABI: found `riscv-interrupt`
-  --> $DIR/riscv-discoverability-guidance.rs:17:8
+  --> $DIR/riscv-discoverability-guidance.rs:15:8
    |
 LL | extern "riscv-interrupt" fn isr() {}
    |        ^^^^^^^^^^^^^^^^^
@@ -10,7 +10,7 @@ LL | extern "riscv-interrupt" fn isr() {}
    = note: invoke `rustc --print=calling-conventions` for a full list of supported calling conventions
 
 error[E0703]: invalid ABI: found `riscv-interrupt-u`
-  --> $DIR/riscv-discoverability-guidance.rs:22:8
+  --> $DIR/riscv-discoverability-guidance.rs:20:8
    |
 LL | extern "riscv-interrupt-u" fn isr_U() {}
    |        ^^^^^^^^^^^^^^^^^^^

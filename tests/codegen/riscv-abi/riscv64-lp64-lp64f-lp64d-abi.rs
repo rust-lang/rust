@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ compile-flags: --target riscv64gc-unknown-linux-gnu -Copt-level=3 -C no-prepopulate-passes -C panic=abort
 //@ needs-llvm-components: riscv
 
@@ -6,19 +7,8 @@
 #![feature(no_core, lang_items)]
 #![allow(improper_ctypes)]
 
-#[lang = "sized"]
-trait Sized {}
-#[lang = "copy"]
-trait Copy {}
-impl Copy for bool {}
-impl Copy for i8 {}
-impl Copy for u8 {}
-impl Copy for i32 {}
-impl Copy for i64 {}
-impl Copy for u64 {}
-impl Copy for f32 {}
-impl Copy for f64 {}
-impl<T> Copy for *mut T {}
+extern crate minicore;
+use minicore::*;
 
 // CHECK: define void @f_void()
 #[no_mangle]

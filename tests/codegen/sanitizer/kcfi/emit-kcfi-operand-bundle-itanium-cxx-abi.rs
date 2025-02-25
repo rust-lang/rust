@@ -1,5 +1,6 @@
 // Verifies that KCFI type metadata for functions are emitted.
 //
+//@ add-core-stubs
 //@ revisions: aarch64 x86_64
 //@ [aarch64] compile-flags: --target aarch64-unknown-none
 //@ [aarch64] needs-llvm-components: aarch64
@@ -11,12 +12,8 @@
 #![feature(no_core, lang_items)]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
-#[lang = "copy"]
-trait Copy {}
-
-impl Copy for i32 {}
+extern crate minicore;
+use minicore::*;
 
 pub fn foo(f: fn(i32) -> i32, arg: i32) -> i32 {
     // CHECK-LABEL: define{{.*}}foo

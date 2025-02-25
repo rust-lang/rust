@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions: x64 A64 ppc64le
 //@ assembly-output: emit-asm
 //@ [x64] compile-flags: --target x86_64-unknown-linux-gnu -Crelocation-model=static
@@ -11,20 +12,8 @@
 #![no_core]
 #![crate_type = "rlib"]
 
-#[lang = "sized"]
-trait Sized {}
-
-#[lang = "copy"]
-trait Copy {}
-
-#[lang = "sync"]
-trait Sync {}
-
-#[lang = "drop_in_place"]
-fn drop_in_place<T>(_: *mut T) {}
-
-impl Copy for u8 {}
-impl Sync for u8 {}
+extern crate minicore;
+use minicore::*;
 
 #[no_mangle]
 pub static PIERIS: u8 = 42;

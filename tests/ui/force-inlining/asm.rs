@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ build-fail
 //@ compile-flags: --crate-type=lib --target thumbv4t-none-eabi
 //@ needs-llvm-components: arm
@@ -9,17 +10,8 @@
 #![feature(no_core, lang_items)]
 #![no_core]
 
-#[lang = "sized"]
-pub trait Sized {}
-#[lang = "copy"]
-pub trait Copy {}
-#[lang = "freeze"]
-pub unsafe trait Freeze {}
-
-#[lang = "start"]
-fn start<T>(_main: fn() -> T, _argc: isize, _argv: *const *const u8, _sigpipe: u8) -> isize {
-    0
-}
+extern crate minicore;
+use minicore::*;
 
 #[rustc_builtin_macro]
 #[macro_export]

@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions: arm-mode thumb-mode
 //@ [arm-mode] compile-flags: --target armv5te-none-eabi
 //@ [thumb-mode] compile-flags: --target thumbv5te-none-eabi
@@ -8,15 +9,8 @@
 #![feature(no_core, lang_items, rustc_attrs, naked_functions)]
 #![no_core]
 
-#[rustc_builtin_macro]
-macro_rules! naked_asm {
-    () => {};
-}
-
-#[lang = "sized"]
-trait Sized {}
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 // arm-mode: .arm
 // thumb-mode: .thumb

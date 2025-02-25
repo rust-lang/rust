@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions: linux win macos thumb
 //
 //@[linux] compile-flags: --target x86_64-unknown-linux-gnu
@@ -13,15 +14,8 @@
 #![feature(no_core, lang_items, rustc_attrs, naked_functions)]
 #![no_core]
 
-#[rustc_builtin_macro]
-macro_rules! naked_asm {
-    () => {};
-}
-
-#[lang = "sized"]
-trait Sized {}
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 // linux,win: .intel_syntax
 //

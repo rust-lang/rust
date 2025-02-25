@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ compile-flags: -Copt-level=3 -C no-prepopulate-passes --target riscv64gc-unknown-linux-gnu
 //@ needs-llvm-components: riscv
 
@@ -6,12 +7,8 @@
 #![no_std]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
-#[lang = "freeze"]
-trait Freeze {}
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 // CHECK: define void @f_fpr_tracking(double %0, double %1, double %2, double %3, double %4, double %5, double %6, double %7, i8 noundef zeroext %i)
 #[no_mangle]

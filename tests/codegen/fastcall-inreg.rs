@@ -2,6 +2,7 @@
 // as "inreg" like the C/C++ compilers for the platforms.
 // x86 only.
 
+//@ add-core-stubs
 //@ compile-flags: --target i686-unknown-linux-gnu -Cno-prepopulate-passes -Copt-level=3
 //@ needs-llvm-components: x86
 
@@ -9,10 +10,8 @@
 #![no_core]
 #![feature(no_core, lang_items)]
 
-#[lang = "sized"]
-trait Sized {}
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 pub mod tests {
     // CHECK: @f1(i32 inreg noundef %_1, i32 inreg noundef %_2, i32 noundef %_3)

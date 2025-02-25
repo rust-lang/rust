@@ -81,7 +81,7 @@ error: layout_of(Univariant) = Layout {
            unadjusted_abi_align: Align(4 bytes),
            randomization_seed: $SEED,
        }
-  --> $DIR/repr-c-dead-variants.rs:39:1
+  --> $DIR/repr-c-dead-variants.rs:43:1
    |
 LL | enum Univariant {
    | ^^^^^^^^^^^^^^^
@@ -219,7 +219,7 @@ error: layout_of(TwoVariants) = Layout {
            unadjusted_abi_align: Align(4 bytes),
            randomization_seed: $SEED,
        }
-  --> $DIR/repr-c-dead-variants.rs:46:1
+  --> $DIR/repr-c-dead-variants.rs:50:1
    |
 LL | enum TwoVariants {
    | ^^^^^^^^^^^^^^^^
@@ -327,7 +327,7 @@ error: layout_of(DeadBranchHasOtherField) = Layout {
            unadjusted_abi_align: Align(8 bytes),
            randomization_seed: $SEED,
        }
-  --> $DIR/repr-c-dead-variants.rs:58:1
+  --> $DIR/repr-c-dead-variants.rs:62:1
    |
 LL | enum DeadBranchHasOtherField {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

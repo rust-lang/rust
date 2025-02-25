@@ -1,19 +1,15 @@
-//
 // Checks that we leave the target alone MACOSX_DEPLOYMENT_TARGET is unset.
 // See issue #60235.
 
+//@ add-core-stubs
 //@ compile-flags: -Copt-level=3 --target=i686-apple-darwin --crate-type=rlib
 //@ needs-llvm-components: x86
 //@ unset-rustc-env:MACOSX_DEPLOYMENT_TARGET
 #![feature(no_core, lang_items)]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
-#[lang = "freeze"]
-trait Freeze {}
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 #[repr(C)]
 pub struct Bool {
