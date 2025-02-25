@@ -1,6 +1,5 @@
 // ignore-tidy-linelength
 #![feature(repr128)]
-#![allow(incomplete_features)]
 
 #[repr(u64)]
 pub enum U64 {
