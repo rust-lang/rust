@@ -100,7 +100,7 @@ struct LoweringContext<'a, 'hir> {
     /// Bodies inside the owner being lowered.
     bodies: Vec<(hir::ItemLocalId, &'hir hir::Body<'hir>)>,
     /// `#[define_opaques]` attributes
-    define_opaques: Option<&'hir [LocalDefId]>,
+    define_opaques: Option<&'hir [(Span, LocalDefId)]>,
     /// Attributes inside the owner being lowered.
     attrs: SortedMap<hir::ItemLocalId, &'hir [hir::Attribute]>,
     /// Collect items that were created by lowering the current owner.

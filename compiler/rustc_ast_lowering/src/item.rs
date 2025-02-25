@@ -1696,7 +1696,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 );
                 return None;
             };
-            Some(did)
+            Some((self.lower_span(path.span), did))
         });
         let define_opaques = self.arena.alloc_from_iter(define_opaques);
         self.define_opaques = Some(define_opaques);
