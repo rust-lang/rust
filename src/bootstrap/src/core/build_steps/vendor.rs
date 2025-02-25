@@ -2,6 +2,7 @@
 //!
 //! This module ensures that all required Cargo dependencies are gathered
 //! and stored in the `<src>/<VENDOR_DIR>` directory.
+use std::collections::BTreeSet;
 use std::path::PathBuf;
 
 use crate::core::build_steps::tool::SUBMODULES_FOR_RUSTBOOK;
@@ -16,21 +17,32 @@ pub const VENDOR_DIR: &str = "vendor";
 /// Returns a `Vec` of `(path_to_manifest, submodules_required)` where
 /// `path_to_manifest` is the cargo workspace, and `submodules_required` is
 /// the set of submodules that must be available.
-pub fn default_paths_to_vendor(builder: &Builder<'_>) -> Vec<(PathBuf, Vec<&'static str>)> {
+pub fn default_paths_to_vendor(
+    builder: &Builder<'_>,
+    excluded_submodules: &BTreeSet<String>,
+) -> Vec<(PathBuf, Vec<&'static str>)> {
     [
-        ("src/tools/cargo/Cargo.toml", vec!["src/tools/cargo"]),
-        ("src/tools/rust-analyzer/Cargo.toml", vec![]),
-        ("compiler/rustc_codegen_cranelift/Cargo.toml", vec![]),
-        ("compiler/rustc_codegen_gcc/Cargo.toml", vec![]),
-        ("library/Cargo.toml", vec![]),
-        ("src/bootstrap/Cargo.toml", vec![]),
-        ("src/tools/rustbook/Cargo.toml", SUBMODULES_FOR_RUSTBOOK.into()),
-        ("src/tools/rustc-perf/Cargo.toml", vec!["src/tools/rustc-perf"]),
-        ("src/tools/opt-dist/Cargo.toml", vec![]),
-        ("src/doc/book/packages/trpl/Cargo.toml", vec![]),
+        ("src/tools/cargo/Cargo.toml", &["src/tools/cargo"][..]),
+        ("src/tools/rust-analyzer/Cargo.toml", &[]),
+        ("compiler/rustc_codegen_cranelift/Cargo.toml", &[]),
+        ("compiler/rustc_codegen_gcc/Cargo.toml", &[]),
+        ("library/Cargo.toml", &[]),
+        ("src/bootstrap/Cargo.toml", &[]),
+        ("src/tools/rustbook/Cargo.toml", SUBMODULES_FOR_RUSTBOOK),
+        ("src/tools/rustc-perf/Cargo.toml", &["src/tools/rustc-perf"]),
+        ("src/tools/opt-dist/Cargo.toml", &[]),
+        ("src/doc/book/packages/trpl/Cargo.toml", &[]),
     ]
     .into_iter()
-    .map(|(path, submodules)| (builder.src.join(path), submodules))
+    .filter_map(|(path, submodules)| {
+        for submodule in submodules {
+            if excluded_submodules.contains(&**submodule) {
+                return None;
+            }
+        }
+
+        Some((builder.src.join(path), submodules.into()))
+    })
     .collect()
 }
 
@@ -82,7 +94,11 @@ impl Step for Vendor {
             cmd.arg("--versioned-dirs");
         }
 
-        let to_vendor = default_paths_to_vendor(builder);
+        let to_vendor = default_paths_to_vendor(
+            builder,
+            &builder.config.dist_exclude_submodules_from_vendoring,
+        );
+
         // These submodules must be present for `x vendor` to work.
         for (_, submodules) in &to_vendor {
             for submodule in submodules {

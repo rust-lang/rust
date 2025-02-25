@@ -209,7 +209,11 @@ impl Step for GenerateCopyright {
         let dest = builder.out.join("COPYRIGHT.html");
         let dest_libstd = builder.out.join("COPYRIGHT-library.html");
 
-        let paths_to_vendor = default_paths_to_vendor(builder);
+        let paths_to_vendor = default_paths_to_vendor(
+            builder,
+            &builder.config.dist_exclude_submodules_from_vendoring,
+        );
+
         for (_, submodules) in &paths_to_vendor {
             for submodule in submodules {
                 builder.build.require_submodule(submodule, None);
