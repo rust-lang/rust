@@ -464,22 +464,23 @@ fn reuse_workproduct_for_cgu(
             err
         ));
     }
+
     let obj_out_global_asm =
         crate::global_asm::add_file_stem_postfix(obj_out_regular.clone(), ".asm");
-    let has_global_asm = if let Some(asm_o) = work_product.saved_files.get("asm.o") {
+    let source_file_global_asm = if let Some(asm_o) = work_product.saved_files.get("asm.o") {
         let source_file_global_asm = rustc_incremental::in_incr_comp_dir_sess(&tcx.sess, asm_o);
         if let Err(err) = rustc_fs_util::link_or_copy(&source_file_global_asm, &obj_out_global_asm)
         {
             return Err(format!(
                 "unable to copy {} to {}: {}",
-                source_file_regular.display(),
-                obj_out_regular.display(),
+                source_file_global_asm.display(),
+                obj_out_global_asm.display(),
                 err
             ));
         }
-        true
+        Some(source_file_global_asm)
     } else {
-        false
+        None
     };
 
     Ok(ModuleCodegenResult {
@@ -491,9 +492,9 @@ fn reuse_workproduct_for_cgu(
             bytecode: None,
             assembly: None,
             llvm_ir: None,
-            links_from_incr_cache: Vec::new(),
+            links_from_incr_cache: vec![source_file_regular],
         },
-        module_global_asm: has_global_asm.then(|| CompiledModule {
+        module_global_asm: source_file_global_asm.map(|source_file| CompiledModule {
             name: cgu.name().to_string(),
             kind: ModuleKind::Regular,
             object: Some(obj_out_global_asm),
@@ -501,7 +502,7 @@ fn reuse_workproduct_for_cgu(
             bytecode: None,
             assembly: None,
             llvm_ir: None,
-            links_from_incr_cache: Vec::new(),
+            links_from_incr_cache: vec![source_file],
         }),
         existing_work_product: Some((cgu.work_product_id(), work_product)),
     })
@@ -752,6 +753,7 @@ pub(crate) fn run_aot(
 
     let metadata_module =
         if need_metadata_module { Some(emit_metadata_module(tcx, &metadata)) } else { None };
+
     Box::new(OngoingCodegen {
         modules,
         allocator_module,
