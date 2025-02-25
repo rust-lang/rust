@@ -17,10 +17,10 @@ LL |         let _0 = v1;
    |             +
 
 error[E0005]: refutable pattern in local binding
-  --> $DIR/bad-pattern.rs:14:14
+  --> $DIR/bad-pattern.rs:14:13
    |
 LL |         let (0 | 1) = v1;
-   |              ^^^^^ pattern `2_u32..=u32::MAX` not covered
+   |             ^^^^^^^ pattern `2_u32..=u32::MAX` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html

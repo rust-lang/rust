@@ -689,7 +689,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     removal_span: if pat.span.eq_ctxt(arm.span) {
                         // - ! => {}
                         // + !,
-                        // FIXME: account for `(!|!)`, as pat.span ends *within* the parentheses.
                         pat.span.shrink_to_hi().with_hi(arm.span.hi())
                     } else {
                         // Subtly incorrect, but close enough if macros are involved.

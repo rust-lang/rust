@@ -7,7 +7,7 @@ LL |             (!|!) if false => {}
 help: remove the match arm expression
    |
 LL -             (!|!) if false => {}
-LL +             (!|!,
+LL +             (!|!),
    |
 
 error: aborting due to 1 previous error

@@ -7,7 +7,7 @@ LL |         (!|!) if true => {}
 help: remove the match arm expression
    |
 LL -         (!|!) if true => {}
-LL +         (!|!,
+LL +         (!|!),
    |
 
 error: a never pattern is always unreachable
@@ -19,7 +19,7 @@ LL |         (!|!) if true => {}
 help: remove the match arm expression
    |
 LL -         (!|!) if true => {}
-LL +         (!|!,
+LL +         (!|!),
    |
 
 error: aborting due to 2 previous errors
