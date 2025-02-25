@@ -905,15 +905,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let expr_span = self.thir[expr_id].span;
         // Allocate locals for the function arguments
         for (argument_index, param) in arguments.iter().enumerate() {
-            let source_info =
-                SourceInfo::outermost(param.pat.as_ref().map_or(self.fn_span, |pat| pat.span));
+            let source_info = SourceInfo::outermost(Option::unwrap_or(
+                try { self.thir[param.pat?].span },
+                self.fn_span,
+            ));
             let arg_local =
                 self.local_decls.push(LocalDecl::with_source_info(param.ty, source_info));
 
             // If this is a simple binding pattern, give debuginfo a nice name.
-            if let Some(ref pat) = param.pat
-                && let Some(name) = pat.simple_ident()
-            {
+            if let Some(name) = try { self.thir[param.pat?].simple_ident()? } {
                 self.var_debug_info.push(VarDebugInfo {
                     name,
                     source_info,
@@ -935,15 +935,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             // Make sure we drop (parts of) the argument even when not matched on.
             self.schedule_drop(
-                param.pat.as_ref().map_or(expr_span, |pat| pat.span),
+                Option::unwrap_or(try { self.thir[param.pat?].span }, expr_span),
                 argument_scope,
                 local,
                 DropKind::Value,
             );
 
-            let Some(ref pat) = param.pat else {
-                continue;
-            };
+            let Some(pat) = (try { &self.thir[param.pat?] }) else { continue };
             let original_source_scope = self.source_scope;
             let span = pat.span;
             if let Some(arg_hir_id) = param.hir_id {

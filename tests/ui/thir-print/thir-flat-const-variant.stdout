@@ -81,6 +81,7 @@ Thir {
     ],
     stmts: [],
     params: [],
+    pats: [],
 }
 
 DefId(0:9 ~ thir_flat_const_variant[1f54]::{impl#0}::BAR2):
@@ -166,6 +167,7 @@ Thir {
     ],
     stmts: [],
     params: [],
+    pats: [],
 }
 
 DefId(0:10 ~ thir_flat_const_variant[1f54]::{impl#0}::BAR3):
@@ -251,6 +253,7 @@ Thir {
     ],
     stmts: [],
     params: [],
+    pats: [],
 }
 
 DefId(0:11 ~ thir_flat_const_variant[1f54]::{impl#0}::BAR4):
@@ -336,6 +339,7 @@ Thir {
     ],
     stmts: [],
     params: [],
+    pats: [],
 }
 
 DefId(0:12 ~ thir_flat_const_variant[1f54]::main):
@@ -388,5 +392,6 @@ Thir {
     ],
     stmts: [],
     params: [],
+    pats: [],
 }
 

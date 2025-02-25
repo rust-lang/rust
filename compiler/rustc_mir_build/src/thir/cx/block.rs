@@ -86,9 +86,9 @@ impl<'tcx> ThirBuildCx<'tcx> {
                                     span: ty.span,
                                     inferred_ty: self.typeck_results.node_type(ty.hir_id),
                                 };
-                                pattern = Box::new(Pat {
-                                    ty: pattern.ty,
-                                    span: pattern.span,
+                                pattern = self.thir.pats.push(Pat {
+                                    ty: self.thir[pattern].ty,
+                                    span: self.thir[pattern].span,
                                     kind: PatKind::AscribeUserType {
                                         ascription: Ascription {
                                             annotation,

@@ -17,14 +17,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn field_match_pairs(
         &mut self,
         place: PlaceBuilder<'tcx>,
-        subpatterns: &[FieldPat<'tcx>],
+        subpatterns: &[FieldPat],
     ) -> Vec<MatchPairTree<'tcx>> {
         subpatterns
             .iter()
             .map(|fieldpat| {
-                let place =
-                    place.clone_project(PlaceElem::Field(fieldpat.field, fieldpat.pattern.ty));
-                MatchPairTree::for_pattern(place, &fieldpat.pattern, self)
+                let pat = &self.thir[fieldpat.pattern];
+                let place = place.clone_project(PlaceElem::Field(fieldpat.field, pat.ty));
+                MatchPairTree::for_pattern(place, pat, self)
             })
             .collect()
     }
@@ -37,9 +37,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         match_pairs: &mut Vec<MatchPairTree<'tcx>>,
         place: &PlaceBuilder<'tcx>,
-        prefix: &[Pat<'tcx>],
-        opt_slice: &Option<Box<Pat<'tcx>>>,
-        suffix: &[Pat<'tcx>],
+        prefix: &[PatId],
+        opt_slice: Option<PatId>,
+        suffix: &[PatId],
     ) {
         let tcx = self.tcx;
         let (min_length, exact_size) = if let Some(place_resolved) = place.try_to_place(self) {
@@ -56,10 +56,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ((prefix.len() + suffix.len()).try_into().unwrap(), false)
         };
 
-        match_pairs.extend(prefix.iter().enumerate().map(|(idx, subpattern)| {
+        match_pairs.extend(prefix.iter().enumerate().map(|(idx, &subpattern)| {
             let elem =
                 ProjectionElem::ConstantIndex { offset: idx as u64, min_length, from_end: false };
-            MatchPairTree::for_pattern(place.clone_project(elem), subpattern, self)
+            MatchPairTree::for_pattern(place.clone_project(elem), &self.thir[subpattern], self)
         }));
 
         if let Some(subslice_pat) = opt_slice {
@@ -69,10 +69,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 to: if exact_size { min_length - suffix_len } else { suffix_len },
                 from_end: !exact_size,
             });
-            match_pairs.push(MatchPairTree::for_pattern(subslice, subslice_pat, self));
+            match_pairs.push(MatchPairTree::for_pattern(subslice, &self.thir[subslice_pat], self));
         }
 
-        match_pairs.extend(suffix.iter().rev().enumerate().map(|(idx, subpattern)| {
+        match_pairs.extend(suffix.iter().rev().enumerate().map(|(idx, &subpattern)| {
             let end_offset = (idx + 1) as u64;
             let elem = ProjectionElem::ConstantIndex {
                 offset: if exact_size { min_length - end_offset } else { end_offset },
@@ -80,7 +80,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 from_end: !exact_size,
             };
             let place = place.clone_project(elem);
-            MatchPairTree::for_pattern(place, subpattern, self)
+            MatchPairTree::for_pattern(place, &self.thir[subpattern], self)
         }));
     }
 }
@@ -120,7 +120,10 @@ impl<'tcx> MatchPairTree<'tcx> {
             PatKind::Wild | PatKind::Error(_) => default_irrefutable(),
 
             PatKind::Or { ref pats } => TestCase::Or {
-                pats: pats.iter().map(|pat| FlatPat::new(place_builder.clone(), pat, cx)).collect(),
+                pats: pats
+                    .iter()
+                    .map(|&pat| FlatPat::new(place_builder.clone(), &cx.thir[pat], cx))
+                    .collect(),
             },
 
             PatKind::Range(ref range) => {
@@ -135,7 +138,7 @@ impl<'tcx> MatchPairTree<'tcx> {
 
             PatKind::AscribeUserType {
                 ascription: Ascription { ref annotation, variance },
-                ref subpattern,
+                subpattern,
                 ..
             } => {
                 // Apply the type ascription to the value at `match_pair.place`
@@ -145,11 +148,11 @@ impl<'tcx> MatchPairTree<'tcx> {
                     variance,
                 });
 
-                subpairs.push(MatchPairTree::for_pattern(place_builder, subpattern, cx));
+                subpairs.push(MatchPairTree::for_pattern(place_builder, &cx.thir[subpattern], cx));
                 TestCase::Irrefutable { ascription, binding: None }
             }
 
-            PatKind::Binding { mode, var, ref subpattern, .. } => {
+            PatKind::Binding { mode, var, subpattern, .. } => {
                 let binding = place.map(|source| super::Binding {
                     span: pattern.span,
                     source,
@@ -157,18 +160,20 @@ impl<'tcx> MatchPairTree<'tcx> {
                     binding_mode: mode,
                 });
 
-                if let Some(subpattern) = subpattern.as_ref() {
+                if let Some(subpattern) = try { &cx.thir[subpattern?] } {
                     // this is the `x @ P` case; have to keep matching against `P` now
                     subpairs.push(MatchPairTree::for_pattern(place_builder, subpattern, cx));
                 }
                 TestCase::Irrefutable { ascription: None, binding }
             }
 
-            PatKind::ExpandedConstant { subpattern: ref pattern, def_id: _, is_inline: false } => {
+            PatKind::ExpandedConstant { subpattern, def_id: _, is_inline: false } => {
+                let pattern = &cx.thir[subpattern];
                 subpairs.push(MatchPairTree::for_pattern(place_builder, pattern, cx));
                 default_irrefutable()
             }
-            PatKind::ExpandedConstant { subpattern: ref pattern, def_id, is_inline: true } => {
+            PatKind::ExpandedConstant { subpattern, def_id, is_inline: true } => {
+                let pattern = &cx.thir[subpattern];
                 // Apply a type ascription for the inline constant to the value at `match_pair.place`
                 let ascription = place.map(|source| {
                     let span = pattern.span;
@@ -196,11 +201,11 @@ impl<'tcx> MatchPairTree<'tcx> {
                 TestCase::Irrefutable { ascription, binding: None }
             }
 
-            PatKind::Array { ref prefix, ref slice, ref suffix } => {
+            PatKind::Array { ref prefix, slice, ref suffix } => {
                 cx.prefix_slice_suffix(&mut subpairs, &place_builder, prefix, slice, suffix);
                 default_irrefutable()
             }
-            PatKind::Slice { ref prefix, ref slice, ref suffix } => {
+            PatKind::Slice { ref prefix, slice, ref suffix } => {
                 cx.prefix_slice_suffix(&mut subpairs, &place_builder, prefix, slice, suffix);
 
                 if prefix.is_empty() && slice.is_some() && suffix.is_empty() {
@@ -237,12 +242,14 @@ impl<'tcx> MatchPairTree<'tcx> {
                 default_irrefutable()
             }
 
-            PatKind::Deref { ref subpattern } => {
+            PatKind::Deref { subpattern } => {
+                let subpattern = &cx.thir[subpattern];
                 subpairs.push(MatchPairTree::for_pattern(place_builder.deref(), subpattern, cx));
                 default_irrefutable()
             }
 
-            PatKind::DerefPattern { ref subpattern, mutability } => {
+            PatKind::DerefPattern { subpattern, mutability } => {
+                let subpattern = &cx.thir[subpattern];
                 // Create a new temporary for each deref pattern.
                 // FIXME(deref_patterns): dedup temporaries to avoid multiple `deref()` calls?
                 let temp = cx.temp(
