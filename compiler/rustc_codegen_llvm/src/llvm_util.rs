@@ -359,7 +359,7 @@ pub(crate) fn target_features_cfg(sess: &Session, allow_unstable: bool) -> Vec<S
             #[allow(rustc::potential_query_instability)]
             features.extend(
                 sess.target
-                    .implied_target_features(std::iter::once(feature.as_str()))
+                    .implied_target_features(feature.as_str())
                     .iter()
                     .map(|s| Symbol::intern(s)),
             );
@@ -372,7 +372,7 @@ pub(crate) fn target_features_cfg(sess: &Session, allow_unstable: bool) -> Vec<S
             features.retain(|f| {
                 if sess
                     .target
-                    .implied_target_features(std::iter::once(f.as_str()))
+                    .implied_target_features(f.as_str())
                     .contains(&feature.as_str())
                 {
                     // If `f` if implies `feature`, then `!feature` implies `!f`, so we have to
@@ -680,7 +680,7 @@ pub(crate) fn global_llvm_features(
         for feature in sess.opts.cg.target_feature.split(',') {
             if let Some(feature) = feature.strip_prefix('+') {
                 all_rust_features.extend(
-                    UnordSet::from(sess.target.implied_target_features(std::iter::once(feature)))
+                    UnordSet::from(sess.target.implied_target_features(feature))
                         .to_sorted_stable_ord()
                         .iter()
                         .map(|&&s| (true, s)),
