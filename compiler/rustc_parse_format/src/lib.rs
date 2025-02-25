@@ -697,7 +697,12 @@ impl<'a> Parser<'a> {
                 spec.precision = self.count(start + 1);
             }
             let end = self.current_pos();
-            spec.precision_span = Some(self.span(start, end));
+            let span = self.span(start, end);
+            if spec.precision == CountImplied {
+                self.err("expected numerical precision", "missing precision", span);
+            } else {
+                spec.precision_span = Some(span);
+            }
         }
 
         let ty_span_start = self.current_pos();
