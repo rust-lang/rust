@@ -1,14 +1,11 @@
 use std::borrow::Cow;
 use std::fmt;
-use std::sync::Arc;
 
 pub use BinOpToken::*;
 pub use LitKind::*;
-pub use Nonterminal::*;
 pub use NtExprKind::*;
 pub use NtPatKind::*;
 pub use TokenKind::*;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::edition::Edition;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, kw, sym};
@@ -17,7 +14,6 @@ use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, kw, sym};
 use rustc_span::{Ident, Symbol};
 
 use crate::ast;
-use crate::ptr::P;
 use crate::util::case::Case;
 
 #[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
@@ -50,10 +46,6 @@ pub enum InvisibleOrigin {
     // Converted from `proc_macro::Delimiter` in
     // `proc_macro::Delimiter::to_internal`, i.e. returned by a proc macro.
     ProcMacro,
-
-    // Converted from `TokenKind::Interpolated` in
-    // `TokenStream::flatten_token`. Treated similarly to `ProcMacro`.
-    FlattenToken,
 }
 
 impl PartialEq for InvisibleOrigin {
@@ -90,7 +82,10 @@ pub enum MetaVarKind {
     Ident,
     Lifetime,
     Literal,
-    Meta,
+    Meta {
+        /// Will `AttrItem::meta` succeed on this, if reparsed?
+        has_meta_form: bool,
+    },
     Path,
     Vis,
     TT,
@@ -110,7 +105,7 @@ impl fmt::Display for MetaVarKind {
             MetaVarKind::Ident => sym::ident,
             MetaVarKind::Lifetime => sym::lifetime,
             MetaVarKind::Literal => sym::literal,
-            MetaVarKind::Meta => sym::meta,
+            MetaVarKind::Meta { .. } => sym::meta,
             MetaVarKind::Path => sym::path,
             MetaVarKind::Vis => sym::vis,
             MetaVarKind::TT => sym::tt,
@@ -147,9 +142,7 @@ impl Delimiter {
         match self {
             Delimiter::Parenthesis | Delimiter::Bracket | Delimiter::Brace => false,
             Delimiter::Invisible(InvisibleOrigin::MetaVar(_)) => false,
-            Delimiter::Invisible(InvisibleOrigin::FlattenToken | InvisibleOrigin::ProcMacro) => {
-                true
-            }
+            Delimiter::Invisible(InvisibleOrigin::ProcMacro) => true,
         }
     }
 
@@ -211,16 +204,17 @@ impl Lit {
         }
     }
 
-    /// Keep this in sync with `Token::can_begin_literal_maybe_minus` excluding unary negation.
+    /// Keep this in sync with `Token::can_begin_literal_maybe_minus` and
+    /// `Parser::eat_token_lit` (excluding unary negation).
     pub fn from_token(token: &Token) -> Option<Lit> {
         match token.uninterpolate().kind {
             Ident(name, IdentIsRaw::No) if name.is_bool_lit() => Some(Lit::new(Bool, name, None)),
             Literal(token_lit) => Some(token_lit),
-            Interpolated(ref nt)
-                if let NtExpr(expr) | NtLiteral(expr) = &**nt
-                    && let ast::ExprKind::Lit(token_lit) = expr.kind =>
-            {
-                Some(token_lit)
+            OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(
+                MetaVarKind::Literal | MetaVarKind::Expr { .. },
+            ))) => {
+                // Unreachable with the current test suite.
+                panic!("from_token metavar");
             }
             _ => None,
         }
@@ -349,9 +343,7 @@ impl From<IdentIsRaw> for bool {
     }
 }
 
-// SAFETY: due to the `Clone` impl below, all fields of all variants other than
-// `Interpolated` must impl `Copy`.
-#[derive(PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub enum TokenKind {
     /* Expression-operator symbols. */
     /// `=`
@@ -440,21 +432,6 @@ pub enum TokenKind {
     /// the `lifetime` metavariable in the macro's RHS.
     NtLifetime(Ident, IdentIsRaw),
 
-    /// An embedded AST node, as produced by a macro. This only exists for
-    /// historical reasons. We'd like to get rid of it, for multiple reasons.
-    /// - It's conceptually very strange. Saying a token can contain an AST
-    ///   node is like saying, in natural language, that a word can contain a
-    ///   sentence.
-    /// - It requires special handling in a bunch of places in the parser.
-    /// - It prevents `Token` from implementing `Copy`.
-    /// It adds complexity and likely slows things down. Please don't add new
-    /// occurrences of this token kind!
-    ///
-    /// The span in the surrounding `Token` is that of the metavariable in the
-    /// macro's RHS. The span within the Nonterminal is that of the fragment
-    /// passed to the macro at the call site.
-    Interpolated(Arc<Nonterminal>),
-
     /// A doc comment token.
     /// `Symbol` is the doc comment's data excluding its "quotes" (`///`, `/**`, etc)
     /// similarly to symbols in string literal tokens.
@@ -464,20 +441,7 @@ pub enum TokenKind {
     Eof,
 }
 
-impl Clone for TokenKind {
-    fn clone(&self) -> Self {
-        // `TokenKind` would impl `Copy` if it weren't for `Interpolated`. So
-        // for all other variants, this implementation of `clone` is just like
-        // a copy. This is faster than the `derive(Clone)` version which has a
-        // separate path for every variant.
-        match self {
-            Interpolated(nt) => Interpolated(Arc::clone(nt)),
-            _ => unsafe { std::ptr::read(self) },
-        }
-    }
-}
-
-#[derive(Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
 pub struct Token {
     pub kind: TokenKind,
     pub span: Span,
@@ -565,10 +529,12 @@ impl Token {
     /// for which spans affect name resolution and edition checks.
     /// Note that keywords are also identifiers, so they should use this
     /// if they keep spans or perform edition checks.
+    //
+    // Note: `Parser::uninterpolated_token_span` may give better information
+    // than this method does.
     pub fn uninterpolated_span(&self) -> Span {
         match self.kind {
             NtIdent(ident, _) | NtLifetime(ident, _) => ident.span,
-            Interpolated(ref nt) => nt.use_span(),
             _ => self.span,
         }
     }
@@ -586,7 +552,7 @@ impl Token {
             }
 
             OpenDelim(..) | CloseDelim(..) | Literal(..) | DocComment(..) | Ident(..)
-            | NtIdent(..) | Lifetime(..) | NtLifetime(..) | Interpolated(..) | Eof => false,
+            | NtIdent(..) | Lifetime(..) | NtLifetime(..) | Eof => false,
         }
     }
 
@@ -617,13 +583,6 @@ impl Token {
             PathSep                           | // global path
             Lifetime(..)                      | // labeled loop
             Pound                             => true, // expression attributes
-            Interpolated(ref nt) =>
-                matches!(&**nt,
-                    NtBlock(..)   |
-                    NtExpr(..)    |
-                    NtLiteral(..) |
-                    NtPath(..)
-                ),
             OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(
                 MetaVarKind::Block |
                 MetaVarKind::Expr { .. } |
@@ -654,18 +613,10 @@ impl Token {
             BinOp(Shl) => true,           // path (double UFCS)
             // leading vert `|` or-pattern
             BinOp(Or) => matches!(pat_kind, PatWithOr),
-            Interpolated(nt) =>
-                matches!(&**nt,
-                    | NtExpr(..)
-                    | NtLiteral(..)
-                    | NtMeta(..)
-                    | NtPat(..)
-                    | NtPath(..)
-                ),
             OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(
                 MetaVarKind::Expr { .. } |
                 MetaVarKind::Literal |
-                MetaVarKind::Meta |
+                MetaVarKind::Meta { .. } |
                 MetaVarKind::Pat(_) |
                 MetaVarKind::Path |
                 MetaVarKind::Ty { .. }
@@ -689,7 +640,6 @@ impl Token {
             Lifetime(..)                | // lifetime bound in trait object
             Lt | BinOp(Shl)             | // associated path
             PathSep                      => true, // global path
-            Interpolated(ref nt) => matches!(&**nt, NtPath(..)),
             OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(
                 MetaVarKind::Ty { .. } |
                 MetaVarKind::Path
@@ -705,7 +655,6 @@ impl Token {
         match self.kind {
             OpenDelim(Delimiter::Brace) | Literal(..) | BinOp(Minus) => true,
             Ident(name, IdentIsRaw::No) if name.is_bool_lit() => true,
-            Interpolated(ref nt) => matches!(&**nt, NtExpr(..) | NtBlock(..) | NtLiteral(..)),
             OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(
                 MetaVarKind::Expr { .. } | MetaVarKind::Block | MetaVarKind::Literal,
             ))) => true,
@@ -749,22 +698,12 @@ impl Token {
     ///
     /// In other words, would this token be a valid start of `parse_literal_maybe_minus`?
     ///
-    /// Keep this in sync with and `Lit::from_token`, excluding unary negation.
+    /// Keep this in sync with `Lit::from_token` and `Parser::eat_token_lit`
+    /// (excluding unary negation).
     pub fn can_begin_literal_maybe_minus(&self) -> bool {
         match self.uninterpolate().kind {
             Literal(..) | BinOp(Minus) => true,
             Ident(name, IdentIsRaw::No) if name.is_bool_lit() => true,
-            Interpolated(ref nt) => match &**nt {
-                NtLiteral(_) => true,
-                NtExpr(e) => match &e.kind {
-                    ast::ExprKind::Lit(_) => true,
-                    ast::ExprKind::Unary(ast::UnOp::Neg, e) => {
-                        matches!(&e.kind, ast::ExprKind::Lit(_))
-                    }
-                    _ => false,
-                },
-                _ => false,
-            },
             OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(mv_kind))) => match mv_kind {
                 MetaVarKind::Literal => true,
                 MetaVarKind::Expr { can_begin_literal_maybe_minus, .. } => {
@@ -779,14 +718,6 @@ impl Token {
     pub fn can_begin_string_literal(&self) -> bool {
         match self.uninterpolate().kind {
             Literal(..) => true,
-            Interpolated(ref nt) => match &**nt {
-                NtLiteral(_) => true,
-                NtExpr(e) => match &e.kind {
-                    ast::ExprKind::Lit(_) => true,
-                    _ => false,
-                },
-                _ => false,
-            },
             OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(mv_kind))) => match mv_kind {
                 MetaVarKind::Literal => true,
                 MetaVarKind::Expr { can_begin_string_literal, .. } => can_begin_string_literal,
@@ -848,38 +779,23 @@ impl Token {
         self.ident().is_some_and(|(ident, _)| ident.name == name)
     }
 
-    /// Returns `true` if the token is an interpolated path.
-    fn is_whole_path(&self) -> bool {
-        if let Interpolated(nt) = &self.kind
-            && let NtPath(..) = &**nt
-        {
-            return true;
-        }
-
-        false
-    }
-
     /// Is this a pre-parsed expression dropped into the token stream
     /// (which happens while parsing the result of macro expansion)?
-    pub fn is_whole_expr(&self) -> bool {
-        if let Interpolated(nt) = &self.kind
-            && let NtExpr(_) | NtLiteral(_) | NtPath(_) | NtBlock(_) = &**nt
-        {
-            return true;
-        }
-
-        false
+    pub fn is_metavar_expr(&self) -> bool {
+        matches!(
+            self.is_metavar_seq(),
+            Some(
+                MetaVarKind::Expr { .. }
+                    | MetaVarKind::Literal
+                    | MetaVarKind::Path
+                    | MetaVarKind::Block
+            )
+        )
     }
 
-    /// Is the token an interpolated block (`$b:block`)?
-    pub fn is_whole_block(&self) -> bool {
-        if let Interpolated(nt) = &self.kind
-            && let NtBlock(..) = &**nt
-        {
-            return true;
-        }
-
-        false
+    /// Are we at a block from a metavar (`$b:block`)?
+    pub fn is_metavar_block(&self) -> bool {
+        matches!(self.is_metavar_seq(), Some(MetaVarKind::Block))
     }
 
     /// Returns `true` if the token is either the `mut` or `const` keyword.
@@ -894,7 +810,7 @@ impl Token {
     pub fn is_path_start(&self) -> bool {
         self == &PathSep
             || self.is_qpath_start()
-            || self.is_whole_path()
+            || matches!(self.is_metavar_seq(), Some(MetaVarKind::Path))
             || self.is_path_segment_keyword()
             || self.is_ident() && !self.is_reserved_ident()
     }
@@ -1032,7 +948,7 @@ impl Token {
             Le | EqEq | Ne | Ge | AndAnd | OrOr | Tilde | BinOpEq(..) | At | DotDotDot
             | DotDotEq | Comma | Semi | PathSep | RArrow | LArrow | FatArrow | Pound | Dollar
             | Question | OpenDelim(..) | CloseDelim(..) | Literal(..) | Ident(..) | NtIdent(..)
-            | Lifetime(..) | NtLifetime(..) | Interpolated(..) | DocComment(..) | Eof => {
+            | Lifetime(..) | NtLifetime(..) | DocComment(..) | Eof => {
                 return None;
             }
         };
@@ -1067,20 +983,6 @@ pub enum NtExprKind {
     // - `inferred`: was written using `expr` in edition 2021 or earlier.
     // - `!inferred`: was written using `expr_2021`.
     Expr2021 { inferred: bool },
-}
-
-#[derive(Clone, Encodable, Decodable)]
-/// For interpolation during macro expansion.
-pub enum Nonterminal {
-    NtItem(P<ast::Item>),
-    NtBlock(P<ast::Block>),
-    NtStmt(P<ast::Stmt>),
-    NtPat(P<ast::Pat>),
-    NtExpr(P<ast::Expr>),
-    NtLiteral(P<ast::Expr>),
-    /// Stuff inside brackets for attributes
-    NtMeta(P<ast::AttrItem>),
-    NtPath(P<ast::Path>),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Encodable, Decodable, Hash, HashStable_Generic)]
@@ -1166,67 +1068,6 @@ impl fmt::Display for NonterminalKind {
     }
 }
 
-impl Nonterminal {
-    pub fn use_span(&self) -> Span {
-        match self {
-            NtItem(item) => item.span,
-            NtBlock(block) => block.span,
-            NtStmt(stmt) => stmt.span,
-            NtPat(pat) => pat.span,
-            NtExpr(expr) | NtLiteral(expr) => expr.span,
-            NtMeta(attr_item) => attr_item.span(),
-            NtPath(path) => path.span,
-        }
-    }
-
-    pub fn descr(&self) -> &'static str {
-        match self {
-            NtItem(..) => "item",
-            NtBlock(..) => "block",
-            NtStmt(..) => "statement",
-            NtPat(..) => "pattern",
-            NtExpr(..) => "expression",
-            NtLiteral(..) => "literal",
-            NtMeta(..) => "attribute",
-            NtPath(..) => "path",
-        }
-    }
-}
-
-impl PartialEq for Nonterminal {
-    fn eq(&self, _rhs: &Self) -> bool {
-        // FIXME: Assume that all nonterminals are not equal, we can't compare them
-        // correctly based on data from AST. This will prevent them from matching each other
-        // in macros. The comparison will become possible only when each nonterminal has an
-        // attached token stream from which it was parsed.
-        false
-    }
-}
-
-impl fmt::Debug for Nonterminal {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
-            NtItem(..) => f.pad("NtItem(..)"),
-            NtBlock(..) => f.pad("NtBlock(..)"),
-            NtStmt(..) => f.pad("NtStmt(..)"),
-            NtPat(..) => f.pad("NtPat(..)"),
-            NtExpr(..) => f.pad("NtExpr(..)"),
-            NtLiteral(..) => f.pad("NtLiteral(..)"),
-            NtMeta(..) => f.pad("NtMeta(..)"),
-            NtPath(..) => f.pad("NtPath(..)"),
-        }
-    }
-}
-
-impl<CTX> HashStable<CTX> for Nonterminal
-where
-    CTX: crate::HashStableContext,
-{
-    fn hash_stable(&self, _hcx: &mut CTX, _hasher: &mut StableHasher) {
-        panic!("interpolated tokens should not be present in the HIR")
-    }
-}
-
 // Some types are used a lot. Make sure they don't unintentionally get bigger.
 #[cfg(target_pointer_width = "64")]
 mod size_asserts {
@@ -1236,7 +1077,6 @@ mod size_asserts {
     // tidy-alphabetical-start
     static_assert_size!(Lit, 12);
     static_assert_size!(LitKind, 2);
-    static_assert_size!(Nonterminal, 16);
     static_assert_size!(Token, 24);
     static_assert_size!(TokenKind, 16);
     // tidy-alphabetical-end

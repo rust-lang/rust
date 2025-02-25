@@ -1025,7 +1025,7 @@ pub(crate) struct SuffixedLiteralInAttribute {
 pub(crate) struct InvalidMetaItem {
     #[primary_span]
     pub span: Span,
-    pub token: Token,
+    pub descr: String,
     #[subdiagnostic]
     pub quote_ident_sugg: Option<InvalidMetaItemQuoteIdentSugg>,
 }
@@ -1687,10 +1687,10 @@ pub(crate) struct SelfArgumentPointer {
 
 #[derive(Diagnostic)]
 #[diag(parse_unexpected_token_after_dot)]
-pub(crate) struct UnexpectedTokenAfterDot<'a> {
+pub(crate) struct UnexpectedTokenAfterDot {
     #[primary_span]
     pub span: Span,
-    pub actual: Cow<'a, str>,
+    pub actual: String,
 }
 
 #[derive(Diagnostic)]

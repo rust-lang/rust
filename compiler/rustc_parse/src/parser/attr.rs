@@ -1,4 +1,6 @@
-use rustc_ast::{self as ast, Attribute, attr, token};
+use rustc_ast as ast;
+use rustc_ast::token::{self, MetaVarKind};
+use rustc_ast::{Attribute, attr};
 use rustc_errors::codes::*;
 use rustc_errors::{Diag, PResult};
 use rustc_span::{BytePos, Span};
@@ -9,7 +11,7 @@ use super::{
     AttrWrapper, Capturing, FnParseMode, ForceCollect, Parser, ParserRange, PathStyle, Trailing,
     UsePreAttrPos,
 };
-use crate::{errors, exp, fluent_generated as fluent, maybe_whole};
+use crate::{errors, exp, fluent_generated as fluent};
 
 // Public for rustfmt usage
 #[derive(Debug)]
@@ -269,7 +271,12 @@ impl<'a> Parser<'a> {
     ///     PATH `=` UNSUFFIXED_LIT
     /// The delimiters or `=` are still put into the resulting token stream.
     pub fn parse_attr_item(&mut self, force_collect: ForceCollect) -> PResult<'a, ast::AttrItem> {
-        maybe_whole!(self, NtMeta, |attr| attr.into_inner());
+        if let Some(item) = self.eat_metavar_seq_with_matcher(
+            |mv_kind| matches!(mv_kind, MetaVarKind::Meta { .. }),
+            |this| this.parse_attr_item(force_collect),
+        ) {
+            return Ok(item);
+        }
 
         // Attr items don't have attributes.
         self.collect_tokens(None, AttrWrapper::empty(), force_collect, |this, _empty_attrs| {
@@ -396,18 +403,17 @@ impl<'a> Parser<'a> {
         &mut self,
         unsafe_allowed: AllowLeadingUnsafe,
     ) -> PResult<'a, ast::MetaItem> {
-        // We can't use `maybe_whole` here because it would bump in the `None`
-        // case, which we don't want.
-        if let token::Interpolated(nt) = &self.token.kind
-            && let token::NtMeta(attr_item) = &**nt
-        {
-            match attr_item.meta(attr_item.path.span) {
-                Some(meta) => {
-                    self.bump();
-                    return Ok(meta);
-                }
-                None => self.unexpected()?,
-            }
+        if let Some(MetaVarKind::Meta { has_meta_form }) = self.token.is_metavar_seq() {
+            return if has_meta_form {
+                let attr_item = self
+                    .eat_metavar_seq(MetaVarKind::Meta { has_meta_form: true }, |this| {
+                        this.parse_attr_item(ForceCollect::No)
+                    })
+                    .unwrap();
+                Ok(attr_item.meta(attr_item.path.span).unwrap())
+            } else {
+                self.unexpected_any()
+            };
         }
 
         let lo = self.token.span;
@@ -464,7 +470,7 @@ impl<'a> Parser<'a> {
 
         let mut err = errors::InvalidMetaItem {
             span: self.token.span,
-            token: self.token.clone(),
+            descr: super::token_descr(&self.token),
             quote_ident_sugg: None,
         };
 
