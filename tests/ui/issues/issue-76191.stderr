@@ -2,7 +2,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/issue-76191.rs:8:37
    |
 LL | const RANGE2: RangeInclusive<i32> = panic!();
-   |                                     ^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/issue-76191.rs:8:37
+   |                                     ^^^^^^^^ evaluation panicked: explicit panic
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 

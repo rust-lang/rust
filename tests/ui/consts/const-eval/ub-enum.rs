@@ -101,7 +101,7 @@ const BAD_UNINHABITED_WITH_DATA2: Result<(i32, !), (i32, Never)> = unsafe { mem:
 const TEST_ICE_89765: () = {
     // This is a regression test for https://github.com/rust-lang/rust/issues/89765.
     unsafe { std::mem::discriminant(&*(&() as *const () as *const Never)); };
-    //~^ inside `TEST_ICE_89765`
+    //~^ ERROR evaluation of constant value failed
 };
 
 fn main() {

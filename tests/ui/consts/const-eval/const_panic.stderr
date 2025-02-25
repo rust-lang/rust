@@ -2,7 +2,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic.rs:6:15
    |
 LL | const Z: () = std::panic!("cheese");
-   |               ^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'cheese', $DIR/const_panic.rs:6:15
+   |               ^^^^^^^^^^^^^^^^^^^^^ evaluation panicked: cheese
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `std::panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -10,7 +10,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic.rs:9:16
    |
 LL | const Z2: () = std::panic!();
-   |                ^^^^^^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/const_panic.rs:9:16
+   |                ^^^^^^^^^^^^^ evaluation panicked: explicit panic
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `std::panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -18,7 +18,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic.rs:12:15
    |
 LL | const Y: () = std::unreachable!();
-   |               ^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'internal error: entered unreachable code', $DIR/const_panic.rs:12:15
+   |               ^^^^^^^^^^^^^^^^^^^ evaluation panicked: internal error: entered unreachable code
    |
    = note: this error originates in the macro `$crate::panic::unreachable_2015` which comes from the expansion of the macro `std::unreachable` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -26,7 +26,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic.rs:15:15
    |
 LL | const X: () = std::unimplemented!();
-   |               ^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'not implemented', $DIR/const_panic.rs:15:15
+   |               ^^^^^^^^^^^^^^^^^^^^^ evaluation panicked: not implemented
    |
    = note: this error originates in the macro `std::unimplemented` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -34,7 +34,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic.rs:18:15
    |
 LL | const W: () = std::panic!(MSG);
-   |               ^^^^^^^^^^^^^^^^ the evaluated program panicked at 'hello', $DIR/const_panic.rs:18:15
+   |               ^^^^^^^^^^^^^^^^ evaluation panicked: hello
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `std::panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -42,7 +42,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic.rs:21:16
    |
 LL | const W2: () = std::panic!("{}", MSG);
-   |                ^^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'hello', $DIR/const_panic.rs:21:16
+   |                ^^^^^^^^^^^^^^^^^^^^^^ evaluation panicked: hello
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `std::panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -50,7 +50,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic.rs:24:20
    |
 LL | const Z_CORE: () = core::panic!("cheese");
-   |                    ^^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'cheese', $DIR/const_panic.rs:24:20
+   |                    ^^^^^^^^^^^^^^^^^^^^^^ evaluation panicked: cheese
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `core::panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -58,7 +58,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic.rs:27:21
    |
 LL | const Z2_CORE: () = core::panic!();
-   |                     ^^^^^^^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/const_panic.rs:27:21
+   |                     ^^^^^^^^^^^^^^ evaluation panicked: explicit panic
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `core::panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -66,7 +66,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic.rs:30:20
    |
 LL | const Y_CORE: () = core::unreachable!();
-   |                    ^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'internal error: entered unreachable code', $DIR/const_panic.rs:30:20
+   |                    ^^^^^^^^^^^^^^^^^^^^ evaluation panicked: internal error: entered unreachable code
    |
    = note: this error originates in the macro `$crate::panic::unreachable_2015` which comes from the expansion of the macro `core::unreachable` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -74,7 +74,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic.rs:33:20
    |
 LL | const X_CORE: () = core::unimplemented!();
-   |                    ^^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'not implemented', $DIR/const_panic.rs:33:20
+   |                    ^^^^^^^^^^^^^^^^^^^^^^ evaluation panicked: not implemented
    |
    = note: this error originates in the macro `core::unimplemented` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -82,7 +82,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic.rs:36:20
    |
 LL | const W_CORE: () = core::panic!(MSG);
-   |                    ^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'hello', $DIR/const_panic.rs:36:20
+   |                    ^^^^^^^^^^^^^^^^^ evaluation panicked: hello
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `core::panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -90,7 +90,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic.rs:39:21
    |
 LL | const W2_CORE: () = core::panic!("{}", MSG);
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'hello', $DIR/const_panic.rs:39:21
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^ evaluation panicked: hello
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `core::panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 

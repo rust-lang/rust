@@ -2,7 +2,7 @@ error[E0080]: evaluation of `_::<'_>` failed
   --> $DIR/def-site-eval.rs:14:20
    |
 LL | const _<'_a>: () = panic!();
-   |                    ^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/def-site-eval.rs:14:20
+   |                    ^^^^^^^^ evaluation panicked: explicit panic
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 

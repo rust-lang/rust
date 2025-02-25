@@ -6,10 +6,10 @@ fn assert_zst<T>() {
         const V: () = assert!(std::mem::size_of::<T>() == 0);
         //~^ ERROR: evaluation of `assert_zst::F::<u32>::V` failed [E0080]
         //~| NOTE: in this expansion of assert!
-        //~| NOTE: the evaluated program panicked
+        //~| NOTE: assertion failed
         //~| ERROR: evaluation of `assert_zst::F::<i32>::V` failed [E0080]
         //~| NOTE: in this expansion of assert!
-        //~| NOTE: the evaluated program panicked
+        //~| NOTE: assertion failed
     }
     F::<T>::V;
     //~^NOTE: erroneous constant

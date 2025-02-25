@@ -2,7 +2,7 @@ error[E0080]: evaluation of `assert_zst::F::<u32>::V` failed
   --> $DIR/post_monomorphization_error_backtrace.rs:6:23
    |
 LL |         const V: () = assert!(std::mem::size_of::<T>() == 0);
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'assertion failed: std::mem::size_of::<T>() == 0', $DIR/post_monomorphization_error_backtrace.rs:6:23
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation panicked: assertion failed: std::mem::size_of::<T>() == 0
    |
    = note: this error originates in the macro `assert` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -22,7 +22,7 @@ error[E0080]: evaluation of `assert_zst::F::<i32>::V` failed
   --> $DIR/post_monomorphization_error_backtrace.rs:6:23
    |
 LL |         const V: () = assert!(std::mem::size_of::<T>() == 0);
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'assertion failed: std::mem::size_of::<T>() == 0', $DIR/post_monomorphization_error_backtrace.rs:6:23
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation panicked: assertion failed: std::mem::size_of::<T>() == 0
    |
    = note: this error originates in the macro `assert` (in Nightly builds, run with -Z macro-backtrace for more info)
 
