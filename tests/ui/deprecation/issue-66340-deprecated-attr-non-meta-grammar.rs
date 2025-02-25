@@ -3,7 +3,7 @@
 // was a well-formed `MetaItem`.
 
 fn main() {
-    foo() //~ WARNING use of deprecated function `foo`
+    foo()
 }
 
 #[deprecated(note = test)]

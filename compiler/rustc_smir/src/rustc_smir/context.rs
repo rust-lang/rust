@@ -9,7 +9,7 @@ use std::cell::RefCell;
 use std::iter;
 
 use rustc_abi::HasDataLayout;
-use rustc_hir::{Attribute, LangItem};
+use rustc_hir::LangItem;
 use rustc_middle::ty::layout::{
     FnAbiOf, FnAbiOfHelpers, HasTyCtxt, HasTypingEnv, LayoutOf, LayoutOfHelpers,
 };
@@ -243,7 +243,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         }
     }
 
-    fn tool_attrs(
+    fn get_attrs_by_path(
         &self,
         def_id: stable_mir::DefId,
         attr: &[stable_mir::Symbol],
@@ -253,40 +253,30 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let did = tables[def_id];
         let attr_name: Vec<_> = attr.iter().map(|seg| rustc_span::Symbol::intern(&seg)).collect();
         tcx.get_attrs_by_path(did, &attr_name)
-            .filter_map(|attribute| {
-                if let Attribute::Unparsed(u) = attribute {
-                    let attr_str = rustc_hir_pretty::attribute_to_string(&tcx, attribute);
-                    Some(stable_mir::crate_def::Attribute::new(
-                        attr_str,
-                        u.span.stable(&mut *tables),
-                    ))
-                } else {
-                    None
-                }
+            .map(|attribute| {
+                let attr_str = rustc_hir_pretty::attribute_to_string(&tcx, attribute);
+                let span = attribute.span;
+                stable_mir::crate_def::Attribute::new(attr_str, span.stable(&mut *tables))
             })
             .collect()
     }
 
-    fn all_tool_attrs(&self, def_id: stable_mir::DefId) -> Vec<stable_mir::crate_def::Attribute> {
+    fn get_all_attrs(&self, def_id: stable_mir::DefId) -> Vec<stable_mir::crate_def::Attribute> {
         let mut tables = self.0.borrow_mut();
         let tcx = tables.tcx;
         let did = tables[def_id];
+        let filter_fn =
+            move |a: &&rustc_hir::Attribute| matches!(a.kind, rustc_hir::AttrKind::Normal(_));
         let attrs_iter = if let Some(did) = did.as_local() {
-            tcx.hir().attrs(tcx.local_def_id_to_hir_id(did)).iter()
+            tcx.hir().attrs(tcx.local_def_id_to_hir_id(did)).iter().filter(filter_fn)
         } else {
-            tcx.attrs_for_def(did).iter()
+            tcx.attrs_for_def(did).iter().filter(filter_fn)
         };
         attrs_iter
-            .filter_map(|attribute| {
-                if let Attribute::Unparsed(u) = attribute {
-                    let attr_str = rustc_hir_pretty::attribute_to_string(&tcx, attribute);
-                    Some(stable_mir::crate_def::Attribute::new(
-                        attr_str,
-                        u.span.stable(&mut *tables),
-                    ))
-                } else {
-                    None
-                }
+            .map(|attribute| {
+                let attr_str = rustc_hir_pretty::attribute_to_string(&tcx, attribute);
+                let span = attribute.span;
+                stable_mir::crate_def::Attribute::new(attr_str, span.stable(&mut *tables))
             })
             .collect()
     }

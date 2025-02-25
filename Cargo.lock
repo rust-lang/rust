@@ -3207,7 +3207,6 @@ dependencies = [
  "rustc_abi",
  "rustc_ast",
  "rustc_ast_pretty",
- "rustc_attr_parsing",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_feature",
@@ -3216,7 +3215,6 @@ dependencies = [
  "rustc_index",
  "rustc_macros",
  "rustc_middle",
- "rustc_parse",
  "rustc_session",
  "rustc_span",
  "rustc_target",
@@ -3265,10 +3263,14 @@ dependencies = [
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_data_structures",
+ "rustc_errors",
+ "rustc_feature",
+ "rustc_fluent_macro",
+ "rustc_lexer",
  "rustc_macros",
  "rustc_serialize",
+ "rustc_session",
  "rustc_span",
- "thin-vec",
 ]
 
 [[package]]
@@ -3283,13 +3285,11 @@ dependencies = [
  "rustc_errors",
  "rustc_feature",
  "rustc_fluent_macro",
- "rustc_hir",
  "rustc_lexer",
  "rustc_macros",
  "rustc_serialize",
  "rustc_session",
  "rustc_span",
- "thin-vec",
 ]
 
 [[package]]
@@ -3342,7 +3342,6 @@ dependencies = [
  "rustc_expand",
  "rustc_feature",
  "rustc_fluent_macro",
- "rustc_hir",
  "rustc_index",
  "rustc_lexer",
  "rustc_lint_defs",
@@ -3599,7 +3598,6 @@ dependencies = [
  "rustc_abi",
  "rustc_ast",
  "rustc_ast_pretty",
- "rustc_attr_data_structures",
  "rustc_data_structures",
  "rustc_error_codes",
  "rustc_error_messages",
@@ -3634,7 +3632,6 @@ dependencies = [
  "rustc_errors",
  "rustc_feature",
  "rustc_fluent_macro",
- "rustc_hir",
  "rustc_lexer",
  "rustc_lint_defs",
  "rustc_macros",
@@ -3693,7 +3690,6 @@ dependencies = [
  "rustc_abi",
  "rustc_arena",
  "rustc_ast",
- "rustc_attr_data_structures",
  "rustc_data_structures",
  "rustc_hashes",
  "rustc_index",
@@ -3741,7 +3737,6 @@ dependencies = [
  "rustc_abi",
  "rustc_ast",
  "rustc_ast_pretty",
- "rustc_attr_parsing",
  "rustc_hir",
  "rustc_span",
 ]
@@ -4249,7 +4244,6 @@ name = "rustc_query_impl"
 version = "0.0.0"
 dependencies = [
  "measureme",
- "rustc_attr_data_structures",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hashes",
@@ -4272,7 +4266,6 @@ dependencies = [
  "rustc-rayon-core",
  "rustc_abi",
  "rustc_ast",
- "rustc_attr_data_structures",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_feature",
@@ -4323,7 +4316,6 @@ version = "0.0.0"
 dependencies = [
  "bitflags",
  "rustc_abi",
- "rustc_ast",
  "rustc_data_structures",
  "rustc_hir",
  "rustc_middle",
@@ -4420,7 +4412,6 @@ dependencies = [
  "punycode",
  "rustc-demangle",
  "rustc_abi",
- "rustc_ast",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hashes",

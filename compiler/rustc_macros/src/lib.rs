@@ -17,7 +17,6 @@ mod diagnostics;
 mod extension;
 mod hash_stable;
 mod lift;
-mod print_attribute;
 mod query;
 mod serialize;
 mod symbols;
@@ -175,12 +174,4 @@ decl_derive! {
     ///
     /// The error type is `u32`.
     try_from::try_from_u32
-}
-decl_derive! {
-    [PrintAttribute] =>
-    /// Derives `PrintAttribute` for `AttributeKind`.
-    /// This macro is pretty specific to `rustc_attr_data_structures` and likely not that useful in
-    /// other places. It's deriving something close to `Debug` without printing some extraenous
-    /// things like spans.
-    print_attribute::print_attribute
 }
