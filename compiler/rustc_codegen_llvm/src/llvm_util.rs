@@ -325,7 +325,6 @@ pub(crate) fn target_features_cfg(sess: &Session) -> (Vec<Symbol>, Vec<Symbol>) 
             if RUSTC_SPECIAL_FEATURES.contains(feature) {
                 return true;
             }
-            // check that all features in a given smallvec are enabled
             if let Some(feat) = to_llvm_features(sess, feature) {
                 for llvm_feature in feat {
                     let cstr = SmallCStr::new(llvm_feature);
