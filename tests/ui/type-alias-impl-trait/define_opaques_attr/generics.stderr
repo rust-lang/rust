@@ -10,12 +10,6 @@ error: expected one of `(`, `,`, `::`, or `=`, found `<`
 LL | #[define_opaque(Tait<()>)]
    |                     ^ expected one of `(`, `,`, `::`, or `=`
 
-error[E0601]: `main` function not found in crate `generics`
-  --> $DIR/generics.rs:12:13
-   |
-LL | fn main() {}
-   |             ^ consider adding a `main` function to `$DIR/generics.rs`
-
 error: unconstrained opaque type
   --> $DIR/generics.rs:3:16
    |
@@ -24,6 +18,5 @@ LL | type Tait<T> = impl Sized;
    |
    = note: `Tait` must be used in combination with a concrete type within the same crate
 
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0601`.

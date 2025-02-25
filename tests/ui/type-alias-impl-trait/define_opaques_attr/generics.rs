@@ -10,4 +10,3 @@ fn foo() {}
 #[define_opaque(Tait<()>)]
 //~^ ERROR: expected one of `(`, `,`, `::`, or `=`, found `<`
 fn main() {}
-//~^ ERROR: `main` function not found
