@@ -610,7 +610,14 @@ impl<'a> State<'a> {
                 self.end(); // end inner head-block
                 self.end(); // end outer head-block
             }
-            hir::ItemKind::Static(ty, m, expr) => {
+            hir::ItemKind::Static(ty, m, expr, define_opaques) => {
+                if let Some(define_opaques) = define_opaques {
+                    self.word("#[");
+                    for id in define_opaques {
+                        self.word(format!("{id:?}"));
+                    }
+                    self.word("]");
+                }
                 self.head("static");
                 if m.is_mut() {
                     self.word_space("mut");
@@ -1555,7 +1562,15 @@ impl<'a> State<'a> {
                 fn_arg_span: _,
                 kind: _,
                 def_id: _,
+                define_opaques,
             }) => {
+                if let Some(define_opaques) = define_opaques {
+                    self.word("#[");
+                    for id in define_opaques {
+                        self.word(format!("{id:?}"));
+                    }
+                    self.word("]");
+                }
                 self.print_closure_binder(binder, bound_generic_params);
                 self.print_constness(constness);
                 self.print_capture_clause(capture_clause);
@@ -2382,6 +2397,12 @@ impl<'a> State<'a> {
                 self.word_space(",");
             }
             self.print_where_predicate(predicate);
+        }
+
+        if let Some(define_opaques) = generics.define_opaques {
+            for id in define_opaques {
+                self.word(format!("define opaque type {id:?},"));
+            }
         }
     }
 

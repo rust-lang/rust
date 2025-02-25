@@ -37,7 +37,14 @@ impl<'a> State<'a> {
             ast::ForeignItemKind::Fn(func) => {
                 self.print_fn_full(ident, vis, attrs, &*func);
             }
-            ast::ForeignItemKind::Static(box ast::StaticItem { ty, mutability, expr, safety }) => {
+            ast::ForeignItemKind::Static(box ast::StaticItem {
+                ty,
+                mutability,
+                expr,
+                safety,
+                define_opaques,
+            }) => {
+                assert!(define_opaques.is_none());
                 self.print_item_const(
                     ident,
                     Some(*mutability),
@@ -174,7 +181,21 @@ impl<'a> State<'a> {
                 self.print_use_tree(tree);
                 self.word(";");
             }
-            ast::ItemKind::Static(box StaticItem { ty, safety, mutability: mutbl, expr: body }) => {
+            ast::ItemKind::Static(box StaticItem {
+                ty,
+                safety,
+                mutability: mutbl,
+                expr: body,
+                define_opaques,
+            }) => {
+                if let Some(define_opaques) = define_opaques {
+                    self.word("#[");
+                    for (_, path) in define_opaques {
+                        self.print_path(path, false, 0);
+                        self.word(",");
+                    }
+                    self.word("]");
+                }
                 self.print_safety(*safety);
                 self.print_item_const(
                     item.ident,
@@ -651,6 +672,7 @@ impl<'a> State<'a> {
         func: &ast::Fn,
     ) {
         let ast::Fn { defaultness, generics, sig, contract, body } = func;
+
         if body.is_some() {
             self.head("");
         }
@@ -698,7 +720,15 @@ impl<'a> State<'a> {
         }
         self.print_generic_params(&generics.params);
         self.print_fn_params_and_ret(decl, false);
-        self.print_where_clause(&generics.where_clause)
+        self.print_where_clause(&generics.where_clause);
+
+        if let Some(define_opaques) = &generics.define_opaques {
+            for (_, path) in define_opaques {
+                self.word("define opaques from ");
+                self.print_path(path, false, 0);
+                self.word(",");
+            }
+        }
     }
 
     pub(crate) fn print_fn_params_and_ret(&mut self, decl: &ast::FnDecl, is_closure: bool) {

@@ -14,6 +14,7 @@ impl Trait for Struct {
     type Assoc<'a> = &'a u32;
 }
 
+#[define_opaques(Foo)]
 const FOO: Foo = Struct;
 //~^ ERROR: expected generic lifetime parameter, found `'a`
 

@@ -752,7 +752,7 @@ impl<'a> TraitDef<'a> {
             }
         }
 
-        let trait_generics = Generics { params, where_clause, span };
+        let trait_generics = Generics { params, where_clause, span, define_opaques: None };
 
         // Create the reference to the trait.
         let trait_ref = cx.trait_ref(trait_path);

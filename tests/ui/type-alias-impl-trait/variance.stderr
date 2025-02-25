@@ -28,7 +28,7 @@ error: unconstrained opaque type
 LL | type NotCapturedEarly<'a> = impl Sized;
    |                             ^^^^^^^^^^
    |
-   = note: `NotCapturedEarly` must be used in combination with a concrete type within the same module
+   = note: `NotCapturedEarly` must be used in combination with a concrete type within the same crate
 
 error: unconstrained opaque type
   --> $DIR/variance.rs:11:26
@@ -36,7 +36,7 @@ error: unconstrained opaque type
 LL | type CapturedEarly<'a> = impl Sized + Captures<'a>;
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `CapturedEarly` must be used in combination with a concrete type within the same module
+   = note: `CapturedEarly` must be used in combination with a concrete type within the same crate
 
 error: unconstrained opaque type
   --> $DIR/variance.rs:14:56
@@ -44,7 +44,7 @@ error: unconstrained opaque type
 LL | type NotCapturedLate<'a> = dyn for<'b> Iterator<Item = impl Sized>;
    |                                                        ^^^^^^^^^^
    |
-   = note: `NotCapturedLate` must be used in combination with a concrete type within the same module
+   = note: `NotCapturedLate` must be used in combination with a concrete type within the same crate
 
 error: unconstrained opaque type
   --> $DIR/variance.rs:18:49
@@ -52,7 +52,7 @@ error: unconstrained opaque type
 LL | type Captured<'a> = dyn for<'b> Iterator<Item = impl Sized + Captures<'a>>;
    |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `Captured` must be used in combination with a concrete type within the same module
+   = note: `Captured` must be used in combination with a concrete type within the same crate
 
 error: unconstrained opaque type
   --> $DIR/variance.rs:22:27
@@ -60,7 +60,7 @@ error: unconstrained opaque type
 LL | type Bar<'a, 'b: 'b, T> = impl Sized;
    |                           ^^^^^^^^^^
    |
-   = note: `Bar` must be used in combination with a concrete type within the same module
+   = note: `Bar` must be used in combination with a concrete type within the same crate
 
 error: unconstrained opaque type
   --> $DIR/variance.rs:34:32

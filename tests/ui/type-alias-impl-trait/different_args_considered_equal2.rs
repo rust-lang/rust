@@ -2,6 +2,7 @@
 
 pub type Opaque<'a> = impl Sized;
 
+#[define_opaques(Opaque)]
 fn get_one<'a>(a: *mut &'a str) -> impl IntoIterator<Item = Opaque<'a>> {
     if a.is_null() {
         Some(a)

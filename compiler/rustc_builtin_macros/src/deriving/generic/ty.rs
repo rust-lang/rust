@@ -188,6 +188,7 @@ impl Bounds {
                 span,
             },
             span,
+            define_opaques: None,
         }
     }
 }

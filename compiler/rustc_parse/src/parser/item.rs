@@ -981,7 +981,13 @@ impl<'a> Parser<'a> {
                 let kind = match AssocItemKind::try_from(kind) {
                     Ok(kind) => kind,
                     Err(kind) => match kind {
-                        ItemKind::Static(box StaticItem { ty, safety: _, mutability: _, expr }) => {
+                        ItemKind::Static(box StaticItem {
+                            ty,
+                            safety: _,
+                            mutability: _,
+                            expr,
+                            define_opaques: _,
+                        }) => {
                             self.dcx().emit_err(errors::AssociatedStaticItemNotAllowed { span });
                             AssocItemKind::Const(Box::new(ConstItem {
                                 defaultness: Defaultness::Final,
@@ -1255,6 +1261,7 @@ impl<'a> Parser<'a> {
                                 mutability: Mutability::Not,
                                 expr,
                                 safety: Safety::Default,
+                                define_opaques: None,
                             }))
                         }
                         _ => return self.error_bad_item_kind(span, &kind, "`extern` blocks"),
@@ -1383,7 +1390,7 @@ impl<'a> Parser<'a> {
 
         self.expect_semi()?;
 
-        Ok((ident, StaticItem { ty, safety, mutability, expr }))
+        Ok((ident, StaticItem { ty, safety, mutability, expr, define_opaques: None }))
     }
 
     /// Parse a constant item with the prefix `"const"` already parsed.

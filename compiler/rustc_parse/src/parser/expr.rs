@@ -2406,6 +2406,7 @@ impl<'a> Parser<'a> {
         let closure = self.mk_expr(
             lo.to(body.span),
             ExprKind::Closure(Box::new(ast::Closure {
+                define_opaques: None,
                 binder,
                 capture_clause,
                 constness,

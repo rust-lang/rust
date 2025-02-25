@@ -3,14 +3,16 @@ type Foo = impl Send;
 
 struct A;
 
+#[define_opaques(Foo)]
+//~^ ERROR unstable library feature
 const VALUE: Foo = value();
 //~^ ERROR cannot find function `value` in this scope
 
 fn test() {
     match VALUE {
         0 | 0 => {}
-//~^ ERROR mismatched types
-//~| ERROR mismatched types
+        //~^ ERROR mismatched types
+        //~| ERROR mismatched types
         _ => (),
     }
 }

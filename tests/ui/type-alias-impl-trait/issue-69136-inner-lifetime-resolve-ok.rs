@@ -18,6 +18,7 @@ impl WithAssoc for () {
 
 type Return<'a> = impl WithAssoc<AssocType = impl Sized + 'a>;
 
+#[define_opaques(Return)]
 fn my_fun<'a>() -> Return<'a> {}
 
 fn main() {}

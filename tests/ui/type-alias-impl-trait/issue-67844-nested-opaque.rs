@@ -22,6 +22,7 @@ impl WithAssoc for MyStruct {
     type AssocType = MyParam;
 }
 
+#[define_opaques(Return)]
 fn my_fun<A>() -> Return<A> {
     MyStruct
 }

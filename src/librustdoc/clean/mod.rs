@@ -2776,7 +2776,7 @@ fn clean_maybe_renamed_item<'tcx>(
     let mut name = renamed.unwrap_or_else(|| cx.tcx.hir().name(item.hir_id()));
     cx.with_param_env(def_id, |cx| {
         let kind = match item.kind {
-            ItemKind::Static(ty, mutability, body_id) => StaticItem(Static {
+            ItemKind::Static(ty, mutability, body_id, _) => StaticItem(Static {
                 type_: Box::new(clean_ty(ty, cx)),
                 mutability,
                 expr: Some(body_id),

@@ -1,5 +1,5 @@
 error: item does not constrain `Foo::{opaque#0}`, but has it in its signature
-  --> $DIR/norm-before-method-resolution-opaque-type.rs:16:4
+  --> $DIR/norm-before-method-resolution-opaque-type.rs:17:4
    |
 LL | fn weird_bound<X>(x: &<X as Trait<'static>>::Out<Foo>) -> X
    |    ^^^^^^^^^^^
@@ -12,7 +12,7 @@ LL | type Foo = impl Sized;
    |            ^^^^^^^^^^
 
 error[E0507]: cannot move out of `*x` which is behind a shared reference
-  --> $DIR/norm-before-method-resolution-opaque-type.rs:22:13
+  --> $DIR/norm-before-method-resolution-opaque-type.rs:23:13
    |
 LL |     let x = *x;
    |             ^^ move occurs because `*x` has type `<X as Trait<'_>>::Out<Foo>`, which does not implement the `Copy` trait

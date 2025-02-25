@@ -138,6 +138,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
                             .collect(),
                         where_clause: generics.where_clause.clone(),
                         span: generics.span,
+                        define_opaques: None,
                     },
                     of_trait: Some(trait_ref),
                     self_ty: self_type.clone(),
