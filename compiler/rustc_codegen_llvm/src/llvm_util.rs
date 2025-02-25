@@ -313,11 +313,11 @@ pub(crate) fn target_features_cfg(sess: &Session, allow_unstable: bool) -> Vec<S
     // We do *not* add the -Ctarget-features there, and instead duplicate the logic for that below.
     // The reason is that if LLVM considers a feature implied but we do not, we don't want that to
     // show up in `cfg`. That way, `cfg` is entirely under our control -- except for the handling of
-    // the target CPU, that is still expanded to target features (with all their implied features) by
-    // LLVM.
+    // the target CPU, that is still expanded to target features (with all their implied features)
+    // by LLVM.
     let target_machine = create_informational_target_machine(sess, true);
-    // Compute which of the known target features are enabled in the 'base' target machine.
-    // We only consider "supported" features; "forbidden" features are not reflected in `cfg` as of now.
+    // Compute which of the known target features are enabled in the 'base' target machine. We only
+    // consider "supported" features; "forbidden" features are not reflected in `cfg` as of now.
     features.extend(
         sess.target
             .rust_target_features()
@@ -344,7 +344,7 @@ pub(crate) fn target_features_cfg(sess: &Session, allow_unstable: bool) -> Vec<S
             .map(|(feature, _, _)| Symbol::intern(feature)),
     );
 
-    // Add enabled features
+    // Add enabled and remove disabled features.
     for (enabled, feature) in
         sess.opts.cg.target_feature.split(',').filter_map(|s| match s.chars().next() {
             Some('+') => Some((true, Symbol::intern(&s[1..]))),
@@ -398,13 +398,12 @@ pub(crate) fn target_features_cfg(sess: &Session, allow_unstable: bool) -> Vec<S
             if allow_unstable
                 || (gate.in_cfg() && (sess.is_nightly_build() || gate.requires_nightly().is_none()))
             {
-                Some(*feature)
+                Some(Symbol::intern(feature))
             } else {
                 None
             }
         })
-        .filter(|feature| features.contains(&Symbol::intern(feature)))
-        .map(|feature| Symbol::intern(feature))
+        .filter(|feature| features.contains(&feature))
         .collect()
 }
 
