@@ -232,12 +232,12 @@ impl AssocItemQSelf {
 /// Use this enum with `<dyn HirTyLowerer>::lower_const_arg` to instruct it with the
 /// desired behavior.
 #[derive(Debug, Clone, Copy)]
-pub enum FeedConstTy {
+pub enum FeedConstTy<'a, 'tcx> {
     /// Feed the type.
     ///
     /// The `DefId` belongs to the const param that we are supplying
     /// this (anon) const arg to.
-    Param(DefId),
+    Param(DefId, &'a [ty::GenericArg<'tcx>]),
     /// Don't feed the type.
     No,
 }
@@ -298,6 +298,7 @@ pub trait GenericArgsLowerer<'a, 'tcx> {
 
     fn provided_kind(
         &mut self,
+        preceding_args: &[ty::GenericArg<'tcx>],
         param: &ty::GenericParamDef,
         arg: &GenericArg<'tcx>,
     ) -> ty::GenericArg<'tcx>;
@@ -481,6 +482,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
             fn provided_kind(
                 &mut self,
+                preceding_args: &[ty::GenericArg<'tcx>],
                 param: &ty::GenericParamDef,
                 arg: &GenericArg<'tcx>,
             ) -> ty::GenericArg<'tcx> {
@@ -526,7 +528,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => self
                         .lowerer
                         // Ambig portions of `ConstArg` are handled in the match arm below
-                        .lower_const_arg(ct.as_unambig_ct(), FeedConstTy::Param(param.def_id))
+                        .lower_const_arg(
+                            ct.as_unambig_ct(),
+                            FeedConstTy::Param(param.def_id, preceding_args),
+                        )
                         .into(),
                     (&GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {
                         self.lowerer.ct_infer(Some(param), inf.span).into()
@@ -582,8 +587,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         let ty = tcx
                             .at(self.span)
                             .type_of(param.def_id)
-                            .no_bound_vars()
-                            .expect("const parameter types cannot be generic");
+                            .instantiate(tcx, preceding_args);
                         if let Err(guar) = ty.error_reported() {
                             return ty::Const::new_error(tcx, guar).into();
                         }
@@ -2107,14 +2111,33 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     pub fn lower_const_arg(
         &self,
         const_arg: &hir::ConstArg<'tcx>,
-        feed: FeedConstTy,
+        feed: FeedConstTy<'_, 'tcx>,
     ) -> Const<'tcx> {
         let tcx = self.tcx();
 
-        if let FeedConstTy::Param(param_def_id) = feed
+        if let FeedConstTy::Param(param_def_id, args) = feed
             && let hir::ConstArgKind::Anon(anon) = &const_arg.kind
         {
-            tcx.feed_anon_const_type(anon.def_id, tcx.type_of(param_def_id));
+            let anon_const_type = tcx.type_of(param_def_id).instantiate(tcx, args);
+
+            // We must error if the instantiated type has any inference variables as we will
+            // use this type to feed the `type_of` and query results must not contain inference
+            // variables otherwise we will ICE.
+            //
+            // FIXME(generic_const_parameter_types): Ideally we remove this one day when we
+            // have the ability to intermix typeck of anon const const args with the parent
+            // bodies typeck.
+            if anon_const_type.has_infer() {
+                let e =
+                    tcx.dcx().span_err(const_arg.span(), "Type of const argument is uninferred");
+                tcx.feed_anon_const_type(anon.def_id, ty::EarlyBinder::bind(Ty::new_error(tcx, e)));
+                return ty::Const::new_error(tcx, e);
+            }
+
+            tcx.feed_anon_const_type(
+                anon.def_id,
+                ty::EarlyBinder::bind(tcx.type_of(param_def_id).instantiate(tcx, args)),
+            );
         }
 
         let hir_id = const_arg.hir_id;
@@ -2230,10 +2253,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let expr = &tcx.hir_body(anon.body).value;
         debug!(?expr);
 
-        let ty = tcx
-            .type_of(anon.def_id)
-            .no_bound_vars()
-            .expect("const parameter types cannot be generic");
+        // FIXME(generic_const_parameter_types): We should use the proper generic args
+        // here. It's only used as a hint for literals so doesn't matter too much to use the right
+        // generic arguments, just weaker type inference.
+        let ty = tcx.type_of(anon.def_id).instantiate_identity();
 
         match self.try_lower_anon_const_lit(ty, expr) {
             Some(v) => v,

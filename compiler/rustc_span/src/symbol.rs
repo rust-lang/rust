@@ -1037,6 +1037,7 @@ symbols! {
         generic_associated_types_extended,
         generic_const_exprs,
         generic_const_items,
+        generic_const_parameter_types,
         generic_param_attrs,
         generic_pattern_types,
         get_context,
