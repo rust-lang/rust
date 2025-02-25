@@ -360,4 +360,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "Added `build.test-stage = 2` to 'tools' profile defaults",
     },
+    ChangeInfo {
+        change_id: 137583,
+        severity: ChangeSeverity::Info,
+        summary: "It is now possible to filter out submodules from vendoring with `dist.exclude-submodules-from-vendoring`",
+    },
 ];

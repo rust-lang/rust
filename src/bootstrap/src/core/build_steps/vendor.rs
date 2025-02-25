@@ -86,6 +86,9 @@ impl Step for Vendor {
         // These submodules must be present for `x vendor` to work.
         for (_, submodules) in &to_vendor {
             for submodule in submodules {
+                if builder.config.dist_exclude_submodules_from_vendoring.contains(&**submodule) {
+                    continue;
+                }
                 builder.build.require_submodule(submodule, None);
             }
         }
