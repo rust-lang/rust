@@ -898,6 +898,45 @@ macro_rules! int_impl {
             }
         }
 
+        /// Unchecked integer division. Computes `self / rhs`.
+        ///
+        /// Calling `x.unchecked_div(y)` is semantically equivalent to calling
+        /// `x.`[`checked_div`]`(y).`[`unwrap_unchecked`]`()`.
+        ///
+        /// If you're just trying to avoid the panic in debug mode, then **do not**
+        /// use this.  Instead, you're looking for [`wrapping_div`].
+        ///
+        /// # Safety
+        ///
+        /// This results in undefined behavior when
+        #[doc = concat!("`rhs  == 0` or (`self == ", stringify!($SelfT), "::MIN` and `rhs == -1`)")]
+        /// i.e. when [`checked_div`] would return `None`.
+        ///
+        /// [`unwrap_unchecked`]: option/enum.Option.html#method.unwrap_unchecked
+        #[doc = concat!("[`checked_div`]: ", stringify!($SelfT), "::checked_div")]
+        #[doc = concat!("[`wrapping_div`]: ", stringify!($SelfT), "::wrapping_div")]
+        #[unstable(
+            feature = "unchecked_div_rem",
+            reason = "consistency with other unchecked_* functions",
+            issue = "136716",
+        )]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+        pub const unsafe fn unchecked_div(self, rhs: Self) -> Self {
+            assert_unsafe_precondition!(
+                check_language_ub,
+                concat!(stringify!($SelfT), "::unchecked_div cannot overflow or accept rhs as 0"),
+                (
+                    lhs: $SelfT = self,
+                    rhs: $SelfT = rhs
+                ) => !lhs.overflowing_div(rhs).1 || !(rhs == 0),
+            );
+
+            // SAFETY: this is guaranteed to be safe by the caller.
+            unsafe { intrinsics::unchecked_div(self, rhs) }
+        }
+
         /// Strict integer division. Computes `self / rhs`, panicking
         /// if overflow occurred.
         ///
@@ -1041,6 +1080,40 @@ macro_rules! int_impl {
             } else {
                 // SAFETY: div by zero and by INT_MIN have been checked above
                 Some(unsafe { intrinsics::unchecked_rem(self, rhs) })
+            }
+        }
+
+        /// Unchecked integer remainder. Computes `self % rhs`, assuming `rhs != 0`
+        /// or overflow cannot occur.
+        ///
+        /// # Safety
+        ///
+        /// This results in undefined behavior when
+        #[doc = concat!("`rhs == 0` or (`self ==", stringify!($SelfT), "::MIN` and `rhs == -1`)")]
+        /// i.e. when [`checked_rem`] would return `None`.
+        ///
+        #[doc = concat!("[`checked_rem`]: ", stringify!($SelfT), "::checked_rem")]
+        #[unstable(
+            feature = "unchecked_div_rem",
+            reason = "consistency with other unchecked_* functions",
+            issue = "136716",
+        )]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+        pub const unsafe fn unchecked_rem(self, rhs: Self) -> Self {
+            assert_unsafe_precondition!(
+                check_language_ub,
+                concat!(stringify!($SelfT), "::unchecked_rem cannot overflow or accept rhs as 0"),
+                (
+                    lhs: $SelfT = self,
+                    rhs: $SelfT = rhs
+                ) => !lhs.overflowing_rem(rhs).1 || !(rhs == 0),
+            );
+
+            // SAFETY: this is guaranteed to be safe by the caller.
+            unsafe {
+                intrinsics::unchecked_rem(self, rhs)
             }
         }
 
