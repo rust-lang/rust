@@ -34,17 +34,7 @@ impl MachineStopType for ConstEvalErrKind {
         match self {
             ConstAccessesMutGlobal => const_eval_const_accesses_mut_global,
             ModifiedGlobal => const_eval_modified_global,
-            Panic { msg, .. } => {
-                let msg = msg.as_str();
-                match msg {
-                    "explicit panic"
-                    | "not implemented"
-                    | "not yet implemented"
-                    | "internal error: entered unreachable code" => msg.to_string().into(),
-                    _ if msg.starts_with("assertion failed: ") => msg.to_string().into(),
-                    _ => const_eval_panic,
-                }
-            }
+            Panic { .. } => const_eval_panic,
             RecursiveStatic => const_eval_recursive_static,
             AssertFailure(x) => x.diagnostic_message(),
             WriteThroughImmutablePointer => const_eval_write_through_immutable_pointer,

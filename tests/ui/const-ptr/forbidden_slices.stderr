@@ -103,11 +103,11 @@ error[E0080]: could not evaluate static initializer
   --> $DIR/forbidden_slices.rs:50:33
    |
 LL | pub static R1: &[()] = unsafe { from_ptr_range(ptr::null()..ptr::null()) }; // errors inside libcore
-   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ assertion failed: 0 < pointee_size && pointee_size <= isize::MAX as usize
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation panicked: assertion failed: 0 < pointee_size && pointee_size <= isize::MAX as usize
    |
 note: inside `from_ptr_range::<'_, ()>`
   --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
-note: inside `std::ptr::const_ptr::<impl *const ()>::sub_ptr`
+note: inside `std::ptr::const_ptr::<impl *const ()>::offset_from_unsigned`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
    = note: the failure occurred here
@@ -189,7 +189,7 @@ LL | pub static R9: &[u32] = unsafe { from_ptr_range(&D0..(&D0 as *const u32).ad
    |
 note: inside `from_ptr_range::<'_, u32>`
   --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
-note: inside `std::ptr::const_ptr::<impl *const u32>::sub_ptr`
+note: inside `std::ptr::const_ptr::<impl *const u32>::offset_from_unsigned`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
    = note: the failure occurred here
@@ -202,7 +202,7 @@ LL | pub static R10: &[u32] = unsafe { from_ptr_range(&D0..&D0) };
    |
 note: inside `from_ptr_range::<'_, u32>`
   --> $SRC_DIR/core/src/slice/raw.rs:LL:COL
-note: inside `std::ptr::const_ptr::<impl *const u32>::sub_ptr`
+note: inside `std::ptr::const_ptr::<impl *const u32>::offset_from_unsigned`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
    = note: the failure occurred here
