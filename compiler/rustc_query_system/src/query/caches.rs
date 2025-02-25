@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 use std::hash::Hash;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::sharded::{self, Sharded};
 use rustc_data_structures::sync::OnceLock;
 pub use rustc_data_structures::vec_cache::VecCache;
@@ -185,5 +185,50 @@ where
 
     fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
         self.iter(f)
+    }
+}
+
+pub struct IndexCache<K, V> {
+    cache: Sharded<FxIndexMap<K, (V, DepNodeIndex)>>,
+}
+
+impl<K, V> Default for IndexCache<K, V> {
+    fn default() -> Self {
+        IndexCache { cache: Default::default() }
+    }
+}
+
+impl<K, V> QueryCache for IndexCache<K, V>
+where
+    K: Eq + Hash + Copy + Debug,
+    V: Copy,
+{
+    type Key = K;
+    type Value = V;
+
+    #[inline(always)]
+    fn lookup(&self, key: &K) -> Option<(V, DepNodeIndex)> {
+        use indexmap::map::raw_entry_v1::RawEntryApiV1;
+        let key_hash = sharded::make_hash(key);
+        let lock = self.cache.lock_shard_by_hash(key_hash);
+        let result = lock.raw_entry_v1().from_key_hashed_nocheck(key_hash, key);
+
+        if let Some((_, value)) = result { Some(*value) } else { None }
+    }
+
+    #[inline]
+    fn complete(&self, key: K, value: V, index: DepNodeIndex) {
+        let mut lock = self.cache.lock_shard_by_value(&key);
+        // We may be overwriting another value. This is all right, since the dep-graph
+        // will check that the fingerprint matches.
+        lock.insert(key, (value, index));
+    }
+
+    fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
+        for shard in self.cache.lock_shards() {
+            for (k, v) in shard.iter() {
+                f(k, &v.0, v.1);
+            }
+        }
     }
 }
