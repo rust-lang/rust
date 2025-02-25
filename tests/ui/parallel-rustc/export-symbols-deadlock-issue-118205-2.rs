@@ -1,3 +1,6 @@
+// Test for #118205, which causes a deadlock bug
+//
+//@ parallel-front-end-robustness
 //@ compile-flags:-C extra-filename=-1 -Z threads=16
 //@ no-prefer-dynamic
 //@ build-pass
