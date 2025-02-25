@@ -85,6 +85,10 @@ hir_analysis_cmse_output_stack_spill =
     .note1 = functions with the `{$abi}` ABI must pass their result via the available return registers
     .note2 = the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
 
+hir_analysis_coerce_multi = implementing `{$trait_name}` does not allow multiple fields to be coerced
+    .note = the trait `{$trait_name}` may only be implemented when a single field is being coerced
+    .label = these fields must be coerced for `{$trait_name}` to be valid
+
 hir_analysis_coerce_pointee_no_field = `CoercePointee` can only be derived on `struct`s with at least one field
 
 hir_analysis_coerce_pointee_no_user_validity_assertion = asserting applicability of `derive(CoercePointee)` on a target data is forbidden
@@ -95,12 +99,12 @@ hir_analysis_coerce_pointee_not_struct = `derive(CoercePointee)` is only applica
 
 hir_analysis_coerce_pointee_not_transparent = `derive(CoercePointee)` is only applicable to `struct` with `repr(transparent)` layout
 
+hir_analysis_coerce_unsized_field_validity = for `{$ty}` to have a valid implementation of `{$trait_name}`, it must be possible to coerce the field of type `{$field_ty}`
+    .label = `{$field_ty}` must be a pointer, reference, or smart pointer that is allowed to be unsized
+
 hir_analysis_coerce_unsized_may = the trait `{$trait_name}` may only be implemented for a coercion between structures
 
-hir_analysis_coerce_unsized_multi = implementing the trait `CoerceUnsized` requires multiple coercions
-    .note = `CoerceUnsized` may only be implemented for a coercion between structures with one field being coerced
-    .coercions_note = currently, {$number} fields need coercions: {$coercions}
-    .label = requires multiple coercions
+hir_analysis_coerce_zero = implementing `{$trait_name}` requires a field to be coerced
 
 hir_analysis_coercion_between_struct_same_note = expected coercion between the same definition; expected `{$source_path}`, found `{$target_path}`
 
@@ -138,10 +142,6 @@ hir_analysis_cross_crate_traits = cross-crate traits with a default impl, like `
 
 hir_analysis_cross_crate_traits_defined = cross-crate traits with a default impl, like `{$traits}`, can only be implemented for a struct/enum type defined in the current crate
     .label = can't implement cross-crate trait for type in another crate
-
-hir_analysis_dispatch_from_dyn_multi = implementing the `DispatchFromDyn` trait requires multiple coercions
-    .note = the trait `DispatchFromDyn` may only be implemented for a coercion between structures with a single field being coerced
-    .coercions_note = currently, {$number} fields need coercions: {$coercions}
 
 hir_analysis_dispatch_from_dyn_repr = structs implementing `DispatchFromDyn` may not have `#[repr(packed)]` or `#[repr(C)]`
 
