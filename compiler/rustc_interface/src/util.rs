@@ -39,11 +39,11 @@ pub(crate) fn add_configuration(
 ) {
     let tf = sym::target_feature;
 
-    let unstable_target_features = codegen_backend.target_features_cfg(sess, true);
-    sess.unstable_target_features.extend(unstable_target_features.iter().cloned());
+    let (target_features, unstable_target_features) = codegen_backend.target_features_cfg(sess);
 
-    let target_features = codegen_backend.target_features_cfg(sess, false);
-    sess.target_features.extend(target_features.iter().cloned());
+    sess.unstable_target_features.extend(unstable_target_features.iter().copied());
+
+    sess.target_features.extend(target_features.iter().copied());
 
     cfg.extend(target_features.into_iter().map(|feat| (tf, Some(feat))));
 

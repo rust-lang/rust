@@ -306,7 +306,7 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
 /// Must express features in the way Rust understands them.
 ///
 /// We do not have to worry about RUSTC_SPECIFIC_FEATURES here, those are handled outside codegen.
-pub(crate) fn target_features_cfg(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
+pub(crate) fn target_features_cfg(sess: &Session) -> (Vec<Symbol>, Vec<Symbol>) {
     let mut features: FxHashSet<Symbol> = Default::default();
 
     // Add base features for the target.
@@ -331,6 +331,9 @@ pub(crate) fn target_features_cfg(sess: &Session, allow_unstable: bool) -> Vec<S
                 if let Some(feat) = to_llvm_features(sess, feature) {
                     for llvm_feature in feat {
                         let cstr = SmallCStr::new(llvm_feature);
+                        // `LLVMRustHasFeature` is moderately expensive. On targets with many
+                        // features (e.g. x86) these calls take a non-trivial fraction of runtime
+                        // when compiling very small programs.
                         if !unsafe { llvm::LLVMRustHasFeature(target_machine.raw(), cstr.as_ptr()) }
                         {
                             return false;
@@ -371,11 +374,7 @@ pub(crate) fn target_features_cfg(sess: &Session, allow_unstable: bool) -> Vec<S
             // `features.contains` below.
             #[allow(rustc::potential_query_instability)]
             features.retain(|f| {
-                if sess
-                    .target
-                    .implied_target_features(f.as_str())
-                    .contains(&feature.as_str())
-                {
+                if sess.target.implied_target_features(f.as_str()).contains(&feature.as_str()) {
                     // If `f` if implies `feature`, then `!feature` implies `!f`, so we have to
                     // remove `f`. (This is the standard logical contraposition principle.)
                     false
@@ -387,24 +386,31 @@ pub(crate) fn target_features_cfg(sess: &Session, allow_unstable: bool) -> Vec<S
         }
     }
 
-    // Filter enabled features based on feature gates
-    sess.target
-        .rust_target_features()
-        .iter()
-        .filter_map(|(feature, gate, _)| {
-            // The `allow_unstable` set is used by rustc internally to determined which target
-            // features are truly available, so we want to return even perma-unstable "forbidden"
-            // features.
-            if allow_unstable
-                || (gate.in_cfg() && (sess.is_nightly_build() || gate.requires_nightly().is_none()))
-            {
-                Some(Symbol::intern(feature))
-            } else {
-                None
-            }
-        })
-        .filter(|feature| features.contains(&feature))
-        .collect()
+    // Filter enabled features based on feature gates.
+    let f = |allow_unstable| {
+        sess.target
+            .rust_target_features()
+            .iter()
+            .filter_map(|(feature, gate, _)| {
+                // The `allow_unstable` set is used by rustc internally to determined which target
+                // features are truly available, so we want to return even perma-unstable
+                // "forbidden" features.
+                if allow_unstable
+                    || (gate.in_cfg()
+                        && (sess.is_nightly_build() || gate.requires_nightly().is_none()))
+                {
+                    Some(Symbol::intern(feature))
+                } else {
+                    None
+                }
+            })
+            .filter(|feature| features.contains(&feature))
+            .collect()
+    };
+
+    let target_features = f(false);
+    let unstable_target_features = f(true);
+    (target_features, unstable_target_features)
 }
 
 pub(crate) fn print_version() {
