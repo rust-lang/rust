@@ -374,12 +374,22 @@ if "--help" in sys.argv or "-h" in sys.argv:
 
 VERBOSE = False
 
-
-# Parse all command line arguments into one of these three lists, handling
-# boolean and value-based options separately
+# Parse command line arguments into a valid build configuration.
 def parse_args(args):
+    known_args = validate_args(args)
+    config = generate_config(known_args)
+    if "profile" not in config:
+        _set("profile", "dist", config)
+    _set("build.configure-args", args, config)
+    return config
+
+# Validate command line arguments, throwing an error if there are any unknown
+# arguments, missing values or duplicate arguments when option-checking is also
+# passed as an argument. Returns a dictionary of known arguments.
+def validate_args(args):
     unknown_args = []
     need_value_args = []
+    duplicate_args = []
     known_args = {}
 
     i = 0
@@ -398,6 +408,10 @@ def parse_args(args):
                 key = keyval[0]
                 if option.name != key:
                     continue
+                if option.name == "infodir" or option.name == "localstatedir":
+                    # These are used by rpm, but aren't accepted by x.py.
+                    # Give a warning that they're ignored, but not a hard error.
+                    p("WARNING: {} will be ignored".format(option.name))
 
                 if len(keyval) > 1:
                     value = keyval[1]
@@ -414,10 +428,13 @@ def parse_args(args):
                     value = False
                 else:
                     continue
-
             found = True
+
             if option.name not in known_args:
                 known_args[option.name] = []
+            elif option.name in known_args and option.name != "set":
+                duplicate_args.append(option.name)
+                
             known_args[option.name].append((option, value))
             break
 
@@ -435,24 +452,17 @@ def parse_args(args):
             err("Option '" + unknown_args[0] + "' is not recognized")
         if len(need_value_args) > 0:
             err("Option '{0}' needs a value ({0}=val)".format(need_value_args[0]))
+        for key, values in known_args.items():
+            if len(values) > 1 and key != "set":
+                err("Option '{}' provided more than once".format(key))
 
     global VERBOSE
     VERBOSE = "verbose-configure" in known_args
 
-    config = {}
-
-    set("build.configure-args", args, config)
-    apply_args(known_args, option_checking, config)
-    return parse_example_config(known_args, config)
+    return known_args
 
 
-def build(known_args):
-    if "build" in known_args:
-        return known_args["build"][-1][1]
-    return bootstrap.default_build_triple(verbose=False)
-
-
-def set(key, value, config):
+def _set(key, value, config):
     if isinstance(value, list):
         # Remove empty values, which value.split(',') tends to generate and
         # replace single quotes for double quotes to ensure correct parsing.
@@ -483,7 +493,9 @@ def set(key, value, config):
             arr = arr[part]
 
 
-def apply_args(known_args, option_checking, config):
+# Convert a validated list of command line arguments into configuration
+def generate_config(known_args):
+    config = {}
     for key in known_args:
         # The `set` option is special and can be passed a bunch of times
         if key == "set":
@@ -495,132 +507,168 @@ def apply_args(known_args, option_checking, config):
                     value = False
                 else:
                     value = keyval[1]
-                set(keyval[0], value, config)
+                _set(keyval[0], value, config)
             continue
 
-        # Ensure each option is only passed once
         arr = known_args[key]
-        if option_checking and len(arr) > 1:
-            err("Option '{}' provided more than once".format(key))
         option, value = arr[-1]
 
         # If we have a clear avenue to set our value in rustbuild, do so
         if option.rustbuild is not None:
-            set(option.rustbuild, value, config)
+            _set(option.rustbuild, value, config)
             continue
 
         # Otherwise we're a "special" option and need some extra handling, so do
         # that here.
-        build_triple = build(known_args)
+        if "build" in known_args:
+            build_triple = known_args["build"][-1][1]
+        else:
+            build_triple = bootstrap.default_build_triple(verbose=False)
 
         if option.name == "sccache":
-            set("build.ccache", "sccache", config)
+            _set("build.ccache", "sccache", config)
         elif option.name == "local-rust":
             for path in os.environ["PATH"].split(os.pathsep):
                 if os.path.exists(path + "/rustc"):
-                    set("build.rustc", path + "/rustc", config)
+                    _set("build.rustc", path + "/rustc", config)
                     break
             for path in os.environ["PATH"].split(os.pathsep):
                 if os.path.exists(path + "/cargo"):
-                    set("build.cargo", path + "/cargo", config)
+                    _set("build.cargo", path + "/cargo", config)
                     break
         elif option.name == "local-rust-root":
-            set("build.rustc", value + "/bin/rustc", config)
-            set("build.cargo", value + "/bin/cargo", config)
+            _set("build.rustc", value + "/bin/rustc", config)
+            _set("build.cargo", value + "/bin/cargo", config)
         elif option.name == "llvm-root":
-            set(
+            _set(
                 "target.{}.llvm-config".format(build_triple),
                 value + "/bin/llvm-config",
                 config,
             )
         elif option.name == "llvm-config":
-            set("target.{}.llvm-config".format(build_triple), value, config)
+            _set("target.{}.llvm-config".format(build_triple), value, config)
         elif option.name == "llvm-filecheck":
-            set("target.{}.llvm-filecheck".format(build_triple), value, config)
+            _set("target.{}.llvm-filecheck".format(build_triple), value, config)
         elif option.name == "tools":
-            set("build.tools", value.split(","), config)
+            _set("build.tools", value.split(","), config)
         elif option.name == "bootstrap-cache-path":
-            set("build.bootstrap-cache-path", value, config)
+            _set("build.bootstrap-cache-path", value, config)
         elif option.name == "codegen-backends":
-            set("rust.codegen-backends", value.split(","), config)
+            _set("rust.codegen-backends", value.split(","), config)
         elif option.name == "host":
-            set("build.host", value.split(","), config)
+            _set("build.host", value.split(","), config)
         elif option.name == "target":
-            set("build.target", value.split(","), config)
+            _set("build.target", value.split(","), config)
         elif option.name == "full-tools":
-            set("rust.codegen-backends", ["llvm"], config)
-            set("rust.lld", True, config)
-            set("rust.llvm-tools", True, config)
-            set("rust.llvm-bitcode-linker", True, config)
-            set("build.extended", True, config)
+            _set("rust.codegen-backends", ["llvm"], config)
+            _set("rust.lld", True, config)
+            _set("rust.llvm-tools", True, config)
+            _set("rust.llvm-bitcode-linker", True, config)
+            _set("build.extended", True, config)
         elif option.name in ["option-checking", "verbose-configure"]:
             # this was handled above
             pass
         elif option.name == "dist-compression-formats":
-            set("dist.compression-formats", value.split(","), config)
+            _set("dist.compression-formats", value.split(","), config)
         else:
             raise RuntimeError("unhandled option {}".format(option.name))
+    return config
 
 
-# "Parse" the `config.example.toml` file into the various sections, and we'll
-# use this as a template of a `config.toml` to write out which preserves
-# all the various comments and whatnot.
-#
-# Note that the `target` section is handled separately as we'll duplicate it
-# per configured target, so there's a bit of special handling for that here.
-def parse_example_config(known_args, config):
-    sections = {}
-    cur_section = None
-    sections[None] = []
-    section_order = [None]
-    targets = {}
-    top_level_keys = []
+def get_configured_targets(config):
+    targets = set()
+    if "build" in config and "build" in config["build"]:
+        targets.add(config["build"]["build"])
+    else:
+        targets.add(bootstrap.default_build_triple(verbose=False))
 
-    with open(rust_dir + "/config.example.toml") as example_config:
-        example_lines = example_config.read().split("\n")
-    for line in example_lines:
-        if cur_section is None:
-            if line.count("=") == 1:
-                top_level_key = line.split("=")[0]
-                top_level_key = top_level_key.strip(" #")
-                top_level_keys.append(top_level_key)
-        if line.startswith("["):
-            cur_section = line[1:-1]
-            if cur_section.startswith("target"):
-                cur_section = "target"
-            elif "." in cur_section:
-                raise RuntimeError(
-                    "don't know how to deal with section: {}".format(cur_section)
-                )
-            sections[cur_section] = [line]
-            section_order.append(cur_section)
-        else:
-            sections[cur_section].append(line)
-
-    # Fill out the `targets` array by giving all configured targets a copy of the
-    # `target` section we just loaded from the example config
-    configured_targets = [build(known_args)]
     if "build" in config:
         if "host" in config["build"]:
-            configured_targets += config["build"]["host"]
+            targets.update(config["build"]["host"])
         if "target" in config["build"]:
-            configured_targets += config["build"]["target"]
+            targets.update(config["build"]["target"])
     if "target" in config:
         for target in config["target"]:
-            configured_targets.append(target)
-    for target in configured_targets:
-        targets[target] = sections["target"][:]
-        # For `.` to be valid TOML, it needs to be quoted. But `bootstrap.py` doesn't use a proper TOML parser and fails to parse the target.
-        # Avoid using quotes unless it's necessary.
-        targets[target][0] = targets[target][0].replace(
-            "x86_64-unknown-linux-gnu",
-            "'{}'".format(target) if "." in target else target,
-        )
+            targets.add(target)
+    return list(targets)
 
-    if "profile" not in config:
-        set("profile", "dist", config)
-    configure_file(sections, top_level_keys, targets, config)
-    return section_order, sections, targets
+
+def write_block(f, config, block):
+    last_line = block[-1]
+    key = last_line.split("=")[0].strip(' #')
+    value = config[key] if key in config else None
+    if value is not None:
+        for ln in block[:-1]:
+            f.write(ln + "\n")
+        f.write("{} = {}\n".format(key, to_toml(value)))
+
+
+def write_section(f, config, section_lines):
+    block = []
+    for line in section_lines[1:]:
+        if line.count("=") == 1:
+            block.append(line)
+            write_block(f, config, block)
+            block = []
+        else:
+            block.append(line)
+
+
+# Write out the configuration toml file to f, using config.example.toml as a
+# template.
+def write_config_toml(f, config):
+    with open(rust_dir + "/config.example.toml") as example_config:
+        lines = example_config.read().split("\n")
+
+    section_name = None
+    section = []
+    block = []
+
+    # Drop the initial comment block
+    for i, line in enumerate(lines):
+        if not line.startswith("#"):
+            break
+
+    for line in lines[i:]:
+        if line.startswith("["):
+            if section:
+                # Write out the previous section before starting a new one.
+                #
+                # Note that the `target` section is handled separately as we'll
+                # duplicate it per configured target, so there's a bit of special
+                # handling for that here.
+                if section_name.startswith("target"):
+                    for target in get_configured_targets(config):
+                        # For `.` to be valid TOML, it needs to be quoted. But `bootstrap.py` doesn't
+                        # use a proper TOML parser and fails to parse the target.
+                        # Avoid using quotes unless it's necessary.
+                        target_trip = "'{}'".format(target) if "." in target else target
+                        f.write("\n[target.{}]\n".format(target_trip))
+                        if "target" in config and target in config["target"]:
+                            write_section(f, config["target"][target], section)
+                elif "." in section_name:
+                    raise RuntimeError(
+                        "don't know how to deal with section: {}".format(section_name)
+                    )
+                else:
+                    f.write("\n[{}]\n".format(section_name))
+                    if section_name in config:
+                        write_section(f, config[section_name], section)
+                # Start a new section
+                section = []
+                section_name = None
+            section_name = line[1:-1]
+            section.append(line)
+        elif section_name is not None:
+            section.append(line)
+        else:
+            # this a top-level configuration
+            if line.count("=") == 1:
+                block.append(line)
+                write_block(f, config, block)
+                block = []
+            else:
+                block.append(line)
 
 
 def is_number(value):
@@ -664,79 +712,6 @@ def to_toml(value):
         raise RuntimeError("no toml")
 
 
-def configure_section(lines, config):
-    for key in config:
-        value = config[key]
-        found = False
-        for i, line in enumerate(lines):
-            if not line.startswith("#" + key + " = "):
-                continue
-            found = True
-            lines[i] = "{} = {}".format(key, to_toml(value))
-            break
-        if not found:
-            # These are used by rpm, but aren't accepted by x.py.
-            # Give a warning that they're ignored, but not a hard error.
-            if key in ["infodir", "localstatedir"]:
-                print("WARNING: {} will be ignored".format(key))
-            else:
-                raise RuntimeError("failed to find config line for {}".format(key))
-
-
-def configure_top_level_key(lines, top_level_key, value):
-    for i, line in enumerate(lines):
-        if line.startswith("#" + top_level_key + " = ") or line.startswith(
-            top_level_key + " = "
-        ):
-            lines[i] = "{} = {}".format(top_level_key, to_toml(value))
-            return
-
-    raise RuntimeError("failed to find config line for {}".format(top_level_key))
-
-
-# Modify `sections` to reflect the parsed arguments and example configs.
-def configure_file(sections, top_level_keys, targets, config):
-    for section_key, section_config in config.items():
-        if section_key not in sections and section_key not in top_level_keys:
-            raise RuntimeError(
-                "config key {} not in sections or top_level_keys".format(section_key)
-            )
-        if section_key in top_level_keys:
-            configure_top_level_key(sections[None], section_key, section_config)
-
-        elif section_key == "target":
-            for target in section_config:
-                configure_section(targets[target], section_config[target])
-        else:
-            configure_section(sections[section_key], section_config)
-
-
-def write_uncommented(target, f):
-    block = []
-    is_comment = True
-
-    for line in target:
-        block.append(line)
-        if len(line) == 0:
-            if not is_comment:
-                for ln in block:
-                    f.write(ln + "\n")
-            block = []
-            is_comment = True
-            continue
-        is_comment = is_comment and line.startswith("#")
-    return f
-
-
-def write_config_toml(writer, section_order, targets, sections):
-    for section in section_order:
-        if section == "target":
-            for target in targets:
-                writer = write_uncommented(targets[target], writer)
-        else:
-            writer = write_uncommented(sections[section], writer)
-
-
 def quit_if_file_exists(file):
     if os.path.isfile(file):
         msg = "Existing '{}' detected. Exiting".format(file)
@@ -759,14 +734,14 @@ if __name__ == "__main__":
     # Parse all known arguments into a configuration structure that reflects the
     # TOML we're going to write out
     p("")
-    section_order, sections, targets = parse_args(sys.argv[1:])
+    config = parse_args(sys.argv[1:])
 
     # Now that we've built up our `config.toml`, write it all out in the same
     # order that we read it in.
     p("")
     p("writing `config.toml` in current directory")
     with bootstrap.output("config.toml") as f:
-        write_config_toml(f, section_order, targets, sections)
+        write_config_toml(f, config)
 
     with bootstrap.output("Makefile") as f:
         contents = os.path.join(rust_dir, "src", "bootstrap", "mk", "Makefile.in")
