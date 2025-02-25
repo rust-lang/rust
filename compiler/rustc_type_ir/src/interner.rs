@@ -279,6 +279,8 @@ pub trait Interner:
 
     fn trait_is_auto(self, trait_def_id: Self::DefId) -> bool;
 
+    fn trait_is_coinductive(self, trait_def_id: Self::DefId) -> bool;
+
     fn trait_is_alias(self, trait_def_id: Self::DefId) -> bool;
 
     fn trait_is_dyn_compatible(self, trait_def_id: Self::DefId) -> bool;
