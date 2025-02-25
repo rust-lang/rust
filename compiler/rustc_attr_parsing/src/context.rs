@@ -333,7 +333,10 @@ impl<'sess> AttributeParser<'sess> {
                 {
                     lit
                 } else {
-                    let guar = self.dcx().has_errors().unwrap();
+                    let guar = self.dcx().span_delayed_bug(
+                        args.span().unwrap_or(DUMMY_SP),
+                        "expr in place where literal is expected (builtin attr parsing)",
+                    );
                     ast::MetaItemLit {
                         symbol: kw::Empty,
                         suffix: None,

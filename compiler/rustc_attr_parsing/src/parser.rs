@@ -13,7 +13,7 @@ use rustc_ast_pretty::pprust;
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir::{self as hir, AttrPath};
 use rustc_span::symbol::{Ident, kw};
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol};
+use rustc_span::{ErrorGuaranteed, Span, Symbol};
 
 pub struct SegmentIterator<'a> {
     offset: usize,
@@ -127,7 +127,7 @@ impl<'a> ArgParser<'a> {
             }
             AttrArgs::Eq { eq_span, expr } => Self::NameValue(NameValueParser {
                 eq_span: *eq_span,
-                value: expr_to_lit(dcx, &expr),
+                value: expr_to_lit(dcx, &expr, *eq_span),
                 value_span: expr.span,
             }),
         }
@@ -348,7 +348,7 @@ impl NameValueParser {
     }
 }
 
-fn expr_to_lit(dcx: DiagCtxtHandle<'_>, expr: &Expr) -> MetaItemLit {
+fn expr_to_lit(dcx: DiagCtxtHandle<'_>, expr: &Expr, span: Span) -> MetaItemLit {
     // In valid code the value always ends up as a single literal. Otherwise, a dummy
     // literal suffices because the error is handled elsewhere.
     if let ExprKind::Lit(token_lit) = expr.kind
@@ -356,8 +356,11 @@ fn expr_to_lit(dcx: DiagCtxtHandle<'_>, expr: &Expr) -> MetaItemLit {
     {
         lit
     } else {
-        let guar = dcx.has_errors().unwrap();
-        MetaItemLit { symbol: kw::Empty, suffix: None, kind: LitKind::Err(guar), span: DUMMY_SP }
+        let guar = dcx.span_delayed_bug(
+            span,
+            "expr in place where literal is expected (builtin attr parsing)",
+        );
+        MetaItemLit { symbol: kw::Empty, suffix: None, kind: LitKind::Err(guar), span }
     }
 }
 
