@@ -372,7 +372,8 @@ mod imp {
             // this way someone on any unix-y OS can check that all these compile
             if cfg!(all(target_os = "linux", not(target_env = "musl"))) {
                 install_main_guard_linux(page_size)
-            } else if cfg!(any(all(target_os = "linux", target_env = "musl"), target_os = "cygwin")) {
+            } else if cfg!(any(all(target_os = "linux", target_env = "musl"), target_os = "cygwin"))
+            {
                 install_main_guard_linux_musl(page_size)
             } else if cfg!(target_os = "freebsd") {
                 install_main_guard_freebsd(page_size)

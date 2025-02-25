@@ -95,9 +95,13 @@ fn getrandom(mut bytes: &mut [u8], insecure: bool) {
             let flags = if insecure {
                 if GRND_INSECURE_AVAILABLE.load(Relaxed) {
                     #[cfg(target_os = "cygwin")]
-                    { libc::GRND_NONBLOCK }
+                    {
+                        libc::GRND_NONBLOCK
+                    }
                     #[cfg(not(target_os = "cygwin"))]
-                    { libc::GRND_INSECURE }
+                    {
+                        libc::GRND_INSECURE
+                    }
                 } else {
                     libc::GRND_NONBLOCK
                 }
