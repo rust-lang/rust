@@ -684,9 +684,33 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.dcx().emit_err(MatchArmWithNoBody { span, suggestion });
                 }
             } else if let Some(body) = &arm.body {
-                self.dcx().emit_err(NeverPatternWithBody { span: body.span });
+                self.dcx().emit_err(NeverPatternWithBody {
+                    span: body.span,
+                    removal_span: if pat.span.eq_ctxt(arm.span) {
+                        // - ! => {}
+                        // + !,
+                        // FIXME: account for `(!|!)`, as pat.span ends *within* the parentheses.
+                        pat.span.shrink_to_hi().with_hi(arm.span.hi())
+                    } else {
+                        // Subtly incorrect, but close enough if macros are involved.
+                        // - ! => {}
+                        // + ! => ,
+                        body.span
+                    },
+                });
             } else if let Some(g) = &arm.guard {
-                self.dcx().emit_err(NeverPatternWithGuard { span: g.span });
+                self.dcx().emit_err(NeverPatternWithGuard {
+                    span: g.span,
+                    removal_span: if pat.span.eq_ctxt(arm.span) {
+                        // - ! if cond,
+                        // + !,
+                        pat.span.shrink_to_hi().with_hi(arm.span.hi())
+                    } else {
+                        // We have something like `never!() if cond =>`
+                        //                      We just remove ^^^^ which isn't entirely correct.
+                        g.span
+                    },
+                });
             }
 
             // We add a fake `loop {}` arm body so that it typecks to `!`. The mir lowering of never
