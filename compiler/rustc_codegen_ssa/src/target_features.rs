@@ -149,8 +149,11 @@ pub(crate) fn provide(providers: &mut Providers) {
             assert_eq!(cnum, LOCAL_CRATE);
             let target = &tcx.sess.target;
             if tcx.sess.opts.actually_rustdoc {
-                // rustdoc needs to be able to document functions that use all the features, so
-                // whitelist them all
+                // HACK: rustdoc would like to pretend that we have all the target features, so we
+                // have to merge all the lists into one. The result has a "random" stability
+                // (depending on the order in which we consider features); all places that check
+                // target stability are expected to check `actually_rustdoc` and do nothing when
+                // that is set.
                 rustc_target::target_features::all_rust_features()
                     .map(|(a, b)| (a.to_string(), b.compute_toggleability(target)))
                     .collect()
