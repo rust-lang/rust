@@ -46,7 +46,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn floor(self) -> f64 {
-        unsafe { intrinsics::floorf64(self) }
+        core::f64::floor(self)
     }
 
     /// Returns the smallest integer greater than or equal to `self`.
@@ -68,7 +68,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn ceil(self) -> f64 {
-        unsafe { intrinsics::ceilf64(self) }
+        core::f64::ceil(self)
     }
 
     /// Returns the nearest integer to `self`. If a value is half-way between two
@@ -96,7 +96,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn round(self) -> f64 {
-        unsafe { intrinsics::roundf64(self) }
+        core::f64::round(self)
     }
 
     /// Returns the nearest integer to a number. Rounds half-way cases to the number
@@ -122,7 +122,7 @@ impl f64 {
     #[stable(feature = "round_ties_even", since = "1.77.0")]
     #[inline]
     pub fn round_ties_even(self) -> f64 {
-        intrinsics::round_ties_even_f64(self)
+        core::f64::round_ties_even(self)
     }
 
     /// Returns the integer part of `self`.
@@ -147,7 +147,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn trunc(self) -> f64 {
-        unsafe { intrinsics::truncf64(self) }
+        core::f64::trunc(self)
     }
 
     /// Returns the fractional part of `self`.
@@ -170,7 +170,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn fract(self) -> f64 {
-        self - self.trunc()
+        core::f64::fract(self)
     }
 
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding
@@ -212,7 +212,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn mul_add(self, a: f64, b: f64) -> f64 {
-        unsafe { intrinsics::fmaf64(self, a, b) }
+        core::f64::mul_add(self, a, b)
     }
 
     /// Calculates Euclidean division, the matching method for `rem_euclid`.
@@ -242,11 +242,7 @@ impl f64 {
     #[inline]
     #[stable(feature = "euclidean_division", since = "1.38.0")]
     pub fn div_euclid(self, rhs: f64) -> f64 {
-        let q = (self / rhs).trunc();
-        if self % rhs < 0.0 {
-            return if rhs > 0.0 { q - 1.0 } else { q + 1.0 };
-        }
-        q
+        core::f64::div_euclid(self, rhs)
     }
 
     /// Calculates the least nonnegative remainder of `self (mod rhs)`.
@@ -283,8 +279,7 @@ impl f64 {
     #[inline]
     #[stable(feature = "euclidean_division", since = "1.38.0")]
     pub fn rem_euclid(self, rhs: f64) -> f64 {
-        let r = self % rhs;
-        if r < 0.0 { r + rhs.abs() } else { r }
+        core::f64::rem_euclid(self, rhs)
     }
 
     /// Raises a number to an integer power.
@@ -312,7 +307,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn powi(self, n: i32) -> f64 {
-        unsafe { intrinsics::powif64(self, n) }
+        core::f64::powi(self, n)
     }
 
     /// Raises a number to a floating point power.
@@ -367,7 +362,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn sqrt(self) -> f64 {
-        unsafe { intrinsics::sqrtf64(self) }
+        core::f64::sqrt(self)
     }
 
     /// Returns `e^(self)`, (the exponential function).
@@ -599,7 +594,8 @@ impl f64 {
                 filing an issue describing your use-case too)."
     )]
     pub fn abs_sub(self, other: f64) -> f64 {
-        cmath::fdim(self, other)
+        #[allow(deprecated)]
+        core::f64::abs_sub(self, other)
     }
 
     /// Returns the cube root of a number.
@@ -626,7 +622,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn cbrt(self) -> f64 {
-        cmath::cbrt(self)
+        core::f64::cbrt(self)
     }
 
     /// Compute the distance between the origin and a point (`x`, `y`) on the
