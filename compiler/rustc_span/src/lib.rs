@@ -31,6 +31,7 @@
 #![feature(round_char_boundary)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
+#![feature(slice_as_chunks)]
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
