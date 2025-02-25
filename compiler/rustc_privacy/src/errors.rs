@@ -42,6 +42,8 @@ pub(crate) struct ItemIsPrivate<'a> {
     pub span: Span,
     pub kind: &'a str,
     pub descr: DiagArgFromDisplay<'a>,
+    #[suggestion(style = "verbose", code = "..", applicability = "maybe-incorrect")]
+    pub pat_span: Option<Span>,
 }
 
 #[derive(Diagnostic)]

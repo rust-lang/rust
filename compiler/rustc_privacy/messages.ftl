@@ -25,6 +25,7 @@ privacy_in_public_interface = {$vis_descr} {$kind} `{$descr}` in public interfac
 
 privacy_item_is_private = {$kind} `{$descr}` is private
     .label = private {$kind}
+    .suggestion = consider using `..` to ignore fields with private types
 
 privacy_private_interface_or_bounds_lint = {$ty_kind} `{$ty_descr}` is more private than the item `{$item_descr}`
     .item_label = {$item_kind} `{$item_descr}` is reachable at visibility `{$item_vis_descr}`

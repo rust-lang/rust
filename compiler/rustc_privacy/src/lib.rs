@@ -1117,6 +1117,7 @@ struct TypePrivacyVisitor<'tcx> {
     module_def_id: LocalModDefId,
     maybe_typeck_results: Option<&'tcx ty::TypeckResults<'tcx>>,
     span: Span,
+    hir_id: Option<hir::HirId>,
 }
 
 impl<'tcx> TypePrivacyVisitor<'tcx> {
@@ -1124,9 +1125,24 @@ impl<'tcx> TypePrivacyVisitor<'tcx> {
         self.tcx.visibility(did).is_accessible_from(self.module_def_id, self.tcx)
     }
 
+    fn tuple_struct_field_with_private_type_span(&self) -> Option<Span> {
+        if let Some(hir_id) = self.hir_id
+            && let hir::Node::Pat(pat) = self.tcx.hir_node(hir_id)
+            && let hir::PatKind::Wild = pat.kind
+            && let hir::Node::Pat(pat) = self.tcx.parent_hir_node(hir_id)
+            && let hir::PatKind::TupleStruct(_, pat_arr, _) = pat.kind
+            && pat_arr.len() == 1
+        {
+            Some(self.tcx.hir().span(hir_id))
+        } else {
+            None
+        }
+    }
+
     // Take node-id of an expression or pattern and check its type for privacy.
     fn check_expr_pat_type(&mut self, id: hir::HirId, span: Span) -> bool {
         self.span = span;
+        self.hir_id = Some(id);
         let typeck_results = self
             .maybe_typeck_results
             .unwrap_or_else(|| span_bug!(span, "`hir::Expr` or `hir::Pat` outside of a body"));
@@ -1143,7 +1159,12 @@ impl<'tcx> TypePrivacyVisitor<'tcx> {
     fn check_def_id(&mut self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
         let is_error = !self.item_is_accessible(def_id);
         if is_error {
-            self.tcx.dcx().emit_err(ItemIsPrivate { span: self.span, kind, descr: descr.into() });
+            self.tcx.dcx().emit_err(ItemIsPrivate {
+                span: self.span,
+                kind,
+                descr: descr.into(),
+                pat_span: self.tuple_struct_field_with_private_type_span(),
+            });
         }
         is_error
     }
@@ -1278,9 +1299,12 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                 let kind = self.tcx.def_descr(def_id);
                 let sess = self.tcx.sess;
                 let _ = match name {
-                    Some(name) => {
-                        sess.dcx().emit_err(ItemIsPrivate { span, kind, descr: (&name).into() })
-                    }
+                    Some(name) => sess.dcx().emit_err(ItemIsPrivate {
+                        span,
+                        kind,
+                        descr: (&name).into(),
+                        pat_span: None,
+                    }),
                     None => sess.dcx().emit_err(UnnamedItemIsPrivate { span, kind }),
                 };
                 return;
@@ -1776,7 +1800,8 @@ fn check_mod_privacy(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
     // Check privacy of explicitly written types and traits as well as
     // inferred types of expressions and patterns.
     let span = tcx.def_span(module_def_id);
-    let mut visitor = TypePrivacyVisitor { tcx, module_def_id, maybe_typeck_results: None, span };
+    let mut visitor =
+        TypePrivacyVisitor { tcx, module_def_id, maybe_typeck_results: None, span, hir_id: None };
 
     let module = tcx.hir_module_items(module_def_id);
     for def_id in module.definitions() {
