@@ -10,9 +10,9 @@ if let StmtKind::Let(local) = stmt.kind
     && let ExprKind::Binary(op, left, right) = e.kind
     && BinOpKind::Eq == op.node
     && let ExprKind::Lit(ref lit1) = left.kind
-    && let LitKind::Int(1, LitIntType::Unsuffixed(false)) = lit1.node
+    && let LitKind::Int(1, LitIntType::Unsuffixed(None)) = lit1.node
     && let ExprKind::Lit(ref lit2) = right.kind
-    && let LitKind::Int(1, LitIntType::Unsuffixed(false)) = lit2.node
+    && let LitKind::Int(1, LitIntType::Unsuffixed(None)) = lit2.node
     && block.expr.is_none()
     && let ExprKind::Block(block1, None) = else_expr.kind
     && block1.stmts.len() == 1
@@ -20,9 +20,9 @@ if let StmtKind::Let(local) = stmt.kind
     && let ExprKind::Binary(op1, left1, right1) = e1.kind
     && BinOpKind::Eq == op1.node
     && let ExprKind::Lit(ref lit3) = left1.kind
-    && let LitKind::Int(2, LitIntType::Unsuffixed(false)) = lit3.node
+    && let LitKind::Int(2, LitIntType::Unsuffixed(None)) = lit3.node
     && let ExprKind::Lit(ref lit4) = right1.kind
-    && let LitKind::Int(2, LitIntType::Unsuffixed(false)) = lit4.node
+    && let LitKind::Int(2, LitIntType::Unsuffixed(None)) = lit4.node
     && block1.expr.is_none()
     && let PatKind::Wild = local.pat.kind
 {

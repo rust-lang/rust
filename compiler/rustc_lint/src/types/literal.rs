@@ -374,10 +374,10 @@ pub(crate) fn lint_literal<'tcx>(
             match lit.node {
                 ast::LitKind::Int(
                     v,
-                    ast::LitIntType::Signed(_, negated) | ast::LitIntType::Unsuffixed(negated),
+                    ast::LitIntType::Signed(_, sign) | ast::LitIntType::Unsuffixed(sign),
                 ) => {
                     let mut span = span;
-                    if negated {
+                    if sign.is_neg() {
                         if type_limits.negated_expr_id == Some(hir_id) {
                             // Double negation is just the value again, so we treat it
                             // as if there were no negations for oflo lint purposes.

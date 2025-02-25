@@ -1,5 +1,5 @@
 use rustc_ast::ast::LitIntType;
-use rustc_ast::{MetaItemInner, MetaItemLit, Path, Safety, StrStyle};
+use rustc_ast::{MetaItemInner, MetaItemLit, Path, Safety, Sign, StrStyle};
 use rustc_span::symbol::{Ident, kw};
 use rustc_span::{DUMMY_SP, create_default_session_globals_then};
 use thin_vec::thin_vec;
@@ -325,7 +325,7 @@ fn test_parse_err() {
         assert!(Cfg::parse(&mi).is_err());
 
         let five = Symbol::intern("5");
-        let mi = dummy_lit(five, LitKind::Int(5.into(), LitIntType::Unsuffixed(false)));
+        let mi = dummy_lit(five, LitKind::Int(5.into(), LitIntType::Unsuffixed(Sign::None)));
         assert!(Cfg::parse(&mi).is_err());
     })
 }

@@ -2,6 +2,7 @@ use core::cmp::min;
 use core::iter;
 
 use hir::def_id::LocalDefId;
+use rustc_ast::Sign;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::{Applicability, Diag, MultiSpan, listify};
@@ -1599,7 +1600,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 true
             }
             ExprKind::Lit(Spanned {
-                node: rustc_ast::LitKind::Int(lit, rustc_ast::LitIntType::Unsuffixed(false)),
+                node: rustc_ast::LitKind::Int(lit, rustc_ast::LitIntType::Unsuffixed(Sign::None)),
                 span,
             }) => {
                 let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(*span) else {

@@ -1,3 +1,4 @@
+use rustc_ast::Sign;
 use rustc_ast::ast::{LitIntType, LitKind};
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
@@ -41,7 +42,7 @@ fn arg_is_seek_from_current<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) 
     {
         // check if argument of `SeekFrom::Current` is `0`
         if let ExprKind::Lit(lit) = arg.kind
-            && let LitKind::Int(Pu128(0), LitIntType::Unsuffixed(false)) = lit.node
+            && let LitKind::Int(Pu128(0), LitIntType::Unsuffixed(Sign::None)) = lit.node
         {
             return true;
         }

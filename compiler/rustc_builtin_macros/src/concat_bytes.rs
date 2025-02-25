@@ -1,6 +1,6 @@
 use rustc_ast::ptr::P;
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::{ExprKind, LitIntType, LitKind, UintTy, token};
+use rustc_ast::{ExprKind, LitIntType, LitKind, Sign, UintTy, token};
 use rustc_expand::base::{DummyResult, ExpandResult, ExtCtxt, MacEager, MacroExpanderResult};
 use rustc_session::errors::report_lit_error;
 use rustc_span::{ErrorGuaranteed, Span};
@@ -51,7 +51,10 @@ fn invalid_type_err(
                 snippet.map(|snippet| ConcatBytesInvalidSuggestion::IntLit { span, snippet });
             dcx.emit_err(ConcatBytesInvalid { span, lit_kind: "numeric", sugg })
         }
-        Ok(LitKind::Int(val, LitIntType::Unsuffixed(false) | LitIntType::Unsigned(UintTy::U8))) => {
+        Ok(LitKind::Int(
+            val,
+            LitIntType::Unsuffixed(Sign::None) | LitIntType::Unsigned(UintTy::U8),
+        )) => {
             assert!(val.get() > u8::MAX.into()); // must be an error
             dcx.emit_err(ConcatBytesOob { span })
         }
@@ -79,7 +82,7 @@ fn handle_array_element(
             match LitKind::from_token_lit(token_lit) {
                 Ok(LitKind::Int(
                     val,
-                    LitIntType::Unsuffixed(false) | LitIntType::Unsigned(UintTy::U8),
+                    LitIntType::Unsuffixed(Sign::None) | LitIntType::Unsigned(UintTy::U8),
                 )) if let Ok(val) = u8::try_from(val.get()) => {
                     return Some(val);
                 }

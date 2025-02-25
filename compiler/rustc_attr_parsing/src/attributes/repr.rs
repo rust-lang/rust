@@ -1,5 +1,5 @@
 use rustc_abi::Align;
-use rustc_ast::{IntTy, LitIntType, LitKind, UintTy};
+use rustc_ast::{IntTy, LitIntType, LitKind, Sign, UintTy};
 use rustc_attr_data_structures::{AttributeKind, IntType, ReprAttr};
 use rustc_span::{Span, Symbol, sym};
 
@@ -225,7 +225,7 @@ fn parse_repr_align(
 }
 
 fn parse_alignment(node: &LitKind) -> Result<Align, &'static str> {
-    if let LitKind::Int(literal, LitIntType::Unsuffixed(false)) = node {
+    if let LitKind::Int(literal, LitIntType::Unsuffixed(Sign::None)) = node {
         // `Align::from_bytes` accepts 0 as an input, check is_power_of_two() first
         if literal.get().is_power_of_two() {
             // Only possible error is larger than 2^29

@@ -1,5 +1,5 @@
 use rustc_abi::Size;
-use rustc_ast::{self as ast, LitIntType};
+use rustc_ast::{self as ast, LitIntType, Sign};
 use rustc_hir::LangItem;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::LitToConstInput;
@@ -56,18 +56,18 @@ pub(crate) fn lit_to_const<'tcx>(
             ty::ValTree::from_raw_bytes(tcx, bytes)
         }
         (
-            ast::LitKind::Int(n, LitIntType::Unsigned(_) | LitIntType::Unsuffixed(false)),
+            ast::LitKind::Int(n, LitIntType::Unsigned(_) | LitIntType::Unsuffixed(Sign::None)),
             ty::Uint(ui),
         ) => {
             let scalar_int = trunc(n.get(), *ui);
             ty::ValTree::from_scalar_int(tcx, scalar_int)
         }
         (
-            &ast::LitKind::Int(n, LitIntType::Signed(_, neg) | LitIntType::Unsuffixed(neg)),
+            &ast::LitKind::Int(n, LitIntType::Signed(_, sign) | LitIntType::Unsuffixed(sign)),
             ty::Int(i),
         ) => {
             let scalar_int = trunc(
-                if neg { (n.get() as i128).overflowing_neg().0 as u128 } else { n.get() },
+                if sign.is_neg() { (n.get() as i128).overflowing_neg().0 as u128 } else { n.get() },
                 i.to_unsigned(),
             );
             ty::ValTree::from_scalar_int(tcx, scalar_int)

@@ -393,7 +393,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             lit: self.arena.alloc(respan(span, LitKind::Err(guar))),
         };
         let kind = match &expr.kind {
-            ExprKind::Lit(lit) => hir::PatExprKind::Lit { lit: self.lower_lit(lit, span, false) },
+            ExprKind::Lit(lit) => {
+                hir::PatExprKind::Lit { lit: self.lower_lit(lit, span, Sign::None) }
+            }
             ExprKind::ConstBlock(c) => hir::PatExprKind::ConstBlock(self.lower_const_block(c)),
             ExprKind::IncludedBytes(bytes) => hir::PatExprKind::Lit {
                 lit: self
@@ -412,7 +414,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 None,
             )),
             ExprKind::Unary(UnOp::Neg, inner) if let ExprKind::Lit(lit) = &inner.kind => {
-                hir::PatExprKind::Lit { lit: self.lower_lit(lit, span, true) }
+                hir::PatExprKind::Lit { lit: self.lower_lit(lit, span, Sign::Neg) }
             }
             _ => {
                 let pattern_from_macro = expr.is_approximately_pattern();

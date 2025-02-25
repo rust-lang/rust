@@ -294,11 +294,11 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
             LitKind::Byte(b) => kind!("Byte({b})"),
             LitKind::Int(i, suffix) => {
                 let int_ty = match suffix {
-                    LitIntType::Signed(int_ty, negative) => {
-                        format!("LitIntType::Signed(IntTy::{int_ty:?}, {negative})")
+                    LitIntType::Signed(int_ty, sign) => {
+                        format!("LitIntType::Signed(IntTy::{int_ty:?}, {sign:?})")
                     },
                     LitIntType::Unsigned(uint_ty) => format!("LitIntType::Unsigned(UintTy::{uint_ty:?})"),
-                    LitIntType::Unsuffixed(negative) => format!("LitIntType::Unsuffixed({negative})"),
+                    LitIntType::Unsuffixed(sign) => format!("LitIntType::Unsuffixed({sign:?})"),
                 };
                 kind!("Int({i}, {int_ty})");
             },

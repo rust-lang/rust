@@ -1869,18 +1869,31 @@ impl StrLit {
     }
 }
 
+#[derive(Clone, Copy, Encodable, Decodable, Debug, Hash, Eq, PartialEq)]
+#[derive(HashStable_Generic)]
+pub enum Sign {
+    /// A `-` in front of a literal.
+    Neg,
+    /// No sign. There are no leading `+` in front of literals.
+    None,
+}
+
+impl Sign {
+    pub fn is_neg(&self) -> bool {
+        matches!(self, Self::Neg)
+    }
+}
+
 /// Type of the integer literal based on provided suffix.
 #[derive(Clone, Copy, Encodable, Decodable, Debug, Hash, Eq, PartialEq)]
 #[derive(HashStable_Generic)]
 pub enum LitIntType {
     /// e.g. `42_i32`.
-    /// The bool signals whether the literal is negated
-    Signed(IntTy, bool),
+    Signed(IntTy, Sign),
     /// e.g. `42_u32`.
     Unsigned(UintTy),
     /// e.g. `42`.
-    /// The bool signals whether the literal is negated
-    Unsuffixed(bool),
+    Unsuffixed(Sign),
 }
 
 /// Type of the float literal based on provided suffix.
@@ -1975,8 +1988,8 @@ impl LitKind {
 
     pub fn is_negative(&self) -> bool {
         match self {
-            LitKind::Int(_, LitIntType::Signed(_, negative) | LitIntType::Unsuffixed(negative)) => {
-                *negative
+            LitKind::Int(_, LitIntType::Signed(_, sign) | LitIntType::Unsuffixed(sign)) => {
+                sign.is_neg()
             }
             LitKind::Float(f, _) => f.as_str().starts_with('-'),
             _ => false,

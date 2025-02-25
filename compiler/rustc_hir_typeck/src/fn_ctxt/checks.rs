@@ -1618,7 +1618,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ast::LitKind::Char(_) => tcx.types.char,
             ast::LitKind::Int(_, ast::LitIntType::Signed(t, _)) => Ty::new_int(tcx, ty::int_ty(t)),
             ast::LitKind::Int(_, ast::LitIntType::Unsigned(t)) => Ty::new_uint(tcx, ty::uint_ty(t)),
-            ast::LitKind::Int(positive, ast::LitIntType::Unsuffixed(neg)) => {
+            ast::LitKind::Int(positive, ast::LitIntType::Unsuffixed(sign)) => {
                 let opt_ty = expected.to_option(self).and_then(|ty| match ty.kind() {
                     ty::Int(_) | ty::Uint(_) => Some(ty),
                     // These exist to direct casts like `0x61 as char` to use
@@ -1631,7 +1631,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 });
                 let ty = opt_ty.unwrap_or_else(|| self.next_int_var());
 
-                if neg {
+                if sign.is_neg() {
                     let cast = if let hir::Node::Expr(parent) = self.tcx.parent_hir_node(hir_id)
                         && let hir::ExprKind::Cast(..) = parent.kind
                     {

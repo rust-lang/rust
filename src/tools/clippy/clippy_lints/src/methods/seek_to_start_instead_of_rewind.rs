@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{is_enum_variant_ctor, is_expr_used_or_unified};
+use rustc_ast::Sign;
 use rustc_ast::ast::{LitIntType, LitKind};
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
@@ -31,7 +32,7 @@ pub(super) fn check<'tcx>(
         && let Some(ctor_call_id) = cx.qpath_res(path, func.hir_id).opt_def_id()
         && is_enum_variant_ctor(cx, sym::SeekFrom, sym!(Start), ctor_call_id)
         && let ExprKind::Lit(lit) = arg.kind
-        && let LitKind::Int(Pu128(0), LitIntType::Unsuffixed(false)) = lit.node
+        && let LitKind::Int(Pu128(0), LitIntType::Unsuffixed(Sign::None)) = lit.node
     {
         let method_call_span = expr.span.with_lo(name_span.lo());
         span_lint_and_then(

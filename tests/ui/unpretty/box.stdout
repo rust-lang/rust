@@ -65,7 +65,7 @@ body:
                                                                                                 temp_lifetime: TempLifetime { temp_lifetime: Some(Node(2)), backwards_incompatible: None }
                                                                                                 span: $DIR/box.rs:7:33: 7:34 (#0)
                                                                                                 kind: 
-                                                                                                    Literal( lit: Spanned { node: Int(Pu128(1), Unsuffixed(false)), span: $DIR/box.rs:7:33: 7:34 (#0) } )
+                                                                                                    Literal( lit: Spanned { node: Int(Pu128(1), Unsuffixed(None)), span: $DIR/box.rs:7:33: 7:34 (#0) } )
 
                                                                                             }
                                                                                     }

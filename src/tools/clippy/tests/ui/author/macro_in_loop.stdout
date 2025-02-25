@@ -6,10 +6,10 @@ if let Some(higher::ForLoop { pat: pat, arg: arg, body: body, .. }) = higher::Fo
     && fields.len() == 2
     && fields[0].ident.as_str() == "start"
     && let ExprKind::Lit(ref lit) = fields[0].expr.kind
-    && let LitKind::Int(0, LitIntType::Unsuffixed(false)) = lit.node
+    && let LitKind::Int(0, LitIntType::Unsuffixed(None)) = lit.node
     && fields[1].ident.as_str() == "end"
     && let ExprKind::Lit(ref lit1) = fields[1].expr.kind
-    && let LitKind::Int(1, LitIntType::Unsuffixed(false)) = lit1.node
+    && let LitKind::Int(1, LitIntType::Unsuffixed(None)) = lit1.node
     && let ExprKind::Block(block, None) = body.kind
     && block.stmts.len() == 1
     && let StmtKind::Semi(e) = block.stmts[0].kind
