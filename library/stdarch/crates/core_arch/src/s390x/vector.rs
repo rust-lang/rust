@@ -7,7 +7,7 @@
 
 #![allow(non_camel_case_types)]
 
-use crate::{core_arch::simd::*, intrinsics::simd::*, mem::transmute};
+use crate::{core_arch::simd::*, intrinsics::simd::*, mem::MaybeUninit, mem::transmute};
 
 #[cfg(test)]
 use stdarch_test::assert_instr;
@@ -149,6 +149,8 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.s390.vlrl"] fn vlrl(a: u32, b: *const u8) -> vector_unsigned_char;
     #[link_name = "llvm.s390.vstrl"] fn vstrl(a: vector_unsigned_char, b: u32, c: *mut u8);
 
+    #[link_name = "llvm.s390.lcbb"] fn lcbb(a: *const u8, b: u32) -> u32;
+    #[link_name = "llvm.s390.vlbb"] fn vlbb(a: *const u8, b: u32) -> MaybeUninit<vector_signed_char>;
 }
 
 impl_from! { i8x16, u8x16,  i16x8, u16x8, i32x4, u32x4, i64x2, u64x2, f32x4, f64x2 }
@@ -234,6 +236,16 @@ const fn genmasks(bit_width: u32, a: u8, b: u8) -> u64 {
     let b = (bit_width - 1) - b;
 
     ((1u64.wrapping_shl(a as u32 + 1)) - 1) & !((1u64.wrapping_shl(b as u32)) - 1)
+}
+
+const fn validate_block_boundary(block_boundary: u16) -> u32 {
+    assert!(
+        block_boundary.is_power_of_two() && block_boundary >= 64 && block_boundary <= 4096,
+        "block boundary must be a constant power of 2 from 64 to 4096",
+    );
+
+    // so that 64 is encoded as 0, 128 as 1, ect.
+    block_boundary as u32 >> 7
 }
 
 #[macro_use]
@@ -1892,6 +1904,10 @@ mod sealed {
         }
 
         unsafe fn vec_load_len(ptr: *const Self::ElementType, byte_count: u32) -> Self;
+
+        unsafe fn vec_load_bndry<const BLOCK_BOUNDARY: u16>(
+            ptr: *const Self::ElementType,
+        ) -> MaybeUninit<Self>;
     }
 
     #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -1919,6 +1935,13 @@ mod sealed {
                     unsafe fn vec_load_len(ptr: *const Self::ElementType, byte_count: u32) -> Self {
                         transmute(vll( byte_count, ptr.cast(),))
                     }
+
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_load_bndry<const BLOCK_BOUNDARY: u16>(ptr: *const Self::ElementType) -> MaybeUninit<Self> {
+                        transmute(vlbb(ptr.cast(), const { validate_block_boundary(BLOCK_BOUNDARY) }))
+                    }
+
                 }
 
                 #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -1946,10 +1969,55 @@ mod sealed {
 
     #[inline]
     #[target_feature(enable = "vector")]
+    #[cfg_attr(test, assert_instr("vlbb"))]
+    unsafe fn test_vec_load_bndry(ptr: *const i32) -> MaybeUninit<vector_signed_int> {
+        vector_signed_int::vec_load_bndry::<512>(ptr)
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
     #[cfg_attr(test, assert_instr(vst))]
     unsafe fn test_vec_store_len(vector: vector_signed_int, ptr: *mut i32, byte_count: u32) {
         vector.vec_store_len(ptr, byte_count)
     }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorLoadPair: Sized {
+        type ElementType;
+
+        unsafe fn vec_load_pair(a: Self::ElementType, b: Self::ElementType) -> Self;
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    impl VectorLoadPair for vector_signed_long_long {
+        type ElementType = i64;
+
+        #[inline]
+        #[target_feature(enable = "vector")]
+        unsafe fn vec_load_pair(a: i64, b: i64) -> Self {
+            vector_signed_long_long([a, b])
+        }
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    impl VectorLoadPair for vector_unsigned_long_long {
+        type ElementType = u64;
+
+        #[inline]
+        #[target_feature(enable = "vector")]
+        unsafe fn vec_load_pair(a: u64, b: u64) -> Self {
+            vector_unsigned_long_long([a, b])
+        }
+    }
+}
+
+/// Load Count to Block Boundary
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+#[cfg_attr(test, assert_instr(lcbb, BLOCK_BOUNDARY = 512))]
+unsafe fn __lcbb<const BLOCK_BOUNDARY: u16>(ptr: *const u8) -> u32 {
+    lcbb(ptr, const { validate_block_boundary(BLOCK_BOUNDARY) })
 }
 
 /// Vector element-wise addition.
@@ -2793,6 +2861,24 @@ pub unsafe fn vec_xl<T: sealed::VectorLoad>(offset: isize, ptr: *const T::Elemen
     T::vec_xl(offset, ptr)
 }
 
+/// Vector Load Pair
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_load_pair<T: sealed::VectorLoadPair>(a: T::ElementType, b: T::ElementType) -> T {
+    T::vec_load_pair(a, b)
+}
+
+/// Vector Load to Block Boundary
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_load_bndry<T: sealed::VectorLoad, const BLOCK_BOUNDARY: u16>(
+    ptr: *const T::ElementType,
+) -> MaybeUninit<T> {
+    T::vec_load_bndry::<BLOCK_BOUNDARY>(ptr)
+}
+
 /// Vector Store
 #[inline]
 #[target_feature(enable = "vector")]
@@ -2801,7 +2887,7 @@ pub unsafe fn vec_xst<T: sealed::VectorStore>(vector: T, offset: isize, ptr: *mu
     vector.vec_xst(offset, ptr)
 }
 
-/// Vector Load
+/// Vector Load with Length
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -2812,7 +2898,7 @@ pub unsafe fn vec_load_len<T: sealed::VectorLoad>(
     T::vec_load_len(ptr, byte_count)
 }
 
-/// Vector Store
+/// Vector Store with Length
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -3618,5 +3704,18 @@ mod tests {
                 0,
             ]
         );
+    }
+
+    #[simd_test(enable = "vector")]
+    fn test_vector_lcbb() {
+        #[repr(align(64))]
+        struct Align64<T>(T);
+
+        static ARRAY: Align64<[u8; 128]> = Align64([0; 128]);
+
+        assert_eq!(unsafe { __lcbb::<64>(ARRAY.0[64..].as_ptr()) }, 16);
+        assert_eq!(unsafe { __lcbb::<64>(ARRAY.0[63..].as_ptr()) }, 1);
+        assert_eq!(unsafe { __lcbb::<64>(ARRAY.0[56..].as_ptr()) }, 8);
+        assert_eq!(unsafe { __lcbb::<64>(ARRAY.0[48..].as_ptr()) }, 16);
     }
 }
