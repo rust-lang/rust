@@ -4,7 +4,7 @@
 
 /// Inserts an element into a vector, returning the updated vector.
 ///
-/// `T` must be a vector with element type `U`.
+/// `T` must be a vector with element type `U`, and `idx` must be `const`.
 ///
 /// # Safety
 ///
@@ -16,9 +16,11 @@ pub unsafe fn simd_insert<T, U>(_x: T, _idx: u32, _val: U) -> T {
     unreachable!()
 }
 
-/// Extracts an element from a vector.
+/// Inserts an element into a vector, returning the updated vector.
 ///
 /// `T` must be a vector with element type `U`.
+///
+/// If the index is `const`, [`simd_insert`] may emit better assembly.
 ///
 /// # Safety
 ///
@@ -26,7 +28,39 @@ pub unsafe fn simd_insert<T, U>(_x: T, _idx: u32, _val: U) -> T {
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 #[rustc_nounwind]
+#[cfg(not(bootstrap))]
+pub unsafe fn simd_insert_dyn<T, U>(_x: T, _idx: u32, _val: U) -> T {
+    unreachable!()
+}
+
+/// Extracts an element from a vector.
+///
+/// `T` must be a vector with element type `U`, and `idx` must be `const`.
+///
+/// # Safety
+///
+/// `idx` must be const and in-bounds of the vector.
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
 pub unsafe fn simd_extract<T, U>(_x: T, _idx: u32) -> U {
+    unreachable!()
+}
+
+/// Extracts an element from a vector.
+///
+/// `T` must be a vector with element type `U`.
+///
+/// If the index is `const`, [`simd_extract`] may emit better assembly.
+///
+/// # Safety
+///
+/// `idx` must be in-bounds of the vector.
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+#[rustc_nounwind]
+#[cfg(not(bootstrap))]
+pub unsafe fn simd_extract_dyn<T, U>(_x: T, _idx: u32) -> U {
     unreachable!()
 }
 
