@@ -3,6 +3,7 @@ FROM ubuntu:24.04
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
+  bzip2 \
   g++ \
   gcc-multilib \
   make \
@@ -55,9 +56,6 @@ ENV RUST_CONFIGURE_ARGS \
       --set rust.thin-lto-import-instr-limit=10
 
 COPY scripts/shared.sh /scripts/
-COPY scripts/build-gccjit.sh /scripts/
-
-RUN /scripts/build-gccjit.sh /scripts
 
 ARG SCRIPT_ARG
 
