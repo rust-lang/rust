@@ -2771,16 +2771,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> ErrorGuaranteed {
         let PatInfo { top_info: ti, current_depth, .. } = pat_info;
 
-        let mut err = struct_span_code_err!(
-            self.dcx(),
-            span,
-            E0529,
-            "expected an array or slice, found `{expected_ty}`"
-        );
+        let mut slice_pat_semantics = false;
+        let mut as_deref = None;
+        let mut slicing = None;
         if let ty::Ref(_, ty, _) = expected_ty.kind()
             && let ty::Array(..) | ty::Slice(..) = ty.kind()
         {
-            err.help("the semantics of slice patterns changed recently; see issue #62254");
+            slice_pat_semantics = true;
         } else if self
             .autoderef(span, expected_ty)
             .silence_errors()
@@ -2797,28 +2794,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         || self.tcx.is_diagnostic_item(sym::Result, adt_def.did()) =>
                 {
                     // Slicing won't work here, but `.as_deref()` might (issue #91328).
-                    err.span_suggestion_verbose(
-                        span.shrink_to_hi(),
-                        "consider using `as_deref` here",
-                        ".as_deref()",
-                        Applicability::MaybeIncorrect,
-                    );
+                    as_deref = Some(errors::AsDerefSuggestion { span: span.shrink_to_hi() });
                 }
                 _ => (),
             }
 
             let is_top_level = current_depth <= 1;
             if is_slice_or_array_or_vector && is_top_level {
-                err.span_suggestion_verbose(
-                    span.shrink_to_hi(),
-                    "consider slicing here",
-                    "[..]",
-                    Applicability::MachineApplicable,
-                );
+                slicing = Some(errors::SlicingSuggestion { span: span.shrink_to_hi() });
             }
         }
-        err.span_label(span, format!("pattern cannot match with input type `{expected_ty}`"));
-        err.emit()
+        self.dcx().emit_err(errors::ExpectedArrayOrSlice {
+            span,
+            ty: expected_ty,
+            slice_pat_semantics,
+            as_deref,
+            slicing,
+        })
     }
 
     fn is_slice_or_array_or_vector(&self, ty: Ty<'tcx>) -> (bool, Ty<'tcx>) {

@@ -1005,10 +1005,10 @@ pub(crate) struct LayoutHomogeneousAggregate {
 
 #[derive(Diagnostic)]
 #[diag(passes_layout_of)]
-pub(crate) struct LayoutOf {
+pub(crate) struct LayoutOf<'tcx> {
     #[primary_span]
     pub span: Span,
-    pub normalized_ty: String,
+    pub normalized_ty: Ty<'tcx>,
     pub ty_layout: String,
 }
 
