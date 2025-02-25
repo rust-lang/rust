@@ -7,7 +7,6 @@
 //@ edition: 2021
 
 #![feature(rustc_private)]
-#![feature(assert_matches)]
 
 extern crate rustc_middle;
 #[macro_use]
@@ -16,7 +15,7 @@ extern crate rustc_driver;
 extern crate rustc_interface;
 extern crate stable_mir;
 
-use std::assert_matches::assert_matches;
+use std::macros::assert_matches;
 use mir::{mono::Instance, TerminatorKind::*};
 use stable_mir::mir::mono::InstanceKind;
 use rustc_smir::rustc_internal;

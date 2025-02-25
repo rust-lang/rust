@@ -1,5 +1,5 @@
-use std::assert_matches::debug_assert_matches;
 use std::cell::LazyCell;
+use std::macros::debug_assert_matches;
 
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::unord::UnordSet;

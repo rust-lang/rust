@@ -2,7 +2,7 @@
 //! looking at their MIR. Intrinsics/functions supported here are shared by CTFE
 //! and miri.
 
-use std::assert_matches::assert_matches;
+use std::macros::assert_matches;
 
 use rustc_abi::Size;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};

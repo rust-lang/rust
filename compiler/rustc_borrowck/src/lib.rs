@@ -3,7 +3,6 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![doc(rust_logo)]
-#![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(file_buffered)]
 #![feature(if_let_guard)]

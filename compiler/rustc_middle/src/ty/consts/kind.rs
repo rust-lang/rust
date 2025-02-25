@@ -1,4 +1,4 @@
-use std::assert_matches::assert_matches;
+use std::macros::assert_matches;
 
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 

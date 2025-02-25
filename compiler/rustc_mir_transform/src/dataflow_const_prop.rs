@@ -2,8 +2,8 @@
 //!
 //! Currently, this pass only propagates scalar values.
 
-use std::assert_matches::assert_matches;
 use std::fmt::Formatter;
+use std::macros::assert_matches;
 
 use rustc_abi::{BackendRepr, FIRST_VARIANT, FieldIdx, Size, VariantIdx};
 use rustc_const_eval::const_eval::{DummyMachine, throw_machine_stop_str};

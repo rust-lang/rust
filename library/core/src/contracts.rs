@@ -1,6 +1,8 @@
 //! Unstable module containing the unstable contracts lang items and attribute macros.
 
-pub use crate::macros::builtin::{contracts_ensures as ensures, contracts_requires as requires};
+pub use crate::core_macros::builtin::{
+    contracts_ensures as ensures, contracts_requires as requires,
+};
 
 /// Emitted by rustc as a desugaring of `#[ensures(PRED)] fn foo() -> R { ... [return R;] ... }`
 /// into: `fn foo() { let _check = build_check_ensures(|ret| PRED) ... [return _check(R);] ... }`

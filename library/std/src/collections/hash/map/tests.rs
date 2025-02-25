@@ -3,9 +3,9 @@ use realstd::collections::TryReserveErrorKind::*;
 
 use super::Entry::{Occupied, Vacant};
 use super::HashMap;
-use crate::assert_matches::assert_matches;
 use crate::cell::RefCell;
 use crate::hash::{BuildHasher, BuildHasherDefault, DefaultHasher, RandomState};
+use crate::macros::assert_matches;
 use crate::test_helpers::test_rng;
 
 // https://github.com/rust-lang/rust/issues/62301

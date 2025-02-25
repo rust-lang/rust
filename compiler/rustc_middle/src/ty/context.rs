@@ -4,10 +4,10 @@
 
 pub mod tls;
 
-use std::assert_matches::{assert_matches, debug_assert_matches};
 use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
+use std::macros::{assert_matches, debug_assert_matches};
 use std::marker::PhantomData;
 use std::ops::{Bound, Deref};
 use std::sync::{Arc, OnceLock};

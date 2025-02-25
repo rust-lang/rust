@@ -10,8 +10,8 @@
 //! otherwise silence errors, if move analysis runs after promotion on broken
 //! MIR.
 
-use std::assert_matches::assert_matches;
 use std::cell::Cell;
+use std::macros::assert_matches;
 use std::{cmp, iter, mem};
 
 use either::{Left, Right};

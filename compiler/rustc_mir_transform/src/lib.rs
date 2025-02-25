@@ -1,6 +1,5 @@
 // tidy-alphabetical-start
 #![feature(array_windows)]
-#![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(const_type_name)]
 #![feature(cow_is_borrowed)]

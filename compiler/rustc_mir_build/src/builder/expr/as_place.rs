@@ -1,7 +1,7 @@
 //! See docs in build/expr/mod.rs
 
-use std::assert_matches::assert_matches;
 use std::iter;
+use std::macros::assert_matches;
 
 use rustc_abi::{FIRST_VARIANT, FieldIdx, VariantIdx};
 use rustc_hir::def_id::LocalDefId;

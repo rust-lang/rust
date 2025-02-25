@@ -6,7 +6,6 @@
 //@ ignore-remote
 
 #![feature(rustc_private)]
-#![feature(assert_matches)]
 #![feature(ascii_char, ascii_char_variants)]
 
 extern crate rustc_hir;
@@ -25,7 +24,7 @@ use stable_mir::abi::{
 use stable_mir::mir::mono::Instance;
 use stable_mir::target::MachineInfo;
 use stable_mir::{CrateDef, CrateItem, CrateItems, ItemKind};
-use std::assert_matches::assert_matches;
+use std::macros::assert_matches;
 use std::convert::TryFrom;
 use std::io::Write;
 use std::ops::ControlFlow;

@@ -4,9 +4,7 @@
 //@ error-pattern: right: 3
 //@ needs-subprocess
 
-#![feature(assert_matches)]
-
-use std::assert_matches::assert_matches;
+use std::macros::assert_matches;
 
 fn main() {
     assert_matches!(1 + 1, 3, "1 + 1 definitely should be 3");

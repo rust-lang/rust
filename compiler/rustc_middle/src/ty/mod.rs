@@ -11,9 +11,9 @@
 
 #![allow(rustc::usage_of_ty_tykind)]
 
-use std::assert_matches::assert_matches;
 use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
+use std::macros::assert_matches;
 use std::marker::PhantomData;
 use std::num::NonZero;
 use std::ptr::NonNull;

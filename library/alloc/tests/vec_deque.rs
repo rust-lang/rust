@@ -2,11 +2,11 @@
 #![allow(static_mut_refs)]
 
 use core::num::NonZero;
-use std::assert_matches::assert_matches;
 use std::collections::TryReserveErrorKind::*;
 use std::collections::VecDeque;
 use std::collections::vec_deque::Drain;
 use std::fmt::Debug;
+use std::macros::assert_matches;
 use std::ops::Bound::*;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 

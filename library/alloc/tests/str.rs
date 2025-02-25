@@ -1,9 +1,9 @@
 #![allow(invalid_from_utf8)]
 
-use std::assert_matches::assert_matches;
 use std::borrow::Cow;
 use std::char::MAX_LEN_UTF8;
 use std::cmp::Ordering::{Equal, Greater, Less};
+use std::macros::assert_matches;
 use std::str::{from_utf8, from_utf8_unchecked};
 
 #[test]

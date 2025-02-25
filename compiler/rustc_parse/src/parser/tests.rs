@@ -1,8 +1,8 @@
 #![allow(rustc::symbol_intern_string_literal)]
 
-use std::assert_matches::assert_matches;
 use std::io::prelude::*;
 use std::iter::Peekable;
+use std::macros::assert_matches;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::{io, str};
