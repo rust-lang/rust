@@ -10,8 +10,8 @@
 #![allow(hidden_glob_reexports)]
 
 // This crate is a private dependency
+// FIXME: This should trigger.
 pub extern crate priv_dep;
-//~^ ERROR extern crate `priv_dep` from private dependency 'priv_dep' in public interface
 // This crate is a public dependency
 extern crate pub_dep;
 // This crate is a private dependency
@@ -91,17 +91,18 @@ pub struct AllowedPrivType {
     pub allowed: OtherType,
 }
 
+// FIXME: This should trigger.
 pub use priv_dep::m;
-//~^ ERROR `use` import `m` from private dependency 'priv_dep' in public interface
+// FIXME: This should trigger.
 pub use pm::fn_like;
-//~^ ERROR `use` import `fn_like` from private dependency 'pm' in public interface
+// FIXME: This should trigger.
 pub use pm::PmDerive;
-//~^ ERROR `use` import `PmDerive` from private dependency 'pm' in public interface
+// FIXME: This should trigger.
 pub use pm::pm_attr;
-//~^ ERROR `use` import `pm_attr` from private dependency 'pm' in public interface
+
+// FIXME: This should trigger.
 pub use priv_dep::E::V1;
-//~^ ERROR `use` import `V1` from private dependency 'priv_dep' in public interface
+// FIXME: This should trigger.
 pub use priv_dep::*;
-//~^ ERROR `use` import `priv_dep` from private dependency 'priv_dep' in public interface
 
 fn main() {}

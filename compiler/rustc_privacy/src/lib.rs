@@ -1789,33 +1789,6 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
                     }
                 }
             }
-            DefKind::Use => {
-                let item = tcx.hir_item(id);
-                if let hir::ItemKind::Use(path, use_kind) = item.kind
-                    // List imports are desugared as single ones so skip `ListStem`s
-                    && use_kind != rustc_hir::UseKind::ListStem
-                {
-                    if let Some(def_id) = path.res.iter().filter_map(Res::opt_def_id).last() {
-                        // normally, public items in a private modules can be re-exported but this should be linted for
-                        // leakages of a private dependencies
-                        self.check_private_dep_leaks_only(item.owner_id.def_id, item_visibility)
-                            .check_def_id(
-                                def_id,
-                                item.kind.descr(),
-                                &LazyDefPathStr { def_id, tcx },
-                            );
-                    }
-                }
-            }
-            DefKind::ExternCrate => {
-                let item = tcx.hir_item(id);
-                if let Some(cnum) = tcx.extern_mod_stmt_cnum(item.owner_id.def_id) {
-                    let def_id = cnum.as_def_id();
-                    // `pub extern some_dep` should be linted if and only if `some_dep` is a private dependency
-                    self.check_private_dep_leaks_only(item.owner_id.def_id, item_visibility)
-                        .visit_def_id(def_id, item.kind.descr(), &LazyDefPathStr { def_id, tcx });
-                }
-            }
             _ => {}
         }
     }
