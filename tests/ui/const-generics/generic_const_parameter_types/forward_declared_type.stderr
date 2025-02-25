@@ -1,0 +1,15 @@
+error[E0770]: the type of const parameters must not depend on other generic parameters
+  --> $DIR/forward_declared_type.rs:6:32
+   |
+LL | struct UsesConst<const N: [u8; M], const M: usize>;
+   |                                ^ the type must not depend on the parameter `M`
+
+error[E0770]: the type of const parameters must not depend on other generic parameters
+  --> $DIR/forward_declared_type.rs:8:27
+   |
+LL | struct UsesType<const N: [T; 2], T>(PhantomData<T>);
+   |                           ^ the type must not depend on the parameter `T`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0770`.

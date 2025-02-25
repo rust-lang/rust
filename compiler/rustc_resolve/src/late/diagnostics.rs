@@ -3052,7 +3052,6 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             .create_err(errors::ParamInTyOfConstParam {
                 span: lifetime_ref.ident.span,
                 name: lifetime_ref.ident.name,
-                param_kind: Some(errors::ParamKindInTyOfConstParam::Lifetime),
             })
             .emit();
     }

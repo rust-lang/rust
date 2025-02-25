@@ -342,6 +342,7 @@ impl ParamConst {
         ParamConst::new(def.index, def.name)
     }
 
+    #[instrument(level = "debug")]
     pub fn find_ty_from_env<'tcx>(self, env: ParamEnv<'tcx>) -> Ty<'tcx> {
         let mut candidates = env.caller_bounds().iter().filter_map(|clause| {
             // `ConstArgHasType` are never desugared to be higher ranked.

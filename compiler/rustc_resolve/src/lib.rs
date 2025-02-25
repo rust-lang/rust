@@ -30,9 +30,7 @@ use std::sync::Arc;
 
 use diagnostics::{ImportSuggestion, LabelSuggestion, Suggestion};
 use effective_visibilities::EffectiveVisibilitiesVisitor;
-use errors::{
-    ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst, ParamKindInTyOfConstParam,
-};
+use errors::{ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst};
 use imports::{Import, ImportData, ImportKind, NameResolution};
 use late::{HasGenericParams, PathSource, PatternSource, UnnecessaryQualification};
 use macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
@@ -277,7 +275,7 @@ enum ResolutionError<'ra> {
     /// Error E0128: generic parameters with a default cannot use forward-declared identifiers.
     ForwardDeclaredGenericParam,
     /// ERROR E0770: the type of const parameters must not depend on other generic parameters.
-    ParamInTyOfConstParam { name: Symbol, param_kind: Option<ParamKindInTyOfConstParam> },
+    ParamInTyOfConstParam { name: Symbol },
     /// generic parameters must not be used inside const evaluations.
     ///
     /// This error is only emitted when using `min_const_generics`.

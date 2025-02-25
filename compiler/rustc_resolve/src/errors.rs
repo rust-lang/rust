@@ -347,19 +347,6 @@ pub(crate) struct ParamInTyOfConstParam {
     #[label]
     pub(crate) span: Span,
     pub(crate) name: Symbol,
-    #[subdiagnostic]
-    pub(crate) param_kind: Option<ParamKindInTyOfConstParam>,
-}
-
-#[derive(Debug)]
-#[derive(Subdiagnostic)]
-pub(crate) enum ParamKindInTyOfConstParam {
-    #[note(resolve_type_param_in_ty_of_const_param)]
-    Type,
-    #[note(resolve_const_param_in_ty_of_const_param)]
-    Const,
-    #[note(resolve_lifetime_param_in_ty_of_const_param)]
-    Lifetime,
 }
 
 #[derive(Diagnostic)]

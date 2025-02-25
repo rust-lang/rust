@@ -125,9 +125,6 @@ resolve_const_param_in_enum_discriminant =
 resolve_const_param_in_non_trivial_anon_const =
     const parameters may only be used as standalone arguments, i.e. `{$name}`
 
-resolve_const_param_in_ty_of_const_param =
-    const parameters may not be used in the type of const parameters
-
 resolve_constructor_private_if_any_field_private =
     a constructor is private if any of the fields is private
 
@@ -249,9 +246,6 @@ resolve_lifetime_param_in_enum_discriminant =
 
 resolve_lifetime_param_in_non_trivial_anon_const =
     lifetime parameters may not be used in const expressions
-
-resolve_lifetime_param_in_ty_of_const_param =
-    lifetime parameters may not be used in the type of const parameters
 
 resolve_lowercase_self =
     attempt to use a non-constant value in a constant
@@ -436,9 +430,6 @@ resolve_type_param_in_enum_discriminant =
 
 resolve_type_param_in_non_trivial_anon_const =
     type parameters may not be used in const expressions
-
-resolve_type_param_in_ty_of_const_param =
-    type parameters may not be used in the type of const parameters
 
 resolve_undeclared_label =
     use of undeclared label `{$name}`
