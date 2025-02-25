@@ -812,32 +812,38 @@ pub struct CtxtInterners<'tcx> {
 
 impl<'tcx> CtxtInterners<'tcx> {
     fn new(arena: &'tcx WorkerLocal<Arena<'tcx>>) -> CtxtInterners<'tcx> {
+        // Default interner size - this value has been chosen empirically, and may need to be adjusted
+        // as the compiler evolves.
+        const N: usize = 2048;
         CtxtInterners {
             arena,
-            type_: Default::default(),
-            const_lists: Default::default(),
-            args: Default::default(),
-            type_lists: Default::default(),
-            region: Default::default(),
-            poly_existential_predicates: Default::default(),
-            canonical_var_infos: Default::default(),
-            predicate: Default::default(),
-            clauses: Default::default(),
-            projs: Default::default(),
-            place_elems: Default::default(),
-            const_: Default::default(),
-            pat: Default::default(),
-            const_allocation: Default::default(),
-            bound_variable_kinds: Default::default(),
-            layout: Default::default(),
-            adt_def: Default::default(),
-            external_constraints: Default::default(),
-            predefined_opaques_in_body: Default::default(),
-            fields: Default::default(),
-            local_def_ids: Default::default(),
-            captures: Default::default(),
-            offset_of: Default::default(),
-            valtree: Default::default(),
+            // The factors have been chosen by @FractalFir based on observed interner sizes, and local perf runs.
+            // To get the interner sizes, insert `eprintln` printing the size of the interner in functions like `intern_ty`.
+            // Bigger benchmarks tend to give more accurate ratios, so use something like `x perf eprintln --includes cargo`.
+            type_: InternedSet::with_capacity(N * 16),
+            const_lists: InternedSet::with_capacity(N * 4),
+            args: InternedSet::with_capacity(N * 4),
+            type_lists: InternedSet::with_capacity(N * 4),
+            region: InternedSet::with_capacity(N * 4),
+            poly_existential_predicates: InternedSet::with_capacity(N / 4),
+            canonical_var_infos: InternedSet::with_capacity(N / 2),
+            predicate: InternedSet::with_capacity(N),
+            clauses: InternedSet::with_capacity(N),
+            projs: InternedSet::with_capacity(N * 4),
+            place_elems: InternedSet::with_capacity(N * 2),
+            const_: InternedSet::with_capacity(N * 2),
+            pat: InternedSet::with_capacity(N),
+            const_allocation: InternedSet::with_capacity(N),
+            bound_variable_kinds: InternedSet::with_capacity(N * 2),
+            layout: InternedSet::with_capacity(N),
+            adt_def: InternedSet::with_capacity(N),
+            external_constraints: InternedSet::with_capacity(N),
+            predefined_opaques_in_body: InternedSet::with_capacity(N),
+            fields: InternedSet::with_capacity(N * 4),
+            local_def_ids: InternedSet::with_capacity(N),
+            captures: InternedSet::with_capacity(N),
+            offset_of: InternedSet::with_capacity(N),
+            valtree: InternedSet::with_capacity(N),
         }
     }
 
