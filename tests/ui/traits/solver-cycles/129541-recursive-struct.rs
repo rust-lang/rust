@@ -1,7 +1,7 @@
 // Regression test for #129541
 
 //@ revisions: unique multiple
-//@ check-pass
+//@ error-pattern: reached the recursion limit finding the struct tail for `<[Hello] as Normalize>::Assoc`
 
 trait Bound {}
 trait Normalize {
