@@ -1855,6 +1855,64 @@ mod sealed {
     }
 
     impl_vfae! { [idx_cc VectorFindAnyNeOrZeroIdxCC vec_find_any_ne_or_0_idx_cc] NeIdx vfaezbs vfaezhs vfaezfs }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(test, assert_instr(vl))]
+    unsafe fn test_vector_load(offset: isize, ptr: *const i32) -> vector_signed_int {
+        ptr.byte_offset(offset)
+            .cast::<vector_signed_int>()
+            .read_unaligned()
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(test, assert_instr(vst))]
+    unsafe fn test_vector_store(vector: vector_signed_int, offset: isize, ptr: *mut i32) {
+        ptr.byte_offset(offset)
+            .cast::<vector_signed_int>()
+            .write_unaligned(vector)
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorLoad: Sized {
+        type ElementType;
+
+        #[inline]
+        #[target_feature(enable = "vector")]
+        unsafe fn vec_xl(offset: isize, ptr: *const Self::ElementType) -> Self {
+            ptr.byte_offset(offset).cast::<Self>().read_unaligned()
+        }
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorStore: Sized {
+        type ElementType;
+
+        #[inline]
+        #[target_feature(enable = "vector")]
+        unsafe fn vec_xst(self, offset: isize, ptr: *mut Self::ElementType) {
+            ptr.byte_offset(offset).cast::<Self>().write_unaligned(self)
+        }
+    }
+
+    macro_rules! impl_load_store {
+        ($($ty:ident)*) => {
+            $(
+                #[unstable(feature = "stdarch_s390x", issue = "135681")]
+                impl VectorLoad for t_t_l!($ty) {
+                    type ElementType = $ty;
+                }
+
+                #[unstable(feature = "stdarch_s390x", issue = "135681")]
+                impl VectorStore for t_t_l!($ty) {
+                    type ElementType = $ty;
+                }
+            )*
+        }
+    }
+
+    impl_load_store! { i8 u8 i16 u16 i32 u32 i64 u64 f32 f64 }
 }
 
 /// Vector element-wise addition.
@@ -2690,6 +2748,22 @@ vec_find_any_cc! {
     VectorFindAnyNeOrZeroIdxCC vec_find_any_ne_or_0_idx_cc
 }
 
+/// Vector Load
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_xl<T: sealed::VectorLoad>(offset: isize, ptr: *const T::ElementType) -> T {
+    T::vec_xl(offset, ptr)
+}
+
+/// Vector Store
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_xst<T: sealed::VectorStore>(vector: T, offset: isize, ptr: *mut T::ElementType) {
+    vector.vec_xst(offset, ptr)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -3392,5 +3466,79 @@ mod tests {
         let d = unsafe { vec_find_any_ne_or_0_idx_cc(a, b, &mut c) };
         assert_eq!(c, 3);
         assert_eq!(d.as_array(), &[0, 16, 0, 0]);
+    }
+
+    #[simd_test(enable = "vector")]
+    fn test_vector_load() {
+        let expected = [0xAAAA_AAAA, 0xBBBB_BBBB, 0xCCCC_CCCC, 0xDDDD_DDDD];
+
+        let source: [u32; 8] = [
+            0xAAAA_AAAA,
+            0xBBBB_BBBB,
+            0xCCCC_CCCC,
+            0xDDDD_DDDD,
+            0,
+            0,
+            0,
+            0,
+        ];
+        assert_eq!(
+            unsafe { vec_xl::<vector_unsigned_int>(0, source.as_ptr()) }.as_array(),
+            &expected
+        );
+
+        // offset is in bytes
+        let source: [u32; 8] = [
+            0x0000_AAAA,
+            0xAAAA_BBBB,
+            0xBBBB_CCCC,
+            0xCCCC_DDDD,
+            0xDDDD_0000,
+            0,
+            0,
+            0,
+        ];
+        assert_eq!(
+            unsafe { vec_xl::<vector_unsigned_int>(2, source.as_ptr()) }.as_array(),
+            &expected
+        );
+    }
+
+    #[simd_test(enable = "vector")]
+    fn test_vector_store() {
+        let vec = vector_unsigned_int([0xAAAA_AAAA, 0xBBBB_BBBB, 0xCCCC_CCCC, 0xDDDD_DDDD]);
+
+        let mut dest = [0u32; 8];
+        unsafe { vec_xst(vec, 0, dest.as_mut_ptr()) };
+        assert_eq!(
+            dest,
+            [
+                0xAAAA_AAAA,
+                0xBBBB_BBBB,
+                0xCCCC_CCCC,
+                0xDDDD_DDDD,
+                0,
+                0,
+                0,
+                0
+            ]
+        );
+
+        // offset is in bytes
+        let mut dest = [0u32; 8];
+        unsafe { vec_xst(vec, 2, dest.as_mut_ptr()) };
+        assert_eq!(
+            dest,
+            [
+                0x0000_AAAA,
+                0xAAAA_BBBB,
+                0xBBBB_CCCC,
+                0xCCCC_DDDD,
+                0xDDDD_0000,
+                0,
+                0,
+                0,
+            ]
+        );
     }
 }
