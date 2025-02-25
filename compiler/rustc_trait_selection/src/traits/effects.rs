@@ -31,6 +31,8 @@ pub fn evaluate_host_effect_obligation<'tcx>(
         );
     }
 
+    let ref obligation = selcx.infcx.resolve_vars_if_possible(obligation.clone());
+
     // Force ambiguity for infer self ty.
     if obligation.predicate.self_ty().is_ty_var() {
         return Err(EvaluationFailure::Ambiguous);
