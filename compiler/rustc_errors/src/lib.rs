@@ -15,7 +15,6 @@
 #![feature(box_into_inner)]
 #![feature(box_patterns)]
 #![feature(error_reporter)]
-#![feature(extract_if)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(negative_impls)]
