@@ -142,6 +142,9 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.s390.vfaezbs"] fn vfaezbs(a: vector_signed_char, b: vector_signed_char, c: i32) -> PackedTuple<vector_signed_char, i32>;
     #[link_name = "llvm.s390.vfaezhs"] fn vfaezhs(a: vector_signed_short, b: vector_signed_short, c: i32) -> PackedTuple<vector_signed_short, i32>;
     #[link_name = "llvm.s390.vfaezfs"] fn vfaezfs(a: vector_signed_int, b: vector_signed_int, c: i32) -> PackedTuple<vector_signed_int, i32>;
+
+    #[link_name = "llvm.s390.vll"] fn vll(a: u32, b: *const u8) -> vector_signed_char;
+    #[link_name = "llvm.s390.vstl"] fn vstl(a: vector_signed_char, b: u32, c: *mut u8);
 }
 
 impl_from! { i8x16, u8x16,  i16x8, u16x8, i32x4, u32x4, i64x2, u64x2, f32x4, f64x2 }
@@ -1883,6 +1886,8 @@ mod sealed {
         unsafe fn vec_xl(offset: isize, ptr: *const Self::ElementType) -> Self {
             ptr.byte_offset(offset).cast::<Self>().read_unaligned()
         }
+
+        unsafe fn vec_load_len(ptr: *const Self::ElementType, byte_count: u32) -> Self;
     }
 
     #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -1894,6 +1899,8 @@ mod sealed {
         unsafe fn vec_xst(self, offset: isize, ptr: *mut Self::ElementType) {
             ptr.byte_offset(offset).cast::<Self>().write_unaligned(self)
         }
+
+        unsafe fn vec_store_len(self, ptr: *mut Self::ElementType, byte_count: u32);
     }
 
     macro_rules! impl_load_store {
@@ -1902,17 +1909,43 @@ mod sealed {
                 #[unstable(feature = "stdarch_s390x", issue = "135681")]
                 impl VectorLoad for t_t_l!($ty) {
                     type ElementType = $ty;
+
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_load_len(ptr: *const Self::ElementType, byte_count: u32) -> Self {
+                        transmute(vll( byte_count, ptr.cast(),))
+                    }
                 }
 
                 #[unstable(feature = "stdarch_s390x", issue = "135681")]
                 impl VectorStore for t_t_l!($ty) {
                     type ElementType = $ty;
+
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_store_len(self, ptr: *mut Self::ElementType, byte_count: u32) {
+                        vstl(transmute(self), byte_count, ptr.cast())
+                    }
                 }
             )*
         }
     }
 
     impl_load_store! { i8 u8 i16 u16 i32 u32 i64 u64 f32 f64 }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(test, assert_instr(vll))]
+    unsafe fn test_vec_load_len(ptr: *const i32, byte_count: u32) -> vector_signed_int {
+        vector_signed_int::vec_load_len(ptr, byte_count)
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(test, assert_instr(vst))]
+    unsafe fn test_vec_store_len(vector: vector_signed_int, ptr: *mut i32, byte_count: u32) {
+        vector.vec_store_len(ptr, byte_count)
+    }
 }
 
 /// Vector element-wise addition.
@@ -2762,6 +2795,29 @@ pub unsafe fn vec_xl<T: sealed::VectorLoad>(offset: isize, ptr: *const T::Elemen
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
 pub unsafe fn vec_xst<T: sealed::VectorStore>(vector: T, offset: isize, ptr: *mut T::ElementType) {
     vector.vec_xst(offset, ptr)
+}
+
+/// Vector Load
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_load_len<T: sealed::VectorLoad>(
+    ptr: *const T::ElementType,
+    byte_count: u32,
+) -> T {
+    T::vec_load_len(ptr, byte_count)
+}
+
+/// Vector Store
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_store_len<T: sealed::VectorStore>(
+    vector: T,
+    ptr: *mut T::ElementType,
+    byte_count: u32,
+) {
+    vector.vec_store_len(ptr, byte_count)
 }
 
 #[cfg(test)]
