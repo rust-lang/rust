@@ -17,6 +17,8 @@ use crate::traits::Obligation;
 pub enum ScrubbedTraitError<'tcx> {
     /// A real error. This goal definitely does not hold.
     TrueError,
+    // A select error with pending obligations
+    Select(PredicateObligations<'tcx>),
     /// An ambiguity. This goal may hold if further inference is done.
     Ambiguity,
     /// An old-solver-style cycle error, which will fatal.
@@ -26,7 +28,7 @@ pub enum ScrubbedTraitError<'tcx> {
 impl<'tcx> ScrubbedTraitError<'tcx> {
     pub fn is_true_error(&self) -> bool {
         match self {
-            ScrubbedTraitError::TrueError => true,
+            ScrubbedTraitError::TrueError | ScrubbedTraitError::Select(_) => true,
             ScrubbedTraitError::Ambiguity | ScrubbedTraitError::Cycle(_) => false,
         }
     }
