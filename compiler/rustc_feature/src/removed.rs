@@ -100,6 +100,15 @@ declare_features! (
      Some("renamed to `doc_notable_trait`")),
     /// Allows using `#[unsafe_destructor_blind_to_params]` (RFC 1238).
     (removed, dropck_parametricity, "1.38.0", Some(28498), None),
+    /// Allows making `dyn Trait` well-formed even if `Trait` is not dyn compatible[^1].
+    /// In that case, `dyn Trait: Trait` does not hold. Moreover, coercions and
+    /// casts in safe Rust to `dyn Trait` for such a `Trait` is also forbidden.
+    ///
+    /// Renamed from `object_safe_for_dispatch`.
+    ///
+    /// [^1]: Formerly known as "object safe".
+    (removed, dyn_compatible_for_dispatch, "1.83.0", Some(43561),
+     Some("removed, not used heavily and represented additional complexity in dyn compatibility")),
     /// Uses generic effect parameters for ~const bounds
     (removed, effects, "1.84.0", Some(102090),
      Some("removed, redundant with `#![feature(const_trait_impl)]`")),
