@@ -1,8 +1,8 @@
 # This file defines our primary CI workflow that runs on pull requests
 # and also on pushes to special branches (auto, try).
 #
-# The actual definition of the executed jobs is calculated by a Python
-# script located at src/ci/github-actions/ci.py, which
+# The actual definition of the executed jobs is calculated by the
+# `src/ci/citool` crate, which
 # uses job definition data from src/ci/github-actions/jobs.yml.
 # You should primarily modify the `jobs.yml` file if you want to modify
 # what jobs are executed in CI.
@@ -56,7 +56,10 @@ jobs:
       - name: Calculate the CI job matrix
         env:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
-        run: python3 src/ci/github-actions/ci.py calculate-job-matrix >> $GITHUB_OUTPUT
+        run: |
+          cd src/ci/citool
+          cargo test
+          cargo run calculate-job-matrix >> $GITHUB_OUTPUT
         id: jobs
   job:
     name: ${{ matrix.full_name }}
