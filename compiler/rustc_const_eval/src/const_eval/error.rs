@@ -49,10 +49,10 @@ impl MachineStopType for ConstEvalErrKind {
             | WriteThroughImmutablePointer => {}
             AssertFailure(kind) => kind.add_args(adder),
             Panic { msg, line, col, file } => {
-                adder("msg".into(), msg.into_diag_arg());
-                adder("file".into(), file.into_diag_arg());
-                adder("line".into(), line.into_diag_arg());
-                adder("col".into(), col.into_diag_arg());
+                adder("msg".into(), msg.into_diag_arg(&mut None));
+                adder("file".into(), file.into_diag_arg(&mut None));
+                adder("line".into(), line.into_diag_arg(&mut None));
+                adder("col".into(), col.into_diag_arg(&mut None));
             }
         }
     }

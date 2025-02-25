@@ -109,8 +109,8 @@ impl Mul<usize> for Limit {
 }
 
 impl rustc_errors::IntoDiagArg for Limit {
-    fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
-        self.to_string().into_diag_arg()
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
+        self.to_string().into_diag_arg(&mut None)
     }
 }
 
