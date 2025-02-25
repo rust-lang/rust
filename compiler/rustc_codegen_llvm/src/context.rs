@@ -205,7 +205,7 @@ pub(crate) unsafe fn create_module<'ll>(
     {
         let tm = crate::back::write::create_informational_target_machine(tcx.sess, false);
         unsafe {
-            llvm::LLVMRustSetDataLayoutFromTargetMachine(llmod, &tm);
+            llvm::LLVMRustSetDataLayoutFromTargetMachine(llmod, tm.raw());
         }
 
         let llvm_data_layout = unsafe { llvm::LLVMGetDataLayoutStr(llmod) };
