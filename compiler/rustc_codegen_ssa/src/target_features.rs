@@ -87,7 +87,10 @@ pub(crate) fn from_target_feature_attr(
                     // But ensure the ABI does not forbid enabling this.
                     // Here we do assume that LLVM doesn't add even more implied features
                     // we don't know about, at least no features that would have ABI effects!
-                    if abi_feature_constraints.incompatible.contains(&name.as_str()) {
+                    // We skip this check in rustdoc, like we skip all target feature related checks.
+                    if !tcx.sess.opts.actually_rustdoc
+                        && abi_feature_constraints.incompatible.contains(&name.as_str())
+                    {
                         tcx.dcx().emit_err(errors::ForbiddenTargetFeatureAttr {
                             span: item.span(),
                             feature: name.as_str(),
@@ -142,8 +145,11 @@ pub(crate) fn provide(providers: &mut Providers) {
         rust_target_features: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
             if tcx.sess.opts.actually_rustdoc {
-                // rustdoc needs to be able to document functions that use all the features, so
-                // whitelist them all
+                // HACK: rustdoc would like to pretend that we have all the target features, so we
+                // have to merge all the lists into one. The result has a "random" stability
+                // (depending on the order in which we consider features); all places that check
+                // target stability are expected to check `actually_rustdoc` and do nothing when
+                // that is set.
                 rustc_target::target_features::all_rust_features()
                     .map(|(a, b)| (a.to_string(), b))
                     .collect()
