@@ -25,7 +25,7 @@ pub fn check(
         && cx
             .tcx
             .hir_parent_iter(owner_id.into())
-            .any(|(id, _node)| is_doc_hidden(cx.tcx.hir().attrs(id)))
+            .any(|(id, _node)| is_doc_hidden(cx.tcx.hir_attrs(id)))
     {
         return;
     }

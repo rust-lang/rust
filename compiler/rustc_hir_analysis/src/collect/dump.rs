@@ -13,7 +13,7 @@ pub(crate) fn opaque_hidden_types(tcx: TyCtxt<'_>) {
     for id in tcx.hir_crate_items(()).opaques() {
         if let hir::OpaqueTyOrigin::FnReturn { parent: fn_def_id, .. }
         | hir::OpaqueTyOrigin::AsyncFn { parent: fn_def_id, .. } =
-            tcx.hir().expect_opaque_ty(id).origin
+            tcx.hir_expect_opaque_ty(id).origin
             && let hir::Node::TraitItem(trait_item) = tcx.hir_node_by_def_id(fn_def_id)
             && let (_, hir::TraitFn::Required(..)) = trait_item.expect_fn()
         {

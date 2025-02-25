@@ -613,7 +613,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .iter()
                     .take(4)
                     .map(|(var_hir_id, upvar)| {
-                        let var_name = self.tcx.hir().name(*var_hir_id).to_string();
+                        let var_name = self.tcx.hir_name(*var_hir_id).to_string();
                         let msg = format!("`{var_name}` captured here");
                         (upvar.span, msg)
                     })

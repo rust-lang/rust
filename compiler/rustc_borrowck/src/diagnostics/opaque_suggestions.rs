@@ -105,7 +105,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
                     if let Some(opaque_def_id) = opaque_def_id.as_local()
                         && let hir::OpaqueTyOrigin::FnReturn { parent, .. } =
-                            tcx.hir().expect_opaque_ty(opaque_def_id).origin
+                            tcx.hir_expect_opaque_ty(opaque_def_id).origin
                     {
                         if let Some(sugg) = impl_trait_overcapture_suggestion(
                             tcx,
