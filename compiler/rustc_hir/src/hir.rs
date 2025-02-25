@@ -1308,7 +1308,7 @@ impl Attribute {
 pub struct AttributeMap<'tcx> {
     pub map: SortedMap<ItemLocalId, &'tcx [Attribute]>,
     /// Preprocessed `#[define_opaque]` attribute.
-    pub define_opaque: Option<&'tcx [LocalDefId]>,
+    pub define_opaque: Option<&'tcx [(Span, LocalDefId)]>,
     // Only present when the crate hash is needed.
     pub opt_hash: Option<Fingerprint>,
 }
