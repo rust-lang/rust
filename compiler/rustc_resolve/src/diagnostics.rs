@@ -890,9 +890,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ResolutionError::ForwardDeclaredGenericParam => {
                 self.dcx().create_err(errs::ForwardDeclaredGenericParam { span })
             }
-            ResolutionError::ParamInTyOfConstParam { name, param_kind: is_type } => self
-                .dcx()
-                .create_err(errs::ParamInTyOfConstParam { span, name, param_kind: is_type }),
+            ResolutionError::ParamInTyOfConstParam { name } => {
+                self.dcx().create_err(errs::ParamInTyOfConstParam { span, name })
+            }
             ResolutionError::ParamInNonTrivialAnonConst { name, param_kind: is_type } => {
                 self.dcx().create_err(errs::ParamInNonTrivialAnonConst {
                     span,
