@@ -251,6 +251,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             || (document_hidden && hir_attr_lists(use_attrs, sym::doc).has_word(sym::hidden));
 
         if is_no_inline {
+            debug!("maybe_inline_local: is_no_inline, (renamed: {renamed:?}) res: {res:?}");
             return false;
         }
 
@@ -277,20 +278,33 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             return true;
         };
 
-        let is_private = !self.cx.cache.effective_visibilities.is_directly_public(tcx, ori_res_did);
         let item = tcx.hir_node_by_def_id(res_did);
 
         if !please_inline {
+            // Check if item is private
+            let is_private =
+                !self.cx.cache.effective_visibilities.is_directly_public(tcx, ori_res_did);
+            // Check if item inherits #[doc(hidden)] from a parent
             let inherits_hidden = !document_hidden && inherits_doc_hidden(tcx, res_did, None);
-            // Only inline if requested or if the item would otherwise be stripped.
-            if (!is_private && !inherits_hidden) || (
-                is_hidden &&
-                // If it's a doc hidden module, we need to keep it in case some of its inner items
-                // are re-exported.
-                !matches!(item, Node::Item(&hir::Item { kind: hir::ItemKind::Mod(_), .. }))
-            ) ||
-                // The imported item is public and not `doc(hidden)` so no need to inline it.
-                self.reexport_public_and_not_hidden(def_id, res_did)
+
+            // Don't inline if the item is public and visible (not hidden)
+            // This preserves the original import for public items that should be documented
+            let is_public_and_visible = !is_private && !inherits_hidden && !is_hidden;
+
+            // Don't inline if the item is hidden but not a module, and not publicly re-exported
+            // We skip modules since their items may be re-exported elsewhere
+            let is_hidden_and_non_module_non_reexported = is_hidden
+                && !self.is_reexport_public(def_id, res_did)
+                && !matches!(item, Node::Item(&hir::Item { kind: hir::ItemKind::Mod(_), .. }));
+
+            // Don't inline if this is a public re-export of a non-hidden item
+            // This preserves the re-export path in the documentation
+            let is_public_reexport = self.reexport_public_and_not_hidden(def_id, res_did);
+
+            // Return false to prevent inlining if any of these conditions are met
+            if is_public_and_visible
+                || is_hidden_and_non_module_non_reexported
+                || is_public_reexport
             {
                 return false;
             }
@@ -339,7 +353,24 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         if inlined {
             self.cx.cache.inlined_items.insert(ori_res_did);
         }
+        debug!("maybe_inline_local: inlined: {inlined}, (renamed: {renamed:?}) res: {res:?}");
         inlined
+    }
+
+    fn is_reexport_public(&self, import_def_id: LocalDefId, target_def_id: LocalDefId) -> bool {
+        if self.cx.render_options.document_hidden {
+            return true;
+        }
+        let tcx = self.cx.tcx;
+        let item_def_id = reexport_chain(tcx, import_def_id, target_def_id.to_def_id())
+            .iter()
+            .flat_map(|reexport| reexport.id())
+            .map(|id| id.expect_local())
+            .nth(1)
+            .unwrap_or(target_def_id);
+
+        item_def_id != import_def_id
+            && self.cx.cache.effective_visibilities.is_directly_public(tcx, item_def_id.to_def_id())
     }
 
     /// Returns `true` if the item is visible, meaning it's not `#[doc(hidden)]` or private.
