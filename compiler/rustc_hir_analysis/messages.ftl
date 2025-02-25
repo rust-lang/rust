@@ -605,6 +605,8 @@ hir_analysis_unused_generic_parameter_adt_no_phantom_data_help =
 hir_analysis_unused_generic_parameter_ty_alias_help =
     consider removing `{$param_name}` or referring to it in the body of the type alias
 
+hir_analysis_useless_impl_item = this item cannot be used as its where bounds are not satisfied for the `Self` type
+
 hir_analysis_value_of_associated_struct_already_specified =
     the value of the associated type `{$item_name}` in trait `{$def_path}` is already specified
     .label = re-bound here

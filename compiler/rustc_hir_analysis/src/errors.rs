@@ -908,6 +908,10 @@ pub(crate) enum ImplNotMarkedDefault {
     },
 }
 
+#[derive(LintDiagnostic)]
+#[diag(hir_analysis_useless_impl_item)]
+pub(crate) struct UselessImplItem;
+
 #[derive(Diagnostic)]
 #[diag(hir_analysis_missing_trait_item, code = E0046)]
 pub(crate) struct MissingTraitItem {
