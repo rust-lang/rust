@@ -58,7 +58,7 @@ fn should_not_lint() {
 
     let vec: Vec<u32> = vec![1, 2, 3, 4, 5, 6];
     let values = &vec[..];
-    let _ = values.iter().any(|&v| v % 2 == 0);
+    let _ = values.iter().any(|&v| v.is_multiple_of(2));
     let _ = values.iter().any(|&v| v * 2 == 6);
     let _ = values.iter().any(|&v| v == v);
     let _ = values.iter().any(|&v| 4 == 4);
