@@ -824,3 +824,10 @@ pub(crate) struct DuplicatePreciseCapturing {
     #[label]
     pub bound2: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(ast_passes_missing_extern_abi)]
+pub(crate) struct MissingExternABI {
+    #[primary_span]
+    pub span: Span,
+}
