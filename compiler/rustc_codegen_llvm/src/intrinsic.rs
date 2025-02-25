@@ -1581,8 +1581,6 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             sym::simd_floor => ("floor", bx.type_func(&[vec_ty], vec_ty)),
             sym::simd_fma => ("fma", bx.type_func(&[vec_ty, vec_ty, vec_ty], vec_ty)),
             sym::simd_relaxed_fma => ("fmuladd", bx.type_func(&[vec_ty, vec_ty, vec_ty], vec_ty)),
-            sym::simd_fpowi => ("powi", bx.type_func(&[vec_ty, bx.type_i32()], vec_ty)),
-            sym::simd_fpow => ("pow", bx.type_func(&[vec_ty, vec_ty], vec_ty)),
             sym::simd_fsin => ("sin", bx.type_func(&[vec_ty], vec_ty)),
             sym::simd_fsqrt => ("sqrt", bx.type_func(&[vec_ty], vec_ty)),
             sym::simd_round => ("round", bx.type_func(&[vec_ty], vec_ty)),
@@ -1615,8 +1613,6 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
             | sym::simd_flog
             | sym::simd_floor
             | sym::simd_fma
-            | sym::simd_fpow
-            | sym::simd_fpowi
             | sym::simd_fsin
             | sym::simd_fsqrt
             | sym::simd_relaxed_fma

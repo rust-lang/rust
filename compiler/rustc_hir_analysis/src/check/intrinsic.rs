@@ -645,7 +645,6 @@ pub fn check_intrinsic_type(
             | sym::simd_xor
             | sym::simd_fmin
             | sym::simd_fmax
-            | sym::simd_fpow
             | sym::simd_saturating_add
             | sym::simd_saturating_sub => (1, 0, vec![param(0), param(0)], param(0)),
             sym::simd_arith_offset => (2, 0, vec![param(0), param(1)], param(0)),
@@ -668,7 +667,6 @@ pub fn check_intrinsic_type(
             | sym::simd_floor
             | sym::simd_round
             | sym::simd_trunc => (1, 0, vec![param(0)], param(0)),
-            sym::simd_fpowi => (1, 0, vec![param(0), tcx.types.i32], param(0)),
             sym::simd_fma | sym::simd_relaxed_fma => {
                 (1, 0, vec![param(0), param(0), param(0)], param(0))
             }
