@@ -145,6 +145,10 @@ unsafe extern "unadjusted" {
 
     #[link_name = "llvm.s390.vll"] fn vll(a: u32, b: *const u8) -> vector_signed_char;
     #[link_name = "llvm.s390.vstl"] fn vstl(a: vector_signed_char, b: u32, c: *mut u8);
+
+    #[link_name = "llvm.s390.vlrl"] fn vlrl(a: u32, b: *const u8) -> vector_unsigned_char;
+    #[link_name = "llvm.s390.vstrl"] fn vstrl(a: vector_unsigned_char, b: u32, c: *mut u8);
+
 }
 
 impl_from! { i8x16, u8x16,  i16x8, u16x8, i32x4, u32x4, i64x2, u64x2, f32x4, f64x2 }
@@ -2818,6 +2822,24 @@ pub unsafe fn vec_store_len<T: sealed::VectorStore>(
     byte_count: u32,
 ) {
     vector.vec_store_len(ptr, byte_count)
+}
+
+/// Vector Load Rightmost with Length
+#[inline]
+#[target_feature(enable = "vector-packed-decimal")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+#[cfg_attr(test, assert_instr(vlrlr))]
+pub unsafe fn vec_load_len_r(ptr: *const u8, byte_count: u32) -> vector_unsigned_char {
+    vlrl(byte_count, ptr)
+}
+
+/// Vector Store Rightmost with Length
+#[inline]
+#[target_feature(enable = "vector-packed-decimal")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+#[cfg_attr(test, assert_instr(vstrlr))]
+pub unsafe fn vec_store_len_r(vector: vector_unsigned_char, ptr: *mut u8, byte_count: u32) {
+    vstrl(vector, byte_count, ptr)
 }
 
 #[cfg(test)]
