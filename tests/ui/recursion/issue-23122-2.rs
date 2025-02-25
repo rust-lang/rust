@@ -1,4 +1,3 @@
-//@ normalize-stderr: "long-type-\d+" -> "long-type-hash"
 trait Next {
     type Next: Next;
 }
