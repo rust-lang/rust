@@ -289,7 +289,7 @@ impl<K: Clone, V: Clone, A: Allocator + Clone> Clone for BTreeMap<K, V, A> {
     }
 }
 
-/// Internal functionality for `BTreeSet`.
+// Internal functionality for `BTreeSet`.
 impl<K, A: Allocator + Clone> BTreeMap<K, SetValZST, A> {
     pub(super) fn replace(&mut self, key: K) -> Option<K>
     where
