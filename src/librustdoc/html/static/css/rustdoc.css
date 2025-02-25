@@ -2040,7 +2040,8 @@ button#toggle-all-docs:before {
 	/* Custom arrow icon */
 	content: url('data:image/svg+xml,<svg width="18" height="18" viewBox="0 0 12 12" \
 	enable-background="new 0 0 12 12" xmlns="http://www.w3.org/2000/svg">\
-	<path d="M2,2l4,4l4,-4M2,6l4,4l4,-4" stroke="black" fill="none" stroke-width="2px"/></svg>');
+	<path d="M2,7l4,-4l4,4" stroke="black" fill="none" stroke-width="2px"/>\
+	<path d="M2,11l4,-4l4,4" stroke="black" fill="none" stroke-width="2px" stroke-opacity="0.5"/></svg>');
 	width: 18px;
 	height: 18px;
 	filter: var(--settings-menu-filter);
