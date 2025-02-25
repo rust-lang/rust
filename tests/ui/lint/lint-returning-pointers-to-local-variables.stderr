@@ -1,0 +1,38 @@
+warning: returning a pointer to stack memory associated with a local variable
+  --> $DIR/lint-returning-pointers-to-local-variables.rs:7:13
+   |
+LL |     return &empty as *const _;
+   |             ^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-returning-pointers-to-local-variables.rs:3:9
+   |
+LL | #![warn(returning_pointers_to_local_variables)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: returning a pointer to stack memory associated with a local variable
+  --> $DIR/lint-returning-pointers-to-local-variables.rs:13:6
+   |
+LL |     &empty as *const _
+   |      ^^^^^
+
+warning: returning a pointer to stack memory associated with a local variable
+  --> $DIR/lint-returning-pointers-to-local-variables.rs:19:13
+   |
+LL |     return &empty;
+   |             ^^^^^
+
+warning: returning a pointer to stack memory associated with a local variable
+  --> $DIR/lint-returning-pointers-to-local-variables.rs:25:6
+   |
+LL |     &empty
+   |      ^^^^^
+
+warning: returning a pointer to stack memory associated with a local variable
+  --> $DIR/lint-returning-pointers-to-local-variables.rs:31:12
+   |
+LL |     &(&mut empty as *mut u32) as *const _
+   |            ^^^^^
+
+warning: 5 warnings emitted
+
