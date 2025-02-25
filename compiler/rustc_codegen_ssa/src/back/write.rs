@@ -412,15 +412,18 @@ fn generate_lto_work<B: ExtraBackendMethods>(
         vec![(WorkItem::LTO(module), 0)]
     } else {
         if !autodiff.is_empty() {
-            let dcx = cgcx.create_dcx();
-            dcx.handle().emit_fatal(AutodiffWithoutLto {});
+            //let dcx = cgcx.create_dcx();
+            //dcx.handle().emit_fatal(AutodiffWithoutLto {});
         }
+        let config = cgcx.config(ModuleKind::Regular);
         assert!(needs_fat_lto.is_empty());
         let (lto_modules, copy_jobs) = B::run_thin_lto(cgcx, needs_thin_lto, import_only_modules)
             .unwrap_or_else(|e| e.raise());
         lto_modules
             .into_iter()
             .map(|module| {
+                let mut module =
+                    unsafe { module.autodiff(cgcx, autodiff.clone(), config).unwrap_or_else(|e| e.raise()) };
                 let cost = module.cost();
                 (WorkItem::LTO(module), cost)
             })
