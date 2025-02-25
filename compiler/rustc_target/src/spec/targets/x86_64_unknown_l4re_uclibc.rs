@@ -1,4 +1,4 @@
-use crate::spec::{PanicStrategy, Target, base};
+use crate::spec::{PanicStrategy, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::l4re::opts();
@@ -9,7 +9,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "x86_64-unknown-l4re-uclibc".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: None,
             tier: Some(3),
             host_tools: Some(false),

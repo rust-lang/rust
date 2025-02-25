@@ -112,6 +112,7 @@ fn resolve_associated_item<'tcx>(
             | CodegenObligationError::Unimplemented
             | CodegenObligationError::FulfillmentError,
         ) => return Ok(None),
+        Err(CodegenObligationError::UnconstrainedParam(guar)) => return Err(guar),
     };
 
     // Now that we know which impl is being used, we can dispatch to

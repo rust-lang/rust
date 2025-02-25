@@ -101,7 +101,7 @@ target | notes
 [`riscv64gc-unknown-linux-gnu`](platform-support/riscv64gc-unknown-linux-gnu.md) | RISC-V Linux (kernel 4.20, glibc 2.29)
 [`riscv64gc-unknown-linux-musl`](platform-support/riscv64gc-unknown-linux-musl.md) | RISC-V Linux (kernel 4.20, musl 1.2.3)
 [`s390x-unknown-linux-gnu`](platform-support/s390x-unknown-linux-gnu.md) | S390x Linux (kernel 3.2, glibc 2.17)
-[`x86_64-unknown-freebsd`](platform-support/freebsd.md) | 64-bit amd64 FreeBSD
+[`x86_64-unknown-freebsd`](platform-support/freebsd.md) | 64-bit x86 FreeBSD
 [`x86_64-unknown-illumos`](platform-support/illumos.md) | illumos
 `x86_64-unknown-linux-musl` | 64-bit Linux with musl 1.2.3
 [`x86_64-unknown-netbsd`](platform-support/netbsd.md) | NetBSD/amd64
@@ -165,11 +165,11 @@ target | std | notes
 `i586-pc-windows-msvc` | * | 32-bit Windows (original Pentium) [^x86_32-floats-x87]
 `i586-unknown-linux-gnu` | ✓ | 32-bit Linux (kernel 3.2, glibc 2.17, original Pentium) [^x86_32-floats-x87]
 `i586-unknown-linux-musl` | ✓ | 32-bit Linux (musl 1.2.3, original Pentium) [^x86_32-floats-x87]
-[`i686-linux-android`](platform-support/android.md) | ✓ | 32-bit x86 Android ([PentiumPro with SSE](https://developer.android.com/ndk/guides/abis.html#x86)) [^x86_32-floats-return-ABI]
+[`i686-linux-android`](platform-support/android.md) | ✓ | 32-bit x86 Android ([Pentium 4 plus various extensions](https://developer.android.com/ndk/guides/abis.html#x86)) [^x86_32-floats-return-ABI]
 [`i686-pc-windows-gnullvm`](platform-support/pc-windows-gnullvm.md) | ✓ | 32-bit x86 MinGW (Windows 10+, Pentium 4), LLVM ABI [^x86_32-floats-return-ABI]
 [`i686-unknown-freebsd`](platform-support/freebsd.md) | ✓ | 32-bit x86 FreeBSD (Pentium 4) [^x86_32-floats-return-ABI]
 `i686-unknown-linux-musl` | ✓ | 32-bit Linux with musl 1.2.3 (Pentium 4) [^x86_32-floats-return-ABI]
-[`i686-unknown-uefi`](platform-support/unknown-uefi.md) | ? (Pentium 4, softfloat) | 32-bit UEFI
+[`i686-unknown-uefi`](platform-support/unknown-uefi.md) | ? | 32-bit UEFI (Pentium 4, softfloat)
 [`loongarch64-unknown-none`](platform-support/loongarch-none.md) | * | LoongArch64 Bare-metal (LP64D ABI)
 [`loongarch64-unknown-none-softfloat`](platform-support/loongarch-none.md) | * | LoongArch64 Bare-metal (LP64S ABI)
 [`nvptx64-nvidia-cuda`](platform-support/nvptx64-nvidia-cuda.md) | * | --emit=asm generates PTX code that [runs on NVIDIA GPUs]
@@ -272,6 +272,7 @@ target | std | host | notes
 `aarch64_be-unknown-linux-gnu` | ✓ | ✓ | ARM64 Linux (big-endian)
 `aarch64_be-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (big-endian, ILP32 ABI)
 [`aarch64_be-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | ARM64 NetBSD (big-endian)
+[`amdgcn-amd-amdhsa`](platform-support/amdgcn-amd-amdhsa.md) | * |  | `-Ctarget-cpu=gfx...` to specify [the AMD GPU] to compile for
 [`arm64_32-apple-watchos`](platform-support/apple-watchos.md) | ✓ |  | Arm Apple WatchOS 64-bit with 32-bit pointers
 [`arm64e-apple-darwin`](platform-support/arm64e-apple-darwin.md)  | ✓ | ✓ | ARM64e Apple Darwin
 [`arm64e-apple-ios`](platform-support/arm64e-apple-ios.md) | ✓ | | ARM64e Apple iOS
@@ -300,7 +301,7 @@ target | std | host | notes
 [`armv8r-none-eabihf`](platform-support/armv8r-none-eabihf.md) | * |  | Bare Armv8-R, hardfloat
 [`armv7a-nuttx-eabi`](platform-support/nuttx.md) | ✓ |  | ARMv7-A with NuttX
 [`armv7a-nuttx-eabihf`](platform-support/nuttx.md) | ✓ |  | ARMv7-A with NuttX, hardfloat
-`avr-unknown-gnu-atmega328` | * |  | AVR. Requires `-Z build-std=core`
+`avr-none` | * |  | AVR; requires `-Zbuild-std=core` and `-Ctarget-cpu=...`
 `bpfeb-unknown-none` | * |  | BPF (big endian)
 `bpfel-unknown-none` | * |  | BPF (little endian)
 `csky-unknown-linux-gnuabiv2` | ✓ |  | C-SKY abiv2 Linux (little endian)
@@ -308,14 +309,14 @@ target | std | host | notes
 [`hexagon-unknown-linux-musl`](platform-support/hexagon-unknown-linux-musl.md) | ✓ | | Hexagon Linux with musl 1.2.3
 [`hexagon-unknown-none-elf`](platform-support/hexagon-unknown-none-elf.md)| * | | Bare Hexagon (v60+, HVX)
 [`i386-apple-ios`](platform-support/apple-ios.md) | ✓ |  | 32-bit x86 iOS (Penryn) [^x86_32-floats-return-ABI]
-[`i586-pc-nto-qnx700`](platform-support/nto-qnx.md) | * |  | 32-bit x86 QNX Neutrino 7.0 RTOS (Pentium 4) [^x86_32-floats-return-ABI]
 [`i586-unknown-netbsd`](platform-support/netbsd.md) | ✓ |  | 32-bit x86 (original Pentium) [^x86_32-floats-x87]
+[`i586-unknown-redox`](platform-support/redox.md) | ✓ |  | 32-bit x86 Redox OS (PentiumPro) [^x86_32-floats-x87]
 [`i686-apple-darwin`](platform-support/apple-darwin.md) | ✓ | ✓ | 32-bit macOS (10.12+, Sierra+, Penryn) [^x86_32-floats-return-ABI]
+[`i686-pc-nto-qnx700`](platform-support/nto-qnx.md) | * |  | 32-bit x86 QNX Neutrino 7.0 RTOS (Pentium 4) [^x86_32-floats-return-ABI]
 `i686-unknown-haiku` | ✓ | ✓ | 32-bit Haiku (Pentium 4) [^x86_32-floats-return-ABI]
-[`i686-unknown-hurd-gnu`](platform-support/hurd.md) | ✓ | ✓ | 32-bit GNU/Hurd (Pentium 4) [^x86_32-floats-x87]
+[`i686-unknown-hurd-gnu`](platform-support/hurd.md) | ✓ | ✓ | 32-bit GNU/Hurd (Pentium 4) [^x86_32-floats-return-ABI]
 [`i686-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | NetBSD/i386 (Pentium 4) [^x86_32-floats-return-ABI]
 [`i686-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | 32-bit OpenBSD (Pentium 4) [^x86_32-floats-return-ABI]
-[`i686-unknown-redox`](platform-support/redox.md) | ✓ |  | i686 Redox OS (PentiumPro) [^x86_32-floats-x87]
 `i686-uwp-windows-gnu` | ✓ |  | [^x86_32-floats-return-ABI]
 [`i686-uwp-windows-msvc`](platform-support/uwp-windows-msvc.md) | ✓ |  | [^x86_32-floats-return-ABI]
 [`i686-win7-windows-gnu`](platform-support/win7-windows-gnu.md) | ✓ |   | 32-bit Windows 7 support [^x86_32-floats-return-ABI]
@@ -406,6 +407,7 @@ target | std | host | notes
 [`wasm64-unknown-unknown`](platform-support/wasm64-unknown-unknown.md) | ? |  | WebAssembly
 [`x86_64-apple-tvos`](platform-support/apple-tvos.md) | ✓ |  | x86 64-bit tvOS
 [`x86_64-apple-watchos-sim`](platform-support/apple-watchos.md) | ✓ |  | x86 64-bit Apple WatchOS simulator
+[`x86_64-pc-cygwin`](platform-support/x86_64-pc-cygwin.md) | ? |  | 64-bit x86 Cygwin |
 [`x86_64-pc-nto-qnx710`](platform-support/nto-qnx.md) | ✓ |  | x86 64-bit QNX Neutrino 7.1 RTOS with default network stack (io-pkt) |
 [`x86_64-pc-nto-qnx710_iosock`](platform-support/nto-qnx.md) | ✓ |  | x86 64-bit QNX Neutrino 7.1 RTOS with new network stack (io-sock) |
 [`x86_64-pc-nto-qnx800`](platform-support/nto-qnx.md) | ✓ |  | x86 64-bit QNX Neutrino 8.0 RTOS |
@@ -432,3 +434,4 @@ target | std | host | notes
 [`xtensa-esp32s3-none-elf`](platform-support/xtensa.md) | * |  | Xtensa ESP32-S3
 
 [runs on NVIDIA GPUs]: https://github.com/japaric-archived/nvptx#targets
+[the AMD GPU]: https://llvm.org/docs/AMDGPUUsage.html#processors

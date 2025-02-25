@@ -1,5 +1,7 @@
 use rustc_hir::intravisit::nested_filter::NestedFilter;
 
+use crate::ty::TyCtxt;
+
 /// Do not visit nested item-like things, but visit nested things
 /// that are inside of an item-like.
 ///
@@ -12,8 +14,8 @@ use rustc_hir::intravisit::nested_filter::NestedFilter;
 /// and to have the visitor that visits the contents of each item
 /// using this setting.
 pub struct OnlyBodies(());
-impl<'hir> NestedFilter<'hir> for OnlyBodies {
-    type Map = crate::hir::map::Map<'hir>;
+impl<'tcx> NestedFilter<'tcx> for OnlyBodies {
+    type MaybeTyCtxt = TyCtxt<'tcx>;
     const INTER: bool = false;
     const INTRA: bool = true;
 }
@@ -24,8 +26,8 @@ impl<'hir> NestedFilter<'hir> for OnlyBodies {
 /// process everything within their lexical context. Typically you
 /// kick off the visit by doing `walk_krate()`.
 pub struct All(());
-impl<'hir> NestedFilter<'hir> for All {
-    type Map = crate::hir::map::Map<'hir>;
+impl<'tcx> NestedFilter<'tcx> for All {
+    type MaybeTyCtxt = TyCtxt<'tcx>;
     const INTER: bool = true;
     const INTRA: bool = true;
 }

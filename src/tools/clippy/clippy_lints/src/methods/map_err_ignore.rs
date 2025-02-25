@@ -16,7 +16,7 @@ pub(super) fn check(cx: &LateContext<'_>, e: &Expr<'_>, arg: &Expr<'_>) {
             fn_decl_span,
             ..
         }) = arg.kind
-        && let closure_body = cx.tcx.hir().body(body)
+        && let closure_body = cx.tcx.hir_body(body)
         && let [param] = closure_body.params
         && let PatKind::Wild = param.pat.kind
     {

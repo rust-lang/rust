@@ -5,7 +5,7 @@ use core::num::flt2dec::{DecodableFloat, Decoded, FullDecoded, MAX_SIG_DIGITS, d
 use std::mem::MaybeUninit;
 use std::str;
 
-use rand::distributions::{Distribution, Uniform};
+use rand::distr::{Distribution, Uniform};
 
 pub fn decode_finite<T: DecodableFloat>(v: T) -> Decoded {
     match decode(v).1 {
@@ -85,7 +85,7 @@ where
     G: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> (&'a [u8], i16),
 {
     let mut rng = crate::test_rng();
-    let f32_range = Uniform::new(0x0000_0001u32, 0x7f80_0000);
+    let f32_range = Uniform::new(0x0000_0001u32, 0x7f80_0000).unwrap();
     iterate("f32_random_equivalence_test", k, n, f, g, |_| {
         let x = f32::from_bits(f32_range.sample(&mut rng));
         decode_finite(x)
@@ -98,7 +98,7 @@ where
     G: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> (&'a [u8], i16),
 {
     let mut rng = crate::test_rng();
-    let f64_range = Uniform::new(0x0000_0000_0000_0001u64, 0x7ff0_0000_0000_0000);
+    let f64_range = Uniform::new(0x0000_0000_0000_0001u64, 0x7ff0_0000_0000_0000).unwrap();
     iterate("f64_random_equivalence_test", k, n, f, g, |_| {
         let x = f64::from_bits(f64_range.sample(&mut rng));
         decode_finite(x)

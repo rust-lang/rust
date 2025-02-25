@@ -22,8 +22,9 @@ LL |     String::from("x".as_ref());
            - impl AsRef<str> for str;
 help: try using a fully qualified path to specify the expected types
    |
-LL |     String::from(<str as AsRef<T>>::as_ref("x"));
-   |                  ++++++++++++++++++++++++++   ~
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<T>>::as_ref("x"));
+   |
 
 error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:12:9
@@ -49,8 +50,9 @@ LL |     |x| String::from("x".as_ref());
            - impl AsRef<str> for str;
 help: try using a fully qualified path to specify the expected types
    |
-LL |     |x| String::from(<str as AsRef<T>>::as_ref("x"));
-   |                      ++++++++++++++++++++++++++   ~
+LL -     |x| String::from("x".as_ref());
+LL +     |x| String::from(<str as AsRef<T>>::as_ref("x"));
+   |
 
 error[E0283]: type annotations needed for `&_`
   --> $DIR/issue-72690.rs:17:9
@@ -93,8 +95,9 @@ LL |     String::from("x".as_ref());
            - impl AsRef<str> for str;
 help: try using a fully qualified path to specify the expected types
    |
-LL |     String::from(<str as AsRef<T>>::as_ref("x"));
-   |                  ++++++++++++++++++++++++++   ~
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<T>>::as_ref("x"));
+   |
 
 error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:28:5
@@ -120,8 +123,9 @@ LL |     String::from("x".as_ref());
            - impl AsRef<str> for str;
 help: try using a fully qualified path to specify the expected types
    |
-LL |     String::from(<str as AsRef<T>>::as_ref("x"));
-   |                  ++++++++++++++++++++++++++   ~
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<T>>::as_ref("x"));
+   |
 
 error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:37:5
@@ -147,8 +151,9 @@ LL |     String::from("x".as_ref());
            - impl AsRef<str> for str;
 help: try using a fully qualified path to specify the expected types
    |
-LL |     String::from(<str as AsRef<T>>::as_ref("x"));
-   |                  ++++++++++++++++++++++++++   ~
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<T>>::as_ref("x"));
+   |
 
 error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:46:5
@@ -174,8 +179,9 @@ LL |     String::from("x".as_ref());
            - impl AsRef<str> for str;
 help: try using a fully qualified path to specify the expected types
    |
-LL |     String::from(<str as AsRef<T>>::as_ref("x"));
-   |                  ++++++++++++++++++++++++++   ~
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<T>>::as_ref("x"));
+   |
 
 error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:53:5
@@ -201,8 +207,9 @@ LL |     String::from("x".as_ref());
            - impl AsRef<str> for str;
 help: try using a fully qualified path to specify the expected types
    |
-LL |     String::from(<str as AsRef<T>>::as_ref("x"));
-   |                  ++++++++++++++++++++++++++   ~
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<T>>::as_ref("x"));
+   |
 
 error[E0283]: type annotations needed
   --> $DIR/issue-72690.rs:62:5
@@ -228,8 +235,9 @@ LL |     String::from("x".as_ref());
            - impl AsRef<str> for str;
 help: try using a fully qualified path to specify the expected types
    |
-LL |     String::from(<str as AsRef<T>>::as_ref("x"));
-   |                  ++++++++++++++++++++++++++   ~
+LL -     String::from("x".as_ref());
+LL +     String::from(<str as AsRef<T>>::as_ref("x"));
+   |
 
 error: aborting due to 17 previous errors
 

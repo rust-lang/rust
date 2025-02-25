@@ -1,3 +1,4 @@
+codegen_llvm_autodiff_without_enable = using the autodiff feature requires -Z autodiff=Enable
 codegen_llvm_autodiff_without_lto = using the autodiff feature requires using fat-lto
 
 codegen_llvm_copy_bitcode = failed to copy bitcode to object file: {$err}
@@ -37,9 +38,6 @@ codegen_llvm_lto_proc_macro = lto cannot be used for `proc-macro` crate type wit
 
 codegen_llvm_mismatch_data_layout =
     data-layout for target `{$rustc_target}`, `{$rustc_layout}`, differs from LLVM target's `{$llvm_target}` default layout, `{$llvm_layout}`
-
-codegen_llvm_multiple_source_dicompileunit = multiple source DICompileUnits found
-codegen_llvm_multiple_source_dicompileunit_with_llvm_err = multiple source DICompileUnits found: {$llvm_err}
 
 codegen_llvm_parse_bitcode = failed to parse bitcode for LTO module
 codegen_llvm_parse_bitcode_with_llvm_err = failed to parse bitcode for LTO module: {$llvm_err}

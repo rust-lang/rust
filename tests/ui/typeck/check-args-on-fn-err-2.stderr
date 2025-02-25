@@ -8,8 +8,9 @@ LL |     a((), 1i32 == 2u32);
    |
 help: change the type of the numeric literal from `u32` to `i32`
    |
-LL |     a((), 1i32 == 2i32);
-   |                    ~~~
+LL -     a((), 1i32 == 2u32);
+LL +     a((), 1i32 == 2i32);
+   |
 
 error[E0425]: cannot find function `a` in this scope
   --> $DIR/check-args-on-fn-err-2.rs:2:5

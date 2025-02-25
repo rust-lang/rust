@@ -6,50 +6,8 @@ mod tests;
 pub use core::net::{SocketAddr, SocketAddrV4, SocketAddrV6};
 
 use crate::net::{IpAddr, Ipv4Addr, Ipv6Addr};
-use crate::sys::net::{LookupHost, netc as c};
-use crate::sys_common::{FromInner, IntoInner};
-use crate::{io, iter, mem, option, slice, vec};
-
-impl FromInner<c::sockaddr_in> for SocketAddrV4 {
-    fn from_inner(addr: c::sockaddr_in) -> SocketAddrV4 {
-        SocketAddrV4::new(Ipv4Addr::from_inner(addr.sin_addr), u16::from_be(addr.sin_port))
-    }
-}
-
-impl FromInner<c::sockaddr_in6> for SocketAddrV6 {
-    fn from_inner(addr: c::sockaddr_in6) -> SocketAddrV6 {
-        SocketAddrV6::new(
-            Ipv6Addr::from_inner(addr.sin6_addr),
-            u16::from_be(addr.sin6_port),
-            addr.sin6_flowinfo,
-            addr.sin6_scope_id,
-        )
-    }
-}
-
-impl IntoInner<c::sockaddr_in> for SocketAddrV4 {
-    fn into_inner(self) -> c::sockaddr_in {
-        c::sockaddr_in {
-            sin_family: c::AF_INET as c::sa_family_t,
-            sin_port: self.port().to_be(),
-            sin_addr: self.ip().into_inner(),
-            ..unsafe { mem::zeroed() }
-        }
-    }
-}
-
-impl IntoInner<c::sockaddr_in6> for SocketAddrV6 {
-    fn into_inner(self) -> c::sockaddr_in6 {
-        c::sockaddr_in6 {
-            sin6_family: c::AF_INET6 as c::sa_family_t,
-            sin6_port: self.port().to_be(),
-            sin6_addr: self.ip().into_inner(),
-            sin6_flowinfo: self.flowinfo(),
-            sin6_scope_id: self.scope_id(),
-            ..unsafe { mem::zeroed() }
-        }
-    }
-}
+use crate::sys::net::LookupHost;
+use crate::{io, iter, option, slice, vec};
 
 /// A trait for objects which can be converted or resolved to one or more
 /// [`SocketAddr`] values.

@@ -100,8 +100,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut deferred_asm_checks = self.deferred_asm_checks.borrow_mut();
         debug!("FnCtxt::check_asm: {} deferred checks", deferred_asm_checks.len());
         for (asm, hir_id) in deferred_asm_checks.drain(..) {
-            let enclosing_id = self.tcx.hir().enclosing_body_owner(hir_id);
-            let get_operand_ty = |expr| {
+            let enclosing_id = self.tcx.hir_enclosing_body_owner(hir_id);
+            let expr_ty = |expr: &hir::Expr<'tcx>| {
                 let ty = self.typeck_results.borrow().expr_ty_adjusted(expr);
                 let ty = self.resolve_vars_if_possible(ty);
                 if ty.has_non_region_infer() {
@@ -110,12 +110,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.tcx.erase_regions(ty)
                 }
             };
-            InlineAsmCtxt::new_in_fn(
-                self.tcx,
-                self.infcx.typing_env(self.param_env),
-                get_operand_ty,
-            )
-            .check_asm(asm, enclosing_id);
+            InlineAsmCtxt::new(self.tcx, enclosing_id, self.typing_env(self.param_env), expr_ty)
+                .check_asm(asm);
         }
     }
 
@@ -780,7 +776,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // First, check if we just need to wrap some arguments in a tuple.
         if let Some((mismatch_idx, terr)) =
-            compatibility_diagonal.iter().enumerate().find_map(|(i, c)| {
+            compatibility_diagonal.iter_enumerated().find_map(|(i, c)| {
                 if let Compatibility::Incompatible(Some(terr)) = c {
                     Some((i, *terr))
                 } else {
@@ -792,24 +788,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Do we have as many extra provided arguments as the tuple's length?
             // If so, we might have just forgotten to wrap some args in a tuple.
             if let Some(ty::Tuple(tys)) =
-                formal_and_expected_inputs.get(mismatch_idx.into()).map(|tys| tys.1.kind())
+                formal_and_expected_inputs.get(mismatch_idx.to_expected_idx()).map(|tys| tys.1.kind())
                 // If the tuple is unit, we're not actually wrapping any arguments.
                 && !tys.is_empty()
                 && provided_arg_tys.len() == formal_and_expected_inputs.len() - 1 + tys.len()
             {
                 // Wrap up the N provided arguments starting at this position in a tuple.
-                let provided_as_tuple = Ty::new_tup_from_iter(
-                    tcx,
-                    provided_arg_tys.iter().map(|(ty, _)| *ty).skip(mismatch_idx).take(tys.len()),
-                );
+                let provided_args_to_tuple = &provided_arg_tys[mismatch_idx..];
+                let (provided_args_to_tuple, provided_args_after_tuple) =
+                    provided_args_to_tuple.split_at(tys.len());
+                let provided_as_tuple =
+                    Ty::new_tup_from_iter(tcx, provided_args_to_tuple.iter().map(|&(ty, _)| ty));
 
                 let mut satisfied = true;
                 // Check if the newly wrapped tuple + rest of the arguments are compatible.
                 for ((_, expected_ty), provided_ty) in std::iter::zip(
-                    formal_and_expected_inputs.iter().skip(mismatch_idx),
-                    [provided_as_tuple].into_iter().chain(
-                        provided_arg_tys.iter().map(|(ty, _)| *ty).skip(mismatch_idx + tys.len()),
-                    ),
+                    formal_and_expected_inputs[mismatch_idx.to_expected_idx()..].iter(),
+                    [provided_as_tuple]
+                        .into_iter()
+                        .chain(provided_args_after_tuple.iter().map(|&(ty, _)| ty)),
                 ) {
                     if !self.may_coerce(provided_ty, *expected_ty) {
                         satisfied = false;
@@ -821,10 +818,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Take some care with spans, so we don't suggest wrapping a macro's
                 // innards in parenthesis, for example.
                 if satisfied
-                    && let Some((_, lo)) =
-                        provided_arg_tys.get(ProvidedIdx::from_usize(mismatch_idx))
-                    && let Some((_, hi)) =
-                        provided_arg_tys.get(ProvidedIdx::from_usize(mismatch_idx + tys.len() - 1))
+                    && let &[(_, hi @ lo)] | &[(_, lo), .., (_, hi)] = provided_args_to_tuple
                 {
                     let mut err;
                     if tys.len() == 1 {
@@ -832,9 +826,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // so don't do anything special here.
                         err = self.err_ctxt().report_and_explain_type_error(
                             mk_trace(
-                                *lo,
-                                formal_and_expected_inputs[mismatch_idx.into()],
-                                provided_arg_tys[mismatch_idx.into()].0,
+                                lo,
+                                formal_and_expected_inputs[mismatch_idx.to_expected_idx()],
+                                provided_arg_tys[mismatch_idx].0,
                             ),
                             self.param_env,
                             terr,
@@ -873,7 +867,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         callee_ty,
                         call_expr,
                         None,
-                        Some(mismatch_idx),
+                        Some(mismatch_idx.as_usize()),
                         &matched_inputs,
                         &formal_and_expected_inputs,
                         is_method,
@@ -2052,11 +2046,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn parent_item_span(&self, id: HirId) -> Option<Span> {
-        let node = self.tcx.hir_node_by_def_id(self.tcx.hir().get_parent_item(id).def_id);
+        let node = self.tcx.hir_node_by_def_id(self.tcx.hir_get_parent_item(id).def_id);
         match node {
             Node::Item(&hir::Item { kind: hir::ItemKind::Fn { body: body_id, .. }, .. })
             | Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Fn(_, body_id), .. }) => {
-                let body = self.tcx.hir().body(body_id);
+                let body = self.tcx.hir_body(body_id);
                 if let ExprKind::Block(block, _) = &body.value.kind {
                     return Some(block.span);
                 }
@@ -2179,7 +2173,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 {
                     let mut block_num = 0;
                     let mut found_semi = false;
-                    for (hir_id, node) in self.tcx.hir().parent_iter(binding_hir_id) {
+                    for (hir_id, node) in self.tcx.hir_parent_iter(binding_hir_id) {
                         // Don't proceed into parent bodies
                         if hir_id.owner != binding_hir_id.owner {
                             break;
@@ -2512,16 +2506,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             err.span_note(spans, format!("{} defined here", self.tcx.def_descr(def_id)));
-        } else if let Some(hir::Node::Expr(e)) = self.tcx.hir().get_if_local(def_id)
+        } else if let Some(hir::Node::Expr(e)) = self.tcx.hir_get_if_local(def_id)
             && let hir::ExprKind::Closure(hir::Closure { body, .. }) = &e.kind
         {
             let param = expected_idx
-                .and_then(|expected_idx| self.tcx.hir().body(*body).params.get(expected_idx));
+                .and_then(|expected_idx| self.tcx.hir_body(*body).params.get(expected_idx));
             let (kind, span) = if let Some(param) = param {
                 // Try to find earlier invocations of this closure to find if the type mismatch
                 // is because of inference. If we find one, point at them.
                 let mut call_finder = FindClosureArg { tcx: self.tcx, calls: vec![] };
-                let parent_def_id = self.tcx.hir().get_parent_item(call_expr.hir_id).def_id;
+                let parent_def_id = self.tcx.hir_get_parent_item(call_expr.hir_id).def_id;
                 match self.tcx.hir_node_by_def_id(parent_def_id) {
                     hir::Node::Item(item) => call_finder.visit_item(item),
                     hir::Node::TraitItem(item) => call_finder.visit_trait_item(item),
@@ -2620,7 +2614,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 let expected_display_type = self
-                    .resolve_vars_if_possible(formal_and_expected_inputs[idx.into()].1)
+                    .resolve_vars_if_possible(formal_and_expected_inputs[idx].1)
                     .sort_string(self.tcx);
                 let label = if idxs_matched == params_with_generics.len() - 1 {
                     format!(
@@ -2650,7 +2644,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         is_method: bool,
     ) -> Option<(IndexVec<ExpectedIdx, (Option<GenericIdx>, FnParam<'_>)>, &hir::Generics<'_>)>
     {
-        let (sig, generics, body_id, param_names) = match self.tcx.hir().get_if_local(def_id)? {
+        let (sig, generics, body_id, param_names) = match self.tcx.hir_get_if_local(def_id)? {
             hir::Node::TraitItem(&hir::TraitItem {
                 generics,
                 kind: hir::TraitItemKind::Fn(sig, trait_fn),
@@ -2695,7 +2689,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match (body_id, param_names) {
             (Some(_), Some(_)) | (None, None) => unreachable!(),
             (Some(body), None) => {
-                let params = self.tcx.hir().body(body).params;
+                let params = self.tcx.hir_body(body).params;
                 let params =
                     params.get(is_method as usize..params.len() - sig.decl.c_variadic as usize)?;
                 debug_assert_eq!(params.len(), fn_inputs.len());
@@ -2725,8 +2719,8 @@ struct FindClosureArg<'tcx> {
 impl<'tcx> Visitor<'tcx> for FindClosureArg<'tcx> {
     type NestedFilter = rustc_middle::hir::nested_filter::All;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
 
     fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) {

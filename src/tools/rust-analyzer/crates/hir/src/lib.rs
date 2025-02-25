@@ -42,8 +42,8 @@ use arrayvec::ArrayVec;
 use base_db::{CrateDisplayName, CrateId, CrateOrigin};
 use either::Either;
 use hir_def::{
-    body::BodyDiagnostic,
     data::{adt::VariantData, TraitFlags},
+    expr_store::ExpressionStoreDiagnostics,
     generics::{LifetimeParamData, TypeOrConstParamData, TypeParamProvenance},
     hir::{BindingAnnotation, BindingId, Expr, ExprId, ExprOrPatId, LabelId, Pat},
     item_tree::{AttrOwner, FieldParent, ItemTreeFieldId, ItemTreeNode},
@@ -55,8 +55,8 @@ use hir_def::{
     resolver::{HasResolver, Resolver},
     type_ref::TypesSourceMap,
     AdtId, AssocItemId, AssocItemLoc, AttrDefId, CallableDefId, ConstId, ConstParamId,
-    CrateRootModuleId, DefWithBodyId, EnumId, EnumVariantId, ExternCrateId, FunctionId,
-    GenericDefId, GenericParamId, HasModule, ImplId, InTypeConstId, ItemContainerId,
+    CrateRootModuleId, DefWithBodyId, EnumId, EnumVariantId, ExternBlockId, ExternCrateId,
+    FunctionId, GenericDefId, GenericParamId, HasModule, ImplId, InTypeConstId, ItemContainerId,
     LifetimeParamId, LocalFieldId, Lookup, MacroExpander, MacroId, ModuleId, StaticId, StructId,
     SyntheticSyntax, TraitAliasId, TupleId, TypeAliasId, TypeOrConstParamId, TypeParamId, UnionId,
 };
@@ -1892,10 +1892,10 @@ impl DefWithBody {
 
         for diag in source_map.diagnostics() {
             acc.push(match diag {
-                BodyDiagnostic::InactiveCode { node, cfg, opts } => {
+                ExpressionStoreDiagnostics::InactiveCode { node, cfg, opts } => {
                     InactiveCode { node: *node, cfg: cfg.clone(), opts: opts.clone() }.into()
                 }
-                BodyDiagnostic::MacroError { node, err } => {
+                ExpressionStoreDiagnostics::MacroError { node, err } => {
                     let RenderedExpandError { message, error, kind } =
                         err.render_to_string(db.upcast());
 
@@ -1919,20 +1919,22 @@ impl DefWithBody {
                     }
                     .into()
                 }
-                BodyDiagnostic::UnresolvedMacroCall { node, path } => UnresolvedMacroCall {
-                    macro_call: (*node).map(|ast_ptr| ast_ptr.into()),
-                    precise_location: None,
-                    path: path.clone(),
-                    is_bang: true,
+                ExpressionStoreDiagnostics::UnresolvedMacroCall { node, path } => {
+                    UnresolvedMacroCall {
+                        macro_call: (*node).map(|ast_ptr| ast_ptr.into()),
+                        precise_location: None,
+                        path: path.clone(),
+                        is_bang: true,
+                    }
+                    .into()
                 }
-                .into(),
-                BodyDiagnostic::AwaitOutsideOfAsync { node, location } => {
+                ExpressionStoreDiagnostics::AwaitOutsideOfAsync { node, location } => {
                     AwaitOutsideOfAsync { node: *node, location: location.clone() }.into()
                 }
-                BodyDiagnostic::UnreachableLabel { node, name } => {
+                ExpressionStoreDiagnostics::UnreachableLabel { node, name } => {
                     UnreachableLabel { node: *node, name: name.clone() }.into()
                 }
-                BodyDiagnostic::UndeclaredLabel { node, name } => {
+                ExpressionStoreDiagnostics::UndeclaredLabel { node, name } => {
                     UndeclaredLabel { node: *node, name: name.clone() }.into()
                 }
             });
@@ -1955,7 +1957,7 @@ impl DefWithBody {
                 ExprOrPatId::PatId(pat) => source_map.pat_syntax(pat).map(Either::Right),
             };
             let expr_or_pat = match expr_or_pat {
-                Ok(Either::Left(expr)) => expr.map(AstPtr::wrap_left),
+                Ok(Either::Left(expr)) => expr,
                 Ok(Either::Right(InFile { file_id, value: pat })) => {
                     // cast from Either<Pat, SelfParam> -> Either<_, Pat>
                     let Some(ptr) = AstPtr::try_from_raw(pat.syntax_node_ptr()) else {
@@ -1976,14 +1978,38 @@ impl DefWithBody {
             );
         }
 
-        let (unsafe_exprs, only_lint) = hir_ty::diagnostics::missing_unsafe(db, self.into());
-        for (node, reason) in unsafe_exprs {
+        let missing_unsafe = hir_ty::diagnostics::missing_unsafe(db, self.into());
+        for (node, reason) in missing_unsafe.unsafe_exprs {
             match source_map.expr_or_pat_syntax(node) {
-                Ok(node) => acc.push(MissingUnsafe { node, only_lint, reason }.into()),
+                Ok(node) => acc.push(
+                    MissingUnsafe {
+                        node,
+                        lint: if missing_unsafe.fn_is_unsafe {
+                            UnsafeLint::UnsafeOpInUnsafeFn
+                        } else {
+                            UnsafeLint::HardError
+                        },
+                        reason,
+                    }
+                    .into(),
+                ),
                 Err(SyntheticSyntax) => {
                     // FIXME: Here and elsewhere in this file, the `expr` was
                     // desugared, report or assert that this doesn't happen.
                 }
+            }
+        }
+        for node in missing_unsafe.deprecated_safe_calls {
+            match source_map.expr_syntax(node) {
+                Ok(node) => acc.push(
+                    MissingUnsafe {
+                        node,
+                        lint: UnsafeLint::DeprecatedSafe2024,
+                        reason: UnsafetyReason::UnsafeFnCall,
+                    }
+                    .into(),
+                ),
+                Err(SyntheticSyntax) => never!("synthetic DeprecatedSafe2024"),
             }
         }
 
@@ -2301,6 +2327,13 @@ impl Function {
         db.function_data(self.id).is_async()
     }
 
+    pub fn extern_block(self, db: &dyn HirDatabase) -> Option<ExternBlock> {
+        match self.id.lookup(db.upcast()).container {
+            ItemContainerId::ExternBlockId(id) => Some(ExternBlock { id }),
+            _ => None,
+        }
+    }
+
     pub fn returns_impl_future(self, db: &dyn HirDatabase) -> bool {
         if self.is_async(db) {
             return true;
@@ -2361,8 +2394,19 @@ impl Function {
         db.attrs(self.id.into()).is_unstable()
     }
 
-    pub fn is_unsafe_to_call(self, db: &dyn HirDatabase) -> bool {
-        hir_ty::is_fn_unsafe_to_call(db, self.id)
+    pub fn is_unsafe_to_call(
+        self,
+        db: &dyn HirDatabase,
+        caller: Option<Function>,
+        call_edition: Edition,
+    ) -> bool {
+        let target_features = caller
+            .map(|caller| hir_ty::TargetFeatures::from_attrs(&db.attrs(caller.id.into())))
+            .unwrap_or_default();
+        matches!(
+            hir_ty::is_fn_unsafe_to_call(db, self.id, &target_features, call_edition),
+            hir_ty::Unsafety::Unsafe
+        )
     }
 
     /// Whether this function declaration has a definition.
@@ -2724,6 +2768,13 @@ impl Static {
         Type::from_value_def(db, self.id)
     }
 
+    pub fn extern_block(self, db: &dyn HirDatabase) -> Option<ExternBlock> {
+        match self.id.lookup(db.upcast()).container {
+            ItemContainerId::ExternBlockId(id) => Some(ExternBlock { id }),
+            _ => None,
+        }
+    }
+
     /// Evaluate the static initializer.
     pub fn eval(self, db: &dyn HirDatabase) -> Result<EvaluatedConst, ConstEvalError> {
         db.const_eval(self.id.into(), Substitution::empty(Interner), None)
@@ -2888,6 +2939,17 @@ impl HasVisibility for TypeAlias {
         let function_data = db.type_alias_data(self.id);
         let visibility = &function_data.visibility;
         visibility.resolve(db.upcast(), &self.id.resolver(db.upcast()))
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ExternBlock {
+    pub(crate) id: ExternBlockId,
+}
+
+impl ExternBlock {
+    pub fn module(self, db: &dyn HirDatabase) -> Module {
+        Module { id: self.id.module(db.upcast()) }
     }
 }
 
@@ -3453,6 +3515,7 @@ pub enum GenericDef {
     Impl(Impl),
     // consts can have type parameters from their parents (i.e. associated consts of traits)
     Const(Const),
+    Static(Static),
 }
 impl_from!(
     Function,
@@ -3461,7 +3524,8 @@ impl_from!(
     TraitAlias,
     TypeAlias,
     Impl,
-    Const
+    Const,
+    Static
     for GenericDef
 );
 
@@ -3511,6 +3575,7 @@ impl GenericDef {
             GenericDef::TypeAlias(it) => it.id.into(),
             GenericDef::Impl(it) => it.id.into(),
             GenericDef::Const(it) => it.id.into(),
+            GenericDef::Static(it) => it.id.into(),
         }
     }
 
@@ -3568,6 +3633,7 @@ impl GenericDef {
                     item_tree_source_maps.impl_(id.value).generics()
                 }
                 GenericDefId::ConstId(_) => return,
+                GenericDefId::StaticId(_) => return,
             },
         };
 
@@ -4551,10 +4617,7 @@ impl CaptureUsages {
             match span {
                 mir::MirSpan::ExprId(expr) => {
                     if let Ok(expr) = source_map.expr_syntax(expr) {
-                        result.push(CaptureUsageSource {
-                            is_ref,
-                            source: expr.map(AstPtr::wrap_left),
-                        })
+                        result.push(CaptureUsageSource { is_ref, source: expr })
                     }
                 }
                 mir::MirSpan::PatId(pat) => {
@@ -4622,17 +4685,6 @@ impl Type {
 
     pub(crate) fn new_for_crate(krate: CrateId, ty: Ty) -> Type {
         Type { env: TraitEnvironment::empty(krate), ty }
-    }
-
-    pub fn reference(inner: &Type, m: Mutability) -> Type {
-        inner.derived(
-            TyKind::Ref(
-                if m.is_mut() { hir_ty::Mutability::Mut } else { hir_ty::Mutability::Not },
-                hir_ty::error_lifetime(),
-                inner.ty.clone(),
-            )
-            .intern(Interner),
-        )
     }
 
     fn new(db: &dyn HirDatabase, lexical_env: impl HasResolver, ty: Ty) -> Type {
@@ -4864,6 +4916,17 @@ impl Type {
             .trait_data(iterator_trait)
             .associated_type_by_name(&Name::new_symbol_root(sym::Item.clone()))?;
         self.normalize_trait_assoc_type(db, &[], iterator_item.into())
+    }
+
+    pub fn impls_iterator(self, db: &dyn HirDatabase) -> bool {
+        let Some(iterator_trait) =
+            db.lang_item(self.env.krate, LangItem::Iterator).and_then(|it| it.as_trait())
+        else {
+            return false;
+        };
+        let canonical_ty =
+            Canonical { value: self.ty.clone(), binders: CanonicalVarKinds::empty(Interner) };
+        method_resolution::implements_trait_unique(&canonical_ty, db, &self.env, iterator_trait)
     }
 
     /// Resolves the projection `<Self as IntoIterator>::IntoIter` and returns the resulting type
@@ -6139,9 +6202,15 @@ impl HasContainer for TraitAlias {
     }
 }
 
+impl HasContainer for ExternBlock {
+    fn container(&self, db: &dyn HirDatabase) -> ItemContainer {
+        ItemContainer::Module(Module { id: self.id.lookup(db.upcast()).container })
+    }
+}
+
 fn container_id_to_hir(c: ItemContainerId) -> ItemContainer {
     match c {
-        ItemContainerId::ExternBlockId(_id) => ItemContainer::ExternBlock(),
+        ItemContainerId::ExternBlockId(id) => ItemContainer::ExternBlock(ExternBlock { id }),
         ItemContainerId::ModuleId(id) => ItemContainer::Module(Module { id }),
         ItemContainerId::ImplId(id) => ItemContainer::Impl(Impl { id }),
         ItemContainerId::TraitId(id) => ItemContainer::Trait(Trait { id }),
@@ -6153,7 +6222,7 @@ pub enum ItemContainer {
     Trait(Trait),
     Impl(Impl),
     Module(Module),
-    ExternBlock(),
+    ExternBlock(ExternBlock),
     Crate(CrateId),
 }
 

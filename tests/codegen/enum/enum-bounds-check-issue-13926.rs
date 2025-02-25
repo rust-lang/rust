@@ -1,6 +1,6 @@
 // This test checks an optimization that is not guaranteed to work. This test case should not block
 // a future LLVM update.
-//@ compile-flags: -O
+//@ compile-flags: -Copt-level=3
 
 #![crate_type = "lib"]
 

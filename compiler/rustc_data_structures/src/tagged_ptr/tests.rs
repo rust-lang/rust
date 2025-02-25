@@ -1,7 +1,8 @@
 use std::ptr;
 
+use rustc_hashes::Hash128;
+
 use super::*;
-use crate::hashes::Hash128;
 use crate::stable_hasher::{HashStable, StableHasher};
 
 /// A tag type used in [`TaggedRef`] tests.

@@ -142,8 +142,8 @@ impl Name {
     /// Ideally, we want a `gensym` semantics for missing names -- each missing
     /// name is equal only to itself. It's not clear how to implement this in
     /// salsa though, so we punt on that bit for a moment.
-    pub fn missing() -> Name {
-        Name { symbol: sym::MISSING_NAME.clone(), ctx: () }
+    pub const fn missing() -> Name {
+        Name { symbol: sym::consts::MISSING_NAME, ctx: () }
     }
 
     /// Returns true if this is a fake name for things missing in the source code. See
@@ -262,6 +262,6 @@ impl AsName for ast::FieldKind {
 
 impl AsName for base_db::Dependency {
     fn as_name(&self) -> Name {
-        Name::new_root(&self.name)
+        Name::new_symbol_root((*self.name).clone())
     }
 }

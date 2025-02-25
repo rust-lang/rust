@@ -20,7 +20,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>, a
     }
 
     if let hir::ExprKind::Closure(&hir::Closure { body, .. }) = arg.kind {
-        let body = cx.tcx.hir().body(body);
+        let body = cx.tcx.hir_body(body);
         let arg_id = body.params[0].pat.hir_id;
         let mutates_arg = mutated_variables(body.value, cx).is_none_or(|used_mutably| used_mutably.contains(&arg_id));
         let (clone_or_copy_needed, _) = clone_or_copy_needed(cx, body.params[0].pat, body.value);

@@ -4,14 +4,14 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::marker::PhantomData;
 use std::sync::Arc;
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicU32, Ordering};
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::{QueryInvocationId, SelfProfilerRef};
 use rustc_data_structures::sharded::{self, Sharded};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::{AtomicU32, AtomicU64, Lock};
+use rustc_data_structures::sync::{AtomicU64, Lock};
 use rustc_data_structures::unord::UnordMap;
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable};

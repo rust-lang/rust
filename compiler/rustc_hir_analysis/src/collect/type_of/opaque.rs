@@ -83,13 +83,13 @@ pub(super) fn find_opaque_ty_constraints_for_impl_trait_in_assoc_type(
 #[instrument(skip(tcx), level = "debug")]
 pub(super) fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
-    let scope = tcx.hir().get_defining_scope(hir_id);
+    let scope = tcx.hir_get_defining_scope(hir_id);
     let mut locator = TaitConstraintLocator { def_id, tcx, found: None, typeck_types: vec![] };
 
     debug!(?scope);
 
     if scope == hir::CRATE_HIR_ID {
-        tcx.hir().walk_toplevel_module(&mut locator);
+        tcx.hir_walk_toplevel_module(&mut locator);
     } else {
         trace!("scope={:#?}", tcx.hir_node(scope));
         match tcx.hir_node(scope) {
@@ -298,8 +298,8 @@ impl TaitConstraintLocator<'_> {
 impl<'tcx> intravisit::Visitor<'tcx> for TaitConstraintLocator<'tcx> {
     type NestedFilter = nested_filter::All;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
     fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
         if let hir::ExprKind::Closure(closure) = ex.kind {
@@ -441,8 +441,8 @@ impl RpitConstraintChecker<'_> {
 impl<'tcx> intravisit::Visitor<'tcx> for RpitConstraintChecker<'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
     fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
         if let hir::ExprKind::Closure(closure) = ex.kind {

@@ -142,8 +142,9 @@ LL |     mod baz {
    |     ^^^^^^^
 help: consider importing this function through its public re-export instead
    |
-LL |         bar::foo();
-   |         ~~~~~~~~
+LL -         ::bar::baz::foo();
+LL +         bar::foo();
+   |
 
 error[E0603]: module `baz` is private
   --> $DIR/privacy1.rs:128:16
@@ -158,8 +159,9 @@ LL |     mod baz {
    |     ^^^^^^^
 help: consider importing this function through its public re-export instead
    |
-LL |         bar::bar();
-   |         ~~~~~~~~
+LL -         ::bar::baz::bar();
+LL +         bar::bar();
+   |
 
 error[E0603]: trait `B` is private
   --> $DIR/privacy1.rs:157:17

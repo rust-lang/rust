@@ -6,9 +6,11 @@ LL | #[rustc_force_inline("foo")]
    |
 help: the following are the possible correct uses
    |
-LL | #[rustc_force_inline = "reason"]
+LL - #[rustc_force_inline("foo")]
+LL + #[rustc_force_inline = "reason"]
    |
-LL | #[rustc_force_inline]
+LL - #[rustc_force_inline("foo")]
+LL + #[rustc_force_inline]
    |
 
 error: malformed `rustc_force_inline` attribute input
@@ -19,9 +21,11 @@ LL | #[rustc_force_inline(bar, baz)]
    |
 help: the following are the possible correct uses
    |
-LL | #[rustc_force_inline = "reason"]
+LL - #[rustc_force_inline(bar, baz)]
+LL + #[rustc_force_inline = "reason"]
    |
-LL | #[rustc_force_inline]
+LL - #[rustc_force_inline(bar, baz)]
+LL + #[rustc_force_inline]
    |
 
 error: malformed `rustc_force_inline` attribute input
@@ -32,9 +36,11 @@ LL | #[rustc_force_inline(2)]
    |
 help: the following are the possible correct uses
    |
-LL | #[rustc_force_inline = "reason"]
+LL - #[rustc_force_inline(2)]
+LL + #[rustc_force_inline = "reason"]
    |
-LL | #[rustc_force_inline]
+LL - #[rustc_force_inline(2)]
+LL + #[rustc_force_inline]
    |
 
 error: malformed `rustc_force_inline` attribute input
@@ -45,9 +51,11 @@ LL | #[rustc_force_inline = 2]
    |
 help: the following are the possible correct uses
    |
-LL | #[rustc_force_inline = "reason"]
+LL - #[rustc_force_inline = 2]
+LL + #[rustc_force_inline = "reason"]
    |
-LL | #[rustc_force_inline]
+LL - #[rustc_force_inline = 2]
+LL + #[rustc_force_inline]
    |
 
 error: allow, cfg, cfg_attr, deny, expect, forbid, and warn are the only allowed built-in attributes in function parameters

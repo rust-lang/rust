@@ -27,7 +27,10 @@ use crate::{
         FetchWorkspaceResponse, GlobalState,
     },
     hack_recover_crate_name,
-    handlers::dispatch::{NotificationDispatcher, RequestDispatcher},
+    handlers::{
+        dispatch::{NotificationDispatcher, RequestDispatcher},
+        request::empty_diagnostic_report,
+    },
     lsp::{
         from_proto, to_proto,
         utils::{notification_is, Progress},
@@ -253,6 +256,11 @@ impl GlobalState {
         &self,
         inbox: &Receiver<lsp_server::Message>,
     ) -> Result<Option<Event>, crossbeam_channel::RecvError> {
+        // Make sure we reply to formatting requests ASAP so the editor doesn't block
+        if let Ok(task) = self.fmt_pool.receiver.try_recv() {
+            return Ok(Some(Event::Task(task)));
+        }
+
         select! {
             recv(inbox) -> msg =>
                 return Ok(msg.ok().map(Event::Lsp)),
@@ -320,26 +328,30 @@ impl GlobalState {
                 }
 
                 for progress in prime_caches_progress {
-                    let (state, message, fraction);
+                    let (state, message, fraction, title);
                     match progress {
                         PrimeCachesProgress::Begin => {
                             state = Progress::Begin;
                             message = None;
                             fraction = 0.0;
+                            title = "Indexing";
                         }
                         PrimeCachesProgress::Report(report) => {
                             state = Progress::Report;
+                            title = report.work_type;
 
-                            message = match &report.crates_currently_indexing[..] {
+                            message = match &*report.crates_currently_indexing {
                                 [crate_name] => Some(format!(
-                                    "{}/{} ({crate_name})",
-                                    report.crates_done, report.crates_total
+                                    "{}/{} ({})",
+                                    report.crates_done,
+                                    report.crates_total,
+                                    crate_name.as_str(),
                                 )),
                                 [crate_name, rest @ ..] => Some(format!(
                                     "{}/{} ({} + {} more)",
                                     report.crates_done,
                                     report.crates_total,
-                                    crate_name,
+                                    crate_name.as_str(),
                                     rest.len()
                                 )),
                                 _ => None,
@@ -351,6 +363,7 @@ impl GlobalState {
                             state = Progress::End;
                             message = None;
                             fraction = 1.0;
+                            title = "Indexing";
 
                             self.prime_caches_queue.op_completed(());
                             if cancelled {
@@ -360,7 +373,13 @@ impl GlobalState {
                         }
                     };
 
-                    self.report_progress("Indexing", state, message, Some(fraction), None);
+                    self.report_progress(
+                        title,
+                        state,
+                        message,
+                        Some(fraction),
+                        Some("rustAnalyzer/cachePriming".to_owned()),
+                    );
                 }
             }
             Event::Vfs(message) => {
@@ -532,6 +551,9 @@ impl GlobalState {
             self.mem_docs
                 .iter()
                 .map(|path| vfs.file_id(path).unwrap())
+                .filter_map(|(file_id, excluded)| {
+                    (excluded == vfs::FileExcluded::No).then_some(file_id)
+                })
                 .filter(|&file_id| {
                     let source_root = db.file_source_root(file_id);
                     // Only publish diagnostics for files in the workspace, not from crates.io deps
@@ -616,6 +638,9 @@ impl GlobalState {
             .mem_docs
             .iter()
             .map(|path| self.vfs.read().0.file_id(path).unwrap())
+            .filter_map(|(file_id, excluded)| {
+                (excluded == vfs::FileExcluded::No).then_some(file_id)
+            })
             .filter(|&file_id| {
                 let source_root = db.file_source_root(file_id);
                 !db.source_root(source_root).is_library
@@ -863,7 +888,10 @@ impl GlobalState {
                 self.task_pool.handle.spawn_with_sender(ThreadIntent::Worker, move |sender| {
                     let _p = tracing::info_span!("GlobalState::check_if_indexed").entered();
                     tracing::debug!(?uri, "handling uri");
-                    let id = from_proto::file_id(&snap, &uri).expect("unable to get FileId");
+                    let Some(id) = from_proto::file_id(&snap, &uri).expect("unable to get FileId")
+                    else {
+                        return;
+                    };
                     if let Ok(crates) = &snap.analysis.crates_for(id) {
                         if crates.is_empty() {
                             if snap.config.discover_workspace_config().is_some() {
@@ -971,13 +999,14 @@ impl GlobalState {
                 );
                 for diag in diagnostics {
                     match url_to_file_id(&self.vfs.read().0, &diag.url) {
-                        Ok(file_id) => self.diagnostics.add_check_diagnostic(
+                        Ok(Some(file_id)) => self.diagnostics.add_check_diagnostic(
                             id,
                             &package_id,
                             file_id,
                             diag.diagnostic,
                             diag.fix,
                         ),
+                        Ok(None) => {}
                         Err(err) => {
                             error!(
                                 "flycheck {id}: File with cargo diagnostic not found in VFS: {}",
@@ -1099,17 +1128,7 @@ impl GlobalState {
             .on_latency_sensitive::<NO_RETRY, lsp_request::SemanticTokensRangeRequest>(handlers::handle_semantic_tokens_range)
             // FIXME: Some of these NO_RETRY could be retries if the file they are interested didn't change.
             // All other request handlers
-            .on_with_vfs_default::<lsp_request::DocumentDiagnosticRequest>(handlers::handle_document_diagnostics, || lsp_types::DocumentDiagnosticReportResult::Report(
-                lsp_types::DocumentDiagnosticReport::Full(
-                    lsp_types::RelatedFullDocumentDiagnosticReport {
-                        related_documents: None,
-                        full_document_diagnostic_report: lsp_types::FullDocumentDiagnosticReport {
-                            result_id: Some("rust-analyzer".to_owned()),
-                            items: vec![],
-                        },
-                    },
-                ),
-            ), || lsp_server::ResponseError {
+            .on_with_vfs_default::<lsp_request::DocumentDiagnosticRequest>(handlers::handle_document_diagnostics, empty_diagnostic_report, || lsp_server::ResponseError {
                 code: lsp_server::ErrorCode::ServerCancelled as i32,
                 message: "server cancelled the request".to_owned(),
                 data: serde_json::to_value(lsp_types::DiagnosticServerCancellationData {

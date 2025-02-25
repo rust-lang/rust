@@ -90,6 +90,7 @@ macro_rules! arena_types {
             [] autodiff_item: rustc_ast::expand::autodiff_attrs::AutoDiffItem,
             [] ordered_name_set: rustc_data_structures::fx::FxIndexSet<rustc_span::Symbol>,
             [] pats: rustc_middle::ty::PatternKind<'tcx>,
+            [] valtree: rustc_middle::ty::ValTreeKind<'tcx>,
 
             // Note that this deliberately duplicates items in the `rustc_hir::arena`,
             // since we need to allocate this type on both the `rustc_hir` arena

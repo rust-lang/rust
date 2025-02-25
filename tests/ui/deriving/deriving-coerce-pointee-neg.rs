@@ -1,6 +1,9 @@
+//@ proc-macro: malicious-macro.rs
 #![feature(derive_coerce_pointee, arbitrary_self_types)]
 
 extern crate core;
+extern crate malicious_macro;
+
 use std::marker::CoercePointee;
 
 #[derive(CoercePointee)]
@@ -41,8 +44,8 @@ struct TooManyPointees<'a, #[pointee] A: ?Sized, #[pointee] B: ?Sized>((&'a A, &
 //~^ ERROR: only one type parameter can be marked as `#[pointee]` when deriving `CoercePointee` traits
 
 #[derive(CoercePointee)]
-//~^ ERROR: `CoercePointee` can only be derived on `struct`s with `#[repr(transparent)]`
 struct NotTransparent<'a, #[pointee] T: ?Sized> {
+    //~^ ERROR: `derive(CoercePointee)` is only applicable to `struct` with `repr(transparent)` layout
     ptr: &'a T,
 }
 
@@ -130,5 +133,36 @@ struct GlobalStdSized<'a, #[pointee] T: ?::std::marker::Sized> {
 struct GlobalCoreSized<'a, #[pointee] T: ?::core::marker::Sized> {
     ptr: &'a T,
 }
+
+#[derive(CoercePointee)]
+#[malicious_macro::norepr]
+#[repr(transparent)]
+struct TryToWipeRepr<'a, #[pointee] T: ?Sized> {
+    //~^ ERROR: `derive(CoercePointee)` is only applicable to `struct` with `repr(transparent)` layout [E0802]
+    ptr: &'a T,
+}
+
+#[repr(transparent)]
+#[derive(CoercePointee)]
+//~^ ERROR for `RcWithId<T>` to have a valid implementation of `CoerceUnsized`, it must be possible to coerce the field of type `Rc<(i32, Box<T>)>`
+struct RcWithId<T: ?Sized> {
+    inner: std::rc::Rc<(i32, Box<T>)>,
+}
+
+#[repr(transparent)]
+#[derive(CoercePointee)]
+//~^ ERROR implementing `CoerceUnsized` does not allow multiple fields to be coerced
+struct MoreThanOneField<T: ?Sized> {
+    //~^ ERROR transparent struct needs at most one field with non-trivial size or alignment, but has 2
+    inner1: Box<T>,
+    inner2: Box<T>,
+}
+
+struct NotCoercePointeeData<T: ?Sized>(T);
+
+#[repr(transparent)]
+#[derive(CoercePointee)]
+//~^ ERROR for `UsingNonCoercePointeeData<T>` to have a valid implementation of `CoerceUnsized`, it must be possible to coerce the field of type `NotCoercePointeeData<T>`
+struct UsingNonCoercePointeeData<T: ?Sized>(NotCoercePointeeData<T>);
 
 fn main() {}

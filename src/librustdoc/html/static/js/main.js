@@ -1112,35 +1112,32 @@ function preLoadCss(cssUrl) {
 
     // @ts-expect-error
     window.rustdoc_add_line_numbers_to_examples = () => {
-        if (document.querySelector(".rustdoc.src")) {
-            // We are in the source code page, nothing to be done here!
-            return;
+        // @ts-expect-error
+        function generateLine(nb) {
+            return `<span data-nosnippet>${nb}</span>`;
         }
+
         onEachLazy(document.querySelectorAll(
-            ":not(.scraped-example) > .example-wrap > pre:not(.example-line-numbers)",
-        ), x => {
-            const parent = x.parentNode;
-            const line_numbers = parent.querySelectorAll(".example-line-numbers");
-            if (line_numbers.length > 0) {
+            ".rustdoc:not(.src) :not(.scraped-example) > .example-wrap > pre > code",
+        ), code => {
+            if (hasClass(code.parentElement.parentElement, "hide-lines")) {
+                removeClass(code.parentElement.parentElement, "hide-lines");
                 return;
             }
-            const count = x.textContent.split("\n").length;
-            const elems = [];
-            for (let i = 0; i < count; ++i) {
-                elems.push(i + 1);
-            }
-            const node = document.createElement("pre");
-            addClass(node, "example-line-numbers");
-            node.innerHTML = elems.join("\n");
-            parent.insertBefore(node, x);
+            const lines = code.innerHTML.split("\n");
+            const digits = (lines.length + "").length;
+            // @ts-expect-error
+            code.innerHTML = lines.map((line, index) => generateLine(index + 1) + line).join("\n");
+            addClass(code.parentElement.parentElement, `digits-${digits}`);
         });
     };
 
     // @ts-expect-error
     window.rustdoc_remove_line_numbers_from_examples = () => {
-        onEachLazy(document.querySelectorAll(".example-wrap > .example-line-numbers"), x => {
-            x.parentNode.removeChild(x);
-        });
+        onEachLazy(
+            document.querySelectorAll(".rustdoc:not(.src) :not(.scraped-example) > .example-wrap"),
+            x => addClass(x, "hide-lines"),
+        );
     };
 
     if (getSettingValue("line-numbers") === "true") {
@@ -2039,7 +2036,10 @@ function preLoadCss(cssUrl) {
         // Most page titles are '<Item> in <path::to::module> - Rust', except
         // modules (which don't have the first part) and keywords/primitives
         // (which don't have a module path)
-        const [item, module] = document.title.split(" in ");
+        const titleElement = document.querySelector("title");
+        const title = titleElement && titleElement.textContent ?
+                      titleElement.textContent.replace(" - Rust", "") : "";
+        const [item, module] = title.split(" in ");
         const path = [item];
         if (module !== undefined) {
             path.unshift(module);

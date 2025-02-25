@@ -154,19 +154,14 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
         let lint_root = self.body.source_scopes[source_info.scope]
             .local_data
             .as_ref()
-            .assert_crate_local()
+            .unwrap_crate_local()
             .lint_root;
         // FIXME: use existing printing routines to print the function signature
         let fn_sig = self.tcx.fn_sig(fn_id).instantiate(self.tcx, fn_args);
         let unsafety = fn_sig.safety().prefix_str();
         let abi = match fn_sig.abi() {
             ExternAbi::Rust => String::from(""),
-            other_abi => {
-                let mut s = String::from("extern \"");
-                s.push_str(other_abi.name());
-                s.push_str("\" ");
-                s
-            }
+            other_abi => format!("extern {other_abi} "),
         };
         let ident = self.tcx.item_ident(fn_id);
         let ty_params = fn_args.types().map(|ty| format!("{ty}"));

@@ -14,8 +14,9 @@ LL | impl MyTrait<u64> for Qqq{
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 help: try using a fully qualified path to specify the expected types
    |
-LL |     <Qqq as MyTrait<T>>::lol::<_>(&q, ||());
-   |     +++++++++++++++++++++++++++++++ ~
+LL -     q.lol(||());
+LL +     <Qqq as MyTrait<T>>::lol::<_>(&q, ||());
+   |
 
 error: aborting due to 1 previous error
 

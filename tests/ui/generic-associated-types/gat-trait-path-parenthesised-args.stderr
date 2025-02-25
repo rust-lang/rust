@@ -12,8 +12,9 @@ LL | fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
    |
 help: use angle brackets instead
    |
-LL | fn foo<'a>(arg: Box<dyn X<Y<'a> = &'a ()>>) {}
-   |                            ~  ~
+LL - fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
+LL + fn foo<'a>(arg: Box<dyn X<Y<'a> = &'a ()>>) {}
+   |
 
 error: parenthesized generic arguments cannot be used in associated type constraints
   --> $DIR/gat-trait-path-parenthesised-args.rs:18:27

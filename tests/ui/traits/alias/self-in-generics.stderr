@@ -16,8 +16,9 @@ LL | pub trait SelfInput = Fn(&mut Self);
    |           this trait is not dyn compatible...
 help: consider using an opaque type instead
    |
-LL | pub fn f(_f: &impl SelfInput) {}
-   |               ~~~~
+LL - pub fn f(_f: &dyn SelfInput) {}
+LL + pub fn f(_f: &impl SelfInput) {}
+   |
 
 error: aborting due to 1 previous error
 

@@ -1,7 +1,7 @@
 error[E0308]: intrinsic has wrong type
-  --> $DIR/E0308.rs:6:16
+  --> $DIR/E0308.rs:5:16
    |
-LL | fn size_of<T>() {
+LL | fn size_of<T>();
    |                ^ expected `usize`, found `()`
    |
    = note: expected signature `fn() -> usize`

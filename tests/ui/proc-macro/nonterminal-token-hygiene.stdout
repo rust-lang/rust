@@ -39,7 +39,6 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
 use ::core /* 0#1 */::prelude /* 0#1 */::rust_2015 /* 0#1 */::*;
 #[macro_use /* 0#1 */]
 extern crate core /* 0#2 */;
-extern crate compiler_builtins /* NNN */ as _ /* 0#2 */;
 // Don't load unnecessary hygiene information from std
 extern crate std /* 0#0 */;
 

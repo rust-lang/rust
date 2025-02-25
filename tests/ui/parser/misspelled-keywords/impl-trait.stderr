@@ -6,8 +6,9 @@ LL | fn code<T: impll Debug>() -> u8 {}
    |
 help: there is a keyword `impl` with a similar name
    |
-LL | fn code<T: impl Debug>() -> u8 {}
-   |            ~~~~
+LL - fn code<T: impll Debug>() -> u8 {}
+LL + fn code<T: impl Debug>() -> u8 {}
+   |
 
 error: aborting due to 1 previous error
 

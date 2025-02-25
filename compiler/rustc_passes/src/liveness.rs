@@ -152,8 +152,8 @@ fn check_liveness(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     }
 
     let mut maps = IrMaps::new(tcx);
-    let body = tcx.hir().body_owned_by(def_id);
-    let hir_id = tcx.hir().body_owner(body.id());
+    let body = tcx.hir_body_owned_by(def_id);
+    let hir_id = tcx.hir_body_owner(body.id());
 
     if let Some(upvars) = tcx.upvars_mentioned(def_id) {
         for &var_hir_id in upvars.keys() {
@@ -1522,8 +1522,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
     }
 
     fn warn_about_unused_args(&self, body: &hir::Body<'_>, entry_ln: LiveNode) {
-        if let Some(intrinsic) =
-            self.ir.tcx.intrinsic(self.ir.tcx.hir().body_owner_def_id(body.id()))
+        if let Some(intrinsic) = self.ir.tcx.intrinsic(self.ir.tcx.hir_body_owner_def_id(body.id()))
         {
             if intrinsic.must_be_overridden {
                 return;
@@ -1624,7 +1623,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
             && let hir::Node::Pat(pat) = self.ir.tcx.hir_node(var_hid)
             && let hir::Node::Param(hir::Param { ty_span, .. }) =
                 self.ir.tcx.parent_hir_node(pat.hir_id)
-            && let item_id = self.ir.tcx.hir().get_parent_item(pat.hir_id)
+            && let item_id = self.ir.tcx.hir_get_parent_item(pat.hir_id)
             && let item = self.ir.tcx.hir_owner_node(item_id)
             && let Some(fn_decl) = item.fn_decl()
             && let hir::PatKind::Binding(hir::BindingMode::MUT, _hir_id, ident, _) = pat.kind

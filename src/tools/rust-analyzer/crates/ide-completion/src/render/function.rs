@@ -144,7 +144,7 @@ fn render(
     let detail = if ctx.completion.config.full_function_signatures {
         detail_full(db, func, ctx.completion.edition)
     } else {
-        detail(db, func, ctx.completion.edition)
+        detail(ctx.completion, func, ctx.completion.edition)
     };
     item.set_documentation(ctx.docs(func))
         .set_deprecated(ctx.is_deprecated(func) || ctx.is_deprecated_assoc_item(func))
@@ -307,26 +307,26 @@ fn ref_of_param(ctx: &CompletionContext<'_>, arg: &str, ty: &hir::Type) -> &'sta
     ""
 }
 
-fn detail(db: &dyn HirDatabase, func: hir::Function, edition: Edition) -> String {
-    let mut ret_ty = func.ret_type(db);
+fn detail(ctx: &CompletionContext<'_>, func: hir::Function, edition: Edition) -> String {
+    let mut ret_ty = func.ret_type(ctx.db);
     let mut detail = String::new();
 
-    if func.is_const(db) {
+    if func.is_const(ctx.db) {
         format_to!(detail, "const ");
     }
-    if func.is_async(db) {
+    if func.is_async(ctx.db) {
         format_to!(detail, "async ");
-        if let Some(async_ret) = func.async_ret_type(db) {
+        if let Some(async_ret) = func.async_ret_type(ctx.db) {
             ret_ty = async_ret;
         }
     }
-    if func.is_unsafe_to_call(db) {
+    if func.is_unsafe_to_call(ctx.db, ctx.containing_function, ctx.edition) {
         format_to!(detail, "unsafe ");
     }
 
-    format_to!(detail, "fn({})", params_display(db, func, edition));
+    format_to!(detail, "fn({})", params_display(ctx.db, func, edition));
     if !ret_ty.is_unit() {
-        format_to!(detail, " -> {}", ret_ty.display(db, edition));
+        format_to!(detail, " -> {}", ret_ty.display(ctx.db, edition));
     }
     detail
 }

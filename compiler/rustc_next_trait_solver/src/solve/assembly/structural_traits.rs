@@ -2,12 +2,11 @@
 //! traits, `Copy`/`Clone`.
 
 use derive_where::derive_where;
-use rustc_ast_ir::{Movability, Mutability};
 use rustc_type_ir::data_structures::HashMap;
 use rustc_type_ir::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
-use rustc_type_ir::{self as ty, Interner, Upcast as _, elaborate};
+use rustc_type_ir::{self as ty, Interner, Movability, Mutability, Upcast as _, elaborate};
 use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
 use tracing::instrument;
 

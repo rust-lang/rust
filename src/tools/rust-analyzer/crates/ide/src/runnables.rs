@@ -4,8 +4,8 @@ use arrayvec::ArrayVec;
 use ast::HasName;
 use cfg::{CfgAtom, CfgExpr};
 use hir::{
-    db::HirDatabase, sym, AsAssocItem, AttrsWithOwner, HasAttrs, HasCrate, HasSource, HirFileIdExt,
-    ModPath, Name, PathKind, Semantics, Symbol,
+    db::HirDatabase, sym, symbols::FxIndexSet, AsAssocItem, AttrsWithOwner, HasAttrs, HasCrate,
+    HasSource, HirFileIdExt, ModPath, Name, PathKind, Semantics, Symbol,
 };
 use ide_assists::utils::{has_test_related_attribute, test_related_attribute_syn};
 use ide_db::{
@@ -13,7 +13,7 @@ use ide_db::{
     documentation::docs_from_attrs,
     helpers::visit_file_defs,
     search::{FileReferenceNode, SearchScope},
-    FilePosition, FxHashMap, FxHashSet, RootDatabase, SymbolKind,
+    FilePosition, FxHashMap, FxIndexMap, RootDatabase, SymbolKind,
 };
 use itertools::Itertools;
 use smallvec::SmallVec;
@@ -61,8 +61,8 @@ pub enum RunnableKind {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 enum RunnableDiscKind {
-    Test,
     TestMod,
+    Test,
     DocTest,
     Bench,
     Bin,
@@ -119,19 +119,18 @@ impl Runnable {
 // location**. Super useful for repeatedly running just a single test. Do bind this
 // to a shortcut!
 //
-// |===
-// | Editor  | Action Name
+// | Editor  | Action Name |
+// |---------|-------------|
+// | VS Code | **rust-analyzer: Run** |
 //
-// | VS Code | **rust-analyzer: Run**
-// |===
-// image::https://user-images.githubusercontent.com/48062697/113065583-055aae80-91b1-11eb-958f-d67efcaf6a2f.gif[]
+// ![Run](https://user-images.githubusercontent.com/48062697/113065583-055aae80-91b1-11eb-958f-d67efcaf6a2f.gif)
 pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
     let sema = Semantics::new(db);
 
     let mut res = Vec::new();
     // Record all runnables that come from macro expansions here instead.
     // In case an expansion creates multiple runnables we want to name them to avoid emitting a bunch of equally named runnables.
-    let mut in_macro_expansion = FxHashMap::<hir::HirFileId, Vec<Runnable>>::default();
+    let mut in_macro_expansion = FxIndexMap::<hir::HirFileId, Vec<Runnable>>::default();
     let mut add_opt = |runnable: Option<Runnable>, def| {
         if let Some(runnable) = runnable.filter(|runnable| runnable.nav.file_id == file_id) {
             if let Some(def) = def {
@@ -183,20 +182,7 @@ pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
             r
         })
     }));
-    res.sort_by(|Runnable { nav, kind, .. }, Runnable { nav: nav_b, kind: kind_b, .. }| {
-        // full_range.start < focus_range.start < name, should give us a decent unique ordering
-        nav.full_range
-            .start()
-            .cmp(&nav_b.full_range.start())
-            .then_with(|| {
-                let t_0 = || TextSize::from(0);
-                nav.focus_range
-                    .map_or_else(t_0, |it| it.start())
-                    .cmp(&nav_b.focus_range.map_or_else(t_0, |it| it.start()))
-            })
-            .then_with(|| kind.disc().cmp(&kind_b.disc()))
-            .then_with(|| nav.name.cmp(&nav_b.name))
-    });
+    res.sort_by(cmp_runnables);
     res
 }
 
@@ -207,23 +193,39 @@ pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
 // The simplest way to use this feature is via the context menu. Right-click on
 // the selected item. The context menu opens. Select **Peek Related Tests**.
 //
-// |===
-// | Editor  | Action Name
-//
-// | VS Code | **rust-analyzer: Peek Related Tests**
-// |===
+// | Editor  | Action Name |
+// |---------|-------------|
+// | VS Code | **rust-analyzer: Peek Related Tests** |
 pub(crate) fn related_tests(
     db: &RootDatabase,
     position: FilePosition,
     search_scope: Option<SearchScope>,
 ) -> Vec<Runnable> {
     let sema = Semantics::new(db);
-    let mut res: FxHashSet<Runnable> = FxHashSet::default();
+    let mut res: FxIndexSet<Runnable> = FxIndexSet::default();
     let syntax = sema.parse_guess_edition(position.file_id).syntax().clone();
 
     find_related_tests(&sema, &syntax, position, search_scope, &mut res);
 
-    res.into_iter().collect()
+    res.into_iter().sorted_by(cmp_runnables).collect()
+}
+
+fn cmp_runnables(
+    Runnable { nav, kind, .. }: &Runnable,
+    Runnable { nav: nav_b, kind: kind_b, .. }: &Runnable,
+) -> std::cmp::Ordering {
+    // full_range.start < focus_range.start < name, should give us a decent unique ordering
+    nav.full_range
+        .start()
+        .cmp(&nav_b.full_range.start())
+        .then_with(|| {
+            let t_0 = || TextSize::from(0);
+            nav.focus_range
+                .map_or_else(t_0, |it| it.start())
+                .cmp(&nav_b.focus_range.map_or_else(t_0, |it| it.start()))
+        })
+        .then_with(|| kind.disc().cmp(&kind_b.disc()))
+        .then_with(|| nav.name.cmp(&nav_b.name))
 }
 
 fn find_related_tests(
@@ -231,7 +233,7 @@ fn find_related_tests(
     syntax: &SyntaxNode,
     position: FilePosition,
     search_scope: Option<SearchScope>,
-    tests: &mut FxHashSet<Runnable>,
+    tests: &mut FxIndexSet<Runnable>,
 ) {
     // FIXME: why is this using references::find_defs, this should use ide_db::search
     let defs = match references::find_defs(sema, syntax, position.offset) {
@@ -271,7 +273,7 @@ fn find_related_tests_in_module(
     syntax: &SyntaxNode,
     fn_def: &ast::Fn,
     parent_module: &hir::Module,
-    tests: &mut FxHashSet<Runnable>,
+    tests: &mut FxIndexSet<Runnable>,
 ) {
     let fn_name = match fn_def.name() {
         Some(it) => it,
@@ -1231,8 +1233,8 @@ gen_main!();
                     "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 0..315, name: \"\", kind: Module })",
                     "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 267..292, focus_range: 271..276, name: \"tests\", kind: Module, description: \"mod tests\" })",
                     "(Test, NavigationTarget { file_id: FileId(0), full_range: 283..290, name: \"foo_test\", kind: Function })",
-                    "(Test, NavigationTarget { file_id: FileId(0), full_range: 293..301, name: \"foo_test2\", kind: Function }, true)",
                     "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 293..301, name: \"tests2\", kind: Module, description: \"mod tests2\" }, true)",
+                    "(Test, NavigationTarget { file_id: FileId(0), full_range: 293..301, name: \"foo_test2\", kind: Function }, true)",
                     "(Bin, NavigationTarget { file_id: FileId(0), full_range: 302..314, name: \"main\", kind: Function })",
                 ]
             "#]],
@@ -1261,10 +1263,10 @@ foo!();
 "#,
             expect![[r#"
                 [
+                    "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 210..217, name: \"foo_tests\", kind: Module, description: \"mod foo_tests\" }, true)",
                     "(Test, NavigationTarget { file_id: FileId(0), full_range: 210..217, name: \"foo0\", kind: Function }, true)",
                     "(Test, NavigationTarget { file_id: FileId(0), full_range: 210..217, name: \"foo1\", kind: Function }, true)",
                     "(Test, NavigationTarget { file_id: FileId(0), full_range: 210..217, name: \"foo2\", kind: Function }, true)",
-                    "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 210..217, name: \"foo_tests\", kind: Module, description: \"mod foo_tests\" }, true)",
                 ]
             "#]],
         );
@@ -1504,18 +1506,18 @@ mod tests {
                         file_id: FileId(
                             0,
                         ),
-                        full_range: 121..185,
-                        focus_range: 136..145,
-                        name: "foo2_test",
+                        full_range: 52..115,
+                        focus_range: 67..75,
+                        name: "foo_test",
                         kind: Function,
                     },
                     NavigationTarget {
                         file_id: FileId(
                             0,
                         ),
-                        full_range: 52..115,
-                        focus_range: 67..75,
-                        name: "foo_test",
+                        full_range: 121..185,
+                        focus_range: 136..145,
+                        name: "foo2_test",
                         kind: Function,
                     },
                 ]

@@ -397,7 +397,7 @@ impl CString {
         // information about the size of the allocation is correct on Rust's
         // side.
         unsafe {
-            extern "C" {
+            unsafe extern "C" {
                 /// Provided by libc or compiler_builtins.
                 fn strlen(s: *const c_char) -> usize;
             }

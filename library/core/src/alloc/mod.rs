@@ -94,7 +94,7 @@ impl fmt::Display for AllocError {
 ///  - the memory block is deallocated, or
 ///  - the allocator is dropped.
 ///
-/// Copying, cloning, or moving the allocator must not invalidate memory blocks returned from it
+/// Copying, cloning, or moving the allocator must not invalidate memory blocks returned from it.
 /// A copied or cloned allocator must behave like the original allocator.
 ///
 /// A memory block which is [*currently allocated*] may be passed to

@@ -92,8 +92,11 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for ParseTargetMachineConfig<'_> {
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_autodiff_without_lto)]
-#[note]
 pub(crate) struct AutoDiffWithoutLTO;
+
+#[derive(Diagnostic)]
+#[diag(codegen_llvm_autodiff_without_enable)]
+pub(crate) struct AutoDiffWithoutEnable;
 
 #[derive(Diagnostic)]
 #[diag(codegen_llvm_lto_disallowed)]
@@ -131,8 +134,6 @@ pub enum LlvmError<'a> {
     LoadBitcode { name: CString },
     #[diag(codegen_llvm_write_thinlto_key)]
     WriteThinLtoKey { err: std::io::Error },
-    #[diag(codegen_llvm_multiple_source_dicompileunit)]
-    MultipleSourceDiCompileUnit,
     #[diag(codegen_llvm_prepare_thin_lto_module)]
     PrepareThinLtoModule,
     #[diag(codegen_llvm_parse_bitcode)]
@@ -155,9 +156,6 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for WithLlvmError<'_> {
             PrepareThinLtoContext => fluent::codegen_llvm_prepare_thin_lto_context_with_llvm_err,
             LoadBitcode { .. } => fluent::codegen_llvm_load_bitcode_with_llvm_err,
             WriteThinLtoKey { .. } => fluent::codegen_llvm_write_thinlto_key_with_llvm_err,
-            MultipleSourceDiCompileUnit => {
-                fluent::codegen_llvm_multiple_source_dicompileunit_with_llvm_err
-            }
             PrepareThinLtoModule => fluent::codegen_llvm_prepare_thin_lto_module_with_llvm_err,
             ParseBitcode => fluent::codegen_llvm_parse_bitcode_with_llvm_err,
             PrepareAutoDiff { .. } => fluent::codegen_llvm_prepare_autodiff_with_llvm_err,

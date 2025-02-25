@@ -16,10 +16,11 @@ use rustc_codegen_ssa::traits::TypeMembershipCodegenMethods;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_middle::ty::{Instance, Ty};
 use rustc_sanitizers::{cfi, kcfi};
+use rustc_target::callconv::FnAbi;
 use smallvec::SmallVec;
 use tracing::debug;
 
-use crate::abi::{FnAbi, FnAbiLlvmExt};
+use crate::abi::FnAbiLlvmExt;
 use crate::common::AsCCharPtr;
 use crate::context::{CodegenCx, SimpleCx};
 use crate::llvm::AttributePlace::Function;
@@ -235,7 +236,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     /// name.
     pub(crate) fn get_defined_value(&self, name: &str) -> Option<&'ll Value> {
         self.get_declared_value(name).and_then(|val| {
-            let declaration = unsafe { llvm::LLVMIsDeclaration(val) != 0 };
+            let declaration = llvm::is_declaration(val);
             if !declaration { Some(val) } else { None }
         })
     }

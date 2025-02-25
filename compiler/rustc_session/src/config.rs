@@ -86,12 +86,18 @@ pub enum CFProtection {
 
 #[derive(Clone, Copy, Debug, PartialEq, Hash, HashStable_Generic)]
 pub enum OptLevel {
-    No,         // -O0
-    Less,       // -O1
-    Default,    // -O2
-    Aggressive, // -O3
-    Size,       // -Os
-    SizeMin,    // -Oz
+    /// `-Copt-level=0`
+    No,
+    /// `-Copt-level=1`
+    Less,
+    /// `-Copt-level=2`
+    More,
+    /// `-Copt-level=3` / `-O`
+    Aggressive,
+    /// `-Copt-level=s`
+    Size,
+    /// `-Copt-level=z`
+    SizeMin,
 }
 
 /// This is what the `LtoCli` values get mapped to after resolving defaults and
@@ -192,33 +198,26 @@ pub enum CoverageLevel {
 /// The different settings that the `-Z autodiff` flag can have.
 #[derive(Clone, Copy, PartialEq, Hash, Debug)]
 pub enum AutoDiff {
+    /// Enable the autodiff opt pipeline
+    Enable,
+
     /// Print TypeAnalysis information
     PrintTA,
     /// Print ActivityAnalysis Information
     PrintAA,
     /// Print Performance Warnings from Enzyme
     PrintPerf,
-    /// Combines the three print flags above.
-    Print,
+    /// Print intermediate IR generation steps
+    PrintSteps,
     /// Print the whole module, before running opts.
     PrintModBefore,
-    /// Print the whole module just before we pass it to Enzyme.
-    /// For Debug purpose, prefer the OPT flag below
-    PrintModAfterOpts,
     /// Print the module after Enzyme differentiated everything.
-    PrintModAfterEnzyme,
+    PrintModAfter,
 
-    /// Enzyme's loose type debug helper (can cause incorrect gradients)
+    /// Enzyme's loose type debug helper (can cause incorrect gradients!!)
+    /// Usable in cases where Enzyme errors with `can not deduce type of X`.
     LooseTypes,
-
-    /// More flags
-    NoModOptAfter,
-    /// Tell Enzyme to run LLVM Opts on each function it generated. By default off,
-    /// since we already optimize the whole module after Enzyme is done.
-    EnableFncOpt,
-    NoVecUnroll,
-    RuntimeActivity,
-    /// Runs Enzyme specific Inlining
+    /// Runs Enzyme's aggressive inlining
     Inline,
 }
 
@@ -1253,7 +1252,7 @@ impl Options {
             Some(setting) => setting,
             None => match self.optimize {
                 OptLevel::No | OptLevel::Less | OptLevel::Size | OptLevel::SizeMin => true,
-                OptLevel::Default | OptLevel::Aggressive => false,
+                OptLevel::More | OptLevel::Aggressive => false,
             },
         }
     }
@@ -1572,7 +1571,7 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
              stack-protector-strategies|link-args|deployment-target]",
         ),
         opt(Stable, FlagMulti, "g", "", "Equivalent to -C debuginfo=2", ""),
-        opt(Stable, FlagMulti, "O", "", "Equivalent to -C opt-level=2", ""),
+        opt(Stable, FlagMulti, "O", "", "Equivalent to -C opt-level=3", ""),
         opt(Stable, Opt, "o", "", "Write output to <filename>", "FILENAME"),
         opt(Stable, Opt, "", "out-dir", "Write output to compiler-chosen filename in <dir>", "DIR"),
         opt(
@@ -2127,12 +2126,12 @@ fn parse_opt_level(
         })
         .max();
     if max_o > max_c {
-        OptLevel::Default
+        OptLevel::Aggressive
     } else {
         match cg.opt_level.as_ref() {
             "0" => OptLevel::No,
             "1" => OptLevel::Less,
-            "2" => OptLevel::Default,
+            "2" => OptLevel::More,
             "3" => OptLevel::Aggressive,
             "s" => OptLevel::Size,
             "z" => OptLevel::SizeMin,
@@ -2922,15 +2921,16 @@ pub enum WasiExecModel {
 /// how the hash should be calculated when adding a new command-line argument.
 pub(crate) mod dep_tracking {
     use std::collections::BTreeMap;
-    use std::hash::{DefaultHasher, Hash};
+    use std::hash::Hash;
     use std::num::NonZero;
     use std::path::PathBuf;
 
     use rustc_abi::Align;
     use rustc_data_structures::fx::FxIndexMap;
-    use rustc_data_structures::stable_hasher::Hash64;
+    use rustc_data_structures::stable_hasher::StableHasher;
     use rustc_errors::LanguageIdentifier;
     use rustc_feature::UnstableFeatures;
+    use rustc_hashes::Hash64;
     use rustc_span::RealFileName;
     use rustc_span::edition::Edition;
     use rustc_target::spec::{
@@ -2954,7 +2954,7 @@ pub(crate) mod dep_tracking {
     pub(crate) trait DepTrackingHash {
         fn hash(
             &self,
-            hasher: &mut DefaultHasher,
+            hasher: &mut StableHasher,
             error_format: ErrorOutputType,
             for_crate_hash: bool,
         );
@@ -2963,7 +2963,7 @@ pub(crate) mod dep_tracking {
     macro_rules! impl_dep_tracking_hash_via_hash {
         ($($t:ty),+ $(,)?) => {$(
             impl DepTrackingHash for $t {
-                fn hash(&self, hasher: &mut DefaultHasher, _: ErrorOutputType, _for_crate_hash: bool) {
+                fn hash(&self, hasher: &mut StableHasher, _: ErrorOutputType, _for_crate_hash: bool) {
                     Hash::hash(self, hasher);
                 }
             }
@@ -2973,7 +2973,7 @@ pub(crate) mod dep_tracking {
     impl<T: DepTrackingHash> DepTrackingHash for Option<T> {
         fn hash(
             &self,
-            hasher: &mut DefaultHasher,
+            hasher: &mut StableHasher,
             error_format: ErrorOutputType,
             for_crate_hash: bool,
         ) {
@@ -3058,7 +3058,7 @@ pub(crate) mod dep_tracking {
     {
         fn hash(
             &self,
-            hasher: &mut DefaultHasher,
+            hasher: &mut StableHasher,
             error_format: ErrorOutputType,
             for_crate_hash: bool,
         ) {
@@ -3077,7 +3077,7 @@ pub(crate) mod dep_tracking {
     {
         fn hash(
             &self,
-            hasher: &mut DefaultHasher,
+            hasher: &mut StableHasher,
             error_format: ErrorOutputType,
             for_crate_hash: bool,
         ) {
@@ -3093,7 +3093,7 @@ pub(crate) mod dep_tracking {
     impl<T: DepTrackingHash> DepTrackingHash for Vec<T> {
         fn hash(
             &self,
-            hasher: &mut DefaultHasher,
+            hasher: &mut StableHasher,
             error_format: ErrorOutputType,
             for_crate_hash: bool,
         ) {
@@ -3108,7 +3108,7 @@ pub(crate) mod dep_tracking {
     impl<T: DepTrackingHash, V: DepTrackingHash> DepTrackingHash for FxIndexMap<T, V> {
         fn hash(
             &self,
-            hasher: &mut DefaultHasher,
+            hasher: &mut StableHasher,
             error_format: ErrorOutputType,
             for_crate_hash: bool,
         ) {
@@ -3123,7 +3123,7 @@ pub(crate) mod dep_tracking {
     impl DepTrackingHash for OutputTypes {
         fn hash(
             &self,
-            hasher: &mut DefaultHasher,
+            hasher: &mut StableHasher,
             error_format: ErrorOutputType,
             for_crate_hash: bool,
         ) {
@@ -3140,7 +3140,7 @@ pub(crate) mod dep_tracking {
     // This is a stable hash because BTreeMap is a sorted container
     pub(crate) fn stable_hash(
         sub_hashes: BTreeMap<&'static str, &dyn DepTrackingHash>,
-        hasher: &mut DefaultHasher,
+        hasher: &mut StableHasher,
         error_format: ErrorOutputType,
         for_crate_hash: bool,
     ) {

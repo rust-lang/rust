@@ -29,8 +29,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     sort_bindings("bindings.txt")?;
 
-    let info = windows_bindgen::bindgen(["--etc", "bindings.txt"])?;
-    println!("{info}");
+    windows_bindgen::bindgen(["--etc", "bindings.txt"]);
 
     let mut f = std::fs::File::options().append(true).open("windows_sys.rs")?;
     f.write_all(ARM32_SHIM.as_bytes())?;

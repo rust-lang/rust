@@ -131,7 +131,7 @@ impl ShallowLintLevelMap {
         let mut owner = start.owner;
         let mut specs = &self.specs;
 
-        for parent in tcx.hir().parent_id_iter(start) {
+        for parent in tcx.hir_parent_id_iter(start) {
             if parent.owner != owner {
                 owner = parent.owner;
                 specs = &tcx.shallow_lint_levels_on(owner).specs;

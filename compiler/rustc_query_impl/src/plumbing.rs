@@ -4,10 +4,11 @@
 
 use std::num::NonZero;
 
-use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::DiagInner;
+use rustc_hashes::Hash64;
 use rustc_index::Idx;
 use rustc_middle::bug;
 use rustc_middle::dep_graph::{
@@ -605,8 +606,8 @@ macro_rules! define_queries {
                     eval_always: is_eval_always!([$($modifiers)*]),
                     dep_kind: dep_graph::dep_kinds::$name,
                     handle_cycle_error: handle_cycle_error!([$($modifiers)*]),
-                    query_state: offset_of!(QueryStates<'tcx> => $name),
-                    query_cache: offset_of!(QueryCaches<'tcx> => $name),
+                    query_state: std::mem::offset_of!(QueryStates<'tcx>, $name),
+                    query_cache: std::mem::offset_of!(QueryCaches<'tcx>, $name),
                     cache_on_disk: |tcx, key| ::rustc_middle::query::cached::$name(tcx, key),
                     execute_query: |tcx, key| erase(tcx.$name(key)),
                     compute: |tcx, key| {

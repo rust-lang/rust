@@ -1,7 +1,7 @@
 use std::assert_matches::assert_matches;
 use std::ops::Deref;
 
-use rustc_abi::{Align, BackendRepr, Scalar, Size, WrappingRange};
+use rustc_abi::{Align, Scalar, Size, WrappingRange};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{Instance, Ty};
@@ -110,6 +110,20 @@ pub trait BuilderMethods<'a, 'tcx>:
         else_llbb: Self::BasicBlock,
         cases: impl ExactSizeIterator<Item = (u128, Self::BasicBlock)>,
     );
+
+    // This is like `switch()`, but every case has a bool flag indicating whether it's cold.
+    //
+    // Default implementation throws away the cold flags and calls `switch()`.
+    fn switch_with_weights(
+        &mut self,
+        v: Self::Value,
+        else_llbb: Self::BasicBlock,
+        _else_is_cold: bool,
+        cases: impl ExactSizeIterator<Item = (u128, Self::BasicBlock, bool)>,
+    ) {
+        self.switch(v, else_llbb, cases.map(|(val, bb, _)| (val, bb)))
+    }
+
     fn invoke(
         &mut self,
         llty: Self::Type,
@@ -159,12 +173,35 @@ pub trait BuilderMethods<'a, 'tcx>:
     /// must be interpreted as unsigned and can be assumed to be less than the size of the left
     /// operand.
     fn ashr(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
-    fn unchecked_sadd(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
-    fn unchecked_uadd(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
-    fn unchecked_ssub(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
-    fn unchecked_usub(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
-    fn unchecked_smul(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
-    fn unchecked_umul(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
+    fn unchecked_sadd(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value {
+        self.add(lhs, rhs)
+    }
+    fn unchecked_uadd(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value {
+        self.add(lhs, rhs)
+    }
+    fn unchecked_suadd(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value {
+        self.unchecked_sadd(lhs, rhs)
+    }
+    fn unchecked_ssub(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value {
+        self.sub(lhs, rhs)
+    }
+    fn unchecked_usub(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value {
+        self.sub(lhs, rhs)
+    }
+    fn unchecked_susub(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value {
+        self.unchecked_ssub(lhs, rhs)
+    }
+    fn unchecked_smul(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value {
+        self.mul(lhs, rhs)
+    }
+    fn unchecked_umul(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value {
+        self.mul(lhs, rhs)
+    }
+    fn unchecked_sumul(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value {
+        // Which to default to is a fairly arbitrary choice,
+        // but this is what slice layout was using before.
+        self.unchecked_smul(lhs, rhs)
+    }
     fn and(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn or(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     /// Defaults to [`Self::or`], but guarantees `(lhs & rhs) == 0` so some backends
@@ -186,13 +223,6 @@ pub trait BuilderMethods<'a, 'tcx>:
     ) -> (Self::Value, Self::Value);
 
     fn from_immediate(&mut self, val: Self::Value) -> Self::Value;
-    fn to_immediate(&mut self, val: Self::Value, layout: TyAndLayout<'_>) -> Self::Value {
-        if let BackendRepr::Scalar(scalar) = layout.backend_repr {
-            self.to_immediate_scalar(val, scalar)
-        } else {
-            val
-        }
-    }
     fn to_immediate_scalar(&mut self, val: Self::Value, scalar: Scalar) -> Self::Value;
 
     fn alloca(&mut self, size: Size, align: Align) -> Self::Value;
@@ -243,6 +273,19 @@ pub trait BuilderMethods<'a, 'tcx>:
         self.assume(cmp);
     }
 
+    /// Emits an `assume` that the `val` of pointer type is non-null.
+    ///
+    /// You may want to check the optimization level before bothering calling this.
+    fn assume_nonnull(&mut self, val: Self::Value) {
+        // Arguably in LLVM it'd be better to emit an assume operand bundle instead
+        // <https://llvm.org/docs/LangRef.html#assume-operand-bundles>
+        // but this works fine for all backends.
+
+        let null = self.const_null(self.type_ptr());
+        let is_null = self.icmp(IntPredicate::IntNE, val, null);
+        self.assume(is_null);
+    }
+
     fn range_metadata(&mut self, load: Self::Value, range: WrappingRange);
     fn nonnull_metadata(&mut self, load: Self::Value);
 
@@ -282,6 +325,14 @@ pub trait BuilderMethods<'a, 'tcx>:
         ptr: Self::Value,
         indices: &[Self::Value],
     ) -> Self::Value;
+    fn inbounds_nuw_gep(
+        &mut self,
+        ty: Self::Type,
+        ptr: Self::Value,
+        indices: &[Self::Value],
+    ) -> Self::Value {
+        self.inbounds_gep(ty, ptr, indices)
+    }
     fn ptradd(&mut self, ptr: Self::Value, offset: Self::Value) -> Self::Value {
         self.gep(self.cx().type_i8(), ptr, &[offset])
     }
@@ -290,6 +341,17 @@ pub trait BuilderMethods<'a, 'tcx>:
     }
 
     fn trunc(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
+    /// Produces the same value as [`Self::trunc`] (and defaults to that),
+    /// but is UB unless the *zero*-extending the result can reproduce `val`.
+    fn unchecked_utrunc(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value {
+        self.trunc(val, dest_ty)
+    }
+    /// Produces the same value as [`Self::trunc`] (and defaults to that),
+    /// but is UB unless the *sign*-extending the result can reproduce `val`.
+    fn unchecked_strunc(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value {
+        self.trunc(val, dest_ty)
+    }
+
     fn sext(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
     fn fptoui_sat(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
     fn fptosi_sat(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;

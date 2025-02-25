@@ -217,7 +217,7 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                     self.eagerness |= NoChange;
                 },
                 // Dereferences should be cheap, but dereferencing a raw pointer earlier may not be safe.
-                ExprKind::Unary(UnOp::Deref, e) if !self.cx.typeck_results().expr_ty(e).is_unsafe_ptr() => (),
+                ExprKind::Unary(UnOp::Deref, e) if !self.cx.typeck_results().expr_ty(e).is_raw_ptr() => (),
                 ExprKind::Unary(UnOp::Deref, _) => self.eagerness |= NoChange,
                 ExprKind::Unary(_, e)
                     if matches!(

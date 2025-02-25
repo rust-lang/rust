@@ -1,13 +1,14 @@
-use crate::spec::{Target, base};
+use crate::spec::{RustcAbi, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::windows_uwp_msvc::opts();
+    base.rustc_abi = Some(RustcAbi::X86Sse2);
     base.cpu = "pentium4".into();
     base.max_atomic_width = Some(64);
 
     Target {
         llvm_target: "i686-pc-windows-msvc".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: None,
             tier: Some(3),
             host_tools: Some(false),

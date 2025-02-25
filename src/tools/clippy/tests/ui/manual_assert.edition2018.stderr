@@ -79,7 +79,15 @@ LL | |     }
    |
 help: try instead
    |
-LL |     assert!(!(a > 2), "panic with comment");
+LL -     if a > 2 {
+LL -         // comment
+LL -         /* this is a
+LL -         multiline
+LL -         comment */
+LL -         /// Doc comment
+LL -         panic!("panic with comment") // comment after `panic!`
+LL -     }
+LL +     assert!(!(a > 2), "panic with comment");
    |
 
 error: only a `panic!` in `if`-then statement

@@ -8,7 +8,8 @@ LL | ///! Fake module documentation.
    = help: to override `-D warnings` add `#[allow(clippy::suspicious_doc_comments)]`
 help: use an inner doc comment to document the parent module or crate
    |
-LL | //! Fake module documentation.
+LL - ///! Fake module documentation.
+LL + //! Fake module documentation.
    |
 
 error: this is an outer doc comment and does not apply to the parent module or crate
@@ -19,7 +20,8 @@ LL |     ///! This module contains useful functions.
    |
 help: use an inner doc comment to document the parent module or crate
    |
-LL |     //! This module contains useful functions.
+LL -     ///! This module contains useful functions.
+LL +     //! This module contains useful functions.
    |
 
 error: this is an outer doc comment and does not apply to the parent module or crate
@@ -71,7 +73,8 @@ LL |     ///! a
    |
 help: use an inner doc comment to document the parent module or crate
    |
-LL |     //! a
+LL -     ///! a
+LL +     //! a
    |
 
 error: this is an outer doc comment and does not apply to the parent module or crate
@@ -97,7 +100,8 @@ LL |     ///! Very cool macro
    |
 help: use an inner doc comment to document the parent module or crate
    |
-LL |     //! Very cool macro
+LL -     ///! Very cool macro
+LL +     //! Very cool macro
    |
 
 error: this is an outer doc comment and does not apply to the parent module or crate
@@ -108,7 +112,8 @@ LL |     ///! Huh.
    |
 help: use an inner doc comment to document the parent module or crate
    |
-LL |     //! Huh.
+LL -     ///! Huh.
+LL +     //! Huh.
    |
 
 error: aborting due to 9 previous errors

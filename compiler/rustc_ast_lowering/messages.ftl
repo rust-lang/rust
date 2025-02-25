@@ -112,7 +112,8 @@ ast_lowering_invalid_register =
     invalid register `{$reg}`: {$error}
 
 ast_lowering_invalid_register_class =
-    invalid register class `{$reg_class}`: {$error}
+    invalid register class `{$reg_class}`: unknown register class
+    .note = the following register classes are supported on this target: {$supported_register_classes}
 
 ast_lowering_match_arm_with_no_body =
     `match` arm with no body

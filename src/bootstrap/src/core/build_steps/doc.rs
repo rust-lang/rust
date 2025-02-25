@@ -572,14 +572,15 @@ impl Step for Std {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
-        run.crate_or_deps("sysroot")
-            .path("library")
-            .alias("core")
-            .default_condition(builder.config.docs)
+        run.crate_or_deps("sysroot").path("library").default_condition(builder.config.docs)
     }
 
     fn make_run(run: RunConfig<'_>) {
         let crates = compile::std_crates_for_run_make(&run);
+        let target_is_no_std = run.builder.no_std(run.target).unwrap_or(false);
+        if crates.is_empty() && target_is_no_std {
+            return;
+        }
         run.builder.ensure(Std {
             stage: run.builder.top_stage,
             target: run.target,

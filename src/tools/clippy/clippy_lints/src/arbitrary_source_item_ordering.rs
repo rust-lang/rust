@@ -338,7 +338,7 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
             return;
         }
 
-        let items = module.item_ids.iter().map(|&id| cx.tcx.hir().item(id));
+        let items = module.item_ids.iter().map(|&id| cx.tcx.hir_item(id));
 
         // Iterates over the items within a module.
         //
@@ -362,7 +362,7 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
                     }
                 } else if let ItemKind::ForeignMod { .. } = item.kind {
                     continue;
-                } else if let ItemKind::GlobalAsm(_) = item.kind {
+                } else if let ItemKind::GlobalAsm { .. } = item.kind {
                     continue;
                 } else if let ItemKind::Use(path, use_kind) = item.kind {
                     if path.segments.is_empty() {
@@ -467,7 +467,7 @@ fn convert_module_item_kind(value: &ItemKind<'_>) -> SourceItemOrderingModuleIte
         ItemKind::Macro(..) => Macro,
         ItemKind::Mod(..) => Mod,
         ItemKind::ForeignMod { .. } => ForeignMod,
-        ItemKind::GlobalAsm(..) => GlobalAsm,
+        ItemKind::GlobalAsm { .. } => GlobalAsm,
         ItemKind::TyAlias(..) => TyAlias,
         ItemKind::Enum(..) => Enum,
         ItemKind::Struct(..) => Struct,

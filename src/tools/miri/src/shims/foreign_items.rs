@@ -742,6 +742,8 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             | "log1pf"
             | "expm1f"
             | "tgammaf"
+            | "erff"
+            | "erfcf"
             => {
                 let [f] = this.check_shim(abi, Conv::C , link_name, args)?;
                 let f = this.read_scalar(f)?.to_f32()?;
@@ -759,6 +761,8 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "log1pf" => f_host.ln_1p(),
                     "expm1f" => f_host.exp_m1(),
                     "tgammaf" => f_host.gamma(),
+                    "erff" => f_host.erf(),
+                    "erfcf" => f_host.erfc(),
                     _ => bug!(),
                 };
                 let res = res.to_soft();
@@ -799,6 +803,8 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             | "log1p"
             | "expm1"
             | "tgamma"
+            | "erf"
+            | "erfc"
             => {
                 let [f] = this.check_shim(abi, Conv::C , link_name, args)?;
                 let f = this.read_scalar(f)?.to_f64()?;
@@ -816,6 +822,8 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "log1p" => f_host.ln_1p(),
                     "expm1" => f_host.exp_m1(),
                     "tgamma" => f_host.gamma(),
+                    "erf" => f_host.erf(),
+                    "erfc" => f_host.erfc(),
                     _ => bug!(),
                 };
                 let res = res.to_soft();

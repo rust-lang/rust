@@ -1949,7 +1949,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 | TraitAliasCandidate
                 | TraitUpcastingUnsizeCandidate(_)
                 | BuiltinObjectCandidate
-                | BuiltinUnsizeCandidate => false,
+                | BuiltinUnsizeCandidate
+                | BikeshedGuaranteedNoDropCandidate => false,
                 // Non-global param candidates have already been handled, global
                 // where-bounds get ignored.
                 ParamCandidate(_) | ImplCandidate(_) => true,

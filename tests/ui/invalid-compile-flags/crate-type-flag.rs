@@ -17,12 +17,12 @@
 //@[staticlib] compile-flags: --crate-type=staticlib
 //@[staticlib] check-pass
 
-//@[dylib] ignore-musl (dylibs are not supported)
-//@[dylib] ignore-wasm (dylibs are not supported)
+//@[dylib] ignore-musl (dylib is supported, but musl libc is statically linked by default)
+//@[dylib] ignore-wasm (dylib is not supported)
 //@[dylib] compile-flags: --crate-type=dylib
 //@[dylib] check-pass
 
-//@[cdylib] ignore-musl (cdylibs are not supported)
+//@[cdylib] ignore-musl (cdylib is supported, but musl libc is statically linked by default)
 //@[cdylib] compile-flags: --crate-type=cdylib
 //@[cdylib] check-pass
 
@@ -39,9 +39,7 @@
 //@[multivalue] compile-flags: --crate-type=lib,rlib,staticlib
 //@[multivalue] check-pass
 
-//@[multivalue_combined] ignore-musl (dylibs are not supported)
-//@[multivalue_combined] ignore-wasm (dylibs are not supported)
-//@[multivalue_combined] compile-flags: --crate-type=lib,rlib,staticlib --crate-type=dylib
+//@[multivalue_combined] compile-flags: --crate-type=lib,rlib --crate-type=staticlib
 //@[multivalue_combined] check-pass
 
 // `proc-macro` is accepted, but `proc_macro` is not.

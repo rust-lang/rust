@@ -400,7 +400,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             conv: Conv::C,
             can_unwind: false,
         };
-        fn_abi.adjust_for_foreign_abi(self.cx, ExternAbi::C { unwind: false }).unwrap();
+        fn_abi.adjust_for_foreign_abi(self.cx, ExternAbi::C { unwind: false });
 
         let ret_indirect = matches!(fn_abi.ret.mode, PassMode::Indirect { .. });
 

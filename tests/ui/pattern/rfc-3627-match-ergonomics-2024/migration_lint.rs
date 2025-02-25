@@ -239,4 +239,15 @@ fn main() {
     assert_type_eq(b, &0u32);
     assert_type_eq(c, &[0u32]);
     assert_type_eq(d, 0u32);
+
+    // Test that we use the correct message and suggestion style when pointing inside expansions.
+    let [migration_lint_macros::bind_ref!(a)] = &[0];
+    //~^ ERROR: binding modifiers may only be written when the default binding mode is `move`
+    assert_type_eq(a, &0u32);
+
+    // Test that we use the correct span when labeling a `&` whose subpattern is from an expansion.
+    let [&migration_lint_macros::bind_ref!(a)] = &[&0];
+    //~^ ERROR: reference patterns may only be written when the default binding mode is `move` in Rust 2024
+    //~| WARN: this changes meaning in Rust 2024
+    assert_type_eq(a, &0u32);
 }

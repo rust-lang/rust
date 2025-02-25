@@ -3,7 +3,6 @@
 use rustc_abi::Variants;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::bug;
-use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::{
     BasicBlock, BasicBlockData, BasicBlocks, Body, Local, Operand, Rvalue, StatementKind,
     TerminatorKind,
@@ -11,6 +10,8 @@ use rustc_middle::mir::{
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{Ty, TyCtxt};
 use tracing::trace;
+
+use crate::patch::MirPatch;
 
 pub(super) struct UnreachableEnumBranching;
 

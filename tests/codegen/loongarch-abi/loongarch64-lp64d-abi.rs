@@ -1,4 +1,4 @@
-//@ compile-flags: -O -C no-prepopulate-passes --target loongarch64-unknown-linux-gnu
+//@ compile-flags: -Copt-level=3 -C no-prepopulate-passes --target loongarch64-unknown-linux-gnu
 //@ needs-llvm-components: loongarch
 
 #![feature(no_core, lang_items)]

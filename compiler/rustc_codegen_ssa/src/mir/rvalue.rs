@@ -231,7 +231,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ///
     /// Returns `None` for cases that can't work in that framework, such as for
     /// `Immediate`->`Ref` that needs an `alloc` to get the location.
-    fn codegen_transmute_operand(
+    pub(crate) fn codegen_transmute_operand(
         &mut self,
         bx: &mut Bx,
         operand: OperandRef<'tcx, Bx::Value>,
@@ -260,6 +260,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             OperandValue::Ref(source_place_val) => {
                 assert_eq!(source_place_val.llextra, None);
                 assert_matches!(operand_kind, OperandValueKind::Ref);
+                // The existing alignment is part of `source_place_val`,
+                // so that alignment will be used, not `cast`'s.
                 Some(bx.load_operand(source_place_val.with_type(cast)).val)
             }
             OperandValue::ZeroSized => {
@@ -435,18 +437,22 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         scalar: abi::Scalar,
         backend_ty: Bx::Type,
     ) {
-        if matches!(self.cx.sess().opts.optimize, OptLevel::No)
-            // For now, the critical niches are all over `Int`eger values.
-            // Should floating-point values or pointers ever get more complex
-            // niches, then this code will probably want to handle them too.
-            || !matches!(scalar.primitive(), abi::Primitive::Int(..))
-            || scalar.is_always_valid(self.cx)
-        {
+        if matches!(self.cx.sess().opts.optimize, OptLevel::No) || scalar.is_always_valid(self.cx) {
             return;
         }
 
-        let range = scalar.valid_range(self.cx);
-        bx.assume_integer_range(imm, backend_ty, range);
+        match scalar.primitive() {
+            abi::Primitive::Int(..) => {
+                let range = scalar.valid_range(self.cx);
+                bx.assume_integer_range(imm, backend_ty, range);
+            }
+            abi::Primitive::Pointer(abi::AddressSpace::DATA)
+                if !scalar.valid_range(self.cx).contains(0) =>
+            {
+                bx.assume_nonnull(imm);
+            }
+            abi::Primitive::Pointer(..) | abi::Primitive::Float(..) => {}
+        }
     }
 
     pub(crate) fn codegen_rvalue_unsized(
@@ -660,9 +666,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         lhs.layout.ty,
                     ),
 
-                    (OperandValue::Immediate(lhs_val), OperandValue::Immediate(rhs_val)) => {
-                        self.codegen_scalar_binop(bx, op, lhs_val, rhs_val, lhs.layout.ty)
-                    }
+                    (OperandValue::Immediate(lhs_val), OperandValue::Immediate(rhs_val)) => self
+                        .codegen_scalar_binop(
+                            bx,
+                            op,
+                            lhs_val,
+                            rhs_val,
+                            lhs.layout.ty,
+                            rhs.layout.ty,
+                        ),
 
                     _ => bug!(),
                 };
@@ -689,7 +701,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         (OperandValue::Immediate(llval), operand.layout)
                     }
                     mir::UnOp::PtrMetadata => {
-                        assert!(operand.layout.ty.is_unsafe_ptr() || operand.layout.ty.is_ref(),);
+                        assert!(operand.layout.ty.is_raw_ptr() || operand.layout.ty.is_ref(),);
                         let (_, meta) = operand.val.pointer_parts();
                         assert_eq!(operand.layout.fields.count() > 1, meta.is_some());
                         if let Some(meta) = meta {
@@ -883,10 +895,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         op: mir::BinOp,
         lhs: Bx::Value,
         rhs: Bx::Value,
-        input_ty: Ty<'tcx>,
+        lhs_ty: Ty<'tcx>,
+        rhs_ty: Ty<'tcx>,
     ) -> Bx::Value {
-        let is_float = input_ty.is_floating_point();
-        let is_signed = input_ty.is_signed();
+        let is_float = lhs_ty.is_floating_point();
+        let is_signed = lhs_ty.is_signed();
         match op {
             mir::BinOp::Add => {
                 if is_float {
@@ -952,9 +965,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::BinOp::BitAnd => bx.and(lhs, rhs),
             mir::BinOp::BitXor => bx.xor(lhs, rhs),
             mir::BinOp::Offset => {
-                let pointee_type = input_ty
+                let pointee_type = lhs_ty
                     .builtin_deref(true)
-                    .unwrap_or_else(|| bug!("deref of non-pointer {:?}", input_ty));
+                    .unwrap_or_else(|| bug!("deref of non-pointer {:?}", lhs_ty));
                 let pointee_layout = bx.cx().layout_of(pointee_type);
                 if pointee_layout.is_zst() {
                     // `Offset` works in terms of the size of pointee,
@@ -962,7 +975,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     lhs
                 } else {
                     let llty = bx.cx().backend_type(pointee_layout);
-                    bx.inbounds_gep(llty, lhs, &[rhs])
+                    if !rhs_ty.is_signed() {
+                        bx.inbounds_nuw_gep(llty, lhs, &[rhs])
+                    } else {
+                        bx.inbounds_gep(llty, lhs, &[rhs])
+                    }
                 }
             }
             mir::BinOp::Shl | mir::BinOp::ShlUnchecked => {

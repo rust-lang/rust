@@ -75,10 +75,10 @@ impl<'tcx> BorrowExplanation<'tcx> {
 
         if let Some(span) = borrow_span {
             let def_id = body.source.def_id();
-            if let Some(node) = tcx.hir().get_if_local(def_id)
+            if let Some(node) = tcx.hir_get_if_local(def_id)
                 && let Some(body_id) = node.body_id()
             {
-                let body = tcx.hir().body(body_id);
+                let body = tcx.hir_body(body_id);
                 let mut expr_finder = FindExprBySpan::new(span, tcx);
                 expr_finder.visit_expr(body.value);
                 if let Some(mut expr) = expr_finder.result {
@@ -117,7 +117,7 @@ impl<'tcx> BorrowExplanation<'tcx> {
                 let local_decl = &body.local_decls[dropped_local];
 
                 if let &LocalInfo::IfThenRescopeTemp { if_then } = local_decl.local_info()
-                    && let Some((_, hir::Node::Expr(expr))) = tcx.hir().parent_iter(if_then).next()
+                    && let Some((_, hir::Node::Expr(expr))) = tcx.hir_parent_iter(if_then).next()
                     && let hir::ExprKind::If(cond, conseq, alt) = expr.kind
                     && let hir::ExprKind::Let(&hir::LetExpr {
                         span: _,
@@ -256,13 +256,13 @@ impl<'tcx> BorrowExplanation<'tcx> {
 
                         impl<'hir> rustc_hir::intravisit::Visitor<'hir> for FindLetExpr<'hir> {
                             type NestedFilter = rustc_middle::hir::nested_filter::OnlyBodies;
-                            fn nested_visit_map(&mut self) -> Self::Map {
-                                self.tcx.hir()
+                            fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+                                self.tcx
                             }
                             fn visit_expr(&mut self, expr: &'hir hir::Expr<'hir>) {
                                 if let hir::ExprKind::If(cond, _conseq, _alt)
                                 | hir::ExprKind::Loop(
-                                    hir::Block {
+                                    &hir::Block {
                                         expr:
                                             Some(&hir::Expr {
                                                 kind: hir::ExprKind::If(cond, _conseq, _alt),
@@ -308,9 +308,9 @@ impl<'tcx> BorrowExplanation<'tcx> {
                             suggest_rewrite_if_let(tcx, expr, &pat, init, conseq, alt, err);
                         } else if let Some((old, new)) = multiple_borrow_span
                             && let def_id = body.source.def_id()
-                            && let Some(node) = tcx.hir().get_if_local(def_id)
+                            && let Some(node) = tcx.hir_get_if_local(def_id)
                             && let Some(body_id) = node.body_id()
-                            && let hir_body = tcx.hir().body(body_id)
+                            && let hir_body = tcx.hir_body(body_id)
                             && let mut expr_finder = (FindLetExpr { span: old, result: None, tcx })
                             && let Some((let_expr_span, let_expr_pat, let_expr_init)) = {
                                 expr_finder.visit_expr(hir_body.value);
@@ -522,7 +522,7 @@ fn suggest_rewrite_if_let<G: EmissionGuarantee>(
     );
     if expr.span.can_be_used_for_suggestions() && conseq.span.can_be_used_for_suggestions() {
         let needs_block = if let Some(hir::Node::Expr(expr)) =
-            alt.and_then(|alt| tcx.hir().parent_iter(alt.hir_id).next()).map(|(_, node)| node)
+            alt.and_then(|alt| tcx.hir_parent_iter(alt.hir_id).next()).map(|(_, node)| node)
         {
             matches!(expr.kind, hir::ExprKind::If(..))
         } else {

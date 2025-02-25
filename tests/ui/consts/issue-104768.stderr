@@ -19,8 +19,9 @@ LL | const A: &_ = 0_u32;
    |
 help: replace this with a fully-specified type
    |
-LL | const A: u32 = 0_u32;
-   |          ~~~
+LL - const A: &_ = 0_u32;
+LL + const A: u32 = 0_u32;
+   |
 
 error: aborting due to 2 previous errors
 

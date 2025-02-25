@@ -16,7 +16,7 @@ use std::simd::prelude::*;
 
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn simd_shuffle_generic<T, U, const IDX: &'static [u32]>(_x: T, _y: T) -> U;
+pub unsafe fn simd_shuffle_const_generic<T, U, const IDX: &'static [u32]>(_x: T, _y: T) -> U;
 
 fn simd_ops_f32() {
     let a = f32x4::splat(10.0);
@@ -298,27 +298,6 @@ fn simd_mask() {
             assert_eq!(bitmask2, [0b0001]);
         }
     }
-
-    // This used to cause an ICE. It exercises simd_select_bitmask with an array as input.
-    let bitmask = u8x4::from_array([0b00001101, 0, 0, 0]);
-    assert_eq!(
-        mask32x4::from_bitmask_vector(bitmask),
-        mask32x4::from_array([true, false, true, true]),
-    );
-    let bitmask = u8x8::from_array([0b01000101, 0, 0, 0, 0, 0, 0, 0]);
-    assert_eq!(
-        mask32x8::from_bitmask_vector(bitmask),
-        mask32x8::from_array([true, false, true, false, false, false, true, false]),
-    );
-    let bitmask =
-        u8x16::from_array([0b01000101, 0b11110000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
-    assert_eq!(
-        mask32x16::from_bitmask_vector(bitmask),
-        mask32x16::from_array([
-            true, false, true, false, false, false, true, false, false, false, false, false, true,
-            true, true, true,
-        ]),
-    );
 
     // Also directly call simd_select_bitmask, to test both kinds of argument types.
     unsafe {
@@ -640,13 +619,13 @@ fn simd_intrinsics() {
             simd_select(i8x4::from_array([0, -1, -1, 0]), b, a),
             i32x4::from_array([10, 2, 10, 10])
         );
-        assert_eq!(simd_shuffle_generic::<_, i32x4, { &[3, 1, 0, 2] }>(a, b), a,);
+        assert_eq!(simd_shuffle_const_generic::<_, i32x4, { &[3, 1, 0, 2] }>(a, b), a,);
         assert_eq!(
             simd_shuffle::<_, _, i32x4>(a, b, const { u32x4::from_array([3u32, 1, 0, 2]) }),
             a,
         );
         assert_eq!(
-            simd_shuffle_generic::<_, i32x4, { &[7, 5, 4, 6] }>(a, b),
+            simd_shuffle_const_generic::<_, i32x4, { &[7, 5, 4, 6] }>(a, b),
             i32x4::from_array([4, 2, 1, 10]),
         );
         assert_eq!(

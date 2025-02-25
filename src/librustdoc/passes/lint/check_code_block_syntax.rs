@@ -1,5 +1,6 @@
 //! Validates syntax inside Rust code blocks (\`\`\`rust).
 
+use std::borrow::Cow;
 use std::sync::Arc;
 
 use rustc_data_structures::sync::Lock;
@@ -43,7 +44,11 @@ fn check_rust_syntax(
 
     let sm = Arc::new(SourceMap::new(FilePathMapping::empty()));
     let dcx = DiagCtxt::new(Box::new(emitter)).disable_warnings();
-    let source = dox[code_block.code].to_owned();
+    let source = dox[code_block.code]
+        .lines()
+        .map(|line| crate::html::markdown::map_line(line).for_code())
+        .intersperse(Cow::Borrowed("\n"))
+        .collect::<String>();
     let psess = ParseSess::with_dcx(dcx, sm);
 
     let edition = code_block.lang_string.edition.unwrap_or_else(|| cx.tcx.sess.edition());

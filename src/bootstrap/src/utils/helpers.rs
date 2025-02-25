@@ -265,6 +265,9 @@ pub fn make(host: &str) -> PathBuf {
 
 #[track_caller]
 pub fn output(cmd: &mut Command) -> String {
+    #[cfg(feature = "tracing")]
+    let _run_span = crate::trace_cmd!(cmd);
+
     let output = match cmd.stderr(Stdio::inherit()).output() {
         Ok(status) => status,
         Err(e) => fail(&format!("failed to execute command: {cmd:?}\nERROR: {e}")),

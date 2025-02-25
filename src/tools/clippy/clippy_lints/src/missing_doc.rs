@@ -217,7 +217,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             | hir::ItemKind::Union(..) => {},
             hir::ItemKind::ExternCrate(..)
             | hir::ItemKind::ForeignMod { .. }
-            | hir::ItemKind::GlobalAsm(..)
+            | hir::ItemKind::GlobalAsm { .. }
             | hir::ItemKind::Impl { .. }
             | hir::ItemKind::Use(..) => note_prev_span_then_ret!(self.prev_span, it.span),
         }

@@ -1,4 +1,4 @@
-//@ compile-flags: -O -C no-prepopulate-passes
+//@ compile-flags: -Copt-level=3 -C no-prepopulate-passes
 //@ only-x86_64 (to not worry about usize differing)
 //@ ignore-std-debug-assertions
 // Reason: precondition checks make mem::replace not a candidate for MIR inlining

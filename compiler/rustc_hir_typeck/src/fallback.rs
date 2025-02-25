@@ -503,7 +503,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         let unit_errors = remaining_errors_if_fallback_to(self.tcx.types.unit);
         if unit_errors.is_empty()
             && let mut never_errors = remaining_errors_if_fallback_to(self.tcx.types.never)
-            && let [ref mut never_error, ..] = never_errors.as_mut_slice()
+            && let [never_error, ..] = never_errors.as_mut_slice()
         {
             self.adjust_fulfillment_error_for_expr_obligation(never_error);
             let sugg = self.try_to_suggest_annotations(diverging_vids, coercions);
@@ -573,7 +573,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         coercions: &VecGraph<ty::TyVid, true>,
     ) -> errors::SuggestAnnotations {
         let body =
-            self.tcx.hir().maybe_body_owned_by(self.body_id).expect("body id must have an owner");
+            self.tcx.hir_maybe_body_owned_by(self.body_id).expect("body id must have an owner");
         // For each diverging var, look through the HIR for a place to give it
         // a type annotation. We do this per var because we only really need one
         // suggestion to influence a var to be `()`.
@@ -687,7 +687,7 @@ impl<'tcx> Visitor<'tcx> for AnnotateUnitFallbackVisitor<'_, 'tcx> {
         if let hir::ExprKind::Closure(&hir::Closure { body, .. })
         | hir::ExprKind::ConstBlock(hir::ConstBlock { body, .. }) = expr.kind
         {
-            self.visit_body(self.fcx.tcx.hir().body(body))?;
+            self.visit_body(self.fcx.tcx.hir_body(body))?;
         }
 
         // Try to suggest adding an explicit qself `()` to a trait method path.
@@ -764,7 +764,7 @@ fn compute_unsafe_infer_vars<'a, 'tcx>(
     fcx: &'a FnCtxt<'a, 'tcx>,
     body_id: LocalDefId,
 ) -> UnordMap<ty::TyVid, (HirId, Span, UnsafeUseReason)> {
-    let body = fcx.tcx.hir().maybe_body_owned_by(body_id).expect("body id must have an owner");
+    let body = fcx.tcx.hir_maybe_body_owned_by(body_id).expect("body id must have an owner");
     let mut res = UnordMap::default();
 
     struct UnsafeInferVarsVisitor<'a, 'tcx> {

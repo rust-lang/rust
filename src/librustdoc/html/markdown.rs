@@ -38,7 +38,7 @@ use std::sync::{Arc, Weak};
 use pulldown_cmark::{
     BrokenLink, CodeBlockKind, CowStr, Event, LinkType, Options, Parser, Tag, TagEnd, html,
 };
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::{Diag, DiagMessage};
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::TyCtxt;
@@ -52,7 +52,6 @@ use crate::clean::RenderedLink;
 use crate::doctest;
 use crate::doctest::GlobalTestOptions;
 use crate::html::escape::{Escape, EscapeBodyText};
-use crate::html::format::Buffer;
 use crate::html::highlight;
 use crate::html::length_limit::HtmlWithLimit;
 use crate::html::render::small_url_encode;
@@ -140,7 +139,7 @@ impl ErrorCodes {
 /// Controls whether a line will be hidden or shown in HTML output.
 ///
 /// All lines are used in documentation tests.
-enum Line<'a> {
+pub(crate) enum Line<'a> {
     Hidden(&'a str),
     Shown(Cow<'a, str>),
 }
@@ -153,7 +152,7 @@ impl<'a> Line<'a> {
         }
     }
 
-    fn for_code(self) -> Cow<'a, str> {
+    pub(crate) fn for_code(self) -> Cow<'a, str> {
         match self {
             Line::Shown(l) => l,
             Line::Hidden(l) => Cow::Borrowed(l),
@@ -161,12 +160,14 @@ impl<'a> Line<'a> {
     }
 }
 
+/// This function is used to handle the "hidden lines" (ie starting with `#`) in
+/// doctests. It also transforms `##` back into `#`.
 // FIXME: There is a minor inconsistency here. For lines that start with ##, we
 // have no easy way of removing a potential single space after the hashes, which
 // is done in the single # case. This inconsistency seems okay, if non-ideal. In
 // order to fix it we'd have to iterate to find the first non-# character, and
 // then reallocate to remove it; which would make us return a String.
-fn map_line(s: &str) -> Line<'_> {
+pub(crate) fn map_line(s: &str) -> Line<'_> {
     let trimmed = s.trim();
     if trimmed.starts_with("##") {
         Line::Shown(Cow::Owned(s.replacen("##", "#", 1)))
@@ -329,7 +330,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
 
         // insert newline to clearly separate it from the
         // previous block so we can shorten the html output
-        let mut s = Buffer::new();
+        let mut s = String::new();
         s.push('\n');
 
         highlight::render_example_with_highlighting(
@@ -339,7 +340,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             playground_button.as_deref(),
             &added_classes,
         );
-        Some(Event::Html(s.into_inner().into()))
+        Some(Event::Html(s.into()))
     }
 }
 
@@ -1762,6 +1763,46 @@ pub(crate) fn markdown_links<'md, R>(
         }
     };
 
+    let span_for_refdef = |link: &CowStr<'_>, span: Range<usize>| {
+        // We want to underline the link's definition, but `span` will point at the entire refdef.
+        // Skip the label, then try to find the entire URL.
+        let mut square_brace_count = 0;
+        let mut iter = md.as_bytes()[span.start..span.end].iter().copied().enumerate();
+        for (_i, c) in &mut iter {
+            match c {
+                b':' if square_brace_count == 0 => break,
+                b'[' => square_brace_count += 1,
+                b']' => square_brace_count -= 1,
+                _ => {}
+            }
+        }
+        while let Some((i, c)) = iter.next() {
+            if c == b'<' {
+                while let Some((j, c)) = iter.next() {
+                    match c {
+                        b'\\' => {
+                            let _ = iter.next();
+                        }
+                        b'>' => {
+                            return MarkdownLinkRange::Destination(
+                                i + 1 + span.start..j + span.start,
+                            );
+                        }
+                        _ => {}
+                    }
+                }
+            } else if !c.is_ascii_whitespace() {
+                while let Some((j, c)) = iter.next() {
+                    if c.is_ascii_whitespace() {
+                        return MarkdownLinkRange::Destination(i + span.start..j + span.start);
+                    }
+                }
+                return MarkdownLinkRange::Destination(i + span.start..span.end);
+            }
+        }
+        span_for_link(link, span)
+    };
+
     let span_for_offset_backward = |span: Range<usize>, open: u8, close: u8| {
         let mut open_brace = !0;
         let mut close_brace = !0;
@@ -1843,9 +1884,16 @@ pub(crate) fn markdown_links<'md, R>(
     .into_offset_iter();
     let mut links = Vec::new();
 
+    let mut refdefs = FxIndexMap::default();
+    for (label, refdef) in event_iter.reference_definitions().iter() {
+        refdefs.insert(label.to_string(), (false, refdef.dest.to_string(), refdef.span.clone()));
+    }
+
     for (event, span) in event_iter {
         match event {
-            Event::Start(Tag::Link { link_type, dest_url, .. }) if may_be_doc_link(link_type) => {
+            Event::Start(Tag::Link { link_type, dest_url, id, .. })
+                if may_be_doc_link(link_type) =>
+            {
                 let range = match link_type {
                     // Link is pulled from the link itself.
                     LinkType::ReferenceUnknown | LinkType::ShortcutUnknown => {
@@ -1855,7 +1903,12 @@ pub(crate) fn markdown_links<'md, R>(
                     LinkType::Inline => span_for_offset_backward(span, b'(', b')'),
                     // Link is pulled from elsewhere in the document.
                     LinkType::Reference | LinkType::Collapsed | LinkType::Shortcut => {
-                        span_for_link(&dest_url, span)
+                        if let Some((is_used, dest_url, span)) = refdefs.get_mut(&id[..]) {
+                            *is_used = true;
+                            span_for_refdef(&CowStr::from(&dest_url[..]), span.clone())
+                        } else {
+                            span_for_link(&dest_url, span)
+                        }
                     }
                     LinkType::Autolink | LinkType::Email => unreachable!(),
                 };
@@ -1869,6 +1922,18 @@ pub(crate) fn markdown_links<'md, R>(
                 }
             }
             _ => {}
+        }
+    }
+
+    for (_label, (is_used, dest_url, span)) in refdefs.into_iter() {
+        if !is_used
+            && let Some(link) = preprocess_link(MarkdownLink {
+                kind: LinkType::Reference,
+                range: span_for_refdef(&CowStr::from(&dest_url[..]), span),
+                link: dest_url,
+            })
+        {
+            links.push(link);
         }
     }
 

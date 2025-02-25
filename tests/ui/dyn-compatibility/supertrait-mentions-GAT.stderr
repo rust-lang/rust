@@ -17,8 +17,9 @@ LL |     fn c(&self) -> dyn SuperTrait<T>;
    |
 help: you might have meant to use `Self` to refer to the implementing type
    |
-LL |     fn c(&self) -> Self;
-   |                    ~~~~
+LL -     fn c(&self) -> dyn SuperTrait<T>;
+LL +     fn c(&self) -> Self;
+   |
 
 error[E0038]: the trait `SuperTrait` is not dyn compatible
   --> $DIR/supertrait-mentions-GAT.rs:10:20

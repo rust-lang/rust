@@ -9,7 +9,6 @@ use chalk_ir::cast::Cast;
 use hir_def::lang_item::LangItem;
 use hir_expand::name::Name;
 use intern::sym;
-use limit::Limit;
 use triomphe::Arc;
 
 use crate::{
@@ -17,7 +16,7 @@ use crate::{
     TraitEnvironment, Ty, TyBuilder, TyKind,
 };
 
-static AUTODEREF_RECURSION_LIMIT: Limit = Limit::new(20);
+const AUTODEREF_RECURSION_LIMIT: usize = 20;
 
 #[derive(Debug)]
 pub(crate) enum AutoderefKind {
@@ -140,7 +139,7 @@ impl<T: TrackAutoderefSteps> Iterator for Autoderef<'_, '_, T> {
             return Some((self.ty.clone(), 0));
         }
 
-        if AUTODEREF_RECURSION_LIMIT.check(self.steps.len() + 1).is_err() {
+        if self.steps.len() > AUTODEREF_RECURSION_LIMIT {
             return None;
         }
 
@@ -194,7 +193,11 @@ pub(crate) fn deref_by_trait(
     }
 
     let trait_id = || {
-        if use_receiver_trait {
+        // FIXME: Remove the `false` once `Receiver` needs to be stabilized, doing so will
+        // effectively bump the MSRV of rust-analyzer to 1.84 due to 1.83 and below lacking the
+        // blanked impl on `Deref`.
+        #[expect(clippy::overly_complex_bool_expr)]
+        if use_receiver_trait && false {
             if let Some(receiver) =
                 db.lang_item(table.trait_env.krate, LangItem::Receiver).and_then(|l| l.as_trait())
             {

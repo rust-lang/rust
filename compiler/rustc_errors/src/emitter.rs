@@ -1976,13 +1976,16 @@ impl HumanEmitter {
             Some(Style::HeaderMsg),
         );
 
+        let other_suggestions = suggestions.len().saturating_sub(MAX_SUGGESTIONS);
+
         let mut row_num = 2;
         for (i, (complete, parts, highlights, _)) in
-            suggestions.iter().enumerate().take(MAX_SUGGESTIONS)
+            suggestions.into_iter().enumerate().take(MAX_SUGGESTIONS)
         {
             debug!(?complete, ?parts, ?highlights);
 
-            let has_deletion = parts.iter().any(|p| p.is_deletion(sm));
+            let has_deletion =
+                parts.iter().any(|p| p.is_deletion(sm) || p.is_destructive_replacement(sm));
             let is_multiline = complete.lines().count() > 1;
 
             if i == 0 {
@@ -2167,7 +2170,7 @@ impl HumanEmitter {
                 self.draw_code_line(
                     &mut buffer,
                     &mut row_num,
-                    highlight_parts,
+                    &highlight_parts,
                     line_pos + line_start,
                     line,
                     show_code_change,
@@ -2376,9 +2379,12 @@ impl HumanEmitter {
                 row_num = row + 1;
             }
         }
-        if suggestions.len() > MAX_SUGGESTIONS {
-            let others = suggestions.len() - MAX_SUGGESTIONS;
-            let msg = format!("and {} other candidate{}", others, pluralize!(others));
+        if other_suggestions > 0 {
+            let msg = format!(
+                "and {} other candidate{}",
+                other_suggestions,
+                pluralize!(other_suggestions)
+            );
             buffer.puts(row_num, max_line_num_len + 3, &msg, Style::NoStyle);
         }
 

@@ -123,23 +123,6 @@ where
     }
 
     #[inline]
-    #[must_use = "method returns a new vector and does not mutate the original value"]
-    pub fn to_bitmask_vector(self) -> Simd<u8, N> {
-        let mut bitmask = Simd::splat(0);
-        bitmask.as_mut_array()[..self.0.as_ref().len()].copy_from_slice(self.0.as_ref());
-        bitmask
-    }
-
-    #[inline]
-    #[must_use = "method returns a new mask and does not mutate the original value"]
-    pub fn from_bitmask_vector(bitmask: Simd<u8, N>) -> Self {
-        let mut bytes = <LaneCount<N> as SupportedLaneCount>::BitMask::default();
-        let len = bytes.as_ref().len();
-        bytes.as_mut().copy_from_slice(&bitmask.as_array()[..len]);
-        Self(bytes, PhantomData)
-    }
-
-    #[inline]
     pub fn to_bitmask_integer(self) -> u64 {
         let mut bitmask = [0u8; 8];
         bitmask[..self.0.as_ref().len()].copy_from_slice(self.0.as_ref());

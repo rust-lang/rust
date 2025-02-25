@@ -61,7 +61,9 @@ pub fn build_mir<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> Body<'tcx> {
         Ok((thir, expr)) => {
             let build_mir = |thir: &Thir<'tcx>| match thir.body_type {
                 thir::BodyTy::Fn(fn_sig) => construct_fn(tcx, def, thir, expr, fn_sig),
-                thir::BodyTy::Const(ty) => construct_const(tcx, def, thir, expr, ty),
+                thir::BodyTy::Const(ty) | thir::BodyTy::GlobalAsm(ty) => {
+                    construct_const(tcx, def, thir, expr, ty)
+                }
             };
 
             // this must run before MIR dump, because
@@ -112,16 +114,7 @@ enum BlockFrame {
     /// Evaluation is currently within the tail expression of a block.
     ///
     /// Example: `{ STMT_1; STMT_2; EXPR }`
-    TailExpr {
-        /// If true, then the surrounding context of the block ignores
-        /// the result of evaluating the block's tail expression.
-        ///
-        /// Example: `let _ = { STMT_1; EXPR };`
-        tail_result_is_ignored: bool,
-
-        /// `Span` of the tail expression.
-        span: Span,
-    },
+    TailExpr { info: BlockTailInfo },
 
     /// Generic mark meaning that the block occurred as a subexpression
     /// where the result might be used.
@@ -277,9 +270,7 @@ impl BlockContext {
             match bf {
                 BlockFrame::SubExpr => continue,
                 BlockFrame::Statement { .. } => break,
-                &BlockFrame::TailExpr { tail_result_is_ignored, span } => {
-                    return Some(BlockTailInfo { tail_result_is_ignored, span });
-                }
+                &BlockFrame::TailExpr { info } => return Some(info),
             }
         }
 
@@ -302,9 +293,9 @@ impl BlockContext {
 
             // otherwise: use accumulated is_ignored state.
             Some(
-                BlockFrame::TailExpr { tail_result_is_ignored: ignored, .. }
-                | BlockFrame::Statement { ignores_expr_result: ignored },
-            ) => *ignored,
+                BlockFrame::TailExpr { info: BlockTailInfo { tail_result_is_ignored: ign, .. } }
+                | BlockFrame::Statement { ignores_expr_result: ign },
+            ) => *ign,
         }
     }
 }
@@ -465,11 +456,10 @@ fn construct_fn<'tcx>(
     assert_eq!(expr.as_usize(), thir.exprs.len() - 1);
 
     // Figure out what primary body this item has.
-    let body = tcx.hir().body_owned_by(fn_def);
+    let body = tcx.hir_body_owned_by(fn_def);
     let span_with_body = tcx.hir().span_with_body(fn_id);
     let return_ty_span = tcx
-        .hir()
-        .fn_decl_by_hir_id(fn_id)
+        .hir_fn_decl_by_hir_id(fn_id)
         .unwrap_or_else(|| span_bug!(span, "can't build MIR for {:?}", fn_def))
         .output
         .span();
@@ -588,6 +578,7 @@ fn construct_const<'a, 'tcx>(
             let span = tcx.def_span(def);
             (span, span)
         }
+        Node::Item(hir::Item { kind: hir::ItemKind::GlobalAsm { .. }, span, .. }) => (*span, *span),
         _ => span_bug!(tcx.def_span(def), "can't build MIR for {:?}", def),
     };
 
@@ -758,7 +749,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         check_overflow |= tcx.sess.overflow_checks();
         // Constants always need overflow checks.
         check_overflow |= matches!(
-            tcx.hir().body_owner_kind(def),
+            tcx.hir_body_owner_kind(def),
             hir::BodyOwnerKind::Const { .. } | hir::BodyOwnerKind::Static(_)
         );
 
@@ -968,7 +959,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 } => {
                     self.local_decls[local].mutability = mutability;
                     self.local_decls[local].source_info.scope = self.source_scope;
-                    **self.local_decls[local].local_info.as_mut().assert_crate_local() =
+                    **self.local_decls[local].local_info.as_mut().unwrap_crate_local() =
                         if let Some(kind) = param.self_kind {
                             LocalInfo::User(BindingForm::ImplicitSelf(kind))
                         } else {
@@ -1033,7 +1024,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let parent_id = self.source_scopes[original_source_scope]
             .local_data
             .as_ref()
-            .assert_crate_local()
+            .unwrap_crate_local()
             .lint_root;
         self.maybe_new_source_scope(pattern_span, arg_hir_id, parent_id);
     }

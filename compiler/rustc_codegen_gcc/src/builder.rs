@@ -665,6 +665,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         a + b
     }
 
+    // TODO(antoyo): should we also override the `unchecked_` versions?
     fn sub(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
         self.gcc_sub(a, b)
     }
@@ -832,31 +833,6 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         set_rvalue_location(self, self.gcc_not(a))
     }
 
-    fn unchecked_sadd(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        set_rvalue_location(self, self.gcc_add(a, b))
-    }
-
-    fn unchecked_uadd(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        set_rvalue_location(self, self.gcc_add(a, b))
-    }
-
-    fn unchecked_ssub(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        set_rvalue_location(self, self.gcc_sub(a, b))
-    }
-
-    fn unchecked_usub(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        // TODO(antoyo): should generate poison value?
-        set_rvalue_location(self, self.gcc_sub(a, b))
-    }
-
-    fn unchecked_smul(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        set_rvalue_location(self, self.gcc_mul(a, b))
-    }
-
-    fn unchecked_umul(&mut self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
-        set_rvalue_location(self, self.gcc_mul(a, b))
-    }
-
     fn fadd_fast(&mut self, lhs: RValue<'gcc>, rhs: RValue<'gcc>) -> RValue<'gcc> {
         // NOTE: it seems like we cannot enable fast-mode for a single operation in GCC.
         set_rvalue_location(self, lhs + rhs)
@@ -1013,10 +989,14 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             OperandValue::Ref(place.val)
         } else if place.layout.is_gcc_immediate() {
             let load = self.load(place.layout.gcc_type(self), place.val.llval, place.val.align);
-            if let abi::BackendRepr::Scalar(ref scalar) = place.layout.backend_repr {
-                scalar_load_metadata(self, load, scalar);
-            }
-            OperandValue::Immediate(self.to_immediate(load, place.layout))
+            OperandValue::Immediate(
+                if let abi::BackendRepr::Scalar(ref scalar) = place.layout.backend_repr {
+                    scalar_load_metadata(self, load, scalar);
+                    self.to_immediate_scalar(load, *scalar)
+                } else {
+                    load
+                },
+            )
         } else if let abi::BackendRepr::ScalarPair(ref a, ref b) = place.layout.backend_repr {
             let b_offset = a.size(self).align_to(b.align(self).abi);
 
@@ -1718,7 +1698,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
     fn to_immediate_scalar(&mut self, val: Self::Value, scalar: abi::Scalar) -> Self::Value {
         if scalar.is_bool() {
-            return self.trunc(val, self.cx().type_i1());
+            return self.unchecked_utrunc(val, self.cx().type_i1());
         }
         val
     }

@@ -1,6 +1,5 @@
 use std::cmp::Ordering;
 
-use rustc_data_structures::captures::Captures;
 use rustc_data_structures::intern::Interned;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{HashStable, extension};
@@ -336,9 +335,9 @@ impl<'tcx> ty::List<ty::PolyExistentialPredicate<'tcx>> {
     }
 
     #[inline]
-    pub fn projection_bounds<'a>(
-        &'a self,
-    ) -> impl Iterator<Item = ty::Binder<'tcx, ExistentialProjection<'tcx>>> + 'a {
+    pub fn projection_bounds(
+        &self,
+    ) -> impl Iterator<Item = ty::Binder<'tcx, ExistentialProjection<'tcx>>> {
         self.iter().filter_map(|predicate| {
             predicate
                 .map_bound(|pred| match pred {
@@ -350,16 +349,14 @@ impl<'tcx> ty::List<ty::PolyExistentialPredicate<'tcx>> {
     }
 
     #[inline]
-    pub fn auto_traits<'a>(&'a self) -> impl Iterator<Item = DefId> + Captures<'tcx> + 'a {
+    pub fn auto_traits(&self) -> impl Iterator<Item = DefId> {
         self.iter().filter_map(|predicate| match predicate.skip_binder() {
             ExistentialPredicate::AutoTrait(did) => Some(did),
             _ => None,
         })
     }
 
-    pub fn without_auto_traits(
-        &self,
-    ) -> impl Iterator<Item = ty::PolyExistentialPredicate<'tcx>> + '_ {
+    pub fn without_auto_traits(&self) -> impl Iterator<Item = ty::PolyExistentialPredicate<'tcx>> {
         self.iter().filter(|predicate| {
             !matches!(predicate.as_ref().skip_binder(), ExistentialPredicate::AutoTrait(_))
         })

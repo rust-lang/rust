@@ -13,15 +13,35 @@ use crate::{
 
 macro_rules! define_symbols {
     (@WITH_NAME: $($alias:ident = $value:literal,)* @PLAIN: $($name:ident,)*) => {
-        // Ideally we would be emitting `const` here, but then we no longer have stable addresses
-        // which is what we are relying on for equality! In the future if consts can refer to
-        // statics we should swap these for `const`s and have the string literal being pointed
-        // to be statics to refer to such that their address is stable.
+        // We define symbols as both `const`s and `static`s because some const code requires const symbols,
+        // but code from before the transition relies on the lifetime of the predefined symbols and making them
+        // `const`s make it error (because now they're temporaries). In the future we probably should only
+        // use consts.
+
+        /// Predefined symbols as `const`s (instead of the default `static`s).
+        pub mod consts {
+            use super::{Symbol, TaggedArcPtr};
+
+            // The strings should be in `static`s so that symbol equality holds.
+            $(
+                pub const $name: Symbol = {
+                    static SYMBOL_STR: &str = stringify!($name);
+                    Symbol { repr: TaggedArcPtr::non_arc(&SYMBOL_STR) }
+                };
+            )*
+            $(
+                pub const $alias: Symbol = {
+                    static SYMBOL_STR: &str = $value;
+                    Symbol { repr: TaggedArcPtr::non_arc(&SYMBOL_STR) }
+                };
+            )*
+        }
+
         $(
-            pub static $name: Symbol = Symbol { repr: TaggedArcPtr::non_arc(&stringify!($name)) };
+            pub static $name: Symbol = consts::$name;
         )*
         $(
-            pub static $alias: Symbol = Symbol { repr: TaggedArcPtr::non_arc(&$value) };
+            pub static $alias: Symbol = consts::$alias;
         )*
 
 
@@ -347,6 +367,7 @@ define_symbols! {
     option,
     Option,
     Ord,
+    Ordering,
     Output,
     CallRefFuture,
     CallOnceFuture,
@@ -427,6 +448,7 @@ define_symbols! {
     rustc_layout_scalar_valid_range_start,
     rustc_legacy_const_generics,
     rustc_macro_transparency,
+    rustc_paren_sugar,
     rustc_reallocator,
     rustc_reservation_impl,
     rustc_safe_intrinsic,
@@ -458,6 +480,8 @@ define_symbols! {
     system,
     sysv64,
     Target,
+    target_feature,
+    enable,
     termination,
     test_case,
     test,
@@ -479,6 +503,7 @@ define_symbols! {
     u64,
     u8,
     unadjusted,
+    unknown,
     Unknown,
     unpin,
     unreachable_2015,

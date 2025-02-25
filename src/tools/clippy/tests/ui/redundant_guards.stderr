@@ -44,8 +44,9 @@ LL |         Some(x) if matches!(x, Some(1) if true) => ..,
    |
 help: try
    |
-LL |         Some(Some(1)) if true => ..,
-   |              ~~~~~~~  ~~~~~~~
+LL -         Some(x) if matches!(x, Some(1) if true) => ..,
+LL +         Some(Some(1)) if true => ..,
+   |
 
 error: redundant guard
   --> tests/ui/redundant_guards.rs:50:20

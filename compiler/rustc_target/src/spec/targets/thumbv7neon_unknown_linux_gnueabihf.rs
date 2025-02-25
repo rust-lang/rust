@@ -1,4 +1,4 @@
-use crate::spec::{FloatAbi, Target, TargetOptions, base};
+use crate::spec::{FloatAbi, Target, TargetMetadata, TargetOptions, base};
 
 // This target is for glibc Linux on ARMv7 with thumb mode enabled
 // (for consistency with Android and Debian-based distributions)
@@ -9,7 +9,7 @@ use crate::spec::{FloatAbi, Target, TargetOptions, base};
 pub(crate) fn target() -> Target {
     Target {
         llvm_target: "armv7-unknown-linux-gnueabihf".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some(
                 "Thumb2-mode ARMv7-A Linux with NEON (kernel 4.4, glibc 2.23)".into(),
             ),

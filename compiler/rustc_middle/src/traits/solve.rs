@@ -1,9 +1,9 @@
-use rustc_ast_ir::try_visit;
 use rustc_data_structures::intern::Interned;
 use rustc_macros::HashStable;
 use rustc_type_ir as ir;
 pub use rustc_type_ir::solve::*;
 
+use crate::ty::visit::try_visit;
 use crate::ty::{
     self, FallibleTypeFolder, TyCtxt, TypeFoldable, TypeFolder, TypeVisitable, TypeVisitor,
 };

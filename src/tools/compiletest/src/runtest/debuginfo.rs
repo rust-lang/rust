@@ -257,11 +257,8 @@ impl TestCx<'_> {
                 println!("Adb process is already finished.");
             }
         } else {
-            let rust_src_root =
-                self.config.find_rust_src_root().expect("Could not find Rust source root");
-            let rust_pp_module_rel_path = Path::new("./src/etc");
-            let rust_pp_module_abs_path =
-                rust_src_root.join(rust_pp_module_rel_path).to_str().unwrap().to_owned();
+            let rust_pp_module_abs_path = self.config.src_root.join("src").join("etc");
+            let rust_pp_module_abs_path = rust_pp_module_abs_path.to_str().unwrap();
             // write debugger script
             let mut script_str = String::with_capacity(2048);
             script_str.push_str(&format!("set charset {}\n", Self::charset()));
@@ -338,7 +335,7 @@ impl TestCx<'_> {
             let pythonpath = if let Ok(pp) = std::env::var("PYTHONPATH") {
                 format!("{pp}:{rust_pp_module_abs_path}")
             } else {
-                rust_pp_module_abs_path
+                rust_pp_module_abs_path.to_string()
             };
             gdb.args(debugger_opts).env("PYTHONPATH", pythonpath);
 
@@ -407,11 +404,8 @@ impl TestCx<'_> {
         // Make LLDB emit its version, so we have it documented in the test output
         script_str.push_str("version\n");
 
-        // Switch LLDB into "Rust mode"
-        let rust_src_root =
-            self.config.find_rust_src_root().expect("Could not find Rust source root");
-        let rust_pp_module_rel_path = Path::new("./src/etc");
-        let rust_pp_module_abs_path = rust_src_root.join(rust_pp_module_rel_path);
+        // Switch LLDB into "Rust mode".
+        let rust_pp_module_abs_path = self.config.src_root.join("src/etc");
 
         script_str.push_str(&format!(
             "command script import {}/lldb_lookup.py\n",
@@ -445,7 +439,7 @@ impl TestCx<'_> {
         let debugger_script = self.make_out_name("debugger.script");
 
         // Let LLDB execute the script via lldb_batchmode.py
-        let debugger_run_result = self.run_lldb(&exe_file, &debugger_script, &rust_src_root);
+        let debugger_run_result = self.run_lldb(&exe_file, &debugger_script);
 
         if !debugger_run_result.status.success() {
             self.fatal_proc_rec("Error while running LLDB", &debugger_run_result);
@@ -456,18 +450,13 @@ impl TestCx<'_> {
         }
     }
 
-    fn run_lldb(
-        &self,
-        test_executable: &Path,
-        debugger_script: &Path,
-        rust_src_root: &Path,
-    ) -> ProcRes {
+    fn run_lldb(&self, test_executable: &Path, debugger_script: &Path) -> ProcRes {
         // Prepare the lldb_batchmode which executes the debugger script
-        let lldb_script_path = rust_src_root.join("src/etc/lldb_batchmode.py");
+        let lldb_script_path = self.config.src_root.join("src/etc/lldb_batchmode.py");
         let pythonpath = if let Ok(pp) = std::env::var("PYTHONPATH") {
             format!("{pp}:{}", self.config.lldb_python_dir.as_ref().unwrap())
         } else {
-            self.config.lldb_python_dir.as_ref().unwrap().to_string()
+            self.config.lldb_python_dir.clone().unwrap()
         };
         self.run_command_to_procres(
             Command::new(&self.config.python)

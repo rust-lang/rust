@@ -1,9 +1,9 @@
-use crate::spec::{FloatAbi, Target, TargetOptions, base};
+use crate::spec::{FloatAbi, Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
         llvm_target: "armv7-unknown-netbsdelf-eabihf".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("Armv7-A NetBSD w/hard-float".into()),
             tier: Some(3),
             host_tools: Some(true),

@@ -10,12 +10,14 @@ LL | #[cfg(my_value)]
    = note: `#[warn(unexpected_cfgs)]` on by default
 help: found config with similar value
    |
-LL | #[cfg(foo = "my_value")]
-   |       ~~~~~~~~~~~~~~~~
+LL - #[cfg(my_value)]
+LL + #[cfg(foo = "my_value")]
+   |
 help: found config with similar value
    |
-LL | #[cfg(bar = "my_value")]
-   |       ~~~~~~~~~~~~~~~~
+LL - #[cfg(my_value)]
+LL + #[cfg(bar = "my_value")]
+   |
 
 warning: 1 warning emitted
 

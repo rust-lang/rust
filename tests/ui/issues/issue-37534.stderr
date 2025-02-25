@@ -9,12 +9,12 @@ help: consider importing this trait instead
 LL + use std::hash::Hash;
    |
 
-warning: relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
+error: relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
   --> $DIR/issue-37534.rs:1:15
    |
 LL | struct Foo<T: ?Hash> {}
    |               ^^^^^
 
-error: aborting due to 1 previous error; 1 warning emitted
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0404`.

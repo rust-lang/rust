@@ -9,19 +9,19 @@ macro_rules! map_insert_rand_bench {
     ($name: ident, $n: expr, $map: ident) => {
         #[bench]
         pub fn $name(b: &mut Bencher) {
-            let n: usize = $n;
+            let n: u32 = $n;
             let mut map = $map::new();
             // setup
             let mut rng = crate::bench_rng();
 
             for _ in 0..n {
-                let i = rng.gen::<usize>() % n;
+                let i = rng.random::<u32>() % n;
                 map.insert(i, i);
             }
 
             // measure
             b.iter(|| {
-                let k = rng.gen::<usize>() % n;
+                let k = rng.random::<u32>() % n;
                 map.insert(k, k);
                 map.remove(&k);
             });
@@ -57,13 +57,13 @@ macro_rules! map_from_iter_rand_bench {
     ($name: ident, $n: expr, $map: ident) => {
         #[bench]
         pub fn $name(b: &mut Bencher) {
-            let n: usize = $n;
+            let n: u32 = $n;
             // setup
             let mut rng = crate::bench_rng();
-            let mut vec = Vec::with_capacity(n);
+            let mut vec = Vec::with_capacity(n as usize);
 
             for _ in 0..n {
-                let i = rng.gen::<usize>() % n;
+                let i = rng.random::<u32>() % n;
                 vec.push((i, i));
             }
 
@@ -102,11 +102,11 @@ macro_rules! map_find_rand_bench {
         #[bench]
         pub fn $name(b: &mut Bencher) {
             let mut map = $map::new();
-            let n: usize = $n;
+            let n: u32 = $n;
 
             // setup
             let mut rng = crate::bench_rng();
-            let mut keys: Vec<_> = (0..n).map(|_| rng.gen::<usize>() % n).collect();
+            let mut keys: Vec<_> = (0..n).map(|_| rng.random::<u32>() % n).collect();
 
             for &k in &keys {
                 map.insert(k, k);
@@ -115,9 +115,9 @@ macro_rules! map_find_rand_bench {
             keys.shuffle(&mut rng);
 
             // measure
-            let mut i = 0;
+            let mut i = 0u32;
             b.iter(|| {
-                let t = map.get(&keys[i]);
+                let t = map.get(&keys[i as usize]);
                 i = (i + 1) % n;
                 black_box(t);
             })
@@ -171,7 +171,7 @@ fn bench_iteration(b: &mut Bencher, size: i32) {
     let mut rng = crate::bench_rng();
 
     for _ in 0..size {
-        map.insert(rng.gen(), rng.gen());
+        map.insert(rng.random(), rng.random());
     }
 
     b.iter(|| {
@@ -201,7 +201,7 @@ fn bench_iteration_mut(b: &mut Bencher, size: i32) {
     let mut rng = crate::bench_rng();
 
     for _ in 0..size {
-        map.insert(rng.gen(), rng.gen());
+        map.insert(rng.random(), rng.random());
     }
 
     b.iter(|| {

@@ -219,7 +219,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // or pin-ergonomics.
         match *b.kind() {
             ty::RawPtr(_, b_mutbl) => {
-                return self.coerce_unsafe_ptr(a, b, b_mutbl);
+                return self.coerce_raw_ptr(a, b, b_mutbl);
             }
             ty::Ref(r_b, _, mutbl_b) => {
                 return self.coerce_borrowed_pointer(a, b, r_b, mutbl_b);
@@ -1017,13 +1017,13 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         }
     }
 
-    fn coerce_unsafe_ptr(
+    fn coerce_raw_ptr(
         &self,
         a: Ty<'tcx>,
         b: Ty<'tcx>,
         mutbl_b: hir::Mutability,
     ) -> CoerceResult<'tcx> {
-        debug!("coerce_unsafe_ptr(a={:?}, b={:?})", a, b);
+        debug!("coerce_raw_ptr(a={:?}, b={:?})", a, b);
 
         let (is_ref, mt_a) = match *a.kind() {
             ty::Ref(_, ty, mutbl) => (true, ty::TypeAndMut { ty, mutbl }),
@@ -1033,21 +1033,21 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         coerce_mutbls(mt_a.mutbl, mutbl_b)?;
 
         // Check that the types which they point at are compatible.
-        let a_unsafe = Ty::new_ptr(self.tcx, mt_a.ty, mutbl_b);
-        // Although references and unsafe ptrs have the same
+        let a_raw = Ty::new_ptr(self.tcx, mt_a.ty, mutbl_b);
+        // Although references and raw ptrs have the same
         // representation, we still register an Adjust::DerefRef so that
         // regionck knows that the region for `a` must be valid here.
         if is_ref {
-            self.unify_and(a_unsafe, b, |target| {
+            self.unify_and(a_raw, b, |target| {
                 vec![
                     Adjustment { kind: Adjust::Deref(None), target: mt_a.ty },
                     Adjustment { kind: Adjust::Borrow(AutoBorrow::RawPtr(mutbl_b)), target },
                 ]
             })
         } else if mt_a.mutbl != mutbl_b {
-            self.unify_and(a_unsafe, b, simple(Adjust::Pointer(PointerCoercion::MutToConstPointer)))
+            self.unify_and(a_raw, b, simple(Adjust::Pointer(PointerCoercion::MutToConstPointer)))
         } else {
-            self.unify_and(a_unsafe, b, identity)
+            self.unify_and(a_raw, b, identity)
         }
     }
 }
@@ -1752,7 +1752,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                                 return false;
                             }
                             let Some((_, hir::Node::Expr(expr))) =
-                                fcx.tcx.hir().parent_iter(id).nth(1)
+                                fcx.tcx.hir_parent_iter(id).nth(1)
                             else {
                                 return false;
                             };
@@ -1887,11 +1887,11 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         let parent_id = fcx.tcx.parent_hir_id(block_or_return_id);
         let parent = fcx.tcx.hir_node(parent_id);
         if let Some(expr) = expression
-            && let hir::Node::Expr(hir::Expr {
+            && let hir::Node::Expr(&hir::Expr {
                 kind: hir::ExprKind::Closure(&hir::Closure { body, .. }),
                 ..
             }) = parent
-            && !matches!(fcx.tcx.hir().body(body).value.kind, hir::ExprKind::Block(..))
+            && !matches!(fcx.tcx.hir_body(body).value.kind, hir::ExprKind::Block(..))
         {
             fcx.suggest_missing_semicolon(&mut err, expr, expected, true);
         }
@@ -1909,7 +1909,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 found,
                 block_or_return_id,
             );
-            if let Some(cond_expr) = fcx.tcx.hir().get_if_cause(expr.hir_id)
+            if let Some(cond_expr) = fcx.tcx.hir_get_if_cause(expr.hir_id)
                 && expected.is_unit()
                 && !pointing_at_return_type
                 // If the block is from an external macro or try (`?`) desugaring, then
@@ -1943,7 +1943,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         if due_to_block
             && let Some(expr) = expression
             && let Some(parent_fn_decl) =
-                fcx.tcx.hir().fn_decl_by_hir_id(fcx.tcx.local_def_id_to_hir_id(fcx.body_id))
+                fcx.tcx.hir_fn_decl_by_hir_id(fcx.tcx.local_def_id_to_hir_id(fcx.body_id))
         {
             fcx.suggest_missing_break_or_return_expr(
                 &mut err,

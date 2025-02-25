@@ -34,6 +34,26 @@ pub(crate) const TEST_CONFIG: AssistConfig = AssistConfig {
     assist_emit_must_use: false,
     term_search_fuel: 400,
     term_search_borrowck: true,
+    code_action_grouping: true,
+};
+
+pub(crate) const TEST_CONFIG_NO_GROUPING: AssistConfig = AssistConfig {
+    snippet_cap: SnippetCap::new(true),
+    allowed: None,
+    insert_use: InsertUseConfig {
+        granularity: ImportGranularity::Crate,
+        prefix_kind: hir::PrefixKind::Plain,
+        enforce_granularity: true,
+        group: true,
+        skip_glob_imports: true,
+    },
+    prefer_no_std: false,
+    prefer_prelude: true,
+    prefer_absolute: false,
+    assist_emit_must_use: false,
+    term_search_fuel: 400,
+    term_search_borrowck: true,
+    code_action_grouping: false,
 };
 
 pub(crate) const TEST_CONFIG_NO_SNIPPET_CAP: AssistConfig = AssistConfig {
@@ -52,6 +72,7 @@ pub(crate) const TEST_CONFIG_NO_SNIPPET_CAP: AssistConfig = AssistConfig {
     assist_emit_must_use: false,
     term_search_fuel: 400,
     term_search_borrowck: true,
+    code_action_grouping: true,
 };
 
 pub(crate) const TEST_CONFIG_IMPORT_ONE: AssistConfig = AssistConfig {
@@ -70,6 +91,7 @@ pub(crate) const TEST_CONFIG_IMPORT_ONE: AssistConfig = AssistConfig {
     assist_emit_must_use: false,
     term_search_fuel: 400,
     term_search_borrowck: true,
+    code_action_grouping: true,
 };
 
 pub(crate) fn with_single_file(text: &str) -> (RootDatabase, EditionedFileId) {
@@ -166,6 +188,20 @@ pub(crate) fn check_assist_not_applicable_for_import_one(
 ) {
     check_with_config(
         TEST_CONFIG_IMPORT_ONE,
+        assist,
+        ra_fixture,
+        ExpectedResult::NotApplicable,
+        None,
+    );
+}
+
+#[track_caller]
+pub(crate) fn check_assist_not_applicable_no_grouping(
+    assist: Handler,
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+) {
+    check_with_config(
+        TEST_CONFIG_NO_GROUPING,
         assist,
         ra_fixture,
         ExpectedResult::NotApplicable,

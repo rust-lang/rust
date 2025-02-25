@@ -1,8 +1,9 @@
-use crate::spec::{LinkerFlavor, Lld, SanitizerSet, Target, base};
+use crate::spec::{LinkerFlavor, Lld, RustcAbi, SanitizerSet, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::windows_msvc::opts();
     base.vendor = "win7".into();
+    base.rustc_abi = Some(RustcAbi::X86Sse2);
     base.cpu = "pentium4".into();
     base.max_atomic_width = Some(64);
     base.supported_sanitizers = SanitizerSet::ADDRESS;
@@ -22,7 +23,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "i686-pc-windows-msvc".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("32-bit MSVC (Windows 7+)".into()),
             tier: Some(3),
             host_tools: Some(false),

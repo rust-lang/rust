@@ -8,6 +8,16 @@ LL |     let x = <Foo as Trait<Bar>>::Assoc::default();
              `Foo` implements `Trait<()>`
              `Foo` implements `Trait<u32>`
 
-error: aborting due to 1 previous error
+error[E0277]: the trait bound `Foo: Trait<Bar>` is not satisfied
+  --> $DIR/constrain_in_projection2.rs:27:13
+   |
+LL |     let x = <Foo as Trait<Bar>>::Assoc::default();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait<Bar>` is not implemented for `Foo`
+   |
+   = help: the following other types implement trait `Trait<T>`:
+             `Foo` implements `Trait<()>`
+             `Foo` implements `Trait<u32>`
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

@@ -37,7 +37,7 @@ pub(super) fn check_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>
             check_must_use_candidate(
                 cx,
                 sig.decl,
-                cx.tcx.hir().body(*body_id),
+                cx.tcx.hir_body(*body_id),
                 item.span,
                 item.owner_id,
                 item.span.with_hi(sig.decl.output.span().hi()),
@@ -59,7 +59,7 @@ pub(super) fn check_impl_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Imp
             check_must_use_candidate(
                 cx,
                 sig.decl,
-                cx.tcx.hir().body(*body_id),
+                cx.tcx.hir_body(*body_id),
                 item.span,
                 item.owner_id,
                 item.span.with_hi(sig.decl.output.span().hi()),
@@ -79,7 +79,7 @@ pub(super) fn check_trait_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Tr
         if let Some(attr) = attr {
             check_needless_must_use(cx, sig.decl, item.owner_id, item.span, fn_header_span, attr, attrs, sig);
         } else if let hir::TraitFn::Provided(eid) = *eid {
-            let body = cx.tcx.hir().body(eid);
+            let body = cx.tcx.hir_body(eid);
             if attr.is_none() && is_public && !is_proc_macro(attrs) {
                 check_must_use_candidate(
                     cx,
@@ -95,6 +95,7 @@ pub(super) fn check_trait_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Tr
     }
 }
 
+// FIXME: needs to be an EARLY LINT. all attribute lints should be
 #[allow(clippy::too_many_arguments)]
 fn check_needless_must_use(
     cx: &LateContext<'_>,
@@ -117,38 +118,22 @@ fn check_needless_must_use(
                 fn_header_span,
                 "this unit-returning function has a `#[must_use]` attribute",
                 |diag| {
-                    diag.span_suggestion(attr.span, "remove the attribute", "", Applicability::MachineApplicable);
+                    diag.span_suggestion(attr.span(), "remove the attribute", "", Applicability::MachineApplicable);
                 },
             );
         } else {
             // When there are multiple attributes, it is not sufficient to simply make `must_use` empty, see
             // issue #12320.
-            span_lint_and_then(
+            // FIXME(jdonszelmann): this used to give a machine-applicable fix. However, it was super fragile,
+            // honestly looked incorrect, and is a little hard to support for a little bit now. Some day this could be
+            // re-added.
+            span_lint_and_help(
                 cx,
-                MUST_USE_UNIT,
+                DOUBLE_MUST_USE,
                 fn_header_span,
                 "this unit-returning function has a `#[must_use]` attribute",
-                |diag| {
-                    let mut attrs_without_must_use = attrs.to_vec();
-                    attrs_without_must_use.retain(|a| a.id != attr.id);
-                    let sugg_str = attrs_without_must_use
-                        .iter()
-                        .map(|a| {
-                            if a.value_str().is_none() {
-                                return a.name_or_empty().to_string();
-                            }
-                            format!("{} = \"{}\"", a.name_or_empty(), a.value_str().unwrap())
-                        })
-                        .collect::<Vec<_>>()
-                        .join(", ");
-
-                    diag.span_suggestion(
-                        attrs[0].span.with_hi(attrs[attrs.len() - 1].span.hi()),
-                        "change these attributes to",
-                        sugg_str,
-                        Applicability::MachineApplicable,
-                    );
-                },
+                Some(attr.span()),
+                "remove `must_use`",
             );
         }
     } else if attr.value_str().is_none() && is_must_use_ty(cx, return_ty(cx, item_id)) {

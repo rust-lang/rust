@@ -68,8 +68,8 @@ impl<'hir> FindExprBySpan<'hir> {
 impl<'v> Visitor<'v> for FindExprBySpan<'v> {
     type NestedFilter = rustc_middle::hir::nested_filter::OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
 
     fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
@@ -172,8 +172,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             {
                 1
             }
-            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => 3,
             ty::PredicateKind::Coerce(_) => 2,
+            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => 3,
             _ => 0,
         });
 
@@ -418,7 +418,7 @@ pub fn report_dyn_incompatibility<'tcx>(
     violations: &[DynCompatibilityViolation],
 ) -> Diag<'tcx> {
     let trait_str = tcx.def_path_str(trait_def_id);
-    let trait_span = tcx.hir().get_if_local(trait_def_id).and_then(|node| match node {
+    let trait_span = tcx.hir_get_if_local(trait_def_id).and_then(|node| match node {
         hir::Node::Item(item) => Some(item.ident.span),
         _ => None,
     });
@@ -587,7 +587,7 @@ fn attempt_dyn_to_impl_suggestion(tcx: TyCtxt<'_>, hir_id: Option<hir::HirId>, e
     //   `type Alias = Box<dyn DynIncompatibleTrait>;` to
     //   `type Alias = Box<impl DynIncompatibleTrait>;`
     let Some((_id, first_non_type_parent_node)) =
-        tcx.hir().parent_iter(hir_id).find(|(_id, node)| !matches!(node, hir::Node::Ty(_)))
+        tcx.hir_parent_iter(hir_id).find(|(_id, node)| !matches!(node, hir::Node::Ty(_)))
     else {
         return;
     };

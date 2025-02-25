@@ -304,7 +304,7 @@ impl DebugContext {
         entry.set(gimli::DW_AT_decl_file, AttributeValue::FileIndex(Some(file_id)));
         entry.set(gimli::DW_AT_decl_line, AttributeValue::Udata(line));
 
-        entry.set(gimli::DW_AT_alignment, AttributeValue::Udata(static_layout.align.pref.bytes()));
+        entry.set(gimli::DW_AT_alignment, AttributeValue::Udata(static_layout.align.abi.bytes()));
 
         let mut expr = Expression::new();
         expr.op_addr(address_for_data(data_id));

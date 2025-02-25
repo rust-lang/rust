@@ -1,4 +1,4 @@
-//! Generates `assists.md` documentation.
+//! Generates `diagnostics_generated.md` documentation.
 
 use std::{fmt, fs, io, path::PathBuf};
 
@@ -14,7 +14,7 @@ pub(crate) fn generate(check: bool) {
         let contents =
             diagnostics.into_iter().map(|it| it.to_string()).collect::<Vec<_>>().join("\n\n");
         let contents = add_preamble(crate::flags::CodegenType::DiagnosticsDocs, contents);
-        let dst = project_root().join("docs/user/generated_diagnostic.adoc");
+        let dst = project_root().join("docs/book/src/diagnostics_generated.md");
         fs::write(dst, contents).unwrap();
     }
 }
@@ -73,6 +73,6 @@ fn is_valid_diagnostic_name(diagnostic: &str) -> Result<(), String> {
 
 impl fmt::Display for Diagnostic {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "=== {}\n**Source:** {}\n{}", self.id, self.location, self.doc)
+        writeln!(f, "#### {}\n\nSource: {}\n\n{}\n\n", self.id, self.location, self.doc)
     }
 }

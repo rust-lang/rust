@@ -53,7 +53,7 @@ fn expr_as_cast_to_usize<'tcx>(cx: &LateContext<'tcx>, cast_expr: &'tcx Expr<'_>
 // If the given expression is a cast to a `*const` pointer, return the lhs of the cast
 // E.g., `foo as *const _` returns `foo`.
 fn expr_as_cast_to_raw_pointer<'tcx>(cx: &LateContext<'tcx>, cast_expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
-    if cx.typeck_results().expr_ty(cast_expr).is_unsafe_ptr() {
+    if cx.typeck_results().expr_ty(cast_expr).is_raw_ptr() {
         if let ExprKind::Cast(expr, _) = cast_expr.kind {
             return Some(expr);
         }

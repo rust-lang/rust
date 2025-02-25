@@ -273,7 +273,7 @@ impl OwnedDevicePath {
 
         io::Result::Err(const_error!(
             io::ErrorKind::NotFound,
-            "DevicePathFromText Protocol not found"
+            "DevicePathFromText Protocol not found",
         ))
     }
 

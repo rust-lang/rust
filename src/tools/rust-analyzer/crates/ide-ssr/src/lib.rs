@@ -33,12 +33,10 @@
 //
 // Supported constraints:
 //
-// |===
-// | Constraint    | Restricts placeholder
-//
-// | kind(literal) | Is a literal (e.g. `42` or `"forty two"`)
-// | not(a)        | Negates the constraint `a`
-// |===
+// | Constraint    | Restricts placeholder |
+// |---------------|------------------------|
+// | kind(literal) | Is a literal (e.g. `42` or `"forty two"`) |
+// | not(a)        | Negates the constraint `a` |
 //
 // Available via the command `rust-analyzer.ssr`.
 //
@@ -52,11 +50,9 @@
 // String::from((y + 5).foo(z))
 // ```
 //
-// |===
-// | Editor  | Action Name
-//
-// | VS Code | **rust-analyzer: Structural Search Replace**
-// |===
+// | Editor  | Action Name |
+// |---------|--------------|
+// | VS Code | **rust-analyzer: Structural Search Replace** |
 //
 // Also available as an assist, by writing a comment containing the structural
 // search and replace rule. You will only see the assist if the comment can

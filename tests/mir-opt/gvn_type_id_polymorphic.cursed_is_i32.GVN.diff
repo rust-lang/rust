@@ -1,0 +1,12 @@
+- // MIR for `cursed_is_i32` before GVN
++ // MIR for `cursed_is_i32` after GVN
+  
+  fn cursed_is_i32() -> bool {
+      let mut _0: bool;
+  
+      bb0: {
+          _0 = Eq(const cursed_is_i32::<T>::{constant#0}, const cursed_is_i32::<T>::{constant#1});
+          return;
+      }
+  }
+  

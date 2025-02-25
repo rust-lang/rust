@@ -354,12 +354,12 @@ fn read_old_toolstate() -> Vec<RepoState> {
 ///   1. Generate a new Personal access token:
 ///
 ///       * Login to the bot account, and go to Settings -> Developer settings ->
-///           Personal access tokens
+///         Personal access tokens
 ///       * Click "Generate new token"
 ///       * Enable the "public_repo" permission, then click "Generate token"
 ///       * Copy the generated token (should be a 40-digit hexadecimal number).
-///           Save it somewhere secure, as the token would be gone once you leave
-///           the page.
+///         Save it somewhere secure, as the token would be gone once you leave
+///         the page.
 ///
 ///   2. Update the variable group in Azure Pipelines
 ///
@@ -368,7 +368,7 @@ fn read_old_toolstate() -> Vec<RepoState> {
 ///   4. Replace the email address below if the bot account identity is changed
 ///
 ///       * See <https://help.github.com/articles/about-commit-email-addresses/>
-///           if a private email by GitHub is wanted.
+///         if a private email by GitHub is wanted.
 fn commit_toolstate_change(builder: &Builder<'_>, current_toolstate: &ToolstateData) {
     let message = format!("({} CI update)", OS.expect("linux/windows only"));
     let mut success = false;

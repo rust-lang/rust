@@ -132,7 +132,7 @@ pub struct T_CTSK {
     pub stk: *mut u8,
 }
 
-extern "C" {
+unsafe extern "C" {
     #[link_name = "__asp3_acre_tsk"]
     pub fn acre_tsk(pk_ctsk: *const T_CTSK) -> ER_ID;
     #[link_name = "__asp3_get_tid"]

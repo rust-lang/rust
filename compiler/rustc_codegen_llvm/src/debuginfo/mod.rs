@@ -22,6 +22,7 @@ use rustc_session::config::{self, DebugInfo};
 use rustc_span::{
     BytePos, Pos, SourceFile, SourceFileAndLine, SourceFileHash, Span, StableSourceFileId, Symbol,
 };
+use rustc_target::callconv::FnAbi;
 use rustc_target::spec::DebuginfoKind;
 use smallvec::SmallVec;
 use tracing::debug;
@@ -29,7 +30,6 @@ use tracing::debug;
 use self::metadata::{UNKNOWN_COLUMN_NUMBER, UNKNOWN_LINE_NUMBER, file_metadata, type_di_node};
 use self::namespace::mangled_name_of_instance;
 use self::utils::{DIB, create_DIArray, is_node_local_to_unit};
-use crate::abi::FnAbi;
 use crate::builder::Builder;
 use crate::common::{AsCCharPtr, CodegenCx};
 use crate::llvm;

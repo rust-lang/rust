@@ -304,9 +304,9 @@ The most important rule for
 this representation is that every value must be uniquely represented. In other
 words: a specific value must only be representable in one specific way. For example: there is only
 one way to represent an array of two integers as a `ValTree`:
-`ValTree::Branch(&[ValTree::Leaf(first_int), ValTree::Leaf(second_int)])`.
+`Branch([Leaf(first_int), Leaf(second_int)])`.
 Even though theoretically a `[u32; 2]` could be encoded in a `u64` and thus just be a
-`ValTree::Leaf(bits_of_two_u32)`, that is not a legal construction of `ValTree`
+`Leaf(bits_of_two_u32)`, that is not a legal construction of `ValTree`
 (and is very complex to do, so it is unlikely anyone is tempted to do so).
 
 These rules also mean that some values are not representable. There can be no `union`s in type

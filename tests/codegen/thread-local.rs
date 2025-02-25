@@ -1,4 +1,4 @@
-//@ compile-flags: -O
+//@ compile-flags: -Copt-level=3
 //@ aux-build:thread_local_aux.rs
 //@ ignore-windows FIXME(#134939)
 //@ ignore-wasm globals are used instead of thread locals

@@ -36,6 +36,7 @@ indexmap.workspace = true
 rustc_apfloat = "0.2.0"
 
 ra-ap-rustc_abi.workspace = true
+ra-ap-rustc_hashes.workspace = true
 ra-ap-rustc_index.workspace = true
 ra-ap-rustc_pattern_analysis.workspace = true
 
@@ -47,7 +48,6 @@ hir-def.workspace = true
 hir-expand.workspace = true
 base-db.workspace = true
 syntax.workspace = true
-limit.workspace = true
 span.workspace = true
 
 [dev-dependencies]

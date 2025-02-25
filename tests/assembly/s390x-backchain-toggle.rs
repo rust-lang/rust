@@ -1,6 +1,6 @@
 //@ revisions: enable-backchain disable-backchain
 //@ assembly-output: emit-asm
-//@ compile-flags: -O --crate-type=lib --target=s390x-unknown-linux-gnu
+//@ compile-flags: -Copt-level=3 --crate-type=lib --target=s390x-unknown-linux-gnu
 //@ needs-llvm-components: systemz
 //@[enable-backchain] compile-flags: -Ctarget-feature=+backchain
 //@[disable-backchain] compile-flags: -Ctarget-feature=-backchain

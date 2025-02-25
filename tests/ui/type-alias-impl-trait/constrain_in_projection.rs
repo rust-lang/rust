@@ -23,6 +23,7 @@ impl Trait<()> for Foo {
 fn bop(_: Bar) {
     let x = <Foo as Trait<Bar>>::Assoc::default();
     //[current]~^ `Foo: Trait<Bar>` is not satisfied
+    //[current]~| `Foo: Trait<Bar>` is not satisfied
 }
 
 fn main() {}

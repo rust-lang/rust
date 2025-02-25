@@ -6,8 +6,9 @@ LL |     let a = ["a", 10];
    |
 help: replace the comma with a semicolon to create an array
    |
-LL |     let a = ["a"; 10];
-   |                 ~
+LL -     let a = ["a", 10];
+LL +     let a = ["a"; 10];
+   |
 
 error[E0308]: mismatched types
   --> $DIR/typo-in-repeat-expr-issue-80173.rs:20:20
@@ -17,8 +18,9 @@ LL |     let b = [Type, size_b];
    |
 help: replace the comma with a semicolon to create an array
    |
-LL |     let b = [Type; size_b];
-   |                  ~
+LL -     let b = [Type, size_b];
+LL +     let b = [Type; size_b];
+   |
 
 error[E0308]: mismatched types
   --> $DIR/typo-in-repeat-expr-issue-80173.rs:25:20
@@ -48,8 +50,9 @@ LL |     let f = ["f", get_size()];
    |
 help: replace the comma with a semicolon to create an array
    |
-LL |     let f = ["f"; get_size()];
-   |                 ~
+LL -     let f = ["f", get_size()];
+LL +     let f = ["f"; get_size()];
+   |
 
 error[E0308]: mismatched types
   --> $DIR/typo-in-repeat-expr-issue-80173.rs:40:19
@@ -65,8 +68,9 @@ LL |     let g = vec![String::new(), 10];
    |
 help: replace the comma with a semicolon to create a vector
    |
-LL |     let g = vec![String::new(); 10];
-   |                               ~
+LL -     let g = vec![String::new(), 10];
+LL +     let g = vec![String::new(); 10];
+   |
 
 error[E0308]: mismatched types
   --> $DIR/typo-in-repeat-expr-issue-80173.rs:49:24
@@ -76,8 +80,9 @@ LL |     let h = vec![Type, dyn_size];
    |
 help: replace the comma with a semicolon to create a vector
    |
-LL |     let h = vec![Type; dyn_size];
-   |                      ~
+LL -     let h = vec![Type, dyn_size];
+LL +     let h = vec![Type; dyn_size];
+   |
 
 error[E0308]: mismatched types
   --> $DIR/typo-in-repeat-expr-issue-80173.rs:53:24
@@ -87,8 +92,9 @@ LL |     let i = vec![Type, get_dyn_size()];
    |
 help: replace the comma with a semicolon to create a vector
    |
-LL |     let i = vec![Type; get_dyn_size()];
-   |                      ~
+LL -     let i = vec![Type, get_dyn_size()];
+LL +     let i = vec![Type; get_dyn_size()];
+   |
 
 error[E0308]: mismatched types
   --> $DIR/typo-in-repeat-expr-issue-80173.rs:57:23
@@ -98,8 +104,9 @@ LL |     let k = vec!['c', 10];
    |
 help: replace the comma with a semicolon to create a vector
    |
-LL |     let k = vec!['c'; 10];
-   |                     ~
+LL -     let k = vec!['c', 10];
+LL +     let k = vec!['c'; 10];
+   |
 
 error[E0308]: mismatched types
   --> $DIR/typo-in-repeat-expr-issue-80173.rs:61:24

@@ -39,8 +39,9 @@ LL | #[warn(clippy::dead_cod)]
    |
 help: a lint with a similar name exists in `rustc` lints
    |
-LL | #[warn(dead_code)]
-   |        ~~~~~~~~~
+LL - #[warn(clippy::dead_cod)]
+LL + #[warn(dead_code)]
+   |
 
 error: unknown lint: `clippy::unused_colle`
   --> tests/ui/unknown_clippy_lints.rs:13:8
@@ -62,8 +63,9 @@ LL | #[warn(clippy::missing_docs)]
    |
 help: a lint with a similar name exists in `rustc` lints
    |
-LL | #[warn(missing_docs)]
-   |        ~~~~~~~~~~~~
+LL - #[warn(clippy::missing_docs)]
+LL + #[warn(missing_docs)]
+   |
 
 error: aborting due to 9 previous errors
 

@@ -502,4 +502,5 @@ language_item_table! {
 
     String,                  sym::String,              string,                     Target::Struct,         GenericRequirement::None;
     CStr,                    sym::CStr,                c_str,                      Target::Struct,         GenericRequirement::None;
+    Ordering,                sym::Ordering,            ordering,                   Target::Enum,           GenericRequirement::None;
 }

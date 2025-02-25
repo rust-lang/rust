@@ -1,7 +1,10 @@
-use crate::spec::{Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetOptions, base};
+use crate::spec::{
+    Cc, LinkerFlavor, Lld, RustcAbi, StackProbeType, Target, TargetMetadata, TargetOptions, base,
+};
 
 pub(crate) fn target() -> Target {
     let mut base = base::netbsd::opts();
+    base.rustc_abi = Some(RustcAbi::X86Sse2);
     base.cpu = "pentium4".into();
     base.max_atomic_width = Some(64);
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m32"]);
@@ -9,7 +12,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "i686-unknown-netbsdelf".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("NetBSD/i386 with SSE2".into()),
             tier: Some(3),
             host_tools: Some(true),

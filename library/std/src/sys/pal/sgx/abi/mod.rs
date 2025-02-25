@@ -23,7 +23,7 @@ global_asm!(include_str!("entry.S"), options(att_syntax));
 struct EntryReturn(u64, u64);
 
 #[cfg(not(test))]
-#[no_mangle]
+#[unsafe(no_mangle)]
 unsafe extern "C" fn tcs_init(secondary: bool) {
     // Be very careful when changing this code: it runs before the binary has been
     // relocated. Any indirect accesses to symbols will likely fail.
@@ -60,7 +60,7 @@ unsafe extern "C" fn tcs_init(secondary: bool) {
 // (main function exists). If this is a library, the crate author should be
 // able to specify this
 #[cfg(not(test))]
-#[no_mangle]
+#[unsafe(no_mangle)]
 extern "C" fn entry(p1: u64, p2: u64, p3: u64, secondary: bool, p4: u64, p5: u64) -> EntryReturn {
     // FIXME: how to support TLS in library mode?
     let tls = Box::new(tls::Tls::new());
@@ -73,7 +73,7 @@ extern "C" fn entry(p1: u64, p2: u64, p3: u64, secondary: bool, p4: u64, p5: u64
 
         EntryReturn(0, 0)
     } else {
-        extern "C" {
+        unsafe extern "C" {
             fn main(argc: isize, argv: *const *const u8) -> isize;
         }
 
@@ -103,7 +103,7 @@ pub(super) fn exit_with_code(code: isize) -> ! {
 }
 
 #[cfg(not(test))]
-#[no_mangle]
+#[unsafe(no_mangle)]
 extern "C" fn abort_reentry() -> ! {
     usercalls::exit(false)
 }

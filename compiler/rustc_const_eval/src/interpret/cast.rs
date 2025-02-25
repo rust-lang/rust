@@ -203,7 +203,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         cast_to: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
         assert!(src.layout.ty.is_any_ptr());
-        assert!(cast_to.ty.is_unsafe_ptr());
+        assert!(cast_to.ty.is_raw_ptr());
         // Handle casting any ptr to raw ptr (might be a wide ptr).
         if cast_to.size == src.layout.size {
             // Thin or wide pointer that just has the ptr kind of target type changed.
@@ -212,7 +212,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // Casting the metadata away from a wide ptr.
             assert_eq!(src.layout.size, 2 * self.pointer_size());
             assert_eq!(cast_to.size, self.pointer_size());
-            assert!(src.layout.ty.is_unsafe_ptr());
+            assert!(src.layout.ty.is_raw_ptr());
             return match **src {
                 Immediate::ScalarPair(data, _) => interp_ok(ImmTy::from_scalar(data, cast_to)),
                 Immediate::Scalar(..) => span_bug!(
@@ -430,10 +430,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     };
                     let erased_trait_ref =
                         ty::ExistentialTraitRef::erase_self_ty(*self.tcx, upcast_trait_ref);
-                    assert!(data_b.principal().is_some_and(|b| self.eq_in_param_env(
-                        erased_trait_ref,
-                        self.tcx.instantiate_bound_regions_with_erased(b)
-                    )));
+                    assert_eq!(
+                        data_b.principal().map(|b| {
+                            self.tcx.normalize_erasing_late_bound_regions(self.typing_env, b)
+                        }),
+                        Some(erased_trait_ref),
+                    );
                 } else {
                     // In this case codegen would keep using the old vtable. We don't want to do
                     // that as it has the wrong trait. The reason codegen can do this is that

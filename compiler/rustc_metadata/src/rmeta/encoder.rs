@@ -696,7 +696,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let target_modifiers = stat!("target-modifiers", || self.encode_target_modifiers());
 
         let root = stat!("final", || {
-            let attrs = tcx.hir().krate_attrs();
+            let attrs = tcx.hir_krate_attrs();
             self.lazy(CrateRoot {
                 header: CrateHeader {
                     name: tcx.crate_name(LOCAL_CRATE),
@@ -1763,7 +1763,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 if should_encode_const(tcx.def_kind(def_id)) {
                     let qualifs = tcx.mir_const_qualif(def_id);
                     record!(self.tables.mir_const_qualif[def_id.to_def_id()] <- qualifs);
-                    let body = tcx.hir().maybe_body_owned_by(def_id);
+                    let body = tcx.hir_maybe_body_owned_by(def_id);
                     if let Some(body) = body {
                         let const_data = rendered_const(self.tcx, &body, def_id);
                         record!(self.tables.rendered_const[def_id.to_def_id()] <- const_data);
@@ -1940,7 +1940,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     bug!("Unknown proc-macro type for item {:?}", id);
                 };
 
-                let mut def_key = self.tcx.hir().def_key(id);
+                let mut def_key = self.tcx.hir_def_key(id);
                 def_key.disambiguated_data.data = DefPathData::MacroNs(name);
 
                 let def_id = id.to_def_id();
@@ -2076,7 +2076,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let mut trait_impls: FxIndexMap<DefId, Vec<(DefIndex, Option<SimplifiedType>)>> =
             FxIndexMap::default();
 
-        for id in tcx.hir().items() {
+        for id in tcx.hir_free_items() {
             let DefKind::Impl { of_trait } = tcx.def_kind(id.owner_id) else {
                 continue;
             };
@@ -2272,10 +2272,7 @@ impl<D: Decoder> Decodable<D> for EncodedMetadata {
         let len = d.read_usize();
         let mmap = if len > 0 {
             let mut mmap = MmapMut::map_anon(len).unwrap();
-            for _ in 0..len {
-                (&mut mmap[..]).write_all(&[d.read_u8()]).unwrap();
-            }
-            mmap.flush().unwrap();
+            mmap.copy_from_slice(d.read_raw_bytes(len));
             Some(mmap.make_read_only().unwrap())
         } else {
             None
@@ -2413,7 +2410,6 @@ pub(crate) fn provide(providers: &mut Providers) {
 /// use a different method for pretty-printing. Ideally this function
 /// should only ever be used as a fallback.
 pub fn rendered_const<'tcx>(tcx: TyCtxt<'tcx>, body: &hir::Body<'_>, def_id: LocalDefId) -> String {
-    let hir = tcx.hir();
     let value = body.value;
 
     #[derive(PartialEq, Eq)]
@@ -2470,7 +2466,7 @@ pub fn rendered_const<'tcx>(tcx: TyCtxt<'tcx>, body: &hir::Body<'_>, def_id: Loc
 
         // Otherwise we prefer pretty-printing to get rid of extraneous whitespace, comments and
         // other formatting artifacts.
-        Literal | Simple => id_to_string(&hir, body.id().hir_id),
+        Literal | Simple => id_to_string(&tcx, body.id().hir_id),
 
         // FIXME: Omit the curly braces if the enclosing expression is an array literal
         //        with a repeated element (an `ExprKind::Repeat`) as in such case it

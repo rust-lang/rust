@@ -1,4 +1,4 @@
-error[E0658]: vectorcall is experimental and subject to change
+error[E0658]: the extern "vectorcall" ABI is experimental and subject to change
   --> $DIR/feature-gate-vectorcall.rs:12:8
    |
 LL | extern "vectorcall" fn f() {}
@@ -8,7 +8,7 @@ LL | extern "vectorcall" fn f() {}
    = help: add `#![feature(abi_vectorcall)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: vectorcall is experimental and subject to change
+error[E0658]: the extern "vectorcall" ABI is experimental and subject to change
   --> $DIR/feature-gate-vectorcall.rs:15:12
    |
 LL |     extern "vectorcall" fn m();
@@ -18,7 +18,7 @@ LL |     extern "vectorcall" fn m();
    = help: add `#![feature(abi_vectorcall)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: vectorcall is experimental and subject to change
+error[E0658]: the extern "vectorcall" ABI is experimental and subject to change
   --> $DIR/feature-gate-vectorcall.rs:17:12
    |
 LL |     extern "vectorcall" fn dm() {}
@@ -28,7 +28,7 @@ LL |     extern "vectorcall" fn dm() {}
    = help: add `#![feature(abi_vectorcall)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: vectorcall is experimental and subject to change
+error[E0658]: the extern "vectorcall" ABI is experimental and subject to change
   --> $DIR/feature-gate-vectorcall.rs:22:12
    |
 LL |     extern "vectorcall" fn m() {}
@@ -38,7 +38,7 @@ LL |     extern "vectorcall" fn m() {}
    = help: add `#![feature(abi_vectorcall)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: vectorcall is experimental and subject to change
+error[E0658]: the extern "vectorcall" ABI is experimental and subject to change
   --> $DIR/feature-gate-vectorcall.rs:26:12
    |
 LL |     extern "vectorcall" fn im() {}
@@ -48,7 +48,7 @@ LL |     extern "vectorcall" fn im() {}
    = help: add `#![feature(abi_vectorcall)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: vectorcall is experimental and subject to change
+error[E0658]: the extern "vectorcall" ABI is experimental and subject to change
   --> $DIR/feature-gate-vectorcall.rs:29:18
    |
 LL | type TA = extern "vectorcall" fn();
@@ -58,7 +58,7 @@ LL | type TA = extern "vectorcall" fn();
    = help: add `#![feature(abi_vectorcall)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: vectorcall is experimental and subject to change
+error[E0658]: the extern "vectorcall" ABI is experimental and subject to change
   --> $DIR/feature-gate-vectorcall.rs:31:8
    |
 LL | extern "vectorcall" {}

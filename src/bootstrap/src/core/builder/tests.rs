@@ -1,5 +1,7 @@
 use std::thread;
 
+use llvm::prebuilt_llvm_config;
+
 use super::*;
 use crate::Flags;
 use crate::core::build_steps::doc::DocumentationFormat;
@@ -523,6 +525,7 @@ mod dist {
             first(cache.all::<compile::Rustc>()),
             &[
                 rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 0),
+                rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 1),
                 rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_2, stage = 1),
             ]
         );
@@ -953,4 +956,162 @@ fn test_test_coverage() {
             cache.all::<test::Coverage>().iter().map(|(step, ())| step.mode).collect::<Vec<_>>();
         assert_eq!(modes, expected);
     }
+}
+
+#[test]
+fn test_prebuilt_llvm_config_path_resolution() {
+    fn configure(config: &str) -> Config {
+        Config::parse_inner(
+            Flags::parse(&[
+                "build".to_string(),
+                "--dry-run".to_string(),
+                "--config=/does/not/exist".to_string(),
+            ]),
+            |&_| toml::from_str(&config),
+        )
+    }
+
+    // Removes Windows disk prefix if present
+    fn drop_win_disk_prefix_if_present(path: PathBuf) -> PathBuf {
+        let path_str = path.to_str().unwrap();
+        if let Some((_, without_prefix)) = path_str.split_once(":/") {
+            return PathBuf::from(format!("/{}", without_prefix));
+        }
+
+        path
+    }
+
+    let config = configure(
+        r#"
+            [llvm]
+            download-ci-llvm = false
+
+            [build]
+            build = "x86_64-unknown-linux-gnu"
+            host = ["arm-unknown-linux-gnueabihf"]
+            target = ["arm-unknown-linux-gnueabihf"]
+
+            [target.x86_64-unknown-linux-gnu]
+            llvm-config = "/some/path/to/llvm-config"
+
+            [target.arm-unknown-linux-gnueabihf]
+            cc = "arm-linux-gnueabihf-gcc"
+            cxx = "arm-linux-gnueabihf-g++"
+        "#,
+    );
+
+    let build = Build::new(config);
+    let builder = Builder::new(&build);
+
+    let expected = PathBuf::from("/some/path/to/llvm-config");
+
+    let actual = prebuilt_llvm_config(
+        &builder,
+        TargetSelection::from_user("arm-unknown-linux-gnueabihf"),
+        false,
+    )
+    .llvm_result()
+    .llvm_config
+    .clone();
+    let actual = drop_win_disk_prefix_if_present(actual);
+    assert_eq!(expected, actual);
+
+    let actual = prebuilt_llvm_config(&builder, builder.config.build, false)
+        .llvm_result()
+        .llvm_config
+        .clone();
+    let actual = drop_win_disk_prefix_if_present(actual);
+    assert_eq!(expected, actual);
+    assert_eq!(expected, actual);
+
+    let config = configure(
+        r#"
+            [llvm]
+            download-ci-llvm = false
+        "#,
+    );
+
+    let build = Build::new(config.clone());
+    let builder = Builder::new(&build);
+
+    let actual = prebuilt_llvm_config(&builder, builder.config.build, false)
+        .llvm_result()
+        .llvm_config
+        .clone();
+    let expected = builder
+        .out
+        .join(builder.config.build)
+        .join("llvm/bin")
+        .join(exe("llvm-config", builder.config.build));
+    assert_eq!(expected, actual);
+
+    let config = configure(
+        r#"
+            [llvm]
+            download-ci-llvm = true
+        "#,
+    );
+
+    // CI-LLVM isn't always available; check if it's enabled before testing.
+    if config.llvm_from_ci {
+        let build = Build::new(config.clone());
+        let builder = Builder::new(&build);
+
+        let actual = prebuilt_llvm_config(&builder, builder.config.build, false)
+            .llvm_result()
+            .llvm_config
+            .clone();
+        let expected = builder
+            .out
+            .join(builder.config.build)
+            .join("ci-llvm/bin")
+            .join(exe("llvm-config", builder.config.build));
+        assert_eq!(expected, actual);
+    }
+}
+
+#[test]
+fn test_is_builder_target() {
+    let target1 = TargetSelection::from_user(TEST_TRIPLE_1);
+    let target2 = TargetSelection::from_user(TEST_TRIPLE_2);
+
+    for (target1, target2) in [(target1, target2), (target2, target1)] {
+        let mut config = configure("build", &[], &[]);
+        config.build = target1;
+        let build = Build::new(config);
+        let builder = Builder::new(&build);
+
+        assert!(builder.is_builder_target(target1));
+        assert!(!builder.is_builder_target(target2));
+    }
+}
+
+#[test]
+fn test_get_tool_rustc_compiler() {
+    let mut config = configure("build", &[], &[]);
+    config.download_rustc_commit = None;
+    let build = Build::new(config);
+    let builder = Builder::new(&build);
+
+    let target_triple_1 = TargetSelection::from_user(TEST_TRIPLE_1);
+
+    let compiler = Compiler { stage: 2, host: target_triple_1 };
+    let expected = Compiler { stage: 1, host: target_triple_1 };
+    let actual = tool::get_tool_rustc_compiler(&builder, compiler);
+    assert_eq!(expected, actual);
+
+    let compiler = Compiler { stage: 1, host: target_triple_1 };
+    let expected = Compiler { stage: 0, host: target_triple_1 };
+    let actual = tool::get_tool_rustc_compiler(&builder, compiler);
+    assert_eq!(expected, actual);
+
+    let mut config = configure("build", &[], &[]);
+    config.download_rustc_commit = Some("".to_owned());
+    let build = Build::new(config);
+    let builder = Builder::new(&build);
+
+    let compiler = Compiler { stage: 1, host: target_triple_1 };
+    let expected = Compiler { stage: 1, host: target_triple_1 };
+    let actual = tool::get_tool_rustc_compiler(&builder, compiler);
+    assert_eq!(expected, actual);
 }

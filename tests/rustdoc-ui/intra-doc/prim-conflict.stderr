@@ -26,12 +26,14 @@ LL | /// [type@char]
    |
 help: to link to the module, prefix with `mod@`
    |
-LL | /// [mod@char]
-   |      ~~~~
+LL - /// [type@char]
+LL + /// [mod@char]
+   |
 help: to link to the primitive type, prefix with `prim@`
    |
-LL | /// [prim@char]
-   |      ~~~~~
+LL - /// [type@char]
+LL + /// [prim@char]
+   |
 
 error: incompatible link kind for `char`
   --> $DIR/prim-conflict.rs:19:6
@@ -41,8 +43,9 @@ LL | /// [struct@char]
    |
 help: to link to the module, prefix with `mod@`
    |
-LL | /// [mod@char]
-   |      ~~~~
+LL - /// [struct@char]
+LL + /// [mod@char]
+   |
 
 error: incompatible link kind for `char`
   --> $DIR/prim-conflict.rs:26:10
@@ -52,8 +55,9 @@ LL |     //! [struct@char]
    |
 help: to link to the primitive type, prefix with `prim@`
    |
-LL |     //! [prim@char]
-   |          ~~~~~
+LL -     //! [struct@char]
+LL +     //! [prim@char]
+   |
 
 error: aborting due to 4 previous errors
 

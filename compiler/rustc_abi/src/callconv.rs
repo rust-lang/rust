@@ -1,6 +1,5 @@
 #[cfg(feature = "nightly")]
-use crate::{BackendRepr, FieldsShape, TyAbiInterface, TyAndLayout};
-use crate::{Primitive, Size, Variants};
+use crate::{BackendRepr, FieldsShape, Primitive, Size, TyAbiInterface, TyAndLayout, Variants};
 
 mod reg;
 
@@ -66,8 +65,6 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         Ty: TyAbiInterface<'a, C> + Copy,
     {
         match self.backend_repr {
-            BackendRepr::Uninhabited => Err(Heterogeneous),
-
             // The primitive for this algorithm.
             BackendRepr::Scalar(scalar) => {
                 let kind = match scalar.primitive() {

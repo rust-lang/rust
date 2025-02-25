@@ -90,4 +90,4 @@ impl fmt::Debug for c_void {
     cfg(not(target_feature = "crt-static"))
 )]
 #[link(name = "/defaultlib:libcmt", modifiers = "+verbatim", cfg(target_feature = "crt-static"))]
-extern "C" {}
+unsafe extern "C" {}

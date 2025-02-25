@@ -20,19 +20,20 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{BindingMode, ByRef, HirId, MatchSource, RangeEnd};
 use rustc_index::{IndexVec, newtype_index};
 use rustc_macros::{HashStable, TypeVisitable};
-use rustc_middle::middle::region;
-use rustc_middle::mir::interpret::AllocId;
-use rustc_middle::mir::{self, BinOp, BorrowKind, FakeReadCause, UnOp};
-use rustc_middle::ty::adjustment::PointerCoercion;
-use rustc_middle::ty::layout::IntegerExt;
-use rustc_middle::ty::{
-    self, AdtDef, CanonicalUserType, CanonicalUserTypeAnnotation, FnSig, GenericArgsRef, List, Ty,
-    TyCtxt, UpvarArgs,
-};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{ErrorGuaranteed, Span, Symbol};
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use tracing::instrument;
+
+use crate::middle::region;
+use crate::mir::interpret::AllocId;
+use crate::mir::{self, BinOp, BorrowKind, FakeReadCause, UnOp};
+use crate::ty::adjustment::PointerCoercion;
+use crate::ty::layout::IntegerExt;
+use crate::ty::{
+    self, AdtDef, CanonicalUserType, CanonicalUserTypeAnnotation, FnSig, GenericArgsRef, List, Ty,
+    TyCtxt, UpvarArgs,
+};
 
 pub mod visit;
 
@@ -93,6 +94,7 @@ thir_with_elements! {
 pub enum BodyTy<'tcx> {
     Const(Ty<'tcx>),
     Fn(FnSig<'tcx>),
+    GlobalAsm(Ty<'tcx>),
 }
 
 /// Description of a type-checked function parameter.
@@ -375,7 +377,6 @@ pub enum ExprKind<'tcx> {
     /// A `match` expression.
     Match {
         scrutinee: ExprId,
-        scrutinee_hir_id: HirId,
         arms: Box<[ArmId]>,
         match_source: MatchSource,
     },
@@ -605,8 +606,7 @@ pub enum InlineAsmOperand<'tcx> {
         span: Span,
     },
     SymFn {
-        value: mir::Const<'tcx>,
-        span: Span,
+        value: ExprId,
     },
     SymStatic {
         def_id: DefId,
@@ -678,8 +678,7 @@ impl<'tcx> Pat<'tcx> {
                 subpatterns.iter().for_each(|field| field.pattern.walk_(it))
             }
             Or { pats } => pats.iter().for_each(|p| p.walk_(it)),
-            Array { box ref prefix, ref slice, box ref suffix }
-            | Slice { box ref prefix, ref slice, box ref suffix } => {
+            Array { box prefix, slice, box suffix } | Slice { box prefix, slice, box suffix } => {
                 prefix.iter().chain(slice.as_deref()).chain(suffix.iter()).for_each(|p| p.walk_(it))
             }
         }

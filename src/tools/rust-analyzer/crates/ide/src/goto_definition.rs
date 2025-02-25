@@ -31,13 +31,11 @@ use syntax::{
 //
 // For outline modules, this will navigate to the source file of the module.
 //
-// |===
-// | Editor  | Shortcut
+// | Editor  | Shortcut |
+// |---------|----------|
+// | VS Code | <kbd>F12</kbd> |
 //
-// | VS Code | kbd:[F12]
-// |===
-//
-// image::https://user-images.githubusercontent.com/48062697/113065563-025fbe00-91b1-11eb-83e4-a5a703610b23.gif[]
+// ![Go to Definition](https://user-images.githubusercontent.com/48062697/113065563-025fbe00-91b1-11eb-83e4-a5a703610b23.gif)
 pub(crate) fn goto_definition(
     db: &RootDatabase,
     FilePosition { file_id, offset }: FilePosition,
@@ -3272,6 +3270,58 @@ fn f() {
     A.to_string$0();
 }
         "#,
+        );
+    }
+
+    #[test]
+    fn use_inside_body() {
+        check(
+            r#"
+fn main() {
+    mod nice_module {
+        pub(super) struct NiceStruct;
+                       // ^^^^^^^^^^
+    }
+
+    use nice_module::NiceStruct$0;
+
+    let _ = NiceStruct;
+}
+    "#,
+        );
+    }
+
+    #[test]
+    fn shadow_builtin_type_by_module() {
+        check(
+            r#"
+mod Foo{
+pub mod str {
+     // ^^^
+    pub fn foo() {}
+}
+}
+
+fn main() {
+    use Foo::str;
+    let s = st$0r::foo();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn not_goto_module_because_str_is_builtin_type() {
+        check(
+            r#"
+mod str {
+pub fn foo() {}
+}
+
+fn main() {
+    let s = st$0r::f();
+}
+"#,
         );
     }
 }

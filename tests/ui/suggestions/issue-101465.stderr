@@ -12,8 +12,9 @@ LL | |     }
    |
 help: you could change the return type to be a boxed trait object
    |
-LL | fn foo() -> Box<dyn Tr> {
-   |             ~~~~~~~   +
+LL - fn foo() -> impl Tr {
+LL + fn foo() -> Box<dyn Tr> {
+   |
 help: if you change the return type to expect trait objects, box the returned expressions
    |
 LL ~         true => Box::new(B),

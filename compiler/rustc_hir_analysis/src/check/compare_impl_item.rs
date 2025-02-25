@@ -501,7 +501,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     check_method_is_structurally_compatible(tcx, impl_m, trait_m, impl_trait_ref, true)?;
 
     let impl_m_hir_id = tcx.local_def_id_to_hir_id(impl_m_def_id);
-    let return_span = tcx.hir().fn_decl_by_hir_id(impl_m_hir_id).unwrap().output.span();
+    let return_span = tcx.hir_fn_decl_by_hir_id(impl_m_hir_id).unwrap().output.span();
     let cause = ObligationCause::new(
         return_span,
         impl_m_def_id,
@@ -658,11 +658,10 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                 "method `{}` has an incompatible return type for trait",
                 trait_m.name
             );
-            let hir = tcx.hir();
             infcx.err_ctxt().note_type_err(
                 &mut diag,
                 &cause,
-                hir.get_if_local(impl_m.def_id)
+                tcx.hir_get_if_local(impl_m.def_id)
                     .and_then(|node| node.fn_decl())
                     .map(|decl| (decl.output.span(), Cow::from("return type in trait"), false)),
                 Some(param_env.and(infer::ValuePairs::Terms(ExpectedFound {
@@ -1034,8 +1033,7 @@ fn report_trait_method_mismatch<'tcx>(
             // argument pattern and type.
             let (sig, body) = tcx.hir().expect_impl_item(impl_m.def_id.expect_local()).expect_fn();
             let span = tcx
-                .hir()
-                .body_param_names(body)
+                .hir_body_param_names(body)
                 .zip(sig.decl.inputs.iter())
                 .map(|(param, ty)| param.span.to(ty.span))
                 .next()
@@ -1123,15 +1121,14 @@ fn check_region_bounds_on_impl_item<'tcx>(
     // the moment, give a kind of vague error message.
     if trait_params != impl_params {
         let span = tcx
-            .hir()
-            .get_generics(impl_m.def_id.expect_local())
+            .hir_get_generics(impl_m.def_id.expect_local())
             .expect("expected impl item to have generics or else we can't compare them")
             .span;
 
         let mut generics_span = None;
         let mut bounds_span = vec![];
         let mut where_span = None;
-        if let Some(trait_node) = tcx.hir().get_if_local(trait_m.def_id)
+        if let Some(trait_node) = tcx.hir_get_if_local(trait_m.def_id)
             && let Some(trait_generics) = trait_node.generics()
         {
             generics_span = Some(trait_generics.span);
@@ -1146,7 +1143,7 @@ fn check_region_bounds_on_impl_item<'tcx>(
                     }
                 }
             }
-            if let Some(impl_node) = tcx.hir().get_if_local(impl_m.def_id)
+            if let Some(impl_node) = tcx.hir_get_if_local(impl_m.def_id)
                 && let Some(impl_generics) = impl_node.generics()
             {
                 let mut impl_bounds = 0;
@@ -2107,18 +2104,21 @@ pub(super) fn check_type_bounds<'tcx>(
         ObligationCause::new(impl_ty_span, impl_ty_def_id, code)
     };
 
-    let mut obligations: Vec<_> = tcx
-        .explicit_item_bounds(trait_ty.def_id)
-        .iter_instantiated_copied(tcx, rebased_args)
-        .map(|(concrete_ty_bound, span)| {
-            debug!(?concrete_ty_bound);
-            traits::Obligation::new(tcx, mk_cause(span), param_env, concrete_ty_bound)
-        })
-        .collect();
+    let mut obligations: Vec<_> = util::elaborate(
+        tcx,
+        tcx.explicit_item_bounds(trait_ty.def_id).iter_instantiated_copied(tcx, rebased_args).map(
+            |(concrete_ty_bound, span)| {
+                debug!(?concrete_ty_bound);
+                traits::Obligation::new(tcx, mk_cause(span), param_env, concrete_ty_bound)
+            },
+        ),
+    )
+    .collect();
 
     // Only in a const implementation do we need to check that the `~const` item bounds hold.
     if tcx.is_conditionally_const(impl_ty_def_id) {
-        obligations.extend(
+        obligations.extend(util::elaborate(
+            tcx,
             tcx.explicit_implied_const_bounds(trait_ty.def_id)
                 .iter_instantiated_copied(tcx, rebased_args)
                 .map(|(c, span)| {
@@ -2129,7 +2129,7 @@ pub(super) fn check_type_bounds<'tcx>(
                         c.to_host_effect_clause(tcx, ty::BoundConstness::Maybe),
                     )
                 }),
-        );
+        ));
     }
     debug!(item_bounds=?obligations);
 
@@ -2137,26 +2137,19 @@ pub(super) fn check_type_bounds<'tcx>(
     // to its definition type. This should be the param-env we use to *prove* the
     // predicate too, but we don't do that because of performance issues.
     // See <https://github.com/rust-lang/rust/pull/117542#issue-1976337685>.
-    let trait_projection_ty = Ty::new_projection_from_args(tcx, trait_ty.def_id, rebased_args);
-    let impl_identity_ty = tcx.type_of(impl_ty.def_id).instantiate_identity();
     let normalize_param_env = param_env_with_gat_bounds(tcx, impl_ty, impl_trait_ref);
-    for mut obligation in util::elaborate(tcx, obligations) {
-        let normalized_predicate = if infcx.next_trait_solver() {
-            obligation.predicate.fold_with(&mut ReplaceTy {
-                tcx,
-                from: trait_projection_ty,
-                to: impl_identity_ty,
-            })
-        } else {
-            ocx.normalize(&normalize_cause, normalize_param_env, obligation.predicate)
-        };
-        debug!(?normalized_predicate);
-        obligation.predicate = normalized_predicate;
-
-        ocx.register_obligation(obligation);
+    for obligation in &mut obligations {
+        match ocx.deeply_normalize(&normalize_cause, normalize_param_env, obligation.predicate) {
+            Ok(pred) => obligation.predicate = pred,
+            Err(e) => {
+                return Err(infcx.err_ctxt().report_fulfillment_errors(e));
+            }
+        }
     }
+
     // Check that all obligations are satisfied by the implementation's
     // version.
+    ocx.register_obligations(obligations);
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
         let reported = infcx.err_ctxt().report_fulfillment_errors(errors);
@@ -2166,22 +2159,6 @@ pub(super) fn check_type_bounds<'tcx>(
     // Finally, resolve all regions. This catches wily misuses of
     // lifetime parameters.
     ocx.resolve_regions_and_report_errors(impl_ty_def_id, param_env, assumed_wf_types)
-}
-
-struct ReplaceTy<'tcx> {
-    tcx: TyCtxt<'tcx>,
-    from: Ty<'tcx>,
-    to: Ty<'tcx>,
-}
-
-impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceTy<'tcx> {
-    fn cx(&self) -> TyCtxt<'tcx> {
-        self.tcx
-    }
-
-    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if self.from == ty { self.to } else { ty.super_fold_with(self) }
-    }
 }
 
 /// Install projection predicates that allow GATs to project to their own

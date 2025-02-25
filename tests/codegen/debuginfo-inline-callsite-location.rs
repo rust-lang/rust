@@ -1,4 +1,4 @@
-//@ compile-flags: -g -O -C panic=abort
+//@ compile-flags: -g -Copt-level=3 -C panic=abort
 
 // Check that each inline call site for the same function uses the same "sub-program" so that LLVM
 // can correctly merge the debug info if it merges the inlined code (e.g., for merging of tail

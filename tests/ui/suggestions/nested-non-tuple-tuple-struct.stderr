@@ -9,8 +9,9 @@ LL |     let _x = (S { x: 1.0, y: 2.0 }, S { x: 3.0, y: 4.0 });
    |
 help: `S` is a tuple struct, use the appropriate syntax
    |
-LL |     let _x = (S(/* f32 */, /* f32 */), S { x: 3.0, y: 4.0 });
-   |               ~~~~~~~~~~~~~~~~~~~~~~~
+LL -     let _x = (S { x: 1.0, y: 2.0 }, S { x: 3.0, y: 4.0 });
+LL +     let _x = (S(/* f32 */, /* f32 */), S { x: 3.0, y: 4.0 });
+   |
 
 error[E0560]: struct `S` has no field named `y`
   --> $DIR/nested-non-tuple-tuple-struct.rs:8:27
@@ -23,8 +24,9 @@ LL |     let _x = (S { x: 1.0, y: 2.0 }, S { x: 3.0, y: 4.0 });
    |
 help: `S` is a tuple struct, use the appropriate syntax
    |
-LL |     let _x = (S(/* f32 */, /* f32 */), S { x: 3.0, y: 4.0 });
-   |               ~~~~~~~~~~~~~~~~~~~~~~~
+LL -     let _x = (S { x: 1.0, y: 2.0 }, S { x: 3.0, y: 4.0 });
+LL +     let _x = (S(/* f32 */, /* f32 */), S { x: 3.0, y: 4.0 });
+   |
 
 error[E0560]: struct `S` has no field named `x`
   --> $DIR/nested-non-tuple-tuple-struct.rs:8:41
@@ -37,8 +39,9 @@ LL |     let _x = (S { x: 1.0, y: 2.0 }, S { x: 3.0, y: 4.0 });
    |
 help: `S` is a tuple struct, use the appropriate syntax
    |
-LL |     let _x = (S { x: 1.0, y: 2.0 }, S(/* f32 */, /* f32 */));
-   |                                     ~~~~~~~~~~~~~~~~~~~~~~~
+LL -     let _x = (S { x: 1.0, y: 2.0 }, S { x: 3.0, y: 4.0 });
+LL +     let _x = (S { x: 1.0, y: 2.0 }, S(/* f32 */, /* f32 */));
+   |
 
 error[E0560]: struct `S` has no field named `y`
   --> $DIR/nested-non-tuple-tuple-struct.rs:8:49
@@ -51,8 +54,9 @@ LL |     let _x = (S { x: 1.0, y: 2.0 }, S { x: 3.0, y: 4.0 });
    |
 help: `S` is a tuple struct, use the appropriate syntax
    |
-LL |     let _x = (S { x: 1.0, y: 2.0 }, S(/* f32 */, /* f32 */));
-   |                                     ~~~~~~~~~~~~~~~~~~~~~~~
+LL -     let _x = (S { x: 1.0, y: 2.0 }, S { x: 3.0, y: 4.0 });
+LL +     let _x = (S { x: 1.0, y: 2.0 }, S(/* f32 */, /* f32 */));
+   |
 
 error[E0559]: variant `E::V` has no field named `x`
   --> $DIR/nested-non-tuple-tuple-struct.rs:13:22
@@ -65,8 +69,9 @@ LL |     let _y = (E::V { x: 1.0, y: 2.0 }, E::V { x: 3.0, y: 4.0 });
    |
 help: `E::V` is a tuple variant, use the appropriate syntax
    |
-LL |     let _y = (E::V(/* f32 */, /* f32 */), E::V { x: 3.0, y: 4.0 });
-   |                   ~~~~~~~~~~~~~~~~~~~~~~
+LL -     let _y = (E::V { x: 1.0, y: 2.0 }, E::V { x: 3.0, y: 4.0 });
+LL +     let _y = (E::V(/* f32 */, /* f32 */), E::V { x: 3.0, y: 4.0 });
+   |
 
 error[E0559]: variant `E::V` has no field named `y`
   --> $DIR/nested-non-tuple-tuple-struct.rs:13:30
@@ -79,8 +84,9 @@ LL |     let _y = (E::V { x: 1.0, y: 2.0 }, E::V { x: 3.0, y: 4.0 });
    |
 help: `E::V` is a tuple variant, use the appropriate syntax
    |
-LL |     let _y = (E::V(/* f32 */, /* f32 */), E::V { x: 3.0, y: 4.0 });
-   |                   ~~~~~~~~~~~~~~~~~~~~~~
+LL -     let _y = (E::V { x: 1.0, y: 2.0 }, E::V { x: 3.0, y: 4.0 });
+LL +     let _y = (E::V(/* f32 */, /* f32 */), E::V { x: 3.0, y: 4.0 });
+   |
 
 error[E0559]: variant `E::V` has no field named `x`
   --> $DIR/nested-non-tuple-tuple-struct.rs:13:47
@@ -93,8 +99,9 @@ LL |     let _y = (E::V { x: 1.0, y: 2.0 }, E::V { x: 3.0, y: 4.0 });
    |
 help: `E::V` is a tuple variant, use the appropriate syntax
    |
-LL |     let _y = (E::V { x: 1.0, y: 2.0 }, E::V(/* f32 */, /* f32 */));
-   |                                            ~~~~~~~~~~~~~~~~~~~~~~
+LL -     let _y = (E::V { x: 1.0, y: 2.0 }, E::V { x: 3.0, y: 4.0 });
+LL +     let _y = (E::V { x: 1.0, y: 2.0 }, E::V(/* f32 */, /* f32 */));
+   |
 
 error[E0559]: variant `E::V` has no field named `y`
   --> $DIR/nested-non-tuple-tuple-struct.rs:13:55
@@ -107,8 +114,9 @@ LL |     let _y = (E::V { x: 1.0, y: 2.0 }, E::V { x: 3.0, y: 4.0 });
    |
 help: `E::V` is a tuple variant, use the appropriate syntax
    |
-LL |     let _y = (E::V { x: 1.0, y: 2.0 }, E::V(/* f32 */, /* f32 */));
-   |                                            ~~~~~~~~~~~~~~~~~~~~~~
+LL -     let _y = (E::V { x: 1.0, y: 2.0 }, E::V { x: 3.0, y: 4.0 });
+LL +     let _y = (E::V { x: 1.0, y: 2.0 }, E::V(/* f32 */, /* f32 */));
+   |
 
 error: aborting due to 8 previous errors
 

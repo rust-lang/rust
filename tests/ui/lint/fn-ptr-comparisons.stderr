@@ -10,8 +10,9 @@ LL |     let _ = f == a;
    = note: `#[warn(unpredictable_function_pointer_comparisons)]` on by default
 help: refactor your code, or use `std::ptr::fn_addr_eq` to suppress the lint
    |
-LL |     let _ = std::ptr::fn_addr_eq(f, a as fn());
-   |             +++++++++++++++++++++ ~   ++++++++
+LL -     let _ = f == a;
+LL +     let _ = std::ptr::fn_addr_eq(f, a as fn());
+   |
 
 warning: function pointer comparisons do not produce meaningful results since their addresses are not guaranteed to be unique
   --> $DIR/fn-ptr-comparisons.rs:28:13
@@ -24,8 +25,9 @@ LL |     let _ = f != a;
    = note: for more information visit <https://doc.rust-lang.org/nightly/core/ptr/fn.fn_addr_eq.html>
 help: refactor your code, or use `std::ptr::fn_addr_eq` to suppress the lint
    |
-LL |     let _ = !std::ptr::fn_addr_eq(f, a as fn());
-   |             ++++++++++++++++++++++ ~   ++++++++
+LL -     let _ = f != a;
+LL +     let _ = !std::ptr::fn_addr_eq(f, a as fn());
+   |
 
 warning: function pointer comparisons do not produce meaningful results since their addresses are not guaranteed to be unique
   --> $DIR/fn-ptr-comparisons.rs:30:13
@@ -38,8 +40,9 @@ LL |     let _ = f == g;
    = note: for more information visit <https://doc.rust-lang.org/nightly/core/ptr/fn.fn_addr_eq.html>
 help: refactor your code, or use `std::ptr::fn_addr_eq` to suppress the lint
    |
-LL |     let _ = std::ptr::fn_addr_eq(f, g);
-   |             +++++++++++++++++++++ ~  +
+LL -     let _ = f == g;
+LL +     let _ = std::ptr::fn_addr_eq(f, g);
+   |
 
 warning: function pointer comparisons do not produce meaningful results since their addresses are not guaranteed to be unique
   --> $DIR/fn-ptr-comparisons.rs:32:13
@@ -52,8 +55,9 @@ LL |     let _ = f == f;
    = note: for more information visit <https://doc.rust-lang.org/nightly/core/ptr/fn.fn_addr_eq.html>
 help: refactor your code, or use `std::ptr::fn_addr_eq` to suppress the lint
    |
-LL |     let _ = std::ptr::fn_addr_eq(f, f);
-   |             +++++++++++++++++++++ ~  +
+LL -     let _ = f == f;
+LL +     let _ = std::ptr::fn_addr_eq(f, f);
+   |
 
 warning: function pointer comparisons do not produce meaningful results since their addresses are not guaranteed to be unique
   --> $DIR/fn-ptr-comparisons.rs:34:13
@@ -66,8 +70,9 @@ LL |     let _ = g == g;
    = note: for more information visit <https://doc.rust-lang.org/nightly/core/ptr/fn.fn_addr_eq.html>
 help: refactor your code, or use `std::ptr::fn_addr_eq` to suppress the lint
    |
-LL |     let _ = std::ptr::fn_addr_eq(g, g);
-   |             +++++++++++++++++++++ ~  +
+LL -     let _ = g == g;
+LL +     let _ = std::ptr::fn_addr_eq(g, g);
+   |
 
 warning: function pointer comparisons do not produce meaningful results since their addresses are not guaranteed to be unique
   --> $DIR/fn-ptr-comparisons.rs:36:13
@@ -80,8 +85,9 @@ LL |     let _ = g == g;
    = note: for more information visit <https://doc.rust-lang.org/nightly/core/ptr/fn.fn_addr_eq.html>
 help: refactor your code, or use `std::ptr::fn_addr_eq` to suppress the lint
    |
-LL |     let _ = std::ptr::fn_addr_eq(g, g);
-   |             +++++++++++++++++++++ ~  +
+LL -     let _ = g == g;
+LL +     let _ = std::ptr::fn_addr_eq(g, g);
+   |
 
 warning: function pointer comparisons do not produce meaningful results since their addresses are not guaranteed to be unique
   --> $DIR/fn-ptr-comparisons.rs:38:13
@@ -94,8 +100,9 @@ LL |     let _ = &g == &g;
    = note: for more information visit <https://doc.rust-lang.org/nightly/core/ptr/fn.fn_addr_eq.html>
 help: refactor your code, or use `std::ptr::fn_addr_eq` to suppress the lint
    |
-LL |     let _ = std::ptr::fn_addr_eq(g, g);
-   |             ~~~~~~~~~~~~~~~~~~~~~ ~  +
+LL -     let _ = &g == &g;
+LL +     let _ = std::ptr::fn_addr_eq(g, g);
+   |
 
 warning: function pointer comparisons do not produce meaningful results since their addresses are not guaranteed to be unique
   --> $DIR/fn-ptr-comparisons.rs:40:13
@@ -108,8 +115,9 @@ LL |     let _ = a as fn() == g;
    = note: for more information visit <https://doc.rust-lang.org/nightly/core/ptr/fn.fn_addr_eq.html>
 help: refactor your code, or use `std::ptr::fn_addr_eq` to suppress the lint
    |
-LL |     let _ = std::ptr::fn_addr_eq(a as fn(), g);
-   |             +++++++++++++++++++++         ~  +
+LL -     let _ = a as fn() == g;
+LL +     let _ = std::ptr::fn_addr_eq(a as fn(), g);
+   |
 
 warning: function pointer comparisons do not produce meaningful results since their addresses are not guaranteed to be unique
   --> $DIR/fn-ptr-comparisons.rs:44:13
@@ -122,8 +130,9 @@ LL |     let _ = cfn == c;
    = note: for more information visit <https://doc.rust-lang.org/nightly/core/ptr/fn.fn_addr_eq.html>
 help: refactor your code, or use `std::ptr::fn_addr_eq` to suppress the lint
    |
-LL |     let _ = std::ptr::fn_addr_eq(cfn, c as extern "C" fn());
-   |             +++++++++++++++++++++   ~   +++++++++++++++++++
+LL -     let _ = cfn == c;
+LL +     let _ = std::ptr::fn_addr_eq(cfn, c as extern "C" fn());
+   |
 
 warning: function pointer comparisons do not produce meaningful results since their addresses are not guaranteed to be unique
   --> $DIR/fn-ptr-comparisons.rs:48:13
@@ -136,8 +145,9 @@ LL |     let _ = argsfn == args;
    = note: for more information visit <https://doc.rust-lang.org/nightly/core/ptr/fn.fn_addr_eq.html>
 help: refactor your code, or use `std::ptr::fn_addr_eq` to suppress the lint
    |
-LL |     let _ = std::ptr::fn_addr_eq(argsfn, args as extern "C" fn(i32) -> i32);
-   |             +++++++++++++++++++++      ~      +++++++++++++++++++++++++++++
+LL -     let _ = argsfn == args;
+LL +     let _ = std::ptr::fn_addr_eq(argsfn, args as extern "C" fn(i32) -> i32);
+   |
 
 warning: function pointer comparisons do not produce meaningful results since their addresses are not guaranteed to be unique
   --> $DIR/fn-ptr-comparisons.rs:52:13
@@ -150,8 +160,9 @@ LL |     let _ = t == test;
    = note: for more information visit <https://doc.rust-lang.org/nightly/core/ptr/fn.fn_addr_eq.html>
 help: refactor your code, or use `std::ptr::fn_addr_eq` to suppress the lint
    |
-LL |     let _ = std::ptr::fn_addr_eq(t, test as unsafe extern "C" fn());
-   |             +++++++++++++++++++++ ~      ++++++++++++++++++++++++++
+LL -     let _ = t == test;
+LL +     let _ = std::ptr::fn_addr_eq(t, test as unsafe extern "C" fn());
+   |
 
 warning: function pointer comparisons do not produce meaningful results since their addresses are not guaranteed to be unique
   --> $DIR/fn-ptr-comparisons.rs:56:13
@@ -164,8 +175,9 @@ LL |     let _ = a1.f == a2.f;
    = note: for more information visit <https://doc.rust-lang.org/nightly/core/ptr/fn.fn_addr_eq.html>
 help: refactor your code, or use `std::ptr::fn_addr_eq` to suppress the lint
    |
-LL |     let _ = std::ptr::fn_addr_eq(a1.f, a2.f);
-   |             +++++++++++++++++++++    ~     +
+LL -     let _ = a1.f == a2.f;
+LL +     let _ = std::ptr::fn_addr_eq(a1.f, a2.f);
+   |
 
 warning: 12 warnings emitted
 

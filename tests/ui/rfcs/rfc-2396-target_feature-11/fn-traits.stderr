@@ -1,5 +1,5 @@
 error[E0277]: expected a `Fn()` closure, found `#[target_features] fn() {foo}`
-  --> $DIR/fn-traits.rs:31:10
+  --> $DIR/fn-traits.rs:29:10
    |
 LL |     call(foo);
    |     ---- ^^^ expected an `Fn()` closure, found `#[target_features] fn() {foo}`
@@ -11,13 +11,13 @@ LL |     call(foo);
    = note: `#[target_feature]` functions do not implement the `Fn` traits
    = note: try casting the function to a `fn` pointer or wrapping it in a closure
 note: required by a bound in `call`
-  --> $DIR/fn-traits.rs:14:17
+  --> $DIR/fn-traits.rs:12:17
    |
 LL | fn call(f: impl Fn()) {
    |                 ^^^^ required by this bound in `call`
 
 error[E0277]: expected a `FnMut()` closure, found `#[target_features] fn() {foo}`
-  --> $DIR/fn-traits.rs:32:14
+  --> $DIR/fn-traits.rs:30:14
    |
 LL |     call_mut(foo);
    |     -------- ^^^ expected an `FnMut()` closure, found `#[target_features] fn() {foo}`
@@ -29,13 +29,13 @@ LL |     call_mut(foo);
    = note: `#[target_feature]` functions do not implement the `Fn` traits
    = note: try casting the function to a `fn` pointer or wrapping it in a closure
 note: required by a bound in `call_mut`
-  --> $DIR/fn-traits.rs:18:25
+  --> $DIR/fn-traits.rs:16:25
    |
 LL | fn call_mut(mut f: impl FnMut()) {
    |                         ^^^^^^^ required by this bound in `call_mut`
 
 error[E0277]: expected a `FnOnce()` closure, found `#[target_features] fn() {foo}`
-  --> $DIR/fn-traits.rs:33:15
+  --> $DIR/fn-traits.rs:31:15
    |
 LL |     call_once(foo);
    |     --------- ^^^ expected an `FnOnce()` closure, found `#[target_features] fn() {foo}`
@@ -47,13 +47,13 @@ LL |     call_once(foo);
    = note: `#[target_feature]` functions do not implement the `Fn` traits
    = note: try casting the function to a `fn` pointer or wrapping it in a closure
 note: required by a bound in `call_once`
-  --> $DIR/fn-traits.rs:22:22
+  --> $DIR/fn-traits.rs:20:22
    |
 LL | fn call_once(f: impl FnOnce()) {
    |                      ^^^^^^^^ required by this bound in `call_once`
 
 error[E0277]: expected a `FnOnce(i32)` closure, found `#[target_features] fn(i32) {bar}`
-  --> $DIR/fn-traits.rs:34:19
+  --> $DIR/fn-traits.rs:32:19
    |
 LL |     call_once_i32(bar);
    |     ------------- ^^^ expected an `FnOnce(i32)` closure, found `#[target_features] fn(i32) {bar}`
@@ -64,13 +64,13 @@ LL |     call_once_i32(bar);
    = note: `#[target_feature]` functions do not implement the `Fn` traits
    = note: try casting the function to a `fn` pointer or wrapping it in a closure
 note: required by a bound in `call_once_i32`
-  --> $DIR/fn-traits.rs:26:26
+  --> $DIR/fn-traits.rs:24:26
    |
 LL | fn call_once_i32(f: impl FnOnce(i32)) {
    |                          ^^^^^^^^^^^ required by this bound in `call_once_i32`
 
 error[E0277]: expected a `Fn()` closure, found `unsafe fn() {foo_unsafe}`
-  --> $DIR/fn-traits.rs:36:10
+  --> $DIR/fn-traits.rs:34:10
    |
 LL |     call(foo_unsafe);
    |     ---- ^^^^^^^^^^ call the function in a closure: `|| unsafe { /* code */ }`
@@ -83,13 +83,13 @@ LL |     call(foo_unsafe);
    = note: `#[target_feature]` functions do not implement the `Fn` traits
    = note: try casting the function to a `fn` pointer or wrapping it in a closure
 note: required by a bound in `call`
-  --> $DIR/fn-traits.rs:14:17
+  --> $DIR/fn-traits.rs:12:17
    |
 LL | fn call(f: impl Fn()) {
    |                 ^^^^ required by this bound in `call`
 
 error[E0277]: expected a `FnMut()` closure, found `unsafe fn() {foo_unsafe}`
-  --> $DIR/fn-traits.rs:38:14
+  --> $DIR/fn-traits.rs:36:14
    |
 LL |     call_mut(foo_unsafe);
    |     -------- ^^^^^^^^^^ call the function in a closure: `|| unsafe { /* code */ }`
@@ -102,13 +102,13 @@ LL |     call_mut(foo_unsafe);
    = note: `#[target_feature]` functions do not implement the `Fn` traits
    = note: try casting the function to a `fn` pointer or wrapping it in a closure
 note: required by a bound in `call_mut`
-  --> $DIR/fn-traits.rs:18:25
+  --> $DIR/fn-traits.rs:16:25
    |
 LL | fn call_mut(mut f: impl FnMut()) {
    |                         ^^^^^^^ required by this bound in `call_mut`
 
 error[E0277]: expected a `FnOnce()` closure, found `unsafe fn() {foo_unsafe}`
-  --> $DIR/fn-traits.rs:40:15
+  --> $DIR/fn-traits.rs:38:15
    |
 LL |     call_once(foo_unsafe);
    |     --------- ^^^^^^^^^^ call the function in a closure: `|| unsafe { /* code */ }`
@@ -121,7 +121,7 @@ LL |     call_once(foo_unsafe);
    = note: `#[target_feature]` functions do not implement the `Fn` traits
    = note: try casting the function to a `fn` pointer or wrapping it in a closure
 note: required by a bound in `call_once`
-  --> $DIR/fn-traits.rs:22:22
+  --> $DIR/fn-traits.rs:20:22
    |
 LL | fn call_once(f: impl FnOnce()) {
    |                      ^^^^^^^^ required by this bound in `call_once`

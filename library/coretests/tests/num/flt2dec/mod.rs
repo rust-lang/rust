@@ -80,7 +80,7 @@ fn ldexp_f32(a: f32, b: i32) -> f32 {
 }
 
 fn ldexp_f64(a: f64, b: i32) -> f64 {
-    extern "C" {
+    unsafe extern "C" {
         fn ldexp(x: f64, n: i32) -> f64;
     }
     // SAFETY: assuming a correct `ldexp` has been supplied, the given arguments cannot possibly

@@ -1998,6 +1998,7 @@ to_def_impls![
     (crate::Adt, ast::Adt, adt_to_def),
     (crate::ExternCrateDecl, ast::ExternCrate, extern_crate_to_def),
     (crate::InlineAsmOperand, ast::AsmOperandNamed, asm_operand_to_def),
+    (crate::ExternBlock, ast::ExternBlock, extern_block_to_def),
     (MacroCallId, ast::MacroCall, macro_call_to_macro_call),
 ];
 
@@ -2038,6 +2039,13 @@ impl SemanticsScope<'_> {
 
     pub fn krate(&self) -> Crate {
         Crate { id: self.resolver.krate() }
+    }
+
+    pub fn containing_function(&self) -> Option<Function> {
+        self.resolver.body_owner().and_then(|owner| match owner {
+            DefWithBodyId::FunctionId(id) => Some(id.into()),
+            _ => None,
+        })
     }
 
     pub(crate) fn resolver(&self) -> &Resolver {

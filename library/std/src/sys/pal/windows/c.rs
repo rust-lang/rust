@@ -115,7 +115,7 @@ if #[cfg(not(target_vendor = "uwp"))] {
     link(name = "bcryptprimitives", kind = "raw-dylib", import_name_type = "undecorated")
 )]
 #[cfg_attr(not(target_arch = "x86"), link(name = "bcryptprimitives", kind = "raw-dylib"))]
-extern "system" {
+unsafe extern "system" {
     pub fn ProcessPrng(pbdata: *mut u8, cbdata: usize) -> BOOL;
 }
 
@@ -164,7 +164,7 @@ compat_fn_with_fallback! {
     not(target_arch = "x86"),
     link(name = "api-ms-win-core-synch-l1-2-0", kind = "raw-dylib")
 )]
-extern "system" {
+unsafe extern "system" {
     pub fn WaitOnAddress(
         address: *const c_void,
         compareaddress: *const c_void,
@@ -204,7 +204,7 @@ compat_fn_with_fallback! {
     pub fn NtReleaseKeyedEvent(
         EventHandle: HANDLE,
         Key: *const c_void,
-        Alertable: BOOLEAN,
+        Alertable: bool,
         Timeout: *mut i64
     ) -> NTSTATUS {
         panic!("keyed events not available")
@@ -213,7 +213,7 @@ compat_fn_with_fallback! {
     pub fn NtWaitForKeyedEvent(
         EventHandle: HANDLE,
         Key: *const c_void,
-        Alertable: BOOLEAN,
+        Alertable: bool,
         Timeout: *mut i64
     ) -> NTSTATUS {
         panic!("keyed events not available")

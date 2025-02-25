@@ -1,0 +1,94 @@
+- // MIR for `maybe_move` before ElaborateDrops
++ // MIR for `maybe_move` after ElaborateDrops
+  
+  fn maybe_move(_1: bool, _2: Box<String>) -> Option<String> {
+      debug cond => _1;
+      debug thing => _2;
+      let mut _0: std::option::Option<std::string::String>;
+      let mut _3: bool;
+      let mut _4: std::string::String;
++     let mut _5: bool;
++     let mut _6: &mut std::boxed::Box<std::string::String>;
++     let mut _7: ();
++     let mut _8: &mut std::boxed::Box<std::string::String>;
++     let mut _9: ();
++     let mut _10: *const std::string::String;
+  
+      bb0: {
++         _5 = const false;
++         _5 = const true;
+          StorageLive(_3);
+          _3 = copy _1;
+          switchInt(move _3) -> [0: bb3, otherwise: bb1];
+      }
+  
+      bb1: {
+          StorageLive(_4);
++         _5 = const false;
+          _4 = move (*_2);
+          _0 = Option::<String>::Some(move _4);
+-         drop(_4) -> [return: bb2, unwind: bb6];
++         goto -> bb2;
+      }
+  
+      bb2: {
+          StorageDead(_4);
+          goto -> bb4;
+      }
+  
+      bb3: {
+          _0 = Option::<String>::None;
+          goto -> bb4;
+      }
+  
+      bb4: {
+          StorageDead(_3);
+-         drop(_2) -> [return: bb5, unwind continue];
++         goto -> bb14;
+      }
+  
+      bb5: {
+          return;
+      }
+  
+      bb6 (cleanup): {
+-         drop(_2) -> [return: bb7, unwind terminate(cleanup)];
++         goto -> bb7;
+      }
+  
+      bb7 (cleanup): {
+          resume;
++     }
++ 
++     bb8: {
++         goto -> bb5;
++     }
++ 
++     bb9: {
++         _6 = &mut _2;
++         _7 = <Box<String> as Drop>::drop(move _6) -> [return: bb8, unwind: bb7];
++     }
++ 
++     bb10 (cleanup): {
++         _8 = &mut _2;
++         _9 = <Box<String> as Drop>::drop(move _8) -> [return: bb7, unwind terminate(cleanup)];
++     }
++ 
++     bb11: {
++         goto -> bb13;
++     }
++ 
++     bb12: {
++         drop((*_10)) -> [return: bb9, unwind: bb10];
++     }
++ 
++     bb13: {
++         switchInt(copy _5) -> [0: bb9, otherwise: bb12];
++     }
++ 
++     bb14: {
++         _10 = copy ((_2.0: std::ptr::Unique<std::string::String>).0: std::ptr::NonNull<std::string::String>) as *const std::string::String (Transmute);
++         goto -> bb11;
+      }
+  }
+  

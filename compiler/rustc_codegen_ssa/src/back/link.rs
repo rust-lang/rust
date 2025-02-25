@@ -244,22 +244,17 @@ pub fn each_linked_rlib(
 
         fmts
     } else {
-        for combination in info.dependency_formats.iter().combinations(2) {
-            let (ty1, list1) = &combination[0];
-            let (ty2, list2) = &combination[1];
-            if list1 != list2 {
-                return Err(errors::LinkRlibError::IncompatibleDependencyFormats {
-                    ty1: format!("{ty1:?}"),
-                    ty2: format!("{ty2:?}"),
-                    list1: format!("{list1:?}"),
-                    list2: format!("{list2:?}"),
-                });
-            }
+        let mut dep_formats = info.dependency_formats.iter();
+        let (ty1, list1) = dep_formats.next().ok_or(errors::LinkRlibError::MissingFormat)?;
+        if let Some((ty2, list2)) = dep_formats.find(|(_, list2)| list1 != *list2) {
+            return Err(errors::LinkRlibError::IncompatibleDependencyFormats {
+                ty1: format!("{ty1:?}"),
+                ty2: format!("{ty2:?}"),
+                list1: format!("{list1:?}"),
+                list2: format!("{list2:?}"),
+            });
         }
-        if info.dependency_formats.is_empty() {
-            return Err(errors::LinkRlibError::MissingFormat);
-        }
-        info.dependency_formats.first().unwrap().1
+        list1
     };
 
     let used_dep_crates = info.used_crates.iter();
@@ -626,10 +621,9 @@ fn link_staticlib(
 
     let mut all_rust_dylibs = vec![];
     for &cnum in crates {
-        match fmts.get(cnum) {
-            Some(&Linkage::Dynamic) => {}
-            _ => continue,
-        }
+        let Some(Linkage::Dynamic) = fmts.get(cnum) else {
+            continue;
+        };
         let crate_name = codegen_results.crate_info.crate_name[&cnum];
         let used_crate_source = &codegen_results.crate_info.used_crate_source[&cnum];
         if let Some((path, _)) = &used_crate_source.dylib {
@@ -1990,6 +1984,7 @@ fn add_pre_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor)
     if let Some(args) = sess.target.pre_link_args.get(&flavor) {
         cmd.verbatim_args(args.iter().map(Deref::deref));
     }
+
     cmd.verbatim_args(&sess.opts.unstable_opts.pre_link_args);
 }
 
@@ -2063,8 +2058,8 @@ fn add_post_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor
 /// linker, and since they never participate in the linking, using `KEEP` in the linker scripts
 /// can't keep them either. This causes #47384.
 ///
-/// To keep them around, we could use `--whole-archive` and equivalents to force rlib to
-/// participate in linking like object files, but this proves to be expensive (#93791). Therefore
+/// To keep them around, we could use `--whole-archive`, `-force_load` and equivalents to force rlib
+/// to participate in linking like object files, but this proves to be expensive (#93791). Therefore
 /// we instead just introduce an undefined reference to them. This could be done by `-u` command
 /// line option to the linker or `EXTERN(...)` in linker scripts, however they does not only
 /// introduce an undefined reference, but also make them the GC roots, preventing `--gc-sections`
@@ -2106,8 +2101,20 @@ fn add_linked_symbol_object(
         file.set_mangling(object::write::Mangling::None);
     }
 
+    // ld64 requires a relocation to load undefined symbols, see below.
+    // Not strictly needed if linking with lld, but might as well do it there too.
+    let ld64_section_helper = if file.format() == object::BinaryFormat::MachO {
+        Some(file.add_section(
+            file.segment_name(object::write::StandardSegment::Data).to_vec(),
+            "__data".into(),
+            object::SectionKind::Data,
+        ))
+    } else {
+        None
+    };
+
     for (sym, kind) in symbols.iter() {
-        file.add_symbol(object::write::Symbol {
+        let symbol = file.add_symbol(object::write::Symbol {
             name: sym.clone().into(),
             value: 0,
             size: 0,
@@ -2121,6 +2128,47 @@ fn add_linked_symbol_object(
             section: object::write::SymbolSection::Undefined,
             flags: object::SymbolFlags::None,
         });
+
+        // The linker shipped with Apple's Xcode, ld64, works a bit differently from other linkers.
+        //
+        // Code-wise, the relevant parts of ld64 are roughly:
+        // 1. Find the `ArchiveLoadMode` based on commandline options, default to `parseObjects`.
+        //    https://github.com/apple-oss-distributions/ld64/blob/ld64-954.16/src/ld/Options.cpp#L924-L932
+        //    https://github.com/apple-oss-distributions/ld64/blob/ld64-954.16/src/ld/Options.h#L55
+        //
+        // 2. Read the archive table of contents (__.SYMDEF file).
+        //    https://github.com/apple-oss-distributions/ld64/blob/ld64-954.16/src/ld/parsers/archive_file.cpp#L294-L325
+        //
+        // 3. Begin linking by loading "atoms" from input files.
+        //    https://github.com/apple-oss-distributions/ld64/blob/ld64-954.16/doc/design/linker.html
+        //    https://github.com/apple-oss-distributions/ld64/blob/ld64-954.16/src/ld/InputFiles.cpp#L1349
+        //
+        //   a. Directly specified object files (`.o`) are parsed immediately.
+        //      https://github.com/apple-oss-distributions/ld64/blob/ld64-954.16/src/ld/parsers/macho_relocatable_file.cpp#L4611-L4627
+        //
+        //     - Undefined symbols are not atoms (`n_value > 0` denotes a common symbol).
+        //       https://github.com/apple-oss-distributions/ld64/blob/ld64-954.16/src/ld/parsers/macho_relocatable_file.cpp#L2455-L2468
+        //       https://maskray.me/blog/2022-02-06-all-about-common-symbols
+        //
+        //     - Relocations/fixups are atoms.
+        //       https://github.com/apple-oss-distributions/ld64/blob/ce6341ae966b3451aa54eeb049f2be865afbd578/src/ld/parsers/macho_relocatable_file.cpp#L2088-L2114
+        //
+        //   b. Archives are not parsed yet.
+        //      https://github.com/apple-oss-distributions/ld64/blob/ld64-954.16/src/ld/parsers/archive_file.cpp#L467-L577
+        //
+        // 4. When a symbol is needed by an atom, parse the object file that contains the symbol.
+        //    https://github.com/apple-oss-distributions/ld64/blob/ld64-954.16/src/ld/InputFiles.cpp#L1417-L1491
+        //    https://github.com/apple-oss-distributions/ld64/blob/ld64-954.16/src/ld/parsers/archive_file.cpp#L579-L597
+        //
+        // All of the steps above are fairly similar to other linkers, except that **it completely
+        // ignores undefined symbols**.
+        //
+        // So to make this trick work on ld64, we need to do something else to load the relevant
+        // object files. We do this by inserting a relocation (fixup) for each symbol.
+        if let Some(section) = ld64_section_helper {
+            apple::add_data_and_relocation(&mut file, section, symbol, &sess.target, *kind)
+                .expect("failed adding relocation");
+        }
     }
 
     let path = tmpdir.join("symbols.o");
@@ -2518,6 +2566,12 @@ fn add_order_independent_options(
             "--target-cpu",
             &codegen_results.crate_info.target_cpu,
         ]);
+        if codegen_results.crate_info.target_features.len() > 0 {
+            cmd.link_arg(&format!(
+                "--target-feature={}",
+                &codegen_results.crate_info.target_features.join(",")
+            ));
+        }
     } else if flavor == LinkerFlavor::Ptx {
         cmd.link_args(&["--fallback-arch", &codegen_results.crate_info.target_cpu]);
     } else if flavor == LinkerFlavor::Bpf {

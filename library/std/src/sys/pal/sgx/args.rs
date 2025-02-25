@@ -7,7 +7,7 @@ use crate::sys_common::FromInner;
 use crate::{fmt, slice};
 
 #[cfg_attr(test, linkage = "available_externally")]
-#[export_name = "_ZN16__rust_internals3std3sys3sgx4args4ARGSE"]
+#[unsafe(export_name = "_ZN16__rust_internals3std3sys3sgx4args4ARGSE")]
 static ARGS: AtomicUsize = AtomicUsize::new(0);
 type ArgsStore = Vec<OsString>;
 

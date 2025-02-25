@@ -88,6 +88,10 @@ use syntax::{
 // }
 // ```
 pub(crate) fn generate_delegate_trait(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+    if !ctx.config.code_action_grouping {
+        return None;
+    }
+
     let strukt = Struct::new(ctx.find_node_at_offset::<ast::Struct>()?)?;
 
     let field: Field = match ctx.find_node_at_offset::<ast::RecordField>() {
@@ -788,7 +792,9 @@ fn qualified_path(qual_path_ty: ast::Path, path_expr_seg: ast::Path) -> ast::Pat
 mod test {
 
     use super::*;
-    use crate::tests::{check_assist, check_assist_not_applicable};
+    use crate::tests::{
+        check_assist, check_assist_not_applicable, check_assist_not_applicable_no_grouping,
+    };
 
     #[test]
     fn test_tuple_struct_basic() {
@@ -1835,5 +1841,34 @@ impl<D, T: C<A>> C<D> for B<T> {
 }
 "#,
         )
+    }
+
+    #[test]
+    fn delegate_trait_skipped_when_no_grouping() {
+        check_assist_not_applicable_no_grouping(
+            generate_delegate_trait,
+            r#"
+trait SomeTrait {
+    type T;
+    fn fn_(arg: u32) -> u32;
+    fn method_(&mut self) -> bool;
+}
+struct A;
+impl SomeTrait for A {
+    type T = u32;
+
+    fn fn_(arg: u32) -> u32 {
+        42
+    }
+
+    fn method_(&mut self) -> bool {
+        false
+    }
+}
+struct B {
+    a$0 : A,
+}
+"#,
+        );
     }
 }

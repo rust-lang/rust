@@ -6,8 +6,9 @@ LL | fn print_on_or_the_other<'a>(a: i32, b: &'a String) -> dyn Fn() + 'a {
    |
 help: consider returning an `impl Trait` instead of a `dyn Trait`
    |
-LL | fn print_on_or_the_other<'a>(a: i32, b: &'a String) -> impl Fn() + 'a {
-   |                                                        ~~~~
+LL - fn print_on_or_the_other<'a>(a: i32, b: &'a String) -> dyn Fn() + 'a {
+LL + fn print_on_or_the_other<'a>(a: i32, b: &'a String) -> impl Fn() + 'a {
+   |
 help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
    |
 LL ~ fn print_on_or_the_other<'a>(a: i32, b: &'a String) -> Box<dyn Fn() + 'a> {

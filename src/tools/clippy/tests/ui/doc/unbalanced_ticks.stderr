@@ -29,8 +29,9 @@ LL | /// This paragraph is fine and should_be linted normally.
    |
 help: try
    |
-LL | /// This paragraph is fine and `should_be` linted normally.
-   |                                ~~~~~~~~~~~
+LL - /// This paragraph is fine and should_be linted normally.
+LL + /// This paragraph is fine and `should_be` linted normally.
+   |
 
 error: backticks are unbalanced
   --> tests/ui/doc/unbalanced_ticks.rs:20:5
@@ -48,8 +49,9 @@ LL | /// ## not_fine
    |
 help: try
    |
-LL | /// ## `not_fine`
-   |        ~~~~~~~~~~
+LL - /// ## not_fine
+LL + /// ## `not_fine`
+   |
 
 error: backticks are unbalanced
   --> tests/ui/doc/unbalanced_ticks.rs:37:5
@@ -75,8 +77,9 @@ LL | /// - This item needs backticks_here
    |
 help: try
    |
-LL | /// - This item needs `backticks_here`
-   |                       ~~~~~~~~~~~~~~~~
+LL - /// - This item needs backticks_here
+LL + /// - This item needs `backticks_here`
+   |
 
 error: backticks are unbalanced
   --> tests/ui/doc/unbalanced_ticks.rs:53:5

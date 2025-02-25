@@ -11,7 +11,7 @@ LL |     check(m1::S);
 help: a tuple struct with a similar name exists
    |
 LL |     check(m1::TS);
-   |               ~~
+   |               +
 help: consider importing one of these constants instead
    |
 LL + use m2::S;
@@ -39,7 +39,7 @@ LL |     pub struct TS();
 help: a tuple struct with a similar name exists
    |
 LL |     check(xm1::TS);
-   |                ~~
+   |                +
 help: consider importing one of these constants instead
    |
 LL + use m2::S;
@@ -65,7 +65,7 @@ LL |     check(m7::V);
 help: a tuple variant with a similar name exists
    |
 LL |     check(m7::TV);
-   |               ~~
+   |               +
 help: consider importing one of these constants instead
    |
 LL + use m8::V;
@@ -93,7 +93,7 @@ LL |         TV(),
 help: a tuple variant with a similar name exists
    |
 LL |     check(xm7::TV);
-   |                ~~
+   |                +
 help: consider importing one of these constants instead
    |
 LL + use m8::V;

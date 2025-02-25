@@ -245,7 +245,11 @@ impl Cargo {
                 // flesh out rpath support more fully in the future.
                 self.rustflags.arg("-Zosx-rpath-install-name");
                 Some(format!("-Wl,-rpath,@loader_path/../{libdir}"))
-            } else if !target.is_windows() && !target.contains("aix") && !target.contains("xous") {
+            } else if !target.is_windows()
+                && !target.contains("cygwin")
+                && !target.contains("aix")
+                && !target.contains("xous")
+            {
                 self.rustflags.arg("-Clink-args=-Wl,-z,origin");
                 Some(format!("-Wl,-rpath,$ORIGIN/../{libdir}"))
             } else {
@@ -281,10 +285,7 @@ impl Cargo {
 
         // Ignore linker warnings for now. These are complicated to fix and don't affect the build.
         // FIXME: we should really investigate these...
-        // cfg(bootstrap)
-        if compiler.stage != 0 {
-            self.rustflags.arg("-Alinker-messages");
-        }
+        self.rustflags.arg("-Alinker-messages");
 
         // Throughout the build Cargo can execute a number of build scripts
         // compiling C/C++ code and we need to pass compilers, archivers, flags, etc
@@ -323,8 +324,15 @@ impl Cargo {
             let cc = ccacheify(&builder.cc(target));
             self.command.env(format!("CC_{triple_underscored}"), &cc);
 
-            let cflags = builder.cflags(target, GitRepo::Rustc, CLang::C).join(" ");
-            self.command.env(format!("CFLAGS_{triple_underscored}"), &cflags);
+            // Extend `CXXFLAGS_$TARGET` with our extra flags.
+            let env = format!("CFLAGS_{triple_underscored}");
+            let mut cflags =
+                builder.cc_unhandled_cflags(target, GitRepo::Rustc, CLang::C).join(" ");
+            if let Ok(var) = std::env::var(&env) {
+                cflags.push(' ');
+                cflags.push_str(&var);
+            }
+            self.command.env(env, &cflags);
 
             if let Some(ar) = builder.ar(target) {
                 let ranlib = format!("{} s", ar.display());
@@ -335,10 +343,17 @@ impl Cargo {
 
             if let Ok(cxx) = builder.cxx(target) {
                 let cxx = ccacheify(&cxx);
-                let cxxflags = builder.cflags(target, GitRepo::Rustc, CLang::Cxx).join(" ");
-                self.command
-                    .env(format!("CXX_{triple_underscored}"), &cxx)
-                    .env(format!("CXXFLAGS_{triple_underscored}"), cxxflags);
+                self.command.env(format!("CXX_{triple_underscored}"), &cxx);
+
+                // Extend `CXXFLAGS_$TARGET` with our extra flags.
+                let env = format!("CXXFLAGS_{triple_underscored}");
+                let mut cxxflags =
+                    builder.cc_unhandled_cflags(target, GitRepo::Rustc, CLang::Cxx).join(" ");
+                if let Ok(var) = std::env::var(&env) {
+                    cxxflags.push(' ');
+                    cxxflags.push_str(&var);
+                }
+                self.command.env(&env, cxxflags);
             }
         }
 
@@ -906,8 +921,7 @@ impl Builder<'_> {
 
         if self.config.rust_remap_debuginfo {
             let mut env_var = OsString::new();
-            if self.config.vendor {
-                let vendor = self.build.src.join("vendor");
+            if let Some(vendor) = self.build.vendored_crates_path() {
                 env_var.push(vendor);
                 env_var.push("=/rust/deps");
             } else {
@@ -1054,10 +1068,7 @@ impl Builder<'_> {
 
         if mode == Mode::Rustc {
             rustflags.arg("-Wrustc::internal");
-            // cfg(bootstrap) - remove this check when lint is in bootstrap compiler
-            if stage != 0 {
-                rustflags.arg("-Drustc::symbol_intern_string_literal");
-            }
+            rustflags.arg("-Drustc::symbol_intern_string_literal");
             // FIXME(edition_2024): Change this to `-Wrust_2024_idioms` when all
             // of the individual lints are satisfied.
             rustflags.arg("-Wkeyword_idents_2024");

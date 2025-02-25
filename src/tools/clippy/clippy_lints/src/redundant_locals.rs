@@ -98,7 +98,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantLocals {
 /// assert_static(closure);
 /// ```
 fn is_by_value_closure_capture(cx: &LateContext<'_>, redefinition: HirId, root_variable: HirId) -> bool {
-    let closure_def_id = cx.tcx.hir().enclosing_body_owner(redefinition);
+    let closure_def_id = cx.tcx.hir_enclosing_body_owner(redefinition);
 
     cx.tcx.is_closure_like(closure_def_id.to_def_id())
         && cx.tcx.closure_captures(closure_def_id).iter().any(|c| {
@@ -122,8 +122,7 @@ fn find_binding(pat: &Pat<'_>, name: Ident) -> Option<BindingMode> {
 
 /// Check if a rebinding of a local changes the effect of assignments to the binding.
 fn affects_assignments(cx: &LateContext<'_>, mutability: Mutability, bind: HirId, rebind: HirId) -> bool {
-    let hir = cx.tcx.hir();
-
     // the binding is mutable and the rebinding is in a different scope than the original binding
-    mutability == Mutability::Mut && hir.get_enclosing_scope(bind) != hir.get_enclosing_scope(rebind)
+    mutability == Mutability::Mut
+        && cx.tcx.hir_get_enclosing_scope(bind) != cx.tcx.hir_get_enclosing_scope(rebind)
 }

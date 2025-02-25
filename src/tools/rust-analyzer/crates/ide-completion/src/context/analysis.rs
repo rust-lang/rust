@@ -59,7 +59,7 @@ pub(super) fn expand_and_analyze(
     // make the offset point to the start of the original token, as that is what the
     // intermediate offsets calculated in expansion always points to
     let offset = offset - relative_offset;
-    let expansion = expand(
+    let expansion = expand_maybe_stop(
         sema,
         original_file.clone(),
         speculative_file.clone(),
@@ -118,6 +118,47 @@ fn token_at_offset_ignore_whitespace(file: &SyntaxNode, offset: TextSize) -> Opt
 /// that we check, we subtract `COMPLETION_MARKER.len()`. This may not be accurate because proc macros
 /// can insert the text of the completion marker in other places while removing the span, but this is
 /// the best we can do.
+fn expand_maybe_stop(
+    sema: &Semantics<'_, RootDatabase>,
+    original_file: SyntaxNode,
+    speculative_file: SyntaxNode,
+    original_offset: TextSize,
+    fake_ident_token: SyntaxToken,
+    relative_offset: TextSize,
+) -> Option<ExpansionResult> {
+    if let result @ Some(_) = expand(
+        sema,
+        original_file.clone(),
+        speculative_file.clone(),
+        original_offset,
+        fake_ident_token.clone(),
+        relative_offset,
+    ) {
+        return result;
+    }
+
+    // This needs to come after the recursive call, because our "inside macro" detection is subtly wrong
+    // with regard to attribute macros named `test` that are not std's test. So hopefully we will expand
+    // them successfully above and be able to analyze.
+    // Left biased since there may already be an identifier token there, and we appended to it.
+    if !sema.might_be_inside_macro_call(&fake_ident_token)
+        && token_at_offset_ignore_whitespace(&original_file, original_offset + relative_offset)
+            .is_some_and(|original_token| !sema.might_be_inside_macro_call(&original_token))
+    {
+        // Recursion base case.
+        Some(ExpansionResult {
+            original_file,
+            speculative_file,
+            original_offset,
+            speculative_offset: fake_ident_token.text_range().start(),
+            fake_ident_token,
+            derive_ctx: None,
+        })
+    } else {
+        None
+    }
+}
+
 fn expand(
     sema: &Semantics<'_, RootDatabase>,
     original_file: SyntaxNode,
@@ -127,22 +168,6 @@ fn expand(
     relative_offset: TextSize,
 ) -> Option<ExpansionResult> {
     let _p = tracing::info_span!("CompletionContext::expand").entered();
-
-    // Left biased since there may already be an identifier token there, and we appended to it.
-    if !sema.might_be_inside_macro_call(&fake_ident_token)
-        && token_at_offset_ignore_whitespace(&original_file, original_offset + relative_offset)
-            .is_some_and(|original_token| !sema.might_be_inside_macro_call(&original_token))
-    {
-        // Recursion base case.
-        return Some(ExpansionResult {
-            original_file,
-            speculative_file,
-            original_offset,
-            speculative_offset: fake_ident_token.text_range().start(),
-            fake_ident_token,
-            derive_ctx: None,
-        });
-    }
 
     let parent_item =
         |item: &ast::Item| item.syntax().ancestors().skip(1).find_map(ast::Item::cast);
@@ -197,7 +222,7 @@ fn expand(
                             // stop here to prevent problems from happening
                             return None;
                         }
-                        let result = expand(
+                        let result = expand_maybe_stop(
                             sema,
                             actual_expansion.clone(),
                             fake_expansion.clone(),
@@ -317,7 +342,7 @@ fn expand(
                                     // stop here to prevent problems from happening
                                     return None;
                                 }
-                                let result = expand(
+                                let result = expand_maybe_stop(
                                     sema,
                                     actual_expansion.clone(),
                                     fake_expansion.clone(),
@@ -386,7 +411,7 @@ fn expand(
                         // stop here to prevent problems from happening
                         return None;
                     }
-                    let result = expand(
+                    let result = expand_maybe_stop(
                         sema,
                         actual_expansion.clone(),
                         fake_expansion.clone(),

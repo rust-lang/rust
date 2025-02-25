@@ -6,8 +6,9 @@ LL |     b'µ';
    |
 help: if you meant to use the unicode code point for 'µ', use a \xHH escape
    |
-LL |     b'\xB5';
-   |       ~~~~
+LL -     b'µ';
+LL +     b'\xB5';
+   |
 
 error: non-ASCII character in byte literal
   --> $DIR/multibyte-escapes.rs:9:7
@@ -26,8 +27,9 @@ LL |     b"字";
    |
 help: if you meant to use the UTF-8 encoding of '字', use \xHH escapes
    |
-LL |     b"\xE5\xAD\x97";
-   |       ~~~~~~~~~~~~
+LL -     b"字";
+LL +     b"\xE5\xAD\x97";
+   |
 
 error: aborting due to 3 previous errors
 

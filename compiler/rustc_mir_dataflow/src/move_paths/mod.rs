@@ -343,7 +343,7 @@ impl<'tcx> MovePathLookup<'tcx> {
     /// `MovePathIndex`es.
     pub fn iter_locals_enumerated(
         &self,
-    ) -> impl DoubleEndedIterator<Item = (Local, MovePathIndex)> + '_ {
+    ) -> impl DoubleEndedIterator<Item = (Local, MovePathIndex)> {
         self.locals.iter_enumerated().filter_map(|(l, &idx)| Some((l, idx?)))
     }
 }

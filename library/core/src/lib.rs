@@ -192,7 +192,6 @@
 #![feature(staged_api)]
 #![feature(stmt_expr_attributes)]
 #![feature(strict_provenance_lints)]
-#![feature(target_feature_11)]
 #![feature(trait_alias)]
 #![feature(transparent_unions)]
 #![feature(try_blocks)]
@@ -248,7 +247,6 @@ pub mod autodiff {
     pub use crate::macros::builtin::autodiff;
 }
 
-#[cfg(not(bootstrap))]
 #[unstable(feature = "contracts", issue = "128044")]
 pub mod contracts;
 

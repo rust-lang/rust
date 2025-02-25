@@ -1,18 +1,20 @@
+// ignore-tidy-filelength
 use std::fmt;
 
 use rustc_abi::ExternAbi;
-// ignore-tidy-filelength
 use rustc_ast::attr::AttributeExt;
 use rustc_ast::token::CommentKind;
 use rustc_ast::util::parser::{AssocOp, ExprPrecedence};
 use rustc_ast::{
-    self as ast, AttrId, AttrStyle, DelimArgs, FloatTy, InlineAsmOptions, InlineAsmTemplatePiece,
-    IntTy, Label, LitIntType, LitKind, MetaItemInner, MetaItemLit, TraitObjectSyntax, UintTy,
+    self as ast, FloatTy, InlineAsmOptions, InlineAsmTemplatePiece, IntTy, Label, LitIntType,
+    LitKind, TraitObjectSyntax, UintTy, UnsafeBinderCastKind,
 };
 pub use rustc_ast::{
-    BinOp, BinOpKind, BindingMode, BorrowKind, BoundConstness, BoundPolarity, ByRef, CaptureBy,
-    ImplPolarity, IsAuto, Movability, Mutability, UnOp, UnsafeBinderCastKind,
+    AttrId, AttrStyle, BinOp, BinOpKind, BindingMode, BorrowKind, BoundConstness, BoundPolarity,
+    ByRef, CaptureBy, DelimArgs, ImplPolarity, IsAuto, MetaItemInner, MetaItemLit, Movability,
+    Mutability, UnOp,
 };
+use rustc_attr_data_structures::AttributeKind;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::tagged_ptr::TaggedRef;
@@ -1009,174 +1011,248 @@ pub enum AttrArgs {
     },
 }
 
-#[derive(Clone, Debug, Encodable, Decodable)]
-pub enum AttrKind {
-    /// A normal attribute.
-    Normal(Box<AttrItem>),
-
-    /// A doc comment (e.g. `/// ...`, `//! ...`, `/** ... */`, `/*! ... */`).
-    /// Doc attributes (e.g. `#[doc="..."]`) are represented with the `Normal`
-    /// variant (which is much less compact and thus more expensive).
-    DocComment(CommentKind, Symbol),
-}
-
 #[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable)]
 pub struct AttrPath {
     pub segments: Box<[Ident]>,
     pub span: Span,
 }
 
+impl AttrPath {
+    pub fn from_ast(path: &ast::Path) -> Self {
+        AttrPath {
+            segments: path.segments.iter().map(|i| i.ident).collect::<Vec<_>>().into_boxed_slice(),
+            span: path.span,
+        }
+    }
+}
+
+impl fmt::Display for AttrPath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.segments.iter().map(|i| i.to_string()).collect::<Vec<_>>().join("::"))
+    }
+}
+
 #[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable)]
 pub struct AttrItem {
-    pub unsafety: Safety,
     // Not lowered to hir::Path because we have no NodeId to resolve to.
     pub path: AttrPath,
     pub args: AttrArgs,
-}
-
-#[derive(Clone, Debug, Encodable, Decodable)]
-pub struct Attribute {
-    pub kind: AttrKind,
-    pub id: AttrId,
+    pub id: HashIgnoredAttrId,
     /// Denotes if the attribute decorates the following construct (outer)
     /// or the construct this attribute is contained within (inner).
     pub style: AttrStyle,
+    /// Span of the entire attribute
     pub span: Span,
+}
+
+/// The derived implementation of [`HashStable_Generic`] on [`Attribute`]s shouldn't hash
+/// [`AttrId`]s. By wrapping them in this, we make sure we never do.
+#[derive(Copy, Debug, Encodable, Decodable, Clone)]
+pub struct HashIgnoredAttrId {
+    pub attr_id: AttrId,
+}
+
+#[derive(Clone, Debug, Encodable, Decodable, HashStable_Generic)]
+pub enum Attribute {
+    /// A parsed built-in attribute.
+    ///
+    /// Each attribute has a span connected to it. However, you must be somewhat careful using it.
+    /// That's because sometimes we merge multiple attributes together, like when an item has
+    /// multiple `repr` attributes. In this case the span might not be very useful.
+    Parsed(AttributeKind),
+
+    /// An attribute that could not be parsed, out of a token-like representation.
+    /// This is the case for custom tool attributes.
+    Unparsed(Box<AttrItem>),
 }
 
 impl Attribute {
     pub fn get_normal_item(&self) -> &AttrItem {
-        match &self.kind {
-            AttrKind::Normal(normal) => &normal,
-            AttrKind::DocComment(..) => panic!("unexpected doc comment"),
+        match &self {
+            Attribute::Unparsed(normal) => &normal,
+            _ => panic!("unexpected parsed attribute"),
         }
     }
 
     pub fn unwrap_normal_item(self) -> AttrItem {
-        match self.kind {
-            AttrKind::Normal(normal) => *normal,
-            AttrKind::DocComment(..) => panic!("unexpected doc comment"),
+        match self {
+            Attribute::Unparsed(normal) => *normal,
+            _ => panic!("unexpected parsed attribute"),
         }
     }
 
     pub fn value_lit(&self) -> Option<&MetaItemLit> {
-        match &self.kind {
-            AttrKind::Normal(box AttrItem { args: AttrArgs::Eq { expr, .. }, .. }) => Some(expr),
+        match &self {
+            Attribute::Unparsed(n) => match n.as_ref() {
+                AttrItem { args: AttrArgs::Eq { eq_span: _, expr }, .. } => Some(expr),
+                _ => None,
+            },
             _ => None,
         }
     }
 }
 
 impl AttributeExt for Attribute {
+    #[inline]
     fn id(&self) -> AttrId {
-        self.id
+        match &self {
+            Attribute::Unparsed(u) => u.id.attr_id,
+            _ => panic!(),
+        }
     }
 
+    #[inline]
     fn meta_item_list(&self) -> Option<ThinVec<ast::MetaItemInner>> {
-        match &self.kind {
-            AttrKind::Normal(box AttrItem { args: AttrArgs::Delimited(d), .. }) => {
-                ast::MetaItemKind::list_from_tokens(d.tokens.clone())
-            }
+        match &self {
+            Attribute::Unparsed(n) => match n.as_ref() {
+                AttrItem { args: AttrArgs::Delimited(d), .. } => {
+                    ast::MetaItemKind::list_from_tokens(d.tokens.clone())
+                }
+                _ => None,
+            },
             _ => None,
         }
     }
 
+    #[inline]
     fn value_str(&self) -> Option<Symbol> {
         self.value_lit().and_then(|x| x.value_str())
     }
 
+    #[inline]
     fn value_span(&self) -> Option<Span> {
         self.value_lit().map(|i| i.span)
     }
 
     /// For a single-segment attribute, returns its name; otherwise, returns `None`.
+    #[inline]
     fn ident(&self) -> Option<Ident> {
-        match &self.kind {
-            AttrKind::Normal(box AttrItem {
-                path: AttrPath { segments: box [ident], .. }, ..
-            }) => Some(*ident),
+        match &self {
+            Attribute::Unparsed(n) => {
+                if let [ident] = n.path.segments.as_ref() {
+                    Some(*ident)
+                } else {
+                    None
+                }
+            }
             _ => None,
         }
     }
 
+    #[inline]
     fn path_matches(&self, name: &[Symbol]) -> bool {
-        match &self.kind {
-            AttrKind::Normal(n) => n.path.segments.iter().map(|segment| &segment.name).eq(name),
-            AttrKind::DocComment(..) => false,
+        match &self {
+            Attribute::Unparsed(n) => {
+                n.path.segments.len() == name.len()
+                    && n.path.segments.iter().zip(name).all(|(s, n)| s.name == *n)
+            }
+            _ => false,
         }
     }
 
+    #[inline]
     fn is_doc_comment(&self) -> bool {
-        matches!(self.kind, AttrKind::DocComment(..))
+        matches!(self, Attribute::Parsed(AttributeKind::DocComment { .. }))
     }
 
+    #[inline]
     fn span(&self) -> Span {
-        self.span
-    }
-
-    fn is_word(&self) -> bool {
-        matches!(self.kind, AttrKind::Normal(box AttrItem { args: AttrArgs::Empty, .. }))
-    }
-
-    fn ident_path(&self) -> Option<SmallVec<[Ident; 1]>> {
-        match &self.kind {
-            AttrKind::Normal(n) => Some(n.path.segments.iter().copied().collect()),
-            AttrKind::DocComment(..) => None,
+        match &self {
+            Attribute::Unparsed(u) => u.span,
+            // FIXME: should not be needed anymore when all attrs are parsed
+            Attribute::Parsed(AttributeKind::Deprecation { span, .. }) => *span,
+            Attribute::Parsed(AttributeKind::DocComment { span, .. }) => *span,
+            a => panic!("can't get the span of an arbitrary parsed attribute: {a:?}"),
         }
     }
 
-    fn doc_str(&self) -> Option<Symbol> {
-        match &self.kind {
-            AttrKind::DocComment(.., data) => Some(*data),
-            AttrKind::Normal(_) if self.has_name(sym::doc) => self.value_str(),
+    #[inline]
+    fn is_word(&self) -> bool {
+        match &self {
+            Attribute::Unparsed(n) => {
+                matches!(n.args, AttrArgs::Empty)
+            }
+            _ => false,
+        }
+    }
+
+    #[inline]
+    fn ident_path(&self) -> Option<SmallVec<[Ident; 1]>> {
+        match &self {
+            Attribute::Unparsed(n) => Some(n.path.segments.iter().copied().collect()),
             _ => None,
         }
     }
+
+    #[inline]
+    fn doc_str(&self) -> Option<Symbol> {
+        match &self {
+            Attribute::Parsed(AttributeKind::DocComment { comment, .. }) => Some(*comment),
+            Attribute::Unparsed(_) if self.has_name(sym::doc) => self.value_str(),
+            _ => None,
+        }
+    }
+    #[inline]
     fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)> {
-        match &self.kind {
-            AttrKind::DocComment(kind, data) => Some((*data, *kind)),
-            AttrKind::Normal(_) if self.name_or_empty() == sym::doc => {
+        match &self {
+            Attribute::Parsed(AttributeKind::DocComment { kind, comment, .. }) => {
+                Some((*comment, *kind))
+            }
+            Attribute::Unparsed(_) if self.name_or_empty() == sym::doc => {
                 self.value_str().map(|s| (s, CommentKind::Line))
             }
             _ => None,
         }
     }
 
+    #[inline]
     fn style(&self) -> AttrStyle {
-        self.style
+        match &self {
+            Attribute::Unparsed(u) => u.style,
+            Attribute::Parsed(AttributeKind::DocComment { style, .. }) => *style,
+            _ => panic!(),
+        }
     }
 }
 
 // FIXME(fn_delegation): use function delegation instead of manually forwarding
 impl Attribute {
+    #[inline]
     pub fn id(&self) -> AttrId {
         AttributeExt::id(self)
     }
 
+    #[inline]
     pub fn name_or_empty(&self) -> Symbol {
         AttributeExt::name_or_empty(self)
     }
 
+    #[inline]
     pub fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
         AttributeExt::meta_item_list(self)
     }
 
+    #[inline]
     pub fn value_str(&self) -> Option<Symbol> {
         AttributeExt::value_str(self)
     }
 
+    #[inline]
     pub fn value_span(&self) -> Option<Span> {
         AttributeExt::value_span(self)
     }
 
+    #[inline]
     pub fn ident(&self) -> Option<Ident> {
         AttributeExt::ident(self)
     }
 
+    #[inline]
     pub fn path_matches(&self, name: &[Symbol]) -> bool {
         AttributeExt::path_matches(self, name)
     }
 
+    #[inline]
     pub fn is_doc_comment(&self) -> bool {
         AttributeExt::is_doc_comment(self)
     }
@@ -1186,34 +1262,42 @@ impl Attribute {
         AttributeExt::has_name(self, name)
     }
 
+    #[inline]
     pub fn span(&self) -> Span {
         AttributeExt::span(self)
     }
 
+    #[inline]
     pub fn is_word(&self) -> bool {
         AttributeExt::is_word(self)
     }
 
+    #[inline]
     pub fn path(&self) -> SmallVec<[Symbol; 1]> {
         AttributeExt::path(self)
     }
 
+    #[inline]
     pub fn ident_path(&self) -> Option<SmallVec<[Ident; 1]>> {
         AttributeExt::ident_path(self)
     }
 
+    #[inline]
     pub fn doc_str(&self) -> Option<Symbol> {
         AttributeExt::doc_str(self)
     }
 
+    #[inline]
     pub fn is_proc_macro_attr(&self) -> bool {
         AttributeExt::is_proc_macro_attr(self)
     }
 
+    #[inline]
     pub fn doc_str_and_comment_kind(&self) -> Option<(Symbol, CommentKind)> {
         AttributeExt::doc_str_and_comment_kind(self)
     }
 
+    #[inline]
     pub fn style(&self) -> AttrStyle {
         AttributeExt::style(self)
     }
@@ -1913,13 +1997,18 @@ pub enum BodyOwnerKind {
 
     /// Initializer of a `static` item.
     Static(Mutability),
+
+    /// Fake body for a global asm to store its const-like value types.
+    GlobalAsm,
 }
 
 impl BodyOwnerKind {
     pub fn is_fn_or_closure(self) -> bool {
         match self {
             BodyOwnerKind::Fn | BodyOwnerKind::Closure => true,
-            BodyOwnerKind::Const { .. } | BodyOwnerKind::Static(_) => false,
+            BodyOwnerKind::Const { .. } | BodyOwnerKind::Static(_) | BodyOwnerKind::GlobalAsm => {
+                false
+            }
         }
     }
 }
@@ -3420,7 +3509,7 @@ pub enum InlineAsmOperand<'hir> {
         anon_const: &'hir AnonConst,
     },
     SymFn {
-        anon_const: &'hir AnonConst,
+        expr: &'hir Expr<'hir>,
     },
     SymStatic {
         path: QPath<'hir>,
@@ -3848,7 +3937,7 @@ impl<'hir> Item<'hir> {
         expect_foreign_mod, (ExternAbi, &'hir [ForeignItemRef]),
             ItemKind::ForeignMod { abi, items }, (*abi, items);
 
-        expect_global_asm, &'hir InlineAsm<'hir>, ItemKind::GlobalAsm(asm), asm;
+        expect_global_asm, &'hir InlineAsm<'hir>, ItemKind::GlobalAsm { asm, .. }, asm;
 
         expect_ty_alias, (&'hir Ty<'hir>, &'hir Generics<'hir>),
             ItemKind::TyAlias(ty, generics), (ty, generics);
@@ -4015,7 +4104,15 @@ pub enum ItemKind<'hir> {
     /// An external module, e.g. `extern { .. }`.
     ForeignMod { abi: ExternAbi, items: &'hir [ForeignItemRef] },
     /// Module-level inline assembly (from `global_asm!`).
-    GlobalAsm(&'hir InlineAsm<'hir>),
+    GlobalAsm {
+        asm: &'hir InlineAsm<'hir>,
+        /// A fake body which stores typeck results for the global asm's sym_fn
+        /// operands, which are represented as path expressions. This body contains
+        /// a single [`ExprKind::InlineAsm`] which points to the asm in the field
+        /// above, and which is typechecked like a inline asm expr just for the
+        /// typeck results.
+        fake_body: BodyId,
+    },
     /// A type alias, e.g., `type Foo = Bar<u8>`.
     TyAlias(&'hir Ty<'hir>, &'hir Generics<'hir>),
     /// An enum definition, e.g., `enum Foo<A, B> {C<A>, D<B>}`.
@@ -4081,7 +4178,7 @@ impl ItemKind<'_> {
             ItemKind::Macro(..) => "macro",
             ItemKind::Mod(..) => "module",
             ItemKind::ForeignMod { .. } => "extern block",
-            ItemKind::GlobalAsm(..) => "global asm item",
+            ItemKind::GlobalAsm { .. } => "global asm item",
             ItemKind::TyAlias(..) => "type alias",
             ItemKind::Enum(..) => "enum",
             ItemKind::Struct(..) => "struct",
@@ -4539,6 +4636,10 @@ impl<'hir> Node<'hir> {
                 kind: ImplItemKind::Const(_, body) | ImplItemKind::Fn(_, body),
                 ..
             }) => Some((owner_id.def_id, *body)),
+
+            Node::Item(Item {
+                owner_id, kind: ItemKind::GlobalAsm { asm: _, fake_body }, ..
+            }) => Some((owner_id.def_id, *fake_body)),
 
             Node::Expr(Expr { kind: ExprKind::Closure(Closure { def_id, body, .. }), .. }) => {
                 Some((*def_id, *body))

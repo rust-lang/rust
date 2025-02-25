@@ -1,6 +1,6 @@
 //@ revisions: elfv1-be elfv2-be elfv2-le aix
 //@ assembly-output: emit-asm
-//@ compile-flags: -O
+//@ compile-flags: -Copt-level=3
 //@[elfv1-be] compile-flags: --target powerpc64-unknown-linux-gnu
 //@[elfv1-be] needs-llvm-components: powerpc
 //@[elfv2-be] compile-flags: --target powerpc64-unknown-linux-musl

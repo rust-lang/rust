@@ -96,8 +96,9 @@ LL |     fn fnc<const N: Trait = u32>(&self) -> Trait {
    |
 help: you might have meant to use `Self` to refer to the implementing type
    |
-LL |     fn fnc<const N: Trait = u32>(&self) -> Self {
-   |                                            ~~~~
+LL -     fn fnc<const N: Trait = u32>(&self) -> Trait {
+LL +     fn fnc<const N: Trait = u32>(&self) -> Self {
+   |
 
 error: aborting due to 7 previous errors; 3 warnings emitted
 

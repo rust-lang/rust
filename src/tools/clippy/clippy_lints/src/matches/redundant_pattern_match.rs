@@ -199,7 +199,7 @@ fn find_method_sugg_for_if_let<'tcx>(
     // type needs to be considered, not just the inner type of the branch being matched on.
     // Note the last expression in a block is dropped after all local bindings.
     let check_ty = if has_else
-        || (keyword == "if" && matches!(cx.tcx.hir().parent_iter(expr.hir_id).next(), Some((_, Node::Block(..)))))
+        || (keyword == "if" && matches!(cx.tcx.hir_parent_iter(expr.hir_id).next(), Some((_, Node::Block(..)))))
     {
         op_ty
     } else {

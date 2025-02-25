@@ -13,8 +13,9 @@ LL |     let Bar(x, y, Foo(z)) = make_bar();
    |                private field
 help: consider making the fields publicly accessible
    |
-LL |     pub(crate) struct Bar(pub u8, pub u8, pub Foo);
-   |                                   ~~~     +++
+LL -     pub(crate) struct Bar(pub u8, pub(in crate::foo) u8, Foo);
+LL +     pub(crate) struct Bar(pub u8, pub u8, pub Foo);
+   |
 
 error[E0532]: cannot match against a tuple struct which contains private fields
   --> $DIR/issue-75907.rs:15:19

@@ -64,7 +64,11 @@ jobs:
         run: |
           rustup update --no-self-update ${{ env.RUST_CHANNEL }}
           rustup default ${{ env.RUST_CHANNEL }}
-          rustup component add --toolchain ${{ env.RUST_CHANNEL }} rustfmt rust-src
+          rustup component add --toolchain ${{ env.RUST_CHANNEL }} rust-src
+          # We always use a nightly rustfmt, regardless of channel, because we need
+          # --file-lines.
+          rustup toolchain add nightly --profile minimal
+          rustup component add --toolchain nightly rustfmt
       # https://github.com/actions-rust-lang/setup-rust-toolchain/blob/main/rust.json
       - name: Install Rust Problem Matcher
         if: matrix.os == 'ubuntu-latest'

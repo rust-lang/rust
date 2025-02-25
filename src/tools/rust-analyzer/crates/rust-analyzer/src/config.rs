@@ -84,10 +84,10 @@ config_data! {
         completion_snippets_custom: FxHashMap<String, SnippetDef> = Config::completion_snippets_default(),
 
 
-        /// These directories will be ignored by rust-analyzer. They are
+        /// These paths (file/directories) will be ignored by rust-analyzer. They are
         /// relative to the workspace root, and globs are not supported. You may
         /// also need to add the folders to Code's `files.watcherExclude`.
-        files_excludeDirs: Vec<Utf8PathBuf> = vec![],
+        files_exclude | files_excludeDirs: Vec<Utf8PathBuf> = vec![],
 
 
 
@@ -208,6 +208,8 @@ config_data! {
         /// Whether to hide inlay type hints for `let` statements that initialize to a closure.
         /// Only applies to closures with blocks, same as `#rust-analyzer.inlayHints.closureReturnTypeHints.enable#`.
         inlayHints_typeHints_hideClosureInitialization: bool       = false,
+        /// Whether to hide inlay parameter type hints for closures.
+        inlayHints_typeHints_hideClosureParameter:bool             = false,
         /// Whether to hide inlay type hints for constructors.
         inlayHints_typeHints_hideNamedConstructor: bool            = false,
 
@@ -528,7 +530,7 @@ config_data! {
         imports_granularity_enforce: bool              = false,
         /// How imports should be grouped into use statements.
         imports_granularity_group: ImportGranularityDef  = ImportGranularityDef::Crate,
-        /// Group inserted imports by the https://rust-analyzer.github.io/manual.html#auto-import[following order]. Groups are separated by newlines.
+        /// Group inserted imports by the [following order](https://rust-analyzer.github.io/manual.html#auto-import). Groups are separated by newlines.
         imports_group_enable: bool                           = true,
         /// Whether to allow import insertion to merge new imports into single path glob imports like `use std::fmt::*;`.
         imports_merge_glob: bool           = true,
@@ -1474,6 +1476,7 @@ impl Config {
             prefer_absolute: self.imports_prefixExternPrelude(source_root).to_owned(),
             term_search_fuel: self.assist_termSearch_fuel(source_root).to_owned() as u64,
             term_search_borrowck: self.assist_termSearch_borrowcheck(source_root).to_owned(),
+            code_action_grouping: self.code_action_group(),
         }
     }
 
@@ -1666,6 +1669,9 @@ impl Config {
             hide_closure_initialization_hints: self
                 .inlayHints_typeHints_hideClosureInitialization()
                 .to_owned(),
+            hide_closure_parameter_hints: self
+                .inlayHints_typeHints_hideClosureParameter()
+                .to_owned(),
             closure_style: match self.inlayHints_closureStyle() {
                 ClosureStyle::ImplFn => hir::ClosureStyle::ImplFn,
                 ClosureStyle::RustAnalyzer => hir::ClosureStyle::RANotation,
@@ -1787,7 +1793,7 @@ impl Config {
 
     fn discovered_projects(&self) -> Vec<ManifestOrProjectJson> {
         let exclude_dirs: Vec<_> =
-            self.files_excludeDirs().iter().map(|p| self.root_path.join(p)).collect();
+            self.files_exclude().iter().map(|p| self.root_path.join(p)).collect();
 
         let mut projects = vec![];
         for fs_proj in &self.discovered_projects_from_filesystem {
@@ -1909,8 +1915,12 @@ impl Config {
                 }
                 _ => FilesWatcher::Server,
             },
-            exclude: self.files_excludeDirs().iter().map(|it| self.root_path.join(it)).collect(),
+            exclude: self.excluded().collect(),
         }
+    }
+
+    pub fn excluded(&self) -> impl Iterator<Item = AbsPathBuf> + use<'_> {
+        self.files_exclude().iter().map(|it| self.root_path.join(it))
     }
 
     pub fn notifications(&self) -> NotificationsConfig {
@@ -3624,21 +3634,9 @@ fn manual(fields: &[SchemaField]) -> String {
         let name = format!("rust-analyzer.{}", field.replace('_', "."));
         let doc = doc_comment_to_string(doc);
         if default.contains('\n') {
-            format_to_acc!(
-                acc,
-                r#"[[{name}]]{name}::
-+
---
-Default:
-----
-{default}
-----
-{doc}
---
-"#
-            )
+            format_to_acc!(acc, " **{name}**\n\nDefault:\n\n```{default}\n\n```\n\n {doc}\n\n ")
         } else {
-            format_to_acc!(acc, "[[{name}]]{name} (default: `{default}`)::\n+\n--\n{doc}--\n")
+            format_to_acc!(acc, "**{name}** (default: {default})\n\n {doc}\n\n")
         }
     })
 }
@@ -3716,7 +3714,7 @@ mod tests {
 
     #[test]
     fn generate_config_documentation() {
-        let docs_path = project_root().join("docs/user/generated_config.adoc");
+        let docs_path = project_root().join("docs/book/src/configuration_generated.md");
         let expected = FullConfigInput::manual();
         ensure_file_contents(docs_path.as_std_path(), &expected);
     }
@@ -3805,8 +3803,10 @@ mod tests {
         (config, _, _) = config.apply_change(change);
 
         assert_eq!(config.cargo_targetDir(None), &Some(TargetDirectory::UseSubdirectory(true)));
+        let target =
+            Utf8PathBuf::from(std::env::var("CARGO_TARGET_DIR").unwrap_or("target".to_owned()));
         assert!(
-            matches!(config.flycheck(None), FlycheckConfig::CargoCommand { options, .. } if options.target_dir == Some(Utf8PathBuf::from("target/rust-analyzer")))
+            matches!(config.flycheck(None), FlycheckConfig::CargoCommand { options, .. } if options.target_dir == Some(target.join("rust-analyzer")))
         );
     }
 

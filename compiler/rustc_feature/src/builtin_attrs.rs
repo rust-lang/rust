@@ -743,7 +743,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(
         rustc_autodiff, Normal,
         template!(Word, List: r#""...""#), DuplicatesOk,
-        EncodeCrossCrate::No, INTERNAL_UNSTABLE
+        EncodeCrossCrate::Yes, INTERNAL_UNSTABLE
     ),
 
     // ==========================================================================
@@ -1005,10 +1005,6 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_intrinsic, Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::Yes, intrinsics,
         "the `#[rustc_intrinsic]` attribute is used to declare intrinsics as function items",
     ),
-    gated!(
-        rustc_intrinsic_must_be_overridden, Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::Yes, intrinsics,
-        "the `#[rustc_intrinsic_must_be_overridden]` attribute is used to declare intrinsics without real bodies",
-    ),
     rustc_attr!(
         rustc_no_mir_inline, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::Yes,
         "#[rustc_no_mir_inline] prevents the MIR inliner from inlining a function while not affecting codegen"
@@ -1149,7 +1145,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "the `#[omit_gdb_pretty_printer_section]` attribute is just used for the Rust test suite",
     ),
     rustc_attr!(
-        TEST, pattern_complexity, CrateLevel, template!(NameValueStr: "N"),
+        TEST, pattern_complexity_limit, CrateLevel, template!(NameValueStr: "N"),
         ErrorFollowing, EncodeCrossCrate::No,
     ),
 ];

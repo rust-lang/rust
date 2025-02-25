@@ -6,8 +6,9 @@ LL | Use std::ptr::read;
    |
 help: write it in the correct case (notice the capitalization difference)
    |
-LL | use std::ptr::read;
-   | ~~~
+LL - Use std::ptr::read;
+LL + use std::ptr::read;
+   |
 
 error: keyword `use` is written in the wrong case
   --> $DIR/item-kw-case-mismatch.rs:8:1
@@ -17,8 +18,9 @@ LL | USE std::ptr::write;
    |
 help: write it in the correct case
    |
-LL | use std::ptr::write;
-   | ~~~
+LL - USE std::ptr::write;
+LL + use std::ptr::write;
+   |
 
 error: keyword `fn` is written in the wrong case
   --> $DIR/item-kw-case-mismatch.rs:10:7
@@ -28,8 +30,9 @@ LL | async Fn _a() {}
    |
 help: write it in the correct case (notice the capitalization difference)
    |
-LL | async fn _a() {}
-   |       ~~
+LL - async Fn _a() {}
+LL + async fn _a() {}
+   |
 
 error: keyword `fn` is written in the wrong case
   --> $DIR/item-kw-case-mismatch.rs:13:1
@@ -39,8 +42,9 @@ LL | Fn _b() {}
    |
 help: write it in the correct case (notice the capitalization difference)
    |
-LL | fn _b() {}
-   | ~~
+LL - Fn _b() {}
+LL + fn _b() {}
+   |
 
 error: keyword `async` is written in the wrong case
   --> $DIR/item-kw-case-mismatch.rs:16:1
@@ -50,8 +54,9 @@ LL | aSYNC fN _c() {}
    |
 help: write it in the correct case
    |
-LL | async fN _c() {}
-   | ~~~~~
+LL - aSYNC fN _c() {}
+LL + async fN _c() {}
+   |
 
 error: keyword `fn` is written in the wrong case
   --> $DIR/item-kw-case-mismatch.rs:16:7
@@ -61,8 +66,9 @@ LL | aSYNC fN _c() {}
    |
 help: write it in the correct case
    |
-LL | aSYNC fn _c() {}
-   |       ~~
+LL - aSYNC fN _c() {}
+LL + aSYNC fn _c() {}
+   |
 
 error: keyword `async` is written in the wrong case
   --> $DIR/item-kw-case-mismatch.rs:20:1
@@ -72,8 +78,9 @@ LL | Async fn _d() {}
    |
 help: write it in the correct case
    |
-LL | async fn _d() {}
-   | ~~~~~
+LL - Async fn _d() {}
+LL + async fn _d() {}
+   |
 
 error: keyword `const` is written in the wrong case
   --> $DIR/item-kw-case-mismatch.rs:23:1
@@ -83,8 +90,9 @@ LL | CONST UNSAFE FN _e() {}
    |
 help: write it in the correct case
    |
-LL | const UNSAFE FN _e() {}
-   | ~~~~~
+LL - CONST UNSAFE FN _e() {}
+LL + const UNSAFE FN _e() {}
+   |
 
 error: keyword `unsafe` is written in the wrong case
   --> $DIR/item-kw-case-mismatch.rs:23:7
@@ -94,8 +102,9 @@ LL | CONST UNSAFE FN _e() {}
    |
 help: write it in the correct case
    |
-LL | CONST unsafe FN _e() {}
-   |       ~~~~~~
+LL - CONST UNSAFE FN _e() {}
+LL + CONST unsafe FN _e() {}
+   |
 
 error: keyword `fn` is written in the wrong case
   --> $DIR/item-kw-case-mismatch.rs:23:14
@@ -105,8 +114,9 @@ LL | CONST UNSAFE FN _e() {}
    |
 help: write it in the correct case
    |
-LL | CONST UNSAFE fn _e() {}
-   |              ~~
+LL - CONST UNSAFE FN _e() {}
+LL + CONST UNSAFE fn _e() {}
+   |
 
 error: keyword `unsafe` is written in the wrong case
   --> $DIR/item-kw-case-mismatch.rs:28:1
@@ -116,8 +126,9 @@ LL | unSAFE EXTern "C" fn _f() {}
    |
 help: write it in the correct case
    |
-LL | unsafe EXTern "C" fn _f() {}
-   | ~~~~~~
+LL - unSAFE EXTern "C" fn _f() {}
+LL + unsafe EXTern "C" fn _f() {}
+   |
 
 error: keyword `extern` is written in the wrong case
   --> $DIR/item-kw-case-mismatch.rs:28:8
@@ -127,8 +138,9 @@ LL | unSAFE EXTern "C" fn _f() {}
    |
 help: write it in the correct case
    |
-LL | unSAFE extern "C" fn _f() {}
-   |        ~~~~~~
+LL - unSAFE EXTern "C" fn _f() {}
+LL + unSAFE extern "C" fn _f() {}
+   |
 
 error: keyword `extern` is written in the wrong case
   --> $DIR/item-kw-case-mismatch.rs:32:1
@@ -138,8 +150,9 @@ LL | EXTERN "C" FN _g() {}
    |
 help: write it in the correct case
    |
-LL | extern "C" FN _g() {}
-   | ~~~~~~
+LL - EXTERN "C" FN _g() {}
+LL + extern "C" FN _g() {}
+   |
 
 error: keyword `fn` is written in the wrong case
   --> $DIR/item-kw-case-mismatch.rs:32:12
@@ -149,8 +162,9 @@ LL | EXTERN "C" FN _g() {}
    |
 help: write it in the correct case
    |
-LL | EXTERN "C" fn _g() {}
-   |            ~~
+LL - EXTERN "C" FN _g() {}
+LL + EXTERN "C" fn _g() {}
+   |
 
 error: aborting due to 14 previous errors
 

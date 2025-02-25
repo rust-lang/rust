@@ -245,7 +245,7 @@ impl<'tcx> LateLintPass<'tcx> for UndocumentedUnsafeBlocks {
             // const and static items only need a safety comment if their body is an unsafe block, lint otherwise
             (&ItemKind::Const(.., body) | &ItemKind::Static(.., body), HasSafetyComment::Yes(pos)) => {
                 if !is_lint_allowed(cx, UNNECESSARY_SAFETY_COMMENT, body.hir_id) {
-                    let body = cx.tcx.hir().body(body);
+                    let body = cx.tcx.hir_body(body);
                     if !matches!(
                         body.value.kind, hir::ExprKind::Block(block, _)
                         if block.rules == BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided)
@@ -291,7 +291,7 @@ fn expr_has_unnecessary_safety_comment<'tcx>(
     expr: &'tcx hir::Expr<'tcx>,
     comment_pos: BytePos,
 ) -> Option<Span> {
-    if cx.tcx.hir().parent_iter(expr.hir_id).any(|(_, ref node)| {
+    if cx.tcx.hir_parent_iter(expr.hir_id).any(|(_, ref node)| {
         matches!(
             node,
             Node::Block(Block {
@@ -432,7 +432,7 @@ fn include_attrs_in_span(cx: &LateContext<'_>, hir_id: HirId, span: Span) -> Spa
         .hir()
         .attrs(hir_id)
         .iter()
-        .fold(span, |acc, attr| acc.to(attr.span)))
+        .fold(span, |acc, attr| acc.to(attr.span())))
 }
 
 enum HasSafetyComment {
@@ -558,7 +558,7 @@ fn comment_start_before_item_in_mod(
                 // some_item /* comment */ unsafe impl T {}
                 // ^-------^ returns the end of this span
                 //         ^---------------^ finally checks comments in this range
-                let prev_item = cx.tcx.hir().item(parent_mod.item_ids[idx - 1]);
+                let prev_item = cx.tcx.hir_item(parent_mod.item_ids[idx - 1]);
                 if let Some(sp) = walk_span_to_context(prev_item.span, SyntaxContext::root()) {
                     return Some(sp.hi());
                 }
@@ -604,10 +604,9 @@ fn span_from_macro_expansion_has_safety_comment(cx: &LateContext<'_>, span: Span
 
 fn get_body_search_span(cx: &LateContext<'_>) -> Option<Span> {
     let body = cx.enclosing_body?;
-    let map = cx.tcx.hir();
-    let mut span = map.body(body).value.span;
+    let mut span = cx.tcx.hir_body(body).value.span;
     let mut maybe_global_var = false;
-    for (_, node) in map.parent_iter(body.hir_id) {
+    for (_, node) in cx.tcx.hir_parent_iter(body.hir_id) {
         match node {
             Node::Expr(e) => span = e.span,
             Node::Block(_) | Node::Arm(_) | Node::Stmt(_) | Node::LetStmt(_) => (),

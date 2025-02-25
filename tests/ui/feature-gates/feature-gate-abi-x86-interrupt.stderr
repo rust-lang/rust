@@ -1,4 +1,4 @@
-error[E0658]: x86-interrupt ABI is experimental and subject to change
+error[E0658]: the extern "x86-interrupt" ABI is experimental and subject to change
   --> $DIR/feature-gate-abi-x86-interrupt.rs:8:8
    |
 LL | extern "x86-interrupt" fn f7() {}
@@ -8,7 +8,7 @@ LL | extern "x86-interrupt" fn f7() {}
    = help: add `#![feature(abi_x86_interrupt)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: x86-interrupt ABI is experimental and subject to change
+error[E0658]: the extern "x86-interrupt" ABI is experimental and subject to change
   --> $DIR/feature-gate-abi-x86-interrupt.rs:10:12
    |
 LL |     extern "x86-interrupt" fn m7();
@@ -18,7 +18,7 @@ LL |     extern "x86-interrupt" fn m7();
    = help: add `#![feature(abi_x86_interrupt)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: x86-interrupt ABI is experimental and subject to change
+error[E0658]: the extern "x86-interrupt" ABI is experimental and subject to change
   --> $DIR/feature-gate-abi-x86-interrupt.rs:11:12
    |
 LL |     extern "x86-interrupt" fn dm7() {}
@@ -28,7 +28,7 @@ LL |     extern "x86-interrupt" fn dm7() {}
    = help: add `#![feature(abi_x86_interrupt)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: x86-interrupt ABI is experimental and subject to change
+error[E0658]: the extern "x86-interrupt" ABI is experimental and subject to change
   --> $DIR/feature-gate-abi-x86-interrupt.rs:18:12
    |
 LL |     extern "x86-interrupt" fn m7() {}
@@ -38,7 +38,7 @@ LL |     extern "x86-interrupt" fn m7() {}
    = help: add `#![feature(abi_x86_interrupt)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: x86-interrupt ABI is experimental and subject to change
+error[E0658]: the extern "x86-interrupt" ABI is experimental and subject to change
   --> $DIR/feature-gate-abi-x86-interrupt.rs:23:12
    |
 LL |     extern "x86-interrupt" fn im7() {}
@@ -48,7 +48,7 @@ LL |     extern "x86-interrupt" fn im7() {}
    = help: add `#![feature(abi_x86_interrupt)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: x86-interrupt ABI is experimental and subject to change
+error[E0658]: the extern "x86-interrupt" ABI is experimental and subject to change
   --> $DIR/feature-gate-abi-x86-interrupt.rs:26:18
    |
 LL | type A7 = extern "x86-interrupt" fn();
@@ -58,7 +58,7 @@ LL | type A7 = extern "x86-interrupt" fn();
    = help: add `#![feature(abi_x86_interrupt)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: x86-interrupt ABI is experimental and subject to change
+error[E0658]: the extern "x86-interrupt" ABI is experimental and subject to change
   --> $DIR/feature-gate-abi-x86-interrupt.rs:28:8
    |
 LL | extern "x86-interrupt" {}

@@ -1,6 +1,5 @@
 use std::ops::Deref;
 
-use field_offset::FieldOffset;
 use rustc_data_structures::sync::{AtomicU64, WorkerLocal};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::hir_id::OwnerId;
@@ -24,8 +23,10 @@ pub struct DynamicQuery<'tcx, C: QueryCache> {
     pub eval_always: bool,
     pub dep_kind: DepKind,
     pub handle_cycle_error: HandleCycleError,
-    pub query_state: FieldOffset<QueryStates<'tcx>, QueryState<C::Key>>,
-    pub query_cache: FieldOffset<QueryCaches<'tcx>, C>,
+    // Offset of this query's state field in the QueryStates struct
+    pub query_state: usize,
+    // Offset of this query's cache field in the QueryCaches struct
+    pub query_cache: usize,
     pub cache_on_disk: fn(tcx: TyCtxt<'tcx>, key: &C::Key) -> bool,
     pub execute_query: fn(tcx: TyCtxt<'tcx>, k: C::Key) -> C::Value,
     pub compute: fn(tcx: TyCtxt<'tcx>, key: C::Key) -> C::Value,

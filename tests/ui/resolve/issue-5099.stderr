@@ -6,8 +6,9 @@ LL |         this.a
    |
 help: you might have meant to use `self` here instead
    |
-LL |         self.a
-   |         ~~~~
+LL -         this.a
+LL +         self.a
+   |
 help: if you meant to use `self`, you are also missing a `self` receiver argument
    |
 LL |     fn a(&self) -> A {
@@ -21,8 +22,9 @@ LL |         this.b(x);
    |
 help: you might have meant to use `self` here instead
    |
-LL |         self.b(x);
-   |         ~~~~
+LL -         this.b(x);
+LL +         self.b(x);
+   |
 help: if you meant to use `self`, you are also missing a `self` receiver argument
    |
 LL |     fn b(&self, x: i32) {
@@ -36,8 +38,9 @@ LL |         let _ = || this.a;
    |
 help: you might have meant to use `self` here instead
    |
-LL |         let _ = || self.a;
-   |                    ~~~~
+LL -         let _ = || this.a;
+LL +         let _ = || self.a;
+   |
 help: if you meant to use `self`, you are also missing a `self` receiver argument
    |
 LL |     fn c(&self) {
