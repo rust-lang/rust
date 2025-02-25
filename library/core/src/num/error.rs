@@ -27,6 +27,8 @@ impl Error for TryFromIntError {
 
 #[stable(feature = "try_from", since = "1.34.0")]
 impl From<Infallible> for TryFromIntError {
+    /// Convert `Infallible` into an error that can happen.
+    #[inline]
     fn from(x: Infallible) -> TryFromIntError {
         match x {}
     }
@@ -34,6 +36,7 @@ impl From<Infallible> for TryFromIntError {
 
 #[unstable(feature = "never_type", issue = "35121")]
 impl From<!> for TryFromIntError {
+    /// Convert `!` into an error that can happen.
     #[inline]
     fn from(never: !) -> TryFromIntError {
         // Match rather than coerce to make sure that code like
