@@ -1,6 +1,6 @@
 use rustc_ast::token::{self, Delimiter, IdentIsRaw, Lit, Token, TokenKind};
 use rustc_ast::tokenstream::{TokenStream, TokenStreamIter, TokenTree};
-use rustc_ast::{LitIntType, LitKind};
+use rustc_ast::{LitIntType, LitKind, Sign};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, PResult};
 use rustc_macros::{Decodable, Encodable};
@@ -191,7 +191,7 @@ fn parse_depth<'psess>(
             .struct_span_err(span, "meta-variable expression depth must be a literal"));
     };
     if let Ok(lit_kind) = LitKind::from_token_lit(*lit)
-        && let LitKind::Int(n_u128, LitIntType::Unsuffixed(false)) = lit_kind
+        && let LitKind::Int(n_u128, LitIntType::Unsuffixed(Sign::None)) = lit_kind
         && let Ok(n_usize) = usize::try_from(n_u128.get())
     {
         Ok(n_usize)

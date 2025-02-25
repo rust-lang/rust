@@ -626,11 +626,11 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
                         hir::ExprKind::Lit(li) => match li.node {
                             ast::LitKind::Int(
                                 v,
-                                ast::LitIntType::Signed(_, negated)
-                                | ast::LitIntType::Unsuffixed(negated),
+                                ast::LitIntType::Signed(_, sign)
+                                | ast::LitIntType::Unsuffixed(sign),
                             ) => {
                                 let v = v.get() as i128;
-                                if negated { v.wrapping_neg() } else { v }
+                                if sign.is_neg() { v.wrapping_neg() } else { v }
                             }
                             _ => return true,
                         },

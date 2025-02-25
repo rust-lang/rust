@@ -4,7 +4,7 @@ use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{get_trait_def_id, is_no_std_crate};
-use rustc_ast::{LitIntType, LitKind, UintTy};
+use rustc_ast::{LitIntType, LitKind, Sign, UintTy};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, LangItem, QPath, StructTailExpr};
 use rustc_lint::{LateContext, LateLintPass};
@@ -111,7 +111,7 @@ impl LateLintPass<'_> for SingleRangeInVecInit {
                 && implements_trait(cx, ty, copy_def_id, &[])
                 && let ExprKind::Lit(lit_kind) = end.expr.kind
                 && let LitKind::Int(.., suffix_type) = lit_kind.node
-                && let LitIntType::Unsigned(UintTy::Usize) | LitIntType::Unsuffixed(false) = suffix_type
+                && let LitIntType::Unsigned(UintTy::Usize) | LitIntType::Unsuffixed(Sign::None) = suffix_type
             {
                 true
             } else {

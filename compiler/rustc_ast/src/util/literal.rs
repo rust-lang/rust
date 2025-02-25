@@ -8,6 +8,7 @@ use rustc_lexer::unescape::{
 use rustc_span::{Span, Symbol, kw, sym};
 use tracing::debug;
 
+use crate::Sign;
 use crate::ast::{self, LitKind, MetaItemLit, StrStyle};
 use crate::token::{self, Token};
 
@@ -44,16 +45,13 @@ pub enum LitError {
 impl LitKind {
     /// Converts literal token into a semantic literal.
     pub fn from_token_lit(lit: token::Lit) -> Result<LitKind, LitError> {
-        Self::from_token_lit_maybe_negated(lit, false)
+        Self::from_token_lit_maybe_negated(lit, Sign::None)
     }
 
     /// Converts literal token into a semantic literal.
     /// May optionally include a sign, and will error if a literal
     /// other than integer or float literals is negated.
-    pub fn from_token_lit_maybe_negated(
-        lit: token::Lit,
-        negated: bool,
-    ) -> Result<LitKind, LitError> {
+    pub fn from_token_lit_maybe_negated(lit: token::Lit, sign: Sign) -> Result<LitKind, LitError> {
         let token::Lit { kind, symbol, suffix } = lit;
         if let Some(suffix) = suffix
             && !kind.may_have_suffix()
@@ -61,7 +59,7 @@ impl LitKind {
             return Err(LitError::InvalidSuffix(suffix));
         }
 
-        if negated && !matches!(kind, token::Integer | token::Float) {
+        if sign.is_neg() && !matches!(kind, token::Integer | token::Float) {
             return Err(LitError::InvalidNegation(kind));
         }
 
@@ -86,8 +84,8 @@ impl LitKind {
 
             // There are some valid suffixes for integer and float literals,
             // so all the handling is done internally.
-            token::Integer => return integer_lit(symbol, suffix, negated),
-            token::Float => return float_lit(symbol, suffix, negated),
+            token::Integer => return integer_lit(symbol, suffix, sign),
+            token::Float => return float_lit(symbol, suffix, sign),
 
             token::Str => {
                 // If there are no characters requiring special treatment we can
@@ -206,14 +204,14 @@ impl fmt::Display for LitKind {
             }
             LitKind::Int(n, ty) => match ty {
                 ast::LitIntType::Unsigned(ty) => write!(f, "{n}{}", ty.name())?,
-                ast::LitIntType::Signed(ty, negated) => {
-                    if negated {
+                ast::LitIntType::Signed(ty, sign) => {
+                    if sign.is_neg() {
                         write!(f, "-")?;
                     }
                     write!(f, "{n}{}", ty.name())?
                 }
-                ast::LitIntType::Unsuffixed(negated) => {
-                    if negated {
+                ast::LitIntType::Unsuffixed(sign) => {
+                    if sign.is_neg() {
                         write!(f, "-")?;
                     }
                     write!(f, "{n}")?;
@@ -291,13 +289,14 @@ fn filtered_float_lit(
     symbol: Symbol,
     suffix: Option<Symbol>,
     base: u32,
-    negated: bool,
+    sign: Sign,
 ) -> Result<LitKind, LitError> {
-    debug!(?symbol, ?suffix, ?base, ?negated);
+    debug!(?symbol, ?suffix, ?base, ?sign);
     if base != 10 {
         return Err(LitError::NonDecimalFloat(base));
     }
-    let symbol = if negated { Symbol::intern(&format!("-{}", symbol.as_str())) } else { symbol };
+    let symbol =
+        if sign.is_neg() { Symbol::intern(&format!("-{}", symbol.as_str())) } else { symbol };
     Ok(match suffix {
         Some(suffix) => LitKind::Float(
             symbol,
@@ -313,12 +312,12 @@ fn filtered_float_lit(
     })
 }
 
-fn float_lit(symbol: Symbol, suffix: Option<Symbol>, negated: bool) -> Result<LitKind, LitError> {
+fn float_lit(symbol: Symbol, suffix: Option<Symbol>, sign: Sign) -> Result<LitKind, LitError> {
     debug!("float_lit: {:?}, {:?}", symbol, suffix);
-    filtered_float_lit(strip_underscores(symbol), suffix, 10, negated)
+    filtered_float_lit(strip_underscores(symbol), suffix, 10, sign)
 }
 
-fn integer_lit(symbol: Symbol, suffix: Option<Symbol>, negated: bool) -> Result<LitKind, LitError> {
+fn integer_lit(symbol: Symbol, suffix: Option<Symbol>, sign: Sign) -> Result<LitKind, LitError> {
     debug!("integer_lit: {:?}, {:?}", symbol, suffix);
     let symbol = strip_underscores(symbol);
     let s = symbol.as_str();
@@ -332,12 +331,12 @@ fn integer_lit(symbol: Symbol, suffix: Option<Symbol>, negated: bool) -> Result<
 
     let ty = match suffix {
         Some(suf) => match suf {
-            sym::isize => ast::LitIntType::Signed(ast::IntTy::Isize, negated),
-            sym::i8 => ast::LitIntType::Signed(ast::IntTy::I8, negated),
-            sym::i16 => ast::LitIntType::Signed(ast::IntTy::I16, negated),
-            sym::i32 => ast::LitIntType::Signed(ast::IntTy::I32, negated),
-            sym::i64 => ast::LitIntType::Signed(ast::IntTy::I64, negated),
-            sym::i128 => ast::LitIntType::Signed(ast::IntTy::I128, negated),
+            sym::isize => ast::LitIntType::Signed(ast::IntTy::Isize, sign),
+            sym::i8 => ast::LitIntType::Signed(ast::IntTy::I8, sign),
+            sym::i16 => ast::LitIntType::Signed(ast::IntTy::I16, sign),
+            sym::i32 => ast::LitIntType::Signed(ast::IntTy::I32, sign),
+            sym::i64 => ast::LitIntType::Signed(ast::IntTy::I64, sign),
+            sym::i128 => ast::LitIntType::Signed(ast::IntTy::I128, sign),
             sym::usize => ast::LitIntType::Unsigned(ast::UintTy::Usize),
             sym::u8 => ast::LitIntType::Unsigned(ast::UintTy::U8),
             sym::u16 => ast::LitIntType::Unsigned(ast::UintTy::U16),
@@ -347,14 +346,14 @@ fn integer_lit(symbol: Symbol, suffix: Option<Symbol>, negated: bool) -> Result<
             // `1f64` and `2f32` etc. are valid float literals, and
             // `fxxx` looks more like an invalid float literal than invalid integer literal.
             _ if suf.as_str().starts_with('f') => {
-                return filtered_float_lit(symbol, suffix, base, negated);
+                return filtered_float_lit(symbol, suffix, base, sign);
             }
             _ => return Err(LitError::InvalidIntSuffix(suf)),
         },
-        _ => ast::LitIntType::Unsuffixed(negated),
+        _ => ast::LitIntType::Unsuffixed(sign),
     };
     if let ast::LitIntType::Unsigned(_) = ty
-        && negated
+        && sign.is_neg()
     {
         return Err(LitError::InvalidNegation(token::Integer));
     }

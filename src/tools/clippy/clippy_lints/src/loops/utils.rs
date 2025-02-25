@@ -1,5 +1,6 @@
 use clippy_utils::ty::{has_iter_method, implements_trait};
 use clippy_utils::{get_parent_expr, is_integer_const, path_to_local, path_to_local_id, sugg};
+use rustc_ast::Sign;
 use rustc_ast::ast::{LitIntType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{Visitor, walk_expr, walk_local};
@@ -192,7 +193,7 @@ impl<'tcx> Visitor<'tcx> for InitializeVisitor<'_, 'tcx> {
                                 InitializeVisitorState::Declared(name, mut ty) => {
                                     if ty.is_none() {
                                         if let ExprKind::Lit(Spanned {
-                                            node: LitKind::Int(_, LitIntType::Unsuffixed(false)),
+                                            node: LitKind::Int(_, LitIntType::Unsuffixed(Sign::None)),
                                             ..
                                         }) = rhs.kind
                                         {

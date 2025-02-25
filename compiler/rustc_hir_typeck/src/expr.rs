@@ -6,6 +6,7 @@
 //! See [`rustc_hir_analysis::check`] for more context on type checking in general.
 
 use rustc_abi::{FIRST_VARIANT, FieldIdx};
+use rustc_ast::Sign;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::unord::UnordMap;
@@ -3529,7 +3530,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // If the index is an integer, we can show the actual
                         // fixed expression:
                         if let ExprKind::Lit(lit) = idx.kind
-                            && let ast::LitKind::Int(i, ast::LitIntType::Unsuffixed(false)) =
+                            && let ast::LitKind::Int(i, ast::LitIntType::Unsuffixed(Sign::None)) =
                                 lit.node
                             && i.get()
                                 < types

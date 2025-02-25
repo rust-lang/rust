@@ -1,7 +1,7 @@
 //! See docs in build/expr/mod.rs
 
 use rustc_abi::Size;
-use rustc_ast::{self as ast, LitIntType};
+use rustc_ast::{self as ast, LitIntType, Sign};
 use rustc_hir::LangItem;
 use rustc_middle::mir::interpret::{Allocation, CTFE_ALLOC_SALT, LitToConstInput, Scalar};
 use rustc_middle::mir::*;
@@ -145,14 +145,14 @@ fn lit_to_mir_constant<'tcx>(tcx: TyCtxt<'tcx>, lit_input: LitToConstInput<'tcx>
             ConstValue::Scalar(Scalar::from_uint(*n, Size::from_bytes(1)))
         }
         (
-            ast::LitKind::Int(n, LitIntType::Unsigned(_) | LitIntType::Unsuffixed(false)),
+            ast::LitKind::Int(n, LitIntType::Unsigned(_) | LitIntType::Unsuffixed(Sign::None)),
             ty::Uint(ui),
         ) => trunc(n.get(), *ui),
         (
-            &ast::LitKind::Int(n, LitIntType::Signed(_, neg) | LitIntType::Unsuffixed(neg)),
+            &ast::LitKind::Int(n, LitIntType::Signed(_, sign) | LitIntType::Unsuffixed(sign)),
             ty::Int(i),
         ) => trunc(
-            if neg { (n.get() as i128).overflowing_neg().0 as u128 } else { n.get() },
+            if sign.is_neg() { (n.get() as i128).overflowing_neg().0 as u128 } else { n.get() },
             i.to_unsigned(),
         ),
         (ast::LitKind::Float(n, _), ty::Float(fty)) => parse_float_into_constval(*n, *fty).unwrap(),

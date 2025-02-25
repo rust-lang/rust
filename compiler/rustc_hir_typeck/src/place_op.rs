@@ -1,4 +1,4 @@
-use rustc_ast::LitIntType;
+use rustc_ast::{LitIntType, Sign};
 use rustc_errors::Applicability;
 use rustc_hir_analysis::autoderef::Autoderef;
 use rustc_infer::infer::InferOk;
@@ -119,7 +119,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
 
         if let hir::ExprKind::Lit(hir::Lit {
-            node: ast::LitKind::Int(_, LitIntType::Unsuffixed(true)),
+            node: ast::LitKind::Int(_, LitIntType::Unsuffixed(Sign::Neg)),
             ..
         }) = index_expr.kind
         {

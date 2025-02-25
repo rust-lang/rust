@@ -7,7 +7,7 @@ use rustc_ast::token::CommentKind;
 use rustc_ast::util::parser::{AssocOp, ExprPrecedence};
 use rustc_ast::{
     self as ast, FloatTy, InlineAsmOptions, InlineAsmTemplatePiece, IntTy, Label, LitIntType,
-    LitKind, TraitObjectSyntax, UintTy, UnsafeBinderCastKind,
+    LitKind, Sign, TraitObjectSyntax, UintTy, UnsafeBinderCastKind,
 };
 pub use rustc_ast::{
     AttrId, AttrStyle, BinOp, BinOpKind, BindingMode, BorrowKind, BoundConstness, BoundPolarity,
@@ -2247,7 +2247,7 @@ impl Expr<'_> {
             ExprKind::Lit(Lit {
                 node: LitKind::Int(
                     _,
-                    LitIntType::Unsuffixed(false) | LitIntType::Unsigned(UintTy::Usize)
+                    LitIntType::Unsuffixed(Sign::None) | LitIntType::Unsigned(UintTy::Usize)
                 ),
                 ..
             })

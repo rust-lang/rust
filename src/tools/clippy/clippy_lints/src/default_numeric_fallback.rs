@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::numeric_literal;
 use clippy_utils::source::snippet_opt;
+use rustc_ast::Sign;
 use rustc_ast::ast::{LitFloatType, LitIntType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{Visitor, walk_expr, walk_pat, walk_stmt};
@@ -88,7 +89,7 @@ impl<'a, 'tcx> NumericFallbackVisitor<'a, 'tcx> {
             && matches!(self.ty_bounds.last(), Some(ExplicitTyBound(false)))
             && matches!(
                 lit.node,
-                LitKind::Int(_, LitIntType::Unsuffixed(false)) | LitKind::Float(_, LitFloatType::Unsuffixed)
+                LitKind::Int(_, LitIntType::Unsuffixed(Sign::None)) | LitKind::Float(_, LitFloatType::Unsuffixed)
             )
         {
             let (suffix, is_float) = match lit_ty.kind() {
