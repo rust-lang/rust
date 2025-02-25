@@ -94,6 +94,12 @@ fn main() {
         //~| HELP: a `match` with a single arm can preserve the drop order up to Edition 2021
     }
 
+    if let Some(_value) = Some((droppy(), ()).1) {} else {}
+    //~^ ERROR: `if let` assigns a shorter lifetime since Edition 2024
+    //~| WARN: this changes meaning in Rust 2024
+    //~| HELP: the value is now dropped here in Edition 2024
+    //~| HELP: a `match` with a single arm can preserve the drop order up to Edition 2021
+
     // We want to keep the `if let`s below as direct descendents of match arms,
     // so the formatting is suppressed.
     #[rustfmt::skip]
