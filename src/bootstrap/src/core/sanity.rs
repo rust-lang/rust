@@ -310,6 +310,17 @@ than building it.
             .entry(*target)
             .or_insert_with(|| Target::from_triple(&target.triple));
 
+        // compiler-rt c fallbacks for wasm cannot be built with gcc
+        if (target.triple == "wasm32-unknown-unknown" || target.triple == "wasm32v1-none") // bare metal targets without wasi sdk
+            && (build.config.optimized_compiler_builtins(*target)
+                || build.config.rust_std_features.contains("compiler-builtins-c"))
+        {
+            let is_gcc = is_gcc_compiler(build.cc(*target), build);
+            if is_gcc {
+                panic!("GCC does not support building c code for bare wasm");
+            }
+        }
+
         if (target.contains("-none-") || target.contains("nvptx"))
             && build.no_std(*target) == Some(false)
         {
@@ -371,4 +382,9 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
     if let Some(ref s) = build.config.ccache {
         cmd_finder.must_have(s);
     }
+}
+
+fn is_gcc_compiler(path: PathBuf, build: &Build) -> bool {
+    let cc_output = command(&path).arg("--version").run_capture_stdout(build).stdout();
+    cc_output.contains("GCC")
 }
