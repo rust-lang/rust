@@ -212,6 +212,9 @@ impl Step for GenerateCopyright {
         let paths_to_vendor = default_paths_to_vendor(builder);
         for (_, submodules) in &paths_to_vendor {
             for submodule in submodules {
+                if builder.config.dist_exclude_submodules_from_vendoring.contains(&**submodule) {
+                    continue;
+                }
                 builder.build.require_submodule(submodule, None);
             }
         }
