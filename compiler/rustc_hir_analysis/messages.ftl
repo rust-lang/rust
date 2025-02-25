@@ -244,9 +244,6 @@ hir_analysis_inherent_ty_outside_relevant = cannot define inherent `impl` for a 
     .help = consider moving this inherent impl into the crate defining the type if possible
     .span_help = alternatively add `#[rustc_allow_incoherent_impl]` to the relevant impl items
 
-hir_analysis_invalid_base_type = `{$ty}` is not a valid base type for range patterns
-    .note = range patterns only support integers
-
 hir_analysis_invalid_generic_receiver_ty = invalid generic `self` parameter type: `{$receiver_ty}`
     .note = type of `self` must not be a method generic parameter type
 

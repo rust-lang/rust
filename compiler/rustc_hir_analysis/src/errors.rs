@@ -11,8 +11,6 @@ use rustc_middle::ty::Ty;
 use rustc_span::{Ident, Span, Symbol};
 
 use crate::fluent_generated as fluent;
-mod pattern_types;
-pub(crate) use pattern_types::*;
 pub(crate) mod wrong_number_of_generic_args;
 
 mod precise_captures;
