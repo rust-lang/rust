@@ -307,8 +307,6 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
 ///
 /// We do not have to worry about RUSTC_SPECIFIC_FEATURES here, those are handled outside codegen.
 pub(crate) fn target_features_cfg(sess: &Session) -> (Vec<Symbol>, Vec<Symbol>) {
-    let mut features: FxHashSet<Symbol> = Default::default();
-
     // Add base features for the target.
     // We do *not* add the -Ctarget-features there, and instead duplicate the logic for that below.
     // The reason is that if LLVM considers a feature implied but we do not, we don't want that to
@@ -318,34 +316,33 @@ pub(crate) fn target_features_cfg(sess: &Session) -> (Vec<Symbol>, Vec<Symbol>) 
     let target_machine = create_informational_target_machine(sess, true);
     // Compute which of the known target features are enabled in the 'base' target machine. We only
     // consider "supported" features; "forbidden" features are not reflected in `cfg` as of now.
-    features.extend(
-        sess.target
-            .rust_target_features()
-            .iter()
-            .filter(|(feature, _, _)| {
-                // skip checking special features, as LLVM may not understand them
-                if RUSTC_SPECIAL_FEATURES.contains(feature) {
-                    return true;
-                }
-                // check that all features in a given smallvec are enabled
-                if let Some(feat) = to_llvm_features(sess, feature) {
-                    for llvm_feature in feat {
-                        let cstr = SmallCStr::new(llvm_feature);
-                        // `LLVMRustHasFeature` is moderately expensive. On targets with many
-                        // features (e.g. x86) these calls take a non-trivial fraction of runtime
-                        // when compiling very small programs.
-                        if !unsafe { llvm::LLVMRustHasFeature(target_machine.raw(), cstr.as_ptr()) }
-                        {
-                            return false;
-                        }
+    let mut features: FxHashSet<Symbol> = sess
+        .target
+        .rust_target_features()
+        .iter()
+        .filter(|(feature, _, _)| {
+            // skip checking special features, as LLVM may not understand them
+            if RUSTC_SPECIAL_FEATURES.contains(feature) {
+                return true;
+            }
+            // check that all features in a given smallvec are enabled
+            if let Some(feat) = to_llvm_features(sess, feature) {
+                for llvm_feature in feat {
+                    let cstr = SmallCStr::new(llvm_feature);
+                    // `LLVMRustHasFeature` is moderately expensive. On targets with many
+                    // features (e.g. x86) these calls take a non-trivial fraction of runtime
+                    // when compiling very small programs.
+                    if !unsafe { llvm::LLVMRustHasFeature(target_machine.raw(), cstr.as_ptr()) } {
+                        return false;
                     }
-                    true
-                } else {
-                    false
                 }
-            })
-            .map(|(feature, _, _)| Symbol::intern(feature)),
-    );
+                true
+            } else {
+                false
+            }
+        })
+        .map(|(feature, _, _)| Symbol::intern(feature))
+        .collect();
 
     // Add enabled and remove disabled features.
     for (enabled, feature) in
