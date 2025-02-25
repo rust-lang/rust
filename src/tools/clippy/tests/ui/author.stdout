@@ -4,7 +4,7 @@ if let StmtKind::Let(local) = stmt.kind
     && let TyKind::Path(ref qpath) = cast_ty.kind
     && match_qpath(qpath, &["char"])
     && let ExprKind::Lit(ref lit) = expr.kind
-    && let LitKind::Int(69, LitIntType::Unsuffixed) = lit.node
+    && let LitKind::Int(69, LitIntType::Unsuffixed(false)) = lit.node
     && let PatKind::Binding(BindingMode::NONE, _, name, None) = local.pat.kind
     && name.as_str() == "x"
 {

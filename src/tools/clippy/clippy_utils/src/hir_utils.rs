@@ -491,16 +491,7 @@ impl HirEqInterExpr<'_, '_, '_> {
 
     fn eq_pat_expr(&mut self, left: &PatExpr<'_>, right: &PatExpr<'_>) -> bool {
         match (&left.kind, &right.kind) {
-            (
-                &PatExprKind::Lit {
-                    lit: left,
-                    negated: left_neg,
-                },
-                &PatExprKind::Lit {
-                    lit: right,
-                    negated: right_neg,
-                },
-            ) => left_neg == right_neg && left.node == right.node,
+            (&PatExprKind::Lit { lit: left }, &PatExprKind::Lit { lit: right }) => left.node == right.node,
             (PatExprKind::ConstBlock(left), PatExprKind::ConstBlock(right)) => self.eq_body(left.body, right.body),
             (PatExprKind::Path(left), PatExprKind::Path(right)) => self.eq_qpath(left, right),
             (PatExprKind::Lit { .. } | PatExprKind::ConstBlock(..) | PatExprKind::Path(..), _) => false,
@@ -1096,10 +1087,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
     pub fn hash_pat_expr(&mut self, lit: &PatExpr<'_>) {
         std::mem::discriminant(&lit.kind).hash(&mut self.s);
         match &lit.kind {
-            PatExprKind::Lit { lit, negated } => {
-                lit.node.hash(&mut self.s);
-                negated.hash(&mut self.s);
-            },
+            PatExprKind::Lit { lit } => lit.node.hash(&mut self.s),
             PatExprKind::ConstBlock(c) => self.hash_body(c.body),
             PatExprKind::Path(qpath) => self.hash_qpath(qpath),
         }

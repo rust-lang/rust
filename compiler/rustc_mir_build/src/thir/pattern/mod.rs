@@ -179,12 +179,13 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         // We need to inspect the original expression, because if we only inspect the output of
         // `eval_bits`, an overflowed value has already been wrapped around.
         // We mostly copy the logic from the `rustc_lint::OVERFLOWING_LITERALS` lint.
-        let hir::PatExprKind::Lit { lit, negated } = expr.kind else {
+        let hir::PatExprKind::Lit { lit } = expr.kind else {
             return Ok(());
         };
         let LitKind::Int(lit_val, _) = lit.node else {
             return Ok(());
         };
+        let negated = lit.node.is_negative();
         let (min, max): (i128, u128) = match ty.kind() {
             ty::Int(ity) => {
                 let size = Integer::from_int_ty(&self.tcx, *ity).size();
@@ -631,18 +632,18 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     /// - Inline const blocks (e.g. `const { 1 + 1 }`)
     /// - Literals, possibly negated (e.g. `-128u8`, `"hello"`)
     fn lower_pat_expr(&mut self, expr: &'tcx hir::PatExpr<'tcx>) -> PatKind<'tcx> {
-        let (lit, neg) = match &expr.kind {
+        let lit = match &expr.kind {
             hir::PatExprKind::Path(qpath) => {
                 return self.lower_path(qpath, expr.hir_id, expr.span).kind;
             }
             hir::PatExprKind::ConstBlock(anon_const) => {
                 return self.lower_inline_const(anon_const, expr.hir_id, expr.span);
             }
-            hir::PatExprKind::Lit { lit, negated } => (lit, *negated),
+            hir::PatExprKind::Lit { lit } => lit,
         };
 
         let ct_ty = self.typeck_results.node_type(expr.hir_id);
-        let lit_input = LitToConstInput { lit: &lit.node, ty: ct_ty, neg };
+        let lit_input = LitToConstInput { lit: &lit.node, ty: ct_ty };
         let constant = self.tcx.at(expr.span).lit_to_const(lit_input);
         self.const_to_pat(constant, ct_ty, expr.hir_id, lit.span).kind
     }

@@ -1852,12 +1852,7 @@ impl<'a> State<'a> {
 
     fn print_pat_expr(&mut self, expr: &hir::PatExpr<'_>) {
         match &expr.kind {
-            hir::PatExprKind::Lit { lit, negated } => {
-                if *negated {
-                    self.word("-");
-                }
-                self.print_literal(lit);
-            }
+            hir::PatExprKind::Lit { lit } => self.print_literal(lit),
             hir::PatExprKind::ConstBlock(c) => self.print_inline_const(c),
             hir::PatExprKind::Path(qpath) => self.print_qpath(qpath, true),
         }

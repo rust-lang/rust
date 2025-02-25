@@ -25,7 +25,9 @@ use rustc_middle::ty::print::{
 };
 use rustc_middle::ty::{self, TraitRef, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, Upcast};
 use rustc_middle::{bug, span_bug};
+use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::{BytePos, DUMMY_SP, STDLIB_STABLE_CRATES, Span, Symbol, sym};
+use rustc_type_ir::UintTy;
 use tracing::{debug, instrument};
 
 use super::on_unimplemented::{AppendConstMessage, OnUnimplementedNote};
@@ -2747,6 +2749,51 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             );
 
             self.suggest_tuple_wrapping(err, root_obligation, obligation);
+
+            self.suggest_trailing_unop_to_binop(err, span, trait_predicate, obligation);
+        }
+    }
+
+    fn suggest_trailing_unop_to_binop(
+        &self,
+        err: &mut Diag<'_>,
+        span: Span,
+        trait_predicate: ty::PolyTraitPredicate<'tcx>,
+        obligation: &PredicateObligation<'tcx>,
+    ) {
+        if Some(trait_predicate.def_id()) != self.tcx.lang_items().neg_trait() {
+            return;
+        }
+        let sp = self.tcx.sess.source_map().start_point(span).with_parent(None);
+        if let Some(sp) = self.tcx.sess.psess.ambiguous_block_expr_parse.borrow().get(&sp) {
+            // If the previous expression was a block expression, suggest parentheses
+            // (turning this into a binary subtraction operation instead.)
+            // for example, `{2} - 2` -> `({2}) - 2` (see src\test\ui\parser\expr-as-stmt.rs)
+            err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
+            return;
+        }
+        let self_ty = trait_predicate.self_ty().skip_binder();
+        if let ty::Uint(u) = self_ty.kind() {
+            err.note("unsigned values cannot be negated");
+            if let ObligationCauseCode::NegLit { cast, positive } = obligation.cause.code() {
+                let bitwidth = u.bit_width().unwrap_or(self.tcx.data_layout.pointer_size.bits());
+                let shift = 128 - bitwidth;
+                let shifted = -(((*positive as i128) << shift) >> shift);
+                let trimmed = ((shifted as u128) << shift) >> shift;
+                let suggestion = if shifted.count_ones() == 128 {
+                    format!("{self_ty}::MAX")
+                } else if let UintTy::U8 = u {
+                    trimmed.to_string()
+                } else {
+                    format!("0x{trimmed:x}")
+                };
+                err.span_suggestion_verbose(
+                    cast.unwrap_or(span),
+                    format!("you may have meant to the wrapped-around value of type `{self_ty}`"),
+                    suggestion,
+                    Applicability::MaybeIncorrect,
+                );
+            }
         }
     }
 

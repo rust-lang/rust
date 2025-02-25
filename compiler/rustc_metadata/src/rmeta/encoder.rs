@@ -2423,9 +2423,6 @@ pub fn rendered_const<'tcx>(tcx: TyCtxt<'tcx>, body: &hir::Body<'_>, def_id: Loc
 
     fn classify(expr: &hir::Expr<'_>) -> Classification {
         match &expr.kind {
-            hir::ExprKind::Unary(hir::UnOp::Neg, expr) => {
-                if matches!(expr.kind, hir::ExprKind::Lit(_)) { Literal } else { Complex }
-            }
             hir::ExprKind::Lit(_) => Literal,
             hir::ExprKind::Tup([]) => Simple,
             hir::ExprKind::Block(hir::Block { stmts: [], expr: Some(expr), .. }, _) => {

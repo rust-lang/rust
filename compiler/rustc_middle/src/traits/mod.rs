@@ -13,9 +13,8 @@ use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 
 use rustc_errors::{Applicability, Diag, EmissionGuarantee, ErrorGuaranteed};
-use rustc_hir as hir;
-use rustc_hir::HirId;
 use rustc_hir::def_id::DefId;
+use rustc_hir::{self as hir, HirId};
 use rustc_macros::{
     Decodable, Encodable, HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable,
 };
@@ -391,6 +390,17 @@ pub enum ObligationCauseCode<'tcx> {
         rhs_span: Option<Span>,
         rhs_is_lit: bool,
         output_ty: Option<Ty<'tcx>>,
+    },
+
+    /// A negated literal being checked for whether the type implements `Neg`.
+    NegLit {
+        /// `Some` if this was a `-1 as type` cast.
+        /// Spans the entire cast.
+        cast: Option<Span>,
+        /// Positive value of the literal
+        #[type_visitable(ignore)]
+        #[type_foldable(identity)]
+        positive: u128,
     },
 
     AscribeUserTypeProvePredicate(Span),

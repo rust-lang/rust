@@ -1,9 +1,17 @@
+error: cannot negate `boolean` literal
+  --> $DIR/unop-neg-bool.rs:3:5
+   |
+LL |     -true;
+   |     ^^^^^
+   |
+   = note: only signed integer literals and float literals can be negated
+
 error[E0600]: cannot apply unary operator `-` to type `bool`
   --> $DIR/unop-neg-bool.rs:2:5
    |
-LL |     -true;
-   |     ^^^^^ cannot apply unary operator `-`
+LL |     -{ true };
+   |     ^^^^^^^^^ cannot apply unary operator `-`
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0600`.
