@@ -4694,21 +4694,21 @@ fn f<T: Send, U>() {
     Struct::<T>::IS_SEND;
   //^^^^^^^^^^^^^^^^^^^^Yes
     Struct::<U>::IS_SEND;
-  //^^^^^^^^^^^^^^^^^^^^{unknown}
+  //^^^^^^^^^^^^^^^^^^^^Yes
     Struct::<*const T>::IS_SEND;
-  //^^^^^^^^^^^^^^^^^^^^^^^^^^^{unknown}
+  //^^^^^^^^^^^^^^^^^^^^^^^^^^^Yes
     Enum::<T>::IS_SEND;
   //^^^^^^^^^^^^^^^^^^Yes
     Enum::<U>::IS_SEND;
-  //^^^^^^^^^^^^^^^^^^{unknown}
+  //^^^^^^^^^^^^^^^^^^Yes
     Enum::<*const T>::IS_SEND;
-  //^^^^^^^^^^^^^^^^^^^^^^^^^{unknown}
+  //^^^^^^^^^^^^^^^^^^^^^^^^^Yes
     Union::<T>::IS_SEND;
   //^^^^^^^^^^^^^^^^^^^Yes
     Union::<U>::IS_SEND;
-  //^^^^^^^^^^^^^^^^^^^{unknown}
+  //^^^^^^^^^^^^^^^^^^^Yes
     Union::<*const T>::IS_SEND;
-  //^^^^^^^^^^^^^^^^^^^^^^^^^^{unknown}
+  //^^^^^^^^^^^^^^^^^^^^^^^^^^Yes
     PhantomData::<T>::IS_SEND;
   //^^^^^^^^^^^^^^^^^^^^^^^^^Yes
     PhantomData::<U>::IS_SEND;

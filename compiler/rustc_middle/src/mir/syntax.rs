@@ -97,19 +97,6 @@ pub enum MirPhase {
     Runtime(RuntimePhase),
 }
 
-impl MirPhase {
-    pub fn name(&self) -> &'static str {
-        match *self {
-            MirPhase::Built => "built",
-            MirPhase::Analysis(AnalysisPhase::Initial) => "analysis",
-            MirPhase::Analysis(AnalysisPhase::PostCleanup) => "analysis-post-cleanup",
-            MirPhase::Runtime(RuntimePhase::Initial) => "runtime",
-            MirPhase::Runtime(RuntimePhase::PostCleanup) => "runtime-post-cleanup",
-            MirPhase::Runtime(RuntimePhase::Optimized) => "runtime-optimized",
-        }
-    }
-}
-
 /// See [`MirPhase::Analysis`].
 #[derive(Copy, Clone, TyEncodable, TyDecodable, Debug, PartialEq, Eq, PartialOrd, Ord)]
 #[derive(HashStable)]
@@ -204,43 +191,6 @@ pub enum RawPtrKind {
     /// unsafe. In terms of the operational semantics (i.e., Miri), this is equivalent
     /// to `RawPtrKind::Mut`, but will never incur a retag.
     FakeForPtrMetadata,
-}
-
-impl From<Mutability> for RawPtrKind {
-    fn from(other: Mutability) -> Self {
-        match other {
-            Mutability::Mut => RawPtrKind::Mut,
-            Mutability::Not => RawPtrKind::Const,
-        }
-    }
-}
-
-impl RawPtrKind {
-    pub fn is_fake(self) -> bool {
-        match self {
-            RawPtrKind::Mut | RawPtrKind::Const => false,
-            RawPtrKind::FakeForPtrMetadata => true,
-        }
-    }
-
-    pub fn to_mutbl_lossy(self) -> Mutability {
-        match self {
-            RawPtrKind::Mut => Mutability::Mut,
-            RawPtrKind::Const => Mutability::Not,
-
-            // We have no type corresponding to a fake borrow, so use
-            // `*const` as an approximation.
-            RawPtrKind::FakeForPtrMetadata => Mutability::Not,
-        }
-    }
-
-    pub fn ptr_str(self) -> &'static str {
-        match self {
-            RawPtrKind::Mut => "mut",
-            RawPtrKind::Const => "const",
-            RawPtrKind::FakeForPtrMetadata => "const (fake)",
-        }
-    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, TyEncodable, TyDecodable)]
@@ -515,29 +465,6 @@ pub enum StatementKind<'tcx> {
     },
 }
 
-impl StatementKind<'_> {
-    /// Returns a simple string representation of a `StatementKind` variant, independent of any
-    /// values it might hold (e.g. `StatementKind::Assign` always returns `"Assign"`).
-    pub const fn name(&self) -> &'static str {
-        match self {
-            StatementKind::Assign(..) => "Assign",
-            StatementKind::FakeRead(..) => "FakeRead",
-            StatementKind::SetDiscriminant { .. } => "SetDiscriminant",
-            StatementKind::Deinit(..) => "Deinit",
-            StatementKind::StorageLive(..) => "StorageLive",
-            StatementKind::StorageDead(..) => "StorageDead",
-            StatementKind::Retag(..) => "Retag",
-            StatementKind::PlaceMention(..) => "PlaceMention",
-            StatementKind::AscribeUserType(..) => "AscribeUserType",
-            StatementKind::Coverage(..) => "Coverage",
-            StatementKind::Intrinsic(..) => "Intrinsic",
-            StatementKind::ConstEvalCounter => "ConstEvalCounter",
-            StatementKind::Nop => "Nop",
-            StatementKind::BackwardIncompatibleDropHint { .. } => "BackwardIncompatibleDropHint",
-        }
-    }
-}
-
 #[derive(
     Clone,
     TyEncodable,
@@ -673,12 +600,6 @@ pub enum CallSource {
     Normal,
 }
 
-impl CallSource {
-    pub fn from_hir_call(self) -> bool {
-        matches!(self, CallSource::Normal)
-    }
-}
-
 #[derive(Clone, Copy, Debug, TyEncodable, TyDecodable, Hash, HashStable, PartialEq)]
 #[derive(TypeFoldable, TypeVisitable)]
 /// The macro that an inline assembly block was created by
@@ -687,15 +608,6 @@ pub enum InlineAsmMacro {
     Asm,
     /// The `naked_asm!` macro
     NakedAsm,
-}
-
-impl InlineAsmMacro {
-    pub const fn diverges(self, options: InlineAsmOptions) -> bool {
-        match self {
-            InlineAsmMacro::Asm => options.contains(InlineAsmOptions::NORETURN),
-            InlineAsmMacro::NakedAsm => true,
-        }
-    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -997,30 +909,6 @@ pub enum TerminatorKind<'tcx> {
 )]
 pub enum BackwardIncompatibleDropReason {
     Edition2024,
-}
-
-impl TerminatorKind<'_> {
-    /// Returns a simple string representation of a `TerminatorKind` variant, independent of any
-    /// values it might hold (e.g. `TerminatorKind::Call` always returns `"Call"`).
-    pub const fn name(&self) -> &'static str {
-        match self {
-            TerminatorKind::Goto { .. } => "Goto",
-            TerminatorKind::SwitchInt { .. } => "SwitchInt",
-            TerminatorKind::UnwindResume => "UnwindResume",
-            TerminatorKind::UnwindTerminate(_) => "UnwindTerminate",
-            TerminatorKind::Return => "Return",
-            TerminatorKind::Unreachable => "Unreachable",
-            TerminatorKind::Drop { .. } => "Drop",
-            TerminatorKind::Call { .. } => "Call",
-            TerminatorKind::TailCall { .. } => "TailCall",
-            TerminatorKind::Assert { .. } => "Assert",
-            TerminatorKind::Yield { .. } => "Yield",
-            TerminatorKind::CoroutineDrop => "CoroutineDrop",
-            TerminatorKind::FalseEdge { .. } => "FalseEdge",
-            TerminatorKind::FalseUnwind { .. } => "FalseUnwind",
-            TerminatorKind::InlineAsm { .. } => "InlineAsm",
-        }
-    }
 }
 
 #[derive(Debug, Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq)]

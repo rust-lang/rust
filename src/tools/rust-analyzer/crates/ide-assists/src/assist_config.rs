@@ -20,6 +20,7 @@ pub struct AssistConfig {
     pub assist_emit_must_use: bool,
     pub term_search_fuel: u64,
     pub term_search_borrowck: bool,
+    pub code_action_grouping: bool,
 }
 
 impl AssistConfig {

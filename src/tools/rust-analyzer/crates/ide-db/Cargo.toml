@@ -30,7 +30,6 @@ bitflags.workspace = true
 
 # local deps
 base-db.workspace = true
-limit.workspace = true
 parser.workspace = true
 profile.workspace = true
 stdx.workspace = true

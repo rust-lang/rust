@@ -116,8 +116,8 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             });
         }
 
-        // simd_shuffle_generic<T, U, const I: &[u32]>(x: T, y: T) -> U
-        sym::simd_shuffle_generic => {
+        // simd_shuffle_const_generic<T, U, const I: &[u32]>(x: T, y: T) -> U
+        sym::simd_shuffle_const_generic => {
             let [x, y] = args else {
                 bug!("wrong number of args for intrinsic {intrinsic}");
             };

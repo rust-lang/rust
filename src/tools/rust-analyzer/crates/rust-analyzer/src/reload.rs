@@ -885,7 +885,6 @@ pub fn ws_to_crate_graph(
         ws_data.extend(mapping.values().copied().zip(iter::repeat(Arc::new(CrateWorkspaceData {
             toolchain: toolchain.clone(),
             data_layout: target_layout.clone(),
-            proc_macro_cwd: Some(ws.workspace_root().to_owned()),
         }))));
         proc_macro_paths.push(crate_proc_macros);
     }

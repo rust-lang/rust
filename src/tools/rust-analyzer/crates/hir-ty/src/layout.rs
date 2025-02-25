@@ -14,8 +14,8 @@ use hir_def::{
 };
 use la_arena::{Idx, RawIdx};
 use rustc_abi::AddressSpace;
-use rustc_index::{IndexSlice, IndexVec};
 use rustc_hashes::Hash64;
+use rustc_index::{IndexSlice, IndexVec};
 
 use triomphe::Arc;
 

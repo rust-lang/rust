@@ -1,3 +1,4 @@
+
 use clippy_config::Conf;
 use clippy_config::types::create_disallowed_map;
 use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};

@@ -768,21 +768,23 @@ pub(crate) fn adt_datum_query(
         phantom_data,
     };
 
-    let variant_id_to_fields = |id: VariantId| {
+    // this slows down rust-analyzer by quite a bit unfortunately, so enabling this is currently not worth it
+    let _variant_id_to_fields = |id: VariantId| {
         let variant_data = &id.variant_data(db.upcast());
-        let fields = if variant_data.fields().is_empty() || bound_vars_subst.is_empty(Interner) {
+        let fields = if variant_data.fields().is_empty() {
             vec![]
         } else {
-            // HACK: provide full struct type info slows down rust-analyzer by quite a bit unfortunately,
-            // so we trick chalk into thinking that our struct impl Unsize
-            if let Some(ty) = bound_vars_subst.at(Interner, 0).ty(Interner) {
-                vec![ty.clone()]
-            } else {
-                vec![]
-            }
+            let field_types = db.field_types(id);
+            variant_data
+                .fields()
+                .iter()
+                .map(|(idx, _)| field_types[idx].clone().substitute(Interner, &bound_vars_subst))
+                .filter(|it| !it.contains_unknown())
+                .collect()
         };
         rust_ir::AdtVariantDatum { fields }
     };
+    let variant_id_to_fields = |_: VariantId| rust_ir::AdtVariantDatum { fields: vec![] };
 
     let (kind, variants) = match adt_id {
         hir_def::AdtId::StructId(id) => {

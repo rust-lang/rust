@@ -312,8 +312,8 @@ impl Sysroot {
                     RustLibSrcWorkspace::Empty => true,
                 };
                 if !has_core {
-                    let var_note = if env::var_os("rust_lib_src_PATH").is_some() {
-                        " (env var `rust_lib_src_PATH` is set and may be incorrect, try unsetting it)"
+                    let var_note = if env::var_os("RUST_SRC_PATH").is_some() {
+                        " (env var `RUST_SRC_PATH` is set and may be incorrect, try unsetting it)"
                     } else {
                         ", try running `rustup component add rust-src` to possibly fix this"
                     };
@@ -422,18 +422,16 @@ fn discover_sysroot_dir(
 }
 
 fn discover_rust_lib_src_dir(sysroot_path: &AbsPathBuf) -> Option<AbsPathBuf> {
-    if let Ok(path) = env::var("rust_lib_src_PATH") {
+    if let Ok(path) = env::var("RUST_SRC_PATH") {
         if let Ok(path) = AbsPathBuf::try_from(path.as_str()) {
             let core = path.join("core");
             if fs::metadata(&core).is_ok() {
-                tracing::debug!("Discovered sysroot by rust_lib_src_PATH: {path}");
+                tracing::debug!("Discovered sysroot by RUST_SRC_PATH: {path}");
                 return Some(path);
             }
-            tracing::debug!(
-                "rust_lib_src_PATH is set, but is invalid (no core: {core:?}), ignoring"
-            );
+            tracing::debug!("RUST_SRC_PATH is set, but is invalid (no core: {core:?}), ignoring");
         } else {
-            tracing::debug!("rust_lib_src_PATH is set, but is invalid, ignoring");
+            tracing::debug!("RUST_SRC_PATH is set, but is invalid, ignoring");
         }
     }
 

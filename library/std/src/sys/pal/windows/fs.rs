@@ -1,4 +1,4 @@
-use super::api::{self, WinError};
+use super::api::{self, WinError, set_file_information_by_handle};
 use super::{IoResult, to_u16s};
 use crate::alloc::{alloc, handle_alloc_error};
 use crate::borrow::Cow;
@@ -319,31 +319,17 @@ impl File {
                 && creation == c::OPEN_ALWAYS
                 && api::get_last_error() == WinError::ALREADY_EXISTS
             {
-                unsafe {
-                    // This first tries `FileAllocationInfo` but falls back to
-                    // `FileEndOfFileInfo` in order to support WINE.
-                    // If WINE gains support for FileAllocationInfo, we should
-                    // remove the fallback.
-                    let alloc = c::FILE_ALLOCATION_INFO { AllocationSize: 0 };
-                    let result = c::SetFileInformationByHandle(
-                        handle.as_raw_handle(),
-                        c::FileAllocationInfo,
-                        (&raw const alloc).cast::<c_void>(),
-                        mem::size_of::<c::FILE_ALLOCATION_INFO>() as u32,
-                    );
-                    if result == 0 {
+                // This first tries `FileAllocationInfo` but falls back to
+                // `FileEndOfFileInfo` in order to support WINE.
+                // If WINE gains support for FileAllocationInfo, we should
+                // remove the fallback.
+                let alloc = c::FILE_ALLOCATION_INFO { AllocationSize: 0 };
+                set_file_information_by_handle(handle.as_raw_handle(), &alloc)
+                    .or_else(|_| {
                         let eof = c::FILE_END_OF_FILE_INFO { EndOfFile: 0 };
-                        let result = c::SetFileInformationByHandle(
-                            handle.as_raw_handle(),
-                            c::FileEndOfFileInfo,
-                            (&raw const eof).cast::<c_void>(),
-                            mem::size_of::<c::FILE_END_OF_FILE_INFO>() as u32,
-                        );
-                        if result == 0 {
-                            return Err(io::Error::last_os_error());
-                        }
-                    }
-                }
+                        set_file_information_by_handle(handle.as_raw_handle(), &eof)
+                    })
+                    .io_result()?;
             }
             Ok(File { handle: Handle::from_inner(handle) })
         } else {
