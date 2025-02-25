@@ -374,6 +374,7 @@ if "--help" in sys.argv or "-h" in sys.argv:
 
 VERBOSE = False
 
+
 # Parse command line arguments into a valid build configuration.
 def parse_args(args):
     known_args = validate_args(args)
@@ -382,6 +383,7 @@ def parse_args(args):
         _set("profile", "dist", config)
     _set("build.configure-args", args, config)
     return config
+
 
 # Validate command line arguments, throwing an error if there are any unknown
 # arguments, missing values or duplicate arguments when option-checking is also
@@ -434,7 +436,7 @@ def validate_args(args):
                 known_args[option.name] = []
             elif option.name in known_args and option.name != "set":
                 duplicate_args.append(option.name)
-                
+
             known_args[option.name].append((option, value))
             break
 
@@ -595,7 +597,7 @@ def get_configured_targets(config):
 
 def write_block(f, config, block):
     last_line = block[-1]
-    key = last_line.split("=")[0].strip(' #')
+    key = last_line.split("=")[0].strip(" #")
     value = config[key] if key in config else None
     if value is not None:
         for ln in block[:-1]:
@@ -624,10 +626,12 @@ def write_config_toml(f, config):
     section = []
     block = []
 
+    i = 0
     # Drop the initial comment block
-    for i, line in enumerate(lines):
+    for line in lines:
         if not line.startswith("#"):
             break
+        i += 1
 
     for line in lines[i:]:
         if line.startswith("["):

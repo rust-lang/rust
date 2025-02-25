@@ -193,14 +193,24 @@ class GenerateAndParseConfig(unittest.TestCase):
         )
 
     def test_set_target_option(self):
-        build = serialize_and_parse(["--build=x86_64-unknown-linux-gnu", "--llvm-config=/usr/bin/llvm-config"])
+        build = serialize_and_parse(
+            ["--build=x86_64-unknown-linux-gnu", "--llvm-config=/usr/bin/llvm-config"]
+        )
         self.assertEqual(
-            build.get_toml("llvm-config", section="target.x86_64-unknown-linux-gnu"), "/usr/bin/llvm-config"
+            build.get_toml("llvm-config", section="target.x86_64-unknown-linux-gnu"),
+            "/usr/bin/llvm-config",
         )
 
     def test_set_targets(self):
         # Multiple targets can be set
-        build = serialize_and_parse(["--set", "target.x86_64-unknown-linux-gnu.cc=gcc", "--set", "target.aarch64-apple-darwin.cc=clang"])
+        build = serialize_and_parse(
+            [
+                "--set",
+                "target.x86_64-unknown-linux-gnu.cc=gcc",
+                "--set",
+                "target.aarch64-apple-darwin.cc=clang",
+            ]
+        )
         self.assertEqual(
             build.get_toml("cc", section="target.x86_64-unknown-linux-gnu"), "gcc"
         )
@@ -208,10 +218,10 @@ class GenerateAndParseConfig(unittest.TestCase):
             build.get_toml("cc", section="target.aarch64-apple-darwin"), "clang"
         )
 
-        build = serialize_and_parse(["--target", "x86_64-unknown-linux-gnu,aarch64-apple-darwin"])
-        self.assertNotEqual(
-            build.config_toml.find("target.aarch64-apple-darwin"), -1
+        build = serialize_and_parse(
+            ["--target", "x86_64-unknown-linux-gnu,aarch64-apple-darwin"]
         )
+        self.assertNotEqual(build.config_toml.find("target.aarch64-apple-darwin"), -1)
         self.assertNotEqual(
             build.config_toml.find("target.x86_64-unknown-linux-gnu"), -1
         )
