@@ -45,10 +45,13 @@ pub trait CodegenBackend {
 
     fn print(&self, _req: &PrintRequest, _out: &mut String, _sess: &Session) {}
 
-    /// Returns the features that should be set in `cfg(target_features)`.
+    /// Returns two feature sets:
+    /// - The first has the features that should be set in `cfg(target_features)`.
+    /// - The second is like the first, but also includes unstable features.
+    ///
     /// RUSTC_SPECIFIC_FEATURES should be skipped here, those are handled outside codegen.
-    fn target_features_cfg(&self, _sess: &Session, _allow_unstable: bool) -> Vec<Symbol> {
-        vec![]
+    fn target_features_cfg(&self, _sess: &Session) -> (Vec<Symbol>, Vec<Symbol>) {
+        (vec![], vec![])
     }
 
     fn print_passes(&self) {}
