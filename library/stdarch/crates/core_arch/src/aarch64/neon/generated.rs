@@ -27,9 +27,9 @@ pub unsafe fn __crc32cd(crc: u32, data: u64) -> u32 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crc32cx"
         )]
-        fn ___crc32cd(crc: i32, data: i64) -> i32;
+        fn ___crc32cd(crc: u32, data: u64) -> u32;
     }
-    ___crc32cd(crc.as_signed(), data.as_signed()).as_unsigned()
+    ___crc32cd(crc, data)
 }
 #[doc = "CRC32 single round checksum for quad words (64 bits)."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/__crc32d)"]
@@ -46,9 +46,9 @@ pub unsafe fn __crc32d(crc: u32, data: u64) -> u32 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crc32x"
         )]
-        fn ___crc32d(crc: i32, data: i64) -> i32;
+        fn ___crc32d(crc: u32, data: u64) -> u32;
     }
-    ___crc32d(crc.as_signed(), data.as_signed()).as_unsigned()
+    ___crc32d(crc, data)
 }
 #[doc = "Signed Absolute difference and Accumulate Long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vabal_high_s8)"]
@@ -507,9 +507,9 @@ pub unsafe fn vaddlv_u16(a: uint16x4_t) -> u32 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uaddlv.i32.v4i16"
         )]
-        fn _vaddlv_u16(a: int16x4_t) -> i32;
+        fn _vaddlv_u16(a: uint16x4_t) -> u32;
     }
-    _vaddlv_u16(a.as_signed()).as_unsigned()
+    _vaddlv_u16(a)
 }
 #[doc = "Unsigned Add Long across Vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaddlvq_u16)"]
@@ -525,9 +525,9 @@ pub unsafe fn vaddlvq_u16(a: uint16x8_t) -> u32 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uaddlv.i32.v8i16"
         )]
-        fn _vaddlvq_u16(a: int16x8_t) -> i32;
+        fn _vaddlvq_u16(a: uint16x8_t) -> u32;
     }
-    _vaddlvq_u16(a.as_signed()).as_unsigned()
+    _vaddlvq_u16(a)
 }
 #[doc = "Unsigned Add Long across Vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaddlvq_u32)"]
@@ -543,9 +543,9 @@ pub unsafe fn vaddlvq_u32(a: uint32x4_t) -> u64 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uaddlv.i64.v4i32"
         )]
-        fn _vaddlvq_u32(a: int32x4_t) -> i64;
+        fn _vaddlvq_u32(a: uint32x4_t) -> u64;
     }
-    _vaddlvq_u32(a.as_signed()).as_unsigned()
+    _vaddlvq_u32(a)
 }
 #[doc = "Unsigned Add Long across Vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaddlv_u32)"]
@@ -561,9 +561,9 @@ pub unsafe fn vaddlv_u32(a: uint32x2_t) -> u64 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uaddlv.i64.v2i32"
         )]
-        fn _vaddlv_u32(a: int32x2_t) -> i64;
+        fn _vaddlv_u32(a: uint32x2_t) -> u64;
     }
-    _vaddlv_u32(a.as_signed()).as_unsigned()
+    _vaddlv_u32(a)
 }
 #[doc = "Unsigned Add Long across Vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaddlv_u8)"]
@@ -579,9 +579,9 @@ pub unsafe fn vaddlv_u8(a: uint8x8_t) -> u16 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uaddlv.i32.v8i8"
         )]
-        fn _vaddlv_u8(a: int8x8_t) -> i32;
+        fn _vaddlv_u8(a: uint8x8_t) -> i32;
     }
-    _vaddlv_u8(a.as_signed()).as_unsigned() as u16
+    _vaddlv_u8(a) as u16
 }
 #[doc = "Unsigned Add Long across Vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaddlvq_u8)"]
@@ -597,9 +597,9 @@ pub unsafe fn vaddlvq_u8(a: uint8x16_t) -> u16 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uaddlv.i32.v16i8"
         )]
-        fn _vaddlvq_u8(a: int8x16_t) -> i32;
+        fn _vaddlvq_u8(a: uint8x16_t) -> i32;
     }
-    _vaddlvq_u8(a.as_signed()).as_unsigned() as u16
+    _vaddlvq_u8(a) as u16
 }
 #[doc = "Floating-point add across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaddv_f32)"]
@@ -777,9 +777,9 @@ pub unsafe fn vaddv_u32(a: uint32x2_t) -> u32 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uaddv.i32.v2i32"
         )]
-        fn _vaddv_u32(a: int32x2_t) -> i32;
+        fn _vaddv_u32(a: uint32x2_t) -> u32;
     }
-    _vaddv_u32(a.as_signed()).as_unsigned()
+    _vaddv_u32(a)
 }
 #[doc = "Add across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaddv_u8)"]
@@ -795,9 +795,9 @@ pub unsafe fn vaddv_u8(a: uint8x8_t) -> u8 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uaddv.i32.v8i8"
         )]
-        fn _vaddv_u8(a: int8x8_t) -> i8;
+        fn _vaddv_u8(a: uint8x8_t) -> u8;
     }
-    _vaddv_u8(a.as_signed()).as_unsigned()
+    _vaddv_u8(a)
 }
 #[doc = "Add across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaddvq_u8)"]
@@ -813,9 +813,9 @@ pub unsafe fn vaddvq_u8(a: uint8x16_t) -> u8 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uaddv.i32.v16i8"
         )]
-        fn _vaddvq_u8(a: int8x16_t) -> i8;
+        fn _vaddvq_u8(a: uint8x16_t) -> u8;
     }
-    _vaddvq_u8(a.as_signed()).as_unsigned()
+    _vaddvq_u8(a)
 }
 #[doc = "Add across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaddv_u16)"]
@@ -831,9 +831,9 @@ pub unsafe fn vaddv_u16(a: uint16x4_t) -> u16 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uaddv.i32.v4i16"
         )]
-        fn _vaddv_u16(a: int16x4_t) -> i16;
+        fn _vaddv_u16(a: uint16x4_t) -> u16;
     }
-    _vaddv_u16(a.as_signed()).as_unsigned()
+    _vaddv_u16(a)
 }
 #[doc = "Add across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaddvq_u16)"]
@@ -849,9 +849,9 @@ pub unsafe fn vaddvq_u16(a: uint16x8_t) -> u16 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uaddv.i32.v8i16"
         )]
-        fn _vaddvq_u16(a: int16x8_t) -> i16;
+        fn _vaddvq_u16(a: uint16x8_t) -> u16;
     }
-    _vaddvq_u16(a.as_signed()).as_unsigned()
+    _vaddvq_u16(a)
 }
 #[doc = "Add across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaddvq_u32)"]
@@ -867,9 +867,9 @@ pub unsafe fn vaddvq_u32(a: uint32x4_t) -> u32 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uaddv.i32.v4i32"
         )]
-        fn _vaddvq_u32(a: int32x4_t) -> i32;
+        fn _vaddvq_u32(a: uint32x4_t) -> u32;
     }
-    _vaddvq_u32(a.as_signed()).as_unsigned()
+    _vaddvq_u32(a)
 }
 #[doc = "Add across vector"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaddvq_s64)"]
@@ -903,9 +903,9 @@ pub unsafe fn vaddvq_u64(a: uint64x2_t) -> u64 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uaddv.i64.v2i64"
         )]
-        fn _vaddvq_u64(a: int64x2_t) -> i64;
+        fn _vaddvq_u64(a: uint64x2_t) -> u64;
     }
-    _vaddvq_u64(a.as_signed()).as_unsigned()
+    _vaddvq_u64(a)
 }
 #[doc = "Bit clear and exclusive OR"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vbcaxq_s8)"]
@@ -993,9 +993,9 @@ pub unsafe fn vbcaxq_u8(a: uint8x16_t, b: uint8x16_t, c: uint8x16_t) -> uint8x16
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.bcaxu.v16i8"
         )]
-        fn _vbcaxq_u8(a: int8x16_t, b: int8x16_t, c: int8x16_t) -> int8x16_t;
+        fn _vbcaxq_u8(a: uint8x16_t, b: uint8x16_t, c: uint8x16_t) -> uint8x16_t;
     }
-    _vbcaxq_u8(a.as_signed(), b.as_signed(), c.as_signed()).as_unsigned()
+    _vbcaxq_u8(a, b, c)
 }
 #[doc = "Bit clear and exclusive OR"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vbcaxq_u16)"]
@@ -1011,9 +1011,9 @@ pub unsafe fn vbcaxq_u16(a: uint16x8_t, b: uint16x8_t, c: uint16x8_t) -> uint16x
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.bcaxu.v8i16"
         )]
-        fn _vbcaxq_u16(a: int16x8_t, b: int16x8_t, c: int16x8_t) -> int16x8_t;
+        fn _vbcaxq_u16(a: uint16x8_t, b: uint16x8_t, c: uint16x8_t) -> uint16x8_t;
     }
-    _vbcaxq_u16(a.as_signed(), b.as_signed(), c.as_signed()).as_unsigned()
+    _vbcaxq_u16(a, b, c)
 }
 #[doc = "Bit clear and exclusive OR"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vbcaxq_u32)"]
@@ -1029,9 +1029,9 @@ pub unsafe fn vbcaxq_u32(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t) -> uint32x
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.bcaxu.v4i32"
         )]
-        fn _vbcaxq_u32(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t;
+        fn _vbcaxq_u32(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t) -> uint32x4_t;
     }
-    _vbcaxq_u32(a.as_signed(), b.as_signed(), c.as_signed()).as_unsigned()
+    _vbcaxq_u32(a, b, c)
 }
 #[doc = "Bit clear and exclusive OR"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vbcaxq_u64)"]
@@ -1047,9 +1047,9 @@ pub unsafe fn vbcaxq_u64(a: uint64x2_t, b: uint64x2_t, c: uint64x2_t) -> uint64x
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.bcaxu.v2i64"
         )]
-        fn _vbcaxq_u64(a: int64x2_t, b: int64x2_t, c: int64x2_t) -> int64x2_t;
+        fn _vbcaxq_u64(a: uint64x2_t, b: uint64x2_t, c: uint64x2_t) -> uint64x2_t;
     }
-    _vbcaxq_u64(a.as_signed(), b.as_signed(), c.as_signed()).as_unsigned()
+    _vbcaxq_u64(a, b, c)
 }
 #[doc = "Floating-point complex add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcadd_rot270_f16)"]
@@ -1249,9 +1249,9 @@ pub unsafe fn vcage_f64(a: float64x1_t, b: float64x1_t) -> uint64x1_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.facge.v1i64.v1f64"
         )]
-        fn _vcage_f64(a: float64x1_t, b: float64x1_t) -> int64x1_t;
+        fn _vcage_f64(a: float64x1_t, b: float64x1_t) -> uint64x1_t;
     }
-    _vcage_f64(a, b).as_unsigned()
+    _vcage_f64(a, b)
 }
 #[doc = "Floating-point absolute compare greater than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcageq_f64)"]
@@ -1267,9 +1267,9 @@ pub unsafe fn vcageq_f64(a: float64x2_t, b: float64x2_t) -> uint64x2_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.facge.v2i64.v2f64"
         )]
-        fn _vcageq_f64(a: float64x2_t, b: float64x2_t) -> int64x2_t;
+        fn _vcageq_f64(a: float64x2_t, b: float64x2_t) -> uint64x2_t;
     }
-    _vcageq_f64(a, b).as_unsigned()
+    _vcageq_f64(a, b)
 }
 #[doc = "Floating-point absolute compare greater than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcaged_f64)"]
@@ -1285,9 +1285,9 @@ pub unsafe fn vcaged_f64(a: f64, b: f64) -> u64 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.facge.i64.f64"
         )]
-        fn _vcaged_f64(a: f64, b: f64) -> i64;
+        fn _vcaged_f64(a: f64, b: f64) -> u64;
     }
-    _vcaged_f64(a, b).as_unsigned()
+    _vcaged_f64(a, b)
 }
 #[doc = "Floating-point absolute compare greater than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcages_f32)"]
@@ -1303,9 +1303,9 @@ pub unsafe fn vcages_f32(a: f32, b: f32) -> u32 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.facge.i32.f32"
         )]
-        fn _vcages_f32(a: f32, b: f32) -> i32;
+        fn _vcages_f32(a: f32, b: f32) -> u32;
     }
-    _vcages_f32(a, b).as_unsigned()
+    _vcages_f32(a, b)
 }
 #[doc = "Floating-point absolute compare greater than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcageh_f16)"]
@@ -1323,7 +1323,7 @@ pub unsafe fn vcageh_f16(a: f16, b: f16) -> u16 {
         )]
         fn _vcageh_f16(a: f16, b: f16) -> i32;
     }
-    _vcageh_f16(a, b).as_unsigned() as u16
+    _vcageh_f16(a, b) as u16
 }
 #[doc = "Floating-point absolute compare greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcagt_f64)"]
@@ -1339,9 +1339,9 @@ pub unsafe fn vcagt_f64(a: float64x1_t, b: float64x1_t) -> uint64x1_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.facgt.v1i64.v1f64"
         )]
-        fn _vcagt_f64(a: float64x1_t, b: float64x1_t) -> int64x1_t;
+        fn _vcagt_f64(a: float64x1_t, b: float64x1_t) -> uint64x1_t;
     }
-    _vcagt_f64(a, b).as_unsigned()
+    _vcagt_f64(a, b)
 }
 #[doc = "Floating-point absolute compare greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcagtq_f64)"]
@@ -1357,9 +1357,9 @@ pub unsafe fn vcagtq_f64(a: float64x2_t, b: float64x2_t) -> uint64x2_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.facgt.v2i64.v2f64"
         )]
-        fn _vcagtq_f64(a: float64x2_t, b: float64x2_t) -> int64x2_t;
+        fn _vcagtq_f64(a: float64x2_t, b: float64x2_t) -> uint64x2_t;
     }
-    _vcagtq_f64(a, b).as_unsigned()
+    _vcagtq_f64(a, b)
 }
 #[doc = "Floating-point absolute compare greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcagtd_f64)"]
@@ -1375,9 +1375,9 @@ pub unsafe fn vcagtd_f64(a: f64, b: f64) -> u64 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.facgt.i64.f64"
         )]
-        fn _vcagtd_f64(a: f64, b: f64) -> i64;
+        fn _vcagtd_f64(a: f64, b: f64) -> u64;
     }
-    _vcagtd_f64(a, b).as_unsigned()
+    _vcagtd_f64(a, b)
 }
 #[doc = "Floating-point absolute compare greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcagts_f32)"]
@@ -1393,9 +1393,9 @@ pub unsafe fn vcagts_f32(a: f32, b: f32) -> u32 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.facgt.i32.f32"
         )]
-        fn _vcagts_f32(a: f32, b: f32) -> i32;
+        fn _vcagts_f32(a: f32, b: f32) -> u32;
     }
-    _vcagts_f32(a, b).as_unsigned()
+    _vcagts_f32(a, b)
 }
 #[doc = "Floating-point absolute compare greater than"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcagth_f16)"]
@@ -1413,7 +1413,7 @@ pub unsafe fn vcagth_f16(a: f16, b: f16) -> u16 {
         )]
         fn _vcagth_f16(a: f16, b: f16) -> i32;
     }
-    _vcagth_f16(a, b).as_unsigned() as u16
+    _vcagth_f16(a, b) as u16
 }
 #[doc = "Floating-point absolute compare less than or equal"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcale_f64)"]
@@ -7799,9 +7799,9 @@ pub unsafe fn vcvt_n_f64_u64<const N: i32>(a: uint64x1_t) -> float64x1_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.vcvtfxu2fp.v1f64.v1i64"
         )]
-        fn _vcvt_n_f64_u64(a: int64x1_t, n: i32) -> float64x1_t;
+        fn _vcvt_n_f64_u64(a: uint64x1_t, n: i32) -> float64x1_t;
     }
-    _vcvt_n_f64_u64(a.as_signed(), N)
+    _vcvt_n_f64_u64(a, N)
 }
 #[doc = "Fixed-point convert to floating-point"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtq_n_f64_u64)"]
@@ -7819,9 +7819,9 @@ pub unsafe fn vcvtq_n_f64_u64<const N: i32>(a: uint64x2_t) -> float64x2_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.vcvtfxu2fp.v2f64.v2i64"
         )]
-        fn _vcvtq_n_f64_u64(a: int64x2_t, n: i32) -> float64x2_t;
+        fn _vcvtq_n_f64_u64(a: uint64x2_t, n: i32) -> float64x2_t;
     }
-    _vcvtq_n_f64_u64(a.as_signed(), N)
+    _vcvtq_n_f64_u64(a, N)
 }
 #[doc = "Floating-point convert to fixed-point, rounding toward zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvt_n_s64_f64)"]
@@ -7879,9 +7879,9 @@ pub unsafe fn vcvt_n_u64_f64<const N: i32>(a: float64x1_t) -> uint64x1_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.vcvtfp2fxu.v1i64.v1f64"
         )]
-        fn _vcvt_n_u64_f64(a: float64x1_t, n: i32) -> int64x1_t;
+        fn _vcvt_n_u64_f64(a: float64x1_t, n: i32) -> uint64x1_t;
     }
-    _vcvt_n_u64_f64(a, N).as_unsigned()
+    _vcvt_n_u64_f64(a, N)
 }
 #[doc = "Floating-point convert to fixed-point, rounding toward zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtq_n_u64_f64)"]
@@ -7899,9 +7899,9 @@ pub unsafe fn vcvtq_n_u64_f64<const N: i32>(a: float64x2_t) -> uint64x2_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.vcvtfp2fxu.v2i64.v2f64"
         )]
-        fn _vcvtq_n_u64_f64(a: float64x2_t, n: i32) -> int64x2_t;
+        fn _vcvtq_n_u64_f64(a: float64x2_t, n: i32) -> uint64x2_t;
     }
-    _vcvtq_n_u64_f64(a, N).as_unsigned()
+    _vcvtq_n_u64_f64(a, N)
 }
 #[doc = "Floating-point convert to signed fixed-point, rounding toward zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvt_s64_f64)"]
@@ -7953,9 +7953,9 @@ pub unsafe fn vcvt_u64_f64(a: float64x1_t) -> uint64x1_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.fptoui.sat.v1i64.v1f64"
         )]
-        fn _vcvt_u64_f64(a: float64x1_t) -> int64x1_t;
+        fn _vcvt_u64_f64(a: float64x1_t) -> uint64x1_t;
     }
-    _vcvt_u64_f64(a).as_unsigned()
+    _vcvt_u64_f64(a)
 }
 #[doc = "Floating-point convert to unsigned fixed-point, rounding toward zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtq_u64_f64)"]
@@ -7971,9 +7971,9 @@ pub unsafe fn vcvtq_u64_f64(a: float64x2_t) -> uint64x2_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.fptoui.sat.v2i64.v2f64"
         )]
-        fn _vcvtq_u64_f64(a: float64x2_t) -> int64x2_t;
+        fn _vcvtq_u64_f64(a: float64x2_t) -> uint64x2_t;
     }
-    _vcvtq_u64_f64(a).as_unsigned()
+    _vcvtq_u64_f64(a)
 }
 #[doc = "Floating-point convert to signed integer, rounding to nearest with ties to away"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvta_s16_f16)"]
@@ -8097,9 +8097,9 @@ pub unsafe fn vcvta_u16_f16(a: float16x4_t) -> uint16x4_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fcvtau.v4i16.v4f16"
         )]
-        fn _vcvta_u16_f16(a: float16x4_t) -> int16x4_t;
+        fn _vcvta_u16_f16(a: float16x4_t) -> uint16x4_t;
     }
-    _vcvta_u16_f16(a).as_unsigned()
+    _vcvta_u16_f16(a)
 }
 #[doc = "Floating-point convert to unsigned integer, rounding to nearest with ties to away"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtaq_u16_f16)"]
@@ -8115,9 +8115,9 @@ pub unsafe fn vcvtaq_u16_f16(a: float16x8_t) -> uint16x8_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fcvtau.v8i16.v8f16"
         )]
-        fn _vcvtaq_u16_f16(a: float16x8_t) -> int16x8_t;
+        fn _vcvtaq_u16_f16(a: float16x8_t) -> uint16x8_t;
     }
-    _vcvtaq_u16_f16(a).as_unsigned()
+    _vcvtaq_u16_f16(a)
 }
 #[doc = "Floating-point convert to unsigned integer, rounding to nearest with ties to away"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvta_u32_f32)"]
@@ -8133,9 +8133,9 @@ pub unsafe fn vcvta_u32_f32(a: float32x2_t) -> uint32x2_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fcvtau.v2i32.v2f32"
         )]
-        fn _vcvta_u32_f32(a: float32x2_t) -> int32x2_t;
+        fn _vcvta_u32_f32(a: float32x2_t) -> uint32x2_t;
     }
-    _vcvta_u32_f32(a).as_unsigned()
+    _vcvta_u32_f32(a)
 }
 #[doc = "Floating-point convert to unsigned integer, rounding to nearest with ties to away"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtaq_u32_f32)"]
@@ -8151,9 +8151,9 @@ pub unsafe fn vcvtaq_u32_f32(a: float32x4_t) -> uint32x4_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fcvtau.v4i32.v4f32"
         )]
-        fn _vcvtaq_u32_f32(a: float32x4_t) -> int32x4_t;
+        fn _vcvtaq_u32_f32(a: float32x4_t) -> uint32x4_t;
     }
-    _vcvtaq_u32_f32(a).as_unsigned()
+    _vcvtaq_u32_f32(a)
 }
 #[doc = "Floating-point convert to unsigned integer, rounding to nearest with ties to away"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvta_u64_f64)"]
@@ -8169,9 +8169,9 @@ pub unsafe fn vcvta_u64_f64(a: float64x1_t) -> uint64x1_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fcvtau.v1i64.v1f64"
         )]
-        fn _vcvta_u64_f64(a: float64x1_t) -> int64x1_t;
+        fn _vcvta_u64_f64(a: float64x1_t) -> uint64x1_t;
     }
-    _vcvta_u64_f64(a).as_unsigned()
+    _vcvta_u64_f64(a)
 }
 #[doc = "Floating-point convert to unsigned integer, rounding to nearest with ties to away"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtaq_u64_f64)"]
@@ -8187,9 +8187,9 @@ pub unsafe fn vcvtaq_u64_f64(a: float64x2_t) -> uint64x2_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fcvtau.v2i64.v2f64"
         )]
-        fn _vcvtaq_u64_f64(a: float64x2_t) -> int64x2_t;
+        fn _vcvtaq_u64_f64(a: float64x2_t) -> uint64x2_t;
     }
-    _vcvtaq_u64_f64(a).as_unsigned()
+    _vcvtaq_u64_f64(a)
 }
 #[doc = "Floating-point convert to integer, rounding to nearest with ties to away"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtah_s16_f16)"]
@@ -8263,9 +8263,9 @@ pub unsafe fn vcvtah_u32_f16(a: f16) -> u32 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fcvtau.i32.f16"
         )]
-        fn _vcvtah_u32_f16(a: f16) -> i32;
+        fn _vcvtah_u32_f16(a: f16) -> u32;
     }
-    _vcvtah_u32_f16(a).as_unsigned()
+    _vcvtah_u32_f16(a)
 }
 #[doc = "Floating-point convert to integer, rounding to nearest with ties to away"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtah_u64_f16)"]
@@ -8281,9 +8281,9 @@ pub unsafe fn vcvtah_u64_f16(a: f16) -> u64 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fcvtau.i64.f16"
         )]
-        fn _vcvtah_u64_f16(a: f16) -> i64;
+        fn _vcvtah_u64_f16(a: f16) -> u64;
     }
-    _vcvtah_u64_f16(a).as_unsigned()
+    _vcvtah_u64_f16(a)
 }
 #[doc = "Floating-point convert to integer, rounding to nearest with ties to away"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtas_s32_f32)"]
@@ -8335,9 +8335,9 @@ pub unsafe fn vcvtas_u32_f32(a: f32) -> u32 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fcvtau.i32.f32"
         )]
-        fn _vcvtas_u32_f32(a: f32) -> i32;
+        fn _vcvtas_u32_f32(a: f32) -> u32;
     }
-    _vcvtas_u32_f32(a).as_unsigned()
+    _vcvtas_u32_f32(a)
 }
 #[doc = "Floating-point convert to integer, rounding to nearest with ties to away"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtad_u64_f64)"]
@@ -8353,9 +8353,9 @@ pub unsafe fn vcvtad_u64_f64(a: f64) -> u64 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fcvtau.i64.f64"
         )]
-        fn _vcvtad_u64_f64(a: f64) -> i64;
+        fn _vcvtad_u64_f64(a: f64) -> u64;
     }
-    _vcvtad_u64_f64(a).as_unsigned()
+    _vcvtad_u64_f64(a)
 }
 #[doc = "Fixed-point convert to floating-point"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtd_f64_s64)"]
@@ -8527,9 +8527,9 @@ pub unsafe fn vcvth_n_f16_u32<const N: i32>(a: u32) -> f16 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.vcvtfxu2fp.f16.i32"
         )]
-        fn _vcvth_n_f16_u32(a: i32, n: i32) -> f16;
+        fn _vcvth_n_f16_u32(a: u32, n: i32) -> f16;
     }
-    _vcvth_n_f16_u32(a.as_signed(), N)
+    _vcvth_n_f16_u32(a, N)
 }
 #[doc = "Fixed-point convert to floating-point"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvth_n_f16_u64)"]
@@ -8547,9 +8547,9 @@ pub unsafe fn vcvth_n_f16_u64<const N: i32>(a: u64) -> f16 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.vcvtfxu2fp.f16.i64"
         )]
-        fn _vcvth_n_f16_u64(a: i64, n: i32) -> f16;
+        fn _vcvth_n_f16_u64(a: u64, n: i32) -> f16;
     }
-    _vcvth_n_f16_u64(a.as_signed(), N)
+    _vcvth_n_f16_u64(a, N)
 }
 #[doc = "Floating-point convert to fixed-point, rounding toward zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvth_n_s16_f16)"]
@@ -8633,9 +8633,9 @@ pub unsafe fn vcvth_n_u32_f16<const N: i32>(a: f16) -> u32 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.vcvtfp2fxu.i32.f16"
         )]
-        fn _vcvth_n_u32_f16(a: f16, n: i32) -> i32;
+        fn _vcvth_n_u32_f16(a: f16, n: i32) -> u32;
     }
-    _vcvth_n_u32_f16(a, N).as_unsigned()
+    _vcvth_n_u32_f16(a, N)
 }
 #[doc = "Floating-point convert to fixed-point, rounding toward zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvth_n_u64_f16)"]
@@ -8653,9 +8653,9 @@ pub unsafe fn vcvth_n_u64_f16<const N: i32>(a: f16) -> u64 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.vcvtfp2fxu.i64.f16"
         )]
-        fn _vcvth_n_u64_f16(a: f16, n: i32) -> i64;
+        fn _vcvth_n_u64_f16(a: f16, n: i32) -> u64;
     }
-    _vcvth_n_u64_f16(a, N).as_unsigned()
+    _vcvth_n_u64_f16(a, N)
 }
 #[doc = "Floating-point convert to signed fixed-point"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvth_s16_f16)"]
@@ -8845,9 +8845,9 @@ pub unsafe fn vcvtm_u16_f16(a: float16x4_t) -> uint16x4_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fcvtmu.v4i16.v4f16"
         )]
-        fn _vcvtm_u16_f16(a: float16x4_t) -> int16x4_t;
+        fn _vcvtm_u16_f16(a: float16x4_t) -> uint16x4_t;
     }
-    _vcvtm_u16_f16(a).as_unsigned()
+    _vcvtm_u16_f16(a)
 }
 #[doc = "Floating-point convert to unsigned integer, rounding toward minus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtmq_u16_f16)"]
@@ -8863,9 +8863,9 @@ pub unsafe fn vcvtmq_u16_f16(a: float16x8_t) -> uint16x8_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fcvtmu.v8i16.v8f16"
         )]
-        fn _vcvtmq_u16_f16(a: float16x8_t) -> int16x8_t;
+        fn _vcvtmq_u16_f16(a: float16x8_t) -> uint16x8_t;
     }
-    _vcvtmq_u16_f16(a).as_unsigned()
+    _vcvtmq_u16_f16(a)
 }
 #[doc = "Floating-point convert to unsigned integer, rounding toward minus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtm_u32_f32)"]
@@ -8881,9 +8881,9 @@ pub unsafe fn vcvtm_u32_f32(a: float32x2_t) -> uint32x2_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fcvtmu.v2i32.v2f32"
         )]
-        fn _vcvtm_u32_f32(a: float32x2_t) -> int32x2_t;
+        fn _vcvtm_u32_f32(a: float32x2_t) -> uint32x2_t;
     }
-    _vcvtm_u32_f32(a).as_unsigned()
+    _vcvtm_u32_f32(a)
 }
 #[doc = "Floating-point convert to unsigned integer, rounding toward minus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtmq_u32_f32)"]
@@ -8899,9 +8899,9 @@ pub unsafe fn vcvtmq_u32_f32(a: float32x4_t) -> uint32x4_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fcvtmu.v4i32.v4f32"
         )]
-        fn _vcvtmq_u32_f32(a: float32x4_t) -> int32x4_t;
+        fn _vcvtmq_u32_f32(a: float32x4_t) -> uint32x4_t;
     }
-    _vcvtmq_u32_f32(a).as_unsigned()
+    _vcvtmq_u32_f32(a)
 }
 #[doc = "Floating-point convert to unsigned integer, rounding toward minus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtm_u64_f64)"]
@@ -8917,9 +8917,9 @@ pub unsafe fn vcvtm_u64_f64(a: float64x1_t) -> uint64x1_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fcvtmu.v1i64.v1f64"
         )]
-        fn _vcvtm_u64_f64(a: float64x1_t) -> int64x1_t;
+        fn _vcvtm_u64_f64(a: float64x1_t) -> uint64x1_t;
     }
-    _vcvtm_u64_f64(a).as_unsigned()
+    _vcvtm_u64_f64(a)
 }
 #[doc = "Floating-point convert to unsigned integer, rounding toward minus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtmq_u64_f64)"]
@@ -8935,9 +8935,9 @@ pub unsafe fn vcvtmq_u64_f64(a: float64x2_t) -> uint64x2_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fcvtmu.v2i64.v2f64"
         )]
-        fn _vcvtmq_u64_f64(a: float64x2_t) -> int64x2_t;
+        fn _vcvtmq_u64_f64(a: float64x2_t) -> uint64x2_t;
     }
-    _vcvtmq_u64_f64(a).as_unsigned()
+    _vcvtmq_u64_f64(a)
 }
 #[doc = "Floating-point convert to integer, rounding towards minus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtmh_s16_f16)"]
@@ -9011,9 +9011,9 @@ pub unsafe fn vcvtmh_u32_f16(a: f16) -> u32 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fcvtmu.i32.f16"
         )]
-        fn _vcvtmh_u32_f16(a: f16) -> i32;
+        fn _vcvtmh_u32_f16(a: f16) -> u32;
     }
-    _vcvtmh_u32_f16(a).as_unsigned()
+    _vcvtmh_u32_f16(a)
 }
 #[doc = "Floating-point convert to unsigned integer, rounding towards minus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtmh_u64_f16)"]
@@ -9029,9 +9029,9 @@ pub unsafe fn vcvtmh_u64_f16(a: f16) -> u64 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fcvtmu.i64.f16"
         )]
-        fn _vcvtmh_u64_f16(a: f16) -> i64;
+        fn _vcvtmh_u64_f16(a: f16) -> u64;
     }
-    _vcvtmh_u64_f16(a).as_unsigned()
+    _vcvtmh_u64_f16(a)
 }
 #[doc = "Floating-point convert to signed integer, rounding toward minus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtms_s32_f32)"]
@@ -9083,9 +9083,9 @@ pub unsafe fn vcvtms_u32_f32(a: f32) -> u32 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fcvtmu.i32.f32"
         )]
-        fn _vcvtms_u32_f32(a: f32) -> i32;
+        fn _vcvtms_u32_f32(a: f32) -> u32;
     }
-    _vcvtms_u32_f32(a).as_unsigned()
+    _vcvtms_u32_f32(a)
 }
 #[doc = "Floating-point convert to unsigned integer, rounding toward minus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtmd_u64_f64)"]
@@ -9101,9 +9101,9 @@ pub unsafe fn vcvtmd_u64_f64(a: f64) -> u64 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fcvtmu.i64.f64"
         )]
-        fn _vcvtmd_u64_f64(a: f64) -> i64;
+        fn _vcvtmd_u64_f64(a: f64) -> u64;
     }
-    _vcvtmd_u64_f64(a).as_unsigned()
+    _vcvtmd_u64_f64(a)
 }
 #[doc = "Floating-point convert to signed integer, rounding to nearest with ties to even"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtn_s16_f16)"]
@@ -9227,9 +9227,9 @@ pub unsafe fn vcvtn_u16_f16(a: float16x4_t) -> uint16x4_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fcvtnu.v4i16.v4f16"
         )]
-        fn _vcvtn_u16_f16(a: float16x4_t) -> int16x4_t;
+        fn _vcvtn_u16_f16(a: float16x4_t) -> uint16x4_t;
     }
-    _vcvtn_u16_f16(a).as_unsigned()
+    _vcvtn_u16_f16(a)
 }
 #[doc = "Floating-point convert to unsigned integer, rounding to nearest with ties to even"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtnq_u16_f16)"]
@@ -9245,9 +9245,9 @@ pub unsafe fn vcvtnq_u16_f16(a: float16x8_t) -> uint16x8_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fcvtnu.v8i16.v8f16"
         )]
-        fn _vcvtnq_u16_f16(a: float16x8_t) -> int16x8_t;
+        fn _vcvtnq_u16_f16(a: float16x8_t) -> uint16x8_t;
     }
-    _vcvtnq_u16_f16(a).as_unsigned()
+    _vcvtnq_u16_f16(a)
 }
 #[doc = "Floating-point convert to unsigned integer, rounding to nearest with ties to even"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtn_u32_f32)"]
@@ -9263,9 +9263,9 @@ pub unsafe fn vcvtn_u32_f32(a: float32x2_t) -> uint32x2_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fcvtnu.v2i32.v2f32"
         )]
-        fn _vcvtn_u32_f32(a: float32x2_t) -> int32x2_t;
+        fn _vcvtn_u32_f32(a: float32x2_t) -> uint32x2_t;
     }
-    _vcvtn_u32_f32(a).as_unsigned()
+    _vcvtn_u32_f32(a)
 }
 #[doc = "Floating-point convert to unsigned integer, rounding to nearest with ties to even"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtnq_u32_f32)"]
@@ -9281,9 +9281,9 @@ pub unsafe fn vcvtnq_u32_f32(a: float32x4_t) -> uint32x4_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fcvtnu.v4i32.v4f32"
         )]
-        fn _vcvtnq_u32_f32(a: float32x4_t) -> int32x4_t;
+        fn _vcvtnq_u32_f32(a: float32x4_t) -> uint32x4_t;
     }
-    _vcvtnq_u32_f32(a).as_unsigned()
+    _vcvtnq_u32_f32(a)
 }
 #[doc = "Floating-point convert to unsigned integer, rounding to nearest with ties to even"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtn_u64_f64)"]
@@ -9299,9 +9299,9 @@ pub unsafe fn vcvtn_u64_f64(a: float64x1_t) -> uint64x1_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fcvtnu.v1i64.v1f64"
         )]
-        fn _vcvtn_u64_f64(a: float64x1_t) -> int64x1_t;
+        fn _vcvtn_u64_f64(a: float64x1_t) -> uint64x1_t;
     }
-    _vcvtn_u64_f64(a).as_unsigned()
+    _vcvtn_u64_f64(a)
 }
 #[doc = "Floating-point convert to unsigned integer, rounding to nearest with ties to even"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtnq_u64_f64)"]
@@ -9317,9 +9317,9 @@ pub unsafe fn vcvtnq_u64_f64(a: float64x2_t) -> uint64x2_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fcvtnu.v2i64.v2f64"
         )]
-        fn _vcvtnq_u64_f64(a: float64x2_t) -> int64x2_t;
+        fn _vcvtnq_u64_f64(a: float64x2_t) -> uint64x2_t;
     }
-    _vcvtnq_u64_f64(a).as_unsigned()
+    _vcvtnq_u64_f64(a)
 }
 #[doc = "Floating-point convert to integer, rounding to nearest with ties to even"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtnh_s16_f16)"]
@@ -9393,9 +9393,9 @@ pub unsafe fn vcvtnh_u32_f16(a: f16) -> u32 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fcvtnu.i32.f16"
         )]
-        fn _vcvtnh_u32_f16(a: f16) -> i32;
+        fn _vcvtnh_u32_f16(a: f16) -> u32;
     }
-    _vcvtnh_u32_f16(a).as_unsigned()
+    _vcvtnh_u32_f16(a)
 }
 #[doc = "Floating-point convert to unsigned integer, rounding to nearest with ties to even"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtnh_u64_f16)"]
@@ -9411,9 +9411,9 @@ pub unsafe fn vcvtnh_u64_f16(a: f16) -> u64 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fcvtnu.i64.f16"
         )]
-        fn _vcvtnh_u64_f16(a: f16) -> i64;
+        fn _vcvtnh_u64_f16(a: f16) -> u64;
     }
-    _vcvtnh_u64_f16(a).as_unsigned()
+    _vcvtnh_u64_f16(a)
 }
 #[doc = "Floating-point convert to signed integer, rounding to nearest with ties to even"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtns_s32_f32)"]
@@ -9465,9 +9465,9 @@ pub unsafe fn vcvtns_u32_f32(a: f32) -> u32 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fcvtnu.i32.f32"
         )]
-        fn _vcvtns_u32_f32(a: f32) -> i32;
+        fn _vcvtns_u32_f32(a: f32) -> u32;
     }
-    _vcvtns_u32_f32(a).as_unsigned()
+    _vcvtns_u32_f32(a)
 }
 #[doc = "Floating-point convert to unsigned integer, rounding to nearest with ties to even"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtnd_u64_f64)"]
@@ -9483,9 +9483,9 @@ pub unsafe fn vcvtnd_u64_f64(a: f64) -> u64 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fcvtnu.i64.f64"
         )]
-        fn _vcvtnd_u64_f64(a: f64) -> i64;
+        fn _vcvtnd_u64_f64(a: f64) -> u64;
     }
-    _vcvtnd_u64_f64(a).as_unsigned()
+    _vcvtnd_u64_f64(a)
 }
 #[doc = "Floating-point convert to signed integer, rounding to plus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtp_s16_f16)"]
@@ -9609,9 +9609,9 @@ pub unsafe fn vcvtp_u16_f16(a: float16x4_t) -> uint16x4_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fcvtpu.v4i16.v4f16"
         )]
-        fn _vcvtp_u16_f16(a: float16x4_t) -> int16x4_t;
+        fn _vcvtp_u16_f16(a: float16x4_t) -> uint16x4_t;
     }
-    _vcvtp_u16_f16(a).as_unsigned()
+    _vcvtp_u16_f16(a)
 }
 #[doc = "Floating-point convert to unsigned integer, rounding to plus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtpq_u16_f16)"]
@@ -9627,9 +9627,9 @@ pub unsafe fn vcvtpq_u16_f16(a: float16x8_t) -> uint16x8_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fcvtpu.v8i16.v8f16"
         )]
-        fn _vcvtpq_u16_f16(a: float16x8_t) -> int16x8_t;
+        fn _vcvtpq_u16_f16(a: float16x8_t) -> uint16x8_t;
     }
-    _vcvtpq_u16_f16(a).as_unsigned()
+    _vcvtpq_u16_f16(a)
 }
 #[doc = "Floating-point convert to unsigned integer, rounding toward plus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtp_u32_f32)"]
@@ -9645,9 +9645,9 @@ pub unsafe fn vcvtp_u32_f32(a: float32x2_t) -> uint32x2_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fcvtpu.v2i32.v2f32"
         )]
-        fn _vcvtp_u32_f32(a: float32x2_t) -> int32x2_t;
+        fn _vcvtp_u32_f32(a: float32x2_t) -> uint32x2_t;
     }
-    _vcvtp_u32_f32(a).as_unsigned()
+    _vcvtp_u32_f32(a)
 }
 #[doc = "Floating-point convert to unsigned integer, rounding toward plus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtpq_u32_f32)"]
@@ -9663,9 +9663,9 @@ pub unsafe fn vcvtpq_u32_f32(a: float32x4_t) -> uint32x4_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fcvtpu.v4i32.v4f32"
         )]
-        fn _vcvtpq_u32_f32(a: float32x4_t) -> int32x4_t;
+        fn _vcvtpq_u32_f32(a: float32x4_t) -> uint32x4_t;
     }
-    _vcvtpq_u32_f32(a).as_unsigned()
+    _vcvtpq_u32_f32(a)
 }
 #[doc = "Floating-point convert to unsigned integer, rounding toward plus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtp_u64_f64)"]
@@ -9681,9 +9681,9 @@ pub unsafe fn vcvtp_u64_f64(a: float64x1_t) -> uint64x1_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fcvtpu.v1i64.v1f64"
         )]
-        fn _vcvtp_u64_f64(a: float64x1_t) -> int64x1_t;
+        fn _vcvtp_u64_f64(a: float64x1_t) -> uint64x1_t;
     }
-    _vcvtp_u64_f64(a).as_unsigned()
+    _vcvtp_u64_f64(a)
 }
 #[doc = "Floating-point convert to unsigned integer, rounding toward plus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtpq_u64_f64)"]
@@ -9699,9 +9699,9 @@ pub unsafe fn vcvtpq_u64_f64(a: float64x2_t) -> uint64x2_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fcvtpu.v2i64.v2f64"
         )]
-        fn _vcvtpq_u64_f64(a: float64x2_t) -> int64x2_t;
+        fn _vcvtpq_u64_f64(a: float64x2_t) -> uint64x2_t;
     }
-    _vcvtpq_u64_f64(a).as_unsigned()
+    _vcvtpq_u64_f64(a)
 }
 #[doc = "Floating-point convert to integer, rounding to plus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtph_s16_f16)"]
@@ -9775,9 +9775,9 @@ pub unsafe fn vcvtph_u32_f16(a: f16) -> u32 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fcvtpu.i32.f16"
         )]
-        fn _vcvtph_u32_f16(a: f16) -> i32;
+        fn _vcvtph_u32_f16(a: f16) -> u32;
     }
-    _vcvtph_u32_f16(a).as_unsigned()
+    _vcvtph_u32_f16(a)
 }
 #[doc = "Floating-point convert to unsigned integer, rounding to plus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtph_u64_f16)"]
@@ -9793,9 +9793,9 @@ pub unsafe fn vcvtph_u64_f16(a: f16) -> u64 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fcvtpu.i64.f16"
         )]
-        fn _vcvtph_u64_f16(a: f16) -> i64;
+        fn _vcvtph_u64_f16(a: f16) -> u64;
     }
-    _vcvtph_u64_f16(a).as_unsigned()
+    _vcvtph_u64_f16(a)
 }
 #[doc = "Floating-point convert to signed integer, rounding toward plus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtps_s32_f32)"]
@@ -9847,9 +9847,9 @@ pub unsafe fn vcvtps_u32_f32(a: f32) -> u32 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fcvtpu.i32.f32"
         )]
-        fn _vcvtps_u32_f32(a: f32) -> i32;
+        fn _vcvtps_u32_f32(a: f32) -> u32;
     }
-    _vcvtps_u32_f32(a).as_unsigned()
+    _vcvtps_u32_f32(a)
 }
 #[doc = "Floating-point convert to unsigned integer, rounding toward plus infinity"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtpd_u64_f64)"]
@@ -9865,9 +9865,9 @@ pub unsafe fn vcvtpd_u64_f64(a: f64) -> u64 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.fcvtpu.i64.f64"
         )]
-        fn _vcvtpd_u64_f64(a: f64) -> i64;
+        fn _vcvtpd_u64_f64(a: f64) -> u64;
     }
-    _vcvtpd_u64_f64(a).as_unsigned()
+    _vcvtpd_u64_f64(a)
 }
 #[doc = "Fixed-point convert to floating-point"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvts_f32_u32)"]
@@ -9947,9 +9947,9 @@ pub unsafe fn vcvts_n_f32_u32<const N: i32>(a: u32) -> f32 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.vcvtfxu2fp.f32.i32"
         )]
-        fn _vcvts_n_f32_u32(a: i32, n: i32) -> f32;
+        fn _vcvts_n_f32_u32(a: u32, n: i32) -> f32;
     }
-    _vcvts_n_f32_u32(a.as_signed(), N)
+    _vcvts_n_f32_u32(a, N)
 }
 #[doc = "Fixed-point convert to floating-point"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtd_n_f64_u64)"]
@@ -9967,9 +9967,9 @@ pub unsafe fn vcvtd_n_f64_u64<const N: i32>(a: u64) -> f64 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.vcvtfxu2fp.f64.i64"
         )]
-        fn _vcvtd_n_f64_u64(a: i64, n: i32) -> f64;
+        fn _vcvtd_n_f64_u64(a: u64, n: i32) -> f64;
     }
-    _vcvtd_n_f64_u64(a.as_signed(), N)
+    _vcvtd_n_f64_u64(a, N)
 }
 #[doc = "Floating-point convert to fixed-point, rounding toward zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvts_n_s32_f32)"]
@@ -10027,9 +10027,9 @@ pub unsafe fn vcvts_n_u32_f32<const N: i32>(a: f32) -> u32 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.vcvtfp2fxu.i32.f32"
         )]
-        fn _vcvts_n_u32_f32(a: f32, n: i32) -> i32;
+        fn _vcvts_n_u32_f32(a: f32, n: i32) -> u32;
     }
-    _vcvts_n_u32_f32(a, N).as_unsigned()
+    _vcvts_n_u32_f32(a, N)
 }
 #[doc = "Floating-point convert to fixed-point, rounding toward zero"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvtd_n_u64_f64)"]
@@ -10047,9 +10047,9 @@ pub unsafe fn vcvtd_n_u64_f64<const N: i32>(a: f64) -> u64 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.vcvtfp2fxu.i64.f64"
         )]
-        fn _vcvtd_n_u64_f64(a: f64, n: i32) -> i64;
+        fn _vcvtd_n_u64_f64(a: f64, n: i32) -> u64;
     }
-    _vcvtd_n_u64_f64(a, N).as_unsigned()
+    _vcvtd_n_u64_f64(a, N)
 }
 #[doc = "Fixed-point convert to floating-point"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vcvts_s32_f32)"]
@@ -10816,9 +10816,9 @@ pub unsafe fn veor3q_u8(a: uint8x16_t, b: uint8x16_t, c: uint8x16_t) -> uint8x16
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.eor3u.v16i8"
         )]
-        fn _veor3q_u8(a: int8x16_t, b: int8x16_t, c: int8x16_t) -> int8x16_t;
+        fn _veor3q_u8(a: uint8x16_t, b: uint8x16_t, c: uint8x16_t) -> uint8x16_t;
     }
-    _veor3q_u8(a.as_signed(), b.as_signed(), c.as_signed()).as_unsigned()
+    _veor3q_u8(a, b, c)
 }
 #[doc = "Three-way exclusive OR"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/veor3q_u16)"]
@@ -10834,9 +10834,9 @@ pub unsafe fn veor3q_u16(a: uint16x8_t, b: uint16x8_t, c: uint16x8_t) -> uint16x
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.eor3u.v8i16"
         )]
-        fn _veor3q_u16(a: int16x8_t, b: int16x8_t, c: int16x8_t) -> int16x8_t;
+        fn _veor3q_u16(a: uint16x8_t, b: uint16x8_t, c: uint16x8_t) -> uint16x8_t;
     }
-    _veor3q_u16(a.as_signed(), b.as_signed(), c.as_signed()).as_unsigned()
+    _veor3q_u16(a, b, c)
 }
 #[doc = "Three-way exclusive OR"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/veor3q_u32)"]
@@ -10852,9 +10852,9 @@ pub unsafe fn veor3q_u32(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t) -> uint32x
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.eor3u.v4i32"
         )]
-        fn _veor3q_u32(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t;
+        fn _veor3q_u32(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t) -> uint32x4_t;
     }
-    _veor3q_u32(a.as_signed(), b.as_signed(), c.as_signed()).as_unsigned()
+    _veor3q_u32(a, b, c)
 }
 #[doc = "Three-way exclusive OR"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/veor3q_u64)"]
@@ -10870,9 +10870,9 @@ pub unsafe fn veor3q_u64(a: uint64x2_t, b: uint64x2_t, c: uint64x2_t) -> uint64x
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.eor3u.v2i64"
         )]
-        fn _veor3q_u64(a: int64x2_t, b: int64x2_t, c: int64x2_t) -> int64x2_t;
+        fn _veor3q_u64(a: uint64x2_t, b: uint64x2_t, c: uint64x2_t) -> uint64x2_t;
     }
-    _veor3q_u64(a.as_signed(), b.as_signed(), c.as_signed()).as_unsigned()
+    _veor3q_u64(a, b, c)
 }
 #[doc = "Extract vector from pair of vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vextq_f64)"]
@@ -14207,9 +14207,9 @@ pub unsafe fn vmaxv_u8(a: uint8x8_t) -> u8 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.umaxv.i8.v8i8"
         )]
-        fn _vmaxv_u8(a: int8x8_t) -> i8;
+        fn _vmaxv_u8(a: uint8x8_t) -> u8;
     }
-    _vmaxv_u8(a.as_signed()).as_unsigned()
+    _vmaxv_u8(a)
 }
 #[doc = "Horizontal vector max."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxvq_u8)"]
@@ -14225,9 +14225,9 @@ pub unsafe fn vmaxvq_u8(a: uint8x16_t) -> u8 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.umaxv.i8.v16i8"
         )]
-        fn _vmaxvq_u8(a: int8x16_t) -> i8;
+        fn _vmaxvq_u8(a: uint8x16_t) -> u8;
     }
-    _vmaxvq_u8(a.as_signed()).as_unsigned()
+    _vmaxvq_u8(a)
 }
 #[doc = "Horizontal vector max."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxv_u16)"]
@@ -14243,9 +14243,9 @@ pub unsafe fn vmaxv_u16(a: uint16x4_t) -> u16 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.umaxv.i16.v4i16"
         )]
-        fn _vmaxv_u16(a: int16x4_t) -> i16;
+        fn _vmaxv_u16(a: uint16x4_t) -> u16;
     }
-    _vmaxv_u16(a.as_signed()).as_unsigned()
+    _vmaxv_u16(a)
 }
 #[doc = "Horizontal vector max."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxvq_u16)"]
@@ -14261,9 +14261,9 @@ pub unsafe fn vmaxvq_u16(a: uint16x8_t) -> u16 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.umaxv.i16.v8i16"
         )]
-        fn _vmaxvq_u16(a: int16x8_t) -> i16;
+        fn _vmaxvq_u16(a: uint16x8_t) -> u16;
     }
-    _vmaxvq_u16(a.as_signed()).as_unsigned()
+    _vmaxvq_u16(a)
 }
 #[doc = "Horizontal vector max."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxv_u32)"]
@@ -14279,9 +14279,9 @@ pub unsafe fn vmaxv_u32(a: uint32x2_t) -> u32 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.umaxv.i32.v2i32"
         )]
-        fn _vmaxv_u32(a: int32x2_t) -> i32;
+        fn _vmaxv_u32(a: uint32x2_t) -> u32;
     }
-    _vmaxv_u32(a.as_signed()).as_unsigned()
+    _vmaxv_u32(a)
 }
 #[doc = "Horizontal vector max."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmaxvq_u32)"]
@@ -14297,9 +14297,9 @@ pub unsafe fn vmaxvq_u32(a: uint32x4_t) -> u32 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.umaxv.i32.v4i32"
         )]
-        fn _vmaxvq_u32(a: int32x4_t) -> i32;
+        fn _vmaxvq_u32(a: uint32x4_t) -> u32;
     }
-    _vmaxvq_u32(a.as_signed()).as_unsigned()
+    _vmaxvq_u32(a)
 }
 #[doc = "Minimum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmin_f64)"]
@@ -14711,9 +14711,9 @@ pub unsafe fn vminv_u8(a: uint8x8_t) -> u8 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uminv.i8.v8i8"
         )]
-        fn _vminv_u8(a: int8x8_t) -> i8;
+        fn _vminv_u8(a: uint8x8_t) -> u8;
     }
-    _vminv_u8(a.as_signed()).as_unsigned()
+    _vminv_u8(a)
 }
 #[doc = "Horizontal vector min."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminvq_u8)"]
@@ -14729,9 +14729,9 @@ pub unsafe fn vminvq_u8(a: uint8x16_t) -> u8 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uminv.i8.v16i8"
         )]
-        fn _vminvq_u8(a: int8x16_t) -> i8;
+        fn _vminvq_u8(a: uint8x16_t) -> u8;
     }
-    _vminvq_u8(a.as_signed()).as_unsigned()
+    _vminvq_u8(a)
 }
 #[doc = "Horizontal vector min."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminv_u16)"]
@@ -14747,9 +14747,9 @@ pub unsafe fn vminv_u16(a: uint16x4_t) -> u16 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uminv.i16.v4i16"
         )]
-        fn _vminv_u16(a: int16x4_t) -> i16;
+        fn _vminv_u16(a: uint16x4_t) -> u16;
     }
-    _vminv_u16(a.as_signed()).as_unsigned()
+    _vminv_u16(a)
 }
 #[doc = "Horizontal vector min."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminvq_u16)"]
@@ -14765,9 +14765,9 @@ pub unsafe fn vminvq_u16(a: uint16x8_t) -> u16 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uminv.i16.v8i16"
         )]
-        fn _vminvq_u16(a: int16x8_t) -> i16;
+        fn _vminvq_u16(a: uint16x8_t) -> u16;
     }
-    _vminvq_u16(a.as_signed()).as_unsigned()
+    _vminvq_u16(a)
 }
 #[doc = "Horizontal vector min."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminv_u32)"]
@@ -14783,9 +14783,9 @@ pub unsafe fn vminv_u32(a: uint32x2_t) -> u32 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uminv.i32.v2i32"
         )]
-        fn _vminv_u32(a: int32x2_t) -> i32;
+        fn _vminv_u32(a: uint32x2_t) -> u32;
     }
-    _vminv_u32(a.as_signed()).as_unsigned()
+    _vminv_u32(a)
 }
 #[doc = "Horizontal vector min."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vminvq_u32)"]
@@ -14801,9 +14801,9 @@ pub unsafe fn vminvq_u32(a: uint32x4_t) -> u32 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uminv.i32.v4i32"
         )]
-        fn _vminvq_u32(a: int32x4_t) -> i32;
+        fn _vminvq_u32(a: uint32x4_t) -> u32;
     }
-    _vminvq_u32(a.as_signed()).as_unsigned()
+    _vminvq_u32(a)
 }
 #[doc = "Floating-point multiply-add to accumulator"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmla_f64)"]
@@ -17351,9 +17351,9 @@ pub unsafe fn vpmaxq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.umaxp.v16i8"
         )]
-        fn _vpmaxq_u8(a: int8x16_t, b: int8x16_t) -> int8x16_t;
+        fn _vpmaxq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t;
     }
-    _vpmaxq_u8(a.as_signed(), b.as_signed()).as_unsigned()
+    _vpmaxq_u8(a, b)
 }
 #[doc = "Folding maximum of adjacent pairs"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpmaxq_u16)"]
@@ -17369,9 +17369,9 @@ pub unsafe fn vpmaxq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.umaxp.v8i16"
         )]
-        fn _vpmaxq_u16(a: int16x8_t, b: int16x8_t) -> int16x8_t;
+        fn _vpmaxq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t;
     }
-    _vpmaxq_u16(a.as_signed(), b.as_signed()).as_unsigned()
+    _vpmaxq_u16(a, b)
 }
 #[doc = "Folding maximum of adjacent pairs"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpmaxq_u32)"]
@@ -17387,9 +17387,9 @@ pub unsafe fn vpmaxq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.umaxp.v4i32"
         )]
-        fn _vpmaxq_u32(a: int32x4_t, b: int32x4_t) -> int32x4_t;
+        fn _vpmaxq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t;
     }
-    _vpmaxq_u32(a.as_signed(), b.as_signed()).as_unsigned()
+    _vpmaxq_u32(a, b)
 }
 #[doc = "Floating-point maximum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpmaxqd_f64)"]
@@ -17693,9 +17693,9 @@ pub unsafe fn vpminq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uminp.v16i8"
         )]
-        fn _vpminq_u8(a: int8x16_t, b: int8x16_t) -> int8x16_t;
+        fn _vpminq_u8(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t;
     }
-    _vpminq_u8(a.as_signed(), b.as_signed()).as_unsigned()
+    _vpminq_u8(a, b)
 }
 #[doc = "Folding minimum of adjacent pairs"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpminq_u16)"]
@@ -17711,9 +17711,9 @@ pub unsafe fn vpminq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uminp.v8i16"
         )]
-        fn _vpminq_u16(a: int16x8_t, b: int16x8_t) -> int16x8_t;
+        fn _vpminq_u16(a: uint16x8_t, b: uint16x8_t) -> uint16x8_t;
     }
-    _vpminq_u16(a.as_signed(), b.as_signed()).as_unsigned()
+    _vpminq_u16(a, b)
 }
 #[doc = "Folding minimum of adjacent pairs"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpminq_u32)"]
@@ -17729,9 +17729,9 @@ pub unsafe fn vpminq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uminp.v4i32"
         )]
-        fn _vpminq_u32(a: int32x4_t, b: int32x4_t) -> int32x4_t;
+        fn _vpminq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t;
     }
-    _vpminq_u32(a.as_signed(), b.as_signed()).as_unsigned()
+    _vpminq_u32(a, b)
 }
 #[doc = "Floating-point minimum pairwise"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vpminqd_f64)"]
@@ -17965,9 +17965,9 @@ pub unsafe fn vqadds_u32(a: u32, b: u32) -> u32 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uqadd.i32"
         )]
-        fn _vqadds_u32(a: i32, b: i32) -> i32;
+        fn _vqadds_u32(a: u32, b: u32) -> u32;
     }
-    _vqadds_u32(a.as_signed(), b.as_signed()).as_unsigned()
+    _vqadds_u32(a, b)
 }
 #[doc = "Saturating add"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqaddd_u64)"]
@@ -17983,9 +17983,9 @@ pub unsafe fn vqaddd_u64(a: u64, b: u64) -> u64 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uqadd.i64"
         )]
-        fn _vqaddd_u64(a: i64, b: i64) -> i64;
+        fn _vqaddd_u64(a: u64, b: u64) -> u64;
     }
-    _vqaddd_u64(a.as_signed(), b.as_signed()).as_unsigned()
+    _vqaddd_u64(a, b)
 }
 #[doc = "Signed saturating doubling multiply-add long"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqdmlal_high_lane_s16)"]
@@ -18898,9 +18898,9 @@ pub unsafe fn vqmovnd_u64(a: u64) -> u32 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.scalar.uqxtn.i32.i64"
         )]
-        fn _vqmovnd_u64(a: i64) -> i32;
+        fn _vqmovnd_u64(a: u64) -> u32;
     }
-    _vqmovnd_u64(a.as_signed()).as_unsigned()
+    _vqmovnd_u64(a)
 }
 #[doc = "Saturating extract narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqmovnh_s16)"]
@@ -19916,9 +19916,9 @@ pub unsafe fn vqrshls_u32(a: u32, b: i32) -> u32 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uqrshl.i32"
         )]
-        fn _vqrshls_u32(a: i32, b: i32) -> i32;
+        fn _vqrshls_u32(a: u32, b: i32) -> u32;
     }
-    _vqrshls_u32(a.as_signed(), b).as_unsigned()
+    _vqrshls_u32(a, b)
 }
 #[doc = "Unsigned signed saturating rounding shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshld_u64)"]
@@ -19934,9 +19934,9 @@ pub unsafe fn vqrshld_u64(a: u64, b: i64) -> u64 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uqrshl.i64"
         )]
-        fn _vqrshld_u64(a: i64, b: i64) -> i64;
+        fn _vqrshld_u64(a: u64, b: i64) -> u64;
     }
-    _vqrshld_u64(a.as_signed(), b).as_unsigned()
+    _vqrshld_u64(a, b)
 }
 #[doc = "Signed saturating rounded shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqrshrn_high_n_s16)"]
@@ -20401,9 +20401,9 @@ pub unsafe fn vqshld_u64(a: u64, b: i64) -> u64 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uqshl.i64"
         )]
-        fn _vqshld_u64(a: i64, b: i64) -> i64;
+        fn _vqshld_u64(a: u64, b: i64) -> u64;
     }
-    _vqshld_u64(a.as_signed(), b).as_unsigned()
+    _vqshld_u64(a, b)
 }
 #[doc = "Signed saturating shift left unsigned"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshlub_n_s8)"]
@@ -20579,9 +20579,9 @@ pub unsafe fn vqshrnd_n_u64<const N: i32>(a: u64) -> u32 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uqshrn.i32"
         )]
-        fn _vqshrnd_n_u64(a: i64, n: i32) -> i32;
+        fn _vqshrnd_n_u64(a: u64, n: i32) -> u32;
     }
-    _vqshrnd_n_u64(a.as_signed(), N).as_unsigned()
+    _vqshrnd_n_u64(a, N)
 }
 #[doc = "Signed saturating shift right narrow"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqshrnh_n_s16)"]
@@ -20819,9 +20819,9 @@ pub unsafe fn vqsubs_u32(a: u32, b: u32) -> u32 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uqsub.i32"
         )]
-        fn _vqsubs_u32(a: i32, b: i32) -> i32;
+        fn _vqsubs_u32(a: u32, b: u32) -> u32;
     }
-    _vqsubs_u32(a.as_signed(), b.as_signed()).as_unsigned()
+    _vqsubs_u32(a, b)
 }
 #[doc = "Saturating subtract"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqsubd_u64)"]
@@ -20837,9 +20837,9 @@ pub unsafe fn vqsubd_u64(a: u64, b: u64) -> u64 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.uqsub.i64"
         )]
-        fn _vqsubd_u64(a: i64, b: i64) -> i64;
+        fn _vqsubd_u64(a: u64, b: u64) -> u64;
     }
-    _vqsubd_u64(a.as_signed(), b.as_signed()).as_unsigned()
+    _vqsubd_u64(a, b)
 }
 #[doc = "Table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl1)"]
@@ -20855,9 +20855,9 @@ unsafe fn vqtbl1(a: int8x16_t, b: uint8x8_t) -> int8x8_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.tbl1.v8i8"
         )]
-        fn _vqtbl1(a: int8x16_t, b: int8x8_t) -> int8x8_t;
+        fn _vqtbl1(a: int8x16_t, b: uint8x8_t) -> int8x8_t;
     }
-    _vqtbl1(a, b.as_signed())
+    _vqtbl1(a, b)
 }
 #[doc = "Table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl1q)"]
@@ -20873,9 +20873,9 @@ unsafe fn vqtbl1q(a: int8x16_t, b: uint8x16_t) -> int8x16_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.tbl1.v16i8"
         )]
-        fn _vqtbl1q(a: int8x16_t, b: int8x16_t) -> int8x16_t;
+        fn _vqtbl1q(a: int8x16_t, b: uint8x16_t) -> int8x16_t;
     }
-    _vqtbl1q(a, b.as_signed())
+    _vqtbl1q(a, b)
 }
 #[doc = "Table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl1_s8)"]
@@ -20961,9 +20961,9 @@ unsafe fn vqtbl2(a: int8x16_t, b: int8x16_t, c: uint8x8_t) -> int8x8_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.tbl2.v8i8"
         )]
-        fn _vqtbl2(a: int8x16_t, b: int8x16_t, c: int8x8_t) -> int8x8_t;
+        fn _vqtbl2(a: int8x16_t, b: int8x16_t, c: uint8x8_t) -> int8x8_t;
     }
-    _vqtbl2(a, b, c.as_signed())
+    _vqtbl2(a, b, c)
 }
 #[doc = "Table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl2q)"]
@@ -20979,9 +20979,9 @@ unsafe fn vqtbl2q(a: int8x16_t, b: int8x16_t, c: uint8x16_t) -> int8x16_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.tbl2.v16i8"
         )]
-        fn _vqtbl2q(a: int8x16_t, b: int8x16_t, c: int8x16_t) -> int8x16_t;
+        fn _vqtbl2q(a: int8x16_t, b: int8x16_t, c: uint8x16_t) -> int8x16_t;
     }
-    _vqtbl2q(a, b, c.as_signed())
+    _vqtbl2q(a, b, c)
 }
 #[doc = "Table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl2_s8)"]
@@ -21175,9 +21175,9 @@ unsafe fn vqtbl3(a: int8x16_t, b: int8x16_t, c: int8x16_t, d: uint8x8_t) -> int8
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.tbl3.v8i8"
         )]
-        fn _vqtbl3(a: int8x16_t, b: int8x16_t, c: int8x16_t, d: int8x8_t) -> int8x8_t;
+        fn _vqtbl3(a: int8x16_t, b: int8x16_t, c: int8x16_t, d: uint8x8_t) -> int8x8_t;
     }
-    _vqtbl3(a, b, c, d.as_signed())
+    _vqtbl3(a, b, c, d)
 }
 #[doc = "Table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl3q)"]
@@ -21193,9 +21193,9 @@ unsafe fn vqtbl3q(a: int8x16_t, b: int8x16_t, c: int8x16_t, d: uint8x16_t) -> in
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.tbl3.v16i8"
         )]
-        fn _vqtbl3q(a: int8x16_t, b: int8x16_t, c: int8x16_t, d: int8x16_t) -> int8x16_t;
+        fn _vqtbl3q(a: int8x16_t, b: int8x16_t, c: int8x16_t, d: uint8x16_t) -> int8x16_t;
     }
-    _vqtbl3q(a, b, c, d.as_signed())
+    _vqtbl3q(a, b, c, d)
 }
 #[doc = "Table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl3_s8)"]
@@ -21409,10 +21409,15 @@ unsafe fn vqtbl4(a: int8x16_t, b: int8x16_t, c: int8x16_t, d: int8x16_t, e: uint
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.tbl4.v8i8"
         )]
-        fn _vqtbl4(a: int8x16_t, b: int8x16_t, c: int8x16_t, d: int8x16_t, e: int8x8_t)
-            -> int8x8_t;
+        fn _vqtbl4(
+            a: int8x16_t,
+            b: int8x16_t,
+            c: int8x16_t,
+            d: int8x16_t,
+            e: uint8x8_t,
+        ) -> int8x8_t;
     }
-    _vqtbl4(a, b, c, d, e.as_signed())
+    _vqtbl4(a, b, c, d, e)
 }
 #[doc = "Table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl4q)"]
@@ -21439,10 +21444,10 @@ unsafe fn vqtbl4q(
             b: int8x16_t,
             c: int8x16_t,
             d: int8x16_t,
-            e: int8x16_t,
+            e: uint8x16_t,
         ) -> int8x16_t;
     }
-    _vqtbl4q(a, b, c, d, e.as_signed())
+    _vqtbl4q(a, b, c, d, e)
 }
 #[doc = "Table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl4_s8)"]
@@ -21724,9 +21729,9 @@ unsafe fn vqtbx1(a: int8x8_t, b: int8x16_t, c: uint8x8_t) -> int8x8_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.tbx1.v8i8"
         )]
-        fn _vqtbx1(a: int8x8_t, b: int8x16_t, c: int8x8_t) -> int8x8_t;
+        fn _vqtbx1(a: int8x8_t, b: int8x16_t, c: uint8x8_t) -> int8x8_t;
     }
-    _vqtbx1(a, b, c.as_signed())
+    _vqtbx1(a, b, c)
 }
 #[doc = "Extended table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbx1q)"]
@@ -21742,9 +21747,9 @@ unsafe fn vqtbx1q(a: int8x16_t, b: int8x16_t, c: uint8x16_t) -> int8x16_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.tbx1.v16i8"
         )]
-        fn _vqtbx1q(a: int8x16_t, b: int8x16_t, c: int8x16_t) -> int8x16_t;
+        fn _vqtbx1q(a: int8x16_t, b: int8x16_t, c: uint8x16_t) -> int8x16_t;
     }
-    _vqtbx1q(a, b, c.as_signed())
+    _vqtbx1q(a, b, c)
 }
 #[doc = "Extended table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbx1_s8)"]
@@ -21830,9 +21835,9 @@ unsafe fn vqtbx2(a: int8x8_t, b: int8x16_t, c: int8x16_t, d: uint8x8_t) -> int8x
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.tbx2.v8i8"
         )]
-        fn _vqtbx2(a: int8x8_t, b: int8x16_t, c: int8x16_t, d: int8x8_t) -> int8x8_t;
+        fn _vqtbx2(a: int8x8_t, b: int8x16_t, c: int8x16_t, d: uint8x8_t) -> int8x8_t;
     }
-    _vqtbx2(a, b, c, d.as_signed())
+    _vqtbx2(a, b, c, d)
 }
 #[doc = "Extended table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbx2q)"]
@@ -21848,9 +21853,9 @@ unsafe fn vqtbx2q(a: int8x16_t, b: int8x16_t, c: int8x16_t, d: uint8x16_t) -> in
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.tbx2.v16i8"
         )]
-        fn _vqtbx2q(a: int8x16_t, b: int8x16_t, c: int8x16_t, d: int8x16_t) -> int8x16_t;
+        fn _vqtbx2q(a: int8x16_t, b: int8x16_t, c: int8x16_t, d: uint8x16_t) -> int8x16_t;
     }
-    _vqtbx2q(a, b, c, d.as_signed())
+    _vqtbx2q(a, b, c, d)
 }
 #[doc = "Extended table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbx2_s8)"]
@@ -22048,9 +22053,10 @@ unsafe fn vqtbx3(a: int8x8_t, b: int8x16_t, c: int8x16_t, d: int8x16_t, e: uint8
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.tbx3.v8i8"
         )]
-        fn _vqtbx3(a: int8x8_t, b: int8x16_t, c: int8x16_t, d: int8x16_t, e: int8x8_t) -> int8x8_t;
+        fn _vqtbx3(a: int8x8_t, b: int8x16_t, c: int8x16_t, d: int8x16_t, e: uint8x8_t)
+            -> int8x8_t;
     }
-    _vqtbx3(a, b, c, d, e.as_signed())
+    _vqtbx3(a, b, c, d, e)
 }
 #[doc = "Extended table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbx3q)"]
@@ -22077,10 +22083,10 @@ unsafe fn vqtbx3q(
             b: int8x16_t,
             c: int8x16_t,
             d: int8x16_t,
-            e: int8x16_t,
+            e: uint8x16_t,
         ) -> int8x16_t;
     }
-    _vqtbx3q(a, b, c, d, e.as_signed())
+    _vqtbx3q(a, b, c, d, e)
 }
 #[doc = "Extended table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbx3_s8)"]
@@ -22359,10 +22365,10 @@ unsafe fn vqtbx4(
             c: int8x16_t,
             d: int8x16_t,
             e: int8x16_t,
-            f: int8x8_t,
+            f: uint8x8_t,
         ) -> int8x8_t;
     }
-    _vqtbx4(a, b, c, d, e, f.as_signed())
+    _vqtbx4(a, b, c, d, e, f)
 }
 #[doc = "Extended table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbx4q)"]
@@ -22391,10 +22397,10 @@ unsafe fn vqtbx4q(
             c: int8x16_t,
             d: int8x16_t,
             e: int8x16_t,
-            f: int8x16_t,
+            f: uint8x16_t,
         ) -> int8x16_t;
     }
-    _vqtbx4q(a, b, c, d, e, f.as_signed())
+    _vqtbx4q(a, b, c, d, e, f)
 }
 #[doc = "Extended table look-up"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbx4_s8)"]
@@ -22688,9 +22694,9 @@ pub unsafe fn vrax1q_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.rax1"
         )]
-        fn _vrax1q_u64(a: int64x2_t, b: int64x2_t) -> int64x2_t;
+        fn _vrax1q_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t;
     }
-    _vrax1q_u64(a.as_signed(), b.as_signed()).as_unsigned()
+    _vrax1q_u64(a, b)
 }
 #[doc = "Reverse bit order"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrbit_s8)"]
@@ -25776,9 +25782,9 @@ pub unsafe fn vrshld_u64(a: u64, b: i64) -> u64 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.urshl.i64"
         )]
-        fn _vrshld_u64(a: i64, b: i64) -> i64;
+        fn _vrshld_u64(a: u64, b: i64) -> u64;
     }
-    _vrshld_u64(a.as_signed(), b).as_unsigned()
+    _vrshld_u64(a, b)
 }
 #[doc = "Signed rounding shift right"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vrshrd_n_s64)"]
@@ -26213,9 +26219,9 @@ pub unsafe fn vsha512h2q_u64(a: uint64x2_t, b: uint64x2_t, c: uint64x2_t) -> uin
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.sha512h2"
         )]
-        fn _vsha512h2q_u64(a: int64x2_t, b: int64x2_t, c: int64x2_t) -> int64x2_t;
+        fn _vsha512h2q_u64(a: uint64x2_t, b: uint64x2_t, c: uint64x2_t) -> uint64x2_t;
     }
-    _vsha512h2q_u64(a.as_signed(), b.as_signed(), c.as_signed()).as_unsigned()
+    _vsha512h2q_u64(a, b, c)
 }
 #[doc = "SHA512 hash update part 1"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsha512hq_u64)"]
@@ -26231,9 +26237,9 @@ pub unsafe fn vsha512hq_u64(a: uint64x2_t, b: uint64x2_t, c: uint64x2_t) -> uint
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.sha512h"
         )]
-        fn _vsha512hq_u64(a: int64x2_t, b: int64x2_t, c: int64x2_t) -> int64x2_t;
+        fn _vsha512hq_u64(a: uint64x2_t, b: uint64x2_t, c: uint64x2_t) -> uint64x2_t;
     }
-    _vsha512hq_u64(a.as_signed(), b.as_signed(), c.as_signed()).as_unsigned()
+    _vsha512hq_u64(a, b, c)
 }
 #[doc = "SHA512 schedule update 0"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsha512su0q_u64)"]
@@ -26249,9 +26255,9 @@ pub unsafe fn vsha512su0q_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.sha512su0"
         )]
-        fn _vsha512su0q_u64(a: int64x2_t, b: int64x2_t) -> int64x2_t;
+        fn _vsha512su0q_u64(a: uint64x2_t, b: uint64x2_t) -> uint64x2_t;
     }
-    _vsha512su0q_u64(a.as_signed(), b.as_signed()).as_unsigned()
+    _vsha512su0q_u64(a, b)
 }
 #[doc = "SHA512 schedule update 1"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsha512su1q_u64)"]
@@ -26267,9 +26273,9 @@ pub unsafe fn vsha512su1q_u64(a: uint64x2_t, b: uint64x2_t, c: uint64x2_t) -> ui
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.sha512su1"
         )]
-        fn _vsha512su1q_u64(a: int64x2_t, b: int64x2_t, c: int64x2_t) -> int64x2_t;
+        fn _vsha512su1q_u64(a: uint64x2_t, b: uint64x2_t, c: uint64x2_t) -> uint64x2_t;
     }
-    _vsha512su1q_u64(a.as_signed(), b.as_signed(), c.as_signed()).as_unsigned()
+    _vsha512su1q_u64(a, b, c)
 }
 #[doc = "Signed Shift left"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vshld_s64)"]
@@ -26845,9 +26851,9 @@ pub unsafe fn vsm3partw1q_u32(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t) -> ui
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.sm3partw1"
         )]
-        fn _vsm3partw1q_u32(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t;
+        fn _vsm3partw1q_u32(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t) -> uint32x4_t;
     }
-    _vsm3partw1q_u32(a.as_signed(), b.as_signed(), c.as_signed()).as_unsigned()
+    _vsm3partw1q_u32(a, b, c)
 }
 #[doc = "SM3PARTW2"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsm3partw2q_u32)"]
@@ -26863,9 +26869,9 @@ pub unsafe fn vsm3partw2q_u32(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t) -> ui
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.sm3partw2"
         )]
-        fn _vsm3partw2q_u32(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t;
+        fn _vsm3partw2q_u32(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t) -> uint32x4_t;
     }
-    _vsm3partw2q_u32(a.as_signed(), b.as_signed(), c.as_signed()).as_unsigned()
+    _vsm3partw2q_u32(a, b, c)
 }
 #[doc = "SM3SS1"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsm3ss1q_u32)"]
@@ -26881,9 +26887,9 @@ pub unsafe fn vsm3ss1q_u32(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t) -> uint3
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.sm3ss1"
         )]
-        fn _vsm3ss1q_u32(a: int32x4_t, b: int32x4_t, c: int32x4_t) -> int32x4_t;
+        fn _vsm3ss1q_u32(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t) -> uint32x4_t;
     }
-    _vsm3ss1q_u32(a.as_signed(), b.as_signed(), c.as_signed()).as_unsigned()
+    _vsm3ss1q_u32(a, b, c)
 }
 #[doc = "SM3TT1A"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsm3tt1aq_u32)"]
@@ -26905,9 +26911,9 @@ pub unsafe fn vsm3tt1aq_u32<const IMM2: i32>(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.sm3tt1a"
         )]
-        fn _vsm3tt1aq_u32(a: int32x4_t, b: int32x4_t, c: int32x4_t, n: i64) -> int32x4_t;
+        fn _vsm3tt1aq_u32(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t, n: i64) -> uint32x4_t;
     }
-    _vsm3tt1aq_u32(a.as_signed(), b.as_signed(), c.as_signed(), IMM2 as i64).as_unsigned()
+    _vsm3tt1aq_u32(a, b, c, IMM2 as i64)
 }
 #[doc = "SM3TT1B"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsm3tt1bq_u32)"]
@@ -26929,9 +26935,9 @@ pub unsafe fn vsm3tt1bq_u32<const IMM2: i32>(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.sm3tt1b"
         )]
-        fn _vsm3tt1bq_u32(a: int32x4_t, b: int32x4_t, c: int32x4_t, n: i64) -> int32x4_t;
+        fn _vsm3tt1bq_u32(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t, n: i64) -> uint32x4_t;
     }
-    _vsm3tt1bq_u32(a.as_signed(), b.as_signed(), c.as_signed(), IMM2 as i64).as_unsigned()
+    _vsm3tt1bq_u32(a, b, c, IMM2 as i64)
 }
 #[doc = "SM3TT2A"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsm3tt2aq_u32)"]
@@ -26953,9 +26959,9 @@ pub unsafe fn vsm3tt2aq_u32<const IMM2: i32>(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.sm3tt2a"
         )]
-        fn _vsm3tt2aq_u32(a: int32x4_t, b: int32x4_t, c: int32x4_t, n: i64) -> int32x4_t;
+        fn _vsm3tt2aq_u32(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t, n: i64) -> uint32x4_t;
     }
-    _vsm3tt2aq_u32(a.as_signed(), b.as_signed(), c.as_signed(), IMM2 as i64).as_unsigned()
+    _vsm3tt2aq_u32(a, b, c, IMM2 as i64)
 }
 #[doc = "SM3TT2B"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsm3tt2bq_u32)"]
@@ -26977,9 +26983,9 @@ pub unsafe fn vsm3tt2bq_u32<const IMM2: i32>(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.sm3tt2b"
         )]
-        fn _vsm3tt2bq_u32(a: int32x4_t, b: int32x4_t, c: int32x4_t, n: i64) -> int32x4_t;
+        fn _vsm3tt2bq_u32(a: uint32x4_t, b: uint32x4_t, c: uint32x4_t, n: i64) -> uint32x4_t;
     }
-    _vsm3tt2bq_u32(a.as_signed(), b.as_signed(), c.as_signed(), IMM2 as i64).as_unsigned()
+    _vsm3tt2bq_u32(a, b, c, IMM2 as i64)
 }
 #[doc = "SM4 key"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsm4ekeyq_u32)"]
@@ -26995,9 +27001,9 @@ pub unsafe fn vsm4ekeyq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.sm4ekey"
         )]
-        fn _vsm4ekeyq_u32(a: int32x4_t, b: int32x4_t) -> int32x4_t;
+        fn _vsm4ekeyq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t;
     }
-    _vsm4ekeyq_u32(a.as_signed(), b.as_signed()).as_unsigned()
+    _vsm4ekeyq_u32(a, b)
 }
 #[doc = "SM4 encode"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsm4eq_u32)"]
@@ -27013,9 +27019,9 @@ pub unsafe fn vsm4eq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.sm4e"
         )]
-        fn _vsm4eq_u32(a: int32x4_t, b: int32x4_t) -> int32x4_t;
+        fn _vsm4eq_u32(a: uint32x4_t, b: uint32x4_t) -> uint32x4_t;
     }
-    _vsm4eq_u32(a.as_signed(), b.as_signed()).as_unsigned()
+    _vsm4eq_u32(a, b)
 }
 #[doc = "Unsigned saturating Accumulate of Signed value."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsqadd_u8)"]
@@ -27031,9 +27037,9 @@ pub unsafe fn vsqadd_u8(a: uint8x8_t, b: int8x8_t) -> uint8x8_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.usqadd.v8i8"
         )]
-        fn _vsqadd_u8(a: int8x8_t, b: int8x8_t) -> int8x8_t;
+        fn _vsqadd_u8(a: uint8x8_t, b: int8x8_t) -> uint8x8_t;
     }
-    _vsqadd_u8(a.as_signed(), b).as_unsigned()
+    _vsqadd_u8(a, b)
 }
 #[doc = "Unsigned saturating Accumulate of Signed value."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsqaddq_u8)"]
@@ -27049,9 +27055,9 @@ pub unsafe fn vsqaddq_u8(a: uint8x16_t, b: int8x16_t) -> uint8x16_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.usqadd.v16i8"
         )]
-        fn _vsqaddq_u8(a: int8x16_t, b: int8x16_t) -> int8x16_t;
+        fn _vsqaddq_u8(a: uint8x16_t, b: int8x16_t) -> uint8x16_t;
     }
-    _vsqaddq_u8(a.as_signed(), b).as_unsigned()
+    _vsqaddq_u8(a, b)
 }
 #[doc = "Unsigned saturating Accumulate of Signed value."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsqadd_u16)"]
@@ -27067,9 +27073,9 @@ pub unsafe fn vsqadd_u16(a: uint16x4_t, b: int16x4_t) -> uint16x4_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.usqadd.v4i16"
         )]
-        fn _vsqadd_u16(a: int16x4_t, b: int16x4_t) -> int16x4_t;
+        fn _vsqadd_u16(a: uint16x4_t, b: int16x4_t) -> uint16x4_t;
     }
-    _vsqadd_u16(a.as_signed(), b).as_unsigned()
+    _vsqadd_u16(a, b)
 }
 #[doc = "Unsigned saturating Accumulate of Signed value."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsqaddq_u16)"]
@@ -27085,9 +27091,9 @@ pub unsafe fn vsqaddq_u16(a: uint16x8_t, b: int16x8_t) -> uint16x8_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.usqadd.v8i16"
         )]
-        fn _vsqaddq_u16(a: int16x8_t, b: int16x8_t) -> int16x8_t;
+        fn _vsqaddq_u16(a: uint16x8_t, b: int16x8_t) -> uint16x8_t;
     }
-    _vsqaddq_u16(a.as_signed(), b).as_unsigned()
+    _vsqaddq_u16(a, b)
 }
 #[doc = "Unsigned saturating Accumulate of Signed value."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsqadd_u32)"]
@@ -27103,9 +27109,9 @@ pub unsafe fn vsqadd_u32(a: uint32x2_t, b: int32x2_t) -> uint32x2_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.usqadd.v2i32"
         )]
-        fn _vsqadd_u32(a: int32x2_t, b: int32x2_t) -> int32x2_t;
+        fn _vsqadd_u32(a: uint32x2_t, b: int32x2_t) -> uint32x2_t;
     }
-    _vsqadd_u32(a.as_signed(), b).as_unsigned()
+    _vsqadd_u32(a, b)
 }
 #[doc = "Unsigned saturating Accumulate of Signed value."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsqaddq_u32)"]
@@ -27121,9 +27127,9 @@ pub unsafe fn vsqaddq_u32(a: uint32x4_t, b: int32x4_t) -> uint32x4_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.usqadd.v4i32"
         )]
-        fn _vsqaddq_u32(a: int32x4_t, b: int32x4_t) -> int32x4_t;
+        fn _vsqaddq_u32(a: uint32x4_t, b: int32x4_t) -> uint32x4_t;
     }
-    _vsqaddq_u32(a.as_signed(), b).as_unsigned()
+    _vsqaddq_u32(a, b)
 }
 #[doc = "Unsigned saturating Accumulate of Signed value."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsqadd_u64)"]
@@ -27139,9 +27145,9 @@ pub unsafe fn vsqadd_u64(a: uint64x1_t, b: int64x1_t) -> uint64x1_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.usqadd.v1i64"
         )]
-        fn _vsqadd_u64(a: int64x1_t, b: int64x1_t) -> int64x1_t;
+        fn _vsqadd_u64(a: uint64x1_t, b: int64x1_t) -> uint64x1_t;
     }
-    _vsqadd_u64(a.as_signed(), b).as_unsigned()
+    _vsqadd_u64(a, b)
 }
 #[doc = "Unsigned saturating Accumulate of Signed value."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsqaddq_u64)"]
@@ -27157,9 +27163,9 @@ pub unsafe fn vsqaddq_u64(a: uint64x2_t, b: int64x2_t) -> uint64x2_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.usqadd.v2i64"
         )]
-        fn _vsqaddq_u64(a: int64x2_t, b: int64x2_t) -> int64x2_t;
+        fn _vsqaddq_u64(a: uint64x2_t, b: int64x2_t) -> uint64x2_t;
     }
-    _vsqaddq_u64(a.as_signed(), b).as_unsigned()
+    _vsqaddq_u64(a, b)
 }
 #[doc = "Unsigned saturating accumulate of signed value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsqaddb_u8)"]
@@ -27197,9 +27203,9 @@ pub unsafe fn vsqaddd_u64(a: u64, b: i64) -> u64 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.usqadd.i64"
         )]
-        fn _vsqaddd_u64(a: i64, b: i64) -> i64;
+        fn _vsqaddd_u64(a: u64, b: i64) -> u64;
     }
-    _vsqaddd_u64(a.as_signed(), b).as_unsigned()
+    _vsqaddd_u64(a, b)
 }
 #[doc = "Unsigned saturating accumulate of signed value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsqadds_u32)"]
@@ -27215,9 +27221,9 @@ pub unsafe fn vsqadds_u32(a: u32, b: i32) -> u32 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.usqadd.i32"
         )]
-        fn _vsqadds_u32(a: i32, b: i32) -> i32;
+        fn _vsqadds_u32(a: u32, b: i32) -> u32;
     }
-    _vsqadds_u32(a.as_signed(), b).as_unsigned()
+    _vsqadds_u32(a, b)
 }
 #[doc = "Calculates the square root of each lane."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vsqrt_f16)"]
@@ -30488,9 +30494,9 @@ pub unsafe fn vuqadd_s8(a: int8x8_t, b: uint8x8_t) -> int8x8_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.suqadd.v8i8"
         )]
-        fn _vuqadd_s8(a: int8x8_t, b: int8x8_t) -> int8x8_t;
+        fn _vuqadd_s8(a: int8x8_t, b: uint8x8_t) -> int8x8_t;
     }
-    _vuqadd_s8(a, b.as_signed())
+    _vuqadd_s8(a, b)
 }
 #[doc = "Signed saturating Accumulate of Unsigned value."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuqaddq_s8)"]
@@ -30506,9 +30512,9 @@ pub unsafe fn vuqaddq_s8(a: int8x16_t, b: uint8x16_t) -> int8x16_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.suqadd.v16i8"
         )]
-        fn _vuqaddq_s8(a: int8x16_t, b: int8x16_t) -> int8x16_t;
+        fn _vuqaddq_s8(a: int8x16_t, b: uint8x16_t) -> int8x16_t;
     }
-    _vuqaddq_s8(a, b.as_signed())
+    _vuqaddq_s8(a, b)
 }
 #[doc = "Signed saturating Accumulate of Unsigned value."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuqadd_s16)"]
@@ -30524,9 +30530,9 @@ pub unsafe fn vuqadd_s16(a: int16x4_t, b: uint16x4_t) -> int16x4_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.suqadd.v4i16"
         )]
-        fn _vuqadd_s16(a: int16x4_t, b: int16x4_t) -> int16x4_t;
+        fn _vuqadd_s16(a: int16x4_t, b: uint16x4_t) -> int16x4_t;
     }
-    _vuqadd_s16(a, b.as_signed())
+    _vuqadd_s16(a, b)
 }
 #[doc = "Signed saturating Accumulate of Unsigned value."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuqaddq_s16)"]
@@ -30542,9 +30548,9 @@ pub unsafe fn vuqaddq_s16(a: int16x8_t, b: uint16x8_t) -> int16x8_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.suqadd.v8i16"
         )]
-        fn _vuqaddq_s16(a: int16x8_t, b: int16x8_t) -> int16x8_t;
+        fn _vuqaddq_s16(a: int16x8_t, b: uint16x8_t) -> int16x8_t;
     }
-    _vuqaddq_s16(a, b.as_signed())
+    _vuqaddq_s16(a, b)
 }
 #[doc = "Signed saturating Accumulate of Unsigned value."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuqadd_s32)"]
@@ -30560,9 +30566,9 @@ pub unsafe fn vuqadd_s32(a: int32x2_t, b: uint32x2_t) -> int32x2_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.suqadd.v2i32"
         )]
-        fn _vuqadd_s32(a: int32x2_t, b: int32x2_t) -> int32x2_t;
+        fn _vuqadd_s32(a: int32x2_t, b: uint32x2_t) -> int32x2_t;
     }
-    _vuqadd_s32(a, b.as_signed())
+    _vuqadd_s32(a, b)
 }
 #[doc = "Signed saturating Accumulate of Unsigned value."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuqaddq_s32)"]
@@ -30578,9 +30584,9 @@ pub unsafe fn vuqaddq_s32(a: int32x4_t, b: uint32x4_t) -> int32x4_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.suqadd.v4i32"
         )]
-        fn _vuqaddq_s32(a: int32x4_t, b: int32x4_t) -> int32x4_t;
+        fn _vuqaddq_s32(a: int32x4_t, b: uint32x4_t) -> int32x4_t;
     }
-    _vuqaddq_s32(a, b.as_signed())
+    _vuqaddq_s32(a, b)
 }
 #[doc = "Signed saturating Accumulate of Unsigned value."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuqadd_s64)"]
@@ -30596,9 +30602,9 @@ pub unsafe fn vuqadd_s64(a: int64x1_t, b: uint64x1_t) -> int64x1_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.suqadd.v1i64"
         )]
-        fn _vuqadd_s64(a: int64x1_t, b: int64x1_t) -> int64x1_t;
+        fn _vuqadd_s64(a: int64x1_t, b: uint64x1_t) -> int64x1_t;
     }
-    _vuqadd_s64(a, b.as_signed())
+    _vuqadd_s64(a, b)
 }
 #[doc = "Signed saturating Accumulate of Unsigned value."]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuqaddq_s64)"]
@@ -30614,9 +30620,9 @@ pub unsafe fn vuqaddq_s64(a: int64x2_t, b: uint64x2_t) -> int64x2_t {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.suqadd.v2i64"
         )]
-        fn _vuqaddq_s64(a: int64x2_t, b: int64x2_t) -> int64x2_t;
+        fn _vuqaddq_s64(a: int64x2_t, b: uint64x2_t) -> int64x2_t;
     }
-    _vuqaddq_s64(a, b.as_signed())
+    _vuqaddq_s64(a, b)
 }
 #[doc = "Signed saturating accumulate of unsigned value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuqaddb_s8)"]
@@ -30654,9 +30660,9 @@ pub unsafe fn vuqaddd_s64(a: i64, b: u64) -> i64 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.suqadd.i64"
         )]
-        fn _vuqaddd_s64(a: i64, b: i64) -> i64;
+        fn _vuqaddd_s64(a: i64, b: u64) -> i64;
     }
-    _vuqaddd_s64(a, b.as_signed())
+    _vuqaddd_s64(a, b)
 }
 #[doc = "Signed saturating accumulate of unsigned value"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vuqadds_s32)"]
@@ -30672,9 +30678,9 @@ pub unsafe fn vuqadds_s32(a: i32, b: u32) -> i32 {
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.neon.suqadd.i32"
         )]
-        fn _vuqadds_s32(a: i32, b: i32) -> i32;
+        fn _vuqadds_s32(a: i32, b: u32) -> i32;
     }
-    _vuqadds_s32(a, b.as_signed())
+    _vuqadds_s32(a, b)
 }
 #[doc = "Dot product index form with unsigned and signed integers"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vusdot_laneq_s32)"]
@@ -31282,9 +31288,9 @@ pub unsafe fn vxarq_u64<const IMM6: i32>(a: uint64x2_t, b: uint64x2_t) -> uint64
             any(target_arch = "aarch64", target_arch = "arm64ec"),
             link_name = "llvm.aarch64.crypto.xar"
         )]
-        fn _vxarq_u64(a: int64x2_t, b: int64x2_t, n: i64) -> int64x2_t;
+        fn _vxarq_u64(a: uint64x2_t, b: uint64x2_t, n: i64) -> uint64x2_t;
     }
-    _vxarq_u64(a.as_signed(), b.as_signed(), IMM6 as i64).as_unsigned()
+    _vxarq_u64(a, b, IMM6 as i64)
 }
 #[doc = "Zip vectors"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vzip1_f16)"]

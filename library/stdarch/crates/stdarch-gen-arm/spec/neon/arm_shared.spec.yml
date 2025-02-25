@@ -1139,7 +1139,7 @@ intrinsics:
           links:
             - link: "llvm.arm.neon.vcvtfxu2fp.{neon_type[1]}.{neon_type[0]}"
               arch: arm
-      - FnCall: ["_vcvt{neon_type[1].N}_{neon_type[0]}", ["a.as_signed()", N]]
+      - FnCall: ["_vcvt{neon_type[1].N}_{neon_type[0]}", ["a", N]]
 
   - name: "vcvt{neon_type[1].N}_{neon_type[0]}"
     doc: "Fixed-point convert to floating-point"
@@ -1166,7 +1166,7 @@ intrinsics:
           links:
             - link: "llvm.aarch64.neon.vcvtfxu2fp.{neon_type[1]}.{neon_type[0]}"
               arch: aarch64,arm64ec
-      - FnCall: ["_vcvt{neon_type[1].N}_{neon_type[0]}", ["a.as_signed()", N]]
+      - FnCall: ["_vcvt{neon_type[1].N}_{neon_type[0]}", ["a", N]]
 
   - name: "vcvt{neon_type[1].N}_{neon_type[0]}"
     doc: "Fixed-point convert to floating-point"
@@ -1197,7 +1197,7 @@ intrinsics:
               arch: arm
             - link: "llvm.aarch64.neon.vcvtfxu2fp.{neon_type[1]}.{neon_type[0]}"
               arch: aarch64,arm64ec
-      - FnCall: ["_vcvt{neon_type[1].N}_{neon_type[0]}", ["a.as_signed()", N]]
+      - FnCall: ["_vcvt{neon_type[1].N}_{neon_type[0]}", ["a", N]]
 
 
   - name: "vcvt{neon_type[1].N}_{neon_type[0]}"
@@ -8486,9 +8486,9 @@ intrinsics:
     safety:
       unsafe: [neon]
     types:
-      - [uint16x8_t, uint8x8_t, 'N >= 1 && N <= 8', 'const { uint16x8_t([-N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16]) }.as_signed()']
-      - [uint32x4_t, uint16x4_t, 'N >= 1 && N <= 16', 'const { uint32x4_t([-N as u32, -N as u32, -N as u32, -N as u32]) }.as_signed()']
-      - [uint64x2_t, uint32x2_t, 'N >= 1 && N <= 32', 'const { uint64x2_t([-N as u64, -N as u64]) }.as_signed()']
+      - [uint16x8_t, uint8x8_t, 'N >= 1 && N <= 8', 'const { uint16x8_t([-N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16]) }']
+      - [uint32x4_t, uint16x4_t, 'N >= 1 && N <= 16', 'const { uint32x4_t([-N as u32, -N as u32, -N as u32, -N as u32]) }']
+      - [uint64x2_t, uint32x2_t, 'N >= 1 && N <= 32', 'const { uint64x2_t([-N as u64, -N as u64]) }']
     compose:
       - FnCall: [static_assert!, ["{type[2]}"]]
       - LLVMLink:
@@ -8499,7 +8499,7 @@ intrinsics:
           links:
             - link: "llvm.arm.neon.vqshiftnu.{neon_type[1]}"
               arch: arm
-      - FnCall: ["_vqshrn_n_{neon_type[0]}", ["a.as_signed()", "{type[3]}"]]
+      - FnCall: ["_vqshrn_n_{neon_type[0]}", ["a", "{type[3]}"]]
 
   - name: "vqshrn_n_{neon_type[0]}"
     doc: "Unsigned saturating shift right narrow"
@@ -8527,7 +8527,7 @@ intrinsics:
           links:
             - link: "llvm.aarch64.neon.uqshrn.{neon_type[1]}"
               arch: aarch64,arm64ec
-      - FnCall: ["_vqshrn_n_{neon_type[0]}", ["a.as_signed()", N]]
+      - FnCall: ["_vqshrn_n_{neon_type[0]}", ["a", N]]
 
   - name: "vqshrun_n_{neon_type[0]}"
     doc: "Signed saturating shift right unsigned narrow"
@@ -10987,9 +10987,9 @@ intrinsics:
     safety:
       unsafe: [neon]
     types:
-      - [uint16x8_t, uint8x8_t, '8', 'const { uint16x8_t([-N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16]) }.as_signed()']
-      - [uint32x4_t, uint16x4_t, '16', 'const { uint32x4_t([-N as u32, -N as u32, -N as u32, -N as u32]) }.as_signed()']
-      - [uint64x2_t, uint32x2_t, '32', 'const { uint64x2_t([-N as u64, -N as u64]) }.as_signed()']
+      - [uint16x8_t, uint8x8_t, '8', 'const { uint16x8_t([-N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16, -N as u16]) }']
+      - [uint32x4_t, uint16x4_t, '16', 'const { uint32x4_t([-N as u32, -N as u32, -N as u32, -N as u32]) }']
+      - [uint64x2_t, uint32x2_t, '32', 'const { uint64x2_t([-N as u64, -N as u64]) }']
     compose:
       - FnCall: [static_assert!, ['N >= 1 && N <= {type[2]}']]
       - LLVMLink:
@@ -11000,7 +11000,7 @@ intrinsics:
           links:
             - link: "llvm.arm.neon.vqrshiftnu.{neon_type[1]}"
               arch: arm
-      - FnCall: ["_vqrshrn_n{neon_type[0].noq}", ["a.as_signed()", "{type[3]}"]]
+      - FnCall: ["_vqrshrn_n{neon_type[0].noq}", ["a", "{type[3]}"]]
 
   - name: "vqrshrn_n_{neon_type[0]}"
     doc: "Unsigned signed saturating rounded shift right narrow"
@@ -11028,7 +11028,7 @@ intrinsics:
           links:
             - link: "llvm.aarch64.neon.uqrshrn.{neon_type[1]}"
               arch: aarch64,arm64ec
-      - FnCall: ["_vqrshrn_n_{neon_type[0]}", ["a.as_signed()", N]]
+      - FnCall: ["_vqrshrn_n_{neon_type[0]}", ["a", N]]
 
   - name: "vcvt{neon_type[1].no}_{neon_type[0]}"
     doc: "Floating-point convert to unsigned fixed-point, rounding toward zero"
@@ -13167,7 +13167,7 @@ intrinsics:
               arch: aarch64,arm64ec
             - link: "llvm.arm.crc32b"
               arch: arm
-      - FnCall: ["___crc32b", ["crc.as_signed()", "data.as_signed() as i32"]]
+      - FnCall: ["___crc32b", ["crc", "data as u32"]]
 
   - name: "__crc32h"
     doc: "CRC32 single round checksum for bytes (16 bits)."
@@ -13194,7 +13194,7 @@ intrinsics:
               arch: aarch64,arm64ec
             - link: "llvm.arm.crc32h"
               arch: arm
-      - FnCall: ["___crc32h", ["crc.as_signed()", "data.as_signed() as i32"]]
+      - FnCall: ["___crc32h", ["crc", "data as u32"]]
 
   - name: "__crc32w"
     doc: "CRC32 single round checksum for bytes (32 bits)."
@@ -13244,7 +13244,7 @@ intrinsics:
               arch: aarch64,arm64ec
             - link: "llvm.arm.crc32cb"
               arch: arm
-      - FnCall: ["___crc32cb", ["crc.as_signed()", "data.as_signed() as i32"]]
+      - FnCall: ["___crc32cb", ["crc", "data as u32"]]
 
   - name: "__crc32ch"
     doc: "CRC32-C single round checksum for bytes (16 bits)."
@@ -13271,7 +13271,7 @@ intrinsics:
               arch: aarch64,arm64ec
             - link: "llvm.arm.crc32ch"
               arch: arm
-      - FnCall: ["___crc32ch", ["crc.as_signed()", "data.as_signed() as i32"]]
+      - FnCall: ["___crc32ch", ["crc", "data as u32"]]
 
   - name: "__crc32cw"
     doc: "CRC32-C single round checksum for bytes (32 bits)."
@@ -13313,10 +13313,9 @@ intrinsics:
       # As the call to `__crc32` does not get inlined, we define an LLVM binding
       # here, which is the same as above, and call it directly which results 
       # in the correct instructions being generated
-      - Let: [a, i32, 'crc as i32']
-      - Let: [b, i32, '(data & 0xFFFFFFFF).as_signed() as i32']
-      - Let: [c, i32, '(data >> 32).as_signed() as i32']
-      - 'unsafe extern "unadjusted" {{ #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.crc32w")] fn ___crc32w(crc: i32, data: i32) -> i32;}} ___crc32w(___crc32w(a, b), c).as_unsigned()'
+      - Let: [b, u32, '(data & 0xFFFFFFFF) as u32']
+      - Let: [c, u32, '(data >> 32) as u32']
+      - 'unsafe extern "unadjusted" {{ #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.crc32w")] fn ___crc32w(crc: u32, data: u32) -> u32;}} ___crc32w(___crc32w(crc, b), c)'
 
   - name: "__crc32cd"
     doc: "CRC32-C single round checksum for quad words (64 bits)."
@@ -13332,10 +13331,9 @@ intrinsics:
     types:
       - [u32, u64]
     compose:
-      - Let: [a, i32, 'crc as i32']
-      - Let: [b, i32, '(data & 0xFFFFFFFF).as_signed() as i32']
-      - Let: [c, i32, '(data >> 32).as_signed() as i32']
-      - 'unsafe extern "unadjusted" {{ #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.crc32cw")] fn ___crc32cw(crc: i32, data: i32) -> i32;}} ___crc32cw(___crc32cw(a, b), c).as_unsigned() as u32'
+      - Let: [b, u32, '(data & 0xFFFFFFFF) as u32']
+      - Let: [c, u32, '(data >> 32) as u32']
+      - 'unsafe extern "unadjusted" {{ #[cfg_attr(target_arch = "arm", link_name = "llvm.arm.crc32cw")] fn ___crc32cw(crc: u32, data: u32) -> u32;}} ___crc32cw(___crc32cw(crc, b), c)'
 
   - name: "vabs{neon_type.no}"
     doc: "Absolute value (wrapping)."

@@ -548,7 +548,9 @@ impl LLVMLink {
         Ok(())
     }
 
-    /// Alters all the unsigned types from the signature, as unsupported by LLVM.
+    /// Alters all the unsigned types from the signature. This is required where
+    /// a signed and unsigned variant require the same binding to an exposed
+    /// LLVM instrinsic.
     pub fn sanitise_uints(&mut self) {
         let transform = |tk: &mut TypeKind| {
             if let Some(BaseType::Sized(BaseTypeKind::UInt, size)) = tk.base_type() {
@@ -603,7 +605,7 @@ impl LLVMLink {
     pub fn apply_conversions_to_call(
         &self,
         mut fn_call: FnCall,
-        ctx: &LocalContext,
+        ctx: &Context,
     ) -> context::Result<Expression> {
         use BaseType::{Sized, Unsized};
         use BaseTypeKind::{Bool, UInt};
@@ -618,6 +620,7 @@ impl LLVMLink {
             .map(|arg| -> context::Result<Expression> {
                 if let Expression::Identifier(ref var_name, IdentifierType::Variable) = arg {
                     let (kind, scope) = ctx
+                        .local
                         .variables
                         .get(&var_name.to_string())
                         .ok_or_else(|| format!("invalid variable {var_name:?} being referenced"))?;
@@ -627,7 +630,11 @@ impl LLVMLink {
                             Ok(convert("into", arg))
                         }
                         (Argument, Some(Sized(UInt, _) | Unsized(UInt))) => {
-                            Ok(convert("as_signed", arg))
+                            if ctx.global.auto_llvm_sign_conversion {
+                                Ok(convert("as_signed", arg))
+                            } else {
+                                Ok(arg)
+                            }
                         }
                         _ => Ok(arg),
                     }
@@ -637,22 +644,25 @@ impl LLVMLink {
             })
             .try_collect()?;
 
-        let return_type_requires_conversion = self
-            .signature
-            .as_ref()
-            .and_then(|sig| sig.return_type.as_ref())
-            .and_then(|ty| {
-                if let Some(Sized(Bool, bitsize)) = ty.base_type() {
-                    (*bitsize != 8).then_some(Bool)
-                } else if let Some(Sized(UInt, _) | Unsized(UInt)) = ty.base_type() {
-                    Some(UInt)
-                } else {
-                    None
-                }
-            });
+        let return_type_conversion = if !ctx.global.auto_llvm_sign_conversion {
+            None
+        } else {
+            self.signature
+                .as_ref()
+                .and_then(|sig| sig.return_type.as_ref())
+                .and_then(|ty| {
+                    if let Some(Sized(Bool, bitsize)) = ty.base_type() {
+                        (*bitsize != 8).then_some(Bool)
+                    } else if let Some(Sized(UInt, _) | Unsized(UInt)) = ty.base_type() {
+                        Some(UInt)
+                    } else {
+                        None
+                    }
+                })
+        };
 
         let fn_call = Expression::FnCall(fn_call);
-        match return_type_requires_conversion {
+        match return_type_conversion {
             Some(Bool) => Ok(convert("into", fn_call)),
             Some(UInt) => Ok(convert("as_unsigned", fn_call)),
             _ => Ok(fn_call),
@@ -1509,8 +1519,10 @@ impl Intrinsic {
         }
 
         if let Some(llvm_link) = self.llvm_link_mut() {
-            // Turn all Rust unsigned types into signed
-            llvm_link.sanitise_uints();
+            /* Turn all Rust unsigned types into signed if required */
+            if ctx.global.auto_llvm_sign_conversion {
+                llvm_link.sanitise_uints();
+            }
         }
 
         if let Some(predicate_form) = ctx.local.predicate_form() {

@@ -203,7 +203,7 @@ impl Expression {
                         *self = intrinsic
                             .llvm_link()
                             .expect("got LLVMLink wildcard without a LLVM link in `compose`")
-                            .apply_conversions_to_call(fn_call.clone(), ctx.local)?
+                            .apply_conversions_to_call(fn_call.clone(), ctx)?
                     }
                 }
 
