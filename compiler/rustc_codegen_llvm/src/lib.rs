@@ -241,7 +241,8 @@ impl WriteBackendMethods for LlvmCodegenBackend {
             let dcx = cgcx.create_dcx();
             return Err(dcx.handle().emit_almost_fatal(AutoDiffWithoutLTO));
         }
-        builder::autodiff::differentiate(module, cgcx, diff_fncs, config)
+        let module_llvm = &module.module_llvm;
+        builder::autodiff::differentiate(module_llvm, cgcx, diff_fncs, config)
     }
 }
 

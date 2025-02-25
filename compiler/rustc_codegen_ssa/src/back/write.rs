@@ -1473,13 +1473,14 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     assert!(!started_lto);
                     started_lto = true;
 
+                    let autodiff_items = mem::take(&mut autodiff_items);
                     let needs_fat_lto = mem::take(&mut needs_fat_lto);
                     let needs_thin_lto = mem::take(&mut needs_thin_lto);
                     let import_only_modules = mem::take(&mut lto_import_only_modules);
 
                     for (work, cost) in generate_lto_work(
                         &cgcx,
-                        autodiff_items.clone(),
+                        autodiff_items,
                         needs_fat_lto,
                         needs_thin_lto,
                         import_only_modules,
