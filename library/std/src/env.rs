@@ -668,7 +668,9 @@ pub fn home_dir() -> Option<PathBuf> {
 /// On Unix, returns the value of the `TMPDIR` environment variable if it is
 /// set, otherwise the value is OS-specific:
 /// - On Android, there is no global temporary folder (it is usually allocated
-///   per-app), it returns `/data/local/tmp`.
+///   per-app), it will return the application's cache dir if the program runs
+///   in application's namespace and system version is Android 13 (or above), or
+///   `/data/local/tmp` otherwise.
 /// - On Darwin-based OSes (macOS, iOS, etc) it returns the directory provided
 ///   by `confstr(_CS_DARWIN_USER_TEMP_DIR, ...)`, as recommended by [Apple's
 ///   security guidelines][appledoc].
