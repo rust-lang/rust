@@ -2331,8 +2331,6 @@ options! {
         "run all passes except codegen; no output"),
     no_generate_arange_section: bool = (false, parse_no_value, [TRACKED],
         "omit DWARF address ranges that give faster lookups"),
-    no_implied_bounds_compat: bool = (false, parse_bool, [TRACKED],
-        "disable the compatibility version of the `implied_bounds_ty` query"),
     no_jump_tables: bool = (false, parse_no_value, [TRACKED],
         "disable the jump tables and lookup tables that can be generated from a switch case lowering"),
     no_leak_check: bool = (false, parse_no_value, [UNTRACKED],
