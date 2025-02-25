@@ -490,7 +490,7 @@ impl<'ll> CodegenCx<'ll, '_> {
                         llvm::LLVMMDStringInContext2(self.llcx, bytes.as_c_char_ptr(), bytes.len());
                     let data = [section, alloc];
                     let meta = llvm::LLVMMDNodeInContext2(self.llcx, data.as_ptr(), data.len());
-                    let val = llvm::LLVMMetadataAsValue(self.llcx, meta);
+                    let val = self.get_metadata_value(meta);
                     llvm::LLVMAddNamedMetadataOperand(
                         self.llmod,
                         c"wasm.custom_sections".as_ptr(),

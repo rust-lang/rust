@@ -11,6 +11,8 @@
 //! * Use define_* family of methods when you might be defining the Value.
 //! * When in doubt, define.
 
+use std::borrow::Borrow;
+
 use itertools::Itertools;
 use rustc_codegen_ssa::traits::TypeMembershipCodegenMethods;
 use rustc_data_structures::fx::FxIndexSet;
@@ -22,7 +24,7 @@ use tracing::debug;
 
 use crate::abi::FnAbiLlvmExt;
 use crate::common::AsCCharPtr;
-use crate::context::{CodegenCx, SimpleCx};
+use crate::context::{CodegenCx, GenericCx, SCx, SimpleCx};
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::Visibility;
 use crate::type_::Type;
@@ -81,16 +83,25 @@ pub(crate) fn declare_raw_fn<'ll, 'tcx>(
     llfn
 }
 
-impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
+impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     /// Declare a global value.
     ///
     /// If there’s a value with the same name already declared, the function will
     /// return its Value instead.
     pub(crate) fn declare_global(&self, name: &str, ty: &'ll Type) -> &'ll Value {
         debug!("declare_global(name={:?})", name);
-        unsafe { llvm::LLVMRustGetOrInsertGlobal(self.llmod, name.as_c_char_ptr(), name.len(), ty) }
+        unsafe {
+            llvm::LLVMRustGetOrInsertGlobal(
+                (**self).borrow().llmod,
+                name.as_c_char_ptr(),
+                name.len(),
+                ty,
+            )
+        }
     }
+}
 
+impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     /// Declare a C ABI function.
     ///
     /// Only use this for foreign function ABIs and glue. For Rust functions use
