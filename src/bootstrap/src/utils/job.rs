@@ -7,7 +7,9 @@ pub unsafe fn setup(_build: &mut crate::Build) {}
 #[cfg(all(unix, not(target_os = "haiku")))]
 pub unsafe fn setup(build: &mut crate::Build) {
     if build.config.low_priority {
-        libc::setpriority(libc::PRIO_PGRP as _, 0, 10);
+        unsafe {
+            libc::setpriority(libc::PRIO_PGRP as _, 0, 10);
+        }
     }
 }
 
