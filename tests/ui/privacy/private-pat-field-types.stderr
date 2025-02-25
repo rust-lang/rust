@@ -1,0 +1,14 @@
+error: type `Bar` is private
+  --> $DIR/private-pat-field-types.rs:10:21
+   |
+LL |         foo::Foo::A(_) => {}
+   |                     ^ private type
+   |
+help: consider using `..` to ignore the field with private type
+   |
+LL -         foo::Foo::A(_) => {}
+LL +         foo::Foo::A(..) => {}
+   |
+
+error: aborting due to 1 previous error
+
