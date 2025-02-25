@@ -17,11 +17,9 @@ struct f32x4(pub [f32; 4]);
 
 use std::intrinsics::simd::*;
 
-// FIXME not currently exposed from std::intrinsics::simd
 #[rustc_intrinsic]
 unsafe fn simd_fpow<T>(x: T, y: T) -> T;
 
-// FIXME not currently exposed from std::intrinsics::simd
 #[rustc_intrinsic]
 unsafe fn simd_fpowi<T>(x: T, y: i32) -> T;
 
