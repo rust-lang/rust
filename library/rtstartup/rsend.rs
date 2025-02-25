@@ -27,7 +27,7 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
     drop_in_place(to_drop);
 }
 
-#[cfg(all(any(target_os = "cygwin", all(target_os = "windows", target_env = "gnu")), target_arch = "x86"))]
+#[cfg(all(target_os = "windows", target_arch = "x86", target_env = "gnu"))]
 pub mod eh_frames {
     // Terminate the frame unwind info section with a 0 as a sentinel;
     // this would be the 'length' field in a real FDE.
