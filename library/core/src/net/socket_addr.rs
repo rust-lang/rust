@@ -8,9 +8,6 @@ use crate::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 /// as possibly some version-dependent additional information. See [`SocketAddrV4`]'s and
 /// [`SocketAddrV6`]'s respective documentation for more details.
 ///
-/// The size of a `SocketAddr` instance may vary depending on the target operating
-/// system.
-///
 /// [IP address]: IpAddr
 ///
 /// # Examples
@@ -41,10 +38,6 @@ pub enum SocketAddr {
 /// stated in [IETF RFC 793].
 ///
 /// See [`SocketAddr`] for a type encompassing both IPv4 and IPv6 socket addresses.
-///
-/// The size of a `SocketAddrV4` struct may vary depending on the target operating
-/// system. Do not assume that this type has the same memory layout as the underlying
-/// system representation.
 ///
 /// [IETF RFC 793]: https://tools.ietf.org/html/rfc793
 /// [`IPv4` address]: Ipv4Addr
@@ -83,10 +76,6 @@ pub struct SocketAddrV4 {
 /// (see [IETF RFC 2553, Section 3.3] for more details).
 ///
 /// See [`SocketAddr`] for a type encompassing both IPv4 and IPv6 socket addresses.
-///
-/// The size of a `SocketAddrV6` struct may vary depending on the target operating
-/// system. Do not assume that this type has the same memory layout as the underlying
-/// system representation.
 ///
 /// [IETF RFC 2553, Section 3.3]: https://tools.ietf.org/html/rfc2553#section-3.3
 /// [`IPv6` address]: Ipv6Addr
