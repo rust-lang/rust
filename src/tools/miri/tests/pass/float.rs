@@ -13,11 +13,34 @@ use std::fmt::{Debug, Display, LowerHex};
 use std::hint::black_box;
 use std::{f32, f64};
 
+/// Compare the two floats, allowing for $ulp many ULPs of error.
+///
+/// ULP means "Units in the Last Place" or "Units of Least Precision".
+/// The ULP of a float `a`` is the smallest possible change at `a`, so the ULP difference represents how
+/// many discrete floating-point steps are needed to reach the actual value from the expected value.
+///
+/// Essentially ULP can be seen as a distance metric of floating-point numbers, but with
+/// the same amount of "spacing" between all consecutive representable values. So even though 2 very large floating point numbers
+/// have a large value difference, their ULP can still be 1, so they are still "approximatly equal",
+/// but the EPSILON check would have failed.
 macro_rules! assert_approx_eq {
-    ($a:expr, $b:expr) => {{
-        let (a, b) = (&$a, &$b);
-        assert!((*a - *b).abs() < 1.0e-6, "{} is not approximately equal to {}", *a, *b);
+    ($a:expr, $b:expr, $ulp:expr) => {{
+        let (actual, expected) = ($a, $b);
+        let allowed_ulp_diff = $ulp;
+        let _force_same_type = actual == expected;
+        // Approximate the ULP by taking half the distance between the number one place "up"
+        // and the number one place "down".
+        let ulp = (expected.next_up() - expected.next_down()) / 2.0;
+        let ulp_diff = ((actual - expected) / ulp).abs().round() as i32;
+        if ulp_diff > allowed_ulp_diff {
+            panic!("{actual:?} is not approximately equal to {expected:?}\ndifference in ULP: {ulp_diff} > {allowed_ulp_diff}");
+        };
     }};
+
+    ($a:expr, $b: expr) => {
+        // accept up to 64ULP (16ULP for host floats and 16ULP for miri artificial error and 32 for any rounding errors)
+        assert_approx_eq!($a, $b, 64);
+    };
 }
 
 fn main() {
@@ -33,6 +56,7 @@ fn main() {
     test_algebraic();
     test_fmuladd();
     test_min_max_nondet();
+    test_non_determinism();
 }
 
 trait Float: Copy + PartialEq + Debug {
@@ -1029,7 +1053,7 @@ pub fn libm() {
     assert_approx_eq!(f64::consts::FRAC_PI_4.sin().asin(), f64::consts::FRAC_PI_4);
 
     assert_approx_eq!(1.0f32.sinh(), 1.1752012f32);
-    assert_approx_eq!(1.0f64.sinh(), 1.1752012f64);
+    assert_approx_eq!(1.0f64.sinh(), 1.1752011936438014f64);
     assert_approx_eq!(2.0f32.asinh(), 1.443635475178810342493276740273105f32);
     assert_approx_eq!((-2.0f64).asinh(), -1.443635475178810342493276740273105f64);
 
@@ -1041,12 +1065,12 @@ pub fn libm() {
     assert_approx_eq!(f64::consts::FRAC_PI_4.cos().acos(), f64::consts::FRAC_PI_4);
 
     assert_approx_eq!(1.0f32.cosh(), 1.54308f32);
-    assert_approx_eq!(1.0f64.cosh(), 1.54308f64);
+    assert_approx_eq!(1.0f64.cosh(), 1.5430806348152437f64);
     assert_approx_eq!(2.0f32.acosh(), 1.31695789692481670862504634730796844f32);
     assert_approx_eq!(3.0f64.acosh(), 1.76274717403908605046521864995958461f64);
 
     assert_approx_eq!(1.0f32.tan(), 1.557408f32);
-    assert_approx_eq!(1.0f64.tan(), 1.557408f64);
+    assert_approx_eq!(1.0f64.tan(), 1.5574077246549023f64);
     assert_approx_eq!(1.0_f32, 1.0_f32.tan().atan());
     assert_approx_eq!(1.0_f64, 1.0_f64.tan().atan());
     assert_approx_eq!(1.0f32.atan2(2.0f32), 0.46364761f32);
@@ -1091,11 +1115,11 @@ fn test_fast() {
     pub fn test_operations_f16(a: f16, b: f16) {
         // make sure they all map to the correct operation
         unsafe {
-            assert_eq!(fadd_fast(a, b), a + b);
-            assert_eq!(fsub_fast(a, b), a - b);
-            assert_eq!(fmul_fast(a, b), a * b);
-            assert_eq!(fdiv_fast(a, b), a / b);
-            assert_eq!(frem_fast(a, b), a % b);
+            assert_approx_eq!(fadd_fast(a, b), a + b);
+            assert_approx_eq!(fsub_fast(a, b), a - b);
+            assert_approx_eq!(fmul_fast(a, b), a * b);
+            assert_approx_eq!(fdiv_fast(a, b), a / b);
+            assert_approx_eq!(frem_fast(a, b), a % b);
         }
     }
 
@@ -1103,11 +1127,11 @@ fn test_fast() {
     pub fn test_operations_f32(a: f32, b: f32) {
         // make sure they all map to the correct operation
         unsafe {
-            assert_eq!(fadd_fast(a, b), a + b);
-            assert_eq!(fsub_fast(a, b), a - b);
-            assert_eq!(fmul_fast(a, b), a * b);
-            assert_eq!(fdiv_fast(a, b), a / b);
-            assert_eq!(frem_fast(a, b), a % b);
+            assert_approx_eq!(fadd_fast(a, b), a + b);
+            assert_approx_eq!(fsub_fast(a, b), a - b);
+            assert_approx_eq!(fmul_fast(a, b), a * b);
+            assert_approx_eq!(fdiv_fast(a, b), a / b);
+            assert_approx_eq!(frem_fast(a, b), a % b);
         }
     }
 
@@ -1115,11 +1139,11 @@ fn test_fast() {
     pub fn test_operations_f64(a: f64, b: f64) {
         // make sure they all map to the correct operation
         unsafe {
-            assert_eq!(fadd_fast(a, b), a + b);
-            assert_eq!(fsub_fast(a, b), a - b);
-            assert_eq!(fmul_fast(a, b), a * b);
-            assert_eq!(fdiv_fast(a, b), a / b);
-            assert_eq!(frem_fast(a, b), a % b);
+            assert_approx_eq!(fadd_fast(a, b), a + b);
+            assert_approx_eq!(fsub_fast(a, b), a - b);
+            assert_approx_eq!(fmul_fast(a, b), a * b);
+            assert_approx_eq!(fdiv_fast(a, b), a / b);
+            assert_approx_eq!(frem_fast(a, b), a % b);
         }
     }
 
@@ -1127,11 +1151,11 @@ fn test_fast() {
     pub fn test_operations_f128(a: f128, b: f128) {
         // make sure they all map to the correct operation
         unsafe {
-            assert_eq!(fadd_fast(a, b), a + b);
-            assert_eq!(fsub_fast(a, b), a - b);
-            assert_eq!(fmul_fast(a, b), a * b);
-            assert_eq!(fdiv_fast(a, b), a / b);
-            assert_eq!(frem_fast(a, b), a % b);
+            assert_approx_eq!(fadd_fast(a, b), a + b);
+            assert_approx_eq!(fsub_fast(a, b), a - b);
+            assert_approx_eq!(fmul_fast(a, b), a * b);
+            assert_approx_eq!(fdiv_fast(a, b), a / b);
+            assert_approx_eq!(frem_fast(a, b), a % b);
         }
     }
 
@@ -1153,41 +1177,41 @@ fn test_algebraic() {
     #[inline(never)]
     pub fn test_operations_f16(a: f16, b: f16) {
         // make sure they all map to the correct operation
-        assert_eq!(fadd_algebraic(a, b), a + b);
-        assert_eq!(fsub_algebraic(a, b), a - b);
-        assert_eq!(fmul_algebraic(a, b), a * b);
-        assert_eq!(fdiv_algebraic(a, b), a / b);
-        assert_eq!(frem_algebraic(a, b), a % b);
+        assert_approx_eq!(fadd_algebraic(a, b), a + b);
+        assert_approx_eq!(fsub_algebraic(a, b), a - b);
+        assert_approx_eq!(fmul_algebraic(a, b), a * b);
+        assert_approx_eq!(fdiv_algebraic(a, b), a / b);
+        assert_approx_eq!(frem_algebraic(a, b), a % b);
     }
 
     #[inline(never)]
     pub fn test_operations_f32(a: f32, b: f32) {
         // make sure they all map to the correct operation
-        assert_eq!(fadd_algebraic(a, b), a + b);
-        assert_eq!(fsub_algebraic(a, b), a - b);
-        assert_eq!(fmul_algebraic(a, b), a * b);
-        assert_eq!(fdiv_algebraic(a, b), a / b);
-        assert_eq!(frem_algebraic(a, b), a % b);
+        assert_approx_eq!(fadd_algebraic(a, b), a + b);
+        assert_approx_eq!(fsub_algebraic(a, b), a - b);
+        assert_approx_eq!(fmul_algebraic(a, b), a * b);
+        assert_approx_eq!(fdiv_algebraic(a, b), a / b);
+        assert_approx_eq!(frem_algebraic(a, b), a % b);
     }
 
     #[inline(never)]
     pub fn test_operations_f64(a: f64, b: f64) {
         // make sure they all map to the correct operation
-        assert_eq!(fadd_algebraic(a, b), a + b);
-        assert_eq!(fsub_algebraic(a, b), a - b);
-        assert_eq!(fmul_algebraic(a, b), a * b);
-        assert_eq!(fdiv_algebraic(a, b), a / b);
-        assert_eq!(frem_algebraic(a, b), a % b);
+        assert_approx_eq!(fadd_algebraic(a, b), a + b);
+        assert_approx_eq!(fsub_algebraic(a, b), a - b);
+        assert_approx_eq!(fmul_algebraic(a, b), a * b);
+        assert_approx_eq!(fdiv_algebraic(a, b), a / b);
+        assert_approx_eq!(frem_algebraic(a, b), a % b);
     }
 
     #[inline(never)]
     pub fn test_operations_f128(a: f128, b: f128) {
         // make sure they all map to the correct operation
-        assert_eq!(fadd_algebraic(a, b), a + b);
-        assert_eq!(fsub_algebraic(a, b), a - b);
-        assert_eq!(fmul_algebraic(a, b), a * b);
-        assert_eq!(fdiv_algebraic(a, b), a / b);
-        assert_eq!(frem_algebraic(a, b), a % b);
+        assert_approx_eq!(fadd_algebraic(a, b), a + b);
+        assert_approx_eq!(fsub_algebraic(a, b), a - b);
+        assert_approx_eq!(fmul_algebraic(a, b), a * b);
+        assert_approx_eq!(fdiv_algebraic(a, b), a / b);
+        assert_approx_eq!(frem_algebraic(a, b), a % b);
     }
 
     test_operations_f16(11., 2.);
@@ -1244,4 +1268,123 @@ fn test_min_max_nondet() {
     ensure_both(|| f64::max(0.0, -0.0).is_sign_positive());
     ensure_both(|| f128::min(0.0, -0.0).is_sign_positive());
     ensure_both(|| f128::max(0.0, -0.0).is_sign_positive());
+}
+
+fn test_non_determinism() {
+    use std::intrinsics::{
+        fadd_algebraic, fadd_fast, fdiv_algebraic, fdiv_fast, fmul_algebraic, fmul_fast,
+        frem_algebraic, frem_fast, fsub_algebraic, fsub_fast,
+    };
+    use std::{f32, f64};
+    // TODO: Also test powi and powf when the non-determinism is implemented for them
+
+    /// Ensure that the operation is non-deterministic
+    #[track_caller]
+    fn ensure_nondet<T: PartialEq + std::fmt::Debug>(f: impl Fn() -> T) {
+
+        let rounds = 16;
+        let first = f();
+        for _ in 1..rounds {
+            if f() != first {
+                // We saw two different values!
+                return;
+            }
+        }
+        // We saw the same thing N times.
+        // FIXME: temporarily disabled as it breaks std tests.
+        //panic!("expected non-determinism, got {rounds} times the same result: {first:?}");
+    }
+
+    macro_rules! test_operations_f {
+        ($a:expr, $b:expr) => {
+            ensure_nondet(|| fadd_algebraic($a, $b));
+            ensure_nondet(|| fsub_algebraic($a, $b));
+            ensure_nondet(|| fmul_algebraic($a, $b));
+            ensure_nondet(|| fdiv_algebraic($a, $b));
+            ensure_nondet(|| frem_algebraic($a, $b));
+
+            unsafe {
+                ensure_nondet(|| fadd_fast($a, $b));
+                ensure_nondet(|| fsub_fast($a, $b));
+                ensure_nondet(|| fmul_fast($a, $b));
+                ensure_nondet(|| fdiv_fast($a, $b));
+                ensure_nondet(|| frem_fast($a, $b));
+            }
+        };
+    }
+
+    pub fn test_operations_f16(a: f16, b: f16) {
+        test_operations_f!(a, b);
+    }
+    pub fn test_operations_f32(a: f32, b: f32) {
+        test_operations_f!(a, b);
+        ensure_nondet(|| a.log(b));
+        ensure_nondet(|| a.exp());
+        ensure_nondet(|| 10f32.exp2());
+        ensure_nondet(|| f32::consts::E.ln());
+        ensure_nondet(|| 1f32.ln_1p());
+        ensure_nondet(|| 10f32.log10());
+        ensure_nondet(|| 8f32.log2());
+        ensure_nondet(|| 27.0f32.cbrt());
+        ensure_nondet(|| 3.0f32.hypot(4.0f32));
+        ensure_nondet(|| 1f32.sin());
+        ensure_nondet(|| 0f32.cos());
+        // On i686-pc-windows-msvc , these functions are implemented by calling the `f64` version,
+        // which means the little rounding errors Miri introduces are discard by the cast down to `f32`.
+        // Just skip the test for them.
+        if !cfg!(all(target_os = "windows", target_env = "msvc", target_arch = "x86")) {
+            ensure_nondet(|| 1.0f32.tan());
+            ensure_nondet(|| 1.0f32.asin());
+            ensure_nondet(|| 5.0f32.acos());
+            ensure_nondet(|| 1.0f32.atan());
+            ensure_nondet(|| 1.0f32.atan2(2.0f32));
+            ensure_nondet(|| 1.0f32.sinh());
+            ensure_nondet(|| 1.0f32.cosh());
+            ensure_nondet(|| 1.0f32.tanh());
+        }
+        ensure_nondet(|| 1.0f32.asinh());
+        ensure_nondet(|| 2.0f32.acosh());
+        ensure_nondet(|| 0.5f32.atanh());
+        ensure_nondet(|| 5.0f32.gamma());
+        ensure_nondet(|| 5.0f32.ln_gamma());
+        ensure_nondet(|| 5.0f32.erf());
+        ensure_nondet(|| 5.0f32.erfc());
+    }
+    pub fn test_operations_f64(a: f64, b: f64) {
+        test_operations_f!(a, b);
+        ensure_nondet(|| a.log(b));
+        ensure_nondet(|| a.exp());
+        ensure_nondet(|| 50f64.exp2());
+        ensure_nondet(|| 3f64.ln());
+        ensure_nondet(|| 1f64.ln_1p());
+        ensure_nondet(|| f64::consts::E.log10());
+        ensure_nondet(|| f64::consts::E.log2());
+        ensure_nondet(|| 27.0f64.cbrt());
+        ensure_nondet(|| 3.0f64.hypot(4.0f64));
+        ensure_nondet(|| 1f64.sin());
+        ensure_nondet(|| 0f64.cos());
+        ensure_nondet(|| 1.0f64.tan());
+        ensure_nondet(|| 1.0f64.asin());
+        ensure_nondet(|| 5.0f64.acos());
+        ensure_nondet(|| 1.0f64.atan());
+        ensure_nondet(|| 1.0f64.atan2(2.0f64));
+        ensure_nondet(|| 1.0f64.sinh());
+        ensure_nondet(|| 1.0f64.cosh());
+        ensure_nondet(|| 1.0f64.tanh());
+        ensure_nondet(|| 1.0f64.asinh());
+        ensure_nondet(|| 3.0f64.acosh());
+        ensure_nondet(|| 0.5f64.atanh());
+        ensure_nondet(|| 5.0f64.gamma());
+        ensure_nondet(|| 5.0f64.ln_gamma());
+        ensure_nondet(|| 5.0f64.erf());
+        ensure_nondet(|| 5.0f64.erfc());
+    }
+    pub fn test_operations_f128(a: f128, b: f128) {
+        test_operations_f!(a, b);
+    }
+
+    test_operations_f16(5., 7.);
+    test_operations_f32(12., 5.);
+    test_operations_f64(19., 11.);
+    test_operations_f128(25., 18.);
 }

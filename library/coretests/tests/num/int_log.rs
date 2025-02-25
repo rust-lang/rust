@@ -34,6 +34,7 @@ fn checked_ilog() {
 }
 
 #[test]
+#[cfg_attr(miri, ignore)] // FIXME test is broken on Miri: https://github.com/rust-lang/rust/issues/137591
 fn checked_ilog2() {
     assert_eq!(5u32.checked_ilog2(), Some(2));
     assert_eq!(0u64.checked_ilog2(), None);

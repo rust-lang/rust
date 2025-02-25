@@ -713,12 +713,13 @@ impl<'tcx> MiriMachine<'tcx> {
             clock: Clock::new(config.isolated_op == IsolatedOp::Allow),
             #[cfg(unix)]
             native_lib: config.native_lib.as_ref().map(|lib_file_path| {
+                let host_triple = rustc_session::config::host_tuple();
                 let target_triple = tcx.sess.opts.target_triple.tuple();
                 // Check if host target == the session target.
-                if env!("TARGET") != target_triple {
+                if host_triple != target_triple {
                     panic!(
                         "calling external C functions in linked .so file requires host and target to be the same: host={}, target={}",
-                        env!("TARGET"),
+                        host_triple,
                         target_triple,
                     );
                 }

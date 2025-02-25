@@ -154,7 +154,6 @@ pub fn get_closest_merge_commit(
         "rev-list",
         &format!("--author={}", config.git_merge_commit_email),
         "-n1",
-        "--first-parent",
         &merge_base,
     ]);
 

@@ -1,4 +1,5 @@
 #![feature(rustc_private)]
+#![feature(cfg_match)]
 #![feature(cell_update)]
 #![feature(float_gamma)]
 #![feature(float_erf)]

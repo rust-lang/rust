@@ -1,7 +1,7 @@
 use rustc_middle::mir::BinOp;
 use rustc_middle::{mir, ty};
 
-use self::helpers::check_arg_count;
+use self::helpers::check_intrinsic_arg_count;
 use crate::*;
 
 pub enum AtomicOp {
@@ -131,7 +131,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        let [place] = check_arg_count(args)?;
+        let [place] = check_intrinsic_arg_count(args)?;
         let place = this.deref_pointer(place)?;
 
         // Perform atomic load.
@@ -144,7 +144,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
     fn atomic_store(&mut self, args: &[OpTy<'tcx>], atomic: AtomicWriteOrd) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        let [place, val] = check_arg_count(args)?;
+        let [place, val] = check_intrinsic_arg_count(args)?;
         let place = this.deref_pointer(place)?;
 
         // Perform regular load.
@@ -159,7 +159,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         args: &[OpTy<'tcx>],
         atomic: AtomicFenceOrd,
     ) -> InterpResult<'tcx> {
-        let [] = check_arg_count(args)?;
+        let [] = check_intrinsic_arg_count(args)?;
         let _ = atomic;
         //FIXME: compiler fences are currently ignored
         interp_ok(())
@@ -171,7 +171,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         atomic: AtomicFenceOrd,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let [] = check_arg_count(args)?;
+        let [] = check_intrinsic_arg_count(args)?;
         this.atomic_fence(atomic)?;
         interp_ok(())
     }
@@ -185,7 +185,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        let [place, rhs] = check_arg_count(args)?;
+        let [place, rhs] = check_intrinsic_arg_count(args)?;
         let place = this.deref_pointer(place)?;
         let rhs = this.read_immediate(rhs)?;
 
@@ -226,7 +226,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        let [place, new] = check_arg_count(args)?;
+        let [place, new] = check_intrinsic_arg_count(args)?;
         let place = this.deref_pointer(place)?;
         let new = this.read_scalar(new)?;
 
@@ -245,7 +245,7 @@ trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
 
-        let [place, expect_old, new] = check_arg_count(args)?;
+        let [place, expect_old, new] = check_intrinsic_arg_count(args)?;
         let place = this.deref_pointer(place)?;
         let expect_old = this.read_immediate(expect_old)?; // read as immediate for the sake of `binary_op()`
         let new = this.read_scalar(new)?;
