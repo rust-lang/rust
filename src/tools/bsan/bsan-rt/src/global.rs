@@ -2,6 +2,8 @@ use core::cell::SyncUnsafeCell;
 use core::sync::atomic::AtomicUsize;
 
 use crate::BsanAllocator;
+#[cfg(test)]
+use crate::TEST_ALLOC;
 
 #[derive(Debug)]
 pub struct GlobalContext {

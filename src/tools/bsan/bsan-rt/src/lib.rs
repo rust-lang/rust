@@ -5,19 +5,23 @@
 #![feature(strict_overflow_ops)]
 #![allow(unused)]
 
-mod global;
-use global::init_global_ctx;
-
-mod alloc;
-pub use alloc::BsanAllocator;
-
-mod shadow;
+extern crate alloc;
 
 use core::cell::UnsafeCell;
 use core::ffi::c_void;
 use core::num::NonZero;
 #[cfg(not(test))]
 use core::panic::PanicInfo;
+
+mod global;
+use global::{global_ctx, init_global_ctx};
+
+mod bsan_alloc;
+pub use bsan_alloc::BsanAllocator;
+#[cfg(test)]
+pub use bsan_alloc::TEST_ALLOC;
+
+mod shadow;
 
 #[no_mangle]
 unsafe extern "C" fn bsan_init(alloc: BsanAllocator) {
