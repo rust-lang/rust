@@ -1,8 +1,8 @@
 error[E0080]: evaluation of `foo::<i32>::{constant#0}` failed
-  --> $DIR/const-expr-generic-err.rs:4:13
+  --> $DIR/const-expr-generic-err.rs:4:21
    |
 LL |     const { assert!(std::mem::size_of::<T>() == 0); }
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'assertion failed: std::mem::size_of::<T>() == 0', $DIR/const-expr-generic-err.rs:4:13
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'assertion failed: std::mem::size_of::<T>() == 0', $DIR/const-expr-generic-err.rs:4:13
    |
    = note: this error originates in the macro `assert` (in Nightly builds, run with -Z macro-backtrace for more info)
 
