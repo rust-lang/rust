@@ -202,7 +202,17 @@ pub fn compute_implied_outlives_bounds_compat_inner<'tcx>(
                 }
             }
 
-            let pred = match obligation.predicate.kind().no_bound_vars() {
+            let pred = if ocx.infcx.next_trait_solver() {
+                ocx.deeply_normalize(
+                    &ObligationCause::dummy_with_span(span),
+                    param_env,
+                    obligation.predicate,
+                )
+                .map_err(|_| NoSolution)?
+            } else {
+                obligation.predicate
+            };
+            let pred = match pred.kind().no_bound_vars() {
                 None => continue,
                 Some(pred) => pred,
             };
@@ -239,6 +249,13 @@ pub fn compute_implied_outlives_bounds_compat_inner<'tcx>(
             }
         }
     }
+
+    outlives_bounds.extend(
+        ocx.infcx
+            .take_registered_region_obligations()
+            .into_iter()
+            .map(|o| ty::OutlivesPredicate(o.sup_type.into(), o.sub_region)),
+    );
 
     // This call to `select_all_or_error` is necessary to constrain inference variables, which we
     // use further down when computing the implied bounds.
