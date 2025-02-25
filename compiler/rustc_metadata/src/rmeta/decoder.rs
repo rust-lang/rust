@@ -1071,7 +1071,6 @@ impl<'a> CrateMetadataRef<'a> {
         let attrs: Vec<_> = self.get_item_attrs(id, sess).collect();
         SyntaxExtension::new(
             sess,
-            tcx.features(),
             kind,
             self.get_span(id, sess),
             helper_attrs,

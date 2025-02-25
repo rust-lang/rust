@@ -1,7 +1,7 @@
 // ignore-tidy-linelength
 
 #[repr(u32)]
-//@ is "$.index[*][?(@.name=='Foo')].attrs" '["#[repr(u32)]"]'
+//@ is "$.index[*][?(@.name=='Foo')].attrs" '["#[attr=\"Repr([ReprInt(UnsignedInt(U32))])\")]\n"]'
 pub enum Foo {
     //@ is    "$.index[*][?(@.name=='Tuple')].inner.variant.discriminant" null
     //@ count "$.index[*][?(@.name=='Tuple')].inner.variant.kind.tuple[*]" 0

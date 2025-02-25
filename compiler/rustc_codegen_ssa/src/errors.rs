@@ -1180,6 +1180,8 @@ pub(crate) struct ErrorCreatingRemarkDir {
 pub struct CompilerBuiltinsCannotCall {
     pub caller: String,
     pub callee: String,
+    #[primary_span]
+    pub span: Span,
 }
 
 #[derive(Diagnostic)]

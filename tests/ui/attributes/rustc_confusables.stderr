@@ -4,12 +4,6 @@ error: malformed `rustc_confusables` attribute input
 LL |     #[rustc_confusables]
    |     ^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[rustc_confusables("name1", "name2", ...)]`
 
-error: attribute should be applied to an inherent method
-  --> $DIR/rustc_confusables.rs:45:1
-   |
-LL | #[rustc_confusables("blah")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 error: expected at least one confusable name
   --> $DIR/rustc_confusables.rs:30:5
    |
@@ -26,6 +20,12 @@ help: consider surrounding this with quotes
    |
 LL |     #[rustc_confusables("invalid_meta_item")]
    |                         +                 +
+
+error: attribute should be applied to an inherent method
+  --> $DIR/rustc_confusables.rs:45:1
+   |
+LL | #[rustc_confusables("blah")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0599]: no method named `inser` found for struct `rustc_confusables_across_crate::BTreeSet` in the current scope
   --> $DIR/rustc_confusables.rs:12:7

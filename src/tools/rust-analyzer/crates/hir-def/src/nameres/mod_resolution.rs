@@ -2,12 +2,11 @@
 use arrayvec::ArrayVec;
 use base_db::AnchoredPath;
 use hir_expand::{name::Name, HirFileIdExt};
-use limit::Limit;
 use span::EditionedFileId;
 
 use crate::{db::DefDatabase, HirFileId};
 
-static MOD_DEPTH_LIMIT: Limit = Limit::new(32);
+const MOD_DEPTH_LIMIT: usize = 32;
 
 #[derive(Clone, Debug)]
 pub(super) struct ModDir {
@@ -50,7 +49,7 @@ impl ModDir {
 
     fn child(&self, dir_path: DirPath, root_non_dir_owner: bool) -> Option<ModDir> {
         let depth = self.depth + 1;
-        if MOD_DEPTH_LIMIT.check(depth as usize).is_err() {
+        if depth as usize > MOD_DEPTH_LIMIT {
             tracing::error!("MOD_DEPTH_LIMIT exceeded");
             cov_mark::hit!(circular_mods);
             return None;
