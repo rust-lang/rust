@@ -77,6 +77,7 @@ static TARGET_FEATURE_IMPLICATIONS: LazyLock<FxHashMap<Symbol, Box<[Symbol]>>> =
         result
     });
 
+// spellchecker:off
 const TARGET_FEATURE_IMPLICATIONS_RAW: &[(&str, &[&str])] = &[
     // Arm
     ("aes", &["neon"]),
@@ -257,3 +258,4 @@ const TARGET_FEATURE_IMPLICATIONS_RAW: &[(&str, &[&str])] = &[
     ("isa-68060", &["isa-68040"]),
     ("isa-68882", &["isa-68881"]),
 ];
+// spellchecker:on
