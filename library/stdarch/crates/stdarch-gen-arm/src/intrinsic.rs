@@ -598,7 +598,10 @@ impl LLVMLink {
             })
             .try_collect()?;
 
-        Ok(FnCall::new_expression(link_sig.fn_name().into(), call_args))
+        Ok(FnCall::new_unsafe_expression(
+            link_sig.fn_name().into(),
+            call_args,
+        ))
     }
 
     /// Given a FnCall, apply all the predicate and unsigned conversions as required.
@@ -1251,7 +1254,7 @@ impl Intrinsic {
             .iter()
             .map(|sd| sd.try_into())
             .try_collect()?;
-        let mut call: Expression = FnCall(Box::new(name), args, statics).into();
+        let mut call: Expression = FnCall(Box::new(name), args, statics, false).into();
         call.build(self, ctx)?;
         Ok(vec![call])
     }
@@ -1320,7 +1323,7 @@ impl Intrinsic {
             .iter()
             .map(|sd| sd.try_into())
             .try_collect()?;
-        let mut call: Expression = FnCall(Box::new(name), args, statics).into();
+        let mut call: Expression = FnCall(Box::new(name), args, statics, false).into();
         call.build(self, ctx)?;
         Ok(vec![call])
     }
@@ -1413,7 +1416,7 @@ impl Intrinsic {
             .iter()
             .map(|sd| sd.try_into())
             .try_collect()?;
-        let mut call: Expression = FnCall(Box::new(name), args, statics).into();
+        let mut call: Expression = FnCall(Box::new(name), args, statics, false).into();
         call.build(self, ctx)?;
 
         variant.compose = vec![call];
@@ -1665,7 +1668,13 @@ impl Intrinsic {
             .return_type
             .as_ref()
             .and_then(|t| t.wildcard());
-        let call = FnCall(Box::new(target_signature.fn_name().into()), args, turbofish).into();
+        let call = FnCall(
+            Box::new(target_signature.fn_name().into()),
+            args,
+            turbofish,
+            false,
+        )
+        .into();
 
         self.compose = vec![convert_if_required(
             ret_wildcard,

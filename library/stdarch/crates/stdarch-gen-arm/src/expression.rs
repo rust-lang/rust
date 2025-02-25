@@ -42,11 +42,18 @@ pub struct FnCall(
     /// Function turbofish arguments
     #[serde(default)]
     pub Vec<Expression>,
+    /// Function requires unsafe wrapper
+    #[serde(default)]
+    pub bool,
 );
 
 impl FnCall {
     pub fn new_expression(fn_ptr: Expression, arguments: Vec<Expression>) -> Expression {
-        FnCall(Box::new(fn_ptr), arguments, Vec::new()).into()
+        FnCall(Box::new(fn_ptr), arguments, Vec::new(), false).into()
+    }
+
+    pub fn new_unsafe_expression(fn_ptr: Expression, arguments: Vec<Expression>) -> Expression {
+        FnCall(Box::new(fn_ptr), arguments, Vec::new(), true).into()
     }
 
     pub fn is_llvm_link_call(&self, llvm_link_name: &String) -> bool {
@@ -84,7 +91,7 @@ impl FnCall {
 
 impl ToTokens for FnCall {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let FnCall(fn_ptr, arguments, turbofish) = self;
+        let FnCall(fn_ptr, arguments, turbofish, _requires_unsafe_wrapper) = self;
 
         fn_ptr.to_tokens(tokens);
 
@@ -301,7 +308,7 @@ impl Expression {
             }
             Self::CastAs(exp, _ty) => exp.requires_unsafe_wrapper(ctx_fn),
             // Functions and macros can be unsafe, but can also contain other expressions.
-            Self::FnCall(FnCall(fn_exp, args, turbo_args)) => {
+            Self::FnCall(FnCall(fn_exp, args, turbo_args, requires_unsafe_wrapper)) => {
                 let fn_name = fn_exp.to_string();
                 fn_exp.requires_unsafe_wrapper(ctx_fn)
                     || fn_name.starts_with("_sv")
@@ -311,6 +318,7 @@ impl Expression {
                     || turbo_args
                         .iter()
                         .any(|exp| exp.requires_unsafe_wrapper(ctx_fn))
+                    || *requires_unsafe_wrapper
             }
             Self::MethodCall(exp, fn_name, args) => match fn_name.as_str() {
                 // `as_signed` and `as_unsigned` are unsafe because they're trait methods with
