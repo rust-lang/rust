@@ -1,4 +1,4 @@
-#![feature(naked_functions, linkage)]
+#![feature(linkage)]
 #![crate_type = "dylib"]
 
 use std::arch::naked_asm;

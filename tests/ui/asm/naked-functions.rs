@@ -2,7 +2,6 @@
 //@ ignore-nvptx64
 //@ ignore-spirv
 
-#![feature(naked_functions)]
 #![feature(asm_unwind, linkage)]
 #![crate_type = "lib"]
 
