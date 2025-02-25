@@ -221,7 +221,7 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
             };
             // params in THIR may be unsafe, e.g. a union pattern.
             for param in &inner_thir.params {
-                if let Some(param_pat) = param.pat.as_deref() {
+                if let Some(param_pat) = try { &inner_thir[param.pat?] } {
                     inner_visitor.visit_pat(param_pat);
                 }
             }
@@ -344,7 +344,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 if let ty::Adt(adt_def, ..) = pat.ty.kind() {
                     for pat in subpatterns {
                         if adt_def.non_enum_variant().fields[pat.field].safety.is_unsafe() {
-                            self.requires_unsafe(pat.pattern.span, UseOfUnsafeField);
+                            self.requires_unsafe(self.thir[pat.pattern].span, UseOfUnsafeField);
                         }
                     }
                     if adt_def.is_union() {
@@ -369,7 +369,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 for pat in subpatterns {
                     let field = &pat.field;
                     if adt_def.variant(*variant_index).fields[*field].safety.is_unsafe() {
-                        self.requires_unsafe(pat.pattern.span, UseOfUnsafeField);
+                        self.requires_unsafe(self.thir[pat.pattern].span, UseOfUnsafeField);
                     }
                 }
                 visit::walk_pat(self, pat);
@@ -1176,7 +1176,7 @@ pub(crate) fn check_unsafety(tcx: TyCtxt<'_>, def: LocalDefId) {
     };
     // params in THIR may be unsafe, e.g. a union pattern.
     for param in &thir.params {
-        if let Some(param_pat) = param.pat.as_deref() {
+        if let Some(param_pat) = try { &thir[param.pat?] } {
             visitor.visit_pat(param_pat);
         }
     }

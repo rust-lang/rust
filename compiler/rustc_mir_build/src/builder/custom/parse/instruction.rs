@@ -130,10 +130,11 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
         };
 
         let otherwise = &self.thir[*otherwise];
-        let PatKind::Wild = otherwise.pattern.kind else {
+        let otherwise_pattern = &self.thir[otherwise.pattern];
+        let PatKind::Wild = otherwise_pattern.kind else {
             return Err(ParseError {
                 span: otherwise.span,
-                item_description: format!("{:?}", otherwise.pattern.kind),
+                item_description: format!("{:?}", otherwise_pattern.kind),
                 expected: "wildcard pattern".to_string(),
             });
         };
@@ -143,17 +144,18 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
         let mut targets = Vec::new();
         for arm in rest {
             let arm = &self.thir[*arm];
-            let value = match arm.pattern.kind {
+            let arm_pattern = &self.thir[arm.pattern];
+            let value = match arm_pattern.kind {
                 PatKind::Constant { value } => value,
                 PatKind::ExpandedConstant { ref subpattern, def_id: _, is_inline: false }
-                    if let PatKind::Constant { value } = subpattern.kind =>
+                    if let PatKind::Constant { value } = self.thir[*subpattern].kind =>
                 {
                     value
                 }
                 _ => {
                     return Err(ParseError {
-                        span: arm.pattern.span,
-                        item_description: format!("{:?}", arm.pattern.kind),
+                        span: arm_pattern.span,
+                        item_description: format!("{:?}", arm_pattern.kind),
                         expected: "constant pattern".to_string(),
                     });
                 }

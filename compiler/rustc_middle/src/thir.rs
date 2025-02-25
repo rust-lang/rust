@@ -9,9 +9,9 @@
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/thir.html
 
 use std::cmp::Ordering;
-use std::fmt;
 use std::ops::Index;
 use std::sync::Arc;
+use std::{fmt, mem};
 
 use rustc_abi::{FieldIdx, Integer, Size, VariantIdx};
 use rustc_ast::{AsmMacro, InlineAsmOptions, InlineAsmTemplatePiece};
@@ -84,10 +84,10 @@ macro_rules! thir_with_elements {
 }
 
 thir_with_elements! {
-    arms: ArmId => Arm<'tcx> => "a{}",
+    arms: ArmId => Arm => "a{}",
     blocks: BlockId => Block => "b{}",
     exprs: ExprId => Expr<'tcx> => "e{}",
-    stmts: StmtId => Stmt<'tcx> => "s{}",
+    stmts: StmtId => Stmt => "s{}",
     params: ParamId => Param<'tcx> => "p{}",
     pats: PatId => Pat<'tcx> => "pat{}",
 }
@@ -103,7 +103,7 @@ pub enum BodyTy<'tcx> {
 #[derive(Debug, HashStable)]
 pub struct Param<'tcx> {
     /// The pattern that appears in the parameter list, or None for implicit parameters.
-    pub pat: Option<Box<Pat<'tcx>>>,
+    pub pat: Option<PatId>,
     /// The possibly inferred type.
     pub ty: Ty<'tcx>,
     /// Span of the explicitly provided type, or None if inferred for closures.
@@ -198,12 +198,12 @@ pub enum BlockSafety {
 }
 
 #[derive(Debug, HashStable)]
-pub struct Stmt<'tcx> {
-    pub kind: StmtKind<'tcx>,
+pub struct Stmt {
+    pub kind: StmtKind,
 }
 
 #[derive(Debug, HashStable)]
-pub enum StmtKind<'tcx> {
+pub enum StmtKind {
     /// An expression with a trailing semicolon.
     Expr {
         /// The scope for this statement; may be used as lifetime of temporaries.
@@ -226,7 +226,7 @@ pub enum StmtKind<'tcx> {
         /// `let <PAT> = ...`
         ///
         /// If a type annotation is included, it is added as an ascription pattern.
-        pattern: Box<Pat<'tcx>>,
+        pattern: PatId,
 
         /// `let pat: ty = <INIT>`
         initializer: Option<ExprId>,
@@ -374,7 +374,7 @@ pub enum ExprKind<'tcx> {
     /// (Not to be confused with [`StmtKind::Let`], which is a normal `let` statement.)
     Let {
         expr: ExprId,
-        pat: Box<Pat<'tcx>>,
+        pat: PatId,
     },
     /// A `match` expression.
     Match {
@@ -564,8 +564,8 @@ pub struct FruInfo<'tcx> {
 
 /// A `match` arm.
 #[derive(Debug, HashStable)]
-pub struct Arm<'tcx> {
-    pub pattern: Box<Pat<'tcx>>,
+pub struct Arm {
+    pub pattern: PatId,
     pub guard: Option<ExprId>,
     pub body: ExprId,
     pub lint_level: LintLevel,
@@ -619,9 +619,9 @@ pub enum InlineAsmOperand<'tcx> {
 }
 
 #[derive(Debug, HashStable, TypeVisitable)]
-pub struct FieldPat<'tcx> {
+pub struct FieldPat {
     pub field: FieldIdx,
-    pub pattern: Pat<'tcx>,
+    pub pattern: PatId,
 }
 
 #[derive(Debug, HashStable, TypeVisitable)]
@@ -669,7 +669,7 @@ impl<'tcx> Thir<'tcx> {
             return;
         }
 
-        for_each_immediate_subpat(pat, |p| self.walk_pat_inner(p, it));
+        for_each_immediate_subpat(self, pat, |p| self.walk_pat_inner(p, it));
     }
 
     /// Whether the pattern has a `PatKind::Error` nested within.
@@ -694,7 +694,7 @@ impl<'tcx> Thir<'tcx> {
 
         let mut references_error = TypeVisitableExt::references_error(pat);
         if !references_error {
-            for_each_immediate_subpat(pat, |p| {
+            for_each_immediate_subpat(self, pat, |p| {
                 references_error = references_error || self.pat_references_error(p);
             });
         }
@@ -721,12 +721,20 @@ impl<'tcx> Thir<'tcx> {
                 false
             }
             PatKind::Or { pats } => {
-                is_never_pattern = pats.iter().all(|p| self.is_never_pattern(p));
+                is_never_pattern = pats.iter().all(|&p| self.is_never_pattern(&self[p]));
                 false
             }
             _ => true,
         });
         is_never_pattern
+    }
+
+    /// FIXME(Zalathar): This method is a concession to existing code that was
+    /// extracting `PatKind` from owned patterns nodes, before `PatId` was
+    /// introduced. Ideally all callers should be modified to not need this.
+    pub fn take_pat_kind(&mut self, pat_id: PatId) -> PatKind<'tcx> {
+        // Replace the existing kind with an arbitrary dummy kind.
+        mem::replace(&mut self.pats[pat_id].kind, PatKind::Wild)
     }
 }
 
@@ -761,7 +769,7 @@ pub enum PatKind<'tcx> {
 
     AscribeUserType {
         ascription: Ascription<'tcx>,
-        subpattern: Box<Pat<'tcx>>,
+        subpattern: PatId,
     },
 
     /// `x`, `ref x`, `x @ P`, etc.
@@ -772,7 +780,7 @@ pub enum PatKind<'tcx> {
         #[type_visitable(ignore)]
         var: LocalVarId,
         ty: Ty<'tcx>,
-        subpattern: Option<Box<Pat<'tcx>>>,
+        subpattern: Option<PatId>,
 
         /// Is this the leftmost occurrence of the binding, i.e., is `var` the
         /// `HirId` of this pattern?
@@ -788,23 +796,23 @@ pub enum PatKind<'tcx> {
         adt_def: AdtDef<'tcx>,
         args: GenericArgsRef<'tcx>,
         variant_index: VariantIdx,
-        subpatterns: Vec<FieldPat<'tcx>>,
+        subpatterns: Vec<FieldPat>,
     },
 
     /// `(...)`, `Foo(...)`, `Foo{...}`, or `Foo`, where `Foo` is a variant name from an ADT with
     /// a single variant.
     Leaf {
-        subpatterns: Vec<FieldPat<'tcx>>,
+        subpatterns: Vec<FieldPat>,
     },
 
     /// `box P`, `&P`, `&mut P`, etc.
     Deref {
-        subpattern: Box<Pat<'tcx>>,
+        subpattern: PatId,
     },
 
     /// Deref pattern, written `box P` for now.
     DerefPattern {
-        subpattern: Box<Pat<'tcx>>,
+        subpattern: PatId,
         mutability: hir::Mutability,
     },
 
@@ -838,7 +846,7 @@ pub enum PatKind<'tcx> {
         /// Otherwise, the actual pattern that the constant lowered to. As with
         /// other constants, inline constants are matched structurally where
         /// possible.
-        subpattern: Box<Pat<'tcx>>,
+        subpattern: PatId,
     },
 
     Range(Arc<PatRange<'tcx>>),
@@ -847,22 +855,22 @@ pub enum PatKind<'tcx> {
     /// irrefutable when there is a slice pattern and both `prefix` and `suffix` are empty.
     /// e.g., `&[ref xs @ ..]`.
     Slice {
-        prefix: Box<[Pat<'tcx>]>,
-        slice: Option<Box<Pat<'tcx>>>,
-        suffix: Box<[Pat<'tcx>]>,
+        prefix: Box<[PatId]>,
+        slice: Option<PatId>,
+        suffix: Box<[PatId]>,
     },
 
     /// Fixed match against an array; irrefutable.
     Array {
-        prefix: Box<[Pat<'tcx>]>,
-        slice: Option<Box<Pat<'tcx>>>,
-        suffix: Box<[Pat<'tcx>]>,
+        prefix: Box<[PatId]>,
+        slice: Option<PatId>,
+        suffix: Box<[PatId]>,
     },
 
     /// An or-pattern, e.g. `p | q`.
     /// Invariant: `pats.len() >= 2`.
     Or {
-        pats: Box<[Pat<'tcx>]>,
+        pats: Box<[PatId]>,
     },
 
     /// A never pattern `!`.
@@ -1128,7 +1136,7 @@ mod size_asserts {
     static_assert_size!(ExprKind<'_>, 40);
     static_assert_size!(Pat<'_>, 64);
     static_assert_size!(PatKind<'_>, 48);
-    static_assert_size!(Stmt<'_>, 48);
-    static_assert_size!(StmtKind<'_>, 48);
+    static_assert_size!(Stmt, 44);
+    static_assert_size!(StmtKind, 44);
     // tidy-alphabetical-end
 }

@@ -155,6 +155,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // │Continue...     │      └────────────────┘
                     // └────────────────┘
 
+                    let pattern = &this.thir[*pattern];
                     let ignores_expr_result = matches!(pattern.kind, PatKind::Wild);
                     this.block_context.push(BlockFrame::Statement { ignores_expr_result });
 
@@ -246,6 +247,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     else_block: None,
                     span: _,
                 } => {
+                    let pattern = &this.thir[*pattern];
                     let ignores_expr_result = matches!(pattern.kind, PatKind::Wild);
                     this.block_context.push(BlockFrame::Statement { ignores_expr_result });
 

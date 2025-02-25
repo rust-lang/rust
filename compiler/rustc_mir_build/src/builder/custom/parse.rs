@@ -83,7 +83,7 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
         match &self.thir[stmt_id].kind {
             StmtKind::Expr { expr, .. } => Ok(*expr),
             kind @ StmtKind::Let { pattern, .. } => Err(ParseError {
-                span: pattern.span,
+                span: self.thir[*pattern].span,
                 item_description: format!("{kind:?}"),
                 expected: "expression".to_string(),
             }),
@@ -93,7 +93,7 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
     pub(crate) fn parse_args(&mut self, params: &IndexSlice<ParamId, Param<'tcx>>) -> PResult<()> {
         for param in params.iter() {
             let (var, span) = {
-                let pat = param.pat.as_ref().unwrap();
+                let pat = &self.thir[param.pat.unwrap()];
                 match &pat.kind {
                     PatKind::Binding { var, .. } => (*var, pat.span),
                     _ => {
@@ -198,7 +198,7 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
     fn parse_basic_block_decl(&mut self, stmt: StmtId) -> PResult<()> {
         match &self.thir[stmt].kind {
             StmtKind::Let { pattern, initializer: Some(initializer), .. } => {
-                let (var, ..) = self.parse_var(pattern)?;
+                let (var, ..) = self.parse_var(&self.thir[*pattern])?;
                 let data = BasicBlockData::new(
                     None,
                     parse_by_kind!(self, *initializer, _, "basic block declaration",
@@ -277,7 +277,7 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
 
     fn parse_let_statement(&mut self, stmt_id: StmtId) -> PResult<(LocalVarId, Ty<'tcx>, Span)> {
         let pattern = match &self.thir[stmt_id].kind {
-            StmtKind::Let { pattern, .. } => pattern,
+            StmtKind::Let { pattern, .. } => &self.thir[*pattern],
             StmtKind::Expr { expr, .. } => {
                 return Err(self.expr_error(*expr, "let statement"));
             }
@@ -286,13 +286,14 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
         self.parse_var(pattern)
     }
 
-    fn parse_var(&mut self, mut pat: &Pat<'tcx>) -> PResult<(LocalVarId, Ty<'tcx>, Span)> {
+    fn parse_var(&mut self, pat: &Pat<'tcx>) -> PResult<(LocalVarId, Ty<'tcx>, Span)> {
         // Make sure we throw out any `AscribeUserType` we find
+        let mut pat = pat;
         loop {
             match &pat.kind {
                 PatKind::Binding { var, ty, .. } => break Ok((*var, *ty, pat.span)),
                 PatKind::AscribeUserType { subpattern, .. } => {
-                    pat = subpattern;
+                    pat = &self.thir[*subpattern];
                 }
                 _ => {
                     break Err(ParseError {

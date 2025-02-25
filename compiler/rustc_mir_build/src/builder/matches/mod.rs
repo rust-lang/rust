@@ -199,10 +199,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 })
             }
             ExprKind::Use { source } => this.then_else_break_inner(block, source, args),
-            ExprKind::Let { expr, ref pat } => this.lower_let_expr(
+            ExprKind::Let { expr, pat } => this.lower_let_expr(
                 block,
                 expr,
-                pat,
+                &this.thir[pat],
                 Some(args.variable_source_info.scope),
                 args.variable_source_info.span,
                 args.declare_let_bindings,
@@ -383,7 +383,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let arm = &self.thir[arm];
                 let has_match_guard =
                     if arm.guard.is_some() { HasMatchGuard::Yes } else { HasMatchGuard::No };
-                (&*arm.pattern, has_match_guard)
+                (&self.thir[arm.pattern], has_match_guard)
             })
             .collect();
         let built_tree = self.lower_match_tree(
@@ -467,7 +467,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let scope = this.declare_bindings(
                         None,
                         arm.span,
-                        &arm.pattern,
+                        &this.thir[arm.pattern],
                         arm.guard,
                         opt_scrutinee_place,
                     );
@@ -531,7 +531,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         branch: MatchTreeBranch<'tcx>,
         fake_borrow_temps: &[(Place<'tcx>, Local, FakeBorrowKind)],
         scrutinee_span: Span,
-        arm_match_scope: Option<(&Arm<'tcx>, region::Scope)>,
+        arm_match_scope: Option<(&Arm, region::Scope)>,
         emit_storage_live: EmitStorageLive,
     ) -> BasicBlock {
         if branch.sub_branches.len() == 1 {
@@ -617,14 +617,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // Optimize the case of `let x: T = ...` to write directly
             // into `x` and then require that `T == typeof(x)`.
             PatKind::AscribeUserType {
-                ref subpattern,
+                subpattern,
                 ascription: thir::Ascription { ref annotation, variance: _ },
             } if let PatKind::Binding {
                 mode: BindingMode(ByRef::No, _),
                 var,
                 subpattern: None,
                 ..
-            } = subpattern.kind =>
+            } = self.thir[subpattern].kind =>
             {
                 let place = self.storage_live_binding(
                     block,
@@ -797,8 +797,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         visibility_scope: Option<SourceScope>,
     ) {
         match self.thir.exprs[guard_expr].kind {
-            ExprKind::Let { expr: _, pat: ref guard_pat } => {
+            ExprKind::Let { expr: _, pat: guard_pat } => {
                 // FIXME: pass a proper `opt_match_place`
+                let guard_pat = &self.thir[guard_pat];
                 self.declare_bindings(visibility_scope, scope_span, guard_pat, None, None);
             }
             ExprKind::Scope { value, .. } => {
@@ -890,31 +891,31 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         ),
     ) {
         // Avoid having to write the full method name at each recursive call.
-        let visit_subpat = |this: &mut Self, subpat, user_tys: &_, f: &mut _| {
-            this.visit_primary_bindings_special(subpat, user_tys, f)
+        let visit_subpat = |this: &mut Self, subpat: PatId, user_tys: &_, f: &mut _| {
+            this.visit_primary_bindings_special(&this.thir[subpat], user_tys, f)
         };
 
         match pattern.kind {
-            PatKind::Binding { name, mode, var, ty, ref subpattern, is_primary, .. } => {
+            PatKind::Binding { name, mode, var, ty, subpattern, is_primary, .. } => {
                 if is_primary {
                     f(self, name, mode, var, pattern.span, ty, user_tys);
                 }
-                if let Some(subpattern) = subpattern.as_ref() {
+                if let Some(subpattern) = subpattern {
                     visit_subpat(self, subpattern, user_tys, f);
                 }
             }
 
-            PatKind::Array { ref prefix, ref slice, ref suffix }
-            | PatKind::Slice { ref prefix, ref slice, ref suffix } => {
+            PatKind::Array { ref prefix, slice, ref suffix }
+            | PatKind::Slice { ref prefix, slice, ref suffix } => {
                 let from = u64::try_from(prefix.len()).unwrap();
                 let to = u64::try_from(suffix.len()).unwrap();
-                for subpattern in prefix.iter() {
+                for &subpattern in prefix {
                     visit_subpat(self, subpattern, &user_tys.index(), f);
                 }
                 if let Some(subpattern) = slice {
                     visit_subpat(self, subpattern, &user_tys.subslice(from, to), f);
                 }
-                for subpattern in suffix.iter() {
+                for &subpattern in suffix {
                     visit_subpat(self, subpattern, &user_tys.index(), f);
                 }
             }
@@ -925,16 +926,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | PatKind::Never
             | PatKind::Error(_) => {}
 
-            PatKind::Deref { ref subpattern } => {
+            PatKind::Deref { subpattern } => {
                 visit_subpat(self, subpattern, &user_tys.deref(), f);
             }
 
-            PatKind::DerefPattern { ref subpattern, .. } => {
+            PatKind::DerefPattern { subpattern, .. } => {
                 visit_subpat(self, subpattern, &ProjectedUserTypesNode::None, f);
             }
 
             PatKind::AscribeUserType {
-                ref subpattern,
+                subpattern,
                 ascription: thir::Ascription { ref annotation, variance: _ },
             } => {
                 // This corresponds to something like
@@ -954,7 +955,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 visit_subpat(self, subpattern, &subpattern_user_tys, f)
             }
 
-            PatKind::ExpandedConstant { ref subpattern, .. } => {
+            PatKind::ExpandedConstant { subpattern, .. } => {
                 visit_subpat(self, subpattern, user_tys, f)
             }
 
@@ -962,7 +963,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 for subpattern in subpatterns {
                     let subpattern_user_tys = user_tys.leaf(subpattern.field);
                     debug!("visit_primary_bindings: subpattern_user_tys={subpattern_user_tys:?}");
-                    visit_subpat(self, &subpattern.pattern, &subpattern_user_tys, f);
+                    visit_subpat(self, subpattern.pattern, &subpattern_user_tys, f);
                 }
             }
 
@@ -970,7 +971,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 for subpattern in subpatterns {
                     let subpattern_user_tys =
                         user_tys.variant(adt_def, variant_index, subpattern.field);
-                    visit_subpat(self, &subpattern.pattern, &subpattern_user_tys, f);
+                    visit_subpat(self, subpattern.pattern, &subpattern_user_tys, f);
                 }
             }
             PatKind::Or { ref pats } => {
@@ -978,7 +979,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // may not all be in the leftmost subpattern. For example in
                 // `let (x | y) = ...`, the primary binding of `y` occurs in
                 // the right subpattern
-                for subpattern in pats.iter() {
+                for &subpattern in pats {
                     visit_subpat(self, subpattern, user_tys, f);
                 }
             }
@@ -2433,7 +2434,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         sub_branch: MatchTreeSubBranch<'tcx>,
         fake_borrows: &[(Place<'tcx>, Local, FakeBorrowKind)],
         scrutinee_span: Span,
-        arm_match_scope: Option<(&Arm<'tcx>, region::Scope)>,
+        arm_match_scope: Option<(&Arm, region::Scope)>,
         schedule_drops: ScheduleDrops,
         emit_storage_live: EmitStorageLive,
     ) -> BasicBlock {

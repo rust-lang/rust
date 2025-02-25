@@ -61,7 +61,7 @@ pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), Err
     };
 
     for param in thir.params.iter() {
-        if let Some(box ref pattern) = param.pat {
+        if let Some(pattern) = try { &thir[param.pat?] } {
             visitor.check_binding_is_irrefutable(pattern, origin, None, None);
         }
     }
@@ -110,14 +110,14 @@ impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
     }
 
     #[instrument(level = "trace", skip(self))]
-    fn visit_arm(&mut self, arm: &'p Arm<'tcx>) {
+    fn visit_arm(&mut self, arm: &'p Arm) {
         self.with_lint_level(arm.lint_level, |this| {
             if let Some(expr) = arm.guard {
                 this.with_let_source(LetSource::IfLetGuard, |this| {
                     this.visit_expr(&this.thir[expr])
                 });
             }
-            this.visit_pat(&arm.pattern);
+            this.visit_pat(&self.thir[arm.pattern]);
             this.visit_expr(&self.thir[arm.body]);
         });
     }
@@ -154,8 +154,8 @@ impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
             ExprKind::Match { scrutinee, box ref arms, match_source } => {
                 self.check_match(scrutinee, arms, match_source, ex.span);
             }
-            ExprKind::Let { box ref pat, expr } => {
-                self.check_let(pat, Some(expr), ex.span);
+            ExprKind::Let { pat, expr } => {
+                self.check_let(&self.thir[pat], Some(expr), ex.span);
             }
             ExprKind::LogicalOp { op: LogicalOp::And, .. }
                 if !matches!(self.let_source, LetSource::None) =>
@@ -173,16 +173,14 @@ impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
         self.with_let_source(LetSource::None, |this| visit::walk_expr(this, ex));
     }
 
-    fn visit_stmt(&mut self, stmt: &'p Stmt<'tcx>) {
+    fn visit_stmt(&mut self, stmt: &'p Stmt) {
         match stmt.kind {
-            StmtKind::Let {
-                box ref pattern, initializer, else_block, lint_level, span, ..
-            } => {
+            StmtKind::Let { pattern, initializer, else_block, lint_level, span, .. } => {
                 self.with_lint_level(lint_level, |this| {
                     let let_source =
                         if else_block.is_some() { LetSource::LetElse } else { LetSource::PlainLet };
                     this.with_let_source(let_source, |this| {
-                        this.check_let(pattern, initializer, span)
+                        this.check_let(&this.thir[pattern], initializer, span)
                     });
                     visit::walk_stmt(this, stmt);
                 });
@@ -256,12 +254,12 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             ExprKind::Scope { value, lint_level, .. } => {
                 self.with_lint_level(lint_level, |this| this.visit_land_rhs(&this.thir[value]))
             }
-            ExprKind::Let { box ref pat, expr } => {
+            ExprKind::Let { pat, expr } => {
                 let expr = &self.thir()[expr];
                 self.with_let_source(LetSource::None, |this| {
                     this.visit_expr(expr);
                 });
-                Ok(Some((ex.span, self.is_let_irrefutable(pat, Some(expr))?)))
+                Ok(Some((ex.span, self.is_let_irrefutable(&self.thir[pat], Some(expr))?)))
             }
             _ => {
                 self.with_let_source(LetSource::None, |this| {
@@ -460,7 +458,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         for &arm in arms {
             let arm = &self.thir.arms[arm];
             let got_error = self.with_lint_level(arm.lint_level, |this| {
-                let Ok(pat) = this.lower_pattern(&cx, &arm.pattern) else { return true };
+                let Ok(pat) = this.lower_pattern(&cx, &this.thir[arm.pattern]) else { return true };
                 let arm =
                     MatchArm { pat, arm_data: this.lint_level, has_guard: arm.guard.is_some() };
                 tarms.push(arm);
@@ -497,13 +495,13 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
                 && let [_, snd_arm] = *arms
             {
                 // the for loop pattern is not irrefutable
-                let pat = &self.thir[snd_arm].pattern;
+                let pat = &self.thir[self.thir[snd_arm].pattern];
                 // `pat` should be `Some(<pat_field>)` from a desugared for loop.
                 debug_assert_eq!(pat.span.desugaring_kind(), Some(DesugaringKind::ForLoop));
                 let PatKind::Variant { ref subpatterns, .. } = pat.kind else { bug!() };
                 let [pat_field] = &subpatterns[..] else { bug!() };
                 self.check_binding_is_irrefutable(
-                    &pat_field.pattern,
+                    &self.thir[pat_field.pattern],
                     "`for` loop binding",
                     None,
                     None,
@@ -672,8 +670,8 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         // These next few matches want to peek through `AscribeUserType` to see
         // the underlying pattern.
         let mut unpeeled_pat = pat;
-        while let PatKind::AscribeUserType { ref subpattern, .. } = unpeeled_pat.kind {
-            unpeeled_pat = subpattern;
+        while let PatKind::AscribeUserType { subpattern, .. } = unpeeled_pat.kind {
+            unpeeled_pat = &self.thir[subpattern];
         }
 
         if let PatKind::ExpandedConstant { def_id, is_inline: false, .. } = unpeeled_pat.kind
@@ -768,9 +766,10 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
 /// This analysis is *not* subsumed by NLL.
 fn check_borrow_conflicts_in_at_patterns<'tcx>(cx: &MatchVisitor<'_, 'tcx>, pat: &Pat<'tcx>) {
     // Extract `sub` in `binding @ sub`.
-    let PatKind::Binding { name, mode, ty, subpattern: Some(box ref sub), .. } = pat.kind else {
+    let PatKind::Binding { name, mode, ty, subpattern: Some(sub), .. } = pat.kind else {
         return;
     };
+    let sub = &cx.thir[sub];
 
     let is_binding_by_move = |ty: Ty<'tcx>| !cx.tcx.type_is_copy_modulo_regions(cx.typing_env, ty);
 
@@ -1300,14 +1299,15 @@ fn report_non_exhaustive_match<'p, 'tcx>(
 
     for &arm in arms {
         let arm = &thir.arms[arm];
-        if let PatKind::ExpandedConstant { def_id, is_inline: false, .. } = arm.pattern.kind
-            && let Ok(snippet) = cx.tcx.sess.source_map().span_to_snippet(arm.pattern.span)
+        let arm_pattern = &thir[arm.pattern];
+        if let PatKind::ExpandedConstant { def_id, is_inline: false, .. } = arm_pattern.kind
+            && let Ok(snippet) = cx.tcx.sess.source_map().span_to_snippet(arm_pattern.span)
             // We filter out paths with multiple path::segments.
             && snippet.chars().all(|c| c.is_alphanumeric() || c == '_')
         {
             let const_name = cx.tcx.item_name(def_id);
             err.span_label(
-                arm.pattern.span,
+                arm_pattern.span,
                 format!(
                     "this pattern doesn't introduce a new catch-all binding, but rather pattern \
                      matches against the value of constant `{const_name}`",
@@ -1315,7 +1315,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
             );
             err.span_note(cx.tcx.def_span(def_id), format!("constant `{const_name}` defined here"));
             err.span_suggestion_verbose(
-                arm.pattern.span.shrink_to_hi(),
+                arm_pattern.span.shrink_to_hi(),
                 "if you meant to introduce a binding, use a different name",
                 "_var".to_string(),
                 Applicability::MaybeIncorrect,

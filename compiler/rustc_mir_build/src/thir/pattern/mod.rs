@@ -15,7 +15,7 @@ use rustc_hir::{self as hir, RangeEnd};
 use rustc_index::Idx;
 use rustc_middle::mir::interpret::LitToConstInput;
 use rustc_middle::thir::{
-    Ascription, FieldPat, LocalVarId, Pat, PatKind, PatRange, PatRangeBoundary, Thir,
+    Ascription, FieldPat, LocalVarId, Pat, PatId, PatKind, PatRange, PatRangeBoundary, Thir,
 };
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, TyCtxt, TypeVisitableExt};
@@ -30,7 +30,7 @@ use crate::errors::*;
 
 struct PatCtxt<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    thir: &'a Thir<'tcx>,
+    thir: &'a mut Thir<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
     typeck_results: &'a ty::TypeckResults<'tcx>,
 
@@ -40,11 +40,11 @@ struct PatCtxt<'a, 'tcx> {
 
 pub(super) fn pat_from_hir<'a, 'tcx>(
     tcx: TyCtxt<'tcx>,
-    thir: &'a Thir<'tcx>,
+    thir: &'a mut Thir<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
     typeck_results: &'a ty::TypeckResults<'tcx>,
     pat: &'tcx hir::Pat<'tcx>,
-) -> Box<Pat<'tcx>> {
+) -> PatId {
     let mut pcx = PatCtxt {
         tcx,
         thir,
@@ -56,15 +56,15 @@ pub(super) fn pat_from_hir<'a, 'tcx>(
             .map(PatMigration::new),
     };
     let result = pcx.lower_pattern(pat);
-    debug!("pat_from_hir({:?}) = {:?}", pat, result);
     if let Some(m) = pcx.rust_2024_migration {
         m.emit(tcx, pat.hir_id);
     }
+    debug!("pat_from_hir({pat:?}) = [{result:?}] {:?}", &thir[result]);
     result
 }
 
 impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
-    fn lower_pattern(&mut self, pat: &'tcx hir::Pat<'tcx>) -> Box<Pat<'tcx>> {
+    fn lower_pattern(&mut self, pat: &'tcx hir::Pat<'tcx>) -> PatId {
         let adjustments: &[Ty<'tcx>] =
             self.typeck_results.pat_adjustments().get(pat.hir_id).map_or(&[], |v| &**v);
 
@@ -106,8 +106,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
         let adjusted_pat = adjustments.iter().rev().fold(unadjusted_pat, |thir_pat, ref_ty| {
             debug!("{:?}: wrapping pattern with type {:?}", thir_pat, ref_ty);
-            Box::new(Pat {
-                span: thir_pat.span,
+            self.thir.pats.push(Pat {
+                span: self.thir[thir_pat].span,
                 ty: *ref_ty,
                 kind: PatKind::Deref { subpattern: thir_pat },
             })
@@ -140,13 +140,13 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             match kind {
                 PatKind::AscribeUserType { ascription, subpattern } => {
                     ascriptions.push(ascription);
-                    kind = subpattern.kind;
+                    kind = self.thir.take_pat_kind(subpattern);
                 }
                 PatKind::ExpandedConstant { is_inline, def_id, subpattern } => {
                     if is_inline {
                         inline_consts.extend(def_id.as_local());
                     }
-                    kind = subpattern.kind;
+                    kind = self.thir.take_pat_kind(subpattern);
                 }
                 _ => break,
             }
@@ -274,21 +274,21 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         for ascription in ascriptions {
             kind = PatKind::AscribeUserType {
                 ascription,
-                subpattern: Box::new(Pat { span, ty, kind }),
+                subpattern: self.thir.pats.push(Pat { span, ty, kind }),
             };
         }
         for def in inline_consts {
             kind = PatKind::ExpandedConstant {
                 def_id: def.to_def_id(),
                 is_inline: true,
-                subpattern: Box::new(Pat { span, ty, kind }),
+                subpattern: self.thir.pats.push(Pat { span, ty, kind }),
             };
         }
         Ok(kind)
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn lower_pattern_unadjusted(&mut self, pat: &'tcx hir::Pat<'tcx>) -> Box<Pat<'tcx>> {
+    fn lower_pattern_unadjusted(&mut self, pat: &'tcx hir::Pat<'tcx>) -> PatId {
         let mut ty = self.typeck_results.node_type(pat.hir_id);
         let mut span = pat.span;
 
@@ -367,7 +367,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     name: ident.name,
                     var: LocalVarId(id),
                     ty: var_ty,
-                    subpattern: self.lower_opt_pattern(sub),
+                    subpattern: try { self.lower_pattern(sub?) },
                     is_primary: id == pat.hir_id,
                 }
             }
@@ -388,7 +388,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     .iter()
                     .map(|field| FieldPat {
                         field: self.typeck_results.field_index(field.hir_id),
-                        pattern: *self.lower_pattern(field.pat),
+                        pattern: self.lower_pattern(field.pat),
                     })
                     .collect();
 
@@ -398,12 +398,15 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             hir::PatKind::Or(pats) => PatKind::Or { pats: self.lower_patterns(pats) },
 
             // FIXME(guard_patterns): implement guard pattern lowering
-            hir::PatKind::Guard(pat, _) => self.lower_pattern(pat).kind,
+            hir::PatKind::Guard(pat, _) => {
+                let pat = self.lower_pattern(pat);
+                self.thir.take_pat_kind(pat)
+            }
 
             hir::PatKind::Err(guar) => PatKind::Error(guar),
         };
 
-        Box::new(Pat { span, ty, kind })
+        self.thir.pats.push(Pat { span, ty, kind })
     }
 
     fn lower_tuple_subpats(
@@ -411,22 +414,18 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         pats: &'tcx [hir::Pat<'tcx>],
         expected_len: usize,
         gap_pos: hir::DotDotPos,
-    ) -> Vec<FieldPat<'tcx>> {
+    ) -> Vec<FieldPat> {
         pats.iter()
             .enumerate_and_adjust(expected_len, gap_pos)
             .map(|(i, subpattern)| FieldPat {
                 field: FieldIdx::new(i),
-                pattern: *self.lower_pattern(subpattern),
+                pattern: self.lower_pattern(subpattern),
             })
             .collect()
     }
 
-    fn lower_patterns(&mut self, pats: &'tcx [hir::Pat<'tcx>]) -> Box<[Pat<'tcx>]> {
-        pats.iter().map(|p| *self.lower_pattern(p)).collect()
-    }
-
-    fn lower_opt_pattern(&mut self, pat: Option<&'tcx hir::Pat<'tcx>>) -> Option<Box<Pat<'tcx>>> {
-        pat.map(|p| self.lower_pattern(p))
+    fn lower_patterns(&mut self, pats: &'tcx [hir::Pat<'tcx>]) -> Box<[PatId]> {
+        pats.iter().map(|p| self.lower_pattern(p)).collect()
     }
 
     fn slice_or_array_pattern(
@@ -438,7 +437,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         suffix: &'tcx [hir::Pat<'tcx>],
     ) -> PatKind<'tcx> {
         let prefix = self.lower_patterns(prefix);
-        let slice = self.lower_opt_pattern(slice);
+        let slice = try { self.lower_pattern(slice?) };
         let suffix = self.lower_patterns(suffix);
         match ty.kind() {
             // Matching a slice, `[T]`.
@@ -461,7 +460,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         hir_id: hir::HirId,
         span: Span,
         ty: Ty<'tcx>,
-        subpatterns: Vec<FieldPat<'tcx>>,
+        subpatterns: Vec<FieldPat>,
     ) -> PatKind<'tcx> {
         let res = match res {
             Res::Def(DefKind::Ctor(CtorOf::Variant, ..), variant_ctor_id) => {
@@ -530,7 +529,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 inferred_ty: self.typeck_results.node_type(hir_id),
             };
             kind = PatKind::AscribeUserType {
-                subpattern: Box::new(Pat { span, ty, kind }),
+                subpattern: self.thir.pats.push(Pat { span, ty, kind }),
                 ascription: Ascription { annotation, variance: ty::Covariant },
             };
         }
@@ -549,7 +548,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     /// it to `const_to_pat`. Any other path (like enum variants without fields)
     /// is converted to the corresponding pattern via `lower_variant_or_leaf`.
     #[instrument(skip(self), level = "debug")]
-    fn lower_path(&mut self, qpath: &hir::QPath<'_>, id: hir::HirId, span: Span) -> Box<Pat<'tcx>> {
+    fn lower_path(&mut self, qpath: &hir::QPath<'_>, id: hir::HirId, span: Span) -> PatId {
         let ty = self.typeck_results.node_type(id);
         let res = self.typeck_results.qpath_res(qpath, id);
 
@@ -563,7 +562,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 // The path isn't the name of a constant, so it must actually
                 // be a unit struct or unit variant (e.g. `Option::None`).
                 let kind = self.lower_variant_or_leaf(res, id, span, ty, vec![]);
-                return Box::new(Pat { span, ty, kind });
+                return self.thir.pats.push(Pat { span, ty, kind });
             }
         };
 
@@ -577,7 +576,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         // diagnostics in some situations, but has no effect at runtime.
         let mut pattern = {
             let kind = PatKind::ExpandedConstant { subpattern, def_id, is_inline: false };
-            Box::new(Pat { span, ty, kind })
+            self.thir.pats.push(Pat { span, ty, kind })
         };
 
         // If this is an associated constant with an explicit user-written
@@ -597,7 +596,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     variance: ty::Contravariant,
                 },
             };
-            pattern = Box::new(Pat { span, kind, ty });
+            pattern = self.thir.pats.push(Pat { span, kind, ty });
         }
 
         pattern
@@ -636,7 +635,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     fn lower_pat_expr(&mut self, expr: &'tcx hir::PatExpr<'tcx>) -> PatKind<'tcx> {
         let (lit, neg) = match &expr.kind {
             hir::PatExprKind::Path(qpath) => {
-                return self.lower_path(qpath, expr.hir_id, expr.span).kind;
+                let pat = self.lower_path(qpath, expr.hir_id, expr.span);
+                return self.thir.take_pat_kind(pat);
             }
             hir::PatExprKind::ConstBlock(anon_const) => {
                 return self.lower_inline_const(anon_const, expr.hir_id, expr.span);
@@ -647,6 +647,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let ct_ty = self.typeck_results.node_type(expr.hir_id);
         let lit_input = LitToConstInput { lit: &lit.node, ty: ct_ty, neg };
         let constant = self.tcx.at(expr.span).lit_to_const(lit_input);
-        self.const_to_pat(constant, ct_ty, expr.hir_id, lit.span).kind
+        let pat = self.const_to_pat(constant, ct_ty, expr.hir_id, lit.span);
+        self.thir.take_pat_kind(pat)
     }
 }
