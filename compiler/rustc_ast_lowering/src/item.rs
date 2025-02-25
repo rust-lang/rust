@@ -1680,18 +1680,21 @@ impl<'hir> LoweringContext<'_, 'hir> {
         define_opaques: &Option<ThinVec<(NodeId, Path)>>,
     ) -> Option<&'hir [LocalDefId]> {
         define_opaques.as_ref().map(|d| {
-            &*self.arena.alloc_from_iter(
-                d.iter()
-                    // TODO: error reporting for non-local items being mentioned and tests that go through these code paths
-                    .map(|(id, _path)| {
-                        self.resolver
-                            .get_partial_res(*id)
-                            .unwrap()
-                            .expect_full_res()
-                            .def_id()
-                            .expect_local()
-                    }),
-            )
+            &*self.arena.alloc_from_iter(d.iter().filter_map(|(id, path)| {
+                let res = self.resolver.get_partial_res(*id).unwrap();
+                let Some(did) = res.expect_full_res().opt_def_id() else {
+                    self.dcx().span_delayed_bug(path.span, "should have errored in resolve");
+                    return None;
+                };
+                let Some(did) = did.as_local() else {
+                    self.dcx().span_err(
+                        path.span,
+                        "only opaque types defined in the local crate can be defined",
+                    );
+                    return None;
+                };
+                Some(did)
+            }))
         })
     }
 
