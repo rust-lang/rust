@@ -144,6 +144,7 @@ mod cmp;
 mod const_ptr;
 mod convert;
 mod ffi;
+mod floats;
 mod fmt;
 mod future;
 mod hash;
