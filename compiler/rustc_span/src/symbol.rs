@@ -1877,8 +1877,6 @@ symbols! {
         simd_fma,
         simd_fmax,
         simd_fmin,
-        simd_fpow,
-        simd_fpowi,
         simd_fsin,
         simd_fsqrt,
         simd_gather,
