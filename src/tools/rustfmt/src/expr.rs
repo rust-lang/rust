@@ -137,6 +137,10 @@ pub(crate) fn format_expr(
         ast::ExprKind::Tup(ref items) => {
             rewrite_tuple(context, items.iter(), expr.span, shape, items.len() == 1)
         }
+        ast::ExprKind::Use(_, _) => {
+            // FIXME: properly implement this
+            Ok(context.snippet(expr.span()).to_owned())
+        }
         ast::ExprKind::Let(ref pat, ref expr, _span, _) => rewrite_let(context, shape, pat, expr),
         ast::ExprKind::If(..)
         | ast::ExprKind::ForLoop { .. }
