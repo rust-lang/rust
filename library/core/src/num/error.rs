@@ -79,7 +79,7 @@ pub struct ParseIntError {
 /// # }
 /// ```
 #[stable(feature = "int_error_matching", since = "1.55.0")]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Copy, Hash)]
 #[non_exhaustive]
 pub enum IntErrorKind {
     /// Value being parsed is empty.
