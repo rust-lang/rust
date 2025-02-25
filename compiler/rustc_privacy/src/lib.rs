@@ -1351,6 +1351,7 @@ struct SearchInterfaceForPrivateItemsVisitor<'tcx> {
     required_effective_vis: Option<EffectiveVisibility>,
     in_assoc_ty: bool,
     in_primary_interface: bool,
+    check_private_dep_leaks_only: bool,
 }
 
 impl SearchInterfaceForPrivateItemsVisitor<'_> {
@@ -1409,6 +1410,10 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                     krate: self.tcx.crate_name(def_id.krate),
                 },
             );
+        }
+
+        if self.check_private_dep_leaks_only {
+            return false;
         }
 
         let Some(local_def_id) = def_id.as_local() else {
@@ -1530,6 +1535,23 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
             required_effective_vis,
             in_assoc_ty: false,
             in_primary_interface: true,
+            check_private_dep_leaks_only: false,
+        }
+    }
+
+    fn check_private_dep_leaks_only(
+        &self,
+        def_id: LocalDefId,
+        required_visibility: ty::Visibility,
+    ) -> SearchInterfaceForPrivateItemsVisitor<'tcx> {
+        SearchInterfaceForPrivateItemsVisitor {
+            tcx: self.tcx,
+            item_def_id: def_id,
+            required_visibility,
+            required_effective_vis: None,
+            in_assoc_ty: false,
+            in_primary_interface: true,
+            check_private_dep_leaks_only: true,
         }
     }
 
@@ -1732,6 +1754,14 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
                             .generics()
                             .predicates();
                     }
+
+                    // normally, a public item can implement a private trait, but this should be linted for leakages of
+                    // private dependencies.
+                    if let Some(trait_ref) = tcx.impl_trait_ref(item.owner_id.def_id) {
+                        self.check_private_dep_leaks_only(item.owner_id.def_id, impl_vis)
+                            .visit_trait(trait_ref.instantiate_identity());
+                    }
+
                     for impl_item_ref in impl_.items {
                         let impl_item_vis = if impl_.of_trait.is_none() {
                             min(
