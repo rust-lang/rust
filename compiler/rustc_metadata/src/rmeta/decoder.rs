@@ -1116,7 +1116,6 @@ impl<'a> CrateMetadataRef<'a> {
                         value: self.get_default_field(did.index),
                     })
                     .collect(),
-                adt_kind,
                 parent_did,
                 None,
                 data.is_non_exhaustive,
