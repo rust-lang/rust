@@ -1184,23 +1184,17 @@ impl VariantDef {
     ///
     /// If someone speeds up attribute loading to not be a performance concern, they can
     /// remove this hack and use the constructor `DefId` everywhere.
+    #[instrument(level = "debug")]
     pub fn new(
         name: Symbol,
         variant_did: Option<DefId>,
         ctor: Option<(CtorKind, DefId)>,
         discr: VariantDiscr,
         fields: IndexVec<FieldIdx, FieldDef>,
-        adt_kind: AdtKind,
         parent_did: DefId,
         recover_tainted: Option<ErrorGuaranteed>,
         is_field_list_non_exhaustive: bool,
     ) -> Self {
-        debug!(
-            "VariantDef::new(name = {:?}, variant_did = {:?}, ctor = {:?}, discr = {:?},
-             fields = {:?}, adt_kind = {:?}, parent_did = {:?})",
-            name, variant_did, ctor, discr, fields, adt_kind, parent_did,
-        );
-
         let mut flags = VariantFlags::NO_VARIANT_FLAGS;
         if is_field_list_non_exhaustive {
             flags |= VariantFlags::IS_FIELD_LIST_NON_EXHAUSTIVE;
