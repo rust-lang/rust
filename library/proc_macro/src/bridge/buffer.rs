@@ -127,7 +127,8 @@ impl Drop for Buffer {
 }
 
 impl From<Vec<u8>> for Buffer {
-    /// Move data, len, and capacity from `Vec`, then create custom reserve and drop fns.
+    /// Create a `Buffer` without allocation.\
+    /// By moving data, len, and capacity from `Vec`, then create custom reserve and drop fns.
     fn from(v: Vec<u8>) -> Self {
         let mut v = ManuallyDrop::new(v);
         let (data, len, capacity) = (v.as_mut_ptr(), v.len(), v.capacity());
