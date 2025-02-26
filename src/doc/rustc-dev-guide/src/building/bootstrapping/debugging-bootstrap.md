@@ -1,6 +1,45 @@
 # Debugging bootstrap
 
+There are two main ways to debug bootstrap itself. The first is through println logging, and the second is through the `tracing` feature.
+
 > FIXME: this section should be expanded
+
+## `println` logging
+
+Bootstrap has extensive unstructured logging. Most of it is gated behind the `--verbose` flag (pass `-vv` for even more detail).
+
+If you want to know which `Step` ran a command, you could invoke bootstrap like so:
+
+```
+$ ./x dist rustc --dry-run -vv
+learning about cargo
+running: RUSTC_BOOTSTRAP="1" "/home/jyn/src/rust2/build/x86_64-unknown-linux-gnu/stage0/bin/cargo" "metadata" "--format-version" "1" "--no-deps" "--manifest-path" "/home/jyn/src/rust2/Cargo.toml" (failure_mode=Exit) (created at src/bootstrap/src/core/metadata.rs:81:25, executed at src/bootstrap/src/core/metadata.rs:92:50)
+running: RUSTC_BOOTSTRAP="1" "/home/jyn/src/rust2/build/x86_64-unknown-linux-gnu/stage0/bin/cargo" "metadata" "--format-version" "1" "--no-deps" "--manifest-path" "/home/jyn/src/rust2/library/Cargo.toml" (failure_mode=Exit) (created at src/bootstrap/src/core/metadata.rs:81:25, executed at src/bootstrap/src/core/metadata.rs:92:50)
+> Assemble { target_compiler: Compiler { stage: 1, host: x86_64-unknown-linux-gnu } }
+  > Libdir { compiler: Compiler { stage: 1, host: x86_64-unknown-linux-gnu }, target: x86_64-unknown-linux-gnu }
+    > Sysroot { compiler: Compiler { stage: 1, host: x86_64-unknown-linux-gnu }, force_recompile: false }
+Removing sysroot /home/jyn/src/rust2/build/tmp-dry-run/x86_64-unknown-linux-gnu/stage1 to avoid caching bugs
+    < Sysroot { compiler: Compiler { stage: 1, host: x86_64-unknown-linux-gnu }, force_recompile: false }
+  < Libdir { compiler: Compiler { stage: 1, host: x86_64-unknown-linux-gnu }, target: x86_64-unknown-linux-gnu }
+...
+```
+
+This will go through all the recursive dependency calculations, where `Step`s internally call `builder.ensure()`, without actually running cargo or the compiler.
+
+In some cases, even this may not be enough logging (if so, please add more!). In that case, you can omit `--dry-run`, which will show the normal output inline with the debug logging:
+
+```
+      c Sysroot { compiler: Compiler { stage: 0, host: x86_64-unknown-linux-gnu }, force_recompile: false }
+using sysroot /home/jyn/src/rust2/build/x86_64-unknown-linux-gnu/stage0-sysroot
+Building stage0 library artifacts (x86_64-unknown-linux-gnu)
+running: cd "/home/jyn/src/rust2" && env ... RUSTC_VERBOSE="2" RUSTC_WRAPPER="/home/jyn/src/rust2/build/bootstrap/debug/rustc" "/home/jyn/src/rust2/build/x86_64-unknown-linux-gnu/stage0/bin/cargo" "build" "--target" "x86_64-unknown-linux-gnu" "-Zbinary-dep-depinfo" "-Zroot-dir=/home/jyn/src/rust2" "-v" "-v" "--manifest-path" "/home/jyn/src/rust2/library/sysroot/Cargo.toml" "--message-format" "json-render-diagnostics"
+   0.293440230s  INFO prepare_target{force=false package_id=sysroot v0.0.0 (/home/jyn/src/rust2/library/sysroot) target="sysroot"}: cargo::core::compiler::fingerprint: fingerprint error for sysroot v0.0.0 (/home/jyn/src/rust2/library/sysroot)/Build/TargetInner { name_inferred: true, ..: lib_target("sysroot", ["lib"], "/home/jyn/src/rust2/library/sysroot/src/lib.rs", Edition2021) }
+...
+```
+
+In most cases this should not be necessary.
+
+TODO: we should convert all this to structured logging so it's easier to control precisely.
 
 ## `tracing` in bootstrap
 
@@ -53,11 +92,11 @@ Checking stage0 bootstrap artifacts (x86_64-unknown-linux-gnu)
 Build completed successfully in 0:00:08
 ```
 
-#### Controlling log output
+#### Controlling tracing output
 
 The env var `BOOTSTRAP_TRACING` accepts a [`tracing` env-filter][tracing-env-filter].
 
-There are two orthogonal ways to control which kind of logs you want:
+There are two orthogonal ways to control which kind of tracing logs you want:
 
 1. You can specify the log **level**, e.g. `DEBUG` or `TRACE`.
 2. You can also control the log **target**, e.g. `bootstrap` or `bootstrap::core::config` vs custom targets like `CONFIG_HANDLING`.
