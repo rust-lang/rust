@@ -1077,6 +1077,36 @@ macro_rules! int_impl {
             }
         }
 
+        /// Unchecked integer remainder. Computes `self % rhs`, assuming `rhs != 0`
+        /// and overflow cannot occur.
+        ///
+        /// # Safety
+        ///
+        /// This results in undefined behavior when `rhs == 0` or
+        #[doc = concat!("(`self == ", stringify!($SelfT), "::MIN` and `rhs == -1`),")]
+        /// i.e. when [`checked_rem`] would return `None`.
+        ///
+        #[doc = concat!("[`checked_rem`]: ", stringify!($SelfT), "::checked_rem")]
+        #[unstable(feature = "unchecked_div_rem", issue = "136716")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+        pub const unsafe fn unchecked_rem(self, rhs: Self) -> Self {
+            assert_unsafe_precondition!(
+                check_language_ub,
+                concat!(stringify!($SelfT), "::unchecked_rem cannot overflow or divide by zero"),
+                (
+                    lhs: $SelfT = self,
+                    rhs: $SelfT = rhs
+                ) => rhs != 0 && !lhs.overflowing_rem(rhs).1,
+            );
+
+            // SAFETY: this is guaranteed to be safe by the caller.
+            unsafe {
+                intrinsics::unchecked_rem(self, rhs)
+            }
+        }
+
         /// Strict integer remainder. Computes `self % rhs`, panicking if
         /// the division results in overflow.
         ///
