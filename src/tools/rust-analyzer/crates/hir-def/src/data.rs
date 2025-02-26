@@ -7,7 +7,6 @@ use hir_expand::name::Name;
 use intern::{sym, Symbol};
 use la_arena::{Idx, RawIdx};
 use triomphe::Arc;
-use tt::iter::TtElement;
 
 use crate::{
     db::DefDatabase,
@@ -73,13 +72,6 @@ impl FunctionData {
         }
 
         let attrs = item_tree.attrs(db, krate, ModItem::from(loc.id.value).into());
-        let legacy_const_generics_indices = attrs
-            .by_key(&sym::rustc_legacy_const_generics)
-            .tt_values()
-            .next()
-            .map(parse_rustc_legacy_const_generics)
-            .filter(|it| !it.is_empty())
-            .map(Box::new);
         let rustc_allow_incoherent_impl = attrs.by_key(&sym::rustc_allow_incoherent_impl).exists();
         if flags.contains(FnFlags::HAS_UNSAFE_KW)
             && attrs.by_key(&sym::rustc_deprecated_safe_2024).exists()
@@ -106,7 +98,7 @@ impl FunctionData {
             ret_type: func.ret_type,
             visibility,
             abi: func.abi.clone(),
-            legacy_const_generics_indices,
+            legacy_const_generics_indices: attrs.rustc_legacy_const_generics(),
             types_map: func.types_map.clone(),
             flags,
             rustc_allow_incoherent_impl,
@@ -154,29 +146,6 @@ impl FunctionData {
     pub fn has_target_feature(&self) -> bool {
         self.flags.contains(FnFlags::HAS_TARGET_FEATURE)
     }
-}
-
-fn parse_rustc_legacy_const_generics(tt: &crate::tt::TopSubtree) -> Box<[u32]> {
-    let mut indices = Vec::new();
-    let mut iter = tt.iter();
-    while let (Some(first), second) = (iter.next(), iter.next()) {
-        match first {
-            TtElement::Leaf(tt::Leaf::Literal(lit)) => match lit.symbol.as_str().parse() {
-                Ok(index) => indices.push(index),
-                Err(_) => break,
-            },
-            _ => break,
-        }
-
-        if let Some(comma) = second {
-            match comma {
-                TtElement::Leaf(tt::Leaf::Punct(punct)) if punct.char == ',' => {}
-                _ => break,
-            }
-        }
-    }
-
-    indices.into_boxed_slice()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
