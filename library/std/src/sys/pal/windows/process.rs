@@ -260,9 +260,10 @@ impl Command {
         needs_stdin: bool,
         proc_thread_attribute_list: Option<&ProcThreadAttributeList<'_>>,
     ) -> io::Result<(Process, StdioPipes)> {
+        let env_saw_path = self.env.have_changed_path();
         let maybe_env = self.env.capture_if_changed();
 
-        let child_paths = if let Some(env) = maybe_env.as_ref() {
+        let child_paths = if env_saw_path && let Some(env) = maybe_env.as_ref() {
             env.get(&EnvKey::new("PATH")).map(|s| s.as_os_str())
         } else {
             None
