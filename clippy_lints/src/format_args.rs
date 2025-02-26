@@ -15,6 +15,7 @@ use rustc_ast::{
     FormatArgPosition, FormatArgPositionKind, FormatArgsPiece, FormatArgumentKind, FormatCount, FormatOptions,
     FormatPlaceholder, FormatTrait,
 };
+use rustc_attr_parsing::RustcVersion;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_errors::SuggestionStyle::{CompletelyHidden, ShowCode};
@@ -206,17 +207,17 @@ pub struct FormatArgs<'tcx> {
     format_args: FormatArgsStorage,
     msrv: Msrv,
     ignore_mixed: bool,
-    ty_feature_map: FxHashMap<Ty<'tcx>, Option<Symbol>>,
+    ty_msrv_map: FxHashMap<Ty<'tcx>, Option<RustcVersion>>,
 }
 
 impl<'tcx> FormatArgs<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, conf: &'static Conf, format_args: FormatArgsStorage) -> Self {
-        let ty_feature_map = make_ty_feature_map(tcx);
+        let ty_msrv_map = make_ty_msrv_map(tcx);
         Self {
             format_args,
             msrv: conf.msrv.clone(),
             ignore_mixed: conf.allow_mixed_uninlined_format_args,
-            ty_feature_map,
+            ty_msrv_map,
         }
     }
 }
@@ -233,7 +234,8 @@ impl<'tcx> LateLintPass<'tcx> for FormatArgs<'tcx> {
                 macro_call: &macro_call,
                 format_args,
                 ignore_mixed: self.ignore_mixed,
-                ty_feature_map: &self.ty_feature_map,
+                msrv: &self.msrv,
+                ty_msrv_map: &self.ty_msrv_map,
             };
 
             linter.check_templates();
@@ -253,7 +255,8 @@ struct FormatArgsExpr<'a, 'tcx> {
     macro_call: &'a MacroCall,
     format_args: &'a rustc_ast::FormatArgs,
     ignore_mixed: bool,
-    ty_feature_map: &'a FxHashMap<Ty<'tcx>, Option<Symbol>>,
+    msrv: &'a Msrv,
+    ty_msrv_map: &'a FxHashMap<Ty<'tcx>, Option<RustcVersion>>,
 }
 
 impl<'tcx> FormatArgsExpr<'_, 'tcx> {
@@ -538,19 +541,19 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
     fn can_display_format(&self, ty: Ty<'tcx>) -> bool {
         let ty = ty.peel_refs();
 
-        if let Some(feature) = self.ty_feature_map.get(&ty)
-            && feature.is_none_or(|feature| self.cx.tcx.features().enabled(feature))
+        if let Some(msrv) = self.ty_msrv_map.get(&ty)
+            && msrv.is_none_or(|msrv| self.msrv.meets(msrv))
         {
             return true;
         }
 
-        // Even if `ty` is not in `self.ty_feature_map`, check whether `ty` implements `Deref` with
-        // a `Target` that is in `self.ty_feature_map`.
+        // Even if `ty` is not in `self.ty_msrv_map`, check whether `ty` implements `Deref` with
+        // a `Target` that is in `self.ty_msrv_map`.
         if let Some(deref_trait_id) = self.cx.tcx.lang_items().deref_trait()
             && implements_trait(self.cx, ty, deref_trait_id, &[])
             && let Some(target_ty) = self.cx.get_associated_type(ty, deref_trait_id, "Target")
-            && let Some(feature) = self.ty_feature_map.get(&target_ty)
-            && feature.is_none_or(|feature| self.cx.tcx.features().enabled(feature))
+            && let Some(msrv) = self.ty_msrv_map.get(&target_ty)
+            && msrv.is_none_or(|msrv| self.msrv.meets(msrv))
         {
             return true;
         }
@@ -559,8 +562,8 @@ impl<'tcx> FormatArgsExpr<'_, 'tcx> {
     }
 }
 
-fn make_ty_feature_map(tcx: TyCtxt<'_>) -> FxHashMap<Ty<'_>, Option<Symbol>> {
-    [(sym::OsStr, Some(Symbol::intern("os_str_display"))), (sym::Path, None)]
+fn make_ty_msrv_map(tcx: TyCtxt<'_>) -> FxHashMap<Ty<'_>, Option<RustcVersion>> {
+    [(sym::OsStr, Some(msrvs::OS_STR_DISPLAY)), (sym::Path, None)]
         .into_iter()
         .filter_map(|(name, feature)| {
             tcx.get_diagnostic_item(name).map(|def_id| {

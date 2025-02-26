@@ -25,11 +25,10 @@ fn main() {
     println!("{}", path.display());
     println!("{}", path_buf.display());
 
-    // should not fire because feature `os_str_display` is not enabled
-    println!("{:?}", os_str);
-    println!("{:?}", os_string);
-
     // positive tests
+    println!("{:?}", os_str); //~ unnecessary_debug_formatting
+    println!("{:?}", os_string); //~ unnecessary_debug_formatting
+
     println!("{:?}", path); //~ unnecessary_debug_formatting
     println!("{:?}", path_buf); //~ unnecessary_debug_formatting
 
