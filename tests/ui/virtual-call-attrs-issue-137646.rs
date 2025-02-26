@@ -1,8 +1,7 @@
 //! Regression test for https://github.com/rust-lang/rust/issues/137646.
-//! FIXME: The parameter value at all calls to `check` should be `(1, 1, 1)`.
+//! The parameter value at all calls to `check` should be `(1, 1, 1)`.
 
 //@ run-pass
-//@ check-run-results
 
 use std::hint::black_box;
 
@@ -35,8 +34,7 @@ pub fn run_2(trait_: &dyn Trait) {
 
 #[inline(never)]
 fn check(v: T) {
-    dbg!(v);
-    // assert_eq!(v, (1, 1, 1));
+    assert_eq!(v, (1, 1, 1));
 }
 
 fn main() {
