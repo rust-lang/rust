@@ -2418,7 +2418,7 @@ impl<'tcx> ObligationCause<'tcx> {
 pub struct ObligationCauseAsDiagArg<'tcx>(pub ObligationCause<'tcx>);
 
 impl IntoDiagArg for ObligationCauseAsDiagArg<'_> {
-    fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
         let kind = match self.0.code() {
             ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Fn, .. } => "method_compat",
             ObligationCauseCode::CompareImplItem { kind: ty::AssocKind::Type, .. } => "type_compat",

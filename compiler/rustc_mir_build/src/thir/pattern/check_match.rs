@@ -786,17 +786,13 @@ fn check_borrow_conflicts_in_at_patterns<'tcx>(cx: &MatchVisitor<'_, 'tcx>, pat:
                 }
             });
             if !conflicts_ref.is_empty() {
-                let mut path = None;
-                let ty = cx.tcx.short_string(ty, &mut path);
-                let mut err = sess.dcx().create_err(BorrowOfMovedValue {
+                sess.dcx().emit_err(BorrowOfMovedValue {
                     binding_span: pat.span,
                     conflicts_ref,
                     name: Ident::new(name, pat.span),
                     ty,
                     suggest_borrowing: Some(pat.span.shrink_to_lo()),
                 });
-                *err.long_ty_path() = path;
-                err.emit();
             }
             return;
         }
