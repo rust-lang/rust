@@ -1,4 +1,5 @@
 #![feature(concat_idents)]
+#![expect(deprecated)] // concat_idents is deprecated
 
 #[derive(Debug)]
 struct Baz<T>(
