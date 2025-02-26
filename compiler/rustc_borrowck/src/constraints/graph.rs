@@ -23,8 +23,8 @@ pub(crate) type ReverseConstraintGraph = ConstraintGraph<Reverse>;
 /// Marker trait that controls whether a `R1: R2` constraint
 /// represents an edge `R1 -> R2` or `R2 -> R1`.
 pub(crate) trait ConstraintGraphDirection: Copy + 'static {
-    fn start_region(c: &OutlivesConstraint<'_>) -> RegionVid;
-    fn end_region(c: &OutlivesConstraint<'_>) -> RegionVid;
+    fn start_region(sup: RegionVid, sub: RegionVid) -> RegionVid;
+    fn end_region(sup: RegionVid, sub: RegionVid) -> RegionVid;
     fn is_normal() -> bool;
 }
 
@@ -36,12 +36,12 @@ pub(crate) trait ConstraintGraphDirection: Copy + 'static {
 pub(crate) struct Normal;
 
 impl ConstraintGraphDirection for Normal {
-    fn start_region(c: &OutlivesConstraint<'_>) -> RegionVid {
-        c.sup
+    fn start_region(sup: RegionVid, _sub: RegionVid) -> RegionVid {
+        sup
     }
 
-    fn end_region(c: &OutlivesConstraint<'_>) -> RegionVid {
-        c.sub
+    fn end_region(_sup: RegionVid, sub: RegionVid) -> RegionVid {
+        sub
     }
 
     fn is_normal() -> bool {
@@ -57,12 +57,12 @@ impl ConstraintGraphDirection for Normal {
 pub(crate) struct Reverse;
 
 impl ConstraintGraphDirection for Reverse {
-    fn start_region(c: &OutlivesConstraint<'_>) -> RegionVid {
-        c.sub
+    fn start_region(_sup: RegionVid, sub: RegionVid) -> RegionVid {
+        sub
     }
 
-    fn end_region(c: &OutlivesConstraint<'_>) -> RegionVid {
-        c.sup
+    fn end_region(sup: RegionVid, _sub: RegionVid) -> RegionVid {
+        sup
     }
 
     fn is_normal() -> bool {
@@ -84,7 +84,7 @@ impl<D: ConstraintGraphDirection> ConstraintGraph<D> {
         let mut next_constraints = IndexVec::from_elem(None, &set.outlives);
 
         for (idx, constraint) in set.outlives.iter_enumerated().rev() {
-            let head = &mut first_constraints[D::start_region(constraint)];
+            let head = &mut first_constraints[D::start_region(constraint.sup, constraint.sub)];
             let next = &mut next_constraints[idx];
             debug_assert!(next.is_none());
             *next = *head;
@@ -207,7 +207,7 @@ impl<'a, 'tcx, D: ConstraintGraphDirection> Iterator for Successors<'a, 'tcx, D>
     type Item = RegionVid;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.edges.next().map(|c| D::end_region(&c))
+        self.edges.next().map(|c| D::end_region(c.sup, c.sub))
     }
 }
 
