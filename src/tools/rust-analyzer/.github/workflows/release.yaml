@@ -69,7 +69,7 @@ jobs:
       - name: Install Node.js toolchain
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install Rust toolchain
         run: |
@@ -188,7 +188,7 @@ jobs:
       - name: Install Nodejs
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - run: echo "TAG=$(date --iso -u)" >> $GITHUB_ENV
         if: github.ref == 'refs/heads/release'
