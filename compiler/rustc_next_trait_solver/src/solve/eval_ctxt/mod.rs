@@ -262,6 +262,14 @@ where
         self.delegate.typing_mode()
     }
 
+    /// Computes the `PathKind` for the step from the current goal to the
+    /// nested goal required due to `source`.
+    ///
+    /// See #136824 for a more detailed reasoning for this behavior. We
+    /// consider cycles to be coinductive if they 'step into' a where-clause
+    /// of a coinductive trait. We will likely extend this function in the future
+    /// and will need to clearly document it in the rustc-dev-guide before
+    /// stabilization.
     pub(super) fn step_kind_for_source(&self, source: GoalSource) -> PathKind {
         match (self.current_goal_kind, source) {
             (_, GoalSource::NormalizeGoal(step_kind)) => step_kind,
@@ -1099,6 +1107,13 @@ where
 ///
 /// This is a performance optimization to more eagerly detect cycles during trait
 /// solving. See tests/ui/traits/next-solver/cycles/cycle-modulo-ambig-aliases.rs.
+///
+/// The emitted goals get evaluated in the context of the parent goal; by
+/// replacing aliases in nested goals we essentially pull the normalization out of
+/// the nested goal. We want to treat the goal as if the normalization still happens
+/// inside of the nested goal by inheriting the `step_kind` of the nested goal and
+/// storing it in the `GoalSource` of the emitted `AliasRelate` goals.
+/// This is necessary for tests/ui/sized/coinductive-1.rs to compile.
 struct ReplaceAliasWithInfer<'me, 'a, D, I>
 where
     D: SolverDelegate<Interner = I>,

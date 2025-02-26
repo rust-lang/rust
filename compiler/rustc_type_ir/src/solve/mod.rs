@@ -83,9 +83,8 @@ pub enum GoalSource {
     /// In case normalizing aliases in nested goals cycles, eagerly normalizing these
     /// aliases in the context of the parent may incorrectly change the cycle kind.
     /// Normalizing aliases in goals therefore tracks the original path kind for this
-    /// nested goal.
-    ///
-    /// This is necessary for tests/ui/sized/coinductive-1.rs to compile.
+    /// nested goal. See the comment of the `ReplaceAliasWithInfer` visitor for more
+    /// details.
     NormalizeGoal(PathKind),
 }
 

@@ -4,7 +4,6 @@ use rustc_data_structures::intern::Interned;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{HashStable, extension};
 use rustc_type_ir as ir;
-use tracing::instrument;
 
 use crate::ty::{
     self, DebruijnIndex, EarlyBinder, PredicatePolarity, Ty, TyCtxt, TypeFlags, Upcast, UpcastFrom,
@@ -113,19 +112,6 @@ impl<'tcx> Predicate<'tcx> {
             .transpose()?;
 
         Some(tcx.mk_predicate(kind))
-    }
-
-    /// Only used by the old solver to decide whether a predicate is accepted
-    /// in a coinductive trait solver cycle.
-    #[instrument(level = "debug", skip(tcx), ret)]
-    pub fn is_coinductive(self, tcx: TyCtxt<'tcx>) -> bool {
-        match self.kind().skip_binder() {
-            ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => {
-                tcx.trait_is_coinductive(data.def_id())
-            }
-            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => true,
-            _ => false,
-        }
     }
 
     /// Whether this projection can be soundly normalized.

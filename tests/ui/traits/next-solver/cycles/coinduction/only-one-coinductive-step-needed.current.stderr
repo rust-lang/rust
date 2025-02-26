@@ -1,11 +1,11 @@
 error[E0275]: overflow evaluating the requirement `Foo<T>: SendIndir`
-  --> $DIR/only-one-coinductive-step-needed.rs:9:15
+  --> $DIR/only-one-coinductive-step-needed.rs:17:15
    |
 LL | struct Foo<T>(<Foo<T> as Trait>::Assoc);
    |               ^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: required for `Foo<T>` to implement `Trait`
-  --> $DIR/only-one-coinductive-step-needed.rs:18:20
+  --> $DIR/only-one-coinductive-step-needed.rs:26:20
    |
 LL | impl<T: SendIndir> Trait for T {
    |         ---------  ^^^^^     ^

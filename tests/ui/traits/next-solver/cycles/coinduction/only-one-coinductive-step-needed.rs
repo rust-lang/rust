@@ -5,6 +5,14 @@
 
 // #136824 changed cycles to be coinductive if they have at least
 // one productive step, causing this test to pass with the new solver.
+//
+// The cycle in the test is the following:
+// - `Foo<T>: Send`, builtin auto-trait impl requires
+// - `<Foo<T> as Trait>::Assoc: Send`, requires normalizing self type via impl, requires
+// - `Foo<T>: SendIndir`, via impl requires
+// - `Foo<T>: Send` cycle
+//
+// The old solver treats this cycle as inductive due to the `Foo<T>: SendIndir` step.
 
 struct Foo<T>(<Foo<T> as Trait>::Assoc);
 //[current]~^ ERROR overflow evaluating the requirement `Foo<T>: SendIndir`
