@@ -1519,7 +1519,11 @@ impl Enum {
     }
 
     pub fn variants(self, db: &dyn HirDatabase) -> Vec<Variant> {
-        db.enum_data(self.id).variants.iter().map(|&(id, _)| Variant { id }).collect()
+        db.enum_variants(self.id).variants.iter().map(|&(id, _)| Variant { id }).collect()
+    }
+
+    pub fn num_variants(self, db: &dyn HirDatabase) -> usize {
+        db.enum_variants(self.id).variants.len()
     }
 
     pub fn repr(self, db: &dyn HirDatabase) -> Option<ReprOptions> {

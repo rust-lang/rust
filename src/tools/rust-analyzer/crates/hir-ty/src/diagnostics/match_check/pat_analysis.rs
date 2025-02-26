@@ -49,7 +49,7 @@ impl EnumVariantContiguousIndex {
     }
 
     fn to_enum_variant_id(self, db: &dyn HirDatabase, eid: EnumId) -> EnumVariantId {
-        db.enum_data(eid).variants[self.0].0
+        db.enum_variants(eid).variants[self.0].0
     }
 }
 
@@ -449,7 +449,7 @@ impl PatCx for MatchCheckCtx<'_> {
             TyKind::Scalar(Scalar::Int(..) | Scalar::Uint(..)) => unhandled(),
             TyKind::Array(..) | TyKind::Slice(..) => unhandled(),
             &TyKind::Adt(AdtId(adt @ hir_def::AdtId::EnumId(enum_id)), ref subst) => {
-                let enum_data = cx.db.enum_data(enum_id);
+                let enum_data = cx.db.enum_variants(enum_id);
                 let is_declared_nonexhaustive = cx.is_foreign_non_exhaustive(adt);
 
                 if enum_data.variants.is_empty() && !is_declared_nonexhaustive {

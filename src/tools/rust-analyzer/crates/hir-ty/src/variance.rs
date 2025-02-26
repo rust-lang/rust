@@ -206,7 +206,7 @@ impl Context<'_> {
                     AdtId::StructId(s) => add_constraints_from_variant(VariantId::StructId(s)),
                     AdtId::UnionId(u) => add_constraints_from_variant(VariantId::UnionId(u)),
                     AdtId::EnumId(e) => {
-                        db.enum_data(e).variants.iter().for_each(|&(variant, _)| {
+                        db.enum_variants(e).variants.iter().for_each(|&(variant, _)| {
                             add_constraints_from_variant(VariantId::EnumVariantId(variant))
                         });
                     }

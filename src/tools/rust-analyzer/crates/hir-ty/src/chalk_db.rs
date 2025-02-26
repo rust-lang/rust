@@ -801,7 +801,7 @@ pub(crate) fn adt_datum_query(
         }
         hir_def::AdtId::EnumId(id) => {
             let variants = db
-                .enum_data(id)
+                .enum_variants(id)
                 .variants
                 .iter()
                 .map(|&(variant_id, _)| variant_id_to_fields(variant_id.into()))

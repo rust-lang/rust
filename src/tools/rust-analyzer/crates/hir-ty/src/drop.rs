@@ -72,7 +72,7 @@ pub(crate) fn has_drop_glue(db: &dyn HirDatabase, ty: Ty, env: Arc<TraitEnvironm
                 // Unions cannot have fields with destructors.
                 AdtId::UnionId(_) => DropGlue::None,
                 AdtId::EnumId(id) => db
-                    .enum_data(id)
+                    .enum_variants(id)
                     .variants
                     .iter()
                     .map(|&(variant, _)| {

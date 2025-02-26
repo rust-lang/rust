@@ -309,7 +309,7 @@ pub(crate) fn const_eval_discriminant_variant(
         let value = match prev_idx {
             Some(prev_idx) => {
                 1 + db.const_eval_discriminant(
-                    db.enum_data(loc.parent).variants[prev_idx as usize].0,
+                    db.enum_variants(loc.parent).variants[prev_idx as usize].0,
                 )?
             }
             _ => 0,

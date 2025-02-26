@@ -43,7 +43,7 @@ impl CastTy {
                 let (AdtId::EnumId(id), _) = t.as_adt()? else {
                     return None;
                 };
-                let enum_data = table.db.enum_data(id);
+                let enum_data = table.db.enum_variants(id);
                 if enum_data.is_payload_free(table.db.upcast()) {
                     Some(Self::Int(Int::CEnum))
                 } else {

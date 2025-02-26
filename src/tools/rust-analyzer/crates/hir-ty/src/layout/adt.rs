@@ -54,13 +54,13 @@ pub fn layout_of_adt_query(
             (r, data.repr.unwrap_or_default())
         }
         AdtId::EnumId(e) => {
-            let data = db.enum_data(e);
-            let r = data
+            let variants = db.enum_variants(e);
+            let r = variants
                 .variants
                 .iter()
                 .map(|&(v, _)| handle_variant(v.into(), &db.enum_variant_data(v).variant_data))
                 .collect::<Result<SmallVec<_>, _>>()?;
-            (r, data.repr.unwrap_or_default())
+            (r, db.enum_data(e).repr.unwrap_or_default())
         }
     };
     let variants = variants
@@ -80,7 +80,7 @@ pub fn layout_of_adt_query(
             |min, max| repr_discr(dl, &repr, min, max).unwrap_or((Integer::I8, false)),
             variants.iter_enumerated().filter_map(|(id, _)| {
                 let AdtId::EnumId(e) = def else { return None };
-                let d = db.const_eval_discriminant(db.enum_data(e).variants[id.0].0).ok()?;
+                let d = db.const_eval_discriminant(db.enum_variants(e).variants[id.0].0).ok()?;
                 Some((id, d))
             }),
             // FIXME: The current code for niche-filling relies on variant indices

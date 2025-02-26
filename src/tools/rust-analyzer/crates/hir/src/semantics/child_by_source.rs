@@ -182,7 +182,7 @@ impl ChildBySource for EnumId {
         let tree = loc.id.item_tree(db);
         let ast_id_map = db.ast_id_map(loc.id.file_id());
 
-        db.enum_data(*self).variants.iter().for_each(|&(variant, _)| {
+        db.enum_variants(*self).variants.iter().for_each(|&(variant, _)| {
             res[keys::ENUM_VARIANT]
                 .insert(ast_id_map.get(tree[variant.lookup(db).id.value].ast_id), variant);
         });

@@ -56,10 +56,14 @@ bitflags! {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EnumData {
     pub name: Name,
-    pub variants: Box<[(EnumVariantId, Name)]>,
     pub repr: Option<ReprOptions>,
     pub visibility: RawVisibility,
     pub rustc_has_incoherent_inherent_impls: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EnumVariants {
+    pub variants: Box<[(EnumVariantId, Name)]>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -203,41 +207,22 @@ impl StructData {
     }
 }
 
-impl EnumData {
-    pub(crate) fn enum_data_query(db: &dyn DefDatabase, e: EnumId) -> Arc<EnumData> {
+impl EnumVariants {
+    pub(crate) fn enum_variants_query(db: &dyn DefDatabase, e: EnumId) -> Arc<EnumVariants> {
         let loc = e.lookup(db);
-        let krate = loc.container.krate;
         let item_tree = loc.id.item_tree(db);
-        let repr = repr_from_value(db, krate, &item_tree, ModItem::from(loc.id.value).into());
-        let rustc_has_incoherent_inherent_impls = item_tree
-            .attrs(db, loc.container.krate, ModItem::from(loc.id.value).into())
-            .by_key(&sym::rustc_has_incoherent_inherent_impls)
-            .exists();
 
-        let enum_ = &item_tree[loc.id.value];
-
-        Arc::new(EnumData {
-            name: enum_.name.clone(),
+        Arc::new(EnumVariants {
             variants: loc.container.def_map(db).enum_definitions[&e]
                 .iter()
                 .map(|&id| (id, item_tree[id.lookup(db).id.value].name.clone()))
                 .collect(),
-            repr,
-            visibility: item_tree[enum_.visibility].clone(),
-            rustc_has_incoherent_inherent_impls,
         })
     }
 
     pub fn variant(&self, name: &Name) -> Option<EnumVariantId> {
         let &(id, _) = self.variants.iter().find(|(_id, n)| n == name)?;
         Some(id)
-    }
-
-    pub fn variant_body_type(&self) -> IntegerType {
-        match self.repr {
-            Some(ReprOptions { int: Some(builtin), .. }) => builtin,
-            _ => IntegerType::Pointer(true),
-        }
     }
 
     // [Adopted from rustc](https://github.com/rust-lang/rust/blob/bd53aa3bf7a24a70d763182303bd75e5fc51a9af/compiler/rustc_middle/src/ty/adt.rs#L446-L448)
@@ -259,6 +244,35 @@ impl EnumData {
             }
             true
         })
+    }
+}
+
+impl EnumData {
+    pub(crate) fn enum_data_query(db: &dyn DefDatabase, e: EnumId) -> Arc<EnumData> {
+        let loc = e.lookup(db);
+        let krate = loc.container.krate;
+        let item_tree = loc.id.item_tree(db);
+        let repr = repr_from_value(db, krate, &item_tree, ModItem::from(loc.id.value).into());
+        let rustc_has_incoherent_inherent_impls = item_tree
+            .attrs(db, loc.container.krate, ModItem::from(loc.id.value).into())
+            .by_key(&sym::rustc_has_incoherent_inherent_impls)
+            .exists();
+
+        let enum_ = &item_tree[loc.id.value];
+
+        Arc::new(EnumData {
+            name: enum_.name.clone(),
+            repr,
+            visibility: item_tree[enum_.visibility].clone(),
+            rustc_has_incoherent_inherent_impls,
+        })
+    }
+
+    pub fn variant_body_type(&self) -> IntegerType {
+        match self.repr {
+            Some(ReprOptions { int: Some(builtin), .. }) => builtin,
+            _ => IntegerType::Pointer(true),
+        }
     }
 }
 
