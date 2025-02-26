@@ -5,6 +5,7 @@
 
 #![feature(trace_macros, concat_idents)]
 #![feature(stmt_expr_attributes)]
+#![expect(deprecated)] // concat_idents is deprecated
 
 use std::arch::asm;
 

@@ -1,11 +1,11 @@
 error: `derive` cannot be used on items with type macros
-  --> $DIR/issue-32950.rs:5:5
+  --> $DIR/issue-32950.rs:6:5
    |
 LL |     concat_idents!(Foo, Bar)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0412]: cannot find type `FooBar` in this scope
-  --> $DIR/issue-32950.rs:5:5
+  --> $DIR/issue-32950.rs:6:5
    |
 LL |     concat_idents!(Foo, Bar)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ not found in this scope
