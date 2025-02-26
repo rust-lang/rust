@@ -160,7 +160,7 @@ pub trait TypeInformationCtxt<'tcx> {
 
     fn try_structurally_resolve_type(&self, span: Span, ty: Ty<'tcx>) -> Ty<'tcx>;
 
-    fn report_error(&self, span: Span, msg: impl ToString) -> Self::Error;
+    fn report_bug(&self, span: Span, msg: impl ToString) -> Self::Error;
 
     fn error_reported_in_ty(&self, ty: Ty<'tcx>) -> Result<(), Self::Error>;
 
@@ -195,7 +195,7 @@ impl<'tcx> TypeInformationCtxt<'tcx> for &FnCtxt<'_, 'tcx> {
         (**self).try_structurally_resolve_type(sp, ty)
     }
 
-    fn report_error(&self, span: Span, msg: impl ToString) -> Self::Error {
+    fn report_bug(&self, span: Span, msg: impl ToString) -> Self::Error {
         self.dcx().span_delayed_bug(span, msg.to_string())
     }
 
@@ -245,7 +245,7 @@ impl<'tcx> TypeInformationCtxt<'tcx> for (&LateContext<'tcx>, LocalDefId) {
         t
     }
 
-    fn report_error(&self, span: Span, msg: impl ToString) -> ! {
+    fn report_bug(&self, span: Span, msg: impl ToString) -> ! {
         span_bug!(span, "{}", msg.to_string())
     }
 
@@ -1218,7 +1218,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
 /// result of `*x'`, effectively, where `x'` is a `Categorization::Upvar` reference
 /// tied to `x`. The type of `x'` will be a borrowed pointer.
 impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx, Cx, D> {
-    fn resolve_type_vars_or_error(
+    fn resolve_type_vars_or_bug(
         &self,
         id: HirId,
         ty: Option<Ty<'tcx>>,
@@ -1228,10 +1228,10 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 let ty = self.cx.resolve_vars_if_possible(ty);
                 self.cx.error_reported_in_ty(ty)?;
                 if ty.is_ty_var() {
-                    debug!("resolve_type_vars_or_error: infer var from {:?}", ty);
+                    debug!("resolve_type_vars_or_bug: infer var from {:?}", ty);
                     Err(self
                         .cx
-                        .report_error(self.cx.tcx().hir().span(id), "encountered type variable"))
+                        .report_bug(self.cx.tcx().hir().span(id), "encountered type variable"))
                 } else {
                     Ok(ty)
                 }
@@ -1248,15 +1248,15 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     }
 
     fn node_ty(&self, hir_id: HirId) -> Result<Ty<'tcx>, Cx::Error> {
-        self.resolve_type_vars_or_error(hir_id, self.cx.typeck_results().node_type_opt(hir_id))
+        self.resolve_type_vars_or_bug(hir_id, self.cx.typeck_results().node_type_opt(hir_id))
     }
 
     fn expr_ty(&self, expr: &hir::Expr<'_>) -> Result<Ty<'tcx>, Cx::Error> {
-        self.resolve_type_vars_or_error(expr.hir_id, self.cx.typeck_results().expr_ty_opt(expr))
+        self.resolve_type_vars_or_bug(expr.hir_id, self.cx.typeck_results().expr_ty_opt(expr))
     }
 
     fn expr_ty_adjusted(&self, expr: &hir::Expr<'_>) -> Result<Ty<'tcx>, Cx::Error> {
-        self.resolve_type_vars_or_error(
+        self.resolve_type_vars_or_bug(
             expr.hir_id,
             self.cx.typeck_results().expr_ty_adjusted_opt(expr),
         )
@@ -1321,7 +1321,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                             debug!("By-ref binding of non-derefable type");
                             Err(self
                                 .cx
-                                .report_error(pat.span, "by-ref binding of non-derefable type"))
+                                .report_bug(pat.span, "by-ref binding of non-derefable type"))
                         }
                     }
                 } else {
@@ -1610,7 +1610,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             Some(ty) => ty,
             None => {
                 debug!("explicit deref of non-derefable type: {:?}", base_curr_ty);
-                return Err(self.cx.report_error(
+                return Err(self.cx.report_bug(
                     self.cx.tcx().hir().span(node),
                     "explicit deref of non-derefable type",
                 ));
@@ -1635,7 +1635,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         let ty::Adt(adt_def, _) = self.cx.try_structurally_resolve_type(span, ty).kind() else {
             return Err(self
                 .cx
-                .report_error(span, "struct or tuple struct pattern not applied to an ADT"));
+                .report_bug(span, "struct or tuple struct pattern not applied to an ADT"));
         };
 
         match res {
@@ -1681,7 +1681,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         let ty = self.cx.typeck_results().node_type(pat_hir_id);
         match self.cx.try_structurally_resolve_type(span, ty).kind() {
             ty::Tuple(args) => Ok(args.len()),
-            _ => Err(self.cx.report_error(span, "tuple pattern not applied to a tuple")),
+            _ => Err(self.cx.report_bug(span, "tuple pattern not applied to a tuple")),
         }
     }
 
@@ -1860,7 +1860,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                     debug!("explicit index of non-indexable type {:?}", place_with_id);
                     return Err(self
                         .cx
-                        .report_error(pat.span, "explicit index of non-indexable type"));
+                        .report_bug(pat.span, "explicit index of non-indexable type"));
                 };
                 let elt_place = self.cat_projection(
                     pat.hir_id,
