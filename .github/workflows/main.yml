@@ -53,13 +53,12 @@ jobs:
           - os: ubuntu-latest
             env:
               TARGET_TRIPLE: x86_64-unknown-linux-gnu
+          - os: ubuntu-24.04-arm
+            env:
+              TARGET_TRIPLE: aarch64-unknown-linux-gnu
           - os: macos-latest
             env:
               TARGET_TRIPLE: x86_64-apple-darwin
-          - os: ubuntu-latest
-            env:
-              TARGET_TRIPLE: aarch64-unknown-linux-gnu
-            apt_deps: gcc-aarch64-linux-gnu qemu-user
           - os: macos-latest
             env:
               TARGET_TRIPLE: aarch64-apple-darwin
@@ -192,6 +191,9 @@ jobs:
           - os: ubuntu-22.04
             env:
               TARGET_TRIPLE: x86_64-unknown-linux-gnu
+          - os: ubuntu-24.04-arm
+            env:
+              TARGET_TRIPLE: aarch64-unknown-linux-gnu
           - os: macos-latest
             env:
               TARGET_TRIPLE: x86_64-apple-darwin
