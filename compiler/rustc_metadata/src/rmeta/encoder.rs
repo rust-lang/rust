@@ -1357,8 +1357,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             features: &tcx.features(),
         };
         let attr_iter = tcx
-            .hir()
-            .attrs(tcx.local_def_id_to_hir_id(def_id))
+            .hir_attrs(tcx.local_def_id_to_hir_id(def_id))
             .iter()
             .filter(|attr| analyze_attr(*attr, &mut state));
 
@@ -1839,7 +1838,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_info_for_macro(&mut self, def_id: LocalDefId) {
         let tcx = self.tcx;
 
-        let hir::ItemKind::Macro(macro_def, _) = tcx.hir().expect_item(def_id).kind else { bug!() };
+        let hir::ItemKind::Macro(macro_def, _) = tcx.hir_expect_item(def_id).kind else { bug!() };
         self.tables.is_macro_rules.set(def_id.local_def_index, macro_def.macro_rules);
         record!(self.tables.macro_definition[def_id.to_def_id()] <- &*macro_def.body);
     }
@@ -1918,11 +1917,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             for &proc_macro in &tcx.resolutions(()).proc_macros {
                 let id = proc_macro;
                 let proc_macro = tcx.local_def_id_to_hir_id(proc_macro);
-                let mut name = hir.name(proc_macro);
+                let mut name = tcx.hir_name(proc_macro);
                 let span = hir.span(proc_macro);
                 // Proc-macros may have attributes like `#[allow_internal_unstable]`,
                 // so downstream crates need access to them.
-                let attrs = hir.attrs(proc_macro);
+                let attrs = tcx.hir_attrs(proc_macro);
                 let macro_kind = if ast::attr::contains_name(attrs, sym::proc_macro) {
                     MacroKind::Bang
                 } else if ast::attr::contains_name(attrs, sym::proc_macro_attribute) {

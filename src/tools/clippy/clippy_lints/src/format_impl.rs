@@ -209,9 +209,8 @@ impl FormatImplExpr<'_, '_> {
         // Handle dereference of &self -> self that is equivalent (i.e. via *self in fmt() impl)
         // Since the argument to fmt is itself a reference: &self
         let reference = peel_ref_operators(self.cx, arg);
-        let map = self.cx.tcx.hir();
         // Is the reference self?
-        if path_to_local(reference).map(|x| map.name(x)) == Some(kw::SelfLower) {
+        if path_to_local(reference).map(|x| self.cx.tcx.hir_name(x)) == Some(kw::SelfLower) {
             let FormatTraitNames { name, .. } = self.format_trait_impl;
             span_lint(
                 self.cx,

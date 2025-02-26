@@ -182,7 +182,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
     }
 
     fn check_crate(&mut self, cx: &LateContext<'tcx>) {
-        let attrs = cx.tcx.hir().attrs(hir::CRATE_HIR_ID);
+        let attrs = cx.tcx.hir_attrs(hir::CRATE_HIR_ID);
         self.check_missing_docs_attrs(cx, CRATE_DEF_ID, attrs, cx.tcx.def_span(CRATE_DEF_ID), "the", "crate");
     }
 
@@ -224,7 +224,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
 
         let (article, desc) = cx.tcx.article_and_description(it.owner_id.to_def_id());
 
-        let attrs = cx.tcx.hir().attrs(it.hir_id());
+        let attrs = cx.tcx.hir_attrs(it.hir_id());
         if !is_from_proc_macro(cx, it) {
             self.check_missing_docs_attrs(cx, it.owner_id.def_id, attrs, it.span, article, desc);
         }
@@ -234,7 +234,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, trait_item: &'tcx hir::TraitItem<'_>) {
         let (article, desc) = cx.tcx.article_and_description(trait_item.owner_id.to_def_id());
 
-        let attrs = cx.tcx.hir().attrs(trait_item.hir_id());
+        let attrs = cx.tcx.hir_attrs(trait_item.hir_id());
         if !is_from_proc_macro(cx, trait_item) {
             self.check_missing_docs_attrs(cx, trait_item.owner_id.def_id, attrs, trait_item.span, article, desc);
         }
@@ -252,7 +252,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
         }
 
         let (article, desc) = cx.tcx.article_and_description(impl_item.owner_id.to_def_id());
-        let attrs = cx.tcx.hir().attrs(impl_item.hir_id());
+        let attrs = cx.tcx.hir_attrs(impl_item.hir_id());
         if !is_from_proc_macro(cx, impl_item) {
             self.check_missing_docs_attrs(cx, impl_item.owner_id.def_id, attrs, impl_item.span, article, desc);
         }
@@ -261,7 +261,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
 
     fn check_field_def(&mut self, cx: &LateContext<'tcx>, sf: &'tcx hir::FieldDef<'_>) {
         if !sf.is_positional() {
-            let attrs = cx.tcx.hir().attrs(sf.hir_id);
+            let attrs = cx.tcx.hir_attrs(sf.hir_id);
             if !is_from_proc_macro(cx, sf) {
                 self.check_missing_docs_attrs(cx, sf.def_id, attrs, sf.span, "a", "struct field");
             }
@@ -270,7 +270,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
     }
 
     fn check_variant(&mut self, cx: &LateContext<'tcx>, v: &'tcx hir::Variant<'_>) {
-        let attrs = cx.tcx.hir().attrs(v.hir_id);
+        let attrs = cx.tcx.hir_attrs(v.hir_id);
         if !is_from_proc_macro(cx, v) {
             self.check_missing_docs_attrs(cx, v.def_id, attrs, v.span, "a", "variant");
         }

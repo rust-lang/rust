@@ -272,7 +272,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let tcx = tables.tcx;
         let did = tables[def_id];
         let attrs_iter = if let Some(did) = did.as_local() {
-            tcx.hir().attrs(tcx.local_def_id_to_hir_id(did)).iter()
+            tcx.hir_attrs(tcx.local_def_id_to_hir_id(did)).iter()
         } else {
             tcx.attrs_for_def(did).iter()
         };

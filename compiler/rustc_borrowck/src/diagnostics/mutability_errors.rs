@@ -698,7 +698,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         if !matches!(k, hir::AssocItemKind::Fn { .. }) {
                             continue;
                         }
-                        if self.infcx.tcx.hir().name(hi) != self.infcx.tcx.hir().name(my_hir) {
+                        if self.infcx.tcx.hir_name(hi) != self.infcx.tcx.hir_name(my_hir) {
                             continue;
                         }
                         f_in_trait_opt = Some(hi);
