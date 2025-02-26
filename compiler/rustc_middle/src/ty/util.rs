@@ -726,26 +726,9 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Return the set of types that should be taken into account when checking
-    /// trait bounds on a coroutine's internal state.
-    // FIXME(compiler-errors): We should remove this when the old solver goes away;
-    // and all other usages of this function should go through `bound_coroutine_hidden_types`
-    // instead.
-    pub fn coroutine_hidden_types(
-        self,
-        def_id: DefId,
-    ) -> impl Iterator<Item = ty::EarlyBinder<'tcx, Ty<'tcx>>> {
-        let coroutine_layout = self.mir_coroutine_witnesses(def_id);
-        coroutine_layout
-            .as_ref()
-            .map_or_else(|| [].iter(), |l| l.field_tys.iter())
-            .filter(|decl| !decl.ignore_for_traits)
-            .map(|decl| ty::EarlyBinder::bind(decl.ty))
-    }
-
-    /// Return the set of types that should be taken into account when checking
     /// trait bounds on a coroutine's internal state. This properly replaces
     /// `ReErased` with new existential bound lifetimes.
-    pub fn bound_coroutine_hidden_types(
+    pub fn coroutine_hidden_types(
         self,
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, ty::Binder<'tcx, &'tcx ty::List<Ty<'tcx>>>> {

@@ -74,7 +74,7 @@ where
 
         ty::CoroutineWitness(def_id, args) => Ok(ecx
             .cx()
-            .bound_coroutine_hidden_types(def_id)
+            .coroutine_hidden_types(def_id)
             .instantiate(cx, args)
             .map_bound(|tys| tys.to_vec())),
 
@@ -240,7 +240,7 @@ where
         // impl Copy/Clone for CoroutineWitness where T: Copy/Clone forall T in coroutine_hidden_types
         ty::CoroutineWitness(def_id, args) => Ok(ecx
             .cx()
-            .bound_coroutine_hidden_types(def_id)
+            .coroutine_hidden_types(def_id)
             .instantiate(ecx.cx(), args)
             .map_bound(|tys| tys.to_vec())),
     }

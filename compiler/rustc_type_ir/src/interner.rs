@@ -189,7 +189,7 @@ pub trait Interner:
     type Features: Features<Self>;
     fn features(self) -> Self::Features;
 
-    fn bound_coroutine_hidden_types(
+    fn coroutine_hidden_types(
         self,
         def_id: Self::DefId,
     ) -> ty::EarlyBinder<Self, ty::Binder<Self, Self::Tys>>;
