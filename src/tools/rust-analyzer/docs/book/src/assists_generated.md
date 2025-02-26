@@ -2974,7 +2974,7 @@ impl Walrus {
 
 
 ### `remove_parentheses`
-**Source:**  [remove_parentheses.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/remove_parentheses.rs#L5) 
+**Source:**  [remove_parentheses.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/remove_parentheses.rs#L9) 
 
 Removes redundant parentheses.
 
@@ -3015,7 +3015,7 @@ mod foo {
 
 
 ### `remove_unused_param`
-**Source:**  [remove_unused_param.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/remove_unused_param.rs#L15) 
+**Source:**  [remove_unused_param.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/remove_unused_param.rs#L16) 
 
 Removes unused function parameter.
 
