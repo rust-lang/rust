@@ -430,8 +430,9 @@ pub fn linker_args(
     builder: &Builder<'_>,
     target: TargetSelection,
     lld_threads: LldThreads,
+    stage: u32,
 ) -> Vec<String> {
-    let mut args = linker_flags(builder, target, lld_threads);
+    let mut args = linker_flags(builder, target, lld_threads, stage);
 
     if let Some(linker) = builder.linker(target) {
         args.push(format!("-Clinker={}", linker.display()));
@@ -446,12 +447,18 @@ pub fn linker_flags(
     builder: &Builder<'_>,
     target: TargetSelection,
     lld_threads: LldThreads,
+    stage: u32,
 ) -> Vec<String> {
     let mut args = vec![];
     if !builder.is_lld_direct_linker(target) && builder.config.lld_mode.is_used() {
         match builder.config.lld_mode {
             LldMode::External => {
-                args.push("-Clinker-flavor=gnu-lld-cc".to_string());
+                // cfg(bootstrap) - remove after updating bootstrap compiler (#137498)
+                if stage == 0 && target.is_windows() {
+                    args.push("-Clink-arg=-fuse-ld=lld".to_string());
+                } else {
+                    args.push("-Clinker-flavor=gnu-lld-cc".to_string());
+                }
                 // FIXME(kobzol): remove this flag once MCP510 gets stabilized
                 args.push("-Zunstable-options".to_string());
             }
@@ -479,8 +486,9 @@ pub fn add_rustdoc_cargo_linker_args(
     builder: &Builder<'_>,
     target: TargetSelection,
     lld_threads: LldThreads,
+    stage: u32,
 ) {
-    let args = linker_args(builder, target, lld_threads);
+    let args = linker_args(builder, target, lld_threads, stage);
     let mut flags = cmd
         .get_envs()
         .find_map(|(k, v)| if k == OsStr::new("RUSTDOCFLAGS") { v } else { None })
