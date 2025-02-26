@@ -1,0 +1,74 @@
+// This test ensures that the macro expansion is generated and working as expected.
+go-to: "file://" + |DOC_PATH| + "/src/macro_expansion/lib.rs.html"
+
+define-function: (
+    "check-expansion",
+    [line, original_content],
+    block {
+        assert-text: ("a[id='" + |line| + "'] + .expansion .original", |original_content|)
+        // The "original" content should be expanded.
+        assert-css: ("a[id='" + |line| + "'] + .expansion .original", {"display": "inline"})
+        // The expanded macro should be hidden.
+        assert-css: ("a[id='" + |line| + "'] + .expansion .expanded", {"display": "none"})
+
+        // We "expand" the macro.
+        click: "a[id='" + |line| + "'] + .expansion label"
+        // The "original" content is hidden.
+        assert-css: ("a[id='" + |line| + "'] + .expansion .original", {"display": "none"})
+        // The expanded macro is visible.
+        assert-css: ("a[id='" + |line| + "'] + .expansion .expanded", {"display": "inline"})
+
+        // We collapse the macro.
+        click: "a[id='" + |line| + "'] + .expansion label"
+        // The "original" content is expanded.
+        assert-css: ("a[id='" + |line| + "'] + .expansion .original", {"display": "inline"})
+        // The expanded macro is hidden.
+        assert-css: ("a[id='" + |line| + "'] + .expansion .expanded", {"display": "none"})
+    }
+)
+
+// First we check the derive macro expansion at line 12.
+call-function: ("check-expansion", {"line": 12, "original_content": "Debug"})
+// Then we check the `bar` macro expansion at line 22.
+call-function: ("check-expansion", {"line": 22, "original_content": "bar!(y)"})
+// Then we check the `println` macro expansion at line 23-25.
+call-function: ("check-expansion", {"line": 23, "original_content": 'println!("
+24    {y}
+25    ")'})
+
+// Then finally we check when there are two macro calls on a same line.
+assert-count: ("#expand-27 ~ .original", 2)
+assert-count: ("#expand-27 ~ .expanded", 2)
+
+store-value: (repeat_o, '/following-sibling::*[@class="original"]')
+store-value: (repeat_e, '/following-sibling::*[@class="expanded"]')
+assert-text: ('//*[@id="expand-27"]' + |repeat_o|, "stringify!(foo)")
+assert-text: ('//*[@id="expand-27"]' + |repeat_o| + |repeat_o|, "stringify!(bar)")
+assert-text: ('//*[@id="expand-27"]' + |repeat_e|, '"foo"')
+assert-text: ('//*[@id="expand-27"]' + |repeat_e| + |repeat_e|, '"bar"')
+
+// The "original" content should be expanded.
+assert-css: ('//*[@id="expand-27"]' + |repeat_o|, {"display": "inline"})
+assert-css: ('//*[@id="expand-27"]' + |repeat_o| + |repeat_o|, {"display": "inline"})
+// The expanded macro should be hidden.
+assert-css: ('//*[@id="expand-27"]' + |repeat_e|, {"display": "none"})
+assert-css: ('//*[@id="expand-27"]' + |repeat_e| + |repeat_e|, {"display": "none"})
+
+// We "expand" the macro (because the line starts with a string, the label is not at the "top
+// level" of the `<code>`, so we need to use a different selector).
+click: ".expansion label[for='expand-27']"
+// The "original" content is hidden.
+assert-css: ('//*[@id="expand-27"]' + |repeat_o|, {"display": "none"})
+assert-css: ('//*[@id="expand-27"]' + |repeat_o| + |repeat_o|, {"display": "none"})
+// The expanded macro is visible.
+assert-css: ('//*[@id="expand-27"]' + |repeat_e|, {"display": "inline"})
+assert-css: ('//*[@id="expand-27"]' + |repeat_e| + |repeat_e|, {"display": "inline"})
+
+// We collapse the macro.
+click: ".expansion label[for='expand-27']"
+// The "original" content is expanded.
+assert-css: ('//*[@id="expand-27"]' + |repeat_o|, {"display": "inline"})
+assert-css: ('//*[@id="expand-27"]' + |repeat_o| + |repeat_o|, {"display": "inline"})
+// The expanded macro is hidden.
+assert-css: ('//*[@id="expand-27"]' + |repeat_e|, {"display": "none"})
+assert-css: ('//*[@id="expand-27"]' + |repeat_e| + |repeat_e|, {"display": "none"})
