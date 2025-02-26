@@ -293,17 +293,27 @@ impl Step for Cargo {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Cargo { stage: run.builder.top_stage, host: run.target });
+        // If stage is explicitly set or not lower than 2, keep it. Otherwise, make sure it's at least 2
+        // as tests for this step don't work with a lower stage.
+        let stage = if run.builder.config.is_explicit_stage() || run.builder.top_stage >= 2 {
+            run.builder.top_stage
+        } else {
+            2
+        };
+
+        run.builder.ensure(Cargo { stage, host: run.target });
     }
 
     /// Runs `cargo test` for `cargo` packaged with Rust.
     fn run(self, builder: &Builder<'_>) {
-        if self.stage < 2 {
-            eprintln!("WARNING: cargo tests on stage {} may not behave well.", self.stage);
+        let stage = self.stage;
+
+        if stage < 2 {
+            eprintln!("WARNING: cargo tests on stage {stage} may not behave well.");
             eprintln!("HELP: consider using stage 2");
         }
 
-        let compiler = builder.compiler(self.stage, self.host);
+        let compiler = builder.compiler(stage, self.host);
 
         let cargo = builder.ensure(tool::Cargo { compiler, target: self.host });
         let compiler = cargo.build_compiler;
@@ -340,7 +350,7 @@ impl Step for Cargo {
                 crates: vec!["cargo".into()],
                 target: self.host.triple.to_string(),
                 host: self.host.triple.to_string(),
-                stage: self.stage,
+                stage,
             },
             builder,
         );
@@ -739,7 +749,15 @@ impl Step for Clippy {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Clippy { stage: run.builder.top_stage, host: run.target });
+        // If stage is explicitly set or not lower than 2, keep it. Otherwise, make sure it's at least 2
+        // as tests for this step don't work with a lower stage.
+        let stage = if run.builder.config.is_explicit_stage() || run.builder.top_stage >= 2 {
+            run.builder.top_stage
+        } else {
+            2
+        };
+
+        run.builder.ensure(Clippy { stage, host: run.target });
     }
 
     /// Runs `cargo test` for clippy.

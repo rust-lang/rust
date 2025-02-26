@@ -26,7 +26,6 @@
 #![feature(array_windows)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
-#![feature(extract_if)]
 #![feature(if_let_guard)]
 #![feature(iter_order_by)]
 #![feature(let_chains)]

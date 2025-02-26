@@ -1,6 +1,6 @@
 use super::abi;
 use super::abi::fileno;
-use crate::io;
+use crate::io::{self, BorrowedCursor};
 
 pub struct Stdin;
 pub struct Stdout;
@@ -15,6 +15,14 @@ impl Stdin {
 impl io::Read for Stdin {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         Ok(unsafe { abi::sys_read(fileno::STDIN, buf.as_mut_ptr(), buf.len()) })
+    }
+
+    fn read_buf(&mut self, mut buf: BorrowedCursor<'_>) -> io::Result<()> {
+        unsafe {
+            let n = abi::sys_read(fileno::STDIN, buf.as_mut().as_mut_ptr().cast(), buf.capacity());
+            buf.advance_unchecked(n);
+        }
+        Ok(())
     }
 }
 

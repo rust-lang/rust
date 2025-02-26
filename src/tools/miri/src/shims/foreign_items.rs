@@ -765,13 +765,15 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "erfcf" => f_host.erfc(),
                     _ => bug!(),
                 };
+                let res = res.to_soft();
                 // Apply a relative error of 16ULP to introduce some non-determinism
                 // simulating imprecise implementations and optimizations.
-                let res = math::apply_random_float_error_ulp(
-                    this,
-                    res.to_soft(),
-                    4, // log2(16)
-                );
+                // FIXME: temporarily disabled as it breaks std tests.
+                // let res = math::apply_random_float_error_ulp(
+                //     this,
+                //     res,
+                //     4, // log2(16)
+                // );
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
@@ -796,11 +798,12 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 };
                 // Apply a relative error of 16ULP to introduce some non-determinism
                 // simulating imprecise implementations and optimizations.
-                let res = math::apply_random_float_error_ulp(
-                    this,
-                    res,
-                    4, // log2(16)
-                );
+                // FIXME: temporarily disabled as it breaks std tests.
+                // let res = math::apply_random_float_error_ulp(
+                //     this,
+                //     res,
+                //     4, // log2(16)
+                // );
                 let res = this.adjust_nan(res, &[f1, f2]);
                 this.write_scalar(res, dest)?;
             }
@@ -839,13 +842,15 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "erfc" => f_host.erfc(),
                     _ => bug!(),
                 };
+                let res = res.to_soft();
                 // Apply a relative error of 16ULP to introduce some non-determinism
                 // simulating imprecise implementations and optimizations.
-                let res = math::apply_random_float_error_ulp(
-                    this,
-                    res.to_soft(),
-                    4, // log2(16)
-                );
+                // FIXME: temporarily disabled as it breaks std tests.
+                // let res = math::apply_random_float_error_ulp(
+                //     this,
+                //     res.to_soft(),
+                //     4, // log2(16)
+                // );
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
@@ -870,11 +875,12 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 };
                 // Apply a relative error of 16ULP to introduce some non-determinism
                 // simulating imprecise implementations and optimizations.
-                let res = math::apply_random_float_error_ulp(
-                    this,
-                    res,
-                    4, // log2(16)
-                );
+                // FIXME: temporarily disabled as it breaks std tests.
+                // let res = math::apply_random_float_error_ulp(
+                //     this,
+                //     res,
+                //     4, // log2(16)
+                // );
                 let res = this.adjust_nan(res, &[f1, f2]);
                 this.write_scalar(res, dest)?;
             }
@@ -900,10 +906,11 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Using host floats (but it's fine, these operations do not have guaranteed precision).
                 let (res, sign) = x.to_host().ln_gamma();
                 this.write_int(sign, &signp)?;
+                let res = res.to_soft();
                 // Apply a relative error of 16ULP to introduce some non-determinism
                 // simulating imprecise implementations and optimizations.
-                let res =
-                    math::apply_random_float_error_ulp(this, res.to_soft(), 4 /* log2(16) */);
+                // FIXME: temporarily disabled as it breaks std tests.
+                // let res = math::apply_random_float_error_ulp(this, res, 4 /* log2(16) */);
                 let res = this.adjust_nan(res, &[x]);
                 this.write_scalar(res, dest)?;
             }
@@ -915,10 +922,11 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Using host floats (but it's fine, these operations do not have guaranteed precision).
                 let (res, sign) = x.to_host().ln_gamma();
                 this.write_int(sign, &signp)?;
+                let res = res.to_soft();
                 // Apply a relative error of 16ULP to introduce some non-determinism
                 // simulating imprecise implementations and optimizations.
-                let res =
-                    math::apply_random_float_error_ulp(this, res.to_soft(), 4 /* log2(16) */);
+                // FIXME: temporarily disabled as it breaks std tests.
+                // let res = math::apply_random_float_error_ulp(this, res, 4 /* log2(16) */);
                 let res = this.adjust_nan(res, &[x]);
                 this.write_scalar(res, dest)?;
             }

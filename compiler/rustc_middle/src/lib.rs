@@ -44,7 +44,6 @@
 #![feature(decl_macro)]
 #![feature(discriminant_kind)]
 #![feature(extern_types)]
-#![feature(extract_if)]
 #![feature(file_buffered)]
 #![feature(if_let_guard)]
 #![feature(intra_doc_pointers)]
