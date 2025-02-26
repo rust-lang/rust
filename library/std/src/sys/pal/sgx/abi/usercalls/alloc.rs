@@ -678,25 +678,18 @@ where
         unsafe { (*self.0.get()).len() }
     }
 
-    /// Copies the value from user memory and place it into `dest`. Afterwards,
-    /// `dest` will contain exactly `self.len()` elements.
-    ///
-    /// # Panics
-    /// This function panics if the destination doesn't have the same size as
-    /// the source. This can happen for dynamically-sized types such as slices.
-    pub fn copy_to_enclave_vec(&self, dest: &mut Vec<T>) {
-        if let Some(missing) = self.len().checked_sub(dest.capacity()) {
-            dest.reserve(missing)
-        }
+    /// Copies the value from user memory and appends it to `dest`.
+    pub fn append_to_enclave_vec(&self, dest: &mut Vec<T>) {
+        dest.reserve(self.len());
+        self.copy_to_enclave(&mut dest.spare_capacity_mut()[..self.len()]);
         // SAFETY: We reserve enough space above.
-        unsafe { dest.set_len(self.len()) };
-        self.copy_to_enclave(&mut dest[..]);
+        unsafe { dest.set_len(dest.len() + self.len()) };
     }
 
     /// Copies the value from user memory into a vector in enclave memory.
     pub fn to_enclave(&self) -> Vec<T> {
         let mut ret = Vec::with_capacity(self.len());
-        self.copy_to_enclave_vec(&mut ret);
+        self.append_to_enclave_vec(&mut ret);
         ret
     }
 
