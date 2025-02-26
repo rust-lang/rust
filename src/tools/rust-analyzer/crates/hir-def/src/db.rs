@@ -20,7 +20,11 @@ use crate::{
     import_map::ImportMap,
     item_tree::{AttrOwner, ItemTree, ItemTreeSourceMaps},
     lang_item::{self, LangItem, LangItemTarget, LangItems},
-    nameres::{diagnostics::DefDiagnostics, DefMap, LocalDefMap},
+    nameres::{
+        assoc::{ImplItems, TraitItems},
+        diagnostics::DefDiagnostics,
+        DefMap, LocalDefMap,
+    },
     tt,
     type_ref::TypesSourceMap,
     visibility::{self, Visibility},
@@ -176,19 +180,26 @@ pub trait DefDatabase:
     #[salsa::transparent]
     #[salsa::invoke_actual(VariantData::variant_data)]
     fn variant_data(&self, id: VariantId) -> Arc<VariantData>;
-    #[salsa::transparent]
+
     #[salsa::invoke_actual(ImplData::impl_data_query)]
     fn impl_data(&self, e: ImplId) -> Arc<ImplData>;
 
-    #[salsa::invoke_actual(ImplData::impl_data_with_diagnostics_query)]
-    fn impl_data_with_diagnostics(&self, e: ImplId) -> (Arc<ImplData>, DefDiagnostics);
-
     #[salsa::transparent]
+    #[salsa::invoke_actual(ImplItems::impl_items_query)]
+    fn impl_items(&self, e: ImplId) -> Arc<ImplItems>;
+
+    #[salsa::invoke_actual(ImplItems::impl_items_with_diagnostics_query)]
+    fn impl_items_with_diagnostics(&self, e: ImplId) -> (Arc<ImplItems>, DefDiagnostics);
+
     #[salsa::invoke_actual(TraitData::trait_data_query)]
     fn trait_data(&self, e: TraitId) -> Arc<TraitData>;
 
-    #[salsa::invoke_actual(TraitData::trait_data_with_diagnostics_query)]
-    fn trait_data_with_diagnostics(&self, tr: TraitId) -> (Arc<TraitData>, DefDiagnostics);
+    #[salsa::transparent]
+    #[salsa::invoke_actual(TraitItems::trait_items_query)]
+    fn trait_items(&self, e: TraitId) -> Arc<TraitItems>;
+
+    #[salsa::invoke_actual(TraitItems::trait_items_with_diagnostics_query)]
+    fn trait_items_with_diagnostics(&self, tr: TraitId) -> (Arc<TraitItems>, DefDiagnostics);
 
     #[salsa::invoke_actual(TraitAliasData::trait_alias_query)]
     fn trait_alias_data(&self, e: TraitAliasId) -> Arc<TraitAliasData>;

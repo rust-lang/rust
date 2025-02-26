@@ -492,7 +492,7 @@ impl FilterMapNextChecker {
                 Some(next_function_id),
                 match next_function_id.lookup(db.upcast()).container {
                     ItemContainerId::TraitId(iterator_trait_id) => {
-                        let iterator_trait_items = &db.trait_data(iterator_trait_id).items;
+                        let iterator_trait_items = &db.trait_items(iterator_trait_id).items;
                         iterator_trait_items.iter().find_map(|(name, it)| match it {
                             &AssocItemId::FunctionId(id) if *name == sym::filter_map.clone() => {
                                 Some(id)

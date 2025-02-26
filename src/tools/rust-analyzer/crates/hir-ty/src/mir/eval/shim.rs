@@ -1261,7 +1261,7 @@ impl Evaluator<'_> {
                 if let Some(target) = self.db.lang_item(self.crate_id, LangItem::FnOnce) {
                     if let Some(def) = target.as_trait().and_then(|it| {
                         self.db
-                            .trait_data(it)
+                            .trait_items(it)
                             .method_by_name(&Name::new_symbol_root(sym::call_once.clone()))
                     }) {
                         self.exec_fn_trait(

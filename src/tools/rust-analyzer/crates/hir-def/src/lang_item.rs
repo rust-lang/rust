@@ -107,7 +107,7 @@ impl LangItems {
         for (_, module_data) in crate_def_map.modules() {
             for impl_def in module_data.scope.impls() {
                 lang_items.collect_lang_item(db, impl_def, LangItemTarget::ImplDef);
-                for &(_, assoc) in db.impl_data(impl_def).items.iter() {
+                for &(_, assoc) in db.impl_items(impl_def).items.iter() {
                     match assoc {
                         AssocItemId::FunctionId(f) => {
                             lang_items.collect_lang_item(db, f, LangItemTarget::Function)
@@ -124,7 +124,7 @@ impl LangItems {
                 match def {
                     ModuleDefId::TraitId(trait_) => {
                         lang_items.collect_lang_item(db, trait_, LangItemTarget::Trait);
-                        db.trait_data(trait_).items.iter().for_each(
+                        db.trait_items(trait_).items.iter().for_each(
                             |&(_, assoc_id)| match assoc_id {
                                 AssocItemId::FunctionId(f) => {
                                     lang_items.collect_lang_item(db, f, LangItemTarget::Function);

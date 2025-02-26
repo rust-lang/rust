@@ -8,8 +8,8 @@ use arrayvec::ArrayVec;
 use base_db::Crate;
 use chalk_ir::{cast::Cast, UniverseIndex, WithKind};
 use hir_def::{
-    data::{adt::StructFlags, ImplData, TraitFlags},
-    nameres::DefMap,
+    data::{adt::StructFlags, TraitFlags},
+    nameres::{assoc::ImplItems, DefMap},
     AssocItemId, BlockId, ConstId, FunctionId, HasModule, ImplId, ItemContainerId, Lookup,
     ModuleId, TraitId,
 };
@@ -325,7 +325,7 @@ impl InherentImpls {
                 let self_ty = db.impl_self_ty(impl_id);
                 let self_ty = self_ty.skip_binders();
 
-                match is_inherent_impl_coherent(db, def_map, &data, self_ty) {
+                match is_inherent_impl_coherent(db, def_map, impl_id, self_ty) {
                     true => {
                         // `fp` should only be `None` in error cases (either erroneous code or incomplete name resolution)
                         if let Some(fp) = TyFingerprint::for_inherent_impl(self_ty) {
@@ -765,11 +765,10 @@ fn find_matching_impl(
     mut impls: impl Iterator<Item = ImplId>,
     mut table: InferenceTable<'_>,
     actual_trait_ref: TraitRef,
-) -> Option<(Arc<ImplData>, Substitution)> {
+) -> Option<(Arc<ImplItems>, Substitution)> {
     let db = table.db;
     impls.find_map(|impl_| {
         table.run_in_snapshot(|table| {
-            let impl_data = db.impl_data(impl_);
             let impl_substs =
                 TyBuilder::subst_for_def(db, impl_, None).fill_with_inference_vars(table).build();
             let trait_ref = db
@@ -787,7 +786,7 @@ fn find_matching_impl(
             let goal = crate::Goal::all(Interner, wcs);
             table.try_obligation(goal.clone())?;
             table.register_obligation(goal);
-            Some((impl_data, table.resolve_completely(impl_substs)))
+            Some((db.impl_items(impl_), table.resolve_completely(impl_substs)))
         })
     })
 }
@@ -795,7 +794,7 @@ fn find_matching_impl(
 fn is_inherent_impl_coherent(
     db: &dyn HirDatabase,
     def_map: &DefMap,
-    impl_data: &ImplData,
+    impl_id: ImplId,
     self_ty: &Ty,
 ) -> bool {
     let self_ty = self_ty.kind(Interner);
@@ -848,9 +847,10 @@ fn is_inherent_impl_coherent(
 
             _ => false,
         };
+        let items = db.impl_items(impl_id);
         rustc_has_incoherent_inherent_impls
-            && !impl_data.items.is_empty()
-            && impl_data.items.iter().all(|&(_, assoc)| match assoc {
+            && !items.items.is_empty()
+            && items.items.iter().all(|&(_, assoc)| match assoc {
                 AssocItemId::FunctionId(it) => db.function_data(it).rustc_allow_incoherent_impl,
                 AssocItemId::ConstId(it) => db.const_data(it).rustc_allow_incoherent_impl,
                 AssocItemId::TypeAliasId(it) => db.type_alias_data(it).rustc_allow_incoherent_impl,
@@ -1241,7 +1241,7 @@ fn iterate_trait_method_candidates(
         // trait, but if we find out it doesn't, we'll skip the rest of the
         // iteration
         let mut known_implemented = false;
-        for &(_, item) in data.items.iter() {
+        for &(_, item) in db.trait_items(t).items.iter() {
             // Don't pass a `visible_from_module` down to `is_valid_candidate`,
             // since only inherent methods should be included into visibility checking.
             let visible =
@@ -1368,7 +1368,7 @@ fn iterate_inherent_methods(
     ) -> ControlFlow<()> {
         let db = table.db;
         for t in traits {
-            let data = db.trait_data(t);
+            let data = db.trait_items(t);
             for &(_, item) in data.items.iter() {
                 // We don't pass `visible_from_module` as all trait items should be visible.
                 let visible = match is_valid_trait_method_candidate(
@@ -1401,7 +1401,7 @@ fn iterate_inherent_methods(
         callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId, bool) -> ControlFlow<()>,
     ) -> ControlFlow<()> {
         for &impl_id in impls.for_self_ty(self_ty) {
-            for &(ref item_name, item) in table.db.impl_data(impl_id).items.iter() {
+            for &(ref item_name, item) in table.db.impl_items(impl_id).items.iter() {
                 let visible = match is_valid_impl_method_candidate(
                     table,
                     self_ty,

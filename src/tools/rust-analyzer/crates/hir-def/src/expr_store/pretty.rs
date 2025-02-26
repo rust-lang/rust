@@ -82,7 +82,7 @@ pub(super) fn print_body_hir(
             p.buf.push_str(", ");
         });
         // remove the last ", " in param list
-        if body.params.len() > 0 {
+        if !body.params.is_empty() {
             p.buf.truncate(p.buf.len() - 2);
         }
         p.buf.push(')');

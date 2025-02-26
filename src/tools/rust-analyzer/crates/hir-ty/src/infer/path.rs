@@ -277,7 +277,7 @@ impl InferenceContext<'_> {
     ) -> Option<(ValueNs, Substitution)> {
         let trait_ = trait_ref.hir_trait_id();
         let item =
-            self.db.trait_data(trait_).items.iter().map(|(_name, id)| *id).find_map(|item| {
+            self.db.trait_items(trait_).items.iter().map(|(_name, id)| *id).find_map(|item| {
                 match item {
                     AssocItemId::FunctionId(func) => {
                         if segment.name == &self.db.function_data(func).name {

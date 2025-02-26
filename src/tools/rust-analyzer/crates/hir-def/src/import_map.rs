@@ -222,7 +222,7 @@ impl ImportMap {
         trait_import_info: &ImportInfo,
     ) {
         let _p = tracing::info_span!("collect_trait_assoc_items").entered();
-        for &(ref assoc_item_name, item) in &db.trait_data(tr).items {
+        for &(ref assoc_item_name, item) in &db.trait_items(tr).items {
             let module_def_id = match item {
                 AssocItemId::FunctionId(f) => ModuleDefId::from(f),
                 AssocItemId::ConstId(c) => ModuleDefId::from(c),
@@ -575,8 +575,8 @@ mod tests {
 
         let trait_info = dependency_imports.import_info_for(ItemInNs::Types(trait_id.into()))?;
 
-        let trait_data = db.trait_data(trait_id);
-        let (assoc_item_name, _) = trait_data
+        let trait_items = db.trait_items(trait_id);
+        let (assoc_item_name, _) = trait_items
             .items
             .iter()
             .find(|(_, assoc_item_id)| &dependency_assoc_item_id == assoc_item_id)?;

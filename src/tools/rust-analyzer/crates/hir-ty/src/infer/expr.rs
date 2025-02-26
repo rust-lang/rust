@@ -772,7 +772,7 @@ impl InferenceContext<'_> {
                         if let Some(deref_trait) = self.resolve_lang_trait(LangItem::Deref) {
                             if let Some(deref_fn) = self
                                 .db
-                                .trait_data(deref_trait)
+                                .trait_items(deref_trait)
                                 .method_by_name(&Name::new_symbol_root(sym::deref.clone()))
                             {
                                 // FIXME: this is wrong in multiple ways, subst is empty, and we emit it even for builtin deref (note that
@@ -930,7 +930,7 @@ impl InferenceContext<'_> {
                     self.write_expr_adj(*base, adj);
                     if let Some(func) = self
                         .db
-                        .trait_data(index_trait)
+                        .trait_items(index_trait)
                         .method_by_name(&Name::new_symbol_root(sym::index.clone()))
                     {
                         let subst = TyBuilder::subst_for_def(self.db, index_trait, None);
@@ -1258,7 +1258,7 @@ impl InferenceContext<'_> {
         let Some(trait_) = fn_x.get_id(self.db, self.table.trait_env.krate) else {
             return;
         };
-        let trait_data = self.db.trait_data(trait_);
+        let trait_data = self.db.trait_items(trait_);
         if let Some(func) = trait_data.method_by_name(&fn_x.method_name()) {
             let subst = TyBuilder::subst_for_def(self.db, trait_, None)
                 .push(callee_ty.clone())
@@ -1426,7 +1426,7 @@ impl InferenceContext<'_> {
 
         let trait_func = lang_items_for_bin_op(op).and_then(|(name, lang_item)| {
             let trait_id = self.resolve_lang_item(lang_item)?.as_trait()?;
-            let func = self.db.trait_data(trait_id).method_by_name(&name)?;
+            let func = self.db.trait_items(trait_id).method_by_name(&name)?;
             Some((trait_id, func))
         });
         let (trait_, func) = match trait_func {

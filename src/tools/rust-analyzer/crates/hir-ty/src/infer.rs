@@ -1723,7 +1723,7 @@ impl<'a> InferenceContext<'a> {
 
     fn resolve_output_on(&self, trait_: TraitId) -> Option<TypeAliasId> {
         self.db
-            .trait_data(trait_)
+            .trait_items(trait_)
             .associated_type_by_name(&Name::new_symbol_root(sym::Output.clone()))
     }
 

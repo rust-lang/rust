@@ -47,6 +47,7 @@
 //! path and, upon success, we run macro expansion and "collect module" phase on
 //! the result
 
+pub mod assoc;
 pub mod attr_resolution;
 mod collector;
 pub mod diagnostics;

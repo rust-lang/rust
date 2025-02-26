@@ -226,7 +226,7 @@ pub(super) fn associated_type_by_name_including_super_traits(
     name: &Name,
 ) -> Option<(TraitRef, TypeAliasId)> {
     all_super_trait_refs(db, trait_ref, |t| {
-        let assoc_type = db.trait_data(t.hir_trait_id()).associated_type_by_name(name)?;
+        let assoc_type = db.trait_items(t.hir_trait_id()).associated_type_by_name(name)?;
         Some((t, assoc_type))
     })
 }

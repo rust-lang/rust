@@ -636,7 +636,7 @@ impl Module {
                     acc.extend(def.diagnostics(db, style_lints))
                 }
                 ModuleDef::Trait(t) => {
-                    for diag in db.trait_data_with_diagnostics(t.id).1.iter() {
+                    for diag in db.trait_items_with_diagnostics(t.id).1.iter() {
                         emit_def_diagnostic(db, acc, diag, edition);
                     }
 
@@ -743,7 +743,7 @@ impl Module {
 
             let ast_id_map = db.ast_id_map(file_id);
 
-            for diag in db.impl_data_with_diagnostics(impl_def.id).1.iter() {
+            for diag in db.impl_items_with_diagnostics(impl_def.id).1.iter() {
                 emit_def_diagnostic(db, acc, diag, edition);
             }
 
@@ -801,13 +801,13 @@ impl Module {
 
             // Negative impls can't have items, don't emit missing items diagnostic for them
             if let (false, Some(trait_)) = (impl_is_negative, trait_) {
-                let items = &db.trait_data(trait_.into()).items;
+                let items = &db.trait_items(trait_.into()).items;
                 let required_items = items.iter().filter(|&(_, assoc)| match *assoc {
                     AssocItemId::FunctionId(it) => !db.function_data(it).has_body(),
                     AssocItemId::ConstId(id) => !db.const_data(id).has_body,
                     AssocItemId::TypeAliasId(it) => db.type_alias_data(it).type_ref.is_none(),
                 });
-                impl_assoc_items_scratch.extend(db.impl_data(impl_def.id).items.iter().cloned());
+                impl_assoc_items_scratch.extend(db.impl_items(impl_def.id).items.iter().cloned());
 
                 let redundant = impl_assoc_items_scratch
                     .iter()
@@ -863,7 +863,7 @@ impl Module {
                 source_map,
             );
 
-            for &(_, item) in db.impl_data(impl_def.id).items.iter() {
+            for &(_, item) in db.impl_items(impl_def.id).items.iter() {
                 AssocItem::from(item).diagnostics(db, acc, style_lints);
             }
         }
@@ -2868,16 +2868,15 @@ impl Trait {
     }
 
     pub fn function(self, db: &dyn HirDatabase, name: impl PartialEq<Name>) -> Option<Function> {
-        db.trait_data(self.id).items.iter().find(|(n, _)| name == *n).and_then(
-            |&(_, it)| match it {
-                AssocItemId::FunctionId(id) => Some(Function { id }),
-                _ => None,
-            },
-        )
+        db.trait_items(self.id).items.iter().find(|(n, _)| name == *n).and_then(|&(_, it)| match it
+        {
+            AssocItemId::FunctionId(id) => Some(Function { id }),
+            _ => None,
+        })
     }
 
     pub fn items(self, db: &dyn HirDatabase) -> Vec<AssocItem> {
-        db.trait_data(self.id).items.iter().map(|(_name, it)| (*it).into()).collect()
+        db.trait_items(self.id).items.iter().map(|(_name, it)| (*it).into()).collect()
     }
 
     pub fn items_with_supertraits(self, db: &dyn HirDatabase) -> Vec<AssocItem> {
@@ -2921,7 +2920,7 @@ impl Trait {
     }
 
     fn all_macro_calls(&self, db: &dyn HirDatabase) -> Box<[(AstId<ast::Item>, MacroCallId)]> {
-        db.trait_data(self.id)
+        db.trait_items(self.id)
             .macro_calls
             .as_ref()
             .map(|it| it.as_ref().clone().into_boxed_slice())
@@ -4428,7 +4427,7 @@ impl Impl {
     }
 
     pub fn items(self, db: &dyn HirDatabase) -> Vec<AssocItem> {
-        db.impl_data(self.id).items.iter().map(|&(_, it)| it.into()).collect()
+        db.impl_items(self.id).items.iter().map(|&(_, it)| it.into()).collect()
     }
 
     pub fn is_negative(self, db: &dyn HirDatabase) -> bool {
@@ -4478,7 +4477,7 @@ impl Impl {
     }
 
     fn all_macro_calls(&self, db: &dyn HirDatabase) -> Box<[(AstId<ast::Item>, MacroCallId)]> {
-        db.impl_data(self.id)
+        db.impl_items(self.id)
             .macro_calls
             .as_ref()
             .map(|it| it.as_ref().clone().into_boxed_slice())
@@ -4959,7 +4958,7 @@ impl Type {
         }
 
         let output_assoc_type = db
-            .trait_data(trait_)
+            .trait_items(trait_)
             .associated_type_by_name(&Name::new_symbol_root(sym::Output.clone()))?;
         self.normalize_trait_assoc_type(db, &[], output_assoc_type.into())
     }
@@ -4975,7 +4974,7 @@ impl Type {
     pub fn iterator_item(self, db: &dyn HirDatabase) -> Option<Type> {
         let iterator_trait = db.lang_item(self.env.krate, LangItem::Iterator)?.as_trait()?;
         let iterator_item = db
-            .trait_data(iterator_trait)
+            .trait_items(iterator_trait)
             .associated_type_by_name(&Name::new_symbol_root(sym::Item.clone()))?;
         self.normalize_trait_assoc_type(db, &[], iterator_item.into())
     }
@@ -5007,7 +5006,7 @@ impl Type {
         }
 
         let into_iter_assoc_type = db
-            .trait_data(trait_)
+            .trait_items(trait_)
             .associated_type_by_name(&Name::new_symbol_root(sym::IntoIter.clone()))?;
         self.normalize_trait_assoc_type(db, &[], into_iter_assoc_type.into())
     }
@@ -5301,7 +5300,7 @@ impl Type {
             let impls = db.inherent_impls_in_crate(krate);
 
             for impl_def in impls.for_self_ty(&self.ty) {
-                for &(_, item) in db.impl_data(*impl_def).items.iter() {
+                for &(_, item) in db.impl_items(*impl_def).items.iter() {
                     if callback(item) {
                         return;
                     }
