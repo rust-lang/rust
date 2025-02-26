@@ -1281,7 +1281,6 @@ fn test_non_determinism() {
     /// Ensure that the operation is non-deterministic
     #[track_caller]
     fn ensure_nondet<T: PartialEq + std::fmt::Debug>(f: impl Fn() -> T) {
-
         let rounds = 16;
         let first = f();
         for _ in 1..rounds {
