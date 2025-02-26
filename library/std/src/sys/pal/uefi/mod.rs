@@ -15,7 +15,6 @@
 
 pub mod args;
 pub mod env;
-pub mod fs;
 pub mod helpers;
 pub mod os;
 #[path = "../unsupported/pipe.rs"]

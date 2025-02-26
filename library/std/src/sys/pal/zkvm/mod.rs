@@ -14,8 +14,6 @@ pub mod abi;
 #[path = "../zkvm/args.rs"]
 pub mod args;
 pub mod env;
-#[path = "../unsupported/fs.rs"]
-pub mod fs;
 pub mod os;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;

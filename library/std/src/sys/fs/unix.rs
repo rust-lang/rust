@@ -1,3 +1,5 @@
+#![allow(nonstandard_style)]
+#![allow(unsafe_op_in_unsafe_fn)]
 // miri has some special hacks here that make things unused.
 #![cfg_attr(miri, allow(unused))]
 
@@ -79,13 +81,13 @@ use crate::path::{Path, PathBuf};
 use crate::sync::Arc;
 use crate::sys::common::small_c_string::run_path_with_cstr;
 use crate::sys::fd::FileDesc;
+pub use crate::sys::fs::common::exists;
 use crate::sys::time::SystemTime;
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
 use crate::sys::weak::syscall;
 #[cfg(target_os = "android")]
 use crate::sys::weak::weak;
 use crate::sys::{cvt, cvt_r};
-pub use crate::sys_common::fs::exists;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 use crate::{mem, ptr};
 
@@ -699,6 +701,8 @@ impl Iterator for ReadDir {
         target_os = "hurd",
     ))]
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
+        use crate::sys::os::{errno, set_errno};
+
         if self.end_of_stream {
             return None;
         }
@@ -710,7 +714,7 @@ impl Iterator for ReadDir {
                 // with unlimited or variable NAME_MAX. Many modern platforms guarantee
                 // thread safety for readdir() as long an individual DIR* is not accessed
                 // concurrently, which is sufficient for Rust.
-                super::os::set_errno(0);
+                set_errno(0);
                 let entry_ptr: *const dirent64 = readdir64(self.inner.dirp.0);
                 if entry_ptr.is_null() {
                     // We either encountered an error, or reached the end. Either way,
@@ -719,7 +723,7 @@ impl Iterator for ReadDir {
 
                     // To distinguish between errors and end-of-directory, we had to clear
                     // errno beforehand to check for an error now.
-                    return match super::os::errno() {
+                    return match errno() {
                         0 => None,
                         e => Some(Err(Error::from_raw_os_error(e))),
                     };
@@ -1932,7 +1936,7 @@ pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
 
 fn open_from(from: &Path) -> io::Result<(crate::fs::File, crate::fs::Metadata)> {
     use crate::fs::File;
-    use crate::sys_common::fs::NOT_FILE_ERROR;
+    use crate::sys::fs::common::NOT_FILE_ERROR;
 
     let reader = File::open(from)?;
     let metadata = reader.metadata()?;
@@ -2151,7 +2155,7 @@ pub use remove_dir_impl::remove_dir_all;
     miri
 ))]
 mod remove_dir_impl {
-    pub use crate::sys_common::fs::remove_dir_all;
+    pub use crate::sys::fs::common::remove_dir_all;
 }
 
 // Modern implementation using openat(), unlinkat() and fdopendir()

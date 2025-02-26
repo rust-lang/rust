@@ -17,7 +17,6 @@ pub mod api;
 pub mod args;
 pub mod c;
 pub mod env;
-pub mod fs;
 #[cfg(not(target_vendor = "win7"))]
 pub mod futex;
 pub mod handle;
@@ -37,7 +36,7 @@ cfg_if::cfg_if! {
 }
 
 /// Map a [`Result<T, WinError>`] to [`io::Result<T>`](crate::io::Result<T>).
-trait IoResult<T> {
+pub trait IoResult<T> {
     fn io_result(self) -> crate::io::Result<T>;
 }
 impl<T> IoResult<T> for Result<T, api::WinError> {
