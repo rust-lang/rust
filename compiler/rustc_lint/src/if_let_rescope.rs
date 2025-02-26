@@ -1,7 +1,7 @@
 use std::iter::repeat;
 use std::ops::ControlFlow;
 
-use hir::intravisit::Visitor;
+use hir::intravisit::{self, Visitor};
 use rustc_ast::Recovered;
 use rustc_errors::{
     Applicability, Diag, EmissionGuarantee, SubdiagMessageOp, Subdiagnostic, SuggestionStyle,
@@ -9,6 +9,7 @@ use rustc_errors::{
 use rustc_hir::{self as hir, HirIdSet};
 use rustc_macros::LintDiagnostic;
 use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::adjustment::Adjust;
 use rustc_session::lint::{FutureIncompatibilityReason, LintId};
 use rustc_session::{declare_lint, impl_lint_pass};
 use rustc_span::Span;
@@ -160,7 +161,7 @@ impl IfLetRescope {
                 let lifetime_end = source_map.end_point(conseq.span);
 
                 if let ControlFlow::Break(significant_dropper) =
-                    (FindSignificantDropper { cx }).visit_expr(init)
+                    (FindSignificantDropper { cx }).check_if_let_scrutinee(init)
                 {
                     first_if_to_lint = first_if_to_lint.or_else(|| Some((span, expr.hir_id)));
                     significant_droppers.push(significant_dropper);
@@ -363,96 +364,97 @@ enum SingleArmMatchBegin {
     WithoutOpenBracket(Span),
 }
 
-struct FindSignificantDropper<'tcx, 'a> {
+struct FindSignificantDropper<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
 }
 
-impl<'tcx, 'a> Visitor<'tcx> for FindSignificantDropper<'tcx, 'a> {
-    type Result = ControlFlow<Span>;
+impl<'tcx> FindSignificantDropper<'_, 'tcx> {
+    /// Check the scrutinee of an `if let` to see if it promotes any temporary values
+    /// that would change drop order in edition 2024. Specifically, it checks the value
+    /// of the scrutinee itself, and also recurses into the expression to find any ref
+    /// exprs (or autoref) which would promote temporaries that would be scoped to the
+    /// end of this `if`.
+    fn check_if_let_scrutinee(&mut self, init: &'tcx hir::Expr<'tcx>) -> ControlFlow<Span> {
+        self.check_promoted_temp_with_drop(init)?;
+        self.visit_expr(init)
+    }
 
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> Self::Result {
-        if self
+    /// Check that an expression is not a promoted temporary with a significant
+    /// drop impl.
+    ///
+    /// An expression is a promoted temporary if it has an addr taken (i.e. `&expr` or autoref)
+    /// or is the scrutinee of the `if let`, *and* the expression is not a place
+    /// expr, and it has a significant drop.
+    fn check_promoted_temp_with_drop(&self, expr: &'tcx hir::Expr<'tcx>) -> ControlFlow<Span> {
+        if !expr.is_place_expr(|base| {
+            self.cx
+                .typeck_results()
+                .adjustments()
+                .get(base.hir_id)
+                .is_some_and(|x| x.iter().any(|adj| matches!(adj.kind, Adjust::Deref(_))))
+        }) && self
             .cx
             .typeck_results()
             .expr_ty(expr)
             .has_significant_drop(self.cx.tcx, self.cx.typing_env())
         {
-            return ControlFlow::Break(expr.span);
+            ControlFlow::Break(expr.span)
+        } else {
+            ControlFlow::Continue(())
         }
+    }
+}
+
+impl<'tcx> Visitor<'tcx> for FindSignificantDropper<'_, 'tcx> {
+    type Result = ControlFlow<Span>;
+
+    fn visit_block(&mut self, b: &'tcx hir::Block<'tcx>) -> Self::Result {
+        // Blocks introduce temporary terminating scope for all of its
+        // statements, so just visit the tail expr, skipping over any
+        // statements. This prevents false positives like `{ let x = &Drop; }`.
+        if let Some(expr) = b.expr { self.visit_expr(expr) } else { ControlFlow::Continue(()) }
+    }
+
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> Self::Result {
+        // Check for promoted temporaries from autoref, e.g.
+        // `if let None = TypeWithDrop.as_ref() {} else {}`
+        // where `fn as_ref(&self) -> Option<...>`.
+        for adj in self.cx.typeck_results().expr_adjustments(expr) {
+            match adj.kind {
+                // Skip when we hit the first deref expr.
+                Adjust::Deref(_) => break,
+                Adjust::Borrow(_) => {
+                    self.check_promoted_temp_with_drop(expr)?;
+                }
+                _ => {}
+            }
+        }
+
         match expr.kind {
-            hir::ExprKind::ConstBlock(_)
-            | hir::ExprKind::Lit(_)
-            | hir::ExprKind::Path(_)
-            | hir::ExprKind::Assign(_, _, _)
-            | hir::ExprKind::AssignOp(_, _, _)
-            | hir::ExprKind::Break(_, _)
-            | hir::ExprKind::Continue(_)
-            | hir::ExprKind::Ret(_)
-            | hir::ExprKind::Become(_)
-            | hir::ExprKind::InlineAsm(_)
-            | hir::ExprKind::OffsetOf(_, _)
-            | hir::ExprKind::Repeat(_, _)
-            | hir::ExprKind::Err(_)
-            | hir::ExprKind::Struct(_, _, _)
-            | hir::ExprKind::Closure(_)
-            | hir::ExprKind::Block(_, _)
-            | hir::ExprKind::DropTemps(_)
-            | hir::ExprKind::Loop(_, _, _, _) => ControlFlow::Continue(()),
-
-            hir::ExprKind::Tup(exprs) | hir::ExprKind::Array(exprs) => {
-                for expr in exprs {
-                    self.visit_expr(expr)?;
-                }
-                ControlFlow::Continue(())
+            // Account for cases like `if let None = Some(&Drop) {} else {}`.
+            hir::ExprKind::AddrOf(_, _, expr) => {
+                self.check_promoted_temp_with_drop(expr)?;
+                intravisit::walk_expr(self, expr)
             }
-            hir::ExprKind::Call(callee, args) => {
-                self.visit_expr(callee)?;
-                for expr in args {
-                    self.visit_expr(expr)?;
-                }
-                ControlFlow::Continue(())
+            // `(Drop, ()).1` introduces a temporary and then moves out of
+            // part of it, therefore we should check it for temporaries.
+            // FIXME: This may have false positives if we move the part
+            // that actually has drop, but oh well.
+            hir::ExprKind::Index(expr, _, _) | hir::ExprKind::Field(expr, _) => {
+                self.check_promoted_temp_with_drop(expr)?;
+                intravisit::walk_expr(self, expr)
             }
-            hir::ExprKind::MethodCall(_, receiver, args, _) => {
-                self.visit_expr(receiver)?;
-                for expr in args {
-                    self.visit_expr(expr)?;
-                }
-                ControlFlow::Continue(())
-            }
-            hir::ExprKind::Index(left, right, _) | hir::ExprKind::Binary(_, left, right) => {
-                self.visit_expr(left)?;
-                self.visit_expr(right)
-            }
-            hir::ExprKind::Unary(_, expr)
-            | hir::ExprKind::Cast(expr, _)
-            | hir::ExprKind::Type(expr, _)
-            | hir::ExprKind::UnsafeBinderCast(_, expr, _)
-            | hir::ExprKind::Yield(expr, _)
-            | hir::ExprKind::AddrOf(_, _, expr)
-            | hir::ExprKind::Match(expr, _, _)
-            | hir::ExprKind::Field(expr, _)
-            | hir::ExprKind::Let(&hir::LetExpr {
-                init: expr,
-                span: _,
-                pat: _,
-                ty: _,
-                recovered: Recovered::No,
-            }) => self.visit_expr(expr),
-            hir::ExprKind::Let(_) => ControlFlow::Continue(()),
-
-            hir::ExprKind::If(cond, _, _) => {
-                if let hir::ExprKind::Let(hir::LetExpr {
-                    init,
-                    span: _,
-                    pat: _,
-                    ty: _,
-                    recovered: Recovered::No,
-                }) = cond.kind
-                {
-                    self.visit_expr(init)?;
-                }
-                ControlFlow::Continue(())
-            }
+            // If always introduces a temporary terminating scope for its cond and arms,
+            // so don't visit them.
+            hir::ExprKind::If(..) => ControlFlow::Continue(()),
+            // Match introduces temporary terminating scopes for arms, so don't visit
+            // them, and only visit the scrutinee to account for cases like:
+            // `if let None = match &Drop { _ => Some(1) } {} else {}`.
+            hir::ExprKind::Match(scrut, _, _) => self.visit_expr(scrut),
+            // Self explanatory.
+            hir::ExprKind::DropTemps(_) => ControlFlow::Continue(()),
+            // Otherwise, walk into the expr's parts.
+            _ => intravisit::walk_expr(self, expr),
         }
     }
 }

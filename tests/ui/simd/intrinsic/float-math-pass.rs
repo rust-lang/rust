@@ -48,13 +48,6 @@ unsafe fn simd_flog10<T>(x: T) -> T;
 #[rustc_intrinsic]
 unsafe fn simd_flog2<T>(x: T) -> T;
 
-#[rustc_intrinsic]
-unsafe fn simd_fpow<T>(x: T, y: T) -> T;
-
-#[rustc_intrinsic]
-unsafe fn simd_fpowi<T>(x: T, y: i32) -> T;
-
-
 // rounding functions
 #[rustc_intrinsic]
 unsafe fn simd_ceil<T>(x: T) -> T;
@@ -68,23 +61,21 @@ unsafe fn simd_round<T>(x: T) -> T;
 #[rustc_intrinsic]
 unsafe fn simd_trunc<T>(x: T) -> T;
 
-
 macro_rules! assert_approx_eq_f32 {
-    ($a:expr, $b:expr) => ({
+    ($a:expr, $b:expr) => {{
         let (a, b) = (&$a, &$b);
-        assert!((*a - *b).abs() < 1.0e-6,
-                "{} is not approximately equal to {}", *a, *b);
-    })
+        assert!((*a - *b).abs() < 1.0e-6, "{} is not approximately equal to {}", *a, *b);
+    }};
 }
 macro_rules! assert_approx_eq {
-    ($a:expr, $b:expr) => ({
+    ($a:expr, $b:expr) => {{
         let a = $a;
         let b = $b;
         assert_approx_eq_f32!(a.0[0], b.0[0]);
         assert_approx_eq_f32!(a.0[1], b.0[1]);
         assert_approx_eq_f32!(a.0[2], b.0[2]);
         assert_approx_eq_f32!(a.0[3], b.0[3]);
-    })
+    }};
 }
 
 fn main() {
@@ -124,12 +115,6 @@ fn main() {
 
         let r = simd_flog10(x);
         assert_approx_eq!(z, r);
-
-        let r = simd_fpow(h, x);
-        assert_approx_eq!(h, r);
-
-        let r = simd_fpowi(h, 1);
-        assert_approx_eq!(h, r);
 
         let r = simd_fsin(z);
         assert_approx_eq!(z, r);
