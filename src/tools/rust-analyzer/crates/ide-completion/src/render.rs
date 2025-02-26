@@ -628,11 +628,9 @@ fn compute_ref_match(
     let expected_type = ctx.expected_type.as_ref()?;
     let expected_without_ref = expected_type.remove_ref();
     let completion_without_ref = completion_ty.remove_ref();
-
-    if completion_ty == expected_type {
+    if expected_type.could_unify_with(ctx.db, completion_ty) {
         return None;
     }
-
     if let Some(expected_without_ref) = &expected_without_ref {
         if completion_ty.autoderef(ctx.db).any(|ty| ty == *expected_without_ref) {
             cov_mark::hit!(suggest_ref);
