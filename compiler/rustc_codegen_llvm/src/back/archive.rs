@@ -132,7 +132,7 @@ fn get_llvm_object_symbols(
     if err.is_null() {
         return Ok(true);
     } else {
-        let error = unsafe { *Box::from_raw(err as *mut String) };
+        let error = unsafe { *Box::from_raw(err as *mut io::Error) };
         // These are the magic constants for LLVM bitcode files:
         // https://github.com/llvm/llvm-project/blob/7eadc1960d199676f04add402bb0aa6f65b7b234/llvm/lib/BinaryFormat/Magic.cpp#L90-L97
         if buf.starts_with(&[0xDE, 0xCE, 0x17, 0x0B]) || buf.starts_with(&[b'B', b'C', 0xC0, 0xDE])
@@ -150,7 +150,7 @@ fn get_llvm_object_symbols(
             eprintln!("warning: Failed to read symbol table from LLVM bitcode: {}", error);
             return Ok(true);
         } else {
-            return Err(io::Error::new(io::ErrorKind::Other, format!("LLVM error: {}", error)));
+            return Err(error);
         }
     }
 
@@ -158,13 +158,16 @@ fn get_llvm_object_symbols(
         let f = unsafe { &mut *(state as *mut &mut dyn FnMut(&[u8]) -> io::Result<()>) };
         match f(unsafe { CStr::from_ptr(symbol_name) }.to_bytes()) {
             Ok(()) => std::ptr::null_mut(),
-            Err(err) => Box::into_raw(Box::new(err.to_string()) as Box<String>) as *mut c_void,
+            Err(err) => Box::into_raw(Box::new(err) as Box<io::Error>) as *mut c_void,
         }
     }
 
     unsafe extern "C" fn error_callback(error: *const c_char) -> *mut c_void {
         let error = unsafe { CStr::from_ptr(error) };
-        Box::into_raw(Box::new(error.to_string_lossy().into_owned()) as Box<String>) as *mut c_void
+        Box::into_raw(Box::new(io::Error::new(
+            io::ErrorKind::Other,
+            format!("LLVM error: {}", error.to_string_lossy()),
+        )) as Box<io::Error>) as *mut c_void
     }
 }
 
