@@ -25,7 +25,7 @@ pub fn ancestors_at_offset(
 /// imprecise: if the cursor is strictly between two nodes of the desired type,
 /// as in
 ///
-/// ```no_run
+/// ```ignore
 /// struct Foo {}|struct Bar;
 /// ```
 ///

@@ -6,7 +6,8 @@
 //! Use this to test functionality local to one file.
 //!
 //! Simple Example:
-//! ```
+//!
+//! ```ignore
 //! r#"
 //! fn main() {
 //!     println!("Hello World")
@@ -19,7 +20,8 @@
 //! which is also how to define multiple files in a single test fixture
 //!
 //! Example using two files in the same crate:
-//! ```
+//!
+//! ```ignore
 //! "
 //! //- /main.rs
 //! mod foo;
@@ -33,7 +35,8 @@
 //! ```
 //!
 //! Example using two crates with one file each, with one crate depending on the other:
-//! ```
+//!
+//! ```ignore
 //! r#"
 //! //- /main.rs crate:a deps:b
 //! fn main() {
@@ -51,7 +54,8 @@
 //! for the syntax.
 //!
 //! Example using some available metadata:
-//! ```
+//!
+//! ```ignore
 //! "
 //! //- /lib.rs crate:foo deps:bar,baz cfg:foo=a,bar=b env:OUTDIR=path/to,OTHER=foo
 //! fn insert_source_code_here() {}
