@@ -772,7 +772,6 @@ pub(crate) struct LabeledLoopInBreak {
 }
 
 #[derive(Subdiagnostic)]
-
 pub(crate) enum WrapInParentheses {
     #[multipart_suggestion(
         parse_sugg_wrap_expression_in_parentheses,
