@@ -1,6 +1,9 @@
 //! A different sort of visitor for walking fn bodies. Unlike the
 //! normal visitor, which just walks the entire body in one shot, the
 //! `ExprUseVisitor` determines how expressions are being used.
+//!
+//! In the compiler, this is only used for upvar inference, but there
+//! are many uses within clippy.
 
 use std::cell::{Ref, RefCell};
 use std::ops::Deref;
@@ -35,11 +38,8 @@ pub trait Delegate<'tcx> {
     /// The value found at `place` is moved, depending
     /// on `mode`. Where `diag_expr_id` is the id used for diagnostics for `place`.
     ///
-    /// Use of a `Copy` type in a ByValue context is considered a use
-    /// by `ImmBorrow` and `borrow` is called instead. This is because
-    /// a shared borrow is the "minimum access" that would be needed
-    /// to perform a copy.
-    ///
+    /// If the value is `Copy`, [`copy`][Self::copy] is called instead, which
+    /// by default falls back to [`borrow`][Self::borrow].
     ///
     /// The parameter `diag_expr_id` indicates the HIR id that ought to be used for
     /// diagnostics. Around pattern matching such as `let pat = expr`, the diagnostic
@@ -73,6 +73,10 @@ pub trait Delegate<'tcx> {
 
     /// The value found at `place` is being copied.
     /// `diag_expr_id` is the id used for diagnostics (see `consume` for more details).
+    ///
+    /// If an implementation is not provided, use of a `Copy` type in a ByValue context is instead
+    /// considered a use by `ImmBorrow` and `borrow` is called instead. This is because a shared
+    /// borrow is the "minimum access" that would be needed to perform a copy.
     fn copy(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
         // In most cases, copying data from `x` is equivalent to doing `*&x`, so by default
         // we treat a copy of `x` as a borrow of `x`.
@@ -141,6 +145,8 @@ impl<'tcx, D: Delegate<'tcx>> Delegate<'tcx> for &mut D {
     }
 }
 
+/// This trait makes `ExprUseVisitor` usable with both [`FnCtxt`]
+/// and [`LateContext`], depending on where in the compiler it is used.
 pub trait TypeInformationCtxt<'tcx> {
     type TypeckResults<'a>: Deref<Target = ty::TypeckResults<'tcx>>
     where
@@ -268,9 +274,9 @@ impl<'tcx> TypeInformationCtxt<'tcx> for (&LateContext<'tcx>, LocalDefId) {
     }
 }
 
-/// The ExprUseVisitor type
+/// A visitor that reports how each expression is being used.
 ///
-/// This is the code that actually walks the tree.
+/// See [module-level docs][self] and [`Delegate`] for details.
 pub struct ExprUseVisitor<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> {
     cx: Cx,
     /// We use a `RefCell` here so that delegates can mutate themselves, but we can
@@ -1285,7 +1291,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         self.pat_ty_unadjusted(pat)
     }
 
-    /// Like `TypeckResults::pat_ty`, but ignores implicit `&` patterns.
+    /// Like [`Self::pat_ty_adjusted`], but ignores implicit `&` patterns.
     fn pat_ty_unadjusted(&self, pat: &hir::Pat<'_>) -> Result<Ty<'tcx>, Cx::Error> {
         let base_ty = self.node_ty(pat.hir_id)?;
         trace!(?base_ty);
