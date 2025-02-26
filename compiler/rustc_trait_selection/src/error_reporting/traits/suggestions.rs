@@ -136,7 +136,10 @@ pub fn suggest_restriction<'tcx, G: EmissionGuarantee>(
 ) {
     if hir_generics.where_clause_span.from_expansion()
         || hir_generics.where_clause_span.desugaring_kind().is_some()
-        || projection.is_some_and(|projection| tcx.is_impl_trait_in_trait(projection.def_id))
+        || projection.is_some_and(|projection| {
+            tcx.is_impl_trait_in_trait(projection.def_id)
+                || tcx.lookup_stability(projection.def_id).is_some_and(|stab| stab.is_unstable())
+        })
     {
         return;
     }
