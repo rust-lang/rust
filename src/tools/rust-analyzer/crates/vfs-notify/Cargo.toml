@@ -10,7 +10,6 @@ license.workspace = true
 rust-version.workspace = true
 
 [lib]
-doctest = false
 
 [dependencies]
 tracing.workspace = true
