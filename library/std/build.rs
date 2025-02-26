@@ -107,7 +107,6 @@ fn main() {
         ("csky", _) => false,
         ("hexagon", _) => false,
         ("loongarch64", _) => false,
-        ("mips" | "mips64" | "mips32r6" | "mips64r6", _) => false,
         ("powerpc" | "powerpc64", _) => false,
         ("sparc" | "sparc64", _) => false,
         ("wasm32" | "wasm64", _) => false,
