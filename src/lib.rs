@@ -41,7 +41,6 @@ use std::sync::Arc;
 use cranelift_codegen::isa::TargetIsa;
 use cranelift_codegen::settings::{self, Configurable};
 use rustc_codegen_ssa::CodegenResults;
-use rustc_codegen_ssa::back::versioned_llvm_target;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
@@ -247,9 +246,7 @@ fn enable_verifier(sess: &Session) -> bool {
 }
 
 fn target_triple(sess: &Session) -> target_lexicon::Triple {
-    // FIXME(madsmtm): Use `sess.target.llvm_target` once target-lexicon supports unversioned macOS.
-    // See <https://github.com/bytecodealliance/target-lexicon/pull/113>
-    match versioned_llvm_target(sess).parse() {
+    match sess.target.llvm_target.parse() {
         Ok(triple) => triple,
         Err(err) => sess.dcx().fatal(format!("target not recognized: {}", err)),
     }
