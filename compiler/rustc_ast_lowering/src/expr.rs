@@ -676,6 +676,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
         {
             self.lower_expr(body)
         } else {
+            let removal_span = |removal_span: Span| {
+                // Seek upwards in the macro call sites to see if we find the place where
+                // `pat!()` was called so that we can get the right span to remove.
+                let Some(pat_span) = pat.span.find_ancestor_in_same_ctxt(arm.span) else {
+                    return removal_span;
+                };
+                // - pat!() => {}
+                // + pat!(),
+                pat_span.shrink_to_hi().with_hi(arm.span.hi())
+            };
             // Either `body.is_none()` or `is_never_pattern` here.
             if !is_never_pattern {
                 if self.tcx.features().never_patterns() {
@@ -686,29 +696,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
             } else if let Some(body) = &arm.body {
                 self.dcx().emit_err(NeverPatternWithBody {
                     span: body.span,
-                    removal_span: if pat.span.eq_ctxt(arm.span) {
-                        // - ! => {}
-                        // + !,
-                        pat.span.shrink_to_hi().with_hi(arm.span.hi())
-                    } else {
-                        // Subtly incorrect, but close enough if macros are involved.
-                        // - ! => {}
-                        // + ! => ,
-                        body.span
-                    },
+                    removal_span: removal_span(body.span),
                 });
             } else if let Some(g) = &arm.guard {
                 self.dcx().emit_err(NeverPatternWithGuard {
                     span: g.span,
-                    removal_span: if pat.span.eq_ctxt(arm.span) {
-                        // - ! if cond,
-                        // + !,
-                        pat.span.shrink_to_hi().with_hi(arm.span.hi())
-                    } else {
-                        // We have something like `never!() if cond =>`
-                        //                      We just remove ^^^^ which isn't entirely correct.
-                        g.span
-                    },
+                    removal_span: removal_span(g.span),
                 });
             }
 

@@ -76,7 +76,7 @@ LL |         never!() if true,
 help: remove the match arm guard
    |
 LL -         never!() if true,
-LL +         never!() if ,,
+LL +         never!(),
    |
 
 error: aborting due to 8 previous errors
