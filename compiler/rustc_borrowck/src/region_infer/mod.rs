@@ -21,8 +21,8 @@ use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable, UniverseIndex};
 use rustc_mir_dataflow::points::DenseLocationMap;
-use rustc_span::Span;
 use rustc_span::hygiene::DesugaringKind;
+use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument, trace};
 
 use crate::BorrowckInferCtxt;
@@ -1809,27 +1809,43 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // A constraint like `'r: 'x` can come from our constraint
             // graph.
             let fr_static = self.universal_regions().fr_static;
-            let outgoing_edges_from_graph =
-                self.constraint_graph.outgoing_edges(r, &self.constraints, fr_static);
 
             // Always inline this closure because it can be hot.
             let mut handle_constraint = #[inline(always)]
-            |constraint: OutlivesConstraint<'tcx>| {
+            |constraint: &OutlivesConstraint<'tcx>| {
                 debug_assert_eq!(constraint.sup, r);
                 let sub_region = constraint.sub;
                 if let Trace::NotVisited = context[sub_region] {
-                    context[sub_region] = Trace::FromOutlivesConstraint(constraint);
+                    context[sub_region] = Trace::FromOutlivesConstraint(*constraint);
                     deque.push_back(sub_region);
                 }
             };
 
-            // This loop can be hot.
-            for constraint in outgoing_edges_from_graph {
-                if matches!(constraint.category, ConstraintCategory::IllegalUniverse) {
-                    debug!("Ignoring illegal universe constraint: {constraint:?}");
-                    continue;
+            // If this is the `'static` region and the graph's direction is normal, then set up the
+            // Edges iterator to return all regions (#53178).
+            if r == fr_static && self.constraint_graph.is_normal() {
+                for next_static_idx in self.constraint_graph.outgoing_edges_from_static() {
+                    let constraint = OutlivesConstraint {
+                        sup: fr_static,
+                        sub: next_static_idx,
+                        locations: Locations::All(DUMMY_SP),
+                        span: DUMMY_SP,
+                        category: ConstraintCategory::Internal,
+                        variance_info: ty::VarianceDiagInfo::default(),
+                        from_closure: false,
+                    };
+                    handle_constraint(&constraint);
                 }
-                handle_constraint(constraint);
+            } else {
+                let edges = self.constraint_graph.outgoing_edges_from_graph(r, &self.constraints);
+                // This loop can be hot.
+                for constraint in edges {
+                    if matches!(constraint.category, ConstraintCategory::IllegalUniverse) {
+                        debug!("Ignoring illegal universe constraint: {constraint:?}");
+                        continue;
+                    }
+                    handle_constraint(constraint);
+                }
             }
 
             // Member constraints can also give rise to `'r: 'x` edges that
@@ -1846,7 +1862,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     variance_info: ty::VarianceDiagInfo::default(),
                     from_closure: false,
                 };
-                handle_constraint(constraint);
+                handle_constraint(&constraint);
             }
         }
 
