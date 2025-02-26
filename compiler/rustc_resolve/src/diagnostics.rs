@@ -2252,7 +2252,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     #[instrument(level = "debug", skip(self, parent_scope))]
     pub(crate) fn make_path_suggestion(
         &mut self,
-        span: Span,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'ra>,
     ) -> Option<(Vec<Segment>, Option<String>)> {
@@ -2480,7 +2479,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             //   or  `use a::{b, c, d}};`
             //               ^^^^^^^^^^^
             let (has_nested, after_crate_name) =
-                find_span_immediately_after_crate_name(self.tcx.sess, module_name, import.use_span);
+                find_span_immediately_after_crate_name(self.tcx.sess, import.use_span);
             debug!(has_nested, ?after_crate_name);
 
             let source_map = self.tcx.sess.source_map();
@@ -2687,11 +2686,7 @@ fn extend_span_to_previous_binding(sess: &Session, binding_span: Span) -> Option
 /// //       ^^^^^^^^^^^^^^^ -- true
 /// ```
 #[instrument(level = "debug", skip(sess))]
-fn find_span_immediately_after_crate_name(
-    sess: &Session,
-    module_name: Symbol,
-    use_span: Span,
-) -> (bool, Span) {
+fn find_span_immediately_after_crate_name(sess: &Session, use_span: Span) -> (bool, Span) {
     let source_map = sess.source_map();
 
     // Using `use issue_59764::foo::{baz, makro};` as an example throughout..

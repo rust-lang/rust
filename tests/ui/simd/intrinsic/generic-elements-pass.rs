@@ -1,5 +1,4 @@
 //@ run-pass
-//@ ignore-emscripten FIXME(#45351) hits an LLVM assert
 
 #![feature(repr_simd, intrinsics)]
 
@@ -21,7 +20,6 @@ unsafe fn simd_insert<T, E>(x: T, idx: u32, y: E) -> T;
 
 #[rustc_intrinsic]
 unsafe fn simd_extract<T, E>(x: T, idx: u32) -> E;
-
 
 #[rustc_intrinsic]
 unsafe fn simd_shuffle<T, I, U>(x: T, y: T, idx: I) -> U;
