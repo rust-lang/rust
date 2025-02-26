@@ -59,20 +59,19 @@ fn symbols_check(path: &str) {
             continue; // Correctly mangled
         }
 
+        if !name.contains("rust") {
+            // Assume that this symbol doesn't originate from rustc. This may
+            // be wrong, but even if so symbol_check_archive will likely
+            // catch it.
+            continue;
+        }
+
         if name == "__rust_no_alloc_shim_is_unstable" {
             continue; // FIXME remove exception once we mangle this symbol
         }
 
         if name.contains("rust_eh_personality") {
             continue; // Unfortunately LLVM doesn't allow us to mangle this symbol
-        }
-
-        if ["_start", "__dso_handle", "_init", "_fini", "__TMC_END__"].contains(&name) {
-            continue; // Part of the libc crt object
-        }
-
-        if name == "main" {
-            continue; // The main symbol has to be unmangled for the crt object to find it
         }
 
         panic!("Unmangled symbol found: {name}");
