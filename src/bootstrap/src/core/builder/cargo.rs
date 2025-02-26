@@ -776,6 +776,12 @@ impl Builder<'_> {
             Mode::Codegen => metadata.push_str("codegen"),
             _ => {}
         }
+        // `rustc_driver`'s version number is always `0.0.0`, which can cause linker search path
+        // problems on side-by-side installs because we don't include the version number of the
+        // `rustc_driver` being built. This can cause builds of different version numbers to produce
+        // `librustc_driver*.so` artifacts that end up with identical filename hashes.
+        metadata.push_str(&self.version);
+
         cargo.env("__CARGO_DEFAULT_LIB_METADATA", &metadata);
 
         if cmd_kind == Kind::Clippy {
