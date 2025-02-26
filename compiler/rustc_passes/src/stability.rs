@@ -312,11 +312,27 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         let mut const_stab = const_stab
             .map(|(stab, _span)| ConstStability::from_partial(stab, const_stability_indirect));
 
+        // `impl const Trait for Type` items forward their const stability to their
+        // immediate children.
+        // FIXME(const_trait_impl): how is this supposed to interact with `#[rustc_const_stable_indirect]`?
+        // Currently, once that is set, we do not inherit anything from the parent any more.
+        if const_stab.is_none()
+            && let Some(parent) = self.parent_const_stab
+            && parent.is_const_unstable()
+        {
+            // For now, `const fn` in const traits/trait impls does not exist.
+            assert!(
+                fn_sig.is_none_or(|s| !s.header.is_const()),
+                "should never have parent const stability for a const fn"
+            );
+            self.index.const_stab_map.insert(def_id, parent);
+        }
+
         // If this is a const fn but not annotated with stability markers, see if we can inherit regular stability.
-        if fn_sig.is_some_and(|s| s.header.is_const())  && const_stab.is_none() &&
+        if fn_sig.is_some_and(|s| s.header.is_const())
+            && const_stab.is_none()
             // We only ever inherit unstable features.
-            let Some(inherit_regular_stab) =
-                final_stab.filter(|s| s.is_unstable())
+            && let Some(inherit_regular_stab) = final_stab.filter(|s| s.is_unstable())
         {
             const_stab = Some(ConstStability {
                 // We subject these implicitly-const functions to recursive const stability.
@@ -339,19 +355,6 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
         }) = const_stab
         {
             self.index.implications.insert(implied_by, feature);
-        }
-
-        // `impl const Trait for Type` items forward their const stability to their
-        // immediate children.
-        // FIXME(const_trait_impl): how is this supposed to interact with `#[rustc_const_stable_indirect]`?
-        // Currently, once that is set, we do not inherit anything from the parent any more.
-        if const_stab.is_none() {
-            debug!("annotate: const_stab not found, parent = {:?}", self.parent_const_stab);
-            if let Some(parent) = self.parent_const_stab {
-                if parent.is_const_unstable() {
-                    self.index.const_stab_map.insert(def_id, parent);
-                }
-            }
         }
 
         self.recurse_with_stability_attrs(
@@ -428,6 +431,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
             hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }) => {
                 self.in_trait_impl = true;
                 kind = AnnotationKind::DeprecationProhibited;
+                const_stab_inherit = InheritConstStability::Yes;
+            }
+            hir::ItemKind::Trait(..) => {
                 const_stab_inherit = InheritConstStability::Yes;
             }
             hir::ItemKind::Struct(ref sd, _) => {
