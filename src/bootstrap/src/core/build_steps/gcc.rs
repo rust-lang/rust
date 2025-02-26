@@ -9,13 +9,13 @@
 //! ensure that they're always in place if needed.
 
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
 use build_helper::ci::CiEnv;
 
 use crate::Kind;
-use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
+use crate::core::builder::{Builder, Cargo, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
 use crate::utils::build_stamp::{BuildStamp, generate_smart_stamp_hash};
 use crate::utils::exec::command;
@@ -29,7 +29,8 @@ pub struct Meta {
 }
 
 pub enum GccBuildStatus {
-    AlreadyBuilt,
+    /// libgccjit is already built at this path
+    AlreadyBuilt(PathBuf),
     ShouldBuild(Meta),
 }
 
@@ -40,9 +41,6 @@ pub enum GccBuildStatus {
 pub fn prebuilt_gcc_config(builder: &Builder<'_>, target: TargetSelection) -> GccBuildStatus {
     // Initialize the gcc submodule if not initialized already.
     builder.config.update_submodule("src/gcc");
-
-    // FIXME (GuillaumeGomez): To be done once gccjit has been built in the CI.
-    // builder.config.maybe_download_ci_gcc();
 
     let root = builder.src.join("src/gcc");
     let out_dir = builder.gcc_out(target).join("build");
@@ -70,10 +68,23 @@ pub fn prebuilt_gcc_config(builder: &Builder<'_>, target: TargetSelection) -> Gc
                 stamp.path().display()
             ));
         }
-        return GccBuildStatus::AlreadyBuilt;
+        let path = libgccjit_built_path(&install_dir);
+        if path.is_file() {
+            return GccBuildStatus::AlreadyBuilt(path);
+        } else {
+            builder.info(&format!(
+                "GCC stamp is up-to-date, but the libgccjit.so file was not found at `{}`",
+                path.display(),
+            ));
+        }
     }
 
     GccBuildStatus::ShouldBuild(Meta { stamp, out_dir, install_dir, root })
+}
+
+/// Returns the path to a libgccjit.so file in the install directory of GCC.
+fn libgccjit_built_path(install_dir: &Path) -> PathBuf {
+    install_dir.join("lib/libgccjit.so")
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -81,8 +92,13 @@ pub struct Gcc {
     pub target: TargetSelection,
 }
 
+#[derive(Clone)]
+pub struct GccOutput {
+    pub libgccjit: PathBuf,
+}
+
 impl Step for Gcc {
-    type Output = bool;
+    type Output = GccOutput;
 
     const ONLY_HOSTS: bool = true;
 
@@ -94,14 +110,14 @@ impl Step for Gcc {
         run.builder.ensure(Gcc { target: run.target });
     }
 
-    /// Compile GCC for `target`.
-    fn run(self, builder: &Builder<'_>) -> bool {
+    /// Compile GCC (specifically `libgccjit`) for `target`.
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
         let target = self.target;
 
         // If GCC has already been built, we avoid building it again.
         let Meta { stamp, out_dir, install_dir, root } = match prebuilt_gcc_config(builder, target)
         {
-            GccBuildStatus::AlreadyBuilt => return true,
+            GccBuildStatus::AlreadyBuilt(path) => return GccOutput { libgccjit: path },
             GccBuildStatus::ShouldBuild(m) => m,
         };
 
@@ -110,8 +126,9 @@ impl Step for Gcc {
         let _time = helpers::timeit(builder);
         t!(fs::create_dir_all(&out_dir));
 
+        let libgccjit_path = libgccjit_built_path(&install_dir);
         if builder.config.dry_run() {
-            return true;
+            return GccOutput { libgccjit: libgccjit_path };
         }
 
         // GCC creates files (e.g. symlinks to the downloaded dependencies)
@@ -173,11 +190,17 @@ impl Step for Gcc {
 
         let lib_alias = install_dir.join("lib/libgccjit.so.0");
         if !lib_alias.exists() {
-            t!(builder.symlink_file(install_dir.join("lib/libgccjit.so"), lib_alias,));
+            t!(builder.symlink_file(&libgccjit_path, lib_alias));
         }
 
         t!(stamp.write());
 
-        true
+        GccOutput { libgccjit: libgccjit_path }
     }
+}
+
+/// Configures a Cargo invocation so that it can build the GCC codegen backend.
+pub fn add_cg_gcc_cargo_flags(cargo: &mut Cargo, gcc: &GccOutput) {
+    // Add the path to libgccjit.so to the linker search paths.
+    cargo.rustflag(&format!("-L{}", gcc.libgccjit.parent().unwrap().to_str().unwrap()));
 }

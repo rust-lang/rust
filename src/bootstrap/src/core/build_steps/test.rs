@@ -12,6 +12,7 @@ use clap_complete::shells;
 
 use crate::core::build_steps::compile::run_cargo;
 use crate::core::build_steps::doc::DocumentationFormat;
+use crate::core::build_steps::gcc::{Gcc, add_cg_gcc_cargo_flags};
 use crate::core::build_steps::llvm::get_llvm_version;
 use crate::core::build_steps::synthetic_targets::MirOptPanicAbortSyntheticTarget;
 use crate::core::build_steps::tool::{self, SourceType, Tool};
@@ -3549,6 +3550,8 @@ impl Step for CodegenGCC {
         let compiler = self.compiler;
         let target = self.target;
 
+        let gcc = builder.ensure(Gcc { target });
+
         builder.ensure(
             compile::Std::new(compiler, target)
                 .extra_rust_args(&["-Csymbol-mangling-version=v0", "-Cpanic=abort"]),
@@ -3575,6 +3578,7 @@ impl Step for CodegenGCC {
                 .arg("--manifest-path")
                 .arg(builder.src.join("compiler/rustc_codegen_gcc/build_system/Cargo.toml"));
             compile::rustc_cargo_env(builder, &mut cargo, target, compiler.stage);
+            add_cg_gcc_cargo_flags(&mut cargo, &gcc);
 
             // Avoid incremental cache issues when changing rustc
             cargo.env("CARGO_BUILD_INCREMENTAL", "false");
@@ -3607,9 +3611,10 @@ impl Step for CodegenGCC {
             .env("CG_RUSTFLAGS", "-Alinker-messages")
             .arg("--")
             .arg("test")
-            .arg("--use-system-gcc")
             .arg("--use-backend")
             .arg("gcc")
+            .arg("--gcc-path")
+            .arg(gcc.libgccjit.parent().unwrap())
             .arg("--out-dir")
             .arg(builder.stage_out(compiler, Mode::ToolRustc).join("cg_gcc"))
             .arg("--release")
