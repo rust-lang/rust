@@ -1,8 +1,6 @@
 //@ run-pass
-//@ ignore-emscripten FIXME(#45351) hits an LLVM assert
 
 #![feature(repr_simd, intrinsics)]
-
 
 #[rustc_intrinsic]
 unsafe fn simd_cast<T, U>(x: T) -> U;
