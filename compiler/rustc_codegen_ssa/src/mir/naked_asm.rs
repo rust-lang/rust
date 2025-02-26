@@ -1,6 +1,8 @@
+use object::{Architecture, SubArchitecture};
 use rustc_abi::{BackendRepr, Float, Integer, Primitive, RegKind};
 use rustc_attr_parsing::InstructionSetAttr;
 use rustc_hir::def_id::DefId;
+use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrs, TargetFeature};
 use rustc_middle::mir::mono::{Linkage, MonoItem, MonoItemData, Visibility};
 use rustc_middle::mir::{Body, InlineAsmOperand};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf};
@@ -104,6 +106,215 @@ fn inline_to_global_operand<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     }
 }
 
+// FIXME share code with `create_object_file`
+fn parse_architecture(
+    sess: &rustc_session::Session,
+) -> Option<(Architecture, Option<SubArchitecture>)> {
+    let (architecture, subarchitecture) = match &sess.target.arch[..] {
+        "arm" => (Architecture::Arm, None),
+        "aarch64" => (
+            if sess.target.pointer_width == 32 {
+                Architecture::Aarch64_Ilp32
+            } else {
+                Architecture::Aarch64
+            },
+            None,
+        ),
+        "x86" => (Architecture::I386, None),
+        "s390x" => (Architecture::S390x, None),
+        "mips" | "mips32r6" => (Architecture::Mips, None),
+        "mips64" | "mips64r6" => (Architecture::Mips64, None),
+        "x86_64" => (
+            if sess.target.pointer_width == 32 {
+                Architecture::X86_64_X32
+            } else {
+                Architecture::X86_64
+            },
+            None,
+        ),
+        "powerpc" => (Architecture::PowerPc, None),
+        "powerpc64" => (Architecture::PowerPc64, None),
+        "riscv32" => (Architecture::Riscv32, None),
+        "riscv64" => (Architecture::Riscv64, None),
+        "sparc" => {
+            if sess.unstable_target_features.contains(&sym::v8plus) {
+                // Target uses V8+, aka EM_SPARC32PLUS, aka 64-bit V9 but in 32-bit mode
+                (Architecture::Sparc32Plus, None)
+            } else {
+                // Target uses V7 or V8, aka EM_SPARC
+                (Architecture::Sparc, None)
+            }
+        }
+        "sparc64" => (Architecture::Sparc64, None),
+        "avr" => (Architecture::Avr, None),
+        "msp430" => (Architecture::Msp430, None),
+        "hexagon" => (Architecture::Hexagon, None),
+        "bpf" => (Architecture::Bpf, None),
+        "loongarch64" => (Architecture::LoongArch64, None),
+        "csky" => (Architecture::Csky, None),
+        "arm64ec" => (Architecture::Aarch64, Some(SubArchitecture::Arm64EC)),
+
+        // added here
+        "wasm32" => (Architecture::Wasm32, None),
+        "wasm64" => (Architecture::Wasm64, None),
+        "m68k" => (Architecture::M68k, None),
+
+        // Unsupported architecture.
+        _ => return None,
+    };
+
+    Some((architecture, subarchitecture))
+}
+
+/// Enable the function's target features in the body of the function, then disable them again
+fn enable_disable_target_features<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    attrs: &CodegenFnAttrs,
+) -> Option<(String, String)> {
+    use std::fmt::Write;
+
+    let mut begin = String::new();
+    let mut end = String::new();
+
+    let (architecture, _subarchitecture) = parse_architecture(tcx.sess)?;
+    let features = attrs.target_features.iter().filter(|attr| !attr.implied);
+
+    match architecture {
+        Architecture::X86_64 | Architecture::X86_64_X32 => { /* do nothing */ }
+
+        Architecture::Aarch64 | Architecture::Aarch64_Ilp32 | Architecture::Arm => {
+            // https://developer.arm.com/documentation/100067/0611/armclang-Integrated-Assembler/AArch32-Target-selection-directives?lang=en
+
+            for feature in features {
+                writeln!(begin, ".arch_extension {}", feature.name).unwrap();
+
+                writeln!(end, ".arch_extension no{}", feature.name).unwrap();
+            }
+        }
+        Architecture::Riscv32 | Architecture::Riscv64 => {
+            // https://github.com/riscv-non-isa/riscv-asm-manual/blob/ad0de8c004e29c9a7ac33cfd054f4d4f9392f2fb/src/asm-manual.adoc#arch
+
+            for feature in features {
+                writeln!(begin, ".option arch, +{}", feature.name).unwrap();
+
+                writeln!(end, ".option arch, -{}", feature.name).unwrap();
+            }
+        }
+        Architecture::Mips | Architecture::Mips64 | Architecture::Mips64_N32 => {
+            // https://sourceware.org/binutils/docs/as/MIPS-ISA.html
+            // https://sourceware.org/binutils/docs/as/MIPS-ASE-Instruction-Generation-Overrides.html
+
+            for feature in features {
+                writeln!(begin, ".set {}", feature.name).unwrap();
+
+                writeln!(end, ".set no{}", feature.name).unwrap();
+            }
+        }
+
+        Architecture::S390x => {
+            // https://sourceware.org/binutils/docs/as/s390-Directives.html
+
+            // based on src/llvm-project/llvm/lib/Target/SystemZ/SystemZFeatures.td
+            let isa_revision_for_feature = |feature: &TargetFeature| match feature.name.as_str() {
+                "backchain" => None, // does not define any instructions
+                "deflate-conversion" => Some(13),
+                "enhanced-sort" => Some(13),
+                "guarded-storage" => Some(12),
+                "high-word" => None, // technically 9, but LLVM supports only >= 10
+                "nnp-assist" => Some(14),
+                "transactional-execution" => Some(10),
+                "vector" => Some(11),
+                "vector-enhancements-1" => Some(12),
+                "vector-enhancements-2" => Some(13),
+                "vector-packed-decimal" => Some(12),
+                "vector-packed-decimal-enhancement" => Some(13),
+                "vector-packed-decimal-enhancement-2" => Some(14),
+                _ => None,
+            };
+
+            if let Some(minimum_isa) = features.filter_map(isa_revision_for_feature).max() {
+                writeln!(begin, ".machine arch{minimum_isa}").unwrap();
+
+                // NOTE: LLVM does not support `.machine push` and `.machine pop`, so we rely on these
+                // target features only being applied to this ASM block (LLVM clears them for the next)
+                //
+                // https://github.com/llvm/llvm-project/blob/74306afe87b85cb9b5734044eb6c74b8290098b3/llvm/lib/Target/SystemZ/AsmParser/SystemZAsmParser.cpp#L1362
+            }
+        }
+        Architecture::PowerPc | Architecture::PowerPc64 => {
+            // https://www.ibm.com/docs/en/ssw_aix_71/assembler/assembler_pdf.pdf
+
+            // based on src/llvm-project/llvm/lib/Target/PowerPC/PPC.td
+            let isa_revision_for_feature = |feature: &TargetFeature| match feature.name.as_str() {
+                "altivec" => Some(7),
+                "partword-atomics" => Some(8),
+                "power10-vector" => Some(10),
+                "power8-altivec" => Some(8),
+                "power8-crypto" => Some(8),
+                "power8-vector" => Some(9),
+                "power9-altivec" => Some(9),
+                "power9-vector" => Some(9),
+                "quadword-atomics" => Some(8),
+                "vsx" => Some(7),
+                _ => None,
+            };
+
+            if let Some(minimum_isa) = features.filter_map(isa_revision_for_feature).max() {
+                writeln!(begin, ".machine push").unwrap();
+
+                // LLVM currently ignores the .machine directive, and allows all instructions regardless
+                // of the machine. This may be fixed in the future.
+                //
+                // https://github.com/llvm/llvm-project/blob/74306afe87b85cb9b5734044eb6c74b8290098b3/llvm/lib/Target/PowerPC/AsmParser/PPCAsmParser.cpp#L1799
+                writeln!(begin, ".machine pwr{minimum_isa}").unwrap();
+
+                writeln!(end, ".machine pop").unwrap();
+            }
+        }
+
+        Architecture::M68k => {
+            // https://sourceware.org/binutils/docs/as/M68K_002dDirectives.html#index-directives_002c-M680x0
+
+            // FIXME support m64k
+            // return None;
+        }
+
+        Architecture::Wasm32 | Architecture::Wasm64 => {
+            // LLVM does not appear to accept any directive to enable target features
+            //
+            // https://github.com/llvm/llvm-project/blob/74306afe87b85cb9b5734044eb6c74b8290098b3/llvm/lib/Target/WebAssembly/AsmParser/WebAssemblyAsmParser.cpp#L909
+            return None;
+        }
+
+        Architecture::LoongArch64 => {
+            // LLVM does not appear to accept any directive to enable target features
+            //
+            // https://github.com/llvm/llvm-project/blob/74306afe87b85cb9b5734044eb6c74b8290098b3/llvm/lib/Target/LoongArch/AsmParser/LoongArchAsmParser.cpp#L1918
+        }
+
+        // FIXME: support naked_asm! on more architectures
+        Architecture::Avr => return None,
+        Architecture::Bpf => return None,
+        Architecture::Csky => return None,
+        Architecture::E2K32 => return None,
+        Architecture::E2K64 => return None,
+        Architecture::I386 => return None,
+        Architecture::Hexagon => return None,
+        Architecture::Msp430 => return None,
+        Architecture::Sbf => return None,
+        Architecture::Sharc => return None,
+        Architecture::Sparc => return None,
+        Architecture::Sparc32Plus => return None,
+        Architecture::Sparc64 => return None,
+        Architecture::Xtensa => return None,
+
+        // the Architecture enum is non-exhaustive
+        Architecture::Unknown | _ => return None,
+    }
+
+    Some((begin, end))
+}
+
 fn prefix_and_suffix<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
@@ -186,6 +397,12 @@ fn prefix_and_suffix<'tcx>(
         Ok(())
     };
 
+    let Some((target_feature_begin, target_feature_end)) =
+        enable_disable_target_features(tcx, attrs)
+    else {
+        panic!("target features on naked functions are not supported for this architecture");
+    };
+
     let mut begin = String::new();
     let mut end = String::new();
     match asm_binary_format {
@@ -205,6 +422,8 @@ fn prefix_and_suffix<'tcx>(
             writeln!(begin, ".pushsection {section},\"ax\", {progbits}").unwrap();
             writeln!(begin, ".balign {align}").unwrap();
             write_linkage(&mut begin).unwrap();
+            begin.push_str(&target_feature_begin);
+
             if let Visibility::Hidden = item_data.visibility {
                 writeln!(begin, ".hidden {asm_name}").unwrap();
             }
@@ -215,6 +434,7 @@ fn prefix_and_suffix<'tcx>(
             writeln!(begin, "{asm_name}:").unwrap();
 
             writeln!(end).unwrap();
+            end.push_str(&target_feature_end);
             writeln!(end, ".size {asm_name}, . - {asm_name}").unwrap();
             writeln!(end, ".popsection").unwrap();
             if !arch_suffix.is_empty() {
@@ -226,12 +446,14 @@ fn prefix_and_suffix<'tcx>(
             writeln!(begin, ".pushsection {},regular,pure_instructions", section).unwrap();
             writeln!(begin, ".balign {align}").unwrap();
             write_linkage(&mut begin).unwrap();
+            begin.push_str(&target_feature_begin);
             if let Visibility::Hidden = item_data.visibility {
                 writeln!(begin, ".private_extern {asm_name}").unwrap();
             }
             writeln!(begin, "{asm_name}:").unwrap();
 
             writeln!(end).unwrap();
+            end.push_str(&target_feature_end);
             writeln!(end, ".popsection").unwrap();
             if !arch_suffix.is_empty() {
                 writeln!(end, "{}", arch_suffix).unwrap();
@@ -242,6 +464,7 @@ fn prefix_and_suffix<'tcx>(
             writeln!(begin, ".pushsection {},\"xr\"", section).unwrap();
             writeln!(begin, ".balign {align}").unwrap();
             write_linkage(&mut begin).unwrap();
+            begin.push_str(&target_feature_begin);
             writeln!(begin, ".def {asm_name}").unwrap();
             writeln!(begin, ".scl 2").unwrap();
             writeln!(begin, ".type 32").unwrap();
@@ -249,6 +472,7 @@ fn prefix_and_suffix<'tcx>(
             writeln!(begin, "{asm_name}:").unwrap();
 
             writeln!(end).unwrap();
+            end.push_str(&target_feature_end);
             writeln!(end, ".popsection").unwrap();
             if !arch_suffix.is_empty() {
                 writeln!(end, "{}", arch_suffix).unwrap();
