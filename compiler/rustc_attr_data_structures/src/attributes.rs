@@ -195,3 +195,22 @@ pub enum AttributeKind {
     },
     // tidy-alphabetical-end
 }
+
+impl AttributeKind {
+    pub fn encode_cross_crate(&self) -> bool {
+        match self {
+            AttributeKind::AllowConstFnUnstable(..)
+            | AttributeKind::AllowInternalUnstable(..)
+            | AttributeKind::BodyStability { .. }
+            | AttributeKind::Confusables { .. }
+            | AttributeKind::ConstStability { .. }
+            | AttributeKind::ConstStabilityIndirect
+            | AttributeKind::Deprecation { .. }
+            | AttributeKind::Diagnostic(..)
+            | AttributeKind::DocComment { .. }
+            | AttributeKind::MacroTransparency(..)
+            | AttributeKind::Repr(..)
+            | AttributeKind::Stability { .. } => true,
+        }
+    }
+}
