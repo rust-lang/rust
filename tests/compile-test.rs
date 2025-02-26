@@ -383,13 +383,15 @@ fn ui_cargo_toml_metadata() {
                 .map(|component| component.as_os_str().to_string_lossy().replace('-', "_"))
                 .any(|s| *s == name)
                 || path.starts_with(&cargo_common_metadata_path),
-            "{path:?} has incorrect package name"
+            "`{}` has incorrect package name",
+            path.display(),
         );
 
         let publish = package.get("publish").and_then(toml::Value::as_bool).unwrap_or(true);
         assert!(
             !publish || publish_exceptions.contains(&path.parent().unwrap().to_path_buf()),
-            "{path:?} lacks `publish = false`"
+            "`{}` lacks `publish = false`",
+            path.display(),
         );
     }
 }
