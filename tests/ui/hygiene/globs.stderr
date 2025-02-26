@@ -50,6 +50,9 @@ error[E0425]: cannot find function `f` in this scope
 LL | n!(f);
    | ----- in this macro invocation
 ...
+LL |                     $j();
+   |                     -- due to this macro variable
+...
 LL |         n!(f);
    |            ^ not found in this scope
    |
@@ -62,6 +65,9 @@ error[E0425]: cannot find function `f` in this scope
    |
 LL | n!(f);
    | ----- in this macro invocation
+...
+LL |                     $j();
+   |                     -- due to this macro variable
 ...
 LL |                 f
    |                 ^ not found in this scope

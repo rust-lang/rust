@@ -429,6 +429,14 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         let mut err = self.r.dcx().struct_span_err(base_error.span, base_error.msg.clone());
         err.code(code);
 
+        // Try to get the span of the identifier within the path's syntax context
+        // (if that's different).
+        if let Some(within_macro_span) =
+            base_error.span.within_macro(span, self.r.tcx.sess.source_map())
+        {
+            err.span_label(within_macro_span, "due to this macro variable");
+        }
+
         self.detect_missing_binding_available_from_pattern(&mut err, path, following_seg);
         self.suggest_at_operator_in_slice_pat_with_range(&mut err, path);
         self.suggest_swapping_misplaced_self_ty_and_trait(&mut err, source, res, base_error.span);

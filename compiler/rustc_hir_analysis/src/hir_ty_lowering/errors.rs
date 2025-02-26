@@ -151,6 +151,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             qself: &qself_str,
             label: None,
             sugg: None,
+            // Try to get the span of the identifier within the path's syntax context
+            // (if that's different).
+            within_macro_span: assoc_name.span.within_macro(span, tcx.sess.source_map()),
         };
 
         if is_dummy {
