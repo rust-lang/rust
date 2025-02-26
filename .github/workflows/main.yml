@@ -165,9 +165,6 @@ jobs:
         sudo apt update
         sudo apt install -y hyperfine
 
-    - name: Prepare dependencies
-      run: ./y.sh prepare
-
     - name: Build
       run: ./y.sh build --sysroot none
 
@@ -215,9 +212,6 @@ jobs:
     - name: Set MinGW as the default toolchain
       if: matrix.os == 'windows-latest' && matrix.env.TARGET_TRIPLE == 'x86_64-pc-windows-gnu'
       run: rustup set default-host x86_64-pc-windows-gnu
-
-    - name: Prepare dependencies
-      run: ./y.sh prepare
 
     - name: Build backend
       run: ./y.sh build --sysroot none

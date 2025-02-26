@@ -22,9 +22,6 @@ jobs:
         path: build/cg_clif
         key: ${{ runner.os }}-rustc-test-cargo-build-target-${{ hashFiles('rust-toolchain', 'Cargo.lock') }}
 
-    - name: Prepare dependencies
-      run: ./y.sh prepare
-
     - name: Test
       run: ./scripts/test_bootstrap.sh
 
@@ -49,9 +46,6 @@ jobs:
       run: |
         sudo apt update
         sudo apt install -y ripgrep
-
-    - name: Prepare dependencies
-      run: ./y.sh prepare
 
     - name: Test
       run: ./scripts/test_rustc_tests.sh
