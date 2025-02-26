@@ -327,7 +327,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     fn bound_coroutine_hidden_types(
         self,
         def_id: DefId,
-    ) -> impl IntoIterator<Item = ty::EarlyBinder<'tcx, ty::Binder<'tcx, Ty<'tcx>>>> {
+    ) -> ty::EarlyBinder<'tcx, ty::Binder<'tcx, &'tcx ty::List<Ty<'tcx>>>> {
         self.bound_coroutine_hidden_types(def_id)
     }
 

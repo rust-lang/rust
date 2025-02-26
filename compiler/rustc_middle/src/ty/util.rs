@@ -748,29 +748,32 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn bound_coroutine_hidden_types(
         self,
         def_id: DefId,
-    ) -> impl Iterator<Item = ty::EarlyBinder<'tcx, ty::Binder<'tcx, Ty<'tcx>>>> {
+    ) -> ty::EarlyBinder<'tcx, ty::Binder<'tcx, &'tcx ty::List<Ty<'tcx>>>> {
         let coroutine_layout = self.mir_coroutine_witnesses(def_id);
-        coroutine_layout
-            .as_ref()
-            .map_or_else(|| [].iter(), |l| l.field_tys.iter())
-            .filter(|decl| !decl.ignore_for_traits)
-            .map(move |decl| {
-                let mut vars = vec![];
-                let ty = fold_regions(self, decl.ty, |re, debruijn| {
-                    assert_eq!(re, self.lifetimes.re_erased);
-                    let var = ty::BoundVar::from_usize(vars.len());
-                    vars.push(ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon));
-                    ty::Region::new_bound(
-                        self,
-                        debruijn,
-                        ty::BoundRegion { var, kind: ty::BoundRegionKind::Anon },
-                    )
-                });
-                ty::EarlyBinder::bind(ty::Binder::bind_with_vars(
-                    ty,
-                    self.mk_bound_variable_kinds(&vars),
-                ))
-            })
+        let mut vars = vec![];
+        let bound_tys = self.mk_type_list_from_iter(
+            coroutine_layout
+                .as_ref()
+                .map_or_else(|| [].iter(), |l| l.field_tys.iter())
+                .filter(|decl| !decl.ignore_for_traits)
+                .map(|decl| {
+                    let ty = fold_regions(self, decl.ty, |re, debruijn| {
+                        assert_eq!(re, self.lifetimes.re_erased);
+                        let var = ty::BoundVar::from_usize(vars.len());
+                        vars.push(ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon));
+                        ty::Region::new_bound(
+                            self,
+                            debruijn,
+                            ty::BoundRegion { var, kind: ty::BoundRegionKind::Anon },
+                        )
+                    });
+                    ty
+                }),
+        );
+        ty::EarlyBinder::bind(ty::Binder::bind_with_vars(
+            bound_tys,
+            self.mk_bound_variable_kinds(&vars),
+        ))
     }
 
     /// Expands the given impl trait type, stopping if the type is recursive.
