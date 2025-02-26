@@ -637,7 +637,7 @@ pub(crate) unsafe fn llvm_optimize(
     let result = unsafe {
         llvm::LLVMRustOptimize(
             module.module_llvm.llmod(),
-            &*module.module_llvm.tm,
+            &*module.module_llvm.tm.raw(),
             to_pass_builder_opt_level(opt_level),
             opt_stage,
             cgcx.opts.cg.linker_plugin_lto.enabled(),
@@ -875,7 +875,7 @@ pub(crate) unsafe fn codegen(
             };
             write_output_file(
                 dcx,
-                tm,
+                tm.raw(),
                 config.no_builtins,
                 llmod,
                 &path,
@@ -909,7 +909,7 @@ pub(crate) unsafe fn codegen(
 
                 write_output_file(
                     dcx,
-                    tm,
+                    tm.raw(),
                     config.no_builtins,
                     llmod,
                     &obj_out,
