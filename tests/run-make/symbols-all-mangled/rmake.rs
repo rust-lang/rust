@@ -1,4 +1,5 @@
 // Check that all symbols in cdylibs, staticlibs and bins are mangled
+//@ only-linux (non-linux has other symbols, unreasonable to exhaustively check)
 
 use run_make_support::object::read::{Object, ObjectSymbol};
 use run_make_support::{bin_name, dynamic_lib_name, object, rfs, rustc, static_lib_name};
@@ -21,7 +22,7 @@ fn symbols_check_archive(path: &str) {
     let file = object::read::archive::ArchiveFile::parse(&*binary_data).unwrap();
     for symbol in file.symbols().unwrap().unwrap() {
         let symbol = symbol.unwrap();
-        let name = strip_underscore_if_apple(std::str::from_utf8(symbol.name()).unwrap());
+        let name = std::str::from_utf8(symbol.name()).unwrap();
         if name.starts_with("_ZN") || name.starts_with("_R") {
             continue; // Correctly mangled
         }
@@ -54,7 +55,7 @@ fn symbols_check(path: &str) {
         if symbol.is_weak() {
             continue; // Likely an intrinsic from compiler-builtins
         }
-        let name = strip_underscore_if_apple(symbol.name().unwrap());
+        let name = symbol.name().unwrap();
         if name.starts_with("_ZN") || name.starts_with("_R") {
             continue; // Correctly mangled
         }
@@ -77,8 +78,4 @@ fn symbols_check(path: &str) {
 
         panic!("Unmangled symbol found: {name}");
     }
-}
-
-fn strip_underscore_if_apple(symbol: &str) -> &str {
-    if cfg!(target_vendor = "apple") { symbol.strip_prefix("_").unwrap() } else { symbol }
 }
