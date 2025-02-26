@@ -2006,6 +2006,30 @@ fn f() {
     }
 
     #[test]
+    fn test_avoid_redundant_suggestion() {
+        check_relevance(
+            r#"
+struct aa([u8]);
+
+impl aa {
+    fn from_bytes(bytes: &[u8]) -> &Self {
+        unsafe { &*(bytes as *const [u8] as *const aa) }
+    }
+}
+
+fn bb()-> &'static aa {
+    let bytes = b"hello";
+    aa::$0
+}
+"#,
+            expect![[r#"
+                ex bb()  [type]
+                fn from_bytes(…) fn(&[u8]) -> &aa [type_could_unify]
+            "#]],
+        );
+    }
+
+    #[test]
     fn suggest_ref_mut() {
         cov_mark::check!(suggest_ref);
         check_relevance(
