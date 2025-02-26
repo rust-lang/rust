@@ -1689,18 +1689,20 @@ impl RawTableInner {
                 insert_slot = self.find_insert_slot_in_group(&group, &probe_seq);
             }
 
-            // Only stop the search if the group contains at least one empty element.
-            // Otherwise, the element that we are looking for might be in a following group.
-            if likely(group.match_empty().any_bit_set()) {
-                // We must have found a insert slot by now, since the current group contains at
-                // least one. For tables smaller than the group width, there will still be an
-                // empty element in the current (and only) group due to the load factor.
-                unsafe {
-                    // SAFETY:
-                    // * Caller of this function ensures that the control bytes are properly initialized.
-                    //
-                    // * We use this function with the slot / index found by `self.find_insert_slot_in_group`
-                    return Err(self.fix_insert_slot(insert_slot.unwrap_unchecked()));
+            if let Some(insert_slot) = insert_slot {
+                // Only stop the search if the group contains at least one empty element.
+                // Otherwise, the element that we are looking for might be in a following group.
+                if likely(group.match_empty().any_bit_set()) {
+                    // We must have found a insert slot by now, since the current group contains at
+                    // least one. For tables smaller than the group width, there will still be an
+                    // empty element in the current (and only) group due to the load factor.
+                    unsafe {
+                        // SAFETY:
+                        // * Caller of this function ensures that the control bytes are properly initialized.
+                        //
+                        // * We use this function with the slot / index found by `self.find_insert_slot_in_group`
+                        return Err(self.fix_insert_slot(insert_slot));
+                    }
                 }
             }
 
