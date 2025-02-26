@@ -867,7 +867,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     }
 
     /// Walks the autoref `autoref` applied to the autoderef'd
-    /// `expr`. `base_place` is the mem-categorized form of `expr`
+    /// `expr`. `base_place` is `expr` represented as a place,
     /// after all relevant autoderefs have occurred.
     fn walk_autoref(
         &self,
@@ -1170,53 +1170,15 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     }
 }
 
-/// The job of the categorization methods is to analyze an expression to
-/// determine what kind of memory is used in evaluating it (for example,
-/// where dereferences occur and what kind of pointer is dereferenced;
-/// whether the memory is mutable, etc.).
+/// The job of the methods whose name starts with `cat_` is to analyze
+/// expressions and construct the corresponding [`Place`]s. The `cat`
+/// stands for "categorize", this is a leftover from long ago when
+/// places were called "categorizations".
 ///
-/// Categorization effectively transforms all of our expressions into
-/// expressions of the following forms (the actual enum has many more
-/// possibilities, naturally, but they are all variants of these base
-/// forms):
-/// ```ignore (not-rust)
-/// E = rvalue    // some computed rvalue
-///   | x         // address of a local variable or argument
-///   | *E        // deref of a ptr
-///   | E.comp    // access to an interior component
-/// ```
-/// Imagine a routine ToAddr(Expr) that evaluates an expression and returns an
-/// address where the result is to be found. If Expr is a place, then this
-/// is the address of the place. If `Expr` is an rvalue, this is the address of
-/// some temporary spot in memory where the result is stored.
-///
-/// Now, `cat_expr()` classifies the expression `Expr` and the address `A = ToAddr(Expr)`
-/// as follows:
-///
-/// - `cat`: what kind of expression was this? This is a subset of the
-///   full expression forms which only includes those that we care about
-///   for the purpose of the analysis.
-/// - `mutbl`: mutability of the address `A`.
-/// - `ty`: the type of data found at the address `A`.
-///
-/// The resulting categorization tree differs somewhat from the expressions
-/// themselves. For example, auto-derefs are explicit. Also, an index `a[b]` is
-/// decomposed into two operations: a dereference to reach the array data and
-/// then an index to jump forward to the relevant item.
-///
-/// ## By-reference upvars
-///
-/// One part of the codegen which may be non-obvious is that we translate
-/// closure upvars into the dereference of a borrowed pointer; this more closely
-/// resembles the runtime codegen. So, for example, if we had:
-///
-///     let mut x = 3;
-///     let y = 5;
-///     let inc = || x += y;
-///
-/// Then when we categorize `x` (*within* the closure) we would yield a
-/// result of `*x'`, effectively, where `x'` is a `Categorization::Upvar` reference
-/// tied to `x`. The type of `x'` will be a borrowed pointer.
+/// Note that a [`Place`] differs somewhat from the expression itself. For
+/// example, auto-derefs are explicit. Also, an index `a[b]` is decomposed into
+/// two operations: a dereference to reach the array data and then an index to
+/// jump forward to the relevant item.
 impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx, Cx, D> {
     fn resolve_type_vars_or_bug(
         &self,
@@ -1239,10 +1201,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             None => {
                 // FIXME: We shouldn't be relying on the infcx being tainted.
                 self.cx.tainted_by_errors()?;
-                bug!(
-                    "no type for node {} in mem_categorization",
-                    self.cx.tcx().hir_id_to_string(id)
-                );
+                bug!("no type for node {} in ExprUseVisitor", self.cx.tcx().hir_id_to_string(id));
             }
         }
     }
@@ -1517,7 +1476,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 }
             }
 
-            def => span_bug!(span, "unexpected definition in memory categorization: {:?}", def),
+            def => span_bug!(span, "unexpected definition in ExprUseVisitor: {:?}", def),
         }
     }
 
