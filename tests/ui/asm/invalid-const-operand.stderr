@@ -80,7 +80,7 @@ error: invalid type for `const` operand
 LL |         asm!("{}", const &0);
    |                    ^^^^^^--
    |                          |
-   |                          is a `&i32`
+   |                          is a `&{integer}`
    |
    = help: `const` operands must be of an integer type
 
