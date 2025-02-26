@@ -57,7 +57,7 @@ const EXPECTED = [
         'in_args': [],
     },
     {
-        'query': '(Q, ())',
+        'query': '(Q, R<()>)',
         'returned': [
             { 'path': 'tuple_unit', 'name': 'nest' },
         ],
@@ -71,7 +71,7 @@ const EXPECTED = [
         'in_args': [],
     },
     {
-        'query': '(u32)',
+        'query': 'R<(u32)>',
         'returned': [
             { 'path': 'tuple_unit', 'name': 'nest' },
         ],

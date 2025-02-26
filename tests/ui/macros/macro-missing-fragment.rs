@@ -1,7 +1,6 @@
 //@ revisions: e2015 e2024
 //@[e2015] edition:2015
 //@[e2024] edition:2024
-//@[e2024] compile-flags: -Zunstable-options
 
 #![warn(missing_fragment_specifier)]
 

@@ -15,9 +15,9 @@
 //@ revisions: arm64ec_pc_windows_msvc
 //@ [arm64ec_pc_windows_msvc] compile-flags: --target arm64ec-pc-windows-msvc
 //@ [arm64ec_pc_windows_msvc] needs-llvm-components: aarch64
-//@ revisions: avr_unknown_gnu_atmega328
-//@ [avr_unknown_gnu_atmega328] compile-flags: --target avr-unknown-gnu-atmega328
-//@ [avr_unknown_gnu_atmega328] needs-llvm-components: avr
+//@ revisions: avr_none
+//@ [avr_none] compile-flags: --target avr-none -C target-cpu=atmega328p
+//@ [avr_none] needs-llvm-components: avr
 //@ revisions: bpfeb_unknown_none
 //@ [bpfeb_unknown_none] compile-flags: --target bpfeb-unknown-none
 //@ [bpfeb_unknown_none] needs-llvm-components: bpf
@@ -39,6 +39,9 @@
 //@ revisions: i686_uwp_windows_gnu
 //@ [i686_uwp_windows_gnu] compile-flags: --target i686-uwp-windows-gnu
 //@ [i686_uwp_windows_gnu] needs-llvm-components: x86
+//@ revisions: i686_win7_windows_gnu
+//@ [i686_win7_windows_gnu] compile-flags: --target i686-win7-windows-gnu
+//@ [i686_win7_windows_gnu] needs-llvm-components: x86
 //@ revisions: i686_unknown_uefi
 //@ [i686_unknown_uefi] compile-flags: --target i686-unknown-uefi
 //@ [i686_unknown_uefi] needs-llvm-components: x86
@@ -72,12 +75,18 @@
 //@ revisions: x86_64_uwp_windows_gnu
 //@ [x86_64_uwp_windows_gnu] compile-flags: --target x86_64-uwp-windows-gnu
 //@ [x86_64_uwp_windows_gnu] needs-llvm-components: x86
+//@ revisions: x86_64_win7_windows_gnu
+//@ [x86_64_win7_windows_gnu] compile-flags: --target x86_64-win7-windows-gnu
+//@ [x86_64_win7_windows_gnu] needs-llvm-components: x86
 //@ revisions: x86_64_uwp_windows_msvc
 //@ [x86_64_uwp_windows_msvc] compile-flags: --target x86_64-uwp-windows-msvc
 //@ [x86_64_uwp_windows_msvc] needs-llvm-components: x86
 //@ revisions: x86_64_win7_windows_msvc
 //@ [x86_64_win7_windows_msvc] compile-flags: --target x86_64-win7-windows-msvc
 //@ [x86_64_win7_windows_msvc] needs-llvm-components: x86
+//@ revisions: x86_64_pc_cygwin
+//@ [x86_64_pc_cygwin] compile-flags: --target x86_64-pc-cygwin
+//@ [x86_64_pc_cygwin] needs-llvm-components: x86
 
 // Sanity-check that each target can produce assembly code.
 

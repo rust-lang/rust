@@ -1,7 +1,7 @@
 //@ revisions: stock gated stocknc gatednc
 //@ [gated] check-pass
 //@ compile-flags: -Znext-solver
-#![cfg_attr(any(gated, gatednc), feature(const_trait_impl, effects))]
+#![cfg_attr(any(gated, gatednc), feature(const_trait_impl))]
 #![allow(incomplete_features)]
 
 //@ aux-build: cross-crate.rs
@@ -20,8 +20,7 @@ const fn const_context() {
     //[stocknc]~^ ERROR: cannot call
     //[gatednc]~^^ ERROR: the trait bound
     Const.func();
-    //[stock]~^ ERROR: cannot call
-    //[stocknc]~^^ ERROR: cannot call
+    //[stock,stocknc]~^ ERROR: cannot call
 }
 
 fn main() {}

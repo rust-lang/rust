@@ -6,7 +6,7 @@ LL |     #[derive(Debug)]
 LL |     struct Outer<T>(Inner<T>);
    |                     ^^^^^^^^ `a::Inner<T>` cannot be formatted using `{:?}`
    |
-   = help: the trait `Debug` is not implemented for `a::Inner<T>`, which is required by `&a::Inner<T>: Debug`
+   = help: the trait `Debug` is not implemented for `a::Inner<T>`
    = note: add `#[derive(Debug)]` to `a::Inner<T>` or manually `impl Debug for a::Inner<T>`
    = note: this error originates in the derive macro `Debug` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider annotating `a::Inner<T>` with `#[derive(Debug)]`
@@ -25,7 +25,7 @@ error[E0277]: the trait bound `T: c::Trait` is not satisfied
 LL |     #[derive(Debug)]
    |              ----- in this derive macro expansion
 LL |     struct Outer<T>(Inner<T>);
-   |                     ^^^^^^^^ the trait `c::Trait` is not implemented for `T`, which is required by `&c::Inner<T>: Debug`
+   |                     ^^^^^^^^ the trait `c::Trait` is not implemented for `T`
    |
 note: required for `c::Inner<T>` to implement `Debug`
   --> $DIR/derive-macro-missing-bounds.rs:34:28
@@ -38,7 +38,7 @@ LL |     impl<T: Debug + Trait> Debug for Inner<T> {
    = note: required for `&c::Inner<T>` to implement `Debug`
    = note: required for the cast from `&&c::Inner<T>` to `&dyn Debug`
    = note: this error originates in the derive macro `Debug` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: consider restricting type parameter `T`
+help: consider restricting type parameter `T` with trait `Trait`
    |
 LL |     struct Outer<T: c::Trait>(Inner<T>);
    |                   ++++++++++
@@ -49,7 +49,7 @@ error[E0277]: the trait bound `T: d::Trait` is not satisfied
 LL |     #[derive(Debug)]
    |              ----- in this derive macro expansion
 LL |     struct Outer<T>(Inner<T>);
-   |                     ^^^^^^^^ the trait `d::Trait` is not implemented for `T`, which is required by `&d::Inner<T>: Debug`
+   |                     ^^^^^^^^ the trait `d::Trait` is not implemented for `T`
    |
 note: required for `d::Inner<T>` to implement `Debug`
   --> $DIR/derive-macro-missing-bounds.rs:49:13
@@ -60,7 +60,7 @@ LL |     impl<T> Debug for Inner<T> where T: Debug, T: Trait {
    = note: required for `&d::Inner<T>` to implement `Debug`
    = note: required for the cast from `&&d::Inner<T>` to `&dyn Debug`
    = note: this error originates in the derive macro `Debug` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: consider restricting type parameter `T`
+help: consider restricting type parameter `T` with trait `Trait`
    |
 LL |     struct Outer<T: d::Trait>(Inner<T>);
    |                   ++++++++++
@@ -71,7 +71,7 @@ error[E0277]: the trait bound `T: e::Trait` is not satisfied
 LL |     #[derive(Debug)]
    |              ----- in this derive macro expansion
 LL |     struct Outer<T>(Inner<T>);
-   |                     ^^^^^^^^ the trait `e::Trait` is not implemented for `T`, which is required by `&e::Inner<T>: Debug`
+   |                     ^^^^^^^^ the trait `e::Trait` is not implemented for `T`
    |
 note: required for `e::Inner<T>` to implement `Debug`
   --> $DIR/derive-macro-missing-bounds.rs:64:13
@@ -82,7 +82,7 @@ LL |     impl<T> Debug for Inner<T> where T: Debug + Trait {
    = note: required for `&e::Inner<T>` to implement `Debug`
    = note: required for the cast from `&&e::Inner<T>` to `&dyn Debug`
    = note: this error originates in the derive macro `Debug` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: consider restricting type parameter `T`
+help: consider restricting type parameter `T` with trait `Trait`
    |
 LL |     struct Outer<T: e::Trait>(Inner<T>);
    |                   ++++++++++
@@ -93,7 +93,7 @@ error[E0277]: the trait bound `T: f::Trait` is not satisfied
 LL |     #[derive(Debug)]
    |              ----- in this derive macro expansion
 LL |     struct Outer<T>(Inner<T>);
-   |                     ^^^^^^^^ the trait `f::Trait` is not implemented for `T`, which is required by `&f::Inner<T>: Debug`
+   |                     ^^^^^^^^ the trait `f::Trait` is not implemented for `T`
    |
 note: required for `f::Inner<T>` to implement `Debug`
   --> $DIR/derive-macro-missing-bounds.rs:79:20
@@ -104,7 +104,7 @@ LL |     impl<T: Debug> Debug for Inner<T> where T: Trait {
    = note: required for `&f::Inner<T>` to implement `Debug`
    = note: required for the cast from `&&f::Inner<T>` to `&dyn Debug`
    = note: this error originates in the derive macro `Debug` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: consider restricting type parameter `T`
+help: consider restricting type parameter `T` with trait `Trait`
    |
 LL |     struct Outer<T: f::Trait>(Inner<T>);
    |                   ++++++++++

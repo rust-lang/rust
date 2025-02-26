@@ -7,7 +7,7 @@
 //@ [LEAF] compile-flags: -Z branch-protection=pac-ret,leaf
 //@ [BKEY] compile-flags: -Z branch-protection=pac-ret,b-key
 //@ compile-flags: --target aarch64-unknown-linux-gnu
-//@ ignore-llvm-version: 19 - 99
+//@ max-llvm-major-version: 18
 
 #![crate_type = "lib"]
 #![feature(no_core, lang_items)]

@@ -11,7 +11,7 @@ fn non_const_context() -> Vec<usize> {
 
 const fn const_context() -> Vec<usize> {
     Default::default()
-    //[stock]~^ ERROR cannot call non-const fn
+    //[stock]~^ ERROR cannot call non-const associated function
 }
 
 fn main() {

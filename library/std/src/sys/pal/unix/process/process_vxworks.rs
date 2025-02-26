@@ -22,7 +22,7 @@ impl Command {
         let envp = self.capture_env();
 
         if self.saw_nul() {
-            return Err(io::const_io_error!(
+            return Err(io::const_error!(
                 ErrorKind::InvalidInput,
                 "nul byte found in provided data",
             ));

@@ -12,7 +12,7 @@ use crate::{
 
 // Diagnostic: incorrect-ident-case
 //
-// This diagnostic is triggered if an item name doesn't follow https://doc.rust-lang.org/1.0.0/style/style/naming/README.html[Rust naming convention].
+// This diagnostic is triggered if an item name doesn't follow [Rust naming convention](https://doc.rust-lang.org/1.0.0/style/style/naming/README.html).
 pub(crate) fn incorrect_case(ctx: &DiagnosticsContext<'_>, d: &hir::IncorrectCase) -> Diagnostic {
     let code = match d.expected_case {
         CaseType::LowerSnakeCase => DiagnosticCode::RustcLint("non_snake_case"),
@@ -936,6 +936,7 @@ fn func() {
     fn override_lint_level() {
         check_diagnostics(
             r#"
+#![allow(unused_variables)]
 #[warn(nonstandard_style)]
 fn foo() {
     let BAR;
@@ -992,6 +993,7 @@ struct QUX;
 const foo: i32 = 0;
 fn BAR() {
     let BAZ;
+    _ = BAZ;
 }
         "#,
         );

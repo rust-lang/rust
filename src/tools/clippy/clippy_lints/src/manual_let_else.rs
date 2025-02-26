@@ -1,16 +1,14 @@
 use crate::question_mark::{QUESTION_MARK, QuestionMark};
-use clippy_config::msrvs;
 use clippy_config::types::MatchLintBehaviour;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::IfLetOrMatch;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{is_lint_allowed, is_never_expr, pat_and_expr_can_be_question_mark, peel_blocks};
+use clippy_utils::{is_lint_allowed, is_never_expr, msrvs, pat_and_expr_can_be_question_mark, peel_blocks};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, MatchSource, Pat, PatKind, QPath, Stmt, StmtKind};
+use rustc_hir::{Expr, ExprKind, MatchSource, Pat, PatExpr, PatExprKind, PatKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LintContext};
-use rustc_middle::lint::in_external_macro;
 
 use rustc_span::Span;
 use rustc_span::symbol::{Symbol, sym};
@@ -56,7 +54,7 @@ impl<'tcx> QuestionMark {
             && init.span.eq_ctxt(stmt.span)
             && let Some(if_let_or_match) = IfLetOrMatch::parse(cx, init)
             && self.msrv.meets(msrvs::LET_ELSE)
-            && !in_external_macro(cx.sess(), stmt.span)
+            && !stmt.span.in_external_macro(cx.sess().source_map())
         {
             match if_let_or_match {
                 IfLetOrMatch::IfLet(if_let_expr, let_pat, if_then, if_else, ..) => {
@@ -107,7 +105,7 @@ impl<'tcx> QuestionMark {
                     emit_manual_let_else(cx, stmt.span, match_expr, &ident_map, pat_arm.pat, diverging_arm.body);
                 },
             }
-        };
+        }
     }
 }
 
@@ -293,10 +291,15 @@ fn pat_allowed_for_else(cx: &LateContext<'_>, pat: &'_ Pat<'_>, check_types: boo
         // Only do the check if the type is "spelled out" in the pattern
         if !matches!(
             pat.kind,
-            PatKind::Struct(..) | PatKind::TupleStruct(..) | PatKind::Path(..)
+            PatKind::Struct(..)
+                | PatKind::TupleStruct(..)
+                | PatKind::Expr(PatExpr {
+                    kind: PatExprKind::Path(..),
+                    ..
+                },)
         ) {
             return;
-        };
+        }
         let ty = typeck_results.pat_ty(pat);
         // Option and Result are allowed, everything else isn't.
         if !(is_type_diagnostic_item(cx, ty, sym::Option) || is_type_diagnostic_item(cx, ty, sym::Result)) {

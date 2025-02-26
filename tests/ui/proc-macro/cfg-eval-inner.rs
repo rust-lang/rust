@@ -1,5 +1,5 @@
 //@ compile-flags: -Z span-debug
-//@ aux-build:test-macros.rs
+//@ proc-macro: test-macros.rs
 //@ check-pass
 
 #![feature(cfg_eval)]

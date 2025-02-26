@@ -1,3 +1,4 @@
+mod extracted;
 mod make;
 mod markdown;
 mod runner;
@@ -13,9 +14,10 @@ use std::{panic, str};
 
 pub(crate) use make::DocTestBuilder;
 pub(crate) use markdown::test as test_markdown;
-use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
-use rustc_errors::{ColorConfig, DiagCtxtHandle, ErrorGuaranteed, FatalError};
+use rustc_errors::emitter::HumanReadableErrorType;
+use rustc_errors::{ColorConfig, DiagCtxtHandle};
+use rustc_hir as hir;
 use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_interface::interface;
@@ -24,12 +26,12 @@ use rustc_session::lint;
 use rustc_span::FileName;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::sym;
-use rustc_target::spec::{Target, TargetTriple};
+use rustc_target::spec::{Target, TargetTuple};
 use tempfile::{Builder as TempFileBuilder, TempDir};
 use tracing::debug;
 
 use self::rust::HirCollector;
-use crate::config::Options as RustdocOptions;
+use crate::config::{Options as RustdocOptions, OutputFormat};
 use crate::html::markdown::{ErrorCodes, Ignore, LangString, MdRelLine};
 use crate::lint::init_lints;
 
@@ -47,6 +49,46 @@ pub(crate) struct GlobalTestOptions {
     pub(crate) attrs: Vec<String>,
     /// Path to file containing arguments for the invocation of rustc.
     pub(crate) args_file: PathBuf,
+}
+
+/// Function used to split command line arguments just like a shell would.
+fn split_args(args: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut iter = args.chars();
+    let mut current = String::new();
+
+    while let Some(c) = iter.next() {
+        if c == '\\' {
+            if let Some(c) = iter.next() {
+                // If it's escaped, even a quote or a whitespace will be ignored.
+                current.push(c);
+            }
+        } else if c == '"' || c == '\'' {
+            while let Some(new_c) = iter.next() {
+                if new_c == c {
+                    break;
+                } else if new_c == '\\' {
+                    if let Some(c) = iter.next() {
+                        // If it's escaped, even a quote will be ignored.
+                        current.push(c);
+                    }
+                } else {
+                    current.push(new_c);
+                }
+            }
+        } else if " \n\t\r".contains(c) {
+            if !current.is_empty() {
+                out.push(current.clone());
+                current.clear();
+            }
+        } else {
+            current.push(c);
+        }
+    }
+    if !current.is_empty() {
+        out.push(current);
+    }
+    out
 }
 
 pub(crate) fn generate_args_file(file_path: &Path, options: &RustdocOptions) -> Result<(), String> {
@@ -77,6 +119,10 @@ pub(crate) fn generate_args_file(file_path: &Path, options: &RustdocOptions) -> 
         content.push(format!("-Z{unstable_option_str}"));
     }
 
+    for compilation_args in &options.doctest_compilation_args {
+        content.extend(split_args(compilation_args));
+    }
+
     let content = content.join("\n");
 
     file.write_all(content.as_bytes())
@@ -88,11 +134,7 @@ fn get_doctest_dir() -> io::Result<TempDir> {
     TempFileBuilder::new().prefix("rustdoctest").tempdir()
 }
 
-pub(crate) fn run(
-    dcx: DiagCtxtHandle<'_>,
-    input: Input,
-    options: RustdocOptions,
-) -> Result<(), ErrorGuaranteed> {
+pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions) {
     let invalid_codeblock_attributes_name = crate::lint::INVALID_CODEBLOCK_ATTRIBUTES.name;
 
     // See core::create_config for what's going on here.
@@ -152,7 +194,7 @@ pub(crate) fn run(
         make_codegen_backend: None,
         registry: rustc_driver::diagnostics_registry(),
         ice_file: None,
-        using_internal_features: Arc::default(),
+        using_internal_features: &rustc_driver::USING_INTERNAL_FEATURES,
         expanded_args: options.expanded_args.clone(),
     };
 
@@ -166,7 +208,47 @@ pub(crate) fn run(
         Err(error) => return crate::wrap_return(dcx, Err(error)),
     };
     let args_path = temp_dir.path().join("rustdoc-cfgs");
-    crate::wrap_return(dcx, generate_args_file(&args_path, &options))?;
+    crate::wrap_return(dcx, generate_args_file(&args_path, &options));
+
+    let extract_doctests = options.output_format == OutputFormat::Doctest;
+    let result = interface::run_compiler(config, |compiler| {
+        let krate = rustc_interface::passes::parse(&compiler.sess);
+
+        let collector = rustc_interface::create_and_enter_global_ctxt(compiler, krate, |tcx| {
+            let crate_name = tcx.crate_name(LOCAL_CRATE).to_string();
+            let crate_attrs = tcx.hir().attrs(CRATE_HIR_ID);
+            let opts = scrape_test_config(crate_name, crate_attrs, args_path);
+            let enable_per_target_ignores = options.enable_per_target_ignores;
+
+            let hir_collector = HirCollector::new(
+                ErrorCodes::from(compiler.sess.opts.unstable_features.is_nightly_build()),
+                enable_per_target_ignores,
+                tcx,
+            );
+            let tests = hir_collector.collect_crate();
+            if extract_doctests {
+                let mut collector = extracted::ExtractedDocTests::new();
+                tests.into_iter().for_each(|t| collector.add_test(t, &opts, &options));
+
+                let stdout = std::io::stdout();
+                let mut stdout = stdout.lock();
+                if let Err(error) = serde_json::ser::to_writer(&mut stdout, &collector) {
+                    eprintln!();
+                    Err(format!("Failed to generate JSON output for doctests: {error:?}"))
+                } else {
+                    Ok(None)
+                }
+            } else {
+                let mut collector = CreateRunnableDocTests::new(options, opts);
+                tests.into_iter().for_each(|t| collector.add_test(t));
+
+                Ok(Some(collector))
+            }
+        });
+        compiler.sess.dcx().abort_if_errors();
+
+        collector
+    });
 
     let CreateRunnableDocTests {
         standalone_tests,
@@ -176,32 +258,14 @@ pub(crate) fn run(
         unused_extern_reports,
         compiling_test_count,
         ..
-    } = interface::run_compiler(config, |compiler| {
-        compiler.enter(|queries| {
-            let collector = queries.global_ctxt()?.enter(|tcx| {
-                let crate_name = tcx.crate_name(LOCAL_CRATE).to_string();
-                let crate_attrs = tcx.hir().attrs(CRATE_HIR_ID);
-                let opts = scrape_test_config(crate_name, crate_attrs, args_path);
-                let enable_per_target_ignores = options.enable_per_target_ignores;
-
-                let mut collector = CreateRunnableDocTests::new(options, opts);
-                let hir_collector = HirCollector::new(
-                    ErrorCodes::from(compiler.sess.opts.unstable_features.is_nightly_build()),
-                    enable_per_target_ignores,
-                    tcx,
-                );
-                let tests = hir_collector.collect_crate();
-                tests.into_iter().for_each(|t| collector.add_test(t));
-
-                collector
-            });
-            if compiler.sess.dcx().has_errors().is_some() {
-                FatalError.raise();
-            }
-
-            Ok(collector)
-        })
-    })?;
+    } = match result {
+        Ok(Some(collector)) => collector,
+        Ok(None) => return,
+        Err(error) => {
+            eprintln!("{error}");
+            std::process::exit(1);
+        }
+    };
 
     run_tests(opts, &rustdoc_options, &unused_extern_reports, standalone_tests, mergeable_tests);
 
@@ -245,8 +309,6 @@ pub(crate) fn run(
             eprintln!("{unused_extern_json}");
         }
     }
-
-    Ok(())
 }
 
 pub(crate) fn run_tests(
@@ -332,7 +394,7 @@ pub(crate) fn run_tests(
 // Look for `#![doc(test(no_crate_inject))]`, used by crates in the std facade.
 fn scrape_test_config(
     crate_name: String,
-    attrs: &[ast::Attribute],
+    attrs: &[hir::Attribute],
     args_file: PathBuf,
 ) -> GlobalTestOptions {
     use rustc_ast_pretty::pprust;
@@ -414,10 +476,10 @@ pub(crate) struct UnusedExterns {
     unused_extern_names: Vec<String>,
 }
 
-fn add_exe_suffix(input: String, target: &TargetTriple) -> String {
+fn add_exe_suffix(input: String, target: &TargetTuple) -> String {
     let exe_suffix = match target {
-        TargetTriple::TargetTriple(_) => Target::expect_builtin(target).options.exe_suffix,
-        TargetTriple::TargetJson { contents, .. } => {
+        TargetTuple::TargetTuple(_) => Target::expect_builtin(target).options.exe_suffix,
+        TargetTuple::TargetJson { contents, .. } => {
             Target::from_json(contents.parse().unwrap()).unwrap().0.options.exe_suffix
         }
     };
@@ -513,16 +575,20 @@ fn run_test(
         compiler.arg("--emit=metadata");
     }
     compiler.arg("--target").arg(match &rustdoc_options.target {
-        TargetTriple::TargetTriple(s) => s,
-        TargetTriple::TargetJson { path_for_rustdoc, .. } => {
+        TargetTuple::TargetTuple(s) => s,
+        TargetTuple::TargetJson { path_for_rustdoc, .. } => {
             path_for_rustdoc.to_str().expect("target path must be valid unicode")
         }
     });
     if let ErrorOutputType::HumanReadable(kind, color_config) = rustdoc_options.error_format {
         let short = kind.short();
+        let unicode = kind == HumanReadableErrorType::Unicode;
 
         if short {
             compiler.arg("--error-format").arg("short");
+        }
+        if unicode {
+            compiler.arg("--error-format").arg("human-unicode");
         }
 
         match color_config {
@@ -695,7 +761,7 @@ impl IndividualTestOptions {
     fn new(options: &RustdocOptions, test_id: &Option<String>, test_path: PathBuf) -> Self {
         let outdir = if let Some(ref path) = options.persist_doctests {
             let mut path = path.clone();
-            path.push(&test_id.as_deref().unwrap_or("<doctest>"));
+            path.push(test_id.as_deref().unwrap_or("<doctest>"));
 
             if let Err(err) = std::fs::create_dir_all(&path) {
                 eprintln!("Couldn't create directory for doctest executables: {err}");
@@ -720,6 +786,7 @@ impl IndividualTestOptions {
 /// [`clean`]: crate::clean
 /// [`run_merged_tests`]: crate::doctest::runner::DocTestRunner::run_merged_tests
 /// [`generate_unique_doctest`]: crate::doctest::make::DocTestBuilder::generate_unique_doctest
+#[derive(Debug)]
 pub(crate) struct ScrapedDocTest {
     filename: FileName,
     line: usize,

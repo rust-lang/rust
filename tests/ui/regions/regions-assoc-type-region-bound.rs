@@ -3,7 +3,6 @@
 // Test that the compiler considers the 'a bound declared in the
 // trait. Issue #20890.
 
-//@ pretty-expanded FIXME #23616
 
 trait Foo<'a> {
     type Value: 'a;

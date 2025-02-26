@@ -2,7 +2,6 @@
 #![allow(unused_variables)]
 //@ aux-build:issue-7899.rs
 
-//@ pretty-expanded FIXME #23616
 
 extern crate issue_7899 as testcrate;
 

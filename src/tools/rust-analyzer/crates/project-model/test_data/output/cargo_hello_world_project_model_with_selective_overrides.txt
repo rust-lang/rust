@@ -19,6 +19,7 @@
             [
                 "rust_analyzer",
                 "test",
+                "true",
             ],
         ),
         potential_cfg_options: None,
@@ -60,6 +61,11 @@
             ),
         },
         is_proc_macro: false,
+        proc_macro_cwd: Some(
+            AbsPathBuf(
+                "$ROOT$hello-world",
+            ),
+        ),
     },
     1: CrateData {
         root_file_id: FileId(
@@ -81,6 +87,7 @@
             [
                 "rust_analyzer",
                 "test",
+                "true",
             ],
         ),
         potential_cfg_options: None,
@@ -130,6 +137,11 @@
             ),
         },
         is_proc_macro: false,
+        proc_macro_cwd: Some(
+            AbsPathBuf(
+                "$ROOT$hello-world",
+            ),
+        ),
     },
     2: CrateData {
         root_file_id: FileId(
@@ -151,6 +163,7 @@
             [
                 "rust_analyzer",
                 "test",
+                "true",
             ],
         ),
         potential_cfg_options: None,
@@ -200,6 +213,11 @@
             ),
         },
         is_proc_macro: false,
+        proc_macro_cwd: Some(
+            AbsPathBuf(
+                "$ROOT$hello-world",
+            ),
+        ),
     },
     3: CrateData {
         root_file_id: FileId(
@@ -221,6 +239,7 @@
             [
                 "rust_analyzer",
                 "test",
+                "true",
             ],
         ),
         potential_cfg_options: None,
@@ -270,6 +289,11 @@
             ),
         },
         is_proc_macro: false,
+        proc_macro_cwd: Some(
+            AbsPathBuf(
+                "$ROOT$hello-world",
+            ),
+        ),
     },
     4: CrateData {
         root_file_id: FileId(
@@ -291,6 +315,7 @@
             [
                 "feature=default",
                 "feature=std",
+                "true",
             ],
         ),
         potential_cfg_options: Some(
@@ -303,6 +328,7 @@
                     "feature=rustc-dep-of-std",
                     "feature=std",
                     "feature=use_std",
+                    "true",
                 ],
             ),
         ),
@@ -335,5 +361,10 @@
             name: "libc",
         },
         is_proc_macro: false,
+        proc_macro_cwd: Some(
+            AbsPathBuf(
+                "$ROOT$.cargo/registry/src/github.com-1ecc6299db9ec823/libc-0.2.98",
+            ),
+        ),
     },
 }

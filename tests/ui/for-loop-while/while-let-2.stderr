@@ -2,7 +2,7 @@ warning: irrefutable `while let` pattern
   --> $DIR/while-let-2.rs:7:19
    |
 LL |               while let $p = $e $b
-   |                     ^^^
+   |                     ^^^^^^^^^^^
 ...
 LL | /     foo!(_a, 1, {
 LL | |         println!("irrefutable pattern");

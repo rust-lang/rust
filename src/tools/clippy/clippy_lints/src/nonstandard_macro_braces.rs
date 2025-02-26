@@ -88,7 +88,7 @@ fn is_offending_macro(cx: &EarlyContext<'_>, span: Span, mac_braces: &MacroBrace
             || span
                 .macro_backtrace()
                 .last()
-                .map_or(false, |e| e.macro_def_id.map_or(false, DefId::is_local))
+                .is_some_and(|e| e.macro_def_id.is_some_and(DefId::is_local))
     };
     let span_call_site = span.ctxt().outer_expn_data().call_site;
     if let ExpnKind::Macro(MacroKind::Bang, mac_name) = span.ctxt().outer_expn_data().kind

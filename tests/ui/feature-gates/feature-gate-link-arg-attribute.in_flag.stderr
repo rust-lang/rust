@@ -1,0 +1,2 @@
+error: unknown linking modifier `link-arg`, expected one of: bundle, verbatim, whole-archive, as-needed
+

@@ -229,7 +229,7 @@ struct SyntheticImplCollector<'a, 'tcx> {
     impls: Vec<Item>,
 }
 
-impl<'a, 'tcx> DocVisitor<'_> for SyntheticImplCollector<'a, 'tcx> {
+impl DocVisitor<'_> for SyntheticImplCollector<'_, '_> {
     fn visit_item(&mut self, i: &Item) {
         if i.is_struct() || i.is_enum() || i.is_union() {
             // FIXME(eddyb) is this `doc(hidden)` check needed?
@@ -256,7 +256,7 @@ impl<'cache> ItemAndAliasCollector<'cache> {
     }
 }
 
-impl<'cache> DocVisitor<'_> for ItemAndAliasCollector<'cache> {
+impl DocVisitor<'_> for ItemAndAliasCollector<'_> {
     fn visit_item(&mut self, i: &Item) {
         self.items.insert(i.item_id);
 
@@ -276,7 +276,7 @@ struct BadImplStripper<'a> {
     cache: &'a Cache,
 }
 
-impl<'a> BadImplStripper<'a> {
+impl BadImplStripper<'_> {
     fn keep_impl(&self, ty: &Type, is_deref: bool) -> bool {
         if let Generic(_) = ty {
             // keep impls made on generics

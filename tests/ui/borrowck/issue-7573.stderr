@@ -9,6 +9,10 @@ LL |     let push_id = |installed_id: &CrateId| {
 LL |
 LL |         lines_to_use.push(installed_id);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `installed_id` escapes the closure body here
+   |
+   = note: requirement occurs because of a mutable reference to `Vec<&CrateId>`
+   = note: mutable references are invariant over their type parameter
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: aborting due to 1 previous error
 

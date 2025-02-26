@@ -7,7 +7,6 @@ use ignore::DirEntry;
 
 /// The default directory filter.
 pub fn filter_dirs(path: &Path) -> bool {
-    // FIXME: sync submodule exclusion list with rustfmt.toml
     // bootstrap/etc
     let skip = [
         "tidy-test-file",

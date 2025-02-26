@@ -20,6 +20,7 @@ itertools.workspace = true
 smallvec.workspace = true
 tracing.workspace = true
 triomphe.workspace = true
+indexmap.workspace = true
 
 # local deps
 base-db.workspace = true
@@ -32,6 +33,14 @@ stdx.workspace = true
 syntax.workspace = true
 tt.workspace = true
 span.workspace = true
+
+[dev-dependencies]
+expect-test.workspace = true
+
+# local deps
+test-utils.workspace = true
+test-fixture.workspace = true
+syntax-bridge.workspace = true
 
 [features]
 in-rust-tree = ["hir-expand/in-rust-tree"]

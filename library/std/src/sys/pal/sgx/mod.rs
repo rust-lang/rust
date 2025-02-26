@@ -14,10 +14,7 @@ pub mod env;
 pub mod fd;
 #[path = "../unsupported/fs.rs"]
 pub mod fs;
-#[path = "../unsupported/io.rs"]
-pub mod io;
 mod libunwind_integration;
-pub mod net;
 pub mod os;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;
@@ -48,7 +45,7 @@ pub fn unsupported<T>() -> crate::io::Result<T> {
 }
 
 pub fn unsupported_err() -> crate::io::Error {
-    crate::io::const_io_error!(ErrorKind::Unsupported, "operation not supported on SGX yet")
+    crate::io::const_error!(ErrorKind::Unsupported, "operation not supported on SGX yet")
 }
 
 /// This function is used to implement various functions that doesn't exist,
@@ -59,7 +56,7 @@ pub fn unsupported_err() -> crate::io::Error {
 pub fn sgx_ineffective<T>(v: T) -> crate::io::Result<T> {
     static SGX_INEFFECTIVE_ERROR: AtomicBool = AtomicBool::new(false);
     if SGX_INEFFECTIVE_ERROR.load(Ordering::Relaxed) {
-        Err(crate::io::const_io_error!(
+        Err(crate::io::const_error!(
             ErrorKind::Uncategorized,
             "operation can't be trusted to have any effect on SGX",
         ))
@@ -126,7 +123,7 @@ pub fn abort_internal() -> ! {
 // This function is needed by the panic runtime. The symbol is named in
 // pre-link args for the target specification, so keep that in sync.
 #[cfg(not(test))]
-#[no_mangle]
+#[unsafe(no_mangle)]
 // NB. used by both libunwind and libpanic_abort
 pub extern "C" fn __rust_abort() {
     abort_internal();

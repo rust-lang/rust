@@ -38,7 +38,7 @@ note: function defined here
   --> $DIR/suggest-better-removing-issue-126246.rs:1:4
    |
 LL | fn add_one(x: i32) -> i32 {
-   |    ^^^^^^^ ------
+   |    ^^^^^^^
 help: remove the extra argument
    |
 LL -     add_one(2, 2);
@@ -55,7 +55,7 @@ note: function defined here
   --> $DIR/suggest-better-removing-issue-126246.rs:1:4
    |
 LL | fn add_one(x: i32) -> i32 {
-   |    ^^^^^^^ ------
+   |    ^^^^^^^
 help: remove the extra argument
    |
 LL -     add_one(no_such_local, 10);
@@ -72,7 +72,7 @@ note: function defined here
   --> $DIR/suggest-better-removing-issue-126246.rs:1:4
    |
 LL | fn add_one(x: i32) -> i32 {
-   |    ^^^^^^^ ------
+   |    ^^^^^^^
 help: remove the extra argument
    |
 LL -     add_one(10, no_such_local);
@@ -89,7 +89,7 @@ note: function defined here
   --> $DIR/suggest-better-removing-issue-126246.rs:5:4
    |
 LL | fn add_two(x: i32, y: i32) -> i32 {
-   |    ^^^^^^^ ------  ------
+   |    ^^^^^^^
 help: remove the extra argument
    |
 LL -     add_two(10, no_such_local, 10);
@@ -106,7 +106,7 @@ note: function defined here
   --> $DIR/suggest-better-removing-issue-126246.rs:5:4
    |
 LL | fn add_two(x: i32, y: i32) -> i32 {
-   |    ^^^^^^^ ------  ------
+   |    ^^^^^^^
 help: remove the extra argument
    |
 LL -     add_two(no_such_local, 10, 10);
@@ -123,7 +123,7 @@ note: function defined here
   --> $DIR/suggest-better-removing-issue-126246.rs:5:4
    |
 LL | fn add_two(x: i32, y: i32) -> i32 {
-   |    ^^^^^^^ ------  ------
+   |    ^^^^^^^
 help: remove the extra argument
    |
 LL -     add_two(10, 10, no_such_local);

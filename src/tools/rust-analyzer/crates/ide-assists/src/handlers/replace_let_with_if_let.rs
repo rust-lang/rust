@@ -1,12 +1,6 @@
-use std::iter::once;
-
 use ide_db::ty_filter::TryEnum;
 use syntax::{
-    ast::{
-        self,
-        edit::{AstNodeEdit, IndentLevel},
-        make,
-    },
+    ast::{self, edit::IndentLevel, edit_in_place::Indent, syntax_factory::SyntaxFactory},
     AstNode, T,
 };
 
@@ -47,7 +41,9 @@ pub(crate) fn replace_let_with_if_let(acc: &mut Assists, ctx: &AssistContext<'_>
         AssistId("replace_let_with_if_let", AssistKind::RefactorRewrite),
         "Replace let with if let",
         target,
-        |edit| {
+        |builder| {
+            let mut editor = builder.make_editor(let_stmt.syntax());
+            let make = SyntaxFactory::new();
             let ty = ctx.sema.type_of_expr(&init);
             let happy_variant = ty
                 .and_then(|ty| TryEnum::from_ty(&ctx.sema, &ty.adjusted()))
@@ -55,17 +51,18 @@ pub(crate) fn replace_let_with_if_let(acc: &mut Assists, ctx: &AssistContext<'_>
             let pat = match happy_variant {
                 None => original_pat,
                 Some(var_name) => {
-                    make::tuple_struct_pat(make::ext::ident_path(var_name), once(original_pat))
-                        .into()
+                    make.tuple_struct_pat(make.ident_path(var_name), [original_pat]).into()
                 }
             };
 
-            let block =
-                make::ext::empty_block_expr().indent(IndentLevel::from_node(let_stmt.syntax()));
-            let if_ = make::expr_if(make::expr_let(pat, init).into(), block, None);
-            let stmt = make::expr_stmt(if_);
+            let block = make.block_expr([], None);
+            block.indent(IndentLevel::from_node(let_stmt.syntax()));
+            let if_expr = make.expr_if(make.expr_let(pat, init).into(), block, None);
+            let if_stmt = make.expr_stmt(if_expr.into());
 
-            edit.replace_ast(ast::Stmt::from(let_stmt), ast::Stmt::from(stmt));
+            editor.replace(let_stmt.syntax(), if_stmt.syntax());
+            editor.add_mappings(make.finish_with_mappings());
+            builder.add_file_edits(ctx.file_id(), editor);
         },
     )
 }

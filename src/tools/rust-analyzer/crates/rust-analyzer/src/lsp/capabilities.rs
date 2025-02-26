@@ -1,4 +1,5 @@
 //! Advertises the capabilities of the LSP Server.
+use ide::{CompletionFieldsToResolve, InlayFieldsToResolve};
 use ide_db::{line_index::WideEncoding, FxHashSet};
 use lsp_types::{
     CallHierarchyServerCapability, CodeActionKind, CodeActionOptions, CodeActionProviderCapability,
@@ -40,7 +41,11 @@ pub fn server_capabilities(config: &Config) -> ServerCapabilities {
         })),
         hover_provider: Some(HoverProviderCapability::Simple(true)),
         completion_provider: Some(CompletionOptions {
-            resolve_provider: config.caps().completions_resolve_provider(),
+            resolve_provider: if config.client_is_neovim() {
+                config.completion_item_edit_resolve().then_some(true)
+            } else {
+                Some(config.caps().completions_resolve_provider())
+            },
             trigger_characters: Some(vec![
                 ":".to_owned(),
                 ".".to_owned(),
@@ -71,9 +76,12 @@ pub fn server_capabilities(config: &Config) -> ServerCapabilities {
             RustfmtConfig::Rustfmt { enable_range_formatting: true, .. } => Some(OneOf::Left(true)),
             _ => Some(OneOf::Left(false)),
         },
-        document_on_type_formatting_provider: Some(DocumentOnTypeFormattingOptions {
-            first_trigger_character: "=".to_owned(),
-            more_trigger_character: Some(more_trigger_character(config)),
+        document_on_type_formatting_provider: Some({
+            let mut chars = ide::Analysis::SUPPORTED_TRIGGER_CHARS.chars();
+            DocumentOnTypeFormattingOptions {
+                first_trigger_character: chars.next().unwrap().to_string(),
+                more_trigger_character: Some(chars.map(|c| c.to_string()).collect()),
+            }
         }),
         selection_range_provider: Some(SelectionRangeProviderCapability::Simple(true)),
         folding_range_provider: Some(FoldingRangeProviderCapability::Simple(true)),
@@ -136,7 +144,7 @@ pub fn server_capabilities(config: &Config) -> ServerCapabilities {
         inlay_hint_provider: Some(OneOf::Right(InlayHintServerCapabilities::Options(
             InlayHintOptions {
                 work_done_progress_options: Default::default(),
-                resolve_provider: Some(true),
+                resolve_provider: Some(config.caps().inlay_hints_resolve_provider()),
             },
         ))),
         inline_value_provider: None,
@@ -155,7 +163,15 @@ pub fn server_capabilities(config: &Config) -> ServerCapabilities {
             "ssr": true,
             "workspaceSymbolScopeKindFiltering": true,
         })),
-        diagnostic_provider: None,
+        diagnostic_provider: Some(lsp_types::DiagnosticServerCapabilities::Options(
+            lsp_types::DiagnosticOptions {
+                identifier: None,
+                inter_file_dependencies: true,
+                // FIXME
+                workspace_diagnostics: false,
+                work_done_progress_options: WorkDoneProgressOptions { work_done_progress: None },
+            },
+        )),
         inline_completion_provider: None,
     }
 }
@@ -168,8 +184,18 @@ impl ClientCapabilities {
         Self(caps)
     }
 
-    fn completions_resolve_provider(&self) -> Option<bool> {
-        self.completion_item_edit_resolve().then_some(true)
+    fn completions_resolve_provider(&self) -> bool {
+        let client_capabilities = self.completion_resolve_support_properties();
+        let fields_to_resolve =
+            CompletionFieldsToResolve::from_client_capabilities(&client_capabilities);
+        fields_to_resolve != CompletionFieldsToResolve::empty()
+    }
+
+    fn inlay_hints_resolve_provider(&self) -> bool {
+        let client_capabilities = self.inlay_hint_resolve_support_properties();
+        let fields_to_resolve =
+            InlayFieldsToResolve::from_client_capabilities(&client_capabilities);
+        fields_to_resolve != InlayFieldsToResolve::empty()
     }
 
     fn experimental_bool(&self, index: &'static str) -> bool {
@@ -210,9 +236,7 @@ impl ClientCapabilities {
                 .completion_item
                 .as_ref()?
                 .label_details_support
-                .as_ref()
-        })()
-        .is_some()
+        })() == Some(true)
     }
 
     fn completion_item(&self) -> Option<CompletionOptionsCompletionItem> {
@@ -382,6 +406,15 @@ impl ClientCapabilities {
         .unwrap_or_default()
     }
 
+    pub fn text_document_diagnostic(&self) -> bool {
+        (|| -> _ { self.0.text_document.as_ref()?.diagnostic.as_ref() })().is_some()
+    }
+
+    pub fn text_document_diagnostic_related_document_support(&self) -> bool {
+        (|| -> _ { self.0.text_document.as_ref()?.diagnostic.as_ref()?.related_document_support })()
+            == Some(true)
+    }
+
     pub fn code_action_group(&self) -> bool {
         self.experimental_bool("codeActionGroup")
     }
@@ -448,6 +481,11 @@ impl ClientCapabilities {
             .unwrap_or_default()
     }
 
+    pub fn diagnostics_refresh(&self) -> bool {
+        (|| -> _ { self.0.workspace.as_ref()?.diagnostic.as_ref()?.refresh_support })()
+            .unwrap_or_default()
+    }
+
     pub fn inlay_hint_resolve_support_properties(&self) -> FxHashSet<&str> {
         self.0
             .text_document
@@ -496,12 +534,4 @@ impl ClientCapabilities {
         })()
         .unwrap_or_default()
     }
-}
-
-fn more_trigger_character(config: &Config) -> Vec<String> {
-    let mut res = vec![".".to_owned(), ">".to_owned(), "{".to_owned(), "(".to_owned()];
-    if config.snippet_cap().is_some() {
-        res.push("<".to_owned());
-    }
-    res
 }

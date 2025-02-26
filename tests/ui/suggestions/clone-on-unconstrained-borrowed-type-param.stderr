@@ -15,7 +15,7 @@ note: `T` does not implement `Clone`, so `&T` was cloned instead
    |
 LL |     t.clone()
    |     ^
-help: consider restricting type parameter `T`
+help: consider restricting type parameter `T` with trait `Clone`
    |
 LL | fn wat<T: Clone>(t: &T) -> T {
    |         +++++++

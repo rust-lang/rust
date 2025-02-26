@@ -1,7 +1,7 @@
 use std::{mem, ptr};
 
 use rand::Rng;
-use rand::distributions::{Alphanumeric, DistString, Standard};
+use rand::distr::{Alphanumeric, SampleString, StandardUniform};
 use test::{Bencher, black_box};
 
 #[bench]
@@ -156,7 +156,7 @@ fn random_inserts(b: &mut Bencher) {
         let mut v = vec![(0, 0); 30];
         for _ in 0..100 {
             let l = v.len();
-            v.insert(rng.gen::<usize>() % (l + 1), (1, 1));
+            v.insert(rng.random::<u32>() as usize % (l + 1), (1, 1));
         }
     })
 }
@@ -168,7 +168,7 @@ fn random_removes(b: &mut Bencher) {
         let mut v = vec![(0, 0); 130];
         for _ in 0..100 {
             let l = v.len();
-            v.remove(rng.gen::<usize>() % l);
+            v.remove(rng.random::<u32>() as usize % l);
         }
     })
 }
@@ -183,20 +183,20 @@ fn gen_descending(len: usize) -> Vec<u64> {
 
 fn gen_random(len: usize) -> Vec<u64> {
     let mut rng = crate::bench_rng();
-    (&mut rng).sample_iter(&Standard).take(len).collect()
+    (&mut rng).sample_iter(&StandardUniform).take(len).collect()
 }
 
 fn gen_random_bytes(len: usize) -> Vec<u8> {
     let mut rng = crate::bench_rng();
-    (&mut rng).sample_iter(&Standard).take(len).collect()
+    (&mut rng).sample_iter(&StandardUniform).take(len).collect()
 }
 
 fn gen_mostly_ascending(len: usize) -> Vec<u64> {
     let mut rng = crate::bench_rng();
     let mut v = gen_ascending(len);
     for _ in (0usize..).take_while(|x| x * x <= len) {
-        let x = rng.gen::<usize>() % len;
-        let y = rng.gen::<usize>() % len;
+        let x = rng.random::<u32>() as usize % len;
+        let y = rng.random::<u32>() as usize % len;
         v.swap(x, y);
     }
     v
@@ -206,8 +206,8 @@ fn gen_mostly_descending(len: usize) -> Vec<u64> {
     let mut rng = crate::bench_rng();
     let mut v = gen_descending(len);
     for _ in (0usize..).take_while(|x| x * x <= len) {
-        let x = rng.gen::<usize>() % len;
-        let y = rng.gen::<usize>() % len;
+        let x = rng.random::<u32>() as usize % len;
+        let y = rng.random::<u32>() as usize % len;
         v.swap(x, y);
     }
     v
@@ -217,15 +217,15 @@ fn gen_strings(len: usize) -> Vec<String> {
     let mut rng = crate::bench_rng();
     let mut v = vec![];
     for _ in 0..len {
-        let n = rng.gen::<usize>() % 20 + 1;
-        v.push(Alphanumeric.sample_string(&mut rng, n));
+        let n = rng.random::<u32>() % 20 + 1;
+        v.push(Alphanumeric.sample_string(&mut rng, n as usize));
     }
     v
 }
 
 fn gen_big_random(len: usize) -> Vec<[u64; 16]> {
     let mut rng = crate::bench_rng();
-    (&mut rng).sample_iter(&Standard).map(|x| [x; 16]).take(len).collect()
+    (&mut rng).sample_iter(&StandardUniform).map(|x| [x; 16]).take(len).collect()
 }
 
 macro_rules! sort {
@@ -366,14 +366,25 @@ rotate!(rotate_medium_half, gen_random, 9158, 9158 / 2);
 rotate!(rotate_medium_half_plus_one, gen_random, 9158, 9158 / 2 + 1);
 
 // Intended to use more RAM than the machine has cache
+#[cfg(not(target_os = "emscripten"))] // hits an OOM
 rotate!(rotate_huge_by1, gen_random, 5 * 1024 * 1024, 1);
+#[cfg(not(target_os = "emscripten"))] // hits an OOM
 rotate!(rotate_huge_by9199_u64, gen_random, 5 * 1024 * 1024, 9199);
+#[cfg(not(target_os = "emscripten"))] // hits an OOM
 rotate!(rotate_huge_by9199_bytes, gen_random_bytes, 5 * 1024 * 1024, 9199);
+#[cfg(not(target_os = "emscripten"))] // hits an OOM
 rotate!(rotate_huge_by9199_strings, gen_strings, 5 * 1024 * 1024, 9199);
+#[cfg(not(target_os = "emscripten"))] // hits an OOM
 rotate!(rotate_huge_by9199_big, gen_big_random, 5 * 1024 * 1024, 9199);
+#[cfg(not(target_os = "emscripten"))] // hits an OOM
 rotate!(rotate_huge_by1234577_u64, gen_random, 5 * 1024 * 1024, 1234577);
+#[cfg(not(target_os = "emscripten"))] // hits an OOM
 rotate!(rotate_huge_by1234577_bytes, gen_random_bytes, 5 * 1024 * 1024, 1234577);
+#[cfg(not(target_os = "emscripten"))] // hits an OOM
 rotate!(rotate_huge_by1234577_strings, gen_strings, 5 * 1024 * 1024, 1234577);
+#[cfg(not(target_os = "emscripten"))] // hits an OOM
 rotate!(rotate_huge_by1234577_big, gen_big_random, 5 * 1024 * 1024, 1234577);
+#[cfg(not(target_os = "emscripten"))] // hits an OOM
 rotate!(rotate_huge_half, gen_random, 5 * 1024 * 1024, 5 * 1024 * 1024 / 2);
+#[cfg(not(target_os = "emscripten"))] // hits an OOM
 rotate!(rotate_huge_half_plus_one, gen_random, 5 * 1024 * 1024, 5 * 1024 * 1024 / 2 + 1);

@@ -22,6 +22,13 @@ help: the `Box` type always has a statically known size and allocates its conten
 LL | struct ArenaSet<U: Deref, V: ?Sized = <U as Deref>::Target>(Box<V>, U);
    |                                                             ++++ +
 
-error: aborting due to 1 previous error
+error[E0080]: evaluation of constant value failed
+  --> $DIR/issue-unsized-tail-restatic-ice-122488.rs:8:1
+   |
+LL | const DATA: *const ArenaSet<Vec<u8>> = std::ptr::null_mut();
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the type `ArenaSet<Vec<u8>, [u8]>` has an unknown layout
 
-For more information about this error, try `rustc --explain E0277`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0080, E0277.
+For more information about an error, try `rustc --explain E0080`.

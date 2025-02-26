@@ -170,6 +170,7 @@ pub fn hard_coded_allowed() {
 
     let _ = Saturating(0u32) + Saturating(0u32);
     let _ = String::new() + "";
+    let _ = String::new() + &String::new();
     let _ = Wrapping(0u32) + Wrapping(0u32);
 
     let saturating: Saturating<u32> = Saturating(0u32);
@@ -408,11 +409,14 @@ pub fn unknown_ops_or_runtime_ops_that_can_overflow() {
     _n.wrapping_rem(_n);
     _n.wrapping_rem_euclid(_n);
 
+    _n.saturating_div(*Box::new(_n));
+
     // Unary
     _n = -_n;
     _n = -&_n;
     _custom = -_custom;
     _custom = -&_custom;
+    _ = -*Box::new(_n);
 }
 
 // Copied and pasted from the `integer_arithmetic` lint for comparison.
@@ -532,6 +536,13 @@ pub fn issue_12318() {
     one.mul_assign(1);
     one.rem_assign(1);
     one.sub_assign(1);
+}
+
+pub fn explicit_methods() {
+    use core::ops::Add;
+    let one: i32 = 1;
+    one.add(&one);
+    Box::new(one).add(one);
 }
 
 fn main() {}

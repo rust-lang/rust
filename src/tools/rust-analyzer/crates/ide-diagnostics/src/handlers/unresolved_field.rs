@@ -1,6 +1,8 @@
 use std::iter;
 
+use either::Either;
 use hir::{db::ExpandDatabase, Adt, FileRange, HasSource, HirDisplay, InFile, Struct, Union};
+use ide_db::text_edit::TextEdit;
 use ide_db::{
     assists::{Assist, AssistId, AssistKind},
     helpers::is_editable_crate,
@@ -16,7 +18,6 @@ use syntax::{
     ast::{edit::AstNodeEdit, Type},
     SyntaxNode,
 };
-use text_edit::TextEdit;
 
 use crate::{adjusted_display_range, Diagnostic, DiagnosticCode, DiagnosticsContext};
 
@@ -41,7 +42,7 @@ pub(crate) fn unresolved_field(
         ),
         adjusted_display_range(ctx, d.expr, &|expr| {
             Some(
-                match expr {
+                match expr.left()? {
                     ast::Expr::MethodCallExpr(it) => it.name_ref(),
                     ast::Expr::FieldExpr(it) => it.name_ref(),
                     _ => None,
@@ -72,7 +73,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedField) -> Option<Vec<A
 fn field_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedField) -> Option<Assist> {
     // Get the FileRange of the invalid field access
     let root = ctx.sema.db.parse_or_expand(d.expr.file_id);
-    let expr = d.expr.value.to_node(&root);
+    let expr = d.expr.value.to_node(&root).left()?;
 
     let error_range = ctx.sema.original_range_opt(expr.syntax())?;
     let field_name = d.name.as_str();
@@ -90,7 +91,9 @@ fn field_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedField) -> Option<A
         make::ty("()")
     };
 
-    if !is_editable_crate(target_module.krate(), ctx.sema.db) {
+    if !is_editable_crate(target_module.krate(), ctx.sema.db)
+        || SyntaxKind::from_keyword(field_name, ctx.edition).is_some()
+    {
         return None;
     }
 
@@ -261,7 +264,7 @@ fn record_field_layout(
 // FIXME: We should fill out the call here, move the cursor and trigger signature help
 fn method_fix(
     ctx: &DiagnosticsContext<'_>,
-    expr_ptr: &InFile<AstPtr<ast::Expr>>,
+    expr_ptr: &InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
 ) -> Option<Assist> {
     let root = ctx.sema.db.parse_or_expand(expr_ptr.file_id);
     let expr = expr_ptr.value.to_node(&root);
@@ -500,5 +503,20 @@ impl Kek {
 fn main() {}
             "#,
         )
+    }
+
+    #[test]
+    fn regression_18683() {
+        check_diagnostics(
+            r#"
+struct S;
+impl S {
+    fn f(self) {
+        self.self
+          // ^^^^ error: no field `self` on type `S`
+    }
+}
+        "#,
+        );
     }
 }

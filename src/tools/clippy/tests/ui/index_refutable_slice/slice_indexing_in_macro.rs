@@ -1,7 +1,5 @@
 #![deny(clippy::index_refutable_slice)]
 
-//@no-rustfix: need to change the suggestion to a multipart suggestion
-
 extern crate if_chain;
 use if_chain::if_chain;
 

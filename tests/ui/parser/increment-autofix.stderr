@@ -20,8 +20,9 @@ LL |     while ++i < 5 {
    |
 help: use `+= 1` instead
    |
-LL |     while { i += 1; i } < 5 {
-   |           ~   +++++++++
+LL -     while ++i < 5 {
+LL +     while { i += 1; i } < 5 {
+   |
 
 error: Rust has no prefix increment operator
   --> $DIR/increment-autofix.rs:19:5
@@ -45,8 +46,9 @@ LL |     while ++tmp < 5 {
    |
 help: use `+= 1` instead
    |
-LL |     while { tmp += 1; tmp } < 5 {
-   |           ~     +++++++++++
+LL -     while ++tmp < 5 {
+LL +     while { tmp += 1; tmp } < 5 {
+   |
 
 error: aborting due to 4 previous errors
 

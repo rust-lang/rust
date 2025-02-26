@@ -6,8 +6,9 @@ LL | import std::{
    |
 help: items are imported using the `use` keyword
    |
-LL | use std::{
-   | ~~~
+LL - import std::{
+LL + use std::{
+   |
 
 error: expected item, found `require`
   --> $DIR/use_instead_of_import.rs:9:1
@@ -17,8 +18,9 @@ LL | require std::time::Duration;
    |
 help: items are imported using the `use` keyword
    |
-LL | use std::time::Duration;
-   | ~~~
+LL - require std::time::Duration;
+LL + use std::time::Duration;
+   |
 
 error: expected item, found `include`
   --> $DIR/use_instead_of_import.rs:12:1
@@ -28,8 +30,9 @@ LL | include std::time::Instant;
    |
 help: items are imported using the `use` keyword
    |
-LL | use std::time::Instant;
-   | ~~~
+LL - include std::time::Instant;
+LL + use std::time::Instant;
+   |
 
 error: expected item, found `using`
   --> $DIR/use_instead_of_import.rs:15:5
@@ -39,8 +42,9 @@ LL | pub using std::io;
    |
 help: items are imported using the `use` keyword
    |
-LL | pub use std::io;
-   |     ~~~
+LL - pub using std::io;
+LL + pub use std::io;
+   |
 
 error: aborting due to 4 previous errors
 

@@ -102,5 +102,14 @@ LL +             }
 LL +         })
    |
 
-error: aborting due to 4 previous errors
+error: called `map(..).flatten()` on `Iterator`
+  --> tests/ui/map_flatten.rs:64:10
+   |
+LL |           .map(|x| x.iter())
+   |  __________^
+...  |
+LL | |         .flatten();
+   | |__________________^ help: try replacing `map` with `flat_map` and remove the `.flatten()`: `flat_map(|x| x.iter())`
+
+error: aborting due to 5 previous errors
 

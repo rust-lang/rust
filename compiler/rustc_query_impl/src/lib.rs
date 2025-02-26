@@ -11,7 +11,6 @@
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
-use field_offset::offset_of;
 use rustc_data_structures::stable_hasher::HashStable;
 use rustc_data_structures::sync::AtomicU64;
 use rustc_middle::arena::Arena;
@@ -89,7 +88,13 @@ where
     where
         QueryCtxt<'tcx>: 'a,
     {
-        self.dynamic.query_state.apply(&qcx.tcx.query_system.states)
+        // Safety:
+        // This is just manually doing the subfield referencing through pointer math.
+        unsafe {
+            &*(&qcx.tcx.query_system.states as *const QueryStates<'tcx>)
+                .byte_add(self.dynamic.query_state)
+                .cast::<QueryState<Self::Key>>()
+        }
     }
 
     #[inline(always)]
@@ -97,7 +102,13 @@ where
     where
         'tcx: 'a,
     {
-        self.dynamic.query_cache.apply(&qcx.tcx.query_system.caches)
+        // Safety:
+        // This is just manually doing the subfield referencing through pointer math.
+        unsafe {
+            &*(&qcx.tcx.query_system.caches as *const QueryCaches<'tcx>)
+                .byte_add(self.dynamic.query_cache)
+                .cast::<Self::Cache>()
+        }
     }
 
     #[inline(always)]
@@ -198,12 +209,12 @@ trait QueryConfigRestored<'tcx> {
     -> Self::RestoredValue;
 }
 
-pub fn query_system<'tcx>(
+pub fn query_system<'a>(
     local_providers: Providers,
     extern_providers: ExternProviders,
-    on_disk_cache: Option<OnDiskCache<'tcx>>,
+    on_disk_cache: Option<OnDiskCache>,
     incremental: bool,
-) -> QuerySystem<'tcx> {
+) -> QuerySystem<'a> {
     QuerySystem {
         states: Default::default(),
         arenas: Default::default(),
@@ -222,3 +233,8 @@ pub fn query_system<'tcx>(
 }
 
 rustc_middle::rustc_query_append! { define_queries! }
+
+pub fn provide(providers: &mut rustc_middle::util::Providers) {
+    providers.hooks.alloc_self_profile_query_strings = alloc_self_profile_query_strings;
+    providers.hooks.query_key_hash_verify_all = query_key_hash_verify_all;
+}

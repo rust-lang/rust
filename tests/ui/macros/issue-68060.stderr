@@ -7,14 +7,8 @@ LL |             #[target_feature(enable = "")]
 LL |             |_| (),
    |             ------ not a function definition
 
-error: the feature named `` is not valid for this target
-  --> $DIR/issue-68060.rs:4:30
-   |
-LL |             #[target_feature(enable = "")]
-   |                              ^^^^^^^^^^^ `` is not valid for this target
-
 error[E0658]: `#[track_caller]` on closures is currently unstable
-  --> $DIR/issue-68060.rs:8:13
+  --> $DIR/issue-68060.rs:6:13
    |
 LL |             #[track_caller]
    |             ^^^^^^^^^^^^^^^
@@ -23,6 +17,6 @@ LL |             #[track_caller]
    = help: add `#![feature(closure_track_caller)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

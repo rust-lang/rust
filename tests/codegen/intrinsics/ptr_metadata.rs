@@ -1,4 +1,4 @@
-//@ compile-flags: -O -C no-prepopulate-passes -Z inline-mir
+//@ compile-flags: -Copt-level=3 -C no-prepopulate-passes -Z inline-mir
 //@ only-64bit (so I don't need to worry about usize)
 
 #![crate_type = "lib"]
@@ -28,7 +28,7 @@ pub unsafe fn dyn_byte_offset(
     p: *const dyn std::fmt::Debug,
     n: usize,
 ) -> *const dyn std::fmt::Debug {
-    // CHECK: %[[Q:.+]] = getelementptr inbounds i8, ptr %p.0, i64 %n
+    // CHECK: %[[Q:.+]] = getelementptr inbounds{{( nuw)?}} i8, ptr %p.0, i64 %n
     // CHECK: %[[TEMP1:.+]] = insertvalue { ptr, ptr } poison, ptr %[[Q]], 0
     // CHECK: %[[TEMP2:.+]] = insertvalue { ptr, ptr } %[[TEMP1]], ptr %p.1, 1
     // CHECK: ret { ptr, ptr } %[[TEMP2]]

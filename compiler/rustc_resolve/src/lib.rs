@@ -15,7 +15,6 @@
 #![doc(rust_logo)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
-#![feature(extract_if)]
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
@@ -27,6 +26,7 @@
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
 use std::fmt;
+use std::sync::Arc;
 
 use diagnostics::{ImportSuggestion, LabelSuggestion, Suggestion};
 use effective_visibilities::EffectiveVisibilitiesVisitor;
@@ -46,7 +46,7 @@ use rustc_ast::{
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::sync::{FreezeReadGuard, Lrc};
+use rustc_data_structures::sync::FreezeReadGuard;
 use rustc_errors::{Applicability, Diag, ErrCode, ErrorGuaranteed};
 use rustc_expand::base::{DeriveResolution, SyntaxExtension, SyntaxExtensionKind};
 use rustc_feature::BUILTIN_ATTRIBUTES;
@@ -70,8 +70,7 @@ use rustc_query_system::ich::StableHashingContext;
 use rustc_session::lint::builtin::PRIVATE_MACRO_USE;
 use rustc_session::lint::{BuiltinLintDiag, LintBuffer};
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
-use rustc_span::symbol::{Ident, Symbol, kw, sym};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use smallvec::{SmallVec, smallvec};
 use tracing::debug;
 
@@ -174,7 +173,6 @@ impl<'ra> ParentScope<'ra> {
 #[derive(Copy, Debug, Clone)]
 struct InvocationParent {
     parent_def: LocalDefId,
-    pending_anon_const_info: Option<PendingAnonConstInfo>,
     impl_trait_context: ImplTraitContext,
     in_attr: bool,
 }
@@ -182,32 +180,23 @@ struct InvocationParent {
 impl InvocationParent {
     const ROOT: Self = Self {
         parent_def: CRATE_DEF_ID,
-        pending_anon_const_info: None,
         impl_trait_context: ImplTraitContext::Existential,
         in_attr: false,
     };
 }
 
 #[derive(Copy, Debug, Clone)]
-struct PendingAnonConstInfo {
-    // A const arg is only a "trivial" const arg if it has at *most* one set of braces
-    // around the argument. We track whether we have stripped an outter brace so that
-    // if a macro expands to a braced expression *and* the macro was itself inside of
-    // some braces then we can consider it to be a non-trivial const argument.
-    block_was_stripped: bool,
-    id: NodeId,
-    span: Span,
-}
-
-#[derive(Copy, Debug, Clone)]
 enum ImplTraitContext {
     Existential,
     Universal,
+    InBinding,
 }
 
 /// Used for tracking import use types which will be used for redundant import checking.
+///
 /// ### Used::Scope Example
-///  ```rust,compile_fail
+///
+/// ```rust,compile_fail
 /// #![deny(redundant_imports)]
 /// use std::mem::drop;
 /// fn main() {
@@ -215,6 +204,7 @@ enum ImplTraitContext {
 ///     drop(s);
 /// }
 /// ```
+///
 /// Used::Other is for other situations like module-relative uses.
 #[derive(Clone, Copy, PartialEq, PartialOrd, Debug)]
 enum Used {
@@ -224,7 +214,7 @@ enum Used {
 
 #[derive(Debug)]
 struct BindingError {
-    name: Symbol,
+    name: Ident,
     origin: BTreeSet<Span>,
     target: BTreeSet<Span>,
     could_be_path: bool,
@@ -236,7 +226,7 @@ enum ResolutionError<'ra> {
     GenericParamsFromOuterItem(Res, HasGenericParams, DefKind),
     /// Error E0403: the name is already used for a type or const parameter in this generic
     /// parameter list.
-    NameAlreadyUsedInParameterList(Symbol, Span),
+    NameAlreadyUsedInParameterList(Ident, Span),
     /// Error E0407: method is not a member of trait.
     MethodNotMemberOfTrait(Ident, String, Option<Symbol>),
     /// Error E0437: type is not a member of trait.
@@ -246,11 +236,11 @@ enum ResolutionError<'ra> {
     /// Error E0408: variable `{}` is not bound in all patterns.
     VariableNotBoundInPattern(BindingError, ParentScope<'ra>),
     /// Error E0409: variable `{}` is bound in inconsistent ways within the same match arm.
-    VariableBoundWithDifferentMode(Symbol, Span),
+    VariableBoundWithDifferentMode(Ident, Span),
     /// Error E0415: identifier is bound more than once in this parameter list.
-    IdentifierBoundMoreThanOnceInParameterList(Symbol),
+    IdentifierBoundMoreThanOnceInParameterList(Ident),
     /// Error E0416: identifier is bound more than once in the same pattern.
-    IdentifierBoundMoreThanOnceInSamePattern(Symbol),
+    IdentifierBoundMoreThanOnceInSamePattern(Ident),
     /// Error E0426: use of undeclared label.
     UndeclaredLabel { name: Symbol, suggestion: Option<LabelSuggestion> },
     /// Error E0429: `self` imports are only allowed within a `{ }` list.
@@ -302,14 +292,14 @@ enum ResolutionError<'ra> {
     UnreachableLabel { name: Symbol, definition_span: Span, suggestion: Option<LabelSuggestion> },
     /// Error E0323, E0324, E0325: mismatch between trait item and impl item.
     TraitImplMismatch {
-        name: Symbol,
+        name: Ident,
         kind: &'static str,
         trait_path: String,
         trait_item_span: Span,
         code: ErrCode,
     },
     /// Error E0201: multiple impl items for the same trait item.
-    TraitImplDuplicate { name: Symbol, trait_item_span: Span, old_span: Span },
+    TraitImplDuplicate { name: Ident, trait_item_span: Span, old_span: Span },
     /// Inline asm `sym` operand must refer to a `fn` or `static`.
     InvalidAsmSym,
     /// `self` used instead of `Self` in a generic parameter
@@ -367,7 +357,7 @@ impl Segment {
     }
 
     fn names_to_string(segments: &[Segment]) -> String {
-        names_to_string(&segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>())
+        names_to_string(segments.iter().map(|seg| seg.ident.name))
     }
 }
 
@@ -463,6 +453,7 @@ enum PathResult<'ra> {
         module: Option<ModuleOrUniformRoot<'ra>>,
         /// The segment name of target
         segment_name: Symbol,
+        error_implied_by_parse_error: bool,
     },
 }
 
@@ -471,6 +462,7 @@ impl<'ra> PathResult<'ra> {
         ident: Ident,
         is_error_from_last_segment: bool,
         finalize: bool,
+        error_implied_by_parse_error: bool,
         module: Option<ModuleOrUniformRoot<'ra>>,
         label_and_suggestion: impl FnOnce() -> (String, Option<Suggestion>),
     ) -> PathResult<'ra> {
@@ -483,6 +475,7 @@ impl<'ra> PathResult<'ra> {
             suggestion,
             is_error_from_last_segment,
             module,
+            error_implied_by_parse_error,
         }
     }
 }
@@ -594,6 +587,19 @@ struct ModuleData<'ra> {
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[rustc_pass_by_value]
 struct Module<'ra>(Interned<'ra, ModuleData<'ra>>);
+
+// Allows us to use Interned without actually enforcing (via Hash/PartialEq/...) uniqueness of the
+// contained data.
+// FIXME: We may wish to actually have at least debug-level assertions that Interned's guarantees
+// are upheld.
+impl std::hash::Hash for ModuleData<'_> {
+    fn hash<H>(&self, _: &mut H)
+    where
+        H: std::hash::Hasher,
+    {
+        unreachable!()
+    }
+}
 
 impl<'ra> ModuleData<'ra> {
     fn new(
@@ -744,6 +750,19 @@ struct NameBindingData<'ra> {
 /// All name bindings are unique and allocated on a same arena,
 /// so we can use referential equality to compare them.
 type NameBinding<'ra> = Interned<'ra, NameBindingData<'ra>>;
+
+// Allows us to use Interned without actually enforcing (via Hash/PartialEq/...) uniqueness of the
+// contained data.
+// FIXME: We may wish to actually have at least debug-level assertions that Interned's guarantees
+// are upheld.
+impl std::hash::Hash for NameBindingData<'_> {
+    fn hash<H>(&self, _: &mut H)
+    where
+        H: std::hash::Hasher,
+    {
+        unreachable!()
+    }
+}
 
 trait ToNameBinding<'ra> {
     fn to_name_binding(self, arenas: &'ra ResolverArenas<'ra>) -> NameBinding<'ra>;
@@ -927,10 +946,13 @@ impl<'ra> NameBindingData<'ra> {
     }
 
     fn is_importable(&self) -> bool {
-        !matches!(
-            self.res(),
-            Res::Def(DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy, _)
-        )
+        !matches!(self.res(), Res::Def(DefKind::AssocTy, _))
+    }
+
+    // FIXME(import_trait_associated_functions): associate `const` or `fn` are not importable unless
+    // the feature `import_trait_associated_functions` is enable
+    fn is_assoc_const_or_fn(&self) -> bool {
+        matches!(self.res(), Res::Def(DefKind::AssocConst | DefKind::AssocFn, _))
     }
 
     fn macro_kind(&self) -> Option<MacroKind> {
@@ -999,13 +1021,13 @@ struct DeriveData {
 }
 
 struct MacroData {
-    ext: Lrc<SyntaxExtension>,
+    ext: Arc<SyntaxExtension>,
     rule_spans: Vec<(usize, Span)>,
     macro_rules: bool,
 }
 
 impl MacroData {
-    fn new(ext: Lrc<SyntaxExtension>) -> MacroData {
+    fn new(ext: Arc<SyntaxExtension>) -> MacroData {
         MacroData { ext, rule_spans: Vec::new(), macro_rules: false }
     }
 }
@@ -1082,8 +1104,6 @@ pub struct Resolver<'ra, 'tcx> {
     binding_parent_modules: FxHashMap<NameBinding<'ra>, Module<'ra>>,
 
     underscore_disambiguator: u32,
-    /// Disambiguator for anonymous adts.
-    empty_disambiguator: u32,
 
     /// Maps glob imports to the names of items actually imported.
     glob_map: FxIndexMap<LocalDefId, FxIndexSet<Symbol>>,
@@ -1116,8 +1136,8 @@ pub struct Resolver<'ra, 'tcx> {
     registered_tools: &'tcx RegisteredTools,
     macro_use_prelude: FxHashMap<Symbol, NameBinding<'ra>>,
     macro_map: FxHashMap<DefId, MacroData>,
-    dummy_ext_bang: Lrc<SyntaxExtension>,
-    dummy_ext_derive: Lrc<SyntaxExtension>,
+    dummy_ext_bang: Arc<SyntaxExtension>,
+    dummy_ext_derive: Arc<SyntaxExtension>,
     non_macro_attr: MacroData,
     local_macro_def_scopes: FxHashMap<LocalDefId, Module<'ra>>,
     ast_transform_scopes: FxHashMap<LocalExpnId, Module<'ra>>,
@@ -1199,7 +1219,7 @@ pub struct Resolver<'ra, 'tcx> {
     effective_visibilities: EffectiveVisibilities,
     doc_link_resolutions: FxIndexMap<LocalDefId, DocLinkResMap>,
     doc_link_traits_in_scope: FxIndexMap<LocalDefId, Vec<DefId>>,
-    all_macro_rules: FxHashMap<Symbol, Res>,
+    all_macro_rules: FxHashSet<Symbol>,
 
     /// Invocation ids of all glob delegations.
     glob_delegation_invoc_ids: FxHashSet<LocalExpnId>,
@@ -1213,6 +1233,8 @@ pub struct Resolver<'ra, 'tcx> {
     /// This is the `Span` where an `extern crate foo;` suggestion would be inserted, if `foo`
     /// could be a crate that wasn't imported. For diagnostics use only.
     current_crate_outer_attr_insert_span: Span,
+
+    mods_with_parse_errors: FxHashSet<DefId>,
 }
 
 /// This provides memory for the rest of the crate. The `'ra` lifetime that is
@@ -1246,7 +1268,7 @@ impl<'ra> ResolverArenas<'ra> {
             no_implicit_prelude,
         ))));
         let def_id = module.opt_def_id();
-        if def_id.map_or(true, |def_id| def_id.is_local()) {
+        if def_id.is_none_or(|def_id| def_id.is_local()) {
             self.local_modules.borrow_mut().push(module);
         }
         if let Some(def_id) = def_id {
@@ -1462,7 +1484,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             module_children: Default::default(),
             trait_map: NodeMap::default(),
             underscore_disambiguator: 0,
-            empty_disambiguator: 0,
             empty_module,
             module_map,
             block_map: Default::default(),
@@ -1515,9 +1536,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             registered_tools,
             macro_use_prelude: FxHashMap::default(),
             macro_map: FxHashMap::default(),
-            dummy_ext_bang: Lrc::new(SyntaxExtension::dummy_bang(edition)),
-            dummy_ext_derive: Lrc::new(SyntaxExtension::dummy_derive(edition)),
-            non_macro_attr: MacroData::new(Lrc::new(SyntaxExtension::non_macro_attr(edition))),
+            dummy_ext_bang: Arc::new(SyntaxExtension::dummy_bang(edition)),
+            dummy_ext_derive: Arc::new(SyntaxExtension::dummy_derive(edition)),
+            non_macro_attr: MacroData::new(Arc::new(SyntaxExtension::non_macro_attr(edition))),
             invocation_parent_scopes: Default::default(),
             output_macro_rules_scopes: Default::default(),
             macro_rules_scopes: Default::default(),
@@ -1559,6 +1580,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             impl_unexpanded_invocations: Default::default(),
             impl_binding_keys: Default::default(),
             current_crate_outer_attr_insert_span,
+            mods_with_parse_errors: Default::default(),
         };
 
         let root_parent_scope = ParentScope::module(graph_root, &resolver);
@@ -1692,11 +1714,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         CStore::from_tcx(self.tcx)
     }
 
-    fn dummy_ext(&self, macro_kind: MacroKind) -> Lrc<SyntaxExtension> {
+    fn dummy_ext(&self, macro_kind: MacroKind) -> Arc<SyntaxExtension> {
         match macro_kind {
-            MacroKind::Bang => self.dummy_ext_bang.clone(),
-            MacroKind::Derive => self.dummy_ext_derive.clone(),
-            MacroKind::Attr => self.non_macro_attr.ext.clone(),
+            MacroKind::Bang => Arc::clone(&self.dummy_ext_bang),
+            MacroKind::Derive => Arc::clone(&self.dummy_ext_derive),
+            MacroKind::Attr => Arc::clone(&self.non_macro_attr.ext),
         }
     }
 
@@ -1809,12 +1831,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         assoc_item: Option<(Symbol, Namespace)>,
     ) -> bool {
         match (trait_module, assoc_item) {
-            (Some(trait_module), Some((name, ns))) => {
-                self.resolutions(trait_module).borrow().iter().any(|resolution| {
-                    let (&BindingKey { ident: assoc_ident, ns: assoc_ns, .. }, _) = resolution;
-                    assoc_ns == ns && assoc_ident.name == name
-                })
-            }
+            (Some(trait_module), Some((name, ns))) => self
+                .resolutions(trait_module)
+                .borrow()
+                .iter()
+                .any(|(key, _name_resolution)| key.ns == ns && key.ident.name == name),
             _ => true,
         }
     }
@@ -1842,9 +1863,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let disambiguator = if ident.name == kw::Underscore {
             self.underscore_disambiguator += 1;
             self.underscore_disambiguator
-        } else if ident.name == kw::Empty {
-            self.empty_disambiguator += 1;
-            self.empty_disambiguator
         } else {
             0
         };
@@ -2248,13 +2266,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 }
 
-fn names_to_string(names: &[Symbol]) -> String {
+fn names_to_string(names: impl Iterator<Item = Symbol>) -> String {
     let mut result = String::new();
-    for (i, name) in names.iter().filter(|name| **name != kw::PathRoot).enumerate() {
+    for (i, name) in names.filter(|name| *name != kw::PathRoot).enumerate() {
         if i > 0 {
             result.push_str("::");
         }
-        if Ident::with_dummy_span(*name).is_raw_guess() {
+        if Ident::with_dummy_span(name).is_raw_guess() {
             result.push_str("r#");
         }
         result.push_str(name.as_str());
@@ -2263,31 +2281,32 @@ fn names_to_string(names: &[Symbol]) -> String {
 }
 
 fn path_names_to_string(path: &Path) -> String {
-    names_to_string(&path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>())
+    names_to_string(path.segments.iter().map(|seg| seg.ident.name))
 }
 
 /// A somewhat inefficient routine to obtain the name of a module.
-fn module_to_string(module: Module<'_>) -> Option<String> {
+fn module_to_string(mut module: Module<'_>) -> Option<String> {
     let mut names = Vec::new();
-
-    fn collect_mod(names: &mut Vec<Symbol>, module: Module<'_>) {
+    loop {
         if let ModuleKind::Def(.., name) = module.kind {
             if let Some(parent) = module.parent {
                 names.push(name);
-                collect_mod(names, parent);
+                module = parent
+            } else {
+                break;
             }
         } else {
-            names.push(Symbol::intern("<opaque>"));
-            collect_mod(names, module.parent.unwrap());
+            names.push(sym::opaque_module_name_placeholder);
+            let Some(parent) = module.parent else {
+                return None;
+            };
+            module = parent;
         }
     }
-    collect_mod(&mut names, module);
-
     if names.is_empty() {
         return None;
     }
-    names.reverse();
-    Some(names_to_string(&names))
+    Some(names_to_string(names.iter().rev().copied()))
 }
 
 #[derive(Copy, Clone, Debug)]

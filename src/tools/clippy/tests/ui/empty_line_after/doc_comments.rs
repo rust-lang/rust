@@ -144,4 +144,14 @@ pub struct BlockComment;
 ))]
 fn empty_line_in_cfg_attr() {}
 
+trait Foo {
+    fn bar();
+}
+
+impl Foo for LineComment {
+    /// comment on assoc item
+
+    fn bar() {}
+}
+
 fn main() {}

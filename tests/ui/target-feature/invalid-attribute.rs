@@ -29,13 +29,6 @@ extern "Rust" {}
 unsafe fn foo() {}
 
 #[target_feature(enable = "sse2")]
-//~^ ERROR `#[target_feature(..)]` can only be applied to `unsafe` functions
-//~| NOTE see issue #69098
-//~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-fn bar() {}
-//~^ NOTE not an `unsafe` function
-
-#[target_feature(enable = "sse2")]
 //~^ ERROR attribute should be applied to a function
 mod another {}
 //~^ NOTE not a function
@@ -58,7 +51,7 @@ enum Bar {}
 #[target_feature(enable = "sse2")]
 //~^ ERROR attribute should be applied to a function
 union Qux {
-//~^ NOTE not a function
+    //~^ NOTE not a function
     f1: u16,
     f2: u16,
 }
@@ -97,15 +90,18 @@ impl Foo {}
 
 trait Quux {
     fn foo(); //~ NOTE `foo` from trait
+    //~^ NOTE: type in trait
 }
 
 impl Quux for Foo {
     #[target_feature(enable = "sse2")]
-    //~^ ERROR `#[target_feature(..)]` can only be applied to `unsafe` functions
-    //~| NOTE see issue #69098
-    //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+    //~^ ERROR `#[target_feature(..)]` cannot be applied to safe trait method
+    //~| NOTE cannot be applied to safe trait method
     fn foo() {}
     //~^ NOTE not an `unsafe` function
+    //~| ERROR: incompatible type for trait
+    //~| NOTE: expected safe fn, found unsafe fn
+    //~| NOTE: expected signature `fn()`
 }
 
 fn main() {
@@ -113,9 +109,8 @@ fn main() {
     //~^ ERROR attribute should be applied to a function
     unsafe {
         foo();
-        bar();
     }
-    //~^^^^ NOTE not a function
+    //~^^^ NOTE not a function
 
     #[target_feature(enable = "sse2")]
     //~^ ERROR attribute should be applied to a function

@@ -10,7 +10,7 @@
     unused_mut,
     unused_variables
 )]
-#![deny(unused_parens)]
+#![deny(unused_parens, unused_braces)]
 
 fn lint_on_top_level() {
     let a = 0; //~ ERROR unnecessary parentheses around pattern
@@ -43,8 +43,10 @@ fn no_lint_ops() {
 fn lint_break_if_not_followed_by_block() {
     #![allow(unreachable_code)]
     loop { if break {} } //~ ERROR unnecessary parentheses
-    loop { if break ({ println!("hello") }) {} } //~ ERROR unnecessary parentheses
-    loop { if (break { println!("hello") }) {} }
+    loop { if break { println!("hello") } {} }
+    //~^ ERROR unnecessary parentheses around `if` condition
+    //~| ERROR unnecessary parentheses around `break` value
+    loop { if (break println!("hello")) {} } //~ ERROR unnecessary braces around `break` value
 }
 
 // Don't lint in these cases (#64106).

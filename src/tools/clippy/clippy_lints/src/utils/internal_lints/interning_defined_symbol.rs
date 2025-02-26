@@ -92,7 +92,7 @@ impl<'tcx> LateLintPass<'tcx> for InterningDefinedSymbol {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Call(func, [arg]) = &expr.kind
             && let ty::FnDef(def_id, _) = cx.typeck_results().expr_ty(func).kind()
-            && match_def_path(cx, *def_id, &paths::SYMBOL_INTERN)
+            && cx.tcx.is_diagnostic_item(sym::SymbolIntern, *def_id)
             && let Some(Constant::Str(arg)) = ConstEvalCtxt::new(cx).eval_simple(arg)
             && let value = Symbol::intern(&arg).as_u32()
             && let Some(&def_id) = self.symbol_map.get(&value)

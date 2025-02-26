@@ -22,6 +22,22 @@ fn main() {
     check_condattr();
 }
 
+// We want to only use pthread APIs here for easier testing.
+// So we can't use `thread::scope`. That means panics can lead
+// to a failure to join threads which can lead to further issues,
+// so let's turn such unwinding into aborts.
+struct AbortOnDrop;
+impl AbortOnDrop {
+    fn defuse(self) {
+        mem::forget(self);
+    }
+}
+impl Drop for AbortOnDrop {
+    fn drop(&mut self) {
+        std::process::abort();
+    }
+}
+
 fn test_mutex_libc_init_recursive() {
     unsafe {
         let mut attr: libc::pthread_mutexattr_t = mem::zeroed();
@@ -122,6 +138,7 @@ impl<T> Clone for SendPtr<T> {
 }
 
 fn check_mutex() {
+    let bomb = AbortOnDrop;
     // Specifically *not* using `Arc` to make sure there is no synchronization apart from the mutex.
     unsafe {
         let data = SyncUnsafeCell::new((libc::PTHREAD_MUTEX_INITIALIZER, 0));
@@ -148,9 +165,11 @@ fn check_mutex() {
         assert_eq!(libc::pthread_mutex_trylock(mutexptr), 0);
         assert_eq!((*ptr.ptr).1, 3);
     }
+    bomb.defuse();
 }
 
 fn check_rwlock_write() {
+    let bomb = AbortOnDrop;
     unsafe {
         let data = SyncUnsafeCell::new((libc::PTHREAD_RWLOCK_INITIALIZER, 0));
         let ptr = SendPtr { ptr: data.get() };
@@ -187,9 +206,11 @@ fn check_rwlock_write() {
         assert_eq!(libc::pthread_rwlock_tryrdlock(rwlockptr), 0);
         assert_eq!((*ptr.ptr).1, 3);
     }
+    bomb.defuse();
 }
 
 fn check_rwlock_read_no_deadlock() {
+    let bomb = AbortOnDrop;
     unsafe {
         let l1 = SyncUnsafeCell::new(libc::PTHREAD_RWLOCK_INITIALIZER);
         let l1 = SendPtr { ptr: l1.get() };
@@ -213,9 +234,11 @@ fn check_rwlock_read_no_deadlock() {
         assert_eq!(libc::pthread_rwlock_rdlock(l2.ptr), 0);
         handle.join().unwrap();
     }
+    bomb.defuse();
 }
 
 fn check_cond() {
+    let bomb = AbortOnDrop;
     unsafe {
         let mut cond: MaybeUninit<libc::pthread_cond_t> = MaybeUninit::uninit();
         assert_eq!(libc::pthread_cond_init(cond.as_mut_ptr(), ptr::null()), 0);
@@ -260,6 +283,7 @@ fn check_cond() {
 
         t.join().unwrap();
     }
+    bomb.defuse();
 }
 
 fn check_condattr() {

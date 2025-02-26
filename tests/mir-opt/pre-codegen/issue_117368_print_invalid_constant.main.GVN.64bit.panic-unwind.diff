@@ -20,7 +20,6 @@
           scope 5 (inlined <std::alloc::Global as Allocator>::allocate) {
           }
           scope 6 (inlined NonNull::<[u8]>::as_ptr) {
-              let mut _12: *const [u8];
           }
       }
       scope 3 (inlined #[track_caller] Option::<Layout>::unwrap) {
@@ -45,16 +44,9 @@
   
       bb1: {
           StorageDead(_6);
--         StorageLive(_12);
-+         nop;
-          _12 = copy (_5.0: *const [u8]);
--         _4 = move _12 as *mut [u8] (PtrToPtr);
--         StorageDead(_12);
-+         _4 = copy _12 as *mut [u8] (PtrToPtr);
-+         nop;
+          _4 = copy _5 as *mut [u8] (Transmute);
           StorageDead(_5);
--         _3 = move _4 as *mut u8 (PtrToPtr);
-+         _3 = copy _12 as *mut u8 (PtrToPtr);
+          _3 = move _4 as *mut u8 (PtrToPtr);
           StorageDead(_4);
           StorageDead(_3);
 -         StorageDead(_1);

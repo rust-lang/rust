@@ -2,7 +2,7 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::{DefId, DefIdMap};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
-use rustc_span::symbol::sym;
+use rustc_span::sym;
 
 use crate::error::StrictCoherenceNeedsNegativeCoherence;
 use crate::ty::fast_reject::SimplifiedType;
@@ -75,7 +75,7 @@ impl OverlapMode {
                         tcx.hir().attrs(tcx.local_def_id_to_hir_id(local_def_id))
                     })
                     .find(|attr| attr.has_name(sym::rustc_strict_coherence))
-                    .map(|attr| attr.span);
+                    .map(|attr| attr.span());
                 tcx.dcx().emit_err(StrictCoherenceNeedsNegativeCoherence {
                     span: tcx.def_span(trait_id),
                     attr_span,

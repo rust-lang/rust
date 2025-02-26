@@ -26,15 +26,10 @@ fn make_dummy(ftl: &'static str) -> Dummy {
 
     let langid_en = langid!("en-US");
 
-    #[cfg(parallel_compiler)]
     let mut bundle: FluentBundle =
         IntoDynSyncSend(crate::fluent_bundle::bundle::FluentBundle::new_concurrent(vec![
             langid_en,
         ]));
-
-    #[cfg(not(parallel_compiler))]
-    let mut bundle: FluentBundle =
-        IntoDynSyncSend(crate::fluent_bundle::bundle::FluentBundle::new(vec![langid_en]));
 
     bundle.add_resource(resource).expect("Failed to add FTL resources to the bundle.");
 

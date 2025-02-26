@@ -1,7 +1,6 @@
 //@ edition: 2024
-//@ compile-flags: -Z validate-mir -Zunstable-options
+//@ compile-flags: -Z validate-mir
 
-#![feature(if_let_rescope)]
 #![deny(if_let_rescope)]
 
 struct Droppy;

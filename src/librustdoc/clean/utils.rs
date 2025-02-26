@@ -1,5 +1,5 @@
 use std::assert_matches::debug_assert_matches;
-use std::fmt::Write as _;
+use std::fmt::{self, Display, Write as _};
 use std::mem;
 use std::sync::LazyLock as Lazy;
 
@@ -24,7 +24,7 @@ use crate::clean::{
     clean_middle_ty, inline,
 };
 use crate::core::DocContext;
-use crate::html::format::visibility_to_src_with_space;
+use crate::display::Joined as _;
 
 #[cfg(test)]
 mod tests;
@@ -82,11 +82,11 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
     args: ty::Binder<'tcx, &'tcx [ty::GenericArg<'tcx>]>,
     mut has_self: bool,
     owner: DefId,
-) -> Vec<GenericArg> {
+) -> ThinVec<GenericArg> {
     let (args, bound_vars) = (args.skip_binder(), args.bound_vars());
     if args.is_empty() {
         // Fast path which avoids executing the query `generics_of`.
-        return Vec::new();
+        return ThinVec::new();
     }
 
     // If the container is a trait object type, the arguments won't contain the self type but the
@@ -112,7 +112,6 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
             return None;
         }
 
-        // Elide internal host effect args.
         let param = generics.param_at(index, cx.tcx);
         let arg = ty::Binder::bind_with_vars(arg, bound_vars);
 
@@ -146,7 +145,7 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
     };
 
     let offset = if has_self { 1 } else { 0 };
-    let mut clean_args = Vec::with_capacity(args.len().saturating_sub(offset));
+    let mut clean_args = ThinVec::with_capacity(args.len().saturating_sub(offset));
     clean_args.extend(args.iter().enumerate().rev().filter_map(clean_arg));
     clean_args.reverse();
     clean_args
@@ -201,35 +200,30 @@ fn clean_middle_generic_args_with_constraints<'tcx>(
     cx: &mut DocContext<'tcx>,
     did: DefId,
     has_self: bool,
-    constraints: ThinVec<AssocItemConstraint>,
-    ty_args: ty::Binder<'tcx, GenericArgsRef<'tcx>>,
+    mut constraints: ThinVec<AssocItemConstraint>,
+    args: ty::Binder<'tcx, GenericArgsRef<'tcx>>,
 ) -> GenericArgs {
-    let args = clean_middle_generic_args(cx, ty_args.map_bound(|args| &args[..]), has_self, did);
-
-    if cx.tcx.fn_trait_kind_from_def_id(did).is_some() {
-        let ty = ty_args
+    if cx.tcx.is_trait(did)
+        && cx.tcx.trait_def(did).paren_sugar
+        && let ty::Tuple(tys) = args.skip_binder().type_at(has_self as usize).kind()
+    {
+        let inputs = tys
             .iter()
-            .nth(if has_self { 1 } else { 0 })
-            .unwrap()
-            .map_bound(|arg| arg.expect_ty());
-        let inputs =
-            // The trait's first substitution is the one after self, if there is one.
-            match ty.skip_binder().kind() {
-                ty::Tuple(tys) => tys.iter().map(|t| clean_middle_ty(ty.rebind(t), cx, None, None)).collect::<Vec<_>>().into(),
-                _ => return GenericArgs::AngleBracketed { args: args.into(), constraints },
-            };
-        let output = constraints.into_iter().next().and_then(|binding| match binding.kind {
-            AssocItemConstraintKind::Equality { term: Term::Type(ty) }
-                if ty != Type::Tuple(Vec::new()) =>
-            {
+            .map(|ty| clean_middle_ty(args.rebind(ty), cx, None, None))
+            .collect::<Vec<_>>()
+            .into();
+        let output = constraints.pop().and_then(|constraint| match constraint.kind {
+            AssocItemConstraintKind::Equality { term: Term::Type(ty) } if !ty.is_unit() => {
                 Some(Box::new(ty))
             }
             _ => None,
         });
-        GenericArgs::Parenthesized { inputs, output }
-    } else {
-        GenericArgs::AngleBracketed { args: args.into(), constraints }
+        return GenericArgs::Parenthesized { inputs, output };
     }
+
+    let args = clean_middle_generic_args(cx, args.map_bound(|args| &args[..]), has_self, did);
+
+    GenericArgs::AngleBracketed { args: args.into(), constraints }
 }
 
 pub(super) fn clean_middle_path<'tcx>(
@@ -257,16 +251,20 @@ pub(crate) fn qpath_to_string(p: &hir::QPath<'_>) -> String {
         hir::QPath::LangItem(lang_item, ..) => return lang_item.name().to_string(),
     };
 
-    let mut s = String::new();
-    for (i, seg) in segments.iter().enumerate() {
-        if i > 0 {
-            s.push_str("::");
-        }
-        if seg.ident.name != kw::PathRoot {
-            s.push_str(seg.ident.as_str());
-        }
-    }
-    s
+    fmt::from_fn(|f| {
+        segments
+            .iter()
+            .map(|seg| {
+                fmt::from_fn(|f| {
+                    if seg.ident.name != kw::PathRoot {
+                        write!(f, "{}", seg.ident)?;
+                    }
+                    Ok(())
+                })
+            })
+            .joined("::", f)
+    })
+    .to_string()
 }
 
 pub(crate) fn build_deref_target_impls(
@@ -306,33 +304,49 @@ pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
 
     Symbol::intern(&match p.kind {
         // FIXME(never_patterns): does this make sense?
-        PatKind::Wild | PatKind::Err(_) | PatKind::Never | PatKind::Struct(..) => {
+        PatKind::Wild
+        | PatKind::Err(_)
+        | PatKind::Never
+        | PatKind::Struct(..)
+        | PatKind::Range(..) => {
             return kw::Underscore;
         }
         PatKind::Binding(_, _, ident, _) => return ident.name,
-        PatKind::TupleStruct(ref p, ..) | PatKind::Path(ref p) => qpath_to_string(p),
+        PatKind::Box(p) | PatKind::Ref(p, _) | PatKind::Guard(p, _) => return name_from_pat(p),
+        PatKind::TupleStruct(ref p, ..)
+        | PatKind::Expr(PatExpr { kind: PatExprKind::Path(ref p), .. }) => qpath_to_string(p),
         PatKind::Or(pats) => {
-            pats.iter().map(|p| name_from_pat(p).to_string()).collect::<Vec<String>>().join(" | ")
+            fmt::from_fn(|f| pats.iter().map(|p| name_from_pat(p)).joined(" | ", f)).to_string()
         }
-        PatKind::Tuple(elts, _) => format!(
-            "({})",
-            elts.iter().map(|p| name_from_pat(p).to_string()).collect::<Vec<String>>().join(", ")
-        ),
-        PatKind::Box(p) => return name_from_pat(p),
+        PatKind::Tuple(elts, _) => {
+            format!("({})", fmt::from_fn(|f| elts.iter().map(|p| name_from_pat(p)).joined(", ", f)))
+        }
         PatKind::Deref(p) => format!("deref!({})", name_from_pat(p)),
-        PatKind::Ref(p, _) => return name_from_pat(p),
-        PatKind::Lit(..) => {
+        PatKind::Expr(..) => {
             warn!(
-                "tried to get argument name from PatKind::Lit, which is silly in function arguments"
+                "tried to get argument name from PatKind::Expr, which is silly in function arguments"
             );
             return Symbol::intern("()");
         }
-        PatKind::Range(..) => return kw::Underscore,
-        PatKind::Slice(begin, ref mid, end) => {
-            let begin = begin.iter().map(|p| name_from_pat(p).to_string());
-            let mid = mid.as_ref().map(|p| format!("..{}", name_from_pat(p))).into_iter();
-            let end = end.iter().map(|p| name_from_pat(p).to_string());
-            format!("[{}]", begin.chain(mid).chain(end).collect::<Vec<_>>().join(", "))
+        PatKind::Slice(begin, mid, end) => {
+            fn print_pat<'a>(pat: &'a Pat<'a>, wild: bool) -> impl Display + 'a {
+                fmt::from_fn(move |f| {
+                    if wild {
+                        f.write_str("..")?;
+                    }
+                    name_from_pat(pat).fmt(f)
+                })
+            }
+
+            format!(
+                "[{}]",
+                fmt::from_fn(|f| {
+                    let begin = begin.iter().map(|p| print_pat(p, false));
+                    let mid = mid.map(|p| print_pat(p, true));
+                    let end = end.iter().map(|p| print_pat(p, false));
+                    begin.chain(mid).chain(end).joined(", ", f)
+                })
+            )
         }
     })
 }
@@ -341,7 +355,7 @@ pub(crate) fn print_const(cx: &DocContext<'_>, n: ty::Const<'_>) -> String {
     match n.kind() {
         ty::ConstKind::Unevaluated(ty::UnevaluatedConst { def, args: _ }) => {
             let s = if let Some(def) = def.as_local() {
-                rendered_const(cx.tcx, cx.tcx.hir().body_owned_by(def), def)
+                rendered_const(cx.tcx, cx.tcx.hir_body_owned_by(def), def)
             } else {
                 inline::print_inlined_const(cx.tcx, def)
             };
@@ -349,10 +363,8 @@ pub(crate) fn print_const(cx: &DocContext<'_>, n: ty::Const<'_>) -> String {
             s
         }
         // array lengths are obviously usize
-        ty::ConstKind::Value(ty, ty::ValTree::Leaf(scalar))
-            if *ty.kind() == ty::Uint(ty::UintTy::Usize) =>
-        {
-            scalar.to_string()
+        ty::ConstKind::Value(cv) if *cv.ty.kind() == ty::Uint(ty::UintTy::Usize) => {
+            cv.valtree.unwrap_leaf().to_string()
         }
         _ => n.to_string(),
     }
@@ -426,7 +438,10 @@ fn print_const_with_custom_print_scalar<'tcx>(
         }
         (mir::Const::Val(mir::ConstValue::Scalar(int), _), ty::Int(i)) => {
             let ty = ct.ty();
-            let size = tcx.layout_of(ty::ParamEnv::empty().and(ty)).unwrap().size;
+            let size = tcx
+                .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty))
+                .unwrap()
+                .size;
             let sign_extended_data = int.assert_scalar_int().to_int(size);
             let mut output = if with_underscores {
                 format_integer_with_underscore_sep(&sign_extended_data.to_string())
@@ -582,24 +597,23 @@ pub(crate) fn has_doc_flag(tcx: TyCtxt<'_>, did: DefId, flag: Symbol) -> bool {
 }
 
 pub(crate) fn attrs_have_doc_flag<'a>(
-    mut attrs: impl Iterator<Item = &'a ast::Attribute>,
+    mut attrs: impl Iterator<Item = &'a hir::Attribute>,
     flag: Symbol,
 ) -> bool {
-    attrs
-        .any(|attr| attr.meta_item_list().is_some_and(|l| rustc_attr::list_contains_name(&l, flag)))
+    attrs.any(|attr| attr.meta_item_list().is_some_and(|l| ast::attr::list_contains_name(&l, flag)))
 }
 
 /// A link to `doc.rust-lang.org` that includes the channel name. Use this instead of manual links
 /// so that the channel is consistent.
 ///
 /// Set by `bootstrap::Builder::doc_rust_lang_org_channel` in order to keep tests passing on beta/stable.
-pub(crate) const DOC_RUST_LANG_ORG_CHANNEL: &str = env!("DOC_RUST_LANG_ORG_CHANNEL");
-pub(crate) static DOC_CHANNEL: Lazy<&'static str> =
-    Lazy::new(|| DOC_RUST_LANG_ORG_CHANNEL.rsplit('/').find(|c| !c.is_empty()).unwrap());
+pub(crate) const DOC_RUST_LANG_ORG_VERSION: &str = env!("DOC_RUST_LANG_ORG_CHANNEL");
+pub(crate) static RUSTDOC_VERSION: Lazy<&'static str> =
+    Lazy::new(|| DOC_RUST_LANG_ORG_VERSION.rsplit('/').find(|c| !c.is_empty()).unwrap());
 
 /// Render a sequence of macro arms in a format suitable for displaying to the user
 /// as part of an item declaration.
-pub(super) fn render_macro_arms<'a>(
+fn render_macro_arms<'a>(
     tcx: TyCtxt<'_>,
     matchers: impl Iterator<Item = &'a TokenTree>,
     arm_delim: &str,
@@ -620,9 +634,6 @@ pub(super) fn display_macro_source(
     cx: &mut DocContext<'_>,
     name: Symbol,
     def: &ast::MacroDef,
-    def_id: DefId,
-    vis: ty::Visibility<DefId>,
-    is_doc_hidden: bool,
 ) -> String {
     // Extract the spans of all matchers. They represent the "interface" of the macro.
     let matchers = def.body.tokens.chunks(4).map(|arm| &arm[0]);
@@ -632,18 +643,13 @@ pub(super) fn display_macro_source(
     } else {
         if matchers.len() <= 1 {
             format!(
-                "{vis}macro {name}{matchers} {{\n    ...\n}}",
-                vis = visibility_to_src_with_space(Some(vis), cx.tcx, def_id, is_doc_hidden),
+                "macro {name}{matchers} {{\n    ...\n}}",
                 matchers = matchers
                     .map(|matcher| render_macro_matcher(cx.tcx, matcher))
                     .collect::<String>(),
             )
         } else {
-            format!(
-                "{vis}macro {name} {{\n{arms}}}",
-                vis = visibility_to_src_with_space(Some(vis), cx.tcx, def_id, is_doc_hidden),
-                arms = render_macro_arms(cx.tcx, matchers, ","),
-            )
+            format!("macro {name} {{\n{arms}}}", arms = render_macro_arms(cx.tcx, matchers, ","))
         }
     }
 }

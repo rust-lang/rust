@@ -82,7 +82,7 @@ impl UnnecessaryBoxReturns {
         // It's sometimes useful to return Box<T> if T is unsized, so don't lint those.
         // Also, don't lint if we know that T is very large, in which case returning
         // a Box<T> may be beneficial.
-        if boxed_ty.is_sized(cx.tcx, cx.param_env) && approx_ty_size(cx, boxed_ty) <= self.maximum_size {
+        if boxed_ty.is_sized(cx.tcx, cx.typing_env()) && approx_ty_size(cx, boxed_ty) <= self.maximum_size {
             span_lint_and_then(
                 cx,
                 UNNECESSARY_BOX_RETURNS,
@@ -130,9 +130,9 @@ impl LateLintPass<'_> for UnnecessaryBoxReturns {
     }
 
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
-        let ItemKind::Fn(signature, ..) = &item.kind else {
+        let ItemKind::Fn { sig, .. } = &item.kind else {
             return;
         };
-        self.check_fn_item(cx, signature.decl, item.owner_id.def_id, item.ident.name);
+        self.check_fn_item(cx, sig.decl, item.owner_id.def_id, item.ident.name);
     }
 }

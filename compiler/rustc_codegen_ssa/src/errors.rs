@@ -1,7 +1,9 @@
 //! Errors emitted by codegen_ssa
 
 use std::borrow::Cow;
+use std::ffi::OsString;
 use std::io::Error;
+use std::num::ParseIntError;
 use std::path::{Path, PathBuf};
 use std::process::ExitStatus;
 
@@ -9,7 +11,7 @@ use rustc_errors::codes::*;
 use rustc_errors::{
     Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
 };
-use rustc_macros::{Diagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::LayoutError;
 use rustc_span::{Span, Symbol};
@@ -36,6 +38,10 @@ pub(crate) struct CguNotRecorded<'a> {
     pub cgu_user_name: &'a str,
     pub cgu_name: &'a str,
 }
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_autodiff_without_lto)]
+pub struct AutodiffWithoutLto;
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_unknown_reuse_kind)]
@@ -344,21 +350,114 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for ThorinErrorWrapper {
 }
 
 pub(crate) struct LinkingFailed<'a> {
-    pub linker_path: &'a PathBuf,
+    pub linker_path: &'a Path,
     pub exit_status: ExitStatus,
-    pub command: &'a Command,
+    pub command: Command,
     pub escaped_output: String,
+    pub verbose: bool,
+    pub sysroot_dir: PathBuf,
 }
 
 impl<G: EmissionGuarantee> Diagnostic<'_, G> for LinkingFailed<'_> {
-    fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
+    fn into_diag(mut self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
         let mut diag = Diag::new(dcx, level, fluent::codegen_ssa_linking_failed);
         diag.arg("linker_path", format!("{}", self.linker_path.display()));
         diag.arg("exit_status", format!("{}", self.exit_status));
 
         let contains_undefined_ref = self.escaped_output.contains("undefined reference to");
 
-        diag.note(format!("{:?}", self.command)).note(self.escaped_output);
+        if self.verbose {
+            diag.note(format!("{:?}", self.command));
+        } else {
+            self.command.env_clear();
+
+            enum ArgGroup {
+                Regular(OsString),
+                Objects(usize),
+                Rlibs(PathBuf, Vec<OsString>),
+            }
+
+            // Omit rust object files and fold rlibs in the error by default to make linker errors a
+            // bit less verbose.
+            let orig_args = self.command.take_args();
+            let mut args: Vec<ArgGroup> = vec![];
+            for arg in orig_args {
+                if arg.as_encoded_bytes().ends_with(b".rcgu.o") {
+                    if let Some(ArgGroup::Objects(n)) = args.last_mut() {
+                        *n += 1;
+                    } else {
+                        args.push(ArgGroup::Objects(1));
+                    }
+                } else if arg.as_encoded_bytes().ends_with(b".rlib") {
+                    let rlib_path = Path::new(&arg);
+                    let dir = rlib_path.parent().unwrap();
+                    let filename = rlib_path.file_name().unwrap().to_owned();
+                    if let Some(ArgGroup::Rlibs(parent, rlibs)) = args.last_mut() {
+                        if parent == dir {
+                            rlibs.push(filename);
+                        } else {
+                            args.push(ArgGroup::Rlibs(dir.to_owned(), vec![filename]));
+                        }
+                    } else {
+                        args.push(ArgGroup::Rlibs(dir.to_owned(), vec![filename]));
+                    }
+                } else {
+                    args.push(ArgGroup::Regular(arg));
+                }
+            }
+            let crate_hash = regex::bytes::Regex::new(r"-[0-9a-f]+\.rlib$").unwrap();
+            self.command.args(args.into_iter().map(|arg_group| {
+                match arg_group {
+                    // SAFETY: we are only matching on ASCII, not any surrogate pairs, so any replacements we do will still be valid.
+                    ArgGroup::Regular(arg) => unsafe {
+                        use bstr::ByteSlice;
+                        OsString::from_encoded_bytes_unchecked(
+                            arg.as_encoded_bytes().replace(
+                                self.sysroot_dir.as_os_str().as_encoded_bytes(),
+                                b"<sysroot>",
+                            ),
+                        )
+                    },
+                    ArgGroup::Objects(n) => OsString::from(format!("<{n} object files omitted>")),
+                    ArgGroup::Rlibs(mut dir, rlibs) => {
+                        let is_sysroot_dir = match dir.strip_prefix(&self.sysroot_dir) {
+                            Ok(short) => {
+                                dir = Path::new("<sysroot>").join(short);
+                                true
+                            }
+                            Err(_) => false,
+                        };
+                        let mut arg = dir.into_os_string();
+                        arg.push("/{");
+                        let mut first = true;
+                        for mut rlib in rlibs {
+                            if !first {
+                                arg.push(",");
+                            }
+                            first = false;
+                            if is_sysroot_dir {
+                                // SAFETY: Regex works one byte at a type, and our regex will not match surrogate pairs (because it only matches ascii).
+                                rlib = unsafe {
+                                    OsString::from_encoded_bytes_unchecked(
+                                        crate_hash
+                                            .replace(rlib.as_encoded_bytes(), b"-*")
+                                            .into_owned(),
+                                    )
+                                };
+                            }
+                            arg.push(rlib);
+                        }
+                        arg.push("}.rlib");
+                        arg
+                    }
+                }
+            }));
+
+            diag.note(format!("{:?}", self.command).trim_start_matches("env -i").to_owned());
+            diag.note("some arguments are omitted. use `--verbose` to show all linker arguments");
+        }
+
+        diag.note(self.escaped_output);
 
         // Trying to match an error from OS linkers
         // which by now we have no way to translate.
@@ -427,6 +526,10 @@ pub(crate) struct CheckInstalledVisualStudio;
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_insufficient_vs_code_product)]
 pub(crate) struct InsufficientVSCodeProduct;
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_cpu_required)]
+pub(crate) struct CpuRequired;
 
 #[derive(Diagnostic)]
 #[diag(codegen_ssa_processing_dymutil_failed)]
@@ -537,6 +640,14 @@ pub enum ExtractBundledLibsError<'a> {
 pub(crate) struct UnsupportedArch<'a> {
     pub arch: &'a str,
     pub os: &'a str,
+}
+
+#[derive(Diagnostic)]
+pub(crate) enum AppleDeploymentTarget {
+    #[diag(codegen_ssa_apple_deployment_target_invalid)]
+    Invalid { env_var: &'static str, error: ParseIntError },
+    #[diag(codegen_ssa_apple_deployment_target_too_low)]
+    TooLow { env_var: &'static str, version: String, os_min: String },
 }
 
 #[derive(Diagnostic)]
@@ -1019,6 +1130,15 @@ pub(crate) struct TargetFeatureSafeTrait {
 }
 
 #[derive(Diagnostic)]
+#[diag(codegen_ssa_forbidden_target_feature_attr)]
+pub struct ForbiddenTargetFeatureAttr<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub feature: &'a str,
+    pub reason: &'a str,
+}
+
+#[derive(Diagnostic)]
 #[diag(codegen_ssa_failed_to_get_layout)]
 pub struct FailedToGetLayout<'tcx> {
     #[primary_span]
@@ -1060,6 +1180,8 @@ pub(crate) struct ErrorCreatingRemarkDir {
 pub struct CompilerBuiltinsCannotCall {
     pub caller: String,
     pub callee: String,
+    #[primary_span]
+    pub span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -1091,4 +1213,20 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for TargetFeatureDisableOrEnable<'_
         diag.arg("features", self.features.join(", "));
         diag
     }
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_aix_strip_not_used)]
+pub(crate) struct AixStripNotUsed;
+
+#[derive(LintDiagnostic)]
+#[diag(codegen_ssa_mixed_export_name_and_no_mangle)]
+pub(crate) struct MixedExportNameAndNoMangle {
+    #[label]
+    pub no_mangle: Span,
+    pub no_mangle_attr: String,
+    #[note]
+    pub export_name: Span,
+    #[suggestion(style = "verbose", code = "", applicability = "machine-applicable")]
+    pub removal_span: Span,
 }

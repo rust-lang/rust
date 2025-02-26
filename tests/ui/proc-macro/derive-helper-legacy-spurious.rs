@@ -1,4 +1,4 @@
-//@ aux-build:test-macros.rs
+//@ proc-macro: test-macros.rs
 
 #![dummy] //~ ERROR cannot find attribute `dummy` in this scope
 

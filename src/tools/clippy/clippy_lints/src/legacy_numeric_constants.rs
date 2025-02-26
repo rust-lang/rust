@@ -1,13 +1,12 @@
 use clippy_config::Conf;
-use clippy_config::msrvs::{Msrv, NUMERIC_ASSOCIATED_CONSTANTS};
 use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::{get_parent_expr, is_from_proc_macro};
 use hir::def_id::DefId;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::{ExprKind, Item, ItemKind, QPath, UseKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::kw;
 use rustc_span::{Symbol, sym};
@@ -53,8 +52,8 @@ impl<'tcx> LateLintPass<'tcx> for LegacyNumericConstants {
         // Integer modules are "TBD" deprecated, and the contents are too,
         // so lint on the `use` statement directly.
         if let ItemKind::Use(path, kind @ (UseKind::Single | UseKind::Glob)) = item.kind
-            && self.msrv.meets(NUMERIC_ASSOCIATED_CONSTANTS)
-            && !in_external_macro(cx.sess(), item.span)
+            && self.msrv.meets(msrvs::NUMERIC_ASSOCIATED_CONSTANTS)
+            && !item.span.in_external_macro(cx.sess().source_map())
             && let Some(def_id) = path.res[0].opt_def_id()
         {
             let module = if is_integer_module(cx, def_id) {
@@ -138,8 +137,8 @@ impl<'tcx> LateLintPass<'tcx> for LegacyNumericConstants {
             return;
         };
 
-        if self.msrv.meets(NUMERIC_ASSOCIATED_CONSTANTS)
-            && !in_external_macro(cx.sess(), expr.span)
+        if self.msrv.meets(msrvs::NUMERIC_ASSOCIATED_CONSTANTS)
+            && !expr.span.in_external_macro(cx.sess().source_map())
             && !is_from_proc_macro(cx, expr)
         {
             span_lint_hir_and_then(cx, LEGACY_NUMERIC_CONSTANTS, expr.hir_id, span, msg, |diag| {

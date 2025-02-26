@@ -16,13 +16,16 @@ use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo, S
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
-use rustc_span::symbol::sym;
+use rustc_span::sym;
 use rustc_target::spec::{Cc, LinkOutputKind, LinkerFlavor, Lld};
 use tracing::{debug, warn};
 
 use super::command::Command;
 use super::symbol_export;
 use crate::errors;
+
+#[cfg(test)]
+mod tests;
 
 /// Disables non-English messages from localized linkers.
 /// Such messages may cause issues with text encoding on Windows (#35785)
@@ -47,7 +50,7 @@ pub(crate) fn get_linker<'a>(
     self_contained: bool,
     target_cpu: &'a str,
 ) -> Box<dyn Linker + 'a> {
-    let msvc_tool = windows_registry::find_tool(sess.opts.target_triple.triple(), "link.exe");
+    let msvc_tool = windows_registry::find_tool(&sess.target.arch, "link.exe");
 
     // If our linker looks like a batch script on Windows then to execute this
     // we'll need to spawn `cmd` explicitly. This is primarily done to handle
@@ -150,6 +153,7 @@ pub(crate) fn get_linker<'a>(
             hinted_static: None,
             is_ld: cc == Cc::No,
             is_gnu: flavor.is_gnu(),
+            uses_lld: flavor.uses_lld(),
         }) as Box<dyn Linker>,
         LinkerFlavor::Msvc(..) => Box::new(MsvcLinker { cmd, sess }) as Box<dyn Linker>,
         LinkerFlavor::EmCc => Box::new(EmLinker { cmd, sess }) as Box<dyn Linker>,
@@ -177,23 +181,42 @@ fn verbatim_args<L: Linker + ?Sized>(
     }
     l
 }
-/// Arguments for the underlying linker.
-/// Add options to pass them through cc wrapper if `Linker` is a cc wrapper.
-fn link_args<L: Linker + ?Sized>(
-    l: &mut L,
-    args: impl IntoIterator<Item: AsRef<OsStr>, IntoIter: ExactSizeIterator>,
-) -> &mut L {
-    let args = args.into_iter();
-    if !l.is_cc() {
-        verbatim_args(l, args);
-    } else if args.len() != 0 {
-        // FIXME: Support arguments with commas, see `rpaths_to_flags` for the example.
-        let mut combined_arg = OsString::from("-Wl");
-        for arg in args {
+/// Add underlying linker arguments to C compiler command, by wrapping them in
+/// `-Wl` or `-Xlinker`.
+fn convert_link_args_to_cc_args(cmd: &mut Command, args: impl IntoIterator<Item: AsRef<OsStr>>) {
+    let mut combined_arg = OsString::from("-Wl");
+    for arg in args {
+        // If the argument itself contains a comma, we need to emit it
+        // as `-Xlinker`, otherwise we can use `-Wl`.
+        if arg.as_ref().as_encoded_bytes().contains(&b',') {
+            // Emit current `-Wl` argument, if any has been built.
+            if combined_arg != OsStr::new("-Wl") {
+                cmd.arg(combined_arg);
+                // Begin next `-Wl` argument.
+                combined_arg = OsString::from("-Wl");
+            }
+
+            // Emit `-Xlinker` argument.
+            cmd.arg("-Xlinker");
+            cmd.arg(arg);
+        } else {
+            // Append to `-Wl` argument.
             combined_arg.push(",");
             combined_arg.push(arg);
         }
-        l.cmd().arg(combined_arg);
+    }
+    // Emit final `-Wl` argument.
+    if combined_arg != OsStr::new("-Wl") {
+        cmd.arg(combined_arg);
+    }
+}
+/// Arguments for the underlying linker.
+/// Add options to pass them through cc wrapper if `Linker` is a cc wrapper.
+fn link_args<L: Linker + ?Sized>(l: &mut L, args: impl IntoIterator<Item: AsRef<OsStr>>) -> &mut L {
+    if !l.is_cc() {
+        verbatim_args(l, args);
+    } else {
+        convert_link_args_to_cc_args(l.cmd(), args);
     }
     l
 }
@@ -223,7 +246,7 @@ macro_rules! generate_arg_methods {
                 verbatim_args(self, iter::once(arg))
             }
             #[allow(unused)]
-            pub(crate) fn link_args(&mut self, args: impl IntoIterator<Item: AsRef<OsStr>, IntoIter: ExactSizeIterator>) -> &mut Self {
+            pub(crate) fn link_args(&mut self, args: impl IntoIterator<Item: AsRef<OsStr>>) -> &mut Self {
                 link_args(self, args)
             }
             #[allow(unused)]
@@ -339,6 +362,7 @@ struct GccLinker<'a> {
     // Link as ld
     is_ld: bool,
     is_gnu: bool,
+    uses_lld: bool,
 }
 
 impl<'a> GccLinker<'a> {
@@ -388,7 +412,7 @@ impl<'a> GccLinker<'a> {
         let opt_level = match self.sess.opts.optimize {
             config::OptLevel::No => "O0",
             config::OptLevel::Less => "O1",
-            config::OptLevel::Default | config::OptLevel::Size | config::OptLevel::SizeMin => "O2",
+            config::OptLevel::More | config::OptLevel::Size | config::OptLevel::SizeMin => "O2",
             config::OptLevel::Aggressive => "O3",
         };
 
@@ -530,6 +554,7 @@ impl<'a> Linker for GccLinker<'a> {
                 self.link_args(&["--entry", "_initialize"]);
             }
         }
+
         // VxWorks compiler driver introduced `--static-crt` flag specifically for rustc,
         // it switches linking for libc and similar system libraries to static without using
         // any `#[link]` attributes in the `libc` crate, see #72782 for details.
@@ -544,6 +569,15 @@ impl<'a> Linker for GccLinker<'a> {
             )
         {
             self.cc_arg("--static-crt");
+        }
+
+        // avr-none doesn't have default ISA, users must specify which specific
+        // CPU (well, microcontroller) they are targetting using `-Ctarget-cpu`.
+        //
+        // Currently this makes sense only when using avr-gcc as a linker, since
+        // it brings a couple of hand-written important intrinsics from libgcc.
+        if self.sess.target.arch == "avr" && !self.uses_lld {
+            self.verbatim_arg(format!("-mmcu={}", self.target_cpu));
         }
     }
 
@@ -663,7 +697,7 @@ impl<'a> Linker for GccLinker<'a> {
 
         // GNU-style linkers support optimization with -O. GNU ld doesn't
         // need a numeric argument, but other linkers do.
-        if self.sess.opts.optimize == config::OptLevel::Default
+        if self.sess.opts.optimize == config::OptLevel::More
             || self.sess.opts.optimize == config::OptLevel::Aggressive
         {
             self.link_arg("-O1");
@@ -1191,7 +1225,7 @@ impl<'a> Linker for EmLinker<'a> {
         self.cc_arg(match self.sess.opts.optimize {
             OptLevel::No => "-O0",
             OptLevel::Less => "-O1",
-            OptLevel::Default => "-O2",
+            OptLevel::More => "-O2",
             OptLevel::Aggressive => "-O3",
             OptLevel::Size => "-Os",
             OptLevel::SizeMin => "-Oz",
@@ -1278,7 +1312,7 @@ impl<'a> WasmLd<'a> {
         let mut wasm_ld = WasmLd { cmd, sess };
         if sess.target_features.contains(&sym::atomics) {
             wasm_ld.link_args(&["--shared-memory", "--max-memory=1073741824", "--import-memory"]);
-            if sess.target.os == "unknown" {
+            if sess.target.os == "unknown" || sess.target.os == "none" {
                 wasm_ld.link_args(&[
                     "--export=__wasm_init_tls",
                     "--export=__tls_size",
@@ -1362,7 +1396,7 @@ impl<'a> Linker for WasmLd<'a> {
         self.link_arg(match self.sess.opts.optimize {
             OptLevel::No => "-O0",
             OptLevel::Less => "-O1",
-            OptLevel::Default => "-O2",
+            OptLevel::More => "-O2",
             OptLevel::Aggressive => "-O3",
             // Currently LLD doesn't support `Os` and `Oz`, so pass through `O2`
             // instead.
@@ -1402,7 +1436,7 @@ impl<'a> Linker for WasmLd<'a> {
         // symbols explicitly passed via the `--export` flags above and hides all
         // others. Various bits and pieces of wasm32-unknown-unknown tooling use
         // this, so be sure these symbols make their way out of the linker as well.
-        if self.sess.target.os == "unknown" {
+        if self.sess.target.os == "unknown" || self.sess.target.os == "none" {
             self.link_args(&["--export=__heap_base", "--export=__data_end"]);
         }
     }
@@ -1429,7 +1463,7 @@ impl<'a> WasmLd<'a> {
         let opt_level = match self.sess.opts.optimize {
             config::OptLevel::No => "O0",
             config::OptLevel::Less => "O1",
-            config::OptLevel::Default => "O2",
+            config::OptLevel::More => "O2",
             config::OptLevel::Aggressive => "O3",
             // wasm-ld only handles integer LTO opt levels. Use O2
             config::OptLevel::Size | config::OptLevel::SizeMin => "O2",
@@ -1503,7 +1537,7 @@ impl<'a> Linker for L4Bender<'a> {
     fn optimize(&mut self) {
         // GNU-style linkers support optimization with -O. GNU ld doesn't
         // need a numeric argument, but other linkers do.
-        if self.sess.opts.optimize == config::OptLevel::Default
+        if self.sess.opts.optimize == config::OptLevel::More
             || self.sess.opts.optimize == config::OptLevel::Aggressive
         {
             self.link_arg("-O1");
@@ -1671,6 +1705,8 @@ impl<'a> Linker for AixLinker<'a> {
 
     fn pgo_gen(&mut self) {
         self.link_arg("-bdbg:namedsects:ss");
+        self.link_arg("-u");
+        self.link_arg("__llvm_profile_runtime");
     }
 
     fn control_flow_guard(&mut self) {}
@@ -1719,15 +1755,10 @@ fn for_each_exported_symbols_include_dep<'tcx>(
     crate_type: CrateType,
     mut callback: impl FnMut(ExportedSymbol<'tcx>, SymbolExportInfo, CrateNum),
 ) {
-    for &(symbol, info) in tcx.exported_symbols(LOCAL_CRATE).iter() {
-        callback(symbol, info, LOCAL_CRATE);
-    }
-
     let formats = tcx.dependency_formats(());
-    let deps = formats.iter().find_map(|(t, list)| (*t == crate_type).then_some(list)).unwrap();
+    let deps = &formats[&crate_type];
 
-    for (index, dep_format) in deps.iter().enumerate() {
-        let cnum = CrateNum::new(index + 1);
+    for (cnum, dep_format) in deps.iter_enumerated() {
         // For each dependency that we are linking to statically ...
         if *dep_format == Linkage::Static {
             for &(symbol, info) in tcx.exported_symbols(cnum).iter() {
@@ -1757,6 +1788,7 @@ fn exported_symbols_for_non_proc_macro(tcx: TyCtxt<'_>, crate_type: CrateType) -
             symbols.push(symbol_export::exporting_symbol_name_for_instance_in_crate(
                 tcx, symbol, cnum,
             ));
+            symbol_export::extend_exported_symbols(&mut symbols, tcx, symbol, cnum);
         }
     });
 
@@ -1910,7 +1942,7 @@ impl<'a> Linker for LlbcLinker<'a> {
         match self.sess.opts.optimize {
             OptLevel::No => "-O0",
             OptLevel::Less => "-O1",
-            OptLevel::Default => "-O2",
+            OptLevel::More => "-O2",
             OptLevel::Aggressive => "-O3",
             OptLevel::Size => "-Os",
             OptLevel::SizeMin => "-Oz",
@@ -1987,7 +2019,7 @@ impl<'a> Linker for BpfLinker<'a> {
         self.link_arg(match self.sess.opts.optimize {
             OptLevel::No => "-O0",
             OptLevel::Less => "-O1",
-            OptLevel::Default => "-O2",
+            OptLevel::More => "-O2",
             OptLevel::Aggressive => "-O3",
             OptLevel::Size => "-Os",
             OptLevel::SizeMin => "-Oz",

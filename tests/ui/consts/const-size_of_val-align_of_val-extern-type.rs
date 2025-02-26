@@ -1,6 +1,5 @@
 #![feature(extern_types)]
 #![feature(core_intrinsics)]
-#![feature(const_size_of_val, const_align_of_val)]
 
 use std::intrinsics::{min_align_of_val, size_of_val};
 

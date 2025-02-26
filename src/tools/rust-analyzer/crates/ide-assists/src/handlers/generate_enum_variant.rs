@@ -1,7 +1,7 @@
 use hir::{HasSource, HirDisplay, InRealFile};
 use ide_db::assists::{AssistId, AssistKind};
 use syntax::{
-    ast::{self, make, HasArgList},
+    ast::{self, syntax_factory::SyntaxFactory, HasArgList},
     match_ast, AstNode, SyntaxNode,
 };
 
@@ -33,7 +33,7 @@ use crate::assist_context::{AssistContext, Assists};
 // ```
 pub(crate) fn generate_enum_variant(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let path: ast::Path = ctx.find_node_at_offset()?;
-    let parent = path_parent(&path)?;
+    let parent = PathParent::new(&path)?;
 
     if ctx.sema.resolve_path(&path).is_some() {
         // No need to generate anything if the path resolves
@@ -46,14 +46,32 @@ pub(crate) fn generate_enum_variant(acc: &mut Assists, ctx: &AssistContext<'_>) 
         return None;
     }
 
-    if let Some(hir::PathResolution::Def(hir::ModuleDef::Adt(hir::Adt::Enum(e)))) =
+    let Some(hir::PathResolution::Def(hir::ModuleDef::Adt(hir::Adt::Enum(e)))) =
         ctx.sema.resolve_path(&path.qualifier()?)
-    {
-        let target = path.syntax().text_range();
-        return add_variant_to_accumulator(acc, ctx, target, e, &name_ref, parent);
-    }
+    else {
+        return None;
+    };
 
-    None
+    let target = path.syntax().text_range();
+    let name_ref: &ast::NameRef = &name_ref;
+    let db = ctx.db();
+    let InRealFile { file_id, value: enum_node } = e.source(db)?.original_ast_node_rooted(db)?;
+
+    acc.add(
+        AssistId("generate_enum_variant", AssistKind::Generate),
+        "Generate variant",
+        target,
+        |builder| {
+            let mut editor = builder.make_editor(enum_node.syntax());
+            let make = SyntaxFactory::new();
+            let field_list = parent.make_field_list(ctx, &make);
+            let variant = make.variant(None, make.name(&name_ref.text()), field_list, None);
+            if let Some(it) = enum_node.variant_list() {
+                it.add_variant(&mut editor, &variant);
+            }
+            builder.add_file_edits(file_id, editor);
+        },
+    )
 }
 
 #[derive(Debug)]
@@ -65,6 +83,20 @@ enum PathParent {
 }
 
 impl PathParent {
+    fn new(path: &ast::Path) -> Option<Self> {
+        let parent = path.syntax().parent()?;
+
+        match_ast! {
+            match parent {
+                ast::PathExpr(it) => Some(PathParent::PathExpr(it)),
+                ast::RecordExpr(it) => Some(PathParent::RecordExpr(it)),
+                ast::PathPat(it) => Some(PathParent::PathPat(it)),
+                ast::UseTree(it) => Some(PathParent::UseTree(it)),
+                _ => None
+            }
+        }
+    }
+
     fn syntax(&self) -> &SyntaxNode {
         match self {
             PathParent::PathExpr(it) => it.syntax(),
@@ -74,97 +106,49 @@ impl PathParent {
         }
     }
 
-    fn make_field_list(&self, ctx: &AssistContext<'_>) -> Option<ast::FieldList> {
+    fn make_field_list(
+        &self,
+        ctx: &AssistContext<'_>,
+        make: &SyntaxFactory,
+    ) -> Option<ast::FieldList> {
         let scope = ctx.sema.scope(self.syntax())?;
 
         match self {
             PathParent::PathExpr(it) => {
-                if let Some(call_expr) = it.syntax().parent().and_then(ast::CallExpr::cast) {
-                    make_tuple_field_list(call_expr, ctx, &scope)
-                } else {
-                    None
-                }
+                let call_expr = ast::CallExpr::cast(it.syntax().parent()?)?;
+                let args = call_expr.arg_list()?.args();
+                let tuple_fields = args.map(|arg| {
+                    let ty =
+                        expr_ty(ctx, make, arg, &scope).unwrap_or_else(|| make.ty_infer().into());
+                    make.tuple_field(None, ty)
+                });
+                Some(make.tuple_field_list(tuple_fields).into())
             }
-            PathParent::RecordExpr(it) => make_record_field_list(it, ctx, &scope),
+            PathParent::RecordExpr(it) => {
+                let fields = it.record_expr_field_list()?.fields();
+                let record_fields = fields.map(|field| {
+                    let name = name_from_field(make, &field);
+
+                    let ty = field
+                        .expr()
+                        .and_then(|it| expr_ty(ctx, make, it, &scope))
+                        .unwrap_or_else(|| make.ty_infer().into());
+
+                    make.record_field(None, name, ty)
+                });
+                Some(make.record_field_list(record_fields).into())
+            }
             PathParent::UseTree(_) | PathParent::PathPat(_) => None,
         }
     }
 }
 
-fn path_parent(path: &ast::Path) -> Option<PathParent> {
-    let parent = path.syntax().parent()?;
-
-    match_ast! {
-        match parent {
-            ast::PathExpr(it) => Some(PathParent::PathExpr(it)),
-            ast::RecordExpr(it) => Some(PathParent::RecordExpr(it)),
-            ast::PathPat(it) => Some(PathParent::PathPat(it)),
-            ast::UseTree(it) => Some(PathParent::UseTree(it)),
-            _ => None
-        }
-    }
-}
-
-fn add_variant_to_accumulator(
-    acc: &mut Assists,
-    ctx: &AssistContext<'_>,
-    target: syntax::TextRange,
-    adt: hir::Enum,
-    name_ref: &ast::NameRef,
-    parent: PathParent,
-) -> Option<()> {
-    let db = ctx.db();
-    let InRealFile { file_id, value: enum_node } = adt.source(db)?.original_ast_node_rooted(db)?;
-
-    acc.add(
-        AssistId("generate_enum_variant", AssistKind::Generate),
-        "Generate variant",
-        target,
-        |builder| {
-            builder.edit_file(file_id.file_id());
-            let node = builder.make_mut(enum_node);
-            let variant = make_variant(ctx, name_ref, parent);
-            if let Some(it) = node.variant_list() {
-                it.add_variant(variant.clone_for_update())
-            }
-        },
-    )
-}
-
-fn make_variant(
-    ctx: &AssistContext<'_>,
-    name_ref: &ast::NameRef,
-    parent: PathParent,
-) -> ast::Variant {
-    let field_list = parent.make_field_list(ctx);
-    make::variant(make::name(&name_ref.text()), field_list)
-}
-
-fn make_record_field_list(
-    record: &ast::RecordExpr,
-    ctx: &AssistContext<'_>,
-    scope: &hir::SemanticsScope<'_>,
-) -> Option<ast::FieldList> {
-    let fields = record.record_expr_field_list()?.fields();
-    let record_fields = fields.map(|field| {
-        let name = name_from_field(&field);
-
-        let ty = field
-            .expr()
-            .and_then(|it| expr_ty(ctx, it, scope))
-            .unwrap_or_else(make::ty_placeholder);
-
-        make::record_field(None, name, ty)
-    });
-    Some(make::record_field_list(record_fields).into())
-}
-
-fn name_from_field(field: &ast::RecordExprField) -> ast::Name {
+fn name_from_field(make: &SyntaxFactory, field: &ast::RecordExprField) -> ast::Name {
     let text = match field.name_ref() {
         Some(it) => it.to_string(),
         None => name_from_field_shorthand(field).unwrap_or("unknown".to_owned()),
     };
-    make::name(&text)
+    make.name(&text)
 }
 
 fn name_from_field_shorthand(field: &ast::RecordExprField) -> Option<String> {
@@ -175,27 +159,15 @@ fn name_from_field_shorthand(field: &ast::RecordExprField) -> Option<String> {
     Some(path.as_single_name_ref()?.to_string())
 }
 
-fn make_tuple_field_list(
-    call_expr: ast::CallExpr,
-    ctx: &AssistContext<'_>,
-    scope: &hir::SemanticsScope<'_>,
-) -> Option<ast::FieldList> {
-    let args = call_expr.arg_list()?.args();
-    let tuple_fields = args.map(|arg| {
-        let ty = expr_ty(ctx, arg, scope).unwrap_or_else(make::ty_placeholder);
-        make::tuple_field(None, ty)
-    });
-    Some(make::tuple_field_list(tuple_fields).into())
-}
-
 fn expr_ty(
     ctx: &AssistContext<'_>,
+    make: &SyntaxFactory,
     arg: ast::Expr,
     scope: &hir::SemanticsScope<'_>,
 ) -> Option<ast::Type> {
     let ty = ctx.sema.type_of_expr(&arg).map(|it| it.adjusted())?;
     let text = ty.display_source_code(ctx.db(), scope.module().into(), false).ok()?;
-    Some(make::ty(&text))
+    Some(make.ty(&text))
 }
 
 #[cfg(test)]

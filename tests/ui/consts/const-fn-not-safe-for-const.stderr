@@ -1,4 +1,4 @@
-error[E0015]: cannot call non-const fn `random` in constant functions
+error[E0015]: cannot call non-const function `random` in constant functions
   --> $DIR/const-fn-not-safe-for-const.rs:14:5
    |
 LL |     random()

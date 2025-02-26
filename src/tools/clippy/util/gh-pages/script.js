@@ -1,3 +1,5 @@
+"use strict";
+
 window.searchState = {
     timeout: null,
     inputElem: document.getElementById("search-input"),
@@ -124,13 +126,6 @@ function toggleElements(filter, value) {
     }
 }
 
-function changeSetting(elem) {
-    if (elem.id === "disable-shortcuts") {
-        disableShortcuts = elem.checked;
-        storeValue(elem.id, elem.checked);
-    }
-}
-
 function onEachLazy(lazyArray, func) {
     const arr = Array.prototype.slice.call(lazyArray);
     for (const el of arr) {
@@ -138,25 +133,19 @@ function onEachLazy(lazyArray, func) {
     }
 }
 
-function highlightIfNeeded(elem) {
-    onEachLazy(elem.querySelectorAll("pre > code.language-rust:not(.highlighted)"), el => {
-        hljs.highlightElement(el.parentElement)
-        el.classList.add("highlighted");
-    });
-}
-
 function expandLint(lintId) {
-    const lintElem = document.getElementById(lintId);
-    const isCollapsed = lintElem.classList.toggle("collapsed");
-    lintElem.querySelector(".label-doc-folding").innerText = isCollapsed ? "+" : "−";
-    highlightIfNeeded(lintElem);
+    const elem = document.querySelector(`#${lintId} > input[type="checkbox"]`);
+    elem.checked = true;
 }
 
-// Show details for one lint
-function openLint(event) {
+function lintAnchor(event) {
     event.preventDefault();
     event.stopPropagation();
-    expandLint(event.target.getAttribute("href").slice(1));
+
+    const id = event.target.getAttribute("href").replace("#", "");
+    window.location.hash = id;
+
+    expandLint(id);
 }
 
 function copyToClipboard(event) {
@@ -192,13 +181,9 @@ function handleBlur(event, elementId) {
 }
 
 function toggleExpansion(expand) {
-    onEachLazy(
-        document.querySelectorAll("article"),
-        expand ? el => {
-            el.classList.remove("collapsed");
-            highlightIfNeeded(el);
-        } : el => el.classList.add("collapsed"),
-    );
+    for (const checkbox of document.querySelectorAll("article input[type=checkbox]")) {
+        checkbox.checked = expand;
+    }
 }
 
 // Returns the current URL without any query parameter or hash.
@@ -230,13 +215,13 @@ const APPLICABILITIES_FILTER_DEFAULT = {
     MaybeIncorrect: true,
     HasPlaceholders: true,
 };
-const URL_PARAMS_CORRESPONDANCE = {
+const URL_PARAMS_CORRESPONDENCE = {
     "groups_filter": "groups",
     "levels_filter": "levels",
     "applicabilities_filter": "applicabilities",
     "version_filter": "versions",
 };
-const VERSIONS_CORRESPONDANCE = {
+const VERSIONS_CORRESPONDENCE = {
     "lte": "≤",
     "gte": "≥",
     "eq": "=",
@@ -283,7 +268,7 @@ window.filters = {
         }
         function updateIfNeeded(filterName, obj2) {
             const obj1 = filters[filterName];
-            const name = URL_PARAMS_CORRESPONDANCE[filterName];
+            const name = URL_PARAMS_CORRESPONDENCE[filterName];
             if (!compareObjects(obj1, obj2)) {
                 urlParams.set(
                     name,
@@ -314,9 +299,9 @@ window.filters = {
             versions.push(`lte:${filters.version_filter["≤"]}`);
         }
         if (versions.length !== 0) {
-            urlParams.set(URL_PARAMS_CORRESPONDANCE["version_filter"], versions.join(","));
+            urlParams.set(URL_PARAMS_CORRESPONDENCE["version_filter"], versions.join(","));
         } else {
-            urlParams.delete(URL_PARAMS_CORRESPONDANCE["version_filter"]);
+            urlParams.delete(URL_PARAMS_CORRESPONDENCE["version_filter"]);
         }
 
         let params = urlParams.toString();
@@ -339,8 +324,8 @@ window.filters = {
                 || !filters.levels_filter[lint.level]
                 || !filters.applicabilities_filter[lint.applicability]
                 || !(filters.version_filter["="] === null || lint.version === filters.version_filter["="])
-                || !(filters.version_filter["≥"] === null || lint.version > filters.version_filter["≥"])
-                || !(filters.version_filter["≤"] === null || lint.version < filters.version_filter["≤"])
+                || !(filters.version_filter["≥"] === null || lint.version >= filters.version_filter["≥"])
+                || !(filters.version_filter["≤"] === null || lint.version <= filters.version_filter["≤"])
             );
             if (lint.filteredOut || lint.searchFilteredOut) {
                 lint.elem.style.display = "none";
@@ -520,7 +505,7 @@ function scrollToLint(lintId) {
 
 // If the page we arrive on has link to a given lint, we scroll to it.
 function scrollToLintByURL() {
-    const lintId = window.location.hash.substring(2);
+    const lintId = window.location.hash.substring(1);
     if (lintId.length > 0) {
         scrollToLint(lintId);
     }
@@ -530,10 +515,10 @@ function parseURLFilters() {
     const urlParams = new URLSearchParams(window.location.search);
 
     for (const [key, value] of urlParams.entries()) {
-        for (const [corres_key, corres_value] of Object.entries(URL_PARAMS_CORRESPONDANCE)) {
+        for (const [corres_key, corres_value] of Object.entries(URL_PARAMS_CORRESPONDENCE)) {
             if (corres_value === key) {
                 if (key !== "versions") {
-                    const settings  = new Set(value.split(","));
+                    const settings = new Set(value.split(","));
                     onEachLazy(document.querySelectorAll(`#lint-${key} ul input`), elem => {
                         elem.checked = settings.has(elem.getAttribute("data-value"));
                         updateFilter(elem, corres_key, true);
@@ -543,7 +528,7 @@ function parseURLFilters() {
 
                     for (const [kind, value] of settings) {
                         const elem = document.querySelector(
-                            `#version-filter input[data-value="${VERSIONS_CORRESPONDANCE[kind]}"]`);
+                            `#version-filter input[data-value="${VERSIONS_CORRESPONDENCE[kind]}"]`);
                         elem.value = value;
                         updateVersionFilters(elem, true);
                     }
@@ -553,12 +538,60 @@ function parseURLFilters() {
     }
 }
 
-document.getElementById(`theme-choice`).value = loadValue("theme");
-let disableShortcuts = loadValue('disable-shortcuts') === "true";
-document.getElementById("disable-shortcuts").checked = disableShortcuts;
+function addListeners() {
+    disableShortcutsButton.addEventListener("change", () => {
+        disableShortcuts = disableShortcutsButton.checked;
+        storeValue("disable-shortcuts", disableShortcuts);
+    });
 
-document.addEventListener("keypress", handleShortcut);
-document.addEventListener("keydown", handleShortcut);
+    document.getElementById("expand-all").addEventListener("click", () => toggleExpansion(true));
+    document.getElementById("collapse-all").addEventListener("click", () => toggleExpansion(false));
+
+    // A delegated listener to avoid the upfront cost of >1000 listeners
+    document.addEventListener("click", event => {
+        if (!event.target instanceof HTMLAnchorElement) {
+            return;
+        }
+
+        if (event.target.classList.contains("lint-anchor")) {
+            lintAnchor(event);
+        } else if (event.target.classList.contains("copy-to-clipboard")) {
+            copyToClipboard(event);
+        }
+    });
+
+    document.addEventListener("keypress", handleShortcut);
+    document.addEventListener("keydown", handleShortcut);
+}
+
+// Highlight code blocks only when they approach the viewport so that clicking the "Expand All"
+// button doesn't take a long time
+function highlightLazily() {
+    if (!'IntersectionObserver' in window) {
+        return;
+    }
+    const observer = new IntersectionObserver((entries) => {
+        for (const entry of entries) {
+            if (entry.isIntersecting) {
+                observer.unobserve(entry.target);
+                for (const code of entry.target.querySelectorAll("pre code")) {
+                    hljs.highlightElement(code);
+                }
+            }
+        }
+    });
+    for (const docs of document.querySelectorAll(".lint-docs")) {
+        observer.observe(docs);
+    }
+}
+
+let disableShortcuts = loadValue("disable-shortcuts") === "true";
+
+const disableShortcutsButton = document.getElementById("disable-shortcuts");
+disableShortcutsButton.checked = disableShortcuts;
+
+addListeners();
+highlightLazily();
 
 generateSettings();
 generateSearch();

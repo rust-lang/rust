@@ -1,5 +1,5 @@
-error[E0658]: use of unstable library feature 'rustc_private': this crate is being loaded from the sysroot, an unstable location; did you mean to load this crate from crates.io via `Cargo.toml` instead?
-  --> $DIR/hash-stable-is-unstable.rs:2:1
+error[E0658]: use of unstable library feature `rustc_private`: this crate is being loaded from the sysroot, an unstable location; did you mean to load this crate from crates.io via `Cargo.toml` instead?
+  --> $DIR/hash-stable-is-unstable.rs:3:1
    |
 LL | extern crate rustc_data_structures;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,8 +8,8 @@ LL | extern crate rustc_data_structures;
    = help: add `#![feature(rustc_private)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'rustc_private': this crate is being loaded from the sysroot, an unstable location; did you mean to load this crate from crates.io via `Cargo.toml` instead?
-  --> $DIR/hash-stable-is-unstable.rs:6:1
+error[E0658]: use of unstable library feature `rustc_private`: this crate is being loaded from the sysroot, an unstable location; did you mean to load this crate from crates.io via `Cargo.toml` instead?
+  --> $DIR/hash-stable-is-unstable.rs:7:1
    |
 LL | extern crate rustc_macros;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -18,8 +18,8 @@ LL | extern crate rustc_macros;
    = help: add `#![feature(rustc_private)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'rustc_private': this crate is being loaded from the sysroot, an unstable location; did you mean to load this crate from crates.io via `Cargo.toml` instead?
-  --> $DIR/hash-stable-is-unstable.rs:10:1
+error[E0658]: use of unstable library feature `rustc_private`: this crate is being loaded from the sysroot, an unstable location; did you mean to load this crate from crates.io via `Cargo.toml` instead?
+  --> $DIR/hash-stable-is-unstable.rs:11:1
    |
 LL | extern crate rustc_query_system;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -28,8 +28,8 @@ LL | extern crate rustc_query_system;
    = help: add `#![feature(rustc_private)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'rustc_private': this crate is being loaded from the sysroot, an unstable location; did you mean to load this crate from crates.io via `Cargo.toml` instead?
-  --> $DIR/hash-stable-is-unstable.rs:15:5
+error[E0658]: use of unstable library feature `rustc_private`: this crate is being loaded from the sysroot, an unstable location; did you mean to load this crate from crates.io via `Cargo.toml` instead?
+  --> $DIR/hash-stable-is-unstable.rs:16:5
    |
 LL | use rustc_macros::HashStable;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -38,8 +38,8 @@ LL | use rustc_macros::HashStable;
    = help: add `#![feature(rustc_private)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'rustc_private': this crate is being loaded from the sysroot, an unstable location; did you mean to load this crate from crates.io via `Cargo.toml` instead?
-  --> $DIR/hash-stable-is-unstable.rs:20:10
+error[E0658]: use of unstable library feature `rustc_private`: this crate is being loaded from the sysroot, an unstable location; did you mean to load this crate from crates.io via `Cargo.toml` instead?
+  --> $DIR/hash-stable-is-unstable.rs:21:10
    |
 LL | #[derive(HashStable)]
    |          ^^^^^^^^^^

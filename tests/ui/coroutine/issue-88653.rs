@@ -14,6 +14,7 @@ fn foo(bar: bool) -> impl Coroutine<(bool,)> {
     #[coroutine]
     |bar| {
         //~^ NOTE: found signature defined here
+        //~| NOTE: return type was inferred to be
         if bar {
             yield bar;
         }

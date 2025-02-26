@@ -1,8 +1,7 @@
 use rustc_index::IndexSlice;
 use rustc_middle::mir::{Body, Local};
 use rustc_middle::ty::{self, RegionVid, TyCtxt};
-use rustc_span::Span;
-use rustc_span::symbol::Symbol;
+use rustc_span::{Span, Symbol};
 use tracing::debug;
 
 use crate::region_infer::RegionInferenceContext;

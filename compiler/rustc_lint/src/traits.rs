@@ -1,6 +1,6 @@
-use rustc_hir::{self as hir, LangItem};
+use rustc_hir::{self as hir, AmbigArg, LangItem};
 use rustc_session::{declare_lint, declare_lint_pass};
-use rustc_span::symbol::sym;
+use rustc_span::sym;
 
 use crate::lints::{DropGlue, DropTraitConstraintsDiag};
 use crate::{LateContext, LateLintPass, LintContext};
@@ -101,17 +101,19 @@ impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
                     continue;
                 }
                 let Some(def_id) = cx.tcx.get_diagnostic_item(sym::needs_drop) else { return };
-                cx.emit_span_lint(DROP_BOUNDS, span, DropTraitConstraintsDiag {
-                    predicate,
-                    tcx: cx.tcx,
-                    def_id,
-                });
+                cx.emit_span_lint(
+                    DROP_BOUNDS,
+                    span,
+                    DropTraitConstraintsDiag { predicate, tcx: cx.tcx, def_id },
+                );
             }
         }
     }
 
-    fn check_ty(&mut self, cx: &LateContext<'_>, ty: &'tcx hir::Ty<'tcx>) {
-        let hir::TyKind::TraitObject(bounds, _lifetime, _syntax) = &ty.kind else { return };
+    fn check_ty(&mut self, cx: &LateContext<'_>, ty: &'tcx hir::Ty<'tcx, AmbigArg>) {
+        let hir::TyKind::TraitObject(bounds, _lifetime_and_syntax_pointer) = &ty.kind else {
+            return;
+        };
         for bound in &bounds[..] {
             let def_id = bound.trait_ref.trait_def_id();
             if def_id.is_some_and(|def_id| cx.tcx.is_lang_item(def_id, LangItem::Drop)) {

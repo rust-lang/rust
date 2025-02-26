@@ -4,8 +4,7 @@ error: manual implementation of `Iterator::find`
 LL | /     for &v in ARRAY {
 LL | |         if v == n {
 LL | |             return Some(v);
-LL | |         }
-LL | |     }
+...  |
 LL | |     None
    | |________^ help: replace with an iterator: `ARRAY.iter().find(|&&v| v == n).copied()`
    |
@@ -18,8 +17,7 @@ error: manual implementation of `Iterator::find`
 LL | /     for (a, _) in arr {
 LL | |         if a % 2 == 0 {
 LL | |             return Some(a);
-LL | |         }
-LL | |     }
+...  |
 LL | |     None
    | |________^ help: replace with an iterator: `arr.into_iter().map(|(a, _)| a).find(|&a| a % 2 == 0)`
 
@@ -29,8 +27,7 @@ error: manual implementation of `Iterator::find`
 LL | /     for el in arr {
 LL | |         if el.name.len() == 10 {
 LL | |             return Some(el);
-LL | |         }
-LL | |     }
+...  |
 LL | |     None
    | |________^ help: replace with an iterator: `arr.into_iter().find(|el| el.name.len() == 10)`
    |
@@ -42,8 +39,7 @@ error: manual implementation of `Iterator::find`
 LL | /     for Tuple(a, _) in arr {
 LL | |         if a >= 3 {
 LL | |             return Some(a);
-LL | |         }
-LL | |     }
+...  |
 LL | |     None
    | |________^ help: replace with an iterator: `arr.into_iter().map(|Tuple(a, _)| a).find(|&a| a >= 3)`
 
@@ -53,8 +49,7 @@ error: manual implementation of `Iterator::find`
 LL | /     for el in arr {
 LL | |         if el.should_keep() {
 LL | |             return Some(el);
-LL | |         }
-LL | |     }
+...  |
 LL | |     None
    | |________^ help: replace with an iterator: `arr.into_iter().find(|el| el.should_keep())`
    |
@@ -66,8 +61,7 @@ error: manual implementation of `Iterator::find`
 LL | /     for el in arr {
 LL | |         if f(el) == 20 {
 LL | |             return Some(el);
-LL | |         }
-LL | |     }
+...  |
 LL | |     None
    | |________^ help: replace with an iterator: `arr.into_iter().find(|&el| f(el) == 20)`
 
@@ -77,8 +71,7 @@ error: manual implementation of `Iterator::find`
 LL | /     for &el in arr.values() {
 LL | |         if f(el) {
 LL | |             return Some(el);
-LL | |         }
-LL | |     }
+...  |
 LL | |     None
    | |________^ help: replace with an iterator: `arr.values().find(|&&el| f(el)).copied()`
 
@@ -88,8 +81,7 @@ error: manual implementation of `Iterator::find`
 LL | /     for el in arr {
 LL | |         if el.is_true {
 LL | |             return Some(el);
-LL | |         }
-LL | |     }
+...  |
 LL | |     None
    | |________^ help: replace with an iterator: `arr.into_iter().find(|el| el.is_true)`
    |
@@ -101,8 +93,7 @@ error: manual implementation of `Iterator::find`
 LL | /     for (_, &x) in v {
 LL | |         if x > 10 {
 LL | |             return Some(x);
-LL | |         }
-LL | |     }
+...  |
 LL | |     None
    | |________^ help: replace with an iterator: `v.into_iter().map(|(_, &x)| x).find(|&x| x > 10)`
 
@@ -112,8 +103,7 @@ error: manual implementation of `Iterator::find`
 LL | /     for &(_, &x) in v {
 LL | |         if x > 10 {
 LL | |             return Some(x);
-LL | |         }
-LL | |     }
+...  |
 LL | |     None
    | |________^ help: replace with an iterator: `v.iter().map(|&(_, &x)| x).find(|&x| x > 10)`
 
@@ -123,8 +113,7 @@ error: manual implementation of `Iterator::find`
 LL | /     for x in arr {
 LL | |         if x >= 5 {
 LL | |             return Some(x);
-LL | |         }
-LL | |     }
+...  |
 LL | |     return None;
    | |________________^ help: replace with an iterator: `arr.into_iter().find(|&x| x >= 5)`
 
@@ -134,8 +123,7 @@ error: manual implementation of `Iterator::find`
 LL | /         for x in arr {
 LL | |             if x < 1 {
 LL | |                 return Some(x);
-LL | |             }
-LL | |         }
+...  |
 LL | |         None
    | |____________^ help: replace with an iterator: `arr.into_iter().find(|&x| x < 1)`
 

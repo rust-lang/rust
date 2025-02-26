@@ -2,9 +2,6 @@ error: unknown attribute `compile-fail`
   --> $DIR/check-attr.rs:3:1
    |
 LL | / /// foo
-LL | |
-LL | |
-LL | |
 ...  |
 LL | | /// boo
 LL | | /// ```
@@ -22,9 +19,6 @@ error: unknown attribute `compilefail`
   --> $DIR/check-attr.rs:3:1
    |
 LL | / /// foo
-LL | |
-LL | |
-LL | |
 ...  |
 LL | | /// boo
 LL | | /// ```
@@ -37,9 +31,6 @@ error: unknown attribute `comPile_fail`
   --> $DIR/check-attr.rs:3:1
    |
 LL | / /// foo
-LL | |
-LL | |
-LL | |
 ...  |
 LL | | /// boo
 LL | | /// ```
@@ -52,9 +43,6 @@ error: unknown attribute `should-panic`
   --> $DIR/check-attr.rs:13:1
    |
 LL | / /// bar
-LL | |
-LL | |
-LL | |
 ...  |
 LL | | /// boo
 LL | | /// ```
@@ -67,9 +55,6 @@ error: unknown attribute `shouldpanic`
   --> $DIR/check-attr.rs:13:1
    |
 LL | / /// bar
-LL | |
-LL | |
-LL | |
 ...  |
 LL | | /// boo
 LL | | /// ```
@@ -82,9 +67,6 @@ error: unknown attribute `sHould_panic`
   --> $DIR/check-attr.rs:13:1
    |
 LL | / /// bar
-LL | |
-LL | |
-LL | |
 ...  |
 LL | | /// boo
 LL | | /// ```
@@ -97,9 +79,6 @@ error: unknown attribute `no-run`
   --> $DIR/check-attr.rs:23:1
    |
 LL | / /// foobar
-LL | |
-LL | |
-LL | |
 ...  |
 LL | | /// boo
 LL | | /// ```
@@ -112,9 +91,6 @@ error: unknown attribute `norun`
   --> $DIR/check-attr.rs:23:1
    |
 LL | / /// foobar
-LL | |
-LL | |
-LL | |
 ...  |
 LL | | /// boo
 LL | | /// ```
@@ -127,9 +103,6 @@ error: unknown attribute `no_Run`
   --> $DIR/check-attr.rs:23:1
    |
 LL | / /// foobar
-LL | |
-LL | |
-LL | |
 ...  |
 LL | | /// boo
 LL | | /// ```
@@ -142,9 +115,6 @@ error: unknown attribute `test-harness`
   --> $DIR/check-attr.rs:33:1
    |
 LL | / /// b
-LL | |
-LL | |
-LL | |
 ...  |
 LL | | /// boo
 LL | | /// ```
@@ -157,9 +127,6 @@ error: unknown attribute `testharness`
   --> $DIR/check-attr.rs:33:1
    |
 LL | / /// b
-LL | |
-LL | |
-LL | |
 ...  |
 LL | | /// boo
 LL | | /// ```
@@ -172,9 +139,6 @@ error: unknown attribute `teSt_harness`
   --> $DIR/check-attr.rs:33:1
    |
 LL | / /// b
-LL | |
-LL | |
-LL | |
 ...  |
 LL | | /// boo
 LL | | /// ```

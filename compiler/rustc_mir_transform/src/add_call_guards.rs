@@ -75,4 +75,8 @@ impl<'tcx> crate::MirPass<'tcx> for AddCallGuards {
 
         body.basic_blocks_mut().extend(new_blocks);
     }
+
+    fn is_required(&self) -> bool {
+        true
+    }
 }

@@ -1,7 +1,7 @@
 //! See the docs for [`RenameReturnPlace`].
 
 use rustc_hir::Mutability;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::bug;
 use rustc_middle::mir::visit::{MutVisitor, NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{self, BasicBlock, Local, Location};
@@ -45,10 +45,6 @@ impl<'tcx> crate::MirPass<'tcx> for RenameReturnPlace {
             return;
         };
 
-        if !tcx.consider_optimizing(|| format!("RenameReturnPlace {def_id:?}")) {
-            return;
-        }
-
         debug!(
             "`{:?}` was eligible for NRVO, making {:?} the return place",
             def_id, returned_local
@@ -74,6 +70,10 @@ impl<'tcx> crate::MirPass<'tcx> for RenameReturnPlace {
 
         // The return place is always mutable.
         ret_decl.mutability = Mutability::Mut;
+    }
+
+    fn is_required(&self) -> bool {
+        false
     }
 }
 
@@ -120,7 +120,7 @@ fn local_eligible_for_nrvo(body: &mir::Body<'_>) -> Option<Local> {
 
 fn find_local_assigned_to_return_place(start: BasicBlock, body: &mir::Body<'_>) -> Option<Local> {
     let mut block = start;
-    let mut seen = BitSet::new_empty(body.basic_blocks.len());
+    let mut seen = DenseBitSet::new_empty(body.basic_blocks.len());
 
     // Iterate as long as `block` has exactly one predecessor that we have not yet visited.
     while seen.insert(block) {

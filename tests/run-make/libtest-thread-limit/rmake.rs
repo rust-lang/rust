@@ -15,10 +15,7 @@
 // Reason: this should be ignored in cg_clif (Cranelift) CI and anywhere
 // else that uses panic=abort.
 
-use std::ffi::{self, CStr, CString};
-use std::path::PathBuf;
-
-use run_make_support::{libc, run, rustc};
+use run_make_support::{libc, rustc};
 
 fn main() {
     rustc().input("test.rs").arg("--test").run();
@@ -38,7 +35,7 @@ fn main() {
     // If the process ID is 0, this is the child process responsible for running the test
     // program.
     if pid == 0 {
-        let test = CString::new("test").unwrap();
+        let test = c"test";
         // The argv array should be terminated with a NULL pointer.
         let argv = [test.as_ptr(), std::ptr::null()];
         // rlim_cur is soft limit, rlim_max is hard limit.

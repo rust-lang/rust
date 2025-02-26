@@ -5,9 +5,8 @@
 //@ compile-flags: -Zmir-opt-level=4
 #![feature(intrinsics, repr_simd)]
 
-extern "rust-intrinsic" {
-    fn simd_shuffle<T, I, U>(x: T, y: T, idx: I) -> U;
-}
+#[rustc_intrinsic]
+unsafe fn simd_shuffle<T, I, U>(x: T, y: T, idx: I) -> U;
 
 #[repr(simd)]
 #[derive(Debug, PartialEq)]

@@ -116,6 +116,11 @@ fn test_redundant_closures_containing_method_calls() {
         t.iter().filter(|x| x.trait_foo_ref());
         t.iter().map(|x| x.trait_foo_ref());
     }
+
+    fn issue14096() {
+        let x = Some("42");
+        let _ = x.map(|x| x.parse::<i16>());
+    }
 }
 
 struct Thunk<T>(Box<dyn FnMut() -> T>);

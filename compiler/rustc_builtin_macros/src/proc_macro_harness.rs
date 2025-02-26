@@ -11,8 +11,7 @@ use rustc_feature::Features;
 use rustc_session::Session;
 use rustc_span::hygiene::AstPass;
 use rustc_span::source_map::SourceMap;
-use rustc_span::symbol::{Ident, Symbol, kw, sym};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use smallvec::smallvec;
 use thin_vec::{ThinVec, thin_vec};
 
@@ -302,13 +301,10 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
             };
             let local_path = |cx: &ExtCtxt<'_>, name| cx.expr_path(cx.path(span, vec![name]));
             let proc_macro_ty_method_path = |cx: &ExtCtxt<'_>, method| {
-                cx.expr_path(cx.path(span.with_ctxt(harness_span.ctxt()), vec![
-                    proc_macro,
-                    bridge,
-                    client,
-                    proc_macro_ty,
-                    method,
-                ]))
+                cx.expr_path(cx.path(
+                    span.with_ctxt(harness_span.ctxt()),
+                    vec![proc_macro, bridge, client, proc_macro_ty, method],
+                ))
             };
             match m {
                 ProcMacro::Derive(cd) => {
@@ -341,10 +337,14 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
 
                     // The call needs to use `harness_span` so that the const stability checker
                     // accepts it.
-                    cx.expr_call(harness_span, proc_macro_ty_method_path(cx, ident), thin_vec![
-                        cx.expr_str(span, ca.function_name.name),
-                        local_path(cx, ca.function_name),
-                    ])
+                    cx.expr_call(
+                        harness_span,
+                        proc_macro_ty_method_path(cx, ident),
+                        thin_vec![
+                            cx.expr_str(span, ca.function_name.name),
+                            local_path(cx, ca.function_name),
+                        ],
+                    )
                 }
             }
         })
@@ -358,12 +358,9 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
                 span,
                 cx.ty(
                     span,
-                    ast::TyKind::Slice(cx.ty_path(cx.path(span, vec![
-                        proc_macro,
-                        bridge,
-                        client,
-                        proc_macro_ty,
-                    ]))),
+                    ast::TyKind::Slice(
+                        cx.ty_path(cx.path(span, vec![proc_macro, bridge, client, proc_macro_ty])),
+                    ),
                 ),
                 None,
                 ast::Mutability::Not,

@@ -1,7 +1,7 @@
 use rustc_hir::def::Res;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
+use rustc_span::Ident;
 use rustc_span::def_id::DefId;
-use rustc_span::symbol::Ident;
 use smallvec::SmallVec;
 
 use crate::ty;

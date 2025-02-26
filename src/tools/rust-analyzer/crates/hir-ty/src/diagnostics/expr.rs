@@ -36,7 +36,7 @@ use crate::{
 };
 
 pub(crate) use hir_def::{
-    body::Body,
+    expr_store::Body,
     hir::{Expr, ExprId, MatchArm, Pat, PatId, Statement},
     LocalFieldId, VariantId,
 };
@@ -289,11 +289,13 @@ impl ExprValidator {
         match &self.body[scrutinee_expr] {
             Expr::UnaryOp { op: UnaryOp::Deref, .. } => false,
             Expr::Path(path) => {
-                let value_or_partial = self
-                    .owner
-                    .resolver(db.upcast())
-                    .resolve_path_in_value_ns_fully(db.upcast(), path);
-                value_or_partial.map_or(true, |v| !matches!(v, ValueNs::StaticId(_)))
+                let value_or_partial =
+                    self.owner.resolver(db.upcast()).resolve_path_in_value_ns_fully(
+                        db.upcast(),
+                        path,
+                        self.body.expr_path_hygiene(scrutinee_expr),
+                    );
+                value_or_partial.is_none_or(|v| !matches!(v, ValueNs::StaticId(_)))
             }
             Expr::Field { expr, .. } => match self.infer.type_of_expr[*expr].kind(Interner) {
                 TyKind::Adt(adt, ..)
@@ -438,14 +440,16 @@ impl ExprValidator {
                             return;
                         };
                         let root = source_ptr.file_syntax(db.upcast());
-                        let ast::Expr::IfExpr(if_expr) = source_ptr.value.to_node(&root) else {
+                        let either::Left(ast::Expr::IfExpr(if_expr)) =
+                            source_ptr.value.to_node(&root)
+                        else {
                             return;
                         };
                         let mut top_if_expr = if_expr;
                         loop {
                             let parent = top_if_expr.syntax().parent();
                             let has_parent_expr_stmt_or_stmt_list =
-                                parent.as_ref().map_or(false, |node| {
+                                parent.as_ref().is_some_and(|node| {
                                     ast::ExprStmt::can_cast(node.kind())
                                         | ast::StmtList::can_cast(node.kind())
                                 });
@@ -527,7 +531,7 @@ impl FilterMapNextChecker {
                 let is_dyn_trait = self
                     .prev_receiver_ty
                     .as_ref()
-                    .map_or(false, |it| it.strip_references().dyn_trait().is_some());
+                    .is_some_and(|it| it.strip_references().dyn_trait().is_some());
                 if *receiver_expr_id == prev_filter_map_expr_id && !is_dyn_trait {
                     return Some(());
                 }
@@ -546,10 +550,7 @@ pub fn record_literal_missing_fields(
     expr: &Expr,
 ) -> Option<(VariantId, Vec<LocalFieldId>, /*exhaustive*/ bool)> {
     let (fields, exhaustive) = match expr {
-        Expr::RecordLit { fields, spread, ellipsis, is_assignee_expr, .. } => {
-            let exhaustive = if *is_assignee_expr { !*ellipsis } else { spread.is_none() };
-            (fields, exhaustive)
-        }
+        Expr::RecordLit { fields, spread, .. } => (fields, spread.is_none()),
         _ => return None,
     };
 

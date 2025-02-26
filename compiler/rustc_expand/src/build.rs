@@ -1,11 +1,11 @@
 use rustc_ast::ptr::P;
 use rustc_ast::util::literal;
 use rustc_ast::{
-    self as ast, AttrVec, BlockCheckMode, Expr, LocalKind, MatchKind, PatKind, UnOp, attr, token,
+    self as ast, AnonConst, AttrVec, BlockCheckMode, Expr, LocalKind, MatchKind, PatKind, UnOp,
+    attr, token,
 };
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::{Ident, Symbol, kw, sym};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 use crate::base::ExtCtxt;
@@ -139,6 +139,42 @@ impl<'a> ExtCtxt<'a> {
         }
     }
 
+    pub fn lifetime_param(
+        &self,
+        span: Span,
+        ident: Ident,
+        bounds: ast::GenericBounds,
+    ) -> ast::GenericParam {
+        ast::GenericParam {
+            id: ast::DUMMY_NODE_ID,
+            ident: ident.with_span_pos(span),
+            attrs: AttrVec::new(),
+            bounds,
+            is_placeholder: false,
+            kind: ast::GenericParamKind::Lifetime,
+            colon_span: None,
+        }
+    }
+
+    pub fn const_param(
+        &self,
+        span: Span,
+        ident: Ident,
+        bounds: ast::GenericBounds,
+        ty: P<ast::Ty>,
+        default: Option<AnonConst>,
+    ) -> ast::GenericParam {
+        ast::GenericParam {
+            id: ast::DUMMY_NODE_ID,
+            ident: ident.with_span_pos(span),
+            attrs: AttrVec::new(),
+            bounds,
+            is_placeholder: false,
+            kind: ast::GenericParamKind::Const { ty, kw_span: DUMMY_SP, default },
+            colon_span: None,
+        }
+    }
+
     pub fn trait_ref(&self, path: ast::Path) -> ast::TraitRef {
         ast::TraitRef { path, ref_id: ast::DUMMY_NODE_ID }
     }
@@ -234,11 +270,14 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn block_expr(&self, expr: P<ast::Expr>) -> P<ast::Block> {
-        self.block(expr.span, thin_vec![ast::Stmt {
-            id: ast::DUMMY_NODE_ID,
-            span: expr.span,
-            kind: ast::StmtKind::Expr(expr),
-        }])
+        self.block(
+            expr.span,
+            thin_vec![ast::Stmt {
+                id: ast::DUMMY_NODE_ID,
+                span: expr.span,
+                kind: ast::StmtKind::Expr(expr),
+            }],
+        )
     }
     pub fn block(&self, span: Span, stmts: ThinVec<ast::Stmt>) -> P<ast::Block> {
         P(ast::Block {
@@ -487,7 +526,7 @@ impl<'a> ExtCtxt<'a> {
         self.pat(span, PatKind::Wild)
     }
     pub fn pat_lit(&self, span: Span, expr: P<ast::Expr>) -> P<ast::Pat> {
-        self.pat(span, PatKind::Lit(expr))
+        self.pat(span, PatKind::Expr(expr))
     }
     pub fn pat_ident(&self, span: Span, ident: Ident) -> P<ast::Pat> {
         self.pat_ident_binding_mode(span, ident, ast::BindingMode::NONE)

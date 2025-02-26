@@ -53,7 +53,7 @@ impl<'a> NumericLiteral<'a> {
                 .trim_start()
                 .chars()
                 .next()
-                .map_or(false, |c| c.is_ascii_digit())
+                .is_some_and(|c| c.is_ascii_digit())
         {
             let (unsuffixed, suffix) = split_suffix(src, lit_kind);
             let float = matches!(lit_kind, LitKind::Float(..));
@@ -125,7 +125,7 @@ impl<'a> NumericLiteral<'a> {
                             integer = &digits[..exp_start];
                         } else {
                             fraction = Some(&digits[integer.len() + 1..exp_start]);
-                        };
+                        }
                         exponent = Some((&digits[exp_start..=i], &digits[i + 1..]));
                         break;
                     },

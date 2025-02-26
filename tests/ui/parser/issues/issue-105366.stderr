@@ -6,8 +6,9 @@ LL | fn From<i32> for Foo {
    |
 help: replace `fn` with `impl` here
    |
-LL | impl From<i32> for Foo {
-   | ~~~~
+LL - fn From<i32> for Foo {
+LL + impl From<i32> for Foo {
+   |
 
 error: aborting due to 1 previous error
 

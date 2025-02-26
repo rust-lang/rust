@@ -6,8 +6,9 @@ LL | fn function(x: &SomeTrait, y: Box<SomeTrait>) {
    |
 help: use a new generic type parameter, constrained by `SomeTrait`
    |
-LL | fn function<T: SomeTrait>(x: &T, y: Box<SomeTrait>) {
-   |            ++++++++++++++     ~
+LL - fn function(x: &SomeTrait, y: Box<SomeTrait>) {
+LL + fn function<T: SomeTrait>(x: &T, y: Box<SomeTrait>) {
+   |
 help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
    |
 LL | fn function(x: &impl SomeTrait, y: Box<SomeTrait>) {

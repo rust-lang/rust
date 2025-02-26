@@ -1,10 +1,11 @@
-use std::fmt;
+use std::{fmt, sync::OnceLock};
 
+use arrayvec::ArrayVec;
 use ast::HasName;
 use cfg::{CfgAtom, CfgExpr};
 use hir::{
-    db::HirDatabase, sym, AsAssocItem, AttrsWithOwner, HasAttrs, HasCrate, HasSource, HirFileIdExt,
-    Semantics,
+    db::HirDatabase, sym, symbols::FxIndexSet, AsAssocItem, AttrsWithOwner, HasAttrs, HasCrate,
+    HasSource, HirFileIdExt, ModPath, Name, PathKind, Semantics, Symbol,
 };
 use ide_assists::utils::{has_test_related_attribute, test_related_attribute_syn};
 use ide_db::{
@@ -12,14 +13,15 @@ use ide_db::{
     documentation::docs_from_attrs,
     helpers::visit_file_defs,
     search::{FileReferenceNode, SearchScope},
-    FilePosition, FxHashMap, FxHashSet, RootDatabase, SymbolKind,
+    FilePosition, FxHashMap, FxIndexMap, RootDatabase, SymbolKind,
 };
 use itertools::Itertools;
+use smallvec::SmallVec;
 use span::{Edition, TextSize};
-use stdx::{always, format_to};
+use stdx::format_to;
 use syntax::{
     ast::{self, AstNode},
-    SmolStr, SyntaxNode, ToSmolStr,
+    format_smolstr, SmolStr, SyntaxNode, ToSmolStr,
 };
 
 use crate::{references, FileId, NavigationTarget, ToNav, TryToNav};
@@ -30,6 +32,7 @@ pub struct Runnable {
     pub nav: NavigationTarget,
     pub kind: RunnableKind,
     pub cfg: Option<CfgExpr>,
+    pub update_test: UpdateTest,
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -58,8 +61,8 @@ pub enum RunnableKind {
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 enum RunnableDiscKind {
-    Test,
     TestMod,
+    Test,
     DocTest,
     Bench,
     Bin,
@@ -116,28 +119,20 @@ impl Runnable {
 // location**. Super useful for repeatedly running just a single test. Do bind this
 // to a shortcut!
 //
-// |===
-// | Editor  | Action Name
+// | Editor  | Action Name |
+// |---------|-------------|
+// | VS Code | **rust-analyzer: Run** |
 //
-// | VS Code | **rust-analyzer: Run**
-// |===
-// image::https://user-images.githubusercontent.com/48062697/113065583-055aae80-91b1-11eb-958f-d67efcaf6a2f.gif[]
+// ![Run](https://user-images.githubusercontent.com/48062697/113065583-055aae80-91b1-11eb-958f-d67efcaf6a2f.gif)
 pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
     let sema = Semantics::new(db);
 
     let mut res = Vec::new();
     // Record all runnables that come from macro expansions here instead.
     // In case an expansion creates multiple runnables we want to name them to avoid emitting a bunch of equally named runnables.
-    let mut in_macro_expansion = FxHashMap::<hir::HirFileId, Vec<Runnable>>::default();
+    let mut in_macro_expansion = FxIndexMap::<hir::HirFileId, Vec<Runnable>>::default();
     let mut add_opt = |runnable: Option<Runnable>, def| {
-        if let Some(runnable) = runnable.filter(|runnable| {
-            always!(
-                runnable.nav.file_id == file_id,
-                "tried adding a runnable pointing to a different file: {:?} for {:?}",
-                runnable.kind,
-                file_id
-            )
-        }) {
+        if let Some(runnable) = runnable.filter(|runnable| runnable.nav.file_id == file_id) {
             if let Some(def) = def {
                 let file_id = match def {
                     Definition::Module(it) => {
@@ -161,13 +156,7 @@ pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
             Definition::SelfType(impl_) => runnable_impl(&sema, &impl_),
             _ => None,
         };
-        add_opt(
-            runnable
-                .or_else(|| module_def_doctest(sema.db, def))
-                // #[macro_export] mbe macros are declared in the root, while their definition may reside in a different module
-                .filter(|it| it.nav.file_id == file_id),
-            Some(def),
-        );
+        add_opt(runnable.or_else(|| module_def_doctest(sema.db, def)), Some(def));
         if let Definition::SelfType(impl_) = def {
             impl_.items(db).into_iter().for_each(|assoc| {
                 let runnable = match assoc {
@@ -193,20 +182,7 @@ pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
             r
         })
     }));
-    res.sort_by(|Runnable { nav, kind, .. }, Runnable { nav: nav_b, kind: kind_b, .. }| {
-        // full_range.start < focus_range.start < name, should give us a decent unique ordering
-        nav.full_range
-            .start()
-            .cmp(&nav_b.full_range.start())
-            .then_with(|| {
-                let t_0 = || TextSize::from(0);
-                nav.focus_range
-                    .map_or_else(t_0, |it| it.start())
-                    .cmp(&nav_b.focus_range.map_or_else(t_0, |it| it.start()))
-            })
-            .then_with(|| kind.disc().cmp(&kind_b.disc()))
-            .then_with(|| nav.name.cmp(&nav_b.name))
-    });
+    res.sort_by(cmp_runnables);
     res
 }
 
@@ -217,23 +193,39 @@ pub(crate) fn runnables(db: &RootDatabase, file_id: FileId) -> Vec<Runnable> {
 // The simplest way to use this feature is via the context menu. Right-click on
 // the selected item. The context menu opens. Select **Peek Related Tests**.
 //
-// |===
-// | Editor  | Action Name
-//
-// | VS Code | **rust-analyzer: Peek Related Tests**
-// |===
+// | Editor  | Action Name |
+// |---------|-------------|
+// | VS Code | **rust-analyzer: Peek Related Tests** |
 pub(crate) fn related_tests(
     db: &RootDatabase,
     position: FilePosition,
     search_scope: Option<SearchScope>,
 ) -> Vec<Runnable> {
     let sema = Semantics::new(db);
-    let mut res: FxHashSet<Runnable> = FxHashSet::default();
+    let mut res: FxIndexSet<Runnable> = FxIndexSet::default();
     let syntax = sema.parse_guess_edition(position.file_id).syntax().clone();
 
     find_related_tests(&sema, &syntax, position, search_scope, &mut res);
 
-    res.into_iter().collect()
+    res.into_iter().sorted_by(cmp_runnables).collect()
+}
+
+fn cmp_runnables(
+    Runnable { nav, kind, .. }: &Runnable,
+    Runnable { nav: nav_b, kind: kind_b, .. }: &Runnable,
+) -> std::cmp::Ordering {
+    // full_range.start < focus_range.start < name, should give us a decent unique ordering
+    nav.full_range
+        .start()
+        .cmp(&nav_b.full_range.start())
+        .then_with(|| {
+            let t_0 = || TextSize::from(0);
+            nav.focus_range
+                .map_or_else(t_0, |it| it.start())
+                .cmp(&nav_b.focus_range.map_or_else(t_0, |it| it.start()))
+        })
+        .then_with(|| kind.disc().cmp(&kind_b.disc()))
+        .then_with(|| nav.name.cmp(&nav_b.name))
 }
 
 fn find_related_tests(
@@ -241,7 +233,7 @@ fn find_related_tests(
     syntax: &SyntaxNode,
     position: FilePosition,
     search_scope: Option<SearchScope>,
-    tests: &mut FxHashSet<Runnable>,
+    tests: &mut FxIndexSet<Runnable>,
 ) {
     // FIXME: why is this using references::find_defs, this should use ide_db::search
     let defs = match references::find_defs(sema, syntax, position.offset) {
@@ -281,7 +273,7 @@ fn find_related_tests_in_module(
     syntax: &SyntaxNode,
     fn_def: &ast::Fn,
     parent_module: &hir::Module,
-    tests: &mut FxHashSet<Runnable>,
+    tests: &mut FxIndexSet<Runnable>,
 ) {
     let fn_name = match fn_def.name() {
         Some(it) => it,
@@ -347,14 +339,20 @@ pub(crate) fn runnable_fn(
         }
     };
 
+    let fn_source = sema.source(def)?;
     let nav = NavigationTarget::from_named(
         sema.db,
-        def.source(sema.db)?.as_ref().map(|it| it as &dyn ast::HasName),
+        fn_source.as_ref().map(|it| it as &dyn ast::HasName),
         SymbolKind::Function,
     )
     .call_site();
+
+    let file_range = fn_source.syntax().original_file_range_with_macro_call_body(sema.db);
+    let update_test =
+        UpdateTest::find_snapshot_macro(sema, &fn_source.file_syntax(sema.db), file_range);
+
     let cfg = def.attrs(sema.db).cfg();
-    Some(Runnable { use_name_in_title: false, nav, kind, cfg })
+    Some(Runnable { use_name_in_title: false, nav, kind, cfg, update_test })
 }
 
 pub(crate) fn runnable_mod(
@@ -379,7 +377,22 @@ pub(crate) fn runnable_mod(
     let attrs = def.attrs(sema.db);
     let cfg = attrs.cfg();
     let nav = NavigationTarget::from_module_to_decl(sema.db, def).call_site();
-    Some(Runnable { use_name_in_title: false, nav, kind: RunnableKind::TestMod { path }, cfg })
+
+    let module_source = sema.module_definition_node(def);
+    let module_syntax = module_source.file_syntax(sema.db);
+    let file_range = hir::FileRange {
+        file_id: module_source.file_id.original_file(sema.db),
+        range: module_syntax.text_range(),
+    };
+    let update_test = UpdateTest::find_snapshot_macro(sema, &module_syntax, file_range);
+
+    Some(Runnable {
+        use_name_in_title: false,
+        nav,
+        kind: RunnableKind::TestMod { path },
+        cfg,
+        update_test,
+    })
 }
 
 pub(crate) fn runnable_impl(
@@ -405,7 +418,19 @@ pub(crate) fn runnable_impl(
     test_id.retain(|c| c != ' ');
     let test_id = TestId::Path(test_id);
 
-    Some(Runnable { use_name_in_title: false, nav, kind: RunnableKind::DocTest { test_id }, cfg })
+    let impl_source = sema.source(*def)?;
+    let impl_syntax = impl_source.syntax();
+    let file_range = impl_syntax.original_file_range_with_macro_call_body(sema.db);
+    let update_test =
+        UpdateTest::find_snapshot_macro(sema, &impl_syntax.file_syntax(sema.db), file_range);
+
+    Some(Runnable {
+        use_name_in_title: false,
+        nav,
+        kind: RunnableKind::DocTest { test_id },
+        cfg,
+        update_test,
+    })
 }
 
 fn has_cfg_test(attrs: AttrsWithOwner) -> bool {
@@ -417,6 +442,8 @@ fn runnable_mod_outline_definition(
     sema: &Semantics<'_, RootDatabase>,
     def: hir::Module,
 ) -> Option<Runnable> {
+    def.as_source_file_id(sema.db)?;
+
     if !has_test_function_or_multiple_test_submodules(sema, &def, has_cfg_test(def.attrs(sema.db)))
     {
         return None;
@@ -434,16 +461,22 @@ fn runnable_mod_outline_definition(
 
     let attrs = def.attrs(sema.db);
     let cfg = attrs.cfg();
-    if def.as_source_file_id(sema.db).is_some() {
-        Some(Runnable {
-            use_name_in_title: false,
-            nav: def.to_nav(sema.db).call_site(),
-            kind: RunnableKind::TestMod { path },
-            cfg,
-        })
-    } else {
-        None
-    }
+
+    let mod_source = sema.module_definition_node(def);
+    let mod_syntax = mod_source.file_syntax(sema.db);
+    let file_range = hir::FileRange {
+        file_id: mod_source.file_id.original_file(sema.db),
+        range: mod_syntax.text_range(),
+    };
+    let update_test = UpdateTest::find_snapshot_macro(sema, &mod_syntax, file_range);
+
+    Some(Runnable {
+        use_name_in_title: false,
+        nav: def.to_nav(sema.db).call_site(),
+        kind: RunnableKind::TestMod { path },
+        cfg,
+        update_test,
+    })
 }
 
 fn module_def_doctest(db: &RootDatabase, def: Definition) -> Option<Runnable> {
@@ -508,6 +541,7 @@ fn module_def_doctest(db: &RootDatabase, def: Definition) -> Option<Runnable> {
         nav,
         kind: RunnableKind::DocTest { test_id },
         cfg: attrs.cfg(),
+        update_test: UpdateTest::default(),
     };
     Some(res)
 }
@@ -528,7 +562,7 @@ fn has_runnable_doc_test(attrs: &hir::Attrs) -> bool {
     const RUSTDOC_CODE_BLOCK_ATTRIBUTES_RUNNABLE: &[&str] =
         &["", "rust", "should_panic", "edition2015", "edition2018", "edition2021"];
 
-    docs_from_attrs(attrs).map_or(false, |doc| {
+    docs_from_attrs(attrs).is_some_and(|doc| {
         let mut in_code_block = false;
 
         for line in doc.lines() {
@@ -588,13 +622,135 @@ fn has_test_function_or_multiple_test_submodules(
     number_of_test_submodules > 1
 }
 
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct UpdateTest {
+    pub expect_test: bool,
+    pub insta: bool,
+    pub snapbox: bool,
+}
+
+static SNAPSHOT_TEST_MACROS: OnceLock<FxHashMap<&str, Vec<ModPath>>> = OnceLock::new();
+
+impl UpdateTest {
+    const EXPECT_CRATE: &str = "expect_test";
+    const EXPECT_MACROS: &[&str] = &["expect", "expect_file"];
+
+    const INSTA_CRATE: &str = "insta";
+    const INSTA_MACROS: &[&str] = &[
+        "assert_snapshot",
+        "assert_debug_snapshot",
+        "assert_display_snapshot",
+        "assert_json_snapshot",
+        "assert_yaml_snapshot",
+        "assert_ron_snapshot",
+        "assert_toml_snapshot",
+        "assert_csv_snapshot",
+        "assert_compact_json_snapshot",
+        "assert_compact_debug_snapshot",
+        "assert_binary_snapshot",
+    ];
+
+    const SNAPBOX_CRATE: &str = "snapbox";
+    const SNAPBOX_MACROS: &[&str] = &["assert_data_eq", "file", "str"];
+
+    fn find_snapshot_macro(
+        sema: &Semantics<'_, RootDatabase>,
+        scope: &SyntaxNode,
+        file_range: hir::FileRange,
+    ) -> Self {
+        fn init<'a>(
+            krate_name: &'a str,
+            paths: &[&str],
+            map: &mut FxHashMap<&'a str, Vec<ModPath>>,
+        ) {
+            let mut res = Vec::with_capacity(paths.len());
+            let krate = Name::new_symbol_root(Symbol::intern(krate_name));
+            for path in paths {
+                let segments = [krate.clone(), Name::new_symbol_root(Symbol::intern(path))];
+                let mod_path = ModPath::from_segments(PathKind::Abs, segments);
+                res.push(mod_path);
+            }
+            map.insert(krate_name, res);
+        }
+
+        let mod_paths = SNAPSHOT_TEST_MACROS.get_or_init(|| {
+            let mut map = FxHashMap::default();
+            init(Self::EXPECT_CRATE, Self::EXPECT_MACROS, &mut map);
+            init(Self::INSTA_CRATE, Self::INSTA_MACROS, &mut map);
+            init(Self::SNAPBOX_CRATE, Self::SNAPBOX_MACROS, &mut map);
+            map
+        });
+
+        let search_scope = SearchScope::file_range(file_range);
+        let find_macro = |paths: &[ModPath]| {
+            for path in paths {
+                let Some(items) = sema.resolve_mod_path(scope, path) else {
+                    continue;
+                };
+                for item in items {
+                    if let hir::ItemInNs::Macros(makro) = item {
+                        if Definition::Macro(makro)
+                            .usages(sema)
+                            .in_scope(&search_scope)
+                            .at_least_one()
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+            false
+        };
+
+        UpdateTest {
+            expect_test: find_macro(mod_paths.get(Self::EXPECT_CRATE).unwrap()),
+            insta: find_macro(mod_paths.get(Self::INSTA_CRATE).unwrap()),
+            snapbox: find_macro(mod_paths.get(Self::SNAPBOX_CRATE).unwrap()),
+        }
+    }
+
+    pub fn label(&self) -> Option<SmolStr> {
+        let mut builder: SmallVec<[_; 3]> = SmallVec::new();
+        if self.expect_test {
+            builder.push("Expect");
+        }
+        if self.insta {
+            builder.push("Insta");
+        }
+        if self.snapbox {
+            builder.push("Snapbox");
+        }
+
+        let res: SmolStr = builder.join(" + ").into();
+        if res.is_empty() {
+            None
+        } else {
+            Some(format_smolstr!("↺\u{fe0e} Update Tests ({res})"))
+        }
+    }
+
+    pub fn env(&self) -> ArrayVec<(&str, &str), 3> {
+        let mut env = ArrayVec::new();
+        if self.expect_test {
+            env.push(("UPDATE_EXPECT", "1"));
+        }
+        if self.insta {
+            env.push(("INSTA_UPDATE", "always"));
+        }
+        if self.snapbox {
+            env.push(("SNAPSHOTS", "overwrite"));
+        }
+        env
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use expect_test::{expect, Expect};
 
     use crate::fixture;
 
-    fn check(ra_fixture: &str, expect: Expect) {
+    fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
         let (analysis, position) = fixture::position(ra_fixture);
         let result = analysis
             .runnables(position.file_id)
@@ -615,7 +771,7 @@ mod tests {
         expect.assert_debug_eq(&result);
     }
 
-    fn check_tests(ra_fixture: &str, expect: Expect) {
+    fn check_tests(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
         let (analysis, position) = fixture::position(ra_fixture);
         let tests = analysis.related_tests(position, None).unwrap();
         let navigation_targets = tests.into_iter().map(|runnable| runnable.nav).collect::<Vec<_>>();
@@ -1077,8 +1233,8 @@ gen_main!();
                     "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 0..315, name: \"\", kind: Module })",
                     "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 267..292, focus_range: 271..276, name: \"tests\", kind: Module, description: \"mod tests\" })",
                     "(Test, NavigationTarget { file_id: FileId(0), full_range: 283..290, name: \"foo_test\", kind: Function })",
-                    "(Test, NavigationTarget { file_id: FileId(0), full_range: 293..301, name: \"foo_test2\", kind: Function }, true)",
                     "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 293..301, name: \"tests2\", kind: Module, description: \"mod tests2\" }, true)",
+                    "(Test, NavigationTarget { file_id: FileId(0), full_range: 293..301, name: \"foo_test2\", kind: Function }, true)",
                     "(Bin, NavigationTarget { file_id: FileId(0), full_range: 302..314, name: \"main\", kind: Function })",
                 ]
             "#]],
@@ -1107,10 +1263,10 @@ foo!();
 "#,
             expect![[r#"
                 [
+                    "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 210..217, name: \"foo_tests\", kind: Module, description: \"mod foo_tests\" }, true)",
                     "(Test, NavigationTarget { file_id: FileId(0), full_range: 210..217, name: \"foo0\", kind: Function }, true)",
                     "(Test, NavigationTarget { file_id: FileId(0), full_range: 210..217, name: \"foo1\", kind: Function }, true)",
                     "(Test, NavigationTarget { file_id: FileId(0), full_range: 210..217, name: \"foo2\", kind: Function }, true)",
-                    "(TestMod, NavigationTarget { file_id: FileId(0), full_range: 210..217, name: \"foo_tests\", kind: Module, description: \"mod foo_tests\" }, true)",
                 ]
             "#]],
         );

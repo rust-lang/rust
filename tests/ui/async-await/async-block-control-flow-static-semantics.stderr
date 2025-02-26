@@ -23,7 +23,6 @@ LL | |
 LL | |     let block = async {
 LL | |         return 0u8;
 ...  |
-LL | |
 LL | | }
    | |_^ expected `u8`, found `()`
 

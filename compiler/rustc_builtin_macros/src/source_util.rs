@@ -1,23 +1,22 @@
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
+use std::sync::Arc;
 
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast_pretty::pprust;
-use rustc_data_structures::sync::Lrc;
 use rustc_expand::base::{
     DummyResult, ExpandResult, ExtCtxt, MacEager, MacResult, MacroExpanderResult, resolve_path,
 };
 use rustc_expand::module::DirOwnership;
 use rustc_lint_defs::BuiltinLintDiag;
 use rustc_parse::parser::{ForceCollect, Parser};
-use rustc_parse::{new_parser_from_file, unwrap_or_emit_fatal};
+use rustc_parse::{new_parser_from_file, unwrap_or_emit_fatal, utf8_error};
 use rustc_session::lint::builtin::INCOMPLETE_INCLUDE;
 use rustc_span::source_map::SourceMap;
-use rustc_span::symbol::Symbol;
-use rustc_span::{Pos, Span};
+use rustc_span::{Pos, Span, Symbol};
 use smallvec::SmallVec;
 
 use crate::errors;
@@ -210,9 +209,10 @@ pub(crate) fn expand_include_str(
                 let interned_src = Symbol::intern(src);
                 MacEager::expr(cx.expr_str(cx.with_def_site_ctxt(bsp), interned_src))
             }
-            Err(_) => {
-                let guar = cx.dcx().span_err(sp, format!("`{path}` wasn't a utf-8 file"));
-                DummyResult::any(sp, guar)
+            Err(utf8err) => {
+                let mut err = cx.dcx().struct_span_err(sp, format!("`{path}` wasn't a utf-8 file"));
+                utf8_error(cx.source_map(), path.as_str(), None, &mut err, utf8err, &bytes[..]);
+                DummyResult::any(sp, err.emit())
             }
         },
         Err(dummy) => dummy,
@@ -249,7 +249,7 @@ fn load_binary_file(
     original_path: &Path,
     macro_span: Span,
     path_span: Span,
-) -> Result<(Lrc<[u8]>, Span), Box<dyn MacResult>> {
+) -> Result<(Arc<[u8]>, Span), Box<dyn MacResult>> {
     let resolved_path = match resolve_path(&cx.sess, original_path, macro_span) {
         Ok(path) => path,
         Err(err) => {
@@ -274,7 +274,7 @@ fn load_binary_file(
                     .and_then(|path| path.into_os_string().into_string().ok());
 
                 if let Some(new_path) = new_path {
-                    err.span_suggestion(
+                    err.span_suggestion_verbose(
                         path_span,
                         "there is a file with the same name in a different directory",
                         format!("\"{}\"", new_path.replace('\\', "/").escape_debug()),

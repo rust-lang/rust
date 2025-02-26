@@ -184,7 +184,7 @@ impl<'a> PathTransform<'a> {
                     if let Some(expr) = v.expr() {
                         // FIXME: expressions in curly brackets can cause ambiguity after insertion
                         // (e.g. `N * 2` -> `{1 + 1} * 2`; it's unclear whether `{1 + 1}`
-                        // is a standalone statement or a part of another expresson)
+                        // is a standalone statement or a part of another expression)
                         // and sometimes require slight modifications; see
                         // https://doc.rust-lang.org/reference/statements.html#expression-statements
                         // (default values in curly brackets can cause the same problem)
@@ -285,8 +285,9 @@ impl Ctx<'_> {
         if path.qualifier().is_some() {
             return None;
         }
-        if path.segment().map_or(false, |s| {
-            s.param_list().is_some() || (s.self_token().is_some() && path.parent_path().is_none())
+        if path.segment().is_some_and(|s| {
+            s.parenthesized_arg_list().is_some()
+                || (s.self_token().is_some() && path.parent_path().is_none())
         }) {
             // don't try to qualify `Fn(Foo) -> Bar` paths, they are in prelude anyway
             // don't try to qualify sole `self` either, they are usually locals, but are returned as modules due to namespace clashing
@@ -318,6 +319,7 @@ impl Ctx<'_> {
                                 prefer_no_std: false,
                                 prefer_prelude: true,
                                 prefer_absolute: false,
+                                allow_unstable: true,
                             };
                             let found_path = self.target_module.find_path(
                                 self.source_scope.db.upcast(),
@@ -377,6 +379,7 @@ impl Ctx<'_> {
                     prefer_no_std: false,
                     prefer_prelude: true,
                     prefer_absolute: false,
+                    allow_unstable: true,
                 };
                 let found_path =
                     self.target_module.find_path(self.source_scope.db.upcast(), def, cfg)?;
@@ -416,6 +419,7 @@ impl Ctx<'_> {
                             prefer_no_std: false,
                             prefer_prelude: true,
                             prefer_absolute: false,
+                            allow_unstable: true,
                         };
                         let found_path = self.target_module.find_path(
                             self.source_scope.db.upcast(),

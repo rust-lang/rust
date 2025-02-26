@@ -3,7 +3,10 @@
 // two free regions outlive each other, without any evidence that this
 // relation holds.
 
-//@ compile-flags: -Z polonius
+//@ ignore-compare-mode-polonius (explicit revisions)
+//@ revisions: polonius legacy
+//@ [polonius] compile-flags: -Z polonius=next
+//@ [legacy] compile-flags: -Z polonius=legacy
 
 // returning `y` requires that `'b: 'a`, but it's not known to be true
 fn missing_subset<'a, 'b>(x: &'a u32, y: &'b u32) -> &'a u32 {
@@ -22,7 +25,7 @@ fn implied_bounds_subset<'a, 'b>(x: &'a &'b mut u32) -> &'a u32 {
 
 // `'b: 'a` is declared, and `'a: 'c` is known via implied bounds:
 // `'b: 'c` is therefore known to hold transitively
-fn transitively_valid_subset<'a, 'b: 'a, 'c>(x: &'c &'a u32, y: &'b u32) -> &'c u32  {
+fn transitively_valid_subset<'a, 'b: 'a, 'c>(x: &'c &'a u32, y: &'b u32) -> &'c u32 {
     y
 }
 

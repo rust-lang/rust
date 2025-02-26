@@ -8,7 +8,7 @@ LL | |         let _a = a;
 LL | |     });
    | |______^ future created by async block is not `Send`
    |
-   = help: within `{async block@$DIR/issue-67252-unnamed-future.rs:18:11: 18:16}`, the trait `Send` is not implemented for `*mut ()`, which is required by `{async block@$DIR/issue-67252-unnamed-future.rs:18:11: 18:16}: Send`
+   = help: within `{async block@$DIR/issue-67252-unnamed-future.rs:18:11: 18:16}`, the trait `Send` is not implemented for `*mut ()`
 note: future is not `Send` as this value is used across an await
   --> $DIR/issue-67252-unnamed-future.rs:20:17
    |

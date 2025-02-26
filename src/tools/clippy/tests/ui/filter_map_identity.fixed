@@ -81,3 +81,8 @@ fn main() {
         //~^ ERROR: use of
     }
 }
+
+fn issue12653() -> impl Iterator<Item = u8> {
+    [].into_iter().filter_map(|x| x)
+    // No lint
+}

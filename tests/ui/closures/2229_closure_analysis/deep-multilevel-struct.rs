@@ -39,13 +39,13 @@ fn main() {
     //~^ ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:
         let x = &p.a.p.x;
-        //~^ NOTE: Capturing p[(0, 0),(0, 0),(0, 0)] -> ImmBorrow
+        //~^ NOTE: Capturing p[(0, 0),(0, 0),(0, 0)] -> Immutable
         p.b.q.y = 9;
-        //~^ NOTE: Capturing p[(1, 0),(1, 0),(1, 0)] -> MutBorrow
-        //~| NOTE: p[] captured as MutBorrow here
+        //~^ NOTE: Capturing p[(1, 0),(1, 0),(1, 0)] -> Mutable
+        //~| NOTE: p[] captured as Mutable here
         println!("{:?}", p);
-        //~^ NOTE: Capturing p[] -> ImmBorrow
-        //~| NOTE: Min Capture p[] -> MutBorrow
+        //~^ NOTE: Capturing p[] -> Immutable
+        //~| NOTE: Min Capture p[] -> Mutable
         //~| NOTE: p[] used here
     };
 }

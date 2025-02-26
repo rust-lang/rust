@@ -205,7 +205,7 @@ fn expr_muldiv_sign(cx: &LateContext<'_>, expr: &Expr<'_>) -> Sign {
             // - uncertain if there are any uncertain values (because they could be negative or positive),
             Sign::Uncertain => return Sign::Uncertain,
             Sign::ZeroOrPositive => (),
-        };
+        }
     }
 
     // A mul/div is:
@@ -236,7 +236,7 @@ fn expr_add_sign(cx: &LateContext<'_>, expr: &Expr<'_>) -> Sign {
             // - uncertain if there are any uncertain values (because they could be negative or positive),
             Sign::Uncertain => return Sign::Uncertain,
             Sign::ZeroOrPositive => positive_count += 1,
-        };
+        }
     }
 
     // A sum is:

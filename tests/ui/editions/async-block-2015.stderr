@@ -4,7 +4,7 @@ error[E0670]: `async fn` is not permitted in Rust 2015
 LL | async fn foo() {
    | ^^^^^ to use `async fn`, switch to Rust 2018 or later
    |
-   = help: pass `--edition 2021` to `rustc`
+   = help: pass `--edition 2024` to `rustc`
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
 error: expected identifier, found keyword `let`
@@ -15,7 +15,7 @@ LL |     let y = async {
 LL |         let x = 42;
    |         ^^^ expected identifier, found keyword
    |
-   = help: pass `--edition 2021` to `rustc`
+   = help: pass `--edition 2024` to `rustc`
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
 error: expected identifier, found `42`
@@ -26,7 +26,7 @@ LL |     let z = async {
 LL |         42
    |         ^^ expected identifier
    |
-   = help: pass `--edition 2021` to `rustc`
+   = help: pass `--edition 2024` to `rustc`
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
 error[E0422]: cannot find struct, variant or union type `async` in this scope

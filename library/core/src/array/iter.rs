@@ -136,7 +136,6 @@ impl<T, const N: usize> IntoIter<T, N> {
     /// assert_eq!(r.collect::<Vec<_>>(), vec![10, 11, 12, 13, 14, 15]);
     /// ```
     #[unstable(feature = "array_into_iter_constructors", issue = "91583")]
-    #[rustc_const_unstable(feature = "const_array_into_iter_constructors", issue = "91583")]
     pub const unsafe fn new_unchecked(
         buffer: [MaybeUninit<T>; N],
         initialized: Range<usize>,
@@ -199,7 +198,6 @@ impl<T, const N: usize> IntoIter<T, N> {
     /// assert_eq!(get_bytes(false).collect::<Vec<_>>(), vec![]);
     /// ```
     #[unstable(feature = "array_into_iter_constructors", issue = "91583")]
-    #[rustc_const_unstable(feature = "const_array_into_iter_constructors", issue = "91583")]
     pub const fn empty() -> Self {
         let buffer = [const { MaybeUninit::uninit() }; N];
         let initialized = 0..0;
@@ -216,7 +214,7 @@ impl<T, const N: usize> IntoIter<T, N> {
         // SAFETY: We know that all elements within `alive` are properly initialized.
         unsafe {
             let slice = self.data.get_unchecked(self.alive.clone());
-            MaybeUninit::slice_assume_init_ref(slice)
+            slice.assume_init_ref()
         }
     }
 
@@ -226,7 +224,7 @@ impl<T, const N: usize> IntoIter<T, N> {
         // SAFETY: We know that all elements within `alive` are properly initialized.
         unsafe {
             let slice = self.data.get_unchecked_mut(self.alive.clone());
-            MaybeUninit::slice_assume_init_mut(slice)
+            slice.assume_init_mut()
         }
     }
 }
@@ -287,7 +285,7 @@ impl<T, const N: usize> Iterator for IntoIter<T, N> {
         // SAFETY: These elements are currently initialized, so it's fine to drop them.
         unsafe {
             let slice = self.data.get_unchecked_mut(range_to_drop);
-            ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(slice));
+            slice.assume_init_drop();
         }
 
         NonZero::new(remaining).map_or(Ok(()), Err)
@@ -342,7 +340,7 @@ impl<T, const N: usize> DoubleEndedIterator for IntoIter<T, N> {
         // SAFETY: These elements are currently initialized, so it's fine to drop them.
         unsafe {
             let slice = self.data.get_unchecked_mut(range_to_drop);
-            ptr::drop_in_place(MaybeUninit::slice_assume_init_mut(slice));
+            slice.assume_init_drop();
         }
 
         NonZero::new(remaining).map_or(Ok(()), Err)

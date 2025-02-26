@@ -3,7 +3,7 @@
 #![crate_type = "lib"]
 
 use std::mem::TransmuteFrom;
-//~^ ERROR use of unstable library feature 'transmutability' [E0658]
+//~^ ERROR use of unstable library feature `transmutability` [E0658]
 
 use std::mem::Assume;
-//~^ ERROR use of unstable library feature 'transmutability' [E0658]
+//~^ ERROR use of unstable library feature `transmutability` [E0658]

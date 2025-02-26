@@ -1,16 +1,6 @@
-use expect_test::{expect, Expect};
+use expect_test::expect;
 
-use crate::tests::{completion_list, completion_list_with_trigger_character};
-
-fn check(ra_fixture: &str, expect: Expect) {
-    let actual = completion_list(ra_fixture);
-    expect.assert_eq(&actual);
-}
-
-fn check_with_trigger_character(ra_fixture: &str, trigger_character: char, expect: Expect) {
-    let actual = completion_list_with_trigger_character(ra_fixture, Some(trigger_character));
-    expect.assert_eq(&actual)
-}
+use crate::tests::{check, check_with_trigger_character};
 
 #[test]
 fn only_param() {
@@ -124,7 +114,7 @@ fn trigger_by_l_paren() {
         r#"
 fn foo($0)
 "#,
-        '(',
+        Some('('),
         expect![[]],
     )
 }
@@ -140,7 +130,7 @@ fn foo2($0) {}
         expect![[r#"
             st Bar
             bn Bar { bar }: Bar
-            bn Bar {…}          Bar { bar$1 }: Bar$0
+            bn Bar {…} Bar { bar$1 }: Bar$0
             kw mut
             kw ref
         "#]],

@@ -4,7 +4,7 @@
 use std::fmt;
 
 use rustc_index::Idx;
-use rustc_index::bit_set::{BitSet, ChunkedBitSet, HybridBitSet};
+use rustc_index::bit_set::{ChunkedBitSet, DenseBitSet, MixedBitSet};
 
 use super::lattice::MaybeReachable;
 
@@ -73,7 +73,7 @@ where
 
 // Impls
 
-impl<T, C> DebugWithContext<C> for BitSet<T>
+impl<T, C> DebugWithContext<C> for DenseBitSet<T>
 where
     T: Idx + DebugWithContext<C>,
 {
@@ -85,8 +85,8 @@ where
         let size = self.domain_size();
         assert_eq!(size, old.domain_size());
 
-        let mut set_in_self = HybridBitSet::new_empty(size);
-        let mut cleared_in_self = HybridBitSet::new_empty(size);
+        let mut set_in_self = MixedBitSet::new_empty(size);
+        let mut cleared_in_self = MixedBitSet::new_empty(size);
 
         for i in (0..size).map(T::new) {
             match (self.contains(i), old.contains(i)) {
@@ -112,8 +112,8 @@ where
         let size = self.domain_size();
         assert_eq!(size, old.domain_size());
 
-        let mut set_in_self = HybridBitSet::new_empty(size);
-        let mut cleared_in_self = HybridBitSet::new_empty(size);
+        let mut set_in_self = MixedBitSet::new_empty(size);
+        let mut cleared_in_self = MixedBitSet::new_empty(size);
 
         for i in (0..size).map(T::new) {
             match (self.contains(i), old.contains(i)) {
@@ -124,6 +124,26 @@ where
         }
 
         fmt_diff(&set_in_self, &cleared_in_self, ctxt, f)
+    }
+}
+
+impl<T, C> DebugWithContext<C> for MixedBitSet<T>
+where
+    T: Idx + DebugWithContext<C>,
+{
+    fn fmt_with(&self, ctxt: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            MixedBitSet::Small(set) => set.fmt_with(ctxt, f),
+            MixedBitSet::Large(set) => set.fmt_with(ctxt, f),
+        }
+    }
+
+    fn fmt_diff_with(&self, old: &Self, ctxt: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match (self, old) {
+            (MixedBitSet::Small(set), MixedBitSet::Small(old)) => set.fmt_diff_with(old, ctxt, f),
+            (MixedBitSet::Large(set), MixedBitSet::Large(old)) => set.fmt_diff_with(old, ctxt, f),
+            _ => panic!("MixedBitSet size mismatch"),
+        }
     }
 }
 
@@ -159,8 +179,8 @@ where
 }
 
 fn fmt_diff<T, C>(
-    inserted: &HybridBitSet<T>,
-    removed: &HybridBitSet<T>,
+    inserted: &MixedBitSet<T>,
+    removed: &MixedBitSet<T>,
     ctxt: &C,
     f: &mut fmt::Formatter<'_>,
 ) -> fmt::Result
@@ -228,18 +248,5 @@ where
 {
     fn fmt_with(&self, ctxt: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", ctxt.move_data().move_paths[*self])
-    }
-}
-
-impl<T, C> DebugWithContext<C> for crate::lattice::Dual<T>
-where
-    T: DebugWithContext<C>,
-{
-    fn fmt_with(&self, ctxt: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        (self.0).fmt_with(ctxt, f)
-    }
-
-    fn fmt_diff_with(&self, old: &Self, ctxt: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        (self.0).fmt_diff_with(&old.0, ctxt, f)
     }
 }

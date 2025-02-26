@@ -26,6 +26,8 @@ click: ".example-wrap .copy-button"
 move-cursor-to: ".search-input"
 assert-count: (".example-wrap:not(:hover) .button-holder.keep-visible", 0)
 assert-css: (".example-wrap .copy-button", { "visibility": "hidden" })
+// Since we clicked on the copy button, the clipboard content should have been updated.
+assert-clipboard: 'println!("nothing fancy");\nprintln!("but with two lines!");'
 
 define-function: (
     "check-buttons",

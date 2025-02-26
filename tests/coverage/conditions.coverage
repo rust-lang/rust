@@ -5,7 +5,7 @@
    LL|      1|    if true {
    LL|      1|        countdown = 10;
    LL|      1|    }
-                   ^0
+                  ^0
    LL|       |
    LL|       |    const B: u32 = 100;
    LL|      1|    let x = if countdown > 7 {
@@ -25,7 +25,7 @@
    LL|      1|    if true {
    LL|      1|        countdown = 10;
    LL|      1|    }
-                   ^0
+                  ^0
    LL|       |
    LL|      1|    if countdown > 7 {
    LL|      1|        countdown -= 4;
@@ -44,7 +44,7 @@
    LL|      1|        if true {
    LL|      1|            countdown = 10;
    LL|      1|        }
-                       ^0
+                      ^0
    LL|       |
    LL|      1|        if countdown > 7 {
    LL|      1|            countdown -= 4;
@@ -64,7 +64,7 @@
    LL|      1|    if true {
    LL|      1|        countdown = 1;
    LL|      1|    }
-                   ^0
+                  ^0
    LL|       |
    LL|      1|    let z = if countdown > 7 {
                       ^0

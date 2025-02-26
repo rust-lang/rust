@@ -2,15 +2,17 @@
 resolver = "2"
 members = [
   "compiler/rustc",
+  "src/build_helper",
   "src/etc/test-float-parse",
+  "src/rustc-std-workspace/rustc-std-workspace-core",
+  "src/rustc-std-workspace/rustc-std-workspace-alloc",
+  "src/rustc-std-workspace/rustc-std-workspace-std",
   "src/rustdoc-json-types",
-  "src/tools/build_helper",
   "src/tools/cargotest",
   "src/tools/clippy",
   "src/tools/clippy/clippy_dev",
   "src/tools/compiletest",
   "src/tools/run-make-support",
-  "src/tools/error_index_generator",
   "src/tools/linkchecker",
   "src/tools/lint-docs",
   "src/tools/miropt-test-tools",
@@ -42,8 +44,8 @@ members = [
   "src/tools/rustdoc-gui-test",
   "src/tools/opt-dist",
   "src/tools/coverage-dump",
-  "src/tools/rustc-perf-wrapper",
   "src/tools/wasm-component-ld",
+  "src/tools/features-status-dump",
 ]
 
 exclude = [

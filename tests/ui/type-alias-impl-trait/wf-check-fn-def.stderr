@@ -9,7 +9,7 @@ note: required by a bound in `mop`
    |
 LL |     fn mop<B: Bar>(bar: B) { bar.bar() }
    |               ^^^ required by this bound in `mop`
-help: consider restricting type parameter `B`
+help: consider restricting type parameter `B` with trait `Bar`
    |
 LL | type FooFn<B: Bar> = impl FnOnce(B);
    |             +++++

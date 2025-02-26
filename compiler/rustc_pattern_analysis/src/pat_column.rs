@@ -1,6 +1,6 @@
 use crate::constructor::{Constructor, SplitConstructorSet};
 use crate::pat::{DeconstructedPat, PatOrWild};
-use crate::{Captures, MatchArm, PatCx};
+use crate::{MatchArm, PatCx};
 
 /// A column of patterns in a match, where a column is the intuitive notion of "subpatterns that
 /// inspect the same subvalue/place".
@@ -41,7 +41,7 @@ impl<'p, Cx: PatCx> PatternColumn<'p, Cx> {
     pub fn head_ty(&self) -> Option<&Cx::Ty> {
         self.patterns.first().map(|pat| pat.ty())
     }
-    pub fn iter<'a>(&'a self) -> impl Iterator<Item = &'p DeconstructedPat<Cx>> + Captures<'a> {
+    pub fn iter(&self) -> impl Iterator<Item = &'p DeconstructedPat<Cx>> {
         self.patterns.iter().copied()
     }
 

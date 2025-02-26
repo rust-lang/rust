@@ -1,5 +1,5 @@
 //@ check-pass
-//@ aux-build:duplicate.rs
+//@ proc-macro: duplicate.rs
 
 extern crate duplicate;
 

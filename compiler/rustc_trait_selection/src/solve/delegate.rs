@@ -1,21 +1,21 @@
 use std::ops::Deref;
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
 use rustc_infer::infer::canonical::{
     Canonical, CanonicalExt as _, CanonicalQueryInput, CanonicalVarInfo, CanonicalVarValues,
 };
 use rustc_infer::infer::{InferCtxt, RegionVariableOrigin, TyCtxtInferExt};
+use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::solve::Goal;
-use rustc_infer::traits::{ObligationCause, Reveal};
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt as _};
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
-use rustc_type_ir::solve::{Certainty, NoSolution, SolverMode};
-use tracing::trace;
+use rustc_type_ir::TypingMode;
+use rustc_type_ir::solve::{Certainty, NoSolution};
 
-use crate::traits::specialization_graph;
+use crate::traits::{EvaluateConstErr, specialization_graph};
 
 #[repr(transparent)]
 pub struct SolverDelegate<'tcx>(InferCtxt<'tcx>);
@@ -43,11 +43,8 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         self.0.tcx
     }
 
-    type Span = Span;
-
     fn build_with_canonical<V>(
         interner: TyCtxt<'tcx>,
-        solver_mode: SolverMode,
         canonical: &CanonicalQueryInput<'tcx, V>,
     ) -> (Self, V, CanonicalVarValues<'tcx>)
     where
@@ -56,10 +53,6 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         let (infcx, value, vars) = interner
             .infer_ctxt()
             .with_next_trait_solver(true)
-            .intercrate(match solver_mode {
-                SolverMode::Normal => false,
-                SolverMode::Coherence => true,
-            })
             .build_with_canonical(DUMMY_SP, canonical);
         (SolverDelegate(infcx), value, vars)
     }
@@ -82,20 +75,19 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         self.0.leak_check(max_input_universe, None).map_err(|_| NoSolution)
     }
 
-    fn try_const_eval_resolve(
+    fn evaluate_const(
         &self,
         param_env: ty::ParamEnv<'tcx>,
-        unevaluated: ty::UnevaluatedConst<'tcx>,
+        uv: ty::UnevaluatedConst<'tcx>,
     ) -> Option<ty::Const<'tcx>> {
-        use rustc_middle::mir::interpret::ErrorHandled;
-        match self.const_eval_resolve(param_env, unevaluated, DUMMY_SP) {
-            Ok(Ok(val)) => Some(ty::Const::new_value(
-                self.tcx,
-                val,
-                self.tcx.type_of(unevaluated.def).instantiate(self.tcx, unevaluated.args),
-            )),
-            Ok(Err(_)) | Err(ErrorHandled::TooGeneric(_)) => None,
-            Err(ErrorHandled::Reported(e, _)) => Some(ty::Const::new_error(self.tcx, e.into())),
+        let ct = ty::Const::new_unevaluated(self.tcx, uv);
+
+        match crate::traits::try_evaluate_const(&self.0, ct, param_env) {
+            Ok(ct) => Some(ct),
+            Err(EvaluateConstErr::EvaluationFailure(e)) => Some(ty::Const::new_error(self.tcx, e)),
+            Err(
+                EvaluateConstErr::InvalidConstParamTy(_) | EvaluateConstErr::HasGenericsOrInfers,
+            ) => None,
         }
     }
 
@@ -104,9 +96,10 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         param_env: ty::ParamEnv<'tcx>,
         arg: ty::GenericArg<'tcx>,
     ) -> Option<Vec<Goal<'tcx, ty::Predicate<'tcx>>>> {
-        crate::traits::wf::unnormalized_obligations(&self.0, param_env, arg).map(|obligations| {
-            obligations.into_iter().map(|obligation| obligation.into()).collect()
-        })
+        crate::traits::wf::unnormalized_obligations(&self.0, param_env, arg, DUMMY_SP, CRATE_DEF_ID)
+            .map(|obligations| {
+                obligations.into_iter().map(|obligation| obligation.into()).collect()
+            })
     }
 
     fn clone_opaque_types_for_query_response(&self) -> Vec<(ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)> {
@@ -128,8 +121,6 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 region_constraints,
             )
         });
-
-        assert_eq!(region_constraints.member_constraints, vec![]);
 
         let mut seen = FxHashSet::default();
         region_constraints
@@ -154,9 +145,10 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
     fn instantiate_canonical_var_with_infer(
         &self,
         cv_info: CanonicalVarInfo<'tcx>,
+        span: Span,
         universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
     ) -> ty::GenericArg<'tcx> {
-        self.0.instantiate_canonical_var(DUMMY_SP, cv_info, universe_map)
+        self.0.instantiate_canonical_var(span, cv_info, universe_map)
     }
 
     fn insert_hidden_type(
@@ -182,11 +174,13 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         self.0.add_item_bounds_for_hidden_type(def_id, args, param_env, hidden_ty, goals);
     }
 
-    fn inject_new_hidden_type_unchecked(&self, key: ty::OpaqueTypeKey<'tcx>, hidden_ty: Ty<'tcx>) {
-        self.0.inject_new_hidden_type_unchecked(key, ty::OpaqueHiddenType {
-            ty: hidden_ty,
-            span: DUMMY_SP,
-        })
+    fn inject_new_hidden_type_unchecked(
+        &self,
+        key: ty::OpaqueTypeKey<'tcx>,
+        hidden_ty: Ty<'tcx>,
+        span: Span,
+    ) {
+        self.0.inject_new_hidden_type_unchecked(key, ty::OpaqueHiddenType { ty: hidden_ty, span })
     }
 
     fn reset_opaque_types(&self) {
@@ -195,13 +189,11 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
 
     fn fetch_eligible_assoc_item(
         &self,
-        param_env: ty::ParamEnv<'tcx>,
         goal_trait_ref: ty::TraitRef<'tcx>,
         trait_assoc_def_id: DefId,
         impl_def_id: DefId,
-    ) -> Result<Option<DefId>, NoSolution> {
-        let node_item = specialization_graph::assoc_def(self.tcx, impl_def_id, trait_assoc_def_id)
-            .map_err(|ErrorGuaranteed { .. }| NoSolution)?;
+    ) -> Result<Option<DefId>, ErrorGuaranteed> {
+        let node_item = specialization_graph::assoc_def(self.tcx, impl_def_id, trait_assoc_def_id)?;
 
         let eligible = if node_item.is_final() {
             // Non-specializable items are always projectable.
@@ -211,12 +203,14 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
             // and the obligation is monomorphic, otherwise passes such as
             // transmute checking and polymorphic MIR optimizations could
             // get a result which isn't correct for all monomorphizations.
-            if param_env.reveal() == Reveal::All {
-                let poly_trait_ref = self.resolve_vars_if_possible(goal_trait_ref);
-                !poly_trait_ref.still_further_specializable()
-            } else {
-                trace!(?node_item.item.def_id, "not eligible due to default");
-                false
+            match self.typing_mode() {
+                TypingMode::Coherence
+                | TypingMode::Analysis { .. }
+                | TypingMode::PostBorrowckAnalysis { .. } => false,
+                TypingMode::PostAnalysis => {
+                    let poly_trait_ref = self.resolve_vars_if_possible(goal_trait_ref);
+                    !poly_trait_ref.still_further_specializable()
+                }
             }
         };
 

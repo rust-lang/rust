@@ -27,7 +27,7 @@
   |   LL|      1|    if cond {
   |   LL|      1|        println!("{}", std::any::type_name::<T>());
   |   LL|      1|    }
-  |                   ^0
+  |                  ^0
   |   LL|      1|}
   ------------------
   | sort_groups::generic_fn::<()>:

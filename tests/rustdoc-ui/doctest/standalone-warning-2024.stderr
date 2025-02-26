@@ -1,34 +1,34 @@
 error: unknown attribute `standalone`
-  --> $DIR/standalone-warning-2024.rs:10:1
+  --> $DIR/standalone-warning-2024.rs:11:1
    |
-10 | / //! ```standalone
-11 | | //! bla
-12 | | //! ```
-13 | | //!
-14 | | //! ```standalone-crate
-15 | | //! bla
-16 | | //! ```
+11 | / //! ```standalone
+12 | | //! bla
+13 | | //! ```
+14 | | //!
+15 | | //! ```standalone-crate
+16 | | //! bla
+17 | | //! ```
    | |_______^
    |
    = help: use `standalone_crate` to compile this code block separately
    = help: this code block may be skipped during testing, because unknown attributes are treated as markers for code samples written in other programming languages, unless it is also explicitly marked as `rust`
 note: the lint level is defined here
-  --> $DIR/standalone-warning-2024.rs:8:9
+  --> $DIR/standalone-warning-2024.rs:9:9
    |
-8  | #![deny(warnings)]
+9  | #![deny(warnings)]
    |         ^^^^^^^^
    = note: `#[deny(rustdoc::invalid_codeblock_attributes)]` implied by `#[deny(warnings)]`
 
 error: unknown attribute `standalone-crate`
-  --> $DIR/standalone-warning-2024.rs:10:1
+  --> $DIR/standalone-warning-2024.rs:11:1
    |
-10 | / //! ```standalone
-11 | | //! bla
-12 | | //! ```
-13 | | //!
-14 | | //! ```standalone-crate
-15 | | //! bla
-16 | | //! ```
+11 | / //! ```standalone
+12 | | //! bla
+13 | | //! ```
+14 | | //!
+15 | | //! ```standalone-crate
+16 | | //! bla
+17 | | //! ```
    | |_______^
    |
    = help: use `standalone_crate` to compile this code block separately

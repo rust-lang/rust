@@ -108,6 +108,8 @@ fn main() {
     let d2s = DerefToDerefToString {};
     println!("{}", (**d2s).is_empty());
 
+    println!("{}", std::borrow::Cow::Borrowed("").is_empty());
+
     let y = One;
     if y.len() == 0 {
         // No error; `One` does not have `.is_empty()`.
@@ -225,4 +227,24 @@ fn binop_with_macros() {
     if has_is_empty.is_empty() {}
 
     (!has_is_empty.is_empty()).then(|| println!("This can happen."));
+}
+
+fn no_infinite_recursion() -> bool {
+    struct S;
+
+    impl Deref for S {
+        type Target = Self;
+        fn deref(&self) -> &Self::Target {
+            self
+        }
+    }
+
+    impl PartialEq<&'static str> for S {
+        fn eq(&self, _other: &&'static str) -> bool {
+            false
+        }
+    }
+
+    // Do not crash while checking if S implements `.is_empty()`
+    S == ""
 }

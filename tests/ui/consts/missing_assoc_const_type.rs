@@ -9,14 +9,13 @@ trait Range {
 
 struct TwoDigits;
 impl Range for TwoDigits {
-    const FIRST:  = 10;
-    //~^ ERROR: missing type for `const` item
+    const FIRST:  = 10; //~ ERROR missing type for `const` item
     const LAST: u8 = 99;
 }
 
 const fn digits(x: u8) -> usize {
     match x {
-        TwoDigits::FIRST..=TwoDigits::LAST => 0, //~ ERROR: could not evaluate constant pattern
+        TwoDigits::FIRST..=TwoDigits::LAST => 0, // ok, `const` error already emitted
         0..=9 | 100..=255 => panic!(),
     }
 }

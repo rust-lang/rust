@@ -1,0 +1,2 @@
+error: linking modifier `as-needed` is unstable, the `-Z unstable-options` flag must also be passed to use it
+

@@ -1,6 +1,6 @@
 //@ run-fail
 //@ error-pattern:attempt to divide by zero
-//@ ignore-emscripten no processes
+//@ needs-subprocess
 
 #[allow(unconditional_panic)]
 fn main() {

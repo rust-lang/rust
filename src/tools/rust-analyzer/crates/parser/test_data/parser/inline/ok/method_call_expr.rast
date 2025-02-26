@@ -101,6 +101,20 @@ SOURCE_FILE
               L_PAREN "("
               R_PAREN ")"
           SEMICOLON ";"
+        WHITESPACE "\n    "
+        CALL_EXPR
+          FIELD_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "x"
+            DOT "."
+            NAME_REF
+              INT_NUMBER "0"
+          ARG_LIST
+            L_PAREN "("
+            R_PAREN ")"
         WHITESPACE "\n"
         R_CURLY "}"
   WHITESPACE "\n"

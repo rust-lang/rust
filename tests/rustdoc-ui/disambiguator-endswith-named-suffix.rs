@@ -1,5 +1,5 @@
 //@ check-pass
-//@ normalize-stderr-test: "nightly|beta|1\.[0-9][0-9]\.[0-9]" -> "$$CHANNEL"
+//@ normalize-stderr: "nightly|beta|1\.[0-9][0-9]\.[0-9]" -> "$$CHANNEL"
 
 //! [struct@m!()]   //~ WARN: unmatched disambiguator `struct` and suffix `!()`
 //! [struct@m!{}]

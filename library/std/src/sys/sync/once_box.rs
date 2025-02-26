@@ -6,6 +6,7 @@
 #![allow(dead_code)] // Only used on some platforms.
 
 use crate::mem::replace;
+use crate::pin::Pin;
 use crate::ptr::null_mut;
 use crate::sync::atomic::AtomicPtr;
 use crate::sync::atomic::Ordering::{Acquire, Relaxed, Release};
@@ -27,46 +28,46 @@ impl<T> OnceBox<T> {
     /// pointer load in this function can be performed with relaxed ordering,
     /// potentially allowing the optimizer to turn code like this:
     /// ```rust, ignore
-    /// once_box.get_or_init(|| Box::new(42));
+    /// once_box.get_or_init(|| Box::pin(42));
     /// unsafe { once_box.get_unchecked() }
     /// ```
     /// into
     /// ```rust, ignore
-    /// once_box.get_or_init(|| Box::new(42))
+    /// once_box.get_or_init(|| Box::pin(42))
     /// ```
     ///
     /// # Safety
     /// This causes undefined behavior if the assumption above is violated.
     #[inline]
-    pub unsafe fn get_unchecked(&self) -> &T {
-        unsafe { &*self.ptr.load(Relaxed) }
+    pub unsafe fn get_unchecked(&self) -> Pin<&T> {
+        unsafe { Pin::new_unchecked(&*self.ptr.load(Relaxed)) }
     }
 
     #[inline]
-    pub fn get_or_init(&self, f: impl FnOnce() -> Box<T>) -> &T {
+    pub fn get_or_init(&self, f: impl FnOnce() -> Pin<Box<T>>) -> Pin<&T> {
         let ptr = self.ptr.load(Acquire);
         match unsafe { ptr.as_ref() } {
-            Some(val) => val,
+            Some(val) => unsafe { Pin::new_unchecked(val) },
             None => self.initialize(f),
         }
     }
 
     #[inline]
-    pub fn take(&mut self) -> Option<Box<T>> {
+    pub fn take(&mut self) -> Option<Pin<Box<T>>> {
         let ptr = replace(self.ptr.get_mut(), null_mut());
-        if !ptr.is_null() { Some(unsafe { Box::from_raw(ptr) }) } else { None }
+        if !ptr.is_null() { Some(unsafe { Pin::new_unchecked(Box::from_raw(ptr)) }) } else { None }
     }
 
     #[cold]
-    fn initialize(&self, f: impl FnOnce() -> Box<T>) -> &T {
-        let new_ptr = Box::into_raw(f());
+    fn initialize(&self, f: impl FnOnce() -> Pin<Box<T>>) -> Pin<&T> {
+        let new_ptr = Box::into_raw(unsafe { Pin::into_inner_unchecked(f()) });
         match self.ptr.compare_exchange(null_mut(), new_ptr, Release, Acquire) {
-            Ok(_) => unsafe { &*new_ptr },
+            Ok(_) => unsafe { Pin::new_unchecked(&*new_ptr) },
             Err(ptr) => {
                 // Lost the race to another thread.
                 // Drop the value we created, and use the one from the other thread instead.
                 drop(unsafe { Box::from_raw(new_ptr) });
-                unsafe { &*ptr }
+                unsafe { Pin::new_unchecked(&*ptr) }
             }
         }
     }

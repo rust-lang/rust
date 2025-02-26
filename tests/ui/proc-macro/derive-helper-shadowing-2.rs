@@ -2,7 +2,7 @@
 // then make sure that it's usable without ambiguities.
 
 //@ check-pass
-//@ aux-build:derive-helper-shadowing-2.rs
+//@ proc-macro: derive-helper-shadowing-2.rs
 
 #[macro_use]
 extern crate derive_helper_shadowing_2;

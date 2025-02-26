@@ -13,6 +13,25 @@ for a list of Miri maintainers.
 
 [Rust Zulip]: https://rust-lang.zulipchat.com
 
+### Pull review process
+
+When you get a review, please take care of the requested changes in new commits. Do not amend
+existing commits. Generally avoid force-pushing. The only time you should force push is when there
+is a conflict with the master branch (in that case you should rebase across master, not merge), and
+all the way at the end of the review process when the reviewer tells you that the PR is done and you
+should squash the commits. For the latter case, use `git rebase --keep-base ...` to squash without
+changing the base commit your PR branches off of. Use your own judgment and the reviewer's guidance
+to decide whether the PR should be squashed into a single commit or multiple logically separate
+commits. (All this is to work around the fact that Github is quite bad at dealing with force pushes
+and does not support `git range-diff`. Maybe one day Github will be good at git and then life can
+become easier.)
+
+Most PRs bounce back and forth between the reviewer and the author several times, so it is good to
+keep track of who is expected to take the next step. We are using the `S-waiting-for-review` and
+`S-waiting-for-author` labels for that. If a reviewer asked you to do some changes and you think
+they are all taken care of, post a comment saying `@rustbot ready` to mark a PR as ready for the
+next round of review.
+
 ### Larger-scale contributions
 
 If you are thinking about making a larger-scale contribution -- in particular anything that needs
@@ -44,14 +63,6 @@ process for such contributions:
 
 This process is largely informal, and its primary goal is to more clearly communicate expectations.
 Please get in touch with us if you have any questions!
-
-### Managing the review state
-
-Most PRs bounce back and forth between the reviewer and the author several times, so it is good to
-keep track of who is expected to take the next step. We are using the `S-waiting-for-review` and
-`S-waiting-for-author` labels for that. If a reviewer asked you to do some changes and you think
-they are all taken care of, post a comment saying `@rustbot ready` to mark a PR as ready for the
-next round of review.
 
 ## Preparing the build environment
 
@@ -201,6 +212,15 @@ Miri comes with a few benchmarks; you can run `./miri bench` to run them with th
 Miri. Note: this will run `./miri install` as a side-effect. Also requires `hyperfine` to be
 installed (`cargo install hyperfine`).
 
+To compare the benchmark results with a baseline, do the following:
+- Before applying your changes, run `./miri bench --save-baseline=baseline.json`.
+- Then do your changes.
+- Then run `./miri bench --load-baseline=baseline.json`; the results will include
+  a comparison with the baseline.
+
+You can run only some of the benchmarks by listing them, e.g. `./miri bench mse`.
+The names refer to the folders in `bench-cargo-miri`.
+
 ## Configuring `rust-analyzer`
 
 To configure `rust-analyzer` and the IDE for working on Miri, copy one of the provided
@@ -270,7 +290,7 @@ We use the [`josh` proxy](https://github.com/josh-project/josh) to transmit chan
 rustc and Miri repositories. You can install it as follows:
 
 ```sh
-RUSTFLAGS="--cap-lints=warn" cargo +stable install josh-proxy --git https://github.com/josh-project/josh --tag r23.12.04
+cargo +stable install josh-proxy --git https://github.com/josh-project/josh --tag r24.10.04
 ```
 
 Josh will automatically be started and stopped by `./miri`.

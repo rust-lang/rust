@@ -201,7 +201,7 @@ impl<'a> DeclValidator<'a> {
 
             // Don't run the lint on extern "[not Rust]" fn items with the
             // #[no_mangle] attribute.
-            let no_mangle = data.attrs.by_key(&sym::no_mangle).exists();
+            let no_mangle = self.db.attrs(func.into()).by_key(&sym::no_mangle).exists();
             if no_mangle && data.abi.as_ref().is_some_and(|abi| *abi != sym::Rust) {
                 cov_mark::hit!(extern_func_no_mangle_ignored);
             } else {
@@ -231,8 +231,7 @@ impl<'a> DeclValidator<'a> {
             .filter_map(|(pat_id, pat)| match pat {
                 Pat::Bind { id, .. } => {
                     let bind_name = &body.bindings[*id].name;
-                    let mut suggested_text =
-                        to_lower_snake_case(&bind_name.unescaped().display_no_db().to_smolstr())?;
+                    let mut suggested_text = to_lower_snake_case(bind_name.as_str())?;
                     if is_raw_identifier(&suggested_text, edition) {
                         suggested_text.insert_str(0, "r#");
                     }
@@ -309,7 +308,7 @@ impl<'a> DeclValidator<'a> {
     /// Check incorrect names for struct fields.
     fn validate_struct_fields(&mut self, struct_id: StructId) {
         let data = self.db.struct_data(struct_id);
-        let VariantData::Record(fields) = data.variant_data.as_ref() else {
+        let VariantData::Record { fields, .. } = data.variant_data.as_ref() else {
             return;
         };
         let edition = self.edition(struct_id);
@@ -469,7 +468,7 @@ impl<'a> DeclValidator<'a> {
     /// Check incorrect names for fields of enum variant.
     fn validate_enum_variant_fields(&mut self, variant_id: EnumVariantId) {
         let variant_data = self.db.enum_variant_data(variant_id);
-        let VariantData::Record(fields) = variant_data.variant_data.as_ref() else {
+        let VariantData::Record { fields, .. } = variant_data.variant_data.as_ref() else {
             return;
         };
         let edition = self.edition(variant_id);

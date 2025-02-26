@@ -13,8 +13,9 @@ LL |     fn foo(x: u16);
               found signature `fn(i16)`
 help: change the parameter type to match the trait
    |
-LL |     fn foo(x: u16) { }
-   |               ~~~
+LL -     fn foo(x: i16) { }
+LL +     fn foo(x: u16) { }
+   |
 
 error[E0053]: method `bar` has an incompatible type for trait
   --> $DIR/E0053.rs:11:12
@@ -31,8 +32,9 @@ LL |     fn bar(&self);
               found signature `fn(&mut Bar)`
 help: change the self-receiver type to match the trait
    |
-LL |     fn bar(&self) { }
-   |            ~~~~~
+LL -     fn bar(&mut self) { }
+LL +     fn bar(&self) { }
+   |
 
 error: aborting due to 2 previous errors
 

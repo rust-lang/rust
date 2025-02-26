@@ -1,6 +1,6 @@
-//@ known-bug: #110395
+//@ check-pass
 
-#![feature(const_trait_impl)]
+#![feature(const_trait_impl, const_ops)]
 
 use std::marker::PhantomData;
 
@@ -26,5 +26,6 @@ const fn twice<T: std::ops::Add>(arg: S<T>) -> S<T> {
 }
 
 fn main() {
+    const _: S<i32> = twice(S(PhantomData));
     let _ = twice(S(PhantomData::<i32>));
 }

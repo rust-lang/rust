@@ -8,8 +8,9 @@ LL |     let _: f32 = 16_777_217.0;
    = help: to override `-D warnings` add `#[allow(clippy::lossy_float_literal)]`
 help: consider changing the type or replacing it with
    |
-LL |     let _: f32 = 16_777_216.0;
-   |                  ~~~~~~~~~~~~
+LL -     let _: f32 = 16_777_217.0;
+LL +     let _: f32 = 16_777_216.0;
+   |
 
 error: literal cannot be represented as the underlying type without loss of precision
   --> tests/ui/lossy_float_literal.rs:15:18
@@ -19,8 +20,9 @@ LL |     let _: f32 = 16_777_219.0;
    |
 help: consider changing the type or replacing it with
    |
-LL |     let _: f32 = 16_777_220.0;
-   |                  ~~~~~~~~~~~~
+LL -     let _: f32 = 16_777_219.0;
+LL +     let _: f32 = 16_777_220.0;
+   |
 
 error: literal cannot be represented as the underlying type without loss of precision
   --> tests/ui/lossy_float_literal.rs:16:18
@@ -30,8 +32,9 @@ LL |     let _: f32 = 16_777_219.;
    |
 help: consider changing the type or replacing it with
    |
-LL |     let _: f32 = 16_777_220.0;
-   |                  ~~~~~~~~~~~~
+LL -     let _: f32 = 16_777_219.;
+LL +     let _: f32 = 16_777_220.0;
+   |
 
 error: literal cannot be represented as the underlying type without loss of precision
   --> tests/ui/lossy_float_literal.rs:17:18
@@ -41,8 +44,9 @@ LL |     let _: f32 = 16_777_219.000;
    |
 help: consider changing the type or replacing it with
    |
-LL |     let _: f32 = 16_777_220.0;
-   |                  ~~~~~~~~~~~~
+LL -     let _: f32 = 16_777_219.000;
+LL +     let _: f32 = 16_777_220.0;
+   |
 
 error: literal cannot be represented as the underlying type without loss of precision
   --> tests/ui/lossy_float_literal.rs:18:13
@@ -52,8 +56,9 @@ LL |     let _ = 16_777_219f32;
    |
 help: consider changing the type or replacing it with
    |
-LL |     let _ = 16_777_220_f32;
-   |             ~~~~~~~~~~~~~~
+LL -     let _ = 16_777_219f32;
+LL +     let _ = 16_777_220_f32;
+   |
 
 error: literal cannot be represented as the underlying type without loss of precision
   --> tests/ui/lossy_float_literal.rs:19:19
@@ -63,8 +68,9 @@ LL |     let _: f32 = -16_777_219.0;
    |
 help: consider changing the type or replacing it with
    |
-LL |     let _: f32 = -16_777_220.0;
-   |                   ~~~~~~~~~~~~
+LL -     let _: f32 = -16_777_219.0;
+LL +     let _: f32 = -16_777_220.0;
+   |
 
 error: literal cannot be represented as the underlying type without loss of precision
   --> tests/ui/lossy_float_literal.rs:21:18
@@ -74,8 +80,9 @@ LL |     let _: f64 = 9_007_199_254_740_993.0;
    |
 help: consider changing the type or replacing it with
    |
-LL |     let _: f64 = 9_007_199_254_740_992.0;
-   |                  ~~~~~~~~~~~~~~~~~~~~~~~
+LL -     let _: f64 = 9_007_199_254_740_993.0;
+LL +     let _: f64 = 9_007_199_254_740_992.0;
+   |
 
 error: literal cannot be represented as the underlying type without loss of precision
   --> tests/ui/lossy_float_literal.rs:22:18
@@ -85,8 +92,9 @@ LL |     let _: f64 = 9_007_199_254_740_993.;
    |
 help: consider changing the type or replacing it with
    |
-LL |     let _: f64 = 9_007_199_254_740_992.0;
-   |                  ~~~~~~~~~~~~~~~~~~~~~~~
+LL -     let _: f64 = 9_007_199_254_740_993.;
+LL +     let _: f64 = 9_007_199_254_740_992.0;
+   |
 
 error: literal cannot be represented as the underlying type without loss of precision
   --> tests/ui/lossy_float_literal.rs:23:18
@@ -96,8 +104,9 @@ LL |     let _: f64 = 9_007_199_254_740_993.00;
    |
 help: consider changing the type or replacing it with
    |
-LL |     let _: f64 = 9_007_199_254_740_992.0;
-   |                  ~~~~~~~~~~~~~~~~~~~~~~~
+LL -     let _: f64 = 9_007_199_254_740_993.00;
+LL +     let _: f64 = 9_007_199_254_740_992.0;
+   |
 
 error: literal cannot be represented as the underlying type without loss of precision
   --> tests/ui/lossy_float_literal.rs:24:13
@@ -107,8 +116,9 @@ LL |     let _ = 9_007_199_254_740_993f64;
    |
 help: consider changing the type or replacing it with
    |
-LL |     let _ = 9_007_199_254_740_992_f64;
-   |             ~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     let _ = 9_007_199_254_740_993f64;
+LL +     let _ = 9_007_199_254_740_992_f64;
+   |
 
 error: literal cannot be represented as the underlying type without loss of precision
   --> tests/ui/lossy_float_literal.rs:25:19
@@ -118,8 +128,9 @@ LL |     let _: f64 = -9_007_199_254_740_993.0;
    |
 help: consider changing the type or replacing it with
    |
-LL |     let _: f64 = -9_007_199_254_740_992.0;
-   |                   ~~~~~~~~~~~~~~~~~~~~~~~
+LL -     let _: f64 = -9_007_199_254_740_993.0;
+LL +     let _: f64 = -9_007_199_254_740_992.0;
+   |
 
 error: aborting due to 11 previous errors
 

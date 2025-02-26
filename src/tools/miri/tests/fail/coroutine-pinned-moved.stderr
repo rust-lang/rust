@@ -23,7 +23,7 @@ note: inside `<CoroutineIteratorAdapter<{static coroutine@tests/fail/coroutine-p
    |
 LL |         match me.resume(()) {
    |               ^^^^^^^^^^^^^
-   = note: inside `<std::boxed::Box<CoroutineIteratorAdapter<{static coroutine@tests/fail/coroutine-pinned-moved.rs:LL:CC}>> as std::iter::Iterator>::next` at RUSTLIB/alloc/src/boxed.rs:LL:CC
+   = note: inside `std::boxed::iter::<impl std::iter::Iterator for std::boxed::Box<CoroutineIteratorAdapter<{static coroutine@tests/fail/coroutine-pinned-moved.rs:LL:CC}>>>::next` at RUSTLIB/alloc/src/boxed/iter.rs:LL:CC
 note: inside `main`
   --> tests/fail/coroutine-pinned-moved.rs:LL:CC
    |

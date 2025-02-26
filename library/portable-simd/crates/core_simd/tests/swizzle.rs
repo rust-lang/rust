@@ -50,6 +50,24 @@ fn rotate() {
 
 #[test]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+fn shift() {
+    let a = Simd::from_array([1, 2, 3, 4]);
+    assert_eq!(a.shift_elements_left::<0>(0).to_array(), [1, 2, 3, 4]);
+    assert_eq!(a.shift_elements_left::<1>(0).to_array(), [2, 3, 4, 0]);
+    assert_eq!(a.shift_elements_left::<2>(9).to_array(), [3, 4, 9, 9]);
+    assert_eq!(a.shift_elements_left::<3>(8).to_array(), [4, 8, 8, 8]);
+    assert_eq!(a.shift_elements_left::<4>(7).to_array(), [7, 7, 7, 7]);
+    assert_eq!(a.shift_elements_left::<5>(6).to_array(), [6, 6, 6, 6]);
+    assert_eq!(a.shift_elements_right::<0>(0).to_array(), [1, 2, 3, 4]);
+    assert_eq!(a.shift_elements_right::<1>(0).to_array(), [0, 1, 2, 3]);
+    assert_eq!(a.shift_elements_right::<2>(-1).to_array(), [-1, -1, 1, 2]);
+    assert_eq!(a.shift_elements_right::<3>(-2).to_array(), [-2, -2, -2, 1]);
+    assert_eq!(a.shift_elements_right::<4>(-3).to_array(), [-3, -3, -3, -3]);
+    assert_eq!(a.shift_elements_right::<5>(-4).to_array(), [-4, -4, -4, -4]);
+}
+
+#[test]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn interleave() {
     let a = Simd::from_array([0, 1, 2, 3, 4, 5, 6, 7]);
     let b = Simd::from_array([8, 9, 10, 11, 12, 13, 14, 15]);

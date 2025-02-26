@@ -66,8 +66,9 @@ LL | |     }
    |
 help: consider adding an explicit lifetime bound
    |
-LL | fn qux<'b, 'a, G: 'a + 'b, T>(g: G, dest: &'b mut T) -> impl FnOnce() + 'b
-   |        +++           ++++                  ++                           ~~
+LL - fn qux<'a, G: 'a, T>(g: G, dest: &mut T) -> impl FnOnce() + '_
+LL + fn qux<'b, 'a, G: 'a + 'b, T>(g: G, dest: &'b mut T) -> impl FnOnce() + 'b
+   |
 
 error[E0311]: the parameter type `G` may not live long enough
   --> $DIR/missing-lifetimes-in-signature.rs:61:9
@@ -82,8 +83,9 @@ LL | |         }
    |
 help: consider adding an explicit lifetime bound
    |
-LL |     fn qux<'c, 'b, G: Get<T> + 'b + 'c, T>(g: G, dest: &'c mut T) -> impl FnOnce() + 'c {
-   |            +++                    ++++                  ++                           ~~
+LL -     fn qux<'b, G: Get<T> + 'b, T>(g: G, dest: &mut T) -> impl FnOnce() + '_ {
+LL +     fn qux<'c, 'b, G: Get<T> + 'b + 'c, T>(g: G, dest: &'c mut T) -> impl FnOnce() + 'c {
+   |
 
 error[E0311]: the parameter type `G` may not live long enough
   --> $DIR/missing-lifetimes-in-signature.rs:73:5
@@ -100,8 +102,9 @@ LL | |     }
    |
 help: consider adding an explicit lifetime bound
    |
-LL | fn bat<'b, 'a, G: 'a + 'b, T>(g: G, dest: &'b mut T) -> impl FnOnce() + 'b + 'a
-   |        +++           ++++                  ++                           ~~
+LL - fn bat<'a, G: 'a, T>(g: G, dest: &mut T) -> impl FnOnce() + '_ + 'a
+LL + fn bat<'b, 'a, G: 'a + 'b, T>(g: G, dest: &'b mut T) -> impl FnOnce() + 'b + 'a
+   |
 
 error[E0621]: explicit lifetime required in the type of `dest`
   --> $DIR/missing-lifetimes-in-signature.rs:73:5

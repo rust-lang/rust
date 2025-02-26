@@ -21,8 +21,8 @@ fn is_method(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: Symbol) -> bool
         ExprKind::Path(QPath::TypeRelative(_, mname)) => mname.ident.name == method_name,
         ExprKind::Path(QPath::Resolved(_, segments)) => segments.segments.last().unwrap().ident.name == method_name,
         ExprKind::MethodCall(segment, _, _, _) => segment.ident.name == method_name,
-        ExprKind::Closure(&Closure { body, .. }) => {
-            let body = cx.tcx.hir().body(body);
+        ExprKind::Closure(Closure { body, .. }) => {
+            let body = cx.tcx.hir_body(*body);
             let closure_expr = peel_blocks(body.value);
             match closure_expr.kind {
                 ExprKind::MethodCall(PathSegment { ident, .. }, receiver, ..) => {
@@ -234,12 +234,12 @@ impl<'tcx> OffendingFilterExpr<'tcx> {
             // the latter only calls `effect` once
             let side_effect_expr_span = receiver.can_have_side_effects().then_some(receiver.span);
 
-            if cx.tcx.is_diagnostic_item(sym::Option, recv_ty.did()) && path.ident.name == sym!(is_some) {
+            if cx.tcx.is_diagnostic_item(sym::Option, recv_ty.did()) && path.ident.name.as_str() == "is_some" {
                 Some(Self::IsSome {
                     receiver,
                     side_effect_expr_span,
                 })
-            } else if cx.tcx.is_diagnostic_item(sym::Result, recv_ty.did()) && path.ident.name == sym!(is_ok) {
+            } else if cx.tcx.is_diagnostic_item(sym::Result, recv_ty.did()) && path.ident.name.as_str() == "is_ok" {
                 Some(Self::IsOk {
                     receiver,
                     side_effect_expr_span,
@@ -404,7 +404,7 @@ fn is_find_or_filter<'a>(
     if is_trait_method(cx, map_recv, sym::Iterator)
         // filter(|x| ...is_some())...
         && let ExprKind::Closure(&Closure { body: filter_body_id, .. }) = filter_arg.kind
-        && let filter_body = cx.tcx.hir().body(filter_body_id)
+        && let filter_body = cx.tcx.hir_body(filter_body_id)
         && let [filter_param] = filter_body.params
         // optional ref pattern: `filter(|&x| ..)`
         && let (filter_pat, is_filter_param_ref) = if let PatKind::Ref(ref_pat, _) = filter_param.pat.kind {
@@ -417,7 +417,7 @@ fn is_find_or_filter<'a>(
         && let Some(mut offending_expr) = OffendingFilterExpr::hir(cx, filter_body.value, filter_param_id)
 
         && let ExprKind::Closure(&Closure { body: map_body_id, .. }) = map_arg.kind
-        && let map_body = cx.tcx.hir().body(map_body_id)
+        && let map_body = cx.tcx.hir_body(map_body_id)
         && let [map_param] = map_body.params
         && let PatKind::Binding(_, map_param_id, map_param_ident, None) = map_param.pat.kind
 

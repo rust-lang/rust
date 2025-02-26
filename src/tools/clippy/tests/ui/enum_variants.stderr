@@ -13,7 +13,6 @@ error: all variants have the same prefix: `c`
 LL | / enum Foo {
 LL | |
 LL | |     cFoo,
-LL | |
 ...  |
 LL | |     cBaz,
 LL | | }
@@ -45,9 +44,7 @@ error: all variants have the same prefix: `Food`
 LL | / enum Food {
 LL | |
 LL | |     FoodGood,
-LL | |
 ...  |
-LL | |
 LL | | }
    | |_^
    |

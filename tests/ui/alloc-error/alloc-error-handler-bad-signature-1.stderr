@@ -7,8 +7,7 @@ LL | // fn oom(
 LL | ||     info: &Layout,
 LL | || ) -> ()
    | ||_______- arguments to this function are incorrect
-LL | |  {
-LL | |      loop {}
+...  |
 LL | |  }
    | |__^ expected `&Layout`, found `Layout`
    |
@@ -30,8 +29,7 @@ LL | // fn oom(
 LL | ||     info: &Layout,
 LL | || ) -> ()
    | ||_______^ expected `!`, found `()`
-LL | |  {
-LL | |      loop {}
+...  |
 LL | |  }
    | |__- expected `!` because of return type
    |

@@ -37,16 +37,16 @@ mod eh_unwinding {
 #[cfg(not(test))]
 mod c_compat {
     use crate::os::xous::ffi::exit;
-    extern "C" {
+    unsafe extern "C" {
         fn main() -> u32;
     }
 
-    #[no_mangle]
+    #[unsafe(no_mangle)]
     pub extern "C" fn abort() {
         exit(1);
     }
 
-    #[no_mangle]
+    #[unsafe(no_mangle)]
     pub extern "C" fn _start(eh_frame: usize, params_address: usize) {
         #[cfg(feature = "panic_unwind")]
         {
@@ -67,7 +67,7 @@ mod c_compat {
 
     // This function is needed by the panic runtime. The symbol is named in
     // pre-link args for the target specification, so keep that in sync.
-    #[no_mangle]
+    #[unsafe(no_mangle)]
     // NB. used by both libunwind and libpanic_abort
     pub extern "C" fn __rust_abort() -> ! {
         exit(101);

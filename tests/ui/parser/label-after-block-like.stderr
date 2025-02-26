@@ -23,7 +23,7 @@ note: the `if` expression is missing a block after this condition
    |
 LL |     if let () = () 'a {}
    |        ^^^^^^^^^^^
-help: try placing this code inside a block
+help: you might have meant to write this as part of a block
    |
 LL |     if let () = () { 'a {} }
    |                    +       +
@@ -53,7 +53,7 @@ note: the `if` expression is missing a block after this condition
    |
 LL |     if true 'a {}
    |        ^^^^
-help: try placing this code inside a block
+help: you might have meant to write this as part of a block
    |
 LL |     if true { 'a {} }
    |             +       +
@@ -80,7 +80,7 @@ LL |     loop 'a {}
    |     |
    |     while parsing this `loop` expression
    |
-help: try placing this code inside a block
+help: you might have meant to write this as part of a block
    |
 LL |     loop { 'a {} }
    |          +       +
@@ -108,7 +108,7 @@ LL |     while true 'a {}
    |     |     this `while` condition successfully parsed
    |     while parsing the body of this `while` expression
    |
-help: try placing this code inside a block
+help: you might have meant to write this as part of a block
    |
 LL |     while true { 'a {} }
    |                +       +
@@ -136,7 +136,7 @@ LL |     while let () = () 'a {}
    |     |     this `while` condition successfully parsed
    |     while parsing the body of this `while` expression
    |
-help: try placing this code inside a block
+help: you might have meant to write this as part of a block
    |
 LL |     while let () = () { 'a {} }
    |                       +       +
@@ -161,7 +161,7 @@ error: expected `{`, found `'a`
 LL |     for _ in 0..0 'a {}
    |                   ^^ expected `{`
    |
-help: try placing this code inside a block
+help: you might have meant to write this as part of a block
    |
 LL |     for _ in 0..0 { 'a {} }
    |                   +       +
@@ -188,7 +188,7 @@ LL |     unsafe 'a {}
    |     |
    |     while parsing this `unsafe` expression
    |
-help: try placing this code inside a block
+help: you might have meant to write this as part of a block
    |
 LL |     unsafe { 'a {} }
    |            +       +

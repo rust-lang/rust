@@ -13,15 +13,35 @@ use crate::{
 
 macro_rules! define_symbols {
     (@WITH_NAME: $($alias:ident = $value:literal,)* @PLAIN: $($name:ident,)*) => {
-        // Ideally we would be emitting `const` here, but then we no longer have stable addresses
-        // which is what we are relying on for equality! In the future if consts can refer to
-        // statics we should swap these for `const`s and have the string literal being pointed
-        // to be statics to refer to such that their address is stable.
+        // We define symbols as both `const`s and `static`s because some const code requires const symbols,
+        // but code from before the transition relies on the lifetime of the predefined symbols and making them
+        // `const`s make it error (because now they're temporaries). In the future we probably should only
+        // use consts.
+
+        /// Predefined symbols as `const`s (instead of the default `static`s).
+        pub mod consts {
+            use super::{Symbol, TaggedArcPtr};
+
+            // The strings should be in `static`s so that symbol equality holds.
+            $(
+                pub const $name: Symbol = {
+                    static SYMBOL_STR: &str = stringify!($name);
+                    Symbol { repr: TaggedArcPtr::non_arc(&SYMBOL_STR) }
+                };
+            )*
+            $(
+                pub const $alias: Symbol = {
+                    static SYMBOL_STR: &str = $value;
+                    Symbol { repr: TaggedArcPtr::non_arc(&SYMBOL_STR) }
+                };
+            )*
+        }
+
         $(
-            pub static $name: Symbol = Symbol { repr: TaggedArcPtr::non_arc(&stringify!($name)) };
+            pub static $name: Symbol = consts::$name;
         )*
         $(
-            pub static $alias: Symbol = Symbol { repr: TaggedArcPtr::non_arc(&$value) };
+            pub static $alias: Symbol = consts::$alias;
         )*
 
 
@@ -80,6 +100,7 @@ define_symbols! {
     self_ = "self",
     Self_ = "Self",
     tick_static = "'static",
+    tick_underscore = "'_",
     dollar_crate = "$crate",
     MISSING_NAME = "[missing name]",
     fn_ = "fn",
@@ -99,7 +120,6 @@ define_symbols! {
     cdecl_dash_unwind = "cdecl-unwind",
     fastcall_dash_unwind = "fastcall-unwind",
     msp430_dash_interrupt = "msp430-interrupt",
-    platform_dash_intrinsic = "platform-intrinsic",
     ptx_dash_kernel = "ptx-kernel",
     riscv_dash_interrupt_dash_m = "riscv-interrupt-m",
     riscv_dash_interrupt_dash_s = "riscv-interrupt-s",
@@ -150,6 +170,9 @@ define_symbols! {
     C,
     call_mut,
     call_once,
+    async_call_once,
+    async_call_mut,
+    async_call,
     call,
     cdecl,
     Center,
@@ -171,6 +194,7 @@ define_symbols! {
     const_param_ty,
     Context,
     Continue,
+    convert,
     copy,
     Copy,
     core_panic,
@@ -221,6 +245,9 @@ define_symbols! {
     fn_mut,
     fn_once_output,
     fn_once,
+    async_fn_once,
+    async_fn_mut,
+    async_fn,
     fn_ptr_addr,
     fn_ptr_trait,
     format_alignment,
@@ -233,6 +260,10 @@ define_symbols! {
     format_unsafe_arg,
     format,
     freeze,
+    from,
+    From,
+    FromStr,
+    from_str,
     from_output,
     from_residual,
     from_usize,
@@ -264,6 +295,8 @@ define_symbols! {
     index_mut,
     index,
     Index,
+    into,
+    Into,
     into_future,
     into_iter,
     IntoFuture,
@@ -301,6 +334,7 @@ define_symbols! {
     module_path,
     mul_assign,
     mul,
+    naked_asm,
     ne,
     neg,
     Neg,
@@ -333,7 +367,10 @@ define_symbols! {
     option,
     Option,
     Ord,
+    Ordering,
     Output,
+    CallRefFuture,
+    CallOnceFuture,
     owned_box,
     packed,
     panic_2015,
@@ -347,11 +384,14 @@ define_symbols! {
     panic_location,
     panic_misaligned_pointer_dereference,
     panic_nounwind,
+    panic_null_pointer_dereference,
     panic,
     Param,
+    parse,
     partial_ord,
     PartialEq,
     PartialOrd,
+    CoercePointee,
     path,
     Pending,
     phantom_data,
@@ -376,6 +416,7 @@ define_symbols! {
     RangeToInclusive,
     Ready,
     receiver,
+    receiver_target,
     recursion_limit,
     register_attr,
     register_tool,
@@ -392,16 +433,23 @@ define_symbols! {
     rust_2024,
     rust_analyzer,
     Rust,
+    rustc_allocator_zeroed,
+    rustc_allocator,
     rustc_allow_incoherent_impl,
     rustc_builtin_macro,
     rustc_coherence_is_core,
     rustc_const_panic_str,
+    rustc_deallocator,
     rustc_deprecated_safe_2024,
     rustc_has_incoherent_inherent_impls,
+    rustc_intrinsic_must_be_overridden,
+    rustc_intrinsic,
     rustc_layout_scalar_valid_range_end,
     rustc_layout_scalar_valid_range_start,
     rustc_legacy_const_generics,
     rustc_macro_transparency,
+    rustc_paren_sugar,
+    rustc_reallocator,
     rustc_reservation_impl,
     rustc_safe_intrinsic,
     rustc_skip_array_during_method_dispatch,
@@ -413,6 +461,7 @@ define_symbols! {
     shr,
     simd,
     sized,
+    skip,
     slice_len_fn,
     Some,
     start,
@@ -431,15 +480,22 @@ define_symbols! {
     system,
     sysv64,
     Target,
+    target_feature,
+    enable,
     termination,
     test_case,
     test,
+    then,
     thiscall,
+    to_string,
     trace_macros,
     transmute_opts,
     transmute_trait,
     transparent,
+    try_into,
     Try,
+    TryFrom,
+    try_from,
     tuple_trait,
     u128,
     u16,
@@ -447,6 +503,7 @@ define_symbols! {
     u64,
     u8,
     unadjusted,
+    unknown,
     Unknown,
     unpin,
     unreachable_2015,

@@ -18,7 +18,7 @@ All intrinsic fallback bodies are automatically made cross-crate inlineable (lik
 by the codegen backend, but not the MIR inliner.
 
 ```rust
-#![feature(rustc_attrs)]
+#![feature(intrinsics)]
 #![allow(internal_features)]
 
 #[rustc_intrinsic]
@@ -28,7 +28,7 @@ const unsafe fn const_deallocate(_ptr: *mut u8, _size: usize, _align: usize) {}
 Since these are just regular functions, it is perfectly ok to create the intrinsic twice:
 
 ```rust
-#![feature(rustc_attrs)]
+#![feature(intrinsics)]
 #![allow(internal_features)]
 
 #[rustc_intrinsic]
@@ -62,12 +62,18 @@ These must be implemented by all backends.
 
 ### `#[rustc_intrinsic]` declarations
 
-These are written like intrinsics with fallback bodies, but the body is irrelevant.
-Use `loop {}` for the body or call the intrinsic recursively and add
-`#[rustc_intrinsic_must_be_overridden]` to the function to ensure that backends don't
-invoke the body.
+These are written without a body:
+```rust
+#![feature(intrinsics)]
+#![allow(internal_features)]
+
+#[rustc_intrinsic]
+pub fn abort() -> !;
+```
 
 ### Legacy extern ABI based intrinsics
+
+*This style is deprecated, always prefer the above form.*
 
 These are imported as if they were FFI functions, with the special
 `rust-intrinsic` ABI. For example, if one was in a freestanding

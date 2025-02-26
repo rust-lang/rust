@@ -77,9 +77,6 @@ error: called `map(..).flatten()` on `Option`
    |
 LL |           .map(|_| {
    |  __________^
-LL | | // we need some newlines
-LL | | // so that the span is big enough
-LL | | // for a split output of the diagnostic
 ...  |
 LL | |         })
 LL | |         .flatten();

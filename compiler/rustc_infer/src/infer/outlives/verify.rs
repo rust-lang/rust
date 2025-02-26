@@ -102,12 +102,11 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     pub(crate) fn alias_bound(&self, alias_ty: ty::AliasTy<'tcx>) -> VerifyBound<'tcx> {
-        let alias_ty_as_ty = alias_ty.to_ty(self.tcx);
-
         // Search the env for where clauses like `P: 'a`.
         let env_bounds = self.approx_declared_bounds_from_env(alias_ty).into_iter().map(|binder| {
             if let Some(ty::OutlivesPredicate(ty, r)) = binder.no_bound_vars()
-                && ty == alias_ty_as_ty
+                && let ty::Alias(_, alias_ty_from_bound) = *ty.kind()
+                && alias_ty_from_bound == alias_ty
             {
                 // Micro-optimize if this is an exact match (this
                 // occurs often when there are no region variables
@@ -127,7 +126,8 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         // see the extensive comment in projection_must_outlive
         let recursive_bound = {
             let mut components = smallvec![];
-            compute_alias_components_recursive(self.tcx, alias_ty_as_ty, &mut components);
+            let kind = alias_ty.kind(self.tcx);
+            compute_alias_components_recursive(self.tcx, kind, alias_ty, &mut components);
             self.bound_from_components(&components)
         };
 
@@ -192,7 +192,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     /// Obviously these must be approximate -- they are in fact both *over* and
     /// and *under* approximated:
     ///
-    /// * Over-approximated because we erase regions, so
+    /// * Over-approximated because we don't consider equality of regions.
     /// * Under-approximated because we look for syntactic equality and so for complex types
     ///   like `<T as Foo<fn(&u32, &u32)>>::Item` or whatever we may fail to figure out
     ///   all the subtleties.
@@ -205,13 +205,14 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         erased_ty: Ty<'tcx>,
     ) -> Vec<ty::PolyTypeOutlivesPredicate<'tcx>> {
         let tcx = self.tcx;
+        let mut bounds = vec![];
 
         // To start, collect bounds from user environment. Note that
         // parameter environments are already elaborated, so we don't
         // have to worry about that.
-        let param_bounds = self.caller_bounds.iter().copied().filter(move |outlives_predicate| {
+        bounds.extend(self.caller_bounds.iter().copied().filter(move |outlives_predicate| {
             super::test_type_match::can_match_erased_ty(tcx, *outlives_predicate, erased_ty)
-        });
+        }));
 
         // Next, collect regions we scraped from the well-formedness
         // constraints in the fn signature. To do that, we walk the list
@@ -224,37 +225,27 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         // The problem is that the type of `x` is `&'a A`. To be
         // well-formed, then, A must outlive `'a`, but we don't know that
         // this holds from first principles.
-        let from_region_bound_pairs =
-            self.region_bound_pairs.iter().filter_map(|&OutlivesPredicate(p, r)| {
-                debug!(
-                    "declared_generic_bounds_from_env_for_erased_ty: region_bound_pair = {:?}",
-                    (r, p)
-                );
-                // Fast path for the common case.
-                match (&p, erased_ty.kind()) {
-                    // In outlive routines, all types are expected to be fully normalized.
-                    // And therefore we can safely use structural equality for alias types.
-                    (GenericKind::Param(p1), ty::Param(p2)) if p1 == p2 => {}
-                    (GenericKind::Placeholder(p1), ty::Placeholder(p2)) if p1 == p2 => {}
-                    (GenericKind::Alias(a1), ty::Alias(_, a2)) if a1.def_id == a2.def_id => {}
-                    _ => return None,
-                }
+        bounds.extend(self.region_bound_pairs.iter().filter_map(|&OutlivesPredicate(p, r)| {
+            debug!(
+                "declared_generic_bounds_from_env_for_erased_ty: region_bound_pair = {:?}",
+                (r, p)
+            );
+            // Fast path for the common case.
+            match (&p, erased_ty.kind()) {
+                // In outlive routines, all types are expected to be fully normalized.
+                // And therefore we can safely use structural equality for alias types.
+                (GenericKind::Param(p1), ty::Param(p2)) if p1 == p2 => {}
+                (GenericKind::Placeholder(p1), ty::Placeholder(p2)) if p1 == p2 => {}
+                (GenericKind::Alias(a1), ty::Alias(_, a2)) if a1.def_id == a2.def_id => {}
+                _ => return None,
+            }
 
-                let p_ty = p.to_ty(tcx);
-                let erased_p_ty = self.tcx.erase_regions(p_ty);
-                (erased_p_ty == erased_ty)
-                    .then_some(ty::Binder::dummy(ty::OutlivesPredicate(p_ty, r)))
-            });
+            let p_ty = p.to_ty(tcx);
+            let erased_p_ty = self.tcx.erase_regions(p_ty);
+            (erased_p_ty == erased_ty).then_some(ty::Binder::dummy(ty::OutlivesPredicate(p_ty, r)))
+        }));
 
-        param_bounds
-            .chain(from_region_bound_pairs)
-            .inspect(|bound| {
-                debug!(
-                    "declared_generic_bounds_from_env_for_erased_ty: result predicate = {:?}",
-                    bound
-                )
-            })
-            .collect()
+        bounds
     }
 
     /// Given a projection like `<T as Foo<'x>>::Bar`, returns any bounds
@@ -290,7 +281,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         alias_ty: ty::AliasTy<'tcx>,
     ) -> impl Iterator<Item = ty::Region<'tcx>> {
         let tcx = self.tcx;
-        let bounds = tcx.item_super_predicates(alias_ty.def_id);
+        let bounds = tcx.item_self_bounds(alias_ty.def_id);
         trace!("{:#?}", bounds.skip_binder());
         bounds
             .iter_instantiated(tcx, alias_ty.args)

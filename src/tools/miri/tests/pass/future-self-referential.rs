@@ -1,6 +1,5 @@
 //@revisions: stack tree
 //@[tree]compile-flags: -Zmiri-tree-borrows
-#![feature(noop_waker)]
 
 use std::future::*;
 use std::marker::PhantomPinned;

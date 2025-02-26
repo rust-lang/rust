@@ -13,7 +13,7 @@
 // Tracking issue: https://github.com/rust-lang/rust/issues/128602
 // Discussion: https://github.com/rust-lang/rust/pull/128407#discussion_r1702439172
 
-use run_make_support::{cc, cwd, has_extension, has_prefix, run, rustc, shallow_find_files};
+use run_make_support::{cc, has_extension, has_prefix, run, rustc, shallow_find_files};
 
 fn main() {
     rustc().input("foo.rs").crate_type("bin").emit("obj").panic("abort").run();

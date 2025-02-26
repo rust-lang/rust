@@ -41,7 +41,7 @@ impl LateLintPass<'_> for FromRawWithVoidPtr {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         if let ExprKind::Call(box_from_raw, [arg]) = expr.kind
             && let ExprKind::Path(QPath::TypeRelative(ty, seg)) = box_from_raw.kind
-            && seg.ident.name == sym!(from_raw)
+            && seg.ident.name.as_str() == "from_raw"
             && let Some(type_str) = path_def_id(cx, ty).and_then(|id| def_id_matches_type(cx, id))
             && let arg_kind = cx.typeck_results().expr_ty(arg).kind()
             && let ty::RawPtr(ty, _) = arg_kind

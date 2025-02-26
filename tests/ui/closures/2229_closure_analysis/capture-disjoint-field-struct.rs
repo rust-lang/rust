@@ -18,8 +18,8 @@ fn main() {
     //~^ First Pass analysis includes:
     //~| Min Capture analysis includes:
         println!("{}", p.x);
-        //~^ NOTE: Capturing p[(0, 0)] -> ImmBorrow
-        //~| NOTE: Min Capture p[(0, 0)] -> ImmBorrow
+        //~^ NOTE: Capturing p[(0, 0)] -> Immutable
+        //~| NOTE: Min Capture p[(0, 0)] -> Immutable
     };
 
     // `c` should only capture `p.x`, therefore mutating `p.y` is allowed.

@@ -1,6 +1,6 @@
 //@ run-fail
 //@ error-pattern:quux
-//@ ignore-emscripten no processes
+//@ needs-subprocess
 
 fn f() -> ! {
     panic!("quux")

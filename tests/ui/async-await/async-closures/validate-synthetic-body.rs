@@ -1,8 +1,6 @@
 //@ check-pass
 //@ edition: 2021
 
-#![feature(async_closure)]
-
 // Make sure that we don't hit a query cycle when validating
 // the by-move coroutine body for an async closure.
 

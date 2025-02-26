@@ -4,6 +4,7 @@ use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::query::NoSolution;
 pub use rustc_middle::traits::query::type_op::ProvePredicate;
 use rustc_middle::ty::{self, ParamEnvAnd, TyCtxt};
+use rustc_span::Span;
 
 use crate::infer::canonical::{CanonicalQueryInput, CanonicalQueryResponse};
 use crate::traits::ObligationCtxt;
@@ -57,10 +58,11 @@ impl<'tcx> super::QueryTypeOp<'tcx> for ProvePredicate<'tcx> {
     fn perform_locally_with_next_solver(
         ocx: &ObligationCtxt<'_, 'tcx>,
         key: ParamEnvAnd<'tcx, Self>,
+        span: Span,
     ) -> Result<Self::QueryResponse, NoSolution> {
         ocx.register_obligation(Obligation::new(
             ocx.infcx.tcx,
-            ObligationCause::dummy(),
+            ObligationCause::dummy_with_span(span),
             key.param_env,
             key.value.predicate,
         ));

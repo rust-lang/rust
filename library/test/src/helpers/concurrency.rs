@@ -4,7 +4,7 @@
 use std::num::NonZero;
 use std::{env, thread};
 
-pub fn get_concurrency() -> usize {
+pub(crate) fn get_concurrency() -> usize {
     if let Ok(value) = env::var("RUST_TEST_THREADS") {
         match value.parse::<NonZero<usize>>().ok() {
             Some(n) => n.get(),

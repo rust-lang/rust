@@ -17,8 +17,9 @@ LL |     (x as [u32; 1]).0;
    |
 help: instead of using tuple indexing, use array indexing
    |
-LL |     (x as [u32; 1])[0];
-   |                    ~ +
+LL -     (x as [u32; 1]).0;
+LL +     (x as [u32; 1])[0];
+   |
 
 error: aborting due to 2 previous errors
 

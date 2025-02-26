@@ -12,7 +12,7 @@
 use crate::num::dec2flt::common::{ByteSlice, is_8digits};
 
 #[derive(Clone)]
-pub struct Decimal {
+pub(super) struct Decimal {
     /// The number of significant digits in the decimal.
     pub num_digits: usize,
     /// The offset of the decimal point in the significant digits.
@@ -55,13 +55,13 @@ impl Decimal {
     ///
     /// In Python:
     ///     `-emin + p2 + math.floor((emin+ 1)*math.log(2, b)-math.log(1-2**(-p2), b))`
-    pub const MAX_DIGITS: usize = 768;
+    pub(super) const MAX_DIGITS: usize = 768;
     /// The max digits that can be exactly represented in a 64-bit integer.
-    pub const MAX_DIGITS_WITHOUT_OVERFLOW: usize = 19;
-    pub const DECIMAL_POINT_RANGE: i32 = 2047;
+    pub(super) const MAX_DIGITS_WITHOUT_OVERFLOW: usize = 19;
+    pub(super) const DECIMAL_POINT_RANGE: i32 = 2047;
 
     /// Append a digit to the buffer.
-    pub fn try_add_digit(&mut self, digit: u8) {
+    pub(super) fn try_add_digit(&mut self, digit: u8) {
         if self.num_digits < Self::MAX_DIGITS {
             self.digits[self.num_digits] = digit;
         }
@@ -69,7 +69,7 @@ impl Decimal {
     }
 
     /// Trim trailing zeros from the buffer.
-    pub fn trim(&mut self) {
+    pub(super) fn trim(&mut self) {
         // All of the following calls to `Decimal::trim` can't panic because:
         //
         //  1. `parse_decimal` sets `num_digits` to a max of `Decimal::MAX_DIGITS`.
@@ -83,7 +83,7 @@ impl Decimal {
         }
     }
 
-    pub fn round(&self) -> u64 {
+    pub(super) fn round(&self) -> u64 {
         if self.num_digits == 0 || self.decimal_point < 0 {
             return 0;
         } else if self.decimal_point > 18 {
@@ -111,7 +111,7 @@ impl Decimal {
     }
 
     /// Computes decimal * 2^shift.
-    pub fn left_shift(&mut self, shift: usize) {
+    pub(super) fn left_shift(&mut self, shift: usize) {
         if self.num_digits == 0 {
             return;
         }
@@ -152,7 +152,7 @@ impl Decimal {
     }
 
     /// Computes decimal * 2^-shift.
-    pub fn right_shift(&mut self, shift: usize) {
+    pub(super) fn right_shift(&mut self, shift: usize) {
         let mut read_index = 0;
         let mut write_index = 0;
         let mut n = 0_u64;
@@ -202,7 +202,7 @@ impl Decimal {
 }
 
 /// Parse a big integer representation of the float as a decimal.
-pub fn parse_decimal(mut s: &[u8]) -> Decimal {
+pub(super) fn parse_decimal(mut s: &[u8]) -> Decimal {
     let mut d = Decimal::default();
     let start = s;
 

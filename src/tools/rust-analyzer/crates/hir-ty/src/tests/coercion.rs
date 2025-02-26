@@ -185,11 +185,10 @@ fn test() {
     let t = &mut 1;
     let x = match 1 {
         1 => t as *mut i32,
+           //^^^^^^^^^^^^^ adjustments: Pointer(MutToConstPointer)
         2 => t as &i32,
            //^^^^^^^^^ expected *mut i32, got &'? i32
         _ => t as *const i32,
-          // ^^^^^^^^^^^^^^^ adjustments: Pointer(MutToConstPointer)
-
     };
     x;
   //^ type: *const i32
@@ -941,4 +940,20 @@ fn main() {
 }
 "#,
     )
+}
+
+#[test]
+fn regression_18626() {
+    check_no_mismatches(
+        r#"
+fn f() {
+    trait T {
+        fn f() {}
+    }
+    impl T for i32 {}
+    impl T for u32 {}
+    &[i32::f, u32::f] as &[fn()];
+}
+    "#,
+    );
 }

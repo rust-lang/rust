@@ -84,7 +84,7 @@ pub(crate) mod system_time_internal {
 
     // This algorithm is based on the one described in the post
     // https://blog.reverberate.org/2020/05/12/optimizing-date-algorithms.html
-    pub const fn uefi_time_to_duration(t: r_efi::system::Time) -> Duration {
+    pub(crate) const fn uefi_time_to_duration(t: r_efi::system::Time) -> Duration {
         assert!(t.month <= 12);
         assert!(t.month != 0);
 

@@ -21,10 +21,10 @@ To use a custom target, see the (unstable) [`build-std` feature](../../cargo/ref
 When `rustc` is given an option `--target=TARGET` (where `TARGET` is any string), it uses the following logic:
 1. if `TARGET` is the name of a built-in target, use that
 2. if `TARGET` is a path to a file, read that file as a json target
-3. otherwise, search the colon-seperated list of directories found
+3. otherwise, search the colon-separated list of directories found
    in the `RUST_TARGET_PATH` environment variable from left to right
    for a file named `TARGET.json`.
 
-These steps are tried in order, so if there are multple potentially valid
+These steps are tried in order, so if there are multiple potentially valid
 interpretations for a target, whichever is found first will take priority.
 If none of these methods find a target, an error is thrown.

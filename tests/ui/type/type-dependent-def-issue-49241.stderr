@@ -6,8 +6,9 @@ LL |     const l: usize = v.count();
    |
 help: consider using `let` instead of `const`
    |
-LL |     let l: usize = v.count();
-   |     ~~~
+LL -     const l: usize = v.count();
+LL +     let l: usize = v.count();
+   |
 
 error: aborting due to 1 previous error
 

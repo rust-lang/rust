@@ -10,7 +10,7 @@ impl<T> GetVariantCount<T> {
 
 const fn check_variant_count<T>() -> bool {
     matches!(GetVariantCount::<T>::VALUE, GetVariantCount::<T>::VALUE)
-    //~^ ERROR constant pattern depends on a generic parameter
+    //~^ ERROR constant pattern cannot depend on generic parameters
 }
 
 fn main() {

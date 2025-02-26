@@ -2,7 +2,7 @@
 //@ error-pattern:thread 'main' panicked
 //@ error-pattern:attempt to add with overflow
 //@ compile-flags: -C debug-assertions
-//@ ignore-emscripten no processes
+//@ needs-subprocess
 
 #![allow(arithmetic_overflow)]
 

@@ -16,4 +16,12 @@ fn main() {
 
     let mut val_mut = 1;
     let _p_mut = std::ptr::addr_of_mut!(val_mut);
+
+    let mut x: [i32; 2] = [42, 43];
+    let _raw = std::ptr::addr_of_mut!(x[1]).wrapping_offset(-1);
+}
+
+fn issue_13882() {
+    let mut x: [i32; 2] = [42, 43];
+    let _raw = (&raw mut x[1]).wrapping_offset(-1);
 }

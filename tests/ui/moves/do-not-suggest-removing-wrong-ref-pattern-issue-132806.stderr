@@ -1,0 +1,18 @@
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/do-not-suggest-removing-wrong-ref-pattern-issue-132806.rs:8:58
+   |
+LL |     let _ = HashMap::<String, i32>::new().iter().filter(|&(&_k, &_v)| { true });
+   |                                                          ^^^--^^^^^^
+   |                                                             |
+   |                                                             data moved here
+   |                                                             move occurs because `_k` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider removing the borrow
+   |
+LL -     let _ = HashMap::<String, i32>::new().iter().filter(|&(&_k, &_v)| { true });
+LL +     let _ = HashMap::<String, i32>::new().iter().filter(|&(_k, &_v)| { true });
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0507`.

@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -7,6 +7,7 @@ use std::sync::OnceLock;
 use std::{fmt, iter};
 
 use build_helper::git::GitConfig;
+use semver::Version;
 use serde::de::{Deserialize, Deserializer, Error as _};
 use test::{ColorConfig, OutputFormat};
 
@@ -38,17 +39,21 @@ macro_rules! string_enum {
         }
 
         impl FromStr for $name {
-            type Err = ();
+            type Err = String;
 
-            fn from_str(s: &str) -> Result<Self, ()> {
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
                 match s {
                     $($repr => Ok(Self::$variant),)*
-                    _ => Err(()),
+                    _ => Err(format!(concat!("unknown `", stringify!($name), "` variant: `{}`"), s)),
                 }
             }
         }
     }
 }
+
+// Make the macro visible outside of this module, for tests.
+#[cfg(test)]
+pub(crate) use string_enum;
 
 string_enum! {
     #[derive(Clone, Copy, PartialEq, Debug)]
@@ -62,7 +67,7 @@ string_enum! {
         Incremental => "incremental",
         RunMake => "run-make",
         Ui => "ui",
-        JsDocTest => "js-doc-test",
+        RustdocJs => "rustdoc-js",
         MirOpt => "mir-opt",
         Assembly => "assembly",
         CoverageMap => "coverage-map",
@@ -210,8 +215,10 @@ pub struct Config {
     /// `None` then these tests will be ignored.
     pub run_clang_based_tests_with: Option<String>,
 
-    /// The directory containing the tests to run
-    pub src_base: PathBuf,
+    /// The directory containing the sources.
+    pub src_root: PathBuf,
+    /// The directory containing the test suite sources. Must be a subdirectory of `src_root`.
+    pub src_test_suite_root: PathBuf,
 
     /// The directory where programs should be built
     pub build_base: PathBuf,
@@ -219,7 +226,9 @@ pub struct Config {
     /// The directory containing the compiler sysroot
     pub sysroot_base: PathBuf,
 
-    /// The name of the stage being built (stage1, etc)
+    /// The number of the stage under test.
+    pub stage: u32,
+    /// The id of the stage under test (stage1-xxx, etc).
     pub stage_id: String,
 
     /// The test mode, e.g. ui or debuginfo.
@@ -235,8 +244,11 @@ pub struct Config {
     /// Run ignored tests
     pub run_ignored: bool,
 
-    /// Whether to run tests with `ignore-debug` header
-    pub with_debug_assertions: bool,
+    /// Whether rustc was built with debug assertions.
+    pub with_rustc_debug_assertions: bool,
+
+    /// Whether std was built with debug assertions.
+    pub with_std_debug_assertions: bool,
 
     /// Only run tests that match these filters
     pub filters: Vec<String>,
@@ -298,7 +310,7 @@ pub struct Config {
     pub lldb_version: Option<u32>,
 
     /// Version of LLVM
-    pub llvm_version: Option<u32>,
+    pub llvm_version: Option<Version>,
 
     /// Is LLVM a system LLVM
     pub system_llvm: bool,
@@ -391,6 +403,11 @@ pub struct Config {
 
     /// Command for visual diff display, e.g. `diff-tool --color=always`.
     pub diff_command: Option<String>,
+
+    /// Path to minicore aux library, used for `no_core` tests that need `core` stubs in
+    /// cross-compilation scenarios that do not otherwise want/need to `-Zbuild-std`. Used in e.g.
+    /// ABI tests.
+    pub minicore_path: PathBuf,
 }
 
 impl Config {
@@ -475,7 +492,21 @@ impl Config {
             git_merge_commit_email: &self.git_merge_commit_email,
         }
     }
+
+    pub fn has_subprocess_support(&self) -> bool {
+        // FIXME(#135928): compiletest is always a **host** tool. Building and running an
+        // capability detection executable against the **target** is not trivial. The short term
+        // solution here is to hard-code some targets to allow/deny, unfortunately.
+
+        let unsupported_target = self.target_cfg().env == "sgx"
+            || matches!(self.target_cfg().arch.as_str(), "wasm32" | "wasm64")
+            || self.target_cfg().os == "emscripten";
+        !unsupported_target
+    }
 }
+
+/// Known widths of `target_has_atomic`.
+pub const KNOWN_TARGET_HAS_ATOMIC_WIDTHS: &[&str] = &["8", "16", "32", "64", "128", "ptr"];
 
 #[derive(Debug, Clone)]
 pub struct TargetCfgs {
@@ -488,6 +519,7 @@ pub struct TargetCfgs {
     pub all_abis: HashSet<String>,
     pub all_families: HashSet<String>,
     pub all_pointer_widths: HashSet<String>,
+    pub all_rustc_abis: HashSet<String>,
 }
 
 impl TargetCfgs {
@@ -507,6 +539,9 @@ impl TargetCfgs {
         let mut all_abis = HashSet::new();
         let mut all_families = HashSet::new();
         let mut all_pointer_widths = HashSet::new();
+        // NOTE: for distinction between `abi` and `rustc_abi`, see comment on
+        // `TargetCfg::rustc_abi`.
+        let mut all_rustc_abis = HashSet::new();
 
         // If current target is not included in the `--print=all-target-specs-json` output,
         // we check whether it is a custom target from the user or a synthetic target from bootstrap.
@@ -547,7 +582,9 @@ impl TargetCfgs {
                 all_families.insert(family.clone());
             }
             all_pointer_widths.insert(format!("{}bit", cfg.pointer_width));
-
+            if let Some(rustc_abi) = &cfg.rustc_abi {
+                all_rustc_abis.insert(rustc_abi.clone());
+            }
             all_targets.insert(target.clone());
         }
 
@@ -561,6 +598,7 @@ impl TargetCfgs {
             all_abis,
             all_families,
             all_pointer_widths,
+            all_rustc_abis,
         }
     }
 
@@ -602,6 +640,17 @@ impl TargetCfgs {
                 ("panic", Some("abort")) => cfg.panic = PanicStrategy::Abort,
                 ("panic", Some("unwind")) => cfg.panic = PanicStrategy::Unwind,
                 ("panic", other) => panic!("unexpected value for panic cfg: {other:?}"),
+
+                ("target_has_atomic", Some(width))
+                    if KNOWN_TARGET_HAS_ATOMIC_WIDTHS.contains(&width) =>
+                {
+                    cfg.target_has_atomic.insert(width.to_string());
+                }
+                ("target_has_atomic", Some(other)) => {
+                    panic!("unexpected value for `target_has_atomic` cfg: {other:?}")
+                }
+                // Nightly-only std-internal impl detail.
+                ("target_has_atomic", None) => {}
                 _ => {}
             }
         }
@@ -636,6 +685,16 @@ pub struct TargetCfg {
     pub(crate) xray: bool,
     #[serde(default = "default_reloc_model")]
     pub(crate) relocation_model: String,
+    // NOTE: `rustc_abi` should not be confused with `abi`. `rustc_abi` was introduced in #137037 to
+    // make SSE2 *required* by the ABI (kind of a hack to make a target feature *required* via the
+    // target spec).
+    pub(crate) rustc_abi: Option<String>,
+
+    // Not present in target cfg json output, additional derived information.
+    #[serde(skip)]
+    /// Supported target atomic widths: e.g. `8` to `128` or `ptr`. This is derived from the builtin
+    /// `target_has_atomic` `cfg`s e.g. `target_has_atomic="8"`.
+    pub(crate) target_has_atomic: BTreeSet<String>,
 }
 
 impl TargetCfg {
@@ -755,7 +814,7 @@ pub const UI_COVERAGE_MAP: &str = "cov-map";
 
 /// Absolute path to the directory where all output for all tests in the given
 /// `relative_dir` group should reside. Example:
-///   /path/to/build/host-triple/test/ui/relative/
+///   /path/to/build/host-tuple/test/ui/relative/
 /// This is created early when tests are collected to avoid race conditions.
 pub fn output_relative_path(config: &Config, relative_dir: &Path) -> PathBuf {
     config.build_base.join(relative_dir)
@@ -778,7 +837,7 @@ pub fn output_testname_unique(
 
 /// Absolute path to the directory where all output for the given
 /// test/revision should reside. Example:
-///   /path/to/build/host-triple/test/ui/relative/testname.revision.mode/
+///   /path/to/build/host-tuple/test/ui/relative/testname.revision.mode/
 pub fn output_base_dir(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> PathBuf {
     output_relative_path(config, &testpaths.relative_dir)
         .join(output_testname_unique(config, testpaths, revision))
@@ -786,13 +845,13 @@ pub fn output_base_dir(config: &Config, testpaths: &TestPaths, revision: Option<
 
 /// Absolute path to the base filename used as output for the given
 /// test/revision. Example:
-///   /path/to/build/host-triple/test/ui/relative/testname.revision.mode/testname
+///   /path/to/build/host-tuple/test/ui/relative/testname.revision.mode/testname
 pub fn output_base_name(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> PathBuf {
     output_base_dir(config, testpaths, revision).join(testpaths.file.file_stem().unwrap())
 }
 
 /// Absolute path to the directory to use for incremental compilation. Example:
-///   /path/to/build/host-triple/test/ui/relative/testname.mode/testname.inc
+///   /path/to/build/host-tuple/test/ui/relative/testname.mode/testname.inc
 pub fn incremental_dir(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> PathBuf {
     output_base_name(config, testpaths, revision).with_extension("inc")
 }

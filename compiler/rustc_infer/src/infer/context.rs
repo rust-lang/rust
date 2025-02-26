@@ -1,14 +1,13 @@
 ///! Definition of `InferCtxtLike` from the librarified type layer.
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::DefId;
 use rustc_middle::traits::ObligationCause;
-use rustc_middle::traits::solve::SolverMode;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::relate::RelateResult;
 use rustc_middle::ty::relate::combine::PredicateEmittingRelation;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::{DUMMY_SP, ErrorGuaranteed};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 
-use super::{BoundRegionConversionTime, InferCtxt, SubregionOrigin};
+use super::{BoundRegionConversionTime, InferCtxt, RegionVariableOrigin, SubregionOrigin};
 
 impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     type Interner = TyCtxt<'tcx>;
@@ -21,11 +20,8 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         self.next_trait_solver
     }
 
-    fn solver_mode(&self) -> ty::solve::SolverMode {
-        match self.intercrate {
-            true => SolverMode::Coherence,
-            false => SolverMode::Normal,
-        }
+    fn typing_mode(&self) -> ty::TypingMode<'tcx> {
+        self.typing_mode()
     }
 
     fn universe(&self) -> ty::UniverseIndex {
@@ -91,8 +87,8 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         self.inner.borrow_mut().unwrap_region_constraints().opportunistic_resolve_var(self.tcx, vid)
     }
 
-    fn defining_opaque_types(&self) -> &'tcx ty::List<LocalDefId> {
-        self.defining_opaque_types()
+    fn next_region_infer(&self) -> ty::Region<'tcx> {
+        self.next_region_var(RegionVariableOrigin::MiscVariable(DUMMY_SP))
     }
 
     fn next_ty_infer(&self) -> Ty<'tcx> {
@@ -118,7 +114,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         )
     }
 
-    fn enter_forall<T: TypeFoldable<TyCtxt<'tcx>> + Copy, U>(
+    fn enter_forall<T: TypeFoldable<TyCtxt<'tcx>>, U>(
         &self,
         value: ty::Binder<'tcx, T>,
         f: impl FnOnce(T) -> U,
@@ -207,23 +203,23 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         self.probe(|_| probe())
     }
 
-    fn sub_regions(&self, sub: ty::Region<'tcx>, sup: ty::Region<'tcx>) {
+    fn sub_regions(&self, sub: ty::Region<'tcx>, sup: ty::Region<'tcx>, span: Span) {
         self.inner.borrow_mut().unwrap_region_constraints().make_subregion(
-            SubregionOrigin::RelateRegionParamBound(DUMMY_SP, None),
+            SubregionOrigin::RelateRegionParamBound(span, None),
             sub,
             sup,
         );
     }
 
-    fn equate_regions(&self, a: ty::Region<'tcx>, b: ty::Region<'tcx>) {
+    fn equate_regions(&self, a: ty::Region<'tcx>, b: ty::Region<'tcx>, span: Span) {
         self.inner.borrow_mut().unwrap_region_constraints().make_eqregion(
-            SubregionOrigin::RelateRegionParamBound(DUMMY_SP, None),
+            SubregionOrigin::RelateRegionParamBound(span, None),
             a,
             b,
         );
     }
 
-    fn register_ty_outlives(&self, ty: Ty<'tcx>, r: ty::Region<'tcx>) {
-        self.register_region_obligation_with_cause(ty, r, &ObligationCause::dummy());
+    fn register_ty_outlives(&self, ty: Ty<'tcx>, r: ty::Region<'tcx>, span: Span) {
+        self.register_region_obligation_with_cause(ty, r, &ObligationCause::dummy_with_span(span));
     }
 }

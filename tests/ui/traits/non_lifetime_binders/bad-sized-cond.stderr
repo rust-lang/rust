@@ -29,7 +29,7 @@ error[E0277]: `V` is not an iterator
 LL |     bar();
    |     ^^^^^ `V` is not an iterator
    |
-   = help: the trait `Iterator` is not implemented for `V`, which is required by `V: IntoIterator`
+   = help: the trait `Iterator` is not implemented for `V`
    = note: required for `V` to implement `IntoIterator`
 note: required by a bound in `bar`
   --> $DIR/bad-sized-cond.rs:12:15
@@ -46,7 +46,7 @@ error[E0277]: the size for values of type `V` cannot be known at compilation tim
 LL |     bar();
    |     ^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `Sized` is not implemented for `V`, which is required by `V: IntoIterator`
+   = help: the trait `Sized` is not implemented for `V`
    = note: required for `V` to implement `IntoIterator`
 note: required by a bound in `bar`
   --> $DIR/bad-sized-cond.rs:12:15

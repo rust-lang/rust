@@ -3,6 +3,9 @@ error[E0271]: type mismatch resolving `<() as Super>::Assoc == ()`
    |
 LL | fn test() -> impl Test {
    |              ^^^^^^^^^ type mismatch resolving `<() as Super>::Assoc == ()`
+LL |
+LL |     ()
+   |     -- return type was inferred to be `()` here
    |
 note: expected this to be `()`
   --> $DIR/projection-mismatch-in-impl-where-clause.rs:6:18

@@ -52,13 +52,14 @@ pub(super) fn hints(
     let text_edit = if has_block_body {
         ty_to_text_edit(
             sema,
+            config,
             closure.syntax(),
             &ty,
             arrow
                 .as_ref()
                 .map_or_else(|| param_list.syntax().text_range(), |t| t.text_range())
                 .end(),
-            if arrow.is_none() { String::from(" -> ") } else { String::new() },
+            if arrow.is_none() { " -> " } else { "" },
         )
     } else {
         None

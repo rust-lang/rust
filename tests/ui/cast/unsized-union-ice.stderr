@@ -4,7 +4,7 @@ error[E0277]: the size for values of type `[u8]` cannot be known at compilation 
 LL |     val: std::mem::ManuallyDrop<[u8]>,
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: within `ManuallyDrop<[u8]>`, the trait `Sized` is not implemented for `[u8]`, which is required by `ManuallyDrop<[u8]>: Sized`
+   = help: within `ManuallyDrop<[u8]>`, the trait `Sized` is not implemented for `[u8]`
 note: required because it appears within the type `ManuallyDrop<[u8]>`
   --> $SRC_DIR/core/src/mem/manually_drop.rs:LL:COL
    = note: no field of a union may have a dynamically sized type

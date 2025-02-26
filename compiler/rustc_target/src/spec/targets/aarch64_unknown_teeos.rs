@@ -1,4 +1,4 @@
-use crate::spec::{StackProbeType, Target, base};
+use crate::spec::{StackProbeType, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::teeos::opts();
@@ -8,7 +8,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "aarch64-unknown-none".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("ARM64 TEEOS".into()),
             tier: Some(3),
             host_tools: Some(false),

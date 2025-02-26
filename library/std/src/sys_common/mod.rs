@@ -21,24 +21,9 @@
 mod tests;
 
 pub mod fs;
-pub mod io;
 pub mod process;
 pub mod wstr;
 pub mod wtf8;
-
-cfg_if::cfg_if! {
-    if #[cfg(any(
-        all(unix, not(target_os = "l4re")),
-        windows,
-        target_os = "hermit",
-        target_os = "solid_asp3",
-        all(target_os = "wasi", target_env = "p2")
-    ))] {
-        pub mod net;
-    } else {
-        pub use crate::sys::net;
-    }
-}
 
 // common error constructors
 

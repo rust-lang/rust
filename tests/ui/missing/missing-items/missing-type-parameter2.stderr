@@ -9,8 +9,9 @@ LL | impl X<N> {}
    |
 help: a struct with a similar name exists
    |
-LL | impl X<X> {}
-   |        ~
+LL - impl X<N> {}
+LL + impl X<X> {}
+   |
 help: you might be missing a type parameter
    |
 LL | impl<N> X<N> {}
@@ -26,8 +27,9 @@ LL | impl<T, const A: u8 = 2> X<N> {}
    |
 help: a type parameter with a similar name exists
    |
-LL | impl<T, const A: u8 = 2> X<T> {}
-   |                            ~
+LL - impl<T, const A: u8 = 2> X<N> {}
+LL + impl<T, const A: u8 = 2> X<T> {}
+   |
 help: you might be missing a type parameter
    |
 LL | impl<T, const A: u8 = 2, N> X<N> {}
@@ -44,8 +46,9 @@ LL | fn foo(_: T) where T: Send {}
    |
 help: a struct with a similar name exists
    |
-LL | fn foo(_: T) where X: Send {}
-   |                    ~
+LL - fn foo(_: T) where T: Send {}
+LL + fn foo(_: T) where X: Send {}
+   |
 help: you might be missing a type parameter
    |
 LL | fn foo<T>(_: T) where T: Send {}
@@ -62,8 +65,9 @@ LL | fn foo(_: T) where T: Send {}
    |
 help: a struct with a similar name exists
    |
-LL | fn foo(_: X) where T: Send {}
-   |           ~
+LL - fn foo(_: T) where T: Send {}
+LL + fn foo(_: X) where T: Send {}
+   |
 help: you might be missing a type parameter
    |
 LL | fn foo<T>(_: T) where T: Send {}
@@ -80,8 +84,9 @@ LL | fn bar<const N: u8>(_: A) {}
    |
 help: a struct with a similar name exists
    |
-LL | fn bar<const N: u8>(_: X) {}
-   |                        ~
+LL - fn bar<const N: u8>(_: A) {}
+LL + fn bar<const N: u8>(_: X) {}
+   |
 help: you might be missing a type parameter
    |
 LL | fn bar<const N: u8, A>(_: A) {}

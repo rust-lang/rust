@@ -1,6 +1,6 @@
 //@ compile-flags: -Zdeduplicate-diagnostics=yes
 
-#![feature(start, no_core)]
+#![feature( no_core)]
 #![no_core] // makes debugging this test *a lot* easier (during resolve)
 
 // Test to make sure that private items imported through globs remain private
@@ -11,12 +11,15 @@ mod bar {
 
     mod glob {
         fn gpriv() {}
+    //~^ ERROR requires `sized` lang_item
     }
 }
 
 pub fn foo() {}
+//~^ ERROR requires `sized` lang_item
 
 fn test1() {
+    //~^ ERROR requires `sized` lang_item
     use bar::gpriv;
     //~^ ERROR unresolved import `bar::gpriv` [E0432]
     //~| no `gpriv` in `bar`
@@ -26,4 +29,5 @@ fn test1() {
     gpriv();
 }
 
-#[start] fn main(_: isize, _: *const *const u8) -> isize { 3 }
+fn main() {}
+//~^ ERROR requires `sized` lang_item

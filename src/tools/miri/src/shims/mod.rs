@@ -1,7 +1,9 @@
 #![warn(clippy::arithmetic_side_effects)]
 
+mod aarch64;
 mod alloc;
 mod backtrace;
+mod files;
 #[cfg(unix)]
 mod native_lib;
 mod unix;
@@ -18,7 +20,8 @@ pub mod panic;
 pub mod time;
 pub mod tls;
 
-pub use self::unix::{DirTable, EpollInterestTable, FdTable};
+pub use self::files::FdTable;
+pub use self::unix::{DirTable, EpollInterestTable};
 
 /// What needs to be done after emulating an item (a shim or an intrinsic) is done.
 pub enum EmulateItemResult {

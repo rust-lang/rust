@@ -87,7 +87,6 @@ impl<'tcx> InferCtxt<'tcx> {
                 Ok(result)
             })
         } else {
-            assert!(!self.intercrate);
             let c_pred =
                 self.canonicalize_query(param_env.and(obligation.predicate), &mut _orig_values);
             self.tcx.at(obligation.cause.span).evaluate_obligation(c_pred)

@@ -1,20 +1,14 @@
 error: missing code example in this documentation
-  --> $DIR/lint-missing-doc-code-example.rs:20:1
+  --> $DIR/lint-missing-doc-code-example.rs:38:3
    |
-LL | pub mod module1 {
-   | ^^^^^^^^^^^^^^^
+LL |   /// doc
+   |   ^^^^^^^
    |
 note: the lint level is defined here
   --> $DIR/lint-missing-doc-code-example.rs:3:9
    |
 LL | #![deny(rustdoc::missing_doc_code_examples)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: missing code example in this documentation
-  --> $DIR/lint-missing-doc-code-example.rs:38:3
-   |
-LL |   /// doc
-   |   ^^^^^^^
 
 error: missing code example in this documentation
   --> $DIR/lint-missing-doc-code-example.rs:50:1
@@ -34,5 +28,5 @@ error: missing code example in this documentation
 LL | /// Doc
    | ^^^^^^^
 
-error: aborting due to 5 previous errors
+error: aborting due to 4 previous errors
 

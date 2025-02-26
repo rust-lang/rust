@@ -6,7 +6,6 @@ LL | |
 LL | |     // unused field: hidden
 LL | |     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
 ...  |
-LL | |     }
 LL | | }
    | |_^
    |
@@ -28,7 +27,6 @@ LL | |
 LL | |     // unused fields: hidden, hidden2, hidden4
 LL | |     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
 ...  |
-LL | |     }
 LL | | }
    | |_^
    |
@@ -58,7 +56,6 @@ LL | |
 LL | |     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
 LL | |         let mut f = formatter.debug_struct("MultiExprDebugImpl");
 ...  |
-LL | |     }
 LL | | }
    | |_^
    |

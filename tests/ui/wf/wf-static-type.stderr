@@ -2,7 +2,7 @@ error[E0277]: the trait bound `NotCopy: Copy` is not satisfied
   --> $DIR/wf-static-type.rs:10:13
    |
 LL | static FOO: IsCopy<Option<NotCopy>> = IsCopy { t: None };
-   |             ^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `NotCopy`, which is required by `Option<NotCopy>: Copy`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `NotCopy`
    |
    = note: required for `Option<NotCopy>` to implement `Copy`
 note: required by a bound in `IsCopy`
@@ -20,7 +20,7 @@ error[E0277]: the trait bound `NotCopy: Copy` is not satisfied
   --> $DIR/wf-static-type.rs:10:13
    |
 LL | static FOO: IsCopy<Option<NotCopy>> = IsCopy { t: None };
-   |             ^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `NotCopy`, which is required by `Option<NotCopy>: Copy`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `NotCopy`
    |
    = note: required for `Option<NotCopy>` to implement `Copy`
 note: required by a bound in `IsCopy`
@@ -39,7 +39,7 @@ error[E0277]: the trait bound `NotCopy: Copy` is not satisfied
   --> $DIR/wf-static-type.rs:10:51
    |
 LL | static FOO: IsCopy<Option<NotCopy>> = IsCopy { t: None };
-   |                                                   ^^^^ the trait `Copy` is not implemented for `NotCopy`, which is required by `Option<NotCopy>: Copy`
+   |                                                   ^^^^ the trait `Copy` is not implemented for `NotCopy`
    |
    = note: required for `Option<NotCopy>` to implement `Copy`
 note: required by a bound in `IsCopy`

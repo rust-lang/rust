@@ -1,4 +1,5 @@
 //@aux-build:proc_macros.rs
+//@aux-build:proc_macro_derive.rs
 #![allow(unused)]
 #![warn(clippy::allow_attributes)]
 #![no_main]
@@ -65,3 +66,9 @@ fn deny_allow_attributes() -> Option<u8> {
     allow?;
     Some(42)
 }
+
+// Edge case where the generated tokens spans match on #[repr(transparent)] which tricks the proc
+// macro check
+#[repr(transparent)]
+#[derive(proc_macro_derive::AllowLintSameSpan)] // This macro generates tokens with the same span as the whole struct and repr
+struct IgnoreDerived;

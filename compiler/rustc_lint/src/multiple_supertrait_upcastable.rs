@@ -37,7 +37,7 @@ declare_lint_pass!(MultipleSupertraitUpcastable => [MULTIPLE_SUPERTRAIT_UPCASTAB
 impl<'tcx> LateLintPass<'tcx> for MultipleSupertraitUpcastable {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
         let def_id = item.owner_id.to_def_id();
-        // NOTE(nbdd0121): use `object_safety_violations` instead of `is_dyn_compatible` because
+        // NOTE(nbdd0121): use `dyn_compatibility_violations` instead of `is_dyn_compatible` because
         // the latter will report `where_clause_object_safety` lint.
         if let hir::ItemKind::Trait(_, _, _, _, _) = item.kind
             && cx.tcx.is_dyn_compatible(def_id)

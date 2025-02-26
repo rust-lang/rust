@@ -1,9 +1,11 @@
-//@ compile-flags: -C debuginfo=2
 // ignore-tidy-linelength
+//! Checks that visibility information is present in the debuginfo for crate-visibility enums.
 
-#![allow(dead_code)]
+//@ revisions: MSVC NONMSVC
+//@[MSVC] only-msvc
+//@[NONMSVC] ignore-msvc
 
-// Checks that visibility information is present in the debuginfo for crate-visibility enums.
+//@ compile-flags: -C debuginfo=2
 
 mod module {
     use std::hint::black_box;

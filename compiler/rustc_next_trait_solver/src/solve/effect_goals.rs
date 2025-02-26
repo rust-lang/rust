@@ -3,15 +3,16 @@
 
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
+use rustc_type_ir::lang_items::TraitSolverLangItem;
+use rustc_type_ir::solve::inspect::ProbeKind;
 use rustc_type_ir::{self as ty, Interner, elaborate};
 use tracing::instrument;
 
-use super::assembly::Candidate;
+use super::assembly::{Candidate, structural_traits};
 use crate::delegate::SolverDelegate;
-use crate::solve::assembly::{self};
 use crate::solve::{
     BuiltinImplSource, CandidateSource, Certainty, EvalCtxt, Goal, GoalSource, NoSolution,
-    QueryResult,
+    QueryResult, assembly,
 };
 
 impl<D, I> assembly::GoalKind<D> for ty::HostEffectPredicate<I>
@@ -44,7 +45,7 @@ where
     ) -> Result<Candidate<I>, NoSolution> {
         if let Some(host_clause) = assumption.as_host_effect_clause() {
             if host_clause.def_id() == goal.predicate.def_id()
-                && host_clause.host().satisfies(goal.predicate.host)
+                && host_clause.constness().satisfies(goal.predicate.constness)
             {
                 if !DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
                     goal.predicate.trait_ref.args,
@@ -84,14 +85,15 @@ where
         let cx = ecx.cx();
         let mut candidates = vec![];
 
-        // FIXME(effects): We elaborate here because the implied const bounds
-        // aren't necessarily elaborated. We probably should prefix this query
-        // with `explicit_`...
+        if !ecx.cx().alias_has_const_conditions(alias_ty.def_id) {
+            return vec![];
+        }
+
         for clause in elaborate::elaborate(
             cx,
-            cx.implied_const_bounds(alias_ty.def_id)
+            cx.explicit_implied_const_bounds(alias_ty.def_id)
                 .iter_instantiated(cx, alias_ty.args)
-                .map(|trait_ref| trait_ref.to_host_effect_clause(cx, goal.predicate.host)),
+                .map(|trait_ref| trait_ref.to_host_effect_clause(cx, goal.predicate.constness)),
         ) {
             candidates.extend(Self::probe_and_match_goal_against_assumption(
                 ecx,
@@ -101,13 +103,13 @@ where
                 |ecx| {
                     // Const conditions must hold for the implied const bound to hold.
                     ecx.add_goals(
-                        GoalSource::Misc,
+                        GoalSource::AliasBoundConstCondition,
                         cx.const_conditions(alias_ty.def_id)
                             .iter_instantiated(cx, alias_ty.args)
                             .map(|trait_ref| {
                                 goal.with(
                                     cx,
-                                    trait_ref.to_host_effect_clause(cx, goal.predicate.host),
+                                    trait_ref.to_host_effect_clause(cx, goal.predicate.constness),
                                 )
                             }),
                     );
@@ -142,7 +144,7 @@ where
             ty::ImplPolarity::Positive => {}
         };
 
-        if !cx.is_const_impl(impl_def_id) {
+        if !cx.impl_is_const(impl_def_id) {
             return Err(NoSolution);
         }
 
@@ -163,7 +165,10 @@ where
                 .const_conditions(impl_def_id)
                 .iter_instantiated(cx, impl_args)
                 .map(|bound_trait_ref| {
-                    goal.with(cx, bound_trait_ref.to_host_effect_clause(cx, goal.predicate.host))
+                    goal.with(
+                        cx,
+                        bound_trait_ref.to_host_effect_clause(cx, goal.predicate.constness),
+                    )
                 });
             ecx.add_goals(GoalSource::ImplWhereBound, const_conditions);
 
@@ -204,14 +209,7 @@ where
         _ecx: &mut EvalCtxt<'_, D>,
         _goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolution> {
-        todo!("Copy/Clone is not yet const")
-    }
-
-    fn consider_builtin_pointer_like_candidate(
-        _ecx: &mut EvalCtxt<'_, D>,
-        _goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolution> {
-        unreachable!("PointerLike is not const")
+        Err(NoSolution)
     }
 
     fn consider_builtin_fn_ptr_trait_candidate(
@@ -222,11 +220,49 @@ where
     }
 
     fn consider_builtin_fn_trait_candidates(
-        _ecx: &mut EvalCtxt<'_, D>,
-        _goal: Goal<I, Self>,
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
         _kind: rustc_type_ir::ClosureKind,
     ) -> Result<Candidate<I>, NoSolution> {
-        todo!("Fn* are not yet const")
+        let cx = ecx.cx();
+
+        let self_ty = goal.predicate.self_ty();
+        let (inputs_and_output, def_id, args) =
+            structural_traits::extract_fn_def_from_const_callable(cx, self_ty)?;
+
+        // A built-in `Fn` impl only holds if the output is sized.
+        // (FIXME: technically we only need to check this if the type is a fn ptr...)
+        let output_is_sized_pred = inputs_and_output.map_bound(|(_, output)| {
+            ty::TraitRef::new(cx, cx.require_lang_item(TraitSolverLangItem::Sized), [output])
+        });
+        let requirements = cx
+            .const_conditions(def_id)
+            .iter_instantiated(cx, args)
+            .map(|trait_ref| {
+                (
+                    GoalSource::ImplWhereBound,
+                    goal.with(cx, trait_ref.to_host_effect_clause(cx, goal.predicate.constness)),
+                )
+            })
+            .chain([(GoalSource::ImplWhereBound, goal.with(cx, output_is_sized_pred))]);
+
+        let pred = inputs_and_output
+            .map_bound(|(inputs, _)| {
+                ty::TraitRef::new(
+                    cx,
+                    goal.predicate.def_id(),
+                    [goal.predicate.self_ty(), Ty::new_tup(cx, inputs.as_slice())],
+                )
+            })
+            .to_host_effect_clause(cx, goal.predicate.constness);
+
+        Self::probe_and_consider_implied_clause(
+            ecx,
+            CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
+            goal,
+            pred,
+            requirements,
+        )
     }
 
     fn consider_builtin_async_fn_trait_candidates(
@@ -308,10 +344,27 @@ where
     }
 
     fn consider_builtin_destruct_candidate(
-        _ecx: &mut EvalCtxt<'_, D>,
-        _goal: Goal<I, Self>,
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolution> {
-        unreachable!("Destruct is not const")
+        let cx = ecx.cx();
+
+        let self_ty = goal.predicate.self_ty();
+        let const_conditions = structural_traits::const_conditions_for_destruct(cx, self_ty)?;
+
+        ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
+            ecx.add_goals(
+                GoalSource::AliasBoundConstCondition,
+                const_conditions.into_iter().map(|trait_ref| {
+                    goal.with(
+                        cx,
+                        ty::Binder::dummy(trait_ref)
+                            .to_host_effect_clause(cx, goal.predicate.constness),
+                    )
+                }),
+            );
+            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        })
     }
 
     fn consider_builtin_transmute_candidate(
@@ -319,6 +372,13 @@ where
         _goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolution> {
         unreachable!("TransmuteFrom is not const")
+    }
+
+    fn consider_builtin_bikeshed_guaranteed_no_drop_candidate(
+        _ecx: &mut EvalCtxt<'_, D>,
+        _goal: Goal<I, Self>,
+    ) -> Result<Candidate<I>, NoSolution> {
+        unreachable!("BikeshedGuaranteedNoDrop is not const");
     }
 
     fn consider_structural_builtin_unsize_candidates(
@@ -340,6 +400,11 @@ where
         goal: Goal<I, ty::HostEffectPredicate<I>>,
     ) -> QueryResult<I> {
         let candidates = self.assemble_and_evaluate_candidates(goal);
-        self.merge_candidates(candidates)
+        let (_, proven_via) = self.probe(|_| ProbeKind::ShadowedEnvProbing).enter(|ecx| {
+            let trait_goal: Goal<I, ty::TraitPredicate<I>> =
+                goal.with(ecx.cx(), goal.predicate.trait_ref);
+            ecx.compute_trait_goal(trait_goal)
+        })?;
+        self.merge_candidates(proven_via, candidates, |_ecx| Err(NoSolution))
     }
 }

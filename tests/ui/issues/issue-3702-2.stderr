@@ -16,12 +16,14 @@ LL |     fn to_int(&self) -> isize { 0 }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 help: disambiguate the method for candidate #1
    |
-LL |         Add::to_int(&self) + other.to_int()
-   |         ~~~~~~~~~~~~~~~~~~
+LL -         self.to_int() + other.to_int()
+LL +         Add::to_int(&self) + other.to_int()
+   |
 help: disambiguate the method for candidate #2
    |
-LL |         ToPrimitive::to_int(&self) + other.to_int()
-   |         ~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -         self.to_int() + other.to_int()
+LL +         ToPrimitive::to_int(&self) + other.to_int()
+   |
 
 error: aborting due to 1 previous error
 

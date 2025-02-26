@@ -5,8 +5,8 @@
 // The win64 ABI is used. It differs from the sysv64 ABI, so we must use a windows target with
 // LLVM. "x86_64-unknown-windows" is used to get the minimal subset of windows-specific features.
 
-use crate::abi::call::Conv;
-use crate::spec::{Target, base};
+use crate::callconv::Conv;
+use crate::spec::{RustcAbi, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::uefi_msvc::opts();
@@ -26,10 +26,11 @@ pub(crate) fn target() -> Target {
     // If you initialize FP units yourself, you can override these flags with custom linker
     // arguments, thus giving you access to full MMX/SSE acceleration.
     base.features = "-mmx,-sse,+soft-float".into();
+    base.rustc_abi = Some(RustcAbi::X86Softfloat);
 
     Target {
         llvm_target: "x86_64-unknown-windows".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("64-bit UEFI".into()),
             tier: Some(2),
             host_tools: Some(false),

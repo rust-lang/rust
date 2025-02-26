@@ -152,6 +152,7 @@ pub fn leading_labeled_expr(mut expr: &ast::Expr) -> bool {
             | Underscore
             | Yeet(..)
             | Yield(..)
+            | UnsafeBinderCast(..)
             | Err(..)
             | Dummy => return false,
         }
@@ -232,6 +233,7 @@ pub fn expr_trailing_brace(mut expr: &ast::Expr) -> Option<TrailingBrace<'_>> {
             | Paren(_)
             | Try(_)
             | Yeet(None)
+            | UnsafeBinderCast(..)
             | Err(_)
             | Dummy => break None,
         }
@@ -251,6 +253,10 @@ fn type_trailing_braced_mac_call(mut ty: &ast::Ty) -> Option<&ast::MacCall> {
             | ast::TyKind::Ref(_, mut_ty)
             | ast::TyKind::PinnedRef(_, mut_ty) => {
                 ty = &mut_ty.ty;
+            }
+
+            ast::TyKind::UnsafeBinder(binder) => {
+                ty = &binder.inner_ty;
             }
 
             ast::TyKind::BareFn(fn_ty) => match &fn_ty.decl.output {

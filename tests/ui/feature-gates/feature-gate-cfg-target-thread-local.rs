@@ -1,4 +1,4 @@
-//@ ignore-windows
+//@ ignore-windows FIXME(134939): thread_local + no_mangle doesn't work on Windows
 //@ aux-build:cfg-target-thread-local.rs
 
 #![feature(thread_local)]

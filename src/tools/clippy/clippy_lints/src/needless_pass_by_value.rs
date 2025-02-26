@@ -5,12 +5,11 @@ use clippy_utils::source::{SpanRangeExt, snippet};
 use clippy_utils::ty::{
     implements_trait, implements_trait_with_env_from_iter, is_copy, is_type_diagnostic_item, is_type_lang_item,
 };
-use rustc_ast::ast::Attribute;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    BindingMode, Body, FnDecl, GenericArg, HirId, HirIdSet, Impl, ItemKind, LangItem, Mutability, Node, PatKind, QPath,
-    TyKind,
+    Attribute, BindingMode, Body, FnDecl, GenericArg, HirId, HirIdSet, Impl, ItemKind, LangItem, Mutability, Node,
+    PatKind, QPath, TyKind,
 };
 use rustc_hir_typeck::expr_use_visitor as euv;
 use rustc_lint::{LateContext, LateLintPass};
@@ -20,7 +19,7 @@ use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::kw;
 use rustc_span::{Span, sym};
-use rustc_target::spec::abi::Abi;
+use rustc_abi::ExternAbi;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::misc::type_allowed_to_implement_copy;
 
@@ -90,7 +89,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
         match kind {
             FnKind::ItemFn(.., header) => {
                 let attrs = cx.tcx.hir().attrs(hir_id);
-                if header.abi != Abi::Rust || requires_exact_signature(attrs) {
+                if header.abi != ExternAbi::Rust || requires_exact_signature(attrs) {
                     return;
                 }
             },
@@ -180,11 +179,16 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
             if !is_self(arg)
                 && !ty.is_mutable_ptr()
                 && !is_copy(cx, ty)
-                && ty.is_sized(cx.tcx, cx.param_env)
+                && ty.is_sized(cx.tcx, cx.typing_env())
                 && !allowed_traits.iter().any(|&t| {
-                    implements_trait_with_env_from_iter(cx.tcx, cx.param_env, ty, t, None, [Option::<
-                        ty::GenericArg<'tcx>,
-                    >::None])
+                    implements_trait_with_env_from_iter(
+                        cx.tcx,
+                        cx.typing_env(),
+                        ty,
+                        t,
+                        None,
+                        [None::<ty::GenericArg<'tcx>>],
+                    )
                 })
                 && !implements_borrow_trait
                 && !all_borrowable_trait
@@ -200,6 +204,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                                 cx.param_env,
                                 ty,
                                 traits::ObligationCause::dummy_with_span(span),
+                                rustc_hir::Safety::Safe,
                             )
                             .is_ok()
                             {

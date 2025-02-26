@@ -343,11 +343,9 @@ fn compute_closure_type_params(
     let mut mentioned_names = mentioned_generic_params
         .iter()
         .filter_map(|param| match param {
-            hir::GenericParam::TypeParam(param) => {
-                Some(param.name(ctx.db()).unescaped().display(ctx.db()).to_smolstr())
-            }
+            hir::GenericParam::TypeParam(param) => Some(param.name(ctx.db()).as_str().to_smolstr()),
             hir::GenericParam::ConstParam(param) => {
-                Some(param.name(ctx.db()).unescaped().display(ctx.db()).to_smolstr())
+                Some(param.name(ctx.db()).as_str().to_smolstr())
             }
             hir::GenericParam::LifetimeParam(_) => None,
         })
@@ -390,7 +388,7 @@ fn compute_closure_type_params(
             let has_name = syntax
                 .descendants()
                 .filter_map(ast::NameOrNameRef::cast)
-                .any(|name| mentioned_names.contains(&*name.text()));
+                .any(|name| mentioned_names.contains(name.text().trim_start_matches("r#")));
             let mut has_new_params = false;
             if has_name {
                 syntax
@@ -507,7 +505,7 @@ fn wrap_capture_in_deref_if_needed(
     if does_autoderef {
         return capture_name;
     }
-    make::expr_prefix(T![*], capture_name)
+    make::expr_prefix(T![*], capture_name).into()
 }
 
 fn capture_as_arg(ctx: &AssistContext<'_>, capture: &ClosureCapture) -> ast::Expr {

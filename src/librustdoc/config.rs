@@ -9,15 +9,15 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::DiagCtxtHandle;
 use rustc_session::config::{
     self, CodegenOptions, CrateType, ErrorOutputType, Externs, Input, JsonUnusedExterns,
-    UnstableOptions, get_cmd_lint_options, nightly_options, parse_crate_types_from_list,
-    parse_externs, parse_target_triple,
+    OptionsTargetModifiers, UnstableOptions, get_cmd_lint_options, nightly_options,
+    parse_crate_types_from_list, parse_externs, parse_target_triple,
 };
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
 use rustc_session::{EarlyDiagCtxt, getopts};
 use rustc_span::FileName;
 use rustc_span::edition::Edition;
-use rustc_target::spec::TargetTriple;
+use rustc_target::spec::TargetTuple;
 
 use crate::core::new_dcx;
 use crate::externalfiles::ExternalHtml;
@@ -33,6 +33,7 @@ pub(crate) enum OutputFormat {
     Json,
     #[default]
     Html,
+    Doctest,
 }
 
 impl OutputFormat {
@@ -48,6 +49,7 @@ impl TryFrom<&str> for OutputFormat {
         match value {
             "json" => Ok(OutputFormat::Json),
             "html" => Ok(OutputFormat::Html),
+            "doctest" => Ok(OutputFormat::Doctest),
             _ => Err(format!("unknown output format `{value}`")),
         }
     }
@@ -96,7 +98,7 @@ pub(crate) struct Options {
     /// Unstable (`-Z`) options strings to pass to the compiler.
     pub(crate) unstable_opts_strs: Vec<String>,
     /// The target used to compile the crate against.
-    pub(crate) target: TargetTriple,
+    pub(crate) target: TargetTuple,
     /// Edition used when reading the crate. Defaults to "2015". Also used by default when
     /// compiling doctests from the crate.
     pub(crate) edition: Edition,
@@ -172,13 +174,16 @@ pub(crate) struct Options {
     /// This is mainly useful for other tools that reads that debuginfo to figure out
     /// how to call the compiler with the same arguments.
     pub(crate) expanded_args: Vec<String>,
+
+    /// Arguments to be used when compiling doctests.
+    pub(crate) doctest_compilation_args: Vec<String>,
 }
 
 impl fmt::Debug for Options {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         struct FmtExterns<'a>(&'a Externs);
 
-        impl<'a> fmt::Debug for FmtExterns<'a> {
+        impl fmt::Debug for FmtExterns<'_> {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 f.debug_map().entries(self.0.iter()).finish()
             }
@@ -300,6 +305,8 @@ pub(crate) struct RenderOptions {
     pub(crate) include_parts_dir: Vec<PathToParts>,
     /// Where to write crate-info
     pub(crate) parts_out_dir: Option<PathToParts>,
+    /// disable minification of CSS/JS
+    pub(crate) disable_minification: bool,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -382,8 +389,9 @@ impl Options {
             config::parse_error_format(early_dcx, matches, color, json_color, json_rendered);
         let diagnostic_width = matches.opt_get("diagnostic-width").unwrap_or_default();
 
-        let codegen_options = CodegenOptions::build(early_dcx, matches);
-        let unstable_opts = UnstableOptions::build(early_dcx, matches);
+        let mut target_modifiers = BTreeMap::<OptionsTargetModifiers, String>::new();
+        let codegen_options = CodegenOptions::build(early_dcx, matches, &mut target_modifiers);
+        let unstable_opts = UnstableOptions::build(early_dcx, matches, &mut target_modifiers);
 
         let remap_path_prefix = match parse_remap_path_prefix(matches) {
             Ok(prefix_mappings) => prefix_mappings,
@@ -440,20 +448,48 @@ impl Options {
             }
         }
 
+        let show_coverage = matches.opt_present("show-coverage");
+        let output_format_s = matches.opt_str("output-format");
+        let output_format = match output_format_s {
+            Some(ref s) => match OutputFormat::try_from(s.as_str()) {
+                Ok(out_fmt) => out_fmt,
+                Err(e) => dcx.fatal(e),
+            },
+            None => OutputFormat::default(),
+        };
+
         // check for `--output-format=json`
-        if !matches!(matches.opt_str("output-format").as_deref(), None | Some("html"))
-            && !matches.opt_present("show-coverage")
-            && !nightly_options::is_unstable_enabled(matches)
-        {
-            dcx.fatal(
-                "the -Z unstable-options flag must be passed to enable --output-format for documentation generation (see https://github.com/rust-lang/rust/issues/76578)",
-            );
+        match (
+            output_format_s.as_ref().map(|_| output_format),
+            show_coverage,
+            nightly_options::is_unstable_enabled(matches),
+        ) {
+            (None | Some(OutputFormat::Json), true, _) => {}
+            (_, true, _) => {
+                dcx.fatal(format!(
+                    "`--output-format={}` is not supported for the `--show-coverage` option",
+                    output_format_s.unwrap_or_default(),
+                ));
+            }
+            // If `-Zunstable-options` is used, nothing to check after this point.
+            (_, false, true) => {}
+            (None | Some(OutputFormat::Html), false, _) => {}
+            (Some(OutputFormat::Json), false, false) => {
+                dcx.fatal(
+                    "the -Z unstable-options flag must be passed to enable --output-format for documentation generation (see https://github.com/rust-lang/rust/issues/76578)",
+                );
+            }
+            (Some(OutputFormat::Doctest), false, false) => {
+                dcx.fatal(
+                    "the -Z unstable-options flag must be passed to enable --output-format for documentation generation (see https://github.com/rust-lang/rust/issues/134529)",
+                );
+            }
         }
 
         let to_check = matches.opt_strs("check-theme");
         if !to_check.is_empty() {
             let mut content =
-                std::str::from_utf8(static_files::STATIC_FILES.rustdoc_css.bytes).unwrap();
+                std::str::from_utf8(static_files::STATIC_FILES.rustdoc_css.src_bytes).unwrap();
             if let Some((_, inside)) = content.split_once("/* Begin theme: light */") {
                 content = inside;
             }
@@ -508,7 +544,7 @@ impl Options {
         };
 
         let parts_out_dir =
-            match matches.opt_str("parts-out-dir").map(|p| PathToParts::from_flag(p)).transpose() {
+            match matches.opt_str("parts-out-dir").map(PathToParts::from_flag).transpose() {
                 Ok(parts_out_dir) => parts_out_dir,
                 Err(e) => dcx.fatal(e),
             };
@@ -602,7 +638,7 @@ impl Options {
         let mut themes = Vec::new();
         if matches.opt_present("theme") {
             let mut content =
-                std::str::from_utf8(static_files::STATIC_FILES.rustdoc_css.bytes).unwrap();
+                std::str::from_utf8(static_files::STATIC_FILES.rustdoc_css.src_bytes).unwrap();
             if let Some((_, inside)) = content.split_once("/* Begin theme: light */") {
                 content = inside;
             }
@@ -699,8 +735,6 @@ impl Options {
             })
             .collect();
 
-        let show_coverage = matches.opt_present("show-coverage");
-
         let crate_types = match parse_crate_types_from_list(matches.opt_strs("crate-type")) {
             Ok(types) => types,
             Err(e) => {
@@ -708,20 +742,6 @@ impl Options {
             }
         };
 
-        let output_format = match matches.opt_str("output-format") {
-            Some(s) => match OutputFormat::try_from(s.as_str()) {
-                Ok(out_fmt) => {
-                    if !out_fmt.is_json() && show_coverage {
-                        dcx.fatal(
-                            "html output format isn't supported for the --show-coverage option",
-                        );
-                    }
-                    out_fmt
-                }
-                Err(e) => dcx.fatal(e),
-            },
-            None => OutputFormat::default(),
-        };
         let crate_name = matches.opt_str("crate-name");
         let bin_crate = crate_types.contains(&CrateType::Executable);
         let proc_macro_crate = crate_types.contains(&CrateType::ProcMacro);
@@ -774,9 +794,13 @@ impl Options {
         let scrape_examples_options = ScrapeExamplesOptions::new(matches, dcx);
         let with_examples = matches.opt_strs("with-examples");
         let call_locations = crate::scrape_examples::load_call_locations(with_examples, dcx);
+        let doctest_compilation_args = matches.opt_strs("doctest-compilation-args");
 
         let unstable_features =
             rustc_feature::UnstableFeatures::from_environment(crate_name.as_deref());
+
+        let disable_minification = matches.opt_present("disable-minification");
+
         let options = Options {
             bin_crate,
             proc_macro_crate,
@@ -819,6 +843,7 @@ impl Options {
             scrape_examples_options,
             unstable_features,
             expanded_args: args,
+            doctest_compilation_args,
         };
         let render_options = RenderOptions {
             output,
@@ -852,6 +877,7 @@ impl Options {
             should_merge,
             include_parts_dir,
             parts_out_dir,
+            disable_minification,
         };
         Some((input, options, render_options))
     }

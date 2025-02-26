@@ -6,8 +6,9 @@ LL |     let b: typeof(a) = 1i8;
    |
 help: consider replacing `typeof(...)` with an actual type
    |
-LL |     let b: u8 = 1i8;
-   |            ~~
+LL -     let b: typeof(a) = 1i8;
+LL +     let b: u8 = 1i8;
+   |
 
 error[E0308]: mismatched types
   --> $DIR/type_mismatch.rs:5:24
@@ -19,8 +20,9 @@ LL |     let b: typeof(a) = 1i8;
    |
 help: change the type of the numeric literal from `i8` to `u8`
    |
-LL |     let b: typeof(a) = 1u8;
-   |                         ~~
+LL -     let b: typeof(a) = 1i8;
+LL +     let b: typeof(a) = 1u8;
+   |
 
 error: aborting due to 2 previous errors
 

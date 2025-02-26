@@ -87,16 +87,15 @@
 
 use either::Either;
 use hir_def::{
-    child_by_source::ChildBySource,
     dyn_map::{
         keys::{self, Key},
         DynMap,
     },
     hir::{BindingId, Expr, LabelId},
-    AdtId, BlockId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, ExternCrateId,
-    FieldId, FunctionId, GenericDefId, GenericParamId, ImplId, LifetimeParamId, Lookup, MacroId,
-    ModuleId, StaticId, StructId, TraitAliasId, TraitId, TypeAliasId, TypeParamId, UnionId, UseId,
-    VariantId,
+    AdtId, BlockId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, ExternBlockId,
+    ExternCrateId, FieldId, FunctionId, GenericDefId, GenericParamId, ImplId, LifetimeParamId,
+    Lookup, MacroId, ModuleId, StaticId, StructId, TraitAliasId, TraitId, TypeAliasId, TypeParamId,
+    UnionId, UseId, VariantId,
 };
 use hir_expand::{
     attrs::AttrId, name::AsName, ExpansionInfo, HirFileId, HirFileIdExt, InMacroFile, MacroCallId,
@@ -111,7 +110,7 @@ use syntax::{
     AstNode, AstPtr, SyntaxNode,
 };
 
-use crate::{db::HirDatabase, InFile, InlineAsmOperand, SemanticsImpl};
+use crate::{db::HirDatabase, semantics::child_by_source::ChildBySource, InFile, InlineAsmOperand};
 
 #[derive(Default)]
 pub(super) struct SourceToDefCache {
@@ -119,9 +118,21 @@ pub(super) struct SourceToDefCache {
     expansion_info_cache: FxHashMap<MacroFileId, ExpansionInfo>,
     pub(super) file_to_def_cache: FxHashMap<FileId, SmallVec<[ModuleId; 1]>>,
     pub(super) included_file_cache: FxHashMap<EditionedFileId, Option<MacroFileId>>,
+    /// Rootnode to HirFileId cache
+    pub(super) root_to_file_cache: FxHashMap<SyntaxNode, HirFileId>,
 }
 
 impl SourceToDefCache {
+    pub(super) fn cache(
+        root_to_file_cache: &mut FxHashMap<SyntaxNode, HirFileId>,
+        root_node: SyntaxNode,
+        file_id: HirFileId,
+    ) {
+        assert!(root_node.parent().is_none());
+        let prev = root_to_file_cache.insert(root_node, file_id);
+        assert!(prev.is_none() || prev == Some(file_id));
+    }
+
     pub(super) fn get_or_insert_include_for(
         &mut self,
         db: &dyn HirDatabase,
@@ -141,14 +152,14 @@ impl SourceToDefCache {
 
     pub(super) fn get_or_insert_expansion(
         &mut self,
-        sema: &SemanticsImpl<'_>,
+        db: &dyn HirDatabase,
         macro_file: MacroFileId,
     ) -> &ExpansionInfo {
         self.expansion_info_cache.entry(macro_file).or_insert_with(|| {
-            let exp_info = macro_file.expansion_info(sema.db.upcast());
+            let exp_info = macro_file.expansion_info(db.upcast());
 
             let InMacroFile { file_id, value } = exp_info.expanded();
-            sema.cache(value, file_id.into());
+            Self::cache(&mut self.root_to_file_cache, value, file_id.into());
 
             exp_info
         })
@@ -297,6 +308,12 @@ impl SourceToDefCtx<'_, '_> {
     ) -> Option<ExternCrateId> {
         self.to_def(src, keys::EXTERN_CRATE)
     }
+    pub(super) fn extern_block_to_def(
+        &mut self,
+        src: InFile<&ast::ExternBlock>,
+    ) -> Option<ExternBlockId> {
+        self.to_def(src, keys::EXTERN_BLOCK)
+    }
     #[allow(dead_code)]
     pub(super) fn use_to_def(&mut self, src: InFile<&ast::Use>) -> Option<UseId> {
         self.to_def(src, keys::USE)
@@ -328,7 +345,7 @@ impl SourceToDefCtx<'_, '_> {
             .position(|it| it == *src.value)?;
         let container = self.find_pat_or_label_container(src.syntax_ref())?;
         let (_, source_map) = self.db.body_with_source_map(container);
-        let expr = source_map.node_expr(src.with_value(&ast::Expr::AsmExpr(asm)))?;
+        let expr = source_map.node_expr(src.with_value(&ast::Expr::AsmExpr(asm)))?.as_expr()?;
         Some(InlineAsmOperand { owner: container, expr, index })
     }
 
@@ -341,7 +358,7 @@ impl SourceToDefCtx<'_, '_> {
         let src = src.cloned().map(ast::Pat::from);
         let pat_id = source_map.node_pat(src.as_ref())?;
         // the pattern could resolve to a constant, verify that this is not the case
-        if let crate::Pat::Bind { id, .. } = body[pat_id] {
+        if let crate::Pat::Bind { id, .. } = body[pat_id.as_pat()?] {
             Some((container, id))
         } else {
             None
@@ -372,7 +389,8 @@ impl SourceToDefCtx<'_, '_> {
         let break_or_continue = ast::Expr::cast(src.value.syntax().parent()?)?;
         let container = self.find_pat_or_label_container(src.syntax_ref())?;
         let (body, source_map) = self.db.body_with_source_map(container);
-        let break_or_continue = source_map.node_expr(src.with_value(&break_or_continue))?;
+        let break_or_continue =
+            source_map.node_expr(src.with_value(&break_or_continue))?.as_expr()?;
         let (Expr::Break { label, .. } | Expr::Continue { label }) = body[break_or_continue] else {
             return None;
         };
@@ -405,7 +423,7 @@ impl SourceToDefCtx<'_, '_> {
     }
 
     pub(super) fn has_derives(&mut self, adt: InFile<&ast::Adt>) -> bool {
-        self.dyn_map(adt).as_ref().map_or(false, |map| !map[keys::DERIVE_MACRO_CALL].is_empty())
+        self.dyn_map(adt).as_ref().is_some_and(|map| !map[keys::DERIVE_MACRO_CALL].is_empty())
     }
 
     fn to_def<Ast: AstNode + 'static, ID: Copy + 'static>(
@@ -517,18 +535,11 @@ impl SourceToDefCtx<'_, '_> {
         node: InFile<&SyntaxNode>,
         mut cb: impl FnMut(&mut Self, InFile<SyntaxNode>) -> Option<T>,
     ) -> Option<T> {
-        use hir_expand::MacroFileIdExt;
         let parent = |this: &mut Self, node: InFile<&SyntaxNode>| match node.value.parent() {
             Some(parent) => Some(node.with_value(parent)),
             None => {
                 let macro_file = node.file_id.macro_file()?;
-
-                let expansion_info = this
-                    .cache
-                    .expansion_info_cache
-                    .entry(macro_file)
-                    .or_insert_with(|| macro_file.expansion_info(this.db.upcast()));
-
+                let expansion_info = this.cache.get_or_insert_expansion(this.db, macro_file);
                 expansion_info.arg().map(|node| node?.parent()).transpose()
             }
         };

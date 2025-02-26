@@ -336,8 +336,9 @@ LL |         let S(&mut _b) = S(0);
    |               ^^^^^^^
 help: consider removing `&mut` from the pattern
    |
-LL |         let S(_b) = S(0);
-   |               ~~
+LL -         let S(&mut _b) = S(0);
+LL +         let S(_b) = S(0);
+   |
 
 error[E0308]: mismatched types
   --> $DIR/ref-pat-suggestions.rs:31:14

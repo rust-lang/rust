@@ -21,9 +21,8 @@ struct f32x4([f32; 4]);
 struct f32x8([f32; 8]);
 
 
-extern "rust-intrinsic" {
-    fn simd_cast<T, U>(x: T) -> U;
-}
+#[rustc_intrinsic]
+unsafe fn simd_cast<T, U>(x: T) -> U;
 
 fn main() {
     let x = i32x4([0, 0, 0, 0]);

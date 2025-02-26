@@ -1,5 +1,9 @@
-// Check that Polonius borrow check works for simple cases.
-//@ compile-flags: -Z polonius
+// Check that Polonius works for simple cases.
+
+//@ ignore-compare-mode-polonius (explicit revisions)
+//@ revisions: polonius legacy
+//@ [polonius] compile-flags: -Z polonius=next
+//@ [legacy] compile-flags: -Z polonius=legacy
 
 pub fn return_ref_to_local() -> &'static i32 {
     let x = 0;

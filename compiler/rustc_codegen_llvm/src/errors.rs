@@ -31,6 +31,16 @@ pub(crate) struct UnstableCTargetFeature<'a> {
     pub feature: &'a str,
 }
 
+#[derive(Diagnostic)]
+#[diag(codegen_llvm_forbidden_ctarget_feature)]
+#[note]
+#[note(codegen_llvm_forbidden_ctarget_feature_issue)]
+pub(crate) struct ForbiddenCTargetFeature<'a> {
+    pub feature: &'a str,
+    pub enabled: &'a str,
+    pub reason: &'a str,
+}
+
 #[derive(Subdiagnostic)]
 pub(crate) enum PossibleFeature<'a> {
     #[help(codegen_llvm_possible_feature)]
@@ -81,6 +91,14 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for ParseTargetMachineConfig<'_> {
 }
 
 #[derive(Diagnostic)]
+#[diag(codegen_llvm_autodiff_without_lto)]
+pub(crate) struct AutoDiffWithoutLTO;
+
+#[derive(Diagnostic)]
+#[diag(codegen_llvm_autodiff_without_enable)]
+pub(crate) struct AutoDiffWithoutEnable;
+
+#[derive(Diagnostic)]
 #[diag(codegen_llvm_lto_disallowed)]
 pub(crate) struct LtoDisallowed;
 
@@ -116,12 +134,12 @@ pub enum LlvmError<'a> {
     LoadBitcode { name: CString },
     #[diag(codegen_llvm_write_thinlto_key)]
     WriteThinLtoKey { err: std::io::Error },
-    #[diag(codegen_llvm_multiple_source_dicompileunit)]
-    MultipleSourceDiCompileUnit,
     #[diag(codegen_llvm_prepare_thin_lto_module)]
     PrepareThinLtoModule,
     #[diag(codegen_llvm_parse_bitcode)]
     ParseBitcode,
+    #[diag(codegen_llvm_prepare_autodiff)]
+    PrepareAutoDiff { src: String, target: String, error: String },
 }
 
 pub(crate) struct WithLlvmError<'a>(pub LlvmError<'a>, pub String);
@@ -138,11 +156,9 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for WithLlvmError<'_> {
             PrepareThinLtoContext => fluent::codegen_llvm_prepare_thin_lto_context_with_llvm_err,
             LoadBitcode { .. } => fluent::codegen_llvm_load_bitcode_with_llvm_err,
             WriteThinLtoKey { .. } => fluent::codegen_llvm_write_thinlto_key_with_llvm_err,
-            MultipleSourceDiCompileUnit => {
-                fluent::codegen_llvm_multiple_source_dicompileunit_with_llvm_err
-            }
             PrepareThinLtoModule => fluent::codegen_llvm_prepare_thin_lto_module_with_llvm_err,
             ParseBitcode => fluent::codegen_llvm_parse_bitcode_with_llvm_err,
+            PrepareAutoDiff { .. } => fluent::codegen_llvm_prepare_autodiff_with_llvm_err,
         };
         self.0
             .into_diag(dcx, level)
@@ -194,12 +210,6 @@ pub(crate) struct MismatchedDataLayout<'a> {
     pub rustc_layout: &'a str,
     pub llvm_target: &'a str,
     pub llvm_layout: &'a str,
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_llvm_invalid_target_feature_prefix)]
-pub(crate) struct InvalidTargetFeaturePrefix<'a> {
-    pub feature: &'a str,
 }
 
 #[derive(Diagnostic)]

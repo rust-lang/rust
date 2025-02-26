@@ -1,8 +1,6 @@
 #![warn(clippy::manual_split_once)]
 #![allow(unused, clippy::iter_skip_next, clippy::iter_nth_zero)]
 
-//@no-rustfix: need to change the suggestion to a multipart suggestion
-
 extern crate itertools;
 
 #[allow(unused_imports)]

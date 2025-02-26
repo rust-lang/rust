@@ -184,8 +184,9 @@ LL |     std::panic!("{}", 123);
    |                 +++++
 help: or use std::panic::panic_any instead
    |
-LL |     std::panic::panic_any(123);
-   |     ~~~~~~~~~~~~~~~~~~~~~
+LL -     std::panic!(123);
+LL +     std::panic::panic_any(123);
+   |
 
 warning: panic message is not a string literal
   --> $DIR/non-fmt-panic.rs:31:18
@@ -214,8 +215,9 @@ LL |     panic!("{:?}", Some(123));
    |            +++++++
 help: or use std::panic::panic_any instead
    |
-LL |     std::panic::panic_any(Some(123));
-   |     ~~~~~~~~~~~~~~~~~~~~~
+LL -     panic!(Some(123));
+LL +     std::panic::panic_any(Some(123));
+   |
 
 warning: panic message contains an unused formatting placeholder
   --> $DIR/non-fmt-panic.rs:33:12
@@ -267,8 +269,9 @@ LL |     panic!("{}", a!());
    |            +++++
 help: or use std::panic::panic_any instead
    |
-LL |     std::panic::panic_any(a!());
-   |     ~~~~~~~~~~~~~~~~~~~~~
+LL -     panic!(a!());
+LL +     std::panic::panic_any(a!());
+   |
 
 warning: panic message is not a string literal
   --> $DIR/non-fmt-panic.rs:47:18
@@ -357,8 +360,9 @@ LL |     panic!["{}", 123];
    |            +++++
 help: or use std::panic::panic_any instead
    |
-LL |     std::panic::panic_any(123);
-   |     ~~~~~~~~~~~~~~~~~~~~~~   ~
+LL -     panic![123];
+LL +     std::panic::panic_any(123);
+   |
 
 warning: panic message is not a string literal
   --> $DIR/non-fmt-panic.rs:55:12
@@ -374,8 +378,9 @@ LL |     panic!{"{}", 123};
    |            +++++
 help: or use std::panic::panic_any instead
    |
-LL |     std::panic::panic_any(123);
-   |     ~~~~~~~~~~~~~~~~~~~~~~   ~
+LL -     panic!{123};
+LL +     std::panic::panic_any(123);
+   |
 
 warning: panic message is not a string literal
   --> $DIR/non-fmt-panic.rs:72:12
@@ -411,8 +416,9 @@ LL |     panic!("{:?}", v);
    |            +++++++
 help: or use std::panic::panic_any instead
    |
-LL |     std::panic::panic_any(v);
-   |     ~~~~~~~~~~~~~~~~~~~~~
+LL -     panic!(v);
+LL +     std::panic::panic_any(v);
+   |
 
 warning: panic message is not a string literal
   --> $DIR/non-fmt-panic.rs:78:20
@@ -441,8 +447,9 @@ LL |     panic!("{}", v);
    |            +++++
 help: or use std::panic::panic_any instead
    |
-LL |     std::panic::panic_any(v);
-   |     ~~~~~~~~~~~~~~~~~~~~~
+LL -     panic!(v);
+LL +     std::panic::panic_any(v);
+   |
 
 warning: panic message is not a string literal
   --> $DIR/non-fmt-panic.rs:83:20
@@ -471,8 +478,9 @@ LL |     panic!("{}", v);
    |            +++++
 help: or use std::panic::panic_any instead
    |
-LL |     std::panic::panic_any(v);
-   |     ~~~~~~~~~~~~~~~~~~~~~
+LL -     panic!(v);
+LL +     std::panic::panic_any(v);
+   |
 
 warning: panic message is not a string literal
   --> $DIR/non-fmt-panic.rs:88:20

@@ -6,11 +6,9 @@ use span::EditionedFileId;
 //
 // Displays the ItemTree of the currently open file, for debugging.
 //
-// |===
-// | Editor  | Action Name
-//
-// | VS Code | **rust-analyzer: Debug ItemTree**
-// |===
+// | Editor  | Action Name |
+// |---------|-------------|
+// | VS Code | **rust-analyzer: Debug ItemTree** |
 pub(crate) fn view_item_tree(db: &RootDatabase, file_id: FileId) -> String {
     let sema = Semantics::new(db);
     let file_id = sema

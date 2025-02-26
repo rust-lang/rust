@@ -63,12 +63,14 @@ LL | fn issue_2114(s: String, t: String, u: Vec<i32>, v: Vec<i32>) {
    |
 help: consider changing the type to
    |
-LL | fn issue_2114(s: String, t: &str, u: Vec<i32>, v: Vec<i32>) {
-   |                             ~~~~
+LL - fn issue_2114(s: String, t: String, u: Vec<i32>, v: Vec<i32>) {
+LL + fn issue_2114(s: String, t: &str, u: Vec<i32>, v: Vec<i32>) {
+   |
 help: change `t.clone()` to
    |
-LL |     let _ = t.to_string();
-   |             ~~~~~~~~~~~~~
+LL -     let _ = t.clone();
+LL +     let _ = t.to_string();
+   |
 
 error: this argument is passed by value, but not consumed in the function body
   --> tests/ui/needless_pass_by_value.rs:91:40
@@ -84,12 +86,14 @@ LL | fn issue_2114(s: String, t: String, u: Vec<i32>, v: Vec<i32>) {
    |
 help: consider changing the type to
    |
-LL | fn issue_2114(s: String, t: String, u: Vec<i32>, v: &[i32]) {
-   |                                                     ~~~~~~
+LL - fn issue_2114(s: String, t: String, u: Vec<i32>, v: Vec<i32>) {
+LL + fn issue_2114(s: String, t: String, u: Vec<i32>, v: &[i32]) {
+   |
 help: change `v.clone()` to
    |
-LL |     let _ = v.to_owned();
-   |             ~~~~~~~~~~~~
+LL -     let _ = v.clone();
+LL +     let _ = v.to_owned();
+   |
 
 error: this argument is passed by value, but not consumed in the function body
   --> tests/ui/needless_pass_by_value.rs:108:12

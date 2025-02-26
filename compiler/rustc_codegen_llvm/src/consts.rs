@@ -1,5 +1,8 @@
 use std::ops::Range;
 
+use rustc_abi::{
+    Align, AlignFromBytesError, HasDataLayout, Primitive, Scalar, Size, WrappingRange,
+};
 use rustc_codegen_ssa::common;
 use rustc_codegen_ssa::traits::*;
 use rustc_hir::def::DefKind;
@@ -10,16 +13,13 @@ use rustc_middle::mir::interpret::{
     read_target_uint,
 };
 use rustc_middle::mir::mono::MonoItem;
-use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::ty::{self, Instance};
+use rustc_middle::ty::Instance;
+use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::Lto;
-use rustc_target::abi::{
-    Align, AlignFromBytesError, HasDataLayout, Primitive, Scalar, Size, WrappingRange,
-};
 use tracing::{debug, instrument, trace};
 
-use crate::common::CodegenCx;
+use crate::common::{AsCCharPtr, CodegenCx};
 use crate::errors::{
     InvalidMinimumAlignmentNotPowerOfTwo, InvalidMinimumAlignmentTooLarge, SymbolAlreadyDefined,
 };
@@ -191,19 +191,13 @@ fn check_and_apply_linkage<'ll, 'tcx>(
             })
         });
         llvm::set_linkage(g2, llvm::Linkage::InternalLinkage);
-        unsafe { llvm::LLVMSetInitializer(g2, g1) };
+        llvm::set_initializer(g2, g1);
         g2
     } else if cx.tcx.sess.target.arch == "x86"
+        && common::is_mingw_gnu_toolchain(&cx.tcx.sess.target)
         && let Some(dllimport) = crate::common::get_dllimport(cx.tcx, def_id, sym)
     {
-        cx.declare_global(
-            &common::i686_decorated_name(
-                dllimport,
-                common::is_mingw_gnu_toolchain(&cx.tcx.sess.target),
-                true,
-            ),
-            llty,
-        )
+        cx.declare_global(&common::i686_decorated_name(dllimport, true, true, false), llty)
     } else {
         // Generate an external declaration.
         // FIXME(nagisa): investigate whether it can be changed into define_global
@@ -216,6 +210,14 @@ impl<'ll> CodegenCx<'ll, '_> {
         unsafe { llvm::LLVMConstBitCast(val, ty) }
     }
 
+    pub(crate) fn const_pointercast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {
+        unsafe { llvm::LLVMConstPointerCast(val, ty) }
+    }
+
+    /// Create a global variable.
+    ///
+    /// The returned global variable is a pointer in the default address space for globals.
+    /// Fails if a symbol with the given name already exists.
     pub(crate) fn static_addr_of_mut(
         &self,
         cv: &'ll Value,
@@ -233,9 +235,37 @@ impl<'ll> CodegenCx<'ll, '_> {
             }
             _ => self.define_private_global(self.val_ty(cv)),
         };
-        unsafe { llvm::LLVMSetInitializer(gv, cv) };
+        llvm::set_initializer(gv, cv);
         set_global_alignment(self, gv, align);
         llvm::SetUnnamedAddress(gv, llvm::UnnamedAddr::Global);
+        gv
+    }
+
+    /// Create a global constant.
+    ///
+    /// The returned global variable is a pointer in the default address space for globals.
+    pub(crate) fn static_addr_of_impl(
+        &self,
+        cv: &'ll Value,
+        align: Align,
+        kind: Option<&str>,
+    ) -> &'ll Value {
+        if let Some(&gv) = self.const_globals.borrow().get(&cv) {
+            unsafe {
+                // Upgrade the alignment in cases where the same constant is used with different
+                // alignment requirements
+                let llalign = align.bytes() as u32;
+                if llalign > llvm::LLVMGetAlignment(gv) {
+                    llvm::LLVMSetAlignment(gv, llalign);
+                }
+            }
+            return gv;
+        }
+        let gv = self.static_addr_of_mut(cv, align, kind);
+        unsafe {
+            llvm::LLVMSetGlobalConstant(gv, True);
+        }
+        self.const_globals.borrow_mut().insert(cv, gv);
         gv
     }
 
@@ -250,7 +280,7 @@ impl<'ll> CodegenCx<'ll, '_> {
         let llty = if nested {
             self.type_i8()
         } else {
-            let ty = instance.ty(self.tcx, ty::ParamEnv::reveal_all());
+            let ty = instance.ty(self.tcx, self.typing_env());
             trace!(?ty);
             self.layout_of(ty).llvm_type(self)
         };
@@ -306,12 +336,7 @@ impl<'ll> CodegenCx<'ll, '_> {
             llvm::set_thread_local_mode(g, self.tls_model);
         }
 
-        let dso_local = self.should_assume_dso_local(g, true);
-        if dso_local {
-            unsafe {
-                llvm::LLVMRustSetDSOLocal(g, true);
-            }
-        }
+        let dso_local = self.assume_dso_local(g, true);
 
         if !def_id.is_local() {
             let needs_dll_storage_attr = self.use_dll_storage_attrs
@@ -345,9 +370,7 @@ impl<'ll> CodegenCx<'ll, '_> {
                 // is actually present in the current crate. We can find out via the
                 // is_codegened_item query.
                 if !self.tcx.is_codegened_item(def_id) {
-                    unsafe {
-                        llvm::LLVMSetDLLStorageClass(g, llvm::DLLStorageClass::DllImport);
-                    }
+                    llvm::set_dllimport_storage_class(g);
                 }
             }
         }
@@ -357,9 +380,7 @@ impl<'ll> CodegenCx<'ll, '_> {
             && library.kind.is_dllimport()
         {
             // For foreign (native) libs we know the exact storage type to use.
-            unsafe {
-                llvm::LLVMSetDLLStorageClass(g, llvm::DLLStorageClass::DllImport);
-            }
+            llvm::set_dllimport_storage_class(g);
         }
 
         self.instances.borrow_mut().insert(instance, g);
@@ -390,8 +411,14 @@ impl<'ll> CodegenCx<'ll, '_> {
             let g = if val_llty == llty {
                 g
             } else {
-                // If we created the global with the wrong type,
-                // correct the type.
+                // codegen_static_initializer creates the global value just from the
+                // `Allocation` data by generating one big struct value that is just
+                // all the bytes and pointers after each other. This will almost never
+                // match the type that the static was declared with. Unfortunately
+                // we can't just LLVMConstBitCast our way out of it because that has very
+                // specific rules on what can be cast. So instead of adding a new way to
+                // generate static initializers that match the static's type, we picked
+                // the easier option and retroactively change the type of the static item itself.
                 let name = llvm::get_value_name(g).to_vec();
                 llvm::set_value_name(g, b"");
 
@@ -400,7 +427,7 @@ impl<'ll> CodegenCx<'ll, '_> {
 
                 let new_g = llvm::LLVMRustGetOrInsertGlobal(
                     self.llmod,
-                    name.as_ptr().cast(),
+                    name.as_c_char_ptr(),
                     name.len(),
                     val_llty,
                 );
@@ -422,11 +449,9 @@ impl<'ll> CodegenCx<'ll, '_> {
                 new_g
             };
             set_global_alignment(self, g, alloc.align);
-            llvm::LLVMSetInitializer(g, v);
+            llvm::set_initializer(g, v);
 
-            if self.should_assume_dso_local(g, true) {
-                llvm::LLVMRustSetDSOLocal(g, true);
-            }
+            self.assume_dso_local(g, true);
 
             // Forward the allocation's mutability (picked by the const interner) to LLVM.
             if alloc.mutability.is_not() {
@@ -451,7 +476,7 @@ impl<'ll> CodegenCx<'ll, '_> {
                 if let Some(section) = attrs.link_section {
                     let section = llvm::LLVMMDStringInContext2(
                         self.llcx,
-                        section.as_str().as_ptr().cast(),
+                        section.as_str().as_c_char_ptr(),
                         section.as_str().len(),
                     );
                     assert!(alloc.provenance().ptrs().is_empty());
@@ -462,7 +487,7 @@ impl<'ll> CodegenCx<'ll, '_> {
                     let bytes =
                         alloc.inspect_with_uninit_and_ptr_outside_interpreter(0..alloc.len());
                     let alloc =
-                        llvm::LLVMMDStringInContext2(self.llcx, bytes.as_ptr().cast(), bytes.len());
+                        llvm::LLVMMDStringInContext2(self.llcx, bytes.as_c_char_ptr(), bytes.len());
                     let data = [section, alloc];
                     let meta = llvm::LLVMMDNodeInContext2(self.llcx, data.as_ptr(), data.len());
                     let val = llvm::LLVMMetadataAsValue(self.llcx, meta);
@@ -475,6 +500,8 @@ impl<'ll> CodegenCx<'ll, '_> {
             } else {
                 base::set_link_section(g, attrs);
             }
+
+            base::set_variable_sanitizer_attrs(g, attrs);
 
             if attrs.flags.contains(CodegenFnAttrFlags::USED) {
                 // `USED` and `USED_LINKER` can't be used together.
@@ -509,24 +536,15 @@ impl<'ll> CodegenCx<'ll, '_> {
 }
 
 impl<'ll> StaticCodegenMethods for CodegenCx<'ll, '_> {
+    /// Get a pointer to a global variable.
+    ///
+    /// The pointer will always be in the default address space. If global variables default to a
+    /// different address space, an addrspacecast is inserted.
     fn static_addr_of(&self, cv: &'ll Value, align: Align, kind: Option<&str>) -> &'ll Value {
-        if let Some(&gv) = self.const_globals.borrow().get(&cv) {
-            unsafe {
-                // Upgrade the alignment in cases where the same constant is used with different
-                // alignment requirements
-                let llalign = align.bytes() as u32;
-                if llalign > llvm::LLVMGetAlignment(gv) {
-                    llvm::LLVMSetAlignment(gv, llalign);
-                }
-            }
-            return gv;
-        }
-        let gv = self.static_addr_of_mut(cv, align, kind);
-        unsafe {
-            llvm::LLVMSetGlobalConstant(gv, True);
-        }
-        self.const_globals.borrow_mut().insert(cv, gv);
-        gv
+        let gv = self.static_addr_of_impl(cv, align, kind);
+        // static_addr_of_impl returns the bare global variable, which might not be in the default
+        // address space. Cast to the default address space if necessary.
+        self.const_pointercast(gv, self.type_ptr())
     }
 
     fn codegen_static(&self, def_id: DefId) {

@@ -1,12 +1,12 @@
 error[E0390]: cannot define inherent `impl` for primitive types outside of `core`
-  --> $DIR/range_patterns_inherent_impls.rs:13:1
+  --> $DIR/range_patterns_inherent_impls.rs:12:1
    |
 LL | impl Y {
    | ^^^^^^
    |
    = help: consider moving this inherent impl into `core` if possible
 help: alternatively add `#[rustc_allow_incoherent_impl]` to the relevant impl items
-  --> $DIR/range_patterns_inherent_impls.rs:15:5
+  --> $DIR/range_patterns_inherent_impls.rs:14:5
    |
 LL |     fn foo() {}
    |     ^^^^^^^^

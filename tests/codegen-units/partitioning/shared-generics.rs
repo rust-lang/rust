@@ -2,12 +2,18 @@
 // NOTE: We always compile this test with -Copt-level=0 because higher opt-levels
 //       prevent drop-glue from participating in share-generics.
 //@ incremental
-//@ compile-flags:-Zprint-mono-items=eager -Zshare-generics=yes -Copt-level=0
+//@ compile-flags: -Zprint-mono-items=lazy -Zshare-generics=yes -Copt-level=0
 
 #![crate_type = "rlib"]
 
 //@ aux-build:shared_generics_aux.rs
 extern crate shared_generics_aux;
+
+// This test ensures that when a crate and a dependency are compiled with -Zshare-generics, the
+// downstream crate reuses generic instantiations from the dependency, but will still instantiate
+// its own copy when instantiating with arguments that the dependency did not.
+// Drop glue has a lot of special handling in the compiler, so we check that drop glue is also
+// shared.
 
 //~ MONO_ITEM fn foo
 pub fn foo() {

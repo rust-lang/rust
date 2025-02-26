@@ -8,7 +8,7 @@ A test will "pass" if rustc exits with something other than 1 or 0.
 
 When adding crashes from https://github.com/rust-lang/rust/issues, the
 issue number should be noted in the file name (12345.rs should suffice)
-and perhaps also inside the file via `//@ known-bug #4321`
+and also inside the file via `//@ known-bug #4321` if possible.
 
 If you happen to fix one of the crashes, please move it to a fitting
 subdirectory in `tests/ui` and give it a meaningful name.
@@ -21,3 +21,5 @@ to the description of your pull request will ensure the
 corresponding tickets will be closed automatically upon merge.
 The ticket ids can be found in the file name or the `known-bug` annotation
 inside the testfile.
+
+Please do not re-report any crashes that you find here!

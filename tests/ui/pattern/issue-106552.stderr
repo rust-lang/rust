@@ -5,7 +5,7 @@ LL |     let 5 = 6;
    |         ^ patterns `i32::MIN..=4_i32` and `6_i32..=i32::MAX` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
    = note: the matched value is of type `i32`
 help: you might want to use `if let` to ignore the variants that aren't matched
    |
@@ -23,7 +23,7 @@ LL |     let x @ 5 = 6;
    |         ^ patterns `i32::MIN..=4_i32` and `6_i32..=i32::MAX` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
    = note: the matched value is of type `i32`
 help: you might want to use `let else` to handle the variants that aren't matched
    |

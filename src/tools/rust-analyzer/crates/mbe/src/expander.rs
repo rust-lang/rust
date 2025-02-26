@@ -13,12 +13,12 @@ use crate::{parser::MetaVarKind, ExpandError, ExpandErrorKind, ExpandResult, Mat
 
 pub(crate) fn expand_rules(
     rules: &[crate::Rule],
-    input: &tt::Subtree<Span>,
+    input: &tt::TopSubtree<Span>,
     marker: impl Fn(&mut Span) + Copy,
     call_site: Span,
     def_site_edition: Edition,
-) -> ExpandResult<(tt::Subtree<Span>, MatchedArmIndex)> {
-    let mut match_: Option<(matcher::Match, &crate::Rule, usize)> = None;
+) -> ExpandResult<(tt::TopSubtree<Span>, MatchedArmIndex)> {
+    let mut match_: Option<(matcher::Match<'_>, &crate::Rule, usize)> = None;
     for (idx, rule) in rules.iter().enumerate() {
         let new_match = matcher::match_(&rule.lhs, input, def_site_edition);
 
@@ -50,13 +50,7 @@ pub(crate) fn expand_rules(
         ExpandResult { value: (value, idx.try_into().ok()), err: match_.err.or(transcribe_err) }
     } else {
         ExpandResult::new(
-            (
-                tt::Subtree {
-                    delimiter: tt::Delimiter::invisible_spanned(call_site),
-                    token_trees: Box::default(),
-                },
-                None,
-            ),
+            (tt::TopSubtree::empty(tt::DelimSpan::from_single(call_site)), None),
             ExpandError::new(call_site, ExpandErrorKind::NoMatchingRule),
         )
     }
@@ -107,32 +101,35 @@ pub(crate) fn expand_rules(
 /// In other words, `Bindings` is a *multi* mapping from `Symbol` to
 /// `tt::TokenTree`, where the index to select a particular `TokenTree` among
 /// many is not a plain `usize`, but a `&[usize]`.
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
-struct Bindings {
-    inner: FxHashMap<Symbol, Binding>,
+#[derive(Debug, Default, Clone)]
+struct Bindings<'a> {
+    inner: FxHashMap<Symbol, Binding<'a>>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum Binding {
-    Fragment(Fragment),
-    Nested(Vec<Binding>),
+#[derive(Debug, Clone)]
+enum Binding<'a> {
+    Fragment(Fragment<'a>),
+    Nested(Vec<Binding<'a>>),
     Empty,
     Missing(MetaVarKind),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum Fragment {
+#[derive(Debug, Default, Clone)]
+enum Fragment<'a> {
+    #[default]
     Empty,
     /// token fragments are just copy-pasted into the output
-    Tokens(tt::TokenTree<Span>),
-    /// Expr ast fragments are surrounded with `()` on insertion to preserve
-    /// precedence. Note that this impl is different from the one currently in
-    /// `rustc` -- `rustc` doesn't translate fragments into token trees at all.
+    Tokens(tt::TokenTreesView<'a, Span>),
+    /// Expr ast fragments are surrounded with `()` on transcription to preserve precedence.
+    /// Note that this impl is different from the one currently in `rustc` --
+    /// `rustc` doesn't translate fragments into token trees at all.
     ///
     /// At one point in time, we tried to use "fake" delimiters here à la
     /// proc-macro delimiter=none. As we later discovered, "none" delimiters are
     /// tricky to handle in the parser, and rustc doesn't handle those either.
-    Expr(tt::Subtree<Span>),
+    ///
+    /// The span of the outer delimiters is marked on transcription.
+    Expr(tt::TokenTreesView<'a, Span>),
     /// There are roughly two types of paths: paths in expression context, where a
     /// separator `::` between an identifier and its following generic argument list
     /// is mandatory, and paths in type context, where `::` can be omitted.
@@ -142,5 +139,18 @@ enum Fragment {
     /// and is trasncribed as an expression-context path, verbatim transcription
     /// would cause a syntax error. We need to fix it up just before transcribing;
     /// see `transcriber::fix_up_and_push_path_tt()`.
-    Path(tt::Subtree<Span>),
+    Path(tt::TokenTreesView<'a, Span>),
+    TokensOwned(tt::TopSubtree<Span>),
+}
+
+impl Fragment<'_> {
+    fn is_empty(&self) -> bool {
+        match self {
+            Fragment::Empty => true,
+            Fragment::Tokens(it) => it.len() == 0,
+            Fragment::Expr(it) => it.len() == 0,
+            Fragment::Path(it) => it.len() == 0,
+            Fragment::TokensOwned(it) => it.0.is_empty(),
+        }
+    }
 }

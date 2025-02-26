@@ -12,7 +12,7 @@ note: the `Copy` impl for `Foo<'any>` requires that `'any: 'static`
    |
 LL | struct Bar<'lt>(Foo<'lt>);
    |                 ^^^^^^^^
-help: consider restricting type parameter `'any`
+help: consider restricting type parameter `'any` with  `'static`
    |
 LL | impl<'any: 'static> Copy for Bar<'any> {}
    |          +++++++++

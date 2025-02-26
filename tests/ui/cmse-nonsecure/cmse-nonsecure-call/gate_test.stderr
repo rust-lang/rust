@@ -1,4 +1,4 @@
-error[E0658]: C-cmse-nonsecure-call ABI is experimental and subject to change
+error[E0658]: the extern "C-cmse-nonsecure-call" ABI is experimental and subject to change
   --> $DIR/gate_test.rs:5:46
    |
 LL |         core::mem::transmute::<usize, extern "C-cmse-nonsecure-call" fn(i32, i32, i32, i32) -> i32>(

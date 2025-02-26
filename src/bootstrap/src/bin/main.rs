@@ -11,19 +11,27 @@ use std::str::FromStr;
 use std::{env, process};
 
 use bootstrap::{
-    Build, CONFIG_CHANGE_HISTORY, Config, Flags, Subcommand, find_recent_config_change_ids,
+    Build, CONFIG_CHANGE_HISTORY, Config, Flags, Subcommand, debug, find_recent_config_change_ids,
     human_readable_changes, t,
 };
 use build_helper::ci::CiEnv;
+#[cfg(feature = "tracing")]
+use tracing::instrument;
 
+#[cfg_attr(feature = "tracing", instrument(level = "trace", name = "main"))]
 fn main() {
+    #[cfg(feature = "tracing")]
+    let _guard = setup_tracing();
+
     let args = env::args().skip(1).collect::<Vec<_>>();
 
     if Flags::try_parse_verbose_help(&args) {
         return;
     }
 
+    debug!("parsing flags");
     let flags = Flags::parse(&args);
+    debug!("parsing config based on flags");
     let config = Config::parse(flags);
 
     let mut build_lock;
@@ -33,7 +41,7 @@ fn main() {
         // Display PID of process holding the lock
         // PID will be stored in a lock file
         let lock_path = config.out.join("lock");
-        let pid = fs::read_to_string(&lock_path).unwrap_or_default();
+        let pid = fs::read_to_string(&lock_path);
 
         build_lock = fd_lock::RwLock::new(t!(fs::OpenOptions::new()
             .write(true)
@@ -47,7 +55,13 @@ fn main() {
             }
             err => {
                 drop(err);
-                println!("WARNING: build directory locked by process {pid}, waiting for lock");
+                // #135972: We can reach this point when the lock has been taken,
+                // but the locker has not yet written its PID to the file
+                if let Some(pid) = pid.ok().filter(|pid| !pid.is_empty()) {
+                    println!("WARNING: build directory locked by process {pid}, waiting for lock");
+                } else {
+                    println!("WARNING: build directory locked, waiting for lock");
+                }
                 let mut lock = t!(build_lock.write());
                 t!(lock.write(process::id().to_string().as_ref()));
                 lock
@@ -79,6 +93,7 @@ fn main() {
     let dump_bootstrap_shims = config.dump_bootstrap_shims;
     let out_dir = config.out.clone();
 
+    debug!("creating new build based on config");
     Build::new(config).build();
 
     if suggest_setup {
@@ -95,7 +110,7 @@ fn main() {
     // HACK: Since the commit script uses hard links, we can't actually tell if it was installed by x.py setup or not.
     // We could see if it's identical to src/etc/pre-push.sh, but pre-push may have been modified in the meantime.
     // Instead, look for this comment, which is almost certainly not in any custom hook.
-    if fs::read_to_string(pre_commit).map_or(false, |contents| {
+    if fs::read_to_string(pre_commit).is_ok_and(|contents| {
         contents.contains("https://github.com/rust-lang/rust/issues/77620#issuecomment-705144570")
     }) {
         println!(
@@ -182,4 +197,38 @@ fn check_version(config: &Config) -> Option<String> {
     };
 
     Some(msg)
+}
+
+// # Note on `tracing` usage in bootstrap
+//
+// Due to the conditional compilation via the `tracing` cargo feature, this means that `tracing`
+// usages in bootstrap need to be also gated behind the `tracing` feature:
+//
+// - `tracing` macros with log levels (`trace!`, `debug!`, `warn!`, `info`, `error`) should not be
+//   used *directly*. You should use the wrapped `tracing` macros which gate the actual invocations
+//   behind `feature = "tracing"`.
+// - `tracing`'s `#[instrument(..)]` macro will need to be gated like `#![cfg_attr(feature =
+//   "tracing", instrument(..))]`.
+#[cfg(feature = "tracing")]
+fn setup_tracing() -> impl Drop {
+    use tracing_subscriber::EnvFilter;
+    use tracing_subscriber::layer::SubscriberExt;
+
+    let filter = EnvFilter::from_env("BOOTSTRAP_TRACING");
+    // cf. <https://docs.rs/tracing-tree/latest/tracing_tree/struct.HierarchicalLayer.html>.
+    let layer = tracing_tree::HierarchicalLayer::default().with_targets(true).with_indent_amount(2);
+
+    let mut chrome_layer = tracing_chrome::ChromeLayerBuilder::new().include_args(true);
+
+    // Writes the Chrome profile to trace-<unix-timestamp>.json if enabled
+    if !env::var("BOOTSTRAP_PROFILE").is_ok_and(|v| v == "1") {
+        chrome_layer = chrome_layer.writer(io::sink());
+    }
+
+    let (chrome_layer, _guard) = chrome_layer.build();
+
+    let registry = tracing_subscriber::registry().with(filter).with(layer).with(chrome_layer);
+
+    tracing::subscriber::set_global_default(registry).unwrap();
+    _guard
 }

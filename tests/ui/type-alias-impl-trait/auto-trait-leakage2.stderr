@@ -9,7 +9,7 @@ LL |     is_send(m::foo());
    |     |
    |     required by a bound introduced by this call
    |
-   = help: within `Foo`, the trait `Send` is not implemented for `Rc<u32>`, which is required by `Foo: Send`
+   = help: within `Foo`, the trait `Send` is not implemented for `Rc<u32>`
 note: required because it appears within the type `Foo`
   --> $DIR/auto-trait-leakage2.rs:7:16
    |

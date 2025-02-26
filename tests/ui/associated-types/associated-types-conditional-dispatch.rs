@@ -5,7 +5,6 @@
 // `Target=[A]`, then the impl marked with `(*)` is seen to conflict
 // with all the others.
 
-//@ pretty-expanded FIXME #23616
 
 use std::marker::PhantomData;
 use std::ops::Deref;

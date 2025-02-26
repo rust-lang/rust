@@ -131,7 +131,7 @@ fn print_tts(printer: &mut Printer<'_>, tts: &TokenStream) {
     use State::*;
 
     let mut state = Start;
-    for tt in tts.trees() {
+    for tt in tts.iter() {
         let (needs_space, next_state) = match &tt {
             TokenTree::Token(tt, _) => match (state, &tt.kind) {
                 (Dollar, token::Ident(..)) => (false, DollarIdent),

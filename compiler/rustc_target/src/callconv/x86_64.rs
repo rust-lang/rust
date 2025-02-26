@@ -1,8 +1,12 @@
 // The classification code for the x86_64 ABI is taken from the clay language
 // https://github.com/jckarter/clay/blob/db0bd2702ab0b6e48965cd85f8859bbd5f60e48e/compiler/externals.cpp
 
-use crate::abi::call::{ArgAbi, CastTarget, FnAbi, Reg, RegKind};
-use crate::abi::{self, Abi, HasDataLayout, Size, TyAbiInterface, TyAndLayout};
+use rustc_abi::{
+    BackendRepr, HasDataLayout, Primitive, Reg, RegKind, Size, TyAbiInterface, TyAndLayout,
+    Variants,
+};
+
+use crate::callconv::{ArgAbi, CastTarget, FnAbi};
 
 /// Classification of "eightbyte" components.
 // N.B., the order of the variants is from general to specific,
@@ -46,25 +50,23 @@ where
             return Ok(());
         }
 
-        let mut c = match layout.abi {
-            Abi::Uninhabited => return Ok(()),
-
-            Abi::Scalar(scalar) => match scalar.primitive() {
-                abi::Int(..) | abi::Pointer(_) => Class::Int,
-                abi::Float(_) => Class::Sse,
+        let mut c = match layout.backend_repr {
+            BackendRepr::Scalar(scalar) => match scalar.primitive() {
+                Primitive::Int(..) | Primitive::Pointer(_) => Class::Int,
+                Primitive::Float(_) => Class::Sse,
             },
 
-            Abi::Vector { .. } => Class::Sse,
+            BackendRepr::Vector { .. } => Class::Sse,
 
-            Abi::ScalarPair(..) | Abi::Aggregate { .. } => {
+            BackendRepr::ScalarPair(..) | BackendRepr::Memory { .. } => {
                 for i in 0..layout.fields.count() {
                     let field_off = off + layout.fields.offset(i);
                     classify(cx, layout.field(cx, i), cls, field_off)?;
                 }
 
                 match &layout.variants {
-                    abi::Variants::Single { .. } => {}
-                    abi::Variants::Multiple { variants, .. } => {
+                    Variants::Single { .. } | Variants::Empty => {}
+                    Variants::Multiple { variants, .. } => {
                         // Treat enum variants like union members.
                         for variant_idx in variants.indices() {
                             classify(cx, layout.for_variant(cx, variant_idx), cls, off)?;

@@ -27,8 +27,9 @@ fn check_lsp_extensions_docs(sh: &Shell) {
     };
 
     let actual_hash = {
-        let lsp_extensions_md =
-            sh.read_file(project_root().join("docs/dev/lsp-extensions.md")).unwrap();
+        let lsp_extensions_md = sh
+            .read_file(project_root().join("docs/book/src/contributing/lsp-extensions.md"))
+            .unwrap();
         let text = lsp_extensions_md
             .lines()
             .find_map(|line| line.strip_prefix("lsp/ext.rs hash:"))
@@ -135,7 +136,6 @@ Apache-2.0 WITH LLVM-exception
 Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT
 Apache-2.0/MIT
 BSD-2-Clause OR Apache-2.0 OR MIT
-BSD-3-Clause
 CC0-1.0
 ISC
 MIT
@@ -186,7 +186,7 @@ Zlib OR Apache-2.0 OR MIT
 
 fn check_test_attrs(path: &Path, text: &str) {
     let panic_rule =
-        "https://github.com/rust-lang/rust-analyzer/blob/master/docs/dev/style.md#should_panic";
+        "https://github.com/rust-lang/rust-analyzer/blob/master/docs/book/src/contributing/style.md#should_panic";
     let need_panic: &[&str] = &[
         // This file.
         "slow-tests/tidy.rs",
@@ -223,7 +223,7 @@ struct TidyDocs {
 impl TidyDocs {
     fn visit(&mut self, path: &Path, text: &str) {
         // Tests and diagnostic fixes don't need module level comments.
-        if is_exclude_dir(path, &["tests", "test_data", "fixes", "grammar", "ra-salsa"]) {
+        if is_exclude_dir(path, &["tests", "test_data", "fixes", "grammar", "ra-salsa", "stdx"]) {
             return;
         }
 

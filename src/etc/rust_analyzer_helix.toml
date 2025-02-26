@@ -1,11 +1,21 @@
+# This config uses a separate build directory for rust-analyzer,
+# so that r-a's checks don't block user `x` commands and vice-verse.
+# R-a's build directory is located in `build/rust-analyzer`.
+#
+# To build rustfmt and proc macro server for r-a run the following command:
+# ```
+# x b proc-macro-srv-cli rustfmt --stage 0 --build-dir build/rust-analyzer
+# ```
+
 [language-server.rust-analyzer.config]
 linkedProjects = [
     "Cargo.toml",
-    "src/tools/x/Cargo.toml",
+    "compiler/rustc_codegen_cranelift/Cargo.toml",
+    "compiler/rustc_codegen_gcc/Cargo.toml",
+    "library/Cargo.toml",
     "src/bootstrap/Cargo.toml",
     "src/tools/rust-analyzer/Cargo.toml",
-    "compiler/rustc_codegen_cranelift/Cargo.toml",
-    "compiler/rustc_codegen_gcc/Cargo.toml"
+    "src/tools/x/Cargo.toml",
 ]
 
 [language-server.rust-analyzer.config.check]
@@ -16,16 +26,18 @@ overrideCommand = [
     "x.py",
     "check",
     "--json-output",
+    "--build-dir",
+    "build/rust-analyzer",
 ]
 
 [language-server.rust-analyzer.config.rustfmt]
 overrideCommand = [
-    "build-rust-analyzer/host/rustfmt/bin/rustfmt",
+    "build/rust-analyzer/host/rustfmt/bin/rustfmt",
     "--edition=2021"
 ]
 
 [language-server.rust-analyzer.config.procMacro]
-server = "build-rust-analyzer/host/stage0/libexec/rust-analyzer-proc-macro-srv"
+server = "build/rust-analyzer/host/stage0/libexec/rust-analyzer-proc-macro-srv"
 enable = true
 
 [language-server.rust-analyzer.config.rustc]
@@ -46,4 +58,6 @@ overrideCommand = [
     "x.py",
     "check",
     "--json-output",
+    "--build-dir",
+    "build/rust-analyzer",
 ]

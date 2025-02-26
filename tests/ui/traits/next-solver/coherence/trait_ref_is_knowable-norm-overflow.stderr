@@ -1,18 +1,8 @@
-error[E0275]: overflow evaluating the requirement `<T as Overflow>::Assoc: Sized`
+error[E0275]: overflow evaluating the requirement `<T as Overflow>::Assoc == _`
   --> $DIR/trait_ref_is_knowable-norm-overflow.rs:10:18
    |
 LL |     type Assoc = <T as Overflow>::Assoc;
    |                  ^^^^^^^^^^^^^^^^^^^^^^
-   |
-note: required by a bound in `Overflow::Assoc`
-  --> $DIR/trait_ref_is_knowable-norm-overflow.rs:7:5
-   |
-LL |     type Assoc;
-   |     ^^^^^^^^^^^ required by this bound in `Overflow::Assoc`
-help: consider relaxing the implicit `Sized` restriction
-   |
-LL |     type Assoc: ?Sized;
-   |               ++++++++
 
 error[E0119]: conflicting implementations of trait `Trait`
   --> $DIR/trait_ref_is_knowable-norm-overflow.rs:18:1

@@ -1,5 +1,5 @@
 use clippy_config::Conf;
-use clippy_utils::create_disallowed_map;
+use clippy_config::types::create_disallowed_map;
 use clippy_utils::diagnostics::span_lint_and_then;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::DefIdMap;
@@ -35,7 +35,6 @@ declare_clippy_lint! {
     /// ```
     ///
     /// ```rust,ignore
-    /// // Example code where clippy issues a warning
     /// let xs = vec![1, 2, 3, 4];
     /// xs.leak(); // Vec::leak is disallowed in the config.
     /// // The diagnostic contains the message "no leaking memory".
@@ -47,7 +46,6 @@ declare_clippy_lint! {
     ///
     /// Use instead:
     /// ```rust,ignore
-    /// // Example code which does not raise clippy warning
     /// let mut xs = Vec::new(); // Vec::new is _not_ disallowed in the config.
     /// xs.push(123); // Vec::push is _not_ disallowed in the config.
     /// ```

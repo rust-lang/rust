@@ -1,9 +1,0 @@
-[unstable]
-profile-rustflags = true
-
-# Add back the containing directory of the packages we have to refer to using --manifest-path.
-# Per-package profiles avoid adding this to build dependencies.
-[profile.dev.package."cargo-miri"]
-rustflags = ["--remap-path-prefix", "=cargo-miri"]
-[profile.dev.package."miri-script"]
-rustflags = ["--remap-path-prefix", "=miri-script"]

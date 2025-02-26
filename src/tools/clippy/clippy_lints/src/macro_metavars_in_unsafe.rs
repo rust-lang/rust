@@ -220,11 +220,11 @@ impl<'tcx> LateLintPass<'tcx> for ExprMetavarsInUnsafe {
         // `check_stmt_post` on `(Late)LintPass`, which we'd need to detect when we're leaving a macro span
 
         let mut vis = BodyVisitor {
+            macro_unsafe_blocks: Vec::new(),
             #[expect(clippy::bool_to_int_with_if)] // obfuscates the meaning
             expn_depth: if body.value.span.from_expansion() { 1 } else { 0 },
-            macro_unsafe_blocks: Vec::new(),
-            lint: self,
-            cx
+            cx,
+            lint: self
         };
         vis.visit_body(body);
     }

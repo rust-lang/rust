@@ -556,13 +556,13 @@ impl<A: Debug + TrustedRandomAccessNoCoerce, B: Debug + TrustedRandomAccessNoCoe
 ///     * `std::iter::ExactSizeIterator::len`
 ///     * `std::iter::Iterator::__iterator_get_unchecked`
 ///     * `std::iter::TrustedRandomAccessNoCoerce::size`
-/// 5. If `T` is a subtype of `Self`, then `self` is allowed to be coerced
+/// 5. If `Self` is a subtype of `T`, then `self` is allowed to be coerced
 ///    to `T`. If `self` is coerced to `T` after `self.__iterator_get_unchecked(idx)` has already
 ///    been called, then no methods except for the ones listed under 4. are allowed to be called
 ///    on the resulting value of type `T`, either. Multiple such coercion steps are allowed.
 ///    Regarding 2. and 3., the number of times `__iterator_get_unchecked(idx)` or `next_back()` is
 ///    called on `self` and the resulting value of type `T` (and on further coercion results with
-///    sub-subtypes) are added together and their sums must not exceed the specified bounds.
+///    super-supertypes) are added together and their sums must not exceed the specified bounds.
 ///
 /// Further, given that these conditions are met, it must guarantee that:
 ///
@@ -570,7 +570,7 @@ impl<A: Debug + TrustedRandomAccessNoCoerce, B: Debug + TrustedRandomAccessNoCoe
 /// * It must be safe to call the methods listed above on `self` after calling
 ///   `self.__iterator_get_unchecked(idx)`, assuming that the required traits are implemented.
 /// * It must also be safe to drop `self` after calling `self.__iterator_get_unchecked(idx)`.
-/// * If `T` is a subtype of `Self`, then it must be safe to coerce `self` to `T`.
+/// * If `Self` is a subtype of `T`, then it must be safe to coerce `self` to `T`.
 //
 // FIXME: Clarify interaction with SourceIter/InPlaceIterable. Calling `SourceIter::as_inner`
 // after `__iterator_get_unchecked` is supposed to be allowed.
@@ -580,7 +580,7 @@ impl<A: Debug + TrustedRandomAccessNoCoerce, B: Debug + TrustedRandomAccessNoCoe
 pub unsafe trait TrustedRandomAccess: TrustedRandomAccessNoCoerce {}
 
 /// Like [`TrustedRandomAccess`] but without any of the requirements / guarantees around
-/// coercions to subtypes after `__iterator_get_unchecked` (they aren’t allowed here!), and
+/// coercions to supertypes after `__iterator_get_unchecked` (they aren’t allowed here!), and
 /// without the requirement that subtypes / supertypes implement `TrustedRandomAccessNoCoerce`.
 ///
 /// This trait was created in PR #85874 to fix soundness issue #85873 without performance regressions.

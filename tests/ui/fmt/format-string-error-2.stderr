@@ -6,8 +6,9 @@ LL |     println!("\x7B}\u8 {", 1);
    |
 help: format of unicode escape sequences uses braces
    |
-LL |     println!("\x7B}\u{8} {", 1);
-   |                    ~~~~~
+LL -     println!("\x7B}\u8 {", 1);
+LL +     println!("\x7B}\u{8} {", 1);
+   |
 
 error: invalid format string: expected `}`, found `a`
   --> $DIR/format-string-error-2.rs:5:5

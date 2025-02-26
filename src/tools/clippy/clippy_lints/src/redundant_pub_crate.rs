@@ -1,4 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::source::HasSession;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Item, ItemKind};
@@ -49,6 +50,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantPubCrate {
             && !cx.effective_visibilities.is_exported(item.owner_id.def_id)
             && self.is_exported.last() == Some(&false)
             && is_not_macro_export(item)
+            && !item.span.in_external_macro(cx.sess().source_map())
         {
             let span = item.span.with_hi(item.ident.span.hi());
             let descr = cx.tcx.def_kind(item.owner_id).descr(item.owner_id.to_def_id());

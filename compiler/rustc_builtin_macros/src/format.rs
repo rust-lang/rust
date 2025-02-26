@@ -8,16 +8,18 @@ use rustc_ast::{
     token,
 };
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{Applicability, Diag, MultiSpan, PResult, SingleLabelManySpans};
+use rustc_errors::{
+    Applicability, Diag, MultiSpan, PResult, SingleLabelManySpans, listify, pluralize,
+};
 use rustc_expand::base::*;
 use rustc_lint_defs::builtin::NAMED_ARGUMENTS_USED_POSITIONALLY;
 use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiag, LintId};
+use rustc_parse::exp;
 use rustc_parse_format as parse;
-use rustc_span::symbol::{Ident, Symbol};
-use rustc_span::{BytePos, ErrorGuaranteed, InnerSpan, Span};
+use rustc_span::{BytePos, ErrorGuaranteed, Ident, InnerSpan, Span, Symbol};
 
 use crate::errors;
-use crate::util::expr_to_spanned_string;
+use crate::util::{ExprToSpannedString, expr_to_spanned_string};
 
 // The format_args!() macro is expanded in three steps:
 //  1. First, `parse_args` will parse the `(literal, arg, arg, name=arg, name=arg)` syntax,
@@ -94,22 +96,21 @@ fn parse_args<'a>(ecx: &ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a, 
     let mut first = true;
 
     while p.token != token::Eof {
-        if !p.eat(&token::Comma) {
+        if !p.eat(exp!(Comma)) {
             if first {
-                p.clear_expected_tokens();
+                p.clear_expected_token_types();
             }
 
-            match p.expect(&token::Comma) {
+            match p.expect(exp!(Comma)) {
                 Err(err) => {
-                    match token::TokenKind::Comma.similar_tokens() {
-                        Some(tks) if tks.contains(&p.token.kind) => {
-                            // If a similar token is found, then it may be a typo. We
-                            // consider it as a comma, and continue parsing.
-                            err.emit();
-                            p.bump();
-                        }
+                    if token::TokenKind::Comma.similar_tokens().contains(&p.token.kind) {
+                        // If a similar token is found, then it may be a typo. We
+                        // consider it as a comma, and continue parsing.
+                        err.emit();
+                        p.bump();
+                    } else {
                         // Otherwise stop the parsing and return the error.
-                        _ => return Err(err),
+                        return Err(err);
                     }
                 }
                 Ok(Recovered::Yes(_)) => (),
@@ -123,7 +124,7 @@ fn parse_args<'a>(ecx: &ExtCtxt<'a>, sp: Span, tts: TokenStream) -> PResult<'a, 
         match p.token.ident() {
             Some((ident, _)) if p.look_ahead(1, |t| *t == token::Eq) => {
                 p.bump();
-                p.expect(&token::Eq)?;
+                p.expect(exp!(Eq))?;
                 let expr = p.parse_expr()?;
                 if let Some((_, prev)) = args.by_name(ident.name) {
                     ecx.dcx().emit_err(errors::FormatDuplicateArg {
@@ -166,13 +167,18 @@ fn make_format_args(
 
     let MacroInput { fmtstr: efmt, mut args, is_direct_literal } = input;
 
-    let (fmt_str, fmt_style, fmt_span) = {
+    let ExprToSpannedString {
+        symbol: fmt_str,
+        span: fmt_span,
+        style: fmt_style,
+        uncooked_symbol: uncooked_fmt_str,
+    } = {
         let ExpandResult::Ready(mac) = expr_to_spanned_string(ecx, efmt.clone(), msg) else {
             return ExpandResult::Retry(());
         };
         match mac {
             Ok(mut fmt) if append_newline => {
-                fmt.0 = Symbol::intern(&format!("{}\n", fmt.0));
+                fmt.symbol = Symbol::intern(&format!("{}\n", fmt.symbol));
                 fmt
             }
             Ok(fmt) => fmt,
@@ -316,6 +322,13 @@ fn make_format_args(
                     e.sugg_ = Some(errors::InvalidFormatStringSuggestion::RemoveRawIdent { span })
                 }
             }
+            parse::Suggestion::ReorderFormatParameter(span, replacement) => {
+                let span = fmt_span.from_inner(InnerSpan::new(span.start, span.end));
+                e.sugg_ = Some(errors::InvalidFormatStringSuggestion::ReorderFormatParameter {
+                    span,
+                    replacement,
+                });
+            }
         }
         let guar = ecx.dcx().emit_err(e);
         return ExpandResult::Ready(Err(guar));
@@ -394,7 +407,7 @@ fn make_format_args(
 
     for piece in &pieces {
         match *piece {
-            parse::Piece::String(s) => {
+            parse::Piece::Lit(s) => {
                 unfinished_literal.push_str(s);
             }
             parse::Piece::NextArgument(box parse::Argument { position, position_span, format }) => {
@@ -584,7 +597,12 @@ fn make_format_args(
         }
     }
 
-    ExpandResult::Ready(Ok(FormatArgs { span: fmt_span, template, arguments: args }))
+    ExpandResult::Ready(Ok(FormatArgs {
+        span: fmt_span,
+        template,
+        arguments: args,
+        uncooked_fmt_str,
+    }))
 }
 
 fn invalid_placeholder_type_error(
@@ -959,15 +977,11 @@ fn report_invalid_references(
         } else {
             MultiSpan::from_spans(invalid_refs.iter().filter_map(|&(_, span, _, _)| span).collect())
         };
-        let arg_list = if let &[index] = &indexes[..] {
-            format!("argument {index}")
-        } else {
-            let tail = indexes.pop().unwrap();
-            format!(
-                "arguments {head} and {tail}",
-                head = indexes.into_iter().map(|i| i.to_string()).collect::<Vec<_>>().join(", ")
-            )
-        };
+        let arg_list = format!(
+            "argument{} {}",
+            pluralize!(indexes.len()),
+            listify(&indexes, |i: &usize| i.to_string()).unwrap_or_default()
+        );
         e = ecx.dcx().struct_span_err(
             span,
             format!("invalid reference to positional {arg_list} ({num_args_desc})"),

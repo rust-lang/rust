@@ -1,13 +1,14 @@
 use crate::spec::{
-    LinkSelfContainedDefault, LinkerFlavor, MergeFunctions, PanicStrategy, Target, TargetOptions,
+    LinkSelfContainedDefault, LinkerFlavor, MergeFunctions, PanicStrategy, Target, TargetMetadata,
+    TargetOptions,
 };
 
 pub(crate) fn target() -> Target {
     Target {
         arch: "nvptx64".into(),
-        data_layout: "e-i64:64-i128:128-v16:16-v32:32-n16:32:64".into(),
+        data_layout: "e-p6:32:32-i64:64-i128:128-v16:16-v32:32-n16:32:64".into(),
         llvm_target: "nvptx64-nvidia-cuda".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("--emit=asm generates PTX code that runs on NVIDIA GPUs".into()),
             tier: Some(2),
             host_tools: Some(false),

@@ -1,13 +1,4 @@
-use std::ffi::OsString;
-use std::path::{Path, PathBuf};
-
-use super::{RPathConfig, get_rpath_relative_to_output, minimize_rpaths, rpaths_to_flags};
-
-#[test]
-fn test_rpaths_to_flags() {
-    let flags = rpaths_to_flags(vec!["path1".into(), "path2".into()]);
-    assert_eq!(flags, ["-Wl,-rpath,path1", "-Wl,-rpath,path2"]);
-}
+use super::*;
 
 #[test]
 fn test_minimize1() {
@@ -68,16 +59,4 @@ fn test_rpath_relative_issue_119571() {
     let _ = get_rpath_relative_to_output(config, Path::new("lib/libstd.so"));
     // Should not panic when lib only contains filename.
     let _ = get_rpath_relative_to_output(config, Path::new("libstd.so"));
-}
-
-#[test]
-fn test_xlinker() {
-    let args = rpaths_to_flags(vec!["a/normal/path".into(), "a,comma,path".into()]);
-
-    assert_eq!(args, vec![
-        OsString::from("-Wl,-rpath,a/normal/path"),
-        OsString::from("-Wl,-rpath"),
-        OsString::from("-Xlinker"),
-        OsString::from("a,comma,path")
-    ]);
 }

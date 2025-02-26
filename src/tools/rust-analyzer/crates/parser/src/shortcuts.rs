@@ -5,7 +5,7 @@
 //! abstract token parsing, and string tokenization as completely separate
 //! layers.
 //!
-//! However, often you do pares text into syntax trees and the glue code for
+//! However, often you do parse text into syntax trees and the glue code for
 //! that needs to live somewhere. Rather than putting it to lexer or parser, we
 //! use a separate shortcuts module for that.
 

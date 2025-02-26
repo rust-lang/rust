@@ -3,11 +3,12 @@
 // Run-time:
 //   status: 1
 
-#![feature(auto_traits, lang_items, no_core, start)]
+#![feature(auto_traits, lang_items, no_core)]
 #![allow(internal_features)]
 
 #![no_std]
 #![no_core]
+#![no_main]
 
 /*
  * Core
@@ -34,7 +35,7 @@ pub(crate) unsafe auto trait Freeze {}
  * Code
  */
 
-#[start]
-fn main(mut argc: isize, _argv: *const *const u8) -> isize {
+#[no_mangle]
+extern "C" fn main(argc: i32, _argv: *const *const u8) -> i32 {
     1
 }

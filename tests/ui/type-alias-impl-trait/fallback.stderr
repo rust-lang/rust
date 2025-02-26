@@ -4,7 +4,10 @@ error[E0283]: type annotations needed
 LL | fn unconstrained_foo() -> Wrapper<Foo> {
    |                           ------------ type must be known at this point
 LL |     Wrapper::Second
-   |     ^^^^^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the enum `Wrapper`
+   |     ^^^^^^^^^^^^^^^
+   |     |
+   |     cannot infer type of the type parameter `T` declared on the enum `Wrapper`
+   |     return type was inferred to be `Wrapper<_>` here
    |
    = note: cannot satisfy `_: Copy`
 help: consider specifying the generic argument

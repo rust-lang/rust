@@ -1,7 +1,7 @@
 //! This follows the pattern in src/shims/unix/mem.rs: We only support uses of mremap that would
 //! correspond to valid uses of realloc.
 
-use rustc_target::abi::Size;
+use rustc_abi::Size;
 
 use crate::*;
 
@@ -22,7 +22,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let flags = this.read_scalar(flags)?.to_i32()?;
 
         // old_address must be a multiple of the page size
-        #[allow(clippy::arithmetic_side_effects)] // PAGE_SIZE is nonzero
+        #[expect(clippy::arithmetic_side_effects)] // PAGE_SIZE is nonzero
         if old_address.addr().bytes() % this.machine.page_size != 0 || new_size == 0 {
             this.set_last_error(LibcError("EINVAL"))?;
             return interp_ok(this.eval_libc("MAP_FAILED"));
@@ -49,16 +49,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Size::from_bytes(new_size),
             align,
             MiriMemoryKind::Mmap.into(),
+            AllocInit::Zero,
         )?;
-        if let Some(increase) = new_size.checked_sub(old_size) {
-            // We just allocated this, the access is definitely in-bounds and fits into our address space.
-            // mmap guarantees new mappings are zero-init.
-            this.write_bytes_ptr(
-                ptr.wrapping_offset(Size::from_bytes(old_size), this).into(),
-                std::iter::repeat(0u8).take(usize::try_from(increase).unwrap()),
-            )
-            .unwrap();
-        }
 
         interp_ok(Scalar::from_pointer(ptr, this))
     }

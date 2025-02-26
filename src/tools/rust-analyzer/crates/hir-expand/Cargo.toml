@@ -31,7 +31,6 @@ cfg.workspace = true
 syntax.workspace = true
 tt.workspace = true
 mbe.workspace = true
-limit.workspace = true
 span.workspace = true
 parser.workspace = true
 syntax-bridge.workspace = true

@@ -1,4 +1,4 @@
-error[E0015]: cannot perform deref coercion on `A` in statics
+error[E0015]: cannot perform non-const deref coercion on `A` in statics
   --> $DIR/issue-25901.rs:4:24
    |
 LL | static S: &'static B = &A;

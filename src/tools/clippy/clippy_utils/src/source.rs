@@ -2,8 +2,9 @@
 
 #![allow(clippy::module_name_repetitions)]
 
+use std::sync::Arc;
+
 use rustc_ast::{LitKind, StrStyle};
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::Applicability;
 use rustc_hir::{BlockCheckMode, Expr, ExprKind, UnsafeSource};
 use rustc_lint::{EarlyContext, LateContext};
@@ -204,7 +205,7 @@ impl fmt::Display for SourceText {
 fn get_source_range(sm: &SourceMap, sp: Range<BytePos>) -> Option<SourceFileRange> {
     let start = sm.lookup_byte_offset(sp.start);
     let end = sm.lookup_byte_offset(sp.end);
-    if !Lrc::ptr_eq(&start.sf, &end.sf) || start.pos > end.pos {
+    if !Arc::ptr_eq(&start.sf, &end.sf) || start.pos > end.pos {
         return None;
     }
     sm.ensure_source_file_source_present(&start.sf);
@@ -277,7 +278,7 @@ fn trim_start(sm: &SourceMap, sp: Range<BytePos>) -> Range<BytePos> {
 }
 
 pub struct SourceFileRange {
-    pub sf: Lrc<SourceFile>,
+    pub sf: Arc<SourceFile>,
     pub range: Range<usize>,
 }
 impl SourceFileRange {
@@ -726,12 +727,15 @@ pub fn str_literal_to_char_literal(
             &snip[1..(snip.len() - 1)]
         };
 
-        let hint = format!("'{}'", match ch {
-            "'" => "\\'",
-            r"\" => "\\\\",
-            "\\\"" => "\"", // no need to escape `"` in `'"'`
-            _ => ch,
-        });
+        let hint = format!(
+            "'{}'",
+            match ch {
+                "'" => "\\'",
+                r"\" => "\\\\",
+                "\\\"" => "\"", // no need to escape `"` in `'"'`
+                _ => ch,
+            }
+        );
 
         Some(hint)
     } else {

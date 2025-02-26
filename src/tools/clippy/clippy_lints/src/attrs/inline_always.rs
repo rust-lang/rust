@@ -1,7 +1,7 @@
 use super::INLINE_ALWAYS;
 use super::utils::is_word;
 use clippy_utils::diagnostics::span_lint;
-use rustc_ast::Attribute;
+use rustc_hir::Attribute;
 use rustc_lint::LateContext;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, sym};
@@ -20,7 +20,7 @@ pub(super) fn check(cx: &LateContext<'_>, span: Span, name: Symbol, attrs: &[Att
                 span_lint(
                     cx,
                     INLINE_ALWAYS,
-                    attr.span,
+                    attr.span(),
                     format!("you have declared `#[inline(always)]` on `{name}`. This is usually a bad idea"),
                 );
             }

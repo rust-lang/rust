@@ -54,7 +54,7 @@ fn _macros() {
     #[cfg(FALSE)] (let 0 = 1);
     //~^ ERROR expected expression, found `let` statement
     use_expr!(let 0 = 1);
-    //~^ ERROR no rules expected the token `let`
+    //~^ ERROR no rules expected keyword `let`
 }
 
 fn main() {}

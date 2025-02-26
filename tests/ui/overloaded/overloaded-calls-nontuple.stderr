@@ -38,6 +38,10 @@ LL |         self.call_mut(z)
    |
 note: required by a bound in `call_mut`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
+help: use a unary tuple instead
+   |
+LL |         self.call_mut((z,))
+   |                       + ++
 
 error[E0059]: cannot use call notation; the first type parameter for the function trait is neither a tuple nor unit
   --> $DIR/overloaded-calls-nontuple.rs:29:10

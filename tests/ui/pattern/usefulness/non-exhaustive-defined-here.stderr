@@ -29,7 +29,7 @@ LL |     let E::A = e;
    |         ^^^^ patterns `E::B` and `E::C` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
 note: `E` defined here
   --> $DIR/non-exhaustive-defined-here.rs:8:6
    |
@@ -78,7 +78,7 @@ LL |     let E::A = e;
    |         ^^^^ patterns `&E::B` and `&E::C` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
 note: `E` defined here
   --> $DIR/non-exhaustive-defined-here.rs:8:6
    |
@@ -127,7 +127,7 @@ LL |     let E::A = e;
    |         ^^^^ patterns `&&mut &E::B` and `&&mut &E::C` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
 note: `E` defined here
   --> $DIR/non-exhaustive-defined-here.rs:8:6
    |
@@ -173,7 +173,7 @@ LL |     let Opt::Some(ref _x) = e;
    |         ^^^^^^^^^^^^^^^^^ pattern `Opt::None` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
 note: `Opt` defined here
   --> $DIR/non-exhaustive-defined-here.rs:83:6
    |

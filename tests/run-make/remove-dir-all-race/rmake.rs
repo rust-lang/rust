@@ -1,13 +1,13 @@
 //@ ignore-windows
 
 // This test attempts to make sure that running `remove_dir_all`
-// doesn't result in a NotFound error one of the files it
+// doesn't result in a NotFound error if one of the files it
 // is deleting is deleted concurrently.
 //
 // The windows implementation for `remove_dir_all` is significantly
 // more complicated, and has not yet been brought up to par with
 // the implementation on other platforms, so this test is marked as
-// `ignore-windows` until someone more expirenced with windows can
+// `ignore-windows` until someone more experienced with windows can
 // sort that out.
 
 use std::fs::remove_dir_all;
@@ -27,13 +27,12 @@ fn main() {
             write("outer/inner.txt", b"sometext");
 
             thread::scope(|scope| {
-                let t1 = scope.spawn(|| {
+                scope.spawn(|| {
                     thread::sleep(Duration::from_nanos(i));
                     remove_dir_all("outer").unwrap();
                 });
 
-                let race_happened_ref = &race_happened;
-                let t2 = scope.spawn(|| {
+                scope.spawn(|| {
                     let r1 = remove_dir_all("outer/inner");
                     let r2 = remove_dir_all("outer/inner.txt");
                     if r1.is_ok() && r2.is_err() {
@@ -44,10 +43,10 @@ fn main() {
 
             assert!(!Path::new("outer").exists());
 
-            // trying to remove a nonexistant top-level directory should
+            // trying to remove a nonexistent top-level directory should
             // still result in an error.
             let Err(err) = remove_dir_all("outer") else {
-                panic!("removing nonexistant dir did not result in an error");
+                panic!("removing nonexistent dir did not result in an error");
             };
             assert_eq!(err.kind(), std::io::ErrorKind::NotFound);
         }

@@ -1,10 +1,9 @@
 //@ run-pass
 
 #![allow(stable_features)]
-//@ pretty-expanded FIXME #23616
 
 #![allow(unused_imports)]
-#![feature(start, no_core, core)]
+#![feature(no_core, core)]
 #![no_core]
 
 extern crate std;
@@ -19,5 +18,4 @@ mod baz {
     pub use std::str as x;
 }
 
-#[start]
-pub fn start(_: isize, _: *const *const u8) -> isize { 0 }
+fn main() {}

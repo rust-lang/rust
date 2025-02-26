@@ -3,6 +3,7 @@ use std::cell::{Cell, RefCell};
 use gccjit::{
     Block, CType, Context, Function, FunctionPtrType, FunctionType, LValue, Location, RValue, Type,
 };
+use rustc_abi::{HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx};
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::errors as ssa_errors;
 use rustc_codegen_ssa::traits::{BackendTypes, BaseTypeCodegenMethods, MiscCodegenMethods};
@@ -11,14 +12,13 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_middle::mir::mono::CodegenUnit;
 use rustc_middle::span_bug;
 use rustc_middle::ty::layout::{
-    FnAbiError, FnAbiOf, FnAbiOfHelpers, FnAbiRequest, HasParamEnv, HasTyCtxt, LayoutError,
+    FnAbiError, FnAbiOf, FnAbiOfHelpers, FnAbiRequest, HasTyCtxt, HasTypingEnv, LayoutError,
     LayoutOfHelpers,
 };
-use rustc_middle::ty::{self, Instance, ParamEnv, PolyExistentialTraitRef, Ty, TyCtxt};
+use rustc_middle::ty::{self, ExistentialTraitRef, Instance, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_span::source_map::respan;
 use rustc_span::{DUMMY_SP, Span};
-use rustc_target::abi::{HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx};
 use rustc_target::spec::{
     HasTargetSpec, HasWasmCAbiOpt, HasX86AbiOpt, Target, TlsModel, WasmCAbi, X86Abi,
 };
@@ -90,7 +90,7 @@ pub struct CodegenCx<'gcc, 'tcx> {
     pub function_instances: RefCell<FxHashMap<Instance<'tcx>, Function<'gcc>>>,
     /// Cache generated vtables
     pub vtables:
-        RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), RValue<'gcc>>>,
+        RefCell<FxHashMap<(Ty<'tcx>, Option<ty::ExistentialTraitRef<'tcx>>), RValue<'gcc>>>,
 
     // TODO(antoyo): improve the SSA API to not require those.
     /// Mapping from function pointer type to indexes of on stack parameters.
@@ -144,7 +144,9 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         supports_f128_type: bool,
     ) -> Self {
         let create_type = |ctype, rust_type| {
-            let layout = tcx.layout_of(ParamEnv::reveal_all().and(rust_type)).unwrap();
+            let layout = tcx
+                .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(rust_type))
+                .unwrap();
             let align = layout.align.abi.bytes();
             #[cfg(feature = "master")]
             {
@@ -384,6 +386,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
 impl<'gcc, 'tcx> BackendTypes for CodegenCx<'gcc, 'tcx> {
     type Value = RValue<'gcc>;
     type Metadata = RValue<'gcc>;
+    // TODO(antoyo): change to Function<'gcc>.
     type Function = RValue<'gcc>;
 
     type BasicBlock = Block<'gcc>;
@@ -398,7 +401,7 @@ impl<'gcc, 'tcx> BackendTypes for CodegenCx<'gcc, 'tcx> {
 impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     fn vtables(
         &self,
-    ) -> &RefCell<FxHashMap<(Ty<'tcx>, Option<PolyExistentialTraitRef<'tcx>>), RValue<'gcc>>> {
+    ) -> &RefCell<FxHashMap<(Ty<'tcx>, Option<ExistentialTraitRef<'tcx>>), RValue<'gcc>>> {
         &self.vtables
     }
 
@@ -459,7 +462,7 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
             Some(def_id) if !wants_msvc_seh(self.sess()) => {
                 let instance = ty::Instance::expect_resolve(
                     tcx,
-                    ty::ParamEnv::reveal_all(),
+                    self.typing_env(),
                     def_id,
                     ty::List::empty(),
                     DUMMY_SP,
@@ -510,7 +513,6 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         } else {
             // If the symbol already exists, it is an error: for example, the user wrote
             // #[no_mangle] extern "C" fn main(..) {..}
-            // instead of #[start]
             None
         }
     }
@@ -542,7 +544,10 @@ impl<'gcc, 'tcx> HasWasmCAbiOpt for CodegenCx<'gcc, 'tcx> {
 
 impl<'gcc, 'tcx> HasX86AbiOpt for CodegenCx<'gcc, 'tcx> {
     fn x86_abi_opt(&self) -> X86Abi {
-        X86Abi { regparm: self.tcx.sess.opts.unstable_opts.regparm }
+        X86Abi {
+            regparm: self.tcx.sess.opts.unstable_opts.regparm,
+            reg_struct_return: self.tcx.sess.opts.unstable_opts.reg_struct_return,
+        }
     }
 }
 
@@ -583,9 +588,9 @@ impl<'gcc, 'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'gcc, 'tcx> {
     }
 }
 
-impl<'tcx, 'gcc> HasParamEnv<'tcx> for CodegenCx<'gcc, 'tcx> {
-    fn param_env(&self) -> ParamEnv<'tcx> {
-        ParamEnv::reveal_all()
+impl<'tcx, 'gcc> HasTypingEnv<'tcx> for CodegenCx<'gcc, 'tcx> {
+    fn typing_env(&self) -> ty::TypingEnv<'tcx> {
+        ty::TypingEnv::fully_monomorphized()
     }
 }
 

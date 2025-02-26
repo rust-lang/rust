@@ -22,7 +22,7 @@ impl Timespec {
     const fn new(tv_sec: i64, tv_nsec: i32) -> Timespec {
         assert!(tv_nsec >= 0 && tv_nsec < NSEC_PER_SEC);
         // SAFETY: The assert above checks tv_nsec is within the valid range
-        Timespec { t: timespec { tv_sec: tv_sec, tv_nsec: tv_nsec } }
+        Timespec { t: timespec { tv_sec, tv_nsec } }
     }
 
     fn sub_timespec(&self, other: &Timespec) -> Result<Duration, Duration> {

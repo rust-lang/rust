@@ -1,6 +1,6 @@
 //! List of the removed feature gates.
 
-use rustc_span::symbol::sym;
+use rustc_span::sym;
 
 use super::{Feature, to_nonzero};
 
@@ -14,7 +14,7 @@ macro_rules! declare_features {
         $(#[doc = $doc:tt])* (removed, $feature:ident, $ver:expr, $issue:expr, $reason:expr),
     )+) => {
         /// Formerly unstable features that have now been removed.
-        pub const REMOVED_LANG_FEATURES: &[RemovedFeature] = &[
+        pub static REMOVED_LANG_FEATURES: &[RemovedFeature] = &[
             $(RemovedFeature {
                 feature: Feature {
                     name: sym::$feature,
@@ -100,6 +100,18 @@ declare_features! (
      Some("renamed to `doc_notable_trait`")),
     /// Allows using `#[unsafe_destructor_blind_to_params]` (RFC 1238).
     (removed, dropck_parametricity, "1.38.0", Some(28498), None),
+    /// Allows making `dyn Trait` well-formed even if `Trait` is not dyn compatible[^1].
+    /// In that case, `dyn Trait: Trait` does not hold. Moreover, coercions and
+    /// casts in safe Rust to `dyn Trait` for such a `Trait` is also forbidden.
+    ///
+    /// Renamed from `object_safe_for_dispatch`.
+    ///
+    /// [^1]: Formerly known as "object safe".
+    (removed, dyn_compatible_for_dispatch, "1.83.0", Some(43561),
+     Some("removed, not used heavily and represented additional complexity in dyn compatibility")),
+    /// Uses generic effect parameters for ~const bounds
+    (removed, effects, "1.84.0", Some(102090),
+     Some("removed, redundant with `#![feature(const_trait_impl)]`")),
     /// Allows defining `existential type`s.
     (removed, existential_type, "1.38.0", Some(63063),
      Some("removed in favor of `#![feature(type_alias_impl_trait)]`")),
@@ -116,9 +128,13 @@ declare_features! (
     (removed, generator_clone, "1.65.0", Some(95360), Some("renamed to `coroutine_clone`")),
     /// Allows defining generators.
     (removed, generators, "1.21.0", Some(43122), Some("renamed to `coroutines`")),
-    /// Allows `impl Trait` in bindings (`let`, `const`, `static`).
-    (removed, impl_trait_in_bindings, "1.55.0", Some(63065),
-     Some("the implementation was not maintainable, the feature may get reintroduced once the current refactorings are done")),
+    /// An extension to the `generic_associated_types` feature, allowing incomplete features.
+    (removed, generic_associated_types_extended, "1.85.0", Some(95451),
+        Some(
+            "feature needs overhaul and reimplementation pending \
+            better implied higher-ranked implied bounds support"
+        )
+    ),
     (removed, import_shadowing, "1.0.0", None, None),
     /// Allows in-band quantification of lifetime bindings (e.g., `fn foo(x: &'a u8) -> &'a u8`).
     (removed, in_band_lifetimes, "1.23.0", Some(44524),
@@ -128,6 +144,8 @@ declare_features! (
      Some("removed as it caused some confusion and discussion was inactive for years")),
     /// Lazily evaluate constants. This allows constants to depend on type parameters.
     (removed, lazy_normalization_consts, "1.46.0", Some(72219), Some("superseded by `generic_const_exprs`")),
+    /// Changes `impl Trait` to capture all lifetimes in scope.
+    (removed, lifetime_capture_rules_2024, "1.76.0", None, Some("unnecessary -- use edition 2024 instead")),
     /// Allows using the `#[link_args]` attribute.
     (removed, link_args, "1.53.0", Some(29596),
      Some("removed in favor of using `-C link-arg=ARG` on command line, \
@@ -156,7 +174,7 @@ declare_features! (
     /// then removed. But there was no utility storing it separately, so now
     /// it's in this list.
     (removed, no_stack_check, "1.0.0", None, None),
-    /// Allows making `dyn Trait` well-formed even if `Trait` is not dyn-compatible (object safe).
+    /// Allows making `dyn Trait` well-formed even if `Trait` is not dyn compatible (object safe).
     /// Renamed to `dyn_compatible_for_dispatch`.
     (removed, object_safe_for_dispatch, "1.83.0", Some(43561),
      Some("renamed to `dyn_compatible_for_dispatch`")),
@@ -213,8 +231,9 @@ declare_features! (
     (removed, rustc_diagnostic_macros, "1.38.0", None, None),
     /// Allows identifying crates that contain sanitizer runtimes.
     (removed, sanitizer_runtime, "1.17.0", None, None),
-    (removed, simd, "1.0.0", Some(27731),
-     Some("removed in favor of `#[repr(simd)]`")),
+    (removed, simd, "1.0.0", Some(27731), Some("removed in favor of `#[repr(simd)]`")),
+    /// Allows using `#[start]` on a function indicating that it is the program entrypoint.
+    (removed, start, "1.0.0", Some(29633), Some("not portable enough and never RFC'd")),
     /// Allows `#[link(kind = "static-nobundle", ...)]`.
     (removed, static_nobundle, "1.16.0", Some(37403),
      Some(r#"subsumed by `#[link(kind = "static", modifiers = "-bundle", ...)]`"#)),

@@ -1,4 +1,4 @@
-#![feature(lang_items, start)]
+#![crate_type = "lib"]
 #![warn(clippy::imprecise_flops)]
 #![warn(clippy::suboptimal_flops)]
 #![no_std]
@@ -17,15 +17,6 @@ fn fake_abs1(num: f64) -> f64 {
     if num >= 0.0 { num } else { -num }
 }
 
-#[start]
-fn main(_argc: isize, _argv: *const *const u8) -> isize {
+pub fn main(_argc: isize, _argv: *const *const u8) -> isize {
     0
 }
-
-#[panic_handler]
-fn panic(_info: &core::panic::PanicInfo) -> ! {
-    loop {}
-}
-
-#[lang = "eh_personality"]
-extern "C" fn eh_personality() {}

@@ -1,8 +1,6 @@
 #![warn(clippy::manual_async_fn)]
 #![allow(clippy::needless_pub_self, unused)]
 
-//@no-rustfix: need to change the suggestion to a multipart suggestion
-
 use std::future::Future;
 
 fn fut() -> impl Future<Output = i32> {
@@ -99,6 +97,7 @@ fn elided_not_bound(_: &i32) -> impl Future<Output = i32> {
     async { 42 }
 }
 
+#[allow(clippy::needless_lifetimes)]
 fn explicit<'a, 'b>(_: &'a i32, _: &'b i32) -> impl Future<Output = i32> + 'a + 'b {
     async { 42 }
 }

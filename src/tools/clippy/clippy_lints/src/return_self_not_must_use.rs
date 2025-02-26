@@ -5,7 +5,6 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl, OwnerId, TraitItem, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::declare_lint_pass;
 use rustc_span::{Span, sym};
 
@@ -69,7 +68,7 @@ declare_clippy_lint! {
 declare_lint_pass!(ReturnSelfNotMustUse => [RETURN_SELF_NOT_MUST_USE]);
 
 fn check_method(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_def: LocalDefId, span: Span, owner_id: OwnerId) {
-    if !in_external_macro(cx.sess(), span)
+    if !span.in_external_macro(cx.sess().source_map())
         // If it comes from an external macro, better ignore it.
         && decl.implicit_self.has_implicit_self()
         // We only show this warning for public exported methods.

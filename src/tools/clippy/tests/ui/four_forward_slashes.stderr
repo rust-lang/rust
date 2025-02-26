@@ -3,12 +3,14 @@ error: this item has comments with 4 forward slashes (`////`). These look like d
    |
 LL | / //// whoops
 LL | | fn a() {}
-   | |_
+   | |_^
    |
    = note: `-D clippy::four-forward-slashes` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::four_forward_slashes)]`
 help: make this a doc comment by removing one `/`
    |
+LL - //// whoops
+LL - fn a() {}
 LL + /// whoops
    |
 
@@ -18,10 +20,12 @@ error: this item has comments with 4 forward slashes (`////`). These look like d
 LL | / //// whoops
 LL | | #[allow(dead_code)]
 LL | | fn b() {}
-   | |_
+   | |_^
    |
 help: make this a doc comment by removing one `/`
    |
+LL - //// whoops
+LL - #[allow(dead_code)]
 LL + /// whoops
    |
 
@@ -32,7 +36,7 @@ LL | / //// whoops
 LL | | //// two borked comments!
 LL | | #[track_caller]
 LL | | fn c() {}
-   | |_
+   | |_^
    |
 help: turn these into doc comments by removing one `/`
    |
@@ -46,10 +50,12 @@ error: this item has comments with 4 forward slashes (`////`). These look like d
 LL | / //// between attributes
 LL | | #[allow(dead_code)]
 LL | | fn g() {}
-   | |_
+   | |_^
    |
 help: make this a doc comment by removing one `/`
    |
+LL - //// between attributes
+LL - #[allow(dead_code)]
 LL + /// between attributes
    |
 
@@ -58,10 +64,12 @@ error: this item has comments with 4 forward slashes (`////`). These look like d
    |
 LL | /     //// not very start of contents
 LL | | fn h() {}
-   | |_
+   | |_^
    |
 help: make this a doc comment by removing one `/`
    |
+LL -     //// not very start of contents
+LL - fn h() {}
 LL + /// not very start of contents
    |
 

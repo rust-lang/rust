@@ -5,7 +5,6 @@ use rustc_ast::node_id::NodeSet;
 use rustc_ast::visit::{Visitor, walk_block, walk_item};
 use rustc_ast::{Block, Crate, Inline, Item, ItemKind, ModKind, NodeId};
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 
@@ -125,7 +124,9 @@ struct NestingVisitor<'conf, 'cx> {
 
 impl NestingVisitor<'_, '_> {
     fn check_indent(&mut self, span: Span, id: NodeId) -> bool {
-        if self.nest_level > self.conf.excessive_nesting_threshold && !in_external_macro(self.cx.sess(), span) {
+        if self.nest_level > self.conf.excessive_nesting_threshold
+            && !span.in_external_macro(self.cx.sess().source_map())
+        {
             self.conf.nodes.insert(id);
 
             return true;
@@ -163,7 +164,7 @@ impl Visitor<'_> for NestingVisitor<'_, '_> {
         }
 
         match &item.kind {
-            ItemKind::Trait(_) | ItemKind::Impl(_) | ItemKind::Mod(.., ModKind::Loaded(_, Inline::Yes, _)) => {
+            ItemKind::Trait(_) | ItemKind::Impl(_) | ItemKind::Mod(.., ModKind::Loaded(_, Inline::Yes, _, _)) => {
                 self.nest_level += 1;
 
                 if !self.check_indent(item.span, item.id) {

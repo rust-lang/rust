@@ -7,8 +7,7 @@ LL | |         0 => x,
    | |              - this is found to be of type `for<'a, 'b> fn(&'a u8, &'b u8) -> &'a u8`
 LL | |         _ => y,
    | |              ^ one type is more general than the other
-LL | |
-LL | |
+...  |
 LL | |     };
    | |_____- `match` arms have incompatible types
    |

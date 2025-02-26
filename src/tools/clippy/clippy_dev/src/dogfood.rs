@@ -1,4 +1,4 @@
-use crate::{clippy_project_root, exit_if_err};
+use crate::utils::{clippy_project_root, exit_if_err};
 use std::process::Command;
 
 /// # Panics

@@ -5,7 +5,8 @@
 
 use std::{collections::hash_map::Entry, iter, mem};
 
-use crate::{assists::Command, SnippetCap};
+use crate::text_edit::{TextEdit, TextEditBuilder};
+use crate::{assists::Command, syntax_helpers::tree_diff::diff, SnippetCap};
 use base_db::AnchoredPathBuf;
 use itertools::Itertools;
 use nohash_hasher::IntMap;
@@ -13,11 +14,9 @@ use rustc_hash::FxHashMap;
 use span::FileId;
 use stdx::never;
 use syntax::{
-    algo,
     syntax_editor::{SyntaxAnnotation, SyntaxEditor},
     AstNode, SyntaxElement, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange, TextSize,
 };
-use text_edit::{TextEdit, TextEditBuilder};
 
 #[derive(Default, Debug, Clone)]
 pub struct SourceChange {
@@ -315,7 +314,7 @@ impl SourceChangeBuilder {
             }
 
             let mut edit = TextEdit::builder();
-            algo::diff(edit_result.old_root(), edit_result.new_root()).into_text_edit(&mut edit);
+            diff(edit_result.old_root(), edit_result.new_root()).into_text_edit(&mut edit);
             let edit = edit.finish();
 
             let snippet_edit =
@@ -334,7 +333,7 @@ impl SourceChangeBuilder {
         });
 
         if let Some(tm) = self.mutated_tree.take() {
-            algo::diff(&tm.immutable, &tm.mutable_clone).into_text_edit(&mut self.edit);
+            diff(&tm.immutable, &tm.mutable_clone).into_text_edit(&mut self.edit);
         }
 
         let edit = mem::take(&mut self.edit).finish();
@@ -373,7 +372,7 @@ impl SourceChangeBuilder {
         self.edit.replace(range, replace_with.into())
     }
     pub fn replace_ast<N: AstNode>(&mut self, old: N, new: N) {
-        algo::diff(old.syntax(), new.syntax()).into_text_edit(&mut self.edit)
+        diff(old.syntax(), new.syntax()).into_text_edit(&mut self.edit)
     }
     pub fn create_file(&mut self, dst: AnchoredPathBuf, content: impl Into<String>) {
         let file_system_edit = FileSystemEdit::CreateFile { dst, initial_contents: content.into() };

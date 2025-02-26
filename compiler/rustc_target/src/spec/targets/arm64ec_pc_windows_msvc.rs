@@ -1,17 +1,18 @@
-use crate::spec::{LinkerFlavor, Lld, Target, add_link_args, base};
+use crate::spec::{LinkerFlavor, Lld, Target, TargetMetadata, add_link_args, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::windows_msvc::opts();
     base.max_atomic_width = Some(128);
     base.features = "+v8a,+neon,+fp-armv8".into();
-    add_link_args(&mut base.late_link_args, LinkerFlavor::Msvc(Lld::No), &[
-        "/machine:arm64ec",
-        "softintrin.lib",
-    ]);
+    add_link_args(
+        &mut base.late_link_args,
+        LinkerFlavor::Msvc(Lld::No),
+        &["/machine:arm64ec", "softintrin.lib"],
+    );
 
     Target {
         llvm_target: "arm64ec-pc-windows-msvc".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("Arm64EC Windows MSVC".into()),
             tier: Some(3),
             host_tools: Some(false),

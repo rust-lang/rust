@@ -1,0 +1,10 @@
+warning: unresolved link to `Self::foo`
+  --> $DIR/ice-unresolved-self-103997.rs:6:13
+   |
+LL | /// [`foo`](Self::foo)
+   |             ^^^^^^^^^ no item named `Self` in scope
+   |
+   = note: `#[warn(rustdoc::broken_intra_doc_links)]` on by default
+
+warning: 1 warning emitted
+

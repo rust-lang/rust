@@ -1,5 +1,5 @@
 #![allow(incomplete_features)]
-#![feature(const_trait_impl, effects, try_trait_v2, const_try)]
+#![feature(const_trait_impl, try_trait_v2, const_try)]
 use std::ops::{FromResidual, Try};
 
 struct TryMe;
@@ -18,8 +18,8 @@ impl const Try for TryMe {
 
 const fn t() -> TryMe {
     TryMe?;
-    //~^ ERROR `?` cannot determine the branch of `TryMe` in constant functions
-    //~| ERROR `?` cannot convert from residual of `TryMe` in constant functions
+    //~^ ERROR `?` is not allowed on
+    //~| ERROR `?` is not allowed on
     TryMe
 }
 

@@ -9,6 +9,7 @@ on:
 
 jobs:
   publish-libs:
+    if: ${{ github.repository == 'rust-lang/rust-analyzer' || github.event.action == 'workflow_dispatch' }}
     name: publish
     runs-on: ubuntu-latest
     steps:

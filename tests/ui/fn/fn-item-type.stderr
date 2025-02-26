@@ -17,7 +17,7 @@ LL | fn eq<T>(x: T, y: T) {}
    |    ^^ -  ----  ---- this parameter needs to match the fn item type of `x`
    |       |  |
    |       |  `y` needs to match the fn item type of this parameter
-   |       `x` and `y` all reference this parameter T
+   |       `x` and `y` both reference this parameter `T`
    = help: consider casting both fn items to fn pointers using `as fn(isize) -> isize`
 
 error[E0308]: mismatched types
@@ -39,7 +39,7 @@ LL | fn eq<T>(x: T, y: T) {}
    |    ^^ -  ----  ---- this parameter needs to match the fn item type of `x`
    |       |  |
    |       |  `y` needs to match the fn item type of this parameter
-   |       `x` and `y` all reference this parameter T
+   |       `x` and `y` both reference this parameter `T`
    = help: consider casting both fn items to fn pointers using `as fn(isize) -> isize`
 
 error[E0308]: mismatched types
@@ -61,7 +61,7 @@ LL | fn eq<T>(x: T, y: T) {}
    |    ^^ -  ----  ---- this parameter needs to match the fn item type of `x`
    |       |  |
    |       |  `y` needs to match the fn item type of this parameter
-   |       `x` and `y` all reference this parameter T
+   |       `x` and `y` both reference this parameter `T`
    = help: consider casting both fn items to fn pointers using `as fn(isize) -> isize`
 
 error[E0308]: mismatched types
@@ -83,7 +83,7 @@ LL | fn eq<T>(x: T, y: T) {}
    |    ^^ -  ----  ---- this parameter needs to match the fn item type of `x`
    |       |  |
    |       |  `y` needs to match the fn item type of this parameter
-   |       `x` and `y` all reference this parameter T
+   |       `x` and `y` both reference this parameter `T`
    = help: consider casting both fn items to fn pointers using `as fn()`
 
 error[E0308]: mismatched types
@@ -105,7 +105,7 @@ LL | fn eq<T>(x: T, y: T) {}
    |    ^^ -  ----  ---- this parameter needs to match the fn item type of `x`
    |       |  |
    |       |  `y` needs to match the fn item type of this parameter
-   |       `x` and `y` all reference this parameter T
+   |       `x` and `y` both reference this parameter `T`
 
 error: aborting due to 5 previous errors
 

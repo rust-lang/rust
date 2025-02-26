@@ -1,3 +1,4 @@
+//@ reference: attributes.diagnostic.on_unimplemented.note-repetition
 #[diagnostic::on_unimplemented(message = "Foo", label = "Bar", note = "Baz", note = "Boom")]
 trait Foo {}
 

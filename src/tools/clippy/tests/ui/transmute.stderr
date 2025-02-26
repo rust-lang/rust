@@ -1,8 +1,8 @@
 error: transmute from a reference to a pointer
   --> tests/ui/transmute.rs:31:23
    |
-LL |     let _: *const T = core::intrinsics::transmute(t);
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `t as *const T`
+LL |     let _: *const T = core::mem::transmute(t);
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `t as *const T`
    |
    = note: `-D clippy::useless-transmute` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::useless_transmute)]`
@@ -10,20 +10,20 @@ LL |     let _: *const T = core::intrinsics::transmute(t);
 error: transmute from a reference to a pointer
   --> tests/ui/transmute.rs:35:21
    |
-LL |     let _: *mut T = core::intrinsics::transmute(t);
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `t as *const T as *mut T`
+LL |     let _: *mut T = core::mem::transmute(t);
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `t as *const T as *mut T`
 
 error: transmute from a reference to a pointer
   --> tests/ui/transmute.rs:38:23
    |
-LL |     let _: *const U = core::intrinsics::transmute(t);
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `t as *const T as *const U`
+LL |     let _: *const U = core::mem::transmute(t);
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `t as *const T as *const U`
 
 error: transmute from a type (`std::vec::Vec<i32>`) to itself
   --> tests/ui/transmute.rs:45:27
    |
-LL |         let _: Vec<i32> = core::intrinsics::transmute(my_vec());
-   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         let _: Vec<i32> = core::mem::transmute(my_vec());
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from a type (`std::vec::Vec<i32>`) to itself
   --> tests/ui/transmute.rs:48:27
@@ -34,8 +34,8 @@ LL |         let _: Vec<i32> = core::mem::transmute(my_vec());
 error: transmute from a type (`std::vec::Vec<i32>`) to itself
   --> tests/ui/transmute.rs:51:27
    |
-LL |         let _: Vec<i32> = std::intrinsics::transmute(my_vec());
-   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         let _: Vec<i32> = std::mem::transmute(my_vec());
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from a type (`std::vec::Vec<i32>`) to itself
   --> tests/ui/transmute.rs:54:27
@@ -64,8 +64,8 @@ LL |         let _: *const usize = std::mem::transmute(1 + 1usize);
 error: transmute from a type (`*const Usize`) to the type that it points to (`Usize`)
   --> tests/ui/transmute.rs:97:24
    |
-LL |         let _: Usize = core::intrinsics::transmute(int_const_ptr);
-   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         let _: Usize = core::mem::transmute(int_const_ptr);
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::crosspointer-transmute` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::crosspointer_transmute)]`
@@ -73,20 +73,20 @@ LL |         let _: Usize = core::intrinsics::transmute(int_const_ptr);
 error: transmute from a type (`*mut Usize`) to the type that it points to (`Usize`)
   --> tests/ui/transmute.rs:101:24
    |
-LL |         let _: Usize = core::intrinsics::transmute(int_mut_ptr);
-   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         let _: Usize = core::mem::transmute(int_mut_ptr);
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from a type (`Usize`) to a pointer to that type (`*const Usize`)
   --> tests/ui/transmute.rs:104:31
    |
-LL |         let _: *const Usize = core::intrinsics::transmute(my_int());
-   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         let _: *const Usize = core::mem::transmute(my_int());
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from a type (`Usize`) to a pointer to that type (`*mut Usize`)
   --> tests/ui/transmute.rs:107:29
    |
-LL |         let _: *mut Usize = core::intrinsics::transmute(my_int());
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         let _: *mut Usize = core::mem::transmute(my_int());
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: transmute from a `u8` to a `bool`
   --> tests/ui/transmute.rs:114:28

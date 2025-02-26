@@ -68,7 +68,7 @@ fn _macros() {
         _ => {}
     }
     use_expr!(let 0 = 1);
-    //~^ ERROR no rules expected the token `let`
+    //~^ ERROR no rules expected keyword `let`
 }
 
 fn main() {}

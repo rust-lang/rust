@@ -161,6 +161,12 @@ fn make_opts() -> Options {
         "Set options from command line. These settings take priority over .rustfmt.toml",
         "[key1=val1,key2=val2...]",
     );
+    opts.optopt(
+        "",
+        "style-edition",
+        "The edition of the Style Guide.",
+        "[2015|2018|2021|2024]",
+    );
 
     if is_nightly {
         opts.optflag(
@@ -185,12 +191,6 @@ fn make_opts() -> Options {
             "",
             "skip-children",
             "Don't reformat child modules (unstable).",
-        );
-        opts.optopt(
-            "",
-            "style-edition",
-            "The edition of the Style Guide (unstable).",
-            "[2015|2018|2021|2024]",
         );
     }
 
@@ -568,10 +568,6 @@ impl GetOptsOptions {
                 if let Some(ref file_lines) = matches.opt_str("file-lines") {
                     options.file_lines = file_lines.parse()?;
                 }
-                if let Some(ref edition_str) = matches.opt_str("style-edition") {
-                    options.style_edition =
-                        Some(style_edition_from_style_edition_str(edition_str)?);
-                }
             } else {
                 let mut unstable_options = vec![];
                 if matches.opt_present("skip-children") {
@@ -582,9 +578,6 @@ impl GetOptsOptions {
                 }
                 if matches.opt_present("file-lines") {
                     unstable_options.push("`--file-lines`");
-                }
-                if matches.opt_present("style-edition") {
-                    unstable_options.push("`--style-edition`");
                 }
                 if !unstable_options.is_empty() {
                     let s = if unstable_options.len() == 1 { "" } else { "s" };
@@ -659,6 +652,10 @@ impl GetOptsOptions {
                 Ok(color) => options.color = Some(color),
                 _ => return Err(format_err!("Invalid color: {}", color)),
             }
+        }
+
+        if let Some(ref edition_str) = matches.opt_str("style-edition") {
+            options.style_edition = Some(style_edition_from_style_edition_str(edition_str)?);
         }
 
         Ok(options)
@@ -820,7 +817,6 @@ mod test {
         options.inline_config = HashMap::from([("version".to_owned(), "Two".to_owned())]);
         let config = get_config(None, Some(options));
         assert_eq!(config.style_edition(), StyleEdition::Edition2024);
-        assert_eq!(config.overflow_delimited_expr(), true);
     }
 
     #[nightly_only_test]
@@ -830,7 +826,6 @@ mod test {
         let config_file = Some(Path::new("tests/config/style-edition/just-version"));
         let config = get_config(config_file, Some(options));
         assert_eq!(config.style_edition(), StyleEdition::Edition2024);
-        assert_eq!(config.overflow_delimited_expr(), true);
     }
 
     #[nightly_only_test]
@@ -875,7 +870,6 @@ mod test {
         ]);
         let config = get_config(None, Some(options));
         assert_eq!(config.style_edition(), StyleEdition::Edition2024);
-        assert_eq!(config.overflow_delimited_expr(), true);
     }
 
     #[nightly_only_test]
@@ -941,7 +935,6 @@ mod test {
         options.style_edition = Some(StyleEdition::Edition2024);
         let config = get_config(None, Some(options));
         assert_eq!(config.style_edition(), StyleEdition::Edition2024);
-        assert_eq!(config.overflow_delimited_expr(), true);
     }
 
     #[nightly_only_test]
@@ -951,6 +944,8 @@ mod test {
         let config_file = Some(Path::new("tests/config/style-edition/overrides"));
         let config = get_config(config_file, Some(options));
         assert_eq!(config.style_edition(), StyleEdition::Edition2024);
+        // FIXME: this test doesn't really exercise anything, since
+        // `overflow_delimited_expr` is disabled by default in edition 2024.
         assert_eq!(config.overflow_delimited_expr(), false);
     }
 
@@ -962,7 +957,8 @@ mod test {
         options.inline_config =
             HashMap::from([("overflow_delimited_expr".to_owned(), "false".to_owned())]);
         let config = get_config(config_file, Some(options));
-        assert_eq!(config.style_edition(), StyleEdition::Edition2024);
+        // FIXME: this test doesn't really exercise anything, since
+        // `overflow_delimited_expr` is disabled by default in edition 2024.
         assert_eq!(config.overflow_delimited_expr(), false);
     }
 }

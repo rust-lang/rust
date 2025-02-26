@@ -61,12 +61,11 @@ impl flags::RunTests {
             }
             let mut sw_one = StopWatch::start();
             let result = test.eval(db, span_formatter);
-            if result.trim() == "pass" {
-                pass_count += 1;
-            } else {
-                fail_count += 1;
+            match &result {
+                Ok(result) if result.trim() == "pass" => pass_count += 1,
+                _ => fail_count += 1,
             }
-            println!("{result}");
+            println!("{result:?}");
             eprintln!("{:<20} {}", format!("test {}", full_name), sw_one.elapsed());
         }
         println!("{pass_count} passed, {fail_count} failed, {ignore_count} ignored");

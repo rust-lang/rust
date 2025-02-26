@@ -1,7 +1,6 @@
 //@ run-pass
 // Issue #17436
 
-//@ pretty-expanded FIXME #23616
 
 mod bleh {
     macro_rules! foo {

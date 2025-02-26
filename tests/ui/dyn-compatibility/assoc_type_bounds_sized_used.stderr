@@ -1,17 +1,3 @@
-error[E0599]: the function or associated item `default` exists for associated type `<T as Bop>::Bar`, but its trait bounds were not satisfied
-  --> $DIR/assoc_type_bounds_sized_used.rs:11:30
-   |
-LL |     let _ = <T as Bop>::Bar::default();
-   |                              ^^^^^^^ function or associated item cannot be called on `<T as Bop>::Bar` due to unsatisfied trait bounds
-   |
-   = note: the following trait bounds were not satisfied:
-           `T: Sized`
-           which is required by `<T as Bop>::Bar: Default`
-help: consider restricting the type parameter to satisfy the trait bound
-   |
-LL | fn bop<T: Bop + ?Sized>() where T: Sized {
-   |                           ++++++++++++++
-
 error[E0277]: the size for values of type `T` cannot be known at compilation time
   --> $DIR/assoc_type_bounds_sized_used.rs:11:14
    |
@@ -37,6 +23,20 @@ help: consider relaxing the implicit `Sized` restriction
    |
 LL |     type Bar: Default + ?Sized
    |                       ++++++++
+
+error[E0599]: the function or associated item `default` exists for associated type `<T as Bop>::Bar`, but its trait bounds were not satisfied
+  --> $DIR/assoc_type_bounds_sized_used.rs:11:30
+   |
+LL |     let _ = <T as Bop>::Bar::default();
+   |                              ^^^^^^^ function or associated item cannot be called on `<T as Bop>::Bar` due to unsatisfied trait bounds
+   |
+   = note: the following trait bounds were not satisfied:
+           `T: Sized`
+           which is required by `<T as Bop>::Bar: Default`
+help: consider restricting the type parameter to satisfy the trait bound
+   |
+LL | fn bop<T: Bop + ?Sized>() where T: Sized {
+   |                           ++++++++++++++
 
 error: aborting due to 2 previous errors
 

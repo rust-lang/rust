@@ -1,7 +1,11 @@
 //! Validates syntax inside Rust code blocks (\`\`\`rust).
 
-use rustc_data_structures::sync::{Lock, Lrc};
+use std::borrow::Cow;
+use std::sync::Arc;
+
+use rustc_data_structures::sync::Lock;
 use rustc_errors::emitter::Emitter;
+use rustc_errors::registry::Registry;
 use rustc_errors::translation::{Translate, to_fluent_args};
 use rustc_errors::{Applicability, DiagCtxt, DiagInner, LazyFallbackBundle};
 use rustc_parse::{source_str_to_stream, unwrap_or_emit_fatal};
@@ -31,16 +35,20 @@ fn check_rust_syntax(
     dox: &str,
     code_block: RustCodeBlock,
 ) {
-    let buffer = Lrc::new(Lock::new(Buffer::default()));
+    let buffer = Arc::new(Lock::new(Buffer::default()));
     let fallback_bundle = rustc_errors::fallback_fluent_bundle(
         rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(),
         false,
     );
-    let emitter = BufferEmitter { buffer: Lrc::clone(&buffer), fallback_bundle };
+    let emitter = BufferEmitter { buffer: Arc::clone(&buffer), fallback_bundle };
 
-    let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+    let sm = Arc::new(SourceMap::new(FilePathMapping::empty()));
     let dcx = DiagCtxt::new(Box::new(emitter)).disable_warnings();
-    let source = dox[code_block.code].to_owned();
+    let source = dox[code_block.code]
+        .lines()
+        .map(|line| crate::html::markdown::map_line(line).for_code())
+        .intersperse(Cow::Borrowed("\n"))
+        .collect::<String>();
     let psess = ParseSess::with_dcx(dcx, sm);
 
     let edition = code_block.lang_string.edition.unwrap_or_else(|| cx.tcx.sess.edition());
@@ -140,7 +148,7 @@ struct Buffer {
 }
 
 struct BufferEmitter {
-    buffer: Lrc<Lock<Buffer>>,
+    buffer: Arc<Lock<Buffer>>,
     fallback_bundle: LazyFallbackBundle,
 }
 
@@ -150,12 +158,12 @@ impl Translate for BufferEmitter {
     }
 
     fn fallback_fluent_bundle(&self) -> &rustc_errors::FluentBundle {
-        &**self.fallback_bundle
+        &self.fallback_bundle
     }
 }
 
 impl Emitter for BufferEmitter {
-    fn emit_diagnostic(&mut self, diag: DiagInner) {
+    fn emit_diagnostic(&mut self, diag: DiagInner, _registry: &Registry) {
         let mut buffer = self.buffer.borrow_mut();
 
         let fluent_args = to_fluent_args(diag.args.iter());

@@ -55,12 +55,12 @@ fn test_memcpy() {
 }
 
 fn test_strcpy() {
-    use std::ffi::{CStr, CString};
+    use std::ffi::CStr;
 
     // case: src_size equals dest_size
     unsafe {
-        let src = CString::new("rust").unwrap();
-        let size = src.as_bytes_with_nul().len();
+        let src = c"rust";
+        let size = src.to_bytes_with_nul().len();
         let dest = libc::malloc(size);
         libc::strcpy(dest as *mut libc::c_char, src.as_ptr());
         assert_eq!(CStr::from_ptr(dest as *const libc::c_char), src.as_ref());
@@ -69,8 +69,8 @@ fn test_strcpy() {
 
     // case: src_size is less than dest_size
     unsafe {
-        let src = CString::new("rust").unwrap();
-        let size = src.as_bytes_with_nul().len();
+        let src = c"rust";
+        let size = src.to_bytes_with_nul().len();
         let dest = libc::malloc(size + 1);
         libc::strcpy(dest as *mut libc::c_char, src.as_ptr());
         assert_eq!(CStr::from_ptr(dest as *const libc::c_char), src.as_ref());

@@ -1,4 +1,4 @@
-//@ compile-flags: -O --target=avr-unknown-gnu-atmega328 --crate-type=rlib -C panic=abort
+//@ compile-flags: -Copt-level=3 --target=avr-none -C target-cpu=atmega328p --crate-type=rlib -C panic=abort
 //@ needs-llvm-components: avr
 
 // This test validates that function pointers can be stored in global variables
@@ -86,7 +86,7 @@ pub extern "C" fn test() {
 
     // A call through the Fn trait must use address space 1.
     //
-    // CHECK: call{{.+}}addrspace(1) void @call_through_fn_trait()
+    // CHECK: call{{.+}}addrspace(1) void @call_through_fn_trait({{.*}})
     call_through_fn_trait(&mut update_bar_value);
 
     // A call through a global variable must use address space 1.

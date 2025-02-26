@@ -1,13 +1,11 @@
 use rustc_ast as ast;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use rustc_ast::{NodeId, PatKind, attr, token};
-use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute, Features, GateIssue};
+use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute, Features};
 use rustc_session::Session;
-use rustc_session::parse::{feature_err, feature_err_issue, feature_warn};
+use rustc_session::parse::{feature_err, feature_warn};
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::sym;
-use rustc_span::{Span, Symbol};
-use rustc_target::spec::abi;
+use rustc_span::{Span, Symbol, sym};
 use thin_vec::ThinVec;
 
 use crate::errors;
@@ -74,35 +72,6 @@ struct PostExpansionVisitor<'a> {
 }
 
 impl<'a> PostExpansionVisitor<'a> {
-    #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
-    fn check_abi(&self, abi: ast::StrLit) {
-        let ast::StrLit { symbol_unescaped, span, .. } = abi;
-
-        match abi::is_enabled(self.features, span, symbol_unescaped.as_str()) {
-            Ok(()) => (),
-            Err(abi::AbiDisabled::Unstable { feature, explain }) => {
-                feature_err_issue(&self.sess, feature, span, GateIssue::Language, explain).emit();
-            }
-            Err(abi::AbiDisabled::Unrecognized) => {
-                if self.sess.opts.pretty.map_or(true, |ppm| ppm.needs_hir()) {
-                    self.sess.dcx().span_delayed_bug(
-                        span,
-                        format!(
-                            "unrecognized ABI not caught in lowering: {}",
-                            symbol_unescaped.as_str()
-                        ),
-                    );
-                }
-            }
-        }
-    }
-
-    fn check_extern(&self, ext: ast::Extern) {
-        if let ast::Extern::Explicit(abi, _) = ext {
-            self.check_abi(abi);
-        }
-    }
-
     /// Feature gate `impl Trait` inside `type Alias = $type_expr;`.
     fn check_impl_trait(&self, ty: &ast::Ty, in_associated_ty: bool) {
         struct ImplTraitVisitor<'a> {
@@ -204,45 +173,19 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     "meant for internal use only" {
                         keyword => rustdoc_internals
                         fake_variadic => rustdoc_internals
+                        search_unbox => rustdoc_internals
                     }
                 );
-            }
-        }
-
-        // Emit errors for non-staged-api crates.
-        if !self.features.staged_api() {
-            if attr.has_name(sym::unstable)
-                || attr.has_name(sym::stable)
-                || attr.has_name(sym::rustc_const_unstable)
-                || attr.has_name(sym::rustc_const_stable)
-                || attr.has_name(sym::rustc_default_body_unstable)
-            {
-                self.sess.dcx().emit_err(errors::StabilityOutsideStd { span: attr.span });
             }
         }
     }
 
     fn visit_item(&mut self, i: &'a ast::Item) {
         match &i.kind {
-            ast::ItemKind::ForeignMod(foreign_module) => {
-                if let Some(abi) = foreign_module.abi {
-                    self.check_abi(abi);
-                }
+            ast::ItemKind::ForeignMod(_foreign_module) => {
+                // handled during lowering
             }
-
-            ast::ItemKind::Fn(..) => {
-                if attr::contains_name(&i.attrs, sym::start) {
-                    gate!(
-                        &self,
-                        start,
-                        i.span,
-                        "`#[start]` functions are experimental and their signature may change \
-                         over time"
-                    );
-                }
-            }
-
-            ast::ItemKind::Struct(..) => {
+            ast::ItemKind::Struct(..) | ast::ItemKind::Enum(..) | ast::ItemKind::Union(..) => {
                 for attr in attr::filter_by_name(&i.attrs, sym::repr) {
                     for item in attr.meta_item_list().unwrap_or_else(ThinVec::new) {
                         if item.has_name(sym::simd) {
@@ -263,7 +206,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                         &self,
                         negative_impls,
                         span.to(of_trait.as_ref().map_or(span, |t| t.path.span)),
-                        "negative trait bounds are not yet fully implemented; \
+                        "negative trait bounds are not fully implemented; \
                          use marker types for now"
                     );
                 }
@@ -328,7 +271,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         match &ty.kind {
             ast::TyKind::BareFn(bare_fn_ty) => {
                 // Function pointers cannot be `const`
-                self.check_extern(bare_fn_ty.ext);
                 self.check_late_bound_lifetime_defs(&bare_fn_ty.generic_params);
             }
             ast::TyKind::Never => {
@@ -344,8 +286,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_generics(&mut self, g: &'a ast::Generics) {
         for predicate in &g.where_clause.predicates {
-            match predicate {
-                ast::WherePredicate::BoundPredicate(bound_pred) => {
+            match &predicate.kind {
+                ast::WherePredicateKind::BoundPredicate(bound_pred) => {
                     // A type bound (e.g., `for<'c> Foo: Send + Clone + 'c`).
                     self.check_late_bound_lifetime_defs(&bound_pred.bound_generic_params);
                 }
@@ -431,9 +373,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_fn(&mut self, fn_kind: FnKind<'a>, span: Span, _: NodeId) {
-        if let Some(header) = fn_kind.header() {
+        if let Some(_header) = fn_kind.header() {
             // Stability of const fn methods are covered in `visit_assoc_item` below.
-            self.check_extern(header.ext);
         }
 
         if let FnKind::Closure(ast::ClosureBinder::For { generic_params, .. }, ..) = fn_kind {
@@ -511,9 +452,9 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     );
     gate_all!(let_chains, "`let` expressions in this position are unstable");
     gate_all!(
-        async_closure,
-        "async closures are unstable",
-        "to use an async block, remove the `||`: `async {`"
+        async_trait_bounds,
+        "`async` trait bounds are unstable",
+        "use the desugared name of the async trait, such as `AsyncFn`"
     );
     gate_all!(async_for_loop, "`for await` loops are experimental");
     gate_all!(
@@ -522,9 +463,18 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
         "consider removing `for<...>`"
     );
     gate_all!(more_qualified_paths, "usage of qualified paths in this context is experimental");
-    for &span in spans.get(&sym::yield_expr).iter().copied().flatten() {
-        if !span.at_least_rust_2024() {
-            gate!(&visitor, coroutines, span, "yield syntax is experimental");
+    // yield can be enabled either by `coroutines` or `gen_blocks`
+    if let Some(spans) = spans.get(&sym::yield_expr) {
+        for span in spans {
+            if (!visitor.features.coroutines() && !span.allows_unstable(sym::coroutines))
+                && (!visitor.features.gen_blocks() && !span.allows_unstable(sym::gen_blocks))
+            {
+                #[allow(rustc::untranslatable_diagnostic)]
+                // Don't know which of the two features to include in the
+                // error message, so I am arbitrarily picking one.
+                feature_err(&visitor.sess, sym::coroutines, *span, "yield syntax is experimental")
+                    .emit();
+            }
         }
     }
     gate_all!(gen_blocks, "gen blocks are experimental");
@@ -541,12 +491,18 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(builtin_syntax, "`builtin #` syntax is unstable");
     gate_all!(explicit_tail_calls, "`become` expression is experimental");
     gate_all!(generic_const_items, "generic const items are experimental");
+    gate_all!(guard_patterns, "guard patterns are experimental", "consider using match arm guards");
+    gate_all!(default_field_values, "default values on fields are experimental");
     gate_all!(fn_delegation, "functions delegation is not yet fully implemented");
     gate_all!(postfix_match, "postfix match is experimental");
     gate_all!(mut_ref, "mutable by-reference bindings are experimental");
     gate_all!(global_registration, "global registration is experimental");
     gate_all!(return_type_notation, "return type notation is experimental");
     gate_all!(pin_ergonomics, "pinned reference syntax is experimental");
+    gate_all!(unsafe_fields, "`unsafe` fields are experimental");
+    gate_all!(unsafe_binders, "unsafe binder types are experimental");
+    gate_all!(contracts, "contracts are incomplete");
+    gate_all!(contracts_internals, "contract internal machinery is for internal use only");
 
     if !visitor.features.never_patterns() {
         if let Some(spans) = spans.get(&sym::never_patterns) {
@@ -679,6 +635,7 @@ fn check_new_solver_banned_features(sess: &Session, features: &Features) {
         .find(|feat| feat.gate_name == sym::generic_const_exprs)
         .map(|feat| feat.attr_sp)
     {
+        #[allow(rustc::symbol_intern_string_literal)]
         sess.dcx().emit_err(errors::IncompatibleFeatures {
             spans: vec![gce_span],
             f1: Symbol::intern("-Znext-solver=globally"),

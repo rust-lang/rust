@@ -24,8 +24,8 @@ fn main() {
     //~^ ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:
         println!("{}", p.x);
-        //~^ NOTE: Capturing p[(0, 0)] -> ImmBorrow
-        //~| NOTE: Min Capture p[(0, 0)] -> ImmBorrow
+        //~^ NOTE: Capturing p[(0, 0)] -> Immutable
+        //~| NOTE: Min Capture p[(0, 0)] -> Immutable
         let incr = 10;
         let mut c2 = #[rustc_capture_analysis]
         //~^ ERROR: attributes on expressions are experimental
@@ -34,15 +34,15 @@ fn main() {
         || p.y += incr;
         //~^ ERROR: First Pass analysis includes:
         //~| ERROR: Min Capture analysis includes:
-        //~| NOTE: Capturing p[(1, 0)] -> MutBorrow
-        //~| NOTE: Capturing incr[] -> ImmBorrow
-        //~| NOTE: Min Capture p[(1, 0)] -> MutBorrow
-        //~| NOTE: Min Capture incr[] -> ImmBorrow
-        //~| NOTE: Capturing p[(1, 0)] -> MutBorrow
-        //~| NOTE: Min Capture p[(1, 0)] -> MutBorrow
+        //~| NOTE: Capturing p[(1, 0)] -> Mutable
+        //~| NOTE: Capturing incr[] -> Immutable
+        //~| NOTE: Min Capture p[(1, 0)] -> Mutable
+        //~| NOTE: Min Capture incr[] -> Immutable
+        //~| NOTE: Capturing p[(1, 0)] -> Mutable
+        //~| NOTE: Min Capture p[(1, 0)] -> Mutable
         c2();
         println!("{}", p.y);
-        //~^ NOTE: Capturing p[(1, 0)] -> ImmBorrow
+        //~^ NOTE: Capturing p[(1, 0)] -> Immutable
     };
 
     c1();

@@ -48,7 +48,7 @@ target list in `config.toml`, a sample configuration is shown below.
 
 ```toml
 [build]
-target = [ "hexagon-unknown-linux-musl"]
+target = ["hexagon-unknown-linux-musl"]
 
 [target.hexagon-unknown-linux-musl]
 

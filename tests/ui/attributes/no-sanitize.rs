@@ -4,31 +4,37 @@
 #![allow(dead_code)]
 
 fn invalid() {
-    #[no_sanitize(memory)] //~ ERROR attribute should be applied to a function definition
+    #[no_sanitize(memory)] //~ ERROR `#[no_sanitize(memory)]` should be applied to a function
     {
         1
     };
 }
 
-#[no_sanitize(memory)] //~ ERROR attribute should be applied to a function definition
+#[no_sanitize(memory)] //~ ERROR `#[no_sanitize(memory)]` should be applied to a function
 type InvalidTy = ();
 
-#[no_sanitize(memory)] //~ ERROR attribute should be applied to a function definition
+#[no_sanitize(memory)] //~ ERROR `#[no_sanitize(memory)]` should be applied to a function
 mod invalid_module {}
 
 fn main() {
-    let _ = #[no_sanitize(memory)] //~ ERROR attribute should be applied to a function definition
+    let _ = #[no_sanitize(memory)] //~ ERROR `#[no_sanitize(memory)]` should be applied to a function
     (|| 1);
 }
 
-#[no_sanitize(memory)] //~ ERROR attribute should be applied to a function definition
+#[no_sanitize(memory)] //~ ERROR `#[no_sanitize(memory)]` should be applied to a function
 struct F;
 
-#[no_sanitize(memory)] //~ ERROR attribute should be applied to a function definition
+#[no_sanitize(memory)] //~ ERROR `#[no_sanitize(memory)]` should be applied to a function
 impl F {
     #[no_sanitize(memory)]
     fn valid(&self) {}
 }
 
+#[no_sanitize(address, memory)] //~ ERROR `#[no_sanitize(memory)]` should be applied to a function
+static INVALID : i32 = 0;
+
 #[no_sanitize(memory)]
 fn valid() {}
+
+#[no_sanitize(address)]
+static VALID : i32 = 0;

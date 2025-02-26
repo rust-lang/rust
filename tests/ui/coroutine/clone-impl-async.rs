@@ -1,4 +1,5 @@
 //@ edition:2021
+//@compile-flags: --diagnostic-width=300
 // gate-test-coroutine_clone
 // Verifies that feature(coroutine_clone) doesn't allow async blocks to be cloned/copied.
 

@@ -1,5 +1,5 @@
-use rustc_errors::DiagArgFromDisplay;
 use rustc_errors::codes::*;
+use rustc_errors::{DiagArgFromDisplay, MultiSpan};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 
@@ -7,12 +7,15 @@ use rustc_span::{Span, Symbol};
 #[diag(privacy_field_is_private, code = E0451)]
 pub(crate) struct FieldIsPrivate {
     #[primary_span]
-    pub span: Span,
-    pub field_name: Symbol,
+    pub span: MultiSpan,
+    #[label]
+    pub struct_span: Option<Span>,
+    pub field_names: String,
     pub variant_descr: &'static str,
     pub def_path_str: String,
     #[subdiagnostic]
-    pub label: FieldIsPrivateLabel,
+    pub labels: Vec<FieldIsPrivateLabel>,
+    pub len: usize,
 }
 
 #[derive(Subdiagnostic)]
@@ -21,7 +24,8 @@ pub(crate) enum FieldIsPrivateLabel {
     IsUpdateSyntax {
         #[primary_span]
         span: Span,
-        field_name: Symbol,
+        rest_field_names: String,
+        rest_len: usize,
     },
     #[label(privacy_field_is_private_label)]
     Other {

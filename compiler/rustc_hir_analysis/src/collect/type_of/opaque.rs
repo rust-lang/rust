@@ -1,4 +1,3 @@
-use rustc_errors::StashKey;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::{self, Visitor};
@@ -45,7 +44,7 @@ pub(super) fn find_opaque_ty_constraints_for_impl_trait_in_assoc_type(
         if !hidden.ty.references_error() {
             for concrete_type in locator.typeck_types {
                 if concrete_type.ty != tcx.erase_regions(hidden.ty) {
-                    if let Ok(d) = hidden.build_mismatch_error(&concrete_type, def_id, tcx) {
+                    if let Ok(d) = hidden.build_mismatch_error(&concrete_type, tcx) {
                         d.emit();
                     }
                 }
@@ -56,7 +55,7 @@ pub(super) fn find_opaque_ty_constraints_for_impl_trait_in_assoc_type(
     } else {
         let reported = tcx.dcx().emit_err(UnconstrainedOpaqueType {
             span: tcx.def_span(def_id),
-            name: tcx.item_name(parent_def_id.to_def_id()),
+            name: tcx.item_ident(parent_def_id.to_def_id()),
             what: "impl",
         });
         Ty::new_error(tcx, reported)
@@ -84,13 +83,13 @@ pub(super) fn find_opaque_ty_constraints_for_impl_trait_in_assoc_type(
 #[instrument(skip(tcx), level = "debug")]
 pub(super) fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
-    let scope = tcx.hir().get_defining_scope(hir_id);
+    let scope = tcx.hir_get_defining_scope(hir_id);
     let mut locator = TaitConstraintLocator { def_id, tcx, found: None, typeck_types: vec![] };
 
     debug!(?scope);
 
     if scope == hir::CRATE_HIR_ID {
-        tcx.hir().walk_toplevel_module(&mut locator);
+        tcx.hir_walk_toplevel_module(&mut locator);
     } else {
         trace!("scope={:#?}", tcx.hir_node(scope));
         match tcx.hir_node(scope) {
@@ -121,7 +120,7 @@ pub(super) fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: Local
         if !hidden.ty.references_error() {
             for concrete_type in locator.typeck_types {
                 if concrete_type.ty != tcx.erase_regions(hidden.ty) {
-                    if let Ok(d) = hidden.build_mismatch_error(&concrete_type, def_id, tcx) {
+                    if let Ok(d) = hidden.build_mismatch_error(&concrete_type, tcx) {
                         d.emit();
                     }
                 }
@@ -137,7 +136,7 @@ pub(super) fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: Local
         }
         let reported = tcx.dcx().emit_err(UnconstrainedOpaqueType {
             span: tcx.def_span(def_id),
-            name: tcx.item_name(parent_def_id.to_def_id()),
+            name: tcx.item_ident(parent_def_id.to_def_id()),
             what: match tcx.hir_node(scope) {
                 _ if scope == hir::CRATE_HIR_ID => "module",
                 Node::Item(hir::Item { kind: hir::ItemKind::Mod(_), .. }) => "module",
@@ -187,7 +186,7 @@ impl TaitConstraintLocator<'_> {
             "foreign items cannot constrain opaque types",
         );
         if let Some(hir_sig) = hir_node.fn_sig()
-            && hir_sig.decl.output.get_infer_ret_ty().is_some()
+            && hir_sig.decl.output.is_suggestable_infer_ty().is_some()
         {
             let guar = self.tcx.dcx().span_delayed_bug(
                 hir_sig.decl.output.span(),
@@ -226,12 +225,17 @@ impl TaitConstraintLocator<'_> {
             constrained = true;
 
             if !opaque_types_defined_by.contains(&self.def_id) {
-                self.tcx.dcx().emit_err(TaitForwardCompat {
+                let guar = self.tcx.dcx().emit_err(TaitForwardCompat {
                     span: hidden_type.span,
                     item_span: self
                         .tcx
                         .def_ident_span(item_def_id)
                         .unwrap_or_else(|| self.tcx.def_span(item_def_id)),
+                });
+                // Avoid "opaque type not constrained" errors on the opaque itself.
+                self.found = Some(ty::OpaqueHiddenType {
+                    span: DUMMY_SP,
+                    ty: Ty::new_error(self.tcx, guar),
                 });
             }
             let concrete_type =
@@ -248,13 +252,18 @@ impl TaitConstraintLocator<'_> {
         if !constrained {
             debug!("no constraints in typeck results");
             if opaque_types_defined_by.contains(&self.def_id) {
-                self.tcx.dcx().emit_err(TaitForwardCompat2 {
+                let guar = self.tcx.dcx().emit_err(TaitForwardCompat2 {
                     span: self
                         .tcx
                         .def_ident_span(item_def_id)
                         .unwrap_or_else(|| self.tcx.def_span(item_def_id)),
                     opaque_type_span: self.tcx.def_span(self.def_id),
                     opaque_type: self.tcx.def_path_str(self.def_id),
+                });
+                // Avoid "opaque type not constrained" errors on the opaque itself.
+                self.found = Some(ty::OpaqueHiddenType {
+                    span: DUMMY_SP,
+                    ty: Ty::new_error(self.tcx, guar),
                 });
             }
             return;
@@ -275,9 +284,8 @@ impl TaitConstraintLocator<'_> {
             debug!(?concrete_type, "found constraint");
             if let Some(prev) = &mut self.found {
                 if concrete_type.ty != prev.ty {
-                    let (Ok(guar) | Err(guar)) = prev
-                        .build_mismatch_error(&concrete_type, self.def_id, self.tcx)
-                        .map(|d| d.emit());
+                    let (Ok(guar) | Err(guar)) =
+                        prev.build_mismatch_error(&concrete_type, self.tcx).map(|d| d.emit());
                     prev.ty = Ty::new_error(self.tcx, guar);
                 }
             } else {
@@ -290,8 +298,8 @@ impl TaitConstraintLocator<'_> {
 impl<'tcx> intravisit::Visitor<'tcx> for TaitConstraintLocator<'tcx> {
     type NestedFilter = nested_filter::All;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
     fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
         if let hir::ExprKind::Closure(closure) = ex.kind {
@@ -351,11 +359,8 @@ pub(super) fn find_opaque_ty_constraints_for_rpit<'tcx>(
             );
             if let Some(prev) = &mut hir_opaque_ty {
                 if concrete_type.ty != prev.ty {
-                    if let Ok(d) = prev.build_mismatch_error(&concrete_type, def_id, tcx) {
-                        d.stash(
-                            tcx.def_span(opaque_type_key.def_id),
-                            StashKey::OpaqueHiddenTypeMismatch,
-                        );
+                    if let Ok(d) = prev.build_mismatch_error(&concrete_type, tcx) {
+                        d.emit();
                     }
                 }
             } else {
@@ -425,9 +430,7 @@ impl RpitConstraintChecker<'_> {
             debug!(?concrete_type, "found constraint");
 
             if concrete_type.ty != self.found.ty {
-                if let Ok(d) =
-                    self.found.build_mismatch_error(&concrete_type, self.def_id, self.tcx)
-                {
+                if let Ok(d) = self.found.build_mismatch_error(&concrete_type, self.tcx) {
                     d.emit();
                 }
             }
@@ -438,8 +441,8 @@ impl RpitConstraintChecker<'_> {
 impl<'tcx> intravisit::Visitor<'tcx> for RpitConstraintChecker<'tcx> {
     type NestedFilter = nested_filter::OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
     fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
         if let hir::ExprKind::Closure(closure) = ex.kind {

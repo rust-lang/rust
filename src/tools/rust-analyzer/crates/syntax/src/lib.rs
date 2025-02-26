@@ -44,10 +44,9 @@ pub mod syntax_editor;
 pub mod ted;
 pub mod utils;
 
-use std::marker::PhantomData;
+use std::{marker::PhantomData, ops::Range};
 
 use stdx::format_to;
-use text_edit::Indel;
 use triomphe::Arc;
 
 pub use crate::{
@@ -150,16 +149,22 @@ impl Parse<SourceFile> {
         buf
     }
 
-    pub fn reparse(&self, indel: &Indel, edition: Edition) -> Parse<SourceFile> {
-        self.incremental_reparse(indel, edition)
-            .unwrap_or_else(|| self.full_reparse(indel, edition))
+    pub fn reparse(&self, delete: TextRange, insert: &str, edition: Edition) -> Parse<SourceFile> {
+        self.incremental_reparse(delete, insert, edition)
+            .unwrap_or_else(|| self.full_reparse(delete, insert, edition))
     }
 
-    fn incremental_reparse(&self, indel: &Indel, edition: Edition) -> Option<Parse<SourceFile>> {
+    fn incremental_reparse(
+        &self,
+        delete: TextRange,
+        insert: &str,
+        edition: Edition,
+    ) -> Option<Parse<SourceFile>> {
         // FIXME: validation errors are not handled here
         parsing::incremental_reparse(
             self.tree().syntax(),
-            indel,
+            delete,
+            insert,
             self.errors.as_deref().unwrap_or_default().iter().cloned(),
             edition,
         )
@@ -170,9 +175,9 @@ impl Parse<SourceFile> {
         })
     }
 
-    fn full_reparse(&self, indel: &Indel, edition: Edition) -> Parse<SourceFile> {
+    fn full_reparse(&self, delete: TextRange, insert: &str, edition: Edition) -> Parse<SourceFile> {
         let mut text = self.tree().syntax().text().to_string();
-        indel.apply(&mut text);
+        text.replace_range(Range::<usize>::from(delete), insert);
         SourceFile::parse(&text, edition)
     }
 }

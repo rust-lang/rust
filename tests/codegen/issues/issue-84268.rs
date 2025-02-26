@@ -1,4 +1,4 @@
-//@ compile-flags: -O --crate-type=rlib
+//@ compile-flags: -Copt-level=3 --crate-type=rlib
 #![feature(intrinsics, repr_simd)]
 
 extern "rust-intrinsic" {

@@ -3,14 +3,14 @@
 /// * `BTreeMap<T, ()>` (possible user-defined map)
 /// * `BTreeMap<T, SetValZST>` (internal set representation)
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Clone, Default)]
-pub struct SetValZST;
+pub(super) struct SetValZST;
 
 /// A trait to differentiate between `BTreeMap` and `BTreeSet` values.
 /// Returns `true` only for type `SetValZST`, `false` for all other types (blanket implementation).
 /// `TypeId` requires a `'static` lifetime, use of this trait avoids that restriction.
 ///
 /// [`TypeId`]: std::any::TypeId
-pub trait IsSetVal {
+pub(super) trait IsSetVal {
     fn is_set_val() -> bool;
 }
 

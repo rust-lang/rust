@@ -1,7 +1,7 @@
 #![forbid(unsafe_op_in_unsafe_fn)]
 
 use super::fd::WasiFd;
-use crate::io::{self, IoSlice, IoSliceMut};
+use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::mem::ManuallyDrop;
 use crate::os::raw;
 use crate::os::wasi::io::{AsRawFd, FromRawFd};
@@ -26,6 +26,10 @@ impl AsRawFd for Stdin {
 impl io::Read for Stdin {
     fn read(&mut self, data: &mut [u8]) -> io::Result<usize> {
         self.read_vectored(&mut [IoSliceMut::new(data)])
+    }
+
+    fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+        ManuallyDrop::new(unsafe { WasiFd::from_raw_fd(self.as_raw_fd()) }).read_buf(buf)
     }
 
     fn read_vectored(&mut self, data: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
@@ -64,6 +68,7 @@ impl io::Write for Stdout {
     fn is_write_vectored(&self) -> bool {
         true
     }
+
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
@@ -101,7 +106,7 @@ impl io::Write for Stderr {
     }
 }
 
-pub const STDIN_BUF_SIZE: usize = crate::sys_common::io::DEFAULT_BUF_SIZE;
+pub const STDIN_BUF_SIZE: usize = crate::sys::io::DEFAULT_BUF_SIZE;
 
 pub fn is_ebadf(err: &io::Error) -> bool {
     err.raw_os_error() == Some(wasi::ERRNO_BADF.raw().into())

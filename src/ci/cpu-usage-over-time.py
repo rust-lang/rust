@@ -40,12 +40,13 @@ import time
 # Python 3.3 changed the value of `sys.platform` on Linux from "linux2" to just
 # "linux". We check here with `.startswith` to keep compatibility with older
 # Python versions (especially Python 2.7).
-if sys.platform.startswith('linux'):
+if sys.platform.startswith("linux"):
+
     class State:
         def __init__(self):
-            with open('/proc/stat', 'r') as file:
+            with open("/proc/stat", "r") as file:
                 data = file.readline().split()
-            if data[0] != 'cpu':
+            if data[0] != "cpu":
                 raise Exception('did not start with "cpu"')
             self.user = int(data[1])
             self.nice = int(data[2])
@@ -69,10 +70,21 @@ if sys.platform.startswith('linux'):
             steal = self.steal - prev.steal
             guest = self.guest - prev.guest
             guest_nice = self.guest_nice - prev.guest_nice
-            total = user + nice + system + idle + iowait + irq + softirq + steal + guest + guest_nice
+            total = (
+                user
+                + nice
+                + system
+                + idle
+                + iowait
+                + irq
+                + softirq
+                + steal
+                + guest
+                + guest_nice
+            )
             return float(idle) / float(total) * 100
 
-elif sys.platform == 'win32':
+elif sys.platform == "win32":
     from ctypes.wintypes import DWORD
     from ctypes import Structure, windll, WinError, GetLastError, byref
 
@@ -104,9 +116,10 @@ elif sys.platform == 'win32':
             kernel = self.kernel - prev.kernel
             return float(idle) / float(user + kernel) * 100
 
-elif sys.platform == 'darwin':
+elif sys.platform == "darwin":
     from ctypes import *
-    libc = cdll.LoadLibrary('/usr/lib/libc.dylib')
+
+    libc = cdll.LoadLibrary("/usr/lib/libc.dylib")
 
     class host_cpu_load_info_data_t(Structure):
         _fields_ = [("cpu_ticks", c_uint * 4)]
@@ -116,7 +129,7 @@ elif sys.platform == 'darwin':
         c_uint,
         c_int,
         POINTER(host_cpu_load_info_data_t),
-        POINTER(c_int)
+        POINTER(c_int),
     ]
     host_statistics.restype = c_int
 
@@ -124,13 +137,14 @@ elif sys.platform == 'darwin':
     CPU_STATE_SYSTEM = 1
     CPU_STATE_IDLE = 2
     CPU_STATE_NICE = 3
+
     class State:
         def __init__(self):
             stats = host_cpu_load_info_data_t()
-            count = c_int(4) # HOST_CPU_LOAD_INFO_COUNT
+            count = c_int(4)  # HOST_CPU_LOAD_INFO_COUNT
             err = libc.host_statistics(
                 libc.mach_host_self(),
-                c_int(3), # HOST_CPU_LOAD_INFO
+                c_int(3),  # HOST_CPU_LOAD_INFO
                 byref(stats),
                 byref(count),
             )
@@ -148,7 +162,7 @@ elif sys.platform == 'darwin':
             return float(idle) / float(user + system + idle + nice) * 100.0
 
 else:
-    print('unknown platform', sys.platform)
+    print("unknown platform", sys.platform)
     sys.exit(1)
 
 cur_state = State()

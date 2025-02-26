@@ -1,4 +1,4 @@
-use crate::spec::{SanitizerSet, StackProbeType, Target, base};
+use crate::spec::{SanitizerSet, StackProbeType, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::fuchsia::opts();
@@ -11,7 +11,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "x86_64-unknown-fuchsia".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("64-bit x86 Fuchsia".into()),
             tier: Some(2),
             host_tools: Some(false),

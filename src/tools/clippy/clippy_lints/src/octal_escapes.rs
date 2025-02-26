@@ -4,7 +4,6 @@ use rustc_ast::token::LitKind;
 use rustc_ast::{Expr, ExprKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::declare_lint_pass;
 use rustc_span::{BytePos, Pos, SpanData};
 
@@ -59,7 +58,7 @@ impl EarlyLintPass for OctalEscapes {
                 LitKind::ByteStr | LitKind::CStr => 2,
                 _ => return,
             })
-            && !in_external_macro(cx.sess(), expr.span)
+            && !expr.span.in_external_macro(cx.sess().source_map())
         {
             let s = lit.symbol.as_str();
             let mut iter = s.as_bytes().iter();

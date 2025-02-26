@@ -1,88 +1,123 @@
 error: redundant else block
-  --> tests/ui/redundant_else.rs:10:16
+  --> tests/ui/redundant_else.rs:10:10
    |
 LL |           } else {
-   |  ________________^
+   |  __________^
 LL | |
 LL | |             println!("yet don't pull down your hedge.");
 LL | |         }
    | |_________^
    |
-   = help: remove the `else` block and move the contents out
    = note: `-D clippy::redundant-else` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::redundant_else)]`
+help: remove the `else` block and move the contents out
+   |
+LL ~         }
+LL +
+LL +         println!("yet don't pull down your hedge.");
+   |
 
 error: redundant else block
-  --> tests/ui/redundant_else.rs:18:16
+  --> tests/ui/redundant_else.rs:18:10
    |
 LL |           } else {
-   |  ________________^
+   |  __________^
 LL | |
 LL | |             println!("shall rise up with fleas.");
 LL | |         }
    | |_________^
    |
-   = help: remove the `else` block and move the contents out
+help: remove the `else` block and move the contents out
+   |
+LL ~         }
+LL +
+LL +         println!("shall rise up with fleas.");
+   |
 
 error: redundant else block
-  --> tests/ui/redundant_else.rs:28:16
+  --> tests/ui/redundant_else.rs:28:10
    |
 LL |           } else {
-   |  ________________^
+   |  __________^
 LL | |
 LL | |             println!("You may delay, but time will not.");
 LL | |         }
    | |_________^
    |
-   = help: remove the `else` block and move the contents out
+help: remove the `else` block and move the contents out
+   |
+LL ~         }
+LL +
+LL +         println!("You may delay, but time will not.");
+   |
 
 error: redundant else block
-  --> tests/ui/redundant_else.rs:38:12
+  --> tests/ui/redundant_else.rs:38:6
    |
 LL |       } else {
-   |  ____________^
+   |  ______^
 LL | |
 LL | |         println!("A fat kitchen makes a lean will.");
 LL | |     }
    | |_____^
    |
-   = help: remove the `else` block and move the contents out
+help: remove the `else` block and move the contents out
+   |
+LL ~     }
+LL +
+LL +     println!("A fat kitchen makes a lean will.");
+   |
 
 error: redundant else block
-  --> tests/ui/redundant_else.rs:46:16
+  --> tests/ui/redundant_else.rs:46:10
    |
 LL |           } else {
-   |  ________________^
+   |  __________^
 LL | |
 LL | |             1
 LL | |         }
    | |_________^
    |
-   = help: remove the `else` block and move the contents out
+help: remove the `else` block and move the contents out
+   |
+LL ~         }
+LL +
+LL +         1
+   |
 
 error: redundant else block
-  --> tests/ui/redundant_else.rs:57:16
+  --> tests/ui/redundant_else.rs:57:10
    |
 LL |           } else {
-   |  ________________^
+   |  __________^
 LL | |
 LL | |             2
 LL | |         }
    | |_________^
    |
-   = help: remove the `else` block and move the contents out
+help: remove the `else` block and move the contents out
+   |
+LL ~         }
+LL +
+LL +         2
+   |
 
 error: redundant else block
-  --> tests/ui/redundant_else.rs:67:16
+  --> tests/ui/redundant_else.rs:67:10
    |
 LL |           } else {
-   |  ________________^
+   |  __________^
 LL | |
 LL | |             1
 LL | |         }
    | |_________^
    |
-   = help: remove the `else` block and move the contents out
+help: remove the `else` block and move the contents out
+   |
+LL ~         }
+LL +
+LL +         1
+   |
 
 error: aborting due to 7 previous errors
 

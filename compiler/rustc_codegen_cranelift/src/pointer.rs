@@ -2,7 +2,7 @@
 //! operations.
 
 use cranelift_codegen::ir::immediates::Offset32;
-use rustc_target::abi::Align;
+use rustc_abi::Align;
 
 use crate::prelude::*;
 

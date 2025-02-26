@@ -10,14 +10,16 @@
 //@ ignore-cross-compile
 // Reason: the compiled binary is executed
 
-use run_make_support::{clang, env_var, llvm_ar, run, rustc, static_lib_name};
+use run_make_support::{clang, env_var, llvm_ar, llvm_objdump, run, rustc, static_lib_name};
+
+static PAUTH_A_KEY_PATTERN: &'static str = "paciasp";
+static PAUTH_B_KEY_PATTERN: &'static str = "pacibsp";
 
 fn main() {
     clang()
         .arg("-v")
         .lto("thin")
-        .arg("-mbranch-protection=bti+pac-ret+leaf")
-        .arg("-O2")
+        .arg("-mbranch-protection=bti+pac-ret+b-key+leaf")
         .arg("-c")
         .out_exe("test.o")
         .input("test.c")
@@ -32,5 +34,15 @@ fn main() {
         .input("test.rs")
         .output("test.bin")
         .run();
+
+    // Check that both a-key and b-key pac-ret survived LTO
+    llvm_objdump()
+        .disassemble()
+        .input("test.bin")
+        .run()
+        .assert_stdout_contains_regex(PAUTH_A_KEY_PATTERN)
+        .assert_stdout_contains_regex(PAUTH_B_KEY_PATTERN);
+
+    // Check that the binary actually runs
     run("test.bin");
 }

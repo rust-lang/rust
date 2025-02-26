@@ -22,9 +22,9 @@ pub(crate) fn build_sysroot(
 
     eprintln!("[BUILD] sysroot {:?}", sysroot_kind);
 
-    let dist_dir = RelPath::DIST.to_path(dirs);
+    let dist_dir = &dirs.dist_dir;
 
-    ensure_empty_dir(&dist_dir);
+    ensure_empty_dir(dist_dir);
     fs::create_dir_all(dist_dir.join("bin")).unwrap();
     fs::create_dir_all(dist_dir.join("lib")).unwrap();
 
@@ -33,14 +33,7 @@ pub(crate) fn build_sysroot(
     let cg_clif_dylib_path = match cg_clif_dylib_src {
         CodegenBackend::Local(src_path) => {
             // Copy the backend
-            let cg_clif_dylib_path = if cfg!(windows) {
-                // Windows doesn't have rpath support, so the cg_clif dylib needs to be next to the
-                // binaries.
-                dist_dir.join("bin")
-            } else {
-                dist_dir.join("lib")
-            }
-            .join(src_path.file_name().unwrap());
+            let cg_clif_dylib_path = dist_dir.join("lib").join(src_path.file_name().unwrap());
             try_hard_link(src_path, &cg_clif_dylib_path);
             CodegenBackend::Local(cg_clif_dylib_path)
         }
@@ -55,7 +48,7 @@ pub(crate) fn build_sysroot(
         let mut build_cargo_wrapper_cmd = Command::new(&bootstrap_host_compiler.rustc);
         let wrapper_path = dist_dir.join(&wrapper_name);
         build_cargo_wrapper_cmd
-            .arg(RelPath::SCRIPTS.to_path(dirs).join(&format!("{wrapper}.rs")))
+            .arg(dirs.source_dir.join("scripts").join(&format!("{wrapper}.rs")))
             .arg("-o")
             .arg(&wrapper_path)
             .arg("-Cstrip=debuginfo");
@@ -85,7 +78,7 @@ pub(crate) fn build_sysroot(
         &cg_clif_dylib_path,
         sysroot_kind,
     );
-    host.install_into_sysroot(&dist_dir);
+    host.install_into_sysroot(dist_dir);
 
     if !is_native {
         build_sysroot_for_triple(
@@ -99,31 +92,17 @@ pub(crate) fn build_sysroot(
             &cg_clif_dylib_path,
             sysroot_kind,
         )
-        .install_into_sysroot(&dist_dir);
+        .install_into_sysroot(dist_dir);
     }
 
-    // Copy std for the host to the lib dir. This is necessary for the jit mode to find
-    // libstd.
-    for lib in host.libs {
-        let filename = lib.file_name().unwrap().to_str().unwrap();
-        if filename.contains("std-") && !filename.contains(".rlib") {
-            try_hard_link(&lib, dist_dir.join("lib").join(lib.file_name().unwrap()));
-        }
-    }
-
-    let mut target_compiler = {
-        let rustc_clif = dist_dir.join(wrapper_base_name.replace("____", "rustc-clif"));
-        let rustdoc_clif = dist_dir.join(wrapper_base_name.replace("____", "rustdoc-clif"));
-
-        Compiler {
-            cargo: bootstrap_host_compiler.cargo.clone(),
-            rustc: rustc_clif.clone(),
-            rustdoc: rustdoc_clif.clone(),
-            rustflags: vec![],
-            rustdocflags: vec![],
-            triple: target_triple,
-            runner: vec![],
-        }
+    let mut target_compiler = Compiler {
+        cargo: bootstrap_host_compiler.cargo.clone(),
+        rustc: dist_dir.join(wrapper_base_name.replace("____", "rustc-clif")),
+        rustdoc: dist_dir.join(wrapper_base_name.replace("____", "rustdoc-clif")),
+        rustflags: vec![],
+        rustdocflags: vec![],
+        triple: target_triple,
+        runner: vec![],
     };
     if !is_native {
         target_compiler.set_cross_linker_and_runner();
@@ -152,10 +131,10 @@ impl SysrootTarget {
     }
 }
 
-static STDLIB_SRC: RelPath = RelPath::BUILD.join("stdlib");
+static STDLIB_SRC: RelPath = RelPath::build("stdlib");
 static STANDARD_LIBRARY: CargoProject =
-    CargoProject::new(&STDLIB_SRC.join("library/sysroot"), "stdlib_target");
-static RTSTARTUP_SYSROOT: RelPath = RelPath::BUILD.join("rtstartup");
+    CargoProject::new(&RelPath::build("stdlib/library/sysroot"), "stdlib_target");
+static RTSTARTUP_SYSROOT: RelPath = RelPath::build("rtstartup");
 
 fn build_sysroot_for_triple(
     dirs: &Dirs,
@@ -256,6 +235,7 @@ fn build_clif_sysroot_for_triple(
     let mut build_cmd = STANDARD_LIBRARY.build(&compiler, dirs);
     build_cmd.arg("--release");
     build_cmd.arg("--features").arg("backtrace panic-unwind compiler-builtins-no-f16-f128");
+    build_cmd.arg(format!("-Zroot-dir={}", STDLIB_SRC.to_path(dirs).display()));
     build_cmd.env("CARGO_PROFILE_RELEASE_DEBUG", "true");
     build_cmd.env("__CARGO_DEFAULT_LIB_METADATA", "cg_clif");
     if compiler.triple.contains("apple") {
@@ -290,13 +270,14 @@ fn build_rtstartup(dirs: &Dirs, compiler: &Compiler) -> Option<SysrootTarget> {
         return None;
     }
 
-    RTSTARTUP_SYSROOT.ensure_fresh(dirs);
+    let rtstartup_sysroot = RTSTARTUP_SYSROOT.to_path(dirs);
+    ensure_empty_dir(&rtstartup_sysroot);
 
     let rtstartup_src = STDLIB_SRC.to_path(dirs).join("library").join("rtstartup");
     let mut target_libs = SysrootTarget { triple: compiler.triple.clone(), libs: vec![] };
 
     for file in ["rsbegin", "rsend"] {
-        let obj = RTSTARTUP_SYSROOT.to_path(dirs).join(format!("{file}.o"));
+        let obj = rtstartup_sysroot.join(format!("{file}.o"));
         let mut build_rtstartup_cmd = Command::new(&compiler.rustc);
         build_rtstartup_cmd
             .arg("--target")

@@ -22,18 +22,16 @@ fn main() {
 }
 """
 
-test_dir = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '../test/ui/parser')
-)
+test_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../test/ui/parser"))
 
 for kw in sys.argv[1:]:
-    test_file = os.path.join(test_dir, 'keyword-%s-as-identifier.rs' % kw)
+    test_file = os.path.join(test_dir, "keyword-%s-as-identifier.rs" % kw)
 
     # set write permission if file exists, so it can be changed
     if os.path.exists(test_file):
         os.chmod(test_file, stat.S_IWUSR)
 
-    with open(test_file, 'wt') as f:
+    with open(test_file, "wt") as f:
         f.write(template % (kw, kw, kw))
 
     # mark file read-only

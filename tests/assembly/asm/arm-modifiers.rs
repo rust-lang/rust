@@ -1,47 +1,27 @@
+//@ add-core-stubs
 //@ assembly-output: emit-asm
-//@ compile-flags: -O -C panic=abort
+//@ compile-flags: -Copt-level=3 -C panic=abort
 //@ compile-flags: --target armv7-unknown-linux-gnueabihf
 //@ compile-flags: -C target-feature=+neon
 //@ compile-flags: -Zmerge-functions=disabled
 //@ needs-llvm-components: arm
 
-#![feature(no_core, lang_items, rustc_attrs, repr_simd)]
+#![feature(no_core, repr_simd)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register, non_camel_case_types)]
 
-#[rustc_builtin_macro]
-macro_rules! asm {
-    () => {};
-}
-#[rustc_builtin_macro]
-macro_rules! concat {
-    () => {};
-}
-#[rustc_builtin_macro]
-macro_rules! stringify {
-    () => {};
-}
-
-#[lang = "sized"]
-trait Sized {}
-#[lang = "copy"]
-trait Copy {}
-
-// Do we really need to use no_core for this?!?
-impl<T: Copy, const N: usize> Copy for [T; N] {}
+extern crate minicore;
+use minicore::*;
 
 #[repr(simd)]
 pub struct f32x4([f32; 4]);
 
-impl Copy for i32 {}
-impl Copy for f32 {}
-impl Copy for f64 {}
 impl Copy for f32x4 {}
 
 macro_rules! check {
     ($func:ident $modifier:literal $reg:ident $ty:ident $mov:literal) => {
-        // -O and extern "C" guarantee that the selected register is always r0/s0/d0/q0
+        // -Copt-level=3 and extern "C" guarantee that the selected register is always r0/s0/d0/q0
         #[no_mangle]
         pub unsafe extern "C" fn $func() -> $ty {
             let y;

@@ -119,7 +119,14 @@ impl<'a, W: ?Sized + Write> Write for LineWriterShim<'a, W> {
         //   the buffer?
         // - If not, scan for the last newline that *does* fit in the buffer
         let tail = if flushed >= newline_idx {
-            &buf[flushed..]
+            let tail = &buf[flushed..];
+            // Avoid unnecessary short writes by not splitting the remaining
+            // bytes if they're larger than the buffer.
+            // They can be written in full by the next call to write.
+            if tail.len() >= self.buffer.capacity() {
+                return Ok(flushed);
+            }
+            tail
         } else if newline_idx - flushed <= self.buffer.capacity() {
             &buf[flushed..newline_idx]
         } else {

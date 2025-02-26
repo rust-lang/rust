@@ -18,6 +18,20 @@ LL | struct MySlice<T>(T);
    |                |
    |                this could be changed to `T: ?Sized`...
 
-error: aborting due to 1 previous error
+error[E0080]: could not evaluate static initializer
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+   |
+   = note: the type `MySlice<[bool]>` has an unknown layout
+   |
+note: inside `align_of::<P2>`
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
+note: inside `CHECK`
+  --> $DIR/invalid-unsized-in-always-sized-tail.rs:15:28
+   |
+LL | static CHECK: () = assert!(align_of::<P2>() == 1);
+   |                            ^^^^^^^^^^^^^^^^
 
-For more information about this error, try `rustc --explain E0277`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0080, E0277.
+For more information about an error, try `rustc --explain E0080`.

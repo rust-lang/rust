@@ -286,7 +286,6 @@ LL | |         if unsafe { true } {
 LL | |             todo!();
 LL | |         } else {
 ...  |
-LL | |         }
 LL | |     };
    | |______^
    |

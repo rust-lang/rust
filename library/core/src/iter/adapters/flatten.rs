@@ -1,7 +1,7 @@
 use crate::iter::adapters::SourceIter;
 use crate::iter::{
-    Cloned, Copied, Empty, Filter, FilterMap, Fuse, FusedIterator, InPlaceIterable, Map, Once,
-    OnceWith, TrustedFused, TrustedLen,
+    Cloned, Copied, Empty, Filter, FilterMap, Fuse, FusedIterator, Map, Once, OnceWith,
+    TrustedFused, TrustedLen,
 };
 use crate::num::NonZero;
 use crate::ops::{ControlFlow, Try};
@@ -155,21 +155,6 @@ where
     F: FnMut(I::Item) -> U,
     FlattenCompat<Map<I, F>, <U as IntoIterator>::IntoIter>: TrustedLen,
 {
-}
-
-#[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<I, U, F> InPlaceIterable for FlatMap<I, U, F>
-where
-    I: InPlaceIterable,
-    U: BoundedSize + IntoIterator,
-{
-    const EXPAND_BY: Option<NonZero<usize>> = const {
-        match (I::EXPAND_BY, U::UPPER_BOUND) {
-            (Some(m), Some(n)) => m.checked_mul(n),
-            _ => None,
-        }
-    };
-    const MERGE_BY: Option<NonZero<usize>> = I::MERGE_BY;
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
@@ -384,21 +369,6 @@ where
     I: Iterator<Item: IntoIterator>,
     FlattenCompat<I, <I::Item as IntoIterator>::IntoIter>: TrustedLen,
 {
-}
-
-#[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<I> InPlaceIterable for Flatten<I>
-where
-    I: InPlaceIterable + Iterator,
-    <I as Iterator>::Item: IntoIterator + BoundedSize,
-{
-    const EXPAND_BY: Option<NonZero<usize>> = const {
-        match (I::EXPAND_BY, I::Item::UPPER_BOUND) {
-            (Some(m), Some(n)) => m.checked_mul(n),
-            _ => None,
-        }
-    };
-    const MERGE_BY: Option<NonZero<usize>> = I::MERGE_BY;
 }
 
 #[unstable(issue = "none", feature = "inplace_iteration")]

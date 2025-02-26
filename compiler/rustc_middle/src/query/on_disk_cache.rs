@@ -1,20 +1,16 @@
 use std::collections::hash_map::Entry;
 use std::mem;
+use std::sync::Arc;
 
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::memmap::Mmap;
-use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, RwLock};
+use rustc_data_structures::sync::{HashMapExt, Lock, RwLock};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE, LocalDefId, StableCrateId};
 use rustc_hir::definitions::DefPathHash;
 use rustc_index::{Idx, IndexVec};
 use rustc_macros::{Decodable, Encodable};
-use rustc_middle::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
-use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
-use rustc_middle::mir::{self, interpret};
-use rustc_middle::ty::codec::{RefDecodable, TyDecoder, TyEncoder};
-use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_query_system::query::QuerySideEffects;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixedSize, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
@@ -22,11 +18,18 @@ use rustc_session::Session;
 use rustc_span::hygiene::{
     ExpnId, HygieneDecodeContext, HygieneEncodeContext, SyntaxContext, SyntaxContextData,
 };
-use rustc_span::source_map::SourceMap;
+use rustc_span::source_map::Spanned;
 use rustc_span::{
     BytePos, CachingSourceMapView, ExpnData, ExpnHash, Pos, RelativeBytePos, SourceFile, Span,
     SpanDecoder, SpanEncoder, StableSourceFileId, Symbol,
 };
+
+use crate::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
+use crate::mir::interpret::{AllocDecodingSession, AllocDecodingState};
+use crate::mir::mono::MonoItem;
+use crate::mir::{self, interpret};
+use crate::ty::codec::{RefDecodable, TyDecoder, TyEncoder};
+use crate::ty::{self, Ty, TyCtxt};
 
 const TAG_FILE_FOOTER: u128 = 0xC0FFEE_C0FFEE_C0FFEE_C0FFEE_C0FFEE;
 
@@ -48,7 +51,7 @@ const SYMBOL_PREINTERNED: u8 = 2;
 /// previous compilation session. This data will eventually include the results
 /// of a few selected queries (like `typeck` and `mir_optimized`) and
 /// any side effects that have been emitted during a query.
-pub struct OnDiskCache<'sess> {
+pub struct OnDiskCache {
     // The complete cache data in serialized form.
     serialized_data: RwLock<Option<Mmap>>,
 
@@ -56,11 +59,10 @@ pub struct OnDiskCache<'sess> {
     // session.
     current_side_effects: Lock<FxIndexMap<DepNodeIndex, QuerySideEffects>>,
 
-    source_map: &'sess SourceMap,
     file_index_to_stable_id: FxHashMap<SourceFileIndex, EncodedSourceFileId>,
 
     // Caches that are populated lazily during decoding.
-    file_index_to_file: Lock<FxHashMap<SourceFileIndex, Lrc<SourceFile>>>,
+    file_index_to_file: Lock<FxHashMap<SourceFileIndex, Arc<SourceFile>>>,
 
     // A map from dep-node to the position of the cached query result in
     // `serialized_data`.
@@ -150,12 +152,12 @@ impl EncodedSourceFileId {
     }
 }
 
-impl<'sess> OnDiskCache<'sess> {
+impl OnDiskCache {
     /// Creates a new `OnDiskCache` instance from the serialized data in `data`.
     ///
     /// The serialized cache has some basic integrity checks, if those checks indicate that the
     /// on-disk data is corrupt, an error is returned.
-    pub fn new(sess: &'sess Session, data: Mmap, start_pos: usize) -> Result<Self, ()> {
+    pub fn new(sess: &Session, data: Mmap, start_pos: usize) -> Result<Self, ()> {
         assert!(sess.opts.incremental.is_some());
 
         let mut decoder = MemDecoder::new(&data, start_pos)?;
@@ -174,7 +176,6 @@ impl<'sess> OnDiskCache<'sess> {
             serialized_data: RwLock::new(Some(data)),
             file_index_to_stable_id: footer.file_index_to_stable_id,
             file_index_to_file: Default::default(),
-            source_map: sess.source_map(),
             current_side_effects: Default::default(),
             query_result_index: footer.query_result_index.into_iter().collect(),
             prev_side_effects_index: footer.side_effects_index.into_iter().collect(),
@@ -186,12 +187,11 @@ impl<'sess> OnDiskCache<'sess> {
         })
     }
 
-    pub fn new_empty(source_map: &'sess SourceMap) -> Self {
+    pub fn new_empty() -> Self {
         Self {
             serialized_data: RwLock::new(None),
             file_index_to_stable_id: Default::default(),
             file_index_to_file: Default::default(),
-            source_map,
             current_side_effects: Default::default(),
             query_result_index: Default::default(),
             prev_side_effects_index: Default::default(),
@@ -328,15 +328,18 @@ impl<'sess> OnDiskCache<'sess> {
 
             // Encode the file footer.
             let footer_pos = encoder.position() as u64;
-            encoder.encode_tagged(TAG_FILE_FOOTER, &Footer {
-                file_index_to_stable_id,
-                query_result_index,
-                side_effects_index,
-                interpret_alloc_index,
-                syntax_contexts,
-                expn_data,
-                foreign_expn_data,
-            });
+            encoder.encode_tagged(
+                TAG_FILE_FOOTER,
+                &Footer {
+                    file_index_to_stable_id,
+                    query_result_index,
+                    side_effects_index,
+                    interpret_alloc_index,
+                    syntax_contexts,
+                    expn_data,
+                    foreign_expn_data,
+                },
+            );
 
             // Encode the position of the footer as the last 8 bytes of the
             // file so we know where to look for it.
@@ -422,7 +425,7 @@ impl<'sess> OnDiskCache<'sess> {
     }
 
     fn with_decoder<'a, 'tcx, T, F: for<'s> FnOnce(&mut CacheDecoder<'s, 'tcx>) -> T>(
-        &'sess self,
+        &self,
         tcx: TyCtxt<'tcx>,
         pos: AbsoluteBytePos,
         f: F,
@@ -435,7 +438,6 @@ impl<'sess> OnDiskCache<'sess> {
             tcx,
             opaque: MemDecoder::new(serialized_data.as_deref().unwrap_or(&[]), pos.to_usize())
                 .unwrap(),
-            source_map: self.source_map,
             file_index_to_file: &self.file_index_to_file,
             file_index_to_stable_id: &self.file_index_to_stable_id,
             alloc_decoding_session: self.alloc_decoding_state.new_decoding_session(),
@@ -456,8 +458,7 @@ impl<'sess> OnDiskCache<'sess> {
 pub struct CacheDecoder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     opaque: MemDecoder<'a>,
-    source_map: &'a SourceMap,
-    file_index_to_file: &'a Lock<FxHashMap<SourceFileIndex, Lrc<SourceFile>>>,
+    file_index_to_file: &'a Lock<FxHashMap<SourceFileIndex, Arc<SourceFile>>>,
     file_index_to_stable_id: &'a FxHashMap<SourceFileIndex, EncodedSourceFileId>,
     alloc_decoding_session: AllocDecodingSession<'a>,
     syntax_contexts: &'a FxHashMap<u32, AbsoluteBytePos>,
@@ -468,36 +469,31 @@ pub struct CacheDecoder<'a, 'tcx> {
 
 impl<'a, 'tcx> CacheDecoder<'a, 'tcx> {
     #[inline]
-    fn file_index_to_file(&self, index: SourceFileIndex) -> Lrc<SourceFile> {
-        let CacheDecoder { tcx, file_index_to_file, file_index_to_stable_id, source_map, .. } =
-            *self;
+    fn file_index_to_file(&self, index: SourceFileIndex) -> Arc<SourceFile> {
+        let CacheDecoder { tcx, file_index_to_file, file_index_to_stable_id, .. } = *self;
 
-        file_index_to_file
-            .borrow_mut()
-            .entry(index)
-            .or_insert_with(|| {
-                let source_file_id = &file_index_to_stable_id[&index];
-                let source_file_cnum =
-                    tcx.stable_crate_id_to_crate_num(source_file_id.stable_crate_id);
+        Arc::clone(file_index_to_file.borrow_mut().entry(index).or_insert_with(|| {
+            let source_file_id = &file_index_to_stable_id[&index];
+            let source_file_cnum = tcx.stable_crate_id_to_crate_num(source_file_id.stable_crate_id);
 
-                // If this `SourceFile` is from a foreign crate, then make sure
-                // that we've imported all of the source files from that crate.
-                // This has usually already been done during macro invocation.
-                // However, when encoding query results like `TypeckResults`,
-                // we might encode an `AdtDef` for a foreign type (because it
-                // was referenced in the body of the function). There is no guarantee
-                // that we will load the source files from that crate during macro
-                // expansion, so we use `import_source_files` to ensure that the foreign
-                // source files are actually imported before we call `source_file_by_stable_id`.
-                if source_file_cnum != LOCAL_CRATE {
-                    self.tcx.import_source_files(source_file_cnum);
-                }
+            // If this `SourceFile` is from a foreign crate, then make sure
+            // that we've imported all of the source files from that crate.
+            // This has usually already been done during macro invocation.
+            // However, when encoding query results like `TypeckResults`,
+            // we might encode an `AdtDef` for a foreign type (because it
+            // was referenced in the body of the function). There is no guarantee
+            // that we will load the source files from that crate during macro
+            // expansion, so we use `import_source_files` to ensure that the foreign
+            // source files are actually imported before we call `source_file_by_stable_id`.
+            if source_file_cnum != LOCAL_CRATE {
+                self.tcx.import_source_files(source_file_cnum);
+            }
 
-                source_map
-                    .source_file_by_stable_id(source_file_id.stable_source_file_id)
-                    .expect("failed to lookup `SourceFile` in new context")
-            })
-            .clone()
+            tcx.sess
+                .source_map()
+                .source_file_by_stable_id(source_file_id.stable_source_file_id)
+                .expect("failed to lookup `SourceFile` in new context")
+        }))
     }
 }
 
@@ -568,7 +564,7 @@ impl<'a, 'tcx> TyDecoder for CacheDecoder<'a, 'tcx> {
     }
 }
 
-rustc_middle::implement_ty_decoder!(CacheDecoder<'a, 'tcx>);
+crate::implement_ty_decoder!(CacheDecoder<'a, 'tcx>);
 
 // This ensures that the `Decodable<opaque::Decoder>::decode` specialization for `Vec<u8>` is used
 // when a `CacheDecoder` is passed to `Decodable::decode`. Unfortunately, we have to manually opt
@@ -778,6 +774,13 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [rustc_ast::InlineAsm
     }
 }
 
+impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx [Spanned<MonoItem<'tcx>>] {
+    #[inline]
+    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
+        RefDecodable::decode(d)
+    }
+}
+
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>>
     for &'tcx crate::traits::specialization_graph::Graph
 {
@@ -800,8 +803,8 @@ macro_rules! impl_ref_decoder {
 
 impl_ref_decoder! {<'tcx>
     Span,
-    rustc_ast::Attribute,
-    rustc_span::symbol::Ident,
+    rustc_hir::Attribute,
+    rustc_span::Ident,
     ty::Variance,
     rustc_span::def_id::DefId,
     rustc_span::def_id::LocalDefId,
@@ -826,7 +829,7 @@ pub struct CacheEncoder<'a, 'tcx> {
 
 impl<'a, 'tcx> CacheEncoder<'a, 'tcx> {
     #[inline]
-    fn source_file_index(&mut self, source_file: Lrc<SourceFile>) -> SourceFileIndex {
+    fn source_file_index(&mut self, source_file: Arc<SourceFile>) -> SourceFileIndex {
         self.file_to_file_index[&(&raw const *source_file)]
     }
 

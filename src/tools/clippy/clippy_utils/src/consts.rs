@@ -1,25 +1,31 @@
+//! A simple const eval API, for use on arbitrary HIR expressions.
+//!
+//! This cannot use rustc's const eval, aka miri, as arbitrary HIR expressions cannot be lowered to
+//! executable MIR bodies, so we have to do this instead.
 #![allow(clippy::float_cmp)]
 
-use crate::macros::HirNode;
+use std::sync::Arc;
+
 use crate::source::{SpanRangeExt, walk_span_to_context};
 use crate::{clip, is_direct_expn_of, sext, unsext};
 
+use rustc_abi::Size;
 use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{Half, Quad};
 use rustc_ast::ast::{self, LitFloatType, LitKind};
-use rustc_data_structures::sync::Lrc;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{BinOp, BinOpKind, Block, ConstBlock, Expr, ExprKind, HirId, Item, ItemKind, Node, QPath, UnOp};
+use rustc_hir::{
+    BinOp, BinOpKind, Block, ConstBlock, Expr, ExprKind, HirId, Item, ItemKind, Node, PatExpr, PatExprKind, QPath, UnOp,
+};
 use rustc_lexer::tokenize;
 use rustc_lint::LateContext;
 use rustc_middle::mir::ConstValue;
 use rustc_middle::mir::interpret::{Scalar, alloc_range};
-use rustc_middle::ty::{self, FloatTy, IntTy, ParamEnv, ScalarInt, Ty, TyCtxt, TypeckResults, UintTy};
+use rustc_middle::ty::{self, FloatTy, IntTy, ScalarInt, Ty, TyCtxt, TypeckResults, UintTy};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::Ident;
 use rustc_span::{SyntaxContext, sym};
-use rustc_target::abi::Size;
 use std::cell::Cell;
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
@@ -32,7 +38,7 @@ pub enum Constant<'tcx> {
     /// A `String` (e.g., "abc").
     Str(String),
     /// A binary string (e.g., `b"abc"`).
-    Binary(Lrc<[u8]>),
+    Binary(Arc<[u8]>),
     /// A single `char` (e.g., `'a'`).
     Char(char),
     /// An integer's bit representation.
@@ -222,7 +228,7 @@ impl Constant<'_> {
                     .zip(r)
                     .zip(tys)
                     .map(|((li, ri), cmp_type)| Self::partial_cmp(tcx, cmp_type, li, ri))
-                    .find(|r| r.map_or(true, |o| o != Ordering::Equal))
+                    .find(|r| r.is_none_or(|o| o != Ordering::Equal))
                     .unwrap_or_else(|| Some(l.len().cmp(&r.len()))),
                 _ => None,
             },
@@ -232,7 +238,7 @@ impl Constant<'_> {
                 };
                 iter::zip(l, r)
                     .map(|(li, ri)| Self::partial_cmp(tcx, cmp_type, li, ri))
-                    .find(|r| r.map_or(true, |o| o != Ordering::Equal))
+                    .find(|r| r.is_none_or(|o| o != Ordering::Equal))
                     .unwrap_or_else(|| Some(l.len().cmp(&r.len())))
             },
             (Self::Repeat(lv, ls), Self::Repeat(rv, rs)) => {
@@ -300,7 +306,7 @@ pub fn lit_to_mir_constant<'tcx>(lit: &LitKind, ty: Option<Ty<'tcx>>) -> Constan
     match *lit {
         LitKind::Str(ref is, _) => Constant::Str(is.to_string()),
         LitKind::Byte(b) => Constant::Int(u128::from(b)),
-        LitKind::ByteStr(ref s, _) | LitKind::CStr(ref s, _) => Constant::Binary(Lrc::clone(s)),
+        LitKind::ByteStr(ref s, _) | LitKind::CStr(ref s, _) => Constant::Binary(Arc::clone(s)),
         LitKind::Char(c) => Constant::Char(c),
         LitKind::Int(n, _) => Constant::Int(n.get()),
         LitKind::Float(ref is, LitFloatType::Suffixed(fty)) => match fty {
@@ -345,21 +351,18 @@ pub enum FullInt {
 }
 
 impl PartialEq for FullInt {
-    #[must_use]
     fn eq(&self, other: &Self) -> bool {
         self.cmp(other) == Ordering::Equal
     }
 }
 
 impl PartialOrd for FullInt {
-    #[must_use]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
 impl Ord for FullInt {
-    #[must_use]
     fn cmp(&self, other: &Self) -> Ordering {
         use FullInt::{S, U};
 
@@ -379,9 +382,11 @@ impl Ord for FullInt {
 /// The context required to evaluate a constant expression.
 ///
 /// This is currently limited to constant folding and reading the value of named constants.
+///
+/// See the module level documentation for some context.
 pub struct ConstEvalCtxt<'tcx> {
     tcx: TyCtxt<'tcx>,
-    param_env: ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     typeck: &'tcx TypeckResults<'tcx>,
     source: Cell<ConstantSource>,
 }
@@ -392,17 +397,17 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
     pub fn new(cx: &LateContext<'tcx>) -> Self {
         Self {
             tcx: cx.tcx,
-            param_env: cx.param_env,
+            typing_env: cx.typing_env(),
             typeck: cx.typeck_results(),
             source: Cell::new(ConstantSource::Local),
         }
     }
 
     /// Creates an evaluation context.
-    pub fn with_env(tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, typeck: &'tcx TypeckResults<'tcx>) -> Self {
+    pub fn with_env(tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>, typeck: &'tcx TypeckResults<'tcx>) -> Self {
         Self {
             tcx,
-            param_env,
+            typing_env,
             typeck,
             source: Cell::new(ConstantSource::Local),
         }
@@ -436,30 +441,48 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
         }
     }
 
+    pub fn eval_pat_expr(&self, pat_expr: &PatExpr<'_>) -> Option<Constant<'tcx>> {
+        match &pat_expr.kind {
+            PatExprKind::Lit { lit, negated } => {
+                let ty = self.typeck.node_type_opt(pat_expr.hir_id);
+                let val = lit_to_mir_constant(&lit.node, ty);
+                if *negated {
+                    self.constant_negate(&val, ty?)
+                } else {
+                    Some(val)
+                }
+            },
+            PatExprKind::ConstBlock(ConstBlock { body, .. }) => self.expr(self.tcx.hir_body(*body).value),
+            PatExprKind::Path(qpath) => self.qpath(qpath, pat_expr.hir_id),
+        }
+    }
+
+    fn qpath(&self, qpath: &QPath<'_>, hir_id: HirId) -> Option<Constant<'tcx>> {
+        let is_core_crate = if let Some(def_id) = self.typeck.qpath_res(qpath, hir_id).opt_def_id() {
+            self.tcx.crate_name(def_id.krate) == sym::core
+        } else {
+            false
+        };
+        self.fetch_path_and_apply(qpath, hir_id, self.typeck.node_type(hir_id), |self_, result| {
+            let result = mir_to_const(self_.tcx, result)?;
+            // If source is already Constant we wouldn't want to override it with CoreConstant
+            self_.source.set(
+                if is_core_crate && !matches!(self_.source.get(), ConstantSource::Constant) {
+                    ConstantSource::CoreConstant
+                } else {
+                    ConstantSource::Constant
+                },
+            );
+            Some(result)
+        })
+    }
+
     /// Simple constant folding: Insert an expression, get a constant or none.
     fn expr(&self, e: &Expr<'_>) -> Option<Constant<'tcx>> {
         match e.kind {
-            ExprKind::ConstBlock(ConstBlock { body, .. }) => self.expr(self.tcx.hir().body(body).value),
+            ExprKind::ConstBlock(ConstBlock { body, .. }) => self.expr(self.tcx.hir_body(body).value),
             ExprKind::DropTemps(e) => self.expr(e),
-            ExprKind::Path(ref qpath) => {
-                let is_core_crate = if let Some(def_id) = self.typeck.qpath_res(qpath, e.hir_id()).opt_def_id() {
-                    self.tcx.crate_name(def_id.krate) == sym::core
-                } else {
-                    false
-                };
-                self.fetch_path_and_apply(qpath, e.hir_id, self.typeck.expr_ty(e), |self_, result| {
-                    let result = mir_to_const(self_.tcx, result)?;
-                    // If source is already Constant we wouldn't want to override it with CoreConstant
-                    self_.source.set(
-                        if is_core_crate && !matches!(self_.source.get(), ConstantSource::Constant) {
-                            ConstantSource::CoreConstant
-                        } else {
-                            ConstantSource::Constant
-                        },
-                    );
-                    Some(result)
-                })
-            },
+            ExprKind::Path(ref qpath) => self.qpath(qpath, e.hir_id),
             ExprKind::Block(block, _) => self.block(block),
             ExprKind::Lit(lit) => {
                 if is_direct_expn_of(e.span, "cfg").is_some() {
@@ -524,7 +547,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
     /// leaves the local crate.
     pub fn eval_is_empty(&self, e: &Expr<'_>) -> Option<bool> {
         match e.kind {
-            ExprKind::ConstBlock(ConstBlock { body, .. }) => self.eval_is_empty(self.tcx.hir().body(body).value),
+            ExprKind::ConstBlock(ConstBlock { body, .. }) => self.eval_is_empty(self.tcx.hir_body(body).value),
             ExprKind::DropTemps(e) => self.eval_is_empty(e),
             ExprKind::Path(ref qpath) => {
                 if !self
@@ -619,7 +642,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
             Res::Def(DefKind::Const | DefKind::AssocConst, def_id) => {
                 // Check if this constant is based on `cfg!(..)`,
                 // which is NOT constant for our purposes.
-                if let Some(node) = self.tcx.hir().get_if_local(def_id)
+                if let Some(node) = self.tcx.hir_get_if_local(def_id)
                     && let Node::Item(Item {
                         kind: ItemKind::Const(.., body_id),
                         ..
@@ -637,7 +660,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                 let args = self.typeck.node_args(id);
                 let result = self
                     .tcx
-                    .const_eval_resolve(self.param_env, mir::UnevaluatedConst::new(def_id, args), qpath.span())
+                    .const_eval_resolve(self.typing_env, mir::UnevaluatedConst::new(def_id, args), qpath.span())
                     .ok()
                     .map(|val| mir::Const::from_value(val, ty))?;
                 f(self, result)

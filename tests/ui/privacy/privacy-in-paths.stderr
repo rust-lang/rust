@@ -25,8 +25,9 @@ LL |     mod bar {
    |     ^^^^^^^
 help: consider importing this struct through its public re-export instead
    |
-LL |         foo::S::f();
-   |         ~~~~~~
+LL -         ::foo::bar::S::f();
+LL +         foo::S::f();
+   |
 
 error[E0603]: trait `T` is private
   --> $DIR/privacy-in-paths.rs:26:23

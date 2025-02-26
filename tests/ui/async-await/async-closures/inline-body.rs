@@ -6,8 +6,6 @@
 // `mir_inliner_callees` for the synthetic by-move coroutine body since
 // its def-id wasn't previously being considered.
 
-#![feature(async_closure, noop_waker)]
-
 use std::future::Future;
 use std::pin::pin;
 use std::task::*;
@@ -24,7 +22,7 @@ pub fn block_on<T>(fut: impl Future<Output = T>) -> T {
     }
 }
 
-async fn call_once<T>(f: impl async FnOnce() -> T) -> T {
+async fn call_once<T>(f: impl AsyncFnOnce() -> T) -> T {
     f().await
 }
 

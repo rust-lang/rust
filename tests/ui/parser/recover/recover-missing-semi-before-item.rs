@@ -28,7 +28,7 @@ fn for_fn() {
 
 fn for_extern() {
     let foo = 3 //~ ERROR expected `;`, found keyword `extern`
-    extern fn foo() {}
+    extern "C" fn foo() {}
 }
 
 fn for_impl() {

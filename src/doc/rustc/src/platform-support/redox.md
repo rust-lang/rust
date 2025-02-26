@@ -9,7 +9,7 @@ Target triplets available so far:
 
 - `x86_64-unknown-redox` (tier 2)
 - `aarch64-unknown-redox` (tier 3)
-- `i686-unknown-redox` (tier 3)
+- `i586-unknown-redox` (tier 3)
 
 ## Target maintainers
 
@@ -36,7 +36,7 @@ target = [
     "<HOST_TARGET>",
     "x86_64-unknown-redox",
     "aarch64-unknown-redox",
-    "i686-unknown-redox",
+    "i586-unknown-redox",
 ]
 ```
 

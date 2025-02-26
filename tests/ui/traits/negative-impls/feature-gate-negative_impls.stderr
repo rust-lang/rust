@@ -1,4 +1,4 @@
-error[E0658]: negative trait bounds are not yet fully implemented; use marker types for now
+error[E0658]: negative trait bounds are not fully implemented; use marker types for now
   --> $DIR/feature-gate-negative_impls.rs:2:6
    |
 LL | impl !MyTrait for u32 {}

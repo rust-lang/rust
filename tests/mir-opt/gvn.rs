@@ -12,7 +12,7 @@
 #![allow(unused)]
 
 use std::intrinsics::mir::*;
-use std::marker::Freeze;
+use std::marker::{Freeze, PhantomData};
 use std::mem::transmute;
 
 struct S<T>(T);
@@ -99,17 +99,18 @@ fn subexpression_elimination(x: u64, y: u64, mut z: u64) {
     opaque((x * y) - y);
     opaque((x * y) - y);
 
-    // We can substitute through an immutable reference too.
+    // We cannot substitute through an immutable reference.
+    // (Disabled due to <https://github.com/rust-lang/rust/issues/130853>)
     // CHECK: [[ref:_.*]] = &_3;
     // CHECK: [[deref:_.*]] = copy (*[[ref]]);
-    // CHECK: [[addref:_.*]] = Add(copy [[deref]], copy _1);
-    // CHECK: opaque::<u64>(copy [[addref]])
-    // CHECK: opaque::<u64>(copy [[addref]])
+    // COM: CHECK: [[addref:_.*]] = Add(copy [[deref]], copy _1);
+    // COM: CHECK: opaque::<u64>(copy [[addref]])
+    // COM: CHECK: opaque::<u64>(copy [[addref]])
     let a = &z;
     opaque(*a + x);
     opaque(*a + x);
 
-    // But not through a mutable reference or a pointer.
+    // And certainly not through a mutable reference or a pointer.
     // CHECK: [[mut:_.*]] = &mut _3;
     // CHECK: [[addmut:_.*]] = Add(
     // CHECK: opaque::<u64>(move [[addmut]])
@@ -137,13 +138,13 @@ fn subexpression_elimination(x: u64, y: u64, mut z: u64) {
         opaque(*d + x);
     }
 
-    // We can substitute again, but not with the earlier computations.
+    // We still cannot substitute again, and never with the earlier computations.
     // Important: `e` is not `a`!
     // CHECK: [[ref2:_.*]] = &_3;
     // CHECK: [[deref2:_.*]] = copy (*[[ref2]]);
-    // CHECK: [[addref2:_.*]] = Add(copy [[deref2]], copy _1);
-    // CHECK: opaque::<u64>(copy [[addref2]])
-    // CHECK: opaque::<u64>(copy [[addref2]])
+    // COM: CHECK: [[addref2:_.*]] = Add(copy [[deref2]], copy _1);
+    // COM: CHECK: opaque::<u64>(copy [[addref2]])
+    // COM: CHECK: opaque::<u64>(copy [[addref2]])
     let e = &z;
     opaque(*e + x);
     opaque(*e + x);
@@ -495,15 +496,15 @@ fn dereferences(t: &mut u32, u: &impl Copy, s: &S<u32>) {
     unsafe { opaque(*z) };
     unsafe { opaque(*z) };
 
-    // We can reuse dereferences of `&Freeze`.
+    // Do not reuse dereferences of `&Freeze`.
     // CHECK: [[ref:_.*]] = &(*_1);
     // CHECK: [[st7:_.*]] = copy (*[[ref]]);
-    // CHECK: opaque::<u32>(copy [[st7]])
-    // CHECK: opaque::<u32>(copy [[st7]])
+    // COM: CHECK: opaque::<u32>(copy [[st7]])
+    // COM: CHECK: opaque::<u32>(copy [[st7]])
     let z = &*t;
     opaque(*z);
     opaque(*z);
-    // But not in reborrows.
+    // Not in reborrows either.
     // CHECK: [[reborrow:_.*]] = &(*[[ref]]);
     // CHECK: opaque::<&u32>(move [[reborrow]])
     opaque(&*z);
@@ -516,10 +517,10 @@ fn dereferences(t: &mut u32, u: &impl Copy, s: &S<u32>) {
     opaque(*u);
     opaque(*u);
 
-    // `*s` is not Copy, but `(*s).0` is, so we can reuse.
+    // `*s` is not Copy, but `(*s).0` is, but we still cannot reuse.
     // CHECK: [[st10:_.*]] = copy ((*_3).0: u32);
-    // CHECK: opaque::<u32>(copy [[st10]])
-    // CHECK: opaque::<u32>(copy [[st10]])
+    // COM: CHECK: opaque::<u32>(copy [[st10]])
+    // COM: CHECK: opaque::<u32>(copy [[st10]])
     opaque(s.0);
     opaque(s.0);
 }
@@ -736,7 +737,7 @@ fn borrowed<T: Copy + Freeze>(x: T) {
     // CHECK: bb1: {
     // CHECK-NEXT: _0 = opaque::<T>(copy _1)
     // CHECK: bb2: {
-    // CHECK-NEXT: _0 = opaque::<T>(copy _1)
+    // COM: CHECK-NEXT: _0 = opaque::<T>(copy _1)
     mir! {
         {
             let a = x;
@@ -834,6 +835,25 @@ fn array_len(x: &mut [i32; 42]) -> usize {
     std::intrinsics::ptr_metadata(x)
 }
 
+// Check that we only load the length once, rather than all 3 times.
+fn dedup_multiple_bounds_checks_lengths(x: &[i32]) -> [i32; 3] {
+    // CHECK-LABEL: fn dedup_multiple_bounds_checks_lengths
+    // CHECK: [[LEN:_.+]] = PtrMetadata(copy _1);
+    // CHECK: Lt(const 42_usize, copy [[LEN]]);
+    // CHECK: assert{{.+}}copy [[LEN]]
+    // CHECK: [[A:_.+]] = copy (*_1)[42 of 43];
+    // CHECK-NOT: PtrMetadata
+    // CHECK: Lt(const 13_usize, copy [[LEN]]);
+    // CHECK: assert{{.+}}copy [[LEN]]
+    // CHECK: [[B:_.+]] = copy (*_1)[13 of 14];
+    // CHECK-NOT: PtrMetadata
+    // CHECK: Lt(const 7_usize, copy [[LEN]]);
+    // CHECK: assert{{.+}}copy [[LEN]]
+    // CHECK: [[C:_.+]] = copy (*_1)[7 of 8];
+    // CHECK: _0 = [move [[A]], move [[B]], move [[C]]]
+    [x[42], x[13], x[7]]
+}
+
 #[custom_mir(dialect = "runtime")]
 fn generic_cast_metadata<T, A: ?Sized, B: ?Sized>(ps: *const [T], pa: *const A, pb: *const B) {
     // CHECK-LABEL: fn generic_cast_metadata
@@ -913,6 +933,69 @@ fn cast_pointer_eq(p1: *mut u8, p2: *mut u32, p3: *mut u32, p4: *mut [u32]) {
     // CHECK: _0 = const ();
 }
 
+unsafe fn aggregate_struct_then_transmute(id: u16, thin: *const u8) {
+    // CHECK: opaque::<u16>(copy _1)
+    let a = MyId(id);
+    opaque(std::intrinsics::transmute::<_, u16>(a));
+
+    // CHECK: opaque::<u16>(copy _1)
+    let b = TypedId::<String>(id, PhantomData);
+    opaque(std::intrinsics::transmute::<_, u16>(b));
+
+    // CHECK: opaque::<u16>(copy _1)
+    let c = Err::<Never, u16>(id);
+    opaque(std::intrinsics::transmute::<_, u16>(c));
+
+    // CHECK: [[TEMP1:_[0-9]+]] = Option::<u16>::Some(copy _1);
+    // CHECK: [[TEMP2:_[0-9]+]] = copy [[TEMP1]] as u32 (Transmute);
+    // CHECK: opaque::<u32>(move [[TEMP2]])
+    let d = Some(id);
+    opaque(std::intrinsics::transmute::<_, u32>(d));
+
+    // Still need the transmute, but the aggregate can be skipped
+    // CHECK: [[TEMP:_[0-9]+]] = copy _1 as i16 (Transmute);
+    // CHECK: opaque::<i16>(move [[TEMP]])
+    let e = MyId(id);
+    opaque(std::intrinsics::transmute::<_, i16>(e));
+
+    // CHECK: [[PAIR:_[0-9]+]] = Pair(copy _1, copy _1);
+    // CHECK: [[TEMP:_[0-9]+]] = copy [[PAIR]] as u32 (Transmute);
+    // CHECK: opaque::<u32>(move [[TEMP]])
+    struct Pair(u16, u16);
+    let f = Pair(id, id);
+    opaque(std::intrinsics::transmute::<_, u32>(f));
+
+    // CHECK: [[TEMP:_[0-9]+]] = copy [[PAIR]] as u16 (Transmute);
+    // CHECK: opaque::<u16>(move [[TEMP]])
+    let g = Pair(id, id);
+    opaque(std::intrinsics::transmute_unchecked::<_, u16>(g));
+
+    // CHECK: opaque::<u16>(copy _1)
+    let h = (id,);
+    opaque(std::intrinsics::transmute::<_, u16>(h));
+
+    // CHECK: opaque::<u16>(copy _1)
+    let i = [id];
+    opaque(std::intrinsics::transmute::<_, u16>(i));
+
+    // CHECK: opaque::<*const u8>(copy _2)
+    let j: *const i32 = std::intrinsics::aggregate_raw_ptr(thin, ());
+    opaque(std::intrinsics::transmute::<_, *const u8>(j));
+}
+
+unsafe fn transmute_then_transmute_again(a: u32, c: char) {
+    // CHECK: [[TEMP1:_[0-9]+]] = copy _1 as char (Transmute);
+    // CHECK: [[TEMP2:_[0-9]+]] = copy [[TEMP1]] as i32 (Transmute);
+    // CHECK: opaque::<i32>(move [[TEMP2]])
+    let x = std::intrinsics::transmute::<u32, char>(a);
+    opaque(std::intrinsics::transmute::<char, i32>(x));
+
+    // CHECK: [[TEMP:_[0-9]+]] = copy _2 as i32 (Transmute);
+    // CHECK: opaque::<i32>(move [[TEMP]])
+    let x = std::intrinsics::transmute::<char, u32>(c);
+    opaque(std::intrinsics::transmute::<u32, i32>(x));
+}
+
 // Transmuting can skip a pointer cast so long as it wasn't a fat-to-thin cast.
 unsafe fn cast_pointer_then_transmute(thin: *mut u32, fat: *mut [u8]) {
     // CHECK-LABEL: fn cast_pointer_then_transmute
@@ -924,6 +1007,28 @@ unsafe fn cast_pointer_then_transmute(thin: *mut u32, fat: *mut [u8]) {
     // CHECK: [[TEMP2:_.+]] = copy _2 as *const () (PtrToPtr);
     // CHECK: = move [[TEMP2]] as usize (Transmute);
     let fat_addr: usize = std::intrinsics::transmute(fat as *const ());
+}
+
+unsafe fn transmute_then_cast_pointer(addr: usize, fat: *mut [u8]) {
+    // CHECK-LABEL: fn transmute_then_cast_pointer
+
+    // This is roughly what `NonNull::dangling` does
+    // CHECK: [[CPTR:_.+]] = copy _1 as *const u8 (Transmute);
+    // CHECK: takes_const_ptr::<u8>(move [[CPTR]])
+    let p: *mut u8 = std::intrinsics::transmute(addr);
+    takes_const_ptr(p);
+
+    // This cast is fat-to-thin, so can't be merged with the transmute
+    // CHECK: [[FAT:_.+]] = move {{.+}} as *const [i32] (Transmute);
+    // CHECK: [[THIN:_.+]] = copy [[FAT]] as *const i32 (PtrToPtr);
+    // CHECK: takes_const_ptr::<i32>(move [[THIN]])
+    let q = std::intrinsics::transmute::<&mut [i32], *const [i32]>(&mut [1, 2, 3]);
+    takes_const_ptr(q as *const i32);
+
+    // CHECK: [[TPTR:_.+]] = copy _2 as *const u8 (PtrToPtr);
+    // CHECK: takes_const_ptr::<u8>(move [[TPTR]])
+    let w = std::intrinsics::transmute::<*mut [u8], *const [u8]>(fat);
+    takes_const_ptr(w as *const u8);
 }
 
 #[custom_mir(dialect = "analysis")]
@@ -982,6 +1087,18 @@ fn identity<T>(x: T) -> T {
     x
 }
 
+#[inline(never)]
+fn takes_const_ptr<T>(_: *const T) {}
+
+#[repr(transparent)]
+#[rustc_layout_scalar_valid_range_end(55555)]
+struct MyId(u16);
+
+#[repr(transparent)]
+struct TypedId<T>(u16, PhantomData<T>);
+
+enum Never {}
+
 // EMIT_MIR gvn.subexpression_elimination.GVN.diff
 // EMIT_MIR gvn.wrap_unwrap.GVN.diff
 // EMIT_MIR gvn.repeated_index.GVN.diff
@@ -1011,7 +1128,11 @@ fn identity<T>(x: T) -> T {
 // EMIT_MIR gvn.casts_before_aggregate_raw_ptr.GVN.diff
 // EMIT_MIR gvn.manual_slice_mut_len.GVN.diff
 // EMIT_MIR gvn.array_len.GVN.diff
+// EMIT_MIR gvn.dedup_multiple_bounds_checks_lengths.GVN.diff
 // EMIT_MIR gvn.generic_cast_metadata.GVN.diff
 // EMIT_MIR gvn.cast_pointer_eq.GVN.diff
+// EMIT_MIR gvn.aggregate_struct_then_transmute.GVN.diff
+// EMIT_MIR gvn.transmute_then_transmute_again.GVN.diff
 // EMIT_MIR gvn.cast_pointer_then_transmute.GVN.diff
+// EMIT_MIR gvn.transmute_then_cast_pointer.GVN.diff
 // EMIT_MIR gvn.remove_casts_must_change_both_sides.GVN.diff

@@ -12,7 +12,7 @@ pub(crate) unsafe fn rel_ptr_mut<T>(offset: u64) -> *mut T {
     (image_base() + offset) as *mut T
 }
 
-extern "C" {
+unsafe extern "C" {
     static ENCLAVE_SIZE: usize;
     static HEAP_BASE: u64;
     static HEAP_SIZE: usize;

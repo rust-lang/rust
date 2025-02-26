@@ -47,7 +47,7 @@ pub(crate) fn remove_unused_param(acc: &mut Assists, ctx: &AssistContext<'_>) ->
         .parent() // AssocItemList
         .and_then(|x| x.parent())
         .and_then(ast::Impl::cast)
-        .map_or(false, |imp| imp.trait_().is_some())
+        .is_some_and(|imp| imp.trait_().is_some())
     {
         cov_mark::hit!(trait_impl);
         return None;

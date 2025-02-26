@@ -43,12 +43,12 @@ pub struct HighlightRelatedConfig {
 //
 // Highlights constructs related to the thing under the cursor:
 //
-// . if on an identifier, highlights all references to that identifier in the current file
-// .. additionally, if the identifier is a trait in a where clause, type parameter trait bound or use item, highlights all references to that trait's assoc items in the corresponding scope
-// . if on an `async` or `await` token, highlights all yield points for that async context
-// . if on a `return` or `fn` keyword, `?` character or `->` return type arrow, highlights all exit points for that context
-// . if on a `break`, `loop`, `while` or `for` token, highlights all break points for that loop or block context
-// . if on a `move` or `|` token that belongs to a closure, highlights all captures of the closure.
+// 1. if on an identifier, highlights all references to that identifier in the current file
+//      * additionally, if the identifier is a trait in a where clause, type parameter trait bound or use item, highlights all references to that trait's assoc items in the corresponding scope
+// 1. if on an `async` or `await` token, highlights all yield points for that async context
+// 1. if on a `return` or `fn` keyword, `?` character or `->` return type arrow, highlights all exit points for that context
+// 1. if on a `break`, `loop`, `while` or `for` token, highlights all break points for that loop or block context
+// 1. if on a `move` or `|` token that belongs to a closure, highlights all captures of the closure.
 //
 // Note: `?`, `|` and `->` do not currently trigger this behavior in the VSCode editor.
 pub(crate) fn highlight_related(
@@ -307,7 +307,7 @@ fn hl_exit_points(
         let range = match &expr {
             ast::Expr::TryExpr(try_) => try_.question_mark_token().map(|token| token.text_range()),
             ast::Expr::MethodCallExpr(_) | ast::Expr::CallExpr(_) | ast::Expr::MacroExpr(_)
-                if sema.type_of_expr(&expr).map_or(false, |ty| ty.original.is_never()) =>
+                if sema.type_of_expr(&expr).is_some_and(|ty| ty.original.is_never()) =>
             {
                 Some(expr.syntax().text_range())
             }
@@ -608,7 +608,7 @@ impl<'a> WalkExpandedExprCtx<'a> {
 
                     if let ast::Expr::MacroExpr(expr) = expr {
                         if let Some(expanded) =
-                            expr.macro_call().and_then(|call| self.sema.expand(&call))
+                            expr.macro_call().and_then(|call| self.sema.expand_macro_call(&call))
                         {
                             match_ast! {
                                 match expanded {
@@ -684,12 +684,15 @@ mod tests {
     };
 
     #[track_caller]
-    fn check(ra_fixture: &str) {
+    fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         check_with_config(ra_fixture, ENABLED_CONFIG);
     }
 
     #[track_caller]
-    fn check_with_config(ra_fixture: &str, config: HighlightRelatedConfig) {
+    fn check_with_config(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        config: HighlightRelatedConfig,
+    ) {
         let (analysis, pos, annotations) = fixture::annotations(ra_fixture);
 
         let hls = analysis.highlight_related(config, pos).unwrap().unwrap_or_default();

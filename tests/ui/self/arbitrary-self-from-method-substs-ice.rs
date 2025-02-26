@@ -8,10 +8,10 @@ use std::ops::Deref;
 struct Foo(u32);
 impl Foo {
     const fn get<R: Deref<Target = Self>>(self: R) -> u32 {
-        //~^ ERROR: `R` cannot be used as the type of `self`
+        //~^ ERROR invalid generic `self` parameter type
         //~| ERROR destructor of `R` cannot be evaluated at compile-time
         self.0
-        //~^ ERROR cannot call non-const fn `<R as Deref>::deref` in constant function
+        //~^ ERROR cannot perform non-const deref coercion on `R` in constant functions
     }
 }
 

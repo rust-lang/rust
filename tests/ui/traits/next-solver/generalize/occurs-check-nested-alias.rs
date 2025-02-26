@@ -37,9 +37,4 @@ fn foo<T: Unnormalizable>() {
     // result in a cyclic type. However, we can still unify these types by first
     // normalizing the inner associated type. Emitting an error here would be incomplete.
     drop::<T>(t);
-
-    // FIXME(-Znext-solver): This line is necessary due to an unrelated solver bug
-    // and should get removed in the future.
-    //   https://github.com/rust-lang/trait-system-refactor-initiative/issues/96
-    drop::<Inv<<T as Unnormalizable>::Assoc>>(u);
 }

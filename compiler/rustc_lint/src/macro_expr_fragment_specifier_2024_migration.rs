@@ -84,7 +84,7 @@ impl Expr2024 {
         let mut prev_colon = false;
         let mut prev_identifier = false;
         let mut prev_dollar = false;
-        for tt in tokens.trees() {
+        for tt in tokens.iter() {
             debug!(
                 "check_tokens: {:?} - colon {prev_dollar} - ident {prev_identifier} - colon {prev_colon}",
                 tt

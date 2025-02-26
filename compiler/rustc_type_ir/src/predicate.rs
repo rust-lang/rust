@@ -112,9 +112,9 @@ impl<I: Interner> ty::Binder<I, TraitRef<I>> {
         self.skip_binder().def_id
     }
 
-    pub fn to_host_effect_clause(self, cx: I, host: HostPolarity) -> I::Clause {
+    pub fn to_host_effect_clause(self, cx: I, constness: BoundConstness) -> I::Clause {
         self.map_bound(|trait_ref| {
-            ty::ClauseKind::HostEffect(HostEffectPredicate { trait_ref, host })
+            ty::ClauseKind::HostEffect(HostEffectPredicate { trait_ref, constness })
         })
         .upcast(cx)
     }
@@ -131,8 +131,6 @@ pub struct TraitPredicate<I: Interner> {
     /// If polarity is Negative: we are proving that a negative impl of this trait
     /// exists. (Note that coherence also checks whether negative impls of supertraits
     /// exist via a series of predicates.)
-    ///
-    /// If polarity is Reserved: that's a bug.
     pub polarity: PredicatePolarity,
 }
 
@@ -174,7 +172,6 @@ impl<I: Interner> UpcastFrom<I, TraitRef<I>> for TraitPredicate<I> {
 
 impl<I: Interner> fmt::Debug for TraitPredicate<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // FIXME(effects) printing?
         write!(f, "TraitPredicate({:?}, polarity:{:?})", self.trait_ref, self.polarity)
     }
 }
@@ -445,7 +442,7 @@ pub enum AliasTermKind {
     /// An associated type in an inherent `impl`
     InherentTy,
     /// An opaque type (usually from `impl Trait` in type aliases or function return types)
-    /// Can only be normalized away in RevealAll mode
+    /// Can only be normalized away in PostAnalysis mode or its defining scope.
     OpaqueTy,
     /// A type alias that actually checks its trait bounds.
     /// Currently only used if the type alias references opaque types.
@@ -466,6 +463,17 @@ impl AliasTermKind {
             AliasTermKind::OpaqueTy => "opaque type",
             AliasTermKind::WeakTy => "type alias",
             AliasTermKind::UnevaluatedConst => "unevaluated constant",
+        }
+    }
+}
+
+impl From<ty::AliasTyKind> for AliasTermKind {
+    fn from(value: ty::AliasTyKind) -> Self {
+        match value {
+            ty::Projection => AliasTermKind::ProjectionTy,
+            ty::Opaque => AliasTermKind::OpaqueTy,
+            ty::Weak => AliasTermKind::WeakTy,
+            ty::Inherent => AliasTermKind::InherentTy,
         }
     }
 }
@@ -542,35 +550,29 @@ impl<I: Interner> AliasTerm<I> {
 
     pub fn to_term(self, interner: I) -> I::Term {
         match self.kind(interner) {
-            AliasTermKind::ProjectionTy => {
-                Ty::new_alias(interner, ty::AliasTyKind::Projection, ty::AliasTy {
-                    def_id: self.def_id,
-                    args: self.args,
-                    _use_alias_ty_new_instead: (),
-                })
-                .into()
-            }
-            AliasTermKind::InherentTy => {
-                Ty::new_alias(interner, ty::AliasTyKind::Inherent, ty::AliasTy {
-                    def_id: self.def_id,
-                    args: self.args,
-                    _use_alias_ty_new_instead: (),
-                })
-                .into()
-            }
-            AliasTermKind::OpaqueTy => {
-                Ty::new_alias(interner, ty::AliasTyKind::Opaque, ty::AliasTy {
-                    def_id: self.def_id,
-                    args: self.args,
-                    _use_alias_ty_new_instead: (),
-                })
-                .into()
-            }
-            AliasTermKind::WeakTy => Ty::new_alias(interner, ty::AliasTyKind::Weak, ty::AliasTy {
-                def_id: self.def_id,
-                args: self.args,
-                _use_alias_ty_new_instead: (),
-            })
+            AliasTermKind::ProjectionTy => Ty::new_alias(
+                interner,
+                ty::AliasTyKind::Projection,
+                ty::AliasTy { def_id: self.def_id, args: self.args, _use_alias_ty_new_instead: () },
+            )
+            .into(),
+            AliasTermKind::InherentTy => Ty::new_alias(
+                interner,
+                ty::AliasTyKind::Inherent,
+                ty::AliasTy { def_id: self.def_id, args: self.args, _use_alias_ty_new_instead: () },
+            )
+            .into(),
+            AliasTermKind::OpaqueTy => Ty::new_alias(
+                interner,
+                ty::AliasTyKind::Opaque,
+                ty::AliasTy { def_id: self.def_id, args: self.args, _use_alias_ty_new_instead: () },
+            )
+            .into(),
+            AliasTermKind::WeakTy => Ty::new_alias(
+                interner,
+                ty::AliasTyKind::Weak,
+                ty::AliasTy { def_id: self.def_id, args: self.args, _use_alias_ty_new_instead: () },
+            )
             .into(),
             AliasTermKind::UnevaluatedConst | AliasTermKind::ProjectionConst => {
                 I::Const::new_unevaluated(
@@ -685,19 +687,6 @@ impl<I: Interner> ty::Binder<I, ProjectionPredicate<I>> {
         self.skip_binder().projection_term.trait_def_id(cx)
     }
 
-    /// Get the trait ref required for this projection to be well formed.
-    /// Note that for generic associated types the predicates of the associated
-    /// type also need to be checked.
-    #[inline]
-    pub fn required_poly_trait_ref(&self, cx: I) -> ty::Binder<I, TraitRef<I>> {
-        // Note: unlike with `TraitRef::to_poly_trait_ref()`,
-        // `self.0.trait_ref` is permitted to have escaping regions.
-        // This is because here `self` has a `Binder` and so does our
-        // return value, so we are preserving the number of binding
-        // levels.
-        self.map_bound(|predicate| predicate.projection_term.trait_ref(cx))
-    }
-
     pub fn term(&self) -> ty::Binder<I, I::Term> {
         self.map_bound(|predicate| predicate.term)
     }
@@ -706,7 +695,7 @@ impl<I: Interner> ty::Binder<I, ProjectionPredicate<I>> {
     ///
     /// Note that this is not the `DefId` of the `TraitRef` containing this
     /// associated type, which is in `tcx.associated_item(projection_def_id()).container`.
-    pub fn projection_def_id(&self) -> I::DefId {
+    pub fn item_def_id(&self) -> I::DefId {
         // Ok to skip binder since trait `DefId` does not care about regions.
         self.skip_binder().projection_term.def_id
     }
@@ -757,7 +746,7 @@ impl<I: Interner> fmt::Debug for NormalizesTo<I> {
 #[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub struct HostEffectPredicate<I: Interner> {
     pub trait_ref: ty::TraitRef<I>,
-    pub host: HostPolarity,
+    pub constness: BoundConstness,
 }
 
 impl<I: Interner> HostEffectPredicate<I> {
@@ -785,28 +774,8 @@ impl<I: Interner> ty::Binder<I, HostEffectPredicate<I>> {
     }
 
     #[inline]
-    pub fn host(self) -> HostPolarity {
-        self.skip_binder().host
-    }
-}
-
-#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
-#[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
-#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
-pub enum HostPolarity {
-    /// May be called in const environments if the callee is const.
-    Maybe,
-    /// Always allowed to be called in const environments.
-    Const,
-}
-
-impl HostPolarity {
-    pub fn satisfies(self, goal: HostPolarity) -> bool {
-        match (self, goal) {
-            (HostPolarity::Const, HostPolarity::Const | HostPolarity::Maybe) => true,
-            (HostPolarity::Maybe, HostPolarity::Maybe) => true,
-            (HostPolarity::Maybe, HostPolarity::Const) => false,
-        }
+    pub fn constness(self) -> BoundConstness {
+        self.skip_binder().constness
     }
 }
 
@@ -831,8 +800,8 @@ pub struct CoercePredicate<I: Interner> {
     pub b: I::Ty,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "nightly", derive(HashStable_NoContext, TyEncodable, TyDecodable))]
+#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
+#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
 pub enum BoundConstness {
     /// `Type: const Trait`
     ///
@@ -841,14 +810,22 @@ pub enum BoundConstness {
     /// `Type: ~const Trait`
     ///
     /// Requires resolving to const only when we are in a const context.
-    ConstIfConst,
+    Maybe,
 }
 
 impl BoundConstness {
+    pub fn satisfies(self, goal: BoundConstness) -> bool {
+        match (self, goal) {
+            (BoundConstness::Const, BoundConstness::Const | BoundConstness::Maybe) => true,
+            (BoundConstness::Maybe, BoundConstness::Maybe) => true,
+            (BoundConstness::Maybe, BoundConstness::Const) => false,
+        }
+    }
+
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Const => "const",
-            Self::ConstIfConst => "~const",
+            Self::Maybe => "~const",
         }
     }
 }
@@ -857,14 +834,7 @@ impl fmt::Display for BoundConstness {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Const => f.write_str("const"),
-            Self::ConstIfConst => f.write_str("~const"),
+            Self::Maybe => f.write_str("~const"),
         }
-    }
-}
-
-impl<I> Lift<I> for BoundConstness {
-    type Lifted = BoundConstness;
-    fn lift_to_interner(self, _: I) -> Option<Self::Lifted> {
-        Some(self)
     }
 }

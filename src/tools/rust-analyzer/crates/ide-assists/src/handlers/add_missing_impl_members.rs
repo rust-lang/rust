@@ -2318,4 +2318,49 @@ impl<'a> Test<'a, i32> for bool {
 "#,
         );
     }
+
+    #[test]
+    fn issue_17321() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+fn main() {}
+
+mod other_file_1 {
+    pub const SOME_CONSTANT: usize = 8;
+}
+
+mod other_file_2 {
+    use crate::other_file_1::SOME_CONSTANT;
+
+    pub trait Trait {
+        type Iter: Iterator<Item = [u8; SOME_CONSTANT]>;
+    }
+}
+
+pub struct MyStruct;
+
+impl other_file_2::Trait for MyStruct$0 {}"#,
+            r#"
+fn main() {}
+
+mod other_file_1 {
+    pub const SOME_CONSTANT: usize = 8;
+}
+
+mod other_file_2 {
+    use crate::other_file_1::SOME_CONSTANT;
+
+    pub trait Trait {
+        type Iter: Iterator<Item = [u8; SOME_CONSTANT]>;
+    }
+}
+
+pub struct MyStruct;
+
+impl other_file_2::Trait for MyStruct {
+    $0type Iter;
+}"#,
+        );
+    }
 }

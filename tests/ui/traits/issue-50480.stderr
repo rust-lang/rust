@@ -47,8 +47,9 @@ LL | struct Bar<T>(T, N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
    |
 help: a type parameter with a similar name exists
    |
-LL | struct Bar<T>(T, T, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
-   |                  ~
+LL - struct Bar<T>(T, N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
+LL + struct Bar<T>(T, T, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
+   |
 help: you might be missing a type parameter
    |
 LL | struct Bar<T, N>(T, N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);

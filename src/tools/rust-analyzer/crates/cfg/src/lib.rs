@@ -9,7 +9,7 @@ use std::fmt;
 
 use rustc_hash::FxHashSet;
 
-use intern::Symbol;
+use intern::{sym, Symbol};
 
 pub use cfg_expr::{CfgAtom, CfgExpr};
 pub use dnf::DnfExpr;
@@ -24,9 +24,15 @@ pub use dnf::DnfExpr;
 /// of key and value in `key_values`.
 ///
 /// See: <https://doc.rust-lang.org/reference/conditional-compilation.html#set-configuration-options>
-#[derive(Clone, PartialEq, Eq, Default)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct CfgOptions {
     enabled: FxHashSet<CfgAtom>,
+}
+
+impl Default for CfgOptions {
+    fn default() -> Self {
+        Self { enabled: FxHashSet::from_iter([CfgAtom::Flag(sym::true_.clone())]) }
+    }
 }
 
 impl fmt::Debug for CfgOptions {
@@ -54,21 +60,35 @@ impl CfgOptions {
     }
 
     pub fn insert_atom(&mut self, key: Symbol) {
-        self.enabled.insert(CfgAtom::Flag(key));
+        self.insert_any_atom(CfgAtom::Flag(key));
     }
 
     pub fn insert_key_value(&mut self, key: Symbol, value: Symbol) {
-        self.enabled.insert(CfgAtom::KeyValue { key, value });
+        self.insert_any_atom(CfgAtom::KeyValue { key, value });
     }
 
     pub fn apply_diff(&mut self, diff: CfgDiff) {
         for atom in diff.enable {
-            self.enabled.insert(atom);
+            self.insert_any_atom(atom);
         }
 
         for atom in diff.disable {
+            let (CfgAtom::Flag(sym) | CfgAtom::KeyValue { key: sym, .. }) = &atom;
+            if *sym == sym::true_ || *sym == sym::false_ {
+                tracing::error!("cannot remove `true` or `false` from cfg");
+                continue;
+            }
             self.enabled.remove(&atom);
         }
+    }
+
+    fn insert_any_atom(&mut self, atom: CfgAtom) {
+        let (CfgAtom::Flag(sym) | CfgAtom::KeyValue { key: sym, .. }) = &atom;
+        if *sym == sym::true_ || *sym == sym::false_ {
+            tracing::error!("cannot insert `true` or `false` to cfg");
+            return;
+        }
+        self.enabled.insert(atom);
     }
 
     pub fn get_cfg_keys(&self) -> impl Iterator<Item = &Symbol> {
@@ -88,7 +108,7 @@ impl CfgOptions {
 
 impl Extend<CfgAtom> for CfgOptions {
     fn extend<T: IntoIterator<Item = CfgAtom>>(&mut self, iter: T) {
-        iter.into_iter().for_each(|cfg_flag| _ = self.enabled.insert(cfg_flag));
+        iter.into_iter().for_each(|cfg_flag| self.insert_any_atom(cfg_flag));
     }
 }
 

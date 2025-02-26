@@ -45,8 +45,7 @@ impl Rustdoc {
     #[track_caller]
     pub fn new() -> Self {
         let mut cmd = setup_common();
-        let target_rpath_dir = env_var_os("TARGET_RPATH_DIR");
-        cmd.arg(format!("-L{}", target_rpath_dir.to_string_lossy()));
+        cmd.arg("-L").arg(env_var_os("TARGET_RPATH_DIR"));
         Self { cmd }
     }
 

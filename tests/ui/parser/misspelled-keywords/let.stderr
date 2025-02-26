@@ -6,8 +6,9 @@ LL |     Let a = 10;
    |
 help: write keyword `let` in lowercase
    |
-LL |     let a = 10;
-   |     ~~~
+LL -     Let a = 10;
+LL +     let a = 10;
+   |
 
 error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `a`
   --> $DIR/let.rs:7:10
@@ -17,8 +18,9 @@ LL |     lett a = 10;
    |
 help: there is a keyword `let` with a similar name
    |
-LL |     let a = 10;
-   |     ~~~
+LL -     lett a = 10;
+LL +     let a = 10;
+   |
 
 error: aborting due to 2 previous errors
 

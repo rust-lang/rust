@@ -2,7 +2,7 @@
 //@ revisions: bit32 bit64
 //@[bit32] only-32bit
 //@[bit64] only-64bit
-//@ compile-flags: -O -C no-prepopulate-passes -Z randomize-layout=no
+//@ compile-flags: -Copt-level=3 -C no-prepopulate-passes -Z randomize-layout=no
 
 #![crate_type = "lib"]
 

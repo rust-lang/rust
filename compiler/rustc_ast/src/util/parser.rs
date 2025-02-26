@@ -1,4 +1,4 @@
-use rustc_span::symbol::kw;
+use rustc_span::kw;
 
 use crate::ast::{self, BinOpKind};
 use crate::token::{self, BinOpToken, Token};
@@ -128,21 +128,21 @@ impl AssocOp {
     }
 
     /// Gets the precedence of this operator
-    pub fn precedence(&self) -> usize {
+    pub fn precedence(&self) -> ExprPrecedence {
         use AssocOp::*;
         match *self {
-            As => 14,
-            Multiply | Divide | Modulus => 13,
-            Add | Subtract => 12,
-            ShiftLeft | ShiftRight => 11,
-            BitAnd => 10,
-            BitXor => 9,
-            BitOr => 8,
-            Less | Greater | LessEqual | GreaterEqual | Equal | NotEqual => 7,
-            LAnd => 6,
-            LOr => 5,
-            DotDot | DotDotEq => 4,
-            Assign | AssignOp(_) => 2,
+            As => ExprPrecedence::Cast,
+            Multiply | Divide | Modulus => ExprPrecedence::Product,
+            Add | Subtract => ExprPrecedence::Sum,
+            ShiftLeft | ShiftRight => ExprPrecedence::Shift,
+            BitAnd => ExprPrecedence::BitAnd,
+            BitXor => ExprPrecedence::BitXor,
+            BitOr => ExprPrecedence::BitOr,
+            Less | Greater | LessEqual | GreaterEqual | Equal | NotEqual => ExprPrecedence::Compare,
+            LAnd => ExprPrecedence::LAnd,
+            LOr => ExprPrecedence::LOr,
+            DotDot | DotDotEq => ExprPrecedence::Range,
+            Assign | AssignOp(_) => ExprPrecedence::Assign,
         }
     }
 
@@ -153,9 +153,10 @@ impl AssocOp {
         match *self {
             Assign | AssignOp(_) => Fixity::Right,
             As | Multiply | Divide | Modulus | Add | Subtract | ShiftLeft | ShiftRight | BitAnd
-            | BitXor | BitOr | Less | Greater | LessEqual | GreaterEqual | Equal | NotEqual
-            | LAnd | LOr => Fixity::Left,
-            DotDot | DotDotEq => Fixity::None,
+            | BitXor | BitOr | LAnd | LOr => Fixity::Left,
+            Less | Greater | LessEqual | GreaterEqual | Equal | NotEqual | DotDot | DotDotEq => {
+                Fixity::None
+            }
         }
     }
 
@@ -229,132 +230,43 @@ impl AssocOp {
     }
 }
 
-pub const PREC_CLOSURE: i8 = -40;
-pub const PREC_JUMP: i8 = -30;
-pub const PREC_RANGE: i8 = -10;
-// The range 2..=14 is reserved for AssocOp binary operator precedences.
-pub const PREC_PREFIX: i8 = 50;
-pub const PREC_UNAMBIGUOUS: i8 = 60;
-pub const PREC_FORCE_PAREN: i8 = 100;
-
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, PartialOrd)]
 pub enum ExprPrecedence {
-    Closure,
-    Break,
-    Continue,
-    Ret,
-    Yield,
-    Yeet,
-    Become,
-
-    Range,
-
-    Binary(BinOpKind),
-
-    Cast,
-
+    // return, break, yield, closures
+    Jump,
+    // = += -= *= /= %= &= |= ^= <<= >>=
     Assign,
-    AssignOp,
-
-    AddrOf,
-    Let,
-    Unary,
-
-    Call,
-    MethodCall,
-    Field,
-    Index,
-    Try,
-    Mac,
-
-    Array,
-    Repeat,
-    Tup,
-    Lit,
-    Path,
-    Paren,
-    If,
-    While,
-    ForLoop,
-    Loop,
-    Match,
-    PostfixMatch,
-    ConstBlock,
-    Block,
-    TryBlock,
-    Struct,
-    Gen,
-    Await,
-    Err,
-}
-
-impl ExprPrecedence {
-    pub fn order(self) -> i8 {
-        match self {
-            ExprPrecedence::Closure => PREC_CLOSURE,
-
-            ExprPrecedence::Break
-            | ExprPrecedence::Continue
-            | ExprPrecedence::Ret
-            | ExprPrecedence::Yield
-            | ExprPrecedence::Yeet
-            | ExprPrecedence::Become => PREC_JUMP,
-
-            // `Range` claims to have higher precedence than `Assign`, but `x .. x = x` fails to
-            // parse, instead of parsing as `(x .. x) = x`. Giving `Range` a lower precedence
-            // ensures that `pprust` will add parentheses in the right places to get the desired
-            // parse.
-            ExprPrecedence::Range => PREC_RANGE,
-
-            // Binop-like expr kinds, handled by `AssocOp`.
-            ExprPrecedence::Binary(op) => AssocOp::from_ast_binop(op).precedence() as i8,
-            ExprPrecedence::Cast => AssocOp::As.precedence() as i8,
-
-            ExprPrecedence::Assign |
-            ExprPrecedence::AssignOp => AssocOp::Assign.precedence() as i8,
-
-            // Unary, prefix
-            ExprPrecedence::AddrOf
-            // Here `let pats = expr` has `let pats =` as a "unary" prefix of `expr`.
-            // However, this is not exactly right. When `let _ = a` is the LHS of a binop we
-            // need parens sometimes. E.g. we can print `(let _ = a) && b` as `let _ = a && b`
-            // but we need to print `(let _ = a) < b` as-is with parens.
-            | ExprPrecedence::Let
-            | ExprPrecedence::Unary => PREC_PREFIX,
-
-            // Never need parens
-            ExprPrecedence::Array
-            | ExprPrecedence::Await
-            | ExprPrecedence::Block
-            | ExprPrecedence::Call
-            | ExprPrecedence::ConstBlock
-            | ExprPrecedence::Field
-            | ExprPrecedence::ForLoop
-            | ExprPrecedence::Gen
-            | ExprPrecedence::If
-            | ExprPrecedence::Index
-            | ExprPrecedence::Lit
-            | ExprPrecedence::Loop
-            | ExprPrecedence::Mac
-            | ExprPrecedence::Match
-            | ExprPrecedence::MethodCall
-            | ExprPrecedence::Paren
-            | ExprPrecedence::Path
-            | ExprPrecedence::PostfixMatch
-            | ExprPrecedence::Repeat
-            | ExprPrecedence::Struct
-            | ExprPrecedence::Try
-            | ExprPrecedence::TryBlock
-            | ExprPrecedence::Tup
-            | ExprPrecedence::While
-            | ExprPrecedence::Err => PREC_UNAMBIGUOUS,
-        }
-    }
+    // .. ..=
+    Range,
+    // ||
+    LOr,
+    // &&
+    LAnd,
+    // == != < > <= >=
+    Compare,
+    // |
+    BitOr,
+    // ^
+    BitXor,
+    // &
+    BitAnd,
+    // << >>
+    Shift,
+    // + -
+    Sum,
+    // * / %
+    Product,
+    // as
+    Cast,
+    // unary - * ! & &mut
+    Prefix,
+    // paths, loops, function calls, array indexing, field expressions, method calls
+    Unambiguous,
 }
 
 /// In `let p = e`, operators with precedence `<=` this one requires parentheses in `e`.
-pub fn prec_let_scrutinee_needs_par() -> usize {
-    AssocOp::LAnd.precedence()
+pub fn prec_let_scrutinee_needs_par() -> ExprPrecedence {
+    ExprPrecedence::LAnd
 }
 
 /// Suppose we have `let _ = e` and the `order` of `e`.
@@ -362,8 +274,8 @@ pub fn prec_let_scrutinee_needs_par() -> usize {
 ///
 /// Conversely, suppose that we have `(let _ = a) OP b` and `order` is that of `OP`.
 /// Can we print this as `let _ = a OP b`?
-pub fn needs_par_as_let_scrutinee(order: i8) -> bool {
-    order <= prec_let_scrutinee_needs_par() as i8
+pub fn needs_par_as_let_scrutinee(order: ExprPrecedence) -> bool {
+    order <= prec_let_scrutinee_needs_par()
 }
 
 /// Expressions that syntactically contain an "exterior" struct literal i.e., not surrounded by any

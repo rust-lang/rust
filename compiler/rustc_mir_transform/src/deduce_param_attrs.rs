@@ -6,7 +6,7 @@
 //! dependent crates can use them.
 
 use rustc_hir::def_id::LocalDefId;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{Body, Location, Operand, Place, RETURN_PLACE, Terminator, TerminatorKind};
 use rustc_middle::ty::{self, DeducedParamAttrs, Ty, TyCtxt};
@@ -18,13 +18,13 @@ struct DeduceReadOnly {
     /// Each bit is indexed by argument number, starting at zero (so 0 corresponds to local decl
     /// 1). The bit is true if the argument may have been mutated or false if we know it hasn't
     /// been up to the point we're at.
-    mutable_args: BitSet<usize>,
+    mutable_args: DenseBitSet<usize>,
 }
 
 impl DeduceReadOnly {
     /// Returns a new DeduceReadOnly instance.
     fn new(arg_count: usize) -> Self {
-        Self { mutable_args: BitSet::new_empty(arg_count) }
+        Self { mutable_args: DenseBitSet::new_empty(arg_count) }
     }
 }
 
@@ -198,7 +198,7 @@ pub(super) fn deduced_param_attrs<'tcx>(
     // see [1].
     //
     // [1]: https://github.com/rust-lang/rust/pull/103172#discussion_r999139997
-    let param_env = tcx.param_env_reveal_all_normalized(def_id);
+    let typing_env = body.typing_env(tcx);
     let mut deduced_param_attrs = tcx.arena.alloc_from_iter(
         body.local_decls.iter().skip(1).take(body.arg_count).enumerate().map(
             |(arg_index, local_decl)| DeducedParamAttrs {
@@ -207,8 +207,8 @@ pub(super) fn deduced_param_attrs<'tcx>(
                     // their generic parameters, otherwise we'll see exponential
                     // blow-up in compile times: #113372
                     && tcx
-                        .normalize_erasing_regions(param_env, local_decl.ty)
-                        .is_freeze(tcx, param_env),
+                        .normalize_erasing_regions(typing_env, local_decl.ty)
+                        .is_freeze(tcx, typing_env),
             },
         ),
     );

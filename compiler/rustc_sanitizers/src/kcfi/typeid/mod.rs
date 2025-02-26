@@ -7,7 +7,7 @@
 use std::hash::Hasher;
 
 use rustc_middle::ty::{Instance, InstanceKind, ReifyReason, Ty, TyCtxt};
-use rustc_target::abi::call::FnAbi;
+use rustc_target::callconv::FnAbi;
 use twox_hash::XxHash64;
 
 pub use crate::cfi::typeid::{TypeIdOptions, itanium_cxx_abi};

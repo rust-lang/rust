@@ -40,7 +40,7 @@ impl<'tcx> BodyBuilder<'tcx> {
         {
             let mut mono_body = self.instance.instantiate_mir_and_normalize_erasing_regions(
                 tables.tcx,
-                ty::ParamEnv::reveal_all(),
+                ty::TypingEnv::fully_monomorphized(),
                 ty::EarlyBinder::bind(body),
             );
             self.visit_body(&mut mono_body);
@@ -60,7 +60,7 @@ impl<'tcx> MutVisitor<'tcx> for BodyBuilder<'tcx> {
         location: mir::Location,
     ) {
         let const_ = constant.const_;
-        let val = match const_.eval(self.tcx, ty::ParamEnv::reveal_all(), constant.span) {
+        let val = match const_.eval(self.tcx, ty::TypingEnv::fully_monomorphized(), constant.span) {
             Ok(v) => v,
             Err(mir::interpret::ErrorHandled::Reported(..)) => return,
             Err(mir::interpret::ErrorHandled::TooGeneric(..)) => {

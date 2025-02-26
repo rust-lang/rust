@@ -6,7 +6,7 @@ use std::{
 };
 
 use either::Either;
-use hir_def::{body::Body, hir::BindingId};
+use hir_def::{expr_store::Body, hir::BindingId};
 use hir_expand::{name::Name, Lookup};
 use la_arena::ArenaMap;
 use span::Edition;
@@ -459,6 +459,10 @@ impl<'a> MirPrettyCtx<'a> {
                 self.place(p);
                 w!(self, ")");
             }
+            Rvalue::ThreadLocalRef(n)
+            | Rvalue::AddressOf(n)
+            | Rvalue::BinaryOp(n)
+            | Rvalue::NullaryOp(n) => match *n {},
         }
     }
 

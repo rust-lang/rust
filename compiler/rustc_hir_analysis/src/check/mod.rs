@@ -74,24 +74,21 @@ pub mod wfcheck;
 use std::num::NonZero;
 
 pub use check::{check_abi, check_abi_fn_ptr};
+use rustc_abi::{ExternAbi, VariantIdx};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::{Diag, ErrorGuaranteed, pluralize, struct_span_code_err};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
-use rustc_index::bit_set::BitSet;
-use rustc_infer::infer::outlives::env::OutlivesEnvironment;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::infer::{self, TyCtxtInferExt as _};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::{self, GenericArgs, GenericArgsRef, Ty, TyCtxt};
+use rustc_middle::ty::{self, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypingMode};
 use rustc_middle::{bug, span_bug};
 use rustc_session::parse::feature_err;
 use rustc_span::def_id::CRATE_DEF_ID;
-use rustc_span::symbol::{Ident, kw, sym};
-use rustc_span::{BytePos, DUMMY_SP, Span, Symbol};
-use rustc_target::abi::VariantIdx;
-use rustc_target::spec::abi::Abi;
+use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::infer::ObligationCauseExt as _;
 use rustc_trait_selection::error_reporting::traits::suggestions::ReturnsVisitor;
@@ -109,7 +106,7 @@ pub fn provide(providers: &mut Providers) {
         adt_async_destructor,
         region_scope_tree,
         collect_return_position_impl_trait_in_trait_tys,
-        compare_impl_const: compare_impl_item::compare_impl_const_raw,
+        compare_impl_item: compare_impl_item::compare_impl_item,
         check_coroutine_obligations: check::check_coroutine_obligations,
         ..*providers
     };
@@ -130,9 +127,9 @@ fn get_owner_return_paths(
     def_id: LocalDefId,
 ) -> Option<(LocalDefId, ReturnsVisitor<'_>)> {
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
-    let parent_id = tcx.hir().get_parent_item(hir_id).def_id;
+    let parent_id = tcx.hir_get_parent_item(hir_id).def_id;
     tcx.hir_node_by_def_id(parent_id).body_id().map(|body_id| {
-        let body = tcx.hir().body(body_id);
+        let body = tcx.hir_body(body_id);
         let mut visitor = ReturnsVisitor::default();
         visitor.visit_body(body);
         (parent_id, visitor)
@@ -142,8 +139,8 @@ fn get_owner_return_paths(
 /// Forbid defining intrinsics in Rust code,
 /// as they must always be defined by the compiler.
 // FIXME: Move this to a more appropriate place.
-pub fn forbid_intrinsic_abi(tcx: TyCtxt<'_>, sp: Span, abi: Abi) {
-    if let Abi::RustIntrinsic = abi {
+pub fn forbid_intrinsic_abi(tcx: TyCtxt<'_>, sp: Span, abi: ExternAbi) {
+    if let ExternAbi::RustIntrinsic = abi {
         tcx.dcx().span_err(sp, "intrinsic must be in `extern \"rust-intrinsic\" { ... }` block");
     }
 }
@@ -199,7 +196,7 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId) {
 
 fn report_forbidden_specialization(tcx: TyCtxt<'_>, impl_item: DefId, parent_impl: DefId) {
     let span = tcx.def_span(impl_item);
-    let ident = tcx.item_name(impl_item);
+    let ident = tcx.item_ident(impl_item);
 
     let err = match tcx.span_of_impl(parent_impl) {
         Ok(sp) => errors::ImplNotMarkedDefault::Ok { span, ident, ok_label: sp },
@@ -299,7 +296,7 @@ fn default_body_is_unstable(
     reason: Option<Symbol>,
     issue: Option<NonZero<u32>>,
 ) {
-    let missing_item_name = tcx.associated_item(item_did).name;
+    let missing_item_name = tcx.item_ident(item_did);
     let (mut some_note, mut none_note, mut reason_str) = (false, false, String::new());
     match reason {
         Some(r) => {
@@ -458,18 +455,14 @@ fn fn_sig_suggestion<'tcx>(
     let mut output = sig.output();
 
     let asyncness = if tcx.asyncness(assoc.def_id).is_async() {
-        output = if let ty::Alias(_, alias_ty) = *output.kind() {
-            tcx.explicit_item_super_predicates(alias_ty.def_id)
+        output = if let ty::Alias(_, alias_ty) = *output.kind()
+            && let Some(output) = tcx
+                .explicit_item_self_bounds(alias_ty.def_id)
                 .iter_instantiated_copied(tcx, alias_ty.args)
                 .find_map(|(bound, _)| {
                     bound.as_projection_clause()?.no_bound_vars()?.term.as_type()
-                })
-                .unwrap_or_else(|| {
-                    span_bug!(
-                        ident.span,
-                        "expected async fn to have `impl Future` output, but it returns {output}"
-                    )
-                })
+                }) {
+            output
         } else {
             span_bug!(
                 ident.span,
@@ -530,7 +523,7 @@ fn suggestion_signature<'tcx>(
             let ty = tcx.type_of(assoc.def_id).instantiate_identity();
             let val = tcx
                 .infer_ctxt()
-                .build()
+                .build(TypingMode::non_body_analysis())
                 .err_ctxt()
                 .ty_kind_suggestion(tcx.param_env(assoc.def_id), ty)
                 .unwrap_or_else(|| "value".to_string());
@@ -620,7 +613,7 @@ pub fn check_function_signature<'tcx>(
 
     let param_env = ty::ParamEnv::empty();
 
-    let infcx = &tcx.infer_ctxt().build();
+    let infcx = &tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(infcx);
 
     let actual_sig = tcx.fn_sig(fn_id).instantiate_identity();
@@ -652,13 +645,13 @@ pub fn check_function_signature<'tcx>(
                 }))),
                 err,
                 false,
+                None,
             );
             return Err(diag.emit());
         }
     }
 
-    let outlives_env = OutlivesEnvironment::new(param_env);
-    if let Err(e) = ocx.resolve_regions_and_report_errors(local_id, &outlives_env) {
+    if let Err(e) = ocx.resolve_regions_and_report_errors(local_id, param_env, []) {
         return Err(e);
     }
 

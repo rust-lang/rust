@@ -262,7 +262,7 @@ fn is_format_trait_impl(cx: &LateContext<'_>, impl_item: &ImplItem<'_>) -> Optio
         && let Some(name) = cx.tcx.get_diagnostic_name(did)
         && matches!(name, sym::Debug | sym::Display)
     {
-        let body = cx.tcx.hir().body(body_id);
+        let body = cx.tcx.hir_body(body_id);
         let formatter_name = body
             .params
             .get(1)

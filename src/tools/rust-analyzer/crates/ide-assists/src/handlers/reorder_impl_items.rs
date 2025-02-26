@@ -3,7 +3,7 @@ use ide_db::{FxHashMap, RootDatabase};
 use itertools::Itertools;
 use syntax::{
     ast::{self, HasName},
-    ted, AstNode,
+    AstNode, SyntaxElement,
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -45,6 +45,11 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 pub(crate) fn reorder_impl_items(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let impl_ast = ctx.find_node_at_offset::<ast::Impl>()?;
     let items = impl_ast.assoc_item_list()?;
+
+    let parent_node = match ctx.covering_element() {
+        SyntaxElement::Node(n) => n,
+        SyntaxElement::Token(t) => t.parent()?,
+    };
 
     // restrict the range
     // if cursor is in assoc_items, abort
@@ -94,12 +99,14 @@ pub(crate) fn reorder_impl_items(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
         "Sort items by trait definition",
         target,
         |builder| {
-            let assoc_items =
-                assoc_items.into_iter().map(|item| builder.make_mut(item)).collect::<Vec<_>>();
+            let mut editor = builder.make_editor(&parent_node);
+
             assoc_items
                 .into_iter()
                 .zip(sorted)
-                .for_each(|(old, new)| ted::replace(old.syntax(), new.clone_for_update().syntax()));
+                .for_each(|(old, new)| editor.replace(old.syntax(), new.syntax()));
+
+            builder.add_file_edits(ctx.file_id(), editor);
         },
     )
 }
@@ -115,7 +122,7 @@ fn compute_item_ranks(
             .iter()
             .flat_map(|i| i.name(ctx.db()))
             .enumerate()
-            .map(|(idx, name)| (name.unescaped().display(ctx.db()).to_string(), idx))
+            .map(|(idx, name)| (name.as_str().to_owned(), idx))
             .collect(),
     )
 }

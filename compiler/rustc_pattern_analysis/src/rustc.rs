@@ -1,6 +1,7 @@
 use std::fmt;
 use std::iter::once;
 
+use rustc_abi::{FIRST_VARIANT, FieldIdx, Integer, VariantIdx};
 use rustc_arena::DroplessArena;
 use rustc_hir::HirId;
 use rustc_hir::def_id::DefId;
@@ -15,7 +16,6 @@ use rustc_middle::ty::{
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
-use rustc_target::abi::{FIRST_VARIANT, FieldIdx, Integer, VariantIdx};
 
 use crate::constructor::Constructor::*;
 use crate::constructor::{
@@ -25,7 +25,7 @@ use crate::lints::lint_nonexhaustive_missing_variants;
 use crate::pat_column::PatternColumn;
 use crate::rustc::print::EnumInfo;
 use crate::usefulness::{PlaceValidity, compute_match_usefulness};
-use crate::{Captures, PatCx, PrivateUninhabitedField, errors};
+use crate::{PatCx, PrivateUninhabitedField, errors};
 
 mod print;
 
@@ -85,7 +85,7 @@ pub struct RustcPatCtxt<'p, 'tcx: 'p> {
     /// not. E.g., `struct Foo { _private: ! }` cannot be seen to be empty
     /// outside its module and should not be matchable with an empty match statement.
     pub module: DefId,
-    pub param_env: ty::ParamEnv<'tcx>,
+    pub typing_env: ty::TypingEnv<'tcx>,
     /// To allocate the result of `self.ctor_sub_tys()`
     pub dropless_arena: &'p DroplessArena,
     /// Lint level at the match.
@@ -111,6 +111,8 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
     /// Type inference occasionally gives us opaque types in places where corresponding patterns
     /// have more specific types. To avoid inconsistencies as well as detect opaque uninhabited
     /// types, we use the corresponding concrete type if possible.
+    // FIXME(#132279): This will be unnecessary once we have a TypingMode which supports revealing
+    // opaque types defined in a body.
     #[inline]
     pub fn reveal_opaque_ty(&self, ty: Ty<'tcx>) -> RevealedTy<'tcx> {
         fn reveal_inner<'tcx>(cx: &RustcPatCtxt<'_, 'tcx>, ty: Ty<'tcx>) -> RevealedTy<'tcx> {
@@ -139,7 +141,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
     pub fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
         !ty.inhabited_predicate(self.tcx).apply_revealing_opaque(
             self.tcx,
-            self.param_env,
+            self.typing_env,
             self.module,
             &|key| self.reveal_opaque_key(key),
         )
@@ -173,13 +175,12 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
         &self,
         ty: RevealedTy<'tcx>,
         variant: &'tcx VariantDef,
-    ) -> impl Iterator<Item = (&'tcx FieldDef, RevealedTy<'tcx>)> + Captures<'p> + Captures<'_>
-    {
+    ) -> impl Iterator<Item = (&'tcx FieldDef, RevealedTy<'tcx>)> {
         let ty::Adt(_, args) = ty.kind() else { bug!() };
         variant.fields.iter().map(move |field| {
             let ty = field.ty(self.tcx, args);
             // `field.ty()` doesn't normalize after instantiating.
-            let ty = self.tcx.normalize_erasing_regions(self.param_env, ty);
+            let ty = self.tcx.normalize_erasing_regions(self.typing_env, ty);
             let ty = self.reveal_opaque_ty(ty);
             (field, ty)
         })
@@ -201,13 +202,11 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
 
     /// Returns the types of the fields for a given constructor. The result must have a length of
     /// `ctor.arity()`.
-    pub(crate) fn ctor_sub_tys<'a>(
-        &'a self,
-        ctor: &'a Constructor<'p, 'tcx>,
+    pub(crate) fn ctor_sub_tys(
+        &self,
+        ctor: &Constructor<'p, 'tcx>,
         ty: RevealedTy<'tcx>,
-    ) -> impl Iterator<Item = (RevealedTy<'tcx>, PrivateUninhabitedField)>
-    + ExactSizeIterator
-    + Captures<'a> {
+    ) -> impl Iterator<Item = (RevealedTy<'tcx>, PrivateUninhabitedField)> + ExactSizeIterator {
         fn reveal_and_alloc<'a, 'tcx>(
             cx: &'a RustcPatCtxt<'_, 'tcx>,
             iter: impl Iterator<Item = Ty<'tcx>>,
@@ -369,7 +368,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                         let is_inhabited = v
                             .inhabited_predicate(cx.tcx, *def)
                             .instantiate(cx.tcx, args)
-                            .apply_revealing_opaque(cx.tcx, cx.param_env, cx.module, &|key| {
+                            .apply_revealing_opaque(cx.tcx, cx.typing_env, cx.module, &|key| {
                                 cx.reveal_opaque_key(key)
                             });
                         // Variants that depend on a disabled unstable feature.
@@ -413,6 +412,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(_, _)
+            | ty::UnsafeBinder(_)
             | ty::Alias(_, _)
             | ty::Param(_)
             | ty::Error(_) => ConstructorSet::Unlistable,
@@ -430,7 +430,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
         match bdy {
             PatRangeBoundary::NegInfinity => MaybeInfiniteInt::NegInfinity,
             PatRangeBoundary::Finite(value) => {
-                let bits = value.eval_bits(self.tcx, self.param_env);
+                let bits = value.eval_bits(self.tcx, self.typing_env);
                 match *ty.kind() {
                     ty::Int(ity) => {
                         let size = Integer::from_int_ty(&self.tcx, ity).size().bits();
@@ -453,7 +453,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
         let fields: Vec<_>;
         match &pat.kind {
             PatKind::AscribeUserType { subpattern, .. }
-            | PatKind::InlineConstant { subpattern, .. } => return self.lower_pat(subpattern),
+            | PatKind::ExpandedConstant { subpattern, .. } => return self.lower_pat(subpattern),
             PatKind::Binding { subpattern: Some(subpat), .. } => return self.lower_pat(subpat),
             PatKind::Binding { subpattern: None, .. } | PatKind::Wild => {
                 ctor = Wildcard;
@@ -539,7 +539,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
             PatKind::Constant { value } => {
                 match ty.kind() {
                     ty::Bool => {
-                        ctor = match value.try_eval_bool(cx.tcx, cx.param_env) {
+                        ctor = match value.try_eval_bool(cx.tcx, cx.typing_env) {
                             Some(b) => Bool(b),
                             None => Opaque(OpaqueId::new()),
                         };
@@ -547,7 +547,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                         arity = 0;
                     }
                     ty::Char | ty::Int(_) | ty::Uint(_) => {
-                        ctor = match value.try_eval_bits(cx.tcx, cx.param_env) {
+                        ctor = match value.try_eval_bits(cx.tcx, cx.typing_env) {
                             Some(bits) => {
                                 let x = match *ty.kind() {
                                     ty::Int(ity) => {
@@ -564,7 +564,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                         arity = 0;
                     }
                     ty::Float(ty::FloatTy::F16) => {
-                        ctor = match value.try_eval_bits(cx.tcx, cx.param_env) {
+                        ctor = match value.try_eval_bits(cx.tcx, cx.typing_env) {
                             Some(bits) => {
                                 use rustc_apfloat::Float;
                                 let value = rustc_apfloat::ieee::Half::from_bits(bits);
@@ -576,7 +576,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                         arity = 0;
                     }
                     ty::Float(ty::FloatTy::F32) => {
-                        ctor = match value.try_eval_bits(cx.tcx, cx.param_env) {
+                        ctor = match value.try_eval_bits(cx.tcx, cx.typing_env) {
                             Some(bits) => {
                                 use rustc_apfloat::Float;
                                 let value = rustc_apfloat::ieee::Single::from_bits(bits);
@@ -588,7 +588,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                         arity = 0;
                     }
                     ty::Float(ty::FloatTy::F64) => {
-                        ctor = match value.try_eval_bits(cx.tcx, cx.param_env) {
+                        ctor = match value.try_eval_bits(cx.tcx, cx.typing_env) {
                             Some(bits) => {
                                 use rustc_apfloat::Float;
                                 let value = rustc_apfloat::ieee::Double::from_bits(bits);
@@ -600,7 +600,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                         arity = 0;
                     }
                     ty::Float(ty::FloatTy::F128) => {
-                        ctor = match value.try_eval_bits(cx.tcx, cx.param_env) {
+                        ctor = match value.try_eval_bits(cx.tcx, cx.typing_env) {
                             Some(bits) => {
                                 use rustc_apfloat::Float;
                                 let value = rustc_apfloat::ieee::Quad::from_bits(bits);
@@ -649,8 +649,8 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     }
                     ty::Float(fty) => {
                         use rustc_apfloat::Float;
-                        let lo = lo.as_finite().map(|c| c.eval_bits(cx.tcx, cx.param_env));
-                        let hi = hi.as_finite().map(|c| c.eval_bits(cx.tcx, cx.param_env));
+                        let lo = lo.as_finite().map(|c| c.eval_bits(cx.tcx, cx.typing_env));
+                        let hi = hi.as_finite().map(|c| c.eval_bits(cx.tcx, cx.typing_env));
                         match fty {
                             ty::FloatTy::F16 => {
                                 use rustc_apfloat::ieee::Half;
@@ -791,9 +791,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                 // fictitious values after `{u,i}size::MAX` (see [`IntRange::split`] for why we do
                 // this). We show this to the user as `usize::MAX..` which is slightly incorrect but
                 // probably clear enough.
-                let c = ty.numeric_max_val(cx.tcx).unwrap();
-                let value = mir::Const::from_ty_const(c, ty.0, cx.tcx);
-                lo = PatRangeBoundary::Finite(value);
+                lo = PatRangeBoundary::Finite(ty.numeric_max_val(cx.tcx).unwrap());
             }
             let hi = if let Some(hi) = range.hi.minus_one() {
                 hi
@@ -935,12 +933,11 @@ impl<'p, 'tcx: 'p> PatCx for RustcPatCtxt<'p, 'tcx> {
     fn ctor_arity(&self, ctor: &crate::constructor::Constructor<Self>, ty: &Self::Ty) -> usize {
         self.ctor_arity(ctor, *ty)
     }
-    fn ctor_sub_tys<'a>(
-        &'a self,
-        ctor: &'a crate::constructor::Constructor<Self>,
-        ty: &'a Self::Ty,
-    ) -> impl Iterator<Item = (Self::Ty, PrivateUninhabitedField)> + ExactSizeIterator + Captures<'a>
-    {
+    fn ctor_sub_tys(
+        &self,
+        ctor: &crate::constructor::Constructor<Self>,
+        ty: &Self::Ty,
+    ) -> impl Iterator<Item = (Self::Ty, PrivateUninhabitedField)> + ExactSizeIterator {
         self.ctor_sub_tys(ctor, *ty)
     }
     fn ctors_for_ty(
@@ -1083,12 +1080,16 @@ pub fn analyze_match<'p, 'tcx>(
     tycx: &RustcPatCtxt<'p, 'tcx>,
     arms: &[MatchArm<'p, 'tcx>],
     scrut_ty: Ty<'tcx>,
-    pattern_complexity_limit: Option<usize>,
 ) -> Result<UsefulnessReport<'p, 'tcx>, ErrorGuaranteed> {
     let scrut_ty = tycx.reveal_opaque_ty(scrut_ty);
     let scrut_validity = PlaceValidity::from_bool(tycx.known_valid_scrutinee);
-    let report =
-        compute_match_usefulness(tycx, arms, scrut_ty, scrut_validity, pattern_complexity_limit)?;
+    let report = compute_match_usefulness(
+        tycx,
+        arms,
+        scrut_ty,
+        scrut_validity,
+        tycx.tcx.pattern_complexity_limit().0,
+    )?;
 
     // Run the non_exhaustive_omitted_patterns lint. Only run on refutable patterns to avoid hitting
     // `if let`s. Only run if the match is exhaustive otherwise the error is redundant.

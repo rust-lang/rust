@@ -1,0 +1,11 @@
+warning: the feature `unsafe_binders` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/expr.rs:3:12
+   |
+LL | #![feature(unsafe_binders)]
+   |            ^^^^^^^^^^^^^^
+   |
+   = note: see issue #130516 <https://github.com/rust-lang/rust/issues/130516> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+warning: 1 warning emitted
+

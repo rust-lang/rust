@@ -1,11 +1,10 @@
 //! This module provides the functionality needed to run `cargo test` in a background
 //! thread and report the result of each test in a channel.
 
-use std::process::Command;
-
 use crossbeam_channel::Sender;
 use paths::AbsPath;
-use serde::Deserialize;
+use serde::Deserialize as _;
+use serde_derive::Deserialize;
 use toolchain::Tool;
 
 use crate::{
@@ -19,7 +18,11 @@ pub(crate) enum TestState {
     Started,
     Ok,
     Ignored,
-    Failed { stdout: String },
+    Failed {
+        // the stdout field is not always present depending on cargo test flags
+        #[serde(skip_serializing_if = "String::is_empty", default)]
+        stdout: String,
+    },
 }
 
 #[derive(Debug, Deserialize)]
@@ -77,7 +80,7 @@ impl CargoTestHandle {
         test_target: TestTarget,
         sender: Sender<CargoTestMessage>,
     ) -> std::io::Result<Self> {
-        let mut cmd = Command::new(Tool::Cargo.path());
+        let mut cmd = toolchain::command(Tool::Cargo.path(), root);
         cmd.env("RUSTC_BOOTSTRAP", "1");
         cmd.arg("test");
 

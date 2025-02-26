@@ -27,6 +27,8 @@ pub use core::slice::ArrayChunksMut;
 pub use core::slice::ArrayWindows;
 #[stable(feature = "inherent_ascii_escape", since = "1.60.0")]
 pub use core::slice::EscapeAscii;
+#[stable(feature = "get_many_mut", since = "1.86.0")]
+pub use core::slice::GetDisjointMutError;
 #[stable(feature = "slice_get_slice", since = "1.28.0")]
 pub use core::slice::SliceIndex;
 #[cfg(not(no_global_oom_handling))]
@@ -83,6 +85,7 @@ use crate::vec::Vec;
 // functions are actually methods that are in `impl [T]` but not in
 // `core::slice::SliceExt` - we need to supply these functions for the
 // `test_permutations` test
+#[allow(unreachable_pub)] // cfg(test) pub above
 pub(crate) mod hack {
     use core::alloc::Allocator;
 

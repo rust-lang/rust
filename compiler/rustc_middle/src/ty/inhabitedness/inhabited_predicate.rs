@@ -3,7 +3,7 @@ use smallvec::SmallVec;
 use tracing::instrument;
 
 use crate::ty::context::TyCtxt;
-use crate::ty::{self, DefId, OpaqueTypeKey, ParamEnv, Ty};
+use crate::ty::{self, DefId, OpaqueTypeKey, Ty, TypingEnv};
 
 /// Represents whether some type is inhabited in a given context.
 /// Examples of uninhabited types are `!`, `enum Void {}`, or a struct
@@ -35,8 +35,13 @@ pub enum InhabitedPredicate<'tcx> {
 
 impl<'tcx> InhabitedPredicate<'tcx> {
     /// Returns true if the corresponding type is inhabited in the given `ParamEnv` and module.
-    pub fn apply(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, module_def_id: DefId) -> bool {
-        self.apply_revealing_opaque(tcx, param_env, module_def_id, &|_| None)
+    pub fn apply(
+        self,
+        tcx: TyCtxt<'tcx>,
+        typing_env: TypingEnv<'tcx>,
+        module_def_id: DefId,
+    ) -> bool {
+        self.apply_revealing_opaque(tcx, typing_env, module_def_id, &|_| None)
     }
 
     /// Returns true if the corresponding type is inhabited in the given `ParamEnv` and module,
@@ -44,13 +49,13 @@ impl<'tcx> InhabitedPredicate<'tcx> {
     pub fn apply_revealing_opaque(
         self,
         tcx: TyCtxt<'tcx>,
-        param_env: ParamEnv<'tcx>,
+        typing_env: TypingEnv<'tcx>,
         module_def_id: DefId,
         reveal_opaque: &impl Fn(OpaqueTypeKey<'tcx>) -> Option<Ty<'tcx>>,
     ) -> bool {
         let Ok(result) = self.apply_inner::<!>(
             tcx,
-            param_env,
+            typing_env,
             &mut Default::default(),
             &|id| Ok(tcx.is_descendant_of(module_def_id, id)),
             reveal_opaque,
@@ -59,25 +64,25 @@ impl<'tcx> InhabitedPredicate<'tcx> {
     }
 
     /// Same as `apply`, but returns `None` if self contains a module predicate
-    pub fn apply_any_module(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> Option<bool> {
-        self.apply_inner(tcx, param_env, &mut Default::default(), &|_| Err(()), &|_| None).ok()
+    pub fn apply_any_module(self, tcx: TyCtxt<'tcx>, typing_env: TypingEnv<'tcx>) -> Option<bool> {
+        self.apply_inner(tcx, typing_env, &mut Default::default(), &|_| Err(()), &|_| None).ok()
     }
 
     /// Same as `apply`, but `NotInModule(_)` predicates yield `false`. That is,
     /// privately uninhabited types are considered always uninhabited.
-    pub fn apply_ignore_module(self, tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>) -> bool {
+    pub fn apply_ignore_module(self, tcx: TyCtxt<'tcx>, typing_env: TypingEnv<'tcx>) -> bool {
         let Ok(result) =
-            self.apply_inner::<!>(tcx, param_env, &mut Default::default(), &|_| Ok(true), &|_| {
+            self.apply_inner::<!>(tcx, typing_env, &mut Default::default(), &|_| Ok(true), &|_| {
                 None
             });
         result
     }
 
-    #[instrument(level = "debug", skip(tcx, param_env, in_module, reveal_opaque), ret)]
+    #[instrument(level = "debug", skip(tcx, typing_env, in_module, reveal_opaque), ret)]
     fn apply_inner<E: std::fmt::Debug>(
         self,
         tcx: TyCtxt<'tcx>,
-        param_env: ParamEnv<'tcx>,
+        typing_env: TypingEnv<'tcx>,
         eval_stack: &mut SmallVec<[Ty<'tcx>; 1]>, // for cycle detection
         in_module: &impl Fn(DefId) -> Result<bool, E>,
         reveal_opaque: &impl Fn(OpaqueTypeKey<'tcx>) -> Option<Ty<'tcx>>,
@@ -94,7 +99,7 @@ impl<'tcx> InhabitedPredicate<'tcx> {
             // we have a param_env available, we can do better.
             Self::GenericType(t) => {
                 let normalized_pred = tcx
-                    .try_normalize_erasing_regions(param_env, t)
+                    .try_normalize_erasing_regions(typing_env, t)
                     .map_or(self, |t| t.inhabited_predicate(tcx));
                 match normalized_pred {
                     // We don't have more information than we started with, so consider inhabited.
@@ -107,7 +112,7 @@ impl<'tcx> InhabitedPredicate<'tcx> {
                         }
                         eval_stack.push(t);
                         let ret =
-                            pred.apply_inner(tcx, param_env, eval_stack, in_module, reveal_opaque);
+                            pred.apply_inner(tcx, typing_env, eval_stack, in_module, reveal_opaque);
                         eval_stack.pop();
                         ret
                     }
@@ -126,7 +131,7 @@ impl<'tcx> InhabitedPredicate<'tcx> {
                     eval_stack.push(t);
                     let ret = t.inhabited_predicate(tcx).apply_inner(
                         tcx,
-                        param_env,
+                        typing_env,
                         eval_stack,
                         in_module,
                         reveal_opaque,
@@ -136,10 +141,10 @@ impl<'tcx> InhabitedPredicate<'tcx> {
                 }
             },
             Self::And([a, b]) => try_and(a, b, |x| {
-                x.apply_inner(tcx, param_env, eval_stack, in_module, reveal_opaque)
+                x.apply_inner(tcx, typing_env, eval_stack, in_module, reveal_opaque)
             }),
             Self::Or([a, b]) => try_or(a, b, |x| {
-                x.apply_inner(tcx, param_env, eval_stack, in_module, reveal_opaque)
+                x.apply_inner(tcx, typing_env, eval_stack, in_module, reveal_opaque)
             }),
         }
     }

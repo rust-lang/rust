@@ -1,26 +1,22 @@
-error: const `impl` for trait `Drop` which is not marked with `#[const_trait]`
-  --> $DIR/const-drop-fail-2.rs:23:25
+error[E0277]: the trait bound `NonTrivialDrop: const A` is not satisfied
+  --> $DIR/const-drop-fail-2.rs:31:23
+   |
+LL | const _: () = check::<ConstDropImplWithBounds<NonTrivialDrop>>(
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: required for `ConstDropImplWithBounds<NonTrivialDrop>` to implement `const Drop`
+  --> $DIR/const-drop-fail-2.rs:25:25
    |
 LL | impl<T: ~const A> const Drop for ConstDropImplWithBounds<T> {
-   |                         ^^^^
-   |
-   = note: marking a trait with `#[const_trait]` ensures all default method bodies are `const`
-   = note: adding a non-const method body in the future would be a breaking change
-
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-drop-fail-2.rs:29:26
+   |         ------          ^^^^     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         |
+   |         unsatisfied trait bound introduced here
+note: required by a bound in `check`
+  --> $DIR/const-drop-fail-2.rs:21:19
    |
 LL | const fn check<T: ~const Destruct>(_: T) {}
-   |                          ^^^^^^^^
+   |                   ^^^^^^ required by this bound in `check`
 
-error: const `impl` for trait `Drop` which is not marked with `#[const_trait]`
-  --> $DIR/const-drop-fail-2.rs:39:25
-   |
-LL | impl<T: ~const A> const Drop for ConstDropImplWithNonConstBounds<T> {
-   |                         ^^^^
-   |
-   = note: marking a trait with `#[const_trait]` ensures all default method bodies are `const`
-   = note: adding a non-const method body in the future would be a breaking change
+error: aborting due to 1 previous error
 
-error: aborting due to 3 previous errors
-
+For more information about this error, try `rustc --explain E0277`.

@@ -95,7 +95,7 @@ impl<'db> MatchCheckCtx<'db> {
 
         let place_validity = PlaceValidity::from_bool(known_valid_scrutinee.unwrap_or(true));
         // Measured to take ~100ms on modern hardware.
-        let complexity_limit = Some(500000);
+        let complexity_limit = 500000;
         compute_match_usefulness(self, arms, scrut_ty, place_validity, complexity_limit)
     }
 
@@ -314,7 +314,7 @@ impl<'db> MatchCheckCtx<'db> {
     }
 }
 
-impl<'db> PatCx for MatchCheckCtx<'db> {
+impl PatCx for MatchCheckCtx<'_> {
     type Error = ();
     type Ty = Ty;
     type VariantIdx = EnumVariantContiguousIndex;
@@ -361,11 +361,11 @@ impl<'db> PatCx for MatchCheckCtx<'db> {
         }
     }
 
-    fn ctor_sub_tys<'a>(
-        &'a self,
-        ctor: &'a rustc_pattern_analysis::constructor::Constructor<Self>,
-        ty: &'a Self::Ty,
-    ) -> impl ExactSizeIterator<Item = (Self::Ty, PrivateUninhabitedField)> + Captures<'a> {
+    fn ctor_sub_tys(
+        &self,
+        ctor: &rustc_pattern_analysis::constructor::Constructor<Self>,
+        ty: &Self::Ty,
+    ) -> impl ExactSizeIterator<Item = (Self::Ty, PrivateUninhabitedField)> {
         let single = |ty| smallvec![(ty, PrivateUninhabitedField(false))];
         let tys: SmallVec<[_; 2]> = match ctor {
             Struct | Variant(_) | UnionField => match ty.kind(Interner) {
@@ -383,9 +383,6 @@ impl<'db> PatCx for MatchCheckCtx<'db> {
                     } else {
                         let variant = Self::variant_id_for_adt(self.db, ctor, adt).unwrap();
 
-                        // Whether we must not match the fields of this variant exhaustively.
-                        let is_non_exhaustive =
-                            LazyCell::new(|| self.is_foreign_non_exhaustive(adt));
                         let visibilities = LazyCell::new(|| self.db.field_visibilities(variant));
 
                         self.list_variant_fields(ty, variant)
@@ -396,8 +393,7 @@ impl<'db> PatCx for MatchCheckCtx<'db> {
                                             .is_visible_from(self.db.upcast(), self.module)
                                 };
                                 let is_uninhabited = self.is_uninhabited(&ty);
-                                let private_uninhabited =
-                                    is_uninhabited && (!is_visible() || *is_non_exhaustive);
+                                let private_uninhabited = is_uninhabited && !is_visible();
                                 (ty, PrivateUninhabitedField(private_uninhabited))
                             })
                             .collect()
@@ -519,7 +515,7 @@ impl<'db> PatCx for MatchCheckCtx<'db> {
     }
 }
 
-impl<'db> fmt::Debug for MatchCheckCtx<'db> {
+impl fmt::Debug for MatchCheckCtx<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("MatchCheckCtx").finish()
     }

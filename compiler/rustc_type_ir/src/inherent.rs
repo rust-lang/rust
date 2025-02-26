@@ -11,7 +11,7 @@ use rustc_ast_ir::Mutability;
 use crate::elaborate::Elaboratable;
 use crate::fold::{TypeFoldable, TypeSuperFoldable};
 use crate::relate::Relate;
-use crate::solve::Reveal;
+use crate::solve::AdtDestructorKind;
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
 use crate::{self as ty, CollectAndApply, Interner, UpcastFrom};
 
@@ -112,6 +112,8 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn new_pat(interner: I, ty: Self, pat: I::Pat) -> Self;
 
+    fn new_unsafe_binder(interner: I, ty: ty::Binder<I, I::Ty>) -> Self;
+
     fn tuple_fields(self) -> I::Tys;
 
     fn to_opt_closure_kind(self) -> Option<ty::ClosureKind>;
@@ -122,6 +124,10 @@ pub trait Ty<I: Interner<Ty = Self>>:
 
     fn is_ty_var(self) -> bool {
         matches!(self.kind(), ty::Infer(ty::TyVar(_)))
+    }
+
+    fn is_ty_error(self) -> bool {
+        matches!(self.kind(), ty::Error(_))
     }
 
     fn is_floating_point(self) -> bool {
@@ -135,6 +141,9 @@ pub trait Ty<I: Interner<Ty = Self>>:
     fn is_fn_ptr(self) -> bool {
         matches!(self.kind(), ty::FnPtr(..))
     }
+
+    /// Checks whether this type is an ADT that has unsafe fields.
+    fn has_unsafe_fields(self) -> bool;
 
     fn fn_sig(self, interner: I) -> ty::Binder<I, ty::FnSig<I>> {
         match self.kind() {
@@ -182,6 +191,7 @@ pub trait Ty<I: Interner<Ty = Self>>:
             | ty::Ref(_, _, _)
             | ty::FnDef(_, _)
             | ty::FnPtr(..)
+            | ty::UnsafeBinder(_)
             | ty::Dynamic(_, _, _)
             | ty::Closure(_, _)
             | ty::CoroutineClosure(_, _)
@@ -257,8 +267,6 @@ pub trait Const<I: Interner<Const = Self>>:
     + Relate<I>
     + Flags
 {
-    fn try_to_target_usize(self, interner: I) -> Option<u64>;
-
     fn new_infer(interner: I, var: ty::InferConst) -> Self;
 
     fn new_var(interner: I, var: ty::ConstVid) -> Self;
@@ -280,6 +288,15 @@ pub trait Const<I: Interner<Const = Self>>:
     fn is_ct_var(self) -> bool {
         matches!(self.kind(), ty::ConstKind::Infer(ty::InferConst::Var(_)))
     }
+
+    fn is_ct_error(self) -> bool {
+        matches!(self.kind(), ty::ConstKind::Error(_))
+    }
+}
+
+pub trait ValueConst<I: Interner<ValueConst = Self>>: Copy + Debug + Hash + Eq {
+    fn ty(self) -> I::Ty;
+    fn valtree(self) -> I::ValTree;
 }
 
 pub trait ExprConst<I: Interner<ExprConst = Self>>: Copy + Debug + Hash + Eq + Relate<I> {
@@ -358,6 +375,13 @@ pub trait Term<I: Interner<Term = Self>>:
         match self.kind() {
             ty::TermKind::Ty(ty) => ty.is_ty_var(),
             ty::TermKind::Const(ct) => ct.is_ct_var(),
+        }
+    }
+
+    fn is_error(self) -> bool {
+        match self.kind() {
+            ty::TermKind::Ty(ty) => ty.is_ty_error(),
+            ty::TermKind::Const(ct) => ct.is_ct_error(),
         }
     }
 
@@ -531,18 +555,20 @@ pub trait AdtDef<I: Interner>: Copy + Debug + Hash + Eq {
 
     fn is_phantom_data(self) -> bool;
 
+    fn is_manually_drop(self) -> bool;
+
     // FIXME: perhaps use `all_fields` and expose `FieldDef`.
     fn all_field_tys(self, interner: I) -> ty::EarlyBinder<I, impl IntoIterator<Item = I::Ty>>;
 
     fn sized_constraint(self, interner: I) -> Option<ty::EarlyBinder<I, I::Ty>>;
 
     fn is_fundamental(self) -> bool;
+
+    fn destructor(self, interner: I) -> Option<AdtDestructorKind>;
 }
 
 pub trait ParamEnv<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
-    fn reveal(self) -> Reveal;
-
-    fn caller_bounds(self) -> impl IntoIterator<Item = I::Clause>;
+    fn caller_bounds(self) -> impl SliceLike<Item = I::Clause>;
 }
 
 pub trait Features<I: Interner>: Copy {

@@ -1,8 +1,6 @@
 use std::cell::RefCell;
 use std::ffi::OsStr;
-use std::ops::RangeInclusive;
 use std::path::{Component, Path, PathBuf};
-use std::rc::Rc;
 use std::{fmt, fs};
 
 use rinja::Template;
@@ -10,15 +8,16 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
-use rustc_span::{FileName, sym};
+use rustc_span::{FileName, FileNameDisplayPreference, RealFileName, sym};
 use tracing::info;
 
+use super::highlight;
+use super::layout::{self, BufDisplay};
+use super::render::Context;
 use crate::clean;
 use crate::clean::utils::has_doc_flag;
 use crate::docfs::PathError;
 use crate::error::Error;
-use crate::html::render::Context;
-use crate::html::{format, highlight, layout};
 use crate::visit::DocVisitor;
 
 pub(crate) fn render(cx: &mut Context<'_>, krate: &clean::Crate) -> Result<(), Error> {
@@ -35,8 +34,8 @@ pub(crate) fn render(cx: &mut Context<'_>, krate: &clean::Crate) -> Result<(), E
     Ok(())
 }
 
-pub(crate) fn collect_local_sources<'tcx>(
-    tcx: TyCtxt<'tcx>,
+pub(crate) fn collect_local_sources(
+    tcx: TyCtxt<'_>,
     src_root: &Path,
     krate: &clean::Crate,
 ) -> FxIndexMap<PathBuf, String> {
@@ -51,8 +50,14 @@ struct LocalSourcesCollector<'a, 'tcx> {
     src_root: &'a Path,
 }
 
-fn is_real_and_local(span: clean::Span, sess: &Session) -> bool {
-    span.cnum(sess) == LOCAL_CRATE && span.filename(sess).is_real()
+fn filename_real_and_local(span: clean::Span, sess: &Session) -> Option<RealFileName> {
+    if span.cnum(sess) == LOCAL_CRATE
+        && let FileName::Real(file) = span.filename(sess)
+    {
+        Some(file)
+    } else {
+        None
+    }
 }
 
 impl LocalSourcesCollector<'_, '_> {
@@ -61,16 +66,8 @@ impl LocalSourcesCollector<'_, '_> {
         let span = item.span(self.tcx);
         let Some(span) = span else { return };
         // skip all synthetic "files"
-        if !is_real_and_local(span, sess) {
-            return;
-        }
-        let filename = span.filename(sess);
-        let p = if let FileName::Real(file) = filename {
-            match file.into_local_path() {
-                Some(p) => p,
-                None => return,
-            }
-        } else {
+        let Some(p) = filename_real_and_local(span, sess).and_then(|file| file.into_local_path())
+        else {
             return;
         };
         if self.local_sources.contains_key(&*p) {
@@ -80,7 +77,7 @@ impl LocalSourcesCollector<'_, '_> {
 
         let href = RefCell::new(PathBuf::new());
         clean_path(
-            &self.src_root,
+            self.src_root,
             &p,
             |component| {
                 href.borrow_mut().push(component);
@@ -124,7 +121,7 @@ struct SourceCollector<'a, 'tcx> {
 
 impl DocVisitor<'_> for SourceCollector<'_, '_> {
     fn visit_item(&mut self, item: &clean::Item) {
-        if !self.cx.include_sources {
+        if !self.cx.info.include_sources {
             return;
         }
 
@@ -136,8 +133,7 @@ impl DocVisitor<'_> for SourceCollector<'_, '_> {
         // If we're not rendering sources, there's nothing to do.
         // If we're including source files, and we haven't seen this file yet,
         // then we need to render it out to the filesystem.
-        if is_real_and_local(span, sess) {
-            let filename = span.filename(sess);
+        if let Some(filename) = filename_real_and_local(span, sess) {
             let span = span.inner();
             let pos = sess.source_map().lookup_source_file(span.lo());
             let file_span = span.with_lo(pos.start_pos).with_hi(pos.end_position());
@@ -146,14 +142,14 @@ impl DocVisitor<'_> for SourceCollector<'_, '_> {
             // something like that), so just don't include sources for the
             // entire crate. The other option is maintaining this mapping on a
             // per-file basis, but that's probably not worth it...
-            self.cx.include_sources = match self.emit_source(&filename, file_span) {
+            self.cx.info.include_sources = match self.emit_source(&filename, file_span) {
                 Ok(()) => true,
                 Err(e) => {
                     self.cx.shared.tcx.dcx().span_err(
                         span,
                         format!(
                             "failed to render source code for `{filename}`: {e}",
-                            filename = filename.prefer_local(),
+                            filename = filename.to_string_lossy(FileNameDisplayPreference::Local),
                         ),
                     );
                     false
@@ -169,18 +165,13 @@ impl SourceCollector<'_, '_> {
     /// Renders the given filename into its corresponding HTML source file.
     fn emit_source(
         &mut self,
-        filename: &FileName,
+        file: &RealFileName,
         file_span: rustc_span::Span,
     ) -> Result<(), Error> {
-        let p = match *filename {
-            FileName::Real(ref file) => {
-                if let Some(local_path) = file.local_path() {
-                    local_path.to_path_buf()
-                } else {
-                    unreachable!("only the current crate should have sources emitted");
-                }
-            }
-            _ => return Ok(()),
+        let p = if let Some(local_path) = file.local_path() {
+            local_path.to_path_buf()
+        } else {
+            unreachable!("only the current crate should have sources emitted");
         };
         if self.emitted_local_sources.contains(&*p) {
             // We've already emitted this source
@@ -197,7 +188,7 @@ impl SourceCollector<'_, '_> {
         // Remove the utf-8 BOM if any
         let contents = contents.strip_prefix('\u{feff}').unwrap_or(&contents);
 
-        let shared = Rc::clone(&self.cx.shared);
+        let shared = &self.cx.shared;
         // Create the intermediate directories
         let cur = RefCell::new(PathBuf::new());
         let root_path = RefCell::new(PathBuf::new());
@@ -234,8 +225,10 @@ impl SourceCollector<'_, '_> {
         cur.push(&fname);
 
         let title = format!("{} - source", src_fname.to_string_lossy());
-        let desc =
-            format!("Source of the Rust file `{}`.", filename.prefer_remapped_unconditionaly());
+        let desc = format!(
+            "Source of the Rust file `{}`.",
+            file.to_string_lossy(FileNameDisplayPreference::Remapped)
+        );
         let page = layout::Page {
             title: &title,
             css_class: "src",
@@ -245,22 +238,22 @@ impl SourceCollector<'_, '_> {
             resource_suffix: &shared.resource_suffix,
             rust_logo: has_doc_flag(self.cx.tcx(), LOCAL_CRATE.as_def_id(), sym::rust_logo),
         };
+        let source_context = SourceContext::Standalone { file_path };
         let v = layout::render(
             &shared.layout,
             &page,
             "",
-            |buf: &mut _| {
-                let cx = &mut self.cx;
+            BufDisplay(|buf: &mut String| {
                 print_src(
                     buf,
                     contents,
                     file_span,
-                    cx,
+                    self.cx,
                     &root_path,
-                    highlight::DecorationInfo::default(),
-                    SourceContext::Standalone { file_path },
-                )
-            },
+                    &highlight::DecorationInfo::default(),
+                    &source_context,
+                );
+            }),
             &shared.style_files,
         );
         shared.fs.write(cur, v)?;
@@ -310,17 +303,17 @@ pub(crate) struct ScrapedInfo<'a> {
 #[derive(Template)]
 #[template(path = "scraped_source.html")]
 struct ScrapedSource<'a, Code: std::fmt::Display> {
-    info: ScrapedInfo<'a>,
-    lines: RangeInclusive<usize>,
+    info: &'a ScrapedInfo<'a>,
     code_html: Code,
+    max_nb_digits: u32,
 }
 
 #[derive(Template)]
 #[template(path = "source.html")]
 struct Source<Code: std::fmt::Display> {
-    lines: RangeInclusive<usize>,
     code_html: Code,
     file_path: Option<(String, String)>,
+    max_nb_digits: u32,
 }
 
 pub(crate) enum SourceContext<'a> {
@@ -336,25 +329,34 @@ pub(crate) fn print_src(
     file_span: rustc_span::Span,
     context: &Context<'_>,
     root_path: &str,
-    decoration_info: highlight::DecorationInfo,
-    source_context: SourceContext<'_>,
+    decoration_info: &highlight::DecorationInfo,
+    source_context: &SourceContext<'_>,
 ) {
-    let current_href = context
-        .href_from_span(clean::Span::new(file_span), false)
-        .expect("only local crates should have sources emitted");
-    let code = format::display_fn(move |fmt| {
+    let mut lines = s.lines().count();
+    let line_info = if let SourceContext::Embedded(ref info) = source_context {
+        highlight::LineInfo::new_scraped(lines as u32, info.offset as u32)
+    } else {
+        highlight::LineInfo::new(lines as u32)
+    };
+    if line_info.is_scraped_example {
+        lines += line_info.start_line as usize;
+    }
+    let code = fmt::from_fn(move |fmt| {
+        let current_href = context
+            .href_from_span(clean::Span::new(file_span), false)
+            .expect("only local crates should have sources emitted");
         highlight::write_code(
             fmt,
             s,
             Some(highlight::HrefContext { context, file_span, root_path, current_href }),
             Some(decoration_info),
+            Some(line_info),
         );
         Ok(())
     });
-    let lines = s.lines().count();
+    let max_nb_digits = if lines > 0 { lines.ilog(10) + 1 } else { 1 };
     match source_context {
         SourceContext::Standalone { file_path } => Source {
-            lines: (1..=lines),
             code_html: code,
             file_path: if let Some(file_name) = file_path.file_name()
                 && let Some(file_path) = file_path.parent()
@@ -363,12 +365,14 @@ pub(crate) fn print_src(
             } else {
                 None
             },
+            max_nb_digits,
         }
         .render_into(&mut writer)
         .unwrap(),
         SourceContext::Embedded(info) => {
-            let lines = (1 + info.offset)..=(lines + info.offset);
-            ScrapedSource { info, lines, code_html: code }.render_into(&mut writer).unwrap();
+            ScrapedSource { info, code_html: code, max_nb_digits }
+                .render_into(&mut writer)
+                .unwrap();
         }
     };
 }

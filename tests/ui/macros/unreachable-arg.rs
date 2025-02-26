@@ -1,4 +1,4 @@
-//@ ignore-emscripten no processes
+//@ needs-subprocess
 
 //@ revisions: edition_2015 edition_2021
 //@ [edition_2015]edition:2015

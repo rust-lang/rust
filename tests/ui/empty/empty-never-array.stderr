@@ -5,7 +5,7 @@ LL |     let Helper::U(u) = Helper::T(t, []);
    |         ^^^^^^^^^^^^ pattern `Helper::T(_, _)` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
 note: `Helper<T, U>` defined here
   --> $DIR/empty-never-array.rs:3:6
    |

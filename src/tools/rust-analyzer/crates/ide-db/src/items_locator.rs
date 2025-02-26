@@ -2,17 +2,23 @@
 //! by its name and a few criteria.
 //! The main reason for this module to exist is the fact that project's items and dependencies' items
 //! are located in different caches, with different APIs.
-use either::Either;
-use hir::{import_map, Crate, ItemInNs, Semantics};
-use limit::Limit;
+use std::ops::ControlFlow;
 
-use crate::{imports::import_assets::NameToImport, symbol_index, RootDatabase};
+use either::Either;
+use hir::{import_map, Crate, ItemInNs, Module, Semantics};
+
+use crate::{
+    imports::import_assets::NameToImport,
+    symbol_index::{self, SymbolsDatabase as _},
+    RootDatabase,
+};
 
 /// A value to use, when uncertain which limit to pick.
-pub static DEFAULT_QUERY_SEARCH_LIMIT: Limit = Limit::new(100);
+pub const DEFAULT_QUERY_SEARCH_LIMIT: usize = 100;
 
 pub use import_map::AssocSearchMode;
 
+// FIXME: Do callbacks instead to avoid allocations.
 /// Searches for importable items with the given name in the crate and its dependencies.
 pub fn items_with_name<'a>(
     sema: &'a Semantics<'_, RootDatabase>,
@@ -20,8 +26,7 @@ pub fn items_with_name<'a>(
     name: NameToImport,
     assoc_item_search: AssocSearchMode,
 ) -> impl Iterator<Item = ItemInNs> + 'a {
-    let krate_name = krate.display_name(sema.db).map(|name| name.to_string());
-    let _p = tracing::info_span!("items_with_name", name = name.text(), assoc_item_search = ?assoc_item_search, crate = ?krate_name)
+    let _p = tracing::info_span!("items_with_name", name = name.text(), assoc_item_search = ?assoc_item_search, crate = ?krate.display_name(sema.db).map(|name| name.to_string()))
         .entered();
 
     let prefix = matches!(name, NameToImport::Prefix(..));
@@ -66,6 +71,53 @@ pub fn items_with_name<'a>(
     find_items(sema, krate, local_query, external_query)
 }
 
+/// Searches for importable items with the given name in the crate and its dependencies.
+pub fn items_with_name_in_module<T>(
+    sema: &Semantics<'_, RootDatabase>,
+    module: Module,
+    name: NameToImport,
+    assoc_item_search: AssocSearchMode,
+    mut cb: impl FnMut(ItemInNs) -> ControlFlow<T>,
+) -> Option<T> {
+    let _p = tracing::info_span!("items_with_name_in", name = name.text(), assoc_item_search = ?assoc_item_search, ?module)
+        .entered();
+
+    let prefix = matches!(name, NameToImport::Prefix(..));
+    let local_query = match name {
+        NameToImport::Prefix(exact_name, case_sensitive)
+        | NameToImport::Exact(exact_name, case_sensitive) => {
+            let mut local_query = symbol_index::Query::new(exact_name.clone());
+            local_query.assoc_search_mode(assoc_item_search);
+            if prefix {
+                local_query.prefix();
+            } else {
+                local_query.exact();
+            }
+            if case_sensitive {
+                local_query.case_sensitive();
+            }
+            local_query
+        }
+        NameToImport::Fuzzy(fuzzy_search_string, case_sensitive) => {
+            let mut local_query = symbol_index::Query::new(fuzzy_search_string.clone());
+            local_query.fuzzy();
+            local_query.assoc_search_mode(assoc_item_search);
+
+            if case_sensitive {
+                local_query.case_sensitive();
+            }
+
+            local_query
+        }
+    };
+    local_query.search(&[sema.db.module_symbols(module)], |local_candidate| {
+        cb(match local_candidate.def {
+            hir::ModuleDef::Macro(macro_def) => ItemInNs::Macros(macro_def),
+            def => ItemInNs::from(def),
+        })
+    })
+}
+
 fn find_items<'a>(
     sema: &'a Semantics<'_, RootDatabase>,
     krate: Crate,
@@ -91,7 +143,8 @@ fn find_items<'a>(
         local_results.push(match local_candidate.def {
             hir::ModuleDef::Macro(macro_def) => ItemInNs::Macros(macro_def),
             def => ItemInNs::from(def),
-        })
+        });
+        ControlFlow::<()>::Continue(())
     });
     local_results.into_iter().chain(external_importables)
 }

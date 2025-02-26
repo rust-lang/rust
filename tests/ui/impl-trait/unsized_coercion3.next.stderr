@@ -1,35 +1,11 @@
 error[E0277]: the trait bound `dyn Send: Trait` is not satisfied
-  --> $DIR/unsized_coercion3.rs:14:17
+  --> $DIR/unsized_coercion3.rs:13:17
    |
 LL |         let x = hello();
    |                 ^^^^^^^ the trait `Trait` is not implemented for `dyn Send`
    |
    = help: the trait `Trait` is implemented for `u32`
 
-error[E0308]: mismatched types
-  --> $DIR/unsized_coercion3.rs:19:5
-   |
-LL | fn hello() -> Box<impl Trait + ?Sized> {
-   |               ------------------------
-   |               |   |
-   |               |   the expected opaque type
-   |               expected `Box<impl Trait + ?Sized>` because of return type
-...
-LL |     Box::new(1u32)
-   |     ^^^^^^^^^^^^^^ types differ
-   |
-   = note: expected struct `Box<impl Trait + ?Sized>`
-              found struct `Box<u32>`
+error: aborting due to 1 previous error
 
-error[E0277]: the trait bound `dyn Send: Trait` is not satisfied
-  --> $DIR/unsized_coercion3.rs:11:1
-   |
-LL | fn hello() -> Box<impl Trait + ?Sized> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `dyn Send`
-   |
-   = help: the trait `Trait` is implemented for `u32`
-
-error: aborting due to 3 previous errors
-
-Some errors have detailed explanations: E0277, E0308.
-For more information about an error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0277`.

@@ -5,7 +5,7 @@
 // are in scope.
 
 //@ check-pass
-//@ aux-build: another-proc-macro.rs
+//@ proc-macro: another-proc-macro.rs
 //@ compile-flags: -Zunpretty=expanded
 
 #![feature(derive_coerce_pointee)]

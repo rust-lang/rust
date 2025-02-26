@@ -2,7 +2,7 @@
 
 // These symbols are all defined by `libm`,
 // or by `compiler-builtins` on unsupported platforms.
-extern "C" {
+unsafe extern "C" {
     pub fn acos(n: f64) -> f64;
     pub fn asin(n: f64) -> f64;
     pub fn atan(n: f64) -> f64;
@@ -26,7 +26,12 @@ extern "C" {
     pub fn tgamma(n: f64) -> f64;
     pub fn tgammaf(n: f32) -> f32;
     pub fn lgamma_r(n: f64, s: &mut i32) -> f64;
+    #[cfg(not(target_os = "aix"))]
     pub fn lgammaf_r(n: f32, s: &mut i32) -> f32;
+    pub fn erf(n: f64) -> f64;
+    pub fn erff(n: f32) -> f32;
+    pub fn erfc(n: f64) -> f64;
+    pub fn erfcf(n: f32) -> f32;
 
     pub fn acosf128(n: f128) -> f128;
     pub fn asinf128(n: f128) -> f128;
@@ -42,6 +47,8 @@ extern "C" {
     pub fn tanhf128(n: f128) -> f128;
     pub fn tgammaf128(n: f128) -> f128;
     pub fn lgammaf128_r(n: f128, s: &mut i32) -> f128;
+    pub fn erff128(n: f128) -> f128;
+    pub fn erfcf128(n: f128) -> f128;
 
     cfg_if::cfg_if! {
     if #[cfg(not(all(target_os = "windows", target_env = "msvc", target_arch = "x86")))] {
@@ -54,6 +61,13 @@ extern "C" {
         pub fn tanf(n: f32) -> f32;
         pub fn tanhf(n: f32) -> f32;
     }}
+}
+
+// On AIX, we don't have lgammaf_r only the f64 version, so we can
+// use the f64 version lgamma_r
+#[cfg(target_os = "aix")]
+pub unsafe fn lgammaf_r(n: f32, s: &mut i32) -> f32 {
+    lgamma_r(n.into(), s) as f32
 }
 
 // On 32-bit x86 MSVC these functions aren't defined, so we just define shims

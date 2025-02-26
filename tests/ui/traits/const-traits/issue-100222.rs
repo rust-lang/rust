@@ -3,7 +3,7 @@
 //@ check-pass
 
 #![allow(incomplete_features)]
-#![feature(const_trait_impl, effects, associated_type_defaults)]
+#![feature(const_trait_impl, associated_type_defaults)]
 
 #[cfg_attr(any(yn, yy), const_trait)]
 pub trait Index {

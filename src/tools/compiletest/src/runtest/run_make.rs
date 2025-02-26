@@ -2,6 +2,8 @@ use std::path::Path;
 use std::process::{Command, Output, Stdio};
 use std::{env, fs};
 
+use build_helper::fs::{ignore_not_found, recursive_remove};
+
 use super::{ProcRes, TestCx, disable_error_reporting};
 use crate::util::{copy_dir_all, dylib_env_var};
 
@@ -19,17 +21,14 @@ impl TestCx<'_> {
 
     fn run_rmake_legacy_test(&self) {
         let cwd = env::current_dir().unwrap();
-        let src_root = self.config.src_base.parent().unwrap().parent().unwrap();
-        let src_root = cwd.join(&src_root);
 
         // FIXME(Zalathar): This should probably be `output_base_dir` to avoid
         // an unnecessary extra subdirectory, but since legacy Makefile tests
         // are hopefully going away, it seems safer to leave this perilous code
         // as-is until it can all be deleted.
         let tmpdir = cwd.join(self.output_base_name());
-        if tmpdir.exists() {
-            self.aggressive_rm_rf(&tmpdir).unwrap();
-        }
+        ignore_not_found(|| recursive_remove(&tmpdir)).unwrap();
+
         fs::create_dir_all(&tmpdir).unwrap();
 
         let host = &self.config.host;
@@ -50,7 +49,7 @@ impl TestCx<'_> {
             .stderr(Stdio::piped())
             .env("TARGET", &self.config.target)
             .env("PYTHON", &self.config.python)
-            .env("S", src_root)
+            .env("S", &self.config.src_root)
             .env("RUST_BUILD_STAGE", &self.config.stage_id)
             .env("RUSTC", cwd.join(&self.config.rustc_path))
             .env("TMPDIR", &tmpdir)
@@ -180,28 +179,10 @@ impl TestCx<'_> {
         //    library.
         // 2. We need to run the recipe binary.
 
-        // So we assume the rust-lang/rust project setup looks like the following (our `.` is the
-        // top-level directory, irrelevant entries to our purposes omitted):
-        //
-        // ```
-        // .                               // <- `source_root`
-        // ├── build/                      // <- `build_root`
-        // ├── compiler/
-        // ├── library/
-        // ├── src/
-        // │  └── tools/
-        // │     └── run_make_support/
-        // └── tests
-        //    └── run-make/
-        // ```
-
-        // `source_root` is the top-level directory containing the rust-lang/rust checkout.
-        let source_root =
-            self.config.find_rust_src_root().expect("could not determine rust source root");
         // `self.config.build_base` is actually the build base folder + "test" + test suite name, it
         // looks like `build/<host_triple>/test/run-make`. But we want `build/<host_triple>/`. Note
         // that the `build` directory does not need to be called `build`, nor does it need to be
-        // under `source_root`, so we must compute it based off of `self.config.build_base`.
+        // under `src_root`, so we must compute it based off of `self.config.build_base`.
         let build_root =
             self.config.build_base.parent().and_then(Path::parent).unwrap().to_path_buf();
 
@@ -218,9 +199,8 @@ impl TestCx<'_> {
         //
         // This setup intentionally diverges from legacy Makefile run-make tests.
         let base_dir = self.output_base_dir();
-        if base_dir.exists() {
-            self.aggressive_rm_rf(&base_dir).unwrap();
-        }
+        ignore_not_found(|| recursive_remove(&base_dir)).unwrap();
+
         let rmake_out_dir = base_dir.join("rmake_out");
         fs::create_dir_all(&rmake_out_dir).unwrap();
 
@@ -238,30 +218,6 @@ impl TestCx<'_> {
                 }
             }
         }
-
-        // `self.config.stage_id` looks like `stage1-<target_triple>`, but we only want
-        // the `stage1` part as that is what the output directories of bootstrap are prefixed with.
-        // Note that this *assumes* build layout from bootstrap is produced as:
-        //
-        // ```
-        // build/<target_triple>/          // <- this is `build_root`
-        // ├── stage0
-        // ├── stage0-bootstrap-tools
-        // ├── stage0-codegen
-        // ├── stage0-rustc
-        // ├── stage0-std
-        // ├── stage0-sysroot
-        // ├── stage0-tools
-        // ├── stage0-tools-bin
-        // ├── stage1
-        // ├── stage1-std
-        // ├── stage1-tools
-        // ├── stage1-tools-bin
-        // └── test
-        // ```
-        // FIXME(jieyouxu): improve the communication between bootstrap and compiletest here so
-        // we don't have to hack out a `stageN`.
-        let stage = self.config.stage_id.split('-').next().unwrap();
 
         // In order to link in the support library as a rlib when compiling recipes, we need three
         // paths:
@@ -284,10 +240,12 @@ impl TestCx<'_> {
         // support lib and its deps are organized, can't we copy them to the tools-bin dir as
         // well?), but this seems to work for now.
 
-        let stage_tools_bin = build_root.join(format!("{stage}-tools-bin"));
+        let stage_number = self.config.stage;
+
+        let stage_tools_bin = build_root.join(format!("stage{stage_number}-tools-bin"));
         let support_lib_path = stage_tools_bin.join("librun_make_support.rlib");
 
-        let stage_tools = build_root.join(format!("{stage}-tools"));
+        let stage_tools = build_root.join(format!("stage{stage_number}-tools"));
         let support_lib_deps = stage_tools.join(&self.config.host).join("release").join("deps");
         let support_lib_deps_deps = stage_tools.join("release").join("deps");
 
@@ -353,8 +311,8 @@ impl TestCx<'_> {
         // to work correctly.
         //
         // See <https://github.com/rust-lang/rust/pull/122248> for more background.
+        let stage0_sysroot = build_root.join("stage0-sysroot");
         if std::env::var_os("COMPILETEST_FORCE_STAGE0").is_some() {
-            let stage0_sysroot = build_root.join("stage0-sysroot");
             rustc.arg("--sysroot").arg(&stage0_sysroot);
         }
 
@@ -368,11 +326,20 @@ impl TestCx<'_> {
         // provided through env vars.
 
         // Compute stage-specific standard library paths.
-        let stage_std_path = build_root.join(&stage).join("lib");
+        let stage_std_path = build_root.join(format!("stage{stage_number}")).join("lib");
 
         // Compute dynamic library search paths for recipes.
         let recipe_dylib_search_paths = {
             let mut paths = base_dylib_search_paths.clone();
+
+            // For stage 0, we need to explicitly include the stage0-sysroot libstd dylib.
+            // See <https://github.com/rust-lang/rust/issues/135373>.
+            if std::env::var_os("COMPILETEST_FORCE_STAGE0").is_some() {
+                paths.push(
+                    stage0_sysroot.join("lib").join("rustlib").join(&self.config.host).join("lib"),
+                );
+            }
+
             paths.push(support_lib_path.parent().unwrap().to_path_buf());
             paths.push(stage_std_path.join("rustlib").join(&self.config.host).join("lib"));
             paths
@@ -402,9 +369,10 @@ impl TestCx<'_> {
             .env("TARGET", &self.config.target)
             // Some tests unfortunately still need Python, so provide path to a Python interpreter.
             .env("PYTHON", &self.config.python)
-            // Provide path to checkout root. This is the top-level directory containing
-            // rust-lang/rust checkout.
-            .env("SOURCE_ROOT", &source_root)
+            // Provide path to sources root.
+            .env("SOURCE_ROOT", &self.config.src_root)
+            // Path to the host build directory.
+            .env("BUILD_ROOT", &build_root)
             // Provide path to stage-corresponding rustc.
             .env("RUSTC", &self.config.rustc_path)
             // Provide the directory to libraries that are needed to run the *compiler*. This is not
@@ -419,11 +387,11 @@ impl TestCx<'_> {
             .env("LLVM_COMPONENTS", &self.config.llvm_components);
 
         if let Some(ref cargo) = self.config.cargo_path {
-            cmd.env("CARGO", source_root.join(cargo));
+            cmd.env("CARGO", cargo);
         }
 
         if let Some(ref rustdoc) = self.config.rustdoc_path {
-            cmd.env("RUSTDOC", source_root.join(rustdoc));
+            cmd.env("RUSTDOC", rustdoc);
         }
 
         if let Some(ref node) = self.config.nodejs {
@@ -517,14 +485,13 @@ impl TestCx<'_> {
 
         let proc = disable_error_reporting(|| cmd.spawn().expect("failed to spawn `rmake`"));
         let (Output { stdout, stderr, status }, truncated) = self.read2_abbreviated(proc);
+        let stdout = String::from_utf8_lossy(&stdout).into_owned();
+        let stderr = String::from_utf8_lossy(&stderr).into_owned();
+        // This conditions on `status.success()` so we don't print output twice on error.
+        // NOTE: this code is called from a libtest thread, so it's hidden by default unless --nocapture is passed.
+        self.dump_output(status.success(), &cmd.get_program().to_string_lossy(), &stdout, &stderr);
         if !status.success() {
-            let res = ProcRes {
-                status,
-                stdout: String::from_utf8_lossy(&stdout).into_owned(),
-                stderr: String::from_utf8_lossy(&stderr).into_owned(),
-                truncated,
-                cmdline: format!("{:?}", cmd),
-            };
+            let res = ProcRes { status, stdout, stderr, truncated, cmdline: format!("{:?}", cmd) };
             self.fatal_proc_rec("rmake recipe failed to complete", &res);
         }
     }

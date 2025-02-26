@@ -24,14 +24,14 @@ impl Foo<u32> {
 }
 
 impl<T> Bar for Foo<T> {
-    // @has - '//*[@id="associatedtype.Item"]//h4[@class="code-header"]' 'type Item = T'
+    //@ has - '//*[@id="associatedtype.Item"]//h4[@class="code-header"]' 'type Item = T'
     type Item=T;
 
     //@ has - '//*[@id="method.quux"]//h4[@class="code-header"]' 'fn quux(self)'
     fn quux(self) {}
 }
 impl<'a, T> Bar for &'a Foo<T> {
-    // @has - '//*[@id="associatedtype.Item-1"]//h4[@class="code-header"]' "type Item = &'a T"
+    //@ has - '//*[@id="associatedtype.Item-1"]//h4[@class="code-header"]' "type Item = &'a T"
     type Item=&'a T;
 
     //@ has - '//*[@id="method.quux-1"]//h4[@class="code-header"]' 'fn quux(self)'

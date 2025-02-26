@@ -5,7 +5,6 @@
 // pretty-print such view items. If that happens again, this should
 // begin failing.
 
-//@ pretty-expanded FIXME #23616
 
 mod m {
     pub fn f() -> Vec<isize> { Vec::new() }

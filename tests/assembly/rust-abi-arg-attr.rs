@@ -50,10 +50,8 @@ enum Ordering {
     Greater = 1,
 }
 
-extern "rust-intrinsic" {
-    #[rustc_safe_intrinsic]
-    fn three_way_compare<T: Copy>(lhs: T, rhs: T) -> Ordering;
-}
+#[rustc_intrinsic]
+fn three_way_compare<T: Copy>(lhs: T, rhs: T) -> Ordering;
 
 // ^^^^^ core
 

@@ -1,6 +1,6 @@
 use super::ITER_KV_MAP;
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::pat_is_wild;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_type_diagnostic_item;
@@ -30,7 +30,7 @@ pub(super) fn check<'tcx>(
         && let Body {
             params: [p],
             value: body_expr,
-        } = cx.tcx.hir().body(c.body)
+        } = cx.tcx.hir_body(c.body)
         && let PatKind::Tuple([key_pat, val_pat], _) = p.pat.kind
         && let (replacement_kind, annotation, bound_ident) = match (&key_pat.kind, &val_pat.kind) {
             (key, PatKind::Binding(ann, _, value, _)) if pat_is_wild(cx, key, m_arg) => ("value", ann, value),

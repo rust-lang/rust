@@ -159,7 +159,7 @@ fn path_eq_no_generics(lhs: ast::Path, rhs: ast::Path) -> bool {
                     && lhs
                         .name_ref()
                         .zip(rhs.name_ref())
-                        .map_or(false, |(lhs, rhs)| lhs.text() == rhs.text()) => {}
+                        .is_some_and(|(lhs, rhs)| lhs.text() == rhs.text()) => {}
             _ => return false,
         }
 

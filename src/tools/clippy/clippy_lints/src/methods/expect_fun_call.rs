@@ -58,7 +58,7 @@ pub(super) fn check<'tcx>(
             if ty.is_str() && can_be_static_str(cx, arg) {
                 return false;
             }
-        };
+        }
         true
     }
 
@@ -83,7 +83,7 @@ pub(super) fn check<'tcx>(
             hir::ExprKind::MethodCall(..) => {
                 cx.typeck_results()
                     .type_dependent_def_id(arg.hir_id)
-                    .map_or(false, |method_id| {
+                    .is_some_and(|method_id| {
                         matches!(
                             cx.tcx.fn_sig(method_id).instantiate_identity().output().skip_binder().kind(),
                             ty::Ref(re, ..) if re.is_static()

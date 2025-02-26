@@ -2,6 +2,7 @@
 #![allow(rustc::untranslatable_diagnostic)]
 use std::num::NonZero;
 
+use rustc_abi::ExternAbi;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagMessage, DiagStyledString, ElidedLifetimeInPathSubdiag,
@@ -9,6 +10,7 @@ use rustc_errors::{
 };
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
+use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::{self as hir, MissingLifetimeKind};
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::inhabitedness::InhabitedPredicate;
@@ -16,8 +18,7 @@ use rustc_middle::ty::{Clause, PolyExistentialTraitRef, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_session::lint::AmbiguityErrorDiag;
 use rustc_span::edition::Edition;
-use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent};
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{Ident, MacroRulesNormalizedIdent, Span, Symbol, kw, sym};
 
 use crate::builtin::{InitError, ShorthandAssocTyCollector, TypeAliasBounds};
 use crate::errors::{OverruledAttributeSub, RequestedLevel};
@@ -178,19 +179,6 @@ pub(crate) enum BuiltinDeprecatedAttrLinkSuggestion<'a> {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_builtin_deprecated_attr_used)]
-pub(crate) struct BuiltinDeprecatedAttrUsed {
-    pub name: String,
-    #[suggestion(
-        lint_builtin_deprecated_attr_default_suggestion,
-        style = "short",
-        code = "",
-        applicability = "machine-applicable"
-    )]
-    pub suggestion: Span,
-}
-
-#[derive(LintDiagnostic)]
 #[diag(lint_builtin_unused_doc_comment)]
 pub(crate) struct BuiltinUnusedDocComment<'a> {
     pub kind: &'a str,
@@ -254,7 +242,8 @@ impl<'a> LintDiagnostic<'a, ()> for BuiltinUngatedAsyncFnTrackCaller<'_> {
 #[diag(lint_builtin_unreachable_pub)]
 pub(crate) struct BuiltinUnreachablePub<'a> {
     pub what: &'a str,
-    #[suggestion(code = "pub(crate)")]
+    pub new_vis: &'a str,
+    #[suggestion(code = "{new_vis}")]
     pub suggestion: (Span, Applicability),
     #[help]
     pub help: bool,
@@ -293,13 +282,13 @@ impl<'a> LintDiagnostic<'a, ()> for BuiltinTypeAliasBounds<'_> {
         // avoid doing throwaway work in case the lint ends up getting suppressed.
         let mut collector = ShorthandAssocTyCollector { qselves: Vec::new() };
         if let Some(ty) = self.ty {
-            hir::intravisit::Visitor::visit_ty(&mut collector, ty);
+            collector.visit_ty_unambig(ty);
         }
 
         let affect_object_lifetime_defaults = self
             .preds
             .iter()
-            .filter(|pred| pred.in_where_clause() == self.in_where_clause)
+            .filter(|pred| pred.kind.in_where_clause() == self.in_where_clause)
             .any(|pred| TypeAliasBounds::affects_object_lifetime_defaults(pred));
 
         // If there are any shorthand assoc tys, then the bounds can't be removed automatically.
@@ -341,6 +330,24 @@ impl<'a> LintDiagnostic<'a, ()> for BuiltinTypeAliasBounds<'_> {
 pub(crate) struct BuiltinTrivialBounds<'a> {
     pub predicate_kind_name: &'a str,
     pub predicate: Clause<'a>,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_builtin_double_negations)]
+#[note(lint_note)]
+#[note(lint_note_decrement)]
+pub(crate) struct BuiltinDoubleNegations {
+    #[subdiagnostic]
+    pub add_parens: BuiltinDoubleNegationsAddParens,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(lint_add_parens_suggestion, applicability = "maybe-incorrect")]
+pub(crate) struct BuiltinDoubleNegationsAddParens {
+    #[suggestion_part(code = "(")]
+    pub start_span: Span,
+    #[suggestion_part(code = ")")]
+    pub end_span: Span,
 }
 
 #[derive(LintDiagnostic)]
@@ -907,6 +914,11 @@ pub(crate) struct QueryUntracked {
 pub(crate) struct SpanUseEqCtxtDiag;
 
 #[derive(LintDiagnostic)]
+#[diag(lint_symbol_intern_string_literal)]
+#[help]
+pub(crate) struct SymbolInternStringLiteralDiag;
+
+#[derive(LintDiagnostic)]
 #[diag(lint_tykind_kind)]
 pub(crate) struct TykindKind {
     #[suggestion(code = "ty", applicability = "maybe-incorrect")]
@@ -943,13 +955,6 @@ pub(crate) struct NonGlobImportTypeIrInherent {
 #[diag(lint_lintpass_by_hand)]
 #[help]
 pub(crate) struct LintPassByHand;
-
-#[derive(LintDiagnostic)]
-#[diag(lint_non_existent_doc_keyword)]
-#[help]
-pub(crate) struct NonExistentDocKeyword {
-    pub keyword: Symbol,
-}
 
 #[derive(LintDiagnostic)]
 #[diag(lint_diag_out_of_impl)]
@@ -1137,16 +1142,21 @@ pub(crate) struct IgnoredUnlessCrateSpecified<'a> {
     pub name: Symbol,
 }
 
-// methods.rs
+// dangling.rs
 #[derive(LintDiagnostic)]
-#[diag(lint_cstring_ptr)]
+#[diag(lint_dangling_pointers_from_temporaries)]
 #[note]
-#[help]
-pub(crate) struct CStringPtr {
-    #[label(lint_as_ptr_label)]
-    pub as_ptr: Span,
-    #[label(lint_unwrap_label)]
-    pub unwrap: Span,
+#[help(lint_help_bind)]
+#[help(lint_help_returned)]
+#[help(lint_help_visit)]
+// FIXME: put #[primary_span] on `ptr_span` once it does not cause conflicts
+pub(crate) struct DanglingPointersFromTemporaries<'tcx> {
+    pub callee: Ident,
+    pub ty: Ty<'tcx>,
+    #[label(lint_label_ptr)]
+    pub ptr_span: Span,
+    #[label(lint_label_temporary)]
+    pub temporary_span: Span,
 }
 
 // multiple_supertrait_upcastable.rs
@@ -1342,7 +1352,7 @@ pub(crate) enum NonUpperCaseGlobalSub {
 #[diag(lint_noop_method_call)]
 #[note]
 pub(crate) struct NoopMethodCallDiag<'a> {
-    pub method: Symbol,
+    pub method: Ident,
     pub orig_ty: Ty<'a>,
     pub trait_: Symbol,
     #[suggestion(code = "", applicability = "machine-applicable")]
@@ -1692,6 +1702,10 @@ pub(crate) struct OverflowingLiteral<'a> {
 }
 
 #[derive(LintDiagnostic)]
+#[diag(lint_uses_power_alignment)]
+pub(crate) struct UsesPowerAlignment;
+
+#[derive(LintDiagnostic)]
 #[diag(lint_unused_comparisons)]
 pub(crate) struct UnusedComparisons;
 
@@ -1803,6 +1817,60 @@ pub(crate) enum AmbiguousWidePointerComparisonsAddrSuggestion<'a> {
         right_before: Option<Span>,
         #[suggestion_part(code = "{r_modifiers}{paren_right}.cast::<()>()")]
         right_after: Span,
+    },
+}
+
+#[derive(LintDiagnostic)]
+pub(crate) enum UnpredictableFunctionPointerComparisons<'a, 'tcx> {
+    #[diag(lint_unpredictable_fn_pointer_comparisons)]
+    #[note(lint_note_duplicated_fn)]
+    #[note(lint_note_deduplicated_fn)]
+    #[note(lint_note_visit_fn_addr_eq)]
+    Suggestion {
+        #[subdiagnostic]
+        sugg: UnpredictableFunctionPointerComparisonsSuggestion<'a, 'tcx>,
+    },
+    #[diag(lint_unpredictable_fn_pointer_comparisons)]
+    #[note(lint_note_duplicated_fn)]
+    #[note(lint_note_deduplicated_fn)]
+    #[note(lint_note_visit_fn_addr_eq)]
+    Warn,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum UnpredictableFunctionPointerComparisonsSuggestion<'a, 'tcx> {
+    #[multipart_suggestion(
+        lint_fn_addr_eq_suggestion,
+        style = "verbose",
+        applicability = "maybe-incorrect"
+    )]
+    FnAddrEq {
+        ne: &'a str,
+        deref_left: &'a str,
+        deref_right: &'a str,
+        #[suggestion_part(code = "{ne}std::ptr::fn_addr_eq({deref_left}")]
+        left: Span,
+        #[suggestion_part(code = ", {deref_right}")]
+        middle: Span,
+        #[suggestion_part(code = ")")]
+        right: Span,
+    },
+    #[multipart_suggestion(
+        lint_fn_addr_eq_suggestion,
+        style = "verbose",
+        applicability = "maybe-incorrect"
+    )]
+    FnAddrEqWithCast {
+        ne: &'a str,
+        deref_left: &'a str,
+        deref_right: &'a str,
+        fn_sig: rustc_middle::ty::PolyFnSig<'tcx>,
+        #[suggestion_part(code = "{ne}std::ptr::fn_addr_eq({deref_left}")]
+        left: Span,
+        #[suggestion_part(code = ", {deref_right}")]
+        middle: Span,
+        #[suggestion_part(code = " as {fn_sig})")]
+        right: Span,
     },
 }
 
@@ -2127,6 +2195,24 @@ impl UnexpectedCfgRustcHelp {
     }
 }
 
+#[derive(Subdiagnostic)]
+#[note(lint_unexpected_cfg_from_external_macro_origin)]
+#[help(lint_unexpected_cfg_from_external_macro_refer)]
+pub(crate) struct UnexpectedCfgRustcMacroHelp {
+    pub macro_kind: &'static str,
+    pub macro_name: Symbol,
+}
+
+#[derive(Subdiagnostic)]
+#[note(lint_unexpected_cfg_from_external_macro_origin)]
+#[help(lint_unexpected_cfg_from_external_macro_refer)]
+#[help(lint_unexpected_cfg_cargo_update)]
+pub(crate) struct UnexpectedCfgCargoMacroHelp {
+    pub macro_kind: &'static str,
+    pub macro_name: Symbol,
+    pub crate_name: Symbol,
+}
+
 #[derive(LintDiagnostic)]
 #[diag(lint_unexpected_cfg_name)]
 pub(crate) struct UnexpectedCfgName {
@@ -2141,8 +2227,7 @@ pub(crate) struct UnexpectedCfgName {
 pub(crate) mod unexpected_cfg_name {
     use rustc_errors::DiagSymbolList;
     use rustc_macros::Subdiagnostic;
-    use rustc_span::symbol::Ident;
-    use rustc_span::{Span, Symbol};
+    use rustc_span::{Ident, Span, Symbol};
 
     #[derive(Subdiagnostic)]
     pub(crate) enum CodeSuggestion {
@@ -2231,10 +2316,17 @@ pub(crate) mod unexpected_cfg_name {
         #[note(lint_unexpected_cfg_doc_cargo)]
         Cargo {
             #[subdiagnostic]
-            sub: Option<super::UnexpectedCfgCargoHelp>,
+            macro_help: Option<super::UnexpectedCfgCargoMacroHelp>,
+            #[subdiagnostic]
+            help: Option<super::UnexpectedCfgCargoHelp>,
         },
         #[note(lint_unexpected_cfg_doc_rustc)]
-        Rustc(#[subdiagnostic] super::UnexpectedCfgRustcHelp),
+        Rustc {
+            #[subdiagnostic]
+            macro_help: Option<super::UnexpectedCfgRustcMacroHelp>,
+            #[subdiagnostic]
+            help: super::UnexpectedCfgRustcHelp,
+        },
     }
 }
 
@@ -2337,9 +2429,19 @@ pub(crate) mod unexpected_cfg_value {
     #[derive(Subdiagnostic)]
     pub(crate) enum InvocationHelp {
         #[note(lint_unexpected_cfg_doc_cargo)]
-        Cargo(#[subdiagnostic] Option<CargoHelp>),
+        Cargo {
+            #[subdiagnostic]
+            help: Option<CargoHelp>,
+            #[subdiagnostic]
+            macro_help: Option<super::UnexpectedCfgCargoMacroHelp>,
+        },
         #[note(lint_unexpected_cfg_doc_rustc)]
-        Rustc(#[subdiagnostic] Option<super::UnexpectedCfgRustcHelp>),
+        Rustc {
+            #[subdiagnostic]
+            help: Option<super::UnexpectedCfgRustcHelp>,
+            #[subdiagnostic]
+            macro_help: Option<super::UnexpectedCfgRustcMacroHelp>,
+        },
     }
 
     #[derive(Subdiagnostic)]
@@ -2471,10 +2573,6 @@ pub(crate) struct UnusedCrateDependency {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_wasm_c_abi)]
-pub(crate) struct WasmCAbi;
-
-#[derive(LintDiagnostic)]
 #[diag(lint_ill_formed_attribute_input)]
 pub(crate) struct IllFormedAttributeInput {
     pub num_suggestions: usize,
@@ -2598,7 +2696,7 @@ impl<G: EmissionGuarantee> LintDiagnostic<'_, G> for ElidedNamedLifetime {
         //  but currently this lint's suggestions can conflict with those of `clippy::needless_lifetimes`:
         //  https://github.com/rust-lang/rust/pull/129840#issuecomment-2323349119
         // HACK: `'static` suggestions will never sonflict, emit only those for now.
-        if name != rustc_span::symbol::kw::StaticLifetime {
+        if name != kw::StaticLifetime {
             return;
         }
         match kind {
@@ -2735,12 +2833,10 @@ pub(crate) struct PatternsInFnsWithoutBodySub {
 
 #[derive(LintDiagnostic)]
 #[diag(lint_extern_without_abi)]
-#[help]
 pub(crate) struct MissingAbi {
-    #[label]
+    #[suggestion(code = "extern {default_abi}", applicability = "machine-applicable")]
     pub span: Span,
-
-    pub default_abi: &'static str,
+    pub default_abi: ExternAbi,
 }
 
 #[derive(LintDiagnostic)]
@@ -3012,7 +3108,10 @@ pub(crate) struct UnsafeAttrOutsideUnsafeSuggestion {
 #[diag(lint_out_of_scope_macro_calls)]
 #[help]
 pub(crate) struct OutOfScopeMacroCalls {
+    #[label]
+    pub span: Span,
     pub path: String,
+    pub location: String,
 }
 
 #[derive(LintDiagnostic)]
@@ -3054,6 +3153,13 @@ pub(crate) struct UnqualifiedLocalImportsDiag {}
 #[derive(LintDiagnostic)]
 #[diag(lint_reserved_string)]
 pub(crate) struct ReservedString {
+    #[suggestion(code = " ", applicability = "machine-applicable")]
+    pub suggestion: Span,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_reserved_multihash)]
+pub(crate) struct ReservedMultihash {
     #[suggestion(code = " ", applicability = "machine-applicable")]
     pub suggestion: Span,
 }

@@ -1,10 +1,9 @@
-#![feature(async_closure)]
 //@ edition: 2021
 
 //@ aux-build: executor.rs
 extern crate executor;
 
-async fn call_once(f: impl async FnOnce()) {
+async fn call_once(f: impl AsyncFnOnce()) {
     f().await;
 }
 

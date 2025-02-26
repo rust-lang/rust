@@ -6,8 +6,9 @@ LL |     let x = Enum::Foo(a: 3, b: 4);
    |
 help: if `Enum::Foo` is a struct, use braces as delimiters
    |
-LL |     let x = Enum::Foo { a: 3, b: 4 };
-   |                       ~            ~
+LL -     let x = Enum::Foo(a: 3, b: 4);
+LL +     let x = Enum::Foo { a: 3, b: 4 };
+   |
 help: if `Enum::Foo` is a function, use the arguments directly
    |
 LL -     let x = Enum::Foo(a: 3, b: 4);
@@ -22,8 +23,9 @@ LL |         Enum::Foo(a, b) => {}
    |
 help: the struct variant's fields are being ignored
    |
-LL |         Enum::Foo { a: _, b: _ } => {}
-   |                   ~~~~~~~~~~~~~~
+LL -         Enum::Foo(a, b) => {}
+LL +         Enum::Foo { a: _, b: _ } => {}
+   |
 
 error[E0769]: tuple variant `Enum::Bar` written as struct variant
   --> $DIR/recover-from-bad-variant.rs:12:9
@@ -33,8 +35,9 @@ LL |         Enum::Bar { a, b } => {}
    |
 help: use the tuple variant pattern syntax instead
    |
-LL |         Enum::Bar(a, b) => {}
-   |                  ~~~~~~
+LL -         Enum::Bar { a, b } => {}
+LL +         Enum::Bar(a, b) => {}
+   |
 
 error: aborting due to 3 previous errors
 

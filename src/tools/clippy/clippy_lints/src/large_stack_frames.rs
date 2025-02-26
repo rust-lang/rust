@@ -150,11 +150,11 @@ impl<'tcx> LateLintPass<'tcx> for LargeStackFrames {
         }
 
         let mir = cx.tcx.optimized_mir(def_id);
-        let param_env = cx.tcx.param_env(def_id);
+        let typing_env = mir.typing_env(cx.tcx);
 
         let sizes_of_locals = || {
             mir.local_decls.iter().filter_map(|local| {
-                let layout = cx.tcx.layout_of(param_env.and(local.ty)).ok()?;
+                let layout = cx.tcx.layout_of(typing_env.as_query_input(local.ty)).ok()?;
                 Some((local, layout.size.bytes()))
             })
         };

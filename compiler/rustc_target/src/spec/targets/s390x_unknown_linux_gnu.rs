@@ -1,14 +1,12 @@
-use crate::abi::Endian;
-use crate::spec::{SanitizerSet, StackProbeType, Target, base};
+use rustc_abi::Endian;
+
+use crate::spec::{SanitizerSet, StackProbeType, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::linux_gnu::opts();
     base.endian = Endian::Big;
     // z10 is the oldest CPU supported by LLVM
     base.cpu = "z10".into();
-    // FIXME: The ABI implementation in abi/call/s390x.rs is for now hard-coded to assume the no-vector
-    // ABI. Pass the -vector feature string to LLVM to respect this assumption.
-    base.features = "-vector".into();
     base.max_atomic_width = Some(128);
     base.min_global_align = Some(16);
     base.stack_probes = StackProbeType::Inline;
@@ -17,7 +15,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "s390x-unknown-linux-gnu".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("S390x Linux (kernel 3.2, glibc 2.17)".into()),
             tier: Some(2),
             host_tools: Some(true),

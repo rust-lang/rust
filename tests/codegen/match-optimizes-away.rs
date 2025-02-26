@@ -1,5 +1,5 @@
 //
-//@ compile-flags: -O
+//@ compile-flags: -Copt-level=3
 #![crate_type = "lib"]
 
 pub enum Three {

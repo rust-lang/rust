@@ -1,4 +1,4 @@
-use crate::spec::{Target, TargetOptions, base};
+use crate::spec::{FloatAbi, Target, TargetMetadata, TargetOptions, base};
 
 // This target is for glibc Linux on ARMv7 without thumb-mode, NEON or
 // hardfloat.
@@ -6,7 +6,7 @@ use crate::spec::{Target, TargetOptions, base};
 pub(crate) fn target() -> Target {
     Target {
         llvm_target: "armv7-unknown-linux-gnueabi".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("Armv7-A Linux (kernel 4.15, glibc 2.27)".into()),
             tier: Some(2),
             host_tools: Some(false),
@@ -17,6 +17,7 @@ pub(crate) fn target() -> Target {
         arch: "arm".into(),
         options: TargetOptions {
             abi: "eabi".into(),
+            llvm_floatabi: Some(FloatAbi::Soft),
             features: "+v7,+thumb2,+soft-float,-neon".into(),
             max_atomic_width: Some(64),
             mcount: "\u{1}__gnu_mcount_nc".into(),

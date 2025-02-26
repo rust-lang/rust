@@ -1,5 +1,6 @@
 //! Code for applying replacement templates for matches that have previously been found.
 
+use ide_db::text_edit::TextEdit;
 use ide_db::{FxHashMap, FxHashSet};
 use itertools::Itertools;
 use parser::Edition;
@@ -7,7 +8,6 @@ use syntax::{
     ast::{self, AstNode, AstToken},
     SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, TextRange, TextSize,
 };
-use text_edit::TextEdit;
 
 use crate::{fragments, resolving::ResolvedRule, Match, SsrMatches};
 

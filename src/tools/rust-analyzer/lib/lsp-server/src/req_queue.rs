@@ -1,7 +1,5 @@
 use std::collections::HashMap;
 
-use serde::Serialize;
-
 use crate::{ErrorCode, Request, RequestId, Response, ResponseError};
 
 /// Manages the set of pending requests, both incoming and outgoing.
@@ -56,7 +54,7 @@ impl<I> Incoming<I> {
 }
 
 impl<O> Outgoing<O> {
-    pub fn register<P: Serialize>(&mut self, method: String, params: P, data: O) -> Request {
+    pub fn register<P: serde::Serialize>(&mut self, method: String, params: P, data: O) -> Request {
         let id = RequestId::from(self.next_id);
         self.pending.insert(id.clone(), data);
         self.next_id += 1;

@@ -6,7 +6,7 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::mono::{Linkage, Visibility};
-use rustc_middle::ty::layout::{FnAbiOf, LayoutOf};
+use rustc_middle::ty::layout::{FnAbiOf, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Instance, TypeVisitableExt};
 
 use crate::context::CodegenCx;
@@ -27,11 +27,8 @@ impl<'gcc, 'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         let DefKind::Static { nested, .. } = self.tcx.def_kind(def_id) else { bug!() };
         // Nested statics do not have a type, so pick a dummy type and let `codegen_static` figure out
         // the gcc type from the actual evaluated initializer.
-        let ty = if nested {
-            self.tcx.types.unit
-        } else {
-            instance.ty(self.tcx, ty::ParamEnv::reveal_all())
-        };
+        let ty =
+            if nested { self.tcx.types.unit } else { instance.ty(self.tcx, self.typing_env()) };
         let gcc_type = self.layout_of(ty).gcc_type(self);
 
         let is_tls = attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL);
@@ -64,10 +61,7 @@ impl<'gcc, 'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         // compiler-rt, then we want to implicitly compile everything with hidden
         // visibility as we're going to link this object all over the place but
         // don't want the symbols to get exported.
-        if linkage != Linkage::Internal
-            && linkage != Linkage::Private
-            && self.tcx.is_compiler_builtins(LOCAL_CRATE)
-        {
+        if linkage != Linkage::Internal && self.tcx.is_compiler_builtins(LOCAL_CRATE) {
             #[cfg(feature = "master")]
             decl.add_attribute(FnAttribute::Visibility(gccjit::Visibility::Hidden));
         } else {

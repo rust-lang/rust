@@ -354,7 +354,7 @@ impl<'tcx> Stack {
         self.borrows.get(idx).cloned()
     }
 
-    #[allow(clippy::len_without_is_empty)] // Stacks are never empty
+    #[expect(clippy::len_without_is_empty)] // Stacks are never empty
     pub fn len(&self) -> usize {
         self.borrows.len()
     }

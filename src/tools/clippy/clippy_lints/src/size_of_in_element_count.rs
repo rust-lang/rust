@@ -63,8 +63,7 @@ fn get_pointee_ty_and_count_expr<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'_>,
 ) -> Option<(Ty<'tcx>, &'tcx Expr<'tcx>)> {
-    const METHODS: [&str; 11] = [
-        "write_bytes",
+    const METHODS: [&str; 10] = [
         "copy_to",
         "copy_from",
         "copy_to_nonoverlapping",
@@ -79,7 +78,7 @@ fn get_pointee_ty_and_count_expr<'tcx>(
 
     if let ExprKind::Call(func, [.., count]) = expr.kind
         // Find calls to ptr::{copy, copy_nonoverlapping}
-        // and ptr::{swap_nonoverlapping, write_bytes},
+        // and ptr::swap_nonoverlapping,
         && let ExprKind::Path(ref func_qpath) = func.kind
         && let Some(def_id) = cx.qpath_res(func_qpath, func.hir_id).opt_def_id()
         && matches!(cx.tcx.get_diagnostic_name(def_id), Some(
@@ -88,7 +87,6 @@ fn get_pointee_ty_and_count_expr<'tcx>(
             | sym::ptr_slice_from_raw_parts
             | sym::ptr_slice_from_raw_parts_mut
             | sym::ptr_swap_nonoverlapping
-            | sym::ptr_write_bytes
             | sym::slice_from_raw_parts
             | sym::slice_from_raw_parts_mut
         ))
@@ -97,9 +95,9 @@ fn get_pointee_ty_and_count_expr<'tcx>(
         && let Some(pointee_ty) = cx.typeck_results().node_args(func.hir_id).types().next()
     {
         return Some((pointee_ty, count));
-    };
+    }
     if let ExprKind::MethodCall(method_path, ptr_self, [.., count], _) = expr.kind
-        // Find calls to copy_{from,to}{,_nonoverlapping} and write_bytes methods
+        // Find calls to copy_{from,to}{,_nonoverlapping}
         && let method_ident = method_path.ident.as_str()
         && METHODS.iter().any(|m| *m == method_ident)
 
@@ -108,7 +106,7 @@ fn get_pointee_ty_and_count_expr<'tcx>(
             cx.typeck_results().expr_ty(ptr_self).kind()
     {
         return Some((*pointee_ty, count));
-    };
+    }
     None
 }
 
@@ -121,6 +119,8 @@ impl<'tcx> LateLintPass<'tcx> for SizeOfInElementCount {
              instead of a count of elements of `T`";
 
         if let Some((pointee_ty, count_expr)) = get_pointee_ty_and_count_expr(cx, expr)
+            // Using a number of bytes for a byte type isn't suspicious
+            && pointee_ty != cx.tcx.types.u8
             // Find calls to functions with an element count parameter and get
             // the pointee type and count parameter expression
 
@@ -130,6 +130,6 @@ impl<'tcx> LateLintPass<'tcx> for SizeOfInElementCount {
             && pointee_ty == ty_used_for_size_of
         {
             span_lint_and_help(cx, SIZE_OF_IN_ELEMENT_COUNT, count_expr.span, LINT_MSG, None, HELP_MSG);
-        };
+        }
     }
 }

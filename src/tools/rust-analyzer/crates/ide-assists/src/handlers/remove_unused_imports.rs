@@ -1,6 +1,7 @@
 use std::collections::hash_map::Entry;
 
 use hir::{FileRange, HirFileIdExt, InFile, InRealFile, Module, ModuleSource};
+use ide_db::text_edit::TextRange;
 use ide_db::{
     defs::Definition,
     search::{FileReference, ReferenceCategory, SearchScope},
@@ -10,7 +11,6 @@ use syntax::{
     ast::{self, Rename},
     AstNode,
 };
-use text_edit::TextRange;
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 

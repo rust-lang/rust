@@ -8,7 +8,7 @@ fn a() {
 
 fn b() {
     match 2 {
-        (_ % 4) => () //~ error: expected one of `)`, `,`, or `|`, found `%`
+        (_ % 4) => () //~ error: expected one of `)`, `,`, `if`, or `|`, found `%`
     }
 }
 
@@ -40,7 +40,7 @@ fn f() {
 
 fn g() {
     match 7 {
-        (_ * 0)..5 => () //~ error: expected one of `)`, `,`, or `|`, found `*`
+        (_ * 0)..5 => () //~ error: expected one of `)`, `,`, `if`, or `|`, found `*`
     }
 }
 

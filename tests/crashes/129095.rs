@@ -1,5 +1,5 @@
 //@ known-bug: rust-lang/rust#129095
-//@ compile-flags: -Zmir-opt-level=5 -Zvalidate-mir
+//@ compile-flags: -Zmir-enable-passes=+GVN -Zmir-enable-passes=+Inline -Zvalidate-mir
 
 pub fn function_with_bytes<const BYTES: &'static [u8; 4]>() -> &'static [u8] {
     BYTES

@@ -39,7 +39,7 @@ use crate::sys::c;
 // See https://docs.microsoft.com/en-us/cpp/c-runtime-library/crt-initialization?view=msvc-170
 #[cfg(target_vendor = "win7")]
 #[used]
-#[link_section = ".CRT$XCT"]
+#[unsafe(link_section = ".CRT$XCT")]
 static INIT_TABLE_ENTRY: unsafe extern "C" fn() = init;
 
 /// Preload some imported functions.

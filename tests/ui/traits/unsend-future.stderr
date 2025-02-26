@@ -4,7 +4,7 @@ error: future cannot be sent between threads safely
 LL |     require_handler(handler)
    |                     ^^^^^^^ future returned by `handler` is not `Send`
    |
-   = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `*const i32`, which is required by `fn() -> impl Future<Output = ()> {handler}: Handler`
+   = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `*const i32`
 note: future is not `Send` as this value is used across an await
   --> $DIR/unsend-future.rs:15:14
    |

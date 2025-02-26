@@ -10,7 +10,7 @@
 //@ has - '//*[@id="main-content"]/*[@class="section-header"]' 'Functions'
 //@ has - '//*[@id="main-content"]/*[@class="section-header"]' 'Traits'
 // Checking that there are only three items.
-//@ count - '//*[@id="main-content"]//*[@class="item-name"]' 3
+//@ count - '//*[@id="main-content"]//dt' 3
 //@ has - '//*[@id="main-content"]//a[@href="struct.Bar.html"]' 'Bar'
 //@ has - '//*[@id="main-content"]//a[@href="fn.foo.html"]' 'foo'
 //@ has - '//*[@id="main-content"]//a[@href="trait.Foo.html"]' 'Foo'

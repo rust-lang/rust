@@ -7,7 +7,7 @@
 //    This causes hygiene information to be saved to the incr cache.
 // 2. One function is the foreign crate is modified. This causes the
 //    optimized mir for an unmodified function to be loaded from the
-//@    incremental cache and written out to the crate metadata.
+//    incremental cache and written out to the crate metadata.
 // 3. In the process of loading and writing out this function's MIR,
 //    we load hygiene information from the incremental cache and
 //    write it to our metadata.

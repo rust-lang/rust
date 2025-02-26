@@ -1,5 +1,4 @@
 //@ edition: 2024
-//@ compile-flags: -Zunstable-options
 
 #![feature(rustc_attrs)]
 #![feature(type_alias_impl_trait)]

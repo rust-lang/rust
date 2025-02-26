@@ -2,13 +2,14 @@
 //! when all of their successors are unreachable. This is achieved through a
 //! post-order traversal of the blocks.
 
+use rustc_abi::Size;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::Scalar;
-use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_target::abi::Size;
+
+use crate::patch::MirPatch;
 
 pub(super) struct UnreachablePropagation;
 
@@ -43,12 +44,6 @@ impl crate::MirPass<'_> for UnreachablePropagation {
             }
         }
 
-        if !tcx
-            .consider_optimizing(|| format!("UnreachablePropagation {:?} ", body.source.def_id()))
-        {
-            return;
-        }
-
         patch.apply(body);
 
         // We do want do keep some unreachable blocks, but make them empty.
@@ -57,6 +52,10 @@ impl crate::MirPass<'_> for UnreachablePropagation {
         for bb in unreachable_blocks {
             body.basic_blocks_mut()[bb].statements.clear();
         }
+    }
+
+    fn is_required(&self) -> bool {
+        false
     }
 }
 

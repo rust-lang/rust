@@ -3,7 +3,6 @@
 //@ compile-flags: --test
 
 #![allow(incomplete_features)]
-#![feature(async_closure)]
 #![feature(auto_traits)]
 #![feature(box_patterns)]
 #![feature(const_trait_impl)]
@@ -570,7 +569,7 @@ fn test_pat() {
     c1!(pat, [ &pat ], "&pat");
     c1!(pat, [ &mut pat ], "&mut pat");
 
-    // PatKind::Lit
+    // PatKind::Expr
     c1!(pat, [ 1_000_i8 ], "1_000_i8");
 
     // PatKind::Range

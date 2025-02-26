@@ -9,10 +9,11 @@ use rustc_ast::token::{self, Delimiter, NonterminalKind, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream};
 use rustc_ast::{self as ast, DUMMY_NODE_ID, NodeId};
 use rustc_ast_pretty::pprust;
-use rustc_attr::{self as attr, TransparencyError};
+use rustc_attr_parsing::{AttributeKind, find_attr};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::{Applicability, ErrorGuaranteed};
 use rustc_feature::Features;
+use rustc_hir as hir;
 use rustc_lint_defs::BuiltinLintDiag;
 use rustc_lint_defs::builtin::{
     RUST_2021_INCOMPATIBLE_OR_PATTERNS, SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
@@ -20,10 +21,9 @@ use rustc_lint_defs::builtin::{
 use rustc_parse::parser::{ParseNtResult, Parser, Recovery};
 use rustc_session::Session;
 use rustc_session::parse::ParseSess;
-use rustc_span::Span;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::Transparency;
-use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent, kw, sym};
+use rustc_span::{Ident, MacroRulesNormalizedIdent, Span, kw, sym};
 use tracing::{debug, instrument, trace, trace_span};
 
 use super::diagnostics;
@@ -371,7 +371,7 @@ pub fn compile_declarative_macro(
     features: &Features,
     macro_def: &ast::MacroDef,
     ident: Ident,
-    attrs: &[ast::Attribute],
+    attrs: &[hir::Attribute],
     span: Span,
     node_id: NodeId,
     edition: Edition,
@@ -379,7 +379,6 @@ pub fn compile_declarative_macro(
     let mk_syn_ext = |expander| {
         SyntaxExtension::new(
             sess,
-            features,
             SyntaxExtensionKind::LegacyBang(expander),
             span,
             Vec::new(),
@@ -391,7 +390,6 @@ pub fn compile_declarative_macro(
     };
     let dummy_syn_ext = |guar| (mk_syn_ext(Box::new(DummyExpander(guar))), Vec::new());
 
-    let dcx = sess.dcx();
     let lhs_nm = Ident::new(sym::lhs, span);
     let rhs_nm = Ident::new(sym::rhs, span);
     let tt_spec = Some(NonterminalKind::TT);
@@ -405,26 +403,35 @@ pub fn compile_declarative_macro(
     // ...quasiquoting this would be nice.
     // These spans won't matter, anyways
     let argument_gram = vec![
-        mbe::TokenTree::Sequence(DelimSpan::dummy(), mbe::SequenceRepetition {
-            tts: vec![
-                mbe::TokenTree::MetaVarDecl(span, lhs_nm, tt_spec),
-                mbe::TokenTree::token(token::FatArrow, span),
-                mbe::TokenTree::MetaVarDecl(span, rhs_nm, tt_spec),
-            ],
-            separator: Some(Token::new(if macro_rules { token::Semi } else { token::Comma }, span)),
-            kleene: mbe::KleeneToken::new(mbe::KleeneOp::OneOrMore, span),
-            num_captures: 2,
-        }),
+        mbe::TokenTree::Sequence(
+            DelimSpan::dummy(),
+            mbe::SequenceRepetition {
+                tts: vec![
+                    mbe::TokenTree::MetaVarDecl(span, lhs_nm, tt_spec),
+                    mbe::TokenTree::token(token::FatArrow, span),
+                    mbe::TokenTree::MetaVarDecl(span, rhs_nm, tt_spec),
+                ],
+                separator: Some(Token::new(
+                    if macro_rules { token::Semi } else { token::Comma },
+                    span,
+                )),
+                kleene: mbe::KleeneToken::new(mbe::KleeneOp::OneOrMore, span),
+                num_captures: 2,
+            },
+        ),
         // to phase into semicolon-termination instead of semicolon-separation
-        mbe::TokenTree::Sequence(DelimSpan::dummy(), mbe::SequenceRepetition {
-            tts: vec![mbe::TokenTree::token(
-                if macro_rules { token::Semi } else { token::Comma },
-                span,
-            )],
-            separator: None,
-            kleene: mbe::KleeneToken::new(mbe::KleeneOp::ZeroOrMore, span),
-            num_captures: 0,
-        }),
+        mbe::TokenTree::Sequence(
+            DelimSpan::dummy(),
+            mbe::SequenceRepetition {
+                tts: vec![mbe::TokenTree::token(
+                    if macro_rules { token::Semi } else { token::Comma },
+                    span,
+                )],
+                separator: None,
+                kleene: mbe::KleeneToken::new(mbe::KleeneOp::ZeroOrMore, span),
+                num_captures: 0,
+            },
+        ),
     ];
     // Convert it into `MatcherLoc` form.
     let argument_gram = mbe::macro_parser::compute_locs(&argument_gram);
@@ -533,16 +540,8 @@ pub fn compile_declarative_macro(
 
     check_emission(macro_check::check_meta_variables(&sess.psess, node_id, span, &lhses, &rhses));
 
-    let (transparency, transparency_error) = attr::find_transparency(attrs, macro_rules);
-    match transparency_error {
-        Some(TransparencyError::UnknownTransparency(value, span)) => {
-            dcx.span_err(span, format!("unknown macro transparency: `{value}`"));
-        }
-        Some(TransparencyError::MultipleTransparencyAttrs(old_span, new_span)) => {
-            dcx.span_err(vec![old_span, new_span], "multiple macro transparency attributes");
-        }
-        None => {}
-    }
+    let transparency = find_attr!(attrs, AttributeKind::MacroTransparency(x) => *x)
+        .unwrap_or(Transparency::fallback(macro_rules));
 
     if let Some(guar) = guar {
         // To avoid warning noise, only consider the rules of this
@@ -693,7 +692,7 @@ fn has_compile_error_macro(rhs: &mbe::TokenTree) -> bool {
                     && let mbe::TokenTree::Token(bang) = bang
                     && let TokenKind::Not = bang.kind
                     && let mbe::TokenTree::Delimited(.., del) = args
-                    && del.delim != Delimiter::Invisible
+                    && !del.delim.skip()
                 {
                     true
                 } else {

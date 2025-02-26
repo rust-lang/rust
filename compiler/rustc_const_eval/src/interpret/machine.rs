@@ -6,6 +6,7 @@ use std::borrow::{Borrow, Cow};
 use std::fmt::Debug;
 use std::hash::Hash;
 
+use rustc_abi::{Align, Size};
 use rustc_apfloat::{Float, FloatConvert};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_middle::query::TyCtxtAt;
@@ -14,8 +15,7 @@ use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::{mir, ty};
 use rustc_span::Span;
 use rustc_span::def_id::DefId;
-use rustc_target::abi::{Align, Size};
-use rustc_target::spec::abi::Abi as CallAbi;
+use rustc_target::callconv::FnAbi;
 
 use super::{
     AllocBytes, AllocId, AllocKind, AllocRange, Allocation, CTFE_ALLOC_SALT, ConstAllocation,
@@ -202,7 +202,7 @@ pub trait Machine<'tcx>: Sized {
     fn find_mir_or_eval_fn(
         ecx: &mut InterpCx<'tcx, Self>,
         instance: ty::Instance<'tcx>,
-        abi: CallAbi,
+        abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[FnArg<'tcx, Self::Provenance>],
         destination: &MPlaceTy<'tcx, Self::Provenance>,
         target: Option<mir::BasicBlock>,
@@ -214,7 +214,7 @@ pub trait Machine<'tcx>: Sized {
     fn call_extra_fn(
         ecx: &mut InterpCx<'tcx, Self>,
         fn_val: Self::ExtraFnVal,
-        abi: CallAbi,
+        abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[FnArg<'tcx, Self::Provenance>],
         destination: &MPlaceTy<'tcx, Self::Provenance>,
         target: Option<mir::BasicBlock>,
@@ -278,6 +278,12 @@ pub trait Machine<'tcx>: Sized {
         F2::NAN
     }
 
+    /// Determines the result of `min`/`max` on floats when the arguments are equal.
+    fn equal_float_min_max<F: Float>(_ecx: &InterpCx<'tcx, Self>, a: F, _b: F) -> F {
+        // By default, we pick the left argument.
+        a
+    }
+
     /// Called before a basic block terminator is executed.
     #[inline]
     fn before_terminator(_ecx: &mut InterpCx<'tcx, Self>) -> InterpResult<'tcx> {
@@ -286,6 +292,9 @@ pub trait Machine<'tcx>: Sized {
 
     /// Determines the result of a `NullaryOp::UbChecks` invocation.
     fn ub_checks(_ecx: &InterpCx<'tcx, Self>) -> InterpResult<'tcx, bool>;
+
+    /// Determines the result of a `NullaryOp::ContractChecks` invocation.
+    fn contract_checks(_ecx: &InterpCx<'tcx, Self>) -> InterpResult<'tcx, bool>;
 
     /// Called when the interpreter encounters a `StatementKind::ConstEvalCounter` instruction.
     /// You can use this to detect long or endlessly running programs.
@@ -328,11 +337,11 @@ pub trait Machine<'tcx>: Sized {
         addr: u64,
     ) -> InterpResult<'tcx, Pointer<Option<Self::Provenance>>>;
 
-    /// Marks a pointer as exposed, allowing it's provenance
+    /// Marks a pointer as exposed, allowing its provenance
     /// to be recovered. "Pointer-to-int cast"
-    fn expose_ptr(
-        ecx: &mut InterpCx<'tcx, Self>,
-        ptr: Pointer<Self::Provenance>,
+    fn expose_provenance(
+        ecx: &InterpCx<'tcx, Self>,
+        provenance: Self::Provenance,
     ) -> InterpResult<'tcx>;
 
     /// Convert a pointer with provenance into an allocation-offset pair and extra provenance info.
@@ -541,10 +550,14 @@ pub trait Machine<'tcx>: Sized {
         interp_ok(ReturnAction::Normal)
     }
 
-    /// Called immediately after an "immediate" local variable is read
+    /// Called immediately after an "immediate" local variable is read in a given frame
     /// (i.e., this is called for reads that do not end up accessing addressable memory).
     #[inline(always)]
-    fn after_local_read(_ecx: &InterpCx<'tcx, Self>, _local: mir::Local) -> InterpResult<'tcx> {
+    fn after_local_read(
+        _ecx: &InterpCx<'tcx, Self>,
+        _frame: &Frame<'tcx, Self::Provenance, Self::FrameExtra>,
+        _local: mir::Local,
+    ) -> InterpResult<'tcx> {
         interp_ok(())
     }
 
@@ -653,7 +666,7 @@ pub macro compile_time_machine(<$tcx: lifetime>) {
     fn call_extra_fn(
         _ecx: &mut InterpCx<$tcx, Self>,
         fn_val: !,
-        _abi: CallAbi,
+        _abi: &FnAbi<$tcx, Ty<$tcx>>,
         _args: &[FnArg<$tcx>],
         _destination: &MPlaceTy<$tcx, Self::Provenance>,
         _target: Option<mir::BasicBlock>,
@@ -664,6 +677,13 @@ pub macro compile_time_machine(<$tcx: lifetime>) {
 
     #[inline(always)]
     fn ub_checks(_ecx: &InterpCx<$tcx, Self>) -> InterpResult<$tcx, bool> {
+        // We can't look at `tcx.sess` here as that can differ across crates, which can lead to
+        // unsound differences in evaluating the same constant at different instantiation sites.
+        interp_ok(true)
+    }
+
+    #[inline(always)]
+    fn contract_checks(_ecx: &InterpCx<$tcx, Self>) -> InterpResult<$tcx, bool> {
         // We can't look at `tcx.sess` here as that can differ across crates, which can lead to
         // unsound differences in evaluating the same constant at different instantiation sites.
         interp_ok(true)

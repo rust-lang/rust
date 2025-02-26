@@ -9,7 +9,7 @@
 //@ count - '//*[@id="main-content"]/*[@class="section-header"]' 1
 //@ has - '//*[@id="main-content"]/*[@class="section-header"]' 'Structs'
 //@ has - '//*[@id="main-content"]//a[@href="struct.Reexport.html"]' 'Reexport'
-//@ has - '//*[@id="main-content"]//*[@class="desc docblock-short"]' 'Visible. Original.'
+//@ has - '//*[@id="main-content"]//dd' 'Visible. Original.'
 
 mod private {
     /// Original.

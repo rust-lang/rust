@@ -9,8 +9,9 @@ fn main() {
 
     // CHECK: [[array_lit:_.*]] = [const 42_u32; 8];
     // CHECK-NOT: {{_.*}} = Len(
+    // CHECK-NOT: {{_.*}} = PtrMetadata(
     // CHECK-NOT: {{_.*}} = Lt(
-    // CHECK: {{_.*}} = const 8_usize;
+    // CHECK: {{_.*}} = const 2_usize;
     // CHECK: {{_.*}} = const true;
     // CHECK: assert(const true
 

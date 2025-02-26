@@ -6,8 +6,9 @@ LL |     origin.2;
    |
 help: a field with a similar name exists
    |
-LL |     origin.0;
-   |            ~
+LL -     origin.2;
+LL +     origin.0;
+   |
 
 error[E0609]: no field `2` on type `({integer}, {integer})`
   --> $DIR/tuple-index-out-of-bounds.rs:12:11

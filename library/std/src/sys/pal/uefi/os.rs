@@ -17,111 +17,50 @@ pub fn errno() -> RawOsError {
 pub fn error_string(errno: RawOsError) -> String {
     // Keep the List in Alphabetical Order
     // The Messages are taken from UEFI Specification Appendix D - Status Codes
-    match r_efi::efi::Status::from_usize(errno) {
-        Status::ABORTED => "The operation was aborted.".to_owned(),
-        Status::ACCESS_DENIED => "Access was denied.".to_owned(),
-        Status::ALREADY_STARTED => "The protocol has already been started.".to_owned(),
-        Status::BAD_BUFFER_SIZE => "The buffer was not the proper size for the request.".to_owned(),
-        Status::BUFFER_TOO_SMALL => {
-                "The buffer is not large enough to hold the requested data. The required buffer size is returned in the appropriate parameter when this error occurs.".to_owned()
-        }
-        Status::COMPROMISED_DATA => {
-                "The security status of the data is unknown or compromised and the data must be updated or replaced to restore a valid security status.".to_owned()
-        }
-        Status::CONNECTION_FIN => {
-                "The receiving operation fails because the communication peer has closed the connection and there is no more data in the receive buffer of the instance.".to_owned()
-        }
-        Status::CONNECTION_REFUSED => {
-                "The receiving or transmission operation fails because this connection is refused.".to_owned()
-        }
-        Status::CONNECTION_RESET => {
-                "The connect fails because the connection is reset either by instance itself or the communication peer.".to_owned()
-        }
-        Status::CRC_ERROR => "A CRC error was detected.".to_owned(),
-        Status::DEVICE_ERROR =>             "The physical device reported an error while attempting the operation.".to_owned()
-        ,
-        Status::END_OF_FILE => {
-            "The end of the file was reached.".to_owned()
-        }
-        Status::END_OF_MEDIA => {
-            "Beginning or end of media was reached".to_owned()
-        }
-        Status::HOST_UNREACHABLE => {
-            "The remote host is not reachable.".to_owned()
-        }
-        Status::HTTP_ERROR => {
-            "A HTTP error occurred during the network operation.".to_owned()
-        }
-        Status::ICMP_ERROR => {
-                "An ICMP error occurred during the network operation.".to_owned()
-        }
-        Status::INCOMPATIBLE_VERSION => {
-                "The function encountered an internal version that was incompatible with a version requested by the caller.".to_owned()
-        }
-        Status::INVALID_LANGUAGE => {
-            "The language specified was invalid.".to_owned()
-        }
-        Status::INVALID_PARAMETER => {
-            "A parameter was incorrect.".to_owned()
-        }
-        Status::IP_ADDRESS_CONFLICT => {
-            "There is an address conflict address allocation".to_owned()
-        }
-        Status::LOAD_ERROR => {
-            "The image failed to load.".to_owned()
-        }
-        Status::MEDIA_CHANGED => {
-                "The medium in the device has changed since the last access.".to_owned()
-        }
-        Status::NETWORK_UNREACHABLE => {
-                "The network containing the remote host is not reachable.".to_owned()
-        }
-        Status::NO_MAPPING => {
-            "A mapping to a device does not exist.".to_owned()
-        }
-        Status::NO_MEDIA => {
-                "The device does not contain any medium to perform the operation.".to_owned()
-        }
-        Status::NO_RESPONSE => {
-                "The server was not found or did not respond to the request.".to_owned()
-        }
-        Status::NOT_FOUND => "The item was not found.".to_owned(),
-        Status::NOT_READY => {
-            "There is no data pending upon return.".to_owned()
-        }
-        Status::NOT_STARTED => {
-            "The protocol has not been started.".to_owned()
-        }
-        Status::OUT_OF_RESOURCES => {
-            "A resource has run out.".to_owned()
-        }
-        Status::PROTOCOL_ERROR => {
-                "A protocol error occurred during the network operation.".to_owned()
-        }
-        Status::PROTOCOL_UNREACHABLE => {
-            "An ICMP protocol unreachable error is received.".to_owned()
-        }
-        Status::SECURITY_VIOLATION => {
-                "The function was not performed due to a security violation.".to_owned()
-        }
-        Status::TFTP_ERROR => {
-            "A TFTP error occurred during the network operation.".to_owned()
-        }
-        Status::TIMEOUT => "The timeout time expired.".to_owned(),
-        Status::UNSUPPORTED => {
-            "The operation is not supported.".to_owned()
-        }
-        Status::VOLUME_FULL => {
-            "There is no more space on the file system.".to_owned()
-        }
-        Status::VOLUME_CORRUPTED => {
-                "An inconstancy was detected on the file system causing the operating to fail.".to_owned()
-        }
-        Status::WRITE_PROTECTED => {
-            "The device cannot be written to.".to_owned()
-        }
-        _ => format!("Status: {}", errno),
-    }
+    #[rustfmt::skip]
+    let msg = match r_efi::efi::Status::from_usize(errno) {
+        Status::ABORTED => "The operation was aborted.",
+        Status::ACCESS_DENIED => "Access was denied.",
+        Status::ALREADY_STARTED => "The protocol has already been started.",
+        Status::BAD_BUFFER_SIZE => "The buffer was not the proper size for the request.",
+        Status::BUFFER_TOO_SMALL => "The buffer is not large enough to hold the requested data. The required buffer size is returned in the appropriate parameter when this error occurs.",
+        Status::COMPROMISED_DATA => "The security status of the data is unknown or compromised and the data must be updated or replaced to restore a valid security status.",
+        Status::CONNECTION_FIN => "The receiving operation fails because the communication peer has closed the connection and there is no more data in the receive buffer of the instance.",
+        Status::CONNECTION_REFUSED => "The receiving or transmission operation fails because this connection is refused.",
+        Status::CONNECTION_RESET => "The connect fails because the connection is reset either by instance itself or the communication peer.",
+        Status::CRC_ERROR => "A CRC error was detected.",
+        Status::DEVICE_ERROR => "The physical device reported an error while attempting the operation.",
+        Status::END_OF_FILE => "The end of the file was reached.",
+        Status::END_OF_MEDIA => "Beginning or end of media was reached",
+        Status::HOST_UNREACHABLE => "The remote host is not reachable.",
+        Status::HTTP_ERROR => "A HTTP error occurred during the network operation.",
+        Status::ICMP_ERROR => "An ICMP error occurred during the network operation.",
+        Status::INCOMPATIBLE_VERSION => "The function encountered an internal version that was incompatible with a version requested by the caller.",
+        Status::INVALID_LANGUAGE => "The language specified was invalid.",
+        Status::INVALID_PARAMETER => "A parameter was incorrect.",
+        Status::IP_ADDRESS_CONFLICT => "There is an address conflict address allocation",
+        Status::LOAD_ERROR => "The image failed to load.",
+        Status::MEDIA_CHANGED => "The medium in the device has changed since the last access.",
+        Status::NETWORK_UNREACHABLE => "The network containing the remote host is not reachable.",
+        Status::NO_MAPPING => "A mapping to a device does not exist.",
+        Status::NO_MEDIA => "The device does not contain any medium to perform the operation.",
+        Status::NO_RESPONSE => "The server was not found or did not respond to the request.",
+        Status::NOT_FOUND => "The item was not found.",
+        Status::NOT_READY => "There is no data pending upon return.",
+        Status::NOT_STARTED => "The protocol has not been started.",
+        Status::OUT_OF_RESOURCES => "A resource has run out.",
+        Status::PROTOCOL_ERROR => "A protocol error occurred during the network operation.",
+        Status::PROTOCOL_UNREACHABLE => "An ICMP protocol unreachable error is received.",
+        Status::SECURITY_VIOLATION => "The function was not performed due to a security violation.",
+        Status::TFTP_ERROR => "A TFTP error occurred during the network operation.",
+        Status::TIMEOUT => "The timeout time expired.",
+        Status::UNSUPPORTED => "The operation is not supported.",
+        Status::VOLUME_FULL => "There is no more space on the file system.",
+        Status::VOLUME_CORRUPTED => "An inconstancy was detected on the file system causing the operating to fail.",
+        Status::WRITE_PROTECTED => "The device cannot be written to.",
+        _ => return format!("Status: {errno}"),
+    };
+    msg.to_owned()
 }
 
 pub fn getcwd() -> io::Result<PathBuf> {
@@ -131,7 +70,7 @@ pub fn getcwd() -> io::Result<PathBuf> {
             let path_ptr = unsafe { ((*shell.as_ptr()).get_cur_dir)(crate::ptr::null_mut()) };
             helpers::os_string_from_raw(path_ptr)
                 .map(PathBuf::from)
-                .ok_or(io::const_io_error!(io::ErrorKind::InvalidData, "Invalid path"))
+                .ok_or(io::const_error!(io::ErrorKind::InvalidData, "Invalid path"))
         }
         None => {
             let mut t = current_exe()?;
@@ -147,7 +86,7 @@ pub fn chdir(p: &path::Path) -> io::Result<()> {
     let shell = helpers::open_shell().ok_or(unsupported_err())?;
 
     let mut p = helpers::os_string_to_raw(p.as_os_str())
-        .ok_or(io::const_io_error!(io::ErrorKind::InvalidData, "Invalid path"))?;
+        .ok_or(io::const_error!(io::ErrorKind::InvalidData, "Invalid path"))?;
 
     let r = unsafe { ((*shell.as_ptr()).set_cur_dir)(crate::ptr::null_mut(), p.as_mut_ptr()) };
     if r.is_error() { Err(io::Error::from_raw_os_error(r.as_usize())) } else { Ok(()) }
@@ -290,15 +229,15 @@ mod uefi_env {
 
     pub(crate) fn set(key: &OsStr, val: &OsStr) -> io::Result<()> {
         let mut key_ptr = helpers::os_string_to_raw(key)
-            .ok_or(io::const_io_error!(io::ErrorKind::InvalidInput, "Invalid Key"))?;
+            .ok_or(io::const_error!(io::ErrorKind::InvalidInput, "Invalid Key"))?;
         let mut val_ptr = helpers::os_string_to_raw(val)
-            .ok_or(io::const_io_error!(io::ErrorKind::InvalidInput, "Invalid Value"))?;
+            .ok_or(io::const_error!(io::ErrorKind::InvalidInput, "Invalid Value"))?;
         unsafe { set_raw(key_ptr.as_mut_ptr(), val_ptr.as_mut_ptr()) }
     }
 
     pub(crate) fn unset(key: &OsStr) -> io::Result<()> {
         let mut key_ptr = helpers::os_string_to_raw(key)
-            .ok_or(io::const_io_error!(io::ErrorKind::InvalidInput, "Invalid Key"))?;
+            .ok_or(io::const_error!(io::ErrorKind::InvalidInput, "Invalid Key"))?;
         unsafe { set_raw(key_ptr.as_mut_ptr(), crate::ptr::null_mut()) }
     }
 
@@ -314,7 +253,7 @@ mod uefi_env {
 
         let mut start = 0;
 
-        // UEFI Shell returns all keys seperated by NULL.
+        // UEFI Shell returns all keys separated by NULL.
         // End of string is denoted by two NULLs
         for i in 0.. {
             if unsafe { *val.add(i) } == 0 {
@@ -328,7 +267,7 @@ mod uefi_env {
                 });
                 // SAFETY: val.add(start) is always NULL terminated
                 let val = unsafe { get_raw(shell, val.add(start)) }
-                    .ok_or(io::const_io_error!(io::ErrorKind::InvalidInput, "Invalid Value"))?;
+                    .ok_or(io::const_error!(io::ErrorKind::InvalidInput, "Invalid Value"))?;
 
                 vars.push((key, val));
                 start = i + 1;

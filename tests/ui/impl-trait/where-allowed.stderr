@@ -333,6 +333,9 @@ LL |     let _in_local_variable: impl Fn() = || {};
    |                             ^^^^^^^^^
    |
    = note: `impl Trait` is only allowed in arguments and return types of functions and methods
+   = note: see issue #63065 <https://github.com/rust-lang/rust/issues/63065> for more information
+   = help: add `#![feature(impl_trait_in_bindings)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0562]: `impl Trait` is not allowed in closure return types
   --> $DIR/where-allowed.rs:253:46
@@ -361,8 +364,9 @@ LL |     fn in_trait_impl_return() -> Self::Out;
    = note: distinct uses of `impl Trait` result in different opaque types
 help: change the output type to match the trait
    |
-LL |     fn in_trait_impl_return() -> <() as DummyTrait>::Out { () }
-   |                                  ~~~~~~~~~~~~~~~~~~~~~~~
+LL -     fn in_trait_impl_return() -> impl Debug { () }
+LL +     fn in_trait_impl_return() -> <() as DummyTrait>::Out { () }
+   |
 
 error: defaults for type parameters are only allowed in `struct`, `enum`, `type`, or `trait` definitions
   --> $DIR/where-allowed.rs:245:36

@@ -1,8 +1,8 @@
 //! Definitions shared by macros / syntax extensions and e.g. `rustc_middle`.
 
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
+use rustc_span::Ident;
 use rustc_span::def_id::DefId;
-use rustc_span::symbol::Ident;
 
 use crate::MetaItem;
 

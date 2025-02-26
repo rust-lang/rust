@@ -26,14 +26,17 @@
 
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
+use std::collections::hash_set::Entry as SetEntry;
 use std::fmt;
 use std::hash::Hash;
+use std::sync::Arc;
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::stable_hasher::{Hash64, HashStable, HashingControls, StableHasher};
-use rustc_data_structures::sync::{Lock, Lrc, WorkerLocal};
+use rustc_data_structures::stable_hasher::{HashStable, HashingControls, StableHasher};
+use rustc_data_structures::sync::{Lock, WorkerLocal};
 use rustc_data_structures::unhash::UnhashMap;
+use rustc_hashes::Hash64;
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
@@ -170,6 +173,12 @@ pub enum Transparency {
     /// Identifier produced by an opaque expansion is always resolved at definition-site.
     /// Def-site spans in procedural macros, identifiers from `macro` by default use this.
     Opaque,
+}
+
+impl Transparency {
+    pub fn fallback(macro_rules: bool) -> Self {
+        if macro_rules { Transparency::SemiTransparent } else { Transparency::Opaque }
+    }
 }
 
 impl LocalExpnId {
@@ -903,7 +912,7 @@ impl Span {
     /// allowed inside this span.
     pub fn mark_with_reason(
         self,
-        allow_internal_unstable: Option<Lrc<[Symbol]>>,
+        allow_internal_unstable: Option<Arc<[Symbol]>>,
         reason: DesugaringKind,
         edition: Edition,
         ctx: impl HashStableContext,
@@ -958,7 +967,7 @@ pub struct ExpnData {
     /// List of `#[unstable]`/feature-gated features that the macro is allowed to use
     /// internally without forcing the whole crate to opt-in
     /// to them.
-    pub allow_internal_unstable: Option<Lrc<[Symbol]>>,
+    pub allow_internal_unstable: Option<Arc<[Symbol]>>,
     /// Edition of the crate in which the macro is defined.
     pub edition: Edition,
     /// The `DefId` of the macro being invoked,
@@ -984,7 +993,7 @@ impl ExpnData {
         parent: ExpnId,
         call_site: Span,
         def_site: Span,
-        allow_internal_unstable: Option<Lrc<[Symbol]>>,
+        allow_internal_unstable: Option<Arc<[Symbol]>>,
         edition: Edition,
         macro_def_id: Option<DefId>,
         parent_module: Option<DefId>,
@@ -1036,7 +1045,7 @@ impl ExpnData {
         kind: ExpnKind,
         call_site: Span,
         edition: Edition,
-        allow_internal_unstable: Lrc<[Symbol]>,
+        allow_internal_unstable: Arc<[Symbol]>,
         macro_def_id: Option<DefId>,
         parent_module: Option<DefId>,
     ) -> ExpnData {
@@ -1162,6 +1171,8 @@ pub enum DesugaringKind {
     WhileLoop,
     /// `async Fn()` bound modifier
     BoundModifier,
+    /// Calls to contract checks (`#[requires]` to precond, `#[ensures]` to postcond)
+    Contract,
 }
 
 impl DesugaringKind {
@@ -1178,6 +1189,7 @@ impl DesugaringKind {
             DesugaringKind::ForLoop => "`for` loop",
             DesugaringKind::WhileLoop => "`while` loop",
             DesugaringKind::BoundModifier => "trait bound modifier",
+            DesugaringKind::Contract => "contract check",
         }
     }
 }
@@ -1270,7 +1282,7 @@ pub struct HygieneDecodeContext {
     inner: Lock<HygieneDecodeContextInner>,
 
     /// A set of serialized `SyntaxContext` ids that are currently being decoded on each thread.
-    local_in_progress: WorkerLocal<RefCell<FxHashMap<u32, ()>>>,
+    local_in_progress: WorkerLocal<RefCell<FxHashSet<u32>>>,
 }
 
 /// Register an expansion which has been decoded from the on-disk-cache for the local crate.
@@ -1300,7 +1312,6 @@ pub fn register_expn_id(
     let expn_id = ExpnId { krate, local_id };
     HygieneData::with(|hygiene_data| {
         let _old_data = hygiene_data.foreign_expn_data.insert(expn_id, data);
-        debug_assert!(_old_data.is_none() || cfg!(parallel_compiler));
         let _old_hash = hygiene_data.foreign_expn_hashes.insert(expn_id, hash);
         debug_assert!(_old_hash.is_none() || _old_hash == Some(hash));
         let _old_id = hygiene_data.expn_hash_to_expn_id.insert(hash, expn_id);
@@ -1365,14 +1376,14 @@ pub fn decode_syntax_context<D: Decoder, F: FnOnce(&mut D, u32) -> SyntaxContext
         match inner.decoding.entry(raw_id) {
             Entry::Occupied(ctxt_entry) => {
                 match context.local_in_progress.borrow_mut().entry(raw_id) {
-                    Entry::Occupied(..) => {
+                    SetEntry::Occupied(..) => {
                         // We're decoding this already on the current thread. Return here
                         // and let the function higher up the stack finish decoding to handle
                         // recursive cases.
                         return *ctxt_entry.get();
                     }
-                    Entry::Vacant(entry) => {
-                        entry.insert(());
+                    SetEntry::Vacant(entry) => {
+                        entry.insert();
 
                         // Some other thread is current decoding this. Race with it.
                         *ctxt_entry.get()
@@ -1381,7 +1392,7 @@ pub fn decode_syntax_context<D: Decoder, F: FnOnce(&mut D, u32) -> SyntaxContext
             }
             Entry::Vacant(entry) => {
                 // We are the first thread to start decoding. Mark the current thread as being progress.
-                context.local_in_progress.borrow_mut().insert(raw_id, ());
+                context.local_in_progress.borrow_mut().insert(raw_id);
 
                 // Allocate and store SyntaxContext id *before* calling the decoder function,
                 // as the SyntaxContextData may reference itself.
@@ -1423,18 +1434,7 @@ pub fn decode_syntax_context<D: Decoder, F: FnOnce(&mut D, u32) -> SyntaxContext
             ctxt_data = old.clone();
         }
 
-        let dummy = std::mem::replace(
-            &mut hygiene_data.syntax_context_data[ctxt.as_u32() as usize],
-            ctxt_data,
-        );
-        if cfg!(not(parallel_compiler)) {
-            // Make sure nothing weird happened while `decode_data` was running.
-            // We used `kw::Empty` for the dummy value and we expect nothing to be
-            // modifying the dummy entry.
-            // This does not hold for the parallel compiler as another thread may
-            // have inserted the fully decoded data.
-            assert_eq!(dummy.dollar_crate_name, kw::Empty);
-        }
+        hygiene_data.syntax_context_data[ctxt.as_u32() as usize] = ctxt_data;
     });
 
     // Mark the context as completed

@@ -1,4 +1,5 @@
 [workspace]
+members = ["../error_index_generator"]
 
 [package]
 name = "rustbook"
@@ -9,12 +10,11 @@ edition = "2021"
 [dependencies]
 clap = "4.0.32"
 env_logger = "0.11"
-mdbook-trpl-listing = { path = "../../doc/book/packages/mdbook-trpl-listing" }
-mdbook-trpl-note = { path = "../../doc/book/packages/mdbook-trpl-note" }
+mdbook-trpl = { path = "../../doc/book/packages/mdbook-trpl" }
 mdbook-i18n-helpers = "0.3.3"
-mdbook-spec = { path = "../../doc/reference/mdbook-spec"}
+mdbook-spec = { path = "../../doc/reference/mdbook-spec" }
 
 [dependencies.mdbook]
-version = "0.4.37"
+version = "0.4.45"
 default-features = false
 features = ["search"]

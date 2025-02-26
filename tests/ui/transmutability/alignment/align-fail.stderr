@@ -16,7 +16,6 @@ LL | |             Assume {
 LL | |                 alignment: false,
 LL | |                 lifetimes: true,
 ...  |
-LL | |             }
 LL | |         }>
    | |__________^ required by this bound in `is_maybe_transmutable`
 help: consider removing the leading `&`-reference

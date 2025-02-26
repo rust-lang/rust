@@ -198,10 +198,6 @@ fn generate_mergeable_doctest(
     } else {
         writeln!(output, "mod {test_id} {{\n{}{}", doctest.crates, doctest.maybe_crate_attrs)
             .unwrap();
-        if scraped_test.langstr.no_run {
-            // To prevent having warnings about unused items since they're not called.
-            writeln!(output, "#![allow(unused)]").unwrap();
-        }
         if doctest.has_main_fn {
             output.push_str(&doctest.everything_else);
         } else {

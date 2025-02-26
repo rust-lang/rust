@@ -1,3 +1,5 @@
+//@ reference: attributes.diagnostic.on_unimplemented.intro
+
 #![feature(negative_bounds)]
 
 #[diagnostic::on_unimplemented(message = "this ain't fooing")]

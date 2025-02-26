@@ -17,7 +17,7 @@
       }
   
       bb1: {
-          _2 = copy (((_1.0: std::ptr::Unique<Never>).0: std::ptr::NonNull<Never>).0: *const Never);
+          _2 = copy ((_1.0: std::ptr::Unique<Never>).0: std::ptr::NonNull<Never>) as *const Never (Transmute);
           PlaceMention((*_2));
           unreachable;
       }

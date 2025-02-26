@@ -143,7 +143,7 @@ pub trait CommandExt: Sealed {
     ///
     /// This function, unlike `spawn`, will **not** `fork` the process to create
     /// a new child. Like spawn, however, the default behavior for the stdio
-    /// descriptors will be to inherited from the current process.
+    /// descriptors will be to inherit them from the current process.
     ///
     /// # Notes
     ///

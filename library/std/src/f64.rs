@@ -12,9 +12,6 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 #![allow(missing_docs)]
 
-#[cfg(test)]
-mod tests;
-
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated, deprecated_in_future)]
 pub use core::f64::{
@@ -125,7 +122,7 @@ impl f64 {
     #[stable(feature = "round_ties_even", since = "1.77.0")]
     #[inline]
     pub fn round_ties_even(self) -> f64 {
-        unsafe { intrinsics::rintf64(self) }
+        intrinsics::round_ties_even_f64(self)
     }
 
     /// Returns the integer part of `self`.
@@ -176,90 +173,6 @@ impl f64 {
         self - self.trunc()
     }
 
-    /// Computes the absolute value of `self`.
-    ///
-    /// This function always returns the precise result.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let x = 3.5_f64;
-    /// let y = -3.5_f64;
-    ///
-    /// assert_eq!(x.abs(), x);
-    /// assert_eq!(y.abs(), -y);
-    ///
-    /// assert!(f64::NAN.abs().is_nan());
-    /// ```
-    #[rustc_allow_incoherent_impl]
-    #[must_use = "method returns a new number and does not mutate the original value"]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
-    #[inline]
-    pub const fn abs(self) -> f64 {
-        unsafe { intrinsics::fabsf64(self) }
-    }
-
-    /// Returns a number that represents the sign of `self`.
-    ///
-    /// - `1.0` if the number is positive, `+0.0` or `INFINITY`
-    /// - `-1.0` if the number is negative, `-0.0` or `NEG_INFINITY`
-    /// - NaN if the number is NaN
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let f = 3.5_f64;
-    ///
-    /// assert_eq!(f.signum(), 1.0);
-    /// assert_eq!(f64::NEG_INFINITY.signum(), -1.0);
-    ///
-    /// assert!(f64::NAN.signum().is_nan());
-    /// ```
-    #[rustc_allow_incoherent_impl]
-    #[must_use = "method returns a new number and does not mutate the original value"]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
-    #[inline]
-    pub const fn signum(self) -> f64 {
-        if self.is_nan() { Self::NAN } else { 1.0_f64.copysign(self) }
-    }
-
-    /// Returns a number composed of the magnitude of `self` and the sign of
-    /// `sign`.
-    ///
-    /// Equal to `self` if the sign of `self` and `sign` are the same, otherwise equal to `-self`.
-    /// If `self` is a NaN, then a NaN with the same payload as `self` and the sign bit of `sign` is
-    /// returned.
-    ///
-    /// If `sign` is a NaN, then this operation will still carry over its sign into the result. Note
-    /// that IEEE 754 doesn't assign any meaning to the sign bit in case of a NaN, and as Rust
-    /// doesn't guarantee that the bit pattern of NaNs are conserved over arithmetic operations, the
-    /// result of `copysign` with `sign` being a NaN might produce an unexpected or non-portable
-    /// result. See the [specification of NaN bit patterns](primitive@f32#nan-bit-patterns) for more
-    /// info.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let f = 3.5_f64;
-    ///
-    /// assert_eq!(f.copysign(0.42), 3.5_f64);
-    /// assert_eq!(f.copysign(-0.42), -3.5_f64);
-    /// assert_eq!((-f).copysign(0.42), 3.5_f64);
-    /// assert_eq!((-f).copysign(-0.42), -3.5_f64);
-    ///
-    /// assert!(f64::NAN.copysign(1.0).is_nan());
-    /// ```
-    #[rustc_allow_incoherent_impl]
-    #[must_use = "method returns a new number and does not mutate the original value"]
-    #[stable(feature = "copysign", since = "1.35.0")]
-    #[rustc_const_unstable(feature = "const_float_methods", issue = "130843")]
-    #[inline]
-    pub const fn copysign(self, sign: f64) -> f64 {
-        unsafe { intrinsics::copysignf64(self, sign) }
-    }
-
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding
     /// error, yielding a more accurate result than an unfused multiply-add.
     ///
@@ -294,6 +207,7 @@ impl f64 {
     /// assert_eq!(one_plus_eps * one_minus_eps + minus_one, 0.0);
     /// ```
     #[rustc_allow_incoherent_impl]
+    #[doc(alias = "fma", alias = "fusedMultiplyAdd")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -389,8 +303,9 @@ impl f64 {
     /// ```
     /// let x = 2.0_f64;
     /// let abs_difference = (x.powi(2) - (x * x)).abs();
+    /// assert!(abs_difference <= f64::EPSILON);
     ///
-    /// assert!(abs_difference < 1e-10);
+    /// assert_eq!(f64::powi(f64::NAN, 0), 1.0);
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
@@ -412,8 +327,10 @@ impl f64 {
     /// ```
     /// let x = 2.0_f64;
     /// let abs_difference = (x.powf(2.0) - (x * x)).abs();
+    /// assert!(abs_difference <= f64::EPSILON);
     ///
-    /// assert!(abs_difference < 1e-10);
+    /// assert_eq!(f64::powf(1.0, f64::NAN), 1.0);
+    /// assert_eq!(f64::powf(f64::NAN, 0.0), 1.0);
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
@@ -444,6 +361,7 @@ impl f64 {
     /// assert!(negative.sqrt().is_nan());
     /// assert!(negative_zero.sqrt() == negative_zero);
     /// ```
+    #[doc(alias = "squareRoot")]
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1232,5 +1150,69 @@ impl f64 {
         let mut signgamp: i32 = 0;
         let x = unsafe { cmath::lgamma_r(self, &mut signgamp) };
         (x, signgamp)
+    }
+
+    /// Error function.
+    ///
+    /// # Unspecified precision
+    ///
+    /// The precision of this function is non-deterministic. This means it varies by platform,
+    /// Rust version, and can even differ within the same execution from one invocation to the next.
+    ///
+    /// This function currently corresponds to the `erf` from libc on Unix
+    /// and Windows. Note that this might change in the future.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(float_erf)]
+    /// /// The error function relates what percent of a normal distribution lies
+    /// /// within `x` standard deviations (scaled by `1/sqrt(2)`).
+    /// fn within_standard_deviations(x: f64) -> f64 {
+    ///     (x * std::f64::consts::FRAC_1_SQRT_2).erf() * 100.0
+    /// }
+    ///
+    /// // 68% of a normal distribution is within one standard deviation
+    /// assert!((within_standard_deviations(1.0) - 68.269).abs() < 0.01);
+    /// // 95% of a normal distribution is within two standard deviations
+    /// assert!((within_standard_deviations(2.0) - 95.450).abs() < 0.01);
+    /// // 99.7% of a normal distribution is within three standard deviations
+    /// assert!((within_standard_deviations(3.0) - 99.730).abs() < 0.01);
+    /// ```
+    #[rustc_allow_incoherent_impl]
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "float_erf", issue = "136321")]
+    #[inline]
+    pub fn erf(self) -> f64 {
+        unsafe { cmath::erf(self) }
+    }
+
+    /// Complementary error function.
+    ///
+    /// # Unspecified precision
+    ///
+    /// The precision of this function is non-deterministic. This means it varies by platform,
+    /// Rust version, and can even differ within the same execution from one invocation to the next.
+    ///
+    /// This function currently corresponds to the `erfc` from libc on Unix
+    /// and Windows. Note that this might change in the future.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(float_erf)]
+    /// let x: f64 = 0.123;
+    ///
+    /// let one = x.erf() + x.erfc();
+    /// let abs_difference = (one - 1.0).abs();
+    ///
+    /// assert!(abs_difference <= f64::EPSILON);
+    /// ```
+    #[rustc_allow_incoherent_impl]
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "float_erf", issue = "136321")]
+    #[inline]
+    pub fn erfc(self) -> f64 {
+        unsafe { cmath::erfc(self) }
     }
 }

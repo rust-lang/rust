@@ -1,7 +1,7 @@
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_span::Symbol;
-use rustc_target::spec::abi::Abi;
+use rustc_target::callconv::{Conv, FnAbi};
 
 use crate::*;
 
@@ -10,7 +10,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn emulate_x86_aesni_intrinsic(
         &mut self,
         link_name: Symbol,
-        abi: Abi,
+        abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
     ) -> InterpResult<'tcx, EmulateItemResult> {
@@ -26,9 +26,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // `state` with the corresponding 128-bit key of `key`.
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_aesdec_si128
             "aesdec" | "aesdec.256" | "aesdec.512" => {
-                let [state, key] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-
+                let [state, key] = this.check_shim(abi, Conv::C, link_name, args)?;
                 aes_round(this, state, key, dest, |state, key| {
                     let key = aes::Block::from(key.to_le_bytes());
                     let mut state = aes::Block::from(state.to_le_bytes());
@@ -44,8 +42,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // `state` with the corresponding 128-bit key of `key`.
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_aesdeclast_si128
             "aesdeclast" | "aesdeclast.256" | "aesdeclast.512" => {
-                let [state, key] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let [state, key] = this.check_shim(abi, Conv::C, link_name, args)?;
 
                 aes_round(this, state, key, dest, |state, key| {
                     let mut state = aes::Block::from(state.to_le_bytes());
@@ -69,9 +66,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // `state` with the corresponding 128-bit key of `key`.
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_aesenc_si128
             "aesenc" | "aesenc.256" | "aesenc.512" => {
-                let [state, key] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-
+                let [state, key] = this.check_shim(abi, Conv::C, link_name, args)?;
                 aes_round(this, state, key, dest, |state, key| {
                     let key = aes::Block::from(key.to_le_bytes());
                     let mut state = aes::Block::from(state.to_le_bytes());
@@ -87,9 +82,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // `state` with the corresponding 128-bit key of `key`.
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_aesenclast_si128
             "aesenclast" | "aesenclast.256" | "aesenclast.512" => {
-                let [state, key] =
-                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-
+                let [state, key] = this.check_shim(abi, Conv::C, link_name, args)?;
                 aes_round(this, state, key, dest, |state, key| {
                     let mut state = aes::Block::from(state.to_le_bytes());
                     // `aes::hazmat::cipher_round` does the following operations:
@@ -109,8 +102,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Used to implement the _mm_aesimc_si128 function.
             // Performs the AES InvMixColumns operation on `op`
             "aesimc" => {
-                let [op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-
+                let [op] = this.check_shim(abi, Conv::C, link_name, args)?;
                 // Transmute to `u128`
                 let op = op.transmute(this.machine.layouts.u128, this)?;
                 let dest = dest.transmute(this.machine.layouts.u128, this)?;
@@ -132,7 +124,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 // Performs an AES round (given by `f`) on each 128-bit word of
 // `state` with the corresponding 128-bit key of `key`.
 fn aes_round<'tcx>(
-    this: &mut crate::MiriInterpCx<'tcx>,
+    ecx: &mut crate::MiriInterpCx<'tcx>,
     state: &OpTy<'tcx>,
     key: &OpTy<'tcx>,
     dest: &MPlaceTy<'tcx>,
@@ -145,21 +137,20 @@ fn aes_round<'tcx>(
     assert_eq!(dest.layout.size.bytes() % 16, 0);
     let len = dest.layout.size.bytes() / 16;
 
-    let u128_array_layout =
-        this.layout_of(Ty::new_array(this.tcx.tcx, this.tcx.types.u128, len))?;
+    let u128_array_layout = ecx.layout_of(Ty::new_array(ecx.tcx.tcx, ecx.tcx.types.u128, len))?;
 
-    let state = state.transmute(u128_array_layout, this)?;
-    let key = key.transmute(u128_array_layout, this)?;
-    let dest = dest.transmute(u128_array_layout, this)?;
+    let state = state.transmute(u128_array_layout, ecx)?;
+    let key = key.transmute(u128_array_layout, ecx)?;
+    let dest = dest.transmute(u128_array_layout, ecx)?;
 
     for i in 0..len {
-        let state = this.read_scalar(&this.project_index(&state, i)?)?.to_u128()?;
-        let key = this.read_scalar(&this.project_index(&key, i)?)?.to_u128()?;
-        let dest = this.project_index(&dest, i)?;
+        let state = ecx.read_scalar(&ecx.project_index(&state, i)?)?.to_u128()?;
+        let key = ecx.read_scalar(&ecx.project_index(&key, i)?)?.to_u128()?;
+        let dest = ecx.project_index(&dest, i)?;
 
         let res = f(state, key);
 
-        this.write_scalar(Scalar::from_u128(res), &dest)?;
+        ecx.write_scalar(Scalar::from_u128(res), &dest)?;
     }
 
     interp_ok(())

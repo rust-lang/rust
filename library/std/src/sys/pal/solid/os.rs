@@ -129,7 +129,7 @@ impl Iterator for Env {
 /// Returns a vector of (variable, value) byte-vector pairs for all the
 /// environment variables of the current process.
 pub fn env() -> Env {
-    extern "C" {
+    unsafe extern "C" {
         static mut environ: *const *const c_char;
     }
 
@@ -204,7 +204,7 @@ pub unsafe fn unsetenv(n: &OsStr) -> io::Result<()> {
 /// In kmclib, `setenv` and `unsetenv` don't always set `errno`, so this
 /// function just returns a generic error.
 fn cvt_env(t: c_int) -> io::Result<c_int> {
-    if t == -1 { Err(io::const_io_error!(io::ErrorKind::Uncategorized, "failure")) } else { Ok(t) }
+    if t == -1 { Err(io::const_error!(io::ErrorKind::Uncategorized, "failure")) } else { Ok(t) }
 }
 
 pub fn temp_dir() -> PathBuf {

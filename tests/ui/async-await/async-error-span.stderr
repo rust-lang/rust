@@ -3,6 +3,9 @@ error[E0277]: `()` is not a future
    |
 LL | fn get_future() -> impl Future<Output = ()> {
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^ `()` is not a future
+LL |
+LL |     panic!()
+   |     -------- return type was inferred to be `_` here
    |
    = help: the trait `Future` is not implemented for `()`
 

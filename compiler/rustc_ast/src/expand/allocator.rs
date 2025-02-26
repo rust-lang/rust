@@ -1,5 +1,5 @@
 use rustc_macros::HashStable_Generic;
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::{Symbol, sym};
 
 #[derive(Clone, Debug, Copy, Eq, PartialEq, HashStable_Generic)]
 pub enum AllocatorKind {

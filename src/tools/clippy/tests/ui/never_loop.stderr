@@ -2,9 +2,6 @@ error: this loop never actually loops
   --> tests/ui/never_loop.rs:12:5
    |
 LL | /     loop {
-LL | |
-LL | |
-LL | |         // clippy::never_loop
 ...  |
 LL | |         break;
 LL | |     }
@@ -75,14 +72,14 @@ LL | |
 LL | |         // never loops
 LL | |         match x {
 ...  |
-LL | |         }
 LL | |     }
    | |_____^
    |
 help: if you need the first element of the iterator, try writing
    |
-LL |     if let Some(x) = (0..10).next() {
-   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     for x in 0..10 {
+LL +     if let Some(x) = (0..10).next() {
+   |
 
 error: this loop never actually loops
   --> tests/ui/never_loop.rs:167:5
@@ -126,7 +123,6 @@ LL | |
 LL | |         'b: {
 LL | |             break 'b 'c: {
 ...  |
-LL | |         }
 LL | |     }
    | |_____^
 
@@ -150,8 +146,9 @@ LL | |             }
    |
 help: if you need the first element of the iterator, try writing
    |
-LL |             if let Some(_) = (0..20).next() {
-   |             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -             for _ in 0..20 {
+LL +             if let Some(_) = (0..20).next() {
+   |
 
 error: this loop never actually loops
   --> tests/ui/never_loop.rs:378:13

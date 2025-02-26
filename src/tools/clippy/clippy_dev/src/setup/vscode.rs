@@ -84,7 +84,7 @@ fn delete_vs_task_file(path: &Path) -> bool {
 /// It may fail silently.
 fn try_delete_vs_directory_if_empty() {
     let path = Path::new(VSCODE_DIR);
-    if path.read_dir().map_or(false, |mut iter| iter.next().is_none()) {
+    if path.read_dir().is_ok_and(|mut iter| iter.next().is_none()) {
         // The directory is empty. We just try to delete it but allow a silence
         // fail as an empty `.vscode` directory is still valid
         let _silence_result = fs::remove_dir(path);

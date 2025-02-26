@@ -25,6 +25,7 @@ use std::{
     fmt,
     hash::{Hash, Hasher},
     mem,
+    ops::ControlFlow,
 };
 
 use base_db::{
@@ -136,16 +137,13 @@ fn library_symbols(db: &dyn SymbolsDatabase, source_root_id: SourceRootId) -> Ar
         // the module or crate indices for those in salsa unless we need to.
         .for_each(|module| symbol_collector.collect(module));
 
-    let mut symbols = symbol_collector.finish();
-    symbols.shrink_to_fit();
-    Arc::new(SymbolIndex::new(symbols))
+    Arc::new(SymbolIndex::new(symbol_collector.finish()))
 }
 
 fn module_symbols(db: &dyn SymbolsDatabase, module: Module) -> Arc<SymbolIndex> {
     let _p = tracing::info_span!("module_symbols").entered();
 
-    let symbols = SymbolCollector::collect_module(db.upcast(), module);
-    Arc::new(SymbolIndex::new(symbols))
+    Arc::new(SymbolIndex::new(SymbolCollector::new_module(db.upcast(), module)))
 }
 
 pub fn crate_symbols(db: &dyn SymbolsDatabase, krate: Crate) -> Box<[Arc<SymbolIndex>]> {
@@ -195,11 +193,9 @@ impl<DB> std::ops::Deref for Snap<DB> {
 // `rust-analyzer.workspace.symbol.search.kind` settings. Symbols prefixed
 // with `__` are hidden from the search results unless configured otherwise.
 //
-// |===
-// | Editor  | Shortcut
-//
-// | VS Code | kbd:[Ctrl+T]
-// |===
+// | Editor  | Shortcut |
+// |---------|-----------|
+// | VS Code | <kbd>Ctrl+T</kbd>
 pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> {
     let _p = tracing::info_span!("world_symbols", query = ?query.query).entered();
 
@@ -222,13 +218,16 @@ pub fn world_symbols(db: &RootDatabase, query: Query) -> Vec<FileSymbol> {
     };
 
     let mut res = vec![];
-    query.search(&indices, |f| res.push(f.clone()));
+    query.search::<()>(&indices, |f| {
+        res.push(f.clone());
+        ControlFlow::Continue(())
+    });
     res
 }
 
 #[derive(Default)]
 pub struct SymbolIndex {
-    symbols: Vec<FileSymbol>,
+    symbols: Box<[FileSymbol]>,
     map: fst::Map<Vec<u8>>,
 }
 
@@ -253,10 +252,10 @@ impl Hash for SymbolIndex {
 }
 
 impl SymbolIndex {
-    fn new(mut symbols: Vec<FileSymbol>) -> SymbolIndex {
+    fn new(mut symbols: Box<[FileSymbol]>) -> SymbolIndex {
         fn cmp(lhs: &FileSymbol, rhs: &FileSymbol) -> Ordering {
-            let lhs_chars = lhs.name.chars().map(|c| c.to_ascii_lowercase());
-            let rhs_chars = rhs.name.chars().map(|c| c.to_ascii_lowercase());
+            let lhs_chars = lhs.name.as_str().chars().map(|c| c.to_ascii_lowercase());
+            let rhs_chars = rhs.name.as_str().chars().map(|c| c.to_ascii_lowercase());
             lhs_chars.cmp(rhs_chars)
         }
 
@@ -283,13 +282,15 @@ impl SymbolIndex {
             builder.insert(key, value).unwrap();
         }
 
-        // FIXME: fst::Map should ideally have a way to shrink the backing buffer without the unwrap dance
-        let map = fst::Map::new({
-            let mut buf = builder.into_inner().unwrap();
-            buf.shrink_to_fit();
-            buf
-        })
-        .unwrap();
+        let map = builder
+            .into_inner()
+            .and_then(|mut buf| {
+                fst::Map::new({
+                    buf.shrink_to_fit();
+                    buf
+                })
+            })
+            .unwrap();
         SymbolIndex { symbols, map }
     }
 
@@ -316,11 +317,11 @@ impl SymbolIndex {
 }
 
 impl Query {
-    pub(crate) fn search<'sym>(
+    pub(crate) fn search<'sym, T>(
         self,
         indices: &'sym [Arc<SymbolIndex>],
-        cb: impl FnMut(&'sym FileSymbol),
-    ) {
+        cb: impl FnMut(&'sym FileSymbol) -> ControlFlow<T>,
+    ) -> Option<T> {
         let _p = tracing::info_span!("symbol_index::Query::search").entered();
         let mut op = fst::map::OpBuilder::new();
         match self.mode {
@@ -351,12 +352,12 @@ impl Query {
         }
     }
 
-    fn search_maps<'sym>(
+    fn search_maps<'sym, T>(
         &self,
         indices: &'sym [Arc<SymbolIndex>],
         mut stream: fst::map::Union<'_>,
-        mut cb: impl FnMut(&'sym FileSymbol),
-    ) {
+        mut cb: impl FnMut(&'sym FileSymbol) -> ControlFlow<T>,
+    ) -> Option<T> {
         let ignore_underscore_prefixed = !self.query.starts_with("__");
         while let Some((_, indexed_values)) = stream.next() {
             for &IndexedValue { index, value } in indexed_values {
@@ -377,15 +378,19 @@ impl Query {
                         continue;
                     }
                     // Hide symbols that start with `__` unless the query starts with `__`
-                    if ignore_underscore_prefixed && symbol.name.starts_with("__") {
+                    let symbol_name = symbol.name.as_str();
+                    if ignore_underscore_prefixed && symbol_name.starts_with("__") {
                         continue;
                     }
-                    if self.mode.check(&self.query, self.case_sensitive, &symbol.name) {
-                        cb(symbol);
+                    if self.mode.check(&self.query, self.case_sensitive, symbol_name) {
+                        if let Some(b) = cb(symbol).break_value() {
+                            return Some(b);
+                        }
                     }
                 }
             }
         }
+        None
     }
 
     fn matches_assoc_mode(&self, is_trait_assoc_item: bool) -> bool {
@@ -476,9 +481,9 @@ use Macro as ItemLikeMacro;
 use Macro as Trait; // overlay namespaces
 //- /b_mod.rs
 struct StructInModB;
-use super::Macro as SuperItemLikeMacro;
-use crate::b_mod::StructInModB as ThisStruct;
-use crate::Trait as IsThisJustATrait;
+pub(self) use super::Macro as SuperItemLikeMacro;
+pub(self) use crate::b_mod::StructInModB as ThisStruct;
+pub(self) use crate::Trait as IsThisJustATrait;
 "#,
         );
 
@@ -486,8 +491,8 @@ use crate::Trait as IsThisJustATrait;
             .modules(&db)
             .into_iter()
             .map(|module_id| {
-                let mut symbols = SymbolCollector::collect_module(&db, module_id);
-                symbols.sort_by_key(|it| it.name.clone());
+                let mut symbols = SymbolCollector::new_module(&db, module_id);
+                symbols.sort_by_key(|it| it.name.as_str().to_owned());
                 (module_id, symbols)
             })
             .collect();
@@ -513,8 +518,8 @@ struct Duplicate;
             .modules(&db)
             .into_iter()
             .map(|module_id| {
-                let mut symbols = SymbolCollector::collect_module(&db, module_id);
-                symbols.sort_by_key(|it| it.name.clone());
+                let mut symbols = SymbolCollector::new_module(&db, module_id);
+                symbols.sort_by_key(|it| it.name.as_str().to_owned());
                 (module_id, symbols)
             })
             .collect();

@@ -7,8 +7,9 @@ LL |         E::A(x @ ..) => {
    = help: remove this and bind each tuple field independently
 help: if you don't need to use the contents of x, discard the tuple's remaining fields
    |
-LL |         E::A(..) => {
-   |              ~~
+LL -         E::A(x @ ..) => {
+LL +         E::A(..) => {
+   |
 
 error: `..` patterns are not allowed here
   --> $DIR/issue-74539.rs:8:18

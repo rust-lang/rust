@@ -32,9 +32,10 @@ pub(super) fn check<'tcx>(
     filter_arg: &'tcx hir::Expr<'_>,
 ) {
     // lint if caller of `.filter().next()` is an Iterator
-    let recv_impls_iterator = cx.tcx.get_diagnostic_item(sym::Iterator).map_or(false, |id| {
-        implements_trait(cx, cx.typeck_results().expr_ty(recv), id, &[])
-    });
+    let recv_impls_iterator = cx
+        .tcx
+        .get_diagnostic_item(sym::Iterator)
+        .is_some_and(|id| implements_trait(cx, cx.typeck_results().expr_ty(recv), id, &[]));
     if recv_impls_iterator {
         let msg = "called `filter(..).next()` on an `Iterator`. This is more succinctly expressed by calling \
                    `.find(..)` instead";

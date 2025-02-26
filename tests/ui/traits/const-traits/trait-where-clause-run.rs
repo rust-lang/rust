@@ -1,8 +1,7 @@
 //@ run-pass
 //@ compile-flags: -Znext-solver
 
-#![feature(const_trait_impl, effects)]
-#![allow(incomplete_features)]
+#![feature(const_trait_impl)]
 
 #[const_trait]
 trait Bar {

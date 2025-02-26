@@ -48,6 +48,8 @@ mod a {
         }
         mod c {
             //@ has decl_macro/a/b/c/macro.by_example_vis_named.html //pre 'pub(in a) macro by_example_vis_named($foo:expr) {'
+            // Regression test for <https://github.com/rust-lang/rust/issues/83000>:
+            //@ has - '//pre[@class="rust item-decl"]//a[@class="mod"]/@href' '../../index.html'
             pub(in a) macro by_example_vis_named {
                 ($foo:expr) => {}
             }

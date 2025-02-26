@@ -35,7 +35,7 @@ const DEFAULT_MAX_FAILURES: u64 = 20;
 /// Register exhaustive tests only for <= 32 bits. No more because it would take years.
 const MAX_BITS_FOR_EXHAUUSTIVE: u32 = 32;
 
-/// If there are more tests than this threashold, the test will be defered until after all
+/// If there are more tests than this threshold, the test will be deferred until after all
 /// others run (so as to avoid thread pool starvation). They also can be excluded with
 /// `--skip-huge`.
 const HUGE_TEST_CUTOFF: u64 = 5_000_000;
@@ -109,7 +109,7 @@ pub fn run(cfg: Config, include: &[String], exclude: &[String]) -> ExitCode {
     ui::finish(&tests, elapsed, &cfg)
 }
 
-/// Enumerate tests to run but don't actaully run them.
+/// Enumerate tests to run but don't actually run them.
 pub fn register_tests(cfg: &Config) -> Vec<TestInfo> {
     let mut tests = Vec::new();
 
@@ -120,7 +120,7 @@ pub fn register_tests(cfg: &Config) -> Vec<TestInfo> {
     tests.sort_unstable_by_key(|t| (t.float_name, t.gen_name));
     for i in 0..(tests.len() - 1) {
         if tests[i].gen_name == tests[i + 1].gen_name {
-            panic!("dupliate test name {}", tests[i].gen_name);
+            panic!("duplicate test name {}", tests[i].gen_name);
         }
     }
 
@@ -295,7 +295,7 @@ enum Update {
         fail: CheckFailure,
         /// String for which parsing was attempted.
         input: Box<str>,
-        /// The parsed & decomposed `FloatRes`, aleady stringified so we don't need generics here.
+        /// The parsed & decomposed `FloatRes`, already stringified so we don't need generics here.
         float_res: Box<str>,
     },
     /// Exited with an unexpected condition.

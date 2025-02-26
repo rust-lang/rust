@@ -70,7 +70,7 @@ use crate::{cmp, ptr};
 ///         {
 ///             return null_mut();
 ///         };
-///         self.arena.get().cast::<u8>().add(allocated)
+///         unsafe { self.arena.get().cast::<u8>().add(allocated) }
 ///     }
 ///     unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {}
 /// }

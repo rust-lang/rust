@@ -1,7 +1,7 @@
 //@ compile-flags: -Zvalidate-mir
 //@ check-pass
 
-// Check that we don't cause cycle errors when validating pre-`Reveal::All` MIR
+// Check that we don't cause cycle errors when validating pre-`RevealOpaques` MIR
 // that assigns opaques through normalized projections.
 
 #![feature(impl_trait_in_assoc_type)]

@@ -11,16 +11,12 @@ trait Fine<Rhs>: Div<Rhs, Output = Rhs> {}
 
 type Foo<Rhs> = dyn Add<Rhs> + Sub<Rhs> + X<Rhs> + Y<Rhs>;
 //~^ ERROR only auto traits can be used as additional traits in a trait object
-//~| ERROR the value of the associated types
 type Bar<Rhs> = dyn Add<Rhs> + Sub<Rhs> + X<Rhs> + Z<Rhs>;
 //~^ ERROR only auto traits can be used as additional traits in a trait object
-//~| ERROR the value of the associated types
 type Baz<Rhs> = dyn Add<Rhs> + Sub<Rhs> + Y<Rhs>;
 //~^ ERROR only auto traits can be used as additional traits in a trait object
-//~| ERROR the value of the associated types
 type Bat<Rhs> = dyn Add<Rhs> + Sub<Rhs> + Fine<Rhs>;
 //~^ ERROR only auto traits can be used as additional traits in a trait object
-//~| ERROR the value of the associated types
 type Bal<Rhs> = dyn X<Rhs>;
 //~^ ERROR the value of the associated types
 

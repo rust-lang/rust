@@ -1,0 +1,61 @@
+error[E0451]: field `x` of struct `S` is private
+  --> $DIR/visibility.rs:37:9
+   |
+LL |     let _a = baz::S {
+   |              ------ in this type
+LL |         ..
+   |         ^^ field `x` is private
+
+error[E0451]: field `x` of struct `S` is private
+  --> $DIR/visibility.rs:40:9
+   |
+LL |     let _b = baz::S {
+   |              ------ in this type
+LL |         x: 0,
+   |         ^ private field
+
+error[E0451]: fields `beta` and `gamma` of struct `Alpha` are private
+  --> $DIR/visibility.rs:13:26
+   |
+LL |         let _x = Alpha { .. };
+   |                          ^^ fields `beta` and `gamma` are private
+
+error[E0451]: fields `beta` and `gamma` of struct `Alpha` are private
+  --> $DIR/visibility.rs:16:13
+   |
+LL |         let _x = Alpha {
+   |                  ----- in this type
+LL |             beta: 0,
+   |             ^^^^ private field
+LL |             gamma: false,
+   |             ^^^^^ private field
+
+error[E0451]: fields `beta` and `gamma` of struct `Alpha` are private
+  --> $DIR/visibility.rs:20:13
+   |
+LL |         let _x = Alpha {
+   |                  ----- in this type
+LL |             beta: 0,
+   |             ^^^^^^^ private field
+LL |             ..
+   |             ^^ field `gamma` is private
+
+error[E0451]: fields `beta` and `gamma` of struct `Alpha` are private
+  --> $DIR/visibility.rs:23:26
+   |
+LL |         let _x = Alpha { beta: 0, .. };
+   |                          ^^^^^^^  ^^ field `gamma` is private
+   |                          |
+   |                          private field
+
+error[E0451]: fields `beta` and `gamma` of struct `Alpha` are private
+  --> $DIR/visibility.rs:25:26
+   |
+LL |         let _x = Alpha { beta: 0, ..Default::default() };
+   |                          ^^^^^^^    ^^^^^^^^^^^^^^^^^^ field `gamma` is private
+   |                          |
+   |                          private field
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0451`.

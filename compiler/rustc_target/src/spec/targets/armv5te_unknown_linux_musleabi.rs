@@ -1,13 +1,9 @@
-use crate::spec::{Target, TargetOptions, base};
+use crate::spec::{FloatAbi, Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
-        // FIXME: this comment below does not seem applicable?
-        // It's important we use "gnueabihf" and not "musleabihf" here. LLVM
-        // uses it to determine the calling convention and float ABI, and LLVM
-        // doesn't support the "musleabihf" value.
-        llvm_target: "armv5te-unknown-linux-gnueabi".into(),
-        metadata: crate::spec::TargetMetadata {
+        llvm_target: "armv5te-unknown-linux-musleabi".into(),
+        metadata: TargetMetadata {
             description: Some("Armv5TE Linux with musl 1.2.3".into()),
             tier: Some(2),
             host_tools: Some(false),
@@ -18,11 +14,14 @@ pub(crate) fn target() -> Target {
         arch: "arm".into(),
         options: TargetOptions {
             abi: "eabi".into(),
+            llvm_floatabi: Some(FloatAbi::Soft),
             features: "+soft-float,+strict-align".into(),
             // Atomic operations provided by compiler-builtins
             max_atomic_width: Some(32),
             mcount: "\u{1}mcount".into(),
             has_thumb_interworking: true,
+            // FIXME(compiler-team#422): musl targets should be dynamically linked by default.
+            crt_static_default: true,
             ..base::linux_musl::opts()
         },
     }

@@ -6,7 +6,7 @@ LL |     vec![1, 2, 3]
    |
    = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0015]: cannot call non-const fn `slice::<impl [i32]>::into_vec::<std::alloc::Global>` in constant functions
+error[E0015]: cannot call non-const method `slice::<impl [i32]>::into_vec::<std::alloc::Global>` in constant functions
   --> $DIR/bad_const_fn_body_ice.rs:2:5
    |
 LL |     vec![1, 2, 3]

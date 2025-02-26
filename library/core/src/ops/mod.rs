@@ -170,6 +170,8 @@ pub use self::coroutine::{Coroutine, CoroutineState};
 pub use self::deref::DerefPure;
 #[unstable(feature = "legacy_receiver_trait", issue = "none")]
 pub use self::deref::LegacyReceiver;
+#[unstable(feature = "arbitrary_self_types", issue = "44874")]
+pub use self::deref::Receiver;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::deref::{Deref, DerefMut};
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -180,10 +182,12 @@ pub use self::function::{Fn, FnMut, FnOnce};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::index::{Index, IndexMut};
 pub(crate) use self::index_range::IndexRange;
-#[unstable(feature = "one_sided_range", issue = "69780")]
-pub use self::range::OneSidedRange;
+#[unstable(feature = "range_into_bounds", issue = "136903")]
+pub use self::range::IntoBounds;
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 pub use self::range::{Bound, RangeBounds, RangeInclusive, RangeToInclusive};
+#[unstable(feature = "one_sided_range", issue = "69780")]
+pub use self::range::{OneSidedRange, OneSidedRangeBound};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::range::{Range, RangeFrom, RangeFull, RangeTo};
 #[unstable(feature = "try_trait_v2_residual", issue = "91285")]

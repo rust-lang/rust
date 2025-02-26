@@ -8,8 +8,7 @@
 
 //@ compile-flags: -Znext-solver -Zinline-mir=yes
 
-#![feature(const_trait_impl, effects)]
-//~^ WARN the feature `effects` is incomplete
+#![feature(const_trait_impl)]
 
 trait Trait {
     fn foo(self);
@@ -25,7 +24,7 @@ impl Trait for () {
 
 const fn foo() {
     ().foo();
-    //~^ ERROR cannot call non-const fn `<() as Trait>::foo` in constant functions
+    //~^ ERROR cannot call non-const method `<() as Trait>::foo` in constant functions
 }
 
 const UWU: () = foo();

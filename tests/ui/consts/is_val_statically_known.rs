@@ -1,6 +1,6 @@
 //@ run-pass
 
-#![feature(core_intrinsics, is_val_statically_known)]
+#![feature(core_intrinsics)]
 
 use std::intrinsics::is_val_statically_known;
 

@@ -10,7 +10,7 @@ use rustc_type_ir::inherent::*;
 use rustc_type_ir::relate::Relate;
 use rustc_type_ir::relate::solver_relating::RelateExt;
 use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
-use rustc_type_ir::{self as ty, CanonicalVarValues, InferCtxtLike, Interner};
+use rustc_type_ir::{self as ty, CanonicalVarValues, InferCtxtLike, Interner, TypingMode};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 use tracing::{instrument, trace};
 
@@ -21,7 +21,6 @@ use crate::solve::search_graph::SearchGraph;
 use crate::solve::{
     CanonicalInput, Certainty, FIXPOINT_STEP_LIMIT, Goal, GoalEvaluationKind, GoalSource,
     HasChanged, NestedNormalizationGoals, NoSolution, PredefinedOpaquesData, QueryResult,
-    SolverMode,
 };
 
 pub(super) mod canonical;
@@ -79,6 +78,8 @@ where
 
     nested_goals: NestedGoals<I>,
 
+    pub(super) origin_span: I::Span,
+
     // Has this `EvalCtxt` errored out with `NoSolution` in `try_evaluate_added_goals`?
     //
     // If so, then it can no longer be used to make a canonical query response,
@@ -135,6 +136,7 @@ pub trait SolverDelegateEvalExt: SolverDelegate {
         &self,
         goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
         generate_proof_tree: GenerateProofTree,
+        span: <Self::Interner as Interner>::Span,
     ) -> (
         Result<(HasChanged, Certainty), NoSolution>,
         Option<inspect::GoalEvaluation<Self::Interner>>,
@@ -175,8 +177,9 @@ where
         &self,
         goal: Goal<I, I::Predicate>,
         generate_proof_tree: GenerateProofTree,
+        span: I::Span,
     ) -> (Result<(HasChanged, Certainty), NoSolution>, Option<inspect::GoalEvaluation<I>>) {
-        EvalCtxt::enter_root(self, self.cx().recursion_limit(), generate_proof_tree, |ecx| {
+        EvalCtxt::enter_root(self, self.cx().recursion_limit(), generate_proof_tree, span, |ecx| {
             ecx.evaluate_goal(GoalEvaluationKind::Root, GoalSource::Misc, goal)
         })
     }
@@ -187,7 +190,7 @@ where
         goal: Goal<Self::Interner, <Self::Interner as Interner>::Predicate>,
     ) -> bool {
         self.probe(|| {
-            EvalCtxt::enter_root(self, root_depth, GenerateProofTree::No, |ecx| {
+            EvalCtxt::enter_root(self, root_depth, GenerateProofTree::No, I::Span::dummy(), |ecx| {
                 ecx.evaluate_goal(GoalEvaluationKind::Root, GoalSource::Misc, goal)
             })
             .0
@@ -204,9 +207,13 @@ where
         Result<(NestedNormalizationGoals<I>, HasChanged, Certainty), NoSolution>,
         Option<inspect::GoalEvaluation<I>>,
     ) {
-        EvalCtxt::enter_root(self, self.cx().recursion_limit(), generate_proof_tree, |ecx| {
-            ecx.evaluate_goal_raw(GoalEvaluationKind::Root, GoalSource::Misc, goal)
-        })
+        EvalCtxt::enter_root(
+            self,
+            self.cx().recursion_limit(),
+            generate_proof_tree,
+            I::Span::dummy(),
+            |ecx| ecx.evaluate_goal_raw(GoalEvaluationKind::Root, GoalSource::Misc, goal),
+        )
     }
 }
 
@@ -215,8 +222,8 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    pub(super) fn solver_mode(&self) -> SolverMode {
-        self.search_graph.solver_mode()
+    pub(super) fn typing_mode(&self) -> TypingMode<I> {
+        self.delegate.typing_mode()
     }
 
     pub(super) fn set_is_normalizes_to_goal(&mut self) {
@@ -230,9 +237,10 @@ where
         delegate: &D,
         root_depth: usize,
         generate_proof_tree: GenerateProofTree,
+        origin_span: I::Span,
         f: impl FnOnce(&mut EvalCtxt<'_, D>) -> R,
     ) -> (R, Option<inspect::GoalEvaluation<I>>) {
-        let mut search_graph = SearchGraph::new(delegate.solver_mode(), root_depth);
+        let mut search_graph = SearchGraph::new(root_depth);
 
         let mut ecx = EvalCtxt {
             delegate,
@@ -249,6 +257,7 @@ where
             variables: Default::default(),
             var_values: CanonicalVarValues::dummy(),
             is_normalizes_to_goal: false,
+            origin_span,
             tainted: Ok(()),
         };
         let result = f(&mut ecx);
@@ -279,7 +288,7 @@ where
         f: impl FnOnce(&mut EvalCtxt<'_, D>, Goal<I, I::Predicate>) -> R,
     ) -> R {
         let (ref delegate, input, var_values) =
-            SolverDelegate::build_with_canonical(cx, search_graph.solver_mode(), &canonical_input);
+            SolverDelegate::build_with_canonical(cx, &canonical_input);
 
         let mut ecx = EvalCtxt {
             delegate,
@@ -290,12 +299,13 @@ where
             max_input_universe: canonical_input.canonical.max_universe,
             search_graph,
             nested_goals: NestedGoals::new(),
+            origin_span: I::Span::dummy(),
             tainted: Ok(()),
             inspect: canonical_goal_evaluation.new_goal_evaluation_step(var_values),
         };
 
         for &(key, ty) in &input.predefined_opaques_in_body.opaque_types {
-            ecx.delegate.inject_new_hidden_type_unchecked(key, ty);
+            ecx.delegate.inject_new_hidden_type_unchecked(key, ty, ecx.origin_span);
         }
 
         if !ecx.nested_goals.is_empty() {
@@ -441,7 +451,7 @@ where
         if let Some(kind) = kind.no_bound_vars() {
             match kind {
                 ty::PredicateKind::Clause(ty::ClauseKind::Trait(predicate)) => {
-                    self.compute_trait_goal(Goal { param_env, predicate })
+                    self.compute_trait_goal(Goal { param_env, predicate }).map(|(r, _via)| r)
                 }
                 ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(predicate)) => {
                     self.compute_host_effect_goal(Goal { param_env, predicate })
@@ -538,10 +548,10 @@ where
             // Replace the goal with an unconstrained infer var, so the
             // RHS does not affect projection candidate assembly.
             let unconstrained_rhs = self.next_term_infer_of_kind(goal.predicate.term);
-            let unconstrained_goal = goal.with(cx, ty::NormalizesTo {
-                alias: goal.predicate.alias,
-                term: unconstrained_rhs,
-            });
+            let unconstrained_goal = goal.with(
+                cx,
+                ty::NormalizesTo { alias: goal.predicate.alias, term: unconstrained_rhs },
+            );
 
             let (NestedNormalizationGoals(nested_goals), _, certainty) = self.evaluate_goal_raw(
                 GoalEvaluationKind::Nested,
@@ -643,6 +653,12 @@ where
         for goal in goals {
             self.add_goal(source, goal);
         }
+    }
+
+    pub(super) fn next_region_var(&mut self) -> I::Region {
+        let region = self.delegate.next_region_infer();
+        self.inspect.add_var_value(region);
+        region
     }
 
     pub(super) fn next_ty_infer(&mut self) -> I::Ty {
@@ -817,8 +833,12 @@ where
             let identity_args = self.fresh_args_for_item(alias.def_id);
             let rigid_ctor = ty::AliasTerm::new_from_args(cx, alias.def_id, identity_args);
             let ctor_term = rigid_ctor.to_term(cx);
-            let obligations =
-                self.delegate.eq_structurally_relating_aliases(param_env, term, ctor_term)?;
+            let obligations = self.delegate.eq_structurally_relating_aliases(
+                param_env,
+                term,
+                ctor_term,
+                self.origin_span,
+            )?;
             debug_assert!(obligations.is_empty());
             self.relate(param_env, alias, variance, rigid_ctor)
         } else {
@@ -836,7 +856,12 @@ where
         lhs: T,
         rhs: T,
     ) -> Result<(), NoSolution> {
-        let result = self.delegate.eq_structurally_relating_aliases(param_env, lhs, rhs)?;
+        let result = self.delegate.eq_structurally_relating_aliases(
+            param_env,
+            lhs,
+            rhs,
+            self.origin_span,
+        )?;
         assert_eq!(result, vec![]);
         Ok(())
     }
@@ -859,7 +884,7 @@ where
         variance: ty::Variance,
         rhs: T,
     ) -> Result<(), NoSolution> {
-        let goals = self.delegate.relate(param_env, lhs, variance, rhs)?;
+        let goals = self.delegate.relate(param_env, lhs, variance, rhs, self.origin_span)?;
         self.add_goals(GoalSource::Misc, goals);
         Ok(())
     }
@@ -876,7 +901,7 @@ where
         lhs: T,
         rhs: T,
     ) -> Result<Vec<Goal<I, I::Predicate>>, NoSolution> {
-        Ok(self.delegate.relate(param_env, lhs, ty::Variance::Invariant, rhs)?)
+        Ok(self.delegate.relate(param_env, lhs, ty::Variance::Invariant, rhs, self.origin_span)?)
     }
 
     pub(super) fn instantiate_binder_with_infer<T: TypeFoldable<I> + Copy>(
@@ -912,12 +937,12 @@ where
     }
 
     pub(super) fn register_ty_outlives(&self, ty: I::Ty, lt: I::Region) {
-        self.delegate.register_ty_outlives(ty, lt);
+        self.delegate.register_ty_outlives(ty, lt, self.origin_span);
     }
 
     pub(super) fn register_region_outlives(&self, a: I::Region, b: I::Region) {
         // `b : a` ==> `a <= b`
-        self.delegate.sub_regions(b, a);
+        self.delegate.sub_regions(b, a, self.origin_span);
     }
 
     /// Computes the list of goals required for `arg` to be well-formed
@@ -942,21 +967,11 @@ where
 
     pub(super) fn fetch_eligible_assoc_item(
         &self,
-        param_env: I::ParamEnv,
         goal_trait_ref: ty::TraitRef<I>,
         trait_assoc_def_id: I::DefId,
         impl_def_id: I::DefId,
-    ) -> Result<Option<I::DefId>, NoSolution> {
-        self.delegate.fetch_eligible_assoc_item(
-            param_env,
-            goal_trait_ref,
-            trait_assoc_def_id,
-            impl_def_id,
-        )
-    }
-
-    pub(super) fn can_define_opaque_ty(&self, def_id: I::LocalDefId) -> bool {
-        self.delegate.defining_opaque_types().contains(&def_id)
+    ) -> Result<Option<I::DefId>, I::ErrorGuaranteed> {
+        self.delegate.fetch_eligible_assoc_item(goal_trait_ref, trait_assoc_def_id, impl_def_id)
     }
 
     pub(super) fn insert_hidden_type(
@@ -1012,12 +1027,12 @@ where
     // Try to evaluate a const, or return `None` if the const is too generic.
     // This doesn't mean the const isn't evaluatable, though, and should be treated
     // as an ambiguity rather than no-solution.
-    pub(super) fn try_const_eval_resolve(
+    pub(super) fn evaluate_const(
         &self,
         param_env: I::ParamEnv,
-        unevaluated: ty::UnevaluatedConst<I>,
+        uv: ty::UnevaluatedConst<I>,
     ) -> Option<I::Const> {
-        self.delegate.try_const_eval_resolve(param_env, unevaluated)
+        self.delegate.evaluate_const(param_env, uv)
     }
 
     pub(super) fn is_transmutable(

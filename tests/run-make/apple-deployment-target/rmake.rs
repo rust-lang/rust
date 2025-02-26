@@ -7,7 +7,11 @@
 
 //@ only-apple
 
-use run_make_support::{apple_os, cmd, run_in_tmpdir, rustc, target};
+use std::collections::HashSet;
+
+use run_make_support::{
+    apple_os, cmd, has_extension, path, regex, run_in_tmpdir, rustc, shallow_find_files, target,
+};
 
 /// Run vtool to check the `minos` field in LC_BUILD_VERSION.
 ///
@@ -24,21 +28,31 @@ fn minos(file: &str, version: &str) {
 
 fn main() {
     // These versions should generally be higher than the default versions
-    let (env_var, example_version, higher_example_version) = match apple_os() {
-        "macos" => ("MACOSX_DEPLOYMENT_TARGET", "12.0", "13.0"),
+    let (example_version, higher_example_version) = match apple_os() {
+        "macos" => ("12.0", "13.0"),
         // armv7s-apple-ios and i386-apple-ios only supports iOS 10.0
-        "ios" if target() == "armv7s-apple-ios" || target() == "i386-apple-ios" => {
-            ("IPHONEOS_DEPLOYMENT_TARGET", "10.0", "10.0")
-        }
-        "ios" => ("IPHONEOS_DEPLOYMENT_TARGET", "15.0", "16.0"),
-        "watchos" => ("WATCHOS_DEPLOYMENT_TARGET", "7.0", "9.0"),
-        "tvos" => ("TVOS_DEPLOYMENT_TARGET", "14.0", "15.0"),
-        "visionos" => ("XROS_DEPLOYMENT_TARGET", "1.1", "1.2"),
+        "ios" if target() == "armv7s-apple-ios" || target() == "i386-apple-ios" => ("10.0", "10.0"),
+        "ios" => ("15.0", "16.0"),
+        "watchos" => ("7.0", "9.0"),
+        "tvos" => ("14.0", "15.0"),
+        "visionos" => ("1.1", "1.2"),
         _ => unreachable!(),
     };
-    let default_version =
-        rustc().target(target()).env_remove(env_var).print("deployment-target").run().stdout_utf8();
-    let default_version = default_version.strip_prefix("deployment_target=").unwrap().trim();
+
+    // Remove env vars to get `rustc`'s default
+    let output = rustc()
+        .target(target())
+        .env_remove("MACOSX_DEPLOYMENT_TARGET")
+        .env_remove("IPHONEOS_DEPLOYMENT_TARGET")
+        .env_remove("WATCHOS_DEPLOYMENT_TARGET")
+        .env_remove("TVOS_DEPLOYMENT_TARGET")
+        .env_remove("XROS_DEPLOYMENT_TARGET")
+        .print("deployment-target")
+        .run()
+        .stdout_utf8();
+    let (env_var, default_version) = output.split_once('=').unwrap();
+    let env_var = env_var.trim();
+    let default_version = default_version.trim();
 
     // Test that version makes it to the object file.
     run_in_tmpdir(|| {
@@ -156,4 +170,21 @@ fn main() {
         rustc().env_remove(env_var).run();
         minos("foo.o", default_version);
     });
+
+    // Test that all binaries in rlibs produced by `rustc` have the same version.
+    // Regression test for https://github.com/rust-lang/rust/issues/128419.
+    let sysroot = rustc().print("sysroot").run().stdout_utf8();
+    let target_sysroot = path(sysroot.trim()).join("lib/rustlib").join(target()).join("lib");
+    let rlibs = shallow_find_files(&target_sysroot, |path| has_extension(path, "rlib"));
+
+    let output = cmd("otool").arg("-l").args(rlibs).run().stdout_utf8();
+    let re = regex::Regex::new(r"(minos|version) ([0-9.]*)").unwrap();
+    let mut versions = HashSet::new();
+    for (_, [_, version]) in re.captures_iter(&output).map(|c| c.extract()) {
+        versions.insert(version);
+    }
+    // FIXME(madsmtm): See above for aarch64-apple-watchos.
+    if versions.len() != 1 && target() != "aarch64-apple-watchos" {
+        panic!("std rlibs contained multiple different deployment target versions: {versions:?}");
+    }
 }

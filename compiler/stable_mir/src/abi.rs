@@ -180,6 +180,9 @@ impl FieldsShape {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 pub enum VariantsShape {
+    /// A type with no valid variants. Must be uninhabited.
+    Empty,
+
     /// Single enum variants, structs/tuples, unions, and all non-ADTs.
     Single { index: VariantIdx },
 
@@ -224,7 +227,6 @@ pub enum TagEncoding {
 /// in terms of categories of C types there are ABI rules for.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 pub enum ValueAbi {
-    Uninhabited,
     Scalar(Scalar),
     ScalarPair(Scalar, Scalar),
     Vector {
@@ -241,10 +243,7 @@ impl ValueAbi {
     /// Returns `true` if the layout corresponds to an unsized type.
     pub fn is_unsized(&self) -> bool {
         match *self {
-            ValueAbi::Uninhabited
-            | ValueAbi::Scalar(_)
-            | ValueAbi::ScalarPair(..)
-            | ValueAbi::Vector { .. } => false,
+            ValueAbi::Scalar(_) | ValueAbi::ScalarPair(..) | ValueAbi::Vector { .. } => false,
             ValueAbi::Aggregate { sized } => !sized,
         }
     }
@@ -438,6 +437,8 @@ pub enum CallConvention {
     Msp430Intr,
 
     PtxKernel,
+
+    GpuKernel,
 
     X86Fastcall,
     X86Intr,

@@ -56,3 +56,14 @@ fn main() {
     let _ = (size_of::<u128>() * 8).pow(5);
     let _ = &(size_of::<u128>() * 8);
 }
+
+fn should_not_lint() {
+    macro_rules! bits_via_macro {
+        ($T: ty) => {
+            size_of::<$T>() * 8;
+        };
+    }
+
+    bits_via_macro!(u8);
+    bits_via_macro!(String);
+}

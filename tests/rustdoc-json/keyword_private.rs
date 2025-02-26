@@ -11,10 +11,10 @@
 /// this is a test!
 pub mod foo {}
 
-//@ !has "$.index[*][?(@.name=='hello')]"
+//@ !has "$.index[*][?(@.name=='break')]"
 //@ has "$.index[*][?(@.name=='bar')]"
-//@ is   "$.index[*][?(@.name=='bar')].attrs" '["#[doc(keyword = \"hello\")]"]'
+//@ is   "$.index[*][?(@.name=='bar')].attrs" '["#[doc(keyword = \"break\")]"]'
 //@ is   "$.index[*][?(@.name=='bar')].docs" '"hello"'
-#[doc(keyword = "hello")]
+#[doc(keyword = "break")]
 /// hello
 mod bar {}

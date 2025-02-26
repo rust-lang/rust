@@ -1,4 +1,4 @@
-error: macro expansion ignores token `let` and any following
+error: macro expansion ignores keyword `let` and any tokens following
   --> $DIR/issue-54441.rs:3:9
    |
 LL |         let

@@ -11,10 +11,10 @@
 
 use std::fmt;
 
+use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_middle::bug;
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
 use rustc_span::sym;
-use rustc_target::abi::{FieldIdx, VariantIdx};
 
 #[derive(Clone, Debug)]
 pub(crate) struct FieldPat {

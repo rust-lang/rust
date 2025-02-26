@@ -1,17 +1,21 @@
 #![stable(feature = "dummy", since = "1.0.0")]
 
 // ignore-tidy-linelength
-#![feature(intrinsics, staged_api)]
+#![feature(intrinsics, staged_api, rustc_attrs)]
 use std::mem;
 
-extern "rust-intrinsic" {
-    #[stable(feature = "dummy", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
-    fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
+#[stable(feature = "dummy", since = "1.0.0")]
+#[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
+#[rustc_intrinsic]
+const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
+    unimplemented!()
+}
 
-    #[stable(feature = "dummy", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
-    fn copy<T>(src: *const T, dst: *mut T, count: usize);
+#[stable(feature = "dummy", since = "1.0.0")]
+#[rustc_const_stable(feature = "const_intrinsic_copy", since = "1.63.0")]
+#[rustc_intrinsic]
+const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
+    unimplemented!()
 }
 
 const COPY_ZERO: () = unsafe {

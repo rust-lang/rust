@@ -9,11 +9,11 @@ use hir_expand::{
     attrs::RawAttrs, mod_path::ModPath, span_map::SpanMap, ExpandError, ExpandErrorKind,
     ExpandResult, HirFileId, InFile, Lookup, MacroCallId,
 };
-use limit::Limit;
-use span::SyntaxContextId;
+use span::{Edition, SyntaxContextId};
 use syntax::{ast, Parse};
 use triomphe::Arc;
 
+use crate::type_ref::{TypesMap, TypesSourceMap};
 use crate::{
     attr::Attrs, db::DefDatabase, lower::LowerCtx, path::Path, AsMacroCall, MacroId, ModuleId,
     UnresolvedMacro,
@@ -27,18 +27,18 @@ pub struct Expander {
     pub(crate) module: ModuleId,
     /// `recursion_depth == usize::MAX` indicates that the recursion limit has been reached.
     recursion_depth: u32,
-    recursion_limit: Limit,
+    recursion_limit: usize,
 }
 
 impl Expander {
     pub fn new(db: &dyn DefDatabase, current_file_id: HirFileId, module: ModuleId) -> Expander {
         let recursion_limit = module.def_map(db).recursion_limit() as usize;
-        let recursion_limit = Limit::new(if cfg!(test) {
+        let recursion_limit = if cfg!(test) {
             // Without this, `body::tests::your_stack_belongs_to_me` stack-overflows in debug
             std::cmp::min(32, recursion_limit)
         } else {
             recursion_limit
-        });
+        };
         Expander {
             current_file_id,
             module,
@@ -49,13 +49,17 @@ impl Expander {
         }
     }
 
+    pub(crate) fn span_map(&self, db: &dyn DefDatabase) -> &SpanMap {
+        self.span_map.get_or_init(|| db.span_map(self.current_file_id))
+    }
+
     pub fn krate(&self) -> CrateId {
         self.module.krate
     }
 
     pub fn syntax_context(&self) -> SyntaxContextId {
         // FIXME:
-        SyntaxContextId::ROOT
+        SyntaxContextId::root(Edition::CURRENT)
     }
 
     pub fn enter_expand<T: ast::AstNode>(
@@ -110,8 +114,19 @@ impl Expander {
         mark.bomb.defuse();
     }
 
-    pub fn ctx<'a>(&self, db: &'a dyn DefDatabase) -> LowerCtx<'a> {
-        LowerCtx::with_span_map_cell(db, self.current_file_id, self.span_map.clone())
+    pub fn ctx<'a>(
+        &self,
+        db: &'a dyn DefDatabase,
+        types_map: &'a mut TypesMap,
+        types_source_map: &'a mut TypesSourceMap,
+    ) -> LowerCtx<'a> {
+        LowerCtx::with_span_map_cell(
+            db,
+            self.current_file_id,
+            self.span_map.clone(),
+            types_map,
+            types_source_map,
+        )
     }
 
     pub(crate) fn in_file<T>(&self, value: T) -> InFile<T> {
@@ -138,9 +153,21 @@ impl Expander {
         self.current_file_id
     }
 
-    pub(crate) fn parse_path(&mut self, db: &dyn DefDatabase, path: ast::Path) -> Option<Path> {
-        let ctx = LowerCtx::with_span_map_cell(db, self.current_file_id, self.span_map.clone());
-        Path::from_src(&ctx, path)
+    pub(crate) fn parse_path(
+        &mut self,
+        db: &dyn DefDatabase,
+        path: ast::Path,
+        types_map: &mut TypesMap,
+        types_source_map: &mut TypesSourceMap,
+    ) -> Option<Path> {
+        let mut ctx = LowerCtx::with_span_map_cell(
+            db,
+            self.current_file_id,
+            self.span_map.clone(),
+            types_map,
+            types_source_map,
+        );
+        Path::from_src(&mut ctx, path)
     }
 
     fn within_limit<F, T: ast::AstNode>(
@@ -166,7 +193,7 @@ impl Expander {
         let Some(call_id) = value else {
             return ExpandResult { value: None, err };
         };
-        if self.recursion_limit.check(self.recursion_depth as usize + 1).is_err() {
+        if self.recursion_depth as usize > self.recursion_limit {
             self.recursion_depth = u32::MAX;
             cov_mark::hit!(your_stack_belongs_to_me);
             return ExpandResult::only_err(ExpandError::new(

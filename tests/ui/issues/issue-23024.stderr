@@ -19,13 +19,7 @@ help: add missing generic argument
 LL |     println!("{:?}",(vfnfer[0] as dyn Fn<Args>)(3));
    |                                         ++++++
 
-error[E0191]: the value of the associated type `Output` in `FnOnce` must be specified
-  --> $DIR/issue-23024.rs:8:39
-   |
-LL |     println!("{:?}",(vfnfer[0] as dyn Fn)(3));
-   |                                       ^^ help: specify the associated type: `Fn::<Output = Type>`
+error: aborting due to 2 previous errors
 
-error: aborting due to 3 previous errors
-
-Some errors have detailed explanations: E0107, E0191, E0658.
+Some errors have detailed explanations: E0107, E0658.
 For more information about an error, try `rustc --explain E0107`.

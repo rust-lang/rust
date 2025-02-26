@@ -5,6 +5,8 @@ LL | fn main() -> Foo::Bar::<Vec<[u32]>> {}
    |                         ^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[u32]`
+note: required by an implicit `Sized` bound in `Vec`
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
 
 error: aborting due to 1 previous error
 

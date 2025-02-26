@@ -2,14 +2,13 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_the
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::ty::is_type_lang_item;
 use clippy_utils::{
-    SpanlessEq, get_expr_use_or_unification_node, get_parent_expr, is_lint_allowed, is_path_diagnostic_item,
-    method_calls, peel_blocks,
+    SpanlessEq, get_expr_use_or_unification_node, get_parent_expr, is_lint_allowed, method_calls, path_def_id,
+    peel_blocks,
 };
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, LangItem, Node, QPath};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
 use rustc_span::source_map::Spanned;
@@ -147,7 +146,7 @@ declare_lint_pass!(StringAdd => [STRING_ADD, STRING_ADD_ASSIGN, STRING_SLICE]);
 
 impl<'tcx> LateLintPass<'tcx> for StringAdd {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
-        if in_external_macro(cx.sess(), e.span) {
+        if e.span.in_external_macro(cx.sess().source_map()) {
             return;
         }
         match e.kind {
@@ -254,8 +253,9 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
         use rustc_ast::LitKind;
 
         if let ExprKind::Call(fun, [bytes_arg]) = e.kind
-            // Find std::str::converts::from_utf8
-            && is_path_diagnostic_item(cx, fun, sym::str_from_utf8)
+            // Find `std::str::converts::from_utf8` or `std::primitive::str::from_utf8`
+            && let Some(sym::str_from_utf8 | sym::str_inherent_from_utf8) =
+                path_def_id(cx, fun).and_then(|id| cx.tcx.get_diagnostic_name(id))
 
             // Find string::as_bytes
             && let ExprKind::AddrOf(BorrowKind::Ref, _, args) = bytes_arg.kind
@@ -284,9 +284,9 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
             );
         }
 
-        if !in_external_macro(cx.sess(), e.span)
+        if !e.span.in_external_macro(cx.sess().source_map())
             && let ExprKind::MethodCall(path, receiver, ..) = &e.kind
-            && path.ident.name == sym!(as_bytes)
+            && path.ident.name.as_str() == "as_bytes"
             && let ExprKind::Lit(lit) = &receiver.kind
             && let LitKind::Str(lit_content, _) = &lit.node
         {
@@ -332,7 +332,7 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
         }
 
         if let ExprKind::MethodCall(path, recv, [], _) = &e.kind
-            && path.ident.name == sym!(into_bytes)
+            && path.ident.name.as_str() == "into_bytes"
             && let ExprKind::MethodCall(path, recv, [], _) = &recv.kind
             && matches!(path.ident.name.as_str(), "to_owned" | "to_string")
             && let ExprKind::Lit(lit) = &recv.kind
@@ -370,12 +370,10 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```no_run
-    /// // example code where clippy issues a warning
     /// let _ = "str".to_string();
     /// ```
     /// Use instead:
     /// ```no_run
-    /// // example code which does not raise clippy warning
     /// let _ = "str".to_owned();
     /// ```
     #[clippy::version = "pre 1.29.0"]
@@ -424,13 +422,11 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```no_run
-    /// // example code where clippy issues a warning
     /// let msg = String::from("Hello World");
     /// let _ = msg.to_string();
     /// ```
     /// Use instead:
     /// ```no_run
-    /// // example code which does not raise clippy warning
     /// let msg = String::from("Hello World");
     /// let _ = msg.clone();
     /// ```
@@ -493,7 +489,7 @@ impl<'tcx> LateLintPass<'tcx> for TrimSplitWhitespace {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'_>) {
         let tyckres = cx.typeck_results();
         if let ExprKind::MethodCall(path, split_recv, [], split_ws_span) = expr.kind
-            && path.ident.name == sym!(split_whitespace)
+            && path.ident.name.as_str() == "split_whitespace"
             && let Some(split_ws_def_id) = tyckres.type_dependent_def_id(expr.hir_id)
             && cx.tcx.is_diagnostic_item(sym::str_split_whitespace, split_ws_def_id)
             && let ExprKind::MethodCall(path, _trim_recv, [], trim_span) = split_recv.kind

@@ -1,4 +1,4 @@
-//@ compile-flags: -O -Zmutable-noalias=no
+//@ compile-flags: -Copt-level=3 -Zmutable-noalias=no
 
 #![crate_type = "lib"]
 

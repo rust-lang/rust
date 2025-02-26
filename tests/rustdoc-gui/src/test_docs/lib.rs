@@ -156,7 +156,7 @@ pub enum AnEnum {
     WithVariants { and: usize, sub: usize, variants: usize },
 }
 
-#[doc(keyword = "CookieMonster")]
+#[doc(keyword = "for")]
 /// Some keyword.
 pub mod keyword {}
 
@@ -615,6 +615,15 @@ pub mod private {
     }
 }
 
+/// ```
+/// fn super_long_function_name_because_i_need_to_hit_the_limit_and_break_beyond_it() {
+/// }
+/// ```
+///
+/// ```text
+/// fn super_long_function_name_because_i_need_to_hit_the_limit_and_break_beyond_it_v2() {
+/// }
+/// ```
 pub mod trait_bounds {
     pub trait OneBound: Sized {}
     pub trait TwoBounds: Sized + Copy {}
@@ -651,4 +660,83 @@ pub mod long_list {
     //!   a type
     //! * [`FromBytes`](#a) indicates that a type may safely be converted from an arbitrary byte
     //!   sequence
+}
+
+pub struct ImplDoc;
+
+/// bla sondfosdnf sdfasd fadsd fdsa f ads fad sf sad f sad fasdfsafsa df dsafasdasd fsa dfadsfasd
+/// fads fadfadd
+///
+/// bla
+impl ImplDoc {
+    pub fn bar() {}
+}
+
+/// bla
+///
+/// bla
+impl ImplDoc {
+    pub fn bar2() {}
+}
+
+// ignore-tidy-linelength
+/// | this::is::a::kinda::very::long::header::number::one | this::is::a::kinda::very::long::header::number::two | this::is::a::kinda::very::long::header::number::three |
+/// |-|-|-|
+/// | bla | bli | blob |
+impl ImplDoc {
+    pub fn bar3() {}
+}
+
+/// # h1
+///
+/// bla
+impl ImplDoc {
+    pub fn bar4() {}
+}
+
+/// * list
+/// * list
+/// * list
+impl ImplDoc {
+    pub fn bar5() {}
+}
+
+pub trait ItemsTrait {
+    /// You want doc, here is doc!
+    ///
+    /// blablala
+    type F;
+
+    /// You want doc, here is doc!
+    ///
+    /// blablala
+    const X: u32;
+
+    /// You want doc, here is doc!
+    ///
+    /// blablala
+    fn foo() {}
+
+    /// You want doc, here is doc!
+    ///
+    /// blablala
+    fn bar();
+}
+
+pub mod SidebarSort {
+    use std::cell::Cell;
+    use std::sync::atomic::*;
+    pub trait Sort {}
+
+    impl Sort for u32 {}
+    impl Sort for u8 {}
+    impl Sort for u16 {}
+    impl Sort for usize {}
+    impl Sort for AtomicU32 {}
+    impl Sort for AtomicU16 {}
+    impl Sort for AtomicU8 {}
+    impl Sort for AtomicBool {}
+    impl Sort for Cell<u16> {}
+    impl Sort for Cell<u8> {}
+    impl<'a> Sort for &'a str {}
 }

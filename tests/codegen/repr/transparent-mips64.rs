@@ -1,5 +1,5 @@
 //@ revisions: mips64 mips64el
-//@ compile-flags: -O -C no-prepopulate-passes
+//@ compile-flags: -Copt-level=3 -C no-prepopulate-passes
 
 //@[mips64] compile-flags: --target mips64-unknown-linux-gnuabi64
 //@[mips64] needs-llvm-components: mips

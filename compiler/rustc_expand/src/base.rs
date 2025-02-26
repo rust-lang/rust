@@ -3,18 +3,20 @@ use std::iter;
 use std::path::Component::Prefix;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
+use std::sync::Arc;
 
-use rustc_ast::attr::MarkedAttrs;
+use rustc_ast::attr::{AttributeExt, MarkedAttrs};
 use rustc_ast::ptr::P;
 use rustc_ast::token::Nonterminal;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, Item, NodeId, PatKind};
-use rustc_attr::{self as attr, Deprecation, Stability};
+use rustc_attr_parsing::{AttributeKind, Deprecation, Stability, find_attr};
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::sync::{self, Lrc};
+use rustc_data_structures::sync;
 use rustc_errors::{DiagCtxtHandle, ErrorGuaranteed, PResult};
 use rustc_feature::Features;
+use rustc_hir as hir;
 use rustc_lint_defs::{BufferedEarlyLint, RegisteredTools};
 use rustc_parse::MACRO_ARGUMENTS;
 use rustc_parse::parser::Parser;
@@ -25,8 +27,7 @@ use rustc_span::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId, MacroKind};
 use rustc_span::source_map::SourceMap;
-use rustc_span::symbol::{Ident, Symbol, kw, sym};
-use rustc_span::{DUMMY_SP, FileName, Span};
+use rustc_span::{DUMMY_SP, FileName, Ident, Span, Symbol, kw, sym};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
 
@@ -523,7 +524,7 @@ impl MacResult for MacEager {
                 return Some(P(ast::Pat {
                     id: ast::DUMMY_NODE_ID,
                     span: e.span,
-                    kind: PatKind::Lit(e),
+                    kind: PatKind::Expr(e),
                     tokens: None,
                 }));
             }
@@ -728,7 +729,7 @@ pub struct SyntaxExtension {
     /// Span of the macro definition.
     pub span: Span,
     /// List of unstable features that are treated as stable inside this macro.
-    pub allow_internal_unstable: Option<Lrc<[Symbol]>>,
+    pub allow_internal_unstable: Option<Arc<[Symbol]>>,
     /// The macro's stability info.
     pub stability: Option<Stability>,
     /// The macro's deprecation info.
@@ -782,10 +783,12 @@ impl SyntaxExtension {
         }
     }
 
-    fn collapse_debuginfo_by_name(attr: &Attribute) -> Result<CollapseMacroDebuginfo, Span> {
+    fn collapse_debuginfo_by_name(
+        attr: &impl AttributeExt,
+    ) -> Result<CollapseMacroDebuginfo, Span> {
         let list = attr.meta_item_list();
         let Some([MetaItemInner::MetaItem(item)]) = list.as_deref() else {
-            return Err(attr.span);
+            return Err(attr.span());
         };
         if !item.is_word() {
             return Err(item.span);
@@ -805,9 +808,9 @@ impl SyntaxExtension {
     /// | (unspecified) | no  | if-ext        | if-ext   | yes |
     /// | external      | no  | if-ext        | if-ext   | yes |
     /// | yes           | yes | yes           | yes      | yes |
-    fn get_collapse_debuginfo(sess: &Session, attrs: &[ast::Attribute], ext: bool) -> bool {
+    fn get_collapse_debuginfo(sess: &Session, attrs: &[impl AttributeExt], ext: bool) -> bool {
         let flag = sess.opts.cg.collapse_macro_debuginfo;
-        let attr = attr::find_by_name(attrs, sym::collapse_debuginfo)
+        let attr = ast::attr::find_by_name(attrs, sym::collapse_debuginfo)
             .and_then(|attr| {
                 Self::collapse_debuginfo_by_name(attr)
                     .map_err(|span| {
@@ -816,7 +819,7 @@ impl SyntaxExtension {
                     .ok()
             })
             .unwrap_or_else(|| {
-                if attr::contains_name(attrs, sym::rustc_builtin_macro) {
+                if ast::attr::contains_name(attrs, sym::rustc_builtin_macro) {
                     CollapseMacroDebuginfo::Yes
                 } else {
                     CollapseMacroDebuginfo::Unspecified
@@ -836,26 +839,30 @@ impl SyntaxExtension {
     /// and other properties converted from attributes.
     pub fn new(
         sess: &Session,
-        features: &Features,
         kind: SyntaxExtensionKind,
         span: Span,
         helper_attrs: Vec<Symbol>,
         edition: Edition,
         name: Symbol,
-        attrs: &[ast::Attribute],
+        attrs: &[hir::Attribute],
         is_local: bool,
     ) -> SyntaxExtension {
         let allow_internal_unstable =
-            attr::allow_internal_unstable(sess, attrs).collect::<Vec<Symbol>>();
+            find_attr!(attrs, AttributeKind::AllowInternalUnstable(i) => i)
+                .map(|i| i.as_slice())
+                .unwrap_or_default();
+        // FIXME(jdonszelman): allow_internal_unsafe isn't yet new-style
+        // let allow_internal_unsafe = find_attr!(attrs, AttributeKind::AllowInternalUnsafe);
+        let allow_internal_unsafe =
+            ast::attr::find_by_name(attrs, sym::allow_internal_unsafe).is_some();
 
-        let allow_internal_unsafe = attr::contains_name(attrs, sym::allow_internal_unsafe);
-        let local_inner_macros = attr::find_by_name(attrs, sym::macro_export)
+        let local_inner_macros = ast::attr::find_by_name(attrs, sym::macro_export)
             .and_then(|macro_export| macro_export.meta_item_list())
-            .is_some_and(|l| attr::list_contains_name(&l, sym::local_inner_macros));
+            .is_some_and(|l| ast::attr::list_contains_name(&l, sym::local_inner_macros));
         let collapse_debuginfo = Self::get_collapse_debuginfo(sess, attrs, !is_local);
         tracing::debug!(?name, ?local_inner_macros, ?collapse_debuginfo, ?allow_internal_unsafe);
 
-        let (builtin_name, helper_attrs) = attr::find_by_name(attrs, sym::rustc_builtin_macro)
+        let (builtin_name, helper_attrs) = ast::attr::find_by_name(attrs, sym::rustc_builtin_macro)
             .map(|attr| {
                 // Override `helper_attrs` passed above if it's a built-in macro,
                 // marking `proc_macro_derive` macros as built-in is not a realistic use case.
@@ -865,18 +872,17 @@ impl SyntaxExtension {
                 )
             })
             .unwrap_or_else(|| (None, helper_attrs));
-        let stability = attr::find_stability(sess, attrs, span);
-        // We set `is_const_fn` false to avoid getting any implicit const stability.
-        let const_stability =
-            attr::find_const_stability(sess, attrs, span, /* is_const_fn */ false);
-        let body_stability = attr::find_body_stability(sess, attrs);
-        if let Some((_, sp)) = const_stability {
+
+        let stability = find_attr!(attrs, AttributeKind::Stability{stability, ..} => *stability);
+
+        // FIXME(jdonszelmann): make it impossible to miss the or_else in the typesystem
+        if let Some(sp) = find_attr!(attrs, AttributeKind::ConstStability{span, ..} => *span) {
             sess.dcx().emit_err(errors::MacroConstStability {
                 span: sp,
                 head_span: sess.source_map().guess_head_span(span),
             });
         }
-        if let Some((_, sp)) = body_stability {
+        if let Some(sp) = find_attr!(attrs, AttributeKind::BodyStability{span, ..} => *span) {
             sess.dcx().emit_err(errors::MacroBodyStability {
                 span: sp,
                 head_span: sess.source_map().guess_head_span(span),
@@ -887,9 +893,10 @@ impl SyntaxExtension {
             kind,
             span,
             allow_internal_unstable: (!allow_internal_unstable.is_empty())
-                .then(|| allow_internal_unstable.into()),
-            stability: stability.map(|(s, _)| s),
-            deprecation: attr::find_deprecation(sess, features, attrs).map(|(d, _)| d),
+                // FIXME(jdonszelmann): avoid the into_iter/collect?
+                .then(|| allow_internal_unstable.iter().map(|i| i.0).collect::<Vec<_>>().into()),
+            stability,
+            deprecation: find_attr!(attrs, AttributeKind::Deprecation{deprecation, ..} => *deprecation),
             helper_attrs,
             edition,
             builtin_name,
@@ -987,7 +994,7 @@ pub struct Indeterminate;
 pub struct DeriveResolution {
     pub path: ast::Path,
     pub item: Annotatable,
-    pub exts: Option<Lrc<SyntaxExtension>>,
+    pub exts: Option<Arc<SyntaxExtension>>,
     pub is_const: bool,
 }
 
@@ -1018,7 +1025,7 @@ pub trait ResolverExpand {
         invoc: &Invocation,
         eager_expansion_root: LocalExpnId,
         force: bool,
-    ) -> Result<Lrc<SyntaxExtension>, Indeterminate>;
+    ) -> Result<Arc<SyntaxExtension>, Indeterminate>;
 
     fn record_macro_rule_usage(&mut self, mac_id: NodeId, rule_index: usize);
 
@@ -1307,7 +1314,7 @@ pub fn resolve_path(sess: &Session, path: impl Into<PathBuf>, span: Span) -> PRe
 
 pub fn parse_macro_name_and_helper_attrs(
     dcx: DiagCtxtHandle<'_>,
-    attr: &Attribute,
+    attr: &impl AttributeExt,
     macro_type: &str,
 ) -> Option<(Symbol, Vec<Symbol>)> {
     // Once we've located the `#[proc_macro_derive]` attribute, verify
@@ -1315,7 +1322,7 @@ pub fn parse_macro_name_and_helper_attrs(
     // `#[proc_macro_derive(Foo, attributes(A, ..))]`
     let list = attr.meta_item_list()?;
     let ([trait_attr] | [trait_attr, _]) = list.as_slice() else {
-        dcx.emit_err(errors::AttrNoArguments { span: attr.span });
+        dcx.emit_err(errors::AttrNoArguments { span: attr.span() });
         return None;
     };
     let Some(trait_attr) = trait_attr.meta_item() else {

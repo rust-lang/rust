@@ -96,7 +96,7 @@ impl<W: Write> BufWriter<W> {
 
     pub(crate) fn try_new_buffer() -> io::Result<Vec<u8>> {
         Vec::try_with_capacity(DEFAULT_BUF_SIZE).map_err(|_| {
-            io::const_io_error!(ErrorKind::OutOfMemory, "failed to allocate write buffer")
+            io::const_error!(ErrorKind::OutOfMemory, "failed to allocate write buffer")
         })
     }
 
@@ -238,7 +238,7 @@ impl<W: ?Sized + Write> BufWriter<W> {
 
             match r {
                 Ok(0) => {
-                    return Err(io::const_io_error!(
+                    return Err(io::const_error!(
                         ErrorKind::WriteZero,
                         "failed to write the buffered data",
                     ));

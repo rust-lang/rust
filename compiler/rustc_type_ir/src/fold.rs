@@ -46,12 +46,12 @@
 //! ```
 
 use std::mem;
+use std::sync::Arc;
 
 use rustc_index::{Idx, IndexVec};
 use thin_vec::ThinVec;
-use tracing::instrument;
+use tracing::{debug, instrument};
 
-use crate::data_structures::Lrc;
 use crate::inherent::*;
 use crate::visit::{TypeVisitable, TypeVisitableExt as _};
 use crate::{self as ty, Interner};
@@ -73,7 +73,7 @@ type Never = std::convert::Infallible;
 /// which means in practice almost every foldable type needs to also be
 /// visitable. (However, there are some types that are visitable without being
 /// foldable.)
-pub trait TypeFoldable<I: Interner>: TypeVisitable<I> {
+pub trait TypeFoldable<I: Interner>: TypeVisitable<I> + Clone {
     /// The entry point for folding. To fold a value `t` with a folder `f`
     /// call: `t.try_fold_with(f)`.
     ///
@@ -273,28 +273,28 @@ impl<I: Interner, T: TypeFoldable<I>, E: TypeFoldable<I>> TypeFoldable<I> for Re
     }
 }
 
-impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Lrc<T> {
+impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Arc<T> {
     fn try_fold_with<F: FallibleTypeFolder<I>>(mut self, folder: &mut F) -> Result<Self, F::Error> {
         // We merely want to replace the contained `T`, if at all possible,
-        // so that we don't needlessly allocate a new `Lrc` or indeed clone
+        // so that we don't needlessly allocate a new `Arc` or indeed clone
         // the contained type.
         unsafe {
             // First step is to ensure that we have a unique reference to
-            // the contained type, which `Lrc::make_mut` will accomplish (by
-            // allocating a new `Lrc` and cloning the `T` only if required).
-            // This is done *before* casting to `Lrc<ManuallyDrop<T>>` so that
+            // the contained type, which `Arc::make_mut` will accomplish (by
+            // allocating a new `Arc` and cloning the `T` only if required).
+            // This is done *before* casting to `Arc<ManuallyDrop<T>>` so that
             // panicking during `make_mut` does not leak the `T`.
-            Lrc::make_mut(&mut self);
+            Arc::make_mut(&mut self);
 
-            // Casting to `Lrc<ManuallyDrop<T>>` is safe because `ManuallyDrop`
+            // Casting to `Arc<ManuallyDrop<T>>` is safe because `ManuallyDrop`
             // is `repr(transparent)`.
-            let ptr = Lrc::into_raw(self).cast::<mem::ManuallyDrop<T>>();
-            let mut unique = Lrc::from_raw(ptr);
+            let ptr = Arc::into_raw(self).cast::<mem::ManuallyDrop<T>>();
+            let mut unique = Arc::from_raw(ptr);
 
-            // Call to `Lrc::make_mut` above guarantees that `unique` is the
+            // Call to `Arc::make_mut` above guarantees that `unique` is the
             // sole reference to the contained value, so we can avoid doing
             // a checked `get_mut` here.
-            let slot = Lrc::get_mut(&mut unique).unwrap_unchecked();
+            let slot = Arc::get_mut(&mut unique).unwrap_unchecked();
 
             // Semantically move the contained type out from `unique`, fold
             // it, then move the folded value back into `unique`. Should
@@ -304,8 +304,8 @@ impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Lrc<T> {
             let folded = owned.try_fold_with(folder)?;
             *slot = mem::ManuallyDrop::new(folded);
 
-            // Cast back to `Lrc<T>`.
-            Ok(Lrc::from_raw(Lrc::into_raw(unique).cast()))
+            // Cast back to `Arc<T>`.
+            Ok(Arc::from_raw(Arc::into_raw(unique).cast()))
         }
     }
 }
@@ -429,5 +429,77 @@ where
         value
     } else {
         value.fold_with(&mut Shifter::new(cx, amount))
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////
+// Region folder
+
+pub fn fold_regions<I: Interner, T>(
+    cx: I,
+    value: T,
+    mut f: impl FnMut(I::Region, ty::DebruijnIndex) -> I::Region,
+) -> T
+where
+    T: TypeFoldable<I>,
+{
+    value.fold_with(&mut RegionFolder::new(cx, &mut f))
+}
+
+/// Folds over the substructure of a type, visiting its component
+/// types and all regions that occur *free* within it.
+///
+/// That is, function pointer types and trait object can introduce
+/// new bound regions which are not visited by this visitors as
+/// they are not free; only regions that occur free will be
+/// visited by `fld_r`.
+pub struct RegionFolder<'a, I: Interner> {
+    cx: I,
+
+    /// Stores the index of a binder *just outside* the stuff we have
+    /// visited. So this begins as INNERMOST; when we pass through a
+    /// binder, it is incremented (via `shift_in`).
+    current_index: ty::DebruijnIndex,
+
+    /// Callback invokes for each free region. The `DebruijnIndex`
+    /// points to the binder *just outside* the ones we have passed
+    /// through.
+    fold_region_fn: &'a mut (dyn FnMut(I::Region, ty::DebruijnIndex) -> I::Region + 'a),
+}
+
+impl<'a, I: Interner> RegionFolder<'a, I> {
+    #[inline]
+    pub fn new(
+        cx: I,
+        fold_region_fn: &'a mut dyn FnMut(I::Region, ty::DebruijnIndex) -> I::Region,
+    ) -> RegionFolder<'a, I> {
+        RegionFolder { cx, current_index: ty::INNERMOST, fold_region_fn }
+    }
+}
+
+impl<'a, I: Interner> TypeFolder<I> for RegionFolder<'a, I> {
+    fn cx(&self) -> I {
+        self.cx
+    }
+
+    fn fold_binder<T: TypeFoldable<I>>(&mut self, t: ty::Binder<I, T>) -> ty::Binder<I, T> {
+        self.current_index.shift_in(1);
+        let t = t.super_fold_with(self);
+        self.current_index.shift_out(1);
+        t
+    }
+
+    #[instrument(skip(self), level = "debug", ret)]
+    fn fold_region(&mut self, r: I::Region) -> I::Region {
+        match r.kind() {
+            ty::ReBound(debruijn, _) if debruijn < self.current_index => {
+                debug!(?self.current_index, "skipped bound region");
+                r
+            }
+            _ => {
+                debug!(?self.current_index, "folding free region");
+                (self.fold_region_fn)(r, self.current_index)
+            }
+        }
     }
 }

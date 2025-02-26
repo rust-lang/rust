@@ -84,23 +84,23 @@ use crate::ty::TyCtxt;
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Copy, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
 pub struct Scope {
-    pub id: hir::ItemLocalId,
+    pub local_id: hir::ItemLocalId,
     pub data: ScopeData,
 }
 
 impl fmt::Debug for Scope {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.data {
-            ScopeData::Node => write!(fmt, "Node({:?})", self.id),
-            ScopeData::CallSite => write!(fmt, "CallSite({:?})", self.id),
-            ScopeData::Arguments => write!(fmt, "Arguments({:?})", self.id),
-            ScopeData::Destruction => write!(fmt, "Destruction({:?})", self.id),
-            ScopeData::IfThen => write!(fmt, "IfThen({:?})", self.id),
-            ScopeData::IfThenRescope => write!(fmt, "IfThen[edition2024]({:?})", self.id),
+            ScopeData::Node => write!(fmt, "Node({:?})", self.local_id),
+            ScopeData::CallSite => write!(fmt, "CallSite({:?})", self.local_id),
+            ScopeData::Arguments => write!(fmt, "Arguments({:?})", self.local_id),
+            ScopeData::Destruction => write!(fmt, "Destruction({:?})", self.local_id),
+            ScopeData::IfThen => write!(fmt, "IfThen({:?})", self.local_id),
+            ScopeData::IfThenRescope => write!(fmt, "IfThen[edition2024]({:?})", self.local_id),
             ScopeData::Remainder(fsi) => write!(
                 fmt,
                 "Remainder {{ block: {:?}, first_statement_index: {}}}",
-                self.id,
+                self.local_id,
                 fsi.as_u32(),
             ),
         }
@@ -164,18 +164,8 @@ rustc_index::newtype_index! {
 rustc_data_structures::static_assert_size!(ScopeData, 4);
 
 impl Scope {
-    /// Returns an item-local ID associated with this scope.
-    ///
-    /// N.B., likely to be replaced as API is refined; e.g., pnkfelix
-    /// anticipates `fn entry_node_id` and `fn each_exit_node_id`.
-    pub fn item_local_id(&self) -> hir::ItemLocalId {
-        self.id
-    }
-
     pub fn hir_id(&self, scope_tree: &ScopeTree) -> Option<HirId> {
-        scope_tree
-            .root_body
-            .map(|hir_id| HirId { owner: hir_id.owner, local_id: self.item_local_id() })
+        scope_tree.root_body.map(|hir_id| HirId { owner: hir_id.owner, local_id: self.local_id })
     }
 
     /// Returns the span of this `Scope`. Note that in general the
@@ -235,6 +225,11 @@ pub struct ScopeTree {
     /// table are not rvalue candidates. The set of rvalue candidates is computed
     /// during type check based on a traversal of the AST.
     pub rvalue_candidates: HirIdMap<RvalueCandidateType>,
+
+    /// Backwards incompatible scoping that will be introduced in future editions.
+    /// This information is used later for linting to identify locals and
+    /// temporary values that will receive backwards-incompatible drop orders.
+    pub backwards_incompatible_scope: UnordMap<hir::ItemLocalId, Scope>,
 
     /// If there are any `yield` nested within a scope, this map
     /// stores the `Span` of the last one and its index in the
@@ -345,7 +340,7 @@ impl ScopeTree {
 
     pub fn record_var_scope(&mut self, var: hir::ItemLocalId, lifetime: Scope) {
         debug!("record_var_scope(sub={:?}, sup={:?})", var, lifetime);
-        assert!(var != lifetime.item_local_id());
+        assert!(var != lifetime.local_id);
         self.var_map.insert(var, lifetime);
     }
 
@@ -354,7 +349,7 @@ impl ScopeTree {
         match &candidate_type {
             RvalueCandidateType::Borrow { lifetime: Some(lifetime), .. }
             | RvalueCandidateType::Pattern { lifetime: Some(lifetime), .. } => {
-                assert!(var.local_id != lifetime.item_local_id())
+                assert!(var.local_id != lifetime.local_id)
             }
             _ => {}
         }

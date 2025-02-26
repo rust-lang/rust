@@ -36,6 +36,9 @@ pub(super) fn hints(
                 if it.ty().is_some() {
                     return None;
                 }
+                if config.hide_closure_parameter_hints && it.syntax().ancestors().nth(2).is_none_or(|n| matches!(ast::Expr::cast(n), Some(ast::Expr::ClosureExpr(_)))) {
+                    return None;
+                }
                 Some(it.colon_token())
             },
             ast::LetStmt(it) => {
@@ -78,13 +81,14 @@ pub(super) fn hints(
     let text_edit = if let Some(colon_token) = &type_ascriptable {
         ty_to_text_edit(
             sema,
+            config,
             desc_pat.syntax(),
             &ty,
             colon_token
                 .as_ref()
                 .map_or_else(|| pat.syntax().text_range(), |t| t.text_range())
                 .end(),
-            if colon_token.is_some() { String::new() } else { String::from(": ") },
+            if colon_token.is_some() { "" } else { ": " },
         )
     } else {
         None
@@ -185,7 +189,7 @@ mod tests {
     };
 
     #[track_caller]
-    fn check_types(ra_fixture: &str) {
+    fn check_types(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         check_with_config(InlayHintsConfig { type_hints: true, ..DISABLED_CONFIG }, ra_fixture);
     }
 
@@ -391,36 +395,37 @@ fn main() {
     #[test]
     fn check_hint_range_limit() {
         let fixture = r#"
-        //- minicore: fn, sized
-        fn foo() -> impl Fn() { loop {} }
-        fn foo1() -> impl Fn(f64) { loop {} }
-        fn foo2() -> impl Fn(f64, f64) { loop {} }
-        fn foo3() -> impl Fn(f64, f64) -> u32 { loop {} }
-        fn foo4() -> &'static dyn Fn(f64, f64) -> u32 { loop {} }
-        fn foo5() -> &'static dyn Fn(&'static dyn Fn(f64, f64) -> u32, f64) -> u32 { loop {} }
-        fn foo6() -> impl Fn(f64, f64) -> u32 + Sized { loop {} }
-        fn foo7() -> *const (impl Fn(f64, f64) -> u32 + Sized) { loop {} }
+//- minicore: fn, sized
+fn foo() -> impl Fn() { loop {} }
+fn foo1() -> impl Fn(f64) { loop {} }
+fn foo2() -> impl Fn(f64, f64) { loop {} }
+fn foo3() -> impl Fn(f64, f64) -> u32 { loop {} }
+fn foo4() -> &'static dyn Fn(f64, f64) -> u32 { loop {} }
+fn foo5() -> &'static dyn Fn(&'static dyn Fn(f64, f64) -> u32, f64) -> u32 { loop {} }
+fn foo6() -> impl Fn(f64, f64) -> u32 + Sized { loop {} }
+fn foo7() -> *const (impl Fn(f64, f64) -> u32 + Sized) { loop {} }
 
-        fn main() {
-            let foo = foo();
-            let foo = foo1();
-            let foo = foo2();
-             // ^^^ impl Fn(f64, f64)
-            let foo = foo3();
-             // ^^^ impl Fn(f64, f64) -> u32
-            let foo = foo4();
-            let foo = foo5();
-            let foo = foo6();
-            let foo = foo7();
-        }
-        "#;
+fn main() {
+    let foo = foo();
+    let foo = foo1();
+    let foo = foo2();
+     // ^^^ impl Fn(f64, f64)
+    let foo = foo3();
+     // ^^^ impl Fn(f64, f64) -> u32
+    let foo = foo4();
+     // ^^^ &dyn Fn(f64, f64) -> u32
+    let foo = foo5();
+    let foo = foo6();
+    let foo = foo7();
+}
+"#;
         let (analysis, file_id) = fixture::file(fixture);
         let expected = extract_annotations(&analysis.file_text(file_id).unwrap());
         let inlay_hints = analysis
             .inlay_hints(
                 &InlayHintsConfig { type_hints: true, ..DISABLED_CONFIG },
                 file_id,
-                Some(TextRange::new(TextSize::from(500), TextSize::from(600))),
+                Some(TextRange::new(TextSize::from(491), TextSize::from(640))),
             )
             .unwrap();
         let actual =
@@ -948,6 +953,36 @@ fn bar(f: impl FnOnce(u8) -> u8) -> impl FnOnce(u8) -> u8 {
     }
 
     #[test]
+    fn skip_closure_parameter_hints() {
+        check_with_config(
+            InlayHintsConfig {
+                type_hints: true,
+                hide_closure_parameter_hints: true,
+                ..DISABLED_CONFIG
+            },
+            r#"
+//- minicore: fn
+struct Foo;
+impl Foo {
+    fn foo(self: Self) {}
+    fn bar(self: &Self) {}
+}
+fn main() {
+    let closure = |x, y| x + y;
+    //  ^^^^^^^ impl Fn(i32, i32) -> {unknown}
+    closure(2, 3);
+    let point = (10, 20);
+    //  ^^^^^ (i32, i32)
+    let (x,      y) = point;
+      // ^ i32   ^ i32
+    Foo::foo(Foo);
+    Foo::bar(&Foo);
+}
+"#,
+        );
+    }
+
+    #[test]
     fn hint_truncation() {
         check_with_config(
             InlayHintsConfig { max_length: Some(8), ..TEST_CONFIG },
@@ -1161,6 +1196,81 @@ fn main() {
     let _x = 42;
       //^^ i32
 }"#,
+        );
+    }
+
+    #[test]
+    fn collapses_nested_impl_projections() {
+        check_types(
+            r#"
+//- minicore: sized
+trait T {
+    type Assoc;
+    fn f(self) -> Self::Assoc;
+}
+
+trait T2 {}
+trait T3<T> {}
+
+fn f(it: impl T<Assoc: T2>) {
+    let l = it.f();
+     // ^ impl T2
+}
+
+fn f2<G: T<Assoc: T2 + 'static>>(it: G) {
+    let l = it.f();
+      //^ impl T2 + 'static
+}
+
+fn f3<G: T>(it: G) where <G as T>::Assoc: T2 {
+    let l = it.f();
+      //^ impl T2
+}
+
+fn f4<G: T<Assoc: T2 + T3<()>>>(it: G) {
+    let l = it.f();
+      //^ impl T2 + T3<()>
+}
+
+fn f5<G: T<Assoc = ()>>(it: G) {
+    let l = it.f();
+      //^ ()
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn regression_19007() {
+        check_types(
+            r#"
+trait Foo {
+    type Assoc;
+
+    fn foo(&self) -> Self::Assoc;
+}
+
+trait Bar {
+    type Target;
+}
+
+trait Baz<T> {}
+
+struct Struct<T: Foo> {
+    field: T,
+}
+
+impl<T> Struct<T>
+where
+    T: Foo,
+    T::Assoc: Baz<<T::Assoc as Bar>::Target> + Bar,
+{
+    fn f(&self) {
+        let x = self.field.foo();
+          //^ impl Baz<<<T as Foo>::Assoc as Bar>::Target> + Bar
+    }
+}
+"#,
         );
     }
 }

@@ -2,7 +2,6 @@
 // Check that coercions unify the expected return type of a polymorphic
 // function call, instead of leaving the type variables as they were.
 
-//@ pretty-expanded FIXME #23616
 
 struct Foo;
 impl Foo {

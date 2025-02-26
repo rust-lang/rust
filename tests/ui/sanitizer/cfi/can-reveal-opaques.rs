@@ -39,6 +39,6 @@ fn main() {
     // So why is the second generic of `test` "`()`", and not the
     // `impl Sized` since we inferred it from the return type of `rpit_fn`
     // during typeck? Well, that's because we're using the generics from the
-    // terminator of the MIR, which has had the RevealAll pass performed on it.
+    // terminator of the MIR, which has had the PostAnalysisNormalize pass performed on it.
     let _ = test(rpit_fn);
 }

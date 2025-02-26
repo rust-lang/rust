@@ -2,7 +2,7 @@
 //@ compile-flags: -Znext-solver
 #![allow(incomplete_features)]
 #![feature(staged_api)]
-#![feature(const_trait_impl, effects)]
+#![feature(const_trait_impl)]
 #![feature(const_t_try)]
 #![feature(const_try)]
 #![feature(try_trait_v2)]
@@ -38,6 +38,7 @@ impl const FromResidual for T {
 }
 
 #[stable(feature = "foo", since = "1.0")]
+#[rustc_const_unstable(feature = "const_tr", issue = "none")]
 #[const_trait]
 pub trait Tr {
     #[stable(feature = "foo", since = "1.0")]

@@ -129,9 +129,9 @@ impl fmt::Display for CrateName {
 }
 
 impl ops::Deref for CrateName {
-    type Target = str;
-    fn deref(&self) -> &str {
-        self.0.as_str()
+    type Target = Symbol;
+    fn deref(&self) -> &Symbol {
+        &self.0
     }
 }
 
@@ -230,8 +230,8 @@ impl fmt::Display for CrateDisplayName {
 }
 
 impl ops::Deref for CrateDisplayName {
-    type Target = str;
-    fn deref(&self) -> &str {
+    type Target = Symbol;
+    fn deref(&self) -> &Symbol {
         &self.crate_name
     }
 }
@@ -296,6 +296,9 @@ pub struct CrateData {
     pub dependencies: Vec<Dependency>,
     pub origin: CrateOrigin,
     pub is_proc_macro: bool,
+    /// The working directory to run proc-macros in. This is the workspace root of the cargo workspace
+    /// for workspace members, the crate manifest dir otherwise.
+    pub proc_macro_cwd: Option<AbsPathBuf>,
 }
 
 #[derive(Default, Clone, PartialEq, Eq)]
@@ -360,8 +363,9 @@ impl CrateGraph {
         cfg_options: Arc<CfgOptions>,
         potential_cfg_options: Option<Arc<CfgOptions>>,
         mut env: Env,
-        is_proc_macro: bool,
         origin: CrateOrigin,
+        is_proc_macro: bool,
+        proc_macro_cwd: Option<AbsPathBuf>,
     ) -> CrateId {
         env.entries.shrink_to_fit();
         let data = CrateData {
@@ -375,6 +379,7 @@ impl CrateGraph {
             dependencies: Vec::new(),
             origin,
             is_proc_macro,
+            proc_macro_cwd,
         };
         self.arena.alloc(data)
     }
@@ -490,14 +495,11 @@ impl CrateGraph {
         }
     }
 
-    pub fn sort_deps(&mut self) {
-        self.arena
-            .iter_mut()
-            .for_each(|(_, data)| data.dependencies.sort_by_key(|dep| dep.crate_id));
-    }
-
     /// Extends this crate graph by adding a complete second crate
     /// graph and adjust the ids in the [`ProcMacroPaths`] accordingly.
+    ///
+    /// This will deduplicate the crates of the graph where possible.
+    /// Furthermore dependencies are sorted by crate id to make deduplication easier.
     ///
     /// Returns a map mapping `other`'s IDs to the new IDs in `self`.
     pub fn extend(
@@ -505,6 +507,13 @@ impl CrateGraph {
         mut other: CrateGraph,
         proc_macros: &mut ProcMacroPaths,
     ) -> FxHashMap<CrateId, CrateId> {
+        // Sorting here is a bit pointless because the input is likely already sorted.
+        // However, the overhead is small and it makes the `extend` method harder to misuse.
+        self.arena
+            .iter_mut()
+            .for_each(|(_, data)| data.dependencies.sort_by_key(|dep| dep.crate_id));
+
+        let m = self.len();
         let topo = other.crates_in_topological_order();
         let mut id_map: FxHashMap<CrateId, CrateId> = FxHashMap::default();
         for topo in topo {
@@ -513,7 +522,8 @@ impl CrateGraph {
             crate_data.dependencies.iter_mut().for_each(|dep| dep.crate_id = id_map[&dep.crate_id]);
             crate_data.dependencies.sort_by_key(|dep| dep.crate_id);
 
-            let new_id = self.arena.alloc(crate_data.clone());
+            let find = self.arena.iter().take(m).find_map(|(k, v)| (v == crate_data).then_some(k));
+            let new_id = find.unwrap_or_else(|| self.arena.alloc(crate_data.clone()));
             id_map.insert(topo, new_id);
         }
 
@@ -545,29 +555,6 @@ impl CrateGraph {
         }
 
         None
-    }
-
-    // Work around for https://github.com/rust-lang/rust-analyzer/issues/6038.
-    // As hacky as it gets.
-    pub fn patch_cfg_if(&mut self) -> bool {
-        // we stupidly max by version in an attempt to have all duplicated std's depend on the same cfg_if so that deduplication still works
-        let cfg_if =
-            self.hacky_find_crate("cfg_if").max_by_key(|&it| self.arena[it].version.clone());
-        let std = self.hacky_find_crate("std").next();
-        match (cfg_if, std) {
-            (Some(cfg_if), Some(std)) => {
-                self.arena[cfg_if].dependencies.clear();
-                self.arena[std]
-                    .dependencies
-                    .push(Dependency::new(CrateName::new("cfg_if").unwrap(), cfg_if));
-                true
-            }
-            _ => false,
-        }
-    }
-
-    fn hacky_find_crate<'a>(&'a self, display_name: &'a str) -> impl Iterator<Item = CrateId> + 'a {
-        self.iter().filter(move |it| self[*it].display_name.as_deref() == Some(display_name))
     }
 
     /// Removes all crates from this crate graph except for the ones in `to_keep` and fixes up the dependencies.
@@ -716,8 +703,9 @@ mod tests {
             Default::default(),
             Default::default(),
             Env::default(),
-            false,
             CrateOrigin::Local { repo: None, name: None },
+            false,
+            None,
         );
         let crate2 = graph.add_crate_root(
             FileId::from_raw(2u32),
@@ -727,8 +715,9 @@ mod tests {
             Default::default(),
             Default::default(),
             Env::default(),
-            false,
             CrateOrigin::Local { repo: None, name: None },
+            false,
+            None,
         );
         let crate3 = graph.add_crate_root(
             FileId::from_raw(3u32),
@@ -738,8 +727,9 @@ mod tests {
             Default::default(),
             Default::default(),
             Env::default(),
-            false,
             CrateOrigin::Local { repo: None, name: None },
+            false,
+            None,
         );
         assert!(graph
             .add_dep(crate1, Dependency::new(CrateName::new("crate2").unwrap(), crate2,))
@@ -763,8 +753,9 @@ mod tests {
             Default::default(),
             Default::default(),
             Env::default(),
-            false,
             CrateOrigin::Local { repo: None, name: None },
+            false,
+            None,
         );
         let crate2 = graph.add_crate_root(
             FileId::from_raw(2u32),
@@ -774,8 +765,9 @@ mod tests {
             Default::default(),
             Default::default(),
             Env::default(),
-            false,
             CrateOrigin::Local { repo: None, name: None },
+            false,
+            None,
         );
         assert!(graph
             .add_dep(crate1, Dependency::new(CrateName::new("crate2").unwrap(), crate2,))
@@ -796,8 +788,9 @@ mod tests {
             Default::default(),
             Default::default(),
             Env::default(),
-            false,
             CrateOrigin::Local { repo: None, name: None },
+            false,
+            None,
         );
         let crate2 = graph.add_crate_root(
             FileId::from_raw(2u32),
@@ -807,8 +800,9 @@ mod tests {
             Default::default(),
             Default::default(),
             Env::default(),
-            false,
             CrateOrigin::Local { repo: None, name: None },
+            false,
+            None,
         );
         let crate3 = graph.add_crate_root(
             FileId::from_raw(3u32),
@@ -818,8 +812,9 @@ mod tests {
             Default::default(),
             Default::default(),
             Env::default(),
-            false,
             CrateOrigin::Local { repo: None, name: None },
+            false,
+            None,
         );
         assert!(graph
             .add_dep(crate1, Dependency::new(CrateName::new("crate2").unwrap(), crate2,))
@@ -840,8 +835,9 @@ mod tests {
             Default::default(),
             Default::default(),
             Env::default(),
-            false,
             CrateOrigin::Local { repo: None, name: None },
+            false,
+            None,
         );
         let crate2 = graph.add_crate_root(
             FileId::from_raw(2u32),
@@ -851,8 +847,9 @@ mod tests {
             Default::default(),
             Default::default(),
             Env::default(),
-            false,
             CrateOrigin::Local { repo: None, name: None },
+            false,
+            None,
         );
         assert!(graph
             .add_dep(

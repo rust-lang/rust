@@ -88,7 +88,7 @@ impl<'a> From<&'a clean::Item> for ItemType {
             clean::ConstantItem(..) => ItemType::Constant,
             clean::TraitItem(..) => ItemType::Trait,
             clean::ImplItem(..) => ItemType::Impl,
-            clean::TyMethodItem(..) => ItemType::TyMethod,
+            clean::RequiredMethodItem(..) => ItemType::TyMethod,
             clean::MethodItem(..) => ItemType::Method,
             clean::StructFieldItem(..) => ItemType::StructField,
             clean::VariantItem(..) => ItemType::Variant,
@@ -96,8 +96,10 @@ impl<'a> From<&'a clean::Item> for ItemType {
             clean::ForeignStaticItem(..) => ItemType::Static,     // no ForeignStatic
             clean::MacroItem(..) => ItemType::Macro,
             clean::PrimitiveItem(..) => ItemType::Primitive,
-            clean::TyAssocConstItem(..) | clean::AssocConstItem(..) => ItemType::AssocConst,
-            clean::TyAssocTypeItem(..) | clean::AssocTypeItem(..) => ItemType::AssocType,
+            clean::RequiredAssocConstItem(..)
+            | clean::ProvidedAssocConstItem(..)
+            | clean::ImplAssocConstItem(..) => ItemType::AssocConst,
+            clean::RequiredAssocTypeItem(..) | clean::AssocTypeItem(..) => ItemType::AssocType,
             clean::ForeignTypeItem => ItemType::ForeignType,
             clean::KeywordItem => ItemType::Keyword,
             clean::TraitAliasItem(..) => ItemType::TraitAlias,

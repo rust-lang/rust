@@ -1,16 +1,14 @@
 [package]
 name = "rustc_target"
 version = "0.0.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 # tidy-alphabetical-start
 bitflags = "2.4.1"
 rustc_abi = { path = "../rustc_abi" }
 rustc_data_structures = { path = "../rustc_data_structures" }
-rustc_feature = { path = "../rustc_feature" }
 rustc_fs_util = { path = "../rustc_fs_util" }
-rustc_index = { path = "../rustc_index" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_span = { path = "../rustc_span" }

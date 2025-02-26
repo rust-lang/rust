@@ -1,3 +1,4 @@
+//@ reference: attributes.diagnostic.on_unimplemented.invalid-string
 #[diagnostic::on_unimplemented(message = "{{Test } thing")]
 //~^WARN unmatched `}` found
 //~|WARN unmatched `}` found

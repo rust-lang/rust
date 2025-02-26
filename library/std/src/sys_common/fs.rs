@@ -5,7 +5,7 @@ use crate::io::{self, Error, ErrorKind};
 use crate::path::Path;
 use crate::sys_common::ignore_notfound;
 
-pub(crate) const NOT_FILE_ERROR: Error = io::const_io_error!(
+pub(crate) const NOT_FILE_ERROR: Error = io::const_error!(
     ErrorKind::InvalidInput,
     "the source path is neither a regular file nor a symlink to a regular file",
 );

@@ -46,7 +46,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
    |
 LL ~     match ref_never {
 LL +         _ => todo!(),
-LL +     }
+LL ~     }
    |
 
 error: unreachable pattern
@@ -76,7 +76,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
    |
 LL ~     match res_u32_never {
 LL +         Ok(_) => todo!(),
-LL +     }
+LL ~     }
    |
 
 error[E0004]: non-exhaustive patterns: `Ok(1_u32..=u32::MAX)` not covered
@@ -104,7 +104,7 @@ LL |     let Ok(_x) = res_u32_never.as_ref();
    |         ^^^^^^ pattern `Err(_)` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
    = note: the matched value is of type `Result<&u32, &!>`
 help: you might want to use `let else` to handle the variant that isn't matched
    |
@@ -118,7 +118,7 @@ LL |     let Ok(_x) = &res_u32_never;
    |         ^^^^^^ pattern `&Err(!)` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
    = note: the matched value is of type `&Result<u32, !>`
 help: you might want to use `let else` to handle the variant that isn't matched
    |
@@ -239,7 +239,7 @@ LL |         let Ok(_) = *ptr_result_never_err;
    |             ^^^^^ pattern `Err(!)` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
    = note: the matched value is of type `Result<u8, !>`
 help: you might want to use `if let` to ignore the variant that isn't matched
    |
@@ -321,7 +321,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
    |
 LL ~     match slice_never {
 LL +         _ => todo!(),
-LL +     }
+LL ~     }
    |
 
 error[E0004]: non-exhaustive patterns: `&[!, ..]` not covered
@@ -376,7 +376,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
    |
 LL ~     match *slice_never {
 LL +         _ => todo!(),
-LL +     }
+LL ~     }
    |
 
 error[E0004]: non-exhaustive patterns: type `[!; 0]` is non-empty
@@ -390,7 +390,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
    |
 LL ~     match array_0_never {
 LL +         _ => todo!(),
-LL +     }
+LL ~     }
    |
 
 error: unreachable pattern
@@ -502,7 +502,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
    |
 LL ~     match *ref_tuple_half_never {
 LL +         _ => todo!(),
-LL +     }
+LL ~     }
    |
 
 error: unreachable pattern

@@ -85,7 +85,7 @@ impl Output {
     }
 
     pub(crate) fn float_split_hack(&mut self, ends_in_dot: bool) {
-        let e = (Self::SPLIT_EVENT as u32) << Self::TAG_SHIFT
+        let e = ((Self::SPLIT_EVENT as u32) << Self::TAG_SHIFT)
             | ((ends_in_dot as u32) << Self::N_INPUT_TOKEN_SHIFT)
             | Self::EVENT_MASK;
         self.event.push(e);
@@ -99,7 +99,7 @@ impl Output {
     }
 
     pub(crate) fn leave_node(&mut self) {
-        let e = (Self::EXIT_EVENT as u32) << Self::TAG_SHIFT | Self::EVENT_MASK;
+        let e = ((Self::EXIT_EVENT as u32) << Self::TAG_SHIFT) | Self::EVENT_MASK;
         self.event.push(e)
     }
 

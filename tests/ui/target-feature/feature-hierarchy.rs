@@ -18,11 +18,10 @@ trait Sized {}
 trait Copy {}
 impl Copy for bool {}
 
-extern "rust-intrinsic" {
-    #[stable(feature = "test", since = "1.0.0")]
-    #[rustc_const_stable(feature = "test", since = "1.0.0")]
-    fn unreachable() -> !;
-}
+#[stable(feature = "test", since = "1.0.0")]
+#[rustc_const_stable(feature = "test", since = "1.0.0")]
+#[rustc_intrinsic]
+const unsafe fn unreachable() -> !;
 
 #[rustc_builtin_macro]
 macro_rules! cfg {

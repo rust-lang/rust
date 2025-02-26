@@ -1,4 +1,4 @@
-//@ aux-build:derive-b.rs
+//@ proc-macro: derive-b.rs
 
 #[macro_use]
 extern crate derive_b;

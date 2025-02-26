@@ -5,7 +5,7 @@
 // We previously wrongly instantiated binders during trait upcasting,
 // allowing the super trait to be more generic than the sub trait.
 // This was unsound.
-#![feature(trait_upcasting)]
+
 trait Supertrait<'a, 'b> {
     fn cast(&self, x: &'a str) -> &'b str;
 }

@@ -3,17 +3,10 @@
 #![allow(unused_unsafe)]
 // Issue #2303
 
-#![feature(intrinsics, rustc_attrs)]
+#![feature(core_intrinsics, rustc_attrs)]
 
 use std::mem;
-
-mod rusti {
-    extern "rust-intrinsic" {
-        pub fn pref_align_of<T>() -> usize;
-        #[rustc_safe_intrinsic]
-        pub fn min_align_of<T>() -> usize;
-    }
-}
+use std::intrinsics;
 
 // This is the type with the questionable alignment
 #[derive(Debug)]
@@ -41,12 +34,12 @@ pub fn main() {
         // Send it through the shape code
         let y = format!("{:?}", x);
 
-        println!("align inner = {:?}", rusti::min_align_of::<Inner>());
+        println!("align inner = {:?}", intrinsics::min_align_of::<Inner>());
         println!("size outer = {:?}", mem::size_of::<Outer>());
         println!("y = {:?}", y);
 
         // per clang/gcc the alignment of `inner` is 4 on x86.
-        assert_eq!(rusti::min_align_of::<Inner>(), m::align());
+        assert_eq!(intrinsics::min_align_of::<Inner>(), m::align());
 
         // per clang/gcc the size of `outer` should be 12
         // because `inner`s alignment was 4.

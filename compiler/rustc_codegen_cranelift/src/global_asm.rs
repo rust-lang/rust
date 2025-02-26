@@ -15,8 +15,8 @@ use rustc_target::asm::InlineAsmArch;
 use crate::prelude::*;
 
 pub(crate) fn codegen_global_asm_item(tcx: TyCtxt<'_>, global_asm: &mut String, item_id: ItemId) {
-    let item = tcx.hir().item(item_id);
-    if let rustc_hir::ItemKind::GlobalAsm(asm) = item.kind {
+    let item = tcx.hir_item(item_id);
+    if let rustc_hir::ItemKind::GlobalAsm { asm, .. } = item.kind {
         let is_x86 =
             matches!(tcx.sess.asm_arch.unwrap(), InlineAsmArch::X86 | InlineAsmArch::X86_64);
 
@@ -42,7 +42,7 @@ pub(crate) fn codegen_global_asm_item(tcx: TyCtxt<'_>, global_asm: &mut String, 
                                         tcx,
                                         op_sp,
                                         const_value,
-                                        RevealAllLayoutCx(tcx).layout_of(ty),
+                                        FullyMonomorphizedLayoutCx(tcx).layout_of(ty),
                                     );
                                     global_asm.push_str(&string);
                                 }
@@ -55,7 +55,7 @@ pub(crate) fn codegen_global_asm_item(tcx: TyCtxt<'_>, global_asm: &mut String, 
                                 }
                             }
                         }
-                        InlineAsmOperand::SymFn { anon_const } => {
+                        InlineAsmOperand::SymFn { expr } => {
                             if cfg!(not(feature = "inline_asm_sym")) {
                                 tcx.dcx().span_err(
                                     item.span,
@@ -63,7 +63,7 @@ pub(crate) fn codegen_global_asm_item(tcx: TyCtxt<'_>, global_asm: &mut String, 
                                 );
                             }
 
-                            let ty = tcx.typeck_body(anon_const.body).node_type(anon_const.hir_id);
+                            let ty = tcx.typeck(item_id.owner_id).expr_ty(expr);
                             let instance = match ty.kind() {
                                 &ty::FnDef(def_id, args) => Instance::new(def_id, args),
                                 _ => span_bug!(op_sp, "asm sym is not a function"),
@@ -118,8 +118,8 @@ impl GlobalAsmConfig {
         GlobalAsmConfig {
             assembler: crate::toolchain::get_toolchain_binary(tcx.sess, "as"),
             target: match &tcx.sess.opts.target_triple {
-                rustc_target::spec::TargetTriple::TargetTriple(triple) => triple.clone(),
-                rustc_target::spec::TargetTriple::TargetJson { path_for_rustdoc, .. } => {
+                rustc_target::spec::TargetTuple::TargetTuple(triple) => triple.clone(),
+                rustc_target::spec::TargetTuple::TargetJson { path_for_rustdoc, .. } => {
                     path_for_rustdoc.to_str().unwrap().to_owned()
                 }
             },

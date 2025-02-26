@@ -823,6 +823,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// assert!(buf.capacity() >= 11);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "vecdeque_reserve")]
     #[track_caller]
     pub fn reserve(&mut self, additional: usize) {
         let new_cap = self.len.checked_add(additional).expect("capacity overflow");
@@ -1735,6 +1736,52 @@ impl<T, A: Allocator> VecDeque<T, A> {
         }
     }
 
+    /// Removes and returns the first element from the deque if the predicate
+    /// returns `true`, or [`None`] if the predicate returns false or the deque
+    /// is empty (the predicate will not be called in that case).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vec_deque_pop_if)]
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut deque: VecDeque<i32> = vec![0, 1, 2, 3, 4].into();
+    /// let pred = |x: &mut i32| *x % 2 == 0;
+    ///
+    /// assert_eq!(deque.pop_front_if(pred), Some(0));
+    /// assert_eq!(deque, [1, 2, 3, 4]);
+    /// assert_eq!(deque.pop_front_if(pred), None);
+    /// ```
+    #[unstable(feature = "vec_deque_pop_if", issue = "135889")]
+    pub fn pop_front_if(&mut self, predicate: impl FnOnce(&mut T) -> bool) -> Option<T> {
+        let first = self.front_mut()?;
+        if predicate(first) { self.pop_front() } else { None }
+    }
+
+    /// Removes and returns the last element from the deque if the predicate
+    /// returns `true`, or [`None`] if the predicate returns false or the deque
+    /// is empty (the predicate will not be called in that case).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vec_deque_pop_if)]
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut deque: VecDeque<i32> = vec![0, 1, 2, 3, 4].into();
+    /// let pred = |x: &mut i32| *x % 2 == 0;
+    ///
+    /// assert_eq!(deque.pop_back_if(pred), Some(4));
+    /// assert_eq!(deque, [0, 1, 2, 3]);
+    /// assert_eq!(deque.pop_back_if(pred), None);
+    /// ```
+    #[unstable(feature = "vec_deque_pop_if", issue = "135889")]
+    pub fn pop_back_if(&mut self, predicate: impl FnOnce(&mut T) -> bool) -> Option<T> {
+        let first = self.back_mut()?;
+        if predicate(first) { self.pop_back() } else { None }
+    }
+
     /// Prepends an element to the deque.
     ///
     /// # Examples
@@ -1869,7 +1916,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// # Panics
     ///
-    /// Panics if `index` is greater than deque's length
+    /// Panics if `index` is strictly greater than deque's length
     ///
     /// # Examples
     ///
@@ -1884,6 +1931,9 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     /// vec_deque.insert(1, 'd');
     /// assert_eq!(vec_deque, &['a', 'd', 'b', 'c']);
+    ///
+    /// vec_deque.insert(4, 'e');
+    /// assert_eq!(vec_deque, &['a', 'd', 'b', 'c', 'e']);
     /// ```
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
     #[track_caller]
@@ -1928,13 +1978,13 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
-    /// buf.push_back(1);
-    /// buf.push_back(2);
-    /// buf.push_back(3);
-    /// assert_eq!(buf, [1, 2, 3]);
+    /// buf.push_back('a');
+    /// buf.push_back('b');
+    /// buf.push_back('c');
+    /// assert_eq!(buf, ['a', 'b', 'c']);
     ///
-    /// assert_eq!(buf.remove(1), Some(2));
-    /// assert_eq!(buf, [1, 3]);
+    /// assert_eq!(buf.remove(1), Some('b'));
+    /// assert_eq!(buf, ['a', 'c']);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_confusables("delete", "take")]
@@ -1982,10 +2032,10 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// ```
     /// use std::collections::VecDeque;
     ///
-    /// let mut buf: VecDeque<_> = [1, 2, 3].into();
+    /// let mut buf: VecDeque<_> = ['a', 'b', 'c'].into();
     /// let buf2 = buf.split_off(1);
-    /// assert_eq!(buf, [1]);
-    /// assert_eq!(buf2, [2, 3]);
+    /// assert_eq!(buf, ['a']);
+    /// assert_eq!(buf2, ['b', 'c']);
     /// ```
     #[inline]
     #[must_use = "use `.truncate()` if you don't need the other half"]

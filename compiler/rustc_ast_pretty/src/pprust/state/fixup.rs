@@ -1,7 +1,9 @@
 use rustc_ast::Expr;
 use rustc_ast::util::{classify, parser};
 
-#[derive(Copy, Clone, Debug)]
+// The default amount of fixing is minimal fixing, so all fixups are set to `false` by `Default`.
+// Fixups should be turned on in a targeted fashion where needed.
+#[derive(Copy, Clone, Debug, Default)]
 pub(crate) struct FixupContext {
     /// Print expression such that it can be parsed back as a statement
     /// consisting of the original expression.
@@ -93,20 +95,6 @@ pub(crate) struct FixupContext {
     parenthesize_exterior_struct_lit: bool,
 }
 
-/// The default amount of fixing is minimal fixing. Fixups should be turned on
-/// in a targeted fashion where needed.
-impl Default for FixupContext {
-    fn default() -> Self {
-        FixupContext {
-            stmt: false,
-            leftmost_subexpression_in_stmt: false,
-            match_arm: false,
-            leftmost_subexpression_in_match_arm: false,
-            parenthesize_exterior_struct_lit: false,
-        }
-    }
-}
-
 impl FixupContext {
     /// Create the initial fixup for printing an expression in statement
     /// position.
@@ -146,6 +134,20 @@ impl FixupContext {
             match_arm: false,
             leftmost_subexpression_in_match_arm: self.match_arm
                 || self.leftmost_subexpression_in_match_arm,
+            ..self
+        }
+    }
+
+    /// Transform this fixup into the one that should apply when printing a
+    /// leftmost subexpression followed by a `.` or `?` token, which confer
+    /// different statement boundary rules compared to other leftmost
+    /// subexpressions.
+    pub(crate) fn leftmost_subexpression_with_dot(self) -> Self {
+        FixupContext {
+            stmt: self.stmt || self.leftmost_subexpression_in_stmt,
+            leftmost_subexpression_in_stmt: false,
+            match_arm: self.match_arm || self.leftmost_subexpression_in_match_arm,
+            leftmost_subexpression_in_match_arm: false,
             ..self
         }
     }
@@ -191,6 +193,6 @@ impl FixupContext {
     ///     "let chain".
     pub(crate) fn needs_par_as_let_scrutinee(self, expr: &Expr) -> bool {
         self.parenthesize_exterior_struct_lit && parser::contains_exterior_struct_lit(expr)
-            || parser::needs_par_as_let_scrutinee(expr.precedence().order())
+            || parser::needs_par_as_let_scrutinee(expr.precedence())
     }
 }

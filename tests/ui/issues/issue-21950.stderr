@@ -7,22 +7,6 @@ LL |     type Output;
 LL |     let x = &10 as &dyn Add;
    |                         ^^^ help: specify the associated type: `Add<Output = Type>`
 
-error[E0393]: the type parameter `Rhs` must be explicitly specified
-  --> $DIR/issue-21950.rs:10:25
-   |
-LL | trait Add<Rhs=Self> {
-   | ------------------- type parameter `Rhs` must be specified for this
-...
-LL |     let x = &10 as &dyn Add;
-   |                         ^^^
-   |
-   = note: because of the default `Self` reference, type parameters must be specified on object types
-help: set the type parameter to the desired type
-   |
-LL |     let x = &10 as &dyn Add<Rhs>;
-   |                            +++++
+error: aborting due to 1 previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0191, E0393.
-For more information about an error, try `rustc --explain E0191`.
+For more information about this error, try `rustc --explain E0191`.

@@ -584,7 +584,7 @@ install_components() {
             # HACK: Try to support overriding --docdir.  Paths with the form
             # "share/doc/$product/" can be redirected to a single --docdir
             # path. If the following detects that --docdir has been specified
-            # then it will replace everything preceeding the "$product" path
+            # then it will replace everything preceding the "$product" path
             # component. The problem here is that the combined rust installer
             # contains two "products": rust and cargo; so the contents of those
             # directories will both be dumped into the same directory; and the

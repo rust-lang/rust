@@ -1,5 +1,5 @@
 error: lifetimes cannot use keyword names
-  --> $DIR/gen-lt.rs:11:11
+  --> $DIR/gen-lt.rs:10:11
    |
 LL | fn gen_lt<'gen>() {}
    |           ^^^^

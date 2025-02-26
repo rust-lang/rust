@@ -14,3 +14,8 @@ pub mod inner {
 pub use inner::Public;
 
 //@ ismany "$.index[*][?(@.name=='simple_public')].inner.module.items[*]" $import_id $inner_id
+
+//@ has  "$.paths[*][?(@.kind=='module')].path" '["simple_public"]'
+//@ has  "$.paths[*][?(@.kind=='module')].path" '["simple_public", "inner"]'
+//@ has  "$.paths[*][?(@.kind=='struct')].path" '["simple_public", "inner", "Public"]'
+//@ !has "$.paths[*].path"                      '["simple_public", "Public"]'

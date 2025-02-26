@@ -82,16 +82,16 @@ pub(crate) struct IncrementCompilation {
 #[diag(query_system_query_overflow)]
 pub struct QueryOverflow {
     #[primary_span]
-    pub span: Option<Span>,
+    pub span: Span,
     #[subdiagnostic]
-    pub layout_of_depth: Option<LayoutOfDepth>,
+    pub note: QueryOverflowNote,
     pub suggested_limit: Limit,
     pub crate_name: Symbol,
 }
 
 #[derive(Subdiagnostic)]
-#[note(query_system_layout_of_depth)]
-pub struct LayoutOfDepth {
+#[note(query_system_overflow_note)]
+pub struct QueryOverflowNote {
     pub desc: String,
     pub depth: usize,
 }

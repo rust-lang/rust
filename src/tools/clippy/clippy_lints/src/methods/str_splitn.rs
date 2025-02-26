@@ -1,6 +1,6 @@
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::usage::local_used_after_expr;
 use clippy_utils::visitors::{Descend, for_each_expr};
@@ -35,7 +35,7 @@ pub(super) fn check(
     };
     let manual = count == 2 && msrv.meets(msrvs::STR_SPLIT_ONCE);
 
-    match parse_iter_usage(cx, expr.span.ctxt(), cx.tcx.hir().parent_iter(expr.hir_id)) {
+    match parse_iter_usage(cx, expr.span.ctxt(), cx.tcx.hir_parent_iter(expr.hir_id)) {
         Some(usage) if needless(usage.kind) => lint_needless(cx, method_name, expr, self_arg, pat_arg),
         Some(usage) if manual => check_manual_split_once(cx, method_name, expr, self_arg, pat_arg, &usage),
         None if manual => {
@@ -127,9 +127,9 @@ fn check_manual_split_once_indirect(
     pat_arg: &Expr<'_>,
 ) -> Option<()> {
     let ctxt = expr.span.ctxt();
-    let mut parents = cx.tcx.hir().parent_iter(expr.hir_id);
+    let mut parents = cx.tcx.hir_parent_iter(expr.hir_id);
     if let (_, Node::LetStmt(local)) = parents.next()?
-        && let PatKind::Binding(BindingMode::MUT, iter_binding_id, iter_ident, None) = local.pat.kind
+        && let PatKind::Binding(BindingMode::MUT, iter_binding_id, _, None) = local.pat.kind
         && let (iter_stmt_id, Node::Stmt(_)) = parents.next()?
         && let (_, Node::Block(enclosing_block)) = parents.next()?
         && let mut stmts = enclosing_block
@@ -162,16 +162,20 @@ fn check_manual_split_once_indirect(
                 UnwrapKind::Unwrap => ".unwrap()",
                 UnwrapKind::QuestionMark => "?",
             };
-            diag.span_suggestion_verbose(
-                local.span,
-                format!("try `{r}split_once`"),
-                format!("let ({lhs}, {rhs}) = {self_snip}.{r}split_once({pat_snip}){unwrap};"),
+
+            // Add a multipart suggestion
+            diag.multipart_suggestion(
+                format!("replace with `{r}split_once`"),
+                vec![
+                    (
+                        local.span,
+                        format!("let ({lhs}, {rhs}) = {self_snip}.{r}split_once({pat_snip}){unwrap};"),
+                    ),
+                    (first.span, String::new()),  // Remove the first usage
+                    (second.span, String::new()), // Remove the second usage
+                ],
                 app,
             );
-
-            let remove_msg = format!("remove the `{iter_ident}` usages");
-            diag.span_suggestion(first.span, remove_msg.clone(), "", app);
-            diag.span_suggestion(second.span, remove_msg, "", app);
         });
     }
 
@@ -216,7 +220,7 @@ fn indirect_usage<'tcx>(
             ControlFlow::Continue(Descend::from(path_to_binding.is_none()))
         });
 
-        let mut parents = cx.tcx.hir().parent_iter(path_to_binding?.hir_id);
+        let mut parents = cx.tcx.hir_parent_iter(path_to_binding?.hir_id);
         let iter_usage = parse_iter_usage(cx, ctxt, &mut parents)?;
 
         let (parent_id, _) = parents.find(|(_, node)| {
@@ -293,8 +297,8 @@ fn parse_iter_usage<'tcx>(
                     {
                         Some(IterUsage {
                             kind: IterUsageKind::NextTuple,
-                            span: e.span,
                             unwrap_kind: None,
+                            span: e.span,
                         })
                     } else {
                         None
@@ -348,7 +352,7 @@ fn parse_iter_usage<'tcx>(
                     && cx
                         .typeck_results()
                         .type_dependent_def_id(e.hir_id)
-                        .map_or(false, |id| is_diag_item_method(cx, id, sym::Option)) =>
+                        .is_some_and(|id| is_diag_item_method(cx, id, sym::Option)) =>
             {
                 (Some(UnwrapKind::Unwrap), e.span)
             },

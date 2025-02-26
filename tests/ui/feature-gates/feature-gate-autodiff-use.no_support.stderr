@@ -1,4 +1,4 @@
-error[E0658]: use of unstable library feature 'autodiff'
+error[E0658]: use of unstable library feature `autodiff`
   --> $DIR/feature-gate-autodiff-use.rs:13:3
    |
 LL | #[autodiff(dfoo, Reverse)]
@@ -14,7 +14,7 @@ error: this rustc version does not support autodiff
 LL | #[autodiff(dfoo, Reverse)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0658]: use of unstable library feature 'autodiff'
+error[E0658]: use of unstable library feature `autodiff`
   --> $DIR/feature-gate-autodiff-use.rs:9:5
    |
 LL | use std::autodiff::autodiff;

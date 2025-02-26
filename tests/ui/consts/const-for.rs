@@ -2,8 +2,8 @@
 
 const _: () = {
     for _ in 0..5 {}
-    //~^ error: cannot call
-    //~| error: cannot convert
+    //~^ ERROR cannot use `for`
+    //~| ERROR cannot use `for`
 };
 
 fn main() {}

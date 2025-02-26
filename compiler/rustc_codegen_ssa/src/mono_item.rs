@@ -1,4 +1,5 @@
 use rustc_hir as hir;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::mir::mono::{Linkage, MonoItem, Visibility};
 use rustc_middle::ty::Instance;
@@ -34,8 +35,8 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
                 cx.codegen_static(def_id);
             }
             MonoItem::GlobalAsm(item_id) => {
-                let item = cx.tcx().hir().item(item_id);
-                if let hir::ItemKind::GlobalAsm(asm) = item.kind {
+                let item = cx.tcx().hir_item(item_id);
+                if let hir::ItemKind::GlobalAsm { asm, .. } = item.kind {
                     let operands: Vec<_> = asm
                         .operands
                         .iter()
@@ -70,11 +71,8 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
                                     }
                                 }
                             }
-                            hir::InlineAsmOperand::SymFn { ref anon_const } => {
-                                let ty = cx
-                                    .tcx()
-                                    .typeck_body(anon_const.body)
-                                    .node_type(anon_const.hir_id);
+                            hir::InlineAsmOperand::SymFn { expr } => {
+                                let ty = cx.tcx().typeck(item_id.owner_id).expr_ty(expr);
                                 let instance = match ty.kind() {
                                     &ty::FnDef(def_id, args) => Instance::new(def_id, args),
                                     _ => span_bug!(*op_sp, "asm sym is not a function"),
@@ -135,7 +133,13 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
                 cx.predefine_static(def_id, linkage, visibility, symbol_name);
             }
             MonoItem::Fn(instance) => {
-                cx.predefine_fn(instance, linkage, visibility, symbol_name);
+                let attrs = cx.tcx().codegen_fn_attrs(instance.def_id());
+
+                if attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
+                    // do not define this function; it will become a global assembly block
+                } else {
+                    cx.predefine_fn(instance, linkage, visibility, symbol_name);
+                };
             }
             MonoItem::GlobalAsm(..) => {}
         }

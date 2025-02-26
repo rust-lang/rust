@@ -1,4 +1,4 @@
-extern "C" {
+unsafe extern "C" {
     fn TEE_GenerateRandom(randomBuffer: *mut core::ffi::c_void, randomBufferLen: libc::size_t);
 }
 

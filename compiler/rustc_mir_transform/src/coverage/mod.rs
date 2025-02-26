@@ -10,22 +10,17 @@ mod unexpand;
 
 use rustc_hir as hir;
 use rustc_hir::intravisit::{Visitor, walk_expr};
-use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::mir::coverage::{
-    CoverageKind, DecisionInfo, FunctionCoverageInfo, Mapping, MappingKind, SourceRegion,
+    CoverageKind, DecisionInfo, FunctionCoverageInfo, Mapping, MappingKind,
 };
-use rustc_middle::mir::{
-    self, BasicBlock, BasicBlockData, SourceInfo, Statement, StatementKind, Terminator,
-    TerminatorKind,
-};
+use rustc_middle::mir::{self, BasicBlock, Statement, StatementKind, TerminatorKind};
 use rustc_middle::ty::TyCtxt;
+use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::source_map::SourceMap;
-use rustc_span::{BytePos, Pos, RelativeBytePos, Span, Symbol};
-use tracing::{debug, debug_span, instrument, trace};
+use tracing::{debug, debug_span, trace};
 
-use crate::coverage::counters::{CounterIncrementSite, CoverageCounters};
+use crate::coverage::counters::BcbCountersData;
 use crate::coverage::graph::CoverageGraph;
 use crate::coverage::mappings::ExtractedMappings;
 
@@ -65,6 +60,10 @@ impl<'tcx> crate::MirPass<'tcx> for InstrumentCoverage {
 
         instrument_function_for_coverage(tcx, mir_body);
     }
+
+    fn is_required(&self) -> bool {
+        false
+    }
 }
 
 fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir::Body<'tcx>) {
@@ -72,46 +71,32 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
     let _span = debug_span!("instrument_function_for_coverage", ?def_id).entered();
 
     let hir_info = extract_hir_info(tcx, def_id.expect_local());
-    let basic_coverage_blocks = CoverageGraph::from_mir(mir_body);
+
+    // Build the coverage graph, which is a simplified view of the MIR control-flow
+    // graph that ignores some details not relevant to coverage instrumentation.
+    let graph = CoverageGraph::from_mir(mir_body);
 
     ////////////////////////////////////////////////////
     // Extract coverage spans and other mapping info from MIR.
-    let extracted_mappings = mappings::extract_all_mapping_info_from_mir(
-        tcx,
-        mir_body,
-        &hir_info,
-        &basic_coverage_blocks,
-    );
+    let extracted_mappings =
+        mappings::extract_all_mapping_info_from_mir(tcx, mir_body, &hir_info, &graph);
 
-    ////////////////////////////////////////////////////
-    // Create an optimized mix of `Counter`s and `Expression`s for the `CoverageGraph`. Ensure
-    // every coverage span has a `Counter` or `Expression` assigned to its `BasicCoverageBlock`
-    // and all `Expression` dependencies (operands) are also generated, for any other
-    // `BasicCoverageBlock`s not already associated with a coverage span.
-    let bcbs_with_counter_mappings = extracted_mappings.all_bcbs_with_counter_mappings();
-    if bcbs_with_counter_mappings.is_empty() {
-        // No relevant spans were found in MIR, so skip instrumenting this function.
-        return;
-    }
-
-    let coverage_counters =
-        CoverageCounters::make_bcb_counters(&basic_coverage_blocks, &bcbs_with_counter_mappings);
-
-    let mappings = create_mappings(tcx, &hir_info, &extracted_mappings, &coverage_counters);
+    let mappings = create_mappings(&extracted_mappings);
     if mappings.is_empty() {
         // No spans could be converted into valid mappings, so skip this function.
         debug!("no spans could be converted into valid mappings; skipping");
         return;
     }
 
-    inject_coverage_statements(
-        mir_body,
-        &basic_coverage_blocks,
-        &extracted_mappings,
-        &coverage_counters,
-    );
+    // Use the coverage graph to prepare intermediate data that will eventually
+    // be used to assign physical counters and counter expressions to points in
+    // the control-flow graph
+    let BcbCountersData { node_flow_data, priority_list } =
+        counters::prepare_bcb_counters_data(&graph);
 
-    inject_mcdc_statements(mir_body, &basic_coverage_blocks, &extracted_mappings);
+    // Inject coverage statements into MIR.
+    inject_coverage_statements(mir_body, &graph);
+    inject_mcdc_statements(mir_body, &graph, &extracted_mappings);
 
     let mcdc_num_condition_bitmaps = extracted_mappings
         .mcdc_mappings
@@ -122,43 +107,26 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
 
     mir_body.function_coverage_info = Some(Box::new(FunctionCoverageInfo {
         function_source_hash: hir_info.function_source_hash,
-        num_counters: coverage_counters.num_counters(),
-        mcdc_bitmap_bits: extracted_mappings.mcdc_bitmap_bits,
-        expressions: coverage_counters.into_expressions(),
+        body_span: hir_info.body_span,
+
+        node_flow_data,
+        priority_list,
+
         mappings,
+
+        mcdc_bitmap_bits: extracted_mappings.mcdc_bitmap_bits,
         mcdc_num_condition_bitmaps,
     }));
 }
 
-/// For each coverage span extracted from MIR, create a corresponding
-/// mapping.
+/// For each coverage span extracted from MIR, create a corresponding mapping.
 ///
-/// Precondition: All BCBs corresponding to those spans have been given
-/// coverage counters.
-fn create_mappings<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    hir_info: &ExtractedHirInfo,
-    extracted_mappings: &ExtractedMappings,
-    coverage_counters: &CoverageCounters,
-) -> Vec<Mapping> {
-    let source_map = tcx.sess.source_map();
-    let body_span = hir_info.body_span;
-
-    let source_file = source_map.lookup_source_file(body_span.lo());
-
-    use rustc_session::RemapFileNameExt;
-    use rustc_session::config::RemapPathScopeComponents;
-    let file_name = Symbol::intern(
-        &source_file.name.for_scope(tcx.sess, RemapPathScopeComponents::MACRO).to_string_lossy(),
-    );
-
-    let term_for_bcb =
-        |bcb| coverage_counters.term_for_bcb(bcb).expect("all BCBs with spans were given counters");
-    let region_for_span = |span: Span| make_source_region(source_map, file_name, span, body_span);
-
+/// FIXME(Zalathar): This used to be where BCBs in the extracted mappings were
+/// resolved to a `CovTerm`. But that is now handled elsewhere, so this
+/// function can potentially be simplified even further.
+fn create_mappings(extracted_mappings: &ExtractedMappings) -> Vec<Mapping> {
     // Fully destructure the mappings struct to make sure we don't miss any kinds.
     let ExtractedMappings {
-        num_bcbs: _,
         code_mappings,
         branch_pairs,
         mcdc_bitmap_bits: _,
@@ -167,30 +135,23 @@ fn create_mappings<'tcx>(
     } = extracted_mappings;
     let mut mappings = Vec::new();
 
-    mappings.extend(code_mappings.iter().filter_map(
+    mappings.extend(code_mappings.iter().map(
         // Ordinary code mappings are the simplest kind.
         |&mappings::CodeMapping { span, bcb }| {
-            let source_region = region_for_span(span)?;
-            let kind = MappingKind::Code(term_for_bcb(bcb));
-            Some(Mapping { kind, source_region })
+            let kind = MappingKind::Code { bcb };
+            Mapping { kind, span }
         },
     ));
 
-    mappings.extend(branch_pairs.iter().filter_map(
+    mappings.extend(branch_pairs.iter().map(
         |&mappings::BranchPair { span, true_bcb, false_bcb }| {
-            let true_term = term_for_bcb(true_bcb);
-            let false_term = term_for_bcb(false_bcb);
-            let kind = MappingKind::Branch { true_term, false_term };
-            let source_region = region_for_span(span)?;
-            Some(Mapping { kind, source_region })
+            let kind = MappingKind::Branch { true_bcb, false_bcb };
+            Mapping { kind, span }
         },
     ));
-
-    let term_for_bcb =
-        |bcb| coverage_counters.term_for_bcb(bcb).expect("all BCBs with spans were given counters");
 
     // MCDC branch mappings are appended with their decisions in case decisions were ignored.
-    mappings.extend(mcdc_degraded_branches.iter().filter_map(
+    mappings.extend(mcdc_degraded_branches.iter().map(
         |&mappings::MCDCBranch {
              span,
              true_bcb,
@@ -198,19 +159,19 @@ fn create_mappings<'tcx>(
              condition_info: _,
              true_index: _,
              false_index: _,
-         }| {
-            let source_region = region_for_span(span)?;
-            let true_term = term_for_bcb(true_bcb);
-            let false_term = term_for_bcb(false_bcb);
-            Some(Mapping { kind: MappingKind::Branch { true_term, false_term }, source_region })
-        },
+         }| { Mapping { kind: MappingKind::Branch { true_bcb, false_bcb }, span } },
     ));
 
     for (decision, branches) in mcdc_mappings {
-        let num_conditions = branches.len() as u16;
+        // FIXME(#134497): Previously it was possible for some of these branch
+        // conversions to fail, in which case the remaining branches in the
+        // decision would be degraded to plain `MappingKind::Branch`.
+        // The changes in #134497 made that failure impossible, because the
+        // fallible step was deferred to codegen. But the corresponding code
+        // in codegen wasn't updated to detect the need for a degrade step.
         let conditions = branches
             .into_iter()
-            .filter_map(
+            .map(
                 |&mappings::MCDCBranch {
                      span,
                      true_bcb,
@@ -219,104 +180,35 @@ fn create_mappings<'tcx>(
                      true_index: _,
                      false_index: _,
                  }| {
-                    let source_region = region_for_span(span)?;
-                    let true_term = term_for_bcb(true_bcb);
-                    let false_term = term_for_bcb(false_bcb);
-                    Some(Mapping {
+                    Mapping {
                         kind: MappingKind::MCDCBranch {
-                            true_term,
-                            false_term,
+                            true_bcb,
+                            false_bcb,
                             mcdc_params: condition_info,
                         },
-                        source_region,
-                    })
+                        span,
+                    }
                 },
             )
             .collect::<Vec<_>>();
 
-        if conditions.len() == num_conditions as usize
-            && let Some(source_region) = region_for_span(decision.span)
-        {
-            // LLVM requires end index for counter mapping regions.
-            let kind = MappingKind::MCDCDecision(DecisionInfo {
-                bitmap_idx: (decision.bitmap_idx + decision.num_test_vectors) as u32,
-                num_conditions,
-            });
-            mappings.extend(
-                std::iter::once(Mapping { kind, source_region }).chain(conditions.into_iter()),
-            );
-        } else {
-            mappings.extend(conditions.into_iter().map(|mapping| {
-                let MappingKind::MCDCBranch { true_term, false_term, mcdc_params: _ } =
-                    mapping.kind
-                else {
-                    unreachable!("all mappings here are MCDCBranch as shown above");
-                };
-                Mapping {
-                    kind: MappingKind::Branch { true_term, false_term },
-                    source_region: mapping.source_region,
-                }
-            }))
-        }
+        // LLVM requires end index for counter mapping regions.
+        let kind = MappingKind::MCDCDecision(DecisionInfo {
+            bitmap_idx: (decision.bitmap_idx + decision.num_test_vectors) as u32,
+            num_conditions: u16::try_from(conditions.len()).unwrap(),
+        });
+        let span = decision.span;
+        mappings.extend(std::iter::once(Mapping { kind, span }).chain(conditions.into_iter()));
     }
 
     mappings
 }
 
-/// For each BCB node or BCB edge that has an associated coverage counter,
-/// inject any necessary coverage statements into MIR.
-fn inject_coverage_statements<'tcx>(
-    mir_body: &mut mir::Body<'tcx>,
-    basic_coverage_blocks: &CoverageGraph,
-    extracted_mappings: &ExtractedMappings,
-    coverage_counters: &CoverageCounters,
-) {
-    // Inject counter-increment statements into MIR.
-    for (id, counter_increment_site) in coverage_counters.counter_increment_sites() {
-        // Determine the block to inject a counter-increment statement into.
-        // For BCB nodes this is just their first block, but for edges we need
-        // to create a new block between the two BCBs, and inject into that.
-        let target_bb = match *counter_increment_site {
-            CounterIncrementSite::Node { bcb } => basic_coverage_blocks[bcb].leader_bb(),
-            CounterIncrementSite::Edge { from_bcb, to_bcb } => {
-                // Create a new block between the last block of `from_bcb` and
-                // the first block of `to_bcb`.
-                let from_bb = basic_coverage_blocks[from_bcb].last_bb();
-                let to_bb = basic_coverage_blocks[to_bcb].leader_bb();
-
-                let new_bb = inject_edge_counter_basic_block(mir_body, from_bb, to_bb);
-                debug!(
-                    "Edge {from_bcb:?} (last {from_bb:?}) -> {to_bcb:?} (leader {to_bb:?}) \
-                    requires a new MIR BasicBlock {new_bb:?} for counter increment {id:?}",
-                );
-                new_bb
-            }
-        };
-
-        inject_statement(mir_body, CoverageKind::CounterIncrement { id }, target_bb);
-    }
-
-    // For each counter expression that is directly associated with at least one
-    // span, we inject an "expression-used" statement, so that coverage codegen
-    // can check whether the injected statement survived MIR optimization.
-    // (BCB edges can't have spans, so we only need to process BCB nodes here.)
-    //
-    // We only do this for ordinary `Code` mappings, because branch and MC/DC
-    // mappings might have expressions that don't correspond to any single
-    // point in the control-flow graph.
-    //
-    // See the code in `rustc_codegen_llvm::coverageinfo::map_data` that deals
-    // with "expressions seen" and "zero terms".
-    let eligible_bcbs = extracted_mappings.bcbs_with_ordinary_code_mappings();
-    for (bcb, expression_id) in coverage_counters
-        .bcb_nodes_with_coverage_expressions()
-        .filter(|&(bcb, _)| eligible_bcbs.contains(bcb))
-    {
-        inject_statement(
-            mir_body,
-            CoverageKind::ExpressionUsed { id: expression_id },
-            basic_coverage_blocks[bcb].leader_bb(),
-        );
+/// Inject any necessary coverage statements into MIR, so that they influence codegen.
+fn inject_coverage_statements<'tcx>(mir_body: &mut mir::Body<'tcx>, graph: &CoverageGraph) {
+    for (bcb, data) in graph.iter_enumerated() {
+        let target_bb = data.leader_bb();
+        inject_statement(mir_body, CoverageKind::VirtualCounter { bcb }, target_bb);
     }
 }
 
@@ -324,13 +216,13 @@ fn inject_coverage_statements<'tcx>(
 /// For each decision inject statements to update test vector bitmap after it has been evaluated.
 fn inject_mcdc_statements<'tcx>(
     mir_body: &mut mir::Body<'tcx>,
-    basic_coverage_blocks: &CoverageGraph,
+    graph: &CoverageGraph,
     extracted_mappings: &ExtractedMappings,
 ) {
     for (decision, conditions) in &extracted_mappings.mcdc_mappings {
         // Inject test vector update first because `inject_statement` always insert new statement at head.
         for &end in &decision.end_bcbs {
-            let end_bb = basic_coverage_blocks[end].leader_bb();
+            let end_bb = graph[end].leader_bb();
             inject_statement(
                 mir_body,
                 CoverageKind::TestVectorBitmapUpdate {
@@ -351,7 +243,7 @@ fn inject_mcdc_statements<'tcx>(
         } in conditions
         {
             for (index, bcb) in [(false_index, false_bcb), (true_index, true_bcb)] {
-                let bb = basic_coverage_blocks[bcb].leader_bb();
+                let bb = graph[bcb].leader_bb();
                 inject_statement(
                     mir_body,
                     CoverageKind::CondBitmapUpdate {
@@ -365,145 +257,12 @@ fn inject_mcdc_statements<'tcx>(
     }
 }
 
-/// Given two basic blocks that have a control-flow edge between them, creates
-/// and returns a new block that sits between those blocks.
-fn inject_edge_counter_basic_block(
-    mir_body: &mut mir::Body<'_>,
-    from_bb: BasicBlock,
-    to_bb: BasicBlock,
-) -> BasicBlock {
-    let span = mir_body[from_bb].terminator().source_info.span.shrink_to_hi();
-    let new_bb = mir_body.basic_blocks_mut().push(BasicBlockData {
-        statements: vec![], // counter will be injected here
-        terminator: Some(Terminator {
-            source_info: SourceInfo::outermost(span),
-            kind: TerminatorKind::Goto { target: to_bb },
-        }),
-        is_cleanup: false,
-    });
-    let edge_ref = mir_body[from_bb]
-        .terminator_mut()
-        .successors_mut()
-        .find(|successor| **successor == to_bb)
-        .expect("from_bb should have a successor for to_bb");
-    *edge_ref = new_bb;
-    new_bb
-}
-
 fn inject_statement(mir_body: &mut mir::Body<'_>, counter_kind: CoverageKind, bb: BasicBlock) {
     debug!("  injecting statement {counter_kind:?} for {bb:?}");
     let data = &mut mir_body[bb];
     let source_info = data.terminator().source_info;
     let statement = Statement { source_info, kind: StatementKind::Coverage(counter_kind) };
     data.statements.insert(0, statement);
-}
-
-/// Convert the Span into its file name, start line and column, and end line and column.
-///
-/// Line numbers and column numbers are 1-based. Unlike most column numbers emitted by
-/// the compiler, these column numbers are denoted in **bytes**, because that's what
-/// LLVM's `llvm-cov` tool expects to see in coverage maps.
-///
-/// Returns `None` if the conversion failed for some reason. This shouldn't happen,
-/// but it's hard to rule out entirely (especially in the presence of complex macros
-/// or other expansions), and if it does happen then skipping a span or function is
-/// better than an ICE or `llvm-cov` failure that the user might have no way to avoid.
-#[instrument(level = "debug", skip(source_map))]
-fn make_source_region(
-    source_map: &SourceMap,
-    file_name: Symbol,
-    span: Span,
-    body_span: Span,
-) -> Option<SourceRegion> {
-    let lo = span.lo();
-    let hi = span.hi();
-
-    let file = source_map.lookup_source_file(lo);
-    if !file.contains(hi) {
-        debug!(?span, ?file, ?lo, ?hi, "span crosses multiple files; skipping");
-        return None;
-    }
-
-    // Column numbers need to be in bytes, so we can't use the more convenient
-    // `SourceMap` methods for looking up file coordinates.
-    let rpos_and_line_and_byte_column = |pos: BytePos| -> Option<(RelativeBytePos, usize, usize)> {
-        let rpos = file.relative_position(pos);
-        let line_index = file.lookup_line(rpos)?;
-        let line_start = file.lines()[line_index];
-        // Line numbers and column numbers are 1-based, so add 1 to each.
-        Some((rpos, line_index + 1, (rpos - line_start).to_usize() + 1))
-    };
-
-    let (lo_rpos, mut start_line, mut start_col) = rpos_and_line_and_byte_column(lo)?;
-    let (hi_rpos, mut end_line, mut end_col) = rpos_and_line_and_byte_column(hi)?;
-
-    // If the span is empty, try to expand it horizontally by one character's
-    // worth of bytes, so that it is more visible in `llvm-cov` reports.
-    // We do this after resolving line/column numbers, so that empty spans at the
-    // end of a line get an extra column instead of wrapping to the next line.
-    if span.is_empty()
-        && body_span.contains(span)
-        && let Some(src) = &file.src
-    {
-        // Prefer to expand the end position, if it won't go outside the body span.
-        if hi < body_span.hi() {
-            let hi_rpos = hi_rpos.to_usize();
-            let nudge_bytes = src.ceil_char_boundary(hi_rpos + 1) - hi_rpos;
-            end_col += nudge_bytes;
-        } else if lo > body_span.lo() {
-            let lo_rpos = lo_rpos.to_usize();
-            let nudge_bytes = lo_rpos - src.floor_char_boundary(lo_rpos - 1);
-            // Subtract the nudge, but don't go below column 1.
-            start_col = start_col.saturating_sub(nudge_bytes).max(1);
-        }
-        // If neither nudge could be applied, stick with the empty span coordinates.
-    }
-
-    // Apply an offset so that code in doctests has correct line numbers.
-    // FIXME(#79417): Currently we have no way to offset doctest _columns_.
-    start_line = source_map.doctest_offset_line(&file.name, start_line);
-    end_line = source_map.doctest_offset_line(&file.name, end_line);
-
-    check_source_region(SourceRegion {
-        file_name,
-        start_line: start_line as u32,
-        start_col: start_col as u32,
-        end_line: end_line as u32,
-        end_col: end_col as u32,
-    })
-}
-
-/// If `llvm-cov` sees a source region that is improperly ordered (end < start),
-/// it will immediately exit with a fatal error. To prevent that from happening,
-/// discard regions that are improperly ordered, or might be interpreted in a
-/// way that makes them improperly ordered.
-fn check_source_region(source_region: SourceRegion) -> Option<SourceRegion> {
-    let SourceRegion { file_name: _, start_line, start_col, end_line, end_col } = source_region;
-
-    // Line/column coordinates are supposed to be 1-based. If we ever emit
-    // coordinates of 0, `llvm-cov` might misinterpret them.
-    let all_nonzero = [start_line, start_col, end_line, end_col].into_iter().all(|x| x != 0);
-    // Coverage mappings use the high bit of `end_col` to indicate that a
-    // region is actually a "gap" region, so make sure it's unset.
-    let end_col_has_high_bit_unset = (end_col & (1 << 31)) == 0;
-    // If a region is improperly ordered (end < start), `llvm-cov` will exit
-    // with a fatal error, which is inconvenient for users and hard to debug.
-    let is_ordered = (start_line, start_col) <= (end_line, end_col);
-
-    if all_nonzero && end_col_has_high_bit_unset && is_ordered {
-        Some(source_region)
-    } else {
-        debug!(
-            ?source_region,
-            ?all_nonzero,
-            ?end_col_has_high_bit_unset,
-            ?is_ordered,
-            "Skipping source region that would be misinterpreted or rejected by LLVM"
-        );
-        // If this happens in a debug build, ICE to make it easier to notice.
-        debug_assert!(false, "Improper source region: {source_region:?}");
-        None
-    }
 }
 
 /// Function information extracted from HIR by the coverage instrumentor.
@@ -531,7 +290,7 @@ fn extract_hir_info<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> ExtractedHir
 
     let hir_node = tcx.hir_node_by_def_id(def_id);
     let fn_body_id = hir_node.body_id().expect("HIR node is a function with body");
-    let hir_body = tcx.hir().body(fn_body_id);
+    let hir_body = tcx.hir_body(fn_body_id);
 
     let maybe_fn_sig = hir_node.fn_sig();
     let is_async_fn = maybe_fn_sig.is_some_and(|fn_sig| fn_sig.header.is_async());
@@ -587,35 +346,37 @@ fn extract_hole_spans_from_hir<'tcx>(
     body_span: Span, // Usually `hir_body.value.span`, but not always
     hir_body: &hir::Body<'tcx>,
 ) -> Vec<Span> {
-    struct HolesVisitor<'hir, F> {
-        hir: Map<'hir>,
-        visit_hole_span: F,
+    struct HolesVisitor<'tcx> {
+        tcx: TyCtxt<'tcx>,
+        body_span: Span,
+        hole_spans: Vec<Span>,
     }
 
-    impl<'hir, F: FnMut(Span)> Visitor<'hir> for HolesVisitor<'hir, F> {
-        /// - We need `NestedFilter::INTRA = true` so that `visit_item` will be called.
-        /// - Bodies of nested items don't actually get visited, because of the
-        ///   `visit_item` override.
-        /// - For nested bodies that are not part of an item, we do want to visit any
-        ///   items contained within them.
-        type NestedFilter = nested_filter::All;
+    impl<'tcx> Visitor<'tcx> for HolesVisitor<'tcx> {
+        /// We have special handling for nested items, but we still want to
+        /// traverse into nested bodies of things that are not considered items,
+        /// such as "anon consts" (e.g. array lengths).
+        type NestedFilter = nested_filter::OnlyBodies;
 
-        fn nested_visit_map(&mut self) -> Self::Map {
-            self.hir
+        fn maybe_tcx(&mut self) -> TyCtxt<'tcx> {
+            self.tcx
         }
 
-        fn visit_item(&mut self, item: &'hir hir::Item<'hir>) {
-            (self.visit_hole_span)(item.span);
+        /// We override `visit_nested_item` instead of `visit_item` because we
+        /// only need the item's span, not the item itself.
+        fn visit_nested_item(&mut self, id: hir::ItemId) -> Self::Result {
+            let span = self.tcx.def_span(id.owner_id.def_id);
+            self.visit_hole_span(span);
             // Having visited this item, we don't care about its children,
             // so don't call `walk_item`.
         }
 
         // We override `visit_expr` instead of the more specific expression
         // visitors, so that we have direct access to the expression span.
-        fn visit_expr(&mut self, expr: &'hir hir::Expr<'hir>) {
+        fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
             match expr.kind {
                 hir::ExprKind::Closure(_) | hir::ExprKind::ConstBlock(_) => {
-                    (self.visit_hole_span)(expr.span);
+                    self.visit_hole_span(expr.span);
                     // Having visited this expression, we don't care about its
                     // children, so don't call `walk_expr`.
                 }
@@ -625,18 +386,17 @@ fn extract_hole_spans_from_hir<'tcx>(
             }
         }
     }
-
-    let mut hole_spans = vec![];
-    let mut visitor = HolesVisitor {
-        hir: tcx.hir(),
-        visit_hole_span: |hole_span| {
+    impl HolesVisitor<'_> {
+        fn visit_hole_span(&mut self, hole_span: Span) {
             // Discard any holes that aren't directly visible within the body span.
-            if body_span.contains(hole_span) && body_span.eq_ctxt(hole_span) {
-                hole_spans.push(hole_span);
+            if self.body_span.contains(hole_span) && self.body_span.eq_ctxt(hole_span) {
+                self.hole_spans.push(hole_span);
             }
-        },
-    };
+        }
+    }
+
+    let mut visitor = HolesVisitor { tcx, body_span, hole_spans: vec![] };
 
     visitor.visit_body(hir_body);
-    hole_spans
+    visitor.hole_spans
 }

@@ -1,4 +1,4 @@
-error[E0015]: cannot call non-const fn `create_some` in constants
+error[E0015]: cannot call non-const function `create_some` in constants
   --> $DIR/E0015.rs:5:25
    |
 LL | const FOO: Option<u8> = create_some();

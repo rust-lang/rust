@@ -4,7 +4,7 @@ error[E0277]: the trait bound `T: Trait` is not satisfied
 LL |     let x: <T as Trait>::Assoc = ();
    |            ^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `T`
    |
-help: consider restricting type parameter `T`
+help: consider restricting type parameter `T` with trait `Trait`
    |
 LL | fn test_poly<T: Trait>() {
    |               +++++++

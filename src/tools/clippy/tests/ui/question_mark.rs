@@ -124,6 +124,12 @@ impl MoveStruct {
 }
 
 fn func() -> Option<i32> {
+    macro_rules! opt_none {
+        () => {
+            None
+        };
+    }
+
     fn f() -> Option<String> {
         Some(String::new())
     }
@@ -131,6 +137,39 @@ fn func() -> Option<i32> {
     if f().is_none() {
         return None;
     }
+
+    let _val = match f() {
+        Some(val) => val,
+        None => return None,
+    };
+
+    let s: &str = match &Some(String::new()) {
+        Some(v) => v,
+        None => return None,
+    };
+
+    match f() {
+        Some(val) => val,
+        None => return None,
+    };
+
+    match opt_none!() {
+        Some(x) => x,
+        None => return None,
+    };
+
+    match f() {
+        Some(x) => x,
+        None => return opt_none!(),
+    };
+
+    match f() {
+        Some(val) => {
+            println!("{val}");
+            val
+        },
+        None => return None,
+    };
 
     Some(0)
 }
@@ -145,6 +184,16 @@ fn result_func(x: Result<i32, i32>) -> Result<i32, i32> {
     if x.is_err() {
         return x;
     }
+
+    let _val = match func_returning_result() {
+        Ok(val) => val,
+        Err(err) => return Err(err),
+    };
+
+    match func_returning_result() {
+        Ok(val) => val,
+        Err(err) => return Err(err),
+    };
 
     // No warning
     let y = if let Ok(x) = x {
@@ -187,6 +236,28 @@ fn result_func(x: Result<i32, i32>) -> Result<i32, i32> {
     }
 
     Ok(y)
+}
+
+fn infer_check() {
+    let closure = |x: Result<u8, ()>| {
+        // `?` would fail here, as it expands to `Err(val.into())` which is not constrained.
+        let _val = match x {
+            Ok(val) => val,
+            Err(val) => return Err(val),
+        };
+
+        Ok(())
+    };
+
+    let closure = |x: Result<u8, ()>| -> Result<(), _> {
+        // `?` would fail here, as it expands to `Err(val.into())` which is not constrained.
+        let _val = match x {
+            Ok(val) => val,
+            Err(val) => return Err(val),
+        };
+
+        Ok(())
+    };
 }
 
 // see issue #8019

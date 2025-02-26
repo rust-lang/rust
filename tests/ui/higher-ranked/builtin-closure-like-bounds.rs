@@ -1,5 +1,4 @@
 //@ edition:2024
-//@ compile-flags: -Zunstable-options
 //@ revisions: current next
 //@[next] compile-flags: -Znext-solver
 //@ check-pass

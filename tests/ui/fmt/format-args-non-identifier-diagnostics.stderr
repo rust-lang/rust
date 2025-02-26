@@ -6,8 +6,9 @@ LL |     println!("{x.0}");
    |
 help: consider using a positional formatting argument instead
    |
-LL |     println!("{0}", x.0);
-   |                ~  +++++
+LL -     println!("{x.0}");
+LL +     println!("{0}", x.0);
+   |
 
 error: aborting due to 1 previous error
 

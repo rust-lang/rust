@@ -1,4 +1,4 @@
-//@ aux-build:derive-b.rs
+//@ proc-macro: derive-b.rs
 
 #![allow(warnings)]
 

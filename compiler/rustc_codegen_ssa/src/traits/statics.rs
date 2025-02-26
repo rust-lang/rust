@@ -1,5 +1,5 @@
+use rustc_abi::Align;
 use rustc_hir::def_id::DefId;
-use rustc_target::abi::Align;
 
 use super::BackendTypes;
 

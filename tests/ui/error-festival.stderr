@@ -2,7 +2,17 @@ error[E0425]: cannot find value `y` in this scope
   --> $DIR/error-festival.rs:14:5
    |
 LL |     y = 2;
-   |     ^ help: a local variable with a similar name exists: `x`
+   |     ^
+   |
+help: a local variable with a similar name exists
+   |
+LL -     y = 2;
+LL +     x = 2;
+   |
+help: you might have meant to introduce a new binding
+   |
+LL |     let y = 2;
+   |     +++
 
 error[E0603]: constant `FOO` is private
   --> $DIR/error-festival.rs:22:10
@@ -67,8 +77,9 @@ LL |     let x_is_nonzero = x as bool;
    |
 help: compare with zero instead
    |
-LL |     let x_is_nonzero = x != 0;
-   |                          ~~~~
+LL -     let x_is_nonzero = x as bool;
+LL +     let x_is_nonzero = x != 0;
+   |
 
 error[E0606]: casting `&u8` as `u32` is invalid
   --> $DIR/error-festival.rs:37:18

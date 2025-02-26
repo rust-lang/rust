@@ -13,8 +13,8 @@ fn main() {
     //~^ First Pass analysis includes:
     //~| Min Capture analysis includes:
         println!("{}", t.0);
-        //~^ NOTE: Capturing t[(0, 0)] -> ImmBorrow
-        //~| NOTE: Min Capture t[(0, 0)] -> ImmBorrow
+        //~^ NOTE: Capturing t[(0, 0)] -> Immutable
+        //~| NOTE: Min Capture t[(0, 0)] -> Immutable
     };
 
     // `c` only captures t.0, therefore mutating t.1 is allowed.

@@ -6,14 +6,15 @@ LL | make_macro!((meow));
    |
 help: change the delimiters to curly braces
    |
-LL | make_macro!({meow});
-   |             ~    ~
+LL - make_macro!((meow));
+LL + make_macro!({meow});
+   |
 help: add a semicolon
    |
 LL |         macro_rules! $macro_name; {
    |                                 +
 
-error: macro expansion ignores token `{` and any following
+error: macro expansion ignores `{` and any tokens following
   --> $DIR/issue-118786.rs:7:34
    |
 LL |         macro_rules! $macro_name {

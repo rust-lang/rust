@@ -74,7 +74,7 @@ impl<'tcx> LateLintPass<'tcx> for UnwrapInResult {
 
 fn lint_impl_body<'tcx>(cx: &LateContext<'tcx>, impl_span: Span, impl_item: &'tcx hir::ImplItem<'_>) {
     if let ImplItemKind::Fn(_, body_id) = impl_item.kind {
-        let body = cx.tcx.hir().body(body_id);
+        let body = cx.tcx.hir_body(body_id);
         let typeck = cx.tcx.typeck(impl_item.owner_id.def_id);
         let mut result = Vec::new();
         let _: Option<!> = for_each_expr(cx, body.value, |e| {

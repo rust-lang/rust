@@ -9,7 +9,7 @@ use directories::ProjectDirs;
 use stdx::JodChild;
 use xshell::{cmd, Shell};
 
-use crate::{codegen, date_iso, flags, is_release_tag, project_root};
+use crate::{date_iso, flags, is_release_tag, project_root};
 
 impl flags::Release {
     pub(crate) fn run(self, sh: &Shell) -> anyhow::Result<()> {
@@ -28,11 +28,6 @@ impl flags::Release {
             // to delete old tags.
             cmd!(sh, "git push --force").run()?;
         }
-
-        // Generates bits of manual.adoc.
-        codegen::diagnostics_docs::generate(false);
-        codegen::assists_doc_tests::generate(false);
-        codegen::feature_docs::generate(false);
 
         let website_root = project_root().join("../rust-analyzer.github.io");
         {
@@ -53,20 +48,6 @@ impl flags::Release {
             .map(|n| 1 + n.floor() as usize)
             .max()
             .unwrap_or_default();
-
-        for adoc in [
-            "manual.adoc",
-            "generated_assists.adoc",
-            "generated_config.adoc",
-            "generated_diagnostic.adoc",
-            "generated_features.adoc",
-        ] {
-            let src = project_root().join("./docs/user/").join(adoc);
-            let dst = website_root.join(adoc);
-
-            let contents = sh.read_file(src)?;
-            sh.write_file(dst, contents)?;
-        }
 
         let tags = cmd!(sh, "git tag --list").read()?;
         let prev_tag = tags.lines().filter(|line| is_release_tag(line)).last().unwrap();

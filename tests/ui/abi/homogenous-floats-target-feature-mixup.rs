@@ -5,8 +5,7 @@
 // without #[repr(simd)]
 
 //@ run-pass
-//@ ignore-wasm32 no processes
-//@ ignore-sgx no processes
+//@ needs-subprocess
 
 #![feature(avx512_target_feature)]
 

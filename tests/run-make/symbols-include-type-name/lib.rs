@@ -4,7 +4,7 @@ pub struct Def {
 
 impl Def {
     pub fn new(id: i32) -> Def {
-        Def { id: id }
+        Def { id }
     }
 }
 

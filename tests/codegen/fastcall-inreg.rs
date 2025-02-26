@@ -2,7 +2,7 @@
 // as "inreg" like the C/C++ compilers for the platforms.
 // x86 only.
 
-//@ compile-flags: --target i686-unknown-linux-gnu -O -C no-prepopulate-passes
+//@ compile-flags: --target i686-unknown-linux-gnu -Cno-prepopulate-passes -Copt-level=3
 //@ needs-llvm-components: x86
 
 #![crate_type = "lib"]

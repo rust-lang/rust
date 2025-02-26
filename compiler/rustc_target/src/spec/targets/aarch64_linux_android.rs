@@ -1,4 +1,4 @@
-use crate::spec::{SanitizerSet, StackProbeType, Target, TargetOptions, base};
+use crate::spec::{SanitizerSet, StackProbeType, Target, TargetMetadata, TargetOptions, base};
 
 // See https://developer.android.com/ndk/guides/abis.html#arm64-v8a
 // for target ABI requirements.
@@ -6,7 +6,7 @@ use crate::spec::{SanitizerSet, StackProbeType, Target, TargetOptions, base};
 pub(crate) fn target() -> Target {
     Target {
         llvm_target: "aarch64-linux-android".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("ARM64 Android".into()),
             tier: Some(2),
             host_tools: Some(false),

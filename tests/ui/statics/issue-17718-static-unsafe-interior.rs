@@ -2,7 +2,6 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 #![allow(unused_imports)]
-//@ pretty-expanded FIXME #23616
 
 use std::marker;
 use std::cell::UnsafeCell;

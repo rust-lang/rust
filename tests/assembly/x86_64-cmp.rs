@@ -1,7 +1,7 @@
 //@ revisions: DEBUG LLVM-PRE-20-OPTIM LLVM-20-OPTIM
 //@ [DEBUG] compile-flags: -C opt-level=0
 //@ [LLVM-PRE-20-OPTIM] compile-flags: -C opt-level=3
-//@ [LLVM-PRE-20-OPTIM] ignore-llvm-version: 20 - 99
+//@ [LLVM-PRE-20-OPTIM] max-llvm-major-version: 19
 //@ [LLVM-20-OPTIM] compile-flags: -C opt-level=3
 //@ [LLVM-20-OPTIM] min-llvm-version: 20
 //@ assembly-output: emit-asm

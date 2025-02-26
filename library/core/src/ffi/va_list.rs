@@ -15,6 +15,7 @@ use crate::ops::{Deref, DerefMut};
         not(target_arch = "aarch64"),
         not(target_arch = "powerpc"),
         not(target_arch = "s390x"),
+        not(target_arch = "xtensa"),
         not(target_arch = "x86_64")
     ),
     all(target_arch = "aarch64", target_vendor = "apple"),
@@ -37,6 +38,7 @@ pub struct VaListImpl<'f> {
         not(target_arch = "aarch64"),
         not(target_arch = "powerpc"),
         not(target_arch = "s390x"),
+        not(target_arch = "xtensa"),
         not(target_arch = "x86_64")
     ),
     all(target_arch = "aarch64", target_vendor = "apple"),
@@ -113,6 +115,18 @@ pub struct VaListImpl<'f> {
     _marker: PhantomData<&'f mut &'f c_void>,
 }
 
+/// Xtensa ABI implementation of a `va_list`.
+#[cfg(target_arch = "xtensa")]
+#[repr(C)]
+#[derive(Debug)]
+#[lang = "va_list"]
+pub struct VaListImpl<'f> {
+    stk: *mut i32,
+    reg: *mut i32,
+    ndx: i32,
+    _marker: PhantomData<&'f mut &'f c_void>,
+}
+
 /// A wrapper for a `va_list`
 #[repr(transparent)]
 #[derive(Debug)]
@@ -124,6 +138,7 @@ pub struct VaList<'a, 'f: 'a> {
             not(target_arch = "s390x"),
             not(target_arch = "x86_64")
         ),
+        target_arch = "xtensa",
         all(target_arch = "aarch64", target_vendor = "apple"),
         target_family = "wasm",
         target_os = "uefi",
@@ -138,6 +153,7 @@ pub struct VaList<'a, 'f: 'a> {
             target_arch = "s390x",
             target_arch = "x86_64"
         ),
+        not(target_arch = "xtensa"),
         any(not(target_arch = "aarch64"), not(target_vendor = "apple")),
         not(target_family = "wasm"),
         not(target_os = "uefi"),
@@ -155,6 +171,7 @@ pub struct VaList<'a, 'f: 'a> {
         not(target_arch = "s390x"),
         not(target_arch = "x86_64")
     ),
+    target_arch = "xtensa",
     all(target_arch = "aarch64", target_vendor = "apple"),
     target_family = "wasm",
     target_os = "uefi",
@@ -173,8 +190,10 @@ impl<'f> VaListImpl<'f> {
         target_arch = "aarch64",
         target_arch = "powerpc",
         target_arch = "s390x",
+        target_arch = "xtensa",
         target_arch = "x86_64"
     ),
+    not(target_arch = "xtensa"),
     any(not(target_arch = "aarch64"), not(target_vendor = "apple")),
     not(target_family = "wasm"),
     not(target_os = "uefi"),
@@ -283,18 +302,19 @@ impl<'f> Drop for VaListImpl<'f> {
     }
 }
 
-extern "rust-intrinsic" {
-    /// Destroy the arglist `ap` after initialization with `va_start` or
-    /// `va_copy`.
-    #[rustc_nounwind]
-    fn va_end(ap: &mut VaListImpl<'_>);
+/// Destroy the arglist `ap` after initialization with `va_start` or
+/// `va_copy`.
+#[rustc_intrinsic]
+#[rustc_nounwind]
+unsafe fn va_end(_ap: &mut VaListImpl<'_>);
 
-    /// Copies the current location of arglist `src` to the arglist `dst`.
-    #[rustc_nounwind]
-    fn va_copy<'f>(dest: *mut VaListImpl<'f>, src: &VaListImpl<'f>);
+/// Copies the current location of arglist `src` to the arglist `dst`.
+#[rustc_intrinsic]
+#[rustc_nounwind]
+unsafe fn va_copy<'f>(_dest: *mut VaListImpl<'f>, _src: &VaListImpl<'f>);
 
-    /// Loads an argument of type `T` from the `va_list` `ap` and increment the
-    /// argument `ap` points to.
-    #[rustc_nounwind]
-    fn va_arg<T: sealed_trait::VaArgSafe>(ap: &mut VaListImpl<'_>) -> T;
-}
+/// Loads an argument of type `T` from the `va_list` `ap` and increment the
+/// argument `ap` points to.
+#[rustc_intrinsic]
+#[rustc_nounwind]
+unsafe fn va_arg<T: sealed_trait::VaArgSafe>(_ap: &mut VaListImpl<'_>) -> T;

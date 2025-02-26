@@ -50,8 +50,9 @@ LL |     let _: usize = 3u8;
    |
 help: change the type of the numeric literal from `u8` to `usize`
    |
-LL |     let _: usize = 3usize;
-   |                     ~~~~~
+LL -     let _: usize = 3u8;
+LL +     let _: usize = 3usize;
+   |
 
 error: aborting due to 4 previous errors
 

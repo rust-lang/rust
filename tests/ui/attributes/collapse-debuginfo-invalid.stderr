@@ -45,7 +45,6 @@ LL | |     let _ = #[collapse_debuginfo(yes)] || { };
 LL | |
 LL | |     #[collapse_debuginfo(yes)]
 ...  |
-LL | |     }
 LL | | }
    | |_- not a macro definition
 

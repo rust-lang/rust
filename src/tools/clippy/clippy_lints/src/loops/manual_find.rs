@@ -58,7 +58,7 @@ pub(super) fn check<'tcx>(
             .tcx
             .lang_items()
             .copy_trait()
-            .map_or(false, |id| implements_trait(cx, ty, id, &[]))
+            .is_some_and(|id| implements_trait(cx, ty, id, &[]))
         {
             snippet.push_str(
                 &format!(
@@ -134,7 +134,7 @@ fn last_stmt_and_ret<'tcx>(
         }
         None
     }
-    let mut parent_iter = cx.tcx.hir().parent_iter(expr.hir_id);
+    let mut parent_iter = cx.tcx.hir_parent_iter(expr.hir_id);
     if let Some((node_hir, Node::Stmt(..))) = parent_iter.next()
         // This should be the loop
         // This should be the function body

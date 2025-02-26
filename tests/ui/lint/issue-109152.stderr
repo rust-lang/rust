@@ -16,8 +16,9 @@ LL | #![deny(map_unit_fn)]
    |         ^^^^^^^^^^^
 help: you might have meant to use `Iterator::for_each`
    |
-LL |     vec![42].iter().for_each(drop);
-   |                     ~~~~~~~~
+LL -     vec![42].iter().map(drop);
+LL +     vec![42].iter().for_each(drop);
+   |
 
 error: aborting due to 1 previous error
 

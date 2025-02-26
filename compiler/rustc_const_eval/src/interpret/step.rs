@@ -3,13 +3,13 @@
 //! The main entry point is the `step` method.
 
 use either::Either;
+use rustc_abi::{FIRST_VARIANT, FieldIdx};
 use rustc_index::IndexSlice;
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_span::source_map::Spanned;
-use rustc_target::abi::call::FnAbi;
-use rustc_target::abi::{FIRST_VARIANT, FieldIdx};
+use rustc_target::callconv::FnAbi;
 use tracing::{info, instrument, trace};
 
 use super::{
@@ -143,6 +143,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // Defined to do nothing. These are added by optimization passes, to avoid changing the
             // size of MIR constantly.
             Nop => {}
+
+            // Only used for temporary lifetime lints
+            BackwardIncompatibleDropHint { .. } => {}
         }
 
         interp_ok(())
@@ -234,11 +237,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.write_immediate(*val, &dest)?;
             }
 
-            RawPtr(_, place) => {
+            RawPtr(kind, place) => {
                 // Figure out whether this is an addr_of of an already raw place.
                 let place_base_raw = if place.is_indirect_first_projection() {
                     let ty = self.frame().body.local_decls[place.local].ty;
-                    ty.is_unsafe_ptr()
+                    ty.is_raw_ptr()
                 } else {
                     // Not a deref, and thus not raw.
                     false
@@ -247,8 +250,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let src = self.eval_place(place)?;
                 let place = self.force_allocation(&src)?;
                 let mut val = ImmTy::from_immediate(place.to_ref(self), dest.layout);
-                if !place_base_raw {
-                    // If this was not already raw, it needs retagging.
+                if !place_base_raw && !kind.is_fake() {
+                    // If this was not already raw, it needs retagging -- except for "fake"
+                    // raw borrows whose defining property is that they do not get retagged.
                     val = M::retag_ptr_value(self, mir::RetagKind::Raw, &val)?;
                 }
                 self.write_immediate(*val, &dest)?;
@@ -272,6 +276,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let variant = self.read_discriminant(&op)?;
                 let discr = self.discriminant_for_variant(op.layout.ty, variant)?;
                 self.write_immediate(*discr, &dest)?;
+            }
+
+            WrapUnsafeBinder(ref op, _ty) => {
+                // Constructing an unsafe binder acts like a transmute
+                // since the operand's layout does not change.
+                let op = self.eval_operand(op, None)?;
+                self.copy_op_allow_transmute(&op, &dest)?;
             }
         }
 
@@ -418,7 +429,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             .collect::<InterpResult<'tcx, Vec<_>>>()?;
 
         let fn_sig_binder = func.layout.ty.fn_sig(*self.tcx);
-        let fn_sig = self.tcx.normalize_erasing_late_bound_regions(self.param_env, fn_sig_binder);
+        let fn_sig = self.tcx.normalize_erasing_late_bound_regions(self.typing_env, fn_sig_binder);
         let extra_args = &args[fn_sig.inputs().len()..];
         let extra_args =
             self.tcx.mk_type_list_from_iter(extra_args.iter().map(|arg| arg.layout().ty));

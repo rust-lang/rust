@@ -6,9 +6,9 @@
 
 //@ has 'foo/index.html'
 // There are two items.
-//@ count - '//*[@class="item-table"]//div[@class="item-name"]' 2
+//@ count - '//*[@class="item-table"]/dt' 2
 // Only one of them should have an attribute.
-//@ count - '//*[@class="item-table"]//div[@class="item-name"]/*[@class="stab portability"]' 1
+//@ count - '//*[@class="item-table"]/dt/*[@class="stab portability"]' 1
 
 mod a {
     #[cfg(not(feature = "a"))]

@@ -1,5 +1,6 @@
 //@ edition:2021
 //@ aux-build:bad_on_unimplemented.rs
+//@ reference: attributes.diagnostic.on_unimplemented.syntax
 
 // Do not ICE when encountering a malformed `#[diagnostic::on_unimplemented]` annotation in a
 // dependency when incorrectly used (#124651).

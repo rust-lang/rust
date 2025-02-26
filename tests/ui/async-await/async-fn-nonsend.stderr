@@ -4,7 +4,7 @@ error: future cannot be sent between threads safely
 LL |     assert_send(non_send_temporary_in_match());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ future returned by `non_send_temporary_in_match` is not `Send`
    |
-   = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `Rc<()>`, which is required by `impl Future<Output = ()>: Send`
+   = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `Rc<()>`
 note: future is not `Send` as this value is used across an await
   --> $DIR/async-fn-nonsend.rs:33:26
    |
@@ -24,7 +24,7 @@ error: future cannot be sent between threads safely
 LL |     assert_send(non_sync_with_method_call());
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ future returned by `non_sync_with_method_call` is not `Send`
    |
-   = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `dyn std::fmt::Write`, which is required by `impl Future<Output = ()>: Send`
+   = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `dyn std::fmt::Write`
 note: future is not `Send` as this value is used across an await
   --> $DIR/async-fn-nonsend.rs:46:15
    |

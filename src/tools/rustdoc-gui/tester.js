@@ -197,7 +197,6 @@ async function main(argv) {
         const args = [
             "--variable", "DOC_PATH", opts["doc_folder"].split("\\").join("/"),
             "--enable-fail-on-js-error", "--allow-file-access-from-files",
-            "--no-sandbox",
         ];
         if (opts["debug"]) {
             debug = true;

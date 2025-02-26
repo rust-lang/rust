@@ -23,8 +23,6 @@ pub mod env;
 pub mod fd;
 pub mod fs;
 pub mod futex;
-pub mod io;
-pub mod net;
 pub mod os;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;
@@ -42,7 +40,7 @@ pub fn unsupported<T>() -> crate::io::Result<T> {
 }
 
 pub fn unsupported_err() -> crate::io::Error {
-    crate::io::const_io_error!(
+    crate::io::const_error!(
         crate::io::ErrorKind::Unsupported,
         "operation not supported on HermitCore yet",
     )
@@ -55,7 +53,7 @@ pub fn abort_internal() -> ! {
 // This function is needed by the panic runtime. The symbol is named in
 // pre-link args for the target specification, so keep that in sync.
 #[cfg(not(test))]
-#[no_mangle]
+#[unsafe(no_mangle)]
 // NB. used by both libunwind and libpanic_abort
 pub extern "C" fn __rust_abort() {
     abort_internal();
@@ -74,18 +72,18 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, _sigpipe: u8) {
 pub unsafe fn cleanup() {}
 
 #[cfg(not(test))]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn runtime_entry(
     argc: i32,
     argv: *const *const c_char,
     env: *const *const c_char,
 ) -> ! {
-    extern "C" {
+    unsafe extern "C" {
         fn main(argc: isize, argv: *const *const c_char) -> i32;
     }
 
     // initialize environment
-    os::init_environment(env as *const *const i8);
+    os::init_environment(env);
 
     let result = unsafe { main(argc as isize, argv) };
 

@@ -5,13 +5,15 @@
 //!
 //! [annotate_snippets]: https://docs.rs/crate/annotate-snippets/
 
+use std::sync::Arc;
+
 use annotate_snippets::{Renderer, Snippet};
-use rustc_data_structures::sync::Lrc;
 use rustc_error_messages::FluentArgs;
 use rustc_span::SourceFile;
 use rustc_span::source_map::SourceMap;
 
 use crate::emitter::FileWithAnnotatedLines;
+use crate::registry::Registry;
 use crate::snippet::Line;
 use crate::translation::{Translate, to_fluent_args};
 use crate::{
@@ -21,8 +23,8 @@ use crate::{
 
 /// Generates diagnostics using annotate-snippet
 pub struct AnnotateSnippetEmitter {
-    source_map: Option<Lrc<SourceMap>>,
-    fluent_bundle: Option<Lrc<FluentBundle>>,
+    source_map: Option<Arc<SourceMap>>,
+    fluent_bundle: Option<Arc<FluentBundle>>,
     fallback_bundle: LazyFallbackBundle,
 
     /// If true, hides the longer explanation text
@@ -45,7 +47,7 @@ impl Translate for AnnotateSnippetEmitter {
 
 impl Emitter for AnnotateSnippetEmitter {
     /// The entry point for the diagnostics generation
-    fn emit_diagnostic(&mut self, mut diag: DiagInner) {
+    fn emit_diagnostic(&mut self, mut diag: DiagInner, _registry: &Registry) {
         let fluent_args = to_fluent_args(diag.args.iter());
 
         let mut suggestions = diag.suggestions.unwrap_tag();
@@ -79,7 +81,7 @@ impl Emitter for AnnotateSnippetEmitter {
 }
 
 /// Provides the source string for the given `line` of `file`
-fn source_string(file: Lrc<SourceFile>, line: &Line) -> String {
+fn source_string(file: Arc<SourceFile>, line: &Line) -> String {
     file.get_line(line.line_index - 1).map(|a| a.to_string()).unwrap_or_default()
 }
 
@@ -101,8 +103,8 @@ fn annotation_level_for_level(level: Level) -> annotate_snippets::Level {
 
 impl AnnotateSnippetEmitter {
     pub fn new(
-        source_map: Option<Lrc<SourceMap>>,
-        fluent_bundle: Option<Lrc<FluentBundle>>,
+        source_map: Option<Arc<SourceMap>>,
+        fluent_bundle: Option<Arc<FluentBundle>>,
         fallback_bundle: LazyFallbackBundle,
         short_message: bool,
         macro_backtrace: bool,
@@ -173,7 +175,7 @@ impl AnnotateSnippetEmitter {
                             source_map.ensure_source_file_source_present(&file);
                             (
                                 format!("{}", source_map.filename_for_diagnostics(&file.name)),
-                                source_string(file.clone(), &line),
+                                source_string(Arc::clone(&file), &line),
                                 line.line_index,
                                 line.annotations,
                             )

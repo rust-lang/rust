@@ -18,6 +18,7 @@ pub struct RwLock {
 const READ_LOCKED: Primitive = 1;
 const MASK: Primitive = (1 << 30) - 1;
 const WRITE_LOCKED: Primitive = MASK;
+const DOWNGRADE: Primitive = READ_LOCKED.wrapping_sub(WRITE_LOCKED); // READ_LOCKED - WRITE_LOCKED
 const MAX_READERS: Primitive = MASK - 1;
 const READERS_WAITING: Primitive = 1 << 30;
 const WRITERS_WAITING: Primitive = 1 << 31;
@@ -54,6 +55,24 @@ fn is_read_lockable(state: Primitive) -> bool {
 }
 
 #[inline]
+fn is_read_lockable_after_wakeup(state: Primitive) -> bool {
+    // We make a special case for checking if we can read-lock _after_ a reader thread that went to
+    // sleep has been woken up by a call to `downgrade`.
+    //
+    // `downgrade` will wake up all readers and place the lock in read mode. Thus, there should be
+    // no readers waiting and the lock should be read-locked (not write-locked or unlocked).
+    //
+    // Note that we do not check if any writers are waiting. This is because a call to `downgrade`
+    // implies that the caller wants other readers to read the value protected by the lock. If we
+    // did not allow readers to acquire the lock before writers after a `downgrade`, then only the
+    // original writer would be able to read the value, thus defeating the purpose of `downgrade`.
+    state & MASK < MAX_READERS
+        && !has_readers_waiting(state)
+        && !is_write_locked(state)
+        && !is_unlocked(state)
+}
+
+#[inline]
 fn has_reached_max_readers(state: Primitive) -> bool {
     state & MASK == MAX_READERS
 }
@@ -84,6 +103,9 @@ impl RwLock {
         }
     }
 
+    /// # Safety
+    ///
+    /// The `RwLock` must be read-locked (N readers) in order to call this.
     #[inline]
     pub unsafe fn read_unlock(&self) {
         let state = self.state.fetch_sub(READ_LOCKED, Release) - READ_LOCKED;
@@ -100,11 +122,13 @@ impl RwLock {
 
     #[cold]
     fn read_contended(&self) {
+        let mut has_slept = false;
         let mut state = self.spin_read();
 
         loop {
-            // If we can lock it, lock it.
-            if is_read_lockable(state) {
+            // If we have just been woken up, first check for a `downgrade` call.
+            // Otherwise, if we can read-lock it, lock it.
+            if (has_slept && is_read_lockable_after_wakeup(state)) || is_read_lockable(state) {
                 match self.state.compare_exchange_weak(state, state + READ_LOCKED, Acquire, Relaxed)
                 {
                     Ok(_) => return, // Locked!
@@ -116,9 +140,7 @@ impl RwLock {
             }
 
             // Check for overflow.
-            if has_reached_max_readers(state) {
-                panic!("too many active read locks on RwLock");
-            }
+            assert!(!has_reached_max_readers(state), "too many active read locks on RwLock");
 
             // Make sure the readers waiting bit is set before we go to sleep.
             if !has_readers_waiting(state) {
@@ -132,6 +154,7 @@ impl RwLock {
 
             // Wait for the state to change.
             futex_wait(&self.state, state | READERS_WAITING, None);
+            has_slept = true;
 
             // Spin again after waking up.
             state = self.spin_read();
@@ -152,6 +175,9 @@ impl RwLock {
         }
     }
 
+    /// # Safety
+    ///
+    /// The `RwLock` must be write-locked (single writer) in order to call this.
     #[inline]
     pub unsafe fn write_unlock(&self) {
         let state = self.state.fetch_sub(WRITE_LOCKED, Release) - WRITE_LOCKED;
@@ -160,6 +186,22 @@ impl RwLock {
 
         if has_writers_waiting(state) || has_readers_waiting(state) {
             self.wake_writer_or_readers(state);
+        }
+    }
+
+    /// # Safety
+    ///
+    /// The `RwLock` must be write-locked (single writer) in order to call this.
+    #[inline]
+    pub unsafe fn downgrade(&self) {
+        // Removes all write bits and adds a single read bit.
+        let state = self.state.fetch_add(DOWNGRADE, Release);
+        debug_assert!(is_write_locked(state), "RwLock must be write locked to call `downgrade`");
+
+        if has_readers_waiting(state) {
+            // Since we had the exclusive lock, nobody else can unset this bit.
+            self.state.fetch_sub(READERS_WAITING, Relaxed);
+            futex_wake_all(&self.state);
         }
     }
 

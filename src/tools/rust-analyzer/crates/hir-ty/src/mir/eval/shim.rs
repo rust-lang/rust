@@ -1,15 +1,16 @@
 //! Interpret intrinsics, lang items and `extern "C"` wellknown functions which their implementation
 //! is not available.
 //!
-use std::cmp;
+use std::cmp::{self, Ordering};
 
 use chalk_ir::TyKind;
 use hir_def::{
     builtin_type::{BuiltinInt, BuiltinUint},
+    lang_item::LangItemTarget,
     resolver::HasResolver,
 };
 use hir_expand::name::Name;
-use intern::sym;
+use intern::{sym, Symbol};
 
 use crate::{
     error_lifetime,
@@ -54,49 +55,32 @@ impl Evaluator<'_> {
         }
 
         let function_data = self.db.function_data(def);
-        let is_intrinsic = match &function_data.abi {
-            Some(abi) => *abi == sym::rust_dash_intrinsic,
-            None => match def.lookup(self.db.upcast()).container {
-                hir_def::ItemContainerId::ExternBlockId(block) => {
-                    let id = block.lookup(self.db.upcast()).id;
-                    id.item_tree(self.db.upcast())[id.value].abi.as_ref()
-                        == Some(&sym::rust_dash_intrinsic)
-                }
-                _ => false,
-            },
-        };
+        let attrs = self.db.attrs(def.into());
+        let is_intrinsic = attrs.by_key(&sym::rustc_intrinsic).exists()
+            // Keep this around for a bit until extern "rustc-intrinsic" abis are no longer used
+            || (match &function_data.abi {
+                Some(abi) => *abi == sym::rust_dash_intrinsic,
+                None => match def.lookup(self.db.upcast()).container {
+                    hir_def::ItemContainerId::ExternBlockId(block) => {
+                        let id = block.lookup(self.db.upcast()).id;
+                        id.item_tree(self.db.upcast())[id.value].abi.as_ref()
+                            == Some(&sym::rust_dash_intrinsic)
+                    }
+                    _ => false,
+                },
+            });
+
         if is_intrinsic {
-            self.exec_intrinsic(
+            return self.exec_intrinsic(
                 function_data.name.as_str(),
                 args,
                 generic_args,
                 destination,
                 locals,
                 span,
-            )?;
-            return Ok(true);
-        }
-        let is_platform_intrinsic = match &function_data.abi {
-            Some(abi) => *abi == sym::platform_dash_intrinsic,
-            None => match def.lookup(self.db.upcast()).container {
-                hir_def::ItemContainerId::ExternBlockId(block) => {
-                    let id = block.lookup(self.db.upcast()).id;
-                    id.item_tree(self.db.upcast())[id.value].abi.as_ref()
-                        == Some(&sym::platform_dash_intrinsic)
-                }
-                _ => false,
-            },
-        };
-        if is_platform_intrinsic {
-            self.exec_platform_intrinsic(
-                function_data.name.as_str(),
-                args,
-                generic_args,
-                destination,
-                locals,
-                span,
-            )?;
-            return Ok(true);
+                !function_data.has_body()
+                    || attrs.by_key(&sym::rustc_intrinsic_must_be_overridden).exists(),
+            );
         }
         let is_extern_c = match def.lookup(self.db.upcast()).container {
             hir_def::ItemContainerId::ExternBlockId(block) => {
@@ -106,27 +90,25 @@ impl Evaluator<'_> {
             _ => false,
         };
         if is_extern_c {
-            self.exec_extern_c(
-                function_data.name.as_str(),
-                args,
-                generic_args,
-                destination,
-                locals,
-                span,
-            )?;
-            return Ok(true);
+            return self
+                .exec_extern_c(
+                    function_data.name.as_str(),
+                    args,
+                    generic_args,
+                    destination,
+                    locals,
+                    span,
+                )
+                .map(|()| true);
         }
-        let alloc_fn = function_data
-            .attrs
-            .iter()
-            .filter_map(|it| it.path().as_ident())
-            .map(|it| it.as_str())
-            .find(|it| {
+
+        let alloc_fn =
+            attrs.iter().filter_map(|it| it.path().as_ident()).map(|it| it.symbol()).find(|it| {
                 [
-                    "rustc_allocator",
-                    "rustc_deallocator",
-                    "rustc_reallocator",
-                    "rustc_allocator_zeroed",
+                    &sym::rustc_allocator,
+                    &sym::rustc_deallocator,
+                    &sym::rustc_reallocator,
+                    &sym::rustc_allocator_zeroed,
                 ]
                 .contains(it)
             });
@@ -270,12 +252,12 @@ impl Evaluator<'_> {
 
     fn exec_alloc_fn(
         &mut self,
-        alloc_fn: &str,
+        alloc_fn: &Symbol,
         args: &[IntervalAndTy],
         destination: Interval,
     ) -> Result<()> {
         match alloc_fn {
-            "rustc_allocator_zeroed" | "rustc_allocator" => {
+            _ if *alloc_fn == sym::rustc_allocator_zeroed || *alloc_fn == sym::rustc_allocator => {
                 let [size, align] = args else {
                     return Err(MirEvalError::InternalError(
                         "rustc_allocator args are not provided".into(),
@@ -286,8 +268,8 @@ impl Evaluator<'_> {
                 let result = self.heap_allocate(size, align)?;
                 destination.write_from_bytes(self, &result.to_bytes())?;
             }
-            "rustc_deallocator" => { /* no-op for now */ }
-            "rustc_reallocator" => {
+            _ if *alloc_fn == sym::rustc_deallocator => { /* no-op for now */ }
+            _ if *alloc_fn == sym::rustc_reallocator => {
                 let [ptr, old_size, align, new_size] = args else {
                     return Err(MirEvalError::InternalError(
                         "rustc_allocator args are not provided".into(),
@@ -603,21 +585,6 @@ impl Evaluator<'_> {
         }
     }
 
-    fn exec_platform_intrinsic(
-        &mut self,
-        name: &str,
-        args: &[IntervalAndTy],
-        generic_args: &Substitution,
-        destination: Interval,
-        locals: &Locals,
-        span: MirSpan,
-    ) -> Result<()> {
-        if let Some(name) = name.strip_prefix("simd_") {
-            return self.exec_simd_intrinsic(name, args, generic_args, destination, locals, span);
-        }
-        not_supported!("unknown platform intrinsic {name}");
-    }
-
     fn exec_intrinsic(
         &mut self,
         name: &str,
@@ -626,9 +593,17 @@ impl Evaluator<'_> {
         destination: Interval,
         locals: &Locals,
         span: MirSpan,
-    ) -> Result<()> {
+        needs_override: bool,
+    ) -> Result<bool> {
         if let Some(name) = name.strip_prefix("atomic_") {
-            return self.exec_atomic_intrinsic(name, args, generic_args, destination, locals, span);
+            return self
+                .exec_atomic_intrinsic(name, args, generic_args, destination, locals, span)
+                .map(|()| true);
+        }
+        if let Some(name) = name.strip_prefix("simd_") {
+            return self
+                .exec_simd_intrinsic(name, args, generic_args, destination, locals, span)
+                .map(|()| true);
         }
         // FIXME(#17451): Add `f16` and `f128` intrinsics.
         if let Some(name) = name.strip_suffix("f64") {
@@ -701,7 +676,7 @@ impl Evaluator<'_> {
                 }
                 _ => not_supported!("unknown f64 intrinsic {name}"),
             };
-            return destination.write_from_bytes(self, &result.to_le_bytes());
+            return destination.write_from_bytes(self, &result.to_le_bytes()).map(|()| true);
         }
         if let Some(name) = name.strip_suffix("f32") {
             let result = match name {
@@ -773,7 +748,7 @@ impl Evaluator<'_> {
                 }
                 _ => not_supported!("unknown f32 intrinsic {name}"),
             };
-            return destination.write_from_bytes(self, &result.to_le_bytes());
+            return destination.write_from_bytes(self, &result.to_le_bytes()).map(|()| true);
         }
         match name {
             "size_of" => {
@@ -1146,12 +1121,6 @@ impl Evaluator<'_> {
                 };
                 destination.write_from_interval(self, arg.interval)
             }
-            "likely" | "unlikely" => {
-                let [arg] = args else {
-                    return Err(MirEvalError::InternalError("likely arg is not provided".into()));
-                };
-                destination.write_from_interval(self, arg.interval)
-            }
             "ctpop" => {
                 let [arg] = args else {
                     return Err(MirEvalError::InternalError("ctpop arg is not provided".into()));
@@ -1296,7 +1265,7 @@ impl Evaluator<'_> {
                             None,
                             span,
                         )?;
-                        return Ok(());
+                        return Ok(true);
                     }
                 }
                 not_supported!("FnOnce was not available for executing const_eval_select");
@@ -1349,8 +1318,86 @@ impl Evaluator<'_> {
                 self.write_memory_using_ref(dst, size)?.fill(val);
                 Ok(())
             }
-            _ => not_supported!("unknown intrinsic {name}"),
+            "ptr_metadata" => {
+                let [ptr] = args else {
+                    return Err(MirEvalError::InternalError(
+                        "ptr_metadata args are not provided".into(),
+                    ));
+                };
+                let arg = ptr.interval.get(self)?.to_owned();
+                let metadata = &arg[self.ptr_size()..];
+                destination.write_from_bytes(self, metadata)?;
+                Ok(())
+            }
+            "three_way_compare" => {
+                let [lhs, rhs] = args else {
+                    return Err(MirEvalError::InternalError(
+                        "three_way_compare args are not provided".into(),
+                    ));
+                };
+                let Some(ty) =
+                    generic_args.as_slice(Interner).first().and_then(|it| it.ty(Interner))
+                else {
+                    return Err(MirEvalError::InternalError(
+                        "three_way_compare generic arg is not provided".into(),
+                    ));
+                };
+                let signed = match ty.as_builtin().unwrap() {
+                    BuiltinType::Int(_) => true,
+                    BuiltinType::Uint(_) => false,
+                    _ => {
+                        return Err(MirEvalError::InternalError(
+                            "three_way_compare expects an integral type".into(),
+                        ))
+                    }
+                };
+                let rhs = rhs.get(self)?;
+                let lhs = lhs.get(self)?;
+                let mut result = Ordering::Equal;
+                for (l, r) in lhs.iter().zip(rhs).rev() {
+                    let it = l.cmp(r);
+                    if it != Ordering::Equal {
+                        result = it;
+                        break;
+                    }
+                }
+                if signed {
+                    if let Some((&l, &r)) = lhs.iter().zip(rhs).next_back() {
+                        if l != r {
+                            result = (l as i8).cmp(&(r as i8));
+                        }
+                    }
+                }
+                if let Some(LangItemTarget::EnumId(e)) =
+                    self.db.lang_item(self.crate_id, LangItem::Ordering)
+                {
+                    let ty = self.db.ty(e.into());
+                    let r = self
+                        .compute_discriminant(ty.skip_binders().clone(), &[result as i8 as u8])?;
+                    destination.write_from_bytes(self, &r.to_le_bytes()[0..destination.size])?;
+                    Ok(())
+                } else {
+                    Err(MirEvalError::InternalError("Ordering enum not found".into()))
+                }
+            }
+            "aggregate_raw_ptr" => {
+                let [data, meta] = args else {
+                    return Err(MirEvalError::InternalError(
+                        "aggregate_raw_ptr args are not provided".into(),
+                    ));
+                };
+                destination.write_from_interval(self, data.interval)?;
+                Interval {
+                    addr: destination.addr.offset(data.interval.size),
+                    size: destination.size - data.interval.size,
+                }
+                .write_from_interval(self, meta.interval)?;
+                Ok(())
+            }
+            _ if needs_override => not_supported!("intrinsic {name} is not implemented"),
+            _ => return Ok(false),
         }
+        .map(|()| true)
     }
 
     fn size_align_of_unsized(

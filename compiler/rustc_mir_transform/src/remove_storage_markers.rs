@@ -22,4 +22,8 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveStorageMarkers {
             })
         }
     }
+
+    fn is_required(&self) -> bool {
+        true
+    }
 }

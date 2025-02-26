@@ -10,7 +10,11 @@ impl Exhaustive for LocationState {
     fn exhaustive() -> Box<dyn Iterator<Item = Self>> {
         // We keep `latest_foreign_access` at `None` as that's just a cache.
         Box::new(<(Permission, bool)>::exhaustive().map(|(permission, initialized)| {
-            Self { permission, initialized, latest_foreign_access: None }
+            Self {
+                permission,
+                initialized,
+                idempotent_foreign_access: IdempotentForeignAccess::default(),
+            }
         }))
     }
 }
@@ -260,15 +264,15 @@ mod spurious_read {
             match xy_rel {
                 RelPosXY::MutuallyForeign =>
                     match self {
-                        PtrSelector::X => (This, DistantAccess),
-                        PtrSelector::Y => (DistantAccess, This),
-                        PtrSelector::Other => (DistantAccess, DistantAccess),
+                        PtrSelector::X => (This, CousinAccess),
+                        PtrSelector::Y => (CousinAccess, This),
+                        PtrSelector::Other => (CousinAccess, CousinAccess),
                     },
                 RelPosXY::XChildY =>
                     match self {
                         PtrSelector::X => (This, StrictChildAccess),
                         PtrSelector::Y => (AncestorAccess, This),
-                        PtrSelector::Other => (DistantAccess, DistantAccess),
+                        PtrSelector::Other => (CousinAccess, CousinAccess),
                     },
             }
         }
@@ -598,13 +602,18 @@ mod spurious_read {
         let source = LocStateProtPair {
             xy_rel: RelPosXY::MutuallyForeign,
             x: LocStateProt {
-                state: LocationState::new_init(Permission::new_frozen()),
+                // For the tests, the strongest idempotent foreign access does not matter, so we use `Default::default`
+                state: LocationState::new_init(
+                    Permission::new_frozen(),
+                    IdempotentForeignAccess::default(),
+                ),
                 prot: true,
             },
             y: LocStateProt {
-                state: LocationState::new_uninit(Permission::new_reserved(
-                    /* freeze */ true, /* protected */ true,
-                )),
+                state: LocationState::new_uninit(
+                    Permission::new_reserved(/* freeze */ true, /* protected */ true),
+                    IdempotentForeignAccess::default(),
+                ),
                 prot: true,
             },
         };

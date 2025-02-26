@@ -4,7 +4,7 @@ error[E0277]: `{float}` is not an iterator
 LL |     for i in 0.2 {
    |              ^^^ `{float}` is not an iterator
    |
-   = help: the trait `Iterator` is not implemented for `{float}`, which is required by `{float}: IntoIterator`
+   = help: the trait `Iterator` is not implemented for `{float}`
    = note: if you want to iterate between `start` until a value `end`, use the exclusive range syntax `start..end` or the inclusive range syntax `start..=end`
    = note: required for `{float}` to implement `IntoIterator`
 

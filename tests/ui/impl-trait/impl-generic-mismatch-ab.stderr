@@ -17,8 +17,9 @@ LL |     fn foo<A: Debug>(&self, a: &A, b: &impl Debug);
    = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 help: change the parameter type to match the trait
    |
-LL |     fn foo<B: Debug>(&self, a: &B, b: &B) { }
-   |                                ~~
+LL -     fn foo<B: Debug>(&self, a: &impl Debug, b: &B) { }
+LL +     fn foo<B: Debug>(&self, a: &B, b: &B) { }
+   |
 
 error: aborting due to 1 previous error
 

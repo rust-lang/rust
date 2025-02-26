@@ -5,14 +5,13 @@ use std::fmt::{self, Display};
 use std::iter;
 
 use rustc_data_structures::fx::IndexEntry;
-use rustc_errors::Diag;
+use rustc_errors::{Diag, EmissionGuarantee};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_middle::ty::print::RegionHighlightMode;
 use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, RegionVid, Ty};
 use rustc_middle::{bug, span_bug};
-use rustc_span::symbol::{Symbol, kw, sym};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, Symbol, kw, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use tracing::{debug, instrument};
 
@@ -30,8 +29,8 @@ pub(crate) struct RegionName {
 }
 
 /// Denotes the source of a region that is named by a `RegionName`. For example, a free region that
-/// was named by the user would get `NamedLateParamRegion` and `'static` lifetime would get `Static`.
-/// This helps to print the right kinds of diagnostics.
+/// was named by the user would get `NamedLateParamRegion` and `'static` lifetime would get
+/// `Static`. This helps to print the right kinds of diagnostics.
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum RegionNameSource {
     /// A bound (not free) region that was instantiated at the def site (not an HRTB).
@@ -109,7 +108,7 @@ impl RegionName {
         }
     }
 
-    pub(crate) fn highlight_region_name(&self, diag: &mut Diag<'_>) {
+    pub(crate) fn highlight_region_name<G: EmissionGuarantee>(&self, diag: &mut Diag<'_, G>) {
         match &self.source {
             RegionNameSource::NamedLateParamRegion(span)
             | RegionNameSource::NamedEarlyParamRegion(span) => {
@@ -300,17 +299,17 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 Some(RegionName { name: kw::StaticLifetime, source: RegionNameSource::Static })
             }
 
-            ty::ReLateParam(late_param) => match late_param.bound_region {
-                ty::BoundRegionKind::BrNamed(region_def_id, name) => {
+            ty::ReLateParam(late_param) => match late_param.kind {
+                ty::LateParamRegionKind::Named(region_def_id, name) => {
                     // Get the span to point to, even if we don't use the name.
                     let span = tcx.hir().span_if_local(region_def_id).unwrap_or(DUMMY_SP);
                     debug!(
                         "bound region named: {:?}, is_named: {:?}",
                         name,
-                        late_param.bound_region.is_named()
+                        late_param.kind.is_named()
                     );
 
-                    if late_param.bound_region.is_named() {
+                    if late_param.kind.is_named() {
                         // A named region that is actually named.
                         Some(RegionName {
                             name,
@@ -332,7 +331,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                     }
                 }
 
-                ty::BoundRegionKind::BrEnv => {
+                ty::LateParamRegionKind::ClosureEnv => {
                     let def_ty = self.regioncx.universal_regions().defining_ty;
 
                     let closure_kind = match def_ty {
@@ -369,7 +368,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                     })
                 }
 
-                ty::BoundRegionKind::BrAnon => None,
+                ty::LateParamRegionKind::Anon(_) => None,
             },
 
             ty::ReBound(..)
@@ -425,7 +424,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         &self,
         argument_index: usize,
     ) -> Option<&hir::Ty<'tcx>> {
-        let fn_decl = self.infcx.tcx.hir().fn_decl_by_hir_id(self.mir_hir_id())?;
+        let fn_decl = self.infcx.tcx.hir_fn_decl_by_hir_id(self.mir_hir_id())?;
         let argument_hir_ty: &hir::Ty<'_> = fn_decl.inputs.get(argument_index)?;
         match argument_hir_ty.kind {
             // This indicates a variable with no type annotation, like
@@ -433,7 +432,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
             // must highlight the variable.
             // NOTE(eddyb) this is handled in/by the sole caller
             // (`give_name_if_anonymous_region_appears_in_arguments`).
-            hir::TyKind::Infer => None,
+            hir::TyKind::Infer(()) => None,
 
             _ => Some(argument_hir_ty),
         }
@@ -459,11 +458,8 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
     ) -> RegionNameHighlight {
         let mut highlight = RegionHighlightMode::default();
         highlight.highlighting_region_vid(self.infcx.tcx, needle_fr, counter);
-        let type_name = self
-            .infcx
-            .err_ctxt()
-            .extract_inference_diagnostics_data(ty.into(), Some(highlight))
-            .name;
+        let type_name =
+            self.infcx.err_ctxt().extract_inference_diagnostics_data(ty.into(), highlight).name;
 
         debug!(
             "highlight_if_we_cannot_match_hir_ty: type_name={:?} needle_fr={:?}",
@@ -619,7 +615,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 }
 
                 (GenericArgKind::Type(ty), hir::GenericArg::Type(hir_ty)) => {
-                    search_stack.push((ty, hir_ty));
+                    search_stack.push((ty, hir_ty.as_unambig_ty()));
                 }
 
                 (GenericArgKind::Const(_ct), hir::GenericArg::Const(_hir_ct)) => {
@@ -675,7 +671,6 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
     #[instrument(level = "trace", skip(self))]
     fn give_name_if_anonymous_region_appears_in_output(&self, fr: RegionVid) -> Option<RegionName> {
         let tcx = self.infcx.tcx;
-        let hir = tcx.hir();
 
         let return_ty = self.regioncx.universal_regions().unnormalized_output_ty;
         debug!("give_name_if_anonymous_region_appears_in_output: return_ty = {:?}", return_ty);
@@ -686,7 +681,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         let mir_hir_id = self.mir_hir_id();
 
         let (return_span, mir_description, hir_ty) = match tcx.hir_node(mir_hir_id) {
-            hir::Node::Expr(hir::Expr {
+            hir::Node::Expr(&hir::Expr {
                 kind: hir::ExprKind::Closure(&hir::Closure { fn_decl, kind, fn_decl_span, .. }),
                 ..
             }) => {
@@ -715,7 +710,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                         hir::CoroutineSource::Fn,
                     )) => {
                         let parent_item =
-                            tcx.hir_node_by_def_id(hir.get_parent_item(mir_hir_id).def_id);
+                            tcx.hir_node_by_def_id(tcx.hir_get_parent_item(mir_hir_id).def_id);
                         let output = &parent_item
                             .fn_decl()
                             .expect("coroutine lowered from async fn should be in fn")
@@ -745,7 +740,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                         hir::CoroutineSource::Fn,
                     )) => {
                         let parent_item =
-                            tcx.hir_node_by_def_id(hir.get_parent_item(mir_hir_id).def_id);
+                            tcx.hir_node_by_def_id(tcx.hir_get_parent_item(mir_hir_id).def_id);
                         let output = &parent_item
                             .fn_decl()
                             .expect("coroutine lowered from gen fn should be in fn")
@@ -772,7 +767,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                         hir::CoroutineSource::Fn,
                     )) => {
                         let parent_item =
-                            tcx.hir_node_by_def_id(hir.get_parent_item(mir_hir_id).def_id);
+                            tcx.hir_node_by_def_id(tcx.hir_get_parent_item(mir_hir_id).def_id);
                         let output = &parent_item
                             .fn_decl()
                             .expect("coroutine lowered from async gen fn should be in fn")
@@ -825,12 +820,12 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
     /// async fn foo() -> i32 { 2 }
     /// ```
     ///
-    /// this function, given the lowered return type of `foo`, an [`OpaqueDef`] that implements `Future<Output=i32>`,
-    /// returns the `i32`.
+    /// this function, given the lowered return type of `foo`, an [`OpaqueDef`] that implements
+    /// `Future<Output=i32>`, returns the `i32`.
     ///
     /// [`OpaqueDef`]: hir::TyKind::OpaqueDef
     fn get_future_inner_return_ty(&self, hir_ty: &'tcx hir::Ty<'tcx>) -> &'tcx hir::Ty<'tcx> {
-        let hir::TyKind::OpaqueDef(opaque_ty, _) = hir_ty.kind else {
+        let hir::TyKind::OpaqueDef(opaque_ty) = hir_ty.kind else {
             span_bug!(
                 hir_ty.span,
                 "lowered return type of async fn is not OpaqueDef: {:?}",
@@ -874,11 +869,11 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
         let type_name = self
             .infcx
             .err_ctxt()
-            .extract_inference_diagnostics_data(yield_ty.into(), Some(highlight))
+            .extract_inference_diagnostics_data(yield_ty.into(), highlight)
             .name;
 
         let yield_span = match tcx.hir_node(self.mir_hir_id()) {
-            hir::Node::Expr(hir::Expr {
+            hir::Node::Expr(&hir::Expr {
                 kind: hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. }),
                 ..
             }) => tcx.sess.source_map().end_point(fn_decl_span),

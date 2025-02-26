@@ -3,7 +3,6 @@
 // between the builtin rules for Sized and the where clause. Issue
 // #20959.
 
-//@ pretty-expanded FIXME #23616
 
 fn foo<K>(x: Option<K>)
     where Option<K> : Sized

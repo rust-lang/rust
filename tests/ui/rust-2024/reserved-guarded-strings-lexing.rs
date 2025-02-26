@@ -26,24 +26,24 @@ macro_rules! demo7 {
 
 fn main() {
     demo3!(## "foo");
-    //~^ WARNING parsed as a guarded string in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
+    //~^ WARNING reserved token in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
     //~| WARNING hard error in Rust 2024
     demo4!(### "foo");
-    //~^ WARNING parsed as a guarded string in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
+    //~^ WARNING reserved token in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
     //~| WARNING hard error in Rust 2024
-    //~| WARNING parsed as a guarded string in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
+    //~| WARNING reserved token in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
     //~| WARNING hard error in Rust 2024
     demo4!(## "foo"#);
-    //~^ WARNING parsed as a guarded string in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
+    //~^ WARNING reserved token in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
     //~| WARNING hard error in Rust 2024
     demo7!(### "foo"###);
-    //~^ WARNING parsed as a guarded string in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
+    //~^ WARNING reserved token in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
     //~| WARNING hard error in Rust 2024
-    //~| WARNING parsed as a guarded string in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
+    //~| WARNING reserved token in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
     //~| WARNING hard error in Rust 2024
-    //~| WARNING parsed as a guarded string in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
+    //~| WARNING reserved token in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
     //~| WARNING hard error in Rust 2024
-    //~| WARNING parsed as a guarded string in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
+    //~| WARNING reserved token in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
     //~| WARNING hard error in Rust 2024
 
     demo5!(###"foo"#);
@@ -56,14 +56,14 @@ fn main() {
     demo5!(#"foo"###);
     //~^ WARNING parsed as a guarded string in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
     //~| WARNING hard error in Rust 2024
-    //~| WARNING parsed as a guarded string in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
+    //~| WARNING reserved token in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
     //~| WARNING hard error in Rust 2024
-    //~| WARNING parsed as a guarded string in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
+    //~| WARNING reserved token in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
     //~| WARNING hard error in Rust 2024
     demo4!("foo"###);
-    //~^ WARNING parsed as a guarded string in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
+    //~^ WARNING reserved token in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
     //~| WARNING hard error in Rust 2024
-    //~| WARNING parsed as a guarded string in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
+    //~| WARNING reserved token in Rust 2024 [rust_2024_guarded_string_incompatible_syntax]
     //~| WARNING hard error in Rust 2024
 
     // Non-ascii identifiers

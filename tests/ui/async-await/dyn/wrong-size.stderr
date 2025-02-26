@@ -1,0 +1,21 @@
+warning: the feature `async_fn_in_dyn_trait` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/wrong-size.rs:3:12
+   |
+LL | #![feature(async_fn_in_dyn_trait)]
+   |            ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #133119 <https://github.com/rust-lang/rust/issues/133119> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0277]: `impl Future<Output = ()>` needs to have the same ABI as a pointer
+  --> $DIR/wrong-size.rs:21:30
+   |
+LL |     let x: &dyn AsyncTrait = &"hello, world!";
+   |                              ^^^^^^^^^^^^^^^^ `impl Future<Output = ()>` needs to be a pointer-like type
+   |
+   = help: the trait `for<'a> PointerLike` is not implemented for `impl Future<Output = ()>`
+   = note: required for the cast from `&&'static str` to `&dyn AsyncTrait`
+
+error: aborting due to 1 previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0277`.

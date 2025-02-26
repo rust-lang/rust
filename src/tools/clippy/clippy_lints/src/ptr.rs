@@ -1,5 +1,6 @@
-use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then, span_lint_hir_and_then};
+use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::source::SpanRangeExt;
+use clippy_utils::sugg::Sugg;
 use clippy_utils::visitors::contains_unsafe_block;
 use clippy_utils::{get_expr_use_or_unification_node, is_lint_allowed, path_def_id, path_to_local, std_or_core};
 use hir::LifetimeName;
@@ -8,7 +9,7 @@ use rustc_hir::hir_id::{HirId, HirIdMap};
 use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{
     self as hir, AnonConst, BinOpKind, BindingMode, Body, Expr, ExprKind, FnRetTy, FnSig, GenericArg, ImplItemKind,
-    ItemKind, Lifetime, Mutability, Node, Param, PatKind, QPath, Safety, TraitFn, TraitItem, TraitItemKind, TyKind,
+    ItemKind, Lifetime, Mutability, Node, Param, PatKind, QPath, TraitFn, TraitItem, TraitItemKind, TyKind,
 };
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{Obligation, ObligationCause};
@@ -18,7 +19,7 @@ use rustc_middle::ty::{self, Binder, ClauseKind, ExistentialPredicate, List, Pre
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, sym};
-use rustc_target::spec::abi::Abi;
+use rustc_abi::ExternAbi;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use std::{fmt, iter};
@@ -159,7 +160,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
 
             check_mut_from_ref(cx, sig, None);
 
-            if !matches!(sig.header.abi, Abi::Rust) {
+            if !matches!(sig.header.abi, ExternAbi::Rust) {
                 // Ignore `extern` functions with non-Rust calling conventions
                 return;
             }
@@ -185,11 +186,10 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
     }
 
     fn check_body(&mut self, cx: &LateContext<'tcx>, body: &Body<'tcx>) {
-        let hir = cx.tcx.hir();
-        let mut parents = hir.parent_iter(body.value.hir_id);
+        let mut parents = cx.tcx.hir_parent_iter(body.value.hir_id);
         let (item_id, sig, is_trait_item) = match parents.next() {
             Some((_, Node::Item(i))) => {
-                if let ItemKind::Fn(sig, ..) = &i.kind {
+                if let ItemKind::Fn { sig, .. } = &i.kind {
                     (i.owner_id, sig, false)
                 } else {
                     return;
@@ -219,7 +219,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
 
         check_mut_from_ref(cx, sig, Some(body));
 
-        if !matches!(sig.header.abi, Abi::Rust) {
+        if !matches!(sig.header.abi, ExternAbi::Rust) {
             // Ignore `extern` functions with non-Rust calling conventions
             return;
         }
@@ -250,15 +250,24 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
     }
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if let ExprKind::Binary(ref op, l, r) = expr.kind {
-            if (op.node == BinOpKind::Eq || op.node == BinOpKind::Ne) && (is_null_path(cx, l) || is_null_path(cx, r)) {
-                span_lint(
-                    cx,
-                    CMP_NULL,
-                    expr.span,
-                    "comparing with null is better expressed by the `.is_null()` method",
-                );
-            }
+        if let ExprKind::Binary(op, l, r) = expr.kind
+            && (op.node == BinOpKind::Eq || op.node == BinOpKind::Ne)
+        {
+            let non_null_path_snippet = match (is_null_path(cx, l), is_null_path(cx, r)) {
+                (true, false) if let Some(sugg) = Sugg::hir_opt(cx, r) => sugg.maybe_par(),
+                (false, true) if let Some(sugg) = Sugg::hir_opt(cx, l) => sugg.maybe_par(),
+                _ => return,
+            };
+
+            span_lint_and_sugg(
+                cx,
+                CMP_NULL,
+                expr.span,
+                "comparing with null is better expressed by the `.is_null()` method",
+                "try",
+                format!("{non_null_path_snippet}.is_null()"),
+                Applicability::MachineApplicable,
+            );
         } else {
             check_invalid_ptr_usage(cx, expr);
         }
@@ -475,7 +484,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                                                     .def_id,
                                             ),
                                             ty::ReBound(_, r) => r.kind.get_id(),
-                                            ty::ReLateParam(r) => r.bound_region.get_id(),
+                                            ty::ReLateParam(r) => r.kind.get_id(),
                                             ty::ReStatic
                                             | ty::ReVar(_)
                                             | ty::RePlaceholder(_)
@@ -541,9 +550,7 @@ fn check_mut_from_ref<'tcx>(cx: &LateContext<'tcx>, sig: &FnSig<'_>, body: Optio
             .collect();
         if let Some(args) = args
             && !args.is_empty()
-            && body.map_or(true, |body| {
-                sig.header.safety == Safety::Unsafe || contains_unsafe_block(cx, body.value)
-            })
+            && body.is_none_or(|body| sig.header.is_unsafe() || contains_unsafe_block(cx, body.value))
         {
             span_lint_and_then(
                 cx,
@@ -575,8 +582,8 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &Body<'tcx>, args: &[
     }
     impl<'tcx> Visitor<'tcx> for V<'_, 'tcx> {
         type NestedFilter = nested_filter::OnlyBodies;
-        fn nested_visit_map(&mut self) -> Self::Map {
-            self.cx.tcx.hir()
+        fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+            self.cx.tcx
         }
 
         fn visit_anon_const(&mut self, _: &'tcx AnonConst) {}
@@ -695,7 +702,7 @@ fn matches_preds<'tcx>(
     ty: Ty<'tcx>,
     preds: &'tcx [ty::PolyExistentialPredicate<'tcx>],
 ) -> bool {
-    let infcx = cx.tcx.infer_ctxt().build();
+    let infcx = cx.tcx.infer_ctxt().build(cx.typing_mode());
     preds
         .iter()
         .all(|&p| match cx.tcx.instantiate_bound_regions_with_erased(p) {
@@ -727,9 +734,8 @@ fn get_ref_lm<'tcx>(ty: &'tcx hir::Ty<'tcx>) -> Option<(&'tcx Lifetime, Mutabili
 
 fn is_null_path(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     if let ExprKind::Call(pathexp, []) = expr.kind {
-        path_def_id(cx, pathexp).map_or(false, |id| {
-            matches!(cx.tcx.get_diagnostic_name(id), Some(sym::ptr_null | sym::ptr_null_mut))
-        })
+        path_def_id(cx, pathexp)
+            .is_some_and(|id| matches!(cx.tcx.get_diagnostic_name(id), Some(sym::ptr_null | sym::ptr_null_mut)))
     } else {
         false
     }

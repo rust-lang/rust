@@ -61,6 +61,10 @@ impl<'tcx> crate::MirPass<'tcx> for PromoteTemps<'tcx> {
         let promoted = promote_candidates(body, tcx, temps, promotable_candidates);
         self.promoted_fragments.set(promoted);
     }
+
+    fn is_required(&self) -> bool {
+        true
+    }
 }
 
 /// State of a temporary during collection and promotion.
@@ -289,7 +293,8 @@ impl<'tcx> Validator<'_, 'tcx> {
             // Recurse directly.
             ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::Subtype(_)
-            | ProjectionElem::Subslice { .. } => {}
+            | ProjectionElem::Subslice { .. }
+            | ProjectionElem::UnwrapUnsafeBinder(_) => {}
 
             // Never recurse.
             ProjectionElem::OpaqueCast(..) | ProjectionElem::Downcast(..) => {
@@ -325,7 +330,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 if let TempState::Defined { location: loc, .. } = self.temps[local]
                     && let Left(statement) =  self.body.stmt_at(loc)
                     && let Some((_, Rvalue::Use(Operand::Constant(c)))) = statement.kind.as_assign()
-                    && let Some(idx) = c.const_.try_eval_target_usize(self.tcx, self.param_env)
+                    && let Some(idx) = c.const_.try_eval_target_usize(self.tcx, self.typing_env)
                     // Determine the type of the thing we are indexing.
                     && let ty::Array(_, len) = place_base.ty(self.body, self.tcx).ty.kind()
                     // It's an array; determine its length.
@@ -422,7 +427,9 @@ impl<'tcx> Validator<'_, 'tcx> {
 
     fn validate_rvalue(&mut self, rvalue: &Rvalue<'tcx>) -> Result<(), Unpromotable> {
         match rvalue {
-            Rvalue::Use(operand) | Rvalue::Repeat(operand, _) => {
+            Rvalue::Use(operand)
+            | Rvalue::Repeat(operand, _)
+            | Rvalue::WrapUnsafeBinder(operand, _) => {
                 self.validate_operand(operand)?;
             }
             Rvalue::CopyForDeref(place) => {
@@ -450,6 +457,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 NullOp::AlignOf => {}
                 NullOp::OffsetOf(_) => {}
                 NullOp::UbChecks => {}
+                NullOp::ContractChecks => {}
             },
 
             Rvalue::ShallowInitBox(_, _) => return Err(Unpromotable),
@@ -490,7 +498,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                             // Integer division: the RHS must be a non-zero const.
                             let rhs_val = match rhs {
                                 Operand::Constant(c) => {
-                                    c.const_.try_eval_scalar_int(self.tcx, self.param_env)
+                                    c.const_.try_eval_scalar_int(self.tcx, self.typing_env)
                                 }
                                 _ => None,
                             };
@@ -509,7 +517,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                                         let lhs_val = match lhs {
                                             Operand::Constant(c) => c
                                                 .const_
-                                                .try_eval_scalar_int(self.tcx, self.param_env),
+                                                .try_eval_scalar_int(self.tcx, self.typing_env),
                                             _ => None,
                                         };
                                         let lhs_min = sz.signed_int_min();
@@ -912,19 +920,23 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             self.extra_statements.push((loc, promoted_ref_statement));
 
             (
-                Rvalue::Ref(tcx.lifetimes.re_erased, *borrow_kind, Place {
-                    local: mem::replace(&mut place.local, promoted_ref),
-                    projection: List::empty(),
-                }),
+                Rvalue::Ref(
+                    tcx.lifetimes.re_erased,
+                    *borrow_kind,
+                    Place {
+                        local: mem::replace(&mut place.local, promoted_ref),
+                        projection: List::empty(),
+                    },
+                ),
                 promoted_operand,
             )
         };
 
         assert_eq!(self.new_block(), START_BLOCK);
-        self.visit_rvalue(&mut rvalue, Location {
-            block: START_BLOCK,
-            statement_index: usize::MAX,
-        });
+        self.visit_rvalue(
+            &mut rvalue,
+            Location { block: START_BLOCK, statement_index: usize::MAX },
+        );
 
         let span = self.promoted.span;
         self.assign(RETURN_PLACE, rvalue, span);

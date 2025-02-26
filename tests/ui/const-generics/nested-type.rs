@@ -13,7 +13,7 @@ struct Foo<const N: [u8; {
     }
 
     Foo::<17>::value()
-    //~^ ERROR cannot call non-const fn
+    //~^ ERROR cannot call non-const associated function
 }]>;
 //[min]~^^^^^^^^^^^^ ERROR `[u8; {
 

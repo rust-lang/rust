@@ -1,5 +1,5 @@
 //@ check-pass
-//@ aux-build:proc-macro-helper.rs
+//@ proc-macro: proc-macro-helper.rs
 
 extern crate proc_macro_helper;
 

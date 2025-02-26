@@ -5,13 +5,14 @@ use std::num::ParseIntError;
 use std::path::{Path, PathBuf};
 use std::process::ExitStatus;
 
+use rustc_abi::TargetDataLayoutErrors;
+use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast_pretty::pprust;
+use rustc_attr_data_structures::RustcVersion;
 use rustc_macros::Subdiagnostic;
-use rustc_span::Span;
 use rustc_span::edition::Edition;
-use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent, Symbol};
-use rustc_target::abi::TargetDataLayoutErrors;
-use rustc_target::spec::{PanicStrategy, SplitDebuginfo, StackProtector, TargetTriple};
+use rustc_span::{Ident, MacroRulesNormalizedIdent, Span, Symbol};
+use rustc_target::spec::{PanicStrategy, SplitDebuginfo, StackProtector, TargetTuple};
 use rustc_type_ir::{ClosureKind, FloatTy};
 use {rustc_ast as ast, rustc_hir as hir};
 
@@ -89,11 +90,18 @@ into_diag_arg_using_display!(
     MacroRulesNormalizedIdent,
     ParseIntError,
     StackProtector,
-    &TargetTriple,
+    &TargetTuple,
     SplitDebuginfo,
     ExitStatus,
     ErrCode,
+    rustc_abi::ExternAbi,
 );
+
+impl IntoDiagArg for RustcVersion {
+    fn into_diag_arg(self) -> DiagArgValue {
+        DiagArgValue::Str(Cow::Owned(self.to_string()))
+    }
+}
 
 impl<I: rustc_type_ir::Interner> IntoDiagArg for rustc_type_ir::TraitRef<I> {
     fn into_diag_arg(self) -> DiagArgValue {
@@ -108,13 +116,13 @@ impl<I: rustc_type_ir::Interner> IntoDiagArg for rustc_type_ir::ExistentialTrait
 }
 
 impl<I: rustc_type_ir::Interner> IntoDiagArg for rustc_type_ir::UnevaluatedConst<I> {
-    fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
+    fn into_diag_arg(self) -> DiagArgValue {
         format!("{self:?}").into_diag_arg()
     }
 }
 
 impl<I: rustc_type_ir::Interner> IntoDiagArg for rustc_type_ir::FnSig<I> {
-    fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
+    fn into_diag_arg(self) -> DiagArgValue {
         format!("{self:?}").into_diag_arg()
     }
 }
@@ -295,6 +303,12 @@ impl IntoDiagArg for ClosureKind {
 impl IntoDiagArg for hir::def::Namespace {
     fn into_diag_arg(self) -> DiagArgValue {
         DiagArgValue::Str(Cow::Borrowed(self.descr()))
+    }
+}
+
+impl IntoDiagArg for ExprPrecedence {
+    fn into_diag_arg(self) -> DiagArgValue {
+        DiagArgValue::Number(self as i32)
     }
 }
 

@@ -5,26 +5,26 @@ use std::path::{Path, PathBuf};
 use std::{iter, ptr};
 
 use libc::{c_char, c_longlong, c_uint};
+use rustc_abi::{Align, Size};
 use rustc_codegen_ssa::debuginfo::type_names::{VTableNameKind, cpp_like_debuginfo};
 use rustc_codegen_ssa::traits::*;
-use rustc_fs_util::path_to_c_string;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::bug;
-use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{
+    HasTypingEnv, LayoutOf, TyAndLayout, WIDE_PTR_ADDR, WIDE_PTR_EXTRA,
+};
 use rustc_middle::ty::{
-    self, AdtKind, CoroutineArgsExt, Instance, ParamEnv, PolyExistentialTraitRef, Ty, TyCtxt,
-    Visibility,
+    self, AdtKind, CoroutineArgsExt, ExistentialTraitRef, Instance, Ty, TyCtxt, Visibility,
 };
 use rustc_session::config::{self, DebugInfo, Lto};
-use rustc_span::symbol::Symbol;
-use rustc_span::{DUMMY_SP, FileName, FileNameDisplayPreference, SourceFile, hygiene};
+use rustc_span::{DUMMY_SP, FileName, FileNameDisplayPreference, SourceFile, Symbol, hygiene};
 use rustc_symbol_mangling::typeid_for_trait_ref;
-use rustc_target::abi::{Align, Size};
 use rustc_target::spec::DebuginfoKind;
 use smallvec::smallvec;
 use tracing::{debug, instrument};
 
+pub(crate) use self::type_map::TypeMap;
 use self::type_map::{DINodeCreationResult, Stub, UniqueTypeId};
 use super::CodegenUnitDebugContext;
 use super::namespace::mangled_name_of_instance;
@@ -32,15 +32,16 @@ use super::type_names::{compute_debuginfo_type_name, compute_debuginfo_vtable_na
 use super::utils::{
     DIB, create_DIArray, debug_context, get_namespace_for_item, is_node_local_to_unit,
 };
-use crate::common::CodegenCx;
+use crate::common::{AsCCharPtr, CodegenCx};
+use crate::debuginfo::dwarf_const;
 use crate::debuginfo::metadata::type_map::build_type_with_children;
 use crate::debuginfo::utils::{WidePtrKind, wide_pointer_kind};
+use crate::llvm;
 use crate::llvm::debuginfo::{
     DIDescriptor, DIFile, DIFlags, DILexicalBlock, DIScope, DIType, DebugEmissionKind,
     DebugNameTableKind,
 };
 use crate::value::Value;
-use crate::{abi, llvm};
 
 impl PartialEq for llvm::Metadata {
     fn eq(&self, other: &Self) -> bool {
@@ -62,20 +63,6 @@ impl fmt::Debug for llvm::Metadata {
     }
 }
 
-// From DWARF 5.
-// See http://www.dwarfstd.org/ShowIssue.php?issue=140129.1.
-const DW_LANG_RUST: c_uint = 0x1c;
-#[allow(non_upper_case_globals)]
-const DW_ATE_boolean: c_uint = 0x02;
-#[allow(non_upper_case_globals)]
-const DW_ATE_float: c_uint = 0x04;
-#[allow(non_upper_case_globals)]
-const DW_ATE_signed: c_uint = 0x05;
-#[allow(non_upper_case_globals)]
-const DW_ATE_unsigned: c_uint = 0x07;
-#[allow(non_upper_case_globals)]
-const DW_ATE_UTF: c_uint = 0x10;
-
 pub(super) const UNKNOWN_LINE_NUMBER: c_uint = 0;
 pub(super) const UNKNOWN_COLUMN_NUMBER: c_uint = 0;
 
@@ -89,8 +76,6 @@ type SmallVec<T> = smallvec::SmallVec<[T; 16]>;
 
 mod enums;
 mod type_map;
-
-pub(crate) use type_map::TypeMap;
 
 /// Returns from the enclosing function if the type debuginfo node with the given
 /// unique ID can be found in the type map.
@@ -190,7 +175,7 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                     data_layout.pointer_size.bits(),
                     data_layout.pointer_align.abi.bits() as u32,
                     0, // Ignore DWARF address space.
-                    ptr_type_debuginfo_name.as_ptr().cast(),
+                    ptr_type_debuginfo_name.as_c_char_ptr(),
                     ptr_type_debuginfo_name.len(),
                 )
             };
@@ -205,6 +190,7 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                     Stub::Struct,
                     unique_type_id,
                     &ptr_type_debuginfo_name,
+                    None,
                     cx.size_and_align_of(ptr_type),
                     NO_SCOPE_METADATA,
                     DIFlags::FlagZero,
@@ -227,16 +213,16 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                     };
 
                     let layout = cx.layout_of(layout_type);
-                    let addr_field = layout.field(cx, abi::WIDE_PTR_ADDR);
-                    let extra_field = layout.field(cx, abi::WIDE_PTR_EXTRA);
+                    let addr_field = layout.field(cx, WIDE_PTR_ADDR);
+                    let extra_field = layout.field(cx, WIDE_PTR_EXTRA);
 
                     let (addr_field_name, extra_field_name) = match wide_pointer_kind {
                         WidePtrKind::Dyn => ("pointer", "vtable"),
                         WidePtrKind::Slice => ("data_ptr", "length"),
                     };
 
-                    assert_eq!(abi::WIDE_PTR_ADDR, 0);
-                    assert_eq!(abi::WIDE_PTR_EXTRA, 1);
+                    assert_eq!(WIDE_PTR_ADDR, 0);
+                    assert_eq!(WIDE_PTR_EXTRA, 1);
 
                     // The data pointer type is a regular, thin pointer, regardless of whether this
                     // is a slice or a trait object.
@@ -258,18 +244,20 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                             owner,
                             addr_field_name,
                             (addr_field.size, addr_field.align.abi),
-                            layout.fields.offset(abi::WIDE_PTR_ADDR),
+                            layout.fields.offset(WIDE_PTR_ADDR),
                             DIFlags::FlagZero,
                             data_ptr_type_di_node,
+                            None,
                         ),
                         build_field_di_node(
                             cx,
                             owner,
                             extra_field_name,
                             (extra_field.size, extra_field.align.abi),
-                            layout.fields.offset(abi::WIDE_PTR_EXTRA),
+                            layout.fields.offset(WIDE_PTR_EXTRA),
                             DIFlags::FlagZero,
                             type_di_node(cx, extra_field.ty),
+                            None,
                         ),
                     ]
                 },
@@ -302,9 +290,8 @@ fn build_subroutine_type_di_node<'ll, 'tcx>(
         .insert(unique_type_id, recursion_marker_type_di_node(cx));
 
     let fn_ty = unique_type_id.expect_ty();
-    let signature = cx
-        .tcx
-        .normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), fn_ty.fn_sig(cx.tcx));
+    let signature =
+        cx.tcx.normalize_erasing_late_bound_regions(cx.typing_env(), fn_ty.fn_sig(cx.tcx));
 
     let signature_di_nodes: SmallVec<_> = iter::once(
         // return type
@@ -334,21 +321,18 @@ fn build_subroutine_type_di_node<'ll, 'tcx>(
     // This is actually a function pointer, so wrap it in pointer DI.
     let name = compute_debuginfo_type_name(cx.tcx, fn_ty, false);
     let (size, align) = match fn_ty.kind() {
-        ty::FnDef(..) => (0, 1),
-        ty::FnPtr(..) => (
-            cx.tcx.data_layout.pointer_size.bits(),
-            cx.tcx.data_layout.pointer_align.abi.bits() as u32,
-        ),
+        ty::FnDef(..) => (Size::ZERO, Align::ONE),
+        ty::FnPtr(..) => (cx.tcx.data_layout.pointer_size, cx.tcx.data_layout.pointer_align.abi),
         _ => unreachable!(),
     };
     let di_node = unsafe {
         llvm::LLVMRustDIBuilderCreatePointerType(
             DIB(cx),
             fn_di_node,
-            size,
-            align,
+            size.bits(),
+            align.bits() as u32,
             0, // Ignore DWARF address space.
-            name.as_ptr().cast(),
+            name.as_c_char_ptr(),
             name.len(),
         )
     };
@@ -372,6 +356,7 @@ fn build_dyn_type_di_node<'ll, 'tcx>(
                 Stub::Struct,
                 unique_type_id,
                 &type_name,
+                None,
                 cx.size_and_align_of(dyn_type),
                 NO_SCOPE_METADATA,
                 DIFlags::FlagZero,
@@ -456,7 +441,7 @@ pub(crate) fn type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) ->
         // (or if there is no allocator argument).
         ty::Adt(def, args)
             if def.is_box()
-                && args.get(1).map_or(true, |arg| cx.layout_of(arg.expect_ty()).is_1zst()) =>
+                && args.get(1).is_none_or(|arg| cx.layout_of(arg.expect_ty()).is_1zst()) =>
         {
             build_pointer_or_reference_di_node(cx, t, t.expect_boxed_ty(), unique_type_id)
         }
@@ -470,8 +455,6 @@ pub(crate) fn type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) ->
             AdtKind::Enum => enums::build_enum_type_di_node(cx, unique_type_id),
         },
         ty::Tuple(_) => build_tuple_type_di_node(cx, unique_type_id),
-        // Type parameters from polymorphized functions.
-        ty::Param(_) => build_param_type_di_node(cx, t),
         _ => bug!("debuginfo: unexpected type in type_di_node(): {:?}", t),
     };
 
@@ -518,10 +501,10 @@ fn recursion_marker_type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) -> &'ll D
             let name = "<recur_type>";
             llvm::LLVMRustDIBuilderCreateBasicType(
                 DIB(cx),
-                name.as_ptr().cast(),
+                name.as_c_char_ptr(),
                 name.len(),
                 cx.tcx.data_layout.pointer_size.bits(),
-                DW_ATE_unsigned,
+                dwarf_const::DW_ATE_unsigned,
             )
         }
     })
@@ -640,14 +623,14 @@ pub(crate) fn file_metadata<'ll>(cx: &CodegenCx<'ll, '_>, source_file: &SourceFi
         unsafe {
             llvm::LLVMRustDIBuilderCreateFile(
                 DIB(cx),
-                file_name.as_ptr().cast(),
+                file_name.as_c_char_ptr(),
                 file_name.len(),
-                directory.as_ptr().cast(),
+                directory.as_c_char_ptr(),
                 directory.len(),
                 hash_kind,
-                hash_value.as_ptr().cast(),
+                hash_value.as_c_char_ptr(),
                 hash_value.len(),
-                source.map_or(ptr::null(), |x| x.as_ptr().cast()),
+                source.map_or(ptr::null(), |x| x.as_c_char_ptr()),
                 source.map_or(0, |x| x.len()),
             )
         }
@@ -662,12 +645,12 @@ fn unknown_file_metadata<'ll>(cx: &CodegenCx<'ll, '_>) -> &'ll DIFile {
 
         llvm::LLVMRustDIBuilderCreateFile(
             DIB(cx),
-            file_name.as_ptr().cast(),
+            file_name.as_c_char_ptr(),
             file_name.len(),
-            directory.as_ptr().cast(),
+            directory.as_c_char_ptr(),
             directory.len(),
             llvm::ChecksumKind::None,
-            hash_value.as_ptr().cast(),
+            hash_value.as_c_char_ptr(),
             hash_value.len(),
             ptr::null(),
             0,
@@ -725,6 +708,14 @@ fn build_cpp_f16_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) -> DINodeCreation
     // `f16`'s value to be displayed using a Natvis visualiser in `intrinsic.natvis`.
     let float_ty = cx.tcx.types.f16;
     let bits_ty = cx.tcx.types.u16;
+    let def_location = if cx.sess().opts.unstable_opts.debug_info_type_line_numbers {
+        match float_ty.kind() {
+            ty::Adt(def, _) => Some(file_metadata_from_def_id(cx, Some(def.did()))),
+            _ => None,
+        }
+    } else {
+        None
+    };
     type_map::build_type_with_children(
         cx,
         type_map::stub(
@@ -732,12 +723,21 @@ fn build_cpp_f16_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) -> DINodeCreation
             Stub::Struct,
             UniqueTypeId::for_ty(cx.tcx, float_ty),
             "f16",
+            def_location,
             cx.size_and_align_of(float_ty),
             NO_SCOPE_METADATA,
             DIFlags::FlagZero,
         ),
         // Fields:
         |cx, float_di_node| {
+            let def_id = if cx.sess().opts.unstable_opts.debug_info_type_line_numbers {
+                match bits_ty.kind() {
+                    ty::Adt(def, _) => Some(def.did()),
+                    _ => None,
+                }
+            } else {
+                None
+            };
             smallvec![build_field_di_node(
                 cx,
                 float_di_node,
@@ -746,6 +746,7 @@ fn build_cpp_f16_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) -> DINodeCreation
                 Size::ZERO,
                 DIFlags::FlagZero,
                 type_di_node(cx, bits_ty),
+                def_id,
             )]
         },
         NO_GENERICS,
@@ -761,6 +762,8 @@ fn build_basic_type_di_node<'ll, 'tcx>(
     // When targeting MSVC, emit MSVC style type names for compatibility with
     // .natvis visualizers (and perhaps other existing native debuggers?)
     let cpp_like_debuginfo = cpp_like_debuginfo(cx.tcx);
+
+    use dwarf_const::{DW_ATE_UTF, DW_ATE_boolean, DW_ATE_float, DW_ATE_signed, DW_ATE_unsigned};
 
     let (name, encoding) = match t.kind() {
         ty::Never => ("!", DW_ATE_unsigned),
@@ -788,7 +791,7 @@ fn build_basic_type_di_node<'ll, 'tcx>(
     let ty_di_node = unsafe {
         llvm::LLVMRustDIBuilderCreateBasicType(
             DIB(cx),
-            name.as_ptr().cast(),
+            name.as_c_char_ptr(),
             name.len(),
             cx.size_of(t).bits(),
             encoding,
@@ -810,7 +813,7 @@ fn build_basic_type_di_node<'ll, 'tcx>(
         llvm::LLVMRustDIBuilderCreateTypedef(
             DIB(cx),
             ty_di_node,
-            typedef_name.as_ptr().cast(),
+            typedef_name.as_c_char_ptr(),
             typedef_name.len(),
             unknown_file_metadata(cx),
             0,
@@ -842,6 +845,7 @@ fn build_foreign_type_di_node<'ll, 'tcx>(
             Stub::Struct,
             unique_type_id,
             &compute_debuginfo_type_name(cx.tcx, t, false),
+            None,
             cx.size_and_align_of(t),
             Some(get_namespace_for_item(cx, def_id)),
             DIFlags::FlagZero,
@@ -849,26 +853,6 @@ fn build_foreign_type_di_node<'ll, 'tcx>(
         |_, _| smallvec![],
         NO_GENERICS,
     )
-}
-
-fn build_param_type_di_node<'ll, 'tcx>(
-    cx: &CodegenCx<'ll, 'tcx>,
-    t: Ty<'tcx>,
-) -> DINodeCreationResult<'ll> {
-    debug!("build_param_type_di_node: {:?}", t);
-    let name = format!("{t:?}");
-    DINodeCreationResult {
-        di_node: unsafe {
-            llvm::LLVMRustDIBuilderCreateBasicType(
-                DIB(cx),
-                name.as_ptr().cast(),
-                name.len(),
-                Size::ZERO.bits(),
-                DW_ATE_unsigned,
-            )
-        },
-        already_stored_in_typemap: false,
-    }
 }
 
 pub(crate) fn build_compile_unit_di_node<'ll, 'tcx>(
@@ -934,8 +918,7 @@ pub(crate) fn build_compile_unit_di_node<'ll, 'tcx>(
         .unwrap_or_default();
     let kind = DebugEmissionKind::from_generic(tcx.sess.opts.debuginfo);
 
-    let dwarf_version =
-        tcx.sess.opts.unstable_opts.dwarf_version.unwrap_or(tcx.sess.target.default_dwarf_version);
+    let dwarf_version = tcx.sess.dwarf_version();
     let is_dwarf_kind =
         matches!(tcx.sess.target.debuginfo_kind, DebuginfoKind::Dwarf | DebuginfoKind::DwarfDsym);
     // Don't emit `.debug_pubnames` and `.debug_pubtypes` on DWARFv4 or lower.
@@ -947,10 +930,10 @@ pub(crate) fn build_compile_unit_di_node<'ll, 'tcx>(
 
     unsafe {
         let compile_unit_file = llvm::LLVMRustDIBuilderCreateFile(
-            debug_context.builder,
-            name_in_debuginfo.as_ptr().cast(),
+            debug_context.builder.as_ref(),
+            name_in_debuginfo.as_c_char_ptr(),
             name_in_debuginfo.len(),
-            work_dir.as_ptr().cast(),
+            work_dir.as_c_char_ptr(),
             work_dir.len(),
             llvm::ChecksumKind::None,
             ptr::null(),
@@ -960,10 +943,10 @@ pub(crate) fn build_compile_unit_di_node<'ll, 'tcx>(
         );
 
         let unit_metadata = llvm::LLVMRustDIBuilderCreateCompileUnit(
-            debug_context.builder,
-            DW_LANG_RUST,
+            debug_context.builder.as_ref(),
+            dwarf_const::DW_LANG_Rust,
             compile_unit_file,
-            producer.as_ptr().cast(),
+            producer.as_c_char_ptr(),
             producer.len(),
             tcx.sess.opts.optimize != config::OptLevel::No,
             c"".as_ptr(),
@@ -971,7 +954,7 @@ pub(crate) fn build_compile_unit_di_node<'ll, 'tcx>(
             // NB: this doesn't actually have any perceptible effect, it seems. LLVM will instead
             // put the path supplied to `MCSplitDwarfFile` into the debug info of the final
             // output(s).
-            split_name.as_ptr().cast(),
+            split_name.as_c_char_ptr(),
             split_name.len(),
             kind,
             0,
@@ -979,33 +962,8 @@ pub(crate) fn build_compile_unit_di_node<'ll, 'tcx>(
             debug_name_table_kind,
         );
 
-        if tcx.sess.opts.unstable_opts.profile {
-            let default_gcda_path = &output_filenames.with_extension("gcda");
-            let gcda_path =
-                tcx.sess.opts.unstable_opts.profile_emit.as_ref().unwrap_or(default_gcda_path);
-
-            let gcov_cu_info = [
-                path_to_mdstring(debug_context.llcontext, &output_filenames.with_extension("gcno")),
-                path_to_mdstring(debug_context.llcontext, gcda_path),
-                unit_metadata,
-            ];
-            let gcov_metadata = llvm::LLVMMDNodeInContext2(
-                debug_context.llcontext,
-                gcov_cu_info.as_ptr(),
-                gcov_cu_info.len(),
-            );
-            let val = llvm::LLVMMetadataAsValue(debug_context.llcontext, gcov_metadata);
-
-            llvm::LLVMAddNamedMetadataOperand(debug_context.llmod, c"llvm.gcov".as_ptr(), val);
-        }
-
         return unit_metadata;
     };
-
-    fn path_to_mdstring<'ll>(llcx: &'ll llvm::Context, path: &Path) -> &'ll llvm::Metadata {
-        let path_str = path_to_c_string(path);
-        unsafe { llvm::LLVMMDStringInContext2(llcx, path_str.as_ptr(), path_str.as_bytes().len()) }
-    }
 }
 
 /// Creates a `DW_TAG_member` entry inside the DIE represented by the given `type_di_node`.
@@ -1017,15 +975,22 @@ fn build_field_di_node<'ll, 'tcx>(
     offset: Size,
     flags: DIFlags,
     type_di_node: &'ll DIType,
+    def_id: Option<DefId>,
 ) -> &'ll DIType {
+    let (file_metadata, line_number) = if cx.sess().opts.unstable_opts.debug_info_type_line_numbers
+    {
+        file_metadata_from_def_id(cx, def_id)
+    } else {
+        (unknown_file_metadata(cx), UNKNOWN_LINE_NUMBER)
+    };
     unsafe {
         llvm::LLVMRustDIBuilderCreateMemberType(
             DIB(cx),
             owner,
-            name.as_ptr().cast(),
+            name.as_c_char_ptr(),
             name.len(),
-            unknown_file_metadata(cx),
-            UNKNOWN_LINE_NUMBER,
+            file_metadata,
+            line_number,
             size_and_align.0.bits(),
             size_and_align.1.bits() as u32,
             offset.bits(),
@@ -1069,6 +1034,11 @@ fn build_struct_type_di_node<'ll, 'tcx>(
     let containing_scope = get_namespace_for_item(cx, adt_def.did());
     let struct_type_and_layout = cx.layout_of(struct_type);
     let variant_def = adt_def.non_enum_variant();
+    let def_location = if cx.sess().opts.unstable_opts.debug_info_type_line_numbers {
+        Some(file_metadata_from_def_id(cx, Some(adt_def.did())))
+    } else {
+        None
+    };
 
     type_map::build_type_with_children(
         cx,
@@ -1077,6 +1047,7 @@ fn build_struct_type_di_node<'ll, 'tcx>(
             Stub::Struct,
             unique_type_id,
             &compute_debuginfo_type_name(cx.tcx, struct_type, false),
+            def_location,
             size_and_align_of(struct_type_and_layout),
             Some(containing_scope),
             visibility_di_flags(cx, adt_def.did(), adt_def.did()),
@@ -1096,6 +1067,11 @@ fn build_struct_type_di_node<'ll, 'tcx>(
                         Cow::Borrowed(f.name.as_str())
                     };
                     let field_layout = struct_type_and_layout.field(cx, i);
+                    let def_id = if cx.sess().opts.unstable_opts.debug_info_type_line_numbers {
+                        Some(f.did)
+                    } else {
+                        None
+                    };
                     build_field_di_node(
                         cx,
                         owner,
@@ -1104,6 +1080,7 @@ fn build_struct_type_di_node<'ll, 'tcx>(
                         struct_type_and_layout.fields.offset(i),
                         visibility_di_flags(cx, f.did, adt_def.did()),
                         type_di_node(cx, field_layout.ty),
+                        def_id,
                     )
                 })
                 .collect()
@@ -1135,9 +1112,7 @@ fn build_upvar_field_di_nodes<'ll, 'tcx>(
         }
     };
 
-    assert!(
-        up_var_tys.iter().all(|t| t == cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), t))
-    );
+    assert!(up_var_tys.iter().all(|t| t == cx.tcx.normalize_erasing_regions(cx.typing_env(), t)));
 
     let capture_names = cx.tcx.closure_saved_names_of_captured_variables(def_id);
     let layout = cx.layout_of(closure_or_coroutine_ty);
@@ -1155,6 +1130,7 @@ fn build_upvar_field_di_nodes<'ll, 'tcx>(
                 layout.fields.offset(index),
                 DIFlags::FlagZero,
                 type_di_node(cx, up_var_ty),
+                None,
             )
         })
         .collect()
@@ -1180,6 +1156,7 @@ fn build_tuple_type_di_node<'ll, 'tcx>(
             Stub::Struct,
             unique_type_id,
             &type_name,
+            None,
             size_and_align_of(tuple_type_and_layout),
             NO_SCOPE_METADATA,
             DIFlags::FlagZero,
@@ -1198,6 +1175,7 @@ fn build_tuple_type_di_node<'ll, 'tcx>(
                         tuple_type_and_layout.fields.offset(index),
                         DIFlags::FlagZero,
                         type_di_node(cx, component_type),
+                        None,
                     )
                 })
                 .collect()
@@ -1219,6 +1197,12 @@ fn build_closure_env_di_node<'ll, 'tcx>(
     let containing_scope = get_namespace_for_item(cx, def_id);
     let type_name = compute_debuginfo_type_name(cx.tcx, closure_env_type, false);
 
+    let def_location = if cx.sess().opts.unstable_opts.debug_info_type_line_numbers {
+        Some(file_metadata_from_def_id(cx, Some(def_id)))
+    } else {
+        None
+    };
+
     type_map::build_type_with_children(
         cx,
         type_map::stub(
@@ -1226,6 +1210,7 @@ fn build_closure_env_di_node<'ll, 'tcx>(
             Stub::Struct,
             unique_type_id,
             &type_name,
+            def_location,
             cx.size_and_align_of(closure_env_type),
             Some(containing_scope),
             DIFlags::FlagZero,
@@ -1249,6 +1234,11 @@ fn build_union_type_di_node<'ll, 'tcx>(
     let containing_scope = get_namespace_for_item(cx, union_def_id);
     let union_ty_and_layout = cx.layout_of(union_type);
     let type_name = compute_debuginfo_type_name(cx.tcx, union_type, false);
+    let def_location = if cx.sess().opts.unstable_opts.debug_info_type_line_numbers {
+        Some(file_metadata_from_def_id(cx, Some(union_def_id)))
+    } else {
+        None
+    };
 
     type_map::build_type_with_children(
         cx,
@@ -1257,6 +1247,7 @@ fn build_union_type_di_node<'ll, 'tcx>(
             Stub::Union,
             unique_type_id,
             &type_name,
+            def_location,
             size_and_align_of(union_ty_and_layout),
             Some(containing_scope),
             DIFlags::FlagZero,
@@ -1269,6 +1260,11 @@ fn build_union_type_di_node<'ll, 'tcx>(
                 .enumerate()
                 .map(|(i, f)| {
                     let field_layout = union_ty_and_layout.field(cx, i);
+                    let def_id = if cx.sess().opts.unstable_opts.debug_info_type_line_numbers {
+                        Some(f.did)
+                    } else {
+                        None
+                    };
                     build_field_di_node(
                         cx,
                         owner,
@@ -1277,6 +1273,7 @@ fn build_union_type_di_node<'ll, 'tcx>(
                         Size::ZERO,
                         DIFlags::FlagZero,
                         type_di_node(cx, field_layout.ty),
+                        def_id,
                     )
                 })
                 .collect()
@@ -1298,15 +1295,14 @@ fn build_generic_type_param_di_nodes<'ll, 'tcx>(
             let template_params: SmallVec<_> = iter::zip(args, names)
                 .filter_map(|(kind, name)| {
                     kind.as_type().map(|ty| {
-                        let actual_type =
-                            cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), ty);
+                        let actual_type = cx.tcx.normalize_erasing_regions(cx.typing_env(), ty);
                         let actual_type_di_node = type_di_node(cx, actual_type);
                         let name = name.as_str();
                         unsafe {
                             llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
                                 DIB(cx),
                                 None,
-                                name.as_ptr().cast(),
+                                name.as_c_char_ptr(),
                                 name.len(),
                                 actual_type_di_node,
                             )
@@ -1352,14 +1348,7 @@ pub(crate) fn build_global_var_di_node<'ll>(
     // We may want to remove the namespace scope if we're in an extern block (see
     // https://github.com/rust-lang/rust/pull/46457#issuecomment-351750952).
     let var_scope = get_namespace_for_item(cx, def_id);
-    let span = hygiene::walk_chain_collapsed(tcx.def_span(def_id), DUMMY_SP);
-
-    let (file_metadata, line_number) = if !span.is_dummy() {
-        let loc = cx.lookup_debug_loc(span.lo());
-        (file_metadata(cx, &loc.file), loc.line)
-    } else {
-        (unknown_file_metadata(cx), UNKNOWN_LINE_NUMBER)
-    };
+    let (file_metadata, line_number) = file_metadata_from_def_id(cx, Some(def_id));
 
     let is_local_to_unit = is_node_local_to_unit(cx, def_id);
 
@@ -1367,7 +1356,7 @@ pub(crate) fn build_global_var_di_node<'ll>(
     if nested {
         return;
     }
-    let variable_type = Instance::mono(cx.tcx, def_id).ty(cx.tcx, ty::ParamEnv::reveal_all());
+    let variable_type = Instance::mono(cx.tcx, def_id).ty(cx.tcx, cx.typing_env());
     let type_di_node = type_di_node(cx, variable_type);
     let var_name = tcx.item_name(def_id);
     let var_name = var_name.as_str();
@@ -1382,9 +1371,9 @@ pub(crate) fn build_global_var_di_node<'ll>(
         llvm::LLVMRustDIBuilderCreateStaticVariable(
             DIB(cx),
             Some(var_scope),
-            var_name.as_ptr().cast(),
+            var_name.as_c_char_ptr(),
             var_name.len(),
-            linkage_name.as_ptr().cast(),
+            linkage_name.as_c_char_ptr(),
             linkage_name.len(),
             file_metadata,
             line_number,
@@ -1409,7 +1398,7 @@ pub(crate) fn build_global_var_di_node<'ll>(
 fn build_vtable_type_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     ty: Ty<'tcx>,
-    poly_trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
+    poly_trait_ref: Option<ty::ExistentialTraitRef<'tcx>>,
 ) -> &'ll DIType {
     let tcx = cx.tcx;
 
@@ -1449,6 +1438,7 @@ fn build_vtable_type_di_node<'ll, 'tcx>(
             Stub::VTableTy { vtable_holder },
             unique_type_id,
             &vtable_type_name,
+            None,
             (size, pointer_align),
             NO_SCOPE_METADATA,
             DIFlags::FlagArtificial,
@@ -1486,6 +1476,7 @@ fn build_vtable_type_di_node<'ll, 'tcx>(
                         field_offset,
                         DIFlags::FlagZero,
                         field_type_di_node,
+                        None,
                     ))
                 })
                 .collect()
@@ -1495,10 +1486,30 @@ fn build_vtable_type_di_node<'ll, 'tcx>(
     .di_node
 }
 
+/// Get the global variable for the vtable.
+///
+/// When using global variables, we may have created an addrspacecast to get a pointer to the
+/// default address space if global variables are created in a different address space.
+/// For modifying the vtable, we need the real global variable. This function accepts either a
+/// global variable (which is simply returned), or an addrspacecast constant expression.
+/// If the given value is an addrspacecast, the cast is removed and the global variable behind
+/// the cast is returned.
+fn find_vtable_behind_cast<'ll>(vtable: &'ll Value) -> &'ll Value {
+    // The vtable is a global variable, which may be behind an addrspacecast.
+    unsafe {
+        if let Some(c) = llvm::LLVMIsAConstantExpr(vtable) {
+            if llvm::LLVMGetConstOpcode(c) == llvm::Opcode::AddrSpaceCast {
+                return llvm::LLVMGetOperand(c, 0).unwrap();
+            }
+        }
+    }
+    vtable
+}
+
 pub(crate) fn apply_vcall_visibility_metadata<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     ty: Ty<'tcx>,
-    trait_ref: Option<PolyExistentialTraitRef<'tcx>>,
+    trait_ref: Option<ExistentialTraitRef<'tcx>>,
     vtable: &'ll Value,
 ) {
     // FIXME(flip1995): The virtual function elimination optimization only works with full LTO in
@@ -1515,9 +1526,11 @@ pub(crate) fn apply_vcall_visibility_metadata<'ll, 'tcx>(
 
     let Some(trait_ref) = trait_ref else { return };
 
+    // Unwrap potential addrspacecast
+    let vtable = find_vtable_behind_cast(vtable);
     let trait_ref_self = trait_ref.with_self_ty(cx.tcx, ty);
     let trait_ref_self = cx.tcx.erase_regions(trait_ref_self);
-    let trait_def_id = trait_ref_self.def_id();
+    let trait_def_id = trait_ref_self.def_id;
     let trait_vis = cx.tcx.visibility(trait_def_id);
 
     let cgus = cx.sess().codegen_units().as_usize();
@@ -1576,7 +1589,7 @@ pub(crate) fn apply_vcall_visibility_metadata<'ll, 'tcx>(
 pub(crate) fn create_vtable_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     ty: Ty<'tcx>,
-    poly_trait_ref: Option<ty::PolyExistentialTraitRef<'tcx>>,
+    poly_trait_ref: Option<ty::ExistentialTraitRef<'tcx>>,
     vtable: &'ll Value,
 ) {
     if cx.dbg_cx.is_none() {
@@ -1587,6 +1600,9 @@ pub(crate) fn create_vtable_di_node<'ll, 'tcx>(
     if cx.sess().opts.debuginfo != DebugInfo::Full {
         return;
     }
+
+    // Unwrap potential addrspacecast
+    let vtable = find_vtable_behind_cast(vtable);
 
     // When full debuginfo is enabled, we want to try and prevent vtables from being
     // merged. Otherwise debuggers will have a hard time mapping from dyn pointer
@@ -1602,9 +1618,9 @@ pub(crate) fn create_vtable_di_node<'ll, 'tcx>(
         llvm::LLVMRustDIBuilderCreateStaticVariable(
             DIB(cx),
             NO_SCOPE_METADATA,
-            vtable_name.as_ptr().cast(),
+            vtable_name.as_c_char_ptr(),
             vtable_name.len(),
-            linkage_name.as_ptr().cast(),
+            linkage_name.as_c_char_ptr(),
             linkage_name.len(),
             unknown_file_metadata(cx),
             UNKNOWN_LINE_NUMBER,
@@ -1624,7 +1640,14 @@ pub(crate) fn extend_scope_to_file<'ll>(
     file: &SourceFile,
 ) -> &'ll DILexicalBlock {
     let file_metadata = file_metadata(cx, file);
-    unsafe { llvm::LLVMRustDIBuilderCreateLexicalBlockFile(DIB(cx), scope_metadata, file_metadata) }
+    unsafe {
+        llvm::LLVMDIBuilderCreateLexicalBlockFile(
+            DIB(cx),
+            scope_metadata,
+            file_metadata,
+            /* Discriminator (default) */ 0u32,
+        )
+    }
 }
 
 fn tuple_field_name(field_index: usize) -> Cow<'static, str> {
@@ -1636,4 +1659,21 @@ fn tuple_field_name(field_index: usize) -> Cow<'static, str> {
         .get(field_index)
         .map(|s| Cow::from(*s))
         .unwrap_or_else(|| Cow::from(format!("__{field_index}")))
+}
+
+pub(crate) type DefinitionLocation<'ll> = (&'ll DIFile, c_uint);
+
+pub(crate) fn file_metadata_from_def_id<'ll>(
+    cx: &CodegenCx<'ll, '_>,
+    def_id: Option<DefId>,
+) -> DefinitionLocation<'ll> {
+    if let Some(def_id) = def_id
+        && let span = hygiene::walk_chain_collapsed(cx.tcx.def_span(def_id), DUMMY_SP)
+        && !span.is_dummy()
+    {
+        let loc = cx.lookup_debug_loc(span.lo());
+        (file_metadata(cx, &loc.file), loc.line)
+    } else {
+        (unknown_file_metadata(cx), UNKNOWN_LINE_NUMBER)
+    }
 }

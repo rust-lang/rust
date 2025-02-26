@@ -1,5 +1,5 @@
 error: `Bar` is forbidden as the type of a const generic parameter
-  --> $DIR/const_generic_type.rs:8:24
+  --> $DIR/const_generic_type.rs:7:24
    |
 LL | async fn test<const N: crate::Bar>() {
    |                        ^^^^^^^^^^

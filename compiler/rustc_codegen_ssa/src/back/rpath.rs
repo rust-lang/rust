@@ -13,39 +13,27 @@ pub(super) struct RPathConfig<'a> {
     pub linker_is_gnu: bool,
 }
 
-pub(super) fn get_rpath_flags(config: &RPathConfig<'_>) -> Vec<OsString> {
+pub(super) fn get_rpath_linker_args(config: &RPathConfig<'_>) -> Vec<OsString> {
     debug!("preparing the RPATH!");
 
     let rpaths = get_rpaths(config);
-    let mut flags = rpaths_to_flags(rpaths);
+    let mut args = Vec::with_capacity(rpaths.len() * 2); // the minimum needed capacity
+
+    for rpath in rpaths {
+        args.push("-rpath".into());
+        args.push(rpath);
+    }
 
     if config.linker_is_gnu {
         // Use DT_RUNPATH instead of DT_RPATH if available
-        flags.push("-Wl,--enable-new-dtags".into());
+        args.push("--enable-new-dtags".into());
 
         // Set DF_ORIGIN for substitute $ORIGIN
-        flags.push("-Wl,-z,origin".into());
+        args.push("-z".into());
+        args.push("origin".into());
     }
 
-    flags
-}
-
-fn rpaths_to_flags(rpaths: Vec<OsString>) -> Vec<OsString> {
-    let mut ret = Vec::with_capacity(rpaths.len()); // the minimum needed capacity
-
-    for rpath in rpaths {
-        if rpath.to_string_lossy().contains(',') {
-            ret.push("-Wl,-rpath".into());
-            ret.push("-Xlinker".into());
-            ret.push(rpath);
-        } else {
-            let mut single_arg = OsString::from("-Wl,-rpath,");
-            single_arg.push(rpath);
-            ret.push(single_arg);
-        }
-    }
-
-    ret
+    args
 }
 
 fn get_rpaths(config: &RPathConfig<'_>) -> Vec<OsString> {

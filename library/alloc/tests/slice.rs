@@ -1414,7 +1414,6 @@ fn test_box_slice_clone() {
 
 #[test]
 #[allow(unused_must_use)] // here, we care about the side effects of `.clone()`
-#[cfg_attr(target_os = "emscripten", ignore)]
 #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_box_slice_clone_panics() {
     use std::sync::Arc;

@@ -1,5 +1,5 @@
-//@only-target: linux
-// test_race depends on a deterministic schedule.
+//@only-target: linux android illumos
+// test_race, test_blocking_read and test_blocking_write depend on a deterministic schedule.
 //@compile-flags: -Zmiri-preemption-rate=0
 
 // FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
@@ -10,7 +10,13 @@ use std::thread;
 fn main() {
     test_read_write();
     test_race();
+
+    #[cfg(not(target_os = "illumos"))]
     test_syscall();
+
+    test_blocking_read();
+    test_blocking_write();
+    test_two_threads_blocked_on_eventfd();
 }
 
 fn read_bytes<const N: usize>(fd: i32, buf: &mut [u8; N]) -> i32 {
@@ -112,9 +118,118 @@ fn test_race() {
 }
 
 // This is a test for calling eventfd2 through a syscall.
+// Illumos supports eventfd, but it has no entry to call it through syscall.
+#[cfg(not(target_os = "illumos"))]
 fn test_syscall() {
     let initval = 0 as libc::c_uint;
     let flags = (libc::EFD_CLOEXEC | libc::EFD_NONBLOCK) as libc::c_int;
     let fd = unsafe { libc::syscall(libc::SYS_eventfd2, initval, flags) };
     assert_ne!(fd, -1);
+}
+
+// This test will block on eventfd read then get unblocked by `write`.
+fn test_blocking_read() {
+    // eventfd read will block when EFD_NONBLOCK flag is clear and counter = 0.
+    let flags = libc::EFD_CLOEXEC;
+    let fd = unsafe { libc::eventfd(0, flags) };
+    let thread1 = thread::spawn(move || {
+        let mut buf: [u8; 8] = [0; 8];
+        // This will block.
+        let res = read_bytes(fd, &mut buf);
+        // read returns number of bytes has been read, which is always 8.
+        assert_eq!(res, 8);
+        let counter = u64::from_ne_bytes(buf);
+        assert_eq!(counter, 1);
+    });
+    let sized_8_data: [u8; 8] = 1_u64.to_ne_bytes();
+    // Pass control to thread1 so it can block on eventfd `read`.
+    thread::yield_now();
+    // Write 1 to the counter to unblock thread1.
+    let res = write_bytes(fd, sized_8_data);
+    assert_eq!(res, 8);
+    thread1.join().unwrap();
+}
+
+/// This test will block on eventfd `write` then get unblocked by `read`.
+fn test_blocking_write() {
+    // eventfd write will block when EFD_NONBLOCK flag is clear
+    // and the addition caused counter to exceed u64::MAX - 1.
+    let flags = libc::EFD_CLOEXEC;
+    let fd = unsafe { libc::eventfd(0, flags) };
+    // Write u64 - 1, so the all subsequent write will block.
+    let sized_8_data: [u8; 8] = (u64::MAX - 1).to_ne_bytes();
+    let res: i64 = unsafe {
+        libc::write(fd, sized_8_data.as_ptr() as *const libc::c_void, 8).try_into().unwrap()
+    };
+    assert_eq!(res, 8);
+
+    let thread1 = thread::spawn(move || {
+        let sized_8_data = 1_u64.to_ne_bytes();
+        // Write 1 to the counter, this will block.
+        let res: i64 = unsafe {
+            libc::write(fd, sized_8_data.as_ptr() as *const libc::c_void, 8).try_into().unwrap()
+        };
+        // Make sure that write is successful.
+        assert_eq!(res, 8);
+    });
+    let mut buf: [u8; 8] = [0; 8];
+    // Pass control to thread1 so it can block on eventfd `write`.
+    thread::yield_now();
+    // This will unblock previously blocked eventfd read.
+    let res = read_bytes(fd, &mut buf);
+    // read returns number of bytes has been read, which is always 8.
+    assert_eq!(res, 8);
+    let counter = u64::from_ne_bytes(buf);
+    assert_eq!(counter, (u64::MAX - 1));
+    thread1.join().unwrap();
+}
+
+// Test two threads blocked on eventfd.
+// Expected behaviour:
+// 1. thread1 and thread2 both blocked on `write`.
+// 2. thread3 unblocks both thread1 and thread2
+// 3. The write in thread1 and thread2 return successfully.
+fn test_two_threads_blocked_on_eventfd() {
+    // eventfd write will block when EFD_NONBLOCK flag is clear
+    // and the addition caused counter to exceed u64::MAX - 1.
+    let flags = libc::EFD_CLOEXEC;
+    let fd = unsafe { libc::eventfd(0, flags) };
+    // Write u64 - 1, so the all subsequent write will block.
+    let sized_8_data: [u8; 8] = (u64::MAX - 1).to_ne_bytes();
+    let res: i64 = unsafe {
+        libc::write(fd, sized_8_data.as_ptr() as *const libc::c_void, 8).try_into().unwrap()
+    };
+    assert_eq!(res, 8);
+
+    let thread1 = thread::spawn(move || {
+        let sized_8_data = 1_u64.to_ne_bytes();
+        let res: i64 = unsafe {
+            libc::write(fd, sized_8_data.as_ptr() as *const libc::c_void, 8).try_into().unwrap()
+        };
+        // Make sure that write is successful.
+        assert_eq!(res, 8);
+    });
+
+    let thread2 = thread::spawn(move || {
+        let sized_8_data = 1_u64.to_ne_bytes();
+        let res: i64 = unsafe {
+            libc::write(fd, sized_8_data.as_ptr() as *const libc::c_void, 8).try_into().unwrap()
+        };
+        // Make sure that write is successful.
+        assert_eq!(res, 8);
+    });
+
+    let thread3 = thread::spawn(move || {
+        let mut buf: [u8; 8] = [0; 8];
+        // This will unblock previously blocked eventfd read.
+        let res = read_bytes(fd, &mut buf);
+        // read returns number of bytes has been read, which is always 8.
+        assert_eq!(res, 8);
+        let counter = u64::from_ne_bytes(buf);
+        assert_eq!(counter, (u64::MAX - 1));
+    });
+
+    thread1.join().unwrap();
+    thread2.join().unwrap();
+    thread3.join().unwrap();
 }

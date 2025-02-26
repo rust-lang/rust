@@ -1,5 +1,5 @@
 warning: method `foo` is never used
-  --> $DIR/issue-14399.rs:12:14
+  --> $DIR/issue-14399.rs:11:14
    |
 LL | trait A { fn foo(&self) {} }
    |       -      ^^^

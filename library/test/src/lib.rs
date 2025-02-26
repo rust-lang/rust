@@ -20,12 +20,15 @@
 #![feature(rustdoc_internals)]
 #![feature(file_buffered)]
 #![feature(internal_output_capture)]
+#![feature(io_const_error)]
 #![feature(staged_api)]
 #![feature(process_exitcode_internals)]
 #![feature(panic_can_unwind)]
 #![feature(test)]
+#![feature(thread_spawn_hook)]
 #![allow(internal_features)]
 #![warn(rustdoc::unescaped_backticks)]
+#![warn(unreachable_pub)]
 
 pub use cli::TestOpts;
 
@@ -134,6 +137,16 @@ pub fn test_main(args: &[String], tests: Vec<TestDescAndFn>, options: Option<Opt
                 }
             });
             panic::set_hook(hook);
+            // Use a thread spawning hook to make new threads inherit output capturing.
+            std::thread::add_spawn_hook(|_| {
+                // Get and clone the output capture of the current thread.
+                let output_capture = io::set_output_capture(None);
+                io::set_output_capture(output_capture.clone());
+                // Set the output capture of the new thread.
+                || {
+                    io::set_output_capture(output_capture);
+                }
+            });
         }
         let res = console::run_tests_console(&opts, tests);
         // Prevent Valgrind from reporting reachable blocks in users' unit tests.
@@ -172,12 +185,16 @@ pub fn test_main_static_abort(tests: &[&TestDescAndFn]) {
     // If we're being run in SpawnedSecondary mode, run the test here. run_test
     // will then exit the process.
     if let Ok(name) = env::var(SECONDARY_TEST_INVOKER_VAR) {
-        env::remove_var(SECONDARY_TEST_INVOKER_VAR);
+        unsafe {
+            env::remove_var(SECONDARY_TEST_INVOKER_VAR);
+        }
 
         // Convert benchmarks to tests if we're not benchmarking.
         let mut tests = tests.iter().map(make_owned_test).collect::<Vec<_>>();
         if env::var(SECONDARY_TEST_BENCH_BENCHMARKS_VAR).is_ok() {
-            env::remove_var(SECONDARY_TEST_BENCH_BENCHMARKS_VAR);
+            unsafe {
+                env::remove_var(SECONDARY_TEST_BENCH_BENCHMARKS_VAR);
+            }
         } else {
             tests = convert_benchmarks_to_tests(tests);
         };

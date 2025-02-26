@@ -15,8 +15,9 @@ LL |         FarmAnimal::Chicken(_) => "cluck, cluck!".to_string(),
    |
 help: the struct variant's field is being ignored
    |
-LL |         FarmAnimal::Chicken { num_eggs: _ } => "cluck, cluck!".to_string(),
-   |                             ~~~~~~~~~~~~~~~
+LL -         FarmAnimal::Chicken(_) => "cluck, cluck!".to_string(),
+LL +         FarmAnimal::Chicken { num_eggs: _ } => "cluck, cluck!".to_string(),
+   |
 
 error: aborting due to 2 previous errors
 

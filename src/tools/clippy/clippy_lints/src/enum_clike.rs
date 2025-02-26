@@ -41,7 +41,7 @@ impl<'tcx> LateLintPass<'tcx> for UnportableVariant {
         if let ItemKind::Enum(def, _) = &item.kind {
             for var in def.variants {
                 if let Some(anon_const) = &var.disr_expr {
-                    let def_id = cx.tcx.hir().body_owner_def_id(anon_const.body);
+                    let def_id = cx.tcx.hir_body_owner_def_id(anon_const.body);
                     let mut ty = cx.tcx.type_of(def_id.to_def_id()).instantiate_identity();
                     let constant = cx
                         .tcx
@@ -70,7 +70,7 @@ impl<'tcx> LateLintPass<'tcx> for UnportableVariant {
                             var.span,
                             "C-like enum variant discriminant is not portable to 32-bit targets",
                         );
-                    };
+                    }
                 }
             }
         }

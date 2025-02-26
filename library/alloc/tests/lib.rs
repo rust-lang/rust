@@ -3,12 +3,12 @@
 #![feature(iter_array_chunks)]
 #![feature(assert_matches)]
 #![feature(btree_extract_if)]
+#![feature(char_max_len)]
 #![feature(cow_is_borrowed)]
-#![feature(const_heap)]
-#![feature(const_try)]
 #![feature(core_intrinsics)]
-#![feature(extract_if)]
+#![feature(downcast_unchecked)]
 #![feature(exact_size_is_empty)]
+#![feature(hashmap_internals)]
 #![feature(linked_list_cursors)]
 #![feature(map_try_insert)]
 #![feature(pattern)]
@@ -28,40 +28,48 @@
 #![feature(string_remove_matches)]
 #![feature(const_btree_len)]
 #![feature(const_trait_impl)]
-#![feature(const_str_from_utf8)]
 #![feature(panic_update_hook)]
 #![feature(pointer_is_aligned_to)]
+#![feature(test)]
 #![feature(thin_box)]
-#![cfg_attr(bootstrap, feature(strict_provenance))]
-#![cfg_attr(not(bootstrap), feature(strict_provenance_lints))]
 #![feature(drain_keep_rest)]
 #![feature(local_waker)]
-#![feature(vec_pop_if)]
+#![feature(str_as_str)]
+#![feature(strict_provenance_lints)]
+#![feature(vec_deque_pop_if)]
 #![feature(unique_rc_arc)]
 #![feature(macro_metavar_expr_concat)]
 #![allow(internal_features)]
 #![deny(fuzzy_provenance_casts)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
+extern crate test;
+
 use std::hash::{DefaultHasher, Hash, Hasher};
 
+mod alloc;
 mod arc;
 mod autotraits;
 mod borrow;
 mod boxed;
 mod btree_set_hash;
 mod c_str;
+mod c_str2;
+mod collections;
 mod const_fns;
 mod cow_str;
 mod fmt;
 mod heap;
 mod linked_list;
+mod misc_tests;
 mod rc;
 mod slice;
 mod sort;
 mod str;
 mod string;
+mod sync;
 mod task;
+mod testing;
 mod thin_box;
 mod vec;
 mod vec_deque;
@@ -72,9 +80,18 @@ fn hash<T: Hash>(t: &T) -> u64 {
     s.finish()
 }
 
-// FIXME: Instantiated functions with i128 in the signature is not supported in Emscripten.
-// See https://github.com/kripken/emscripten-fastcomp/issues/169
-#[cfg(not(target_os = "emscripten"))]
+/// Copied from `std::test_helpers::test_rng`, since these tests rely on the
+/// seed not being the same for every RNG invocation too.
+fn test_rng() -> rand_xorshift::XorShiftRng {
+    use std::hash::{BuildHasher, Hash, Hasher};
+    let mut hasher = std::hash::RandomState::new().build_hasher();
+    std::panic::Location::caller().hash(&mut hasher);
+    let hc64 = hasher.finish();
+    let seed_vec = hc64.to_le_bytes().into_iter().chain(0u8..8).collect::<Vec<u8>>();
+    let seed: [u8; 16] = seed_vec.as_slice().try_into().unwrap();
+    rand::SeedableRng::from_seed(seed)
+}
+
 #[test]
 fn test_boxed_hasher() {
     let ordinary_hash = hash(&5u32);

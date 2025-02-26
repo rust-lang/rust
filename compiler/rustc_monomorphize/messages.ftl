@@ -1,3 +1,41 @@
+monomorphize_abi_error_disabled_vector_type =
+  this function {$is_call ->
+    [true] call
+    *[false] definition
+  } uses SIMD vector type `{$ty}` which (with the chosen ABI) requires the `{$required_feature}` target feature, which is not enabled{$is_call ->
+    [true] {" "}in the caller
+    *[false] {""}
+  }
+  .label = function {$is_call ->
+    [true] called
+    *[false] defined
+  } here
+  .help = consider enabling it globally (`-C target-feature=+{$required_feature}`) or locally (`#[target_feature(enable="{$required_feature}")]`)
+
+monomorphize_abi_error_unsupported_vector_type =
+  this function {$is_call ->
+    [true] call
+    *[false] definition
+  } uses SIMD vector type `{$ty}` which is not currently supported with the chosen ABI
+  .label = function {$is_call ->
+    [true] called
+    *[false] defined
+  } here
+
+monomorphize_abi_required_target_feature =
+  this function {$is_call ->
+    [true] call
+    *[false] definition
+  } uses ABI "{$abi}" which requires the `{$required_feature}` target feature, which is not enabled{$is_call ->
+    [true] {" "}in the caller
+    *[false] {""}
+  }
+  .label = function {$is_call ->
+    [true] called
+    *[false] defined
+  } here
+  .help = consider enabling it globally (`-C target-feature=+{$required_feature}`) or locally (`#[target_feature(enable="{$required_feature}")]`)
+
 monomorphize_couldnt_dump_mono_stats =
     unexpected error occurred while dumping monomorphization stats: {$error}
 
@@ -24,7 +62,5 @@ monomorphize_symbol_already_defined = symbol `{$symbol}` is already defined
 
 monomorphize_unknown_cgu_collection_mode =
     unknown codegen-item collection mode '{$mode}', falling back to 'lazy' mode
-
-monomorphize_unused_generic_params = item has unused generic parameters
 
 monomorphize_written_to_path = the full type name has been written to '{$path}'

@@ -1,7 +1,5 @@
 #![warn(clippy::significant_drop_tightening)]
 
-//@no-rustfix: need to change the suggestion to a multipart suggestion
-
 use std::sync::Mutex;
 
 pub fn complex_return_triggers_the_lint() -> i32 {

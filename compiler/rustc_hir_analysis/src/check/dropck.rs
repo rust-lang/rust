@@ -1,15 +1,10 @@
-// FIXME(@lcnr): Move this module out of `rustc_hir_analysis`.
-//
-// We don't do any drop checking during hir typeck.
-
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::codes::*;
 use rustc_errors::{ErrorGuaranteed, struct_span_code_err};
-use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
 use rustc_infer::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::util::CheckRegions;
-use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt};
+use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypingMode};
 use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
 
@@ -33,7 +28,10 @@ use crate::hir::def_id::{DefId, LocalDefId};
 ///    struct/enum definition for the nominal type itself (i.e.
 ///    cannot do `struct S<T>; impl<T:Clone> Drop for S<T> { ... }`).
 ///
-pub fn check_drop_impl(tcx: TyCtxt<'_>, drop_impl_did: DefId) -> Result<(), ErrorGuaranteed> {
+pub(crate) fn check_drop_impl(
+    tcx: TyCtxt<'_>,
+    drop_impl_did: DefId,
+) -> Result<(), ErrorGuaranteed> {
     match tcx.impl_polarity(drop_impl_did) {
         ty::ImplPolarity::Positive => {}
         ty::ImplPolarity::Negative => {
@@ -124,7 +122,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     adt_def_id: LocalDefId,
     adt_to_impl_args: GenericArgsRef<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
-    let infcx = tcx.infer_ctxt().build();
+    let infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
 
     let impl_span = tcx.def_span(drop_impl_def_id.to_def_id());
@@ -192,7 +190,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
         return Err(guar.unwrap());
     }
 
-    let errors = ocx.infcx.resolve_regions(&OutlivesEnvironment::new(adt_env));
+    let errors = ocx.infcx.resolve_regions(adt_def_id, adt_env, []);
     if !errors.is_empty() {
         let mut guar = None;
         for error in errors {

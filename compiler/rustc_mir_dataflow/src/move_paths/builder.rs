@@ -1,7 +1,6 @@
 use std::mem;
 
 use rustc_index::IndexVec;
-use rustc_middle::mir::tcx::{PlaceTy, RvalueInitializationState};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
@@ -161,6 +160,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                     | ty::CoroutineWitness(..)
                     | ty::Never
                     | ty::Tuple(_)
+                    | ty::UnsafeBinder(_)
                     | ty::Alias(_, _)
                     | ty::Param(_)
                     | ty::Bound(_, _)
@@ -200,13 +200,14 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                     | ty::Dynamic(_, _, _)
                     | ty::CoroutineWitness(..)
                     | ty::Never
+                    | ty::UnsafeBinder(_)
                     | ty::Alias(_, _)
                     | ty::Param(_)
                     | ty::Bound(_, _)
                     | ty::Infer(_)
                     | ty::Error(_)
                     | ty::Placeholder(_) => bug!(
-                        "When Place contains ProjectionElem::Field it's type shouldn't be {place_ty:#?}"
+                        "When Place contains ProjectionElem::Field its type shouldn't be {place_ty:#?}"
                     ),
                 },
                 ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. } => {
@@ -224,6 +225,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
                     }
                     _ => bug!("Unexpected type {place_ty:#?}"),
                 },
+                ProjectionElem::UnwrapUnsafeBinder(_) => {}
                 // `OpaqueCast`:Only transmutes the type, so no moves there.
                 // `Downcast`  :Only changes information about a `Place` without moving.
                 // `Subtype`   :Only transmutes the type, so moves.
@@ -385,6 +387,7 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
             | StatementKind::Coverage(..)
             | StatementKind::Intrinsic(..)
             | StatementKind::ConstEvalCounter
+            | StatementKind::BackwardIncompatibleDropHint { .. }
             | StatementKind::Nop => {}
         }
     }
@@ -396,7 +399,8 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
             | Rvalue::Repeat(ref operand, _)
             | Rvalue::Cast(_, ref operand, _)
             | Rvalue::ShallowInitBox(ref operand, _)
-            | Rvalue::UnaryOp(_, ref operand) => self.gather_operand(operand),
+            | Rvalue::UnaryOp(_, ref operand)
+            | Rvalue::WrapUnsafeBinder(ref operand, _) => self.gather_operand(operand),
             Rvalue::BinaryOp(ref _binop, box (ref lhs, ref rhs)) => {
                 self.gather_operand(lhs);
                 self.gather_operand(rhs);
@@ -412,7 +416,11 @@ impl<'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> MoveDataBuilder<'a, 'tcx, F> {
             | Rvalue::Discriminant(..)
             | Rvalue::Len(..)
             | Rvalue::NullaryOp(
-                NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(..) | NullOp::UbChecks,
+                NullOp::SizeOf
+                | NullOp::AlignOf
+                | NullOp::OffsetOf(..)
+                | NullOp::UbChecks
+                | NullOp::ContractChecks,
                 _,
             ) => {}
         }

@@ -248,7 +248,7 @@ impl HasSource for Param {
                 let ast @ InFile { file_id, value } = source_map.expr_syntax(expr_id).ok()?;
                 let root = db.parse_or_expand(file_id);
                 match value.to_node(&root) {
-                    ast::Expr::ClosureExpr(it) => it
+                    Either::Left(ast::Expr::ClosureExpr(it)) => it
                         .param_list()?
                         .params()
                         .nth(self.idx)
@@ -301,7 +301,7 @@ impl HasSource for InlineAsmOperand {
             let root = src.file_syntax(db.upcast());
             return src
                 .map(|ast| match ast.to_node(&root) {
-                    ast::Expr::AsmExpr(asm) => asm
+                    Either::Left(ast::Expr::AsmExpr(asm)) => asm
                         .asm_pieces()
                         .filter_map(|it| match it {
                             ast::AsmPiece::AsmOperandNamed(it) => Some(it),

@@ -1,4 +1,4 @@
-use std::io::{Read, Result as IoResult};
+use std::io::{self, Read};
 
 pub struct Aaaaaaa;
 
@@ -12,7 +12,7 @@ impl Aaaaaaa {
 }
 
 impl Read for Aaaaaaa {
-    fn read(&mut self, out: &mut [u8]) -> IoResult<usize> {
+    fn read(&mut self, out: &mut [u8]) -> io::Result<usize> {
         Ok(out.len())
     }
 }

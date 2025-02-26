@@ -1,6 +1,6 @@
 // MIR for `main::{closure#0}::{closure#1}::{closure#1}` after built
 
-fn main::{closure#0}::{closure#1}::{closure#1}(_1: {async closure body@$DIR/async_closure_shims.rs:63:48: 66:10}, _2: ResumeTy) -> ()
+fn main::{closure#0}::{closure#1}::{closure#1}(_1: {async closure body@$DIR/async_closure_shims.rs:62:48: 65:10}, _2: ResumeTy) -> ()
 yields ()
  {
     debug _task_context => _2;

@@ -23,7 +23,6 @@ tracing.workspace = true
 # local deps
 stdx.workspace = true
 syntax.workspace = true
-text-edit.workspace = true
 ide-db.workspace = true
 hir.workspace = true
 

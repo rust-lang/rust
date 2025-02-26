@@ -97,7 +97,7 @@ LL | pub trait Bar<X=usize, A=Self> {
 LL |     let e = Bar::<usize>::lol();
    |             ^^^^^^^^^^^^ missing reference to `A`
    |
-   = note: because of the default `Self` reference, type parameters must be specified on object types
+   = note: because the parameter default references `Self`, the parameter must be specified on the object type
 
 error: aborting due to 5 previous errors; 5 warnings emitted
 

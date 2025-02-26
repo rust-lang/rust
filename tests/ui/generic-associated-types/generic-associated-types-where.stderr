@@ -5,7 +5,7 @@ LL |     type Assoc2<T> = Vec<T>;
    |                      ^^^^^^ `T` cannot be formatted with the default formatter
    |
    = note: in format strings you may be able to use `{:?}` (or {:#?} for pretty-print) instead
-help: consider restricting type parameter `T`
+help: consider restricting type parameter `T` with trait `Display`
    |
 LL |     type Assoc2<T: std::fmt::Display> = Vec<T>;
    |                  +++++++++++++++++++

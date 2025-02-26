@@ -49,12 +49,13 @@ pub(super) fn hints(
             if mir.locals[place.local].ty.adt_id(ChalkTyInterner).is_none() {
                 continue; // Arguably only ADTs have significant drop impls
             }
-            let Some(binding) = local_to_binding.get(place.local) else {
+            let Some(&binding_idx) = local_to_binding.get(place.local) else {
                 continue; // Ignore temporary values
             };
             let range = match terminator.span {
                 MirSpan::ExprId(e) => match source_map.expr_syntax(e) {
-                    Ok(s) => {
+                    // don't show inlay hint for macro
+                    Ok(s) if !s.file_id.is_macro() => {
                         let root = &s.file_syntax(sema.db);
                         let expr = s.value.to_node(root);
                         let expr = expr.syntax();
@@ -69,11 +70,11 @@ pub(super) fn hints(
                             }
                         }
                     }
-                    Err(_) => continue,
+                    _ => continue,
                 },
                 MirSpan::PatId(p) => match source_map.pat_syntax(p) {
-                    Ok(s) => s.value.text_range(),
-                    Err(_) => continue,
+                    Ok(s) if !s.file_id.is_macro() => s.value.text_range(),
+                    _ => continue,
                 },
                 MirSpan::BindingId(b) => {
                     match source_map
@@ -81,35 +82,36 @@ pub(super) fn hints(
                         .iter()
                         .find_map(|p| source_map.pat_syntax(*p).ok())
                     {
-                        Some(s) => s.value.text_range(),
-                        None => continue,
+                        Some(s) if !s.file_id.is_macro() => s.value.text_range(),
+                        _ => continue,
                     }
                 }
                 MirSpan::SelfParam => match source_map.self_param_syntax() {
-                    Some(s) => s.value.text_range(),
-                    None => continue,
+                    Some(s) if !s.file_id.is_macro() => s.value.text_range(),
+                    _ => continue,
                 },
                 MirSpan::Unknown => continue,
             };
-            let binding_source = source_map
-                .patterns_for_binding(*binding)
-                .first()
-                .and_then(|d| source_map.pat_syntax(*d).ok())
-                .and_then(|d| {
-                    Some(FileRange {
-                        file_id: d.file_id.file_id()?.into(),
-                        range: d.value.text_range(),
-                    })
-                });
-            let binding = &hir.bindings[*binding];
+            let binding = &hir.bindings[binding_idx];
             let name = binding.name.display_no_db(file_id.edition()).to_smolstr();
             if name.starts_with("<ra@") {
                 continue; // Ignore desugared variables
             }
             let mut label = InlayHintLabel::simple(
                 name,
-                Some(crate::InlayTooltip::String("moz".into())),
-                binding_source,
+                None,
+                config.lazy_location_opt(|| {
+                    source_map
+                        .patterns_for_binding(binding_idx)
+                        .first()
+                        .and_then(|d| source_map.pat_syntax(*d).ok())
+                        .and_then(|d| {
+                            Some(FileRange {
+                                file_id: d.file_id.file_id()?.into(),
+                                range: d.value.text_range(),
+                            })
+                        })
+                }),
             );
             label.prepend_str("drop(");
             label.append_str(")");
@@ -227,6 +229,27 @@ mod tests {
       //^ drop(y)
     }
   //^ drop(x)
+"#,
+        );
+    }
+
+    #[test]
+    fn ignore_inlay_hint_for_macro_call() {
+        check_with_config(
+            ONLY_DROP_CONFIG,
+            r#"
+    struct X;
+
+    macro_rules! my_macro {
+        () => {{
+            let bbb = X;
+            bbb
+        }};
+    }
+
+    fn test() -> X {
+        my_macro!()
+    }
 "#,
         );
     }

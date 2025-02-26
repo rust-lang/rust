@@ -33,7 +33,7 @@ fn baz<I: Tr1>(_x: &<I as Tr1<A=Bar>>::A) {}
 trait Tr2<T1, T2, T3> {
 }
 
-// Test for when wrongly specifed equality constraint's ident
+// Test for when wrongly specified equality constraint's ident
 // matches some generic param's ident
 // (Note: E0229 is emitted only for the first erroneous equality
 // constraint (T2) not for any subequent ones (e.g. T3))

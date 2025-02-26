@@ -6,8 +6,9 @@
 //!   - otherwise, we search for the nearest `{}` block which contains the edit
 //!     and try to parse only this block.
 
+use std::ops::Range;
+
 use parser::{Edition, Reparser};
-use text_edit::Indel;
 
 use crate::{
     parsing::build_tree,
@@ -19,38 +20,48 @@ use crate::{
 
 pub(crate) fn incremental_reparse(
     node: &SyntaxNode,
-    edit: &Indel,
+    delete: TextRange,
+    insert: &str,
     errors: impl IntoIterator<Item = SyntaxError>,
     edition: Edition,
 ) -> Option<(GreenNode, Vec<SyntaxError>, TextRange)> {
-    if let Some((green, new_errors, old_range)) = reparse_token(node, edit, edition) {
-        return Some((green, merge_errors(errors, new_errors, old_range, edit), old_range));
+    if let Some((green, new_errors, old_range)) = reparse_token(node, delete, insert, edition) {
+        return Some((
+            green,
+            merge_errors(errors, new_errors, old_range, delete, insert),
+            old_range,
+        ));
     }
 
-    if let Some((green, new_errors, old_range)) = reparse_block(node, edit, edition) {
-        return Some((green, merge_errors(errors, new_errors, old_range, edit), old_range));
+    if let Some((green, new_errors, old_range)) = reparse_block(node, delete, insert, edition) {
+        return Some((
+            green,
+            merge_errors(errors, new_errors, old_range, delete, insert),
+            old_range,
+        ));
     }
     None
 }
 
 fn reparse_token(
     root: &SyntaxNode,
-    edit: &Indel,
+    delete: TextRange,
+    insert: &str,
     edition: Edition,
 ) -> Option<(GreenNode, Vec<SyntaxError>, TextRange)> {
-    let prev_token = root.covering_element(edit.delete).as_token()?.clone();
+    let prev_token = root.covering_element(delete).as_token()?.clone();
     let prev_token_kind = prev_token.kind();
     match prev_token_kind {
         WHITESPACE | COMMENT | IDENT | STRING | BYTE_STRING | C_STRING => {
             if prev_token_kind == WHITESPACE || prev_token_kind == COMMENT {
                 // removing a new line may extends previous token
-                let deleted_range = edit.delete - prev_token.text_range().start();
+                let deleted_range = delete - prev_token.text_range().start();
                 if prev_token.text()[deleted_range].contains('\n') {
                     return None;
                 }
             }
 
-            let mut new_text = get_text_after_edit(prev_token.clone().into(), edit);
+            let mut new_text = get_text_after_edit(prev_token.clone().into(), delete, insert);
             let (new_token_kind, new_err) = parser::LexedStr::single_token(edition, &new_text)?;
 
             if new_token_kind != prev_token_kind
@@ -85,11 +96,12 @@ fn reparse_token(
 
 fn reparse_block(
     root: &SyntaxNode,
-    edit: &Indel,
+    delete: TextRange,
+    insert: &str,
     edition: parser::Edition,
 ) -> Option<(GreenNode, Vec<SyntaxError>, TextRange)> {
-    let (node, reparser) = find_reparsable_node(root, edit.delete)?;
-    let text = get_text_after_edit(node.clone().into(), edit);
+    let (node, reparser) = find_reparsable_node(root, delete)?;
+    let text = get_text_after_edit(node.clone().into(), delete, insert);
 
     let lexed = parser::LexedStr::new(edition, text.as_str());
     let parser_input = lexed.to_input(edition);
@@ -104,14 +116,14 @@ fn reparse_block(
     Some((node.replace_with(green), new_parser_errors, node.text_range()))
 }
 
-fn get_text_after_edit(element: SyntaxElement, edit: &Indel) -> String {
-    let edit = Indel::replace(edit.delete - element.text_range().start(), edit.insert.clone());
+fn get_text_after_edit(element: SyntaxElement, mut delete: TextRange, insert: &str) -> String {
+    delete -= element.text_range().start();
 
     let mut text = match element {
         NodeOrToken::Token(token) => token.text().to_owned(),
         NodeOrToken::Node(node) => node.text().to_string(),
     };
-    edit.apply(&mut text);
+    text.replace_range(Range::<usize>::from(delete), insert);
     text
 }
 
@@ -153,7 +165,8 @@ fn merge_errors(
     old_errors: impl IntoIterator<Item = SyntaxError>,
     new_errors: Vec<SyntaxError>,
     range_before_reparse: TextRange,
-    edit: &Indel,
+    delete: TextRange,
+    insert: &str,
 ) -> Vec<SyntaxError> {
     let mut res = Vec::new();
 
@@ -162,8 +175,8 @@ fn merge_errors(
         if old_err_range.end() <= range_before_reparse.start() {
             res.push(old_err);
         } else if old_err_range.start() >= range_before_reparse.end() {
-            let inserted_len = TextSize::of(&edit.insert);
-            res.push(old_err.with_range((old_err_range + inserted_len) - edit.delete.len()));
+            let inserted_len = TextSize::of(insert);
+            res.push(old_err.with_range((old_err_range + inserted_len) - delete.len()));
             // Note: extra parens are intentional to prevent uint underflow, HWAB (here was a bug)
         }
     }
@@ -177,6 +190,8 @@ fn merge_errors(
 
 #[cfg(test)]
 mod tests {
+    use std::ops::Range;
+
     use parser::Edition;
     use test_utils::{assert_eq_text, extract_range};
 
@@ -185,10 +200,9 @@ mod tests {
 
     fn do_check(before: &str, replace_with: &str, reparsed_len: u32) {
         let (range, before) = extract_range(before);
-        let edit = Indel::replace(range, replace_with.to_owned());
         let after = {
             let mut after = before.clone();
-            edit.apply(&mut after);
+            after.replace_range(Range::<usize>::from(range), replace_with);
             after
         };
 
@@ -197,7 +211,8 @@ mod tests {
             let before = SourceFile::parse(&before, Edition::CURRENT);
             let (green, new_errors, range) = incremental_reparse(
                 before.tree().syntax(),
-                &edit,
+                range,
+                replace_with,
                 before.errors.as_deref().unwrap_or_default().iter().cloned(),
                 Edition::CURRENT,
             )

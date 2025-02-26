@@ -4,8 +4,7 @@ error[E0308]: mismatched types
 LL | /     if x {
 LL | |         Err(42)
    | |         ^^^^^^^ expected `()`, found `Result<_, {integer}>`
-LL | |
-LL | |
+...  |
 LL | |     }
    | |_____- expected this to be `()`
    |
@@ -22,8 +21,7 @@ error[E0308]: mismatched types
 LL | /     if true {
 LL | |         1i32
    | |         ^^^^ expected `()`, found `i32`
-LL | |
-LL | |
+...  |
 LL | |     }
    | |_____- expected this to be `()`
    |
@@ -38,8 +36,7 @@ error[E0308]: mismatched types
 LL | /     if x {
 LL | |         Err(42)
    | |         ^^^^^^^ expected `()`, found `Result<_, {integer}>`
-LL | |
-LL | |
+...  |
 LL | |     }
    | |_____- expected this to be `()`
    |

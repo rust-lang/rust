@@ -71,3 +71,9 @@ mod false_negative {
         assert_ne!(addr_x, addr_y);
     }
 }
+
+fn issue_13584() {
+    let s = "Hello, world!\n";
+    let p = &raw const *s;
+    let _ = p as *const i8;
+}

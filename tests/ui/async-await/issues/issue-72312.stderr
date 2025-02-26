@@ -8,10 +8,7 @@ LL |       pub async fn start(&self) {
    |                          let's call the lifetime of this reference `'1`
 ...
 LL | /         require_static(async move {
-LL | |
-LL | |
-LL | |
-LL | |             &self;
+...  |
 LL | |         });
    | |          ^
    | |          |

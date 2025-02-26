@@ -8,7 +8,8 @@ fn main() {
     // CHECK-LABEL: fn main(
     // CHECK: debug a => [[a:_.*]];
     // CHECK: [[slice:_.*]] = copy {{.*}} as &[u32] (PointerCoercion(Unsize, AsCast));
-    // CHECK: assert(const true,
-    // CHECK: [[a]] = const 2_u32;
+    // Disabled due to <https://github.com/rust-lang/rust/issues/130853>
+    // COM: CHECK: assert(const true,
+    // COM: CHECK: [[a]] = const 2_u32;
     let a = (&[1u32, 2, 3] as &[u32])[1];
 }

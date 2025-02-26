@@ -1,4 +1,4 @@
-error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
+error[E0803]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
   --> $DIR/regions-normalize-in-where-clause-list.rs:24:4
    |
 LL | fn bar<'a, 'b>()
@@ -24,4 +24,4 @@ LL | fn bar<'a, 'b>()
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0495`.
+For more information about this error, try `rustc --explain E0803`.

@@ -19,10 +19,10 @@ fn test_alignment_not_affected() {
     //~^ ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:
         let z1: &u8 = &foo.x;
-        //~^ NOTE: Capturing foo[] -> ImmBorrow
+        //~^ NOTE: Capturing foo[] -> Immutable
         let z2: &mut u8 = &mut foo.y;
-        //~^ NOTE: Capturing foo[] -> MutBorrow
-        //~| NOTE: Min Capture foo[] -> MutBorrow
+        //~^ NOTE: Capturing foo[] -> Mutable
+        //~| NOTE: Min Capture foo[] -> Mutable
 
         *z2 = 42;
 
@@ -50,10 +50,10 @@ fn test_alignment_affected() {
     //~^ ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:
         let z1: &String = &foo.x;
-        //~^ NOTE: Capturing foo[] -> ImmBorrow
+        //~^ NOTE: Capturing foo[] -> Immutable
         let z2: &mut u16 = &mut foo.y;
-        //~^ NOTE: Capturing foo[] -> MutBorrow
-        //~| NOTE: Min Capture foo[] -> MutBorrow
+        //~^ NOTE: Capturing foo[] -> Mutable
+        //~| NOTE: Min Capture foo[] -> Mutable
 
 
         *z2 = 42;
@@ -86,7 +86,7 @@ fn test_truncation_when_ref_and_move() {
     //~^ ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:
         println!("{}", foo.x);
-        //~^ NOTE: Capturing foo[] -> ImmBorrow
+        //~^ NOTE: Capturing foo[] -> Immutable
         //~| NOTE: Min Capture foo[] -> ByValue
         //~| NOTE: foo[] used here
         let _z = foo.x;

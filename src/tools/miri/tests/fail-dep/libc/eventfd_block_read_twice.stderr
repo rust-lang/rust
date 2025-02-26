@@ -1,0 +1,41 @@
+error: deadlock: the evaluated program deadlocked
+  --> RUSTLIB/std/src/sys/pal/PLATFORM/thread.rs:LL:CC
+   |
+LL |         let ret = unsafe { libc::pthread_join(id, ptr::null_mut()) };
+   |                                                                  ^ the evaluated program deadlocked
+   |
+   = note: BACKTRACE:
+   = note: inside `std::sys::pal::PLATFORM::thread::Thread::join` at RUSTLIB/std/src/sys/pal/PLATFORM/thread.rs:LL:CC
+   = note: inside `std::thread::JoinInner::<'_, ()>::join` at RUSTLIB/std/src/thread/mod.rs:LL:CC
+   = note: inside `std::thread::JoinHandle::<()>::join` at RUSTLIB/std/src/thread/mod.rs:LL:CC
+note: inside `main`
+  --> tests/fail-dep/libc/eventfd_block_read_twice.rs:LL:CC
+   |
+LL |     thread2.join().unwrap();
+   |     ^^^^^^^^^^^^^^
+
+error: deadlock: the evaluated program deadlocked
+   |
+   = note: the evaluated program deadlocked
+   = note: (no span available)
+   = note: BACKTRACE on thread `unnamed-ID`:
+
+error: deadlock: the evaluated program deadlocked
+  --> tests/fail-dep/libc/eventfd_block_read_twice.rs:LL:CC
+   |
+LL |         let res: i64 = unsafe { libc::read(fd, buf.as_mut_ptr().cast(), 8).try_into().unwrap() };
+   |                                                                          ^ the evaluated program deadlocked
+   |
+   = note: BACKTRACE on thread `unnamed-ID`:
+   = note: inside closure at tests/fail-dep/libc/eventfd_block_read_twice.rs:LL:CC
+
+error: deadlock: the evaluated program deadlocked
+   |
+   = note: the evaluated program deadlocked
+   = note: (no span available)
+   = note: BACKTRACE on thread `unnamed-ID`:
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to 4 previous errors
+

@@ -22,9 +22,8 @@ fn check_ty<T>() {
     check_size_align::<T, 15>();
 }
 
-extern "rust-intrinsic" {
-    fn simd_add<T>(a: T, b: T) -> T;
-}
+#[rustc_intrinsic]
+unsafe fn simd_add<T>(a: T, b: T) -> T;
 
 fn main() {
     check_ty::<u8>();

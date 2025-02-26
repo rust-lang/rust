@@ -2,7 +2,7 @@ use std::iter;
 
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{
-    Applicability, Diag, E0309, E0310, E0311, E0495, Subdiagnostic, struct_span_code_err,
+    Applicability, Diag, E0309, E0310, E0311, E0803, Subdiagnostic, struct_span_code_err,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -12,8 +12,7 @@ use rustc_middle::bug;
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{self, IsSuggestable, Region, Ty, TyCtxt, TypeVisitableExt as _};
-use rustc_span::symbol::kw;
-use rustc_span::{BytePos, ErrorGuaranteed, Span, Symbol};
+use rustc_span::{BytePos, ErrorGuaranteed, Span, Symbol, kw};
 use rustc_type_ir::Upcast as _;
 use tracing::{debug, instrument};
 
@@ -222,7 +221,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             infer::Subtype(ref trace) => RegionOriginNote::WithRequirement {
                 span: trace.cause.span,
                 requirement: ObligationCauseAsDiagArg(trace.cause.clone()),
-                expected_found: self.values_str(trace.values).map(|(e, f, _)| (e, f)),
+                expected_found: self.values_str(trace.values, &trace.cause, err.long_ty_path()),
             }
             .add_to_diag(err),
             infer::Reborrow(span) => {
@@ -488,7 +487,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     &format!("`{sup}: {sub}`"),
                 );
                 // We should only suggest rewriting the `where` clause if the predicate is within that `where` clause
-                if let Some(generics) = self.tcx.hir().get_generics(impl_item_def_id)
+                if let Some(generics) = self.tcx.hir_get_generics(impl_item_def_id)
                     && generics.where_clause_span.contains(span)
                 {
                     self.suggest_copy_trait_method_bounds(
@@ -591,7 +590,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             return;
         };
 
-        let Some(generics) = self.tcx.hir().get_generics(impl_item_def_id) else {
+        let Some(generics) = self.tcx.hir_get_generics(impl_item_def_id) else {
             return;
         };
 
@@ -764,7 +763,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     // Get the `hir::Param` to verify whether it already has any bounds.
                     // We do this to avoid suggesting code that ends up as `T: 'a'b`,
                     // instead we suggest `T: 'a + 'b` in that case.
-                    let hir_generics = self.tcx.hir().get_generics(scope).unwrap();
+                    let hir_generics = self.tcx.hir_get_generics(scope).unwrap();
                     let sugg_span = match hir_generics.bounds_span_for_suggestions(def_id) {
                         Some((span, open_paren_sp)) => Some((span, true, open_paren_sp)),
                         // If `param` corresponds to `Self`, no usable suggestion span.
@@ -790,7 +789,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let lifetime_scope = match sub.kind() {
                     ty::ReStatic => hir::def_id::CRATE_DEF_ID,
                     _ => match self.tcx.is_suitable_region(generic_param_scope, sub) {
-                        Some(info) => info.def_id,
+                        Some(info) => info.scope,
                         None => generic_param_scope,
                     },
                 };
@@ -823,7 +822,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             {
                 // The lifetime found in the `impl` is longer than the one on the RPITIT.
                 // Do not suggest `<Type as Trait>::{opaque}: 'static`.
-            } else if let Some(generics) = self.tcx.hir().get_generics(suggestion_scope) {
+            } else if let Some(generics) = self.tcx.hir_get_generics(suggestion_scope) {
                 let pred = format!("{bound_kind}: {lt_name}");
                 let suggestion = format!("{} {}", generics.add_where_or_trailing_comma(), pred);
                 suggs.push((generics.tail_span_for_predicate_suggestion(), suggestion))
@@ -862,31 +861,15 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     self.add_lt_suggs.push(lt.suggestion(self.new_lt));
                 }
             }
-
-            fn visit_ty(&mut self, ty: &'hir hir::Ty<'hir>) {
-                let hir::TyKind::OpaqueDef(opaque_ty, _) = ty.kind else {
-                    return hir::intravisit::walk_ty(self, ty);
-                };
-                if let Some(&(_, b)) =
-                    opaque_ty.lifetime_mapping.iter().find(|&(a, _)| a.res == self.needle)
-                {
-                    let prev_needle =
-                        std::mem::replace(&mut self.needle, hir::LifetimeName::Param(b));
-                    for bound in opaque_ty.bounds {
-                        self.visit_param_bound(bound);
-                    }
-                    self.needle = prev_needle;
-                }
-            }
         }
 
-        let (lifetime_def_id, lifetime_scope) =
-            match self.tcx.is_suitable_region(generic_param_scope, lifetime) {
-                Some(info) if !lifetime.has_name() => {
-                    (info.bound_region.get_id().unwrap().expect_local(), info.def_id)
-                }
-                _ => return lifetime.get_name_or_anon().to_string(),
-            };
+        let (lifetime_def_id, lifetime_scope) = match self
+            .tcx
+            .is_suitable_region(generic_param_scope, lifetime)
+        {
+            Some(info) if !lifetime.has_name() => (info.region_def_id.expect_local(), info.scope),
+            _ => return lifetime.get_name_or_anon().to_string(),
+        };
 
         let new_lt = {
             let generics = self.tcx.generics_of(lifetime_scope);
@@ -924,7 +907,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             hir::OwnerNode::Synthetic => unreachable!(),
         }
 
-        let ast_generics = self.tcx.hir().get_generics(lifetime_scope).unwrap();
+        let ast_generics = self.tcx.hir_get_generics(lifetime_scope).unwrap();
         let sugg = ast_generics
             .span_for_lifetime_suggestion()
             .map(|span| (span, format!("{new_lt}, ")))
@@ -963,8 +946,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         if let infer::Subtype(ref sup_trace) = sup_origin
             && let infer::Subtype(ref sub_trace) = sub_origin
-            && let Some((sup_expected, sup_found, _)) = self.values_str(sup_trace.values)
-            && let Some((sub_expected, sub_found, _)) = self.values_str(sub_trace.values)
+            && let Some((sup_expected, sup_found)) =
+                self.values_str(sup_trace.values, &sup_trace.cause, err.long_ty_path())
+            && let Some((sub_expected, sub_found)) =
+                self.values_str(sub_trace.values, &sup_trace.cause, err.long_ty_path())
             && sub_expected == sup_expected
             && sub_found == sup_found
         {
@@ -1009,7 +994,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     fn report_inference_failure(&self, var_origin: RegionVariableOrigin) -> Diag<'_> {
         let br_string = |br: ty::BoundRegionKind| {
             let mut s = match br {
-                ty::BrNamed(_, name) => name.to_string(),
+                ty::BoundRegionKind::Named(_, name) => name.to_string(),
                 _ => String::new(),
             };
             if !s.is_empty() {
@@ -1047,7 +1032,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         struct_span_code_err!(
             self.dcx(),
             var_origin.span(),
-            E0495,
+            E0803,
             "cannot infer an appropriate lifetime{} due to conflicting requirements",
             var_description
         )
@@ -1112,14 +1097,13 @@ fn msg_span_from_named_region<'tcx>(
             (text, Some(span))
         }
         ty::ReLateParam(ref fr) => {
-            if !fr.bound_region.is_named()
-                && let Some((ty, _)) =
-                    find_anon_type(tcx, generic_param_scope, region, &fr.bound_region)
+            if !fr.kind.is_named()
+                && let Some((ty, _)) = find_anon_type(tcx, generic_param_scope, region)
             {
                 ("the anonymous lifetime defined here".to_string(), Some(ty.span))
             } else {
-                match fr.bound_region {
-                    ty::BoundRegionKind::BrNamed(param_def_id, name) => {
+                match fr.kind {
+                    ty::LateParamRegionKind::Named(param_def_id, name) => {
                         let span = tcx.def_span(param_def_id);
                         let text = if name == kw::UnderscoreLifetime {
                             "the anonymous lifetime as defined here".to_string()
@@ -1128,7 +1112,7 @@ fn msg_span_from_named_region<'tcx>(
                         };
                         (text, Some(span))
                     }
-                    ty::BrAnon => (
+                    ty::LateParamRegionKind::Anon(_) => (
                         "the anonymous lifetime as defined here".to_string(),
                         Some(tcx.def_span(generic_param_scope)),
                     ),
@@ -1141,11 +1125,11 @@ fn msg_span_from_named_region<'tcx>(
         }
         ty::ReStatic => ("the static lifetime".to_owned(), alt_span),
         ty::RePlaceholder(ty::PlaceholderRegion {
-            bound: ty::BoundRegion { kind: ty::BoundRegionKind::BrNamed(def_id, name), .. },
+            bound: ty::BoundRegion { kind: ty::BoundRegionKind::Named(def_id, name), .. },
             ..
         }) => (format!("the lifetime `{name}` as defined here"), Some(tcx.def_span(def_id))),
         ty::RePlaceholder(ty::PlaceholderRegion {
-            bound: ty::BoundRegion { kind: ty::BoundRegionKind::BrAnon, .. },
+            bound: ty::BoundRegion { kind: ty::BoundRegionKind::Anon, .. },
             ..
         }) => ("an anonymous lifetime".to_owned(), None),
         _ => bug!("{:?}", region),
@@ -1398,7 +1382,7 @@ fn suggest_precise_capturing<'tcx>(
                 new_params += name_as_bounds;
             }
 
-            let Some(generics) = tcx.hir().get_generics(fn_def_id) else {
+            let Some(generics) = tcx.hir_get_generics(fn_def_id) else {
                 // This shouldn't happen, but don't ICE.
                 return;
             };

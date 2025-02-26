@@ -14,14 +14,24 @@ struct u32x4(pub [u32; 4]);
 #[derive(Copy, Clone)]
 struct f32x4(pub [f32; 4]);
 
-extern "rust-intrinsic" {
-    fn simd_eq<T, U>(x: T, y: T) -> U;
-    fn simd_ne<T, U>(x: T, y: T) -> U;
-    fn simd_lt<T, U>(x: T, y: T) -> U;
-    fn simd_le<T, U>(x: T, y: T) -> U;
-    fn simd_gt<T, U>(x: T, y: T) -> U;
-    fn simd_ge<T, U>(x: T, y: T) -> U;
-}
+
+#[rustc_intrinsic]
+unsafe fn simd_eq<T, U>(x: T, y: T) -> U;
+
+#[rustc_intrinsic]
+unsafe fn simd_ne<T, U>(x: T, y: T) -> U;
+
+#[rustc_intrinsic]
+unsafe fn simd_lt<T, U>(x: T, y: T) -> U;
+
+#[rustc_intrinsic]
+unsafe fn simd_le<T, U>(x: T, y: T) -> U;
+
+#[rustc_intrinsic]
+unsafe fn simd_gt<T, U>(x: T, y: T) -> U;
+
+#[rustc_intrinsic]
+unsafe fn simd_ge<T, U>(x: T, y: T) -> U;
 
 macro_rules! cmp {
     ($method: ident($lhs: expr, $rhs: expr)) => {{

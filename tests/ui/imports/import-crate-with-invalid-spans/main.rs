@@ -1,7 +1,6 @@
 //@ run-pass
 //@ aux-build:crate_with_invalid_spans.rs
 
-//@ pretty-expanded FIXME #23616
 
 extern crate crate_with_invalid_spans;
 

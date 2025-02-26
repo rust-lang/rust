@@ -6,8 +6,9 @@ LL |     let u = 5 as bool;
    |
 help: compare with zero instead
    |
-LL |     let u = 5 != 0;
-   |               ~~~~
+LL -     let u = 5 as bool;
+LL +     let u = 5 != 0;
+   |
 
 error[E0054]: cannot cast `i32` as `bool`
   --> $DIR/cast-as-bool.rs:6:13
@@ -17,8 +18,9 @@ LL |     let t = (1 + 2) as bool;
    |
 help: compare with zero instead
    |
-LL |     let t = (1 + 2) != 0;
-   |                     ~~~~
+LL -     let t = (1 + 2) as bool;
+LL +     let t = (1 + 2) != 0;
+   |
 
 error[E0054]: cannot cast `u32` as `bool`
   --> $DIR/cast-as-bool.rs:10:13
@@ -28,8 +30,9 @@ LL |     let _ = 5_u32 as bool;
    |
 help: compare with zero instead
    |
-LL |     let _ = 5_u32 != 0;
-   |                   ~~~~
+LL -     let _ = 5_u32 as bool;
+LL +     let _ = 5_u32 != 0;
+   |
 
 error[E0054]: cannot cast `f64` as `bool`
   --> $DIR/cast-as-bool.rs:13:13
@@ -39,8 +42,9 @@ LL |     let _ = 64.0_f64 as bool;
    |
 help: compare with zero instead
    |
-LL |     let _ = 64.0_f64 != 0;
-   |                      ~~~~
+LL -     let _ = 64.0_f64 as bool;
+LL +     let _ = 64.0_f64 != 0;
+   |
 
 error[E0054]: cannot cast `IntEnum` as `bool`
   --> $DIR/cast-as-bool.rs:24:13
@@ -86,8 +90,9 @@ LL |     let v = "hello" as bool;
    |
 help: consider using the `is_empty` method on `&'static str` to determine if it contains anything
    |
-LL |     let v = !"hello".is_empty();
-   |             +       ~~~~~~~~~~~
+LL -     let v = "hello" as bool;
+LL +     let v = !"hello".is_empty();
+   |
 
 error: aborting due to 11 previous errors
 

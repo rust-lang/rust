@@ -62,9 +62,9 @@ use cranelift_codegen::entity::SecondaryMap;
 use cranelift_codegen::ir::Fact;
 use cranelift_codegen::ir::entities::AnyEntity;
 use cranelift_codegen::write::{FuncWriter, PlainWriter};
-use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::config::{OutputFilenames, OutputType};
+use rustc_target::callconv::FnAbi;
 
 use crate::prelude::*;
 
@@ -76,17 +76,18 @@ pub(crate) struct CommentWriter {
 }
 
 impl CommentWriter {
-    pub(crate) fn new<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Self {
+    pub(crate) fn new<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        instance: Instance<'tcx>,
+        fn_abi: &'tcx FnAbi<'tcx, Ty<'tcx>>,
+    ) -> Self {
         let enabled = should_write_ir(tcx);
         let global_comments = if enabled {
             with_no_trimmed_paths!({
                 vec![
                     format!("symbol {}", tcx.symbol_name(instance).name),
                     format!("instance {:?}", instance),
-                    format!(
-                        "abi {:?}",
-                        RevealAllLayoutCx(tcx).fn_abi_of_instance(instance, ty::List::empty())
-                    ),
+                    format!("abi {:?}", fn_abi),
                     String::new(),
                 ]
             })

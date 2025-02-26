@@ -1,14 +1,14 @@
 use std::assert_matches::assert_matches;
 
 use arrayvec::ArrayVec;
+use rustc_abi::{self as abi, FIRST_VARIANT, FieldIdx};
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_session::config::OptLevel;
 use rustc_span::{DUMMY_SP, Span};
-use rustc_target::abi::{self, FIRST_VARIANT, FieldIdx};
-use tracing::{debug, instrument};
+use tracing::{debug, instrument, trace};
 
 use super::operand::{OperandRef, OperandValue};
 use super::place::PlaceRef;
@@ -93,23 +93,59 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     return;
                 }
 
-                if let OperandValue::Immediate(v) = cg_elem.val {
+                // If `v` is an integer constant whose value is just a single byte repeated N times,
+                // emit a `memset` filling the entire `dest` with that byte.
+                let try_init_all_same = |bx: &mut Bx, v| {
                     let start = dest.val.llval;
                     let size = bx.const_usize(dest.layout.size.bytes());
 
-                    // Use llvm.memset.p0i8.* to initialize all zero arrays
-                    if bx.cx().const_to_opt_u128(v, false) == Some(0) {
-                        let fill = bx.cx().const_u8(0);
-                        bx.memset(start, fill, size, dest.val.align, MemFlags::empty());
-                        return;
+                    // Use llvm.memset.p0i8.* to initialize all same byte arrays
+                    if let Some(int) = bx.cx().const_to_opt_u128(v, false) {
+                        let bytes = &int.to_le_bytes()[..cg_elem.layout.size.bytes_usize()];
+                        let first = bytes[0];
+                        if bytes[1..].iter().all(|&b| b == first) {
+                            let fill = bx.cx().const_u8(first);
+                            bx.memset(start, fill, size, dest.val.align, MemFlags::empty());
+                            return true;
+                        }
                     }
 
                     // Use llvm.memset.p0i8.* to initialize byte arrays
                     let v = bx.from_immediate(v);
                     if bx.cx().val_ty(v) == bx.cx().type_i8() {
                         bx.memset(start, v, size, dest.val.align, MemFlags::empty());
-                        return;
+                        return true;
                     }
+                    false
+                };
+
+                trace!(?cg_elem.val);
+                match cg_elem.val {
+                    OperandValue::Immediate(v) => {
+                        if try_init_all_same(bx, v) {
+                            return;
+                        }
+                    }
+                    OperandValue::Pair(a, b) => {
+                        let a_is_undef = bx.cx().is_undef(a);
+                        match (a_is_undef, bx.cx().is_undef(b)) {
+                            // Can happen for uninit unions
+                            (true, true) => {
+                                // FIXME: can we produce better output here?
+                            }
+                            (false, true) | (true, false) => {
+                                let val = if a_is_undef { b } else { a };
+                                if try_init_all_same(bx, val) {
+                                    return;
+                                }
+                            }
+                            (false, false) => {
+                                // FIXME: if both are the same value, use try_init_all_same
+                            }
+                        }
+                    }
+                    OperandValue::ZeroSized => unreachable!("checked above"),
+                    OperandValue::Ref(..) => {}
                 }
 
                 let count = self
@@ -195,7 +231,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ///
     /// Returns `None` for cases that can't work in that framework, such as for
     /// `Immediate`->`Ref` that needs an `alloc` to get the location.
-    fn codegen_transmute_operand(
+    pub(crate) fn codegen_transmute_operand(
         &mut self,
         bx: &mut Bx,
         operand: OperandRef<'tcx, Bx::Value>,
@@ -203,10 +239,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) -> Option<OperandValue<Bx::Value>> {
         // Check for transmutes that are always UB.
         if operand.layout.size != cast.size
-            || operand.layout.abi.is_uninhabited()
-            || cast.abi.is_uninhabited()
+            || operand.layout.is_uninhabited()
+            || cast.is_uninhabited()
         {
-            if !operand.layout.abi.is_uninhabited() {
+            if !operand.layout.is_uninhabited() {
                 // Since this is known statically and the input could have existed
                 // without already having hit UB, might as well trap for it.
                 bx.abort();
@@ -224,6 +260,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             OperandValue::Ref(source_place_val) => {
                 assert_eq!(source_place_val.llextra, None);
                 assert_matches!(operand_kind, OperandValueKind::Ref);
+                // The existing alignment is part of `source_place_val`,
+                // so that alignment will be used, not `cast`'s.
                 Some(bx.load_operand(source_place_val.with_type(cast)).val)
             }
             OperandValue::ZeroSized => {
@@ -351,10 +389,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         use abi::Primitive::*;
         imm = bx.from_immediate(imm);
 
-        // When scalars are passed by value, there's no metadata recording their
-        // valid ranges. For example, `char`s are passed as just `i32`, with no
-        // way for LLVM to know that they're 0x10FFFF at most. Thus we assume
-        // the range of the input value too, not just the output range.
+        // If we have a scalar, we must already know its range. Either
+        //
+        // 1) It's a parameter with `range` parameter metadata,
+        // 2) It's something we `load`ed with `!range` metadata, or
+        // 3) After a transmute we `assume`d the range (see below).
+        //
+        // That said, last time we tried removing this, it didn't actually help
+        // the rustc-perf results, so might as well keep doing it
+        // <https://github.com/rust-lang/rust/pull/135610#issuecomment-2599275182>
         self.assume_scalar_range(bx, imm, from_scalar, from_backend_ty);
 
         imm = match (from_scalar.primitive(), to_scalar.primitive()) {
@@ -375,7 +418,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.bitcast(int_imm, to_backend_ty)
             }
         };
+
+        // This `assume` remains important for cases like (a conceptual)
+        //    transmute::<u32, NonZeroU32>(x) == 0
+        // since it's never passed to something with parameter metadata (especially
+        // after MIR inlining) so the only way to tell the backend about the
+        // constraint that the `transmute` introduced is to `assume` it.
         self.assume_scalar_range(bx, imm, to_scalar, to_backend_ty);
+
         imm = bx.to_immediate_scalar(imm, to_scalar);
         imm
     }
@@ -387,40 +437,21 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         scalar: abi::Scalar,
         backend_ty: Bx::Type,
     ) {
-        if matches!(self.cx.sess().opts.optimize, OptLevel::No)
-            // For now, the critical niches are all over `Int`eger values.
-            // Should floating-point values or pointers ever get more complex
-            // niches, then this code will probably want to handle them too.
-            || !matches!(scalar.primitive(), abi::Primitive::Int(..))
-            || scalar.is_always_valid(self.cx)
-        {
+        if matches!(self.cx.sess().opts.optimize, OptLevel::No) || scalar.is_always_valid(self.cx) {
             return;
         }
 
-        let abi::WrappingRange { start, end } = scalar.valid_range(self.cx);
-
-        if start <= end {
-            if start > 0 {
-                let low = bx.const_uint_big(backend_ty, start);
-                let cmp = bx.icmp(IntPredicate::IntUGE, imm, low);
-                bx.assume(cmp);
+        match scalar.primitive() {
+            abi::Primitive::Int(..) => {
+                let range = scalar.valid_range(self.cx);
+                bx.assume_integer_range(imm, backend_ty, range);
             }
-
-            let type_max = scalar.size(self.cx).unsigned_int_max();
-            if end < type_max {
-                let high = bx.const_uint_big(backend_ty, end);
-                let cmp = bx.icmp(IntPredicate::IntULE, imm, high);
-                bx.assume(cmp);
+            abi::Primitive::Pointer(abi::AddressSpace::DATA)
+                if !scalar.valid_range(self.cx).contains(0) =>
+            {
+                bx.assume_nonnull(imm);
             }
-        } else {
-            let low = bx.const_uint_big(backend_ty, start);
-            let cmp_low = bx.icmp(IntPredicate::IntUGE, imm, low);
-
-            let high = bx.const_uint_big(backend_ty, end);
-            let cmp_high = bx.icmp(IntPredicate::IntULE, imm, high);
-
-            let or = bx.or(cmp_low, cmp_high);
-            bx.assume(or);
+            abi::Primitive::Pointer(..) | abi::Primitive::Float(..) => {}
         }
     }
 
@@ -474,12 +505,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             ty::FnDef(def_id, args) => {
                                 let instance = ty::Instance::resolve_for_fn_ptr(
                                     bx.tcx(),
-                                    ty::ParamEnv::reveal_all(),
+                                    bx.typing_env(),
                                     def_id,
                                     args,
                                 )
-                                .unwrap()
-                                .polymorphize(bx.cx().tcx());
+                                .unwrap();
                                 OperandValue::Immediate(bx.get_fn_addr(instance))
                             }
                             _ => bug!("{} cannot be reified to a fn ptr", operand.layout.ty),
@@ -493,8 +523,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     def_id,
                                     args,
                                     ty::ClosureKind::FnOnce,
-                                )
-                                .polymorphize(bx.cx().tcx());
+                                );
                                 OperandValue::Immediate(bx.cx().get_fn_addr(instance))
                             }
                             _ => bug!("{} cannot be cast to a fn ptr", operand.layout.ty),
@@ -555,7 +584,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                         assert!(bx.cx().is_backend_immediate(cast));
                         let to_backend_ty = bx.cx().immediate_backend_type(cast);
-                        if operand.layout.abi.is_uninhabited() {
+                        if operand.layout.is_uninhabited() {
                             let val = OperandValue::Immediate(bx.cx().const_poison(to_backend_ty));
                             return OperandRef { val, layout: cast };
                         }
@@ -589,9 +618,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::CopyForDeref(place) => {
                 self.codegen_operand(bx, &mir::Operand::Copy(place))
             }
-            mir::Rvalue::RawPtr(mutability, place) => {
-                let mk_ptr =
-                    move |tcx: TyCtxt<'tcx>, ty: Ty<'tcx>| Ty::new_ptr(tcx, ty, mutability);
+            mir::Rvalue::RawPtr(kind, place) => {
+                let mk_ptr = move |tcx: TyCtxt<'tcx>, ty: Ty<'tcx>| {
+                    Ty::new_ptr(tcx, ty, kind.to_mutbl_lossy())
+                };
                 self.codegen_place_to_pointer(bx, place, mk_ptr)
             }
 
@@ -636,9 +666,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         lhs.layout.ty,
                     ),
 
-                    (OperandValue::Immediate(lhs_val), OperandValue::Immediate(rhs_val)) => {
-                        self.codegen_scalar_binop(bx, op, lhs_val, rhs_val, lhs.layout.ty)
-                    }
+                    (OperandValue::Immediate(lhs_val), OperandValue::Immediate(rhs_val)) => self
+                        .codegen_scalar_binop(
+                            bx,
+                            op,
+                            lhs_val,
+                            rhs_val,
+                            lhs.layout.ty,
+                            rhs.layout.ty,
+                        ),
 
                     _ => bug!(),
                 };
@@ -665,7 +701,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         (OperandValue::Immediate(llval), operand.layout)
                     }
                     mir::UnOp::PtrMetadata => {
-                        assert!(operand.layout.ty.is_unsafe_ptr() || operand.layout.ty.is_ref(),);
+                        assert!(operand.layout.ty.is_raw_ptr() || operand.layout.ty.is_ref(),);
                         let (_, meta) = operand.val.pointer_parts();
                         assert_eq!(operand.layout.fields.count() > 1, meta.is_some());
                         if let Some(meta) = meta {
@@ -709,12 +745,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     mir::NullOp::OffsetOf(fields) => {
                         let val = bx
                             .tcx()
-                            .offset_of_subfield(bx.param_env(), layout, fields.iter())
+                            .offset_of_subfield(bx.typing_env(), layout, fields.iter())
                             .bytes();
                         bx.cx().const_usize(val)
                     }
                     mir::NullOp::UbChecks => {
                         let val = bx.tcx().sess.ub_checks();
+                        bx.cx().const_bool(val)
+                    }
+                    mir::NullOp::ContractChecks => {
+                        let val = bx.tcx().sess.contract_checks();
                         bx.cx().const_bool(val)
                     }
                 };
@@ -727,7 +767,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             mir::Rvalue::ThreadLocalRef(def_id) => {
                 assert!(bx.cx().tcx().is_static(def_id));
-                let layout = bx.layout_of(bx.cx().tcx().static_ptr_ty(def_id));
+                let layout = bx.layout_of(bx.cx().tcx().static_ptr_ty(def_id, bx.typing_env()));
                 let static_ = if !def_id.is_local() && bx.cx().tcx().needs_thread_local_shim(def_id)
                 {
                     let instance = ty::Instance {
@@ -799,6 +839,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                 OperandRef { val: OperandValue::Immediate(val), layout: box_layout }
             }
+            mir::Rvalue::WrapUnsafeBinder(ref operand, binder_ty) => {
+                let operand = self.codegen_operand(bx, operand);
+                let binder_ty = self.monomorphize(binder_ty);
+                let layout = bx.cx().layout_of(binder_ty);
+                OperandRef { val: operand.val, layout }
+            }
         }
     }
 
@@ -849,10 +895,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         op: mir::BinOp,
         lhs: Bx::Value,
         rhs: Bx::Value,
-        input_ty: Ty<'tcx>,
+        lhs_ty: Ty<'tcx>,
+        rhs_ty: Ty<'tcx>,
     ) -> Bx::Value {
-        let is_float = input_ty.is_floating_point();
-        let is_signed = input_ty.is_signed();
+        let is_float = lhs_ty.is_floating_point();
+        let is_signed = lhs_ty.is_signed();
         match op {
             mir::BinOp::Add => {
                 if is_float {
@@ -918,9 +965,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::BinOp::BitAnd => bx.and(lhs, rhs),
             mir::BinOp::BitXor => bx.xor(lhs, rhs),
             mir::BinOp::Offset => {
-                let pointee_type = input_ty
+                let pointee_type = lhs_ty
                     .builtin_deref(true)
-                    .unwrap_or_else(|| bug!("deref of non-pointer {:?}", input_ty));
+                    .unwrap_or_else(|| bug!("deref of non-pointer {:?}", lhs_ty));
                 let pointee_layout = bx.cx().layout_of(pointee_type);
                 if pointee_layout.is_zst() {
                     // `Offset` works in terms of the size of pointee,
@@ -928,7 +975,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     lhs
                 } else {
                     let llty = bx.cx().backend_type(pointee_layout);
-                    bx.inbounds_gep(llty, lhs, &[rhs])
+                    if !rhs_ty.is_signed() {
+                        bx.inbounds_nuw_gep(llty, lhs, &[rhs])
+                    } else {
+                        bx.inbounds_gep(llty, lhs, &[rhs])
+                    }
                 }
             }
             mir::BinOp::Shl | mir::BinOp::ShlUnchecked => {
@@ -1099,7 +1150,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::Discriminant(..) |
             mir::Rvalue::NullaryOp(..) |
             mir::Rvalue::ThreadLocalRef(_) |
-            mir::Rvalue::Use(..) => // (*)
+            mir::Rvalue::Use(..) |
+            mir::Rvalue::WrapUnsafeBinder(..) => // (*)
                 true,
             // Arrays are always aggregates, so it's not worth checking anything here.
             // (If it's really `[(); N]` or `[T; 0]` and we use the place path, fine.)
@@ -1136,17 +1188,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             OperandValueKind::ZeroSized
         } else if self.cx.is_backend_immediate(layout) {
             assert!(!self.cx.is_backend_scalar_pair(layout));
-            OperandValueKind::Immediate(match layout.abi {
-                abi::Abi::Scalar(s) => s,
-                abi::Abi::Vector { element, .. } => element,
+            OperandValueKind::Immediate(match layout.backend_repr {
+                abi::BackendRepr::Scalar(s) => s,
+                abi::BackendRepr::Vector { element, .. } => element,
                 x => span_bug!(self.mir.span, "Couldn't translate {x:?} as backend immediate"),
             })
         } else if self.cx.is_backend_scalar_pair(layout) {
-            let abi::Abi::ScalarPair(s1, s2) = layout.abi else {
+            let abi::BackendRepr::ScalarPair(s1, s2) = layout.backend_repr else {
                 span_bug!(
                     self.mir.span,
                     "Couldn't translate {:?} as backend scalar pair",
-                    layout.abi,
+                    layout.backend_repr,
                 );
             };
             OperandValueKind::Pair(s1, s2)

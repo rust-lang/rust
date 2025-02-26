@@ -22,7 +22,7 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
             .find(|link| *link.original_text == *broken_link.reference)
             .map(|link| ((*link.href).into(), (*link.new_text).into()))
     };
-    let parser = Parser::new_with_broken_link_callback(&dox, main_body_opts(), Some(&mut replacer))
+    let parser = Parser::new_with_broken_link_callback(dox, main_body_opts(), Some(&mut replacer))
         .into_offset_iter();
 
     let mut element_stack = Vec::new();
@@ -44,7 +44,7 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
                 // use the span of the entire attribute as a fallback.
                 let span = source_span_for_markdown_range(
                     tcx,
-                    &dox,
+                    dox,
                     &(backtick_index..backtick_index + 1),
                     &item.attrs.doc_strings,
                 )
@@ -61,12 +61,12 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
                             // "foo` `bar`" -> "`foo` `bar`"
                             if let Some(suggest_index) =
                                 clamp_start(guess, &element.suggestible_ranges)
-                                && can_suggest_backtick(&dox, suggest_index)
+                                && can_suggest_backtick(dox, suggest_index)
                             {
                                 suggest_insertion(
                                     cx,
                                     item,
-                                    &dox,
+                                    dox,
                                     lint,
                                     suggest_index,
                                     '`',
@@ -80,11 +80,11 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
                             // Don't `clamp_end` here, because the suggestion is guaranteed to be inside
                             // an inline code node and we intentionally "break" the inline code here.
                             let suggest_index = guess;
-                            if can_suggest_backtick(&dox, suggest_index) {
+                            if can_suggest_backtick(dox, suggest_index) {
                                 suggest_insertion(
                                     cx,
                                     item,
-                                    &dox,
+                                    dox,
                                     lint,
                                     suggest_index,
                                     '`',
@@ -98,15 +98,15 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
                     if !element.prev_code_guess.is_confident() {
                         // "`foo` bar`" -> "`foo` `bar`"
                         if let Some(guess) =
-                            guess_start_of_code(&dox, element.element_range.start..backtick_index)
+                            guess_start_of_code(dox, element.element_range.start..backtick_index)
                             && let Some(suggest_index) =
                                 clamp_start(guess, &element.suggestible_ranges)
-                            && can_suggest_backtick(&dox, suggest_index)
+                            && can_suggest_backtick(dox, suggest_index)
                         {
                             suggest_insertion(
                                 cx,
                                 item,
-                                &dox,
+                                dox,
                                 lint,
                                 suggest_index,
                                 '`',
@@ -120,16 +120,16 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
                         // if we already suggested opening backtick. For example:
                         // "foo`." -> "`foo`." or "foo`s" -> "`foo`s".
                         if let Some(guess) =
-                            guess_end_of_code(&dox, backtick_index + 1..element.element_range.end)
+                            guess_end_of_code(dox, backtick_index + 1..element.element_range.end)
                             && let Some(suggest_index) =
                                 clamp_end(guess, &element.suggestible_ranges)
-                            && can_suggest_backtick(&dox, suggest_index)
+                            && can_suggest_backtick(dox, suggest_index)
                             && (!help_emitted || suggest_index - backtick_index > 2)
                         {
                             suggest_insertion(
                                 cx,
                                 item,
-                                &dox,
+                                dox,
                                 lint,
                                 suggest_index,
                                 '`',
@@ -148,7 +148,7 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
                     suggest_insertion(
                         cx,
                         item,
-                        &dox,
+                        dox,
                         lint,
                         backtick_index,
                         '\\',
@@ -177,13 +177,13 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
                     let is_confident = text_inside.starts_with(char::is_whitespace)
                         || text_inside.ends_with(char::is_whitespace);
 
-                    if let Some(guess) = guess_end_of_code(&dox, range_inside) {
+                    if let Some(guess) = guess_end_of_code(dox, range_inside) {
                         // Find earlier end of code.
                         element.prev_code_guess = PrevCodeGuess::End { guess, is_confident };
                     } else {
                         // Find alternate start of code.
                         let range_before = element.element_range.start..event_range.start;
-                        if let Some(guess) = guess_start_of_code(&dox, range_before) {
+                        if let Some(guess) = guess_start_of_code(dox, range_before) {
                             element.prev_code_guess = PrevCodeGuess::Start { guess, is_confident };
                         }
                     }
@@ -421,7 +421,7 @@ fn suggest_insertion(
 
     if let Some(span) = source_span_for_markdown_range(
         cx.tcx,
-        &dox,
+        dox,
         &(insert_index..insert_index),
         &item.attrs.doc_strings,
     ) {

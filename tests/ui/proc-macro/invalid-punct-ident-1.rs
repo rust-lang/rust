@@ -1,4 +1,4 @@
-//@ aux-build:invalid-punct-ident.rs
+//@ proc-macro: invalid-punct-ident.rs
 //@ needs-unwind proc macro panics to report errors
 
 #[macro_use]

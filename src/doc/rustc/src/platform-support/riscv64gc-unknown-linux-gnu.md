@@ -122,7 +122,7 @@ limactl shell riscv
 
 Using [Docker (with BuildKit)](https://docs.docker.com/build/buildkit/) the
 [`riscv64/ubuntu`](https://hub.docker.com/r/riscv64/ubuntu) image can be used
-to buiild or run `riscv64gc-unknown-linux-gnu` binaries.
+to build or run `riscv64gc-unknown-linux-gnu` binaries.
 
 ```bash
 docker run --platform linux/riscv64 -ti --rm --mount "type=bind,src=$(pwd),dst=/checkout" riscv64/ubuntu bash

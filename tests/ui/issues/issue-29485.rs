@@ -2,7 +2,7 @@
 #![allow(unused_attributes)]
 //@ aux-build:issue-29485.rs
 //@ needs-unwind
-//@ ignore-emscripten no threads
+//@ needs-threads
 
 #[feature(recover)]
 

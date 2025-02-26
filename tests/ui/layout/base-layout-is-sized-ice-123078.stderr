@@ -23,7 +23,7 @@ LL | const C: S = unsafe { std::mem::transmute(()) };
    |                       ^^^^^^^^^^^^^^^^^^^
    |
    = note: source type: `()` (0 bits)
-   = note: target type: `S` (size can vary because of [u8])
+   = note: target type: `S` (the type `S` has an unknown layout)
 
 error: aborting due to 2 previous errors
 

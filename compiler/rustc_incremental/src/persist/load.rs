@@ -5,13 +5,14 @@ use std::sync::Arc;
 
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::unord::UnordMap;
+use rustc_hashes::Hash64;
 use rustc_middle::dep_graph::{DepGraph, DepsType, SerializedDepGraph, WorkProductMap};
 use rustc_middle::query::on_disk_cache::OnDiskCache;
 use rustc_serialize::Decodable;
 use rustc_serialize::opaque::MemDecoder;
 use rustc_session::Session;
 use rustc_session::config::IncrementalStateAssertion;
-use rustc_span::ErrorGuaranteed;
+use rustc_span::Symbol;
 use tracing::{debug, warn};
 
 use super::data::*;
@@ -154,7 +155,7 @@ fn load_dep_graph(sess: &Session) -> LoadResult<(Arc<SerializedDepGraph>, WorkPr
                 sess.dcx().emit_warn(errors::CorruptFile { path: &path });
                 return LoadResult::DataOutOfDate;
             };
-            let prev_commandline_args_hash = u64::decode(&mut decoder);
+            let prev_commandline_args_hash = Hash64::decode(&mut decoder);
 
             if prev_commandline_args_hash != expected_hash {
                 if sess.opts.unstable_opts.incremental_info {
@@ -182,7 +183,7 @@ fn load_dep_graph(sess: &Session) -> LoadResult<(Arc<SerializedDepGraph>, WorkPr
 /// If we are not in incremental compilation mode, returns `None`.
 /// Otherwise, tries to load the query result cache from disk,
 /// creating an empty cache if it could not be loaded.
-pub fn load_query_result_cache(sess: &Session) -> Option<OnDiskCache<'_>> {
+pub fn load_query_result_cache(sess: &Session) -> Option<OnDiskCache> {
     if sess.opts.incremental.is_none() {
         return None;
     }
@@ -194,19 +195,19 @@ pub fn load_query_result_cache(sess: &Session) -> Option<OnDiskCache<'_>> {
         LoadResult::Ok { data: (bytes, start_pos) } => {
             let cache = OnDiskCache::new(sess, bytes, start_pos).unwrap_or_else(|()| {
                 sess.dcx().emit_warn(errors::CorruptFile { path: &path });
-                OnDiskCache::new_empty(sess.source_map())
+                OnDiskCache::new_empty()
             });
             Some(cache)
         }
-        _ => Some(OnDiskCache::new_empty(sess.source_map())),
+        _ => Some(OnDiskCache::new_empty()),
     }
 }
 
 /// Setups the dependency graph by loading an existing graph from disk and set up streaming of a
 /// new graph to an incremental session directory.
-pub fn setup_dep_graph(sess: &Session) -> Result<DepGraph, ErrorGuaranteed> {
+pub fn setup_dep_graph(sess: &Session, crate_name: Symbol) -> DepGraph {
     // `load_dep_graph` can only be called after `prepare_session_directory`.
-    prepare_session_directory(sess)?;
+    prepare_session_directory(sess, crate_name);
 
     let res = sess.opts.build_dep_graph().then(|| load_dep_graph(sess));
 
@@ -222,10 +223,9 @@ pub fn setup_dep_graph(sess: &Session) -> Result<DepGraph, ErrorGuaranteed> {
         });
     }
 
-    Ok(res
-        .and_then(|result| {
-            let (prev_graph, prev_work_products) = result.open(sess);
-            build_dep_graph(sess, prev_graph, prev_work_products)
-        })
-        .unwrap_or_else(DepGraph::new_disabled))
+    res.and_then(|result| {
+        let (prev_graph, prev_work_products) = result.open(sess);
+        build_dep_graph(sess, prev_graph, prev_work_products)
+    })
+    .unwrap_or_else(DepGraph::new_disabled)
 }

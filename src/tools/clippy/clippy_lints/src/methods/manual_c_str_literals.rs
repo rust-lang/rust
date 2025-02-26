@@ -1,6 +1,6 @@
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::get_parent_expr;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet;
 use rustc_ast::{LitKind, StrStyle};
 use rustc_errors::Applicability;
@@ -187,7 +187,7 @@ fn peel_ptr_cast<'tcx>(e: &'tcx Expr<'tcx>) -> &'tcx Expr<'tcx> {
 ///      ^ given this `x` expression, returns the `foo(...)` expression
 fn peel_ptr_cast_ancestors<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> &'tcx Expr<'tcx> {
     let mut prev = e;
-    for (_, node) in cx.tcx.hir().parent_iter(e.hir_id) {
+    for (_, node) in cx.tcx.hir_parent_iter(e.hir_id) {
         if let Node::Expr(e) = node
             && get_cast_target(e).is_some()
         {

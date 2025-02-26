@@ -20,13 +20,9 @@ const PAT_TOP_FIRST: TokenSet = PATTERN_FIRST.union(TokenSet::new(&[T![|]]));
 const RANGE_PAT_END_FIRST: TokenSet =
     expressions::LITERAL_FIRST.union(paths::PATH_FIRST).union(TokenSet::new(&[T![-], T![const]]));
 
+/// Parses a pattern list separated by pipes `|`.
 pub(crate) fn pattern(p: &mut Parser<'_>) {
     pattern_r(p, PAT_RECOVERY_SET);
-}
-
-/// Parses a pattern list separated by pipes `|`.
-pub(super) fn pattern_top(p: &mut Parser<'_>) {
-    pattern_top_r(p, PAT_RECOVERY_SET);
 }
 
 pub(crate) fn pattern_single(p: &mut Parser<'_>) {
@@ -36,12 +32,8 @@ pub(crate) fn pattern_single(p: &mut Parser<'_>) {
 /// Parses a pattern list separated by pipes `|`
 /// using the given `recovery_set`.
 pub(super) fn pattern_top_r(p: &mut Parser<'_>, recovery_set: TokenSet) {
-    p.eat(T![|]);
     pattern_r(p, recovery_set);
 }
-
-/// Parses a pattern list separated by pipes `|`, with no leading `|`,using the
-/// given `recovery_set`.
 
 // test or_pattern
 // fn main() {
@@ -52,11 +44,15 @@ pub(super) fn pattern_top_r(p: &mut Parser<'_>, recovery_set: TokenSet) {
 //         [_ | _,] => (),
 //     }
 // }
+/// Parses a pattern list separated by pipes `|`, with no leading `|`,using the
+/// given `recovery_set`.
 fn pattern_r(p: &mut Parser<'_>, recovery_set: TokenSet) {
     let m = p.start();
+    let has_leading_pipe = p.eat(T![|]);
+
     pattern_single_r(p, recovery_set);
 
-    if !p.at(T![|]) {
+    if !p.at(T![|]) && !has_leading_pipe {
         m.abandon(p);
         return;
     }
@@ -319,6 +315,8 @@ fn record_pat_field(p: &mut Parser<'_>) {
         IDENT | INT_NUMBER if p.nth(1) == T![:] => {
             name_ref_or_index(p);
             p.bump(T![:]);
+            // test record_field_pat_leading_or
+            // fn foo() { let R { a: | 1 | 2 } = 0; }
             pattern(p);
         }
         // test_err record_pat_field_eq_recovery
@@ -438,7 +436,7 @@ fn tuple_pat(p: &mut Parser<'_>) -> CompletedMarker {
         }
         has_rest |= p.at(T![..]);
 
-        pattern_top(p);
+        pattern(p);
         if !p.at(T![')']) {
             has_comma = true;
             p.expect(T![,]);
@@ -465,7 +463,7 @@ fn slice_pat(p: &mut Parser<'_>) -> CompletedMarker {
 
 fn pat_list(p: &mut Parser<'_>, ket: SyntaxKind) {
     while !p.at(EOF) && !p.at(ket) {
-        pattern_top(p);
+        pattern(p);
         if !p.eat(T![,]) {
             if p.at_ts(PAT_TOP_FIRST) {
                 p.error(format!("expected {:?}, got {:?}", T![,], p.current()));

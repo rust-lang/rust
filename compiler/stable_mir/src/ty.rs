@@ -63,6 +63,11 @@ impl Ty {
         Ty::from_rigid_kind(RigidTy::Coroutine(def, args, mov))
     }
 
+    /// Create a new closure type.
+    pub fn new_coroutine_closure(def: CoroutineClosureDef, args: GenericArgs) -> Ty {
+        Ty::from_rigid_kind(RigidTy::CoroutineClosure(def, args))
+    }
+
     /// Create a new box type that represents `Box<T>`, for the given inner type `T`.
     pub fn new_box(inner_ty: Ty) -> Ty {
         with(|cx| cx.new_box_ty(inner_ty))
@@ -271,6 +276,14 @@ impl Span {
     pub fn get_lines(&self) -> LineInfo {
         with(|c| c.get_lines(self))
     }
+
+    /// Return the span location to be printed in diagnostic messages.
+    ///
+    /// This may leak local file paths and should not be used to build artifacts that may be
+    /// distributed.
+    pub fn diagnostic(&self) -> String {
+        with(|c| c.span_to_string(*self))
+    }
 }
 
 #[derive(Clone, Copy, Debug, Serialize)]
@@ -476,7 +489,7 @@ impl TyKind {
     /// Returns the type and mutability of `*ty` for builtin types.
     ///
     /// The parameter `explicit` indicates if this is an *explicit* dereference.
-    /// Some types -- notably unsafe ptrs -- can only be dereferenced explicitly.
+    /// Some types -- notably raw ptrs -- can only be dereferenced explicitly.
     pub fn builtin_deref(&self, explicit: bool) -> Option<TypeAndMut> {
         match self.rigid()? {
             RigidTy::Adt(def, args) if def.is_box() => {
@@ -542,6 +555,7 @@ pub enum RigidTy {
     Closure(ClosureDef, GenericArgs),
     // FIXME(stable_mir): Movability here is redundant
     Coroutine(CoroutineDef, GenericArgs, Movability),
+    CoroutineClosure(CoroutineClosureDef, GenericArgs),
     Dynamic(Vec<Binder<ExistentialPredicate>>, Region, DynKind),
     Never,
     Tuple(Vec<Ty>),
@@ -734,6 +748,11 @@ crate_def! {
 
 crate_def! {
     #[derive(Serialize)]
+    pub CoroutineClosureDef;
+}
+
+crate_def! {
+    #[derive(Serialize)]
     pub ParamDef;
 }
 
@@ -790,7 +809,7 @@ impl AdtDef {
     }
 
     /// Iterate over the variants in this ADT.
-    pub fn variants_iter(&self) -> impl Iterator<Item = VariantDef> + '_ {
+    pub fn variants_iter(&self) -> impl Iterator<Item = VariantDef> {
         (0..self.num_variants())
             .map(|idx| VariantDef { idx: VariantIdx::to_val(idx), adt_def: *self })
     }
@@ -1058,6 +1077,7 @@ pub enum Abi {
     PtxKernel,
     Msp430Interrupt,
     X86Interrupt,
+    GpuKernel,
     EfiApi,
     AvrInterrupt,
     AvrNonBlockingInterrupt,

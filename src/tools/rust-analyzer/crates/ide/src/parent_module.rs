@@ -15,13 +15,11 @@ use crate::NavigationTarget;
 //
 // Navigates to the parent module of the current module.
 //
-// |===
-// | Editor  | Action Name
+// | Editor  | Action Name |
+// |---------|-------------|
+// | VS Code | **rust-analyzer: Locate parent module** |
 //
-// | VS Code | **rust-analyzer: Locate parent module**
-// |===
-//
-// image::https://user-images.githubusercontent.com/48062697/113065580-04c21800-91b1-11eb-9a32-00086161c0bd.gif[]
+// ![Parent Module](https://user-images.githubusercontent.com/48062697/113065580-04c21800-91b1-11eb-9a32-00086161c0bd.gif)
 
 /// This returns `Vec` because a module may be included from several places.
 pub(crate) fn parent_module(db: &RootDatabase, position: FilePosition) -> Vec<NavigationTarget> {
@@ -34,7 +32,7 @@ pub(crate) fn parent_module(db: &RootDatabase, position: FilePosition) -> Vec<Na
     if let Some(m) = &module {
         if !m
             .item_list()
-            .map_or(false, |it| it.syntax().text_range().contains_inclusive(position.offset))
+            .is_some_and(|it| it.syntax().text_range().contains_inclusive(position.offset))
         {
             cov_mark::hit!(test_resolve_parent_module_on_module_decl);
             module = m.syntax().ancestors().skip(1).find_map(ast::Module::cast);
@@ -70,7 +68,7 @@ mod tests {
 
     use crate::fixture;
 
-    fn check(ra_fixture: &str) {
+    fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         let (analysis, position, expected) = fixture::annotations(ra_fixture);
         let navs = analysis.parent_module(position).unwrap();
         let navs = navs

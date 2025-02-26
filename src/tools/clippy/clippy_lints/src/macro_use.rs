@@ -1,10 +1,9 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::snippet;
 use hir::def::{DefKind, Res};
-use rustc_ast::ast;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
-use rustc_hir as hir;
+use rustc_hir::{self as hir, AmbigArg};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::impl_lint_pass;
 use rustc_span::edition::Edition;
@@ -95,7 +94,7 @@ impl LateLintPass<'_> for MacroUseImports {
         {
             for kid in cx.tcx.module_children(id) {
                 if let Res::Def(DefKind::Macro(_mac_type), mac_id) = kid.res {
-                    let span = mac_attr.span;
+                    let span = mac_attr.span();
                     let def_path = cx.tcx.def_path_str(mac_id);
                     self.imports.push((def_path, span, hir_id));
                 }
@@ -104,9 +103,9 @@ impl LateLintPass<'_> for MacroUseImports {
             self.push_unique_macro_pat_ty(cx, item.span);
         }
     }
-    fn check_attribute(&mut self, cx: &LateContext<'_>, attr: &ast::Attribute) {
-        if attr.span.from_expansion() {
-            self.push_unique_macro(cx, attr.span);
+    fn check_attribute(&mut self, cx: &LateContext<'_>, attr: &hir::Attribute) {
+        if attr.span().from_expansion() {
+            self.push_unique_macro(cx, attr.span());
         }
     }
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &hir::Expr<'_>) {
@@ -124,7 +123,7 @@ impl LateLintPass<'_> for MacroUseImports {
             self.push_unique_macro_pat_ty(cx, pat.span);
         }
     }
-    fn check_ty(&mut self, cx: &LateContext<'_>, ty: &hir::Ty<'_>) {
+    fn check_ty(&mut self, cx: &LateContext<'_>, ty: &hir::Ty<'_, AmbigArg>) {
         if ty.span.from_expansion() {
             self.push_unique_macro_pat_ty(cx, ty.span);
         }

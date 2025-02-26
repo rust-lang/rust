@@ -3,9 +3,9 @@
 // of terminologies might not be relevant in the context of Clippy. Note that its behavior might
 // differ from the time of `rustc` even if the name stays the same.
 
-use clippy_config::msrvs::{self, Msrv};
+use crate::msrvs::{self, Msrv};
 use hir::LangItem;
-use rustc_attr::StableSince;
+use rustc_attr_parsing::{RustcVersion, StableSince};
 use rustc_const_eval::check_consts::ConstCx;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -29,13 +29,14 @@ pub fn is_min_const_fn<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, msrv: &Msrv) 
     let def_id = body.source.def_id();
 
     for local in &body.local_decls {
-        check_ty(tcx, local.ty, local.source_info.span)?;
+        check_ty(tcx, local.ty, local.source_info.span, msrv)?;
     }
     // impl trait is gone in MIR, so check the return type manually
     check_ty(
         tcx,
         tcx.fn_sig(def_id).instantiate_identity().output().skip_binder(),
         body.local_decls.iter().next().unwrap().source_info.span,
+        msrv,
     )?;
 
     for bb in &*body.basic_blocks {
@@ -51,7 +52,7 @@ pub fn is_min_const_fn<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, msrv: &Msrv) 
     Ok(())
 }
 
-fn check_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span) -> McfResult {
+fn check_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span, msrv: &Msrv) -> McfResult {
     for arg in ty.walk() {
         let ty = match arg.unpack() {
             GenericArgKind::Type(ty) => ty,
@@ -62,7 +63,7 @@ fn check_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span) -> McfResult {
         };
 
         match ty.kind() {
-            ty::Ref(_, _, hir::Mutability::Mut) => {
+            ty::Ref(_, _, hir::Mutability::Mut) if !msrv.meets(msrvs::CONST_MUT_REFS) => {
                 return Err((span, "mutable references in const fn are unstable".into()));
             },
             ty::Alias(ty::Opaque, ..) => return Err((span, "`impl Trait` in const fn is unstable".into())),
@@ -115,6 +116,7 @@ fn check_rvalue<'tcx>(
         Rvalue::CopyForDeref(place) => check_place(tcx, *place, span, body, msrv),
         Rvalue::Repeat(operand, _)
         | Rvalue::Use(operand)
+        | Rvalue::WrapUnsafeBinder(operand, _)
         | Rvalue::Cast(
             CastKind::PointerWithExposedProvenance
             | CastKind::IntToInt
@@ -142,7 +144,7 @@ fn check_rvalue<'tcx>(
                 // We cannot allow this for now.
                 return Err((span, "unsizing casts are only allowed for references right now".into()));
             };
-            let unsized_ty = tcx.struct_tail_for_codegen(pointee_ty, tcx.param_env(def_id));
+            let unsized_ty = tcx.struct_tail_for_codegen(pointee_ty, ty::TypingEnv::post_analysis(tcx, def_id));
             if let ty::Slice(_) | ty::Str = unsized_ty.kind() {
                 check_operand(tcx, op, span, body, msrv)?;
                 // Casting/coercing things to slices is fine.
@@ -177,7 +179,10 @@ fn check_rvalue<'tcx>(
                 ))
             }
         },
-        Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(_) | NullOp::UbChecks, _)
+        Rvalue::NullaryOp(
+            NullOp::SizeOf | NullOp::AlignOf | NullOp::OffsetOf(_) | NullOp::UbChecks | NullOp::ContractChecks,
+            _,
+        )
         | Rvalue::ShallowInitBox(_, _) => Ok(()),
         Rvalue::UnaryOp(_, operand) => {
             let ty = operand.ty(body, tcx);
@@ -233,6 +238,7 @@ fn check_statement<'tcx>(
         | StatementKind::PlaceMention(..)
         | StatementKind::Coverage(..)
         | StatementKind::ConstEvalCounter
+        | StatementKind::BackwardIncompatibleDropHint { .. }
         | StatementKind::Nop => Ok(()),
     }
 }
@@ -287,7 +293,8 @@ fn check_place<'tcx>(tcx: TyCtxt<'tcx>, place: Place<'tcx>, span: Span, body: &B
             | ProjectionElem::Downcast(..)
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Subtype(_)
-            | ProjectionElem::Index(_) => {},
+            | ProjectionElem::Index(_)
+            | ProjectionElem::UnwrapUnsafeBinder(_) => {},
         }
     }
 
@@ -380,47 +387,43 @@ fn check_terminator<'tcx>(
 fn is_stable_const_fn(tcx: TyCtxt<'_>, def_id: DefId, msrv: &Msrv) -> bool {
     tcx.is_const_fn(def_id)
         && tcx.lookup_const_stability(def_id).is_none_or(|const_stab| {
-            if let rustc_attr::StabilityLevel::Stable { since, .. } = const_stab.level {
+            if let rustc_attr_parsing::StabilityLevel::Stable { since, .. } = const_stab.level {
                 // Checking MSRV is manually necessary because `rustc` has no such concept. This entire
                 // function could be removed if `rustc` provided a MSRV-aware version of `is_stable_const_fn`.
                 // as a part of an unimplemented MSRV check https://github.com/rust-lang/rust/issues/65262.
 
                 let const_stab_rust_version = match since {
                     StableSince::Version(version) => version,
-                    StableSince::Current => rustc_session::RustcVersion::CURRENT,
+                    StableSince::Current => RustcVersion::CURRENT,
                     StableSince::Err => return false,
                 };
 
                 msrv.meets(const_stab_rust_version)
             } else {
-                // Unstable const fn, check if the feature is enabled. We need both the regular stability
-                // feature and (if set) the const stability feature to const-call this function.
-                let stab = tcx.lookup_stability(def_id);
-                let is_enabled = stab.is_some_and(|s| s.is_stable() || tcx.features().enabled(s.feature))
-                    && const_stab.feature.is_none_or(|f| tcx.features().enabled(f));
-                is_enabled && msrv.current().is_none()
+                // Unstable const fn, check if the feature is enabled.
+                tcx.features().enabled(const_stab.feature) && msrv.current().is_none()
             }
         })
 }
 
 fn is_ty_const_destruct<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, body: &Body<'tcx>) -> bool {
-    // FIXME(effects, fee1-dead) revert to const destruct once it works again
+    // FIXME(const_trait_impl, fee1-dead) revert to const destruct once it works again
     #[expect(unused)]
     fn is_ty_const_destruct_unused<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, body: &Body<'tcx>) -> bool {
-        // Avoid selecting for simple cases, such as builtin types.
-        if ty::util::is_trivially_const_drop(ty) {
-            return true;
+        // If this doesn't need drop at all, then don't select `~const Destruct`.
+        if !ty.needs_drop(tcx, body.typing_env(tcx)) {
+            return false;
         }
 
-        // FIXME(effects) constness
+        let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(body.typing_env(tcx));
+        // FIXME(const_trait_impl) constness
         let obligation = Obligation::new(
             tcx,
             ObligationCause::dummy_with_span(body.span),
-            ConstCx::new(tcx, body).param_env,
+            param_env,
             TraitRef::new(tcx, tcx.require_lang_item(LangItem::Destruct, Some(body.span)), [ty]),
         );
 
-        let infcx = tcx.infer_ctxt().build();
         let mut selcx = SelectionContext::new(&infcx);
         let Some(impl_src) = selcx.select(&obligation).ok().flatten() else {
             return false;
@@ -438,5 +441,5 @@ fn is_ty_const_destruct<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, body: &Body<'tcx>
         ocx.select_all_or_error().is_empty()
     }
 
-    !ty.needs_drop(tcx, ConstCx::new(tcx, body).param_env)
+    !ty.needs_drop(tcx, ConstCx::new(tcx, body).typing_env)
 }

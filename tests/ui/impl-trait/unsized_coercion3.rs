@@ -9,7 +9,6 @@ trait Trait {}
 impl Trait for u32 {}
 
 fn hello() -> Box<impl Trait + ?Sized> {
-    //[next]~^ ERROR: the trait bound `dyn Send: Trait` is not satisfied
     if true {
         let x = hello();
         //[next]~^ ERROR: the trait bound `dyn Send: Trait` is not satisfied
@@ -17,7 +16,6 @@ fn hello() -> Box<impl Trait + ?Sized> {
         //[old]~^ ERROR: the size for values of type `impl Trait + ?Sized` cannot be know
     }
     Box::new(1u32)
-    //[next]~^ ERROR: mismatched types
 }
 
 fn main() {}

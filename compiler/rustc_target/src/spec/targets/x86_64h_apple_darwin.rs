@@ -1,5 +1,5 @@
 use crate::spec::base::apple::{Arch, TargetAbi, base};
-use crate::spec::{FramePointer, SanitizerSet, Target, TargetOptions};
+use crate::spec::{FramePointer, SanitizerSet, Target, TargetMetadata, TargetOptions};
 
 pub(crate) fn target() -> Target {
     let (mut opts, llvm_target, arch) = base("macos", Arch::X86_64h, TargetAbi::Normal);
@@ -28,7 +28,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target,
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("x86_64 Apple macOS with Intel Haswell+".into()),
             tier: Some(3),
             host_tools: Some(true),

@@ -4,19 +4,18 @@ use std::borrow::Cow;
 use std::{convert, fmt, mem, ops};
 
 use either::Either;
-use rustc_ast_ir::Mutability;
+use rustc_abi::{Align, Size, VariantIdx, WrappingRange};
 use rustc_data_structures::sync::Lock;
 use rustc_errors::{DiagArgName, DiagArgValue, DiagMessage, ErrorGuaranteed, IntoDiagArg};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_session::CtfeBacktrace;
 use rustc_span::def_id::DefId;
 use rustc_span::{DUMMY_SP, Span, Symbol};
-use rustc_target::abi::{Align, Size, VariantIdx, WrappingRange, call};
 
 use super::{AllocId, AllocRange, ConstAllocation, Pointer, Scalar};
 use crate::error;
 use crate::mir::{ConstAlloc, ConstValue};
-use crate::ty::{self, Ty, TyCtxt, ValTree, layout, tls};
+use crate::ty::{self, Mutability, Ty, TyCtxt, ValTree, layout, tls};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
 pub enum ErrorHandled {
@@ -28,10 +27,10 @@ pub enum ErrorHandled {
     TooGeneric(Span),
 }
 
-impl From<ErrorGuaranteed> for ErrorHandled {
+impl From<ReportedErrorInfo> for ErrorHandled {
     #[inline]
-    fn from(error: ErrorGuaranteed) -> ErrorHandled {
-        ErrorHandled::Reported(error.into(), DUMMY_SP)
+    fn from(error: ReportedErrorInfo) -> ErrorHandled {
+        ErrorHandled::Reported(error, DUMMY_SP)
     }
 }
 
@@ -46,7 +45,7 @@ impl ErrorHandled {
     pub fn emit_note(&self, tcx: TyCtxt<'_>) {
         match self {
             &ErrorHandled::Reported(err, span) => {
-                if !err.is_tainted_by_errors && !span.is_dummy() {
+                if !err.allowed_in_infallible && !span.is_dummy() {
                     tcx.dcx().emit_note(error::ErroneousConstant { span });
                 }
             }
@@ -58,34 +57,42 @@ impl ErrorHandled {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
 pub struct ReportedErrorInfo {
     error: ErrorGuaranteed,
-    is_tainted_by_errors: bool,
+    /// Whether this error is allowed to show up even in otherwise "infallible" promoteds.
+    /// This is for things like overflows during size computation or resource exhaustion.
+    allowed_in_infallible: bool,
 }
 
 impl ReportedErrorInfo {
     #[inline]
-    pub fn tainted_by_errors(error: ErrorGuaranteed) -> ReportedErrorInfo {
-        ReportedErrorInfo { is_tainted_by_errors: true, error }
+    pub fn const_eval_error(error: ErrorGuaranteed) -> ReportedErrorInfo {
+        ReportedErrorInfo { allowed_in_infallible: false, error }
     }
-    pub fn is_tainted_by_errors(&self) -> bool {
-        self.is_tainted_by_errors
-    }
-}
 
-impl From<ErrorGuaranteed> for ReportedErrorInfo {
+    /// Use this when the error that led to this is *not* a const-eval error
+    /// (e.g., a layout or type checking error).
     #[inline]
-    fn from(error: ErrorGuaranteed) -> ReportedErrorInfo {
-        ReportedErrorInfo { is_tainted_by_errors: false, error }
+    pub fn non_const_eval_error(error: ErrorGuaranteed) -> ReportedErrorInfo {
+        ReportedErrorInfo { allowed_in_infallible: true, error }
     }
-}
 
-impl Into<ErrorGuaranteed> for ReportedErrorInfo {
+    /// Use this when the error that led to this *is* a const-eval error, but
+    /// we do allow it to occur in infallible constants (e.g., resource exhaustion).
     #[inline]
-    fn into(self) -> ErrorGuaranteed {
-        self.error
+    pub fn allowed_in_infallible(error: ErrorGuaranteed) -> ReportedErrorInfo {
+        ReportedErrorInfo { allowed_in_infallible: true, error }
+    }
+
+    pub fn is_allowed_in_infallible(&self) -> bool {
+        self.allowed_in_infallible
     }
 }
 
-TrivialTypeTraversalImpls! { ErrorHandled }
+impl From<ReportedErrorInfo> for ErrorGuaranteed {
+    #[inline]
+    fn from(val: ReportedErrorInfo) -> Self {
+        val.error
+    }
+}
 
 pub type EvalToAllocationRawResult<'tcx> = Result<ConstAlloc<'tcx>, ErrorHandled>;
 pub type EvalStaticInitializerRawResult<'tcx> = Result<ConstAllocation<'tcx>, ErrorHandled>;
@@ -177,12 +184,6 @@ fn print_backtrace(backtrace: &Backtrace) {
     eprintln!("\n\nAn error occurred in the MIR interpreter:\n{backtrace}");
 }
 
-impl From<ErrorGuaranteed> for InterpErrorInfo<'_> {
-    fn from(err: ErrorGuaranteed) -> Self {
-        InterpErrorKind::InvalidProgram(InvalidProgramInfo::AlreadyReported(err.into())).into()
-    }
-}
-
 impl From<ErrorHandled> for InterpErrorInfo<'_> {
     fn from(err: ErrorHandled) -> Self {
         InterpErrorKind::InvalidProgram(match err {
@@ -214,10 +215,6 @@ pub enum InvalidProgramInfo<'tcx> {
     AlreadyReported(ReportedErrorInfo),
     /// An error occurred during layout computation.
     Layout(layout::LayoutError<'tcx>),
-    /// An error occurred during FnAbi computation: the passed --target lacks FFI support
-    /// (which unfortunately typeck does not reject).
-    /// Not using `FnAbiError` as that contains a nested `LayoutError`.
-    FnAbiAdjustForForeignAbi(call::AdjustForForeignAbiError),
 }
 
 /// Details of why a pointer had to be in-bounds.
@@ -388,7 +385,7 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     /// A discriminant of an uninhabited enum variant is written.
     UninhabitedEnumVariantWritten(VariantIdx),
     /// An uninhabited enum variant is projected.
-    UninhabitedEnumVariantRead(VariantIdx),
+    UninhabitedEnumVariantRead(Option<VariantIdx>),
     /// Trying to set discriminant to the niched variant, but the value does not match.
     InvalidNichedEnumVariantWritten { enum_ty: Ty<'tcx> },
     /// ABI-incompatible argument types.

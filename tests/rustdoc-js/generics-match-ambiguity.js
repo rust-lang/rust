@@ -60,18 +60,14 @@ const EXPECTED = [
         ],
     },
     {
+        // strict generics matching; W2<i32, u32> doesn't match W2<W3<i32, u32>>,
+        // even though W2<i32> works just fine (ignoring the W3)
         'query': 'W2<i32>, W2<i32, u32>',
-        'others': [
-            { 'path': 'generics_match_ambiguity', 'name': 'baag' },
-            { 'path': 'generics_match_ambiguity', 'name': 'baah' },
-        ],
+        'others': [],
     },
     {
         'query': 'W2<i32, u32>, W2<i32>',
-        'others': [
-            { 'path': 'generics_match_ambiguity', 'name': 'baag' },
-            { 'path': 'generics_match_ambiguity', 'name': 'baah' },
-        ],
+        'others': [],
     },
     {
         'query': 'W2<i32>, W3<i32, u32>',

@@ -2,9 +2,9 @@
 
 #![feature(repr_simd, intrinsics)]
 
-extern "rust-intrinsic" {
-    fn simd_as<T, U>(x: T) -> U;
-}
+
+#[rustc_intrinsic]
+unsafe fn simd_as<T, U>(x: T) -> U;
 
 #[derive(Copy, Clone)]
 #[repr(simd)]

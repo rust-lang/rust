@@ -1,4 +1,4 @@
-error[E0658]: use of unstable library feature 'cfg_accessible': `cfg_accessible` is not fully implemented
+error[E0658]: use of unstable library feature `cfg_accessible`: `cfg_accessible` is not fully implemented
   --> $DIR/cfg_accessible-unstable.rs:1:3
    |
 LL | #[cfg_accessible(std)]

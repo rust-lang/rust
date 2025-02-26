@@ -16,7 +16,6 @@
 +     scope 3 (inlined Pin::<&mut {coroutine@$DIR/inline_coroutine.rs:20:5: 20:8}>::new) {
 +         debug pointer => _3;
 +         scope 4 (inlined Pin::<&mut {coroutine@$DIR/inline_coroutine.rs:20:5: 20:8}>::new_unchecked) {
-+             debug pointer => _3;
 +         }
 +     }
 +     scope 5 (inlined g::{closure#0}) {

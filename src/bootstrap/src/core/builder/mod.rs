@@ -1,9 +1,7 @@
-mod cargo;
-
 use std::any::{Any, type_name};
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
-use std::fmt::{Debug, Write};
+use std::fmt::{self, Debug, Write};
 use std::hash::Hash;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
@@ -12,8 +10,10 @@ use std::time::{Duration, Instant};
 use std::{env, fs};
 
 use clap::ValueEnum;
+#[cfg(feature = "tracing")]
+use tracing::instrument;
 
-pub use self::cargo::Cargo;
+pub use self::cargo::{Cargo, cargo_profile_var};
 pub use crate::Compiler;
 use crate::core::build_steps::{
     check, clean, clippy, compile, dist, doc, gcc, install, llvm, run, setup, test, tool, vendor,
@@ -23,7 +23,9 @@ use crate::core::config::{DryRun, TargetSelection};
 use crate::utils::cache::Cache;
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{self, LldThreads, add_dylib_path, exe, libdir, linker_args, t};
-use crate::{Build, Crate};
+use crate::{Build, Crate, trace};
+
+mod cargo;
 
 #[cfg(test)]
 mod tests;
@@ -127,10 +129,14 @@ impl RunConfig<'_> {
     pub fn cargo_crates_in_set(&self) -> Vec<String> {
         let mut crates = Vec::new();
         for krate in &self.paths {
-            let path = krate.assert_single_path();
-            let Some(crate_name) = self.builder.crate_paths.get(&path.path) else {
-                panic!("missing crate for path {}", path.path.display())
-            };
+            let path = &krate.assert_single_path().path;
+
+            let crate_name = self
+                .builder
+                .crate_paths
+                .get(path)
+                .unwrap_or_else(|| panic!("missing crate for path {}", path.display()));
+
             crates.push(crate_name.to_string());
         }
         crates
@@ -258,11 +264,11 @@ impl PathSet {
 
     // internal use only
     fn check(p: &TaskPath, needle: &Path, module: Kind) -> bool {
-        if let Some(p_kind) = &p.kind {
-            p.path.ends_with(needle) && *p_kind == module
-        } else {
-            p.path.ends_with(needle)
-        }
+        let check_path = || {
+            // This order is important for retro-compatibility, as `starts_with` was introduced later.
+            p.path.ends_with(needle) || p.path.starts_with(needle)
+        };
+        if let Some(p_kind) = &p.kind { check_path() && *p_kind == module } else { check_path() }
     }
 
     /// Return all `TaskPath`s in `Self` that contain any of the `needles`, removing the
@@ -271,16 +277,17 @@ impl PathSet {
     /// This is used for `StepDescription::krate`, which passes all matching crates at once to
     /// `Step::make_run`, rather than calling it many times with a single crate.
     /// See `tests.rs` for examples.
-    fn intersection_removing_matches(&self, needles: &mut Vec<PathBuf>, module: Kind) -> PathSet {
+    fn intersection_removing_matches(&self, needles: &mut [CLIStepPath], module: Kind) -> PathSet {
         let mut check = |p| {
-            for (i, n) in needles.iter().enumerate() {
-                let matched = Self::check(p, n, module);
+            let mut result = false;
+            for n in needles.iter_mut() {
+                let matched = Self::check(p, &n.path, module);
                 if matched {
-                    needles.remove(i);
-                    return true;
+                    n.will_be_executed = true;
+                    result = true;
                 }
             }
-            false
+            result
         };
         match self {
             PathSet::Set(set) => PathSet::Set(set.iter().filter(|&p| check(p)).cloned().collect()),
@@ -314,29 +321,32 @@ const PATH_REMAP: &[(&str, &[&str])] = &[
     // actual path is `proc-macro-srv-cli`
     ("rust-analyzer-proc-macro-srv", &["src/tools/rust-analyzer/crates/proc-macro-srv-cli"]),
     // Make `x test tests` function the same as `x t tests/*`
-    ("tests", &[
-        // tidy-alphabetical-start
-        "tests/assembly",
-        "tests/codegen",
-        "tests/codegen-units",
-        "tests/coverage",
-        "tests/coverage-run-rustdoc",
-        "tests/crashes",
-        "tests/debuginfo",
-        "tests/incremental",
-        "tests/mir-opt",
-        "tests/pretty",
-        "tests/run-make",
-        "tests/rustdoc",
-        "tests/rustdoc-gui",
-        "tests/rustdoc-js",
-        "tests/rustdoc-js-std",
-        "tests/rustdoc-json",
-        "tests/rustdoc-ui",
-        "tests/ui",
-        "tests/ui-fulldeps",
-        // tidy-alphabetical-end
-    ]),
+    (
+        "tests",
+        &[
+            // tidy-alphabetical-start
+            "tests/assembly",
+            "tests/codegen",
+            "tests/codegen-units",
+            "tests/coverage",
+            "tests/coverage-run-rustdoc",
+            "tests/crashes",
+            "tests/debuginfo",
+            "tests/incremental",
+            "tests/mir-opt",
+            "tests/pretty",
+            "tests/run-make",
+            "tests/rustdoc",
+            "tests/rustdoc-gui",
+            "tests/rustdoc-js",
+            "tests/rustdoc-js-std",
+            "tests/rustdoc-json",
+            "tests/rustdoc-ui",
+            "tests/ui",
+            "tests/ui-fulldeps",
+            // tidy-alphabetical-end
+        ],
+    ),
 ];
 
 fn remap_paths(paths: &mut Vec<PathBuf>) {
@@ -359,6 +369,32 @@ fn remap_paths(paths: &mut Vec<PathBuf>) {
         paths.remove(idx);
     }
     paths.append(&mut add);
+}
+
+#[derive(Clone, PartialEq)]
+struct CLIStepPath {
+    path: PathBuf,
+    will_be_executed: bool,
+}
+
+#[cfg(test)]
+impl CLIStepPath {
+    fn will_be_executed(mut self, will_be_executed: bool) -> Self {
+        self.will_be_executed = will_be_executed;
+        self
+    }
+}
+
+impl Debug for CLIStepPath {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.path.display())
+    }
+}
+
+impl From<PathBuf> for CLIStepPath {
+    fn from(path: PathBuf) -> Self {
+        Self { path, will_be_executed: false }
+    }
 }
 
 impl StepDescription {
@@ -478,7 +514,8 @@ impl StepDescription {
             return;
         }
 
-        let mut path_lookup: Vec<(PathBuf, bool)> =
+        let mut paths: Vec<CLIStepPath> = paths.into_iter().map(|p| p.into()).collect();
+        let mut path_lookup: Vec<(CLIStepPath, bool)> =
             paths.clone().into_iter().map(|p| (p, false)).collect();
 
         // List of `(usize, &StepDescription, Vec<PathSet>)` where `usize` is the closest index of a path
@@ -518,8 +555,10 @@ impl StepDescription {
             }
         }
 
+        paths.retain(|p| !p.will_be_executed);
+
         if !paths.is_empty() {
-            eprintln!("ERROR: no `{}` rules matched {:?}", builder.kind.as_str(), paths,);
+            eprintln!("ERROR: no `{}` rules matched {:?}", builder.kind.as_str(), paths);
             eprintln!(
                 "HELP: run `x.py {} --help --verbose` to show a list of available paths",
                 builder.kind.as_str()
@@ -613,7 +652,9 @@ impl<'a> ShouldRun<'a> {
         self
     }
 
-    // single, non-aliased path
+    /// single, non-aliased path
+    ///
+    /// Must be an on-disk path; use `alias` for names that do not correspond to on-disk paths.
     pub fn path(self, path: &str) -> Self {
         self.paths(&[path])
     }
@@ -622,7 +663,7 @@ impl<'a> ShouldRun<'a> {
     ///
     /// This differs from [`path`] in that multiple calls to path will end up calling `make_run`
     /// multiple times, whereas a single call to `paths` will only ever generate a single call to
-    /// `paths`.
+    /// `make_run`.
     ///
     /// This is analogous to `all_krates`, although `all_krates` is gone now. Prefer [`path`] where possible.
     ///
@@ -680,7 +721,7 @@ impl<'a> ShouldRun<'a> {
     /// (for now, just `all_krates` and `paths`, but we may want to add an `aliases` function in the future?)
     fn pathset_for_paths_removing_matches(
         &self,
-        paths: &mut Vec<PathBuf>,
+        paths: &mut [CLIStepPath],
         kind: Kind,
     ) -> Vec<PathSet> {
         let mut sets = vec![];
@@ -765,6 +806,54 @@ impl Kind {
     }
 }
 
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+struct Libdir {
+    compiler: Compiler,
+    target: TargetSelection,
+}
+
+impl Step for Libdir {
+    type Output = PathBuf;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.never()
+    }
+
+    fn run(self, builder: &Builder<'_>) -> PathBuf {
+        let relative_sysroot_libdir = builder.sysroot_libdir_relative(self.compiler);
+        let sysroot = builder.sysroot(self.compiler).join(relative_sysroot_libdir).join("rustlib");
+
+        if !builder.config.dry_run() {
+            // Avoid deleting the `rustlib/` directory we just copied (in `impl Step for
+            // Sysroot`).
+            if !builder.download_rustc() {
+                let sysroot_target_libdir = sysroot.join(self.target).join("lib");
+                builder.verbose(|| {
+                    eprintln!(
+                        "Removing sysroot {} to avoid caching bugs",
+                        sysroot_target_libdir.display()
+                    )
+                });
+                let _ = fs::remove_dir_all(&sysroot_target_libdir);
+                t!(fs::create_dir_all(&sysroot_target_libdir));
+            }
+
+            if self.compiler.stage == 0 {
+                // The stage 0 compiler for the build triple is always pre-built. Ensure that
+                // `libLLVM.so` ends up in the target libdir, so that ui-fulldeps tests can use
+                // it when run.
+                dist::maybe_install_llvm_target(
+                    builder,
+                    self.compiler.host,
+                    &builder.sysroot(self.compiler),
+                );
+            }
+        }
+
+        sysroot
+    }
+}
+
 impl<'a> Builder<'a> {
     fn get_step_descriptions(kind: Kind) -> Vec<StepDescription> {
         macro_rules! describe {
@@ -820,6 +909,7 @@ impl<'a> Builder<'a> {
                 clippy::BuildManifest,
                 clippy::CargoMiri,
                 clippy::Clippy,
+                clippy::CodegenGcc,
                 clippy::CollectLicenseMetadata,
                 clippy::Compiletest,
                 clippy::CoverageDump,
@@ -839,6 +929,7 @@ impl<'a> Builder<'a> {
                 clippy::RustInstaller,
                 clippy::TestFloatParse,
                 clippy::Tidy,
+                clippy::CI,
             ),
             Kind::Check | Kind::Fix => describe!(
                 check::Std,
@@ -854,6 +945,9 @@ impl<'a> Builder<'a> {
                 check::RustAnalyzer,
                 check::TestFloatParse,
                 check::Bootstrap,
+                check::RunMakeSupport,
+                check::Compiletest,
+                check::FeaturesStatusDump,
             ),
             Kind::Test => describe!(
                 crate::core::build_steps::toolstate::ToolStateCheck,
@@ -861,8 +955,6 @@ impl<'a> Builder<'a> {
                 test::Ui,
                 test::Crashes,
                 test::Coverage,
-                test::CoverageMap,
-                test::CoverageRun,
                 test::MirOpt,
                 test::Codegen,
                 test::CodegenUnits,
@@ -870,11 +962,11 @@ impl<'a> Builder<'a> {
                 test::Incremental,
                 test::Debuginfo,
                 test::UiFullDeps,
-                test::CodegenCranelift,
-                test::CodegenGCC,
                 test::Rustdoc,
                 test::CoverageRunRustdoc,
                 test::Pretty,
+                test::CodegenCranelift,
+                test::CodegenGCC,
                 test::Crate,
                 test::CrateLibrustc,
                 test::CrateRustdoc,
@@ -895,7 +987,6 @@ impl<'a> Builder<'a> {
                 test::UnstableBook,
                 test::RustcBook,
                 test::LintDocs,
-                test::RustcGuide,
                 test::EmbeddedBook,
                 test::EditionGuide,
                 test::Rustfmt,
@@ -914,6 +1005,7 @@ impl<'a> Builder<'a> {
                 test::HtmlCheck,
                 test::RustInstaller,
                 test::TestFloatParse,
+                test::CollectLicenseMetadata,
                 // Run bootstrap close to the end as it's unlikely to fail
                 test::Bootstrap,
                 // Run run-make last, since these won't pass without make on Windows
@@ -1007,6 +1099,7 @@ impl<'a> Builder<'a> {
                 run::GenerateWindowsSys,
                 run::GenerateCompletions,
                 run::UnicodeTableGenerator,
+                run::FeaturesStatusDump,
             ),
             Kind::Setup => {
                 describe!(setup::Profile, setup::Hook, setup::Link, setup::Editor)
@@ -1127,6 +1220,19 @@ impl<'a> Builder<'a> {
     /// compiler will run on, *not* the target it will build code for). Explicitly does not take
     /// `Compiler` since all `Compiler` instances are meant to be obtained through this function,
     /// since it ensures that they are valid (i.e., built and assembled).
+    #[cfg_attr(
+        feature = "tracing",
+        instrument(
+            level = "trace",
+            name = "Builder::compiler",
+            target = "COMPILER",
+            skip_all,
+            fields(
+                stage = stage,
+                host = ?host,
+            ),
+        ),
+    )]
     pub fn compiler(&self, stage: u32, host: TargetSelection) -> Compiler {
         self.ensure(compile::Assemble { target_compiler: Compiler { stage, host } })
     }
@@ -1142,76 +1248,61 @@ impl<'a> Builder<'a> {
     /// sysroot.
     ///
     /// See `force_use_stage1` and `force_use_stage2` for documentation on what each argument is.
+    #[cfg_attr(
+        feature = "tracing",
+        instrument(
+            level = "trace",
+            name = "Builder::compiler_for",
+            target = "COMPILER_FOR",
+            skip_all,
+            fields(
+                stage = stage,
+                host = ?host,
+                target = ?target,
+            ),
+        ),
+    )]
+
+    /// FIXME: This function is unnecessary (and dangerous, see <https://github.com/rust-lang/rust/issues/137469>).
+    /// We already have uplifting logic for the compiler, so remove this.
     pub fn compiler_for(
         &self,
         stage: u32,
         host: TargetSelection,
         target: TargetSelection,
     ) -> Compiler {
-        if self.build.force_use_stage2(stage) {
+        #![allow(clippy::let_and_return)]
+        let resolved_compiler = if self.build.force_use_stage2(stage) {
+            trace!(target: "COMPILER_FOR", ?stage, "force_use_stage2");
             self.compiler(2, self.config.build)
         } else if self.build.force_use_stage1(stage, target) {
+            trace!(target: "COMPILER_FOR", ?stage, "force_use_stage1");
             self.compiler(1, self.config.build)
         } else {
+            trace!(target: "COMPILER_FOR", ?stage, ?host, "no force, fallback to `compiler()`");
             self.compiler(stage, host)
-        }
+        };
+        trace!(target: "COMPILER_FOR", ?resolved_compiler);
+        resolved_compiler
     }
 
     pub fn sysroot(&self, compiler: Compiler) -> PathBuf {
         self.ensure(compile::Sysroot::new(compiler))
     }
 
+    /// Returns the bindir for a compiler's sysroot.
+    pub fn sysroot_target_bindir(&self, compiler: Compiler, target: TargetSelection) -> PathBuf {
+        self.ensure(Libdir { compiler, target }).join(target).join("bin")
+    }
+
     /// Returns the libdir where the standard library and other artifacts are
     /// found for a compiler's sysroot.
-    pub fn sysroot_libdir(&self, compiler: Compiler, target: TargetSelection) -> PathBuf {
-        #[derive(Debug, Clone, Hash, PartialEq, Eq)]
-        struct Libdir {
-            compiler: Compiler,
-            target: TargetSelection,
-        }
-        impl Step for Libdir {
-            type Output = PathBuf;
-
-            fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-                run.never()
-            }
-
-            fn run(self, builder: &Builder<'_>) -> PathBuf {
-                let lib = builder.sysroot_libdir_relative(self.compiler);
-                let sysroot = builder
-                    .sysroot(self.compiler)
-                    .join(lib)
-                    .join("rustlib")
-                    .join(self.target)
-                    .join("lib");
-                // Avoid deleting the rustlib/ directory we just copied
-                // (in `impl Step for Sysroot`).
-                if !builder.download_rustc() {
-                    builder.verbose(|| {
-                        println!("Removing sysroot {} to avoid caching bugs", sysroot.display())
-                    });
-                    let _ = fs::remove_dir_all(&sysroot);
-                    t!(fs::create_dir_all(&sysroot));
-                }
-
-                if self.compiler.stage == 0 {
-                    // The stage 0 compiler for the build triple is always pre-built.
-                    // Ensure that `libLLVM.so` ends up in the target libdir, so that ui-fulldeps tests can use it when run.
-                    dist::maybe_install_llvm_target(
-                        builder,
-                        self.compiler.host,
-                        &builder.sysroot(self.compiler),
-                    );
-                }
-
-                sysroot
-            }
-        }
-        self.ensure(Libdir { compiler, target })
+    pub fn sysroot_target_libdir(&self, compiler: Compiler, target: TargetSelection) -> PathBuf {
+        self.ensure(Libdir { compiler, target }).join(target).join("lib")
     }
 
     pub fn sysroot_codegen_backends(&self, compiler: Compiler) -> PathBuf {
-        self.sysroot_libdir(compiler, compiler.host).with_file_name("codegen-backends")
+        self.sysroot_target_libdir(compiler, compiler.host).with_file_name("codegen-backends")
     }
 
     /// Returns the compiler's libdir where it stores the dynamic libraries that
@@ -1255,7 +1346,7 @@ impl<'a> Builder<'a> {
     pub fn sysroot_libdir_relative(&self, compiler: Compiler) -> &Path {
         match self.config.libdir_relative() {
             Some(relative_libdir) if compiler.stage >= 1 => relative_libdir,
-            _ if compiler.stage == 0 => &self.build.initial_libdir,
+            _ if compiler.stage == 0 => &self.build.initial_relative_libdir,
             _ => Path::new("lib"),
         }
     }
@@ -1304,7 +1395,7 @@ impl<'a> Builder<'a> {
     }
 
     pub fn rustdoc(&self, compiler: Compiler) -> PathBuf {
-        self.ensure(tool::Rustdoc { compiler })
+        self.ensure(tool::Rustdoc { compiler }).tool_path
     }
 
     pub fn cargo_clippy_cmd(&self, run_compiler: Compiler) -> BootstrapCommand {
@@ -1320,21 +1411,13 @@ impl<'a> Builder<'a> {
             return cmd;
         }
 
-        let build_compiler = self.compiler(run_compiler.stage - 1, self.build.build);
-        self.ensure(tool::Clippy {
-            compiler: build_compiler,
-            target: self.build.build,
-            extra_features: vec![],
-        });
-        let cargo_clippy = self.ensure(tool::CargoClippy {
-            compiler: build_compiler,
-            target: self.build.build,
-            extra_features: vec![],
-        });
+        let _ = self.ensure(tool::Clippy { compiler: run_compiler, target: self.build.build });
+        let cargo_clippy =
+            self.ensure(tool::CargoClippy { compiler: run_compiler, target: self.build.build });
         let mut dylib_path = helpers::dylib_path();
         dylib_path.insert(0, self.sysroot(run_compiler).join("lib"));
 
-        let mut cmd = command(cargo_clippy);
+        let mut cmd = command(cargo_clippy.tool_path);
         cmd.env(helpers::dylib_path_var(), env::join_paths(&dylib_path).unwrap());
         cmd.env("CARGO", &self.initial_cargo);
         cmd
@@ -1342,30 +1425,21 @@ impl<'a> Builder<'a> {
 
     pub fn cargo_miri_cmd(&self, run_compiler: Compiler) -> BootstrapCommand {
         assert!(run_compiler.stage > 0, "miri can not be invoked at stage 0");
-        let build_compiler = self.compiler(run_compiler.stage - 1, self.build.build);
-
         // Prepare the tools
-        let miri = self.ensure(tool::Miri {
-            compiler: build_compiler,
-            target: self.build.build,
-            extra_features: Vec::new(),
-        });
-        let cargo_miri = self.ensure(tool::CargoMiri {
-            compiler: build_compiler,
-            target: self.build.build,
-            extra_features: Vec::new(),
-        });
+        let miri = self.ensure(tool::Miri { compiler: run_compiler, target: self.build.build });
+        let cargo_miri =
+            self.ensure(tool::CargoMiri { compiler: run_compiler, target: self.build.build });
         // Invoke cargo-miri, make sure it can find miri and cargo.
-        let mut cmd = command(cargo_miri);
-        cmd.env("MIRI", &miri);
+        let mut cmd = command(cargo_miri.tool_path);
+        cmd.env("MIRI", &miri.tool_path);
         cmd.env("CARGO", &self.initial_cargo);
-        // Need to add the `run_compiler` libs. Those are the libs produces *by* `build_compiler`,
-        // so they match the Miri we just built. However this means they are actually living one
-        // stage up, i.e. we are running `stage0-tools-bin/miri` with the libraries in `stage1/lib`.
-        // This is an unfortunate off-by-1 caused (possibly) by the fact that Miri doesn't have an
-        // "assemble" step like rustc does that would cross the stage boundary. We can't use
-        // `add_rustc_lib_path` as that's a NOP on Windows but we do need these libraries added to
-        // the PATH due to the stage mismatch.
+        // Need to add the `run_compiler` libs. Those are the libs produces *by* `build_compiler`
+        // in `tool::ToolBuild` step, so they match the Miri we just built. However this means they
+        // are actually living one stage up, i.e. we are running `stage0-tools-bin/miri` with the
+        // libraries in `stage1/lib`. This is an unfortunate off-by-1 caused (possibly) by the fact
+        // that Miri doesn't have an "assemble" step like rustc does that would cross the stage boundary.
+        // We can't use `add_rustc_lib_path` as that's a NOP on Windows but we do need these libraries
+        // added to the PATH due to the stage mismatch.
         // Also see https://github.com/rust-lang/rust/pull/123192#issuecomment-2028901503.
         add_dylib_path(self.rustc_lib_paths(run_compiler), &mut cmd);
         cmd
@@ -1396,7 +1470,7 @@ impl<'a> Builder<'a> {
     ///
     /// Note that this returns `None` if LLVM is disabled, or if we're in a
     /// check build or dry-run, where there's no need to build all of LLVM.
-    fn llvm_config(&self, target: TargetSelection) -> Option<PathBuf> {
+    pub fn llvm_config(&self, target: TargetSelection) -> Option<PathBuf> {
         if self.config.llvm_enabled(target) && self.kind != Kind::Check && !self.config.dry_run() {
             let llvm::LlvmResult { llvm_config, .. } = self.ensure(llvm::Llvm { target });
             if llvm_config.is_file() {
@@ -1414,7 +1488,7 @@ impl<'a> Builder<'a> {
             let mut stack = self.stack.borrow_mut();
             for stack_step in stack.iter() {
                 // should skip
-                if stack_step.downcast_ref::<S>().map_or(true, |stack_step| *stack_step != step) {
+                if stack_step.downcast_ref::<S>().is_none_or(|stack_step| *stack_step != step) {
                     continue;
                 }
                 let mut out = String::new();
@@ -1516,15 +1590,19 @@ impl<'a> Builder<'a> {
     pub(crate) fn maybe_open_in_browser<S: Step>(&self, path: impl AsRef<Path>) {
         if self.was_invoked_explicitly::<S>(Kind::Doc) {
             self.open_in_browser(path);
+        } else {
+            self.info(&format!("Doc path: {}", path.as_ref().display()));
         }
     }
 
     pub(crate) fn open_in_browser(&self, path: impl AsRef<Path>) {
+        let path = path.as_ref();
+
         if self.config.dry_run() || !self.config.cmd.open() {
+            self.info(&format!("Doc path: {}", path.display()));
             return;
         }
 
-        let path = path.as_ref();
         self.info(&format!("Opening doc {}", path.display()));
         if let Err(err) = opener::open(path) {
             self.info(&format!("{err}\n"));

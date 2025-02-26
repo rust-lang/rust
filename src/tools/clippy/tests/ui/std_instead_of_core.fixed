@@ -1,7 +1,7 @@
 //@aux-build:proc_macro_derive.rs
 
 #![warn(clippy::std_instead_of_core)]
-#![allow(unused_imports)]
+#![allow(unused_imports, deprecated)]
 
 extern crate alloc;
 

@@ -23,15 +23,6 @@ pub struct ModPath {
     segments: SmallVec<[Name; 1]>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct UnescapedModPath<'a>(&'a ModPath);
-
-impl<'a> UnescapedModPath<'a> {
-    pub fn display(&'a self, db: &'a dyn crate::db::ExpandDatabase) -> impl fmt::Display + 'a {
-        UnescapedDisplay { db, path: self }
-    }
-}
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum PathKind {
     Plain,
@@ -58,7 +49,7 @@ impl ModPath {
         convert_path(db, path, span_for_range)
     }
 
-    pub fn from_tt(db: &dyn ExpandDatabase, tt: &[tt::TokenTree]) -> Option<ModPath> {
+    pub fn from_tt(db: &dyn ExpandDatabase, tt: tt::TokenTreesView<'_>) -> Option<ModPath> {
         convert_path_tt(db, tt)
     }
 
@@ -135,9 +126,11 @@ impl ModPath {
             _ => None,
         }
     }
-
-    pub fn unescaped(&self) -> UnescapedModPath<'_> {
-        UnescapedModPath(self)
+    pub fn display_verbatim<'a>(
+        &'a self,
+        db: &'a dyn crate::db::ExpandDatabase,
+    ) -> impl fmt::Display + 'a {
+        Display { db, path: self, edition: None }
     }
 
     pub fn display<'a>(
@@ -145,7 +138,7 @@ impl ModPath {
         db: &'a dyn crate::db::ExpandDatabase,
         edition: Edition,
     ) -> impl fmt::Display + 'a {
-        Display { db, path: self, edition }
+        Display { db, path: self, edition: Some(edition) }
     }
 }
 
@@ -158,23 +151,12 @@ impl Extend<Name> for ModPath {
 struct Display<'a> {
     db: &'a dyn ExpandDatabase,
     path: &'a ModPath,
-    edition: Edition,
+    edition: Option<Edition>,
 }
 
 impl fmt::Display for Display<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        display_fmt_path(self.db, self.path, f, Escape::IfNeeded(self.edition))
-    }
-}
-
-struct UnescapedDisplay<'a> {
-    db: &'a dyn ExpandDatabase,
-    path: &'a UnescapedModPath<'a>,
-}
-
-impl fmt::Display for UnescapedDisplay<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        display_fmt_path(self.db, self.path.0, f, Escape::No)
+        display_fmt_path(self.db, self.path, f, self.edition)
     }
 }
 
@@ -184,16 +166,11 @@ impl From<Name> for ModPath {
     }
 }
 
-enum Escape {
-    No,
-    IfNeeded(Edition),
-}
-
 fn display_fmt_path(
     db: &dyn ExpandDatabase,
     path: &ModPath,
     f: &mut fmt::Formatter<'_>,
-    escaped: Escape,
+    edition: Option<Edition>,
 ) -> fmt::Result {
     let mut first_segment = true;
     let mut add_segment = |s| -> fmt::Result {
@@ -221,10 +198,10 @@ fn display_fmt_path(
             f.write_str("::")?;
         }
         first_segment = false;
-        match escaped {
-            Escape::IfNeeded(edition) => segment.display(db, edition).fmt(f)?,
-            Escape::No => segment.unescaped().display(db).fmt(f)?,
-        }
+        match edition {
+            Some(edition) => segment.display(db, edition).fmt(f)?,
+            None => fmt::Display::fmt(segment.as_str(), f)?,
+        };
     }
     Ok(())
 }
@@ -273,10 +250,9 @@ fn convert_path(
                 res
             }
         }
-        ast::PathSegmentKind::SelfTypeKw => ModPath::from_segments(
-            PathKind::Plain,
-            Some(Name::new_symbol(sym::Self_.clone(), SyntaxContextId::ROOT)),
-        ),
+        ast::PathSegmentKind::SelfTypeKw => {
+            ModPath::from_segments(PathKind::Plain, Some(Name::new_symbol_root(sym::Self_.clone())))
+        }
         ast::PathSegmentKind::CrateKw => ModPath::from_segments(PathKind::Crate, iter::empty()),
         ast::PathSegmentKind::SelfKw => handle_super_kw(0)?,
         ast::PathSegmentKind::SuperKw => handle_super_kw(1)?,
@@ -315,10 +291,10 @@ fn convert_path(
     Some(mod_path)
 }
 
-fn convert_path_tt(db: &dyn ExpandDatabase, tt: &[tt::TokenTree]) -> Option<ModPath> {
+fn convert_path_tt(db: &dyn ExpandDatabase, tt: tt::TokenTreesView<'_>) -> Option<ModPath> {
     let mut leaves = tt.iter().filter_map(|tt| match tt {
-        tt::TokenTree::Leaf(leaf) => Some(leaf),
-        tt::TokenTree::Subtree(_) => None,
+        tt::TtElement::Leaf(leaf) => Some(leaf),
+        tt::TtElement::Subtree(..) => None,
     });
     let mut segments = smallvec::smallvec![];
     let kind = match leaves.next()? {
@@ -399,6 +375,9 @@ macro_rules! __known_path {
     (core::fmt::Debug) => {};
     (std::fmt::format) => {};
     (core::ops::Try) => {};
+    (core::convert::From) => {};
+    (core::convert::TryFrom) => {};
+    (core::str::FromStr) => {};
     ($path:path) => {
         compile_error!("Please register your known path in the path module")
     };
@@ -415,3 +394,14 @@ macro_rules! __path {
 }
 
 pub use crate::__path as path;
+
+#[macro_export]
+macro_rules! __tool_path {
+    ($start:ident $(:: $seg:ident)*) => ({
+        $crate::mod_path::ModPath::from_segments($crate::mod_path::PathKind::Plain, vec![
+            $crate::name::Name::new_symbol_root(intern::sym::rust_analyzer.clone()), $crate::name::Name::new_symbol_root(intern::sym::$start.clone()), $($crate::name::Name::new_symbol_root(intern::sym::$seg.clone()),)*
+        ])
+    });
+}
+
+pub use crate::__tool_path as tool_path;

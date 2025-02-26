@@ -4,7 +4,6 @@
 //@ edition:2021
 //@ compile-flags: -Z unstable-options
 
-#![feature(if_let_rescope)]
 #![deny(if_let_rescope)]
 #![allow(irrefutable_let_patterns)]
 

@@ -96,7 +96,7 @@ fn expr_as_ptr_offset_call<'tcx>(
             if path_segment.ident.name == sym::offset {
                 return Some((arg_0, arg_1, Method::Offset));
             }
-            if path_segment.ident.name == sym!(wrapping_offset) {
+            if path_segment.ident.name.as_str() == "wrapping_offset" {
                 return Some((arg_0, arg_1, Method::WrappingOffset));
             }
         }
@@ -111,7 +111,7 @@ fn is_expr_ty_usize(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 
 // Is the type of the expression a raw pointer?
 fn is_expr_ty_raw_ptr(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    cx.typeck_results().expr_ty(expr).is_unsafe_ptr()
+    cx.typeck_results().expr_ty(expr).is_raw_ptr()
 }
 
 fn build_suggestion(

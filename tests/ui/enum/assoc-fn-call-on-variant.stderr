@@ -1,0 +1,15 @@
+error[E0433]: failed to resolve: `A` is a variant, not a module
+  --> $DIR/assoc-fn-call-on-variant.rs:14:8
+   |
+LL |     E::A::f();
+   |        ^ `A` is a variant, not a module
+   |
+help: there is an enum variant `E::A`; try using the variant's enum
+   |
+LL -     E::A::f();
+LL +     E::f();
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0433`.

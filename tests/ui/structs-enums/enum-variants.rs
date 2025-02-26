@@ -1,7 +1,6 @@
 //@ run-pass
 #![allow(dead_code)]
 #![allow(unused_assignments)]
-//@ pretty-expanded FIXME #23616
 
 #![allow(unused_variables)]
 

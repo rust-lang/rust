@@ -4,9 +4,8 @@
 
 #![crate_type = "lib"]
 #![feature(try_trait_v2)]
-#![feature(const_trait_impl, effects)]
+#![feature(const_trait_impl)]
 #![feature(const_try)]
-#![allow(incomplete_features)]
 
 use std::ops::{ControlFlow, FromResidual, Try};
 
@@ -34,8 +33,8 @@ impl const Try for TryMe {
 
 const fn t() -> TryMe {
     TryMe?;
-    //~^ ERROR `?` cannot determine the branch of `TryMe` in constant functions
-    //~| ERROR `?` cannot convert from residual of `TryMe` in constant functions
+    //~^ ERROR `?` is not allowed on
+    //~| ERROR `?` is not allowed on
     TryMe
 }
 

@@ -44,7 +44,7 @@ fn by_val(e: E) {
     //~^ ERROR refutable pattern in local binding
     //~| patterns `E::B` and `E::C` not covered
     //~| NOTE `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with
-    //~| NOTE for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+    //~| NOTE for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
     //~| NOTE the matched value is of type `E`
 }
 
@@ -60,7 +60,7 @@ fn by_ref_once(e: &E) {
     //~^ ERROR refutable pattern in local binding
     //~| patterns `&E::B` and `&E::C` not covered
     //~| NOTE `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with
-    //~| NOTE for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+    //~| NOTE for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
     //~| NOTE the matched value is of type `&E`
 }
 
@@ -76,7 +76,7 @@ fn by_ref_thrice(e: & &mut &E) {
     //~^ ERROR refutable pattern in local binding
     //~| patterns `&&mut &E::B` and `&&mut &E::C` not covered
     //~| NOTE `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with
-    //~| NOTE for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+    //~| NOTE for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
     //~| NOTE the matched value is of type `&&mut &E`
 }
 
@@ -103,7 +103,7 @@ fn ref_pat(e: Opt) {
     //~| NOTE the matched value is of type `Opt`
     //~| NOTE pattern `Opt::None` not covered
     //~| NOTE `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with
-    //~| NOTE for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+    //~| NOTE for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
 }
 
 fn main() {}

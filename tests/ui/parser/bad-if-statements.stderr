@@ -29,7 +29,7 @@ note: the `if` expression is missing a block after this condition
    |
 LL |     if true x
    |        ^^^^
-help: try placing this code inside a block
+help: you might have meant to write this as part of a block
    |
 LL |     if true { x }
    |             +   +
@@ -65,7 +65,7 @@ note: the `if` expression is missing a block after this condition
    |
 LL |     if true x else {}
    |        ^^^^
-help: try placing this code inside a block
+help: you might have meant to write this as part of a block
    |
 LL |     if true { x } else {}
    |             +   +

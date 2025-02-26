@@ -1,7 +1,7 @@
 #![feature(prelude_import)]
 #![no_std]
 //@ check-pass
-//@ aux-build: another-proc-macro.rs
+//@ proc-macro: another-proc-macro.rs
 //@ compile-flags: -Zunpretty=expanded
 
 #![feature(derive_coerce_pointee)]
@@ -19,6 +19,8 @@ use another_proc_macro::{AnotherMacro, pointee};
 pub struct Ptr<'a, #[pointee] T: ?Sized> {
     data: &'a mut T,
 }
+#[automatically_derived]
+impl<'a, T: ?Sized> ::core::marker::CoercePointeeValidated for Ptr<'a, T> { }
 #[automatically_derived]
 impl<'a, T: ?Sized + ::core::marker::Unsize<__S>, __S: ?Sized>
     ::core::ops::DispatchFromDyn<Ptr<'a, __S>> for Ptr<'a, T> {

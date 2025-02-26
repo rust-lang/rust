@@ -1,7 +1,7 @@
 //@ check-pass
 //@ compile-flags: -Znext-solver
 #![allow(incomplete_features)]
-#![feature(const_trait_impl, rustc_attrs, effects)]
+#![feature(const_trait_impl, rustc_attrs)]
 
 #[const_trait]
 trait Foo {

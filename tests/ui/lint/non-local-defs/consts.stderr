@@ -124,7 +124,6 @@ LL | |         impl Uto10 for Test {}
    | |              |         |
    | |              |         `Test` is not local
    | |              `Uto10` is not local
-LL | |
 ...  |
 LL | |     }];
    | |_____- move the `impl` block outside of this constant expression `<unnameable>` and up 2 bodies

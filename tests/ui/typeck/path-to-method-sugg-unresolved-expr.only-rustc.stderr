@@ -1,0 +1,11 @@
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `page_size`
+  --> $DIR/path-to-method-sugg-unresolved-expr.rs:5:21
+   |
+LL |     let page_size = page_size::get();
+   |                     ^^^^^^^^^ use of unresolved module or unlinked crate `page_size`
+   |
+   = help: you might be missing a crate named `page_size`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0433`.

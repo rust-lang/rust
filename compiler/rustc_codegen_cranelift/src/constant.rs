@@ -6,7 +6,7 @@ use cranelift_module::*;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{AllocId, GlobalAlloc, Scalar, read_target_uint};
-use rustc_middle::ty::{Binder, ExistentialTraitRef, ScalarInt};
+use rustc_middle::ty::{ExistentialTraitRef, ScalarInt};
 
 use crate::prelude::*;
 
@@ -78,7 +78,7 @@ pub(crate) fn eval_mir_constant<'tcx>(
     let cv = fx.monomorphize(constant.const_);
     // This cannot fail because we checked all required_consts in advance.
     let val = cv
-        .eval(fx.tcx, ty::ParamEnv::reveal_all(), constant.span)
+        .eval(fx.tcx, ty::TypingEnv::fully_monomorphized(), constant.span)
         .expect("erroneous constant missed by mono item collection");
     (val, cv.ty())
 }
@@ -167,7 +167,9 @@ pub(crate) fn codegen_const_value<'tcx>(
                             &mut fx.constants_cx,
                             fx.module,
                             ty,
-                            dyn_ty.principal(),
+                            dyn_ty.principal().map(|principal| {
+                                fx.tcx.instantiate_bound_regions_with_erased(principal)
+                            }),
                         );
                         let local_data_id =
                             fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
@@ -243,7 +245,7 @@ pub(crate) fn data_id_for_vtable<'tcx>(
     cx: &mut ConstantCx,
     module: &mut dyn Module,
     ty: Ty<'tcx>,
-    trait_ref: Option<Binder<'tcx, ExistentialTraitRef<'tcx>>>,
+    trait_ref: Option<ExistentialTraitRef<'tcx>>,
 ) -> DataId {
     let alloc_id = tcx.vtable_allocation((ty, trait_ref));
     data_id_for_alloc_id(cx, module, alloc_id, Mutability::Not)
@@ -265,8 +267,13 @@ fn data_id_for_static(
         assert!(!definition);
         assert!(!tcx.is_mutable_static(def_id));
 
-        let ty = instance.ty(tcx, ParamEnv::reveal_all());
-        let align = tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap().align.pref.bytes();
+        let ty = instance.ty(tcx, ty::TypingEnv::fully_monomorphized());
+        let align = tcx
+            .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty))
+            .unwrap()
+            .align
+            .abi
+            .bytes();
 
         let linkage = if import_linkage == rustc_middle::mir::mono::Linkage::ExternalWeak
             || import_linkage == rustc_middle::mir::mono::Linkage::WeakAny
@@ -447,8 +454,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
             let data_id = match reloc_target_alloc {
                 GlobalAlloc::Function { instance, .. } => {
                     assert_eq!(addend, 0);
-                    let func_id =
-                        crate::abi::import_function(tcx, module, instance.polymorphize(tcx));
+                    let func_id = crate::abi::import_function(tcx, module, instance);
                     let local_func_id = module.declare_func_in_data(func_id, &mut data);
                     data.write_function_addr(offset.bytes() as u32, local_func_id);
                     continue;
@@ -456,9 +462,15 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                 GlobalAlloc::Memory(target_alloc) => {
                     data_id_for_alloc_id(cx, module, alloc_id, target_alloc.inner().mutability)
                 }
-                GlobalAlloc::VTable(ty, dyn_ty) => {
-                    data_id_for_vtable(tcx, cx, module, ty, dyn_ty.principal())
-                }
+                GlobalAlloc::VTable(ty, dyn_ty) => data_id_for_vtable(
+                    tcx,
+                    cx,
+                    module,
+                    ty,
+                    dyn_ty
+                        .principal()
+                        .map(|principal| tcx.instantiate_bound_regions_with_erased(principal)),
+                ),
                 GlobalAlloc::Static(def_id) => {
                     if tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::THREAD_LOCAL)
                     {
@@ -578,6 +590,7 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
                         | StatementKind::PlaceMention(..)
                         | StatementKind::Coverage(_)
                         | StatementKind::ConstEvalCounter
+                        | StatementKind::BackwardIncompatibleDropHint { .. }
                         | StatementKind::Nop => {}
                     }
                 }

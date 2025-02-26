@@ -47,6 +47,7 @@ impl ArithmeticSideEffects {
         Self {
             allowed_binary,
             allowed_unary,
+            const_span: None,
             disallowed_int_methods: [
                 sym::saturating_div,
                 sym::wrapping_div,
@@ -55,7 +56,6 @@ impl ArithmeticSideEffects {
             ]
             .into_iter()
             .collect(),
-            const_span: None,
             expr_span: None,
         }
     }
@@ -104,7 +104,7 @@ impl ArithmeticSideEffects {
 
             if !tcx.is_diagnostic_item(sym::NonZero, adt.did()) {
                 return false;
-            };
+            }
 
             let int_type = substs.type_at(0);
             let unsigned_int_types = [
@@ -214,13 +214,13 @@ impl ArithmeticSideEffects {
                 | hir::BinOpKind::Sub
         ) {
             return;
-        };
+        }
         let (mut actual_lhs, lhs_ref_counter) = peel_hir_expr_refs(lhs);
         let (mut actual_rhs, rhs_ref_counter) = peel_hir_expr_refs(rhs);
         actual_lhs = expr_or_init(cx, actual_lhs);
         actual_rhs = expr_or_init(cx, actual_rhs);
         let lhs_ty = cx.typeck_results().expr_ty(actual_lhs).peel_refs();
-        let rhs_ty = cx.typeck_results().expr_ty(actual_rhs).peel_refs();
+        let rhs_ty = cx.typeck_results().expr_ty_adjusted(actual_rhs).peel_refs();
         if self.has_allowed_binary(lhs_ty, rhs_ty) {
             return;
         }
@@ -283,7 +283,7 @@ impl ArithmeticSideEffects {
         if ConstEvalCtxt::new(cx).eval_simple(receiver).is_some() {
             return;
         }
-        let instance_ty = cx.typeck_results().expr_ty(receiver);
+        let instance_ty = cx.typeck_results().expr_ty_adjusted(receiver);
         if !Self::is_integral(instance_ty) {
             return;
         }
@@ -311,7 +311,7 @@ impl ArithmeticSideEffects {
         if ConstEvalCtxt::new(cx).eval(un_expr).is_some() {
             return;
         }
-        let ty = cx.typeck_results().expr_ty(expr).peel_refs();
+        let ty = cx.typeck_results().expr_ty_adjusted(expr).peel_refs();
         if self.has_allowed_unary(ty) {
             return;
         }
@@ -325,7 +325,7 @@ impl ArithmeticSideEffects {
     fn should_skip_expr<'tcx>(&mut self, cx: &LateContext<'tcx>, expr: &hir::Expr<'tcx>) -> bool {
         is_lint_allowed(cx, ARITHMETIC_SIDE_EFFECTS, expr.hir_id)
             || self.expr_span.is_some()
-            || self.const_span.map_or(false, |sp| sp.contains(expr.span))
+            || self.const_span.is_some_and(|sp| sp.contains(expr.span))
     }
 }
 
@@ -349,10 +349,10 @@ impl<'tcx> LateLintPass<'tcx> for ArithmeticSideEffects {
     }
 
     fn check_body(&mut self, cx: &LateContext<'_>, body: &hir::Body<'_>) {
-        let body_owner = cx.tcx.hir().body_owner(body.id());
-        let body_owner_def_id = cx.tcx.hir().body_owner_def_id(body.id());
+        let body_owner = cx.tcx.hir_body_owner(body.id());
+        let body_owner_def_id = cx.tcx.hir_body_owner_def_id(body.id());
 
-        let body_owner_kind = cx.tcx.hir().body_owner_kind(body_owner_def_id);
+        let body_owner_kind = cx.tcx.hir_body_owner_kind(body_owner_def_id);
         if let hir::BodyOwnerKind::Const { .. } | hir::BodyOwnerKind::Static(_) = body_owner_kind {
             let body_span = cx.tcx.hir().span_with_body(body_owner);
             if let Some(span) = self.const_span
@@ -365,7 +365,7 @@ impl<'tcx> LateLintPass<'tcx> for ArithmeticSideEffects {
     }
 
     fn check_body_post(&mut self, cx: &LateContext<'_>, body: &hir::Body<'_>) {
-        let body_owner = cx.tcx.hir().body_owner(body.id());
+        let body_owner = cx.tcx.hir_body_owner(body.id());
         let body_span = cx.tcx.hir().span(body_owner);
         if let Some(span) = self.const_span
             && span.contains(body_span)

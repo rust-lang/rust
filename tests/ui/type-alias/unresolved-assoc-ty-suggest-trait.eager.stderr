@@ -17,8 +17,9 @@ LL | type AssokOf<T> = T::Assok;
    |
 help: consider fully qualifying and renaming the associated type
    |
-LL | type AssokOf<T> = <T as Trait>::Assoc;
-   |                   +  +++++++++  ~~~~~
+LL - type AssokOf<T> = T::Assok;
+LL + type AssokOf<T> = <T as Trait>::Assoc;
+   |
 
 error[E0220]: associated type `Proj` not found for `T`
   --> $DIR/unresolved-assoc-ty-suggest-trait.rs:22:21

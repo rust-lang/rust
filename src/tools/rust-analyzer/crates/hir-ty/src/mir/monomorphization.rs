@@ -258,6 +258,10 @@ impl Filler<'_> {
                         | Rvalue::UnaryOp(_, _)
                         | Rvalue::Discriminant(_)
                         | Rvalue::CopyForDeref(_) => (),
+                        Rvalue::ThreadLocalRef(n)
+                        | Rvalue::AddressOf(n)
+                        | Rvalue::BinaryOp(n)
+                        | Rvalue::NullaryOp(n) => match *n {},
                     },
                     StatementKind::Deinit(_)
                     | StatementKind::FakeRead(_)

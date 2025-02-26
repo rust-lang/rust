@@ -19,8 +19,7 @@ use crate::sys::process::process_common::*;
 use crate::{fmt, mem, sys};
 
 cfg_if::cfg_if! {
-    // This workaround is only needed for QNX 7.0 and 7.1. The bug should have been fixed in 8.0
-    if #[cfg(any(target_env = "nto70", target_env = "nto71"))] {
+    if #[cfg(target_os = "nto")] {
         use crate::thread;
         use libc::{c_char, posix_spawn_file_actions_t, posix_spawnattr_t};
         use crate::time::Duration;
@@ -61,7 +60,7 @@ impl Command {
         let envp = self.capture_env();
 
         if self.saw_nul() {
-            return Err(io::const_io_error!(
+            return Err(io::const_error!(
                 ErrorKind::InvalidInput,
                 "nul byte found in provided data",
             ));
@@ -175,7 +174,7 @@ impl Command {
     // allowed to exist in dead code), but it sounds bad, so we go out of our
     // way to avoid that all-together.
     #[cfg(any(target_os = "tvos", target_os = "watchos"))]
-    const ERR_APPLE_TV_WATCH_NO_FORK_EXEC: Error = io::const_io_error!(
+    const ERR_APPLE_TV_WATCH_NO_FORK_EXEC: Error = io::const_error!(
         ErrorKind::Unsupported,
         "`fork`+`exec`-based process spawning is not supported on this target",
     );
@@ -187,12 +186,7 @@ impl Command {
 
     // Attempts to fork the process. If successful, returns Ok((0, -1))
     // in the child, and Ok((child_pid, -1)) in the parent.
-    #[cfg(not(any(
-        target_os = "watchos",
-        target_os = "tvos",
-        target_env = "nto70",
-        target_env = "nto71"
-    )))]
+    #[cfg(not(any(target_os = "watchos", target_os = "tvos", target_os = "nto")))]
     unsafe fn do_fork(&mut self) -> Result<pid_t, io::Error> {
         cvt(libc::fork())
     }
@@ -201,8 +195,7 @@ impl Command {
     // or closed a file descriptor while the fork() was occurring".
     // Documentation says "... or try calling fork() again". This is what we do here.
     // See also https://www.qnx.com/developers/docs/7.1/#com.qnx.doc.neutrino.lib_ref/topic/f/fork.html
-    // This workaround is only needed for QNX 7.0 and 7.1. The bug should have been fixed in 8.0
-    #[cfg(any(target_env = "nto70", target_env = "nto71"))]
+    #[cfg(target_os = "nto")]
     unsafe fn do_fork(&mut self) -> Result<pid_t, io::Error> {
         use crate::sys::os::errno;
 
@@ -218,7 +211,7 @@ impl Command {
                 } else if delay < MAX_FORKSPAWN_SLEEP {
                     thread::sleep(delay);
                 } else {
-                    return Err(io::const_io_error!(
+                    return Err(io::const_error!(
                         ErrorKind::WouldBlock,
                         "forking returned EBADF too often",
                     ));
@@ -235,7 +228,7 @@ impl Command {
         let envp = self.capture_env();
 
         if self.saw_nul() {
-            return io::const_io_error!(ErrorKind::InvalidInput, "nul byte found in provided data",);
+            return io::const_error!(ErrorKind::InvalidInput, "nul byte found in provided data");
         }
 
         match self.setup_io(default, true) {
@@ -561,7 +554,7 @@ impl Command {
                         } else if delay < MAX_FORKSPAWN_SLEEP {
                             thread::sleep(delay);
                         } else {
-                            return Err(io::const_io_error!(
+                            return Err(io::const_error!(
                                 ErrorKind::WouldBlock,
                                 "posix_spawnp returned EBADF too often",
                             ));
@@ -1235,7 +1228,7 @@ mod linux_child_ext {
                 .as_ref()
                 // SAFETY: The os type is a transparent wrapper, therefore we can transmute references
                 .map(|fd| unsafe { mem::transmute::<&imp::PidFd, &os::PidFd>(fd) })
-                .ok_or_else(|| io::Error::new(ErrorKind::Uncategorized, "No pidfd was created."))
+                .ok_or_else(|| io::const_error!(ErrorKind::Uncategorized, "No pidfd was created."))
         }
 
         fn into_pidfd(mut self) -> Result<os::PidFd, Self> {

@@ -3,13 +3,13 @@ use std::collections::BTreeSet;
 use rand::Rng;
 use test::Bencher;
 
-fn random(n: usize) -> BTreeSet<usize> {
+fn random(n: u32) -> BTreeSet<u32> {
     let mut rng = crate::bench_rng();
     let mut set = BTreeSet::new();
-    while set.len() < n {
-        set.insert(rng.gen());
+    while set.len() < n as usize {
+        set.insert(rng.random());
     }
-    assert_eq!(set.len(), n);
+    assert_eq!(set.len(), n as usize);
     set
 }
 

@@ -1,7 +1,7 @@
 // ignore-tidy-linelength
 //@ revisions:aarch64 loongarch64 powerpc64 sparc64 x86_64
 //@ min-llvm-version: 19
-//@ compile-flags: -O -Cno-prepopulate-passes -Zlint-llvm-ir -Cllvm-args=-lint-abort-on-error
+//@ compile-flags: -Copt-level=3 -Cno-prepopulate-passes -Zlint-llvm-ir -Cllvm-args=-lint-abort-on-error
 
 //@[aarch64] compile-flags: --target aarch64-unknown-linux-gnu
 //@[aarch64] needs-llvm-components: arm
@@ -392,7 +392,7 @@ pub fn call_fiveu16s() {
 }
 
 // CHECK-LABEL: @return_fiveu16s
-// CHECK-SAME: (ptr {{.+}} sret([10 x i8]) align [[RUST_ALIGN:2]] dereferenceable(10) [[RET_PTR:%.+]])
+// CHECK-SAME: (ptr {{.+}} sret([10 x i8]) align [[RUST_ALIGN:2]] {{.*}}dereferenceable(10) [[RET_PTR:%.+]])
 #[no_mangle]
 pub fn return_fiveu16s() -> FiveU16s {
     // powerpc returns this struct via sret pointer, it doesn't use the cast ABI.

@@ -37,8 +37,8 @@ use walkdir::WalkDir;
 
 use self::header::{EarlyProps, make_test_description};
 use crate::common::{
-    Config, Mode, PassMode, TestPaths, UI_EXTENSIONS, expected_output_path, output_base_dir,
-    output_relative_path,
+    CompareMode, Config, Debugger, Mode, PassMode, TestPaths, UI_EXTENSIONS, expected_output_path,
+    output_base_dir, output_relative_path,
 };
 use crate::header::HeadersCache;
 use crate::util::logv;
@@ -61,9 +61,11 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .optopt("", "jsondoclint-path", "path to jsondoclint to use for doc tests", "PATH")
         .optopt("", "run-clang-based-tests-with", "path to Clang executable", "PATH")
         .optopt("", "llvm-filecheck", "path to LLVM's FileCheck binary", "DIR")
-        .reqopt("", "src-base", "directory to scan for test files", "PATH")
+        .reqopt("", "src-root", "directory containing sources", "PATH")
+        .reqopt("", "src-test-suite-root", "directory containing test suite sources", "PATH")
         .reqopt("", "build-base", "directory to deposit test outputs", "PATH")
         .reqopt("", "sysroot-base", "directory containing the compiler sysroot", "PATH")
+        .reqopt("", "stage", "stage number under test", "N")
         .reqopt("", "stage-id", "the target-stage identifier", "stageN-TARGET")
         .reqopt(
             "",
@@ -71,7 +73,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "which sort of compile tests to run",
             "pretty | debug-info | codegen | rustdoc \
             | rustdoc-json | codegen-units | incremental | run-make | ui \
-            | js-doc-test | mir-opt | assembly | crashes",
+            | rustdoc-js | mir-opt | assembly | crashes",
         )
         .reqopt(
             "",
@@ -88,7 +90,8 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .optopt("", "run", "whether to execute run-* tests", "auto | always | never")
         .optflag("", "ignored", "run tests marked as ignored")
         .optflag("", "has-enzyme", "run tests that require enzyme")
-        .optflag("", "with-debug-assertions", "whether to run tests with `ignore-debug` header")
+        .optflag("", "with-rustc-debug-assertions", "whether rustc was built with debug assertions")
+        .optflag("", "with-std-debug-assertions", "whether std was built with debug assertions")
         .optmulti(
             "",
             "skip",
@@ -158,7 +161,9 @@ pub fn parse_config(args: Vec<String>) -> Config {
         )
         .optflag("", "force-rerun", "rerun tests even if the inputs are unchanged")
         .optflag("", "only-modified", "only run tests that result been modified")
+        // FIXME: Temporarily retained so we can point users to `--no-capture`
         .optflag("", "nocapture", "")
+        .optflag("", "no-capture", "don't capture stdout/stderr of tests")
         .optflag("", "profiler-runtime", "is the profiler runtime enabled for this target")
         .optflag("h", "help", "show this message")
         .reqopt("", "channel", "current Rust channel", "CHANNEL")
@@ -181,6 +186,13 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "compiletest-diff-tool",
             "What custom diff tool to use for displaying compiletest tests.",
             "COMMAND",
+        )
+        .reqopt("", "minicore-path", "path to minicore aux library", "PATH")
+        .optopt(
+            "",
+            "debugger",
+            "only test a specific debugger in debuginfo tests",
+            "gdb | lldb | cdb",
         );
 
     let (argv0, args_) = args.split_first().unwrap();
@@ -228,13 +240,13 @@ pub fn parse_config(args: Vec<String>) -> Config {
         Some(x) => panic!("argument for --color must be auto, always, or never, but found `{}`", x),
     };
     let llvm_version =
-        matches.opt_str("llvm-version").as_deref().and_then(header::extract_llvm_version).or_else(
+        matches.opt_str("llvm-version").as_deref().map(header::extract_llvm_version).or_else(
             || header::extract_llvm_version_from_binary(&matches.opt_str("llvm-filecheck")?),
         );
 
-    let src_base = opt_path(matches, "src-base");
     let run_ignored = matches.opt_present("ignored");
-    let with_debug_assertions = matches.opt_present("with-debug-assertions");
+    let with_rustc_debug_assertions = matches.opt_present("with-rustc-debug-assertions");
+    let with_std_debug_assertions = matches.opt_present("with-std-debug-assertions");
     let mode = matches.opt_str("mode").unwrap().parse().expect("invalid mode");
     let has_html_tidy = if mode == Mode::Rustdoc {
         Command::new("tidy")
@@ -270,6 +282,33 @@ pub fn parse_config(args: Vec<String>) -> Config {
     } else {
         matches.free.clone()
     };
+    let compare_mode = matches.opt_str("compare-mode").map(|s| {
+        s.parse().unwrap_or_else(|_| {
+            let variants: Vec<_> = CompareMode::STR_VARIANTS.iter().copied().collect();
+            panic!(
+                "`{s}` is not a valid value for `--compare-mode`, it should be one of: {}",
+                variants.join(", ")
+            );
+        })
+    });
+    if matches.opt_present("nocapture") {
+        panic!("`--nocapture` is deprecated; please use `--no-capture`");
+    }
+
+    let stage = match matches.opt_str("stage") {
+        Some(stage) => stage.parse::<u32>().expect("expected `--stage` to be an unsigned integer"),
+        None => panic!("`--stage` is required"),
+    };
+
+    let src_root = opt_path(matches, "src-root");
+    let src_test_suite_root = opt_path(matches, "src-test-suite-root");
+    assert!(
+        src_test_suite_root.starts_with(&src_root),
+        "`src-root` must be a parent of `src-test-suite-root`: `src-root`=`{}`, `src-test-suite-root` = `{}`",
+        src_root.display(),
+        src_test_suite_root.display()
+    );
+
     Config {
         bless: matches.opt_present("bless"),
         compile_lib_path: make_absolute(opt_path(matches, "compile-lib-path")),
@@ -284,15 +323,26 @@ pub fn parse_config(args: Vec<String>) -> Config {
         run_clang_based_tests_with: matches.opt_str("run-clang-based-tests-with"),
         llvm_filecheck: matches.opt_str("llvm-filecheck").map(PathBuf::from),
         llvm_bin_dir: matches.opt_str("llvm-bin-dir").map(PathBuf::from),
-        src_base,
+
+        src_root,
+        src_test_suite_root,
+
         build_base: opt_path(matches, "build-base"),
         sysroot_base: opt_path(matches, "sysroot-base"),
+
+        stage,
         stage_id: matches.opt_str("stage-id").unwrap(),
+
         mode,
         suite: matches.opt_str("suite").unwrap(),
-        debugger: None,
+        debugger: matches.opt_str("debugger").map(|debugger| {
+            debugger
+                .parse::<Debugger>()
+                .unwrap_or_else(|_| panic!("unknown `--debugger` option `{debugger}` given"))
+        }),
         run_ignored,
-        with_debug_assertions,
+        with_rustc_debug_assertions,
+        with_std_debug_assertions,
         filters,
         skip: matches.opt_strs("skip"),
         filter_exact: matches.opt_present("exact"),
@@ -338,9 +388,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         only_modified: matches.opt_present("only-modified"),
         color,
         remote_test_client: matches.opt_str("remote-test-client").map(PathBuf::from),
-        compare_mode: matches
-            .opt_str("compare-mode")
-            .map(|s| s.parse().expect("invalid --compare-mode provided")),
+        compare_mode,
         rustfix_coverage: matches.opt_present("rustfix-coverage"),
         has_html_tidy,
         has_enzyme,
@@ -364,14 +412,17 @@ pub fn parse_config(args: Vec<String>) -> Config {
         target_cfgs: OnceLock::new(),
         builtin_cfg_names: OnceLock::new(),
 
-        nocapture: matches.opt_present("nocapture"),
+        nocapture: matches.opt_present("no-capture"),
 
         git_repository: matches.opt_str("git-repository").unwrap(),
         nightly_branch: matches.opt_str("nightly-branch").unwrap(),
         git_merge_commit_email: matches.opt_str("git-merge-commit-email").unwrap(),
 
         profiler_runtime: matches.opt_present("profiler-runtime"),
+
         diff_command: matches.opt_str("compiletest-diff-tool"),
+
+        minicore_path: opt_path(matches, "minicore-path"),
     }
 }
 
@@ -383,8 +434,12 @@ pub fn log_config(config: &Config) {
     logv(c, format!("rustc_path: {:?}", config.rustc_path.display()));
     logv(c, format!("cargo_path: {:?}", config.cargo_path));
     logv(c, format!("rustdoc_path: {:?}", config.rustdoc_path));
-    logv(c, format!("src_base: {:?}", config.src_base.display()));
+
+    logv(c, format!("src_root: {}", config.src_root.display()));
+    logv(c, format!("src_test_suite_root: {}", config.src_test_suite_root.display()));
+
     logv(c, format!("build_base: {:?}", config.build_base.display()));
+    logv(c, format!("stage: {}", config.stage));
     logv(c, format!("stage_id: {}", config.stage_id));
     logv(c, format!("mode: {}", config.mode));
     logv(c, format!("run_ignored: {}", config.run_ignored));
@@ -409,6 +464,7 @@ pub fn log_config(config: &Config) {
     logv(c, format!("host-linker: {:?}", config.host_linker));
     logv(c, format!("verbose: {}", config.verbose));
     logv(c, format!("format: {:?}", config.format));
+    logv(c, format!("minicore_path: {:?}", config.minicore_path.display()));
     logv(c, "\n".to_string());
 }
 
@@ -460,9 +516,16 @@ pub fn run_tests(config: Arc<Config>) {
     if let Mode::DebugInfo = config.mode {
         // Debugging emscripten code doesn't make sense today
         if !config.target.contains("emscripten") {
-            configs.extend(debuggers::configure_cdb(&config));
-            configs.extend(debuggers::configure_gdb(&config));
-            configs.extend(debuggers::configure_lldb(&config));
+            match config.debugger {
+                Some(Debugger::Cdb) => configs.extend(debuggers::configure_cdb(&config)),
+                Some(Debugger::Gdb) => configs.extend(debuggers::configure_gdb(&config)),
+                Some(Debugger::Lldb) => configs.extend(debuggers::configure_lldb(&config)),
+                None => {
+                    configs.extend(debuggers::configure_cdb(&config));
+                    configs.extend(debuggers::configure_gdb(&config));
+                    configs.extend(debuggers::configure_lldb(&config));
+                }
+            }
         }
     } else {
         configs.push(config.clone());
@@ -572,20 +635,28 @@ struct TestCollector {
 /// regardless of whether any filters/tests were specified on the command-line,
 /// because filtering is handled later by libtest.
 pub fn collect_and_make_tests(config: Arc<Config>) -> Vec<test::TestDescAndFn> {
-    debug!("making tests from {:?}", config.src_base.display());
+    debug!("making tests from {}", config.src_test_suite_root.display());
     let common_inputs_stamp = common_inputs_stamp(&config);
-    let modified_tests = modified_tests(&config, &config.src_base).unwrap_or_else(|err| {
-        panic!("modified_tests got error from dir: {}, error: {}", config.src_base.display(), err)
-    });
+    let modified_tests =
+        modified_tests(&config, &config.src_test_suite_root).unwrap_or_else(|err| {
+            panic!(
+                "modified_tests got error from dir: {}, error: {}",
+                config.src_test_suite_root.display(),
+                err
+            )
+        });
     let cache = HeadersCache::load(&config);
 
     let cx = TestCollectorCx { config, cache, common_inputs_stamp, modified_tests };
     let mut collector =
         TestCollector { tests: vec![], found_path_stems: HashSet::new(), poisoned: false };
 
-    collect_tests_from_dir(&cx, &mut collector, &cx.config.src_base, &PathBuf::new())
+    collect_tests_from_dir(&cx, &mut collector, &cx.config.src_test_suite_root, Path::new(""))
         .unwrap_or_else(|reason| {
-            panic!("Could not read tests from {}: {reason}", cx.config.src_base.display())
+            panic!(
+                "Could not read tests from {}: {reason}",
+                cx.config.src_test_suite_root.display()
+            )
         });
 
     let TestCollector { tests, found_path_stems, poisoned } = collector;
@@ -608,7 +679,7 @@ pub fn collect_and_make_tests(config: Arc<Config>) -> Vec<test::TestDescAndFn> {
 /// common to some subset of tests, and are hopefully unlikely to be modified
 /// while working on other tests.)
 fn common_inputs_stamp(config: &Config) -> Stamp {
-    let rust_src_dir = config.find_rust_src_root().expect("Could not find Rust source root");
+    let src_root = &config.src_root;
 
     let mut stamp = Stamp::from_path(&config.rustc_path);
 
@@ -623,17 +694,17 @@ fn common_inputs_stamp(config: &Config) -> Stamp {
         "src/etc/lldb_providers.py",
     ];
     for file in &pretty_printer_files {
-        let path = rust_src_dir.join(file);
+        let path = src_root.join(file);
         stamp.add_path(&path);
     }
 
-    stamp.add_dir(&rust_src_dir.join("src/etc/natvis"));
+    stamp.add_dir(&src_root.join("src/etc/natvis"));
 
     stamp.add_dir(&config.run_lib_path);
 
     if let Some(ref rustdoc_path) = config.rustdoc_path {
         stamp.add_path(&rustdoc_path);
-        stamp.add_path(&rust_src_dir.join("src/etc/htmldocck.py"));
+        stamp.add_path(&src_root.join("src/etc/htmldocck.py"));
     }
 
     // Re-run coverage tests if the `coverage-dump` tool was modified,
@@ -642,10 +713,10 @@ fn common_inputs_stamp(config: &Config) -> Stamp {
         stamp.add_path(coverage_dump_path)
     }
 
-    stamp.add_dir(&rust_src_dir.join("src/tools/run-make-support"));
+    stamp.add_dir(&src_root.join("src/tools/run-make-support"));
 
     // Compiletest itself.
-    stamp.add_dir(&rust_src_dir.join("src/tools/compiletest/"));
+    stamp.add_dir(&src_root.join("src/tools/compiletest"));
 
     stamp
 }
@@ -885,6 +956,9 @@ fn files_related_to_test(
         related.push(path);
     }
 
+    // `minicore.rs` test auxiliary: we need to make sure tests get rerun if this changes.
+    related.push(config.src_root.join("tests").join("auxiliary").join("minicore.rs"));
+
     related
 }
 
@@ -973,10 +1047,8 @@ fn make_test_name(
     testpaths: &TestPaths,
     revision: Option<&str>,
 ) -> test::TestName {
-    // Print the name of the file, relative to the repository root.
-    // `src_base` looks like `/path/to/rust/tests/ui`
-    let root_directory = config.src_base.parent().unwrap().parent().unwrap();
-    let path = testpaths.file.strip_prefix(root_directory).unwrap();
+    // Print the name of the file, relative to the sources root.
+    let path = testpaths.file.strip_prefix(&config.src_root).unwrap();
     let debugger = match config.debugger {
         Some(d) => format!("-{}", d),
         None => String::new(),

@@ -9,7 +9,7 @@ use parking_lot::{Mutex, RwLock};
 use std::hash::Hash;
 use std::panic::panic_any;
 use std::sync::atomic::{AtomicU32, Ordering};
-use tracing::debug;
+use tracing::trace;
 use triomphe::{Arc, ThinArc};
 
 mod dependency_graph;
@@ -177,7 +177,7 @@ impl Runtime {
     where
         F: FnOnce(Revision) -> Option<Durability>,
     {
-        tracing::debug!("increment_revision()");
+        tracing::trace!("increment_revision()");
 
         if !self.permits_increment() {
             panic!("increment_revision invoked during a query computation");
@@ -196,7 +196,7 @@ impl Runtime {
 
         let new_revision = current_revision.next();
 
-        debug!("increment_revision: incremented to {:?}", new_revision);
+        trace!("increment_revision: incremented to {:?}", new_revision);
 
         if let Some(d) = op(new_revision) {
             for rev in &self.shared_state.revisions[1..=d.index()] {
@@ -267,7 +267,7 @@ impl Runtime {
         database_key_index: DatabaseKeyIndex,
         to_id: RuntimeId,
     ) {
-        debug!("unblock_cycle_and_maybe_throw(database_key={:?})", database_key_index);
+        trace!("unblock_cycle_and_maybe_throw(database_key={:?})", database_key_index);
 
         let mut from_stack = self.local_state.take_query_stack();
         let from_id = self.id();
@@ -305,7 +305,7 @@ impl Runtime {
 
             Cycle::new(Arc::new(v))
         };
-        debug!("cycle {:?}, cycle_query {:#?}", cycle.debug(db), cycle_query,);
+        trace!("cycle {:?}, cycle_query {:#?}", cycle.debug(db), cycle_query,);
 
         // We can remove the cycle participants from the list of dependencies;
         // they are a strongly connected component (SCC) and we only care about
@@ -323,7 +323,7 @@ impl Runtime {
                     CycleRecoveryStrategy::Fallback => false,
                 })
                 .for_each(|aq| {
-                    debug!("marking {:?} for fallback", aq.database_key_index.debug(db));
+                    trace!("marking {:?} for fallback", aq.database_key_index.debug(db));
                     aq.take_inputs_from(&cycle_query);
                     assert!(aq.cycle.is_none());
                     aq.cycle = Some(cycle.clone());

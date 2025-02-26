@@ -7,7 +7,7 @@ LL |     async fn box_ref_Struct(self: Box<Self, impl FnMut(&mut Self)>) -> &u32
    = note: see issue #44874 <https://github.com/rust-lang/rust/issues/44874> for more information
    = help: add `#![feature(arbitrary_self_types)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-   = help: consider changing to `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
+   = help: consider changing to `self`, `&self`, `&mut self`, or a type implementing `Receiver` such as `self: Box<Self>`, `self: Rc<Self>`, or `self: Arc<Self>`
 
 error: aborting due to 1 previous error
 

@@ -11,22 +11,16 @@ pub mod env;
 pub mod fd;
 pub mod fs;
 pub mod futex;
-pub mod io;
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub mod kernel_copy;
-#[cfg(target_os = "l4re")]
-mod l4re;
 #[cfg(target_os = "linux")]
 pub mod linux;
-#[cfg(not(target_os = "l4re"))]
-pub mod net;
-#[cfg(target_os = "l4re")]
-pub use self::l4re::net;
 pub mod os;
 pub mod pipe;
 pub mod process;
 pub mod stack_overflow;
 pub mod stdio;
+pub mod sync;
 pub mod thread;
 pub mod thread_parking;
 pub mod time;
@@ -253,7 +247,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         libc::ECONNREFUSED => ConnectionRefused,
         libc::ECONNRESET => ConnectionReset,
         libc::EDEADLK => Deadlock,
-        libc::EDQUOT => FilesystemQuotaExceeded,
+        libc::EDQUOT => QuotaExceeded,
         libc::EEXIST => AlreadyExists,
         libc::EFBIG => FileTooLarge,
         libc::EHOSTUNREACH => HostUnreachable,
@@ -379,24 +373,24 @@ cfg_if::cfg_if! {
             cfg(target_feature = "crt-static"))]
         #[link(name = "dl", cfg(not(target_feature = "crt-static")))]
         #[link(name = "log", cfg(not(target_feature = "crt-static")))]
-        extern "C" {}
+        unsafe extern "C" {}
     } else if #[cfg(target_os = "freebsd")] {
         #[link(name = "execinfo")]
         #[link(name = "pthread")]
-        extern "C" {}
+        unsafe extern "C" {}
     } else if #[cfg(target_os = "netbsd")] {
         #[link(name = "pthread")]
         #[link(name = "rt")]
-        extern "C" {}
+        unsafe extern "C" {}
     } else if #[cfg(any(target_os = "dragonfly", target_os = "openbsd"))] {
         #[link(name = "pthread")]
-        extern "C" {}
+        unsafe extern "C" {}
     } else if #[cfg(target_os = "solaris")] {
         #[link(name = "socket")]
         #[link(name = "posix4")]
         #[link(name = "pthread")]
         #[link(name = "resolv")]
-        extern "C" {}
+        unsafe extern "C" {}
     } else if #[cfg(target_os = "illumos")] {
         #[link(name = "socket")]
         #[link(name = "posix4")]
@@ -405,24 +399,24 @@ cfg_if::cfg_if! {
         #[link(name = "nsl")]
         // Use libumem for the (malloc-compatible) allocator
         #[link(name = "umem")]
-        extern "C" {}
+        unsafe extern "C" {}
     } else if #[cfg(target_vendor = "apple")] {
         // Link to `libSystem.dylib`.
         //
         // Don't get confused by the presence of `System.framework`,
         // it is a deprecated wrapper over the dynamic library.
         #[link(name = "System")]
-        extern "C" {}
+        unsafe extern "C" {}
     } else if #[cfg(target_os = "fuchsia")] {
         #[link(name = "zircon")]
         #[link(name = "fdio")]
-        extern "C" {}
+        unsafe extern "C" {}
     } else if #[cfg(all(target_os = "linux", target_env = "uclibc"))] {
         #[link(name = "dl")]
-        extern "C" {}
+        unsafe extern "C" {}
     } else if #[cfg(target_os = "vita")] {
         #[link(name = "pthread", kind = "static", modifiers = "-bundle")]
-        extern "C" {}
+        unsafe extern "C" {}
     }
 }
 

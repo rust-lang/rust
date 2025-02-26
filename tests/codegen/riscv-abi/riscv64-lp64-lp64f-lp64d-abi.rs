@@ -1,4 +1,4 @@
-//@ compile-flags: --target riscv64gc-unknown-linux-gnu -O -C no-prepopulate-passes -C panic=abort
+//@ compile-flags: --target riscv64gc-unknown-linux-gnu -Copt-level=3 -C no-prepopulate-passes -C panic=abort
 //@ needs-llvm-components: riscv
 
 #![crate_type = "lib"]

@@ -18,7 +18,7 @@ impl<T: 'static> GetTypeId<T> {
 
 const fn check_type_id<T: 'static>() -> bool {
     matches!(GetTypeId::<T>::VALUE, GetTypeId::<T>::VALUE)
-    //~^ ERROR constant pattern depends on a generic parameter
+    //~^ ERROR constant pattern cannot depend on generic parameters
 }
 
 pub struct GetTypeNameLen<T>(T);
@@ -29,7 +29,7 @@ impl<T: 'static> GetTypeNameLen<T> {
 
 const fn check_type_name_len<T: 'static>() -> bool {
     matches!(GetTypeNameLen::<T>::VALUE, GetTypeNameLen::<T>::VALUE)
-    //~^ ERROR constant pattern depends on a generic parameter
+    //~^ ERROR constant pattern cannot depend on generic parameters
 }
 
 fn main() {

@@ -1,5 +1,5 @@
 //@ known-bug: #121363
-//@ compile-flags: -Zmir-opt-level=5 --crate-type lib
+//@ compile-flags: -Zmir-enable-passes=+GVN --crate-type lib
 
 #![feature(trivial_bounds)]
 

@@ -8,8 +8,9 @@ LL |     fn next(&mut self) -> Result<i32, i32> { Ok(7) }
               found signature `fn(&mut S) -> Result<i32, i32>`
 help: change the output type to match the trait
    |
-LL |     fn next(&mut self) -> Option<i32> { Ok(7) }
-   |                           ~~~~~~~~~~~
+LL -     fn next(&mut self) -> Result<i32, i32> { Ok(7) }
+LL +     fn next(&mut self) -> Option<i32> { Ok(7) }
+   |
 
 error: aborting due to 1 previous error
 

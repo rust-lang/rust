@@ -33,12 +33,12 @@ pub(crate) fn item_namespace<'ll>(cx: &CodegenCx<'ll, '_>, def_id: DefId) -> &'l
     };
 
     let scope = unsafe {
-        llvm::LLVMRustDIBuilderCreateNameSpace(
+        llvm::LLVMDIBuilderCreateNameSpace(
             DIB(cx),
             parent_scope,
-            namespace_name_string.as_ptr().cast(),
+            namespace_name_string.as_ptr(),
             namespace_name_string.len(),
-            false, // ExportSymbols (only relevant for C++ anonymous namespaces)
+            llvm::False, // ExportSymbols (only relevant for C++ anonymous namespaces)
         )
     };
 

@@ -1,0 +1,118 @@
+error: the `#[default]` attribute may only be used on unit enum variants or variants where every field has a default value
+  --> $DIR/failures.rs:47:5
+   |
+LL |     Variant {}
+   |     ^^^^^^^
+   |
+   = help: consider a manual implementation of `Default`
+
+error: generic parameters may not be used in const operations
+  --> $DIR/failures.rs:22:23
+   |
+LL |     bat: i32 = <Qux<{ C }> as T>::K,
+   |                       ^ cannot perform const operation using `C`
+   |
+   = help: const parameters may only be used as standalone arguments, i.e. `C`
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+
+error: default fields are not supported in tuple structs
+  --> $DIR/failures.rs:26:22
+   |
+LL | pub struct Rak(i32 = 42);
+   |                      ^^ default fields are only supported on structs
+
+error: generic `Self` types are currently not permitted in anonymous constants
+  --> $DIR/failures.rs:20:14
+   |
+LL |     bar: S = Self::S,
+   |              ^^^^
+
+error[E0277]: the trait bound `S: Default` is not satisfied
+  --> $DIR/failures.rs:14:5
+   |
+LL | #[derive(Debug, Default)]
+   |                 ------- in this derive macro expansion
+LL | pub struct Bar {
+LL |     pub bar: S,
+   |     ^^^^^^^^^^ the trait `Default` is not implemented for `S`
+   |
+   = note: this error originates in the derive macro `Default` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider annotating `S` with `#[derive(Default)]`
+   |
+LL + #[derive(Default)]
+LL | pub struct S;
+   |
+
+error: missing mandatory field `bar`
+  --> $DIR/failures.rs:53:21
+   |
+LL |     let _ = Bar { .. };
+   |                     ^
+
+error[E0308]: mismatched types
+  --> $DIR/failures.rs:57:17
+   |
+LL |     let _ = Rak(..);
+   |             --- ^^ expected `i32`, found `RangeFull`
+   |             |
+   |             arguments to this struct are incorrect
+   |
+note: tuple struct defined here
+  --> $DIR/failures.rs:26:12
+   |
+LL | pub struct Rak(i32 = 42);
+   |            ^^^
+help: you might have meant to use `..` to skip providing a value for expected fields, but this is only supported on non-tuple struct literals; it is instead interpreted as a `std::ops::RangeFull` literal
+  --> $DIR/failures.rs:57:17
+   |
+LL |     let _ = Rak(..);
+   |                 ^^
+
+error[E0061]: this struct takes 1 argument but 2 arguments were supplied
+  --> $DIR/failures.rs:59:13
+   |
+LL |     let _ = Rak(0, ..);
+   |             ^^^    -- unexpected argument #2 of type `RangeFull`
+   |
+help: you might have meant to use `..` to skip providing a value for expected fields, but this is only supported on non-tuple struct literals; it is instead interpreted as a `std::ops::RangeFull` literal
+  --> $DIR/failures.rs:59:20
+   |
+LL |     let _ = Rak(0, ..);
+   |                    ^^
+note: tuple struct defined here
+  --> $DIR/failures.rs:26:12
+   |
+LL | pub struct Rak(i32 = 42);
+   |            ^^^
+help: remove the extra argument
+   |
+LL -     let _ = Rak(0, ..);
+LL +     let _ = Rak(0);
+   |
+
+error[E0061]: this struct takes 1 argument but 2 arguments were supplied
+  --> $DIR/failures.rs:61:13
+   |
+LL |     let _ = Rak(.., 0);
+   |             ^^^ -- unexpected argument #1 of type `RangeFull`
+   |
+help: you might have meant to use `..` to skip providing a value for expected fields, but this is only supported on non-tuple struct literals; it is instead interpreted as a `std::ops::RangeFull` literal
+  --> $DIR/failures.rs:61:17
+   |
+LL |     let _ = Rak(.., 0);
+   |                 ^^
+note: tuple struct defined here
+  --> $DIR/failures.rs:26:12
+   |
+LL | pub struct Rak(i32 = 42);
+   |            ^^^
+help: remove the extra argument
+   |
+LL -     let _ = Rak(.., 0);
+LL +     let _ = Rak(0);
+   |
+
+error: aborting due to 9 previous errors
+
+Some errors have detailed explanations: E0061, E0277, E0308.
+For more information about an error, try `rustc --explain E0061`.

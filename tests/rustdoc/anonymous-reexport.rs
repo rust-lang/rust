@@ -9,7 +9,7 @@
 //@ has - '//*[@id="main-content"]/h2' 'Structs'
 //@ has - '//*[@id="main-content"]/h2' 'Re-exports'
 // The 3 re-exports.
-//@ count - '//*[@id="main-content"]//*[@class="item-table"]//li//code' 3
+//@ count - '//*[@id="main-content"]//*[@class="item-table reexports"]/dt//code' 3
 // The public struct.
 //@ count - '//*[@id="main-content"]//a[@class="struct"]' 1
 

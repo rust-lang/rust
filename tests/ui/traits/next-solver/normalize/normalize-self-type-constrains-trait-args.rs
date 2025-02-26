@@ -1,3 +1,6 @@
+//@ revisions: current next
+//@[next] compile-flags: -Znext-solver
+//@ ignore-compare-mode-next-solver (explicit revisions)
 //@ check-pass
 
 // This goal is also possible w/ a GAT, but lazy_type_alias

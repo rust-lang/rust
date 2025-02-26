@@ -9,9 +9,8 @@
 #[repr(simd)]
 struct i32x4([i32; 4]);
 
-extern "rust-intrinsic" {
-    pub(crate) fn simd_add<T>(x: T, y: T) -> T;
-}
+#[rustc_intrinsic]
+pub(crate) unsafe fn simd_add<T>(x: T, y: T) -> T;
 
 #[inline(always)]
 fn to_array(a: i32x4) -> [i32; 4] {

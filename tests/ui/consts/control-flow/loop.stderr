@@ -1,42 +1,4 @@
-error[E0658]: `for` is not allowed in a `const`
-  --> $DIR/loop.rs:53:5
-   |
-LL | /     for i in 0..4 {
-LL | |
-LL | |
-LL | |         x += i;
-LL | |     }
-   | |_____^
-   |
-   = note: see issue #87575 <https://github.com/rust-lang/rust/issues/87575> for more information
-   = help: add `#![feature(const_for)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: `for` is not allowed in a `const`
-  --> $DIR/loop.rs:59:5
-   |
-LL | /     for i in 0..4 {
-LL | |
-LL | |
-LL | |         x += i;
-LL | |     }
-   | |_____^
-   |
-   = note: see issue #87575 <https://github.com/rust-lang/rust/issues/87575> for more information
-   = help: add `#![feature(const_for)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0015]: cannot convert `std::ops::Range<i32>` into an iterator in constants
-  --> $DIR/loop.rs:53:14
-   |
-LL |     for i in 0..4 {
-   |              ^^^^
-   |
-note: impl defined here, but it is not `const`
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
-
-error[E0015]: cannot call non-const fn `<std::ops::Range<i32> as Iterator>::next` in constants
+error[E0015]: cannot use `for` loop on `std::ops::Range<i32>` in constants
   --> $DIR/loop.rs:53:14
    |
 LL |     for i in 0..4 {
@@ -44,25 +6,32 @@ LL |     for i in 0..4 {
    |
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
 
-error[E0015]: cannot convert `std::ops::Range<i32>` into an iterator in constants
-  --> $DIR/loop.rs:59:14
-   |
-LL |     for i in 0..4 {
-   |              ^^^^
-   |
-note: impl defined here, but it is not `const`
-  --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
-
-error[E0015]: cannot call non-const fn `<std::ops::Range<i32> as Iterator>::next` in constants
-  --> $DIR/loop.rs:59:14
+error[E0015]: cannot use `for` loop on `std::ops::Range<i32>` in constants
+  --> $DIR/loop.rs:53:14
    |
 LL |     for i in 0..4 {
    |              ^^^^
    |
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: aborting due to 6 previous errors
+error[E0015]: cannot use `for` loop on `std::ops::Range<i32>` in constants
+  --> $DIR/loop.rs:59:14
+   |
+LL |     for i in 0..4 {
+   |              ^^^^
+   |
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
 
-Some errors have detailed explanations: E0015, E0658.
-For more information about an error, try `rustc --explain E0015`.
+error[E0015]: cannot use `for` loop on `std::ops::Range<i32>` in constants
+  --> $DIR/loop.rs:59:14
+   |
+LL |     for i in 0..4 {
+   |              ^^^^
+   |
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0015`.

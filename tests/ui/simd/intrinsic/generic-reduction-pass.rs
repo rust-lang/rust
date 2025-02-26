@@ -24,19 +24,38 @@ struct f32x4(pub [f32; 4]);
 #[derive(Copy, Clone)]
 struct b8x4(pub [i8; 4]);
 
-extern "rust-intrinsic" {
-    fn simd_reduce_add_unordered<T, U>(x: T) -> U;
-    fn simd_reduce_mul_unordered<T, U>(x: T) -> U;
-    fn simd_reduce_add_ordered<T, U>(x: T, acc: U) -> U;
-    fn simd_reduce_mul_ordered<T, U>(x: T, acc: U) -> U;
-    fn simd_reduce_min<T, U>(x: T) -> U;
-    fn simd_reduce_max<T, U>(x: T) -> U;
-    fn simd_reduce_and<T, U>(x: T) -> U;
-    fn simd_reduce_or<T, U>(x: T) -> U;
-    fn simd_reduce_xor<T, U>(x: T) -> U;
-    fn simd_reduce_all<T>(x: T) -> bool;
-    fn simd_reduce_any<T>(x: T) -> bool;
-}
+#[rustc_intrinsic]
+unsafe fn simd_reduce_add_unordered<T, U>(x: T) -> U;
+
+#[rustc_intrinsic]
+unsafe fn simd_reduce_mul_unordered<T, U>(x: T) -> U;
+
+#[rustc_intrinsic]
+unsafe fn simd_reduce_add_ordered<T, U>(x: T, acc: U) -> U;
+
+#[rustc_intrinsic]
+unsafe fn simd_reduce_mul_ordered<T, U>(x: T, acc: U) -> U;
+
+#[rustc_intrinsic]
+unsafe fn simd_reduce_min<T, U>(x: T) -> U;
+
+#[rustc_intrinsic]
+unsafe fn simd_reduce_max<T, U>(x: T) -> U;
+
+#[rustc_intrinsic]
+unsafe fn simd_reduce_and<T, U>(x: T) -> U;
+
+#[rustc_intrinsic]
+unsafe fn simd_reduce_or<T, U>(x: T) -> U;
+
+#[rustc_intrinsic]
+unsafe fn simd_reduce_xor<T, U>(x: T) -> U;
+
+#[rustc_intrinsic]
+unsafe fn simd_reduce_all<T>(x: T) -> bool;
+
+#[rustc_intrinsic]
+unsafe fn simd_reduce_any<T>(x: T) -> bool;
 
 fn main() {
     unsafe {

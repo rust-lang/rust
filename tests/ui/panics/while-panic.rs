@@ -2,7 +2,7 @@
 
 //@ run-fail
 //@ error-pattern:giraffe
-//@ ignore-emscripten no processes
+//@ needs-subprocess
 
 fn main() {
     panic!("{}", {

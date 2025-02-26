@@ -48,7 +48,7 @@ fn add_vis_to_referenced_module_def(acc: &mut Assists, ctx: &AssistContext<'_>) 
     let (_, def) = module
         .scope(ctx.db(), None)
         .into_iter()
-        .find(|(name, _)| name.eq_ident(name_ref.text().as_str()))?;
+        .find(|(name, _)| name.as_str() == name_ref.text().trim_start_matches("r#"))?;
     let ScopeDef::ModuleDef(def) = def else {
         return None;
     };

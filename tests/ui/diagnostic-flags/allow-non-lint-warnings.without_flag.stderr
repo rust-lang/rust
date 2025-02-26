@@ -1,0 +1,8 @@
+warning: unexpected annotation used with `#[rustc_error(...)]`!
+  --> $DIR/allow-non-lint-warnings.rs:25:1
+   |
+LL | fn main() {}
+   | ^^^^^^^^^
+
+warning: 1 warning emitted
+

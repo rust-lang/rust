@@ -2,7 +2,6 @@
 
 #![allow(dead_code)]
 #![allow(unreachable_code)]
-//@ pretty-expanded FIXME #23616
 
 use std::ops::Add;
 

@@ -1,5 +1,4 @@
    LL|       |#![feature(coverage_attribute)]
-   LL|       |#![feature(noop_waker)]
    LL|       |//@ edition: 2018
    LL|       |
    LL|       |//@ aux-build: executor.rs

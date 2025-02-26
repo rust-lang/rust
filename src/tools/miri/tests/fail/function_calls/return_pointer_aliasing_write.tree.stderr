@@ -16,7 +16,6 @@ LL | |         {
 LL | |             let _x = 0;
 LL | |             let ptr = &raw mut _x;
 ...  |
-LL | |         }
 LL | |     }
    | |_____^
 help: the protected tag <TAG> was created here, in the initial state Reserved

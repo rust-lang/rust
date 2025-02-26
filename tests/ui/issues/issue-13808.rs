@@ -1,7 +1,6 @@
 //@ run-pass
 #![allow(dead_code)]
 #![allow(unused_variables)]
-//@ pretty-expanded FIXME #23616
 
 struct Foo<'a> {
     listener: Box<dyn FnMut() + 'a>,

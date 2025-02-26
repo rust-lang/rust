@@ -1,6 +1,6 @@
-//@ compile-flags: -O
+//@ compile-flags: -Copt-level=3
 //@ only-x86_64
-//@ ignore-debug: debug assertions prevent generating shufflevector
+//@ ignore-std-debug-assertions (debug assertions prevent generating shufflevector)
 
 #![crate_type = "lib"]
 

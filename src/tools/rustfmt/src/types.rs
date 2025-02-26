@@ -18,6 +18,7 @@ use crate::lists::{
 use crate::macros::{MacroPosition, rewrite_macro};
 use crate::overflow;
 use crate::pairs::{PairParts, rewrite_pair};
+use crate::patterns::rewrite_range_pat;
 use crate::rewrite::{Rewrite, RewriteContext, RewriteError, RewriteErrorExt, RewriteResult};
 use crate::shape::Shape;
 use crate::source_map::SpanUtils;
@@ -463,8 +464,8 @@ impl Rewrite for ast::WherePredicate {
 
     fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
         // FIXME: dead spans?
-        let result = match *self {
-            ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
+        let result = match self.kind {
+            ast::WherePredicateKind::BoundPredicate(ast::WhereBoundPredicate {
                 ref bound_generic_params,
                 ref bounded_ty,
                 ref bounds,
@@ -482,12 +483,11 @@ impl Rewrite for ast::WherePredicate {
 
                 rewrite_assign_rhs(context, lhs, bounds, &RhsAssignKind::Bounds, shape)?
             }
-            ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate {
+            ast::WherePredicateKind::RegionPredicate(ast::WhereRegionPredicate {
                 ref lifetime,
                 ref bounds,
-                span,
-            }) => rewrite_bounded_lifetime(lifetime, bounds, span, context, shape)?,
-            ast::WherePredicate::EqPredicate(ast::WhereEqPredicate {
+            }) => rewrite_bounded_lifetime(lifetime, bounds, self.span, context, shape)?,
+            ast::WherePredicateKind::EqPredicate(ast::WhereEqPredicate {
                 ref lhs_ty,
                 ref rhs_ty,
                 ..
@@ -1017,6 +1017,46 @@ impl Rewrite for ast::Ty {
                 let pat = pat.rewrite_result(context, shape)?;
                 Ok(format!("{ty} is {pat}"))
             }
+            ast::TyKind::UnsafeBinder(ref binder) => {
+                let mut result = String::new();
+                if let Some(ref lifetime_str) =
+                    rewrite_bound_params(context, shape, &binder.generic_params)
+                {
+                    result.push_str("unsafe<");
+                    result.push_str(lifetime_str);
+                    result.push_str("> ");
+                }
+
+                let inner_ty_shape = if context.use_block_indent() {
+                    shape
+                        .offset_left(result.len())
+                        .max_width_error(shape.width, self.span())?
+                } else {
+                    shape
+                        .visual_indent(result.len())
+                        .sub_width(result.len())
+                        .max_width_error(shape.width, self.span())?
+                };
+
+                let rewrite = binder.inner_ty.rewrite_result(context, inner_ty_shape)?;
+                result.push_str(&rewrite);
+                Ok(result)
+            }
+        }
+    }
+}
+
+impl Rewrite for ast::TyPat {
+    fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+        self.rewrite_result(context, shape).ok()
+    }
+
+    fn rewrite_result(&self, context: &RewriteContext<'_>, shape: Shape) -> RewriteResult {
+        match self.kind {
+            ast::TyPatKind::Range(ref lhs, ref rhs, ref end_kind) => {
+                rewrite_range_pat(context, shape, lhs, rhs, end_kind, self.span)
+            }
+            ast::TyPatKind::Err(_) => Err(RewriteError::Unknown),
         }
     }
 }

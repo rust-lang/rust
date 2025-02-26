@@ -59,8 +59,8 @@ fn explore_directory(dir: &Path) -> Vec<String> {
                             missing_files.push(path.to_str().unwrap().to_string());
                         }
                     },
-                    _ => continue,
-                };
+                    _ => {},
+                }
             }
         }
     }

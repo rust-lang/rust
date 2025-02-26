@@ -3,13 +3,13 @@
 // See comments in build_native_lib()
 #define EXPORT __attribute__((visibility("default")))
 
-/* Test: test_pointer */
+/* Test: test_access_pointer */
 
 EXPORT void print_pointer(const int *ptr) {
   printf("printing pointer dereference from C: %d\n", *ptr);
 }
 
-/* Test: test_simple */
+/* Test: test_access_simple */
 
 typedef struct Simple {
   int field;
@@ -19,7 +19,7 @@ EXPORT int access_simple(const Simple *s_ptr) {
   return s_ptr->field;
 }
 
-/* Test: test_nested */
+/* Test: test_access_nested */
 
 typedef struct Nested {
   int value;
@@ -38,7 +38,7 @@ EXPORT int access_nested(const Nested *n_ptr) {
   return n_ptr->value;
 }
 
-/* Test: test_static */
+/* Test: test_access_static */
 
 typedef struct Static {
     int value;

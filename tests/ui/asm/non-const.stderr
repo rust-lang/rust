@@ -1,4 +1,4 @@
-error[E0015]: cannot call non-const fn `non_const_fn` in constants
+error[E0015]: cannot call non-const function `non_const_fn` in constants
   --> $DIR/non-const.rs:10:31
    |
 LL | global_asm!("/* {} */", const non_const_fn(0));

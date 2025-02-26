@@ -6,13 +6,15 @@ use base_db::ra_salsa::Cycle;
 use chalk_ir::{AdtId, FloatTy, IntTy, TyKind, UintTy};
 use hir_def::{
     layout::{
-        Abi, FieldsShape, Float, Integer, LayoutCalculator, LayoutCalculatorError, LayoutS,
-        Primitive, ReprOptions, Scalar, Size, StructKind, TargetDataLayout, WrappingRange,
+        BackendRepr, FieldsShape, Float, Integer, LayoutCalculator, LayoutCalculatorError,
+        LayoutData, Primitive, ReprOptions, Scalar, Size, StructKind, TargetDataLayout,
+        WrappingRange,
     },
     LocalFieldId, StructId,
 };
 use la_arena::{Idx, RawIdx};
 use rustc_abi::AddressSpace;
+use rustc_hashes::Hash64;
 use rustc_index::{IndexSlice, IndexVec};
 
 use triomphe::Arc;
@@ -66,7 +68,7 @@ impl rustc_index::Idx for RustcFieldIdx {
     }
 }
 
-pub type Layout = LayoutS<RustcFieldIdx, RustcEnumVariantIdx>;
+pub type Layout = LayoutData<RustcFieldIdx, RustcEnumVariantIdx>;
 pub type TagEncoding = hir_def::layout::TagEncoding<RustcEnumVariantIdx>;
 pub type Variants = hir_def::layout::Variants<RustcFieldIdx, RustcEnumVariantIdx>;
 
@@ -168,7 +170,7 @@ fn layout_of_simd_ty(
 
     // Compute the ABI of the element type:
     let e_ly = db.layout_of_ty(e_ty, env)?;
-    let Abi::Scalar(e_abi) = e_ly.abi else {
+    let BackendRepr::Scalar(e_abi) = e_ly.backend_repr else {
         return Err(LayoutError::Unknown);
     };
 
@@ -177,7 +179,7 @@ fn layout_of_simd_ty(
         .size
         .checked_mul(e_len, dl)
         .ok_or(LayoutError::BadCalc(LayoutCalculatorError::SizeOverflow))?;
-    let align = dl.vector_align(size);
+    let align = dl.llvmlike_vector_align(size);
     let size = size.align_to(align.abi);
 
     // Compute the placement of the vector fields:
@@ -190,12 +192,14 @@ fn layout_of_simd_ty(
     Ok(Arc::new(Layout {
         variants: Variants::Single { index: struct_variant_idx() },
         fields,
-        abi: Abi::Vector { element: e_abi, count: e_len },
+        backend_repr: BackendRepr::Vector { element: e_abi, count: e_len },
         largest_niche: e_ly.largest_niche,
+        uninhabited: false,
         size,
         align,
         max_repr_align: None,
         unadjusted_abi_align: align.abi,
+        randomization_seed: Hash64::ZERO,
     }))
 }
 
@@ -294,23 +298,22 @@ pub fn layout_of_ty_query(
                 .checked_mul(count, dl)
                 .ok_or(LayoutError::BadCalc(LayoutCalculatorError::SizeOverflow))?;
 
-            let abi = if count != 0 && matches!(element.abi, Abi::Uninhabited) {
-                Abi::Uninhabited
-            } else {
-                Abi::Aggregate { sized: true }
-            };
+            let backend_repr = BackendRepr::Memory { sized: true };
 
             let largest_niche = if count != 0 { element.largest_niche } else { None };
+            let uninhabited = if count != 0 { element.uninhabited } else { false };
 
             Layout {
                 variants: Variants::Single { index: struct_variant_idx() },
                 fields: FieldsShape::Array { stride: element.size, count },
-                abi,
+                backend_repr,
                 largest_niche,
+                uninhabited,
                 align: element.align,
                 size,
                 max_repr_align: None,
                 unadjusted_abi_align: element.align.abi,
+                randomization_seed: Hash64::ZERO,
             }
         }
         TyKind::Slice(element) => {
@@ -318,23 +321,27 @@ pub fn layout_of_ty_query(
             Layout {
                 variants: Variants::Single { index: struct_variant_idx() },
                 fields: FieldsShape::Array { stride: element.size, count: 0 },
-                abi: Abi::Aggregate { sized: false },
+                backend_repr: BackendRepr::Memory { sized: false },
                 largest_niche: None,
+                uninhabited: false,
                 align: element.align,
                 size: Size::ZERO,
                 max_repr_align: None,
                 unadjusted_abi_align: element.align.abi,
+                randomization_seed: Hash64::ZERO,
             }
         }
         TyKind::Str => Layout {
             variants: Variants::Single { index: struct_variant_idx() },
             fields: FieldsShape::Array { stride: Size::from_bytes(1), count: 0 },
-            abi: Abi::Aggregate { sized: false },
+            backend_repr: BackendRepr::Memory { sized: false },
             largest_niche: None,
+            uninhabited: false,
             align: dl.i8_align,
             size: Size::ZERO,
             max_repr_align: None,
             unadjusted_abi_align: dl.i8_align.abi,
+            randomization_seed: Hash64::ZERO,
         },
         // Potentially-wide pointers.
         TyKind::Ref(_, _, pointee) | TyKind::Raw(_, pointee) => {
@@ -379,8 +386,8 @@ pub fn layout_of_ty_query(
         TyKind::Never => cx.calc.layout_of_never_type(),
         TyKind::Dyn(_) | TyKind::Foreign(_) => {
             let mut unit = layout_of_unit(&cx)?;
-            match &mut unit.abi {
-                Abi::Aggregate { sized } => *sized = false,
+            match &mut unit.backend_repr {
+                BackendRepr::Memory { sized } => *sized = false,
                 _ => return Err(LayoutError::Unknown),
             }
             unit

@@ -40,8 +40,8 @@ pub(super) fn handle_only(config: &Config, line: &str) -> IgnoreDecision {
 }
 
 /// Parses a name-value directive which contains config-specific information, e.g., `ignore-x86`
-/// or `normalize-stderr-32bit`.
-pub(super) fn parse_cfg_name_directive<'a>(
+/// or `only-windows`.
+fn parse_cfg_name_directive<'a>(
     config: &Config,
     line: &'a str,
     prefix: &str,
@@ -192,7 +192,7 @@ pub(super) fn parse_cfg_name_directive<'a>(
         message: "on big-endian targets",
     }
     condition! {
-        name: config.stage_id.split('-').next().unwrap(),
+        name: format!("stage{}", config.stage).as_str(),
         allowed_names: &["stage0", "stage1", "stage2"],
         message: "when the bootstrapping stage is {name}",
     }
@@ -202,9 +202,14 @@ pub(super) fn parse_cfg_name_directive<'a>(
         message: "when running tests remotely",
     }
     condition! {
-        name: "debug",
-        condition: config.with_debug_assertions,
-        message: "when running tests with `ignore-debug` header",
+        name: "rustc-debug-assertions",
+        condition: config.with_rustc_debug_assertions,
+        message: "when rustc is built with debug assertions",
+    }
+    condition! {
+        name: "std-debug-assertions",
+        condition: config.with_std_debug_assertions,
+        message: "when std is built with debug assertions",
     }
     condition! {
         name: config.debugger.as_ref().map(|d| d.to_str()),
@@ -228,6 +233,20 @@ pub(super) fn parse_cfg_name_directive<'a>(
         name: config.mode.to_str(),
         allowed_names: ["coverage-map", "coverage-run"],
         message: "when the test mode is {name}",
+    }
+    condition! {
+        name: target_cfg.rustc_abi.as_ref().map(|abi| format!("rustc_abi-{abi}")).unwrap_or_default(),
+        allowed_names: ContainsPrefixed {
+            prefix: "rustc_abi-",
+            inner: target_cfgs.all_rustc_abis.clone(),
+        },
+        message: "when the target `rustc_abi` is {name}",
+    }
+
+    condition! {
+        name: "dist",
+        condition: std::env::var("COMPILETEST_ENABLE_DIST_TESTS") == Ok("1".to_string()),
+        message: "when performing tests on dist toolchain"
     }
 
     if prefix == "ignore" && outcome == MatchOutcome::Invalid {

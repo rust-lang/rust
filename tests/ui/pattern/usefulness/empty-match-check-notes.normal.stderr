@@ -54,7 +54,7 @@ LL |     let None = *x;
    |         ^^^^ pattern `Some(_)` not covered
    |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
-   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: for more information, visit https://doc.rust-lang.org/book/ch19-02-refutability.html
    = note: pattern `Some(_)` is currently uninhabited, but this variant contains private fields which may become inhabited in the future
    = note: the matched value is of type `Option<SecretlyUninhabitedForeignStruct>`
 help: you might want to use `if let` to ignore the variant that isn't matched

@@ -22,10 +22,22 @@ pub fn is_msvc() -> bool {
     target().contains("msvc")
 }
 
+/// Check if target is windows-gnu.
+#[must_use]
+pub fn is_windows_gnu() -> bool {
+    target().ends_with("windows-gnu")
+}
+
 /// Check if target uses macOS.
 #[must_use]
 pub fn is_darwin() -> bool {
     target().contains("darwin")
+}
+
+/// Check if target uses AIX.
+#[must_use]
+pub fn is_aix() -> bool {
+    target().contains("aix")
 }
 
 /// Get the target OS on Apple operating systems.

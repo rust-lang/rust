@@ -257,15 +257,15 @@ assert-text: ("#preferred-light-theme .setting-radio-name", "Preferred light the
 // We now check that clicking on the toggles' text is like clicking on the checkbox.
 // To test it, we use the "Disable keyboard shortcuts".
 set-local-storage: {"rustdoc-disable-shortcuts": "false"}
-click: ".setting-line:last-child .setting-check span"
+click: "#disable-shortcuts"
 assert-local-storage: {"rustdoc-disable-shortcuts": "true"}
 
 // We now check that focusing a toggle and pressing Space is like clicking on it.
 assert-local-storage: {"rustdoc-disable-shortcuts": "true"}
-focus: ".setting-line:last-child .setting-check input"
+focus: "#disable-shortcuts"
 press-key: "Space"
 assert-local-storage: {"rustdoc-disable-shortcuts": "false"}
-focus: ".setting-line:last-child .setting-check input"
+focus: "#disable-shortcuts"
 press-key: "Space"
 assert-local-storage: {"rustdoc-disable-shortcuts": "true"}
 
@@ -276,7 +276,7 @@ assert-false: "#help-button .popover"
 wait-for-css: ("#settings-menu .popover", {"display": "block"})
 
 // Now turn keyboard shortcuts back on, and see if they work.
-click: ".setting-line:last-child .setting-check span"
+click: "#disable-shortcuts"
 assert-local-storage: {"rustdoc-disable-shortcuts": "false"}
 press-key: "Escape"
 press-key: "?"

@@ -6,7 +6,7 @@ macro_rules! m {
 
 fn main() {
     m!(dyn Copy + Send + 'static);
-    //~^ ERROR the trait `Copy` cannot be made into an object
+    //~^ ERROR the trait `Copy` is not dyn compatible
     m!(dyn 'static + Send);
     m!(dyn 'static +); //~ ERROR at least one trait is required for an object type
 }

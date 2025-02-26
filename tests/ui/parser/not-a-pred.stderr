@@ -6,8 +6,9 @@ LL | fn f(a: isize, b: isize) : lt(a, b) { }
    |
 help: use `->` instead
    |
-LL | fn f(a: isize, b: isize) -> lt(a, b) { }
-   |                          ~~
+LL - fn f(a: isize, b: isize) : lt(a, b) { }
+LL + fn f(a: isize, b: isize) -> lt(a, b) { }
+   |
 
 error[E0573]: expected type, found function `lt`
   --> $DIR/not-a-pred.rs:1:28

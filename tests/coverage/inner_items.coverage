@@ -10,7 +10,7 @@
    LL|      1|    if is_true {
    LL|      1|        countdown = 10;
    LL|      1|    }
-                   ^0
+                  ^0
    LL|       |
    LL|       |    mod in_mod {
    LL|       |        const IN_MOD_CONST: u32 = 1000;
@@ -49,7 +49,7 @@
    LL|      1|    if is_true {
    LL|      1|        in_func(countdown);
    LL|      1|    }
-                   ^0
+                  ^0
    LL|       |
    LL|      1|    let mut val = InStruct {
    LL|      1|        in_struct_field: 101, //

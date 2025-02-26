@@ -55,8 +55,9 @@ LL | fn mult_string(a: &Option<String>, b: &Option<Vec<u8>>) {}
    |
 help: change this to
    |
-LL | fn mult_string(a: Option<&String>, b: Option<&Vec<u8>>) {}
-   |                   ~~~~~~~~~~~~~~~     ~~~~~~~~~~~~~~~~
+LL - fn mult_string(a: &Option<String>, b: &Option<Vec<u8>>) {}
+LL + fn mult_string(a: Option<&String>, b: Option<&Vec<u8>>) {}
+   |
 
 error: it is more idiomatic to use `Option<&T>` instead of `&Option<T>`
   --> tests/ui/ref_option/ref_option.rs:18:1

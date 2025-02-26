@@ -1,4 +1,5 @@
-//@ normalize-stderr-test: "pref: Align\([1-8] bytes\)" -> "pref: $$SOME_ALIGN"
+//@ normalize-stderr: "pref: Align\([1-8] bytes\)" -> "pref: $$SOME_ALIGN"
+//@ normalize-stderr: "randomization_seed: \d+" -> "randomization_seed: $$SEED"
 #![feature(never_type, rustc_attrs, type_alias_impl_trait, repr_simd)]
 #![crate_type = "lib"]
 
@@ -81,3 +82,8 @@ type Impossible = (str, str); //~ ERROR: cannot be known at compilation time
 #[rustc_layout(debug)]
 union EmptyUnion {} //~ ERROR: has an unknown layout
 //~^ ERROR: unions cannot have zero fields
+
+// Test the error message of `LayoutError::TooGeneric`
+// (this error is never emitted to users).
+#[rustc_layout(debug)]
+type TooGeneric<T> = T; //~ ERROR: does not have a fixed layout

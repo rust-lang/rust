@@ -55,8 +55,9 @@ LL |         pub(in m) struct Z(pub(in m::n) u8);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider making the field publicly accessible
    |
-LL |         pub(in m) struct Z(pub u8);
-   |                            ~~~
+LL -         pub(in m) struct Z(pub(in m::n) u8);
+LL +         pub(in m) struct Z(pub u8);
+   |
 
 error[E0603]: tuple struct constructor `S` is private
   --> $DIR/privacy-struct-ctor.rs:29:8
@@ -112,8 +113,9 @@ LL |         pub(in m) struct Z(pub(in m::n) u8);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider making the field publicly accessible
    |
-LL |         pub(in m) struct Z(pub u8);
-   |                            ~~~
+LL -         pub(in m) struct Z(pub(in m::n) u8);
+LL +         pub(in m) struct Z(pub u8);
+   |
 
 error[E0603]: tuple struct constructor `S` is private
   --> $DIR/privacy-struct-ctor.rs:41:16

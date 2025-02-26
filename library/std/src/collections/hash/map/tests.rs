@@ -5,7 +5,7 @@ use super::Entry::{Occupied, Vacant};
 use super::HashMap;
 use crate::assert_matches::assert_matches;
 use crate::cell::RefCell;
-use crate::hash::RandomState;
+use crate::hash::{BuildHasher, BuildHasherDefault, DefaultHasher, RandomState};
 use crate::test_helpers::test_rng;
 
 // https://github.com/rust-lang/rust/issues/62301
@@ -1124,6 +1124,26 @@ fn from_array() {
 
 #[test]
 fn const_with_hasher() {
-    const X: HashMap<(), (), ()> = HashMap::with_hasher(());
-    assert_eq!(X.len(), 0);
+    const X: HashMap<(), (), BuildHasherDefault<DefaultHasher>> =
+        HashMap::with_hasher(BuildHasherDefault::new());
+    let mut x = X;
+    assert_eq!(x.len(), 0);
+    x.insert((), ());
+    assert_eq!(x.len(), 1);
+
+    // It *is* possible to do this without using the `BuildHasherDefault` type.
+    struct MyBuildDefaultHasher;
+    impl BuildHasher for MyBuildDefaultHasher {
+        type Hasher = DefaultHasher;
+
+        fn build_hasher(&self) -> Self::Hasher {
+            DefaultHasher::new()
+        }
+    }
+
+    const Y: HashMap<(), (), MyBuildDefaultHasher> = HashMap::with_hasher(MyBuildDefaultHasher);
+    let mut y = Y;
+    assert_eq!(y.len(), 0);
+    y.insert((), ());
+    assert_eq!(y.len(), 1);
 }

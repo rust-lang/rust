@@ -1,4 +1,4 @@
-//@ compile-flags: -O -Zmerge-functions=disabled
+//@ compile-flags: -Copt-level=3 -Zmerge-functions=disabled
 //! Test for <https://github.com/rust-lang/rust/issues/108395>. Check that
 //! matching on two bools with wildcards does not produce branches.
 #![crate_type = "lib"]

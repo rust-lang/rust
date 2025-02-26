@@ -1,9 +1,10 @@
-//@ compile-flags: -C debuginfo=2
 // ignore-tidy-linelength
+//! Checks that visibility information is present in the debuginfo for private enums.
 
-#![allow(dead_code)]
-
-// Checks that visibility information is present in the debuginfo for private enums.
+//@ revisions: MSVC NONMSVC
+//@[MSVC] only-msvc
+//@[NONMSVC] ignore-msvc
+//@ compile-flags: -C debuginfo=2
 
 use std::hint::black_box;
 

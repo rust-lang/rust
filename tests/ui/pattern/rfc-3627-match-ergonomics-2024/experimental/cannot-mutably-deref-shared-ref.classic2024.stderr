@@ -1,0 +1,58 @@
+error[E0308]: mismatched types
+  --> $DIR/cannot-mutably-deref-shared-ref.rs:9:9
+   |
+LL |     let &mut _ = &&0;
+   |         ^^^^^^   --- this expression has type `&&{integer}`
+   |         |
+   |         types differ in mutability
+   |
+   = note:      expected reference `&&{integer}`
+           found mutable reference `&mut _`
+
+error[E0308]: mismatched types
+  --> $DIR/cannot-mutably-deref-shared-ref.rs:12:9
+   |
+LL |     let &mut _ = &&&&&&&&&&&&&&&&&&&&&&&&&&&&0;
+   |         ^^^^^^   ----------------------------- this expression has type `&&&&&&&&&&&&&&&&&&&&&&&&&&&&{integer}`
+   |         |
+   |         types differ in mutability
+   |
+   = note:      expected reference `&&&&&&&&&&&&&&&&&&&&&&&&&&&&{integer}`
+           found mutable reference `&mut _`
+
+error[E0308]: mismatched types
+  --> $DIR/cannot-mutably-deref-shared-ref.rs:15:9
+   |
+LL |     let &mut _ = &&mut 0;
+   |         ^^^^^^   ------- this expression has type `&&mut {integer}`
+   |         |
+   |         types differ in mutability
+   |
+   = note:      expected reference `&&mut {integer}`
+           found mutable reference `&mut _`
+
+error[E0308]: mismatched types
+  --> $DIR/cannot-mutably-deref-shared-ref.rs:18:9
+   |
+LL |     let &mut _ = &&&&&&&&&&&&&&&&&&&&&&&&&&&&mut 0;
+   |         ^^^^^^   --------------------------------- this expression has type `&&&&&&&&&&&&&&&&&&&&&&&&&&&&mut {integer}`
+   |         |
+   |         types differ in mutability
+   |
+   = note:      expected reference `&&&&&&&&&&&&&&&&&&&&&&&&&&&&mut {integer}`
+           found mutable reference `&mut _`
+
+error[E0308]: mismatched types
+  --> $DIR/cannot-mutably-deref-shared-ref.rs:21:14
+   |
+LL |     let &mut &mut &mut &mut _ = &mut &&&&mut &&&mut &mut 0;
+   |              ^^^^^^^^^^^^^^^^   -------------------------- this expression has type `&mut &&&&mut &&&mut &mut {integer}`
+   |              |
+   |              types differ in mutability
+   |
+   = note:      expected reference `&&&&mut &&&mut &mut {integer}`
+           found mutable reference `&mut _`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

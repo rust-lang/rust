@@ -31,7 +31,7 @@ extern "rust-intrinsic" {
 // CHECK-LABEL: @bitmask_int
 #[no_mangle]
 pub unsafe fn bitmask_int(x: i32x2) -> u8 {
-    // CHECK: [[A:%[0-9]+]] = lshr <2 x i32> %{{x|1}}, <i32 31, i32 31>
+    // CHECK: [[A:%[0-9]+]] = lshr <2 x i32> %{{x|1}}, {{<i32 31, i32 31>|splat \(i32 31\)}}
     // CHECK: [[B:%[0-9]+]] = trunc <2 x i32> [[A]] to <2 x i1>
     // CHECK: [[C:%[0-9]+]] = bitcast <2 x i1> [[B]] to i2
     // CHECK: %{{[0-9]+}} = zext i2 [[C]] to i8
@@ -41,7 +41,7 @@ pub unsafe fn bitmask_int(x: i32x2) -> u8 {
 // CHECK-LABEL: @bitmask_uint
 #[no_mangle]
 pub unsafe fn bitmask_uint(x: u32x2) -> u8 {
-    // CHECK: [[A:%[0-9]+]] = lshr <2 x i32> %{{x|1}}, <i32 31, i32 31>
+    // CHECK: [[A:%[0-9]+]] = lshr <2 x i32> %{{x|1}}, {{<i32 31, i32 31>|splat \(i32 31\)}}
     // CHECK: [[B:%[0-9]+]] = trunc <2 x i32> [[A]] to <2 x i1>
     // CHECK: [[C:%[0-9]+]] = bitcast <2 x i1> [[B]] to i2
     // CHECK: %{{[0-9]+}} = zext i2 [[C]] to i8
@@ -51,7 +51,7 @@ pub unsafe fn bitmask_uint(x: u32x2) -> u8 {
 // CHECK-LABEL: @bitmask_int16
 #[no_mangle]
 pub unsafe fn bitmask_int16(x: i8x16) -> u16 {
-    // CHECK: [[A:%[0-9]+]] = lshr <16 x i8> %{{x|1|2}}, <i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7>
+    // CHECK: [[A:%[0-9]+]] = lshr <16 x i8> %{{x|1|2}}, {{<i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7, i8 7>|splat \(i8 7\)}}
     // CHECK: [[B:%[0-9]+]] = trunc <16 x i8> [[A]] to <16 x i1>
     // CHECK: %{{[0-9]+}} = bitcast <16 x i1> [[B]] to i16
     // CHECK-NOT: zext

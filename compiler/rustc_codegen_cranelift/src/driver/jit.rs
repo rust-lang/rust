@@ -11,12 +11,12 @@ use cranelift_jit::{JITBuilder, JITModule};
 use rustc_codegen_ssa::CrateInfo;
 use rustc_middle::mir::mono::MonoItem;
 use rustc_session::Session;
-use rustc_span::Symbol;
+use rustc_span::sym;
 
 use crate::debuginfo::TypeDebugContext;
 use crate::prelude::*;
 use crate::unwind_module::UnwindModule;
-use crate::{BackendConfig, CodegenCx, CodegenMode};
+use crate::{CodegenCx, CodegenMode};
 
 struct JitState {
     jit_module: UnwindModule<JITModule>,
@@ -46,7 +46,7 @@ unsafe impl Send for UnsafeMessage {}
 
 impl UnsafeMessage {
     /// Send the message.
-    fn send(self) -> Result<(), mpsc::SendError<UnsafeMessage>> {
+    fn send(self) {
         thread_local! {
             /// The Sender owned by the local thread
             static LOCAL_MESSAGE_SENDER: mpsc::Sender<UnsafeMessage> =
@@ -55,18 +55,16 @@ impl UnsafeMessage {
                     .lock().unwrap()
                     .clone();
         }
-        LOCAL_MESSAGE_SENDER.with(|sender| sender.send(self))
+        LOCAL_MESSAGE_SENDER.with(|sender| {
+            sender.send(self).expect("rustc thread hung up before lazy JIT request was sent")
+        })
     }
 }
 
-fn create_jit_module(
-    tcx: TyCtxt<'_>,
-    backend_config: &BackendConfig,
-    hotswap: bool,
-) -> (UnwindModule<JITModule>, CodegenCx) {
+fn create_jit_module(tcx: TyCtxt<'_>, hotswap: bool) -> (UnwindModule<JITModule>, CodegenCx) {
     let crate_info = CrateInfo::new(tcx, "dummy_target_cpu".to_string());
 
-    let isa = crate::build_isa(tcx.sess, backend_config);
+    let isa = crate::build_isa(tcx.sess);
     let mut jit_builder = JITBuilder::with_isa(isa, cranelift_module::default_libcall_names());
     jit_builder.hotswap(hotswap);
     crate::compiler_builtins::register_functions_for_jit(&mut jit_builder);
@@ -74,14 +72,14 @@ fn create_jit_module(
     jit_builder.symbol("__clif_jit_fn", clif_jit_fn as *const u8);
     let mut jit_module = UnwindModule::new(JITModule::new(jit_builder), false);
 
-    let cx = crate::CodegenCx::new(tcx, jit_module.isa(), false, Symbol::intern("dummy_cgu_name"));
+    let cx = crate::CodegenCx::new(tcx, jit_module.isa(), false, sym::dummy_cgu_name);
 
     crate::allocator::codegen(tcx, &mut jit_module);
 
     (jit_module, cx)
 }
 
-pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
+pub(crate) fn run_jit(tcx: TyCtxt<'_>, codegen_mode: CodegenMode, jit_args: Vec<String>) -> ! {
     if !tcx.sess.opts.output_types.should_codegen() {
         tcx.dcx().fatal("JIT mode doesn't work with `cargo check`");
     }
@@ -90,14 +88,11 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
         tcx.dcx().fatal("can't jit non-executable crate");
     }
 
-    let (mut jit_module, mut cx) = create_jit_module(
-        tcx,
-        &backend_config,
-        matches!(backend_config.codegen_mode, CodegenMode::JitLazy),
-    );
+    let (mut jit_module, mut cx) =
+        create_jit_module(tcx, matches!(codegen_mode, CodegenMode::JitLazy));
     let mut cached_context = Context::new();
 
-    let (_, cgus) = tcx.collect_and_partition_mono_items(());
+    let cgus = tcx.collect_and_partition_mono_items(()).codegen_units;
     let mono_items = cgus
         .iter()
         .map(|cgu| cgu.items_in_deterministic_order(tcx).into_iter())
@@ -110,7 +105,7 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
         super::predefine_mono_items(tcx, &mut jit_module, &mono_items);
         for (mono_item, _) in mono_items {
             match mono_item {
-                MonoItem::Fn(inst) => match backend_config.codegen_mode {
+                MonoItem::Fn(inst) => match codegen_mode {
                     CodegenMode::Aot => unreachable!(),
                     CodegenMode::Jit => {
                         codegen_and_compile_fn(
@@ -129,7 +124,7 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
                     crate::constant::codegen_static(tcx, &mut jit_module, def_id);
                 }
                 MonoItem::GlobalAsm(item_id) => {
-                    let item = tcx.hir().item(item_id);
+                    let item = tcx.hir_item(item_id);
                     tcx.dcx().span_fatal(item.span, "Global asm is not supported in JIT mode");
                 }
             }
@@ -151,7 +146,7 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
     );
 
     let args = std::iter::once(&*tcx.crate_name(LOCAL_CRATE).as_str().to_string())
-        .chain(backend_config.jit_args.iter().map(|arg| &**arg))
+        .chain(jit_args.iter().map(|arg| &**arg))
         .map(|arg| CString::new(arg).unwrap())
         .collect::<Vec<_>>();
 
@@ -211,7 +206,7 @@ pub(crate) fn codegen_and_compile_fn<'tcx>(
     instance: Instance<'tcx>,
 ) {
     cranelift_codegen::timing::set_thread_profiler(Box::new(super::MeasuremeProfiler(
-        cx.profiler.clone(),
+        tcx.prof.clone(),
     )));
 
     tcx.prof.generic_activity("codegen and compile fn").run(|| {
@@ -227,7 +222,7 @@ pub(crate) fn codegen_and_compile_fn<'tcx>(
             module,
             instance,
         ) {
-            crate::base::compile_fn(cx, cached_context, module, codegened_func);
+            crate::base::compile_fn(cx, &tcx.prof, cached_context, module, codegened_func);
         }
     });
 }
@@ -238,9 +233,7 @@ extern "C" fn clif_jit_fn(
 ) -> *const u8 {
     // send the JIT request to the rustc thread, with a channel for the response
     let (tx, rx) = mpsc::channel();
-    UnsafeMessage::JitFn { instance_ptr, trampoline_ptr, tx }
-        .send()
-        .expect("rustc thread hung up before lazy JIT request was sent");
+    UnsafeMessage::JitFn { instance_ptr, trampoline_ptr, tx }.send();
 
     // block on JIT compilation result
     rx.recv().expect("rustc thread hung up before responding to sent lazy JIT request")
@@ -276,12 +269,7 @@ fn jit_fn(instance_ptr: *const Instance<'static>, trampoline_ptr: *const u8) -> 
 
             jit_module.module.prepare_for_function_redefine(func_id).unwrap();
 
-            let mut cx = crate::CodegenCx::new(
-                tcx,
-                jit_module.isa(),
-                false,
-                Symbol::intern("dummy_cgu_name"),
-            );
+            let mut cx = crate::CodegenCx::new(tcx, jit_module.isa(), false, sym::dummy_cgu_name);
             codegen_and_compile_fn(tcx, &mut cx, &mut Context::new(), jit_module, instance);
 
             assert!(cx.global_asm.is_empty());
@@ -299,19 +287,14 @@ fn dep_symbol_lookup_fn(
 
     let mut dylib_paths = Vec::new();
 
-    let data = &crate_info
-        .dependency_formats
-        .iter()
-        .find(|(crate_type, _data)| *crate_type == rustc_session::config::CrateType::Executable)
-        .unwrap()
-        .1;
+    let data = &crate_info.dependency_formats[&rustc_session::config::CrateType::Executable];
     // `used_crates` is in reverse postorder in terms of dependencies. Reverse the order here to
     // get a postorder which ensures that all dependencies of a dylib are loaded before the dylib
     // itself. This helps the dynamic linker to find dylibs not in the regular dynamic library
     // search path.
     for &cnum in crate_info.used_crates.iter().rev() {
         let src = &crate_info.used_crate_source[&cnum];
-        match data[cnum.as_usize() - 1] {
+        match data[cnum] {
             Linkage::NotLinked | Linkage::IncludedFromDylib => {}
             Linkage::Static => {
                 let name = crate_info.crate_name[&cnum];
@@ -359,11 +342,15 @@ fn codegen_shim<'tcx>(
     let instance_ptr = Box::into_raw(Box::new(inst));
 
     let jit_fn = module
-        .declare_function("__clif_jit_fn", Linkage::Import, &Signature {
-            call_conv: module.target_config().default_call_conv,
-            params: vec![AbiParam::new(pointer_type), AbiParam::new(pointer_type)],
-            returns: vec![AbiParam::new(pointer_type)],
-        })
+        .declare_function(
+            "__clif_jit_fn",
+            Linkage::Import,
+            &Signature {
+                call_conv: module.target_config().default_call_conv,
+                params: vec![AbiParam::new(pointer_type), AbiParam::new(pointer_type)],
+                returns: vec![AbiParam::new(pointer_type)],
+            },
+        )
         .unwrap();
 
     let context = cached_context;

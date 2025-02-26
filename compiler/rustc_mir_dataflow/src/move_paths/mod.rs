@@ -8,7 +8,7 @@ use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_span::Span;
 use smallvec::SmallVec;
 
-use self::abs_domain::{AbstractElem, Lift};
+use self::abs_domain::Lift;
 use crate::un_derefer::UnDerefer;
 
 mod abs_domain;
@@ -300,7 +300,7 @@ pub struct MovePathLookup<'tcx> {
     /// subsequent search so that it is solely relative to that
     /// base-place). For the remaining lookup, we map the projection
     /// elem to the associated MovePathIndex.
-    projections: FxHashMap<(MovePathIndex, AbstractElem), MovePathIndex>,
+    projections: FxHashMap<(MovePathIndex, ProjectionKind), MovePathIndex>,
 
     un_derefer: UnDerefer<'tcx>,
 }
@@ -343,7 +343,7 @@ impl<'tcx> MovePathLookup<'tcx> {
     /// `MovePathIndex`es.
     pub fn iter_locals_enumerated(
         &self,
-    ) -> impl DoubleEndedIterator<Item = (Local, MovePathIndex)> + '_ {
+    ) -> impl DoubleEndedIterator<Item = (Local, MovePathIndex)> {
         self.locals.iter_enumerated().filter_map(|(l, &idx)| Some((l, idx?)))
     }
 }

@@ -1,15 +1,14 @@
 use std::fmt;
 
 use rinja::Template;
+use rustc_abi::{Primitive, TagEncoding, Variants};
 use rustc_data_structures::captures::Captures;
 use rustc_hir::def_id::DefId;
 use rustc_middle::span_bug;
 use rustc_middle::ty::layout::LayoutError;
 use rustc_middle::ty::{self};
 use rustc_span::symbol::Symbol;
-use rustc_target::abi::{Primitive, TagEncoding, Variants};
 
-use crate::html::format::display_fn;
 use crate::html::render::Context;
 
 #[derive(Template)]
@@ -31,15 +30,15 @@ pub(crate) fn document_type_layout<'a, 'cx: 'a>(
     cx: &'a Context<'cx>,
     ty_def_id: DefId,
 ) -> impl fmt::Display + 'a + Captures<'cx> {
-    display_fn(move |f| {
+    fmt::from_fn(move |f| {
         if !cx.shared.show_type_layout {
             return Ok(());
         }
 
         let tcx = cx.tcx();
-        let param_env = tcx.param_env(ty_def_id);
+        let typing_env = ty::TypingEnv::post_analysis(tcx, ty_def_id);
         let ty = tcx.type_of(ty_def_id).instantiate_identity();
-        let type_layout = tcx.layout_of(param_env.and(ty));
+        let type_layout = tcx.layout_of(typing_env.as_query_input(ty));
 
         let variants = if let Ok(type_layout) = type_layout
             && let Variants::Multiple { variants, tag, tag_encoding, .. } =
@@ -60,8 +59,8 @@ pub(crate) fn document_type_layout<'a, 'cx: 'a>(
                         span_bug!(tcx.def_span(ty_def_id), "not an adt")
                     };
                     let name = adt.variant(variant_idx).name;
-                    let is_unsized = variant_layout.abi.is_unsized();
-                    let is_uninhabited = variant_layout.abi.is_uninhabited();
+                    let is_unsized = variant_layout.is_unsized();
+                    let is_uninhabited = variant_layout.is_uninhabited();
                     let size = variant_layout.size.bytes() - tag_size;
                     let type_layout_size = TypeLayoutSize { is_unsized, is_uninhabited, size };
                     (name, type_layout_size)
@@ -71,9 +70,9 @@ pub(crate) fn document_type_layout<'a, 'cx: 'a>(
             Vec::new()
         };
 
-        let type_layout_size = tcx.layout_of(param_env.and(ty)).map(|layout| {
-            let is_unsized = layout.abi.is_unsized();
-            let is_uninhabited = layout.abi.is_uninhabited();
+        let type_layout_size = tcx.layout_of(typing_env.as_query_input(ty)).map(|layout| {
+            let is_unsized = layout.is_unsized();
+            let is_uninhabited = layout.is_uninhabited();
             let size = layout.size.bytes();
             TypeLayoutSize { is_unsized, is_uninhabited, size }
         });

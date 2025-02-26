@@ -37,7 +37,7 @@ fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[(ty::Clau
                 //        parent of generics returned by `generics_of`
                 //
                 // In the above code we want the anon const to have predicates in its param env for `'b: 'a`
-                let item_def_id = tcx.hir().get_parent_item(id);
+                let item_def_id = tcx.hir_get_parent_item(id);
                 // In the above code example we would be calling `inferred_outlives_of(Foo)` here
                 tcx.inferred_outlives_of(item_def_id)
             } else {

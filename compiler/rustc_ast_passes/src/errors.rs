@@ -4,8 +4,7 @@ use rustc_ast::ParamKindOrd;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, EmissionGuarantee, SubdiagMessageOp, Subdiagnostic};
 use rustc_macros::{Diagnostic, Subdiagnostic};
-use rustc_span::symbol::Ident;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Ident, Span, Symbol};
 
 use crate::fluent_generated as fluent;
 
@@ -594,8 +593,8 @@ pub(crate) struct ConstBoundTraitObject {
     pub span: Span,
 }
 
-// FIXME(effects): Consider making the note/reason the message of the diagnostic.
-// FIXME(effects): Provide structured suggestions (e.g., add `const` / `#[const_trait]` here).
+// FIXME(const_trait_impl): Consider making the note/reason the message of the diagnostic.
+// FIXME(const_trait_impl): Provide structured suggestions (e.g., add `const` / `#[const_trait]` here).
 #[derive(Diagnostic)]
 #[diag(ast_passes_tilde_const_disallowed)]
 pub(crate) struct TildeConstDisallowed {
@@ -734,13 +733,6 @@ pub(crate) struct AssociatedSuggestion2 {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_stability_outside_std, code = E0734)]
-pub(crate) struct StabilityOutsideStd {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(ast_passes_feature_on_non_nightly, code = E0554)]
 pub(crate) struct FeatureOnNonNightly {
     #[primary_span]
@@ -780,14 +772,6 @@ pub(crate) struct IncompatibleFeatures {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_show_span)]
-pub(crate) struct ShowSpan {
-    #[primary_span]
-    pub span: Span,
-    pub msg: &'static str,
-}
-
-#[derive(Diagnostic)]
 #[diag(ast_passes_negative_bound_not_supported)]
 pub(crate) struct NegativeBoundUnsupported {
     #[primary_span]
@@ -813,7 +797,14 @@ pub(crate) struct NegativeBoundWithParentheticalNotation {
 pub(crate) struct MatchArmWithNoBody {
     #[primary_span]
     pub span: Span,
-    #[suggestion(code = " => todo!(),", applicability = "has-placeholders")]
+    // We include the braces around `todo!()` so that a comma is optional, and we don't have to have
+    // any logic looking at the arm being replaced if there was a comma already or not for the
+    // resulting code to be correct.
+    #[suggestion(
+        code = " => {{ todo!() }}",
+        applicability = "has-placeholders",
+        style = "verbose"
+    )]
     pub suggestion: Span,
 }
 

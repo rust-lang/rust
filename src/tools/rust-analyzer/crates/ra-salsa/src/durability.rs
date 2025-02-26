@@ -11,7 +11,7 @@
 /// case), and we know that the query only used inputs of medium
 /// durability or higher, then we can skip that enumeration.
 ///
-/// Typically, one assigns low durabilites to inputs that the user is
+/// Typically, one assigns low durabilities to inputs that the user is
 /// frequently editing. Medium or high durabilities are used for
 /// configuration, the source from library crates, or other things
 /// that are unlikely to be edited.

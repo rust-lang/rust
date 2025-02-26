@@ -7,11 +7,12 @@
 use std::fmt::{self, Write};
 use std::hash::Hash;
 
-use rustc_data_structures::stable_hasher::{Hash64, StableHasher};
+use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::unord::UnordMap;
+use rustc_hashes::Hash64;
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable};
-use rustc_span::symbol::{Symbol, kw, sym};
+use rustc_span::{Symbol, kw, sym};
 use tracing::{debug, instrument};
 
 pub use crate::def_id::DefPathHash;
@@ -92,7 +93,7 @@ impl DefPathTable {
 
     pub fn enumerated_keys_and_path_hashes(
         &self,
-    ) -> impl Iterator<Item = (DefIndex, &DefKey, DefPathHash)> + ExactSizeIterator + '_ {
+    ) -> impl Iterator<Item = (DefIndex, &DefKey, DefPathHash)> + ExactSizeIterator {
         self.index_to_key
             .iter_enumerated()
             .map(move |(index, key)| (index, key, self.def_path_hash(index)))
@@ -289,8 +290,6 @@ pub enum DefPathData {
     /// An existential `impl Trait` type node.
     /// Argument position `impl Trait` have a `TypeNs` with their pretty-printed name.
     OpaqueTy,
-    /// An anonymous struct or union type i.e. `struct { foo: Type }` or `union { bar: Type }`
-    AnonAdt,
 }
 
 impl Definitions {
@@ -415,7 +414,7 @@ impl DefPathData {
             TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) => Some(name),
 
             Impl | ForeignMod | CrateRoot | Use | GlobalAsm | Closure | Ctor | AnonConst
-            | OpaqueTy | AnonAdt => None,
+            | OpaqueTy => None,
         }
     }
 
@@ -438,7 +437,6 @@ impl DefPathData {
             Ctor => DefPathDataName::Anon { namespace: sym::constructor },
             AnonConst => DefPathDataName::Anon { namespace: sym::constant },
             OpaqueTy => DefPathDataName::Anon { namespace: sym::opaque },
-            AnonAdt => DefPathDataName::Anon { namespace: sym::anon_adt },
         }
     }
 }

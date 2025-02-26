@@ -20,10 +20,11 @@ error[E0277]: `{closure@$DIR/const_param_ty_bad.rs:8:11: 8:13}` can't be used as
   --> $DIR/const_param_ty_bad.rs:8:11
    |
 LL |     check(|| {});
-   |     ----- ^^^^^ the trait `UnsizedConstParamTy` is not implemented for closure `{closure@$DIR/const_param_ty_bad.rs:8:11: 8:13}`
+   |     ----- ^^^^^ unsatisfied trait bound
    |     |
    |     required by a bound introduced by this call
    |
+   = help: the trait `UnsizedConstParamTy` is not implemented for closure `{closure@$DIR/const_param_ty_bad.rs:8:11: 8:13}`
 note: required by a bound in `check`
   --> $DIR/const_param_ty_bad.rs:4:18
    |

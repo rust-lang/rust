@@ -1,7 +1,9 @@
+use std::ops::ControlFlow;
+
 use clippy_config::Conf;
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::span_is_local;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::path_def_id;
 use clippy_utils::source::SpanRangeExt;
 use rustc_errors::Applicability;
@@ -90,7 +92,7 @@ impl<'tcx> LateLintPass<'tcx> for FromOverInto {
                 |diag| {
                     // If the target type is likely foreign mention the orphan rules as it's a common source of
                     // confusion
-                    if path_def_id(cx, target_ty.peel_refs()).map_or(true, |id| !id.is_local()) {
+                    if path_def_id(cx, target_ty.peel_refs()).is_none_or(|id| !id.is_local()) {
                         diag.help(
                             "`impl From<Local> for Foreign` is allowed by the orphan rules, for more information see\n\
                             https://doc.rust-lang.org/reference/items/implementations.html#trait-implementation-coherence"
@@ -101,7 +103,9 @@ impl<'tcx> LateLintPass<'tcx> for FromOverInto {
                         "replace the `Into` implementation with `From<{}>`",
                         middle_trait_ref.self_ty()
                     );
-                    if let Some(suggestions) = convert_to_from(cx, into_trait_seg, target_ty, self_ty, impl_item_ref) {
+                    if let Some(suggestions) =
+                        convert_to_from(cx, into_trait_seg, target_ty.as_unambig_ty(), self_ty, impl_item_ref)
+                    {
                         diag.multipart_suggestion(message, suggestions, Applicability::MachineApplicable);
                     } else {
                         diag.help(message);
@@ -115,25 +119,26 @@ impl<'tcx> LateLintPass<'tcx> for FromOverInto {
 }
 
 /// Finds the occurrences of `Self` and `self`
+///
+/// Returns `ControlFlow::break` if any of the `self`/`Self` usages were from an expansion, or the
+/// body contained a binding already named `val`.
 struct SelfFinder<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
     /// Occurrences of `Self`
     upper: Vec<Span>,
     /// Occurrences of `self`
     lower: Vec<Span>,
-    /// If any of the `self`/`Self` usages were from an expansion, or the body contained a binding
-    /// already named `val`
-    invalid: bool,
 }
 
 impl<'tcx> Visitor<'tcx> for SelfFinder<'_, 'tcx> {
+    type Result = ControlFlow<()>;
     type NestedFilter = OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.cx.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.cx.tcx
     }
 
-    fn visit_path(&mut self, path: &Path<'tcx>, _id: HirId) {
+    fn visit_path(&mut self, path: &Path<'tcx>, _id: HirId) -> Self::Result {
         for segment in path.segments {
             match segment.ident.name {
                 kw::SelfLower => self.lower.push(segment.ident.span),
@@ -141,17 +146,19 @@ impl<'tcx> Visitor<'tcx> for SelfFinder<'_, 'tcx> {
                 _ => continue,
             }
 
-            self.invalid |= segment.ident.span.from_expansion();
+            if segment.ident.span.from_expansion() {
+                return ControlFlow::Break(());
+            }
         }
 
-        if !self.invalid {
-            walk_path(self, path);
-        }
+        walk_path(self, path)
     }
 
-    fn visit_name(&mut self, name: Symbol) {
+    fn visit_name(&mut self, name: Symbol) -> Self::Result {
         if name == sym::val {
-            self.invalid = true;
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
         }
     }
 }
@@ -168,11 +175,11 @@ fn convert_to_from(
         // bad suggestion/fix.
         return None;
     }
-    let impl_item = cx.tcx.hir().impl_item(impl_item_ref.id);
+    let impl_item = cx.tcx.hir_impl_item(impl_item_ref.id);
     let ImplItemKind::Fn(ref sig, body_id) = impl_item.kind else {
         return None;
     };
-    let body = cx.tcx.hir().body(body_id);
+    let body = cx.tcx.hir_body(body_id);
     let [input] = body.params else { return None };
     let PatKind::Binding(.., self_ident, None) = input.pat.kind else {
         return None;
@@ -209,11 +216,9 @@ fn convert_to_from(
         cx,
         upper: Vec::new(),
         lower: Vec::new(),
-        invalid: false,
     };
-    finder.visit_expr(body.value);
 
-    if finder.invalid {
+    if finder.visit_expr(body.value).is_break() {
         return None;
     }
 

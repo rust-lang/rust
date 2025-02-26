@@ -84,21 +84,5 @@ impl TestCx<'_> {
         if !proc_res.status.success() {
             self.fatal_proc_rec("pretty-printed source does not typecheck", &proc_res);
         }
-
-        if !self.props.pretty_expanded {
-            return;
-        }
-
-        // additionally, run `-Zunpretty=expanded` and try to build it.
-        let proc_res = self.print_source(ReadFrom::Path, "expanded");
-        if !proc_res.status.success() {
-            self.fatal_proc_rec("pretty-printing (expanded) failed", &proc_res);
-        }
-
-        let ProcRes { stdout: expanded_src, .. } = proc_res;
-        let proc_res = self.typecheck_source(expanded_src);
-        if !proc_res.status.success() {
-            self.fatal_proc_rec("pretty-printed source (expanded) does not typecheck", &proc_res);
-        }
     }
 }

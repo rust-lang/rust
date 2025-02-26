@@ -17,7 +17,7 @@
 // We need to normalize out frame 5 because without debug info, dbghelp.dll doesn't know where CGU
 // internal functions like `main` start or end and so it will return whatever symbol happens
 // to be located near the address.
-//@ normalize-stderr-test: "5: .*" -> "5: some Rust fn"
+//@ normalize-stderr: "5: .*" -> "5: some Rust fn"
 
 // Backtraces are pretty broken in general on i686-pc-windows-msvc (#62897).
 //@ only-x86_64-pc-windows-msvc

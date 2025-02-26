@@ -1,9 +1,8 @@
 #![feature(intrinsics)]
 
 // Directly call intrinsic to avoid debug assertions in libstd
-extern "rust-intrinsic" {
-    fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
-}
+#[rustc_intrinsic]
+unsafe fn copy_nonoverlapping<T>(_src: *const T, _dst: *mut T, _count: usize);
 
 fn main() {
     let mut data = [0u16; 8];

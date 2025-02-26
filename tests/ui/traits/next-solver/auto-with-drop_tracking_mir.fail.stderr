@@ -4,7 +4,7 @@ error: future cannot be sent between threads safely
 LL |     is_send(foo());
    |             ^^^^^ future returned by `foo` is not `Send`
    |
-   = help: the trait `Sync` is not implemented for `NotSync`, which is required by `impl Future<Output = ()>: Send`
+   = help: the trait `Sync` is not implemented for `NotSync`
 note: future is not `Send` as this value is used across an await
   --> $DIR/auto-with-drop_tracking_mir.rs:16:11
    |

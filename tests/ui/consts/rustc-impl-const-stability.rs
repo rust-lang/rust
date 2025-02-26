@@ -2,8 +2,7 @@
 //@ known-bug: #110395
 
 #![crate_type = "lib"]
-#![feature(staged_api, const_trait_impl, effects)]
-#![allow(incomplete_features)]
+#![feature(staged_api, const_trait_impl)]
 #![stable(feature = "foo", since = "1.0.0")]
 
 #[stable(feature = "potato", since = "1.27.0")]

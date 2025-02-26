@@ -15,8 +15,9 @@ LL |         Some(ref x) => *x,
    |
 help: try
    |
-LL |         Some(x) => x,
-   |              ~     ~
+LL -         Some(ref x) => *x,
+LL +         Some(x) => x,
+   |
 
 error: this pattern creates a reference to a reference
   --> tests/ui/needless_borrow_pat.rs:74:14
@@ -71,8 +72,9 @@ LL |         E::A(ref x) | E::B(ref x) => *x,
    |
 help: try
    |
-LL |         E::A(x) | E::B(x) => x,
-   |              ~         ~     ~
+LL -         E::A(ref x) | E::B(ref x) => *x,
+LL +         E::A(x) | E::B(x) => x,
+   |
 
 error: this pattern creates a reference to a reference
   --> tests/ui/needless_borrow_pat.rs:126:21

@@ -2,7 +2,7 @@
 //@ error-pattern:assertion `left == right` failed: 1 + 1 definitely should be 3
 //@ error-pattern:  left: 2
 //@ error-pattern: right: 3
-//@ ignore-emscripten no processes
+//@ needs-subprocess
 
 fn main() {
     assert_eq!(1 + 1, 3, "1 + 1 definitely should be 3");

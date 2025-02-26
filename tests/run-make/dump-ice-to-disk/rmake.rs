@@ -83,7 +83,7 @@ fn extract_exactly_one_ice_file<P: AsRef<Path>>(name: &'static str, dir: P) -> I
 
 fn main() {
     // Establish baseline ICE message.
-    let mut default_ice_dump = OnceCell::new();
+    let default_ice_dump = OnceCell::new();
     run_in_tmpdir(|| {
         rustc().env("RUSTC_ICE", cwd()).input("lib.rs").arg("-Ztreat-err-as-bug=1").run_fail();
         let dump = extract_exactly_one_ice_file("baseline", cwd());

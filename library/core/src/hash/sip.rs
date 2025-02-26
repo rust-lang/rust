@@ -147,9 +147,8 @@ impl SipHasher {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[deprecated(since = "1.13.0", note = "use `std::hash::DefaultHasher` instead")]
-    #[rustc_const_unstable(feature = "const_hash", issue = "104061")]
     #[must_use]
-    pub const fn new() -> SipHasher {
+    pub fn new() -> SipHasher {
         SipHasher::new_with_keys(0, 0)
     }
 
@@ -157,9 +156,8 @@ impl SipHasher {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[deprecated(since = "1.13.0", note = "use `std::hash::DefaultHasher` instead")]
-    #[rustc_const_unstable(feature = "const_hash", issue = "104061")]
     #[must_use]
-    pub const fn new_with_keys(key0: u64, key1: u64) -> SipHasher {
+    pub fn new_with_keys(key0: u64, key1: u64) -> SipHasher {
         SipHasher(SipHasher24 { hasher: Hasher::new_with_keys(key0, key1) })
     }
 }
@@ -169,8 +167,7 @@ impl SipHasher13 {
     #[inline]
     #[unstable(feature = "hashmap_internals", issue = "none")]
     #[deprecated(since = "1.13.0", note = "use `std::hash::DefaultHasher` instead")]
-    #[rustc_const_unstable(feature = "const_hash", issue = "104061")]
-    pub const fn new() -> SipHasher13 {
+    pub fn new() -> SipHasher13 {
         SipHasher13::new_with_keys(0, 0)
     }
 
@@ -178,8 +175,7 @@ impl SipHasher13 {
     #[inline]
     #[unstable(feature = "hashmap_internals", issue = "none")]
     #[deprecated(since = "1.13.0", note = "use `std::hash::DefaultHasher` instead")]
-    #[rustc_const_unstable(feature = "const_hash", issue = "104061")]
-    pub const fn new_with_keys(key0: u64, key1: u64) -> SipHasher13 {
+    pub fn new_with_keys(key0: u64, key1: u64) -> SipHasher13 {
         SipHasher13 { hasher: Hasher::new_with_keys(key0, key1) }
     }
 }

@@ -58,7 +58,7 @@ pub fn check(tests_path: impl AsRef<Path>, bad: &mut bool) {
 
             let mut expected_revisions = BTreeSet::new();
 
-            let contents = std::fs::read_to_string(test).unwrap();
+            let Ok(contents) = std::fs::read_to_string(test) else { continue };
 
             // Collect directives.
             iter_header(&contents, &mut |HeaderLine { revision, directive, .. }| {

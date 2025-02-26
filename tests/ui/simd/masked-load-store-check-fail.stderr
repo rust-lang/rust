@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/masked-load-store-check-fail.rs:21:13
+  --> $DIR/masked-load-store-check-fail.rs:22:13
    |
 LL |         let _x: Simd<u8, 2> = simd_masked_load(
    |                               ---------------- arguments to this function are incorrect
@@ -10,7 +10,7 @@ LL |             Simd::<u8, 4>([9; 4])
    = note: expected struct `Simd<_, 2>`
               found struct `Simd<_, 4>`
 help: the return type of this call is `Simd<u8, 4>` due to the type of the argument passed
-  --> $DIR/masked-load-store-check-fail.rs:18:31
+  --> $DIR/masked-load-store-check-fail.rs:19:31
    |
 LL |           let _x: Simd<u8, 2> = simd_masked_load(
    |  _______________________________^
@@ -21,13 +21,13 @@ LL | |             Simd::<u8, 4>([9; 4])
 LL | |         );
    | |_________^
 note: function defined here
-  --> $DIR/masked-load-store-check-fail.rs:5:8
+  --> $DIR/masked-load-store-check-fail.rs:5:11
    |
-LL |     fn simd_masked_load<M, P, T>(mask: M, pointer: P, values: T) -> T;
-   |        ^^^^^^^^^^^^^^^^
+LL | unsafe fn simd_masked_load<M, P, T>(mask: M, pointer: P, values: T) -> T;
+   |           ^^^^^^^^^^^^^^^^                               ---------
 
 error[E0308]: mismatched types
-  --> $DIR/masked-load-store-check-fail.rs:28:13
+  --> $DIR/masked-load-store-check-fail.rs:29:13
    |
 LL |         let _x: Simd<u32, 4> = simd_masked_load(
    |                                ---------------- arguments to this function are incorrect
@@ -38,7 +38,7 @@ LL |             default
    = note: expected struct `Simd<u32, _>`
               found struct `Simd<u8, _>`
 help: the return type of this call is `Simd<u8, 4>` due to the type of the argument passed
-  --> $DIR/masked-load-store-check-fail.rs:25:32
+  --> $DIR/masked-load-store-check-fail.rs:26:32
    |
 LL |           let _x: Simd<u32, 4> = simd_masked_load(
    |  ________________________________^
@@ -49,10 +49,10 @@ LL | |             default
 LL | |         );
    | |_________^
 note: function defined here
-  --> $DIR/masked-load-store-check-fail.rs:5:8
+  --> $DIR/masked-load-store-check-fail.rs:5:11
    |
-LL |     fn simd_masked_load<M, P, T>(mask: M, pointer: P, values: T) -> T;
-   |        ^^^^^^^^^^^^^^^^
+LL | unsafe fn simd_masked_load<M, P, T>(mask: M, pointer: P, values: T) -> T;
+   |           ^^^^^^^^^^^^^^^^                               ---------
 
 error: aborting due to 2 previous errors
 

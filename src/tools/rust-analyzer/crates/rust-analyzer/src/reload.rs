@@ -24,7 +24,7 @@ use ide_db::{
 use itertools::Itertools;
 use load_cargo::{load_proc_macro, ProjectFolders};
 use lsp_types::FileSystemWatcher;
-use proc_macro_api::ProcMacroServer;
+use proc_macro_api::ProcMacroClient;
 use project_model::{ManifestPath, ProjectWorkspace, ProjectWorkspaceKind, WorkspaceBuildScripts};
 use stdx::{format_to, thread::ThreadIntent};
 use triomphe::Arc;
@@ -70,7 +70,6 @@ impl GlobalState {
     /// are ready to do semantic work.
     pub(crate) fn is_quiescent(&self) -> bool {
         self.vfs_done
-            && self.last_reported_status.is_some()
             && !self.fetch_workspaces_queue.op_in_progress()
             && !self.fetch_build_data_queue.op_in_progress()
             && !self.fetch_proc_macros_queue.op_in_progress()
@@ -316,9 +315,8 @@ impl GlobalState {
                         LinkedProject::InlineJsonProject(it) => {
                             let workspace = project_model::ProjectWorkspace::load_inline(
                                 it.clone(),
-                                cargo_config.target.as_deref(),
-                                &cargo_config.extra_env,
-                                &cargo_config.cfg_overrides,
+                                &cargo_config,
+                                &progress,
                             );
                             Ok(workspace)
                         }
@@ -592,7 +590,7 @@ impl GlobalState {
             }
 
             watchers.extend(
-                iter::once(Config::user_config_path())
+                iter::once(Config::user_config_dir_path().as_deref())
                     .chain(self.workspaces.iter().map(|ws| ws.manifest().map(ManifestPath::as_ref)))
                     .flatten()
                     .map(|glob_pattern| lsp_types::FileSystemWatcher {
@@ -615,7 +613,11 @@ impl GlobalState {
         }
 
         let files_config = self.config.files();
-        let project_folders = ProjectFolders::new(&self.workspaces, &files_config.exclude);
+        let project_folders = ProjectFolders::new(
+            &self.workspaces,
+            &files_config.exclude,
+            Config::user_config_dir_path().as_deref(),
+        );
 
         if (self.proc_macro_clients.is_empty() || !same_workspaces)
             && self.config.expand_proc_macros()
@@ -629,13 +631,10 @@ impl GlobalState {
                 };
 
                 let env: FxHashMap<_, _> = match &ws.kind {
-                    ProjectWorkspaceKind::Cargo { cargo_config_extra_env, .. }
-                    | ProjectWorkspaceKind::DetachedFile {
-                        cargo: Some(_),
-                        cargo_config_extra_env,
-                        ..
-                    } => cargo_config_extra_env
-                        .iter()
+                    ProjectWorkspaceKind::Cargo { cargo, .. }
+                    | ProjectWorkspaceKind::DetachedFile { cargo: Some((cargo, ..)), .. } => cargo
+                        .env()
+                        .into_iter()
                         .chain(self.config.extra_env(None))
                         .map(|(a, b)| (a.clone(), b.clone()))
                         .chain(
@@ -649,7 +648,7 @@ impl GlobalState {
                 };
                 info!("Using proc-macro server at {path}");
 
-                ProcMacroServer::spawn(&path, &env).map_err(|err| {
+                ProcMacroClient::spawn(&path, &env).map_err(|err| {
                     tracing::error!(
                         "Failed to run proc-macro server from path {path}, error: {err:?}",
                     );
@@ -703,12 +702,13 @@ impl GlobalState {
 
         let (crate_graph, proc_macro_paths, ws_data) = {
             // Create crate graph from all the workspaces
-            let vfs = &mut self.vfs.write().0;
-
+            let vfs = &self.vfs.read().0;
             let load = |path: &AbsPath| {
                 let vfs_path = vfs::VfsPath::from(path.to_path_buf());
                 self.crate_graph_file_dependencies.insert(vfs_path.clone());
-                vfs.file_id(&vfs_path)
+                vfs.file_id(&vfs_path).and_then(|(file_id, excluded)| {
+                    (excluded == vfs::FileExcluded::No).then_some(file_id)
+                })
             };
 
             ws_to_crate_graph(&self.workspaces, self.config.extra_env(None), load)
@@ -885,7 +885,6 @@ pub fn ws_to_crate_graph(
         ws_data.extend(mapping.values().copied().zip(iter::repeat(Arc::new(CrateWorkspaceData {
             toolchain: toolchain.clone(),
             data_layout: target_layout.clone(),
-            proc_macro_cwd: Some(ws.workspace_root().to_owned()),
         }))));
         proc_macro_paths.push(crate_proc_macros);
     }

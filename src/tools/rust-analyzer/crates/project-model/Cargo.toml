@@ -19,6 +19,7 @@ rustc-hash.workspace = true
 semver.workspace = true
 serde_json.workspace = true
 serde.workspace = true
+serde_derive.workspace = true
 tracing.workspace = true
 triomphe.workspace = true
 la-arena.workspace = true

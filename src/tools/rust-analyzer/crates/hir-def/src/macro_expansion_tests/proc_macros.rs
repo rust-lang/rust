@@ -5,7 +5,7 @@
 //! in-memory macros.
 use expect_test::expect;
 
-use crate::macro_expansion_tests::check;
+use crate::macro_expansion_tests::{check, check_errors};
 
 #[test]
 fn attribute_macro_attr_censoring() {
@@ -181,9 +181,9 @@ fn foo(&self) {
     self.0. 1;
 }
 
-fn#0:1@45..47#0# foo#0:1@48..51#0#(#0:1@51..52#0#&#0:1@52..53#0#self#0:1@53..57#0# )#0:1@57..58#0# {#0:1@59..60#0#
-    self#0:1@65..69#0# .#0:1@69..70#0#0#0:1@70..71#0#.#0:1@71..72#0#1#0:1@73..74#0#;#0:1@74..75#0#
-}#0:1@76..77#0#"#]],
+fn#0:1@45..47#2# foo#0:1@48..51#2#(#0:1@51..52#2#&#0:1@52..53#2#self#0:1@53..57#2# )#0:1@57..58#2# {#0:1@59..60#2#
+    self#0:1@65..69#2# .#0:1@69..70#2#0#0:1@70..71#2#.#0:1@71..72#2#1#0:1@73..74#2#;#0:1@74..75#2#
+}#0:1@76..77#2#"#]],
     );
 }
 
@@ -214,5 +214,23 @@ struct S;
 #[doc = " doc string \\n with newline"]
 #[doc = "\n     MultiLines Doc\n     MultiLines Doc\n"]
 #[doc = "doc attr"] struct S;"##]],
+    );
+}
+
+#[test]
+fn cfg_evaluated_before_attr_macros() {
+    check_errors(
+        r#"
+//- proc_macros: disallow_cfg
+
+use proc_macros::disallow_cfg;
+
+#[disallow_cfg] #[cfg(false)] fn foo() {}
+// True cfg are kept.
+// #[disallow_cfg] #[cfg(true)] fn bar() {}
+#[disallow_cfg] #[cfg_attr(false, inline)] fn baz() {}
+#[disallow_cfg] #[cfg_attr(true, inline)] fn qux() {}
+    "#,
+        expect![[r#""#]],
     );
 }

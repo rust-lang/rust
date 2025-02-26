@@ -19,27 +19,23 @@
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt::Display;
-use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::OnceLock;
 use std::time::SystemTime;
-use std::{env, io, str};
+use std::{env, fs, io, str};
 
 use build_helper::ci::gha;
 use build_helper::exit;
-use sha2::digest::Digest;
 use termcolor::{ColorChoice, StandardStream, WriteColor};
+use utils::build_stamp::BuildStamp;
 use utils::channel::GitInfo;
-use utils::helpers::hex_encode;
 
 use crate::core::builder;
-use crate::core::builder::{Builder, Kind};
+use crate::core::builder::Kind;
 use crate::core::config::{DryRun, LldMode, LlvmLibunwind, Target, TargetSelection, flags};
 use crate::utils::exec::{BehaviorOnFailure, BootstrapCommand, CommandOutput, OutputMode, command};
-use crate::utils::helpers::{
-    self, dir_is_empty, exe, libdir, mtime, output, set_file_times, symlink_dir,
-};
+use crate::utils::helpers::{self, dir_is_empty, exe, libdir, output, set_file_times, symlink_dir};
 
 mod core;
 mod utils;
@@ -48,9 +44,13 @@ pub use core::builder::PathSet;
 pub use core::config::Config;
 pub use core::config::flags::{Flags, Subcommand};
 
+#[cfg(feature = "tracing")]
+use tracing::{instrument, span};
 pub use utils::change_tracker::{
     CONFIG_CHANGE_HISTORY, find_recent_config_change_ids, human_readable_changes,
 };
+
+use crate::core::build_steps::vendor::VENDOR_DIR;
 
 const LLVM_TOOLS: &[&str] = &[
     "llvm-cov",      // used to generate coverage report
@@ -80,11 +80,8 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &str, Option<&[&'static str]>)] = &[
     (Some(Mode::Rustc), "llvm_enzyme", None),
     (Some(Mode::Codegen), "llvm_enzyme", None),
     (Some(Mode::ToolRustc), "llvm_enzyme", None),
-    (Some(Mode::Rustc), "parallel_compiler", None),
-    (Some(Mode::ToolRustc), "parallel_compiler", None),
     (Some(Mode::ToolRustc), "rust_analyzer", None),
     (Some(Mode::ToolStd), "rust_analyzer", None),
-    (Some(Mode::Codegen), "parallel_compiler", None),
     // Any library specific cfgs like `target_os`, `target_arch` should be put in
     // priority the `[lints.rust.unexpected_cfgs.check-cfg]` table
     // in the appropriate `library/{std,alloc,core}/Cargo.toml`
@@ -159,9 +156,10 @@ pub struct Build {
     targets: Vec<TargetSelection>,
 
     initial_rustc: PathBuf,
+    initial_rustdoc: PathBuf,
     initial_cargo: PathBuf,
     initial_lld: PathBuf,
-    initial_libdir: PathBuf,
+    initial_relative_libdir: PathBuf,
     initial_sysroot: PathBuf,
 
     // Runtime state filled in later on
@@ -253,6 +251,7 @@ impl Mode {
     }
 }
 
+#[derive(Debug, Hash, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum CLang {
     C,
     Cxx,
@@ -315,46 +314,19 @@ impl Build {
         let in_tree_llvm_info = config.in_tree_llvm_info.clone();
         let in_tree_gcc_info = config.in_tree_gcc_info.clone();
 
-        let initial_target_libdir_str = if config.dry_run() {
-            "/dummy/lib/path/to/lib/".to_string()
-        } else {
-            output(
-                Command::new(&config.initial_rustc)
-                    .arg("--target")
-                    .arg(config.build.rustc_target_arg())
-                    .arg("--print")
-                    .arg("target-libdir"),
-            )
-        };
+        let initial_target_libdir_str =
+            config.initial_sysroot.join("lib/rustlib").join(config.build).join("lib");
+
         let initial_target_dir = Path::new(&initial_target_libdir_str).parent().unwrap();
         let initial_lld = initial_target_dir.join("bin").join("rust-lld");
 
-        let initial_sysroot = if config.dry_run() {
-            "/dummy".to_string()
-        } else {
-            output(Command::new(&config.initial_rustc).arg("--print").arg("sysroot"))
-        }
-        .trim()
-        .to_string();
-
-        // FIXME(Zalathar): Determining this path occasionally fails locally for
-        // unknown reasons, so we print some extra context to help track down why.
-        let find_initial_libdir = || {
-            let initial_libdir =
-                initial_target_dir.parent()?.parent()?.strip_prefix(&initial_sysroot).ok()?;
-            Some(initial_libdir.to_path_buf())
-        };
-        let Some(initial_libdir) = find_initial_libdir() else {
-            panic!(
-                "couldn't determine `initial_libdir`:
-- config.initial_rustc:      {rustc:?}
-- initial_target_libdir_str: {initial_target_libdir_str:?}
-- initial_target_dir:        {initial_target_dir:?}
-- initial_sysroot:           {initial_sysroot:?}
-",
-                rustc = config.initial_rustc,
-            );
-        };
+        let initial_relative_libdir = initial_target_dir
+            .ancestors()
+            .nth(2)
+            .unwrap()
+            .strip_prefix(&config.initial_sysroot)
+            .expect("Couldn’t determine initial relative libdir.")
+            .to_path_buf();
 
         let version = std::fs::read_to_string(src.join("src").join("version"))
             .expect("failed to read src/version");
@@ -383,11 +355,12 @@ impl Build {
         }
 
         let mut build = Build {
-            initial_rustc: config.initial_rustc.clone(),
-            initial_cargo: config.initial_cargo.clone(),
             initial_lld,
-            initial_libdir,
-            initial_sysroot: initial_sysroot.into(),
+            initial_relative_libdir,
+            initial_rustc: config.initial_rustc.clone(),
+            initial_rustdoc: config.initial_rustc.with_file_name(exe("rustdoc", config.build)),
+            initial_cargo: config.initial_cargo.clone(),
+            initial_sysroot: config.initial_sysroot.clone(),
             local_rebuild: config.local_rebuild,
             fail_fast: config.cmd.fail_fast(),
             doc_tests: config.cmd.doc_tests(),
@@ -498,7 +471,20 @@ impl Build {
     ///
     /// The given `err_hint` will be shown to the user if the submodule is not
     /// checked out and submodule management is disabled.
+    #[cfg_attr(
+        feature = "tracing",
+        instrument(
+            level = "trace",
+            name = "Build::require_submodule",
+            skip_all,
+            fields(submodule = submodule),
+        ),
+    )]
     pub fn require_submodule(&self, submodule: &str, err_hint: Option<&str>) {
+        if self.rust_info().is_from_tarball() {
+            return;
+        }
+
         // When testing bootstrap itself, it is much faster to ignore
         // submodules. Almost all Steps work fine without their submodules.
         if cfg!(test) && !self.config.submodules() {
@@ -506,7 +492,7 @@ impl Build {
         }
         self.config.update_submodule(submodule);
         let absolute_path = self.config.src.join(submodule);
-        if dir_is_empty(&absolute_path) {
+        if !absolute_path.exists() || dir_is_empty(&absolute_path) {
             let maybe_enable = if !self.config.submodules()
                 && self.config.rust_info.is_managed_git_subrepository()
             {
@@ -571,52 +557,87 @@ impl Build {
     }
 
     /// Executes the entire build, as configured by the flags and configuration.
+    #[cfg_attr(feature = "tracing", instrument(level = "debug", name = "Build::build", skip_all))]
     pub fn build(&mut self) {
+        trace!("setting up job management");
         unsafe {
             crate::utils::job::setup(self);
         }
 
         // Download rustfmt early so that it can be used in rust-analyzer configs.
+        trace!("downloading rustfmt early");
         let _ = &builder::Builder::new(self).initial_rustfmt();
 
-        // hardcoded subcommands
-        match &self.config.cmd {
-            Subcommand::Format { check, all } => {
-                return core::build_steps::format::format(
-                    &builder::Builder::new(self),
-                    *check,
-                    *all,
-                    &self.config.paths,
-                );
+        // Handle hard-coded subcommands.
+        {
+            #[cfg(feature = "tracing")]
+            let _hardcoded_span = span!(
+                tracing::Level::DEBUG,
+                "handling hardcoded subcommands (Format, Suggest, Perf)"
+            )
+            .entered();
+
+            match &self.config.cmd {
+                Subcommand::Format { check, all } => {
+                    return core::build_steps::format::format(
+                        &builder::Builder::new(self),
+                        *check,
+                        *all,
+                        &self.config.paths,
+                    );
+                }
+                Subcommand::Suggest { run } => {
+                    return core::build_steps::suggest::suggest(&builder::Builder::new(self), *run);
+                }
+                Subcommand::Perf(args) => {
+                    return core::build_steps::perf::perf(&builder::Builder::new(self), args);
+                }
+                _cmd => {
+                    debug!(cmd = ?_cmd, "not a hardcoded subcommand; returning to normal handling");
+                }
             }
-            Subcommand::Suggest { run } => {
-                return core::build_steps::suggest::suggest(&builder::Builder::new(self), *run);
-            }
-            Subcommand::Perf { .. } => {
-                return core::build_steps::perf::perf(&builder::Builder::new(self));
-            }
-            _ => (),
+
+            debug!("handling subcommand normally");
         }
 
         if !self.config.dry_run() {
+            #[cfg(feature = "tracing")]
+            let _real_run_span = span!(tracing::Level::DEBUG, "executing real run").entered();
+
+            // We first do a dry-run. This is a sanity-check to ensure that
+            // steps don't do anything expensive in the dry-run.
             {
-                // We first do a dry-run. This is a sanity-check to ensure that
-                // steps don't do anything expensive in the dry-run.
+                #[cfg(feature = "tracing")]
+                let _sanity_check_span =
+                    span!(tracing::Level::DEBUG, "(1) executing dry-run sanity-check").entered();
                 self.config.dry_run = DryRun::SelfCheck;
                 let builder = builder::Builder::new(self);
                 builder.execute_cli();
             }
-            self.config.dry_run = DryRun::Disabled;
-            let builder = builder::Builder::new(self);
-            builder.execute_cli();
+
+            // Actual run.
+            {
+                #[cfg(feature = "tracing")]
+                let _actual_run_span =
+                    span!(tracing::Level::DEBUG, "(2) executing actual run").entered();
+                self.config.dry_run = DryRun::Disabled;
+                let builder = builder::Builder::new(self);
+                builder.execute_cli();
+            }
         } else {
+            #[cfg(feature = "tracing")]
+            let _dry_run_span = span!(tracing::Level::DEBUG, "executing dry run").entered();
+
             let builder = builder::Builder::new(self);
             builder.execute_cli();
         }
 
+        #[cfg(feature = "tracing")]
+        debug!("checking for postponed test failures from `test  --no-fail-fast`");
+
         // Check for postponed failures from `test --no-fail-fast`.
         let failures = self.delayed_failures.borrow();
-        if failures.len() > 0 {
+        if !failures.is_empty() {
             eprintln!("\n{} command(s) did not execute successfully:\n", failures.len());
             for failure in failures.iter() {
                 eprintln!("  - {failure}\n");
@@ -626,24 +647,6 @@ impl Build {
 
         #[cfg(feature = "build-metrics")]
         self.metrics.persist(self);
-    }
-
-    /// Clear out `dir` if `input` is newer.
-    ///
-    /// After this executes, it will also ensure that `dir` exists.
-    fn clear_if_dirty(&self, dir: &Path, input: &Path) -> bool {
-        let stamp = dir.join(".stamp");
-        let mut cleared = false;
-        if mtime(&stamp) < mtime(input) {
-            self.verbose(|| println!("Dirty - {}", dir.display()));
-            let _ = fs::remove_dir_all(dir);
-            cleared = true;
-        } else if stamp.exists() {
-            return cleared;
-        }
-        t!(fs::create_dir_all(dir));
-        t!(File::create(stamp));
-        cleared
     }
 
     fn rust_info(&self) -> &GitInfo {
@@ -665,11 +668,12 @@ impl Build {
         if self.config.backtrace {
             features.insert("backtrace");
         }
+
         if self.config.profiler_enabled(target) {
             features.insert("profiler");
         }
-        // Generate memcpy, etc.  FIXME: Remove this once compiler-builtins
-        // automatically detects this target.
+
+        // If zkvm target, generate memcpy, etc.
         if target.contains("zkvm") {
             features.insert("compiler-builtins-mem");
         }
@@ -688,16 +692,13 @@ impl Build {
             crates.is_empty() || possible_features_by_crates.contains(feature)
         };
         let mut features = vec![];
-        if self.config.jemalloc && check("jemalloc") {
+        if self.config.jemalloc(target) && check("jemalloc") {
             features.push("jemalloc");
         }
         if (self.config.llvm_enabled(target) || kind == Kind::Check) && check("llvm") {
             features.push("llvm");
         }
         // keep in sync with `bootstrap/compile.rs:rustc_cargo_env`
-        if self.config.rustc_parallel && check("rustc_use_parallel_compiler") {
-            features.push("rustc_use_parallel_compiler");
-        }
         if self.config.rust_randomize_layout {
             features.push("rustc_randomized_layouts");
         }
@@ -753,7 +754,7 @@ impl Build {
     /// Note that if LLVM is configured externally then the directory returned
     /// will likely be empty.
     fn llvm_out(&self, target: TargetSelection) -> PathBuf {
-        if self.config.llvm_from_ci && self.config.build == target {
+        if self.config.llvm_from_ci && self.is_builder_target(target) {
             self.config.ci_llvm_root()
         } else {
             self.out.join(target).join("llvm")
@@ -796,6 +797,11 @@ impl Build {
         self.out.join(target).join("md-doc")
     }
 
+    /// Path to the vendored Rust crates.
+    fn vendored_crates_path(&self) -> Option<PathBuf> {
+        if self.config.vendor { Some(self.src.join(VENDOR_DIR)) } else { None }
+    }
+
     /// Returns `true` if this is an external version of LLVM not managed by bootstrap.
     /// In particular, we expect llvm sources to be available when this is false.
     ///
@@ -803,7 +809,7 @@ impl Build {
     fn is_system_llvm(&self, target: TargetSelection) -> bool {
         match self.config.target_config.get(&target) {
             Some(Target { llvm_config: Some(_), .. }) => {
-                let ci_llvm = self.config.llvm_from_ci && target == self.config.build;
+                let ci_llvm = self.config.llvm_from_ci && self.is_builder_target(target);
                 !ci_llvm
             }
             // We're building from the in-tree src/llvm-project sources.
@@ -918,6 +924,9 @@ impl Build {
         if self.config.dry_run() && !command.run_always {
             return CommandOutput::default();
         }
+
+        #[cfg(feature = "tracing")]
+        let _run_span = trace_cmd!(command);
 
         let created_at = command.get_created_location();
         let executed_at = std::panic::Location::caller();
@@ -1193,9 +1202,9 @@ Executed at: {executed_at}"#,
         self.cc.borrow()[&target].path().into()
     }
 
-    /// Returns a list of flags to pass to the C compiler for the target
-    /// specified.
-    fn cflags(&self, target: TargetSelection, which: GitRepo, c: CLang) -> Vec<String> {
+    /// Returns C flags that `cc-rs` thinks should be enabled for the
+    /// specified target by default.
+    fn cc_handled_clags(&self, target: TargetSelection, c: CLang) -> Vec<String> {
         if self.config.dry_run() {
             return Vec::new();
         }
@@ -1204,14 +1213,23 @@ Executed at: {executed_at}"#,
             CLang::Cxx => self.cxx.borrow()[&target].clone(),
         };
 
-        // Filter out -O and /O (the optimization flags) that we picked up from
-        // cc-rs because the build scripts will determine that for themselves.
-        let mut base = base
-            .args()
+        // Filter out -O and /O (the optimization flags) that we picked up
+        // from cc-rs, that's up to the caller to figure out.
+        base.args()
             .iter()
             .map(|s| s.to_string_lossy().into_owned())
             .filter(|s| !s.starts_with("-O") && !s.starts_with("/O"))
-            .collect::<Vec<String>>();
+            .collect::<Vec<String>>()
+    }
+
+    /// Returns extra C flags that `cc-rs` doesn't handle.
+    fn cc_unhandled_cflags(
+        &self,
+        target: TargetSelection,
+        which: GitRepo,
+        c: CLang,
+    ) -> Vec<String> {
+        let mut base = Vec::new();
 
         // If we're compiling C++ on macOS then we add a flag indicating that
         // we want libc++ (more filled out than libstdc++), ensuring that
@@ -1279,7 +1297,7 @@ Executed at: {executed_at}"#,
             // need to use CXX compiler as linker to resolve the exception functions
             // that are only existed in CXX libraries
             Some(self.cxx.borrow()[&target].path().into())
-        } else if target != self.config.build
+        } else if !self.is_builder_target(target)
             && helpers::use_host_linker(target)
             && !target.is_msvc()
         {
@@ -1654,21 +1672,21 @@ Executed at: {executed_at}"#,
         ret
     }
 
-    fn read_stamp_file(&self, stamp: &Path) -> Vec<(PathBuf, DependencyType)> {
+    fn read_stamp_file(&self, stamp: &BuildStamp) -> Vec<(PathBuf, DependencyType)> {
         if self.config.dry_run() {
             return Vec::new();
         }
 
-        if !stamp.exists() {
+        if !stamp.path().exists() {
             eprintln!(
                 "ERROR: Unable to find the stamp file {}, did you try to keep a nonexistent build stage?",
-                stamp.display()
+                stamp.path().display()
             );
             crate::exit!(1);
         }
 
         let mut paths = Vec::new();
-        let contents = t!(fs::read(stamp), &stamp);
+        let contents = t!(fs::read(stamp.path()), stamp.path());
         // This is the method we use for extracting paths from the stamp file passed to us. See
         // run_cargo for more information (in compile.rs).
         for part in contents.split(|b| *b == 0) {
@@ -1685,6 +1703,14 @@ Executed at: {executed_at}"#,
             paths.push((path, dependency_type));
         }
         paths
+    }
+
+    /// Copies a file from `src` to `dst`.
+    ///
+    /// If `src` is a symlink, `src` will be resolved to the actual path
+    /// and copied to `dst` instead of the symlink itself.
+    pub fn resolve_symlink_and_copy(&self, src: &Path, dst: &Path) {
+        self.copy_link_internal(src, dst, true);
     }
 
     /// Links a file from `src` to `dst`.
@@ -1723,7 +1749,7 @@ Executed at: {executed_at}"#,
             }
         }
         if let Ok(()) = fs::hard_link(&src, dst) {
-            // Attempt to "easy copy" by creating a hard link (symlinks are priviledged on windows),
+            // Attempt to "easy copy" by creating a hard link (symlinks are privileged on windows),
             // but if that fails just fall back to a slow `copy` operation.
         } else {
             if let Err(e) = fs::copy(&src, dst) {
@@ -1922,6 +1948,11 @@ to download LLVM rather than building it.
         stream.reset().unwrap();
         result
     }
+
+    /// Checks if the given target is the same as the builder target.
+    fn is_builder_target(&self, target: TargetSelection) -> bool {
+        self.config.build == target
+    }
 }
 
 #[cfg(unix)]
@@ -1952,52 +1983,6 @@ fn envify(s: &str) -> String {
         })
         .flat_map(|c| c.to_uppercase())
         .collect()
-}
-
-/// Computes a hash representing the state of a repository/submodule and additional input.
-///
-/// It uses `git diff` for the actual changes, and `git status` for including the untracked
-/// files in the specified directory. The additional input is also incorporated into the
-/// computation of the hash.
-///
-/// # Parameters
-///
-/// - `dir`: A reference to the directory path of the target repository/submodule.
-/// - `additional_input`: An additional input to be included in the hash.
-///
-/// # Panics
-///
-/// In case of errors during `git` command execution (e.g., in tarball sources), default values
-/// are used to prevent panics.
-pub fn generate_smart_stamp_hash(
-    builder: &Builder<'_>,
-    dir: &Path,
-    additional_input: &str,
-) -> String {
-    let diff = helpers::git(Some(dir))
-        .allow_failure()
-        .arg("diff")
-        .run_capture_stdout(builder)
-        .stdout_if_ok()
-        .unwrap_or_default();
-
-    let status = helpers::git(Some(dir))
-        .allow_failure()
-        .arg("status")
-        .arg("--porcelain")
-        .arg("-z")
-        .arg("--untracked-files=normal")
-        .run_capture_stdout(builder)
-        .stdout_if_ok()
-        .unwrap_or_default();
-
-    let mut hasher = sha2::Sha256::new();
-
-    hasher.update(diff);
-    hasher.update(status);
-    hasher.update(additional_input);
-
-    hex_encode(hasher.finalize().as_slice())
 }
 
 /// Ensures that the behavior dump directory is properly initialized.

@@ -26,12 +26,6 @@ LL | trait Parent2 { const C: &'static str; }
 LL |
 LL | fn take1(_: impl Trait1<C = "?">) {}
    |                         ^^^^^^^ ambiguous associated constant `C`
-   |
-   = help: consider introducing a new type parameter `T` and adding `where` constraints:
-               where
-                   T: Trait1,
-                   T: Parent2::C = "?",
-                   T: Parent1::C = "?"
 
 error: aborting due to 2 previous errors
 

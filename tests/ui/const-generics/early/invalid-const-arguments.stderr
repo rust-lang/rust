@@ -9,8 +9,9 @@ LL | impl Foo for A<N> {}
    |
 help: a struct with a similar name exists
    |
-LL | impl Foo for A<A> {}
-   |                ~
+LL - impl Foo for A<N> {}
+LL + impl Foo for A<A> {}
+   |
 help: you might be missing a type parameter
    |
 LL | impl<N> Foo for A<N> {}
@@ -27,8 +28,9 @@ LL | impl<const N: u8> Foo for C<N, T> {}
    |
 help: a struct with a similar name exists
    |
-LL | impl<const N: u8> Foo for C<N, A> {}
-   |                                ~
+LL - impl<const N: u8> Foo for C<N, T> {}
+LL + impl<const N: u8> Foo for C<N, A> {}
+   |
 help: you might be missing a type parameter
    |
 LL | impl<const N: u8, T> Foo for C<N, T> {}

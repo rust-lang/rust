@@ -128,7 +128,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
 
             // If the type has a trivial Drop implementation, then it doesn't
             // matter that we drop the value immediately.
-            if !ty.needs_drop(cx.tcx, cx.param_env) {
+            if !ty.needs_drop(cx.tcx, cx.typing_env()) {
                 return;
             }
             // Lint for patterns like `mutex.lock()`, which returns `Result<MutexGuard, _>` as well.
@@ -156,10 +156,11 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
             };
             if is_sync_lock {
                 let span = MultiSpan::from_span(pat.span);
-                cx.emit_span_lint(LET_UNDERSCORE_LOCK, span, NonBindingLet::SyncLock {
-                    sub,
-                    pat: pat.span,
-                });
+                cx.emit_span_lint(
+                    LET_UNDERSCORE_LOCK,
+                    span,
+                    NonBindingLet::SyncLock { sub, pat: pat.span },
+                );
             // Only emit let_underscore_drop for top-level `_` patterns.
             } else if can_use_init.is_some() {
                 cx.emit_span_lint(LET_UNDERSCORE_DROP, local.span, NonBindingLet::DropType { sub });

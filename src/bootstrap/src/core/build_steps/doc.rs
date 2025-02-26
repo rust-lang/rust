@@ -18,19 +18,10 @@ use crate::core::builder::{
     self, Alias, Builder, Compiler, Kind, RunConfig, ShouldRun, Step, crate_description,
 };
 use crate::core::config::{Config, TargetSelection};
-use crate::utils::helpers::{symlink_dir, t, up_to_date};
-
-macro_rules! submodule_helper {
-    ($path:expr, submodule) => {
-        $path
-    };
-    ($path:expr, submodule = $submodule:literal) => {
-        $submodule
-    };
-}
+use crate::helpers::{submodule_path_of, symlink_dir, t, up_to_date};
 
 macro_rules! book {
-    ($($name:ident, $path:expr, $book_name:expr, $lang:expr $(, submodule $(= $submodule:literal)? )? ;)+) => {
+    ($($name:ident, $path:expr, $book_name:expr, $lang:expr ;)+) => {
         $(
             #[derive(Debug, Clone, Hash, PartialEq, Eq)]
         pub struct $name {
@@ -53,10 +44,10 @@ macro_rules! book {
             }
 
             fn run(self, builder: &Builder<'_>) {
-                $(
-                    let path = submodule_helper!( $path, submodule $( = $submodule )? );
-                    builder.require_submodule(path, None);
-                )?
+                if let Some(submodule_path) = submodule_path_of(&builder, $path) {
+                    builder.require_submodule(&submodule_path, None)
+                }
+
                 builder.ensure(RustbookSrc {
                     target: self.target,
                     name: $book_name.to_owned(),
@@ -72,17 +63,15 @@ macro_rules! book {
 }
 
 // NOTE: When adding a book here, make sure to ALSO build the book by
-// adding a build step in `src/bootstrap/builder.rs`!
+// adding a build step in `src/bootstrap/code/builder/mod.rs`!
 // NOTE: Make sure to add the corresponding submodule when adding a new book.
-// FIXME: Make checking for a submodule automatic somehow (maybe by having a list of all submodules
-// and checking against it?).
 book!(
-    CargoBook, "src/tools/cargo/src/doc", "cargo", &[], submodule = "src/tools/cargo";
+    CargoBook, "src/tools/cargo/src/doc", "cargo", &[];
     ClippyBook, "src/tools/clippy/book", "clippy", &[];
-    EditionGuide, "src/doc/edition-guide", "edition-guide", &[], submodule;
-    EmbeddedBook, "src/doc/embedded-book", "embedded-book", &[], submodule;
-    Nomicon, "src/doc/nomicon", "nomicon", &[], submodule;
-    RustByExample, "src/doc/rust-by-example", "rust-by-example", &["ja", "zh"], submodule;
+    EditionGuide, "src/doc/edition-guide", "edition-guide", &[];
+    EmbeddedBook, "src/doc/embedded-book", "embedded-book", &[];
+    Nomicon, "src/doc/nomicon", "nomicon", &[];
+    RustByExample, "src/doc/rust-by-example", "rust-by-example", &["ja", "zh"];
     RustdocBook, "src/doc/rustdoc", "rustdoc", &[];
     StyleGuide, "src/doc/style-guide", "style-guide", &[];
 );
@@ -588,6 +577,10 @@ impl Step for Std {
 
     fn make_run(run: RunConfig<'_>) {
         let crates = compile::std_crates_for_run_make(&run);
+        let target_is_no_std = run.builder.no_std(run.target).unwrap_or(false);
+        if crates.is_empty() && target_is_no_std {
+            return;
+        }
         run.builder.ensure(Std {
             stage: run.builder.top_stage,
             target: run.target,
@@ -838,7 +831,8 @@ impl Step for Rustc {
         cargo.rustdocflag("--show-type-layout");
         // FIXME: `--generate-link-to-definition` tries to resolve cfged out code
         // see https://github.com/rust-lang/rust/pull/122066#issuecomment-1983049222
-        // cargo.rustdocflag("--generate-link-to-definition");
+        // If there is any bug, please comment out the next line.
+        cargo.rustdocflag("--generate-link-to-definition");
 
         compile::rustc_cargo(builder, &mut cargo, target, &compiler, &self.crates);
         cargo.arg("-Zskip-rustdoc-fingerprint");
@@ -910,7 +904,6 @@ macro_rules! tool_doc {
         $(rustc_tool = $rustc_tool:literal, )?
         $(is_library = $is_library:expr,)?
         $(crates = $crates:expr)?
-        $(, submodule $(= $submodule:literal)? )?
        ) => {
         #[derive(Debug, Clone, Hash, PartialEq, Eq)]
         pub struct $tool {
@@ -938,14 +931,12 @@ macro_rules! tool_doc {
             /// we do not merge it with the other documentation from std, test and
             /// proc_macros. This is largely just a wrapper around `cargo doc`.
             fn run(self, builder: &Builder<'_>) {
-                let source_type = SourceType::InTree;
-                $(
-                    let _ = source_type; // silence the "unused variable" warning
-                    let source_type = SourceType::Submodule;
+                let mut source_type = SourceType::InTree;
 
-                    let path = submodule_helper!( $path, submodule $( = $submodule )? );
-                    builder.require_submodule(path, None);
-                )?
+                if let Some(submodule_path) = submodule_path_of(&builder, $path) {
+                    source_type = SourceType::Submodule;
+                    builder.require_submodule(&submodule_path, None);
+                }
 
                 let stage = builder.top_stage;
                 let target = self.target;
@@ -1030,7 +1021,7 @@ macro_rules! tool_doc {
 // NOTE: make sure to register these in `Builder::get_step_description`.
 tool_doc!(
     BuildHelper,
-    "src/tools/build_helper",
+    "src/build_helper",
     rustc_tool = false,
     is_library = true,
     crates = ["build_helper"]
@@ -1054,8 +1045,7 @@ tool_doc!(
         "crates-io",
         "mdman",
         "rustfix",
-    ],
-    submodule = "src/tools/cargo"
+    ]
 );
 tool_doc!(Tidy, "src/tools/tidy", rustc_tool = false, crates = ["tidy"]);
 tool_doc!(

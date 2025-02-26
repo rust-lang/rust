@@ -359,8 +359,8 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
                 )?;
                 self.attempt_match_opt(
                     phase,
-                    pattern_segment.param_list(),
-                    code_segment.param_list(),
+                    pattern_segment.parenthesized_arg_list(),
+                    code_segment.parenthesized_arg_list(),
                 )?;
             }
             if matches!(phase, Phase::Second(_)) {
@@ -673,6 +673,7 @@ impl Match {
                     prefer_no_std: false,
                     prefer_prelude: true,
                     prefer_absolute: false,
+                    allow_unstable: true,
                 };
                 let mod_path = module.find_path(sema.db, module_def, cfg).ok_or_else(|| {
                     match_error!("Failed to render template path `{}` at match location")

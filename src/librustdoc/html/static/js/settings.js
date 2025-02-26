@@ -3,6 +3,9 @@
 /* global addClass, removeClass, onEach, onEachLazy */
 /* global MAIN_ID, getVar, getSettingsButton, getHelpButton */
 
+// Eventually fix this.
+// @ts-nocheck
+
 "use strict";
 
 (function() {
@@ -48,6 +51,20 @@
                     addClass(document.documentElement, "hide-modnav");
                 } else {
                     removeClass(document.documentElement, "hide-modnav");
+                }
+                break;
+            case "sans-serif-fonts":
+                if (value === true) {
+                    addClass(document.documentElement, "sans-serif");
+                } else {
+                    removeClass(document.documentElement, "sans-serif");
+                }
+                break;
+            case "word-wrap-source-code":
+                if (value === true) {
+                    addClass(document.documentElement, "word-wrap-source-code");
+                } else {
+                    removeClass(document.documentElement, "word-wrap-source-code");
                 }
                 break;
         }
@@ -230,6 +247,16 @@
             {
                 "name": "Disable keyboard shortcuts",
                 "js_name": "disable-shortcuts",
+                "default": false,
+            },
+            {
+                "name": "Use sans serif fonts",
+                "js_name": "sans-serif-fonts",
+                "default": false,
+            },
+            {
+                "name": "Word wrap source code",
+                "js_name": "word-wrap-source-code",
                 "default": false,
             },
         ];

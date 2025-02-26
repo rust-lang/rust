@@ -2,7 +2,7 @@
 
 fn check<const N: usize>() {
     match 1 {
-        N => {} //~ ERROR const parameters cannot be referenced in patterns
+        N => {} //~ ERROR constant parameters cannot be referenced in patterns
         _ => {}
     }
 }

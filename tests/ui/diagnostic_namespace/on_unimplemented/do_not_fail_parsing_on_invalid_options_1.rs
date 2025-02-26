@@ -1,3 +1,5 @@
+//@ reference: attributes.diagnostic.on_unimplemented.syntax
+//@ reference: attributes.diagnostic.on_unimplemented.unknown-keys
 #[diagnostic::on_unimplemented(unsupported = "foo")]
 //~^WARN malformed `on_unimplemented` attribute
 //~|WARN malformed `on_unimplemented` attribute

@@ -1,12 +1,12 @@
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::{self as hir, AmbigArg};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, ImplTraitInTraitData, TyCtxt};
 use rustc_middle::{bug, span_bug};
-use rustc_span::symbol::kw;
+use rustc_span::kw;
 
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
@@ -95,7 +95,7 @@ fn impl_item_implementor_ids(tcx: TyCtxt<'_>, impl_id: DefId) -> DefIdMap<DefId>
 
 fn associated_item(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AssocItem {
     let id = tcx.local_def_id_to_hir_id(def_id);
-    let parent_def_id = tcx.hir().get_parent_item(id);
+    let parent_def_id = tcx.hir_get_parent_item(id);
     let parent_item = tcx.hir().expect_item(parent_def_id.def_id);
     match parent_item.kind {
         hir::ItemKind::Impl(impl_) => {
@@ -140,10 +140,9 @@ fn associated_item_from_trait_item_ref(trait_item_ref: &hir::TraitItemRef) -> ty
         kind,
         def_id: owner_id.to_def_id(),
         trait_item_def_id: Some(owner_id.to_def_id()),
-        container: ty::TraitContainer,
+        container: ty::AssocItemContainer::Trait,
         fn_has_self_parameter: has_self,
         opt_rpitit_info: None,
-        is_effects_desugaring: false,
     }
 }
 
@@ -160,10 +159,9 @@ fn associated_item_from_impl_item_ref(impl_item_ref: &hir::ImplItemRef) -> ty::A
         kind,
         def_id: def_id.to_def_id(),
         trait_item_def_id: impl_item_ref.trait_item_def_id,
-        container: ty::ImplContainer,
+        container: ty::AssocItemContainer::Impl,
         fn_has_self_parameter: has_self,
         opt_rpitit_info: None,
-        is_effects_desugaring: false,
     }
 }
 
@@ -189,8 +187,8 @@ fn associated_types_for_impl_traits_in_associated_fn(
             }
 
             impl<'tcx> Visitor<'tcx> for RPITVisitor {
-                fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
-                    if let hir::TyKind::OpaqueDef(opaq, _) = ty.kind
+                fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx, AmbigArg>) {
+                    if let hir::TyKind::OpaqueDef(opaq) = ty.kind
                         && self.rpits.insert(opaq.def_id)
                     {
                         for bound in opaq.bounds {
@@ -246,7 +244,7 @@ fn associated_type_for_impl_trait_in_trait(
 ) -> LocalDefId {
     let (hir::OpaqueTyOrigin::FnReturn { parent: fn_def_id, .. }
     | hir::OpaqueTyOrigin::AsyncFn { parent: fn_def_id, .. }) =
-        tcx.opaque_type_origin(opaque_ty_def_id)
+        tcx.local_opaque_ty_origin(opaque_ty_def_id)
     else {
         bug!("expected opaque for {opaque_ty_def_id:?}");
     };
@@ -269,13 +267,12 @@ fn associated_type_for_impl_trait_in_trait(
         kind: ty::AssocKind::Type,
         def_id,
         trait_item_def_id: None,
-        container: ty::TraitContainer,
+        container: ty::AssocItemContainer::Trait,
         fn_has_self_parameter: false,
         opt_rpitit_info: Some(ImplTraitInTraitData::Trait {
             fn_def_id: fn_def_id.to_def_id(),
             opaque_def_id: opaque_ty_def_id.to_def_id(),
         }),
-        is_effects_desugaring: false,
     });
 
     // Copy visility of the containing function.
@@ -283,8 +280,6 @@ fn associated_type_for_impl_trait_in_trait(
 
     // Copy defaultness of the containing function.
     trait_assoc_ty.defaultness(tcx.defaultness(fn_def_id));
-
-    trait_assoc_ty.is_type_alias_impl_trait(false);
 
     // There are no inferred outlives for the synthesized associated type.
     trait_assoc_ty.inferred_outlives_of(&[]);
@@ -324,10 +319,9 @@ fn associated_type_for_impl_trait_in_impl(
         kind: ty::AssocKind::Type,
         def_id,
         trait_item_def_id: Some(trait_assoc_def_id),
-        container: ty::ImplContainer,
+        container: ty::AssocItemContainer::Impl,
         fn_has_self_parameter: false,
         opt_rpitit_info: Some(ImplTraitInTraitData::Impl { fn_def_id: impl_fn_def_id.to_def_id() }),
-        is_effects_desugaring: false,
     });
 
     // Copy visility of the containing function.

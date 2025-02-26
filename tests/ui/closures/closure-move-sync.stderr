@@ -10,7 +10,7 @@ LL | |
 LL | |     });
    | |_____^ `std::sync::mpsc::Receiver<()>` cannot be shared between threads safely
    |
-   = help: the trait `Sync` is not implemented for `std::sync::mpsc::Receiver<()>`, which is required by `{closure@$DIR/closure-move-sync.rs:6:27: 6:29}: Send`
+   = help: the trait `Sync` is not implemented for `std::sync::mpsc::Receiver<()>`
    = note: required for `&std::sync::mpsc::Receiver<()>` to implement `Send`
 note: required because it's used within this closure
   --> $DIR/closure-move-sync.rs:6:27

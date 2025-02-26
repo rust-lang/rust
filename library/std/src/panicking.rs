@@ -27,6 +27,22 @@ use crate::sys::backtrace;
 use crate::sys::stdio::panic_output;
 use crate::{fmt, intrinsics, process, thread};
 
+// This forces codegen of the function called by panic!() inside the std crate, rather than in
+// downstream crates. Primarily this is useful for rustc's codegen tests, which rely on noticing
+// complete removal of panic from generated IR. Since begin_panic is inline(never), it's only
+// codegen'd once per crate-graph so this pushes that to std rather than our codegen test crates.
+//
+// (See https://github.com/rust-lang/rust/pull/123244 for more info on why).
+//
+// If this is causing problems we can also modify those codegen tests to use a crate type like
+// cdylib which doesn't export "Rust" symbols to downstream linkage units.
+#[unstable(feature = "libstd_sys_internals", reason = "used by the panic! macro", issue = "none")]
+#[doc(hidden)]
+#[allow(dead_code)]
+#[used(compiler)]
+pub static EMPTY_PANIC: fn(&'static str) -> ! =
+    begin_panic::<&'static str> as fn(&'static str) -> !;
+
 // Binary interface to the panic runtime that the standard library depends on.
 //
 // The standard library is tagged with `#![needs_panic_runtime]` (introduced in
@@ -38,11 +54,11 @@ use crate::{fmt, intrinsics, process, thread};
 // One day this may look a little less ad-hoc with the compiler helping out to
 // hook up these functions, but it is not this day!
 #[allow(improper_ctypes)]
-extern "C" {
+unsafe extern "C" {
     fn __rust_panic_cleanup(payload: *mut u8) -> *mut (dyn Any + Send + 'static);
 }
 
-extern "Rust" {
+unsafe extern "Rust" {
     /// `PanicPayload` lazily performs allocation only when needed (this avoids
     /// allocations when using the "abort" panic runtime).
     fn __rust_start_panic(payload: &mut dyn PanicPayload) -> u32;
@@ -65,7 +81,9 @@ extern "C" fn __rust_foreign_exception() -> ! {
     rtabort!("Rust cannot catch foreign exceptions");
 }
 
+#[derive(Default)]
 enum Hook {
+    #[default]
     Default,
     Custom(Box<dyn Fn(&PanicHookInfo<'_>) + 'static + Sync + Send>),
 }
@@ -77,13 +95,6 @@ impl Hook {
             Hook::Default => Box::new(default_hook),
             Hook::Custom(hook) => hook,
         }
-    }
-}
-
-impl Default for Hook {
-    #[inline]
-    fn default() -> Hook {
-        Hook::Default
     }
 }
 
@@ -247,15 +258,34 @@ fn default_hook(info: &PanicHookInfo<'_>) {
     let location = info.location().unwrap();
 
     let msg = payload_as_str(info.payload());
-    let thread = thread::try_current();
-    let name = thread.as_ref().and_then(|t| t.name()).unwrap_or("<unnamed>");
 
     let write = #[optimize(size)]
     |err: &mut dyn crate::io::Write| {
         // Use a lock to prevent mixed output in multithreading context.
         // Some platforms also require it when printing a backtrace, like `SymFromAddr` on Windows.
         let mut lock = backtrace::lock();
-        let _ = writeln!(err, "thread '{name}' panicked at {location}:\n{msg}");
+
+        thread::with_current_name(|name| {
+            let name = name.unwrap_or("<unnamed>");
+
+            // Try to write the panic message to a buffer first to prevent other concurrent outputs
+            // interleaving with it.
+            let mut buffer = [0u8; 512];
+            let mut cursor = crate::io::Cursor::new(&mut buffer[..]);
+
+            let write_msg = |dst: &mut dyn crate::io::Write| {
+                // We add a newline to ensure the panic message appears at the start of a line.
+                writeln!(dst, "\nthread '{name}' panicked at {location}:\n{msg}")
+            };
+
+            if write_msg(&mut cursor).is_ok() {
+                let pos = cursor.position() as usize;
+                let _ = err.write_all(&buffer[0..pos]);
+            } else {
+                // The message did not fit into the buffer, write it directly instead.
+                let _ = write_msg(err);
+            };
+        });
 
         static FIRST_PANIC: AtomicBool = AtomicBool::new(true);
 
@@ -607,7 +637,7 @@ pub fn begin_panic_handler(info: &core::panic::PanicInfo<'_>) -> ! {
             // Lazily, the first time this gets called, run the actual string formatting.
             self.string.get_or_insert_with(|| {
                 let mut s = String::new();
-                let mut fmt = fmt::Formatter::new(&mut s);
+                let mut fmt = fmt::Formatter::new(&mut s, fmt::FormattingOptions::new());
                 let _err = fmt::Display::fmt(&inner, &mut fmt);
                 s
             })

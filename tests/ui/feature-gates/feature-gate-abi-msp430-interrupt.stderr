@@ -1,4 +1,4 @@
-error[E0658]: msp430-interrupt ABI is experimental and subject to change
+error[E0658]: the extern "msp430-interrupt" ABI is experimental and subject to change
   --> $DIR/feature-gate-abi-msp430-interrupt.rs:8:8
    |
 LL | extern "msp430-interrupt" fn f() {}
@@ -8,7 +8,7 @@ LL | extern "msp430-interrupt" fn f() {}
    = help: add `#![feature(abi_msp430_interrupt)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: msp430-interrupt ABI is experimental and subject to change
+error[E0658]: the extern "msp430-interrupt" ABI is experimental and subject to change
   --> $DIR/feature-gate-abi-msp430-interrupt.rs:12:12
    |
 LL |     extern "msp430-interrupt" fn m();
@@ -18,7 +18,7 @@ LL |     extern "msp430-interrupt" fn m();
    = help: add `#![feature(abi_msp430_interrupt)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: msp430-interrupt ABI is experimental and subject to change
+error[E0658]: the extern "msp430-interrupt" ABI is experimental and subject to change
   --> $DIR/feature-gate-abi-msp430-interrupt.rs:15:12
    |
 LL |     extern "msp430-interrupt" fn dm() {}
@@ -28,7 +28,7 @@ LL |     extern "msp430-interrupt" fn dm() {}
    = help: add `#![feature(abi_msp430_interrupt)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: msp430-interrupt ABI is experimental and subject to change
+error[E0658]: the extern "msp430-interrupt" ABI is experimental and subject to change
   --> $DIR/feature-gate-abi-msp430-interrupt.rs:21:12
    |
 LL |     extern "msp430-interrupt" fn m() {}
@@ -38,7 +38,7 @@ LL |     extern "msp430-interrupt" fn m() {}
    = help: add `#![feature(abi_msp430_interrupt)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: msp430-interrupt ABI is experimental and subject to change
+error[E0658]: the extern "msp430-interrupt" ABI is experimental and subject to change
   --> $DIR/feature-gate-abi-msp430-interrupt.rs:26:12
    |
 LL |     extern "msp430-interrupt" fn im() {}
@@ -48,7 +48,7 @@ LL |     extern "msp430-interrupt" fn im() {}
    = help: add `#![feature(abi_msp430_interrupt)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: msp430-interrupt ABI is experimental and subject to change
+error[E0658]: the extern "msp430-interrupt" ABI is experimental and subject to change
   --> $DIR/feature-gate-abi-msp430-interrupt.rs:30:18
    |
 LL | type TA = extern "msp430-interrupt" fn();
@@ -58,7 +58,7 @@ LL | type TA = extern "msp430-interrupt" fn();
    = help: add `#![feature(abi_msp430_interrupt)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: msp430-interrupt ABI is experimental and subject to change
+error[E0658]: the extern "msp430-interrupt" ABI is experimental and subject to change
   --> $DIR/feature-gate-abi-msp430-interrupt.rs:33:8
    |
 LL | extern "msp430-interrupt" {}

@@ -1,4 +1,5 @@
 use hir::Name;
+use ide_db::text_edit::TextEdit;
 use ide_db::{
     assists::{Assist, AssistId, AssistKind},
     label::Label,
@@ -6,7 +7,6 @@ use ide_db::{
     FileRange, RootDatabase,
 };
 use syntax::{Edition, TextRange};
-use text_edit::TextEdit;
 
 use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 
@@ -259,6 +259,19 @@ fn main() {
 fn main() {
     let arr = [1, 2, 3, 4, 5];
     let [_x, _y @ ..] = arr;
+}
+"#,
+        );
+    }
+
+    // regression test as we used to panic in this scenario
+    #[test]
+    fn unknown_struct_pattern_param_type() {
+        check_diagnostics(
+            r#"
+struct S { field : u32 }
+fn f(S { field }: error) {
+      // ^^^^^ 💡 warn: unused variable
 }
 "#,
         );

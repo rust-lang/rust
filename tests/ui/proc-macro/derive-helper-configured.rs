@@ -1,7 +1,7 @@
 // Derive helpers are resolved successfully inside `cfg_attr`.
 
 //@ check-pass
-//@ aux-build:test-macros.rs
+//@ proc-macro: test-macros.rs
 
 #[macro_use]
 extern crate test_macros;

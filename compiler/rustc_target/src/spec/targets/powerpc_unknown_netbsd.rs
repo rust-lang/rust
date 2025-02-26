@@ -1,5 +1,8 @@
-use crate::abi::Endian;
-use crate::spec::{Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetOptions, base};
+use rustc_abi::Endian;
+
+use crate::spec::{
+    Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetMetadata, TargetOptions, base,
+};
 
 pub(crate) fn target() -> Target {
     let mut base = base::netbsd::opts();
@@ -9,7 +12,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "powerpc-unknown-netbsd".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("NetBSD 32-bit powerpc systems".into()),
             tier: Some(3),
             host_tools: Some(true),

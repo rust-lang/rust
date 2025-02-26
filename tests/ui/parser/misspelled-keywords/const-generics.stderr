@@ -6,8 +6,9 @@ LL | fn foo<consta N: usize>(_arr: [i32; N]) {}
    |
 help: there is a keyword `const` with a similar name
    |
-LL | fn foo<const N: usize>(_arr: [i32; N]) {}
-   |        ~~~~~
+LL - fn foo<consta N: usize>(_arr: [i32; N]) {}
+LL + fn foo<const N: usize>(_arr: [i32; N]) {}
+   |
 
 error: aborting due to 1 previous error
 

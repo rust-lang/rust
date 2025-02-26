@@ -1,5 +1,4 @@
 //@ edition: 2024
-//@ compile-flags: -Zunstable-options
 
 #[unsafe(cfg(any()))] //~ ERROR: is not an unsafe attribute
 fn a() {}

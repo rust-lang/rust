@@ -21,6 +21,8 @@ RUN yum upgrade -y && \
       git \
       glibc-devel.i686 \
       glibc-devel.x86_64 \
+      glibc-static.i686 \
+      glibc-static.x86_64 \
       libedit-devel \
       libstdc++-devel.i686 \
       libstdc++-devel.x86_64 \
@@ -34,6 +36,7 @@ RUN yum upgrade -y && \
       python3 \
       unzip \
       wget \
+      flex \
       xz \
       zlib-devel.i686 \
       zlib-devel.x86_64 \
@@ -44,12 +47,15 @@ RUN mkdir -p /rustroot/bin
 ENV PATH=/rustroot/bin:$PATH
 ENV LD_LIBRARY_PATH=/rustroot/lib64:/rustroot/lib32:/rustroot/lib
 ENV PKG_CONFIG_PATH=/rustroot/lib/pkgconfig
+# Clang needs to access GCC headers to enable linker plugin LTO
 WORKDIR /tmp
 RUN mkdir /home/user
-COPY host-x86_64/dist-x86_64-linux/shared.sh /tmp/
+COPY scripts/shared.sh /tmp/
 
 # Need at least GCC 5.1 to compile LLVM nowadays
-COPY host-x86_64/dist-x86_64-linux/build-gcc.sh /tmp/
+COPY scripts/build-gcc.sh /tmp/
+ENV GCC_VERSION=9.5.0
+ENV GCC_BUILD_TARGET=x86_64-pc-linux-gnu
 RUN ./build-gcc.sh && yum remove -y gcc gcc-c++
 
 # LLVM 17 needs cmake 3.20 or higher.
@@ -58,12 +64,13 @@ RUN ./cmake.sh
 
 # Now build LLVM+Clang, afterwards configuring further compilations to use the
 # clang/clang++ compilers.
-COPY host-x86_64/dist-x86_64-linux/build-clang.sh /tmp/
+COPY scripts/build-clang.sh /tmp/
+ENV LLVM_BUILD_TARGETS=X86
 RUN ./build-clang.sh
 ENV CC=clang CXX=clang++
 
 # Build zstd to enable `llvm.libzstd`.
-COPY host-x86_64/dist-x86_64-linux/build-zstd.sh /tmp/
+COPY scripts/build-zstd.sh /tmp/
 RUN ./build-zstd.sh
 
 COPY scripts/sccache.sh /scripts/
@@ -89,6 +96,7 @@ ENV RUST_CONFIGURE_ARGS \
       --set rust.lto=thin \
       --set rust.codegen-units=1
 
+# Note that `rust.debug` is set to true *only* for `opt-dist`
 ENV SCRIPT python3 ../x.py build --set rust.debug=true opt-dist && \
     ./build/$HOSTS/stage0-tools-bin/opt-dist linux-ci -- python3 ../x.py dist \
     --host $HOSTS --target $HOSTS \
@@ -104,3 +112,7 @@ ENV DIST_SRC 1
 ENV LIBCURL_NO_PKG_CONFIG 1
 
 ENV DIST_REQUIRE_ALL_TOOLS 1
+
+# FIXME: Without this, LLVMgold.so incorrectly resolves to the system
+# libstdc++, instead of the one we build.
+ENV LD_PRELOAD=/rustroot/lib64/libstdc++.so.6

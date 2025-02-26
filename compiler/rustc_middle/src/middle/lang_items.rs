@@ -68,6 +68,17 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    /// Given a [`ty::ClosureKind`], get the [`DefId`] of its corresponding `Fn`-family
+    /// trait, if it is defined.
+    pub fn async_fn_trait_kind_to_def_id(self, kind: ty::ClosureKind) -> Option<DefId> {
+        let items = self.lang_items();
+        match kind {
+            ty::ClosureKind::Fn => items.async_fn_trait(),
+            ty::ClosureKind::FnMut => items.async_fn_mut_trait(),
+            ty::ClosureKind::FnOnce => items.async_fn_once_trait(),
+        }
+    }
+
     /// Returns `true` if `id` is a `DefId` of [`Fn`], [`FnMut`] or [`FnOnce`] traits.
     pub fn is_fn_trait(self, id: DefId) -> bool {
         self.fn_trait_kind_from_def_id(id).is_some()

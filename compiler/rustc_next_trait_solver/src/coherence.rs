@@ -339,7 +339,9 @@ where
             | ty::Slice(..)
             | ty::RawPtr(..)
             | ty::Never
-            | ty::Tuple(..) => self.found_non_local_ty(ty),
+            | ty::Tuple(..)
+            // FIXME(unsafe_binders): Non-local?
+            | ty::UnsafeBinder(_) => self.found_non_local_ty(ty),
 
             ty::Param(..) => panic!("unexpected ty param"),
 

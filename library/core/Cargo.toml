@@ -15,19 +15,6 @@ edition = "2021"
 test = false
 bench = false
 
-[[test]]
-name = "coretests"
-path = "tests/lib.rs"
-
-[[bench]]
-name = "corebenches"
-path = "benches/lib.rs"
-test = true
-
-[dev-dependencies]
-rand = { version = "0.8.5", default-features = false }
-rand_xorshift = { version = "0.3.0", default-features = false }
-
 [features]
 # Make panics and failed asserts immediately abort without formatting any message
 panic_immediate_abort = []
@@ -36,6 +23,8 @@ optimize_for_size = []
 # Make `RefCell` store additional debugging information, which is printed out when
 # a borrow error occurs
 debug_refcell = []
+# Make `TypeId` store a reference to the name of the type, so that it can print that name.
+debug_typeid = []
 
 [lints.rust.unexpected_cfgs]
 level = "warn"
@@ -43,8 +32,6 @@ check-cfg = [
     'cfg(bootstrap)',
     'cfg(no_fp_fmt_parse)',
     'cfg(stdarch_intel_sde)',
-    # #[cfg(bootstrap)] rtems
-    'cfg(target_os, values("rtems"))',
     # core use #[path] imports to portable-simd `core_simd` crate
     # and to stdarch `core_arch` crate which messes-up with Cargo list
     # of declared features, we therefor expect any feature cfg

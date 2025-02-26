@@ -1,6 +1,7 @@
 use r_efi::protocols::simple_text_output;
 
 use super::helpers;
+use crate::collections::BTreeMap;
 pub use crate::ffi::OsString as EnvKey;
 use crate::ffi::{OsStr, OsString};
 use crate::num::{NonZero, NonZeroI32};
@@ -18,8 +19,10 @@ use crate::{fmt, io};
 #[derive(Debug)]
 pub struct Command {
     prog: OsString,
+    args: Vec<OsString>,
     stdout: Option<Stdio>,
     stderr: Option<Stdio>,
+    env: CommandEnv,
 }
 
 // passed back to std::process with the pipes connected to the child, if any
@@ -39,16 +42,21 @@ pub enum Stdio {
 
 impl Command {
     pub fn new(program: &OsStr) -> Command {
-        Command { prog: program.to_os_string(), stdout: None, stderr: None }
+        Command {
+            prog: program.to_os_string(),
+            args: Vec::new(),
+            stdout: None,
+            stderr: None,
+            env: Default::default(),
+        }
     }
 
-    // FIXME: Implement arguments as reverse of parsing algorithm
-    pub fn arg(&mut self, _arg: &OsStr) {
-        panic!("unsupported")
+    pub fn arg(&mut self, arg: &OsStr) {
+        self.args.push(arg.to_os_string());
     }
 
     pub fn env_mut(&mut self) -> &mut CommandEnv {
-        panic!("unsupported")
+        &mut self.env
     }
 
     pub fn cwd(&mut self, _dir: &OsStr) {
@@ -72,11 +80,11 @@ impl Command {
     }
 
     pub fn get_args(&self) -> CommandArgs<'_> {
-        panic!("unsupported")
+        CommandArgs { iter: self.args.iter() }
     }
 
     pub fn get_envs(&self) -> CommandEnvs<'_> {
-        panic!("unsupported")
+        self.env.iter()
     }
 
     pub fn get_current_dir(&self) -> Option<&Path> {
@@ -116,6 +124,12 @@ impl Command {
     pub fn output(&mut self) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>)> {
         let mut cmd = uefi_command_internal::Image::load_image(&self.prog)?;
 
+        // UEFI adds the bin name by default
+        if !self.args.is_empty() {
+            let args = uefi_command_internal::create_args(&self.prog, &self.args);
+            cmd.set_args(args);
+        }
+
         // Setup Stdout
         let stdout = self.stdout.unwrap_or(Stdio::MakePipe);
         let stdout = Self::create_pipe(stdout)?;
@@ -134,7 +148,29 @@ impl Command {
             cmd.stderr_inherit()
         };
 
+        let env = env_changes(&self.env);
+
+        // Set any new vars
+        if let Some(e) = &env {
+            for (k, (_, v)) in e {
+                match v {
+                    Some(v) => unsafe { crate::env::set_var(k, v) },
+                    None => unsafe { crate::env::remove_var(k) },
+                }
+            }
+        }
+
         let stat = cmd.start_image()?;
+
+        // Rollback any env changes
+        if let Some(e) = env {
+            for (k, (v, _)) in e {
+                match v {
+                    Some(v) => unsafe { crate::env::set_var(k, v) },
+                    None => unsafe { crate::env::remove_var(k) },
+                }
+            }
+        }
 
         let stdout = cmd.stdout()?;
         let stderr = cmd.stderr()?;
@@ -301,7 +337,7 @@ mod uefi_command_internal {
 
     use super::super::helpers;
     use crate::ffi::{OsStr, OsString};
-    use crate::io::{self, const_io_error};
+    use crate::io::{self, const_error};
     use crate::mem::MaybeUninit;
     use crate::os::uefi::env::{boot_services, image_handle, system_table};
     use crate::os::uefi::ffi::{OsStrExt, OsStringExt};
@@ -315,14 +351,14 @@ mod uefi_command_internal {
         stdout: Option<helpers::OwnedProtocol<PipeProtocol>>,
         stderr: Option<helpers::OwnedProtocol<PipeProtocol>>,
         st: OwnedTable<r_efi::efi::SystemTable>,
-        args: Option<Vec<u16>>,
+        args: Option<(*mut u16, usize)>,
     }
 
     impl Image {
         pub fn load_image(p: &OsStr) -> io::Result<Self> {
-            let path = helpers::DevicePath::from_text(p)?;
+            let path = helpers::OwnedDevicePath::from_text(p)?;
             let boot_services: NonNull<r_efi::efi::BootServices> = boot_services()
-                .ok_or_else(|| const_io_error!(io::ErrorKind::NotFound, "Boot Services not found"))?
+                .ok_or_else(|| const_error!(io::ErrorKind::NotFound, "Boot Services not found"))?
                 .cast();
             let mut child_handle: MaybeUninit<r_efi::efi::Handle> = MaybeUninit::uninit();
             let image_handle = image_handle();
@@ -352,7 +388,7 @@ mod uefi_command_internal {
             }
         }
 
-        pub fn start_image(&mut self) -> io::Result<r_efi::efi::Status> {
+        pub(crate) fn start_image(&mut self) -> io::Result<r_efi::efi::Status> {
             self.update_st_crc32()?;
 
             // Use our system table instead of the default one
@@ -363,7 +399,7 @@ mod uefi_command_internal {
             }
 
             let boot_services: NonNull<r_efi::efi::BootServices> = boot_services()
-                .ok_or_else(|| const_io_error!(io::ErrorKind::NotFound, "Boot Services not found"))?
+                .ok_or_else(|| const_error!(io::ErrorKind::NotFound, "Boot Services not found"))?
                 .cast();
             let mut exit_data_size: usize = 0;
             let mut exit_data: MaybeUninit<*mut u16> = MaybeUninit::uninit();
@@ -449,20 +485,20 @@ mod uefi_command_internal {
             }
         }
 
-        pub fn set_args(&mut self, args: &OsStr) {
+        pub fn set_args(&mut self, args: Box<[u16]>) {
             let loaded_image: NonNull<loaded_image::Protocol> =
                 helpers::open_protocol(self.handle, loaded_image::PROTOCOL_GUID).unwrap();
 
-            let mut args = args.encode_wide().collect::<Vec<u16>>();
-            let args_size = (crate::mem::size_of::<u16>() * args.len()) as u32;
+            let len = args.len();
+            let args_size: u32 = (len * crate::mem::size_of::<u16>()).try_into().unwrap();
+            let ptr = Box::into_raw(args).as_mut_ptr();
 
             unsafe {
-                (*loaded_image.as_ptr()).load_options =
-                    args.as_mut_ptr() as *mut crate::ffi::c_void;
+                (*loaded_image.as_ptr()).load_options = ptr as *mut crate::ffi::c_void;
                 (*loaded_image.as_ptr()).load_options_size = args_size;
             }
 
-            self.args = Some(args);
+            self.args = Some((ptr, len));
         }
 
         fn update_st_crc32(&mut self) -> io::Result<()> {
@@ -501,6 +537,10 @@ mod uefi_command_internal {
                 unsafe {
                     ((*bt.as_ptr()).unload_image)(self.handle.as_ptr());
                 }
+            }
+
+            if let Some((ptr, len)) = self.args {
+                let _ = unsafe { Box::from_raw(crate::ptr::slice_from_raw_parts_mut(ptr, len)) };
             }
         }
     }
@@ -573,7 +613,7 @@ mod uefi_command_internal {
             OsString::from_wide(&self._buffer)
                 .into_string()
                 .map(Into::into)
-                .map_err(|_| const_io_error!(io::ErrorKind::Other, "utf8 conversion failed"))
+                .map_err(|_| const_error!(io::ErrorKind::Other, "utf8 conversion failed"))
         }
 
         extern "efiapi" fn reset(
@@ -681,4 +721,66 @@ mod uefi_command_internal {
             }
         }
     }
+
+    pub fn create_args(prog: &OsStr, args: &[OsString]) -> Box<[u16]> {
+        const QUOTE: u16 = 0x0022;
+        const SPACE: u16 = 0x0020;
+        const CARET: u16 = 0x005e;
+        const NULL: u16 = 0;
+
+        // This is the lower bound on the final length under the assumption that
+        // the arguments only contain ASCII characters.
+        let mut res = Vec::with_capacity(args.iter().map(|arg| arg.len() + 3).sum());
+
+        // Wrap program name in quotes to avoid any problems
+        res.push(QUOTE);
+        res.extend(prog.encode_wide());
+        res.push(QUOTE);
+
+        for arg in args {
+            res.push(SPACE);
+
+            // Wrap the argument in quotes to be treat as single arg
+            res.push(QUOTE);
+            for c in arg.encode_wide() {
+                // CARET in quotes is used to escape CARET or QUOTE
+                if c == QUOTE || c == CARET {
+                    res.push(CARET);
+                }
+                res.push(c);
+            }
+            res.push(QUOTE);
+        }
+
+        res.into_boxed_slice()
+    }
+}
+
+/// Create a map of environment variable changes. Allows efficient setting and rolling back of
+/// enviroment variable changes.
+///
+/// Entry: (Old Value, New Value)
+fn env_changes(env: &CommandEnv) -> Option<BTreeMap<EnvKey, (Option<OsString>, Option<OsString>)>> {
+    if env.is_unchanged() {
+        return None;
+    }
+
+    let mut result = BTreeMap::<EnvKey, (Option<OsString>, Option<OsString>)>::new();
+
+    // Check if we want to clear all prior variables
+    if env.does_clear() {
+        for (k, v) in crate::env::vars_os() {
+            result.insert(k.into(), (Some(v), None));
+        }
+    }
+
+    for (k, v) in env.iter() {
+        let v: Option<OsString> = v.map(Into::into);
+        result
+            .entry(k.into())
+            .and_modify(|cur| *cur = (cur.0.clone(), v.clone()))
+            .or_insert((crate::env::var_os(k), v));
+    }
+
+    Some(result)
 }

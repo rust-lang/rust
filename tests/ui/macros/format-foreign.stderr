@@ -11,8 +11,9 @@ LL |     println!("%.*3$s %s!\n", "Hello,", "World", 4);
    = note: printf formatting is not supported; see the documentation for `std::fmt`
 help: format specifiers use curly braces
    |
-LL |     println!("{:.2$} {}!\n", "Hello,", "World", 4);
-   |               ~~~~~~ ~~
+LL -     println!("%.*3$s %s!\n", "Hello,", "World", 4);
+LL +     println!("{:.2$} {}!\n", "Hello,", "World", 4);
+   |
 
 error: argument never used
   --> $DIR/format-foreign.rs:3:29
@@ -75,8 +76,9 @@ LL |     println!("$1 $0 $$ $NAME", 1, 2, NAME=3);
    = note: shell formatting is not supported; see the documentation for `std::fmt`
 help: format specifiers use curly braces
    |
-LL |     println!("{1} {0} $$ {NAME}", 1, 2, NAME=3);
-   |               ~~~ ~~~    ~~~~~~
+LL -     println!("$1 $0 $$ $NAME", 1, 2, NAME=3);
+LL +     println!("{1} {0} $$ {NAME}", 1, 2, NAME=3);
+   |
 
 error: aborting due to 6 previous errors
 

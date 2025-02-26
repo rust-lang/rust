@@ -9,8 +9,9 @@ LL |         S::B {} => {},
    |
 help: there is a variant with a similar name
    |
-LL |         S::A {} => {},
-   |            ~
+LL -         S::B {} => {},
+LL +         S::A {} => {},
+   |
 
 error: aborting due to 1 previous error
 

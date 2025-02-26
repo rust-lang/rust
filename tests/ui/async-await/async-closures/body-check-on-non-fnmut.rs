@@ -2,8 +2,6 @@
 //@ edition:2021
 //@ build-pass
 
-#![feature(async_closure)]
-
 extern crate block_on;
 
 // Make sure that we don't call `coroutine_by_move_body_def_id` query
@@ -11,7 +9,7 @@ extern crate block_on;
 
 async fn empty() {}
 
-pub async fn call_once<F: async FnOnce()>(f: F) {
+pub async fn call_once<F: AsyncFnOnce()>(f: F) {
     f().await;
 }
 

@@ -3,7 +3,7 @@ use span::{Edition, EditionedFileId};
 use syntax::{TextRange, TextSize};
 use test_fixture::WithFixture;
 
-use crate::{db::HirDatabase, test_db::TestDB, Interner, Substitution};
+use crate::{db::HirDatabase, mir::MirLowerError, test_db::TestDB, Interner, Substitution};
 
 use super::{interpret_mir, MirEvalError};
 
@@ -32,16 +32,20 @@ fn eval_main(db: &TestDB, file_id: EditionedFileId) -> Result<(String, String), 
         )
         .map_err(|e| MirEvalError::MirLowerError(func_id, e))?;
 
-    let (result, output) = interpret_mir(db, body, false, None);
+    let (result, output) = interpret_mir(db, body, false, None)?;
     result?;
     Ok((output.stdout().into_owned(), output.stderr().into_owned()))
 }
 
-fn check_pass(ra_fixture: &str) {
+fn check_pass(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
     check_pass_and_stdio(ra_fixture, "", "");
 }
 
-fn check_pass_and_stdio(ra_fixture: &str, expected_stdout: &str, expected_stderr: &str) {
+fn check_pass_and_stdio(
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    expected_stdout: &str,
+    expected_stderr: &str,
+) {
     let (db, file_ids) = TestDB::with_many_files(ra_fixture);
     let file_id = *file_ids.last().unwrap();
     let x = eval_main(&db, file_id);
@@ -73,11 +77,21 @@ fn check_pass_and_stdio(ra_fixture: &str, expected_stdout: &str, expected_stderr
     }
 }
 
-fn check_panic(ra_fixture: &str, expected_panic: &str) {
+fn check_panic(#[rust_analyzer::rust_fixture] ra_fixture: &str, expected_panic: &str) {
     let (db, file_ids) = TestDB::with_many_files(ra_fixture);
     let file_id = *file_ids.last().unwrap();
     let e = eval_main(&db, file_id).unwrap_err();
     assert_eq!(e.is_panic().unwrap_or_else(|| panic!("unexpected error: {e:?}")), expected_panic);
+}
+
+fn check_error_with(
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    expect_err: impl FnOnce(MirEvalError) -> bool,
+) {
+    let (db, file_ids) = TestDB::with_many_files(ra_fixture);
+    let file_id = *file_ids.last().unwrap();
+    let e = eval_main(&db, file_id).unwrap_err();
+    assert!(expect_err(e));
 }
 
 #[test]
@@ -877,5 +891,91 @@ fn main() {
     C::c(&());
 }
 "#,
+    );
+}
+
+#[test]
+fn long_str_eq_same_prefix() {
+    check_pass_and_stdio(
+        r#"
+//- minicore: slice, index, coerce_unsized
+
+type pthread_key_t = u32;
+type c_void = u8;
+type c_int = i32;
+
+extern "C" {
+    pub fn write(fd: i32, buf: *const u8, count: usize) -> usize;
+}
+
+fn main() {
+    // More than 16 bytes, the size of `i128`.
+    let long_str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaab";
+    let output = match long_str {
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" => b"true" as &[u8],
+        _ => b"false",
+    };
+    write(1, &output[0], output.len());
+}
+        "#,
+        "false",
+        "",
+    );
+}
+
+#[test]
+fn regression_19021() {
+    check_pass(
+        r#"
+//- minicore: deref
+use core::ops::Deref;
+
+#[lang = "owned_box"]
+struct Box<T>(T);
+
+impl<T> Deref for Box<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+struct Foo;
+
+fn main() {
+    let x = Box(Foo);
+    let y = &Foo;
+
+    || match x {
+        ref x => x,
+        _ => y,
+    };
+}
+"#,
+    );
+}
+
+#[test]
+fn regression_19177() {
+    check_error_with(
+        r#"
+//- minicore: copy
+trait Foo {}
+trait Bar {}
+trait Baz {}
+trait Qux {
+    type Assoc;
+}
+
+fn main<'a, T: Foo + Bar + Baz>(
+    x: &T,
+    y: (),
+    z: &'a dyn Qux<Assoc = T>,
+    w: impl Foo + Bar,
+) {
+}
+"#,
+        |e| matches!(e, MirEvalError::MirLowerError(_, MirLowerError::GenericArgNotProvided(..))),
     );
 }

@@ -51,4 +51,10 @@ pub mod __macro {
     }
 }
 
+#[warn(clippy::missing_errors_doc)]
+#[test]
+fn test() -> Result<(), ()> {
+    Ok(())
+}
+
 fn main() {}

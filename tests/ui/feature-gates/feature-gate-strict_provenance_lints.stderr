@@ -1,8 +1,8 @@
 warning: unknown lint: `fuzzy_provenance_casts`
-  --> $DIR/feature-gate-strict_provenance_lints.rs:3:1
+  --> $DIR/feature-gate-strict_provenance_lints.rs:3:9
    |
 LL | #![deny(fuzzy_provenance_casts)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the `fuzzy_provenance_casts` lint is unstable
    = note: see issue #130351 <https://github.com/rust-lang/rust/issues/130351> for more information
@@ -11,10 +11,10 @@ LL | #![deny(fuzzy_provenance_casts)]
    = note: `#[warn(unknown_lints)]` on by default
 
 warning: unknown lint: `lossy_provenance_casts`
-  --> $DIR/feature-gate-strict_provenance_lints.rs:5:1
+  --> $DIR/feature-gate-strict_provenance_lints.rs:5:9
    |
 LL | #![deny(lossy_provenance_casts)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the `lossy_provenance_casts` lint is unstable
    = note: see issue #130351 <https://github.com/rust-lang/rust/issues/130351> for more information

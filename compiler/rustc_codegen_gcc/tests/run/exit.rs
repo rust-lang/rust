@@ -3,11 +3,12 @@
 // Run-time:
 //   status: 2
 
-#![feature(auto_traits, lang_items, no_core, start, intrinsics)]
+#![feature(auto_traits, lang_items, no_core, intrinsics)]
 #![allow(internal_features)]
 
 #![no_std]
 #![no_core]
+#![no_main]
 
 mod libc {
     #[link(name = "c")]
@@ -41,8 +42,8 @@ pub(crate) unsafe auto trait Freeze {}
  * Code
  */
 
-#[start]
-fn main(mut argc: isize, _argv: *const *const u8) -> isize {
+#[no_mangle]
+extern "C" fn main(argc: i32, _argv: *const *const u8) -> i32 {
     unsafe {
         libc::exit(2);
     }

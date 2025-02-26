@@ -183,7 +183,7 @@
    LL|      0|            println!(
    LL|      0|                "not called: {}",
    LL|      0|                if is_true { "check" } else { "me" }
-   LL|      0|            )
+   LL|       |            )
    LL|       |    ;
    LL|       |
    LL|      1|    let short_used_not_covered_closure_line_break_block_embedded_branch =
@@ -202,7 +202,7 @@
    LL|      1|                "not called: {}",
    LL|      1|                if is_true { "check" } else { "me" }
                                                             ^0
-   LL|      1|            )
+   LL|       |            )
    LL|       |    ;
    LL|       |
    LL|      1|    let short_used_covered_closure_line_break_block_embedded_branch =

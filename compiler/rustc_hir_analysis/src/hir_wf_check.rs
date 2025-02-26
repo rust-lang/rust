@@ -1,11 +1,11 @@
-use rustc_hir as hir;
-use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{ForeignItem, ForeignItemKind};
+use rustc_hir::intravisit::{self, Visitor, VisitorExt};
+use rustc_hir::{self as hir, AmbigArg, ForeignItem, ForeignItemKind};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{ObligationCause, WellFormedLoc};
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::fold::fold_regions;
+use rustc_middle::ty::{self, TyCtxt, TypingMode};
 use rustc_span::def_id::LocalDefId;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
 use tracing::debug;
@@ -22,8 +22,6 @@ fn diagnostic_hir_wf_check<'tcx>(
     tcx: TyCtxt<'tcx>,
     (predicate, loc): (ty::Predicate<'tcx>, WellFormedLoc),
 ) -> Option<ObligationCause<'tcx>> {
-    let hir = tcx.hir();
-
     let def_id = match loc {
         WellFormedLoc::Ty(def_id) => def_id,
         WellFormedLoc::Param { function, param_idx: _ } => function,
@@ -67,15 +65,17 @@ fn diagnostic_hir_wf_check<'tcx>(
     }
 
     impl<'tcx> Visitor<'tcx> for HirWfCheck<'tcx> {
-        fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
-            let infcx = self.tcx.infer_ctxt().build();
+        fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx, AmbigArg>) {
+            let infcx = self.tcx.infer_ctxt().build(TypingMode::non_body_analysis());
             let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
 
-            let tcx_ty = self.icx.lower_ty(ty);
+            // We don't handle infer vars but we wouldn't handle them anyway as we're creating a
+            // fresh `InferCtxt` in this function.
+            let tcx_ty = self.icx.lower_ty(ty.as_unambig_ty());
             // This visitor can walk into binders, resulting in the `tcx_ty` to
             // potentially reference escaping bound variables. We simply erase
             // those here.
-            let tcx_ty = self.tcx.fold_regions(tcx_ty, |r, _| {
+            let tcx_ty = fold_regions(self.tcx, tcx_ty, |r, _| {
                 if r.is_bound() { self.tcx.lifetimes.re_erased } else { r }
             });
             let cause = traits::ObligationCause::new(
@@ -148,7 +148,11 @@ fn diagnostic_hir_wf_check<'tcx>(
                         .iter()
                         .flat_map(|seg| seg.args().args)
                         .filter_map(|arg| {
-                            if let hir::GenericArg::Type(ty) = arg { Some(*ty) } else { None }
+                            if let hir::GenericArg::Type(ty) = arg {
+                                Some(ty.as_unambig_ty())
+                            } else {
+                                None
+                            }
                         })
                         .chain([impl_.self_ty])
                         .collect(),
@@ -181,7 +185,7 @@ fn diagnostic_hir_wf_check<'tcx>(
             ref node => bug!("Unexpected node {:?}", node),
         },
         WellFormedLoc::Param { function: _, param_idx } => {
-            let fn_decl = hir.fn_decl_by_hir_id(hir_id).unwrap();
+            let fn_decl = tcx.hir_fn_decl_by_hir_id(hir_id).unwrap();
             // Get return type
             if param_idx as usize == fn_decl.inputs.len() {
                 match fn_decl.output {
@@ -195,7 +199,7 @@ fn diagnostic_hir_wf_check<'tcx>(
         }
     };
     for ty in tys {
-        visitor.visit_ty(ty);
+        visitor.visit_ty_unambig(ty);
     }
     visitor.cause
 }

@@ -41,27 +41,6 @@ fn far(far: Far) -> isize {
     far as isize
 }
 
-// EMIT_MIR enum_cast.droppy.built.after.mir
-enum Droppy {
-    A,
-    B,
-    C,
-}
-
-impl Drop for Droppy {
-    fn drop(&mut self) {}
-}
-
-fn droppy() {
-    {
-        let x = Droppy::C;
-        // remove this entire test once `cenum_impl_drop_cast` becomes a hard error
-        #[allow(cenum_impl_drop_cast)]
-        let y = x as usize;
-    }
-    let z = Droppy::B;
-}
-
 #[repr(i16)]
 enum SignedAroundZero {
     A = -2,

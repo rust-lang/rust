@@ -170,7 +170,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for TypeFreshener<'a, 'tcx> {
             }
 
             ty::ConstKind::Param(_)
-            | ty::ConstKind::Value(_, _)
+            | ty::ConstKind::Value(_)
             | ty::ConstKind::Unevaluated(..)
             | ty::ConstKind::Expr(..)
             | ty::ConstKind::Error(_) => ct.super_fold_with(self),

@@ -164,3 +164,11 @@ fn issue10803() {
     // Don't lint
     let _ = matches!(x, Some(16));
 }
+
+fn issue13902() {
+    let x = Some(0);
+    let p = &raw const x;
+    unsafe {
+        let _ = matches!(*p, None);
+    }
+}

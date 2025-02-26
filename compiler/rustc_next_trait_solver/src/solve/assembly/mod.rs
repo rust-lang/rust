@@ -6,17 +6,22 @@ use derive_where::derive_where;
 use rustc_type_ir::fold::TypeFoldable;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
-use rustc_type_ir::solve::inspect;
 use rustc_type_ir::visit::TypeVisitableExt as _;
-use rustc_type_ir::{self as ty, Interner, Upcast as _, elaborate};
+use rustc_type_ir::{self as ty, Interner, TypingMode, Upcast as _, elaborate};
 use tracing::{debug, instrument};
 
+use super::trait_goals::TraitGoalProvenVia;
 use crate::delegate::SolverDelegate;
 use crate::solve::inspect::ProbeKind;
 use crate::solve::{
     BuiltinImplSource, CandidateSource, CanonicalResponse, Certainty, EvalCtxt, Goal, GoalSource,
-    MaybeCause, NoSolution, QueryResult, SolverMode,
+    MaybeCause, NoSolution, QueryResult,
 };
+
+enum AliasBoundKind {
+    SelfBounds,
+    NonSelfBounds,
+}
 
 /// A candidate is a possible way to prove a goal.
 ///
@@ -102,7 +107,7 @@ where
 
     /// Assemble additional assumptions for an alias that are not included
     /// in the item bounds of the alias. For now, this is limited to the
-    /// `implied_const_bounds` for an associated type.
+    /// `explicit_implied_const_bounds` for an associated type.
     fn consider_additional_alias_assumptions(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
@@ -155,13 +160,6 @@ where
     /// These components are given by built-in rules from
     /// [`structural_traits::instantiate_constituent_tys_for_copy_clone_trait`].
     fn consider_builtin_copy_clone_candidate(
-        ecx: &mut EvalCtxt<'_, D>,
-        goal: Goal<I, Self>,
-    ) -> Result<Candidate<I>, NoSolution>;
-
-    /// A type is `PointerLike` if we can compute its layout, and that layout
-    /// matches the layout of `usize`.
-    fn consider_builtin_pointer_like_candidate(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolution>;
@@ -268,6 +266,11 @@ where
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolution>;
 
+    fn consider_builtin_bikeshed_guaranteed_no_drop_candidate(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+    ) -> Result<Candidate<I>, NoSolution>;
+
     /// Consider (possibly several) candidates to upcast or unsize a type to another
     /// type, excluding the coercion of a sized type into a `dyn Trait`.
     ///
@@ -293,25 +296,6 @@ where
         let Ok(normalized_self_ty) =
             self.structurally_normalize_ty(goal.param_env, goal.predicate.self_ty())
         else {
-            // FIXME: We register a fake candidate when normalization fails so that
-            // we can point at the reason for *why*. I'm tempted to say that this
-            // is the wrong way to do this, though.
-            let result =
-                self.probe(|&result| inspect::ProbeKind::RigidAlias { result }).enter(|this| {
-                    let normalized_ty = this.next_ty_infer();
-                    let alias_relate_goal = Goal::new(
-                        this.cx(),
-                        goal.param_env,
-                        ty::PredicateKind::AliasRelate(
-                            goal.predicate.self_ty().into(),
-                            normalized_ty.into(),
-                            ty::AliasRelationDirection::Equate,
-                        ),
-                    );
-                    this.add_goal(GoalSource::AliasWellFormed, alias_relate_goal);
-                    this.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
-                });
-            assert_eq!(result, Err(NoSolution));
             return vec![];
         };
 
@@ -328,11 +312,12 @@ where
 
         let mut candidates = vec![];
 
-        if self.solver_mode() == SolverMode::Coherence {
+        if let TypingMode::Coherence = self.typing_mode() {
             if let Ok(candidate) = self.consider_coherence_unknowable_candidate(goal) {
                 return vec![candidate];
             }
         }
+
         self.assemble_impl_candidates(goal, &mut candidates);
 
         self.assemble_builtin_impl_candidates(goal, &mut candidates);
@@ -342,10 +327,6 @@ where
         self.assemble_object_bound_candidates(goal, &mut candidates);
 
         self.assemble_param_env_candidates(goal, &mut candidates);
-
-        if self.solver_mode() == SolverMode::Normal {
-            self.discard_impls_shadowed_by_env(goal, &mut candidates);
-        }
 
         candidates
     }
@@ -445,9 +426,6 @@ where
                         ty::ClosureKind::FnOnce,
                     )
                 }
-                Some(TraitSolverLangItem::PointerLike) => {
-                    G::consider_builtin_pointer_like_candidate(self, goal)
-                }
                 Some(TraitSolverLangItem::FnPtrTrait) => {
                     G::consider_builtin_fn_ptr_trait_candidate(self, goal)
                 }
@@ -485,6 +463,9 @@ where
                 Some(TraitSolverLangItem::TransmuteTrait) => {
                     G::consider_builtin_transmute_candidate(self, goal)
                 }
+                Some(TraitSolverLangItem::BikeshedGuaranteedNoDrop) => {
+                    G::consider_builtin_bikeshed_guaranteed_no_drop_candidate(self, goal)
+                }
                 _ => Err(NoSolution),
             }
         };
@@ -504,7 +485,7 @@ where
         goal: Goal<I, G>,
         candidates: &mut Vec<Candidate<I>>,
     ) {
-        for (i, assumption) in goal.param_env.caller_bounds().into_iter().enumerate() {
+        for (i, assumption) in goal.param_env.caller_bounds().iter().enumerate() {
             candidates.extend(G::probe_and_consider_implied_clause(
                 self,
                 CandidateSource::ParamEnv(i),
@@ -522,7 +503,12 @@ where
         candidates: &mut Vec<Candidate<I>>,
     ) {
         let () = self.probe(|_| ProbeKind::NormalizedSelfTyAssembly).enter(|ecx| {
-            ecx.assemble_alias_bound_candidates_recur(goal.predicate.self_ty(), goal, candidates);
+            ecx.assemble_alias_bound_candidates_recur(
+                goal.predicate.self_ty(),
+                goal,
+                candidates,
+                AliasBoundKind::SelfBounds,
+            );
         });
     }
 
@@ -540,6 +526,7 @@ where
         self_ty: I::Ty,
         goal: Goal<I, G>,
         candidates: &mut Vec<Candidate<I>>,
+        consider_self_bounds: AliasBoundKind,
     ) {
         let (kind, alias_ty) = match self_ty.kind() {
             ty::Bool
@@ -557,6 +544,7 @@ where
             | ty::Ref(_, _, _)
             | ty::FnDef(_, _)
             | ty::FnPtr(..)
+            | ty::UnsafeBinder(_)
             | ty::Dynamic(..)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
@@ -591,16 +579,37 @@ where
             }
         };
 
-        for assumption in
-            self.cx().item_bounds(alias_ty.def_id).iter_instantiated(self.cx(), alias_ty.args)
-        {
-            candidates.extend(G::probe_and_consider_implied_clause(
-                self,
-                CandidateSource::AliasBound,
-                goal,
-                assumption,
-                [],
-            ));
+        match consider_self_bounds {
+            AliasBoundKind::SelfBounds => {
+                for assumption in self
+                    .cx()
+                    .item_self_bounds(alias_ty.def_id)
+                    .iter_instantiated(self.cx(), alias_ty.args)
+                {
+                    candidates.extend(G::probe_and_consider_implied_clause(
+                        self,
+                        CandidateSource::AliasBound,
+                        goal,
+                        assumption,
+                        [],
+                    ));
+                }
+            }
+            AliasBoundKind::NonSelfBounds => {
+                for assumption in self
+                    .cx()
+                    .item_non_self_bounds(alias_ty.def_id)
+                    .iter_instantiated(self.cx(), alias_ty.args)
+                {
+                    candidates.extend(G::probe_and_consider_implied_clause(
+                        self,
+                        CandidateSource::AliasBound,
+                        goal,
+                        assumption,
+                        [],
+                    ));
+                }
+            }
         }
 
         candidates.extend(G::consider_additional_alias_assumptions(self, goal, alias_ty));
@@ -611,9 +620,12 @@ where
 
         // Recurse on the self type of the projection.
         match self.structurally_normalize_ty(goal.param_env, alias_ty.self_ty()) {
-            Ok(next_self_ty) => {
-                self.assemble_alias_bound_candidates_recur(next_self_ty, goal, candidates)
-            }
+            Ok(next_self_ty) => self.assemble_alias_bound_candidates_recur(
+                next_self_ty,
+                goal,
+                candidates,
+                AliasBoundKind::NonSelfBounds,
+            ),
             Err(NoSolution) => {}
         }
     }
@@ -646,6 +658,7 @@ where
             | ty::Ref(_, _, _)
             | ty::FnDef(_, _)
             | ty::FnPtr(..)
+            | ty::UnsafeBinder(_)
             | ty::Alias(..)
             | ty::Closure(..)
             | ty::CoroutineClosure(..)
@@ -737,72 +750,100 @@ where
         })
     }
 
-    /// If there's a where-bound for the current goal, do not use any impl candidates
-    /// to prove the current goal. Most importantly, if there is a where-bound which does
-    /// not specify any associated types, we do not allow normalizing the associated type
-    /// by using an impl, even if it would apply.
+    /// We sadly can't simply take all possible candidates for normalization goals
+    /// and check whether they result in the same constraints. We want to make sure
+    /// that trying to normalize an alias doesn't result in constraints which aren't
+    /// otherwise required.
     ///
-    ///  <https://github.com/rust-lang/trait-system-refactor-initiative/issues/76>
-    // FIXME(@lcnr): The current structure here makes me unhappy and feels ugly. idk how
-    // to improve this however. However, this should make it fairly straightforward to refine
-    // the filtering going forward, so it seems alright-ish for now.
-    #[instrument(level = "debug", skip(self, goal))]
-    fn discard_impls_shadowed_by_env<G: GoalKind<D>>(
+    /// Most notably, when proving a trait goal by via a where-bound, we should not
+    /// normalize via impls which have stricter region constraints than the where-bound:
+    ///
+    /// ```rust
+    /// trait Trait<'a> {
+    ///     type Assoc;
+    /// }
+    ///
+    /// impl<'a, T: 'a> Trait<'a> for T {
+    ///     type Assoc = u32;
+    /// }
+    ///
+    /// fn with_bound<'a, T: Trait<'a>>(_value: T::Assoc) {}
+    /// ```
+    ///
+    /// The where-bound of `with_bound` doesn't specify the associated type, so we would
+    /// only be able to normalize `<T as Trait<'a>>::Assoc` by using the impl. This impl
+    /// adds a `T: 'a` bound however, which would result in a region error. Given that the
+    /// user explicitly wrote that `T: Trait<'a>` holds, this is undesirable and we instead
+    /// treat the alias as rigid.
+    ///
+    /// See trait-system-refactor-initiative#124 for more details.
+    #[instrument(level = "debug", skip(self, inject_normalize_to_rigid_candidate), ret)]
+    pub(super) fn merge_candidates(
         &mut self,
-        goal: Goal<I, G>,
-        candidates: &mut Vec<Candidate<I>>,
-    ) {
-        let cx = self.cx();
-        let trait_goal: Goal<I, ty::TraitPredicate<I>> =
-            goal.with(cx, goal.predicate.trait_ref(cx));
+        proven_via: Option<TraitGoalProvenVia>,
+        candidates: Vec<Candidate<I>>,
+        inject_normalize_to_rigid_candidate: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResult<I>,
+    ) -> QueryResult<I> {
+        let Some(proven_via) = proven_via else {
+            // We don't care about overflow. If proving the trait goal overflowed, then
+            // it's enough to report an overflow error for that, we don't also have to
+            // overflow during normalization.
+            return Ok(self.make_ambiguous_response_no_constraints(MaybeCause::Ambiguity));
+        };
 
-        let mut trait_candidates_from_env = vec![];
-        self.probe(|_| ProbeKind::ShadowedEnvProbing).enter(|ecx| {
-            ecx.assemble_param_env_candidates(trait_goal, &mut trait_candidates_from_env);
-            ecx.assemble_alias_bound_candidates(trait_goal, &mut trait_candidates_from_env);
-        });
+        match proven_via {
+            // Even when a trait bound has been proven using a where-bound, we
+            // still need to consider alias-bounds for normalization, see
+            // tests/ui/next-solver/alias-bound-shadowed-by-env.rs.
+            //
+            // FIXME(const_trait_impl): should this behavior also be used by
+            // constness checking. Doing so is *at least theoretically* breaking,
+            // see github.com/rust-lang/rust/issues/133044#issuecomment-2500709754
+            TraitGoalProvenVia::ParamEnv | TraitGoalProvenVia::AliasBound => {
+                let mut candidates_from_env_and_bounds: Vec<_> = candidates
+                    .iter()
+                    .filter(|c| {
+                        matches!(
+                            c.source,
+                            CandidateSource::AliasBound | CandidateSource::ParamEnv(_)
+                        )
+                    })
+                    .map(|c| c.result)
+                    .collect();
 
-        if !trait_candidates_from_env.is_empty() {
-            let trait_env_result = self.merge_candidates(trait_candidates_from_env);
-            match trait_env_result.unwrap().value.certainty {
-                // If proving the trait goal succeeds by using the env,
-                // we freely drop all impl candidates.
-                //
-                // FIXME(@lcnr): It feels like this could easily hide
-                // a forced ambiguity candidate added earlier.
-                // This feels dangerous.
-                Certainty::Yes => {
-                    candidates.retain(|c| match c.source {
-                        CandidateSource::Impl(_) | CandidateSource::BuiltinImpl(_) => {
-                            debug!(?c, "discard impl candidate");
-                            false
-                        }
-                        CandidateSource::ParamEnv(_) | CandidateSource::AliasBound => true,
-                        CandidateSource::CoherenceUnknowable => panic!("uh oh"),
-                    });
+                // If the trait goal has been proven by using the environment, we want to treat
+                // aliases as rigid if there are no applicable projection bounds in the environment.
+                if candidates_from_env_and_bounds.is_empty() {
+                    if let Ok(response) = inject_normalize_to_rigid_candidate(self) {
+                        candidates_from_env_and_bounds.push(response);
+                    }
                 }
-                // If it is still ambiguous we instead just force the whole goal
-                // to be ambig and wait for inference constraints. See
-                // tests/ui/traits/next-solver/env-shadows-impls/ambig-env-no-shadow.rs
-                Certainty::Maybe(cause) => {
-                    debug!(?cause, "force ambiguity");
-                    *candidates = self.forced_ambiguity(cause).into_iter().collect();
+
+                if let Some(response) = self.try_merge_responses(&candidates_from_env_and_bounds) {
+                    Ok(response)
+                } else {
+                    self.flounder(&candidates_from_env_and_bounds)
                 }
             }
-        }
-    }
+            TraitGoalProvenVia::Misc => {
+                // Prefer "orphaned" param-env normalization predicates, which are used
+                // (for example, and ideally only) when proving item bounds for an impl.
+                let candidates_from_env: Vec<_> = candidates
+                    .iter()
+                    .filter(|c| matches!(c.source, CandidateSource::ParamEnv(_)))
+                    .map(|c| c.result)
+                    .collect();
+                if let Some(response) = self.try_merge_responses(&candidates_from_env) {
+                    return Ok(response);
+                }
 
-    /// If there are multiple ways to prove a trait or projection goal, we have
-    /// to somehow try to merge the candidates into one. If that fails, we return
-    /// ambiguity.
-    #[instrument(level = "debug", skip(self), ret)]
-    pub(super) fn merge_candidates(&mut self, candidates: Vec<Candidate<I>>) -> QueryResult<I> {
-        // First try merging all candidates. This is complete and fully sound.
-        let responses = candidates.iter().map(|c| c.result).collect::<Vec<_>>();
-        if let Some(result) = self.try_merge_responses(&responses) {
-            return Ok(result);
-        } else {
-            self.flounder(&responses)
+                let responses: Vec<_> = candidates.iter().map(|c| c.result).collect();
+                if let Some(response) = self.try_merge_responses(&responses) {
+                    Ok(response)
+                } else {
+                    self.flounder(&responses)
+                }
+            }
         }
     }
 }

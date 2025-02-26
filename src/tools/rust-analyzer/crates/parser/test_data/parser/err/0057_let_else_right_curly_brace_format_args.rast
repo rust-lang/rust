@@ -1,0 +1,90 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "r"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          IDENT_PAT
+            NAME
+              IDENT "ok"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          MACRO_EXPR
+            MACRO_CALL
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "format_args"
+              BANG "!"
+              TOKEN_TREE
+                L_PAREN "("
+                STRING "\"\""
+                R_PAREN ")"
+          WHITESPACE " "
+          LET_ELSE
+            ELSE_KW "else"
+            WHITESPACE " "
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                WHITESPACE " "
+                EXPR_STMT
+                  RETURN_EXPR
+                    RETURN_KW "return"
+                  SEMICOLON ";"
+                WHITESPACE " "
+                R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          IDENT_PAT
+            NAME
+              IDENT "bad"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          MACRO_EXPR
+            MACRO_CALL
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "format_args"
+              BANG "!"
+              WHITESPACE " "
+              TOKEN_TREE
+                L_CURLY "{"
+                STRING "\"\""
+                R_CURLY "}"
+          WHITESPACE " "
+          LET_ELSE
+            ELSE_KW "else"
+            WHITESPACE " "
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                WHITESPACE " "
+                EXPR_STMT
+                  RETURN_EXPR
+                    RETURN_KW "return"
+                  SEMICOLON ";"
+                WHITESPACE " "
+                R_CURLY "}"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"
+error 89: right curly brace `}` before `else` in a `let...else` statement not allowed

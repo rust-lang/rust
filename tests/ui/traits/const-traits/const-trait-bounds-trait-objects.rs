@@ -1,5 +1,5 @@
 #![feature(const_trait_impl)]
-// FIXME(effects) add effects
+// FIXME(const_trait_impl) add effects
 //@ edition: 2021
 
 #[const_trait]

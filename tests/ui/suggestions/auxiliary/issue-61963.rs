@@ -1,7 +1,3 @@
-//@ force-host
-//@ no-prefer-dynamic
-#![crate_type = "proc-macro"]
-
 extern crate proc_macro;
 
 use proc_macro::{Group, Spacing, Punct, TokenTree, TokenStream};

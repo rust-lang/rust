@@ -42,14 +42,12 @@ fn check_op(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>, left: bool)
             if typeck
                 .type_dependent_def_id(expr.hir_id)
                 .and_then(|id| cx.tcx.trait_of_item(id))
-                .map_or(false, |id| {
-                    matches!(cx.tcx.get_diagnostic_name(id), Some(sym::ToString | sym::ToOwned))
-                }) =>
+                .is_some_and(|id| matches!(cx.tcx.get_diagnostic_name(id), Some(sym::ToString | sym::ToOwned))) =>
         {
             (arg, arg.span)
         },
         ExprKind::Call(path, [arg])
-            if path_def_id(cx, path).map_or(false, |did| {
+            if path_def_id(cx, path).is_some_and(|did| {
                 if cx.tcx.is_diagnostic_item(sym::from_str_method, did) {
                     true
                 } else if cx.tcx.is_diagnostic_item(sym::from_fn, did) {
@@ -106,7 +104,7 @@ fn check_op(cx: &LateContext<'_>, expr: &Expr<'_>, other: &Expr<'_>, left: bool)
             } else {
                 expr_snip = arg_snip.to_string();
                 eq_impl = without_deref;
-            };
+            }
 
             let span;
             let hint;

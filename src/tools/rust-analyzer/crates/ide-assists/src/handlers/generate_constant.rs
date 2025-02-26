@@ -64,7 +64,7 @@ pub(crate) fn generate_constant(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
         let name_ref_value = name_ref?;
         let name_ref_class = NameRefClass::classify(&ctx.sema, &name_ref_value);
         match name_ref_class {
-            Some(NameRefClass::Definition(Definition::Module(m))) => {
+            Some(NameRefClass::Definition(Definition::Module(m), _)) => {
                 if !m.visibility(ctx.sema.db).is_visible_from(ctx.sema.db, constant_module.into()) {
                     return None;
                 }

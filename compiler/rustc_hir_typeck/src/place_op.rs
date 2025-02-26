@@ -1,14 +1,14 @@
 use rustc_errors::Applicability;
 use rustc_hir_analysis::autoderef::Autoderef;
 use rustc_infer::infer::InferOk;
+use rustc_infer::traits::{Obligation, ObligationCauseCode};
 use rustc_middle::span_bug;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, OverloadedDeref,
     PointerCoercion,
 };
 use rustc_middle::ty::{self, Ty};
-use rustc_span::Span;
-use rustc_span::symbol::{Ident, sym};
+use rustc_span::{Ident, Span, sym};
 use tracing::debug;
 use {rustc_ast as ast, rustc_hir as hir};
 
@@ -29,11 +29,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let ok = self.try_overloaded_deref(expr.span, oprnd_ty)?;
         let method = self.register_infer_ok_obligations(ok);
-        if let ty::Ref(region, _, hir::Mutability::Not) = method.sig.inputs()[0].kind() {
-            self.apply_adjustments(oprnd_expr, vec![Adjustment {
-                kind: Adjust::Borrow(AutoBorrow::Ref(*region, AutoBorrowMutability::Not)),
-                target: method.sig.inputs()[0],
-            }]);
+        if let ty::Ref(_, _, hir::Mutability::Not) = method.sig.inputs()[0].kind() {
+            self.apply_adjustments(
+                oprnd_expr,
+                vec![Adjustment {
+                    kind: Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Not)),
+                    target: method.sig.inputs()[0],
+                }],
+            );
         } else {
             span_bug!(expr.span, "input to deref is not a ref?");
         }
@@ -137,8 +140,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let mut self_ty = adjusted_ty;
             if unsize {
                 // We only unsize arrays here.
-                if let ty::Array(element_ty, _) = adjusted_ty.kind() {
-                    self_ty = Ty::new_slice(self.tcx, *element_ty);
+                if let ty::Array(element_ty, ct) = *adjusted_ty.kind() {
+                    self.register_predicate(Obligation::new(
+                        self.tcx,
+                        self.cause(base_expr.span, ObligationCauseCode::ArrayLen(adjusted_ty)),
+                        self.param_env,
+                        ty::ClauseKind::ConstArgHasType(ct, self.tcx.types.usize),
+                    ));
+                    self_ty = Ty::new_slice(self.tcx, element_ty);
                 } else {
                     continue;
                 }
@@ -149,7 +158,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // If some lookup succeeded, install method in table
             let input_ty = self.next_ty_var(base_expr.span);
             let method =
-                self.try_overloaded_place_op(expr.span, self_ty, &[input_ty], PlaceOp::Index);
+                self.try_overloaded_place_op(expr.span, self_ty, Some(input_ty), PlaceOp::Index);
 
             if let Some(result) = method {
                 debug!("try_index_step: success, using overloaded indexing");
@@ -158,7 +167,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let mut adjustments = self.adjust_steps(autoderef);
                 if let ty::Ref(region, _, hir::Mutability::Not) = method.sig.inputs()[0].kind() {
                     adjustments.push(Adjustment {
-                        kind: Adjust::Borrow(AutoBorrow::Ref(*region, AutoBorrowMutability::Not)),
+                        kind: Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Not)),
                         target: Ty::new_imm_ref(self.tcx, *region, adjusted_ty),
                     });
                 } else {
@@ -189,7 +198,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         span: Span,
         base_ty: Ty<'tcx>,
-        arg_tys: &[Ty<'tcx>],
+        opt_rhs_ty: Option<Ty<'tcx>>,
         op: PlaceOp,
     ) -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
         debug!("try_overloaded_place_op({:?},{:?},{:?})", span, base_ty, op);
@@ -207,7 +216,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Ident::with_dummy_span(imm_op),
             imm_tr,
             base_ty,
-            Some(arg_tys),
+            opt_rhs_ty,
         )
     }
 
@@ -215,7 +224,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         span: Span,
         base_ty: Ty<'tcx>,
-        arg_tys: &[Ty<'tcx>],
+        opt_rhs_ty: Option<Ty<'tcx>>,
         op: PlaceOp,
     ) -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
         debug!("try_mutable_overloaded_place_op({:?},{:?},{:?})", span, base_ty, op);
@@ -233,7 +242,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Ident::with_dummy_span(mut_op),
             mut_tr,
             base_ty,
-            Some(arg_tys),
+            opt_rhs_ty,
         )
     }
 
@@ -284,14 +293,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         && let Some(ok) = self.try_mutable_overloaded_place_op(
                             expr.span,
                             source,
-                            &[],
+                            None,
                             PlaceOp::Deref,
                         )
                     {
                         let method = self.register_infer_ok_obligations(ok);
-                        if let ty::Ref(region, _, mutbl) = *method.sig.output().kind() {
-                            *deref = OverloadedDeref { region, mutbl, span: deref.span };
-                        }
+                        let ty::Ref(_, _, mutbl) = *method.sig.output().kind() else {
+                            span_bug!(
+                                self.tcx.def_span(method.def_id),
+                                "expected DerefMut to return a &mut"
+                            );
+                        };
+                        *deref = OverloadedDeref { mutbl, span: deref.span };
+                        self.enforce_context_effects(None, expr.span, method.def_id, method.args);
                         // If this is a union field, also throw an error for `DerefMut` of `ManuallyDrop` (see RFC 2514).
                         // This helps avoid accidental drops.
                         if inside_union
@@ -359,8 +373,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some(self.typeck_results.borrow().node_args(expr.hir_id).type_at(1))
             }
         };
-        let arg_tys = arg_ty.as_slice();
-        let method = self.try_mutable_overloaded_place_op(expr.span, base_ty, arg_tys, op);
+        let method = self.try_mutable_overloaded_place_op(expr.span, base_ty, arg_ty, op);
         let method = match method {
             Some(ok) => self.register_infer_ok_obligations(ok),
             // Couldn't find the mutable variant of the place op, keep the
@@ -391,7 +404,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // not the case today.
                         allow_two_phase_borrow: AllowTwoPhase::No,
                     };
-                    adjustment.kind = Adjust::Borrow(AutoBorrow::Ref(*region, mutbl));
+                    adjustment.kind = Adjust::Borrow(AutoBorrow::Ref(mutbl));
                     adjustment.target = Ty::new_ref(self.tcx, *region, source, mutbl.into());
                 }
                 source = adjustment.target;

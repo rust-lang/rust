@@ -1,22 +1,20 @@
-use std::{iter, slice};
+use std::iter;
 
-use rustc_ast::util::parser::PREC_UNAMBIGUOUS;
+use rustc_ast::util::parser::ExprPrecedence;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, StashKey};
 use rustc_hir::def::{self, CtorKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, LangItem};
+use rustc_hir::{self as hir, HirId, LangItem};
 use rustc_hir_analysis::autoderef::Autoderef;
 use rustc_infer::infer;
-use rustc_infer::traits::{self, Obligation, ObligationCause, ObligationCauseCode};
+use rustc_infer::traits::{Obligation, ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
-use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::symbol::{Ident, sym};
-use rustc_target::spec::abi;
+use rustc_span::{Ident, Span, sym};
 use rustc_trait_selection::error_reporting::traits::DefIdOrName;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -51,7 +49,7 @@ pub(crate) fn check_legal_trait_for_method_call(
         };
         return Err(tcx.dcx().emit_err(errors::ExplicitDestructorCall { span, sugg }));
     }
-    tcx.ensure().coherent_trait(trait_id)
+    tcx.ensure_ok().coherent_trait(trait_id)
 }
 
 #[derive(Debug)]
@@ -63,7 +61,7 @@ enum CallStep<'tcx> {
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub(crate) fn check_call(
+    pub(crate) fn check_expr_call(
         &self,
         call_expr: &'tcx hir::Expr<'tcx>,
         callee_expr: &'tcx hir::Expr<'tcx>,
@@ -75,8 +73,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .check_expr_with_expectation_and_args(
                     callee_expr,
                     Expectation::NoExpectation,
-                    arg_exprs,
-                    Some(call_expr),
+                    Some((call_expr, arg_exprs)),
                 ),
             _ => self.check_expr(callee_expr),
         };
@@ -156,13 +153,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     closure_sig,
                 );
                 let adjustments = self.adjust_steps(autoderef);
-                self.record_deferred_call_resolution(def_id, DeferredCallResolution {
-                    call_expr,
-                    callee_expr,
-                    closure_ty: adjusted_ty,
-                    adjustments,
-                    fn_sig: closure_sig,
-                });
+                self.record_deferred_call_resolution(
+                    def_id,
+                    DeferredCallResolution {
+                        call_expr,
+                        callee_expr,
+                        closure_ty: adjusted_ty,
+                        adjustments,
+                        fn_sig: closure_sig,
+                    },
+                );
                 return Some(CallStep::DeferredClosure(def_id, closure_sig));
             }
 
@@ -199,13 +199,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     coroutine_closure_sig.abi,
                 );
                 let adjustments = self.adjust_steps(autoderef);
-                self.record_deferred_call_resolution(def_id, DeferredCallResolution {
-                    call_expr,
-                    callee_expr,
-                    closure_ty: adjusted_ty,
-                    adjustments,
-                    fn_sig: call_sig,
-                });
+                self.record_deferred_call_resolution(
+                    def_id,
+                    DeferredCallResolution {
+                        call_expr,
+                        callee_expr,
+                        closure_ty: adjusted_ty,
+                        adjustments,
+                        fn_sig: call_sig,
+                    },
+                );
                 return Some(CallStep::DeferredClosure(def_id, call_sig));
             }
 
@@ -300,14 +303,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Ident::with_dummy_span(method_name),
                 trait_def_id,
                 adjusted_ty,
-                opt_input_type.as_ref().map(slice::from_ref),
+                opt_input_type,
             ) {
                 let method = self.register_infer_ok_obligations(ok);
                 let mut autoref = None;
                 if borrow {
                     // Check for &self vs &mut self in the method signature. Since this is either
                     // the Fn or FnMut trait, it should be one of those.
-                    let ty::Ref(region, _, mutbl) = method.sig.inputs()[0].kind() else {
+                    let ty::Ref(_, _, mutbl) = method.sig.inputs()[0].kind() else {
                         bug!("Expected `FnMut`/`Fn` to take receiver by-ref/by-mut")
                     };
 
@@ -317,7 +320,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let mutbl = AutoBorrowMutability::new(*mutbl, AllowTwoPhase::No);
 
                     autoref = Some(Adjustment {
-                        kind: Adjust::Borrow(AutoBorrow::Ref(*region, mutbl)),
+                        kind: Adjust::Borrow(AutoBorrow::Ref(mutbl)),
                         target: method.sig.inputs()[0],
                     });
                 }
@@ -343,8 +346,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         };
 
-        let hir = self.tcx.hir();
-        let fn_decl_span = if let hir::Node::Expr(hir::Expr {
+        let fn_decl_span = if let hir::Node::Expr(&hir::Expr {
             kind: hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. }),
             ..
         }) = self.tcx.parent_hir_node(hir_id)
@@ -365,11 +367,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }),
                 ..
             }),
-        )) = hir.parent_iter(hir_id).nth(3)
+        )) = self.tcx.hir_parent_iter(hir_id).nth(3)
         {
             // Actually need to unwrap one more layer of HIR to get to
             // the _real_ closure...
-            if let hir::Node::Expr(hir::Expr {
+            if let hir::Node::Expr(&hir::Expr {
                 kind: hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. }),
                 ..
             }) = self.tcx.parent_hir_node(parent_hir_id)
@@ -430,7 +432,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let (fn_sig, def_id) = match *callee_ty.kind() {
             ty::FnDef(def_id, args) => {
-                self.enforce_context_effects(call_expr.span, def_id, args);
+                self.enforce_context_effects(Some(call_expr.hir_id), call_expr.span, def_id, args);
                 let fn_sig = self.tcx.fn_sig(def_id).instantiate(self.tcx, args);
 
                 // Unit testing: function items annotated with
@@ -461,7 +463,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 (fn_sig, Some(def_id))
             }
-            // FIXME(effects): these arms should error because we can't enforce them
+            // FIXME(const_trait_impl): these arms should error because we can't enforce them
             ty::FnPtr(sig_tys, hdr) => (sig_tys.with(hdr), None),
             _ => {
                 for arg in arg_exprs {
@@ -509,13 +511,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             def_id,
         );
 
-        if fn_sig.abi == abi::Abi::RustCall {
+        if fn_sig.abi == rustc_abi::ExternAbi::RustCall {
             let sp = arg_exprs.last().map_or(call_expr.span, |expr| expr.span);
             if let Some(ty) = fn_sig.inputs().last().copied() {
                 self.register_bound(
                     ty,
                     self.tcx.require_lang_item(hir::LangItem::Tuple, Some(sp)),
-                    traits::ObligationCause::new(sp, self.body_id, ObligationCauseCode::RustCall),
+                    self.cause(sp, ObligationCauseCode::RustCall),
                 );
                 self.require_type_is_sized(ty, sp, ObligationCauseCode::RustCall);
             } else {
@@ -608,7 +610,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
 
             if let Ok(rest_snippet) = rest_snippet {
-                let sugg = if callee_expr.precedence().order() >= PREC_UNAMBIGUOUS {
+                let sugg = if callee_expr.precedence() >= ExprPrecedence::Unambiguous {
                     vec![
                         (up_to_rcvr_span, "".to_string()),
                         (rest_span, format!(".{}({rest_snippet}", segment.ident)),
@@ -705,10 +707,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && let Res::Local(_) = path.res
             && let [segment] = &path.segments
         {
-            for id in self.tcx.hir().items() {
-                if let Some(node) = self.tcx.hir().get_if_local(id.owner_id.into())
+            for id in self.tcx.hir_free_items() {
+                if let Some(node) = self.tcx.hir_get_if_local(id.owner_id.into())
                     && let hir::Node::Item(item) = node
-                    && let hir::ItemKind::Fn(..) = item.kind
+                    && let hir::ItemKind::Fn { .. } = item.kind
                     && item.ident.name == segment.ident.name
                 {
                     err.span_label(
@@ -839,41 +841,57 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     #[tracing::instrument(level = "debug", skip(self, span))]
     pub(super) fn enforce_context_effects(
         &self,
+        call_hir_id: Option<HirId>,
         span: Span,
         callee_did: DefId,
         callee_args: GenericArgsRef<'tcx>,
     ) {
-        // FIXME(effects): We should be enforcing these effects unconditionally.
+        // FIXME(const_trait_impl): We should be enforcing these effects unconditionally.
         // This can be done as soon as we convert the standard library back to
         // using const traits, since if we were to enforce these conditions now,
         // we'd fail on basically every builtin trait call (i.e. `1 + 2`).
-        if !self.tcx.features().effects() {
+        if !self.tcx.features().const_trait_impl() {
             return;
         }
 
-        let host = match self.tcx.hir().body_const_context(self.body_id) {
+        // If we have `rustc_do_not_const_check`, do not check `~const` bounds.
+        if self.tcx.has_attr(self.body_id, sym::rustc_do_not_const_check) {
+            return;
+        }
+
+        let host = match self.tcx.hir_body_const_context(self.body_id) {
             Some(hir::ConstContext::Const { .. } | hir::ConstContext::Static(_)) => {
-                ty::HostPolarity::Const
+                ty::BoundConstness::Const
             }
-            Some(hir::ConstContext::ConstFn) => ty::HostPolarity::Maybe,
+            Some(hir::ConstContext::ConstFn) => ty::BoundConstness::Maybe,
             None => return,
         };
 
-        // FIXME(effects): Should this be `is_const_fn_raw`? It depends on if we move
+        // FIXME(const_trait_impl): Should this be `is_const_fn_raw`? It depends on if we move
         // const stability checking here too, I guess.
         if self.tcx.is_conditionally_const(callee_did) {
             let q = self.tcx.const_conditions(callee_did);
-            // FIXME(effects): Use this span with a better cause code.
-            for (cond, _) in q.instantiate(self.tcx, callee_args) {
+            // FIXME(const_trait_impl): Use this span with a better cause code.
+            for (idx, (cond, pred_span)) in
+                q.instantiate(self.tcx, callee_args).into_iter().enumerate()
+            {
+                let cause = self.cause(
+                    span,
+                    if let Some(hir_id) = call_hir_id {
+                        ObligationCauseCode::HostEffectInExpr(callee_did, pred_span, hir_id, idx)
+                    } else {
+                        ObligationCauseCode::WhereClause(callee_did, pred_span)
+                    },
+                );
                 self.register_predicate(Obligation::new(
                     self.tcx,
-                    self.misc(span),
+                    cause,
                     self.param_env,
                     cond.to_host_effect_clause(self.tcx, host),
                 ));
             }
         } else {
-            // FIXME(effects): This should eventually be caught here.
+            // FIXME(const_trait_impl): This should eventually be caught here.
             // For now, though, we defer some const checking to MIR.
         }
     }

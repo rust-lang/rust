@@ -4,7 +4,7 @@ error[E0277]: `&&std::slice::Iter<'_, {integer}>` is not an iterator
 LL |     for _i in &foo {}
    |               ^^^^ `&&std::slice::Iter<'_, {integer}>` is not an iterator
    |
-   = help: the trait `Iterator` is not implemented for `&&std::slice::Iter<'_, {integer}>`, which is required by `&&std::slice::Iter<'_, {integer}>: IntoIterator`
+   = help: the trait `Iterator` is not implemented for `&&std::slice::Iter<'_, {integer}>`
    = note: required for `&&std::slice::Iter<'_, {integer}>` to implement `IntoIterator`
 help: consider removing 2 leading `&`-references
    |

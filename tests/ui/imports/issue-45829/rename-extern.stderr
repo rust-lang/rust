@@ -10,7 +10,7 @@ LL | extern crate issue_45829_b as issue_45829_a;
 help: you can use `as` to change the binding name of the import
    |
 LL | extern crate issue_45829_b as other_issue_45829_a;
-   |
+   |                               ++++++
 
 error: aborting due to 1 previous error
 

@@ -1,4 +1,4 @@
-//@compile-flags: --edition 2024 -Zunstable-options
+//@ edition: 2024
 #![feature(gen_blocks)]
 
 fn foo() -> impl std::future::Future { //~ ERROR is not a future

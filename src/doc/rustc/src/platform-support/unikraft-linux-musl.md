@@ -39,7 +39,7 @@ You can build Rust with support for the targets by adding it to the `target` lis
 ```toml
 [build]
 build-stage = 1
-target = [ "x86_64-unikraft-linux-musl" ]
+target = ["x86_64-unikraft-linux-musl"]
 ```
 
 ## Building Rust programs

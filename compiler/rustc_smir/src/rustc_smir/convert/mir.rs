@@ -151,6 +151,10 @@ impl<'tcx> Stable<'tcx> for mir::StatementKind<'tcx> {
             mir::StatementKind::ConstEvalCounter => {
                 stable_mir::mir::StatementKind::ConstEvalCounter
             }
+            // BackwardIncompatibleDropHint has no semantics, so it is translated to Nop.
+            mir::StatementKind::BackwardIncompatibleDropHint { .. } => {
+                stable_mir::mir::StatementKind::Nop
+            }
             mir::StatementKind::Nop => stable_mir::mir::StatementKind::Nop,
         }
     }
@@ -213,6 +217,7 @@ impl<'tcx> Stable<'tcx> for mir::Rvalue<'tcx> {
                 stable_mir::mir::Rvalue::ShallowInitBox(op.stable(tables), ty.stable(tables))
             }
             CopyForDeref(place) => stable_mir::mir::Rvalue::CopyForDeref(place.stable(tables)),
+            WrapUnsafeBinder(..) => todo!("FIXME(unsafe_binders):"),
         }
     }
 }
@@ -224,6 +229,18 @@ impl<'tcx> Stable<'tcx> for mir::Mutability {
         match *self {
             Not => stable_mir::mir::Mutability::Not,
             Mut => stable_mir::mir::Mutability::Mut,
+        }
+    }
+}
+
+impl<'tcx> Stable<'tcx> for mir::RawPtrKind {
+    type T = stable_mir::mir::RawPtrKind;
+    fn stable(&self, _: &mut Tables<'_>) -> Self::T {
+        use mir::RawPtrKind::*;
+        match *self {
+            Const => stable_mir::mir::RawPtrKind::Const,
+            Mut => stable_mir::mir::RawPtrKind::Mut,
+            FakeForPtrMetadata => stable_mir::mir::RawPtrKind::FakeForPtrMetadata,
         }
     }
 }
@@ -274,6 +291,7 @@ impl<'tcx> Stable<'tcx> for mir::NullOp<'tcx> {
                 indices.iter().map(|idx| idx.stable(tables)).collect(),
             ),
             UbChecks => stable_mir::mir::NullOp::UbChecks,
+            ContractChecks => stable_mir::mir::NullOp::ContractChecks,
         }
     }
 }
@@ -379,6 +397,7 @@ impl<'tcx> Stable<'tcx> for mir::PlaceElem<'tcx> {
             Downcast(_, idx) => stable_mir::mir::ProjectionElem::Downcast(idx.stable(tables)),
             OpaqueCast(ty) => stable_mir::mir::ProjectionElem::OpaqueCast(ty.stable(tables)),
             Subtype(ty) => stable_mir::mir::ProjectionElem::Subtype(ty.stable(tables)),
+            UnwrapUnsafeBinder(..) => todo!("FIXME(unsafe_binders):"),
         }
     }
 }
@@ -480,6 +499,9 @@ impl<'tcx> Stable<'tcx> for mir::AssertMessage<'tcx> {
                     found: found.stable(tables),
                 }
             }
+            AssertKind::NullPointerDereference => {
+                stable_mir::mir::AssertMessage::NullPointerDereference
+            }
         }
     }
 }
@@ -561,8 +583,11 @@ impl<'tcx> Stable<'tcx> for mir::AggregateKind<'tcx> {
                     tables.tcx.coroutine_movability(*def_id).stable(tables),
                 )
             }
-            mir::AggregateKind::CoroutineClosure(..) => {
-                todo!("FIXME(async_closures): Lower these to SMIR")
+            mir::AggregateKind::CoroutineClosure(def_id, generic_args) => {
+                stable_mir::mir::AggregateKind::CoroutineClosure(
+                    tables.coroutine_closure_def(*def_id),
+                    generic_args.stable(tables),
+                )
             }
             mir::AggregateKind::RawPtr(ty, mutability) => {
                 stable_mir::mir::AggregateKind::RawPtr(ty.stable(tables), mutability.stable(tables))
@@ -691,11 +716,7 @@ impl<'tcx> Stable<'tcx> for mir::interpret::Allocation {
     type T = stable_mir::ty::Allocation;
 
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
-        alloc::allocation_filter(
-            self,
-            alloc_range(rustc_target::abi::Size::ZERO, self.size()),
-            tables,
-        )
+        alloc::allocation_filter(self, alloc_range(rustc_abi::Size::ZERO, self.size()), tables)
     }
 }
 

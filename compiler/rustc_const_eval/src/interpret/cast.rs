@@ -1,5 +1,6 @@
 use std::assert_matches::assert_matches;
 
+use rustc_abi::Integer;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_apfloat::{Float, FloatConvert};
 use rustc_middle::mir::CastKind;
@@ -8,7 +9,6 @@ use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::layout::{IntegerExt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, FloatTy, Ty};
 use rustc_middle::{bug, span_bug};
-use rustc_target::abi::Integer;
 use rustc_type_ir::TyKind::*;
 use tracing::trace;
 
@@ -83,7 +83,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     ty::FnDef(def_id, args) => {
                         let instance = ty::Instance::resolve_for_fn_ptr(
                             *self.tcx,
-                            self.param_env,
+                            self.typing_env,
                             def_id,
                             args,
                         )
@@ -203,7 +203,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         cast_to: TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
         assert!(src.layout.ty.is_any_ptr());
-        assert!(cast_to.ty.is_unsafe_ptr());
+        assert!(cast_to.ty.is_raw_ptr());
         // Handle casting any ptr to raw ptr (might be a wide ptr).
         if cast_to.size == src.layout.size {
             // Thin or wide pointer that just has the ptr kind of target type changed.
@@ -212,7 +212,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             // Casting the metadata away from a wide ptr.
             assert_eq!(src.layout.size, 2 * self.pointer_size());
             assert_eq!(cast_to.size, self.pointer_size());
-            assert!(src.layout.ty.is_unsafe_ptr());
+            assert!(src.layout.ty.is_raw_ptr());
             return match **src {
                 Immediate::ScalarPair(data, _) => interp_ok(ImmTy::from_scalar(data, cast_to)),
                 Immediate::Scalar(..) => span_bug!(
@@ -238,7 +238,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let scalar = src.to_scalar();
         let ptr = scalar.to_pointer(self)?;
         match ptr.into_pointer_or_addr() {
-            Ok(ptr) => M::expose_ptr(self, ptr)?,
+            Ok(ptr) => M::expose_provenance(self, ptr.provenance)?,
             Err(_) => {} // Do nothing, exposing an invalid pointer (`None` provenance) is a NOP.
         };
         interp_ok(ImmTy::from_scalar(
@@ -274,7 +274,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         cast_ty: Ty<'tcx>,
     ) -> InterpResult<'tcx, Scalar<M::Provenance>> {
         // Let's make sure v is sign-extended *if* it has a signed type.
-        let signed = src_layout.abi.is_signed(); // Also asserts that abi is `Scalar`.
+        let signed = src_layout.backend_repr.is_signed(); // Also asserts that abi is `Scalar`.
 
         let v = match src_layout.ty.kind() {
             Uint(_) | RawPtr(..) | FnPtr(..) => scalar.to_uint(src_layout.size)?,
@@ -384,7 +384,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     ) -> InterpResult<'tcx> {
         // A<Struct> -> A<Trait> conversion
         let (src_pointee_ty, dest_pointee_ty) =
-            self.tcx.struct_lockstep_tails_for_codegen(source_ty, cast_ty, self.param_env);
+            self.tcx.struct_lockstep_tails_for_codegen(source_ty, cast_ty, self.typing_env);
 
         match (src_pointee_ty.kind(), dest_pointee_ty.kind()) {
             (&ty::Array(_, length), &ty::Slice(_)) => {
@@ -414,36 +414,35 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 // Sanity-check that `supertrait_vtable_slot` in this type's vtable indeed produces
                 // our destination trait.
-                if cfg!(debug_assertions) {
-                    let vptr_entry_idx =
-                        self.tcx.supertrait_vtable_slot((src_pointee_ty, dest_pointee_ty));
-                    let vtable_entries = self.vtable_entries(data_a.principal(), ty);
-                    if let Some(entry_idx) = vptr_entry_idx {
-                        let Some(&ty::VtblEntry::TraitVPtr(upcast_trait_ref)) =
-                            vtable_entries.get(entry_idx)
-                        else {
-                            span_bug!(
-                                self.cur_span(),
-                                "invalid vtable entry index in {} -> {} upcast",
-                                src_pointee_ty,
-                                dest_pointee_ty
-                            );
-                        };
-                        let erased_trait_ref = upcast_trait_ref
-                            .map_bound(|r| ty::ExistentialTraitRef::erase_self_ty(*self.tcx, r));
-                        assert!(
-                            data_b
-                                .principal()
-                                .is_some_and(|b| self.eq_in_param_env(erased_trait_ref, b))
+                let vptr_entry_idx =
+                    self.tcx.supertrait_vtable_slot((src_pointee_ty, dest_pointee_ty));
+                let vtable_entries = self.vtable_entries(data_a.principal(), ty);
+                if let Some(entry_idx) = vptr_entry_idx {
+                    let Some(&ty::VtblEntry::TraitVPtr(upcast_trait_ref)) =
+                        vtable_entries.get(entry_idx)
+                    else {
+                        span_bug!(
+                            self.cur_span(),
+                            "invalid vtable entry index in {} -> {} upcast",
+                            src_pointee_ty,
+                            dest_pointee_ty
                         );
-                    } else {
-                        // In this case codegen would keep using the old vtable. We don't want to do
-                        // that as it has the wrong trait. The reason codegen can do this is that
-                        // one vtable is a prefix of the other, so we double-check that.
-                        let vtable_entries_b = self.vtable_entries(data_b.principal(), ty);
-                        assert!(&vtable_entries[..vtable_entries_b.len()] == vtable_entries_b);
                     };
-                }
+                    let erased_trait_ref =
+                        ty::ExistentialTraitRef::erase_self_ty(*self.tcx, upcast_trait_ref);
+                    assert_eq!(
+                        data_b.principal().map(|b| {
+                            self.tcx.normalize_erasing_late_bound_regions(self.typing_env, b)
+                        }),
+                        Some(erased_trait_ref),
+                    );
+                } else {
+                    // In this case codegen would keep using the old vtable. We don't want to do
+                    // that as it has the wrong trait. The reason codegen can do this is that
+                    // one vtable is a prefix of the other, so we double-check that.
+                    let vtable_entries_b = self.vtable_entries(data_b.principal(), ty);
+                    assert!(&vtable_entries[..vtable_entries_b.len()] == vtable_entries_b);
+                };
 
                 // Get the destination trait vtable and return that.
                 let new_vptr = self.get_vtable_ptr(ty, data_b)?;

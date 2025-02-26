@@ -1,5 +1,14 @@
 //
 //@ compile-flags: -C no-prepopulate-passes
+// LLVM IR isn't very portable and the one tested here depends on the ABI
+// which is different between x86 (where we use SSE registers) and others.
+// `x86-64` and `x86-32-sse2` are identical, but compiletest does not support
+// taking the union of multiple `only` annotations.
+//@ revisions: x86-64 x86-32-sse2 other
+//@[x86-64] only-x86_64
+//@[x86-32-sse2] only-rustc_abi-x86-sse2
+//@[other] ignore-rustc_abi-x86-sse2
+//@[other] ignore-x86_64
 
 #![crate_type = "lib"]
 #![allow(non_camel_case_types)]
@@ -38,7 +47,9 @@ pub fn build_array_s(x: [f32; 4]) -> S<4> {
 #[no_mangle]
 pub fn build_array_transmute_s(x: [f32; 4]) -> S<4> {
     // CHECK: %[[VAL:.+]] = load <4 x float>, ptr %x, align [[ARRAY_ALIGN]]
-    // CHECK: store <4 x float> %[[VAL:.+]], ptr %_0, align [[VECTOR_ALIGN]]
+    // x86-32: ret <4 x float> %[[VAL:.+]]
+    // x86-64: ret <4 x float> %[[VAL:.+]]
+    // other: store <4 x float> %[[VAL:.+]], ptr %_0, align [[VECTOR_ALIGN]]
     unsafe { std::mem::transmute(x) }
 }
 
@@ -53,6 +64,8 @@ pub fn build_array_t(x: [f32; 4]) -> T {
 #[no_mangle]
 pub fn build_array_transmute_t(x: [f32; 4]) -> T {
     // CHECK: %[[VAL:.+]] = load <4 x float>, ptr %x, align [[ARRAY_ALIGN]]
-    // CHECK: store <4 x float> %[[VAL:.+]], ptr %_0, align [[VECTOR_ALIGN]]
+    // x86-32: ret <4 x float> %[[VAL:.+]]
+    // x86-64: ret <4 x float> %[[VAL:.+]]
+    // other: store <4 x float> %[[VAL:.+]], ptr %_0, align [[VECTOR_ALIGN]]
     unsafe { std::mem::transmute(x) }
 }

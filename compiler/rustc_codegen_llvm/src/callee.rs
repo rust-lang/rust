@@ -5,7 +5,7 @@
 //! closure.
 
 use rustc_codegen_ssa::common;
-use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt};
+use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv};
 use rustc_middle::ty::{self, Instance, TypeVisitableExt};
 use tracing::debug;
 
@@ -28,12 +28,7 @@ pub(crate) fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'t
     }
 
     let sym = tcx.symbol_name(instance).name;
-    debug!(
-        "get_fn({:?}: {:?}) => {}",
-        instance,
-        instance.ty(cx.tcx(), ty::ParamEnv::reveal_all()),
-        sym
-    );
+    debug!("get_fn({:?}: {:?}) => {}", instance, instance.ty(cx.tcx(), cx.typing_env()), sym);
 
     let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
 
@@ -44,6 +39,22 @@ pub(crate) fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'t
         let llfn = if tcx.sess.target.arch == "x86"
             && let Some(dllimport) = crate::common::get_dllimport(tcx, instance_def_id, sym)
         {
+            // When calling functions in generated import libraries, MSVC needs
+            // the fully decorated name (as would have been in the declaring
+            // object file), but MinGW wants the name as exported (as would be
+            // in the def file) which may be missing decorations.
+            let mingw_gnu_toolchain = common::is_mingw_gnu_toolchain(&tcx.sess.target);
+            let llfn = cx.declare_fn(
+                &common::i686_decorated_name(
+                    dllimport,
+                    mingw_gnu_toolchain,
+                    true,
+                    !mingw_gnu_toolchain,
+                ),
+                fn_abi,
+                Some(instance),
+            );
+
             // Fix for https://github.com/rust-lang/rust/issues/104453
             // On x86 Windows, LLVM uses 'L' as the prefix for any private
             // global symbols, so when we create an undecorated function symbol
@@ -55,18 +66,7 @@ pub(crate) fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'t
             // LLVM will prefix the name with `__imp_`. Ideally, we'd like the
             // existing logic below to set the Storage Class, but it has an
             // exemption for MinGW for backwards compatibility.
-            let llfn = cx.declare_fn(
-                &common::i686_decorated_name(
-                    dllimport,
-                    common::is_mingw_gnu_toolchain(&tcx.sess.target),
-                    true,
-                ),
-                fn_abi,
-                Some(instance),
-            );
-            unsafe {
-                llvm::LLVMSetDLLStorageClass(llfn, llvm::DLLStorageClass::DllImport);
-            }
+            llvm::set_dllimport_storage_class(llfn);
             llfn
         } else {
             cx.declare_fn(sym, fn_abi, Some(instance))
@@ -97,61 +97,60 @@ pub(crate) fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'t
         // has been applied to the definition (wherever that definition may be).
 
         llvm::set_linkage(llfn, llvm::Linkage::ExternalLinkage);
-        unsafe {
-            let is_generic = instance.args.non_erasable_generics().next().is_some();
+        let is_generic = instance.args.non_erasable_generics().next().is_some();
 
-            let is_hidden = if is_generic {
-                // This is a monomorphization of a generic function.
-                if !cx.tcx.sess.opts.share_generics() {
-                    // When not sharing generics, all instances are in the same
-                    // crate and have hidden visibility.
-                    true
-                } else {
-                    if let Some(instance_def_id) = instance_def_id.as_local() {
-                        // This is a monomorphization of a generic function
-                        // defined in the current crate. It is hidden if:
-                        // - the definition is unreachable for downstream
-                        //   crates, or
-                        // - the current crate does not re-export generics
-                        //   (because the crate is a C library or executable)
-                        cx.tcx.is_unreachable_local_definition(instance_def_id)
-                            || !cx.tcx.local_crate_exports_generics()
-                    } else {
-                        // This is a monomorphization of a generic function
-                        // defined in an upstream crate. It is hidden if:
-                        // - it is instantiated in this crate, and
-                        // - the current crate does not re-export generics
-                        instance.upstream_monomorphization(tcx).is_none()
-                            && !cx.tcx.local_crate_exports_generics()
-                    }
-                }
-            } else {
-                // This is a non-generic function. It is hidden if:
-                // - it is instantiated in the local crate, and
-                //   - it is defined an upstream crate (non-local), or
-                //   - it is not reachable
-                cx.tcx.is_codegened_item(instance_def_id)
-                    && (!instance_def_id.is_local()
-                        || !cx.tcx.is_reachable_non_generic(instance_def_id))
-            };
-            if is_hidden {
-                llvm::set_visibility(llfn, llvm::Visibility::Hidden);
-            }
-
-            // MinGW: For backward compatibility we rely on the linker to decide whether it
-            // should use dllimport for functions.
-            if cx.use_dll_storage_attrs
-                && let Some(library) = tcx.native_library(instance_def_id)
-                && library.kind.is_dllimport()
-                && !matches!(tcx.sess.target.env.as_ref(), "gnu" | "uclibc")
+        let is_hidden = if is_generic {
+            // This is a monomorphization of a generic function.
+            if !(cx.tcx.sess.opts.share_generics()
+                || tcx.codegen_fn_attrs(instance_def_id).inline
+                    == rustc_attr_parsing::InlineAttr::Never)
             {
-                llvm::LLVMSetDLLStorageClass(llfn, llvm::DLLStorageClass::DllImport);
+                // When not sharing generics, all instances are in the same
+                // crate and have hidden visibility.
+                true
+            } else {
+                if let Some(instance_def_id) = instance_def_id.as_local() {
+                    // This is a monomorphization of a generic function
+                    // defined in the current crate. It is hidden if:
+                    // - the definition is unreachable for downstream
+                    //   crates, or
+                    // - the current crate does not re-export generics
+                    //   (because the crate is a C library or executable)
+                    cx.tcx.is_unreachable_local_definition(instance_def_id)
+                        || !cx.tcx.local_crate_exports_generics()
+                } else {
+                    // This is a monomorphization of a generic function
+                    // defined in an upstream crate. It is hidden if:
+                    // - it is instantiated in this crate, and
+                    // - the current crate does not re-export generics
+                    instance.upstream_monomorphization(tcx).is_none()
+                        && !cx.tcx.local_crate_exports_generics()
+                }
             }
-
-            if cx.should_assume_dso_local(llfn, true) {
-                llvm::LLVMRustSetDSOLocal(llfn, true);
-            }
+        } else {
+            // This is a non-generic function. It is hidden if:
+            // - it is instantiated in the local crate, and
+            //   - it is defined an upstream crate (non-local), or
+            //   - it is not reachable
+            cx.tcx.is_codegened_item(instance_def_id)
+                && (!instance_def_id.is_local()
+                    || !cx.tcx.is_reachable_non_generic(instance_def_id))
+        };
+        if is_hidden {
+            llvm::set_visibility(llfn, llvm::Visibility::Hidden);
         }
+
+        // MinGW: For backward compatibility we rely on the linker to decide whether it
+        // should use dllimport for functions.
+        if cx.use_dll_storage_attrs
+            && let Some(library) = tcx.native_library(instance_def_id)
+            && library.kind.is_dllimport()
+            && !matches!(tcx.sess.target.env.as_ref(), "gnu" | "uclibc")
+        {
+            llvm::set_dllimport_storage_class(llfn);
+        }
+
+        cx.assume_dso_local(llfn, true);
 
         llfn
     };

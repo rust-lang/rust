@@ -1,8 +1,8 @@
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
+use std::sync::Arc;
 
 use rustc_ast::{ast, token::Delimiter, visit};
-use rustc_data_structures::sync::Lrc;
 use rustc_span::{BytePos, Pos, Span, symbol};
 use tracing::debug;
 
@@ -32,7 +32,7 @@ use crate::{ErrorKind, FormatReport, FormattingError};
 /// Creates a string slice corresponding to the specified span.
 pub(crate) struct SnippetProvider {
     /// A pointer to the content of the file we are formatting.
-    big_snippet: Lrc<String>,
+    big_snippet: Arc<String>,
     /// A position of the start of `big_snippet`, used as an offset.
     start_pos: usize,
     /// An end position of the file that this snippet lives.
@@ -46,7 +46,7 @@ impl SnippetProvider {
         Some(&self.big_snippet[start_index..end_index])
     }
 
-    pub(crate) fn new(start_pos: BytePos, end_pos: BytePos, big_snippet: Lrc<String>) -> Self {
+    pub(crate) fn new(start_pos: BytePos, end_pos: BytePos, big_snippet: Arc<String>) -> Self {
         let start_pos = start_pos.to_usize();
         let end_pos = end_pos.to_usize();
         SnippetProvider {
@@ -386,11 +386,18 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         let indent = self.block_indent;
         let block;
         let rewrite = match fk {
-            visit::FnKind::Fn(_, ident, _, _, _, Some(ref b)) => {
+            visit::FnKind::Fn(
+                _,
+                ident,
+                _,
+                ast::Fn {
+                    body: Some(ref b), ..
+                },
+            ) => {
                 block = b;
                 self.rewrite_fn_before_block(
                     indent,
-                    ident,
+                    *ident,
                     &FnSig::from_fn_kind(&fk, fd, defaultness),
                     mk_sp(s.lo(), b.span.lo()),
                 )
@@ -539,22 +546,16 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                         ref sig,
                         ref generics,
                         ref body,
+                        ..
                     } = **fn_kind;
-                    if let Some(ref body) = body {
+                    if body.is_some() {
                         let inner_attrs = inner_attributes(&item.attrs);
                         let fn_ctxt = match sig.header.ext {
                             ast::Extern::None => visit::FnCtxt::Free,
                             _ => visit::FnCtxt::Foreign,
                         };
                         self.visit_fn(
-                            visit::FnKind::Fn(
-                                fn_ctxt,
-                                item.ident,
-                                sig,
-                                &item.vis,
-                                generics,
-                                Some(body),
-                            ),
+                            visit::FnKind::Fn(fn_ctxt, &item.ident, &item.vis, fn_kind),
                             &sig.decl,
                             item.span,
                             defaultness,
@@ -647,12 +648,13 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     ref sig,
                     ref generics,
                     ref body,
+                    ..
                 } = **fn_kind;
-                if let Some(ref body) = body {
+                if body.is_some() {
                     let inner_attrs = inner_attributes(&ai.attrs);
                     let fn_ctxt = visit::FnCtxt::Assoc(assoc_ctxt);
                     self.visit_fn(
-                        visit::FnKind::Fn(fn_ctxt, ai.ident, sig, &ai.vis, generics, Some(body)),
+                        visit::FnKind::Fn(fn_ctxt, &ai.ident, &ai.vis, fn_kind),
                         &sig.decl,
                         ai.span,
                         defaultness,
@@ -934,7 +936,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         let ident_str = rewrite_ident(&self.get_context(), ident).to_owned();
         self.push_str(&ident_str);
 
-        if let ast::ModKind::Loaded(ref items, ast::Inline::Yes, ref spans) = mod_kind {
+        if let ast::ModKind::Loaded(ref items, ast::Inline::Yes, ref spans, _) = mod_kind {
             let ast::ModSpans {
                 inner_span,
                 inject_use_span: _,

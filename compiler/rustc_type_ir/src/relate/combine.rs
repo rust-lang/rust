@@ -6,9 +6,9 @@ use super::{
 };
 use crate::error::TypeError;
 use crate::inherent::*;
-use crate::solve::{Goal, SolverMode};
+use crate::solve::Goal;
 use crate::visit::TypeVisitableExt as _;
-use crate::{self as ty, InferCtxtLike, Interner, Upcast};
+use crate::{self as ty, InferCtxtLike, Interner, TypingMode, Upcast};
 
 pub trait PredicateEmittingRelation<Infcx, I = <Infcx as InferCtxtLike>::Interner>:
     TypeRelation<I>
@@ -123,24 +123,22 @@ where
         }
 
         // All other cases of inference are errors
-        (ty::Infer(_), _) | (_, ty::Infer(_)) => {
-            Err(TypeError::Sorts(ExpectedFound::new(true, a, b)))
-        }
+        (ty::Infer(_), _) | (_, ty::Infer(_)) => Err(TypeError::Sorts(ExpectedFound::new(a, b))),
 
         (ty::Alias(ty::Opaque, _), _) | (_, ty::Alias(ty::Opaque, _)) => {
-            match infcx.solver_mode() {
-                SolverMode::Normal => {
-                    assert!(!infcx.next_trait_solver());
-                    structurally_relate_tys(relation, a, b)
-                }
+            assert!(!infcx.next_trait_solver());
+            match infcx.typing_mode() {
                 // During coherence, opaque types should be treated as *possibly*
-                // equal to any other type (except for possibly itinfcx). This is an
+                // equal to any other type. This is an
                 // extremely heavy hammer, but can be relaxed in a forwards-compatible
                 // way later.
-                SolverMode::Coherence => {
+                TypingMode::Coherence => {
                     relation.register_predicates([ty::Binder::dummy(ty::PredicateKind::Ambiguous)]);
                     Ok(a)
                 }
+                TypingMode::Analysis { .. }
+                | TypingMode::PostBorrowckAnalysis { .. }
+                | TypingMode::PostAnalysis => structurally_relate_tys(relation, a, b),
             }
         }
 

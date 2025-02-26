@@ -10,13 +10,13 @@ use crate::{
     lang_items::is_box,
     mapping::ToChalk,
     CallableDefId, ClosureId, Const, ConstScalar, InferenceResult, Interner, MemoryMap,
-    Substitution, TraitEnvironment, Ty, TyKind,
+    Substitution, TraitEnvironment, Ty, TyExt, TyKind,
 };
 use base_db::CrateId;
 use chalk_ir::Mutability;
 use either::Either;
 use hir_def::{
-    body::Body,
+    expr_store::Body,
     hir::{BindingAnnotation, BindingId, Expr, ExprId, Ordering, PatId},
     DefWithBodyId, FieldId, StaticId, TupleFieldId, UnionId, VariantId,
 };
@@ -144,6 +144,13 @@ impl<V, T> ProjectionElem<V, T> {
         closure_field: impl FnOnce(ClosureId, &Substitution, usize) -> Ty,
         krate: CrateId,
     ) -> Ty {
+        // we only bail on mir building when there are type mismatches
+        // but error types may pop up resulting in us still attempting to build the mir
+        // so just propagate the error type
+        if base.is_unknown() {
+            return TyKind::Error.intern(Interner);
+        }
+
         if matches!(base.kind(Interner), TyKind::Alias(_) | TyKind::AssociatedType(..)) {
             base = normalize(
                 db,
@@ -166,7 +173,7 @@ impl<V, T> ProjectionElem<V, T> {
                     TyKind::Error.intern(Interner)
                 }
             },
-            ProjectionElem::Field(Either::Left(f)) => match &base.kind(Interner) {
+            ProjectionElem::Field(Either::Left(f)) => match base.kind(Interner) {
                 TyKind::Adt(_, subst) => {
                     db.field_types(f.parent)[f.local_id].clone().substitute(Interner, subst)
                 }
@@ -879,7 +886,8 @@ pub enum Rvalue {
     ///
     /// **Needs clarification**: Are there weird additional semantics here related to the runtime
     /// nature of this operation?
-    //ThreadLocalRef(DefId),
+    // ThreadLocalRef(DefId),
+    ThreadLocalRef(std::convert::Infallible),
 
     /// Creates a pointer with the indicated mutability to the place.
     ///
@@ -888,7 +896,8 @@ pub enum Rvalue {
     ///
     /// Like with references, the semantics of this operation are heavily dependent on the aliasing
     /// model.
-    //AddressOf(Mutability, Place),
+    // AddressOf(Mutability, Place),
+    AddressOf(std::convert::Infallible),
 
     /// Yields the length of the place, as a `usize`.
     ///
@@ -906,19 +915,21 @@ pub enum Rvalue {
     Cast(CastKind, Operand, Ty),
 
     // FIXME link to `pointer::offset` when it hits stable.
-    // /// * `Offset` has the same semantics as `pointer::offset`, except that the second
-    // ///   parameter may be a `usize` as well.
-    // /// * The comparison operations accept `bool`s, `char`s, signed or unsigned integers, floats,
-    // ///   raw pointers, or function pointers and return a `bool`. The types of the operands must be
-    // ///   matching, up to the usual caveat of the lifetimes in function pointers.
-    // /// * Left and right shift operations accept signed or unsigned integers not necessarily of the
-    // ///   same type and return a value of the same type as their LHS. Like in Rust, the RHS is
-    // ///   truncated as needed.
-    // /// * The `Bit*` operations accept signed integers, unsigned integers, or bools with matching
-    // ///   types and return a value of that type.
-    // /// * The remaining operations accept signed integers, unsigned integers, or floats with
-    // ///   matching types and return a value of that type.
+    /// * `Offset` has the same semantics as `pointer::offset`, except that the second
+    ///   parameter may be a `usize` as well.
+    /// * The comparison operations accept `bool`s, `char`s, signed or unsigned integers, floats,
+    ///   raw pointers, or function pointers and return a `bool`. The types of the operands must be
+    ///   matching, up to the usual caveat of the lifetimes in function pointers.
+    /// * Left and right shift operations accept signed or unsigned integers not necessarily of the
+    ///   same type and return a value of the same type as their LHS. Like in Rust, the RHS is
+    ///   truncated as needed.
+    /// * The `Bit*` operations accept signed integers, unsigned integers, or bools with matching
+    ///   types and return a value of that type.
+    /// * The remaining operations accept signed integers, unsigned integers, or floats with
+    ///   matching types and return a value of that type.
     //BinaryOp(BinOp, Box<(Operand, Operand)>),
+    BinaryOp(std::convert::Infallible),
+
     /// Same as `BinaryOp`, but yields `(T, bool)` with a `bool` indicating an error condition.
     ///
     /// When overflow checking is disabled and we are generating run-time code, the error condition
@@ -937,6 +948,7 @@ pub enum Rvalue {
 
     /// Computes a value as described by the operation.
     //NullaryOp(NullOp, Ty),
+    NullaryOp(std::convert::Infallible),
 
     /// Exactly like `BinaryOp`, but less operands.
     ///
@@ -1095,6 +1107,10 @@ impl MirBody {
                                     for_operand(op, &mut f, &mut self.projection_store);
                                 }
                             }
+                            Rvalue::ThreadLocalRef(n)
+                            | Rvalue::AddressOf(n)
+                            | Rvalue::BinaryOp(n)
+                            | Rvalue::NullaryOp(n) => match *n {},
                         }
                     }
                     StatementKind::FakeRead(p) | StatementKind::Deinit(p) => {

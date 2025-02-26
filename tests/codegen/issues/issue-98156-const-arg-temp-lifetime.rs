@@ -1,6 +1,6 @@
 // This test checks that temporaries for indirectly-passed arguments get lifetime markers.
 
-//@ compile-flags: -O -C no-prepopulate-passes -Zmir-opt-level=0
+//@ compile-flags: -Copt-level=3 -C no-prepopulate-passes -Zmir-opt-level=0
 
 #![crate_type = "lib"]
 

@@ -79,7 +79,7 @@ pub trait Database: plumbing::DatabaseOps {
 
         let current_revision = runtime.current_revision();
         let pending_revision = runtime.pending_revision();
-        tracing::debug!(
+        tracing::trace!(
             "unwind_if_cancelled: current_revision={:?}, pending_revision={:?}",
             current_revision,
             pending_revision
@@ -149,7 +149,7 @@ where
     db: &'me D,
 }
 
-impl<'me, D: ?Sized> fmt::Debug for EventDebug<'me, D>
+impl<D: ?Sized> fmt::Debug for EventDebug<'_, D>
 where
     D: plumbing::DatabaseOps,
 {
@@ -242,7 +242,7 @@ where
     db: &'me D,
 }
 
-impl<'me, D: ?Sized> fmt::Debug for EventKindDebug<'me, D>
+impl<D: ?Sized> fmt::Debug for EventKindDebug<'_, D>
 where
     D: plumbing::DatabaseOps,
 {
@@ -291,7 +291,7 @@ pub trait ParallelDatabase: Database + Send {
     /// # Panics
     ///
     /// It is not permitted to create a snapshot from inside of a
-    /// query. Attepting to do so will panic.
+    /// query. Attempting to do so will panic.
     ///
     /// # Deadlock warning
     ///
@@ -684,7 +684,7 @@ impl Cycle {
     }
 
     pub(crate) fn throw(self) -> ! {
-        tracing::debug!("throwing cycle {:?}", self);
+        tracing::trace!("throwing cycle {:?}", self);
         std::panic::resume_unwind(Box::new(self))
     }
 
@@ -729,7 +729,7 @@ impl Cycle {
             db: &'me dyn Database,
         }
 
-        impl<'me> std::fmt::Debug for UnexpectedCycleDebug<'me> {
+        impl std::fmt::Debug for UnexpectedCycleDebug<'_> {
             fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 fmt.debug_struct("UnexpectedCycle")
                     .field("all_participants", &self.c.all_participants(self.db))

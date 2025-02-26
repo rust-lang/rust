@@ -8,11 +8,11 @@ note: function defined here
   --> $DIR/E0060.rs:2:8
    |
 LL |     fn printf(_: *const u8, ...) -> u32;
-   |        ^^^^^^
+   |        ^^^^^^ -
 help: provide the argument
    |
 LL |     unsafe { printf(/* *const u8 */); }
-   |                    ~~~~~~~~~~~~~~~~~
+   |                     +++++++++++++++
 
 error: aborting due to 1 previous error
 

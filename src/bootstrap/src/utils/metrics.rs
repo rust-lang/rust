@@ -56,7 +56,7 @@ impl BuildMetrics {
             running_steps: Vec::new(),
 
             system_info: System::new_with_specifics(
-                RefreshKind::new().with_cpu(CpuRefreshKind::everything()),
+                RefreshKind::nothing().with_cpu(CpuRefreshKind::everything()),
             ),
             timer_start: None,
             invocation_timer_start: Instant::now(),
@@ -161,8 +161,9 @@ impl BuildMetrics {
 
         let dest = build.out.join("metrics.json");
 
-        let mut system =
-            System::new_with_specifics(RefreshKind::new().with_cpu(CpuRefreshKind::everything()));
+        let mut system = System::new_with_specifics(
+            RefreshKind::nothing().with_cpu(CpuRefreshKind::everything()),
+        );
         system.refresh_cpu_usage();
         system.refresh_memory();
 

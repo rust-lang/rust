@@ -1,6 +1,6 @@
 use clippy_config::Conf;
-use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_non_aggregate_primitive_type;
@@ -11,7 +11,6 @@ use rustc_errors::Applicability;
 use rustc_hir::LangItem::OptionNone;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::symbol::sym;
@@ -188,7 +187,7 @@ fn check_replace_with_default(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<
     if is_non_aggregate_primitive_type(expr_type) {
         return;
     }
-    if is_default_equivalent(cx, src) && !in_external_macro(cx.tcx.sess, expr_span) {
+    if is_default_equivalent(cx, src) && !expr_span.in_external_macro(cx.tcx.sess.source_map()) {
         let Some(top_crate) = std_or_core(cx) else { return };
         span_lint_and_then(
             cx,

@@ -19,7 +19,7 @@ LL | static STATIC11: Vec<MyOwned> = vec![MyOwned];
    |
    = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0015]: cannot call non-const fn `slice::<impl [MyOwned]>::into_vec::<std::alloc::Global>` in statics
+error[E0015]: cannot call non-const method `slice::<impl [MyOwned]>::into_vec::<std::alloc::Global>` in statics
   --> $DIR/check-values-constraints.rs:81:33
    |
 LL | static STATIC11: Vec<MyOwned> = vec![MyOwned];
@@ -29,7 +29,7 @@ LL | static STATIC11: Vec<MyOwned> = vec![MyOwned];
    = note: consider wrapping this expression in `std::sync::LazyLock::new(|| ...)`
    = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0015]: cannot call non-const fn `<str as ToString>::to_string` in statics
+error[E0015]: cannot call non-const method `<str as ToString>::to_string` in statics
   --> $DIR/check-values-constraints.rs:92:38
    |
 LL |     field2: SafeEnum::Variant4("str".to_string()),
@@ -46,7 +46,7 @@ LL |     vec![MyOwned],
    |
    = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0015]: cannot call non-const fn `slice::<impl [MyOwned]>::into_vec::<std::alloc::Global>` in statics
+error[E0015]: cannot call non-const method `slice::<impl [MyOwned]>::into_vec::<std::alloc::Global>` in statics
   --> $DIR/check-values-constraints.rs:96:5
    |
 LL |     vec![MyOwned],
@@ -64,7 +64,7 @@ LL |     vec![MyOwned],
    |
    = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0015]: cannot call non-const fn `slice::<impl [MyOwned]>::into_vec::<std::alloc::Global>` in statics
+error[E0015]: cannot call non-const method `slice::<impl [MyOwned]>::into_vec::<std::alloc::Global>` in statics
   --> $DIR/check-values-constraints.rs:98:5
    |
 LL |     vec![MyOwned],
@@ -82,7 +82,7 @@ LL |     &vec![MyOwned],
    |
    = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0015]: cannot call non-const fn `slice::<impl [MyOwned]>::into_vec::<std::alloc::Global>` in statics
+error[E0015]: cannot call non-const method `slice::<impl [MyOwned]>::into_vec::<std::alloc::Global>` in statics
   --> $DIR/check-values-constraints.rs:103:6
    |
 LL |     &vec![MyOwned],
@@ -100,7 +100,7 @@ LL |     &vec![MyOwned],
    |
    = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0015]: cannot call non-const fn `slice::<impl [MyOwned]>::into_vec::<std::alloc::Global>` in statics
+error[E0015]: cannot call non-const method `slice::<impl [MyOwned]>::into_vec::<std::alloc::Global>` in statics
   --> $DIR/check-values-constraints.rs:105:6
    |
 LL |     &vec![MyOwned],
@@ -118,7 +118,7 @@ LL | static STATIC19: Vec<isize> = vec![3];
    |
    = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0015]: cannot call non-const fn `slice::<impl [isize]>::into_vec::<std::alloc::Global>` in statics
+error[E0015]: cannot call non-const method `slice::<impl [isize]>::into_vec::<std::alloc::Global>` in statics
   --> $DIR/check-values-constraints.rs:111:31
    |
 LL | static STATIC19: Vec<isize> = vec![3];
@@ -136,7 +136,7 @@ LL |         static x: Vec<isize> = vec![3];
    |
    = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0015]: cannot call non-const fn `slice::<impl [isize]>::into_vec::<std::alloc::Global>` in statics
+error[E0015]: cannot call non-const method `slice::<impl [isize]>::into_vec::<std::alloc::Global>` in statics
   --> $DIR/check-values-constraints.rs:117:32
    |
 LL |         static x: Vec<isize> = vec![3];

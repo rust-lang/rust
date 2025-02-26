@@ -1,7 +1,7 @@
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{self as hir};
 use rustc_session::{declare_lint, declare_lint_pass};
-use rustc_span::symbol::kw;
+use rustc_span::kw;
 
 use crate::{LateContext, LateLintPass, LintContext, lints};
 
@@ -12,6 +12,7 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,edition2018
+    /// #![feature(unqualified_local_imports)]
     /// #![warn(unqualified_local_imports)]
     ///
     /// mod localmod {
@@ -31,7 +32,7 @@ declare_lint! {
     ///
     /// This lint is meant to be used with the (unstable) rustfmt setting `group_imports = "StdExternalCrate"`.
     /// That setting makes rustfmt group `self::`, `super::`, and `crate::` imports separately from those
-    /// refering to other crates. However, rustfmt cannot know whether `use c::S;` refers to a local module `c`
+    /// referring to other crates. However, rustfmt cannot know whether `use c::S;` refers to a local module `c`
     /// or an external crate `c`, so it always gets categorized as an import from another crate.
     /// To ensure consistent grouping of imports from the local crate, all local imports must
     /// start with `self::`, `super::`, or `crate::`. This lint can be used to enforce that style.
@@ -67,7 +68,7 @@ impl<'tcx> LateLintPass<'tcx> for UnqualifiedLocalImports {
             return;
         }
 
-        let encl_item_id = cx.tcx.hir().get_parent_item(item.hir_id());
+        let encl_item_id = cx.tcx.hir_get_parent_item(item.hir_id());
         let encl_item = cx.tcx.hir_node_by_def_id(encl_item_id.def_id);
         if encl_item.fn_kind().is_some() {
             // `use` in a method -- don't lint, that leads to too many undesirable lints

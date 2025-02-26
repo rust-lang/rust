@@ -27,6 +27,7 @@ fn bop(_: Bar) {
     let x = <Foo as Trait<Bar>>::Assoc::default();
     //[next]~^ ERROR: cannot satisfy `Foo: Trait<Bar>`
     //[current]~^^ ERROR: `Foo: Trait<Bar>` is not satisfied
+    //[current]~| ERROR: `Foo: Trait<Bar>` is not satisfied
 }
 
 fn main() {}

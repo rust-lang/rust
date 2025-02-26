@@ -48,17 +48,6 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <pre><code><span class="keyword">use</span> <span class="module">inner</span><span class="operator">::</span><span class="brace">{</span><span class="self_keyword">self</span> <span class="keyword">as</span> <span class="module declaration">inner_mod</span><span class="brace">}</span><span class="semicolon">;</span>
 <span class="keyword">mod</span> <span class="module declaration">inner</span> <span class="brace">{</span><span class="brace">}</span>
 
-<span class="keyword">pub</span> <span class="keyword">mod</span> <span class="module declaration public">ops</span> <span class="brace">{</span>
-    <span class="attribute_bracket attribute">#</span><span class="attribute_bracket attribute">[</span><span class="builtin_attr attribute">lang</span> <span class="operator attribute">=</span> <span class="string_literal attribute">"fn_once"</span><span class="attribute_bracket attribute">]</span>
-    <span class="keyword">pub</span> <span class="keyword">trait</span> <span class="trait declaration public">FnOnce</span><span class="angle">&lt;</span><span class="type_param declaration">Args</span><span class="angle">&gt;</span> <span class="brace">{</span><span class="brace">}</span>
-
-    <span class="attribute_bracket attribute">#</span><span class="attribute_bracket attribute">[</span><span class="builtin_attr attribute">lang</span> <span class="operator attribute">=</span> <span class="string_literal attribute">"fn_mut"</span><span class="attribute_bracket attribute">]</span>
-    <span class="keyword">pub</span> <span class="keyword">trait</span> <span class="trait declaration public">FnMut</span><span class="angle">&lt;</span><span class="type_param declaration">Args</span><span class="angle">&gt;</span><span class="colon">:</span> <span class="trait public">FnOnce</span><span class="angle">&lt;</span><span class="type_param">Args</span><span class="angle">&gt;</span> <span class="brace">{</span><span class="brace">}</span>
-
-    <span class="attribute_bracket attribute">#</span><span class="attribute_bracket attribute">[</span><span class="builtin_attr attribute">lang</span> <span class="operator attribute">=</span> <span class="string_literal attribute">"fn"</span><span class="attribute_bracket attribute">]</span>
-    <span class="keyword">pub</span> <span class="keyword">trait</span> <span class="trait declaration public">Fn</span><span class="angle">&lt;</span><span class="type_param declaration">Args</span><span class="angle">&gt;</span><span class="colon">:</span> <span class="trait public">FnMut</span><span class="angle">&lt;</span><span class="type_param">Args</span><span class="angle">&gt;</span> <span class="brace">{</span><span class="brace">}</span>
-<span class="brace">}</span>
-
 <span class="keyword">struct</span> <span class="struct declaration">Foo</span> <span class="brace">{</span>
     <span class="field declaration">x</span><span class="colon">:</span> <span class="builtin_type">u32</span><span class="comma">,</span>
 <span class="brace">}</span>
@@ -125,8 +114,8 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="const_param const">FOO</span>
 <span class="brace">}</span>
 
-<span class="keyword">use</span> <span class="module public">ops</span><span class="operator">::</span><span class="trait public">Fn</span><span class="semicolon">;</span>
-<span class="keyword">fn</span> <span class="function declaration">baz</span><span class="angle">&lt;</span><span class="type_param declaration">F</span><span class="colon">:</span> <span class="trait public">Fn</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="parenthesis">(</span><span class="parenthesis">)</span><span class="angle">&gt;</span><span class="parenthesis">(</span><span class="value_param callable declaration">f</span><span class="colon">:</span> <span class="type_param">F</span><span class="parenthesis">)</span> <span class="brace">{</span>
+<span class="keyword">use</span> <span class="module crate_root default_library library">core</span><span class="operator">::</span><span class="module default_library library">ops</span><span class="operator">::</span><span class="trait default_library library">Fn</span><span class="semicolon">;</span>
+<span class="keyword">fn</span> <span class="function declaration">baz</span><span class="angle">&lt;</span><span class="type_param declaration">F</span><span class="colon">:</span> <span class="trait default_library library">Fn</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="parenthesis">(</span><span class="parenthesis">)</span><span class="angle">&gt;</span><span class="parenthesis">(</span><span class="value_param callable declaration">f</span><span class="colon">:</span> <span class="type_param">F</span><span class="parenthesis">)</span> <span class="brace">{</span>
     <span class="value_param callable">f</span><span class="parenthesis">(</span><span class="parenthesis">)</span>
 <span class="brace">}</span>
 

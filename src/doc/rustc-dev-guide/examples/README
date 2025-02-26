@@ -1,0 +1,11 @@
+For each example to compile, you will need to first run the following:
+
+    rustup component add rustc-dev llvm-tools
+
+To create an executable:
+
+    rustc rustc-driver-example.rs
+
+To run an executable:
+
+    rustup run nightly ./rustc-driver-example

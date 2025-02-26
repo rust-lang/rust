@@ -1,0 +1,32 @@
+error: `_` cannot be a raw lifetime
+  --> $DIR/raw-lt-invalid-raw-id.rs:9:4
+   |
+LL | w!('r#_);
+   |    ^^^^
+
+error: `self` cannot be a raw lifetime
+  --> $DIR/raw-lt-invalid-raw-id.rs:11:4
+   |
+LL | w!('r#self);
+   |    ^^^^^^^
+
+error: `super` cannot be a raw lifetime
+  --> $DIR/raw-lt-invalid-raw-id.rs:13:4
+   |
+LL | w!('r#super);
+   |    ^^^^^^^^
+
+error: `Self` cannot be a raw lifetime
+  --> $DIR/raw-lt-invalid-raw-id.rs:15:4
+   |
+LL | w!('r#Self);
+   |    ^^^^^^^
+
+error: `crate` cannot be a raw lifetime
+  --> $DIR/raw-lt-invalid-raw-id.rs:17:4
+   |
+LL | w!('r#crate);
+   |    ^^^^^^^^
+
+error: aborting due to 5 previous errors
+

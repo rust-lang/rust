@@ -136,21 +136,10 @@ use self::foo as bar;
 fn test_highlighting() {
     check_highlighting(
         r#"
-//- minicore: derive, copy
+//- minicore: derive, copy, fn
 //- /main.rs crate:main deps:foo
 use inner::{self as inner_mod};
 mod inner {}
-
-pub mod ops {
-    #[lang = "fn_once"]
-    pub trait FnOnce<Args> {}
-
-    #[lang = "fn_mut"]
-    pub trait FnMut<Args>: FnOnce<Args> {}
-
-    #[lang = "fn"]
-    pub trait Fn<Args>: FnMut<Args> {}
-}
 
 struct Foo {
     x: u32,
@@ -218,7 +207,7 @@ fn const_param<const FOO: usize>() -> usize {
     FOO
 }
 
-use ops::Fn;
+use core::ops::Fn;
 fn baz<F: Fn() -> ()>(f: F) {
     f()
 }
@@ -465,6 +454,10 @@ macro_rules! toho {
 macro_rules! reuse_twice {
     ($literal:literal) => {{stringify!($literal); format_args!($literal)}};
 }
+
+use foo::bar as baz;
+trait Bar = Baz;
+trait Foo = Bar;
 
 fn main() {
     let a = '\n';
@@ -718,6 +711,15 @@ fn test_highlight_doc_comment() {
 //! fn test() {}
 //! ```
 
+//! ```rust
+//! extern crate self;
+//! extern crate std;
+//! extern crate core;
+//! extern crate alloc;
+//! extern crate proc_macro;
+//! extern crate test;
+//! extern crate Krate;
+//! ```
 mod outline_module;
 
 /// ```
@@ -990,7 +992,7 @@ impl t for foo {
 fn test_injection() {
     check_highlighting(
         r##"
-fn fixture(ra_fixture: &str) {}
+fn fixture(#[rust_analyzer::rust_fixture] ra_fixture: &str) {}
 
 fn main() {
     fixture(r#"
@@ -1080,6 +1082,9 @@ pub struct Struct;
     );
 }
 
+// Rainbow highlighting uses a deterministic hash (fxhash) but the hashing does differ
+// depending on the pointer width so only runs this on 64-bit targets.
+#[cfg(target_pointer_width = "64")]
 #[test]
 fn test_rainbow_highlighting() {
     check_highlighting(
@@ -1188,7 +1193,11 @@ fn foo(x: &fn(&dyn Trait)) {}
 /// Highlights the code given by the `ra_fixture` argument, renders the
 /// result as HTML, and compares it with the HTML file given as `snapshot`.
 /// Note that the `snapshot` file is overwritten by the rendered HTML.
-fn check_highlighting(ra_fixture: &str, expect: ExpectFile, rainbow: bool) {
+fn check_highlighting(
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    expect: ExpectFile,
+    rainbow: bool,
+) {
     let (analysis, file_id) = fixture::file(ra_fixture.trim());
     let actual_html = &analysis.highlight_as_html(file_id, rainbow).unwrap();
     expect.assert_eq(actual_html)

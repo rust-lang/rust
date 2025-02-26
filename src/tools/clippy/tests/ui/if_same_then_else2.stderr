@@ -7,7 +7,6 @@ LL | |         for _ in &[42] {
 LL | |             let foo: &Option<_> = &Some::<u8>(42);
 LL | |             if foo.is_some() {
 ...  |
-LL | |         }
 LL | |     } else {
    | |_____^
    |
@@ -20,7 +19,6 @@ LL | |         for _ in &[42] {
 LL | |             let bar: &Option<_> = &Some::<u8>(42);
 LL | |             if bar.is_some() {
 ...  |
-LL | |         }
 LL | |     }
    | |_____^
    = note: `-D clippy::if-same-then-else` implied by `-D warnings`

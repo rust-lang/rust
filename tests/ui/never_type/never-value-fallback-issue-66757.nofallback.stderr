@@ -4,7 +4,8 @@ error[E0277]: the trait bound `E: From<()>` is not satisfied
 LL |     <E as From<_>>::from(never);
    |      ^ the trait `From<()>` is not implemented for `E`
    |
-   = help: the trait `From<!>` is implemented for `E`
+   = help: the trait `From<()>` is not implemented for `E`
+           but trait `From<!>` is implemented for it
    = help: for that trait implementation, expected `!`, found `()`
 
 error: aborting due to 1 previous error

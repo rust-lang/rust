@@ -1,11 +1,11 @@
-//@ compile-flags: -Znext-solver
+//@ revisions: current next
+//@[next] compile-flags: -Znext-solver
 
 // Check that `~const` item bounds only hold if the parent trait is `~const`.
 // i.e. check that we validate the const conditions for the associated type
 // when considering one of implied const bounds.
 
-#![allow(incomplete_features)]
-#![feature(const_trait_impl, effects)]
+#![feature(const_trait_impl)]
 
 #[const_trait]
 trait Trait {

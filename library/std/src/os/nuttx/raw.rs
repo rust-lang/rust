@@ -1,4 +1,4 @@
-//! rtems raw type definitions
+//! NuttX raw type definitions
 
 #![stable(feature = "raw_ext", since = "1.1.0")]
 #![deprecated(

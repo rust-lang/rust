@@ -3418,11 +3418,11 @@ struct TS(usize);
 fn main() {
     let x;
     [x,] = &[1,];
-  //^^^^expected &'? [i32; 1], got [{unknown}; _]
+  //^^^^expected &'? [i32; 1], got [{unknown}]
 
     let x;
     [(x,),] = &[(1,),];
-  //^^^^^^^expected &'? [(i32,); 1], got [{unknown}; _]
+  //^^^^^^^expected &'? [(i32,); 1], got [{unknown}]
 
     let x;
     ((x,),) = &((1,),);
@@ -3717,6 +3717,147 @@ fn test() -> bool {
             169..175 '1 >> 1': {unknown}
             181..182 '1': i32
             181..187 '1 == 1': {unknown}
+        "#]],
+    );
+}
+
+#[test]
+fn macro_semitransparent_hygiene() {
+    check_types(
+        r#"
+macro_rules! m {
+    () => { let bar: i32; };
+}
+fn foo() {
+    let bar: bool;
+    m!();
+    bar;
+ // ^^^ bool
+}
+        "#,
+    );
+}
+
+#[test]
+fn macro_expansion_can_refer_variables_defined_before_macro_definition() {
+    check_types(
+        r#"
+fn foo() {
+    let v: i32 = 0;
+    macro_rules! m {
+        () => { v };
+    }
+    let v: bool = true;
+    m!();
+ // ^^^^ i32
+}
+        "#,
+    );
+}
+
+#[test]
+fn macro_rules_shadowing_works_with_hygiene() {
+    check_types(
+        r#"
+fn foo() {
+    let v: bool;
+    macro_rules! m { () => { v } }
+    m!();
+ // ^^^^ bool
+
+    let v: char;
+    macro_rules! m { () => { v } }
+    m!();
+ // ^^^^ char
+
+    {
+        let v: u8;
+        macro_rules! m { () => { v } }
+        m!();
+     // ^^^^ u8
+
+        let v: i8;
+        macro_rules! m { () => { v } }
+        m!();
+     // ^^^^ i8
+
+        let v: i16;
+        macro_rules! m { () => { v } }
+        m!();
+     // ^^^^ i16
+
+        {
+            let v: u32;
+            macro_rules! m { () => { v } }
+            m!();
+         // ^^^^ u32
+
+            let v: u64;
+            macro_rules! m { () => { v } }
+            m!();
+         // ^^^^ u64
+        }
+    }
+}
+        "#,
+    );
+}
+
+#[test]
+fn tool_attr_skip() {
+    check_no_mismatches(
+        r#"
+#[rust_analyzer::skip]
+async fn foo(a: (), b: i32) -> u32 {
+    0 + 1 + b()
+}
+        "#,
+    );
+}
+
+#[test]
+fn irrefutable_slices() {
+    check_infer(
+        r#"
+//- minicore: from
+struct A;
+
+impl From<A> for [u8; 2] {
+    fn from(a: A) -> Self {
+        [0; 2]
+    }
+}
+impl From<A> for [u8; 3] {
+    fn from(a: A) -> Self {
+        [0; 3]
+    }
+}
+
+
+fn main() {
+    let a = A;
+    let [b, c] = a.into();
+}
+"#,
+        expect![[r#"
+            50..51 'a': A
+            64..86 '{     ...     }': [u8; 2]
+            74..80 '[0; 2]': [u8; 2]
+            75..76 '0': u8
+            78..79 '2': usize
+            128..129 'a': A
+            142..164 '{     ...     }': [u8; 3]
+            152..158 '[0; 3]': [u8; 3]
+            153..154 '0': u8
+            156..157 '3': usize
+            179..224 '{     ...o(); }': ()
+            189..190 'a': A
+            193..194 'A': A
+            204..210 '[b, c]': [u8; 2]
+            205..206 'b': u8
+            208..209 'c': u8
+            213..214 'a': A
+            213..221 'a.into()': [u8; 2]
         "#]],
     );
 }

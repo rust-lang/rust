@@ -55,4 +55,4 @@ ENV RUST_CONFIGURE_ARGS \
 
 ENV SCRIPT \
   python3 ../x.py --stage 2 build && \
-  python3 ../x.py --stage 2 test tests/run-make --test-args clang
+  python3 ../x.py --stage 2 test tests/run-make

@@ -12,7 +12,7 @@ pub trait Foo {
 pub trait Bar {
     fn map()
     where for<'a> &'a mut [dyn Bar]: ;
-    //~^ ERROR: the trait `Bar` cannot be made into an object
+    //~^ ERROR: the trait `Bar` is not dyn compatible
 }
 
 fn main() {}

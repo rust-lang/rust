@@ -220,6 +220,10 @@ pub enum FnTrait {
     FnOnce,
     FnMut,
     Fn,
+
+    AsyncFnOnce,
+    AsyncFnMut,
+    AsyncFn,
 }
 
 impl fmt::Display for FnTrait {
@@ -228,6 +232,9 @@ impl fmt::Display for FnTrait {
             FnTrait::FnOnce => write!(f, "FnOnce"),
             FnTrait::FnMut => write!(f, "FnMut"),
             FnTrait::Fn => write!(f, "Fn"),
+            FnTrait::AsyncFnOnce => write!(f, "AsyncFnOnce"),
+            FnTrait::AsyncFnMut => write!(f, "AsyncFnMut"),
+            FnTrait::AsyncFn => write!(f, "AsyncFn"),
         }
     }
 }
@@ -238,6 +245,9 @@ impl FnTrait {
             FnTrait::FnOnce => "call_once",
             FnTrait::FnMut => "call_mut",
             FnTrait::Fn => "call",
+            FnTrait::AsyncFnOnce => "async_call_once",
+            FnTrait::AsyncFnMut => "async_call_mut",
+            FnTrait::AsyncFn => "async_call",
         }
     }
 
@@ -246,6 +256,9 @@ impl FnTrait {
             FnTrait::FnOnce => LangItem::FnOnce,
             FnTrait::FnMut => LangItem::FnMut,
             FnTrait::Fn => LangItem::Fn,
+            FnTrait::AsyncFnOnce => LangItem::AsyncFnOnce,
+            FnTrait::AsyncFnMut => LangItem::AsyncFnMut,
+            FnTrait::AsyncFn => LangItem::AsyncFn,
         }
     }
 
@@ -254,15 +267,19 @@ impl FnTrait {
             LangItem::FnOnce => Some(FnTrait::FnOnce),
             LangItem::FnMut => Some(FnTrait::FnMut),
             LangItem::Fn => Some(FnTrait::Fn),
+            LangItem::AsyncFnOnce => Some(FnTrait::AsyncFnOnce),
+            LangItem::AsyncFnMut => Some(FnTrait::AsyncFnMut),
+            LangItem::AsyncFn => Some(FnTrait::AsyncFn),
             _ => None,
         }
     }
 
     pub const fn to_chalk_ir(self) -> rust_ir::ClosureKind {
+        // Chalk doesn't support async fn traits.
         match self {
-            FnTrait::FnOnce => rust_ir::ClosureKind::FnOnce,
-            FnTrait::FnMut => rust_ir::ClosureKind::FnMut,
-            FnTrait::Fn => rust_ir::ClosureKind::Fn,
+            FnTrait::AsyncFnOnce | FnTrait::FnOnce => rust_ir::ClosureKind::FnOnce,
+            FnTrait::AsyncFnMut | FnTrait::FnMut => rust_ir::ClosureKind::FnMut,
+            FnTrait::AsyncFn | FnTrait::Fn => rust_ir::ClosureKind::Fn,
         }
     }
 
@@ -271,6 +288,9 @@ impl FnTrait {
             FnTrait::FnOnce => Name::new_symbol_root(sym::call_once.clone()),
             FnTrait::FnMut => Name::new_symbol_root(sym::call_mut.clone()),
             FnTrait::Fn => Name::new_symbol_root(sym::call.clone()),
+            FnTrait::AsyncFnOnce => Name::new_symbol_root(sym::async_call_once.clone()),
+            FnTrait::AsyncFnMut => Name::new_symbol_root(sym::async_call_mut.clone()),
+            FnTrait::AsyncFn => Name::new_symbol_root(sym::async_call.clone()),
         }
     }
 

@@ -1,4 +1,5 @@
 //@ run-pass
+//@ reference: input.crlf
 // ignore-tidy-cr
 // ignore-tidy-cr (repeated again because of tidy bug)
 // license is ignored because tidy can't handle the CRLF here properly.

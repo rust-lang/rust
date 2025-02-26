@@ -1,7 +1,6 @@
 //@ run-pass
 #![allow(unused_braces)]
 #![allow(dead_code)]
-//@ pretty-expanded FIXME #23616
 
 use std::rc::Rc;
 

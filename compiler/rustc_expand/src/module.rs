@@ -2,13 +2,12 @@ use std::iter::once;
 use std::path::{self, Path, PathBuf};
 
 use rustc_ast::ptr::P;
-use rustc_ast::{AttrVec, Attribute, Inline, Item, ModSpans, token};
+use rustc_ast::{AttrVec, Attribute, Inline, Item, ModSpans};
 use rustc_errors::{Diag, ErrorGuaranteed};
-use rustc_parse::{new_parser_from_file, unwrap_or_emit_fatal, validate_attr};
+use rustc_parse::{exp, new_parser_from_file, unwrap_or_emit_fatal, validate_attr};
 use rustc_session::Session;
 use rustc_session::parse::ParseSess;
-use rustc_span::Span;
-use rustc_span::symbol::{Ident, sym};
+use rustc_span::{Ident, Span, sym};
 use thin_vec::ThinVec;
 
 use crate::base::ModuleData;
@@ -37,6 +36,7 @@ pub(crate) struct ParsedExternalMod {
     pub file_path: PathBuf,
     pub dir_path: PathBuf,
     pub dir_ownership: DirOwnership,
+    pub had_parse_error: Result<(), ErrorGuaranteed>,
 }
 
 pub enum ModError<'a> {
@@ -70,18 +70,21 @@ pub(crate) fn parse_external_mod(
         let mut parser =
             unwrap_or_emit_fatal(new_parser_from_file(&sess.psess, &mp.file_path, Some(span)));
         let (inner_attrs, items, inner_span) =
-            parser.parse_mod(&token::Eof).map_err(|err| ModError::ParserError(err))?;
+            parser.parse_mod(exp!(Eof)).map_err(|err| ModError::ParserError(err))?;
         attrs.extend(inner_attrs);
         (items, inner_span, mp.file_path)
     };
+
     // (1) ...instead, we return a dummy module.
-    let (items, spans, file_path) =
-        result.map_err(|err| err.report(sess, span)).unwrap_or_default();
+    let ((items, spans, file_path), had_parse_error) = match result {
+        Err(err) => (Default::default(), Err(err.report(sess, span))),
+        Ok(result) => (result, Ok(())),
+    };
 
     // Extract the directory path for submodules of the module.
     let dir_path = file_path.parent().unwrap_or(&file_path).to_owned();
 
-    ParsedExternalMod { items, spans, file_path, dir_path, dir_ownership }
+    ParsedExternalMod { items, spans, file_path, dir_path, dir_ownership, had_parse_error }
 }
 
 pub(crate) fn mod_dir_path(
@@ -180,12 +183,12 @@ pub(crate) fn mod_file_path_from_attr(
     let first_path = attrs.iter().find(|at| at.has_name(sym::path))?;
     let Some(path_sym) = first_path.value_str() else {
         // This check is here mainly to catch attempting to use a macro,
-        // such as #[path = concat!(...)]. This isn't currently supported
-        // because otherwise the InvocationCollector would need to defer
-        // loading a module until the #[path] attribute was expanded, and
-        // it doesn't support that (and would likely add a bit of
-        // complexity). Usually bad forms are checked in AstValidator (via
-        // `check_builtin_attribute`), but by the time that runs the macro
+        // such as `#[path = concat!(...)]`. This isn't supported because
+        // otherwise the `InvocationCollector` would need to defer loading
+        // a module until the `#[path]` attribute was expanded, and it
+        // doesn't support that (and would likely add a bit of complexity).
+        // Usually bad forms are checked during semantic analysis via
+        // `TyCtxt::check_mod_attrs`), but by the time that runs the macro
         // is expanded, and it doesn't give an error.
         validate_attr::emit_fatal_malformed_builtin_attribute(&sess.psess, first_path, sym::path);
     };

@@ -1,16 +1,16 @@
-error: vtable entries for `<std::vec::IntoIter<u8> as A>`: [
+error: vtable entries: [
            MetadataDropInPlace,
            MetadataSize,
            MetadataAlign,
-           Method(<std::vec::IntoIter<u8> as Iterator>::next),
-           Method(<std::vec::IntoIter<u8> as Iterator>::size_hint),
-           Method(<std::vec::IntoIter<u8> as Iterator>::advance_by),
-           Method(<std::vec::IntoIter<u8> as Iterator>::nth),
+           Method(<dyn A<Item = u8> as Iterator>::next - shim(reify)),
+           Method(<dyn A<Item = u8> as Iterator>::size_hint - shim(reify)),
+           Method(<dyn A<Item = u8> as Iterator>::advance_by - shim(reify)),
+           Method(<dyn A<Item = u8> as Iterator>::nth - shim(reify)),
        ]
-  --> $DIR/vtable-dyn-incompatible.rs:8:1
+  --> $DIR/vtable-dyn-incompatible.rs:11:1
    |
-LL | trait A: Iterator {}
-   | ^^^^^^^^^^^^^^^^^
+LL | type Test = dyn A<Item=u8>;
+   | ^^^^^^^^^
 
 error: aborting due to 1 previous error
 

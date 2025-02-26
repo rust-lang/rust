@@ -1,4 +1,4 @@
-//@ compile-flags: -O -g
+//@ compile-flags: -Copt-level=3 -g
 
 #![crate_type = "lib"]
 

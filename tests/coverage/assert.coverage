@@ -9,16 +9,16 @@
    LL|       |
    LL|      1|fn main() -> Result<(), u8> {
    LL|      1|    let mut countdown = 10;
-   LL|     11|    while countdown > 0 {
-   LL|     11|        if countdown == 1 {
+   LL|     10|    while countdown > 0 {
+   LL|      9|        if countdown == 1 {
    LL|      1|            might_fail_assert(3);
-   LL|     10|        } else if countdown < 5 {
+   LL|      8|        } else if countdown < 5 {
    LL|      3|            might_fail_assert(2);
-   LL|      6|        }
-   LL|     10|        countdown -= 1;
+   LL|      5|        }
+   LL|      9|        countdown -= 1;
    LL|       |    }
-   LL|      0|    Ok(())
-   LL|      0|}
+   LL|      1|    Ok(())
+   LL|      1|}
    LL|       |
    LL|       |// Notes:
    LL|       |//   1. Compare this program and its coverage results to those of the very similar test

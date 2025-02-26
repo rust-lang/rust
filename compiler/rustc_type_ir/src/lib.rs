@@ -74,6 +74,7 @@ pub use opaque_ty::*;
 pub use predicate::*;
 pub use predicate_kind::*;
 pub use region_kind::*;
+pub use rustc_ast_ir::{Movability, Mutability, Pinnedness};
 pub use ty_info::*;
 pub use ty_kind::*;
 pub use upcast::*;

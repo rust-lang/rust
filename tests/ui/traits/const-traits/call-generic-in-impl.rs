@@ -1,5 +1,5 @@
 //@ known-bug: #110395
-// FIXME(effects) check-pass
+// FIXME(const_trait_impl) check-pass
 #![feature(const_trait_impl)]
 
 #[const_trait]

@@ -1,4 +1,5 @@
 use hir::{FileRange, Semantics};
+use ide_db::text_edit::TextRange;
 use ide_db::{
     defs::Definition,
     search::{SearchScope, UsageSearchResult},
@@ -11,7 +12,6 @@ use syntax::{
     },
     match_ast, ted, AstNode,
 };
-use text_edit::TextRange;
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 

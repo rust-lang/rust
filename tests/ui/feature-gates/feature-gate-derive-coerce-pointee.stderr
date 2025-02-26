@@ -1,4 +1,4 @@
-error[E0658]: use of unstable library feature 'derive_coerce_pointee'
+error[E0658]: use of unstable library feature `derive_coerce_pointee`
   --> $DIR/feature-gate-derive-coerce-pointee.rs:3:10
    |
 LL | #[derive(CoercePointee)]
@@ -8,7 +8,7 @@ LL | #[derive(CoercePointee)]
    = help: add `#![feature(derive_coerce_pointee)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: use of unstable library feature 'derive_coerce_pointee'
+error[E0658]: use of unstable library feature `derive_coerce_pointee`
   --> $DIR/feature-gate-derive-coerce-pointee.rs:1:5
    |
 LL | use std::marker::CoercePointee;

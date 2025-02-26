@@ -1,6 +1,7 @@
 # Add this folder to the python sys path; GDB Python-interpreter will now find modules in this path
 import sys
 from os import path
+
 self_dir = path.dirname(path.realpath(__file__))
 sys.path.append(self_dir)
 

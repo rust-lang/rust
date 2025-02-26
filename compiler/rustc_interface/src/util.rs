@@ -6,12 +6,11 @@ use std::{env, iter, thread};
 
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
-#[cfg(parallel_compiler)]
 use rustc_data_structures::sync;
 use rustc_metadata::{DylibError, load_symbol_from_dylib};
 use rustc_middle::ty::CurrentGcx;
 use rustc_parse::validate_attr;
-use rustc_session::config::{Cfg, OutFileName, OutputFilenames, OutputTypes, host_triple};
+use rustc_session::config::{Cfg, OutFileName, OutputFilenames, OutputTypes, host_tuple};
 use rustc_session::filesearch::sysroot_candidates;
 use rustc_session::lint::{self, BuiltinLintDiag, LintBuffer};
 use rustc_session::output::{CRATE_TYPES, categorize_crate_type};
@@ -19,33 +18,65 @@ use rustc_session::{EarlyDiagCtxt, Session, filesearch};
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMapInputs;
-use rustc_span::symbol::sym;
+use rustc_span::{Symbol, sym};
 use rustc_target::spec::Target;
 use tracing::info;
 
 use crate::errors;
 
 /// Function pointer type that constructs a new CodegenBackend.
-pub type MakeBackendFn = fn() -> Box<dyn CodegenBackend>;
+type MakeBackendFn = fn() -> Box<dyn CodegenBackend>;
 
 /// Adds `target_feature = "..."` cfgs for a variety of platform
 /// specific features (SSE, NEON etc.).
 ///
 /// This is performed by checking whether a set of permitted features
 /// is available on the target machine, by querying the codegen backend.
-pub fn add_configuration(cfg: &mut Cfg, sess: &mut Session, codegen_backend: &dyn CodegenBackend) {
+pub(crate) fn add_configuration(
+    cfg: &mut Cfg,
+    sess: &mut Session,
+    codegen_backend: &dyn CodegenBackend,
+) {
     let tf = sym::target_feature;
 
-    let unstable_target_features = codegen_backend.target_features(sess, true);
+    let unstable_target_features = codegen_backend.target_features_cfg(sess, true);
     sess.unstable_target_features.extend(unstable_target_features.iter().cloned());
 
-    let target_features = codegen_backend.target_features(sess, false);
+    let target_features = codegen_backend.target_features_cfg(sess, false);
     sess.target_features.extend(target_features.iter().cloned());
 
     cfg.extend(target_features.into_iter().map(|feat| (tf, Some(feat))));
 
     if sess.crt_static(None) {
         cfg.insert((tf, Some(sym::crt_dash_static)));
+    }
+}
+
+/// Ensures that all target features required by the ABI are present.
+/// Must be called after `unstable_target_features` has been populated!
+pub(crate) fn check_abi_required_features(sess: &Session) {
+    let abi_feature_constraints = sess.target.abi_required_features();
+    // We check this against `unstable_target_features` as that is conveniently already
+    // back-translated to rustc feature names, taking into account `-Ctarget-cpu` and `-Ctarget-feature`.
+    // Just double-check that the features we care about are actually on our list.
+    for feature in
+        abi_feature_constraints.required.iter().chain(abi_feature_constraints.incompatible.iter())
+    {
+        assert!(
+            sess.target.rust_target_features().iter().any(|(name, ..)| feature == name),
+            "target feature {feature} is required/incompatible for the current ABI but not a recognized feature for this target"
+        );
+    }
+
+    for feature in abi_feature_constraints.required {
+        if !sess.unstable_target_features.contains(&Symbol::intern(feature)) {
+            sess.dcx().emit_warn(errors::AbiRequiredTargetFeature { feature, enabled: "enabled" });
+        }
+    }
+    for feature in abi_feature_constraints.incompatible {
+        if sess.unstable_target_features.contains(&Symbol::intern(feature)) {
+            sess.dcx().emit_warn(errors::AbiRequiredTargetFeature { feature, enabled: "disabled" });
+        }
     }
 }
 
@@ -117,19 +148,6 @@ fn run_in_thread_with_globals<F: FnOnce(CurrentGcx) -> R + Send, R: Send>(
     })
 }
 
-#[cfg(not(parallel_compiler))]
-pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send, R: Send>(
-    thread_builder_diag: &EarlyDiagCtxt,
-    edition: Edition,
-    _threads: usize,
-    sm_inputs: SourceMapInputs,
-    f: F,
-) -> R {
-    let thread_stack_size = init_stack_size(thread_builder_diag);
-    run_in_thread_with_globals(thread_stack_size, edition, sm_inputs, f)
-}
-
-#[cfg(parallel_compiler)]
 pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send, R: Send>(
     thread_builder_diag: &EarlyDiagCtxt,
     edition: Edition,
@@ -310,7 +328,7 @@ fn get_codegen_sysroot(
         "cannot load the default codegen backend twice"
     );
 
-    let target = host_triple();
+    let target = host_tuple();
     let sysroot_candidates = sysroot_candidates();
 
     let sysroot = iter::once(sysroot)
@@ -415,11 +433,11 @@ pub(crate) fn check_attr_crate_type(
                 }
             } else {
                 // This is here mainly to check for using a macro, such as
-                // #![crate_type = foo!()]. That is not supported since the
+                // `#![crate_type = foo!()]`. That is not supported since the
                 // crate type needs to be known very early in compilation long
                 // before expansion. Otherwise, validation would normally be
-                // caught in AstValidator (via `check_builtin_attribute`), but
-                // by the time that runs the macro is expanded, and it doesn't
+                // caught during semantic analysis via `TyCtxt::check_mod_attrs`,
+                // but by the time that runs the macro is expanded, and it doesn't
                 // give an error.
                 validate_attr::emit_fatal_malformed_builtin_attribute(
                     &sess.psess,
@@ -467,7 +485,7 @@ pub fn build_output_filenames(attrs: &[ast::Attribute], sess: &Session) -> Outpu
         .opts
         .crate_name
         .clone()
-        .or_else(|| rustc_attr::find_crate_name(attrs).map(|n| n.to_string()));
+        .or_else(|| rustc_attr_parsing::find_crate_name(attrs).map(|n| n.to_string()));
 
     match sess.io.output_file {
         None => {

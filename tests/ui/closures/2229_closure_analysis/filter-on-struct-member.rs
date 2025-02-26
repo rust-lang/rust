@@ -24,8 +24,8 @@ impl Data {
             |v| self.filter.allowed(*v),
             //~^ ERROR: First Pass analysis includes:
             //~| ERROR: Min Capture analysis includes:
-            //~| NOTE: Capturing self[Deref,(0, 0)] -> ImmBorrow
-            //~| NOTE: Min Capture self[Deref,(0, 0)] -> ImmBorrow
+            //~| NOTE: Capturing self[Deref,(0, 0)] -> Immutable
+            //~| NOTE: Min Capture self[Deref,(0, 0)] -> Immutable
         );
     }
 }

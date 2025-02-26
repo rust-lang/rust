@@ -1,9 +1,10 @@
 // Not in interpret to make sure we do not use private implementation details
 
-use rustc_middle::query::{Key, TyCtxtAt};
+use rustc_abi::VariantIdx;
+use rustc_middle::query::Key;
+use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, mir};
-use rustc_target::abi::VariantIdx;
 use tracing::instrument;
 
 use crate::interpret::InterpCx;
@@ -34,16 +35,17 @@ pub(crate) type ValTreeCreationResult<'tcx> = Result<ty::ValTree<'tcx>, ValTreeC
 
 #[instrument(skip(tcx), level = "debug")]
 pub(crate) fn try_destructure_mir_constant_for_user_output<'tcx>(
-    tcx: TyCtxtAt<'tcx>,
+    tcx: TyCtxt<'tcx>,
     val: mir::ConstValue<'tcx>,
     ty: Ty<'tcx>,
 ) -> Option<mir::DestructuredConstant<'tcx>> {
-    let param_env = ty::ParamEnv::reveal_all();
-    let (ecx, op) = mk_eval_cx_for_const_val(tcx, param_env, val, ty)?;
+    let typing_env = ty::TypingEnv::fully_monomorphized();
+    // FIXME: use a proper span here?
+    let (ecx, op) = mk_eval_cx_for_const_val(tcx.at(rustc_span::DUMMY_SP), typing_env, val, ty)?;
 
     // We go to `usize` as we cannot allocate anything bigger anyway.
     let (field_count, variant, down) = match ty.kind() {
-        ty::Array(_, len) => (len.try_to_target_usize(tcx.tcx)? as usize, None, op),
+        ty::Array(_, len) => (len.try_to_target_usize(tcx)? as usize, None, op),
         ty::Adt(def, _) if def.variants().is_empty() => {
             return None;
         }
@@ -76,12 +78,15 @@ pub fn tag_for_variant_provider<'tcx>(
 ) -> Option<ty::ScalarInt> {
     assert!(ty.is_enum());
 
+    // FIXME: This uses an empty `TypingEnv` even though
+    // it may be used by a generic CTFE.
     let ecx = InterpCx::new(
         tcx,
         ty.default_span(tcx),
-        ty::ParamEnv::reveal_all(),
+        ty::TypingEnv::fully_monomorphized(),
         crate::const_eval::DummyMachine,
     );
 
-    ecx.tag_for_variant(ty, variant_index).unwrap().map(|(tag, _tag_field)| tag)
+    let layout = ecx.layout_of(ty).unwrap();
+    ecx.tag_for_variant(layout, variant_index).unwrap().map(|(tag, _tag_field)| tag)
 }

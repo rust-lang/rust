@@ -1,6 +1,6 @@
 //@ edition:2021
-//@ aux-build:reserved-guarded-strings-macro-2021.rs
-//@ aux-build:reserved-guarded-strings-macro-2024.rs
+//@ proc-macro: reserved-guarded-strings-macro-2021.rs
+//@ proc-macro: reserved-guarded-strings-macro-2024.rs
 
 extern crate reserved_guarded_strings_macro_2021 as m2021;
 extern crate reserved_guarded_strings_macro_2024 as m2024;

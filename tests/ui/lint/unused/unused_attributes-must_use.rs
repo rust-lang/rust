@@ -79,6 +79,11 @@ trait Use {
 #[must_use] //~ ERROR `#[must_use]` has no effect
 impl Use for () {
     type AssocTy = ();
+
+    #[must_use] //~ ERROR `#[must_use]` has no effect
+    fn get_four(&self) -> usize {
+        4
+    }
 }
 
 #[must_use] //~ ERROR `#[must_use]` has no effect

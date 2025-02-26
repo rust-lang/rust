@@ -6,8 +6,9 @@ LL | fn foo(_x: Foo + Send) {
    |
 help: use a new generic type parameter, constrained by `Foo + Send`
    |
-LL | fn foo<T: Foo + Send>(_x: T) {
-   |       +++++++++++++++     ~
+LL - fn foo(_x: Foo + Send) {
+LL + fn foo<T: Foo + Send>(_x: T) {
+   |
 help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
    |
 LL | fn foo(_x: impl Foo + Send) {
@@ -25,8 +26,9 @@ LL | fn bar(x: Foo) -> Foo {
    |
 help: use a new generic type parameter, constrained by `Foo`
    |
-LL | fn bar<T: Foo>(x: T) -> Foo {
-   |       ++++++++    ~
+LL - fn bar(x: Foo) -> Foo {
+LL + fn bar<T: Foo>(x: T) -> Foo {
+   |
 help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
    |
 LL | fn bar(x: impl Foo) -> Foo {

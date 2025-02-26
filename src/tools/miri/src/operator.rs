@@ -2,9 +2,9 @@ use std::iter;
 
 use rand::Rng;
 use rand::seq::IteratorRandom;
+use rustc_abi::Size;
 use rustc_apfloat::{Float, FloatConvert};
 use rustc_middle::mir;
-use rustc_target::abi::Size;
 
 use crate::*;
 
@@ -23,7 +23,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         interp_ok(match bin_op {
             Eq | Ne | Lt | Le | Gt | Ge => {
-                assert_eq!(left.layout.abi, right.layout.abi); // types can differ, e.g. fn ptrs with different `for`
+                assert_eq!(left.layout.backend_repr, right.layout.backend_repr); // types can differ, e.g. fn ptrs with different `for`
                 let size = this.pointer_size();
                 // Just compare the bits. ScalarPairs are compared lexicographically.
                 // We thus always compare pairs and simply fill scalars up with 0.
@@ -52,8 +52,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Some more operations are possible with atomics.
             // The return value always has the provenance of the *left* operand.
             Add | Sub | BitOr | BitAnd | BitXor => {
-                assert!(left.layout.ty.is_unsafe_ptr());
-                assert!(right.layout.ty.is_unsafe_ptr());
+                assert!(left.layout.ty.is_raw_ptr());
+                assert!(right.layout.ty.is_raw_ptr());
                 let ptr = left.to_scalar().to_pointer(this)?;
                 // We do the actual operation with usize-typed scalars.
                 let left = ImmTy::from_uint(ptr.addr().bytes(), this.machine.layouts.usize);
@@ -108,11 +108,18 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Pick one of the NaNs.
         let nan = nans.choose(&mut *rand).unwrap();
         // Non-deterministically flip the sign.
-        if rand.gen() {
+        if rand.random() {
             // This will properly flip even for NaN.
             -nan
         } else {
             nan
         }
+    }
+
+    fn equal_float_min_max<F: Float>(&self, a: F, b: F) -> F {
+        let this = self.eval_context_ref();
+        // Return one side non-deterministically.
+        let mut rand = this.machine.rng.borrow_mut();
+        if rand.random() { a } else { b }
     }
 }

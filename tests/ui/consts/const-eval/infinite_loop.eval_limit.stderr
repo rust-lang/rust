@@ -16,7 +16,6 @@ LL |       let s = [(); {
    |  __________________^
 LL | |         let mut n = 113383; // #20 in https://oeis.org/A006884
 LL | |         while n != 0 {
-LL | |
 ...  |
 LL | |         n
 LL | |     }];

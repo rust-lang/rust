@@ -13,7 +13,7 @@
    LL|      1|        b = 10;
    LL|      1|        c = 100;
    LL|      1|    }
-                   ^0
+                  ^0
    LL|       |    let
    LL|      1|        somebool
    LL|       |        =

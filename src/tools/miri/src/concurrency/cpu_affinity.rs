@@ -1,5 +1,5 @@
+use rustc_abi::Endian;
 use rustc_middle::ty::layout::LayoutOf;
-use rustc_target::abi::Endian;
 
 use crate::*;
 
@@ -54,8 +54,8 @@ impl CpuAffinityMask {
                 let chunk = self.0[start..].first_chunk_mut::<4>().unwrap();
                 let offset = cpu % 32;
                 *chunk = match target.options.endian {
-                    Endian::Little => (u32::from_le_bytes(*chunk) | 1 << offset).to_le_bytes(),
-                    Endian::Big => (u32::from_be_bytes(*chunk) | 1 << offset).to_be_bytes(),
+                    Endian::Little => (u32::from_le_bytes(*chunk) | (1 << offset)).to_le_bytes(),
+                    Endian::Big => (u32::from_be_bytes(*chunk) | (1 << offset)).to_be_bytes(),
                 };
             }
             8 => {
@@ -63,8 +63,8 @@ impl CpuAffinityMask {
                 let chunk = self.0[start..].first_chunk_mut::<8>().unwrap();
                 let offset = cpu % 64;
                 *chunk = match target.options.endian {
-                    Endian::Little => (u64::from_le_bytes(*chunk) | 1 << offset).to_le_bytes(),
-                    Endian::Big => (u64::from_be_bytes(*chunk) | 1 << offset).to_be_bytes(),
+                    Endian::Little => (u64::from_le_bytes(*chunk) | (1 << offset)).to_le_bytes(),
+                    Endian::Big => (u64::from_be_bytes(*chunk) | (1 << offset)).to_be_bytes(),
                 };
             }
             other => bug!("chunk size not supported: {other}"),

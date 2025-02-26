@@ -1,5 +1,7 @@
-//@ compile-flags: --diagnostic-width=40
-//@ normalize-stderr-test: "long-type-\d+" -> "long-type-hash"
+//@ revisions: ascii unicode
+//@[ascii] compile-flags: --diagnostic-width=40 -Zwrite-long-types-to-disk=yes
+//@[unicode] compile-flags: -Zunstable-options --error-format=human-unicode --diagnostic-width=40 -Zwrite-long-types-to-disk=yes
+//@ normalize-stderr: "'\$TEST_BUILD_DIR/.*\.long-type-\d+.txt'" -> "'$$TEST_BUILD_DIR/$$FILE.long-type-hash.txt'"
 trait Future {
     type Error;
 }
@@ -15,7 +17,7 @@ impl<T> Future for Option<T> {
 struct Foo;
 
 fn foo() -> Box<dyn Future<Error=Foo>> {
-    Box::new( //~ ERROR E0271
+    Box::new( //[ascii]~ ERROR E0271
         Ok::<_, ()>(
             Err::<(), _>(
                 Ok::<_, ()>(

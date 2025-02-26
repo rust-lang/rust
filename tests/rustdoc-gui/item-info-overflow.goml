@@ -16,7 +16,7 @@ assert-text: (
 go-to: "file://" + |DOC_PATH| + "/lib2/struct.LongItemInfo2.html"
 compare-elements-property: (
     "#impl-SimpleTrait-for-LongItemInfo2 .item-info",
-    "#impl-SimpleTrait-for-LongItemInfo2 + .docblock",
+    "#impl-SimpleTrait-for-LongItemInfo2 .docblock",
     ["scrollWidth"],
 )
 assert-property: (

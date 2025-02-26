@@ -1,9 +1,9 @@
 use std::fmt;
 use std::num::NonZero;
 
+use rustc_abi::{HasDataLayout, Size};
 use rustc_data_structures::static_assert_size;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
-use rustc_target::abi::{HasDataLayout, Size};
 
 use super::AllocId;
 
@@ -65,6 +65,9 @@ pub trait Provenance: Copy + fmt::Debug + 'static {
     /// - If `true`, the interpreter will permit operations to inspect the underlying bytes of a
     ///   pointer, and implement ptr-to-int transmutation by stripping provenance.
     const OFFSET_IS_ADDR: bool;
+
+    /// If wildcard provenance is implemented, contains the unique, general wildcard provenance variant.
+    const WILDCARD: Option<Self>;
 
     /// Determines how a pointer should be printed.
     fn fmt(ptr: &Pointer<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result;
@@ -168,6 +171,9 @@ impl Provenance for CtfeProvenance {
     // so ptr-to-int casts are not possible (since we do not know the global physical offset).
     const OFFSET_IS_ADDR: bool = false;
 
+    // `CtfeProvenance` does not implement wildcard provenance.
+    const WILDCARD: Option<Self> = None;
+
     fn fmt(ptr: &Pointer<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Print AllocId.
         fmt::Debug::fmt(&ptr.provenance.alloc_id(), f)?; // propagates `alternate` flag
@@ -196,6 +202,9 @@ impl Provenance for AllocId {
     // With the `AllocId` as provenance, the `offset` is interpreted *relative to the allocation*,
     // so ptr-to-int casts are not possible (since we do not know the global physical offset).
     const OFFSET_IS_ADDR: bool = false;
+
+    // `AllocId` does not implement wildcard provenance.
+    const WILDCARD: Option<Self> = None;
 
     fn fmt(ptr: &Pointer<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Forward `alternate` flag to `alloc_id` printing.

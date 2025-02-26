@@ -2,7 +2,7 @@
 //@ edition:2021
 //@ build-pass
 
-#![feature(async_closure, async_fn_traits)]
+#![feature(async_fn_traits)]
 
 extern crate block_on;
 
@@ -19,7 +19,7 @@ fn main() {
         is_static(&c);
 
         // Check that `<{async fn} as AsyncFnOnce>::CallOnceFuture` owns its captures.
-        fn call_once<F: async FnOnce()>(f: F) -> F::CallOnceFuture { f() }
+        fn call_once<F: AsyncFnOnce()>(f: F) -> F::CallOnceFuture { f() }
         is_static(&call_once(c));
     });
 }

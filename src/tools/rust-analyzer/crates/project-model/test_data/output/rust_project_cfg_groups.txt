@@ -17,6 +17,7 @@
             [
                 "debug_assertions",
                 "miri",
+                "true",
             ],
         ),
         potential_cfg_options: None,
@@ -37,6 +38,7 @@
             Alloc,
         ),
         is_proc_macro: false,
+        proc_macro_cwd: None,
     },
     1: CrateData {
         root_file_id: FileId(
@@ -56,6 +58,7 @@
             [
                 "debug_assertions",
                 "miri",
+                "true",
             ],
         ),
         potential_cfg_options: None,
@@ -67,6 +70,7 @@
             Core,
         ),
         is_proc_macro: false,
+        proc_macro_cwd: None,
     },
     2: CrateData {
         root_file_id: FileId(
@@ -86,6 +90,7 @@
             [
                 "debug_assertions",
                 "miri",
+                "true",
             ],
         ),
         potential_cfg_options: None,
@@ -97,6 +102,7 @@
             Other,
         ),
         is_proc_macro: false,
+        proc_macro_cwd: None,
     },
     3: CrateData {
         root_file_id: FileId(
@@ -116,6 +122,7 @@
             [
                 "debug_assertions",
                 "miri",
+                "true",
             ],
         ),
         potential_cfg_options: None,
@@ -127,6 +134,7 @@
             Other,
         ),
         is_proc_macro: false,
+        proc_macro_cwd: None,
     },
     4: CrateData {
         root_file_id: FileId(
@@ -146,6 +154,7 @@
             [
                 "debug_assertions",
                 "miri",
+                "true",
             ],
         ),
         potential_cfg_options: None,
@@ -174,6 +183,7 @@
             ProcMacro,
         ),
         is_proc_macro: false,
+        proc_macro_cwd: None,
     },
     5: CrateData {
         root_file_id: FileId(
@@ -193,6 +203,7 @@
             [
                 "debug_assertions",
                 "miri",
+                "true",
             ],
         ),
         potential_cfg_options: None,
@@ -204,6 +215,7 @@
             Other,
         ),
         is_proc_macro: false,
+        proc_macro_cwd: None,
     },
     6: CrateData {
         root_file_id: FileId(
@@ -223,6 +235,7 @@
             [
                 "debug_assertions",
                 "miri",
+                "true",
             ],
         ),
         potential_cfg_options: None,
@@ -299,6 +312,7 @@
             Std,
         ),
         is_proc_macro: false,
+        proc_macro_cwd: None,
     },
     7: CrateData {
         root_file_id: FileId(
@@ -318,6 +332,7 @@
             [
                 "debug_assertions",
                 "miri",
+                "true",
             ],
         ),
         potential_cfg_options: None,
@@ -329,6 +344,7 @@
             Other,
         ),
         is_proc_macro: false,
+        proc_macro_cwd: None,
     },
     8: CrateData {
         root_file_id: FileId(
@@ -348,6 +364,7 @@
             [
                 "debug_assertions",
                 "miri",
+                "true",
             ],
         ),
         potential_cfg_options: None,
@@ -359,6 +376,7 @@
             Test,
         ),
         is_proc_macro: false,
+        proc_macro_cwd: None,
     },
     9: CrateData {
         root_file_id: FileId(
@@ -378,6 +396,7 @@
             [
                 "debug_assertions",
                 "miri",
+                "true",
             ],
         ),
         potential_cfg_options: None,
@@ -389,6 +408,7 @@
             Other,
         ),
         is_proc_macro: false,
+        proc_macro_cwd: None,
     },
     10: CrateData {
         root_file_id: FileId(
@@ -410,6 +430,8 @@
                 "group1_other_cfg=other_config",
                 "group2_cfg=yet_another_config",
                 "rust_analyzer",
+                "test",
+                "true",
             ],
         ),
         potential_cfg_options: None,
@@ -465,10 +487,11 @@
             ),
         },
         is_proc_macro: false,
+        proc_macro_cwd: None,
     },
     11: CrateData {
         root_file_id: FileId(
-            12,
+            11,
         ),
         edition: Edition2018,
         version: None,
@@ -485,6 +508,8 @@
                 "group2_cfg=fourth_config",
                 "group2_cfg=yet_another_config",
                 "rust_analyzer",
+                "test",
+                "true",
                 "unrelated_cfg",
             ],
         ),
@@ -541,5 +566,6 @@
             ),
         },
         is_proc_macro: false,
+        proc_macro_cwd: None,
     },
 }

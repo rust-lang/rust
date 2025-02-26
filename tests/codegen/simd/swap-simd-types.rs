@@ -1,4 +1,4 @@
-//@ compile-flags: -O -C target-feature=+avx
+//@ compile-flags: -Copt-level=3 -C target-feature=+avx
 //@ only-x86_64
 
 #![crate_type = "lib"]

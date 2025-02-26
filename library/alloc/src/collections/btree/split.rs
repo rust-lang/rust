@@ -8,7 +8,7 @@ use super::search::SearchResult::*;
 impl<K, V> Root<K, V> {
     /// Calculates the length of both trees that result from splitting up
     /// a given number of distinct key-value pairs.
-    pub fn calc_split_length(
+    pub(super) fn calc_split_length(
         total_num: usize,
         root_a: &Root<K, V>,
         root_b: &Root<K, V>,
@@ -31,7 +31,11 @@ impl<K, V> Root<K, V> {
     /// and if the ordering of `Q` corresponds to that of `K`.
     /// If `self` respects all `BTreeMap` tree invariants, then both
     /// `self` and the returned tree will respect those invariants.
-    pub fn split_off<Q: ?Sized + Ord, A: Allocator + Clone>(&mut self, key: &Q, alloc: A) -> Self
+    pub(super) fn split_off<Q: ?Sized + Ord, A: Allocator + Clone>(
+        &mut self,
+        key: &Q,
+        alloc: A,
+    ) -> Self
     where
         K: Borrow<Q>,
     {

@@ -328,7 +328,7 @@ pub(crate) fn absolute(path: &Path) -> io::Result<PathBuf> {
     if prefix.map(|x| x.is_verbatim()).unwrap_or(false) {
         // NULs in verbatim paths are rejected for consistency.
         if path.as_encoded_bytes().contains(&0) {
-            return Err(io::const_io_error!(
+            return Err(io::const_error!(
                 io::ErrorKind::InvalidInput,
                 "strings passed to WinAPI cannot contain NULs",
             ));
@@ -345,4 +345,8 @@ pub(crate) fn absolute(path: &Path) -> io::Result<PathBuf> {
         |buffer, size| unsafe { c::GetFullPathNameW(lpfilename, size, buffer, ptr::null_mut()) },
         os2path,
     )
+}
+
+pub(crate) fn is_absolute(path: &Path) -> bool {
+    path.has_root() && path.prefix().is_some()
 }

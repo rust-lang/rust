@@ -134,3 +134,12 @@ pub mod ambiguous_glob_exports {
     pub use my_prelude::*;
     pub use my_type::*;
 }
+
+// Regression test for https://github.com/rust-lang/rust-clippy/issues/13764
+pub mod unknown_namespace {
+    pub mod some_module {
+        pub struct SomeType;
+    }
+    #[allow(rustc::non_glob_import_of_type_ir_inherent)]
+    use some_module::SomeType;
+}

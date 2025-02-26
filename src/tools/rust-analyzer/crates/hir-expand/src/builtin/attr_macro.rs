@@ -14,7 +14,7 @@ macro_rules! register_builtin {
         }
 
         impl BuiltinAttrExpander {
-            pub fn expander(&self) -> fn (&dyn ExpandDatabase, MacroCallId, &tt::Subtree, Span) -> ExpandResult<tt::Subtree>  {
+            pub fn expander(&self) -> fn (&dyn ExpandDatabase, MacroCallId, &tt::TopSubtree, Span) -> ExpandResult<tt::TopSubtree>  {
                 match *self {
                     $( BuiltinAttrExpander::$variant => $expand, )*
                 }
@@ -36,9 +36,9 @@ impl BuiltinAttrExpander {
         &self,
         db: &dyn ExpandDatabase,
         id: MacroCallId,
-        tt: &tt::Subtree,
+        tt: &tt::TopSubtree,
         span: Span,
-    ) -> ExpandResult<tt::Subtree> {
+    ) -> ExpandResult<tt::TopSubtree> {
         self.expander()(db, id, tt, span)
     }
 
@@ -75,18 +75,18 @@ pub fn find_builtin_attr(ident: &name::Name) -> Option<BuiltinAttrExpander> {
 fn dummy_attr_expand(
     _db: &dyn ExpandDatabase,
     _id: MacroCallId,
-    tt: &tt::Subtree,
+    tt: &tt::TopSubtree,
     _span: Span,
-) -> ExpandResult<tt::Subtree> {
+) -> ExpandResult<tt::TopSubtree> {
     ExpandResult::ok(tt.clone())
 }
 
 fn dummy_gate_test_expand(
     _db: &dyn ExpandDatabase,
     _id: MacroCallId,
-    tt: &tt::Subtree,
+    tt: &tt::TopSubtree,
     span: Span,
-) -> ExpandResult<tt::Subtree> {
+) -> ExpandResult<tt::TopSubtree> {
     let result = quote::quote! { span=>
         #[cfg(test)]
         #tt
@@ -118,47 +118,41 @@ fn dummy_gate_test_expand(
 fn derive_expand(
     db: &dyn ExpandDatabase,
     id: MacroCallId,
-    tt: &tt::Subtree,
+    tt: &tt::TopSubtree,
     span: Span,
-) -> ExpandResult<tt::Subtree> {
+) -> ExpandResult<tt::TopSubtree> {
     let loc = db.lookup_intern_macro_call(id);
     let derives = match &loc.kind {
         MacroCallKind::Attr { attr_args: Some(attr_args), .. } if loc.def.is_attribute_derive() => {
             attr_args
         }
         _ => {
-            return ExpandResult::ok(tt::Subtree::empty(tt::DelimSpan { open: span, close: span }))
+            return ExpandResult::ok(tt::TopSubtree::empty(tt::DelimSpan {
+                open: span,
+                close: span,
+            }))
         }
     };
     pseudo_derive_attr_expansion(tt, derives, span)
 }
 
 pub fn pseudo_derive_attr_expansion(
-    _: &tt::Subtree,
-    args: &tt::Subtree,
+    _: &tt::TopSubtree,
+    args: &tt::TopSubtree,
     call_site: Span,
-) -> ExpandResult<tt::Subtree> {
-    let mk_leaf = |char| {
-        tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct {
-            char,
-            spacing: tt::Spacing::Alone,
-            span: call_site,
-        }))
-    };
+) -> ExpandResult<tt::TopSubtree> {
+    let mk_leaf =
+        |char| tt::Leaf::Punct(tt::Punct { char, spacing: tt::Spacing::Alone, span: call_site });
 
-    let mut token_trees = Vec::new();
-    for tt in args
-        .token_trees
-        .split(|tt| matches!(tt, tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct { char: ',', .. }))))
-    {
-        token_trees.push(mk_leaf('#'));
-        token_trees.push(mk_leaf('!'));
-        token_trees.push(mk_leaf('['));
-        token_trees.extend(tt.iter().cloned());
-        token_trees.push(mk_leaf(']'));
+    let mut token_trees = tt::TopSubtreeBuilder::new(args.top_subtree().delimiter);
+    let iter = args.token_trees().split(|tt| {
+        matches!(tt, tt::TtElement::Leaf(tt::Leaf::Punct(tt::Punct { char: ',', .. })))
+    });
+    for tts in iter {
+        token_trees.extend([mk_leaf('#'), mk_leaf('!')]);
+        token_trees.open(tt::DelimiterKind::Bracket, call_site);
+        token_trees.extend_with_tt(tts);
+        token_trees.close(call_site);
     }
-    ExpandResult::ok(tt::Subtree {
-        delimiter: args.delimiter,
-        token_trees: token_trees.into_boxed_slice(),
-    })
+    ExpandResult::ok(token_trees.build())
 }

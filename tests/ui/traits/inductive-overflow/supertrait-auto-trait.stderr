@@ -10,7 +10,7 @@ error[E0277]: the trait bound `NoClone: Magic` is not satisfied
   --> $DIR/supertrait-auto-trait.rs:16:23
    |
 LL |     let (a, b) = copy(NoClone);
-   |                  ---- ^^^^^^^ the trait `Copy` is not implemented for `NoClone`, which is required by `NoClone: Magic`
+   |                  ---- ^^^^^^^ the trait `Copy` is not implemented for `NoClone`
    |                  |
    |                  required by a bound introduced by this call
    |

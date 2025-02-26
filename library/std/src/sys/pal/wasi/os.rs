@@ -16,7 +16,7 @@ use crate::{fmt, io, str, vec};
 mod libc {
     pub use libc::*;
 
-    extern "C" {
+    unsafe extern "C" {
         pub fn getcwd(buf: *mut c_char, size: size_t) -> *mut c_char;
         pub fn chdir(dir: *const c_char) -> c_int;
         pub fn __wasilibc_get_environ() -> *mut *mut c_char;
@@ -46,7 +46,7 @@ cfg_if::cfg_if! {
 }
 
 pub fn errno() -> i32 {
-    extern "C" {
+    unsafe extern "C" {
         #[thread_local]
         static errno: libc::c_int;
     }

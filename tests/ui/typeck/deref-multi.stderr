@@ -34,8 +34,9 @@ LL |     &x
    |
 help: consider removing the `&` and dereferencing the borrow instead
    |
-LL |     *x
-   |     ~
+LL -     &x
+LL +     *x
+   |
 
 error[E0308]: mismatched types
   --> $DIR/deref-multi.rs:17:5
@@ -49,8 +50,9 @@ LL |     &x
            found reference `&Box<i32>`
 help: consider removing the `&` and dereferencing the borrow instead
    |
-LL |     *x
-   |     ~
+LL -     &x
+LL +     *x
+   |
 
 error[E0308]: mismatched types
   --> $DIR/deref-multi.rs:22:5

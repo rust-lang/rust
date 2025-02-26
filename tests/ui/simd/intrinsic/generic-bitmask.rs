@@ -30,9 +30,8 @@ struct u8x32([u8; 32]);
 #[derive(Copy, Clone)]
 struct u8x64([u8; 64]);
 
-extern "rust-intrinsic" {
-    fn simd_bitmask<T, U>(x: T) -> U;
-}
+#[rustc_intrinsic]
+unsafe fn simd_bitmask<T, U>(x: T) -> U;
 
 fn main() {
     let m2 = u32x2([0; 2]);

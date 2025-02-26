@@ -2,7 +2,7 @@
 
 #![crate_name = "foo"]
 
-//@ has 'foo/index.html' '//*[@class="desc docblock-short"]' '–'
+//@ has 'foo/index.html' '//dd' '–'
 //@ has 'foo/struct.Bar.html' '//*[@class="docblock"]' '–'
 
 /// --

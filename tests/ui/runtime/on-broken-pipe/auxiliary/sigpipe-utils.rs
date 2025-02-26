@@ -20,7 +20,14 @@ pub fn assert_sigpipe_handler(expected_handler: SignalHandler) {
         let actual = unsafe {
             let mut actual: libc::sigaction = std::mem::zeroed();
             libc::sigaction(libc::SIGPIPE, std::ptr::null(), &mut actual);
-            actual.sa_sigaction
+            #[cfg(not(target_os = "aix"))]
+            {
+                actual.sa_sigaction
+            }
+            #[cfg(target_os = "aix")]
+            {
+                actual.sa_union.__su_sigaction as libc::sighandler_t
+            }
         };
 
         let expected = match expected_handler {

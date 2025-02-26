@@ -4,9 +4,8 @@ use std::collections::BTreeMap;
 use std::collections::btree_map::Entry as BTreeEntry;
 use std::task::Poll;
 
+use rustc_abi::{ExternAbi, HasDataLayout, Size};
 use rustc_middle::ty;
-use rustc_target::abi::{HasDataLayout, Size};
-use rustc_target::spec::abi::Abi;
 
 use crate::*;
 
@@ -54,7 +53,7 @@ impl<'tcx> Default for TlsData<'tcx> {
 impl<'tcx> TlsData<'tcx> {
     /// Generate a new TLS key with the given destructor.
     /// `max_size` determines the integer size the key has to fit in.
-    #[allow(clippy::arithmetic_side_effects)]
+    #[expect(clippy::arithmetic_side_effects)]
     pub fn create_tls_key(
         &mut self,
         dtor: Option<ty::Instance<'tcx>>,
@@ -323,7 +322,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // but both are ignored by std.
         this.call_function(
             thread_callback,
-            Abi::System { unwind: false },
+            ExternAbi::System { unwind: false },
             &[null_ptr.clone(), ImmTy::from_scalar(reason, this.machine.layouts.u32), null_ptr],
             None,
             StackPopCleanup::Root { cleanup: true },
@@ -344,7 +343,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             this.call_function(
                 instance,
-                Abi::C { unwind: false },
+                ExternAbi::C { unwind: false },
                 &[ImmTy::from_scalar(data, this.machine.layouts.mut_raw_ptr)],
                 None,
                 StackPopCleanup::Root { cleanup: true },
@@ -381,7 +380,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             this.call_function(
                 instance,
-                Abi::C { unwind: false },
+                ExternAbi::C { unwind: false },
                 &[ImmTy::from_scalar(ptr, this.machine.layouts.mut_raw_ptr)],
                 None,
                 StackPopCleanup::Root { cleanup: true },

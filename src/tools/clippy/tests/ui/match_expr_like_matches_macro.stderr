@@ -68,8 +68,7 @@ LL |           let _ans = match x {
    |  ____________________^
 LL | |             E::A(_) => {
 LL | |                 true
-LL | |             }
-LL | |             E::B(_) => true,
+...  |
 LL | |             _ => false,
 LL | |         };
    | |_________^ help: try: `matches!(x, E::A(_) | E::B(_))`

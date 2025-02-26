@@ -4,6 +4,7 @@
 
 use std::fmt::Debug;
 
+use rustc_abi::{BackendRepr, FieldIdx, HasDataLayout, Size, TargetDataLayout, VariantIdx};
 use rustc_const_eval::const_eval::DummyMachine;
 use rustc_const_eval::interpret::{
     ImmTy, InterpCx, InterpResult, Projectable, Scalar, format_interp_error, interp_ok,
@@ -12,14 +13,13 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::HirId;
 use rustc_hir::def::DefKind;
 use rustc_index::IndexVec;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::bug;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
-use rustc_middle::ty::{self, ConstInt, ParamEnv, ScalarInt, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, ConstInt, ScalarInt, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::Span;
-use rustc_target::abi::{Abi, FieldIdx, HasDataLayout, Size, TargetDataLayout, VariantIdx};
 use tracing::{debug, instrument, trace};
 
 use crate::errors::{AssertLint, AssertLintKind};
@@ -65,9 +65,9 @@ impl<'tcx> crate::MirLint<'tcx> for KnownPanicsLint {
 struct ConstPropagator<'mir, 'tcx> {
     ecx: InterpCx<'tcx, DummyMachine>,
     tcx: TyCtxt<'tcx>,
-    param_env: ParamEnv<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     worklist: Vec<BasicBlock>,
-    visited_blocks: BitSet<BasicBlock>,
+    visited_blocks: DenseBitSet<BasicBlock>,
     locals: IndexVec<Local, Value<'tcx>>,
     body: &'mir Body<'tcx>,
     written_only_inside_own_block_locals: FxHashSet<Local>,
@@ -169,27 +169,28 @@ impl<'tcx> ty::layout::HasTyCtxt<'tcx> for ConstPropagator<'_, 'tcx> {
     }
 }
 
-impl<'tcx> ty::layout::HasParamEnv<'tcx> for ConstPropagator<'_, 'tcx> {
+impl<'tcx> ty::layout::HasTypingEnv<'tcx> for ConstPropagator<'_, 'tcx> {
     #[inline]
-    fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        self.param_env
+    fn typing_env(&self) -> ty::TypingEnv<'tcx> {
+        self.typing_env
     }
 }
 
 impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     fn new(body: &'mir Body<'tcx>, tcx: TyCtxt<'tcx>) -> ConstPropagator<'mir, 'tcx> {
         let def_id = body.source.def_id();
-        let param_env = tcx.param_env_reveal_all_normalized(def_id);
-
-        let can_const_prop = CanConstProp::check(tcx, param_env, body);
-        let ecx = InterpCx::new(tcx, tcx.def_span(def_id), param_env, DummyMachine);
+        // FIXME(#132279): This is used during the phase transition from analysis
+        // to runtime, so we have to manually specify the correct typing mode.
+        let typing_env = ty::TypingEnv::post_analysis(tcx, body.source.def_id());
+        let can_const_prop = CanConstProp::check(tcx, typing_env, body);
+        let ecx = InterpCx::new(tcx, tcx.def_span(def_id), typing_env, DummyMachine);
 
         ConstPropagator {
             ecx,
             tcx,
-            param_env,
+            typing_env,
             worklist: vec![START_BLOCK],
-            visited_blocks: BitSet::new_empty(body.basic_blocks.len()),
+            visited_blocks: DenseBitSet::new_empty(body.basic_blocks.len()),
             locals: IndexVec::from_elem_n(Value::Uninit, body.local_decls.len()),
             body,
             can_const_prop,
@@ -257,10 +258,10 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         // Normalization needed b/c known panics lint runs in
         // `mir_drops_elaborated_and_const_checked`, which happens before
         // optimized MIR. Only after optimizing the MIR can we guarantee
-        // that the `RevealAll` pass has happened and that the body's consts
+        // that the `PostAnalysisNormalize` pass has happened and that the body's consts
         // are normalized, so any call to resolve before that needs to be
         // manually normalized.
-        let val = self.tcx.try_normalize_erasing_regions(self.param_env, c.const_).ok()?;
+        let val = self.tcx.try_normalize_erasing_regions(self.typing_env, c.const_).ok()?;
 
         self.use_ecx(|this| this.ecx.eval_mir_constant(&val, c.span, None))?
             .as_mplace_or_imm()
@@ -295,11 +296,12 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         let source_info = self.body.source_info(location);
         if let Some(lint_root) = self.lint_root(*source_info) {
             let span = source_info.span;
-            self.tcx.emit_node_span_lint(lint_kind.lint(), lint_root, span, AssertLint {
+            self.tcx.emit_node_span_lint(
+                lint_kind.lint(),
+                lint_root,
                 span,
-                assert_kind,
-                lint_kind,
-            });
+                AssertLint { span, assert_kind, lint_kind },
+            );
         }
     }
 
@@ -443,14 +445,15 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             | Rvalue::Cast(..)
             | Rvalue::ShallowInitBox(..)
             | Rvalue::Discriminant(..)
-            | Rvalue::NullaryOp(..) => {}
+            | Rvalue::NullaryOp(..)
+            | Rvalue::WrapUnsafeBinder(..) => {}
         }
 
         // FIXME we need to revisit this for #67176
         if rvalue.has_param() {
             return None;
         }
-        if !rvalue.ty(self.local_decls(), self.tcx).is_sized(self.tcx, self.param_env) {
+        if !rvalue.ty(self.local_decls(), self.tcx).is_sized(self.tcx, self.typing_env) {
             // the interpreter doesn't support unsized locals (only unsized arguments),
             // but rustc does (in a kinda broken way), so we have to skip them here
             return None;
@@ -506,7 +509,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     // other overflow checks.
                     AssertKind::Overflow(*bin_op, eval_to_int(op1), eval_to_int(op2))
                 }
-                AssertKind::BoundsCheck { ref len, ref index } => {
+                AssertKind::BoundsCheck { len, index } => {
                     let len = eval_to_int(len);
                     let index = eval_to_int(index);
                     AssertKind::BoundsCheck { len, index }
@@ -545,7 +548,9 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         let val: Value<'_> = match *rvalue {
             ThreadLocalRef(_) => return None,
 
-            Use(ref operand) => self.eval_operand(operand)?.into(),
+            Use(ref operand) | WrapUnsafeBinder(ref operand, _) => {
+                self.eval_operand(operand)?.into()
+            }
 
             CopyForDeref(place) => self.eval_place(place)?.into(),
 
@@ -557,7 +562,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 let right = self.use_ecx(|this| this.ecx.read_immediate(&right))?;
 
                 let val = self.use_ecx(|this| this.ecx.binary_op(bin_op, &left, &right))?;
-                if matches!(val.layout.abi, Abi::ScalarPair(..)) {
+                if matches!(val.layout.backend_repr, BackendRepr::ScalarPair(..)) {
                     // FIXME `Value` should properly support pairs in `Immediate`... but currently
                     // it does not.
                     let (val, overflow) = val.to_pair(&self.ecx);
@@ -622,9 +627,10 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     NullOp::AlignOf => op_layout.align.abi.bytes(),
                     NullOp::OffsetOf(fields) => self
                         .tcx
-                        .offset_of_subfield(self.param_env, op_layout, fields.iter())
+                        .offset_of_subfield(self.typing_env, op_layout, fields.iter())
                         .bytes(),
                     NullOp::UbChecks => return None,
+                    NullOp::ContractChecks => return None,
                 };
                 ImmTy::from_scalar(Scalar::from_target_usize(val, self), layout).into()
             }
@@ -651,9 +657,9 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     let to = self.ecx.layout_of(to).ok()?;
                     // `offset` for immediates only supports scalar/scalar-pair ABIs,
                     // so bail out if the target is not one.
-                    match (value.layout.abi, to.abi) {
-                        (Abi::Scalar(..), Abi::Scalar(..)) => {}
-                        (Abi::ScalarPair(..), Abi::ScalarPair(..)) => {}
+                    match (value.layout.backend_repr, to.backend_repr) {
+                        (BackendRepr::Scalar(..), BackendRepr::Scalar(..)) => {}
+                        (BackendRepr::ScalarPair(..), BackendRepr::ScalarPair(..)) => {}
                         _ => return None,
                     }
 
@@ -776,10 +782,10 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
         self.super_terminator(terminator, location);
         match &terminator.kind {
-            TerminatorKind::Assert { expected, ref msg, ref cond, .. } => {
+            TerminatorKind::Assert { expected, msg, cond, .. } => {
                 self.check_assertion(*expected, msg, cond, location);
             }
-            TerminatorKind::SwitchInt { ref discr, ref targets } => {
+            TerminatorKind::SwitchInt { discr, targets } => {
                 if let Some(ref value) = self.eval_operand(discr)
                     && let Some(value_const) = self.use_ecx(|this| this.ecx.read_scalar(value))
                     && let Some(constant) = value_const.to_bits(value_const.size()).discard_err()
@@ -866,19 +872,19 @@ enum ConstPropMode {
 struct CanConstProp {
     can_const_prop: IndexVec<Local, ConstPropMode>,
     // False at the beginning. Once set, no more assignments are allowed to that local.
-    found_assignment: BitSet<Local>,
+    found_assignment: DenseBitSet<Local>,
 }
 
 impl CanConstProp {
     /// Returns true if `local` can be propagated
     fn check<'tcx>(
         tcx: TyCtxt<'tcx>,
-        param_env: ParamEnv<'tcx>,
+        typing_env: ty::TypingEnv<'tcx>,
         body: &Body<'tcx>,
     ) -> IndexVec<Local, ConstPropMode> {
         let mut cpv = CanConstProp {
             can_const_prop: IndexVec::from_elem(ConstPropMode::FullConstProp, &body.local_decls),
-            found_assignment: BitSet::new_empty(body.local_decls.len()),
+            found_assignment: DenseBitSet::new_empty(body.local_decls.len()),
         };
         for (local, val) in cpv.can_const_prop.iter_enumerated_mut() {
             let ty = body.local_decls[local].ty;
@@ -888,7 +894,7 @@ impl CanConstProp {
                 // variant of a union
                 *val = ConstPropMode::NoPropagation;
             } else {
-                match tcx.layout_of(param_env.and(ty)) {
+                match tcx.layout_of(typing_env.as_query_input(ty)) {
                     Ok(layout) if layout.size < Size::from_bytes(MAX_ALLOC_LIMIT) => {}
                     // Either the layout fails to compute, then we can't use this local anyway
                     // or the local is too large, then we don't want to.

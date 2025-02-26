@@ -1,9 +1,9 @@
 //! Suggests shortening `Foo { field: field }` to `Foo { field }` in both
 //! expressions and patterns.
 
+use ide_db::text_edit::TextEdit;
 use ide_db::{source_change::SourceChange, EditionedFileId, FileRange};
 use syntax::{ast, match_ast, AstNode, SyntaxNode};
-use text_edit::TextEdit;
 
 use crate::{fix, Diagnostic, DiagnosticCode};
 

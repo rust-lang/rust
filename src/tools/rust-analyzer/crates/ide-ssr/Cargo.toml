@@ -24,7 +24,6 @@ ide-db.workspace = true
 parser.workspace = true
 stdx.workspace = true
 syntax.workspace = true
-text-edit.workspace = true
 
 [dev-dependencies]
 expect-test = "1.4.0"

@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions: base d32 neon
 //@ assembly-output: emit-asm
 //@ compile-flags: --target armv7-unknown-linux-gnueabihf
@@ -8,31 +9,13 @@
 //@[neon] filecheck-flags: --check-prefix d32
 //@ needs-llvm-components: arm
 
-#![feature(no_core, lang_items, rustc_attrs, repr_simd, f16)]
+#![feature(no_core, repr_simd, f16)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register, non_camel_case_types)]
 
-#[rustc_builtin_macro]
-macro_rules! asm {
-    () => {};
-}
-#[rustc_builtin_macro]
-macro_rules! concat {
-    () => {};
-}
-#[rustc_builtin_macro]
-macro_rules! stringify {
-    () => {};
-}
-
-#[lang = "sized"]
-trait Sized {}
-#[lang = "copy"]
-trait Copy {}
-
-// Do we really need to use no_core for this?!?
-impl<T: Copy, const N: usize> Copy for [T; N] {}
+extern crate minicore;
+use minicore::*;
 
 type ptr = *mut u8;
 
@@ -61,14 +44,6 @@ pub struct f16x8([f16; 8]);
 #[repr(simd)]
 pub struct f32x4([f32; 4]);
 
-impl Copy for i8 {}
-impl Copy for i16 {}
-impl Copy for i32 {}
-impl Copy for f16 {}
-impl Copy for f32 {}
-impl Copy for i64 {}
-impl Copy for f64 {}
-impl Copy for ptr {}
 impl Copy for i8x8 {}
 impl Copy for i16x4 {}
 impl Copy for i32x2 {}

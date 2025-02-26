@@ -1,7 +1,6 @@
 //@ run-pass
 //! Tests the float intrinsics: min, max, abs, copysign
 
-#![feature(const_float_methods)]
 #![feature(f16, f128)]
 
 const F16_MIN: f16 = 1.0_f16.min(0.5_f16);

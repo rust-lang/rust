@@ -4,6 +4,7 @@ use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use std::panic;
+use std::path::PathBuf;
 use std::thread::panicking;
 
 use rustc_data_structures::fx::FxIndexMap;
@@ -11,8 +12,7 @@ use rustc_error_messages::{FluentValue, fluent_value_from_str_list_sep_by_and};
 use rustc_lint_defs::Applicability;
 use rustc_macros::{Decodable, Encodable};
 use rustc_span::source_map::Spanned;
-use rustc_span::symbol::Symbol;
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, Symbol};
 use tracing::debug;
 
 use crate::snippet::Style;
@@ -157,9 +157,9 @@ impl IntoDiagArg for DiagArgValue {
     }
 }
 
-impl Into<FluentValue<'static>> for DiagArgValue {
-    fn into(self) -> FluentValue<'static> {
-        match self {
+impl From<DiagArgValue> for FluentValue<'static> {
+    fn from(val: DiagArgValue) -> Self {
+        match val {
             DiagArgValue::Str(s) => From::from(s),
             DiagArgValue::Number(n) => From::from(n),
             DiagArgValue::StrListSepByAnd(l) => fluent_value_from_str_list_sep_by_and(l),
@@ -302,6 +302,7 @@ pub struct DiagInner {
 
     pub is_lint: Option<IsLint>,
 
+    pub long_ty_path: Option<PathBuf>,
     /// With `-Ztrack_diagnostics` enabled,
     /// we print where in rustc this error was emitted.
     pub(crate) emitted_at: DiagLocation,
@@ -325,6 +326,7 @@ impl DiagInner {
             args: Default::default(),
             sort_span: DUMMY_SP,
             is_lint: None,
+            long_ty_path: None,
             emitted_at: DiagLocation::caller(),
         }
     }
@@ -642,7 +644,14 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         found_label: &dyn fmt::Display,
         found: DiagStyledString,
     ) -> &mut Self {
-        self.note_expected_found_extra(expected_label, expected, found_label, found, &"", &"")
+        self.note_expected_found_extra(
+            expected_label,
+            expected,
+            found_label,
+            found,
+            DiagStyledString::normal(""),
+            DiagStyledString::normal(""),
+        )
     }
 
     #[rustc_lint_diagnostics]
@@ -652,8 +661,8 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         expected: DiagStyledString,
         found_label: &dyn fmt::Display,
         found: DiagStyledString,
-        expected_extra: &dyn fmt::Display,
-        found_extra: &dyn fmt::Display,
+        expected_extra: DiagStyledString,
+        found_extra: DiagStyledString,
     ) -> &mut Self {
         let expected_label = expected_label.to_string();
         let expected_label = if expected_label.is_empty() {
@@ -678,10 +687,13 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
             expected_label
         ))];
         msg.extend(expected.0);
-        msg.push(StringPart::normal(format!("`{expected_extra}\n")));
+        msg.push(StringPart::normal(format!("`")));
+        msg.extend(expected_extra.0);
+        msg.push(StringPart::normal(format!("\n")));
         msg.push(StringPart::normal(format!("{}{} `", " ".repeat(found_padding), found_label)));
         msg.extend(found.0);
-        msg.push(StringPart::normal(format!("`{found_extra}")));
+        msg.push(StringPart::normal(format!("`")));
+        msg.extend(found_extra.0);
 
         // For now, just attach these as notes.
         self.highlighted_note(msg);
@@ -881,7 +893,7 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
         )
     } }
 
-    /// Show a suggestion that has multiple parts to it, always as it's own subdiagnostic.
+    /// Show a suggestion that has multiple parts to it, always as its own subdiagnostic.
     /// In other words, multiple changes need to be applied as part of this suggestion.
     #[rustc_lint_diagnostics]
     pub fn multipart_suggestion_verbose(
@@ -1294,7 +1306,35 @@ impl<'a, G: EmissionGuarantee> Diag<'a, G> {
     /// `cancel`, etc. Afterwards, `drop` is the only code that will be run on
     /// `self`.
     fn take_diag(&mut self) -> DiagInner {
+        if let Some(path) = &self.long_ty_path {
+            self.note(format!(
+                "the full name for the type has been written to '{}'",
+                path.display()
+            ));
+            self.note("consider using `--verbose` to print the full type name to the console");
+        }
         Box::into_inner(self.diag.take().unwrap())
+    }
+
+    /// This method allows us to access the path of the file where "long types" are written to.
+    ///
+    /// When calling `Diag::emit`, as part of that we will check if a `long_ty_path` has been set,
+    /// and if it has been then we add a note mentioning the file where the "long types" were
+    /// written to.
+    ///
+    /// When calling `tcx.short_string()` after a `Diag` is constructed, the preferred way of doing
+    /// so is `tcx.short_string(ty, diag.long_ty_path())`. The diagnostic itself is the one that
+    /// keeps the existence of a "long type" anywhere in the diagnostic, so the note telling the
+    /// user where we wrote the file to is only printed once at most, *and* it makes it much harder
+    /// to forget to set it.
+    ///
+    /// If the diagnostic hasn't been created before a "short ty string" is created, then you should
+    /// ensure that this method is called to set it `*diag.long_ty_path() = path`.
+    ///
+    /// As a rule of thumb, if you see or add at least one `tcx.short_string()` call anywhere, in a
+    /// scope, `diag.long_ty_path()` should be called once somewhere close by.
+    pub fn long_ty_path(&mut self) -> &mut Option<PathBuf> {
+        &mut self.long_ty_path
     }
 
     /// Most `emit_producing_guarantee` functions use this as a starting point.

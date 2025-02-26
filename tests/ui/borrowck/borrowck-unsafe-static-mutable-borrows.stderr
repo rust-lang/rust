@@ -10,7 +10,7 @@ LL |         let sfoo: *mut Foo = &mut SFOO;
 help: use `&raw mut` instead to create a raw pointer
    |
 LL |         let sfoo: *mut Foo = &raw mut SFOO;
-   |                              ~~~~~~~~
+   |                               +++
 
 warning: 1 warning emitted
 

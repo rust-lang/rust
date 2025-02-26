@@ -97,7 +97,7 @@ pub(crate) fn convert_from_to_tryfrom(acc: &mut Assists, ctx: &AssistContext<'_>
             );
 
             for r in return_exprs {
-                let t = r.expr().unwrap_or_else(make::expr_unit);
+                let t = r.expr().unwrap_or_else(make::ext::expr_unit);
                 ted::replace(t.syntax(), wrap_ok(t.clone()).syntax().clone_for_update());
             }
 

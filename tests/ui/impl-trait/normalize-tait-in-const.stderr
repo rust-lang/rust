@@ -1,53 +1,30 @@
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/normalize-tait-in-const.rs:26:35
+  --> $DIR/normalize-tait-in-const.rs:27:35
    |
 LL | const fn with_positive<F: for<'a> ~const Fn(&'a Alias<'a>) + ~const Destruct>(fun: F) {
-   |                                   ^^^^^^
+   |                                   ^^^^^^ can't be applied to `Fn`
+   |
+note: `Fn` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
 
 error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/normalize-tait-in-const.rs:26:62
+  --> $DIR/normalize-tait-in-const.rs:27:35
    |
 LL | const fn with_positive<F: for<'a> ~const Fn(&'a Alias<'a>) + ~const Destruct>(fun: F) {
-   |                                                              ^^^^^^
-
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/normalize-tait-in-const.rs:26:35
+   |                                   ^^^^^^ can't be applied to `Fn`
    |
-LL | const fn with_positive<F: for<'a> ~const Fn(&'a Alias<'a>) + ~const Destruct>(fun: F) {
-   |                                   ^^^^^^
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/normalize-tait-in-const.rs:26:62
-   |
-LL | const fn with_positive<F: for<'a> ~const Fn(&'a Alias<'a>) + ~const Destruct>(fun: F) {
-   |                                                              ^^^^^^
-   |
+note: `Fn` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0015]: cannot call non-const closure in constant functions
-  --> $DIR/normalize-tait-in-const.rs:27:5
+  --> $DIR/normalize-tait-in-const.rs:28:5
    |
 LL |     fun(filter_positive());
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
-help: consider further restricting this bound
-   |
-LL | const fn with_positive<F: for<'a> ~const Fn(&'a Alias<'a>) + ~const Destruct + ~const Fn(&foo::Alias<'_>)>(fun: F) {
-   |                                                                              ++++++++++++++++++++++++++++
 
-error[E0493]: destructor of `F` cannot be evaluated at compile-time
-  --> $DIR/normalize-tait-in-const.rs:26:79
-   |
-LL | const fn with_positive<F: for<'a> ~const Fn(&'a Alias<'a>) + ~const Destruct>(fun: F) {
-   |                                                                               ^^^ the destructor for this type cannot be evaluated in constant functions
-LL |     fun(filter_positive());
-LL | }
-   | - value is dropped here
+error: aborting due to 3 previous errors
 
-error: aborting due to 6 previous errors
-
-Some errors have detailed explanations: E0015, E0493.
-For more information about an error, try `rustc --explain E0015`.
+For more information about this error, try `rustc --explain E0015`.

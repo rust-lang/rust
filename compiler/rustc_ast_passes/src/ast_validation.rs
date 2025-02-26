@@ -20,6 +20,7 @@ use std::mem;
 use std::ops::{Deref, DerefMut};
 
 use itertools::{Either, Itertools};
+use rustc_abi::ExternAbi;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor, walk_list};
 use rustc_ast::*;
@@ -34,9 +35,7 @@ use rustc_session::lint::builtin::{
     PATTERNS_IN_FNS_WITHOUT_BODY,
 };
 use rustc_session::lint::{BuiltinLintDiag, LintBuffer};
-use rustc_span::Span;
-use rustc_span::symbol::{Ident, kw, sym};
-use rustc_target::spec::abi;
+use rustc_span::{Ident, Span, kw, sym};
 use thin_vec::thin_vec;
 
 use crate::errors::{self, TildeConstReason};
@@ -342,7 +341,7 @@ impl<'a> AstValidator<'a> {
                     sym::forbid,
                     sym::warn,
                 ];
-                !arr.contains(&attr.name_or_empty()) && rustc_attr::is_builtin_attr(attr)
+                !arr.contains(&attr.name_or_empty()) && rustc_attr_parsing::is_builtin_attr(*attr)
             })
             .for_each(|attr| {
                 if attr.is_doc_comment() {
@@ -677,9 +676,8 @@ impl<'a> AstValidator<'a> {
                 Self::check_decl_no_pat(&bfty.decl, |span, _, _| {
                     self.dcx().emit_err(errors::PatternFnPointer { span });
                 });
-                if let Extern::Implicit(_) = bfty.ext {
-                    let sig_span = self.sess.source_map().next_point(ty.span.shrink_to_lo());
-                    self.maybe_lint_missing_abi(sig_span, ty.id);
+                if let Extern::Implicit(extern_span) = bfty.ext {
+                    self.maybe_lint_missing_abi(extern_span, ty.id);
                 }
             }
             TyKind::TraitObject(bounds, ..) => {
@@ -725,7 +723,7 @@ impl<'a> AstValidator<'a> {
                 MISSING_ABI,
                 id,
                 span,
-                BuiltinLintDiag::MissingAbi(span, abi::Abi::FALLBACK),
+                BuiltinLintDiag::MissingAbi(span, ExternAbi::FALLBACK),
             )
         }
     }
@@ -919,10 +917,12 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 walk_list!(self, visit_attribute, &item.attrs);
                 return; // Avoid visiting again.
             }
-            ItemKind::Fn(box Fn { defaultness, sig, generics, body }) => {
+            ItemKind::Fn(func @ box Fn { defaultness, generics: _, sig, contract: _, body }) => {
                 self.check_defaultness(item.span, *defaultness);
 
-                if body.is_none() {
+                let is_intrinsic =
+                    item.attrs.iter().any(|a| a.name_or_empty() == sym::rustc_intrinsic);
+                if body.is_none() && !is_intrinsic {
                     self.dcx().emit_err(errors::FnWithoutBody {
                         span: item.span,
                         replace_span: self.ending_semi_or_hi(item.span),
@@ -947,13 +947,12 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
                 self.visit_vis(&item.vis);
                 self.visit_ident(&item.ident);
-                let kind =
-                    FnKind::Fn(FnCtxt::Free, item.ident, sig, &item.vis, generics, body.as_deref());
+                let kind = FnKind::Fn(FnCtxt::Free, &item.ident, &item.vis, &*func);
                 self.visit_fn(kind, item.span, item.id);
                 walk_list!(self, visit_attribute, &item.attrs);
                 return; // Avoid visiting again.
             }
-            ItemKind::ForeignMod(ForeignMod { abi, safety, .. }) => {
+            ItemKind::ForeignMod(ForeignMod { extern_span, abi, safety, .. }) => {
                 self.with_in_extern_mod(*safety, |this| {
                     let old_item = mem::replace(&mut this.extern_mod, Some(item.span));
                     this.visibility_not_permitted(
@@ -977,7 +976,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     }
 
                     if abi.is_none() {
-                        this.maybe_lint_missing_abi(item.span, item.id);
+                        this.maybe_lint_missing_abi(*extern_span, item.id);
                     }
                     visit::walk_item(this, item);
                     this.extern_mod = old_item;
@@ -1031,7 +1030,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     self.dcx().emit_err(errors::UnsafeItem { span, kind: "module" });
                 }
                 // Ensure that `path` attributes on modules are recorded as used (cf. issue #35584).
-                if !matches!(mod_kind, ModKind::Loaded(_, Inline::Yes, _))
+                if !matches!(mod_kind, ModKind::Loaded(_, Inline::Yes, _, _))
                     && !attr::contains_name(&item.attrs, sym::path)
                 {
                     self.check_mod_file_item_asciionly(item.ident);
@@ -1202,14 +1201,15 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         validate_generic_param_order(self.dcx(), &generics.params, generics.span);
 
         for predicate in &generics.where_clause.predicates {
-            if let WherePredicate::EqPredicate(predicate) = predicate {
-                deny_equality_constraints(self, predicate, generics);
+            let span = predicate.span;
+            if let WherePredicateKind::EqPredicate(predicate) = &predicate.kind {
+                deny_equality_constraints(self, predicate, span, generics);
             }
         }
         walk_list!(self, visit_generic_param, &generics.params);
         for predicate in &generics.where_clause.predicates {
-            match predicate {
-                WherePredicate::BoundPredicate(bound_pred) => {
+            match &predicate.kind {
+                WherePredicateKind::BoundPredicate(bound_pred) => {
                     // This is slightly complicated. Our representation for poly-trait-refs contains a single
                     // binder and thus we only allow a single level of quantification. However,
                     // the syntax of Rust permits quantification in two places in where clauses,
@@ -1350,17 +1350,18 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         if let FnKind::Fn(
             _,
             _,
-            FnSig { span: sig_span, header: FnHeader { ext: Extern::Implicit(_), .. }, .. },
             _,
-            _,
-            _,
+            Fn {
+                sig: FnSig { header: FnHeader { ext: Extern::Implicit(extern_span), .. }, .. },
+                ..
+            },
         ) = fk
         {
-            self.maybe_lint_missing_abi(*sig_span, id);
+            self.maybe_lint_missing_abi(*extern_span, id);
         }
 
         // Functions without bodies cannot have patterns.
-        if let FnKind::Fn(ctxt, _, sig, _, _, None) = fk {
+        if let FnKind::Fn(ctxt, _, _, Fn { body: None, sig, .. }) = fk {
             Self::check_decl_no_pat(&sig.decl, |span, ident, mut_ident| {
                 if mut_ident && matches!(ctxt, FnCtxt::Assoc(_)) {
                     if let Some(ident) = ident {
@@ -1394,7 +1395,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         .is_some();
 
         let disallowed = (!tilde_const_allowed).then(|| match fk {
-            FnKind::Fn(_, ident, _, _, _, _) => TildeConstReason::Function { ident: ident.span },
+            FnKind::Fn(_, ident, _, _) => TildeConstReason::Function { ident: ident.span },
             FnKind::Closure(..) => TildeConstReason::Closure,
         });
         self.with_tilde_const(disallowed, |this| visit::walk_fn(this, fk));
@@ -1470,21 +1471,14 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             self.outer_trait_or_trait_impl.as_ref().and_then(TraitOrTraitImpl::constness).is_some();
 
         match &item.kind {
-            AssocItemKind::Fn(box Fn { sig, generics, body, .. })
+            AssocItemKind::Fn(func)
                 if parent_is_const
                     || ctxt == AssocCtxt::Trait
-                    || matches!(sig.header.constness, Const::Yes(_)) =>
+                    || matches!(func.sig.header.constness, Const::Yes(_)) =>
             {
                 self.visit_vis(&item.vis);
                 self.visit_ident(&item.ident);
-                let kind = FnKind::Fn(
-                    FnCtxt::Assoc(ctxt),
-                    item.ident,
-                    sig,
-                    &item.vis,
-                    generics,
-                    body.as_deref(),
-                );
+                let kind = FnKind::Fn(FnCtxt::Assoc(ctxt), &item.ident, &item.vis, &*func);
                 walk_list!(self, visit_attribute, &item.attrs);
                 self.visit_fn(kind, item.span, item.id);
             }
@@ -1512,9 +1506,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 fn deny_equality_constraints(
     this: &AstValidator<'_>,
     predicate: &WhereEqPredicate,
+    predicate_span: Span,
     generics: &Generics,
 ) {
-    let mut err = errors::EqualityInWhere { span: predicate.span, assoc: None, assoc2: None };
+    let mut err = errors::EqualityInWhere { span: predicate_span, assoc: None, assoc2: None };
 
     // Given `<A as Foo>::Bar = RhsTy`, suggest `A: Foo<Bar = RhsTy>`.
     if let TyKind::Path(Some(qself), full_path) = &predicate.lhs_ty.kind
@@ -1558,7 +1553,7 @@ fn deny_equality_constraints(
                     }
                 }
                 err.assoc = Some(errors::AssociatedSuggestion {
-                    span: predicate.span,
+                    span: predicate_span,
                     ident: *ident,
                     param: param.ident,
                     path: pprust::path_to_string(&assoc_path),
@@ -1588,23 +1583,23 @@ fn deny_equality_constraints(
                     // We're removing th eonly where bound left, remove the whole thing.
                     generics.where_clause.span
                 } else {
-                    let mut span = predicate.span;
+                    let mut span = predicate_span;
                     let mut prev: Option<Span> = None;
                     let mut preds = generics.where_clause.predicates.iter().peekable();
                     // Find the predicate that shouldn't have been in the where bound list.
                     while let Some(pred) = preds.next() {
-                        if let WherePredicate::EqPredicate(pred) = pred
-                            && pred.span == predicate.span
+                        if let WherePredicateKind::EqPredicate(_) = pred.kind
+                            && pred.span == predicate_span
                         {
                             if let Some(next) = preds.peek() {
                                 // This is the first predicate, remove the trailing comma as well.
-                                span = span.with_hi(next.span().lo());
+                                span = span.with_hi(next.span.lo());
                             } else if let Some(prev) = prev {
                                 // Remove the previous comma as well.
                                 span = span.with_lo(prev.hi());
                             }
                         }
-                        prev = Some(pred.span());
+                        prev = Some(pred.span);
                     }
                     span
                 };
@@ -1621,8 +1616,8 @@ fn deny_equality_constraints(
     if let TyKind::Path(None, full_path) = &predicate.lhs_ty.kind {
         // Given `A: Foo, Foo::Bar = RhsTy`, suggest `A: Foo<Bar = RhsTy>`.
         for bounds in generics.params.iter().map(|p| &p.bounds).chain(
-            generics.where_clause.predicates.iter().filter_map(|pred| match pred {
-                WherePredicate::BoundPredicate(p) => Some(&p.bounds),
+            generics.where_clause.predicates.iter().filter_map(|pred| match &pred.kind {
+                WherePredicateKind::BoundPredicate(p) => Some(&p.bounds),
                 _ => None,
             }),
         ) {
@@ -1645,8 +1640,8 @@ fn deny_equality_constraints(
         // Given `A: Foo, A::Bar = RhsTy`, suggest `A: Foo<Bar = RhsTy>`.
         if let [potential_param, potential_assoc] = &full_path.segments[..] {
             for (ident, bounds) in generics.params.iter().map(|p| (p.ident, &p.bounds)).chain(
-                generics.where_clause.predicates.iter().filter_map(|pred| match pred {
-                    WherePredicate::BoundPredicate(p)
+                generics.where_clause.predicates.iter().filter_map(|pred| match &pred.kind {
+                    WherePredicateKind::BoundPredicate(p)
                         if let ast::TyKind::Path(None, path) = &p.bounded_ty.kind
                             && let [segment] = &path.segments[..] =>
                     {

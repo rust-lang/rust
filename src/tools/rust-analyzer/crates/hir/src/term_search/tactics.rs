@@ -15,6 +15,7 @@ use hir_ty::mir::BorrowKind;
 use hir_ty::TyBuilder;
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
+use span::Edition;
 
 use crate::{
     Adt, AssocItem, GenericDef, GenericParam, HasAttrs, HasVisibility, Impl, ModuleDef, ScopeDef,
@@ -365,7 +366,7 @@ pub(super) fn free_function<'a, DB: HirDatabase>(
                         let ret_ty = it.ret_type_with_args(db, generics.iter().cloned());
                         // Filter out private and unsafe functions
                         if !it.is_visible_from(db, module)
-                            || it.is_unsafe_to_call(db)
+                            || it.is_unsafe_to_call(db, None, Edition::CURRENT_FIXME)
                             || it.is_unstable(db)
                             || ctx.config.enable_borrowcheck && ret_ty.contains_reference(db)
                             || ret_ty.is_raw_ptr()
@@ -470,7 +471,10 @@ pub(super) fn impl_method<'a, DB: HirDatabase>(
             }
 
             // Filter out private and unsafe functions
-            if !it.is_visible_from(db, module) || it.is_unsafe_to_call(db) || it.is_unstable(db) {
+            if !it.is_visible_from(db, module)
+                || it.is_unsafe_to_call(db, None, Edition::CURRENT_FIXME)
+                || it.is_unstable(db)
+            {
                 return None;
             }
 
@@ -658,7 +662,10 @@ pub(super) fn impl_static_method<'a, DB: HirDatabase>(
             }
 
             // Filter out private and unsafe functions
-            if !it.is_visible_from(db, module) || it.is_unsafe_to_call(db) || it.is_unstable(db) {
+            if !it.is_visible_from(db, module)
+                || it.is_unsafe_to_call(db, None, Edition::CURRENT_FIXME)
+                || it.is_unstable(db)
+            {
                 return None;
             }
 

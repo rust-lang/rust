@@ -1,10 +1,11 @@
 use hir::db::ExpandDatabase;
-use hir::{InFile, MacroFileIdExt, Semantics};
+use hir::{ExpandResult, InFile, MacroFileIdExt, Semantics};
 use ide_db::base_db::CrateId;
 use ide_db::{
     helpers::pick_best_token, syntax_helpers::prettify_macro_expansion, FileId, RootDatabase,
 };
 use span::{Edition, SpanMap, SyntaxContextId, TextRange, TextSize};
+use stdx::format_to;
 use syntax::{ast, ted, AstNode, NodeOrToken, SyntaxKind, SyntaxNode, T};
 
 use crate::FilePosition;
@@ -18,13 +19,11 @@ pub struct ExpandedMacro {
 //
 // Shows the full macro expansion of the macro at the current caret position.
 //
-// |===
-// | Editor  | Action Name
+// | Editor  | Action Name |
+// |---------|-------------|
+// | VS Code | **rust-analyzer: Expand macro recursively at caret** |
 //
-// | VS Code | **rust-analyzer: Expand macro recursively at caret**
-// |===
-//
-// image::https://user-images.githubusercontent.com/48062697/113020648-b3973180-917a-11eb-84a9-ecb921293dc5.gif[]
+// ![Expand Macro Recursively](https://user-images.githubusercontent.com/48062697/113020648-b3973180-917a-11eb-84a9-ecb921293dc5.gif)
 pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<ExpandedMacro> {
     let sema = Semantics::new(db);
     let file = sema.parse_guess_edition(position.file_id);
@@ -63,10 +62,10 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
             .take_while(|it| it != &token)
             .filter(|it| it.kind() == T![,])
             .count();
-        let expansion = expansions.get(idx)?.clone();
+        let ExpandResult { err, value: expansion } = expansions.get(idx)?.clone();
         let expansion_file_id = sema.hir_file_for(&expansion).macro_file()?;
         let expansion_span_map = db.expansion_span_map(expansion_file_id);
-        let expansion = format(
+        let mut expansion = format(
             db,
             SyntaxKind::MACRO_ITEMS,
             position.file_id,
@@ -74,6 +73,12 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
             &expansion_span_map,
             krate,
         );
+        if let Some(err) = err {
+            expansion.insert_str(
+                0,
+                &format!("Expansion had errors: {}\n\n", err.render_to_string(sema.db)),
+            );
+        }
         Some(ExpandedMacro { name, expansion })
     });
 
@@ -83,6 +88,7 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
 
     let mut anc = tok.parent_ancestors();
     let mut span_map = SpanMap::empty();
+    let mut error = String::new();
     let (name, expanded, kind) = loop {
         let node = anc.next()?;
 
@@ -97,7 +103,7 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
                                 .unwrap_or(Edition::CURRENT),
                         )
                         .to_string(),
-                    expand_macro_recur(&sema, &item, &mut span_map, TextSize::new(0))?,
+                    expand_macro_recur(&sema, &item, &mut error, &mut span_map, TextSize::new(0))?,
                     SyntaxKind::MACRO_ITEMS,
                 );
             }
@@ -112,6 +118,7 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
                 expand_macro_recur(
                     &sema,
                     &ast::Item::MacroCall(mac),
+                    &mut error,
                     &mut span_map,
                     TextSize::new(0),
                 )?,
@@ -123,24 +130,31 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
     // FIXME:
     // macro expansion may lose all white space information
     // But we hope someday we can use ra_fmt for that
-    let expansion = format(db, kind, position.file_id, expanded, &span_map, krate);
+    let mut expansion = format(db, kind, position.file_id, expanded, &span_map, krate);
 
+    if !error.is_empty() {
+        expansion.insert_str(0, &format!("Expansion had errors:{error}\n\n"));
+    }
     Some(ExpandedMacro { name, expansion })
 }
 
 fn expand_macro_recur(
     sema: &Semantics<'_, RootDatabase>,
     macro_call: &ast::Item,
+    error: &mut String,
     result_span_map: &mut SpanMap<SyntaxContextId>,
     offset_in_original_node: TextSize,
 ) -> Option<SyntaxNode> {
-    let expanded = match macro_call {
-        item @ ast::Item::MacroCall(macro_call) => sema
-            .expand_attr_macro(item)
-            .or_else(|| sema.expand_allowed_builtins(macro_call))?
-            .clone_for_update(),
-        item => sema.expand_attr_macro(item)?.clone_for_update(),
+    let ExpandResult { value: expanded, err } = match macro_call {
+        item @ ast::Item::MacroCall(macro_call) => {
+            sema.expand_attr_macro(item).or_else(|| sema.expand_allowed_builtins(macro_call))?
+        }
+        item => sema.expand_attr_macro(item)?,
     };
+    let expanded = expanded.clone_for_update();
+    if let Some(err) = err {
+        format_to!(error, "\n{}", err.render_to_string(sema.db));
+    }
     let file_id =
         sema.hir_file_for(&expanded).macro_file().expect("expansion must produce a macro file");
     let expansion_span_map = sema.db.expansion_span_map(file_id);
@@ -149,12 +163,13 @@ fn expand_macro_recur(
         expanded.text_range().len(),
         &expansion_span_map,
     );
-    Some(expand(sema, expanded, result_span_map, u32::from(offset_in_original_node) as i32))
+    Some(expand(sema, expanded, error, result_span_map, u32::from(offset_in_original_node) as i32))
 }
 
 fn expand(
     sema: &Semantics<'_, RootDatabase>,
     expanded: SyntaxNode,
+    error: &mut String,
     result_span_map: &mut SpanMap<SyntaxContextId>,
     mut offset_in_original_node: i32,
 ) -> SyntaxNode {
@@ -165,6 +180,7 @@ fn expand(
         if let Some(new_node) = expand_macro_recur(
             sema,
             &child,
+            error,
             result_span_map,
             TextSize::new(
                 (offset_in_original_node + (u32::from(child.syntax().text_range().start()) as i32))
@@ -235,6 +251,7 @@ fn _format(
     let &crate_id = db.relevant_crates(file_id).iter().next()?;
     let edition = db.crate_graph()[crate_id].edition;
 
+    #[allow(clippy::disallowed_methods)]
     let mut cmd = std::process::Command::new(toolchain::Tool::Rustfmt.path());
     cmd.arg("--edition");
     cmd.arg(edition.to_string());
@@ -277,7 +294,7 @@ mod tests {
     use crate::fixture;
 
     #[track_caller]
-    fn check(ra_fixture: &str, expect: Expect) {
+    fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
         let (analysis, pos) = fixture::position(ra_fixture);
         let expansion = analysis.expand_macro(pos).unwrap().unwrap();
         let actual = format!("{}\n{}", expansion.name, expansion.expansion);
@@ -495,6 +512,9 @@ fn main() {
 "#,
             expect![[r#"
                 foo!
+                Expansion had errors:
+                expected ident: `BAD`
+
             "#]],
         );
     }
@@ -552,7 +572,7 @@ struct Foo {}
 "#,
             expect![[r#"
                 Clone
-                impl < >core::clone::Clone for Foo< >where {
+                impl <>core::clone::Clone for Foo< >where {
                     fn clone(&self) -> Self {
                         match self {
                             Foo{}
@@ -578,7 +598,7 @@ struct Foo {}
 "#,
             expect![[r#"
                 Copy
-                impl < >core::marker::Copy for Foo< >where{}"#]],
+                impl <>core::marker::Copy for Foo< >where{}"#]],
         );
     }
 
@@ -593,7 +613,7 @@ struct Foo {}
 "#,
             expect![[r#"
                 Copy
-                impl < >core::marker::Copy for Foo< >where{}"#]],
+                impl <>core::marker::Copy for Foo< >where{}"#]],
         );
         check(
             r#"
@@ -604,7 +624,7 @@ struct Foo {}
 "#,
             expect![[r#"
                 Clone
-                impl < >core::clone::Clone for Foo< >where {
+                impl <>core::clone::Clone for Foo< >where {
                     fn clone(&self) -> Self {
                         match self {
                             Foo{}

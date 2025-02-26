@@ -9,8 +9,9 @@ LL |     (d, p)
    |
 help: consider adding an explicit lifetime bound
    |
-LL | fn foo<'a>(d: impl Sized + 'a, p: &'a mut ()) -> impl Sized + 'a {
-   |       ++++               ++++      ++                         ~~
+LL - fn foo(d: impl Sized, p: &mut ()) -> impl Sized + '_ {
+LL + fn foo<'a>(d: impl Sized + 'a, p: &'a mut ()) -> impl Sized + 'a {
+   |
 
 error[E0309]: the parameter type `impl Sized` may not live long enough
   --> $DIR/issue-105544.rs:15:5
@@ -37,8 +38,9 @@ LL |     (d, p)
    |
 help: consider adding an explicit lifetime bound
    |
-LL | fn foo2<'b, 'a>(d: impl Sized + 'a + 'b, p: &'b mut ()) -> impl Sized + 'b {
-   |         +++                        ++++      ++                         ~~
+LL - fn foo2<'a>(d: impl Sized + 'a, p: &mut ()) -> impl Sized + '_ {
+LL + fn foo2<'b, 'a>(d: impl Sized + 'a + 'b, p: &'b mut ()) -> impl Sized + 'b {
+   |
 
 error[E0311]: the parameter type `T` may not live long enough
   --> $DIR/issue-105544.rs:28:5
@@ -51,8 +53,9 @@ LL |     (d, p)
    |
 help: consider adding an explicit lifetime bound
    |
-LL | fn bar<'a, T : Sized + 'a>(d: T, p: &'a  mut ()) -> impl Sized + 'a {
-   |        +++           ++++            ++                          ~~
+LL - fn bar<T : Sized>(d: T, p: & mut ()) -> impl Sized + '_ {
+LL + fn bar<'a, T : Sized + 'a>(d: T, p: &'a  mut ()) -> impl Sized + 'a {
+   |
 
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/issue-105544.rs:36:5
@@ -79,8 +82,9 @@ LL |     (d, p)
    |
 help: consider adding an explicit lifetime bound
    |
-LL | fn bar2<'b, 'a, T : Sized + 'a + 'b>(d: T, p: &'b mut ()) -> impl Sized + 'b {
-   |         +++                    ++++            ++                         ~~
+LL - fn bar2<'a, T : Sized + 'a>(d: T, p: &mut ()) -> impl Sized + '_ {
+LL + fn bar2<'b, 'a, T : Sized + 'a + 'b>(d: T, p: &'b mut ()) -> impl Sized + 'b {
+   |
 
 error: aborting due to 6 previous errors
 

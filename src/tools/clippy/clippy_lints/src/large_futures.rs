@@ -2,11 +2,11 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::implements_trait;
+use rustc_abi::Size;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, LangItem, MatchSource, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
-use rustc_target::abi::Size;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -63,7 +63,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeFuture {
             && let ty = cx.typeck_results().expr_ty(arg)
             && let Some(future_trait_def_id) = cx.tcx.lang_items().future_trait()
             && implements_trait(cx, ty, future_trait_def_id, &[])
-            && let Ok(layout) = cx.tcx.layout_of(cx.param_env.and(ty))
+            && let Ok(layout) = cx.tcx.layout_of(cx.typing_env().as_query_input(ty))
             && let size = layout.layout.size()
             && size >= Size::from_bytes(self.future_size_threshold)
         {

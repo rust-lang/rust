@@ -148,8 +148,6 @@ trait_selection_dtcs_has_req_note = the used `impl` has a `'static` requirement
 trait_selection_dtcs_introduces_requirement = calling this method introduces the `impl`'s `'static` requirement
 trait_selection_dtcs_suggestion = consider relaxing the implicit `'static` requirement
 
-trait_selection_dump_vtable_entries = vtable entries for `{$trait_ref}`: {$entries}
-
 trait_selection_empty_on_clause_in_rustc_on_unimplemented = empty `on`-clause in `#[rustc_on_unimplemented]`
     .label = empty on-clause here
 
@@ -164,6 +162,8 @@ trait_selection_explicit_lifetime_required_with_param_type = explicit lifetime r
     .label = lifetime `{$named}` required
 
 trait_selection_fn_consider_casting = consider casting the fn item to a fn pointer: `{$casting}`
+
+trait_selection_fn_consider_casting_both = consider casting both fn items to fn pointers using `as {$sig}`
 
 trait_selection_fn_uniq_types = different fn items have unique types, even if their signatures are the same
 trait_selection_fps_cast = consider casting to a fn pointer
@@ -225,14 +225,6 @@ trait_selection_mismatched_static_lifetime = incompatible lifetime on type
 trait_selection_missing_options_for_on_unimplemented_attr = missing options for `on_unimplemented` attribute
     .help = at least one of the `message`, `note` and `label` options are expected
 
-trait_selection_more_targeted = {$has_param_name ->
-    [true] `{$param_name}`
-    *[false] `fn` parameter
-} has {$has_lifetime ->
-    [true] lifetime `{$lifetime}`
-    *[false] an anonymous lifetime `'_`
-} but calling `{$ident}` introduces an implicit `'static` lifetime requirement
-
 trait_selection_msl_introduces_static = introduces a `'static` lifetime requirement
 trait_selection_msl_unmet_req = because this has an unmet lifetime requirement
 
@@ -251,7 +243,9 @@ trait_selection_no_value_in_rustc_on_unimplemented = this attribute must have a 
 
 trait_selection_nothing = {""}
 
-trait_selection_oc_cant_coerce = cannot coerce intrinsics to function pointers
+trait_selection_oc_cant_coerce_force_inline =
+    cannot coerce functions which must be inlined to function pointers
+trait_selection_oc_cant_coerce_intrinsic = cannot coerce intrinsics to function pointers
 trait_selection_oc_closure_selfref = closure/coroutine type that references itself
 trait_selection_oc_const_compat = const not compatible with trait
 trait_selection_oc_fn_lang_correct_type = {$lang_item_name ->
@@ -259,7 +253,6 @@ trait_selection_oc_fn_lang_correct_type = {$lang_item_name ->
         *[lang_item_name] lang item `{$lang_item_name}`
     } function has wrong type
 trait_selection_oc_fn_main_correct_type = `main` function has wrong type
-trait_selection_oc_fn_start_correct_type = `#[start]` function has wrong type
 trait_selection_oc_generic = mismatched types
 
 trait_selection_oc_if_else_different = `if` and `else` have incompatible types
@@ -281,6 +274,8 @@ trait_selection_precise_capturing_existing = add `{$new_lifetime}` to the `use<.
 trait_selection_precise_capturing_new = add a `use<...>` bound to explicitly capture `{$new_lifetime}`
 
 trait_selection_precise_capturing_new_but_apit = add a `use<...>` bound to explicitly capture `{$new_lifetime}` after turning all argument-position `impl Trait` into type parameters, noting that this possibly affects the API of this crate
+
+trait_selection_precise_capturing_overcaptures = use the precise capturing `use<...>` syntax to make the captures explicit
 
 trait_selection_prlf_defined_with_sub = the lifetime `{$sub_symbol}` defined here...
 trait_selection_prlf_defined_without_sub = the lifetime defined here...
@@ -392,7 +387,6 @@ trait_selection_subtype = ...so that the {$requirement ->
     [if_else_different] `if` and `else` have incompatible types
     [no_else] `if` missing an `else` returns `()`
     [fn_main_correct_type] `main` function has the correct type
-    [fn_start_correct_type] `#[start]` function has the correct type
     [fn_lang_correct_type] lang item function has the correct type
     [intrinsic_correct_type] intrinsic has the correct type
     [method_correct_type] method receiver has the correct type
@@ -406,7 +400,6 @@ trait_selection_subtype_2 = ...so that {$requirement ->
     [if_else_different] `if` and `else` have incompatible types
     [no_else] `if` missing an `else` returns `()`
     [fn_main_correct_type] `main` function has the correct type
-    [fn_start_correct_type] `#[start]` function has the correct type
     [fn_lang_correct_type] lang item function has the correct type
     [intrinsic_correct_type] intrinsic has the correct type
     [method_correct_type] method receiver has the correct type
@@ -455,7 +448,9 @@ trait_selection_unable_to_construct_constant_value = unable to construct a const
 trait_selection_unknown_format_parameter_for_on_unimplemented_attr = there is no parameter `{$argument_name}` on trait `{$trait_name}`
     .help = expect either a generic argument name or {"`{Self}`"} as format argument
 
-trait_selection_warn_removing_apit_params = you could use a `use<...>` bound to explicitly capture `{$new_lifetime}`, but argument-position `impl Trait`s are not nameable
+trait_selection_warn_removing_apit_params_for_overcapture = you could use a `use<...>` bound to explicitly specify captures, but argument-position `impl Trait`s are not nameable
+
+trait_selection_warn_removing_apit_params_for_undercapture = you could use a `use<...>` bound to explicitly capture `{$new_lifetime}`, but argument-position `impl Trait`s are not nameable
 
 trait_selection_where_copy_predicates = copy the `where` clause predicates from the trait
 

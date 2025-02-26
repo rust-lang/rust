@@ -1,8 +1,9 @@
-use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::visit::NonUseContext::VarDebugInfo;
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
+
+use crate::patch::MirPatch;
 
 pub(super) struct Derefer;
 
@@ -80,5 +81,9 @@ pub(super) fn deref_finder<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 impl<'tcx> crate::MirPass<'tcx> for Derefer {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         deref_finder(tcx, body);
+    }
+
+    fn is_required(&self) -> bool {
+        true
     }
 }

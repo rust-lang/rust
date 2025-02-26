@@ -6,8 +6,9 @@ LL |     println!('hello world');
    |
 help: if you meant to write a string literal, use double quotes
    |
-LL |     println!("hello world");
-   |              ~           ~
+LL -     println!('hello world');
+LL +     println!("hello world");
+   |
 
 error: aborting due to 1 previous error
 

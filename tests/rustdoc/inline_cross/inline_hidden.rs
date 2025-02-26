@@ -11,14 +11,14 @@ extern crate rustdoc_hidden;
 pub use rustdoc_hidden::Foo;
 
 // Even if the foreign item has `doc(hidden)`, we should be able to inline it.
-//@ has - '//*[@class="item-name"]/a[@class="struct"]' 'Inlined'
+//@ has - '//dt/a[@class="struct"]' 'Inlined'
 #[doc(inline)]
 pub use rustdoc_hidden::Foo as Inlined;
 
 // Even with this import, we should not see `Foo`.
-//@ count - '//*[@class="item-name"]' 4
-//@ has - '//*[@class="item-name"]/a[@class="struct"]' 'Bar'
-//@ has - '//*[@class="item-name"]/a[@class="fn"]' 'foo'
+//@ count - '//dt' 4
+//@ has - '//dt/a[@class="struct"]' 'Bar'
+//@ has - '//dt/a[@class="fn"]' 'foo'
 pub use rustdoc_hidden::*;
 
 //@ has inline_hidden/fn.foo.html

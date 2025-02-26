@@ -1,4 +1,4 @@
-//@ compile-flags: -O -C no-prepopulate-passes
+//@ compile-flags: -Copt-level=3 -C no-prepopulate-passes
 //@ ignore-riscv64 riscv64 has an i128 type used with test_Vector
 //@ ignore-s390x s390x with default march passes vector types per reference
 //@ ignore-loongarch64 see codegen/loongarch-abi for loongarch function call tests

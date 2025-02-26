@@ -15,7 +15,6 @@
 #![feature(box_into_inner)]
 #![feature(box_patterns)]
 #![feature(error_reporter)]
-#![feature(extract_if)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(negative_impls)]
@@ -35,6 +34,7 @@ use std::backtrace::{Backtrace, BacktraceStatus};
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::error::Report;
+use std::ffi::OsStr;
 use std::hash::Hash;
 use std::io::Write;
 use std::num::NonZero;
@@ -55,27 +55,29 @@ pub use diagnostic_impls::{
 };
 pub use emitter::ColorConfig;
 use emitter::{DynEmitter, Emitter, is_case_difference, is_different};
-use registry::Registry;
 use rustc_data_structures::AtomicRef;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
-use rustc_data_structures::stable_hasher::{Hash128, StableHasher};
-use rustc_data_structures::sync::Lock;
+use rustc_data_structures::stable_hasher::StableHasher;
+use rustc_data_structures::sync::{DynSend, Lock};
 pub use rustc_error_messages::{
     DiagMessage, FluentBundle, LanguageIdentifier, LazyFallbackBundle, MultiSpan, SpanLabel,
     SubdiagMessage, fallback_fluent_bundle, fluent_bundle,
 };
+use rustc_hashes::Hash128;
 use rustc_lint_defs::LintExpectationId;
-pub use rustc_lint_defs::{Applicability, pluralize};
+pub use rustc_lint_defs::{Applicability, listify, pluralize};
 use rustc_macros::{Decodable, Encodable};
 pub use rustc_span::ErrorGuaranteed;
 pub use rustc_span::fatal_error::{FatalError, FatalErrorMarker};
 use rustc_span::source_map::SourceMap;
-use rustc_span::{DUMMY_SP, Loc, Span};
+use rustc_span::{BytePos, DUMMY_SP, Loc, Span};
 pub use snippet::Style;
 // Used by external projects such as `rust-gpu`.
 // See https://github.com/rust-lang/rust/pull/115393.
 pub use termcolor::{Color, ColorSpec, WriteColor};
 use tracing::debug;
+
+use crate::registry::Registry;
 
 pub mod annotate_snippet_emitter_writer;
 pub mod codes;
@@ -93,8 +95,7 @@ mod styled_buffer;
 mod tests;
 pub mod translation;
 
-pub type PErr<'a> = Diag<'a>;
-pub type PResult<'a, T> = Result<T, PErr<'a>>;
+pub type PResult<'a, T> = Result<T, Diag<'a>>;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
@@ -229,9 +230,62 @@ impl SubstitutionPart {
         !self.snippet.is_empty() && self.replaces_meaningful_content(sm)
     }
 
+    /// Whether this is a replacement that overwrites source with a snippet
+    /// in a way that isn't a superset of the original string. For example,
+    /// replacing "abc" with "abcde" is not destructive, but replacing it
+    /// it with "abx" is, since the "c" character is lost.
+    pub fn is_destructive_replacement(&self, sm: &SourceMap) -> bool {
+        self.is_replacement(sm)
+            && !sm
+                .span_to_snippet(self.span)
+                .is_ok_and(|snippet| as_substr(snippet.trim(), self.snippet.trim()).is_some())
+    }
+
     fn replaces_meaningful_content(&self, sm: &SourceMap) -> bool {
         sm.span_to_snippet(self.span)
             .map_or(!self.span.is_empty(), |snippet| !snippet.trim().is_empty())
+    }
+
+    /// Try to turn a replacement into an addition when the span that is being
+    /// overwritten matches either the prefix or suffix of the replacement.
+    fn trim_trivial_replacements(&mut self, sm: &SourceMap) {
+        if self.snippet.is_empty() {
+            return;
+        }
+        let Ok(snippet) = sm.span_to_snippet(self.span) else {
+            return;
+        };
+
+        if let Some((prefix, substr, suffix)) = as_substr(&snippet, &self.snippet) {
+            self.span = Span::new(
+                self.span.lo() + BytePos(prefix as u32),
+                self.span.hi() - BytePos(suffix as u32),
+                self.span.ctxt(),
+                self.span.parent(),
+            );
+            self.snippet = substr.to_string();
+        }
+    }
+}
+
+/// Given an original string like `AACC`, and a suggestion like `AABBCC`, try to detect
+/// the case where a substring of the suggestion is "sandwiched" in the original, like
+/// `BB` is. Return the length of the prefix, the "trimmed" suggestion, and the length
+/// of the suffix.
+fn as_substr<'a>(original: &'a str, suggestion: &'a str) -> Option<(usize, &'a str, usize)> {
+    let common_prefix = original
+        .chars()
+        .zip(suggestion.chars())
+        .take_while(|(c1, c2)| c1 == c2)
+        .map(|(c, _)| c.len_utf8())
+        .sum();
+    let original = &original[common_prefix..];
+    let suggestion = &suggestion[common_prefix..];
+    if suggestion.ends_with(original) {
+        let common_suffix = original.len();
+        Some((common_prefix, &suggestion[..suggestion.len() - original.len()], common_suffix))
+    } else {
+        None
     }
 }
 
@@ -348,7 +402,12 @@ impl CodeSuggestion {
                 // or deleted code in order to point at the correct column *after* substitution.
                 let mut acc = 0;
                 let mut only_capitalization = false;
-                for part in &substitution.parts {
+                for part in &mut substitution.parts {
+                    // If this is a replacement of, e.g. `"a"` into `"ab"`, adjust the
+                    // suggestion and snippet to look as if we just suggested to add
+                    // `"b"`, which is typically much easier for the user to understand.
+                    part.trim_trivial_replacements(sm);
+
                     only_capitalization |= is_case_difference(sm, &part.snippet, part.span);
                     let cur_lo = sm.lookup_char_pos(part.span.lo());
                     if prev_hi.line == cur_lo.line {
@@ -483,6 +542,8 @@ impl<'a> std::ops::Deref for DiagCtxtHandle<'a> {
 struct DiagCtxtInner {
     flags: DiagCtxtFlags,
 
+    registry: Registry,
+
     /// The error guarantees from all emitted errors. The length gives the error count.
     err_guars: Vec<ErrorGuaranteed>,
     /// The error guarantee from all emitted lint errors. The length gives the
@@ -564,15 +625,17 @@ pub enum StashKey {
     /// FRU syntax
     MaybeFruTypo,
     CallAssocMethod,
-    TraitMissingMethod,
     AssociatedTypeSuggestion,
-    OpaqueHiddenTypeMismatch,
     MaybeForgetReturn,
     /// Query cycle detected, stashing in favor of a better error.
     Cycle,
     UndeterminedMacroResolution,
     /// Used by `Parser::maybe_recover_trailing_expr`
     ExprInPat,
+    /// If in the parser we detect a field expr with turbofish generic params it's possible that
+    /// it's a method call without parens. If later on in `hir_typeck` we find out that this is
+    /// the case we suppress this message and we give a better suggestion.
+    GenericInFieldExpr,
 }
 
 fn default_track_diagnostic<R>(diag: DiagInner, f: &mut dyn FnMut(DiagInner) -> R) -> R {
@@ -619,16 +682,27 @@ impl Drop for DiagCtxtInner {
         // Important: it is sound to produce an `ErrorGuaranteed` when emitting
         // delayed bugs because they are guaranteed to be emitted here if
         // necessary.
-        if self.err_guars.is_empty() {
-            self.flush_delayed()
-        }
+        self.flush_delayed();
 
+        // Sanity check: did we use some of the expensive `trimmed_def_paths` functions
+        // unexpectedly, that is, without producing diagnostics? If so, for debugging purposes, we
+        // suggest where this happened and how to avoid it.
         if !self.has_printed && !self.suppressed_expected_diag && !std::thread::panicking() {
             if let Some(backtrace) = &self.must_produce_diag {
+                let suggestion = match backtrace.status() {
+                    BacktraceStatus::Disabled => String::from(
+                        "Backtraces are currently disabled: set `RUST_BACKTRACE=1` and re-run \
+                        to see where it happened.",
+                    ),
+                    BacktraceStatus::Captured => format!(
+                        "This happened in the following `must_produce_diag` call's backtrace:\n\
+                        {backtrace}",
+                    ),
+                    _ => String::from("(impossible to capture backtrace where this happened)"),
+                };
                 panic!(
-                    "must_produce_diag: `trimmed_def_paths` called but no diagnostics emitted; \
-                     `with_no_trimmed_paths` for debugging. \
-                     called at: {backtrace}"
+                    "`trimmed_def_paths` called, diagnostics were expected but none were emitted. \
+                    Use `with_no_trimmed_paths` for debugging. {suggestion}"
                 );
             }
         }
@@ -651,61 +725,53 @@ impl DiagCtxt {
         self
     }
 
+    pub fn with_registry(mut self, registry: Registry) -> Self {
+        self.inner.get_mut().registry = registry;
+        self
+    }
+
     pub fn new(emitter: Box<DynEmitter>) -> Self {
         Self { inner: Lock::new(DiagCtxtInner::new(emitter)) }
     }
 
-    pub fn make_silent(
-        &self,
-        fallback_bundle: LazyFallbackBundle,
-        fatal_note: Option<String>,
-        emit_fatal_diagnostic: bool,
-    ) {
-        self.wrap_emitter(|old_dcx| {
-            Box::new(emitter::SilentEmitter {
-                fallback_bundle,
-                fatal_dcx: DiagCtxt { inner: Lock::new(old_dcx) },
-                fatal_note,
-                emit_fatal_diagnostic,
-            })
-        });
-    }
-
-    fn wrap_emitter<F>(&self, f: F)
-    where
-        F: FnOnce(DiagCtxtInner) -> Box<DynEmitter>,
-    {
-        // A empty type that implements `Emitter` so that a `DiagCtxtInner` can be constructed
-        // to temporarily swap in place of the real one, which will be used in constructing
-        // its replacement.
+    pub fn make_silent(&self, fatal_note: Option<String>, emit_fatal_diagnostic: bool) {
+        // An empty type that implements `Emitter` to temporarily swap in place of the real one,
+        // which will be used in constructing its replacement.
         struct FalseEmitter;
 
         impl Emitter for FalseEmitter {
-            fn emit_diagnostic(&mut self, _: DiagInner) {
-                unimplemented!("false emitter must only used during `wrap_emitter`")
+            fn emit_diagnostic(&mut self, _: DiagInner, _: &Registry) {
+                unimplemented!("false emitter must only used during `make_silent`")
             }
 
             fn source_map(&self) -> Option<&SourceMap> {
-                unimplemented!("false emitter must only used during `wrap_emitter`")
+                unimplemented!("false emitter must only used during `make_silent`")
             }
         }
 
         impl translation::Translate for FalseEmitter {
             fn fluent_bundle(&self) -> Option<&FluentBundle> {
-                unimplemented!("false emitter must only used during `wrap_emitter`")
+                unimplemented!("false emitter must only used during `make_silent`")
             }
 
             fn fallback_fluent_bundle(&self) -> &FluentBundle {
-                unimplemented!("false emitter must only used during `wrap_emitter`")
+                unimplemented!("false emitter must only used during `make_silent`")
             }
         }
 
         let mut inner = self.inner.borrow_mut();
-        let mut prev_dcx = DiagCtxtInner::new(Box::new(FalseEmitter));
-        std::mem::swap(&mut *inner, &mut prev_dcx);
-        let new_emitter = f(prev_dcx);
-        let mut new_dcx = DiagCtxtInner::new(new_emitter);
-        std::mem::swap(&mut *inner, &mut new_dcx);
+        let mut prev_emitter = Box::new(FalseEmitter) as Box<dyn Emitter + DynSend>;
+        std::mem::swap(&mut inner.emitter, &mut prev_emitter);
+        let new_emitter = Box::new(emitter::SilentEmitter {
+            fatal_emitter: prev_emitter,
+            fatal_note,
+            emit_fatal_diagnostic,
+        });
+        inner.emitter = new_emitter;
+    }
+
+    pub fn set_emitter(&self, emitter: Box<dyn Emitter + DynSend>) {
+        self.inner.borrow_mut().emitter = emitter;
     }
 
     /// Translate `message` eagerly with `args` to `SubdiagMessage::Eager`.
@@ -746,6 +812,7 @@ impl DiagCtxt {
         let mut inner = self.inner.borrow_mut();
         let DiagCtxtInner {
             flags: _,
+            registry: _,
             err_guars,
             lint_err_guars,
             delayed_bugs,
@@ -951,7 +1018,7 @@ impl<'a> DiagCtxtHandle<'a> {
         self.inner.borrow().has_errors_or_delayed_bugs()
     }
 
-    pub fn print_error_count(&self, registry: &Registry) {
+    pub fn print_error_count(&self) {
         let mut inner = self.inner.borrow_mut();
 
         // Any stashed diagnostics should have been handled by
@@ -1001,7 +1068,7 @@ impl<'a> DiagCtxtHandle<'a> {
                 .emitted_diagnostic_codes
                 .iter()
                 .filter_map(|&code| {
-                    if registry.try_find_description(code).is_ok() {
+                    if inner.registry.try_find_description(code).is_ok() {
                         Some(code.to_string())
                     } else {
                         None
@@ -1039,8 +1106,8 @@ impl<'a> DiagCtxtHandle<'a> {
     /// bad results, such as spurious/uninteresting additional errors -- when
     /// returning an error `Result` is difficult.
     pub fn abort_if_errors(&self) {
-        if self.has_errors().is_some() {
-            FatalError.raise();
+        if let Some(guar) = self.has_errors() {
+            guar.raise_fatal();
         }
     }
 
@@ -1062,10 +1129,10 @@ impl<'a> DiagCtxtHandle<'a> {
     }
 
     pub fn emit_future_breakage_report(&self) {
-        let mut inner = self.inner.borrow_mut();
+        let inner = &mut *self.inner.borrow_mut();
         let diags = std::mem::take(&mut inner.future_breakage_diagnostics);
         if !diags.is_empty() {
-            inner.emitter.emit_future_breakage_report(diags);
+            inner.emitter.emit_future_breakage_report(diags, &inner.registry);
         }
     }
 
@@ -1271,7 +1338,7 @@ impl<'a> DiagCtxtHandle<'a> {
         Diag::<ErrorGuaranteed>::new(self, DelayedBug, msg.into()).emit()
     }
 
-    /// Ensures that an error is printed. See `Level::DelayedBug`.
+    /// Ensures that an error is printed. See [`Level::DelayedBug`].
     ///
     /// Note: this function used to be called `delay_span_bug`. It was renamed
     /// to match similar functions like `span_err`, `span_warn`, etc.
@@ -1396,6 +1463,7 @@ impl DiagCtxtInner {
     fn new(emitter: Box<DynEmitter>) -> Self {
         Self {
             flags: DiagCtxtFlags { can_emit_warnings: true, ..Default::default() },
+            registry: Registry::new(&[]),
             err_guars: Vec::new(),
             lint_err_guars: Vec::new(),
             delayed_bugs: Vec::new(),
@@ -1545,18 +1613,18 @@ impl DiagCtxtInner {
                 debug!(?diagnostic);
                 debug!(?self.emitted_diagnostics);
 
-                let already_emitted_sub = |sub: &mut Subdiag| {
+                let not_yet_emitted = |sub: &mut Subdiag| {
                     debug!(?sub);
                     if sub.level != OnceNote && sub.level != OnceHelp {
-                        return false;
+                        return true;
                     }
                     let mut hasher = StableHasher::new();
                     sub.hash(&mut hasher);
                     let diagnostic_hash = hasher.finish();
                     debug!(?diagnostic_hash);
-                    !self.emitted_diagnostics.insert(diagnostic_hash)
+                    self.emitted_diagnostics.insert(diagnostic_hash)
                 };
-                diagnostic.children.extract_if(already_emitted_sub).for_each(|_| {});
+                diagnostic.children.retain_mut(not_yet_emitted);
                 if already_emitted {
                     let msg = "duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`";
                     diagnostic.sub(Note, msg, MultiSpan::new());
@@ -1569,7 +1637,7 @@ impl DiagCtxtInner {
                 }
                 self.has_printed = true;
 
-                self.emitter.emit_diagnostic(diagnostic);
+                self.emitter.emit_diagnostic(diagnostic, &self.registry);
             }
 
             if is_error {
@@ -1682,14 +1750,20 @@ impl DiagCtxtInner {
         // eventually happened.
         assert!(self.stashed_diagnostics.is_empty());
 
+        if !self.err_guars.is_empty() {
+            // If an error happened already. We shouldn't expose delayed bugs.
+            return;
+        }
+
         if self.delayed_bugs.is_empty() {
+            // Nothing to do.
             return;
         }
 
         let bugs: Vec<_> =
             std::mem::take(&mut self.delayed_bugs).into_iter().map(|(b, _)| b).collect();
 
-        let backtrace = std::env::var_os("RUST_BACKTRACE").map_or(true, |x| &x != "0");
+        let backtrace = std::env::var_os("RUST_BACKTRACE").as_deref() != Some(OsStr::new("0"));
         let decorate = backtrace || self.ice_file.is_none();
         let mut out = self
             .ice_file
@@ -1967,18 +2041,6 @@ pub fn a_or_an(s: &str) -> &'static str {
         "an"
     } else {
         "a"
-    }
-}
-
-/// Grammatical tool for displaying messages to end users in a nice form.
-///
-/// Take a list ["a", "b", "c"] and output a display friendly version "a, b and c"
-pub fn display_list_with_comma_and<T: std::fmt::Display>(v: &[T]) -> String {
-    match v {
-        [] => "".to_string(),
-        [a] => a.to_string(),
-        [a, b] => format!("{a} and {b}"),
-        [a, v @ ..] => format!("{a}, {}", display_list_with_comma_and(v)),
     }
 }
 

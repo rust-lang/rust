@@ -8,8 +8,9 @@ use rustc_middle::ty::{
     self, GenericArg, GenericArgKind, GenericArgsRef, Ty, TyCtxt, TypeSuperVisitable,
     TypeVisitable, TypeVisitableExt, TypeVisitor,
 };
-use rustc_span::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
-use rustc_span::{DUMMY_SP, Span};
+use rustc_session::parse::feature_err;
+use rustc_span::def_id::{DefId, LocalDefId};
+use rustc_span::{Span, sym};
 use tracing::{debug, instrument, trace};
 
 use crate::infer::InferCtxt;
@@ -89,6 +90,8 @@ pub fn unnormalized_obligations<'tcx>(
     infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     arg: GenericArg<'tcx>,
+    span: Span,
+    body_id: LocalDefId,
 ) -> Option<PredicateObligations<'tcx>> {
     debug_assert_eq!(arg, infcx.resolve_vars_if_possible(arg));
 
@@ -106,8 +109,8 @@ pub fn unnormalized_obligations<'tcx>(
     let mut wf = WfPredicates {
         infcx,
         param_env,
-        body_id: CRATE_DEF_ID,
-        span: DUMMY_SP,
+        body_id,
+        span,
         out: PredicateObligations::new(),
         recursion_depth: 0,
         item: None,
@@ -286,7 +289,7 @@ fn extend_cause_with_original_assoc_item_obligation<'tcx>(
             && let Some(impl_item) =
                 items.iter().find(|item| item.id.owner_id.to_def_id() == impl_item_id)
         {
-            Some(tcx.hir().impl_item(impl_item.id).expect_type().span)
+            Some(tcx.hir_impl_item(impl_item.id).expect_type().span)
         } else {
             None
         }
@@ -689,7 +692,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 self.require_sized(subty, ObligationCauseCode::SliceOrArrayElem);
                 // Note that the len being WF is implicitly checked while visiting.
                 // Here we just check that it's of type usize.
-                let cause = self.cause(ObligationCauseCode::Misc);
+                let cause = self.cause(ObligationCauseCode::ArrayLen(t));
                 self.out.push(traits::Obligation::with_depth(
                     tcx,
                     cause,
@@ -702,8 +705,47 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 ));
             }
 
-            ty::Pat(subty, _) => {
+            ty::Pat(subty, pat) => {
                 self.require_sized(subty, ObligationCauseCode::Misc);
+                match *pat {
+                    ty::PatternKind::Range { start, end, include_end: _ } => {
+                        let mut check = |c| {
+                            let cause = self.cause(ObligationCauseCode::Misc);
+                            self.out.push(traits::Obligation::with_depth(
+                                tcx,
+                                cause.clone(),
+                                self.recursion_depth,
+                                self.param_env,
+                                ty::Binder::dummy(ty::PredicateKind::Clause(
+                                    ty::ClauseKind::ConstArgHasType(c, subty),
+                                )),
+                            ));
+                            if !tcx.features().generic_pattern_types() {
+                                if c.has_param() {
+                                    if self.span.is_dummy() {
+                                        self.tcx().dcx().delayed_bug(
+                                            "feature error should be reported elsewhere, too",
+                                        );
+                                    } else {
+                                        feature_err(
+                                            &self.tcx().sess,
+                                            sym::generic_pattern_types,
+                                            self.span,
+                                            "wraparound pattern type ranges cause monomorphization time errors",
+                                        )
+                                        .emit();
+                                    }
+                                }
+                            }
+                        };
+                        if let Some(start) = start {
+                            check(start)
+                        }
+                        if let Some(end) = end {
+                            check(end)
+                        }
+                    }
+                }
             }
 
             ty::Tuple(tys) => {
@@ -828,6 +870,29 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 // Let the visitor iterate into the argument/return
                 // types appearing in the fn signature.
             }
+            ty::UnsafeBinder(ty) => {
+                // FIXME(unsafe_binders): For now, we have no way to express
+                // that a type must be `ManuallyDrop` OR `Copy` (or a pointer).
+                if !ty.has_escaping_bound_vars() {
+                    self.out.push(traits::Obligation::new(
+                        self.tcx(),
+                        self.cause(ObligationCauseCode::Misc),
+                        self.param_env,
+                        ty.map_bound(|ty| {
+                            ty::TraitRef::new(
+                                self.tcx(),
+                                self.tcx().require_lang_item(
+                                    LangItem::BikeshedGuaranteedNoDrop,
+                                    Some(self.span),
+                                ),
+                                [ty],
+                            )
+                        }),
+                    ));
+                }
+
+                // We recurse into the binder below.
+            }
 
             ty::Dynamic(data, r, _) => {
                 // WfObject
@@ -839,19 +904,14 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 // FIXME(#27579) RFC also considers adding trait
                 // obligations that don't refer to Self and
                 // checking those
-
-                let defer_to_coercion = tcx.features().dyn_compatible_for_dispatch();
-
-                if !defer_to_coercion {
-                    if let Some(principal) = data.principal_def_id() {
-                        self.out.push(traits::Obligation::with_depth(
-                            tcx,
-                            self.cause(ObligationCauseCode::WellFormed(None)),
-                            self.recursion_depth,
-                            self.param_env,
-                            ty::Binder::dummy(ty::PredicateKind::DynCompatible(principal)),
-                        ));
-                    }
+                if let Some(principal) = data.principal_def_id() {
+                    self.out.push(traits::Obligation::with_depth(
+                        tcx,
+                        self.cause(ObligationCauseCode::WellFormed(None)),
+                        self.recursion_depth,
+                        self.param_env,
+                        ty::Binder::dummy(ty::PredicateKind::DynCompatible(principal)),
+                    ));
                 }
             }
 
@@ -963,30 +1023,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
 /// bounds that must hold on the elided self type. These are derived
 /// from the declarations of `SomeTrait`, `Send`, and friends -- if
 /// they declare `trait SomeTrait : 'static`, for example, then
-/// `'static` would appear in the list. The hard work is done by
-/// `infer::required_region_bounds`, see that for more information.
-pub fn object_region_bounds<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    existential_predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
-) -> Vec<ty::Region<'tcx>> {
-    let predicates = existential_predicates.iter().filter_map(|predicate| {
-        if let ty::ExistentialPredicate::Projection(_) = predicate.skip_binder() {
-            None
-        } else {
-            Some(predicate.with_self_ty(tcx, tcx.types.trait_object_dummy_self))
-        }
-    });
-
-    required_region_bounds(tcx, tcx.types.trait_object_dummy_self, predicates)
-}
-
-/// Given a set of predicates that apply to an object type, returns
-/// the region bounds that the (erased) `Self` type must
-/// outlive. Precisely *because* the `Self` type is erased, the
-/// parameter `erased_self_ty` must be supplied to indicate what type
-/// has been used to represent `Self` in the predicates
-/// themselves. This should really be a unique type; `FreshTy(0)` is a
-/// popular choice.
+/// `'static` would appear in the list.
 ///
 /// N.B., in some cases, particularly around higher-ranked bounds,
 /// this function returns a kind of conservative approximation.
@@ -996,13 +1033,14 @@ pub fn object_region_bounds<'tcx>(
 ///
 /// Requires that trait definitions have been processed so that we can
 /// elaborate predicates and walk supertraits.
-#[instrument(skip(tcx, predicates), level = "debug", ret)]
-pub(crate) fn required_region_bounds<'tcx>(
+pub fn object_region_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
-    erased_self_ty: Ty<'tcx>,
-    predicates: impl Iterator<Item = ty::Clause<'tcx>>,
+    existential_predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
 ) -> Vec<ty::Region<'tcx>> {
-    assert!(!erased_self_ty.has_escaping_bound_vars());
+    let erased_self_ty = tcx.types.trait_object_dummy_self;
+
+    let predicates =
+        existential_predicates.iter().map(|predicate| predicate.with_self_ty(tcx, erased_self_ty));
 
     traits::elaborate(tcx, predicates)
         .filter_map(|pred| {

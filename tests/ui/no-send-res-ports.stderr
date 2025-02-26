@@ -13,7 +13,7 @@ LL | |         println!("{:?}", y);
 LL | |     });
    | |_____^ `Rc<()>` cannot be sent between threads safely
    |
-   = help: within `{closure@$DIR/no-send-res-ports.rs:25:19: 25:25}`, the trait `Send` is not implemented for `Rc<()>`, which is required by `{closure@$DIR/no-send-res-ports.rs:25:19: 25:25}: Send`
+   = help: within `{closure@$DIR/no-send-res-ports.rs:25:19: 25:25}`, the trait `Send` is not implemented for `Rc<()>`
 note: required because it appears within the type `Port<()>`
   --> $DIR/no-send-res-ports.rs:5:8
    |

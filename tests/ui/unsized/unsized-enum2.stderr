@@ -320,7 +320,7 @@ error[E0277]: the size for values of type `(dyn PathHelper1 + 'static)` cannot b
 LL |     VI(Path1),
    |        ^^^^^ doesn't have a size known at compile-time
    |
-   = help: within `Path1`, the trait `Sized` is not implemented for `(dyn PathHelper1 + 'static)`, which is required by `Path1: Sized`
+   = help: within `Path1`, the trait `Sized` is not implemented for `(dyn PathHelper1 + 'static)`
 note: required because it appears within the type `Path1`
   --> $DIR/unsized-enum2.rs:16:8
    |
@@ -343,7 +343,7 @@ error[E0277]: the size for values of type `(dyn PathHelper2 + 'static)` cannot b
 LL |     VJ{x: Path2},
    |           ^^^^^ doesn't have a size known at compile-time
    |
-   = help: within `Path2`, the trait `Sized` is not implemented for `(dyn PathHelper2 + 'static)`, which is required by `Path2: Sized`
+   = help: within `Path2`, the trait `Sized` is not implemented for `(dyn PathHelper2 + 'static)`
 note: required because it appears within the type `Path2`
   --> $DIR/unsized-enum2.rs:17:8
    |
@@ -366,7 +366,7 @@ error[E0277]: the size for values of type `(dyn PathHelper3 + 'static)` cannot b
 LL |     VK(isize, Path3),
    |               ^^^^^ doesn't have a size known at compile-time
    |
-   = help: within `Path3`, the trait `Sized` is not implemented for `(dyn PathHelper3 + 'static)`, which is required by `Path3: Sized`
+   = help: within `Path3`, the trait `Sized` is not implemented for `(dyn PathHelper3 + 'static)`
 note: required because it appears within the type `Path3`
   --> $DIR/unsized-enum2.rs:18:8
    |
@@ -389,7 +389,7 @@ error[E0277]: the size for values of type `(dyn PathHelper4 + 'static)` cannot b
 LL |     VL{u: isize, x: Path4},
    |                     ^^^^^ doesn't have a size known at compile-time
    |
-   = help: within `Path4`, the trait `Sized` is not implemented for `(dyn PathHelper4 + 'static)`, which is required by `Path4: Sized`
+   = help: within `Path4`, the trait `Sized` is not implemented for `(dyn PathHelper4 + 'static)`
 note: required because it appears within the type `Path4`
   --> $DIR/unsized-enum2.rs:19:8
    |

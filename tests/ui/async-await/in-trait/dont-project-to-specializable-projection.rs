@@ -2,7 +2,6 @@
 //@ known-bug: #108309
 
 #![feature(min_specialization)]
-#![feature(noop_waker)]
 
 struct MyStruct;
 

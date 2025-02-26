@@ -6,7 +6,6 @@ LL | |
 LL | |
 LL | |     if a && b {
 ...  |
-LL | |     }
 LL | | }
    | |_^
    |
@@ -14,8 +13,9 @@ LL | | }
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_wraps)]`
 help: remove `Option` from the return type...
    |
-LL | fn func1(a: bool, b: bool) -> i32 {
-   |                               ~~~
+LL - fn func1(a: bool, b: bool) -> Option<i32> {
+LL + fn func1(a: bool, b: bool) -> i32 {
+   |
 help: ...and then change returning expressions
    |
 LL ~         return 42;
@@ -41,8 +41,9 @@ LL | | }
    |
 help: remove `Option` from the return type...
    |
-LL | fn func2(a: bool, b: bool) -> i32 {
-   |                               ~~~
+LL - fn func2(a: bool, b: bool) -> Option<i32> {
+LL + fn func2(a: bool, b: bool) -> i32 {
+   |
 help: ...and then change returning expressions
    |
 LL ~         return 10;
@@ -61,11 +62,13 @@ LL | | }
    |
 help: remove `Option` from the return type...
    |
-LL | fn func5() -> i32 {
-   |               ~~~
+LL - fn func5() -> Option<i32> {
+LL + fn func5() -> i32 {
+   |
 help: ...and then change returning expressions
    |
-LL |     1
+LL -     Some(1)
+LL +     1
    |
 
 error: this function's return value is unnecessarily wrapped by `Result`
@@ -79,11 +82,13 @@ LL | | }
    |
 help: remove `Result` from the return type...
    |
-LL | fn func7() -> i32 {
-   |               ~~~
+LL - fn func7() -> Result<i32, ()> {
+LL + fn func7() -> i32 {
+   |
 help: ...and then change returning expressions
    |
-LL |     1
+LL -     Ok(1)
+LL +     1
    |
 
 error: this function's return value is unnecessarily wrapped by `Option`
@@ -97,11 +102,13 @@ LL | |     }
    |
 help: remove `Option` from the return type...
    |
-LL |     fn func12() -> i32 {
-   |                    ~~~
+LL -     fn func12() -> Option<i32> {
+LL +     fn func12() -> i32 {
+   |
 help: ...and then change returning expressions
    |
-LL |         1
+LL -         Some(1)
+LL +         1
    |
 
 error: this function's return value is unnecessary
@@ -112,14 +119,14 @@ LL | |
 LL | |     if a && b {
 LL | |         return Some(());
 ...  |
-LL | |     }
 LL | | }
    | |_^
    |
 help: remove the return type...
    |
-LL | fn issue_6640_1(a: bool, b: bool) -> () {
-   |                                      ~~
+LL - fn issue_6640_1(a: bool, b: bool) -> Option<()> {
+LL + fn issue_6640_1(a: bool, b: bool) -> () {
+   |
 help: ...and then remove returned values
    |
 LL ~         return ;
@@ -139,14 +146,14 @@ LL | |
 LL | |     if a && b {
 LL | |         return Ok(());
 ...  |
-LL | |     }
 LL | | }
    | |_^
    |
 help: remove the return type...
    |
-LL | fn issue_6640_2(a: bool, b: bool) -> () {
-   |                                      ~~
+LL - fn issue_6640_2(a: bool, b: bool) -> Result<(), i32> {
+LL + fn issue_6640_2(a: bool, b: bool) -> () {
+   |
 help: ...and then remove returned values
    |
 LL ~         return ;

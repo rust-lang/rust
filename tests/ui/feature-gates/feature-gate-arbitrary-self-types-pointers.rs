@@ -1,3 +1,6 @@
+//@ revisions: default feature
+#![cfg_attr(feature, feature(arbitrary_self_types))]
+
 trait Foo {
     fn foo(self: *const Self); //~ ERROR `*const Self` cannot be used as the type of `self`
 }

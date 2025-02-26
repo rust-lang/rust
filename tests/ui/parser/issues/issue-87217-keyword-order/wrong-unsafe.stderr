@@ -1,5 +1,5 @@
 error: expected `fn`, found keyword `unsafe`
-  --> $DIR/wrong-unsafe.rs:9:8
+  --> $DIR/wrong-unsafe.rs:10:8
    |
 LL | extern unsafe fn test() {}
    | -------^^^^^^

@@ -82,4 +82,29 @@ self::m!(); self::m2!();
 "#,
         );
     }
+
+    #[test]
+    fn no_unresolved_panic_inside_mod_inside_fn() {
+        check_diagnostics(
+            r#"
+//- /core.rs library crate:core
+#[macro_export]
+macro_rules! panic {
+    () => {};
+}
+
+//- /lib.rs crate:foo deps:core
+#[macro_use]
+extern crate core;
+
+fn foo() {
+    mod init {
+        pub fn init() {
+            panic!();
+        }
+    }
+}
+    "#,
+        );
+    }
 }

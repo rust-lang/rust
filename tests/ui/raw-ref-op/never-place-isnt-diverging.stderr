@@ -7,8 +7,7 @@ LL | /     unsafe {
 LL | |
 LL | |         let x: *const ! = 0 as _;
 LL | |         &raw const *x;
-LL | |         // Since `*x` is `!`, HIR typeck used to think that it diverges
-LL | |         // and allowed the block to coerce to any value, leading to UB.
+...  |
 LL | |     }
    | |_____^ expected type parameter `T`, found `()`
    |

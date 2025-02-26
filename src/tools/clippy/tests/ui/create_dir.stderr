@@ -8,8 +8,9 @@ LL |     std::fs::create_dir("foo");
    = help: to override `-D warnings` add `#[allow(clippy::create_dir)]`
 help: consider calling `std::fs::create_dir_all` instead
    |
-LL |     create_dir_all("foo");
-   |     ~~~~~~~~~~~~~~~~~~~~~
+LL -     std::fs::create_dir("foo");
+LL +     create_dir_all("foo");
+   |
 
 error: calling `std::fs::create_dir` where there may be a better way
   --> tests/ui/create_dir.rs:11:5
@@ -19,8 +20,9 @@ LL |     std::fs::create_dir("bar").unwrap();
    |
 help: consider calling `std::fs::create_dir_all` instead
    |
-LL |     create_dir_all("bar").unwrap();
-   |     ~~~~~~~~~~~~~~~~~~~~~
+LL -     std::fs::create_dir("bar").unwrap();
+LL +     create_dir_all("bar").unwrap();
+   |
 
 error: aborting due to 2 previous errors
 

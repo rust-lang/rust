@@ -1,6 +1,6 @@
 use super::REDUNDANT_PATTERN_MATCHING;
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::source::{snippet, walk_span_to_context};
+use clippy_utils::source::walk_span_to_context;
 use clippy_utils::sugg::{Sugg, make_unop};
 use clippy_utils::ty::{is_type_diagnostic_item, needs_ordered_drop};
 use clippy_utils::visitors::{any_temporaries_need_ordered_drop, for_each_expr_without_closures};
@@ -9,7 +9,7 @@ use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{self, OptionNone, OptionSome, PollPending, PollReady, ResultErr, ResultOk};
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::{Arm, Expr, ExprKind, Node, Pat, PatKind, QPath, UnOp};
+use rustc_hir::{Arm, Expr, ExprKind, Node, Pat, PatExpr, PatExprKind, PatKind, QPath, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, GenericArgKind, Ty};
 use rustc_span::{Span, Symbol, sym};
@@ -74,8 +74,8 @@ fn find_match_true<'tcx>(
     span: Span,
     message: &'static str,
 ) {
-    if let PatKind::Lit(lit) = pat.kind
-        && let ExprKind::Lit(lit) = lit.kind
+    if let PatKind::Expr(lit) = pat.kind
+        && let PatExprKind::Lit { lit, negated: false } = lit.kind
         && let LitKind::Bool(pat_is_true) = lit.node
     {
         let mut applicability = Applicability::MachineApplicable;
@@ -149,8 +149,12 @@ fn find_method_and_type<'tcx>(
                 None
             }
         },
-        PatKind::Path(ref path) => {
-            if let Res::Def(DefKind::Ctor(..), ctor_id) = cx.qpath_res(path, check_pat.hir_id)
+        PatKind::Expr(PatExpr {
+            kind: PatExprKind::Path(path),
+            hir_id,
+            ..
+        }) => {
+            if let Res::Def(DefKind::Ctor(..), ctor_id) = cx.qpath_res(path, *hir_id)
                 && let Some(variant_id) = cx.tcx.opt_parent(ctor_id)
             {
                 let method = if cx.tcx.lang_items().option_none_variant() == Some(variant_id) {
@@ -195,7 +199,7 @@ fn find_method_sugg_for_if_let<'tcx>(
     // type needs to be considered, not just the inner type of the branch being matched on.
     // Note the last expression in a block is dropped after all local bindings.
     let check_ty = if has_else
-        || (keyword == "if" && matches!(cx.tcx.hir().parent_iter(expr.hir_id).next(), Some((_, Node::Block(..)))))
+        || (keyword == "if" && matches!(cx.tcx.hir_parent_iter(expr.hir_id).next(), Some((_, Node::Block(..)))))
     {
         op_ty
     } else {
@@ -274,7 +278,9 @@ pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op
                 ExprKind::AddrOf(_, _, borrowed) => borrowed,
                 _ => op,
             };
-            let mut sugg = format!("{}.{good_method}", snippet(cx, result_expr.span, "_"));
+            let mut app = Applicability::MachineApplicable;
+            let receiver_sugg = Sugg::hir_with_applicability(cx, result_expr, "_", &mut app).maybe_par();
+            let mut sugg = format!("{receiver_sugg}.{good_method}");
 
             if let Some(guard) = maybe_guard {
                 // wow, the HIR for match guards in `PAT if let PAT = expr && expr => ...` is annoying!
@@ -307,7 +313,7 @@ pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op
                 format!("redundant pattern matching, consider using `{good_method}`"),
                 "try",
                 sugg,
-                Applicability::MachineApplicable,
+                app,
             );
         }
     }
@@ -319,10 +325,9 @@ fn found_good_method<'tcx>(
     node: (&PatKind<'_>, &PatKind<'_>),
 ) -> Option<(&'static str, Option<&'tcx Expr<'tcx>>)> {
     match node {
-        (
-            PatKind::TupleStruct(ref path_left, patterns_left, _),
-            PatKind::TupleStruct(ref path_right, patterns_right, _),
-        ) if patterns_left.len() == 1 && patterns_right.len() == 1 => {
+        (PatKind::TupleStruct(path_left, patterns_left, _), PatKind::TupleStruct(path_right, patterns_right, _))
+            if patterns_left.len() == 1 && patterns_right.len() == 1 =>
+        {
             if let (PatKind::Wild, PatKind::Wild) = (&patterns_left[0].kind, &patterns_right[0].kind) {
                 find_good_method_for_match(
                     cx,
@@ -350,10 +355,20 @@ fn found_good_method<'tcx>(
                 None
             }
         },
-        (PatKind::TupleStruct(ref path_left, patterns, _), PatKind::Path(ref path_right))
-        | (PatKind::Path(ref path_left), PatKind::TupleStruct(ref path_right, patterns, _))
-            if patterns.len() == 1 =>
-        {
+        (
+            PatKind::TupleStruct(path_left, patterns, _),
+            PatKind::Expr(PatExpr {
+                kind: PatExprKind::Path(path_right),
+                ..
+            }),
+        )
+        | (
+            PatKind::Expr(PatExpr {
+                kind: PatExprKind::Path(path_left),
+                ..
+            }),
+            PatKind::TupleStruct(path_right, patterns, _),
+        ) if patterns.len() == 1 => {
             if let PatKind::Wild = patterns[0].kind {
                 find_good_method_for_match(
                     cx,
@@ -381,14 +396,20 @@ fn found_good_method<'tcx>(
                 None
             }
         },
-        (PatKind::TupleStruct(ref path_left, patterns, _), PatKind::Wild) if patterns.len() == 1 => {
+        (PatKind::TupleStruct(path_left, patterns, _), PatKind::Wild) if patterns.len() == 1 => {
             if let PatKind::Wild = patterns[0].kind {
                 get_good_method(cx, arms, path_left)
             } else {
                 None
             }
         },
-        (PatKind::Path(ref path_left), PatKind::Wild) => get_good_method(cx, arms, path_left),
+        (
+            PatKind::Expr(PatExpr {
+                kind: PatExprKind::Path(path_left),
+                ..
+            }),
+            PatKind::Wild,
+        ) => get_good_method(cx, arms, path_left),
         _ => None,
     }
 }
@@ -448,7 +469,7 @@ fn is_pat_variant(cx: &LateContext<'_>, pat: &Pat<'_>, path: &QPath<'_>, expecte
             .tcx
             .lang_items()
             .get(expected_lang_item)
-            .map_or(false, |expected_id| cx.tcx.parent(id) == expected_id),
+            .is_some_and(|expected_id| cx.tcx.parent(id) == expected_id),
         Item::Diag(expected_ty, expected_variant) => {
             let ty = cx.typeck_results().pat_ty(pat);
 

@@ -4,7 +4,7 @@ error[E0277]: `*const Bar` cannot be shared between threads safely
 LL |     let _: AssertSync<Foo> = unimplemented!();
    |            ^^^^^^^^^^^^^^^ `*const Bar` cannot be shared between threads safely
    |
-   = help: within `Foo`, the trait `Sync` is not implemented for `*const Bar`, which is required by `Foo: Sync`
+   = help: within `Foo`, the trait `Sync` is not implemented for `*const Bar`
 note: required because it appears within the type `Foo`
   --> $DIR/recursive-requirements.rs:5:12
    |
@@ -22,7 +22,7 @@ error[E0277]: `*const Foo` cannot be shared between threads safely
 LL |     let _: AssertSync<Foo> = unimplemented!();
    |            ^^^^^^^^^^^^^^^ `*const Foo` cannot be shared between threads safely
    |
-   = help: within `Foo`, the trait `Sync` is not implemented for `*const Foo`, which is required by `Foo: Sync`
+   = help: within `Foo`, the trait `Sync` is not implemented for `*const Foo`
 note: required because it appears within the type `Bar`
   --> $DIR/recursive-requirements.rs:10:12
    |

@@ -22,8 +22,7 @@ LL |   extern "C" {
 LL | /     thread_local! {
 LL | |       static FOO: u32 = 0;
    | |              ^^^ cannot have a body
-LL | |
-LL | |
+...  |
 LL | |     }
    | |_____- the invalid body
    |

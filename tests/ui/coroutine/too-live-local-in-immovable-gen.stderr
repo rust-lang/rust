@@ -3,9 +3,6 @@ warning: unused coroutine that must be used
    |
 LL |           #[coroutine] static move || {
    |  ______________________^
-LL | |             // Tests that the coroutine transformation finds out that `a` is not live
-LL | |             // during the yield expression. Type checking will also compute liveness
-LL | |             // and it should also find out that `a` is not live.
 ...  |
 LL | |             let _ = &a;
 LL | |         };

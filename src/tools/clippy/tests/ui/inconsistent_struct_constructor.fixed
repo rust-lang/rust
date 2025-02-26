@@ -60,7 +60,11 @@ mod with_base {
         let z = 1;
 
         // Should lint.
-        Foo { x, z, ..Default::default() };
+        Foo {
+            x,
+            z,
+            ..Default::default()
+        };
 
         // Should NOT lint because the order is consistent with the definition.
         Foo {

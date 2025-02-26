@@ -2,8 +2,7 @@ use rustc_errors::{Diag, EmissionGuarantee, IntoDiagArg, SubdiagMessageOp, Subdi
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::bug;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_span::Span;
-use rustc_span::symbol::kw;
+use rustc_span::{Span, kw};
 
 use crate::error_reporting::infer::nice_region_error::find_anon_type;
 use crate::fluent_generated as fluent;
@@ -27,7 +26,7 @@ impl<'a> DescriptionCtx<'a> {
                     .parent(tcx.generics_of(generic_param_scope).region_param(br, tcx).def_id)
                     .expect_local();
                 let span = if let Some(param) =
-                    tcx.hir().get_generics(scope).and_then(|generics| generics.get_named(br.name))
+                    tcx.hir_get_generics(scope).and_then(|generics| generics.get_named(br.name))
                 {
                     param.span
                 } else {
@@ -40,18 +39,16 @@ impl<'a> DescriptionCtx<'a> {
                 }
             }
             ty::ReLateParam(ref fr) => {
-                if !fr.bound_region.is_named()
-                    && let Some((ty, _)) =
-                        find_anon_type(tcx, generic_param_scope, region, &fr.bound_region)
+                if !fr.kind.is_named()
+                    && let Some((ty, _)) = find_anon_type(tcx, generic_param_scope, region)
                 {
                     (Some(ty.span), "defined_here", String::new())
                 } else {
                     let scope = fr.scope.expect_local();
-                    match fr.bound_region {
-                        ty::BoundRegionKind::BrNamed(_, name) => {
+                    match fr.kind {
+                        ty::LateParamRegionKind::Named(_, name) => {
                             let span = if let Some(param) = tcx
-                                .hir()
-                                .get_generics(scope)
+                                .hir_get_generics(scope)
                                 .and_then(|generics| generics.get_named(name))
                             {
                                 param.span
@@ -64,7 +61,7 @@ impl<'a> DescriptionCtx<'a> {
                                 (Some(span), "as_defined", name.to_string())
                             }
                         }
-                        ty::BrAnon => {
+                        ty::LateParamRegionKind::Anon(_) => {
                             let span = Some(tcx.def_span(scope));
                             (span, "defined_here", String::new())
                         }

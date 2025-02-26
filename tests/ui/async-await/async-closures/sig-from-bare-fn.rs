@@ -5,8 +5,6 @@
 // a function that requires the async closure implement `Fn*` but does *not* have
 // a `Future` bound on the return type.
 
-#![feature(async_closure)]
-
 use std::future::Future;
 
 trait TryStream {

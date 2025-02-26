@@ -3,7 +3,7 @@
 
 //@ revisions: llvm-pre-20 llvm-20
 //@ [llvm-20] min-llvm-version: 20
-//@ [llvm-pre-20] ignore-llvm-version: 20 - 99
+//@ [llvm-pre-20] max-llvm-major-version: 19
 //@ compile-flags: -C opt-level=3
 
 #![crate_type = "lib"]

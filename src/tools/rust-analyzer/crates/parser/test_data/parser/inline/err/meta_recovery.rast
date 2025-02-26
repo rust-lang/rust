@@ -1,0 +1,83 @@
+SOURCE_FILE
+  ATTR
+    POUND "#"
+    BANG "!"
+    L_BRACK "["
+    META
+    R_BRACK "]"
+  WHITESPACE "\n"
+  ATTR
+    POUND "#"
+    BANG "!"
+    L_BRACK "["
+    META
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "p"
+      WHITESPACE " "
+      EQ "="
+    WHITESPACE " "
+    R_BRACK "]"
+  WHITESPACE "\n"
+  ATTR
+    POUND "#"
+    BANG "!"
+    L_BRACK "["
+    META
+      PATH
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "p"
+        COLON2 "::"
+    R_BRACK "]"
+  WHITESPACE "\n"
+  ATTR
+    POUND "#"
+    BANG "!"
+    L_BRACK "["
+    META
+      PATH
+        PATH
+          PATH_SEGMENT
+            NAME_REF
+              IDENT "p"
+        COLON2 "::"
+      WHITESPACE " "
+      EQ "="
+    R_BRACK "]"
+  WHITESPACE "\n"
+  ATTR
+    POUND "#"
+    BANG "!"
+    L_BRACK "["
+    META
+      UNSAFE_KW "unsafe"
+    R_BRACK "]"
+  WHITESPACE "\n"
+  ATTR
+    POUND "#"
+    BANG "!"
+    L_BRACK "["
+    META
+      UNSAFE_KW "unsafe"
+      WHITESPACE " "
+      EQ "="
+    R_BRACK "]"
+  WHITESPACE "\n"
+error 3: expected identifier, `self`, `super`, `crate`, or `Self`
+error 11: expected expression
+error 11: expected expression
+error 20: expected identifier, `self`, `super`, `crate`, or `Self`
+error 28: expected identifier, `self`, `super`, `crate`, or `Self`
+error 30: expected expression
+error 30: expected expression
+error 41: expected L_PAREN
+error 41: expected identifier, `self`, `super`, `crate`, or `Self`
+error 41: expected R_PAREN
+error 52: expected L_PAREN
+error 52: expected identifier, `self`, `super`, `crate`, or `Self`
+error 54: expected expression
+error 54: expected expression
+error 54: expected R_PAREN

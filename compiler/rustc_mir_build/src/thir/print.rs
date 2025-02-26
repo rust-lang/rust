@@ -1,12 +1,13 @@
 use std::fmt::{self, Write};
 
-use rustc_middle::query::TyCtxtAt;
 use rustc_middle::thir::*;
 use rustc_middle::ty;
+use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::LocalDefId;
 
-pub(crate) fn thir_tree(tcx: TyCtxtAt<'_>, owner_def: LocalDefId) -> String {
-    match super::cx::thir_body(*tcx, owner_def) {
+/// Create a THIR tree for debugging.
+pub fn thir_tree(tcx: TyCtxt<'_>, owner_def: LocalDefId) -> String {
+    match super::cx::thir_body(tcx, owner_def) {
         Ok((thir, _)) => {
             let thir = thir.steal();
             let mut printer = ThirPrinter::new(&thir);
@@ -17,8 +18,9 @@ pub(crate) fn thir_tree(tcx: TyCtxtAt<'_>, owner_def: LocalDefId) -> String {
     }
 }
 
-pub(crate) fn thir_flat(tcx: TyCtxtAt<'_>, owner_def: LocalDefId) -> String {
-    match super::cx::thir_body(*tcx, owner_def) {
+/// Create a list-like THIR representation for debugging.
+pub fn thir_flat(tcx: TyCtxt<'_>, owner_def: LocalDefId) -> String {
+    match super::cx::thir_body(tcx, owner_def) {
         Ok((thir, _)) => format!("{:#?}", thir.steal()),
         Err(_) => "error".into(),
     }
@@ -475,6 +477,24 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 self.print_expr(*source, depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl);
             }
+            PlaceUnwrapUnsafeBinder { source } => {
+                print_indented!(self, "PlaceUnwrapUnsafeBinder {", depth_lvl);
+                print_indented!(self, "source:", depth_lvl + 1);
+                self.print_expr(*source, depth_lvl + 2);
+                print_indented!(self, "}", depth_lvl);
+            }
+            ValueUnwrapUnsafeBinder { source } => {
+                print_indented!(self, "ValueUnwrapUnsafeBinder {", depth_lvl);
+                print_indented!(self, "source:", depth_lvl + 1);
+                self.print_expr(*source, depth_lvl + 2);
+                print_indented!(self, "}", depth_lvl);
+            }
+            WrapUnsafeBinder { source } => {
+                print_indented!(self, "WrapUnsafeBinder {", depth_lvl);
+                print_indented!(self, "source:", depth_lvl + 1);
+                self.print_expr(*source, depth_lvl + 2);
+                print_indented!(self, "}", depth_lvl);
+            }
             Closure(closure_expr) => {
                 print_indented!(self, "Closure {", depth_lvl);
                 print_indented!(self, "closure_expr:", depth_lvl + 1);
@@ -566,11 +586,17 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
             self.print_expr(field_expr.expr, depth_lvl + 2);
         }
 
-        if let Some(ref base) = adt_expr.base {
-            print_indented!(self, "base:", depth_lvl + 1);
-            self.print_fru_info(base, depth_lvl + 2);
-        } else {
-            print_indented!(self, "base: None", depth_lvl + 1);
+        match adt_expr.base {
+            AdtExprBase::Base(ref base) => {
+                print_indented!(self, "base:", depth_lvl + 1);
+                self.print_fru_info(base, depth_lvl + 2);
+            }
+            AdtExprBase::DefaultFields(_) => {
+                print_indented!(self, "base: {{ defaulted fields }}", depth_lvl + 1);
+            }
+            AdtExprBase::None => {
+                print_indented!(self, "base: None", depth_lvl + 1);
+            }
         }
     }
 
@@ -617,8 +643,8 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
         print_indented!(self, "}", depth_lvl);
     }
 
-    fn print_pat(&mut self, pat: &Box<Pat<'tcx>>, depth_lvl: usize) {
-        let Pat { ty, span, kind } = &**pat;
+    fn print_pat(&mut self, pat: &Pat<'tcx>, depth_lvl: usize) {
+        let &Pat { ty, span, ref kind } = pat;
 
         print_indented!(self, "Pat: {", depth_lvl);
         print_indented!(self, format!("ty: {:?}", ty), depth_lvl + 1);
@@ -707,9 +733,10 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 print_indented!(self, format!("value: {:?}", value), depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl + 1);
             }
-            PatKind::InlineConstant { def, subpattern } => {
-                print_indented!(self, "InlineConstant {", depth_lvl + 1);
-                print_indented!(self, format!("def: {:?}", def), depth_lvl + 2);
+            PatKind::ExpandedConstant { def_id, is_inline, subpattern } => {
+                print_indented!(self, "ExpandedConstant {", depth_lvl + 1);
+                print_indented!(self, format!("def_id: {def_id:?}"), depth_lvl + 2);
+                print_indented!(self, format!("is_inline: {is_inline:?}"), depth_lvl + 2);
                 print_indented!(self, "subpattern:", depth_lvl + 2);
                 self.print_pat(subpattern, depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl + 1);
@@ -894,10 +921,10 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 print_indented!(self, format!("span: {:?}", span), depth_lvl + 1);
                 print_indented!(self, "}", depth_lvl + 1);
             }
-            InlineAsmOperand::SymFn { value, span } => {
+            InlineAsmOperand::SymFn { value } => {
                 print_indented!(self, "InlineAsmOperand::SymFn {", depth_lvl);
-                print_indented!(self, format!("value: {:?}", *value), depth_lvl + 1);
-                print_indented!(self, format!("span: {:?}", span), depth_lvl + 1);
+                print_indented!(self, "value: ", depth_lvl + 1);
+                self.print_expr(*value, depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl + 1);
             }
             InlineAsmOperand::SymStatic { def_id } => {

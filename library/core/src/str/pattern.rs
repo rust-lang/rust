@@ -38,6 +38,7 @@
     issue = "27721"
 )]
 
+use crate::char::MAX_LEN_UTF8;
 use crate::cmp::Ordering;
 use crate::convert::TryInto as _;
 use crate::slice::memchr;
@@ -561,8 +562,8 @@ impl Pattern for char {
     type Searcher<'a> = CharSearcher<'a>;
 
     #[inline]
-    fn into_searcher(self, haystack: &str) -> Self::Searcher<'_> {
-        let mut utf8_encoded = [0; 4];
+    fn into_searcher<'a>(self, haystack: &'a str) -> Self::Searcher<'a> {
+        let mut utf8_encoded = [0; MAX_LEN_UTF8];
         let utf8_size = self
             .encode_utf8(&mut utf8_encoded)
             .len()
@@ -886,8 +887,8 @@ impl<'a, 'b> DoubleEndedSearcher<'a> for CharSliceSearcher<'a, 'b> {}
 /// # Examples
 ///
 /// ```
-/// assert_eq!("Hello world".find(&['l', 'l'] as &[_]), Some(2));
-/// assert_eq!("Hello world".find(&['l', 'l'][..]), Some(2));
+/// assert_eq!("Hello world".find(&['o', 'l'][..]), Some(2));
+/// assert_eq!("Hello world".find(&['h', 'w'][..]), Some(6));
 /// ```
 impl<'b> Pattern for &'b [char] {
     pattern_methods!('a, CharSliceSearcher<'a, 'b>, MultiCharEqPattern, CharSliceSearcher);

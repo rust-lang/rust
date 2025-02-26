@@ -187,12 +187,15 @@ pub fn i686_decorated_name(
     dll_import: &DllImport,
     mingw: bool,
     disable_name_mangling: bool,
+    force_fully_decorated: bool,
 ) -> String {
     let name = dll_import.name.as_str();
 
-    let (add_prefix, add_suffix) = match dll_import.import_name_type {
-        Some(PeImportNameType::NoPrefix) => (false, true),
-        Some(PeImportNameType::Undecorated) => (false, false),
+    let (add_prefix, add_suffix) = match (force_fully_decorated, dll_import.import_name_type) {
+        // No prefix is a bit weird, in that LLVM/ar_archive_writer won't emit it, so we will
+        // ignore `force_fully_decorated` and always partially decorate it.
+        (_, Some(PeImportNameType::NoPrefix)) => (false, true),
+        (false, Some(PeImportNameType::Undecorated)) => (false, false),
         _ => (true, true),
     };
 

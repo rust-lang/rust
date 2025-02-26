@@ -8,9 +8,6 @@ fn baz(f: extern "stdcall" fn(usize, ...)) {
     f(22, 44);
 }
 
-fn system(f: extern "system" fn(usize, ...)) {
-    f(22, 44);
-}
 #[cfg(target_arch = "x86_64")]
 fn sysv(f: extern "sysv64" fn(usize, ...)) {
     f(22, 44);

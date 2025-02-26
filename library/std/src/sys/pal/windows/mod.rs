@@ -21,8 +21,6 @@ pub mod fs;
 #[cfg(not(target_vendor = "win7"))]
 pub mod futex;
 pub mod handle;
-pub mod io;
-pub mod net;
 pub mod os;
 pub mod pipe;
 pub mod process;
@@ -38,7 +36,7 @@ cfg_if::cfg_if! {
     }
 }
 
-/// Map a Result<T, WinError> to io::Result<T>.
+/// Map a [`Result<T, WinError>`] to [`io::Result<T>`](crate::io::Result<T>).
 trait IoResult<T> {
     fn io_result(self) -> crate::io::Result<T>;
 }
@@ -63,7 +61,7 @@ pub unsafe fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {
 // SAFETY: must be called only once during runtime cleanup.
 // NOTE: this is not guaranteed to run, for example when the program aborts.
 pub unsafe fn cleanup() {
-    net::cleanup();
+    crate::sys::net::cleanup();
 }
 
 #[inline]
@@ -113,7 +111,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         c::ERROR_WRITE_PROTECT => return ReadOnlyFilesystem,
         c::ERROR_DISK_FULL | c::ERROR_HANDLE_DISK_FULL => return StorageFull,
         c::ERROR_SEEK_ON_DEVICE => return NotSeekable,
-        c::ERROR_DISK_QUOTA_EXCEEDED => return FilesystemQuotaExceeded,
+        c::ERROR_DISK_QUOTA_EXCEEDED => return QuotaExceeded,
         c::ERROR_FILE_TOO_LARGE => return FileTooLarge,
         c::ERROR_BUSY => return ResourceBusy,
         c::ERROR_POSSIBLE_DEADLOCK => return Deadlock,
@@ -138,7 +136,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         c::WSAEHOSTUNREACH => HostUnreachable,
         c::WSAENETDOWN => NetworkDown,
         c::WSAENETUNREACH => NetworkUnreachable,
-        c::WSAEDQUOT => FilesystemQuotaExceeded,
+        c::WSAEDQUOT => QuotaExceeded,
 
         _ => Uncategorized,
     }
@@ -183,7 +181,7 @@ pub fn to_u16s<S: AsRef<OsStr>>(s: S) -> crate::io::Result<Vec<u16>> {
         maybe_result.extend(s.encode_wide());
 
         if unrolled_find_u16s(0, &maybe_result).is_some() {
-            return Err(crate::io::const_io_error!(
+            return Err(crate::io::const_error!(
                 ErrorKind::InvalidInput,
                 "strings passed to WinAPI cannot contain NULs",
             ));
@@ -272,7 +270,7 @@ where
                 unreachable!();
             } else {
                 // Safety: First `k` values are initialized.
-                let slice: &[u16] = MaybeUninit::slice_assume_init_ref(&buf[..k]);
+                let slice: &[u16] = buf[..k].assume_init_ref();
                 return Ok(f2(slice));
             }
         }

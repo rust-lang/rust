@@ -1,9 +1,8 @@
 use rustc_hir::LangItem;
-use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::ty::{self, Mutability};
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::{bug, mir};
-use rustc_span::symbol::Symbol;
+use rustc_span::Symbol;
 use tracing::trace;
 
 use crate::const_eval::{CanAccessMutGlobal, CompileTimeInterpCx, mk_eval_cx_to_read_const_val};
@@ -20,12 +19,9 @@ fn alloc_caller_location<'tcx>(
     // This can fail if rustc runs out of memory right here. Trying to emit an error would be
     // pointless, since that would require allocating more memory than these short strings.
     let file = if loc_details.file {
-        ecx.allocate_str(filename.as_str(), MemoryKind::CallerLocation, Mutability::Not).unwrap()
+        ecx.allocate_str_dedup(filename.as_str()).unwrap()
     } else {
-        // FIXME: This creates a new allocation each time. It might be preferable to
-        // perform this allocation only once, and re-use the `MPlaceTy`.
-        // See https://github.com/rust-lang/rust/pull/89920#discussion_r730012398
-        ecx.allocate_str("<redacted>", MemoryKind::CallerLocation, Mutability::Not).unwrap()
+        ecx.allocate_str_dedup("<redacted>").unwrap()
     };
     let file = file.map_provenance(CtfeProvenance::as_immutable);
     let line = if loc_details.line { Scalar::from_u32(line) } else { Scalar::from_u32(0) };
@@ -51,16 +47,16 @@ fn alloc_caller_location<'tcx>(
 }
 
 pub(crate) fn const_caller_location_provider(
-    tcx: TyCtxtAt<'_>,
+    tcx: TyCtxt<'_>,
     file: Symbol,
     line: u32,
     col: u32,
 ) -> mir::ConstValue<'_> {
     trace!("const_caller_location: {}:{}:{}", file, line, col);
     let mut ecx = mk_eval_cx_to_read_const_val(
-        tcx.tcx,
-        tcx.span,
-        ty::ParamEnv::reveal_all(),
+        tcx,
+        rustc_span::DUMMY_SP, // FIXME: use a proper span here?
+        ty::TypingEnv::fully_monomorphized(),
         CanAccessMutGlobal::No,
     );
 

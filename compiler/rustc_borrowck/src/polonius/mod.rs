@@ -1,191 +1,196 @@
-//! Functions dedicated to fact generation for the `-Zpolonius=legacy` datalog implementation.
+//! Polonius analysis and support code:
+//! - dedicated constraints
+//! - conversion from NLL constraints
+//! - debugging utilities
+//! - etc.
 //!
-//! Will be removed in the future, once the in-tree `-Zpolonius=next` implementation reaches feature
-//! parity.
+//! The current implementation models the flow-sensitive borrow-checking concerns as a graph
+//! containing both information about regions and information about the control flow.
+//!
+//! Loan propagation is seen as a reachability problem (with some subtleties) between where the loan
+//! is introduced and a given point.
+//!
+//! Constraints arising from type-checking allow loans to flow from region to region at the same CFG
+//! point. Constraints arising from liveness allow loans to flow within from point to point, between
+//! live regions at these points.
+//!
+//! Edges can be bidirectional to encode invariant relationships, and loans can flow "back in time"
+//! to traverse these constraints arising earlier in the CFG.
+//!
+//! When incorporating kills in the traversal, the loans reaching a given point are considered live.
+//!
+//! After this, the usual NLL process happens. These live loans are fed into a dataflow analysis
+//! combining them with the points where loans go out of NLL scope (the frontier where they stop
+//! propagating to a live region), to yield the "loans in scope" or "active loans", at a given
+//! point.
+//!
+//! Illegal accesses are still computed by checking whether one of these resulting loans is
+//! invalidated.
+//!
+//! More information on this simple approach can be found in the following links, and in the future
+//! in the rustc dev guide:
+//! - <https://smallcultfollowing.com/babysteps/blog/2023/09/22/polonius-part-1/>
+//! - <https://smallcultfollowing.com/babysteps/blog/2023/09/29/polonius-part-2/>
+//!
+//!
+//! Data flows like this:
+//! 1) during MIR typeck, record liveness data needed later: live region variances, as well as the
+//!    usual NLL liveness data (just computed on more locals). That's the [PoloniusLivenessContext].
+//! 2) once that is done, variance data is transferred, and the NLL region liveness is converted to
+//!    the polonius shape. That's the main [PoloniusContext].
+//! 3) during region inference, that data and the NLL outlives constraints are used to create the
+//!    localized outlives constraints, as described above. That's the [PoloniusDiagnosticsContext].
+//! 4) transfer this back to the main borrowck procedure: it handles computing errors and
+//!    diagnostics, debugging and MIR dumping concerns.
 
-use rustc_middle::mir::{Body, LocalKind, Location, START_BLOCK};
-use rustc_middle::ty::TyCtxt;
-use rustc_mir_dataflow::move_paths::{InitKind, InitLocation, MoveData};
-use tracing::debug;
+mod constraints;
+mod dump;
+pub(crate) mod legacy;
+mod liveness_constraints;
+mod loan_liveness;
+mod typeck_constraints;
 
-use crate::borrow_set::BorrowSet;
-use crate::facts::{AllFacts, PoloniusRegionVid};
-use crate::location::LocationTable;
-use crate::type_check::free_region_relations::UniversalRegionRelations;
-use crate::universal_regions::UniversalRegions;
+use std::collections::BTreeMap;
 
-mod loan_invalidations;
-mod loan_kills;
+use rustc_data_structures::fx::FxHashSet;
+use rustc_index::bit_set::SparseBitMatrix;
+use rustc_index::interval::SparseIntervalMatrix;
+use rustc_middle::mir::{Body, Local};
+use rustc_middle::ty::{RegionVid, TyCtxt};
+use rustc_mir_dataflow::points::PointIndex;
 
-/// When requested, emit most of the facts needed by polonius:
-/// - moves and assignments
-/// - universal regions and their relations
-/// - CFG points and edges
-/// - loan kills
-/// - loan invalidations
-///
-/// The rest of the facts are emitted during typeck and liveness.
-pub(crate) fn emit_facts<'tcx>(
-    all_facts: &mut Option<AllFacts>,
-    tcx: TyCtxt<'tcx>,
-    location_table: &LocationTable,
-    body: &Body<'tcx>,
-    borrow_set: &BorrowSet<'tcx>,
-    move_data: &MoveData<'_>,
-    universal_regions: &UniversalRegions<'_>,
-    universal_region_relations: &UniversalRegionRelations<'_>,
-) {
-    let Some(all_facts) = all_facts else {
-        // We don't do anything if there are no facts to fill.
-        return;
-    };
-    let _prof_timer = tcx.prof.generic_activity("polonius_fact_generation");
-    emit_move_facts(all_facts, move_data, location_table, body);
-    emit_universal_region_facts(
-        all_facts,
-        borrow_set,
-        universal_regions,
-        universal_region_relations,
-    );
-    emit_cfg_and_loan_kills_facts(all_facts, tcx, location_table, body, borrow_set);
-    emit_loan_invalidations_facts(all_facts, tcx, location_table, body, borrow_set);
+pub(crate) use self::constraints::*;
+pub(crate) use self::dump::dump_polonius_mir;
+use self::liveness_constraints::create_liveness_constraints;
+use self::loan_liveness::compute_loan_liveness;
+use self::typeck_constraints::convert_typeck_constraints;
+use crate::dataflow::BorrowIndex;
+use crate::{BorrowSet, RegionInferenceContext};
+
+pub(crate) type LiveLoans = SparseBitMatrix<PointIndex, BorrowIndex>;
+
+/// This struct holds the liveness data created during MIR typeck, and which will be used later in
+/// the process, to compute the polonius localized constraints.
+#[derive(Default)]
+pub(crate) struct PoloniusLivenessContext {
+    /// The expected edge direction per live region: the kind of directed edge we'll create as
+    /// liveness constraints depends on the variance of types with respect to each contained region.
+    live_region_variances: BTreeMap<RegionVid, ConstraintDirection>,
+
+    /// The regions that outlive free regions are used to distinguish relevant live locals from
+    /// boring locals. A boring local is one whose type contains only such regions. Polonius
+    /// currently has more boring locals than NLLs so we record the latter to use in errors and
+    /// diagnostics, to focus on the locals we consider relevant and match NLL diagnostics.
+    pub(crate) boring_nll_locals: FxHashSet<Local>,
 }
 
-/// Emit facts needed for move/init analysis: moves and assignments.
-fn emit_move_facts(
-    all_facts: &mut AllFacts,
-    move_data: &MoveData<'_>,
-    location_table: &LocationTable,
-    body: &Body<'_>,
-) {
-    all_facts
-        .path_is_var
-        .extend(move_data.rev_lookup.iter_locals_enumerated().map(|(l, r)| (r, l)));
+/// This struct holds the data needed to create the Polonius localized constraints. Its data is
+/// transferred and converted from the [PoloniusLivenessContext] at the end of MIR typeck.
+pub(crate) struct PoloniusContext {
+    /// The liveness data we recorded during MIR typeck.
+    liveness_context: PoloniusLivenessContext,
 
-    for (child, move_path) in move_data.move_paths.iter_enumerated() {
-        if let Some(parent) = move_path.parent {
-            all_facts.child_path.push((child, parent));
-        }
-    }
+    /// The set of regions that are live at a given point in the CFG, used to create localized
+    /// outlives constraints between regions that are live at connected points in the CFG.
+    live_regions: SparseBitMatrix<PointIndex, RegionVid>,
+}
 
-    let fn_entry_start =
-        location_table.start_index(Location { block: START_BLOCK, statement_index: 0 });
+/// This struct holds the data needed by the borrowck error computation and diagnostics. Its data is
+/// computed from the [PoloniusContext] when computing NLL regions.
+pub(crate) struct PoloniusDiagnosticsContext {
+    /// The localized outlives constraints that were computed in the main analysis.
+    localized_outlives_constraints: LocalizedOutlivesConstraintSet,
 
-    // initialized_at
-    for init in move_data.inits.iter() {
-        match init.location {
-            InitLocation::Statement(location) => {
-                let block_data = &body[location.block];
-                let is_terminator = location.statement_index == block_data.statements.len();
+    /// The liveness data computed during MIR typeck: [PoloniusLivenessContext::boring_nll_locals].
+    pub(crate) boring_nll_locals: FxHashSet<Local>,
+}
 
-                if is_terminator && init.kind == InitKind::NonPanicPathOnly {
-                    // We are at the terminator of an init that has a panic path,
-                    // and where the init should not happen on panic
+/// The direction a constraint can flow into. Used to create liveness constraints according to
+/// variance.
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+enum ConstraintDirection {
+    /// For covariant cases, we add a forward edge `O at P1 -> O at P2`.
+    Forward,
 
-                    for successor in block_data.terminator().successors() {
-                        if body[successor].is_cleanup {
-                            continue;
-                        }
+    /// For contravariant cases, we add a backward edge `O at P2 -> O at P1`
+    Backward,
 
-                        // The initialization happened in (or rather, when arriving at)
-                        // the successors, but not in the unwind block.
-                        let first_statement = Location { block: successor, statement_index: 0 };
-                        all_facts
-                            .path_assigned_at_base
-                            .push((init.path, location_table.start_index(first_statement)));
-                    }
-                } else {
-                    // In all other cases, the initialization just happens at the
-                    // midpoint, like any other effect.
-                    all_facts
-                        .path_assigned_at_base
-                        .push((init.path, location_table.mid_index(location)));
-                }
+    /// For invariant cases, we add both the forward and backward edges `O at P1 <-> O at P2`.
+    Bidirectional,
+}
+
+impl PoloniusContext {
+    /// Unlike NLLs, in polonius we traverse the cfg to look for regions live across an edge, so we
+    /// need to transpose the "points where each region is live" matrix to a "live regions per point"
+    /// matrix.
+    // FIXME: avoid this conversion by always storing liveness data in this shape in the rest of
+    // borrowck.
+    pub(crate) fn create_from_liveness(
+        liveness_context: PoloniusLivenessContext,
+        num_regions: usize,
+        points_per_live_region: &SparseIntervalMatrix<RegionVid, PointIndex>,
+    ) -> PoloniusContext {
+        let mut live_regions_per_point = SparseBitMatrix::new(num_regions);
+        for region in points_per_live_region.rows() {
+            for point in points_per_live_region.row(region).unwrap().iter() {
+                live_regions_per_point.insert(point, region);
             }
-            // Arguments are initialized on function entry
-            InitLocation::Argument(local) => {
-                assert!(body.local_kind(local) == LocalKind::Arg);
-                all_facts.path_assigned_at_base.push((init.path, fn_entry_start));
-            }
         }
+
+        PoloniusContext { live_regions: live_regions_per_point, liveness_context }
     }
 
-    for (local, path) in move_data.rev_lookup.iter_locals_enumerated() {
-        if body.local_kind(local) != LocalKind::Arg {
-            // Non-arguments start out deinitialised; we simulate this with an
-            // initial move:
-            all_facts.path_moved_at_base.push((path, fn_entry_start));
-        }
+    /// Computes live loans using the set of loans model for `-Zpolonius=next`.
+    ///
+    /// First, creates a constraint graph combining regions and CFG points, by:
+    /// - converting NLL typeck constraints to be localized
+    /// - encoding liveness constraints
+    ///
+    /// Then, this graph is traversed, and combined with kills, reachability is recorded as loan
+    /// liveness, to be used by the loan scope and active loans computations.
+    ///
+    /// The constraint data will be used to compute errors and diagnostics.
+    pub(crate) fn compute_loan_liveness<'tcx>(
+        self,
+        tcx: TyCtxt<'tcx>,
+        regioncx: &mut RegionInferenceContext<'tcx>,
+        body: &Body<'tcx>,
+        borrow_set: &BorrowSet<'tcx>,
+    ) -> PoloniusDiagnosticsContext {
+        let PoloniusLivenessContext { live_region_variances, boring_nll_locals } =
+            self.liveness_context;
+
+        let mut localized_outlives_constraints = LocalizedOutlivesConstraintSet::default();
+        convert_typeck_constraints(
+            tcx,
+            body,
+            regioncx.liveness_constraints(),
+            regioncx.outlives_constraints(),
+            regioncx.universal_regions(),
+            &mut localized_outlives_constraints,
+        );
+
+        create_liveness_constraints(
+            body,
+            regioncx.liveness_constraints(),
+            &self.live_regions,
+            &live_region_variances,
+            regioncx.universal_regions(),
+            &mut localized_outlives_constraints,
+        );
+
+        // Now that we have a complete graph, we can compute reachability to trace the liveness of
+        // loans for the next step in the chain, the NLL loan scope and active loans computations.
+        let live_loans = compute_loan_liveness(
+            tcx,
+            body,
+            regioncx.liveness_constraints(),
+            regioncx.outlives_constraints(),
+            borrow_set,
+            &localized_outlives_constraints,
+        );
+        regioncx.record_live_loans(live_loans);
+
+        PoloniusDiagnosticsContext { localized_outlives_constraints, boring_nll_locals }
     }
-
-    // moved_out_at
-    // deinitialisation is assumed to always happen!
-    all_facts
-        .path_moved_at_base
-        .extend(move_data.moves.iter().map(|mo| (mo.path, location_table.mid_index(mo.source))));
-}
-
-/// Emit universal regions facts, and their relations.
-fn emit_universal_region_facts(
-    all_facts: &mut AllFacts,
-    borrow_set: &BorrowSet<'_>,
-    universal_regions: &UniversalRegions<'_>,
-    universal_region_relations: &UniversalRegionRelations<'_>,
-) {
-    // 1: universal regions are modeled in Polonius as a pair:
-    // - the universal region vid itself.
-    // - a "placeholder loan" associated to this universal region. Since they don't exist in
-    //   the `borrow_set`, their `BorrowIndex` are synthesized as the universal region index
-    //   added to the existing number of loans, as if they succeeded them in the set.
-    //
-    all_facts
-        .universal_region
-        .extend(universal_regions.universal_regions().map(PoloniusRegionVid::from));
-    let borrow_count = borrow_set.len();
-    debug!(
-        "emit_universal_region_facts: polonius placeholders, num_universals={}, borrow_count={}",
-        universal_regions.len(),
-        borrow_count
-    );
-
-    for universal_region in universal_regions.universal_regions() {
-        let universal_region_idx = universal_region.index();
-        let placeholder_loan_idx = borrow_count + universal_region_idx;
-        all_facts.placeholder.push((universal_region.into(), placeholder_loan_idx.into()));
-    }
-
-    // 2: the universal region relations `outlives` constraints are emitted as
-    //  `known_placeholder_subset` facts.
-    for (fr1, fr2) in universal_region_relations.known_outlives() {
-        if fr1 != fr2 {
-            debug!(
-                "emit_universal_region_facts: emitting polonius `known_placeholder_subset` \
-                     fr1={:?}, fr2={:?}",
-                fr1, fr2
-            );
-            all_facts.known_placeholder_subset.push((fr1.into(), fr2.into()));
-        }
-    }
-}
-
-/// Emit facts about loan invalidations.
-fn emit_loan_invalidations_facts<'tcx>(
-    all_facts: &mut AllFacts,
-    tcx: TyCtxt<'tcx>,
-    location_table: &LocationTable,
-    body: &Body<'tcx>,
-    borrow_set: &BorrowSet<'tcx>,
-) {
-    loan_invalidations::emit_loan_invalidations(tcx, all_facts, location_table, body, borrow_set);
-}
-
-/// Emit facts about CFG points and edges, as well as locations where loans are killed.
-fn emit_cfg_and_loan_kills_facts<'tcx>(
-    all_facts: &mut AllFacts,
-    tcx: TyCtxt<'tcx>,
-    location_table: &LocationTable,
-    body: &Body<'tcx>,
-    borrow_set: &BorrowSet<'tcx>,
-) {
-    loan_kills::emit_loan_kills(tcx, all_facts, location_table, body, borrow_set);
 }

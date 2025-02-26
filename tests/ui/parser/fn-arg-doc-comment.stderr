@@ -30,15 +30,11 @@ note: function defined here
 LL |   pub fn f(
    |          ^
 LL | /     /// Comment
-LL | |
-LL | |
-LL | |
+...  |
 LL | |     id: u8,
    | |__________-
 LL | /     /// Other
-LL | |
-LL | |
-LL | |
+...  |
 LL | |     a: u8,
    | |_________-
 

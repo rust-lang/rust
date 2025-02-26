@@ -121,7 +121,7 @@ impl RefData {
     /// Derefs `expr` and wraps it in parens if necessary
     pub(crate) fn wrap_expr(&self, mut expr: ast::Expr) -> ast::Expr {
         if self.needs_deref {
-            expr = make::expr_prefix(T![*], expr);
+            expr = make::expr_prefix(T![*], expr).into();
         }
 
         if self.needs_parentheses {

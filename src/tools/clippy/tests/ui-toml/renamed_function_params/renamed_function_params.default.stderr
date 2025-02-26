@@ -33,8 +33,9 @@ LL |     fn hash_slice<H: Hasher>(date: &[Self], states: &mut H) {
    |
 help: consider using the default names
    |
-LL |     fn hash_slice<H: Hasher>(data: &[Self], state: &mut H) {
-   |                              ~~~~           ~~~~~
+LL -     fn hash_slice<H: Hasher>(date: &[Self], states: &mut H) {
+LL +     fn hash_slice<H: Hasher>(data: &[Self], state: &mut H) {
+   |
 
 error: renamed function parameter of trait impl
   --> tests/ui-toml/renamed_function_params/renamed_function_params.rs:80:18

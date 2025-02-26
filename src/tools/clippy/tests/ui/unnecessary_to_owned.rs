@@ -7,8 +7,6 @@
 )]
 #![warn(clippy::unnecessary_to_owned, clippy::redundant_clone)]
 
-//@no-rustfix: need to change the suggestion to a multipart suggestion
-
 use std::borrow::Cow;
 use std::ffi::{CStr, CString, OsStr, OsString};
 use std::ops::Deref;
@@ -586,4 +584,10 @@ fn borrow_checks() {
     // Should not lint!
     HashSet::<i32>::new().foo::<&str>(&"".to_owned());
     HashSet::<String>::new().get(&1.to_string());
+}
+
+fn issue13624() -> impl IntoIterator {
+    let cow: Cow<'_, Vec<String>> = Cow::Owned(vec![String::from("foo")]);
+
+    cow.into_owned().into_iter()
 }

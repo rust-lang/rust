@@ -2,8 +2,7 @@ use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
-use rustc_span::Span;
-use rustc_span::symbol::{Symbol, kw};
+use rustc_span::{Span, Symbol, kw};
 use tracing::instrument;
 
 use super::{Clause, InstantiatedPredicates, ParamConst, ParamTy, Ty, TyCtxt};
@@ -86,10 +85,10 @@ impl GenericParamDef {
         tcx: TyCtxt<'tcx>,
     ) -> Option<EarlyBinder<'tcx, ty::GenericArg<'tcx>>> {
         match self.kind {
-            GenericParamDefKind::Type { has_default, .. } if has_default => {
+            GenericParamDefKind::Type { has_default: true, .. } => {
                 Some(tcx.type_of(self.def_id).map_bound(|t| t.into()))
             }
-            GenericParamDefKind::Const { has_default, .. } if has_default => {
+            GenericParamDefKind::Const { has_default: true, .. } => {
                 Some(tcx.const_param_default(self.def_id).map_bound(|c| c.into()))
             }
             _ => None,

@@ -2,7 +2,6 @@
 //@[e2021] edition: 2021
 //@[e2021] run-rustfix
 //@[e2024] edition: 2024
-//@[e2024] compile-flags: -Zunstable-options
 //@[e2024] check-pass
 
 #![deny(rust_2024_prelude_collisions)]

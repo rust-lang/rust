@@ -6,6 +6,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
+use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
 
@@ -78,15 +79,16 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
                         if matches!(*orig_lt, ty::ReLateParam(..)) {
                             mapping.insert(
                                 orig_lt,
-                                ty::Region::new_early_param(tcx, ty::EarlyParamRegion {
-                                    index: param.index,
-                                    name: param.name,
-                                }),
+                                ty::Region::new_early_param(
+                                    tcx,
+                                    ty::EarlyParamRegion { index: param.index, name: param.name },
+                                ),
                             );
                         }
                     }
                     // FIXME: This could use a real folder, I guess.
-                    let remapped_wf_tys = tcx.fold_regions(
+                    let remapped_wf_tys = fold_regions(
+                        tcx,
                         tcx.assumed_wf_types(fn_def_id.expect_local()).to_vec(),
                         |region, _| {
                             // If `region` is a `ReLateParam` that is captured by the
@@ -149,7 +151,7 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
     }
 }
 
-fn fn_sig_spans(tcx: TyCtxt<'_>, def_id: LocalDefId) -> impl Iterator<Item = Span> + '_ {
+fn fn_sig_spans(tcx: TyCtxt<'_>, def_id: LocalDefId) -> impl Iterator<Item = Span> {
     let node = tcx.hir_node_by_def_id(def_id);
     if let Some(decl) = node.fn_decl() {
         decl.inputs.iter().map(|ty| ty.span).chain(iter::once(decl.output.span()))
@@ -158,7 +160,7 @@ fn fn_sig_spans(tcx: TyCtxt<'_>, def_id: LocalDefId) -> impl Iterator<Item = Spa
     }
 }
 
-fn impl_spans(tcx: TyCtxt<'_>, def_id: LocalDefId) -> impl Iterator<Item = Span> + '_ {
+fn impl_spans(tcx: TyCtxt<'_>, def_id: LocalDefId) -> impl Iterator<Item = Span> {
     let item = tcx.hir().expect_item(def_id);
     if let hir::ItemKind::Impl(impl_) = item.kind {
         let trait_args = impl_

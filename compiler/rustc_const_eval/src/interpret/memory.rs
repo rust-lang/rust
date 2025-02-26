@@ -11,20 +11,19 @@ use std::borrow::{Borrow, Cow};
 use std::collections::VecDeque;
 use std::{fmt, mem, ptr};
 
+use rustc_abi::{Align, HasDataLayout, Size};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
-use rustc_hir::def::DefKind;
 use rustc_middle::bug;
 use rustc_middle::mir::display_allocation;
-use rustc_middle::ty::{self, Instance, ParamEnv, Ty, TyCtxt};
-use rustc_target::abi::{Align, HasDataLayout, Size};
+use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use tracing::{debug, instrument, trace};
 
 use super::{
-    AllocBytes, AllocId, AllocMap, AllocRange, Allocation, CheckAlignMsg, CheckInAllocMsg,
-    CtfeProvenance, GlobalAlloc, InterpCx, InterpResult, Machine, MayLeak, Misalignment, Pointer,
-    PointerArithmetic, Provenance, Scalar, alloc_range, err_ub, err_ub_custom, interp_ok, throw_ub,
-    throw_ub_custom, throw_unsup, throw_unsup_format,
+    AllocBytes, AllocId, AllocInit, AllocMap, AllocRange, Allocation, CheckAlignMsg,
+    CheckInAllocMsg, CtfeProvenance, GlobalAlloc, InterpCx, InterpResult, Machine, MayLeak,
+    Misalignment, Pointer, PointerArithmetic, Provenance, Scalar, alloc_range, err_ub,
+    err_ub_custom, interp_ok, throw_ub, throw_ub_custom, throw_unsup, throw_unsup_format,
 };
 use crate::fluent_generated as fluent;
 
@@ -70,6 +69,21 @@ pub enum AllocKind {
     VTable,
     /// A dead allocation.
     Dead,
+}
+
+/// Metadata about an `AllocId`.
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub struct AllocInfo {
+    pub size: Size,
+    pub align: Align,
+    pub kind: AllocKind,
+    pub mutbl: Mutability,
+}
+
+impl AllocInfo {
+    fn new(size: Size, align: Align, kind: AllocKind, mutbl: Mutability) -> Self {
+        Self { size, align, kind, mutbl }
+    }
 }
 
 /// The value of a function pointer.
@@ -216,11 +230,12 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         size: Size,
         align: Align,
         kind: MemoryKind<M::MemoryKind>,
+        init: AllocInit,
     ) -> InterpResult<'tcx, Pointer<M::Provenance>> {
         let alloc = if M::PANIC_ON_ALLOC_FAIL {
-            Allocation::uninit(size, align)
+            Allocation::new(size, align, init)
         } else {
-            Allocation::try_uninit(size, align)?
+            Allocation::try_new(size, align, init)?
         };
         self.insert_allocation(alloc, kind)
     }
@@ -256,6 +271,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         M::adjust_alloc_root_pointer(self, Pointer::from(id), Some(kind))
     }
 
+    /// If this grows the allocation, `init_growth` determines
+    /// whether the additional space will be initialized.
     pub fn reallocate_ptr(
         &mut self,
         ptr: Pointer<Option<M::Provenance>>,
@@ -263,6 +280,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         new_size: Size,
         new_align: Align,
         kind: MemoryKind<M::MemoryKind>,
+        init_growth: AllocInit,
     ) -> InterpResult<'tcx, Pointer<M::Provenance>> {
         let (alloc_id, offset, _prov) = self.ptr_get_alloc_id(ptr, 0)?;
         if offset.bytes() != 0 {
@@ -275,7 +293,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         // For simplicities' sake, we implement reallocate as "alloc, copy, dealloc".
         // This happens so rarely, the perf advantage is outweighed by the maintenance cost.
-        let new_ptr = self.allocate_ptr(new_size, new_align, kind)?;
+        // If requested, we zero-init the entire allocation, to ensure that a growing
+        // allocation has its new bytes properly set. For the part that is copied,
+        // `mem_copy` below will de-initialize things as necessary.
+        let new_ptr = self.allocate_ptr(new_size, new_align, kind, init_growth)?;
         let old_size = match old_size_and_align {
             Some((size, _align)) => size,
             None => self.get_alloc_raw(alloc_id)?.size(),
@@ -524,17 +545,22 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         match self.ptr_try_get_alloc_id(ptr, 0) {
             Err(addr) => is_offset_misaligned(addr, align),
             Ok((alloc_id, offset, _prov)) => {
-                let (_size, alloc_align, kind) = self.get_alloc_info(alloc_id);
-                if let Some(misalign) =
-                    M::alignment_check(self, alloc_id, alloc_align, kind, offset, align)
-                {
+                let alloc_info = self.get_alloc_info(alloc_id);
+                if let Some(misalign) = M::alignment_check(
+                    self,
+                    alloc_id,
+                    alloc_info.align,
+                    alloc_info.kind,
+                    offset,
+                    align,
+                ) {
                     Some(misalign)
                 } else if M::Provenance::OFFSET_IS_ADDR {
                     is_offset_misaligned(ptr.addr().bytes(), align)
                 } else {
                     // Check allocation alignment and offset alignment.
-                    if alloc_align.bytes() < align.bytes() {
-                        Some(Misalignment { has: alloc_align, required: align })
+                    if alloc_info.align.bytes() < align.bytes() {
+                        Some(Misalignment { has: alloc_info.align, required: align })
                     } else {
                         is_offset_misaligned(offset.bytes(), align)
                     }
@@ -811,89 +837,54 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// [`InterpCx::get_alloc_info`] if all you need to check is whether the kind is
     /// [`AllocKind::Dead`] because it doesn't have to look up the type and layout of statics.
     pub fn is_alloc_live(&self, id: AllocId) -> bool {
-        self.tcx.try_get_global_alloc(id).is_some()
-            || self.memory.alloc_map.contains_key_ref(&id)
+        self.memory.alloc_map.contains_key_ref(&id)
             || self.memory.extra_fn_ptr_map.contains_key(&id)
+            // We check `tcx` last as that has to acquire a lock in `many-seeds` mode.
+            // This also matches the order in `get_alloc_info`.
+            || self.tcx.try_get_global_alloc(id).is_some()
     }
 
     /// Obtain the size and alignment of an allocation, even if that allocation has
     /// been deallocated.
-    pub fn get_alloc_info(&self, id: AllocId) -> (Size, Align, AllocKind) {
+    pub fn get_alloc_info(&self, id: AllocId) -> AllocInfo {
         // # Regular allocations
         // Don't use `self.get_raw` here as that will
         // a) cause cycles in case `id` refers to a static
         // b) duplicate a global's allocation in miri
         if let Some((_, alloc)) = self.memory.alloc_map.get(id) {
-            return (alloc.size(), alloc.align, AllocKind::LiveData);
+            return AllocInfo::new(
+                alloc.size(),
+                alloc.align,
+                AllocKind::LiveData,
+                alloc.mutability,
+            );
         }
 
         // # Function pointers
         // (both global from `alloc_map` and local from `extra_fn_ptr_map`)
         if self.get_fn_alloc(id).is_some() {
-            return (Size::ZERO, Align::ONE, AllocKind::Function);
+            return AllocInfo::new(Size::ZERO, Align::ONE, AllocKind::Function, Mutability::Not);
         }
 
-        // # Statics
-        // Can't do this in the match argument, we may get cycle errors since the lock would
-        // be held throughout the match.
-        match self.tcx.try_get_global_alloc(id) {
-            Some(GlobalAlloc::Static(def_id)) => {
-                // Thread-local statics do not have a constant address. They *must* be accessed via
-                // `ThreadLocalRef`; we can never have a pointer to them as a regular constant value.
-                assert!(!self.tcx.is_thread_local_static(def_id));
-
-                let DefKind::Static { nested, .. } = self.tcx.def_kind(def_id) else {
-                    bug!("GlobalAlloc::Static is not a static")
-                };
-
-                let (size, align) = if nested {
-                    // Nested anonymous statics are untyped, so let's get their
-                    // size and alignment from the allocation itself. This always
-                    // succeeds, as the query is fed at DefId creation time, so no
-                    // evaluation actually occurs.
-                    let alloc = self.tcx.eval_static_initializer(def_id).unwrap();
-                    (alloc.0.size(), alloc.0.align)
-                } else {
-                    // Use size and align of the type for everything else. We need
-                    // to do that to
-                    // * avoid cycle errors in case of self-referential statics,
-                    // * be able to get information on extern statics.
-                    let ty = self
-                        .tcx
-                        .type_of(def_id)
-                        .no_bound_vars()
-                        .expect("statics should not have generic parameters");
-                    let layout = self.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
-                    assert!(layout.is_sized());
-                    (layout.size, layout.align.abi)
-                };
-                (size, align, AllocKind::LiveData)
-            }
-            Some(GlobalAlloc::Memory(alloc)) => {
-                // Need to duplicate the logic here, because the global allocations have
-                // different associated types than the interpreter-local ones.
-                let alloc = alloc.inner();
-                (alloc.size(), alloc.align, AllocKind::LiveData)
-            }
-            Some(GlobalAlloc::Function { .. }) => {
-                bug!("We already checked function pointers above")
-            }
-            Some(GlobalAlloc::VTable(..)) => {
-                // No data to be accessed here. But vtables are pointer-aligned.
-                return (Size::ZERO, self.tcx.data_layout.pointer_align.abi, AllocKind::VTable);
-            }
-            // The rest must be dead.
-            None => {
-                // Deallocated pointers are allowed, we should be able to find
-                // them in the map.
-                let (size, align) = *self
-                    .memory
-                    .dead_alloc_map
-                    .get(&id)
-                    .expect("deallocated pointers should all be recorded in `dead_alloc_map`");
-                (size, align, AllocKind::Dead)
-            }
+        // # Global allocations
+        if let Some(global_alloc) = self.tcx.try_get_global_alloc(id) {
+            let (size, align) = global_alloc.size_and_align(*self.tcx, self.typing_env);
+            let mutbl = global_alloc.mutability(*self.tcx, self.typing_env);
+            let kind = match global_alloc {
+                GlobalAlloc::Static { .. } | GlobalAlloc::Memory { .. } => AllocKind::LiveData,
+                GlobalAlloc::Function { .. } => bug!("We already checked function pointers above"),
+                GlobalAlloc::VTable { .. } => AllocKind::VTable,
+            };
+            return AllocInfo::new(size, align, kind, mutbl);
         }
+
+        // # Dead pointers
+        let (size, align) = *self
+            .memory
+            .dead_alloc_map
+            .get(&id)
+            .expect("deallocated pointers should all be recorded in `dead_alloc_map`");
+        AllocInfo::new(size, align, AllocKind::Dead, Mutability::Not)
     }
 
     /// Obtain the size and alignment of a *live* allocation.
@@ -902,11 +893,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         id: AllocId,
         msg: CheckInAllocMsg,
     ) -> InterpResult<'tcx, (Size, Align)> {
-        let (size, align, kind) = self.get_alloc_info(id);
-        if matches!(kind, AllocKind::Dead) {
+        let info = self.get_alloc_info(id);
+        if matches!(info.kind, AllocKind::Dead) {
             throw_ub!(PointerUseAfterFree(id, msg))
         }
-        interp_ok((size, align))
+        interp_ok((info.size, info.align))
     }
 
     fn get_fn_alloc(&self, id: AllocId) -> Option<FnVal<'tcx, M::ExtraFnVal>> {
@@ -959,6 +950,52 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
     pub fn alloc_mark_immutable(&mut self, id: AllocId) -> InterpResult<'tcx> {
         self.get_alloc_raw_mut(id)?.0.mutability = Mutability::Not;
+        interp_ok(())
+    }
+
+    /// Handle the effect an FFI call might have on the state of allocations.
+    /// This overapproximates the modifications which external code might make to memory:
+    /// We set all reachable allocations as initialized, mark all provenances as exposed
+    /// and overwrite them with `Provenance::WILDCARD`.
+    pub fn prepare_for_native_call(
+        &mut self,
+        id: AllocId,
+        initial_prov: M::Provenance,
+    ) -> InterpResult<'tcx> {
+        // Expose provenance of the root allocation.
+        M::expose_provenance(self, initial_prov)?;
+
+        let mut done = FxHashSet::default();
+        let mut todo = vec![id];
+        while let Some(id) = todo.pop() {
+            if !done.insert(id) {
+                // We already saw this allocation before, don't process it again.
+                continue;
+            }
+            let info = self.get_alloc_info(id);
+
+            // If there is no data behind this pointer, skip this.
+            if !matches!(info.kind, AllocKind::LiveData) {
+                continue;
+            }
+
+            // Expose all provenances in this allocation, and add them to `todo`.
+            let alloc = self.get_alloc_raw(id)?;
+            for prov in alloc.provenance().provenances() {
+                M::expose_provenance(self, prov)?;
+                if let Some(id) = prov.get_alloc_id() {
+                    todo.push(id);
+                }
+            }
+
+            // Prepare for possible write from native code if mutable.
+            if info.mutbl.is_mut() {
+                self.get_alloc_raw_mut(id)?
+                    .0
+                    .prepare_for_native_write()
+                    .map_err(|e| e.to_interp_error(id))?;
+            }
+        }
         interp_ok(())
     }
 
@@ -1331,6 +1368,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let src_alloc = self.get_alloc_raw(src_alloc_id)?;
         let src_range = alloc_range(src_offset, size);
         assert!(!self.memory.validation_in_progress, "we can't be copying during validation");
+        // For the overlapping case, it is crucial that we trigger the read hook
+        // before the write hook -- the aliasing model cares about the order.
         M::before_memory_read(
             tcx,
             &self.machine,
@@ -1451,22 +1490,31 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Test if this value might be null.
     /// If the machine does not support ptr-to-int casts, this is conservative.
     pub fn scalar_may_be_null(&self, scalar: Scalar<M::Provenance>) -> InterpResult<'tcx, bool> {
-        interp_ok(match scalar.try_to_scalar_int() {
-            Ok(int) => int.is_null(),
+        match scalar.try_to_scalar_int() {
+            Ok(int) => interp_ok(int.is_null()),
             Err(_) => {
-                // Can only happen during CTFE.
+                // We can't cast this pointer to an integer. Can only happen during CTFE.
                 let ptr = scalar.to_pointer(self)?;
                 match self.ptr_try_get_alloc_id(ptr, 0) {
                     Ok((alloc_id, offset, _)) => {
-                        let (size, _align, _kind) = self.get_alloc_info(alloc_id);
-                        // If the pointer is out-of-bounds, it may be null.
-                        // Note that one-past-the-end (offset == size) is still inbounds, and never null.
-                        offset > size
+                        let info = self.get_alloc_info(alloc_id);
+                        // If the pointer is in-bounds (including "at the end"), it is definitely not null.
+                        if offset <= info.size {
+                            return interp_ok(false);
+                        }
+                        // If the allocation is N-aligned, and the offset is not divisible by N,
+                        // then `base + offset` has a non-zero remainder after division by `N`,
+                        // which means `base + offset` cannot be null.
+                        if offset.bytes() % info.align.bytes() != 0 {
+                            return interp_ok(false);
+                        }
+                        // We don't know enough, this might be null.
+                        interp_ok(true)
                     }
                     Err(_offset) => bug!("a non-int scalar is always a pointer"),
                 }
             }
-        })
+        }
     }
 
     /// Turning a "maybe pointer" into a proper pointer (and some information

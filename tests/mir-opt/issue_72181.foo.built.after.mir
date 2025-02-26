@@ -4,15 +4,14 @@ fn foo(_1: [(Never, u32); 1]) -> u32 {
     debug xs => _1;
     let mut _0: u32;
     let _2: usize;
-    let mut _3: usize;
-    let mut _4: bool;
+    let mut _3: bool;
 
     bb0: {
         StorageLive(_2);
         _2 = const 0_usize;
-        _3 = Len(_1);
-        _4 = Lt(copy _2, copy _3);
-        assert(move _4, "index out of bounds: the length is {} but the index is {}", move _3, copy _2) -> [success: bb1, unwind: bb2];
+        FakeRead(ForIndex, _1);
+        _3 = Lt(copy _2, const 1_usize);
+        assert(move _3, "index out of bounds: the length is {} but the index is {}", const 1_usize, copy _2) -> [success: bb1, unwind: bb2];
     }
 
     bb1: {

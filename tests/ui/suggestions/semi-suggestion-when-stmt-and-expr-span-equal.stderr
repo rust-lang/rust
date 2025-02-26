@@ -1,0 +1,50 @@
+error[E0308]: mismatched types
+  --> $DIR/semi-suggestion-when-stmt-and-expr-span-equal.rs:13:5
+   |
+LL |   fn foo() -> String {
+   |               ------ expected `String` because of return type
+LL |       let mut list = {
+   |  ____________________-
+LL | |         println!();
+LL | |     };
+   | |_____- this block is missing a tail expression
+LL |       list
+   |       ^^^^ expected `String`, found `()`
+
+error[E0277]: a value of type `String` cannot be built from an iterator over elements of type `()`
+  --> $DIR/semi-suggestion-when-stmt-and-expr-span-equal.rs:23:20
+   |
+LL |         .collect::<String>();
+   |          -------   ^^^^^^ value of type `String` cannot be built from `std::iter::Iterator<Item=()>`
+   |          |
+   |          required by a bound introduced by this call
+   |
+   = help: the trait `FromIterator<()>` is not implemented for `String`
+   = help: the following other types implement trait `FromIterator<A>`:
+             `String` implements `FromIterator<&char>`
+             `String` implements `FromIterator<&str>`
+             `String` implements `FromIterator<Box<str, A>>`
+             `String` implements `FromIterator<Cow<'_, str>>`
+             `String` implements `FromIterator<String>`
+             `String` implements `FromIterator<char>`
+note: the method call chain might not have had the expected associated types
+  --> $DIR/semi-suggestion-when-stmt-and-expr-span-equal.rs:20:10
+   |
+LL |       String::new()
+   |       ------------- this expression has type `String`
+LL |           .chars()
+   |            ------- `Iterator::Item` is `char` here
+LL |           .filter(|x| !x.is_whitespace())
+   |            ------------------------------ `Iterator::Item` remains `char` here
+LL |           .map(|x| {
+   |  __________^
+LL | |             println!("Child spawned with the size: {}", x);
+LL | |         })
+   | |__________^ `Iterator::Item` changed to `()` here
+note: required by a bound in `collect`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.
