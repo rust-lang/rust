@@ -93,7 +93,7 @@ pub unsafe fn simd_shl<T>(_lhs: T, _rhs: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn simd_shr<T>(_lhs: T, _rhs: T) -> T;
 
-/// "Ands" vectors elementwise.
+/// "And"s vectors elementwise.
 ///
 /// `T` must be a vector of integer primitive types.
 #[rustc_intrinsic]
@@ -457,7 +457,7 @@ pub unsafe fn simd_reduce_max<T, U>(_x: T) -> U;
 #[rustc_nounwind]
 pub unsafe fn simd_reduce_min<T, U>(_x: T) -> U;
 
-/// Logical "ands" all elements together.
+/// Logical "and"s all elements together.
 ///
 /// `T` must be a vector of integer or floating-point primitive types.
 ///

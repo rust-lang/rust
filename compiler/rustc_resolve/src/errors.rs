@@ -891,12 +891,12 @@ pub(crate) struct MacroExpandedExternCrateCannotShadowExternArguments {
 
 #[derive(Diagnostic)]
 #[diag(resolve_elided_anonymous_lifetime_report_error, code = E0637)]
-pub(crate) struct ElidedAnonymousLivetimeReportError {
+pub(crate) struct ElidedAnonymousLifetimeReportError {
     #[primary_span]
     #[label]
     pub(crate) span: Span,
     #[subdiagnostic]
-    pub(crate) suggestion: Option<ElidedAnonymousLivetimeReportErrorSuggestion>,
+    pub(crate) suggestion: Option<ElidedAnonymousLifetimeReportErrorSuggestion>,
 }
 
 #[derive(Diagnostic)]
@@ -910,7 +910,7 @@ pub(crate) struct LendingIteratorReportError {
 
 #[derive(Diagnostic)]
 #[diag(resolve_anonymous_lifetime_non_gat_report_error)]
-pub(crate) struct AnonymousLivetimeNonGatReportError {
+pub(crate) struct AnonymousLifetimeNonGatReportError {
     #[primary_span]
     #[label]
     pub(crate) lifetime: Span,
@@ -921,7 +921,7 @@ pub(crate) struct AnonymousLivetimeNonGatReportError {
     resolve_elided_anonymous_lifetime_report_error_suggestion,
     applicability = "machine-applicable"
 )]
-pub(crate) struct ElidedAnonymousLivetimeReportErrorSuggestion {
+pub(crate) struct ElidedAnonymousLifetimeReportErrorSuggestion {
     #[suggestion_part(code = "for<'a> ")]
     pub(crate) lo: Span,
     #[suggestion_part(code = "'a ")]
@@ -930,7 +930,7 @@ pub(crate) struct ElidedAnonymousLivetimeReportErrorSuggestion {
 
 #[derive(Diagnostic)]
 #[diag(resolve_explicit_anonymous_lifetime_report_error, code = E0637)]
-pub(crate) struct ExplicitAnonymousLivetimeReportError {
+pub(crate) struct ExplicitAnonymousLifetimeReportError {
     #[primary_span]
     #[label]
     pub(crate) span: Span,

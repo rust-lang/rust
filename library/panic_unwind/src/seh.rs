@@ -264,7 +264,7 @@ static mut TYPE_DESCRIPTOR: _TypeDescriptor = _TypeDescriptor {
 // runtime under a try/catch block and the panic that we generate here will be
 // used as the result of the exception copy. This is used by the C++ runtime to
 // support capturing exceptions with std::exception_ptr, which we can't support
-// because Box<dyn Any> isn't clonable.
+// because Box<dyn Any> isn't cloneable.
 macro_rules! define_cleanup {
     ($abi:tt $abi2:tt) => {
         unsafe extern $abi fn exception_cleanup(e: *mut Exception) {

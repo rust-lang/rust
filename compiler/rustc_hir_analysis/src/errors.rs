@@ -1360,7 +1360,7 @@ pub(crate) struct ImplForTyRequires {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_traits_with_defualt_impl, code = E0321)]
+#[diag(hir_analysis_traits_with_default_impl, code = E0321)]
 #[note]
 pub(crate) struct TraitsWithDefaultImpl<'a> {
     #[primary_span]
