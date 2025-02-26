@@ -4,7 +4,7 @@ on: [push, pull_request]
 env:
   RUSTDOCFLAGS: -Dwarnings
   RUSTFLAGS: -Dwarnings
-  RUST_LLVM_VERSION: 19.1-2024-09-17
+  RUST_LLVM_VERSION: 20.1-2025-02-13
   RUST_COMPILER_RT_ROOT: ./compiler-rt
 
 jobs:
