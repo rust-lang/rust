@@ -54,6 +54,14 @@ pub(crate) fn codegen_llvm_intrinsic_call<'tcx>(
             );
         }
 
+        "llvm.fptosi.sat.v4i32.v4f32" => {
+            intrinsic_args!(fx, args => (a); intrinsic);
+
+            simd_for_each_lane(fx, a, ret, &|fx, _lane_ty, _res_lane_ty, lane| {
+                fx.bcx.ins().fcvt_to_sint_sat(types::I32, lane)
+            });
+        }
+
         _ => {
             fx.tcx
                 .dcx()
