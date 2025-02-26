@@ -74,6 +74,23 @@ fn main() {
     if s3.starts_with("ab") {
         s4[2..].to_string();
     }
+
+    // Don't propose to reuse the `stripped` identifier as it is overriden
+    if s.starts_with("ab") {
+        let stripped = &s["ab".len()..];
+        //~^ ERROR: stripping a prefix manually
+        let stripped = format!("{stripped}-");
+        println!("{stripped}{}", &s["ab".len()..]);
+    }
+
+    // Don't propose to reuse the `stripped` identifier as it is mutable
+    if s.starts_with("ab") {
+        let mut stripped = &s["ab".len()..];
+        //~^ ERROR: stripping a prefix manually
+        stripped = "";
+        let stripped = format!("{stripped}-");
+        println!("{stripped}{}", &s["ab".len()..]);
+    }
 }
 
 #[clippy::msrv = "1.44"]
