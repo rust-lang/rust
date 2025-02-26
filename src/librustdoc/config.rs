@@ -315,23 +315,30 @@ pub(crate) enum ModuleSorting {
     Alphabetical,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum EmitType {
     Unversioned,
     Toolchain,
     InvocationSpecific,
+    DepInfo(Option<PathBuf>),
 }
 
 impl FromStr for EmitType {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        use EmitType::*;
         match s {
-            "unversioned-shared-resources" => Ok(Unversioned),
-            "toolchain-shared-resources" => Ok(Toolchain),
-            "invocation-specific" => Ok(InvocationSpecific),
-            _ => Err(()),
+            "unversioned-shared-resources" => Ok(Self::Unversioned),
+            "toolchain-shared-resources" => Ok(Self::Toolchain),
+            "invocation-specific" => Ok(Self::InvocationSpecific),
+            "dep-info" => Ok(Self::DepInfo(None)),
+            option => {
+                if let Some(file) = option.strip_prefix("dep-info=") {
+                    Ok(Self::DepInfo(Some(Path::new(file).into())))
+                } else {
+                    Err(())
+                }
+            }
         }
     }
 }
@@ -339,6 +346,15 @@ impl FromStr for EmitType {
 impl RenderOptions {
     pub(crate) fn should_emit_crate(&self) -> bool {
         self.emit.is_empty() || self.emit.contains(&EmitType::InvocationSpecific)
+    }
+
+    pub(crate) fn dep_info(&self) -> Option<Option<&Path>> {
+        for emit in &self.emit {
+            if let EmitType::DepInfo(file) = emit {
+                return Some(file.as_deref());
+            }
+        }
+        None
     }
 }
 
