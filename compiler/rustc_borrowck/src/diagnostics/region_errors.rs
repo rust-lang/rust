@@ -379,7 +379,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         self.body.source.def_id().expect_local(),
                         type_test_span,
                         Some(origin),
-                        generic_kind,
+                        self.name_regions(self.infcx.tcx, generic_kind),
                         lower_bound_region,
                     ));
                 }

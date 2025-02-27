@@ -28,10 +28,10 @@ use crate::borrow_set::BorrowSet;
 use crate::consumers::ConsumerOptions;
 use crate::diagnostics::{BorrowckDiagnosticsBuffer, RegionErrors};
 use crate::eliminate_placeholders::rewrite_higher_kinded_outlives_as_constraints;
+use crate::polonius::PoloniusDiagnosticsContext;
 use crate::polonius::legacy::{
     PoloniusFacts, PoloniusFactsExt, PoloniusLocationTable, PoloniusOutput,
 };
-use crate::polonius::{LocalizedOutlivesConstraintSet, PoloniusDiagnosticsContext};
 use crate::region_infer::RegionInferenceContext;
 use crate::type_check::{self, MirTypeckRegionConstraints, MirTypeckResults};
 use crate::universal_regions::UniversalRegions;

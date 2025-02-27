@@ -1,7 +1,6 @@
 use std::hash::Hash;
 use std::ops::Index;
 
-use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::ty::{self, Ty};
