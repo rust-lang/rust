@@ -16,6 +16,18 @@ note: required by a bound in `Trait`
 LL | trait Trait {
    | ^^^^^^^^^^^ required by this bound in `Trait`
 
+error[E0275]: overflow evaluating the requirement `<T as Trait>::Assoc: const MetaSized`
+  --> $DIR/normalize-param-env-4.rs:19:26
+   |
+LL |     <T as Trait>::Assoc: Trait,
+   |                          ^^^^^
+   |
+note: required by a bound in `Trait`
+  --> $DIR/normalize-param-env-4.rs:7:1
+   |
+LL | trait Trait {
+   | ^^^^^^^^^^^ required by this bound in `Trait`
+
 error[E0275]: overflow evaluating the requirement `<T as Trait>::Assoc well-formed`
   --> $DIR/normalize-param-env-4.rs:19:26
    |
@@ -34,6 +46,6 @@ note: required by a bound in `impls_trait`
 LL | fn impls_trait<T: Trait>() {}
    |                   ^^^^^ required by this bound in `impls_trait`
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0275`.
