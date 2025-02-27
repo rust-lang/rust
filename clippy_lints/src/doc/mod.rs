@@ -1010,11 +1010,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                                 start -= 1;
                             }
 
-                            if start > range.start {
-                                start - range.start
-                            } else {
-                                0
-                            }
+                            start.saturating_sub(range.start)
                         }
                     } else {
                         0
