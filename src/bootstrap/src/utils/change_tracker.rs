@@ -360,4 +360,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "Added `build.test-stage = 2` to 'tools' profile defaults",
     },
+    ChangeInfo {
+        change_id: 137723,
+        severity: ChangeSeverity::Info,
+        summary: "The rust.description option has moved to build.description and rust.description is now deprecated.",
+    },
 ];
