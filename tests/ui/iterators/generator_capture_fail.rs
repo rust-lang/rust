@@ -1,5 +1,3 @@
-//@ run-pass
-
 #![feature(iter_macro)]
 // FIXME(iter_macro): make `yield` within it legal
 #![feature(coroutines)]
@@ -7,10 +5,13 @@
 use std::iter::iter;
 
 fn main() {
-    let i = iter! {
-        yield 0;
-        for x in 5..10 {
-            yield x * 2;
+    let i = {
+        let s = String::new();
+        iter! {
+            yield s.len(); //~ ERROR `s` does not live long enough
+            for x in 5..10 {
+                yield x * 2;
+            }
         }
     };
     let mut i = i();
