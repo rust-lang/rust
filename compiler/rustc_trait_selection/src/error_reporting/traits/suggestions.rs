@@ -2773,6 +2773,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             };
                             if tcx.is_lang_item(def_id, LangItem::Sized) {
                                 // Check if this is an implicit bound, even in foreign crates.
+                                debug!(?item_def_id);
                                 if tcx
                                     .generics_of(item_def_id)
                                     .own_params

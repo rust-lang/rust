@@ -1,4 +1,5 @@
 //@ check-pass
+#![allow(sized_hierarchy_migration)]
 #![feature(sized_hierarchy)]
 
 use std::marker::PhantomData;

@@ -1138,6 +1138,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 }
                             });
                         for param in generics.params {
+                            debug!(?param, ?param.span, ?cause_span, ?sized_pred);
                             if param.span == cause_span && sized_pred {
                                 let (sp, sugg) = match param.colon_span {
                                     Some(sp) => (sp.shrink_to_hi(), " ?Sized +"),
