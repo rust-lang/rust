@@ -1,8 +1,10 @@
 //@ check-fail
-//@ edition:2021
+//@ edition: 2024
+
 #![allow(incomplete_features, internal_features)]
 #![feature(sized_hierarchy)]
 #![feature(coroutines, dyn_star, extern_types, f16, never_type, unsized_fn_params)]
+
 use std::fmt::Debug;
 use std::marker::{MetaSized, PointeeSized};
 
@@ -11,11 +13,11 @@ use std::marker::{MetaSized, PointeeSized};
 fn needs_sized<T: Sized>() { }
 fn takes_sized<T: Sized>(_t: T) { }
 
-fn needs_metasized<T: ?Sized + MetaSized>() { }
-fn takes_metasized<T: ?Sized + MetaSized>(_t: T) { }
+fn needs_metasized<T: MetaSized>() { }
+fn takes_metasized<T: MetaSized>(_t: T) { }
 
-fn needs_pointeesized<T: ?Sized + PointeeSized>() { }
-fn takes_pointeesized<T: ?Sized + PointeeSized>(_t: T) { }
+fn needs_pointeesized<T: PointeeSized>() { }
+fn takes_pointeesized<T: PointeeSized>(_t: T) { }
 
 fn main() {
     // `bool`
@@ -173,7 +175,7 @@ fn main() {
     needs_pointeesized::<dyn Debug>();
 
     // `extern type`
-    extern "C" {
+    unsafe extern "C" {
         type Foo;
     }
     needs_sized::<Foo>();
