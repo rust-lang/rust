@@ -26,6 +26,7 @@
     f16,
     f128,
     asm_experimental_arch,
+    const_trait_impl,
     unboxed_closures
 )]
 #![allow(unused, improper_ctypes_definitions, internal_features)]
@@ -44,9 +45,11 @@ macro_rules! impl_marker_trait {
 pub trait PointeeSized {}
 
 #[lang = "meta_sized"]
+#[const_trait]
 pub trait MetaSized: PointeeSized {}
 
 #[lang = "sized"]
+#[const_trait]
 pub trait Sized: MetaSized {}
 
 #[lang = "legacy_receiver"]
