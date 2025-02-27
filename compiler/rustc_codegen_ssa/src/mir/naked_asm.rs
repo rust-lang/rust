@@ -285,13 +285,16 @@ fn enable_disable_target_features<'tcx>(
             // LLVM does not appear to accept any directive to enable target features
             //
             // https://github.com/llvm/llvm-project/blob/74306afe87b85cb9b5734044eb6c74b8290098b3/llvm/lib/Target/WebAssembly/AsmParser/WebAssemblyAsmParser.cpp#L909
-            return None;
+
+            /* fallthrough */
         }
 
         Architecture::LoongArch64 => {
             // LLVM does not appear to accept any directive to enable target features
             //
             // https://github.com/llvm/llvm-project/blob/74306afe87b85cb9b5734044eb6c74b8290098b3/llvm/lib/Target/LoongArch/AsmParser/LoongArchAsmParser.cpp#L1918
+
+            /* fallthrough */
         }
 
         // FIXME: support naked_asm! on more architectures
