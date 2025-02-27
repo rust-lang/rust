@@ -474,13 +474,13 @@ auto:
     env:
       RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc  --enable-sanitizers
       SCRIPT: make ci-msvc-py
-    <<: *job-windows
+    <<: *job-windows-8c
 
   - name: i686-msvc-2
     env:
       RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc --enable-sanitizers
       SCRIPT: make ci-msvc-ps1
-    <<: *job-windows
+    <<: *job-windows-8c
 
   # x86_64-msvc-ext is split into multiple jobs to run tests in parallel.
   - name: x86_64-msvc-ext1
@@ -595,7 +595,7 @@ auto:
       SCRIPT: python x.py dist bootstrap --include-default-paths
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-windows
+    <<: *job-windows-8c
 
   - name: dist-aarch64-msvc
     env:
