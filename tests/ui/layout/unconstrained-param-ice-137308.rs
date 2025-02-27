@@ -3,6 +3,7 @@
 //! This used to ICE in layout computation, because `<u8 as A>::B` fails to normalize
 //! due to the unconstrained param on the impl.
 
+#![allow(sized_hierarchy_migration)]
 #![feature(rustc_attrs, sized_hierarchy)]
 #![crate_type = "lib"]
 

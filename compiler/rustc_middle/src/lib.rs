@@ -30,6 +30,7 @@
 #![allow(rustc::potential_query_instability)]
 #![allow(rustc::untranslatable_diagnostic)]
 #![cfg_attr(doc, recursion_limit = "256")] // FIXME(nnethercote): will be removed by #124141
+#![cfg_attr(not(bootstrap), allow(sized_hierarchy_migration))]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(allocator_api)]

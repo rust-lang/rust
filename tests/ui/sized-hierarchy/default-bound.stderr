@@ -1,24 +1,24 @@
 error: relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
-  --> $DIR/default-bound.rs:16:21
+  --> $DIR/default-bound.rs:19:21
    |
 LL | fn neg_metasized<T: ?MetaSized>() {}
    |                     ^^^^^^^^^^
 
 error: relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
-  --> $DIR/default-bound.rs:22:24
+  --> $DIR/default-bound.rs:25:24
    |
 LL | fn neg_pointeesized<T: ?PointeeSized>() { }
    |                        ^^^^^^^^^^^^^
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/default-bound.rs:29:12
+  --> $DIR/default-bound.rs:32:12
    |
 LL |     bare::<[u8]>();
    |            ^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[u8]`
 note: required by an implicit `Sized` bound in `bare`
-  --> $DIR/default-bound.rs:6:9
+  --> $DIR/default-bound.rs:9:9
    |
 LL | fn bare<T>() {}
    |         ^ required by the implicit `Sized` requirement on this type parameter in `bare`
@@ -28,27 +28,27 @@ LL | fn bare<T: ?Sized>() {}
    |          ++++++++
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/default-bound.rs:31:13
+  --> $DIR/default-bound.rs:34:13
    |
 LL |     sized::<[u8]>();
    |             ^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[u8]`
 note: required by a bound in `sized`
-  --> $DIR/default-bound.rs:9:13
+  --> $DIR/default-bound.rs:12:13
    |
 LL | fn sized<T: Sized>() {}
    |             ^^^^^ required by this bound in `sized`
 
 error[E0277]: the size for values of type `main::Foo` cannot be known at compilation time
-  --> $DIR/default-bound.rs:42:12
+  --> $DIR/default-bound.rs:45:12
    |
 LL |     bare::<Foo>();
    |            ^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `main::Foo`
 note: required by an implicit `Sized` bound in `bare`
-  --> $DIR/default-bound.rs:6:9
+  --> $DIR/default-bound.rs:9:9
    |
 LL | fn bare<T>() {}
    |         ^ required by the implicit `Sized` requirement on this type parameter in `bare`
@@ -58,27 +58,27 @@ LL | fn bare<T: ?Sized>() {}
    |          ++++++++
 
 error[E0277]: the size for values of type `main::Foo` cannot be known at compilation time
-  --> $DIR/default-bound.rs:44:13
+  --> $DIR/default-bound.rs:47:13
    |
 LL |     sized::<Foo>();
    |             ^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `main::Foo`
 note: required by a bound in `sized`
-  --> $DIR/default-bound.rs:9:13
+  --> $DIR/default-bound.rs:12:13
    |
 LL | fn sized<T: Sized>() {}
    |             ^^^^^ required by this bound in `sized`
 
 error[E0277]: the size for values of type `main::Foo` cannot be known
-  --> $DIR/default-bound.rs:46:17
+  --> $DIR/default-bound.rs:49:17
    |
 LL |     metasized::<Foo>();
    |                 ^^^ doesn't have a known size
    |
    = help: the trait `MetaSized` is not implemented for `main::Foo`
 note: required by a bound in `metasized`
-  --> $DIR/default-bound.rs:14:17
+  --> $DIR/default-bound.rs:17:17
    |
 LL | fn metasized<T: MetaSized>() {}
    |                 ^^^^^^^^^ required by this bound in `metasized`

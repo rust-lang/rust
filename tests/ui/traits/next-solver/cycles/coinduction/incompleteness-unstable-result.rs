@@ -1,5 +1,6 @@
 //@ revisions: with without
 //@ compile-flags: -Znext-solver
+#![allow(sized_hierarchy_migration)]
 #![feature(rustc_attrs, sized_hierarchy)]
 use std::marker::PointeeSized;
 
