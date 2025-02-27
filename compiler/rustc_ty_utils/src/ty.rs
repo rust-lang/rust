@@ -95,7 +95,7 @@ fn defaultness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Defaultness {
 /// `def_id` is assumed to be the `AdtDef` of a struct and will panic otherwise.
 ///
 /// For `Sized`, there are only a few options for the types in the constraint:
-///     - an metasized type (str, slices, trait objects, etc)
+///     - an meta-sized type (str, slices, trait objects, etc)
 ///     - an pointee-sized type (extern types)
 ///     - a type parameter or projection whose sizedness can't be known
 ///

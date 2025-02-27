@@ -162,7 +162,6 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                         .map(|t| ty::Binder::dummy(t.instantiate_identity()));
                 }
             }
-
             ItemKind::Trait(_, _, _, _, self_bounds, ..)
             | ItemKind::TraitAlias(_, _, self_bounds) => {
                 is_trait = Some((self_bounds, item.span));
@@ -183,21 +182,29 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     // and the explicit where-clauses, but to get the full set of predicates
     // on a trait we must also consider the bounds that follow the trait's name,
     // like `trait Foo: A + B + C`.
-    if let Some(self_bounds) = is_trait {
+    if let Some((self_bounds, span)) = is_trait {
         let mut bounds = Vec::new();
         icx.lowerer().lower_bounds(
             tcx.types.self_param,
-            self_bounds.0,
+            self_bounds,
             &mut bounds,
             ty::List::empty(),
             PredicateFilter::All,
         );
+        icx.lowerer().add_sizedness_bounds(
+            &mut bounds,
+            tcx.types.self_param,
+            self_bounds,
+            None,
+            Some(def_id),
+            span,
+        );
         icx.lowerer().add_default_super_traits(
             def_id,
             &mut bounds,
-            self_bounds.0,
+            self_bounds,
             hir_generics,
-            self_bounds.1,
+            span,
         );
         predicates.extend(bounds);
     }
@@ -224,6 +231,14 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                 let param_ty = icx.lowerer().lower_ty_param(param.hir_id);
                 let mut bounds = Vec::new();
                 // Implicit bounds are added to type params unless a `?Trait` bound is found
+                icx.lowerer().add_sizedness_bounds(
+                    &mut bounds,
+                    param_ty,
+                    &[],
+                    Some((param.def_id, hir_generics.predicates)),
+                    None,
+                    param.span,
+                );
                 icx.lowerer().add_default_traits(
                     &mut bounds,
                     param_ty,
