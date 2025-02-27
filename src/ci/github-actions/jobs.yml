@@ -474,12 +474,14 @@ auto:
     env:
       RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc  --enable-sanitizers
       SCRIPT: make ci-msvc-py
+      DISABLE_SCCACHE: 1
     <<: *job-windows
 
   - name: i686-msvc-2
     env:
       RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc --enable-sanitizers
       SCRIPT: make ci-msvc-ps1
+      DISABLE_SCCACHE: 1
     <<: *job-windows
 
   # x86_64-msvc-ext is split into multiple jobs to run tests in parallel.
@@ -594,6 +596,7 @@ auto:
         --enable-profiler
       SCRIPT: python x.py dist bootstrap --include-default-paths
       DIST_REQUIRE_ALL_TOOLS: 1
+      DISABLE_SCCACHE: 1
       CODEGEN_BACKENDS: llvm,cranelift
     <<: *job-windows
 
