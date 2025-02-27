@@ -1,4 +1,3 @@
-// skip-filecheck
 //@ compile-flags: -O -Zmir-opt-level=2
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
@@ -8,10 +7,35 @@
 // EMIT_MIR checked_ops.step_forward.PreCodegen.after.mir
 pub fn step_forward(x: u16, n: usize) -> u16 {
     // This uses `u16` so that the conversion to usize is always widening.
+
+    // CHECK-LABEL: fn step_forward
+    // CHECK: inlined{{.+}}forward
     std::iter::Step::forward(x, n)
 }
 
 // EMIT_MIR checked_ops.checked_shl.PreCodegen.after.mir
 pub fn checked_shl(x: u32, rhs: u32) -> Option<u32> {
+    // CHECK-LABEL: fn checked_shl
+    // CHECK: [[TEMP:_[0-9]+]] = ShlUnchecked(copy _1, copy _2)
+    // CHECK: _0 = Option::<u32>::Some({{move|copy}} [[TEMP]])
     x.checked_shl(rhs)
+}
+
+// EMIT_MIR checked_ops.use_checked_sub.PreCodegen.after.mir
+// EMIT_MIR checked_ops.use_checked_sub.GVN.diff
+pub fn use_checked_sub(x: u32, rhs: u32) {
+    // We want this to be equivalent to open-coding it, leaving no `Option`s around.
+
+    // CHECK-LABEL: fn use_checked_sub
+    // FIXME-CHECK-NOT: let{{.+}}Option
+    // CHECK: inlined{{.+}}u32{{.+}}checked_sub
+    // CHECK: [[DELTA:_[0-9]+]] = SubUnchecked(copy _1, copy _2)
+    // FIXME-CHECK: do_something({{move|copy}} [[DELTA]])
+    if let Some(delta) = x.checked_sub(rhs) {
+        do_something(delta);
+    }
+}
+
+unsafe extern "Rust" {
+    safe fn do_something(_: u32);
 }
