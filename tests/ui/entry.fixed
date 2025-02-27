@@ -218,4 +218,12 @@ mod issue13934 {
     }
 }
 
+fn issue11976() {
+    let mut hashmap = std::collections::HashMap::new();
+    if !hashmap.contains_key(&0) {
+        let _ = || hashmap.get(&0);
+        hashmap.insert(0, 0);
+    }
+}
+
 fn main() {}

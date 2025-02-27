@@ -8,7 +8,7 @@ use clippy_utils::{
 use core::fmt::{self, Write};
 use rustc_errors::Applicability;
 use rustc_hir::hir_id::HirIdSet;
-use rustc_hir::intravisit::{Visitor, walk_expr};
+use rustc_hir::intravisit::{Visitor, walk_body, walk_expr};
 use rustc_hir::{Block, Expr, ExprKind, HirId, Pat, Stmt, StmtKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
@@ -331,7 +331,7 @@ impl<'tcx> Edit<'tcx> {
         if let Self::Insertion(i) = self { Some(i) } else { None }
     }
 }
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 struct Insertion<'tcx> {
     call: &'tcx Expr<'tcx>,
     value: &'tcx Expr<'tcx>,
@@ -544,6 +544,7 @@ impl<'tcx> Visitor<'tcx> for InsertSearcher<'_, 'tcx> {
                 ExprKind::InlineAsm(_) => {
                     self.can_use_entry = false;
                 },
+                ExprKind::Closure(closure) => walk_body(self, self.cx.tcx.hir_body(closure.body)),
                 _ => {
                     self.allow_insert_closure &= !self.in_tail_pos;
                     self.allow_insert_closure &=
