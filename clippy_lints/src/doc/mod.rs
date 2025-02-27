@@ -1004,7 +1004,12 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                                 // backslashes aren't in the event stream...
                                 start -= 1;
                             }
-                            start - range.start
+
+                            if start > range.start {
+                                start - range.start
+                            } else {
+                                0
+                            }
                         }
                     } else {
                         0
@@ -1184,6 +1189,10 @@ impl<'tcx> Visitor<'tcx> for FindPanicUnwrap<'_, 'tcx> {
 
 #[expect(clippy::range_plus_one)] // inclusive ranges aren't the same type
 fn looks_like_refdef(doc: &str, range: Range<usize>) -> Option<Range<usize>> {
+    if range.end < range.start {
+        return None;
+    }
+
     let offset = range.start;
     let mut iterator = doc.as_bytes()[range].iter().copied().enumerate();
     let mut start = None;
