@@ -713,7 +713,7 @@ impl<'a> Parser<'a> {
 
     /// Parses the rest of a block expression or function body.
     /// Precondition: already parsed the '{'.
-    pub(crate) fn parse_block_tail(
+    pub fn parse_block_tail(
         &mut self,
         lo: Span,
         s: BlockCheckMode,

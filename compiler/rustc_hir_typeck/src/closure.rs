@@ -204,14 +204,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 )
             }
             hir::ClosureKind::CoroutineClosure(kind) => {
-                // async closures always return the type ascribed after the `->` (if present),
-                // and yield `()`.
                 let (bound_return_ty, bound_yield_ty) = match kind {
+                    hir::CoroutineDesugaring::Gen => {
+                        // `iter!` closures always return unit and yield the `Iterator::Item` type
+                        // that we have to infer.
+                        (tcx.types.unit, self.infcx.next_ty_var(expr_span))
+                    }
                     hir::CoroutineDesugaring::Async => {
+                        // async closures always return the type ascribed after the `->` (if present),
+                        // and yield `()`.
                         (bound_sig.skip_binder().output(), tcx.types.unit)
                     }
-                    hir::CoroutineDesugaring::Gen | hir::CoroutineDesugaring::AsyncGen => {
-                        todo!("`gen` and `async gen` closures not supported yet")
+                    hir::CoroutineDesugaring::AsyncGen => {
+                        todo!("`async gen` closures not supported yet")
                     }
                 };
                 // Compute all of the variables that will be used to populate the coroutine.
@@ -465,7 +470,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             if let Some(trait_def_id) = trait_def_id {
                 let found_kind = match closure_kind {
-                    hir::ClosureKind::Closure => self.tcx.fn_trait_kind_from_def_id(trait_def_id),
+                    hir::ClosureKind::Closure
+                    // FIXME(iter_macro): Someday we'll probably want iterator closures instead of
+                    // just using Fn* for iterators.
+                    | hir::ClosureKind::CoroutineClosure(hir::CoroutineDesugaring::Gen) => {
+                        self.tcx.fn_trait_kind_from_def_id(trait_def_id)
+                    }
                     hir::ClosureKind::CoroutineClosure(hir::CoroutineDesugaring::Async) => self
                         .tcx
                         .async_fn_trait_kind_from_def_id(trait_def_id)
