@@ -1,4 +1,7 @@
 //@ check-pass
+//@ revisions: current next
+//@[next] compile-flags: -Znext-solver
+//@ ignore-compare-mode-next-solver (explicit revisions)
 
 // Make sure that we don't look into associated type bounds when looking for
 // supertraits that define an associated type. Fixes #76593.
