@@ -812,7 +812,7 @@ fn assoc_href_attr<'a, 'tcx>(
     }
 
     let href = match link {
-        AssocItemLink::Anchor(Some(ref id)) => Href::AnchorId(id),
+        AssocItemLink::Anchor(Some(id)) => Href::AnchorId(id),
         AssocItemLink::Anchor(None) => Href::Anchor(item_type),
         AssocItemLink::GotoSource(did, provided_methods) => {
             // We're creating a link from the implementation of an associated item to its
@@ -1144,7 +1144,7 @@ fn render_assoc_item<'a, 'tcx>(
             cx,
         )
         .fmt(f),
-        clean::RequiredAssocTypeItem(ref generics, ref bounds) => assoc_type(
+        clean::RequiredAssocTypeItem(generics, bounds) => assoc_type(
             item,
             generics,
             bounds,
@@ -1154,7 +1154,7 @@ fn render_assoc_item<'a, 'tcx>(
             cx,
         )
         .fmt(f),
-        clean::AssocTypeItem(ref ty, ref bounds) => assoc_type(
+        clean::AssocTypeItem(ty, bounds) => assoc_type(
             item,
             &ty.generics,
             bounds,

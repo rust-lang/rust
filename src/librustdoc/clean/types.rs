@@ -502,7 +502,7 @@ impl Item {
         let Some(links) = cx.cache().intra_doc_links.get(&self.item_id) else { return vec![] };
         links
             .iter()
-            .filter_map(|ItemLink { link: s, link_text, page_id: id, ref fragment }| {
+            .filter_map(|ItemLink { link: s, link_text, page_id: id, fragment }| {
                 debug!(?id);
                 if let Ok((mut href, ..)) = href(*id, cx) {
                     debug!(?href);
