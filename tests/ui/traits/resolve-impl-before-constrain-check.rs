@@ -1,5 +1,6 @@
 // Need a different module so we try to build the mir for `test`
 // before analyzing `mod foo`.
+#![allow(sized_hierarchy_migration)]
 #![feature(sized_hierarchy)]
 
 mod foo {

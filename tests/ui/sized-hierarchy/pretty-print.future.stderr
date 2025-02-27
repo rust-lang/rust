@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `ConstSizedTr` for type `X<_>`
-  --> $DIR/pretty-print.rs:18:1
+  --> $DIR/pretty-print.rs:23:1
    |
 LL | impl<T: const Sized> ConstSizedTr for X<T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,17 +8,16 @@ LL | impl<T: const Sized> ConstSizedTr for X<T> {}
            - impl<T> ConstSizedTr for T;
 
 error[E0119]: conflicting implementations of trait `SizedTr` for type `X<_>`
-  --> $DIR/pretty-print.rs:21:1
+  --> $DIR/pretty-print.rs:26:1
    |
 LL | impl<T: Sized> SizedTr for X<T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: conflicting implementation in crate `pretty_print_dep`:
-           - impl<T> SizedTr for T
-             where T: Sized;
+           - impl<T> SizedTr for T;
 
 error[E0119]: conflicting implementations of trait `NegSizedTr` for type `X<_>`
-  --> $DIR/pretty-print.rs:24:1
+  --> $DIR/pretty-print.rs:29:1
    |
 LL | impl<T: ?Sized> pretty_print_dep::NegSizedTr for X<T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -28,7 +27,7 @@ LL | impl<T: ?Sized> pretty_print_dep::NegSizedTr for X<T> {}
              where T: const MetaSized;
 
 error[E0119]: conflicting implementations of trait `ConstMetaSizedTr` for type `X<_>`
-  --> $DIR/pretty-print.rs:27:1
+  --> $DIR/pretty-print.rs:32:1
    |
 LL | impl<T: const MetaSized> ConstMetaSizedTr for X<T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -38,7 +37,7 @@ LL | impl<T: const MetaSized> ConstMetaSizedTr for X<T> {}
              where T: const MetaSized;
 
 error[E0119]: conflicting implementations of trait `MetaSizedTr` for type `X<_>`
-  --> $DIR/pretty-print.rs:30:1
+  --> $DIR/pretty-print.rs:35:1
    |
 LL | impl<T: MetaSized> MetaSizedTr for X<T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -48,7 +47,7 @@ LL | impl<T: MetaSized> MetaSizedTr for X<T> {}
              where T: MetaSized;
 
 error[E0119]: conflicting implementations of trait `PointeeSizedTr` for type `X<_>`
-  --> $DIR/pretty-print.rs:33:1
+  --> $DIR/pretty-print.rs:38:1
    |
 LL | impl<T: PointeeSized> PointeeSizedTr for X<T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

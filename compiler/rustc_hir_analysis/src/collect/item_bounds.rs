@@ -51,6 +51,7 @@ fn associated_type_bounds<'tcx>(
                     hir_bounds,
                     None,
                     span,
+                    assoc_item_def_id,
                     filter,
                 );
             }
@@ -348,6 +349,7 @@ fn opaque_type_bounds<'tcx>(
                     hir_bounds,
                     None,
                     span,
+                    opaque_def_id,
                     filter,
                 );
             }

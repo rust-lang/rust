@@ -1,5 +1,5 @@
 warning: the feature `non_lifetime_binders` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/supertrait-dyn-compatibility.rs:2:12
+  --> $DIR/supertrait-dyn-compatibility.rs:3:12
    |
 LL | #![feature(non_lifetime_binders)]
    |            ^^^^^^^^^^^^^^^^^^^^
@@ -8,14 +8,14 @@ LL | #![feature(non_lifetime_binders)]
    = note: `#[warn(incomplete_features)]` on by default
 
 error[E0038]: the trait `Foo` is not dyn compatible
-  --> $DIR/supertrait-dyn-compatibility.rs:22:23
+  --> $DIR/supertrait-dyn-compatibility.rs:23:23
    |
 LL |     let x: &dyn Foo = &();
    |                       ^^^ `Foo` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/supertrait-dyn-compatibility.rs:7:12
+  --> $DIR/supertrait-dyn-compatibility.rs:8:12
    |
 LL | trait Foo: for<T> Bar<T> {}
    |       ---  ^^^^^^^^^^^^^ ...because where clause cannot reference non-lifetime `for<...>` variables
@@ -25,14 +25,14 @@ LL | trait Foo: for<T> Bar<T> {}
    = note: required for the cast from `&()` to `&dyn Foo`
 
 error[E0038]: the trait `Foo` is not dyn compatible
-  --> $DIR/supertrait-dyn-compatibility.rs:22:12
+  --> $DIR/supertrait-dyn-compatibility.rs:23:12
    |
 LL |     let x: &dyn Foo = &();
    |            ^^^^^^^^ `Foo` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/supertrait-dyn-compatibility.rs:7:12
+  --> $DIR/supertrait-dyn-compatibility.rs:8:12
    |
 LL | trait Foo: for<T> Bar<T> {}
    |       ---  ^^^^^^^^^^^^^ ...because where clause cannot reference non-lifetime `for<...>` variables
@@ -41,14 +41,14 @@ LL | trait Foo: for<T> Bar<T> {}
    = help: only type `()` implements `Foo`; consider using it directly instead.
 
 error[E0038]: the trait `Foo` is not dyn compatible
-  --> $DIR/supertrait-dyn-compatibility.rs:25:5
+  --> $DIR/supertrait-dyn-compatibility.rs:26:5
    |
 LL |     needs_bar(x);
    |     ^^^^^^^^^ `Foo` is not dyn compatible
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/supertrait-dyn-compatibility.rs:7:12
+  --> $DIR/supertrait-dyn-compatibility.rs:8:12
    |
 LL | trait Foo: for<T> Bar<T> {}
    |       ---  ^^^^^^^^^^^^^ ...because where clause cannot reference non-lifetime `for<...>` variables
