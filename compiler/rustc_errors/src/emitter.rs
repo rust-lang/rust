@@ -1238,6 +1238,33 @@ impl HumanEmitter {
                 );
             }
         }
+
+        // We look for individual *long* spans, and we trim the *middle*, so that we render
+        // LL | ...= [0, 0, 0, ..., 0, 0];
+        //    |      ^^^^^^^^^^...^^^^^^^ expected `&[u8]`, found `[{integer}; 1680]`
+        for &(pos, annotation) in &annotations_position {
+            let AnnotationType::Singleline = annotation.annotation_type else { continue };
+            let width = annotation.end_col.display - annotation.start_col.display;
+            if pos == 0 && width > margin.column_width && width > 10 {
+                // If the terminal is *too* small, we keep at least a tiny bit of the span for
+                // display.
+                let pad = max(margin.column_width / 2, 5);
+                // Code line
+                buffer.replace(
+                    line_offset,
+                    annotation.start_col.file + pad,
+                    annotation.end_col.file - pad,
+                    self.margin(),
+                );
+                // Underline line
+                buffer.replace(
+                    line_offset + 1,
+                    annotation.start_col.file + pad,
+                    annotation.end_col.file - pad,
+                    self.margin(),
+                );
+            }
+        }
         annotations_position
             .iter()
             .filter_map(|&(_, annotation)| match annotation.annotation_type {
