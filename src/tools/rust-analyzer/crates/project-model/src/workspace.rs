@@ -1522,7 +1522,7 @@ fn extend_crate_graph_with_sysroot(
 ) -> (SysrootPublicDeps, Option<CrateId>) {
     let mut pub_deps = vec![];
     let mut libproc_macro = None;
-    let diff = CfgDiff::new(vec![], vec![CfgAtom::Flag(sym::test.clone())]).unwrap();
+    let diff = CfgDiff::new(vec![], vec![CfgAtom::Flag(sym::test.clone())]);
     for (cid, c) in sysroot_crate_graph.iter_mut() {
         // uninject `test` flag so `core` keeps working.
         Arc::make_mut(&mut c.cfg_options).apply_diff(diff.clone());
@@ -1596,8 +1596,7 @@ fn sysroot_to_crate_graph(
                             CfgAtom::Flag(sym::miri.clone()),
                         ],
                         vec![],
-                    )
-                    .unwrap(),
+                    ),
                     ..Default::default()
                 },
                 &WorkspaceBuildScripts::default(),
@@ -1620,8 +1619,7 @@ fn sysroot_to_crate_graph(
                             CfgAtom::Flag(sym::miri.clone()),
                         ],
                         vec![],
-                    )
-                    .unwrap(),
+                    ),
                     ..Default::default()
                 },
                 false,

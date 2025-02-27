@@ -69,7 +69,7 @@ impl flags::AnalysisStats {
             all_targets: true,
             set_test: !self.no_test,
             cfg_overrides: CfgOverrides {
-                global: CfgDiff::new(vec![CfgAtom::Flag(hir::sym::miri.clone())], vec![]).unwrap(),
+                global: CfgDiff::new(vec![CfgAtom::Flag(hir::sym::miri.clone())], vec![]),
                 selective: Default::default(),
             },
             ..Default::default()
