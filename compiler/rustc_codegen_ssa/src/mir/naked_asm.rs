@@ -194,21 +194,23 @@ fn enable_disable_target_features<'tcx>(
         Architecture::Riscv32 | Architecture::Riscv64 => {
             // https://github.com/riscv-non-isa/riscv-asm-manual/blob/ad0de8c004e29c9a7ac33cfd054f4d4f9392f2fb/src/asm-manual.adoc#arch
 
+            writeln!(begin, ".option push").unwrap();
             for feature in features {
                 writeln!(begin, ".option arch, +{}", feature.name).unwrap();
-
-                writeln!(end, ".option arch, -{}", feature.name).unwrap();
             }
+
+            writeln!(end, ".option pop").unwrap();
         }
         Architecture::Mips | Architecture::Mips64 | Architecture::Mips64_N32 => {
             // https://sourceware.org/binutils/docs/as/MIPS-ISA.html
             // https://sourceware.org/binutils/docs/as/MIPS-ASE-Instruction-Generation-Overrides.html
 
+            writeln!(begin, ".set push").unwrap();
             for feature in features {
                 writeln!(begin, ".set {}", feature.name).unwrap();
-
-                writeln!(end, ".set no{}", feature.name).unwrap();
             }
+
+            writeln!(end, ".set pop").unwrap();
         }
 
         Architecture::S390x => {
