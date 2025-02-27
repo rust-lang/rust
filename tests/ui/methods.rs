@@ -11,6 +11,7 @@
     clippy::new_without_default,
     clippy::needless_pass_by_value,
     clippy::needless_lifetimes,
+    clippy::elidable_lifetime_names,
     clippy::print_stdout,
     clippy::must_use_candidate,
     clippy::use_self,

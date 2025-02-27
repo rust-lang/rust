@@ -1,4 +1,4 @@
-#![deny(clippy::needless_lifetimes)]
+#![deny(clippy::elidable_lifetime_names)]
 #![allow(dead_code)]
 
 trait Foo {}
@@ -10,11 +10,11 @@ struct Baz<'a> {
 }
 
 impl Foo for Baz<'_> {}
-//~^ needless_lifetimes
+//~^ elidable_lifetime_names
 
 impl Bar {
     fn baz(&self) -> impl Foo + '_ {
-        //~^ needless_lifetimes
+        //~^ elidable_lifetime_names
 
         Baz { bar: self }
     }
