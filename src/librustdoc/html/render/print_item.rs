@@ -252,24 +252,24 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item, buf: &mut String)
     item_vars.render_into(buf).unwrap();
 
     match &item.kind {
-        clean::ModuleItem(ref m) => item_module(buf, cx, item, &m.items),
-        clean::FunctionItem(ref f) | clean::ForeignFunctionItem(ref f, _) => {
+        clean::ModuleItem(m) => item_module(buf, cx, item, &m.items),
+        clean::FunctionItem(f) | clean::ForeignFunctionItem(f, _) => {
             item_function(buf, cx, item, f)
         }
-        clean::TraitItem(ref t) => item_trait(buf, cx, item, t),
-        clean::StructItem(ref s) => item_struct(buf, cx, item, s),
-        clean::UnionItem(ref s) => item_union(buf, cx, item, s),
-        clean::EnumItem(ref e) => item_enum(buf, cx, item, e),
-        clean::TypeAliasItem(ref t) => item_type_alias(buf, cx, item, t),
-        clean::MacroItem(ref m) => item_macro(buf, cx, item, m),
-        clean::ProcMacroItem(ref m) => item_proc_macro(buf, cx, item, m),
+        clean::TraitItem(t) => item_trait(buf, cx, item, t),
+        clean::StructItem(s) => item_struct(buf, cx, item, s),
+        clean::UnionItem(s) => item_union(buf, cx, item, s),
+        clean::EnumItem(e) => item_enum(buf, cx, item, e),
+        clean::TypeAliasItem(t) => item_type_alias(buf, cx, item, t),
+        clean::MacroItem(m) => item_macro(buf, cx, item, m),
+        clean::ProcMacroItem(m) => item_proc_macro(buf, cx, item, m),
         clean::PrimitiveItem(_) => item_primitive(buf, cx, item),
-        clean::StaticItem(ref i) => item_static(buf, cx, item, i, None),
-        clean::ForeignStaticItem(ref i, safety) => item_static(buf, cx, item, i, Some(*safety)),
+        clean::StaticItem(i) => item_static(buf, cx, item, i, None),
+        clean::ForeignStaticItem(i, safety) => item_static(buf, cx, item, i, Some(*safety)),
         clean::ConstantItem(ci) => item_constant(buf, cx, item, &ci.generics, &ci.type_, &ci.kind),
         clean::ForeignTypeItem => item_foreign_type(buf, cx, item),
         clean::KeywordItem => item_keyword(buf, cx, item),
-        clean::TraitAliasItem(ref ta) => item_trait_alias(buf, cx, item, ta),
+        clean::TraitAliasItem(ta) => item_trait_alias(buf, cx, item, ta),
         _ => {
             // We don't generate pages for any other type.
             unreachable!();
@@ -973,7 +973,7 @@ fn item_trait(w: &mut String, cx: &Context<'_>, it: &clean::Item, t: &clean::Tra
                 extern_crates.insert(did.krate);
             }
             match implementor.inner_impl().for_.without_borrowed_ref() {
-                clean::Type::Path { ref path } if !path.is_assoc_ty() => {
+                clean::Type::Path { path } if !path.is_assoc_ty() => {
                     let did = path.def_id();
                     let &mut (prev_did, ref mut has_duplicates) =
                         implementor_dups.entry(path.last()).or_insert((did, false));

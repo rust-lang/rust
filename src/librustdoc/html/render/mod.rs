@@ -814,7 +814,7 @@ fn assoc_href_attr<'a, 'tcx>(
     }
 
     let href = match link {
-        AssocItemLink::Anchor(Some(ref id)) => Href::AnchorId(id),
+        AssocItemLink::Anchor(Some(id)) => Href::AnchorId(id),
         AssocItemLink::Anchor(None) => Href::Anchor(item_type),
         AssocItemLink::GotoSource(did, provided_methods) => {
             // We're creating a link from the implementation of an associated item to its
@@ -1168,7 +1168,7 @@ fn render_assoc_item(
             if parent == ItemType::Trait { 4 } else { 0 },
             cx,
         ),
-        clean::RequiredAssocTypeItem(ref generics, ref bounds) => assoc_type(
+        clean::RequiredAssocTypeItem(generics, bounds) => assoc_type(
             w,
             item,
             generics,
@@ -1178,7 +1178,7 @@ fn render_assoc_item(
             if parent == ItemType::Trait { 4 } else { 0 },
             cx,
         ),
-        clean::AssocTypeItem(ref ty, ref bounds) => assoc_type(
+        clean::AssocTypeItem(ty, bounds) => assoc_type(
             w,
             item,
             &ty.generics,
@@ -1773,7 +1773,7 @@ fn render_impl(
                     w.push_str("</h4></section>");
                 }
             }
-            clean::RequiredAssocConstItem(ref generics, ref ty) => {
+            clean::RequiredAssocConstItem(generics, ty) => {
                 let source_id = format!("{item_type}.{name}");
                 let id = cx.derive_id(&source_id);
                 write_str(
@@ -1827,7 +1827,7 @@ fn render_impl(
                 );
                 w.push_str("</h4></section>");
             }
-            clean::RequiredAssocTypeItem(ref generics, ref bounds) => {
+            clean::RequiredAssocTypeItem(generics, bounds) => {
                 let source_id = format!("{item_type}.{name}");
                 let id = cx.derive_id(&source_id);
                 write_str(

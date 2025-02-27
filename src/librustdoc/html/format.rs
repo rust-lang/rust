@@ -80,7 +80,7 @@ impl clean::GenericParamDef {
                     print_generic_bounds(bounds, cx).fmt(f)?;
                 }
 
-                if let Some(ref ty) = default {
+                if let Some(ty) = default {
                     f.write_str(" = ")?;
                     ty.print(cx).fmt(f)?;
                 }
