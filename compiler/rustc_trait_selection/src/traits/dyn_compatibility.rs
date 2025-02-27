@@ -468,7 +468,9 @@ fn virtual_call_violations_for_method<'tcx>(
             polarity: ty::PredicatePolarity::Positive,
         }) = pred.kind().skip_binder()
             && pred_trait_ref.self_ty() == tcx.types.self_param
-            && tcx.trait_is_auto(pred_trait_ref.def_id)
+            && (tcx.trait_is_auto(pred_trait_ref.def_id)
+                // FIXME(sized-hierarchy): is this correct? what about `Sized`?
+                || tcx.is_lang_item(pred_trait_ref.def_id, LangItem::MetaSized))
         {
             // Consider bounds like `Self: Bound<Self>`. Auto traits are not
             // allowed to have generic parameters so `auto trait Bound<T> {}`
