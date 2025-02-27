@@ -556,6 +556,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         self.tcx().for_each_relevant_impl(
             obligation.predicate.def_id(),
             obligation.predicate.skip_binder().trait_ref.self_ty(),
+            #[inline(always)]
             |impl_def_id| {
                 // Before we create the generic parameters and everything, first
                 // consider a "quick reject". This avoids creating more types
