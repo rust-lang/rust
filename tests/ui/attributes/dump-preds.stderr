@@ -5,9 +5,11 @@ LL | trait Trait<T>: Iterator<Item: Copy>
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: Binder { value: TraitPredicate(<Self as std::marker::MetaSized>, polarity:Positive), bound_vars: [] }
+   = note: Binder { value: HostEffectPredicate { trait_ref: <Self as std::marker::MetaSized>, constness: Const }, bound_vars: [] }
    = note: Binder { value: TraitPredicate(<Self as std::iter::Iterator>, polarity:Positive), bound_vars: [] }
    = note: Binder { value: TraitPredicate(<<Self as std::iter::Iterator>::Item as std::marker::Copy>, polarity:Positive), bound_vars: [] }
    = note: Binder { value: TraitPredicate(<T as std::marker::Sized>, polarity:Positive), bound_vars: [] }
+   = note: Binder { value: HostEffectPredicate { trait_ref: <T as std::marker::Sized>, constness: Const }, bound_vars: [] }
    = note: Binder { value: TraitPredicate(<std::string::String as std::convert::From<T>>, polarity:Positive), bound_vars: [] }
    = note: Binder { value: TraitPredicate(<Self as Trait<T>>, polarity:Positive), bound_vars: [] }
 
@@ -18,12 +20,15 @@ LL |     type Assoc<P: Eq>: std::ops::Deref<Target = ()>
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: Binder { value: TraitPredicate(<Self as std::marker::MetaSized>, polarity:Positive), bound_vars: [] }
+   = note: Binder { value: HostEffectPredicate { trait_ref: <Self as std::marker::MetaSized>, constness: Const }, bound_vars: [] }
    = note: Binder { value: TraitPredicate(<Self as std::iter::Iterator>, polarity:Positive), bound_vars: [] }
    = note: Binder { value: TraitPredicate(<<Self as std::iter::Iterator>::Item as std::marker::Copy>, polarity:Positive), bound_vars: [] }
    = note: Binder { value: TraitPredicate(<T as std::marker::Sized>, polarity:Positive), bound_vars: [] }
+   = note: Binder { value: HostEffectPredicate { trait_ref: <T as std::marker::Sized>, constness: Const }, bound_vars: [] }
    = note: Binder { value: TraitPredicate(<std::string::String as std::convert::From<T>>, polarity:Positive), bound_vars: [] }
    = note: Binder { value: TraitPredicate(<Self as Trait<T>>, polarity:Positive), bound_vars: [] }
    = note: Binder { value: TraitPredicate(<P as std::marker::Sized>, polarity:Positive), bound_vars: [] }
+   = note: Binder { value: HostEffectPredicate { trait_ref: <P as std::marker::Sized>, constness: Const }, bound_vars: [] }
    = note: Binder { value: TraitPredicate(<P as std::cmp::Eq>, polarity:Positive), bound_vars: [] }
    = note: Binder { value: TraitPredicate(<<Self as Trait<T>>::Assoc<()> as std::marker::Copy>, polarity:Positive), bound_vars: [] }
 
@@ -35,6 +40,7 @@ LL |     type Assoc<P: Eq>: std::ops::Deref<Target = ()>
    |
    = note: Binder { value: ProjectionPredicate(AliasTerm { args: [Alias(Projection, AliasTy { args: [Self/#0, T/#1, P/#2], def_id: DefId(..), .. })], def_id: DefId(..), .. }, Term::Ty(())), bound_vars: [] }
    = note: Binder { value: TraitPredicate(<<Self as Trait<T>>::Assoc<P> as std::ops::Deref>, polarity:Positive), bound_vars: [] }
+   = note: Binder { value: HostEffectPredicate { trait_ref: <<Self as Trait<T>>::Assoc<P> as std::marker::Sized>, constness: Const }, bound_vars: [] }
    = note: Binder { value: TraitPredicate(<<Self as Trait<T>>::Assoc<P> as std::marker::Sized>, polarity:Positive), bound_vars: [] }
 
 error: aborting due to 3 previous errors
