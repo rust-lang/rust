@@ -180,7 +180,9 @@ fn enable_disable_target_features<'tcx>(
     let features = attrs.target_features.iter().filter(|attr| !attr.implied);
 
     match architecture {
-        Architecture::X86_64 | Architecture::X86_64_X32 => { /* do nothing */ }
+        Architecture::X86_64 | Architecture::X86_64_X32 | Architecture::I386 => {
+            // no action is needed, all instructions are accepted regardless of target feature
+        }
 
         Architecture::Aarch64 | Architecture::Aarch64_Ilp32 | Architecture::Arm => {
             // https://developer.arm.com/documentation/100067/0611/armclang-Integrated-Assembler/AArch32-Target-selection-directives?lang=en
@@ -303,7 +305,6 @@ fn enable_disable_target_features<'tcx>(
         Architecture::Csky => return None,
         Architecture::E2K32 => return None,
         Architecture::E2K64 => return None,
-        Architecture::I386 => return None,
         Architecture::Hexagon => return None,
         Architecture::Msp430 => return None,
         Architecture::Sbf => return None,
