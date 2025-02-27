@@ -1,4 +1,7 @@
 //@ check-fail
+//@ compile-flags: -Zunstable-options
+//@ edition: future
+#![allow(sized_hierarchy_migration)]
 #![feature(extern_types, sized_hierarchy)]
 
 use std::marker::{MetaSized, PointeeSized};
@@ -14,13 +17,13 @@ fn neg_sized<T: ?Sized>() {}
 fn metasized<T: MetaSized>() {}
 
 fn neg_metasized<T: ?MetaSized>() {}
-//~^ ERROR relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
+//~^ ERROR relaxing a default bound only does something for `?Sized`
 
 
 fn pointeesized<T: PointeeSized>() { }
 
 fn neg_pointeesized<T: ?PointeeSized>() { }
-//~^ ERROR relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
+//~^ ERROR relaxing a default bound only does something for `?Sized`
 
 
 fn main() {

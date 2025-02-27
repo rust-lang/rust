@@ -5,6 +5,7 @@
 //@[future] compile-flags: -Zunstable-options
 //@[future] edition: future
 //@[future] check-pass
+#![allow(sized_hierarchy_migration)]
 #![feature(sized_hierarchy)]
 
 pub fn metasized<T: MetaSized>() {}
