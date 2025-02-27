@@ -7,7 +7,7 @@ LL |     include!("not-utf8.bin");
 note: byte `193` is not valid utf-8
   --> $DIR/not-utf8.bin:1:1
    |
-LL | �|�␂!5�cc␕␂�Ӻi��WWj�ȥ�'�}�␒�J�ȉ��W�␞O�@����␜w�V���LO����␔[ ␃_�'���SQ�~ذ��ų&��-    ��lN~��!@␌ _#���kQ��h�␝�:�...
+LL | �|�␂!5�cc␕␂�Ӻi��WWj�ȥ�'�}�␒�J�ȉ��W�␞O�@����␜w�V���LO����␔[ ␃_�'���SQ�~ذ��ų&��-    ��lN~��!@␌ _#���kQ��h�␝�:�␜␇�
    | ^
    = note: this error originates in the macro `include` (in Nightly builds, run with -Z macro-backtrace for more info)
 
