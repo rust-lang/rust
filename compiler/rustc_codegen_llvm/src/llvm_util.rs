@@ -262,6 +262,15 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         // Filter out features that are not supported by the current LLVM version
         ("aarch64", "fpmr") => None, // only existed in 18
         ("arm", "fp16") => Some(LLVMFeature::new("fullfp16")),
+        // NVPTX targets added in LLVM 20
+        ("nvptx64", "sm_100") if get_version().0 < 20 => None,
+        ("nvptx64", "sm_100a") if get_version().0 < 20 => None,
+        ("nvptx64", "sm_101") if get_version().0 < 20 => None,
+        ("nvptx64", "sm_101a") if get_version().0 < 20 => None,
+        ("nvptx64", "sm_120") if get_version().0 < 20 => None,
+        ("nvptx64", "sm_120a") if get_version().0 < 20 => None,
+        ("nvptx64", "ptx86") if get_version().0 < 20 => None,
+        ("nvptx64", "ptx87") if get_version().0 < 20 => None,
         // Filter out features that are not supported by the current LLVM version
         ("loongarch64", "div32" | "lam-bh" | "lamcas" | "ld-seq-sa" | "scq")
             if get_version().0 < 20 =>
