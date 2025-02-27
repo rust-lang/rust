@@ -49,6 +49,9 @@ macro_rules! thir_with_elements {
             }
         )*
 
+        // Note: Making `Thir` implement `Clone` is useful for external tools that need access to
+        // THIR bodies even after the `Steal` query result has been stolen.
+        // One such tool is https://github.com/rust-corpus/qrates/.
         /// A container for a THIR body.
         ///
         /// This can be indexed directly by any THIR index (e.g. [`ExprId`]).
