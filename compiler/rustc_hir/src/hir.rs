@@ -4,7 +4,7 @@ use std::fmt;
 use rustc_abi::ExternAbi;
 use rustc_ast::attr::AttributeExt;
 use rustc_ast::token::CommentKind;
-use rustc_ast::util::parser::{AssocOp, ExprPrecedence};
+use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast::{
     self as ast, FloatTy, InlineAsmOptions, InlineAsmTemplatePiece, IntTy, Label, LitIntType,
     LitKind, TraitObjectSyntax, UintTy, UnsafeBinderCastKind,
@@ -2124,7 +2124,7 @@ impl Expr<'_> {
             | ExprKind::Become(..) => ExprPrecedence::Jump,
 
             // Binop-like expr kinds, handled by `AssocOp`.
-            ExprKind::Binary(op, ..) => AssocOp::from_ast_binop(op.node).precedence(),
+            ExprKind::Binary(op, ..) => op.node.precedence(),
             ExprKind::Cast(..) => ExprPrecedence::Cast,
 
             ExprKind::Assign(..) |

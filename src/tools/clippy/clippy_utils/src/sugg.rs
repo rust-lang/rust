@@ -5,8 +5,7 @@ use crate::source::{snippet, snippet_opt, snippet_with_applicability, snippet_wi
 use crate::ty::expr_sig;
 use crate::{get_parent_expr_for_hir, higher};
 use rustc_ast::util::parser::AssocOp;
-use rustc_ast::{ast, token};
-use rustc_ast_pretty::pprust::token_kind_to_string;
+use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::{Closure, ExprKind, HirId, MutTy, TyKind};
@@ -114,10 +113,7 @@ impl<'a> Sugg<'a> {
     /// function variants of `Sugg`, since these use different snippet functions.
     fn hir_from_snippet(expr: &hir::Expr<'_>, mut get_snippet: impl FnMut(Span) -> Cow<'a, str>) -> Self {
         if let Some(range) = higher::Range::hir(expr) {
-            let op = match range.limits {
-                ast::RangeLimits::HalfOpen => AssocOp::DotDot,
-                ast::RangeLimits::Closed => AssocOp::DotDotEq,
-            };
+            let op = AssocOp::Range(range.limits);
             let start = range.start.map_or("".into(), |expr| get_snippet(expr.span));
             let end = range.end.map_or("".into(), |expr| get_snippet(expr.span));
 
@@ -158,16 +154,16 @@ impl<'a> Sugg<'a> {
                 Sugg::BinOp(AssocOp::Assign, get_snippet(lhs.span), get_snippet(rhs.span))
             },
             ExprKind::AssignOp(op, lhs, rhs) => {
-                Sugg::BinOp(hirbinop2assignop(op), get_snippet(lhs.span), get_snippet(rhs.span))
+                Sugg::BinOp(AssocOp::AssignOp(op.node), get_snippet(lhs.span), get_snippet(rhs.span))
             },
             ExprKind::Binary(op, lhs, rhs) => Sugg::BinOp(
-                AssocOp::from_ast_binop(op.node),
+                AssocOp::Binary(op.node),
                 get_snippet(lhs.span),
                 get_snippet(rhs.span),
             ),
             ExprKind::Cast(lhs, ty) |
             //FIXME(chenyukang), remove this after type ascription is removed from AST
-            ExprKind::Type(lhs, ty) => Sugg::BinOp(AssocOp::As, get_snippet(lhs.span), get_snippet(ty.span)),
+            ExprKind::Type(lhs, ty) => Sugg::BinOp(AssocOp::Cast, get_snippet(lhs.span), get_snippet(ty.span)),
         }
     }
 
@@ -179,8 +175,6 @@ impl<'a> Sugg<'a> {
         ctxt: SyntaxContext,
         app: &mut Applicability,
     ) -> Self {
-        use rustc_ast::ast::RangeLimits;
-
         let mut snippet = |span: Span| snippet_with_context(cx, span, ctxt, default, app).0;
 
         match expr.kind {
@@ -229,13 +223,8 @@ impl<'a> Sugg<'a> {
             | ast::ExprKind::Err(_)
             | ast::ExprKind::Dummy
             | ast::ExprKind::UnsafeBinderCast(..) => Sugg::NonParen(snippet(expr.span)),
-            ast::ExprKind::Range(ref lhs, ref rhs, RangeLimits::HalfOpen) => Sugg::BinOp(
-                AssocOp::DotDot,
-                lhs.as_ref().map_or("".into(), |lhs| snippet(lhs.span)),
-                rhs.as_ref().map_or("".into(), |rhs| snippet(rhs.span)),
-            ),
-            ast::ExprKind::Range(ref lhs, ref rhs, RangeLimits::Closed) => Sugg::BinOp(
-                AssocOp::DotDotEq,
+            ast::ExprKind::Range(ref lhs, ref rhs, limits) => Sugg::BinOp(
+                AssocOp::Range(limits),
                 lhs.as_ref().map_or("".into(), |lhs| snippet(lhs.span)),
                 rhs.as_ref().map_or("".into(), |rhs| snippet(rhs.span)),
             ),
@@ -245,19 +234,19 @@ impl<'a> Sugg<'a> {
                 snippet(rhs.span),
             ),
             ast::ExprKind::AssignOp(op, ref lhs, ref rhs) => Sugg::BinOp(
-                astbinop2assignop(op),
+                AssocOp::AssignOp(op.node),
                 snippet(lhs.span),
                 snippet(rhs.span),
             ),
             ast::ExprKind::Binary(op, ref lhs, ref rhs) => Sugg::BinOp(
-                AssocOp::from_ast_binop(op.node),
+                AssocOp::Binary(op.node),
                 snippet(lhs.span),
                 snippet(rhs.span),
             ),
             ast::ExprKind::Cast(ref lhs, ref ty) |
             //FIXME(chenyukang), remove this after type ascription is removed from AST
             ast::ExprKind::Type(ref lhs, ref ty) => Sugg::BinOp(
-                AssocOp::As,
+                AssocOp::Cast,
                 snippet(lhs.span),
                 snippet(ty.span),
             ),
@@ -276,7 +265,7 @@ impl<'a> Sugg<'a> {
 
     /// Convenience method to create the `<lhs> as <rhs>` suggestion.
     pub fn as_ty<R: Display>(self, rhs: R) -> Sugg<'static> {
-        make_assoc(AssocOp::As, &self, &Sugg::NonParen(rhs.to_string().into()))
+        make_assoc(AssocOp::Cast, &self, &Sugg::NonParen(rhs.to_string().into()))
     }
 
     /// Convenience method to create the `&<expr>` suggestion.
@@ -327,11 +316,8 @@ impl<'a> Sugg<'a> {
 
     /// Convenience method to create the `<lhs>..<rhs>` or `<lhs>...<rhs>`
     /// suggestion.
-    pub fn range(self, end: &Self, limit: ast::RangeLimits) -> Sugg<'static> {
-        match limit {
-            ast::RangeLimits::HalfOpen => make_assoc(AssocOp::DotDot, &self, end),
-            ast::RangeLimits::Closed => make_assoc(AssocOp::DotDotEq, &self, end),
-        }
+    pub fn range(self, end: &Self, limits: ast::RangeLimits) -> Sugg<'static> {
+        make_assoc(AssocOp::Range(limits), &self, end)
     }
 
     /// Adds parentheses to any expression that might need them. Suitable to the
@@ -367,33 +353,11 @@ impl<'a> Sugg<'a> {
 /// Generates a string from the operator and both sides.
 fn binop_to_string(op: AssocOp, lhs: &str, rhs: &str) -> String {
     match op {
-        AssocOp::Add
-        | AssocOp::Subtract
-        | AssocOp::Multiply
-        | AssocOp::Divide
-        | AssocOp::Modulus
-        | AssocOp::LAnd
-        | AssocOp::LOr
-        | AssocOp::BitXor
-        | AssocOp::BitAnd
-        | AssocOp::BitOr
-        | AssocOp::ShiftLeft
-        | AssocOp::ShiftRight
-        | AssocOp::Equal
-        | AssocOp::Less
-        | AssocOp::LessEqual
-        | AssocOp::NotEqual
-        | AssocOp::Greater
-        | AssocOp::GreaterEqual => {
-            format!("{lhs} {} {rhs}", op.to_ast_binop().expect("Those are AST ops").as_str())
-        },
+        AssocOp::Binary(op) => format!("{lhs} {} {rhs}", op.as_str()),
         AssocOp::Assign => format!("{lhs} = {rhs}"),
-        AssocOp::AssignOp(op) => {
-            format!("{lhs} {}= {rhs}", token_kind_to_string(&token::BinOp(op)))
-        },
-        AssocOp::As => format!("{lhs} as {rhs}"),
-        AssocOp::DotDot => format!("{lhs}..{rhs}"),
-        AssocOp::DotDotEq => format!("{lhs}..={rhs}"),
+        AssocOp::AssignOp(op) => format!("{lhs} {}= {rhs}", op.as_str()),
+        AssocOp::Cast => format!("{lhs} as {rhs}"),
+        AssocOp::Range(limits) => format!("{lhs}{}{rhs}", limits.as_str()),
     }
 }
 
@@ -468,7 +432,7 @@ impl Neg for Sugg<'_> {
     type Output = Sugg<'static>;
     fn neg(self) -> Sugg<'static> {
         match &self {
-            Self::BinOp(AssocOp::As, ..) => Sugg::MaybeParen(format!("-({self})").into()),
+            Self::BinOp(AssocOp::Cast, ..) => Sugg::MaybeParen(format!("-({self})").into()),
             _ => make_unop("-", self),
         }
     }
@@ -477,16 +441,17 @@ impl Neg for Sugg<'_> {
 impl<'a> Not for Sugg<'a> {
     type Output = Sugg<'a>;
     fn not(self) -> Sugg<'a> {
-        use AssocOp::{Equal, Greater, GreaterEqual, Less, LessEqual, NotEqual};
+        use AssocOp::Binary;
+        use ast::BinOpKind::{Eq, Gt, Ge, Lt, Le, Ne};
 
         if let Sugg::BinOp(op, lhs, rhs) = self {
             let to_op = match op {
-                Equal => NotEqual,
-                NotEqual => Equal,
-                Less => GreaterEqual,
-                GreaterEqual => Less,
-                Greater => LessEqual,
-                LessEqual => Greater,
+                Binary(Eq) => Binary(Ne),
+                Binary(Ne) => Binary(Eq),
+                Binary(Lt) => Binary(Ge),
+                Binary(Ge) => Binary(Lt),
+                Binary(Gt) => Binary(Le),
+                Binary(Le) => Binary(Gt),
                 _ => return make_unop("!", Sugg::BinOp(op, lhs, rhs)),
             };
             Sugg::BinOp(to_op, lhs, rhs)
@@ -538,7 +503,7 @@ pub fn make_unop(op: &str, expr: Sugg<'_>) -> Sugg<'static> {
 pub fn make_assoc(op: AssocOp, lhs: &Sugg<'_>, rhs: &Sugg<'_>) -> Sugg<'static> {
     /// Returns `true` if the operator is a shift operator `<<` or `>>`.
     fn is_shift(op: AssocOp) -> bool {
-        matches!(op, AssocOp::ShiftLeft | AssocOp::ShiftRight)
+        matches!(op, AssocOp::Binary(ast::BinOpKind::Shl | ast::BinOpKind::Shr))
     }
 
     /// Returns `true` if the operator is an arithmetic operator
@@ -546,7 +511,13 @@ pub fn make_assoc(op: AssocOp, lhs: &Sugg<'_>, rhs: &Sugg<'_>) -> Sugg<'static> 
     fn is_arith(op: AssocOp) -> bool {
         matches!(
             op,
-            AssocOp::Add | AssocOp::Subtract | AssocOp::Multiply | AssocOp::Divide | AssocOp::Modulus
+            AssocOp::Binary(
+                ast::BinOpKind::Add
+                | ast::BinOpKind::Sub
+                | ast::BinOpKind::Mul
+                | ast::BinOpKind::Div
+                | ast::BinOpKind::Rem
+            )
         )
     }
 
@@ -578,9 +549,9 @@ pub fn make_assoc(op: AssocOp, lhs: &Sugg<'_>, rhs: &Sugg<'_>) -> Sugg<'static> 
     Sugg::BinOp(op, lhs.into(), rhs.into())
 }
 
-/// Convenience wrapper around `make_assoc` and `AssocOp::from_ast_binop`.
+/// Convenience wrapper around `make_assoc` and `AssocOp::Binary`.
 pub fn make_binop(op: ast::BinOpKind, lhs: &Sugg<'_>, rhs: &Sugg<'_>) -> Sugg<'static> {
-    make_assoc(AssocOp::from_ast_binop(op), lhs, rhs)
+    make_assoc(AssocOp::Binary(op), lhs, rhs)
 }
 
 #[derive(PartialEq, Eq, Clone, Copy)]
@@ -605,67 +576,17 @@ enum Associativity {
 /// associative.
 #[must_use]
 fn associativity(op: AssocOp) -> Associativity {
-    use rustc_ast::util::parser::AssocOp::{
-        Add, As, Assign, AssignOp, BitAnd, BitOr, BitXor, Divide, DotDot, DotDotEq, Equal, Greater, GreaterEqual, LAnd,
-        LOr, Less, LessEqual, Modulus, Multiply, NotEqual, ShiftLeft, ShiftRight, Subtract,
+    use rustc_ast::util::parser::AssocOp::{Assign, AssignOp, Binary, Cast, Range};
+    use ast::BinOpKind::{
+        Add, BitAnd, BitOr, BitXor, Div, Eq, Gt, Ge, And, Or, Lt, Le, Rem, Mul, Ne, Shl, Shr, Sub,
     };
 
     match op {
         Assign | AssignOp(_) => Associativity::Right,
-        Add | BitAnd | BitOr | BitXor | LAnd | LOr | Multiply | As => Associativity::Both,
-        Divide | Equal | Greater | GreaterEqual | Less | LessEqual | Modulus | NotEqual | ShiftLeft | ShiftRight
-        | Subtract => Associativity::Left,
-        DotDot | DotDotEq => Associativity::None,
+        Binary(Add | BitAnd | BitOr | BitXor | And | Or | Mul) | Cast => Associativity::Both,
+        Binary(Div | Eq | Gt | Ge | Lt | Le | Rem | Ne | Shl | Shr | Sub) => Associativity::Left,
+        Range(_) => Associativity::None,
     }
-}
-
-/// Converts a `hir::BinOp` to the corresponding assigning binary operator.
-fn hirbinop2assignop(op: hir::BinOp) -> AssocOp {
-    use rustc_ast::token::BinOpToken::{And, Caret, Minus, Or, Percent, Plus, Shl, Shr, Slash, Star};
-
-    AssocOp::AssignOp(match op.node {
-        hir::BinOpKind::Add => Plus,
-        hir::BinOpKind::BitAnd => And,
-        hir::BinOpKind::BitOr => Or,
-        hir::BinOpKind::BitXor => Caret,
-        hir::BinOpKind::Div => Slash,
-        hir::BinOpKind::Mul => Star,
-        hir::BinOpKind::Rem => Percent,
-        hir::BinOpKind::Shl => Shl,
-        hir::BinOpKind::Shr => Shr,
-        hir::BinOpKind::Sub => Minus,
-
-        hir::BinOpKind::And
-        | hir::BinOpKind::Eq
-        | hir::BinOpKind::Ge
-        | hir::BinOpKind::Gt
-        | hir::BinOpKind::Le
-        | hir::BinOpKind::Lt
-        | hir::BinOpKind::Ne
-        | hir::BinOpKind::Or => panic!("This operator does not exist"),
-    })
-}
-
-/// Converts an `ast::BinOp` to the corresponding assigning binary operator.
-fn astbinop2assignop(op: ast::BinOp) -> AssocOp {
-    use rustc_ast::ast::BinOpKind::{
-        Add, And, BitAnd, BitOr, BitXor, Div, Eq, Ge, Gt, Le, Lt, Mul, Ne, Or, Rem, Shl, Shr, Sub,
-    };
-    use rustc_ast::token::BinOpToken;
-
-    AssocOp::AssignOp(match op.node {
-        Add => BinOpToken::Plus,
-        BitAnd => BinOpToken::And,
-        BitOr => BinOpToken::Or,
-        BitXor => BinOpToken::Caret,
-        Div => BinOpToken::Slash,
-        Mul => BinOpToken::Star,
-        Rem => BinOpToken::Percent,
-        Shl => BinOpToken::Shl,
-        Shr => BinOpToken::Shr,
-        Sub => BinOpToken::Minus,
-        And | Eq | Ge | Gt | Le | Lt | Ne | Or => panic!("This operator does not exist"),
-    })
 }
 
 /// Returns the indentation before `span` if there are nothing but `[ \t]`
