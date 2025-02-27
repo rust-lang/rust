@@ -93,6 +93,9 @@ impl StyledBuffer {
         if start == end {
             return;
         }
+        if start > self.lines[line].len() || end > self.lines[line].len() {
+            return;
+        }
         let _ = self.lines[line].drain(start..(end - string.chars().count()));
         for (i, c) in string.chars().enumerate() {
             self.lines[line][start + i] = StyledChar::new(c, Style::LineNumber);
