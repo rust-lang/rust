@@ -88,10 +88,9 @@ impl RustcInternal for Pattern {
     type T<'tcx> = rustc_ty::Pattern<'tcx>;
     fn internal<'tcx>(&self, tables: &mut Tables<'_>, tcx: TyCtxt<'tcx>) -> Self::T<'tcx> {
         tcx.mk_pat(match self {
-            Pattern::Range { start, end, include_end } => rustc_ty::PatternKind::Range {
-                start: start.as_ref().map(|c| c.internal(tables, tcx)),
-                end: end.as_ref().map(|c| c.internal(tables, tcx)),
-                include_end: *include_end,
+            Pattern::Range { start, end, include_end: _ } => rustc_ty::PatternKind::Range {
+                start: start.as_ref().unwrap().internal(tables, tcx),
+                end: end.as_ref().unwrap().internal(tables, tcx),
             },
         })
     }
