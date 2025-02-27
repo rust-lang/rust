@@ -118,6 +118,7 @@ declare_passes! {
     mod add_moves_for_packed_drops : AddMovesForPackedDrops;
     mod add_retag : AddRetag;
     mod add_subtyping_projections : Subtyper;
+    mod branch_duplicator: BranchDuplicator;
     mod check_inline : CheckForceInline;
     mod check_call_recursion : CheckCallRecursion, CheckDropRecursion;
     mod check_alignment : CheckAlignment;
@@ -670,6 +671,9 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &unreachable_enum_branching::UnreachableEnumBranching,
             &unreachable_prop::UnreachablePropagation,
             &o1(simplify::SimplifyCfg::AfterUnreachableEnumBranching),
+            // If we inlined something returning `Option` or `Result`,
+            // duplicating the discriminant branches on those helps later passes.
+            &branch_duplicator::BranchDuplicator,
             // Inlining may have introduced a lot of redundant code and a large move pattern.
             // Now, we need to shrink the generated MIR.
             &ref_prop::ReferencePropagation,

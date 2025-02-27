@@ -56,7 +56,11 @@
   
       bb4: {
           _3 = const Option::<u32>::None;
-          goto -> bb6;
+          StorageDead(_10);
+          StorageDead(_5);
+          StorageDead(_4);
+          _6 = discriminant(_3);
+          switchInt(move _6) -> [1: bb1, 0: bb3, otherwise: bb7];
       }
   
       bb5: {
@@ -65,15 +69,15 @@
 +         _11 = SubUnchecked(copy _1, copy _2);
           _3 = Option::<u32>::Some(move _11);
           StorageDead(_11);
-          goto -> bb6;
-      }
-  
-      bb6: {
           StorageDead(_10);
           StorageDead(_5);
           StorageDead(_4);
           _6 = discriminant(_3);
           switchInt(move _6) -> [1: bb1, 0: bb3, otherwise: bb7];
+      }
+  
+      bb6: {
+          unreachable;
       }
   
       bb7: {

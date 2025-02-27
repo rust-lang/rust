@@ -22,6 +22,7 @@ pub fn checked_shl(x: u32, rhs: u32) -> Option<u32> {
 }
 
 // EMIT_MIR checked_ops.use_checked_sub.PreCodegen.after.mir
+// EMIT_MIR checked_ops.use_checked_sub.BranchDuplicator.diff
 // EMIT_MIR checked_ops.use_checked_sub.GVN.diff
 pub fn use_checked_sub(x: u32, rhs: u32) {
     // We want this to be equivalent to open-coding it, leaving no `Option`s around.
