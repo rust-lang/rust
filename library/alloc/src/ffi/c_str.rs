@@ -352,8 +352,8 @@ impl CString {
     /// # Safety
     ///
     /// This should only ever be called with a pointer that was earlier
-    /// obtained by calling [`CString::into_raw`] and this pointer must not be accessed 
-    /// through any other pointer during the lifetime of reconstructed `CString`. 
+    /// obtained by calling [`CString::into_raw`] and this pointer must not be accessed
+    /// through any other pointer during the lifetime of reconstructed `CString`.
     /// Other usage (e.g., trying to take ownership of a string that was allocated by foreign code)
     /// is likely to lead to undefined behavior or allocator corruption.
     ///
