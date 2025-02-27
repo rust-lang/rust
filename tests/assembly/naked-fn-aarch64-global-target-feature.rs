@@ -1,7 +1,7 @@
 //@ add-core-stubs
 //@ assembly-output: emit-asm
-//@ compile-flags: --target aarch64-unknown-linux-gnu -Ctarget-feature=+lse
-//@ needs-llvm-components: aarch64
+//@ only-aarch64
+//@ compile-flags: -Ctarget-feature=+lse
 
 #![crate_type = "lib"]
 #![feature(no_core, naked_functions)]

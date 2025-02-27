@@ -59,18 +59,22 @@ unsafe extern "C" fn vpclmulqdq() {
     naked_asm!("vpclmulqdq zmm1, zmm2, zmm3, 4")
 }
 
-// aarch64-elf-LABEL: aes:
-// aarch64-elf: aese
-// aarch64-macho-LABEL: aes:
-// aarch64-macho: aese
-// aarch64-coff-LABEL: aes:
-// aarch64-coff: aese
+// i8mm is not enabled by default
+//
+// note that aarch64-apple-darwin enables more features than aarch64-unknown-linux-gnu
+//
+// aarch64-elf-LABEL: i8mm:
+// aarch64-elf: usdot
+// aarch64-macho-LABEL: i8mm:
+// aarch64-macho: usdot
+// aarch64-coff-LABEL: i8mm:
+// aarch64-coff: usdot
 #[no_mangle]
 #[naked]
 #[cfg(target_arch = "aarch64")]
-#[target_feature(enable = "aes")]
-unsafe extern "C" fn aes() {
-    naked_asm!("aese.16b v0, v1")
+#[target_feature(enable = "i8mm")]
+unsafe extern "C" fn i8mm() {
+    naked_asm!("usdot   v0.4s, v1.16b, v2.4b[3]")
 }
 
 // riscv64: sh1add:
