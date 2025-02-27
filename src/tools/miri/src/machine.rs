@@ -1532,7 +1532,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     fn before_terminator(ecx: &mut InterpCx<'tcx, Self>) -> InterpResult<'tcx> {
         ecx.machine.basic_block_count += 1u64; // a u64 that is only incremented by 1 will "never" overflow
         ecx.machine.since_gc += 1;
-        // Possibly report our progress.
+        // Possibly report our progress. This will point at the terminator we are about to execute.
         if let Some(report_progress) = ecx.machine.report_progress {
             if ecx.machine.basic_block_count % u64::from(report_progress) == 0 {
                 ecx.emit_diagnostic(NonHaltingDiagnostic::ProgressReport {
@@ -1551,6 +1551,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         }
 
         // These are our preemption points.
+        // (This will only take effect after the terminator has been executed.)
         ecx.maybe_preempt_active_thread();
 
         // Make sure some time passes.
