@@ -2,14 +2,14 @@
 
 use std::mem;
 
+use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::sym;
 use tracing::debug;
 
-use crate::clean;
 use crate::clean::utils::inherits_doc_hidden;
-use crate::clean::{Item, ItemIdSet};
+use crate::clean::{self, Item, ItemId, ItemIdSet};
 use crate::core::DocContext;
 use crate::fold::{DocFolder, strip_item};
 use crate::passes::{ImplStripper, Pass};
@@ -25,6 +25,28 @@ pub(crate) fn strip_hidden(krate: clean::Crate, cx: &mut DocContext<'_>) -> clea
     let mut retained = ItemIdSet::default();
     let is_json_output = cx.is_json_output();
 
+    let all_items = collect_items(&krate);
+
+    // Collect hidden items
+    let hidden_items: Vec<_> =
+        all_items.iter().filter(|item| item.is_doc_hidden()).cloned().collect();
+
+    // Map import items to their hidden source items
+    let source_items: FxHashMap<_, _> = all_items
+        .iter()
+        .filter_map(|item| {
+            if let clean::ItemKind::ImportItem(import) = &item.kind {
+                let source_item = hidden_items
+                    .iter()
+                    .find(|i| i.item_id.as_def_id() == import.source.did)
+                    .cloned();
+                Some((item.item_id, source_item))
+            } else {
+                None
+            }
+        })
+        .collect();
+
     // strip all #[doc(hidden)] items
     let krate = {
         let mut stripper = Stripper {
@@ -33,6 +55,7 @@ pub(crate) fn strip_hidden(krate: clean::Crate, cx: &mut DocContext<'_>) -> clea
             tcx: cx.tcx,
             is_in_hidden_item: false,
             last_reexport: None,
+            source_items,
         };
         stripper.fold_crate(krate)
     };
@@ -49,12 +72,30 @@ pub(crate) fn strip_hidden(krate: clean::Crate, cx: &mut DocContext<'_>) -> clea
     stripper.fold_crate(krate)
 }
 
+fn collect_items(krate: &clean::Crate) -> Vec<Item> {
+    fn collect_items_module(module: &clean::Module) -> Vec<Item> {
+        let mut items = Vec::new();
+        for item in &module.items {
+            items.push(item.clone());
+        }
+        items
+    }
+
+    let mut items = Vec::new();
+    if let clean::ItemKind::ModuleItem(module) = &krate.module.kind {
+        items.extend(collect_items_module(module));
+    }
+    items
+}
+
 struct Stripper<'a, 'tcx> {
     retained: &'a mut ItemIdSet,
     update_retained: bool,
     tcx: TyCtxt<'tcx>,
     is_in_hidden_item: bool,
     last_reexport: Option<LocalDefId>,
+    /// store the source items of a import item
+    source_items: FxHashMap<ItemId, Option<Item>>,
 }
 
 impl Stripper<'_, '_> {
@@ -89,6 +130,25 @@ impl Stripper<'_, '_> {
 impl DocFolder for Stripper<'_, '_> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         let has_doc_hidden = i.is_doc_hidden();
+        debug!(
+            "kkkkkkkkkkkkkk {:?}, item: {:?}, has_doc_hidden: {}, is_in_hidden_item: {}\n",
+            i.name, i, has_doc_hidden, self.is_in_hidden_item
+        );
+
+        // if self.hidden_items.iter().any(|item| item.item_id == i.item_id) {
+        //     return None;
+        // }
+
+        if let clean::ImportItem(clean::Import { .. }) = &i.kind {
+            if let Some(source_item) = self.source_items.get(&i.item_id) {
+                if let Some(source_item) = source_item {
+                    if source_item.is_doc_hidden() {
+                        return None;
+                    }
+                }
+            }
+        }
+
         let is_impl_or_exported_macro = match i.kind {
             clean::ImplItem(..) => true,
             // If the macro has the `#[macro_export]` attribute, it means it's accessible at the
