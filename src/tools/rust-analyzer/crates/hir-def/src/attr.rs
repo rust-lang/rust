@@ -84,7 +84,7 @@ impl Attrs {
                 let krate = loc.parent.lookup(db).container.krate;
                 item_tree = loc.id.item_tree(db);
                 let variant = &item_tree[loc.id.value];
-                (FieldParent::Variant(loc.id.value), &variant.fields, krate)
+                (FieldParent::EnumVariant(loc.id.value), &variant.fields, krate)
             }
             VariantId::StructId(it) => {
                 let loc = it.lookup(db);

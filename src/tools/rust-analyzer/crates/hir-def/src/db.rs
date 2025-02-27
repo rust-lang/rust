@@ -151,18 +151,17 @@ pub trait DefDatabase:
     // region:data
 
     #[salsa::transparent]
+    #[salsa::invoke_actual(VariantData::variant_data_query)]
+    fn variant_data(&self, id: VariantId) -> Arc<VariantData>;
+
+    #[salsa::invoke_actual(VariantData::variant_data_with_diagnostics_query)]
+    fn variant_data_with_diagnostics(&self, id: VariantId) -> (Arc<VariantData>, DefDiagnostics);
+
     #[salsa::invoke_actual(StructData::struct_data_query)]
     fn struct_data(&self, id: StructId) -> Arc<StructData>;
 
-    #[salsa::invoke_actual(StructData::struct_data_with_diagnostics_query)]
-    fn struct_data_with_diagnostics(&self, id: StructId) -> (Arc<StructData>, DefDiagnostics);
-
-    #[salsa::transparent]
     #[salsa::invoke_actual(StructData::union_data_query)]
     fn union_data(&self, id: UnionId) -> Arc<StructData>;
-
-    #[salsa::invoke_actual(StructData::union_data_with_diagnostics_query)]
-    fn union_data_with_diagnostics(&self, id: UnionId) -> (Arc<StructData>, DefDiagnostics);
 
     #[salsa::invoke_actual(EnumData::enum_data_query)]
     fn enum_data(&self, e: EnumId) -> Arc<EnumData>;
@@ -170,19 +169,8 @@ pub trait DefDatabase:
     #[salsa::invoke_actual(EnumVariants::enum_variants_query)]
     fn enum_variants(&self, e: EnumId) -> Arc<EnumVariants>;
 
-    #[salsa::transparent]
     #[salsa::invoke_actual(EnumVariantData::enum_variant_data_query)]
     fn enum_variant_data(&self, id: EnumVariantId) -> Arc<EnumVariantData>;
-
-    #[salsa::invoke_actual(EnumVariantData::enum_variant_data_with_diagnostics_query)]
-    fn enum_variant_data_with_diagnostics(
-        &self,
-        id: EnumVariantId,
-    ) -> (Arc<EnumVariantData>, DefDiagnostics);
-
-    #[salsa::transparent]
-    #[salsa::invoke_actual(VariantData::variant_data)]
-    fn variant_data(&self, id: VariantId) -> Arc<VariantData>;
 
     #[salsa::invoke_actual(ImplData::impl_data_query)]
     fn impl_data(&self, e: ImplId) -> Arc<ImplData>;

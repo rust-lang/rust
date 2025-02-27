@@ -1631,7 +1631,7 @@ impl ExprCollector<'_> {
                             (None, Pat::Path(name.into()))
                         }
                         Some(ModuleDefId::AdtId(AdtId::StructId(s)))
-                            if self.db.struct_data(s).variant_data.kind() != StructKind::Record =>
+                            if self.db.variant_data(s.into()).kind() != StructKind::Record =>
                         {
                             (None, Pat::Path(name.into()))
                         }

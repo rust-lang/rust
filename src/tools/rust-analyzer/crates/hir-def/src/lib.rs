@@ -1104,11 +1104,7 @@ impl_from!(EnumVariantId, StructId, UnionId for VariantId);
 
 impl VariantId {
     pub fn variant_data(self, db: &dyn DefDatabase) -> Arc<VariantData> {
-        match self {
-            VariantId::StructId(it) => db.struct_data(it).variant_data.clone(),
-            VariantId::UnionId(it) => db.union_data(it).variant_data.clone(),
-            VariantId::EnumVariantId(it) => db.enum_variant_data(it).variant_data.clone(),
-        }
+        db.variant_data(self)
     }
 
     pub fn file_id(self, db: &dyn DefDatabase) -> HirFileId {

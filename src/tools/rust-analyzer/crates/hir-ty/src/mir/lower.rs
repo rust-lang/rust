@@ -499,7 +499,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                         Ok(Some(current))
                     }
                     ValueNs::EnumVariantId(variant_id) => {
-                        let variant_data = &self.db.enum_variant_data(variant_id).variant_data;
+                        let variant_data = &self.db.variant_data(variant_id.into());
                         if variant_data.kind() == StructKind::Unit {
                             let ty = self.infer.type_of_expr[expr_id].clone();
                             current = self.lower_enum_variant(
@@ -1165,8 +1165,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                     Rvalue::Aggregate(
                         AggregateKind::Adt(st.into(), subst.clone()),
                         self.db
-                            .struct_data(st)
-                            .variant_data
+                            .variant_data(st.into())
                             .fields()
                             .iter()
                             .map(|it| {

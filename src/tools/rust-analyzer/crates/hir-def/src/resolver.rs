@@ -276,11 +276,16 @@ impl Resolver {
         db: &dyn DefDatabase,
         visibility: &RawVisibility,
     ) -> Option<Visibility> {
-        let within_impl = self.scopes().any(|scope| matches!(scope, Scope::ImplDefScope(_)));
         match visibility {
             RawVisibility::Module(_, _) => {
                 let (item_map, item_local_map, module) = self.item_scope();
-                item_map.resolve_visibility(item_local_map, db, module, visibility, within_impl)
+                item_map.resolve_visibility(
+                    item_local_map,
+                    db,
+                    module,
+                    visibility,
+                    self.scopes().any(|scope| matches!(scope, Scope::ImplDefScope(_))),
+                )
             }
             RawVisibility::Public => Some(Visibility::Public),
         }

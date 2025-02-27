@@ -149,7 +149,6 @@ impl RootDatabase {
             // hir::db::CrateNotableTraitsQuery
             // hir::db::CrateSupportsNoStdQuery
             // hir::db::EnumDataQuery
-            // hir::db::EnumVariantDataWithDiagnosticsQuery
             // hir::db::ExpandProcAttrMacrosQuery
             // hir::db::ExprScopesQuery
             // hir::db::ExternCrateDeclDataQuery
@@ -191,11 +190,10 @@ impl RootDatabase {
             // hir::db::NotableTraitsInDepsQuery
             // hir::db::ProcMacroDataQuery
             // hir::db::StaticDataQuery
-            // hir::db::StructDataWithDiagnosticsQuery
             // hir::db::TraitAliasDataQuery
             // hir::db::TraitItemsWithDiagnosticsQuery
             // hir::db::TypeAliasDataQuery
-            // hir::db::UnionDataWithDiagnosticsQuery
+            // hir::db::VariantDataWithDiagnosticsQuery
 
             // // InternDatabase
             // hir::db::InternFunctionQuery

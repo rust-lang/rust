@@ -44,13 +44,13 @@ pub fn layout_of_adt_query(
         AdtId::StructId(s) => {
             let data = db.struct_data(s);
             let mut r = SmallVec::<[_; 1]>::new();
-            r.push(handle_variant(s.into(), &data.variant_data)?);
+            r.push(handle_variant(s.into(), &db.variant_data(s.into()))?);
             (r, data.repr.unwrap_or_default())
         }
         AdtId::UnionId(id) => {
             let data = db.union_data(id);
             let mut r = SmallVec::new();
-            r.push(handle_variant(id.into(), &data.variant_data)?);
+            r.push(handle_variant(id.into(), &db.variant_data(id.into()))?);
             (r, data.repr.unwrap_or_default())
         }
         AdtId::EnumId(e) => {
@@ -58,7 +58,7 @@ pub fn layout_of_adt_query(
             let r = variants
                 .variants
                 .iter()
-                .map(|&(v, _)| handle_variant(v.into(), &db.enum_variant_data(v).variant_data))
+                .map(|&(v, _)| handle_variant(v.into(), &db.variant_data(v.into())))
                 .collect::<Result<SmallVec<_>, _>>()?;
             (r, db.enum_data(e).repr.unwrap_or_default())
         }

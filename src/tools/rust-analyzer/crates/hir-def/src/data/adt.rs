@@ -27,7 +27,6 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StructData {
     pub name: Name,
-    pub variant_data: Arc<VariantData>,
     pub repr: Option<ReprOptions>,
     pub visibility: RawVisibility,
     pub flags: StructFlags,
@@ -69,7 +68,6 @@ pub struct EnumVariants {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EnumVariantData {
     pub name: Name,
-    pub variant_data: Arc<VariantData>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -77,6 +75,94 @@ pub enum VariantData {
     Record { fields: Arena<FieldData>, types_map: Arc<TypesMap> },
     Tuple { fields: Arena<FieldData>, types_map: Arc<TypesMap> },
     Unit,
+}
+
+impl VariantData {
+    #[inline]
+    pub(crate) fn variant_data_query(db: &dyn DefDatabase, id: VariantId) -> Arc<VariantData> {
+        db.variant_data_with_diagnostics(id).0
+    }
+
+    pub(crate) fn variant_data_with_diagnostics_query(
+        db: &dyn DefDatabase,
+        id: VariantId,
+    ) -> (Arc<VariantData>, DefDiagnostics) {
+        let (shape, types_map, (fields, diagnostics)) = match id {
+            VariantId::EnumVariantId(id) => {
+                let loc = id.lookup(db);
+                let item_tree = loc.id.item_tree(db);
+                let parent = loc.parent.lookup(db);
+                let krate = parent.container.krate;
+                let variant = &item_tree[loc.id.value];
+                (
+                    variant.shape,
+                    variant.types_map.clone(),
+                    lower_fields(
+                        db,
+                        krate,
+                        parent.container.local_id,
+                        loc.id.tree_id(),
+                        &item_tree,
+                        krate.cfg_options(db),
+                        FieldParent::EnumVariant(loc.id.value),
+                        &variant.fields,
+                        Some(item_tree[parent.id.value].visibility),
+                    ),
+                )
+            }
+            VariantId::StructId(id) => {
+                let loc = id.lookup(db);
+                let item_tree = loc.id.item_tree(db);
+                let krate = loc.container.krate;
+                let strukt = &item_tree[loc.id.value];
+                (
+                    strukt.shape,
+                    strukt.types_map.clone(),
+                    lower_fields(
+                        db,
+                        krate,
+                        loc.container.local_id,
+                        loc.id.tree_id(),
+                        &item_tree,
+                        krate.cfg_options(db),
+                        FieldParent::Struct(loc.id.value),
+                        &strukt.fields,
+                        None,
+                    ),
+                )
+            }
+            VariantId::UnionId(id) => {
+                let loc = id.lookup(db);
+                let item_tree = loc.id.item_tree(db);
+                let krate = loc.container.krate;
+                let union = &item_tree[loc.id.value];
+                (
+                    FieldsShape::Record,
+                    union.types_map.clone(),
+                    lower_fields(
+                        db,
+                        krate,
+                        loc.container.local_id,
+                        loc.id.tree_id(),
+                        &item_tree,
+                        krate.cfg_options(db),
+                        FieldParent::Union(loc.id.value),
+                        &union.fields,
+                        None,
+                    ),
+                )
+            }
+        };
+
+        (
+            Arc::new(match shape {
+                FieldsShape::Record => VariantData::Record { fields, types_map },
+                FieldsShape::Tuple => VariantData::Tuple { fields, types_map },
+                FieldsShape::Unit => VariantData::Unit,
+            }),
+            DefDiagnostics::new(diagnostics),
+        )
+    }
 }
 
 /// A single field of an enum variant or struct
@@ -99,13 +185,6 @@ fn repr_from_value(
 impl StructData {
     #[inline]
     pub(crate) fn struct_data_query(db: &dyn DefDatabase, id: StructId) -> Arc<StructData> {
-        db.struct_data_with_diagnostics(id).0
-    }
-
-    pub(crate) fn struct_data_with_diagnostics_query(
-        db: &dyn DefDatabase,
-        id: StructId,
-    ) -> (Arc<StructData>, DefDiagnostics) {
         let loc = id.lookup(db);
         let krate = loc.container.krate;
         let item_tree = loc.id.item_tree(db);
@@ -130,44 +209,16 @@ impl StructData {
         }
 
         let strukt = &item_tree[loc.id.value];
-        let (fields, diagnostics) = lower_fields(
-            db,
-            krate,
-            loc.container.local_id,
-            loc.id.tree_id(),
-            &item_tree,
-            krate.cfg_options(db),
-            FieldParent::Struct(loc.id.value),
-            &strukt.fields,
-            None,
-        );
-        let types_map = strukt.types_map.clone();
-
-        (
-            Arc::new(StructData {
-                name: strukt.name.clone(),
-                variant_data: Arc::new(match strukt.shape {
-                    FieldsShape::Record => VariantData::Record { fields, types_map },
-                    FieldsShape::Tuple => VariantData::Tuple { fields, types_map },
-                    FieldsShape::Unit => VariantData::Unit,
-                }),
-                repr,
-                visibility: item_tree[strukt.visibility].clone(),
-                flags,
-            }),
-            DefDiagnostics::new(diagnostics),
-        )
+        Arc::new(StructData {
+            name: strukt.name.clone(),
+            repr,
+            visibility: item_tree[strukt.visibility].clone(),
+            flags,
+        })
     }
 
     #[inline]
     pub(crate) fn union_data_query(db: &dyn DefDatabase, id: UnionId) -> Arc<StructData> {
-        db.union_data_with_diagnostics(id).0
-    }
-
-    pub(crate) fn union_data_with_diagnostics_query(
-        db: &dyn DefDatabase,
-        id: UnionId,
-    ) -> (Arc<StructData>, DefDiagnostics) {
         let loc = id.lookup(db);
         let krate = loc.container.krate;
         let item_tree = loc.id.item_tree(db);
@@ -182,28 +233,13 @@ impl StructData {
         }
 
         let union = &item_tree[loc.id.value];
-        let (fields, diagnostics) = lower_fields(
-            db,
-            krate,
-            loc.container.local_id,
-            loc.id.tree_id(),
-            &item_tree,
-            krate.cfg_options(db),
-            FieldParent::Union(loc.id.value),
-            &union.fields,
-            None,
-        );
-        let types_map = union.types_map.clone();
-        (
-            Arc::new(StructData {
-                name: union.name.clone(),
-                variant_data: Arc::new(VariantData::Record { fields, types_map }),
-                repr,
-                visibility: item_tree[union.visibility].clone(),
-                flags,
-            }),
-            DefDiagnostics::new(diagnostics),
-        )
+
+        Arc::new(StructData {
+            name: union.name.clone(),
+            repr,
+            visibility: item_tree[union.visibility].clone(),
+            flags,
+        })
     }
 }
 
@@ -227,16 +263,16 @@ impl EnumVariants {
 
     // [Adopted from rustc](https://github.com/rust-lang/rust/blob/bd53aa3bf7a24a70d763182303bd75e5fc51a9af/compiler/rustc_middle/src/ty/adt.rs#L446-L448)
     pub fn is_payload_free(&self, db: &dyn DefDatabase) -> bool {
-        self.variants.iter().all(|(v, _)| {
+        self.variants.iter().all(|&(v, _)| {
             // The condition check order is slightly modified from rustc
             // to improve performance by early returning with relatively fast checks
-            let variant = &db.enum_variant_data(*v).variant_data;
+            let variant = &db.variant_data(v.into());
             if !variant.fields().is_empty() {
                 return false;
             }
             // The outer if condition is whether this variant has const ctor or not
             if !matches!(variant.kind(), StructKind::Unit) {
-                let body = db.body((*v).into());
+                let body = db.body(v.into());
                 // A variant with explicit discriminant
                 if body.exprs[body.body_expr] != Expr::Missing {
                     return false;
@@ -282,43 +318,11 @@ impl EnumVariantData {
         db: &dyn DefDatabase,
         e: EnumVariantId,
     ) -> Arc<EnumVariantData> {
-        db.enum_variant_data_with_diagnostics(e).0
-    }
-
-    pub(crate) fn enum_variant_data_with_diagnostics_query(
-        db: &dyn DefDatabase,
-        e: EnumVariantId,
-    ) -> (Arc<EnumVariantData>, DefDiagnostics) {
         let loc = e.lookup(db);
-        let container = loc.parent.lookup(db).container;
-        let krate = container.krate;
         let item_tree = loc.id.item_tree(db);
         let variant = &item_tree[loc.id.value];
 
-        let (fields, diagnostics) = lower_fields(
-            db,
-            krate,
-            container.local_id,
-            loc.id.tree_id(),
-            &item_tree,
-            krate.cfg_options(db),
-            FieldParent::Variant(loc.id.value),
-            &variant.fields,
-            Some(item_tree[loc.parent.lookup(db).id.value].visibility),
-        );
-        let types_map = variant.types_map.clone();
-
-        (
-            Arc::new(EnumVariantData {
-                name: variant.name.clone(),
-                variant_data: Arc::new(match variant.shape {
-                    FieldsShape::Record => VariantData::Record { fields, types_map },
-                    FieldsShape::Tuple => VariantData::Tuple { fields, types_map },
-                    FieldsShape::Unit => VariantData::Unit,
-                }),
-            }),
-            DefDiagnostics::new(diagnostics),
-        )
+        Arc::new(EnumVariantData { name: variant.name.clone() })
     }
 }
 
@@ -350,15 +354,6 @@ impl VariantData {
             VariantData::Record { .. } => StructKind::Record,
             VariantData::Tuple { .. } => StructKind::Tuple,
             VariantData::Unit => StructKind::Unit,
-        }
-    }
-
-    #[allow(clippy::self_named_constructors)]
-    pub(crate) fn variant_data(db: &dyn DefDatabase, id: VariantId) -> Arc<VariantData> {
-        match id {
-            VariantId::StructId(it) => db.struct_data(it).variant_data.clone(),
-            VariantId::EnumVariantId(it) => db.enum_variant_data(it).variant_data.clone(),
-            VariantId::UnionId(it) => db.union_data(it).variant_data.clone(),
         }
     }
 }

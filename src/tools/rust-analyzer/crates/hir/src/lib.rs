@@ -661,8 +661,7 @@ impl Module {
                                 db.field_types_with_diagnostics(s.id.into()).1,
                                 tree_source_maps.strukt(tree_id.value).item(),
                             );
-
-                            for diag in db.struct_data_with_diagnostics(s.id).1.iter() {
+                            for diag in db.variant_data_with_diagnostics(s.id.into()).1.iter() {
                                 emit_def_diagnostic(db, acc, diag, edition);
                             }
                         }
@@ -675,8 +674,7 @@ impl Module {
                                 db.field_types_with_diagnostics(u.id.into()).1,
                                 tree_source_maps.union(tree_id.value).item(),
                             );
-
-                            for diag in db.union_data_with_diagnostics(u.id).1.iter() {
+                            for diag in db.variant_data_with_diagnostics(u.id.into()).1.iter() {
                                 emit_def_diagnostic(db, acc, diag, edition);
                             }
                         }
@@ -692,7 +690,7 @@ impl Module {
                                     tree_source_maps.variant(tree_id.value),
                                 );
                                 acc.extend(ModuleDef::Variant(v).diagnostics(db, style_lints));
-                                for diag in db.enum_variant_data_with_diagnostics(v.id).1.iter() {
+                                for diag in db.variant_data_with_diagnostics(v.id.into()).1.iter() {
                                     emit_def_diagnostic(db, acc, diag, edition);
                                 }
                             }
@@ -1059,7 +1057,7 @@ fn emit_def_diagnostic_(
                     AttrOwner::Variant(it) => {
                         ast_id_map.get(item_tree[it].ast_id).syntax_node_ptr()
                     }
-                    AttrOwner::Field(FieldParent::Variant(parent), idx) => process_field_list(
+                    AttrOwner::Field(FieldParent::EnumVariant(parent), idx) => process_field_list(
                         ast_id_map
                             .get(item_tree[parent].ast_id)
                             .to_node(&db.parse_or_expand(tree.file_id()))
@@ -1392,6 +1390,7 @@ impl HasVisibility for Field {
         let variant_data = self.parent.variant_data(db);
         let visibility = &variant_data.fields()[self.id].visibility;
         let parent_id: hir_def::VariantId = self.parent.into();
+        // FIXME: RawVisibility::Public doesn't need to construct a resolver
         visibility.resolve(db.upcast(), &parent_id.resolver(db.upcast()))
     }
 }
@@ -1411,8 +1410,7 @@ impl Struct {
     }
 
     pub fn fields(self, db: &dyn HirDatabase) -> Vec<Field> {
-        db.struct_data(self.id)
-            .variant_data
+        db.variant_data(self.id.into())
             .fields()
             .iter()
             .map(|(id, _)| Field { parent: self.into(), id })
@@ -1440,7 +1438,7 @@ impl Struct {
     }
 
     fn variant_data(self, db: &dyn HirDatabase) -> Arc<VariantData> {
-        db.struct_data(self.id).variant_data.clone()
+        db.variant_data(self.id.into()).clone()
     }
 
     pub fn is_unstable(self, db: &dyn HirDatabase) -> bool {
@@ -1481,8 +1479,7 @@ impl Union {
     }
 
     pub fn fields(self, db: &dyn HirDatabase) -> Vec<Field> {
-        db.union_data(self.id)
-            .variant_data
+        db.variant_data(self.id.into())
             .fields()
             .iter()
             .map(|(id, _)| Field { parent: self.into(), id })
@@ -1490,7 +1487,7 @@ impl Union {
     }
 
     fn variant_data(self, db: &dyn HirDatabase) -> Arc<VariantData> {
-        db.union_data(self.id).variant_data.clone()
+        db.variant_data(self.id.into()).clone()
     }
 
     pub fn is_unstable(self, db: &dyn HirDatabase) -> bool {
@@ -1633,7 +1630,7 @@ impl Variant {
     }
 
     pub(crate) fn variant_data(self, db: &dyn HirDatabase) -> Arc<VariantData> {
-        db.enum_variant_data(self.id).variant_data.clone()
+        db.variant_data(self.id.into()).clone()
     }
 
     pub fn value(self, db: &dyn HirDatabase) -> Option<ast::Expr> {

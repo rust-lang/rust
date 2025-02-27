@@ -1761,7 +1761,7 @@ impl Evaluator<'_> {
                         AdtId::EnumId(_) => not_supported!("unsizing enums"),
                     };
                     let Some((last_field, _)) =
-                        self.db.struct_data(id).variant_data.fields().iter().next_back()
+                        self.db.variant_data(id.into()).fields().iter().next_back()
                     else {
                         not_supported!("unsizing struct without field");
                     };
@@ -2243,10 +2243,10 @@ impl Evaluator<'_> {
                 }
                 chalk_ir::TyKind::Adt(adt, subst) => match adt.0 {
                     AdtId::StructId(s) => {
-                        let data = this.db.struct_data(s);
+                        let data = this.db.variant_data(s.into());
                         let layout = this.layout(ty)?;
                         let field_types = this.db.field_types(s.into());
-                        for (f, _) in data.variant_data.fields().iter() {
+                        for (f, _) in data.fields().iter() {
                             let offset = layout
                                 .fields
                                 .offset(u32::from(f.into_raw()) as usize)
@@ -2272,7 +2272,7 @@ impl Evaluator<'_> {
                             bytes,
                             e,
                         ) {
-                            let data = &this.db.enum_variant_data(v).variant_data;
+                            let data = &this.db.variant_data(v.into());
                             let field_types = this.db.field_types(v.into());
                             for (f, _) in data.fields().iter() {
                                 let offset =
@@ -2851,7 +2851,7 @@ impl Evaluator<'_> {
                             return Ok(());
                         }
                         let layout = self.layout_adt(id.0, subst.clone())?;
-                        match data.variant_data.as_ref() {
+                        match self.db.variant_data(s.into()).as_ref() {
                             VariantData::Record { fields, .. }
                             | VariantData::Tuple { fields, .. } => {
                                 let field_types = self.db.field_types(s.into());

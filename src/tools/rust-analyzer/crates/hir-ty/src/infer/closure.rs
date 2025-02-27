@@ -1159,7 +1159,7 @@ impl InferenceContext<'_> {
                             self.consume_place(place)
                         }
                         VariantId::StructId(s) => {
-                            let vd = &*self.db.struct_data(s).variant_data;
+                            let vd = &*self.db.variant_data(s.into());
                             for field_pat in args.iter() {
                                 let arg = field_pat.pat;
                                 let Some(local_id) = vd.field(&field_pat.name) else {
@@ -1211,7 +1211,7 @@ impl InferenceContext<'_> {
                             self.consume_place(place)
                         }
                         VariantId::StructId(s) => {
-                            let vd = &*self.db.struct_data(s).variant_data;
+                            let vd = &*self.db.variant_data(s.into());
                             let (al, ar) =
                                 args.split_at(ellipsis.map_or(args.len(), |it| it as usize));
                             let fields = vd.fields().iter();

@@ -382,7 +382,12 @@ impl Printer<'_> {
                         this.print_ast_id(ast_id.erase());
                         this.print_attrs_of(variant, "\n");
                         w!(this, "{}", name.display(self.db.upcast(), edition));
-                        this.print_fields(FieldParent::Variant(variant), *kind, fields, types_map);
+                        this.print_fields(
+                            FieldParent::EnumVariant(variant),
+                            *kind,
+                            fields,
+                            types_map,
+                        );
                         wln!(this, ",");
                     }
                 });

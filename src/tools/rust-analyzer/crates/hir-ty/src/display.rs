@@ -846,7 +846,7 @@ fn render_const_scalar(
                     write!(f, "{}", data.name.display(f.db.upcast(), f.edition()))?;
                     let field_types = f.db.field_types(s.into());
                     render_variant_after_name(
-                        &data.variant_data,
+                        &f.db.variant_data(s.into()),
                         f,
                         &field_types,
                         f.db.trait_environment(adt.0.into()),
@@ -872,7 +872,7 @@ fn render_const_scalar(
                     write!(f, "{}", data.name.display(f.db.upcast(), f.edition()))?;
                     let field_types = f.db.field_types(var_id.into());
                     render_variant_after_name(
-                        &data.variant_data,
+                        &f.db.variant_data(var_id.into()),
                         f,
                         &field_types,
                         f.db.trait_environment(adt.0.into()),

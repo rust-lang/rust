@@ -137,7 +137,7 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
         let fps: &[TyFingerprint] = match binder_kind(&ty, binders) {
             Some(chalk_ir::TyVariableKind::Integer) => &ALL_INT_FPS,
             Some(chalk_ir::TyVariableKind::Float) => &ALL_FLOAT_FPS,
-            _ => self_ty_fp.as_ref().map(std::slice::from_ref).unwrap_or(&[]),
+            _ => self_ty_fp.as_slice(),
         };
 
         let id_to_chalk = |id: hir_def::ImplId| id.to_chalk(self.db);
