@@ -2,7 +2,7 @@
 #![crate_type = "lib"]
 // we can compile to a variety of platforms, because we don't need
 // cross-compiled standard libraries.
-#![feature(no_core, auto_traits)]
+#![feature(no_core, auto_traits, const_trait_impl)]
 #![no_core]
 #![feature(repr_simd, simd_ffi, link_llvm_intrinsics, lang_items, rustc_attrs)]
 
@@ -56,9 +56,11 @@ pub fn bar(a: i32x4, b: i32x4) -> i32x4 {
 pub trait PointeeSized {}
 
 #[lang = "meta_sized"]
+#[const_trait]
 pub trait MetaSized: PointeeSized {}
 
 #[lang = "sized"]
+#[const_trait]
 pub trait Sized: MetaSized {}
 
 #[lang = "copy"]

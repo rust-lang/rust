@@ -6,16 +6,18 @@
 //@ normalize-stderr: "`, `[A-Za-z0-9-:]*`" -> "`, `normalized data layout`"
 //@ normalize-stderr: "layout, `[A-Za-z0-9-:]*`" -> "layout, `normalized data layout`"
 
-#![feature(lang_items, no_core, auto_traits)]
+#![feature(lang_items, no_core, auto_traits, const_trait_impl)]
 #![no_core]
 
 #[lang = "pointee_sized"]
 pub trait PointeeSized {}
 
 #[lang = "meta_sized"]
+#[const_trait]
 pub trait MetaSized: PointeeSized {}
 
 #[lang = "sized"]
+#[const_trait]
 pub trait Sized: MetaSized {}
 
 //~? ERROR differs from LLVM target's

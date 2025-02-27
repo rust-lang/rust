@@ -2,7 +2,15 @@
 //@ revisions: current next
 //@ [next] compile-flags: -Znext-solver
 
-#![feature(auto_traits, extern_types, lang_items, negative_impls, no_core, rustc_attrs)]
+#![feature(
+    auto_traits,
+    const_trait_impl,
+    extern_types,
+    lang_items,
+    negative_impls,
+    no_core,
+    rustc_attrs
+)]
 #![allow(incomplete_features)]
 #![no_std]
 #![no_core]
@@ -11,9 +19,11 @@
 trait PointeeSized {}
 
 #[lang = "meta_sized"]
+#[const_trait]
 trait MetaSized: PointeeSized {}
 
 #[lang = "sized"]
+#[const_trait]
 trait Sized: MetaSized {}
 
 #[lang = "copy"]
