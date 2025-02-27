@@ -39,8 +39,14 @@ macro_rules! impl_marker_trait {
     }
 }
 
+#[lang = "pointee_sized"]
+pub trait PointeeSized {}
+
+#[lang = "meta_sized"]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-pub trait Sized {}
+pub trait Sized: MetaSized {}
 
 #[lang = "legacy_receiver"]
 pub trait LegacyReceiver {}
