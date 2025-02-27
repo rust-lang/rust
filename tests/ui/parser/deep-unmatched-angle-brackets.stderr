@@ -1,5 +1,5 @@
 error: expected one of `!`, `+`, `,`, `::`, or `>`, found `(`
-  --> $DIR/deep-unmatched-angle-brackets.rs:14:63
+  --> $DIR/deep-unmatched-angle-brackets.rs:16:63
    |
 LL |         <f::<f::<f::<f::<f::<f::<f::<f::<f::<f::<f::<f::<f::<>();
    |                                                               ^ expected one of `!`, `+`, `,`, `::`, or `>`

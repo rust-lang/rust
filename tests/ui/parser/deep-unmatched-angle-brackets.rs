@@ -1,3 +1,5 @@
+//@ ignore-i686-pc-windows-msvc (#137733; exit status 0xc0000005, maybe memory usage?)
+
 trait Mul<T> {
     type Output;
 }
