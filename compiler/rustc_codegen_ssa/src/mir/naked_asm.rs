@@ -188,13 +188,13 @@ fn enable_disable_target_features<'tcx>(
             // https://developer.arm.com/documentation/100067/0611/armclang-Integrated-Assembler/AArch32-Target-selection-directives?lang=en
 
             for feature in features {
-                writeln!(begin, ".arch_extension {}", feature.name).unwrap();
+                // only enable/disable a feature if it is not already globally enabled.
+                // so that we don't infuence subsequent asm blocks
+                if !tcx.sess.unstable_target_features.contains(&feature.name) {
+                    writeln!(begin, ".arch_extension {}", feature.name).unwrap();
 
-                // aarch does not have the push/pop mechanism like riscv below.
-                //
-                // > The .arch_extension directive is effective until the end of the assembly block and is not propagated to subsequent code
-                //
-                // https://github.com/taiki-e/portable-atomic/blob/75a36c33b38c4c68f4095e95f106cfbedce9a914/src/imp/atomic128/aarch64.rs#L330
+                    writeln!(end, ".arch_extension no{}", feature.name).unwrap();
+                }
             }
         }
         Architecture::Riscv32 | Architecture::Riscv64 => {
