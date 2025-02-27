@@ -190,7 +190,11 @@ fn enable_disable_target_features<'tcx>(
             for feature in features {
                 writeln!(begin, ".arch_extension {}", feature.name).unwrap();
 
-                writeln!(end, ".arch_extension no{}", feature.name).unwrap();
+                // aarch does not have the push/pop mechanism like riscv below.
+                //
+                // > The .arch_extension directive is effective until the end of the assembly block and is not propagated to subsequent code
+                //
+                // https://github.com/taiki-e/portable-atomic/blob/75a36c33b38c4c68f4095e95f106cfbedce9a914/src/imp/atomic128/aarch64.rs#L330
             }
         }
         Architecture::Riscv32 | Architecture::Riscv64 => {
