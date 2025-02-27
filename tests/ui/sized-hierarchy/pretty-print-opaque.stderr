@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `impl Tr + PointeeSized` cannot be known
-  --> $DIR/pretty-print-opaque.rs:35:26
+  --> $DIR/pretty-print-opaque.rs:52:26
    |
 LL | pub fn pointeesized() -> Box<impl Tr + PointeeSized> {
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a known size
@@ -8,8 +8,17 @@ LL | pub fn pointeesized() -> Box<impl Tr + PointeeSized> {
 note: required by a bound in `Box`
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
 
+error[E0277]: the size for values of type `impl Tr + const MetaSized` cannot be known at compilation time
+  --> $DIR/pretty-print-opaque.rs:28:30
+   |
+LL |         let y: Box<dyn Tr> = x;
+   |                              ^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `impl Tr + const MetaSized`
+   = note: required for the cast from `Box<impl Tr + const MetaSized>` to `Box<dyn Tr>`
+
 error[E0277]: the size for values of type `impl Tr + MetaSized` cannot be known at compilation time
-  --> $DIR/pretty-print-opaque.rs:20:30
+  --> $DIR/pretty-print-opaque.rs:37:30
    |
 LL |         let y: Box<dyn Tr> = x;
    |                              ^ doesn't have a size known at compile-time
@@ -17,17 +26,17 @@ LL |         let y: Box<dyn Tr> = x;
    = help: the trait `Sized` is not implemented for `impl Tr + MetaSized`
    = note: required for the cast from `Box<impl Tr + MetaSized>` to `Box<dyn Tr>`
 
-error[E0277]: the size for values of type `impl Tr + MetaSized` cannot be known at compilation time
-  --> $DIR/pretty-print-opaque.rs:29:30
+error[E0277]: the size for values of type `impl Tr + const MetaSized` cannot be known at compilation time
+  --> $DIR/pretty-print-opaque.rs:46:30
    |
 LL |         let y: Box<dyn Tr> = x;
    |                              ^ doesn't have a size known at compile-time
    |
-   = help: the trait `Sized` is not implemented for `impl Tr + MetaSized`
-   = note: required for the cast from `Box<impl Tr + MetaSized>` to `Box<dyn Tr>`
+   = help: the trait `Sized` is not implemented for `impl Tr + const MetaSized`
+   = note: required for the cast from `Box<impl Tr + const MetaSized>` to `Box<dyn Tr>`
 
 error[E0277]: the size for values of type `impl Tr + PointeeSized` cannot be known
-  --> $DIR/pretty-print-opaque.rs:38:17
+  --> $DIR/pretty-print-opaque.rs:55:17
    |
 LL |         let x = pointeesized();
    |                 ^^^^^^^^^^^^^^ doesn't have a known size
@@ -37,7 +46,7 @@ note: required by a bound in `Box`
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
 
 error[E0277]: the size for values of type `impl Tr + PointeeSized` cannot be known at compilation time
-  --> $DIR/pretty-print-opaque.rs:40:30
+  --> $DIR/pretty-print-opaque.rs:57:30
    |
 LL |         let y: Box<dyn Tr> = x;
    |                              ^ doesn't have a size known at compile-time
@@ -46,7 +55,7 @@ LL |         let y: Box<dyn Tr> = x;
    = note: required for the cast from `Box<impl Tr + PointeeSized>` to `Box<dyn Tr>`
 
 error[E0277]: the size for values of type `impl Tr + PointeeSized` cannot be known
-  --> $DIR/pretty-print-opaque.rs:40:30
+  --> $DIR/pretty-print-opaque.rs:57:30
    |
 LL |         let y: Box<dyn Tr> = x;
    |                              ^ doesn't have a known size
@@ -54,6 +63,6 @@ LL |         let y: Box<dyn Tr> = x;
    = help: the trait `MetaSized` is not implemented for `impl Tr + PointeeSized`
    = note: required for the cast from `Box<impl Tr + PointeeSized>` to `Box<dyn Tr>`
 
-error: aborting due to 6 previous errors
+error: aborting due to 7 previous errors
 
 For more information about this error, try `rustc --explain E0277`.
