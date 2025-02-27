@@ -1,5 +1,10 @@
 //@ aux-build:pretty-print-dep.rs
 //@ compile-flags: --crate-type=lib
+//@ revisions: e2024 future
+//@[e2024] edition: 2024
+//@[future] compile-flags: -Zunstable-options
+//@[future] edition: future
+#![allow(sized_hierarchy_migration)]
 #![feature(const_trait_impl, sized_hierarchy)]
 
 // Test that printing the sizedness trait bounds in the conflicting impl error with

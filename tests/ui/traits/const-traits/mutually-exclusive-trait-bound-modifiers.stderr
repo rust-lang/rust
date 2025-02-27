@@ -1,5 +1,5 @@
 error: `~const` trait not allowed with `?` trait polarity modifier
-  --> $DIR/mutually-exclusive-trait-bound-modifiers.rs:3:38
+  --> $DIR/mutually-exclusive-trait-bound-modifiers.rs:4:38
    |
 LL | const fn maybe_const_maybe<T: ~const ?Sized>() {}
    |                               ------ ^
@@ -7,7 +7,7 @@ LL | const fn maybe_const_maybe<T: ~const ?Sized>() {}
    |                               there is not a well-defined meaning for a `~const ?` trait
 
 error: `const` trait not allowed with `?` trait polarity modifier
-  --> $DIR/mutually-exclusive-trait-bound-modifiers.rs:6:25
+  --> $DIR/mutually-exclusive-trait-bound-modifiers.rs:7:25
    |
 LL | fn const_maybe<T: const ?Sized>() {}
    |                   ----- ^
@@ -15,7 +15,7 @@ LL | fn const_maybe<T: const ?Sized>() {}
    |                   there is not a well-defined meaning for a `const ?` trait
 
 error: `~const` trait not allowed with `!` trait polarity modifier
-  --> $DIR/mutually-exclusive-trait-bound-modifiers.rs:9:41
+  --> $DIR/mutually-exclusive-trait-bound-modifiers.rs:10:41
    |
 LL | const fn maybe_const_negative<T: ~const !Trait>() {}
    |                                  ------ ^
@@ -23,7 +23,7 @@ LL | const fn maybe_const_negative<T: ~const !Trait>() {}
    |                                  there is not a well-defined meaning for a `~const !` trait
 
 error: `const` trait not allowed with `!` trait polarity modifier
-  --> $DIR/mutually-exclusive-trait-bound-modifiers.rs:13:28
+  --> $DIR/mutually-exclusive-trait-bound-modifiers.rs:14:28
    |
 LL | fn const_negative<T: const !Trait>() {}
    |                      ----- ^
@@ -31,13 +31,13 @@ LL | fn const_negative<T: const !Trait>() {}
    |                      there is not a well-defined meaning for a `const !` trait
 
 error: negative bounds are not supported
-  --> $DIR/mutually-exclusive-trait-bound-modifiers.rs:9:41
+  --> $DIR/mutually-exclusive-trait-bound-modifiers.rs:10:41
    |
 LL | const fn maybe_const_negative<T: ~const !Trait>() {}
    |                                         ^
 
 error: negative bounds are not supported
-  --> $DIR/mutually-exclusive-trait-bound-modifiers.rs:13:28
+  --> $DIR/mutually-exclusive-trait-bound-modifiers.rs:14:28
    |
 LL | fn const_negative<T: const !Trait>() {}
    |                            ^
