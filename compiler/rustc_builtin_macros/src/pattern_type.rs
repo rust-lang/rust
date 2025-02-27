@@ -27,12 +27,7 @@ fn parse_pat_ty<'a>(cx: &mut ExtCtxt<'a>, stream: TokenStream) -> PResult<'a, (P
     let ty = parser.parse_ty()?;
     parser.expect_keyword(exp!(Is))?;
 
-    let start = parser.token.span;
-    let pat = parser.parse_pat_no_top_alt(None, None)?.into_inner();
-    let kind = pat_to_ty_pat(cx, pat);
-
-    let span = start.to(parser.token.span);
-    let pat = ty_pat(kind, span);
+    let pat = pat_to_ty_pat(cx, parser.parse_pat_no_top_alt(None, None)?.into_inner());
 
     if parser.token != token::Eof {
         parser.unexpected()?;
@@ -45,8 +40,8 @@ fn ty_pat(kind: TyPatKind, span: Span) -> P<TyPat> {
     P(TyPat { id: DUMMY_NODE_ID, kind, span, tokens: None })
 }
 
-fn pat_to_ty_pat(cx: &mut ExtCtxt<'_>, pat: ast::Pat) -> TyPatKind {
-    match pat.kind {
+fn pat_to_ty_pat(cx: &mut ExtCtxt<'_>, pat: ast::Pat) -> P<TyPat> {
+    let kind = match pat.kind {
         ast::PatKind::Range(start, end, include_end) => TyPatKind::Range(
             start.map(|value| P(AnonConst { id: DUMMY_NODE_ID, value })),
             end.map(|value| P(AnonConst { id: DUMMY_NODE_ID, value })),
@@ -54,5 +49,6 @@ fn pat_to_ty_pat(cx: &mut ExtCtxt<'_>, pat: ast::Pat) -> TyPatKind {
         ),
         ast::PatKind::Err(guar) => TyPatKind::Err(guar),
         _ => TyPatKind::Err(cx.dcx().span_err(pat.span, "pattern not supported in pattern types")),
-    }
+    };
+    ty_pat(kind, pat.span)
 }
