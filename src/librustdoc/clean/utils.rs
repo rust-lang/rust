@@ -330,7 +330,7 @@ pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
             return Symbol::intern("()");
         }
         PatKind::Slice(begin, mid, end) => {
-            fn print_pat<'a>(pat: &'a Pat<'a>, wild: bool) -> impl Display + 'a {
+            fn print_pat(pat: &Pat<'_>, wild: bool) -> impl Display {
                 fmt::from_fn(move |f| {
                     if wild {
                         f.write_str("..")?;
