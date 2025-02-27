@@ -653,6 +653,45 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
             }
         }
     }
+
+    fn check_pat(&mut self, subty: Ty<'tcx>, pat: ty::Pattern<'tcx>) {
+        let tcx = self.tcx();
+        match *pat {
+            ty::PatternKind::Range { start, end } => {
+                let mut check = |c| {
+                    let cause = self.cause(ObligationCauseCode::Misc);
+                    self.out.push(traits::Obligation::with_depth(
+                        tcx,
+                        cause.clone(),
+                        self.recursion_depth,
+                        self.param_env,
+                        ty::Binder::dummy(ty::PredicateKind::Clause(
+                            ty::ClauseKind::ConstArgHasType(c, subty),
+                        )),
+                    ));
+                    if !tcx.features().generic_pattern_types() {
+                        if c.has_param() {
+                            if self.span.is_dummy() {
+                                self.tcx()
+                                    .dcx()
+                                    .delayed_bug("feature error should be reported elsewhere, too");
+                            } else {
+                                feature_err(
+                                    &self.tcx().sess,
+                                    sym::generic_pattern_types,
+                                    self.span,
+                                    "wraparound pattern type ranges cause monomorphization time errors",
+                                )
+                                .emit();
+                            }
+                        }
+                    }
+                };
+                check(start);
+                check(end);
+            }
+        }
+    }
 }
 
 impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
@@ -707,41 +746,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
 
             ty::Pat(subty, pat) => {
                 self.require_sized(subty, ObligationCauseCode::Misc);
-                match *pat {
-                    ty::PatternKind::Range { start, end } => {
-                        let mut check = |c| {
-                            let cause = self.cause(ObligationCauseCode::Misc);
-                            self.out.push(traits::Obligation::with_depth(
-                                tcx,
-                                cause.clone(),
-                                self.recursion_depth,
-                                self.param_env,
-                                ty::Binder::dummy(ty::PredicateKind::Clause(
-                                    ty::ClauseKind::ConstArgHasType(c, subty),
-                                )),
-                            ));
-                            if !tcx.features().generic_pattern_types() {
-                                if c.has_param() {
-                                    if self.span.is_dummy() {
-                                        self.tcx().dcx().delayed_bug(
-                                            "feature error should be reported elsewhere, too",
-                                        );
-                                    } else {
-                                        feature_err(
-                                            &self.tcx().sess,
-                                            sym::generic_pattern_types,
-                                            self.span,
-                                            "wraparound pattern type ranges cause monomorphization time errors",
-                                        )
-                                        .emit();
-                                    }
-                                }
-                            }
-                        };
-                        check(start);
-                        check(end);
-                    }
-                }
+                self.check_pat(subty, pat);
             }
 
             ty::Tuple(tys) => {

@@ -251,12 +251,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::Pat(typ, pat) => {
-                match *pat {
-                    ty::PatternKind::Range { start, end } => {
-                        self.add_constraints_from_const(current, start, variance);
-                        self.add_constraints_from_const(current, end, variance);
-                    }
-                }
+                self.add_constraints_from_pat(current, variance, pat);
                 self.add_constraints_from_ty(current, typ, variance);
             }
 
@@ -330,6 +325,20 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
             ty::Placeholder(..) | ty::CoroutineWitness(..) | ty::Bound(..) | ty::Infer(..) => {
                 bug!("unexpected type encountered in variance inference: {}", ty);
+            }
+        }
+    }
+
+    fn add_constraints_from_pat(
+        &mut self,
+        current: &CurrentItem,
+        variance: VarianceTermPtr<'a>,
+        pat: ty::Pattern<'tcx>,
+    ) {
+        match *pat {
+            ty::PatternKind::Range { start, end } => {
+                self.add_constraints_from_const(current, start, variance);
+                self.add_constraints_from_const(current, end, variance);
             }
         }
     }
