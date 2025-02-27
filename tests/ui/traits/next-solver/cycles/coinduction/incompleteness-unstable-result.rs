@@ -1,6 +1,7 @@
 //@ revisions: with without
 //@ compile-flags: -Znext-solver
-#![feature(rustc_attrs)]
+#![feature(rustc_attrs, sized_hierarchy)]
+use std::marker::PointeeSized;
 
 // This test is incredibly subtle. At its core the goal is to get a coinductive cycle,
 // which, depending on its root goal, either holds or errors. We achieve this by getting
@@ -17,20 +18,20 @@
 // test for that.
 
 #[rustc_coinductive]
-trait Trait<T: ?Sized, V: ?Sized, D: ?Sized> {}
-struct A<T: ?Sized>(*const T);
-struct B<T: ?Sized>(*const T);
+trait Trait<T: PointeeSized, V: PointeeSized, D: PointeeSized>: PointeeSized {}
+struct A<T: PointeeSized>(*const T);
+struct B<T: PointeeSized>(*const T);
 
-trait IncompleteGuidance<T: ?Sized, V: ?Sized> {}
-impl<T: ?Sized, U: ?Sized + 'static> IncompleteGuidance<U, u8> for T {}
-impl<T: ?Sized, U: ?Sized + 'static> IncompleteGuidance<U, i8> for T {}
-impl<T: ?Sized, U: ?Sized + 'static> IncompleteGuidance<U, i16> for T {}
+trait IncompleteGuidance<T: PointeeSized, V: PointeeSized>: PointeeSized {}
+impl<T: PointeeSized, U: PointeeSized + 'static> IncompleteGuidance<U, u8> for T {}
+impl<T: PointeeSized, U: PointeeSized + 'static> IncompleteGuidance<U, i8> for T {}
+impl<T: PointeeSized, U: PointeeSized + 'static> IncompleteGuidance<U, i16> for T {}
 
-trait ImplGuidance<T: ?Sized, V: ?Sized> {}
-impl<T: ?Sized> ImplGuidance<u32, u8> for T {}
-impl<T: ?Sized> ImplGuidance<i32, i8> for T {}
+trait ImplGuidance<T: PointeeSized, V: PointeeSized>: PointeeSized {}
+impl<T: PointeeSized> ImplGuidance<u32, u8> for T {}
+impl<T: PointeeSized> ImplGuidance<i32, i8> for T {}
 
-impl<T: ?Sized, U: ?Sized, V: ?Sized, D: ?Sized> Trait<U, V, D> for A<T>
+impl<T: PointeeSized, U: PointeeSized, V: PointeeSized, D: PointeeSized> Trait<U, V, D> for A<T>
 where
     T: IncompleteGuidance<U, V>,
     A<T>: Trait<U, D, V>,
@@ -39,17 +40,24 @@ where
 {
 }
 
-trait ToU8<T: ?Sized> {}
+trait ToU8<T: PointeeSized>: PointeeSized {}
 impl ToU8<u8> for () {}
 
-impl<T: ?Sized, U: ?Sized, V: ?Sized, D: ?Sized> Trait<U, V, D> for B<T>
+impl<T: PointeeSized, U: PointeeSized, V: PointeeSized, D: PointeeSized> Trait<U, V, D> for B<T>
 where
     T: ImplGuidance<U, V>,
     A<T>: Trait<U, V, D>,
 {
 }
 
-fn impls_trait<T: ?Sized + Trait<U, V, D>, U: ?Sized, V: ?Sized, D: ?Sized>() {}
+fn impls_trait<T, U, V, D>()
+where
+    T: PointeeSized + Trait<U, V, D>,
+    U: PointeeSized,
+    V: PointeeSized,
+    D: PointeeSized
+{
+}
 
 fn with_bound<X>()
 where
