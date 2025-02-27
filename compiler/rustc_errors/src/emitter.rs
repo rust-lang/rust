@@ -763,7 +763,7 @@ impl HumanEmitter {
         let mut short_start = true;
         for ann in &line.annotations {
             if let AnnotationType::MultilineStart(depth) = ann.annotation_type {
-                if source_string.chars().take(ann.start_col.display).all(|c| c.is_whitespace()) {
+                if source_string.chars().take(ann.start_col.file).all(|c| c.is_whitespace()) {
                     let uline = self.underline(ann.is_primary);
                     let chr = uline.multiline_whole_line;
                     annotations.push((depth, uline.style));
