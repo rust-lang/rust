@@ -1,5 +1,6 @@
 #![allow(internal_features)]
 #![feature(no_core, lang_items, abi_gpu_kernel)]
+#![feature(const_trait_impl)]
 #![no_core]
 #![no_std]
 
@@ -8,9 +9,11 @@
 trait PointeeSized {}
 
 #[lang = "meta_sized"]
+#[const_trait]
 trait MetaSized: PointeeSized {}
 
 #[lang = "sized"]
+#[const_trait]
 trait Sized: MetaSized {}
 
 #[no_mangle]

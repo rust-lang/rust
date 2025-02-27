@@ -5,16 +5,18 @@
 //@[paca] error-pattern: the target features paca, pacg must all be either enabled or disabled together
 //@[pacg] compile-flags: -Ctarget-feature=+pacg
 //@[pacg] error-pattern: the name `foo` is defined multiple times
-#![feature(no_core, lang_items)]
+#![feature(no_core, lang_items, const_trait_impl)]
 #![no_core]
 
 #[lang = "pointee_sized"]
 pub trait PointeeSized {}
 
 #[lang = "meta_sized"]
+#[const_trait]
 pub trait MetaSized: PointeeSized {}
 
 #[lang = "sized"]
+#[const_trait]
 pub trait Sized: MetaSized {}
 
 // Can't use `compile_error!` here without `core`/`std` but requiring these makes this test only
