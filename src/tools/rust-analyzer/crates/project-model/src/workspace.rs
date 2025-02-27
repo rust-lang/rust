@@ -1094,8 +1094,7 @@ fn cargo_to_crate_graph(
 ) -> (CrateGraph, ProcMacroPaths) {
     let _p = tracing::info_span!("cargo_to_crate_graph").entered();
     let mut res = (CrateGraph::default(), ProcMacroPaths::default());
-    let crate_graph = &mut res.0;
-    let proc_macros = &mut res.1;
+    let (crate_graph, proc_macros) = &mut res;
     let (public_deps, libproc_macro) =
         sysroot_to_crate_graph(crate_graph, sysroot, rustc_cfg.clone(), load);
 
@@ -1560,6 +1559,10 @@ fn extend_crate_graph_with_sysroot(
 
     // Remove all crates except the ones we are interested in to keep the sysroot graph small.
     let removed_mapping = sysroot_crate_graph.remove_crates_except(&marker_set);
+    sysroot_proc_macros = sysroot_proc_macros
+        .into_iter()
+        .filter_map(|(k, v)| Some((removed_mapping[k.into_raw().into_u32() as usize]?, v)))
+        .collect();
     let mapping = crate_graph.extend(sysroot_crate_graph, &mut sysroot_proc_macros);
 
     // Map the id through the removal mapping first, then through the crate graph extension mapping.
