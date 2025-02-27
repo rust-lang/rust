@@ -1,6 +1,6 @@
 //! MIR lowering for places
 
-use crate::mir::MutBorrowKind;
+use crate::mir::{MutBorrowKind, Operand, OperandKind};
 
 use super::*;
 use hir_def::FunctionId;
@@ -156,7 +156,7 @@ impl MirLowerCtx<'_> {
                         self.push_assignment(
                             current,
                             temp,
-                            Operand::Static(s).into(),
+                            Operand { kind: OperandKind::Static(s), span: None }.into(),
                             expr_id.into(),
                         );
                         Ok(Some((
@@ -306,7 +306,7 @@ impl MirLowerCtx<'_> {
         );
         let Some(current) = self.lower_call(
             index_fn_op,
-            Box::new([Operand::Copy(place), index_operand]),
+            Box::new([Operand { kind: OperandKind::Copy(place), span: None }, index_operand]),
             result,
             current,
             false,
@@ -366,7 +366,7 @@ impl MirLowerCtx<'_> {
         let mut result: Place = self.temp(target_ty_ref, current, span)?.into();
         let Some(current) = self.lower_call(
             deref_fn_op,
-            Box::new([Operand::Copy(ref_place)]),
+            Box::new([Operand { kind: OperandKind::Copy(ref_place), span: None }]),
             result,
             current,
             false,
