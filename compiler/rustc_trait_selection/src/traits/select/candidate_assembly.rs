@@ -561,9 +561,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // consider a "quick reject". This avoids creating more types
                 // and so forth that we need to.
                 let impl_trait_header = self.tcx().impl_trait_header(impl_def_id).unwrap();
-                if !drcx
-                    .args_may_unify(obligation_args, impl_trait_header.trait_ref.skip_binder().args)
-                {
+                // This call site can be hot.
+                if !drcx.inlined_args_may_unify(
+                    obligation_args,
+                    impl_trait_header.trait_ref.skip_binder().args,
+                ) {
                     return;
                 }
 
