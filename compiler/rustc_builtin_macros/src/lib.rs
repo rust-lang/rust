@@ -47,6 +47,7 @@ mod errors;
 mod format;
 mod format_foreign;
 mod global_allocator;
+mod iter;
 mod log_syntax;
 mod pattern_type;
 mod source_util;
@@ -95,6 +96,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         include: source_util::expand_include,
         include_bytes: source_util::expand_include_bytes,
         include_str: source_util::expand_include_str,
+        iter: iter::expand,
         line: source_util::expand_line,
         log_syntax: log_syntax::expand_log_syntax,
         module_path: source_util::expand_mod,
