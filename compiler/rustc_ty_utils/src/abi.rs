@@ -545,11 +545,13 @@ fn fn_abi_new_uncached<'tcx>(
     instance: Option<ty::Instance<'tcx>>,
 ) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, &'tcx FnAbiError<'tcx>> {
     let tcx = cx.tcx();
-    let (caller_location, fn_def_id, is_virtual_call) = if let Some(instance) = instance {
+    let (caller_location, determined_fn_def_id, is_virtual_call) = if let Some(instance) = instance
+    {
+        let is_virtual_call = matches!(instance.def, ty::InstanceKind::Virtual(..));
         (
             instance.def.requires_caller_location(tcx).then(|| tcx.caller_location_ty()),
-            Some(instance.def_id()),
-            matches!(instance.def, ty::InstanceKind::Virtual(..)),
+            if is_virtual_call { None } else { Some(instance.def_id()) },
+            is_virtual_call,
         )
     } else {
         (None, None, false)
@@ -579,7 +581,7 @@ fn fn_abi_new_uncached<'tcx>(
     };
 
     let is_drop_in_place =
-        fn_def_id.is_some_and(|def_id| tcx.is_lang_item(def_id, LangItem::DropInPlace));
+        determined_fn_def_id.is_some_and(|def_id| tcx.is_lang_item(def_id, LangItem::DropInPlace));
 
     let arg_of = |ty: Ty<'tcx>, arg_idx: Option<usize>| -> Result<_, &'tcx FnAbiError<'tcx>> {
         let span = tracing::debug_span!("arg_of");
@@ -635,7 +637,12 @@ fn fn_abi_new_uncached<'tcx>(
         c_variadic: sig.c_variadic,
         fixed_count: inputs.len() as u32,
         conv,
-        can_unwind: fn_can_unwind(cx.tcx(), fn_def_id, sig.abi),
+        can_unwind: fn_can_unwind(
+            tcx,
+            // Since `#[rustc_nounwind]` can change unwinding, we cannot infer unwinding by `fn_def_id` for a virtual call.
+            determined_fn_def_id,
+            sig.abi,
+        ),
     };
     fn_abi_adjust_for_abi(
         cx,
@@ -644,7 +651,7 @@ fn fn_abi_new_uncached<'tcx>(
         // If this is a virtual call, we cannot pass the `fn_def_id`, as it might call other
         // functions from vtable. Internally, `deduced_param_attrs` attempts to infer attributes by
         // visit the function body.
-        fn_def_id.filter(|_| !is_virtual_call),
+        determined_fn_def_id,
     );
     debug!("fn_abi_new_uncached = {:?}", fn_abi);
     fn_abi_sanity_check(cx, &fn_abi, sig.abi);
