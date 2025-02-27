@@ -94,6 +94,11 @@ pub fn rustc_allow_const_fn_unstable(
 /// world into two functions: those that are safe to expose on stable (and hence may not use
 /// unstable features, not even recursively), and those that are not.
 pub fn is_fn_or_trait_safe_to_expose_on_stable(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+    // A default body in a `#[const_trait]` is const-stable when the trait is const-stable.
+    if tcx.is_const_default_method(def_id) {
+        return is_fn_or_trait_safe_to_expose_on_stable(tcx, tcx.parent(def_id));
+    }
+
     match tcx.lookup_const_stability(def_id) {
         None => {
             // In a `staged_api` crate, we do enforce recursive const stability for all unmarked
