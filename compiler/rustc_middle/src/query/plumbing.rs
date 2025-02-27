@@ -165,7 +165,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
-#[inline]
+#[inline(always)]
 pub fn query_get_at<'tcx, Cache>(
     tcx: TyCtxt<'tcx>,
     execute_query: fn(TyCtxt<'tcx>, Span, Cache::Key, QueryMode) -> Option<Cache::Value>,
