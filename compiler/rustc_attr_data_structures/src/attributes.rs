@@ -175,6 +175,11 @@ pub enum AttributeKind {
         span: Span,
     },
     ConstStabilityIndirect,
+    CrateName {
+        name: Symbol,
+        name_span: Span,
+        style: AttrStyle,
+    },
     Deprecation {
         deprecation: Deprecation,
         span: Span,
@@ -194,4 +199,25 @@ pub enum AttributeKind {
         span: Span,
     },
     // tidy-alphabetical-end
+}
+
+impl AttributeKind {
+    pub fn crate_level(&self) -> Option<(AttrStyle, Span)> {
+        match self {
+            AttributeKind::AllowConstFnUnstable(..)
+            | AttributeKind::AllowInternalUnstable(..)
+            | AttributeKind::BodyStability { .. }
+            | AttributeKind::Confusables { .. }
+            | AttributeKind::ConstStability { .. }
+            | AttributeKind::ConstStabilityIndirect
+            | AttributeKind::Deprecation { .. }
+            | AttributeKind::Diagnostic(..)
+            | AttributeKind::DocComment { .. }
+            | AttributeKind::MacroTransparency(..)
+            | AttributeKind::Repr(..)
+            | AttributeKind::Stability { .. } => None,
+
+            AttributeKind::CrateName { style, name_span, .. } => Some((*style, *name_span)),
+        }
+    }
 }

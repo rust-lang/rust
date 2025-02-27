@@ -6,6 +6,7 @@ use std::sync::{Arc, LazyLock};
 use std::{env, fs, iter};
 
 use rustc_ast as ast;
+use rustc_attr_parsing::{AttributeKind, AttributeParser};
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::parallel;
 use rustc_data_structures::steal::Steal;
@@ -32,7 +33,7 @@ use rustc_session::output::{collect_crate_types, filename_for_input};
 use rustc_session::search_paths::PathKind;
 use rustc_session::{Limit, Session};
 use rustc_span::{
-    ErrorGuaranteed, FileName, SourceFileHash, SourceFileHashAlgorithm, Span, Symbol, sym,
+    DUMMY_SP, ErrorGuaranteed, FileName, SourceFileHash, SourceFileHashAlgorithm, Span, Symbol, sym,
 };
 use rustc_target::spec::PanicStrategy;
 use rustc_trait_selection::traits;
@@ -1119,6 +1120,20 @@ pub(crate) fn start_codegen<'tcx>(
     codegen
 }
 
+pub(crate) fn parse_crate_name(
+    sess: &Session,
+    attrs: &[ast::Attribute],
+    limit_diagnostics: bool,
+) -> Option<(Symbol, Span)> {
+    let rustc_hir::Attribute::Parsed(AttributeKind::CrateName { name, name_span, .. }) =
+        AttributeParser::parse_limited(sess, &attrs, sym::crate_name, DUMMY_SP, limit_diagnostics)?
+    else {
+        unreachable!("crate_name is the only attr we could've parsed here");
+    };
+
+    Some((name, name_span))
+}
+
 /// Compute and validate the crate name.
 pub fn get_crate_name(sess: &Session, krate_attrs: &[ast::Attribute]) -> Symbol {
     // We validate *all* occurrences of `#![crate_name]`, pick the first find and
@@ -1128,8 +1143,7 @@ pub fn get_crate_name(sess: &Session, krate_attrs: &[ast::Attribute]) -> Symbol 
     // in all code paths that require the crate name very early on, namely before
     // macro expansion.
 
-    let attr_crate_name =
-        validate_and_find_value_str_builtin_attr(sym::crate_name, sess, krate_attrs);
+    let attr_crate_name = parse_crate_name(sess, krate_attrs, false);
 
     let validate = |name, span| {
         rustc_session::output::validate_crate_name(sess, name, span);

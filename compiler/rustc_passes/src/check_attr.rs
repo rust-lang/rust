@@ -315,22 +315,43 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             let builtin = attr.ident().and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name));
 
             if hir_id != CRATE_HIR_ID {
-                if let Some(BuiltinAttribute { type_: AttributeType::CrateLevel, .. }) =
-                    attr.ident().and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name))
-                {
-                    match attr.style() {
-                        ast::AttrStyle::Outer => self.tcx.emit_node_span_lint(
-                            UNUSED_ATTRIBUTES,
-                            hir_id,
-                            attr.span(),
-                            errors::OuterCrateLevelAttr,
-                        ),
-                        ast::AttrStyle::Inner => self.tcx.emit_node_span_lint(
-                            UNUSED_ATTRIBUTES,
-                            hir_id,
-                            attr.span(),
-                            errors::InnerCrateLevelAttr,
-                        ),
+                if let Attribute::Parsed(attr) = attr {
+                    if let Some((style, span)) = attr.crate_level() {
+                        match style {
+                            ast::AttrStyle::Outer => self.tcx.emit_node_span_lint(
+                                UNUSED_ATTRIBUTES,
+                                hir_id,
+                                span,
+                                errors::OuterCrateLevelAttr,
+                            ),
+                            ast::AttrStyle::Inner => self.tcx.emit_node_span_lint(
+                                UNUSED_ATTRIBUTES,
+                                hir_id,
+                                span,
+                                errors::InnerCrateLevelAttr,
+                            ),
+                        }
+                    }
+                } else {
+                    // FIXME(jdonszelmann): remove once all crate-level attrs are parsed and caught by
+                    // the above
+                    if let Some(BuiltinAttribute { type_: AttributeType::CrateLevel, .. }) =
+                        attr.ident().and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name))
+                    {
+                        match attr.style() {
+                            ast::AttrStyle::Outer => self.tcx.emit_node_span_lint(
+                                UNUSED_ATTRIBUTES,
+                                hir_id,
+                                attr.span(),
+                                errors::OuterCrateLevelAttr,
+                            ),
+                            ast::AttrStyle::Inner => self.tcx.emit_node_span_lint(
+                                UNUSED_ATTRIBUTES,
+                                hir_id,
+                                attr.span(),
+                                errors::InnerCrateLevelAttr,
+                            ),
+                        }
                     }
                 }
             }

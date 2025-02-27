@@ -1,8 +1,9 @@
-error: malformed `crate_name` attribute input
+error[E0539]: expected a quoted string literal
   --> $DIR/crate-name-macro-call.rs:4:1
    |
 LL | #![crate_name = concat!("my", "crate")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#![crate_name = "name"]`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 1 previous error
 
+For more information about this error, try `rustc --explain E0539`.
