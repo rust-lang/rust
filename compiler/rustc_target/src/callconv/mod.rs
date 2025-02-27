@@ -367,13 +367,10 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
         let mut attrs = ArgAttributes::new();
 
         // For non-immediate arguments the callee gets its own copy of
-        // the value on the stack, so there are no aliases. It's also
-        // program-invisible so can't possibly capture
-        attrs
-            .set(ArgAttribute::NoAlias)
-            .set(ArgAttribute::NoCapture)
-            .set(ArgAttribute::NonNull)
-            .set(ArgAttribute::NoUndef);
+        // the value on the stack, so there are no aliases. Note that this
+        // pointer *is* program-visible if the function creates a pointer
+        // to its argument!
+        attrs.set(ArgAttribute::NoAlias).set(ArgAttribute::NonNull).set(ArgAttribute::NoUndef);
         attrs.pointee_size = layout.size;
         attrs.pointee_align = Some(layout.align.abi);
 
