@@ -3,8 +3,8 @@
 
 use std::marker::{MetaSized, PointeeSized};
 
-fn needs_pointeesized<T: ?Sized + PointeeSized>() {}
-fn needs_metasized<T: ?Sized + MetaSized>() {}
+fn needs_pointeesized<T: PointeeSized>() {}
+fn needs_metasized<T: MetaSized>() {}
 fn needs_sized<T: Sized>() {}
 
 fn main() {

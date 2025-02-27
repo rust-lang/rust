@@ -104,7 +104,7 @@ fn defaultness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Defaultness {
 /// Calculates the `Sized` constraint.
 ///
 /// In fact, there are only a few options for the types in the constraint:
-///     - an metasized type (str, slices, trait objects, etc)
+///     - an meta_sized type (str, slices, trait objects, etc)
 ///     - an pointee-sized type (extern types)
 ///     - a type parameter or projection whose sizedness can't be known
 #[instrument(level = "debug", skip(tcx), ret)]

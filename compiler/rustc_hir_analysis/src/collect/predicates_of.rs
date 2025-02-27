@@ -162,10 +162,11 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                         .map(|t| ty::Binder::dummy(t.instantiate_identity()));
                 }
             }
-
-            ItemKind::Trait(_, _, _, _, self_bounds, ..)
-            | ItemKind::TraitAlias(_, _, self_bounds) => {
-                is_trait = Some(self_bounds);
+            ItemKind::Trait(is_auto, _, _, _, self_bounds, ..) => {
+                is_trait = Some((is_auto, self_bounds));
+            }
+            ItemKind::TraitAlias(_, _, self_bounds) => {
+                is_trait = Some((IsAuto::No, self_bounds));
             }
             _ => {}
         }
@@ -177,7 +178,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     // and the explicit where-clauses, but to get the full set of predicates
     // on a trait we must also consider the bounds that follow the trait's name,
     // like `trait Foo: A + B + C`.
-    if let Some(self_bounds) = is_trait {
+    if let Some((is_auto, self_bounds)) = is_trait {
         let mut bounds = Vec::new();
         icx.lowerer().lower_bounds(
             tcx.types.self_param,
@@ -186,6 +187,18 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             ty::List::empty(),
             PredicateFilter::All,
         );
+
+        // Don't add default supertraits to auto traits as it is not permitted to explicitly
+        // relax it in the source code.
+        if is_auto == IsAuto::No {
+            icx.lowerer().adjust_sizedness_supertraits(
+                &mut bounds,
+                tcx.types.self_param,
+                self_bounds,
+                def_id,
+            );
+        }
+
         predicates.extend(bounds);
     }
 
@@ -211,7 +224,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                 let param_ty = icx.lowerer().lower_ty_param(param.hir_id);
                 let mut bounds = Vec::new();
                 // Params are implicitly sized unless a `?Sized` bound is found
-                icx.lowerer().add_sized_bound(
+                icx.lowerer().adjust_sizedness_params_and_assoc_types(
                     &mut bounds,
                     param_ty,
                     &[],
@@ -269,6 +282,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                     bound_vars,
                     PredicateFilter::All,
                 );
+                icx.lowerer().adjust_sizedness_predicates(&mut bounds, bound_pred.bounded_ty.span);
                 predicates.extend(bounds);
             }
 
@@ -625,6 +639,7 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
     let self_param_ty = tcx.types.self_param;
     let mut bounds = Vec::new();
     icx.lowerer().lower_bounds(self_param_ty, superbounds, &mut bounds, ty::List::empty(), filter);
+    icx.lowerer().adjust_sizedness_predicates(&mut bounds, item.span);
 
     let where_bounds_that_match =
         icx.probe_ty_param_bounds_in_generics(generics, item.owner_id.def_id, filter);
@@ -932,6 +947,7 @@ impl<'tcx> ItemCtxt<'tcx> {
                 bound_vars,
                 filter,
             );
+            self.lowerer().adjust_sizedness_predicates(&mut bounds, predicate.bounded_ty.span);
         }
 
         bounds
@@ -1011,6 +1027,7 @@ pub(super) fn const_conditions<'tcx>(
                     bound_vars,
                     PredicateFilter::ConstIfConst,
                 );
+                icx.lowerer().adjust_sizedness_predicates(&mut bounds, bound_pred.bounded_ty.span);
             }
             _ => {}
         }
@@ -1031,6 +1048,7 @@ pub(super) fn const_conditions<'tcx>(
             ty::List::empty(),
             PredicateFilter::ConstIfConst,
         );
+        icx.lowerer().adjust_sizedness_predicates(&mut bounds, DUMMY_SP);
     }
 
     ty::ConstConditions {
