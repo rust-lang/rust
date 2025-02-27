@@ -608,11 +608,10 @@ impl Builder<'_> {
         }
 
         // FIXME: the following components don't build with `-Zrandomize-layout` yet:
-        // - wasm-component-ld, due to the `wast`crate
         // - rust-analyzer, due to the rowan crate
-        // so we exclude entire categories of steps here due to lack of fine-grained control over
+        // so we exclude an entire category of steps here due to lack of fine-grained control over
         // rustflags.
-        if self.config.rust_randomize_layout && mode != Mode::ToolStd && mode != Mode::ToolRustc {
+        if self.config.rust_randomize_layout && mode != Mode::ToolRustc {
             rustflags.arg("-Zrandomize-layout");
         }
 
