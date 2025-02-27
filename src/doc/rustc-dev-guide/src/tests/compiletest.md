@@ -424,6 +424,9 @@ Compiletest directives like `//@ only-<target>` or `//@ ignore-<target>` are
 supported in `rmake.rs`, like in UI tests. However, revisions or building
 auxiliary via directives are not currently supported.
 
+`rmake.rs` may *not* use any nightly/unstable features, as they must be
+compilable by a stage 0 rustc that may be a beta or even stable rustc.
+
 Two `run-make` tests are ported over to Rust recipes as examples:
 
 - <https://github.com/rust-lang/rust/tree/master/tests/run-make/CURRENT_RUSTC_VERSION>

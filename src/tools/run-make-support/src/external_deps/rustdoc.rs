@@ -2,16 +2,10 @@ use std::ffi::OsStr;
 use std::path::Path;
 
 use crate::command::Command;
-use crate::env::{env_var, env_var_os};
-use crate::util::set_host_rpath;
+use crate::env::env_var;
+use crate::util::set_host_compiler_dylib_path;
 
-/// Construct a plain `rustdoc` invocation with no flags set.
-#[track_caller]
-pub fn bare_rustdoc() -> Rustdoc {
-    Rustdoc::bare()
-}
-
-/// Construct a new `rustdoc` invocation with `-L $(TARGET_RPATH_DIR)` set.
+/// Construct a new `rustdoc` invocation.
 #[track_caller]
 pub fn rustdoc() -> Rustdoc {
     Rustdoc::new()
@@ -29,23 +23,15 @@ crate::macros::impl_common_helpers!(Rustdoc);
 fn setup_common() -> Command {
     let rustdoc = env_var("RUSTDOC");
     let mut cmd = Command::new(rustdoc);
-    set_host_rpath(&mut cmd);
+    set_host_compiler_dylib_path(&mut cmd);
     cmd
 }
 
 impl Rustdoc {
     /// Construct a bare `rustdoc` invocation.
     #[track_caller]
-    pub fn bare() -> Self {
-        let cmd = setup_common();
-        Self { cmd }
-    }
-
-    /// Construct a `rustdoc` invocation with `-L $(TARGET_RPATH_DIR)` set.
-    #[track_caller]
     pub fn new() -> Self {
-        let mut cmd = setup_common();
-        cmd.arg("-L").arg(env_var_os("TARGET_RPATH_DIR"));
+        let cmd = setup_common();
         Self { cmd }
     }
 
