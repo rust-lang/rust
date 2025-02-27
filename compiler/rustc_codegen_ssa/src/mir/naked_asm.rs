@@ -223,7 +223,7 @@ fn enable_disable_target_features<'tcx>(
             // https://sourceware.org/binutils/docs/as/s390-Directives.html
 
             // based on src/llvm-project/llvm/lib/Target/SystemZ/SystemZFeatures.td
-            let isa_revision_for_feature = |feature: &TargetFeature| match feature.name.as_str() {
+            let isa_revision_for_feature_name = |feature_name| match feature_name {
                 "backchain" => None, // does not define any instructions
                 "deflate-conversion" => Some(13),
                 "enhanced-sort" => Some(13),
@@ -240,13 +240,29 @@ fn enable_disable_target_features<'tcx>(
                 _ => None,
             };
 
-            if let Some(minimum_isa) = features.filter_map(isa_revision_for_feature).max() {
+            let target_feature_isa = features
+                .filter_map(|feature| isa_revision_for_feature_name(feature.name.as_str()))
+                .max();
+
+            if let Some(minimum_isa) = target_feature_isa {
                 writeln!(begin, ".machine arch{minimum_isa}").unwrap();
 
-                // NOTE: LLVM does not currently support `.machine push` and `.machine pop`, so we rely on these
-                // target features only being applied to this ASM block (LLVM clears them for the next)
+                // NOTE: LLVM does not currently support `.machine push` and `.machine pop`
+                // this is tracked in https://github.com/llvm/llvm-project/issues/129053.
                 //
-                // https://github.com/llvm/llvm-project/issues/129053
+                // So instead we have to try revert to the previous state manually.
+                //
+                // However, this may still be observable if the user explicitly set the machine to
+                // a higher value using global assembly.
+                let global_isa = tcx
+                    .sess
+                    .unstable_target_features
+                    .iter()
+                    .filter_map(|feature| isa_revision_for_feature_name(feature.as_str()))
+                    .max()
+                    .unwrap_or(10);
+
+                writeln!(end, ".machine arch{global_isa}").unwrap();
             }
         }
         Architecture::PowerPc | Architecture::PowerPc64 => {
