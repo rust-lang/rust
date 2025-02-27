@@ -5,7 +5,7 @@ use std::{collections::hash_map::Entry, fmt::Display, iter};
 use crate::{
     consteval::usize_const,
     db::HirDatabase,
-    display::HirDisplay,
+    display::{DisplayTarget, HirDisplay},
     infer::{normalize, PointerCast},
     lang_items::is_box,
     mapping::ToChalk,
@@ -168,7 +168,7 @@ impl<V, T> ProjectionElem<V, T> {
                 _ => {
                     never!(
                         "Overloaded deref on type {} is not a projection",
-                        base.display(db, db.crate_graph()[krate].edition)
+                        base.display(db, DisplayTarget::from_crate(db, krate))
                     );
                     TyKind::Error.intern(Interner)
                 }

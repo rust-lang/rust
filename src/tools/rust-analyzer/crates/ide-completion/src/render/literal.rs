@@ -82,10 +82,10 @@ fn render(
 
     let mut rendered = match kind {
         StructKind::Tuple if should_add_parens => {
-            render_tuple_lit(db, snippet_cap, &fields, &escaped_qualified_name, completion.edition)
+            render_tuple_lit(completion, snippet_cap, &fields, &escaped_qualified_name)
         }
         StructKind::Record if should_add_parens => {
-            render_record_lit(db, snippet_cap, &fields, &escaped_qualified_name, completion.edition)
+            render_record_lit(completion, snippet_cap, &fields, &escaped_qualified_name)
         }
         _ => RenderedLiteral {
             literal: escaped_qualified_name.clone(),

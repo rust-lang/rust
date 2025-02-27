@@ -38,7 +38,7 @@ fn render(
     } else {
         (name.as_str().to_smolstr(), name.display_no_db(ctx.completion.edition).to_smolstr())
     };
-    let detail = type_alias.display(db, ctx.completion.edition).to_string();
+    let detail = type_alias.display(db, ctx.completion.display_target).to_string();
 
     let mut item = CompletionItem::new(
         SymbolKind::TypeAlias,

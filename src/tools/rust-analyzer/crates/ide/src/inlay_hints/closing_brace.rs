@@ -3,7 +3,7 @@
 //! fn g() {
 //! } /* fn g */
 //! ```
-use hir::{HirDisplay, Semantics};
+use hir::{DisplayTarget, HirDisplay, Semantics};
 use ide_db::{FileRange, RootDatabase};
 use span::EditionedFileId;
 use syntax::{
@@ -21,6 +21,7 @@ pub(super) fn hints(
     sema: &Semantics<'_, RootDatabase>,
     config: &InlayHintsConfig,
     file_id: EditionedFileId,
+    display_target: DisplayTarget,
     original_node: SyntaxNode,
 ) -> Option<()> {
     let min_lines = config.closing_brace_hints_min_lines?;
@@ -43,9 +44,9 @@ pub(super) fn hints(
                         Some(tr) => format!(
                             "impl {} for {}",
                             tr.name(sema.db).display(sema.db, file_id.edition()),
-                            ty.display_truncated(sema.db, config.max_length, file_id.edition(),
+                            ty.display_truncated(sema.db, config.max_length, display_target,
                         )),
-                        None => format!("impl {}", ty.display_truncated(sema.db, config.max_length, file_id.edition())),
+                        None => format!("impl {}", ty.display_truncated(sema.db, config.max_length, display_target)),
                     };
                     (hint_text, None)
                 },
