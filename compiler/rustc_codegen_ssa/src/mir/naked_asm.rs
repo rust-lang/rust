@@ -154,7 +154,7 @@ fn parse_architecture(
         "csky" => (Architecture::Csky, None),
         "arm64ec" => (Architecture::Aarch64, Some(SubArchitecture::Arm64EC)),
 
-        // added here
+        // These architecutres are added here, and not present in `create_object_file`
         "wasm32" => (Architecture::Wasm32, None),
         "wasm64" => (Architecture::Wasm64, None),
         "m68k" => (Architecture::M68k, None),
@@ -243,10 +243,10 @@ fn enable_disable_target_features<'tcx>(
             if let Some(minimum_isa) = features.filter_map(isa_revision_for_feature).max() {
                 writeln!(begin, ".machine arch{minimum_isa}").unwrap();
 
-                // NOTE: LLVM does not support `.machine push` and `.machine pop`, so we rely on these
+                // NOTE: LLVM does not currently support `.machine push` and `.machine pop`, so we rely on these
                 // target features only being applied to this ASM block (LLVM clears them for the next)
                 //
-                // https://github.com/llvm/llvm-project/blob/74306afe87b85cb9b5734044eb6c74b8290098b3/llvm/lib/Target/SystemZ/AsmParser/SystemZAsmParser.cpp#L1362
+                // https://github.com/llvm/llvm-project/issues/129053
             }
         }
         Architecture::PowerPc | Architecture::PowerPc64 => {
@@ -283,8 +283,18 @@ fn enable_disable_target_features<'tcx>(
         Architecture::M68k => {
             // https://sourceware.org/binutils/docs/as/M68K_002dDirectives.html#index-directives_002c-M680x0
 
-            // FIXME support m64k
-            // return None;
+            // M68k suports the .cpu and .arch directives, but they both can only be applied once
+            //
+            // > If it is given multiple times, or in conjunction with the -march option,
+            // > all uses must be for the same architecture and extension set.
+            //
+            // That is not flexible enough for us, because different functions might want different
+            // features.
+            //
+            // So far, we've not found any cases where ignoring the target features causes issues,
+            // so that's what we do for now.
+
+            /* fallthrough */
         }
 
         Architecture::Wasm32 | Architecture::Wasm64 => {
