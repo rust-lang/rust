@@ -86,6 +86,18 @@ jobs:
         with:
           fetch-depth: 2
 
+      # Temporary fix to unblock CI
+      # We revert to an older Windows SDK for 32-bit Windows MSVC builds.
+      # See issue https://github.com/rust-lang/rust/issues/137733 for more details.
+      - shell: powershell
+        if: ${{ matrix.name == 'i686-msvc-1' || matrix.name == 'i686-msvc-2' || matrix.name == 'dist-i686-msvc' }}
+        run: |
+          $vs = &"${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -format value -property installationPath
+          cmd /c "`"$vs\VC\Auxiliary\Build\vcvarsall.bat`" x86 10.0.22621.0 & SET > envs.txt"
+          echo "Printing current environment variables"
+          cat envs.txt
+          cat envs.txt >> $env:GITHUB_ENV
+
       # Free up disk space on Linux by removing preinstalled components that
       # we do not need. We do this to enable some of the less resource
       # intensive jobs to run on free runners, which however also have
