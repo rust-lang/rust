@@ -359,6 +359,7 @@ impl CString {
     ///
     /// This function does not validate ownership of the raw pointer's memory.
     /// A double-free may occur if the function is called twice on the same raw pointer.
+    /// Additionally, the caller must ensure the pointer is not dangling.
     ///
     /// It should be noted that the length isn't just "recomputed," but that
     /// the recomputed length must match the original length from the
