@@ -1814,16 +1814,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // FIXME: the performance of this is Not Great, and the logic
         // should be folded into the search itself if possible.
         for constraint in path.iter() {
-            let ConstraintCategory::IllegalPlaceholder(culprit_from, culprit_to) =
-                constraint.category
-            else {
+            let ConstraintCategory::IllegalPlaceholder(cl_fr, culprit) = constraint.category else {
                 continue;
             };
 
-            debug!("{culprit_from:?}: {culprit_to:?} is the reason {from:?}: 'static!");
+            debug!("{culprit:?} is the reason {from:?}: 'static!");
             // FIXME: think: this may be for transitive reasons and
             // we may have to do this arbitrarily many times. Or may we?
-            return self.find_constraint_path_to(culprit_from, |r| r == culprit_to, false).unwrap();
+            return self.find_constraint_path_to(cl_fr, |r| r == culprit, false).unwrap();
         }
 
         // No funny business; just return the path!
