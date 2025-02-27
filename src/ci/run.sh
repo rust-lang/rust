@@ -62,7 +62,9 @@ if ! isCI || isCiBranch auto || isCiBranch beta || isCiBranch try || isCiBranch 
 fi
 
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-verbose-configure"
-RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-sccache"
+if [ -n $DISABLE_SCCACHE ];
+  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-sccache"
+fi
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-manage-submodules"
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-locked-deps"
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-cargo-native-static"
