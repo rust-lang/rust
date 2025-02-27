@@ -4,15 +4,15 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
-use rustc_hir::HirId;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::{HirId, LangItem, PolyTraitRef};
 use rustc_middle::bug;
 use rustc_middle::ty::{
     self as ty, IsSuggestable, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
     TypeVisitor, Upcast,
 };
-use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
+use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw};
 use rustc_trait_selection::traits;
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
@@ -23,11 +23,172 @@ use crate::hir_ty_lowering::{
     AssocItemQSelf, FeedConstTy, HirTyLowerer, PredicateFilter, RegionInferReason,
 };
 
+#[derive(Debug, Default)]
+struct CollectedBound {
+    /// `Trait`
+    positive: bool,
+    /// `?Trait`
+    maybe: bool,
+    /// `!Trait`
+    negative: bool,
+}
+
+impl CollectedBound {
+    /// Returns `true` if any of `Trait`, `?Trait` or `!Trait` were encountered.
+    fn any(&self) -> bool {
+        self.positive || self.maybe || self.negative
+    }
+}
+
+#[derive(Debug)]
+struct CollectedSizednessBounds {
+    // Collected `Sized` bounds
+    sized: CollectedBound,
+    // Collected `MetaSized` bounds
+    meta_sized: CollectedBound,
+    // Collected `PointeeSized` bounds
+    pointee_sized: CollectedBound,
+}
+
+impl CollectedSizednessBounds {
+    /// Returns `true` if any of `Trait`, `?Trait` or `!Trait` were encountered for `Sized`,
+    /// `MetaSized` or `PointeeSized`.
+    fn any(&self) -> bool {
+        self.sized.any() || self.meta_sized.any() || self.pointee_sized.any()
+    }
+}
+
+fn collect_sizedness_bounds<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    hir_bounds: &'tcx [hir::GenericBound<'tcx>],
+    self_ty_where_predicates: Option<(LocalDefId, &'tcx [hir::WherePredicate<'tcx>])>,
+    span: Span,
+) -> (CollectedSizednessBounds, SmallVec<[&'tcx PolyTraitRef<'tcx>; 1]>) {
+    let sized_did = tcx.require_lang_item(LangItem::Sized, Some(span));
+    let mut sized = CollectedBound::default();
+
+    let meta_sized_did = tcx.require_lang_item(LangItem::MetaSized, Some(span));
+    let mut meta_sized = CollectedBound::default();
+
+    let pointee_sized_did = tcx.require_lang_item(LangItem::PointeeSized, Some(span));
+    let mut pointee_sized = CollectedBound::default();
+
+    let mut unbounds: SmallVec<[_; 1]> = SmallVec::new();
+    let mut search_bounds = |hir_bounds: &'tcx [hir::GenericBound<'tcx>]| {
+        for hir_bound in hir_bounds {
+            let hir::GenericBound::Trait(ptr) = hir_bound else {
+                continue;
+            };
+
+            if matches!(ptr.modifiers.polarity, hir::BoundPolarity::Maybe(_)) {
+                unbounds.push(ptr);
+            }
+
+            let collect_into = match ptr.trait_ref.path.res {
+                Res::Def(DefKind::Trait, did) if did == sized_did => &mut sized,
+                Res::Def(DefKind::Trait, did) if did == meta_sized_did => &mut meta_sized,
+                Res::Def(DefKind::Trait, did) if did == pointee_sized_did => &mut pointee_sized,
+                _ => continue,
+            };
+
+            match ptr.modifiers.polarity {
+                hir::BoundPolarity::Maybe(_) => collect_into.maybe = true,
+                hir::BoundPolarity::Negative(_) => collect_into.negative = true,
+                hir::BoundPolarity::Positive => collect_into.positive = true,
+            }
+        }
+    };
+
+    search_bounds(hir_bounds);
+    if let Some((self_ty, where_clause)) = self_ty_where_predicates {
+        for clause in where_clause {
+            if let hir::WherePredicateKind::BoundPredicate(pred) = clause.kind
+                && pred.is_param_bound(self_ty.to_def_id())
+            {
+                search_bounds(pred.bounds);
+            }
+        }
+    }
+
+    (CollectedSizednessBounds { sized, meta_sized, pointee_sized }, unbounds)
+}
+
+/// Add a trait bound for `did`.
+fn add_trait_bound<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
+    self_ty: Ty<'tcx>,
+    did: DefId,
+    span: Span,
+) {
+    let trait_ref = ty::TraitRef::new(tcx, did, [self_ty]);
+    // Preferable to put sizedness obligations first, since we report better errors for `Sized`
+    // ambiguity.
+    bounds.insert(0, (trait_ref.upcast(tcx), span));
+}
+
+/// Remove any bounds of `did`.
+fn remove_lang_item_bound<'tcx>(bounds: &mut Vec<(ty::Clause<'tcx>, Span)>, did: DefId) {
+    bounds.retain(|(clause, _)| {
+        clause.as_trait_clause().map_or(true, |clause| clause.skip_binder().def_id() != did)
+    });
+}
+
 impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
-    /// Add a `Sized` bound to the `bounds` if appropriate.
+    /// Remove `PointeeSized` predicates (sibling functions do the same for supertraits and params).
     ///
-    /// Doesn't add the bound if the HIR bounds contain any of `Sized`, `?Sized` or `!Sized`.
-    pub(crate) fn add_sized_bound(
+    // `PointeeSized` is a "fake bound" insofar as it is preferred that anywhere a `PointeeSized`
+    // bound exists, there is actually the absence of any bounds. This avoids limitations around
+    // non-global where clauses being preferred over item bounds (where `PointeeSized` bounds
+    // would be proven) - which can result in errors when a `PointeeSized`
+    // supertrait/bound/predicate is added to some items.
+    pub(crate) fn adjust_sizedness_predicates(
+        &self,
+        bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
+        span: Span,
+    ) {
+        let tcx = self.tcx();
+        let pointee_sized_did = tcx.require_lang_item(LangItem::PointeeSized, Some(span));
+        // See doc comment on `adjust_sizedness_predicates`.
+        remove_lang_item_bound(bounds, pointee_sized_did);
+    }
+
+    /// Adds a `MetaSized` bound to `bounds` (of a trait definition) if there are no other sizedness
+    /// bounds. Also removes `PointeeSized` params - see doc comment on
+    /// `adjust_sizedness_predicates`.
+    pub(crate) fn adjust_sizedness_supertraits(
+        &self,
+        bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
+        self_ty: Ty<'tcx>,
+        hir_bounds: &'tcx [hir::GenericBound<'tcx>],
+        trait_did: LocalDefId,
+    ) {
+        let tcx = self.tcx();
+
+        let span = tcx.def_span(trait_did);
+        let meta_sized_did = tcx.require_lang_item(LangItem::MetaSized, Some(span));
+        let pointee_sized_did = tcx.require_lang_item(LangItem::PointeeSized, Some(span));
+
+        let trait_did = trait_did.to_def_id();
+        if trait_did == pointee_sized_did {
+            // Never add a default supertrait to `PointeeSized`.
+            return;
+        }
+
+        let (collected, _unbounds) = collect_sizedness_bounds(tcx, hir_bounds, None, span);
+        if !collected.any() && trait_did != pointee_sized_did {
+            // If there are no explicit sizedness bounds then add a default `MetaSized` supertrait.
+            add_trait_bound(tcx, bounds, self_ty, meta_sized_did, span);
+        }
+
+        // See doc comment on `adjust_sizedness_predicates`.
+        remove_lang_item_bound(bounds, pointee_sized_did);
+    }
+
+    /// Add a default `Sized` bound if there are no other sizedness bounds and rewrite `?Sized`
+    /// to `MetaSized`. Also removes `PointeeSized` params - see doc comment on
+    /// `adjust_sizedness_predicates`.
+    pub(crate) fn adjust_sizedness_params_and_assoc_types(
         &self,
         bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
         self_ty: Ty<'tcx>,
@@ -36,91 +197,30 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         span: Span,
     ) {
         let tcx = self.tcx();
-        let sized_def_id = tcx.lang_items().sized_trait();
-        let mut seen_negative_sized_bound = false;
-        let mut seen_positive_sized_bound = false;
 
-        // Try to find an unbound in bounds.
-        let mut unbounds: SmallVec<[_; 1]> = SmallVec::new();
-        let mut search_bounds = |hir_bounds: &'tcx [hir::GenericBound<'tcx>]| {
-            for hir_bound in hir_bounds {
-                let hir::GenericBound::Trait(ptr) = hir_bound else {
-                    continue;
-                };
-                match ptr.modifiers.polarity {
-                    hir::BoundPolarity::Maybe(_) => unbounds.push(ptr),
-                    hir::BoundPolarity::Negative(_) => {
-                        if let Some(sized_def_id) = sized_def_id
-                            && ptr.trait_ref.path.res == Res::Def(DefKind::Trait, sized_def_id)
-                        {
-                            seen_negative_sized_bound = true;
-                        }
-                    }
-                    hir::BoundPolarity::Positive => {
-                        if let Some(sized_def_id) = sized_def_id
-                            && ptr.trait_ref.path.res == Res::Def(DefKind::Trait, sized_def_id)
-                        {
-                            seen_positive_sized_bound = true;
-                        }
-                    }
-                }
-            }
-        };
-        search_bounds(hir_bounds);
-        if let Some((self_ty, where_clause)) = self_ty_where_predicates {
-            for clause in where_clause {
-                if let hir::WherePredicateKind::BoundPredicate(pred) = clause.kind
-                    && pred.is_param_bound(self_ty.to_def_id())
-                {
-                    search_bounds(pred.bounds);
-                }
-            }
+        let sized_did = tcx.require_lang_item(LangItem::Sized, Some(span));
+        let meta_sized_did = tcx.require_lang_item(LangItem::MetaSized, Some(span));
+        let pointee_sized_did = tcx.require_lang_item(LangItem::PointeeSized, Some(span));
+
+        let (collected, unbounds) =
+            collect_sizedness_bounds(tcx, hir_bounds, self_ty_where_predicates, span);
+        self.check_and_report_invalid_unbounds_on_param(unbounds);
+
+        if (collected.sized.maybe || collected.sized.negative)
+            && !collected.sized.positive
+            && !collected.meta_sized.any()
+            && !collected.pointee_sized.any()
+        {
+            // `?Sized` is equivalent to `MetaSized` (but only add the bound if there aren't any
+            // other explicit ones)
+            add_trait_bound(tcx, bounds, self_ty, meta_sized_did, span);
+        } else if !collected.any() {
+            // If there are no explicit sizedness bounds then add a default `Sized` bound.
+            add_trait_bound(tcx, bounds, self_ty, sized_did, span);
         }
 
-        let mut unique_bounds = FxIndexSet::default();
-        let mut seen_repeat = false;
-        for unbound in &unbounds {
-            if let Res::Def(DefKind::Trait, unbound_def_id) = unbound.trait_ref.path.res {
-                seen_repeat |= !unique_bounds.insert(unbound_def_id);
-            }
-        }
-        if unbounds.len() > 1 {
-            let err = errors::MultipleRelaxedDefaultBounds {
-                spans: unbounds.iter().map(|ptr| ptr.span).collect(),
-            };
-            if seen_repeat {
-                self.dcx().emit_err(err);
-            } else if !tcx.features().more_maybe_bounds() {
-                self.tcx().sess.create_feature_err(err, sym::more_maybe_bounds).emit();
-            };
-        }
-
-        let mut seen_sized_unbound = false;
-        for unbound in unbounds {
-            if let Some(sized_def_id) = sized_def_id
-                && unbound.trait_ref.path.res == Res::Def(DefKind::Trait, sized_def_id)
-            {
-                seen_sized_unbound = true;
-                continue;
-            }
-            // There was a `?Trait` bound, but it was not `?Sized`
-            self.dcx().span_err(
-                unbound.span,
-                "relaxing a default bound only does something for `?Sized`; \
-                all other traits are not bound by default",
-            );
-        }
-
-        if seen_sized_unbound || seen_negative_sized_bound || seen_positive_sized_bound {
-            // There was in fact a `?Sized`, `!Sized` or explicit `Sized` bound;
-            // we don't need to do anything.
-        } else if let Some(sized_def_id) = sized_def_id {
-            // There was no `?Sized`, `!Sized` or explicit `Sized` bound;
-            // add `Sized` if it's available.
-            let trait_ref = ty::TraitRef::new(tcx, sized_def_id, [self_ty]);
-            // Preferable to put this obligation first, since we report better errors for sized ambiguity.
-            bounds.insert(0, (trait_ref.upcast(tcx), span));
-        }
+        // See doc comment on `adjust_sizedness_predicates`.
+        remove_lang_item_bound(bounds, pointee_sized_did);
     }
 
     /// Lower HIR bounds into `bounds` given the self type `param_ty` and the overarching late-bound vars if any.
@@ -423,6 +523,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                             projection_ty.bound_vars(),
                             predicate_filter,
                         );
+                        self.adjust_sizedness_predicates(bounds, constraint.span);
                     }
                     PredicateFilter::SelfOnly
                     | PredicateFilter::SelfTraitThatDefines(_)
