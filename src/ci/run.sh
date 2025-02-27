@@ -62,7 +62,7 @@ if ! isCI || isCiBranch auto || isCiBranch beta || isCiBranch try || isCiBranch 
 fi
 
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-verbose-configure"
-if [ -n $DISABLE_SCCACHE ]; then
+if [ -z "$DISABLE_SCCACHE" ]; then
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-sccache"
 fi
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-manage-submodules"
