@@ -1093,6 +1093,19 @@ impl Rewrite for ast::TyPat {
             ast::TyPatKind::Range(ref lhs, ref rhs, ref end_kind) => {
                 rewrite_range_pat(context, shape, lhs, rhs, end_kind, self.span)
             }
+            ast::TyPatKind::Or(ref variants) => {
+                let mut first = true;
+                let mut s = String::new();
+                for variant in variants {
+                    if first {
+                        first = false
+                    } else {
+                        s.push_str(" | ");
+                    }
+                    s.push_str(&variant.rewrite_result(context, shape)?);
+                }
+                Ok(s)
+            }
             ast::TyPatKind::Err(_) => Err(RewriteError::Unknown),
         }
     }

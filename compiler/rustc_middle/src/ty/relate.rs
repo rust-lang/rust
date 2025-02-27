@@ -59,6 +59,15 @@ impl<'tcx> Relate<TyCtxt<'tcx>> for ty::Pattern<'tcx> {
                 let end = relation.relate(end_a, end_b)?;
                 Ok(tcx.mk_pat(ty::PatternKind::Range { start, end }))
             }
+            (&ty::PatternKind::Or(a), &ty::PatternKind::Or(b)) => {
+                if a.len() != b.len() {
+                    return Err(TypeError::Mismatch);
+                }
+                let v = iter::zip(a, b).map(|(a, b)| relation.relate(a, b));
+                let patterns = tcx.mk_patterns_from_iter(v)?;
+                Ok(tcx.mk_pat(ty::PatternKind::Or(patterns)))
+            }
+            (ty::PatternKind::Range { .. } | ty::PatternKind::Or(_), _) => Err(TypeError::Mismatch),
         }
     }
 }

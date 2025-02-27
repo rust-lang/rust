@@ -1,0 +1,10 @@
+error: only non-overlapping pattern type ranges are allowed at present
+
+error: one pattern needs to end at `i8::MAX`, but was 29 instead
+
+error: only signed integer base types are allowed for or-pattern pattern types at present
+
+error: the only or-pattern types allowed are two range patterns that are directly connected at their overflow site
+
+error: aborting due to 4 previous errors
+

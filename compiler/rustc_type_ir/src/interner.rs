@@ -113,6 +113,13 @@ pub trait Interner:
         + Relate<Self>
         + Flags
         + IntoKind<Kind = ty::PatternKind<Self>>;
+    type PatList: Copy
+        + Debug
+        + Hash
+        + Default
+        + Eq
+        + TypeVisitable<Self>
+        + SliceLike<Item = Self::Pat>;
     type Safety: Safety<Self>;
     type Abi: Abi<Self>;
 
