@@ -1,7 +1,9 @@
 //@ check-fail
-//@ edition: 2024
+//@ compile-flags: -Zunstable-options
+//@ edition: future
 
 #![allow(incomplete_features, internal_features)]
+#![allow(sized_hierarchy_migration)]
 #![feature(sized_hierarchy)]
 #![feature(coroutines, dyn_star, extern_types, f16, never_type, unsized_fn_params)]
 

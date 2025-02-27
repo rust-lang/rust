@@ -1,3 +1,4 @@
+#![allow(sized_hierarchy_migration)]
 #![feature(extern_types)]
 #![feature(sized_hierarchy)]
 
