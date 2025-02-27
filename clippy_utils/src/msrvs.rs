@@ -19,6 +19,7 @@ macro_rules! msrv_aliases {
 
 // names may refer to stabilized feature flags or library items
 msrv_aliases! {
+    1,87,0 { OS_STR_DISPLAY }
     1,84,0 { CONST_OPTION_AS_SLICE }
     1,83,0 { CONST_EXTERN_FN, CONST_FLOAT_BITS_CONV, CONST_FLOAT_CLASSIFY, CONST_MUT_REFS, CONST_UNWRAP }
     1,82,0 { IS_NONE_OR, REPEAT_N, RAW_REF_OP }

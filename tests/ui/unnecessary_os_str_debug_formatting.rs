@@ -1,4 +1,3 @@
-#![feature(os_str_display)]
 #![warn(clippy::unnecessary_debug_formatting)]
 
 use std::ffi::{OsStr, OsString};

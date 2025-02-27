@@ -8,9 +8,8 @@ LL |     let _ = cow.to_owned();
    = help: to override `-D warnings` add `#[allow(clippy::suspicious_to_owned)]`
 help: depending on intent, either make the Cow an Owned variant
    |
-LL -     let _ = cow.to_owned();
-LL +     let _ = cow.into_owned();
-   |
+LL |     let _ = cow.into_owned();
+   |                 ++
 help: or clone the Cow itself
    |
 LL -     let _ = cow.to_owned();
@@ -25,9 +24,8 @@ LL |     let _ = cow.to_owned();
    |
 help: depending on intent, either make the Cow an Owned variant
    |
-LL -     let _ = cow.to_owned();
-LL +     let _ = cow.into_owned();
-   |
+LL |     let _ = cow.into_owned();
+   |                 ++
 help: or clone the Cow itself
    |
 LL -     let _ = cow.to_owned();
@@ -42,9 +40,8 @@ LL |     let _ = cow.to_owned();
    |
 help: depending on intent, either make the Cow an Owned variant
    |
-LL -     let _ = cow.to_owned();
-LL +     let _ = cow.into_owned();
-   |
+LL |     let _ = cow.into_owned();
+   |                 ++
 help: or clone the Cow itself
    |
 LL -     let _ = cow.to_owned();
@@ -59,9 +56,8 @@ LL |     let _ = cow.to_owned();
    |
 help: depending on intent, either make the Cow an Owned variant
    |
-LL -     let _ = cow.to_owned();
-LL +     let _ = cow.into_owned();
-   |
+LL |     let _ = cow.into_owned();
+   |                 ++
 help: or clone the Cow itself
    |
 LL -     let _ = cow.to_owned();

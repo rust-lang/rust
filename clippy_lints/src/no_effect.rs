@@ -141,7 +141,7 @@ impl NoEffect {
                     stmt.span,
                     "statement with no effect",
                     |diag| {
-                        for parent in cx.tcx.hir().parent_iter(stmt.hir_id) {
+                        for parent in cx.tcx.hir_parent_iter(stmt.hir_id) {
                             if let Node::Item(item) = parent.1
                                 && let ItemKind::Fn { .. } = item.kind
                                 && let Node::Block(block) = cx.tcx.parent_hir_node(stmt.hir_id)

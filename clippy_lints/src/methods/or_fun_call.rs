@@ -92,7 +92,7 @@ pub(super) fn check<'tcx>(
         let in_sugg_method_implementation = {
             matches!(
                 suggested_method_def_id.as_local(),
-                Some(local_def_id) if local_def_id == cx.tcx.hir().get_parent_item(receiver.hir_id).def_id
+                Some(local_def_id) if local_def_id == cx.tcx.hir_get_parent_item(receiver.hir_id).def_id
             )
         };
         if in_sugg_method_implementation {

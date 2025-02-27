@@ -95,6 +95,7 @@ use std::sync::{Mutex, MutexGuard, OnceLock};
 use itertools::Itertools;
 use rustc_abi::Integer;
 use rustc_ast::ast::{self, LitKind, RangeLimits};
+use rustc_attr_parsing::{AttributeKind, find_attr};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::unhash::UnhashMap;
@@ -214,7 +215,7 @@ pub fn find_binding_init<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<
 ///
 /// e.g. returns true for `x` in `fn f(x: usize) { .. }` and `let x = 1;` but false for `let x;`
 pub fn local_is_initialized(cx: &LateContext<'_>, local: HirId) -> bool {
-    for (_, node) in cx.tcx.hir().parent_iter(local) {
+    for (_, node) in cx.tcx.hir_parent_iter(local) {
         match node {
             Node::Pat(..) | Node::PatField(..) => {},
             Node::LetStmt(let_stmt) => return let_stmt.init.is_some(),
@@ -229,7 +230,7 @@ pub fn local_is_initialized(cx: &LateContext<'_>, local: HirId) -> bool {
 ///
 /// The current context is determined based on the current body which is set before calling a lint's
 /// entry point (any function on `LateLintPass`). If you need to check in a different context use
-/// `tcx.hir().is_inside_const_context(_)`.
+/// `tcx.hir_is_inside_const_context(_)`.
 ///
 /// Do not call this unless the `LateContext` has an enclosing body. For release build this case
 /// will safely return `false`, but debug builds will ICE. Note that `check_expr`, `check_block`,
@@ -808,7 +809,7 @@ pub fn get_trait_def_id(tcx: TyCtxt<'_>, path: &[&str]) -> Option<DefId> {
 pub fn trait_ref_of_method<'tcx>(cx: &LateContext<'tcx>, def_id: LocalDefId) -> Option<&'tcx TraitRef<'tcx>> {
     // Get the implemented trait for the current function
     let hir_id = cx.tcx.local_def_id_to_hir_id(def_id);
-    let parent_impl = cx.tcx.hir().get_parent_item(hir_id);
+    let parent_impl = cx.tcx.hir_get_parent_item(hir_id);
     if parent_impl != hir::CRATE_OWNER_ID
         && let Node::Item(item) = cx.tcx.hir_node_by_def_id(parent_impl.def_id)
         && let ItemKind::Impl(impl_) = &item.kind
@@ -1198,7 +1199,7 @@ pub fn capture_local_usage(cx: &LateContext<'_>, e: &Expr<'_>) -> CaptureKind {
     let mut capture = CaptureKind::Value;
     let mut capture_expr_ty = e;
 
-    for (parent_id, parent) in cx.tcx.hir().parent_iter(e.hir_id) {
+    for (parent_id, parent) in cx.tcx.hir_parent_iter(e.hir_id) {
         if let [
             Adjustment {
                 kind: Adjust::Deref(_) | Adjust::Borrow(AutoBorrow::Ref(..)),
@@ -1417,13 +1418,13 @@ pub fn is_entrypoint_fn(cx: &LateContext<'_>, def_id: DefId) -> bool {
 
 /// Returns `true` if the expression is in the program's `#[panic_handler]`.
 pub fn is_in_panic_handler(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
-    let parent = cx.tcx.hir().get_parent_item(e.hir_id);
+    let parent = cx.tcx.hir_get_parent_item(e.hir_id);
     Some(parent.to_def_id()) == cx.tcx.lang_items().panic_impl()
 }
 
 /// Gets the name of the item the expression is in, if available.
 pub fn get_item_name(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<Symbol> {
-    let parent_id = cx.tcx.hir().get_parent_item(expr.hir_id).def_id;
+    let parent_id = cx.tcx.hir_get_parent_item(expr.hir_id).def_id;
     match cx.tcx.hir_node_by_def_id(parent_id) {
         Node::Item(Item { ident, .. })
         | Node::TraitItem(TraitItem { ident, .. })
@@ -1488,9 +1489,9 @@ pub fn get_parent_expr_for_hir<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> O
 
 /// Gets the enclosing block, if any.
 pub fn get_enclosing_block<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<&'tcx Block<'tcx>> {
-    let map = &cx.tcx.hir();
-    let enclosing_node = map
-        .get_enclosing_scope(hir_id)
+    let enclosing_node = cx
+        .tcx
+        .hir_get_enclosing_scope(hir_id)
         .map(|enclosing_id| cx.tcx.hir_node(enclosing_id));
     enclosing_node.and_then(|node| match node {
         Node::Block(block) => Some(block),
@@ -1518,7 +1519,7 @@ pub fn get_enclosing_loop_or_multi_call_closure<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &Expr<'_>,
 ) -> Option<&'tcx Expr<'tcx>> {
-    for (_, node) in cx.tcx.hir().parent_iter(expr.hir_id) {
+    for (_, node) in cx.tcx.hir_parent_iter(expr.hir_id) {
         match node {
             Node::Expr(e) => match e.kind {
                 ExprKind::Closure { .. }
@@ -1538,7 +1539,7 @@ pub fn get_enclosing_loop_or_multi_call_closure<'tcx>(
 
 /// Gets the parent node if it's an impl block.
 pub fn get_parent_as_impl(tcx: TyCtxt<'_>, id: HirId) -> Option<&Impl<'_>> {
-    match tcx.hir().parent_iter(id).next() {
+    match tcx.hir_parent_iter(id).next() {
         Some((
             _,
             Node::Item(Item {
@@ -1616,7 +1617,7 @@ pub fn peel_blocks_with_stmt<'a>(mut expr: &'a Expr<'a>) -> &'a Expr<'a> {
 
 /// Checks if the given expression is the else clause of either an `if` or `if let` expression.
 pub fn is_else_clause(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
-    let mut iter = tcx.hir().parent_iter(expr.hir_id);
+    let mut iter = tcx.hir_parent_iter(expr.hir_id);
     match iter.next() {
         Some((
             _,
@@ -1633,7 +1634,7 @@ pub fn is_else_clause(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
 /// returns `true` for both the `init` and the `else` part
 pub fn is_inside_let_else(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
     let mut child_id = expr.hir_id;
-    for (parent_id, node) in tcx.hir().parent_iter(child_id) {
+    for (parent_id, node) in tcx.hir_parent_iter(child_id) {
         if let Node::LetStmt(LetStmt {
             init: Some(init),
             els: Some(els),
@@ -1653,7 +1654,7 @@ pub fn is_inside_let_else(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
 /// Checks if the given expression is the else clause of a `let else` expression
 pub fn is_else_clause_in_let_else(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
     let mut child_id = expr.hir_id;
-    for (parent_id, node) in tcx.hir().parent_iter(child_id) {
+    for (parent_id, node) in tcx.hir_parent_iter(child_id) {
         if let Node::LetStmt(LetStmt { els: Some(els), .. }) = node
             && els.hir_id == child_id
         {
@@ -2034,7 +2035,7 @@ pub fn has_attr(attrs: &[hir::Attribute], symbol: Symbol) -> bool {
 }
 
 pub fn has_repr_attr(cx: &LateContext<'_>, hir_id: HirId) -> bool {
-    has_attr(cx.tcx.hir().attrs(hir_id), sym::repr)
+    find_attr!(cx.tcx.hir().attrs(hir_id), AttributeKind::Repr(..))
 }
 
 pub fn any_parent_has_attr(tcx: TyCtxt<'_>, node: HirId, symbol: Symbol) -> bool {
@@ -2046,7 +2047,7 @@ pub fn any_parent_has_attr(tcx: TyCtxt<'_>, node: HirId, symbol: Symbol) -> bool
             return true;
         }
         prev_enclosing_node = Some(enclosing_node);
-        enclosing_node = map.get_parent_item(enclosing_node).into();
+        enclosing_node = tcx.hir_get_parent_item(enclosing_node).into();
     }
 
     false
@@ -2055,8 +2056,7 @@ pub fn any_parent_has_attr(tcx: TyCtxt<'_>, node: HirId, symbol: Symbol) -> bool
 /// Checks if the given HIR node is inside an `impl` block with the `automatically_derived`
 /// attribute.
 pub fn in_automatically_derived(tcx: TyCtxt<'_>, id: HirId) -> bool {
-    tcx.hir()
-        .parent_owner_iter(id)
+    tcx.hir_parent_owner_iter(id)
         .filter(|(_, node)| matches!(node, OwnerNode::Item(item) if matches!(item.kind, ItemKind::Impl(_))))
         .any(|(id, _)| {
             has_attr(
@@ -2287,7 +2287,7 @@ pub fn is_expr_identity_function(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool 
 /// Returns both the node and the `HirId` of the closest child node.
 pub fn get_expr_use_or_unification_node<'tcx>(tcx: TyCtxt<'tcx>, expr: &Expr<'_>) -> Option<(Node<'tcx>, HirId)> {
     let mut child_id = expr.hir_id;
-    let mut iter = tcx.hir().parent_iter(child_id);
+    let mut iter = tcx.hir_parent_iter(child_id);
     loop {
         match iter.next() {
             None => break None,
@@ -2666,7 +2666,7 @@ pub fn is_in_test_function(tcx: TyCtxt<'_>, id: HirId) -> bool {
     with_test_item_names(tcx, tcx.parent_module(id), |names| {
         let node = tcx.hir_node(id);
         once((id, node))
-            .chain(tcx.hir().parent_iter(id))
+            .chain(tcx.hir_parent_iter(id))
             // Since you can nest functions we need to collect all until we leave
             // function scope
             .any(|(_id, node)| {
@@ -2702,9 +2702,7 @@ pub fn is_cfg_test(tcx: TyCtxt<'_>, id: HirId) -> bool {
 
 /// Checks if any parent node of `HirId` has `#[cfg(test)]` attribute applied
 pub fn is_in_cfg_test(tcx: TyCtxt<'_>, id: HirId) -> bool {
-    tcx.hir()
-        .parent_id_iter(id)
-        .any(|parent_id| is_cfg_test(tcx, parent_id))
+    tcx.hir_parent_id_iter(id).any(|parent_id| is_cfg_test(tcx, parent_id))
 }
 
 /// Checks if the node is in a `#[test]` function or has any parent node marked `#[cfg(test)]`
@@ -2717,8 +2715,8 @@ pub fn inherits_cfg(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     let hir = tcx.hir();
 
     tcx.has_attr(def_id, sym::cfg)
-        || hir
-            .parent_iter(tcx.local_def_id_to_hir_id(def_id))
+        || tcx
+            .hir_parent_iter(tcx.local_def_id_to_hir_id(def_id))
             .flat_map(|(parent_id, _)| hir.attrs(parent_id))
             .any(|attr| attr.has_name(sym::cfg))
 }
@@ -2738,8 +2736,7 @@ pub fn walk_to_expr_usage<'tcx, T>(
     e: &Expr<'tcx>,
     mut f: impl FnMut(HirId, Node<'tcx>, HirId) -> ControlFlow<T>,
 ) -> Option<ControlFlow<T, (Node<'tcx>, HirId)>> {
-    let map = cx.tcx.hir();
-    let mut iter = map.parent_iter(e.hir_id);
+    let mut iter = cx.tcx.hir_parent_iter(e.hir_id);
     let mut child_id = e.hir_id;
 
     while let Some((parent_id, parent)) = iter.next() {
@@ -2762,7 +2759,7 @@ pub fn walk_to_expr_usage<'tcx, T>(
             ExprKind::If(child, ..) | ExprKind::Match(child, ..) if child.hir_id != child_id => child_id = parent_id,
             ExprKind::Break(Destination { target_id: Ok(id), .. }, _) => {
                 child_id = id;
-                iter = map.parent_iter(id);
+                iter = cx.tcx.hir_parent_iter(id);
             },
             ExprKind::Block(..) | ExprKind::DropTemps(_) => child_id = parent_id,
             _ => return Some(ControlFlow::Continue((parent, child_id))),

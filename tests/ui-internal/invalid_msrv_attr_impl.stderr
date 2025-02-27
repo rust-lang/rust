@@ -12,7 +12,7 @@ LL | #![deny(clippy::internal)]
    = note: `#[deny(clippy::missing_msrv_attr_impl)]` implied by `#[deny(clippy::internal)]`
 help: add `extract_msrv_attr!(LateContext)` to the `LateLintPass` implementation
    |
-LL + impl LateLintPass<'_> for Pass {
+LL ~ impl LateLintPass<'_> for Pass {
 LL +     extract_msrv_attr!(LateContext);
    |
 
@@ -24,7 +24,7 @@ LL | impl EarlyLintPass for Pass {
    |
 help: add `extract_msrv_attr!(EarlyContext)` to the `EarlyLintPass` implementation
    |
-LL + impl EarlyLintPass for Pass {
+LL ~ impl EarlyLintPass for Pass {
 LL +     extract_msrv_attr!(EarlyContext);
    |
 

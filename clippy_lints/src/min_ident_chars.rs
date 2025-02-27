@@ -122,8 +122,7 @@ impl Visitor<'_> for IdentVisitor<'_, '_> {
             // has no control over the type.
             let usenode = opt_as_use_node(node).or_else(|| {
                 cx.tcx
-                    .hir()
-                    .parent_iter(hir_id)
+                    .hir_parent_iter(hir_id)
                     .find_map(|(_, node)| opt_as_use_node(node))
             });
 

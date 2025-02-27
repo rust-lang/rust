@@ -99,7 +99,7 @@ impl<'tcx> LateLintPass<'tcx> for PanicUnimplemented {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let Some(macro_call) = root_macro_call_first_node(cx, expr) {
             if is_panic(cx, macro_call.def_id) {
-                if cx.tcx.hir().is_inside_const_context(expr.hir_id)
+                if cx.tcx.hir_is_inside_const_context(expr.hir_id)
                     || self.allow_panic_in_tests && is_in_test(cx.tcx, expr.hir_id)
                 {
                     return;
@@ -140,7 +140,7 @@ impl<'tcx> LateLintPass<'tcx> for PanicUnimplemented {
             && let Res::Def(DefKind::Fn, def_id) = expr_path.res
             && cx.tcx.is_diagnostic_item(sym::panic_any, def_id)
         {
-            if cx.tcx.hir().is_inside_const_context(expr.hir_id)
+            if cx.tcx.hir_is_inside_const_context(expr.hir_id)
                 || self.allow_panic_in_tests && is_in_test(cx.tcx, expr.hir_id)
             {
                 return;
