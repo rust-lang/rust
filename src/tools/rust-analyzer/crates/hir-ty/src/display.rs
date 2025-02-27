@@ -680,10 +680,7 @@ fn render_const_scalar(
     memory_map: &MemoryMap,
     ty: &Ty,
 ) -> Result<(), HirDisplayError> {
-    // FIXME: We need to get krate from the final callers of the hir display
-    // infrastructure and have it here as a field on `f`.
-    let trait_env =
-        TraitEnvironment::empty(*f.db.crate_graph().crates_in_topological_order().last().unwrap());
+    let trait_env = TraitEnvironment::empty(f.krate());
     let ty = normalize(f.db, trait_env.clone(), ty.clone());
     match ty.kind(Interner) {
         TyKind::Scalar(s) => match s {
