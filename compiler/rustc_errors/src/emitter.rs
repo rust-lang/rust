@@ -616,7 +616,6 @@ pub struct HumanEmitter {
     #[setters(skip)]
     fallback_bundle: LazyFallbackBundle,
     short_message: bool,
-    teach: bool,
     ui_testing: bool,
     ignored_directories_in_source_blocks: Vec<String>,
     diagnostic_width: Option<usize>,
@@ -642,7 +641,6 @@ impl HumanEmitter {
             fluent_bundle: None,
             fallback_bundle,
             short_message: false,
-            teach: false,
             ui_testing: false,
             ignored_directories_in_source_blocks: Vec::new(),
             diagnostic_width: None,
@@ -1042,15 +1040,6 @@ impl HumanEmitter {
                         width_offset + depth,
                         (code_offset + annotation.start_col.display).saturating_sub(left),
                         underline.style,
-                    );
-                }
-                _ if self.teach => {
-                    buffer.set_style_range(
-                        line_offset,
-                        (code_offset + annotation.start_col.display).saturating_sub(left),
-                        (code_offset + annotation.end_col.display).saturating_sub(left),
-                        underline.style,
-                        annotation.is_primary,
                     );
                 }
                 _ => {}
