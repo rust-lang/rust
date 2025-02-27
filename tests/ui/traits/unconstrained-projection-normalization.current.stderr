@@ -1,5 +1,5 @@
 error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/unconstrained-projection-normalization.rs:15:6
+  --> $DIR/unconstrained-projection-normalization.rs:16:6
    |
 LL | impl<T: PointeeSized> Every for Thing {
    |      ^ unconstrained type parameter

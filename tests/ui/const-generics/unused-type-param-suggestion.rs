@@ -1,4 +1,5 @@
 #![crate_type="lib"]
+#![allow(sized_hierarchy_migration)]
 #![feature(sized_hierarchy)]
 
 struct S<N>;

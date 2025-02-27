@@ -1,4 +1,5 @@
 //@ check-pass
+#![allow(sized_hierarchy_migration)]
 #![feature(extern_types, sized_hierarchy)]
 
 use std::marker::PointeeSized;

@@ -1,6 +1,7 @@
 // Make sure not to construct predicates with escaping bound vars in `diagnostic_hir_wf_check`.
 // Regression test for <https://github.com/rust-lang/rust/issues/139330>.
 
+#![allow(sized_hierarchy_migration)]
 #![feature(sized_hierarchy)]
 #![feature(non_lifetime_binders)]
 //~^ WARN the feature `non_lifetime_binders` is incomplete

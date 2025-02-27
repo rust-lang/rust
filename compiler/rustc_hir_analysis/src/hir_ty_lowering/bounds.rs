@@ -25,18 +25,19 @@ use crate::hir_ty_lowering::{
 
 #[derive(Debug, Default)]
 struct CollectedBound {
+    constness: bool,
     /// `Trait`
-    positive: bool,
+    positive: Option<Span>,
     /// `?Trait`
-    maybe: bool,
+    maybe: Option<Span>,
     /// `!Trait`
-    negative: bool,
+    negative: Option<Span>,
 }
 
 impl CollectedBound {
     /// Returns `true` if any of `Trait`, `?Trait` or `!Trait` were encountered.
     fn any(&self) -> bool {
-        self.positive || self.maybe || self.negative
+        self.positive.is_some() || self.maybe.is_some() || self.negative.is_some()
     }
 }
 
@@ -61,7 +62,7 @@ impl CollectedSizednessBounds {
 fn search_bounds_for<'tcx>(
     hir_bounds: &'tcx [hir::GenericBound<'tcx>],
     self_ty_where_predicates: Option<(LocalDefId, &'tcx [hir::WherePredicate<'tcx>])>,
-    mut f: impl FnMut(&'tcx PolyTraitRef<'tcx>),
+    mut f: impl FnMut(&'tcx PolyTraitRef<'tcx>, Span),
 ) {
     let mut search_bounds = |hir_bounds: &'tcx [hir::GenericBound<'tcx>]| {
         for hir_bound in hir_bounds {
@@ -69,7 +70,7 @@ fn search_bounds_for<'tcx>(
                 continue;
             };
 
-            f(ptr)
+            f(ptr, hir_bound.span())
         }
     };
 
@@ -90,7 +91,7 @@ fn collect_unbounds<'tcx>(
     self_ty_where_predicates: Option<(LocalDefId, &'tcx [hir::WherePredicate<'tcx>])>,
 ) -> SmallVec<[&'tcx PolyTraitRef<'tcx>; 1]> {
     let mut unbounds: SmallVec<[_; 1]> = SmallVec::new();
-    search_bounds_for(hir_bounds, self_ty_where_predicates, |ptr| {
+    search_bounds_for(hir_bounds, self_ty_where_predicates, |ptr, _| {
         if matches!(ptr.modifiers.polarity, hir::BoundPolarity::Maybe(_)) {
             unbounds.push(ptr);
         }
@@ -104,15 +105,20 @@ fn collect_bounds<'a, 'tcx>(
     target_did: DefId,
 ) -> CollectedBound {
     let mut collect_into = CollectedBound::default();
-    search_bounds_for(hir_bounds, self_ty_where_predicates, |ptr| {
+    search_bounds_for(hir_bounds, self_ty_where_predicates, |ptr, span| {
         if !matches!(ptr.trait_ref.path.res, Res::Def(DefKind::Trait, did) if did == target_did) {
             return;
         }
 
+        collect_into.constness = matches!(
+            ptr.modifiers.constness,
+            hir::BoundConstness::Always(_) | hir::BoundConstness::Maybe(_)
+        );
+
         match ptr.modifiers.polarity {
-            hir::BoundPolarity::Maybe(_) => collect_into.maybe = true,
-            hir::BoundPolarity::Negative(_) => collect_into.negative = true,
-            hir::BoundPolarity::Positive => collect_into.positive = true,
+            hir::BoundPolarity::Maybe(_) => collect_into.maybe = Some(span),
+            hir::BoundPolarity::Negative(_) => collect_into.negative = Some(span),
+            hir::BoundPolarity::Positive => collect_into.positive = Some(span),
         }
     });
     collect_into
@@ -259,9 +265,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let tcx = self.tcx();
 
         let span = tcx.def_span(trait_did);
+        let sized_did = tcx.require_lang_item(LangItem::Sized, Some(span));
         let meta_sized_did = tcx.require_lang_item(LangItem::MetaSized, Some(span));
         let pointee_sized_did = tcx.require_lang_item(LangItem::PointeeSized, Some(span));
 
+        // See doc comment on `adjust_sizedness_predicates`.
+        remove_lang_item_bound(bounds, pointee_sized_did);
+
+        let trait_hir_id = tcx.local_def_id_to_hir_id(trait_did);
         if self.should_add_metasized_supertrait(hir_bounds, trait_did)
             && self.requires_default_supertraits(
                 hir_bounds,
@@ -269,6 +280,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 Some((meta_sized_did, trait_did)),
             )
         {
+            // Emit migration lint when the feature is enabled.
+            self.emit_implicit_const_meta_sized_supertrait_lint(trait_hir_id, span);
+
             // If there are no explicit sizedness bounds then add a default `MetaSized` supertrait.
             add_trait_predicate(tcx, bounds, tcx.types.self_param, meta_sized_did, span);
             add_host_effect_predicate(
@@ -279,10 +293,27 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 meta_sized_did,
                 span,
             );
+            return;
         }
 
-        // See doc comment on `adjust_sizedness_predicates`.
-        remove_lang_item_bound(bounds, pointee_sized_did);
+        let collected = collect_sizedness_bounds(tcx, hir_bounds, None, span);
+        if let Some(bound_span) = collected.sized.positive
+            && !collected.sized.constness
+            && !tcx.sess.edition().at_least_edition_future()
+        {
+            // Emit migration lint when the feature is enabled.
+            self.emit_sized_to_const_sized_lint(trait_hir_id, bound_span);
+
+            // If it is not Edition Future then `Sized` is equivalent to writing `const Sized`.
+            add_host_effect_predicate(
+                tcx,
+                PredicateFilter::All,
+                bounds,
+                tcx.types.self_param,
+                sized_did,
+                bound_span,
+            );
+        }
     }
 
     /// Implicitly add `Self: MetaSized` clauses on trait associated items if they are not added as
@@ -330,6 +361,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         hir_bounds: &'tcx [hir::GenericBound<'tcx>],
         self_ty_where_predicates: Option<(LocalDefId, &'tcx [hir::WherePredicate<'tcx>])>,
         span: Span,
+        trait_did: LocalDefId,
         filter: PredicateFilter,
     ) {
         let tcx = self.tcx();
@@ -339,12 +371,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let pointee_sized_did = tcx.require_lang_item(LangItem::PointeeSized, Some(span));
 
         // Report invalid unbounds.
+        let trait_hir_id = tcx.local_def_id_to_hir_id(trait_did);
         let unbounds = collect_unbounds(hir_bounds, self_ty_where_predicates);
-        self.check_and_report_invalid_unbounds_on_param(unbounds);
+        self.check_and_report_invalid_unbounds_on_param(trait_hir_id, unbounds);
 
         let collected = collect_sizedness_bounds(tcx, hir_bounds, self_ty_where_predicates, span);
-        if (collected.sized.maybe || collected.sized.negative)
-            && !collected.sized.positive
+        if (collected.sized.maybe.is_some() || collected.sized.negative.is_some())
+            && !collected.sized.positive.is_some()
             && !collected.meta_sized.any()
             && !collected.pointee_sized.any()
         {
@@ -352,10 +385,25 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // any other explicit ones)
             add_trait_predicate(tcx, bounds, self_ty, meta_sized_did, span);
             add_host_effect_predicate(tcx, filter, bounds, self_ty, meta_sized_did, span);
+        } else if let Some(bound_span) = collected.sized.positive
+            && !collected.sized.constness
+            && !tcx.sess.edition().at_least_edition_future()
+        {
+            // Emit migration lint when the feature is enabled.
+            self.emit_sized_to_const_sized_lint(trait_hir_id, bound_span);
+
+            // Replace `Sized` with `const Sized`.
+            add_trait_predicate(tcx, bounds, self_ty, sized_did, bound_span);
+            add_host_effect_predicate(tcx, filter, bounds, self_ty, sized_did, bound_span);
         } else if !collected.any() {
             // If there are no explicit sizedness bounds then add a default `const Sized` bound.
             add_trait_predicate(tcx, bounds, self_ty, sized_did, span);
-            add_host_effect_predicate(tcx, filter, bounds, self_ty, sized_did, span);
+
+            if !tcx.sess.edition().at_least_edition_future() {
+                self.emit_default_sized_to_const_sized_lint(trait_hir_id, span);
+
+                add_host_effect_predicate(tcx, filter, bounds, self_ty, sized_did, span);
+            }
         }
 
         // See doc comment on `adjust_sizedness_predicates`.
@@ -559,7 +607,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         self_ty_where_predicates: Option<(LocalDefId, &'tcx [hir::WherePredicate<'tcx>])>,
     ) -> bool {
         let collected = collect_bounds(hir_bounds, self_ty_where_predicates, trait_def_id);
-        !(collected.positive || collected.maybe || collected.negative)
+        !(collected.positive.is_some() || collected.maybe.is_some() || collected.negative.is_some())
     }
 
     /// Lower HIR bounds into `bounds` given the self type `param_ty` and the overarching late-bound vars if any.

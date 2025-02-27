@@ -97,6 +97,7 @@ declare_lint_pass! {
         SELF_CONSTRUCTOR_FROM_OUTER_ITEM,
         SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
         SINGLE_USE_LIFETIMES,
+        SIZED_HIERARCHY_MIGRATION,
         SOFT_UNSTABLE,
         STABLE_FEATURES,
         SUPERTRAIT_ITEM_SHADOWING_DEFINITION,
@@ -5169,5 +5170,43 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
         reference: "issue #138762 <https://github.com/rust-lang/rust/issues/138762>",
+    };
+}
+
+declare_lint! {
+    /// The `sized_hierarchy_migration` lint detects uses of the `Sized` trait which must be
+    /// migrated with the introduction of a hierarchy of sizedness traits.
+    ///
+    /// ### Example
+    /// ```rust,edition_2024,compile_fail
+    /// #![feature(sized_hierarchy)]
+    /// #![deny(sized_hierarchy_migration)]
+    ///
+    /// pub fn foo<T: ?Sized>() {}
+    ///
+    /// pub trait Foo {}
+    ///
+    /// pub fn bar<T>() {}
+    ///
+    /// pub fn qux<T: Sized>() {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    /// In order to preserve backwards compatibility when a hierarchy of sizedness traits is
+    /// introduced, various migrations are necessary:
+    ///
+    /// - `Sized` becomes `const Sized`
+    /// - `?Sized` becomes `const MetaSized`
+    /// - Traits have a `const MetaSized` supertrait
+    ///
+    /// See [RFC #3729](https://github.com/rust-lang/rfcs/pull/3729) for more details.
+    pub SIZED_HIERARCHY_MIGRATION,
+    Warn,
+    "new sized traits are being introduced which require migration to maintain backwards compat",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::EditionError(Edition::EditionFuture),
+        reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-future/sized-hierarchy.html>",
     };
 }

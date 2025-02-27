@@ -1,4 +1,5 @@
 //@ compile-flags: --crate-type=lib
+#![allow(sized_hierarchy_migration)]
 #![feature(const_trait_impl, sized_hierarchy)]
 
 use std::marker::{MetaSized, PointeeSized};

@@ -1,11 +1,11 @@
 error[E0207]: the type parameter `C` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/unconstrained-param-ice-137308.rs:15:6
+  --> $DIR/unconstrained-param-ice-137308.rs:16:6
    |
 LL | impl<C: PointeeSized> A for u8 {
    |      ^ unconstrained type parameter
 
 error: the type has an unknown layout
-  --> $DIR/unconstrained-param-ice-137308.rs:20:1
+  --> $DIR/unconstrained-param-ice-137308.rs:21:1
    |
 LL | struct S([u8; <u8 as A>::B]);
    | ^^^^^^^^

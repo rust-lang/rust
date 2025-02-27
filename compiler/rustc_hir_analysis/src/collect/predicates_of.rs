@@ -233,6 +233,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                     &[],
                     Some((param.def_id, hir_generics.predicates)),
                     param.span,
+                    def_id,
                     PredicateFilter::All,
                 );
                 icx.lowerer().add_default_traits(

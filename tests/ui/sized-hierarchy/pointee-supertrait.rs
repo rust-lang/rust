@@ -1,4 +1,5 @@
 //@ check-pass
+#![allow(sized_hierarchy_migration)]
 #![feature(sized_hierarchy)]
 
 // This is a reduction of some code in `library/core/src/cmp.rs` that would ICE if a default

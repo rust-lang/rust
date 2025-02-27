@@ -1,0 +1,99 @@
+error: `?Sized` bound relaxations are being migrated to `const MetaSized`
+  --> $DIR/migration.rs:17:35
+   |
+LL | pub fn relaxed_bound_migration<T: ?Sized>() {
+   |                                   ^^^^^^ help: replace `?Sized` with `const MetaSized`: `const MetaSized`
+   |
+   = warning: this is accepted in the current edition (Rust 2024) but is a hard error in Rust future!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-future/sized-hierarchy.html>
+note: the lint level is defined here
+  --> $DIR/migration.rs:6:9
+   |
+LL | #![deny(sized_hierarchy_migration)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: default bounds are being migrated to `const Sized`
+  --> $DIR/migration.rs:24:37
+   |
+LL | pub fn default_sized_to_const_sized<T>() {
+   |                                     ^- help: add `const Sized`: `: const Sized`
+   |
+   = warning: this is accepted in the current edition (Rust 2024) but is a hard error in Rust future!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-future/sized-hierarchy.html>
+
+error: `Sized` bounds are being migrated to `const Sized`
+  --> $DIR/migration.rs:30:32
+   |
+LL | pub fn sized_to_const_sized<T: Sized>() {
+   |                                ^^^^^ help: replace `Sized` with `const Sized`: `const Sized`
+   |
+   = warning: this is accepted in the current edition (Rust 2024) but is a hard error in Rust future!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-future/sized-hierarchy.html>
+
+error: a `const MetaSized` supertrait is required to maintain backwards compatibility
+  --> $DIR/migration.rs:37:1
+   |
+LL | pub trait ImplicitSupertrait {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^- help: add an explicit `const MetaSized` supertrait: `: const MetaSized`
+   |
+   = warning: this is accepted in the current edition (Rust 2024) but is a hard error in Rust future!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-future/sized-hierarchy.html>
+
+error: `Sized` bounds are being migrated to `const Sized`
+  --> $DIR/migration.rs:45:30
+   |
+LL | pub trait SizedToConstSized: Sized {
+   |                              ^^^^^ help: replace `Sized` with `const Sized`: `const Sized`
+   |
+   = warning: this is accepted in the current edition (Rust 2024) but is a hard error in Rust future!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-future/sized-hierarchy.html>
+
+error: a `const MetaSized` supertrait is required to maintain backwards compatibility
+  --> $DIR/migration.rs:53:1
+   |
+LL | pub trait AssocType {
+   | ^^^^^^^^^^^^^^^^^^^- help: add an explicit `const MetaSized` supertrait: `: const MetaSized`
+   |
+   = warning: this is accepted in the current edition (Rust 2024) but is a hard error in Rust future!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-future/sized-hierarchy.html>
+
+error: `Sized` bounds are being migrated to `const Sized`
+  --> $DIR/migration.rs:56:15
+   |
+LL |     type Foo: Sized;
+   |               ^^^^^ help: replace `Sized` with `const Sized`: `const Sized`
+   |
+   = warning: this is accepted in the current edition (Rust 2024) but is a hard error in Rust future!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-future/sized-hierarchy.html>
+
+error: `Sized` bounds are being migrated to `const Sized`
+  --> $DIR/migration.rs:56:15
+   |
+LL |     type Foo: Sized;
+   |               ^^^^^ help: replace `Sized` with `const Sized`: `const Sized`
+   |
+   = warning: this is accepted in the current edition (Rust 2024) but is a hard error in Rust future!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-future/sized-hierarchy.html>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: `?Sized` bound relaxations are being migrated to `const MetaSized`
+  --> $DIR/migration.rs:61:15
+   |
+LL |     type Bar: ?Sized;
+   |               ^^^^^^ help: replace `?Sized` with `const MetaSized`: `const MetaSized`
+   |
+   = warning: this is accepted in the current edition (Rust 2024) but is a hard error in Rust future!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-future/sized-hierarchy.html>
+
+error: `?Sized` bound relaxations are being migrated to `const MetaSized`
+  --> $DIR/migration.rs:61:15
+   |
+LL |     type Bar: ?Sized;
+   |               ^^^^^^ help: replace `?Sized` with `const MetaSized`: `const MetaSized`
+   |
+   = warning: this is accepted in the current edition (Rust 2024) but is a hard error in Rust future!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-future/sized-hierarchy.html>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 10 previous errors
+

@@ -1,5 +1,9 @@
 //@ aux-build:pretty-print-dep.rs
 //@ compile-flags: --crate-type=lib
+//@ revisions: e2024 future
+//@[e2024] edition: 2024
+//@[future] compile-flags: -Zunstable-options
+//@[future] edition: future
 
 extern crate pretty_print_dep;
 use pretty_print_dep::{
