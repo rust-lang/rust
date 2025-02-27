@@ -138,13 +138,14 @@ impl Deprecation {
     }
 }
 
-/// Attributes represent parsed, *built in*, inert attributes. That means,
-/// attributes that are not actually ever expanded.
-/// For more information on this, see the module docs on the rustc_attr_parsing crate.
+/// Represent parsed, *built in*, inert attributes.
+///
+/// That means attributes that are not actually ever expanded.
+/// For more information on this, see the module docs on the [`rustc_attr_parsing`] crate.
 /// They're instead used as markers, to guide the compilation process in various way in most every stage of the compiler.
 /// These are kept around after the AST, into the HIR and further on.
 ///
-/// The word parsed could be a little misleading here, because the parser already parses
+/// The word "parsed" could be a little misleading here, because the parser already parses
 /// attributes early on. However, the result, an [`ast::Attribute`]
 /// is only parsed at a high level, still containing a token stream in many cases. That is
 /// because the structure of the contents varies from attribute to attribute.
@@ -153,7 +154,9 @@ impl Deprecation {
 /// the place where `must_use` is checked) little to no extra parsing or validating needs to
 /// happen.
 ///
-/// For more docs, look in [`rustc_attr`](https://doc.rust-lang.org/stable/nightly-rustc/rustc_attr/index.html)
+/// For more docs, look in [`rustc_attr_parsing`].
+///
+/// [`rustc_attr_parsing`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_attr_parsing/index.html
 #[derive(Clone, Debug, HashStable_Generic, Encodable, Decodable, PrintAttribute)]
 pub enum AttributeKind {
     // tidy-alphabetical-start
