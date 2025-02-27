@@ -7,11 +7,14 @@
 use std::iter::iter;
 
 fn main() {
-    let i = iter! {
-        yield 0;
-        for x in 5..10 {
-            yield x * 2;
-        }
+    let i = {
+        let s = String::new();
+        iter! { move || {
+            yield s.len();
+            for x in 5..10 {
+                yield x * 2;
+            }
+        }}
     };
     let mut i = i();
     assert_eq!(i.next(), Some(0));

@@ -20,6 +20,7 @@
 /// ```
 #[unstable(feature = "iter_macro", issue = "none", reason = "generators are unstable")]
 #[allow_internal_unstable(coroutines, iter_from_coroutine)]
+#[cfg_attr(not(bootstrap), rustc_builtin_macro)]
 pub macro iter($($t:tt)*) {
-    || $crate::iter::from_coroutine(#[coroutine] || { $($t)* })
+    /* compiler-builtin */
 }
