@@ -3,8 +3,6 @@
 #![feature(unsized_fn_params)]
 #![feature(custom_mir, core_intrinsics)]
 
-use std::mem;
-
 fn unsized_params() {
     pub fn f0(_f: dyn FnOnce()) {}
     pub fn f1(_s: str) {}
