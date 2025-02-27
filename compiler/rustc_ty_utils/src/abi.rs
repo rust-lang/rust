@@ -392,13 +392,13 @@ fn adjust_for_rust_scalar<'tcx>(
             // potentially self-referential types (see
             // <https://github.com/rust-lang/unsafe-code-guidelines/issues/381>). If LLVM had a way
             // to say "dereferenceable on entry" we could use it here.
-            attrs.pointee_size = match kind {
-                PointerKind::Box { .. }
-                | PointerKind::SharedRef { frozen: false }
-                | PointerKind::MutableRef { unpin: false } => Size::ZERO,
-                PointerKind::SharedRef { frozen: true }
-                | PointerKind::MutableRef { unpin: true } => pointee.size,
-            };
+            // attrs.pointee_size = match kind {
+            //     PointerKind::Box { .. }
+            //     | PointerKind::SharedRef { frozen: false }
+            //     | PointerKind::MutableRef { unpin: false } => Size::ZERO,
+            //     PointerKind::SharedRef { frozen: true }
+            //     | PointerKind::MutableRef { unpin: true } => pointee.size,
+            // };
 
             // The aliasing rules for `Box<T>` are still not decided, but currently we emit
             // `noalias` for it. This can be turned off using an unstable flag.
@@ -424,11 +424,11 @@ fn adjust_for_rust_scalar<'tcx>(
             // We can never add `noalias` in return position; that LLVM attribute has some very surprising semantics
             // (see <https://github.com/rust-lang/unsafe-code-guidelines/issues/385#issuecomment-1368055745>).
             if no_alias && !is_return {
-                attrs.set(ArgAttribute::NoAlias);
+                //attrs.set(ArgAttribute::NoAlias);
             }
 
             if matches!(kind, PointerKind::SharedRef { frozen: true }) && !is_return {
-                attrs.set(ArgAttribute::ReadOnly);
+                //attrs.set(ArgAttribute::ReadOnly);
             }
         }
     }
