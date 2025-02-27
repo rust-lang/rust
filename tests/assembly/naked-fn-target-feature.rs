@@ -142,14 +142,14 @@ mod s390x {
     }
 }
 
-// powerpc64: altivec:
-// powerpc64: vsumsws
+// powerpc64: power10_vector:
+// powerpc64: xxpermx
 #[no_mangle]
 #[naked]
 #[cfg(target_arch = "powerpc64")]
-#[target_feature(enable = "altivec")]
-unsafe extern "C" fn altivec() {
-    naked_asm!("vsumsws   %v0, %v1, %v2", "blr")
+#[target_feature(enable = "power10-vector")]
+unsafe extern "C" fn power10_vector() {
+    naked_asm!("xxpermx 34, 0, 1, 2, 0", "blr")
 }
 
 // loongarch64: lasx:
