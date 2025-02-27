@@ -45,6 +45,7 @@ use crate::{
     db::{HirDatabase, InternedClosure},
     from_assoc_type_id, from_foreign_def_id, from_placeholder_idx,
     generics::generics,
+    infer::normalize,
     layout::Layout,
     lt_from_placeholder_idx,
     mapping::from_chalk,
@@ -657,6 +658,7 @@ fn render_const_scalar(
     // infrastructure and have it here as a field on `f`.
     let trait_env =
         TraitEnvironment::empty(*f.db.crate_graph().crates_in_topological_order().last().unwrap());
+    let ty = normalize(f.db, trait_env.clone(), ty.clone());
     match ty.kind(Interner) {
         TyKind::Scalar(s) => match s {
             Scalar::Bool => write!(f, "{}", b[0] != 0),

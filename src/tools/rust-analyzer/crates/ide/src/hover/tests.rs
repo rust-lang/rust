@@ -10947,3 +10947,37 @@ pub struct ManuallyDrop$0<T: ?Sized> {
         "#]],
     );
 }
+
+#[test]
+fn projection_const() {
+    check(
+        r#"
+pub trait PublicFlags {
+    type Internal;
+}
+
+pub struct NoteDialects(<NoteDialects as PublicFlags>::Internal);
+
+impl NoteDialects {
+    pub const CLAP$0: Self = Self(InternalBitFlags);
+}
+
+pub struct InternalBitFlags;
+
+impl PublicFlags for NoteDialects {
+    type Internal = InternalBitFlags;
+}
+    "#,
+        expect![[r#"
+            *CLAP*
+
+            ```rust
+            ra_test_fixture::NoteDialects
+            ```
+
+            ```rust
+            pub const CLAP: Self = NoteDialects(InternalBitFlags)
+            ```
+        "#]],
+    );
+}
