@@ -1,5 +1,4 @@
-//! An "interner" is a data structure that associates values with usize tags and
-//! allows bidirectional lookup; i.e., given a value, one can easily find the
+//! An "interner" is a data structure that associates values with usize tags and allows bidirectional lookup; i.e., given a value, one can easily find the
 //! type, and vice versa.
 
 use std::hash::{Hash, Hasher};
@@ -2165,7 +2164,6 @@ symbols! {
         unsized_const_params,
         unsized_fn_params,
         unsized_locals,
-        unsized_tuple_coercion,
         unstable,
         unstable_location_reason_default: "this crate is being loaded from the sysroot, an \
                           unstable location; did you mean to load this crate \
