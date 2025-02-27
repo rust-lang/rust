@@ -24,11 +24,11 @@ use serde_json::to_value;
 use vfs::AbsPath;
 
 use crate::{
-    completion_item_hash,
     config::{CallInfoConfig, Config},
     global_state::GlobalStateSnapshot,
     line_index::{LineEndings, LineIndex, PositionEncoding},
     lsp::{
+        completion_item_hash,
         ext::ShellRunnableArgs,
         semantic_tokens::{self, standard_fallback_type},
         utils::invalid_params_error,
