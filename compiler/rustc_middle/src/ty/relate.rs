@@ -49,6 +49,7 @@ impl<'tcx> Relate<TyCtxt<'tcx>> for ty::Pattern<'tcx> {
         a: Self,
         b: Self,
     ) -> RelateResult<'tcx, Self> {
+        let tcx = relation.cx();
         match (&*a, &*b) {
             (
                 &ty::PatternKind::Range { start: start_a, end: end_a },
@@ -56,7 +57,7 @@ impl<'tcx> Relate<TyCtxt<'tcx>> for ty::Pattern<'tcx> {
             ) => {
                 let start = relation.relate(start_a, start_b)?;
                 let end = relation.relate(end_a, end_b)?;
-                Ok(relation.cx().mk_pat(ty::PatternKind::Range { start, end }))
+                Ok(tcx.mk_pat(ty::PatternKind::Range { start, end }))
             }
         }
     }

@@ -304,7 +304,7 @@ impl<I: Interner> FlagComputation<I> {
 
             ty::Pat(ty, pat) => {
                 self.add_ty(ty);
-                self.add_flags(pat.flags());
+                self.add_ty_pat(pat);
             }
 
             ty::Slice(tt) => self.add_ty(tt),
@@ -336,6 +336,10 @@ impl<I: Interner> FlagComputation<I> {
                 })
             }
         }
+    }
+
+    fn add_ty_pat(&mut self, pat: <I as Interner>::Pat) {
+        self.add_flags(pat.flags());
     }
 
     fn add_predicate(&mut self, binder: ty::Binder<I, ty::PredicateKind<I>>) {

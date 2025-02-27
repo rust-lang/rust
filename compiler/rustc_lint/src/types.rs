@@ -878,23 +878,31 @@ fn ty_is_known_nonnull<'tcx>(
         }
         ty::Pat(base, pat) => {
             ty_is_known_nonnull(tcx, typing_env, *base, mode)
-                || Option::unwrap_or_default(
-                    try {
-                        match **pat {
-                            ty::PatternKind::Range { start, end } => {
-                                let start = start.try_to_value()?.try_to_bits(tcx, typing_env)?;
-                                let end = end.try_to_value()?.try_to_bits(tcx, typing_env)?;
-
-                                // This also works for negative numbers, as we just need
-                                // to ensure we aren't wrapping over zero.
-                                start > 0 && end >= start
-                            }
-                        }
-                    },
-                )
+                || pat_ty_is_known_nonnull(tcx, typing_env, *pat)
         }
         _ => false,
     }
+}
+
+fn pat_ty_is_known_nonnull<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
+    pat: ty::Pattern<'tcx>,
+) -> bool {
+    Option::unwrap_or_default(
+        try {
+            match *pat {
+                ty::PatternKind::Range { start, end } => {
+                    let start = start.try_to_value()?.try_to_bits(tcx, typing_env)?;
+                    let end = end.try_to_value()?.try_to_bits(tcx, typing_env)?;
+
+                    // This also works for negative numbers, as we just need
+                    // to ensure we aren't wrapping over zero.
+                    start > 0 && end >= start
+                }
+            }
+        },
+    )
 }
 
 /// Given a non-null scalar (or transparent) type `ty`, return the nullable version of that type.
