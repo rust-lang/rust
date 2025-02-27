@@ -1619,16 +1619,17 @@ impl<'tcx> TyCtxt<'tcx> {
         self.reserve_and_set_memory_dedup(alloc, salt)
     }
 
+    /// Traits added on all bounds by default, excluding `Sized` which is treated separately.
     pub fn default_traits(self) -> &'static [rustc_hir::LangItem] {
-        match self.sess.opts.unstable_opts.experimental_default_bounds {
-            true => &[
-                LangItem::Sized,
+        if self.sess.opts.unstable_opts.experimental_default_bounds {
+            &[
                 LangItem::DefaultTrait1,
                 LangItem::DefaultTrait2,
                 LangItem::DefaultTrait3,
                 LangItem::DefaultTrait4,
-            ],
-            false => &[LangItem::Sized],
+            ]
+        } else {
+            &[]
         }
     }
 
