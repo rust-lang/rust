@@ -930,7 +930,6 @@ fn default_emitter(
                     .fluent_bundle(bundle)
                     .sm(source_map)
                     .short_message(short)
-                    .teach(sopts.unstable_opts.teach)
                     .diagnostic_width(sopts.diagnostic_width)
                     .macro_backtrace(macro_backtrace)
                     .track_diagnostics(track_diagnostics)
