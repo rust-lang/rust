@@ -14,7 +14,7 @@
 //@ [M68K] compile-flags: --target=m68k-unknown-linux-gnu
 //@ [M68K] needs-llvm-components: m68k
 
-#![feature(no_core, lang_items)]
+#![feature(no_core, lang_items, const_trait_impl)]
 #![no_std]
 #![no_core]
 #![crate_type = "lib"]
@@ -23,9 +23,11 @@
 pub trait PointeeSized {}
 
 #[lang = "meta_sized"]
+#[const_trait]
 pub trait MetaSized: PointeeSized {}
 
 #[lang = "sized"]
+#[const_trait]
 pub trait Sized: MetaSized {}
 
 #[lang = "drop_in_place"]

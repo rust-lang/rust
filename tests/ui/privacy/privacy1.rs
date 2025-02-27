@@ -1,10 +1,12 @@
-#![feature(lang_items, no_core)]
+#![feature(lang_items, const_trait_impl, no_core)]
 #![no_core] // makes debugging this test *a lot* easier (during resolve)
 
 #[lang = "sized"]
+#[const_trait]
 pub trait Sized: MetaSized {}
 
 #[lang = "meta_sized"]
+#[const_trait]
 pub trait MetaSized: PointeeSized {}
 
 #[lang = "pointee_sized"]

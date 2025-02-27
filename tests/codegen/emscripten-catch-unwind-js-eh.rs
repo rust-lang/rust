@@ -4,7 +4,7 @@
 // Emscripten has its own unique implementation of catch_unwind (in `codegen_emcc_try`),
 // make sure it generates something reasonable.
 
-#![feature(no_core, lang_items, intrinsics, rustc_attrs)]
+#![feature(no_core, lang_items, intrinsics, rustc_attrs, const_trait_impl)]
 #![crate_type = "lib"]
 #![no_std]
 #![no_core]
@@ -13,9 +13,11 @@
 pub trait PointeeSized {}
 
 #[lang = "meta_sized"]
+#[const_trait]
 pub trait MetaSized: PointeeSized {}
 
 #[lang = "sized"]
+#[const_trait]
 pub trait Sized: MetaSized {}
 #[lang = "freeze"]
 trait Freeze {}

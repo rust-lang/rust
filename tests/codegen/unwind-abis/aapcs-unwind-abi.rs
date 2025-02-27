@@ -1,15 +1,17 @@
 //@ needs-llvm-components: arm
 //@ compile-flags: --target=armv7-unknown-linux-gnueabihf --crate-type=rlib -Cno-prepopulate-passes
 #![no_core]
-#![feature(no_core, lang_items)]
+#![feature(no_core, lang_items, const_trait_impl)]
 
 #[lang = "pointee_sized"]
 pub trait PointeeSized {}
 
 #[lang = "meta_sized"]
+#[const_trait]
 pub trait MetaSized: PointeeSized {}
 
 #[lang = "sized"]
+#[const_trait]
 pub trait Sized: MetaSized {}
 
 // Test that `nounwind` attributes are correctly applied to exported `aapcs` and

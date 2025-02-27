@@ -1,16 +1,18 @@
 // Checks that declaring a lang item with the wrong number of generic arguments errors rather than
 // crashing (issue #83474, #83893, #87573, part of #9307, #79559).
 
-#![feature(lang_items, no_core)]
+#![feature(lang_items, no_core, const_trait_impl)]
 #![no_core]
 
 #[lang = "pointee_sized"]
 pub trait MyPointeeSized {}
 
 #[lang = "meta_sized"]
+#[const_trait]
 pub trait MyMetaSized: MyPointeeSized {}
 
 #[lang = "sized"]
+#[const_trait]
 trait MySized: MyMetaSized {}
 
 #[lang = "add"]

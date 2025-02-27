@@ -4,16 +4,18 @@
 //@[paca] compile-flags: -Ctarget-feature=+paca
 //@[pacg] compile-flags: -Ctarget-feature=+pacg
 
-#![feature(no_core, lang_items)]
+#![feature(no_core, lang_items, const_trait_impl)]
 #![no_core]
 
 #[lang = "pointee_sized"]
 pub trait PointeeSized {}
 
 #[lang = "meta_sized"]
+#[const_trait]
 pub trait MetaSized: PointeeSized {}
 
 #[lang = "sized"]
+#[const_trait]
 pub trait Sized: MetaSized {}
 
 // Can't use `compile_error!` here without `core`/`std` but requiring these makes this test only

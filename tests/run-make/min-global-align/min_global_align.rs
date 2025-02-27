@@ -1,4 +1,4 @@
-#![feature(no_core, lang_items, freeze_impls)]
+#![feature(no_core, lang_items, freeze_impls, const_trait_impl)]
 #![crate_type = "rlib"]
 #![no_core]
 
@@ -13,9 +13,11 @@ pub static CONST_BOOL_REF: &'static bool = &CONST_BOOL;
 pub trait PointeeSized {}
 
 #[lang = "meta_sized"]
+#[const_trait]
 pub trait MetaSized: PointeeSized {}
 
 #[lang = "sized"]
+#[const_trait]
 pub trait Sized: MetaSized {}
 
 #[lang = "copy"]

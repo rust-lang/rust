@@ -2,6 +2,7 @@
 
 #![feature(
     auto_traits,
+    const_trait_impl,
     lang_items,
     more_maybe_bounds,
     negative_impls,
@@ -16,9 +17,11 @@
 trait PointeeSized {}
 
 #[lang = "meta_sized"]
+#[const_trait]
 trait MetaSized: PointeeSized {}
 
 #[lang = "sized"]
+#[const_trait]
 trait Sized: MetaSized {}
 
 #[lang = "copy"]

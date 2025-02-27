@@ -2,16 +2,18 @@
 //@ needs-llvm-components: x86
 //@ compile-flags: -Ctarget-feature=-x87
 //@ build-pass
-#![feature(no_core, lang_items)]
+#![feature(no_core, lang_items, const_trait_impl)]
 #![no_core]
 
 #[lang = "pointee_sized"]
 pub trait PointeeSized {}
 
 #[lang = "meta_sized"]
+#[const_trait]
 pub trait MetaSized: PointeeSized {}
 
 #[lang = "sized"]
+#[const_trait]
 pub trait Sized: MetaSized {}
 
 //~? WARN unstable feature specified for `-Ctarget-feature`: `x87`

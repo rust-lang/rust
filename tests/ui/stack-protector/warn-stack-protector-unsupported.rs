@@ -7,7 +7,7 @@
 //@ [basic] compile-flags: -Z stack-protector=basic
 
 #![crate_type = "lib"]
-#![feature(no_core, lang_items)]
+#![feature(no_core, lang_items, const_trait_impl)]
 #![no_std]
 #![no_core]
 
@@ -15,9 +15,11 @@
 pub trait PointeeSized {}
 
 #[lang = "meta_sized"]
+#[const_trait]
 pub trait MetaSized: PointeeSized {}
 
 #[lang = "sized"]
+#[const_trait]
 trait Sized: MetaSized {}
 
 #[lang = "copy"]
