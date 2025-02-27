@@ -53,7 +53,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualBits {
         if let ExprKind::Binary(bin_op, left_expr, right_expr) = expr.kind
             && let BinOpKind::Mul = &bin_op.node
             && !expr.span.from_expansion()
-            && self.msrv.meets(msrvs::MANUAL_BITS)
+            && self.msrv.meets(msrvs::INTEGER_BITS)
             && let ctxt = expr.span.ctxt()
             && left_expr.span.ctxt() == ctxt
             && right_expr.span.ctxt() == ctxt

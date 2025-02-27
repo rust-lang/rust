@@ -51,6 +51,7 @@ error: manual implementation of `ok`
 LL |       let _ = if let Ok(v) = funcall() {
    |  _____________^
 LL | |
+LL | |
 LL | |         Some(v)
 LL | |     } else {
 LL | |         None
@@ -58,10 +59,11 @@ LL | |     };
    | |_____^ help: replace with: `funcall().ok()`
 
 error: manual implementation of `err`
-  --> tests/ui/manual_ok_err.rs:39:13
+  --> tests/ui/manual_ok_err.rs:40:13
    |
 LL |       let _ = if let Err(v) = funcall() {
    |  _____________^
+LL | |
 LL | |
 LL | |         Some(v)
 LL | |     } else {
@@ -70,7 +72,7 @@ LL | |     };
    | |_____^ help: replace with: `funcall().err()`
 
 error: manual implementation of `ok`
-  --> tests/ui/manual_ok_err.rs:47:13
+  --> tests/ui/manual_ok_err.rs:49:13
    |
 LL |       let _ = match funcall() {
    |  _____________^
@@ -81,7 +83,7 @@ LL | |     };
    | |_____^ help: replace with: `funcall().ok()`
 
 error: manual implementation of `ok`
-  --> tests/ui/manual_ok_err.rs:64:13
+  --> tests/ui/manual_ok_err.rs:66:13
    |
 LL |       let _ = match -S {
    |  _____________^
@@ -91,5 +93,23 @@ LL | |         _ => None,
 LL | |     };
    | |_____^ help: replace with: `(-S).ok()`
 
-error: aborting due to 8 previous errors
+error: manual implementation of `ok`
+  --> tests/ui/manual_ok_err.rs:132:12
+   |
+LL |       } else if let Ok(n) = "1".parse::<u8>() {
+   |  ____________^
+LL | |         Some(n)
+LL | |     } else {
+LL | |         None
+LL | |     };
+   | |_____^
+   |
+help: replace with
+   |
+LL ~     } else {
+LL +         "1".parse::<u8>().ok()
+LL ~     };
+   |
+
+error: aborting due to 9 previous errors
 

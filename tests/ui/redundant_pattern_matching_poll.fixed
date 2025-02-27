@@ -13,10 +13,13 @@ use std::task::Poll::{self, Pending, Ready};
 
 fn main() {
     if Pending::<()>.is_pending() {}
+    //~^ redundant_pattern_matching
 
     if Ready(42).is_ready() {}
+    //~^ redundant_pattern_matching
 
     if Ready(42).is_ready() {
+        //~^ redundant_pattern_matching
         foo();
     } else {
         bar();
@@ -24,15 +27,20 @@ fn main() {
 
     // Issue 6459
     if Ready(42).is_ready() {}
+    //~^ redundant_pattern_matching
 
     // Issue 6459
     if Pending::<()>.is_pending() {}
+    //~^ redundant_pattern_matching
 
     while Ready(42).is_ready() {}
+    //~^ redundant_pattern_matching
 
     while Ready(42).is_pending() {}
+    //~^ redundant_pattern_matching
 
     while Pending::<()>.is_pending() {}
+    //~^ redundant_pattern_matching
 
     if Pending::<i32>.is_pending() {}
 
@@ -46,12 +54,15 @@ fn main() {
 
     let poll = Ready(false);
     let _ = if poll.is_ready() { true } else { false };
+    //~^ redundant_pattern_matching
 
     poll_const();
 
     let _ = if gen_poll().is_ready() {
+        //~^ redundant_pattern_matching
         1
     } else if gen_poll().is_pending() {
+        //~^ redundant_pattern_matching
         2
     } else {
         3
@@ -68,12 +79,16 @@ fn bar() {}
 
 const fn poll_const() {
     if Ready(42).is_ready() {}
+    //~^ redundant_pattern_matching
 
     if Pending::<()>.is_pending() {}
+    //~^ redundant_pattern_matching
 
     while Ready(42).is_ready() {}
+    //~^ redundant_pattern_matching
 
     while Pending::<()>.is_pending() {}
+    //~^ redundant_pattern_matching
 
     Ready(42).is_ready();
 

@@ -2,6 +2,7 @@ error: direct implementation of `ToString`
   --> tests/ui/to_string_trait_impl.rs:11:1
    |
 LL | / impl ToString for Point {
+LL | |
 LL | |     fn to_string(&self) -> String {
 LL | |         format!("({}, {})", self.x, self.y)
 LL | |     }

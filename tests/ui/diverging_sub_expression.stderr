@@ -20,19 +20,19 @@ LL |             6 => true || return,
    |                          ^^^^^^
 
 error: sub-expression diverges
-  --> tests/ui/diverging_sub_expression.rs:36:26
+  --> tests/ui/diverging_sub_expression.rs:37:26
    |
 LL |             7 => true || continue,
    |                          ^^^^^^^^
 
 error: sub-expression diverges
-  --> tests/ui/diverging_sub_expression.rs:40:26
+  --> tests/ui/diverging_sub_expression.rs:42:26
    |
 LL |             3 => true || diverge(),
    |                          ^^^^^^^^^
 
 error: sub-expression diverges
-  --> tests/ui/diverging_sub_expression.rs:44:30
+  --> tests/ui/diverging_sub_expression.rs:47:30
    |
 LL |                 _ => true || panic!("boo"),
    |                              ^^^^^^^^^^^^^
@@ -40,31 +40,31 @@ LL |                 _ => true || panic!("boo"),
    = note: this error originates in the macro `$crate::panic::panic_2021` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: sub-expression diverges
-  --> tests/ui/diverging_sub_expression.rs:48:29
+  --> tests/ui/diverging_sub_expression.rs:52:29
    |
 LL |             15 => true || { return; },
    |                             ^^^^^^
 
 error: sub-expression diverges
-  --> tests/ui/diverging_sub_expression.rs:50:30
+  --> tests/ui/diverging_sub_expression.rs:55:30
    |
 LL |             16 => false || { return; },
    |                              ^^^^^^
 
 error: sub-expression diverges
-  --> tests/ui/diverging_sub_expression.rs:53:29
+  --> tests/ui/diverging_sub_expression.rs:59:29
    |
 LL |             17 => true || { return },
    |                             ^^^^^^
 
 error: sub-expression diverges
-  --> tests/ui/diverging_sub_expression.rs:55:30
+  --> tests/ui/diverging_sub_expression.rs:62:30
    |
 LL |             18 => false || { return },
    |                              ^^^^^^
 
 error: sub-expression diverges
-  --> tests/ui/diverging_sub_expression.rs:65:26
+  --> tests/ui/diverging_sub_expression.rs:73:26
    |
 LL |             _ => true || break,
    |                          ^^^^^

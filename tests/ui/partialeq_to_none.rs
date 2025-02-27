@@ -12,6 +12,7 @@ impl PartialEq<Option<()>> for Foobar {
 #[allow(dead_code)]
 fn foo(f: Option<u32>) -> &'static str {
     if f != None { "yay" } else { "nay" }
+    //~^ partialeq_to_none
 }
 
 fn foobar() -> Option<()> {
@@ -42,19 +43,28 @@ fn main() {
     let x = Some(0);
 
     let _ = x == None;
+    //~^ partialeq_to_none
     let _ = x != None;
+    //~^ partialeq_to_none
     let _ = None == x;
+    //~^ partialeq_to_none
     let _ = None != x;
+    //~^ partialeq_to_none
 
     if foobar() == None {}
+    //~^ partialeq_to_none
 
     if bar().ok() != None {}
+    //~^ partialeq_to_none
 
     let _ = Some(1 + 2) != None;
+    //~^ partialeq_to_none
 
     let _ = { Some(0) } == None;
+    //~^ partialeq_to_none
 
     let _ = {
+        //~^ partialeq_to_none
         /*
           This comment runs long
         */
@@ -65,10 +75,15 @@ fn main() {
     let _ = Foobar == None;
 
     let _ = optref() == &&None;
+    //~^ partialeq_to_none
     let _ = &&None != optref();
+    //~^ partialeq_to_none
     let _ = **optref() == None;
+    //~^ partialeq_to_none
     let _ = &None != *optref();
+    //~^ partialeq_to_none
 
     let x = Box::new(Option::<()>::None);
     let _ = None != *x;
+    //~^ partialeq_to_none
 }

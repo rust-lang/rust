@@ -38,8 +38,8 @@ declare_clippy_lint! {
     /// them leads to more readable code.
     ///
     /// ### Known problems
-    /// - We bail out if the function has a `where` clause where lifetimes
-    /// are mentioned due to potential false positives.
+    /// This lint ignores functions with `where` clauses that reference
+    /// lifetimes to prevent false positives.
     ///
     /// ### Example
     /// ```no_run
@@ -60,6 +60,38 @@ declare_clippy_lint! {
     complexity,
     "using explicit lifetimes for references in function arguments when elision rules \
      would allow omitting them"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for lifetime annotations which can be replaced with anonymous lifetimes (`'_`).
+    ///
+    /// ### Why is this bad?
+    /// The additional lifetimes can make the code look more complicated.
+    ///
+    /// ### Known problems
+    /// This lint ignores functions with `where` clauses that reference
+    /// lifetimes to prevent false positives.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # use std::str::Chars;
+    /// fn f<'a>(x: &'a str) -> Chars<'a> {
+    ///     x.chars()
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// # use std::str::Chars;
+    /// fn f(x: &str) -> Chars<'_> {
+    ///     x.chars()
+    /// }
+    /// ```
+    #[clippy::version = "1.84.0"]
+    pub ELIDABLE_LIFETIME_NAMES,
+    pedantic,
+    "lifetime name that can be replaced with the anonymous lifetime"
 }
 
 declare_clippy_lint! {
@@ -104,7 +136,11 @@ impl Lifetimes {
     }
 }
 
-impl_lint_pass!(Lifetimes => [NEEDLESS_LIFETIMES, EXTRA_UNUSED_LIFETIMES]);
+impl_lint_pass!(Lifetimes => [
+    NEEDLESS_LIFETIMES,
+    ELIDABLE_LIFETIME_NAMES,
+    EXTRA_UNUSED_LIFETIMES,
+]);
 
 impl<'tcx> LateLintPass<'tcx> for Lifetimes {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
@@ -746,6 +782,15 @@ fn report_elidable_impl_lifetimes<'tcx>(
     report_elidable_lifetimes(cx, impl_.generics, &elidable_lts, &usages, true);
 }
 
+#[derive(Copy, Clone)]
+enum ElidableUsage {
+    /// Used in a ref (`&'a T`), can be removed
+    Ref(Span),
+    /// Used as a generic param (`T<'a>`) or an impl lifetime (`impl T + 'a`), can be replaced
+    /// with `'_`
+    Other(Span),
+}
+
 /// Generate diagnostic messages for elidable lifetimes.
 fn report_elidable_lifetimes(
     cx: &LateContext<'_>,
@@ -763,9 +808,29 @@ fn report_elidable_lifetimes(
         .collect::<Vec<_>>()
         .join(", ");
 
+    let elidable_usages: Vec<ElidableUsage> = usages
+        .iter()
+        .filter(|usage| named_lifetime(usage).is_some_and(|id| elidable_lts.contains(&id)))
+        .map(|usage| match cx.tcx.parent_hir_node(usage.hir_id) {
+            Node::Ty(Ty {
+                kind: TyKind::Ref(..), ..
+            }) => ElidableUsage::Ref(usage.ident.span),
+            _ => ElidableUsage::Other(usage.ident.span),
+        })
+        .collect();
+
+    let lint = if elidable_usages
+        .iter()
+        .any(|usage| matches!(usage, ElidableUsage::Other(_)))
+    {
+        ELIDABLE_LIFETIME_NAMES
+    } else {
+        NEEDLESS_LIFETIMES
+    };
+
     span_lint_and_then(
         cx,
-        NEEDLESS_LIFETIMES,
+        lint,
         elidable_lts
             .iter()
             .map(|&lt| cx.tcx.def_span(lt))
@@ -785,7 +850,7 @@ fn report_elidable_lifetimes(
                 return;
             }
 
-            if let Some(suggestions) = elision_suggestions(cx, generics, elidable_lts, usages) {
+            if let Some(suggestions) = elision_suggestions(cx, generics, elidable_lts, &elidable_usages) {
                 diag.multipart_suggestion("elide the lifetimes", suggestions, Applicability::MachineApplicable);
             }
         },
@@ -796,7 +861,7 @@ fn elision_suggestions(
     cx: &LateContext<'_>,
     generics: &Generics<'_>,
     elidable_lts: &[LocalDefId],
-    usages: &[Lifetime],
+    usages: &[ElidableUsage],
 ) -> Option<Vec<(Span, String)>> {
     let explicit_params = generics
         .params
@@ -836,26 +901,21 @@ fn elision_suggestions(
             .collect::<Option<Vec<_>>>()?
     };
 
-    suggestions.extend(
-        usages
-            .iter()
-            .filter(|usage| named_lifetime(usage).is_some_and(|id| elidable_lts.contains(&id)))
-            .map(|usage| {
-                match cx.tcx.parent_hir_node(usage.hir_id) {
-                    Node::Ty(Ty {
-                        kind: TyKind::Ref(..), ..
-                    }) => {
-                        // expand `&'a T` to `&'a T`
-                        //          ^^         ^^^
-                        let span = cx.sess().source_map().span_extend_while_whitespace(usage.ident.span);
+    suggestions.extend(usages.iter().map(|&usage| {
+        match usage {
+            ElidableUsage::Ref(span) => {
+                // expand `&'a T` to `&'a T`
+                //          ^^         ^^^
+                let span = cx.sess().source_map().span_extend_while_whitespace(span);
 
-                        (span, String::new())
-                    },
-                    // `T<'a>` and `impl Foo + 'a` should be replaced by `'_`
-                    _ => (usage.ident.span, String::from("'_")),
-                }
-            }),
-    );
+                (span, String::new())
+            },
+            ElidableUsage::Other(span) => {
+                // `T<'a>` and `impl Foo + 'a` should be replaced by `'_`
+                (span, String::from("'_"))
+            },
+        }
+    }));
 
     Some(suggestions)
 }

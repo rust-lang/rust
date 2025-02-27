@@ -1,11 +1,10 @@
 use crate::utils::{clippy_project_root, clippy_version};
 use indoc::{formatdoc, writedoc};
-use std::fmt;
 use std::fmt::Write as _;
 use std::fs::{self, OpenOptions};
 use std::io::prelude::*;
-use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
+use std::{fmt, io};
 
 struct LintData<'a> {
     pass: &'a str,
@@ -25,7 +24,7 @@ impl<T> Context for io::Result<T> {
             Ok(t) => Ok(t),
             Err(e) => {
                 let message = format!("{}: {e}", text.as_ref());
-                Err(io::Error::new(ErrorKind::Other, message))
+                Err(io::Error::other(message))
             },
         }
     }

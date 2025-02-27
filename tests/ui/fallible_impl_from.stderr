@@ -3,15 +3,15 @@ error: consider implementing `TryFrom` instead
    |
 LL | / impl From<String> for Foo {
 LL | |
+LL | |
 LL | |     fn from(s: String) -> Self {
-LL | |         Foo(s.parse().unwrap())
-LL | |     }
+...  |
 LL | | }
    | |_^
    |
    = help: `From` is intended for infallible conversions only. Use `TryFrom` if there's a possibility for the conversion to fail
 note: potential failure(s)
-  --> tests/ui/fallible_impl_from.rs:9:13
+  --> tests/ui/fallible_impl_from.rs:10:13
    |
 LL |         Foo(s.parse().unwrap())
    |             ^^^^^^^^^^^^^^^^^^
@@ -22,38 +22,38 @@ LL | #![deny(clippy::fallible_impl_from)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: consider implementing `TryFrom` instead
-  --> tests/ui/fallible_impl_from.rs:28:1
+  --> tests/ui/fallible_impl_from.rs:29:1
    |
 LL | / impl From<usize> for Invalid {
 LL | |
+LL | |
 LL | |     fn from(i: usize) -> Invalid {
-LL | |         if i != 42 {
 ...  |
 LL | | }
    | |_^
    |
    = help: `From` is intended for infallible conversions only. Use `TryFrom` if there's a possibility for the conversion to fail
 note: potential failure(s)
-  --> tests/ui/fallible_impl_from.rs:32:13
+  --> tests/ui/fallible_impl_from.rs:34:13
    |
 LL |             panic!();
    |             ^^^^^^^^
    = note: this error originates in the macro `$crate::panic::panic_2021` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: consider implementing `TryFrom` instead
-  --> tests/ui/fallible_impl_from.rs:38:1
+  --> tests/ui/fallible_impl_from.rs:40:1
    |
 LL | / impl From<Option<String>> for Invalid {
 LL | |
+LL | |
 LL | |     fn from(s: Option<String>) -> Invalid {
-LL | |         let s = s.unwrap();
 ...  |
 LL | | }
    | |_^
    |
    = help: `From` is intended for infallible conversions only. Use `TryFrom` if there's a possibility for the conversion to fail
 note: potential failure(s)
-  --> tests/ui/fallible_impl_from.rs:41:17
+  --> tests/ui/fallible_impl_from.rs:44:17
    |
 LL |         let s = s.unwrap();
    |                 ^^^^^^^^^^
@@ -67,19 +67,19 @@ LL |             panic!("{:?}", s);
    = note: this error originates in the macro `$crate::panic::panic_2021` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: consider implementing `TryFrom` instead
-  --> tests/ui/fallible_impl_from.rs:57:1
+  --> tests/ui/fallible_impl_from.rs:60:1
    |
 LL | / impl<'a> From<&'a mut <Box<u32> as ProjStrTrait>::ProjString> for Invalid {
 LL | |
+LL | |
 LL | |     fn from(s: &'a mut <Box<u32> as ProjStrTrait>::ProjString) -> Invalid {
-LL | |         if s.parse::<u32>().ok().unwrap() != 42 {
 ...  |
 LL | | }
    | |_^
    |
    = help: `From` is intended for infallible conversions only. Use `TryFrom` if there's a possibility for the conversion to fail
 note: potential failure(s)
-  --> tests/ui/fallible_impl_from.rs:60:12
+  --> tests/ui/fallible_impl_from.rs:64:12
    |
 LL |         if s.parse::<u32>().ok().unwrap() != 42 {
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

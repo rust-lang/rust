@@ -10,7 +10,7 @@ LL |     println!("");
    = help: to override `-D warnings` add `#[allow(clippy::println_empty_string)]`
 
 error: empty string literal in `println!`
-  --> tests/ui/println_empty_string.rs:8:14
+  --> tests/ui/println_empty_string.rs:9:14
    |
 LL |         _ => println!(""),
    |              ^^^^^^^^^--^
@@ -18,7 +18,7 @@ LL |         _ => println!(""),
    |                       help: remove the empty string
 
 error: empty string literal in `eprintln!`
-  --> tests/ui/println_empty_string.rs:12:5
+  --> tests/ui/println_empty_string.rs:14:5
    |
 LL |     eprintln!("");
    |     ^^^^^^^^^^--^
@@ -26,7 +26,7 @@ LL |     eprintln!("");
    |               help: remove the empty string
 
 error: empty string literal in `eprintln!`
-  --> tests/ui/println_empty_string.rs:15:14
+  --> tests/ui/println_empty_string.rs:18:14
    |
 LL |         _ => eprintln!(""),
    |              ^^^^^^^^^^--^

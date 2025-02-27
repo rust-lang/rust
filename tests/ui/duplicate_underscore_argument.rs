@@ -1,8 +1,8 @@
 #![warn(clippy::duplicate_underscore_argument)]
 
 fn join_the_dark_side(darth: i32, _darth: i32) {}
-//~^ ERROR: `darth` already exists, having another argument having almost the same name ma
-//~| NOTE: `-D clippy::duplicate-underscore-argument` implied by `-D warnings`
+//~^ duplicate_underscore_argument
+
 fn join_the_light_side(knight: i32, _master: i32) {} // the Force is strong with this one
 
 fn main() {

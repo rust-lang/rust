@@ -8,7 +8,7 @@ LL |     vec.sort_by(|a, b| (a + 1).cmp(&(b + 1)));
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_sort_by)]`
 
 error: consider using `sort_by_key`
-  --> tests/ui/unnecessary_sort_by_no_std.rs:18:5
+  --> tests/ui/unnecessary_sort_by_no_std.rs:19:5
    |
 LL |     vec.sort_by(|a, b| (b + 1).cmp(&(a + 1)));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `vec.sort_by_key(|b| core::cmp::Reverse(b + 1))`

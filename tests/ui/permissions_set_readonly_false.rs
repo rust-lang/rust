@@ -17,8 +17,8 @@ fn main() {
     let mut permissions = metadata.permissions();
     // lint here
     permissions.set_readonly(false);
-    //~^ ERROR: call to `set_readonly` with argument `false`
-    //~| NOTE: on Unix platforms this results in the file being world writable
+    //~^ permissions_set_readonly_false
+
     // no lint
     permissions.set_readonly(true);
 

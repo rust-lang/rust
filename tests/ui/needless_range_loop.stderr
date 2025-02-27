@@ -25,7 +25,7 @@ LL +     for <item> in &vec {
    |
 
 error: the loop variable `j` is only used to index `STATIC`
-  --> tests/ui/needless_range_loop.rs:33:14
+  --> tests/ui/needless_range_loop.rs:34:14
    |
 LL |     for j in 0..4 {
    |              ^^^^
@@ -37,7 +37,7 @@ LL +     for <item> in &STATIC {
    |
 
 error: the loop variable `j` is only used to index `CONST`
-  --> tests/ui/needless_range_loop.rs:38:14
+  --> tests/ui/needless_range_loop.rs:40:14
    |
 LL |     for j in 0..4 {
    |              ^^^^
@@ -49,7 +49,7 @@ LL +     for <item> in &CONST {
    |
 
 error: the loop variable `i` is used to index `vec`
-  --> tests/ui/needless_range_loop.rs:43:14
+  --> tests/ui/needless_range_loop.rs:46:14
    |
 LL |     for i in 0..vec.len() {
    |              ^^^^^^^^^^^^
@@ -61,7 +61,7 @@ LL +     for (i, <item>) in vec.iter().enumerate() {
    |
 
 error: the loop variable `i` is only used to index `vec2`
-  --> tests/ui/needless_range_loop.rs:52:14
+  --> tests/ui/needless_range_loop.rs:56:14
    |
 LL |     for i in 0..vec.len() {
    |              ^^^^^^^^^^^^
@@ -73,7 +73,7 @@ LL +     for <item> in vec2.iter().take(vec.len()) {
    |
 
 error: the loop variable `i` is only used to index `vec`
-  --> tests/ui/needless_range_loop.rs:57:14
+  --> tests/ui/needless_range_loop.rs:62:14
    |
 LL |     for i in 5..vec.len() {
    |              ^^^^^^^^^^^^
@@ -85,7 +85,7 @@ LL +     for <item> in vec.iter().skip(5) {
    |
 
 error: the loop variable `i` is only used to index `vec`
-  --> tests/ui/needless_range_loop.rs:62:14
+  --> tests/ui/needless_range_loop.rs:68:14
    |
 LL |     for i in 0..MAX_LEN {
    |              ^^^^^^^^^^
@@ -97,7 +97,7 @@ LL +     for <item> in vec.iter().take(MAX_LEN) {
    |
 
 error: the loop variable `i` is only used to index `vec`
-  --> tests/ui/needless_range_loop.rs:67:14
+  --> tests/ui/needless_range_loop.rs:74:14
    |
 LL |     for i in 0..=MAX_LEN {
    |              ^^^^^^^^^^^
@@ -109,7 +109,7 @@ LL +     for <item> in vec.iter().take(MAX_LEN + 1) {
    |
 
 error: the loop variable `i` is only used to index `vec`
-  --> tests/ui/needless_range_loop.rs:72:14
+  --> tests/ui/needless_range_loop.rs:80:14
    |
 LL |     for i in 5..10 {
    |              ^^^^^
@@ -121,7 +121,7 @@ LL +     for <item> in vec.iter().take(10).skip(5) {
    |
 
 error: the loop variable `i` is only used to index `vec`
-  --> tests/ui/needless_range_loop.rs:77:14
+  --> tests/ui/needless_range_loop.rs:86:14
    |
 LL |     for i in 5..=10 {
    |              ^^^^^^
@@ -133,7 +133,7 @@ LL +     for <item> in vec.iter().take(10 + 1).skip(5) {
    |
 
 error: the loop variable `i` is used to index `vec`
-  --> tests/ui/needless_range_loop.rs:82:14
+  --> tests/ui/needless_range_loop.rs:92:14
    |
 LL |     for i in 5..vec.len() {
    |              ^^^^^^^^^^^^
@@ -145,7 +145,7 @@ LL +     for (i, <item>) in vec.iter().enumerate().skip(5) {
    |
 
 error: the loop variable `i` is used to index `vec`
-  --> tests/ui/needless_range_loop.rs:87:14
+  --> tests/ui/needless_range_loop.rs:98:14
    |
 LL |     for i in 5..10 {
    |              ^^^^^
@@ -157,7 +157,7 @@ LL +     for (i, <item>) in vec.iter().enumerate().take(10).skip(5) {
    |
 
 error: the loop variable `i` is used to index `vec`
-  --> tests/ui/needless_range_loop.rs:93:14
+  --> tests/ui/needless_range_loop.rs:105:14
    |
 LL |     for i in 0..vec.len() {
    |              ^^^^^^^^^^^^

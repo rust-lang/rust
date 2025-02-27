@@ -36,6 +36,7 @@ mod implicit_clone;
 mod inefficient_to_string;
 mod inspect_for_each;
 mod into_iter_on_ref;
+mod io_other_error;
 mod is_digit_ascii_radix;
 mod is_empty;
 mod iter_cloned_collect;
@@ -54,6 +55,7 @@ mod iter_with_drain;
 mod iterator_step_by_zero;
 mod join_absolute_paths;
 mod manual_c_str_literals;
+mod manual_contains;
 mod manual_inspect;
 mod manual_is_variant_and;
 mod manual_next_back;
@@ -82,7 +84,6 @@ mod ok_expect;
 mod open_options;
 mod option_as_ref_cloned;
 mod option_as_ref_deref;
-mod option_map_or_err_ok;
 mod option_map_or_none;
 mod option_map_unwrap_or;
 mod or_fun_call;
@@ -114,6 +115,7 @@ mod suspicious_map;
 mod suspicious_splitn;
 mod suspicious_to_owned;
 mod type_id_on_box;
+mod unbuffered_bytes;
 mod uninit_assumed_init;
 mod unit_hash;
 mod unnecessary_fallible_conversions;
@@ -2642,7 +2644,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.49.0"]
     pub MANUAL_OK_OR,
-    pedantic,
+    style,
     "finds patterns that can be encoded more concisely with `Option::ok_or`"
 }
 
@@ -3786,31 +3788,6 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `_.map_or(Err(_), Ok)`.
-    ///
-    /// ### Why is this bad?
-    /// Readability, this can be written more concisely as
-    /// `_.ok_or(_)`.
-    ///
-    /// ### Example
-    /// ```no_run
-    /// # let opt = Some(1);
-    /// opt.map_or(Err("error"), Ok);
-    /// ```
-    ///
-    /// Use instead:
-    /// ```no_run
-    /// # let opt = Some(1);
-    /// opt.ok_or("error");
-    /// ```
-    #[clippy::version = "1.76.0"]
-    pub OPTION_MAP_OR_ERR_OK,
-    style,
-    "using `Option.map_or(Err(_), Ok)`, which is more succinctly expressed as `Option.ok_or(_)`"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
     /// Checks for iterators of `Result`s using `.filter(Result::is_ok).map(Result::unwrap)` that may
     /// be replaced with a `.flatten()` call.
     ///
@@ -4433,11 +4410,88 @@ declare_clippy_lint! {
     "using `Option::and_then` or `Result::and_then` to chain a computation that returns an `Option` or a `Result`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for calls to `Read::bytes` on types which don't implement `BufRead`.
+    ///
+    /// ### Why is this bad?
+    /// The default implementation calls `read` for each byte, which can be very inefficient for data that’s not in memory, such as `File`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// use std::io::Read;
+    /// use std::fs::File;
+    /// let file = File::open("./bytes.txt").unwrap();
+    /// file.bytes();
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// use std::io::{BufReader, Read};
+    /// use std::fs::File;
+    /// let file = BufReader::new(std::fs::File::open("./bytes.txt").unwrap());
+    /// file.bytes();
+    /// ```
+    #[clippy::version = "1.86.0"]
+    pub UNBUFFERED_BYTES,
+    perf,
+    "calling .bytes() is very inefficient when data is not in memory"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `iter().any()` on slices when it can be replaced with `contains()` and suggests doing so.
+    ///
+    /// ### Why is this bad?
+    /// `contains()` is more concise and idiomatic, sometimes more fast.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// fn foo(values: &[u8]) -> bool {
+    ///    values.iter().any(|&v| v == 10)
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// fn foo(values: &[u8]) -> bool {
+    ///    values.contains(&10)
+    /// }
+    /// ```
+    #[clippy::version = "1.86.0"]
+    pub MANUAL_CONTAINS,
+    perf,
+    "unnecessary `iter().any()` on slices that can be replaced with `contains()`"
+}
+
+declare_clippy_lint! {
+    /// This lint warns on calling `io::Error::new(..)` with a kind of
+    /// `io::ErrorKind::Other`.
+    ///
+    /// ### Why is this bad?
+    /// Since Rust 1.74, there's the `io::Error::other(_)` shortcut.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// use std::io;
+    /// let _ = io::Error::new(io::ErrorKind::Other, "bad".to_string());
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let _ = std::io::Error::other("bad".to_string());
+    /// ```
+    #[clippy::version = "1.86.0"]
+    pub IO_OTHER_ERROR,
+    style,
+    "calling `std::io::Error::new(std::io::ErrorKind::Other, _)`"
+}
+
+#[expect(clippy::struct_excessive_bools)]
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
     allow_expect_in_tests: bool,
     allow_unwrap_in_tests: bool,
+    allow_expect_in_consts: bool,
+    allow_unwrap_in_consts: bool,
     allowed_dotfiles: FxHashSet<&'static str>,
     format_args: FormatArgsStorage,
 }
@@ -4452,6 +4506,8 @@ impl Methods {
             msrv: conf.msrv.clone(),
             allow_expect_in_tests: conf.allow_expect_in_tests,
             allow_unwrap_in_tests: conf.allow_unwrap_in_tests,
+            allow_expect_in_consts: conf.allow_expect_in_consts,
+            allow_unwrap_in_consts: conf.allow_unwrap_in_consts,
             allowed_dotfiles,
             format_args,
         }
@@ -4580,7 +4636,6 @@ impl_lint_pass!(Methods => [
     WAKER_CLONE_WAKE,
     UNNECESSARY_FALLIBLE_CONVERSIONS,
     JOIN_ABSOLUTE_PATHS,
-    OPTION_MAP_OR_ERR_OK,
     RESULT_FILTER_MAP,
     ITER_FILTER_IS_SOME,
     ITER_FILTER_IS_OK,
@@ -4603,6 +4658,9 @@ impl_lint_pass!(Methods => [
     MANUAL_REPEAT_N,
     SLICED_STRING_AS_BYTES,
     RETURN_AND_THEN,
+    UNBUFFERED_BYTES,
+    MANUAL_CONTAINS,
+    IO_OTHER_ERROR,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -4632,6 +4690,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                 unnecessary_fallible_conversions::check_function(cx, expr, func);
                 manual_c_str_literals::check(cx, expr, func, args, &self.msrv);
                 useless_nonzero_new_unchecked::check(cx, expr, func, args, &self.msrv);
+                io_other_error::check(cx, expr, func, args, &self.msrv);
             },
             ExprKind::MethodCall(method_call, receiver, args, _) => {
                 let method_span = method_call.ident.span;
@@ -4860,6 +4919,9 @@ impl Methods {
                         Some(("map", _, [map_arg], _, map_call_span)) => {
                             map_all_any_identity::check(cx, expr, recv, map_call_span, map_arg, call_span, arg, "any");
                         },
+                        Some(("iter", iter_recv, ..)) => {
+                            manual_contains::check(cx, expr, iter_recv, arg);
+                        },
                         _ => {},
                     }
                 },
@@ -4879,6 +4941,7 @@ impl Methods {
                 ("as_ptr", []) => manual_c_str_literals::check_as_ptr(cx, expr, recv, &self.msrv),
                 ("as_ref", []) => useless_asref::check(cx, expr, "as_ref", recv),
                 ("assume_init", []) => uninit_assumed_init::check(cx, expr, recv),
+                ("bytes", []) => unbuffered_bytes::check(cx, expr, recv),
                 ("cloned", []) => {
                     cloned_instead_of_copied::check(cx, expr, recv, span, &self.msrv);
                     option_as_ref_cloned::check(cx, recv, span);
@@ -4946,6 +5009,7 @@ impl Methods {
                             expr,
                             recv,
                             false,
+                            self.allow_expect_in_consts,
                             self.allow_expect_in_tests,
                             unwrap_expect_used::Variant::Expect,
                         ),
@@ -4959,6 +5023,7 @@ impl Methods {
                         expr,
                         recv,
                         true,
+                        self.allow_expect_in_consts,
                         self.allow_expect_in_tests,
                         unwrap_expect_used::Variant::Expect,
                     );
@@ -5147,7 +5212,6 @@ impl Methods {
                 ("map_or", [def, map]) => {
                     option_map_or_none::check(cx, expr, recv, def, map);
                     manual_ok_or::check(cx, expr, recv, def, map);
-                    option_map_or_err_ok::check(cx, expr, recv, def, map);
                     unnecessary_map_or::check(cx, expr, recv, def, map, span, &self.msrv);
                 },
                 ("map_or_else", [def, map]) => {
@@ -5333,6 +5397,7 @@ impl Methods {
                         expr,
                         recv,
                         false,
+                        self.allow_unwrap_in_consts,
                         self.allow_unwrap_in_tests,
                         unwrap_expect_used::Variant::Unwrap,
                     );
@@ -5344,6 +5409,7 @@ impl Methods {
                         expr,
                         recv,
                         true,
+                        self.allow_unwrap_in_consts,
                         self.allow_unwrap_in_tests,
                         unwrap_expect_used::Variant::Unwrap,
                     );
@@ -5357,7 +5423,7 @@ impl Methods {
                             option_map_unwrap_or::check(cx, expr, m_recv, m_arg, recv, u_arg, span, &self.msrv);
                         },
                         Some((then_method @ ("then" | "then_some"), t_recv, [t_arg], _, _)) => {
-                            obfuscated_if_else::check(cx, expr, t_recv, t_arg, u_arg, then_method);
+                            obfuscated_if_else::check(cx, expr, t_recv, t_arg, u_arg, then_method, "unwrap_or");
                         },
                         _ => {},
                     }
@@ -5376,6 +5442,9 @@ impl Methods {
                     match method_call(recv) {
                         Some(("map", recv, [map_arg], _, _))
                             if map_unwrap_or::check(cx, expr, recv, map_arg, u_arg, &self.msrv) => {},
+                        Some((then_method @ ("then" | "then_some"), t_recv, [t_arg], _, _)) => {
+                            obfuscated_if_else::check(cx, expr, t_recv, t_arg, u_arg, then_method, "unwrap_or_else");
+                        },
                         _ => {
                             unnecessary_lazy_eval::check(cx, expr, recv, u_arg, "unwrap_or");
                         },

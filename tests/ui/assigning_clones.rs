@@ -23,60 +23,73 @@ impl Clone for HasCloneFrom {
 
 fn clone_method_rhs_val(mut_thing: &mut HasCloneFrom, value_thing: HasCloneFrom) {
     *mut_thing = value_thing.clone();
+    //~^ assigning_clones
 }
 
 fn clone_method_rhs_ref(mut_thing: &mut HasCloneFrom, ref_thing: &HasCloneFrom) {
     *mut_thing = ref_thing.clone();
+    //~^ assigning_clones
 }
 
 fn clone_method_lhs_val(mut mut_thing: HasCloneFrom, ref_thing: &HasCloneFrom) {
     mut_thing = ref_thing.clone();
+    //~^ assigning_clones
 }
 
 fn clone_function_lhs_mut_ref(mut_thing: &mut HasCloneFrom, ref_thing: &HasCloneFrom) {
     *mut_thing = Clone::clone(ref_thing);
+    //~^ assigning_clones
 }
 
 fn clone_function_lhs_val(mut mut_thing: HasCloneFrom, ref_thing: &HasCloneFrom) {
     mut_thing = Clone::clone(ref_thing);
+    //~^ assigning_clones
 }
 
 fn clone_function_through_trait(mut_thing: &mut HasCloneFrom, ref_thing: &HasCloneFrom) {
     *mut_thing = Clone::clone(ref_thing);
+    //~^ assigning_clones
 }
 
 fn clone_function_through_type(mut_thing: &mut HasCloneFrom, ref_thing: &HasCloneFrom) {
     *mut_thing = HasCloneFrom::clone(ref_thing);
+    //~^ assigning_clones
 }
 
 fn clone_function_fully_qualified(mut_thing: &mut HasCloneFrom, ref_thing: &HasCloneFrom) {
     *mut_thing = <HasCloneFrom as Clone>::clone(ref_thing);
+    //~^ assigning_clones
 }
 
 fn clone_method_lhs_complex(mut_thing: &mut HasCloneFrom, ref_thing: &HasCloneFrom) {
     // These parens should be kept as necessary for a receiver
     *(mut_thing + &mut HasCloneFrom) = ref_thing.clone();
+    //~^ assigning_clones
 }
 
 fn clone_method_rhs_complex(mut_thing: &mut HasCloneFrom, ref_thing: &HasCloneFrom) {
     // These parens should be removed since they are not needed in a function argument
     *mut_thing = (ref_thing + ref_thing).clone();
+    //~^ assigning_clones
 }
 
 fn clone_method_macro() {
     let mut s = String::from("");
     s = format!("{} {}", "hello", "world").clone();
+    //~^ assigning_clones
 }
 
 fn clone_function_macro() {
     let mut s = String::from("");
     s = Clone::clone(&format!("{} {}", "hello", "world"));
+    //~^ assigning_clones
 }
 
 fn assign_to_init_mut_var(b: HasCloneFrom) -> HasCloneFrom {
     let mut a = HasCloneFrom;
     for _ in 1..10 {
         a = b.clone();
+        //~^ assigning_clones
     }
     a
 }
@@ -148,6 +161,7 @@ fn ignore_generic_clone<T: Clone>(a: &mut T, b: &T) {
 #[clippy::msrv = "1.62"]
 fn msrv_1_62(mut a: String, b: String, c: &str) {
     a = b.clone();
+    //~^ assigning_clones
     // Should not be linted, as clone_into wasn't stabilized until 1.63
     a = c.to_owned();
 }
@@ -155,7 +169,9 @@ fn msrv_1_62(mut a: String, b: String, c: &str) {
 #[clippy::msrv = "1.63"]
 fn msrv_1_63(mut a: String, b: String, c: &str) {
     a = b.clone();
+    //~^ assigning_clones
     a = c.to_owned();
+    //~^ assigning_clones
 }
 
 macro_rules! clone_inside {
@@ -186,35 +202,43 @@ impl Clone for AvoidRecursiveCloneFrom {
 // Deref handling
 fn clone_into_deref_method(mut a: DerefWrapper<HasCloneFrom>, b: HasCloneFrom) {
     *a = b.clone();
+    //~^ assigning_clones
 }
 
 fn clone_into_deref_with_clone_method(mut a: DerefWrapperWithClone<HasCloneFrom>, b: HasCloneFrom) {
     *a = b.clone();
+    //~^ assigning_clones
 }
 
 fn clone_into_box_method(mut a: Box<HasCloneFrom>, b: HasCloneFrom) {
     *a = b.clone();
+    //~^ assigning_clones
 }
 
 fn clone_into_self_deref_method(a: &mut DerefWrapperWithClone<HasCloneFrom>, b: DerefWrapperWithClone<HasCloneFrom>) {
     *a = b.clone();
+    //~^ assigning_clones
 }
 
 fn clone_into_deref_function(mut a: DerefWrapper<HasCloneFrom>, b: HasCloneFrom) {
     *a = Clone::clone(&b);
+    //~^ assigning_clones
 }
 
 fn clone_into_box_function(mut a: Box<HasCloneFrom>, b: HasCloneFrom) {
     *a = Clone::clone(&b);
+    //~^ assigning_clones
 }
 
 // ToOwned
 fn owned_method_mut_ref(mut_string: &mut String, ref_str: &str) {
     *mut_string = ref_str.to_owned();
+    //~^ assigning_clones
 }
 
 fn owned_method_val(mut mut_string: String, ref_str: &str) {
     mut_string = ref_str.to_owned();
+    //~^ assigning_clones
 }
 
 struct HasDeref {
@@ -236,28 +260,34 @@ impl DerefMut for HasDeref {
 
 fn owned_method_box(mut_box_string: &mut Box<String>, ref_str: &str) {
     **mut_box_string = ref_str.to_owned();
+    //~^ assigning_clones
 }
 
 fn owned_method_deref(mut_box_string: &mut HasDeref, ref_str: &str) {
     **mut_box_string = ref_str.to_owned();
+    //~^ assigning_clones
 }
 
 fn owned_function_mut_ref(mut_thing: &mut String, ref_str: &str) {
     *mut_thing = ToOwned::to_owned(ref_str);
+    //~^ assigning_clones
 }
 
 fn owned_function_val(mut mut_thing: String, ref_str: &str) {
     mut_thing = ToOwned::to_owned(ref_str);
+    //~^ assigning_clones
 }
 
 fn owned_method_macro() {
     let mut s = String::from("");
     s = format!("{} {}", "hello", "world").to_owned();
+    //~^ assigning_clones
 }
 
 fn owned_function_macro() {
     let mut s = String::from("");
     s = ToOwned::to_owned(&format!("{} {}", "hello", "world"));
+    //~^ assigning_clones
 }
 
 struct FakeToOwned;
