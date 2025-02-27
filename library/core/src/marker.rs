@@ -173,7 +173,7 @@ pub trait MetaSized: PointeeSized {
 
 #[cfg(bootstrap)]
 #[unstable(feature = "sized_hierarchy", issue = "none")]
-impl<T: ?Sized> MetaSized for T {}
+impl<T: ?Sized + PointeeSized> MetaSized for T {}
 
 /// Types that may or may not have a size.
 #[unstable(feature = "sized_hierarchy", issue = "none")]
@@ -193,7 +193,7 @@ pub trait PointeeSized {
 
 #[cfg(bootstrap)]
 #[unstable(feature = "sized_hierarchy", issue = "none")]
-impl<T: ?Sized> PointeeSized for T {}
+impl<T: ?Sized + PointeeSized> PointeeSized for T {}
 
 /// Types that can be "unsized" to a dynamically-sized type.
 ///
