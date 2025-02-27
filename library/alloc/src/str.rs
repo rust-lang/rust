@@ -608,7 +608,7 @@ impl str {
 ///
 /// * The provided bytes must contain a valid UTF-8 sequence.
 ///
-/// * The `Box<[u8]>` must have been allocated via the global allocator. 
+/// * The `Box<[u8]>` must have been allocated via the global allocator.
 ///
 /// # Examples
 ///
