@@ -1553,6 +1553,45 @@ pub(crate) struct TraitImplConstStable {
 }
 
 #[derive(Diagnostic)]
+#[diag(passes_trait_impl_const_stability_mismatch)]
+pub(crate) struct TraitImplConstStabilityMismatch {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub impl_stability: ImplConstStability,
+    #[subdiagnostic]
+    pub trait_stability: TraitConstStability,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum TraitConstStability {
+    #[note(passes_trait_impl_const_stability_mismatch_trait_stable)]
+    Stable {
+        #[primary_span]
+        span: Span,
+    },
+    #[note(passes_trait_impl_const_stability_mismatch_trait_unstable)]
+    Unstable {
+        #[primary_span]
+        span: Span,
+    },
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum ImplConstStability {
+    #[note(passes_trait_impl_const_stability_mismatch_impl_stable)]
+    Stable {
+        #[primary_span]
+        span: Span,
+    },
+    #[note(passes_trait_impl_const_stability_mismatch_impl_unstable)]
+    Unstable {
+        #[primary_span]
+        span: Span,
+    },
+}
+
+#[derive(Diagnostic)]
 #[diag(passes_unknown_feature, code = E0635)]
 pub(crate) struct UnknownFeature {
     #[primary_span]
