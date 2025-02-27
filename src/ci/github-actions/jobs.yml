@@ -35,6 +35,13 @@ runners:
     os: windows-2022
     <<: *base-job
 
+  # Temporarily use old Windows 2019 because of an issue with Windows 2022 GHA runner images.
+  # See https://github.com/rust-lang/rust/issues/137733 for more details.
+  # FIXME(#137733): go back to Windows 2022 once this is resolved
+  - &job-windows-19
+    os: windows-2019
+    <<: *base-job
+
   - &job-windows-25
     os: windows-2025
     <<: *base-job
@@ -474,13 +481,13 @@ auto:
     env:
       RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc  --enable-sanitizers
       SCRIPT: make ci-msvc-py
-    <<: *job-windows
+    <<: *job-windows-19
 
   - name: i686-msvc-2
     env:
       RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc --enable-sanitizers
       SCRIPT: make ci-msvc-ps1
-    <<: *job-windows
+    <<: *job-windows-19
 
   # x86_64-msvc-ext is split into multiple jobs to run tests in parallel.
   - name: x86_64-msvc-ext1
@@ -595,7 +602,7 @@ auto:
       SCRIPT: python x.py dist bootstrap --include-default-paths
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
-    <<: *job-windows
+    <<: *job-windows-19
 
   - name: dist-aarch64-msvc
     env:
