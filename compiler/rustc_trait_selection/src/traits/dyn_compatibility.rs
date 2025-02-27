@@ -7,8 +7,8 @@
 use std::ops::ControlFlow;
 
 use rustc_errors::FatalError;
-use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
+use rustc_hir::{self as hir, LangItem};
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{
@@ -542,11 +542,11 @@ fn receiver_for_self_ty<'tcx>(
 /// In practice, we cannot use `dyn Trait` explicitly in the obligation because it would result in
 /// a new check that `Trait` is dyn-compatible, creating a cycle.
 /// Instead, we emulate a placeholder by introducing a new type parameter `U` such that
-/// `Self: Unsize<U>` and `U: Trait + ?Sized`, and use `U` in place of `dyn Trait`.
+/// `Self: Unsize<U>` and `U: Trait + MetaSized`, and use `U` in place of `dyn Trait`.
 ///
 /// Written as a chalk-style query:
 /// ```ignore (not-rust)
-/// forall (U: Trait + ?Sized) {
+/// forall (U: Trait + MetaSized) {
 ///     if (Self: Unsize<U>) {
 ///         Receiver: DispatchFromDyn<Receiver[Self => U]>
 ///     }
@@ -566,9 +566,10 @@ fn receiver_is_dispatchable<'tcx>(
 ) -> bool {
     debug!("receiver_is_dispatchable: method = {:?}, receiver_ty = {:?}", method, receiver_ty);
 
-    let traits = (tcx.lang_items().unsize_trait(), tcx.lang_items().dispatch_from_dyn_trait());
-    let (Some(unsize_did), Some(dispatch_from_dyn_did)) = traits else {
-        debug!("receiver_is_dispatchable: Missing Unsize or DispatchFromDyn traits");
+    let (Some(unsize_did), Some(dispatch_from_dyn_did)) =
+        (tcx.lang_items().unsize_trait(), tcx.lang_items().dispatch_from_dyn_trait())
+    else {
+        debug!("receiver_is_dispatchable: Missing `Unsize` or `DispatchFromDyn` traits");
         return false;
     };
 
@@ -582,7 +583,7 @@ fn receiver_is_dispatchable<'tcx>(
         receiver_for_self_ty(tcx, receiver_ty, unsized_self_ty, method.def_id);
 
     // create a modified param env, with `Self: Unsize<U>` and `U: Trait` (and all of
-    // its supertraits) added to caller bounds. `U: ?Sized` is already implied here.
+    // its supertraits) added to caller bounds. `U: MetaSized` is already implied here.
     let param_env = {
         let param_env = tcx.param_env(method.def_id);
 
@@ -600,11 +601,23 @@ fn receiver_is_dispatchable<'tcx>(
             ty::TraitRef::new_from_args(tcx, trait_def_id, args).upcast(tcx)
         };
 
+        let metasized_predicate = {
+            let metasized_did = tcx.require_lang_item(LangItem::MetaSized, None);
+            ty::TraitRef::new(tcx, metasized_did, [unsized_self_ty]).upcast(tcx)
+        };
+        let pointeesized_predicate = {
+            let pointeesized_did = tcx.require_lang_item(LangItem::PointeeSized, None);
+            ty::TraitRef::new(tcx, pointeesized_did, [unsized_self_ty]).upcast(tcx)
+        };
+
         normalize_param_env_or_error(
             tcx,
-            ty::ParamEnv::new(tcx.mk_clauses_from_iter(
-                param_env.caller_bounds().iter().chain([unsize_predicate, trait_predicate]),
-            )),
+            ty::ParamEnv::new(tcx.mk_clauses_from_iter(param_env.caller_bounds().iter().chain([
+                unsize_predicate,
+                metasized_predicate,
+                pointeesized_predicate,
+                trait_predicate,
+            ]))),
             ObligationCause::dummy_with_span(tcx.def_span(method.def_id)),
         )
     };
