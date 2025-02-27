@@ -1683,6 +1683,12 @@ pub enum PatKind<'hir> {
     /// The `HirId` is the canonical ID for the variable being bound,
     /// (e.g., in `Ok(x) | Err(x)`, both `x` use the same canonical ID),
     /// which is the pattern ID of the first `x`.
+    ///
+    /// The `BindingMode` is what's provided by the user, before match
+    /// ergonomics are applied. For the binding mode actually in use,
+    /// see [`TypeckResults::extract_binding_mode`].
+    ///
+    /// [`TypeckResults::extract_binding_mode`]: ../../rustc_middle/ty/struct.TypeckResults.html#method.extract_binding_mode
     Binding(BindingMode, HirId, Ident, Option<&'hir Pat<'hir>>),
 
     /// A struct or struct variant pattern (e.g., `Variant {x, y, ..}`).

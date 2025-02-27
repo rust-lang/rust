@@ -319,11 +319,8 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
         match p.kind {
             hir::PatKind::Binding(..) => {
                 let typeck_results = self.fcx.typeck_results.borrow();
-                if let Some(bm) =
-                    typeck_results.extract_binding_mode(self.tcx().sess, p.hir_id, p.span)
-                {
-                    self.typeck_results.pat_binding_modes_mut().insert(p.hir_id, bm);
-                }
+                let bm = typeck_results.extract_binding_mode(self.tcx().sess, p.hir_id, p.span);
+                self.typeck_results.pat_binding_modes_mut().insert(p.hir_id, bm);
             }
             hir::PatKind::Struct(_, fields, _) => {
                 for field in fields {
