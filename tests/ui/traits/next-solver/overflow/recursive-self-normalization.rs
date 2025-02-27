@@ -14,6 +14,7 @@ fn test<T: Foo<Assoc = <T as Foo>::Assoc>>() {
     //~| ERROR overflow evaluating the requirement `<T as Foo>::Assoc == _`
     //~| ERROR overflow evaluating the requirement `<T as Foo>::Assoc == _`
     //~| ERROR overflow evaluating the requirement `<T as Foo>::Assoc: Sized`
+    //~| ERROR overflow evaluating the requirement `<T as Foo>::Assoc: const Sized`
     //~| ERROR overflow evaluating the requirement `<T as Foo>::Assoc: Bar`
 }
 
