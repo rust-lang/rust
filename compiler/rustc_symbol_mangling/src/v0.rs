@@ -256,6 +256,11 @@ impl<'tcx> SymbolMangler<'tcx> {
                     Ty::new_array_with_const_len(self.tcx, self.tcx.types.unit, ct).print(self)?;
                 }
             }
+            ty::PatternKind::Or(patterns) => {
+                for pat in patterns {
+                    self.print_pat(pat)?;
+                }
+            }
         })
     }
 }

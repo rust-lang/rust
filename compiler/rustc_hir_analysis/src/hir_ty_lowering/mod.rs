@@ -2735,6 +2735,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         ty_span: Span,
         pat: &hir::TyPat<'tcx>,
     ) -> Result<ty::PatternKind<'tcx>, ErrorGuaranteed> {
+        let tcx = self.tcx();
         match pat.kind {
             hir::TyPatKind::Range(start, end) => {
                 match ty.kind() {
@@ -2749,6 +2750,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         .dcx()
                         .span_delayed_bug(ty_span, "invalid base type for range pattern")),
                 }
+            }
+            hir::TyPatKind::Or(patterns) => {
+                self.tcx()
+                    .mk_patterns_from_iter(patterns.iter().map(|pat| {
+                        self.lower_pat_ty_pat(ty, ty_span, pat).map(|pat| tcx.mk_pat(pat))
+                    }))
+                    .map(ty::PatternKind::Or)
             }
             hir::TyPatKind::Err(e) => Err(e),
         }

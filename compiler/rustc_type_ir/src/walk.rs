@@ -173,5 +173,10 @@ fn push_ty_pat<I: Interner>(stack: &mut TypeWalkerStack<I>, pat: I::Pat) {
             stack.push(end.into());
             stack.push(start.into());
         }
+        ty::PatternKind::Or(pats) => {
+            for pat in pats.iter() {
+                push_ty_pat::<I>(stack, pat)
+            }
+        }
     }
 }
