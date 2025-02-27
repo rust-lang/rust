@@ -1,5 +1,5 @@
 //@ compile-flags: --crate-type=lib
-#![feature(sized_hierarchy)]
+#![feature(const_trait_impl, sized_hierarchy)]
 
 use std::marker::{MetaSized, PointeeSized};
 
@@ -14,11 +14,19 @@ pub fn sized() -> Box<impl Tr + Sized> {
     Box::new(1u32)
 }
 
+pub fn const_sized() -> Box<impl Tr + const Sized> {
+    if true {
+        let x = const_sized();
+        let y: Box<dyn Tr> = x;
+    }
+    Box::new(1u32)
+}
+
 pub fn neg_sized() -> Box<impl Tr + ?Sized> {
     if true {
         let x = neg_sized();
         let y: Box<dyn Tr> = x;
-//~^ ERROR: the size for values of type `impl Tr + MetaSized` cannot be known
+//~^ ERROR: the size for values of type `impl Tr + const MetaSized` cannot be known
     }
     Box::new(1u32)
 }
@@ -28,6 +36,15 @@ pub fn metasized() -> Box<impl Tr + MetaSized> {
         let x = metasized();
         let y: Box<dyn Tr> = x;
 //~^ ERROR: the size for values of type `impl Tr + MetaSized` cannot be known
+    }
+    Box::new(1u32)
+}
+
+pub fn const_metasized() -> Box<impl Tr + const MetaSized> {
+    if true {
+        let x = const_metasized();
+        let y: Box<dyn Tr> = x;
+//~^ ERROR: the size for values of type `impl Tr + const MetaSized` cannot be known
     }
     Box::new(1u32)
 }

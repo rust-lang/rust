@@ -1071,10 +1071,12 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         let mut fn_traits = FxIndexMap::default();
         let mut lifetimes = SmallVec::<[ty::Region<'tcx>; 1]>::new();
 
-        let mut has_sized_bound = false;
-        let mut has_negative_sized_bound = false;
-        let mut has_meta_sized_bound = false;
-        let mut has_pointee_sized_bound = false;
+        let mut has_sized_pred = false;
+        let mut has_const_sized_pred = false;
+        let mut has_negative_sized_pred = false;
+        let mut has_meta_sized_pred = false;
+        let mut has_const_meta_sized_pred = false;
+        let mut has_pointee_sized_pred = false;
 
         for (predicate, _) in bounds.iter_instantiated_copied(tcx, args) {
             let bound_predicate = predicate.kind();
@@ -1086,17 +1088,17 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     if tcx.is_lang_item(pred.def_id(), LangItem::Sized) {
                         match pred.polarity {
                             ty::PredicatePolarity::Positive => {
-                                has_sized_bound = true;
+                                has_sized_pred = true;
                                 continue;
                             }
-                            ty::PredicatePolarity::Negative => has_negative_sized_bound = true,
+                            ty::PredicatePolarity::Negative => has_negative_sized_pred = true,
                         }
                     } else if tcx.is_lang_item(pred.def_id(), LangItem::MetaSized) {
-                        has_meta_sized_bound = true;
+                        has_meta_sized_pred = true;
                         continue;
                     } else if tcx.is_lang_item(pred.def_id(), LangItem::PointeeSized) {
                         // Unexpected - `PointeeSized` is the absence of bounds.
-                        has_pointee_sized_bound = true;
+                        has_pointee_sized_pred = true;
                         continue;
                     }
 
@@ -1124,6 +1126,13 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 ty::ClauseKind::TypeOutlives(outlives) => {
                     lifetimes.push(outlives.1);
                 }
+                ty::ClauseKind::HostEffect(pred) => {
+                    if tcx.is_lang_item(pred.def_id(), LangItem::Sized) {
+                        has_const_sized_pred = true;
+                    } else if tcx.is_lang_item(pred.def_id(), LangItem::MetaSized) {
+                        has_const_meta_sized_pred = true;
+                    }
+                }
                 _ => {}
             }
         }
@@ -1132,7 +1141,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
         let mut first = true;
         // Insert parenthesis around (Fn(A, B) -> C) if the opaque ty has more than one other trait
-        let paren_needed = fn_traits.len() > 1 || traits.len() > 0 || !has_sized_bound;
+        let paren_needed = fn_traits.len() > 1 || traits.len() > 0 || !has_sized_pred;
 
         for ((bound_args_and_self_ty, is_async), entry) in fn_traits {
             write!(self, "{}", if first { "" } else { " + " })?;
@@ -1267,26 +1276,31 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         }
 
         let using_sized_hierarchy = self.tcx().features().sized_hierarchy();
-        let add_sized = has_sized_bound && (first || has_negative_sized_bound);
+        let add_sized = has_sized_pred && (first || has_negative_sized_pred);
         let add_maybe_sized =
-            has_meta_sized_bound && !has_negative_sized_bound && !using_sized_hierarchy;
+            has_meta_sized_pred && !has_negative_sized_pred && !using_sized_hierarchy;
         // Set `has_pointee_sized_bound` if there were no `Sized` or `MetaSized` bounds.
-        has_pointee_sized_bound = has_pointee_sized_bound
-            || (!has_sized_bound && !has_meta_sized_bound && !has_negative_sized_bound);
+        has_pointee_sized_pred = has_pointee_sized_pred
+            || (!has_sized_pred && !has_meta_sized_pred && !has_negative_sized_pred);
         if add_sized || add_maybe_sized {
             if !first {
                 write!(self, " + ")?;
             }
             if add_maybe_sized {
                 write!(self, "?")?;
+            } else if has_const_sized_pred && using_sized_hierarchy {
+                write!(self, "const ")?;
             }
             write!(self, "Sized")?;
-        } else if has_meta_sized_bound && using_sized_hierarchy {
+        } else if has_meta_sized_pred && using_sized_hierarchy {
             if !first {
                 write!(self, " + ")?;
             }
+            if has_const_meta_sized_pred && using_sized_hierarchy {
+                write!(self, "const ")?;
+            }
             write!(self, "MetaSized")?;
-        } else if has_pointee_sized_bound && using_sized_hierarchy {
+        } else if has_pointee_sized_pred && using_sized_hierarchy {
             if !first {
                 write!(self, " + ")?;
             }
