@@ -272,6 +272,13 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         // Filter out features that are not supported by the current LLVM version
         ("aarch64", "fpmr") if get_version().0 != 18 => None,
         ("arm", "fp16") => Some(LLVMFeature::new("fullfp16")),
+        // NVPTX targets added in LLVM 20
+        ("nvptx32" | "nvptx64", "sm_100") if get_version().0 < 20 => None,
+        ("nvptx32" | "nvptx64", "sm_100a") if get_version().0 < 20 => None,
+        ("nvptx32" | "nvptx64", "sm_101") if get_version().0 < 20 => None,
+        ("nvptx32" | "nvptx64", "sm_101a") if get_version().0 < 20 => None,
+        ("nvptx32" | "nvptx64", "sm_120") if get_version().0 < 20 => None,
+        ("nvptx32" | "nvptx64", "sm_120a") if get_version().0 < 20 => None,
         // In LLVM 18, `unaligned-scalar-mem` was merged with `unaligned-vector-mem` into a single
         // feature called `fast-unaligned-access`. In LLVM 19, it was split back out.
         ("riscv32" | "riscv64", "unaligned-scalar-mem") if get_version().0 == 18 => {
