@@ -6,7 +6,7 @@ use super::super::mem::{is_enclave_range, is_user_range};
 use crate::arch::asm;
 use crate::cell::UnsafeCell;
 use crate::convert::TryInto;
-use crate::mem::{self, ManuallyDrop};
+use crate::mem::{self, ManuallyDrop, MaybeUninit};
 use crate::ops::{CoerceUnsized, Deref, DerefMut, Index, IndexMut};
 use crate::pin::PinCoerceUnsized;
 use crate::ptr::{self, NonNull};
@@ -206,6 +206,45 @@ impl<T: ?Sized> NewUserRef<NonNull<T>> for NonNull<UserRef<T>> {
     unsafe fn new_userref(v: NonNull<T>) -> Self {
         // SAFETY: The caller has guaranteed the pointer is valid
         unsafe { NonNull::new_userref(v.as_ptr()) }
+    }
+}
+
+/// A type which can a destination for safely copying from userspace.
+///
+/// # Safety
+///
+/// Requires that `T` and `Self` have identical layouts.
+#[unstable(feature = "sgx_platform", issue = "56975")]
+pub unsafe trait UserSafeCopyDestination<T: ?Sized> {
+    /// Returns a pointer for writing to the value.
+    fn as_mut_ptr(&mut self) -> *mut T;
+}
+
+#[unstable(feature = "sgx_platform", issue = "56975")]
+unsafe impl<T> UserSafeCopyDestination<T> for T {
+    fn as_mut_ptr(&mut self) -> *mut T {
+        self as _
+    }
+}
+
+#[unstable(feature = "sgx_platform", issue = "56975")]
+unsafe impl<T> UserSafeCopyDestination<[T]> for [T] {
+    fn as_mut_ptr(&mut self) -> *mut [T] {
+        self as _
+    }
+}
+
+#[unstable(feature = "sgx_platform", issue = "56975")]
+unsafe impl<T> UserSafeCopyDestination<T> for MaybeUninit<T> {
+    fn as_mut_ptr(&mut self) -> *mut T {
+        self as *mut Self as _
+    }
+}
+
+#[unstable(feature = "sgx_platform", issue = "56975")]
+unsafe impl<T> UserSafeCopyDestination<[T]> for [MaybeUninit<T>] {
+    fn as_mut_ptr(&mut self) -> *mut [T] {
+        self as *mut Self as _
     }
 }
 
@@ -544,12 +583,12 @@ where
     /// # Panics
     /// This function panics if the destination doesn't have the same size as
     /// the source. This can happen for dynamically-sized types such as slices.
-    pub fn copy_to_enclave(&self, dest: &mut T) {
+    pub fn copy_to_enclave<U: ?Sized + UserSafeCopyDestination<T>>(&self, dest: &mut U) {
         unsafe {
             assert_eq!(size_of_val(dest), size_of_val(&*self.0.get()));
             copy_from_userspace(
                 self.0.get() as *const T as *const u8,
-                dest as *mut T as *mut u8,
+                dest.as_mut_ptr() as *mut u8,
                 size_of_val(dest),
             );
         }
