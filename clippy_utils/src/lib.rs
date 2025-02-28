@@ -3651,7 +3651,10 @@ pub fn expr_requires_coercion<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -
         ExprKind::Struct(qpath, _, _) => {
             let res = cx.typeck_results().qpath_res(qpath, expr.hir_id);
             if let Some((_, v_def)) = adt_and_variant_of_res(cx, res) {
-                let generic_args = cx.typeck_results().node_args(expr.hir_id);
+                let rustc_ty::Adt(_, generic_args) = cx.typeck_results().expr_ty_adjusted(expr).kind() else {
+                    // This should never happen, but when it does, not linting is the better option.
+                    return true;
+                };
                 v_def
                     .fields
                     .iter()
