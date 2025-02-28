@@ -9,6 +9,7 @@ extern crate rustdoc_hidden;
 //@ !has - '//*[@id="reexport.Foo"]/code' 'pub use rustdoc_hidden::Foo;'
 #[doc(no_inline)]
 pub use rustdoc_hidden::Foo;
+
 // Even if the foreign item has `doc(hidden)`, we should be able to inline it.
 //@ has - '//dt/a[@class="struct"]' 'Inlined'
 #[doc(inline)]

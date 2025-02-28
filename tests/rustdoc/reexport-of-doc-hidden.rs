@@ -21,7 +21,6 @@ pub use crate::Bar as Boo;
 //@ !has - '//*[@id="reexport.Boo2"]/code' 'pub use crate::Bar as Boo2;'
 pub use crate::Bar as Boo2;
 
-
 pub fn fofo() {}
 
 //@ has - '//*[@id="reexport.f1"]/code' 'pub use crate::fofo as f1;'
@@ -35,6 +34,7 @@ pub mod sub {
     pub use crate::foo as Macro;
     //@ has - '//*[@id="reexport.Macro2"]/code' 'pub use crate::foo as Macro2;'
     pub use crate::foo as Macro2;
+
     //@ has - '//*[@id="reexport.f1"]/code' 'pub use crate::fofo as f1;'
     pub use crate::fofo as f1;
     //@ has - '//*[@id="reexport.f2"]/code' 'pub use crate::fofo as f2;'
