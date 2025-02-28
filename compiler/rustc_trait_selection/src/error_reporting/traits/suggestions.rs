@@ -4914,6 +4914,53 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         );
         true
     }
+    pub(crate) fn suggest_swapping_lhs_and_rhs<T>(
+        &self,
+        err: &mut Diag<'_>,
+        predicate: T,
+        param_env: ty::ParamEnv<'tcx>,
+        cause_code: &ObligationCauseCode<'tcx>,
+    ) where
+        T: Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>>,
+    {
+        let tcx = self.tcx;
+        let predicate = predicate.upcast(tcx);
+        match *cause_code {
+            ObligationCauseCode::BinOp {
+                lhs_hir_id,
+                rhs_hir_id: Some(rhs_hir_id),
+                rhs_span: Some(rhs_span),
+                ..
+            } if let Some(typeck_results) = &self.typeck_results
+                && let hir::Node::Expr(lhs) = tcx.hir_node(lhs_hir_id)
+                && let hir::Node::Expr(rhs) = tcx.hir_node(rhs_hir_id)
+                && let Some(lhs_ty) = typeck_results.expr_ty_opt(lhs)
+                && let Some(rhs_ty) = typeck_results.expr_ty_opt(rhs) =>
+            {
+                if let Some(pred) = predicate.as_trait_clause()
+                    && tcx.is_lang_item(pred.def_id(), LangItem::PartialEq)
+                    && self
+                        .infcx
+                        .type_implements_trait(pred.def_id(), [rhs_ty, lhs_ty], param_env)
+                        .must_apply_modulo_regions()
+                {
+                    let lhs_span = tcx.hir().span(lhs_hir_id);
+                    let sm = tcx.sess.source_map();
+                    if let Ok(rhs_snippet) = sm.span_to_snippet(rhs_span)
+                        && let Ok(lhs_snippet) = sm.span_to_snippet(lhs_span)
+                    {
+                        err.note(format!("`{rhs_ty}` implements `PartialEq<{lhs_ty}>`"));
+                        err.multipart_suggestion(
+                            "consider swapping the equality",
+                            vec![(lhs_span, rhs_snippet), (rhs_span, lhs_snippet)],
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
 }
 
 /// Add a hint to add a missing borrow or remove an unnecessary one.
