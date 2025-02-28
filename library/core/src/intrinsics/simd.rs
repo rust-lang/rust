@@ -71,7 +71,7 @@ pub unsafe fn simd_rem<T>(_lhs: T, _rhs: T) -> T;
 ///
 /// Shifts `lhs` left by `rhs`, shifting in sign bits for signed types.
 ///
-/// `T` must be a vector of integer primitive types.
+/// `T` must be a vector of integers.
 ///
 /// # Safety
 ///
@@ -82,7 +82,7 @@ pub unsafe fn simd_shl<T>(_lhs: T, _rhs: T) -> T;
 
 /// Shifts vector right elementwise, with UB on overflow.
 ///
-/// `T` must be a vector of integer primitive types.
+/// `T` must be a vector of integers.
 ///
 /// Shifts `lhs` right by `rhs`, shifting in sign bits for signed types.
 ///
@@ -95,21 +95,21 @@ pub unsafe fn simd_shr<T>(_lhs: T, _rhs: T) -> T;
 
 /// "Ands" vectors elementwise.
 ///
-/// `T` must be a vector of integer primitive types.
+/// `T` must be a vector of integers.
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub unsafe fn simd_and<T>(_x: T, _y: T) -> T;
 
 /// "Ors" vectors elementwise.
 ///
-/// `T` must be a vector of integer primitive types.
+/// `T` must be a vector of integers.
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub unsafe fn simd_or<T>(_x: T, _y: T) -> T;
 
 /// "Exclusive ors" vectors elementwise.
 ///
-/// `T` must be a vector of integer primitive types.
+/// `T` must be a vector of integers.
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub unsafe fn simd_xor<T>(_x: T, _y: T) -> T;
@@ -151,7 +151,7 @@ pub unsafe fn simd_as<T, U>(_x: T) -> U;
 
 /// Negates a vector elementwise.
 ///
-/// `T` must be a vector of integer or floating-point primitive types.
+/// `T` must be a vector of integers or floats.
 ///
 /// Rust panics for `-<int>::Min` due to overflow, but it is not UB with this intrinsic.
 #[rustc_intrinsic]
@@ -185,7 +185,7 @@ pub unsafe fn simd_fmax<T>(_x: T, _y: T) -> T;
 
 /// Tests elementwise equality of two vectors.
 ///
-/// `T` must be a vector of integer or floating-point primitive types.
+/// `T` must be a vector of integers or floats.
 ///
 /// `U` must be a vector of integers with the same number of elements and element size as `T`.
 ///
@@ -196,7 +196,7 @@ pub unsafe fn simd_eq<T, U>(_x: T, _y: T) -> U;
 
 /// Tests elementwise inequality equality of two vectors.
 ///
-/// `T` must be a vector of integer or floating-point primitive types.
+/// `T` must be a vector of integers or floats.
 ///
 /// `U` must be a vector of integers with the same number of elements and element size as `T`.
 ///
@@ -207,7 +207,7 @@ pub unsafe fn simd_ne<T, U>(_x: T, _y: T) -> U;
 
 /// Tests if `x` is less than `y`, elementwise.
 ///
-/// `T` must be a vector of integer or floating-point primitive types.
+/// `T` must be a vector of integers or floats.
 ///
 /// `U` must be a vector of integers with the same number of elements and element size as `T`.
 ///
@@ -218,7 +218,7 @@ pub unsafe fn simd_lt<T, U>(_x: T, _y: T) -> U;
 
 /// Tests if `x` is less than or equal to `y`, elementwise.
 ///
-/// `T` must be a vector of integer or floating-point primitive types.
+/// `T` must be a vector of integers or floats.
 ///
 /// `U` must be a vector of integers with the same number of elements and element size as `T`.
 ///
@@ -229,7 +229,7 @@ pub unsafe fn simd_le<T, U>(_x: T, _y: T) -> U;
 
 /// Tests if `x` is greater than `y`, elementwise.
 ///
-/// `T` must be a vector of integer or floating-point primitive types.
+/// `T` must be a vector of integers or floats.
 ///
 /// `U` must be a vector of integers with the same number of elements and element size as `T`.
 ///
@@ -240,7 +240,7 @@ pub unsafe fn simd_gt<T, U>(_x: T, _y: T) -> U;
 
 /// Tests if `x` is greater than or equal to `y`, elementwise.
 ///
-/// `T` must be a vector of integer or floating-point primitive types.
+/// `T` must be a vector of integers or floats.
 ///
 /// `U` must be a vector of integers with the same number of elements and element size as `T`.
 ///
@@ -271,7 +271,7 @@ pub unsafe fn simd_shuffle<T, U, V>(_x: T, _y: T, _idx: U) -> V;
 ///
 /// `U` must be a vector of pointers to the element type of `T`, with the same length as `T`.
 ///
-/// `V` must be a vector of integers with the same length as `T` (but any element size).
+/// `V` must be a vector of signed integers with the same length as `T` (but any element size).
 ///
 /// For each pointer in `ptr`, if the corresponding value in `mask` is `!0`, read the pointer.
 /// Otherwise if the corresponding value in `mask` is `0`, return the corresponding value from
@@ -292,7 +292,7 @@ pub unsafe fn simd_gather<T, U, V>(_val: T, _ptr: U, _mask: V) -> T;
 ///
 /// `U` must be a vector of pointers to the element type of `T`, with the same length as `T`.
 ///
-/// `V` must be a vector of integers with the same length as `T` (but any element size).
+/// `V` must be a vector of signed integers with the same length as `T` (but any element size).
 ///
 /// For each pointer in `ptr`, if the corresponding value in `mask` is `!0`, write the
 /// corresponding value in `val` to the pointer.
@@ -316,7 +316,7 @@ pub unsafe fn simd_scatter<T, U, V>(_val: T, _ptr: U, _mask: V);
 ///
 /// `U` must be a pointer to the element type of `T`
 ///
-/// `V` must be a vector of integers with the same length as `T` (but any element size).
+/// `V` must be a vector of signed integers with the same length as `T` (but any element size).
 ///
 /// For each element, if the corresponding value in `mask` is `!0`, read the corresponding
 /// pointer offset from `ptr`.
@@ -339,7 +339,7 @@ pub unsafe fn simd_masked_load<V, U, T>(_mask: V, _ptr: U, _val: T) -> T;
 ///
 /// `U` must be a pointer to the element type of `T`
 ///
-/// `V` must be a vector of integers with the same length as `T` (but any element size).
+/// `V` must be a vector of signed integers with the same length as `T` (but any element size).
 ///
 /// For each element, if the corresponding value in `mask` is `!0`, write the corresponding
 /// value in `val` to the pointer offset from `ptr`.
@@ -373,7 +373,7 @@ pub unsafe fn simd_saturating_sub<T>(_lhs: T, _rhs: T) -> T;
 
 /// Adds elements within a vector from left to right.
 ///
-/// `T` must be a vector of integer or floating-point primitive types.
+/// `T` must be a vector of integers or floats.
 ///
 /// `U` must be the element type of `T`.
 ///
@@ -385,7 +385,7 @@ pub unsafe fn simd_reduce_add_ordered<T, U>(_x: T, _y: U) -> U;
 /// Adds elements within a vector in arbitrary order. May also be re-associated with
 /// unordered additions on the inputs/outputs.
 ///
-/// `T` must be a vector of integer or floating-point primitive types.
+/// `T` must be a vector of integers or floats.
 ///
 /// `U` must be the element type of `T`.
 #[rustc_intrinsic]
@@ -394,7 +394,7 @@ pub unsafe fn simd_reduce_add_unordered<T, U>(_x: T) -> U;
 
 /// Multiplies elements within a vector from left to right.
 ///
-/// `T` must be a vector of integer or floating-point primitive types.
+/// `T` must be a vector of integers or floats.
 ///
 /// `U` must be the element type of `T`.
 ///
@@ -406,7 +406,7 @@ pub unsafe fn simd_reduce_mul_ordered<T, U>(_x: T, _y: U) -> U;
 /// Multiplies elements within a vector in arbitrary order. May also be re-associated with
 /// unordered additions on the inputs/outputs.
 ///
-/// `T` must be a vector of integer or floating-point primitive types.
+/// `T` must be a vector of integers or floats.
 ///
 /// `U` must be the element type of `T`.
 #[rustc_intrinsic]
@@ -435,7 +435,7 @@ pub unsafe fn simd_reduce_any<T>(_x: T) -> bool;
 
 /// Returns the maximum element of a vector.
 ///
-/// `T` must be a vector of integer or floating-point primitive types.
+/// `T` must be a vector of integers or floats.
 ///
 /// `U` must be the element type of `T`.
 ///
@@ -446,7 +446,7 @@ pub unsafe fn simd_reduce_max<T, U>(_x: T) -> U;
 
 /// Returns the minimum element of a vector.
 ///
-/// `T` must be a vector of integer or floating-point primitive types.
+/// `T` must be a vector of integers or floats.
 ///
 /// `U` must be the element type of `T`.
 ///
@@ -457,7 +457,7 @@ pub unsafe fn simd_reduce_min<T, U>(_x: T) -> U;
 
 /// Logical "ands" all elements together.
 ///
-/// `T` must be a vector of integer or floating-point primitive types.
+/// `T` must be a vector of integers or floats.
 ///
 /// `U` must be the element type of `T`.
 #[rustc_intrinsic]
@@ -466,7 +466,7 @@ pub unsafe fn simd_reduce_and<T, U>(_x: T) -> U;
 
 /// Logical "ors" all elements together.
 ///
-/// `T` must be a vector of integer or floating-point primitive types.
+/// `T` must be a vector of integers or floats.
 ///
 /// `U` must be the element type of `T`.
 #[rustc_intrinsic]
@@ -475,7 +475,7 @@ pub unsafe fn simd_reduce_or<T, U>(_x: T) -> U;
 
 /// Logical "exclusive ors" all elements together.
 ///
-/// `T` must be a vector of integer or floating-point primitive types.
+/// `T` must be a vector of integers or floats.
 ///
 /// `U` must be the element type of `T`.
 #[rustc_intrinsic]
@@ -521,9 +521,9 @@ pub unsafe fn simd_bitmask<T, U>(_x: T) -> U;
 
 /// Selects elements from a mask.
 ///
-/// `M` must be an integer vector.
+/// `T` must be a vector.
 ///
-/// `T` must be a vector with the same number of elements as `M`.
+/// `M` must be a signed integer vector with the same length as `T` (but any element size).
 ///
 /// For each element, if the corresponding value in `mask` is `!0`, select the element from
 /// `if_true`.  If the corresponding value in `mask` is `0`, select the element from
