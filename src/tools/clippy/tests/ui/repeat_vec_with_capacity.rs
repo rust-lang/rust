@@ -4,13 +4,13 @@
 fn main() {
     {
         vec![Vec::<()>::with_capacity(42); 123];
-        //~^ ERROR: repeating `Vec::with_capacity` using `vec![x; n]`, which does not retain capacity
+        //~^ repeat_vec_with_capacity
     }
 
     {
         let n = 123;
         vec![Vec::<()>::with_capacity(42); n];
-        //~^ ERROR: repeating `Vec::with_capacity` using `vec![x; n]`, which does not retain capacity
+        //~^ repeat_vec_with_capacity
     }
 
     {
@@ -25,7 +25,7 @@ fn main() {
 
     {
         std::iter::repeat(Vec::<()>::with_capacity(42));
-        //~^ ERROR: repeating `Vec::with_capacity` using `iter::repeat`, which does not retain capacity
+        //~^ repeat_vec_with_capacity
     }
 
     {
@@ -36,4 +36,9 @@ fn main() {
         }
         from_macro!(Vec::<()>::with_capacity(42));
     }
+}
+
+#[clippy::msrv = "1.27.0"]
+fn msrv_check() {
+    std::iter::repeat(Vec::<()>::with_capacity(42));
 }

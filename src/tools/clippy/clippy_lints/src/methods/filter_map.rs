@@ -12,7 +12,6 @@ use rustc_lint::LateContext;
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_span::Span;
 use rustc_span::symbol::{Ident, Symbol, sym};
-use std::borrow::Cow;
 
 use super::{MANUAL_FILTER_MAP, MANUAL_FIND_MAP, OPTION_FILTER_MAP, RESULT_FILTER_MAP};
 
@@ -302,7 +301,7 @@ pub(super) fn check(
             filter_span.with_hi(expr.span.hi()),
             "`filter` for `Some` followed by `unwrap`",
             "consider using `flatten` instead",
-            reindent_multiline(Cow::Borrowed("flatten()"), true, indent_of(cx, map_span)).into_owned(),
+            reindent_multiline("flatten()", true, indent_of(cx, map_span)),
             Applicability::MachineApplicable,
         );
 
@@ -316,7 +315,7 @@ pub(super) fn check(
             filter_span.with_hi(expr.span.hi()),
             "`filter` for `Ok` followed by `unwrap`",
             "consider using `flatten` instead",
-            reindent_multiline(Cow::Borrowed("flatten()"), true, indent_of(cx, map_span)).into_owned(),
+            reindent_multiline("flatten()", true, indent_of(cx, map_span)),
             Applicability::MachineApplicable,
         );
 

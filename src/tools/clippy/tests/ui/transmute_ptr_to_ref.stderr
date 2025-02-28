@@ -8,127 +8,127 @@ LL |     let _: &T = std::mem::transmute(p);
    = help: to override `-D warnings` add `#[allow(clippy::transmute_ptr_to_ref)]`
 
 error: transmute from a pointer type (`*mut T`) to a reference type (`&mut T`)
-  --> tests/ui/transmute_ptr_to_ref.rs:12:21
+  --> tests/ui/transmute_ptr_to_ref.rs:13:21
    |
 LL |     let _: &mut T = std::mem::transmute(m);
    |                     ^^^^^^^^^^^^^^^^^^^^^^ help: try: `&mut *m`
 
 error: transmute from a pointer type (`*mut T`) to a reference type (`&T`)
-  --> tests/ui/transmute_ptr_to_ref.rs:15:17
+  --> tests/ui/transmute_ptr_to_ref.rs:17:17
    |
 LL |     let _: &T = std::mem::transmute(m);
    |                 ^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*m`
 
 error: transmute from a pointer type (`*mut T`) to a reference type (`&mut T`)
-  --> tests/ui/transmute_ptr_to_ref.rs:18:21
+  --> tests/ui/transmute_ptr_to_ref.rs:21:21
    |
 LL |     let _: &mut T = std::mem::transmute(p as *mut T);
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&mut *(p as *mut T)`
 
 error: transmute from a pointer type (`*const U`) to a reference type (`&T`)
-  --> tests/ui/transmute_ptr_to_ref.rs:21:17
+  --> tests/ui/transmute_ptr_to_ref.rs:25:17
    |
 LL |     let _: &T = std::mem::transmute(o);
    |                 ^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(o as *const T)`
 
 error: transmute from a pointer type (`*mut U`) to a reference type (`&mut T`)
-  --> tests/ui/transmute_ptr_to_ref.rs:24:21
+  --> tests/ui/transmute_ptr_to_ref.rs:29:21
    |
 LL |     let _: &mut T = std::mem::transmute(om);
    |                     ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&mut *(om as *mut T)`
 
 error: transmute from a pointer type (`*mut U`) to a reference type (`&T`)
-  --> tests/ui/transmute_ptr_to_ref.rs:27:17
+  --> tests/ui/transmute_ptr_to_ref.rs:33:17
    |
 LL |     let _: &T = std::mem::transmute(om);
    |                 ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(om as *const T)`
 
 error: transmute from a pointer type (`*const i32`) to a reference type (`&_issue1231::Foo<'_, u8>`)
-  --> tests/ui/transmute_ptr_to_ref.rs:37:32
+  --> tests/ui/transmute_ptr_to_ref.rs:44:32
    |
 LL |     let _: &Foo<u8> = unsafe { std::mem::transmute::<_, &Foo<_>>(raw) };
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*raw.cast::<Foo<_>>()`
 
 error: transmute from a pointer type (`*const i32`) to a reference type (`&_issue1231::Foo<'_, &u8>`)
-  --> tests/ui/transmute_ptr_to_ref.rs:39:33
+  --> tests/ui/transmute_ptr_to_ref.rs:47:33
    |
 LL |     let _: &Foo<&u8> = unsafe { std::mem::transmute::<_, &Foo<&_>>(raw) };
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*raw.cast::<Foo<&_>>()`
 
 error: transmute from a pointer type (`*const i32`) to a reference type (`&u8`)
-  --> tests/ui/transmute_ptr_to_ref.rs:43:14
+  --> tests/ui/transmute_ptr_to_ref.rs:52:14
    |
 LL |     unsafe { std::mem::transmute::<_, Bar>(raw) };
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(raw as *const u8)`
 
 error: transmute from a pointer type (`*const &u32`) to a reference type (`&&u32`)
-  --> tests/ui/transmute_ptr_to_ref.rs:48:14
+  --> tests/ui/transmute_ptr_to_ref.rs:58:14
    |
 LL |         0 => std::mem::transmute(x),
    |              ^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*x.cast::<&u32>()`
 
 error: transmute from a pointer type (`*const &u32`) to a reference type (`&&u32`)
-  --> tests/ui/transmute_ptr_to_ref.rs:49:14
+  --> tests/ui/transmute_ptr_to_ref.rs:60:14
    |
 LL |         1 => std::mem::transmute(y),
    |              ^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*y.cast::<&u32>()`
 
 error: transmute from a pointer type (`*const &u32`) to a reference type (`&&u32`)
-  --> tests/ui/transmute_ptr_to_ref.rs:50:14
+  --> tests/ui/transmute_ptr_to_ref.rs:62:14
    |
 LL |         2 => std::mem::transmute::<_, &&'b u32>(x),
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*x.cast::<&'b u32>()`
 
 error: transmute from a pointer type (`*const &u32`) to a reference type (`&&u32`)
-  --> tests/ui/transmute_ptr_to_ref.rs:51:14
+  --> tests/ui/transmute_ptr_to_ref.rs:64:14
    |
 LL |         _ => std::mem::transmute::<_, &&'b u32>(y),
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*y.cast::<&'b u32>()`
 
 error: transmute from a pointer type (`*const u32`) to a reference type (`&u32`)
-  --> tests/ui/transmute_ptr_to_ref.rs:59:19
+  --> tests/ui/transmute_ptr_to_ref.rs:73:19
    |
 LL |     let _: &u32 = std::mem::transmute(a);
    |                   ^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*a`
 
 error: transmute from a pointer type (`*const u32`) to a reference type (`&u32`)
-  --> tests/ui/transmute_ptr_to_ref.rs:60:19
+  --> tests/ui/transmute_ptr_to_ref.rs:75:19
    |
 LL |     let _: &u32 = std::mem::transmute::<_, &u32>(a);
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*a.cast::<u32>()`
 
 error: transmute from a pointer type (`*const &u32`) to a reference type (`&&u32`)
-  --> tests/ui/transmute_ptr_to_ref.rs:62:14
+  --> tests/ui/transmute_ptr_to_ref.rs:78:14
    |
 LL |         0 => std::mem::transmute(x),
    |              ^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*x.cast::<&u32>()`
 
 error: transmute from a pointer type (`*const &u32`) to a reference type (`&&u32`)
-  --> tests/ui/transmute_ptr_to_ref.rs:63:14
+  --> tests/ui/transmute_ptr_to_ref.rs:80:14
    |
 LL |         _ => std::mem::transmute::<_, &&'b u32>(x),
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*x.cast::<&'b u32>()`
 
 error: transmute from a pointer type (`*const u32`) to a reference type (`&u32`)
-  --> tests/ui/transmute_ptr_to_ref.rs:71:19
+  --> tests/ui/transmute_ptr_to_ref.rs:89:19
    |
 LL |     let _: &u32 = std::mem::transmute(a);
    |                   ^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*a`
 
 error: transmute from a pointer type (`*const u32`) to a reference type (`&u32`)
-  --> tests/ui/transmute_ptr_to_ref.rs:72:19
+  --> tests/ui/transmute_ptr_to_ref.rs:91:19
    |
 LL |     let _: &u32 = std::mem::transmute::<_, &u32>(a);
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(a as *const u32)`
 
 error: transmute from a pointer type (`*const &u32`) to a reference type (`&&u32`)
-  --> tests/ui/transmute_ptr_to_ref.rs:74:14
+  --> tests/ui/transmute_ptr_to_ref.rs:94:14
    |
 LL |         0 => std::mem::transmute(x),
    |              ^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(x as *const () as *const &u32)`
 
 error: transmute from a pointer type (`*const &u32`) to a reference type (`&&u32`)
-  --> tests/ui/transmute_ptr_to_ref.rs:75:14
+  --> tests/ui/transmute_ptr_to_ref.rs:96:14
    |
 LL |         _ => std::mem::transmute::<_, &&'b u32>(x),
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(x as *const () as *const &'b u32)`

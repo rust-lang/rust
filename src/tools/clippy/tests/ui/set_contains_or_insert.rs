@@ -10,35 +10,42 @@ fn should_warn_hashset() {
     let value = 5;
 
     if !set.contains(&value) {
+        //~^ set_contains_or_insert
         set.insert(value);
         println!("Just a comment");
     }
 
     if set.contains(&value) {
+        //~^ set_contains_or_insert
         set.insert(value);
         println!("Just a comment");
     }
 
     if !set.contains(&value) {
+        //~^ set_contains_or_insert
         set.insert(value);
     }
 
     if !!set.contains(&value) {
+        //~^ set_contains_or_insert
         set.insert(value);
         println!("Just a comment");
     }
 
     if (&set).contains(&value) {
+        //~^ set_contains_or_insert
         set.insert(value);
     }
 
     let borrow_value = &6;
     if !set.contains(borrow_value) {
+        //~^ set_contains_or_insert
         set.insert(*borrow_value);
     }
 
     let borrow_set = &mut set;
     if !borrow_set.contains(&value) {
+        //~^ set_contains_or_insert
         borrow_set.insert(value);
     }
 }
@@ -77,35 +84,42 @@ fn should_warn_btreeset() {
     let value = 5;
 
     if !set.contains(&value) {
+        //~^ set_contains_or_insert
         set.insert(value);
         println!("Just a comment");
     }
 
     if set.contains(&value) {
+        //~^ set_contains_or_insert
         set.insert(value);
         println!("Just a comment");
     }
 
     if !set.contains(&value) {
+        //~^ set_contains_or_insert
         set.insert(value);
     }
 
     if !!set.contains(&value) {
+        //~^ set_contains_or_insert
         set.insert(value);
         println!("Just a comment");
     }
 
     if (&set).contains(&value) {
+        //~^ set_contains_or_insert
         set.insert(value);
     }
 
     let borrow_value = &6;
     if !set.contains(borrow_value) {
+        //~^ set_contains_or_insert
         set.insert(*borrow_value);
     }
 
     let borrow_set = &mut set;
     if !borrow_set.contains(&value) {
+        //~^ set_contains_or_insert
         borrow_set.insert(value);
     }
 }

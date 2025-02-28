@@ -8,7 +8,7 @@ LL |         _ => panic!(""),
    = help: to override `-D warnings` add `#[allow(clippy::panic)]`
 
 error: `panic_any` should not be present in production code
-  --> tests/ui-toml/panic/panic.rs:17:5
+  --> tests/ui-toml/panic/panic.rs:18:5
    |
 LL |     panic_any("should lint")
    |     ^^^^^^^^^^^^^^^^^^^^^^^^

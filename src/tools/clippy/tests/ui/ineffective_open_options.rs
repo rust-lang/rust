@@ -5,7 +5,8 @@ use std::fs::OpenOptions;
 fn main() {
     let file = OpenOptions::new()
         .create(true)
-        .write(true) //~ ERROR: unnecessary use of `.write(true)`
+        .write(true)
+        //~^ ineffective_open_options
         .append(true)
         .open("dump.json")
         .unwrap();
@@ -13,7 +14,8 @@ fn main() {
     let file = OpenOptions::new()
         .create(true)
         .append(true)
-        .write(true) //~ ERROR: unnecessary use of `.write(true)`
+        .write(true)
+        //~^ ineffective_open_options
         .open("dump.json")
         .unwrap();
 

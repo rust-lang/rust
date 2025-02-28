@@ -10,7 +10,8 @@ impl PartialEq<u64> for Foo {
 }
 
 #[derive(Hash)]
-//~^ ERROR: you are deriving `Hash` but have implemented `PartialEq` explicitly
+//~^ derived_hash_with_manual_eq
+
 struct Bar;
 
 impl PartialEq for Bar {
@@ -20,7 +21,8 @@ impl PartialEq for Bar {
 }
 
 #[derive(Hash)]
-//~^ ERROR: you are deriving `Hash` but have implemented `PartialEq` explicitly
+//~^ derived_hash_with_manual_eq
+
 struct Baz;
 
 impl PartialEq<Baz> for Baz {

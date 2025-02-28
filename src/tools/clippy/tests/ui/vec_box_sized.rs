@@ -24,22 +24,30 @@ unsafe impl Allocator for DummyAllocator {
 mod should_trigger {
     use super::{DummyAllocator, SizedStruct};
     const C: Vec<Box<i32>> = Vec::new();
+    //~^ vec_box
     static S: Vec<Box<i32>> = Vec::new();
+    //~^ vec_box
 
     struct StructWithVecBox {
         sized_type: Vec<Box<SizedStruct>>,
+        //~^ vec_box
     }
 
     struct A(Vec<Box<SizedStruct>>);
+    //~^ vec_box
     struct B(Vec<Vec<Box<(u32)>>>);
+    //~^ vec_box
 
     fn allocator_global_defined_vec() -> Vec<Box<i32>, std::alloc::Global> {
+        //~^ vec_box
         Vec::new()
     }
     fn allocator_global_defined_box() -> Vec<Box<i32, std::alloc::Global>> {
+        //~^ vec_box
         Vec::new()
     }
     fn allocator_match() -> Vec<Box<i32, DummyAllocator>, DummyAllocator> {
+        //~^ vec_box
         Vec::new_in(DummyAllocator)
     }
 }
@@ -77,6 +85,7 @@ mod inner_mod {
         use super::inner::S;
 
         pub fn f() -> Vec<Box<S>> {
+            //~^ vec_box
             vec![]
         }
     }

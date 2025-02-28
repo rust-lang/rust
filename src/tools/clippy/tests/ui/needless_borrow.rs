@@ -14,10 +14,14 @@ fn main() {
     let ref_a = &a;
     let _ = x(&a); // no warning
     let _ = x(&&a); // warn
+    //
+    //~^^ needless_borrow
 
     let mut b = 5;
     mut_ref(&mut b); // no warning
     mut_ref(&mut &mut b); // warn
+    //
+    //~^^ needless_borrow
 
     let s = &String::from("hi");
     let s_ident = f(&s); // should not error, because `&String` implements Copy, but `String` does not
@@ -30,14 +34,17 @@ fn main() {
         45 => {
             println!("foo");
             &&a
+            //~^ needless_borrow
         },
         46 => &&a,
+        //~^ needless_borrow
         47 => {
             println!("foo");
             loop {
                 println!("{}", a);
                 if a == 25 {
                     break &ref_a;
+                    //~^ needless_borrow
                 }
             }
         },
@@ -45,12 +52,17 @@ fn main() {
     };
 
     let _ = x(&&&a);
+    //~^ needless_borrow
     let _ = x(&mut &&a);
+    //~^ needless_borrow
     let _ = x(&&&mut b);
+    //~^ needless_borrow
     let _ = x(&&ref_a);
+    //~^ needless_borrow
     {
         let b = &mut b;
         x(&b);
+        //~^ needless_borrow
     }
 
     // Issue #8191
@@ -58,9 +70,13 @@ fn main() {
     let mut x = &mut x;
 
     mut_ref(&mut x);
+    //~^ needless_borrow
     mut_ref(&mut &mut x);
+    //~^ needless_borrow
     let y: &mut i32 = &mut x;
+    //~^ needless_borrow
     let y: &mut i32 = &mut &mut x;
+    //~^ needless_borrow
 
     let y = match 0 {
         // Don't lint. Removing the borrow would move 'x'
@@ -70,12 +86,14 @@ fn main() {
     let y: &mut i32 = match 0 {
         // Lint here. The type given above triggers auto-borrow.
         0 => &mut x,
+        //~^ needless_borrow
         _ => &mut *x,
     };
     fn ref_mut_i32(_: &mut i32) {}
     ref_mut_i32(match 0 {
         // Lint here. The type given above triggers auto-borrow.
         0 => &mut x,
+        //~^ needless_borrow
         _ => &mut *x,
     });
     // use 'x' after to make sure it's still usable in the fixed code.
@@ -88,8 +106,10 @@ fn main() {
 
     let x = (1, 2);
     let _ = (&x).0;
+    //~^ needless_borrow
     let x = &x as *const (i32, i32);
     let _ = unsafe { (&*x).0 };
+    //~^ needless_borrow
 
     // Issue #8367
     trait Foo {
@@ -100,6 +120,7 @@ fn main() {
     }
     (&()).foo(); // Don't lint. `()` doesn't implement `Foo`
     (&&()).foo();
+    //~^ needless_borrow
 
     impl Foo for i32 {
         fn foo(self) {}
@@ -109,6 +130,7 @@ fn main() {
     }
     (&5).foo(); // Don't lint. `5` will call `<i32 as Foo>::foo`
     (&&5).foo();
+    //~^ needless_borrow
 
     trait FooRef {
         fn foo_ref(&self);
@@ -135,6 +157,7 @@ fn main() {
 
     // issue #11786
     let x: (&str,) = (&"",);
+    //~^ needless_borrow
 }
 
 #[allow(clippy::needless_borrowed_reference)]
@@ -177,6 +200,7 @@ mod issue9160 {
     {
         fn calls_field(&self) -> T {
             (&self.f)()
+            //~^ needless_borrow
         }
     }
 
@@ -186,6 +210,7 @@ mod issue9160 {
     {
         fn calls_mut_field(&mut self) -> T {
             (&mut self.f)()
+            //~^ needless_borrow
         }
     }
 }
@@ -223,6 +248,7 @@ fn issue9383() {
         };
         let _ = &mut (&mut x.u).x;
         let _ = &mut (&mut { x.u }).x;
+        //~^ needless_borrow
         let _ = &mut ({ &mut x.u }).x;
 
         let mut x = U {
@@ -230,11 +256,14 @@ fn issue9383() {
         };
         let _ = &mut (&mut x.u).x;
         let _ = &mut (&mut { x.u }).x;
+        //~^ needless_borrow
         let _ = &mut ({ &mut x.u }).x;
 
         let mut x = U { u: Wrap(Foo { x: 0 }) };
         let _ = &mut (&mut x.u).x;
+        //~^ needless_borrow
         let _ = &mut (&mut { x.u }).x;
+        //~^ needless_borrow
         let _ = &mut ({ &mut x.u }).x;
     }
 }
@@ -256,6 +285,7 @@ fn issue_12268() {
     let option = Some((&1,));
     let x = (&1,);
     option.unwrap_or((&x.0,));
-    //~^ ERROR: this expression creates a reference which is immediately dereferenced by the
+    //~^ needless_borrow
+
     // compiler
 }

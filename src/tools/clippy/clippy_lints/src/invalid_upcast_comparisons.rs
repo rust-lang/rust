@@ -22,9 +22,6 @@ declare_clippy_lint! {
     /// will mistakenly imply that it is possible for `x` to be outside the range of
     /// `u8`.
     ///
-    /// ### Known problems
-    /// https://github.com/rust-lang/rust-clippy/issues/886
-    ///
     /// ### Example
     /// ```no_run
     /// let x: u8 = 1;

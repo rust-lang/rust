@@ -6,7 +6,6 @@
 /// ```
 /// fn main() {
 //~^ ERROR: needless `fn main` in doctest
-//~| NOTE: `-D clippy::needless-doctest-main` implied by `-D warnings`
 ///     unimplemented!();
 /// }
 /// ```
