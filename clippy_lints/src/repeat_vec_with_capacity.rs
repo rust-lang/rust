@@ -18,9 +18,7 @@ pub struct RepeatVecWithCapacity {
 
 impl RepeatVecWithCapacity {
     pub fn new(conf: &'static Conf) -> Self {
-        Self {
-            msrv: conf.msrv.clone(),
-        }
+        Self { msrv: conf.msrv }
     }
 }
 
@@ -101,13 +99,14 @@ fn check_vec_macro(cx: &LateContext<'_>, expr: &Expr<'_>) {
 }
 
 /// Checks `iter::repeat(Vec::with_capacity(x))`
-fn check_repeat_fn(cx: &LateContext<'_>, expr: &Expr<'_>) {
+fn check_repeat_fn(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: Msrv) {
     if !expr.span.from_expansion()
         && fn_def_id(cx, expr).is_some_and(|did| cx.tcx.is_diagnostic_item(sym::iter_repeat, did))
         && let ExprKind::Call(_, [repeat_expr]) = expr.kind
         && fn_def_id(cx, repeat_expr).is_some_and(|did| cx.tcx.is_diagnostic_item(sym::vec_with_capacity, did))
         && !repeat_expr.span.from_expansion()
         && let Some(exec_context) = std_or_core(cx)
+        && msrv.meets(cx, msrvs::REPEAT_WITH)
     {
         emit_lint(
             cx,
@@ -126,10 +125,6 @@ fn check_repeat_fn(cx: &LateContext<'_>, expr: &Expr<'_>) {
 impl LateLintPass<'_> for RepeatVecWithCapacity {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
         check_vec_macro(cx, expr);
-        if self.msrv.meets(msrvs::REPEAT_WITH) {
-            check_repeat_fn(cx, expr);
-        }
+        check_repeat_fn(cx, expr, self.msrv);
     }
-
-    extract_msrv_attr!(LateContext);
 }

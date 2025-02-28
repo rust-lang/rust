@@ -56,9 +56,7 @@ pub struct ManualStrip {
 
 impl ManualStrip {
     pub fn new(conf: &'static Conf) -> Self {
-        Self {
-            msrv: conf.msrv.clone(),
-        }
+        Self { msrv: conf.msrv }
     }
 }
 
@@ -75,7 +73,6 @@ impl<'tcx> LateLintPass<'tcx> for ManualStrip {
         if let Some(higher::If { cond, then, .. }) = higher::If::hir(expr)
             && let ExprKind::MethodCall(_, target_arg, [pattern], _) = cond.kind
             && let ExprKind::Path(target_path) = &target_arg.kind
-            && self.msrv.meets(msrvs::STR_STRIP_PREFIX)
             && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(cond.hir_id)
         {
             let strip_kind = if cx.tcx.is_diagnostic_item(sym::str_starts_with, method_def_id) {
@@ -98,7 +95,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualStrip {
             }
 
             let (strippings, bindings) = find_stripping(cx, strip_kind, target_res, pattern, then);
-            if !strippings.is_empty() {
+            if !strippings.is_empty() && self.msrv.meets(cx, msrvs::STR_STRIP_PREFIX) {
                 let kind_word = match strip_kind {
                     StripKind::Prefix => "prefix",
                     StripKind::Suffix => "suffix",
@@ -156,8 +153,6 @@ impl<'tcx> LateLintPass<'tcx> for ManualStrip {
             }
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
 // Returns `Some(arg)` if `expr` matches `arg.len()` and `None` otherwise.

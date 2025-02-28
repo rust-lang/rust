@@ -160,11 +160,11 @@ fn check_replace_option_with_some(
     src: &Expr<'_>,
     dest: &Expr<'_>,
     expr_span: Span,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) -> bool {
-    if msrv.meets(msrvs::OPTION_REPLACE)
-        && let ExprKind::Call(src_func, [src_arg]) = src.kind
+    if let ExprKind::Call(src_func, [src_arg]) = src.kind
         && is_res_lang_ctor(cx, path_res(cx, src_func), OptionSome)
+        && msrv.meets(cx, msrvs::OPTION_REPLACE)
     {
         // We do not have to check for a `const` context here, because `core::mem::replace()` and
         // `Option::replace()` have been const-stabilized simultaneously in version 1.83.0.
@@ -250,15 +250,16 @@ fn check_replace_with_default(
     src: &Expr<'_>,
     dest: &Expr<'_>,
     expr: &Expr<'_>,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) -> bool {
-    if msrv.meets(msrvs::MEM_TAKE) && is_expr_used_or_unified(cx.tcx, expr)
+    if is_expr_used_or_unified(cx.tcx, expr)
         // disable lint for primitives
         && let expr_type = cx.typeck_results().expr_ty_adjusted(src)
         && !is_non_aggregate_primitive_type(expr_type)
         && is_default_equivalent(cx, src)
         && !expr.span.in_external_macro(cx.tcx.sess.source_map())
         && let Some(top_crate) = std_or_core(cx)
+        && msrv.meets(cx, msrvs::MEM_TAKE)
     {
         span_lint_and_then(
             cx,
@@ -292,9 +293,7 @@ pub struct MemReplace {
 
 impl MemReplace {
     pub fn new(conf: &'static Conf) -> Self {
-        Self {
-            msrv: conf.msrv.clone(),
-        }
+        Self { msrv: conf.msrv }
     }
 }
 
@@ -308,12 +307,11 @@ impl<'tcx> LateLintPass<'tcx> for MemReplace {
         {
             // Check that second argument is `Option::None`
             if !check_replace_option_with_none(cx, src, dest, expr.span)
-                && !check_replace_option_with_some(cx, src, dest, expr.span, &self.msrv)
-                && !check_replace_with_default(cx, src, dest, expr, &self.msrv)
+                && !check_replace_option_with_some(cx, src, dest, expr.span, self.msrv)
+                && !check_replace_with_default(cx, src, dest, expr, self.msrv)
             {
                 check_replace_with_uninit(cx, src, dest, expr.span);
             }
         }
     }
-    extract_msrv_attr!(LateContext);
 }

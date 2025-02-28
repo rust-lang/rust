@@ -1,11 +1,14 @@
+use rustc_ast::Attribute;
 use rustc_ast::attr::AttributeExt;
 
 use rustc_attr_parsing::{RustcVersion, parse_version};
+use rustc_lint::LateContext;
 use rustc_session::Session;
 use rustc_span::{Symbol, sym};
 use serde::Deserialize;
-use smallvec::{SmallVec, smallvec};
-use std::fmt;
+use smallvec::SmallVec;
+use std::iter::once;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 macro_rules! msrv_aliases {
     ($($major:literal,$minor:literal,$patch:literal {
@@ -73,21 +76,15 @@ msrv_aliases! {
     1,15,0 { MAYBE_BOUND_IN_WHERE }
 }
 
-/// Tracks the current MSRV from `clippy.toml`, `Cargo.toml` or set via `#[clippy::msrv]`
-#[derive(Debug, Clone)]
-pub struct Msrv {
-    stack: SmallVec<[RustcVersion; 2]>,
-}
+/// `#[clippy::msrv]` attributes are rarely used outside of Clippy's test suite, as a basic
+/// optimization we can skip traversing the HIR in [`Msrv::meets`] if we never saw an MSRV attribute
+/// during the early lint passes
+static SEEN_MSRV_ATTR: AtomicBool = AtomicBool::new(false);
 
-impl fmt::Display for Msrv {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let Some(msrv) = self.current() {
-            write!(f, "{msrv}")
-        } else {
-            f.write_str("1.0.0")
-        }
-    }
-}
+/// Tracks the current MSRV from `clippy.toml`, `Cargo.toml` or set via `#[clippy::msrv]` in late
+/// lint passes, use [`MsrvStack`] for early passes
+#[derive(Copy, Clone, Debug, Default)]
+pub struct Msrv(Option<RustcVersion>);
 
 impl<'de> Deserialize<'de> for Msrv {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -96,14 +93,36 @@ impl<'de> Deserialize<'de> for Msrv {
     {
         let v = String::deserialize(deserializer)?;
         parse_version(Symbol::intern(&v))
-            .map(|v| Msrv { stack: smallvec![v] })
+            .map(|v| Self(Some(v)))
             .ok_or_else(|| serde::de::Error::custom("not a valid Rust version"))
     }
 }
 
 impl Msrv {
-    pub fn empty() -> Msrv {
-        Msrv { stack: SmallVec::new() }
+    /// Returns the MSRV at the current node
+    ///
+    /// If the crate being linted uses an `#[clippy::msrv]` attribute this will search the parent
+    /// nodes for that attribute, prefer to run this check after cheaper pattern matching operations
+    pub fn current(self, cx: &LateContext<'_>) -> Option<RustcVersion> {
+        if SEEN_MSRV_ATTR.load(Ordering::Relaxed) {
+            let start = cx.last_node_with_lint_attrs;
+            if let Some(msrv_attr) = once(start)
+                .chain(cx.tcx.hir_parent_id_iter(start))
+                .find_map(|id| parse_attrs(cx.tcx.sess, cx.tcx.hir().attrs(id)))
+            {
+                return Some(msrv_attr);
+            }
+        }
+
+        self.0
+    }
+
+    /// Checks if a required version from [this module](self) is met at the current node
+    ///
+    /// If the crate being linted uses an `#[clippy::msrv]` attribute this will search the parent
+    /// nodes for that attribute, prefer to run this check after cheaper pattern matching operations
+    pub fn meets(self, cx: &LateContext<'_>, required: RustcVersion) -> bool {
+        self.current(cx).is_none_or(|msrv| msrv >= required)
     }
 
     pub fn read_cargo(&mut self, sess: &Session) {
@@ -111,8 +130,8 @@ impl Msrv {
             .ok()
             .and_then(|v| parse_version(Symbol::intern(&v)));
 
-        match (self.current(), cargo_msrv) {
-            (None, Some(cargo_msrv)) => self.stack = smallvec![cargo_msrv],
+        match (self.0, cargo_msrv) {
+            (None, Some(cargo_msrv)) => self.0 = Some(cargo_msrv),
             (Some(clippy_msrv), Some(cargo_msrv)) => {
                 if clippy_msrv != cargo_msrv {
                     sess.dcx().warn(format!(
@@ -121,6 +140,21 @@ impl Msrv {
                 }
             },
             _ => {},
+        }
+    }
+}
+
+/// Tracks the current MSRV from `clippy.toml`, `Cargo.toml` or set via `#[clippy::msrv]` in early
+/// lint passes, use [`Msrv`] for late passes
+#[derive(Debug, Clone)]
+pub struct MsrvStack {
+    stack: SmallVec<[RustcVersion; 2]>,
+}
+
+impl MsrvStack {
+    pub fn new(initial: Msrv) -> Self {
+        Self {
+            stack: SmallVec::from_iter(initial.0),
         }
     }
 
@@ -132,42 +166,43 @@ impl Msrv {
         self.current().is_none_or(|msrv| msrv >= required)
     }
 
-    fn parse_attr(sess: &Session, attrs: &[impl AttributeExt]) -> Option<RustcVersion> {
-        let sym_msrv = Symbol::intern("msrv");
-        let mut msrv_attrs = attrs.iter().filter(|attr| attr.path_matches(&[sym::clippy, sym_msrv]));
-
-        if let Some(msrv_attr) = msrv_attrs.next() {
-            if let Some(duplicate) = msrv_attrs.next_back() {
-                sess.dcx()
-                    .struct_span_err(duplicate.span(), "`clippy::msrv` is defined multiple times")
-                    .with_span_note(msrv_attr.span(), "first definition found here")
-                    .emit();
-            }
-
-            if let Some(msrv) = msrv_attr.value_str() {
-                if let Some(version) = parse_version(msrv) {
-                    return Some(version);
-                }
-
-                sess.dcx()
-                    .span_err(msrv_attr.span(), format!("`{msrv}` is not a valid Rust version"));
-            } else {
-                sess.dcx().span_err(msrv_attr.span(), "bad clippy attribute");
-            }
-        }
-
-        None
-    }
-
-    pub fn check_attributes(&mut self, sess: &Session, attrs: &[impl AttributeExt]) {
-        if let Some(version) = Self::parse_attr(sess, attrs) {
+    pub fn check_attributes(&mut self, sess: &Session, attrs: &[Attribute]) {
+        if let Some(version) = parse_attrs(sess, attrs) {
+            SEEN_MSRV_ATTR.store(true, Ordering::Relaxed);
             self.stack.push(version);
         }
     }
 
-    pub fn check_attributes_post(&mut self, sess: &Session, attrs: &[impl AttributeExt]) {
-        if Self::parse_attr(sess, attrs).is_some() {
+    pub fn check_attributes_post(&mut self, sess: &Session, attrs: &[Attribute]) {
+        if parse_attrs(sess, attrs).is_some() {
             self.stack.pop();
         }
     }
+}
+
+fn parse_attrs(sess: &Session, attrs: &[impl AttributeExt]) -> Option<RustcVersion> {
+    let sym_msrv = Symbol::intern("msrv");
+    let mut msrv_attrs = attrs.iter().filter(|attr| attr.path_matches(&[sym::clippy, sym_msrv]));
+
+    if let Some(msrv_attr) = msrv_attrs.next() {
+        if let Some(duplicate) = msrv_attrs.next_back() {
+            sess.dcx()
+                .struct_span_err(duplicate.span(), "`clippy::msrv` is defined multiple times")
+                .with_span_note(msrv_attr.span(), "first definition found here")
+                .emit();
+        }
+
+        if let Some(msrv) = msrv_attr.value_str() {
+            if let Some(version) = parse_version(msrv) {
+                return Some(version);
+            }
+
+            sess.dcx()
+                .span_err(msrv_attr.span(), format!("`{msrv}` is not a valid Rust version"));
+        } else {
+            sess.dcx().span_err(msrv_attr.span(), "bad clippy attribute");
+        }
+    }
+
+    None
 }

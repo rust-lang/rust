@@ -19,7 +19,7 @@ pub(super) fn check<'tcx>(
     arg: &'tcx Expr<'_>,
     body: &'tcx Expr<'_>,
     span: Span,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) {
     let inner_expr = peel_blocks_with_stmt(body);
     if let Some(higher::IfLet { let_pat, let_expr, if_then, if_else: None, .. })
@@ -36,7 +36,7 @@ pub(super) fn check<'tcx>(
         && (some_ctor || ok_ctor)
         // Ensure expr in `if let` is not used afterwards
         && !is_local_used(cx, if_then, pat_hir_id)
-        && msrv.meets(msrvs::ITER_FLATTEN)
+        && msrv.meets(cx, msrvs::ITER_FLATTEN)
     {
         let if_let_type = if some_ctor { "Some" } else { "Ok" };
         // Prepare the error message

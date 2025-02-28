@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::msrvs::{IO_ERROR_OTHER, Msrv};
+use clippy_utils::msrvs::{self, Msrv};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::LateContext;
 
-pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, path: &Expr<'_>, args: &[Expr<'_>], msrv: &Msrv) {
+pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, path: &Expr<'_>, args: &[Expr<'_>], msrv: Msrv) {
     if let [error_kind, error] = args
         && !expr.span.from_expansion()
         && !error_kind.span.from_expansion()
@@ -15,7 +15,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, path: &Expr<'_>, args
             &clippy_utils::paths::IO_ERRORKIND_OTHER,
         )
         && let ExprKind::Path(QPath::TypeRelative(_, new_segment)) = path.kind
-        && msrv.meets(IO_ERROR_OTHER)
+        && msrv.meets(cx, msrvs::IO_ERROR_OTHER)
     {
         span_lint_and_then(
             cx,

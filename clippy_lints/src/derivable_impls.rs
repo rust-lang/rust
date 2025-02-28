@@ -62,9 +62,7 @@ pub struct DerivableImpls {
 
 impl DerivableImpls {
     pub fn new(conf: &'static Conf) -> Self {
-        DerivableImpls {
-            msrv: conf.msrv.clone(),
-        }
+        DerivableImpls { msrv: conf.msrv }
     }
 }
 
@@ -205,11 +203,9 @@ impl<'tcx> LateLintPass<'tcx> for DerivableImpls {
         {
             if adt_def.is_struct() {
                 check_struct(cx, item, self_ty, func_expr, adt_def, args, cx.tcx.typeck_body(*b));
-            } else if adt_def.is_enum() && self.msrv.meets(msrvs::DEFAULT_ENUM_ATTRIBUTE) {
+            } else if adt_def.is_enum() && self.msrv.meets(cx, msrvs::DEFAULT_ENUM_ATTRIBUTE) {
                 check_enum(cx, item, func_expr, adt_def);
             }
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }

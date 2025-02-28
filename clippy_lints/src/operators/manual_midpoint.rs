@@ -16,7 +16,7 @@ pub(super) fn check<'tcx>(
     op: BinOpKind,
     left: &'tcx Expr<'_>,
     right: &'tcx Expr<'_>,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) {
     if !left.span.from_expansion()
         && !right.span.from_expansion()
@@ -29,7 +29,7 @@ pub(super) fn check<'tcx>(
         && left_ty == right_ty
         // Do not lint on `(_+1)/2` and `(1+_)/2`, it is likely a `div_ceil()` operation
         && !is_integer_literal(ll_expr, 1) && !is_integer_literal(lr_expr, 1)
-        && is_midpoint_implemented(left_ty, msrv)
+        && is_midpoint_implemented(cx, left_ty, msrv)
     {
         let mut app = Applicability::MachineApplicable;
         let left_sugg = Sugg::hir_with_context(cx, ll_expr, expr.span.ctxt(), "..", &mut app);
@@ -55,10 +55,10 @@ fn add_operands<'e, 'tcx>(expr: &'e Expr<'tcx>) -> Option<(&'e Expr<'tcx>, &'e E
     }
 }
 
-fn is_midpoint_implemented(ty: Ty<'_>, msrv: &Msrv) -> bool {
+fn is_midpoint_implemented(cx: &LateContext<'_>, ty: Ty<'_>, msrv: Msrv) -> bool {
     match ty.kind() {
-        ty::Uint(_) | ty::Float(_) => msrv.meets(msrvs::UINT_FLOAT_MIDPOINT),
-        ty::Int(_) => msrv.meets(msrvs::INT_MIDPOINT),
+        ty::Uint(_) | ty::Float(_) => msrv.meets(cx, msrvs::UINT_FLOAT_MIDPOINT),
+        ty::Int(_) => msrv.meets(cx, msrvs::INT_MIDPOINT),
         _ => false,
     }
 }
