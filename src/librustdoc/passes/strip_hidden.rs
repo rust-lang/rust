@@ -113,7 +113,6 @@ impl DocFolder for Stripper<'_, '_> {
             if let Some(source_did) = source.did {
                 let import_def_id = i.def_id().unwrap().expect_local();
                 let reexports = reexport_chain(self.tcx, import_def_id, source_did);
-                println!("item: {:?}, reexports: {:?}", i, reexports);
 
                 // Check if any reexport in the chain has a hidden source
                 let has_hidden_source =
