@@ -2,14 +2,13 @@
 
 use std::mem;
 
-use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::sym;
 use tracing::debug;
 
 use crate::clean::utils::inherits_doc_hidden;
-use crate::clean::{self, Item, ItemId, ItemIdSet};
+use crate::clean::{self, Item, ItemIdSet, reexport_chain};
 use crate::core::DocContext;
 use crate::fold::{DocFolder, strip_item};
 use crate::passes::{ImplStripper, Pass};
@@ -27,26 +26,6 @@ pub(crate) fn strip_hidden(krate: clean::Crate, cx: &mut DocContext<'_>) -> clea
 
     let all_items = collect_items(&krate);
 
-    // Collect hidden items
-    let hidden_items: Vec<_> =
-        all_items.iter().filter(|item| item.is_doc_hidden()).cloned().collect();
-
-    // Map import items to their hidden source items
-    let source_items: FxHashMap<_, _> = all_items
-        .iter()
-        .filter_map(|item| {
-            if let clean::ItemKind::ImportItem(import) = &item.kind {
-                let source_item = hidden_items
-                    .iter()
-                    .find(|i| i.item_id.as_def_id() == import.source.did)
-                    .cloned();
-                Some((item.item_id, source_item))
-            } else {
-                None
-            }
-        })
-        .collect();
-
     // strip all #[doc(hidden)] items
     let krate = {
         let mut stripper = Stripper {
@@ -55,7 +34,7 @@ pub(crate) fn strip_hidden(krate: clean::Crate, cx: &mut DocContext<'_>) -> clea
             tcx: cx.tcx,
             is_in_hidden_item: false,
             last_reexport: None,
-            source_items,
+            all_items,
         };
         stripper.fold_crate(krate)
     };
@@ -94,8 +73,7 @@ struct Stripper<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     is_in_hidden_item: bool,
     last_reexport: Option<LocalDefId>,
-    /// store the source items of a import item
-    source_items: FxHashMap<ItemId, Option<Item>>,
+    all_items: Vec<Item>,
 }
 
 impl Stripper<'_, '_> {
@@ -130,21 +108,31 @@ impl Stripper<'_, '_> {
 impl DocFolder for Stripper<'_, '_> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         let has_doc_hidden = i.is_doc_hidden();
-        debug!(
-            "kkkkkkkkkkkkkk {:?}, item: {:?}, has_doc_hidden: {}, is_in_hidden_item: {}\n",
-            i.name, i, has_doc_hidden, self.is_in_hidden_item
-        );
 
-        // if self.hidden_items.iter().any(|item| item.item_id == i.item_id) {
-        //     return None;
-        // }
+        if let clean::ImportItem(clean::Import { source, .. }) = &i.kind {
+            if let Some(source_did) = source.did {
+                let import_def_id = i.def_id().unwrap().expect_local();
+                let reexports = reexport_chain(self.tcx, import_def_id, source_did);
+                println!("item: {:?}, reexports: {:?}", i, reexports);
 
-        if let clean::ImportItem(clean::Import { .. }) = &i.kind {
-            if let Some(source_item) = self.source_items.get(&i.item_id) {
-                if let Some(source_item) = source_item {
-                    if source_item.is_doc_hidden() {
-                        return None;
-                    }
+                // Check if any reexport in the chain has a hidden source
+                let has_hidden_source =
+                    reexports.iter().filter_map(|reexport| reexport.id()).any(|reexport_did| {
+                        self.all_items
+                            .iter()
+                            .find(|item| item.def_id() == Some(reexport_did))
+                            .and_then(|item| {
+                                if let clean::ItemKind::ImportItem(import) = &item.kind {
+                                    import.source.did.map(|did| self.tcx.is_doc_hidden(did))
+                                } else {
+                                    None
+                                }
+                            })
+                            .unwrap_or(false)
+                    });
+
+                if has_hidden_source {
+                    return None;
                 }
             }
         }
