@@ -1094,7 +1094,6 @@ pub fn capture_local_usage(cx: &LateContext<'_>, e: &Expr<'_>) -> CaptureKind {
         pat.each_binding_or_first(&mut |_, id, span, _| match cx
             .typeck_results()
             .extract_binding_mode(cx.sess(), id, span)
-            .unwrap()
             .0
         {
             ByRef::No if !is_copy(cx, cx.typeck_results().node_type(id)) => {
