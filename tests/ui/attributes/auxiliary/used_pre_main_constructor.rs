@@ -10,14 +10,14 @@
 
 #[cfg_attr(
     any(
-        target_os = "linux",
         target_os = "android",
+        target_os = "dragonfly",
         target_os = "freebsd",
+        target_os = "haiku",
+        target_os = "illumos",
+        target_os = "linux",
         target_os = "netbsd",
         target_os = "openbsd",
-        target_os = "dragonfly",
-        target_os = "illumos",
-        target_os = "haiku"
     ),
     link_section = ".init_array"
 )]
