@@ -16,6 +16,7 @@ use rustc_span::{ErrorGuaranteed, sym};
 use rustc_type_ir::elaborate;
 use tracing::debug;
 
+use crate::check::always_applicable;
 use crate::errors;
 
 mod builtin;
@@ -24,11 +25,12 @@ mod inherent_impls_overlap;
 mod orphan;
 mod unsafety;
 
-fn check_impl(
-    tcx: TyCtxt<'_>,
+fn check_impl<'tcx>(
+    tcx: TyCtxt<'tcx>,
     impl_def_id: LocalDefId,
-    trait_ref: ty::TraitRef<'_>,
-    trait_def: &ty::TraitDef,
+    trait_ref: ty::TraitRef<'tcx>,
+    trait_def: &'tcx ty::TraitDef,
+    polarity: ty::ImplPolarity,
 ) -> Result<(), ErrorGuaranteed> {
     debug!(
         "(checking implementation) adding impl for trait '{:?}', item '{}'",
@@ -44,6 +46,12 @@ fn check_impl(
 
     enforce_trait_manually_implementable(tcx, impl_def_id, trait_ref.def_id, trait_def)
         .and(enforce_empty_impls_for_marker_traits(tcx, impl_def_id, trait_ref.def_id, trait_def))
+        .and(always_applicable::check_negative_auto_trait_impl(
+            tcx,
+            impl_def_id,
+            trait_ref,
+            polarity,
+        ))
 }
 
 fn enforce_trait_manually_implementable(
@@ -154,16 +162,16 @@ fn coherent_trait(tcx: TyCtxt<'_>, def_id: DefId) -> Result<(), ErrorGuaranteed>
     let mut res = tcx.ensure_ok().specialization_graph_of(def_id);
 
     for &impl_def_id in impls {
-        let trait_header = tcx.impl_trait_header(impl_def_id).unwrap();
-        let trait_ref = trait_header.trait_ref.instantiate_identity();
+        let impl_header = tcx.impl_trait_header(impl_def_id).unwrap();
+        let trait_ref = impl_header.trait_ref.instantiate_identity();
         let trait_def = tcx.trait_def(trait_ref.def_id);
 
         res = res
-            .and(check_impl(tcx, impl_def_id, trait_ref, trait_def))
+            .and(check_impl(tcx, impl_def_id, trait_ref, trait_def, impl_header.polarity))
             .and(check_object_overlap(tcx, impl_def_id, trait_ref))
-            .and(unsafety::check_item(tcx, impl_def_id, trait_header, trait_def))
+            .and(unsafety::check_item(tcx, impl_def_id, impl_header, trait_def))
             .and(tcx.ensure_ok().orphan_check_impl(impl_def_id))
-            .and(builtin::check_trait(tcx, def_id, impl_def_id, trait_header));
+            .and(builtin::check_trait(tcx, def_id, impl_def_id, impl_header));
     }
 
     res
