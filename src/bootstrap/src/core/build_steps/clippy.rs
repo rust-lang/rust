@@ -108,7 +108,8 @@ impl LintConfig {
         }
     }
 
-    fn merge(&self, other: &Self) -> Self {
+    /// prefer_self - use self.clippy_cfg_path when merging, otherwise - other.clippy_cfg_path
+    fn merge(&self, other: &Self, prefer_self: bool) -> Self {
         let merged = |self_attr: &[String], other_attr: &[String]| -> Vec<String> {
             self_attr.iter().cloned().chain(other_attr.iter().cloned()).collect()
         };
@@ -120,7 +121,11 @@ impl LintConfig {
             forbid: merged(&self.forbid, &other.forbid),
             // FIXME: this skip merging clippy.toml,
             // but maybe there is a better way?
-            clippy_cfg_path: self.clippy_cfg_path.clone(),
+            clippy_cfg_path: if prefer_self {
+                self.clippy_cfg_path.clone()
+            } else {
+                other.clippy_cfg_path.clone()
+            },
         }
     }
 
@@ -212,7 +217,10 @@ impl Step for Rustc {
 
     fn make_run(run: RunConfig<'_>) {
         let crates = run.make_run_crates(Alias::Compiler);
-        let config = LintConfig::new(run.builder, None);
+        let config = LintConfig::new(
+            run.builder,
+            Some("src/etc/clippy_configs/compiler/clippy.toml".into()),
+        );
         run.builder.ensure(Rustc { target: run.target, config, crates });
     }
 
@@ -274,6 +282,7 @@ impl Step for Rustc {
 macro_rules! lint_any {
     ($(
         $name:ident, $path:expr, $readable_name:expr
+        $(,clippy_cfg = $cfg_path:expr)?
         $(,lint_by_default = $lint_by_default:expr)*
         ;
     )+) => {
@@ -294,7 +303,14 @@ macro_rules! lint_any {
             }
 
             fn make_run(run: RunConfig<'_>) {
-                let config = LintConfig::new(run.builder, None);
+                #[allow(unused_mut, unused_assignments)] // optional cfg_path
+                let mut clippy_cfg: Option<PathBuf> = None;
+
+                $(
+                    clippy_cfg = Some($cfg_path.into());
+                )?
+
+                let config = LintConfig::new(run.builder, clippy_cfg);
                 run.builder.ensure($name {
                     target: run.target,
                     config,
@@ -349,7 +365,7 @@ macro_rules! lint_any {
 }
 
 lint_any!(
-    Bootstrap, "src/bootstrap", "bootstrap";
+    Bootstrap, "src/bootstrap", "bootstrap", clippy_cfg = "src/etc/clippy_configs/bootstrap/clippy.toml";
     BuildHelper, "src/build_helper", "build_helper";
     BuildManifest, "src/tools/build-manifest", "build-manifest";
     CargoMiri, "src/tools/miri/cargo-miri", "cargo-miri";
@@ -398,13 +414,16 @@ impl Step for CI {
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         builder.ensure(Bootstrap {
             target: self.target,
-            config: self.config.merge(&LintConfig {
-                allow: vec![],
-                warn: vec![],
-                deny: vec!["warnings".into()],
-                forbid: vec![],
-                clippy_cfg_path: None,
-            }),
+            config: self.config.merge(
+                &LintConfig {
+                    allow: vec![],
+                    warn: vec![],
+                    deny: vec!["warnings".into()],
+                    forbid: vec![],
+                    clippy_cfg_path: Some("src/etc/clippy_configs/bootstrap/clippy.toml".into()),
+                },
+                false,
+            ),
         });
         let library_clippy_cfg = LintConfig {
             allow: vec!["clippy::all".into()],
@@ -426,7 +445,7 @@ impl Step for CI {
         };
         builder.ensure(Std {
             target: self.target,
-            config: self.config.merge(&library_clippy_cfg),
+            config: self.config.merge(&library_clippy_cfg, true),
             crates: vec![],
         });
 
@@ -448,11 +467,11 @@ impl Step for CI {
                 "clippy::to_string_in_format_args".into(),
             ],
             forbid: vec![],
-            clippy_cfg_path: None,
+            clippy_cfg_path: Some("src/etc/clippy_configs/compiler/clippy.toml".into()),
         };
         builder.ensure(Rustc {
             target: self.target,
-            config: self.config.merge(&compiler_clippy_cfg),
+            config: self.config.merge(&compiler_clippy_cfg, false),
             crates: vec![],
         });
 
@@ -465,7 +484,7 @@ impl Step for CI {
         };
         builder.ensure(CodegenGcc {
             target: self.target,
-            config: self.config.merge(&rustc_codegen_gcc),
+            config: self.config.merge(&rustc_codegen_gcc, true),
         });
     }
 }
