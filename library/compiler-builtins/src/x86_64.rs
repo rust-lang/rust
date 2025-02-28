@@ -10,7 +10,11 @@ use core::intrinsics;
 intrinsics! {
     #[naked]
     #[cfg(all(
-        any(all(windows, target_env = "gnu"), target_os = "uefi"),
+        any(
+            all(windows, target_env = "gnu"),
+            target_os = "cygwin",
+            target_os = "uefi"
+        ),
         not(feature = "no-asm")
     ))]
     pub unsafe extern "C" fn ___chkstk_ms() {

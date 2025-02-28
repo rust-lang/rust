@@ -673,17 +673,17 @@ pub fn __aeabi_unwind_cpp_pr0() {}
 #[no_mangle]
 pub fn __aeabi_unwind_cpp_pr1() {}
 
-#[cfg(not(windows))]
+#[cfg(not(any(windows, target_os = "cygwin")))]
 #[allow(non_snake_case)]
 #[no_mangle]
 pub fn _Unwind_Resume() {}
 
-#[cfg(not(windows))]
+#[cfg(not(any(windows, target_os = "cygwin")))]
 #[lang = "eh_personality"]
 #[no_mangle]
 pub extern "C" fn eh_personality() {}
 
-#[cfg(all(windows, target_env = "gnu"))]
+#[cfg(any(all(windows, target_env = "gnu"), target_os = "cygwin"))]
 mod mingw_unwinding {
     #[no_mangle]
     pub fn rust_eh_personality() {}

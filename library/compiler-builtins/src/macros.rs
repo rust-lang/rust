@@ -193,7 +193,7 @@ macro_rules! intrinsics {
 
         $($rest:tt)*
     ) => (
-        #[cfg(all(any(windows, all(target_os = "uefi", target_arch = "x86_64")), target_pointer_width = "64"))]
+        #[cfg(all(any(windows, target_os = "cygwin", all(target_os = "uefi", target_arch = "x86_64")), target_pointer_width = "64"))]
         intrinsics! {
             $(#[$($attr)*])*
             pub extern "unadjusted" fn $name( $($argname: $ty),* ) $(-> $ret)? {
@@ -201,7 +201,7 @@ macro_rules! intrinsics {
             }
         }
 
-        #[cfg(not(all(any(windows, all(target_os = "uefi", target_arch = "x86_64")), target_pointer_width = "64")))]
+        #[cfg(not(all(any(windows, target_os = "cygwin", all(target_os = "uefi", target_arch = "x86_64")), target_pointer_width = "64")))]
         intrinsics! {
             $(#[$($attr)*])*
             pub extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
@@ -257,7 +257,7 @@ macro_rules! intrinsics {
         #[cfg(all(target_vendor = "apple", any(target_arch = "x86", target_arch = "x86_64"), not(feature = "mangled-names")))]
         mod $name {
             #[no_mangle]
-            #[cfg_attr(not(all(windows, target_env = "gnu")), linkage = "weak")]
+            #[cfg_attr(not(any(all(windows, target_env = "gnu"), target_os = "cygwin")), linkage = "weak")]
             $(#[$($attr)*])*
             extern $abi fn $name( $($argname: u16),* ) $(-> $ret)? {
                 super::$name($(f16::from_bits($argname)),*)
@@ -293,7 +293,7 @@ macro_rules! intrinsics {
         #[cfg(all(target_vendor = "apple", any(target_arch = "x86", target_arch = "x86_64"), not(feature = "mangled-names")))]
         mod $name {
             #[no_mangle]
-            #[cfg_attr(not(all(windows, target_env = "gnu")), linkage = "weak")]
+            #[cfg_attr(not(any(all(windows, target_env = "gnu"), target_os = "cygwin")), linkage = "weak")]
             $(#[$($attr)*])*
             extern $abi fn $name( $($argname: $ty),* ) -> u16 {
                 super::$name($($argname),*).to_bits()
@@ -334,7 +334,7 @@ macro_rules! intrinsics {
         #[cfg(all(target_arch = "arm", not(feature = "mangled-names")))]
         mod $name {
             #[no_mangle]
-            #[cfg_attr(not(all(windows, target_env = "gnu")), linkage = "weak")]
+            #[cfg_attr(not(any(all(windows, target_env = "gnu"), target_os = "cygwin")), linkage = "weak")]
             $(#[$($attr)*])*
             extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
                 super::$name($($argname),*)
@@ -344,7 +344,7 @@ macro_rules! intrinsics {
         #[cfg(all(target_arch = "arm", not(feature = "mangled-names")))]
         mod $alias {
             #[no_mangle]
-            #[cfg_attr(not(all(windows, target_env = "gnu")), linkage = "weak")]
+            #[cfg_attr(not(any(all(windows, target_env = "gnu"), target_os = "cygwin")), linkage = "weak")]
             $(#[$($attr)*])*
             extern "aapcs" fn $alias( $($argname: $ty),* ) $(-> $ret)? {
                 super::$name($($argname),*)
@@ -411,7 +411,7 @@ macro_rules! intrinsics {
         mod $name {
             $(#[$($attr)*])*
             #[no_mangle]
-            #[cfg_attr(not(all(windows, target_env = "gnu")), linkage = "weak")]
+            #[cfg_attr(not(any(all(windows, target_env = "gnu"), target_os = "cygwin")), linkage = "weak")]
             unsafe extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
                 super::$name($($argname),*)
             }
@@ -436,7 +436,7 @@ macro_rules! intrinsics {
             #[naked]
             $(#[$($attr)*])*
             #[cfg_attr(not(feature = "mangled-names"), no_mangle)]
-            #[cfg_attr(not(all(windows, target_env = "gnu")), linkage = "weak")]
+            #[cfg_attr(not(any(all(windows, target_env = "gnu"), target_os = "cygwin")), linkage = "weak")]
             pub unsafe extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
                 $($body)*
             }
@@ -503,7 +503,7 @@ macro_rules! intrinsics {
         mod $name {
             $(#[$($attr)*])*
             #[no_mangle]
-            #[cfg_attr(not(all(windows, target_env = "gnu")), linkage = "weak")]
+            #[cfg_attr(not(any(all(windows, target_env = "gnu"), target_os = "cygwin")), linkage = "weak")]
             $(unsafe $($empty)?)? extern $abi fn $name( $($argname: $ty),* ) $(-> $ret)? {
                 super::$name($($argname),*)
             }
