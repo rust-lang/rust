@@ -617,7 +617,6 @@ where
             )?;
 
             let certainty = ecx.is_transmutable(
-                goal.param_env,
                 goal.predicate.trait_ref.args.type_at(0),
                 goal.predicate.trait_ref.args.type_at(1),
                 assume,

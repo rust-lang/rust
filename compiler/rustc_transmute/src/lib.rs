@@ -1,5 +1,4 @@
 // tidy-alphabetical-start
-#![allow(unused_variables)]
 #![feature(never_type)]
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end
@@ -80,8 +79,7 @@ pub enum Reason<T> {
 #[cfg(feature = "rustc")]
 mod rustc {
     use rustc_hir::lang_items::LangItem;
-    use rustc_middle::traits::ObligationCause;
-    use rustc_middle::ty::{Const, ParamEnv, Ty, TyCtxt};
+    use rustc_middle::ty::{Const, Ty, TyCtxt};
 
     use super::*;
 
@@ -105,15 +103,11 @@ mod rustc {
 
         pub fn is_transmutable(
             &mut self,
-            cause: ObligationCause<'tcx>,
             types: Types<'tcx>,
             assume: crate::Assume,
         ) -> crate::Answer<crate::layout::rustc::Ref<'tcx>> {
             crate::maybe_transmutable::MaybeTransmutableQuery::new(
-                types.src,
-                types.dst,
-                assume,
-                self.tcx,
+                types.src, types.dst, assume, self.tcx,
             )
             .answer()
         }
@@ -121,11 +115,7 @@ mod rustc {
 
     impl Assume {
         /// Constructs an `Assume` from a given const-`Assume`.
-        pub fn from_const<'tcx>(
-            tcx: TyCtxt<'tcx>,
-            param_env: ParamEnv<'tcx>,
-            ct: Const<'tcx>,
-        ) -> Option<Self> {
+        pub fn from_const<'tcx>(tcx: TyCtxt<'tcx>, ct: Const<'tcx>) -> Option<Self> {
             use rustc_middle::ty::ScalarInt;
             use rustc_span::sym;
 
