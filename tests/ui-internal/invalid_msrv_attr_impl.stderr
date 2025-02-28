@@ -1,8 +1,8 @@
-error: `extract_msrv_attr!` macro missing from `LateLintPass` implementation
+error: `extract_msrv_attr!` macro missing from `EarlyLintPass` implementation
   --> tests/ui-internal/invalid_msrv_attr_impl.rs:28:1
    |
-LL | impl LateLintPass<'_> for Pass {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | impl EarlyLintPass for Pass {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the lint level is defined here
   --> tests/ui-internal/invalid_msrv_attr_impl.rs:1:9
@@ -10,23 +10,11 @@ note: the lint level is defined here
 LL | #![deny(clippy::internal)]
    |         ^^^^^^^^^^^^^^^^
    = note: `#[deny(clippy::missing_msrv_attr_impl)]` implied by `#[deny(clippy::internal)]`
-help: add `extract_msrv_attr!(LateContext)` to the `LateLintPass` implementation
+help: add `extract_msrv_attr!()` to the `EarlyLintPass` implementation
    |
-LL + impl LateLintPass<'_> for Pass {
-LL +     extract_msrv_attr!(LateContext);
-   |
-
-error: `extract_msrv_attr!` macro missing from `EarlyLintPass` implementation
-  --> tests/ui-internal/invalid_msrv_attr_impl.rs:32:1
-   |
-LL | impl EarlyLintPass for Pass {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: add `extract_msrv_attr!(EarlyContext)` to the `EarlyLintPass` implementation
-   |
-LL + impl EarlyLintPass for Pass {
-LL +     extract_msrv_attr!(EarlyContext);
+LL ~ impl EarlyLintPass for Pass {
+LL +     extract_msrv_attr!();
    |
 
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 

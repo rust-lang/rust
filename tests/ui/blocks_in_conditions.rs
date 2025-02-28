@@ -46,6 +46,7 @@ fn condition_has_block_with_single_expression() -> i32 {
 fn condition_is_normal() -> i32 {
     let x = 3;
     if true && x == 3 { 6 } else { 10 }
+    //~^ nonminimal_bool
 }
 
 fn condition_is_unsafe_block() {

@@ -27,15 +27,18 @@ fn main() {}
 fn foo() -> Option<()> {
     // Fire here, normal case
     let v = g()?;
+    //~^ question_mark
 
     // Don't fire here, the pattern is refutable
     let Variant::A(v, w) = e() else { return None };
 
     // Fire here, the pattern is irrefutable
     let (v, w) = g()?;
+    //~^ question_mark
 
     // Don't fire manual_let_else in this instance: question mark can be used instead.
     let v = g()?;
+    //~^ question_mark
 
     // Do fire manual_let_else in this instance: question mark cannot be used here due to the return
     // body.
@@ -56,6 +59,7 @@ fn foo() -> Option<()> {
     #[allow(clippy::question_mark)]
     {
         let Some(v) = g() else { return None };
+        //~^ manual_let_else
     }
 
     Some(())
@@ -64,6 +68,7 @@ fn foo() -> Option<()> {
 // lint not just `return None`, but also `return None;` (note the semicolon)
 fn issue11993(y: Option<i32>) -> Option<i32> {
     let x = y?;
+    //~^^^ question_mark
 
     // don't lint: more than one statement in the else body
     let Some(x) = y else {

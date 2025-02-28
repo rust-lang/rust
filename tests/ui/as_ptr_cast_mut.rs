@@ -20,10 +20,11 @@ impl<T> Covariant<T> {
 fn main() {
     let mut string = String::new();
     let _ = string.as_ptr() as *mut u8;
-    //~^ ERROR: casting the result of `as_ptr` to *mut u8
-    //~| NOTE: `-D clippy::as-ptr-cast-mut` implied by `-D warnings`
+    //~^ as_ptr_cast_mut
+
     let _: *mut i8 = string.as_ptr() as *mut _;
-    //~^ ERROR: casting the result of `as_ptr` to *mut i8
+    //~^ as_ptr_cast_mut
+
     let _ = string.as_ptr() as *const i8;
     let _ = string.as_mut_ptr();
     let _ = string.as_mut_ptr() as *mut u8;

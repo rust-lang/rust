@@ -41,16 +41,25 @@ mod a {
 
 fn main() {
     _foo1();
+    //~^ used_underscore_items
     let _ = _foo2();
+    //~^ used_underscore_items
     a::b::c::_foo3();
+    //~^ used_underscore_items
     let _ = &_FooStruct {};
+    //~^ used_underscore_items
     let _ = _FooStruct {};
+    //~^ used_underscore_items
 
     let foo_struct = _FooStruct {};
+    //~^ used_underscore_items
     foo_struct._method_call();
+    //~^ used_underscore_items
 
     let foo_struct2 = a::b::c::_FooStruct2 {};
+    //~^ used_underscore_items
     foo_struct2._method_call();
+    //~^ used_underscore_items
 }
 
 // should not lint exteranl crate.
@@ -60,4 +69,14 @@ fn external_item_call() {
     foo_struct3._foo();
 
     external_item::_exernal_foo();
+}
+
+// should not lint foreign functions.
+// issue #14156
+extern "C" {
+    pub fn _exit(code: i32) -> !;
+}
+
+fn _f() {
+    unsafe { _exit(1) }
 }

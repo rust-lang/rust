@@ -6,8 +6,8 @@ fn main() {
     let v: Vec<i32> = Vec::new();
     // This is unfixable because the closure includes `return`.
     v.iter().for_each(|v| {
-        //~^ ERROR: needless use of `for_each`
-        //~| NOTE: `-D clippy::needless-for-each` implied by `-D warnings`
+        //~^ needless_for_each
+
         if *v == 10 {
             return;
         } else {

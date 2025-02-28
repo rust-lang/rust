@@ -84,6 +84,28 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for links with code directly adjacent to code text:
+    /// `` [`MyItem`]`<`[`u32`]`>` ``.
+    ///
+    /// ### Why is this bad?
+    /// It can be written more simply using HTML-style `<code>` tags.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// //! [`first`](x)`second`
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// //! <code>[first](x)second</code>
+    /// ```
+    #[clippy::version = "1.86.0"]
+    pub DOC_LINK_CODE,
+    nursery,
+    "link with code back-to-back with other code"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for the doc comments of publicly visible
     /// unsafe functions and warns if there is no `# Safety` section.
     ///
@@ -453,7 +475,7 @@ declare_clippy_lint! {
     /// ///   and this line is overindented.
     /// # fn foo() {}
     /// ```
-    #[clippy::version = "1.80.0"]
+    #[clippy::version = "1.86.0"]
     pub DOC_OVERINDENTED_LIST_ITEMS,
     style,
     "ensure list items are not overindented"
@@ -513,7 +535,7 @@ declare_clippy_lint! {
     /// ```no_run
     /// #![cfg_attr(doc, doc = include_str!("some_file.md"))]
     /// ```
-    #[clippy::version = "1.84.0"]
+    #[clippy::version = "1.85.0"]
     pub DOC_INCLUDE_WITHOUT_CFG,
     restriction,
     "check if files included in documentation are behind `cfg(doc)`"
@@ -539,7 +561,7 @@ declare_clippy_lint! {
     /// //!
     /// //! [link]: destination (for link reference definition)
     /// ```
-    #[clippy::version = "1.84.0"]
+    #[clippy::version = "1.85.0"]
     pub DOC_NESTED_REFDEFS,
     suspicious,
     "link reference defined in list item or quote"
@@ -560,6 +582,7 @@ impl Documentation {
 }
 
 impl_lint_pass!(Documentation => [
+    DOC_LINK_CODE,
     DOC_LINK_WITH_QUOTES,
     DOC_MARKDOWN,
     DOC_NESTED_REFDEFS,
@@ -576,7 +599,6 @@ impl_lint_pass!(Documentation => [
     TOO_LONG_FIRST_DOC_PARAGRAPH,
     DOC_INCLUDE_WITHOUT_CFG,
 ]);
-
 
 impl EarlyLintPass for Documentation {
     fn check_attributes(&mut self, cx: &EarlyContext<'_>, attrs: &[rustc_ast::Attribute]) {
@@ -717,7 +739,7 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
 
     let (fragments, _) = attrs_to_doc_fragments(
         attrs.iter().filter_map(|attr| {
-            if !attr.doc_str_and_comment_kind().is_some() || attr.span().in_external_macro(cx.sess().source_map()) {
+            if attr.doc_str_and_comment_kind().is_none() || attr.span().in_external_macro(cx.sess().source_map()) {
                 None
             } else {
                 Some((attr, None))
@@ -747,6 +769,21 @@ fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[
 
     let mut cb = fake_broken_link_callback;
 
+    check_for_code_clusters(
+        cx,
+        pulldown_cmark::Parser::new_with_broken_link_callback(
+            &doc,
+            main_body_opts() - Options::ENABLE_SMART_PUNCTUATION,
+            Some(&mut cb),
+        )
+        .into_offset_iter(),
+        &doc,
+        Fragments {
+            doc: &doc,
+            fragments: &fragments,
+        },
+    );
+
     // disable smart punctuation to pick up ['link'] more easily
     let opts = main_body_opts() - Options::ENABLE_SMART_PUNCTUATION;
     let parser = pulldown_cmark::Parser::new_with_broken_link_callback(&doc, opts, Some(&mut cb));
@@ -768,6 +805,66 @@ const RUST_CODE: &[&str] = &["rust", "no_run", "should_panic", "compile_fail"];
 enum Container {
     Blockquote,
     List(usize),
+}
+
+/// Scan the documentation for code links that are back-to-back with code spans.
+///
+/// This is done separately from the rest of the docs, because that makes it easier to produce
+/// the correct messages.
+fn check_for_code_clusters<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize>)>>(
+    cx: &LateContext<'_>,
+    events: Events,
+    doc: &str,
+    fragments: Fragments<'_>,
+) {
+    let mut events = events.peekable();
+    let mut code_starts_at = None;
+    let mut code_ends_at = None;
+    let mut code_includes_link = false;
+    while let Some((event, range)) = events.next() {
+        match event {
+            Start(Link { .. }) if matches!(events.peek(), Some((Code(_), _range))) => {
+                if code_starts_at.is_some() {
+                    code_ends_at = Some(range.end);
+                } else {
+                    code_starts_at = Some(range.start);
+                }
+                code_includes_link = true;
+                // skip the nested "code", because we're already handling it here
+                let _ = events.next();
+            },
+            Code(_) => {
+                if code_starts_at.is_some() {
+                    code_ends_at = Some(range.end);
+                } else {
+                    code_starts_at = Some(range.start);
+                }
+            },
+            End(TagEnd::Link) => {},
+            _ => {
+                if let Some(start) = code_starts_at
+                    && let Some(end) = code_ends_at
+                    && code_includes_link
+                {
+                    if let Some(span) = fragments.span(cx, start..end) {
+                        span_lint_and_then(cx, DOC_LINK_CODE, span, "code link adjacent to code text", |diag| {
+                            let sugg = format!("<code>{}</code>", doc[start..end].replace('`', ""));
+                            diag.span_suggestion_verbose(
+                                span,
+                                "wrap the entire group in `<code>` tags",
+                                sugg,
+                                Applicability::MaybeIncorrect,
+                            );
+                            diag.help("separate code snippets will be shown with a gap");
+                        });
+                    }
+                }
+                code_includes_link = false;
+                code_starts_at = None;
+                code_ends_at = None;
+            },
+        }
+    }
 }
 
 /// Checks parsed documentation.
@@ -912,7 +1009,12 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                                 // backslashes aren't in the event stream...
                                 start -= 1;
                             }
-                            start - range.start
+
+                            if start > range.start {
+                                start - range.start
+                            } else {
+                                0
+                            }
                         }
                     } else {
                         0
@@ -1092,6 +1194,10 @@ impl<'tcx> Visitor<'tcx> for FindPanicUnwrap<'_, 'tcx> {
 
 #[expect(clippy::range_plus_one)] // inclusive ranges aren't the same type
 fn looks_like_refdef(doc: &str, range: Range<usize>) -> Option<Range<usize>> {
+    if range.end < range.start {
+        return None;
+    }
+
     let offset = range.start;
     let mut iterator = doc.as_bytes()[range].iter().copied().enumerate();
     let mut start = None;

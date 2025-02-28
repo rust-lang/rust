@@ -3,12 +3,15 @@
 
 trait Foo {
     #[inline]
+    //~^ inline_fn_without_body
     fn default_inline();
 
     #[inline(always)]
+    //~^ inline_fn_without_body
     fn always_inline();
 
     #[inline(never)]
+    //~^ inline_fn_without_body
     fn never_inline();
 
     #[inline]

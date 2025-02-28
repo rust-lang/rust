@@ -20,43 +20,43 @@ LL | fn bar(x: String, y: Wrapper) {
    |                      ^^^^^^^ help: consider taking a reference instead: `&Wrapper`
 
 error: this argument is passed by value, but not consumed in the function body
-  --> tests/ui/needless_pass_by_value.rs:43:71
+  --> tests/ui/needless_pass_by_value.rs:44:71
    |
 LL | fn test_borrow_trait<T: Borrow<str>, U: AsRef<str>, V>(t: T, u: U, v: V) {
    |                                                                       ^ help: consider taking a reference instead: `&V`
 
 error: this argument is passed by value, but not consumed in the function body
-  --> tests/ui/needless_pass_by_value.rs:56:18
+  --> tests/ui/needless_pass_by_value.rs:58:18
    |
 LL | fn test_match(x: Option<Option<String>>, y: Option<Option<String>>) {
    |                  ^^^^^^^^^^^^^^^^^^^^^^ help: consider taking a reference instead: `&Option<Option<String>>`
 
 error: this argument is passed by value, but not consumed in the function body
-  --> tests/ui/needless_pass_by_value.rs:70:24
+  --> tests/ui/needless_pass_by_value.rs:73:24
    |
 LL | fn test_destructure(x: Wrapper, y: Wrapper, z: Wrapper) {
    |                        ^^^^^^^ help: consider taking a reference instead: `&Wrapper`
 
 error: this argument is passed by value, but not consumed in the function body
-  --> tests/ui/needless_pass_by_value.rs:70:36
+  --> tests/ui/needless_pass_by_value.rs:73:36
    |
 LL | fn test_destructure(x: Wrapper, y: Wrapper, z: Wrapper) {
    |                                    ^^^^^^^ help: consider taking a reference instead: `&Wrapper`
 
 error: this argument is passed by value, but not consumed in the function body
-  --> tests/ui/needless_pass_by_value.rs:88:49
+  --> tests/ui/needless_pass_by_value.rs:92:49
    |
 LL | fn test_blanket_ref<T: Foo, S: Serialize>(vals: T, serializable: S) {}
    |                                                 ^ help: consider taking a reference instead: `&T`
 
 error: this argument is passed by value, but not consumed in the function body
-  --> tests/ui/needless_pass_by_value.rs:91:18
+  --> tests/ui/needless_pass_by_value.rs:95:18
    |
 LL | fn issue_2114(s: String, t: String, u: Vec<i32>, v: Vec<i32>) {
    |                  ^^^^^^ help: consider taking a reference instead: `&String`
 
 error: this argument is passed by value, but not consumed in the function body
-  --> tests/ui/needless_pass_by_value.rs:91:29
+  --> tests/ui/needless_pass_by_value.rs:95:29
    |
 LL | fn issue_2114(s: String, t: String, u: Vec<i32>, v: Vec<i32>) {
    |                             ^^^^^^
@@ -73,13 +73,13 @@ LL +     let _ = t.to_string();
    |
 
 error: this argument is passed by value, but not consumed in the function body
-  --> tests/ui/needless_pass_by_value.rs:91:40
+  --> tests/ui/needless_pass_by_value.rs:95:40
    |
 LL | fn issue_2114(s: String, t: String, u: Vec<i32>, v: Vec<i32>) {
    |                                        ^^^^^^^^ help: consider taking a reference instead: `&Vec<i32>`
 
 error: this argument is passed by value, but not consumed in the function body
-  --> tests/ui/needless_pass_by_value.rs:91:53
+  --> tests/ui/needless_pass_by_value.rs:95:53
    |
 LL | fn issue_2114(s: String, t: String, u: Vec<i32>, v: Vec<i32>) {
    |                                                     ^^^^^^^^
@@ -96,85 +96,85 @@ LL +     let _ = v.to_owned();
    |
 
 error: this argument is passed by value, but not consumed in the function body
-  --> tests/ui/needless_pass_by_value.rs:108:12
+  --> tests/ui/needless_pass_by_value.rs:113:12
    |
 LL |         s: String,
    |            ^^^^^^ help: consider changing the type to: `&str`
 
 error: this argument is passed by value, but not consumed in the function body
-  --> tests/ui/needless_pass_by_value.rs:110:12
+  --> tests/ui/needless_pass_by_value.rs:115:12
    |
 LL |         t: String,
    |            ^^^^^^ help: consider taking a reference instead: `&String`
 
 error: this argument is passed by value, but not consumed in the function body
-  --> tests/ui/needless_pass_by_value.rs:120:23
+  --> tests/ui/needless_pass_by_value.rs:125:23
    |
 LL |     fn baz(&self, uu: U, ss: Self) {}
    |                       ^ help: consider taking a reference instead: `&U`
 
 error: this argument is passed by value, but not consumed in the function body
-  --> tests/ui/needless_pass_by_value.rs:120:30
+  --> tests/ui/needless_pass_by_value.rs:125:30
    |
 LL |     fn baz(&self, uu: U, ss: Self) {}
    |                              ^^^^ help: consider taking a reference instead: `&Self`
 
 error: this argument is passed by value, but not consumed in the function body
-  --> tests/ui/needless_pass_by_value.rs:144:24
+  --> tests/ui/needless_pass_by_value.rs:149:24
    |
 LL | fn bar_copy(x: u32, y: CopyWrapper) {
    |                        ^^^^^^^^^^^ help: consider taking a reference instead: `&CopyWrapper`
    |
 help: or consider marking this type as `Copy`
-  --> tests/ui/needless_pass_by_value.rs:142:1
+  --> tests/ui/needless_pass_by_value.rs:147:1
    |
 LL | struct CopyWrapper(u32);
    | ^^^^^^^^^^^^^^^^^^
 
 error: this argument is passed by value, but not consumed in the function body
-  --> tests/ui/needless_pass_by_value.rs:151:29
+  --> tests/ui/needless_pass_by_value.rs:157:29
    |
 LL | fn test_destructure_copy(x: CopyWrapper, y: CopyWrapper, z: CopyWrapper) {
    |                             ^^^^^^^^^^^ help: consider taking a reference instead: `&CopyWrapper`
    |
 help: or consider marking this type as `Copy`
-  --> tests/ui/needless_pass_by_value.rs:142:1
+  --> tests/ui/needless_pass_by_value.rs:147:1
    |
 LL | struct CopyWrapper(u32);
    | ^^^^^^^^^^^^^^^^^^
 
 error: this argument is passed by value, but not consumed in the function body
-  --> tests/ui/needless_pass_by_value.rs:151:45
+  --> tests/ui/needless_pass_by_value.rs:157:45
    |
 LL | fn test_destructure_copy(x: CopyWrapper, y: CopyWrapper, z: CopyWrapper) {
    |                                             ^^^^^^^^^^^ help: consider taking a reference instead: `&CopyWrapper`
    |
 help: or consider marking this type as `Copy`
-  --> tests/ui/needless_pass_by_value.rs:142:1
+  --> tests/ui/needless_pass_by_value.rs:147:1
    |
 LL | struct CopyWrapper(u32);
    | ^^^^^^^^^^^^^^^^^^
 
 error: this argument is passed by value, but not consumed in the function body
-  --> tests/ui/needless_pass_by_value.rs:151:61
+  --> tests/ui/needless_pass_by_value.rs:157:61
    |
 LL | fn test_destructure_copy(x: CopyWrapper, y: CopyWrapper, z: CopyWrapper) {
    |                                                             ^^^^^^^^^^^ help: consider taking a reference instead: `&CopyWrapper`
    |
 help: or consider marking this type as `Copy`
-  --> tests/ui/needless_pass_by_value.rs:142:1
+  --> tests/ui/needless_pass_by_value.rs:147:1
    |
 LL | struct CopyWrapper(u32);
    | ^^^^^^^^^^^^^^^^^^
 
 error: this argument is passed by value, but not consumed in the function body
-  --> tests/ui/needless_pass_by_value.rs:166:40
+  --> tests/ui/needless_pass_by_value.rs:173:40
    |
 LL | fn some_fun<'b, S: Bar<'b, ()>>(items: S) {}
    |                                        ^ help: consider taking a reference instead: `&S`
 
 error: this argument is passed by value, but not consumed in the function body
-  --> tests/ui/needless_pass_by_value.rs:172:20
+  --> tests/ui/needless_pass_by_value.rs:179:20
    |
 LL | fn more_fun(items: impl Club<'static, i32>) {}
    |                    ^^^^^^^^^^^^^^^^^^^^^^^ help: consider taking a reference instead: `&impl Club<'static, i32>`

@@ -41,7 +41,7 @@ fn should_run_lint(cx: &LateContext<'_>, e: &hir::Expr<'_>, method_id: DefId) ->
     true
 }
 
-pub(super) fn check(cx: &LateContext<'_>, e: &hir::Expr<'_>, recv: &hir::Expr<'_>, arg: &hir::Expr<'_>, msrv: &Msrv) {
+pub(super) fn check(cx: &LateContext<'_>, e: &hir::Expr<'_>, recv: &hir::Expr<'_>, arg: &hir::Expr<'_>, msrv: Msrv) {
     if let Some(method_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
         && should_run_lint(cx, e, method_id)
     {
@@ -169,10 +169,10 @@ fn lint_path(cx: &LateContext<'_>, replace: Span, root: Span, is_copy: bool) {
     );
 }
 
-fn lint_explicit_closure(cx: &LateContext<'_>, replace: Span, root: Span, is_copy: bool, msrv: &Msrv) {
+fn lint_explicit_closure(cx: &LateContext<'_>, replace: Span, root: Span, is_copy: bool, msrv: Msrv) {
     let mut applicability = Applicability::MachineApplicable;
 
-    let (message, sugg_method) = if is_copy && msrv.meets(msrvs::ITERATOR_COPIED) {
+    let (message, sugg_method) = if is_copy && msrv.meets(cx, msrvs::ITERATOR_COPIED) {
         ("you are using an explicit closure for copying elements", "copied")
     } else {
         ("you are using an explicit closure for cloning elements", "cloned")
