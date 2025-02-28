@@ -1,4 +1,4 @@
-error[E0284]: type annotations needed
+error[E0283]: type annotations needed
   --> $DIR/issue-71584.rs:5:15
    |
 LL |     d = d % n.into();
@@ -6,7 +6,10 @@ LL |     d = d % n.into();
    |           |
    |           type must be known at this point
    |
-   = note: cannot satisfy `<u64 as Rem<_>>::Output == u64`
+   = note: multiple `impl`s satisfying `u64: Rem<_>` found in the `core` crate:
+           - impl Rem for u64;
+           - impl Rem<&u64> for u64;
+           - impl Rem<NonZero<u64>> for u64;
 help: try using a fully qualified path to specify the expected types
    |
 LL -     d = d % n.into();
@@ -15,4 +18,4 @@ LL +     d = d % <u32 as Into<T>>::into(n);
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0284`.
+For more information about this error, try `rustc --explain E0283`.

@@ -11,13 +11,15 @@ LL |     x = |c| c + 1;
    = note: no two closures, even if identical, have the same type
    = help: consider boxing your closure and/or using it as a trait object
 
-error[E0284]: type annotations needed
+error[E0283]: type annotations needed
   --> $DIR/issue-24036.rs:9:15
    |
 LL |         1 => |c| c + 1,
    |               ^    - type must be known at this point
    |
-   = note: cannot satisfy `<_ as Add<i32>>::Output == _`
+   = note: multiple `impl`s satisfying `_: Add<i32>` found in the `core` crate:
+           - impl Add for i32;
+           - impl<'a> Add<i32> for &'a i32;
 help: consider giving this closure parameter an explicit type
    |
 LL |         1 => |c: /* Type */| c + 1,
@@ -25,5 +27,5 @@ LL |         1 => |c: /* Type */| c + 1,
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0284, E0308.
-For more information about an error, try `rustc --explain E0284`.
+Some errors have detailed explanations: E0283, E0308.
+For more information about an error, try `rustc --explain E0283`.
