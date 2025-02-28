@@ -1,17 +1,15 @@
 use std::mem::take;
 use std::ops::{Deref, DerefMut};
-use std::sync::Arc;
 
 use ast::token::IdentIsRaw;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Lit, LitKind, Token, TokenKind};
-use rustc_ast::tokenstream::AttrTokenTree;
 use rustc_ast::util::parser::AssocOp;
 use rustc_ast::{
     AngleBracketedArg, AngleBracketedArgs, AnonConst, AttrVec, BinOpKind, BindingMode, Block,
-    BlockCheckMode, Expr, ExprKind, GenericArg, Generics, HasTokens, Item, ItemKind, Param, Pat,
-    PatKind, Path, PathSegment, QSelf, Recovered, Ty, TyKind,
+    BlockCheckMode, Expr, ExprKind, GenericArg, Generics, Item, ItemKind, Param, Pat, PatKind,
+    Path, PathSegment, QSelf, Recovered, Ty, TyKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
@@ -2406,52 +2404,6 @@ impl<'a> Parser<'a> {
             err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
         }
         err.span_label(span, "expected expression");
-
-        // Walk the chain of macro expansions for the current token to point at how the original
-        // code was interpreted. This helps the user realize when a macro argument of one type is
-        // later reinterpreted as a different type, like `$x:expr` being reinterpreted as `$x:pat`
-        // in a subsequent macro invocation (#71039).
-        let mut tok = self.token.clone();
-        let mut labels = vec![];
-        while let TokenKind::Interpolated(nt) = &tok.kind {
-            let tokens = nt.tokens();
-            labels.push(Arc::clone(nt));
-            if let Some(tokens) = tokens
-                && let tokens = tokens.to_attr_token_stream()
-                && let tokens = tokens.0.deref()
-                && let [AttrTokenTree::Token(token, _)] = &tokens[..]
-            {
-                tok = token.clone();
-            } else {
-                break;
-            }
-        }
-        let mut iter = labels.into_iter().peekable();
-        let mut show_link = false;
-        while let Some(nt) = iter.next() {
-            let descr = nt.descr();
-            if let Some(next) = iter.peek() {
-                let next_descr = next.descr();
-                if next_descr != descr {
-                    err.span_label(next.use_span(), format!("this is expected to be {next_descr}"));
-                    err.span_label(
-                        nt.use_span(),
-                        format!(
-                            "this is interpreted as {}, but it is expected to be {}",
-                            next_descr, descr,
-                        ),
-                    );
-                    show_link = true;
-                }
-            }
-        }
-        if show_link {
-            err.note(
-                "when forwarding a matched fragment to another macro-by-example, matchers in the \
-                 second macro will see an opaque AST of the fragment type, not the underlying \
-                 tokens",
-            );
-        }
         err
     }
 

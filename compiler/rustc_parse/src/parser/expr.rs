@@ -4,7 +4,7 @@ use core::mem;
 use core::ops::{Bound, ControlFlow};
 
 use ast::mut_visit::{self, MutVisitor};
-use ast::token::IdentIsRaw;
+use ast::token::{IdentIsRaw, MetaVarKind};
 use ast::{CoroutineKind, ForLoopKind, GenBlockKind, MatchKind, Pat, Path, PathSegment, Recovered};
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
@@ -1344,17 +1344,13 @@ impl<'a> Parser<'a> {
     fn parse_expr_bottom(&mut self) -> PResult<'a, P<Expr>> {
         maybe_recover_from_interpolated_ty_qpath!(self, true);
 
+        let span = self.token.span;
         if let token::Interpolated(nt) = &self.token.kind {
             match &**nt {
                 token::NtExpr(e) | token::NtLiteral(e) => {
                     let e = e.clone();
                     self.bump();
                     return Ok(e);
-                }
-                token::NtPath(path) => {
-                    let path = (**path).clone();
-                    self.bump();
-                    return Ok(self.mk_expr(self.prev_token.span, ExprKind::Path(None, path)));
                 }
                 token::NtBlock(block) => {
                     let block = block.clone();
@@ -1363,6 +1359,10 @@ impl<'a> Parser<'a> {
                 }
                 _ => {}
             };
+        } else if let Some(path) = self.eat_metavar_seq(MetaVarKind::Path, |this| {
+            this.collect_tokens_no_attrs(|this| this.parse_path(PathStyle::Type))
+        }) {
+            return Ok(self.mk_expr(span, ExprKind::Path(None, path)));
         }
 
         // Outer attributes are already parsed and will be

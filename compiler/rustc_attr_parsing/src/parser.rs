@@ -477,41 +477,21 @@ impl<'a> MetaItemListParserContext<'a> {
 
         // or a path.
         let path =
-            if let Some(TokenTree::Token(Token { kind: token::Interpolated(nt), span, .. }, _)) =
+            if let Some(TokenTree::Token(Token { kind: token::Interpolated(_), span, .. }, _)) =
                 self.inside_delimiters.peek()
             {
-                match &**nt {
-                    // or maybe a full nt meta including the path but we return immediately
-                    token::Nonterminal::NtMeta(item) => {
-                        self.inside_delimiters.next();
+                self.inside_delimiters.next();
+                // We go into this path if an expr ended up in an attribute that
+                // expansion did not turn into a literal. Say, `#[repr(align(macro!()))]`
+                // where the macro didn't expand to a literal. An error is already given
+                // for this at this point, and then we do continue. This makes this path
+                // reachable...
+                let e = self.dcx.span_delayed_bug(
+                    *span,
+                    "expr in place where literal is expected (builtin attr parsing)",
+                );
 
-                        return Some(MetaItemOrLitParser::MetaItemParser(MetaItemParser {
-                            path: PathParser::Ast(&item.path),
-                            args: ArgParser::from_attr_args(&item.args, self.dcx),
-                        }));
-                    }
-                    // an already interpolated path from a macro expansion is a path, no need to parse
-                    // one from tokens
-                    token::Nonterminal::NtPath(path) => {
-                        self.inside_delimiters.next();
-
-                        AttrPath::from_ast(path)
-                    }
-                    _ => {
-                        self.inside_delimiters.next();
-                        // we go into this path if an expr ended up in an attribute that
-                        // expansion did not turn into a literal. Say, `#[repr(align(macro!()))]`
-                        // where the macro didn't expand to a literal. An error is already given
-                        // for this at this point, and then we do continue. This makes this path
-                        // reachable...
-                        let e = self.dcx.span_delayed_bug(
-                            *span,
-                            "expr in place where literal is expected (builtin attr parsing)",
-                        );
-
-                        return Some(MetaItemOrLitParser::Err(*span, e));
-                    }
-                }
+                return Some(MetaItemOrLitParser::Err(*span, e));
             } else {
                 self.next_path()?
             };
