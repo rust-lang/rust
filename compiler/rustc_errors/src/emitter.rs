@@ -882,11 +882,16 @@ impl HumanEmitter {
         //      |      x_span
         //      <EMPTY LINE>
         //
+        let mut overlap = vec![false; annotations.len()];
         let mut annotations_position = vec![];
         let mut line_len: usize = 0;
         let mut p = 0;
         for (i, annotation) in annotations.iter().enumerate() {
             for (j, next) in annotations.iter().enumerate() {
+                if overlaps(next, annotation, 0) && j > i {
+                    overlap[i] = true;
+                    overlap[j] = true;
+                }
                 if overlaps(next, annotation, 0)  // This label overlaps with another one and both
                     && annotation.has_label()     // take space (they have text and are not
                     && j > i                      // multiline lines).
@@ -1269,13 +1274,17 @@ impl HumanEmitter {
         // We look for individual *long* spans, and we trim the *middle*, so that we render
         // LL | ...= [0, 0, 0, ..., 0, 0];
         //    |      ^^^^^^^^^^...^^^^^^^ expected `&[u8]`, found `[{integer}; 1680]`
-        for &(pos, annotation) in &annotations_position {
+        for (i, (_pos, annotation)) in annotations_position.iter().enumerate() {
+            // Skip cases where multiple spans overlap each other.
+            if overlap[i] {
+                continue;
+            };
             let AnnotationType::Singleline = annotation.annotation_type else { continue };
             let width = annotation.end_col.display - annotation.start_col.display;
-            if pos == 0 && width > margin.column_width && width > 10 {
+            if width > margin.column_width * 2 && width > 10 {
                 // If the terminal is *too* small, we keep at least a tiny bit of the span for
                 // display.
-                let pad = max(margin.column_width / 2, 5);
+                let pad = max(margin.column_width / 3, 5);
                 // Code line
                 buffer.replace(
                     line_offset,
@@ -1800,15 +1809,7 @@ impl HumanEmitter {
                     width_offset + annotated_file.multiline_depth + 1
                 };
 
-                let column_width = if let Some(width) = self.diagnostic_width {
-                    width.saturating_sub(code_offset)
-                } else if self.ui_testing || cfg!(miri) {
-                    DEFAULT_COLUMN_WIDTH
-                } else {
-                    termize::dimensions()
-                        .map(|(w, _)| w.saturating_sub(code_offset))
-                        .unwrap_or(DEFAULT_COLUMN_WIDTH)
-                };
+                let column_width = self.column_width(code_offset);
 
                 let margin = Margin::new(
                     whitespace_margin,
@@ -1963,6 +1964,18 @@ impl HumanEmitter {
         emit_to_destination(&buffer.render(), level, &mut self.dst, self.short_message)?;
 
         Ok(())
+    }
+
+    fn column_width(&self, code_offset: usize) -> usize {
+        if let Some(width) = self.diagnostic_width {
+            width.saturating_sub(code_offset)
+        } else if self.ui_testing || cfg!(miri) {
+            DEFAULT_COLUMN_WIDTH
+        } else {
+            termize::dimensions()
+                .map(|(w, _)| w.saturating_sub(code_offset))
+                .unwrap_or(DEFAULT_COLUMN_WIDTH)
+        }
     }
 
     fn emit_suggestion_default(
