@@ -1,6 +1,5 @@
 // tidy-alphabetical-start
 #![allow(unused_variables)]
-#![feature(alloc_layout_extra)]
 #![feature(never_type)]
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end
