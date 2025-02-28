@@ -19,7 +19,7 @@ mod tests {
     use crate::tests::check_diagnostics;
 
     #[test]
-    fn abc() {
+    fn operand_field_span_respected() {
         check_diagnostics(
             r#"
 struct NotCopy;

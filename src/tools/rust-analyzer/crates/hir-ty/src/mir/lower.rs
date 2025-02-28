@@ -544,8 +544,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                                         )),
                                     }
                                     .intern(Interner),
-                                )
-                                .into(),
+                                ),
                                 span: None,
                             }),
                             expr_id.into(),
