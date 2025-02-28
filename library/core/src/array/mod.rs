@@ -18,7 +18,7 @@ use crate::ops::{
 };
 use crate::ptr::{null, null_mut};
 use crate::random::{Random, RandomSource};
-use crate::slice::{self, Iter, IterMut};
+use crate::slice::{Iter, IterMut};
 
 mod ascii;
 mod drain;
@@ -455,12 +455,9 @@ macro_rules! impl_random_for_integer_array {
                 // SAFETY: all elements in the buffer were initialized with
                 // random bytes.
                 unsafe {
-                    let bytes = slice::from_raw_parts_mut(
-                        &raw mut buf as *mut u8,
-                        N * (<$t>::BITS as usize / 8),
-                    );
+                    let bytes = buf.as_bytes_mut().assume_init_mut();
                     source.fill_bytes(bytes);
-                    mem::transmute_copy(&buf)
+                    MaybeUninit::array_assume_init(buf)
                 }
             }
         }
