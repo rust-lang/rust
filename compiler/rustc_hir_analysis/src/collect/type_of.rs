@@ -8,7 +8,7 @@ use rustc_middle::query::plumbing::CyclePlaceholder;
 use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_middle::ty::util::IntTypeExt;
-use rustc_middle::ty::{self, Article, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::{DUMMY_SP, Ident, Span};
 
@@ -35,13 +35,6 @@ fn anon_const_type_of<'tcx>(icx: &ItemCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx
     let parent_node_id = tcx.parent_hir_id(hir_id);
     let parent_node = tcx.hir_node(parent_node_id);
 
-    let find_const = |&(op, op_sp)| match op {
-        hir::InlineAsmOperand::Const { anon_const } if anon_const.hir_id == hir_id => {
-            Some((anon_const, op_sp))
-        }
-        _ => None,
-    };
-
     match parent_node {
         // Anon consts "inside" the type system.
         Node::ConstArg(&ConstArg {
@@ -50,31 +43,6 @@ fn anon_const_type_of<'tcx>(icx: &ItemCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx
             ..
         }) if anon_hir_id == hir_id => const_arg_anon_type_of(icx, arg_hir_id, span),
 
-        // Anon consts outside the type system.
-        Node::Expr(&Expr { kind: ExprKind::InlineAsm(asm), .. })
-        | Node::Item(&Item { kind: ItemKind::GlobalAsm { asm, .. }, .. })
-            if let Some((anon_const, op_sp)) = asm.operands.iter().find_map(find_const) =>
-        {
-            let ty = tcx.typeck(def_id).node_type(hir_id);
-
-            match ty.kind() {
-                ty::Error(_) => ty,
-                ty::Int(_) | ty::Uint(_) => ty,
-                _ => {
-                    let guar = tcx
-                        .dcx()
-                        .struct_span_err(op_sp, "invalid type for `const` operand")
-                        .with_span_label(
-                            tcx.def_span(anon_const.def_id),
-                            format!("is {} `{}`", ty.kind().article(), ty),
-                        )
-                        .with_help("`const` operands must be of an integer type")
-                        .emit();
-
-                    Ty::new_error(tcx, guar)
-                }
-            }
-        }
         Node::Variant(Variant { disr_expr: Some(e), .. }) if e.hir_id == hir_id => {
             tcx.adt_def(tcx.hir_get_parent_item(hir_id)).repr().discr_type().to_ty(tcx)
         }

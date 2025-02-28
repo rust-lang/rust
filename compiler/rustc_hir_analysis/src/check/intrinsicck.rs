@@ -1,5 +1,3 @@
-use std::assert_matches::debug_assert_matches;
-
 use rustc_abi::FieldIdx;
 use rustc_ast::InlineAsmTemplatePiece;
 use rustc_data_structures::fx::FxIndexSet;
@@ -21,6 +19,7 @@ pub struct InlineAsmCtxt<'a, 'tcx: 'a> {
     typing_env: ty::TypingEnv<'tcx>,
     target_features: &'tcx FxIndexSet<Symbol>,
     expr_ty: Box<dyn Fn(&hir::Expr<'tcx>) -> Ty<'tcx> + 'a>,
+    node_ty: Box<dyn Fn(hir::HirId) -> Ty<'tcx> + 'a>,
 }
 
 enum NonAsmTypeReason<'tcx> {
@@ -35,18 +34,24 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         tcx: TyCtxt<'tcx>,
         def_id: LocalDefId,
         typing_env: ty::TypingEnv<'tcx>,
-        get_operand_ty: impl Fn(&hir::Expr<'tcx>) -> Ty<'tcx> + 'a,
+        expr_ty: impl Fn(&hir::Expr<'tcx>) -> Ty<'tcx> + 'a,
+        node_ty: impl Fn(hir::HirId) -> Ty<'tcx> + 'a,
     ) -> Self {
         InlineAsmCtxt {
             tcx,
             typing_env,
             target_features: tcx.asm_target_features(def_id),
-            expr_ty: Box::new(get_operand_ty),
+            expr_ty: Box::new(expr_ty),
+            node_ty: Box::new(node_ty),
         }
     }
 
     fn expr_ty(&self, expr: &hir::Expr<'tcx>) -> Ty<'tcx> {
         (self.expr_ty)(expr)
+    }
+
+    fn node_ty(&self, hir_id: hir::HirId) -> Ty<'tcx> {
+        (self.node_ty)(hir_id)
     }
 
     // FIXME(compiler-errors): This could use `<$ty as Pointee>::Metadata == ()`
@@ -487,12 +492,23 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                         );
                     }
                 }
-                // Typeck has checked that Const operands are integers.
                 hir::InlineAsmOperand::Const { anon_const } => {
-                    debug_assert_matches!(
-                        self.tcx.type_of(anon_const.def_id).instantiate_identity().kind(),
-                        ty::Error(_) | ty::Int(_) | ty::Uint(_)
-                    );
+                    let ty = self.node_ty(anon_const.hir_id);
+                    match ty.kind() {
+                        ty::Error(_) => {}
+                        _ if ty.is_integral() => {}
+                        _ => {
+                            self.tcx
+                                .dcx()
+                                .struct_span_err(op_sp, "invalid type for `const` operand")
+                                .with_span_label(
+                                    self.tcx.def_span(anon_const.def_id),
+                                    format!("is {} `{}`", ty.kind().article(), ty),
+                                )
+                                .with_help("`const` operands must be of an integer type")
+                                .emit();
+                        }
+                    }
                 }
                 // Typeck has checked that SymFn refers to a function.
                 hir::InlineAsmOperand::SymFn { expr } => {

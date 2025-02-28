@@ -730,12 +730,20 @@ impl<'tcx> ThirBuildCx<'tcx> {
                             }
                         }
                         hir::InlineAsmOperand::Const { ref anon_const } => {
-                            let value =
-                                mir::Const::from_unevaluated(tcx, anon_const.def_id.to_def_id())
-                                    .instantiate_identity();
-                            let span = tcx.def_span(anon_const.def_id);
+                            let ty = self.typeck_results.node_type(anon_const.hir_id);
+                            let did = anon_const.def_id.to_def_id();
+                            let typeck_root_def_id = tcx.typeck_root_def_id(did);
+                            let parent_args = tcx.erase_regions(GenericArgs::identity_for_item(
+                                tcx,
+                                typeck_root_def_id,
+                            ));
+                            let args =
+                                InlineConstArgs::new(tcx, InlineConstArgsParts { parent_args, ty })
+                                    .args;
 
-                            InlineAsmOperand::Const { value, span }
+                            let uneval = mir::UnevaluatedConst::new(did, args);
+                            let value = mir::Const::Unevaluated(uneval, ty);
+                            InlineAsmOperand::Const { value, span: tcx.def_span(did) }
                         }
                         hir::InlineAsmOperand::SymFn { expr } => {
                             InlineAsmOperand::SymFn { value: self.mirror_expr(expr) }
