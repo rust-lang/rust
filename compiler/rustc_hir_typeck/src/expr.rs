@@ -3774,13 +3774,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.check_expr_asm_operand(out_expr, false);
                     }
                 }
+                hir::InlineAsmOperand::Const { ref anon_const } => {
+                    self.check_expr_const_block(anon_const, Expectation::NoExpectation);
+                }
                 hir::InlineAsmOperand::SymFn { expr } => {
                     self.check_expr(expr);
                 }
-                // `AnonConst`s have their own body and is type-checked separately.
-                // As they don't flow into the type system we don't need them to
-                // be well-formed.
-                hir::InlineAsmOperand::Const { .. } => {}
                 hir::InlineAsmOperand::SymStatic { .. } => {}
                 hir::InlineAsmOperand::Label { block } => {
                     let previous_diverges = self.diverges.get();
