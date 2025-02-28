@@ -35,7 +35,9 @@ pub enum ExprPrecedence {
     Cast,
     // unary - * ! & &mut
     Prefix,
-    // paths, loops, function calls, array indexing, field expressions, method calls
+    // function calls, array indexing, field expressions, method calls
+    Postfix,
+    // paths, loops,
     Unambiguous,
 }
 
@@ -57,6 +59,7 @@ pub fn precedence(expr: &ast::Expr) -> ExprPrecedence {
         },
 
         Expr::BreakExpr(_)
+        | Expr::BecomeExpr(_)
         | Expr::ContinueExpr(_)
         | Expr::ReturnExpr(_)
         | Expr::YeetExpr(_)
@@ -89,27 +92,27 @@ pub fn precedence(expr: &ast::Expr) -> ExprPrecedence {
 
         Expr::LetExpr(_) | Expr::PrefixExpr(_) | Expr::RefExpr(_) => ExprPrecedence::Prefix,
 
-        Expr::ArrayExpr(_)
-        | Expr::AsmExpr(_)
-        | Expr::AwaitExpr(_)
-        | Expr::BecomeExpr(_)
-        | Expr::BlockExpr(_)
+        Expr::AwaitExpr(_)
         | Expr::CallExpr(_)
         | Expr::FieldExpr(_)
+        | Expr::IndexExpr(_)
+        | Expr::MethodCallExpr(_)
+        | Expr::TryExpr(_) => ExprPrecedence::Postfix,
+
+        Expr::ArrayExpr(_)
+        | Expr::AsmExpr(_)
+        | Expr::BlockExpr(_)
         | Expr::ForExpr(_)
         | Expr::FormatArgsExpr(_)
         | Expr::IfExpr(_)
-        | Expr::IndexExpr(_)
         | Expr::Literal(_)
         | Expr::LoopExpr(_)
         | Expr::MacroExpr(_)
         | Expr::MatchExpr(_)
-        | Expr::MethodCallExpr(_)
         | Expr::OffsetOfExpr(_)
         | Expr::ParenExpr(_)
         | Expr::PathExpr(_)
         | Expr::RecordExpr(_)
-        | Expr::TryExpr(_)
         | Expr::TupleExpr(_)
         | Expr::UnderscoreExpr(_)
         | Expr::WhileExpr(_) => ExprPrecedence::Unambiguous,
