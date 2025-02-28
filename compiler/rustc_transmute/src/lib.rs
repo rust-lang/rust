@@ -104,7 +104,6 @@ mod rustc {
             Self { tcx }
         }
 
-        #[allow(unused)]
         pub fn is_transmutable(
             &mut self,
             cause: ObligationCause<'tcx>,
