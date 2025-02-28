@@ -424,7 +424,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let src = predicate.trait_ref.args.type_at(1);
 
         debug!(?src, ?dst);
-        let mut transmute_env = rustc_transmute::TransmuteTypeEnv::new(self.infcx);
+        let mut transmute_env = rustc_transmute::TransmuteTypeEnv::new(self.infcx.tcx);
         let maybe_transmutable = transmute_env.is_transmutable(
             obligation.cause.clone(),
             rustc_transmute::Types { dst, src },

@@ -2544,7 +2544,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let src = trait_pred.trait_ref.args.type_at(1);
             let err_msg = format!("`{src}` cannot be safely transmuted into `{dst}`");
 
-            match rustc_transmute::TransmuteTypeEnv::new(self.infcx).is_transmutable(
+            match rustc_transmute::TransmuteTypeEnv::new(self.infcx.tcx).is_transmutable(
                 obligation.cause,
                 src_and_dst,
                 assume,

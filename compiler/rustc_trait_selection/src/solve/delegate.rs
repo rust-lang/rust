@@ -236,7 +236,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         };
 
         // FIXME(transmutability): This really should be returning nested goals for `Answer::If*`
-        match rustc_transmute::TransmuteTypeEnv::new(&self.0).is_transmutable(
+        match rustc_transmute::TransmuteTypeEnv::new(self.0.tcx).is_transmutable(
             ObligationCause::dummy(),
             rustc_transmute::Types { src, dst },
             assume,

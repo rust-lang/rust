@@ -81,7 +81,6 @@ pub enum Reason<T> {
 #[cfg(feature = "rustc")]
 mod rustc {
     use rustc_hir::lang_items::LangItem;
-    use rustc_infer::infer::InferCtxt;
     use rustc_macros::TypeVisitable;
     use rustc_middle::traits::ObligationCause;
     use rustc_middle::ty::{Const, ParamEnv, Ty, TyCtxt};
@@ -97,13 +96,13 @@ mod rustc {
         pub dst: Ty<'tcx>,
     }
 
-    pub struct TransmuteTypeEnv<'cx, 'tcx> {
-        infcx: &'cx InferCtxt<'tcx>,
+    pub struct TransmuteTypeEnv<'tcx> {
+        tcx: TyCtxt<'tcx>,
     }
 
-    impl<'cx, 'tcx> TransmuteTypeEnv<'cx, 'tcx> {
-        pub fn new(infcx: &'cx InferCtxt<'tcx>) -> Self {
-            Self { infcx }
+    impl<'tcx> TransmuteTypeEnv<'tcx> {
+        pub fn new(tcx: TyCtxt<'tcx>) -> Self {
+            Self { tcx }
         }
 
         #[allow(unused)]
@@ -117,7 +116,7 @@ mod rustc {
                 types.src,
                 types.dst,
                 assume,
-                self.infcx.tcx,
+                self.tcx,
             )
             .answer()
         }
