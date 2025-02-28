@@ -65,11 +65,16 @@ pub(crate) fn from_target_feature_attr(
             // Only allow target features whose feature gates have been enabled
             // and which are permitted to be toggled.
             if let Err(reason) = stability.toggle_allowed(/*enable*/ true) {
-                tcx.dcx().emit_err(errors::ForbiddenTargetFeatureAttr {
-                    span: item.span(),
-                    feature,
-                    reason,
-                });
+                // We skip this error in rustdoc, where we want to allow all target features of
+                // all targets, so we can't check their ABI compatibility and anyway we are not
+                // generating code so "it's fine".
+                if !tcx.sess.opts.actually_rustdoc {
+                    tcx.dcx().emit_err(errors::ForbiddenTargetFeatureAttr {
+                        span: item.span(),
+                        feature,
+                        reason,
+                    });
+                }
             } else if let Some(nightly_feature) = stability.requires_nightly()
                 && !rust_features.enabled(nightly_feature)
             {
