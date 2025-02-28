@@ -144,10 +144,8 @@ pub(crate) struct AllocMustStatics {
     pub(crate) span: Span,
 }
 
-#[cfg(llvm_enzyme)]
 pub(crate) use autodiff::*;
 
-#[cfg(llvm_enzyme)]
 mod autodiff {
     use super::*;
     #[derive(Diagnostic)]
@@ -203,9 +201,7 @@ mod autodiff {
     }
 }
 
-#[cfg(not(llvm_enzyme))]
 pub(crate) use ad_fallback::*;
-#[cfg(not(llvm_enzyme))]
 mod ad_fallback {
     use super::*;
     #[derive(Diagnostic)]
