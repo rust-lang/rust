@@ -184,7 +184,7 @@ fn enable_disable_target_features<'tcx>(
             // no action is needed, all instructions are accepted regardless of target feature
         }
 
-        Architecture::Aarch64 | Architecture::Aarch64_Ilp32 | Architecture::Arm => {
+        Architecture::Aarch64 | Architecture::Aarch64_Ilp32 => {
             // https://developer.arm.com/documentation/100067/0611/armclang-Integrated-Assembler/AArch32-Target-selection-directives?lang=en
 
             for feature in features {
@@ -197,6 +197,17 @@ fn enable_disable_target_features<'tcx>(
                 }
             }
         }
+        Architecture::Arm => {
+            // https://developer.arm.com/documentation/100067/0611/armclang-Integrated-Assembler/AArch32-Target-selection-directives?lang=en
+
+            // FIXME: implement the target feature handling. Contrary to most other targets, there
+            // is no convenient push/pop mechanism. That means we have to manually restore the state
+            // of the target features to the state on entry. This is complicated, given how arm
+            // features interact. There is some incomplete code here https://gist.github.com/folkertdev/fe99874c466e598d0fb2dadf13b91b6f
+
+            /* fallthrough */
+        }
+
         Architecture::Riscv32 | Architecture::Riscv64 => {
             // https://github.com/riscv-non-isa/riscv-asm-manual/blob/ad0de8c004e29c9a7ac33cfd054f4d4f9392f2fb/src/asm-manual.adoc#arch
 
