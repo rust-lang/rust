@@ -42,6 +42,7 @@ declare_clippy_lint! {
 pub struct IncompatibleMsrv {
     msrv: Msrv,
     is_above_msrv: FxHashMap<DefId, RustcVersion>,
+    check_in_tests: bool,
 }
 
 impl_lint_pass!(IncompatibleMsrv => [INCOMPATIBLE_MSRV]);
@@ -51,6 +52,7 @@ impl IncompatibleMsrv {
         Self {
             msrv: conf.msrv.clone(),
             is_above_msrv: FxHashMap::default(),
+            check_in_tests: conf.check_incompatible_msrv_in_tests,
         }
     }
 
@@ -87,7 +89,7 @@ impl IncompatibleMsrv {
             return;
         }
         let version = self.get_def_id_version(cx.tcx, def_id);
-        if self.msrv.meets(version) || is_in_test(cx.tcx, node) {
+        if self.msrv.meets(version) || (!self.check_in_tests && is_in_test(cx.tcx, node)) {
             return;
         }
         if let ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) = span.ctxt().outer_expn_data().kind {
