@@ -1,4 +1,5 @@
 #include <stddef.h>
+#include <stdint.h>
 
 // See comments in build_native_lib()
 #define EXPORT __attribute__((visibility("default")))
@@ -87,4 +88,22 @@ EXPORT void swap_ptr_triple_dangling(Triple *t_ptr) {
 
 EXPORT const int *return_ptr(const int *ptr) {
   return ptr;
+}
+
+/* Test: test_pass_ptr_as_int */
+
+EXPORT void pass_ptr_as_int(uintptr_t ptr, int set_to_val) {
+  *(int*)ptr = set_to_val;
+}
+
+/* Test: test_pass_ptr_via_previously_shared_mem */
+
+int** shared_place;
+
+EXPORT void set_shared_mem(int** ptr) {
+  shared_place = ptr;
+}
+
+EXPORT void init_ptr_stored_in_shared_mem(int val) {
+  **shared_place = val;
 }
