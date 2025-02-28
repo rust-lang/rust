@@ -1,0 +1,38 @@
+warning: the feature `generic_const_exprs` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/eval_fn_item_in_const_arg.rs:1:12
+   |
+LL | #![feature(generic_const_exprs)]
+   |            ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #76560 <https://github.com/rust-lang/rust/issues/76560> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+warning: the feature `min_generic_const_args` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/eval_fn_item_in_const_arg.rs:3:12
+   |
+LL | #![feature(min_generic_const_args)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
+
+error[E0080]: evaluation of `Checked::{constant#0}` failed
+  --> $DIR/eval_fn_item_in_const_arg.rs:6:51
+   |
+LL | struct Checked<const N: usize, const M: usize = { N + 1 }>;
+   |                                                   ^^^^^ using uninitialized data, but this operation requires initialized memory
+
+error: the constant `main` is not of type `usize`
+  --> $DIR/eval_fn_item_in_const_arg.rs:10:12
+   |
+LL |     let _: Checked<main>;
+   |            ^^^^^^^^^^^^^ expected `usize`, found fn item
+   |
+note: required by a const generic parameter in `Checked`
+  --> $DIR/eval_fn_item_in_const_arg.rs:6:16
+   |
+LL | struct Checked<const N: usize, const M: usize = { N + 1 }>;
+   |                ^^^^^^^^^^^^^^ required by this const generic parameter in `Checked`
+
+error: aborting due to 2 previous errors; 2 warnings emitted
+
+For more information about this error, try `rustc --explain E0080`.

@@ -658,7 +658,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     abi::Scalar::Initialized { .. }
                 )
         ) {
-            span_bug!(self.cur_span(), "primitive read not possible for type: {}", op.layout().ty);
+            self.tcx().dcx().span_delayed_bug(
+                self.cur_span(),
+                format!("primitive read not possible for type: {}", op.layout().ty),
+            );
         }
         let imm = self.read_immediate_raw(op)?.right().unwrap();
         if matches!(*imm, Immediate::Uninit) {
