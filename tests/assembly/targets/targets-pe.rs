@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ assembly-output: emit-asm
 // ignore-tidy-linelength
 //@ revisions: aarch64_pc_windows_msvc
@@ -95,8 +96,8 @@
 #![no_core]
 #![crate_type = "lib"]
 
-#[lang = "sized"]
-trait Sized {}
+extern crate minicore;
+use minicore::*;
 
 pub fn test() -> u8 {
     42
