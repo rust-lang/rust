@@ -608,6 +608,7 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::operators::IMPOSSIBLE_COMPARISONS_INFO,
     crate::operators::INEFFECTIVE_BIT_MASK_INFO,
     crate::operators::INTEGER_DIVISION_INFO,
+    crate::operators::MANUAL_MIDPOINT_INFO,
     crate::operators::MISREFACTORED_ASSIGN_OP_INFO,
     crate::operators::MODULO_ARITHMETIC_INFO,
     crate::operators::MODULO_ONE_INFO,

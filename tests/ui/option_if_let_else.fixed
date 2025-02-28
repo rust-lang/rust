@@ -4,6 +4,7 @@
     clippy::equatable_if_let,
     clippy::let_unit_value,
     clippy::redundant_locals,
+    clippy::manual_midpoint,
     clippy::manual_unwrap_or_default,
     clippy::manual_unwrap_or
 )]

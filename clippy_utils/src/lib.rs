@@ -1752,6 +1752,17 @@ pub fn is_integer_literal(expr: &Expr<'_>, value: u128) -> bool {
     false
 }
 
+/// Checks whether the given expression is a constant literal of the given value.
+pub fn is_float_literal(expr: &Expr<'_>, value: f64) -> bool {
+    if let ExprKind::Lit(spanned) = expr.kind
+        && let LitKind::Float(v, _) = spanned.node
+    {
+        v.as_str().parse() == Ok(value)
+    } else {
+        false
+    }
+}
+
 /// Returns `true` if the given `Expr` has been coerced before.
 ///
 /// Examples of coercions can be found in the Nomicon at

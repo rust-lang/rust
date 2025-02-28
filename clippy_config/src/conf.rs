@@ -629,6 +629,7 @@ define_Conf! {
         manual_hash_one,
         manual_is_ascii_check,
         manual_let_else,
+        manual_midpoint,
         manual_non_exhaustive,
         manual_option_as_slice,
         manual_pattern_char_comparison,
