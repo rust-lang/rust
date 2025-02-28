@@ -823,13 +823,11 @@ pub fn vaddvq_u64(a: uint64x2_t) -> u64 {
 }
 #[doc = "Multi-vector floating-point absolute maximum"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vamax_f32)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
 #[inline]
 #[target_feature(enable = "neon,faminmax")]
 #[cfg_attr(test, assert_instr(nop))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub unsafe fn vamax_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
+pub fn vamax_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -837,17 +835,15 @@ pub unsafe fn vamax_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
         )]
         fn _vamax_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t;
     }
-    _vamax_f32(a, b)
+    unsafe { _vamax_f32(a, b) }
 }
 #[doc = "Multi-vector floating-point absolute maximum"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vamaxq_f32)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
 #[inline]
 #[target_feature(enable = "neon,faminmax")]
 #[cfg_attr(test, assert_instr(nop))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub unsafe fn vamaxq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
+pub fn vamaxq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -855,17 +851,15 @@ pub unsafe fn vamaxq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
         )]
         fn _vamaxq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t;
     }
-    _vamaxq_f32(a, b)
+    unsafe { _vamaxq_f32(a, b) }
 }
 #[doc = "Multi-vector floating-point absolute maximum"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vamaxq_f64)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
 #[inline]
 #[target_feature(enable = "neon,faminmax")]
 #[cfg_attr(test, assert_instr(nop))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub unsafe fn vamaxq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
+pub fn vamaxq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -873,17 +867,15 @@ pub unsafe fn vamaxq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
         )]
         fn _vamaxq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t;
     }
-    _vamaxq_f64(a, b)
+    unsafe { _vamaxq_f64(a, b) }
 }
 #[doc = "Multi-vector floating-point absolute minimum"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vamin_f32)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
 #[inline]
 #[target_feature(enable = "neon,faminmax")]
 #[cfg_attr(test, assert_instr(nop))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub unsafe fn vamin_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
+pub fn vamin_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -891,17 +883,15 @@ pub unsafe fn vamin_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
         )]
         fn _vamin_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t;
     }
-    _vamin_f32(a, b)
+    unsafe { _vamin_f32(a, b) }
 }
 #[doc = "Multi-vector floating-point absolute minimum"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaminq_f32)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
 #[inline]
 #[target_feature(enable = "neon,faminmax")]
 #[cfg_attr(test, assert_instr(nop))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub unsafe fn vaminq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
+pub fn vaminq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -909,17 +899,15 @@ pub unsafe fn vaminq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
         )]
         fn _vaminq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t;
     }
-    _vaminq_f32(a, b)
+    unsafe { _vaminq_f32(a, b) }
 }
 #[doc = "Multi-vector floating-point absolute minimum"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vaminq_f64)"]
-#[doc = "## Safety"]
-#[doc = "  * Neon instrinsic unsafe"]
 #[inline]
 #[target_feature(enable = "neon,faminmax")]
 #[cfg_attr(test, assert_instr(nop))]
 #[stable(feature = "neon_intrinsics", since = "1.59.0")]
-pub unsafe fn vaminq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
+pub fn vaminq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
             any(target_arch = "aarch64", target_arch = "arm64ec"),
@@ -927,7 +915,7 @@ pub unsafe fn vaminq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
         )]
         fn _vaminq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t;
     }
-    _vaminq_f64(a, b)
+    unsafe { _vaminq_f64(a, b) }
 }
 #[doc = "Bit clear and exclusive OR"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vbcaxq_s8)"]
