@@ -1,12 +1,11 @@
+//@ add-core-stubs
 //@ compile-flags: --target thumbv8m.main-none-eabi --crate-type lib
 //@ needs-llvm-components: arm
 #![feature(cmse_nonsecure_entry, c_variadic, no_core, lang_items)]
 #![no_core]
-#[lang = "sized"]
-pub trait Sized {}
-#[lang = "copy"]
-pub trait Copy {}
-impl Copy for u32 {}
+
+extern crate minicore;
+use minicore::*;
 
 #[repr(C)]
 struct Wrapper<T>(T);

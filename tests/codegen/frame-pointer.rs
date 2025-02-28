@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ compile-flags: --crate-type=rlib -Copt-level=0
 //@ revisions: aarch64-apple aarch64-linux force x64-apple x64-linux
 //@ [aarch64-apple] needs-llvm-components: aarch64
@@ -13,11 +14,9 @@
 
 #![feature(no_core, lang_items)]
 #![no_core]
-#[lang = "sized"]
-trait Sized {}
-#[lang = "copy"]
-trait Copy {}
-impl Copy for u32 {}
+
+extern crate minicore;
+use minicore::*;
 
 // CHECK: define i32 @peach{{.*}}[[PEACH_ATTRS:\#[0-9]+]] {
 #[no_mangle]
