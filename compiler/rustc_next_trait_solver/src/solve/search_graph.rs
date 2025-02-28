@@ -1,9 +1,9 @@
 use std::convert::Infallible;
 use std::marker::PhantomData;
 
-use rustc_type_ir::Interner;
 use rustc_type_ir::search_graph::{self, PathKind};
 use rustc_type_ir::solve::{CanonicalInput, Certainty, NoSolution, QueryResult};
+use rustc_type_ir::{Interner, TypingMode};
 
 use super::inspect::ProofTreeBuilder;
 use super::{FIXPOINT_STEP_LIMIT, has_no_inference_or_external_constraints};
@@ -48,7 +48,23 @@ where
         match kind {
             PathKind::Coinductive => response_no_constraints(cx, input, Certainty::Yes),
             PathKind::Unknown => response_no_constraints(cx, input, Certainty::overflow(false)),
-            PathKind::Inductive => Err(NoSolution),
+            // Even though we know these cycles to be unproductive, we still return
+            // overflow during coherence. This is both as we are not 100% confident in
+            // the implementation yet and any incorrect errors would be unsound there.
+            // The affected cases are also fairly artificial and not necessarily desirable
+            // so keeping this as ambiguity is fine for now.
+            //
+            // See `tests/ui/traits/next-solver/cycles/unproductive-in-coherence.rs` for an
+            // example where this would matter. We likely should change these cycles to `NoSolution`
+            // even in coherence once this is a bit more settled.
+            PathKind::Inductive => match input.typing_mode {
+                TypingMode::Coherence => {
+                    response_no_constraints(cx, input, Certainty::overflow(false))
+                }
+                TypingMode::Analysis { .. }
+                | TypingMode::PostBorrowckAnalysis { .. }
+                | TypingMode::PostAnalysis => Err(NoSolution),
+            },
         }
     }
 
