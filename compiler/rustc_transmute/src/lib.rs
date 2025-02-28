@@ -81,14 +81,13 @@ pub enum Reason<T> {
 #[cfg(feature = "rustc")]
 mod rustc {
     use rustc_hir::lang_items::LangItem;
-    use rustc_macros::TypeVisitable;
     use rustc_middle::traits::ObligationCause;
     use rustc_middle::ty::{Const, ParamEnv, Ty, TyCtxt};
 
     use super::*;
 
     /// The source and destination types of a transmutation.
-    #[derive(TypeVisitable, Debug, Clone, Copy)]
+    #[derive(Debug, Clone, Copy)]
     pub struct Types<'tcx> {
         /// The source type.
         pub src: Ty<'tcx>,
