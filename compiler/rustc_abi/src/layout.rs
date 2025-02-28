@@ -12,6 +12,8 @@ use crate::{
     Variants, WrappingRange,
 };
 
+mod simple;
+
 #[cfg(feature = "nightly")]
 mod ty;
 
@@ -102,41 +104,27 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         Self { cx }
     }
 
-    pub fn scalar_pair<FieldIdx: Idx, VariantIdx: Idx>(
+    pub fn array_like<FieldIdx: Idx, VariantIdx: Idx, F>(
         &self,
-        a: Scalar,
-        b: Scalar,
-    ) -> LayoutData<FieldIdx, VariantIdx> {
-        let dl = self.cx.data_layout();
-        let b_align = b.align(dl);
-        let align = a.align(dl).max(b_align).max(dl.aggregate_align);
-        let b_offset = a.size(dl).align_to(b_align.abi);
-        let size = (b_offset + b.size(dl)).align_to(align.abi);
+        element: &LayoutData<FieldIdx, VariantIdx>,
+        count_if_sized: Option<u64>, // None for slices
+    ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F> {
+        let count = count_if_sized.unwrap_or(0);
+        let size =
+            element.size.checked_mul(count, &self.cx).ok_or(LayoutCalculatorError::SizeOverflow)?;
 
-        // HACK(nox): We iter on `b` and then `a` because `max_by_key`
-        // returns the last maximum.
-        let largest_niche = Niche::from_scalar(dl, b_offset, b)
-            .into_iter()
-            .chain(Niche::from_scalar(dl, Size::ZERO, a))
-            .max_by_key(|niche| niche.available(dl));
-
-        let combined_seed = a.size(&self.cx).bytes().wrapping_add(b.size(&self.cx).bytes());
-
-        LayoutData {
+        Ok(LayoutData {
             variants: Variants::Single { index: VariantIdx::new(0) },
-            fields: FieldsShape::Arbitrary {
-                offsets: [Size::ZERO, b_offset].into(),
-                memory_index: [0, 1].into(),
-            },
-            backend_repr: BackendRepr::ScalarPair(a, b),
-            largest_niche,
-            uninhabited: false,
-            align,
+            fields: FieldsShape::Array { stride: element.size, count },
+            backend_repr: BackendRepr::Memory { sized: count_if_sized.is_some() },
+            largest_niche: element.largest_niche.filter(|_| count != 0),
+            uninhabited: element.uninhabited && count != 0,
+            align: element.align,
             size,
             max_repr_align: None,
-            unadjusted_abi_align: align.abi,
-            randomization_seed: Hash64::new(combined_seed),
-        }
+            unadjusted_abi_align: element.align.abi,
+            randomization_seed: element.randomization_seed.wrapping_add(Hash64::new(count)),
+        })
     }
 
     pub fn univariant<
@@ -214,25 +202,6 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         layout
     }
 
-    pub fn layout_of_never_type<FieldIdx: Idx, VariantIdx: Idx>(
-        &self,
-    ) -> LayoutData<FieldIdx, VariantIdx> {
-        let dl = self.cx.data_layout();
-        // This is also used for uninhabited enums, so we use `Variants::Empty`.
-        LayoutData {
-            variants: Variants::Empty,
-            fields: FieldsShape::Primitive,
-            backend_repr: BackendRepr::Memory { sized: true },
-            largest_niche: None,
-            uninhabited: true,
-            align: dl.i8_align,
-            size: Size::ZERO,
-            max_repr_align: None,
-            unadjusted_abi_align: dl.i8_align.abi,
-            randomization_seed: Hash64::ZERO,
-        }
-    }
-
     pub fn layout_of_struct_or_enum<
         'a,
         FieldIdx: Idx,
@@ -260,7 +229,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             Some(present_first) => present_first,
             // Uninhabited because it has no variants, or only absent ones.
             None if is_enum => {
-                return Ok(self.layout_of_never_type());
+                return Ok(LayoutData::never_type(&self.cx));
             }
             // If it's a struct, still compute a layout so that we can still compute the
             // field offsets.
@@ -949,7 +918,8 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                     // Common prim might be uninit.
                     Scalar::Union { value: prim }
                 };
-                let pair = self.scalar_pair::<FieldIdx, VariantIdx>(tag, prim_scalar);
+                let pair =
+                    LayoutData::<FieldIdx, VariantIdx>::scalar_pair(&self.cx, tag, prim_scalar);
                 let pair_offsets = match pair.fields {
                     FieldsShape::Arbitrary { ref offsets, ref memory_index } => {
                         assert_eq!(memory_index.raw, [0, 1]);
@@ -1341,7 +1311,8 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                             } else {
                                 ((j, b), (i, a))
                             };
-                            let pair = self.scalar_pair::<FieldIdx, VariantIdx>(a, b);
+                            let pair =
+                                LayoutData::<FieldIdx, VariantIdx>::scalar_pair(&self.cx, a, b);
                             let pair_offsets = match pair.fields {
                                 FieldsShape::Arbitrary { ref offsets, ref memory_index } => {
                                     assert_eq!(memory_index.raw, [0, 1]);

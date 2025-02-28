@@ -188,6 +188,10 @@ fn layout_of_uncached<'tcx>(
 
     let tcx = cx.tcx();
     let dl = cx.data_layout();
+    let map_layout = |result: Result<_, _>| match result {
+        Ok(layout) => Ok(tcx.mk_layout(layout)),
+        Err(err) => Err(map_error(cx, ty, err)),
+    };
     let scalar_unit = |value: Primitive| {
         let size = value.size(dl);
         assert!(size.bits() <= 128);
@@ -258,7 +262,7 @@ fn layout_of_uncached<'tcx>(
         }
 
         // The never type.
-        ty::Never => tcx.mk_layout(cx.calc.layout_of_never_type()),
+        ty::Never => tcx.mk_layout(LayoutData::never_type(cx)),
 
         // Potentially-wide pointers.
         ty::Ref(_, pointee, _) | ty::RawPtr(pointee, _) => {
@@ -329,7 +333,7 @@ fn layout_of_uncached<'tcx>(
             };
 
             // Effectively a (ptr, meta) tuple.
-            tcx.mk_layout(cx.calc.scalar_pair(data_ptr, metadata))
+            tcx.mk_layout(LayoutData::scalar_pair(cx, data_ptr, metadata))
         }
 
         ty::Dynamic(_, _, ty::DynStar) => {
@@ -337,7 +341,7 @@ fn layout_of_uncached<'tcx>(
             data.valid_range_mut().start = 0;
             let mut vtable = scalar_unit(Pointer(AddressSpace::DATA));
             vtable.valid_range_mut().start = 1;
-            tcx.mk_layout(cx.calc.scalar_pair(data, vtable))
+            tcx.mk_layout(LayoutData::scalar_pair(cx, data, vtable))
         }
 
         // Arrays and slices.
@@ -347,71 +351,29 @@ fn layout_of_uncached<'tcx>(
                 .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
 
             let element = cx.layout_of(element)?;
-            let size = element
-                .size
-                .checked_mul(count, dl)
-                .ok_or_else(|| error(cx, LayoutError::SizeOverflow(ty)))?;
-
-            let abi = BackendRepr::Memory { sized: true };
-
-            let largest_niche = if count != 0 { element.largest_niche } else { None };
-            let uninhabited = if count != 0 { element.uninhabited } else { false };
-
-            tcx.mk_layout(LayoutData {
-                variants: Variants::Single { index: FIRST_VARIANT },
-                fields: FieldsShape::Array { stride: element.size, count },
-                backend_repr: abi,
-                largest_niche,
-                uninhabited,
-                align: element.align,
-                size,
-                max_repr_align: None,
-                unadjusted_abi_align: element.align.abi,
-                randomization_seed: element.randomization_seed.wrapping_add(Hash64::new(count)),
-            })
+            map_layout(cx.calc.array_like(&element, Some(count)))?
         }
         ty::Slice(element) => {
             let element = cx.layout_of(element)?;
-            tcx.mk_layout(LayoutData {
-                variants: Variants::Single { index: FIRST_VARIANT },
-                fields: FieldsShape::Array { stride: element.size, count: 0 },
-                backend_repr: BackendRepr::Memory { sized: false },
-                largest_niche: None,
-                uninhabited: false,
-                align: element.align,
-                size: Size::ZERO,
-                max_repr_align: None,
-                unadjusted_abi_align: element.align.abi,
-                // adding a randomly chosen value to distinguish slices
-                randomization_seed: element
-                    .randomization_seed
-                    .wrapping_add(Hash64::new(0x2dcba99c39784102)),
-            })
+            map_layout(cx.calc.array_like(&element, None).map(|mut layout| {
+                // a randomly chosen value to distinguish slices
+                layout.randomization_seed = Hash64::new(0x2dcba99c39784102);
+                layout
+            }))?
         }
-        ty::Str => tcx.mk_layout(LayoutData {
-            variants: Variants::Single { index: FIRST_VARIANT },
-            fields: FieldsShape::Array { stride: Size::from_bytes(1), count: 0 },
-            backend_repr: BackendRepr::Memory { sized: false },
-            largest_niche: None,
-            uninhabited: false,
-            align: dl.i8_align,
-            size: Size::ZERO,
-            max_repr_align: None,
-            unadjusted_abi_align: dl.i8_align.abi,
-            // another random value
-            randomization_seed: Hash64::new(0xc1325f37d127be22),
-        }),
+        ty::Str => {
+            let element = scalar(Int(I8, false));
+            map_layout(cx.calc.array_like(&element, None).map(|mut layout| {
+                // another random value
+                layout.randomization_seed = Hash64::new(0xc1325f37d127be22);
+                layout
+            }))?
+        }
 
         // Odd unit types.
-        ty::FnDef(..) => univariant(IndexSlice::empty(), StructKind::AlwaysSized)?,
-        ty::Dynamic(_, _, ty::Dyn) | ty::Foreign(..) => {
-            let mut unit =
-                univariant_uninterned(cx, ty, IndexSlice::empty(), StructKind::AlwaysSized)?;
-            match unit.backend_repr {
-                BackendRepr::Memory { ref mut sized } => *sized = false,
-                _ => bug!(),
-            }
-            tcx.mk_layout(unit)
+        ty::FnDef(..) | ty::Dynamic(_, _, ty::Dyn) | ty::Foreign(..) => {
+            let sized = matches!(ty.kind(), ty::FnDef(..));
+            tcx.mk_layout(LayoutData::unit(cx, sized))
         }
 
         ty::Coroutine(def_id, args) => coroutine_layout(cx, ty, def_id, args)?,
@@ -545,11 +507,7 @@ fn layout_of_uncached<'tcx>(
                     return Err(error(cx, LayoutError::ReferencesError(guar)));
                 }
 
-                return Ok(tcx.mk_layout(
-                    cx.calc
-                        .layout_of_union(&def.repr(), &variants)
-                        .map_err(|err| map_error(cx, ty, err))?,
-                ));
+                return map_layout(cx.calc.layout_of_union(&def.repr(), &variants));
             }
 
             let get_discriminant_type =
