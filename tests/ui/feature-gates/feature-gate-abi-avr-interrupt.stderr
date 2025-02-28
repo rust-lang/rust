@@ -1,5 +1,5 @@
 error[E0658]: the extern "avr-non-blocking-interrupt" ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi-avr-interrupt.rs:11:8
+  --> $DIR/feature-gate-abi-avr-interrupt.rs:13:8
    |
 LL | extern "avr-non-blocking-interrupt" fn fu() {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL | extern "avr-non-blocking-interrupt" fn fu() {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the extern "avr-interrupt" ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi-avr-interrupt.rs:13:8
+  --> $DIR/feature-gate-abi-avr-interrupt.rs:15:8
    |
 LL | extern "avr-interrupt" fn f() {}
    |        ^^^^^^^^^^^^^^^
@@ -19,7 +19,7 @@ LL | extern "avr-interrupt" fn f() {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the extern "avr-interrupt" ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi-avr-interrupt.rs:17:12
+  --> $DIR/feature-gate-abi-avr-interrupt.rs:19:12
    |
 LL |     extern "avr-interrupt" fn m();
    |            ^^^^^^^^^^^^^^^
@@ -29,7 +29,7 @@ LL |     extern "avr-interrupt" fn m();
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the extern "avr-non-blocking-interrupt" ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi-avr-interrupt.rs:19:12
+  --> $DIR/feature-gate-abi-avr-interrupt.rs:21:12
    |
 LL |     extern "avr-non-blocking-interrupt" fn mu();
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -39,7 +39,7 @@ LL |     extern "avr-non-blocking-interrupt" fn mu();
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the extern "avr-interrupt" ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi-avr-interrupt.rs:22:12
+  --> $DIR/feature-gate-abi-avr-interrupt.rs:24:12
    |
 LL |     extern "avr-interrupt" fn dm() {}
    |            ^^^^^^^^^^^^^^^
@@ -49,7 +49,7 @@ LL |     extern "avr-interrupt" fn dm() {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the extern "avr-non-blocking-interrupt" ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi-avr-interrupt.rs:24:12
+  --> $DIR/feature-gate-abi-avr-interrupt.rs:26:12
    |
 LL |     extern "avr-non-blocking-interrupt" fn dmu() {}
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -59,7 +59,7 @@ LL |     extern "avr-non-blocking-interrupt" fn dmu() {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the extern "avr-interrupt" ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi-avr-interrupt.rs:30:12
+  --> $DIR/feature-gate-abi-avr-interrupt.rs:32:12
    |
 LL |     extern "avr-interrupt" fn m() {}
    |            ^^^^^^^^^^^^^^^
@@ -69,7 +69,7 @@ LL |     extern "avr-interrupt" fn m() {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the extern "avr-non-blocking-interrupt" ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi-avr-interrupt.rs:32:12
+  --> $DIR/feature-gate-abi-avr-interrupt.rs:34:12
    |
 LL |     extern "avr-non-blocking-interrupt" fn mu() {}
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -79,7 +79,7 @@ LL |     extern "avr-non-blocking-interrupt" fn mu() {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the extern "avr-interrupt" ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi-avr-interrupt.rs:37:12
+  --> $DIR/feature-gate-abi-avr-interrupt.rs:39:12
    |
 LL |     extern "avr-interrupt" fn im() {}
    |            ^^^^^^^^^^^^^^^
@@ -89,7 +89,7 @@ LL |     extern "avr-interrupt" fn im() {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the extern "avr-non-blocking-interrupt" ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi-avr-interrupt.rs:39:12
+  --> $DIR/feature-gate-abi-avr-interrupt.rs:41:12
    |
 LL |     extern "avr-non-blocking-interrupt" fn imu() {}
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -99,7 +99,7 @@ LL |     extern "avr-non-blocking-interrupt" fn imu() {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the extern "avr-interrupt" ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi-avr-interrupt.rs:43:18
+  --> $DIR/feature-gate-abi-avr-interrupt.rs:45:18
    |
 LL | type TA = extern "avr-interrupt" fn();
    |                  ^^^^^^^^^^^^^^^
@@ -109,7 +109,7 @@ LL | type TA = extern "avr-interrupt" fn();
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the extern "avr-non-blocking-interrupt" ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi-avr-interrupt.rs:45:19
+  --> $DIR/feature-gate-abi-avr-interrupt.rs:47:19
    |
 LL | type TAU = extern "avr-non-blocking-interrupt" fn();
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -119,7 +119,7 @@ LL | type TAU = extern "avr-non-blocking-interrupt" fn();
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the extern "avr-interrupt" ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi-avr-interrupt.rs:48:8
+  --> $DIR/feature-gate-abi-avr-interrupt.rs:50:8
    |
 LL | extern "avr-interrupt" {}
    |        ^^^^^^^^^^^^^^^
@@ -129,7 +129,7 @@ LL | extern "avr-interrupt" {}
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the extern "avr-non-blocking-interrupt" ABI is experimental and subject to change
-  --> $DIR/feature-gate-abi-avr-interrupt.rs:50:8
+  --> $DIR/feature-gate-abi-avr-interrupt.rs:52:8
    |
 LL | extern "avr-non-blocking-interrupt" {}
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

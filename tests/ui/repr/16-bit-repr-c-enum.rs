@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ build-pass
 //@ revisions: avr msp430
 //
@@ -10,6 +11,9 @@
 #![crate_type = "lib"]
 #![stable(feature = "intrinsics_for_test", since = "3.3.3")]
 #![allow(dead_code)]
+
+extern crate minicore;
+use minicore::*;
 
 // Test that the repr(C) attribute doesn't break compilation
 // Previous bad assumption was that 32-bit enum default width is fine on msp430, avr
@@ -25,11 +29,6 @@ enum Foo {
 #[rustc_const_stable(feature = "intrinsics_for_test", since = "3.3.3")]
 #[rustc_intrinsic]
 const fn size_of<T>() -> usize;
-
-#[lang="sized"]
-trait Sized {}
-#[lang="copy"]
-trait Copy {}
 
 const EXPECTED: usize = 2;
 const ACTUAL: usize = size_of::<Foo>();
