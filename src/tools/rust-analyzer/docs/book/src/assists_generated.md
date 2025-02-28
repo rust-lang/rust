@@ -419,7 +419,7 @@ Converts comments to documentation.
 
 
 ### `convert_bool_then_to_if`
-**Source:**  [convert_bool_then.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/convert_bool_then.rs#L131) 
+**Source:**  [convert_bool_then.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/convert_bool_then.rs#L143) 
 
 Converts a `bool::then` method call to an equivalent if expression.
 
@@ -443,7 +443,7 @@ fn main() {
 
 
 ### `convert_closure_to_fn`
-**Source:**  [convert_closure_to_fn.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/convert_closure_to_fn.rs#L25) 
+**Source:**  [convert_closure_to_fn.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/convert_closure_to_fn.rs#L27) 
 
 This converts a closure to a freestanding function, changing all captures to parameters.
 
@@ -527,7 +527,7 @@ impl TryFrom<usize> for Thing {
 
 
 ### `convert_if_to_bool_then`
-**Source:**  [convert_bool_then.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/convert_bool_then.rs#L20) 
+**Source:**  [convert_bool_then.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/convert_bool_then.rs#L21) 
 
 Converts an if expression into a corresponding `bool::then` call.
 
@@ -2258,7 +2258,7 @@ fn bar() {
 
 
 ### `inline_local_variable`
-**Source:**  [inline_local_variable.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/inline_local_variable.rs#L17) 
+**Source:**  [inline_local_variable.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/inline_local_variable.rs#L21) 
 
 Inlines a local variable.
 
