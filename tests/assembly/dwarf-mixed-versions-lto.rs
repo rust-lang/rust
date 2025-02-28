@@ -4,7 +4,7 @@
 
 //@ only-linux
 //@ aux-build:dwarf-mixed-versions-lto-aux.rs
-//@ compile-flags: -C lto -g -Zdwarf-version=5
+//@ compile-flags: -C lto -g -Cdwarf-version=5
 //@ assembly-output: emit-asm
 //@ no-prefer-dynamic
 
