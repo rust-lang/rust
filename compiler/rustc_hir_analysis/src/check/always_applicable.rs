@@ -140,7 +140,7 @@ fn ensure_impl_params_and_item_params_correspond<'tcx>(
         return Ok(());
     };
 
-    let drop_impl_span = tcx.def_span(impl_def_id);
+    let impl_span = tcx.def_span(impl_def_id);
     let item_span = tcx.def_span(adt_def_id);
     let self_descr = tcx.def_descr(adt_def_id);
     let polarity = match tcx.impl_polarity(impl_def_id) {
@@ -151,7 +151,7 @@ fn ensure_impl_params_and_item_params_correspond<'tcx>(
         .item_name(tcx.trait_id_of_impl(impl_def_id.to_def_id()).expect("expected impl of trait"));
     let mut err = struct_span_code_err!(
         tcx.dcx(),
-        drop_impl_span,
+        impl_span,
         E0366,
         "`{polarity}{trait_name}` impls cannot be specialized",
     );
