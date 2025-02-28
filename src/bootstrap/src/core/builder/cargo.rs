@@ -260,7 +260,7 @@ impl Cargo {
             }
         }
 
-        for arg in linker_args(builder, compiler.host, LldThreads::Yes) {
+        for arg in linker_args(builder, compiler.host, LldThreads::Yes, 0) {
             self.hostflags.arg(&arg);
         }
 
@@ -270,10 +270,10 @@ impl Cargo {
         }
         // We want to set -Clinker using Cargo, therefore we only call `linker_flags` and not
         // `linker_args` here.
-        for flag in linker_flags(builder, target, LldThreads::Yes) {
+        for flag in linker_flags(builder, target, LldThreads::Yes, compiler.stage) {
             self.rustflags.arg(&flag);
         }
-        for arg in linker_args(builder, target, LldThreads::Yes) {
+        for arg in linker_args(builder, target, LldThreads::Yes, compiler.stage) {
             self.rustdocflags.arg(&arg);
         }
 
