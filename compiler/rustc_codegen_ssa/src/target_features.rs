@@ -87,12 +87,17 @@ pub(crate) fn from_target_feature_attr(
                     // But ensure the ABI does not forbid enabling this.
                     // Here we do assume that LLVM doesn't add even more implied features
                     // we don't know about, at least no features that would have ABI effects!
-                    if abi_feature_constraints.incompatible.contains(&name.as_str()) {
-                        tcx.dcx().emit_err(errors::ForbiddenTargetFeatureAttr {
-                            span: item.span(),
-                            feature: name.as_str(),
-                            reason: "this feature is incompatible with the target ABI",
-                        });
+                    // We skip this logic in rustdoc, where we want to allow all target features of
+                    // all targets, so we can't check their ABI compatibility and anyway we are not
+                    // generating code so "it's fine".
+                    if !tcx.sess.opts.actually_rustdoc {
+                        if abi_feature_constraints.incompatible.contains(&name.as_str()) {
+                            tcx.dcx().emit_err(errors::ForbiddenTargetFeatureAttr {
+                                span: item.span(),
+                                feature: name.as_str(),
+                                reason: "this feature is incompatible with the target ABI",
+                            });
+                        }
                     }
                     target_features.push(TargetFeature { name, implied: name != feature_sym })
                 }
