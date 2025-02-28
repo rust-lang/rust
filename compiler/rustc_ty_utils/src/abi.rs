@@ -309,15 +309,11 @@ fn fn_abi_of_fn_ptr<'tcx>(
     query: ty::PseudoCanonicalInput<'tcx, (ty::PolyFnSig<'tcx>, &'tcx ty::List<Ty<'tcx>>)>,
 ) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, &'tcx FnAbiError<'tcx>> {
     let ty::PseudoCanonicalInput { typing_env, value: (sig, extra_args) } = query;
-
-    let cx = LayoutCx::new(tcx, typing_env);
     fn_abi_new_uncached(
-        &cx,
+        &LayoutCx::new(tcx, typing_env),
         tcx.instantiate_bound_regions_with_erased(sig),
         extra_args,
         None,
-        None,
-        false,
     )
 }
 
@@ -326,19 +322,11 @@ fn fn_abi_of_instance<'tcx>(
     query: ty::PseudoCanonicalInput<'tcx, (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>)>,
 ) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, &'tcx FnAbiError<'tcx>> {
     let ty::PseudoCanonicalInput { typing_env, value: (instance, extra_args) } = query;
-
-    let sig = fn_sig_for_fn_abi(tcx, instance, typing_env);
-
-    let caller_location =
-        instance.def.requires_caller_location(tcx).then(|| tcx.caller_location_ty());
-
     fn_abi_new_uncached(
         &LayoutCx::new(tcx, typing_env),
-        sig,
+        fn_sig_for_fn_abi(tcx, instance, typing_env),
         extra_args,
-        caller_location,
-        Some(instance.def_id()),
-        matches!(instance.def, ty::InstanceKind::Virtual(..)),
+        Some(instance),
     )
 }
 
@@ -547,19 +535,25 @@ fn fn_abi_sanity_check<'tcx>(
     fn_arg_sanity_check(cx, fn_abi, spec_abi, &fn_abi.ret);
 }
 
-// FIXME(eddyb) perhaps group the signature/type-containing (or all of them?)
-// arguments of this method, into a separate `struct`.
-#[tracing::instrument(level = "debug", skip(cx, caller_location, fn_def_id, force_thin_self_ptr))]
+#[tracing::instrument(level = "debug", skip(cx, instance))]
 fn fn_abi_new_uncached<'tcx>(
     cx: &LayoutCx<'tcx>,
     sig: ty::FnSig<'tcx>,
     extra_args: &[Ty<'tcx>],
-    caller_location: Option<Ty<'tcx>>,
-    fn_def_id: Option<DefId>,
-    // FIXME(eddyb) replace this with something typed, like an `enum`.
-    force_thin_self_ptr: bool,
+    instance: Option<ty::Instance<'tcx>>,
 ) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, &'tcx FnAbiError<'tcx>> {
     let tcx = cx.tcx();
+    let (caller_location, determined_fn_def_id, is_virtual_call) = if let Some(instance) = instance
+    {
+        let is_virtual_call = matches!(instance.def, ty::InstanceKind::Virtual(..));
+        (
+            instance.def.requires_caller_location(tcx).then(|| tcx.caller_location_ty()),
+            if is_virtual_call { None } else { Some(instance.def_id()) },
+            is_virtual_call,
+        )
+    } else {
+        (None, None, false)
+    };
     let sig = tcx.normalize_erasing_regions(cx.typing_env, sig);
 
     let conv = conv_from_spec_abi(cx.tcx(), sig.abi, sig.c_variadic);
@@ -568,16 +562,11 @@ fn fn_abi_new_uncached<'tcx>(
     let extra_args = if sig.abi == ExternAbi::RustCall {
         assert!(!sig.c_variadic && extra_args.is_empty());
 
-        if let Some(input) = sig.inputs().last() {
-            if let ty::Tuple(tupled_arguments) = input.kind() {
-                inputs = &sig.inputs()[0..sig.inputs().len() - 1];
-                tupled_arguments
-            } else {
-                bug!(
-                    "argument to function with \"rust-call\" ABI \
-                        is not a tuple"
-                );
-            }
+        if let Some(input) = sig.inputs().last()
+            && let ty::Tuple(tupled_arguments) = input.kind()
+        {
+            inputs = &sig.inputs()[0..sig.inputs().len() - 1];
+            tupled_arguments
         } else {
             bug!(
                 "argument to function with \"rust-call\" ABI \
@@ -590,7 +579,7 @@ fn fn_abi_new_uncached<'tcx>(
     };
 
     let is_drop_in_place =
-        fn_def_id.is_some_and(|def_id| tcx.is_lang_item(def_id, LangItem::DropInPlace));
+        determined_fn_def_id.is_some_and(|def_id| tcx.is_lang_item(def_id, LangItem::DropInPlace));
 
     let arg_of = |ty: Ty<'tcx>, arg_idx: Option<usize>| -> Result<_, &'tcx FnAbiError<'tcx>> {
         let span = tracing::debug_span!("arg_of");
@@ -603,7 +592,7 @@ fn fn_abi_new_uncached<'tcx>(
         });
 
         let layout = cx.layout_of(ty).map_err(|err| &*tcx.arena.alloc(FnAbiError::Layout(*err)))?;
-        let layout = if force_thin_self_ptr && arg_idx == Some(0) {
+        let layout = if is_virtual_call && arg_idx == Some(0) {
             // Don't pass the vtable, it's not an argument of the virtual fn.
             // Instead, pass just the data pointer, but give it the type `*const/mut dyn Trait`
             // or `&/&mut dyn Trait` because this is special-cased elsewhere in codegen
@@ -646,9 +635,22 @@ fn fn_abi_new_uncached<'tcx>(
         c_variadic: sig.c_variadic,
         fixed_count: inputs.len() as u32,
         conv,
-        can_unwind: fn_can_unwind(cx.tcx(), fn_def_id, sig.abi),
+        can_unwind: fn_can_unwind(
+            tcx,
+            // Since `#[rustc_nounwind]` can change unwinding, we cannot infer unwinding by `fn_def_id` for a virtual call.
+            determined_fn_def_id,
+            sig.abi,
+        ),
     };
-    fn_abi_adjust_for_abi(cx, &mut fn_abi, sig.abi, fn_def_id);
+    fn_abi_adjust_for_abi(
+        cx,
+        &mut fn_abi,
+        sig.abi,
+        // If this is a virtual call, we cannot pass the `fn_def_id`, as it might call other
+        // functions from vtable. Internally, `deduced_param_attrs` attempts to infer attributes by
+        // visit the function body.
+        determined_fn_def_id,
+    );
     debug!("fn_abi_new_uncached = {:?}", fn_abi);
     fn_abi_sanity_check(cx, &fn_abi, sig.abi);
     Ok(tcx.arena.alloc(fn_abi))
