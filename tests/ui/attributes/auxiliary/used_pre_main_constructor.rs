@@ -17,6 +17,7 @@
         target_os = "illumos",
         target_os = "linux",
         target_os = "netbsd",
+        target_os = "nto",
         target_os = "openbsd",
     ),
     link_section = ".init_array"
