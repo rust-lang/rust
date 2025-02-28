@@ -1,7 +1,8 @@
 //@ run-pass
 #![allow(non_camel_case_types)]
-#![feature(repr_simd, intrinsics)]
+#![feature(repr_simd, core_intrinsics)]
 
+use std::intrinsics::simd::simd_add;
 use std::ops;
 
 #[repr(simd)]
@@ -20,11 +21,7 @@ struct B<T>([T; 4]);
 #[derive(Copy, Clone)]
 struct C<T, const N: usize>([T; N]);
 
-
-#[rustc_intrinsic]
-unsafe fn simd_add<T>(x: T, y: T) -> T;
-
-fn add<T: ops::Add<Output=T>>(lhs: T, rhs: T) -> T {
+fn add<T: ops::Add<Output = T>>(lhs: T, rhs: T) -> T {
     lhs + rhs
 }
 
@@ -59,7 +56,6 @@ impl ops::Add for C<f32, 4> {
         unsafe { simd_add(self, rhs) }
     }
 }
-
 
 pub fn main() {
     let x = [1.0f32, 2.0f32, 3.0f32, 4.0f32];

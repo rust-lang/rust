@@ -1,7 +1,10 @@
 //@ build-fail
 //@ ignore-emscripten
-#![feature(repr_simd, intrinsics)]
+#![feature(repr_simd, core_intrinsics)]
 #![allow(non_camel_case_types)]
+
+use std::intrinsics::simd::{simd_saturating_add, simd_saturating_sub};
+
 #[repr(simd)]
 #[derive(Copy, Clone)]
 pub struct i32x4(pub [i32; 4]);
@@ -13,13 +16,6 @@ pub struct x4<T>(pub [T; 4]);
 #[repr(simd)]
 #[derive(Copy, Clone)]
 pub struct f32x4(pub [f32; 4]);
-
-#[rustc_intrinsic]
-unsafe fn simd_saturating_add<T>(x: T, y: T) -> T;
-
-#[rustc_intrinsic]
-unsafe fn simd_saturating_sub<T>(x: T, y: T) -> T;
-
 
 fn main() {
     let x = i32x4([0, 0, 0, 0]);

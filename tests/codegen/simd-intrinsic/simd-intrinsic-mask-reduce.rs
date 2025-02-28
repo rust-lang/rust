@@ -1,9 +1,10 @@
 //@ compile-flags: -C no-prepopulate-passes
-//
 
 #![crate_type = "lib"]
-#![feature(repr_simd, intrinsics)]
+#![feature(repr_simd, core_intrinsics)]
 #![allow(non_camel_case_types)]
+
+use std::intrinsics::simd::{simd_reduce_all, simd_reduce_any};
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
@@ -12,11 +13,6 @@ pub struct mask32x2([i32; 2]);
 #[repr(simd)]
 #[derive(Copy, Clone)]
 pub struct mask8x16([i8; 16]);
-
-extern "rust-intrinsic" {
-    fn simd_reduce_all<T>(x: T) -> bool;
-    fn simd_reduce_any<T>(x: T) -> bool;
-}
 
 // NOTE(eddyb) `%{{x|1}}` is used because on some targets (e.g. WASM)
 // SIMD vectors are passed directly, resulting in `%x` being a vector,
