@@ -14,6 +14,7 @@ pub use rustdoc_hidden::Foo;
 //@ has - '//dt/a[@class="struct"]' 'Inlined'
 #[doc(inline)]
 pub use rustdoc_hidden::Foo as Inlined;
+
 // Even with this import, we should not see `Foo`.
 //@ count - '//dt' 3
 //@ has - '//dt/a[@class="struct"]' 'Bar'
