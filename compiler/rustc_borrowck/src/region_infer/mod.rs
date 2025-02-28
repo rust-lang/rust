@@ -957,6 +957,19 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         Some(ClosureOutlivesSubject::Ty(ClosureOutlivesSubjectTy::bind(tcx, ty)))
     }
 
+    /// Returns the first named region reachable in the constraint graph
+    /// from `from`. For when you are really desperate for something
+    /// nameable.
+    #[instrument(level = "info", skip(self), ret)]
+    pub(crate) fn first_named_region_reached(&self, from: RegionVid) -> Option<ty::Region<'tcx>> {
+        self.find_constraint_path_to(
+            from,
+            |reached| self.region_definition(reached).external_name.is_some(),
+            true,
+        )
+        .and_then(|x| self.region_definition(x.1).external_name)
+    }
+
     /// Like `universal_upper_bound`, but returns an approximation more suitable
     /// for diagnostics. If `r` contains multiple disjoint universal regions
     /// (e.g. 'a and 'b in `fn foo<'a, 'b> { ... }`, we pick the lower-numbered region.
