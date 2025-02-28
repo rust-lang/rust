@@ -1225,15 +1225,21 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// that recursion is ok. This routine returns `true` if the top of the
     /// stack (`cycle[0]`):
     ///
-    /// - is a defaulted trait,
+    /// - is a coinductive trait: an auto-trait or `Sized`,
     /// - it also appears in the backtrace at some position `X`,
     /// - all the predicates at positions `X..` between `X` and the top are
-    ///   also defaulted traits.
+    ///   also coinductive traits.
     pub(crate) fn coinductive_match<I>(&mut self, mut cycle: I) -> bool
     where
         I: Iterator<Item = ty::Predicate<'tcx>>,
     {
-        cycle.all(|predicate| predicate.is_coinductive(self.tcx()))
+        cycle.all(|p| match p.kind().skip_binder() {
+            ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => {
+                self.infcx.tcx.trait_is_coinductive(data.def_id())
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => true,
+            _ => false,
+        })
     }
 
     /// Further evaluates `candidate` to decide whether all type parameters match and whether nested

@@ -143,11 +143,11 @@ rustc_queries! {
 
     /// Represents crate as a whole (as distinct from the top-level crate module).
     ///
-    /// If you call `hir_crate` (e.g., indirectly by calling `tcx.hir().krate()`),
+    /// If you call `hir_crate` (e.g., indirectly by calling `tcx.hir_crate()`),
     /// we will have to assume that any change means that you need to be recompiled.
     /// This is because the `hir_crate` query gives you access to all other items.
-    /// To avoid this fate, do not call `tcx.hir().krate()`; instead,
-    /// prefer wrappers like `tcx.visit_all_items_in_krate()`.
+    /// To avoid this fate, do not call `tcx.hir_crate()`; instead,
+    /// prefer wrappers like [`TyCtxt::hir_visit_all_item_likes_in_crate`].
     query hir_crate(key: ()) -> &'tcx Crate<'tcx> {
         arena_cache
         eval_always
