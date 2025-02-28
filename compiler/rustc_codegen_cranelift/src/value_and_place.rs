@@ -173,9 +173,11 @@ impl<'tcx> CValue<'tcx> {
             CValueInner::ByRef(ptr, None) => {
                 let clif_ty = match layout.backend_repr {
                     BackendRepr::Scalar(scalar) => scalar_to_clif_type(fx.tcx, scalar),
-                    BackendRepr::Vector { element, count } => scalar_to_clif_type(fx.tcx, element)
-                        .by(u32::try_from(count).unwrap())
-                        .unwrap(),
+                    BackendRepr::SimdVector { element, count } => {
+                        scalar_to_clif_type(fx.tcx, element)
+                            .by(u32::try_from(count).unwrap())
+                            .unwrap()
+                    }
                     _ => unreachable!("{:?}", layout.ty),
                 };
                 let mut flags = MemFlags::new();

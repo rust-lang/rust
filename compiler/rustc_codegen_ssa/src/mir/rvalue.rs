@@ -1190,7 +1190,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             assert!(!self.cx.is_backend_scalar_pair(layout));
             OperandValueKind::Immediate(match layout.backend_repr {
                 abi::BackendRepr::Scalar(s) => s,
-                abi::BackendRepr::Vector { element, .. } => element,
+                abi::BackendRepr::SimdVector { element, .. } => element,
                 x => span_bug!(self.mir.span, "Couldn't translate {x:?} as backend immediate"),
             })
         } else if self.cx.is_backend_scalar_pair(layout) {
