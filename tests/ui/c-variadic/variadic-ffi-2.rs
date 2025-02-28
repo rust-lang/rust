@@ -1,8 +1,6 @@
-//@ ignore-arm stdcall isn't supported
 #![feature(extended_varargs_abi_support)]
 
-#[allow(unsupported_fn_ptr_calling_conventions)]
-fn baz(f: extern "stdcall" fn(usize, ...)) {
+fn baz(f: extern "Rust" fn(usize, ...)) {
     //~^ ERROR: C-variadic function must have a compatible calling convention,
     // like C, cdecl, system, aapcs, win64, sysv64 or efiapi
     f(22, 44);
