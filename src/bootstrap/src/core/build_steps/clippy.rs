@@ -95,7 +95,7 @@ pub struct LintConfig {
     pub deny: Vec<String>,
     pub forbid: Vec<String>,
     // Path to folder containing clippy.toml, if any
-    clippy_cfg_path: Option<PathBuf>,
+    pub clippy_cfg_path: Option<PathBuf>,
 }
 
 impl LintConfig {
