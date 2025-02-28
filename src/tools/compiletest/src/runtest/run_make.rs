@@ -259,13 +259,17 @@ impl TestCx<'_> {
             p
         };
 
-        // run-make-support and run-make tests are compiled using the bootstrap compiler
-        let bootstrap_rustc = {
+        // run-make-support and run-make tests are compiled using the stage0 compiler
+        // If the stage is 0, then the compiler that we test (either bootstrap or an explicitly
+        // set compiler) is the one that actually compiled run-make-support.
+        let stage0_rustc = if self.config.stage == 0 {
+            self.config.rustc_path.clone()
+        } else {
             let mut p = build_root.join("stage0").join("bin").join("rustc");
             p.set_extension(env::consts::EXE_EXTENSION);
             p
         };
-        let mut rustc = Command::new(bootstrap_rustc);
+        let mut rustc = Command::new(stage0_rustc);
         rustc
             .arg("-o")
             .arg(&recipe_bin)
@@ -298,15 +302,29 @@ impl TestCx<'_> {
         // These dylib directories are needed to **execute the recipe**.
         let recipe_dylib_search_paths = {
             let mut paths = base_dylib_search_paths.clone();
-            // This is the bootstrap stdlib required to run the rmake recipe itself
-            paths.push(
-                build_root
-                    .join("stage0")
-                    .join("lib")
-                    .join("rustlib")
-                    .join(&self.config.host)
-                    .join("lib"),
-            );
+            // This is the stage0 stdlib required to run the rmake recipe itself
+            if self.config.stage == 0 {
+                // If we're on stage0, the compiler that compiled rmake is the same one that we
+                // are testing.
+                // But we cannot use self.config.run_lib_path, because that is stage0 + in-tree
+                // std. So we build the path ourselves.
+                paths.push(
+                    self.config
+                        .compile_lib_path
+                        .join("rustlib")
+                        .join(&self.config.host)
+                        .join("lib"),
+                );
+            } else {
+                paths.push(
+                    build_root
+                        .join("stage0")
+                        .join("lib")
+                        .join("rustlib")
+                        .join(&self.config.host)
+                        .join("lib"),
+                );
+            }
             paths
         };
 
