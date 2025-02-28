@@ -1,6 +1,3 @@
-//@ check-pass
-//@ known-bug: #74629
-
 // Should fail. The `0` and `1` impls overlap, violating coherence. Eg, with
 // `T = Test, F = ()`, all bounds are true, making both impls applicable.
 // `Test: Fold<Nil>`, `Test: Fold<()>` are true because of `2`.
@@ -39,6 +36,7 @@ mod private {
     pub auto trait NotNil {}
 
     impl !NotNil for Is<Nil> {}
+    //~^ ERROR `!NotNil` impls cannot be specialized
 }
 
 fn main() {}
