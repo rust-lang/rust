@@ -81,7 +81,7 @@ pub(crate) fn expand_deriving_clone(
             explicit_self: true,
             nonself_args: Vec::new(),
             ret_ty: Self_,
-            attributes: thin_vec![cx.attr_word(sym::inline, span)],
+            attributes: thin_vec![cx.attr_word(sym::inline, span, span)],
             fieldless_variants_strategy: FieldlessVariantsStrategy::Default,
             combine_substructure: substructure,
         }],

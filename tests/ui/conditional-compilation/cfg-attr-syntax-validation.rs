@@ -36,4 +36,9 @@ macro_rules! generate_s10 {
 
 generate_s10!(concat!("nonexistent"));
 
+mod m {
+    #![cfg] //~ ERROR `cfg` is not followed by parentheses
+    #![cfg = 10] //~ ERROR `cfg` is not followed by parentheses
+    #![cfg()] //~ ERROR `cfg` predicate is not specified
+}
 fn main() {}

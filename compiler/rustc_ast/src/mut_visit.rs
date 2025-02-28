@@ -723,13 +723,14 @@ fn walk_attribute<T: MutVisitor>(vis: &mut T, attr: &mut Attribute) {
     match kind {
         AttrKind::Normal(normal) => {
             let NormalAttr {
-                item: AttrItem { unsafety: _, path, args, tokens },
+                item: AttrItem { unsafety: _, path, args, tokens, span },
                 tokens: attr_tokens,
             } = &mut **normal;
             vis.visit_path(path);
             visit_attr_args(vis, args);
             visit_lazy_tts(vis, tokens);
             visit_lazy_tts(vis, attr_tokens);
+            vis.visit_span(span);
         }
         AttrKind::DocComment(_kind, _sym) => {}
     }
@@ -909,10 +910,11 @@ fn visit_nonterminal<T: MutVisitor>(vis: &mut T, nt: &mut token::Nonterminal) {
         token::NtExpr(expr) => vis.visit_expr(expr),
         token::NtLiteral(expr) => vis.visit_expr(expr),
         token::NtMeta(item) => {
-            let AttrItem { unsafety: _, path, args, tokens } = item.deref_mut();
+            let AttrItem { unsafety: _, path, args, tokens, span } = item.deref_mut();
             vis.visit_path(path);
             visit_attr_args(vis, args);
             visit_lazy_tts(vis, tokens);
+            vis.visit_span(span);
         }
         token::NtPath(path) => vis.visit_path(path),
     }

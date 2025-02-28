@@ -273,6 +273,7 @@ impl<'a> Parser<'a> {
 
         // Attr items don't have attributes.
         self.collect_tokens(None, AttrWrapper::empty(), force_collect, |this, _empty_attrs| {
+            let lo = this.token.span;
             let is_unsafe = this.eat_keyword(exp!(Unsafe));
             let unsafety = if is_unsafe {
                 let unsafe_span = this.prev_token.span;
@@ -287,8 +288,9 @@ impl<'a> Parser<'a> {
             if is_unsafe {
                 this.expect(exp!(CloseParen))?;
             }
+            let span = lo.until(this.token.span);
             Ok((
-                ast::AttrItem { unsafety, path, args, tokens: None },
+                ast::AttrItem { unsafety, path, args, tokens: None, span },
                 Trailing::No,
                 UsePreAttrPos::No,
             ))
@@ -401,7 +403,7 @@ impl<'a> Parser<'a> {
         if let token::Interpolated(nt) = &self.token.kind
             && let token::NtMeta(attr_item) = &**nt
         {
-            match attr_item.meta(attr_item.path.span) {
+            match attr_item.meta() {
                 Some(meta) => {
                     self.bump();
                     return Ok(meta);

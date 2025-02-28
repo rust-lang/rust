@@ -6,7 +6,8 @@ use rustc_ast::tokenstream::{
     AttrTokenStream, AttrTokenTree, LazyAttrTokenStream, Spacing, TokenTree,
 };
 use rustc_ast::{
-    self as ast, AttrStyle, Attribute, HasAttrs, HasTokens, MetaItem, MetaItemInner, NodeId,
+    self as ast, AttrKind, AttrStyle, Attribute, HasAttrs, HasTokens, MetaItem, MetaItemInner,
+    NodeId,
 };
 use rustc_attr_parsing as attr;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
@@ -387,11 +388,15 @@ impl<'a> StripUnconfigured<'a> {
                 return (true, None);
             }
         };
+        let sugg_span = match &attr.kind {
+            AttrKind::Normal(attr) => attr.item.span,
+            _ => meta_item.span,
+        };
 
         validate_attr::deny_builtin_meta_unsafety(&self.sess.psess, &meta_item);
 
         (
-            parse_cfg(&meta_item, self.sess).is_none_or(|meta_item| {
+            parse_cfg(&meta_item, self.sess, sugg_span).is_none_or(|meta_item| {
                 attr::cfg_matches(meta_item, &self.sess, self.lint_node_id, self.features)
             }),
             Some(meta_item),
@@ -447,15 +452,19 @@ impl<'a> StripUnconfigured<'a> {
     }
 }
 
-pub fn parse_cfg<'a>(meta_item: &'a MetaItem, sess: &Session) -> Option<&'a MetaItemInner> {
+pub fn parse_cfg<'a>(
+    meta_item: &'a MetaItem,
+    sess: &Session,
+    suggestion_span: Span,
+) -> Option<&'a MetaItemInner> {
     let span = meta_item.span;
     match meta_item.meta_item_list() {
         None => {
-            sess.dcx().emit_err(InvalidCfg::NotFollowedByParens { span });
+            sess.dcx().emit_err(InvalidCfg::NotFollowedByParens { span, suggestion_span });
             None
         }
         Some([]) => {
-            sess.dcx().emit_err(InvalidCfg::NoPredicate { span });
+            sess.dcx().emit_err(InvalidCfg::NoPredicate { span, suggestion_span });
             None
         }
         Some([_, .., l]) => {

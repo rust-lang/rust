@@ -63,7 +63,7 @@ pub(crate) fn expand_test_case(
             tokens: None,
         };
         item.ident.span = item.ident.span.with_ctxt(sp.ctxt());
-        item.attrs.push(ecx.attr_name_value_str(sym::rustc_test_marker, test_path_symbol, sp));
+        item.attrs.push(ecx.attr_name_value_str(sym::rustc_test_marker, test_path_symbol, sp, sp));
         item
     });
 
@@ -200,7 +200,7 @@ pub(crate) fn expand_test_or_bench(
     // corresponding macro declaration in `core::macros`.
     let coverage_off = |mut expr: P<ast::Expr>| {
         assert_matches!(expr.kind, ast::ExprKind::Closure(_));
-        expr.attrs.push(cx.attr_nested_word(sym::coverage, sym::off, sp));
+        expr.attrs.push(cx.attr_nested_word(sym::coverage, sym::off, sp, sp));
         expr
     };
 
@@ -273,11 +273,11 @@ pub(crate) fn expand_test_or_bench(
             Ident::new(item.ident.name, sp),
             thin_vec![
                 // #[cfg(test)]
-                cx.attr_nested_word(sym::cfg, sym::test, attr_sp),
+                cx.attr_nested_word(sym::cfg, sym::test, attr_sp, attr_sp),
                 // #[rustc_test_marker = "test_case_sort_key"]
-                cx.attr_name_value_str(sym::rustc_test_marker, test_path_symbol, attr_sp),
+                cx.attr_name_value_str(sym::rustc_test_marker, test_path_symbol, attr_sp, attr_sp),
                 // #[doc(hidden)]
-                cx.attr_nested_word(sym::doc, sym::hidden, attr_sp),
+                cx.attr_nested_word(sym::doc, sym::hidden, attr_sp, attr_sp),
             ],
             // const $ident: test::TestDescAndFn =
             ast::ItemKind::Const(

@@ -369,9 +369,9 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
             cx.expr_array_ref(span, decls),
         )
         .map(|mut i| {
-            i.attrs.push(cx.attr_word(sym::rustc_proc_macro_decls, span));
-            i.attrs.push(cx.attr_word(sym::used, span));
-            i.attrs.push(cx.attr_nested_word(sym::allow, sym::deprecated, span));
+            i.attrs.push(cx.attr_word(sym::rustc_proc_macro_decls, span, span));
+            i.attrs.push(cx.attr_word(sym::used, span, span));
+            i.attrs.push(cx.attr_nested_word(sym::allow, sym::deprecated, span, span));
             i
         });
 
