@@ -926,19 +926,27 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     if let Some(first_char) = constraint.ident.as_str().chars().next()
                         && first_char.is_ascii_lowercase()
                     {
-                        let mut err = if !data.inputs.is_empty() {
-                            self.dcx().create_err(errors::BadReturnTypeNotation::Inputs {
-                                span: data.inputs_span,
-                            })
-                        } else if let FnRetTy::Ty(ty) = &data.output {
-                            self.dcx().create_err(errors::BadReturnTypeNotation::Output {
-                                span: data.inputs_span.shrink_to_hi().to(ty.span),
-                            })
-                        } else {
-                            self.dcx().create_err(errors::BadReturnTypeNotation::NeedsDots {
-                                span: data.inputs_span,
-                            })
+                        tracing::info!(?data, ?data.inputs);
+                        let err = match (&data.inputs[..], &data.output) {
+                            ([_, ..], FnRetTy::Default(_)) => {
+                                errors::BadReturnTypeNotation::Inputs { span: data.inputs_span }
+                            }
+                            ([], FnRetTy::Default(_)) => {
+                                errors::BadReturnTypeNotation::NeedsDots { span: data.inputs_span }
+                            }
+                            // The case `T: Trait<method(..) -> Ret>` is handled in the parser.
+                            (_, FnRetTy::Ty(ty)) => {
+                                let span = data.inputs_span.shrink_to_hi().to(ty.span);
+                                errors::BadReturnTypeNotation::Output {
+                                    span,
+                                    suggestion: errors::RTNSuggestion {
+                                        output: span,
+                                        input: data.inputs_span,
+                                    },
+                                }
+                            }
                         };
+                        let mut err = self.dcx().create_err(err);
                         if !self.tcx.features().return_type_notation()
                             && self.tcx.sess.is_nightly_build()
                         {
