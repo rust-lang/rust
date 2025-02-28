@@ -5,11 +5,7 @@ use ide_db::{
     EditionedFileId, RootDatabase,
 };
 use syntax::{
-    ast::{
-        self,
-        prec::{precedence, ExprPrecedence},
-        AstNode, AstToken, HasName,
-    },
+    ast::{self, AstNode, AstToken, HasName},
     SyntaxElement, TextRange,
 };
 
@@ -77,22 +73,12 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext<'_>) 
             }
             let usage_node =
                 name_ref.syntax().ancestors().find(|it| ast::PathExpr::can_cast(it.kind()));
-            let usage_parent_option =
-                usage_node.and_then(|it| it.parent()).and_then(ast::Expr::cast);
+            let usage_parent_option = usage_node.and_then(|it| it.parent());
             let usage_parent = match usage_parent_option {
                 Some(u) => u,
                 None => return Some((range, name_ref, false)),
             };
-            let initializer = precedence(&initializer_expr);
-            let parent = precedence(&usage_parent);
-            Some((
-                range,
-                name_ref,
-                parent != ExprPrecedence::Unambiguous
-                    && initializer < parent
-                    // initializer == ExprPrecedence::Prefix -> parent != ExprPrecedence::Jump
-                    && (initializer != ExprPrecedence::Prefix || parent != ExprPrecedence::Jump),
-            ))
+            Some((range, name_ref, initializer_expr.needs_parens_in(&usage_parent)))
         })
         .collect::<Option<Vec<_>>>()?;
 
