@@ -341,6 +341,7 @@ pub struct Config {
     pub dist_compression_profile: String,
     pub dist_include_mingw_linker: bool,
     pub dist_vendor: bool,
+    pub dist_exclude_submodules_from_vendoring: BTreeSet<String>,
 
     // libstd features
     pub backtrace: bool, // support for RUST_BACKTRACE
@@ -1003,6 +1004,7 @@ define_config! {
         compression_profile: Option<String> = "compression-profile",
         include_mingw_linker: Option<bool> = "include-mingw-linker",
         vendor: Option<bool> = "vendor",
+        exclude_submodules_from_vendoring: Option<BTreeSet<String>> = "exclude-submodules-from-vendoring",
     }
 }
 
@@ -2229,10 +2231,13 @@ impl Config {
                 compression_profile,
                 include_mingw_linker,
                 vendor,
+                exclude_submodules_from_vendoring,
             } = dist;
             config.dist_sign_folder = sign_folder.map(PathBuf::from);
             config.dist_upload_addr = upload_addr;
             config.dist_compression_formats = compression_formats;
+            config.dist_exclude_submodules_from_vendoring =
+                exclude_submodules_from_vendoring.unwrap_or_else(BTreeSet::new);
             set(&mut config.dist_compression_profile, compression_profile);
             set(&mut config.rust_dist_src, src_tarball);
             set(&mut config.dist_include_mingw_linker, include_mingw_linker);
