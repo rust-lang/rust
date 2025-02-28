@@ -1,2 +1,2 @@
-// @has foobar/fn.ok.html
+//@ has foobar/fn.ok.html
 pub fn ok() {}
