@@ -115,7 +115,10 @@ pub trait Delegate {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
 pub enum PathKind {
-    /// A path consisting of only inductive/unproductive steps.
+    /// A path consisting of only inductive/unproductive steps. Their initial
+    /// provisional result is `Err(NoSolution)`. We currently treat them as
+    /// `PathKind::Unknown` during coherence until we're fully confident in
+    /// our approach.
     Inductive,
     /// A path which is not be coinductive right now but we may want
     /// to change of them to be so in the future. We return an ambiguous
