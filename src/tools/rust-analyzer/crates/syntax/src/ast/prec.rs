@@ -7,7 +7,7 @@ use crate::{
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 pub enum ExprPrecedence {
-    // return, break, yield, closures
+    // return val, break val, yield val, closures
     Jump,
     // = += -= *= /= %= &= |= ^= <<= >>=
     Assign,
@@ -58,12 +58,18 @@ pub fn precedence(expr: &ast::Expr) -> ExprPrecedence {
             Some(_) => ExprPrecedence::Unambiguous,
         },
 
+        Expr::BreakExpr(e) if e.expr().is_some() => ExprPrecedence::Jump,
+        Expr::BecomeExpr(e) if e.expr().is_some() => ExprPrecedence::Jump,
+        Expr::ReturnExpr(e) if e.expr().is_some() => ExprPrecedence::Jump,
+        Expr::YeetExpr(e) if e.expr().is_some() => ExprPrecedence::Jump,
+        Expr::YieldExpr(e) if e.expr().is_some() => ExprPrecedence::Jump,
+
         Expr::BreakExpr(_)
         | Expr::BecomeExpr(_)
-        | Expr::ContinueExpr(_)
         | Expr::ReturnExpr(_)
         | Expr::YeetExpr(_)
-        | Expr::YieldExpr(_) => ExprPrecedence::Jump,
+        | Expr::YieldExpr(_)
+        | Expr::ContinueExpr(_) => ExprPrecedence::Unambiguous,
 
         Expr::RangeExpr(..) => ExprPrecedence::Range,
 
@@ -387,6 +393,7 @@ impl Expr {
             BreakExpr(e) => e.expr().is_none(),
             ContinueExpr(_) => true,
             YieldExpr(e) => e.expr().is_none(),
+            BecomeExpr(e) => e.expr().is_none(),
             _ => false,
         }
     }
