@@ -12,8 +12,10 @@ pub struct Foo;
 
 #[doc(hidden, no_inline, cfg(feature = "bar"))]
 pub use Foo as Foo1;
+
 #[doc(hidden, inline)]
 pub use Foo1 as Foo2;
+
 // First we ensure that only the reexport `Bar2` and the inlined struct `Bar`
 // are inlined.
 //@ count - '//a[@class="struct"]' 1
@@ -24,6 +26,7 @@ pub use Foo1 as Foo2;
 //@ has - '//a[@class="struct"]' 'Bar'
 #[doc(inline)]
 pub use Foo2 as Bar;
+
 // This one should appear but `Bar2` won't be linked because there is no
 // `#[doc(inline)]`.
 //@ !has - '//*[@id="reexport.Bar2"]' 'pub use Foo2 as Bar2;'

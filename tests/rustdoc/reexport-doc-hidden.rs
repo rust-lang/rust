@@ -10,6 +10,7 @@ pub type Type = u32;
 //@ has 'foo/index.html'
 //@ !has - '//*[@id="reexport.Type2"]/code' 'pub use crate::Type as Type2;'
 pub use crate::Type as Type2;
+
 //@ count - '//*[@id="reexport.Type3"]' 0
 #[doc(hidden)]
 pub use crate::Type as Type3;
