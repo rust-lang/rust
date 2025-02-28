@@ -538,8 +538,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
                 self.error = Err(report_non_exhaustive_match(
                     &cx,
                     self.thir,
-                    scrut.ty,
-                    scrut.span,
+                    scrut,
                     witnesses,
                     arms,
                     braces_span,
@@ -1205,12 +1204,13 @@ fn pat_is_catchall(pat: &DeconstructedPat<'_, '_>) -> bool {
 fn report_non_exhaustive_match<'p, 'tcx>(
     cx: &PatCtxt<'p, 'tcx>,
     thir: &Thir<'tcx>,
-    scrut_ty: Ty<'tcx>,
-    sp: Span,
+    scrut: &Expr<'tcx>,
     witnesses: Vec<WitnessPat<'p, 'tcx>>,
     arms: &[ArmId],
     braces_span: Option<Span>,
 ) -> ErrorGuaranteed {
+    let scrut_ty = scrut.ty;
+    let sp = scrut.span;
     let is_empty_match = arms.is_empty();
     let non_empty_enum = match scrut_ty.kind() {
         ty::Adt(def, _) => def.is_enum() && !def.variants().is_empty(),
@@ -1323,7 +1323,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
     let suggested_arm = if suggest_the_witnesses {
         let pattern = witnesses
             .iter()
-            .map(|witness| cx.print_witness_pat(witness))
+            .map(|witness| erase_path_if_local(cx, witness, scrut, cx.print_witness_pat(witness)))
             .collect::<Vec<String>>()
             .join(" | ");
         if witnesses.iter().all(|p| p.is_never_pattern()) && cx.tcx.features().never_patterns() {
@@ -1436,6 +1436,33 @@ fn report_non_exhaustive_match<'p, 'tcx>(
     err.emit()
 }
 
+fn erase_path_if_local<'p, 'tcx>(
+    cx: &PatCtxt<'p, 'tcx>,
+    pat: &WitnessPat<'p, 'tcx>,
+    scrut: &Expr<'tcx>,
+    mut pat_str: String,
+) -> String {
+    if let ty::Adt(adt_def, _) = *pat.ty().kind()
+        && adt_def.is_enum()
+    {
+        let enum_parent_def_id = cx.tcx.parent(adt_def.did());
+        let scrut_parent_def_id = if let ExprKind::Scope { region_scope: _, lint_level, value: _ } =
+            scrut.kind
+            && let LintLevel::Explicit(hir_id) = lint_level
+        {
+            Some(hir_id.owner.to_def_id())
+        } else {
+            None
+        };
+        if scrut_parent_def_id == Some(enum_parent_def_id) {
+            let segments: Vec<&str> = pat_str.split("::").collect();
+            let enum_name = segments[segments.len() - 2];
+            let variant_name = segments[segments.len() - 1];
+            pat_str = String::from(format!("{}::{}", enum_name, variant_name));
+        }
+    }
+    pat_str
+}
 fn joined_uncovered_patterns<'p, 'tcx>(
     cx: &PatCtxt<'p, 'tcx>,
     witnesses: &[WitnessPat<'p, 'tcx>],
