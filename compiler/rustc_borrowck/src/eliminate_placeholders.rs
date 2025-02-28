@@ -619,9 +619,6 @@ fn rewrite_verify_bound<'t>(
         // in an unnameable universe, they would compare equal since they
         // are both empty. This bit checks if we
         VerifyBound::IfEq(binder) => {
-            info!("Assuming, incorrectly, that Eq bound is universe-fine: {binder:?}");
-
-            // FIXME: does it matter that I don't normalise to SCCs?
             match test_type_match::extract_verify_if_eq(tcx, &binder, generic_kind.to_ty(tcx)) {
                 Some(r) => {
                     let r_vid = universal_regions.to_region_vid(r);
@@ -638,7 +635,13 @@ fn rewrite_verify_bound<'t>(
                         Either::Right(RewrittenVerifyBound::Unsatisfied)
                     }
                 }
-                None => Either::Right(RewrittenVerifyBound::Unsatisfied),
+                None => {
+                    info!(
+                        "Failed to extract type from {:#?}; assuming we are fine!",
+                        generic_kind.to_ty(tcx)
+                    );
+                    Either::Left(bound)
+                }
             }
         }
         // Rewrite an outlives bound to an outlives-static bound upon referencing
