@@ -4,7 +4,6 @@ use rustc_data_structures::intern::Interned;
 use rustc_hir::def_id::DefId;
 use rustc_macros::{HashStable, extension};
 use rustc_type_ir as ir;
-use tracing::instrument;
 
 use crate::ty::{
     self, DebruijnIndex, EarlyBinder, PredicatePolarity, Ty, TyCtxt, TypeFlags, Upcast, UpcastFrom,
@@ -49,10 +48,6 @@ pub struct Predicate<'tcx>(
 impl<'tcx> rustc_type_ir::inherent::Predicate<TyCtxt<'tcx>> for Predicate<'tcx> {
     fn as_clause(self) -> Option<ty::Clause<'tcx>> {
         self.as_clause()
-    }
-
-    fn is_coinductive(self, interner: TyCtxt<'tcx>) -> bool {
-        self.is_coinductive(interner)
     }
 
     fn allow_normalization(self) -> bool {
@@ -117,17 +112,6 @@ impl<'tcx> Predicate<'tcx> {
             .transpose()?;
 
         Some(tcx.mk_predicate(kind))
-    }
-
-    #[instrument(level = "debug", skip(tcx), ret)]
-    pub fn is_coinductive(self, tcx: TyCtxt<'tcx>) -> bool {
-        match self.kind().skip_binder() {
-            ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => {
-                tcx.trait_is_coinductive(data.def_id())
-            }
-            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => true,
-            _ => false,
-        }
     }
 
     /// Whether this projection can be soundly normalized.

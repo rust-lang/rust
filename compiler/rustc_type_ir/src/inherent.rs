@@ -462,8 +462,6 @@ pub trait Predicate<I: Interner<Predicate = Self>>:
 {
     fn as_clause(self) -> Option<I::Clause>;
 
-    fn is_coinductive(self, interner: I) -> bool;
-
     // FIXME: Eventually uplift the impl out of rustc and make this defaulted.
     fn allow_normalization(self) -> bool;
 }

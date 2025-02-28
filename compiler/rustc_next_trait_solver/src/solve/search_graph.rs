@@ -2,7 +2,6 @@ use std::convert::Infallible;
 use std::marker::PhantomData;
 
 use rustc_type_ir::Interner;
-use rustc_type_ir::inherent::*;
 use rustc_type_ir::search_graph::{self, PathKind};
 use rustc_type_ir::solve::{CanonicalInput, Certainty, QueryResult};
 
@@ -93,10 +92,6 @@ where
     ) -> QueryResult<I> {
         let certainty = from_result.unwrap().value.certainty;
         response_no_constraints(cx, for_input, certainty)
-    }
-
-    fn step_is_coinductive(cx: I, input: CanonicalInput<I>) -> bool {
-        input.canonical.value.goal.predicate.is_coinductive(cx)
     }
 }
 
