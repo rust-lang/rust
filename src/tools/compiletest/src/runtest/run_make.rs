@@ -234,7 +234,7 @@ impl TestCx<'_> {
         // FIXME(jieyouxu): there almost certainly is a better way to do this (specifically how the
         // support lib and its deps are organized), but this seems to work for now.
 
-        let tools_bin = build_root.join("stage0-bootstrap-tools");
+        let tools_bin = host_build_root.join("stage0-bootstrap-tools");
         let support_host_path = tools_bin.join(&self.config.host).join("release");
         let support_lib_path = support_host_path.join("librun_make_support.rlib");
 
@@ -265,7 +265,7 @@ impl TestCx<'_> {
         let stage0_rustc = if self.config.stage == 0 {
             self.config.rustc_path.clone()
         } else {
-            let mut p = build_root.join("stage0").join("bin").join("rustc");
+            let mut p = host_build_root.join("stage0").join("bin").join("rustc");
             p.set_extension(env::consts::EXE_EXTENSION);
             p
         };
@@ -317,7 +317,7 @@ impl TestCx<'_> {
                 );
             } else {
                 paths.push(
-                    build_root
+                    host_build_root
                         .join("stage0")
                         .join("lib")
                         .join("rustlib")
