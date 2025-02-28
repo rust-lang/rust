@@ -190,17 +190,16 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     /// `to_error_region`.
     pub(super) fn to_error_region_vid(&self, r: RegionVid) -> Option<RegionVid> {
         if self.regioncx.universal_regions().is_universal_region(r) {
-            Some(r)
-        } else {
-            // We just want something nameable, even if it's not
-            // actually an upper bound.
-            let upper_bound = self.regioncx.approx_universal_upper_bound(r);
+            return Some(r);
+        }
+        // We just want something nameable, even if it's not
+        // actually an upper bound.
+        let upper_bound = self.regioncx.approx_universal_upper_bound(r);
 
-            if self.regioncx.upper_bound_in_region_scc(r, upper_bound) {
-                self.to_error_region_vid(upper_bound)
-            } else {
-                None
-            }
+        if self.regioncx.upper_bound_in_region_scc(r, upper_bound) {
+            self.to_error_region_vid(upper_bound)
+        } else {
+            None
         }
     }
 
@@ -210,7 +209,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         fold_regions(tcx, ty, |region, _| match *region {
-            ty::ReVar(vid) => self.to_error_region(vid).unwrap_or(region),
+            ty::ReVar(vid) => self.regioncx.first_named_region_reached(vid).unwrap_or(region),
             _ => region,
         })
     }
@@ -373,7 +372,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         );
                     };
                     debug!(?lower_bound_region);
-                    let generic_ty = generic_kind.to_ty(self.infcx.tcx);
+                    let generic_ty =
+                        self.name_regions(self.infcx.tcx, generic_kind.to_ty(self.infcx.tcx));
                     let origin = RelateParamBound(type_test_span, generic_ty, None);
                     self.buffer_error(self.infcx.err_ctxt().construct_generic_bound_failure(
                         self.body.source.def_id().expect_local(),
