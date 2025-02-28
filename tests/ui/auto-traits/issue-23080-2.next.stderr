@@ -4,7 +4,9 @@ error[E0380]: auto traits cannot have associated items
 LL | unsafe auto trait Trait {
    |                   ----- auto traits cannot have associated items
 LL |     type Output;
-   |     -----^^^^^^- help: remove these associated items
+   |          ^^^^^^
+   |
+   = help: remove the associated items
 
 error: aborting due to 1 previous error
 
