@@ -324,11 +324,11 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.features()
     }
 
-    fn bound_coroutine_hidden_types(
+    fn coroutine_hidden_types(
         self,
         def_id: DefId,
-    ) -> impl IntoIterator<Item = ty::EarlyBinder<'tcx, ty::Binder<'tcx, Ty<'tcx>>>> {
-        self.bound_coroutine_hidden_types(def_id)
+    ) -> ty::EarlyBinder<'tcx, ty::Binder<'tcx, &'tcx ty::List<Ty<'tcx>>>> {
+        self.coroutine_hidden_types(def_id)
     }
 
     fn fn_sig(self, def_id: DefId) -> ty::EarlyBinder<'tcx, ty::PolyFnSig<'tcx>> {
