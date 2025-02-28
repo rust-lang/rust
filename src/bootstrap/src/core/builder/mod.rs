@@ -1462,7 +1462,7 @@ impl<'a> Builder<'a> {
             cmd.arg("-Dwarnings");
         }
         cmd.arg("-Znormalize-docs");
-        cmd.args(linker_args(self, compiler.host, LldThreads::Yes));
+        cmd.args(linker_args(self, compiler.host, LldThreads::Yes, compiler.stage));
         cmd
     }
 
