@@ -48,12 +48,12 @@ impl Cfg {
         exclude: &FxHashSet<Cfg>,
     ) -> Result<Option<Cfg>, InvalidCfgError> {
         match nested_cfg {
-            MetaItemInner::MetaItem(ref cfg) => Cfg::parse_without(cfg, exclude),
+            MetaItemInner::MetaItem(cfg) => Cfg::parse_without(cfg, exclude),
             MetaItemInner::Lit(MetaItemLit { kind: LitKind::Bool(b), .. }) => match *b {
                 true => Ok(Some(Cfg::True)),
                 false => Ok(Some(Cfg::False)),
             },
-            MetaItemInner::Lit(ref lit) => {
+            MetaItemInner::Lit(lit) => {
                 Err(InvalidCfgError { msg: "unexpected literal", span: lit.span })
             }
         }

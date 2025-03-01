@@ -60,7 +60,7 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
     let primitives = local_crate.primitives(cx.tcx);
     let keywords = local_crate.keywords(cx.tcx);
     {
-        let ItemKind::ModuleItem(ref mut m) = &mut module.inner.kind else { unreachable!() };
+        let ItemKind::ModuleItem(m) = &mut module.inner.kind else { unreachable!() };
         m.items.extend(primitives.iter().map(|&(def_id, prim)| {
             Item::from_def_id_and_parts(
                 def_id,
@@ -302,7 +302,7 @@ pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
     use rustc_hir::*;
     debug!("trying to get a name from pattern: {p:?}");
 
-    Symbol::intern(&match p.kind {
+    Symbol::intern(&match &p.kind {
         // FIXME(never_patterns): does this make sense?
         PatKind::Wild
         | PatKind::Err(_)
@@ -313,8 +313,9 @@ pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
         }
         PatKind::Binding(_, _, ident, _) => return ident.name,
         PatKind::Box(p) | PatKind::Ref(p, _) | PatKind::Guard(p, _) => return name_from_pat(p),
-        PatKind::TupleStruct(ref p, ..)
-        | PatKind::Expr(PatExpr { kind: PatExprKind::Path(ref p), .. }) => qpath_to_string(p),
+        PatKind::TupleStruct(p, ..) | PatKind::Expr(PatExpr { kind: PatExprKind::Path(p), .. }) => {
+            qpath_to_string(p)
+        }
         PatKind::Or(pats) => {
             fmt::from_fn(|f| pats.iter().map(|p| name_from_pat(p)).joined(" | ", f)).to_string()
         }
@@ -329,7 +330,7 @@ pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
             return Symbol::intern("()");
         }
         PatKind::Slice(begin, mid, end) => {
-            fn print_pat<'a>(pat: &'a Pat<'a>, wild: bool) -> impl Display + 'a {
+            fn print_pat(pat: &Pat<'_>, wild: bool) -> impl Display {
                 fmt::from_fn(move |f| {
                     if wild {
                         f.write_str("..")?;
@@ -493,7 +494,7 @@ pub(crate) fn resolve_type(cx: &mut DocContext<'_>, path: Path) -> Type {
 pub(crate) fn synthesize_auto_trait_and_blanket_impls(
     cx: &mut DocContext<'_>,
     item_def_id: DefId,
-) -> impl Iterator<Item = Item> {
+) -> impl Iterator<Item = Item> + use<> {
     let auto_impls = cx
         .sess()
         .prof
