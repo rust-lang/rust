@@ -5,8 +5,76 @@
 
 use super::*;
 use crate::hint::unreachable_unchecked;
+use crate::marker::PhantomData;
 use crate::ptr::NonNull;
 
+#[cfg(not(bootstrap))]
+#[lang = "format_template"]
+#[derive(Copy, Clone)]
+pub struct Template<'a> {
+    pub(super) pieces: NonNull<rt::Piece>,
+    lifetime: PhantomData<&'a rt::Piece>,
+}
+
+#[cfg(not(bootstrap))]
+unsafe impl Send for Template<'_> {}
+#[cfg(not(bootstrap))]
+unsafe impl Sync for Template<'_> {}
+
+#[cfg(not(bootstrap))]
+impl<'a> Template<'a> {
+    #[inline]
+    pub const unsafe fn new<const N: usize>(pieces: &'a [rt::Piece; N]) -> Self {
+        Self { pieces: NonNull::from_ref(pieces).cast(), lifetime: PhantomData }
+    }
+
+    #[inline]
+    pub const unsafe fn next(&mut self) -> Piece {
+        // SAFETY: Guaranteed by caller.
+        unsafe {
+            let piece = *self.pieces.as_ref();
+            self.pieces = self.pieces.add(1);
+            piece
+        }
+    }
+}
+
+#[cfg(not(bootstrap))]
+#[lang = "format_piece"]
+#[derive(Copy, Clone)]
+pub union Piece {
+    pub i: usize,
+    pub p: *const u8,
+}
+
+#[cfg(not(bootstrap))]
+unsafe impl Send for Piece {}
+#[cfg(not(bootstrap))]
+unsafe impl Sync for Piece {}
+
+// These are marked as #[stable] because of #[rustc_promotable] and #[rustc_const_stable].
+// With #[rustc_const_unstable], many format_args!() invocations would result in errors.
+//
+// There is still no way to use these on stable, because Piece itself is #[unstable] and not
+// reachable through any public path. (format_args!()'s expansion uses it as a lang item.)
+#[cfg(not(bootstrap))]
+impl Piece {
+    #[rustc_promotable]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_stable(feature = "rust1", since = "1.0.0")]
+    pub const fn str(s: &'static str) -> Self {
+        Self { p: s as *const str as *const u8 }
+    }
+
+    #[rustc_promotable]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_stable(feature = "rust1", since = "1.0.0")]
+    pub const fn num(i: usize) -> Self {
+        Self { i }
+    }
+}
+
+#[cfg(bootstrap)]
 #[lang = "format_placeholder"]
 #[derive(Copy, Clone)]
 pub struct Placeholder {
@@ -18,6 +86,7 @@ pub struct Placeholder {
     pub width: Count,
 }
 
+#[cfg(bootstrap)]
 impl Placeholder {
     #[inline]
     pub const fn new(
@@ -32,6 +101,7 @@ impl Placeholder {
     }
 }
 
+#[cfg(bootstrap)]
 #[lang = "format_alignment"]
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum Alignment {
@@ -43,6 +113,7 @@ pub enum Alignment {
 
 /// Used by [width](https://doc.rust-lang.org/std/fmt/#width)
 /// and [precision](https://doc.rust-lang.org/std/fmt/#precision) specifiers.
+#[cfg(bootstrap)]
 #[lang = "format_count"]
 #[derive(Copy, Clone)]
 pub enum Count {
@@ -54,16 +125,21 @@ pub enum Count {
     Implied,
 }
 
-// This needs to match the order of flags in compiler/rustc_ast_lowering/src/format.rs.
-#[derive(Copy, Clone)]
-pub(super) enum Flag {
-    SignPlus,
-    SignMinus,
-    Alternate,
-    SignAwareZeroPad,
-    DebugLowerHex,
-    DebugUpperHex,
-}
+// This needs to match with compiler/rustc_ast_lowering/src/format.rs.
+pub const SIGN_PLUS_FLAG: u32 = 1 << 21;
+pub const SIGN_MINUS_FLAG: u32 = 1 << 22;
+pub const ALTERNATE_FLAG: u32 = 1 << 23;
+pub const SIGN_AWARE_ZERO_PAD_FLAG: u32 = 1 << 24;
+pub const DEBUG_LOWER_HEX_FLAG: u32 = 1 << 25;
+pub const DEBUG_UPPER_HEX_FLAG: u32 = 1 << 26;
+pub const WIDTH_FLAG: u32 = 1 << 27;
+pub const PRECISION_FLAG: u32 = 1 << 28;
+pub const ALIGN_BITS: u32 = 0b11 << 29;
+pub const ALIGN_LEFT: u32 = 0 << 29;
+pub const ALIGN_RIGHT: u32 = 1 << 29;
+pub const ALIGN_CENTER: u32 = 2 << 29;
+pub const ALIGN_UNKNOWN: u32 = 3 << 29;
+pub const ALWAYS_SET: u32 = 1 << 31;
 
 #[derive(Copy, Clone)]
 enum ArgumentType<'a> {
@@ -74,7 +150,7 @@ enum ArgumentType<'a> {
         formatter: unsafe fn(NonNull<()>, &mut Formatter<'_>) -> Result,
         _lifetime: PhantomData<&'a ()>,
     },
-    Count(usize),
+    Count(u16),
 }
 
 /// This struct represents a generic "argument" which is taken by format_args!().
@@ -151,7 +227,10 @@ impl Argument<'_> {
     }
     #[inline]
     pub const fn from_usize(x: &usize) -> Argument<'_> {
-        Argument { ty: ArgumentType::Count(*x) }
+        if *x > u16::MAX as usize {
+            panic!("Formatting argument out of range");
+        };
+        Argument { ty: ArgumentType::Count(*x as u16) }
     }
 
     /// Format this placeholder argument.
@@ -181,7 +260,7 @@ impl Argument<'_> {
     }
 
     #[inline]
-    pub(super) const fn as_usize(&self) -> Option<usize> {
+    pub(super) const fn as_u16(&self) -> Option<u16> {
         match self.ty {
             ArgumentType::Count(count) => Some(count),
             ArgumentType::Placeholder { .. } => None,
@@ -204,17 +283,14 @@ impl Argument<'_> {
     }
 }
 
-/// This struct represents the unsafety of constructing an `Arguments`.
-/// It exists, rather than an unsafe function, in order to simplify the expansion
-/// of `format_args!(..)` and reduce the scope of the `unsafe` block.
+#[cfg(bootstrap)]
 #[lang = "format_unsafe_arg"]
 pub struct UnsafeArg {
     _private: (),
 }
 
+#[cfg(bootstrap)]
 impl UnsafeArg {
-    /// See documentation where `UnsafeArg` is required to know when it is safe to
-    /// create and use `UnsafeArg`.
     #[inline]
     pub const unsafe fn new() -> Self {
         Self { _private: () }
