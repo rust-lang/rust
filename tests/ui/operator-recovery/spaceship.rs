@@ -1,4 +1,5 @@
+//@ run-pass
+
 fn main() {
-    println!("{}", 1 <=> 2);
-    //~^ERROR invalid comparison operator `<=>`
+    println!("{:?}", 1 <=> 2);
 }

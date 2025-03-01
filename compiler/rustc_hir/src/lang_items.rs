@@ -277,6 +277,7 @@ language_item_table! {
     OrderingEnum,            sym::Ordering,            ordering_enum,              Target::Enum,           GenericRequirement::Exact(0);
     PartialEq,               sym::eq,                  eq_trait,                   Target::Trait,          GenericRequirement::Exact(1);
     PartialOrd,              sym::partial_ord,         partial_ord_trait,          Target::Trait,          GenericRequirement::Exact(1);
+    Ord,                     sym::Ord,                 ord_trait,                  Target::Trait,          GenericRequirement::Exact(0);
     CVoid,                   sym::c_void,              c_void,                     Target::Enum,           GenericRequirement::None;
 
     // A number of panic-related lang items. The `panic` item corresponds to divide-by-zero and

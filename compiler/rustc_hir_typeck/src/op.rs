@@ -3,6 +3,7 @@
 use rustc_data_structures::packed::Pu128;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, struct_span_code_err};
+use rustc_hir::LangItem;
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
@@ -193,6 +194,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // both LHS and RHS and result will have the same type
                 self.demand_suptype(rhs_span, lhs_ty, rhs_ty);
                 tcx.types.bool
+            }
+
+            BinOpCategory::ThreeWayComparison => {
+                // both LHS and RHS and result will have the same type
+                self.demand_suptype(rhs_span, lhs_ty, rhs_ty);
+                tcx.ty_ordering_enum(Some(lhs_span))
+            }
+
+            BinOpCategory::ThreeWayComparisonPartial => {
+                // both LHS and RHS and result will have the same type
+                self.demand_suptype(rhs_span, lhs_ty, rhs_ty);
+                let ordering_ty = tcx.ty_ordering_enum(Some(lhs_span));
+                Ty::new_lang_item(tcx, ordering_ty, LangItem::Option).unwrap()
             }
         }
     }
@@ -1006,7 +1020,9 @@ fn lang_item_for_op(
             | hir::BinOpKind::Eq
             | hir::BinOpKind::Ne
             | hir::BinOpKind::And
-            | hir::BinOpKind::Or => {
+            | hir::BinOpKind::Or
+            | hir::BinOpKind::Cmp
+            | hir::BinOpKind::CmpPartial => {
                 span_bug!(span, "impossible assignment operation: {}=", op.node.as_str())
             }
         }
@@ -1027,6 +1043,8 @@ fn lang_item_for_op(
             hir::BinOpKind::Ge => (sym::ge, lang.partial_ord_trait()),
             hir::BinOpKind::Gt => (sym::gt, lang.partial_ord_trait()),
             hir::BinOpKind::Eq => (sym::eq, lang.eq_trait()),
+            hir::BinOpKind::Cmp => (sym::cmp, lang.ord_trait()),
+            hir::BinOpKind::CmpPartial => (sym::partial_cmp, lang.partial_ord_trait()),
             hir::BinOpKind::Ne => (sym::ne, lang.eq_trait()),
             hir::BinOpKind::And | hir::BinOpKind::Or => {
                 span_bug!(span, "&& and || are not overloadable")
@@ -1062,6 +1080,9 @@ enum BinOpCategory {
     /// ==, !=, etc -- takes equal types, produces bools, except for simd,
     /// which produce the input type
     Comparison,
+
+    ThreeWayComparison,
+    ThreeWayComparisonPartial,
 }
 
 impl BinOpCategory {
@@ -1085,6 +1106,9 @@ impl BinOpCategory {
             | hir::BinOpKind::Le
             | hir::BinOpKind::Ge
             | hir::BinOpKind::Gt => BinOpCategory::Comparison,
+
+            hir::BinOpKind::Cmp => BinOpCategory::ThreeWayComparison,
+            hir::BinOpKind::CmpPartial => BinOpCategory::ThreeWayComparisonPartial,
 
             hir::BinOpKind::And | hir::BinOpKind::Or => BinOpCategory::Shortcircuit,
         }
@@ -1157,7 +1181,9 @@ fn is_builtin_binop<'tcx>(lhs: Ty<'tcx>, rhs: Ty<'tcx>, op: hir::BinOp) -> bool 
                 || lhs.is_bool() && rhs.is_bool()
         }
 
-        BinOpCategory::Comparison => {
+        BinOpCategory::Comparison
+        | BinOpCategory::ThreeWayComparison
+        | BinOpCategory::ThreeWayComparisonPartial => {
             lhs.references_error() || rhs.references_error() || lhs.is_scalar() && rhs.is_scalar()
         }
     }

@@ -1,0 +1,27 @@
+// MIR for `bar` after built
+
+fn bar(_1: (i32, u32), _2: (i32, u32)) -> std::cmp::Ordering {
+    debug a => _1;
+    debug b => _2;
+    let mut _0: std::cmp::Ordering;
+    let mut _3: &(i32, u32);
+    let mut _4: &(i32, u32);
+
+    bb0: {
+        StorageLive(_3);
+        _3 = &_1;
+        StorageLive(_4);
+        _4 = &_2;
+        _0 = <(i32, u32) as Ord>::cmp(move _3, move _4) -> [return: bb1, unwind: bb2];
+    }
+
+    bb1: {
+        StorageDead(_4);
+        StorageDead(_3);
+        return;
+    }
+
+    bb2 (cleanup): {
+        resume;
+    }
+}

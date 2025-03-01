@@ -1105,7 +1105,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             check_kinds!(
                                 x,
                                 "Cannot three-way compare non-integer type {:?}",
-                                ty::Char | ty::Uint(..) | ty::Int(..)
+                                ty::Char | ty::Uint(..) | ty::Int(..) | ty::Bool
                             )
                         }
                     }

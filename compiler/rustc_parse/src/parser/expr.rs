@@ -154,7 +154,16 @@ impl<'a> Parser<'a> {
         }
 
         self.expected_token_types.insert(TokenType::Operator);
-        while let Some(op) = self.check_assoc_op() {
+        while let Some(mut op) = self.check_assoc_op() {
+            // Look for `<=>`
+            if op.node == AssocOp::Binary(BinOpKind::Le) && self.look_ahead(1, |t| *t == token::Gt) {
+                //let sp = op.span.to(self.token.span);
+                //op = source_map::respan(sp, AssocOp::Cmp);
+                op.node = AssocOp::Binary(BinOpKind::Cmp);
+                self.bump();
+            }
+            let op = op;
+
             let lhs_span = self.interpolated_or_expr_span(&lhs);
             let cur_op_span = self.token.span;
             let restrictions = if op.node.is_assign_like() {
@@ -225,6 +234,7 @@ impl<'a> Parser<'a> {
                 self.bump();
             }
 
+            /*
             // Look for C++'s `<=>` and recover
             if op.node == AssocOp::Binary(BinOpKind::Le)
                 && self.token == token::Gt
@@ -238,6 +248,7 @@ impl<'a> Parser<'a> {
                 });
                 self.bump();
             }
+            */
 
             if self.prev_token == token::BinOp(token::Plus)
                 && self.token == token::BinOp(token::Plus)
