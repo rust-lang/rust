@@ -159,6 +159,14 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.s390.vpklsh"] fn vpklsh(a: vector_signed_short, b: vector_signed_short) -> vector_unsigned_char;
     #[link_name = "llvm.s390.vpklsf"] fn vpklsf(a: vector_signed_int, b: vector_signed_int) -> vector_unsigned_short;
     #[link_name = "llvm.s390.vpklsg"] fn vpklsg(a: vector_signed_long_long, b: vector_signed_long_long) -> vector_unsigned_int;
+
+    #[link_name = "llvm.s390.vpkshs"] fn vpkshs(a: vector_signed_short, b: vector_signed_short) -> PackedTuple<vector_signed_char, i32>;
+    #[link_name = "llvm.s390.vpksfs"] fn vpksfs(a: vector_signed_int, b: vector_signed_int) -> PackedTuple<vector_signed_short, i32>;
+    #[link_name = "llvm.s390.vpksgs"] fn vpksgs(a: vector_signed_long_long, b: vector_signed_long_long) -> PackedTuple<vector_signed_int, i32>;
+
+    #[link_name = "llvm.s390.vpklshs"] fn vpklshs(a: vector_unsigned_short, b: vector_unsigned_short) -> PackedTuple<vector_unsigned_char, i32>;
+    #[link_name = "llvm.s390.vpklsfs"] fn vpklsfs(a: vector_unsigned_int, b: vector_unsigned_int) -> PackedTuple<vector_unsigned_short, i32>;
+    #[link_name = "llvm.s390.vpklsgs"] fn vpklsgs(a: vector_unsigned_long_long, b: vector_unsigned_long_long) -> PackedTuple<vector_unsigned_int, i32>;
 }
 
 impl_from! { i8x16, u8x16,  i16x8, u16x8, i32x4, u32x4, i64x2, u64x2, f32x4, f64x2 }
@@ -1839,13 +1847,13 @@ mod sealed {
      }
 
     vfaes_wrapper! {
-       vfaebs vector_signed_char
-       vfaehs vector_signed_short
-       vfaefs vector_signed_int
+        vfaebs vector_signed_char
+        vfaehs vector_signed_short
+        vfaefs vector_signed_int
 
-       vfaezbs vector_signed_char
-       vfaezhs vector_signed_short
-       vfaezfs vector_signed_int
+        vfaezbs vector_signed_char
+        vfaezhs vector_signed_short
+        vfaezfs vector_signed_int
     }
 
     #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -2138,6 +2146,80 @@ mod sealed {
     impl_vec_trait! { [VectorPacksu vec_packsu] vpklsf (vector_unsigned_int, vector_unsigned_int) -> vector_unsigned_short }
     impl_vec_trait! { [VectorPacksu vec_packsu] vpacksug (vector_signed_long_long, vector_signed_long_long) -> vector_unsigned_int }
     impl_vec_trait! { [VectorPacksu vec_packsu] vpklsg (vector_unsigned_long_long, vector_unsigned_long_long) -> vector_unsigned_int }
+
+    macro_rules! impl_vector_packs_cc {
+        ($($intr:ident $ty:ident $outty:ident)*) => {
+            $(
+                #[inline]
+                #[target_feature(enable = "vector")]
+                #[cfg_attr(test, assert_instr($intr))]
+                unsafe fn $intr(
+                    a: $ty,
+                    b: $ty,
+                    c: *mut i32,
+                ) -> $outty {
+                    let PackedTuple { x, y } = super::$intr(a, b);
+                    c.write(y);
+                    x
+                }
+
+                #[unstable(feature = "stdarch_s390x", issue = "135681")]
+                impl VectorPacksCC for $ty {
+                    type Result = $outty;
+
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_packs_cc(self, b: Self, c: *mut i32) -> Self::Result {
+                        $intr(self, b, c)
+                    }
+                }
+            )*
+        }
+    }
+
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    pub trait VectorPacksCC {
+        type Result;
+        unsafe fn vec_packs_cc(self, b: Self, c: *mut i32) -> Self::Result;
+    }
+
+    impl_vector_packs_cc! {
+        vpkshs vector_signed_short vector_signed_char
+        vpklshs vector_unsigned_short vector_unsigned_char
+        vpksfs vector_signed_int vector_signed_short
+        vpklsfs vector_unsigned_int vector_unsigned_short
+        vpksgs vector_signed_long_long vector_signed_int
+        vpklsgs vector_unsigned_long_long vector_unsigned_int
+    }
+
+    macro_rules! impl_vector_packsu_cc {
+        ($($intr:ident $ty:ident $outty:ident)*) => {
+            $(
+                #[unstable(feature = "stdarch_s390x", issue = "135681")]
+                impl VectorPacksuCC for $ty {
+                    type Result = $outty;
+
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_packsu_cc(self, b: Self, c: *mut i32) -> Self::Result {
+                        $intr(self, b, c)
+                    }
+                }
+            )*
+        }
+    }
+
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    pub trait VectorPacksuCC {
+        type Result;
+        unsafe fn vec_packsu_cc(self, b: Self, c: *mut i32) -> Self::Result;
+    }
+
+    impl_vector_packsu_cc! {
+        vpklshs vector_unsigned_short vector_unsigned_char
+        vpklsfs vector_unsigned_int vector_unsigned_short
+        vpklsgs vector_unsigned_long_long vector_unsigned_int
+    }
 }
 
 /// Load Count to Block Boundary
@@ -2689,12 +2771,28 @@ pub unsafe fn vec_packs<T: sealed::VectorPacks<U>, U>(a: T, b: U) -> T::Result {
     a.vec_packs(b)
 }
 
+/// Vector Pack Saturated Condition Code
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_packs_cc<T: sealed::VectorPacksCC>(a: T, b: T, c: *mut i32) -> T::Result {
+    a.vec_packs_cc(b, c)
+}
+
 /// Vector Pack Saturated Unsigned
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
 pub unsafe fn vec_packsu<T: sealed::VectorPacksu<U>, U>(a: T, b: U) -> T::Result {
     a.vec_packsu(b)
+}
+
+/// Vector Pack Saturated Unsigned Condition Code
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_packsu_cc<T: sealed::VectorPacksuCC>(a: T, b: T, c: *mut i32) -> T::Result {
+    a.vec_packsu_cc(b, c)
 }
 
 /// Merges the least significant ("low") halves of two vectors.
