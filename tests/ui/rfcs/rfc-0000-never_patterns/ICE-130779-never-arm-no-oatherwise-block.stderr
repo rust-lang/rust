@@ -5,12 +5,6 @@ LL |         ! |
    |         - ^
    |         |
    |         while parsing this or-pattern starting here
-   |
-help: remove the `|`
-   |
-LL -         ! |
-LL +         !
-   |
 
 error: a never pattern is always unreachable
   --> $DIR/ICE-130779-never-arm-no-oatherwise-block.rs:10:20
