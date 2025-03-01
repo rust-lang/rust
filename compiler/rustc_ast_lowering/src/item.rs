@@ -2,6 +2,7 @@ use rustc_abi::ExternAbi;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
+use rustc_attr_parsing::AttributeKind;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::PredicateOrigin;
@@ -158,7 +159,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let mut ident = i.ident;
         let vis_span = self.lower_span(i.vis.span);
         let hir_id = hir::HirId::make_owner(self.current_hir_id_owner.def_id);
-        let attrs = self.lower_attrs(hir_id, &i.attrs, i.span);
+        let define_opaques = match &i.kind {
+            ItemKind::Fn(f) => self.lower_define_opaques(&f.define_opaques),
+            _ => None,
+        };
+        let attrs = self.lower_attrs_with_extra(hir_id, &i.attrs, i.span, define_opaques);
         let kind = self.lower_item_kind(i.span, i.id, hir_id, &mut ident, attrs, vis_span, &i.kind);
         let item = hir::Item {
             owner_id: hir_id.expect_owner(),
@@ -760,7 +765,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_trait_item(&mut self, i: &AssocItem) -> &'hir hir::TraitItem<'hir> {
         let hir_id = hir::HirId::make_owner(self.current_hir_id_owner.def_id);
-        let attrs = self.lower_attrs(hir_id, &i.attrs, i.span);
+        let define_opaques = match &i.kind {
+            AssocItemKind::Fn(f) => self.lower_define_opaques(&f.define_opaques),
+            _ => None,
+        };
+        let attrs = self.lower_attrs_with_extra(hir_id, &i.attrs, i.span, define_opaques);
+
         let trait_item_def_id = hir_id.expect_owner();
 
         let (generics, kind, has_default) = match &i.kind {
@@ -896,7 +906,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let has_value = true;
         let (defaultness, _) = self.lower_defaultness(i.kind.defaultness(), has_value);
         let hir_id = hir::HirId::make_owner(self.current_hir_id_owner.def_id);
-        let attrs = self.lower_attrs(hir_id, &i.attrs, i.span);
+        let define_opaques = match &i.kind {
+            AssocItemKind::Fn(f) => self.lower_define_opaques(&f.define_opaques),
+            _ => None,
+        };
+        let attrs = self.lower_attrs_with_extra(hir_id, &i.attrs, i.span, define_opaques);
 
         let (generics, kind) = match &i.kind {
             AssocItemKind::Const(box ConstItem { generics, ty, expr, .. }) => self.lower_generics(
@@ -1655,6 +1669,32 @@ impl<'hir> LoweringContext<'_, 'hir> {
         });
 
         (lowered_generics, res)
+    }
+
+    pub(super) fn lower_define_opaques(
+        &mut self,
+        define_opaques: &Option<ThinVec<(NodeId, Path)>>,
+    ) -> Option<hir::Attribute> {
+        let define_opaques = define_opaques.as_ref()?;
+        let define_opaques = define_opaques
+            .iter()
+            .filter_map(|(id, path)| {
+                let res = self.resolver.get_partial_res(*id).unwrap();
+                let Some(did) = res.expect_full_res().opt_def_id() else {
+                    self.dcx().span_delayed_bug(path.span, "should have errored in resolve");
+                    return None;
+                };
+                let Some(did) = did.as_local() else {
+                    self.dcx().span_err(
+                        path.span,
+                        "only opaque types defined in the local crate can be defined",
+                    );
+                    return None;
+                };
+                Some((self.lower_span(path.span), did))
+            })
+            .collect();
+        Some(hir::Attribute::Parsed(AttributeKind::DefineOpaques(define_opaques)))
     }
 
     pub(super) fn lower_generic_bound_predicate(

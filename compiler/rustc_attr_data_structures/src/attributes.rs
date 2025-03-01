@@ -2,6 +2,7 @@ use rustc_abi::Align;
 use rustc_ast::token::CommentKind;
 use rustc_ast::{self as ast, AttrStyle};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic, PrintAttribute};
+use rustc_span::def_id::LocalDefId;
 use rustc_span::hygiene::Transparency;
 use rustc_span::{Span, Symbol};
 use thin_vec::ThinVec;
@@ -178,6 +179,8 @@ pub enum AttributeKind {
         span: Span,
     },
     ConstStabilityIndirect,
+    /// List of type aliases that contain the opaque types that can be defined by the current item.
+    DefineOpaques(ThinVec<(Span, LocalDefId)>),
     Deprecation {
         deprecation: Deprecation,
         span: Span,
@@ -197,4 +200,24 @@ pub enum AttributeKind {
         span: Span,
     },
     // tidy-alphabetical-end
+}
+
+impl AttributeKind {
+    pub fn encode_cross_crate(&self) -> bool {
+        match self {
+            AttributeKind::DefineOpaques(..) => false,
+            AttributeKind::AllowConstFnUnstable(..)
+            | AttributeKind::AllowInternalUnstable(..)
+            | AttributeKind::BodyStability { .. }
+            | AttributeKind::Confusables { .. }
+            | AttributeKind::ConstStability { .. }
+            | AttributeKind::ConstStabilityIndirect
+            | AttributeKind::Deprecation { .. }
+            | AttributeKind::Diagnostic(..)
+            | AttributeKind::DocComment { .. }
+            | AttributeKind::MacroTransparency(..)
+            | AttributeKind::Repr(..)
+            | AttributeKind::Stability { .. } => true,
+        }
+    }
 }

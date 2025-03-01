@@ -7,6 +7,7 @@ fn bar<F: Fn(&i32) + Clone>(f: F) -> F {
     f
 }
 
+#[define_opaques(X)]
 fn foo() -> X {
     bar(|_| ())
 }
