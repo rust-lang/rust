@@ -1,3 +1,5 @@
+use std::alloc::Allocator;
+
 #[rustc_on_unimplemented(message = "`{Self}` doesn't implement `DynSend`. \
             Add it to `rustc_data_structures::marker` or use `IntoDynSyncSend` if it's already `Send`")]
 // This is an auto trait for types which can be sent across threads if `sync::is_dyn_thread_safe()`
@@ -28,8 +30,8 @@ impls_dyn_send_neg!(
     [*const T where T: ?Sized]
     [*mut T where T: ?Sized]
     [std::ptr::NonNull<T> where T: ?Sized]
-    [std::rc::Rc<T> where T: ?Sized]
-    [std::rc::Weak<T> where T: ?Sized]
+    [std::rc::Rc<T, A> where T: ?Sized, A: Allocator]
+    [std::rc::Weak<T, A> where T: ?Sized, A: Allocator]
     [std::sync::MutexGuard<'_, T> where T: ?Sized]
     [std::sync::RwLockReadGuard<'_, T> where T: ?Sized]
     [std::sync::RwLockWriteGuard<'_, T> where T: ?Sized]
@@ -96,8 +98,8 @@ impls_dyn_sync_neg!(
     [std::cell::RefCell<T> where T: ?Sized]
     [std::cell::UnsafeCell<T> where T: ?Sized]
     [std::ptr::NonNull<T> where T: ?Sized]
-    [std::rc::Rc<T> where T: ?Sized]
-    [std::rc::Weak<T> where T: ?Sized]
+    [std::rc::Rc<T, A> where T: ?Sized, A: Allocator]
+    [std::rc::Weak<T, A> where T: ?Sized, A: Allocator]
     [std::cell::OnceCell<T> where T]
     [std::sync::mpsc::Receiver<T> where T]
     [std::sync::mpsc::Sender<T> where T]

@@ -5,7 +5,7 @@
 
 extern crate rustdoc_impl_parts_crosscrate;
 
-pub struct Bar<T> { t: T }
+pub struct Bar<T: Copy + Send> { t: T }
 
 // The output file is html embedded in javascript, so the html tags
 // aren't stripped by the processing script and we can't check for the
