@@ -62,7 +62,6 @@ case $HOST_TARGET in
     # See <https://github.com/rust-lang/rust/issues/127883>
     # For now, these tests are moved to `x86_64-msvc-ext2` in `src/ci/github-actions/jobs.yml`.
     #python3 "$X_PY" test --stage 2 src/tools/miri --target aarch64-apple-darwin --test-args pass
-    #python3 "$X_PY" test --stage 2 src/tools/miri --target i686-pc-windows-gnu --test-args pass
     ;;
   *)
     echo "FATAL: unexpected host $HOST_TARGET"
