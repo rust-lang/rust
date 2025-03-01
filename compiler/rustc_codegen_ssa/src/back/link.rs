@@ -1,3 +1,5 @@
+mod raw_dylib;
+
 use std::collections::BTreeSet;
 use std::ffi::OsString;
 use std::fs::{File, OpenOptions, read};
@@ -12,7 +14,7 @@ use itertools::Itertools;
 use regex::Regex;
 use rustc_arena::TypedArena;
 use rustc_ast::CRATE_NODE_ID;
-use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_errors::{DiagCtxtHandle, LintDiagnostic};
@@ -30,7 +32,6 @@ use rustc_session::config::{
     self, CFGuard, CrateType, DebugInfo, LinkerFeaturesCli, OutFileName, OutputFilenames,
     OutputType, PrintKind, SplitDwarfKind, Strip,
 };
-use rustc_session::cstore::DllImport;
 use rustc_session::lint::builtin::LINKER_MESSAGES;
 use rustc_session::output::{check_file_is_writeable, invalid_output_for_target, out_filename};
 use rustc_session::search_paths::PathKind;
@@ -41,22 +42,21 @@ use rustc_session::{Session, filesearch};
 use rustc_span::Symbol;
 use rustc_target::spec::crt_objects::CrtObjects;
 use rustc_target::spec::{
-    Cc, LinkOutputKind, LinkSelfContainedComponents, LinkSelfContainedDefault, LinkerFeatures,
-    LinkerFlavor, LinkerFlavorCli, Lld, PanicStrategy, RelocModel, RelroLevel, SanitizerSet,
-    SplitDebuginfo,
+    BinaryFormat, Cc, LinkOutputKind, LinkSelfContainedComponents, LinkSelfContainedDefault,
+    LinkerFeatures, LinkerFlavor, LinkerFlavorCli, Lld, PanicStrategy, RelocModel, RelroLevel,
+    SanitizerSet, SplitDebuginfo,
 };
 use tempfile::Builder as TempFileBuilder;
 use tracing::{debug, info, warn};
 
-use super::archive::{ArchiveBuilder, ArchiveBuilderBuilder, ImportLibraryItem};
+use super::archive::{ArchiveBuilder, ArchiveBuilderBuilder};
 use super::command::Command;
 use super::linker::{self, Linker};
 use super::metadata::{MetadataPosition, create_wrapper_file};
 use super::rpath::{self, RPathConfig};
 use super::{apple, versioned_llvm_target};
 use crate::{
-    CodegenResults, CompiledModule, CrateInfo, NativeLib, common, errors,
-    looks_like_rust_object_file,
+    CodegenResults, CompiledModule, CrateInfo, NativeLib, errors, looks_like_rust_object_file,
 };
 
 pub fn ensure_removed(dcx: DiagCtxtHandle<'_>, path: &Path) {
@@ -376,16 +376,22 @@ fn link_rlib<'a>(
         }
     }
 
-    for output_path in create_dll_import_libs(
-        sess,
-        archive_builder_builder,
-        codegen_results.crate_info.used_libraries.iter(),
-        tmpdir.as_ref(),
-        true,
-    ) {
-        ab.add_archive(&output_path, Box::new(|_| false)).unwrap_or_else(|error| {
-            sess.dcx().emit_fatal(errors::AddNativeLibrary { library_path: output_path, error });
-        });
+    // On Windows, we add the raw-dylib import libraries to the rlibs already.
+    // But on ELF, this is not possible, as a shared object cannot be a member of a static library.
+    // Instead, we add all raw-dylibs to the final link on ELF.
+    if sess.target.is_like_windows {
+        for output_path in raw_dylib::create_raw_dylib_dll_import_libs(
+            sess,
+            archive_builder_builder,
+            codegen_results.crate_info.used_libraries.iter(),
+            tmpdir.as_ref(),
+            true,
+        ) {
+            ab.add_archive(&output_path, Box::new(|_| false)).unwrap_or_else(|error| {
+                sess.dcx()
+                    .emit_fatal(errors::AddNativeLibrary { library_path: output_path, error });
+            });
+        }
     }
 
     if let Some(trailing_metadata) = trailing_metadata {
@@ -424,108 +430,6 @@ fn link_rlib<'a>(
     }
 
     ab
-}
-
-/// Extract all symbols defined in raw-dylib libraries, collated by library name.
-///
-/// If we have multiple extern blocks that specify symbols defined in the same raw-dylib library,
-/// then the CodegenResults value contains one NativeLib instance for each block. However, the
-/// linker appears to expect only a single import library for each library used, so we need to
-/// collate the symbols together by library name before generating the import libraries.
-fn collate_raw_dylibs<'a>(
-    sess: &Session,
-    used_libraries: impl IntoIterator<Item = &'a NativeLib>,
-) -> Vec<(String, Vec<DllImport>)> {
-    // Use index maps to preserve original order of imports and libraries.
-    let mut dylib_table = FxIndexMap::<String, FxIndexMap<Symbol, &DllImport>>::default();
-
-    for lib in used_libraries {
-        if lib.kind == NativeLibKind::RawDylib {
-            let ext = if lib.verbatim { "" } else { ".dll" };
-            let name = format!("{}{}", lib.name, ext);
-            let imports = dylib_table.entry(name.clone()).or_default();
-            for import in &lib.dll_imports {
-                if let Some(old_import) = imports.insert(import.name, import) {
-                    // FIXME: when we add support for ordinals, figure out if we need to do anything
-                    // if we have two DllImport values with the same name but different ordinals.
-                    if import.calling_convention != old_import.calling_convention {
-                        sess.dcx().emit_err(errors::MultipleExternalFuncDecl {
-                            span: import.span,
-                            function: import.name,
-                            library_name: &name,
-                        });
-                    }
-                }
-            }
-        }
-    }
-    sess.dcx().abort_if_errors();
-    dylib_table
-        .into_iter()
-        .map(|(name, imports)| {
-            (name, imports.into_iter().map(|(_, import)| import.clone()).collect())
-        })
-        .collect()
-}
-
-fn create_dll_import_libs<'a>(
-    sess: &Session,
-    archive_builder_builder: &dyn ArchiveBuilderBuilder,
-    used_libraries: impl IntoIterator<Item = &'a NativeLib>,
-    tmpdir: &Path,
-    is_direct_dependency: bool,
-) -> Vec<PathBuf> {
-    collate_raw_dylibs(sess, used_libraries)
-        .into_iter()
-        .map(|(raw_dylib_name, raw_dylib_imports)| {
-            let name_suffix = if is_direct_dependency { "_imports" } else { "_imports_indirect" };
-            let output_path = tmpdir.join(format!("{raw_dylib_name}{name_suffix}.lib"));
-
-            let mingw_gnu_toolchain = common::is_mingw_gnu_toolchain(&sess.target);
-
-            let items: Vec<ImportLibraryItem> = raw_dylib_imports
-                .iter()
-                .map(|import: &DllImport| {
-                    if sess.target.arch == "x86" {
-                        ImportLibraryItem {
-                            name: common::i686_decorated_name(
-                                import,
-                                mingw_gnu_toolchain,
-                                false,
-                                false,
-                            ),
-                            ordinal: import.ordinal(),
-                            symbol_name: import.is_missing_decorations().then(|| {
-                                common::i686_decorated_name(
-                                    import,
-                                    mingw_gnu_toolchain,
-                                    false,
-                                    true,
-                                )
-                            }),
-                            is_data: !import.is_fn,
-                        }
-                    } else {
-                        ImportLibraryItem {
-                            name: import.name.to_string(),
-                            ordinal: import.ordinal(),
-                            symbol_name: None,
-                            is_data: !import.is_fn,
-                        }
-                    }
-                })
-                .collect();
-
-            archive_builder_builder.create_dll_import_lib(
-                sess,
-                &raw_dylib_name,
-                items,
-                &output_path,
-            );
-
-            output_path
-        })
-        .collect()
 }
 
 /// Create a static archive.
@@ -2422,15 +2326,39 @@ fn linker_with_args(
         link_output_kind,
     );
 
+    // Raw-dylibs from all crates.
+    let raw_dylib_dir = tmpdir.join("raw-dylibs");
+    if sess.target.binary_format == BinaryFormat::Elf {
+        // On ELF we can't pass the raw-dylibs stubs to the linker as a path,
+        // instead we need to pass them via -l. To find the stub, we need to add
+        // the directory of the stub to the linker search path.
+        // We make an extra directory for this to avoid polluting the search path.
+        if let Err(error) = fs::create_dir(&raw_dylib_dir) {
+            sess.dcx().emit_fatal(errors::CreateTempDir { error })
+        }
+        cmd.include_path(&raw_dylib_dir);
+    }
+
     // Link with the import library generated for any raw-dylib functions.
-    for output_path in create_dll_import_libs(
-        sess,
-        archive_builder_builder,
-        codegen_results.crate_info.used_libraries.iter(),
-        tmpdir,
-        true,
-    ) {
-        cmd.add_object(&output_path);
+    if sess.target.is_like_windows {
+        for output_path in raw_dylib::create_raw_dylib_dll_import_libs(
+            sess,
+            archive_builder_builder,
+            codegen_results.crate_info.used_libraries.iter(),
+            tmpdir,
+            true,
+        ) {
+            cmd.add_object(&output_path);
+        }
+    } else {
+        for link_path in raw_dylib::create_raw_dylib_elf_stub_shared_objects(
+            sess,
+            codegen_results.crate_info.used_libraries.iter(),
+            &raw_dylib_dir,
+        ) {
+            // Always use verbatim linkage, see comments in create_raw_dylib_elf_stub_shared_objects.
+            cmd.link_dylib_by_name(&link_path, true, false);
+        }
     }
     // As with add_upstream_native_libraries, we need to add the upstream raw-dylib symbols in case
     // they are used within inlined functions or instantiated generic functions. We do this *after*
@@ -2449,19 +2377,35 @@ fn linker_with_args(
         .native_libraries
         .iter()
         .filter_map(|(&cnum, libraries)| {
-            (dependency_linkage[cnum] != Linkage::Static).then_some(libraries)
+            if sess.target.is_like_windows {
+                (dependency_linkage[cnum] != Linkage::Static).then_some(libraries)
+            } else {
+                Some(libraries)
+            }
         })
         .flatten()
         .collect::<Vec<_>>();
     native_libraries_from_nonstatics.sort_unstable_by(|a, b| a.name.as_str().cmp(b.name.as_str()));
-    for output_path in create_dll_import_libs(
-        sess,
-        archive_builder_builder,
-        native_libraries_from_nonstatics,
-        tmpdir,
-        false,
-    ) {
-        cmd.add_object(&output_path);
+
+    if sess.target.is_like_windows {
+        for output_path in raw_dylib::create_raw_dylib_dll_import_libs(
+            sess,
+            archive_builder_builder,
+            native_libraries_from_nonstatics,
+            tmpdir,
+            false,
+        ) {
+            cmd.add_object(&output_path);
+        }
+    } else {
+        for link_path in raw_dylib::create_raw_dylib_elf_stub_shared_objects(
+            sess,
+            native_libraries_from_nonstatics,
+            &raw_dylib_dir,
+        ) {
+            // Always use verbatim linkage, see comments in create_raw_dylib_elf_stub_shared_objects.
+            cmd.link_dylib_by_name(&link_path, true, false);
+        }
     }
 
     // Library linking above uses some global state for things like `-Bstatic`/`-Bdynamic` to make
