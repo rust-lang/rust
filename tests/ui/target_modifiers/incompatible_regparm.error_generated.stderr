@@ -1,7 +1,7 @@
 error: mixing `-Zregparm` will cause an ABI mismatch in crate `incompatible_regparm`
-  --> $DIR/incompatible_regparm.rs:16:1
+  --> $DIR/incompatible_regparm.rs:11:1
    |
-LL | #![crate_type = "rlib"]
+LL | #![feature(no_core)]
    | ^
    |
    = help: the `-Zregparm` flag modifies the ABI so Rust crates compiled with different values of this flag cannot be used together safely
