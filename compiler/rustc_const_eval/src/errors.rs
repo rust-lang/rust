@@ -278,7 +278,7 @@ pub(crate) struct NonConstImplNote {
     pub span: Span,
 }
 
-#[derive(Subdiagnostic, Clone)]
+#[derive(Subdiagnostic, Clone, PartialEq, Eq, Hash)]
 #[note(const_eval_frame_note)]
 pub struct FrameNote {
     #[primary_span]
