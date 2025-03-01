@@ -403,10 +403,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let cmp = bx.icmp(IntPredicate::IntEQ, discr_value, llval);
                 bx.cond_br_with_expect(cmp, lltarget, llotherwise, expect);
             }
-        } else if target_iter.len() == 2
+        } else if let [Pu128(0), Pu128(1)] | [Pu128(1), Pu128(0)] = targets.all_values()
             && self.mir[targets.otherwise()].is_empty_unreachable()
-            && targets.all_values().contains(&Pu128(0))
-            && targets.all_values().contains(&Pu128(1))
         {
             // This is the really common case for `bool`, `Option`, etc.
             // By using `trunc nuw` we communicate that other values are
