@@ -1108,14 +1108,9 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
     pub fn hash_ty_pat(&mut self, pat: &TyPat<'_>) {
         std::mem::discriminant(&pat.kind).hash(&mut self.s);
         match pat.kind {
-            TyPatKind::Range(s, e, i) => {
-                if let Some(s) = s {
-                    self.hash_const_arg(s);
-                }
-                if let Some(e) = e {
-                    self.hash_const_arg(e);
-                }
-                std::mem::discriminant(&i).hash(&mut self.s);
+            TyPatKind::Range(s, e) => {
+                self.hash_const_arg(s);
+                self.hash_const_arg(e);
             },
             TyPatKind::Err(_) => {},
         }

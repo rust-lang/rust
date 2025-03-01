@@ -1600,7 +1600,7 @@ pub struct PatField<'hir> {
     pub span: Span,
 }
 
-#[derive(Copy, Clone, PartialEq, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Debug, HashStable_Generic, Hash, Eq, Encodable, Decodable)]
 pub enum RangeEnd {
     Included,
     Excluded,
@@ -1668,7 +1668,7 @@ pub enum PatExprKind<'hir> {
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum TyPatKind<'hir> {
     /// A range pattern (e.g., `1..=2` or `1..2`).
-    Range(Option<&'hir ConstArg<'hir>>, Option<&'hir ConstArg<'hir>>, RangeEnd),
+    Range(&'hir ConstArg<'hir>, &'hir ConstArg<'hir>),
 
     /// A placeholder for a pattern that wasn't well formed in some way.
     Err(ErrorGuaranteed),
