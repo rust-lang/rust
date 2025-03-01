@@ -1510,7 +1510,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             span: abi.span,
             suggestion: suggested_name.map(|suggested_name| InvalidAbiSuggestion {
                 span: abi.span,
-                suggestion: format!("\"{suggested_name}\""),
+                suggestion: suggested_name.to_string(),
             }),
             command: "rustc --print=calling-conventions".to_string(),
         });
