@@ -427,7 +427,7 @@ To learn more about the dashboard, see the [Datadog CI docs].
 
 ## Determining the CI configuration
 
-If you want to determine which `config.toml` settings are used in CI for a
+If you want to determine which `bootstrap.toml` settings are used in CI for a
 particular job, it is probably easiest to just look at the build log. To do
 this:
 

@@ -159,15 +159,15 @@ similar to the one declared in section [What is `x.py`](#what-is-xpy), but
 it works as an independent process to execute the `x.py` rather than calling the 
 shell to run the platform related scripts.
 
-## Create a `config.toml`
+## Create a `bootstrap.toml`
 
 To start, run `./x setup` and select the `compiler` defaults. This will do some initialization
-and create a `config.toml` for you with reasonable defaults. If you use a different default (which
+and create a `bootstrap.toml` for you with reasonable defaults. If you use a different default (which
 you'll likely want to do if you want to contribute to an area of rust other than the compiler, such
 as rustdoc), make sure to read information about that default (located in `src/bootstrap/defaults`)
 as the build process may be different for other defaults.
 
-Alternatively, you can write `config.toml` by hand. See `config.example.toml` for all the available
+Alternatively, you can write `bootstrap.toml` by hand. See `bootstrap.example.toml` for all the available
 settings and explanations of them. See `src/bootstrap/defaults` for common settings to change.
 
 If you have already built `rustc` and you change settings related to LLVM, then you may have to
@@ -206,7 +206,7 @@ See the chapters on
 Note that building will require a relatively large amount of storage space.
 You may want to have upwards of 10 or 15 gigabytes available to build the compiler.
 
-Once you've created a `config.toml`, you are now ready to run
+Once you've created a `bootstrap.toml`, you are now ready to run
 `x`. There are a lot of options here, but let's start with what is
 probably the best "go to" command for building a local compiler:
 
@@ -326,7 +326,7 @@ involve proc macros or build scripts, you must be sure to explicitly build targe
 host platform (in this case, `x86_64-unknown-linux-gnu`).
 
 If you want to always build for other targets without needing to pass flags to `x build`,
-you can configure this in the `[build]` section of your `config.toml` like so:
+you can configure this in the `[build]` section of your `bootstrap.toml` like so:
 
 ```toml
 [build]
@@ -336,8 +336,8 @@ target = ["x86_64-unknown-linux-gnu", "wasm32-wasip1"]
 Note that building for some targets requires having external dependencies installed
 (e.g. building musl targets requires a local copy of musl).
 Any target-specific configuration (e.g. the path to a local copy of musl)
-will need to be provided by your `config.toml`.
-Please see `config.example.toml` for information on target-specific configuration keys.
+will need to be provided by your `bootstrap.toml`.
+Please see `bootstrap.example.toml` for information on target-specific configuration keys.
 
 For examples of the complete configuration necessary to build a target, please visit
 [the rustc book](https://doc.rust-lang.org/rustc/platform-support.html),
