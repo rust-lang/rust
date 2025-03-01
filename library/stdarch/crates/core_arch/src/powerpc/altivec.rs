@@ -129,8 +129,6 @@ unsafe extern "C" {
         b: vector_signed_short,
         c: vector_signed_int,
     ) -> vector_signed_int;
-    #[link_name = "llvm.ppc.altivec.vmaddfp"]
-    fn vmaddfp(a: vector_float, b: vector_float, c: vector_float) -> vector_float;
     #[link_name = "llvm.ppc.altivec.vnmsubfp"]
     fn vnmsubfp(a: vector_float, b: vector_float, c: vector_float) -> vector_float;
     #[link_name = "llvm.ppc.altivec.vsum2sws"]
@@ -1869,8 +1867,8 @@ mod sealed {
     #[inline]
     #[target_feature(enable = "altivec")]
     #[cfg_attr(test, assert_instr(vmaddfp))]
-    unsafe fn vec_vmaddfp(a: vector_float, b: vector_float, c: vector_float) -> vector_float {
-        vmaddfp(a, b, c)
+    pub unsafe fn vec_vmaddfp(a: vector_float, b: vector_float, c: vector_float) -> vector_float {
+        simd_fma(a, b, c)
     }
 
     #[inline]
@@ -4234,7 +4232,7 @@ where
 #[target_feature(enable = "altivec")]
 #[unstable(feature = "stdarch_powerpc", issue = "111145")]
 pub unsafe fn vec_madd(a: vector_float, b: vector_float, c: vector_float) -> vector_float {
-    vmaddfp(a, b, c)
+    sealed::vec_vmaddfp(a, b, c)
 }
 
 /// Vector Negative Multiply Subtract
