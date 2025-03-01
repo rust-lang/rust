@@ -382,11 +382,14 @@ impl<'a> Parser<'a> {
 
                     self.psess.gated_spans.gate(sym::return_type_notation, span);
 
+                    let prev_lo = self.prev_token.span.shrink_to_hi();
                     if self.eat_noexpect(&token::RArrow) {
                         let lo = self.prev_token.span;
                         let ty = self.parse_ty()?;
+                        let span = lo.to(ty.span);
+                        let suggestion = prev_lo.to(ty.span);
                         self.dcx()
-                            .emit_err(errors::BadReturnTypeNotationOutput { span: lo.to(ty.span) });
+                            .emit_err(errors::BadReturnTypeNotationOutput { span, suggestion });
                     }
 
                     P(ast::GenericArgs::ParenthesizedElided(span))
