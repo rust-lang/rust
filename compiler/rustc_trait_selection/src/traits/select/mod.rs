@@ -1007,7 +1007,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // depend on its particular value in order to work, so we can clear
             // out the param env and get better caching.
             debug!("in global");
-            obligation.param_env = obligation.param_env.without_caller_bounds();
+            obligation.param_env = ty::ParamEnv::empty();
         }
 
         let stack = self.push_stack(previous_stack, &obligation);

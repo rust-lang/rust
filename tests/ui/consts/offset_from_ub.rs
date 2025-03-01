@@ -21,7 +21,7 @@ pub const DIFFERENT_ALLOC: usize = {
 };
 
 pub const NOT_PTR: usize = {
-    unsafe { (42 as *const u8).offset_from(&5u8) as usize }
+    unsafe { (42 as *const u8).offset_from(&5u8) as usize } //~ ERROR evaluation of constant value failed
 };
 
 pub const NOT_MULTIPLE_OF_SIZE: isize = {
@@ -107,13 +107,13 @@ pub const OFFSET_VERY_FAR1: isize = {
     let ptr1 = ptr::null::<u8>();
     let ptr2 = ptr1.wrapping_offset(isize::MAX);
     unsafe { ptr2.offset_from(ptr1) }
-    //~^ inside
+    //~^ ERROR evaluation of constant value failed
 };
 pub const OFFSET_VERY_FAR2: isize = {
     let ptr1 = ptr::null::<u8>();
     let ptr2 = ptr1.wrapping_offset(isize::MAX);
     unsafe { ptr1.offset_from(ptr2.wrapping_offset(1)) }
-    //~^ inside
+    //~^ ERROR evaluation of constant value failed
 };
 
 // If the pointers are the same, OOB/null/UAF is fine.

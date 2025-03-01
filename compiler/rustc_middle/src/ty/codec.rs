@@ -224,7 +224,7 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for Ty<'tcx> {
             })
         } else {
             let tcx = decoder.interner();
-            tcx.mk_ty_from_kind(rustc_type_ir::TyKind::decode(decoder))
+            tcx.mk_ty_from_kind(ty::TyKind::decode(decoder))
         }
     }
 }
