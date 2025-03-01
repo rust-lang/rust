@@ -1,5 +1,5 @@
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/transmute-const.rs:3:1
+  --> $DIR/transmute-const.rs:4:1
    |
 LL | static FOO: bool = unsafe { mem::transmute(3u8) };
    | ^^^^^^^^^^^^^^^^ constructing invalid value: encountered 0x03, but expected a boolean
