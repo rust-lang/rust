@@ -614,7 +614,7 @@ pub(crate) fn default_read_buf_exact<R: Read + ?Sized>(
 
 pub(crate) fn default_write_fmt<W: Write + ?Sized>(
     this: &mut W,
-    fmt: fmt::Arguments<'_>,
+    args: fmt::Arguments<'_>,
 ) -> Result<()> {
     // Create a shim which translates a `Write` to a `fmt::Write` and saves off
     // I/O errors, instead of discarding them.
@@ -636,7 +636,7 @@ pub(crate) fn default_write_fmt<W: Write + ?Sized>(
     }
 
     let mut output = Adapter { inner: this, error: Ok(()) };
-    match fmt::write(&mut output, fmt) {
+    match fmt::write(&mut output, args) {
         Ok(()) => Ok(()),
         Err(..) => {
             // Check whether the error came from the underlying `Write`.
@@ -1907,8 +1907,12 @@ pub trait Write {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> Result<()> {
-        default_write_fmt(self, fmt)
+    fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> Result<()> {
+        if let Some(s) = args.as_statically_known_str() {
+            self.write_all(s.as_bytes())
+        } else {
+            default_write_fmt(self, args)
+        }
     }
 
     /// Creates a "by reference" adapter for this instance of `Write`.
