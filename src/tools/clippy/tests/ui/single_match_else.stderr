@@ -22,7 +22,7 @@ LL ~     };
    |
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
-  --> tests/ui/single_match_else.rs:82:5
+  --> tests/ui/single_match_else.rs:83:5
    |
 LL | /     match Some(1) {
 LL | |         Some(a) => println!("${:?}", a),
@@ -42,7 +42,7 @@ LL +     }
    |
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
-  --> tests/ui/single_match_else.rs:91:5
+  --> tests/ui/single_match_else.rs:93:5
    |
 LL | /     match Some(1) {
 LL | |         Some(a) => println!("${:?}", a),
@@ -62,7 +62,7 @@ LL +     }
    |
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
-  --> tests/ui/single_match_else.rs:101:5
+  --> tests/ui/single_match_else.rs:104:5
    |
 LL | /     match Result::<i32, &Infallible>::Ok(1) {
 LL | |         Ok(a) => println!("${:?}", a),
@@ -81,7 +81,7 @@ LL +     }
    |
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
-  --> tests/ui/single_match_else.rs:110:5
+  --> tests/ui/single_match_else.rs:114:5
    |
 LL | /     match Cow::from("moo") {
 LL | |         Cow::Owned(a) => println!("${:?}", a),
@@ -100,7 +100,7 @@ LL +     }
    |
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
-  --> tests/ui/single_match_else.rs:120:5
+  --> tests/ui/single_match_else.rs:125:5
    |
 LL | /     match bar {
 LL | |         Some(v) => unsafe {
@@ -123,7 +123,7 @@ LL +     }
    |
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
-  --> tests/ui/single_match_else.rs:131:5
+  --> tests/ui/single_match_else.rs:137:5
    |
 LL | /     match bar {
 LL | |         Some(v) => {
@@ -147,7 +147,7 @@ LL +     } }
    |
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
-  --> tests/ui/single_match_else.rs:143:5
+  --> tests/ui/single_match_else.rs:150:5
    |
 LL | /     match bar {
 LL | |         Some(v) => unsafe {
@@ -171,7 +171,7 @@ LL +     } }
    |
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
-  --> tests/ui/single_match_else.rs:155:5
+  --> tests/ui/single_match_else.rs:163:5
    |
 LL | /     match bar {
 LL | |         #[rustfmt::skip]
@@ -196,7 +196,7 @@ LL +     }
    |
 
 error: this pattern is irrefutable, `match` is useless
-  --> tests/ui/single_match_else.rs:204:5
+  --> tests/ui/single_match_else.rs:213:5
    |
 LL | /     match ExprNode::Butterflies {
 LL | |         ExprNode::Butterflies => Some(&NODE),

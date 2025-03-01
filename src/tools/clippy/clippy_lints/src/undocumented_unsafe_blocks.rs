@@ -1,5 +1,5 @@
-use std::sync::Arc;
 use std::ops::ControlFlow;
+use std::sync::Arc;
 
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;

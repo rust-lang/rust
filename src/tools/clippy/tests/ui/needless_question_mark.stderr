@@ -8,67 +8,67 @@ LL |     return Some(to.magic?);
    = help: to override `-D warnings` add `#[allow(clippy::needless_question_mark)]`
 
 error: question mark operator is useless here
-  --> tests/ui/needless_question_mark.rs:28:12
+  --> tests/ui/needless_question_mark.rs:29:12
    |
 LL |     return Some(to.magic?)
    |            ^^^^^^^^^^^^^^^ help: try removing question mark and `Some()`: `to.magic`
 
 error: question mark operator is useless here
-  --> tests/ui/needless_question_mark.rs:33:5
+  --> tests/ui/needless_question_mark.rs:35:5
    |
 LL |     Some(to.magic?)
    |     ^^^^^^^^^^^^^^^ help: try removing question mark and `Some()`: `to.magic`
 
 error: question mark operator is useless here
-  --> tests/ui/needless_question_mark.rs:38:21
+  --> tests/ui/needless_question_mark.rs:41:21
    |
 LL |     to.and_then(|t| Some(t.magic?))
    |                     ^^^^^^^^^^^^^^ help: try removing question mark and `Some()`: `t.magic`
 
 error: question mark operator is useless here
-  --> tests/ui/needless_question_mark.rs:47:9
+  --> tests/ui/needless_question_mark.rs:51:9
    |
 LL |         Some(t.magic?)
    |         ^^^^^^^^^^^^^^ help: try removing question mark and `Some()`: `t.magic`
 
 error: question mark operator is useless here
-  --> tests/ui/needless_question_mark.rs:52:12
+  --> tests/ui/needless_question_mark.rs:57:12
    |
 LL |     return Ok(tr.magic?);
    |            ^^^^^^^^^^^^^ help: try removing question mark and `Ok()`: `tr.magic`
 
 error: question mark operator is useless here
-  --> tests/ui/needless_question_mark.rs:59:12
+  --> tests/ui/needless_question_mark.rs:65:12
    |
 LL |     return Ok(tr.magic?)
    |            ^^^^^^^^^^^^^ help: try removing question mark and `Ok()`: `tr.magic`
 
 error: question mark operator is useless here
-  --> tests/ui/needless_question_mark.rs:63:5
+  --> tests/ui/needless_question_mark.rs:70:5
    |
 LL |     Ok(tr.magic?)
    |     ^^^^^^^^^^^^^ help: try removing question mark and `Ok()`: `tr.magic`
 
 error: question mark operator is useless here
-  --> tests/ui/needless_question_mark.rs:67:21
+  --> tests/ui/needless_question_mark.rs:75:21
    |
 LL |     tr.and_then(|t| Ok(t.magic?))
    |                     ^^^^^^^^^^^^ help: try removing question mark and `Ok()`: `t.magic`
 
 error: question mark operator is useless here
-  --> tests/ui/needless_question_mark.rs:75:9
+  --> tests/ui/needless_question_mark.rs:84:9
    |
 LL |         Ok(t.magic?)
    |         ^^^^^^^^^^^^ help: try removing question mark and `Ok()`: `t.magic`
 
 error: question mark operator is useless here
-  --> tests/ui/needless_question_mark.rs:82:16
+  --> tests/ui/needless_question_mark.rs:92:16
    |
 LL |         return Ok(t.magic?);
    |                ^^^^^^^^^^^^ help: try removing question mark and `Ok()`: `t.magic`
 
 error: question mark operator is useless here
-  --> tests/ui/needless_question_mark.rs:117:27
+  --> tests/ui/needless_question_mark.rs:128:27
    |
 LL |         || -> Option<_> { Some(Some($expr)?) }()
    |                           ^^^^^^^^^^^^^^^^^^ help: try removing question mark and `Some()`: `Some($expr)`
@@ -79,19 +79,19 @@ LL |     let _x = some_and_qmark_in_macro!(x?);
    = note: this error originates in the macro `some_and_qmark_in_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: question mark operator is useless here
-  --> tests/ui/needless_question_mark.rs:128:5
+  --> tests/ui/needless_question_mark.rs:140:5
    |
 LL |     Some(to.magic?)
    |     ^^^^^^^^^^^^^^^ help: try removing question mark and `Some()`: `to.magic`
 
 error: question mark operator is useless here
-  --> tests/ui/needless_question_mark.rs:136:5
+  --> tests/ui/needless_question_mark.rs:149:5
    |
 LL |     Ok(s.magic?)
    |     ^^^^^^^^^^^^ help: try removing question mark and `Ok()`: `s.magic`
 
 error: question mark operator is useless here
-  --> tests/ui/needless_question_mark.rs:140:7
+  --> tests/ui/needless_question_mark.rs:154:7
    |
 LL |     { Some(a?) }
    |       ^^^^^^^^ help: try removing question mark and `Some()`: `a`

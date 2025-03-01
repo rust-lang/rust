@@ -1,3 +1,4 @@
+//@ check-pass
 //@aux-build:ice-7272-aux.rs
 
 #![allow(clippy::no_effect)]

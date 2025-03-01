@@ -8,13 +8,13 @@ LL |     assert_eq!(map.entry("poneyland").key(), &"poneyland");
    = help: to override `-D warnings` add `#[allow(clippy::incompatible_msrv)]`
 
 error: current MSRV (Minimum Supported Rust Version) is `1.3.0` but this item is stable since `1.12.0`
-  --> tests/ui/incompatible_msrv.rs:16:11
+  --> tests/ui/incompatible_msrv.rs:17:11
    |
 LL |         v.into_key();
    |           ^^^^^^^^^^
 
 error: current MSRV (Minimum Supported Rust Version) is `1.3.0` but this item is stable since `1.4.0`
-  --> tests/ui/incompatible_msrv.rs:20:5
+  --> tests/ui/incompatible_msrv.rs:21:5
    |
 LL |     sleep(Duration::new(1, 0));
    |     ^^^^^

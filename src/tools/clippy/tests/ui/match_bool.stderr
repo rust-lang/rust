@@ -164,5 +164,24 @@ LL | |         _ => println!("Hello"),
 LL | |     };
    | |_____^ help: consider using an `if`/`else` expression: `if !(!test && option == 5) { println!("Hello") }`
 
-error: aborting due to 12 previous errors
+error: `match` on a boolean expression
+  --> tests/ui/match_bool.rs:107:5
+   |
+LL | /     match true {
+LL | |
+LL | |         true => 'a: {
+LL | |             break 'a;
+LL | |         },
+LL | |         _ => (),
+LL | |     }
+   | |_____^
+   |
+help: consider using an `if`/`else` expression
+   |
+LL ~     if true { 'a: {
+LL +         break 'a;
+LL +     } }
+   |
+
+error: aborting due to 13 previous errors
 
