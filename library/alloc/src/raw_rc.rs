@@ -1,11 +1,11 @@
 //! Base implementation for `rc::{Rc, Weak}` and `sync::{Arc, Weak}`.
 //!
-//! # Allocation memory Layout
+//! # Allocation Memory Layout
 //!
-//! The memory layout of a reference counted allocation is designed so that the memory that stores
-//! the reference counts has fixed offset to the memory that stores the value. In this way,
+//! The memory layout of a reference-counted allocation is designed so that the memory that stores
+//! the reference counts has a fixed offset to the memory that stores the value. In this way,
 //! operations that only rely on reference counts can ignore the actual type of the contained value
-//! and only care about the address of the contained value, which allows us to share codes between
+//! and only care about the address of the contained value, which allows us to share code between
 //! reference-counting pointers that have different types of contained values. This can potentially
 //! reduce the binary size.
 //!
@@ -25,12 +25,12 @@
 //!   alignment of `align_of::<RefCounts>().max(align_of::<T>())` because `size_of::<RefCounts>()`
 //!   must be a multiple of `align_of::<RefCounts>()`.
 //! - Offset `align_of::<T>().saturating_sub(size_of::<RefCounts>())` where the `RefCounts` object
-//!   is stored equals to `size_of::<RefCounts>().max(align_of::<T>()) - size_of::<RefCounts>()`, so
+//!   is stored equals `size_of::<RefCounts>().max(align_of::<T>()) - size_of::<RefCounts>()`, so
 //!   it has the alignment of `align_of::<RefCounts>()`, which is a valid alignment for `RefCounts`.
 //! - The distance between the `RefCounts` object and the value is:
 //!   `size_of::<RefCounts>().max(align_of::<T>()) - align_of::<T>().saturating_sub(size_of::<RefCounts>())`,
-//!   which equals to `size_of::<RefCounts>()`, which is a fixed offset and ensures that the
-//!   `RefCounts` object and the value object does not overlap.
+//!   which equals `size_of::<RefCounts>()`, which is a fixed offset and ensures that the
+//!   `RefCounts` object and the value object do not overlap.
 //! - The size of the allocation is `size_of::<RefCounts>().max(align_of::<T>()) + size_of::<T>()`,
 //!   and the value is stored at `size_of::<RefCounts>().max(align_of::<T>())`, which leaves exactly
 //!   `size_of::<T>()` bytes for storing the value object.
@@ -38,16 +38,16 @@
 //! So both the `RefCounts` object and the value object have their alignment and size requirements.
 //! And we get a fixed offset between those two objects.
 //!
-//! # Reference-counting pointer design
+//! # Reference-counting Pointer Design
 //!
-//! Both strong and weak reference-counting pointers stores a pointer that points to the value
-//! object in a reference counted allocation instead of the beginning of the allocation, this is
-//! base on the assumption that users access the contained value more frequently than the reference
+//! Both strong and weak reference-counting pointers store a pointer that points to the value
+//! object in a reference-counted allocation instead of the beginning of the allocation. This is
+//! based on the assumption that users access the contained value more frequently than the reference
 //! counters. Also, this possibly allows us to enable some future optimizations like:
 //!
 //! - Making reference-counting pointers have ABI-compatible representation as raw pointers so we
 //!   can use them directly in FFI interfaces.
-//! - Converting `Option<Rc<T>>` to `Option<&T>` with memory copy operation.
+//! - Converting `Option<Rc<T>>` to `Option<&T>` with a memory copy operation.
 //! - Converting `&[Rc<T>]` to `&[&T]` with zero cost.
 
 use core::alloc::{AllocError, Allocator, Layout, LayoutError};
@@ -85,21 +85,21 @@ use crate::vec::Vec;
 pub(crate) enum MakeMutStrategy {
     /// This `RawRc` is the only strong pointer that references the value, but there are weak
     /// pointers also referencing the value. Before returning, the strong reference count has been
-    /// set to zero to prevent new strong pointers being created through upgrading from weak
+    /// set to zero to prevent new strong pointers from being created through upgrading from weak
     /// pointers.
     Move,
     /// There is more than one strong pointer that references the value.
     Clone,
 }
 
-/// A trait for `rc` and `sync` module to define their own implementation of reference-counting
+/// A trait for `rc` and `sync` modules to define their own implementation of reference-counting
 /// behaviors.
 ///
 /// # Safety
 ///
 /// Implementors should implement each method according to its description.
 pub(crate) unsafe trait RcOps: Sized {
-    /// Increment a reference counter managed by `RawRc` and `RawWeak`. Currently both strong and
+    /// Increment a reference counter managed by `RawRc` and `RawWeak`. Currently, both strong and
     /// weak reference counters are incremented by this method.
     ///
     /// # Safety
@@ -108,9 +108,9 @@ pub(crate) unsafe trait RcOps: Sized {
     /// - The value of `count` should be non-zero.
     unsafe fn increment_ref_count(count: &UnsafeCell<usize>);
 
-    /// Decrement a reference counter managed by `RawRc` and `RawWeak`. Currently both strong and
+    /// Decrement a reference counter managed by `RawRc` and `RawWeak`. Currently, both strong and
     /// weak reference counters are decremented by this method. Returns whether the reference count
-    /// become zero after decrementing.
+    /// becomes zero after decrementing.
     ///
     /// # Safety
     ///
@@ -186,7 +186,7 @@ macro_rules! define_ref_counts {
             #[cfg(target_pointer_width = $target_pointer_width)]
             #[repr(C, align($align))]
             pub(crate) struct RefCounts {
-                /// Weak reference count (plus one if there are non-zero strong reference count).
+                /// Weak reference count (plus one if there are non-zero strong reference counts).
                 pub(crate) weak: UnsafeCell<usize>,
                 /// Strong reference count.
                 pub(crate) strong: UnsafeCell<usize>,
@@ -205,8 +205,8 @@ define_ref_counts! {
 
 impl RefCounts {
     /// Creates a `RefCounts` with weak count of `1` and strong count of `strong_count`.
-    pub(crate) const fn new(strong_cont: usize) -> Self {
-        Self { weak: UnsafeCell::new(1), strong: UnsafeCell::new(strong_cont) }
+    pub(crate) const fn new(strong_count: usize) -> Self {
+        Self { weak: UnsafeCell::new(1), strong: UnsafeCell::new(strong_count) }
     }
 }
 
@@ -218,13 +218,13 @@ fn handle_layout_error<T>(result: Result<T, LayoutError>) -> T {
     result.unwrap()
 }
 
-/// A `Layout` that describes a reference counted allocation.
+/// A `Layout` that describes a reference-counted allocation.
 #[derive(Clone, Copy)]
 struct RcLayout(Layout);
 
 impl RcLayout {
     /// Tries to create an `RcLayout` to store a value with layout `value_layout`. Returns `Err` if
-    /// `value_layout` is too big to store in a reference counted allocation.
+    /// `value_layout` is too big to store in a reference-counted allocation.
     #[inline]
     const fn try_from_value_layout(value_layout: Layout) -> Result<Self, LayoutError> {
         match RefCounts::LAYOUT.extend(value_layout) {
@@ -233,8 +233,8 @@ impl RcLayout {
         }
     }
 
-    /// Create an `RcLayout` to store a value with layout `value_layout`. Panics if `value_layout`
-    /// is too big to store in a reference counted allocation.
+    /// Creates an `RcLayout` to store a value with layout `value_layout`. Panics if `value_layout`
+    /// is too big to store in a reference-counted allocation.
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     fn from_value_layout(value_layout: Layout) -> Self {
@@ -267,14 +267,14 @@ impl RcLayout {
         handle_layout_error(Self::try_new_array::<T>(length))
     }
 
-    /// Returns the byte offset of the value stored in a reference counted allocation that is
+    /// Returns the byte offset of the value stored in a reference-counted allocation that is
     /// described by `self`.
     #[inline]
     fn value_offset(&self) -> usize {
         size_of::<RefCounts>().max(self.align())
     }
 
-    /// Returns the byte size of the value stored in a reference counted allocation that is
+    /// Returns the byte size of the value stored in a reference-counted allocation that is
     /// described by `self`.
     #[cfg(not(no_global_oom_handling))]
     #[inline]
@@ -282,7 +282,7 @@ impl RcLayout {
         unsafe { self.size().unchecked_sub(self.value_offset()) }
     }
 
-    /// Creates an `RcLayout` for storing a value that is pointed by `value_ptr`.
+    /// Creates an `RcLayout` for storing a value that is pointed to by `value_ptr`.
     ///
     /// # Safety
     ///
@@ -318,13 +318,13 @@ impl RcLayout {
         unsafe { T::spec_rc_layout(value_ptr) }
     }
 
-    /// Creates an `RcLayout` for storing a value that is pointed by `value_ptr`, assume the value
-    /// is small enough to fit inside a reference counted allocation.
+    /// Creates an `RcLayout` for storing a value that is pointed to by `value_ptr`, assuming the
+    /// value is small enough to fit inside a reference-counted allocation.
     ///
     /// # Safety
     ///
     /// - `value_ptr` has correct metadata for a `T` object.
-    /// - It is known that memory layout described by `value_ptr` can be used to create an
+    /// - It is known that the memory layout described by `value_ptr` can be used to create an
     ///   `RcLayout` successfully.
     unsafe fn from_value_ptr_unchecked<T>(value_ptr: NonNull<T>) -> Self
     where
@@ -375,56 +375,56 @@ trait RcLayoutExt {
 impl<T> RcLayoutExt for T {
     const RC_LAYOUT: RcLayout = match RcLayout::try_from_value_layout(T::LAYOUT) {
         Ok(rc_layout) => rc_layout,
-        Err(_) => panic!("value is too big to store in a reference counted allocation"),
+        Err(_) => panic!("value is too big to store in a reference-counted allocation"),
     };
 }
 
-/// Get a pointer to the `RefCounts` object in the same allocation with a value pointed by
+/// Get a pointer to the `RefCounts` object in the same allocation with a value pointed to by
 /// `value_ptr`.
 ///
 /// # Safety
 ///
 /// - `value_ptr` must point to a value object (can be uninitialized or dropped) that lives in a
-///   reference counted allocation.
+///   reference-counted allocation.
 unsafe fn ref_counts_ptr_from_value_ptr(value_ptr: NonNull<()>) -> NonNull<RefCounts> {
     const REF_COUNTS_OFFSET: usize = size_of::<RefCounts>();
 
     unsafe { value_ptr.byte_sub(REF_COUNTS_OFFSET) }.cast()
 }
 
-/// Get a pointer to the strong counter object in the same allocation with a value pointed by
+/// Get a pointer to the strong counter object in the same allocation with a value pointed to by
 /// `value_ptr`.
 ///
 /// # Safety
 ///
 /// - `value_ptr` must point to a value object (can be uninitialized or dropped) that lives in a
-///   reference counted allocation.
+///   reference-counted allocation.
 unsafe fn strong_count_ptr_from_value_ptr(value_ptr: NonNull<()>) -> NonNull<UnsafeCell<usize>> {
     const STRONG_OFFSET: usize = size_of::<RefCounts>() - mem::offset_of!(RefCounts, strong);
 
     unsafe { value_ptr.byte_sub(STRONG_OFFSET) }.cast()
 }
 
-/// Get a pointer to the weak counter object in the same allocation with a value pointed by
+/// Get a pointer to the weak counter object in the same allocation with a value pointed to by
 /// `value_ptr`.
 ///
 /// # Safety
 ///
 /// - `value_ptr` must point to a value object (can be uninitialized or dropped) that lives in a
-///   reference counted allocation.
+///   reference-counted allocation.
 unsafe fn weak_count_ptr_from_value_ptr(value_ptr: NonNull<()>) -> NonNull<UnsafeCell<usize>> {
     const WEAK_OFFSET: usize = size_of::<RefCounts>() - mem::offset_of!(RefCounts, weak);
 
     unsafe { value_ptr.byte_sub(WEAK_OFFSET) }.cast()
 }
 
-/// Initialize reference counters in a reference counted allocation pointed by `rc_ptr`
-/// with strong count of `STRONG_COUNT` and weak count of 1.
+/// Initialize reference counters in a reference-counted allocation pointed to by `rc_ptr`
+/// with a strong count of `STRONG_COUNT` and a weak count of 1.
 ///
 /// # Safety
 ///
-/// - `rc_ptr` points to a valid reference counted allocation.
-/// - `rc_layout` correctly describes the memory layout of the reference counted allocation.
+/// - `rc_ptr` points to a valid reference-counted allocation.
+/// - `rc_layout` correctly describes the memory layout of the reference-counted allocation.
 #[inline]
 unsafe fn init_rc_allocation<const STRONG_COUNT: usize>(
     rc_ptr: NonNull<[u8]>,
@@ -440,7 +440,7 @@ unsafe fn init_rc_allocation<const STRONG_COUNT: usize>(
     value_ptr
 }
 
-/// If `allocation_result` is `Ok`, initialize the reference counts with strong count
+/// If `allocation_result` is `Ok`, initialize the reference counts with strong count of
 /// `STRONG_COUNT` and weak count of 1 and returns `Ok` with a pointer to the value object,
 /// otherwise return the original error.
 unsafe fn try_handle_rc_allocation_result<const STRONG_COUNT: usize>(
@@ -450,8 +450,8 @@ unsafe fn try_handle_rc_allocation_result<const STRONG_COUNT: usize>(
     allocation_result.map(|rc_ptr| unsafe { init_rc_allocation::<STRONG_COUNT>(rc_ptr, rc_layout) })
 }
 
-/// Try to allocate a chunk of reference counted memory that is described by `rc_layout` with
-/// `alloc`. The allocated memory have strong count of `STRONG_COUNT` and weak count of 1.
+/// Try to allocate a chunk of reference-counted memory that is described by `rc_layout` with
+/// `alloc`. The allocated memory has strong count of `STRONG_COUNT` and weak count of 1.
 fn try_allocate_uninit_in<A, const STRONG_COUNT: usize>(
     alloc: &A,
     rc_layout: RcLayout,
@@ -464,8 +464,8 @@ where
     unsafe { try_handle_rc_allocation_result::<STRONG_COUNT>(allocation_result, rc_layout) }
 }
 
-/// Creates an allocator of type `A`, then tries to allocate a chunk of reference counts memory that
-/// is described by `rc_layout`.
+/// Creates an allocator of type `A`, then tries to allocate a chunk of reference-counted memory
+/// that is described by `rc_layout`.
 fn try_allocate_uninit<A, const STRONG_COUNT: usize>(
     rc_layout: RcLayout,
 ) -> Result<(NonNull<()>, A), AllocError>
@@ -477,8 +477,8 @@ where
     try_allocate_uninit_in::<A, STRONG_COUNT>(&alloc, rc_layout).map(|value_ptr| (value_ptr, alloc))
 }
 
-/// Try to allocate a reference counted memory that is described by `rc_layout` with `alloc`. The
-/// allocated memory have strong count of `STRONG_COUNT` and weak count of 1, and the value memory
+/// Tries to allocate a reference-counted memory that is described by `rc_layout` with `alloc`. The
+/// allocated memory has strong count of `STRONG_COUNT` and weak count of 1, and the value memory
 /// is all zero bytes.
 fn try_allocate_zeroed_in<A, const STRONG_COUNT: usize>(
     alloc: &A,
@@ -492,7 +492,7 @@ where
     unsafe { try_handle_rc_allocation_result::<STRONG_COUNT>(allocation_result, rc_layout) }
 }
 
-/// Creates a allocator of type `A`, then tries to allocate a chunk of reference counts memory with
+/// Creates an allocator of type `A`, then tries to allocate a chunk of reference-counted memory with
 /// all zero bytes memory that is described by `rc_layout`.
 fn try_allocate_zeroed<A, const STRONG_COUNT: usize>(
     rc_layout: RcLayout,
@@ -520,8 +520,8 @@ unsafe fn handle_rc_allocation_result<const STRONG_COUNT: usize>(
     }
 }
 
-/// Allocates reference counted memory that is described by `rc_layout` with `alloc`. The allocated
-/// memory have strong count of `STRONG_COUNT` and weak count of 1. If the allocation fails, panic
+/// Allocates reference-counted memory that is described by `rc_layout` with `alloc`. The allocated
+/// memory has strong count of `STRONG_COUNT` and weak count of 1. If the allocation fails, panic
 /// will be triggered by calling `alloc::handle_alloc_error`.
 #[cfg(not(no_global_oom_handling))]
 #[inline]
@@ -534,7 +534,7 @@ where
     unsafe { handle_rc_allocation_result::<STRONG_COUNT>(allocation_result, rc_layout) }
 }
 
-/// Creates an allocator of type `A`, then allocate a chunk of reference counts memory that is
+/// Creates an allocator of type `A`, then allocate a chunk of reference-counted memory that is
 /// described by `rc_layout`.
 #[cfg(not(no_global_oom_handling))]
 #[inline]
@@ -548,8 +548,8 @@ where
     (value_ptr, alloc)
 }
 
-/// Allocates reference counted memory that is described by `rc_layout` with `alloc`. The allocated
-/// memory have strong count of `STRONG_COUNT` and weak count of 1, and the value memory is all zero
+/// Allocates reference-counted memory that is described by `rc_layout` with `alloc`. The allocated
+/// memory has strong count of `STRONG_COUNT` and weak count of 1, and the value memory is all zero
 /// bytes. If the allocation fails, panic will be triggered by calling `alloc::handle_alloc_error`.
 #[cfg(not(no_global_oom_handling))]
 fn allocate_zeroed_in<A, const STRONG_COUNT: usize>(alloc: &A, rc_layout: RcLayout) -> NonNull<()>
@@ -561,8 +561,8 @@ where
     unsafe { handle_rc_allocation_result::<STRONG_COUNT>(allocation_result, rc_layout) }
 }
 
-/// Creates an allocator of type `A`, then allocate a chunk of reference counts memory with all zero
-/// bytes that is described by `rc_layout`.
+/// Creates an allocator of type `A`, then allocate a chunk of reference-counted memory with all
+/// zero bytes that is described by `rc_layout`.
 #[cfg(not(no_global_oom_handling))]
 fn allocate_zeroed<A, const STRONG_COUNT: usize>(rc_layout: RcLayout) -> (NonNull<()>, A)
 where
@@ -574,7 +574,7 @@ where
     (value_ptr, alloc)
 }
 
-/// Allocate a reference counted memory chunk for storing a value according to `rc_layout`, then
+/// Allocate a reference-counted memory chunk for storing a value according to `rc_layout`, then
 /// initialize the value with `f`. If `f` panics, the memory will be freed.
 #[cfg(not(no_global_oom_handling))]
 fn allocate_with_in<A, F, const STRONG_COUNT: usize>(
@@ -614,7 +614,7 @@ where
     value_ptr
 }
 
-/// Creates an allocator of type `A`, then allocate a chunk of reference counts memory that is
+/// Creates an allocator of type `A`, then allocate a chunk of reference-counted memory that is
 /// described by `rc_layout`. `f` will be called with a pointer that points the value storage to
 /// initialize the allocated memory. If `f` panics, the allocated memory will be deallocated.
 #[cfg(not(no_global_oom_handling))]
@@ -629,13 +629,13 @@ where
     (value_ptr, alloc)
 }
 
-/// Allocate reference counted memory that have strong count of `STRONG_COUNT` and weak count of 1.
-/// The value will be initialized with data pointed by `src_ptr`.
+/// Allocate reference-counted memory that has strong count of `STRONG_COUNT` and weak count of 1.
+/// The value will be initialized with data pointed to by `src_ptr`.
 ///
 /// # Safety
 ///
-/// - Memory pointed by `src_ptr` has enough data to read for filling the value in a allocation that
-///   is described by `rc_layout`.
+/// - Memory pointed to by `src_ptr` has enough data to read for filling the value in an allocation
+///   that is described by `rc_layout`.
 #[cfg(not(no_global_oom_handling))]
 unsafe fn allocate_with_bytes_in<A, const STRONG_COUNT: usize>(
     src_ptr: NonNull<()>,
@@ -668,7 +668,7 @@ where
     unsafe { NonNull::new_unchecked(ptr.as_ptr().with_metadata_of(meta.as_ptr())) }
 }
 
-/// Allocate a chunk of reference counted memory with a value that is copied from `value`.
+/// Allocate a chunk of reference-counted memory with a value that is copied from `value`.
 #[cfg(not(no_global_oom_handling))]
 fn allocate_with_value_in<T, A, const STRONG_COUNT: usize>(src: &T, alloc: &A) -> NonNull<T>
 where
@@ -684,7 +684,7 @@ where
     unsafe { non_null_with_metadata_of(value_ptr, src_ptr) }
 }
 
-/// Creates an allocator of type `A`, then allocates a chunk of reference counted memory with value
+/// Creates an allocator of type `A`, then allocates a chunk of reference-counted memory with value
 /// copied from `value`.
 #[cfg(not(no_global_oom_handling))]
 #[inline]
@@ -699,7 +699,7 @@ where
     (value_ptr, alloc)
 }
 
-/// Deallocate a reference counted allocation with an value object pointed by `value_ptr`.
+/// Deallocate a reference-counted allocation with a value object pointed to by `value_ptr`.
 #[inline]
 unsafe fn deallocate_value_ptr<A>(value_ptr: NonNull<()>, alloc: &A, rc_layout: RcLayout)
 where
@@ -716,8 +716,8 @@ fn is_dangling(value_ptr: NonNull<()>) -> bool {
     value_ptr.addr() == NonZeroUsize::MAX
 }
 
-/// Decrement strong reference count in a reference counted allocation with a value object that is
-/// pointed by `value_ptr`.
+/// Decrement strong reference count in a reference-counted allocation with a value object that is
+/// pointed to by `value_ptr`.
 unsafe fn decrement_strong_ref_count<R>(value_ptr: NonNull<()>) -> bool
 where
     R: RcOps,
@@ -725,8 +725,8 @@ where
     unsafe { R::decrement_ref_count(strong_count_ptr_from_value_ptr(value_ptr).as_ref()) }
 }
 
-/// Decrement weak reference count in a reference counted allocation with a value object that is
-/// pointed by `value_ptr`.
+/// Decrement weak reference count in a reference-counted allocation with a value object that is
+/// pointed to by `value_ptr`.
 unsafe fn decrement_weak_ref_count<R>(value_ptr: NonNull<()>) -> bool
 where
     R: RcOps,
@@ -734,8 +734,8 @@ where
     unsafe { R::decrement_ref_count(weak_count_ptr_from_value_ptr(value_ptr).as_ref()) }
 }
 
-/// Increment strong reference count in a reference counted allocation with a value object that is
-/// pointed by `value_ptr`.
+/// Increment strong reference count in a reference-counted allocation with a value object that is
+/// pointed to by `value_ptr`.
 unsafe fn increment_strong_ref_count<R>(value_ptr: NonNull<()>)
 where
     R: RcOps,
@@ -743,8 +743,8 @@ where
     unsafe { R::increment_ref_count(strong_count_ptr_from_value_ptr(value_ptr).as_ref()) }
 }
 
-/// Increment weak reference count in a reference counted allocation with a value object that is
-/// pointed by `value_ptr`.
+/// Increment weak reference count in a reference-counted allocation with a value object that is
+/// pointed to by `value_ptr`.
 unsafe fn increment_weak_ref_count<R>(value_ptr: NonNull<()>)
 where
     R: RcOps,
@@ -772,7 +772,7 @@ where
     /// # Safety
     ///
     /// - `weak` is non-dangling.
-    /// - After `WeakGuard` being dropped, the content pointed by `weak.ptr` should not be accessed
+    /// - After `WeakGuard` being dropped, the content pointed to by `weak.ptr` should not be accessed
     ///   anymore.
     unsafe fn new(weak: &'a mut RawWeak<T, A>) -> Self {
         Self { weak, _phantom_data: PhantomData }
@@ -809,7 +809,7 @@ where
 {
     /// # Safety
     ///
-    /// - After `WeakGuard` being dropped, the content pointed by `rc.weak.ptr` should not be
+    /// - After `WeakGuard` being dropped, the content pointed to by `rc.weak.ptr` should not be
     ///   accessed anymore.
     unsafe fn new(rc: &'a mut RawRc<T, A>) -> Self {
         Self { rc, _phantom_data: PhantomData }
@@ -831,13 +831,13 @@ where
 /// `RawWeak::drop` or `RawWeak::drop_unchecked` manually to drop this object.
 ///
 /// A `RawWeak` can be either dangling or non-dangling. A dangling `RawWeak` does not point to a
-/// valid value. A non-dangling `RawWeak` points to a valid reference counted allocation. The value
-/// pointed by a `RawWeak` may be uninitialized.
+/// valid value. A non-dangling `RawWeak` points to a valid reference-counted allocation. The value
+/// pointed to by a `RawWeak` may be uninitialized.
 pub(crate) struct RawWeak<T, A>
 where
     T: ?Sized,
 {
-    /// Points to a (possible uninitialized or dropped) `T` value inside of a reference counted
+    /// Points to a (possibly uninitialized or dropped) `T` value inside of a reference-counted
     /// allocation.
     ptr: NonNull<T>,
 
@@ -879,7 +879,7 @@ where
         unsafe { guard.weak.ptr.drop_in_place() };
     }
 
-    /// Assume the value pointed by `ptr` is initialized, drop the value along the `RawWeak` object.
+    /// Assume the value pointed to by `ptr` is initialized, drop the value along the `RawWeak` object.
     #[inline]
     unsafe fn assume_init_drop<R>(&mut self)
     where
@@ -972,14 +972,14 @@ where
         !ptr::addr_eq(self.ptr.as_ptr(), other.ptr.as_ptr())
     }
 
-    /// Returns the `RefCounts` object inside the reference counted allocation if `self` is
+    /// Returns the `RefCounts` object inside the reference-counted allocation if `self` is
     /// non-dangling.
     #[cfg(not(no_sync))]
     pub(crate) fn ref_counts(&self) -> Option<&RefCounts> {
         (!is_dangling(self.ptr.cast())).then(|| unsafe { self.ref_counts_unchecked() })
     }
 
-    /// Returns the `RefCounts` object inside the reference counted allocation, assume `self` is
+    /// Returns the `RefCounts` object inside the reference-counted allocation, assume `self` is
     /// non-dangling.
     ///
     /// # Safety
@@ -989,13 +989,13 @@ where
         unsafe { ref_counts_ptr_from_value_ptr(self.ptr.cast()).as_ref() }
     }
 
-    /// Returns the strong reference count object inside the reference counted allocation if `self`
+    /// Returns the strong reference count object inside the reference-counted allocation if `self`
     /// is non-dangling.
     pub(crate) fn strong_count(&self) -> Option<&UnsafeCell<usize>> {
         (!is_dangling(self.ptr.cast())).then(|| unsafe { self.strong_count_unchecked() })
     }
 
-    /// Returns the strong reference count object inside the reference counted allocation, assume
+    /// Returns the strong reference count object inside the reference-counted allocation, assume
     /// `self` is non-dangling.
     ///
     /// # Safety
@@ -1005,13 +1005,13 @@ where
         unsafe { strong_count_ptr_from_value_ptr(self.ptr.cast()).as_ref() }
     }
 
-    /// Returns the weak reference count object inside the reference counted allocation if `self`
+    /// Returns the weak reference count object inside the reference-counted allocation if `self`
     /// is non-dangling.
     pub(crate) fn weak_count(&self) -> Option<&UnsafeCell<usize>> {
         (!is_dangling(self.ptr.cast())).then(|| unsafe { self.weak_count_unchecked() })
     }
 
-    /// Returns the weak reference count object inside the reference counted allocation, assume
+    /// Returns the weak reference count object inside the reference-counted allocation, assume
     /// `self` is non-dangling.
     ///
     /// # Safety
@@ -1021,7 +1021,7 @@ where
         unsafe { weak_count_ptr_from_value_ptr(self.ptr.cast()).as_ref() }
     }
 
-    /// Creates a `RawRck` object if there are non-zero strong reference count.
+    /// Creates a `RawRc` object if there are non-zero strong reference counts.
     ///
     /// # Safety
     ///
@@ -1135,12 +1135,12 @@ impl<T, A> RawWeak<T, A> {
         }
     }
 
-    /// Take the value pointed by `self` and drop the `RawWeak` object.
+    /// Take the value pointed to by `self` and drop the `RawWeak` object.
     ///
     /// # Safety
     ///
     /// - `self` is non-dangling.
-    /// - The value pointed by `self` is initialized.
+    /// - The value pointed to by `self` is initialized.
     /// - The strong reference count is zero.
     unsafe fn assume_init_into_inner<R>(mut self) -> T
     where
@@ -1268,7 +1268,7 @@ where
 {
     /// # Safety
     ///
-    /// - `ptr` points to a value inside a reference counted allocation.
+    /// - `ptr` points to a value inside a reference-counted allocation.
     /// - The allocation can be freed by `A::default()`.
     pub(crate) unsafe fn from_raw(ptr: NonNull<T>) -> Self
     where
@@ -1279,7 +1279,7 @@ where
 
     /// # Safety
     ///
-    /// - `ptr` points to a value inside a reference counted allocation.
+    /// - `ptr` points to a value inside a reference-counted allocation.
     /// - The allocation can be freed by `alloc`.
     pub(crate) unsafe fn from_raw_parts(ptr: NonNull<T>, alloc: A) -> Self {
         unsafe { Self::from_weak(RawWeak::from_raw_parts(ptr, alloc)) }
@@ -1451,6 +1451,7 @@ where
                         );
 
                         // No panic happens, defuse the guard.
+
                         mem::forget(guard);
 
                         let new_ptr = non_null_with_metadata_of(new_ptr, self.weak.ptr);
