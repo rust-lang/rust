@@ -895,20 +895,22 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         // e.g. we want to allow `dyn T -> (dyn T,)`, etc.
                         //
                         // We also need to skip auto traits to emit an FCW and not an error.
-                        let src_obj = tcx.mk_ty_from_kind(ty::Dynamic(
+                        let src_obj = Ty::new_dynamic(
+                            tcx,
                             tcx.mk_poly_existential_predicates(
                                 &src_tty.without_auto_traits().collect::<Vec<_>>(),
                             ),
                             tcx.lifetimes.re_erased,
                             ty::Dyn,
-                        ));
-                        let dst_obj = tcx.mk_ty_from_kind(ty::Dynamic(
+                        );
+                        let dst_obj = Ty::new_dynamic(
+                            tcx,
                             tcx.mk_poly_existential_predicates(
                                 &dst_tty.without_auto_traits().collect::<Vec<_>>(),
                             ),
                             tcx.lifetimes.re_erased,
                             ty::Dyn,
-                        ));
+                        );
 
                         // `dyn Src = dyn Dst`, this checks for matching traits/generics/projections
                         // This is `fcx.demand_eqtype`, but inlined to give a better error.
