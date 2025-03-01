@@ -1413,7 +1413,8 @@ impl<'a> State<'a> {
                 hir::InlineAsmOperand::Const { ref anon_const } => {
                     s.word("const");
                     s.space();
-                    s.print_anon_const(anon_const);
+                    // Not using `print_inline_const` to avoid additional `const { ... }`
+                    s.ann.nested(s, Nested::Body(anon_const.body))
                 }
                 hir::InlineAsmOperand::SymFn { ref expr } => {
                     s.word("sym_fn");
