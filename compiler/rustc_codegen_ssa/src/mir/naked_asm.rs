@@ -349,7 +349,7 @@ fn wasm_type<'tcx>(
         PassMode::Direct(_) => {
             let direct_type = match arg_abi.layout.backend_repr {
                 BackendRepr::Scalar(scalar) => wasm_primitive(scalar.primitive(), ptr_type),
-                BackendRepr::Vector { .. } => "v128",
+                BackendRepr::SimdVector { .. } => "v128",
                 BackendRepr::Memory { .. } => {
                     // FIXME: remove this branch once the wasm32-unknown-unknown ABI is fixed
                     let _ = WasmCAbi::Legacy;

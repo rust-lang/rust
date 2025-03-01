@@ -234,7 +234,7 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                     "`ScalarPair` second field with bad ABI in {inner:#?}",
                 );
             }
-            BackendRepr::Vector { element, count } => {
+            BackendRepr::SimdVector { element, count } => {
                 let align = layout.align.abi;
                 let size = layout.size;
                 let element_align = element.align(cx).abi;

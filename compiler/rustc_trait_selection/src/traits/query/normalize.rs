@@ -31,20 +31,19 @@ impl<'a, 'tcx> At<'a, 'tcx> {
     /// normalized. If you don't care about regions, you should prefer
     /// `normalize_erasing_regions`, which is more efficient.
     ///
-    /// If the normalization succeeds and is unambiguous, returns back
-    /// the normalized value along with various outlives relations (in
-    /// the form of obligations that must be discharged).
+    /// If the normalization succeeds, returns back the normalized
+    /// value along with various outlives relations (in the form of
+    /// obligations that must be discharged).
     ///
-    /// N.B., this will *eventually* be the main means of
-    /// normalizing, but for now should be used only when we actually
-    /// know that normalization will succeed, since error reporting
-    /// and other details are still "under development".
-    ///
-    /// This normalization should *only* be used when the projection does not
-    /// have possible ambiguity or may not be well-formed.
+    /// This normalization should *only* be used when the projection is well-formed and
+    /// does not have possible ambiguity (contains inference variables).
     ///
     /// After codegen, when lifetimes do not matter, it is preferable to instead
     /// use [`TyCtxt::normalize_erasing_regions`], which wraps this procedure.
+    ///
+    /// N.B. Once the new solver is stabilized this method of normalization will
+    /// likely be removed as trait solver operations are already cached by the query
+    /// system making this redundant.
     fn query_normalize<T>(self, value: T) -> Result<Normalized<'tcx, T>, NoSolution>
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
@@ -210,8 +209,6 @@ impl<'a, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'a, 'tcx> {
 
         // See note in `rustc_trait_selection::traits::project` about why we
         // wait to fold the args.
-
-        // Wrap this in a closure so we don't accidentally return from the outer function
         let res = match kind {
             ty::Opaque => {
                 // Only normalize `impl Trait` outside of type inference, usually in codegen.

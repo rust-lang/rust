@@ -206,7 +206,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::BackendRepr {
             rustc_abi::BackendRepr::ScalarPair(first, second) => {
                 ValueAbi::ScalarPair(first.stable(tables), second.stable(tables))
             }
-            rustc_abi::BackendRepr::Vector { element, count } => {
+            rustc_abi::BackendRepr::SimdVector { element, count } => {
                 ValueAbi::Vector { element: element.stable(tables), count }
             }
             rustc_abi::BackendRepr::Memory { sized } => ValueAbi::Aggregate { sized },

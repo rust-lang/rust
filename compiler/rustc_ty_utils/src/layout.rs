@@ -553,7 +553,7 @@ fn layout_of_uncached<'tcx>(
                 )
             } else {
                 (
-                    BackendRepr::Vector { element: e_abi, count: e_len },
+                    BackendRepr::SimdVector { element: e_abi, count: e_len },
                     dl.llvmlike_vector_align(size),
                 )
             };

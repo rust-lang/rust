@@ -109,7 +109,7 @@ where
             {
                 match layout.backend_repr {
                     BackendRepr::Scalar(_) | BackendRepr::ScalarPair(..) => false,
-                    BackendRepr::Vector { .. } => true,
+                    BackendRepr::SimdVector { .. } => true,
                     BackendRepr::Memory { .. } => {
                         for i in 0..layout.fields.count() {
                             if contains_vector(cx, layout.field(cx, i)) {

@@ -470,7 +470,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 let layout = self.layout_of(tp_ty).layout;
                 let use_integer_compare = match layout.backend_repr() {
                     Scalar(_) | ScalarPair(_, _) => true,
-                    Vector { .. } => false,
+                    SimdVector { .. } => false,
                     Memory { .. } => {
                         // For rusty ABIs, small aggregates are actually passed
                         // as `RegKind::Integer` (see `FnAbi::adjust_for_abi`),

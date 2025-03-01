@@ -56,7 +56,7 @@ where
                 Primitive::Float(_) => Class::Sse,
             },
 
-            BackendRepr::Vector { .. } => Class::Sse,
+            BackendRepr::SimdVector { .. } => Class::Sse,
 
             BackendRepr::ScalarPair(..) | BackendRepr::Memory { .. } => {
                 for i in 0..layout.fields.count() {

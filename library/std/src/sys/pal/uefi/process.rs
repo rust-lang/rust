@@ -613,7 +613,7 @@ mod uefi_command_internal {
             OsString::from_wide(&self._buffer)
                 .into_string()
                 .map(Into::into)
-                .map_err(|_| const_error!(io::ErrorKind::Other, "utf8 conversion failed"))
+                .map_err(|_| const_error!(io::ErrorKind::Other, "UTF-8 conversion failed"))
         }
 
         extern "efiapi" fn reset(

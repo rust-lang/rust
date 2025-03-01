@@ -74,7 +74,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
                 Ok(HomogeneousAggregate::Homogeneous(Reg { kind, size: self.size }))
             }
 
-            BackendRepr::Vector { .. } => {
+            BackendRepr::SimdVector { .. } => {
                 assert!(!self.is_zst());
                 Ok(HomogeneousAggregate::Homogeneous(Reg {
                     kind: RegKind::Vector,
