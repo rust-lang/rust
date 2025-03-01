@@ -9,7 +9,7 @@
 //! coherence right now and was annoying to implement, so I am leaving it
 //! as is until we start using it for something else.
 
-use std::assert_matches::assert_matches;
+use std::macros::assert_matches;
 
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk};
 use rustc_macros::extension;

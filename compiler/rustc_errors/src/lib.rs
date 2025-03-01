@@ -10,7 +10,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(array_windows)]
-#![feature(assert_matches)]
 #![feature(associated_type_defaults)]
 #![feature(box_into_inner)]
 #![feature(box_patterns)]
@@ -29,7 +28,6 @@
 
 extern crate self as rustc_errors;
 
-use std::assert_matches::assert_matches;
 use std::backtrace::{Backtrace, BacktraceStatus};
 use std::borrow::Cow;
 use std::cell::Cell;
@@ -37,6 +35,7 @@ use std::error::Report;
 use std::ffi::OsStr;
 use std::hash::Hash;
 use std::io::Write;
+use std::macros::assert_matches;
 use std::num::NonZero;
 use std::ops::DerefMut;
 use std::path::{Path, PathBuf};

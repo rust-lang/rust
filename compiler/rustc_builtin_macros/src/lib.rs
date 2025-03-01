@@ -7,7 +7,6 @@
 #![allow(rustc::untranslatable_diagnostic)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
-#![feature(assert_matches)]
 #![feature(autodiff)]
 #![feature(box_patterns)]
 #![feature(decl_macro)]

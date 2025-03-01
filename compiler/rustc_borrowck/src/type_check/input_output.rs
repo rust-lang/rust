@@ -7,7 +7,7 @@
 //! `RETURN_PLACE` the MIR arguments) are always fully normalized (and
 //! contain revealed `impl Trait` values).
 
-use std::assert_matches::assert_matches;
+use std::macros::assert_matches;
 
 use itertools::Itertools;
 use rustc_hir as hir;

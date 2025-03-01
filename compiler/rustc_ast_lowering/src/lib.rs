@@ -33,7 +33,6 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![doc(rust_logo)]
-#![feature(assert_matches)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]

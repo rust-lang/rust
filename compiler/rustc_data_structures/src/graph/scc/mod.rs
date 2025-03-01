@@ -8,8 +8,8 @@
 //! Typical examples would include: minimum element in SCC, maximum element
 //! reachable from it, etc.
 
-use std::assert_matches::debug_assert_matches;
 use std::fmt::Debug;
+use std::macros::debug_assert_matches;
 use std::ops::Range;
 
 use rustc_index::{Idx, IndexSlice, IndexVec};

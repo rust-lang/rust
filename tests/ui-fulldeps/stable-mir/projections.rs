@@ -7,7 +7,6 @@
 //@ edition: 2021
 
 #![feature(rustc_private)]
-#![feature(assert_matches)]
 
 extern crate rustc_hir;
 extern crate rustc_middle;
@@ -22,7 +21,7 @@ use stable_mir::crate_def::CrateDef;
 use stable_mir::mir::{ProjectionElem, Rvalue, StatementKind};
 use stable_mir::ty::{RigidTy, TyKind, UintTy};
 use stable_mir::ItemKind;
-use std::assert_matches::assert_matches;
+use std::macros::assert_matches;
 use std::io::Write;
 use std::ops::ControlFlow;
 

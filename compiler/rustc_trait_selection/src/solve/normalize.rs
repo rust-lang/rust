@@ -1,5 +1,5 @@
-use std::assert_matches::assert_matches;
 use std::fmt::Debug;
+use std::macros::assert_matches;
 use std::marker::PhantomData;
 
 use rustc_data_structures::stack::ensure_sufficient_stack;

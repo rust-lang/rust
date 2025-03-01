@@ -138,7 +138,7 @@ macro_rules! assert_ne {
 /// be disabled. See [`debug_assert_matches!`] for assertions that are disabled in
 /// release builds by default.
 ///
-/// [`debug_assert_matches!`]: crate::assert_matches::debug_assert_matches
+/// [`debug_assert_matches!`]: crate::macros::debug_assert_matches
 ///
 /// On panic, this macro will print the value of the expression with its debug representation.
 ///
@@ -147,9 +147,7 @@ macro_rules! assert_ne {
 /// # Examples
 ///
 /// ```
-/// #![feature(assert_matches)]
-///
-/// use std::assert_matches::assert_matches;
+/// use std::macros::assert_matches;
 ///
 /// let a = Some(345);
 /// let b = Some(56);
@@ -166,7 +164,7 @@ macro_rules! assert_ne {
 /// assert_matches!(a, Some(x) if x > 100);
 /// // assert_matches!(a, Some(x) if x < 100); // panics
 /// ```
-#[unstable(feature = "assert_matches", issue = "82775")]
+#[stable(feature = "assert_matches", since = "CURRENT_RUSTC_VERSION")]
 #[allow_internal_unstable(panic_internals)]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro assert_matches {
@@ -393,9 +391,7 @@ macro_rules! debug_assert_ne {
 /// # Examples
 ///
 /// ```
-/// #![feature(assert_matches)]
-///
-/// use std::assert_matches::debug_assert_matches;
+/// use std::macros::debug_assert_matches;
 ///
 /// let a = Some(345);
 /// let b = Some(56);
@@ -412,12 +408,12 @@ macro_rules! debug_assert_ne {
 /// debug_assert_matches!(a, Some(x) if x > 100);
 /// // debug_assert_matches!(a, Some(x) if x < 100); // panics
 /// ```
-#[unstable(feature = "assert_matches", issue = "82775")]
+#[stable(feature = "assert_matches", since = "CURRENT_RUSTC_VERSION")]
 #[allow_internal_unstable(assert_matches)]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro debug_assert_matches($($arg:tt)*) {
     if $crate::cfg!(debug_assertions) {
-        $crate::assert_matches::assert_matches!($($arg)*);
+        $crate::macros::assert_matches!($($arg)*);
     }
 }
 

@@ -1,4 +1,4 @@
-use std::assert_matches::debug_assert_matches;
+use std::macros::debug_assert_matches;
 
 use either::{Left, Right};
 use rustc_abi::{Align, HasDataLayout, Size, TargetDataLayout};

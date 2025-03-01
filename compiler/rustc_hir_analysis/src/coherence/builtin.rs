@@ -1,8 +1,8 @@
 //! Check properties that are required by built-in traits and set
 //! up data structures required by type-checking/codegen.
 
-use std::assert_matches::assert_matches;
 use std::collections::BTreeMap;
+use std::macros::assert_matches;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};

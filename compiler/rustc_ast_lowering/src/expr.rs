@@ -1,4 +1,4 @@
-use std::assert_matches::assert_matches;
+use std::macros::assert_matches;
 use std::ops::ControlFlow;
 use std::sync::Arc;
 
