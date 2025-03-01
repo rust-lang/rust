@@ -1,3 +1,6 @@
+// Test for #118205, which causes a deadlock bug
+//
+//@ parallel-front-end-robustness
 //@ compile-flags: -Z threads=16
 //@ build-pass
 
