@@ -2922,8 +2922,9 @@ pub(crate) struct AddBoxNew {
 #[diag(parse_bad_return_type_notation_output)]
 pub(crate) struct BadReturnTypeNotationOutput {
     #[primary_span]
-    #[suggestion(code = "", applicability = "maybe-incorrect", style = "verbose")]
     pub span: Span,
+    #[suggestion(code = "", applicability = "maybe-incorrect", style = "verbose")]
+    pub suggestion: Span,
 }
 
 #[derive(Diagnostic)]
