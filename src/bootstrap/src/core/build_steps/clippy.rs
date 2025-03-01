@@ -77,7 +77,8 @@ pub fn get_clippy_rules_in_order(all_args: &[String], config: &LintConfig) -> Ve
             let rule = format!("{prefix}{v}");
             // Arguments added by bootstrap in LintConfig won't show up in the all_args list, so
             // put them at the end of the command line.
-            let position = all_args.iter().position(|t| t == &rule || t == v).unwrap_or(usize::MAX);
+            let position =
+                all_args.iter().position(|t| t == rule.as_str() || t == v).unwrap_or(usize::MAX);
             result.push((position, rule));
         });
     }

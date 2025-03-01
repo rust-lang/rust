@@ -30,6 +30,22 @@ impl PartialEq for str {
     }
 }
 
+#[stable(feature = "more_str_partialeq_impls", since = "CURRENT_RUSTC_VERSION")]
+impl PartialEq<&str> for str {
+    #[inline]
+    fn eq(&self, other: &&str) -> bool {
+        self.as_bytes() == other.as_bytes()
+    }
+}
+
+#[stable(feature = "more_str_partialeq_impls", since = "CURRENT_RUSTC_VERSION")]
+impl PartialEq<str> for &str {
+    #[inline]
+    fn eq(&self, other: &str) -> bool {
+        self.as_bytes() == other.as_bytes()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Eq for str {}
 
@@ -45,6 +61,22 @@ impl PartialOrd for str {
     #[inline]
     fn partial_cmp(&self, other: &str) -> Option<Ordering> {
         Some(self.cmp(other))
+    }
+}
+
+#[stable(feature = "more_str_partialord_impls", since = "CURRENT_RUSTC_VERSION")]
+impl PartialOrd<&str> for str {
+    #[inline]
+    fn partial_cmp(&self, other: &&str) -> Option<Ordering> {
+        Some(self.cmp(*other))
+    }
+}
+
+#[stable(feature = "more_str_partialord_impls", since = "CURRENT_RUSTC_VERSION")]
+impl PartialOrd<str> for &str {
+    #[inline]
+    fn partial_cmp(&self, other: &str) -> Option<Ordering> {
+        Some(self.cmp(&other))
     }
 }
 
