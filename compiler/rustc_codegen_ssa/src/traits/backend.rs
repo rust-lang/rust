@@ -108,6 +108,8 @@ pub trait ExtraBackendMethods:
         alloc_error_handler_kind: AllocatorKind,
     ) -> Self::Module;
 
+    fn codegen_personality_stub<'tcx>(&self, tcx: TyCtxt<'tcx>, module_name: &str) -> Self::Module;
+
     /// This generates the codegen unit and returns it along with
     /// a `u64` giving an estimate of the unit's processing cost.
     fn compile_codegen_unit(
