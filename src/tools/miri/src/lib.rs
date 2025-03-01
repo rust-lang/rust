@@ -71,6 +71,7 @@ extern crate rustc_index;
 extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
+extern crate rustc_symbol_mangling;
 extern crate rustc_target;
 // Linking `rustc_driver` pulls in the required  object code as the rest of the rustc crates are
 // shipped only as rmeta files.
