@@ -28,11 +28,6 @@ name = "rustdoc"
 path = "src/bin/rustdoc.rs"
 test = false
 
-[[bin]]
-name = "sccache-plus-cl"
-path = "src/bin/sccache-plus-cl.rs"
-test = false
-
 [dependencies]
 # Most of the time updating these dependencies requires modifications to the
 # bootstrap codebase(e.g., https://github.com/rust-lang/rust/issues/124565);
