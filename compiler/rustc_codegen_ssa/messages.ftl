@@ -119,7 +119,8 @@ codegen_ssa_invalid_monomorphization_inserted_type = invalid monomorphization of
 
 codegen_ssa_invalid_monomorphization_invalid_bitmask = invalid monomorphization of `{$name}` intrinsic: invalid bitmask `{$mask_ty}`, expected `u{$expected_int_bits}` or `[u8; {$expected_bytes}]`
 
-codegen_ssa_invalid_monomorphization_mask_type = invalid monomorphization of `{$name}` intrinsic: mask element type is `{$ty}`, expected `i_`
+codegen_ssa_invalid_monomorphization_mask_type = invalid monomorphization of `{$name}` intrinsic: found mask element type is `{$ty}`, expected a signed integer type
+    .note = the mask may be widened, which only has the correct behavior for signed integers
 
 codegen_ssa_invalid_monomorphization_mismatched_lengths = invalid monomorphization of `{$name}` intrinsic: mismatched lengths: mask length `{$m_len}` != other vector length `{$v_len}`
 
