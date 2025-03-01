@@ -2,7 +2,10 @@
 
 The tracking issue for this feature is: [#29599]
 
+This feature is deprecated, to be replaced by [`macro_metavar_expr_concat`].
+
 [#29599]: https://github.com/rust-lang/rust/issues/29599
+[`macro_metavar_expr_concat`]: https://github.com/rust-lang/rust/issues/124225
 
 ------------------------
 
