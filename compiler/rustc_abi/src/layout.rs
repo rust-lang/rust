@@ -386,13 +386,15 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                     BackendRepr::Memory { sized: true }
                 }
                 // Vectors require at least element alignment, else disable the opt
-                BackendRepr::Vector { element, count: _ } if element.align(dl).abi > align.abi => {
+                BackendRepr::SimdVector { element, count: _ }
+                    if element.align(dl).abi > align.abi =>
+                {
                     BackendRepr::Memory { sized: true }
                 }
                 // the alignment tests passed and we can use this
                 BackendRepr::Scalar(..)
                 | BackendRepr::ScalarPair(..)
-                | BackendRepr::Vector { .. }
+                | BackendRepr::SimdVector { .. }
                 | BackendRepr::Memory { .. } => repr,
             },
         };
@@ -464,7 +466,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                     hide_niches(a);
                     hide_niches(b);
                 }
-                BackendRepr::Vector { element, count: _ } => hide_niches(element),
+                BackendRepr::SimdVector { element, count: _ } => hide_niches(element),
                 BackendRepr::Memory { sized: _ } => {}
             }
             st.largest_niche = None;
@@ -1314,7 +1316,9 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                         match field.backend_repr {
                             // For plain scalars, or vectors of them, we can't unpack
                             // newtypes for `#[repr(C)]`, as that affects C ABIs.
-                            BackendRepr::Scalar(_) | BackendRepr::Vector { .. } if optimize_abi => {
+                            BackendRepr::Scalar(_) | BackendRepr::SimdVector { .. }
+                                if optimize_abi =>
+                            {
                                 abi = field.backend_repr;
                             }
                             // But scalar pairs are Rust-specific and get
