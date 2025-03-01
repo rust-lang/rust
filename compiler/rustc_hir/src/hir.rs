@@ -3512,7 +3512,7 @@ pub enum InlineAsmOperand<'hir> {
         out_expr: Option<&'hir Expr<'hir>>,
     },
     Const {
-        anon_const: &'hir AnonConst,
+        anon_const: ConstBlock,
     },
     SymFn {
         expr: &'hir Expr<'hir>,

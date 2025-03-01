@@ -248,13 +248,6 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             }
         }
     }
-
-    fn visit_const_block(&mut self, span: Span, anon_const: &hir::ConstBlock) {
-        self.visit_node_id(span, anon_const.hir_id);
-
-        let body = self.tcx().hir_body(anon_const.body);
-        self.visit_body(body);
-    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -284,9 +277,6 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
             hir::ExprKind::Field(..) | hir::ExprKind::OffsetOf(..) => {
                 self.visit_field_id(e.hir_id);
             }
-            hir::ExprKind::ConstBlock(ref anon_const) => {
-                self.visit_const_block(e.span, anon_const);
-            }
             _ => {}
         }
 
@@ -295,6 +285,14 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
 
         self.fix_scalar_builtin_expr(e);
         self.fix_index_builtin_expr(e);
+    }
+
+    fn visit_inline_const(&mut self, anon_const: &hir::ConstBlock) {
+        let span = self.tcx().def_span(anon_const.def_id);
+        self.visit_node_id(span, anon_const.hir_id);
+
+        let body = self.tcx().hir_body(anon_const.body);
+        self.visit_body(body);
     }
 
     fn visit_generic_param(&mut self, p: &'tcx hir::GenericParam<'tcx>) {
@@ -340,9 +338,6 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
 
     fn visit_pat_expr(&mut self, expr: &'tcx hir::PatExpr<'tcx>) {
         self.visit_node_id(expr.span, expr.hir_id);
-        if let hir::PatExprKind::ConstBlock(c) = &expr.kind {
-            self.visit_const_block(expr.span, c);
-        }
         intravisit::walk_pat_expr(self, expr);
     }
 
