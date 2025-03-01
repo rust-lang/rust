@@ -6,11 +6,7 @@ LL |         ! |
    |         |
    |         while parsing this or-pattern starting here
    |
-help: remove the `|`
-   |
-LL -         ! |
-LL +         !
-   |
+   = help: a trailing `|` is not allowed in an or-pattern
 
 error: a never pattern is always unreachable
   --> $DIR/ICE-130779-never-arm-no-oatherwise-block-fix.rs:10:20

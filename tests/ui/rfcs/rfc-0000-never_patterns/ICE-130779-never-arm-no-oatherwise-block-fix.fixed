@@ -6,7 +6,7 @@ enum Void {}
 
 fn foo(v: Void) {
     match v {
-        ! , //~ ERROR: a never pattern is always unreachable
+        !, //~ ERROR: a never pattern is always unreachable
     }
 }
 
