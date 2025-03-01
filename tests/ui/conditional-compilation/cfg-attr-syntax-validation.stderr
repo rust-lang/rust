@@ -2,19 +2,37 @@ error: `cfg` is not followed by parentheses
   --> $DIR/cfg-attr-syntax-validation.rs:1:1
    |
 LL | #[cfg]
-   | ^^^^^^ help: expected syntax is: `cfg(/* predicate */)`
+   | ^^^^^^
+   |
+help: expected syntax is
+   |
+LL - #[cfg]
+LL + cfg(/* predicate */)
+   |
 
 error: `cfg` is not followed by parentheses
   --> $DIR/cfg-attr-syntax-validation.rs:4:1
    |
 LL | #[cfg = 10]
-   | ^^^^^^^^^^^ help: expected syntax is: `cfg(/* predicate */)`
+   | ^^^^^^^^^^^
+   |
+help: expected syntax is
+   |
+LL - #[cfg = 10]
+LL + cfg(/* predicate */)
+   |
 
 error: `cfg` predicate is not specified
   --> $DIR/cfg-attr-syntax-validation.rs:7:1
    |
 LL | #[cfg()]
-   | ^^^^^^^^ help: expected syntax is: `cfg(/* predicate */)`
+   | ^^^^^^^^
+   |
+help: expected syntax is
+   |
+LL - #[cfg()]
+LL + cfg(/* predicate */)
+   |
 
 error: multiple `cfg` predicates are specified
   --> $DIR/cfg-attr-syntax-validation.rs:10:10

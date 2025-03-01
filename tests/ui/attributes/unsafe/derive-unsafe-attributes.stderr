@@ -13,7 +13,13 @@ error: traits in `#[derive(...)]` don't accept arguments
   --> $DIR/derive-unsafe-attributes.rs:1:16
    |
 LL | #[derive(unsafe(Debug))]
-   |                ^^^^^^^ help: remove the arguments
+   |                ^^^^^^^
+   |
+help: remove the arguments
+   |
+LL - #[derive(unsafe(Debug))]
+LL + #[derive(unsafe)]
+   |
 
 error: `derive` is not an unsafe attribute
   --> $DIR/derive-unsafe-attributes.rs:10:3

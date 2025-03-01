@@ -13,7 +13,12 @@ error: associated function in `impl` without body
   --> $DIR/issue-87635.rs:4:5
    |
 LL |     pub fn bar()
-   |     ^^^^^^^^^^^^- help: provide a definition for the function: `{ <body> }`
+   |     ^^^^^^^^^^^^
+   |
+help: provide a definition for the function
+   |
+LL |     pub fn bar() { <body> }
+   |                  ++++++++++
 
 error: aborting due to 2 previous errors
 

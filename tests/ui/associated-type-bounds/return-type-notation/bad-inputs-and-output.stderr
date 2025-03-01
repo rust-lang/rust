@@ -20,37 +20,71 @@ error: argument types not allowed with return type notation
   --> $DIR/bad-inputs-and-output.rs:9:23
    |
 LL | fn foo<T: Trait<method(i32): Send>>() {}
-   |                       ^^^^^ help: remove the input types: `()`
+   |                       ^^^^^
+   |
+help: remove the input types
+   |
+LL - fn foo<T: Trait<method(i32): Send>>() {}
+LL + fn foo<T: Trait<method(): Send>>() {}
+   |
 
 error: return type not allowed with return type notation
   --> $DIR/bad-inputs-and-output.rs:12:25
    |
 LL | fn bar<T: Trait<method() -> (): Send>>() {}
-   |                         ^^^^^^ help: remove the return type
+   |                         ^^^^^^
+   |
+help: remove the return type
+   |
+LL - fn bar<T: Trait<method() -> (): Send>>() {}
+LL + fn bar<T: Trait<method(): Send>>() {}
+   |
 
 error: return type notation arguments must be elided with `..`
   --> $DIR/bad-inputs-and-output.rs:15:23
    |
 LL | fn baz<T: Trait<method(): Send>>() {}
-   |                       ^^ help: add `..`: `(..)`
+   |                       ^^
+   |
+help: add `..`
+   |
+LL | fn baz<T: Trait<method(..): Send>>() {}
+   |                        ++
 
 error: argument types not allowed with return type notation
   --> $DIR/bad-inputs-and-output.rs:18:40
    |
 LL | fn foo_path<T: Trait>() where T::method(i32): Send {}
-   |                                        ^^^^^ help: remove the input types: `()`
+   |                                        ^^^^^
+   |
+help: remove the input types
+   |
+LL - fn foo_path<T: Trait>() where T::method(i32): Send {}
+LL + fn foo_path<T: Trait>() where T::method(): Send {}
+   |
 
 error: return type not allowed with return type notation
   --> $DIR/bad-inputs-and-output.rs:21:42
    |
 LL | fn bar_path<T: Trait>() where T::method() -> (): Send {}
-   |                                          ^^^^^^ help: remove the return type
+   |                                          ^^^^^^
+   |
+help: remove the return type
+   |
+LL - fn bar_path<T: Trait>() where T::method() -> (): Send {}
+LL + fn bar_path<T: Trait>() where T::method(): Send {}
+   |
 
 error: return type notation arguments must be elided with `..`
   --> $DIR/bad-inputs-and-output.rs:24:40
    |
 LL | fn baz_path<T: Trait>() where T::method(): Send {}
-   |                                        ^^ help: add `..`: `(..)`
+   |                                        ^^
+   |
+help: add `..`
+   |
+LL | fn baz_path<T: Trait>() where T::method(..): Send {}
+   |                                         ++
 
 error: aborting due to 9 previous errors
 

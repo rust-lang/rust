@@ -2,17 +2,27 @@ error[E0449]: visibility qualifiers are not permitted here
   --> $DIR/issue-28433.rs:2:5
    |
 LL |     pub Duck,
-   |     ^^^ help: remove the qualifier
+   |     ^^^
    |
    = note: enum variants and their fields always share the visibility of the enum they are in
+help: remove the qualifier
+   |
+LL -     pub Duck,
+LL +      Duck,
+   |
 
 error[E0449]: visibility qualifiers are not permitted here
   --> $DIR/issue-28433.rs:5:5
    |
 LL |     pub(crate) Dove
-   |     ^^^^^^^^^^ help: remove the qualifier
+   |     ^^^^^^^^^^
    |
    = note: enum variants and their fields always share the visibility of the enum they are in
+help: remove the qualifier
+   |
+LL -     pub(crate) Dove
+LL +      Dove
+   |
 
 error: aborting due to 2 previous errors
 

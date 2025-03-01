@@ -2,10 +2,13 @@ error[E0379]: functions in trait impls cannot be declared const
   --> $DIR/const-fn-mismatch.rs:11:5
    |
 LL |     const fn f() -> u32 {
-   |     ^^^^^-
-   |     |
-   |     functions in trait impls cannot be const
-   |     help: remove the `const`
+   |     ^^^^^ functions in trait impls cannot be const
+   |
+help: remove the `const`
+   |
+LL -     const fn f() -> u32 {
+LL +     fn f() -> u32 {
+   |
 
 error: aborting due to 1 previous error
 

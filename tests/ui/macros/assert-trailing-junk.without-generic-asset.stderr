@@ -42,9 +42,13 @@ error: macro requires an expression as an argument
   --> $DIR/assert-trailing-junk.rs:22:5
    |
 LL |     assert!(true;);
-   |     ^^^^^^^^^^^^-^
-   |                 |
-   |                 help: try removing semicolon
+   |     ^^^^^^^^^^^^^^
+   |
+help: try removing semicolon
+   |
+LL -     assert!(true;);
+LL +     assert!(true);
+   |
 
 error: unexpected string literal
   --> $DIR/assert-trailing-junk.rs:25:27

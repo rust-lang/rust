@@ -16,10 +16,13 @@ error: a never pattern is always unreachable
   --> $DIR/ICE-130779-never-arm-no-oatherwise-block.rs:10:20
    |
 LL |         if true => {}
-   |                    ^^
-   |                    |
-   |                    this will never be executed
-   |                    help: remove this expression
+   |                    ^^ this will never be executed
+   |
+help: remove this expression
+   |
+LL -         if true => {}
+LL +         if true =>
+   |
 
 error: mismatched types
   --> $DIR/ICE-130779-never-arm-no-oatherwise-block.rs:8:9

@@ -18,7 +18,8 @@ pub(crate) struct VisibilityNotPermitted {
     #[suggestion(
         ast_passes_remove_qualifier_sugg,
         code = "",
-        applicability = "machine-applicable"
+        applicability = "machine-applicable",
+        style = "verbose"
     )]
     pub remove_qualifier_sugg: Span,
 }
@@ -44,19 +45,21 @@ pub(crate) struct TraitFnConst {
     pub in_impl: bool,
     #[label(ast_passes_const_context_label)]
     pub const_context_label: Option<Span>,
-    #[suggestion(ast_passes_remove_const_sugg, code = "")]
+    #[suggestion(ast_passes_remove_const_sugg, code = "", style = "verbose")]
     pub remove_const_sugg: (Span, Applicability),
     pub requires_multiple_changes: bool,
     #[suggestion(
         ast_passes_make_impl_const_sugg,
         code = "const ",
-        applicability = "maybe-incorrect"
+        applicability = "maybe-incorrect",
+        style = "verbose"
     )]
     pub make_impl_const_sugg: Option<Span>,
     #[suggestion(
         ast_passes_make_trait_const_sugg,
         code = "#[const_trait]\n",
-        applicability = "maybe-incorrect"
+        applicability = "maybe-incorrect",
+        style = "verbose"
     )]
     pub make_trait_const_sugg: Option<Span>,
 }
@@ -128,7 +131,7 @@ pub(crate) struct ForbiddenDefault {
 pub(crate) struct AssocConstWithoutBody {
     #[primary_span]
     pub span: Span,
-    #[suggestion(code = " = <expr>;", applicability = "has-placeholders")]
+    #[suggestion(code = " = <expr>;", applicability = "has-placeholders", style = "verbose")]
     pub replace_span: Span,
 }
 
@@ -137,7 +140,7 @@ pub(crate) struct AssocConstWithoutBody {
 pub(crate) struct AssocFnWithoutBody {
     #[primary_span]
     pub span: Span,
-    #[suggestion(code = " {{ <body> }}", applicability = "has-placeholders")]
+    #[suggestion(code = " {{ <body> }}", applicability = "has-placeholders", style = "verbose")]
     pub replace_span: Span,
 }
 
@@ -146,7 +149,7 @@ pub(crate) struct AssocFnWithoutBody {
 pub(crate) struct AssocTypeWithoutBody {
     #[primary_span]
     pub span: Span,
-    #[suggestion(code = " = <type>;", applicability = "has-placeholders")]
+    #[suggestion(code = " = <type>;", applicability = "has-placeholders", style = "verbose")]
     pub replace_span: Span,
 }
 
@@ -155,7 +158,7 @@ pub(crate) struct AssocTypeWithoutBody {
 pub(crate) struct ConstWithoutBody {
     #[primary_span]
     pub span: Span,
-    #[suggestion(code = " = <expr>;", applicability = "has-placeholders")]
+    #[suggestion(code = " = <expr>;", applicability = "has-placeholders", style = "verbose")]
     pub replace_span: Span,
 }
 
@@ -164,7 +167,7 @@ pub(crate) struct ConstWithoutBody {
 pub(crate) struct StaticWithoutBody {
     #[primary_span]
     pub span: Span,
-    #[suggestion(code = " = <expr>;", applicability = "has-placeholders")]
+    #[suggestion(code = " = <expr>;", applicability = "has-placeholders", style = "verbose")]
     pub replace_span: Span,
 }
 
@@ -173,7 +176,7 @@ pub(crate) struct StaticWithoutBody {
 pub(crate) struct TyAliasWithoutBody {
     #[primary_span]
     pub span: Span,
-    #[suggestion(code = " = <type>;", applicability = "has-placeholders")]
+    #[suggestion(code = " = <type>;", applicability = "has-placeholders", style = "verbose")]
     pub replace_span: Span,
 }
 
@@ -182,7 +185,7 @@ pub(crate) struct TyAliasWithoutBody {
 pub(crate) struct FnWithoutBody {
     #[primary_span]
     pub span: Span,
-    #[suggestion(code = " {{ <body> }}", applicability = "has-placeholders")]
+    #[suggestion(code = " {{ <body> }}", applicability = "has-placeholders", style = "verbose")]
     pub replace_span: Span,
     #[subdiagnostic]
     pub extern_block_suggestion: Option<ExternBlockSuggestion>,
@@ -190,14 +193,22 @@ pub(crate) struct FnWithoutBody {
 
 #[derive(Subdiagnostic)]
 pub(crate) enum ExternBlockSuggestion {
-    #[multipart_suggestion(ast_passes_extern_block_suggestion, applicability = "maybe-incorrect")]
+    #[multipart_suggestion(
+        ast_passes_extern_block_suggestion,
+        applicability = "maybe-incorrect",
+        style = "verbose"
+    )]
     Implicit {
         #[suggestion_part(code = "extern {{")]
         start_span: Span,
         #[suggestion_part(code = " }}")]
         end_span: Span,
     },
-    #[multipart_suggestion(ast_passes_extern_block_suggestion, applicability = "maybe-incorrect")]
+    #[multipart_suggestion(
+        ast_passes_extern_block_suggestion,
+        applicability = "maybe-incorrect",
+        style = "verbose"
+    )]
     Explicit {
         #[suggestion_part(code = "extern \"{abi}\" {{")]
         start_span: Span,
@@ -250,7 +261,7 @@ pub(crate) struct BoundInContext<'a> {
 #[note(ast_passes_extern_keyword_link)]
 pub(crate) struct ExternTypesCannotHave<'a> {
     #[primary_span]
-    #[suggestion(code = "", applicability = "maybe-incorrect")]
+    #[suggestion(code = "", applicability = "maybe-incorrect", style = "verbose")]
     pub span: Span,
     pub descr: &'a str,
     pub remove_descr: &'a str,
@@ -280,7 +291,7 @@ pub(crate) struct FnBodyInExtern {
     #[primary_span]
     #[label(ast_passes_cannot_have)]
     pub span: Span,
-    #[suggestion(code = ";", applicability = "maybe-incorrect")]
+    #[suggestion(code = ";", applicability = "maybe-incorrect", style = "verbose")]
     pub body: Span,
     #[label]
     pub block: Span,
@@ -290,7 +301,7 @@ pub(crate) struct FnBodyInExtern {
 #[diag(ast_passes_extern_fn_qualifiers)]
 pub(crate) struct FnQualifierInExtern {
     #[primary_span]
-    #[suggestion(code = "", applicability = "maybe-incorrect")]
+    #[suggestion(code = "", applicability = "maybe-incorrect", style = "verbose")]
     pub span: Span,
     #[label]
     pub block: Span,
@@ -343,7 +354,7 @@ pub(crate) struct ModuleNonAscii {
 #[diag(ast_passes_auto_generic, code = E0567)]
 pub(crate) struct AutoTraitGeneric {
     #[primary_span]
-    #[suggestion(code = "", applicability = "machine-applicable")]
+    #[suggestion(code = "", applicability = "machine-applicable", style = "verbose")]
     pub span: Span,
     #[label]
     pub ident: Span,
@@ -353,7 +364,7 @@ pub(crate) struct AutoTraitGeneric {
 #[diag(ast_passes_auto_super_lifetime, code = E0568)]
 pub(crate) struct AutoTraitBounds {
     #[primary_span]
-    #[suggestion(code = "", applicability = "machine-applicable")]
+    #[suggestion(code = "", applicability = "machine-applicable", style = "verbose")]
     pub span: Span,
     #[label]
     pub ident: Span,
@@ -364,7 +375,7 @@ pub(crate) struct AutoTraitBounds {
 pub(crate) struct AutoTraitItems {
     #[primary_span]
     pub spans: Vec<Span>,
-    #[suggestion(code = "", applicability = "machine-applicable")]
+    #[suggestion(code = "", applicability = "machine-applicable", style = "verbose")]
     pub total: Span,
     #[label]
     pub ident: Span,
@@ -440,7 +451,11 @@ pub(crate) struct AtLeastOneTrait {
 pub(crate) struct OutOfOrderParams<'a> {
     #[primary_span]
     pub spans: Vec<Span>,
-    #[suggestion(code = "{ordered_params}", applicability = "machine-applicable")]
+    #[suggestion(
+        code = "{ordered_params}",
+        applicability = "machine-applicable",
+        style = "verbose"
+    )]
     pub sugg_span: Span,
     pub param_ord: &'a ParamKindOrd,
     pub max_param: &'a ParamKindOrd,
@@ -536,7 +551,12 @@ pub(crate) struct WhereClauseBeforeTypeAlias {
 
 #[derive(Subdiagnostic)]
 pub(crate) enum WhereClauseBeforeTypeAliasSugg {
-    #[suggestion(ast_passes_remove_suggestion, applicability = "machine-applicable", code = "")]
+    #[suggestion(
+        ast_passes_remove_suggestion,
+        applicability = "machine-applicable",
+        code = "",
+        style = "verbose"
+    )]
     Remove {
         #[primary_span]
         span: Span,
@@ -720,7 +740,11 @@ pub(crate) struct AssociatedSuggestion {
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(ast_passes_suggestion_path, applicability = "maybe-incorrect")]
+#[multipart_suggestion(
+    ast_passes_suggestion_path,
+    applicability = "maybe-incorrect",
+    style = "verbose"
+)]
 pub(crate) struct AssociatedSuggestion2 {
     #[suggestion_part(code = "{args}")]
     pub span: Span,
@@ -739,7 +763,7 @@ pub(crate) struct FeatureOnNonNightly {
     pub channel: &'static str,
     #[subdiagnostic]
     pub stable_features: Vec<StableFeature>,
-    #[suggestion(code = "", applicability = "machine-applicable")]
+    #[suggestion(code = "", applicability = "machine-applicable", style = "verbose")]
     pub sugg: Option<Span>,
 }
 

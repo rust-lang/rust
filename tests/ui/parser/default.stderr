@@ -21,9 +21,14 @@ error[E0449]: visibility qualifiers are not permitted here
   --> $DIR/default.rs:17:5
    |
 LL |     pub default fn foo<T: Default>() -> T {
-   |     ^^^ help: remove the qualifier
+   |     ^^^
    |
    = note: trait items always share the visibility of their trait
+help: remove the qualifier
+   |
+LL -     pub default fn foo<T: Default>() -> T {
+LL +      default fn foo<T: Default>() -> T {
+   |
 
 warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
   --> $DIR/default.rs:3:12
