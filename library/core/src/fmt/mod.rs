@@ -636,6 +636,9 @@ impl<'a> Arguments<'a> {
     /// when using `format!`. Note: this is neither the lower nor upper bound.
     #[inline]
     pub fn estimated_capacity(&self) -> usize {
+        // Since the format args are constructed from a single string literal in
+        // `format_args!`, the total length of the pieces is under `isize::MAX`
+        // and this sum cannot overflow.
         let pieces_length: usize = self.pieces.iter().map(|x| x.len()).sum();
 
         if self.args.is_empty() {
@@ -649,7 +652,8 @@ impl<'a> Arguments<'a> {
             // There are some arguments, so any additional push
             // will reallocate the string. To avoid that,
             // we're "pre-doubling" the capacity here.
-            pieces_length.checked_mul(2).unwrap_or(0)
+            // It cannot overflow, because the maximum length is `isize::MAX`.
+            pieces_length * 2
         }
     }
 }
