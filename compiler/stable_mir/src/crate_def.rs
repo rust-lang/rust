@@ -10,6 +10,27 @@ use crate::{Crate, Symbol, with};
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 pub struct DefId(pub(crate) usize);
 
+impl DefId {
+    /// Return fully qualified name of this definition
+    pub fn name(&self) -> Symbol {
+        with(|cx| cx.def_name(*self, false))
+    }
+
+    /// Return a trimmed name of this definition.
+    ///
+    /// This can be used to print more user friendly diagnostic messages.
+    ///
+    /// If a symbol name can only be imported from one place for a type, and as
+    /// long as it was not glob-imported anywhere in the current crate, we trim its
+    /// path and print only the name.
+    ///
+    /// For example, this function may shorten `std::vec::Vec` to just `Vec`,
+    /// as long as there is no other `Vec` importable anywhere.
+    pub fn trimmed_name(&self) -> Symbol {
+        with(|cx| cx.def_name(*self, true))
+    }
+}
+
 /// A trait for retrieving information about a particular definition.
 ///
 /// Implementors must provide the implementation of `def_id` which will be used to retrieve
