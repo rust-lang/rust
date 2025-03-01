@@ -9,6 +9,7 @@ pub fn pipe() -> io::Result<(AnonPipe, AnonPipe)> {
 
 #[unstable(feature = "anonymous_pipe", issue = "127154")]
 impl From<PipeReader> for Stdio {
+    /// Diverge `PipeReader`s inner into a `Stdio`.
     fn from(pipe: PipeReader) -> Self {
         pipe.0.diverge()
     }
@@ -16,6 +17,7 @@ impl From<PipeReader> for Stdio {
 
 #[unstable(feature = "anonymous_pipe", issue = "127154")]
 impl From<PipeWriter> for Stdio {
+    /// Diverge `PipeWriter`s inner into a `Stdio`.
     fn from(pipe: PipeWriter) -> Self {
         pipe.0.diverge()
     }
