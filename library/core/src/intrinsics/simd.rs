@@ -11,7 +11,7 @@
 /// `idx` must be in-bounds of the vector.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn simd_insert<T, U>(_x: T, _idx: u32, _val: U) -> T;
+pub const unsafe fn simd_insert<T, U>(_x: T, _idx: u32, _val: U) -> T;
 
 /// Extracts an element from a vector.
 ///
@@ -22,7 +22,7 @@ pub unsafe fn simd_insert<T, U>(_x: T, _idx: u32, _val: U) -> T;
 /// `idx` must be in-bounds of the vector.
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn simd_extract<T, U>(_x: T, _idx: u32) -> U;
+pub const unsafe fn simd_extract<T, U>(_x: T, _idx: u32) -> U;
 
 /// Adds two simd vectors elementwise.
 ///

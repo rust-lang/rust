@@ -2,6 +2,7 @@
 // marks function arguments as "inreg" like the C/C++ compilers for the platforms.
 // x86 only.
 
+//@ add-core-stubs
 //@ compile-flags: --target i686-unknown-linux-gnu -Cno-prepopulate-passes -Copt-level=3
 //@ needs-llvm-components: x86
 
@@ -14,10 +15,9 @@
 #![crate_type = "lib"]
 #![no_core]
 #![feature(no_core, lang_items, repr_simd)]
-#[lang = "sized"]
-trait Sized {}
-#[lang = "copy"]
-trait Copy {}
+
+extern crate minicore;
+use minicore::*;
 
 pub mod tests {
     // regparm doesn't work for "fastcall" calling conv (only 2 inregs)

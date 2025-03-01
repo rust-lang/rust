@@ -1,6 +1,8 @@
 //@ run-pass
 
-#![feature(repr_simd, intrinsics)]
+#![feature(repr_simd, core_intrinsics)]
+
+use std::intrinsics::simd::{simd_extract, simd_insert, simd_shuffle};
 
 #[repr(simd)]
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -14,15 +16,6 @@ struct i32x4([i32; 4]);
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[allow(non_camel_case_types)]
 struct i32x8([i32; 8]);
-
-#[rustc_intrinsic]
-unsafe fn simd_insert<T, E>(x: T, idx: u32, y: E) -> T;
-
-#[rustc_intrinsic]
-unsafe fn simd_extract<T, E>(x: T, idx: u32) -> E;
-
-#[rustc_intrinsic]
-unsafe fn simd_shuffle<T, I, U>(x: T, y: T, idx: I) -> U;
 
 #[repr(simd)]
 struct SimdShuffleIdx<const LEN: usize>([u32; LEN]);

@@ -1,5 +1,6 @@
 // Test that the correct module flags are emitted with different control-flow protection flags.
 
+//@ add-core-stubs
 //@ revisions: undefined none branch return full
 //@ needs-llvm-components: x86
 //@ [undefined] compile-flags:
@@ -13,8 +14,8 @@
 #![feature(no_core, lang_items)]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
+extern crate minicore;
+use minicore::*;
 
 // A basic test function.
 pub fn test() {}

@@ -1,5 +1,6 @@
 // Verifies that type metadata identifiers for trait objects are emitted correctly.
 //
+//@ add-core-stubs
 //@ revisions: aarch64 x86_64
 //@ [aarch64] compile-flags: --target aarch64-unknown-none
 //@ [aarch64] needs-llvm-components: aarch64
@@ -11,29 +12,8 @@
 #![feature(arbitrary_self_types, no_core, lang_items)]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
-#[lang = "copy"]
-trait Copy {}
-impl<T: ?Sized> Copy for &T {}
-#[lang = "legacy_receiver"]
-trait LegacyReceiver {}
-#[lang = "dispatch_from_dyn"]
-trait DispatchFromDyn<T> {}
-impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<&'a U> for &'a T {}
-#[lang = "unsize"]
-trait Unsize<T: ?Sized> {}
-#[lang = "coerce_unsized"]
-pub trait CoerceUnsized<T: ?Sized> {}
-impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b T {}
-#[lang = "freeze"]
-trait Freeze {}
-#[lang = "drop_in_place"]
-fn drop_in_place_fn<T>() {}
-#[lang = "drop"]
-trait Drop {
-    fn drop(&mut self);
-}
+extern crate minicore;
+use minicore::*;
 
 pub trait Trait1 {
     fn foo(&self);

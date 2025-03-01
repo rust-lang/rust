@@ -1,9 +1,11 @@
+//@ add-core-stubs
 //@ needs-llvm-components: x86
 //@ compile-flags: --target=x86_64-unknown-linux-gnu --crate-type=rlib
 #![no_core]
 #![feature(no_core, lang_items)]
-#[lang="sized"]
-trait Sized { }
+
+extern crate minicore;
+use minicore::*;
 
 extern "x86-interrupt" fn f7() {} //~ ERROR "x86-interrupt" ABI is experimental
 trait Tr {
