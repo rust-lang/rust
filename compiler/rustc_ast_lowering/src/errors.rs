@@ -346,7 +346,7 @@ pub(crate) struct NeverPatternWithBody {
     #[primary_span]
     #[label]
     pub span: Span,
-    #[suggestion(code = ",", applicability = "maybe-incorrect", style = "verbose")]
+    #[suggestion(code = ",", applicability = "maybe-incorrect", style = "hidden")]
     pub removal_span: Span,
 }
 
@@ -355,7 +355,7 @@ pub(crate) struct NeverPatternWithBody {
 pub(crate) struct NeverPatternWithGuard {
     #[primary_span]
     pub span: Span,
-    #[suggestion(code = ",", applicability = "maybe-incorrect", style = "verbose")]
+    #[suggestion(code = ",", applicability = "maybe-incorrect", style = "hidden")]
     pub removal_span: Span,
 }
 

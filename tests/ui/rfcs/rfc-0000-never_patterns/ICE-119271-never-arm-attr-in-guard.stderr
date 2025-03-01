@@ -24,14 +24,7 @@ error: a guard on a never pattern will never be run
 LL |             false
    |             ^^^^^
    |
-help: remove the match arm guard
-   |
-LL -         Some(!)
-LL -
-LL -             if #[deny(unused_mut)]
-LL -             false
-LL +         Some(!),
-   |
+   = help: remove the match arm guard
 
 error: mismatched types
   --> $DIR/ICE-119271-never-arm-attr-in-guard.rs:5:14

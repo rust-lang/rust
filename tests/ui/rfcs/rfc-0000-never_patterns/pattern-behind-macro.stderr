@@ -4,11 +4,7 @@ error: a never pattern is always unreachable
 LL |         never!() => {}
    |                     ^^ this will never be executed
    |
-help: remove the match arm expression
-   |
-LL -         never!() => {}
-LL +         never!(),
-   |
+   = help: remove the match arm expression
 
 error: aborting due to 1 previous error
 

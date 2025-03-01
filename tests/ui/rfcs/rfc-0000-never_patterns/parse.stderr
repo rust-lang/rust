@@ -49,11 +49,7 @@ error: a guard on a never pattern will never be run
 LL |         Some(!) if true
    |                    ^^^^
    |
-help: remove the match arm guard
-   |
-LL -         Some(!) if true
-LL +         Some(!),
-   |
+   = help: remove the match arm guard
 
 error: a guard on a never pattern will never be run
   --> $DIR/parse.rs:37:20
@@ -61,11 +57,7 @@ error: a guard on a never pattern will never be run
 LL |         Some(!) if true,
    |                    ^^^^
    |
-help: remove the match arm guard
-   |
-LL -         Some(!) if true,
-LL +         Some(!),
-   |
+   = help: remove the match arm guard
 
 error: a guard on a never pattern will never be run
   --> $DIR/parse.rs:49:21
@@ -73,11 +65,7 @@ error: a guard on a never pattern will never be run
 LL |         never!() if true,
    |                     ^^^^
    |
-help: remove the match arm guard
-   |
-LL -         never!() if true,
-LL +         never!(),
-   |
+   = help: remove the match arm guard
 
 error: aborting due to 8 previous errors
 

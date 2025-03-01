@@ -135,11 +135,7 @@ error: a guard on a never pattern will never be run
 LL |         Err(!) if false,
    |                   ^^^^^
    |
-help: remove the match arm guard
-   |
-LL -         Err(!) if false,
-LL +         Err(!),
-   |
+   = help: remove the match arm guard
 
 error: aborting due to 13 previous errors
 
