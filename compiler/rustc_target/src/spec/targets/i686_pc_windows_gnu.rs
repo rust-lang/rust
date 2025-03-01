@@ -20,7 +20,7 @@ pub(crate) fn target() -> Target {
         llvm_target: "i686-pc-windows-gnu".into(),
         metadata: TargetMetadata {
             description: Some("32-bit MinGW (Windows 10+)".into()),
-            tier: Some(1),
+            tier: Some(2),
             host_tools: Some(true),
             std: Some(true),
         },

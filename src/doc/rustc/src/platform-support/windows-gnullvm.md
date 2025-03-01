@@ -1,8 +1,8 @@
-# \*-pc-windows-gnullvm
+# \*-windows-gnullvm
 
 **Tier: 2 (without host tools)**
 
-Windows targets similar to `*-pc-windows-gnu` but using UCRT as the runtime and various LLVM tools/libraries instead of GCC/Binutils.
+Windows targets similar to `*-windows-gnu` but using UCRT as the runtime and various LLVM tools/libraries instead of GCC/Binutils.
 
 Target triples available so far:
 - `aarch64-pc-windows-gnullvm`
@@ -17,9 +17,9 @@ Target triples available so far:
 ## Requirements
 
 The easiest way to obtain these targets is cross-compilation, but native build from `x86_64-pc-windows-gnu` is possible with few hacks which I don't recommend.
-Std support is expected to be on par with `*-pc-windows-gnu`.
+Std support is expected to be on par with `*-windows-gnu`.
 
-Binaries for this target should be at least on par with `*-pc-windows-gnu` in terms of requirements and functionality.
+Binaries for this target should be at least on par with `*-windows-gnu` in terms of requirements and functionality.
 
 Those targets follow Windows calling convention for `extern "C"`.
 
