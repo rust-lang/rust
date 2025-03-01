@@ -462,7 +462,7 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn new_param(tcx: TyCtxt<'tcx>, index: u32, name: Symbol) -> Ty<'tcx> {
-        tcx.mk_ty_from_kind(Param(ParamTy { index, name }))
+        Ty::new(tcx, Param(ParamTy { index, name }))
     }
 
     #[inline]
