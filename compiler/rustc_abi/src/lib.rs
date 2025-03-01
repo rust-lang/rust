@@ -1812,7 +1812,7 @@ where
         f.debug_struct("Layout")
             .field("size", size)
             .field("align", align)
-            .field("abi", backend_repr)
+            .field("backend_repr", backend_repr)
             .field("fields", fields)
             .field("largest_niche", largest_niche)
             .field("uninhabited", uninhabited)

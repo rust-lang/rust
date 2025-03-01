@@ -4,7 +4,7 @@ error: layout_of(NonZero<u32>) = Layout {
                abi: Align(4 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Scalar(
+           backend_repr: Scalar(
                Initialized {
                    value: Int(
                        I32,
@@ -50,7 +50,7 @@ error: layout_of((u32) is 1..=) = Layout {
                abi: Align(4 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Scalar(
+           backend_repr: Scalar(
                Initialized {
                    value: Int(
                        I32,
@@ -89,7 +89,7 @@ error: layout_of(Option<(u32) is 1..=>) = Layout {
                abi: Align(4 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Scalar(
+           backend_repr: Scalar(
                Initialized {
                    value: Int(
                        I32,
@@ -129,7 +129,7 @@ error: layout_of(Option<(u32) is 1..=>) = Layout {
                            abi: Align(1 bytes),
                            pref: $SOME_ALIGN,
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -151,7 +151,7 @@ error: layout_of(Option<(u32) is 1..=>) = Layout {
                            abi: Align(4 bytes),
                            pref: $SOME_ALIGN,
                        },
-                       abi: Scalar(
+                       backend_repr: Scalar(
                            Initialized {
                                value: Int(
                                    I32,
@@ -203,7 +203,7 @@ error: layout_of(Option<NonZero<u32>>) = Layout {
                abi: Align(4 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Scalar(
+           backend_repr: Scalar(
                Initialized {
                    value: Int(
                        I32,
@@ -243,7 +243,7 @@ error: layout_of(Option<NonZero<u32>>) = Layout {
                            abi: Align(1 bytes),
                            pref: $SOME_ALIGN,
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -265,7 +265,7 @@ error: layout_of(Option<NonZero<u32>>) = Layout {
                            abi: Align(4 bytes),
                            pref: $SOME_ALIGN,
                        },
-                       abi: Scalar(
+                       backend_repr: Scalar(
                            Initialized {
                                value: Int(
                                    I32,
@@ -317,7 +317,7 @@ error: layout_of(NonZeroU32New) = Layout {
                abi: Align(4 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Scalar(
+           backend_repr: Scalar(
                Initialized {
                    value: Int(
                        I32,
