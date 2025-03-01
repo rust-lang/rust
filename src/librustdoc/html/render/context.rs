@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::sync::mpsc::{Receiver, channel};
 
 use rinja::Template;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_hir::def_id::{DefIdMap, LOCAL_CRATE};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -62,7 +62,7 @@ pub(crate) struct Context<'tcx> {
     /// [#82381]: https://github.com/rust-lang/rust/issues/82381
     pub(crate) shared: SharedContext<'tcx>,
     /// Collection of all types with notable traits referenced in the current module.
-    pub(crate) types_with_notable_traits: RefCell<FxIndexSet<clean::Type>>,
+    pub(crate) types_with_notable_traits: RefCell<FxHashSet<clean::Type>>,
     /// Contains information that needs to be saved and reset after rendering an item which is
     /// not a module.
     pub(crate) info: ContextInfo,
@@ -587,7 +587,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             id_map: RefCell::new(id_map),
             deref_id_map: Default::default(),
             shared: scx,
-            types_with_notable_traits: RefCell::new(FxIndexSet::default()),
+            types_with_notable_traits: RefCell::default(),
             info: ContextInfo::new(include_sources),
         };
 
