@@ -2,7 +2,7 @@
 //@ only-x86_64
 
 #![crate_type = "rlib"]
-#![feature(asm_goto, asm_goto_with_outputs)]
+#![feature(asm_goto_with_outputs)]
 
 use std::arch::asm;
 

@@ -185,8 +185,6 @@ ast_lowering_underscore_expr_lhs_assign =
 ast_lowering_unstable_inline_assembly = inline assembly is not stable yet on this architecture
 ast_lowering_unstable_inline_assembly_label_operand_with_outputs =
     using both label and output operands for inline assembly is unstable
-ast_lowering_unstable_inline_assembly_label_operands =
-    label operands for inline assembly are unstable
 ast_lowering_unstable_may_unwind = the `may_unwind` option is unstable
 
 ast_lowering_use_angle_brackets = use angle brackets instead
