@@ -131,7 +131,7 @@ fn write_header(
 /// * If the other `Class` is unclassified and only contains white characters (backline,
 ///   whitespace, etc), it can be merged.
 /// * `Class::Ident` is considered the same as unclassified (because it doesn't have an associated
-///    CSS class).
+///   CSS class).
 fn can_merge(class1: Option<Class>, class2: Option<Class>, text: &str) -> bool {
     match (class1, class2) {
         (Some(c1), Some(c2)) => c1.is_equal_to(c2),
