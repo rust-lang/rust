@@ -37,7 +37,7 @@ macro_rules! panic {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "assert_eq_macro")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "assert_eq_macro", clippy::format_args)]
 #[allow_internal_unstable(panic_internals)]
 macro_rules! assert_eq {
     ($left:expr, $right:expr $(,)?) => {
@@ -93,7 +93,7 @@ macro_rules! assert_eq {
 /// ```
 #[macro_export]
 #[stable(feature = "assert_ne", since = "1.13.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "assert_ne_macro")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "assert_ne_macro", clippy::format_args)]
 #[allow_internal_unstable(panic_internals)]
 macro_rules! assert_ne {
     ($left:expr, $right:expr $(,)?) => {
@@ -169,6 +169,7 @@ macro_rules! assert_ne {
 #[unstable(feature = "assert_matches", issue = "82775")]
 #[allow_internal_unstable(panic_internals)]
 #[rustc_macro_transparency = "semitransparent"]
+#[cfg_attr(not(test), clippy::format_args)]
 pub macro assert_matches {
     ($left:expr, $(|)? $( $pattern:pat_param )|+ $( if $guard: expr )? $(,)?) => {
         match $left {
@@ -302,6 +303,7 @@ pub macro cfg_match {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "debug_assert_macro"]
 #[allow_internal_unstable(edition_panic)]
+#[cfg_attr(not(test), clippy::format_args)]
 macro_rules! debug_assert {
     ($($arg:tt)*) => {
         if $crate::cfg!(debug_assertions) {
@@ -331,7 +333,7 @@ macro_rules! debug_assert {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "debug_assert_eq_macro")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "debug_assert_eq_macro", clippy::format_args)]
 macro_rules! debug_assert_eq {
     ($($arg:tt)*) => {
         if $crate::cfg!(debug_assertions) {
@@ -361,7 +363,7 @@ macro_rules! debug_assert_eq {
 /// ```
 #[macro_export]
 #[stable(feature = "assert_ne", since = "1.13.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "debug_assert_ne_macro")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "debug_assert_ne_macro", clippy::format_args)]
 macro_rules! debug_assert_ne {
     ($($arg:tt)*) => {
         if $crate::cfg!(debug_assertions) {
@@ -617,7 +619,7 @@ macro_rules! r#try {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "write_macro")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "write_macro", clippy::format_args)]
 macro_rules! write {
     ($dst:expr, $($arg:tt)*) => {
         $dst.write_fmt($crate::format_args!($($arg)*))
@@ -651,7 +653,7 @@ macro_rules! write {
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "writeln_macro")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "writeln_macro", clippy::format_args)]
 #[allow_internal_unstable(format_args_nl)]
 macro_rules! writeln {
     ($dst:expr $(,)?) => {
@@ -805,6 +807,7 @@ macro_rules! unreachable {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "unimplemented_macro")]
 #[allow_internal_unstable(panic_internals)]
+#[clippy::format_args]
 macro_rules! unimplemented {
     () => {
         $crate::panicking::panic("not implemented")
@@ -883,7 +886,7 @@ macro_rules! unimplemented {
 /// ```
 #[macro_export]
 #[stable(feature = "todo_macro", since = "1.40.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "todo_macro")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "todo_macro", clippy::format_args)]
 #[allow_internal_unstable(panic_internals)]
 macro_rules! todo {
     () => {
@@ -995,7 +998,7 @@ pub(crate) mod builtin {
     /// and cannot be stored for later use.
     /// This is a known limitation, see [#92698](https://github.com/rust-lang/rust/issues/92698).
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "format_args_macro")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "format_args_macro", clippy::format_args)]
     #[allow_internal_unsafe]
     #[allow_internal_unstable(fmt_internals)]
     #[rustc_builtin_macro]
@@ -1585,6 +1588,7 @@ pub(crate) mod builtin {
         edition_panic,
         generic_assert_internals
     )]
+    #[cfg_attr(not(test), clippy::format_args)]
     macro_rules! assert {
         ($cond:expr $(,)?) => {{ /* compiler built-in */ }};
         ($cond:expr, $($arg:tt)+) => {{ /* compiler built-in */ }};
