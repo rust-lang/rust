@@ -218,16 +218,11 @@ impl FixtureWithProjectMeta {
                 );
             }
 
-            if line.starts_with("//-") {
+            if let Some(line) = line.strip_prefix("//-") {
                 let meta = Self::parse_meta_line(line);
                 res.push(meta);
             } else {
-                if line.starts_with("// ")
-                    && line.contains(':')
-                    && !line.contains("::")
-                    && !line.contains('.')
-                    && line.chars().all(|it| !it.is_uppercase())
-                {
+                if matches!(line.strip_prefix("// "), Some(l) if l.trim().starts_with('/')) {
                     panic!("looks like invalid metadata line: {line:?}");
                 }
 
@@ -242,8 +237,7 @@ impl FixtureWithProjectMeta {
 
     //- /lib.rs crate:foo deps:bar,baz cfg:foo=a,bar=b env:OUTDIR=path/to,OTHER=foo
     fn parse_meta_line(meta: &str) -> Fixture {
-        assert!(meta.starts_with("//-"));
-        let meta = meta["//-".len()..].trim();
+        let meta = meta.trim();
         let mut components = meta.split_ascii_whitespace();
 
         let path = components.next().expect("fixture meta must start with a path").to_owned();
