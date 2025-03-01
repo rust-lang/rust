@@ -4,7 +4,6 @@ error: struct `T` is never constructed
 LL | struct T;
    |        ^
    |
-   = note: `T` has a derived impl for the trait `Default`, but this is intentionally ignored during dead code analysis
 note: the lint level is defined here
   --> $DIR/unused-struct-derive-default.rs:1:9
    |
