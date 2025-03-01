@@ -144,7 +144,7 @@ fn create_assigned_tuple_shuffle_call_fmt(
     array_lanes: &String,
 ) -> String {
     format!(
-        "{variable_name}.{idx} = simd_shuffle!({variable_name}.{idx}, {variable_name}.{idx}, {array_lanes});\n",
+        "{variable_name}.{idx} = unsafe {{ simd_shuffle!({variable_name}.{idx}, {variable_name}.{idx}, {array_lanes}) }};\n",
         variable_name = variable_name,
         idx = idx,
         array_lanes = array_lanes
@@ -157,7 +157,7 @@ fn create_assigned_shuffle_call_fmt(
     array_lanes: &String,
 ) -> String {
     format!(
-        "let {variable_name}: {type_kind} = simd_shuffle!({variable_name}, {variable_name}, {array_lanes})",
+        "let {variable_name}: {type_kind} = unsafe {{ simd_shuffle!({variable_name}, {variable_name}, {array_lanes}) }}",
         type_kind = type_kind.to_string(),
         variable_name = variable_name,
         array_lanes = array_lanes
