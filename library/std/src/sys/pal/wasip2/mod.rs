@@ -12,8 +12,6 @@ pub mod args;
 pub mod env;
 #[path = "../wasi/fd.rs"]
 pub mod fd;
-#[path = "../wasi/fs.rs"]
-pub mod fs;
 #[allow(unused)]
 #[path = "../wasm/atomics/futex.rs"]
 pub mod futex;
