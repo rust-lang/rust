@@ -111,8 +111,9 @@
           StorageLive(_7);
           StorageLive(_8);
 -         StorageLive(_9);
+-         StorageLive(_10);
 +         nop;
-          StorageLive(_10);
++         nop;
           StorageLive(_11);
           _11 = &(*_1);
           _10 = core::str::<impl str>::as_ptr(move _11) -> [return: bb3, unwind continue];
@@ -122,8 +123,9 @@
           StorageDead(_11);
           _9 = &_10;
 -         StorageLive(_12);
+-         StorageLive(_13);
 +         nop;
-          StorageLive(_13);
++         nop;
           StorageLive(_14);
 -         _14 = &(*_4);
 +         _14 = &(*_1);
@@ -148,11 +150,12 @@
           StorageLive(_17);
           StorageLive(_18);
 -         _18 = copy (*_15);
-+         _18 = copy (*_9);
++         _18 = copy _10;
           StorageLive(_19);
 -         _19 = copy (*_16);
-+         _19 = copy (*_12);
-          _17 = Eq(move _18, move _19);
+-         _17 = Eq(move _18, move _19);
++         _19 = copy _13;
++         _17 = Eq(copy _10, copy _13);
           switchInt(move _17) -> [0: bb6, otherwise: bb5];
       }
   
@@ -163,8 +166,10 @@
           StorageDead(_17);
           StorageDead(_16);
           StorageDead(_15);
-          StorageDead(_13);
-          StorageDead(_10);
+-         StorageDead(_13);
+-         StorageDead(_10);
++         nop;
++         nop;
           StorageDead(_8);
           StorageDead(_7);
 -         StorageLive(_29);
@@ -213,8 +218,9 @@
           StorageLive(_33);
           StorageLive(_34);
 -         StorageLive(_35);
+-         StorageLive(_36);
 +         nop;
-          StorageLive(_36);
++         nop;
           StorageLive(_37);
           _37 = &(*_1);
           _36 = core::str::<impl str>::as_ptr(move _37) -> [return: bb8, unwind continue];
@@ -224,8 +230,9 @@
           StorageDead(_37);
           _35 = &_36;
 -         StorageLive(_38);
+-         StorageLive(_39);
 +         nop;
-          StorageLive(_39);
++         nop;
           StorageLive(_40);
           _40 = &(*_29);
           _39 = core::slice::<impl [u8]>::as_ptr(move _40) -> [return: bb9, unwind continue];
@@ -249,11 +256,12 @@
           StorageLive(_43);
           StorageLive(_44);
 -         _44 = copy (*_41);
-+         _44 = copy (*_35);
++         _44 = copy _36;
           StorageLive(_45);
 -         _45 = copy (*_42);
-+         _45 = copy (*_38);
-          _43 = Eq(move _44, move _45);
+-         _43 = Eq(move _44, move _45);
++         _45 = copy _39;
++         _43 = Eq(copy _36, copy _39);
           switchInt(move _43) -> [0: bb11, otherwise: bb10];
       }
   
@@ -264,8 +272,10 @@
           StorageDead(_43);
           StorageDead(_42);
           StorageDead(_41);
-          StorageDead(_39);
-          StorageDead(_36);
+-         StorageDead(_39);
+-         StorageDead(_36);
++         nop;
++         nop;
           StorageDead(_34);
           StorageDead(_33);
           _0 = const ();
