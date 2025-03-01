@@ -7,7 +7,7 @@ use rustc_ast::token::CommentKind;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast::{
     self as ast, FloatTy, InlineAsmOptions, InlineAsmTemplatePiece, IntTy, Label, LitIntType,
-    LitKind, TraitObjectSyntax, UintTy, UnsafeBinderCastKind,
+    LitKind, Sign, TraitObjectSyntax, UintTy, UnsafeBinderCastKind,
 };
 pub use rustc_ast::{
     AttrId, AttrStyle, BinOp, BinOpKind, BindingMode, BorrowKind, BoundConstness, BoundPolarity,
@@ -1656,9 +1656,6 @@ pub struct PatExpr<'hir> {
 pub enum PatExprKind<'hir> {
     Lit {
         lit: &'hir Lit,
-        // FIXME: move this into `Lit` and handle negated literal expressions
-        // once instead of matching on unop neg expressions everywhere.
-        negated: bool,
     },
     ConstBlock(ConstBlock),
     /// A path pattern for a unit struct/variant or a (maybe-associated) constant.
@@ -2145,6 +2142,13 @@ impl Expr<'_> {
             | ExprKind::Let(..)
             | ExprKind::Unary(..) => ExprPrecedence::Prefix,
 
+            // `-1.foo()` is `-(1.foo())`, so negative literals must be treated as `(-1).foo()`
+            ExprKind::Lit(lit) => if lit.node.is_negative() {
+                ExprPrecedence::Prefix
+            } else {
+                ExprPrecedence::Unambiguous
+            },
+
             // Never need parens
             ExprKind::Array(_)
             | ExprKind::Block(..)
@@ -2155,7 +2159,6 @@ impl Expr<'_> {
             | ExprKind::If(..)
             | ExprKind::Index(..)
             | ExprKind::InlineAsm(..)
-            | ExprKind::Lit(_)
             | ExprKind::Loop(..)
             | ExprKind::Match(..)
             | ExprKind::MethodCall(..)
@@ -2248,7 +2251,10 @@ impl Expr<'_> {
         matches!(
             self.kind,
             ExprKind::Lit(Lit {
-                node: LitKind::Int(_, LitIntType::Unsuffixed | LitIntType::Unsigned(UintTy::Usize)),
+                node: LitKind::Int(
+                    _,
+                    LitIntType::Unsuffixed(Sign::None) | LitIntType::Unsigned(UintTy::Usize)
+                ),
                 ..
             })
         )

@@ -4,7 +4,7 @@ use rustc_abi::ExternAbi;
 use rustc_ast::expand::autodiff_attrs::{
     AutoDiffAttrs, DiffActivity, DiffMode, valid_input_activity, valid_ret_activity,
 };
-use rustc_ast::{MetaItem, MetaItemInner, attr};
+use rustc_ast::{MetaItem, MetaItemInner, Sign, attr};
 use rustc_attr_parsing::ReprAttr::ReprAlign;
 use rustc_attr_parsing::{AttributeKind, InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_data_structures::fx::FxHashMap;
@@ -750,8 +750,10 @@ fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &hir::Attribute) -> Option<u16> {
         tcx.dcx().emit_err(errors::InvalidLinkOrdinalNargs { span: attr.span() });
         return None;
     };
-    if let Some(MetaItemLit { kind: LitKind::Int(ordinal, LitIntType::Unsuffixed), .. }) =
-        sole_meta_list.lit()
+    if let Some(MetaItemLit {
+        kind: LitKind::Int(ordinal, LitIntType::Unsuffixed(Sign::None)),
+        ..
+    }) = sole_meta_list.lit()
     {
         // According to the table at
         // https://docs.microsoft.com/en-us/windows/win32/debug/pe-format#import-header, the

@@ -501,12 +501,8 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 self.print_closure_expr(&**closure_expr, depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl);
             }
-            Literal { lit, neg } => {
-                print_indented!(
-                    self,
-                    format!("Literal( lit: {:?}, neg: {:?})\n", lit, neg),
-                    depth_lvl
-                );
+            Literal { lit } => {
+                print_indented!(self, format!("Literal( lit: {lit:?} )\n"), depth_lvl);
             }
             NonHirLiteral { lit, user_ty } => {
                 print_indented!(self, "NonHirLiteral {", depth_lvl);

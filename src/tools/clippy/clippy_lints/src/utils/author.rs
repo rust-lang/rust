@@ -294,9 +294,11 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
             LitKind::Byte(b) => kind!("Byte({b})"),
             LitKind::Int(i, suffix) => {
                 let int_ty = match suffix {
-                    LitIntType::Signed(int_ty) => format!("LitIntType::Signed(IntTy::{int_ty:?})"),
+                    LitIntType::Signed(int_ty, sign) => {
+                        format!("LitIntType::Signed(IntTy::{int_ty:?}, {sign:?})")
+                    },
                     LitIntType::Unsigned(uint_ty) => format!("LitIntType::Unsigned(UintTy::{uint_ty:?})"),
-                    LitIntType::Unsuffixed => String::from("LitIntType::Unsuffixed"),
+                    LitIntType::Unsuffixed(sign) => format!("LitIntType::Unsuffixed({sign:?})"),
                 };
                 kind!("Int({i}, {int_ty})");
             },
@@ -648,10 +650,9 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
             ($($t:tt)*) => (kind(format_args!($($t)*)));
         }
         match lit.value.kind {
-            PatExprKind::Lit { lit, negated } => {
+            PatExprKind::Lit { lit } => {
                 bind!(self, lit);
-                bind!(self, negated);
-                kind!("Lit{{ref {lit}, {negated} }}");
+                kind!("Lit{{ref {lit} }}");
                 self.lit(lit);
             },
             PatExprKind::ConstBlock(_) => kind!("ConstBlock(_)"),

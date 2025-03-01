@@ -133,12 +133,9 @@ fn differ_by_one(small_expr: &Expr<'_>, large_expr: &Expr<'_>) -> bool {
         && let ExprKind::Lit(large) = large_expr.kind
         && let LitKind::Int(s, _) = small.node
         && let LitKind::Int(l, _) = large.node
+        && small.node.is_negative() == large.node.is_negative()
     {
         Some(l.get()) == s.get().checked_add(1)
-    } else if let ExprKind::Unary(UnOp::Neg, small_inner_expr) = small_expr.kind
-        && let ExprKind::Unary(UnOp::Neg, large_inner_expr) = large_expr.kind
-    {
-        differ_by_one(large_inner_expr, small_inner_expr)
     } else {
         false
     }
@@ -179,18 +176,9 @@ fn build_suggestion(
         && matches!(
             lhs.kind,
             ExprKind::Lit(Spanned {
-                node: LitKind::Int(_, LitIntType::Unsuffixed),
+                node: LitKind::Int(_, LitIntType::Unsuffixed(_)),
                 ..
-            }) | ExprKind::Unary(
-                UnOp::Neg,
-                Expr {
-                    kind: ExprKind::Lit(Spanned {
-                        node: LitKind::Int(_, LitIntType::Unsuffixed),
-                        ..
-                    }),
-                    ..
-                }
-            )
+            })
         ) {
         format!("_{}", cx.typeck_results().expr_ty(rhs))
     } else {
