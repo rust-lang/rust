@@ -7,9 +7,8 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::sym;
 use tracing::debug;
 
-use crate::clean;
 use crate::clean::utils::inherits_doc_hidden;
-use crate::clean::{Item, ItemIdSet};
+use crate::clean::{self, Item, ItemIdSet, reexport_chain};
 use crate::core::DocContext;
 use crate::fold::{DocFolder, strip_item};
 use crate::passes::{ImplStripper, Pass};
@@ -25,6 +24,8 @@ pub(crate) fn strip_hidden(krate: clean::Crate, cx: &mut DocContext<'_>) -> clea
     let mut retained = ItemIdSet::default();
     let is_json_output = cx.is_json_output();
 
+    let all_items = collect_items(&krate);
+
     // strip all #[doc(hidden)] items
     let krate = {
         let mut stripper = Stripper {
@@ -33,6 +34,7 @@ pub(crate) fn strip_hidden(krate: clean::Crate, cx: &mut DocContext<'_>) -> clea
             tcx: cx.tcx,
             is_in_hidden_item: false,
             last_reexport: None,
+            all_items,
         };
         stripper.fold_crate(krate)
     };
@@ -49,12 +51,29 @@ pub(crate) fn strip_hidden(krate: clean::Crate, cx: &mut DocContext<'_>) -> clea
     stripper.fold_crate(krate)
 }
 
+fn collect_items(krate: &clean::Crate) -> Vec<Item> {
+    fn collect_items_module(module: &clean::Module) -> Vec<Item> {
+        let mut items = Vec::new();
+        for item in &module.items {
+            items.push(item.clone());
+        }
+        items
+    }
+
+    let mut items = Vec::new();
+    if let clean::ItemKind::ModuleItem(module) = &krate.module.kind {
+        items.extend(collect_items_module(module));
+    }
+    items
+}
+
 struct Stripper<'a, 'tcx> {
     retained: &'a mut ItemIdSet,
     update_retained: bool,
     tcx: TyCtxt<'tcx>,
     is_in_hidden_item: bool,
     last_reexport: Option<LocalDefId>,
+    all_items: Vec<Item>,
 }
 
 impl Stripper<'_, '_> {
@@ -89,6 +108,34 @@ impl Stripper<'_, '_> {
 impl DocFolder for Stripper<'_, '_> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         let has_doc_hidden = i.is_doc_hidden();
+
+        if let clean::ImportItem(clean::Import { source, .. }) = &i.kind {
+            if let Some(source_did) = source.did {
+                let import_def_id = i.def_id().unwrap().expect_local();
+                let reexports = reexport_chain(self.tcx, import_def_id, source_did);
+
+                // Check if any reexport in the chain has a hidden source
+                let has_hidden_source =
+                    reexports.iter().filter_map(|reexport| reexport.id()).any(|reexport_did| {
+                        self.all_items
+                            .iter()
+                            .find(|item| item.def_id() == Some(reexport_did))
+                            .and_then(|item| {
+                                if let clean::ItemKind::ImportItem(import) = &item.kind {
+                                    import.source.did.map(|did| self.tcx.is_doc_hidden(did))
+                                } else {
+                                    None
+                                }
+                            })
+                            .unwrap_or(false)
+                    });
+
+                if has_hidden_source {
+                    return None;
+                }
+            }
+        }
+
         let is_impl_or_exported_macro = match i.kind {
             clean::ImplItem(..) => true,
             // If the macro has the `#[macro_export]` attribute, it means it's accessible at the

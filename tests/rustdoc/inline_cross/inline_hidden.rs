@@ -6,7 +6,7 @@ extern crate rustdoc_hidden;
 
 //@ has inline_hidden/index.html
 // Ensures this item is not inlined.
-//@ has - '//*[@id="reexport.Foo"]/code' 'pub use rustdoc_hidden::Foo;'
+//@ !has - '//*[@id="reexport.Foo"]/code' 'pub use rustdoc_hidden::Foo;'
 #[doc(no_inline)]
 pub use rustdoc_hidden::Foo;
 
@@ -16,7 +16,7 @@ pub use rustdoc_hidden::Foo;
 pub use rustdoc_hidden::Foo as Inlined;
 
 // Even with this import, we should not see `Foo`.
-//@ count - '//dt' 4
+//@ count - '//dt' 3
 //@ has - '//dt/a[@class="struct"]' 'Bar'
 //@ has - '//dt/a[@class="fn"]' 'foo'
 pub use rustdoc_hidden::*;

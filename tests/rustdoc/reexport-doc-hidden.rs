@@ -8,7 +8,7 @@
 pub type Type = u32;
 
 //@ has 'foo/index.html'
-//@ has - '//*[@id="reexport.Type2"]/code' 'pub use crate::Type as Type2;'
+//@ !has - '//*[@id="reexport.Type2"]/code' 'pub use crate::Type as Type2;'
 pub use crate::Type as Type2;
 
 //@ count - '//*[@id="reexport.Type3"]' 0
@@ -21,5 +21,5 @@ macro_rules! foo {
     () => {};
 }
 
-//@ has - '//*[@id="reexport.Macro"]/code' 'pub use crate::foo as Macro;'
+//@ !has - '//*[@id="reexport.Macro"]/code' 'pub use crate::foo as Macro;'
 pub use crate::foo as Macro;
