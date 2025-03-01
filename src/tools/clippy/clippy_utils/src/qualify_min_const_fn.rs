@@ -125,6 +125,7 @@ fn check_rvalue<'tcx>(
             | CastKind::FloatToFloat
             | CastKind::FnPtrToPtr
             | CastKind::PtrToPtr
+            | CastKind::StripPat
             | CastKind::PointerCoercion(PointerCoercion::MutToConstPointer | PointerCoercion::ArrayToPointer, _),
             operand,
             _,

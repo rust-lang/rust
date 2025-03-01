@@ -1302,6 +1302,16 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             );
                         }
                     }
+                    CastKind::StripPat => {
+                        if !matches!(op_ty.kind(), ty::Pat(base, _) if base == target_type) {
+                            self.fail(
+                                location,
+                                format!(
+                                    "Trying to strip pattern off `{op_ty:?}` into {target_type:?}"
+                                ),
+                            );
+                        }
+                    }
                     CastKind::Transmute => {
                         if let MirPhase::Runtime(..) = self.body.phase {
                             // Unlike `mem::transmute`, a MIR `Transmute` is well-formed

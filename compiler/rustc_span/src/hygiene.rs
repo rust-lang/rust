@@ -1173,6 +1173,8 @@ pub enum DesugaringKind {
     BoundModifier,
     /// Calls to contract checks (`#[requires]` to precond, `#[ensures]` to postcond)
     Contract,
+    /// A pattern type range start/end
+    PatTyRange,
 }
 
 impl DesugaringKind {
@@ -1190,6 +1192,7 @@ impl DesugaringKind {
             DesugaringKind::WhileLoop => "`while` loop",
             DesugaringKind::BoundModifier => "trait bound modifier",
             DesugaringKind::Contract => "contract check",
+            DesugaringKind::PatTyRange => "pattern type",
         }
     }
 }

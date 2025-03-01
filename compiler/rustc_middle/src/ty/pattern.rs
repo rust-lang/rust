@@ -26,19 +26,32 @@ impl<'tcx> fmt::Debug for Pattern<'tcx> {
 impl<'tcx> fmt::Debug for PatternKind<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            PatternKind::Range { start, end, include_end } => {
-                if let Some(start) = start {
-                    write!(f, "{start}")?;
+            PatternKind::Range { start, end } => {
+                write!(f, "{start}")?;
+
+                if let Some(c) = end.try_to_value() {
+                    let end = c.valtree.unwrap_leaf();
+                    let size = end.size();
+                    let max = match c.ty.kind() {
+                        ty::Int(_) => {
+                            Some(ty::ScalarInt::truncate_from_int(size.signed_int_max(), size))
+                        }
+                        ty::Uint(_) => {
+                            Some(ty::ScalarInt::truncate_from_uint(size.unsigned_int_max(), size))
+                        }
+                        ty::Char => Some(ty::ScalarInt::truncate_from_uint(char::MAX, size)),
+                        _ => None,
+                    };
+                    if let Some((max, _)) = max
+                        && end == max
+                    {
+                        return write!(f, "..");
+                    }
                 }
-                write!(f, "..")?;
-                if include_end {
-                    write!(f, "=")?;
-                }
-                if let Some(end) = end {
-                    write!(f, "{end}")?;
-                }
-                Ok(())
+
+                write!(f, "..={end}")
             }
+            PatternKind::NotNull => write!(f, "!null"),
         }
     }
 }
@@ -46,5 +59,6 @@ impl<'tcx> fmt::Debug for PatternKind<'tcx> {
 #[derive(Clone, PartialEq, Eq, Hash)]
 #[derive(HashStable, TyEncodable, TyDecodable, TypeVisitable, TypeFoldable)]
 pub enum PatternKind<'tcx> {
-    Range { start: Option<ty::Const<'tcx>>, end: Option<ty::Const<'tcx>>, include_end: bool },
+    Range { start: ty::Const<'tcx>, end: ty::Const<'tcx> },
+    NotNull,
 }

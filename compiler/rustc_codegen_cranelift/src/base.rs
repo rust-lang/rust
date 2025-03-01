@@ -793,7 +793,7 @@ fn codegen_stmt<'tcx>(
                     let operand = codegen_operand(fx, operand);
                     crate::unsize::coerce_dyn_star(fx, operand, lval);
                 }
-                Rvalue::Cast(CastKind::Transmute, ref operand, _to_ty) => {
+                Rvalue::Cast(CastKind::Transmute | CastKind::StripPat, ref operand, _to_ty) => {
                     let operand = codegen_operand(fx, operand);
                     lval.write_cvalue_transmute(fx, operand);
                 }

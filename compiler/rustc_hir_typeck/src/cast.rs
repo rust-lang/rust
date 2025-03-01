@@ -840,6 +840,8 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             (Int(Char) | Int(Bool), Int(_)) => Ok(CastKind::PrimIntCast),
 
             (Int(_) | Float, Int(_) | Float) => Ok(CastKind::NumericCast),
+            (Pat, _) => Err(CastError::IllegalCast),
+            (_, Pat) => Err(CastError::IllegalCast),
         }
     }
 

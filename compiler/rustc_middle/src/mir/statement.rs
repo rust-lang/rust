@@ -662,6 +662,7 @@ impl<'tcx> Rvalue<'tcx> {
                 | CastKind::PtrToPtr
                 | CastKind::PointerCoercion(_, _)
                 | CastKind::PointerWithExposedProvenance
+                | CastKind::StripPat
                 | CastKind::Transmute,
                 _,
                 _,
