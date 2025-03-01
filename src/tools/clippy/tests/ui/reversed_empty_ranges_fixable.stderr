@@ -13,7 +13,7 @@ LL +     (21..=42).rev().for_each(|x| println!("{}", x));
    |
 
 error: this range is empty so it will yield no values
-  --> tests/ui/reversed_empty_ranges_fixable.rs:10:13
+  --> tests/ui/reversed_empty_ranges_fixable.rs:11:13
    |
 LL |     let _ = (ANSWER..21).filter(|x| x % 2 == 0).take(10).collect::<Vec<_>>();
    |             ^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL +     let _ = (21..ANSWER).rev().filter(|x| x % 2 == 0).take(10).collect::<Ve
    |
 
 error: this range is empty so it will yield no values
-  --> tests/ui/reversed_empty_ranges_fixable.rs:12:14
+  --> tests/ui/reversed_empty_ranges_fixable.rs:14:14
    |
 LL |     for _ in -21..=-42 {}
    |              ^^^^^^^^^
@@ -37,7 +37,7 @@ LL +     for _ in (-42..=-21).rev() {}
    |
 
 error: this range is empty so it will yield no values
-  --> tests/ui/reversed_empty_ranges_fixable.rs:13:14
+  --> tests/ui/reversed_empty_ranges_fixable.rs:16:14
    |
 LL |     for _ in 42u32..21u32 {}
    |              ^^^^^^^^^^^^

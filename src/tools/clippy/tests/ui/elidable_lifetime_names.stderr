@@ -1,0 +1,162 @@
+error: the following explicit lifetimes could be elided: 'a, 'b
+  --> tests/ui/elidable_lifetime_names.rs:9:21
+   |
+LL | fn lifetime_param_2<'a, 'b>(_x: Ref<'a>, _y: &'b u8) {}
+   |                     ^^  ^^          ^^        ^^
+   |
+   = note: `-D clippy::elidable-lifetime-names` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::elidable_lifetime_names)]`
+help: elide the lifetimes
+   |
+LL - fn lifetime_param_2<'a, 'b>(_x: Ref<'a>, _y: &'b u8) {}
+LL + fn lifetime_param_2(_x: Ref<'_>, _y: &u8) {}
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/elidable_lifetime_names.rs:34:15
+   |
+LL | fn fn_bound_2<'a, F, I>(_m: Lt<'a, I>, _f: F) -> Lt<'a, I>
+   |               ^^               ^^                   ^^
+   |
+help: elide the lifetimes
+   |
+LL - fn fn_bound_2<'a, F, I>(_m: Lt<'a, I>, _f: F) -> Lt<'a, I>
+LL + fn fn_bound_2<F, I>(_m: Lt<'_, I>, _f: F) -> Lt<'_, I>
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/elidable_lifetime_names.rs:44:19
+   |
+LL | fn struct_with_lt<'a>(_foo: Foo<'a>) -> &'a str {
+   |                   ^^            ^^       ^^
+   |
+help: elide the lifetimes
+   |
+LL - fn struct_with_lt<'a>(_foo: Foo<'a>) -> &'a str {
+LL + fn struct_with_lt(_foo: Foo<'_>) -> &str {
+   |
+
+error: the following explicit lifetimes could be elided: 'b
+  --> tests/ui/elidable_lifetime_names.rs:59:25
+   |
+LL | fn struct_with_lt4a<'a, 'b>(_foo: &'a Foo<'b>) -> &'a str {
+   |                         ^^                ^^
+   |
+help: elide the lifetimes
+   |
+LL - fn struct_with_lt4a<'a, 'b>(_foo: &'a Foo<'b>) -> &'a str {
+LL + fn struct_with_lt4a<'a>(_foo: &'a Foo<'_>) -> &'a str {
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/elidable_lifetime_names.rs:66:18
+   |
+LL | fn alias_with_lt<'a>(_foo: FooAlias<'a>) -> &'a str {
+   |                  ^^                 ^^       ^^
+   |
+help: elide the lifetimes
+   |
+LL - fn alias_with_lt<'a>(_foo: FooAlias<'a>) -> &'a str {
+LL + fn alias_with_lt(_foo: FooAlias<'_>) -> &str {
+   |
+
+error: the following explicit lifetimes could be elided: 'b
+  --> tests/ui/elidable_lifetime_names.rs:81:24
+   |
+LL | fn alias_with_lt4a<'a, 'b>(_foo: &'a FooAlias<'b>) -> &'a str {
+   |                        ^^                     ^^
+   |
+help: elide the lifetimes
+   |
+LL - fn alias_with_lt4a<'a, 'b>(_foo: &'a FooAlias<'b>) -> &'a str {
+LL + fn alias_with_lt4a<'a>(_foo: &'a FooAlias<'_>) -> &'a str {
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/elidable_lifetime_names.rs:91:24
+   |
+LL | fn out_return_type_lts<'a>(e: &'a str) -> Cow<'a> {
+   |                        ^^      ^^             ^^
+   |
+help: elide the lifetimes
+   |
+LL - fn out_return_type_lts<'a>(e: &'a str) -> Cow<'a> {
+LL + fn out_return_type_lts(e: &str) -> Cow<'_> {
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/elidable_lifetime_names.rs:103:10
+   |
+LL |     impl<'a> Foo for Baz<'a> {}
+   |          ^^              ^^
+   |
+help: elide the lifetimes
+   |
+LL -     impl<'a> Foo for Baz<'a> {}
+LL +     impl Foo for Baz<'_> {}
+   |
+
+error: the following explicit lifetimes could be elided: 'a
+  --> tests/ui/elidable_lifetime_names.rs:106:16
+   |
+LL |         fn baz<'a>(&'a self) -> impl Foo + 'a {
+   |                ^^   ^^                     ^^
+   |
+help: elide the lifetimes
+   |
+LL -         fn baz<'a>(&'a self) -> impl Foo + 'a {
+LL +         fn baz(&self) -> impl Foo + '_ {
+   |
+
+error: the following explicit lifetimes could be elided: 'py
+  --> tests/ui/elidable_lifetime_names.rs:139:14
+   |
+LL |     impl<'t, 'py> ContentString<'t> {
+   |              ^^^
+LL |         // `'py` can be elided because of `&self`
+LL |         fn map_content2(&self, f: impl FnOnce(&'t str) -> &'t str) -> Content<'t, 'py> {
+   |                                                                                   ^^^
+   |
+help: elide the lifetimes
+   |
+LL ~     impl<'t> ContentString<'t> {
+LL |         // `'py` can be elided because of `&self`
+LL ~         fn map_content2(&self, f: impl FnOnce(&'t str) -> &'t str) -> Content<'t, '_> {
+   |
+
+error: the following explicit lifetimes could be elided: 'py
+  --> tests/ui/elidable_lifetime_names.rs:150:14
+   |
+LL |     impl<'t, 'py> ContentString<'t> {
+   |              ^^^
+LL |         // `'py` can be elided because of `&'_ self`
+LL |         fn map_content3(&'_ self, f: impl FnOnce(&'t str) -> &'t str) -> Content<'t, 'py> {
+   |                                                                                      ^^^
+   |
+help: elide the lifetimes
+   |
+LL ~     impl<'t> ContentString<'t> {
+LL |         // `'py` can be elided because of `&'_ self`
+LL ~         fn map_content3(&'_ self, f: impl FnOnce(&'t str) -> &'t str) -> Content<'t, '_> {
+   |
+
+error: the following explicit lifetimes could be elided: 'py
+  --> tests/ui/elidable_lifetime_names.rs:171:14
+   |
+LL |     impl<'t, 'py> ContentString<'t> {
+   |              ^^^
+...
+LL |         ) -> Content<'t, 'py> {
+   |                          ^^^
+   |
+help: elide the lifetimes
+   |
+LL ~     impl<'t> ContentString<'t> {
+LL |         // `'py` can be elided because of `&Self`
+...
+LL |             o: &'t str,
+LL ~         ) -> Content<'t, '_> {
+   |
+
+error: aborting due to 12 previous errors
+

@@ -24,7 +24,7 @@ LL |     ArrayStruct { array: [0] }.array[0] = 1;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: assignment to temporary
-  --> tests/ui/temporary_assignment.rs:59:5
+  --> tests/ui/temporary_assignment.rs:60:5
    |
 LL |     (0, 0).0 = 1;
    |     ^^^^^^^^^^^^

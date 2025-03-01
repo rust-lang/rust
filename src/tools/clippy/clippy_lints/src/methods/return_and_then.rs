@@ -60,7 +60,7 @@ pub(super) fn check<'tcx>(
         "let {} = {}?;\n{}",
         arg_snip,
         recv_snip,
-        reindent_multiline(inner.into(), false, indent_of(cx, expr.span))
+        reindent_multiline(inner, false, indent_of(cx, expr.span))
     );
 
     span_lint_and_sugg(cx, RETURN_AND_THEN, expr.span, msg, "try", sugg, applicability);

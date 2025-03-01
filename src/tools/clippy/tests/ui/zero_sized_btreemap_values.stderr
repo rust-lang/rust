@@ -65,7 +65,7 @@ LL |     fn not_ok(&self) -> BTreeMap<String, ()> {
    = help: consider using a set instead
 
 error: map with zero-sized value type
-  --> tests/ui/zero_sized_btreemap_values.rs:62:14
+  --> tests/ui/zero_sized_btreemap_values.rs:63:14
    |
 LL | fn test(map: BTreeMap<String, ()>, key: &str) -> BTreeMap<String, ()> {
    |              ^^^^^^^^^^^^^^^^^^^^
@@ -73,7 +73,7 @@ LL | fn test(map: BTreeMap<String, ()>, key: &str) -> BTreeMap<String, ()> {
    = help: consider using a set instead
 
 error: map with zero-sized value type
-  --> tests/ui/zero_sized_btreemap_values.rs:62:50
+  --> tests/ui/zero_sized_btreemap_values.rs:63:50
    |
 LL | fn test(map: BTreeMap<String, ()>, key: &str) -> BTreeMap<String, ()> {
    |                                                  ^^^^^^^^^^^^^^^^^^^^
@@ -81,7 +81,7 @@ LL | fn test(map: BTreeMap<String, ()>, key: &str) -> BTreeMap<String, ()> {
    = help: consider using a set instead
 
 error: map with zero-sized value type
-  --> tests/ui/zero_sized_btreemap_values.rs:73:35
+  --> tests/ui/zero_sized_btreemap_values.rs:75:35
    |
 LL |     let _: BTreeMap<String, ()> = BTreeMap::new();
    |                                   ^^^^^^^^
@@ -89,7 +89,7 @@ LL |     let _: BTreeMap<String, ()> = BTreeMap::new();
    = help: consider using a set instead
 
 error: map with zero-sized value type
-  --> tests/ui/zero_sized_btreemap_values.rs:73:12
+  --> tests/ui/zero_sized_btreemap_values.rs:75:12
    |
 LL |     let _: BTreeMap<String, ()> = BTreeMap::new();
    |            ^^^^^^^^^^^^^^^^^^^^
@@ -97,7 +97,7 @@ LL |     let _: BTreeMap<String, ()> = BTreeMap::new();
    = help: consider using a set instead
 
 error: map with zero-sized value type
-  --> tests/ui/zero_sized_btreemap_values.rs:78:12
+  --> tests/ui/zero_sized_btreemap_values.rs:81:12
    |
 LL |     let _: BTreeMap<_, _> = std::iter::empty::<(String, ())>().collect();
    |            ^^^^^^^^^^^^^^

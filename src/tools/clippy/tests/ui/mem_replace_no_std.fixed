@@ -21,16 +21,20 @@ fn panic(info: &PanicInfo) -> ! {
 fn replace_option_with_none() {
     let mut an_option = Some(1);
     let _ = an_option.take();
+    //~^ mem_replace_option_with_none
     let an_option = &mut Some(1);
     let _ = an_option.take();
+    //~^ mem_replace_option_with_none
 }
 
 fn replace_with_default() {
     let mut refstr = "hello";
     let _ = core::mem::take(&mut refstr);
+    //~^ mem_replace_with_default
 
     let mut slice: &[i32] = &[1, 2, 3];
     let _ = core::mem::take(&mut slice);
+    //~^ mem_replace_with_default
 }
 
 // lint is disabled for primitives because in this case `take`
@@ -74,8 +78,11 @@ fn issue9824() {
 
     // replace option with none
     let _ = f.0.take();
+    //~^ mem_replace_option_with_none
     let _ = (*f).take();
+    //~^ mem_replace_option_with_none
     let _ = b.opt.take();
+    //~^ mem_replace_option_with_none
     // replace with default
     let _ = mem::replace(&mut b.val, u8::default());
 }

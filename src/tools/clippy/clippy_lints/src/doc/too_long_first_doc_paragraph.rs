@@ -1,6 +1,6 @@
+use rustc_attr_parsing::AttributeKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Attribute, Item, ItemKind};
-use rustc_attr_parsing::AttributeKind;
 use rustc_lint::LateContext;
 
 use clippy_utils::diagnostics::span_lint_and_then;
@@ -44,7 +44,7 @@ pub(super) fn check(
     let mut should_suggest_empty_doc = false;
 
     for attr in attrs {
-        if let Attribute::Parsed(AttributeKind::DocComment {span, comment, ..}) = attr {
+        if let Attribute::Parsed(AttributeKind::DocComment { span, comment, .. }) = attr {
             spans.push(span);
             let doc = comment.as_str();
             let doc = doc.trim();
@@ -52,7 +52,11 @@ pub(super) fn check(
                 // We make this suggestion only if the first doc line ends with a punctuation
                 // because it might just need to add an empty line with `///`.
                 should_suggest_empty_doc = doc.ends_with('.') || doc.ends_with('!') || doc.ends_with('?');
+            } else if spans.len() == 2 {
+                // We make this suggestion only if the second doc line is not empty.
+                should_suggest_empty_doc &= !doc.is_empty();
             }
+
             let len = doc.chars().count();
             if len >= first_paragraph_len {
                 break;

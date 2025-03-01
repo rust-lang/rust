@@ -23,9 +23,9 @@ fn main() {
     // could)
     let b: Box<dyn AnySubSubTrait> = Box::new(1);
     let _ = b.type_id();
-    //~^ ERROR: calling `.type_id()` on
+    //~^ type_id_on_box
 
     let b: Box<dyn NormalTrait> = Box::new(1);
     let _ = b.type_id();
-    //~^ ERROR: calling `.type_id()` on
+    //~^ type_id_on_box
 }

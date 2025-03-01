@@ -69,13 +69,11 @@ pub struct ApproxConstant {
 
 impl ApproxConstant {
     pub fn new(conf: &'static Conf) -> Self {
-        Self {
-            msrv: conf.msrv.clone(),
-        }
+        Self { msrv: conf.msrv }
     }
 }
 
-impl<'tcx> LateLintPass<'tcx> for ApproxConstant {
+impl LateLintPass<'_> for ApproxConstant {
     fn check_lit(&mut self, cx: &LateContext<'_>, _hir_id: HirId, lit: &Lit, _negated: bool) {
         match lit.node {
             LitKind::Float(s, LitFloatType::Suffixed(fty)) => match fty {
@@ -89,8 +87,6 @@ impl<'tcx> LateLintPass<'tcx> for ApproxConstant {
             _ => (),
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
 impl ApproxConstant {
@@ -98,7 +94,7 @@ impl ApproxConstant {
         let s = s.as_str();
         if s.parse::<f64>().is_ok() {
             for &(constant, name, min_digits, msrv) in &KNOWN_CONSTS {
-                if is_approx_const(constant, s, min_digits) && msrv.is_none_or(|msrv| self.msrv.meets(msrv)) {
+                if is_approx_const(constant, s, min_digits) && msrv.is_none_or(|msrv| self.msrv.meets(cx, msrv)) {
                     span_lint_and_help(
                         cx,
                         APPROX_CONSTANT,

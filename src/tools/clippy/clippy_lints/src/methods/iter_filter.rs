@@ -12,7 +12,6 @@ use rustc_hir as hir;
 use rustc_hir::QPath;
 use rustc_span::Span;
 use rustc_span::symbol::{Ident, Symbol, sym};
-use std::borrow::Cow;
 
 ///
 /// Returns true if the expression is a method call to `method_name`
@@ -181,7 +180,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, filter_arg: &hir
             filter_span.with_hi(expr.span.hi()),
             "`filter` for `is_ok` on iterator over `Result`s",
             "consider using `flatten` instead",
-            reindent_multiline(Cow::Borrowed("flatten()"), true, indent_of(cx, filter_span)).into_owned(),
+            reindent_multiline("flatten()", true, indent_of(cx, filter_span)),
             Applicability::HasPlaceholders,
         ),
         Some(FilterType::IsSome) => span_lint_and_sugg(
@@ -190,7 +189,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, filter_arg: &hir
             filter_span.with_hi(expr.span.hi()),
             "`filter` for `is_some` on iterator over `Option`",
             "consider using `flatten` instead",
-            reindent_multiline(Cow::Borrowed("flatten()"), true, indent_of(cx, filter_span)).into_owned(),
+            reindent_multiline("flatten()", true, indent_of(cx, filter_span)),
             Applicability::HasPlaceholders,
         ),
     }

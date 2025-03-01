@@ -9,7 +9,7 @@ LL |     memstuff::forget(six);
    = help: to override `-D warnings` add `#[allow(clippy::mem_forget)]`
 
 error: usage of `mem::forget` on `Drop` type
-  --> tests/ui/mem_forget.rs:19:5
+  --> tests/ui/mem_forget.rs:18:5
    |
 LL |     std::mem::forget(seven);
    |     ^^^^^^^^^^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL |     std::mem::forget(seven);
    = note: argument has type `std::rc::Rc<i32>`
 
 error: usage of `mem::forget` on `Drop` type
-  --> tests/ui/mem_forget.rs:24:5
+  --> tests/ui/mem_forget.rs:22:5
    |
 LL |     forgetSomething(eight);
    |     ^^^^^^^^^^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL |     forgetSomething(eight);
    = note: argument has type `std::vec::Vec<i32>`
 
 error: usage of `mem::forget` on type with `Drop` fields
-  --> tests/ui/mem_forget.rs:29:5
+  --> tests/ui/mem_forget.rs:26:5
    |
 LL |     std::mem::forget(string);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^

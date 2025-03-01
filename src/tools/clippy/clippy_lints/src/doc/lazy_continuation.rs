@@ -16,7 +16,6 @@ fn map_container_to_text(c: &super::Container) -> &'static str {
     }
 }
 
-// TODO: Adjust the parameters as necessary
 pub(super) fn check(
     cx: &LateContext<'_>,
     doc: &str,

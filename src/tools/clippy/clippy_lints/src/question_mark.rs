@@ -68,7 +68,7 @@ impl_lint_pass!(QuestionMark => [QUESTION_MARK, MANUAL_LET_ELSE]);
 impl QuestionMark {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
-            msrv: conf.msrv.clone(),
+            msrv: conf.msrv,
             matches_behaviour: conf.matches_for_let_else,
             try_block_depth_stack: Vec::new(),
             inferred_ret_closure_stack: 0,
@@ -543,5 +543,4 @@ impl<'tcx> LateLintPass<'tcx> for QuestionMark {
                 .expect("blocks are always part of bodies and must have a depth") -= 1;
         }
     }
-    extract_msrv_attr!(LateContext);
 }

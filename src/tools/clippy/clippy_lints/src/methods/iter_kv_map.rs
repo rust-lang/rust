@@ -20,9 +20,9 @@ pub(super) fn check<'tcx>(
     expr: &'tcx Expr<'tcx>,  // .iter().map(|(_, v_| v))
     recv: &'tcx Expr<'tcx>,  // hashmap
     m_arg: &'tcx Expr<'tcx>, // |(_, v)| v
-    msrv: &Msrv,
+    msrv: Msrv,
 ) {
-    if map_type == "into_iter" && !msrv.meets(msrvs::INTO_KEYS) {
+    if map_type == "into_iter" && !msrv.meets(cx, msrvs::INTO_KEYS) {
         return;
     }
     if !expr.span.from_expansion()

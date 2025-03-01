@@ -41,10 +41,13 @@ trait TraitUnordered {
 impl BasicTrait for StructUnordered {
     fn b() {}
     fn a() {}
+    //~^ arbitrary_source_item_ordering
 
     type SomeType = i8;
+    //~^ arbitrary_source_item_ordering
 
     const A: bool = true;
+    //~^ arbitrary_source_item_ordering
 }
 
 trait TraitUnorderedItemKinds {

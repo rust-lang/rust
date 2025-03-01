@@ -1,8 +1,8 @@
 use crate::ClippyConfiguration;
 use crate::types::{
-    DisallowedPath, MacroMatcher, MatchLintBehaviour, PubUnderscoreFieldsBehaviour, Rename, SourceItemOrdering,
-    SourceItemOrderingCategory, SourceItemOrderingModuleItemGroupings, SourceItemOrderingModuleItemKind,
-    SourceItemOrderingTraitAssocItemKind, SourceItemOrderingTraitAssocItemKinds,
+    DisallowedPath, DisallowedPathWithoutReplacement, MacroMatcher, MatchLintBehaviour, PubUnderscoreFieldsBehaviour,
+    Rename, SourceItemOrdering, SourceItemOrderingCategory, SourceItemOrderingModuleItemGroupings,
+    SourceItemOrderingModuleItemKind, SourceItemOrderingTraitAssocItemKind, SourceItemOrderingTraitAssocItemKinds,
 };
 use clippy_utils::msrvs::Msrv;
 use rustc_errors::Applicability;
@@ -288,6 +288,9 @@ define_Conf! {
     /// Whether `dbg!` should be allowed in test functions or `#[cfg(test)]`
     #[lints(dbg_macro)]
     allow_dbg_in_tests: bool = false,
+    /// Whether `expect` should be allowed in code always evaluated at compile time
+    #[lints(expect_used)]
+    allow_expect_in_consts: bool = true,
     /// Whether `expect` should be allowed in test functions or `#[cfg(test)]`
     #[lints(expect_used)]
     allow_expect_in_tests: bool = false,
@@ -298,7 +301,7 @@ define_Conf! {
     #[lints(uninlined_format_args)]
     allow_mixed_uninlined_format_args: bool = true,
     /// Whether to allow `r#""#` when `r""` can be used
-    #[lints(unnecessary_raw_string_hashes)]
+    #[lints(needless_raw_string_hashes)]
     allow_one_hash_in_raw_strings: bool = false,
     /// Whether `panic` should be allowed in test functions or `#[cfg(test)]`
     #[lints(panic)]
@@ -325,6 +328,9 @@ define_Conf! {
     #[lints(renamed_function_params)]
     allow_renamed_params_for: Vec<String> =
         DEFAULT_ALLOWED_TRAITS_WITH_RENAMED_PARAMS.iter().map(ToString::to_string).collect(),
+    /// Whether `unwrap` should be allowed in code always evaluated at compile time
+    #[lints(unwrap_used)]
+    allow_unwrap_in_consts: bool = true,
     /// Whether `unwrap` should be allowed in test functions or `#[cfg(test)]`
     #[lints(unwrap_used)]
     allow_unwrap_in_tests: bool = false,
@@ -432,6 +438,7 @@ define_Conf! {
         linkedlist,
         needless_pass_by_ref_mut,
         option_option,
+        owned_cow,
         rc_buffer,
         rc_mutex,
         redundant_allocation,
@@ -448,7 +455,7 @@ define_Conf! {
     avoid_breaking_exported_api: bool = true,
     /// The list of types which may not be held across an await point.
     #[lints(await_holding_invalid_type)]
-    await_holding_invalid_types: Vec<DisallowedPath> = Vec::new(),
+    await_holding_invalid_types: Vec<DisallowedPathWithoutReplacement> = Vec::new(),
     /// DEPRECATED LINT: BLACKLISTED_NAME.
     ///
     /// Use the Disallowed Names lint instead
@@ -457,6 +464,9 @@ define_Conf! {
     /// For internal testing only, ignores the current `publish` settings in the Cargo manifest.
     #[lints(cargo_common_metadata)]
     cargo_ignore_publish: bool = false,
+    /// Whether to check MSRV compatibility in `#[test]` and `#[cfg(test)]` code.
+    #[lints(incompatible_msrv)]
+    check_incompatible_msrv_in_tests: bool = false,
     /// Whether to also run the listed lints on private items.
     #[lints(missing_errors_doc, missing_panics_doc, missing_safety_doc, unnecessary_safety_doc)]
     check_private_items: bool = false,
@@ -607,15 +617,21 @@ define_Conf! {
         from_over_into,
         if_then_some_else_none,
         index_refutable_slice,
+        io_other_error,
         iter_kv_map,
         legacy_numeric_constants,
+        lines_filter_map_ok,
         manual_bits,
         manual_c_str_literals,
         manual_clamp,
+        manual_div_ceil,
+        manual_flatten,
         manual_hash_one,
         manual_is_ascii_check,
         manual_let_else,
+        manual_midpoint,
         manual_non_exhaustive,
+        manual_option_as_slice,
         manual_pattern_char_comparison,
         manual_range_contains,
         manual_rem_euclid,
@@ -630,6 +646,7 @@ define_Conf! {
         map_unwrap_or,
         map_with_unused_argument_over_ranges,
         match_like_matches_macro,
+        mem_replace_option_with_some,
         mem_replace_with_default,
         missing_const_for_fn,
         needless_borrow,
@@ -639,6 +656,7 @@ define_Conf! {
         ptr_as_ptr,
         redundant_field_names,
         redundant_static_lifetimes,
+        repeat_vec_with_capacity,
         same_item_push,
         seek_from_current,
         seek_rewind,
@@ -652,7 +670,7 @@ define_Conf! {
         unused_trait_names,
         use_self,
     )]
-    msrv: Msrv = Msrv::empty(),
+    msrv: Msrv = Msrv::default(),
     /// The minimum size (in bytes) to consider a type for passing by reference instead of by value.
     #[lints(large_types_passed_by_value)]
     pass_by_value_size_limit: u64 = 256,

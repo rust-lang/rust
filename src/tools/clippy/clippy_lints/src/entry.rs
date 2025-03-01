@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{reindent_multiline, snippet_indent, snippet_with_applicability, snippet_with_context};
+use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{
     SpanlessEq, can_move_expr_to_closure_no_visit, higher, is_expr_final_block_expr, is_expr_used_or_unified,
     peel_hir_expr_while,
@@ -7,11 +8,12 @@ use clippy_utils::{
 use core::fmt::{self, Write};
 use rustc_errors::Applicability;
 use rustc_hir::hir_id::HirIdSet;
-use rustc_hir::intravisit::{Visitor, walk_expr};
+use rustc_hir::intravisit::{Visitor, walk_body, walk_expr};
 use rustc_hir::{Block, Expr, ExprKind, HirId, Pat, Stmt, StmtKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::{DUMMY_SP, Span, SyntaxContext, sym};
+use std::ops::ControlFlow;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -135,8 +137,8 @@ impl<'tcx> LateLintPass<'tcx> for HashMapPass {
                 format!(
                     "match {map_str}.entry({key_str}) {{\n{indent_str}    {entry}::{then_entry} => {}\n\
                         {indent_str}    {entry}::{else_entry} => {}\n{indent_str}}}",
-                    reindent_multiline(then_str.into(), true, Some(4 + indent_str.len())),
-                    reindent_multiline(else_str.into(), true, Some(4 + indent_str.len())),
+                    reindent_multiline(&then_str, true, Some(4 + indent_str.len())),
+                    reindent_multiline(&else_str, true, Some(4 + indent_str.len())),
                     entry = map_ty.entry_path(),
                 )
             }
@@ -329,7 +331,7 @@ impl<'tcx> Edit<'tcx> {
         if let Self::Insertion(i) = self { Some(i) } else { None }
     }
 }
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 struct Insertion<'tcx> {
     call: &'tcx Expr<'tcx>,
     value: &'tcx Expr<'tcx>,
@@ -500,7 +502,7 @@ impl<'tcx> Visitor<'tcx> for InsertSearcher<'_, 'tcx> {
                 self.visit_non_tail_expr(insert_expr.value);
                 self.is_single_insert = is_single_insert;
             },
-            _ if SpanlessEq::new(self.cx).eq_expr(self.map, expr) => {
+            _ if is_any_expr_in_map_used(self.cx, self.map, expr) => {
                 self.is_map_used = true;
             },
             _ => match expr.kind {
@@ -542,6 +544,7 @@ impl<'tcx> Visitor<'tcx> for InsertSearcher<'_, 'tcx> {
                 ExprKind::InlineAsm(_) => {
                     self.can_use_entry = false;
                 },
+                ExprKind::Closure(closure) => walk_body(self, self.cx.tcx.hir_body(closure.body)),
                 _ => {
                     self.allow_insert_closure &= !self.in_tail_pos;
                     self.allow_insert_closure &=
@@ -560,6 +563,19 @@ impl<'tcx> Visitor<'tcx> for InsertSearcher<'_, 'tcx> {
             self.locals.insert(id);
         });
     }
+}
+
+/// Check if the given expression is used for each sub-expression in the given map.
+/// For example, in map `a.b.c.my_map`, The expression `a.b.c.my_map`, `a.b.c`, `a.b`, and `a` are
+/// all checked.
+fn is_any_expr_in_map_used<'tcx>(cx: &LateContext<'tcx>, map: &'tcx Expr<'tcx>, expr: &'tcx Expr<'tcx>) -> bool {
+    for_each_expr(cx, map, |e| {
+        if SpanlessEq::new(cx).eq_expr(e, expr) {
+            return ControlFlow::Break(());
+        }
+        ControlFlow::Continue(())
+    })
+    .is_some()
 }
 
 struct InsertSearchResults<'tcx> {

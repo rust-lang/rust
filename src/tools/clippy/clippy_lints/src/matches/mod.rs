@@ -1014,7 +1014,7 @@ pub struct Matches {
 impl Matches {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
-            msrv: conf.msrv.clone(),
+            msrv: conf.msrv,
             infallible_destructuring_match_linted: false,
         }
     }
@@ -1073,7 +1073,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                 significant_drop_in_scrutinee::check_match(cx, expr, ex, arms, source);
             }
 
-            collapsible_match::check_match(cx, arms, &self.msrv);
+            collapsible_match::check_match(cx, arms, self.msrv);
             if !from_expansion {
                 // These don't depend on a relationship between multiple arms
                 match_wild_err_arm::check(cx, ex, arms);
@@ -1086,7 +1086,9 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
 
             if !from_expansion && !contains_cfg_arm(cx, expr, ex, arms) {
                 if source == MatchSource::Normal {
-                    if !(self.msrv.meets(msrvs::MATCHES_MACRO) && match_like_matches::check_match(cx, expr, ex, arms)) {
+                    if !(self.msrv.meets(cx, msrvs::MATCHES_MACRO)
+                        && match_like_matches::check_match(cx, expr, ex, arms))
+                    {
                         match_same_arms::check(cx, arms);
                     }
 
@@ -1120,7 +1122,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                     needless_match::check_match(cx, ex, arms, expr);
                     match_on_vec_items::check(cx, ex);
                     match_str_case_mismatch::check(cx, ex, arms);
-                    redundant_guards::check(cx, arms, &self.msrv);
+                    redundant_guards::check(cx, arms, self.msrv);
 
                     if !is_in_const_context(cx) {
                         manual_unwrap_or::check_match(cx, expr, ex, arms);
@@ -1138,11 +1140,11 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                 match_ref_pats::check(cx, ex, arms.iter().map(|el| el.pat), expr);
             }
         } else if let Some(if_let) = higher::IfLet::hir(cx, expr) {
-            collapsible_match::check_if_let(cx, if_let.let_pat, if_let.if_then, if_let.if_else, &self.msrv);
+            collapsible_match::check_if_let(cx, if_let.let_pat, if_let.if_then, if_let.if_else, self.msrv);
             significant_drop_in_scrutinee::check_if_let(cx, expr, if_let.let_expr, if_let.if_then, if_let.if_else);
             if !from_expansion {
                 if let Some(else_expr) = if_let.if_else {
-                    if self.msrv.meets(msrvs::MATCHES_MACRO) {
+                    if self.msrv.meets(cx, msrvs::MATCHES_MACRO) {
                         match_like_matches::check_if_let(
                             cx,
                             expr,
@@ -1208,8 +1210,6 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
     fn check_pat(&mut self, cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>) {
         rest_pat_in_fully_bound_struct::check(cx, pat);
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
 /// Checks if there are any arms with a `#[cfg(..)]` attribute.
@@ -1274,16 +1274,12 @@ fn contains_cfg_arm(cx: &LateContext<'_>, e: &Expr<'_>, scrutinee: &Expr<'_>, ar
 }
 
 /// Checks if `pat` contains OR patterns that cannot be nested due to a too low MSRV.
-fn pat_contains_disallowed_or(pat: &Pat<'_>, msrv: &Msrv) -> bool {
-    if msrv.meets(msrvs::OR_PATTERNS) {
-        return false;
-    }
-
-    let mut result = false;
+fn pat_contains_disallowed_or(cx: &LateContext<'_>, pat: &Pat<'_>, msrv: Msrv) -> bool {
+    let mut contains_or = false;
     pat.walk(|p| {
         let is_or = matches!(p.kind, PatKind::Or(_));
-        result |= is_or;
+        contains_or |= is_or;
         !is_or
     });
-    result
+    contains_or && !msrv.meets(cx, msrvs::OR_PATTERNS)
 }

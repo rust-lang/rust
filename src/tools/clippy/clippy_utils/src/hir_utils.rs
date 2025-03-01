@@ -970,7 +970,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                         },
                         InlineAsmOperand::SymFn { expr } => {
                             self.hash_expr(expr);
-                        }
+                        },
                         InlineAsmOperand::Const { anon_const } => {
                             self.hash_body(anon_const.body);
                         },

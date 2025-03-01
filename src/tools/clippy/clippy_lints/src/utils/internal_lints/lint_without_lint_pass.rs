@@ -249,7 +249,7 @@ fn check_invalid_clippy_version_attribute(cx: &LateContext<'_>, item: &'_ Item<'
 pub(super) fn extract_clippy_version_value(cx: &LateContext<'_>, item: &'_ Item<'_>) -> Option<Symbol> {
     let attrs = cx.tcx.hir().attrs(item.hir_id());
     attrs.iter().find_map(|attr| {
-        if let hir::AttrKind::Normal(attr_kind) = &attr.kind
+        if let hir::Attribute::Unparsed(attr_kind) = &attr
             // Identify attribute
             && let [tool_name, attr_name] = &attr_kind.path.segments[..]
             && tool_name.name == sym::clippy
@@ -278,6 +278,6 @@ impl<'tcx> Visitor<'tcx> for LintCollector<'_, 'tcx> {
     }
 
     fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
-        self.cx.tcx.hir()
+        self.cx.tcx
     }
 }

@@ -11,14 +11,14 @@ impl AsyncTrait for Bar {
     // Shouldn't lint `binding to `_` prefixed variable with no side-effect`
     async fn bar(_i: u64) {
         let _a = 0;
-        //~^ ERROR: binding to `_` prefixed variable with no side-effect
+        //~^ no_effect_underscore_binding
 
         // Shouldn't lint `binding to `_` prefixed variable with no side-effect`
         let _b = num();
 
         let _ = async {
             let _c = 0;
-            //~^ ERROR: binding to `_` prefixed variable with no side-effect
+            //~^ no_effect_underscore_binding
 
             // Shouldn't lint `binding to `_` prefixed variable with no side-effect`
             let _d = num();
@@ -30,14 +30,14 @@ impl AsyncTrait for Bar {
 // Shouldn't lint `binding to `_` prefixed variable with no side-effect`
 async fn foo(_i: u64) {
     let _a = 0;
-    //~^ ERROR: binding to `_` prefixed variable with no side-effect
+    //~^ no_effect_underscore_binding
 
     // Shouldn't lint `binding to `_` prefixed variable with no side-effect`
     let _b = num();
 
     let _ = async {
         let _c = 0;
-        //~^ ERROR: binding to `_` prefixed variable with no side-effect
+        //~^ no_effect_underscore_binding
 
         // Shouldn't lint `binding to `_` prefixed variable with no side-effect`
         let _d = num();

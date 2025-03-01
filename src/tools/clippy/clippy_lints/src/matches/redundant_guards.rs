@@ -16,7 +16,7 @@ use std::ops::ControlFlow;
 
 use super::{REDUNDANT_GUARDS, pat_contains_disallowed_or};
 
-pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'tcx>], msrv: &Msrv) {
+pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'tcx>], msrv: Msrv) {
     for outer_arm in arms {
         let Some(guard) = outer_arm.guard else {
             continue;
@@ -26,7 +26,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'tcx>], msrv:
         if let ExprKind::Match(scrutinee, [arm, _], MatchSource::Normal) = guard.kind
             && matching_root_macro_call(cx, guard.span, sym::matches_macro).is_some()
             && let Some(binding) = get_pat_binding(cx, scrutinee, outer_arm)
-            && !pat_contains_disallowed_or(arm.pat, msrv)
+            && !pat_contains_disallowed_or(cx, arm.pat, msrv)
         {
             let pat_span = match (arm.pat.kind, binding.byref_ident) {
                 (PatKind::Ref(pat, _), Some(_)) => pat.span,
@@ -45,7 +45,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'tcx>], msrv:
         // `Some(x) if let Some(2) = x`
         else if let ExprKind::Let(let_expr) = guard.kind
             && let Some(binding) = get_pat_binding(cx, let_expr.init, outer_arm)
-            && !pat_contains_disallowed_or(let_expr.pat, msrv)
+            && !pat_contains_disallowed_or(cx, let_expr.pat, msrv)
         {
             let pat_span = match (let_expr.pat.kind, binding.byref_ident) {
                 (PatKind::Ref(pat, _), Some(_)) => pat.span,

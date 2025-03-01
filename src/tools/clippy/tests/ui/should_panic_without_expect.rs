@@ -3,6 +3,7 @@
 
 #[test]
 #[should_panic]
+//~^ should_panic_without_expect
 fn no_message() {}
 
 #[test]

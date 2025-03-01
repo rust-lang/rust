@@ -62,7 +62,7 @@ impl IndexRefutableSlice {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
             max_suggested_slice: conf.max_suggested_slice_pattern_length,
-            msrv: conf.msrv.clone(),
+            msrv: conf.msrv,
         }
     }
 }
@@ -74,19 +74,17 @@ impl<'tcx> LateLintPass<'tcx> for IndexRefutableSlice {
         if let Some(IfLet { let_pat, if_then, .. }) = IfLet::hir(cx, expr)
             && (!expr.span.from_expansion() || is_expn_of(expr.span, "if_chain").is_some())
             && !is_lint_allowed(cx, INDEX_REFUTABLE_SLICE, expr.hir_id)
-            && self.msrv.meets(msrvs::SLICE_PATTERNS)
             && let found_slices = find_slice_values(cx, let_pat)
             && !found_slices.is_empty()
             && let filtered_slices = filter_lintable_slices(cx, found_slices, self.max_suggested_slice, if_then)
             && !filtered_slices.is_empty()
+            && self.msrv.meets(cx, msrvs::SLICE_PATTERNS)
         {
             for slice in filtered_slices.values() {
                 lint_slice(cx, slice);
             }
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
 fn find_slice_values(cx: &LateContext<'_>, pat: &hir::Pat<'_>) -> FxIndexMap<HirId, SliceLintInformation> {

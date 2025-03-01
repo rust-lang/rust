@@ -8,15 +8,16 @@ LL |     if (true) {}
    = help: to override `-D warnings` add `#[allow(clippy::needless_if)]`
 
 error: this `if` branch is empty
-  --> tests/ui/needless_if.rs:29:5
+  --> tests/ui/needless_if.rs:30:5
    |
 LL |     if maybe_side_effect() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can remove it: `maybe_side_effect();`
 
 error: this `if` branch is empty
-  --> tests/ui/needless_if.rs:34:5
+  --> tests/ui/needless_if.rs:36:5
    |
 LL | /     if {
+LL | |
 LL | |         return;
 LL | |     } {}
    | |________^
@@ -24,14 +25,16 @@ LL | |     } {}
 help: you can remove it
    |
 LL ~     ({
+LL +
 LL +         return;
 LL +     });
    |
 
 error: this `if` branch is empty
-  --> tests/ui/needless_if.rs:50:5
+  --> tests/ui/needless_if.rs:53:5
    |
 LL | /     if {
+LL | |
 LL | |         if let true = true
 LL | |             && true
 ...  |
@@ -42,6 +45,7 @@ LL | |     {}
 help: you can remove it
    |
 LL ~     ({
+LL +
 LL +         if let true = true
 LL +             && true
 LL +         {
@@ -53,19 +57,19 @@ LL +     } && true);
    |
 
 error: this `if` branch is empty
-  --> tests/ui/needless_if.rs:94:5
+  --> tests/ui/needless_if.rs:98:5
    |
 LL |     if { maybe_side_effect() } {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can remove it: `({ maybe_side_effect() });`
 
 error: this `if` branch is empty
-  --> tests/ui/needless_if.rs:96:5
+  --> tests/ui/needless_if.rs:101:5
    |
 LL |     if { maybe_side_effect() } && true {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can remove it: `({ maybe_side_effect() } && true);`
 
 error: this `if` branch is empty
-  --> tests/ui/needless_if.rs:100:5
+  --> tests/ui/needless_if.rs:106:5
    |
 LL |     if true {}
    |     ^^^^^^^^^^ help: you can remove it: `true;`

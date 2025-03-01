@@ -1,9 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::eager_or_lazy::switch_to_eager_eval;
-use clippy_utils::macros::span_is_local;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{HasSession, snippet_with_applicability};
 use clippy_utils::ty::implements_trait;
+use clippy_utils::visitors::is_local_used;
 use clippy_utils::{higher, peel_blocks_with_stmt, span_contains_comment};
 use rustc_ast::ast::LitKind;
 use rustc_ast::{RangeLimits, UnOp};
@@ -24,12 +24,8 @@ pub(super) fn check<'tcx>(
     arg: &'tcx Expr<'_>,
     body: &'tcx Expr<'_>,
     expr: &'tcx Expr<'_>,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) {
-    if !msrv.meets(msrvs::SLICE_FILL) {
-        return;
-    }
-
     // `for _ in 0..slice.len() { slice[_] = value; }`
     if let Some(higher::Range {
         start: Some(start),
@@ -43,7 +39,7 @@ pub(super) fn check<'tcx>(
         && let ExprKind::Block(..) = body.kind
         // Check if the body is an assignment to a slice element.
         && let ExprKind::Assign(assignee, assignval, _) = peel_blocks_with_stmt(body).kind
-        && let ExprKind::Index(slice, _, _) = assignee.kind
+        && let ExprKind::Index(slice, idx, _) = assignee.kind
         // Check if `len()` is used for the range end.
         && let ExprKind::MethodCall(path, recv,..) = end.kind
         && path.ident.name == sym::len
@@ -54,10 +50,14 @@ pub(super) fn check<'tcx>(
         && !assignval.span.from_expansion()
         // It is generally not equivalent to use the `fill` method if `assignval` can have side effects
         && switch_to_eager_eval(cx, assignval)
-        && span_is_local(assignval.span)
         // The `fill` method requires that the slice's element type implements the `Clone` trait.
         && let Some(clone_trait) = cx.tcx.lang_items().clone_trait()
         && implements_trait(cx, cx.typeck_results().expr_ty(slice), clone_trait, &[])
+        // https://github.com/rust-lang/rust-clippy/issues/14192
+        && let ExprKind::Path(Resolved(_, idx_path)) = idx.kind
+        && let Res::Local(idx_hir) = idx_path.res
+        && !is_local_used(cx, assignval, idx_hir)
+        && msrv.meets(cx, msrvs::SLICE_FILL)
     {
         sugg(cx, body, expr, slice.span, assignval.span);
     }
@@ -73,10 +73,12 @@ pub(super) fn check<'tcx>(
         && local == pat.hir_id
         && !assignval.span.from_expansion()
         && switch_to_eager_eval(cx, assignval)
-        && span_is_local(assignval.span)
+        // `assignval` must not reference the iterator
+        && !is_local_used(cx, assignval, local)
         // The `fill` method cannot be used if the slice's element type does not implement the `Clone` trait.
         && let Some(clone_trait) = cx.tcx.lang_items().clone_trait()
         && implements_trait(cx, cx.typeck_results().expr_ty(recv), clone_trait, &[])
+        && msrv.meets(cx, msrvs::SLICE_FILL)
     {
         sugg(cx, body, expr, recv_path.span, assignval.span);
     }

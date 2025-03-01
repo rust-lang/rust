@@ -150,6 +150,7 @@ trait Foo {
 
 impl Foo for LineComment {
     /// comment on assoc item
+    //~^ empty_line_after_doc_comments
 
     fn bar() {}
 }

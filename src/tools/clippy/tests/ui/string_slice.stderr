@@ -14,13 +14,13 @@ LL |     &m[2..5];
    |      ^^^^^^^
 
 error: indexing into a string may panic if the index is within a UTF-8 character
-  --> tests/ui/string_slice.rs:14:6
+  --> tests/ui/string_slice.rs:15:6
    |
 LL |     &s[0..2];
    |      ^^^^^^^
 
 error: indexing into a string may panic if the index is within a UTF-8 character
-  --> tests/ui/string_slice.rs:17:6
+  --> tests/ui/string_slice.rs:19:6
    |
 LL |     &a[0..3];
    |      ^^^^^^^

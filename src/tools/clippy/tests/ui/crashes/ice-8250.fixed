@@ -1,7 +1,7 @@
 fn _f(s: &str) -> Option<()> {
     let _ = s[1..].split('.').next()?;
-    //~^ ERROR: unnecessary use of `splitn`
-    //~| NOTE: `-D clippy::needless-splitn` implied by `-D warnings`
+    //~^ needless_splitn
+
     Some(())
 }
 

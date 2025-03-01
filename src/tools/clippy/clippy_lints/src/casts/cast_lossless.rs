@@ -19,7 +19,7 @@ pub(super) fn check(
     cast_from: Ty<'_>,
     cast_to: Ty<'_>,
     cast_to_hir: &rustc_hir::Ty<'_>,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) {
     if !should_lint(cx, cast_from, cast_to, msrv) {
         return;
@@ -70,7 +70,7 @@ pub(super) fn check(
     );
 }
 
-fn should_lint(cx: &LateContext<'_>, cast_from: Ty<'_>, cast_to: Ty<'_>, msrv: &Msrv) -> bool {
+fn should_lint(cx: &LateContext<'_>, cast_from: Ty<'_>, cast_to: Ty<'_>, msrv: Msrv) -> bool {
     // Do not suggest using From in consts/statics until it is valid to do so (see #2267).
     if is_in_const_context(cx) {
         return false;
@@ -96,7 +96,7 @@ fn should_lint(cx: &LateContext<'_>, cast_from: Ty<'_>, cast_to: Ty<'_>, msrv: &
             };
             !is_isize_or_usize(cast_from) && from_nbits < to_nbits
         },
-        (false, true) if matches!(cast_from.kind(), ty::Bool) && msrv.meets(msrvs::FROM_BOOL) => true,
+        (false, true) if matches!(cast_from.kind(), ty::Bool) && msrv.meets(cx, msrvs::FROM_BOOL) => true,
         (_, _) => {
             matches!(cast_from.kind(), ty::Float(FloatTy::F32)) && matches!(cast_to.kind(), ty::Float(FloatTy::F64))
         },

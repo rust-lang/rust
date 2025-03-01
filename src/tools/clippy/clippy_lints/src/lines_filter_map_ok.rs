@@ -1,11 +1,23 @@
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{is_diag_item_method, is_trait_method, path_to_local_id};
 use rustc_errors::Applicability;
 use rustc_hir::{Body, Closure, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_session::impl_lint_pass;
 use rustc_span::sym;
+
+pub struct LinesFilterMapOk {
+    msrv: Msrv,
+}
+
+impl LinesFilterMapOk {
+    pub fn new(conf: &Conf) -> Self {
+        Self { msrv: conf.msrv }
+    }
+}
 
 declare_clippy_lint! {
     /// ### What it does
@@ -55,7 +67,8 @@ declare_clippy_lint! {
     suspicious,
     "filtering `std::io::Lines` with `filter_map()`, `flat_map()`, or `flatten()` might cause an infinite loop"
 }
-declare_lint_pass!(LinesFilterMapOk => [LINES_FILTER_MAP_OK]);
+
+impl_lint_pass!(LinesFilterMapOk => [LINES_FILTER_MAP_OK]);
 
 impl LateLintPass<'_> for LinesFilterMapOk {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
@@ -65,6 +78,7 @@ impl LateLintPass<'_> for LinesFilterMapOk {
             && matches!(fm_method_str, "filter_map" | "flat_map" | "flatten")
             && is_type_diagnostic_item(cx, cx.typeck_results().expr_ty_adjusted(fm_receiver), sym::IoLines)
             && should_lint(cx, fm_args, fm_method_str)
+            && self.msrv.meets(cx, msrvs::MAP_WHILE)
         {
             span_lint_and_then(
                 cx,

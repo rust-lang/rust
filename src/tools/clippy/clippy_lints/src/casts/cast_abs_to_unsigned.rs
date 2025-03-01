@@ -14,13 +14,13 @@ pub(super) fn check(
     cast_expr: &Expr<'_>,
     cast_from: Ty<'_>,
     cast_to: Ty<'_>,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) {
-    if msrv.meets(msrvs::UNSIGNED_ABS)
-        && let ty::Int(from) = cast_from.kind()
+    if let ty::Int(from) = cast_from.kind()
         && let ty::Uint(to) = cast_to.kind()
         && let ExprKind::MethodCall(method_path, receiver, [], _) = cast_expr.kind
         && method_path.ident.name.as_str() == "abs"
+        && msrv.meets(cx, msrvs::UNSIGNED_ABS)
     {
         let span = if from.bit_width() == to.bit_width() {
             expr.span

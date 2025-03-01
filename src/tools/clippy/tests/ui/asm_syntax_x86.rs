@@ -6,19 +6,24 @@ mod warn_intel {
 
     pub(super) unsafe fn use_asm() {
         asm!("");
-        //~^ ERROR: Intel x86 assembly syntax used
+        //~^ inline_asm_x86_intel_syntax
+
         asm!("", options());
-        //~^ ERROR: Intel x86 assembly syntax used
+        //~^ inline_asm_x86_intel_syntax
+
         asm!("", options(nostack));
-        //~^ ERROR: Intel x86 assembly syntax used
+        //~^ inline_asm_x86_intel_syntax
+
         asm!("", options(att_syntax));
         asm!("", options(nostack, att_syntax));
     }
 
     global_asm!("");
-    //~^ ERROR: Intel x86 assembly syntax used
+    //~^ inline_asm_x86_intel_syntax
+
     global_asm!("", options());
-    //~^ ERROR: Intel x86 assembly syntax used
+    //~^ inline_asm_x86_intel_syntax
+
     global_asm!("", options(att_syntax));
 }
 
@@ -31,15 +36,16 @@ mod warn_att {
         asm!("", options());
         asm!("", options(nostack));
         asm!("", options(att_syntax));
-        //~^ ERROR: AT&T x86 assembly syntax used
+        //~^ inline_asm_x86_att_syntax
+
         asm!("", options(nostack, att_syntax));
-        //~^ ERROR: AT&T x86 assembly syntax used
+        //~^ inline_asm_x86_att_syntax
     }
 
     global_asm!("");
     global_asm!("", options());
     global_asm!("", options(att_syntax));
-    //~^ ERROR: AT&T x86 assembly syntax used
+    //~^ inline_asm_x86_att_syntax
 }
 
 fn main() {

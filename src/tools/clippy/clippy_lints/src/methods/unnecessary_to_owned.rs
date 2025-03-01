@@ -31,7 +31,7 @@ pub fn check<'tcx>(
     method_name: Symbol,
     receiver: &'tcx Expr<'_>,
     args: &'tcx [Expr<'_>],
-    msrv: &Msrv,
+    msrv: Msrv,
 ) {
     if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
         && args.is_empty()
@@ -207,7 +207,7 @@ fn check_into_iter_call_arg(
     expr: &Expr<'_>,
     method_name: Symbol,
     receiver: &Expr<'_>,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) -> bool {
     if let Some(parent) = get_parent_expr(cx, expr)
         && let Some(callee_def_id) = fn_def_id(cx, parent)
@@ -224,7 +224,7 @@ fn check_into_iter_call_arg(
             return true;
         }
 
-        let cloned_or_copied = if is_copy(cx, item_ty) && msrv.meets(msrvs::ITERATOR_COPIED) {
+        let cloned_or_copied = if is_copy(cx, item_ty) && msrv.meets(cx, msrvs::ITERATOR_COPIED) {
             "copied"
         } else {
             "cloned"

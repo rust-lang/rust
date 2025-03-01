@@ -9,7 +9,7 @@ macro_rules! arg {
 
 fn test(path: &Path) {
     path.ends_with(".md");
-    //~^ ERROR: this looks like a failed attempt at checking for the file extension
+    //~^ path_ends_with_ext
 
     // some "extensions" are allowed by default
     path.ends_with(".git");
@@ -30,7 +30,7 @@ fn test(path: &Path) {
 #[clippy::msrv = "1.69"]
 fn under_msv(path: &Path) -> bool {
     path.ends_with(".md")
-    //~^ ERROR: this looks like a failed attempt at checking for the file extension
+    //~^ path_ends_with_ext
 }
 
 fn main() {}

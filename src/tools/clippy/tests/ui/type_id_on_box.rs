@@ -29,7 +29,7 @@ fn main() {
 
     let any_box: Box<dyn Any> = Box::new(0usize);
     let _ = any_box.type_id();
-    //~^ ERROR: calling `.type_id()` on
+    //~^ type_id_on_box
 
     // Don't lint. We explicitly say "do this instead" if this is intentional
     let _ = TypeId::of::<Box<dyn Any>>();
@@ -38,18 +38,18 @@ fn main() {
     // 2 derefs are needed here to get to the `dyn Any`
     let any_box: &Box<dyn Any> = &(Box::new(0usize) as Box<dyn Any>);
     let _ = any_box.type_id();
-    //~^ ERROR: calling `.type_id()` on
+    //~^ type_id_on_box
 
     let b = existential();
     let _ = b.type_id(); // Don't
 
     let b: Box<dyn AnySubTrait> = Box::new(1);
     let _ = b.type_id();
-    //~^ ERROR: calling `.type_id()` on
+    //~^ type_id_on_box
 
     let b: SomeBox = Box::new(0usize);
     let _ = b.type_id();
-    //~^ ERROR: calling `.type_id()` on
+    //~^ type_id_on_box
 
     let b = BadBox(Box::new(0usize));
     let _ = b.type_id(); // Don't lint. This is a call to `<BadBox as Any>::type_id`. Not `std::boxed::Box`!

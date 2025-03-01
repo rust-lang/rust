@@ -20,14 +20,14 @@ pub(super) fn check<'tcx>(
     _: &'tcx Expr<'_>,
     body: &'tcx Expr<'_>,
     _: &'tcx Expr<'_>,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) {
-    fn emit_lint(cx: &LateContext<'_>, vec: &Expr<'_>, pushed_item: &Expr<'_>, ctxt: SyntaxContext, msrv: &Msrv) {
+    fn emit_lint(cx: &LateContext<'_>, vec: &Expr<'_>, pushed_item: &Expr<'_>, ctxt: SyntaxContext, msrv: Msrv) {
         let mut app = Applicability::Unspecified;
         let vec_str = snippet_with_context(cx, vec.span, ctxt, "", &mut app).0;
         let item_str = snippet_with_context(cx, pushed_item.span, ctxt, "", &mut app).0;
 
-        let secondary_help = if msrv.meets(msrvs::REPEAT_N)
+        let secondary_help = if msrv.meets(cx, msrvs::REPEAT_N)
             && let Some(std_or_core) = std_or_core(cx)
         {
             format!("or `{vec_str}.extend({std_or_core}::iter::repeat_n({item_str}, SIZE))`")

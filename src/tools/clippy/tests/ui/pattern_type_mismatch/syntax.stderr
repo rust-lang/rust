@@ -25,7 +25,7 @@ LL |     while let Some(_) = ref_value {
    = help: use `*` to dereference the match expression or explicitly match against a `&_` pattern and adjust the enclosed variable bindings
 
 error: type of pattern does not match the expression type
-  --> tests/ui/pattern_type_mismatch/syntax.rs:62:9
+  --> tests/ui/pattern_type_mismatch/syntax.rs:63:9
    |
 LL |     for (_a, _b) in slice.iter() {}
    |         ^^^^^^^^
@@ -33,7 +33,7 @@ LL |     for (_a, _b) in slice.iter() {}
    = help: explicitly match against a `&_` pattern and adjust the enclosed variable bindings
 
 error: type of pattern does not match the expression type
-  --> tests/ui/pattern_type_mismatch/syntax.rs:73:9
+  --> tests/ui/pattern_type_mismatch/syntax.rs:74:9
    |
 LL |     let (_n, _m) = ref_value;
    |         ^^^^^^^^
@@ -41,7 +41,7 @@ LL |     let (_n, _m) = ref_value;
    = help: use `*` to dereference the match expression or explicitly match against a `&_` pattern and adjust the enclosed variable bindings
 
 error: type of pattern does not match the expression type
-  --> tests/ui/pattern_type_mismatch/syntax.rs:83:12
+  --> tests/ui/pattern_type_mismatch/syntax.rs:84:12
    |
 LL |     fn foo((_a, _b): &(i32, i32)) {}
    |            ^^^^^^^^
@@ -49,7 +49,7 @@ LL |     fn foo((_a, _b): &(i32, i32)) {}
    = help: explicitly match against a `&_` pattern and adjust the enclosed variable bindings
 
 error: type of pattern does not match the expression type
-  --> tests/ui/pattern_type_mismatch/syntax.rs:98:10
+  --> tests/ui/pattern_type_mismatch/syntax.rs:99:10
    |
 LL |     foo(|(_a, _b)| ());
    |          ^^^^^^^^
@@ -57,7 +57,7 @@ LL |     foo(|(_a, _b)| ());
    = help: explicitly match against a `&_` pattern and adjust the enclosed variable bindings
 
 error: type of pattern does not match the expression type
-  --> tests/ui/pattern_type_mismatch/syntax.rs:115:9
+  --> tests/ui/pattern_type_mismatch/syntax.rs:116:9
    |
 LL |         Some(_) => (),
    |         ^^^^^^^
@@ -65,7 +65,7 @@ LL |         Some(_) => (),
    = help: use `*` to dereference the match expression or explicitly match against a `&_` pattern and adjust the enclosed variable bindings
 
 error: type of pattern does not match the expression type
-  --> tests/ui/pattern_type_mismatch/syntax.rs:136:17
+  --> tests/ui/pattern_type_mismatch/syntax.rs:137:17
    |
 LL |                 Some(_) => (),
    |                 ^^^^^^^

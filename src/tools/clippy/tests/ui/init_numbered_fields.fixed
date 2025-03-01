@@ -39,6 +39,7 @@ fn main() {
     struct TupleStructVec(Vec<usize>);
 
     let _ = TupleStructVec(vec![0, 1, 2, 3]);
+    //~^ init_numbered_fields
 
     {
         struct S(i32, i32);

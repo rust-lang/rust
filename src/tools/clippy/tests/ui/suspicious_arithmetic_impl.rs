@@ -12,16 +12,14 @@ impl Add for Foo {
 
     fn add(self, other: Self) -> Self {
         Foo(self.0 - other.0)
-        //~^ ERROR: suspicious use of `-` in `Add` impl
-        //~| NOTE: `-D clippy::suspicious-arithmetic-impl` implied by `-D warnings`
+        //~^ suspicious_arithmetic_impl
     }
 }
 
 impl AddAssign for Foo {
     fn add_assign(&mut self, other: Foo) {
         *self = *self - other;
-        //~^ ERROR: suspicious use of `-` in `AddAssign` impl
-        //~| NOTE: `-D clippy::suspicious-op-assign-impl` implied by `-D warnings`
+        //~^ suspicious_op_assign_impl
     }
 }
 
@@ -35,7 +33,7 @@ impl BitOrAssign for Foo {
 impl MulAssign for Foo {
     fn mul_assign(&mut self, other: Foo) {
         self.0 /= other.0;
-        //~^ ERROR: suspicious use of `/` in `MulAssign` impl
+        //~^ suspicious_op_assign_impl
     }
 }
 
@@ -74,7 +72,7 @@ impl Rem for Foo {
 
     fn rem(self, other: Self) -> Self {
         Foo(self.0 / other.0)
-        //~^ ERROR: suspicious use of `/` in `Rem` impl
+        //~^ suspicious_arithmetic_impl
     }
 }
 
@@ -83,7 +81,7 @@ impl BitAnd for Foo {
 
     fn bitand(self, other: Self) -> Self {
         Foo(self.0 | other.0)
-        //~^ ERROR: suspicious use of `|` in `BitAnd` impl
+        //~^ suspicious_arithmetic_impl
     }
 }
 
@@ -92,7 +90,7 @@ impl BitOr for Foo {
 
     fn bitor(self, other: Self) -> Self {
         Foo(self.0 ^ other.0)
-        //~^ ERROR: suspicious use of `^` in `BitOr` impl
+        //~^ suspicious_arithmetic_impl
     }
 }
 
@@ -101,7 +99,7 @@ impl BitXor for Foo {
 
     fn bitxor(self, other: Self) -> Self {
         Foo(self.0 & other.0)
-        //~^ ERROR: suspicious use of `&` in `BitXor` impl
+        //~^ suspicious_arithmetic_impl
     }
 }
 
@@ -110,7 +108,7 @@ impl Shl for Foo {
 
     fn shl(self, other: Self) -> Self {
         Foo(self.0 >> other.0)
-        //~^ ERROR: suspicious use of `>>` in `Shl` impl
+        //~^ suspicious_arithmetic_impl
     }
 }
 
@@ -119,7 +117,7 @@ impl Shr for Foo {
 
     fn shr(self, other: Self) -> Self {
         Foo(self.0 << other.0)
-        //~^ ERROR: suspicious use of `<<` in `Shr` impl
+        //~^ suspicious_arithmetic_impl
     }
 }
 

@@ -8,19 +8,19 @@ LL |     let _p = &val as *const i32;
    = help: to override `-D warnings` add `#[allow(clippy::borrow_as_ptr)]`
 
 error: borrow as raw pointer
-  --> tests/ui/borrow_as_ptr.rs:18:18
+  --> tests/ui/borrow_as_ptr.rs:19:18
    |
 LL |     let _p_mut = &mut val_mut as *mut i32;
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::addr_of_mut!(val_mut)`
 
 error: borrow as raw pointer
-  --> tests/ui/borrow_as_ptr.rs:21:16
+  --> tests/ui/borrow_as_ptr.rs:23:16
    |
 LL |     let _raw = (&mut x[1] as *mut i32).wrapping_offset(-1);
    |                ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::addr_of_mut!(x[1])`
 
 error: borrow as raw pointer
-  --> tests/ui/borrow_as_ptr.rs:26:17
+  --> tests/ui/borrow_as_ptr.rs:29:17
    |
 LL |     let _raw = (&mut x[1] as *mut i32).wrapping_offset(-1);
    |                 ^^^^^^^^^^^^^^^^^^^^^ help: try: `&raw mut x[1]`

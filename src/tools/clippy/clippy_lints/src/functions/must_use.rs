@@ -118,18 +118,23 @@ fn check_needless_must_use(
                 fn_header_span,
                 "this unit-returning function has a `#[must_use]` attribute",
                 |diag| {
-                    diag.span_suggestion(attr.span(), "remove the attribute", "", Applicability::MachineApplicable);
+                    diag.span_suggestion(
+                        attr.span(),
+                        "remove the attribute",
+                        "",
+                        Applicability::MachineApplicable,
+                    );
                 },
             );
         } else {
             // When there are multiple attributes, it is not sufficient to simply make `must_use` empty, see
             // issue #12320.
             // FIXME(jdonszelmann): this used to give a machine-applicable fix. However, it was super fragile,
-            // honestly looked incorrect, and is a little hard to support for a little bit now. Some day this could be
-            // re-added.
+            // honestly looked incorrect, and is a little hard to support for a little bit now. Some day this
+            // could be re-added.
             span_lint_and_help(
                 cx,
-                DOUBLE_MUST_USE,
+                MUST_USE_UNIT,
                 fn_header_span,
                 "this unit-returning function has a `#[must_use]` attribute",
                 Some(attr.span()),

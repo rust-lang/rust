@@ -8,25 +8,25 @@ LL |     for _ in 0..3 + 1 {}
    = help: to override `-D warnings` add `#[allow(clippy::range_plus_one)]`
 
 error: an inclusive range would be more readable
-  --> tests/ui/range_plus_minus_one.rs:32:14
+  --> tests/ui/range_plus_minus_one.rs:33:14
    |
 LL |     for _ in 0..1 + 5 {}
    |              ^^^^^^^^ help: use: `0..=5`
 
 error: an inclusive range would be more readable
-  --> tests/ui/range_plus_minus_one.rs:35:14
+  --> tests/ui/range_plus_minus_one.rs:37:14
    |
 LL |     for _ in 1..1 + 1 {}
    |              ^^^^^^^^ help: use: `1..=1`
 
 error: an inclusive range would be more readable
-  --> tests/ui/range_plus_minus_one.rs:41:14
+  --> tests/ui/range_plus_minus_one.rs:44:14
    |
 LL |     for _ in 0..(1 + f()) {}
    |              ^^^^^^^^^^^^ help: use: `0..=f()`
 
 error: an exclusive range would be more readable
-  --> tests/ui/range_plus_minus_one.rs:45:13
+  --> tests/ui/range_plus_minus_one.rs:49:13
    |
 LL |     let _ = ..=11 - 1;
    |             ^^^^^^^^^ help: use: `..11`
@@ -35,25 +35,25 @@ LL |     let _ = ..=11 - 1;
    = help: to override `-D warnings` add `#[allow(clippy::range_minus_one)]`
 
 error: an exclusive range would be more readable
-  --> tests/ui/range_plus_minus_one.rs:46:13
+  --> tests/ui/range_plus_minus_one.rs:51:13
    |
 LL |     let _ = ..=(11 - 1);
    |             ^^^^^^^^^^^ help: use: `..11`
 
 error: an inclusive range would be more readable
-  --> tests/ui/range_plus_minus_one.rs:47:13
+  --> tests/ui/range_plus_minus_one.rs:53:13
    |
 LL |     let _ = (1..11 + 1);
    |             ^^^^^^^^^^^ help: use: `(1..=11)`
 
 error: an inclusive range would be more readable
-  --> tests/ui/range_plus_minus_one.rs:48:13
+  --> tests/ui/range_plus_minus_one.rs:55:13
    |
 LL |     let _ = (f() + 1)..(f() + 1);
    |             ^^^^^^^^^^^^^^^^^^^^ help: use: `((f() + 1)..=f())`
 
 error: an inclusive range would be more readable
-  --> tests/ui/range_plus_minus_one.rs:52:14
+  --> tests/ui/range_plus_minus_one.rs:60:14
    |
 LL |     for _ in 1..ONE + ONE {}
    |              ^^^^^^^^^^^^ help: use: `1..=ONE`
