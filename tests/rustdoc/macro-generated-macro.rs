@@ -25,7 +25,7 @@ make_macro!(linebreak 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22
 
 //@ snapshot macro_morestuff_pre macro_generated_macro/macro.morestuff.html //pre/text()
 make_macro!(morestuff
-    "space between most kinds of tokens": 1 $x + @ :: >>= 'static
+    "space between most kinds of tokens": 1 $x:ident + @ :: >>= 'static
     "no space inside paren or bracket": (2 a) [2 a] $(2 $a:tt)*
     "space inside curly brace": { 2 a }
     "no space inside empty delimiters": () [] {}
