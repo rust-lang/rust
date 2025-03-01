@@ -6,11 +6,7 @@ LL | auto trait Magic : Sized where Option<Self> : Magic {}
    |            |
    |            auto traits cannot have super traits or lifetime bounds
    |
-help: remove the super traits or lifetime bounds
-   |
-LL - auto trait Magic : Sized where Option<Self> : Magic {}
-LL + auto trait Magic where Option<Self> : Magic {}
-   |
+   = help: remove the super traits or lifetime bounds
 
 error[E0568]: auto traits cannot have super traits or lifetime bounds
   --> $DIR/typeck-auto-trait-no-supertraits-2.rs:4:26
@@ -20,11 +16,7 @@ LL | auto trait Magic : Sized where Option<Self> : Magic {}
    |            |
    |            auto traits cannot have super traits or lifetime bounds
    |
-help: remove the super traits or lifetime bounds
-   |
-LL - auto trait Magic : Sized where Option<Self> : Magic {}
-LL + auto trait Magic : Sized  {}
-   |
+   = help: remove the super traits or lifetime bounds
 
 error[E0382]: use of moved value: `x`
   --> $DIR/typeck-auto-trait-no-supertraits-2.rs:8:41

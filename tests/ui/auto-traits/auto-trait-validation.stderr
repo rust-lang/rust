@@ -6,11 +6,7 @@ LL | auto trait Generic<T> {}
    |            |
    |            auto trait cannot have generic parameters
    |
-help: remove the parameters
-   |
-LL - auto trait Generic<T> {}
-LL + auto trait Generic {}
-   |
+   = help: remove the parameters
 
 error[E0568]: auto traits cannot have super traits or lifetime bounds
   --> $DIR/auto-trait-validation.rs:8:20
@@ -20,11 +16,7 @@ LL | auto trait Bound : Copy {}
    |            |
    |            auto traits cannot have super traits or lifetime bounds
    |
-help: remove the super traits or lifetime bounds
-   |
-LL - auto trait Bound : Copy {}
-LL + auto trait Bound {}
-   |
+   = help: remove the super traits or lifetime bounds
 
 error[E0568]: auto traits cannot have super traits or lifetime bounds
   --> $DIR/auto-trait-validation.rs:10:28
@@ -34,11 +26,7 @@ LL | auto trait LifetimeBound : 'static {}
    |            |
    |            auto traits cannot have super traits or lifetime bounds
    |
-help: remove the super traits or lifetime bounds
-   |
-LL - auto trait LifetimeBound : 'static {}
-LL + auto trait LifetimeBound {}
-   |
+   = help: remove the super traits or lifetime bounds
 
 error[E0380]: auto traits cannot have associated items
   --> $DIR/auto-trait-validation.rs:12:25

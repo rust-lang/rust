@@ -6,11 +6,7 @@ LL | auto trait Trait1<'a> {}
    |            |
    |            auto trait cannot have generic parameters
    |
-help: remove the parameters
-   |
-LL - auto trait Trait1<'a> {}
-LL + auto trait Trait1 {}
-   |
+   = help: remove the parameters
 
 error: aborting due to 1 previous error
 

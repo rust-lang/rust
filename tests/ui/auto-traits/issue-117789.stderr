@@ -6,11 +6,7 @@ LL | auto trait Trait<P> {}
    |            |
    |            auto trait cannot have generic parameters
    |
-help: remove the parameters
-   |
-LL - auto trait Trait<P> {}
-LL + auto trait Trait {}
-   |
+   = help: remove the parameters
 
 error[E0658]: auto traits are experimental and possibly buggy
   --> $DIR/issue-117789.rs:1:1

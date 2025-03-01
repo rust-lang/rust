@@ -6,11 +6,7 @@ LL | auto trait Magic: Copy {}
    |            |
    |            auto traits cannot have super traits or lifetime bounds
    |
-help: remove the super traits or lifetime bounds
-   |
-LL - auto trait Magic: Copy {}
-LL + auto trait Magic {}
-   |
+   = help: remove the super traits or lifetime bounds
 
 error: aborting due to 1 previous error
 
