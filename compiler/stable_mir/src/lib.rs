@@ -48,10 +48,7 @@ pub type CrateNum = usize;
 
 impl Debug for DefId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("DefId")
-            .field("id", &self.0)
-            .field("name", &with(|cx| cx.def_name(*self, false)))
-            .finish()
+        f.debug_struct("DefId").field("id", &self.0).field("name", &self.name()).finish()
     }
 }
 

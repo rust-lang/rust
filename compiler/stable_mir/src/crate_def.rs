@@ -41,8 +41,7 @@ pub trait CrateDef {
 
     /// Return the fully qualified name of the current definition.
     fn name(&self) -> Symbol {
-        let def_id = self.def_id();
-        with(|cx| cx.def_name(def_id, false))
+        self.def_id().name()
     }
 
     /// Return a trimmed name of this definition.
@@ -56,8 +55,7 @@ pub trait CrateDef {
     /// For example, this function may shorten `std::vec::Vec` to just `Vec`,
     /// as long as there is no other `Vec` importable anywhere.
     fn trimmed_name(&self) -> Symbol {
-        let def_id = self.def_id();
-        with(|cx| cx.def_name(def_id, true))
+        self.def_id().trimmed_name()
     }
 
     /// Return information about the crate where this definition is declared.
