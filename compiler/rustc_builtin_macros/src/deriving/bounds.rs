@@ -1,4 +1,4 @@
-use rustc_ast::MetaItem;
+use rustc_ast::{MetaItem, Safety};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::Span;
 
@@ -23,6 +23,7 @@ pub(crate) fn expand_deriving_copy(
         methods: Vec::new(),
         associated_types: Vec::new(),
         is_const,
+        safety: Safety::Default,
     };
 
     trait_def.expand(cx, mitem, item, push);
@@ -46,6 +47,7 @@ pub(crate) fn expand_deriving_const_param_ty(
         methods: Vec::new(),
         associated_types: Vec::new(),
         is_const,
+        safety: Safety::Default,
     };
 
     trait_def.expand(cx, mitem, item, push);
@@ -60,6 +62,7 @@ pub(crate) fn expand_deriving_const_param_ty(
         methods: Vec::new(),
         associated_types: Vec::new(),
         is_const,
+        safety: Safety::Default,
     };
 
     trait_def.expand(cx, mitem, item, push);
@@ -83,6 +86,7 @@ pub(crate) fn expand_deriving_unsized_const_param_ty(
         methods: Vec::new(),
         associated_types: Vec::new(),
         is_const,
+        safety: Safety::Default,
     };
 
     trait_def.expand(cx, mitem, item, push);
