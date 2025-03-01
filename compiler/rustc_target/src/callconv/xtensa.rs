@@ -116,7 +116,7 @@ where
 
 fn is_xtensa_aggregate<'a, Ty>(arg: &ArgAbi<'a, Ty>) -> bool {
     match arg.layout.backend_repr {
-        BackendRepr::Vector { .. } => true,
+        BackendRepr::SimdVector { .. } => true,
         _ => arg.layout.is_aggregate(),
     }
 }

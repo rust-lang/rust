@@ -219,7 +219,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         C: HasDataLayout,
     {
         match self.backend_repr {
-            BackendRepr::Vector { .. } => self.size == expected_size,
+            BackendRepr::SimdVector { .. } => self.size == expected_size,
             BackendRepr::Memory { .. } => {
                 if self.fields.count() == 1 && self.fields.offset(0).bytes() == 0 {
                     self.field(cx, 0).is_single_vector_element(cx, expected_size)

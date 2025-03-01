@@ -18,7 +18,7 @@ fn uses_vector_registers(mode: &PassMode, repr: &BackendRepr) -> bool {
             cast.prefix.iter().any(|r| r.is_some_and(|x| x.kind == RegKind::Vector))
                 || cast.rest.unit.kind == RegKind::Vector
         }
-        PassMode::Direct(..) | PassMode::Pair(..) => matches!(repr, BackendRepr::Vector { .. }),
+        PassMode::Direct(..) | PassMode::Pair(..) => matches!(repr, BackendRepr::SimdVector { .. }),
     }
 }
 
