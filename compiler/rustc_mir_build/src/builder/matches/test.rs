@@ -55,12 +55,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // Or-patterns are not tested directly; instead they are expanded into subcandidates,
             // which are then distinguished by testing whatever non-or patterns they contain.
             TestCase::Or { .. } => bug!("or-patterns should have already been handled"),
-
-            TestCase::Irrefutable { .. } => span_bug!(
-                match_pair.pattern_span,
-                "simplifiable pattern found: {:?}",
-                match_pair.pattern_span
-            ),
         };
 
         Test { span: match_pair.pattern_span, kind }

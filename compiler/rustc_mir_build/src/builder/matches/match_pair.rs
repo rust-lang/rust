@@ -116,24 +116,23 @@ impl<'tcx> MatchPairTree<'tcx> {
         }
 
         let place = place_builder.try_to_place(cx);
-        let default_irrefutable = || TestCase::Irrefutable {};
         let mut subpairs = Vec::new();
         let test_case = match pattern.kind {
-            PatKind::Wild | PatKind::Error(_) => default_irrefutable(),
+            PatKind::Wild | PatKind::Error(_) => None,
 
-            PatKind::Or { ref pats } => TestCase::Or {
+            PatKind::Or { ref pats } => Some(TestCase::Or {
                 pats: pats.iter().map(|pat| FlatPat::new(place_builder.clone(), pat, cx)).collect(),
-            },
+            }),
 
             PatKind::Range(ref range) => {
                 if range.is_full_range(cx.tcx) == Some(true) {
-                    default_irrefutable()
+                    None
                 } else {
-                    TestCase::Range(Arc::clone(range))
+                    Some(TestCase::Range(Arc::clone(range)))
                 }
             }
 
-            PatKind::Constant { value } => TestCase::Constant { value },
+            PatKind::Constant { value } => Some(TestCase::Constant { value }),
 
             PatKind::AscribeUserType {
                 ascription: Ascription { ref annotation, variance },
@@ -154,7 +153,7 @@ impl<'tcx> MatchPairTree<'tcx> {
                     extra_data.ascriptions.push(super::Ascription { source, annotation, variance });
                 }
 
-                default_irrefutable()
+                None
             }
 
             PatKind::Binding { mode, var, ref subpattern, .. } => {
@@ -199,12 +198,12 @@ impl<'tcx> MatchPairTree<'tcx> {
                     });
                 }
 
-                default_irrefutable()
+                None
             }
 
             PatKind::ExpandedConstant { subpattern: ref pattern, def_id: _, is_inline: false } => {
                 MatchPairTree::for_pattern(place_builder, pattern, cx, &mut subpairs, extra_data);
-                default_irrefutable()
+                None
             }
             PatKind::ExpandedConstant { subpattern: ref pattern, def_id, is_inline: true } => {
                 MatchPairTree::for_pattern(place_builder, pattern, cx, &mut subpairs, extra_data);
@@ -233,7 +232,7 @@ impl<'tcx> MatchPairTree<'tcx> {
                     extra_data.ascriptions.push(super::Ascription { annotation, source, variance });
                 }
 
-                default_irrefutable()
+                None
             }
 
             PatKind::Array { ref prefix, ref slice, ref suffix } => {
@@ -245,7 +244,7 @@ impl<'tcx> MatchPairTree<'tcx> {
                     slice,
                     suffix,
                 );
-                default_irrefutable()
+                None
             }
             PatKind::Slice { ref prefix, ref slice, ref suffix } => {
                 cx.prefix_slice_suffix(
@@ -258,12 +257,12 @@ impl<'tcx> MatchPairTree<'tcx> {
                 );
 
                 if prefix.is_empty() && slice.is_some() && suffix.is_empty() {
-                    default_irrefutable()
+                    None
                 } else {
-                    TestCase::Slice {
+                    Some(TestCase::Slice {
                         len: prefix.len() + suffix.len(),
                         variable_length: slice.is_some(),
-                    }
+                    })
                 }
             }
 
@@ -279,16 +278,12 @@ impl<'tcx> MatchPairTree<'tcx> {
                             .apply_ignore_module(cx.tcx, cx.infcx.typing_env(cx.param_env))
                 }) && (adt_def.did().is_local()
                     || !adt_def.is_variant_list_non_exhaustive());
-                if irrefutable {
-                    default_irrefutable()
-                } else {
-                    TestCase::Variant { adt_def, variant_index }
-                }
+                if irrefutable { None } else { Some(TestCase::Variant { adt_def, variant_index }) }
             }
 
             PatKind::Leaf { ref subpatterns } => {
                 cx.field_match_pairs(&mut subpairs, extra_data, place_builder, subpatterns);
-                default_irrefutable()
+                None
             }
 
             PatKind::Deref { ref subpattern } => {
@@ -299,7 +294,7 @@ impl<'tcx> MatchPairTree<'tcx> {
                     &mut subpairs,
                     extra_data,
                 );
-                default_irrefutable()
+                None
             }
 
             PatKind::DerefPattern { ref subpattern, mutability } => {
@@ -316,18 +311,25 @@ impl<'tcx> MatchPairTree<'tcx> {
                     &mut subpairs,
                     extra_data,
                 );
-                TestCase::Deref { temp, mutability }
+                Some(TestCase::Deref { temp, mutability })
             }
 
-            PatKind::Never => TestCase::Never,
+            PatKind::Never => Some(TestCase::Never),
         };
 
-        match_pairs.push(MatchPairTree {
-            place,
-            test_case,
-            subpairs,
-            pattern_ty: pattern.ty,
-            pattern_span: pattern.span,
-        });
+        if let Some(test_case) = test_case {
+            // This pattern is refutable, so push a new match-pair node.
+            match_pairs.push(MatchPairTree {
+                place,
+                test_case,
+                subpairs,
+                pattern_ty: pattern.ty,
+                pattern_span: pattern.span,
+            })
+        } else {
+            // This pattern is irrefutable, so it doesn't need its own match-pair node.
+            // Just push its refutable subpatterns instead, if any.
+            match_pairs.extend(subpairs);
+        }
     }
 }
