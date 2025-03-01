@@ -5,6 +5,7 @@ LL |     pub static mut symbol: [i8];
    |                            ^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `[i8]`
+   = note: statics and constants must have a statically known size
 
 error: aborting due to 1 previous error
 

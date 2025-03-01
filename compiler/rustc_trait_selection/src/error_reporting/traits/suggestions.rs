@@ -3126,8 +3126,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     Applicability::MachineApplicable,
                 );
             }
-            ObligationCauseCode::ConstSized => {
-                err.note("constant expressions must have a statically known size");
+            ObligationCauseCode::SizedConstOrStatic => {
+                err.note("statics and constants must have a statically known size");
             }
             ObligationCauseCode::InlineAsmSized => {
                 err.note("all inline asm arguments must have a statically known size");

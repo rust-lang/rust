@@ -145,7 +145,7 @@ pub fn forbid_intrinsic_abi(tcx: TyCtxt<'_>, sp: Span, abi: ExternAbi) {
     }
 }
 
-fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId) {
+pub(super) fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId) {
     // Only restricted on wasm target for now
     if !tcx.sess.target.is_like_wasm {
         return;
