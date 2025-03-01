@@ -338,8 +338,11 @@ pub trait MutVisitor: Sized {
         walk_where_clause(self, where_clause);
     }
 
-    fn visit_where_predicate(&mut self, where_predicate: &mut WherePredicate) {
-        walk_where_predicate(self, where_predicate)
+    fn flat_map_where_predicate(
+        &mut self,
+        where_predicate: WherePredicate,
+    ) -> SmallVec<[WherePredicate; 1]> {
+        walk_flat_map_where_predicate(self, where_predicate)
     }
 
     fn visit_where_predicate_kind(&mut self, kind: &mut WherePredicateKind) {
@@ -1097,15 +1100,20 @@ fn walk_ty_alias_where_clauses<T: MutVisitor>(vis: &mut T, tawcs: &mut TyAliasWh
 
 fn walk_where_clause<T: MutVisitor>(vis: &mut T, wc: &mut WhereClause) {
     let WhereClause { has_where_token: _, predicates, span } = wc;
-    visit_thin_vec(predicates, |predicate| vis.visit_where_predicate(predicate));
+    predicates.flat_map_in_place(|predicate| vis.flat_map_where_predicate(predicate));
     vis.visit_span(span);
 }
 
-pub fn walk_where_predicate<T: MutVisitor>(vis: &mut T, pred: &mut WherePredicate) {
-    let WherePredicate { kind, id, span } = pred;
+pub fn walk_flat_map_where_predicate<T: MutVisitor>(
+    vis: &mut T,
+    mut pred: WherePredicate,
+) -> SmallVec<[WherePredicate; 1]> {
+    let WherePredicate { attrs, kind, id, span, is_placeholder: _ } = &mut pred;
     vis.visit_id(id);
+    visit_attrs(vis, attrs);
     vis.visit_where_predicate_kind(kind);
     vis.visit_span(span);
+    smallvec![pred]
 }
 
 pub fn walk_where_predicate_kind<T: MutVisitor>(vis: &mut T, kind: &mut WherePredicateKind) {

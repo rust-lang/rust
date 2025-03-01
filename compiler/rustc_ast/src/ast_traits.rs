@@ -11,7 +11,7 @@ use crate::tokenstream::LazyAttrTokenStream;
 use crate::{
     Arm, AssocItem, AttrItem, AttrKind, AttrVec, Attribute, Block, Crate, Expr, ExprField,
     FieldDef, ForeignItem, GenericParam, Item, NodeId, Param, Pat, PatField, Path, Stmt, StmtKind,
-    Ty, Variant, Visibility,
+    Ty, Variant, Visibility, WherePredicate,
 };
 
 /// A utility trait to reduce boilerplate.
@@ -79,6 +79,7 @@ impl_has_node_id!(
     Stmt,
     Ty,
     Variant,
+    WherePredicate,
 );
 
 impl<T: AstDeref<Target: HasNodeId>> HasNodeId for T {
@@ -127,7 +128,16 @@ macro_rules! impl_has_tokens_none {
 }
 
 impl_has_tokens!(AssocItem, AttrItem, Block, Expr, ForeignItem, Item, Pat, Path, Ty, Visibility);
-impl_has_tokens_none!(Arm, ExprField, FieldDef, GenericParam, Param, PatField, Variant);
+impl_has_tokens_none!(
+    Arm,
+    ExprField,
+    FieldDef,
+    GenericParam,
+    Param,
+    PatField,
+    Variant,
+    WherePredicate
+);
 
 impl<T: AstDeref<Target: HasTokens>> HasTokens for T {
     fn tokens(&self) -> Option<&LazyAttrTokenStream> {
@@ -279,6 +289,7 @@ impl_has_attrs!(
     Param,
     PatField,
     Variant,
+    WherePredicate,
 );
 impl_has_attrs_none!(Attribute, AttrItem, Block, Pat, Path, Ty, Visibility);
 
