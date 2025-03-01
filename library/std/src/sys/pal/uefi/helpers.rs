@@ -10,7 +10,7 @@
 //! - More information about protocols can be found [here](https://edk2-docs.gitbook.io/edk-ii-uefi-driver-writer-s-guide/3_foundation/36_protocols_and_handles)
 
 use r_efi::efi::{self, Guid};
-use r_efi::protocols::{device_path, device_path_to_text, shell};
+use r_efi::protocols::{device_path, device_path_to_text, service_binding, shell};
 
 use crate::ffi::{OsStr, OsString};
 use crate::io::{self, const_error};
@@ -499,4 +499,63 @@ pub(crate) fn get_device_path_from_map(map: &Path) -> io::Result<BorrowedDeviceP
         .ok_or(io::const_error!(io::ErrorKind::NotFound, "UEFI Shell mapping not found"))?;
 
     Ok(BorrowedDevicePath::new(protocol))
+}
+
+/// Helper for UEFI Protocols which are created and destroyed using
+/// [EFI_SERVICE_BINDING_PROTCOL](https://uefi.org/specs/UEFI/2.11/11_Protocols_UEFI_Driver_Model.html#efi-service-binding-protocol)
+pub(crate) struct ServiceProtocol {
+    service_guid: r_efi::efi::Guid,
+    handle: NonNull<crate::ffi::c_void>,
+    child_handle: NonNull<crate::ffi::c_void>,
+}
+
+impl ServiceProtocol {
+    #[expect(dead_code)]
+    pub(crate) fn open(service_guid: r_efi::efi::Guid) -> io::Result<Self> {
+        let handles = locate_handles(service_guid)?;
+
+        for handle in handles {
+            if let Ok(protocol) = open_protocol::<service_binding::Protocol>(handle, service_guid) {
+                let Ok(child_handle) = Self::create_child(protocol) else {
+                    continue;
+                };
+
+                return Ok(Self { service_guid, handle, child_handle });
+            }
+        }
+
+        Err(io::const_error!(io::ErrorKind::NotFound, "no service binding protocol found"))
+    }
+
+    #[expect(dead_code)]
+    pub(crate) fn child_handle(&self) -> NonNull<crate::ffi::c_void> {
+        self.child_handle
+    }
+
+    fn create_child(
+        sbp: NonNull<service_binding::Protocol>,
+    ) -> io::Result<NonNull<crate::ffi::c_void>> {
+        let mut child_handle: r_efi::efi::Handle = crate::ptr::null_mut();
+        // SAFETY: A new handle is allocated if a pointer to NULL is passed.
+        let r = unsafe { ((*sbp.as_ptr()).create_child)(sbp.as_ptr(), &mut child_handle) };
+
+        if r.is_error() {
+            Err(crate::io::Error::from_raw_os_error(r.as_usize()))
+        } else {
+            NonNull::new(child_handle)
+                .ok_or(const_error!(io::ErrorKind::Other, "null child handle"))
+        }
+    }
+}
+
+impl Drop for ServiceProtocol {
+    fn drop(&mut self) {
+        if let Ok(sbp) = open_protocol::<service_binding::Protocol>(self.handle, self.service_guid)
+        {
+            // SAFETY: Child handle must be allocated by the current service binding protocol.
+            let _ = unsafe {
+                ((*sbp.as_ptr()).destroy_child)(sbp.as_ptr(), self.child_handle.as_ptr())
+            };
+        }
+    }
 }
