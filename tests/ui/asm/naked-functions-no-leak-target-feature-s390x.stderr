@@ -1,0 +1,18 @@
+error: instruction requires: vector-packed-decimal
+   |
+note: instantiated into assembly here
+  --> <inline asm>:16:1
+   |
+LL | vlrlr   %v24, %r3, 0(%r2)
+   | ^
+
+error: instruction requires: vector-packed-decimal
+   |
+note: instantiated into assembly here
+  --> <inline asm>:16:1
+   |
+LL | vlrlr   %v24, %r3, 0(%r2)
+   | ^
+
+error: aborting due to 2 previous errors
+
