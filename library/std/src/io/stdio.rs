@@ -575,6 +575,11 @@ impl fmt::Debug for StdinLock<'_> {
 /// output stream. Access is also synchronized via a lock and explicit control
 /// over locking is available via the [`lock`] method.
 ///
+/// By default, the handle is line-buffered when connected to a terminal, meaning
+/// it flushes automatically when a newline (`\n`) is encountered. For immediate
+/// output, you can manually call the [`flush`] method. When the handle goes out
+/// of scope, the buffer is automatically flushed.
+///
 /// Created by the [`io::stdout`] method.
 ///
 /// ### Note: Windows Portability Considerations
@@ -590,6 +595,7 @@ impl fmt::Debug for StdinLock<'_> {
 /// standard library or via raw Windows API calls, will fail.
 ///
 /// [`lock`]: Stdout::lock
+/// [`flush`]: Write::flush
 /// [`io::stdout`]: stdout
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Stdout {
@@ -604,6 +610,11 @@ pub struct Stdout {
 /// This handle implements the [`Write`] trait, and is constructed via
 /// the [`Stdout::lock`] method. See its documentation for more.
 ///
+/// By default, the handle is line-buffered when connected to a terminal, meaning
+/// it flushes automatically when a newline (`\n`) is encountered. For immediate
+/// output, you can manually call the [`flush`] method. When the handle goes out
+/// of scope, the buffer is automatically flushed.
+///
 /// ### Note: Windows Portability Considerations
 ///
 /// When operating in a console, the Windows implementation of this stream does not support
@@ -615,6 +626,8 @@ pub struct Stdout {
 /// the contained handle will be null. In such cases, the standard library's `Read` and
 /// `Write` will do nothing and silently succeed. All other I/O operations, via the
 /// standard library or via raw Windows API calls, will fail.
+///
+/// [`flush`]: Write::flush
 #[must_use = "if unused stdout will immediately unlock"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct StdoutLock<'a> {
@@ -628,6 +641,11 @@ static STDOUT: OnceLock<ReentrantLock<RefCell<LineWriter<StdoutRaw>>>> = OnceLoc
 /// Each handle returned is a reference to a shared global buffer whose access
 /// is synchronized via a mutex. If you need more explicit control over
 /// locking, see the [`Stdout::lock`] method.
+///
+/// By default, the handle is line-buffered when connected to a terminal, meaning
+/// it flushes automatically when a newline (`\n`) is encountered. For immediate
+/// output, you can manually call the [`flush`] method. When the handle goes out
+/// of scope, the buffer is automatically flushed.
 ///
 /// ### Note: Windows Portability Considerations
 ///
@@ -669,6 +687,22 @@ static STDOUT: OnceLock<ReentrantLock<RefCell<LineWriter<StdoutRaw>>>> = OnceLoc
 ///     Ok(())
 /// }
 /// ```
+///
+/// Ensuring output is flushed immediately:
+///
+/// ```no_run
+/// use std::io::{self, Write};
+///
+/// fn main() -> io::Result<()> {
+///     let mut stdout = io::stdout();
+///     stdout.write_all(b"hello, ")?;
+///     stdout.flush()?;                // Manual flush
+///     stdout.write_all(b"world!\n")?; // Automatically flushed
+///     Ok(())
+/// }
+/// ```
+///
+/// [`flush`]: Write::flush
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "io_stdout")]
