@@ -316,7 +316,7 @@ let mut input = String::new();
 io::stdin().read_line(&mut input)?;
 Ok::<(), io:Error>(())";
     let expected = "#![allow(unused)]
-fn main() { fn _inner() -> Result<(), impl core::fmt::Debug> {
+fn main() { fn _inner() -> core::result::Result<(), impl core::fmt::Debug> {
 use std::io;
 let mut input = String::new();
 io::stdin().read_line(&mut input)?;
