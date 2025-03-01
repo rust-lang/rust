@@ -204,7 +204,7 @@ compat_fn_with_fallback! {
     pub fn NtReleaseKeyedEvent(
         EventHandle: HANDLE,
         Key: *const c_void,
-        Alertable: BOOLEAN,
+        Alertable: bool,
         Timeout: *mut i64
     ) -> NTSTATUS {
         panic!("keyed events not available")
@@ -213,7 +213,7 @@ compat_fn_with_fallback! {
     pub fn NtWaitForKeyedEvent(
         EventHandle: HANDLE,
         Key: *const c_void,
-        Alertable: BOOLEAN,
+        Alertable: bool,
         Timeout: *mut i64
     ) -> NTSTATUS {
         panic!("keyed events not available")
