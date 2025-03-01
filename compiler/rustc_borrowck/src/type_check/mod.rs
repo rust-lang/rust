@@ -38,7 +38,7 @@ use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::source_map::Spanned;
-use rustc_span::{DUMMY_SP, Span, sym};
+use rustc_span::{Span, sym};
 use rustc_trait_selection::traits::query::type_op::custom::scrape_region_constraints;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
 use tracing::{debug, instrument, trace};
@@ -51,7 +51,6 @@ use crate::polonius::legacy::{PoloniusFacts, PoloniusLocationTable};
 use crate::polonius::{PoloniusContext, PoloniusLivenessContext};
 use crate::region_infer::TypeTest;
 use crate::region_infer::values::{LivenessValues, PlaceholderIndex, PlaceholderIndices};
-use crate::renumber::RegionCtxt;
 use crate::session_diagnostics::{MoveUnsized, SimdIntrinsicArgConst};
 use crate::type_check::free_region_relations::{CreateResult, UniversalRegionRelations};
 use crate::universal_regions::{DefiningTy, UniversalRegions};
@@ -2121,8 +2120,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                 //
                                 // Note that other checks (such as denying `dyn Send` -> `dyn
                                 // Debug`) are in `rustc_hir_typeck`.
-                                if let ty::Dynamic(src_tty, ..) = src_tail.kind()
-                                    && let ty::Dynamic(dst_tty, ..) = dst_tail.kind()
+                                if let ty::Dynamic(src_tty, src_region_bound, ..) = src_tail.kind()
+                                    && let ty::Dynamic(dst_tty, dst_region_bound, ..) =
+                                        dst_tail.kind()
                                     && src_tty.principal().is_some()
                                     && dst_tty.principal().is_some()
                                 {
@@ -2132,24 +2132,16 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                         tcx.mk_poly_existential_predicates(
                                             &src_tty.without_auto_traits().collect::<Vec<_>>(),
                                         ),
-                                        tcx.lifetimes.re_static,
+                                        *src_region_bound,
                                         ty::Dyn,
                                     ));
                                     let dst_obj = tcx.mk_ty_from_kind(ty::Dynamic(
                                         tcx.mk_poly_existential_predicates(
                                             &dst_tty.without_auto_traits().collect::<Vec<_>>(),
                                         ),
-                                        tcx.lifetimes.re_static,
+                                        *dst_region_bound,
                                         ty::Dyn,
                                     ));
-
-                                    // Replace trait object lifetimes with fresh vars, to allow
-                                    // casts like
-                                    // `*mut dyn FnOnce() + 'a` -> `*mut dyn FnOnce() + 'static`
-                                    let src_obj =
-                                        freshen_single_trait_object_lifetime(self.infcx, src_obj);
-                                    let dst_obj =
-                                        freshen_single_trait_object_lifetime(self.infcx, dst_obj);
 
                                     debug!(?src_tty, ?dst_tty, ?src_obj, ?dst_obj);
 
@@ -2706,17 +2698,4 @@ impl<'tcx> TypeOp<'tcx> for InstantiateOpaqueType<'tcx> {
         output.error_info = Some(self);
         Ok(output)
     }
-}
-
-fn freshen_single_trait_object_lifetime<'tcx>(
-    infcx: &BorrowckInferCtxt<'tcx>,
-    ty: Ty<'tcx>,
-) -> Ty<'tcx> {
-    let &ty::Dynamic(tty, _, dyn_kind @ ty::Dyn) = ty.kind() else { bug!("expected trait object") };
-
-    let fresh = infcx
-        .next_region_var(rustc_infer::infer::RegionVariableOrigin::MiscVariable(DUMMY_SP), || {
-            RegionCtxt::Unknown
-        });
-    infcx.tcx.mk_ty_from_kind(ty::Dynamic(tty, fresh, dyn_kind))
 }
