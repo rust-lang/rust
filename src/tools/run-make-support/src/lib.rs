@@ -61,7 +61,7 @@ pub use cargo::cargo;
 pub use clang::{clang, Clang};
 pub use htmldocck::htmldocck;
 pub use llvm::{
-    llvm_ar, llvm_bcanalyzer, llvm_dis, llvm_dwarfdump, llvm_filecheck, llvm_nm, llvm_objcopy,
+    llvm_ar, llvm_bcanalyzer, llvm_as, llvm_dis, llvm_dwarfdump, llvm_filecheck, llvm_nm, llvm_objcopy,
     llvm_objdump, llvm_profdata, llvm_readobj, LlvmAr, LlvmBcanalyzer, LlvmDis, LlvmDwarfdump,
     LlvmFilecheck, LlvmNm, LlvmObjcopy, LlvmObjdump, LlvmProfdata, LlvmReadobj,
 };
