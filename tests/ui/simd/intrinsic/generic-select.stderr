@@ -4,17 +4,21 @@ error[E0511]: invalid monomorphization of `simd_select` intrinsic: mismatched le
 LL |         simd_select(m8, x, x);
    |         ^^^^^^^^^^^^^^^^^^^^^
 
-error[E0511]: invalid monomorphization of `simd_select` intrinsic: mask element type is `u32`, expected `i_`
+error[E0511]: invalid monomorphization of `simd_select` intrinsic: found mask element type is `u32`, expected a signed integer type
   --> $DIR/generic-select.rs:39:9
    |
 LL |         simd_select(x, x, x);
    |         ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the mask may be widened, which only has the correct behavior for signed integers
 
-error[E0511]: invalid monomorphization of `simd_select` intrinsic: mask element type is `f32`, expected `i_`
+error[E0511]: invalid monomorphization of `simd_select` intrinsic: found mask element type is `f32`, expected a signed integer type
   --> $DIR/generic-select.rs:42:9
    |
 LL |         simd_select(z, z, z);
    |         ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the mask may be widened, which only has the correct behavior for signed integers
 
 error[E0511]: invalid monomorphization of `simd_select` intrinsic: expected SIMD argument type, found non-SIMD `u32`
   --> $DIR/generic-select.rs:45:9
