@@ -1,0 +1,8 @@
+error: expected expression, found `}`
+  --> $DIR/frontmatter-invalid-in-fn.rs:6:1
+   |
+LL | }
+   | ^ expected expression
+
+error: aborting due to 1 previous error
+
