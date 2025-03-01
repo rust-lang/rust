@@ -43,11 +43,12 @@
 #![deny(fuzzy_provenance_casts)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
+extern crate alloc;
 extern crate test;
 
 use std::hash::{DefaultHasher, Hash, Hasher};
 
-mod alloc;
+mod alloc_test;
 mod arc;
 mod autotraits;
 mod borrow;
