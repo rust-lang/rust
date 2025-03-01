@@ -635,12 +635,13 @@ fn filename_and_frag_for_def(
         }
         Definition::Macro(mac) => match mac.kind(db) {
             hir::MacroKind::Declarative
-            | hir::MacroKind::BuiltIn
+            | hir::MacroKind::AttrBuiltIn
+            | hir::MacroKind::DeclarativeBuiltIn
             | hir::MacroKind::Attr
             | hir::MacroKind::ProcMacro => {
                 format!("macro.{}.html", mac.name(db).as_str())
             }
-            hir::MacroKind::Derive => {
+            hir::MacroKind::Derive | hir::MacroKind::DeriveBuiltIn => {
                 format!("derive.{}.html", mac.name(db).as_str())
             }
         },

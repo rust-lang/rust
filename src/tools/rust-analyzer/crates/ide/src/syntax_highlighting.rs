@@ -14,7 +14,7 @@ mod tests;
 
 use std::ops::ControlFlow;
 
-use hir::{InFile, InRealFile, Name, Semantics};
+use hir::{InFile, InRealFile, MacroFileIdExt, MacroKind, Name, Semantics};
 use ide_db::{FxHashMap, Ranker, RootDatabase, SymbolKind};
 use span::EditionedFileId;
 use syntax::{
@@ -253,8 +253,6 @@ fn traverse(
     // FIXME: these are not perfectly accurate, we determine them by the real file's syntax tree
     // an attribute nested in a macro call will not emit `inside_attribute`
     let mut inside_attribute = false;
-    let mut inside_macro_call = false;
-    let mut inside_proc_macro_call = false;
 
     // Walk all nodes, keeping track of whether we are inside a macro or not.
     // If in macro, expand it first and highlight the expanded code.
@@ -291,11 +289,6 @@ fn traverse(
                         ast::Item::Fn(_) | ast::Item::Const(_) | ast::Item::Static(_) => {
                             bindings_shadow_count.clear()
                         }
-                        ast::Item::MacroCall(ref macro_call) => {
-                            inside_macro_call = true;
-                            inside_proc_macro_call =
-                                sema.is_proc_macro_call(InFile::new(file_id.into(), macro_call));
-                        }
                         _ => (),
                     }
 
@@ -329,10 +322,6 @@ fn traverse(
                         if attr_or_derive_item.as_ref().is_some_and(|it| *it.item() == item) =>
                     {
                         attr_or_derive_item = None;
-                    }
-                    Some(ast::Item::MacroCall(_)) => {
-                        inside_macro_call = false;
-                        inside_proc_macro_call = false;
                     }
                     _ => (),
                 }
@@ -375,17 +364,17 @@ fn traverse(
         let descended_element = if in_macro {
             // Attempt to descend tokens into macro-calls.
             match element {
-                NodeOrToken::Token(token) => descend_token(sema, file_id, token),
-                n => n,
+                NodeOrToken::Token(token) => descend_token(sema, InRealFile::new(file_id, token)),
+                n => InFile::new(file_id.into(), n),
             }
         } else {
-            element
+            InFile::new(file_id.into(), element)
         };
 
         // string highlight injections, note this does not use the descended element as proc-macros
         // can rewrite string literals which invalidates our indices
         if let (Some(original_token), Some(descended_token)) =
-            (original_token, descended_element.as_token())
+            (original_token, descended_element.value.as_token())
         {
             let control_flow = string_injections(
                 hl,
@@ -401,7 +390,7 @@ fn traverse(
             }
         }
 
-        let element = match descended_element {
+        let element = match descended_element.value {
             NodeOrToken::Node(name_like) => {
                 let hl = highlight::name_like(
                     sema,
@@ -437,8 +426,9 @@ fn traverse(
             if inside_attribute {
                 highlight |= HlMod::Attribute
             }
-            if inside_macro_call && tt_level > 0 {
-                if inside_proc_macro_call {
+            if let Some(m) = descended_element.file_id.macro_file() {
+                if let MacroKind::ProcMacro | MacroKind::Attr | MacroKind::Derive = m.kind(sema.db)
+                {
                     highlight |= HlMod::ProcMacro
                 }
                 highlight |= HlMod::Macro
@@ -506,20 +496,18 @@ fn string_injections(
 
 fn descend_token(
     sema: &Semantics<'_, RootDatabase>,
-    file_id: EditionedFileId,
-    token: SyntaxToken,
-) -> NodeOrToken<ast::NameLike, SyntaxToken> {
-    if token.kind() == COMMENT {
-        return NodeOrToken::Token(token);
+    token: InRealFile<SyntaxToken>,
+) -> InFile<NodeOrToken<ast::NameLike, SyntaxToken>> {
+    if token.value.kind() == COMMENT {
+        return token.map(NodeOrToken::Token).into();
     }
-    let ranker = Ranker::from_token(&token);
+    let ranker = Ranker::from_token(&token.value);
 
     let mut t = None;
     let mut r = 0;
-    sema.descend_into_macros_breakable(InRealFile::new(file_id, token.clone()), |tok, _ctx| {
+    sema.descend_into_macros_breakable(token.clone(), |tok, _ctx| {
         // FIXME: Consider checking ctx transparency for being opaque?
-        let tok = tok.value;
-        let my_rank = ranker.rank_token(&tok);
+        let my_rank = ranker.rank_token(&tok.value);
 
         if my_rank >= Ranker::MAX_RANK {
             // a rank of 0b1110 means that we have found a maximally interesting
@@ -544,8 +532,8 @@ fn descend_token(
         ControlFlow::Continue(())
     });
 
-    let token = t.unwrap_or(token);
-    match token.parent().and_then(ast::NameLike::cast) {
+    let token = t.unwrap_or_else(|| token.into());
+    token.map(|token| match token.parent().and_then(ast::NameLike::cast) {
         // Remap the token into the wrapping single token nodes
         Some(parent) => match (token.kind(), parent.syntax().kind()) {
             (T![self] | T![ident], NAME | NAME_REF) => NodeOrToken::Node(parent),
@@ -555,7 +543,7 @@ fn descend_token(
             _ => NodeOrToken::Token(token),
         },
         None => NodeOrToken::Token(token),
-    }
+    })
 }
 
 fn filter_by_config(highlight: &mut Highlight, config: HighlightConfig) -> bool {
