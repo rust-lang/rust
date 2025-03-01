@@ -285,9 +285,19 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    fn expose_ptr(&self, alloc_id: AllocId, tag: BorTag) -> InterpResult<'tcx> {
+    fn expose_provenance(&self, provenance: Provenance) -> InterpResult<'tcx> {
         let this = self.eval_context_ref();
         let mut global_state = this.machine.alloc_addresses.borrow_mut();
+
+        let (alloc_id, tag) = match provenance {
+            Provenance::Concrete { alloc_id, tag } => (alloc_id, tag),
+            Provenance::Wildcard => {
+                // No need to do anything for wildcard pointers as
+                // their provenances have already been previously exposed.
+                return interp_ok(());
+            }
+        };
+
         // In strict mode, we don't need this, so we can save some cycles by not tracking it.
         if global_state.provenance_mode == ProvenanceMode::Strict {
             return interp_ok(());
@@ -421,6 +431,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Wrapping "addr - base_addr"
         let rel_offset = this.truncate_to_target_usize(addr.bytes().wrapping_sub(base_addr));
         Some((alloc_id, Size::from_bytes(rel_offset)))
+    }
+
+    /// Prepare all exposed memory for a native call.
+    /// This overapproximates the modifications which external code might make to memory:
+    /// We set all reachable allocations as initialized, mark all reachable provenances as exposed
+    /// and overwrite them with `Provenance::WILDCARD`.
+    fn prepare_exposed_for_native_call(&mut self) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        // We need to make a deep copy of this list, but it's fine; it also serves as scratch space
+        // for the search within `prepare_for_native_call`.
+        let exposed: Vec<AllocId> =
+            this.machine.alloc_addresses.get_mut().exposed.iter().copied().collect();
+        this.prepare_for_native_call(exposed)
     }
 }
 

@@ -6,7 +6,7 @@
 #![feature(box_as_ptr)]
 
 use std::mem::MaybeUninit;
-use std::ptr::null;
+use std::ptr;
 
 fn main() {
     test_increment_int();
@@ -20,6 +20,8 @@ fn main() {
     test_pass_dangling();
     test_swap_ptr_triple_dangling();
     test_return_ptr();
+    test_pass_ptr_as_int();
+    test_pass_ptr_via_previously_shared_mem();
 }
 
 /// Test function that modifies an int.
@@ -112,7 +114,7 @@ fn test_swap_ptr() {
     }
 
     let x = 61;
-    let (mut ptr0, mut ptr1) = (&raw const x, null());
+    let (mut ptr0, mut ptr1) = (&raw const x, ptr::null());
 
     unsafe { swap_ptr(&mut ptr0, &mut ptr1) };
     assert_eq!(unsafe { *ptr1 }, x);
@@ -131,7 +133,7 @@ fn test_swap_ptr_tuple() {
     }
 
     let x = 71;
-    let mut tuple = Tuple { ptr0: &raw const x, ptr1: null() };
+    let mut tuple = Tuple { ptr0: &raw const x, ptr1: ptr::null() };
 
     unsafe { swap_ptr_tuple(&mut tuple) }
     assert_eq!(unsafe { *tuple.ptr1 }, x);
@@ -148,7 +150,7 @@ fn test_overwrite_dangling() {
     drop(b);
 
     unsafe { overwrite_ptr(&mut ptr) };
-    assert_eq!(ptr, null());
+    assert_eq!(ptr, ptr::null());
 }
 
 /// Test function that passes a dangling pointer.
@@ -199,4 +201,34 @@ fn test_return_ptr() {
 
     let ptr = unsafe { return_ptr(ptr) };
     assert_eq!(unsafe { *ptr }, x);
+}
+
+/// Test casting a pointer to an integer and passing that to C.
+fn test_pass_ptr_as_int() {
+    extern "C" {
+        fn pass_ptr_as_int(ptr: usize, set_to_val: i32);
+    }
+
+    let mut m: MaybeUninit<i32> = MaybeUninit::uninit();
+    unsafe { pass_ptr_as_int(m.as_mut_ptr() as usize, 42) };
+    assert_eq!(unsafe { m.assume_init() }, 42);
+}
+
+fn test_pass_ptr_via_previously_shared_mem() {
+    extern "C" {
+        fn set_shared_mem(ptr: *mut *mut i32);
+        fn init_ptr_stored_in_shared_mem(val: i32);
+    }
+
+    let mut m: *mut i32 = ptr::null_mut();
+    let ptr_to_m = &raw mut m;
+    unsafe { set_shared_mem(&raw mut m) };
+
+    let mut m2: MaybeUninit<i32> = MaybeUninit::uninit();
+    // Store a pointer to m2 somewhere that C code can access it.
+    unsafe { ptr_to_m.write(m2.as_mut_ptr()) };
+    // Have C code write there.
+    unsafe { init_ptr_stored_in_shared_mem(42) };
+    // Ensure this memory is now considered initialized.
+    assert_eq!(unsafe { m2.assume_init() }, 42);
 }

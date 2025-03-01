@@ -955,18 +955,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
     /// Handle the effect an FFI call might have on the state of allocations.
     /// This overapproximates the modifications which external code might make to memory:
-    /// We set all reachable allocations as initialized, mark all provenances as exposed
+    /// We set all reachable allocations as initialized, mark all reachable provenances as exposed
     /// and overwrite them with `Provenance::WILDCARD`.
-    pub fn prepare_for_native_call(
-        &mut self,
-        id: AllocId,
-        initial_prov: M::Provenance,
-    ) -> InterpResult<'tcx> {
-        // Expose provenance of the root allocation.
-        M::expose_provenance(self, initial_prov)?;
-
+    ///
+    /// The allocations in `ids` are assumed to be already exposed.
+    pub fn prepare_for_native_call(&mut self, ids: Vec<AllocId>) -> InterpResult<'tcx> {
         let mut done = FxHashSet::default();
-        let mut todo = vec![id];
+        let mut todo = ids;
         while let Some(id) = todo.pop() {
             if !done.insert(id) {
                 // We already saw this allocation before, don't process it again.
