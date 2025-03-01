@@ -3,7 +3,7 @@ use rustc_errors::Applicability;
 use rustc_lint::LateContext;
 use rustc_span::{BytePos, Span};
 
-use super::DOC_COMMENT_DOUBLE_SPACE_LINEBREAK;
+use super::DOC_COMMENT_DOUBLE_SPACE_LINEBREAKS;
 
 pub fn check(cx: &LateContext<'_>, collected_breaks: &[Span]) {
     if collected_breaks.is_empty() {
@@ -17,7 +17,7 @@ pub fn check(cx: &LateContext<'_>, collected_breaks: &[Span]) {
 
     span_lint_and_then(
         cx,
-        DOC_COMMENT_DOUBLE_SPACE_LINEBREAK,
+        DOC_COMMENT_DOUBLE_SPACE_LINEBREAKS,
         breaks.clone(),
         "doc comment uses two spaces for a hard line break",
         |diag| {

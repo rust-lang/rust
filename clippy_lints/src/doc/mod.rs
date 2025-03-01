@@ -1,8 +1,5 @@
 #![allow(clippy::lint_without_lint_pass)]
 
-mod lazy_continuation;
-mod too_long_first_doc_paragraph;
-
 use clippy_config::Conf;
 use clippy_utils::attrs::is_doc_hidden;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_then};
@@ -34,13 +31,15 @@ use rustc_span::{Span, sym};
 use std::ops::Range;
 use url::Url;
 
-mod doc_comment_double_space_linebreak;
+mod doc_comment_double_space_linebreaks;
 mod include_in_doc_without_cfg;
+mod lazy_continuation;
 mod link_with_quotes;
 mod markdown;
 mod missing_headers;
 mod needless_doctest_main;
 mod suspicious_doc_comments;
+mod too_long_first_doc_paragraph;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -595,8 +594,8 @@ declare_clippy_lint! {
     ///     l + r
     /// }
     /// ```
-    #[clippy::version = "1.80.0"]
-    pub DOC_COMMENT_DOUBLE_SPACE_LINEBREAK,
+    #[clippy::version = "1.87.0"]
+    pub DOC_COMMENT_DOUBLE_SPACE_LINEBREAKS,
     pedantic,
     "double-space used for doc comment linebreak instead of `\\`"
 }
@@ -632,7 +631,7 @@ impl_lint_pass!(Documentation => [
     DOC_OVERINDENTED_LIST_ITEMS,
     TOO_LONG_FIRST_DOC_PARAGRAPH,
     DOC_INCLUDE_WITHOUT_CFG,
-    DOC_COMMENT_DOUBLE_SPACE_LINEBREAK
+    DOC_COMMENT_DOUBLE_SPACE_LINEBREAKS
 ]);
 
 impl EarlyLintPass for Documentation {
@@ -1164,7 +1163,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
         }
     }
 
-    doc_comment_double_space_linebreak::check(cx, &collected_breaks);
+    doc_comment_double_space_linebreaks::check(cx, &collected_breaks);
 
     headers
 }
