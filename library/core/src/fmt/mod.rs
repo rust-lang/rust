@@ -636,6 +636,9 @@ impl<'a> Arguments<'a> {
     /// when using `format!`. Note: this is neither the lower nor upper bound.
     #[inline]
     pub fn estimated_capacity(&self) -> usize {
+        // Since the format args are constructed from a single string literal in
+        // `format_args!`, the total length of the pieces is under `isize::MAX`
+        // and this sum cannot overflow.
         let pieces_length: usize = self.pieces.iter().map(|x| x.len()).sum();
 
         if self.args.is_empty() {
@@ -649,7 +652,9 @@ impl<'a> Arguments<'a> {
             // There are some arguments, so any additional push
             // will reallocate the string. To avoid that,
             // we're "pre-doubling" the capacity here.
-            pieces_length.checked_mul(2).unwrap_or(0)
+            pieces_length
+                .checked_add(self.args.len().checked_mul(8).unwrap_or(0))
+                .unwrap_or(pieces_length)
         }
     }
 }
@@ -710,9 +715,10 @@ impl<'a> Arguments<'a> {
     }
 
     /// Same as [`Arguments::as_str`], but will only return `Some(s)` if it can be determined at compile time.
+    #[unstable(feature = "fmt_internals", reason = "internal to standard library", issue = "none")]
     #[must_use]
     #[inline]
-    fn as_statically_known_str(&self) -> Option<&'static str> {
+    pub fn as_statically_known_str(&self) -> Option<&'static str> {
         let s = self.as_str();
         if core::intrinsics::is_val_statically_known(s.is_some()) { s } else { None }
     }

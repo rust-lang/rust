@@ -496,6 +496,12 @@ impl<A: Allocator> Write for Vec<u8, A> {
     }
 
     #[inline]
+    fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> io::Result<()> {
+        self.reserve(fmt.estimated_capacity());
+        io::default_write_fmt(self, fmt)
+    }
+
+    #[inline]
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
@@ -636,6 +642,12 @@ impl<A: Allocator> Write for VecDeque<u8, A> {
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
         self.extend(buf);
         Ok(())
+    }
+
+    #[inline]
+    fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> io::Result<()> {
+        self.reserve(fmt.estimated_capacity());
+        io::default_write_fmt(self, fmt)
     }
 
     #[inline]
