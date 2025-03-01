@@ -473,6 +473,15 @@ impl<'a> MetaItemListParserContext<'a> {
         {
             self.inside_delimiters.next();
             return Some(MetaItemOrLitParser::Lit(lit));
+        } else if let Some(TokenTree::Delimited(.., Delimiter::Invisible(_), inner_tokens)) =
+            self.inside_delimiters.peek()
+        {
+            self.inside_delimiters.next();
+            return MetaItemListParserContext {
+                inside_delimiters: inner_tokens.iter().peekable(),
+                dcx: self.dcx,
+            }
+            .next();
         }
 
         // or a path.
