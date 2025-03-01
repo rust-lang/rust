@@ -34,7 +34,7 @@ pub(crate) fn remove_parentheses(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
     let expr = parens.expr()?;
 
     let parent = parens.syntax().parent()?;
-    if expr.needs_parens_in(parent) {
+    if expr.needs_parens_in(&parent) {
         return None;
     }
 

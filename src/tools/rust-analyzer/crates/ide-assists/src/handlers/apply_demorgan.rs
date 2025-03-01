@@ -6,9 +6,16 @@ use ide_db::{
     syntax_helpers::node_ext::{for_each_tail_expr, walk_expr},
 };
 use syntax::{
-    ast::{self, syntax_factory::SyntaxFactory, AstNode, Expr::BinExpr, HasArgList},
+    ast::{
+        self,
+        prec::{precedence, ExprPrecedence},
+        syntax_factory::SyntaxFactory,
+        AstNode,
+        Expr::BinExpr,
+        HasArgList,
+    },
     syntax_editor::{Position, SyntaxEditor},
-    SyntaxKind, SyntaxNode, T,
+    SyntaxKind, T,
 };
 
 use crate::{utils::invert_boolean_expression, AssistContext, AssistId, AssistKind, Assists};
@@ -52,9 +59,9 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
     }
 
     let op = bin_expr.op_kind()?;
-    let inv_token = match op {
-        ast::BinaryOp::LogicOp(ast::LogicOp::And) => SyntaxKind::PIPE2,
-        ast::BinaryOp::LogicOp(ast::LogicOp::Or) => SyntaxKind::AMP2,
+    let (inv_token, prec) = match op {
+        ast::BinaryOp::LogicOp(ast::LogicOp::And) => (SyntaxKind::PIPE2, ExprPrecedence::LOr),
+        ast::BinaryOp::LogicOp(ast::LogicOp::Or) => (SyntaxKind::AMP2, ExprPrecedence::LAnd),
         _ => return None,
     };
 
@@ -65,33 +72,33 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
     editor.replace(demorganed.op_token()?, make.token(inv_token));
 
     let mut exprs = VecDeque::from([
-        (bin_expr.lhs()?, demorganed.lhs()?),
-        (bin_expr.rhs()?, demorganed.rhs()?),
+        (bin_expr.lhs()?, demorganed.lhs()?, prec),
+        (bin_expr.rhs()?, demorganed.rhs()?, prec),
     ]);
 
-    while let Some((expr, dm)) = exprs.pop_front() {
+    while let Some((expr, demorganed, prec)) = exprs.pop_front() {
         if let BinExpr(bin_expr) = &expr {
-            if let BinExpr(cbin_expr) = &dm {
+            if let BinExpr(cbin_expr) = &demorganed {
                 if op == bin_expr.op_kind()? {
                     editor.replace(cbin_expr.op_token()?, make.token(inv_token));
-                    exprs.push_back((bin_expr.lhs()?, cbin_expr.lhs()?));
-                    exprs.push_back((bin_expr.rhs()?, cbin_expr.rhs()?));
+                    exprs.push_back((bin_expr.lhs()?, cbin_expr.lhs()?, prec));
+                    exprs.push_back((bin_expr.rhs()?, cbin_expr.rhs()?, prec));
                 } else {
                     let mut inv = invert_boolean_expression(&make, expr);
-                    if needs_parens_in_place_of(&inv, &dm.syntax().parent()?, &dm) {
+                    if precedence(&inv).needs_parentheses_in(prec) {
                         inv = make.expr_paren(inv).into();
                     }
-                    editor.replace(dm.syntax(), inv.syntax());
+                    editor.replace(demorganed.syntax(), inv.syntax());
                 }
             } else {
                 return None;
             }
         } else {
-            let mut inv = invert_boolean_expression(&make, dm.clone());
-            if needs_parens_in_place_of(&inv, &dm.syntax().parent()?, &dm) {
+            let mut inv = invert_boolean_expression(&make, demorganed.clone());
+            if precedence(&inv).needs_parentheses_in(prec) {
                 inv = make.expr_paren(inv).into();
             }
-            editor.replace(dm.syntax(), inv.syntax());
+            editor.replace(demorganed.syntax(), inv.syntax());
         }
     }
 
@@ -121,7 +128,7 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
                     let parent = neg_expr.syntax().parent();
                     editor = builder.make_editor(neg_expr.syntax());
 
-                    if parent.is_some_and(|parent| demorganed.needs_parens_in(parent)) {
+                    if parent.is_some_and(|parent| demorganed.needs_parens_in(&parent)) {
                         cov_mark::hit!(demorgan_keep_parens_for_op_precedence2);
                         editor.replace(neg_expr.syntax(), make.expr_paren(demorganed).syntax());
                     } else {
@@ -269,30 +276,6 @@ fn tail_cb_impl(editor: &mut SyntaxEditor, make: &SyntaxFactory, e: &ast::Expr) 
 /// Add bang and parentheses to the expression.
 fn add_bang_paren(make: &SyntaxFactory, expr: ast::Expr) -> ast::Expr {
     make.expr_prefix(T![!], make.expr_paren(expr).into()).into()
-}
-
-fn needs_parens_in_place_of(
-    this: &ast::Expr,
-    parent: &SyntaxNode,
-    in_place_of: &ast::Expr,
-) -> bool {
-    assert_eq!(Some(parent), in_place_of.syntax().parent().as_ref());
-
-    let child_idx = parent
-        .children()
-        .enumerate()
-        .find_map(|(i, it)| if &it == in_place_of.syntax() { Some(i) } else { None })
-        .unwrap();
-    let parent = parent.clone_subtree();
-    let subtree_place = parent.children().nth(child_idx).unwrap();
-
-    let mut editor = SyntaxEditor::new(parent);
-    editor.replace(subtree_place, this.syntax());
-    let edit = editor.finish();
-
-    let replaced = edit.new_root().children().nth(child_idx).unwrap();
-    let replaced = ast::Expr::cast(replaced).unwrap();
-    replaced.needs_parens_in(edit.new_root().clone())
 }
 
 #[cfg(test)]
