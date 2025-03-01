@@ -401,6 +401,9 @@ pub struct Config {
 
     /// Command for visual diff display, e.g. `diff-tool --color=always`.
     pub compiletest_diff_tool: Option<String>,
+
+    // For excluding tests from the test suite
+    pub exclude: Option<Vec<PathBuf>>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -941,6 +944,7 @@ define_config! {
         optimized_compiler_builtins: Option<bool> = "optimized-compiler-builtins",
         jobs: Option<u32> = "jobs",
         compiletest_diff_tool: Option<String> = "compiletest-diff-tool",
+        exclude: Option<Vec<String>> = "exclude",
         ccache: Option<StringOrBool> = "ccache",
     }
 }
@@ -1631,6 +1635,7 @@ impl Config {
             optimized_compiler_builtins,
             jobs,
             compiletest_diff_tool,
+            exclude,
             mut ccache,
         } = toml.build.unwrap_or_default();
 
@@ -2327,6 +2332,7 @@ impl Config {
         config.optimized_compiler_builtins =
             optimized_compiler_builtins.unwrap_or(config.channel != "dev");
         config.compiletest_diff_tool = compiletest_diff_tool;
+        config.exclude = exclude.map(|excludes| excludes.into_iter().map(PathBuf::from).collect());
 
         let download_rustc = config.download_rustc_commit.is_some();
         config.explicit_stage_from_cli = flags.stage.is_some();
