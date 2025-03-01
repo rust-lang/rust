@@ -3242,6 +3242,8 @@ pub const fn bitreverse<T: Copy>(_x: T) -> T {
 /// large and difficult to optimize.
 ///
 /// The stabilized version of this intrinsic is [`Ord::cmp`].
+#[rustc_intrinsic_const_stable_indirect]
+#[rustc_nounwind]
 #[rustc_intrinsic]
 #[rustc_intrinsic_must_be_overridden]
 pub const fn three_way_compare<T: Copy>(_lhs: T, _rhss: T) -> crate::cmp::Ordering {
