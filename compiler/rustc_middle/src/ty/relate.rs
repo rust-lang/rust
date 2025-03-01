@@ -51,22 +51,12 @@ impl<'tcx> Relate<TyCtxt<'tcx>> for ty::Pattern<'tcx> {
     ) -> RelateResult<'tcx, Self> {
         match (&*a, &*b) {
             (
-                &ty::PatternKind::Range { start: start_a, end: end_a, include_end: inc_a },
-                &ty::PatternKind::Range { start: start_b, end: end_b, include_end: inc_b },
+                &ty::PatternKind::Range { start: start_a, end: end_a },
+                &ty::PatternKind::Range { start: start_b, end: end_b },
             ) => {
-                // FIXME(pattern_types): make equal patterns equal (`0..=` is the same as `..=`).
-                let mut relate_opt_const = |a, b| match (a, b) {
-                    (None, None) => Ok(None),
-                    (Some(a), Some(b)) => relation.relate(a, b).map(Some),
-                    // FIXME(pattern_types): report a better error
-                    _ => Err(TypeError::Mismatch),
-                };
-                let start = relate_opt_const(start_a, start_b)?;
-                let end = relate_opt_const(end_a, end_b)?;
-                if inc_a != inc_b {
-                    todo!()
-                }
-                Ok(relation.cx().mk_pat(ty::PatternKind::Range { start, end, include_end: inc_a }))
+                let start = relation.relate(start_a, start_b)?;
+                let end = relation.relate(end_a, end_b)?;
+                Ok(relation.cx().mk_pat(ty::PatternKind::Range { start, end }))
             }
         }
     }

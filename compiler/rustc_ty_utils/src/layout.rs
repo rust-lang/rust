@@ -207,24 +207,45 @@ fn layout_of_uncached<'tcx>(
             let layout = cx.layout_of(ty)?.layout;
             let mut layout = LayoutData::clone(&layout.0);
             match *pat {
-                ty::PatternKind::Range { start, end, include_end } => {
+                ty::PatternKind::Range { start, end } => {
                     if let BackendRepr::Scalar(scalar) | BackendRepr::ScalarPair(scalar, _) =
                         &mut layout.backend_repr
                     {
-                        if let Some(start) = start {
-                            scalar.valid_range_mut().start = extract_const_value(cx, ty, start)?
-                                .try_to_bits(tcx, cx.typing_env)
-                                .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
-                        }
-                        if let Some(end) = end {
-                            let mut end = extract_const_value(cx, ty, end)?
-                                .try_to_bits(tcx, cx.typing_env)
-                                .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
-                            if !include_end {
-                                end = end.wrapping_sub(1);
+                        scalar.valid_range_mut().start = extract_const_value(cx, ty, start)?
+                            .try_to_bits(tcx, cx.typing_env)
+                            .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
+
+                        scalar.valid_range_mut().end = extract_const_value(cx, ty, end)?
+                            .try_to_bits(tcx, cx.typing_env)
+                            .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
+
+                        // FIXME(pattern_types): create implied bounds from pattern types in signatures
+                        // that require that the range end is >= the range start so that we can't hit
+                        // this error anymore without first having hit a trait solver error.
+                        // Very fuzzy on the details here, but pattern types are an internal impl detail,
+                        // so we can just go with this for now
+                        if scalar.is_signed() {
+                            let range = scalar.valid_range_mut();
+                            let start = layout.size.sign_extend(range.start);
+                            let end = layout.size.sign_extend(range.end);
+                            if end < start {
+                                let guar = tcx.dcx().err(format!(
+                                    "pattern type ranges cannot wrap: {start}..={end}"
+                                ));
+
+                                return Err(error(cx, LayoutError::ReferencesError(guar)));
                             }
-                            scalar.valid_range_mut().end = end;
-                        }
+                        } else {
+                            let range = scalar.valid_range_mut();
+                            if range.end < range.start {
+                                let guar = tcx.dcx().err(format!(
+                                    "pattern type ranges cannot wrap: {}..={}",
+                                    range.start, range.end
+                                ));
+
+                                return Err(error(cx, LayoutError::ReferencesError(guar)));
+                            }
+                        };
 
                         let niche = Niche {
                             offset: Size::ZERO,
