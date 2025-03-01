@@ -92,7 +92,6 @@ mod bool {
 
     #[test]
     fn should_permit_validity_expansion_and_reject_contraction() {
-        let un = layout::Tree::<Def, !>::uninhabited();
         let b0 = layout::Tree::<Def, !>::from_bits(0);
         let b1 = layout::Tree::<Def, !>::from_bits(1);
         let b2 = layout::Tree::<Def, !>::from_bits(2);

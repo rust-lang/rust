@@ -2527,9 +2527,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 return GetSafeTransmuteErrorAndReason::Silent;
             };
 
-            let Some(assume) =
-                rustc_transmute::Assume::from_const(self.infcx.tcx, obligation.param_env, assume)
-            else {
+            let Some(assume) = rustc_transmute::Assume::from_const(self.infcx.tcx, assume) else {
                 self.dcx().span_delayed_bug(
                     span,
                     "Unable to construct rustc_transmute::Assume where it was previously possible",
@@ -2541,11 +2539,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let src = trait_pred.trait_ref.args.type_at(1);
             let err_msg = format!("`{src}` cannot be safely transmuted into `{dst}`");
 
-            match rustc_transmute::TransmuteTypeEnv::new(self.infcx).is_transmutable(
-                obligation.cause,
-                src_and_dst,
-                assume,
-            ) {
+            match rustc_transmute::TransmuteTypeEnv::new(self.infcx.tcx)
+                .is_transmutable(src_and_dst, assume)
+            {
                 Answer::No(reason) => {
                     let safe_transmute_explanation = match reason {
                         rustc_transmute::Reason::SrcIsNotYetSupported => {

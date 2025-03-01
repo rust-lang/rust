@@ -1091,12 +1091,11 @@ where
 
     pub(super) fn is_transmutable(
         &mut self,
-        param_env: I::ParamEnv,
         dst: I::Ty,
         src: I::Ty,
         assume: I::Const,
     ) -> Result<Certainty, NoSolution> {
-        self.delegate.is_transmutable(param_env, dst, src, assume)
+        self.delegate.is_transmutable(dst, src, assume)
     }
 }
 
