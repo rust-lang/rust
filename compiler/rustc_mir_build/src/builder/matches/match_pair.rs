@@ -9,24 +9,21 @@ use crate::builder::expr::as_place::{PlaceBase, PlaceBuilder};
 use crate::builder::matches::{FlatPat, MatchPairTree, TestCase};
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
-    /// Builds and returns [`MatchPairTree`] subtrees, one for each pattern in
+    /// Builds and pushes [`MatchPairTree`] subtrees, one for each pattern in
     /// `subpatterns`, representing the fields of a [`PatKind::Variant`] or
     /// [`PatKind::Leaf`].
     ///
     /// Used internally by [`MatchPairTree::for_pattern`].
     fn field_match_pairs(
         &mut self,
+        match_pairs: &mut Vec<MatchPairTree<'tcx>>,
         place: PlaceBuilder<'tcx>,
         subpatterns: &[FieldPat<'tcx>],
-    ) -> Vec<MatchPairTree<'tcx>> {
-        subpatterns
-            .iter()
-            .map(|fieldpat| {
-                let place =
-                    place.clone_project(PlaceElem::Field(fieldpat.field, fieldpat.pattern.ty));
-                MatchPairTree::for_pattern(place, &fieldpat.pattern, self)
-            })
-            .collect()
+    ) {
+        for fieldpat in subpatterns {
+            let place = place.clone_project(PlaceElem::Field(fieldpat.field, fieldpat.pattern.ty));
+            match_pairs.push(MatchPairTree::for_pattern(place, &fieldpat.pattern, self));
+        }
     }
 
     /// Builds [`MatchPairTree`] subtrees for the prefix/middle/suffix parts of an
@@ -215,7 +212,7 @@ impl<'tcx> MatchPairTree<'tcx> {
 
             PatKind::Variant { adt_def, variant_index, args, ref subpatterns } => {
                 let downcast_place = place_builder.downcast(adt_def, variant_index); // `(x as Variant)`
-                subpairs = cx.field_match_pairs(downcast_place, subpatterns);
+                cx.field_match_pairs(&mut subpairs, downcast_place, subpatterns);
 
                 let irrefutable = adt_def.variants().iter_enumerated().all(|(i, v)| {
                     i == variant_index
@@ -233,7 +230,7 @@ impl<'tcx> MatchPairTree<'tcx> {
             }
 
             PatKind::Leaf { ref subpatterns } => {
-                subpairs = cx.field_match_pairs(place_builder, subpatterns);
+                cx.field_match_pairs(&mut subpairs, place_builder, subpatterns);
                 default_irrefutable()
             }
 
