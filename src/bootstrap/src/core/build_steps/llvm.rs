@@ -735,57 +735,17 @@ fn configure_cmake(
         None => (builder.cc(target), builder.cxx(target).unwrap()),
     };
 
-    // Handle msvc + ninja + ccache specially (this is what the bots use)
-    if target.is_msvc() && builder.ninja() && builder.config.ccache.is_some() {
-        let mut wrap_cc = env::current_exe().expect("failed to get cwd");
-        wrap_cc.set_file_name("sccache-plus-cl.exe");
-
-        cfg.define("CMAKE_C_COMPILER", sanitize_cc(&wrap_cc))
-            .define("CMAKE_CXX_COMPILER", sanitize_cc(&wrap_cc));
-        cfg.env("SCCACHE_PATH", builder.config.ccache.as_ref().unwrap())
-            .env("SCCACHE_TARGET", target.triple)
-            .env("SCCACHE_CC", &cc)
-            .env("SCCACHE_CXX", &cxx);
-
-        // Building LLVM on MSVC can be a little ludicrous at times. We're so far
-        // off the beaten path here that I'm not really sure this is even half
-        // supported any more. Here we're trying to:
-        //
-        // * Build LLVM on MSVC
-        // * Build LLVM with `clang-cl` instead of `cl.exe`
-        // * Build a project with `sccache`
-        // * Build for 32-bit as well
-        // * Build with Ninja
-        //
-        // For `cl.exe` there are different binaries to compile 32/64 bit which
-        // we use but for `clang-cl` there's only one which internally
-        // multiplexes via flags. As a result it appears that CMake's detection
-        // of a compiler's architecture and such on MSVC **doesn't** pass any
-        // custom flags we pass in CMAKE_CXX_FLAGS below. This means that if we
-        // use `clang-cl.exe` it's always diagnosed as a 64-bit compiler which
-        // definitely causes problems since all the env vars are pointing to
-        // 32-bit libraries.
-        //
-        // To hack around this... again... we pass an argument that's
-        // unconditionally passed in the sccache shim. This'll get CMake to
-        // correctly diagnose it's doing a 32-bit compilation and LLVM will
-        // internally configure itself appropriately.
-        if builder.config.llvm_clang_cl.is_some() && target.contains("i686") {
-            cfg.env("SCCACHE_EXTRA_ARGS", "-m32");
+    // If ccache is configured we inform the build a little differently how
+    // to invoke ccache while also invoking our compilers.
+    if use_compiler_launcher {
+        if let Some(ref ccache) = builder.config.ccache {
+            cfg.define("CMAKE_C_COMPILER_LAUNCHER", ccache)
+                .define("CMAKE_CXX_COMPILER_LAUNCHER", ccache);
         }
-    } else {
-        // If ccache is configured we inform the build a little differently how
-        // to invoke ccache while also invoking our compilers.
-        if use_compiler_launcher {
-            if let Some(ref ccache) = builder.config.ccache {
-                cfg.define("CMAKE_C_COMPILER_LAUNCHER", ccache)
-                    .define("CMAKE_CXX_COMPILER_LAUNCHER", ccache);
-            }
-        }
-        cfg.define("CMAKE_C_COMPILER", sanitize_cc(&cc))
-            .define("CMAKE_CXX_COMPILER", sanitize_cc(&cxx))
-            .define("CMAKE_ASM_COMPILER", sanitize_cc(&cc));
     }
+    cfg.define("CMAKE_C_COMPILER", sanitize_cc(&cc))
+        .define("CMAKE_CXX_COMPILER", sanitize_cc(&cxx))
+        .define("CMAKE_ASM_COMPILER", sanitize_cc(&cc));
 
     cfg.build_arg("-j").build_arg(builder.jobs().to_string());
     // FIXME(madsmtm): Allow `cmake-rs` to select flags by itself by passing
