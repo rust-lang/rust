@@ -151,6 +151,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `mp`
 `mp1e2`
 `msa`
+`msync`
 `mte`
 `multivalue`
 `mutable-globals`
