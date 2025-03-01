@@ -3665,7 +3665,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// ```
     /// # use std::cmp::min;
-    /// # let some_predicate = |x: &mut i32| { *x == 2 || *x == 3 || *x == 6 };
+    /// # let some_predicate = |x: &mut i32| *x == 2 || *x == 3 || *x == 6;
     /// # let mut vec = vec![1, 2, 3, 4, 5, 6];
     /// # let range = 1..4;
     /// let mut i = range.start;
