@@ -220,6 +220,15 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
     // and small enough to prevent hangs.
     const STARTING_DEPTH: usize = 8;
 
+    #[inline(always)]
+    pub fn inlined_args_may_unify(
+        self,
+        obligation_args: I::GenericArgs,
+        impl_args: I::GenericArgs,
+    ) -> bool {
+        self.inlined_args_may_unify_inner(obligation_args, impl_args, Self::STARTING_DEPTH)
+    }
+
     pub fn args_may_unify(
         self,
         obligation_args: I::GenericArgs,
@@ -228,8 +237,23 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
         self.args_may_unify_inner(obligation_args, impl_args, Self::STARTING_DEPTH)
     }
 
-    pub fn types_may_unify(self, lhs: I::Ty, rhs: I::Ty) -> bool {
-        self.types_may_unify_inner(lhs, rhs, Self::STARTING_DEPTH)
+    #[inline(always)]
+    fn inlined_arg_may_unify(self, obl: I::GenericArg, imp: I::GenericArg, depth: usize) -> bool {
+        match (obl.kind(), imp.kind()) {
+            // We don't fast reject based on regions.
+            (ty::GenericArgKind::Lifetime(_), ty::GenericArgKind::Lifetime(_)) => true,
+            (ty::GenericArgKind::Type(obl), ty::GenericArgKind::Type(imp)) => {
+                self.types_may_unify_inner(obl, imp, depth)
+            }
+            (ty::GenericArgKind::Const(obl), ty::GenericArgKind::Const(imp)) => {
+                self.consts_may_unify_inner(obl, imp)
+            }
+            _ => panic!("kind mismatch: {obl:?} {imp:?}"),
+        }
+    }
+
+    fn arg_may_unify(self, obl: I::GenericArg, imp: I::GenericArg, depth: usize) -> bool {
+        self.inlined_arg_may_unify(obl, imp, depth)
     }
 
     fn args_may_unify_inner(
@@ -238,22 +262,34 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
         impl_args: I::GenericArgs,
         depth: usize,
     ) -> bool {
+        iter::zip(obligation_args.iter(), impl_args.iter())
+            .all(|(obl, imp)| self.arg_may_unify(obl, imp, depth))
+    }
+
+    #[inline(always)]
+    fn inlined_args_may_unify_inner(
+        self,
+        obligation_args: I::GenericArgs,
+        impl_args: I::GenericArgs,
+        depth: usize,
+    ) -> bool {
         // No need to decrement the depth here as this function is only
         // recursively reachable via `types_may_unify_inner` which already
         // increments the depth for us.
-        iter::zip(obligation_args.iter(), impl_args.iter()).all(|(obl, imp)| {
-            match (obl.kind(), imp.kind()) {
-                // We don't fast reject based on regions.
-                (ty::GenericArgKind::Lifetime(_), ty::GenericArgKind::Lifetime(_)) => true,
-                (ty::GenericArgKind::Type(obl), ty::GenericArgKind::Type(imp)) => {
-                    self.types_may_unify_inner(obl, imp, depth)
-                }
-                (ty::GenericArgKind::Const(obl), ty::GenericArgKind::Const(imp)) => {
-                    self.consts_may_unify_inner(obl, imp)
-                }
-                _ => panic!("kind mismatch: {obl:?} {imp:?}"),
-            }
-        })
+
+        // The len==1 case accounts for 99.9% of occurrences in the benchmarks
+        // where this code is hot, e.g. `bitmaps-3.1.0` and `typenum-1.17.0`.
+        if obligation_args.len() == 1 {
+            let obl = obligation_args.as_slice()[0];
+            let imp = impl_args.as_slice()[0];
+            self.inlined_arg_may_unify(obl, imp, depth)
+        } else {
+            self.args_may_unify_inner(obligation_args, impl_args, depth)
+        }
+    }
+
+    pub fn types_may_unify(self, lhs: I::Ty, rhs: I::Ty) -> bool {
+        self.types_may_unify_inner(lhs, rhs, Self::STARTING_DEPTH)
     }
 
     fn types_may_unify_inner(self, lhs: I::Ty, rhs: I::Ty, depth: usize) -> bool {
@@ -320,7 +356,9 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
 
             ty::Adt(lhs_def, lhs_args) => match rhs.kind() {
                 ty::Adt(rhs_def, rhs_args) => {
-                    lhs_def == rhs_def && self.args_may_unify_inner(lhs_args, rhs_args, depth)
+                    // This call site can be hot.
+                    lhs_def == rhs_def
+                        && self.inlined_args_may_unify_inner(lhs_args, rhs_args, depth)
                 }
                 _ => false,
             },
