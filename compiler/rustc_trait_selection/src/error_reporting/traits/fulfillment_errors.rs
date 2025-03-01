@@ -1189,9 +1189,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let span = obligation.cause.span;
 
         let mut diag = match ty.kind() {
-            _ if ty.has_param() => {
-                span_bug!(span, "const param tys cannot mention other generic parameters");
-            }
             ty::Float(_) => {
                 struct_span_code_err!(
                     self.dcx(),

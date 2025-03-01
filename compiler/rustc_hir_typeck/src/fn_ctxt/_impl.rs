@@ -522,7 +522,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn lower_const_arg(
         &self,
         const_arg: &'tcx hir::ConstArg<'tcx>,
-        feed: FeedConstTy,
+        feed: FeedConstTy<'_, 'tcx>,
     ) -> ty::Const<'tcx> {
         let ct = self.lowerer().lower_const_arg(const_arg, feed);
         self.register_wf_obligation(
@@ -1138,7 +1138,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .last()
             .is_some_and(|GenericPathSegment(def_id, _)| tcx.generics_of(*def_id).has_self);
 
-        let (res, self_ctor_args) = if let Res::SelfCtor(impl_def_id) = res {
+        let (res, implicit_args) = if let Res::Def(DefKind::ConstParam, def) = res {
+            // types of const parameters are somewhat special as they are part of
+            // the same environment as the const parameter itself. this means that
+            // unlike most paths `type-of(N)` can return a type naming parameters
+            // introduced by the containing item, rather than provided through `N`.
+            //
+            // for example given `<T, const M: usize, const N: [T; M]>` and some
+            // `let a = N;` expression. The path to `N` would wind up with no args
+            // (as it has no args), but instantiating the early binder on `typeof(N)`
+            // requires providing generic arguments for `[T, M, N]`.
+            (res, Some(ty::GenericArgs::identity_for_item(tcx, tcx.parent(def))))
+        } else if let Res::SelfCtor(impl_def_id) = res {
             let ty = LoweredTy::from_raw(
                 self,
                 span,
@@ -1264,6 +1275,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             fn provided_kind(
                 &mut self,
+                preceding_args: &[ty::GenericArg<'tcx>],
                 param: &ty::GenericParamDef,
                 arg: &GenericArg<'tcx>,
             ) -> ty::GenericArg<'tcx> {
@@ -1283,7 +1295,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => self
                         .fcx
                         // Ambiguous parts of `ConstArg` are handled in the match arms below
-                        .lower_const_arg(ct.as_unambig_ct(), FeedConstTy::Param(param.def_id))
+                        .lower_const_arg(
+                            ct.as_unambig_ct(),
+                            FeedConstTy::Param(param.def_id, preceding_args),
+                        )
                         .into(),
                     (&GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {
                         self.fcx.ct_infer(Some(param), inf.span).into()
@@ -1323,7 +1338,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        let args_raw = self_ctor_args.unwrap_or_else(|| {
+        let args_raw = implicit_args.unwrap_or_else(|| {
             lower_generic_args(
                 self,
                 def_id,
