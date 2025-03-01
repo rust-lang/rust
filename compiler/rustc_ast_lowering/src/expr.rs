@@ -207,6 +207,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     },
                 ),
                 ExprKind::Await(expr, await_kw_span) => self.lower_expr_await(*await_kw_span, expr),
+                ExprKind::Use(expr, use_kw_span) => self.lower_expr_use(*use_kw_span, expr),
                 ExprKind::Closure(box Closure {
                     binder,
                     capture_clause,
@@ -1065,6 +1066,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
             arena_vec![self; awaitee_arm],
             hir::MatchSource::AwaitDesugar,
         )
+    }
+
+    fn lower_expr_use(&mut self, use_kw_span: Span, expr: &Expr) -> hir::ExprKind<'hir> {
+        hir::ExprKind::Use(self.lower_expr(expr), use_kw_span)
     }
 
     fn lower_expr_closure(

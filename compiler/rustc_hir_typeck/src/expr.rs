@@ -362,6 +362,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // Any expression child of these expressions constitute reads.
                     ExprKind::Array(_)
                     | ExprKind::Call(_, _)
+                    | ExprKind::Use(_, _)
                     | ExprKind::MethodCall(_, _, _, _)
                     | ExprKind::Tup(_)
                     | ExprKind::Binary(_, _, _)
@@ -552,6 +553,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Closure(closure) => self.check_expr_closure(closure, expr.span, expected),
             ExprKind::Block(body, _) => self.check_expr_block(body, expected),
             ExprKind::Call(callee, args) => self.check_expr_call(expr, callee, args, expected),
+            ExprKind::Use(used_expr, _) => self.check_expr_use(used_expr, expected),
             ExprKind::MethodCall(segment, receiver, args, _) => {
                 self.check_expr_method_call(expr, segment, receiver, args, expected)
             }
@@ -1614,6 +1616,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             DontTupleArguments,
             expected,
         )
+    }
+
+    /// Checks use `x.use`.
+    fn check_expr_use(
+        &self,
+        used_expr: &'tcx hir::Expr<'tcx>,
+        expected: Expectation<'tcx>,
+    ) -> Ty<'tcx> {
+        self.check_expr_with_expectation(used_expr, expected)
     }
 
     fn check_expr_cast(

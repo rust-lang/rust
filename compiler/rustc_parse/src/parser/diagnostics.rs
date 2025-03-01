@@ -31,15 +31,15 @@ use super::{
     SeqSep, TokenType,
 };
 use crate::errors::{
-    AddParen, AmbiguousPlus, AsyncMoveBlockIn2015, AttributeOnParamType, AwaitSuggestion,
-    BadQPathStage2, BadTypePlus, BadTypePlusSub, ColonAsSemi, ComparisonOperatorsCannotBeChained,
-    ComparisonOperatorsCannotBeChainedSugg, ConstGenericWithoutBraces,
-    ConstGenericWithoutBracesSugg, DocCommentDoesNotDocumentAnything, DocCommentOnParamType,
-    DoubleColonInBound, ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg,
+    AddParen, AmbiguousPlus, AsyncMoveBlockIn2015, AsyncUseBlockIn2015, AttributeOnParamType,
+    AwaitSuggestion, BadQPathStage2, BadTypePlus, BadTypePlusSub, ColonAsSemi,
+    ComparisonOperatorsCannotBeChained, ComparisonOperatorsCannotBeChainedSugg,
+    ConstGenericWithoutBraces, ConstGenericWithoutBracesSugg, DocCommentDoesNotDocumentAnything,
+    DocCommentOnParamType, DoubleColonInBound, ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg,
     GenericParamsWithoutAngleBrackets, GenericParamsWithoutAngleBracketsSugg,
     HelpIdentifierStartsWithNumber, HelpUseLatestEdition, InInTypo, IncorrectAwait,
-    IncorrectSemicolon, IncorrectUseOfAwait, PatternMethodParamWithoutBody, QuestionMarkInType,
-    QuestionMarkInTypeSugg, SelfParamNotFirst, StructLiteralBodyWithoutPath,
+    IncorrectSemicolon, IncorrectUseOfAwait, IncorrectUseOfUse, PatternMethodParamWithoutBody,
+    QuestionMarkInType, QuestionMarkInTypeSugg, SelfParamNotFirst, StructLiteralBodyWithoutPath,
     StructLiteralBodyWithoutPathSugg, StructLiteralNeedingParens, StructLiteralNeedingParensSugg,
     SuggAddMissingLetStmt, SuggEscapeIdentifier, SuggRemoveComma, TernaryOperator,
     UnexpectedConstInGenericParam, UnexpectedConstParamDeclaration,
@@ -572,10 +572,17 @@ impl<'a> Parser<'a> {
             return Err(self.dcx().create_err(UseEqInstead { span: self.token.span }));
         }
 
-        if self.token.is_keyword(kw::Move) && self.prev_token.is_keyword(kw::Async) {
-            // The 2015 edition is in use because parsing of `async move` has failed.
+        if (self.token.is_keyword(kw::Move) || self.token.is_keyword(kw::Use))
+            && self.prev_token.is_keyword(kw::Async)
+        {
+            // The 2015 edition is in use because parsing of `async move` or `async use` has failed.
             let span = self.prev_token.span.to(self.token.span);
-            return Err(self.dcx().create_err(AsyncMoveBlockIn2015 { span }));
+            if self.token.is_keyword(kw::Move) {
+                return Err(self.dcx().create_err(AsyncMoveBlockIn2015 { span }));
+            } else {
+                // kw::Use
+                return Err(self.dcx().create_err(AsyncUseBlockIn2015 { span }));
+            }
         }
 
         let expect = tokens_to_string(&expected);
@@ -1964,16 +1971,16 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, P<Expr>> {
         let (hi, expr, is_question) = if self.token == token::Not {
             // Handle `await!(<expr>)`.
-            self.recover_await_macro()?
+            self.recover_macro()?
         } else {
-            self.recover_await_prefix(await_sp)?
+            self.recover_prefix(await_sp, "await")?
         };
         let (sp, guar) = self.error_on_incorrect_await(await_sp, hi, &expr, is_question);
         let expr = self.mk_expr_err(await_sp.to(sp), guar);
         self.maybe_recover_from_bad_qpath(expr)
     }
 
-    fn recover_await_macro(&mut self) -> PResult<'a, (Span, P<Expr>, bool)> {
+    fn recover_macro(&mut self) -> PResult<'a, (Span, P<Expr>, bool)> {
         self.expect(exp!(Not))?;
         self.expect(exp!(OpenParen))?;
         let expr = self.parse_expr()?;
@@ -1981,7 +1988,11 @@ impl<'a> Parser<'a> {
         Ok((self.prev_token.span, expr, false))
     }
 
-    fn recover_await_prefix(&mut self, await_sp: Span) -> PResult<'a, (Span, P<Expr>, bool)> {
+    fn recover_prefix(
+        &mut self,
+        await_sp: Span,
+        expr_str: &str,
+    ) -> PResult<'a, (Span, P<Expr>, bool)> {
         let is_question = self.eat(exp!(Question)); // Handle `await? <expr>`.
         let expr = if self.token == token::OpenDelim(Delimiter::Brace) {
             // Handle `await { <expr> }`.
@@ -1992,7 +2003,10 @@ impl<'a> Parser<'a> {
             self.parse_expr()
         }
         .map_err(|mut err| {
-            err.span_label(await_sp, "while parsing this incorrect await expression");
+            err.span_label(
+                await_sp,
+                format!("while parsing this incorrect {} expression", expr_str),
+            );
             err
         })?;
         Ok((expr.span, expr, is_question))
@@ -2029,6 +2043,21 @@ impl<'a> Parser<'a> {
             self.bump(); // )
 
             self.dcx().emit_err(IncorrectUseOfAwait { span });
+        }
+    }
+    ///
+    /// If encountering `future.await()`, consumes and emits an error.
+    pub(super) fn recover_from_use(&mut self) {
+        if self.token == token::OpenDelim(Delimiter::Parenthesis)
+            && self.look_ahead(1, |t| t == &token::CloseDelim(Delimiter::Parenthesis))
+        {
+            // var.use()
+            let lo = self.token.span;
+            self.bump(); // (
+            let span = lo.to(self.token.span);
+            self.bump(); // )
+
+            self.dcx().emit_err(IncorrectUseOfUse { span });
         }
     }
 

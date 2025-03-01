@@ -192,6 +192,18 @@ impl<'tcx> TyCtxt<'tcx> {
         ty.is_trivially_pure_clone_copy() || self.is_copy_raw(typing_env.as_query_input(ty))
     }
 
+    /// Checks whether `ty: UseCloned` holds while ignoring region constraints.
+    ///
+    /// This function should not be used if there is an `InferCtxt` available.
+    /// Use `InferCtxt::type_is_copy_modulo_regions` instead.
+    pub fn type_is_use_cloned_modulo_regions(
+        self,
+        typing_env: ty::TypingEnv<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> bool {
+        ty.is_trivially_pure_clone_copy() || self.is_use_cloned_raw(typing_env.as_query_input(ty))
+    }
+
     /// Returns the deeply last field of nested structures, or the same type if
     /// not a structure at all. Corresponds to the only possible unsized field,
     /// and its type can be used to determine unsizing strategy.

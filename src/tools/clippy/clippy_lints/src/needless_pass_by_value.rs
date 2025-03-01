@@ -326,6 +326,8 @@ impl<'tcx> euv::Delegate<'tcx> for MovedVariablesCtxt {
         self.move_common(cmt);
     }
 
+    fn use_cloned(&mut self, _: &euv::PlaceWithHirId<'tcx>, _: HirId) {}
+
     fn borrow(&mut self, _: &euv::PlaceWithHirId<'tcx>, _: HirId, _: ty::BorrowKind) {}
 
     fn mutate(&mut self, _: &euv::PlaceWithHirId<'tcx>, _: HirId) {}

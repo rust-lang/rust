@@ -778,6 +778,7 @@ impl<'a> Parser<'a> {
                     ExprKind::MethodCall(_) => "a method call",
                     ExprKind::Call(_, _) => "a function call",
                     ExprKind::Await(_, _) => "`.await`",
+                    ExprKind::Use(_, _) => "`.use`",
                     ExprKind::Match(_, _, MatchKind::Postfix) => "a postfix match",
                     ExprKind::Err(_) => return Ok(with_postfix),
                     _ => unreachable!("parse_dot_or_call_expr_with_ shouldn't produce this"),
@@ -1296,6 +1297,12 @@ impl<'a> Parser<'a> {
             return Ok(self.mk_await_expr(self_arg, lo));
         }
 
+        if self.eat_keyword(exp!(Use)) {
+            let use_span = self.prev_token.span;
+            self.psess.gated_spans.gate(sym::ergonomic_clones, use_span);
+            return Ok(self.mk_use_expr(self_arg, lo));
+        }
+
         // Post-fix match
         if self.eat_keyword(exp!(Match)) {
             let match_span = self.prev_token.span;
@@ -1397,6 +1404,7 @@ impl<'a> Parser<'a> {
             } else if this.check_path() {
                 this.parse_expr_path_start()
             } else if this.check_keyword(exp!(Move))
+                || this.check_keyword(exp!(Use))
                 || this.check_keyword(exp!(Static))
                 || this.check_const_closure()
             {
@@ -2388,7 +2396,7 @@ impl<'a> Parser<'a> {
         Ok(closure)
     }
 
-    /// Parses an optional `move` prefix to a closure-like construct.
+    /// Parses an optional `move` or `use` prefix to a closure-like construct.
     fn parse_capture_clause(&mut self) -> PResult<'a, CaptureBy> {
         if self.eat_keyword(exp!(Move)) {
             let move_kw_span = self.prev_token.span;
@@ -2400,6 +2408,16 @@ impl<'a> Parser<'a> {
                     .create_err(errors::AsyncMoveOrderIncorrect { span: move_async_span }))
             } else {
                 Ok(CaptureBy::Value { move_kw: move_kw_span })
+            }
+        } else if self.eat_keyword(exp!(Use)) {
+            let use_kw_span = self.prev_token.span;
+            self.psess.gated_spans.gate(sym::ergonomic_clones, use_kw_span);
+            // Check for `use async` and recover
+            if self.check_keyword(exp!(Async)) {
+                let use_async_span = self.token.span.with_lo(self.prev_token.span.data().lo);
+                Err(self.dcx().create_err(errors::AsyncUseOrderIncorrect { span: use_async_span }))
+            } else {
+                Ok(CaptureBy::Use { use_kw: use_kw_span })
             }
         } else {
             Ok(CaptureBy::Ref)
@@ -3415,7 +3433,7 @@ impl<'a> Parser<'a> {
         self.is_keyword_ahead(lookahead, &[kw])
             && ((
                 // `async move {`
-                self.is_keyword_ahead(lookahead + 1, &[kw::Move])
+                self.is_keyword_ahead(lookahead + 1, &[kw::Move, kw::Use])
                     && self.look_ahead(lookahead + 2, |t| {
                         *t == token::OpenDelim(Delimiter::Brace) || t.is_whole_block()
                     })
@@ -3818,6 +3836,13 @@ impl<'a> Parser<'a> {
         await_expr
     }
 
+    fn mk_use_expr(&mut self, self_arg: P<Expr>, lo: Span) -> P<Expr> {
+        let span = lo.to(self.prev_token.span);
+        let use_expr = self.mk_expr(span, ExprKind::Use(self_arg, self.prev_token.span));
+        self.recover_from_use();
+        use_expr
+    }
+
     pub(crate) fn mk_expr_with_attrs(&self, span: Span, kind: ExprKind, attrs: AttrVec) -> P<Expr> {
         P(Expr { kind, span, attrs, id: DUMMY_NODE_ID, tokens: None })
     }
@@ -3966,6 +3991,7 @@ impl MutVisitor for CondChecker<'_> {
             }
             ExprKind::Unary(_, _)
             | ExprKind::Await(_, _)
+            | ExprKind::Use(_, _)
             | ExprKind::AssignOp(_, _, _)
             | ExprKind::Range(_, _, _)
             | ExprKind::Try(_)

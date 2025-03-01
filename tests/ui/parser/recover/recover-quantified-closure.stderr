@@ -1,8 +1,8 @@
-error: expected one of `move`, `static`, `|`, or `||`, found `::`
+error: expected one of `move`, `static`, `use`, `|`, or `||`, found `::`
   --> $DIR/recover-quantified-closure.rs:9:14
    |
 LL |     for <Foo>::Bar in x {}
-   |              ^^ expected one of `move`, `static`, `|`, or `||`
+   |              ^^ expected one of `move`, `static`, `use`, `|`, or `||`
 
 error[E0658]: `for<...>` binders for closures are experimental
   --> $DIR/recover-quantified-closure.rs:2:5
