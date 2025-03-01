@@ -98,6 +98,23 @@ impl<'a, 'tcx> Deref for Coerce<'a, 'tcx> {
 
 type CoerceResult<'tcx> = InferResult<'tcx, (Vec<Adjustment<'tcx>>, Ty<'tcx>)>;
 
+/// Make any adjustments necessary for a function signature to be compatible
+/// with reification to a `fn` pointer. In particular, intrinsics are imported
+/// using pseudo-ABIs (`extern "rust-intrinsic" {...}`) currently, but that's
+/// an implementation detail and any `fn` pointers that may be taken to them
+/// should be indistinguishable from those to regular Rust functions, in order
+/// to allow e.g. libcore public APIs to be replaced with intrinsics, without
+/// breaking code that was, explicitly or implicitly, creating `fn` pointers.
+// FIXME(eddyb) intrinsics shouldn't use pseudo-ABIs, but rather the  Rust ABI
+// and some other way to indicate that they are intrinsics (e.g. new attributes).
+fn prepare_fn_sig_for_reify<'tcx>(mut sig: ty::FnSig<'tcx>) -> ty::FnSig<'tcx> {
+    if matches!(sig.abi, ExternAbi::RustIntrinsic) {
+        sig.abi = ExternAbi::Rust;
+    }
+
+    sig
+}
+
 /// Coercing a mutable reference to an immutable works, while
 /// coercing `&T` to `&mut T` should be forbidden.
 fn coerce_mutbls<'tcx>(
@@ -911,12 +928,10 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         match b.kind() {
             ty::FnPtr(_, b_hdr) => {
                 let mut a_sig = a.fn_sig(self.tcx);
-                if let ty::FnDef(def_id, _) = *a.kind() {
-                    // Intrinsics are not coercible to function pointers
-                    if self.tcx.intrinsic(def_id).is_some() {
-                        return Err(TypeError::IntrinsicCast);
-                    }
+                // NOTE(eddyb) see comment on `prepare_fn_sig_for_reify`.
+                a_sig = a_sig.map_bound(prepare_fn_sig_for_reify);
 
+                if let ty::FnDef(def_id, _) = *a.kind() {
                     let fn_attrs = self.tcx.codegen_fn_attrs(def_id);
                     if matches!(fn_attrs.inline, InlineAttr::Force { .. }) {
                         return Err(TypeError::ForceInlineCast);
@@ -1266,10 +1281,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
         if let (Some(a_sig), Some(b_sig)) = (a_sig, b_sig) {
-            // Intrinsics are not coercible to function pointers.
-            if a_sig.abi() == ExternAbi::RustIntrinsic || b_sig.abi() == ExternAbi::RustIntrinsic {
-                return Err(TypeError::IntrinsicCast);
-            }
             // The signature must match.
             let (a_sig, b_sig) = self.normalize(new.span, (a_sig, b_sig));
             let sig = self
