@@ -18,6 +18,18 @@
                 ) {# #}
             </span> {# #}
         </div>
+    {% when Self::ConstUnstable with { feature, tracking } %}
+        <div class="stab unstable"> {# #}
+            <span class="emoji">🔬</span> {# #}
+            <span> {# #}
+                The const version is a nightly-only experimental API. ({# #}
+                <code>{{feature}}</code>
+                {% if let Some(num) = tracking %}
+                    &nbsp;<a href="https://github.com/rust-lang/rust/issues/{{num}}">#{{num}}</a>
+                {% endif %}
+                ) {# #}
+            </span> {# #}
+        </div>
     {% when Self::Portability with { message } %}
         <div class="stab portability">{{message|safe}}</div>
 {% endmatch %}
