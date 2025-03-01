@@ -22,7 +22,7 @@ Options:
                         for the compiler to emit
         --crate-name NAME
                         Specify the name of the crate being built
-        --edition 2015|2018|2021|2024
+        --edition 2015|2018|2021|2024|2027
                         Specify which edition of the compiler to use when
                         compiling code. The default is 2015 and the latest
                         stable edition is 2024.
