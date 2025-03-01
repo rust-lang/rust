@@ -1,4 +1,5 @@
-use rustc_ast::MetaItem;
+use rustc_ast::ptr::P;
+use rustc_ast::{BinOpKind, BorrowKind, Expr, ExprKind, MetaItem, Mutability};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::{Ident, Span, sym};
 use thin_vec::thin_vec;
@@ -42,7 +43,6 @@ pub(crate) fn expand_deriving_ord(
 pub(crate) fn cs_cmp(cx: &ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> BlockOrExpr {
     let test_id = Ident::new(sym::cmp, span);
     let equal_path = cx.path_global(span, cx.std_path(&[sym::cmp, sym::Ordering, sym::Equal]));
-    let cmp_path = cx.std_path(&[sym::cmp, sym::Ord, sym::cmp]);
 
     // Builds:
     //
@@ -63,8 +63,23 @@ pub(crate) fn cs_cmp(cx: &ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) ->
                 let [other_expr] = &field.other_selflike_exprs[..] else {
                     cx.dcx().span_bug(field.span, "not exactly 2 arguments in `derive(Ord)`");
                 };
-                let args = thin_vec![field.self_expr.clone(), other_expr.clone()];
-                cx.expr_call_global(field.span, cmp_path.clone(), args)
+                let convert = |expr: &P<Expr>| {
+                    if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, inner) = &expr.kind {
+                        if let ExprKind::Block(..) = &inner.kind {
+                            // `&{ x }` form: remove the `&`, add parens.
+                            cx.expr_paren(field.span, inner.clone())
+                        } else {
+                            // `&x` form: remove the `&`.
+                            inner.clone()
+                        }
+                    } else {
+                        cx.expr_deref(field.span, expr.clone())
+                    }
+                };
+
+                let lhs = convert(&field.self_expr);
+                let rhs = convert(&other_expr);
+                cx.expr_binary(field.span, BinOpKind::Cmp, lhs, rhs)
             }
             CsFold::Combine(span, expr1, expr2) => {
                 let eq_arm = cx.arm(span, cx.pat_path(span, equal_path.clone()), expr1);

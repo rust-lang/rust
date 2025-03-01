@@ -937,6 +937,7 @@ impl<T: Clone> Clone for Reverse<T> {
 /// [`PartialOrd`] and [`PartialEq`] to disagree.
 ///
 /// [`cmp`]: Ord::cmp
+#[cfg_attr(not(bootstrap), lang = "Ord")]
 #[doc(alias = "<")]
 #[doc(alias = ">")]
 #[doc(alias = "<=")]

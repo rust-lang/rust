@@ -1329,6 +1329,9 @@ fn bin_op(op: hir::BinOpKind) -> BinOp {
         hir::BinOpKind::Ne => BinOp::Ne,
         hir::BinOpKind::Ge => BinOp::Ge,
         hir::BinOpKind::Gt => BinOp::Gt,
-        _ => bug!("no equivalent for ast binop {:?}", op),
+        hir::BinOpKind::Cmp => BinOp::Cmp,
+        hir::BinOpKind::And | hir::BinOpKind::Or | hir::BinOpKind::CmpPartial => {
+            bug!("no equivalent for ast binop {:?}", op)
+        }
     }
 }

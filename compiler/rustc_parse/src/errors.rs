@@ -210,8 +210,6 @@ pub(crate) enum InvalidComparisonOperatorSub {
         invalid: String,
         correct: String,
     },
-    #[label(parse_spaceship_operator_invalid)]
-    Spaceship(#[primary_span] Span),
 }
 
 #[derive(Diagnostic)]
