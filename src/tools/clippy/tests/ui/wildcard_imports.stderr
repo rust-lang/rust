@@ -17,7 +17,7 @@ error: usage of wildcard import
   --> tests/ui/wildcard_imports.rs:17:5
    |
 LL | use crate::multi_fn_mod::*;
-   |     ^^^^^^^^^^^^^^^^^^^^^^ help: try: `crate::multi_fn_mod::{multi_bar, multi_foo, multi_inner_mod}`
+   |     ^^^^^^^^^^^^^^^^^^^^^^ help: try: `crate::multi_fn_mod::{multi_foo, multi_bar, multi_inner_mod}`
 
 error: usage of wildcard import
   --> tests/ui/wildcard_imports.rs:19:5
@@ -35,7 +35,7 @@ error: usage of wildcard import
   --> tests/ui/wildcard_imports.rs:24:5
    |
 LL | use wildcard_imports_helper::*;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `wildcard_imports_helper::{ExternA, extern_foo}`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `wildcard_imports_helper::{extern_foo, ExternA}`
 
 error: usage of wildcard import
   --> tests/ui/wildcard_imports.rs:94:13
@@ -59,7 +59,7 @@ error: usage of wildcard import
   --> tests/ui/wildcard_imports.rs:132:13
    |
 LL |         use wildcard_imports_helper::*;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `wildcard_imports_helper::{ExternA, extern_foo}`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `wildcard_imports_helper::{extern_foo, ExternA}`
 
 error: usage of wildcard import
   --> tests/ui/wildcard_imports.rs:144:20
@@ -77,13 +77,13 @@ error: usage of wildcard import
   --> tests/ui/wildcard_imports.rs:151:13
    |
 LL |         use wildcard_imports_helper::*;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `wildcard_imports_helper::{ExternExportedEnum, ExternExportedStruct, extern_exported}`
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `wildcard_imports_helper::{extern_exported, ExternExportedStruct, ExternExportedEnum}`
 
 error: usage of wildcard import
   --> tests/ui/wildcard_imports.rs:180:9
    |
 LL |     use crate::in_fn_test::*;
-   |         ^^^^^^^^^^^^^^^^^^^^ help: try: `crate::in_fn_test::{ExportedEnum, ExportedStruct, exported}`
+   |         ^^^^^^^^^^^^^^^^^^^^ help: try: `crate::in_fn_test::{exported, ExportedStruct, ExportedEnum}`
 
 error: usage of wildcard import
   --> tests/ui/wildcard_imports.rs:189:9
