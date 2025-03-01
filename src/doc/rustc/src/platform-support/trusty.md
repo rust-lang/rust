@@ -16,8 +16,10 @@ Environment (TEE) for Android.
 
 These targets are cross-compiled. They have no special requirements for the host.
 
-Support for the standard library is work-in-progress. It is expected that
-they will support alloc with the default allocator, and partially support std.
+Trusty targets have partial support for the standard library: `alloc` is fully
+supported and `std` has limited support that excludes things like filesystem
+access, network I/O, and spawning processes/threads. File descriptors are
+supported for the purpose of IPC.
 
 Trusty uses the ELF file format.
 
