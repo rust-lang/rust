@@ -28,9 +28,7 @@ use rustc_span::{Symbol, sym};
 use tracing::{debug, instrument, trace};
 use {rustc_abi as abi, rustc_hir as hir};
 
-use crate::errors::{
-    MultipleArrayFieldsSimdType, NonPrimitiveSimdType, OversizedSimdType, ZeroLengthSimdType,
-};
+use crate::errors::{NonPrimitiveSimdType, OversizedSimdType, ZeroLengthSimdType};
 
 mod invariant;
 
@@ -450,70 +448,25 @@ fn layout_of_uncached<'tcx>(
 
         // SIMD vector types.
         ty::Adt(def, args) if def.repr().simd() => {
-            if !def.is_struct() {
-                // Should have yielded E0517 by now.
-                let guar = tcx
-                    .dcx()
-                    .delayed_bug("#[repr(simd)] was applied to an ADT that is not a struct");
-                return Err(error(cx, LayoutError::ReferencesError(guar)));
-            }
-
-            let fields = &def.non_enum_variant().fields;
-
-            // Supported SIMD vectors are homogeneous ADTs with at least one field:
+            // Supported SIMD vectors are ADTs with a single array field:
             //
-            // * #[repr(simd)] struct S(T, T, T, T);
-            // * #[repr(simd)] struct S { x: T, y: T, z: T, w: T }
             // * #[repr(simd)] struct S([T; 4])
             //
             // where T is a primitive scalar (integer/float/pointer).
-
-            // SIMD vectors with zero fields are not supported.
-            // (should be caught by typeck)
-            if fields.is_empty() {
-                tcx.dcx().emit_fatal(ZeroLengthSimdType { ty })
-            }
-
-            // Type of the first ADT field:
-            let f0_ty = fields[FieldIdx::ZERO].ty(tcx, args);
-
-            // Heterogeneous SIMD vectors are not supported:
-            // (should be caught by typeck)
-            for fi in fields {
-                if fi.ty(tcx, args) != f0_ty {
-                    let guar = tcx.dcx().delayed_bug(
-                        "#[repr(simd)] was applied to an ADT with heterogeneous field type",
-                    );
-                    return Err(error(cx, LayoutError::ReferencesError(guar)));
-                }
-            }
-
-            // The element type and number of elements of the SIMD vector
-            // are obtained from:
-            //
-            // * the element type and length of the single array field, if
-            // the first field is of array type, or
-            //
-            // * the homogeneous field type and the number of fields.
-            let (e_ty, e_len, is_array) = if let ty::Array(e_ty, _) = f0_ty.kind() {
-                // First ADT field is an array:
-
-                // SIMD vectors with multiple array fields are not supported:
-                // Can't be caught by typeck with a generic simd type.
-                if def.non_enum_variant().fields.len() != 1 {
-                    tcx.dcx().emit_fatal(MultipleArrayFieldsSimdType { ty });
-                }
-
-                // Extract the number of elements from the layout of the array field:
-                let FieldsShape::Array { count, .. } = cx.layout_of(f0_ty)?.layout.fields() else {
-                    return Err(error(cx, LayoutError::Unknown(ty)));
-                };
-
-                (*e_ty, *count, true)
-            } else {
-                // First ADT field is not an array:
-                (f0_ty, def.non_enum_variant().fields.len() as _, false)
+            let Some(ty::Array(e_ty, e_len)) = def
+                .is_struct()
+                .then(|| &def.variant(FIRST_VARIANT).fields)
+                .filter(|fields| fields.len() == 1)
+                .map(|fields| *fields[FieldIdx::ZERO].ty(tcx, args).kind())
+            else {
+                // Invalid SIMD types should have been caught by typeck by now.
+                let guar = tcx.dcx().delayed_bug("#[repr(simd)] was applied to an invalid ADT");
+                return Err(error(cx, LayoutError::ReferencesError(guar)));
             };
+
+            let e_len = extract_const_value(cx, ty, e_len)?
+                .try_to_target_usize(tcx)
+                .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
 
             // SIMD vectors of zero length are not supported.
             // Additionally, lengths are capped at 2^16 as a fixed maximum backends must
@@ -559,16 +512,12 @@ fn layout_of_uncached<'tcx>(
             };
             let size = size.align_to(align.abi);
 
-            // Compute the placement of the vector fields:
-            let fields = if is_array {
-                FieldsShape::Arbitrary { offsets: [Size::ZERO].into(), memory_index: [0].into() }
-            } else {
-                FieldsShape::Array { stride: e_ly.size, count: e_len }
-            };
-
             tcx.mk_layout(LayoutData {
                 variants: Variants::Single { index: FIRST_VARIANT },
-                fields,
+                fields: FieldsShape::Arbitrary {
+                    offsets: [Size::ZERO].into(),
+                    memory_index: [0].into(),
+                },
                 backend_repr: abi,
                 largest_niche: e_ly.largest_niche,
                 uninhabited: false,
