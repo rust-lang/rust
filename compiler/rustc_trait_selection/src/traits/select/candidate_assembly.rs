@@ -1017,13 +1017,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            // `(.., T)` -> `(.., U)`
-            (&ty::Tuple(tys_a), &ty::Tuple(tys_b)) => {
-                if tys_a.len() == tys_b.len() {
-                    candidates.vec.push(BuiltinUnsizeCandidate);
-                }
-            }
-
             _ => {}
         };
     }

@@ -1,5 +1,5 @@
 warning: trait `Bar` is never used
-  --> $DIR/cast-rfc0401-vtable-kinds.rs:7:7
+  --> $DIR/cast-rfc0401-vtable-kinds.rs:5:7
    |
 LL | trait Bar {
    |       ^^^
