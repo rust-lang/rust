@@ -27,7 +27,7 @@ fn rustfmt(
     rustfmt: &Path,
     paths: &[PathBuf],
     check: bool,
-) -> impl FnMut(bool) -> RustfmtStatus {
+) -> impl FnMut(bool) -> RustfmtStatus + use<> {
     let mut cmd = Command::new(rustfmt);
     // Avoid the submodule config paths from coming into play. We only allow a single global config
     // for the workspace for now.
