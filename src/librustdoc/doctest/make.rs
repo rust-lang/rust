@@ -208,7 +208,7 @@ impl DocTestBuilder {
             let (main_pre, main_post) = if returns_result {
                 (
                     format!(
-                        "fn main() {{ {inner_attr}fn {inner_fn_name}() -> Result<(), impl core::fmt::Debug> {{\n",
+                        "fn main() {{ {inner_attr}fn {inner_fn_name}() -> core::result::Result<(), impl core::fmt::Debug> {{\n",
                     ),
                     format!("\n}} {inner_fn_name}().unwrap() }}"),
                 )
