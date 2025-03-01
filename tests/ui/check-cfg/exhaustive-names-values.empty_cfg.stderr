@@ -14,7 +14,7 @@ warning: unexpected `cfg` condition value: `value`
 LL | #[cfg(target_vendor = "value")]
    |       ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: expected values for `target_vendor` are: `amd`, `apple`, `espressif`, `fortanix`, `ibm`, `kmc`, `mti`, `nintendo`, `nvidia`, `pc`, `risc0`, `sony`, `sun`, `unikraft`, `unknown`, `uwp`, `win7`, and `wrs`
+   = note: expected values for `target_vendor` are: `amd`, `apple`, `espressif`, `fortanix`, `ibm`, `kmc`, `mti`, `nintendo`, `nvidia`, `openwrt`, `pc`, `risc0`, `sony`, `sun`, `unikraft`, `unknown`, `uwp`, `win7`, and `wrs`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition name: `feature`
