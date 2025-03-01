@@ -336,7 +336,7 @@ pub(crate) struct MisplacedRelaxTraitBound {
 pub(crate) struct MatchArmWithNoBody {
     #[primary_span]
     pub span: Span,
-    #[suggestion(code = " => todo!(),", applicability = "has-placeholders")]
+    #[suggestion(code = " => todo!(),", applicability = "has-placeholders", style = "verbose")]
     pub suggestion: Span,
 }
 
@@ -345,16 +345,18 @@ pub(crate) struct MatchArmWithNoBody {
 pub(crate) struct NeverPatternWithBody {
     #[primary_span]
     #[label]
-    #[suggestion(code = "", applicability = "maybe-incorrect")]
     pub span: Span,
+    #[suggestion(code = ",", applicability = "maybe-incorrect", style = "hidden")]
+    pub removal_span: Span,
 }
 
 #[derive(Diagnostic)]
 #[diag(ast_lowering_never_pattern_with_guard)]
 pub(crate) struct NeverPatternWithGuard {
     #[primary_span]
-    #[suggestion(code = "", applicability = "maybe-incorrect")]
     pub span: Span,
+    #[suggestion(code = ",", applicability = "maybe-incorrect", style = "hidden")]
+    pub removal_span: Span,
 }
 
 #[derive(Diagnostic)]
