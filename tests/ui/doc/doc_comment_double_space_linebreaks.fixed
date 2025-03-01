@@ -1,9 +1,10 @@
 #![feature(custom_inner_attributes)]
 #![rustfmt::skip]
 
-#![warn(clippy::doc_comment_double_space_linebreak)]
+#![warn(clippy::doc_comment_double_space_linebreaks)]
 #![allow(unused, clippy::empty_docs)]
 
+//~v doc_comment_double_space_linebreaks
 //! Should warn on double space linebreaks\
 //! in file/module doc comment
 
@@ -22,16 +23,17 @@ fn single_line_split() {}
 
 #[doc = "This is a doc attribute, which should not be linted"]
 fn normal_comment() {
-    /*
-       Should not warn on block comments
-    */
-
-    /*
-        Should not warn on block comments  
-        with double space at the end of a line
-     */
+   /*
+   Should not warn on block comments
+   */
+  
+  /*
+  Should not warn on block comments  
+  with double space at the end of a line
+  */
 }
 
+//~v doc_comment_double_space_linebreaks
 /// Should warn when doc comment uses double space\
 /// as a line-break, even when there are multiple\
 /// in a row
@@ -41,6 +43,7 @@ fn double_space_doc_comment() {}
 /// as a line-break
 fn back_slash_doc_comment() {}
 
+//~v doc_comment_double_space_linebreaks
 /// 🌹 are 🟥\
 /// 🌷 are 🟦\
 /// 📎 is 😎\
@@ -83,6 +86,7 @@ fn inline() {}
 /// https://example.com) in a URL.  
 fn url() {}
 
+//~v doc_comment_double_space_linebreaks
 /// here we mix\
 /// double spaces\
 /// and also\

@@ -569,6 +569,7 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
+    /// ### What it does
     /// Detects doc comment linebreaks that use double spaces to separate lines, instead of back-slash (`\`).
     ///
     /// ### Why is this bad?
