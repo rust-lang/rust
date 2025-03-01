@@ -10,7 +10,7 @@ use rustc_ast::{LitKind, RangeLimits};
 use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::unhash::UnindexMap;
 use rustc_errors::{Applicability, Diag};
-use rustc_hir::{BinOp, Block, Body, Expr, ExprKind, UnOp};
+use rustc_hir::{BinOp, Body, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::source_map::Spanned;
@@ -134,9 +134,8 @@ fn assert_len_expr<'hir>(
     cx: &LateContext<'_>,
     expr: &'hir Expr<'hir>,
 ) -> Option<(LengthComparison, usize, &'hir Expr<'hir>)> {
-    if let Some(higher::If { cond, then, .. }) = higher::If::hir(expr)
-        && let ExprKind::Unary(UnOp::Not, condition) = &cond.kind
-        && let ExprKind::Binary(bin_op, left, right) = &condition.kind
+    if let higher::IfLetOrMatch::Match(cond, [_, then], _) = higher::IfLetOrMatch::parse(cx, expr)?
+        && let ExprKind::Binary(bin_op, left, right) = &cond.kind
 
         && let Some((cmp, asserted_len, slice_len)) = len_comparison(*bin_op, left, right)
         && let ExprKind::MethodCall(method, recv, [], _) = &slice_len.kind
@@ -144,8 +143,7 @@ fn assert_len_expr<'hir>(
         && method.ident.name == sym::len
 
         // check if `then` block has a never type expression
-        && let ExprKind::Block(Block { expr: Some(then_expr), .. }, _) = then.kind
-        && cx.typeck_results().expr_ty(then_expr).is_never()
+        && cx.typeck_results().expr_ty(then.body).is_never()
     {
         Some((cmp, asserted_len, recv))
     } else {
@@ -337,21 +335,21 @@ fn report_indexes(cx: &LateContext<'_>, map: &UnindexMap<u64, Vec<IndexEntry<'_>
                         // `v.len() < 5` and `v.len() <= 5` does nothing in terms of bounds checks.
                         // The user probably meant `v.len() > 5`
                         LengthComparison::LengthLessThanInt | LengthComparison::LengthLessThanOrEqualInt => Some(
-                            format!("assert!({}.len() > {highest_index})", snippet(cx, slice.span, "..")),
+                            format!("{}.len() > {highest_index}", snippet(cx, slice.span, "..")),
                         ),
                         // `5 < v.len()` == `v.len() > 5`
                         LengthComparison::IntLessThanLength if asserted_len < highest_index => Some(format!(
-                            "assert!({}.len() > {highest_index})",
+                            "{}.len() > {highest_index}",
                             snippet(cx, slice.span, "..")
                         )),
                         // `5 <= v.len() == `v.len() >= 5`
                         LengthComparison::IntLessThanOrEqualLength if asserted_len <= highest_index => Some(format!(
-                            "assert!({}.len() > {highest_index})",
+                            "{}.len() > {highest_index}",
                             snippet(cx, slice.span, "..")
                         )),
                         // `highest_index` here is rather a length, so we need to add 1 to it
                         LengthComparison::LengthEqualInt if asserted_len < highest_index + 1 => Some(format!(
-                            "assert!({}.len() == {})",
+                            "{}.len() == {}",
                             snippet(cx, slice.span, ".."),
                             highest_index + 1
                         )),
