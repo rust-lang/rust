@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-   ╭▸ $DIR/long-E0308.rs:48:9
+   ╭▸ $DIR/long-E0308.rs:45:9
    │
 LL │        let x: Atype<
    │ ┌─────────────┘
@@ -20,11 +20,11 @@ LL │  ┃     ))))))))))))))))))))))))))))));
    │
    ├ note: expected struct `Atype<Btype<..., i32>, i32>`
    │            found enum `Result<Result<..., _>, _>`
-   ├ note: the full name for the type has been written to '$TEST_BUILD_DIR/$FILE.long-type-hash.txt'
+   ├ note: the full name for the type has been written to '$TEST_BUILD_DIR/long-E0308.long-type-$LONG_TYPE_HASH.txt'
    ╰ note: consider using `--verbose` to print the full type name to the console
 
 error[E0308]: mismatched types
-   ╭▸ $DIR/long-E0308.rs:61:26
+   ╭▸ $DIR/long-E0308.rs:58:26
    │
 LL │       ))))))))))))))))) == Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(…
    │ ┏━━━━━━━━━━━━━━━━━━━━━━━━━━┛
@@ -36,11 +36,11 @@ LL │ ┃     ))))))))))))))))))))))));
    │
    ├ note: expected enum `Option<Result<Option<...>, _>>`
    │          found enum `Result<Result<..., _>, _>`
-   ├ note: the full name for the type has been written to '$TEST_BUILD_DIR/$FILE.long-type-hash.txt'
+   ├ note: the full name for the type has been written to '$TEST_BUILD_DIR/long-E0308.long-type-$LONG_TYPE_HASH.txt'
    ╰ note: consider using `--verbose` to print the full type name to the console
 
 error[E0308]: mismatched types
-   ╭▸ $DIR/long-E0308.rs:92:9
+   ╭▸ $DIR/long-E0308.rs:89:9
    │
 LL │       let x: Atype<
    │ ┌────────────┘
@@ -56,11 +56,11 @@ LL │ │     > = ();
    │
    ├ note: expected struct `Atype<Btype<..., i32>, i32>`
    │       found unit type `()`
-   ├ note: the full name for the type has been written to '$TEST_BUILD_DIR/$FILE.long-type-hash.txt'
+   ├ note: the full name for the type has been written to '$TEST_BUILD_DIR/long-E0308.long-type-$LONG_TYPE_HASH.txt'
    ╰ note: consider using `--verbose` to print the full type name to the console
 
 error[E0308]: mismatched types
-   ╭▸ $DIR/long-E0308.rs:95:17
+   ╭▸ $DIR/long-E0308.rs:92:17
    │
 LL │       let _: () = Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(Ok(…
    │ ┏━━━━━━━━━━━━┬─━━━┛
@@ -74,7 +74,7 @@ LL │ ┃     ))))))))))))))))))))))));
    │
    ├ note: expected unit type `()`
    │               found enum `Result<Result<..., _>, _>`
-   ├ note: the full name for the type has been written to '$TEST_BUILD_DIR/$FILE.long-type-hash.txt'
+   ├ note: the full name for the type has been written to '$TEST_BUILD_DIR/long-E0308.long-type-$LONG_TYPE_HASH.txt'
    ╰ note: consider using `--verbose` to print the full type name to the console
 
 error: aborting due to 4 previous errors

@@ -31,7 +31,7 @@ case `XROS_DEPLOYMENT_TARGET`.
 ## Building the target
 
 The targets can be built by enabling them for a `rustc` build in
-`config.toml`, by adding, for example:
+`bootstrap.toml`, by adding, for example:
 
 ```toml
 [build]

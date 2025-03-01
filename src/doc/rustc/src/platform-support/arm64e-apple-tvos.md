@@ -15,7 +15,7 @@ To build this target Xcode 12 or higher on macOS is required.
 
 ## Building the target
 
-You can build Rust with support for the targets by adding it to the `target` list in `config.toml`:
+You can build Rust with support for the targets by adding it to the `target` list in `bootstrap.toml`:
 
 ```toml
 [build]

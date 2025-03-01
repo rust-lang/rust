@@ -76,14 +76,14 @@ fn main() {
         check_version(&config)
     };
 
-    // NOTE: Since `./configure` generates a `config.toml`, distro maintainers will see the
+    // NOTE: Since `./configure` generates a `bootstrap.toml`, distro maintainers will see the
     // changelog warning, not the `x.py setup` message.
     let suggest_setup = config.config.is_none() && !matches!(config.cmd, Subcommand::Setup { .. });
     if suggest_setup {
-        println!("WARNING: you have not made a `config.toml`");
+        println!("WARNING: you have not made a `bootstrap.toml`");
         println!(
-            "HELP: consider running `./x.py setup` or copying `config.example.toml` by running \
-            `cp config.example.toml config.toml`"
+            "HELP: consider running `./x.py setup` or copying `bootstrap.example.toml` by running \
+            `cp bootstrap.example.toml bootstrap.toml`"
         );
     } else if let Some(suggestion) = &changelog_suggestion {
         println!("{suggestion}");
@@ -97,10 +97,10 @@ fn main() {
     Build::new(config).build();
 
     if suggest_setup {
-        println!("WARNING: you have not made a `config.toml`");
+        println!("WARNING: you have not made a `bootstrap.toml`");
         println!(
-            "HELP: consider running `./x.py setup` or copying `config.example.toml` by running \
-            `cp config.example.toml config.toml`"
+            "HELP: consider running `./x.py setup` or copying `bootstrap.example.toml` by running \
+            `cp bootstrap.example.toml bootstrap.toml`"
         );
     } else if let Some(suggestion) = &changelog_suggestion {
         println!("{suggestion}");
@@ -159,7 +159,7 @@ fn check_version(config: &Config) -> Option<String> {
         }
 
         // Always try to use `change-id` from .last-warned-change-id first. If it doesn't exist,
-        // then use the one from the config.toml. This way we never show the same warnings
+        // then use the one from the bootstrap.toml. This way we never show the same warnings
         // more than once.
         if let Ok(t) = fs::read_to_string(&warned_id_path) {
             let last_warned_id = usize::from_str(&t)
@@ -184,16 +184,18 @@ fn check_version(config: &Config) -> Option<String> {
 
         msg.push_str("NOTE: to silence this warning, ");
         msg.push_str(&format!(
-            "update `config.toml` to use `change-id = {latest_change_id}` instead"
+            "update `bootstrap.toml` to use `change-id = {latest_change_id}` instead"
         ));
 
         if io::stdout().is_terminal() && !config.dry_run() {
             t!(fs::write(warned_id_path, latest_change_id.to_string()));
         }
     } else {
-        msg.push_str("WARNING: The `change-id` is missing in the `config.toml`. This means that you will not be able to track the major changes made to the bootstrap configurations.\n");
+        msg.push_str("WARNING: The `change-id` is missing in the `bootstrap.toml`. This means that you will not be able to track the major changes made to the bootstrap configurations.\n");
         msg.push_str("NOTE: to silence this warning, ");
-        msg.push_str(&format!("add `change-id = {latest_change_id}` at the top of `config.toml`"));
+        msg.push_str(&format!(
+            "add `change-id = {latest_change_id}` at the top of `bootstrap.toml`"
+        ));
     };
 
     Some(msg)

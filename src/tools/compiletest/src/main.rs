@@ -27,7 +27,7 @@ fn main() {
         eprintln!(
             r#"
 WARNING: profiler runtime is not available, so `.coverage` files won't be {actioned}
-help: try setting `profiler = true` in the `[build]` section of `config.toml`"#
+help: try setting `profiler = true` in the `[build]` section of `bootstrap.toml`"#
         );
     }
 
