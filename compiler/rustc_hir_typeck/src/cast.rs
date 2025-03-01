@@ -940,23 +940,19 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                             .collect::<Vec<_>>();
 
                         if !added.is_empty() {
-                            tcx.emit_node_span_lint(
-                                lint::builtin::PTR_CAST_ADD_AUTO_TO_OBJECT,
-                                self.expr.hir_id,
-                                self.span,
-                                errors::PtrCastAddAutoToObject {
-                                    traits_len: added.len(),
-                                    traits: {
-                                        let mut traits: Vec<_> = added
-                                            .into_iter()
-                                            .map(|trait_did| tcx.def_path_str(trait_did))
-                                            .collect();
+                            tcx.dcx().emit_err(errors::PtrCastAddAutoToObject {
+                                span: self.span,
+                                traits_len: added.len(),
+                                traits: {
+                                    let mut traits: Vec<_> = added
+                                        .into_iter()
+                                        .map(|trait_did| tcx.def_path_str(trait_did))
+                                        .collect();
 
-                                        traits.sort();
-                                        traits.into()
-                                    },
+                                    traits.sort();
+                                    traits.into()
                                 },
-                            )
+                            });
                         }
 
                         Ok(CastKind::PtrPtrCast)
