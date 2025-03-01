@@ -2220,6 +2220,53 @@ mod sealed {
         vpklsfs vector_unsigned_int vector_unsigned_short
         vpklsgs vector_unsigned_long_long vector_unsigned_int
     }
+
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    pub trait VectorMadd {
+        unsafe fn vec_madd(self, b: Self, c: Self) -> Self;
+        unsafe fn vec_msub(self, b: Self, c: Self) -> Self;
+    }
+
+    test_impl! { vfmasb (a: vector_float, b: vector_float, c: vector_float) -> vector_float [simd_fma, "vector-enhancements-1" vfmasb] }
+    test_impl! { vfmadb (a: vector_double, b: vector_double, c: vector_double) -> vector_double [simd_fma, vfmadb] }
+
+    #[inline]
+    unsafe fn simd_fms<T>(a: T, b: T, c: T) -> T {
+        simd_fma(a, b, simd_neg(c))
+    }
+
+    test_impl! { vfmssb (a: vector_float, b: vector_float, c: vector_float) -> vector_float [simd_fms, "vector-enhancements-1" vfmssb] }
+    test_impl! { vfmsdb (a: vector_double, b: vector_double, c: vector_double) -> vector_double [simd_fms, vfmsdb] }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    impl VectorMadd for vector_float {
+        #[inline]
+        #[target_feature(enable = "vector")]
+        unsafe fn vec_madd(self, b: Self, c: Self) -> Self {
+            vfmasb(self, b, c)
+        }
+
+        #[inline]
+        #[target_feature(enable = "vector")]
+        unsafe fn vec_msub(self, b: Self, c: Self) -> Self {
+            vfmssb(self, b, c)
+        }
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    impl VectorMadd for vector_double {
+        #[inline]
+        #[target_feature(enable = "vector")]
+        unsafe fn vec_madd(self, b: Self, c: Self) -> Self {
+            vfmadb(self, b, c)
+        }
+
+        #[inline]
+        #[target_feature(enable = "vector")]
+        unsafe fn vec_msub(self, b: Self, c: Self) -> Self {
+            vfmsdb(self, b, c)
+        }
+    }
 }
 
 /// Load Count to Block Boundary
@@ -3177,6 +3224,22 @@ pub unsafe fn vec_load_len_r(ptr: *const u8, byte_count: u32) -> vector_unsigned
 #[cfg_attr(test, assert_instr(vstrlr))]
 pub unsafe fn vec_store_len_r(vector: vector_unsigned_char, ptr: *mut u8, byte_count: u32) {
     vstrl(vector, byte_count, ptr)
+}
+
+/// Vector Multiply Add
+#[inline]
+#[target_feature(enable = "vector-packed-decimal")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_madd<T: sealed::VectorMadd>(a: T, b: T, c: T) -> T {
+    a.vec_madd(b, c)
+}
+
+/// Vector Multiply Add
+#[inline]
+#[target_feature(enable = "vector-packed-decimal")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_msub<T: sealed::VectorMadd>(a: T, b: T, c: T) -> T {
+    a.vec_msub(b, c)
 }
 
 #[cfg(test)]
