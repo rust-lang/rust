@@ -47,13 +47,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // match lowering forces us to lower bindings inside or-patterns last.
         for mut match_pair in mem::take(match_pairs) {
             self.simplify_match_pairs(&mut match_pair.subpairs, extra_data);
-            if let TestCase::Irrefutable { binding, ascription } = match_pair.test_case {
-                if let Some(binding) = binding {
-                    extra_data.bindings.push(binding);
-                }
-                if let Some(ascription) = ascription {
-                    extra_data.ascriptions.push(ascription);
-                }
+            if let TestCase::Irrefutable {} = match_pair.test_case {
                 // Simplifiable pattern; we replace it with its already simplified subpairs.
                 match_pairs.append(&mut match_pair.subpairs);
             } else {

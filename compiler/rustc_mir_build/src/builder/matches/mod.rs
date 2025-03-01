@@ -1008,17 +1008,15 @@ impl<'tcx> FlatPat<'tcx> {
     /// Creates a `FlatPat` containing a simplified [`MatchPairTree`] list/forest
     /// for the given pattern.
     fn new(place: PlaceBuilder<'tcx>, pattern: &Pat<'tcx>, cx: &mut Builder<'_, 'tcx>) -> Self {
-        // First, recursively build a tree of match pairs for the given pattern.
+        // Recursively build a tree of match pairs for the given pattern.
         let mut match_pairs = vec![];
-        MatchPairTree::for_pattern(place, pattern, cx, &mut match_pairs);
         let mut extra_data = PatternExtraData {
             span: pattern.span,
             bindings: Vec::new(),
             ascriptions: Vec::new(),
             is_never: pattern.is_never_pattern(),
         };
-        // Recursively remove irrefutable match pairs, while recording their
-        // bindings/ascriptions, and sort or-patterns after other match pairs.
+        MatchPairTree::for_pattern(place, pattern, cx, &mut match_pairs, &mut extra_data);
         cx.simplify_match_pairs(&mut match_pairs, &mut extra_data);
 
         Self { match_pairs, extra_data }
@@ -1238,7 +1236,7 @@ struct Ascription<'tcx> {
 ///   - See [`Builder::expand_and_match_or_candidates`].
 #[derive(Debug, Clone)]
 enum TestCase<'tcx> {
-    Irrefutable { binding: Option<Binding<'tcx>>, ascription: Option<Ascription<'tcx>> },
+    Irrefutable {},
     Variant { adt_def: ty::AdtDef<'tcx>, variant_index: VariantIdx },
     Constant { value: mir::Const<'tcx> },
     Range(Arc<PatRange<'tcx>>),
