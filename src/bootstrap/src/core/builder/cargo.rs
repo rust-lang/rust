@@ -215,7 +215,7 @@ impl Cargo {
         // dynamic libraries. We use this by default on Unix platforms to ensure
         // that our nightlies behave the same on Windows, that is they work out
         // of the box. This can be disabled by setting `rpath = false` in `[rust]`
-        // table of `config.toml`
+        // table of `bootstrap.toml`
         //
         // Ok, so the astute might be wondering "why isn't `-C rpath` used
         // here?" and that is indeed a good question to ask. This codegen

@@ -87,7 +87,7 @@ Example output for the compiler:
 
 Since this doesn't seem to work with incremental compilation or `./x check`,
 you will be compiling rustc _a lot_.
-I recommend changing a few settings in `config.toml` to make it bearable:
+I recommend changing a few settings in `bootstrap.toml` to make it bearable:
 ```
 [rust]
 # A debug build takes _a third_ as long on my machine,

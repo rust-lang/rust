@@ -65,7 +65,7 @@ Building this target can be done by:
 * Configure LLD to be built.
 * Ensure the `WebAssembly` target backend is not disabled in LLVM.
 
-These are all controlled through `config.toml` options. It should be possible
+These are all controlled through `bootstrap.toml` options. It should be possible
 to build this target on any platform.
 
 ## Building Rust programs
