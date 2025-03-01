@@ -1,19 +1,14 @@
 error[E0080]: evaluation of constant value failed
-  --> $DIR/issue-100313.rs:9:13
+  --> $DIR/issue-100313.rs:16:5
    |
-LL |             *(B as *const bool as *mut bool) = false;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ writing to ALLOC0 which is read-only
+LL |     x.set_false();
+   |     ^^^^^^^^^^^^^ writing to ALLOC0 which is read-only
    |
 note: inside `T::<&true>::set_false`
   --> $DIR/issue-100313.rs:9:13
    |
 LL |             *(B as *const bool as *mut bool) = false;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: inside `_`
-  --> $DIR/issue-100313.rs:17:5
-   |
-LL |     x.set_false();
-   |     ^^^^^^^^^^^^^
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the failure occurred here
 
 error: aborting due to 1 previous error
 

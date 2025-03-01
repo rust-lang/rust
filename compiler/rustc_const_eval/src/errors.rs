@@ -6,6 +6,7 @@ use rustc_abi::WrappingRange;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Diag, DiagArgValue, DiagCtxtHandle, DiagMessage, Diagnostic, EmissionGuarantee, Level,
+    MultiSpan, SubdiagMessageOp, Subdiagnostic,
 };
 use rustc_hir::ConstContext;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
@@ -17,6 +18,7 @@ use rustc_middle::mir::interpret::{
 use rustc_middle::ty::{self, Mutability, Ty};
 use rustc_span::{Span, Symbol};
 
+use crate::fluent_generated as fluent;
 use crate::interpret::InternKind;
 
 #[derive(Diagnostic)]
@@ -278,14 +280,31 @@ pub(crate) struct NonConstImplNote {
     pub span: Span,
 }
 
-#[derive(Subdiagnostic, Clone)]
-#[note(const_eval_frame_note)]
+#[derive(Clone)]
 pub struct FrameNote {
-    #[primary_span]
     pub span: Span,
     pub times: i32,
     pub where_: &'static str,
     pub instance: String,
+    pub has_label: bool,
+}
+
+impl Subdiagnostic for FrameNote {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+        self,
+        diag: &mut Diag<'_, G>,
+        f: &F,
+    ) {
+        diag.arg("times", self.times);
+        diag.arg("where_", self.where_);
+        diag.arg("instance", self.instance);
+        let mut span: MultiSpan = self.span.into();
+        if self.has_label && !self.span.is_dummy() {
+            span.push_span_label(self.span, fluent::const_eval_frame_note_last);
+        }
+        let msg = f(diag, fluent::const_eval_frame_note.into());
+        diag.span_note(span, msg);
+    }
 }
 
 #[derive(Subdiagnostic)]

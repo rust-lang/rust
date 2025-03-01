@@ -8,21 +8,17 @@ LL | };
    | - value is dropped here
 
 error[E0080]: evaluation of constant value failed
-  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-   |
-   = note: calling non-const function `<Vec<u8> as Drop>::drop`
-   |
-note: inside `std::ptr::drop_in_place::<Vec<u8>> - shim(Some(Vec<u8>))`
-  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-note: inside `std::ptr::drop_in_place::<String> - shim(Some(String))`
-  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-note: inside `std::ptr::drop_in_place::<Option<String>> - shim(Some(Option<String>))`
-  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-note: inside `A1`
   --> $DIR/qualif-indirect-mutation-fail.rs:18:1
    |
 LL | };
-   | ^
+   | ^ calling non-const function `<Vec<u8> as Drop>::drop`
+   |
+note: inside `std::ptr::drop_in_place::<Option<String>> - shim(Some(Option<String>))`
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+note: inside `std::ptr::drop_in_place::<String> - shim(Some(String))`
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+note: inside `std::ptr::drop_in_place::<Vec<u8>> - shim(Some(Vec<u8>))`
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 
 error[E0493]: destructor of `Option<String>` cannot be evaluated at compile-time
   --> $DIR/qualif-indirect-mutation-fail.rs:28:9
@@ -33,21 +29,17 @@ LL | };
    | - value is dropped here
 
 error[E0080]: evaluation of constant value failed
-  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-   |
-   = note: calling non-const function `<Vec<u8> as Drop>::drop`
-   |
-note: inside `std::ptr::drop_in_place::<Vec<u8>> - shim(Some(Vec<u8>))`
-  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-note: inside `std::ptr::drop_in_place::<String> - shim(Some(String))`
-  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-note: inside `std::ptr::drop_in_place::<Option<String>> - shim(Some(Option<String>))`
-  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-note: inside `A2`
   --> $DIR/qualif-indirect-mutation-fail.rs:29:1
    |
 LL | };
-   | ^
+   | ^ calling non-const function `<Vec<u8> as Drop>::drop`
+   |
+note: inside `std::ptr::drop_in_place::<Option<String>> - shim(Some(Option<String>))`
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+note: inside `std::ptr::drop_in_place::<String> - shim(Some(String))`
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+note: inside `std::ptr::drop_in_place::<Vec<u8>> - shim(Some(Vec<u8>))`
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 
 error[E0493]: destructor of `(u32, Option<String>)` cannot be evaluated at compile-time
   --> $DIR/qualif-indirect-mutation-fail.rs:6:9
