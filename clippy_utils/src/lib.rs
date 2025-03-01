@@ -1027,6 +1027,7 @@ pub fn is_default_equivalent(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
         ExprKind::Call(from_func, [arg]) => is_default_equivalent_from(cx, from_func, arg),
         ExprKind::Path(qpath) => is_res_lang_ctor(cx, cx.qpath_res(qpath, e.hir_id), OptionNone),
         ExprKind::AddrOf(rustc_hir::BorrowKind::Ref, _, expr) => matches!(expr.kind, ExprKind::Array([])),
+        ExprKind::Block(Block { stmts: [], expr, .. }, _) => expr.is_some_and(|e| is_default_equivalent(cx, e)),
         _ => false,
     }
 }
