@@ -652,8 +652,9 @@ impl<'a> Arguments<'a> {
             // There are some arguments, so any additional push
             // will reallocate the string. To avoid that,
             // we're "pre-doubling" the capacity here.
-            // It cannot overflow, because the maximum length is `isize::MAX`.
-            pieces_length * 2
+            pieces_length
+                .checked_add(self.args.len().checked_mul(8).unwrap_or(0))
+                .unwrap_or(pieces_length)
         }
     }
 }
