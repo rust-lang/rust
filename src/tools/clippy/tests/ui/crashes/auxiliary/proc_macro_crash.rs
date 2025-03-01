@@ -1,5 +1,4 @@
 #![feature(repr128)]
-#![allow(incomplete_features)]
 
 extern crate proc_macro;
 
