@@ -319,6 +319,7 @@ impl<'tcx> MatchPairTree<'tcx> {
 
         if let Some(test_case) = test_case {
             // This pattern is refutable, so push a new match-pair node.
+            sort_match_pairs(&mut subpairs);
             match_pairs.push(MatchPairTree {
                 place,
                 test_case,
@@ -332,4 +333,10 @@ impl<'tcx> MatchPairTree<'tcx> {
             match_pairs.extend(subpairs);
         }
     }
+}
+
+/// Sorts or-patterns to the end of the list, as required by [`FlatPat`] and
+/// its enclosed [`MatchPairTree`] nodes.
+pub(super) fn sort_match_pairs(match_pairs: &mut [MatchPairTree<'_>]) {
+    match_pairs.sort_by_key(|pair| matches!(pair.test_case, TestCase::Or { .. }));
 }

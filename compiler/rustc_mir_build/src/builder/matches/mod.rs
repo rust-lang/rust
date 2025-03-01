@@ -26,7 +26,6 @@ use crate::builder::{
 
 // helper functions, broken out by category:
 mod match_pair;
-mod simplify;
 mod test;
 mod util;
 
@@ -989,16 +988,16 @@ impl<'tcx> PatternExtraData<'tcx> {
 /// A pattern in a form suitable for lowering the match tree, with all irrefutable
 /// patterns simplified away, and or-patterns sorted to the end.
 ///
-/// Here, "flat" indicates that the pattern's match pairs have been recursively
-/// simplified by [`Builder::simplify_match_pairs`]. They are not necessarily
-/// flat in an absolute sense.
+/// Here, "flat" indicates that irrefutable nodes in the pattern tree have been
+/// recursively replaced with their refutable subpatterns. They are not
+/// necessarily flat in an absolute sense.
 ///
 /// Will typically be incorporated into a [`Candidate`].
 #[derive(Debug, Clone)]
 struct FlatPat<'tcx> {
     /// To match the pattern, all of these must be satisfied...
-    // Invariant: all the match pairs are recursively simplified.
-    // Invariant: or-patterns must be sorted to the end.
+    /// ---
+    /// Invariant: Or-patterns must be sorted to the end.
     match_pairs: Vec<MatchPairTree<'tcx>>,
 
     extra_data: PatternExtraData<'tcx>,
@@ -1017,7 +1016,7 @@ impl<'tcx> FlatPat<'tcx> {
             is_never: pattern.is_never_pattern(),
         };
         MatchPairTree::for_pattern(place, pattern, cx, &mut match_pairs, &mut extra_data);
-        cx.simplify_match_pairs(&mut match_pairs, &mut extra_data);
+        match_pair::sort_match_pairs(&mut match_pairs);
 
         Self { match_pairs, extra_data }
     }
@@ -1271,6 +1270,8 @@ pub(crate) struct MatchPairTree<'tcx> {
     /// parent has succeeded. For example, the pattern `Some(3)` might have an
     /// outer match pair that tests for the variant `Some`, and then a subpair
     /// that tests its field for the value `3`.
+    ///
+    /// Invariant: Or-patterns must be sorted to the end.
     subpairs: Vec<Self>,
 
     /// Type field of the pattern this node was created from.
