@@ -373,7 +373,11 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
         Architecture::Avr => {
             // Resolve the ISA revision and set
             // the appropriate EF_AVR_ARCH flag.
-            ef_avr_arch(&sess.target.options.cpu)
+            if let Some(ref cpu) = sess.opts.cg.target_cpu {
+                ef_avr_arch(cpu)
+            } else {
+                bug!("AVR CPU not explicitly specified")
+            }
         }
         Architecture::Csky => {
             let e_flags = match sess.target.options.abi.as_ref() {
