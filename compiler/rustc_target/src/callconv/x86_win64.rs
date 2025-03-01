@@ -23,20 +23,24 @@ pub(crate) fn compute_abi_info<Ty>(cx: &impl HasTargetSpec, fn_abi: &mut FnAbi<'
                 // (probably what clang calls "illegal vectors").
             }
             BackendRepr::Scalar(scalar) => {
-                if is_ret && matches!(scalar.primitive(), Primitive::Int(Integer::I128, _)) {
+                if is_ret
+                    && matches!(
+                        scalar.primitive(),
+                        Primitive::Int(Integer::I128, _) | Primitive::Float(Float::F128)
+                    )
+                {
+                    // i128 and f128 have the same ABI on Windows.
                     if cx.target_spec().rustc_abi == Some(RustcAbi::X86Softfloat) {
-                        // Use the native `i128` LLVM type for the softfloat ABI -- in other words, adjust nothing.
+                        // Use the native `i128`/`f128` LLVM type for the softfloat ABI -- in other
+                        // words, adjust nothing.
                     } else {
-                        // `i128` is returned in xmm0 by Clang and GCC
+                        // `i128` and `f128` are returned in xmm0 by Clang. `i128` is returned in
+                        // xmm0 by GCC but `f128` is indirect (Clang and GCC have a mismatch).
                         // FIXME(#134288): This may change for the `-msvc` targets in the future.
                         let reg = Reg { kind: RegKind::Vector, size: Size::from_bits(128) };
                         a.cast_to(reg);
                     }
-                } else if a.layout.size.bytes() > 8
-                    && !matches!(scalar.primitive(), Primitive::Float(Float::F128))
-                {
-                    // Match what LLVM does for `f128` so that `compiler-builtins` builtins match up
-                    // with what LLVM expects.
+                } else if a.layout.size.bytes() > 8 {
                     a.make_indirect();
                 } else {
                     a.extend_integer_width_to(32);
