@@ -89,7 +89,7 @@ pub(super) fn name_like(
             Some(IdentClass::NameRefClass(NameRefClass::Definition(def, _))) => {
                 highlight_def(sema, krate, def, edition)
             }
-            // FIXME: Fallback for 'static and '_, as we do not resolve these yet
+            // FIXME: Fallback for '_, as we do not resolve these yet
             _ => SymbolKind::LifetimeParam.into(),
         },
     };

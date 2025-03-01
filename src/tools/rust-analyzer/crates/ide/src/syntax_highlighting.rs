@@ -14,7 +14,7 @@ mod tests;
 
 use std::ops::ControlFlow;
 
-use hir::{InFile, InRealFile, MacroFileIdExt, MacroKind, Name, Semantics};
+use hir::{HirFileIdExt, InFile, InRealFile, MacroFileIdExt, MacroKind, Name, Semantics};
 use ide_db::{FxHashMap, Ranker, RootDatabase, SymbolKind};
 use span::EditionedFileId;
 use syntax::{
@@ -371,8 +371,7 @@ fn traverse(
             InFile::new(file_id.into(), element)
         };
 
-        // string highlight injections, note this does not use the descended element as proc-macros
-        // can rewrite string literals which invalidates our indices
+        // string highlight injections
         if let (Some(original_token), Some(descended_token)) =
             (original_token, descended_element.value.as_token())
         {
@@ -390,6 +389,7 @@ fn traverse(
             }
         }
 
+        let edition = descended_element.file_id.edition(sema.db);
         let element = match descended_element.value {
             NodeOrToken::Node(name_like) => {
                 let hl = highlight::name_like(
@@ -398,7 +398,7 @@ fn traverse(
                     &mut bindings_shadow_count,
                     config.syntactic_name_ref_highlighting,
                     name_like,
-                    file_id.edition(),
+                    edition,
                 );
                 if hl.is_some() && !in_macro {
                     // skip highlighting the contained token of our name-like node
@@ -408,7 +408,7 @@ fn traverse(
                 hl
             }
             NodeOrToken::Token(token) => {
-                highlight::token(sema, token, file_id.edition(), tt_level > 0).zip(Some(None))
+                highlight::token(sema, token, edition, tt_level > 0).zip(Some(None))
             }
         };
         if let Some((mut highlight, binding_hash)) = element {
@@ -448,10 +448,11 @@ fn string_injections(
     token: SyntaxToken,
     descended_token: &SyntaxToken,
 ) -> ControlFlow<()> {
-    if ast::String::can_cast(token.kind()) && ast::String::can_cast(descended_token.kind()) {
-        let string = ast::String::cast(token);
-        let string_to_highlight = ast::String::cast(descended_token.clone());
-        if let Some((string, descended_string)) = string.zip(string_to_highlight) {
+    if !matches!(token.kind(), STRING | BYTE_STRING | BYTE | CHAR | C_STRING) {
+        return ControlFlow::Continue(());
+    }
+    if let Some(string) = ast::String::cast(token.clone()) {
+        if let Some(descended_string) = ast::String::cast(descended_token.clone()) {
             if string.is_raw()
                 && inject::ra_fixture(hl, sema, config, &string, &descended_string).is_some()
             {
@@ -463,32 +464,17 @@ fn string_injections(
                 highlight_escape_string(hl, &string);
             }
         }
-    } else if ast::ByteString::can_cast(token.kind())
-        && ast::ByteString::can_cast(descended_token.kind())
-    {
-        if let Some(byte_string) = ast::ByteString::cast(token) {
-            if !byte_string.is_raw() {
-                highlight_escape_string(hl, &byte_string);
-            }
+    } else if let Some(byte_string) = ast::ByteString::cast(token.clone()) {
+        if !byte_string.is_raw() {
+            highlight_escape_string(hl, &byte_string);
         }
-    } else if ast::CString::can_cast(token.kind()) && ast::CString::can_cast(descended_token.kind())
-    {
-        if let Some(c_string) = ast::CString::cast(token) {
-            if !c_string.is_raw() {
-                highlight_escape_string(hl, &c_string);
-            }
+    } else if let Some(c_string) = ast::CString::cast(token.clone()) {
+        if !c_string.is_raw() {
+            highlight_escape_string(hl, &c_string);
         }
-    } else if ast::Char::can_cast(token.kind()) && ast::Char::can_cast(descended_token.kind()) {
-        let Some(char) = ast::Char::cast(token) else {
-            return ControlFlow::Break(());
-        };
-
+    } else if let Some(char) = ast::Char::cast(token.clone()) {
         highlight_escape_char(hl, &char)
-    } else if ast::Byte::can_cast(token.kind()) && ast::Byte::can_cast(descended_token.kind()) {
-        let Some(byte) = ast::Byte::cast(token) else {
-            return ControlFlow::Break(());
-        };
-
+    } else if let Some(byte) = ast::Byte::cast(token) {
         highlight_escape_byte(hl, &byte)
     }
     ControlFlow::Continue(())
@@ -536,10 +522,10 @@ fn descend_token(
     token.map(|token| match token.parent().and_then(ast::NameLike::cast) {
         // Remap the token into the wrapping single token nodes
         Some(parent) => match (token.kind(), parent.syntax().kind()) {
-            (T![self] | T![ident], NAME | NAME_REF) => NodeOrToken::Node(parent),
-            (T![self] | T![super] | T![crate] | T![Self], NAME_REF) => NodeOrToken::Node(parent),
-            (INT_NUMBER, NAME_REF) => NodeOrToken::Node(parent),
-            (LIFETIME_IDENT, LIFETIME) => NodeOrToken::Node(parent),
+            (T![ident] | T![self], NAME)
+            | (T![ident] | T![self] | T![super] | T![crate] | T![Self], NAME_REF)
+            | (INT_NUMBER, NAME_REF)
+            | (LIFETIME_IDENT, LIFETIME) => NodeOrToken::Node(parent),
             _ => NodeOrToken::Token(token),
         },
         None => NodeOrToken::Token(token),
