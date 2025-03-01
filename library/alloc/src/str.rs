@@ -604,6 +604,12 @@ impl str {
 /// Converts a boxed slice of bytes to a boxed string slice without checking
 /// that the string contains valid UTF-8.
 ///
+/// # Safety
+///
+/// * The provided bytes must contain a valid UTF-8 sequence.
+///
+/// * The `Box<[u8]>` must have been allocated via the global allocator.
+///
 /// # Examples
 ///
 /// ```
