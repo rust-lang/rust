@@ -9,10 +9,8 @@ use rustc_index::Idx;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::Obligation;
 use rustc_middle::mir::interpret::ErrorHandled;
-use rustc_middle::thir::{FieldPat, Pat, PatKind};
-use rustc_middle::ty::{
-    self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitableExt, TypeVisitor, ValTree,
-};
+use rustc_middle::thir::{FieldPat, Pat, PatId, PatKind, Thir};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor, ValTree};
 use rustc_middle::{mir, span_bug};
 use rustc_span::def_id::DefId;
 use rustc_span::{Span, sym};
@@ -36,12 +34,12 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     /// so we have to carry one ourselves.
     #[instrument(level = "debug", skip(self), ret)]
     pub(super) fn const_to_pat(
-        &self,
+        &mut self,
         c: ty::Const<'tcx>,
         ty: Ty<'tcx>,
         id: hir::HirId,
         span: Span,
-    ) -> Box<Pat<'tcx>> {
+    ) -> PatId {
         let mut convert = ConstToPat::new(self, id, span, c);
 
         match c.kind() {
@@ -52,8 +50,9 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     }
 }
 
-struct ConstToPat<'tcx> {
+struct ConstToPat<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
+    thir: &'a mut Thir<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
     span: Span,
     id: hir::HirId,
@@ -63,11 +62,17 @@ struct ConstToPat<'tcx> {
     c: ty::Const<'tcx>,
 }
 
-impl<'tcx> ConstToPat<'tcx> {
-    fn new(pat_ctxt: &PatCtxt<'_, 'tcx>, id: hir::HirId, span: Span, c: ty::Const<'tcx>) -> Self {
+impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
+    fn new(
+        pat_ctxt: &'a mut PatCtxt<'_, 'tcx>,
+        id: hir::HirId,
+        span: Span,
+        c: ty::Const<'tcx>,
+    ) -> Self {
         trace!(?pat_ctxt.typeck_results.hir_owner);
         ConstToPat {
             tcx: pat_ctxt.tcx,
+            thir: pat_ctxt.thir,
             typing_env: pat_ctxt.typing_env,
             span,
             id,
@@ -84,7 +89,7 @@ impl<'tcx> ConstToPat<'tcx> {
     }
 
     /// We errored. Signal that in the pattern, so that follow up errors can be silenced.
-    fn mk_err(&self, mut err: Diag<'_>, ty: Ty<'tcx>) -> Box<Pat<'tcx>> {
+    fn mk_err(&mut self, mut err: Diag<'_>, ty: Ty<'tcx>) -> PatId {
         if let ty::ConstKind::Unevaluated(uv) = self.c.kind() {
             let def_kind = self.tcx.def_kind(uv.def);
             if let hir::def::DefKind::AssocConst = def_kind
@@ -100,14 +105,10 @@ impl<'tcx> ConstToPat<'tcx> {
                 );
             }
         }
-        Box::new(Pat { span: self.span, ty, kind: PatKind::Error(err.emit()) })
+        self.thir.pats.push(Pat { span: self.span, ty, kind: PatKind::Error(err.emit()) })
     }
 
-    fn unevaluated_to_pat(
-        &mut self,
-        uv: ty::UnevaluatedConst<'tcx>,
-        ty: Ty<'tcx>,
-    ) -> Box<Pat<'tcx>> {
+    fn unevaluated_to_pat(&mut self, uv: ty::UnevaluatedConst<'tcx>, ty: Ty<'tcx>) -> PatId {
         trace!(self.treat_byte_string_as_slice);
 
         // It's not *technically* correct to be revealing opaque types here as borrowcheck has
@@ -187,7 +188,7 @@ impl<'tcx> ConstToPat<'tcx> {
         // Convert the valtree to a const.
         let inlined_const_as_pat = self.valtree_to_pat(valtree, ty);
 
-        if !inlined_const_as_pat.references_error() {
+        if !self.thir.pat_references_error(&self.thir[inlined_const_as_pat]) {
             // Always check for `PartialEq` if we had no other errors yet.
             if !type_has_partial_eq_impl(self.tcx, typing_env, ty).has_impl {
                 let mut err = self.tcx.dcx().create_err(TypeNotPartialEq { span: self.span, ty });
@@ -200,15 +201,15 @@ impl<'tcx> ConstToPat<'tcx> {
     }
 
     fn field_pats(
-        &self,
+        &mut self,
         vals: impl Iterator<Item = (ValTree<'tcx>, Ty<'tcx>)>,
-    ) -> Vec<FieldPat<'tcx>> {
+    ) -> Vec<FieldPat> {
         vals.enumerate()
             .map(|(idx, (val, ty))| {
                 let field = FieldIdx::new(idx);
                 // Patterns can only use monomorphic types.
                 let ty = self.tcx.normalize_erasing_regions(self.typing_env, ty);
-                FieldPat { field, pattern: *self.valtree_to_pat(val, ty) }
+                FieldPat { field, pattern: self.valtree_to_pat(val, ty) }
             })
             .collect()
     }
@@ -216,7 +217,7 @@ impl<'tcx> ConstToPat<'tcx> {
     // Recursive helper for `to_pat`; invoke that (instead of calling this directly).
     // FIXME(valtrees): Accept `ty::Value` instead of `Ty` and `ty::ValTree` separately.
     #[instrument(skip(self), level = "debug")]
-    fn valtree_to_pat(&self, cv: ValTree<'tcx>, ty: Ty<'tcx>) -> Box<Pat<'tcx>> {
+    fn valtree_to_pat(&mut self, cv: ValTree<'tcx>, ty: Ty<'tcx>) -> PatId {
         let span = self.span;
         let tcx = self.tcx;
         let kind = match ty.kind() {
@@ -277,7 +278,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 prefix: cv
                     .unwrap_branch()
                     .iter()
-                    .map(|val| *self.valtree_to_pat(*val, *elem_ty))
+                    .map(|&val| self.valtree_to_pat(val, *elem_ty))
                     .collect(),
                 slice: None,
                 suffix: Box::new([]),
@@ -286,7 +287,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 prefix: cv
                     .unwrap_branch()
                     .iter()
-                    .map(|val| *self.valtree_to_pat(*val, *elem_ty))
+                    .map(|&val| self.valtree_to_pat(val, *elem_ty))
                     .collect(),
                 slice: None,
                 suffix: Box::new([]),
@@ -363,7 +364,7 @@ impl<'tcx> ConstToPat<'tcx> {
             }
         };
 
-        Box::new(Pat { span, ty, kind })
+        self.thir.pats.push(Pat { span, ty, kind })
     }
 }
 

@@ -10,7 +10,7 @@ pub trait Visitor<'thir, 'tcx: 'thir>: Sized {
         walk_expr(self, expr);
     }
 
-    fn visit_stmt(&mut self, stmt: &'thir Stmt<'tcx>) {
+    fn visit_stmt(&mut self, stmt: &'thir Stmt) {
         walk_stmt(self, stmt);
     }
 
@@ -18,7 +18,7 @@ pub trait Visitor<'thir, 'tcx: 'thir>: Sized {
         walk_block(self, block);
     }
 
-    fn visit_arm(&mut self, arm: &'thir Arm<'tcx>) {
+    fn visit_arm(&mut self, arm: &'thir Arm) {
         walk_arm(self, arm);
     }
 
@@ -71,9 +71,9 @@ pub fn walk_expr<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
         PointerCoercion { source, cast: _, is_from_as_cast: _ } => {
             visitor.visit_expr(&visitor.thir()[source])
         }
-        Let { expr, ref pat } => {
+        Let { expr, pat } => {
             visitor.visit_expr(&visitor.thir()[expr]);
-            visitor.visit_pat(pat);
+            visitor.visit_pat(&visitor.thir()[pat]);
         }
         Loop { body } => visitor.visit_expr(&visitor.thir()[body]),
         Match { scrutinee, ref arms, .. } => {
@@ -184,10 +184,7 @@ pub fn walk_expr<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
     }
 }
 
-pub fn walk_stmt<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
-    visitor: &mut V,
-    stmt: &'thir Stmt<'tcx>,
-) {
+pub fn walk_stmt<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(visitor: &mut V, stmt: &'thir Stmt) {
     match &stmt.kind {
         StmtKind::Expr { expr, scope: _ } => visitor.visit_expr(&visitor.thir()[*expr]),
         StmtKind::Let {
@@ -202,7 +199,7 @@ pub fn walk_stmt<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
             if let Some(init) = initializer {
                 visitor.visit_expr(&visitor.thir()[*init]);
             }
-            visitor.visit_pat(pattern);
+            visitor.visit_pat(&visitor.thir()[*pattern]);
             if let Some(block) = else_block {
                 visitor.visit_block(&visitor.thir()[*block])
             }
@@ -222,14 +219,11 @@ pub fn walk_block<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
     }
 }
 
-pub fn walk_arm<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
-    visitor: &mut V,
-    arm: &'thir Arm<'tcx>,
-) {
+pub fn walk_arm<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(visitor: &mut V, arm: &'thir Arm) {
     if let Some(expr) = arm.guard {
         visitor.visit_expr(&visitor.thir()[expr])
     }
-    visitor.visit_pat(&arm.pattern);
+    visitor.visit_pat(&visitor.thir()[arm.pattern]);
     visitor.visit_expr(&visitor.thir()[arm.body]);
 }
 
@@ -237,36 +231,49 @@ pub fn walk_pat<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
     visitor: &mut V,
     pat: &'thir Pat<'tcx>,
 ) {
-    use PatKind::*;
-    match &pat.kind {
-        AscribeUserType { subpattern, ascription: _ }
-        | Deref { subpattern }
-        | DerefPattern { subpattern, .. }
-        | Binding { subpattern: Some(subpattern), .. } => visitor.visit_pat(subpattern),
-        Binding { .. } | Wild | Never | Error(_) => {}
-        Variant { subpatterns, adt_def: _, args: _, variant_index: _ } | Leaf { subpatterns } => {
-            for subpattern in subpatterns {
-                visitor.visit_pat(&subpattern.pattern);
+    for_each_immediate_subpat(visitor.thir(), pat, |p| visitor.visit_pat(p));
+}
+
+/// Invokes `callback` on each immediate subpattern of `pat`, if any.
+/// A building block for assembling THIR pattern visitors.
+pub(crate) fn for_each_immediate_subpat<'a, 'tcx>(
+    thir: &'a Thir<'tcx>,
+    pat: &'a Pat<'tcx>,
+    mut callback: impl FnMut(&'a Pat<'tcx>),
+) {
+    let mut callback_id = |pat_id| callback(&thir[pat_id]);
+
+    match pat.kind {
+        PatKind::Wild
+        | PatKind::Binding { subpattern: None, .. }
+        | PatKind::Constant { value: _ }
+        | PatKind::Range(_)
+        | PatKind::Never
+        | PatKind::Error(_) => {}
+
+        PatKind::AscribeUserType { subpattern, .. }
+        | PatKind::Binding { subpattern: Some(subpattern), .. }
+        | PatKind::Deref { subpattern }
+        | PatKind::DerefPattern { subpattern, .. }
+        | PatKind::ExpandedConstant { subpattern, .. } => callback_id(subpattern),
+
+        PatKind::Variant { ref subpatterns, .. } | PatKind::Leaf { ref subpatterns } => {
+            for field_pat in subpatterns {
+                callback_id(field_pat.pattern);
             }
         }
-        Constant { value: _ } => {}
-        ExpandedConstant { def_id: _, is_inline: _, subpattern } => visitor.visit_pat(subpattern),
-        Range(_) => {}
-        Slice { prefix, slice, suffix } | Array { prefix, slice, suffix } => {
-            for subpattern in prefix.iter() {
-                visitor.visit_pat(subpattern);
-            }
-            if let Some(pat) = slice {
-                visitor.visit_pat(pat);
-            }
-            for subpattern in suffix.iter() {
-                visitor.visit_pat(subpattern);
+
+        PatKind::Slice { ref prefix, ref slice, ref suffix }
+        | PatKind::Array { ref prefix, ref slice, ref suffix } => {
+            for &pat in prefix.iter().chain(slice).chain(suffix) {
+                callback_id(pat);
             }
         }
-        Or { pats } => {
-            for pat in pats.iter() {
-                visitor.visit_pat(pat);
+
+        PatKind::Or { ref pats } => {
+            for &pat in pats {
+                callback_id(pat);
             }
         }
-    };
+    }
 }
