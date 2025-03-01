@@ -4,13 +4,12 @@
 const extern "C" fn c_fn() {}
 
 const fn call_rust_fn(my_fn: extern "Rust" fn()) {
-    my_fn();
-    //~^ ERROR could not evaluate static initializer
-    //~| NOTE calling a function with calling convention C using calling convention Rust
-    //~| NOTE inside `call_rust_fn`
+    my_fn(); //~ NOTE inside `call_rust_fn`
+    //~^ NOTE the failure occurred here
 }
 
 static VAL: () = call_rust_fn(unsafe { std::mem::transmute(c_fn as extern "C" fn()) });
-//~^ NOTE inside `VAL`
+//~^ ERROR could not evaluate static initializer
+//~| NOTE calling a function with calling convention C using calling convention Rust
 
 fn main() {}
