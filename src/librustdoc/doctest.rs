@@ -550,7 +550,12 @@ fn run_test(
     }
 
     compiler.arg("--edition").arg(doctest.edition.to_string());
-    if !doctest.is_multiple_tests {
+    if doctest.is_multiple_tests {
+        // The merged test harness uses the `test` crate, so we need to actually allow it.
+        // This will not expose nightly features on stable, because crate attrs disable
+        // merging, and `#![feature]` is required to be a crate attr.
+        compiler.env("RUSTC_BOOTSTRAP", "1");
+    } else {
         // Setting these environment variables is unneeded if this is a merged doctest.
         compiler.env("UNSTABLE_RUSTDOC_TEST_PATH", &doctest.test_opts.path);
         compiler.env(
