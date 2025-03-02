@@ -3,6 +3,7 @@ use std::hash::Hash;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def_id::DefIndex;
 use rustc_index::{Idx, IndexVec};
+use rustc_span::Symbol;
 
 use crate::ty;
 
@@ -96,6 +97,7 @@ trivially_parameterized_over_tcx! {
     rustc_hir::def_id::DefIndex,
     rustc_hir::definitions::DefKey,
     rustc_hir::OpaqueTyOrigin<rustc_hir::def_id::DefId>,
+    rustc_hir::PreciseCapturingArgKind<Symbol, Symbol>,
     rustc_index::bit_set::DenseBitSet<u32>,
     rustc_index::bit_set::FiniteBitSet<u32>,
     rustc_session::cstore::ForeignModule,
