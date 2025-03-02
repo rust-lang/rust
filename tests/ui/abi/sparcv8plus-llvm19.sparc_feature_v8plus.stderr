@@ -1,5 +1,5 @@
 error: +v8plus,-v9 (FIXME)
-  --> $DIR/sparcv8plus-llvm19.rs:39:1
+  --> $DIR/sparcv8plus-llvm19.rs:38:1
    |
 LL | compile_error!("+v8plus,-v9 (FIXME)");
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

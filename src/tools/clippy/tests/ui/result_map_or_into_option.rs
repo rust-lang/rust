@@ -3,12 +3,14 @@
 fn main() {
     let opt: Result<u32, &str> = Ok(1);
     let _ = opt.map_or(None, Some);
-    //~^ ERROR: called `map_or(None, Some)` on a `Result` value
+    //~^ result_map_or_into_option
+
     let _ = opt.map_or_else(|_| None, Some);
-    //~^ ERROR: called `map_or_else(|_| None, Some)` on a `Result` value
+    //~^ result_map_or_into_option
+
     #[rustfmt::skip]
     let _ = opt.map_or_else(|_| { None }, Some);
-    //~^ ERROR: called `map_or_else(|_| None, Some)` on a `Result` value
+    //~^ result_map_or_into_option
 
     let rewrap = |s: u32| -> Option<u32> { Some(s) };
 

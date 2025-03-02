@@ -279,9 +279,9 @@ pub(super) fn transcribe<'a>(
                 if let Some(cur_matched) = lookup_cur_matched(ident, interp, &repeats) {
                     // We wrap the tokens in invisible delimiters, unless they are already wrapped
                     // in invisible delimiters with the same `MetaVarKind`. Because some proc
-                    // macros can't multiple layers of invisible delimiters of the same
+                    // macros can't handle multiple layers of invisible delimiters of the same
                     // `MetaVarKind`. This loses some span info, though it hopefully won't matter.
-                    let mut mk_delimited = |mv_kind, mut stream: TokenStream| {
+                    let mut mk_delimited = |mk_span, mv_kind, mut stream: TokenStream| {
                         if stream.len() == 1 {
                             let tree = stream.iter().next().unwrap();
                             if let TokenTree::Delimited(_, _, delim, inner) = tree
@@ -295,6 +295,7 @@ pub(super) fn transcribe<'a>(
                         // Emit as a token stream within `Delimiter::Invisible` to maintain
                         // parsing priorities.
                         marker.visit_span(&mut sp);
+                        with_metavar_spans(|mspans| mspans.insert(mk_span, sp));
                         // Both the open delim and close delim get the same span, which covers the
                         // `$foo` in the decl macro RHS.
                         TokenTree::Delimited(
@@ -322,12 +323,32 @@ pub(super) fn transcribe<'a>(
                             let kind = token::NtLifetime(*ident, *is_raw);
                             TokenTree::token_alone(kind, sp)
                         }
+                        MatchedSingle(ParseNtResult::Pat(pat, pat_kind)) => mk_delimited(
+                            pat.span,
+                            MetaVarKind::Pat(*pat_kind),
+                            TokenStream::from_ast(pat),
+                        ),
                         MatchedSingle(ParseNtResult::Ty(ty)) => {
                             let is_path = matches!(&ty.kind, TyKind::Path(None, _path));
-                            mk_delimited(MetaVarKind::Ty { is_path }, TokenStream::from_ast(ty))
+                            mk_delimited(
+                                ty.span,
+                                MetaVarKind::Ty { is_path },
+                                TokenStream::from_ast(ty),
+                            )
+                        }
+                        MatchedSingle(ParseNtResult::Meta(attr_item)) => {
+                            let has_meta_form = attr_item.meta_kind().is_some();
+                            mk_delimited(
+                                attr_item.span(),
+                                MetaVarKind::Meta { has_meta_form },
+                                TokenStream::from_ast(attr_item),
+                            )
+                        }
+                        MatchedSingle(ParseNtResult::Path(path)) => {
+                            mk_delimited(path.span, MetaVarKind::Path, TokenStream::from_ast(path))
                         }
                         MatchedSingle(ParseNtResult::Vis(vis)) => {
-                            mk_delimited(MetaVarKind::Vis, TokenStream::from_ast(vis))
+                            mk_delimited(vis.span, MetaVarKind::Vis, TokenStream::from_ast(vis))
                         }
                         MatchedSingle(ParseNtResult::Nt(nt)) => {
                             // Other variables are emitted into the output stream as groups with

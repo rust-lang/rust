@@ -14,7 +14,7 @@ LL |     fn iter_mut(&self) -> Counter2 {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this method is named `iter` but its return type does not implement `Iterator`
-  --> tests/ui/iter_not_returning_iterator.rs:53:5
+  --> tests/ui/iter_not_returning_iterator.rs:54:5
    |
 LL |     fn iter(&self) -> Self::I;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -9,9 +9,10 @@ LL |     fn what(&self) -> Self;
    = help: to override `-D warnings` add `#[allow(clippy::return_self_not_must_use)]`
 
 error: missing `#[must_use]` attribute on a method returning `Self`
-  --> tests/ui/return_self_not_must_use.rs:19:5
+  --> tests/ui/return_self_not_must_use.rs:20:5
    |
 LL | /     pub fn foo(&self) -> Self {
+LL | |
 LL | |
 LL | |         Self
 LL | |     }
@@ -20,9 +21,10 @@ LL | |     }
    = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
 
 error: missing `#[must_use]` attribute on a method returning `Self`
-  --> tests/ui/return_self_not_must_use.rs:23:5
+  --> tests/ui/return_self_not_must_use.rs:25:5
    |
 LL | /     pub fn bar(self) -> Self {
+LL | |
 LL | |
 LL | |         self
 LL | |     }

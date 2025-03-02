@@ -9,7 +9,7 @@ LL |         pub(crate) pub_crate_field: bool,
    = help: to override `-D warnings` add `#[allow(clippy::field_scoped_visibility_modifiers)]`
 
 error: scoped visibility modifier on a field
-  --> tests/ui/field_scoped_visibility_modifiers.rs:10:9
+  --> tests/ui/field_scoped_visibility_modifiers.rs:11:9
    |
 LL |         pub(in crate::pub_module) pub_in_path_field: bool,
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL |         pub(in crate::pub_module) pub_in_path_field: bool,
    = help: consider making the field private and adding a scoped visibility method for it
 
 error: scoped visibility modifier on a field
-  --> tests/ui/field_scoped_visibility_modifiers.rs:11:9
+  --> tests/ui/field_scoped_visibility_modifiers.rs:13:9
    |
 LL |         pub(super) pub_super_field: bool,
    |         ^^^^^^^^^^

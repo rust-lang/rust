@@ -3,6 +3,7 @@ error: method `add` can be confused for the standard trait method `std::ops::Add
    |
 LL | /     pub fn add(self, other: T) -> T {
 LL | |
+LL | |
 LL | |         unimplemented!()
 LL | |     }
    | |_____^
@@ -12,9 +13,10 @@ LL | |     }
    = help: to override `-D warnings` add `#[allow(clippy::should_implement_trait)]`
 
 error: method `as_mut` can be confused for the standard trait method `std::convert::AsMut::as_mut`
-  --> tests/ui/should_impl_trait/method_list_1.rs:30:5
+  --> tests/ui/should_impl_trait/method_list_1.rs:31:5
    |
 LL | /     pub fn as_mut(&mut self) -> &mut T {
+LL | |
 LL | |
 LL | |         unimplemented!()
 LL | |     }
@@ -23,9 +25,10 @@ LL | |     }
    = help: consider implementing the trait `std::convert::AsMut` or choosing a less ambiguous method name
 
 error: method `as_ref` can be confused for the standard trait method `std::convert::AsRef::as_ref`
-  --> tests/ui/should_impl_trait/method_list_1.rs:35:5
+  --> tests/ui/should_impl_trait/method_list_1.rs:37:5
    |
 LL | /     pub fn as_ref(&self) -> &T {
+LL | |
 LL | |
 LL | |         unimplemented!()
 LL | |     }
@@ -34,9 +37,10 @@ LL | |     }
    = help: consider implementing the trait `std::convert::AsRef` or choosing a less ambiguous method name
 
 error: method `bitand` can be confused for the standard trait method `std::ops::BitAnd::bitand`
-  --> tests/ui/should_impl_trait/method_list_1.rs:40:5
+  --> tests/ui/should_impl_trait/method_list_1.rs:43:5
    |
 LL | /     pub fn bitand(self, rhs: T) -> T {
+LL | |
 LL | |
 LL | |         unimplemented!()
 LL | |     }
@@ -45,9 +49,10 @@ LL | |     }
    = help: consider implementing the trait `std::ops::BitAnd` or choosing a less ambiguous method name
 
 error: method `bitor` can be confused for the standard trait method `std::ops::BitOr::bitor`
-  --> tests/ui/should_impl_trait/method_list_1.rs:45:5
+  --> tests/ui/should_impl_trait/method_list_1.rs:49:5
    |
 LL | /     pub fn bitor(self, rhs: Self) -> Self {
+LL | |
 LL | |
 LL | |         unimplemented!()
 LL | |     }
@@ -56,9 +61,10 @@ LL | |     }
    = help: consider implementing the trait `std::ops::BitOr` or choosing a less ambiguous method name
 
 error: method `bitxor` can be confused for the standard trait method `std::ops::BitXor::bitxor`
-  --> tests/ui/should_impl_trait/method_list_1.rs:50:5
+  --> tests/ui/should_impl_trait/method_list_1.rs:55:5
    |
 LL | /     pub fn bitxor(self, rhs: Self) -> Self {
+LL | |
 LL | |
 LL | |         unimplemented!()
 LL | |     }
@@ -67,9 +73,10 @@ LL | |     }
    = help: consider implementing the trait `std::ops::BitXor` or choosing a less ambiguous method name
 
 error: method `borrow` can be confused for the standard trait method `std::borrow::Borrow::borrow`
-  --> tests/ui/should_impl_trait/method_list_1.rs:55:5
+  --> tests/ui/should_impl_trait/method_list_1.rs:61:5
    |
 LL | /     pub fn borrow(&self) -> &str {
+LL | |
 LL | |
 LL | |         unimplemented!()
 LL | |     }
@@ -78,9 +85,10 @@ LL | |     }
    = help: consider implementing the trait `std::borrow::Borrow` or choosing a less ambiguous method name
 
 error: method `borrow_mut` can be confused for the standard trait method `std::borrow::BorrowMut::borrow_mut`
-  --> tests/ui/should_impl_trait/method_list_1.rs:60:5
+  --> tests/ui/should_impl_trait/method_list_1.rs:67:5
    |
 LL | /     pub fn borrow_mut(&mut self) -> &mut str {
+LL | |
 LL | |
 LL | |         unimplemented!()
 LL | |     }
@@ -89,9 +97,10 @@ LL | |     }
    = help: consider implementing the trait `std::borrow::BorrowMut` or choosing a less ambiguous method name
 
 error: method `clone` can be confused for the standard trait method `std::clone::Clone::clone`
-  --> tests/ui/should_impl_trait/method_list_1.rs:65:5
+  --> tests/ui/should_impl_trait/method_list_1.rs:73:5
    |
 LL | /     pub fn clone(&self) -> Self {
+LL | |
 LL | |
 LL | |         unimplemented!()
 LL | |     }
@@ -100,9 +109,10 @@ LL | |     }
    = help: consider implementing the trait `std::clone::Clone` or choosing a less ambiguous method name
 
 error: method `cmp` can be confused for the standard trait method `std::cmp::Ord::cmp`
-  --> tests/ui/should_impl_trait/method_list_1.rs:70:5
+  --> tests/ui/should_impl_trait/method_list_1.rs:79:5
    |
 LL | /     pub fn cmp(&self, other: &Self) -> Self {
+LL | |
 LL | |
 LL | |         unimplemented!()
 LL | |     }
@@ -111,9 +121,10 @@ LL | |     }
    = help: consider implementing the trait `std::cmp::Ord` or choosing a less ambiguous method name
 
 error: method `default` can be confused for the standard trait method `std::default::Default::default`
-  --> tests/ui/should_impl_trait/method_list_1.rs:75:5
+  --> tests/ui/should_impl_trait/method_list_1.rs:85:5
    |
 LL | /     pub fn default() -> Self {
+LL | |
 LL | |
 LL | |         unimplemented!()
 LL | |     }
@@ -122,9 +133,10 @@ LL | |     }
    = help: consider implementing the trait `std::default::Default` or choosing a less ambiguous method name
 
 error: method `deref` can be confused for the standard trait method `std::ops::Deref::deref`
-  --> tests/ui/should_impl_trait/method_list_1.rs:80:5
+  --> tests/ui/should_impl_trait/method_list_1.rs:91:5
    |
 LL | /     pub fn deref(&self) -> &Self {
+LL | |
 LL | |
 LL | |         unimplemented!()
 LL | |     }
@@ -133,9 +145,10 @@ LL | |     }
    = help: consider implementing the trait `std::ops::Deref` or choosing a less ambiguous method name
 
 error: method `deref_mut` can be confused for the standard trait method `std::ops::DerefMut::deref_mut`
-  --> tests/ui/should_impl_trait/method_list_1.rs:85:5
+  --> tests/ui/should_impl_trait/method_list_1.rs:97:5
    |
 LL | /     pub fn deref_mut(&mut self) -> &mut Self {
+LL | |
 LL | |
 LL | |         unimplemented!()
 LL | |     }
@@ -144,9 +157,10 @@ LL | |     }
    = help: consider implementing the trait `std::ops::DerefMut` or choosing a less ambiguous method name
 
 error: method `div` can be confused for the standard trait method `std::ops::Div::div`
-  --> tests/ui/should_impl_trait/method_list_1.rs:90:5
+  --> tests/ui/should_impl_trait/method_list_1.rs:103:5
    |
 LL | /     pub fn div(self, rhs: Self) -> Self {
+LL | |
 LL | |
 LL | |         unimplemented!()
 LL | |     }
@@ -155,9 +169,10 @@ LL | |     }
    = help: consider implementing the trait `std::ops::Div` or choosing a less ambiguous method name
 
 error: method `drop` can be confused for the standard trait method `std::ops::Drop::drop`
-  --> tests/ui/should_impl_trait/method_list_1.rs:95:5
+  --> tests/ui/should_impl_trait/method_list_1.rs:109:5
    |
 LL | /     pub fn drop(&mut self) {
+LL | |
 LL | |
 LL | |         unimplemented!()
 LL | |     }

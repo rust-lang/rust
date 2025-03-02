@@ -11,6 +11,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Expr, FnDecl, LangItem, TyKind};
+use rustc_hir_analysis::lower_ty;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::mir::ConstValue;
@@ -35,6 +36,19 @@ use crate::{def_path_def_ids, match_def_path, path_res};
 
 mod type_certainty;
 pub use type_certainty::expr_type_is_certain;
+
+/// Lower a [`hir::Ty`] to a [`rustc_middle::ty::Ty`].
+pub fn ty_from_hir_ty<'tcx>(cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
+    cx.maybe_typeck_results()
+        .and_then(|results| {
+            if results.hir_owner == hir_ty.hir_id.owner {
+                results.node_type_opt(hir_ty.hir_id)
+            } else {
+                None
+            }
+        })
+        .unwrap_or_else(|| lower_ty(cx.tcx, hir_ty))
+}
 
 /// Checks if the given type implements copy.
 pub fn is_copy<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
@@ -351,20 +365,26 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
 /// Checks if `Ty` is normalizable. This function is useful
 /// to avoid crashes on `layout_of`.
 pub fn is_normalizable<'tcx>(cx: &LateContext<'tcx>, param_env: ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
-    is_normalizable_helper(cx, param_env, ty, &mut FxHashMap::default())
+    is_normalizable_helper(cx, param_env, ty, 0, &mut FxHashMap::default())
 }
 
 fn is_normalizable_helper<'tcx>(
     cx: &LateContext<'tcx>,
     param_env: ParamEnv<'tcx>,
     ty: Ty<'tcx>,
+    depth: usize,
     cache: &mut FxHashMap<Ty<'tcx>, bool>,
 ) -> bool {
     if let Some(&cached_result) = cache.get(&ty) {
         return cached_result;
     }
-    // prevent recursive loops, false-negative is better than endless loop leading to stack overflow
-    cache.insert(ty, false);
+    if !cx.tcx.recursion_limit().value_within_limit(depth) {
+        return false;
+    }
+    // Prevent recursive loops by answering `true` to recursive requests with the same
+    // type. This will be adjusted when the outermost call analyzes all the type
+    // components.
+    cache.insert(ty, true);
     let infcx = cx.tcx.infer_ctxt().build(cx.typing_mode());
     let cause = ObligationCause::dummy();
     let result = if infcx.at(&cause, param_env).query_normalize(ty).is_ok() {
@@ -373,11 +393,11 @@ fn is_normalizable_helper<'tcx>(
                 variant
                     .fields
                     .iter()
-                    .all(|field| is_normalizable_helper(cx, param_env, field.ty(cx.tcx, args), cache))
+                    .all(|field| is_normalizable_helper(cx, param_env, field.ty(cx.tcx, args), depth + 1, cache))
             }),
             _ => ty.walk().all(|generic_arg| match generic_arg.unpack() {
                 GenericArgKind::Type(inner_ty) if inner_ty != ty => {
-                    is_normalizable_helper(cx, param_env, inner_ty, cache)
+                    is_normalizable_helper(cx, param_env, inner_ty, depth + 1, cache)
                 },
                 _ => true, // if inner_ty == ty, we've already checked it
             }),
@@ -1226,6 +1246,10 @@ impl<'tcx> InteriorMut<'tcx> {
                     def.all_fields()
                         .find_map(|f| self.interior_mut_ty_chain(cx, f.ty(cx.tcx, args)))
                 }
+            },
+            ty::Alias(ty::Projection, _) => match cx.tcx.try_normalize_erasing_regions(cx.typing_env(), ty) {
+                Ok(normalized_ty) if ty != normalized_ty => self.interior_mut_ty_chain(cx, normalized_ty),
+                _ => None,
             },
             _ => None,
         };

@@ -44,6 +44,7 @@ fn unwrap_or_else_default() {
 
     let with_new = Some(vec![1]);
     with_new.unwrap_or_default();
+    //~^ unwrap_or_default
 
     let with_err: Result<_, ()> = Ok(vec![1]);
     with_err.unwrap_or_else(make);
@@ -58,43 +59,56 @@ fn unwrap_or_else_default() {
 
     let with_real_default = None::<HasDefaultAndDuplicate>;
     with_real_default.unwrap_or_default();
+    //~^ unwrap_or_default
 
     let with_default_trait = Some(1);
     with_default_trait.unwrap_or_default();
+    //~^ unwrap_or_default
 
     let with_default_type = Some(1);
     with_default_type.unwrap_or_default();
+    //~^ unwrap_or_default
 
     let with_default_type: Option<Vec<u64>> = None;
     with_default_type.unwrap_or_default();
+    //~^ unwrap_or_default
 
     let empty_string = None::<String>;
     empty_string.unwrap_or_default();
+    //~^ unwrap_or_default
 }
 
 fn type_certainty(option: Option<Vec<u64>>) {
     option.unwrap_or_default().push(1);
+    //~^ unwrap_or_default
 
     let option: std::option::Option<std::vec::Vec<u64>> = None;
     option.unwrap_or_default().push(1);
+    //~^ unwrap_or_default
 
     let option: Option<Vec<u64>> = None;
     option.unwrap_or_default().push(1);
+    //~^ unwrap_or_default
 
     let option = std::option::Option::<std::vec::Vec<u64>>::None;
     option.unwrap_or_default().push(1);
+    //~^ unwrap_or_default
 
     let option = Option::<Vec<u64>>::None;
     option.unwrap_or_default().push(1);
+    //~^ unwrap_or_default
 
     let option = std::option::Option::None::<std::vec::Vec<u64>>;
     option.unwrap_or_default().push(1);
+    //~^ unwrap_or_default
 
     let option = Option::None::<Vec<u64>>;
     option.unwrap_or_default().push(1);
+    //~^ unwrap_or_default
 
     let option = None::<Vec<u64>>;
     option.unwrap_or_default().push(1);
+    //~^ unwrap_or_default
 
     // should not be changed: type annotation with infer, unconcretized initializer
     let option: Option<Vec<_>> = None;
@@ -111,6 +125,7 @@ fn type_certainty(option: Option<Vec<u64>>) {
     type Alias = Option<Vec<u32>>;
     let option: Alias = Option::<Vec<u32>>::Some(Vec::new());
     option.unwrap_or_default().push(1);
+    //~^ unwrap_or_default
 }
 
 fn method_call_with_deref() {
@@ -128,6 +143,7 @@ fn method_call_with_deref() {
     let inner_map = outer_map.get_mut(&option.unwrap()).unwrap();
 
     let _ = inner_map.entry(0).or_default();
+    //~^ unwrap_or_default
 }
 
 fn missing_suggested_method() {

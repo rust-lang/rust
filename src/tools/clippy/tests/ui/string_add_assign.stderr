@@ -17,7 +17,7 @@ LL |         x = x + ".";
    = help: to override `-D warnings` add `#[allow(clippy::assign_op_pattern)]`
 
 error: manual implementation of an assign operation
-  --> tests/ui/string_add_assign.rs:17:5
+  --> tests/ui/string_add_assign.rs:19:5
    |
 LL |     x = x + 1;
    |     ^^^^^^^^^ help: replace it with: `x += 1`

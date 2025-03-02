@@ -187,7 +187,7 @@ impl Process {
         if actual != 1 {
             return Err(io::const_error!(
                 io::ErrorKind::InvalidData,
-                "Failed to get exit status of process",
+                "failed to get exit status of process",
             ));
         }
         Ok(ExitStatus(proc_info.return_code))
@@ -224,7 +224,7 @@ impl Process {
         if actual != 1 {
             return Err(io::const_error!(
                 io::ErrorKind::InvalidData,
-                "Failed to get exit status of process",
+                "failed to get exit status of process",
             ));
         }
         Ok(Some(ExitStatus(proc_info.return_code)))

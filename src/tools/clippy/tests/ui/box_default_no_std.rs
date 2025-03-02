@@ -1,3 +1,5 @@
+//@ check-pass
+
 #![warn(clippy::box_default)]
 #![no_std]
 #![crate_type = "lib"]

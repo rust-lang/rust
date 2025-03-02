@@ -6,12 +6,17 @@ fn main() {
     let z = 11_u32;
 
     // Lint
-    let _ = x.div_ceil(y); //~ ERROR: manually reimplementing `div_ceil`
-    let _ = x.div_ceil(y); //~ ERROR: manually reimplementing `div_ceil`
-    let _ = x.div_ceil(y); //~ ERROR: manually reimplementing `div_ceil`
+    let _ = x.div_ceil(y);
+    //~^ manual_div_ceil
+    let _ = x.div_ceil(y);
+    //~^ manual_div_ceil
+    let _ = x.div_ceil(y);
+    //~^ manual_div_ceil
 
-    let _ = 7_u32.div_ceil(4); //~ ERROR: manually reimplementing `div_ceil`
-    let _ = (7_i32 as u32).div_ceil(4); //~ ERROR: manually reimplementing `div_ceil`
+    let _ = 7_u32.div_ceil(4);
+    //~^ manual_div_ceil
+    let _ = (7_i32 as u32).div_ceil(4);
+    //~^ manual_div_ceil
 
     // No lint
     let _ = (x + (y - 2)) / y;
@@ -32,29 +37,40 @@ fn main() {
 fn issue_13843() {
     let x = 3usize;
     let _ = 2048_usize.div_ceil(x);
+    //~^ manual_div_ceil
 
     let x = 5usize;
     let _ = 2048usize.div_ceil(x);
+    //~^ manual_div_ceil
 
     let x = 5usize;
     let _ = 2048_usize.div_ceil(x);
+    //~^ manual_div_ceil
 
     let x = 2048usize;
     let _ = x.div_ceil(4);
+    //~^ manual_div_ceil
 
     let _: u32 = 2048_u32.div_ceil(6);
+    //~^ manual_div_ceil
     let _: usize = 2048_usize.div_ceil(6);
+    //~^ manual_div_ceil
     let _: u32 = 0x2048_u32.div_ceil(0x6);
+    //~^ manual_div_ceil
 
     let _ = 2048_u32.div_ceil(6u32);
+    //~^ manual_div_ceil
 
     let _ = 1_000_000_u32.div_ceil(6u32);
+    //~^ manual_div_ceil
 }
 
 fn issue_13950() {
     let x = 33u32;
     let _ = x.div_ceil(8);
+    //~^ manual_div_ceil
     let _ = x.div_ceil(8);
+    //~^ manual_div_ceil
 
     let y = -33i32;
     let _ = (y + -8) / -7;

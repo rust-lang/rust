@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ assembly-output: emit-asm
 // ignore-tidy-linelength
 //@ revisions: nvptx64_nvidia_cuda
@@ -11,8 +12,8 @@
 #![no_core]
 #![crate_type = "lib"]
 
-#[lang = "sized"]
-trait Sized {}
+extern crate minicore;
+use minicore::*;
 
 pub fn test() -> u8 {
     42

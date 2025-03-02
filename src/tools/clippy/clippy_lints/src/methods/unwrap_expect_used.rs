@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::ty::{is_never_like, is_type_diagnostic_item};
-use clippy_utils::{is_in_test, is_lint_allowed};
+use clippy_utils::{is_in_test, is_inside_always_const_context, is_lint_allowed};
 use rustc_hir::Expr;
 use rustc_lint::{LateContext, Lint};
 use rustc_middle::ty;
@@ -39,6 +39,7 @@ pub(super) fn check(
     expr: &Expr<'_>,
     recv: &Expr<'_>,
     is_err: bool,
+    allow_unwrap_in_consts: bool,
     allow_unwrap_in_tests: bool,
     variant: Variant,
 ) {
@@ -62,6 +63,10 @@ pub(super) fn check(
     let method_suffix = if is_err { "_err" } else { "" };
 
     if allow_unwrap_in_tests && is_in_test(cx.tcx, expr.hir_id) {
+        return;
+    }
+
+    if allow_unwrap_in_consts && is_inside_always_const_context(cx.tcx, expr.hir_id) {
         return;
     }
 

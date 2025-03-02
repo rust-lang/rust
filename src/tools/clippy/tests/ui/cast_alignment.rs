@@ -17,16 +17,17 @@ fn main() {
 
     // cast to more-strictly-aligned type
     (&1u8 as *const u8) as *const u16;
-    //~^ ERROR: casting from `*const u8` to a more-strictly-aligned pointer (`*const u16`)
-    //~| NOTE: `-D clippy::cast-ptr-alignment` implied by `-D warnings`
+    //~^ cast_ptr_alignment
+
     (&mut 1u8 as *mut u8) as *mut u16;
-    //~^ ERROR: casting from `*mut u8` to a more-strictly-aligned pointer (`*mut u16`) (1
+    //~^ cast_ptr_alignment
 
     // cast to more-strictly-aligned type, but with the `pointer::cast` function.
     (&1u8 as *const u8).cast::<u16>();
-    //~^ ERROR: casting from `*const u8` to a more-strictly-aligned pointer (`*const u16`)
+    //~^ cast_ptr_alignment
+
     (&mut 1u8 as *mut u8).cast::<u16>();
-    //~^ ERROR: casting from `*mut u8` to a more-strictly-aligned pointer (`*mut u16`) (1
+    //~^ cast_ptr_alignment
 
     /* These should be ok */
 

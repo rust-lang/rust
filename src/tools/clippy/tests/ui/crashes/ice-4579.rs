@@ -1,3 +1,5 @@
+//@ check-pass
+
 #![allow(clippy::single_match)]
 
 use std::ptr;

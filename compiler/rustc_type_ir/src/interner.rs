@@ -189,10 +189,10 @@ pub trait Interner:
     type Features: Features<Self>;
     fn features(self) -> Self::Features;
 
-    fn bound_coroutine_hidden_types(
+    fn coroutine_hidden_types(
         self,
         def_id: Self::DefId,
-    ) -> impl IntoIterator<Item = ty::EarlyBinder<Self, ty::Binder<Self, Self::Ty>>>;
+    ) -> ty::EarlyBinder<Self, ty::Binder<Self, Self::Tys>>;
 
     fn fn_sig(
         self,
@@ -278,6 +278,8 @@ pub trait Interner:
     fn impl_polarity(self, impl_def_id: Self::DefId) -> ty::ImplPolarity;
 
     fn trait_is_auto(self, trait_def_id: Self::DefId) -> bool;
+
+    fn trait_is_coinductive(self, trait_def_id: Self::DefId) -> bool;
 
     fn trait_is_alias(self, trait_def_id: Self::DefId) -> bool;
 

@@ -1189,9 +1189,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let span = obligation.cause.span;
 
         let mut diag = match ty.kind() {
-            _ if ty.has_param() => {
-                span_bug!(span, "const param tys cannot mention other generic parameters");
-            }
             ty::Float(_) => {
                 struct_span_code_err!(
                     self.dcx(),
@@ -2419,6 +2416,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 &mut vec![],
                 &mut Default::default(),
             );
+            self.suggest_swapping_lhs_and_rhs(
+                err,
+                obligation.predicate,
+                obligation.param_env,
+                obligation.cause.code(),
+            );
             self.suggest_unsized_bound_if_applicable(err, obligation);
             if let Some(span) = err.span.primary_span()
                 && let Some(mut diag) =
@@ -2530,9 +2533,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 return GetSafeTransmuteErrorAndReason::Silent;
             };
 
-            let Some(assume) =
-                rustc_transmute::Assume::from_const(self.infcx.tcx, obligation.param_env, assume)
-            else {
+            let Some(assume) = rustc_transmute::Assume::from_const(self.infcx.tcx, assume) else {
                 self.dcx().span_delayed_bug(
                     span,
                     "Unable to construct rustc_transmute::Assume where it was previously possible",
@@ -2544,11 +2545,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let src = trait_pred.trait_ref.args.type_at(1);
             let err_msg = format!("`{src}` cannot be safely transmuted into `{dst}`");
 
-            match rustc_transmute::TransmuteTypeEnv::new(self.infcx).is_transmutable(
-                obligation.cause,
-                src_and_dst,
-                assume,
-            ) {
+            match rustc_transmute::TransmuteTypeEnv::new(self.infcx.tcx)
+                .is_transmutable(src_and_dst, assume)
+            {
                 Answer::No(reason) => {
                     let safe_transmute_explanation = match reason {
                         rustc_transmute::Reason::SrcIsNotYetSupported => {

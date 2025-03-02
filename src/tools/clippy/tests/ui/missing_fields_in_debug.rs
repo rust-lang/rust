@@ -12,7 +12,8 @@ struct NamedStruct1Ignored {
 }
 
 impl fmt::Debug for NamedStruct1Ignored {
-    //~^ ERROR: manual `Debug` impl does not include all fields
+    //~^ missing_fields_in_debug
+
     // unused field: hidden
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter
@@ -31,7 +32,8 @@ struct NamedStructMultipleIgnored {
 }
 
 impl fmt::Debug for NamedStructMultipleIgnored {
-    //~^ ERROR: manual `Debug` impl does not include all fields
+    //~^ missing_fields_in_debug
+
     // unused fields: hidden, hidden2, hidden4
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter
@@ -93,7 +95,8 @@ struct MultiExprDebugImpl {
 
 // ok
 impl fmt::Debug for MultiExprDebugImpl {
-    //~^ ERROR: manual `Debug` impl does not include all fields
+    //~^ missing_fields_in_debug
+
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut f = formatter.debug_struct("MultiExprDebugImpl");
         f.field("a", &self.a);

@@ -14,19 +14,19 @@ LL |     if ptr::null() == p {
    |        ^^^^^^^^^^^^^^^^ help: try: `p.is_null()`
 
 error: comparing with null is better expressed by the `.is_null()` method
-  --> tests/ui/cmp_null.rs:21:8
+  --> tests/ui/cmp_null.rs:22:8
    |
 LL |     if m == ptr::null_mut() {
    |        ^^^^^^^^^^^^^^^^^^^^ help: try: `m.is_null()`
 
 error: comparing with null is better expressed by the `.is_null()` method
-  --> tests/ui/cmp_null.rs:25:8
+  --> tests/ui/cmp_null.rs:27:8
    |
 LL |     if ptr::null_mut() == m {
    |        ^^^^^^^^^^^^^^^^^^^^ help: try: `m.is_null()`
 
 error: comparing with null is better expressed by the `.is_null()` method
-  --> tests/ui/cmp_null.rs:30:13
+  --> tests/ui/cmp_null.rs:33:13
    |
 LL |     let _ = x as *const () == ptr::null();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `(x as *const ()).is_null()`

@@ -548,17 +548,19 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 err.emit();
             }
             CastError::SizedUnsizedCast => {
+                let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
+                let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
                 fcx.dcx().emit_err(errors::CastThinPointerToWidePointer {
                     span: self.span,
-                    expr_ty: self.expr_ty,
-                    cast_ty: fcx.ty_to_string(self.cast_ty),
+                    expr_ty,
+                    cast_ty,
                     teach: fcx.tcx.sess.teach(E0607),
                 });
             }
             CastError::IntToWideCast(known_metadata) => {
                 let expr_if_nightly = fcx.tcx.sess.is_nightly_build().then_some(self.expr_span);
                 let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
-                let expr_ty = fcx.ty_to_string(self.expr_ty);
+                let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
                 let metadata = known_metadata.unwrap_or("type-specific metadata");
                 let known_wide = known_metadata.is_some();
                 let span = self.cast_span;
@@ -893,20 +895,22 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         // e.g. we want to allow `dyn T -> (dyn T,)`, etc.
                         //
                         // We also need to skip auto traits to emit an FCW and not an error.
-                        let src_obj = tcx.mk_ty_from_kind(ty::Dynamic(
+                        let src_obj = Ty::new_dynamic(
+                            tcx,
                             tcx.mk_poly_existential_predicates(
                                 &src_tty.without_auto_traits().collect::<Vec<_>>(),
                             ),
                             tcx.lifetimes.re_erased,
                             ty::Dyn,
-                        ));
-                        let dst_obj = tcx.mk_ty_from_kind(ty::Dynamic(
+                        );
+                        let dst_obj = Ty::new_dynamic(
+                            tcx,
                             tcx.mk_poly_existential_predicates(
                                 &dst_tty.without_auto_traits().collect::<Vec<_>>(),
                             ),
                             tcx.lifetimes.re_erased,
                             ty::Dyn,
-                        ));
+                        );
 
                         // `dyn Src = dyn Dst`, this checks for matching traits/generics/projections
                         // This is `fcx.demand_eqtype`, but inlined to give a better error.
@@ -1164,10 +1168,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             if let Some((deref_ty, _)) = derefed {
                 // Give a note about what the expr derefs to.
                 if deref_ty != self.expr_ty.peel_refs() {
-                    err.subdiagnostic(errors::DerefImplsIsEmpty {
-                        span: self.expr_span,
-                        deref_ty: fcx.ty_to_string(deref_ty),
-                    });
+                    err.subdiagnostic(errors::DerefImplsIsEmpty { span: self.expr_span, deref_ty });
                 }
 
                 // Create a multipart suggestion: add `!` and `.is_empty()` in
@@ -1175,7 +1176,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 err.subdiagnostic(errors::UseIsEmpty {
                     lo: self.expr_span.shrink_to_lo(),
                     hi: self.span.with_lo(self.expr_span.hi()),
-                    expr_ty: fcx.ty_to_string(self.expr_ty),
+                    expr_ty: self.expr_ty,
                 });
             }
         }
