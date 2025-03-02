@@ -683,50 +683,55 @@ mod llvm_enzyme {
             match activity {
                 DiffActivity::Active => {
                     act_ret.push(arg.ty.clone());
+                    // if width =/= 1, then push [arg.ty; width] to act_ret
                 }
                 DiffActivity::ActiveOnly => {
                     // We will add the active scalar to the return type.
                     // This is handled later.
                 }
                 DiffActivity::Duplicated | DiffActivity::DuplicatedOnly => {
-                    let mut shadow_arg = arg.clone();
-                    // We += into the shadow in reverse mode.
-                    shadow_arg.ty = P(assure_mut_ref(&arg.ty));
-                    let old_name = if let PatKind::Ident(_, ident, _) = arg.pat.kind {
-                        ident.name
-                    } else {
-                        debug!("{:#?}", &shadow_arg.pat);
-                        panic!("not an ident?");
-                    };
-                    let name: String = format!("d{}", old_name);
-                    new_inputs.push(name.clone());
-                    let ident = Ident::from_str_and_span(&name, shadow_arg.pat.span);
-                    shadow_arg.pat = P(ast::Pat {
-                        id: ast::DUMMY_NODE_ID,
-                        kind: PatKind::Ident(BindingMode::NONE, ident, None),
-                        span: shadow_arg.pat.span,
-                        tokens: shadow_arg.pat.tokens.clone(),
-                    });
-                    d_inputs.push(shadow_arg);
+                    for i in 0..x.width {
+                        let mut shadow_arg = arg.clone();
+                        // We += into the shadow in reverse mode.
+                        shadow_arg.ty = P(assure_mut_ref(&arg.ty));
+                        let old_name = if let PatKind::Ident(_, ident, _) = arg.pat.kind {
+                            ident.name
+                        } else {
+                            debug!("{:#?}", &shadow_arg.pat);
+                            panic!("not an ident?");
+                        };
+                        let name: String = format!("d{}_{}", old_name, i);
+                        new_inputs.push(name.clone());
+                        let ident = Ident::from_str_and_span(&name, shadow_arg.pat.span);
+                        shadow_arg.pat = P(ast::Pat {
+                            id: ast::DUMMY_NODE_ID,
+                            kind: PatKind::Ident(BindingMode::NONE, ident, None),
+                            span: shadow_arg.pat.span,
+                            tokens: shadow_arg.pat.tokens.clone(),
+                        });
+                        d_inputs.push(shadow_arg.clone());
+                    }
                 }
                 DiffActivity::Dual | DiffActivity::DualOnly => {
-                    let mut shadow_arg = arg.clone();
-                    let old_name = if let PatKind::Ident(_, ident, _) = arg.pat.kind {
-                        ident.name
-                    } else {
-                        debug!("{:#?}", &shadow_arg.pat);
-                        panic!("not an ident?");
-                    };
-                    let name: String = format!("b{}", old_name);
-                    new_inputs.push(name.clone());
-                    let ident = Ident::from_str_and_span(&name, shadow_arg.pat.span);
-                    shadow_arg.pat = P(ast::Pat {
-                        id: ast::DUMMY_NODE_ID,
-                        kind: PatKind::Ident(BindingMode::NONE, ident, None),
-                        span: shadow_arg.pat.span,
-                        tokens: shadow_arg.pat.tokens.clone(),
-                    });
-                    d_inputs.push(shadow_arg);
+                    for i in 0..x.width {
+                        let mut shadow_arg = arg.clone();
+                        let old_name = if let PatKind::Ident(_, ident, _) = arg.pat.kind {
+                            ident.name
+                        } else {
+                            debug!("{:#?}", &shadow_arg.pat);
+                            panic!("not an ident?");
+                        };
+                        let name: String = format!("b{}_{}", old_name, i);
+                        new_inputs.push(name.clone());
+                        let ident = Ident::from_str_and_span(&name, shadow_arg.pat.span);
+                        shadow_arg.pat = P(ast::Pat {
+                            id: ast::DUMMY_NODE_ID,
+                            kind: PatKind::Ident(BindingMode::NONE, ident, None),
+                            span: shadow_arg.pat.span,
+                            tokens: shadow_arg.pat.tokens.clone(),
+                        });
+                        d_inputs.push(shadow_arg.clone());
+                    }
                 }
                 DiffActivity::Const => {
                     // Nothing to do here.
