@@ -484,7 +484,20 @@ mod llvm_enzyme {
 
         if primal_ret && n_active == 0 && x.mode.is_rev() {
             // We only have the primal ret.
-            body.stmts.push(ecx.stmt_expr(black_box_primal_call.clone()));
+            dbg!(&primal_call);
+            if x.width > 1 {
+                // We have to return [T; width], thus add `[` and `]` and repeat ret
+                // width times.
+                let mut rets = ThinVec::new();
+                for _ in 0..x.width {
+                    rets.push(primal_call.clone());
+                }
+                let exprs = ecx.expr_array(span, rets);
+                let ret = ecx.expr_call(new_decl_span, blackbox_call_expr.clone(), thin_vec![exprs]);
+                body.stmts.push(ecx.stmt_expr(ret));
+            } else {
+                body.stmts.push(ecx.stmt_expr(black_box_primal_call.clone()));
+            }
             return body;
         }
 
@@ -576,10 +589,23 @@ mod llvm_enzyme {
                 return body;
             }
             [arg] => {
+                // if width > 1, then we need to return [T; width], thus add `[` and `]` and repeat ret
+                // width times.
+                let exprs;
+                if x.width > 1 {
+                    let mut rets = ThinVec::new();
+                    for _ in 0..x.width {
+                        rets.push(arg.clone());
+                    }
+                    exprs = ecx.expr_array(span, rets);
+                } else {
+                    exprs = arg.clone();
+                }
+                dbg!(&exprs);
                 ret = ecx.expr_call(
                     new_decl_span,
                     blackbox_call_expr.clone(),
-                    thin_vec![arg.clone()],
+                    thin_vec![exprs],
                 );
             }
             args => {
@@ -805,6 +831,20 @@ mod llvm_enzyme {
                 // we will just return the shadow in place
                 // of the primal return.
             }
+        }
+
+        // If we have a width > 1, then we don't return -> T, but -> [T; width]
+        if x.width > 1 && has_ret {
+            let ty = match d_decl.output {
+                FnRetTy::Ty(ref ty) => ty.clone(),
+                FnRetTy::Default(span) => {
+                    panic!("Did not expect Default ret ty: {:?}", span);
+                }
+            };
+            let anon_const = rustc_ast::AnonConst { id: ast::DUMMY_NODE_ID, value: ecx.expr_usize(span, x.width as usize) };
+            let kind = TyKind::Array(ty.clone(), anon_const);
+            let ty = P(rustc_ast::Ty { kind, id: ty.id, span: ty.span, tokens: None });
+            d_decl.output = FnRetTy::Ty(ty);
         }
 
         // If we use ActiveOnly, drop the original return value.

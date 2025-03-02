@@ -41,8 +41,11 @@ fn main() {
     let mut df_dx2 = 0.0;
     let mut df_dx3 = 0.0;
     let mut df_dx4 = 0.0;
-    let output_ = d_square(&x, &mut df_dx1, &mut df_dx2, &mut df_dx3,  &mut df_dx4, 1.0);
-    assert_eq!(output, output_);
+    let [o1;o2;o3;o4] = d_square(&x, &mut df_dx1, &mut df_dx2, &mut df_dx3,  &mut df_dx4, 1.0);
+    assert_eq!(output, o1);
+    assert_eq!(output, o2);
+    assert_eq!(output, o3);
+    assert_eq!(output, o4);
     assert_eq!(6.0, df_dx1);
     assert_eq!(6.0, df_dx2);
     assert_eq!(6.0, df_dx3);
