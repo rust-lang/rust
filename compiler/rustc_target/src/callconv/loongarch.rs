@@ -25,7 +25,7 @@ struct CannotUseFpConv;
 
 fn is_loongarch_aggregate<Ty>(arg: &ArgAbi<'_, Ty>) -> bool {
     match arg.layout.backend_repr {
-        BackendRepr::Vector { .. } => true,
+        BackendRepr::SimdVector { .. } => true,
         _ => arg.layout.is_aggregate(),
     }
 }
@@ -80,7 +80,7 @@ where
                 }
             }
         },
-        BackendRepr::Vector { .. } => return Err(CannotUseFpConv),
+        BackendRepr::SimdVector { .. } => return Err(CannotUseFpConv),
         BackendRepr::ScalarPair(..) | BackendRepr::Memory { .. } => match arg_layout.fields {
             FieldsShape::Primitive => {
                 unreachable!("aggregates can't have `FieldsShape::Primitive`")

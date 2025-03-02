@@ -21,6 +21,9 @@ fn foo_path<T: Trait>() where T::method(i32): Send {}
 fn bar_path<T: Trait>() where T::method() -> (): Send {}
 //~^ ERROR return type not allowed with return type notation
 
+fn bay_path<T: Trait>() where T::method(..) -> (): Send {}
+//~^ ERROR return type not allowed with return type notation
+
 fn baz_path<T: Trait>() where T::method(): Send {}
 //~^ ERROR return type notation arguments must be elided with `..`
 

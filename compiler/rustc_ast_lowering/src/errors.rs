@@ -373,24 +373,39 @@ pub(crate) struct InclusiveRangeWithNoEnd {
     pub span: Span,
 }
 
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    ast_lowering_bad_return_type_notation_output_suggestion,
+    applicability = "machine-applicable",
+    style = "verbose"
+)]
+/// Given `T: Tr<m() -> Ret>` or `T: Tr<m(Ty) -> Ret>`, suggest `T: Tr<m(..)>`.
+pub(crate) struct RTNSuggestion {
+    #[suggestion_part(code = "")]
+    pub output: Span,
+    #[suggestion_part(code = "(..)")]
+    pub input: Span,
+}
+
 #[derive(Diagnostic)]
 pub(crate) enum BadReturnTypeNotation {
     #[diag(ast_lowering_bad_return_type_notation_inputs)]
     Inputs {
         #[primary_span]
-        #[suggestion(code = "()", applicability = "maybe-incorrect")]
+        #[suggestion(code = "(..)", applicability = "machine-applicable", style = "verbose")]
         span: Span,
     },
     #[diag(ast_lowering_bad_return_type_notation_output)]
     Output {
         #[primary_span]
-        #[suggestion(code = "", applicability = "maybe-incorrect")]
         span: Span,
+        #[subdiagnostic]
+        suggestion: RTNSuggestion,
     },
     #[diag(ast_lowering_bad_return_type_notation_needs_dots)]
     NeedsDots {
         #[primary_span]
-        #[suggestion(code = "(..)", applicability = "maybe-incorrect")]
+        #[suggestion(code = "(..)", applicability = "machine-applicable", style = "verbose")]
         span: Span,
     },
     #[diag(ast_lowering_bad_return_type_notation_position)]

@@ -937,12 +937,6 @@ impl<'tcx> ItemCtxt<'tcx> {
     }
 }
 
-/// Compute the conditions that need to hold for a conditionally-const item to be const.
-/// That is, compute the set of `~const` where clauses for a given item.
-///
-/// This query also computes the `~const` where clauses for associated types, which are
-/// not "const", but which have item bounds which may be `~const`. These must hold for
-/// the `~const` item bound to hold.
 pub(super) fn const_conditions<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
@@ -1060,7 +1054,9 @@ pub(super) fn explicit_implied_const_bounds<'tcx>(
     def_id: LocalDefId,
 ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::PolyTraitRef<'tcx>, Span)]> {
     if !tcx.is_conditionally_const(def_id) {
-        bug!("const_conditions invoked for item that is not conditionally const: {def_id:?}");
+        bug!(
+            "explicit_implied_const_bounds invoked for item that is not conditionally const: {def_id:?}"
+        );
     }
 
     let bounds = match tcx.opt_rpitit_info(def_id.to_def_id()) {

@@ -158,7 +158,7 @@ pub(crate) unsafe fn close_event(evt: NonNull<crate::ffi::c_void>) -> io::Result
 /// Note: Some protocols need to be manually freed. It is the caller's responsibility to do so.
 pub(crate) fn image_handle_protocol<T>(protocol_guid: Guid) -> io::Result<NonNull<T>> {
     let system_handle = uefi::env::try_image_handle()
-        .ok_or(io::const_error!(io::ErrorKind::NotFound, "Protocol not found in Image handle"))?;
+        .ok_or(io::const_error!(io::ErrorKind::NotFound, "protocol not found in Image handle"))?;
     open_protocol(system_handle, protocol_guid)
 }
 
@@ -178,7 +178,7 @@ pub(crate) fn device_path_to_text(path: NonNull<device_path::Protocol>) -> io::R
         };
 
         let path = os_string_from_raw(path_ptr)
-            .ok_or(io::const_error!(io::ErrorKind::InvalidData, "Invalid path"))?;
+            .ok_or(io::const_error!(io::ErrorKind::InvalidData, "invalid path"))?;
 
         if let Some(boot_services) = crate::os::uefi::env::boot_services() {
             let boot_services: NonNull<r_efi::efi::BootServices> = boot_services.cast();
@@ -213,7 +213,7 @@ pub(crate) fn device_path_to_text(path: NonNull<device_path::Protocol>) -> io::R
         }
     }
 
-    Err(io::const_error!(io::ErrorKind::NotFound, "No device path to text protocol found"))
+    Err(io::const_error!(io::ErrorKind::NotFound, "no device path to text protocol found"))
 }
 
 /// Gets RuntimeServices.
@@ -245,7 +245,7 @@ impl OwnedDevicePath {
 
             NonNull::new(path)
                 .map(OwnedDevicePath)
-                .ok_or_else(|| const_error!(io::ErrorKind::InvalidFilename, "Invalid Device Path"))
+                .ok_or_else(|| const_error!(io::ErrorKind::InvalidFilename, "invalid Device Path"))
         }
 
         static LAST_VALID_HANDLE: AtomicPtr<crate::ffi::c_void> =
@@ -490,7 +490,7 @@ pub(crate) fn get_device_path_from_map(map: &Path) -> io::Result<BorrowedDeviceP
     let shell =
         open_shell().ok_or(io::const_error!(io::ErrorKind::NotFound, "UEFI Shell not found"))?;
     let mut path = os_string_to_raw(map.as_os_str())
-        .ok_or(io::const_error!(io::ErrorKind::InvalidFilename, "Invalid UEFI shell mapping"))?;
+        .ok_or(io::const_error!(io::ErrorKind::InvalidFilename, "invalid UEFI shell mapping"))?;
 
     // The Device Path Protocol pointer returned by UEFI shell is owned by the shell and is not
     // freed throughout it's lifetime. So it has a 'static lifetime.
