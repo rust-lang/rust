@@ -957,6 +957,7 @@ pub enum InvalidMonomorphization<'tcx> {
     },
 
     #[diag(codegen_ssa_invalid_monomorphization_mask_type, code = E0511)]
+    #[note]
     MaskType {
         #[primary_span]
         span: Span,
