@@ -14,8 +14,14 @@
 #![feature(arm_target_feature)]
 #![no_core]
 
+#[lang = "pointee_sized"]
+pub trait PointeeSized {}
+
+#[lang = "meta_sized"]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-pub trait Sized {}
+pub trait Sized: MetaSized {}
 
 // `fp-armv8` is "forbidden" on aarch64 as we tie it to `neon`.
 #[target_feature(enable = "fp-armv8")]

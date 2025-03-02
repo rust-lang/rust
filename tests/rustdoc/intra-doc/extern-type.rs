@@ -4,11 +4,11 @@ extern {
     pub type ExternType;
 }
 
-pub trait T {
+pub trait T: std::marker::PointeeSized {
     fn test(&self) {}
 }
 
-pub trait G<N> {
+pub trait G<N>: std::marker::PointeeSized {
     fn g(&self, n: N) {}
 }
 
