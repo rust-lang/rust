@@ -11,8 +11,14 @@ impl<T> Box<T> {
     }
 }
 
+#[lang = "pointee_sized"]
+pub trait PointeeSized {}
+
+#[lang = "meta_sized"]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-trait Sized {}
+pub trait Sized: MetaSized {}
 
 #[doc(notable_trait)]
 pub trait FakeIterator {}
