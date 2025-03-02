@@ -231,7 +231,7 @@ fn clean_generic_bound<'tcx>(
             GenericBound::TraitBound(clean_poly_trait_ref(t, cx), t.modifiers)
         }
         hir::GenericBound::Use(args, ..) => {
-            GenericBound::Use(args.iter().map(|arg| arg.name()).collect())
+            GenericBound::Use(args.iter().map(|arg| clean_precise_capturing_arg(arg, cx)).collect())
         }
     })
 }
@@ -284,6 +284,18 @@ fn clean_lifetime(lifetime: &hir::Lifetime, cx: &DocContext<'_>) -> Lifetime {
         return *lt;
     }
     Lifetime(lifetime.ident.name)
+}
+
+pub(crate) fn clean_precise_capturing_arg(
+    arg: &hir::PreciseCapturingArg<'_>,
+    cx: &DocContext<'_>,
+) -> PreciseCapturingArg {
+    match arg {
+        hir::PreciseCapturingArg::Lifetime(lt) => {
+            PreciseCapturingArg::Lifetime(clean_lifetime(lt, cx))
+        }
+        hir::PreciseCapturingArg::Param(param) => PreciseCapturingArg::Param(param.ident.name),
+    }
 }
 
 pub(crate) fn clean_const<'tcx>(
@@ -2364,7 +2376,18 @@ fn clean_middle_opaque_bounds<'tcx>(
     }
 
     if let Some(args) = cx.tcx.rendered_precise_capturing_args(impl_trait_def_id) {
-        bounds.push(GenericBound::Use(args.to_vec()));
+        bounds.push(GenericBound::Use(
+            args.iter()
+                .map(|arg| match arg {
+                    hir::PreciseCapturingArgKind::Lifetime(lt) => {
+                        PreciseCapturingArg::Lifetime(Lifetime(*lt))
+                    }
+                    hir::PreciseCapturingArgKind::Param(param) => {
+                        PreciseCapturingArg::Param(*param)
+                    }
+                })
+                .collect(),
+        ));
     }
 
     ImplTrait(bounds)
