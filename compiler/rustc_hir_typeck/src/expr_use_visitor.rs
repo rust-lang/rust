@@ -895,48 +895,44 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             match pat.kind {
                 PatKind::Binding(_, canonical_id, ..) => {
                     debug!("walk_pat: binding place={:?} pat={:?}", place, pat);
-                    if let Some(bm) = self
+                    let bm = self
                         .cx
                         .typeck_results()
-                        .extract_binding_mode(tcx.sess, pat.hir_id, pat.span)
-                    {
-                        debug!("walk_pat: pat.hir_id={:?} bm={:?}", pat.hir_id, bm);
+                        .extract_binding_mode(tcx.sess, pat.hir_id, pat.span);
+                    debug!("walk_pat: pat.hir_id={:?} bm={:?}", pat.hir_id, bm);
 
-                        // pat_ty: the type of the binding being produced.
-                        let pat_ty = self.node_ty(pat.hir_id)?;
-                        debug!("walk_pat: pat_ty={:?}", pat_ty);
+                    // pat_ty: the type of the binding being produced.
+                    let pat_ty = self.node_ty(pat.hir_id)?;
+                    debug!("walk_pat: pat_ty={:?}", pat_ty);
 
-                        let def = Res::Local(canonical_id);
-                        if let Ok(ref binding_place) =
-                            self.cat_res(pat.hir_id, pat.span, pat_ty, def)
-                        {
-                            self.delegate.borrow_mut().bind(binding_place, binding_place.hir_id);
+                    let def = Res::Local(canonical_id);
+                    if let Ok(ref binding_place) = self.cat_res(pat.hir_id, pat.span, pat_ty, def) {
+                        self.delegate.borrow_mut().bind(binding_place, binding_place.hir_id);
+                    }
+
+                    // Subtle: MIR desugaring introduces immutable borrows for each pattern
+                    // binding when lowering pattern guards to ensure that the guard does not
+                    // modify the scrutinee.
+                    if has_guard {
+                        self.delegate.borrow_mut().borrow(
+                            place,
+                            discr_place.hir_id,
+                            BorrowKind::Immutable,
+                        );
+                    }
+
+                    // It is also a borrow or copy/move of the value being matched.
+                    // In a cases of pattern like `let pat = upvar`, don't use the span
+                    // of the pattern, as this just looks confusing, instead use the span
+                    // of the discriminant.
+                    match bm.0 {
+                        hir::ByRef::Yes(m) => {
+                            let bk = ty::BorrowKind::from_mutbl(m);
+                            self.delegate.borrow_mut().borrow(place, discr_place.hir_id, bk);
                         }
-
-                        // Subtle: MIR desugaring introduces immutable borrows for each pattern
-                        // binding when lowering pattern guards to ensure that the guard does not
-                        // modify the scrutinee.
-                        if has_guard {
-                            self.delegate.borrow_mut().borrow(
-                                place,
-                                discr_place.hir_id,
-                                BorrowKind::Immutable,
-                            );
-                        }
-
-                        // It is also a borrow or copy/move of the value being matched.
-                        // In a cases of pattern like `let pat = upvar`, don't use the span
-                        // of the pattern, as this just looks confusing, instead use the span
-                        // of the discriminant.
-                        match bm.0 {
-                            hir::ByRef::Yes(m) => {
-                                let bk = ty::BorrowKind::from_mutbl(m);
-                                self.delegate.borrow_mut().borrow(place, discr_place.hir_id, bk);
-                            }
-                            hir::ByRef::No => {
-                                debug!("walk_pat binding consuming pat");
-                                self.consume_or_copy(place, discr_place.hir_id);
-                            }
+                        hir::ByRef::No => {
+                            debug!("walk_pat binding consuming pat");
+                            self.consume_or_copy(place, discr_place.hir_id);
                         }
                     }
                 }

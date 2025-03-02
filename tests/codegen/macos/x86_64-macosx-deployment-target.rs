@@ -1,19 +1,15 @@
-//
 // Checks that we correctly modify the target when MACOSX_DEPLOYMENT_TARGET is set.
 // See issue #60235.
 
+//@ add-core-stubs
 //@ compile-flags: -Copt-level=3 --target=x86_64-apple-darwin --crate-type=rlib
 //@ needs-llvm-components: x86
 //@ rustc-env:MACOSX_DEPLOYMENT_TARGET=10.14
 #![feature(no_core, lang_items)]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
-#[lang = "freeze"]
-trait Freeze {}
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 #[repr(C)]
 pub struct Bool {

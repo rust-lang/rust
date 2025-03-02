@@ -438,7 +438,10 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
 
             let obligation;
             match (child_mode, nested_goal.source()) {
-                (ChildMode::Trait(_) | ChildMode::Host(_), GoalSource::Misc) => {
+                (
+                    ChildMode::Trait(_) | ChildMode::Host(_),
+                    GoalSource::Misc | GoalSource::NormalizeGoal(_),
+                ) => {
                     continue;
                 }
                 (ChildMode::Trait(parent_trait_pred), GoalSource::ImplWhereBound) => {

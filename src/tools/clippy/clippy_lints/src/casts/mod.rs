@@ -134,8 +134,14 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```no_run
-    /// u32::MAX as i32; // will yield a value of `-1`
+    /// let _ = u32::MAX as i32; // will yield a value of `-1`
     /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// let _ = i32::try_from(u32::MAX).ok();
+    /// ```
+    ///
     #[clippy::version = "pre 1.29.0"]
     pub CAST_POSSIBLE_WRAP,
     pedantic,
@@ -747,7 +753,7 @@ declare_clippy_lint! {
     ///     t as *const T as usize
     /// }
     /// ```
-    #[clippy::version = "1.81.0"]
+    #[clippy::version = "1.85.0"]
     pub AS_POINTER_UNDERSCORE,
     restriction,
     "detects `as *mut _` and `as *const _` conversion"
@@ -759,9 +765,7 @@ pub struct Casts {
 
 impl Casts {
     pub fn new(conf: &'static Conf) -> Self {
-        Self {
-            msrv: conf.msrv.clone(),
-        }
+        Self { msrv: conf.msrv }
     }
 }
 
@@ -811,8 +815,8 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
             if !expr.span.from_expansion() && unnecessary_cast::check(cx, expr, cast_from_expr, cast_from, cast_to) {
                 return;
             }
-            cast_slice_from_raw_parts::check(cx, expr, cast_from_expr, cast_to, &self.msrv);
-            ptr_cast_constness::check(cx, expr, cast_from_expr, cast_from, cast_to, &self.msrv);
+            cast_slice_from_raw_parts::check(cx, expr, cast_from_expr, cast_to, self.msrv);
+            ptr_cast_constness::check(cx, expr, cast_from_expr, cast_from, cast_to, self.msrv);
             as_ptr_cast_mut::check(cx, expr, cast_from_expr, cast_to);
             fn_to_numeric_cast_any::check(cx, expr, cast_from_expr, cast_from, cast_to);
             fn_to_numeric_cast::check(cx, expr, cast_from_expr, cast_from, cast_to);
@@ -825,29 +829,27 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
                     cast_possible_wrap::check(cx, expr, cast_from, cast_to);
                     cast_precision_loss::check(cx, expr, cast_from, cast_to);
                     cast_sign_loss::check(cx, expr, cast_from_expr, cast_from, cast_to);
-                    cast_abs_to_unsigned::check(cx, expr, cast_from_expr, cast_from, cast_to, &self.msrv);
+                    cast_abs_to_unsigned::check(cx, expr, cast_from_expr, cast_from, cast_to, self.msrv);
                     cast_nan_to_int::check(cx, expr, cast_from_expr, cast_from, cast_to);
                 }
-                cast_lossless::check(cx, expr, cast_from_expr, cast_from, cast_to, cast_to_hir, &self.msrv);
+                cast_lossless::check(cx, expr, cast_from_expr, cast_from, cast_to, cast_to_hir, self.msrv);
                 cast_enum_constructor::check(cx, expr, cast_from_expr, cast_from);
             }
 
             as_underscore::check(cx, expr, cast_to_hir);
             as_pointer_underscore::check(cx, cast_to, cast_to_hir);
 
-            let was_borrow_as_ptr_emitted = self.msrv.meets(msrvs::BORROW_AS_PTR)
-                && borrow_as_ptr::check(cx, expr, cast_from_expr, cast_to_hir, &self.msrv);
-            if self.msrv.meets(msrvs::PTR_FROM_REF) && !was_borrow_as_ptr_emitted {
+            let was_borrow_as_ptr_emitted = self.msrv.meets(cx, msrvs::BORROW_AS_PTR)
+                && borrow_as_ptr::check(cx, expr, cast_from_expr, cast_to_hir, self.msrv);
+            if !was_borrow_as_ptr_emitted && self.msrv.meets(cx, msrvs::PTR_FROM_REF) {
                 ref_as_ptr::check(cx, expr, cast_from_expr, cast_to_hir);
             }
         }
 
         cast_ptr_alignment::check(cx, expr);
         char_lit_as_u8::check(cx, expr);
-        ptr_as_ptr::check(cx, expr, &self.msrv);
-        cast_slice_different_sizes::check(cx, expr, &self.msrv);
+        ptr_as_ptr::check(cx, expr, self.msrv);
+        cast_slice_different_sizes::check(cx, expr, self.msrv);
         ptr_cast_constness::check_null_ptr_cast_method(cx, expr);
     }
-
-    extract_msrv_attr!(LateContext);
 }

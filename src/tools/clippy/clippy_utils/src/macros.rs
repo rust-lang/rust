@@ -30,6 +30,8 @@ const FORMAT_MACRO_DIAG_ITEMS: &[Symbol] = &[
     sym::print_macro,
     sym::println_macro,
     sym::std_panic_macro,
+    sym::todo_macro,
+    sym::unimplemented_macro,
     sym::write_macro,
     sym::writeln_macro,
 ];

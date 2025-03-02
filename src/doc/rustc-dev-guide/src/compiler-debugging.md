@@ -368,7 +368,7 @@ error: layout_of(&'a u32) = Layout {
 error: aborting due to previous error
 ```
 
-[`Layout`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_target/abi/struct.Layout.html
+[`Layout`]: https://doc.rust-lang.org/nightly/nightly-rustc/stable_mir/abi/struct.Layout.html
 
 
 ## Configuring CodeLLDB for debugging `rustc`

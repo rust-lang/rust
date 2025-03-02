@@ -27,6 +27,7 @@ error: this seems like a manual implementation of the non-exhaustive pattern
   --> tests/ui/manual_non_exhaustive_enum.rs:29:1
    |
 LL | / pub enum NoUnderscore {
+LL | |
 LL | |     A,
 LL | |     B,
 LL | |     #[doc(hidden)]
@@ -35,7 +36,7 @@ LL | | }
    | |_^
    |
 help: remove this variant
-  --> tests/ui/manual_non_exhaustive_enum.rs:33:5
+  --> tests/ui/manual_non_exhaustive_enum.rs:34:5
    |
 LL |     C,
    |     ^

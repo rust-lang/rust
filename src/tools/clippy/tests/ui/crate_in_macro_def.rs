@@ -16,6 +16,7 @@ mod unhygienic {
     macro_rules! print_message_unhygienic {
         () => {
             println!("{}", crate::unhygienic::MESSAGE);
+            //~^ crate_in_macro_def
         };
     }
 

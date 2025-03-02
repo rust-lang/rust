@@ -1,17 +1,15 @@
 use std::mem::take;
 use std::ops::{Deref, DerefMut};
-use std::sync::Arc;
 
 use ast::token::IdentIsRaw;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Lit, LitKind, Token, TokenKind};
-use rustc_ast::tokenstream::AttrTokenTree;
 use rustc_ast::util::parser::AssocOp;
 use rustc_ast::{
     AngleBracketedArg, AngleBracketedArgs, AnonConst, AttrVec, BinOpKind, BindingMode, Block,
-    BlockCheckMode, Expr, ExprKind, GenericArg, Generics, HasTokens, Item, ItemKind, Param, Pat,
-    PatKind, Path, PathSegment, QSelf, Recovered, Ty, TyKind,
+    BlockCheckMode, Expr, ExprKind, GenericArg, Generics, Item, ItemKind, Param, Pat, PatKind,
+    Path, PathSegment, QSelf, Recovered, Ty, TyKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
@@ -1350,13 +1348,13 @@ impl<'a> Parser<'a> {
             }
             return match (op.node, &outer_op.node) {
                 // `x == y == z`
-                (BinOpKind::Eq, AssocOp::Equal) |
+                (BinOpKind::Eq, AssocOp::Binary(BinOpKind::Eq)) |
                 // `x < y < z` and friends.
-                (BinOpKind::Lt, AssocOp::Less | AssocOp::LessEqual) |
-                (BinOpKind::Le, AssocOp::LessEqual | AssocOp::Less) |
+                (BinOpKind::Lt, AssocOp::Binary(BinOpKind::Lt | BinOpKind::Le)) |
+                (BinOpKind::Le, AssocOp::Binary(BinOpKind::Lt | BinOpKind::Le)) |
                 // `x > y > z` and friends.
-                (BinOpKind::Gt, AssocOp::Greater | AssocOp::GreaterEqual) |
-                (BinOpKind::Ge, AssocOp::GreaterEqual | AssocOp::Greater) => {
+                (BinOpKind::Gt, AssocOp::Binary(BinOpKind::Gt | BinOpKind::Ge)) |
+                (BinOpKind::Ge, AssocOp::Binary(BinOpKind::Gt | BinOpKind::Ge)) => {
                     let expr_to_str = |e: &Expr| {
                         self.span_to_snippet(e.span)
                             .unwrap_or_else(|_| pprust::expr_to_string(e))
@@ -1368,7 +1366,10 @@ impl<'a> Parser<'a> {
                     false // Keep the current parse behavior, where the AST is `(x < y) < z`.
                 }
                 // `x == y < z`
-                (BinOpKind::Eq, AssocOp::Less | AssocOp::LessEqual | AssocOp::Greater | AssocOp::GreaterEqual) => {
+                (
+                    BinOpKind::Eq,
+                    AssocOp::Binary(BinOpKind::Lt | BinOpKind::Le | BinOpKind::Gt | BinOpKind::Ge)
+                ) => {
                     // Consume `z`/outer-op-rhs.
                     let snapshot = self.create_snapshot_for_diagnostic();
                     match self.parse_expr() {
@@ -1389,7 +1390,10 @@ impl<'a> Parser<'a> {
                     }
                 }
                 // `x > y == z`
-                (BinOpKind::Lt | BinOpKind::Le | BinOpKind::Gt | BinOpKind::Ge, AssocOp::Equal) => {
+                (
+                    BinOpKind::Lt | BinOpKind::Le | BinOpKind::Gt | BinOpKind::Ge,
+                    AssocOp::Binary(BinOpKind::Eq)
+                ) => {
                     let snapshot = self.create_snapshot_for_diagnostic();
                     // At this point it is always valid to enclose the lhs in parentheses, no
                     // further checks are necessary.
@@ -1457,10 +1461,10 @@ impl<'a> Parser<'a> {
 
                 // Include `<` to provide this recommendation even in a case like
                 // `Foo<Bar<Baz<Qux, ()>>>`
-                if op.node == BinOpKind::Lt && outer_op.node == AssocOp::Less
-                    || outer_op.node == AssocOp::Greater
+                if op.node == BinOpKind::Lt && outer_op.node == AssocOp::Binary(BinOpKind::Lt)
+                    || outer_op.node == AssocOp::Binary(BinOpKind::Gt)
                 {
-                    if outer_op.node == AssocOp::Less {
+                    if outer_op.node == AssocOp::Binary(BinOpKind::Lt) {
                         let snapshot = self.create_snapshot_for_diagnostic();
                         self.bump();
                         // So far we have parsed `foo<bar<`, consume the rest of the type args.
@@ -2400,52 +2404,6 @@ impl<'a> Parser<'a> {
             err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
         }
         err.span_label(span, "expected expression");
-
-        // Walk the chain of macro expansions for the current token to point at how the original
-        // code was interpreted. This helps the user realize when a macro argument of one type is
-        // later reinterpreted as a different type, like `$x:expr` being reinterpreted as `$x:pat`
-        // in a subsequent macro invocation (#71039).
-        let mut tok = self.token.clone();
-        let mut labels = vec![];
-        while let TokenKind::Interpolated(nt) = &tok.kind {
-            let tokens = nt.tokens();
-            labels.push(Arc::clone(nt));
-            if let Some(tokens) = tokens
-                && let tokens = tokens.to_attr_token_stream()
-                && let tokens = tokens.0.deref()
-                && let [AttrTokenTree::Token(token, _)] = &tokens[..]
-            {
-                tok = token.clone();
-            } else {
-                break;
-            }
-        }
-        let mut iter = labels.into_iter().peekable();
-        let mut show_link = false;
-        while let Some(nt) = iter.next() {
-            let descr = nt.descr();
-            if let Some(next) = iter.peek() {
-                let next_descr = next.descr();
-                if next_descr != descr {
-                    err.span_label(next.use_span(), format!("this is expected to be {next_descr}"));
-                    err.span_label(
-                        nt.use_span(),
-                        format!(
-                            "this is interpreted as {}, but it is expected to be {}",
-                            next_descr, descr,
-                        ),
-                    );
-                    show_link = true;
-                }
-            }
-        }
-        if show_link {
-            err.note(
-                "when forwarding a matched fragment to another macro-by-example, matchers in the \
-                 second macro will see an opaque AST of the fragment type, not the underlying \
-                 tokens",
-            );
-        }
         err
     }
 
@@ -2635,10 +2593,12 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, GenericArg> {
         let is_op_or_dot = AssocOp::from_token(&self.token)
             .and_then(|op| {
-                if let AssocOp::Greater
-                | AssocOp::Less
-                | AssocOp::ShiftRight
-                | AssocOp::GreaterEqual
+                if let AssocOp::Binary(
+                    BinOpKind::Gt
+                    | BinOpKind::Lt
+                    | BinOpKind::Shr
+                    | BinOpKind::Ge
+                )
                 // Don't recover from `foo::<bar = baz>`, because this could be an attempt to
                 // assign a value to a defaulted generic parameter.
                 | AssocOp::Assign

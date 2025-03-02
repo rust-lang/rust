@@ -72,7 +72,7 @@ impl NeedlessBorrowsForGenericArgs<'_> {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
             possible_borrowers: Vec::new(),
-            msrv: conf.msrv.clone(),
+            msrv: conf.msrv,
         }
     }
 }
@@ -114,7 +114,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrowsForGenericArgs<'tcx> {
                 i,
                 param_ty,
                 expr,
-                &self.msrv,
+                self.msrv,
             )
             && count != 0
         {
@@ -142,8 +142,6 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBorrowsForGenericArgs<'tcx> {
             self.possible_borrowers.pop();
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
 fn path_has_args(p: &QPath<'_>) -> bool {
@@ -172,7 +170,7 @@ fn needless_borrow_count<'tcx>(
     arg_index: usize,
     param_ty: ParamTy,
     mut expr: &Expr<'tcx>,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) -> usize {
     let destruct_trait_def_id = cx.tcx.lang_items().destruct_trait();
     let sized_trait_def_id = cx.tcx.lang_items().sized_trait();
@@ -273,7 +271,7 @@ fn needless_borrow_count<'tcx>(
                 && let ty::Param(param_ty) = trait_predicate.self_ty().kind()
                 && let GenericArgKind::Type(ty) = args_with_referent_ty[param_ty.index as usize].unpack()
                 && ty.is_array()
-                && !msrv.meets(msrvs::ARRAY_INTO_ITERATOR)
+                && !msrv.meets(cx, msrvs::ARRAY_INTO_ITERATOR)
             {
                 return false;
             }

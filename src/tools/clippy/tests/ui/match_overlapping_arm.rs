@@ -7,14 +7,14 @@ fn overlapping() {
 
     match 42 {
         0..=10 => println!("0..=10"),
-        //~^ ERROR: some ranges overlap
+        //~^ match_overlapping_arm
         0..=11 => println!("0..=11"),
         _ => (),
     }
 
     match 42 {
         0..=5 => println!("0..=5"),
-        //~^ ERROR: some ranges overlap
+        //~^ match_overlapping_arm
         6..=7 => println!("6..=7"),
         FOO..=11 => println!("FOO..=11"),
         _ => (),
@@ -52,7 +52,7 @@ fn overlapping() {
 
     match 42 {
         0..11 => println!("0..11"),
-        //~^ ERROR: some ranges overlap
+        //~^ match_overlapping_arm
         0..=11 => println!("0..=11"),
         _ => (),
     }
@@ -78,13 +78,13 @@ fn overlapping() {
     match 42 {
         5..14 => println!("5..14"),
         0..=10 => println!("0..=10"),
-        //~^ ERROR: some ranges overlap
+        //~^ match_overlapping_arm
         _ => (),
     }
 
     match 42 {
         0..7 => println!("0..7"),
-        //~^ ERROR: some ranges overlap
+        //~^ match_overlapping_arm
         0..=10 => println!("0..=10"),
         _ => (),
     }
@@ -97,7 +97,7 @@ fn overlapping() {
 
     match 42 {
         ..=23 => println!("..=23"),
-        //~^ ERROR: some ranges overlap
+        //~^ match_overlapping_arm
         ..26 => println!("..26"),
         _ => (),
     }
@@ -107,7 +107,7 @@ fn overlapping() {
         5..=10 => (),
         0..=20 => (),
         21..=30 => (),
-        //~^ ERROR: some ranges overlap
+        //~^ match_overlapping_arm
         21..=40 => (),
         _ => (),
     }
@@ -122,7 +122,7 @@ fn overlapping() {
     // Only warn about the first if there are multiple overlaps
     match 42u128 {
         0..=0x0000_0000_0000_00ff => (),
-        //~^ ERROR: some ranges overlap
+        //~^ match_overlapping_arm
         0..=0x0000_0000_0000_ffff => (),
         0..=0x0000_0000_ffff_ffff => (),
         0..=0xffff_ffff_ffff_ffff => (),

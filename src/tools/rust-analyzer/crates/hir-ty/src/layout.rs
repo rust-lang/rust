@@ -192,7 +192,7 @@ fn layout_of_simd_ty(
     Ok(Arc::new(Layout {
         variants: Variants::Single { index: struct_variant_idx() },
         fields,
-        backend_repr: BackendRepr::Vector { element: e_abi, count: e_len },
+        backend_repr: BackendRepr::SimdVector { element: e_abi, count: e_len },
         largest_niche: e_ly.largest_niche,
         uninhabited: false,
         size,

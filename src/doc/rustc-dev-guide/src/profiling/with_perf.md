@@ -52,6 +52,13 @@ you made in the beginning. But there are some things to be aware of:
 - You probably don't want incremental messing about with your
   profile. So something like `CARGO_INCREMENTAL=0` can be helpful.
 
+In case to avoid the issue of `addr2line xxx/elf: could not read first record` when reading
+collected data from `cargo`, you may need use the latest version of `addr2line`:
+
+```bash
+cargo install addr2line --features="bin"
+```
+
 ### Gathering a perf profile from a `perf.rust-lang.org` test
 
 Often we want to analyze a specific test from `perf.rust-lang.org`.

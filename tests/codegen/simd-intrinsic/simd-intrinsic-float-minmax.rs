@@ -1,18 +1,14 @@
 //@ compile-flags: -C no-prepopulate-passes
 
 #![crate_type = "lib"]
-
-#![feature(repr_simd, intrinsics)]
+#![feature(repr_simd, core_intrinsics)]
 #![allow(non_camel_case_types)]
+
+use std::intrinsics::simd::{simd_fmax, simd_fmin};
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct f32x4(pub [f32; 4]);
-
-extern "rust-intrinsic" {
-    fn simd_fmin<T>(x: T, y: T) -> T;
-    fn simd_fmax<T>(x: T, y: T) -> T;
-}
 
 // CHECK-LABEL: @fmin
 #[no_mangle]

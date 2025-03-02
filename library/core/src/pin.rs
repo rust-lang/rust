@@ -1240,8 +1240,8 @@ impl<Ptr: Deref> Pin<Ptr> {
     /// points to is pinned, that is a violation of the API contract and may lead to undefined
     /// behavior in later (even safe) operations.
     ///
-    /// By using this method, you are also making a promise about the [`Deref`] and
-    /// [`DerefMut`] implementations of `Ptr`, if they exist. Most importantly, they
+    /// By using this method, you are also making a promise about the [`Deref`],
+    /// [`DerefMut`], and [`Drop`] implementations of `Ptr`, if they exist. Most importantly, they
     /// must not move out of their `self` arguments: `Pin::as_mut` and `Pin::as_ref`
     /// will call `DerefMut::deref_mut` and `Deref::deref` *on the pointer type `Ptr`*
     /// and expect these methods to uphold the pinning invariants.

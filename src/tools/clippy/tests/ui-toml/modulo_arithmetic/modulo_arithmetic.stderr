@@ -10,7 +10,7 @@ LL |     let c = a % b == 0;
    = help: to override `-D warnings` add `#[allow(clippy::modulo_arithmetic)]`
 
 error: you are using modulo operator on types that might have different signs
-  --> tests/ui-toml/modulo_arithmetic/modulo_arithmetic.rs:7:13
+  --> tests/ui-toml/modulo_arithmetic/modulo_arithmetic.rs:8:13
    |
 LL |     let c = a % b != 0;
    |             ^^^^^
@@ -19,7 +19,7 @@ LL |     let c = a % b != 0;
    = note: or consider using `rem_euclid` or similar function
 
 error: you are using modulo operator on types that might have different signs
-  --> tests/ui-toml/modulo_arithmetic/modulo_arithmetic.rs:8:18
+  --> tests/ui-toml/modulo_arithmetic/modulo_arithmetic.rs:10:18
    |
 LL |     let c = 0 == a % b;
    |                  ^^^^^
@@ -28,7 +28,7 @@ LL |     let c = 0 == a % b;
    = note: or consider using `rem_euclid` or similar function
 
 error: you are using modulo operator on types that might have different signs
-  --> tests/ui-toml/modulo_arithmetic/modulo_arithmetic.rs:9:18
+  --> tests/ui-toml/modulo_arithmetic/modulo_arithmetic.rs:12:18
    |
 LL |     let c = 0 != a % b;
    |                  ^^^^^

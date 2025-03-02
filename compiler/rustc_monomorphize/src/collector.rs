@@ -751,7 +751,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
     /// This does not walk the MIR of the constant as that is not needed for codegen, all we need is
     /// to ensure that the constant evaluates successfully and walk the result.
     #[instrument(skip(self), level = "debug")]
-    fn visit_const_operand(&mut self, constant: &mir::ConstOperand<'tcx>, location: Location) {
+    fn visit_const_operand(&mut self, constant: &mir::ConstOperand<'tcx>, _location: Location) {
         // No `super_constant` as we don't care about `visit_ty`/`visit_ty_const`.
         let Some(val) = self.eval_constant(constant) else { return };
         collect_const_value(self.tcx, val, self.used_items);
@@ -1043,18 +1043,7 @@ fn find_vtable_types_for_unsizing<'tcx>(
 ) -> (Ty<'tcx>, Ty<'tcx>) {
     let ptr_vtable = |inner_source: Ty<'tcx>, inner_target: Ty<'tcx>| {
         let typing_env = ty::TypingEnv::fully_monomorphized();
-        let type_has_metadata = |ty: Ty<'tcx>| -> bool {
-            if ty.is_sized(tcx.tcx, typing_env) {
-                return false;
-            }
-            let tail = tcx.struct_tail_for_codegen(ty, typing_env);
-            match tail.kind() {
-                ty::Foreign(..) => false,
-                ty::Str | ty::Slice(..) | ty::Dynamic(..) => true,
-                _ => bug!("unexpected unsized tail: {:?}", tail),
-            }
-        };
-        if type_has_metadata(inner_source) {
+        if tcx.type_has_metadata(inner_source, typing_env) {
             (inner_source, inner_target)
         } else {
             tcx.struct_lockstep_tails_for_codegen(inner_source, inner_target, typing_env)

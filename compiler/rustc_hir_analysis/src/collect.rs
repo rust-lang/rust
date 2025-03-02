@@ -1074,7 +1074,6 @@ fn lower_variant<'tcx>(
         def.ctor().map(|(kind, _, def_id)| (kind, def_id.to_def_id())),
         discr,
         fields,
-        adt_kind,
         parent_did.to_def_id(),
         recovered,
         adt_kind == AdtKind::Struct && tcx.has_attr(parent_did, sym::non_exhaustive)
@@ -1823,6 +1822,9 @@ fn const_param_default<'tcx>(
         ),
     };
     let icx = ItemCtxt::new(tcx, def_id);
-    let ct = icx.lowerer().lower_const_arg(default_ct, FeedConstTy::Param(def_id.to_def_id()));
+    let identity_args = ty::GenericArgs::identity_for_item(tcx, def_id);
+    let ct = icx
+        .lowerer()
+        .lower_const_arg(default_ct, FeedConstTy::Param(def_id.to_def_id(), identity_args));
     ty::EarlyBinder::bind(ct)
 }

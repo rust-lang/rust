@@ -15,10 +15,10 @@ fn panic(info: &PanicInfo) -> ! {
 
 fn int_to_char() {
     let _: char = unsafe { core::char::from_u32(0_u32).unwrap() };
-    //~^ ERROR: transmute from a `u32` to a `char`
-    //~| NOTE: `-D clippy::transmute-int-to-char` implied by `-D warnings`
+    //~^ transmute_int_to_char
+
     let _: char = unsafe { core::char::from_u32(0_i32 as u32).unwrap() };
-    //~^ ERROR: transmute from a `i32` to a `char`
+    //~^ transmute_int_to_char
 
     // These shouldn't warn
     const _: char = unsafe { core::mem::transmute(0_u32) };

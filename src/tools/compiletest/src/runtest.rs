@@ -535,7 +535,9 @@ impl<'test> TestCx<'test> {
             .arg(&out_dir)
             .arg(&format!("--target={}", target))
             .arg("-L")
-            .arg(&self.config.build_base)
+            // FIXME(jieyouxu): this search path seems questionable. Is this intended for
+            // `rust_test_helpers` in ui tests?
+            .arg(&self.config.build_test_suite_root)
             .arg("-L")
             .arg(aux_dir)
             .arg("-A")
@@ -1366,7 +1368,7 @@ impl<'test> TestCx<'test> {
         // Note: avoid adding a subdirectory of an already filtered directory here, otherwise the
         // same slice of text will be double counted and the truncation might not happen.
         add_path(&self.config.src_test_suite_root);
-        add_path(&self.config.build_base);
+        add_path(&self.config.build_test_suite_root);
 
         read2_abbreviated(child, &filter_paths_from_len).expect("failed to read output")
     }
@@ -1421,7 +1423,7 @@ impl<'test> TestCx<'test> {
     }
 
     fn get_mir_dump_dir(&self) -> PathBuf {
-        let mut mir_dump_dir = PathBuf::from(self.config.build_base.as_path());
+        let mut mir_dump_dir = self.config.build_test_suite_root.clone();
         debug!("input_file: {:?}", self.testpaths.file);
         mir_dump_dir.push(&self.testpaths.relative_dir);
         mir_dump_dir.push(self.testpaths.file.file_stem().unwrap());
@@ -2410,14 +2412,10 @@ impl<'test> TestCx<'test> {
         let rust_src_dir = rust_src_dir.read_link().unwrap_or(rust_src_dir.to_path_buf());
         normalize_path(&rust_src_dir.join("library"), "$SRC_DIR_REAL");
 
-        // Paths into the build directory
-        let test_build_dir = &self.config.build_base;
-        let parent_build_dir = test_build_dir.parent().unwrap().parent().unwrap().parent().unwrap();
-
         // eg. /home/user/rust/build/x86_64-unknown-linux-gnu/test/ui
-        normalize_path(test_build_dir, "$TEST_BUILD_DIR");
+        normalize_path(&self.config.build_test_suite_root, "$TEST_BUILD_DIR");
         // eg. /home/user/rust/build
-        normalize_path(parent_build_dir, "$BUILD_DIR");
+        normalize_path(&self.config.build_root, "$BUILD_DIR");
 
         if json {
             // escaped newlines in json strings should be readable

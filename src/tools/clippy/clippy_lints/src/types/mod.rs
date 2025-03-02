@@ -2,6 +2,7 @@ mod borrowed_box;
 mod box_collection;
 mod linked_list;
 mod option_option;
+mod owned_cow;
 mod rc_buffer;
 mod rc_mutex;
 mod redundant_allocation;
@@ -355,13 +356,63 @@ declare_clippy_lint! {
     "usage of `Rc<Mutex<T>>`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Detects needlessly owned `Cow` types.
+    ///
+    /// ### Why is this bad?
+    /// The borrowed types are usually more flexible, in that e.g. a
+    /// `Cow<'_, str>` can accept both `&str` and `String` while
+    /// `Cow<'_, String>` can only accept `&String` and `String`. In
+    /// particular, `&str` is more general, because it allows for string
+    /// literals while `&String` can only be borrowed from a heap-owned
+    /// `String`).
+    ///
+    /// ### Known Problems
+    /// The lint does not check for usage of the type. There may be external
+    /// interfaces that require the use of an owned type.
+    ///
+    /// At least the `CString` type also has a different API than `CStr`: The
+    /// former has an `as_bytes` method which the latter calls `to_bytes`.
+    /// There is no guarantee that other types won't gain additional methods
+    /// leading to a similar mismatch.
+    ///
+    /// In addition, the lint only checks for the known problematic types
+    /// `String`, `Vec<_>`, `CString`, `OsString` and `PathBuf`. Custom types
+    /// that implement `ToOwned` will not be detected.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let wrogn: std::borrow::Cow<'_, Vec<u8>>;
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let right: std::borrow::Cow<'_, [u8]>;
+    /// ```
+    #[clippy::version = "1.85.0"]
+    pub OWNED_COW,
+    style,
+    "needlessly owned Cow type"
+}
+
 pub struct Types {
     vec_box_size_threshold: u64,
     type_complexity_threshold: u64,
     avoid_breaking_exported_api: bool,
 }
 
-impl_lint_pass!(Types => [BOX_COLLECTION, VEC_BOX, OPTION_OPTION, LINKEDLIST, BORROWED_BOX, REDUNDANT_ALLOCATION, RC_BUFFER, RC_MUTEX, TYPE_COMPLEXITY]);
+impl_lint_pass!(Types => [
+    BOX_COLLECTION,
+    VEC_BOX,
+    OPTION_OPTION,
+    LINKEDLIST,
+    BORROWED_BOX,
+    REDUNDANT_ALLOCATION,
+    RC_BUFFER,
+    RC_MUTEX,
+    TYPE_COMPLEXITY,
+    OWNED_COW
+]);
 
 impl<'tcx> LateLintPass<'tcx> for Types {
     fn check_fn(
@@ -373,11 +424,10 @@ impl<'tcx> LateLintPass<'tcx> for Types {
         _: Span,
         def_id: LocalDefId,
     ) {
-        let is_in_trait_impl = if let hir::Node::Item(item) = cx.tcx.hir_node_by_def_id(
-            cx.tcx
-                .hir_get_parent_item(cx.tcx.local_def_id_to_hir_id(def_id))
-                .def_id,
-        ) {
+        let is_in_trait_impl = if let hir::Node::Item(item) = cx
+            .tcx
+            .hir_node_by_def_id(cx.tcx.hir_get_parent_item(cx.tcx.local_def_id_to_hir_id(def_id)).def_id)
+        {
             matches!(item.kind, ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }))
         } else {
             false
@@ -560,6 +610,7 @@ impl Types {
                         triggered |= option_option::check(cx, hir_ty, qpath, def_id);
                         triggered |= linked_list::check(cx, hir_ty, def_id);
                         triggered |= rc_mutex::check(cx, hir_ty, qpath, def_id);
+                        triggered |= owned_cow::check(cx, qpath, def_id);
 
                         if triggered {
                             return;
@@ -609,6 +660,14 @@ impl Types {
                         }
                     },
                     QPath::LangItem(..) => {},
+                }
+            },
+            TyKind::Path(ref qpath) => {
+                let res = cx.qpath_res(qpath, hir_ty.hir_id);
+                if let Some(def_id) = res.opt_def_id()
+                    && self.is_type_change_allowed(context)
+                {
+                    owned_cow::check(cx, qpath, def_id);
                 }
             },
             TyKind::Ref(lt, ref mut_ty) => {

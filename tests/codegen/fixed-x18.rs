@@ -1,6 +1,7 @@
 // Test that the `reserve-x18` target feature is (not) emitted when
 // the `-Zfixed-x18` flag is (not) set.
 
+//@ add-core-stubs
 //@ revisions: unset set
 //@ needs-llvm-components: aarch64
 //@ compile-flags: --target aarch64-unknown-none
@@ -10,8 +11,8 @@
 #![feature(no_core, lang_items)]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
+extern crate minicore;
+use minicore::*;
 
 #[no_mangle]
 pub fn foo() {

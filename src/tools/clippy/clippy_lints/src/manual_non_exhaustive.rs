@@ -71,7 +71,7 @@ pub struct ManualNonExhaustive {
 impl ManualNonExhaustive {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
-            msrv: conf.msrv.clone(),
+            msrv: conf.msrv,
             constructed_enum_variants: FxHashSet::default(),
             potential_enums: Vec::new(),
         }
@@ -82,7 +82,7 @@ impl_lint_pass!(ManualNonExhaustive => [MANUAL_NON_EXHAUSTIVE]);
 
 impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustive {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if !self.msrv.meets(msrvs::NON_EXHAUSTIVE) || !cx.effective_visibilities.is_exported(item.owner_id.def_id) {
+        if !cx.effective_visibilities.is_exported(item.owner_id.def_id) || !self.msrv.meets(cx, msrvs::NON_EXHAUSTIVE) {
             return;
         }
 
@@ -171,6 +171,4 @@ impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustive {
             );
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }

@@ -724,7 +724,7 @@ impl File {
         {
             return Err(io::const_error!(
                 io::ErrorKind::InvalidInput,
-                "Cannot set file timestamp to 0",
+                "cannot set file timestamp to 0",
             ));
         }
         let is_max = |t: c::FILETIME| t.dwLowDateTime == u32::MAX && t.dwHighDateTime == u32::MAX;
@@ -734,7 +734,7 @@ impl File {
         {
             return Err(io::const_error!(
                 io::ErrorKind::InvalidInput,
-                "Cannot set file timestamp to 0xFFFF_FFFF_FFFF_FFFF",
+                "cannot set file timestamp to 0xFFFF_FFFF_FFFF_FFFF",
             ));
         }
         cvt(unsafe {

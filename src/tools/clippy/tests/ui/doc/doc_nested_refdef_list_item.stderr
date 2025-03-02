@@ -144,5 +144,29 @@ help: for an intra-doc link, add `[]` between the label and the colon
 LL | /// - [link][]: def "title"
    |             ++
 
-error: aborting due to 12 previous errors
+error: link reference defined in list item
+  --> tests/ui/doc/doc_nested_refdef_list_item.rs:75:7
+   |
+LL | /// - [x] - Done
+   |       ^^^
+   |
+   = help: link definitions are not shown in rendered documentation
+help: for an intra-doc link, add `[]` between the label and the colon
+   |
+LL | /// - [x][] - Done
+   |          ++
+
+error: link reference defined in list item
+  --> tests/ui/doc/doc_nested_refdef_list_item.rs:77:7
+   |
+LL | /// - [ ] - Not Done
+   |       ^^^
+   |
+   = help: link definitions are not shown in rendered documentation
+help: for an intra-doc link, add `[]` between the label and the colon
+   |
+LL | /// - [ ][] - Not Done
+   |          ++
+
+error: aborting due to 14 previous errors
 

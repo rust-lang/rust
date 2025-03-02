@@ -186,7 +186,7 @@ fn report_bin_hex_error(
                 lit_no_suffix,
                 negative_val: actually.clone(),
                 int_ty: int_ty.name_str(),
-                uint_ty: int_ty.to_unsigned().name_str(),
+                uint_ty: Integer::fit_unsigned(val).uint_ty_str(),
             })
         })
         .flatten();

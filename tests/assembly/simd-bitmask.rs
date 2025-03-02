@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions: x86 x86-avx2 x86-avx512 aarch64
 //@ [x86] compile-flags: --target=x86_64-unknown-linux-gnu -C llvm-args=-x86-asm-syntax=intel
 //@ [x86] needs-llvm-components: x86
@@ -16,12 +17,8 @@
 #![no_core]
 #![allow(non_camel_case_types)]
 
-// Because we don't have core yet.
-#[lang = "sized"]
-pub trait Sized {}
-
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 #[repr(simd)]
 pub struct m8x16([i8; 16]);

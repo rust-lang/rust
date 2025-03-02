@@ -13,23 +13,31 @@ use std::path::Path;
 
 fn main() {
     let _s = ["lorem", "ipsum"].join(" ");
+    //~^ redundant_clone
 
     let s = String::from("foo");
     let _s = s;
+    //~^ redundant_clone
 
     let s = String::from("foo");
     let _s = s;
+    //~^ redundant_clone
 
     let s = String::from("foo");
     let _s = s;
+    //~^ redundant_clone
 
     let _s = Path::new("/a/b/").join("c");
+    //~^ redundant_clone
 
     let _s = Path::new("/a/b/").join("c");
+    //~^ redundant_clone
 
     let _s = OsString::new();
+    //~^ redundant_clone
 
     let _s = OsString::new();
+    //~^ redundant_clone
 
     // Check that lint level works
     #[allow(clippy::redundant_clone)]
@@ -41,6 +49,7 @@ fn main() {
 
     let tup = (String::from("foo"),);
     let _t = tup.0;
+    //~^ redundant_clone
 
     let tup_ref = &(String::from("foo"),);
     let _s = tup_ref.0.clone(); // this `.clone()` cannot be removed
@@ -73,6 +82,7 @@ fn main() {
 struct Alpha;
 fn with_branch(a: Alpha, b: bool) -> (Alpha, Alpha) {
     if b { (a.clone(), a) } else { (Alpha, a) }
+    //~^ redundant_clone
 }
 
 fn cannot_double_move(a: Alpha) -> (Alpha, Alpha) {
@@ -130,7 +140,9 @@ fn borrower_propagation() {
     }
 
     let _s = s;
+    //~^ redundant_clone
     let _t = t;
+    //~^ redundant_clone
 
     #[derive(Clone)]
     struct Foo {
@@ -141,6 +153,7 @@ fn borrower_propagation() {
         let f = Foo { x: 123 };
         let _x = Some(f.x);
         let _f = f;
+        //~^ redundant_clone
     }
 
     {
@@ -153,6 +166,7 @@ fn borrower_propagation() {
 fn not_consumed() {
     let x = std::path::PathBuf::from("home");
     let y = x.join("matthias");
+    //~^ redundant_clone
     // join() creates a new owned PathBuf, does not take a &mut to x variable, thus the .clone() is
     // redundant. (It also does not consume the PathBuf)
 
@@ -207,6 +221,7 @@ fn clone_then_move_cloned() {
     let x = Alpha;
     // ok, data is moved while the clone is in use.
     foo(&x, move || {
+        //~^ redundant_clone
         let _ = x;
     });
 

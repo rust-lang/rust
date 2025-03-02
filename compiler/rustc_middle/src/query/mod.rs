@@ -143,11 +143,11 @@ rustc_queries! {
 
     /// Represents crate as a whole (as distinct from the top-level crate module).
     ///
-    /// If you call `hir_crate` (e.g., indirectly by calling `tcx.hir().krate()`),
+    /// If you call `hir_crate` (e.g., indirectly by calling `tcx.hir_crate()`),
     /// we will have to assume that any change means that you need to be recompiled.
     /// This is because the `hir_crate` query gives you access to all other items.
-    /// To avoid this fate, do not call `tcx.hir().krate()`; instead,
-    /// prefer wrappers like `tcx.visit_all_items_in_krate()`.
+    /// To avoid this fate, do not call `tcx.hir_crate()`; instead,
+    /// prefer wrappers like [`TyCtxt::hir_visit_all_item_likes_in_crate`].
     query hir_crate(key: ()) -> &'tcx Crate<'tcx> {
         arena_cache
         eval_always
@@ -748,6 +748,15 @@ rustc_queries! {
         }
     }
 
+    /// Compute the conditions that need to hold for a conditionally-const item to be const.
+    /// That is, compute the set of `~const` where clauses for a given item.
+    ///
+    /// This can be thought of as the `~const` equivalent of `predicates_of`. These are the
+    /// predicates that need to be proven at usage sites, and can be assumed at definition.
+    ///
+    /// This query also computes the `~const` where clauses for associated types, which are
+    /// not "const", but which have item bounds which may be `~const`. These must hold for
+    /// the `~const` item bound to hold.
     query const_conditions(
         key: DefId
     ) -> ty::ConstConditions<'tcx> {
@@ -757,6 +766,11 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    /// Compute the const bounds that are implied for a conditionally-const item.
+    ///
+    /// This can be though of as the `~const` equivalent of `explicit_item_bounds`. These
+    /// are the predicates that need to proven at definition sites, and can be assumed at
+    /// usage sites.
     query explicit_implied_const_bounds(
         key: DefId
     ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::PolyTraitRef<'tcx>, Span)]> {

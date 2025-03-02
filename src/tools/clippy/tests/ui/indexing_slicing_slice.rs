@@ -113,22 +113,21 @@ fn main() {
     let index_from: usize = 2;
     let index_to: usize = 3;
     &x[index..];
-    //~^ ERROR: slicing may panic
+    //~^ indexing_slicing
     &x[..index];
-    //~^ ERROR: slicing may panic
+    //~^ indexing_slicing
     &x[index_from..index_to];
-    //~^ ERROR: slicing may panic
+    //~^ indexing_slicing
     &x[index_from..][..index_to];
-    //~^ ERROR: slicing may panic
-    //~| ERROR: slicing may panic
+    //~^ indexing_slicing
+    //~| indexing_slicing
     &x[5..][..10];
-    //~^ ERROR: slicing may panic
-    //~| ERROR: range is out of bounds
-    //~| NOTE: `-D clippy::out-of-bounds-indexing` implied by `-D warnings`
+    //~^ indexing_slicing
+    //~| out_of_bounds_indexing
     &x[0..][..3];
-    //~^ ERROR: slicing may panic
+    //~^ indexing_slicing
     &x[1..][..5];
-    //~^ ERROR: slicing may panic
+    //~^ indexing_slicing
 
     &x[0..].get(..3); // Ok, should not produce stderr.
     &x[0..3]; // Ok, should not produce stderr.
@@ -136,22 +135,22 @@ fn main() {
     let y = &x;
     &y[1..2];
     &y[0..=4];
-    //~^ ERROR: range is out of bounds
+    //~^ out_of_bounds_indexing
     &y[..=4];
-    //~^ ERROR: range is out of bounds
+    //~^ out_of_bounds_indexing
 
     &y[..]; // Ok, should not produce stderr.
 
     let v = vec![0; 5];
     &v[10..100];
-    //~^ ERROR: slicing may panic
+    //~^ indexing_slicing
     &x[10..][..100];
-    //~^ ERROR: slicing may panic
-    //~| ERROR: range is out of bounds
+    //~^ indexing_slicing
+    //~| out_of_bounds_indexing
     &v[10..];
-    //~^ ERROR: slicing may panic
+    //~^ indexing_slicing
     &v[..100];
-    //~^ ERROR: slicing may panic
+    //~^ indexing_slicing
 
     &v[..]; // Ok, should not produce stderr.
 
@@ -169,12 +168,15 @@ fn main() {
 
     // Lint on this, because `get` does exist with same signature
     map_with_get[true];
+    //~^ indexing_slicing
 
     let s = S::<i32>(1);
     s[0];
+    //~^ indexing_slicing
 
     let y = Y::<i32>(1);
     y[0];
+    //~^ indexing_slicing
 
     let z = Z::<i32>(1);
     z[0];

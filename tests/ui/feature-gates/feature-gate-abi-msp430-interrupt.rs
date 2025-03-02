@@ -1,9 +1,11 @@
+//@ add-core-stubs
 //@ needs-llvm-components: msp430
 //@ compile-flags: --target=msp430-none-elf --crate-type=rlib
 #![no_core]
 #![feature(no_core, lang_items)]
-#[lang="sized"]
-trait Sized { }
+
+extern crate minicore;
+use minicore::*;
 
 extern "msp430-interrupt" fn f() {}
 //~^ ERROR "msp430-interrupt" ABI is experimental

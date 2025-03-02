@@ -14,12 +14,19 @@ fn main() {
     );
     let bad = (        // Hex:
         0x8005,        // 0x8005
+        //~^ decimal_literal_representation
         0xFF00,        // 0xFF00
+        //~^ decimal_literal_representation
         0x7F0F_F00F, // 0x7F0F_F00F
+        //~^ decimal_literal_representation
         0x7FFF_FFFF, // 0x7FFF_FFFF
+        //~^ decimal_literal_representation
         #[allow(overflowing_literals)]
         0xF0F0_F0F0, // 0xF0F0_F0F0
+        //~^ decimal_literal_representation
         0x8005_usize,   // 0x8005_usize
+        //~^ decimal_literal_representation
         0x7F0F_F00F_isize, // 0x7F0F_F00F_isize
+        //~^ decimal_literal_representation
     );
 }

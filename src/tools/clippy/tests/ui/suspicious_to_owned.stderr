@@ -33,7 +33,7 @@ LL +     let _ = cow.clone();
    |
 
 error: this `to_owned` call clones the Cow<'_, Vec<char>> itself and does not cause the Cow<'_, Vec<char>> contents to become owned
-  --> tests/ui/suspicious_to_owned.rs:40:13
+  --> tests/ui/suspicious_to_owned.rs:41:13
    |
 LL |     let _ = cow.to_owned();
    |             ^^^^^^^^^^^^^^
@@ -49,7 +49,7 @@ LL +     let _ = cow.clone();
    |
 
 error: this `to_owned` call clones the Cow<'_, str> itself and does not cause the Cow<'_, str> contents to become owned
-  --> tests/ui/suspicious_to_owned.rs:51:13
+  --> tests/ui/suspicious_to_owned.rs:53:13
    |
 LL |     let _ = cow.to_owned();
    |             ^^^^^^^^^^^^^^
@@ -65,7 +65,7 @@ LL +     let _ = cow.clone();
    |
 
 error: implicitly cloning a `String` by calling `to_owned` on its dereferenced type
-  --> tests/ui/suspicious_to_owned.rs:66:13
+  --> tests/ui/suspicious_to_owned.rs:69:13
    |
 LL |     let _ = String::from(moo).to_owned();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `String::from(moo).clone()`
@@ -74,7 +74,7 @@ LL |     let _ = String::from(moo).to_owned();
    = help: to override `-D warnings` add `#[allow(clippy::implicit_clone)]`
 
 error: implicitly cloning a `Vec` by calling `to_owned` on its dereferenced type
-  --> tests/ui/suspicious_to_owned.rs:69:13
+  --> tests/ui/suspicious_to_owned.rs:72:13
    |
 LL |     let _ = moos_vec.to_owned();
    |             ^^^^^^^^^^^^^^^^^^^ help: consider using: `moos_vec.clone()`

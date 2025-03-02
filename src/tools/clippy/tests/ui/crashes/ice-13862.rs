@@ -1,3 +1,5 @@
+//@ check-pass
+
 #![crate_type = "lib"]
 #![no_std]
 

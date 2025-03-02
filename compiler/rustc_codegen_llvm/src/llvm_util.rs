@@ -331,7 +331,8 @@ pub(crate) fn target_features_cfg(sess: &Session, allow_unstable: bool) -> Vec<S
                 if let Some(feat) = to_llvm_features(sess, feature) {
                     for llvm_feature in feat {
                         let cstr = SmallCStr::new(llvm_feature);
-                        if !unsafe { llvm::LLVMRustHasFeature(&target_machine, cstr.as_ptr()) } {
+                        if !unsafe { llvm::LLVMRustHasFeature(target_machine.raw(), cstr.as_ptr()) }
+                        {
                             return false;
                         }
                     }
@@ -453,8 +454,8 @@ pub(crate) fn print(req: &PrintRequest, out: &mut String, sess: &Session) {
     require_inited();
     let tm = create_informational_target_machine(sess, false);
     match req.kind {
-        PrintKind::TargetCPUs => print_target_cpus(sess, &tm, out),
-        PrintKind::TargetFeatures => print_target_features(sess, &tm, out),
+        PrintKind::TargetCPUs => print_target_cpus(sess, tm.raw(), out),
+        PrintKind::TargetFeatures => print_target_features(sess, tm.raw(), out),
         _ => bug!("rustc_codegen_llvm can't handle print request: {:?}", req),
     }
 }

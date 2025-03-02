@@ -45,9 +45,10 @@ use crate::coercion::{CoerceMany, DynamicCoerceMany};
 use crate::errors::{
     AddressOfTemporaryTaken, BaseExpressionDoubleDot, BaseExpressionDoubleDotAddExpr,
     BaseExpressionDoubleDotEnableDefaultFieldValues, BaseExpressionDoubleDotRemove,
-    FieldMultiplySpecifiedInInitializer, FunctionalRecordUpdateOnNonStruct, HelpUseLatestEdition,
-    ReturnLikeStatementKind, ReturnStmtOutsideOfFnBody, StructExprNonExhaustive,
-    TypeMismatchFruTypo, YieldExprOutsideOfCoroutine,
+    CantDereference, FieldMultiplySpecifiedInInitializer, FunctionalRecordUpdateOnNonStruct,
+    HelpUseLatestEdition, NoFieldOnType, NoFieldOnVariant, ReturnLikeStatementKind,
+    ReturnStmtOutsideOfFnBody, StructExprNonExhaustive, TypeMismatchFruTypo,
+    YieldExprOutsideOfCoroutine,
 };
 use crate::{
     BreakableCtxt, CoroutineTypes, Diverges, FnCtxt, Needs, cast, fatally_break_rust,
@@ -607,13 +608,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if let Some(ty) = self.lookup_derefing(expr, oprnd, oprnd_t) {
                         oprnd_t = ty;
                     } else {
-                        let mut err = type_error_struct!(
-                            self.dcx(),
-                            expr.span,
-                            oprnd_t,
-                            E0614,
-                            "type `{oprnd_t}` cannot be dereferenced",
-                        );
+                        let mut err =
+                            self.dcx().create_err(CantDereference { span: expr.span, ty: oprnd_t });
                         let sp = tcx.sess.source_map().start_point(expr.span).with_parent(None);
                         if let Some(sp) =
                             tcx.sess.psess.ambiguous_block_expr_parse.borrow().get(&sp)
@@ -1857,12 +1853,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return Ty::new_error(tcx, guar);
         }
 
+        // We defer checking whether the element type is `Copy` as it is possible to have
+        // an inference variable as a repeat count and it seems unlikely that `Copy` would
+        // have inference side effects required for type checking to succeed.
+        if tcx.features().generic_arg_infer() {
+            self.deferred_repeat_expr_checks.borrow_mut().push((element, element_ty, count));
         // If the length is 0, we don't create any elements, so we don't copy any.
         // If the length is 1, we don't copy that one element, we move it. Only check
         // for `Copy` if the length is larger, or unevaluated.
-        // FIXME(min_const_generic_exprs): We could perhaps defer this check so that
-        // we don't require `<?0t as Tr>::CONST` doesn't unnecessarily require `Copy`.
-        if count.try_to_target_usize(tcx).is_none_or(|x| x > 1) {
+        } else if count.try_to_target_usize(self.tcx).is_none_or(|x| x > 1) {
             self.enforce_repeat_element_needs_copy_bound(element, element_ty);
         }
 
@@ -1872,7 +1871,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Requires that `element_ty` is `Copy` (unless it's a const expression itself).
-    fn enforce_repeat_element_needs_copy_bound(
+    pub(super) fn enforce_repeat_element_needs_copy_bound(
         &self,
         element: &hir::Expr<'_>,
         element_ty: Ty<'tcx>,
@@ -3287,13 +3286,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let span = field.span;
         debug!("no_such_field_err(span: {:?}, field: {:?}, expr_t: {:?})", span, field, expr_t);
 
-        let mut err = type_error_struct!(
-            self.dcx(),
-            span,
-            expr_t,
-            E0609,
-            "no field `{field}` on type `{expr_t}`",
-        );
+        let mut err = self.dcx().create_err(NoFieldOnType { span, ty: expr_t, field });
+        if expr_t.references_error() {
+            err.downgrade_to_delayed_bug();
+        }
 
         // try to add a suggestion in case the field is a nested field of a field of the Adt
         let mod_id = self.tcx.parent_module(id).to_def_id();
@@ -3778,13 +3774,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.check_expr_asm_operand(out_expr, false);
                     }
                 }
+                hir::InlineAsmOperand::Const { ref anon_const } => {
+                    self.check_expr_const_block(anon_const, Expectation::NoExpectation);
+                }
                 hir::InlineAsmOperand::SymFn { expr } => {
                     self.check_expr(expr);
                 }
-                // `AnonConst`s have their own body and is type-checked separately.
-                // As they don't flow into the type system we don't need them to
-                // be well-formed.
-                hir::InlineAsmOperand::Const { .. } => {}
                 hir::InlineAsmOperand::SymStatic { .. } => {}
                 hir::InlineAsmOperand::Label { block } => {
                     let previous_diverges = self.diverges.get();
@@ -3867,16 +3862,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .iter_enumerated()
                         .find(|(_, f)| f.ident(self.tcx).normalize_to_macros_2_0() == subident)
                     else {
-                        type_error_struct!(
-                            self.dcx(),
-                            ident.span,
-                            container,
-                            E0609,
-                            "no field named `{subfield}` on enum variant `{container}::{ident}`",
-                        )
-                        .with_span_label(field.span, "this enum variant...")
-                        .with_span_label(subident.span, "...does not have this field")
-                        .emit();
+                        self.dcx()
+                            .create_err(NoFieldOnVariant {
+                                span: ident.span,
+                                container,
+                                ident,
+                                field: subfield,
+                                enum_span: field.span,
+                                field_span: subident.span,
+                            })
+                            .emit_unless(container.references_error());
                         break;
                     };
 

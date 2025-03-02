@@ -9,7 +9,7 @@ use std::ops::ControlFlow;
 use std::{cmp, iter};
 
 use hir::def::DefKind;
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Diag, EmissionGuarantee};
 use rustc_hir as hir;
@@ -25,7 +25,6 @@ use rustc_middle::dep_graph::{DepNodeIndex, dep_kinds};
 pub use rustc_middle::traits::select::*;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::TypeErrorToStringExt;
-use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
 use rustc_middle::ty::{
     self, GenericArgsRef, PolyProjectionPredicate, Ty, TyCtxt, TypeFoldable, TypeVisitableExt,
@@ -1008,7 +1007,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // depend on its particular value in order to work, so we can clear
             // out the param env and get better caching.
             debug!("in global");
-            obligation.param_env = obligation.param_env.without_caller_bounds();
+            obligation.param_env = ty::ParamEnv::empty();
         }
 
         let stack = self.push_stack(previous_stack, &obligation);
@@ -1225,15 +1224,21 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// that recursion is ok. This routine returns `true` if the top of the
     /// stack (`cycle[0]`):
     ///
-    /// - is a defaulted trait,
+    /// - is a coinductive trait: an auto-trait or `Sized`,
     /// - it also appears in the backtrace at some position `X`,
     /// - all the predicates at positions `X..` between `X` and the top are
-    ///   also defaulted traits.
+    ///   also coinductive traits.
     pub(crate) fn coinductive_match<I>(&mut self, mut cycle: I) -> bool
     where
         I: Iterator<Item = ty::Predicate<'tcx>>,
     {
-        cycle.all(|predicate| predicate.is_coinductive(self.tcx()))
+        cycle.all(|p| match p.kind().skip_binder() {
+            ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => {
+                self.infcx.tcx.trait_is_coinductive(data.def_id())
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => true,
+            _ => false,
+        })
     }
 
     /// Further evaluates `candidate` to decide whether all type parameters match and whether nested
@@ -2199,8 +2204,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             }
 
             ty::CoroutineWitness(def_id, args) => {
-                let hidden_types = bind_coroutine_hidden_types_above(
-                    self.infcx,
+                let hidden_types = rebind_coroutine_witness_types(
+                    self.infcx.tcx,
                     def_id,
                     args,
                     obligation.predicate.bound_vars(),
@@ -2348,7 +2353,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             }
 
             ty::CoroutineWitness(def_id, args) => {
-                bind_coroutine_hidden_types_above(self.infcx, def_id, args, t.bound_vars())
+                rebind_coroutine_witness_types(self.infcx.tcx, def_id, args, t.bound_vars())
             }
 
             // For `PhantomData<T>`, we pass `T`.
@@ -2843,6 +2848,23 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
     }
 }
 
+fn rebind_coroutine_witness_types<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+    args: ty::GenericArgsRef<'tcx>,
+    bound_vars: &'tcx ty::List<ty::BoundVariableKind>,
+) -> ty::Binder<'tcx, Vec<Ty<'tcx>>> {
+    let bound_coroutine_types = tcx.coroutine_hidden_types(def_id).skip_binder();
+    let shifted_coroutine_types =
+        tcx.shift_bound_var_indices(bound_vars.len(), bound_coroutine_types.skip_binder());
+    ty::Binder::bind_with_vars(
+        ty::EarlyBinder::bind(shifted_coroutine_types.to_vec()).instantiate(tcx, args),
+        tcx.mk_bound_variable_kinds_from_iter(
+            bound_vars.iter().chain(bound_coroutine_types.bound_vars()),
+        ),
+    )
+}
+
 impl<'o, 'tcx> TraitObligationStack<'o, 'tcx> {
     fn list(&'o self) -> TraitObligationStackList<'o, 'tcx> {
         TraitObligationStackList::with(self)
@@ -3150,57 +3172,4 @@ pub(crate) enum ProjectionMatchesProjection {
     Yes,
     Ambiguous,
     No,
-}
-
-/// Replace all regions inside the coroutine interior with late bound regions.
-/// Note that each region slot in the types gets a new fresh late bound region, which means that
-/// none of the regions inside relate to any other, even if typeck had previously found constraints
-/// that would cause them to be related.
-#[instrument(level = "trace", skip(infcx), ret)]
-fn bind_coroutine_hidden_types_above<'tcx>(
-    infcx: &InferCtxt<'tcx>,
-    def_id: DefId,
-    args: ty::GenericArgsRef<'tcx>,
-    bound_vars: &ty::List<ty::BoundVariableKind>,
-) -> ty::Binder<'tcx, Vec<Ty<'tcx>>> {
-    let tcx = infcx.tcx;
-    let mut seen_tys = FxHashSet::default();
-
-    let considering_regions = infcx.considering_regions;
-
-    let num_bound_variables = bound_vars.len() as u32;
-    let mut counter = num_bound_variables;
-
-    let hidden_types: Vec<_> = tcx
-        .coroutine_hidden_types(def_id)
-        // Deduplicate tys to avoid repeated work.
-        .filter(|bty| seen_tys.insert(*bty))
-        .map(|mut bty| {
-            // Only remap erased regions if we use them.
-            if considering_regions {
-                bty = bty.map_bound(|ty| {
-                    fold_regions(tcx, ty, |r, current_depth| match r.kind() {
-                        ty::ReErased => {
-                            let br = ty::BoundRegion {
-                                var: ty::BoundVar::from_u32(counter),
-                                kind: ty::BoundRegionKind::Anon,
-                            };
-                            counter += 1;
-                            ty::Region::new_bound(tcx, current_depth, br)
-                        }
-                        r => bug!("unexpected region: {r:?}"),
-                    })
-                })
-            }
-
-            bty.instantiate(tcx, args)
-        })
-        .collect();
-    let bound_vars = tcx.mk_bound_variable_kinds_from_iter(
-        bound_vars.iter().chain(
-            (num_bound_variables..counter)
-                .map(|_| ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon)),
-        ),
-    );
-    ty::Binder::bind_with_vars(hidden_types, bound_vars)
 }

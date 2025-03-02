@@ -14,7 +14,7 @@ note: rustc <version> running on <target>
 note: compiler flags: -Z ui-testing -Z deduplicate-diagnostics=no
 
 query stack during panic:
-#0 [early_lint_checks] perform lints prior to macro expansion
+#0 [early_lint_checks] perform lints prior to AST lowering
 #1 [hir_crate] getting the crate HIR
 ... and 3 other queries... use `env RUST_BACKTRACE=1` to see the full query stack
 note: Clippy version: foo

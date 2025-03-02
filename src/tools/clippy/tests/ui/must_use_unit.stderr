@@ -10,7 +10,7 @@ LL | pub fn must_use_default() {}
    = help: to override `-D warnings` add `#[allow(clippy::must_use_unit)]`
 
 error: this unit-returning function has a `#[must_use]` attribute
-  --> tests/ui/must_use_unit.rs:13:1
+  --> tests/ui/must_use_unit.rs:14:1
    |
 LL | #[must_use]
    | ----------- help: remove the attribute
@@ -18,7 +18,7 @@ LL | pub fn must_use_unit() -> () {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this unit-returning function has a `#[must_use]` attribute
-  --> tests/ui/must_use_unit.rs:16:1
+  --> tests/ui/must_use_unit.rs:18:1
    |
 LL | #[must_use = "With note"]
    | ------------------------- help: remove the attribute

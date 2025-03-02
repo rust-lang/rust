@@ -268,41 +268,53 @@ fn in_closure(x: *const u32) {
 #[rustfmt::skip]
 fn inline_block_comment() {
     /* Safety: */ unsafe {}
+    //~^ undocumented_unsafe_blocks
 }
 
 fn no_comment() {
     unsafe {}
+    //~^ undocumented_unsafe_blocks
 }
 
 fn no_comment_array() {
     let _ = [unsafe { 14 }, unsafe { 15 }, 42, unsafe { 16 }];
+    //~^ undocumented_unsafe_blocks
+    //~| undocumented_unsafe_blocks
+    //~| undocumented_unsafe_blocks
 }
 
 fn no_comment_tuple() {
     let _ = (42, unsafe {}, "test", unsafe {});
+    //~^ undocumented_unsafe_blocks
+    //~| undocumented_unsafe_blocks
 }
 
 fn no_comment_unary() {
     let _ = *unsafe { &42 };
+    //~^ undocumented_unsafe_blocks
 }
 
 #[allow(clippy::match_single_binding)]
 fn no_comment_match() {
     let _ = match unsafe {} {
+        //~^ undocumented_unsafe_blocks
         _ => {},
     };
 }
 
 fn no_comment_addr_of() {
     let _ = &unsafe {};
+    //~^ undocumented_unsafe_blocks
 }
 
 fn no_comment_repeat() {
     let _ = [unsafe {}; 5];
+    //~^ undocumented_unsafe_blocks
 }
 
 fn local_no_comment() {
     let _ = unsafe {};
+    //~^ undocumented_unsafe_blocks
 }
 
 fn no_comment_macro_call() {
@@ -313,12 +325,14 @@ fn no_comment_macro_call() {
     }
 
     t!(unsafe {});
+    //~^ undocumented_unsafe_blocks
 }
 
 fn no_comment_macro_def() {
     macro_rules! t {
         () => {
             unsafe {}
+            //~^ undocumented_unsafe_blocks
         };
     }
 
@@ -327,10 +341,13 @@ fn no_comment_macro_def() {
 
 fn trailing_comment() {
     unsafe {} // SAFETY:
+    //
+    //~^^ undocumented_unsafe_blocks
 }
 
 fn internal_comment() {
     unsafe {
+        //~^ undocumented_unsafe_blocks
         // SAFETY:
     }
 }
@@ -341,10 +358,12 @@ fn interference() {
     let _ = 42;
 
     unsafe {};
+    //~^ undocumented_unsafe_blocks
 }
 
 pub fn print_binary_tree() {
     println!("{}", unsafe { String::from_utf8_unchecked(vec![]) });
+    //~^ undocumented_unsafe_blocks
 }
 
 mod unsafe_impl_smoke_test {
@@ -352,6 +371,7 @@ mod unsafe_impl_smoke_test {
 
     // error: no safety comment
     unsafe impl A for () {}
+    //~^ undocumented_unsafe_blocks
 
     // Safety: ok
     unsafe impl A for (i32) {}
@@ -359,6 +379,7 @@ mod unsafe_impl_smoke_test {
     mod sub_mod {
         // error:
         unsafe impl B for (u32) {}
+        //~^ undocumented_unsafe_blocks
         unsafe trait B {}
     }
 
@@ -380,6 +401,7 @@ mod unsafe_impl_from_macro {
     macro_rules! no_safety_comment {
         ($t:ty) => {
             unsafe impl T for $t {}
+            //~^ undocumented_unsafe_blocks
         };
     }
 
@@ -405,6 +427,8 @@ mod unsafe_impl_macro_and_not_macro {
     macro_rules! no_safety_comment {
         ($t:ty) => {
             unsafe impl T for $t {}
+            //~^ undocumented_unsafe_blocks
+            //~| undocumented_unsafe_blocks
         };
     }
 
@@ -413,12 +437,14 @@ mod unsafe_impl_macro_and_not_macro {
 
     // error
     unsafe impl T for (i32) {}
+    //~^ undocumented_unsafe_blocks
 
     // ok
     no_safety_comment!(u32);
 
     // error
     unsafe impl T for (bool) {}
+    //~^ undocumented_unsafe_blocks
 }
 
 #[rustfmt::skip]
@@ -465,19 +491,24 @@ mod unsafe_impl_invalid_comment {
     unsafe trait NoComment {}
 
     unsafe impl NoComment for () {}
+    //~^ undocumented_unsafe_blocks
 
     unsafe trait InlineComment {}
 
     /* SAFETY: */ unsafe impl InlineComment for () {}
+    //~^ undocumented_unsafe_blocks
 
     unsafe trait TrailingComment {}
 
     unsafe impl TrailingComment for () {} // SAFETY:
+    //~^ undocumented_unsafe_blocks
 
     unsafe trait Interference {}
     // SAFETY:
     const BIG_NUMBER: i32 = 1000000;
+    //~^ unnecessary_safety_comment
     unsafe impl Interference for () {}
+    //~^ undocumented_unsafe_blocks
 }
 
 unsafe trait ImplInFn {}
@@ -485,6 +516,7 @@ unsafe trait ImplInFn {}
 fn impl_in_fn() {
     // error
     unsafe impl ImplInFn for () {}
+    //~^ undocumented_unsafe_blocks
 
     // SAFETY: ok
     unsafe impl ImplInFn for (i32) {}
@@ -494,6 +526,7 @@ unsafe trait CrateRoot {}
 
 // error
 unsafe impl CrateRoot for () {}
+//~^ undocumented_unsafe_blocks
 
 // SAFETY: ok
 unsafe impl CrateRoot for (i32) {}
@@ -504,13 +537,17 @@ fn nested_block_separation_issue_9142() {
         // we need this comment to avoid rustfmt putting
         // it all on one line
         unsafe {};
+    //~[disabled]^ undocumented_unsafe_blocks
 
     // SAFETY: this is more than one level away, so it should warn
     let _ = {
+        //~^ unnecessary_safety_comment
         if unsafe { true } {
+            //~^ undocumented_unsafe_blocks
             todo!();
         } else {
             let bar = unsafe {};
+            //~^ undocumented_unsafe_blocks
             todo!();
             bar
         }
@@ -529,24 +566,29 @@ fn separate_line_from_let_issue_10832() {
     // SAFETY: fail ONLY if `accept-comment-above-statement = false`
     let _some_variable_with_a_very_long_name_to_break_the_line =
         unsafe { a_function_with_a_very_long_name_to_break_the_line() };
+    //~[disabled]^ undocumented_unsafe_blocks
 
     // SAFETY: fail ONLY if `accept-comment-above-statement = false`
     const _SOME_CONST_WITH_A_VERY_LONG_NAME_TO_BREAK_THE_LINE: u32 =
         unsafe { a_const_function_with_a_very_long_name_to_break_the_line() };
+    //~[disabled]^ undocumented_unsafe_blocks
 
     // SAFETY: fail ONLY if `accept-comment-above-statement = false`
     static _SOME_STATIC_WITH_A_VERY_LONG_NAME_TO_BREAK_THE_LINE: u32 =
         unsafe { a_const_function_with_a_very_long_name_to_break_the_line() };
+    //~[disabled]^ undocumented_unsafe_blocks
 }
 
 fn above_expr_attribute_issue_8679<T: Copy>() {
     // SAFETY: fail ONLY if `accept-comment-above-attribute = false`
     #[allow(unsafe_code)]
     unsafe {}
+    //~[disabled]^ undocumented_unsafe_blocks
 
     // SAFETY: fail ONLY if `accept-comment-above-attribute = false`
     #[expect(unsafe_code, reason = "totally safe")]
     unsafe {
+        //~[disabled]^ undocumented_unsafe_blocks
         *std::ptr::null::<T>()
     };
 
@@ -554,22 +596,26 @@ fn above_expr_attribute_issue_8679<T: Copy>() {
     #[allow(unsafe_code)]
     let _some_variable_with_a_very_long_name_to_break_the_line =
         unsafe { a_function_with_a_very_long_name_to_break_the_line() };
+    //~[disabled]^ undocumented_unsafe_blocks
 
     // SAFETY: fail ONLY if `accept-comment-above-attribute = false`
     #[allow(unsafe_code)]
     const _SOME_CONST_WITH_A_VERY_LONG_NAME_TO_BREAK_THE_LINE: u32 =
         unsafe { a_const_function_with_a_very_long_name_to_break_the_line() };
+    //~[disabled]^ undocumented_unsafe_blocks
 
     // SAFETY: fail ONLY if `accept-comment-above-attribute = false`
     #[allow(unsafe_code)]
     #[allow(non_upper_case_globals)]
     static _some_static_with_a_very_long_name_to_break_the_line: u32 =
         unsafe { a_const_function_with_a_very_long_name_to_break_the_line() };
+    //~[disabled]^ undocumented_unsafe_blocks
 
     // SAFETY:
     #[allow(unsafe_code)]
     // This shouldn't work either
     unsafe {}
+    //~[disabled]^ undocumented_unsafe_blocks
 }
 
 mod issue_11246 {

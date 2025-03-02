@@ -6,17 +6,26 @@ fn main() {
     // Disallow comparisons to empty
     let s = String::new();
     let _ = s.is_empty();
+    //~^ comparison_to_empty
     let _ = !s.is_empty();
+    //~^ comparison_to_empty
 
     let v = vec![0];
     let _ = v.is_empty();
+    //~^ comparison_to_empty
     let _ = !v.is_empty();
+    //~^ comparison_to_empty
     if (*v).is_empty() {}
+    //~^ comparison_to_empty
     let s = [0].as_slice();
     if s.is_empty() {}
+    //~^ comparison_to_empty
     if s.is_empty() {}
+    //~^ comparison_to_empty
     if s.is_empty()
+    //~^ comparison_to_empty
         && s.is_empty()
+    //~^ comparison_to_empty
     {}
 
     // Allow comparisons to non-empty
@@ -37,8 +46,12 @@ fn main() {
     // Also lint the `PartialEq` methods
     let s = String::new();
     let _ = s.is_empty();
+    //~^ comparison_to_empty
     let _ = !s.is_empty();
+    //~^ comparison_to_empty
     let v = vec![0];
     let _ = v.is_empty();
+    //~^ comparison_to_empty
     let _ = !v.is_empty();
+    //~^ comparison_to_empty
 }

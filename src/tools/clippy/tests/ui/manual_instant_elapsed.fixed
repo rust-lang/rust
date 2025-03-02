@@ -15,6 +15,7 @@ fn main() {
     }
 
     let duration = prev_instant.elapsed();
+    //~^ manual_instant_elapsed
 
     // don't catch
     let duration = prev_instant.elapsed();
@@ -24,4 +25,6 @@ fn main() {
     let ref_to_instant = &Instant::now();
 
     (*ref_to_instant).elapsed(); // to ensure parens are added correctly
+    //
+    //~^^ manual_instant_elapsed
 }

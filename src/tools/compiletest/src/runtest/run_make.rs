@@ -179,12 +179,7 @@ impl TestCx<'_> {
         //    library.
         // 2. We need to run the recipe binary.
 
-        // `self.config.build_base` is actually the build base folder + "test" + test suite name, it
-        // looks like `build/<host_triple>/test/run-make`. But we want `build/<host_triple>/`. Note
-        // that the `build` directory does not need to be called `build`, nor does it need to be
-        // under `src_root`, so we must compute it based off of `self.config.build_base`.
-        let build_root =
-            self.config.build_base.parent().and_then(Path::parent).unwrap().to_path_buf();
+        let host_build_root = self.config.build_root.join(&self.config.host);
 
         // We construct the following directory tree for each rmake.rs test:
         // ```
@@ -242,10 +237,10 @@ impl TestCx<'_> {
 
         let stage_number = self.config.stage;
 
-        let stage_tools_bin = build_root.join(format!("stage{stage_number}-tools-bin"));
+        let stage_tools_bin = host_build_root.join(format!("stage{stage_number}-tools-bin"));
         let support_lib_path = stage_tools_bin.join("librun_make_support.rlib");
 
-        let stage_tools = build_root.join(format!("stage{stage_number}-tools"));
+        let stage_tools = host_build_root.join(format!("stage{stage_number}-tools"));
         let support_lib_deps = stage_tools.join(&self.config.host).join("release").join("deps");
         let support_lib_deps_deps = stage_tools.join("release").join("deps");
 
@@ -311,7 +306,7 @@ impl TestCx<'_> {
         // to work correctly.
         //
         // See <https://github.com/rust-lang/rust/pull/122248> for more background.
-        let stage0_sysroot = build_root.join("stage0-sysroot");
+        let stage0_sysroot = host_build_root.join("stage0-sysroot");
         if std::env::var_os("COMPILETEST_FORCE_STAGE0").is_some() {
             rustc.arg("--sysroot").arg(&stage0_sysroot);
         }
@@ -326,7 +321,7 @@ impl TestCx<'_> {
         // provided through env vars.
 
         // Compute stage-specific standard library paths.
-        let stage_std_path = build_root.join(format!("stage{stage_number}")).join("lib");
+        let stage_std_path = host_build_root.join(format!("stage{stage_number}")).join("lib");
 
         // Compute dynamic library search paths for recipes.
         let recipe_dylib_search_paths = {
@@ -372,7 +367,7 @@ impl TestCx<'_> {
             // Provide path to sources root.
             .env("SOURCE_ROOT", &self.config.src_root)
             // Path to the host build directory.
-            .env("BUILD_ROOT", &build_root)
+            .env("BUILD_ROOT", &host_build_root)
             // Provide path to stage-corresponding rustc.
             .env("RUSTC", &self.config.rustc_path)
             // Provide the directory to libraries that are needed to run the *compiler*. This is not

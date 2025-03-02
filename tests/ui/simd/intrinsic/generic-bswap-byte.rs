@@ -1,6 +1,8 @@
 //@ run-pass
-#![feature(repr_simd, intrinsics)]
+#![feature(repr_simd, core_intrinsics)]
 #![allow(non_camel_case_types)]
+
+use std::intrinsics::simd::simd_bswap;
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
@@ -9,9 +11,6 @@ struct i8x4([i8; 4]);
 #[repr(simd)]
 #[derive(Copy, Clone)]
 struct u8x4([u8; 4]);
-
-#[rustc_intrinsic]
-unsafe fn simd_bswap<T>(x: T) -> T;
 
 fn main() {
     unsafe {

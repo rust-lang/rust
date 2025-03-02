@@ -18,7 +18,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/issue-66693.rs:16:15
    |
 LL | const _: () = panic!();
-   |               ^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/issue-66693.rs:16:15
+   |               ^^^^^^^^ evaluation panicked: explicit panic
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -26,7 +26,7 @@ error[E0080]: could not evaluate static initializer
   --> $DIR/issue-66693.rs:18:19
    |
 LL | static _BAR: () = panic!("panic in static");
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'panic in static', $DIR/issue-66693.rs:18:19
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation panicked: panic in static
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 

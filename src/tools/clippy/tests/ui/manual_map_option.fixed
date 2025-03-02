@@ -113,7 +113,16 @@ fn main() {
     }
 
     // #6811
-    Some(0).map(|x| vec![x]);
+    match Some(0) {
+        Some(x) => Some(vec![x]),
+        None => None,
+    };
+
+    // Don't lint, coercion
+    let x: Option<Vec<&[u8]>> = match Some(()) {
+        Some(_) => Some(vec![b"1234"]),
+        None => None,
+    };
 
     option_env!("").map(String::from);
 

@@ -3,9 +3,9 @@ error: you should not implement `visit_string` without also implementing `visit_
    |
 LL | /     fn visit_string<E>(self, _v: String) -> Result<Self::Value, E>
 LL | |
-LL | |
 LL | |     where
-...  |
+LL | |         E: serde::de::Error,
+LL | |     {
 LL | |         unimplemented!()
 LL | |     }
    | |_____^

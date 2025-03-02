@@ -394,8 +394,10 @@ impl<'tcx> TypeckResults<'tcx> {
         matches!(self.type_dependent_defs().get(expr.hir_id), Some(Ok((DefKind::AssocFn, _))))
     }
 
-    pub fn extract_binding_mode(&self, s: &Session, id: HirId, sp: Span) -> Option<BindingMode> {
-        self.pat_binding_modes().get(id).copied().or_else(|| {
+    /// Returns the computed binding mode for a `PatKind::Binding` pattern
+    /// (after match ergonomics adjustments).
+    pub fn extract_binding_mode(&self, s: &Session, id: HirId, sp: Span) -> BindingMode {
+        self.pat_binding_modes().get(id).copied().unwrap_or_else(|| {
             s.dcx().span_bug(sp, "missing binding mode");
         })
     }

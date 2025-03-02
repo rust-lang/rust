@@ -3,7 +3,7 @@ use std::assert_matches::assert_matches;
 use arrayvec::ArrayVec;
 use rustc_abi::{self as abi, FIRST_VARIANT, FieldIdx};
 use rustc_middle::ty::adjustment::PointerCoercion;
-use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_session::config::OptLevel;
@@ -878,7 +878,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let ty = cg_place.layout.ty;
         assert!(
-            if bx.cx().type_has_metadata(ty) {
+            if bx.cx().tcx().type_has_metadata(ty, bx.cx().typing_env()) {
                 matches!(val, OperandValue::Pair(..))
             } else {
                 matches!(val, OperandValue::Immediate(..))
@@ -1190,7 +1190,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             assert!(!self.cx.is_backend_scalar_pair(layout));
             OperandValueKind::Immediate(match layout.backend_repr {
                 abi::BackendRepr::Scalar(s) => s,
-                abi::BackendRepr::Vector { element, .. } => element,
+                abi::BackendRepr::SimdVector { element, .. } => element,
                 x => span_bug!(self.mir.span, "Couldn't translate {x:?} as backend immediate"),
             })
         } else if self.cx.is_backend_scalar_pair(layout) {

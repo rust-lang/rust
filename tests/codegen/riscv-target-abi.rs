@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions:riscv64gc riscv32gc riscv32imac
 
 //@[riscv64gc] compile-flags: --target=riscv64gc-unknown-linux-gnu
@@ -16,5 +17,5 @@
 #![crate_type = "lib"]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
+extern crate minicore;
+use minicore::*;

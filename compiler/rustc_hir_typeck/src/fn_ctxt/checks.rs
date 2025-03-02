@@ -110,8 +110,40 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.tcx.erase_regions(ty)
                 }
             };
-            InlineAsmCtxt::new(self.tcx, enclosing_id, self.typing_env(self.param_env), expr_ty)
-                .check_asm(asm);
+            let node_ty = |hir_id: HirId| self.typeck_results.borrow().node_type(hir_id);
+            InlineAsmCtxt::new(
+                self.tcx,
+                enclosing_id,
+                self.typing_env(self.param_env),
+                expr_ty,
+                node_ty,
+            )
+            .check_asm(asm);
+        }
+    }
+
+    pub(in super::super) fn check_repeat_exprs(&self) {
+        let mut deferred_repeat_expr_checks = self.deferred_repeat_expr_checks.borrow_mut();
+        debug!("FnCtxt::check_repeat_exprs: {} deferred checks", deferred_repeat_expr_checks.len());
+        for (element, element_ty, count) in deferred_repeat_expr_checks.drain(..) {
+            // We want to emit an error if the const is not structurally resolveable as otherwise
+            // we can find up conservatively proving `Copy` which may infer the repeat expr count
+            // to something that never required `Copy` in the first place.
+            let count =
+                self.structurally_resolve_const(element.span, self.normalize(element.span, count));
+
+            // Avoid run on "`NotCopy: Copy` is not implemented" errors when the repeat expr count
+            // is erroneous/unknown. The user might wind up specifying a repeat count of 0/1.
+            if count.references_error() {
+                continue;
+            }
+
+            // If the length is 0, we don't create any elements, so we don't copy any.
+            // If the length is 1, we don't copy that one element, we move it. Only check
+            // for `Copy` if the length is larger.
+            if count.try_to_target_usize(self.tcx).is_none_or(|x| x > 1) {
+                self.enforce_repeat_element_needs_copy_bound(element, element_ty);
+            }
         }
     }
 

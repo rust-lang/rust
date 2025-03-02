@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ assembly-output: emit-asm
 // ignore-tidy-linelength
 //@ revisions: aarch64_be_unknown_linux_gnu
@@ -709,8 +710,8 @@
 #![no_core]
 #![crate_type = "lib"]
 
-#[lang = "sized"]
-trait Sized {}
+extern crate minicore;
+use minicore::*;
 
 // Force linkage to ensure code is actually generated
 #[no_mangle]

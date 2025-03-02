@@ -1410,7 +1410,7 @@ impl AddressSpace {
 pub enum BackendRepr {
     Scalar(Scalar),
     ScalarPair(Scalar, Scalar),
-    Vector {
+    SimdVector {
         element: Scalar,
         count: u64,
     },
@@ -1426,9 +1426,9 @@ impl BackendRepr {
     #[inline]
     pub fn is_unsized(&self) -> bool {
         match *self {
-            BackendRepr::Scalar(_) | BackendRepr::ScalarPair(..) | BackendRepr::Vector { .. } => {
-                false
-            }
+            BackendRepr::Scalar(_)
+            | BackendRepr::ScalarPair(..)
+            | BackendRepr::SimdVector { .. } => false,
             BackendRepr::Memory { sized } => !sized,
         }
     }
@@ -1467,7 +1467,7 @@ impl BackendRepr {
             BackendRepr::Scalar(s) => Some(s.align(cx).abi),
             BackendRepr::ScalarPair(s1, s2) => Some(s1.align(cx).max(s2.align(cx)).abi),
             // The align of a Vector can vary in surprising ways
-            BackendRepr::Vector { .. } | BackendRepr::Memory { .. } => None,
+            BackendRepr::SimdVector { .. } | BackendRepr::Memory { .. } => None,
         }
     }
 
@@ -1489,7 +1489,7 @@ impl BackendRepr {
                 Some(size)
             }
             // The size of a Vector can vary in surprising ways
-            BackendRepr::Vector { .. } | BackendRepr::Memory { .. } => None,
+            BackendRepr::SimdVector { .. } | BackendRepr::Memory { .. } => None,
         }
     }
 
@@ -1500,8 +1500,8 @@ impl BackendRepr {
             BackendRepr::ScalarPair(s1, s2) => {
                 BackendRepr::ScalarPair(s1.to_union(), s2.to_union())
             }
-            BackendRepr::Vector { element, count } => {
-                BackendRepr::Vector { element: element.to_union(), count }
+            BackendRepr::SimdVector { element, count } => {
+                BackendRepr::SimdVector { element: element.to_union(), count }
             }
             BackendRepr::Memory { .. } => BackendRepr::Memory { sized: true },
         }
@@ -1513,8 +1513,8 @@ impl BackendRepr {
             // We do *not* ignore the sign since it matters for some ABIs (e.g. s390x).
             (BackendRepr::Scalar(l), BackendRepr::Scalar(r)) => l.primitive() == r.primitive(),
             (
-                BackendRepr::Vector { element: element_l, count: count_l },
-                BackendRepr::Vector { element: element_r, count: count_r },
+                BackendRepr::SimdVector { element: element_l, count: count_l },
+                BackendRepr::SimdVector { element: element_r, count: count_r },
             ) => element_l.primitive() == element_r.primitive() && count_l == count_r,
             (BackendRepr::ScalarPair(l1, l2), BackendRepr::ScalarPair(r1, r2)) => {
                 l1.primitive() == r1.primitive() && l2.primitive() == r2.primitive()
@@ -1735,7 +1735,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
     /// Returns `true` if this is an aggregate type (including a ScalarPair!)
     pub fn is_aggregate(&self) -> bool {
         match self.backend_repr {
-            BackendRepr::Scalar(_) | BackendRepr::Vector { .. } => false,
+            BackendRepr::Scalar(_) | BackendRepr::SimdVector { .. } => false,
             BackendRepr::ScalarPair(..) | BackendRepr::Memory { .. } => true,
         }
     }
@@ -1877,9 +1877,9 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
     /// non-trivial alignment constraints. You probably want to use `is_1zst` instead.
     pub fn is_zst(&self) -> bool {
         match self.backend_repr {
-            BackendRepr::Scalar(_) | BackendRepr::ScalarPair(..) | BackendRepr::Vector { .. } => {
-                false
-            }
+            BackendRepr::Scalar(_)
+            | BackendRepr::ScalarPair(..)
+            | BackendRepr::SimdVector { .. } => false,
             BackendRepr::Memory { sized } => sized && self.size.bytes() == 0,
         }
     }

@@ -13,7 +13,7 @@ LL +     let foo = 5 - 6;
    |
 
 error: taken reference of right operand
-  --> tests/ui/op_ref.rs:58:13
+  --> tests/ui/op_ref.rs:57:13
    |
 LL |     let z = x & &y;
    |             ^^^^--
@@ -21,7 +21,7 @@ LL |     let z = x & &y;
    |                 help: use the right value directly: `y`
 
 error: taken reference of right operand
-  --> tests/ui/op_ref.rs:92:17
+  --> tests/ui/op_ref.rs:91:17
    |
 LL |         let _ = one * &self;
    |                 ^^^^^^-----

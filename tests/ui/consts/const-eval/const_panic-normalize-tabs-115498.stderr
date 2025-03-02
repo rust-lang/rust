@@ -2,7 +2,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic-normalize-tabs-115498.rs:3:17
    |
 LL | struct Bug([u8; panic!{"\t"}]);
-   |                 ^^^^^^^^^^^^ the evaluated program panicked at '    ', $DIR/const_panic-normalize-tabs-115498.rs:3:17
+   |                 ^^^^^^^^^^^^ evaluation panicked:     
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 

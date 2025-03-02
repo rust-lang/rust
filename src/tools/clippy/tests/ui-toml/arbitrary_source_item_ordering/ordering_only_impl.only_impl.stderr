@@ -13,7 +13,7 @@ LL |     fn b() {}
    = help: to override `-D warnings` add `#[allow(clippy::arbitrary_source_item_ordering)]`
 
 error: incorrect ordering of impl items (defined order: [Const, Type, Fn])
-  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_only_impl.rs:45:5
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_only_impl.rs:46:5
    |
 LL |     type SomeType = i8;
    |     ^^^^^^^^^^^^^^^^^^^
@@ -25,13 +25,13 @@ LL |     fn a() {}
    |     ^^^^^^^^^
 
 error: incorrect ordering of impl items (defined order: [Const, Type, Fn])
-  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_only_impl.rs:47:5
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_only_impl.rs:49:5
    |
 LL |     const A: bool = true;
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
 note: should be placed before `SomeType`
-  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_only_impl.rs:45:5
+  --> tests/ui-toml/arbitrary_source_item_ordering/ordering_only_impl.rs:46:5
    |
 LL |     type SomeType = i8;
    |     ^^^^^^^^^^^^^^^^^^^

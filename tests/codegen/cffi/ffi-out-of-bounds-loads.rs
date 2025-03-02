@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions: linux apple
 //@ min-llvm-version: 19
 //@ compile-flags: -Copt-level=0 -Cno-prepopulate-passes -Zlint-llvm-ir -Cllvm-args=-lint-abort-on-error
@@ -14,12 +15,8 @@
 #![no_std]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
-#[lang = "freeze"]
-trait Freeze {}
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 #[repr(C)]
 struct S {

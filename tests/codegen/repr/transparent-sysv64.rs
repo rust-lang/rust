@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions: linux apple win
 //@ compile-flags: -Copt-level=3 -C no-prepopulate-passes
 
@@ -13,12 +14,8 @@
 #![no_std]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
-#[lang = "freeze"]
-trait Freeze {}
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 #[repr(C)]
 pub struct Rgb8 {

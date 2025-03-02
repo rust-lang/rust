@@ -10,6 +10,7 @@ pub fn returns_unit_error_no_lint() -> Result<u32, ()> {
 
 #[clippy::msrv = "1.81"]
 pub fn returns_unit_error_lint() -> Result<u32, ()> {
+    //~^ result_unit_err
     Err(())
 }
 

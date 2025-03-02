@@ -34,7 +34,7 @@ fn result_err_ty<'tcx>(
     }
 }
 
-pub(super) fn check_item<'tcx>(cx: &LateContext<'tcx>, item: &hir::Item<'tcx>, large_err_threshold: u64, msrv: &Msrv) {
+pub(super) fn check_item<'tcx>(cx: &LateContext<'tcx>, item: &hir::Item<'tcx>, large_err_threshold: u64, msrv: Msrv) {
     if let hir::ItemKind::Fn { ref sig, .. } = item.kind
         && let Some((hir_ty, err_ty)) = result_err_ty(cx, sig.decl, item.owner_id.def_id, item.span)
     {
@@ -50,7 +50,7 @@ pub(super) fn check_impl_item<'tcx>(
     cx: &LateContext<'tcx>,
     item: &hir::ImplItem<'tcx>,
     large_err_threshold: u64,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) {
     // Don't lint if method is a trait's implementation, we can't do anything about those
     if let hir::ImplItemKind::Fn(ref sig, _) = item.kind
@@ -69,7 +69,7 @@ pub(super) fn check_trait_item<'tcx>(
     cx: &LateContext<'tcx>,
     item: &hir::TraitItem<'tcx>,
     large_err_threshold: u64,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) {
     if let hir::TraitItemKind::Fn(ref sig, _) = item.kind {
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
@@ -82,8 +82,8 @@ pub(super) fn check_trait_item<'tcx>(
     }
 }
 
-fn check_result_unit_err(cx: &LateContext<'_>, err_ty: Ty<'_>, fn_header_span: Span, msrv: &Msrv) {
-    if err_ty.is_unit() && (!is_no_std_crate(cx) || msrv.meets(msrvs::ERROR_IN_CORE)) {
+fn check_result_unit_err(cx: &LateContext<'_>, err_ty: Ty<'_>, fn_header_span: Span, msrv: Msrv) {
+    if err_ty.is_unit() && (!is_no_std_crate(cx) || msrv.meets(cx, msrvs::ERROR_IN_CORE)) {
         span_lint_and_help(
             cx,
             RESULT_UNIT_ERR,

@@ -9,16 +9,25 @@ impl NotStr {
 fn main() {
     let sentence = "Hello, world!";
     sentence.trim_end_matches(|c: char| c == '.' || c == ',' || c == '!' || c == '?');
+    //~^ manual_pattern_char_comparison
     sentence.split(|c: char| c == '\n' || c == 'X');
+    //~^ manual_pattern_char_comparison
     sentence.split(|c| c == '\n' || c == 'X');
+    //~^ manual_pattern_char_comparison
     sentence.splitn(3, |c: char| c == 'X');
+    //~^ manual_pattern_char_comparison
     sentence.splitn(3, |c: char| c.is_whitespace() || c == 'X');
     let char_compare = 'X';
     sentence.splitn(3, |c: char| c == char_compare);
+    //~^ manual_pattern_char_comparison
     sentence.split(|c: char| matches!(c, '\n' | 'X' | 'Y'));
+    //~^ manual_pattern_char_comparison
     sentence.splitn(3, |c: char| matches!(c, 'X'));
+    //~^ manual_pattern_char_comparison
     sentence.splitn(3, |c: char| matches!(c, 'X' | 'W'));
+    //~^ manual_pattern_char_comparison
     sentence.find(|c| c == '🎈');
+    //~^ manual_pattern_char_comparison
 
     let not_str = NotStr;
     not_str.find(|c: char| c == 'X');
@@ -58,4 +67,5 @@ fn msrv_1_57() {
 fn msrv_1_58() {
     let sentence = "Hello, world!";
     sentence.trim_end_matches(|c: char| c == '.' || c == ',' || c == '!' || c == '?');
+    //~^ manual_pattern_char_comparison
 }

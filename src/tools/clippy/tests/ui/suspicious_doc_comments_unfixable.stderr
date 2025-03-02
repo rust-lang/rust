@@ -26,6 +26,7 @@ error: this is an outer doc comment and does not apply to the parent module or c
    |
 LL | / ///! a
 LL | |
+LL | |
 LL | | ///! b
 LL | | /// c
 LL | | ///! d
@@ -34,6 +35,7 @@ LL | | ///! d
 help: use an inner doc comment to document the parent module or crate
    |
 LL + //! a
+LL |
 LL |
 LL + //! b
 LL | /// c

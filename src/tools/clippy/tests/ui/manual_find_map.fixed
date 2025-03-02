@@ -7,12 +7,15 @@
 fn main() {
     // is_some(), unwrap()
     let _ = (0..).find_map(|a| to_opt(a));
+    //~^ manual_find_map
 
     // ref pattern, expect()
     let _ = (0..).find_map(|a| to_opt(a));
+    //~^ manual_find_map
 
     // is_ok(), unwrap_or()
     let _ = (0..).find_map(|a| to_res(a).ok());
+    //~^ manual_find_map
 
     let _ = (1..5)
         .find_map(|y| *to_ref(to_opt(y)));
@@ -28,20 +31,34 @@ fn main() {
 #[rustfmt::skip]
 fn simple_equal() {
     iter::<Option<u8>>().find_map(|x| x);
+    //~^ manual_find_map
     iter::<&Option<u8>>().find_map(|x| *x);
+    //~^ manual_find_map
     iter::<&&Option<u8>>().find_map(|x| **x);
+    //~^ manual_find_map
     iter::<Option<&u8>>().find_map(|x| x.cloned());
+    //~^ manual_find_map
     iter::<&Option<&u8>>().find_map(|x| x.cloned());
+    //~^ manual_find_map
     iter::<&Option<String>>().find_map(|x| x.as_deref());
+    //~^ manual_find_map
     iter::<Option<&String>>().find_map(|y| to_ref(y).cloned());
+    //~^ manual_find_map
 
     iter::<Result<u8, ()>>().find_map(|x| x.ok());
+    //~^ manual_find_map
     iter::<&Result<u8, ()>>().find_map(|x| x.ok());
+    //~^ manual_find_map
     iter::<&&Result<u8, ()>>().find_map(|x| x.ok());
+    //~^ manual_find_map
     iter::<Result<&u8, ()>>().find_map(|x| x.cloned().ok());
+    //~^ manual_find_map
     iter::<&Result<&u8, ()>>().find_map(|x| x.cloned().ok());
+    //~^ manual_find_map
     iter::<&Result<String, ()>>().find_map(|x| x.as_deref().ok());
+    //~^ manual_find_map
     iter::<Result<&String, ()>>().find_map(|y| to_ref(y).cloned().ok());
+    //~^ manual_find_map
 }
 
 fn no_lint() {

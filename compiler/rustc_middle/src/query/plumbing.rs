@@ -258,7 +258,7 @@ macro_rules! query_if_arena {
     };
 }
 
-/// If `separate_provide_if_extern`, then the key can be projected to its
+/// If `separate_provide_extern`, then the key can be projected to its
 /// local key via `<$K as AsLocalKey>::LocalKey`.
 macro_rules! local_key_if_separate_extern {
     ([] $($K:tt)*) => {

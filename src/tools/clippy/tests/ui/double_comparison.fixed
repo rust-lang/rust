@@ -4,27 +4,35 @@ fn main() {
     let x = 1;
     let y = 2;
     if x <= y {
+        //~^ double_comparisons
         // do something
     }
     if x <= y {
+        //~^ double_comparisons
         // do something
     }
     if x >= y {
+        //~^ double_comparisons
         // do something
     }
     if x >= y {
+        //~^ double_comparisons
         // do something
     }
     if x != y {
+        //~^ double_comparisons
         // do something
     }
     if x != y {
+        //~^ double_comparisons
         // do something
     }
     if x == y {
+        //~^ double_comparisons
         // do something
     }
     if x == y {
+        //~^ double_comparisons
         // do something
     }
 }

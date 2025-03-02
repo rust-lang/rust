@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions: aarch64 android
 //@[aarch64] compile-flags: --target aarch64-unknown-none -Zfixed-x18 -Zsanitizer=shadow-call-stack
 //@[aarch64] needs-llvm-components: aarch64
@@ -9,8 +10,8 @@
 #![feature(no_core, lang_items)]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
+extern crate minicore;
+use minicore::*;
 
 // CHECK: ; Function Attrs:{{.*}}shadowcallstack
 #[no_mangle]

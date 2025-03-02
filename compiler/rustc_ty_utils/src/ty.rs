@@ -37,8 +37,6 @@ fn sized_constraint_for_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'
         | Never
         | Dynamic(_, _, ty::DynStar) => None,
 
-        UnsafeBinder(_) => todo!(),
-
         // these are never sized
         Str | Slice(..) | Dynamic(_, _, ty::Dyn) | Foreign(..) => Some(ty),
 
@@ -52,8 +50,13 @@ fn sized_constraint_for_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'
             sized_constraint_for_ty(tcx, ty)
         }),
 
-        // these can be sized or unsized
+        // these can be sized or unsized.
         Param(..) | Alias(..) | Error(_) => Some(ty),
+
+        // We cannot instantiate the binder, so just return the *original* type back,
+        // but only if the inner type has a sized constraint. Thus we skip the binder,
+        // but don't actually use the result from `sized_constraint_for_ty`.
+        UnsafeBinder(inner_ty) => sized_constraint_for_ty(tcx, inner_ty.skip_binder()).map(|_| ty),
 
         Placeholder(..) | Bound(..) | Infer(..) => {
             bug!("unexpected type `{ty:?}` in sized_constraint_for_ty")

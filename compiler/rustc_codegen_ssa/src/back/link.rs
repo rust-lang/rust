@@ -1726,8 +1726,12 @@ fn exec_linker(
         args.push_str(
             &Escape {
                 arg: arg.to_str().unwrap(),
-                // LLD also uses MSVC-like parsing for @-files by default when running on windows hosts
-                is_like_msvc: sess.target.is_like_msvc || (cfg!(windows) && flavor.uses_lld()),
+                // Windows-style escaping for @-files is used by
+                // - all linkers targeting MSVC-like targets, including LLD
+                // - all LLD flavors running on Windows hosts
+                // С/С++ compilers use Posix-style escaping (except clang-cl, which we do not use).
+                is_like_msvc: sess.target.is_like_msvc
+                    || (cfg!(windows) && flavor.uses_lld() && !flavor.uses_cc()),
             }
             .to_string(),
         );

@@ -8,6 +8,7 @@ use derive_where::derive_where;
 use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 
+use crate::search_graph::PathKind;
 use crate::{self as ty, Canonical, CanonicalVarValues, Interner, Upcast};
 
 pub type CanonicalInput<I, T = <I as Interner>::Predicate> =
@@ -78,6 +79,13 @@ pub enum GoalSource {
     /// This is used in two places: projecting to an opaque whose hidden type
     /// is already registered in the opaque type storage, and for rigid projections.
     AliasWellFormed,
+
+    /// In case normalizing aliases in nested goals cycles, eagerly normalizing these
+    /// aliases in the context of the parent may incorrectly change the cycle kind.
+    /// Normalizing aliases in goals therefore tracks the original path kind for this
+    /// nested goal. See the comment of the `ReplaceAliasWithInfer` visitor for more
+    /// details.
+    NormalizeGoal(PathKind),
 }
 
 #[derive_where(Clone; I: Interner, Goal<I, P>: Clone)]

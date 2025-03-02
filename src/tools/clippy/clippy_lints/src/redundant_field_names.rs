@@ -1,6 +1,6 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::msrvs::{self, MsrvStack};
 use rustc_ast::ast::{Expr, ExprKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
@@ -36,13 +36,13 @@ declare_clippy_lint! {
 }
 
 pub struct RedundantFieldNames {
-    msrv: Msrv,
+    msrv: MsrvStack,
 }
 
 impl RedundantFieldNames {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
-            msrv: conf.msrv.clone(),
+            msrv: MsrvStack::new(conf.msrv),
         }
     }
 }
@@ -80,5 +80,6 @@ impl EarlyLintPass for RedundantFieldNames {
             }
         }
     }
-    extract_msrv_attr!(EarlyContext);
+
+    extract_msrv_attr!();
 }

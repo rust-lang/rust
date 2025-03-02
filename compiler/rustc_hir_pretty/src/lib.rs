@@ -10,7 +10,7 @@ use std::cell::Cell;
 use std::vec;
 
 use rustc_abi::ExternAbi;
-use rustc_ast::util::parser::{self, AssocOp, ExprPrecedence, Fixity};
+use rustc_ast::util::parser::{self, ExprPrecedence, Fixity};
 use rustc_ast::{AttrStyle, DUMMY_NODE_ID, DelimArgs};
 use rustc_ast_pretty::pp::Breaks::{Consistent, Inconsistent};
 use rustc_ast_pretty::pp::{self, Breaks};
@@ -1296,12 +1296,11 @@ impl<'a> State<'a> {
     }
 
     fn print_expr_binary(&mut self, op: hir::BinOp, lhs: &hir::Expr<'_>, rhs: &hir::Expr<'_>) {
-        let assoc_op = AssocOp::from_ast_binop(op.node);
-        let binop_prec = assoc_op.precedence();
+        let binop_prec = op.node.precedence();
         let left_prec = lhs.precedence();
         let right_prec = rhs.precedence();
 
-        let (mut left_needs_paren, right_needs_paren) = match assoc_op.fixity() {
+        let (mut left_needs_paren, right_needs_paren) = match op.node.fixity() {
             Fixity::Left => (left_prec < binop_prec, right_prec <= binop_prec),
             Fixity::Right => (left_prec <= binop_prec, right_prec < binop_prec),
             Fixity::None => (left_prec <= binop_prec, right_prec <= binop_prec),
@@ -1414,7 +1413,8 @@ impl<'a> State<'a> {
                 hir::InlineAsmOperand::Const { ref anon_const } => {
                     s.word("const");
                     s.space();
-                    s.print_anon_const(anon_const);
+                    // Not using `print_inline_const` to avoid additional `const { ... }`
+                    s.ann.nested(s, Nested::Body(anon_const.body))
                 }
                 hir::InlineAsmOperand::SymFn { ref expr } => {
                     s.word("sym_fn");

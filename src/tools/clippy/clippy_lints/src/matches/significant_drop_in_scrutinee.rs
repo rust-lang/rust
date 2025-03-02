@@ -199,7 +199,7 @@ impl<'a, 'tcx> SigDropChecker<'a, 'tcx> {
             return false;
         }
 
-        let result = match ty.kind() {
+        match ty.kind() {
             rustc_middle::ty::Adt(adt, args) => {
                 // if some field has significant drop,
                 adt.all_fields()
@@ -223,9 +223,7 @@ impl<'a, 'tcx> SigDropChecker<'a, 'tcx> {
             rustc_middle::ty::Tuple(tys) => tys.iter().any(|ty| self.has_sig_drop_attr_impl(ty)),
             rustc_middle::ty::Array(ty, _) | rustc_middle::ty::Slice(ty) => self.has_sig_drop_attr_impl(*ty),
             _ => false,
-        };
-
-        result
+        }
     }
 }
 

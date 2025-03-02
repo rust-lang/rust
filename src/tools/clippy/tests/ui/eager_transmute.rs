@@ -19,20 +19,27 @@ struct Data {
 
 fn int_to_opcode(op: u8) -> Option<Opcode> {
     (op < 4).then_some(unsafe { std::mem::transmute(op) })
+    //~^ eager_transmute
 }
 
 fn f(op: u8, op2: Data, unrelated: u8) {
     true.then_some(unsafe { std::mem::transmute::<_, Opcode>(op) });
     (unrelated < 4).then_some(unsafe { std::mem::transmute::<_, Opcode>(op) });
     (op < 4).then_some(unsafe { std::mem::transmute::<_, Opcode>(op) });
+    //~^ eager_transmute
     (op > 4).then_some(unsafe { std::mem::transmute::<_, Opcode>(op) });
+    //~^ eager_transmute
     (op == 0).then_some(unsafe { std::mem::transmute::<_, Opcode>(op) });
+    //~^ eager_transmute
 
     let _: Option<Opcode> = (op > 0 && op < 10).then_some(unsafe { std::mem::transmute(op) });
+    //~^ eager_transmute
     let _: Option<Opcode> = (op > 0 && op < 10 && unrelated == 0).then_some(unsafe { std::mem::transmute(op) });
+    //~^ eager_transmute
 
     // lint even when the transmutable goes through field/array accesses
     let _: Option<Opcode> = (op2.foo[0] > 0 && op2.foo[0] < 10).then_some(unsafe { std::mem::transmute(op2.foo[0]) });
+    //~^ eager_transmute
 
     // don't lint: wrong index used in the transmute
     let _: Option<Opcode> = (op2.foo[0] > 0 && op2.foo[0] < 10).then_some(unsafe { std::mem::transmute(op2.foo[1]) });
@@ -45,11 +52,17 @@ fn f(op: u8, op2: Data, unrelated: u8) {
 
     // range contains checks
     let _: Option<Opcode> = (1..=3).contains(&op).then_some(unsafe { std::mem::transmute(op) });
+    //~^ eager_transmute
     let _: Option<Opcode> = ((1..=3).contains(&op) || op == 4).then_some(unsafe { std::mem::transmute(op) });
+    //~^ eager_transmute
     let _: Option<Opcode> = (1..3).contains(&op).then_some(unsafe { std::mem::transmute(op) });
+    //~^ eager_transmute
     let _: Option<Opcode> = (1..).contains(&op).then_some(unsafe { std::mem::transmute(op) });
+    //~^ eager_transmute
     let _: Option<Opcode> = (..3).contains(&op).then_some(unsafe { std::mem::transmute(op) });
+    //~^ eager_transmute
     let _: Option<Opcode> = (..=3).contains(&op).then_some(unsafe { std::mem::transmute(op) });
+    //~^ eager_transmute
 
     // unrelated binding in contains
     let _: Option<Opcode> = (1..=3)
@@ -59,6 +72,7 @@ fn f(op: u8, op2: Data, unrelated: u8) {
 
 unsafe fn f2(op: u8) {
     (op < 4).then_some(std::mem::transmute::<_, Opcode>(op));
+    //~^ eager_transmute
 }
 
 #[rustc_layout_scalar_valid_range_end(254)]
@@ -88,18 +102,21 @@ impls!(NonMaxU8, NonZeroNonMaxU8);
 fn niche_tests(v1: u8, v2: NonZero<u8>, v3: NonZeroNonMaxU8) {
     // u8 -> NonZero<u8>, do lint
     let _: Option<NonZero<u8>> = (v1 > 0).then_some(unsafe { std::mem::transmute(v1) });
+    //~^ eager_transmute
 
     // NonZero<u8> -> u8, don't lint, target type has no niche and therefore a higher validity range
     let _: Option<u8> = (v2 > NonZero::new(1u8).unwrap()).then_some(unsafe { std::mem::transmute(v2) });
 
     // NonZero<u8> -> NonMaxU8, do lint, different niche
     let _: Option<NonMaxU8> = (v2 < NonZero::new(255u8).unwrap()).then_some(unsafe { std::mem::transmute(v2) });
+    //~^ eager_transmute
 
     // NonZeroNonMaxU8 -> NonMaxU8, don't lint, target type has more validity
     let _: Option<NonMaxU8> = (v3 < 255).then_some(unsafe { std::mem::transmute(v2) });
 
     // NonZero<u8> -> NonZeroNonMaxU8, do lint, target type has less validity
     let _: Option<NonZeroNonMaxU8> = (v2 < NonZero::new(255u8).unwrap()).then_some(unsafe { std::mem::transmute(v2) });
+    //~^ eager_transmute
 }
 
 fn main() {}

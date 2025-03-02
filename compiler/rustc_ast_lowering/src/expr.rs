@@ -671,10 +671,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let span = self.lower_span(arm.span);
         self.lower_attrs(hir_id, &arm.attrs, arm.span);
         let is_never_pattern = pat.is_never_pattern();
-        let body = if let Some(body) = &arm.body
+        // We need to lower the body even if it's unneeded for never pattern in match,
+        // ensure that we can get HirId for DefId if need (issue #137708).
+        let body = arm.body.as_ref().map(|x| self.lower_expr(x));
+        let body = if let Some(body) = body
             && !is_never_pattern
         {
-            self.lower_expr(body)
+            body
         } else {
             // Either `body.is_none()` or `is_never_pattern` here.
             if !is_never_pattern {

@@ -11,7 +11,9 @@ fn main() {
     };
     let mut a = Data { field: false };
     a.field = random() && random();
+    //~^^^^^ needless_bool_assign
     a.field = !(random() && random());
+    //~^^^^^ needless_bool_assign
     // Do not lint…
     if random() {
         a.field = false;
@@ -22,6 +24,8 @@ fn main() {
     // This one also triggers lint `clippy::if_same_then_else`
     // which does not suggest a rewrite.
     random(); a.field = true;
+    //~^^^^^ if_same_then_else
+    //~| needless_bool_assign
     let mut b = false;
     if random() {
         a.field = false;

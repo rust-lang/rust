@@ -1,3 +1,5 @@
+// Tested with nightly-2025-02-13
+
 #![feature(rustc_private)]
 
 extern crate rustc_ast;
@@ -18,7 +20,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use rustc_ast_pretty::pprust::item_to_string;
-use rustc_driver::{Compilation, run_compiler};
+use rustc_driver::{run_compiler, Compilation};
 use rustc_interface::interface::{Compiler, Config};
 use rustc_middle::ty::TyCtxt;
 
@@ -74,8 +76,8 @@ impl rustc_driver::Callbacks for MyCallbacks {
         for id in hir_krate.items() {
             let item = hir_krate.item(id);
             // Use pattern-matching to find a specific node inside the main function.
-            if let rustc_hir::ItemKind::Fn(_, _, body_id) = item.kind {
-                let expr = &tcx.hir_body(body_id).value;
+            if let rustc_hir::ItemKind::Fn { body, .. } = item.kind {
+                let expr = &tcx.hir_body(body).value;
                 if let rustc_hir::ExprKind::Block(block, _) = expr.kind {
                     if let rustc_hir::StmtKind::Let(let_stmt) = block.stmts[0].kind {
                         if let Some(expr) = let_stmt.init {
@@ -94,5 +96,13 @@ impl rustc_driver::Callbacks for MyCallbacks {
 }
 
 fn main() {
-    run_compiler(&["main.rs".to_string()], &mut MyCallbacks);
+    run_compiler(
+        &[
+            // The first argument, which in practice contains the name of the binary being executed
+            // (i.e. "rustc") is ignored by rustc.
+            "ignored".to_string(),
+            "main.rs".to_string(),
+        ],
+        &mut MyCallbacks,
+    );
 }

@@ -6,8 +6,8 @@ on:
       - master
   pull_request:
   schedule:
-    # Run at 18:00 UTC every day
-    - cron: '0 18 * * *'
+    # Run multiple times a day as the successfull cached links are not checked every time.
+    - cron: '0 */8 * * *'
 
 jobs:
   ci:
@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       MDBOOK_VERSION: 0.4.21
-      MDBOOK_LINKCHECK2_VERSION: 0.8.1
+      MDBOOK_LINKCHECK2_VERSION: 0.9.1
       MDBOOK_MERMAID_VERSION: 0.12.6
       MDBOOK_TOC_VERSION: 0.11.2
       DEPLOY_DIR: book/html

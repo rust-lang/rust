@@ -31,6 +31,7 @@ fn main() {
 
     let _ = if let Ok(v) = funcall() {
         //~^ manual_ok_err
+
         Some(v)
     } else {
         None
@@ -38,6 +39,7 @@ fn main() {
 
     let _ = if let Err(v) = funcall() {
         //~^ manual_ok_err
+
         Some(v)
     } else {
         None
@@ -122,4 +124,15 @@ const fn cf(x: Result<u32, &'static str>) -> Option<u32> {
         Ok(v) => Some(v),
         Err(_) => None,
     }
+}
+
+fn issue14239() {
+    let _ = if false {
+        None
+    } else if let Ok(n) = "1".parse::<u8>() {
+        Some(n)
+    } else {
+        None
+    };
+    //~^^^^^ manual_ok_err
 }

@@ -12,31 +12,37 @@ fn main() {
     // Should lint
     // precedence
     if a {
+        //~^ bool_to_int_with_if
         1
     } else {
         0
     };
     if a {
+        //~^ bool_to_int_with_if
         0
     } else {
         1
     };
     if !a {
+        //~^ bool_to_int_with_if
         1
     } else {
         0
     };
     if a || b {
+        //~^ bool_to_int_with_if
         1
     } else {
         0
     };
     if cond(a, b) {
+        //~^ bool_to_int_with_if
         1
     } else {
         0
     };
     if x + y < 4 {
+        //~^ bool_to_int_with_if
         1
     } else {
         0
@@ -46,6 +52,7 @@ fn main() {
     if a {
         123
     } else if b {
+        //~^ bool_to_int_with_if
         1
     } else {
         0
@@ -55,6 +62,7 @@ fn main() {
     if a {
         123
     } else if b {
+        //~^ bool_to_int_with_if
         0
     } else {
         1
@@ -120,6 +128,7 @@ fn main() {
 // Lint returns and type inference
 fn some_fn(a: bool) -> u8 {
     if a { 1 } else { 0 }
+    //~^ bool_to_int_with_if
 }
 
 fn side_effect() {}

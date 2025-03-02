@@ -5,6 +5,11 @@
 //@[bad_conf_1] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/bad_conf_1
 //@[bad_conf_2] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/bad_conf_2
 //@[bad_conf_3] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/arbitrary_source_item_ordering/bad_conf_3
+//@[default] check-pass
+//@[default_exp] check-pass
+//@[bad_conf_1] error-in-other-file:
+//@[bad_conf_2] error-in-other-file:
+//@[bad_conf_3] error-in-other-file:
 
 #![allow(dead_code)]
 #![warn(clippy::arbitrary_source_item_ordering)]

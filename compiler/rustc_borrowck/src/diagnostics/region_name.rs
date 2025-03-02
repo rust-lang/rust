@@ -194,8 +194,8 @@ impl Display for RegionName {
 }
 
 impl rustc_errors::IntoDiagArg for RegionName {
-    fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
-        self.to_string().into_diag_arg()
+    fn into_diag_arg(self, path: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
+        self.to_string().into_diag_arg(path)
     }
 }
 

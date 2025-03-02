@@ -5,17 +5,13 @@ LL |     let offset = unsafe { ptr_offset_from(field_ptr, base_ptr) };
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `ptr_offset_from` called on two different pointers that are not both derived from the same allocation
 
 error[E0080]: evaluation of constant value failed
-  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-   |
-   = note: `ptr_offset_from` called on two different pointers that are not both derived from the same allocation
-   |
-note: inside `std::ptr::const_ptr::<impl *const u8>::offset_from`
-  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-note: inside `NOT_PTR`
   --> $DIR/offset_from_ub.rs:24:14
    |
 LL |     unsafe { (42 as *const u8).offset_from(&5u8) as usize }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `ptr_offset_from` called on two different pointers that are not both derived from the same allocation
+   |
+note: inside `std::ptr::const_ptr::<impl *const u8>::offset_from`
+  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/offset_from_ub.rs:31:14
@@ -78,30 +74,22 @@ LL |     unsafe { ptr_offset_from_unsigned(ptr2, ptr1) }
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `ptr_offset_from_unsigned` called when first pointer is too far ahead of second
 
 error[E0080]: evaluation of constant value failed
-  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-   |
-   = note: `ptr_offset_from` called on two different pointers that are not both derived from the same allocation
-   |
-note: inside `std::ptr::const_ptr::<impl *const u8>::offset_from`
-  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-note: inside `OFFSET_VERY_FAR1`
   --> $DIR/offset_from_ub.rs:109:14
    |
 LL |     unsafe { ptr2.offset_from(ptr1) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^
-
-error[E0080]: evaluation of constant value failed
-  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-   |
-   = note: `ptr_offset_from` called when first pointer is too far before second
+   |              ^^^^^^^^^^^^^^^^^^^^^^ `ptr_offset_from` called on two different pointers that are not both derived from the same allocation
    |
 note: inside `std::ptr::const_ptr::<impl *const u8>::offset_from`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-note: inside `OFFSET_VERY_FAR2`
+
+error[E0080]: evaluation of constant value failed
   --> $DIR/offset_from_ub.rs:115:14
    |
 LL |     unsafe { ptr1.offset_from(ptr2.wrapping_offset(1)) }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `ptr_offset_from` called when first pointer is too far before second
+   |
+note: inside `std::ptr::const_ptr::<impl *const u8>::offset_from`
+  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 
 error: aborting due to 14 previous errors
 

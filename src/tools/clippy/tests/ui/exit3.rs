@@ -1,3 +1,5 @@
+//@ check-pass
+
 #![warn(clippy::exit)]
 
 fn main() {

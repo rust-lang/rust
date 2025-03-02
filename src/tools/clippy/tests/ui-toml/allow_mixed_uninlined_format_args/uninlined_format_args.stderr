@@ -13,7 +13,7 @@ LL +     println!("val='{local_i32}'");
    |
 
 error: variables can be used directly in the `format!` string
-  --> tests/ui-toml/allow_mixed_uninlined_format_args/uninlined_format_args.rs:10:5
+  --> tests/ui-toml/allow_mixed_uninlined_format_args/uninlined_format_args.rs:11:5
    |
 LL |     println!("Hello {} is {:.*}", "x", local_i32, local_f64);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL +     println!("Hello {} is {local_f64:.local_i32$}", "x");
    |
 
 error: literal with an empty format string
-  --> tests/ui-toml/allow_mixed_uninlined_format_args/uninlined_format_args.rs:10:35
+  --> tests/ui-toml/allow_mixed_uninlined_format_args/uninlined_format_args.rs:11:35
    |
 LL |     println!("Hello {} is {:.*}", "x", local_i32, local_f64);
    |                                   ^^^
@@ -39,7 +39,7 @@ LL +     println!("Hello x is {:.*}", local_i32, local_f64);
    |
 
 error: variables can be used directly in the `format!` string
-  --> tests/ui-toml/allow_mixed_uninlined_format_args/uninlined_format_args.rs:11:5
+  --> tests/ui-toml/allow_mixed_uninlined_format_args/uninlined_format_args.rs:14:5
    |
 LL |     println!("Hello {} is {:.*}", local_i32, 5, local_f64);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -51,7 +51,7 @@ LL +     println!("Hello {local_i32} is {local_f64:.*}", 5);
    |
 
 error: variables can be used directly in the `format!` string
-  --> tests/ui-toml/allow_mixed_uninlined_format_args/uninlined_format_args.rs:12:5
+  --> tests/ui-toml/allow_mixed_uninlined_format_args/uninlined_format_args.rs:16:5
    |
 LL |     println!("Hello {} is {2:.*}", local_i32, 5, local_f64);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -63,7 +63,7 @@ LL +     println!("Hello {local_i32} is {local_f64:.*}", 5);
    |
 
 error: variables can be used directly in the `format!` string
-  --> tests/ui-toml/allow_mixed_uninlined_format_args/uninlined_format_args.rs:13:5
+  --> tests/ui-toml/allow_mixed_uninlined_format_args/uninlined_format_args.rs:18:5
    |
 LL |     println!("{}, {}", local_i32, local_opt.unwrap());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

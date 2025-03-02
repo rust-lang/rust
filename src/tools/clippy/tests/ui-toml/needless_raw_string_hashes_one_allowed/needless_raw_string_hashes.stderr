@@ -13,7 +13,7 @@ LL +     r#"\aaa"#;
    |
 
 error: unnecessary hashes around raw string literal
-  --> tests/ui-toml/needless_raw_string_hashes_one_allowed/needless_raw_string_hashes.rs:7:5
+  --> tests/ui-toml/needless_raw_string_hashes_one_allowed/needless_raw_string_hashes.rs:8:5
    |
 LL |     r##"Hello "world"!"##;
    |     ^^^^^^^^^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL +     r#"Hello "world"!"#;
    |
 
 error: unnecessary hashes around raw string literal
-  --> tests/ui-toml/needless_raw_string_hashes_one_allowed/needless_raw_string_hashes.rs:8:5
+  --> tests/ui-toml/needless_raw_string_hashes_one_allowed/needless_raw_string_hashes.rs:10:5
    |
 LL |     r######" "### "## "# "######;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

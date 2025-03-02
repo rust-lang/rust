@@ -16,14 +16,15 @@ pub(super) fn check<'tcx>(
     to_ty: Ty<'tcx>,
     arg: &'tcx Expr<'_>,
     const_context: bool,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) -> bool {
     match (&from_ty.kind(), &to_ty.kind()) {
         (ty::Int(_) | ty::Uint(_) | ty::Float(_), ty::Array(arr_ty, _)) => {
             if !matches!(arr_ty.kind(), ty::Uint(UintTy::U8)) {
                 return false;
             }
-            if matches!(from_ty.kind(), ty::Float(_)) && const_context && !msrv.meets(msrvs::CONST_FLOAT_BITS_CONV) {
+            if matches!(from_ty.kind(), ty::Float(_)) && const_context && !msrv.meets(cx, msrvs::CONST_FLOAT_BITS_CONV)
+            {
                 return false;
             }
 

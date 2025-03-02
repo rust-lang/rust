@@ -1,6 +1,4 @@
 // tidy-alphabetical-start
-#![allow(unused_variables)]
-#![feature(alloc_layout_extra)]
 #![feature(never_type)]
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end
@@ -81,15 +79,12 @@ pub enum Reason<T> {
 #[cfg(feature = "rustc")]
 mod rustc {
     use rustc_hir::lang_items::LangItem;
-    use rustc_infer::infer::InferCtxt;
-    use rustc_macros::TypeVisitable;
-    use rustc_middle::traits::ObligationCause;
-    use rustc_middle::ty::{Const, ParamEnv, Ty, TyCtxt};
+    use rustc_middle::ty::{Const, Ty, TyCtxt};
 
     use super::*;
 
     /// The source and destination types of a transmutation.
-    #[derive(TypeVisitable, Debug, Clone, Copy)]
+    #[derive(Debug, Clone, Copy)]
     pub struct Types<'tcx> {
         /// The source type.
         pub src: Ty<'tcx>,
@@ -97,27 +92,22 @@ mod rustc {
         pub dst: Ty<'tcx>,
     }
 
-    pub struct TransmuteTypeEnv<'cx, 'tcx> {
-        infcx: &'cx InferCtxt<'tcx>,
+    pub struct TransmuteTypeEnv<'tcx> {
+        tcx: TyCtxt<'tcx>,
     }
 
-    impl<'cx, 'tcx> TransmuteTypeEnv<'cx, 'tcx> {
-        pub fn new(infcx: &'cx InferCtxt<'tcx>) -> Self {
-            Self { infcx }
+    impl<'tcx> TransmuteTypeEnv<'tcx> {
+        pub fn new(tcx: TyCtxt<'tcx>) -> Self {
+            Self { tcx }
         }
 
-        #[allow(unused)]
         pub fn is_transmutable(
             &mut self,
-            cause: ObligationCause<'tcx>,
             types: Types<'tcx>,
             assume: crate::Assume,
         ) -> crate::Answer<crate::layout::rustc::Ref<'tcx>> {
             crate::maybe_transmutable::MaybeTransmutableQuery::new(
-                types.src,
-                types.dst,
-                assume,
-                self.infcx.tcx,
+                types.src, types.dst, assume, self.tcx,
             )
             .answer()
         }
@@ -125,11 +115,7 @@ mod rustc {
 
     impl Assume {
         /// Constructs an `Assume` from a given const-`Assume`.
-        pub fn from_const<'tcx>(
-            tcx: TyCtxt<'tcx>,
-            param_env: ParamEnv<'tcx>,
-            ct: Const<'tcx>,
-        ) -> Option<Self> {
+        pub fn from_const<'tcx>(tcx: TyCtxt<'tcx>, ct: Const<'tcx>) -> Option<Self> {
             use rustc_middle::ty::ScalarInt;
             use rustc_span::sym;
 

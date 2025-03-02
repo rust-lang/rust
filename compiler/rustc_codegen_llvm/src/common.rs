@@ -77,7 +77,7 @@ impl<'ll> Funclet<'ll> {
     }
 
     pub(crate) fn bundle(&self) -> &llvm::OperandBundle<'ll> {
-        &self.operand
+        self.operand.raw()
     }
 }
 

@@ -20,6 +20,7 @@ impl Color {
             Self::Green => (),
             Self::Blue => (),
             _ => (),
+            //~^ match_wildcard_for_single_variants
         };
     }
 }
@@ -30,6 +31,7 @@ fn main() {
         Foo::A => {},
         Foo::B => {},
         _ => {},
+        //~^ match_wildcard_for_single_variants
     }
 
     let color = Color::Red;
@@ -40,6 +42,7 @@ fn main() {
         Color::Green => {},
         Color::Rgb(_r, _g, _b) => {},
         _ => {},
+        //~^ match_wildcard_for_single_variants
     }
 
     // check exhaustive wild
@@ -48,12 +51,14 @@ fn main() {
         Color::Green => {},
         Color::Rgb(..) => {},
         _ => {},
+        //~^ match_wildcard_for_single_variants
     }
     match color {
         Color::Red => {},
         Color::Green => {},
         Color::Rgb(_, _, _) => {},
         _ => {},
+        //~^ match_wildcard_for_single_variants
     }
 
     // shouldn't lint as there is one missing variant
@@ -71,6 +76,7 @@ fn main() {
         Color::Green => (),
         &Color::Rgb(..) => (),
         &_ => (),
+        //~^ match_wildcard_for_single_variants
     }
 
     use self::Color as C;
@@ -80,6 +86,7 @@ fn main() {
         C::Green => (),
         C::Rgb(..) => (),
         _ => (),
+        //~^ match_wildcard_for_single_variants
     }
 
     match color {
@@ -87,6 +94,7 @@ fn main() {
         Color::Green => (),
         Color::Rgb(..) => (),
         _ => (),
+        //~^ match_wildcard_for_single_variants
     }
 
     match Some(0) {
@@ -122,6 +130,7 @@ fn main() {
             Enum::B => (),
             Enum::C => (),
             _ => (),
+            //~^ match_wildcard_for_single_variants
         }
         match Enum::A {
             Enum::A => (),
@@ -149,6 +158,7 @@ mod issue9993 {
             _ if false => 0,
             Foo::A(_) => 1,
             _ => 2,
+            //~^ match_wildcard_for_single_variants
         };
     }
 }

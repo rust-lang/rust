@@ -789,7 +789,11 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
                 Some(args.constraints.iter().filter_map(|constraint| {
                     let ident = constraint.ident;
-                    let trait_def = path.res.def_id();
+
+                    let Res::Def(DefKind::Trait, trait_def) = path.res else {
+                        return None;
+                    };
+
                     let assoc_item = tcx.associated_items(trait_def).find_by_name_and_kind(
                         tcx,
                         ident,

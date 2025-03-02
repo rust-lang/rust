@@ -342,6 +342,7 @@ impl ParamConst {
         ParamConst::new(def.index, def.name)
     }
 
+    #[instrument(level = "debug")]
     pub fn find_ty_from_env<'tcx>(self, env: ParamEnv<'tcx>) -> Ty<'tcx> {
         let mut candidates = env.caller_bounds().iter().filter_map(|clause| {
             // `ConstArgHasType` are never desugared to be higher ranked.
@@ -461,7 +462,7 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn new_param(tcx: TyCtxt<'tcx>, index: u32, name: Symbol) -> Ty<'tcx> {
-        tcx.mk_ty_from_kind(Param(ParamTy { index, name }))
+        Ty::new(tcx, Param(ParamTy { index, name }))
     }
 
     #[inline]

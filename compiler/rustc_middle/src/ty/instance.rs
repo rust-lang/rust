@@ -111,8 +111,9 @@ pub enum InstanceKind<'tcx> {
 
     /// Dynamic dispatch to `<dyn Trait as Trait>::fn`.
     ///
-    /// This `InstanceKind` does not have callable MIR. Calls to `Virtual` instances must be
-    /// codegen'd as virtual calls through the vtable.
+    /// This `InstanceKind` may have a callable MIR as the default implementation.
+    /// Calls to `Virtual` instances must be codegen'd as virtual calls through the vtable.
+    /// *This means we might not know exactly what is being called.*
     ///
     /// If this is reified to a `fn` pointer, a `ReifyShim` is used (see `ReifyShim` above for more
     /// details on that).

@@ -3,7 +3,6 @@
 //! configs (autodiff enabled or disabled), so we have to add cfg's to each import.
 //! FIXME(ZuseZ4): Remove this once we have a smarter linter.
 
-#[cfg(llvm_enzyme)]
 mod llvm_enzyme {
     use std::str::FromStr;
     use std::string::String;
@@ -130,10 +129,14 @@ mod llvm_enzyme {
         meta_item: &ast::MetaItem,
         mut item: Annotatable,
     ) -> Vec<Annotatable> {
+        if cfg!(not(llvm_enzyme)) {
+            ecx.sess.dcx().emit_err(errors::AutoDiffSupportNotBuild { span: meta_item.span });
+            return vec![item];
+        }
         let dcx = ecx.sess.dcx();
         // first get the annotable item:
         let (sig, is_impl): (FnSig, bool) = match &item {
-            Annotatable::Item(ref iitem) => {
+            Annotatable::Item(iitem) => {
                 let sig = match &iitem.kind {
                     ItemKind::Fn(box ast::Fn { sig, .. }) => sig,
                     _ => {
@@ -143,7 +146,7 @@ mod llvm_enzyme {
                 };
                 (sig.clone(), false)
             }
-            Annotatable::AssocItem(ref assoc_item, _) => {
+            Annotatable::AssocItem(assoc_item, _) => {
                 let sig = match &assoc_item.kind {
                     ast::AssocItemKind::Fn(box ast::Fn { sig, .. }) => sig,
                     _ => {
@@ -171,8 +174,8 @@ mod llvm_enzyme {
         let sig_span = ecx.with_call_site_ctxt(sig.span);
 
         let (vis, primal) = match &item {
-            Annotatable::Item(ref iitem) => (iitem.vis.clone(), iitem.ident.clone()),
-            Annotatable::AssocItem(ref assoc_item, _) => {
+            Annotatable::Item(iitem) => (iitem.vis.clone(), iitem.ident.clone()),
+            Annotatable::AssocItem(assoc_item, _) => {
                 (assoc_item.vis.clone(), assoc_item.ident.clone())
             }
             _ => {
@@ -801,25 +804,4 @@ mod llvm_enzyme {
     }
 }
 
-#[cfg(not(llvm_enzyme))]
-mod ad_fallback {
-    use rustc_ast::ast;
-    use rustc_expand::base::{Annotatable, ExtCtxt};
-    use rustc_span::Span;
-
-    use crate::errors;
-    pub(crate) fn expand(
-        ecx: &mut ExtCtxt<'_>,
-        _expand_span: Span,
-        meta_item: &ast::MetaItem,
-        item: Annotatable,
-    ) -> Vec<Annotatable> {
-        ecx.sess.dcx().emit_err(errors::AutoDiffSupportNotBuild { span: meta_item.span });
-        return vec![item];
-    }
-}
-
-#[cfg(not(llvm_enzyme))]
-pub(crate) use ad_fallback::expand;
-#[cfg(llvm_enzyme)]
 pub(crate) use llvm_enzyme::expand;

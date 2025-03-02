@@ -1,15 +1,11 @@
 error[E0080]: evaluation of constant value failed
-  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
-   |
-   = note: the type `<() as Project>::Assoc` has an unknown layout
-   |
-note: inside `std::mem::size_of::<<() as Project>::Assoc>`
-  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
-note: inside `foo::{constant#0}`
   --> $DIR/unknown-when-no-type-parameter.rs:11:10
    |
 LL |     [(); size_of::<<() as Project>::Assoc>()];
-   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the type `<() as Project>::Assoc` has an unknown layout
+   |
+note: inside `std::mem::size_of::<<() as Project>::Assoc>`
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
 
 error: aborting due to 1 previous error
 

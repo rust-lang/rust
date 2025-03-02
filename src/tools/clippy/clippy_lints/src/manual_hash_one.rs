@@ -53,9 +53,7 @@ pub struct ManualHashOne {
 
 impl ManualHashOne {
     pub fn new(conf: &'static Conf) -> Self {
-        Self {
-            msrv: conf.msrv.clone(),
-        }
+        Self { msrv: conf.msrv }
     }
 }
 
@@ -98,7 +96,7 @@ impl LateLintPass<'_> for ManualHashOne {
             && let ExprKind::MethodCall(seg, _, [], _) = finish_expr.kind
             && seg.ident.name.as_str() == "finish"
 
-            && self.msrv.meets(msrvs::BUILD_HASHER_HASH_ONE)
+            && self.msrv.meets(cx, msrvs::BUILD_HASHER_HASH_ONE)
         {
             span_lint_hir_and_then(
                 cx,
@@ -129,6 +127,4 @@ impl LateLintPass<'_> for ManualHashOne {
             );
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }

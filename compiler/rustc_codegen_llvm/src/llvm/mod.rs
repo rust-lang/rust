@@ -1,7 +1,6 @@
 #![allow(non_snake_case)]
 
 use std::ffi::{CStr, CString};
-use std::ops::Deref;
 use std::ptr;
 use std::str::FromStr;
 use std::string::FromUtf8Error;
@@ -355,6 +354,16 @@ impl<'a> OperandBundleOwned<'a> {
         };
         OperandBundleOwned { raw: ptr::NonNull::new(raw).unwrap() }
     }
+
+    /// Returns inner `OperandBundle` type.
+    ///
+    /// This could be a `Deref` implementation, but `OperandBundle` contains an extern type and
+    /// `Deref::Target: ?Sized`.
+    pub(crate) fn raw(&self) -> &OperandBundle<'a> {
+        // SAFETY: The returned reference is opaque and can only used for FFI.
+        // It is valid for as long as `&self` is.
+        unsafe { self.raw.as_ref() }
+    }
 }
 
 impl Drop for OperandBundleOwned<'_> {
@@ -362,16 +371,6 @@ impl Drop for OperandBundleOwned<'_> {
         unsafe {
             LLVMDisposeOperandBundle(self.raw);
         }
-    }
-}
-
-impl<'a> Deref for OperandBundleOwned<'a> {
-    type Target = OperandBundle<'a>;
-
-    fn deref(&self) -> &Self::Target {
-        // SAFETY: The returned reference is opaque and can only used for FFI.
-        // It is valid for as long as `&self` is.
-        unsafe { self.raw.as_ref() }
     }
 }
 

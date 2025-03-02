@@ -8,7 +8,7 @@ LL |     let _ = d.to_digit(8).is_some();
    = help: to override `-D warnings` add `#[allow(clippy::to_digit_is_some)]`
 
 error: use of `.to_digit(..).is_some()`
-  --> tests/ui/to_digit_is_some.rs:8:13
+  --> tests/ui/to_digit_is_some.rs:9:13
    |
 LL |     let _ = char::to_digit(c, 8).is_some();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `char::is_digit(c, 8)`

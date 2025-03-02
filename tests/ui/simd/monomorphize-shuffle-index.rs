@@ -1,18 +1,22 @@
+//@ revisions: old generic generic_with_fn
 //@[old]run-pass
 //@[generic_with_fn]run-pass
-//@ revisions: old generic generic_with_fn
-#![feature(repr_simd, intrinsics, adt_const_params, unsized_const_params, generic_const_exprs)]
+#![feature(
+    repr_simd,
+    core_intrinsics,
+    intrinsics,
+    adt_const_params,
+    unsized_const_params,
+    generic_const_exprs
+)]
 #![allow(incomplete_features)]
 
-
-#[rustc_intrinsic]
 #[cfg(old)]
-unsafe fn simd_shuffle<T, I, U>(a: T, b: T, i: I) -> U;
+use std::intrinsics::simd::simd_shuffle;
 
-#[rustc_intrinsic]
 #[cfg(any(generic, generic_with_fn))]
+#[rustc_intrinsic]
 unsafe fn simd_shuffle_const_generic<T, U, const I: &'static [u32]>(a: T, b: T) -> U;
-
 
 #[derive(Copy, Clone)]
 #[repr(simd)]

@@ -169,7 +169,7 @@ from the lint to the code of the test file and compare that to the contents of a
 Use `cargo bless` to automatically generate the `.fixed` file while running
 the tests.
 
-[rustfix]: https://github.com/rust-lang/rustfix
+[rustfix]: https://github.com/rust-lang/cargo/tree/master/crates/rustfix
 
 ## Testing manually
 
@@ -460,7 +460,7 @@ pub struct ManualStrip {
 
 impl ManualStrip {
     pub fn new(conf: &'static Conf) -> Self {
-        Self { msrv: conf.msrv.clone() }
+        Self { msrv: conf.msrv }
     }
 }
 ```
@@ -469,24 +469,13 @@ The project's MSRV can then be matched against the feature MSRV in the LintPass
 using the `Msrv::meets` method.
 
 ``` rust
-if !self.msrv.meets(msrvs::STR_STRIP_PREFIX) {
+if !self.msrv.meets(cx, msrvs::STR_STRIP_PREFIX) {
     return;
 }
 ```
 
-The project's MSRV can also be specified as an attribute, which overrides
-the value from `clippy.toml`. This can be accounted for using the
-`extract_msrv_attr!(LintContext)` macro and passing
-`LateContext`/`EarlyContext`.
-
-```rust,ignore
-impl<'tcx> LateLintPass<'tcx> for ManualStrip {
-    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        ...
-    }
-    extract_msrv_attr!(LateContext);
-}
-```
+Early lint passes should instead use `MsrvStack` coupled with
+`extract_msrv_attr!()`
 
 Once the `msrv` is added to the lint, a relevant test case should be added to
 the lint's test file, `tests/ui/manual_strip.rs` in this example. It should
@@ -512,8 +501,16 @@ in `clippy_config/src/conf.rs`:
 
 ```rust
 define_Conf! {
-    /// Lint: LIST, OF, LINTS, <THE_NEWLY_ADDED_LINT>. The minimum rust version that the project supports
-    (msrv: Option<String> = None),
+    #[lints(
+        allow_attributes,
+        allow_attributes_without_reason,
+        ..
+        <the newly added lint name>,
+        ..
+        unused_trait_names,
+        use_self,
+    )]
+    msrv: Msrv = Msrv::default(),
     ...
 }
 ```

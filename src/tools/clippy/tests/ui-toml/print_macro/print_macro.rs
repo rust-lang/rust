@@ -4,7 +4,9 @@
 
 fn foo(n: u32) {
     print!("{n}");
+    //~^ print_stdout
     eprint!("{n}");
+    //~^ print_stderr
 }
 
 #[test]

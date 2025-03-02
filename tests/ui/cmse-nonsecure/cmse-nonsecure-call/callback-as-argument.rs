@@ -1,13 +1,12 @@
+//@ add-core-stubs
 //@ build-pass
 //@ compile-flags: --target thumbv8m.main-none-eabi --crate-type lib
 //@ needs-llvm-components: arm
 #![feature(abi_c_cmse_nonsecure_call, cmse_nonsecure_entry, no_core, lang_items, intrinsics)]
 #![no_core]
-#[lang = "sized"]
-pub trait Sized {}
-#[lang = "copy"]
-pub trait Copy {}
-impl Copy for u32 {}
+
+extern crate minicore;
+use minicore::*;
 
 #[no_mangle]
 pub extern "C-cmse-nonsecure-entry" fn test(

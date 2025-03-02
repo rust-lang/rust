@@ -27,7 +27,7 @@ impl UselessVec {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
             too_large_for_stack: conf.too_large_for_stack,
-            msrv: conf.msrv.clone(),
+            msrv: conf.msrv,
             span_to_lint_map: BTreeMap::new(),
             allow_in_test: conf.allow_useless_vec_in_tests,
         }
@@ -111,7 +111,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
             },
             // search for `for _ in vec![...]`
             Node::Expr(Expr { span, .. })
-                if span.is_desugaring(DesugaringKind::ForLoop) && self.msrv.meets(msrvs::ARRAY_INTO_ITERATOR) =>
+                if span.is_desugaring(DesugaringKind::ForLoop) && self.msrv.meets(cx, msrvs::ARRAY_INTO_ITERATOR) =>
             {
                 let suggest_slice = suggest_type(expr);
                 self.check_vec_macro(cx, &vec_args, callsite, expr.hir_id, suggest_slice);
@@ -149,8 +149,6 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
             }
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
 impl UselessVec {
