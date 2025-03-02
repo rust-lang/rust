@@ -144,7 +144,7 @@ so let's go through each in detail.
    Note that `profile = "compiler"` and other defaults set by `./x setup`
    download LLVM from CI instead of building it from source.
    You should disable this temporarily to make sure your changes are being used.
-   This is done by having the following setting in `config.toml`:
+   This is done by having the following setting in `bootstrap.toml`:
 
    ```toml
    [llvm]

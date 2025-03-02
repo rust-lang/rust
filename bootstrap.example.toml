@@ -5,7 +5,7 @@
 #
 # All options are commented out by default in this file, and they're commented
 # out with their default values. The build system by default looks for
-# `config.toml` in the current directory of a build for build configuration, but
+# `bootstrap.toml` in the current directory of a build for build configuration, but
 # a custom configuration file can also be specified with `--config` to the build
 # system.
 
@@ -16,7 +16,7 @@
 # Use different pre-set defaults than the global defaults.
 #
 # See `src/bootstrap/defaults` for more information.
-# Note that this has no default value (x.py uses the defaults in `config.example.toml`).
+# Note that this has no default value (x.py uses the defaults in `bootstrap.example.toml`).
 #profile = <none>
 
 # Keeps track of major changes made to this configuration.
@@ -325,7 +325,7 @@
 # Enable a build of the extended Rust tool set which is not only the compiler
 # but also tools such as Cargo. This will also produce "combined installers"
 # which are used to install Rust and Cargo together.
-# The `tools` (check `config.example.toml` to see its default value) option specifies
+# The `tools` (check `bootstrap.example.toml` to see its default value) option specifies
 # which tools should be built if `extended = true`.
 #
 # This is disabled by default.

@@ -163,9 +163,9 @@ settings:
   stable support for `asm!`
 - `needs-profiler-runtime` — ignores the test if the profiler runtime was not
   enabled for the target
-  (`build.profiler = true` in rustc's `config.toml`)
+  (`build.profiler = true` in rustc's `bootstrap.toml`)
 - `needs-sanitizer-support` — ignores if the sanitizer support was not enabled
-  for the target (`sanitizers = true` in rustc's `config.toml`)
+  for the target (`sanitizers = true` in rustc's `bootstrap.toml`)
 - `needs-sanitizer-{address,hwaddress,leak,memory,thread}` — ignores if the
   corresponding sanitizer is not enabled for the target (AddressSanitizer,
   hardware-assisted AddressSanitizer, LeakSanitizer, MemorySanitizer or
@@ -175,7 +175,7 @@ settings:
   flag, or running on fuchsia.
 - `needs-unwind` — ignores if the target does not support unwinding
 - `needs-rust-lld` — ignores if the rust lld support is not enabled (`rust.lld =
-  true` in `config.toml`)
+  true` in `bootstrap.toml`)
 - `needs-threads` — ignores if the target does not have threading support
 - `needs-subprocess`  — ignores if the target does not have subprocess support
 - `needs-symlink` — ignores if the target does not support symlinks. This can be

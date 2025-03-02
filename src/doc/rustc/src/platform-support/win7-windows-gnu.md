@@ -23,7 +23,7 @@ Like any other Windows target, the created binaries are in PE format.
 
 ## Building the target
 
-You can build Rust with support for the targets by adding it to the target list in config.toml:
+You can build Rust with support for the targets by adding it to the target list in bootstrap.toml:
 
 ```toml
 [build]

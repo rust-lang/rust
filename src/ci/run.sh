@@ -226,8 +226,8 @@ trap datecheck EXIT
 # sccache server at the start of the build, but no need to worry if this fails.
 SCCACHE_IDLE_TIMEOUT=10800 sccache --start-server || true
 
-# Our build may overwrite config.toml, so we remove it here
-rm -f config.toml
+# Our build may overwrite bootstrap.toml, so we remove it here
+rm -f bootstrap.toml
 
 $SRC/configure $RUST_CONFIGURE_ARGS
 
@@ -262,7 +262,7 @@ else
 fi
 
 if [ "$RUN_CHECK_WITH_PARALLEL_QUERIES" != "" ]; then
-  rm -f config.toml
+  rm -f bootstrap.toml
   $SRC/configure --set change-id=99999999
 
   # Save the build metrics before we wipe the directory
