@@ -956,9 +956,9 @@ pub use foo::{Bar, Baz};
 }
 
 #[test]
-fn doctest_expand_rest_pattern() {
+fn doctest_expand_record_rest_pattern() {
     check_doc_test(
-        "expand_rest_pattern",
+        "expand_record_rest_pattern",
         r#####"
 struct Bar { y: Y, z: Z }
 
@@ -971,6 +971,27 @@ struct Bar { y: Y, z: Z }
 
 fn foo(bar: Bar) {
     let Bar { y, z  } = bar;
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_expand_tuple_struct_rest_pattern() {
+    check_doc_test(
+        "expand_tuple_struct_rest_pattern",
+        r#####"
+struct Bar(Y, Z);
+
+fn foo(bar: Bar) {
+    let Bar(..$0) = bar;
+}
+"#####,
+        r#####"
+struct Bar(Y, Z);
+
+fn foo(bar: Bar) {
+    let Bar(_0, _1) = bar;
 }
 "#####,
     )

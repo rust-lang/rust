@@ -1069,8 +1069,8 @@ pub use foo::{Bar, Baz};
 ```
 
 
-### `expand_rest_pattern`
-**Source:**  [expand_rest_pattern.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/expand_rest_pattern.rs#L8) 
+### `expand_record_rest_pattern`
+**Source:**  [expand_rest_pattern.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/expand_rest_pattern.rs#L24) 
 
 Fills fields by replacing rest pattern in record patterns.
 
@@ -1089,6 +1089,30 @@ struct Bar { y: Y, z: Z }
 
 fn foo(bar: Bar) {
     let Bar { y, z  } = bar;
+}
+```
+
+
+### `expand_tuple_struct_rest_pattern`
+**Source:**  [expand_rest_pattern.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/expand_rest_pattern.rs#L80) 
+
+Fills fields by replacing rest pattern in tuple struct patterns.
+
+#### Before
+```rust
+struct Bar(Y, Z);
+
+fn foo(bar: Bar) {
+    let Bar(..┃) = bar;
+}
+```
+
+#### After
+```rust
+struct Bar(Y, Z);
+
+fn foo(bar: Bar) {
+    let Bar(_0, _1) = bar;
 }
 ```
 

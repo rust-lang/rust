@@ -296,6 +296,7 @@ pub enum ModuleDef {
     Function(Function),
     Adt(Adt),
     // Can't be directly declared, but can be imported.
+    // FIXME: Rename to `EnumVariant`
     Variant(Variant),
     Const(Const),
     Static(Static),
@@ -1564,6 +1565,7 @@ impl From<&Variant> for DefWithBodyId {
     }
 }
 
+// FIXME: Rename to `EnumVariant`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Variant {
     pub(crate) id: EnumVariantId,
