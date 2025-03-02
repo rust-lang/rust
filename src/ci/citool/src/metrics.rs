@@ -30,6 +30,7 @@ fn record_bootstrap_step_durations(metrics: &JsonRoot, file: &mut File) -> anyho
     for invocation in &metrics.invocations {
         let step = BuildStep::from_invocation(invocation);
         let table = format_build_steps(&step);
+        eprintln!("Step `{}`\n{table}\n", invocation.cmdline);
         writeln!(
             file,
             r"<details>
