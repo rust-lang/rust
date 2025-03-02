@@ -8,7 +8,7 @@ use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_session::config::OptLevel;
 use rustc_span::{DUMMY_SP, Span};
-use tracing::{debug, instrument, trace};
+use tracing::{debug, instrument};
 
 use super::operand::{OperandRef, OperandValue};
 use super::place::PlaceRef;
@@ -93,8 +93,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     return;
                 }
 
-                // If `v` is an integer constant whose value is just a single byte repeated N times,
-                // emit a `memset` filling the entire `dest` with that byte.
                 let try_init_all_same = |bx: &mut Bx, v| {
                     let start = dest.val.llval;
                     let size = bx.const_usize(dest.layout.size.bytes());
@@ -119,33 +117,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     false
                 };
 
-                trace!(?cg_elem.val);
                 match cg_elem.val {
                     OperandValue::Immediate(v) => {
                         if try_init_all_same(bx, v) {
                             return;
                         }
                     }
-                    OperandValue::Pair(a, b) => {
-                        let a_is_undef = bx.cx().is_undef(a);
-                        match (a_is_undef, bx.cx().is_undef(b)) {
-                            // Can happen for uninit unions
-                            (true, true) => {
-                                // FIXME: can we produce better output here?
-                            }
-                            (false, true) | (true, false) => {
-                                let val = if a_is_undef { b } else { a };
-                                if try_init_all_same(bx, val) {
-                                    return;
-                                }
-                            }
-                            (false, false) => {
-                                // FIXME: if both are the same value, use try_init_all_same
-                            }
-                        }
-                    }
-                    OperandValue::ZeroSized => unreachable!("checked above"),
-                    OperandValue::Ref(..) => {}
+                    _ => (),
                 }
 
                 let count = self
