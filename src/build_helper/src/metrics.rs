@@ -172,7 +172,7 @@ pub fn format_build_steps(root: &BuildStep) -> String {
     let mut output = String::new();
     for (level, step) in substeps {
         let label = format!("{}{}", ".".repeat(level as usize), step.r#type);
-        writeln!(output, "{label:<65}{:>8.2}s", step.duration.as_secs_f64()).unwrap();
+        writeln!(output, "{label:.<65}{:>8.2}s", step.duration.as_secs_f64()).unwrap();
     }
     output
 }
