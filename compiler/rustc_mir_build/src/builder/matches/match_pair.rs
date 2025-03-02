@@ -115,6 +115,7 @@ impl<'tcx> MatchPairTree<'tcx> {
             place_builder = place_builder.project(ProjectionElem::OpaqueCast(pattern.ty));
         }
 
+        // Place can be none if the pattern refers to a non-captured place in a closure.
         let place = place_builder.try_to_place(cx);
         let mut subpairs = Vec::new();
         let test_case = match pattern.kind {
@@ -321,7 +322,7 @@ impl<'tcx> MatchPairTree<'tcx> {
             // This pattern is refutable, so push a new match-pair node.
             sort_match_pairs(&mut subpairs);
             match_pairs.push(MatchPairTree {
-                place,
+                place: place.expect("refutable patterns should always have a place to inspect"),
                 test_case,
                 subpairs,
                 pattern_ty: pattern.ty,
