@@ -51,4 +51,33 @@ pub fn check(path: &Path, bad: &mut bool) {
             }
         }
     }
+
+    // Verify that trigger_files in [autolabel."*"] exist in the project, i.e.
+    // [autolabel."A-rustdoc-search"]
+    // trigger_files = [
+    //    "src/librustdoc/html/static/js/search.js",
+    //    "tests/rustdoc-js",
+    //    "tests/rustdoc-js-std",
+    // ]
+    if let Some(Value::Table(autolabels)) = config.get("autolabel") {
+        for (label, content) in autolabels {
+            if let Some(trigger_files) = content.get("trigger_files").and_then(|v| v.as_array()) {
+                for file in trigger_files {
+                    if let Some(file_str) = file.as_str() {
+                        let full_path = path.join(file_str);
+
+                        // Handle both file and directory paths
+                        if !full_path.exists() {
+                            tidy_error!(
+                                bad,
+                                "triagebot.toml [autolabel.{}] contains trigger_files path '{}' which doesn't exist",
+                                label,
+                                file_str
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
