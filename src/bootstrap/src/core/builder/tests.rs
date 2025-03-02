@@ -664,15 +664,13 @@ mod dist {
                 std!(TEST_TRIPLE_1 => TEST_TRIPLE_3, stage = 2),
             ]
         );
-        assert_eq!(builder.cache.all::<compile::Assemble>().len(), 5);
+        assert_eq!(builder.cache.all::<compile::Assemble>().len(), 4);
         assert_eq!(
             first(builder.cache.all::<compile::Rustc>()),
             &[
                 rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 0),
                 rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 1),
-                rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 2),
                 rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_2, stage = 1),
-                rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_2, stage = 2),
             ]
         );
     }
