@@ -45,6 +45,9 @@ fn main() {
     let _ = std::ptr::eq(x, y);
     //~^ ptr_eq
 
+    let _ = !std::ptr::eq(x, y);
+    //~^ ptr_eq
+
     #[allow(clippy::eq_op)]
     let _issue14337 = std::ptr::eq(main as *const (), main as *const ());
     //~^ ptr_eq

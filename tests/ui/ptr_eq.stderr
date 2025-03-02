@@ -44,10 +44,16 @@ LL |     let _ = x as *const u32 == y as *mut u32 as *const u32;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::eq(x, y)`
 
 error: use `std::ptr::eq` when comparing raw pointers
-  --> tests/ui/ptr_eq.rs:49:23
+  --> tests/ui/ptr_eq.rs:48:13
+   |
+LL |     let _ = x as *const u32 != y as *mut u32 as *const u32;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `!std::ptr::eq(x, y)`
+
+error: use `std::ptr::eq` when comparing raw pointers
+  --> tests/ui/ptr_eq.rs:52:23
    |
 LL |     let _issue14337 = main as *const () == main as *const ();
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::eq(main as *const (), main as *const ())`
 
-error: aborting due to 8 previous errors
+error: aborting due to 9 previous errors
 

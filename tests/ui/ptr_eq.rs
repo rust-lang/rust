@@ -45,6 +45,9 @@ fn main() {
     let _ = x as *const u32 == y as *mut u32 as *const u32;
     //~^ ptr_eq
 
+    let _ = x as *const u32 != y as *mut u32 as *const u32;
+    //~^ ptr_eq
+
     #[allow(clippy::eq_op)]
     let _issue14337 = main as *const () == main as *const ();
     //~^ ptr_eq
