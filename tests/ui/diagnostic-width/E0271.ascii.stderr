@@ -1,5 +1,5 @@
 error[E0271]: type mismatch resolving `<Result<..., ()> as Future>::Error == Foo`
-  --> $DIR/E0271.rs:20:5
+  --> $DIR/E0271.rs:19:5
    |
 LL | /     Box::new(
 LL | |         Ok::<_, ()>(
@@ -10,12 +10,12 @@ LL | |     )
    | |_____^ type mismatch resolving `<Result<..., ()> as Future>::Error == Foo`
    |
 note: expected this to be `Foo`
-  --> $DIR/E0271.rs:10:18
+  --> $DIR/E0271.rs:9:18
    |
 LL |     type Error = E;
    |                  ^
    = note: required for the cast from `Box<Result<..., ()>>` to `Box<...>`
-   = note: the full name for the type has been written to '$TEST_BUILD_DIR/$FILE.long-type-hash.txt'
+   = note: the full name for the type has been written to '$TEST_BUILD_DIR/E0271.long-type-$LONG_TYPE_HASH.txt'
    = note: consider using `--verbose` to print the full type name to the console
 
 error: aborting due to 1 previous error
