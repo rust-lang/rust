@@ -40,20 +40,15 @@ pub trait CrateDef {
     fn def_id(&self) -> DefId;
 
     /// Return the fully qualified name of the current definition.
+    ///
+    /// See [`DefId::name`] for more details
     fn name(&self) -> Symbol {
         self.def_id().name()
     }
 
     /// Return a trimmed name of this definition.
     ///
-    /// This can be used to print more user friendly diagnostic messages.
-    ///
-    /// If a symbol name can only be imported from one place for a type, and as
-    /// long as it was not glob-imported anywhere in the current crate, we trim its
-    /// path and print only the name.
-    ///
-    /// For example, this function may shorten `std::vec::Vec` to just `Vec`,
-    /// as long as there is no other `Vec` importable anywhere.
+    /// See [`DefId::trimmed_name`] for more details
     fn trimmed_name(&self) -> Symbol {
         self.def_id().trimmed_name()
     }
