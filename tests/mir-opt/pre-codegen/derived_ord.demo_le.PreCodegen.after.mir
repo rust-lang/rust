@@ -6,23 +6,29 @@ fn demo_le(_1: &MultiField, _2: &MultiField) -> bool {
     let mut _0: bool;
     scope 1 (inlined <MultiField as PartialOrd>::le) {
         let mut _11: std::option::Option<std::cmp::Ordering>;
-        scope 2 (inlined Option::<std::cmp::Ordering>::is_some_and::<fn(std::cmp::Ordering) -> bool {std::cmp::Ordering::is_le}>) {
+        scope 2 (inlined Option::<std::cmp::Ordering>::is_some_and::<{closure@<MultiField as PartialOrd>::le::{closure#0}}>) {
             let _12: std::cmp::Ordering;
-            let mut _13: (std::cmp::Ordering,);
             scope 3 {
+                scope 4 (inlined <MultiField as PartialOrd>::le::{closure#0}) {
+                    scope 5 (inlined std::cmp::Ordering::is_le) {
+                        let mut _13: i8;
+                        scope 6 (inlined std::cmp::Ordering::as_raw) {
+                        }
+                    }
+                }
             }
         }
-        scope 4 (inlined <MultiField as PartialOrd>::partial_cmp) {
+        scope 7 (inlined <MultiField as PartialOrd>::partial_cmp) {
             let mut _6: std::option::Option<std::cmp::Ordering>;
             let mut _7: i8;
-            scope 5 {
+            scope 8 {
             }
-            scope 6 (inlined std::cmp::impls::<impl PartialOrd for char>::partial_cmp) {
+            scope 9 (inlined std::cmp::impls::<impl PartialOrd for char>::partial_cmp) {
                 let mut _3: char;
                 let mut _4: char;
                 let mut _5: std::cmp::Ordering;
             }
-            scope 7 (inlined std::cmp::impls::<impl PartialOrd for i16>::partial_cmp) {
+            scope 10 (inlined std::cmp::impls::<impl PartialOrd for i16>::partial_cmp) {
                 let mut _8: i16;
                 let mut _9: i16;
                 let mut _10: std::cmp::Ordering;
@@ -31,6 +37,7 @@ fn demo_le(_1: &MultiField, _2: &MultiField) -> bool {
     }
 
     bb0: {
+        StorageLive(_12);
         StorageLive(_11);
         StorageLive(_5);
         StorageLive(_7);
@@ -59,7 +66,6 @@ fn demo_le(_1: &MultiField, _2: &MultiField) -> bool {
         StorageDead(_10);
         StorageDead(_7);
         StorageDead(_5);
-        StorageLive(_12);
         goto -> bb3;
     }
 
@@ -67,21 +73,17 @@ fn demo_le(_1: &MultiField, _2: &MultiField) -> bool {
         _11 = copy _6;
         StorageDead(_7);
         StorageDead(_5);
-        StorageLive(_12);
         goto -> bb3;
     }
 
     bb3: {
         _12 = move ((_11 as Some).0: std::cmp::Ordering);
         StorageLive(_13);
-        _13 = (copy _12,);
-        _0 = <fn(std::cmp::Ordering) -> bool {std::cmp::Ordering::is_le} as FnOnce<(std::cmp::Ordering,)>>::call_once(std::cmp::Ordering::is_le, move _13) -> [return: bb4, unwind unreachable];
-    }
-
-    bb4: {
+        _13 = discriminant(_12);
+        _0 = Le(move _13, const 0_i8);
         StorageDead(_13);
-        StorageDead(_12);
         StorageDead(_11);
+        StorageDead(_12);
         return;
     }
 }
