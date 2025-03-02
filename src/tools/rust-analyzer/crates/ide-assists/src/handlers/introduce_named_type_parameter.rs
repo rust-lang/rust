@@ -4,7 +4,7 @@ use syntax::ast::{self, syntax_factory::SyntaxFactory, AstNode, HasGenericParams
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
-// Assist: introduce_named_generic
+// Assist: introduce_named_type_parameter
 //
 // Replaces `impl Trait` function argument with the named generic.
 //
@@ -15,18 +15,20 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // ```
 // fn foo<$0B: Bar>(bar: B) {}
 // ```
-pub(crate) fn introduce_named_generic(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn introduce_named_type_parameter(
+    acc: &mut Assists,
+    ctx: &AssistContext<'_>,
+) -> Option<()> {
     let impl_trait_type = ctx.find_node_at_offset::<ast::ImplTraitType>()?;
     let param = impl_trait_type.syntax().ancestors().find_map(ast::Param::cast)?;
-    let fn_ = param.syntax().ancestors().find_map(ast::Fn::cast)?;
-
+    let fn_ = param.syntax().ancestors().nth(2).and_then(ast::Fn::cast)?;
     let type_bound_list = impl_trait_type.type_bound_list()?;
 
     let make = SyntaxFactory::new();
     let target = fn_.syntax().text_range();
     acc.add(
-        AssistId("introduce_named_generic", AssistKind::RefactorRewrite),
-        "Replace impl trait with generic",
+        AssistId("introduce_named_type_parameter", AssistKind::RefactorRewrite),
+        "Replace impl trait with type parameter",
         target,
         |builder| {
             let mut editor = builder.make_editor(fn_.syntax());
@@ -71,7 +73,7 @@ mod tests {
     #[test]
     fn introduce_named_generic_params() {
         check_assist(
-            introduce_named_generic,
+            introduce_named_type_parameter,
             r#"fn foo<G>(bar: $0impl Bar) {}"#,
             r#"fn foo<G, $0B: Bar>(bar: B) {}"#,
         );
@@ -80,7 +82,7 @@ mod tests {
     #[test]
     fn replace_impl_trait_without_generic_params() {
         check_assist(
-            introduce_named_generic,
+            introduce_named_type_parameter,
             r#"fn foo(bar: $0impl Bar) {}"#,
             r#"fn foo<$0B: Bar>(bar: B) {}"#,
         );
@@ -89,7 +91,7 @@ mod tests {
     #[test]
     fn replace_two_impl_trait_with_generic_params() {
         check_assist(
-            introduce_named_generic,
+            introduce_named_type_parameter,
             r#"fn foo<G>(foo: impl Foo, bar: $0impl Bar) {}"#,
             r#"fn foo<G, $0B: Bar>(foo: impl Foo, bar: B) {}"#,
         );
@@ -98,7 +100,7 @@ mod tests {
     #[test]
     fn replace_impl_trait_with_empty_generic_params() {
         check_assist(
-            introduce_named_generic,
+            introduce_named_type_parameter,
             r#"fn foo<>(bar: $0impl Bar) {}"#,
             r#"fn foo<$0B: Bar>(bar: B) {}"#,
         );
@@ -107,7 +109,7 @@ mod tests {
     #[test]
     fn replace_impl_trait_with_empty_multiline_generic_params() {
         check_assist(
-            introduce_named_generic,
+            introduce_named_type_parameter,
             r#"
 fn foo<
 >(bar: $0impl Bar) {}
@@ -122,7 +124,7 @@ fn foo<$0B: Bar
     #[test]
     fn replace_impl_trait_with_exist_generic_letter() {
         check_assist(
-            introduce_named_generic,
+            introduce_named_type_parameter,
             r#"fn foo<B>(bar: $0impl Bar) {}"#,
             r#"fn foo<B, $0B1: Bar>(bar: B1) {}"#,
         );
@@ -131,7 +133,7 @@ fn foo<$0B: Bar
     #[test]
     fn replace_impl_trait_with_more_exist_generic_letter() {
         check_assist(
-            introduce_named_generic,
+            introduce_named_type_parameter,
             r#"fn foo<B, B0, B1, B3>(bar: $0impl Bar) {}"#,
             r#"fn foo<B, B0, B1, B3, $0B4: Bar>(bar: B4) {}"#,
         );
@@ -140,7 +142,7 @@ fn foo<$0B: Bar
     #[test]
     fn replace_impl_trait_with_multiline_generic_params() {
         check_assist(
-            introduce_named_generic,
+            introduce_named_type_parameter,
             r#"
 fn foo<
     G: Foo,
@@ -161,7 +163,7 @@ fn foo<
     #[test]
     fn replace_impl_trait_multiple() {
         check_assist(
-            introduce_named_generic,
+            introduce_named_type_parameter,
             r#"fn foo(bar: $0impl Foo + Bar) {}"#,
             r#"fn foo<$0F: Foo + Bar>(bar: F) {}"#,
         );
@@ -170,7 +172,7 @@ fn foo<
     #[test]
     fn replace_impl_with_mut() {
         check_assist(
-            introduce_named_generic,
+            introduce_named_type_parameter,
             r#"fn f(iter: &mut $0impl Iterator<Item = i32>) {}"#,
             r#"fn f<$0I: Iterator<Item = i32>>(iter: &mut I) {}"#,
         );
@@ -179,7 +181,7 @@ fn foo<
     #[test]
     fn replace_impl_inside() {
         check_assist(
-            introduce_named_generic,
+            introduce_named_type_parameter,
             r#"fn f(x: &mut Vec<$0impl Iterator<Item = i32>>) {}"#,
             r#"fn f<$0I: Iterator<Item = i32>>(x: &mut Vec<I>) {}"#,
         );

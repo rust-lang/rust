@@ -1,11 +1,11 @@
 use syntax::{
     ast::{self, make},
-    AstNode, ToSmolStr,
+    match_ast, AstNode, ToSmolStr,
 };
 
 use crate::{AssistContext, AssistId, Assists};
 
-// Assist: fill_record_pattern_fields
+// Assist: expand_rest_pattern
 //
 // Fills fields by replacing rest pattern in record patterns.
 //
@@ -24,14 +24,20 @@ use crate::{AssistContext, AssistId, Assists};
 //     let Bar { y, z  } = bar;
 // }
 // ```
-pub(crate) fn fill_record_pattern_fields(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
-    let record_pat = ctx.find_node_at_offset::<ast::RecordPat>()?;
+pub(crate) fn expand_rest_pattern(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+    let rest_pat = ctx.find_node_at_offset::<ast::RestPat>()?;
+    let parent = rest_pat.syntax().parent()?;
+    let record_pat = match_ast! {
+        match parent {
+            ast::RecordPatFieldList(it) => ast::RecordPat::cast(it.syntax().parent()?)?,
+            // ast::TupleStructPat(it) => (),
+            // ast::TuplePat(it) => (),
+            // ast::SlicePat(it) => (),
+            _ => return None,
+        }
+    };
 
     let ellipsis = record_pat.record_pat_field_list().and_then(|r| r.rest_pat())?;
-    if !ellipsis.syntax().text_range().contains_inclusive(ctx.offset()) {
-        return None;
-    }
-
     let target_range = ellipsis.syntax().text_range();
 
     let missing_fields = ctx.sema.record_pattern_missing_fields(&record_pat);
@@ -58,7 +64,7 @@ pub(crate) fn fill_record_pattern_fields(acc: &mut Assists, ctx: &AssistContext<
     }
 
     acc.add(
-        AssistId("fill_record_pattern_fields", crate::AssistKind::RefactorRewrite),
+        AssistId("expand_rest_pattern", crate::AssistKind::RefactorRewrite),
         "Fill structure fields",
         target_range,
         move |builder| builder.replace_ast(old_field_list, new_field_list),
@@ -73,7 +79,7 @@ mod tests {
     #[test]
     fn fill_fields_enum_with_only_ellipsis() {
         check_assist(
-            fill_record_pattern_fields,
+            expand_rest_pattern,
             r#"
 enum Foo {
     A(X),
@@ -106,7 +112,7 @@ fn bar(foo: Foo) {
     #[test]
     fn fill_fields_enum_with_fields() {
         check_assist(
-            fill_record_pattern_fields,
+            expand_rest_pattern,
             r#"
 enum Foo {
     A(X),
@@ -139,7 +145,7 @@ fn bar(foo: Foo) {
     #[test]
     fn fill_fields_struct_with_only_ellipsis() {
         check_assist(
-            fill_record_pattern_fields,
+            expand_rest_pattern,
             r#"
 struct Bar {
     y: Y,
@@ -166,7 +172,7 @@ fn foo(bar: Bar) {
     #[test]
     fn fill_fields_struct_with_fields() {
         check_assist(
-            fill_record_pattern_fields,
+            expand_rest_pattern,
             r#"
 struct Bar {
     y: Y,
@@ -193,7 +199,7 @@ fn foo(bar: Bar) {
     #[test]
     fn fill_fields_struct_generated_by_macro() {
         check_assist(
-            fill_record_pattern_fields,
+            expand_rest_pattern,
             r#"
 macro_rules! position {
     ($t: ty) => {
@@ -226,7 +232,7 @@ fn macro_call(pos: Pos) {
     #[test]
     fn fill_fields_enum_generated_by_macro() {
         check_assist(
-            fill_record_pattern_fields,
+            expand_rest_pattern,
             r#"
 macro_rules! enum_gen {
     ($t: ty) => {
@@ -271,7 +277,7 @@ fn macro_call(foo: Foo) {
     #[test]
     fn not_applicable_when_not_in_ellipsis() {
         check_assist_not_applicable(
-            fill_record_pattern_fields,
+            expand_rest_pattern,
             r#"
 enum Foo {
     A(X),
@@ -287,7 +293,7 @@ fn bar(foo: Foo) {
 "#,
         );
         check_assist_not_applicable(
-            fill_record_pattern_fields,
+            expand_rest_pattern,
             r#"
 enum Foo {
     A(X),
@@ -303,7 +309,7 @@ fn bar(foo: Foo) {
 "#,
         );
         check_assist_not_applicable(
-            fill_record_pattern_fields,
+            expand_rest_pattern,
             r#"
 enum Foo {
     A(X),
@@ -325,7 +331,7 @@ fn bar(foo: Foo) {
         // This is still possible even though it's meaningless
         cov_mark::check!(no_missing_fields);
         check_assist_not_applicable(
-            fill_record_pattern_fields,
+            expand_rest_pattern,
             r#"
 enum Foo {
     A(X),
@@ -341,7 +347,7 @@ fn bar(foo: Foo) {
 "#,
         );
         check_assist_not_applicable(
-            fill_record_pattern_fields,
+            expand_rest_pattern,
             r#"
 struct Bar {
     y: Y,
