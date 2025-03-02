@@ -2,6 +2,7 @@
 
 #![deny(rustdoc::broken_intra_doc_links)]
 #![feature(no_core, lang_items, rustc_attrs)]
+#![feature(const_trait_impl)]
 #![no_core]
 #![rustc_coherence_is_core]
 #![crate_type = "rlib"]
@@ -10,8 +11,16 @@
 //@ has no_doc_primitive/index.html
 //! A [`char`] and its [`char::len_utf8`].
 
+#[lang = "pointee_sized"]
+pub trait PointeeSized {}
+
+#[lang = "meta_sized"]
+#[const_trait]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-trait Sized {}
+#[const_trait]
+pub trait Sized: MetaSized {}
 
 impl char {
     pub fn len_utf8(self) -> usize {
