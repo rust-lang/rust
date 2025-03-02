@@ -3,10 +3,19 @@
 //@ only-linux
 
 #![feature(no_core, lang_items)]
+#![feature(const_trait_impl)]
 #![no_core]
 
+#[lang = "pointeesized"]
+pub trait PointeeSized {}
+
+#[lang = "metasized"]
+#[const_trait]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-trait Sized {}
+#[const_trait]
+pub trait Sized: MetaSized {}
 
 extern crate primitive_doc;
 
