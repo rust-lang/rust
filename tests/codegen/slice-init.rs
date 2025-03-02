@@ -89,6 +89,20 @@ pub fn option_none_init() -> [Option<u8>; N] {
     [None; N]
 }
 
+use std::mem::MaybeUninit;
+
+// FIXME: This could be optimized into a memset.
+// Regression test for <https://github.com/rust-lang/rust/issues/137892>.
+#[no_mangle]
+pub fn half_uninit() -> [(u128, MaybeUninit<u128>); N] {
+    // CHECK-NOT: select
+    // CHECK: br label %repeat_loop_header{{.*}}
+    // CHECK-NOT: switch
+    // CHECK: icmp
+    // CHECK-NOT: call void @llvm.memset.p0
+    [const { (0, MaybeUninit::uninit()) }; N]
+}
+
 // Use an opaque function to prevent rustc from removing useless drops.
 #[inline(never)]
 pub fn opaque(_: impl Sized) {}
