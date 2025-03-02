@@ -175,8 +175,14 @@ pub fn format_build_steps(root: &BuildStep) -> String {
 
     let mut output = String::new();
     for (level, step) in substeps {
-        let label = format!("{}{}", ".".repeat(level as usize), step.r#type);
-        writeln!(output, "{label:<65}{:>8.2}s", step.duration.as_secs_f64()).unwrap();
+        let label = format!(
+            "{}{}",
+            ".".repeat(level as usize),
+            // Bootstrap steps can be generic and thus contain angle brackets (<...>).
+            // However, Markdown interprets these as HTML, so we need to escap ethem.
+            step.r#type.replace('<', "&lt;").replace('>', "&gt;")
+        );
+        writeln!(output, "{label:.<65}{:>8.2}s", step.duration.as_secs_f64()).unwrap();
     }
     output
 }

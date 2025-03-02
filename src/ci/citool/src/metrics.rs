@@ -4,7 +4,9 @@ use std::io::Write;
 use std::path::Path;
 
 use anyhow::Context;
-use build_helper::metrics::{JsonNode, JsonRoot, TestOutcome, TestSuite, TestSuiteMetadata};
+use build_helper::metrics::{
+    BuildStep, JsonNode, JsonRoot, TestOutcome, TestSuite, TestSuiteMetadata, format_build_steps,
+};
 
 pub fn postprocess_metrics(metrics_path: &Path, summary_path: &Path) -> anyhow::Result<()> {
     let metrics = load_metrics(metrics_path)?;
@@ -15,7 +17,31 @@ pub fn postprocess_metrics(metrics_path: &Path, summary_path: &Path) -> anyhow::
         .open(summary_path)
         .with_context(|| format!("Cannot open summary file at {summary_path:?}"))?;
 
-    record_test_suites(&metrics, &mut file)?;
+    if !metrics.invocations.is_empty() {
+        writeln!(file, "# Bootstrap steps")?;
+        record_bootstrap_step_durations(&metrics, &mut file)?;
+        record_test_suites(&metrics, &mut file)?;
+    }
+
+    Ok(())
+}
+
+fn record_bootstrap_step_durations(metrics: &JsonRoot, file: &mut File) -> anyhow::Result<()> {
+    for invocation in &metrics.invocations {
+        let step = BuildStep::from_invocation(invocation);
+        let table = format_build_steps(&step);
+        eprintln!("Step `{}`\n{table}\n", invocation.cmdline);
+        writeln!(
+            file,
+            r"<details>
+<summary>{}</summary>
+<pre><code>{table}</code></pre>
+</details>
+",
+            invocation.cmdline
+        )?;
+    }
+    eprintln!("Recorded {} bootstrap invocation(s)", metrics.invocations.len());
 
     Ok(())
 }
