@@ -930,13 +930,19 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
         }
     }
 
+    // Validate input and return activities
+    let mut msg = "".to_string();
     for &input in &arg_activities {
         if !valid_input_activity(mode, input) {
-            span_bug!(attr.span(), "Invalid input activity {} for {} mode", input, mode);
+            msg = format!("Invalid input activity {} for {} mode", input, mode);
         }
     }
     if !valid_ret_activity(mode, ret_activity) {
-        span_bug!(attr.span(), "Invalid return activity {} for {} mode", ret_activity, mode);
+        msg = format!("Invalid return activity {} for {} mode", ret_activity, mode);
+    }
+    if msg != "".to_string() {
+        tcx.dcx().struct_span_err(attr.span(), msg).with_note("invalid activity").emit();
+        return Some(AutoDiffAttrs::error());
     }
 
     Some(AutoDiffAttrs { mode, ret_activity, input_activity: arg_activities })
