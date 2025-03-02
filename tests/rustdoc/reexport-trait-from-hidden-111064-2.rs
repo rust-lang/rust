@@ -3,11 +3,17 @@
 #![no_core]
 #![crate_name = "foo"]
 
+#[lang = "pointee_sized"]
+pub trait PointeeSized {}
+
+#[lang = "meta_sized"]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-trait Sized {}
+pub trait Sized: MetaSized {}
 
 //@ files "foo" "['sidebar-items.js', 'all.html', 'hidden', 'index.html', 'struct.Bar.html', \
-//        'visible']"
+//        'visible', 'trait.Sized.html', 'trait.MetaSized.html', 'trait.PointeeSized.html']"
 //@ files "foo/hidden" "['inner']"
 //@ files "foo/hidden/inner" "['trait.Foo.html']"
 //@ files "foo/visible" "['index.html', 'sidebar-items.js', 'trait.Foo.html']"

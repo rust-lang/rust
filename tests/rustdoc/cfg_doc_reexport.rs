@@ -4,8 +4,14 @@
 #![crate_name = "foo"]
 #![no_core]
 
+#[lang = "pointee_sized"]
+pub trait PointeeSized {}
+
+#[lang = "meta_sized"]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-trait Sized {}
+pub trait Sized: MetaSized {}
 
 //@ has 'foo/index.html'
 //@ has - '//dt/*[@class="stab portability"]' 'foobar'
