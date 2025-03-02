@@ -538,8 +538,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
                 self.error = Err(report_non_exhaustive_match(
                     &cx,
                     self.thir,
-                    scrut.ty,
-                    scrut.span,
+                    scrut,
                     witnesses,
                     arms,
                     braces_span,
@@ -1205,12 +1204,13 @@ fn pat_is_catchall(pat: &DeconstructedPat<'_, '_>) -> bool {
 fn report_non_exhaustive_match<'p, 'tcx>(
     cx: &PatCtxt<'p, 'tcx>,
     thir: &Thir<'tcx>,
-    scrut_ty: Ty<'tcx>,
-    sp: Span,
+    scrut: &Expr<'tcx>,
     witnesses: Vec<WitnessPat<'p, 'tcx>>,
     arms: &[ArmId],
     braces_span: Option<Span>,
 ) -> ErrorGuaranteed {
+    let scrut_ty = scrut.ty;
+    let sp = scrut.span;
     let is_empty_match = arms.is_empty();
     let non_empty_enum = match scrut_ty.kind() {
         ty::Adt(def, _) => def.is_enum() && !def.variants().is_empty(),
@@ -1323,7 +1323,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
     let suggested_arm = if suggest_the_witnesses {
         let pattern = witnesses
             .iter()
-            .map(|witness| cx.print_witness_pat(witness))
+            .map(|witness| cx.print_witness_pat_with_scrut(witness, Some(scrut)))
             .collect::<Vec<String>>()
             .join(" | ");
         if witnesses.iter().all(|p| p.is_never_pattern()) && cx.tcx.features().never_patterns() {
