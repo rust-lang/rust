@@ -207,11 +207,6 @@ export class AnsiDecorationProvider implements vscode.Disposable {
             }
         }
 
-        const themeColor = AnsiDecorationProvider._anserToThemeColor[color];
-        if (themeColor) {
-            return new ThemeColor("terminal." + themeColor);
-        }
-
-        return undefined;
+        return AnsiDecorationProvider._anserToThemeColor[color];
     }
 }
