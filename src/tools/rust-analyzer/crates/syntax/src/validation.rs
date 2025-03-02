@@ -315,10 +315,21 @@ fn validate_path_keywords(segment: ast::PathSegment, errors: &mut Vec<SyntaxErro
 }
 
 fn validate_trait_object_ref_ty(ty: ast::RefType, errors: &mut Vec<SyntaxError>) {
-    if let Some(ast::Type::DynTraitType(ty)) = ty.ty() {
-        if let Some(err) = validate_trait_object_ty(ty) {
-            errors.push(err);
+    match ty.ty() {
+        Some(ast::Type::DynTraitType(ty)) => {
+            if let Some(err) = validate_trait_object_ty(ty) {
+                errors.push(err);
+            }
         }
+        Some(ast::Type::ImplTraitType(ty)) => {
+            if ty.type_bound_list().map_or(0, |tbl| tbl.bounds().count()) == 0 {
+                errors.push(SyntaxError::new(
+                    "At least one trait must be specified",
+                    ty.syntax().text_range(),
+                ));
+            }
+        }
+        _ => {}
     }
 }
 
