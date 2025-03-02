@@ -1,7 +1,6 @@
 //@ revisions: ascii unicode
 //@[ascii] compile-flags: --diagnostic-width=40 -Zwrite-long-types-to-disk=yes
 //@[unicode] compile-flags: -Zunstable-options --error-format=human-unicode --diagnostic-width=40 -Zwrite-long-types-to-disk=yes
-//@ normalize-stderr: "'\$TEST_BUILD_DIR/.*\.long-type-\d+.txt'" -> "'$$TEST_BUILD_DIR/$$FILE.long-type-hash.txt'"
 trait Future {
     type Error;
 }

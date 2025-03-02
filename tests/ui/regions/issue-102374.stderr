@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-102374.rs:17:5
+  --> $DIR/issue-102374.rs:16:5
    |
 LL | ) -> i32 {
    |      --- expected `i32` because of return type
