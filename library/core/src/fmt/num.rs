@@ -244,7 +244,7 @@ macro_rules! impl_Display {
             #[doc(hidden)]
             #[unstable(
                 feature = "fmt_internals",
-                reason = "internal routines only exposed for testing",
+                reason = "internal API used to convert integers to string",
                 issue = "none"
             )]
             pub fn _fmt<'a>(self, buf: &'a mut [MaybeUninit::<u8>]) -> &'a str {
