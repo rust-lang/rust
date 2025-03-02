@@ -1289,11 +1289,19 @@ impl GenericBound {
     }
 
     pub(crate) fn is_sized_bound(&self, cx: &DocContext<'_>) -> bool {
+        self.is_bounded_by_lang_item(cx, LangItem::Sized)
+    }
+
+    pub(crate) fn is_meta_sized_bound(&self, cx: &DocContext<'_>) -> bool {
+        self.is_bounded_by_lang_item(cx, LangItem::MetaSized)
+    }
+
+    fn is_bounded_by_lang_item(&self, cx: &DocContext<'_>, lang_item: LangItem) -> bool {
         if let GenericBound::TraitBound(
             PolyTrait { ref trait_, .. },
             rustc_hir::TraitBoundModifiers::NONE,
         ) = *self
-            && Some(trait_.def_id()) == cx.tcx.lang_items().sized_trait()
+            && cx.tcx.is_lang_item(trait_.def_id(), lang_item)
         {
             return true;
         }
