@@ -1,6 +1,6 @@
 use std::ops::Range;
-use std::{io, thread};
 use std::sync::Arc;
+use std::{io, thread};
 
 use crate::doc::{NEEDLESS_DOCTEST_MAIN, TEST_ATTR_IN_DOCTEST};
 use clippy_utils::diagnostics::span_lint;

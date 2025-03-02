@@ -13,7 +13,7 @@ LL +         Some(x) => &x,
    |
 
 error: this pattern creates a reference to a reference
-  --> tests/ui/ref_binding_to_reference.rs:38:14
+  --> tests/ui/ref_binding_to_reference.rs:37:14
    |
 LL |         Some(ref x) => {
    |              ^^^^^
@@ -21,6 +21,7 @@ LL |         Some(ref x) => {
 help: try
    |
 LL ~         Some(x) => {
+LL |
 LL |
 LL |             f1(x);
 LL ~             f1(x);
@@ -49,11 +50,12 @@ help: try
    |
 LL ~     let _ = |&x: &&String| {
 LL |
+LL |
 LL ~         let _: &&String = &x;
    |
 
 error: this pattern creates a reference to a reference
-  --> tests/ui/ref_binding_to_reference.rs:62:12
+  --> tests/ui/ref_binding_to_reference.rs:63:12
    |
 LL | fn f2<'a>(&ref x: &&'a String) -> &'a String {
    |            ^^^^^
@@ -62,12 +64,13 @@ help: try
    |
 LL ~ fn f2<'a>(&x: &&'a String) -> &'a String {
 LL |
+LL |
 LL ~     let _: &&String = &x;
 LL ~     x
    |
 
 error: this pattern creates a reference to a reference
-  --> tests/ui/ref_binding_to_reference.rs:70:11
+  --> tests/ui/ref_binding_to_reference.rs:72:11
    |
 LL |     fn f(&ref x: &&String) {
    |           ^^^^^
@@ -76,11 +79,12 @@ help: try
    |
 LL ~     fn f(&x: &&String) {
 LL |
+LL |
 LL ~         let _: &&String = &x;
    |
 
 error: this pattern creates a reference to a reference
-  --> tests/ui/ref_binding_to_reference.rs:79:11
+  --> tests/ui/ref_binding_to_reference.rs:82:11
    |
 LL |     fn f(&ref x: &&String) {
    |           ^^^^^
@@ -88,6 +92,7 @@ LL |     fn f(&ref x: &&String) {
 help: try
    |
 LL ~     fn f(&x: &&String) {
+LL |
 LL |
 LL ~         let _: &&String = &x;
    |

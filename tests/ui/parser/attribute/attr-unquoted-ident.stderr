@@ -20,7 +20,7 @@ help: surround the identifier with quotation marks to make it into a string lite
 LL |     #[cfg(key="foo bar baz")]
    |               +           +
 
-error: expected unsuffixed literal, found `nickname`
+error: expected unsuffixed literal, found identifier `nickname`
   --> $DIR/attr-unquoted-ident.rs:21:38
    |
 LL |     ($name:ident) => { #[doc(alias = $name)] pub struct S; }

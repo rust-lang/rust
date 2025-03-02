@@ -16,9 +16,11 @@ fn main() {
     let z = 1;
 
     Foo { y, x, z: z };
+    //~^ inconsistent_struct_constructor
 
     Foo {
         z: z,
+        //~^ inconsistent_struct_constructor
         x,
         ..Default::default()
     };
@@ -34,6 +36,7 @@ mod field_attributes {
     fn check_body(condition: bool) {
         BodyVisitor {
             #[expect(clippy::bool_to_int_with_if)] // obfuscates the meaning
+            //~^ inconsistent_struct_constructor
             expn_depth: if condition { 1 } else { 0 },
             macro_unsafe_blocks: Vec::new(),
         };
@@ -53,6 +56,7 @@ mod cfgs_between_fields {
         }
         let s = S {
             d: 0,
+            //~^ inconsistent_struct_constructor
             #[cfg(all())]
             c: 1,
             b: 2,
@@ -70,6 +74,7 @@ mod cfgs_between_fields {
         }
         let s = S {
             d: 0,
+            //~^ inconsistent_struct_constructor
             #[cfg(any())]
             c: 1,
             b: 2,

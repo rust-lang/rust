@@ -434,7 +434,6 @@ pub fn create_ecx<'tcx>(
 /// Evaluates the entry function specified by `entry_id`.
 /// Returns `Some(return_code)` if program execution completed.
 /// Returns `None` if an evaluation error occurred.
-#[expect(clippy::needless_lifetimes)]
 pub fn eval_entry<'tcx>(
     tcx: TyCtxt<'tcx>,
     entry_id: DefId,

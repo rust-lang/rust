@@ -42,10 +42,10 @@ pub use self::Enzyme_AD::*;
 #[cfg(llvm_enzyme)]
 pub mod Enzyme_AD {
     use libc::c_void;
-    extern "C" {
+    unsafe extern "C" {
         pub fn EnzymeSetCLBool(arg1: *mut ::std::os::raw::c_void, arg2: u8);
     }
-    extern "C" {
+    unsafe extern "C" {
         static mut EnzymePrintPerf: c_void;
         static mut EnzymePrintActivity: c_void;
         static mut EnzymePrintType: c_void;

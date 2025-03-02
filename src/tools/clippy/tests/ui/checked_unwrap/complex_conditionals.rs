@@ -11,16 +11,19 @@ fn test_complex_conditions() {
     if x.is_ok() && y.is_err() {
         // unnecessary
         x.unwrap();
-        //~^ ERROR: called `unwrap` on `x` after checking its variant with `is_ok`
+        //~^ unnecessary_unwrap
+
         // will panic
         x.unwrap_err();
-        //~^ ERROR: this call to `unwrap_err()` will always panic
+        //~^ panicking_unwrap
+
         // will panic
         y.unwrap();
-        //~^ ERROR: this call to `unwrap()` will always panic
+        //~^ panicking_unwrap
+
         // unnecessary
         y.unwrap_err();
-        //~^ ERROR: called `unwrap_err` on `y` after checking its variant with `is_err`
+        //~^ unnecessary_unwrap
     } else {
         // not statically determinable whether any of the following will always succeed or always fail:
         x.unwrap();
@@ -36,37 +39,45 @@ fn test_complex_conditions() {
     } else {
         // will panic
         x.unwrap();
-        //~^ ERROR: this call to `unwrap()` will always panic
+        //~^ panicking_unwrap
+
         // unnecessary
         x.unwrap_err();
-        //~^ ERROR: called `unwrap_err` on `x` after checking its variant with `is_ok`
+        //~^ unnecessary_unwrap
+
         // will panic
         y.unwrap();
-        //~^ ERROR: this call to `unwrap()` will always panic
+        //~^ panicking_unwrap
+
         // unnecessary
         y.unwrap_err();
-        //~^ ERROR: called `unwrap_err` on `y` after checking its variant with `is_ok`
+        //~^ unnecessary_unwrap
     }
     let z: Result<(), ()> = Ok(());
     if x.is_ok() && !(y.is_ok() || z.is_err()) {
         // unnecessary
         x.unwrap();
-        //~^ ERROR: called `unwrap` on `x` after checking its variant with `is_ok`
+        //~^ unnecessary_unwrap
+
         // will panic
         x.unwrap_err();
-        //~^ ERROR: this call to `unwrap_err()` will always panic
+        //~^ panicking_unwrap
+
         // will panic
         y.unwrap();
-        //~^ ERROR: this call to `unwrap()` will always panic
+        //~^ panicking_unwrap
+
         // unnecessary
         y.unwrap_err();
-        //~^ ERROR: called `unwrap_err` on `y` after checking its variant with `is_ok`
+        //~^ unnecessary_unwrap
+
         // unnecessary
         z.unwrap();
-        //~^ ERROR: called `unwrap` on `z` after checking its variant with `is_err`
+        //~^ unnecessary_unwrap
+
         // will panic
         z.unwrap_err();
-        //~^ ERROR: this call to `unwrap_err()` will always panic
+        //~^ panicking_unwrap
     }
     if x.is_ok() || !(y.is_ok() && z.is_err()) {
         // not statically determinable whether any of the following will always succeed or always fail:
@@ -76,22 +87,27 @@ fn test_complex_conditions() {
     } else {
         // will panic
         x.unwrap();
-        //~^ ERROR: this call to `unwrap()` will always panic
+        //~^ panicking_unwrap
+
         // unnecessary
         x.unwrap_err();
-        //~^ ERROR: called `unwrap_err` on `x` after checking its variant with `is_ok`
+        //~^ unnecessary_unwrap
+
         // unnecessary
         y.unwrap();
-        //~^ ERROR: called `unwrap` on `y` after checking its variant with `is_ok`
+        //~^ unnecessary_unwrap
+
         // will panic
         y.unwrap_err();
-        //~^ ERROR: this call to `unwrap_err()` will always panic
+        //~^ panicking_unwrap
+
         // will panic
         z.unwrap();
-        //~^ ERROR: this call to `unwrap()` will always panic
+        //~^ panicking_unwrap
+
         // unnecessary
         z.unwrap_err();
-        //~^ ERROR: called `unwrap_err` on `z` after checking its variant with `is_err`
+        //~^ unnecessary_unwrap
     }
 }
 

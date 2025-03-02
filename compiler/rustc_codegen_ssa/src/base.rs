@@ -687,7 +687,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         submit_codegened_module_to_llvm(
             &backend,
             &ongoing_codegen.coordinator.sender,
-            ModuleCodegen { name: llmod_id, module_llvm, kind: ModuleKind::Allocator },
+            ModuleCodegen::new_allocator(llmod_id, module_llvm),
             cost,
         );
     }

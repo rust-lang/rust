@@ -223,10 +223,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             }
             hir::GenericParamKind::Const { .. } => {
                 let param_def_id = param.def_id.to_def_id();
-                let ct_ty = tcx
-                    .type_of(param_def_id)
-                    .no_bound_vars()
-                    .expect("const parameters cannot be generic");
+                let ct_ty = tcx.type_of(param_def_id).instantiate_identity();
                 let ct = icx.lowerer().lower_const_param(param_def_id, param.hir_id);
                 predicates
                     .insert((ty::ClauseKind::ConstArgHasType(ct, ct_ty).upcast(tcx), param.span));
@@ -940,12 +937,6 @@ impl<'tcx> ItemCtxt<'tcx> {
     }
 }
 
-/// Compute the conditions that need to hold for a conditionally-const item to be const.
-/// That is, compute the set of `~const` where clauses for a given item.
-///
-/// This query also computes the `~const` where clauses for associated types, which are
-/// not "const", but which have item bounds which may be `~const`. These must hold for
-/// the `~const` item bound to hold.
 pub(super) fn const_conditions<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
@@ -1063,7 +1054,9 @@ pub(super) fn explicit_implied_const_bounds<'tcx>(
     def_id: LocalDefId,
 ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::PolyTraitRef<'tcx>, Span)]> {
     if !tcx.is_conditionally_const(def_id) {
-        bug!("const_conditions invoked for item that is not conditionally const: {def_id:?}");
+        bug!(
+            "explicit_implied_const_bounds invoked for item that is not conditionally const: {def_id:?}"
+        );
     }
 
     let bounds = match tcx.opt_rpitit_info(def_id.to_def_id()) {

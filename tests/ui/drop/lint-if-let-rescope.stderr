@@ -8,6 +8,15 @@ LL |     if let Some(_value) = droppy().get() {
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-if-let-scope.html>
+note: value invokes this custom destructor
+  --> $DIR/lint-if-let-rescope.rs:11:1
+   |
+LL | / impl Drop for Droppy {
+LL | |     fn drop(&mut self) {
+LL | |         println!("dropped");
+LL | |     }
+LL | | }
+   | |_^
 help: the value is now dropped here in Edition 2024
   --> $DIR/lint-if-let-rescope.rs:32:5
    |
@@ -43,6 +52,24 @@ LL |     } else if let Some(_value) = droppy().get() {
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-if-let-scope.html>
+note: value invokes this custom destructor
+  --> $DIR/lint-if-let-rescope.rs:11:1
+   |
+LL | / impl Drop for Droppy {
+LL | |     fn drop(&mut self) {
+LL | |         println!("dropped");
+LL | |     }
+LL | | }
+   | |_^
+note: value invokes this custom destructor
+  --> $DIR/lint-if-let-rescope.rs:11:1
+   |
+LL | / impl Drop for Droppy {
+LL | |     fn drop(&mut self) {
+LL | |         println!("dropped");
+LL | |     }
+LL | | }
+   | |_^
 help: the value is now dropped here in Edition 2024
   --> $DIR/lint-if-let-rescope.rs:42:5
    |
@@ -75,6 +102,15 @@ LL |     } else if let Some(_value) = droppy().get() {
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-if-let-scope.html>
+note: value invokes this custom destructor
+  --> $DIR/lint-if-let-rescope.rs:11:1
+   |
+LL | / impl Drop for Droppy {
+LL | |     fn drop(&mut self) {
+LL | |         println!("dropped");
+LL | |     }
+LL | | }
+   | |_^
 help: the value is now dropped here in Edition 2024
   --> $DIR/lint-if-let-rescope.rs:54:5
    |
@@ -101,6 +137,15 @@ LL |     if let Some(1) = { if let Some(_value) = Droppy.get() { Some(1) } else 
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-if-let-scope.html>
+note: value invokes this custom destructor
+  --> $DIR/lint-if-let-rescope.rs:11:1
+   |
+LL | / impl Drop for Droppy {
+LL | |     fn drop(&mut self) {
+LL | |         println!("dropped");
+LL | |     }
+LL | | }
+   | |_^
 help: the value is now dropped here in Edition 2024
   --> $DIR/lint-if-let-rescope.rs:58:69
    |
@@ -122,6 +167,15 @@ LL |     if (if let Some(_value) = droppy().get() { true } else { false }) {
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-if-let-scope.html>
+note: value invokes this custom destructor
+  --> $DIR/lint-if-let-rescope.rs:11:1
+   |
+LL | / impl Drop for Droppy {
+LL | |     fn drop(&mut self) {
+LL | |         println!("dropped");
+LL | |     }
+LL | | }
+   | |_^
 help: the value is now dropped here in Edition 2024
   --> $DIR/lint-if-let-rescope.rs:72:53
    |
@@ -143,6 +197,15 @@ LL |     } else if (((if let Some(_value) = droppy().get() { true } else { false
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-if-let-scope.html>
+note: value invokes this custom destructor
+  --> $DIR/lint-if-let-rescope.rs:11:1
+   |
+LL | / impl Drop for Droppy {
+LL | |     fn drop(&mut self) {
+LL | |         println!("dropped");
+LL | |     }
+LL | | }
+   | |_^
 help: the value is now dropped here in Edition 2024
   --> $DIR/lint-if-let-rescope.rs:78:62
    |
@@ -164,6 +227,15 @@ LL |     while (if let Some(_value) = droppy().get() { false } else { true }) {
    |
    = warning: this changes meaning in Rust 2024
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/temporary-if-let-scope.html>
+note: value invokes this custom destructor
+  --> $DIR/lint-if-let-rescope.rs:11:1
+   |
+LL | / impl Drop for Droppy {
+LL | |     fn drop(&mut self) {
+LL | |         println!("dropped");
+LL | |     }
+LL | | }
+   | |_^
 help: the value is now dropped here in Edition 2024
   --> $DIR/lint-if-let-rescope.rs:90:57
    |

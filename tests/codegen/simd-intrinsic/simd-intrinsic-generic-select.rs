@@ -1,9 +1,10 @@
 //@ compile-flags: -C no-prepopulate-passes
 
 #![crate_type = "lib"]
-
-#![feature(repr_simd, intrinsics)]
+#![feature(repr_simd, core_intrinsics)]
 #![allow(non_camel_case_types)]
+
+use std::intrinsics::simd::{simd_select, simd_select_bitmask};
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -20,11 +21,6 @@ pub struct b8x4(pub [i8; 4]);
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct i32x4([i32; 4]);
-
-extern "rust-intrinsic" {
-    fn simd_select<T, U>(x: T, a: U, b: U) -> U;
-    fn simd_select_bitmask<T, U>(x: T, a: U, b: U) -> U;
-}
 
 // CHECK-LABEL: @select_m8
 #[no_mangle]

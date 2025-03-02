@@ -4,19 +4,23 @@
 mod unsafe_items_invalid_comment {
     // SAFETY:
     const CONST: u32 = 0;
-    //~^ ERROR: constant item has unnecessary safety comment
+    //~^ unnecessary_safety_comment
+
     // SAFETY:
     static STATIC: u32 = 0;
-    //~^ ERROR: static item has unnecessary safety comment
+    //~^ unnecessary_safety_comment
+
     // SAFETY:
     struct Struct;
-    //~^ ERROR: struct has unnecessary safety comment
+    //~^ unnecessary_safety_comment
+
     // SAFETY:
     enum Enum {}
-    //~^ ERROR: enum has unnecessary safety comment
+    //~^ unnecessary_safety_comment
+
     // SAFETY:
     mod module {}
-    //~^ ERROR: module has unnecessary safety comment
+    //~^ unnecessary_safety_comment
 }
 
 mod unnecessary_from_macro {
@@ -36,6 +40,7 @@ mod unnecessary_from_macro {
         ($t:ty) => {
             // Safety: unnecessary
             impl T for $t {}
+            //~^ unnecessary_safety_comment
         };
     }
 
@@ -45,15 +50,15 @@ mod unnecessary_from_macro {
 fn unnecessary_on_stmt_and_expr() -> u32 {
     // SAFETY: unnecessary
     let num = 42;
-    //~^ ERROR: statement has unnecessary safety comment
+    //~^ unnecessary_safety_comment
 
     // SAFETY: unnecessary
     if num > 24 {}
-    //~^ ERROR: statement has unnecessary safety comment
+    //~^ unnecessary_safety_comment
 
     // SAFETY: unnecessary
     24
-    //~^ ERROR: expression has unnecessary safety comment
+    //~^ unnecessary_safety_comment
 }
 
 mod issue_10084 {

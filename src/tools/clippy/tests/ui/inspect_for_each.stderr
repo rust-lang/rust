@@ -4,6 +4,7 @@ error: called `inspect(..).for_each(..)` on an `Iterator`
 LL |       a.into_iter().inspect(|x| assert!(*x > 0)).for_each(|x| {
    |  ___________________^
 LL | |
+LL | |
 LL | |         let y = do_some(x);
 LL | |         let z = do_more(y);
 LL | |         b.push(z);

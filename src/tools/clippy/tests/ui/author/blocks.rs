@@ -1,3 +1,4 @@
+//@ check-pass
 //@edition:2018
 
 #![allow(redundant_semicolons, clippy::no_effect)]

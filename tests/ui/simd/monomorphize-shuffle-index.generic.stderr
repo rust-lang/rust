@@ -1,5 +1,5 @@
 error: overly complex generic constant
-  --> $DIR/monomorphize-shuffle-index.rs:32:51
+  --> $DIR/monomorphize-shuffle-index.rs:36:51
    |
 LL |         return simd_shuffle_const_generic::<_, _, { &Self::I.0 }>(a, b);
    |                                                   ^^----------^^

@@ -278,6 +278,10 @@ impl ModuleConfig {
             || self.emit_obj == EmitObj::Bitcode
             || self.emit_obj == EmitObj::ObjectCode(BitcodeSection::Full)
     }
+
+    pub fn embed_bitcode(&self) -> bool {
+        self.emit_obj == EmitObj::ObjectCode(BitcodeSection::Full)
+    }
 }
 
 /// Configuration passed to the function returned by the `target_machine_factory`.
@@ -877,14 +881,14 @@ pub(crate) fn compute_per_cgu_lto_type(
 
 fn execute_optimize_work_item<B: ExtraBackendMethods>(
     cgcx: &CodegenContext<B>,
-    module: ModuleCodegen<B::Module>,
+    mut module: ModuleCodegen<B::Module>,
     module_config: &ModuleConfig,
 ) -> Result<WorkItemResult<B>, FatalError> {
     let dcx = cgcx.create_dcx();
     let dcx = dcx.handle();
 
     unsafe {
-        B::optimize(cgcx, dcx, &module, module_config)?;
+        B::optimize(cgcx, dcx, &mut module, module_config)?;
     }
 
     // After we've done the initial round of optimizations we need to

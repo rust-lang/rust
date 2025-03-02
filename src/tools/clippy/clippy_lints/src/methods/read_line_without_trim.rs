@@ -1,11 +1,10 @@
 use std::ops::ControlFlow;
 
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::paths::STDIN;
+use clippy_utils::get_parent_expr;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::for_each_local_use_after_expr;
-use clippy_utils::{get_parent_expr, match_def_path};
 use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
@@ -34,7 +33,7 @@ fn parse_fails_on_trailing_newline(ty: Ty<'_>) -> bool {
 
 pub fn check(cx: &LateContext<'_>, call: &Expr<'_>, recv: &Expr<'_>, arg: &Expr<'_>) {
     if let Some(recv_adt) = cx.typeck_results().expr_ty(recv).ty_adt_def()
-        && match_def_path(cx, recv_adt.did(), &STDIN)
+        && cx.tcx.is_diagnostic_item(sym::Stdin, recv_adt.did())
         && let ExprKind::Path(QPath::Resolved(_, path)) = arg.peel_borrows().kind
         && let Res::Local(local_id) = path.res
     {

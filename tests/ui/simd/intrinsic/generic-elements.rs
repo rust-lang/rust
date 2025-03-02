@@ -1,7 +1,19 @@
 //@ build-fail
 
-#![feature(repr_simd, intrinsics, rustc_attrs, adt_const_params, unsized_const_params)]
+#![feature(
+    repr_simd,
+    intrinsics,
+    core_intrinsics,
+    rustc_attrs,
+    adt_const_params,
+    unsized_const_params
+)]
 #![allow(incomplete_features)]
+
+use std::intrinsics::simd::{simd_extract, simd_insert, simd_shuffle};
+
+#[rustc_intrinsic]
+unsafe fn simd_shuffle_const_generic<T, U, const IDX: &'static [u32]>(x: T, y: T) -> U;
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
@@ -28,21 +40,6 @@ struct f32x4([f32; 4]);
 #[derive(Copy, Clone)]
 #[allow(non_camel_case_types)]
 struct f32x8([f32; 8]);
-
-
-#[rustc_intrinsic]
-unsafe fn simd_insert<T, E>(x: T, idx: u32, y: E) -> T;
-
-#[rustc_intrinsic]
-unsafe fn simd_extract<T, E>(x: T, idx: u32) -> E;
-
-
-#[rustc_intrinsic]
-unsafe fn simd_shuffle<T, I, U>(x: T, y: T, idx: I) -> U;
-
-#[rustc_intrinsic]
-unsafe fn simd_shuffle_const_generic<T, U, const IDX: &'static [u32]>(x: T, y: T) -> U;
-
 
 #[repr(simd)]
 struct SimdShuffleIdx<const LEN: usize>([u32; LEN]);

@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions: elfv1-be elfv2-be elfv2-le aix
 //@ assembly-output: emit-asm
 //@ compile-flags: -Copt-level=3
@@ -20,21 +21,9 @@
 #![no_core]
 #![crate_type = "lib"]
 
-#[lang = "sized"]
-trait Sized {}
+extern crate minicore;
+use minicore::*;
 
-#[lang = "copy"]
-trait Copy {}
-
-#[lang = "freeze"]
-trait Freeze {}
-
-#[lang = "unpin"]
-trait Unpin {}
-
-impl Copy for u8 {}
-impl Copy for u16 {}
-impl Copy for u32 {}
 impl Copy for FiveU32s {}
 impl Copy for FiveU16s {}
 impl Copy for ThreeU8s {}

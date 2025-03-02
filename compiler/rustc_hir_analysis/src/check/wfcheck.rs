@@ -966,7 +966,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), 
             let ty = tcx.type_of(param.def_id).instantiate_identity();
 
             if tcx.features().unsized_const_params() {
-                enter_wf_checking_ctxt(tcx, hir_ty.span, param.def_id, |wfcx| {
+                enter_wf_checking_ctxt(tcx, hir_ty.span, tcx.local_parent(param.def_id), |wfcx| {
                     wfcx.register_bound(
                         ObligationCause::new(
                             hir_ty.span,
@@ -980,7 +980,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), 
                     Ok(())
                 })
             } else if tcx.features().adt_const_params() {
-                enter_wf_checking_ctxt(tcx, hir_ty.span, param.def_id, |wfcx| {
+                enter_wf_checking_ctxt(tcx, hir_ty.span, tcx.local_parent(param.def_id), |wfcx| {
                     wfcx.register_bound(
                         ObligationCause::new(
                             hir_ty.span,

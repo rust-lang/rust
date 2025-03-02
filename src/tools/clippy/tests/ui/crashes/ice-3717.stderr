@@ -13,6 +13,7 @@ help: add a type parameter for `BuildHasher`
    |
 LL ~ pub fn ice_3717<S: ::std::hash::BuildHasher + Default>(_: &HashSet<usize, S>) {
 LL |
+LL |
 LL |     let _ = [0u8; 0];
 LL ~     let _: HashSet<usize> = HashSet::default();
    |

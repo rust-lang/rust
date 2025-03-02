@@ -1,5 +1,6 @@
 // Verifies that `-Zsanitizer=kernel-address` emits sanitizer instrumentation.
 
+//@ add-core-stubs
 //@ compile-flags: -Zsanitizer=kernel-address -Copt-level=0
 //@ revisions: aarch64 riscv64imac riscv64gc x86_64
 //@[aarch64] compile-flags: --target aarch64-unknown-none
@@ -15,13 +16,8 @@
 #![feature(no_core, no_sanitize, lang_items)]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
-
-#[lang = "copy"]
-trait Copy {}
-
-impl Copy for u8 {}
+extern crate minicore;
+use minicore::*;
 
 // CHECK-LABEL: ; kasan_emits_instrumentation::unsanitized
 // CHECK-NEXT:  ; Function Attrs:

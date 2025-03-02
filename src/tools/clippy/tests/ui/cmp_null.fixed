@@ -7,26 +7,29 @@ fn main() {
     let x = 0;
     let p: *const usize = &x;
     if p.is_null() {
-        //~^ ERROR: comparing with null is better expressed by the `.is_null()` method
-        //~| NOTE: `-D clippy::cmp-null` implied by `-D warnings`
+        //~^ cmp_null
+
         println!("This is surprising!");
     }
     if p.is_null() {
-        //~^ ERROR: comparing with null is better expressed by the `.is_null()` method
+        //~^ cmp_null
+
         println!("This is surprising!");
     }
 
     let mut y = 0;
     let mut m: *mut usize = &mut y;
     if m.is_null() {
-        //~^ ERROR: comparing with null is better expressed by the `.is_null()` method
+        //~^ cmp_null
+
         println!("This is surprising, too!");
     }
     if m.is_null() {
-        //~^ ERROR: comparing with null is better expressed by the `.is_null()` method
+        //~^ cmp_null
+
         println!("This is surprising, too!");
     }
 
     let _ = (x as *const ()).is_null();
-    //~^ ERROR: comparing with null is better expressed by the `.is_null()` method
+    //~^ cmp_null
 }

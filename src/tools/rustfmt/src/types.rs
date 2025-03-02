@@ -1019,7 +1019,11 @@ impl Rewrite for ast::Ty {
             }
             ast::TyKind::UnsafeBinder(ref binder) => {
                 let mut result = String::new();
-                if let Some(ref lifetime_str) =
+                if binder.generic_params.is_empty() {
+                    // We always want to write `unsafe<>` since `unsafe<> Ty`
+                    // and `Ty` are distinct types.
+                    result.push_str("unsafe<> ")
+                } else if let Some(ref lifetime_str) =
                     rewrite_bound_params(context, shape, &binder.generic_params)
                 {
                     result.push_str("unsafe<");

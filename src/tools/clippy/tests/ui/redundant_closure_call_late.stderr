@@ -8,7 +8,7 @@ LL |     i = redun_closure();
    = help: to override `-D warnings` add `#[allow(clippy::redundant_closure_call)]`
 
 error: closure called just once immediately after it was declared
-  --> tests/ui/redundant_closure_call_late.rs:22:5
+  --> tests/ui/redundant_closure_call_late.rs:21:5
    |
 LL |     i = shadowed_closure();
    |     ^^^^^^^^^^^^^^^^^^^^^^
