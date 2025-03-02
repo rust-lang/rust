@@ -1,12 +1,21 @@
 #![feature(intrinsics)]
 #![feature(no_core, lang_items)]
+#![feature(const_trait_impl)]
 #![feature(rustc_attrs)]
 
 #![no_core]
 #![crate_name = "foo"]
 
+#[lang = "pointee_sized"]
+pub trait PointeeSized {}
+
+#[lang = "meta_sized"]
+#[const_trait]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-trait Sized {}
+#[const_trait]
+pub trait Sized: MetaSized {}
 
 //@ has 'foo/fn.abort.html'
 //@ has - '//pre[@class="rust item-decl"]' 'pub fn abort() -> !'

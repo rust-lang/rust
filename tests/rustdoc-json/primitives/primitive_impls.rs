@@ -1,4 +1,5 @@
 #![feature(no_core, lang_items)]
+#![feature(const_trait_impl)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
 #![no_core]
@@ -6,8 +7,16 @@
 
 //@ set impl_i32 = "$.index[?(@.docs=='Only core can do this')].id"
 
+#[lang = "pointee_sized"]
+pub trait PointeeSized {}
+
+#[lang = "meta_sized"]
+#[const_trait]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-trait Sized {}
+#[const_trait]
+pub trait Sized: MetaSized {}
 
 /// Only core can do this
 impl i32 {
