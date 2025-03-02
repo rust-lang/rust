@@ -1,50 +1,12 @@
 # `compiler-builtins`
 
-> Porting `compiler-rt` intrinsics to Rust
+This crate provides external symbols that the compiler expects to be available when
+building Rust projects, typically software routines for basic operations that do not
+have hardware support. It is largely a port of LLVM's [`compiler-rt`].
 
-See [rust-lang/rust#35437][0].
+It is distributed as part of Rust's sysroot.
 
-[0]: https://github.com/rust-lang/rust/issues/35437
-
-## When and how to use this crate?
-
-If you are working with a target that doesn't have binary releases of std
-available via rustup (this probably means you are building the core crate
-yourself) and need compiler-rt intrinsics (i.e. you are probably getting linker
-errors when building an executable: `undefined reference to __aeabi_memcpy`),
-you can use this crate to get those intrinsics and solve the linker errors. To
-do that, add this crate somewhere in the dependency graph of the crate you are
-building:
-
-```toml
-# Cargo.toml
-[dependencies]
-compiler_builtins = { git = "https://github.com/rust-lang/compiler-builtins" }
-```
-
-```rust
-extern crate compiler_builtins;
-
-// ...
-```
-
-If you still get an "undefined reference to $INTRINSIC" error after that change,
-that means that we haven't ported `$INTRINSIC` to Rust yet! Please open [an
-issue] with the name of the intrinsic and the LLVM triple (e.g.
-thumbv7m-none-eabi) of the target you are using. That way we can prioritize
-porting that particular intrinsic.
-
-If you've got a C compiler available for your target then while we implement
-this intrinsic you can temporarily enable a fallback to the actual compiler-rt
-implementation as well for unimplemented intrinsics:
-
-```toml
-[dependencies.compiler_builtins]
-git = "https://github.com/rust-lang/compiler-builtins"
-features = ["c"]
-```
-
-[an issue]: https://github.com/rust-lang/compiler-builtins/issues
+[`compiler-rt`]: https://github.com/llvm/llvm-project/tree/1b1dc505057322f4fa1110ef4f53c44347f52986/compiler-rt
 
 ## Contributing
 
