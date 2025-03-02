@@ -136,6 +136,13 @@ fn generate_enzyme_call<'ll>(
         let enzyme_dup = cx.create_metadata("enzyme_dup".to_string()).unwrap();
         let enzyme_dupnoneed = cx.create_metadata("enzyme_dupnoneed".to_string()).unwrap();
         let enzyme_primal_ret = cx.create_metadata("enzyme_primal_return".to_string()).unwrap();
+        let enzyme_width = cx.create_metadata("enzyme_width".to_string()).unwrap();
+
+        // FIXME(ZuseZ4): Find out, how enzyme_primal_ret and enzyme_width are combinable.
+        if attrs.width > 1 {
+            args.push(cx.get_metadata_value(enzyme_width));
+            args.push(cx.get_const_i64(attrs.width as u64));
+        }
 
         match output {
             DiffActivity::Dual => {
