@@ -257,7 +257,7 @@ fn main() {
 
 
 ### `apply_demorgan`
-**Source:**  [apply_demorgan.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/apply_demorgan.rs#L16) 
+**Source:**  [apply_demorgan.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/apply_demorgan.rs#L23) 
 
 Apply [De Morgan's law](https://en.wikipedia.org/wiki/De_Morgan%27s_laws).
 This transforms expressions of the form `!l || !r` into `!(l && r)`.
@@ -280,7 +280,7 @@ fn main() {
 
 
 ### `apply_demorgan_iterator`
-**Source:**  [apply_demorgan.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/apply_demorgan.rs#L147) 
+**Source:**  [apply_demorgan.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/apply_demorgan.rs#L154) 
 
 Apply [De Morgan's law](https://en.wikipedia.org/wiki/De_Morgan%27s_laws) to
 `Iterator::all` and `Iterator::any`.
@@ -1341,6 +1341,26 @@ fn main() {
 ```rust
 fn main() {
     ((3, 4), (1, 2));
+}
+```
+
+
+### `flip_or_pattern`
+**Source:**  [flip_or_pattern.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/flip_or_pattern.rs#L9) 
+
+Flips two trait bounds.
+
+#### Before
+```rust
+fn foo() {
+    let (a |┃ b) = 1;
+}
+```
+
+#### After
+```rust
+fn foo() {
+    let (b | a) = 1;
 }
 ```
 
