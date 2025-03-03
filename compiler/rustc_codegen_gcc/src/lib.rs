@@ -52,6 +52,7 @@ extern crate rustc_metadata;
 extern crate rustc_middle;
 extern crate rustc_session;
 extern crate rustc_span;
+extern crate rustc_symbol_mangling;
 extern crate rustc_target;
 
 // This prevents duplicating functions and statics that are already part of the host rustc process.
