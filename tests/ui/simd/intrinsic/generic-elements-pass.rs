@@ -1,8 +1,10 @@
 //@ run-pass
 
-#![feature(repr_simd, core_intrinsics)]
+#![feature(repr_simd, intrinsics, core_intrinsics)]
 
-use std::intrinsics::simd::{simd_extract, simd_insert, simd_shuffle};
+use std::intrinsics::simd::{
+    simd_extract, simd_extract_dyn, simd_insert, simd_insert_dyn, simd_shuffle,
+};
 
 #[repr(simd)]
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -69,6 +71,41 @@ fn main() {
         all_eq!(simd_extract(x8, 5), 85);
         all_eq!(simd_extract(x8, 6), 86);
         all_eq!(simd_extract(x8, 7), 87);
+    }
+    unsafe {
+        all_eq!(simd_insert_dyn(x2, 0, 100), i32x2([100, 21]));
+        all_eq!(simd_insert_dyn(x2, 1, 100), i32x2([20, 100]));
+
+        all_eq!(simd_insert_dyn(x4, 0, 100), i32x4([100, 41, 42, 43]));
+        all_eq!(simd_insert_dyn(x4, 1, 100), i32x4([40, 100, 42, 43]));
+        all_eq!(simd_insert_dyn(x4, 2, 100), i32x4([40, 41, 100, 43]));
+        all_eq!(simd_insert_dyn(x4, 3, 100), i32x4([40, 41, 42, 100]));
+
+        all_eq!(simd_insert_dyn(x8, 0, 100), i32x8([100, 81, 82, 83, 84, 85, 86, 87]));
+        all_eq!(simd_insert_dyn(x8, 1, 100), i32x8([80, 100, 82, 83, 84, 85, 86, 87]));
+        all_eq!(simd_insert_dyn(x8, 2, 100), i32x8([80, 81, 100, 83, 84, 85, 86, 87]));
+        all_eq!(simd_insert_dyn(x8, 3, 100), i32x8([80, 81, 82, 100, 84, 85, 86, 87]));
+        all_eq!(simd_insert_dyn(x8, 4, 100), i32x8([80, 81, 82, 83, 100, 85, 86, 87]));
+        all_eq!(simd_insert_dyn(x8, 5, 100), i32x8([80, 81, 82, 83, 84, 100, 86, 87]));
+        all_eq!(simd_insert_dyn(x8, 6, 100), i32x8([80, 81, 82, 83, 84, 85, 100, 87]));
+        all_eq!(simd_insert_dyn(x8, 7, 100), i32x8([80, 81, 82, 83, 84, 85, 86, 100]));
+
+        all_eq!(simd_extract_dyn(x2, 0), 20);
+        all_eq!(simd_extract_dyn(x2, 1), 21);
+
+        all_eq!(simd_extract_dyn(x4, 0), 40);
+        all_eq!(simd_extract_dyn(x4, 1), 41);
+        all_eq!(simd_extract_dyn(x4, 2), 42);
+        all_eq!(simd_extract_dyn(x4, 3), 43);
+
+        all_eq!(simd_extract_dyn(x8, 0), 80);
+        all_eq!(simd_extract_dyn(x8, 1), 81);
+        all_eq!(simd_extract_dyn(x8, 2), 82);
+        all_eq!(simd_extract_dyn(x8, 3), 83);
+        all_eq!(simd_extract_dyn(x8, 4), 84);
+        all_eq!(simd_extract_dyn(x8, 5), 85);
+        all_eq!(simd_extract_dyn(x8, 6), 86);
+        all_eq!(simd_extract_dyn(x8, 7), 87);
     }
 
     let y2 = i32x2([120, 121]);
