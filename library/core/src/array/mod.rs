@@ -178,6 +178,7 @@ impl Error for TryFromSliceError {
 
 #[stable(feature = "try_from_slice_error", since = "1.36.0")]
 impl From<Infallible> for TryFromSliceError {
+    /// Convert `Infallible` into an error that can happen.
     fn from(x: Infallible) -> TryFromSliceError {
         match x {}
     }
