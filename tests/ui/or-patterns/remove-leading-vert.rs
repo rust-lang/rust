@@ -32,7 +32,7 @@ fn trailing() {
     //~^ ERROR a trailing `|` is not allowed in an or-pattern
     match A {
         A | => {} //~ ERROR a trailing `|` is not allowed in an or-pattern
-        A || => {} //~ ERROR a trailing `|` is not allowed in an or-pattern
+        A || => {} //~ ERROR a trailing `||` is not allowed in an or-pattern
         A || B | => {} //~ ERROR unexpected token `||` in pattern
         //~^ ERROR a trailing `|` is not allowed in an or-pattern
         | A | B | => {}
