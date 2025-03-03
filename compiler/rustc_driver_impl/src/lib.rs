@@ -44,6 +44,10 @@ use rustc_errors::emitter::stderr_destination;
 use rustc_errors::registry::Registry;
 use rustc_errors::{ColorConfig, DiagCtxt, ErrCode, FatalError, PResult, markdown};
 use rustc_feature::find_gated_cfg;
+// This avoids a false positive with `-Wunused_crate_dependencies`.
+// `rust_index` isn't used in this crate's code, but it must be named in the
+// `Cargo.toml` for the `rustc_randomized_layouts` feature.
+use rustc_index as _;
 use rustc_interface::util::{self, get_codegen_backend};
 use rustc_interface::{Linker, create_and_enter_global_ctxt, interface, passes};
 use rustc_lint::unerased_lint_store;
@@ -89,6 +93,10 @@ pub mod pretty;
 #[macro_use]
 mod print;
 mod session_diagnostics;
+
+// Keep the OS parts of this `cfg` in sync with the `cfg` on the `libc`
+// dependency in `compiler/rustc_driver/Cargo.toml`, to keep
+// `-Wunused-crated-dependencies` satisfied.
 #[cfg(all(not(miri), unix, any(target_env = "gnu", target_os = "macos")))]
 mod signal_handler;
 

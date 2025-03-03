@@ -1073,6 +1073,7 @@ impl Builder<'_> {
             lint_flags.push("-Wkeyword_idents_2024");
             lint_flags.push("-Wunreachable_pub");
             lint_flags.push("-Wunsafe_op_in_unsafe_fn");
+            lint_flags.push("-Wunused_crate_dependencies");
         }
 
         // This does not use RUSTFLAGS for two reasons.

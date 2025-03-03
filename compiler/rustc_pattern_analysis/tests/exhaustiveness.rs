@@ -1,5 +1,7 @@
 //! Test exhaustiveness checking.
 
+#![allow(unused_crate_dependencies)]
+
 use common::*;
 use rustc_pattern_analysis::MatchArm;
 use rustc_pattern_analysis::pat::{DeconstructedPat, WitnessPat};
