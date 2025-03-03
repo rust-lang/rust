@@ -1046,7 +1046,6 @@ unsafe extern "C" {
     pub(crate) fn LLVMMetadataTypeInContext(C: &Context) -> &Type;
 
     // Operations on all values
-    pub(crate) fn LLVMIsUndef(Val: &Value) -> Bool;
     pub(crate) fn LLVMTypeOf(Val: &Value) -> &Type;
     pub(crate) fn LLVMGetValueName2(Val: &Value, Length: *mut size_t) -> *const c_char;
     pub(crate) fn LLVMSetValueName2(Val: &Value, Name: *const c_char, NameLen: size_t);
