@@ -472,13 +472,8 @@ where
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "vec_into_iter_clone", since = "1.8.0")]
 impl<T: Clone, A: Allocator + Clone> Clone for IntoIter<T, A> {
-    #[cfg(not(test))]
     fn clone(&self) -> Self {
         self.as_slice().to_vec_in(self.alloc.deref().clone()).into_iter()
-    }
-    #[cfg(test)]
-    fn clone(&self) -> Self {
-        crate::slice::to_vec(self.as_slice(), self.alloc.deref().clone()).into_iter()
     }
 }
 

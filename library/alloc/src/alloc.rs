@@ -5,9 +5,7 @@
 #[stable(feature = "alloc_module", since = "1.28.0")]
 #[doc(inline)]
 pub use core::alloc::*;
-#[cfg(not(test))]
 use core::hint;
-#[cfg(not(test))]
 use core::ptr::{self, NonNull};
 
 unsafe extern "Rust" {
@@ -44,13 +42,9 @@ unsafe extern "Rust" {
 /// accessed through the [free functions in `alloc`](self#functions).
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[derive(Copy, Clone, Default, Debug)]
-#[cfg(not(test))]
 // the compiler needs to know when a Box uses the global allocator vs a custom one
 #[lang = "global_alloc_ty"]
 pub struct Global;
-
-#[cfg(test)]
-pub use std::alloc::Global;
 
 /// Allocates memory with the global allocator.
 ///
@@ -180,7 +174,6 @@ pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
     }
 }
 
-#[cfg(not(test))]
 impl Global {
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -246,7 +239,6 @@ impl Global {
 }
 
 #[unstable(feature = "allocator_api", issue = "32838")]
-#[cfg(not(test))]
 unsafe impl Allocator for Global {
     #[inline]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -346,7 +338,7 @@ unsafe impl Allocator for Global {
 }
 
 /// The allocator for `Box`.
-#[cfg(all(not(no_global_oom_handling), not(test)))]
+#[cfg(not(no_global_oom_handling))]
 #[lang = "exchange_malloc"]
 #[inline]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
@@ -395,7 +387,7 @@ unsafe extern "Rust" {
 /// [no_std]: https://doc.rust-lang.org/reference/names/preludes.html#the-no_std-attribute
 #[stable(feature = "global_alloc", since = "1.28.0")]
 #[rustc_const_unstable(feature = "const_alloc_error", issue = "92523")]
-#[cfg(all(not(no_global_oom_handling), not(test)))]
+#[cfg(not(no_global_oom_handling))]
 #[cold]
 #[optimize(size)]
 pub const fn handle_alloc_error(layout: Layout) -> ! {
@@ -419,11 +411,7 @@ pub const fn handle_alloc_error(layout: Layout) -> ! {
     ct_error(layout)
 }
 
-// For alloc test `std::alloc::handle_alloc_error` can be used directly.
-#[cfg(all(not(no_global_oom_handling), test))]
-pub use std::alloc::handle_alloc_error;
-
-#[cfg(all(not(no_global_oom_handling), not(test)))]
+#[cfg(not(no_global_oom_handling))]
 #[doc(hidden)]
 #[allow(unused_attributes)]
 #[unstable(feature = "alloc_internals", issue = "none")]

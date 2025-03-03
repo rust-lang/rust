@@ -645,6 +645,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// initialized rather than only supporting `0..len`.  Requires that
     /// `initialized.start` ≤ `initialized.end` ≤ `capacity`.
     #[inline]
+    #[cfg(not(test))]
     pub(crate) unsafe fn from_contiguous_raw_parts_in(
         ptr: *mut T,
         initialized: Range<usize>,
