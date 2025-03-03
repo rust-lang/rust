@@ -588,23 +588,40 @@ impl fmt::Debug for Wtf8 {
 /// Formats the string with unpaired surrogates substituted with the replacement
 /// character, U+FFFD.
 impl fmt::Display for Wtf8 {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let wtf8_bytes = &self.bytes;
-        let mut pos = 0;
-        loop {
-            match self.next_surrogate(pos) {
-                Some((surrogate_pos, _)) => {
-                    formatter.write_str(unsafe {
-                        str::from_utf8_unchecked(&wtf8_bytes[pos..surrogate_pos])
-                    })?;
-                    formatter.write_str(UTF8_REPLACEMENT_CHARACTER)?;
-                    pos = surrogate_pos + 3;
-                }
-                None => {
-                    let s = unsafe { str::from_utf8_unchecked(&wtf8_bytes[pos..]) };
-                    if pos == 0 { return s.fmt(formatter) } else { return formatter.write_str(s) }
-                }
-            }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Corresponds to `Formatter::pad`, but for `Wtf8` instead of `str`.
+
+        // Make sure there's a fast path up front.
+        if f.options().get_width().is_none() && f.options().get_precision().is_none() {
+            return self.write_lossy(f);
+        }
+
+        // The `precision` field can be interpreted as a maximum width for the
+        // string being formatted.
+        let max_code_point_count = f.options().get_precision().unwrap_or(usize::MAX);
+        let mut iter = self.code_points();
+        let code_point_count = iter.by_ref().take(max_code_point_count).count();
+
+        // If our string is longer than the maximum width, truncate it and
+        // handle other flags in terms of the truncated string.
+        let byte_len = self.len() - iter.as_slice().len();
+        // SAFETY: The index is derived from the offset of `.code_points()`,
+        // which is guaranteed to be in-bounds and between character boundaries.
+        let s = unsafe { Wtf8::from_bytes_unchecked(self.bytes.get_unchecked(..byte_len)) };
+
+        // The `width` field is more of a minimum width parameter at this point.
+        if let Some(width) = f.options().get_width()
+            && code_point_count < width
+        {
+            // If we're under the minimum width, then fill up the minimum width
+            // with the specified string + some alignment.
+            let post_padding = f.padding(width - code_point_count, fmt::Alignment::Left)?;
+            s.write_lossy(f)?;
+            post_padding.write(f)
+        } else {
+            // If we're over the minimum width or there is no minimum width, we
+            // can just emit the string.
+            s.write_lossy(f)
         }
     }
 }
@@ -718,6 +735,19 @@ impl Wtf8 {
                 }
             }
         }
+    }
+
+    /// Writes the string as lossy UTF-8 like [`Wtf8::to_string_lossy`].
+    /// It ignores formatter flags.
+    fn write_lossy(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let wtf8_bytes = &self.bytes;
+        let mut pos = 0;
+        while let Some((surrogate_pos, _)) = self.next_surrogate(pos) {
+            f.write_str(unsafe { str::from_utf8_unchecked(&wtf8_bytes[pos..surrogate_pos]) })?;
+            f.write_str(UTF8_REPLACEMENT_CHARACTER)?;
+            pos = surrogate_pos + 3;
+        }
+        f.write_str(unsafe { str::from_utf8_unchecked(&wtf8_bytes[pos..]) })
     }
 
     /// Converts the WTF-8 string to potentially ill-formed UTF-16
@@ -1001,6 +1031,16 @@ impl Iterator for Wtf8CodePoints<'_> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         let len = self.bytes.len();
         (len.saturating_add(3) / 4, Some(len))
+    }
+}
+
+impl<'a> Wtf8CodePoints<'a> {
+    /// Views the underlying data as a subslice of the original data.
+    #[inline]
+    pub fn as_slice(&self) -> &Wtf8 {
+        // SAFETY: `Wtf8CodePoints` is only made from a `Wtf8Str`, which
+        // guarantees the iter is valid WTF-8.
+        unsafe { Wtf8::from_bytes_unchecked(self.bytes.as_slice()) }
     }
 }
 
