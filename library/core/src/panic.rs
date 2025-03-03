@@ -49,6 +49,7 @@ pub macro panic_2015 {
 #[rustc_diagnostic_item = "core_panic_2021_macro"]
 #[rustc_macro_transparency = "semitransparent"]
 #[cfg(feature = "panic_immediate_abort")]
+#[cfg_attr(not(test), clippy::format_args)]
 pub macro panic_2021 {
     () => (
         $crate::panicking::panic("explicit panic")
@@ -77,6 +78,7 @@ pub macro panic_2021 {
 #[rustc_diagnostic_item = "core_panic_2021_macro"]
 #[rustc_macro_transparency = "semitransparent"]
 #[cfg(not(feature = "panic_immediate_abort"))]
+#[cfg_attr(not(test), clippy::format_args)]
 pub macro panic_2021 {
     () => ({
         // Create a function so that the argument for `track_caller`
@@ -131,6 +133,7 @@ pub macro unreachable_2015 {
 #[unstable(feature = "edition_panic", issue = "none", reason = "use unreachable!() instead")]
 #[allow_internal_unstable(panic_internals)]
 #[rustc_macro_transparency = "semitransparent"]
+#[cfg_attr(not(test), clippy::format_args)]
 pub macro unreachable_2021 {
     () => (
         $crate::panicking::panic("internal error: entered unreachable code")
