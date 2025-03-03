@@ -606,14 +606,14 @@ fn try_inlining<'tcx, I: Inliner<'tcx>>(
         ty::EarlyBinder::bind(callee_body.clone()),
     ) else {
         debug!("failed to normalize callee body");
-        return Err("implementation limitation");
+        return Err("implementation limitation -- could not normalize callee body");
     };
 
     // Normally, this shouldn't be required, but trait normalization failure can create a
     // validation ICE.
     if !validate_types(tcx, inliner.typing_env(), &callee_body, &caller_body).is_empty() {
         debug!("failed to validate callee body");
-        return Err("implementation limitation");
+        return Err("implementation limitation -- callee body failed validation");
     }
 
     // Check call signature compatibility.
@@ -622,8 +622,7 @@ fn try_inlining<'tcx, I: Inliner<'tcx>>(
     let output_type = callee_body.return_ty();
     if !util::sub_types(tcx, inliner.typing_env(), output_type, destination_ty) {
         trace!(?output_type, ?destination_ty);
-        debug!("failed to normalize return type");
-        return Err("implementation limitation");
+        return Err("implementation limitation -- return type mismatch");
     }
     if callsite.fn_sig.abi() == ExternAbi::RustCall {
         // FIXME: Don't inline user-written `extern "rust-call"` functions,
@@ -653,7 +652,7 @@ fn try_inlining<'tcx, I: Inliner<'tcx>>(
             if !util::sub_types(tcx, inliner.typing_env(), input_type, arg_ty) {
                 trace!(?arg_ty, ?input_type);
                 debug!("failed to normalize tuple argument type");
-                return Err("implementation limitation");
+                return Err("implementation limitation -- arg mismatch");
             }
         }
     } else {
@@ -663,7 +662,7 @@ fn try_inlining<'tcx, I: Inliner<'tcx>>(
             if !util::sub_types(tcx, inliner.typing_env(), input_type, arg_ty) {
                 trace!(?arg_ty, ?input_type);
                 debug!("failed to normalize argument type");
-                return Err("implementation limitation");
+                return Err("implementation limitation -- arg mismatch");
             }
         }
     }
@@ -693,13 +692,13 @@ fn check_mir_is_available<'tcx, I: Inliner<'tcx>>(
             // won't cause cycles on this.
             if !inliner.tcx().is_mir_available(callee_def_id) {
                 debug!("item MIR unavailable");
-                return Err("implementation limitation");
+                return Err("implementation limitation -- MIR unavailable");
             }
         }
         // These have no own callable MIR.
         InstanceKind::Intrinsic(_) | InstanceKind::Virtual(..) => {
             debug!("instance without MIR (intrinsic / virtual)");
-            return Err("implementation limitation");
+            return Err("implementation limitation -- cannot inline intrinsic");
         }
 
         // FIXME(#127030): `ConstParamHasTy` has bad interactions with
@@ -709,7 +708,7 @@ fn check_mir_is_available<'tcx, I: Inliner<'tcx>>(
         // substituted.
         InstanceKind::DropGlue(_, Some(ty)) if ty.has_type_flags(TypeFlags::HAS_CT_PARAM) => {
             debug!("still needs substitution");
-            return Err("implementation limitation");
+            return Err("implementation limitation -- HACK for dropping polymorphic type");
         }
 
         // This cannot result in an immediate cycle since the callee MIR is a shim, which does
