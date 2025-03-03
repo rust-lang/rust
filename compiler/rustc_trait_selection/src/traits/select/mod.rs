@@ -1925,9 +1925,9 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         let mut impl_candidate = None;
         for c in impls {
             if let Some(prev) = impl_candidate.replace(c) {
-                if self.prefer_lhs_over_victim(has_non_region_infer, c, prev) {
+                if self.prefer_lhs_over_victim(has_non_region_infer, c, prev.0) {
                     // Ok, prefer `c` over the previous entry
-                } else if self.prefer_lhs_over_victim(has_non_region_infer, prev, c) {
+                } else if self.prefer_lhs_over_victim(has_non_region_infer, prev, c.0) {
                     // Ok, keep `prev` instead of the new entry
                     impl_candidate = Some(prev);
                 } else {
@@ -1986,7 +1986,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         &self,
         has_non_region_infer: bool,
         (lhs, lhs_evaluation): (DefId, EvaluationResult),
-        (victim, victim_evaluation): (DefId, EvaluationResult),
+        victim: DefId,
     ) -> bool {
         let tcx = self.tcx();
         // See if we can toss out `victim` based on specialization.
@@ -2002,14 +2002,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         }
 
         match tcx.impls_are_allowed_to_overlap(lhs, victim) {
-            // For #33140 the impl headers must be exactly equal, the trait must not have
-            // any associated items and there are no where-clauses.
-            //
-            // We can just arbitrarily drop one of the impls.
-            Some(ty::ImplOverlapKind::FutureCompatOrderDepTraitObjects) => {
-                assert_eq!(lhs_evaluation, victim_evaluation);
-                true
-            }
             // For candidates which already reference errors it doesn't really
             // matter what we do 🤷
             Some(ty::ImplOverlapKind::Permitted { marker: false }) => {

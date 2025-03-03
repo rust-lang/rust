@@ -20,7 +20,7 @@ use rustc_middle::bug;
 use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::print::PrintTraitRefExt as _;
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, TypingMode};
-use rustc_session::lint::builtin::{COHERENCE_LEAK_CHECK, ORDER_DEPENDENT_TRAIT_OBJECTS};
+use rustc_session::lint::builtin::COHERENCE_LEAK_CHECK;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, sym};
 use rustc_type_ir::solve::NoSolution;
 use specialization_graph::GraphExt;
@@ -557,13 +557,9 @@ fn report_conflicting_impls<'tcx>(
 
     let msg = || {
         format!(
-            "conflicting implementations of trait `{}`{}{}",
+            "conflicting implementations of trait `{}`{}",
             overlap.trait_ref.print_trait_sugared(),
             overlap.self_ty.map_or_else(String::new, |ty| format!(" for type `{ty}`")),
-            match used_to_be_allowed {
-                Some(FutureCompatOverlapErrorKind::OrderDepTraitObjects) => ": (E0119)",
-                _ => "",
-            }
         )
     };
 
@@ -588,7 +584,6 @@ fn report_conflicting_impls<'tcx>(
         }
         Some(kind) => {
             let lint = match kind {
-                FutureCompatOverlapErrorKind::OrderDepTraitObjects => ORDER_DEPENDENT_TRAIT_OBJECTS,
                 FutureCompatOverlapErrorKind::LeakCheck => COHERENCE_LEAK_CHECK,
             };
             tcx.node_span_lint(lint, tcx.local_def_id_to_hir_id(impl_def_id), impl_span, |err| {
