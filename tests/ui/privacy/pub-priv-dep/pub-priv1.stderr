@@ -1,5 +1,5 @@
 error: type `OtherType` from private dependency 'priv_dep' in public interface
-  --> $DIR/pub-priv1.rs:29:5
+  --> $DIR/pub-priv1.rs:30:5
    |
 LL |     pub field: OtherType,
    |     ^^^^^^^^^^^^^^^^^^^^
@@ -11,64 +11,76 @@ LL | #![deny(exported_private_dependencies)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: type `OtherType` from private dependency 'priv_dep' in public interface
-  --> $DIR/pub-priv1.rs:36:5
+  --> $DIR/pub-priv1.rs:37:5
    |
 LL |     pub fn pub_fn_param(param: OtherType) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: type `OtherType` from private dependency 'priv_dep' in public interface
-  --> $DIR/pub-priv1.rs:39:5
+  --> $DIR/pub-priv1.rs:40:5
    |
 LL |     pub fn pub_fn_return() -> OtherType { OtherType }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: trait `OtherTrait` from private dependency 'priv_dep' in public interface
-  --> $DIR/pub-priv1.rs:46:5
+  --> $DIR/pub-priv1.rs:47:5
    |
 LL |     type Foo: OtherTrait;
    |     ^^^^^^^^^^^^^^^^^^^^
 
 error: trait `OtherTrait` from private dependency 'priv_dep' in public interface
-  --> $DIR/pub-priv1.rs:50:1
+  --> $DIR/pub-priv1.rs:51:1
    |
 LL | pub trait WithSuperTrait: OtherTrait {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: type `OtherType` from private dependency 'priv_dep' in public interface
-  --> $DIR/pub-priv1.rs:59:5
+  --> $DIR/pub-priv1.rs:60:5
    |
 LL |     type X = OtherType;
    |     ^^^^^^
 
 error: trait `OtherTrait` from private dependency 'priv_dep' in public interface
-  --> $DIR/pub-priv1.rs:63:1
+  --> $DIR/pub-priv1.rs:64:1
    |
 LL | pub fn in_bounds<T: OtherTrait>(x: T) { unimplemented!() }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: type `OtherType` from private dependency 'priv_dep' in public interface
-  --> $DIR/pub-priv1.rs:66:1
+  --> $DIR/pub-priv1.rs:67:1
    |
 LL | pub fn private_in_generic() -> std::num::Saturating<OtherType> { unimplemented!() }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: type `OtherType` from private dependency 'priv_dep' in public interface
-  --> $DIR/pub-priv1.rs:69:1
+  --> $DIR/pub-priv1.rs:70:1
    |
 LL | pub static STATIC: OtherType = OtherType;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: type `OtherType` from private dependency 'priv_dep' in public interface
-  --> $DIR/pub-priv1.rs:72:1
+  --> $DIR/pub-priv1.rs:73:1
    |
 LL | pub const CONST: OtherType = OtherType;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: type `OtherType` from private dependency 'priv_dep' in public interface
-  --> $DIR/pub-priv1.rs:75:1
+  --> $DIR/pub-priv1.rs:76:1
    |
 LL | pub type Alias = OtherType;
    | ^^^^^^^^^^^^^^
 
-error: aborting due to 11 previous errors
+error: trait `OtherTrait` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:81:1
+   |
+LL | impl OtherTrait for PublicWithPrivateImpl {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type `OtherType` from private dependency 'priv_dep' in public interface
+  --> $DIR/pub-priv1.rs:86:1
+   |
+LL | impl PubTraitOnPrivate for OtherType {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 13 previous errors
 
