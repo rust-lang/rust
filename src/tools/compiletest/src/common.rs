@@ -190,6 +190,9 @@ pub struct Config {
     /// The cargo executable.
     pub cargo_path: Option<PathBuf>,
 
+    /// Rustc executable used to compile run-make recipes.
+    pub stage0_rustc_path: Option<PathBuf>,
+
     /// The rustdoc executable.
     pub rustdoc_path: Option<PathBuf>,
 
