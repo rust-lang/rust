@@ -910,10 +910,7 @@ impl<T> RefCell<T> {
     #[rustc_confusables("swap")]
     #[rustc_const_unstable(feature = "const_ref_cell", issue = "137844")]
     pub const fn replace(&self, t: T) -> T {
-        let mut s = self.borrow_mut();
-        let t = mem::replace(s.as_mut(), t);
-        s.const_drop();
-        t
+        mem::replace(self.borrow_mut().as_mut(), t)
     }
 
     /// Replaces the wrapped value with a new one computed from `f`, returning
@@ -965,11 +962,7 @@ impl<T> RefCell<T> {
     #[stable(feature = "refcell_swap", since = "1.24.0")]
     #[rustc_const_unstable(feature = "const_ref_cell", issue = "137844")]
     pub const fn swap(&self, other: &Self) {
-        let mut s = self.borrow_mut();
-        let mut o = other.borrow_mut();
-        mem::swap(s.as_mut(), o.as_mut());
-        s.const_drop();
-        o.const_drop();
+        mem::swap(self.borrow_mut().as_mut(), other.borrow_mut().as_mut())
     }
 }
 
@@ -1474,12 +1467,13 @@ impl<'b> BorrowRef<'b> {
     }
 }
 
-impl Drop for BorrowRef<'_> {
+#[rustc_const_unstable(feature = "const_ref_cell", issue = "137844")]
+impl const Drop for BorrowRef<'_> {
     #[inline]
     fn drop(&mut self) {
         let borrow = self.borrow.get();
         debug_assert!(is_reading(borrow));
-        self.borrow.set(borrow - 1);
+        self.borrow.replace(borrow - 1);
     }
 }
 
@@ -1683,15 +1677,6 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
         unsafe { self.value.as_mut() }
     }
 
-    #[inline]
-    #[rustc_const_unstable(feature = "const_ref_cell", issue = "137844")]
-    const fn const_drop(self) {
-        // SAFETY: only `borrow` is `Drop`
-        let borrow = unsafe { ptr::read(&self.borrow) };
-        mem::forget(self);
-        borrow.const_drop();
-    }
-
     /// Makes a new `RefMut` for a component of the borrowed data, e.g., an enum
     /// variant.
     ///
@@ -1853,25 +1838,17 @@ struct BorrowRefMut<'b> {
     borrow: &'b Cell<BorrowFlag>,
 }
 
-impl Drop for BorrowRefMut<'_> {
+#[rustc_const_unstable(feature = "const_ref_cell", issue = "137844")]
+impl const Drop for BorrowRefMut<'_> {
     #[inline]
     fn drop(&mut self) {
         let borrow = self.borrow.get();
         debug_assert!(is_writing(borrow));
-        self.borrow.set(borrow + 1);
+        self.borrow.replace(borrow + 1);
     }
 }
 
 impl<'b> BorrowRefMut<'b> {
-    #[inline]
-    #[rustc_const_unstable(feature = "const_ref_cell", issue = "137844")]
-    const fn const_drop(self) {
-        let borrow = self.borrow.get();
-        debug_assert!(is_writing(borrow));
-        self.borrow.replace(borrow + 1);
-        mem::forget(self)
-    }
-
     #[inline]
     #[rustc_const_unstable(feature = "const_ref_cell", issue = "137844")]
     const fn new(borrow: &'b Cell<BorrowFlag>) -> Option<BorrowRefMut<'b>> {
