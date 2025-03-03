@@ -122,6 +122,7 @@ impl<M> ModuleCodegen<M> {
             bytecode,
             assembly,
             llvm_ir,
+            links_from_incr_cache: Vec::new(),
         }
     }
 }
@@ -135,6 +136,7 @@ pub struct CompiledModule {
     pub bytecode: Option<PathBuf>,
     pub assembly: Option<PathBuf>, // --emit=asm
     pub llvm_ir: Option<PathBuf>,  // --emit=llvm-ir, llvm-bc is in bytecode
+    pub links_from_incr_cache: Vec<PathBuf>,
 }
 
 impl CompiledModule {
