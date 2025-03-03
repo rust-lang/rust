@@ -37,6 +37,7 @@ pub(crate) fn validate(root: &SyntaxNode, errors: &mut Vec<SyntaxError>) {
                 ast::FnPtrType(it) => validate_trait_object_fn_ptr_ret_ty(it, errors),
                 ast::MacroRules(it) => validate_macro_rules(it, errors),
                 ast::LetExpr(it) => validate_let_expr(it, errors),
+                ast::ImplTraitType(it) => validate_impl_object_ty(it, errors),
                 _ => (),
             }
         }
@@ -315,21 +316,10 @@ fn validate_path_keywords(segment: ast::PathSegment, errors: &mut Vec<SyntaxErro
 }
 
 fn validate_trait_object_ref_ty(ty: ast::RefType, errors: &mut Vec<SyntaxError>) {
-    match ty.ty() {
-        Some(ast::Type::DynTraitType(ty)) => {
-            if let Some(err) = validate_trait_object_ty(ty) {
-                errors.push(err);
-            }
+    if let Some(ast::Type::DynTraitType(ty)) = ty.ty() {
+        if let Some(err) = validate_trait_object_ty(ty) {
+            errors.push(err);
         }
-        Some(ast::Type::ImplTraitType(ty)) => {
-            if ty.type_bound_list().map_or(0, |tbl| tbl.bounds().count()) == 0 {
-                errors.push(SyntaxError::new(
-                    "At least one trait must be specified",
-                    ty.syntax().text_range(),
-                ));
-            }
-        }
-        _ => {}
     }
 }
 
@@ -369,6 +359,15 @@ fn validate_trait_object_ty(ty: ast::DynTraitType) -> Option<SyntaxError> {
             None
         }
         _ => None,
+    }
+}
+
+fn validate_impl_object_ty(ty: ast::ImplTraitType, errors: &mut Vec<SyntaxError>) {
+    if ty.type_bound_list().map_or(0, |tbl| tbl.bounds().count()) == 0 {
+        errors.push(SyntaxError::new(
+            "At least one trait must be specified",
+            ty.syntax().text_range(),
+        ));
     }
 }
 

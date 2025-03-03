@@ -1,1 +1,1 @@
-fn f(_: &impl) {}
+fn f(_: impl) {}
