@@ -471,6 +471,10 @@ impl Step for Llvm {
             cfg.define("LLVM_BUILD_32_BITS", "ON");
         }
 
+        if target.starts_with("x86_64") && target.contains("ohos") {
+            cfg.define("LLVM_TOOL_LLVM_RTDYLD_BUILD", "OFF");
+        }
+
         let mut enabled_llvm_projects = Vec::new();
 
         if helpers::forcing_clang_based_tests() {
@@ -810,6 +814,10 @@ fn configure_cmake(
         cflags.push(s);
     }
 
+    if target.contains("ohos") {
+        cflags.push(" -D_LINUX_SYSINFO_H");
+    }
+
     if builder.config.llvm_clang_cl.is_some() {
         cflags.push(format!(" --target={target}"));
     }
@@ -830,6 +838,11 @@ fn configure_cmake(
         cxxflags.push(" ");
         cxxflags.push(s);
     }
+
+    if target.contains("ohos") {
+        cxxflags.push(" -D_LINUX_SYSINFO_H");
+    }
+
     if builder.config.llvm_clang_cl.is_some() {
         cxxflags.push(format!(" --target={target}"));
     }
@@ -1215,6 +1228,10 @@ impl Step for Sanitizers {
         cfg.define("COMPILER_RT_DEFAULT_TARGET_ONLY", "ON");
         cfg.define("COMPILER_RT_USE_LIBCXX", "OFF");
         cfg.define("LLVM_CONFIG_PATH", &llvm_config);
+
+        if self.target.contains("ohos") {
+            cfg.define("COMPILER_RT_USE_BUILTINS_LIBRARY", "ON");
+        }
 
         // On Darwin targets the sanitizer runtimes are build as universal binaries.
         // Unfortunately sccache currently lacks support to build them successfully.

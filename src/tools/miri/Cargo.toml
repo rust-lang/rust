@@ -22,7 +22,7 @@ getrandom = { version = "0.3", features = ["std"] }
 rand = "0.9"
 smallvec = { version = "1.7", features = ["drain_filter"] }
 aes = { version = "0.8.3", features = ["hazmat"] }
-measureme = "11"
+measureme = "12.0.1"
 chrono = { version = "0.4.38", default-features = false }
 chrono-tz = "0.10"
 directories = "5"
@@ -31,12 +31,14 @@ directories = "5"
 # But only for some targets, it fails for others. Rustc configures this in its CI, but we can't
 # easily use that since we support of-tree builds.
 [target.'cfg(any(target_os = "linux", target_os = "macos"))'.dependencies.tikv-jemalloc-sys]
-version = "0.6.0"
+version = "0.6.2"
+package = "tikv-jemalloc-sys2"
 features = ['unprefixed_malloc_on_supported_platforms']
 
+# libffi2-3.3.0 is a fork of libffi-3.2.0 with OpenHarmony (OHOS) support.
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
-libffi = "3.2.0"
+libffi = { version = "3.3.0", package = "libffi2" }
 libloading = "0.8"
 
 [target.'cfg(target_family = "windows")'.dependencies]
