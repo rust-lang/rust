@@ -266,7 +266,7 @@ fn make_mut_unsized() {
 
 #[allow(unused)]
 mod pin_coerce_unsized {
-    use alloc::sync::Arc;
+    use alloc::sync::{Arc, UniqueArc};
     use core::pin::Pin;
 
     pub trait MyTrait {}
@@ -274,6 +274,9 @@ mod pin_coerce_unsized {
 
     // Pin coercion should work for Arc
     pub fn pin_arc(arg: Pin<Arc<String>>) -> Pin<Arc<dyn MyTrait>> {
+        arg
+    }
+    pub fn pin_unique_arc(arg: Pin<UniqueArc<String>>) -> Pin<UniqueArc<dyn MyTrait>> {
         arg
     }
 }
