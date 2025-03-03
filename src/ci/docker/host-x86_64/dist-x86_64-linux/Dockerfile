@@ -101,7 +101,7 @@ ENV SCRIPT python3 ../x.py build --set rust.debug=true opt-dist && \
     ./build/$HOSTS/stage0-tools-bin/opt-dist linux-ci -- python3 ../x.py dist \
     --host $HOSTS --target $HOSTS \
     --include-default-paths \
-    build-manifest bootstrap
+    build-manifest bootstrap gcc
 ENV CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=clang
 
 # This is the only builder which will create source tarballs

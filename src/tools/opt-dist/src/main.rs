@@ -389,6 +389,7 @@ fn main() -> anyhow::Result<()> {
             "clippy",
             "miri",
             "rustfmt",
+            "gcc",
         ] {
             build_args.extend(["--skip".to_string(), target.to_string()]);
         }

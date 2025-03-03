@@ -2464,3 +2464,30 @@ impl Step for ReproducibleArtifacts {
         if added_anything { Some(tarball.generate()) } else { None }
     }
 }
+
+/// Tarball containing a prebuilt version of the libgccjit library,
+/// needed as a dependency for the GCC codegen backend (similarly to the LLVM
+/// backend needing a prebuilt libLLVM).
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct Gcc {
+    pub target: TargetSelection,
+}
+
+impl Step for Gcc {
+    type Output = GeneratedTarball;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("gcc")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Gcc { target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let tarball = Tarball::new(builder, "gcc", &self.target.triple);
+        let output = builder.ensure(super::gcc::Gcc { target: self.target });
+        tarball.add_file(output.libgccjit, ".", 0o644);
+        tarball.generate()
+    }
+}
