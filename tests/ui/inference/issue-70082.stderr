@@ -1,4 +1,4 @@
-error[E0284]: type annotations needed
+error[E0283]: type annotations needed
   --> $DIR/issue-70082.rs:7:33
    |
 LL |     let y: f64 = 0.01f64 * 1i16.into();
@@ -6,7 +6,9 @@ LL |     let y: f64 = 0.01f64 * 1i16.into();
    |                          |
    |                          type must be known at this point
    |
-   = note: cannot satisfy `<f64 as Mul<_>>::Output == f64`
+   = note: multiple `impl`s satisfying `f64: Mul<_>` found in the `core` crate:
+           - impl Mul for f64;
+           - impl Mul<&f64> for f64;
 help: try using a fully qualified path to specify the expected types
    |
 LL -     let y: f64 = 0.01f64 * 1i16.into();
@@ -15,4 +17,4 @@ LL +     let y: f64 = 0.01f64 * <i16 as Into<T>>::into(1i16);
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0284`.
+For more information about this error, try `rustc --explain E0283`.
