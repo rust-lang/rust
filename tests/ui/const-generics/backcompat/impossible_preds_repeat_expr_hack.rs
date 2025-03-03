@@ -23,6 +23,10 @@ where
     for<'a> (): Unimplemented<'a>,
 {
     let _a: [(); 1] = [(); <u8 as Trait<()>>::ASSOC];
+    //~^ WARN: cannot use constants which depend on trivially-false where clauses
+    //~| WARN: this was previously accepted by the compiler
+    //~^^^ WARN: cannot use constants which depend on trivially-false where clauses
+    //~| WARN: this was previously accepted by the compiler
 }
 
 struct Foo<const N: usize>;
