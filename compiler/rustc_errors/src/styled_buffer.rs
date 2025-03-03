@@ -89,6 +89,19 @@ impl StyledBuffer {
         }
     }
 
+    pub(crate) fn replace(&mut self, line: usize, start: usize, end: usize, string: &str) {
+        if start == end {
+            return;
+        }
+        if start > self.lines[line].len() || end > self.lines[line].len() {
+            return;
+        }
+        let _ = self.lines[line].drain(start..(end - string.chars().count()));
+        for (i, c) in string.chars().enumerate() {
+            self.lines[line][start + i] = StyledChar::new(c, Style::LineNumber);
+        }
+    }
+
     /// For given `line` inserts `string` with `style` before old content of that line,
     /// adding lines if needed
     pub(crate) fn prepend(&mut self, line: usize, string: &str, style: Style) {
