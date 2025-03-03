@@ -271,7 +271,7 @@ pub unsafe fn simd_shuffle<T, U, V>(x: T, y: T, idx: U) -> V;
 ///
 /// `U` must be a vector of pointers to the element type of `T`, with the same length as `T`.
 ///
-/// `V` must be a vector of signed integers with the same length as `T` (but any element size).
+/// `V` must be a vector of integers with the same length as `T` (but any element size).
 ///
 /// For each pointer in `ptr`, if the corresponding value in `mask` is `!0`, read the pointer.
 /// Otherwise if the corresponding value in `mask` is `0`, return the corresponding value from
@@ -292,7 +292,7 @@ pub unsafe fn simd_gather<T, U, V>(val: T, ptr: U, mask: V) -> T;
 ///
 /// `U` must be a vector of pointers to the element type of `T`, with the same length as `T`.
 ///
-/// `V` must be a vector of signed integers with the same length as `T` (but any element size).
+/// `V` must be a vector of integers with the same length as `T` (but any element size).
 ///
 /// For each pointer in `ptr`, if the corresponding value in `mask` is `!0`, write the
 /// corresponding value in `val` to the pointer.
@@ -316,7 +316,7 @@ pub unsafe fn simd_scatter<T, U, V>(val: T, ptr: U, mask: V);
 ///
 /// `U` must be a pointer to the element type of `T`
 ///
-/// `V` must be a vector of signed integers with the same length as `T` (but any element size).
+/// `V` must be a vector of integers with the same length as `T` (but any element size).
 ///
 /// For each element, if the corresponding value in `mask` is `!0`, read the corresponding
 /// pointer offset from `ptr`.
@@ -339,7 +339,7 @@ pub unsafe fn simd_masked_load<V, U, T>(mask: V, ptr: U, val: T) -> T;
 ///
 /// `U` must be a pointer to the element type of `T`
 ///
-/// `V` must be a vector of signed integers with the same length as `T` (but any element size).
+/// `V` must be a vector of integers with the same length as `T` (but any element size).
 ///
 /// For each element, if the corresponding value in `mask` is `!0`, write the corresponding
 /// value in `val` to the pointer offset from `ptr`.
@@ -523,7 +523,7 @@ pub unsafe fn simd_bitmask<T, U>(x: T) -> U;
 ///
 /// `T` must be a vector.
 ///
-/// `M` must be a signed integer vector with the same length as `T` (but any element size).
+/// `M` must be an integer vector with the same length as `T` (but any element size).
 ///
 /// For each element, if the corresponding value in `mask` is `!0`, select the element from
 /// `if_true`.  If the corresponding value in `mask` is `0`, select the element from
