@@ -16,7 +16,7 @@
 #![allow(internal_features)]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
-#![feature(rustc_private, decl_macro, never_type, trusted_len, hash_raw_entry, let_chains)]
+#![feature(rustc_private, decl_macro, never_type, trusted_len, let_chains)]
 #![allow(broken_intra_doc_links)]
 #![recursion_limit = "256"]
 #![warn(rust_2018_idioms)]
