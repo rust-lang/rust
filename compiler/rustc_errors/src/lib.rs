@@ -14,6 +14,7 @@
 #![feature(associated_type_defaults)]
 #![feature(box_into_inner)]
 #![feature(box_patterns)]
+#![feature(default_field_values)]
 #![feature(error_reporter)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
