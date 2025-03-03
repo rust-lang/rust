@@ -133,11 +133,11 @@ ast_lowering_misplaced_relax_trait_bound =
 ast_lowering_never_pattern_with_body =
     a never pattern is always unreachable
     .label = this will never be executed
-    .suggestion = remove this expression
+    .suggestion = remove the match arm expression
 
 ast_lowering_never_pattern_with_guard =
     a guard on a never pattern will never be run
-    .suggestion = remove this guard
+    .suggestion = remove the match arm guard
 
 ast_lowering_no_precise_captures_on_apit = `use<...>` precise capturing syntax not allowed in argument-position `impl Trait`
 
