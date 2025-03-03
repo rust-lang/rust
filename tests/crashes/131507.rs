@@ -6,5 +6,5 @@ fn brick()
 where
     for<T> T: Copy,
 {
-    || format_args!("");
+    || Some::<&[()]>(&[]);
 }
