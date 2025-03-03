@@ -1453,7 +1453,7 @@ impl<'b> BorrowRef<'b> {
         }
     }
 
-    /// `Clone` is not a `const_trait`, so work around that by making our own method
+    /// FIXME(const-hack): `Clone` is not a `const_trait`, so work around that by making our own method
     #[inline]
     #[rustc_const_unstable(feature = "const_ref_cell", issue = "137844")]
     const fn clone(&self) -> Self {
