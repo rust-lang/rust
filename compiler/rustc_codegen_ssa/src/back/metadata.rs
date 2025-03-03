@@ -9,8 +9,7 @@ use itertools::Itertools;
 use object::write::{self, StandardSegment, Symbol, SymbolSection};
 use object::{
     Architecture, BinaryFormat, Endianness, FileFlags, Object, ObjectSection, ObjectSymbol,
-    SectionFlags, SectionKind, SubArchitecture, SymbolFlags, SymbolKind, SymbolScope, elf, pe,
-    xcoff,
+    SectionFlags, SectionKind, SymbolFlags, SymbolKind, SymbolScope, elf, pe, xcoff,
 };
 use rustc_abi::Endian;
 use rustc_data_structures::memmap::Mmap;
@@ -206,51 +205,10 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
         Endian::Little => Endianness::Little,
         Endian::Big => Endianness::Big,
     };
-    let (architecture, sub_architecture) = match &sess.target.arch[..] {
-        "arm" => (Architecture::Arm, None),
-        "aarch64" => (
-            if sess.target.pointer_width == 32 {
-                Architecture::Aarch64_Ilp32
-            } else {
-                Architecture::Aarch64
-            },
-            None,
-        ),
-        "x86" => (Architecture::I386, None),
-        "s390x" => (Architecture::S390x, None),
-        "mips" | "mips32r6" => (Architecture::Mips, None),
-        "mips64" | "mips64r6" => (Architecture::Mips64, None),
-        "x86_64" => (
-            if sess.target.pointer_width == 32 {
-                Architecture::X86_64_X32
-            } else {
-                Architecture::X86_64
-            },
-            None,
-        ),
-        "powerpc" => (Architecture::PowerPc, None),
-        "powerpc64" => (Architecture::PowerPc64, None),
-        "riscv32" => (Architecture::Riscv32, None),
-        "riscv64" => (Architecture::Riscv64, None),
-        "sparc" => {
-            if sess.unstable_target_features.contains(&sym::v8plus) {
-                // Target uses V8+, aka EM_SPARC32PLUS, aka 64-bit V9 but in 32-bit mode
-                (Architecture::Sparc32Plus, None)
-            } else {
-                // Target uses V7 or V8, aka EM_SPARC
-                (Architecture::Sparc, None)
-            }
-        }
-        "sparc64" => (Architecture::Sparc64, None),
-        "avr" => (Architecture::Avr, None),
-        "msp430" => (Architecture::Msp430, None),
-        "hexagon" => (Architecture::Hexagon, None),
-        "bpf" => (Architecture::Bpf, None),
-        "loongarch64" => (Architecture::LoongArch64, None),
-        "csky" => (Architecture::Csky, None),
-        "arm64ec" => (Architecture::Aarch64, Some(SubArchitecture::Arm64EC)),
-        // Unsupported architecture.
-        _ => return None,
+    let Some((architecture, sub_architecture)) =
+        sess.target.object_architecture(&sess.unstable_target_features)
+    else {
+        return None;
     };
     let binary_format = sess.target.binary_format.to_object();
 
@@ -292,7 +250,26 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
 
         file.set_mangling(original_mangling);
     }
-    let e_flags = match architecture {
+    let e_flags = elf_e_flags(architecture, sess);
+    // adapted from LLVM's `MCELFObjectTargetWriter::getOSABI`
+    let os_abi = elf_os_abi(sess);
+    let abi_version = 0;
+    add_gnu_property_note(&mut file, architecture, binary_format, endianness);
+    file.flags = FileFlags::Elf { os_abi, abi_version, e_flags };
+    Some(file)
+}
+
+pub(super) fn elf_os_abi(sess: &Session) -> u8 {
+    match sess.target.options.os.as_ref() {
+        "hermit" => elf::ELFOSABI_STANDALONE,
+        "freebsd" => elf::ELFOSABI_FREEBSD,
+        "solaris" => elf::ELFOSABI_SOLARIS,
+        _ => elf::ELFOSABI_NONE,
+    }
+}
+
+pub(super) fn elf_e_flags(architecture: Architecture, sess: &Session) -> u32 {
+    match architecture {
         Architecture::Mips => {
             let arch = match sess.target.options.cpu.as_ref() {
                 "mips1" => elf::EF_MIPS_ARCH_1,
@@ -387,18 +364,7 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
             e_flags
         }
         _ => 0,
-    };
-    // adapted from LLVM's `MCELFObjectTargetWriter::getOSABI`
-    let os_abi = match sess.target.options.os.as_ref() {
-        "hermit" => elf::ELFOSABI_STANDALONE,
-        "freebsd" => elf::ELFOSABI_FREEBSD,
-        "solaris" => elf::ELFOSABI_SOLARIS,
-        _ => elf::ELFOSABI_NONE,
-    };
-    let abi_version = 0;
-    add_gnu_property_note(&mut file, architecture, binary_format, endianness);
-    file.flags = FileFlags::Elf { os_abi, abi_version, e_flags };
-    Some(file)
+    }
 }
 
 /// Mach-O files contain information about:
