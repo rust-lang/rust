@@ -1,13 +1,41 @@
+use core::num::dec2flt::float::RawFloat;
 use core::num::dec2flt::lemire::compute_float;
+
+#[cfg(any(target_arch = "x86", all(target_arch = "aarch64", target_feature = "neon")))]
+fn compute_float16(q: i64, w: u64) -> (i32, u64) {
+    let fp = compute_float::<f16>(q, w);
+    (fp.p_biased, fp.m)
+}
 
 fn compute_float32(q: i64, w: u64) -> (i32, u64) {
     let fp = compute_float::<f32>(q, w);
-    (fp.e, fp.f)
+    (fp.p_biased, fp.m)
 }
 
 fn compute_float64(q: i64, w: u64) -> (i32, u64) {
     let fp = compute_float::<f64>(q, w);
-    (fp.e, fp.f)
+    (fp.p_biased, fp.m)
+}
+
+// FIXME(f16_f128): enable on all targets once possible.
+#[test]
+#[cfg(any(target_arch = "x86", all(target_arch = "aarch64", target_feature = "neon")))]
+fn compute_float_f16_rounding() {
+    // These test near-halfway cases for single-precision floats.
+    assert_eq!(compute_float16(0, 16777216), (151, 0));
+    assert_eq!(compute_float16(0, 16777217), (151, 0));
+    assert_eq!(compute_float16(0, 16777218), (151, 1));
+    assert_eq!(compute_float16(0, 16777219), (151, 2));
+    assert_eq!(compute_float16(0, 16777220), (151, 2));
+
+    // These are examples of the above tests, with
+    // digits from the exponent shifted to the mantissa.
+    assert_eq!(compute_float16(-10, 167772160000000000), (151, 0));
+    assert_eq!(compute_float16(-10, 167772170000000000), (151, 0));
+    assert_eq!(compute_float16(-10, 167772180000000000), (151, 1));
+    // Let's check the lines to see if anything is different in table...
+    assert_eq!(compute_float16(-10, 167772190000000000), (151, 2));
+    assert_eq!(compute_float16(-10, 167772200000000000), (151, 2));
 }
 
 #[test]
@@ -27,6 +55,11 @@ fn compute_float_f32_rounding() {
     // Let's check the lines to see if anything is different in table...
     assert_eq!(compute_float32(-10, 167772190000000000), (151, 2));
     assert_eq!(compute_float32(-10, 167772200000000000), (151, 2));
+
+    // Check the rounding point between infinity and the next representable number down
+    assert_eq!(compute_float32(38, 3), (f32::INFINITE_POWER - 1, 6402534));
+    assert_eq!(compute_float32(38, 4), (f32::INFINITE_POWER, 0)); // infinity
+    assert_eq!(compute_float32(20, 3402823470000000000), (f32::INFINITE_POWER - 1, 8388607));
 }
 
 #[test]
