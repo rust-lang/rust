@@ -1,16 +1,16 @@
-use crate::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use crate::sync::atomic::{Atomic, AtomicBool, AtomicUsize, Ordering};
 use crate::{ops, process};
 
 /// Reference counter internals.
 struct Counter<C> {
     /// The number of senders associated with the channel.
-    senders: AtomicUsize,
+    senders: Atomic<usize>,
 
     /// The number of receivers associated with the channel.
-    receivers: AtomicUsize,
+    receivers: Atomic<usize>,
 
     /// Set to `true` if the last sender or the last receiver reference deallocates the channel.
-    destroy: AtomicBool,
+    destroy: Atomic<bool>,
 
     /// The internal channel.
     chan: C,
