@@ -9,6 +9,7 @@
 // Note: please avoid adding other feature gates where possible
 #![warn(rust_2018_idioms)]
 #![warn(unreachable_pub)]
+#![warn(unused_crate_dependencies)]
 #![warn(unused_lifetimes)]
 // tidy-alphabetical-end
 

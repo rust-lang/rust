@@ -19,6 +19,7 @@
 #![feature(string_from_utf8_lossy_owned)]
 #![feature(try_blocks)]
 #![warn(unreachable_pub)]
+#![warn(unused_crate_dependencies)]
 // tidy-alphabetical-end
 
 extern crate proc_macro;

@@ -1,3 +1,7 @@
+// tidy-alphabetical-start
+#![warn(unused_crate_dependencies)]
+// tidy-alphabetical-end
+
 use quote::{ToTokens, quote};
 use syn::visit_mut::VisitMut;
 use syn::{Attribute, parse_quote};

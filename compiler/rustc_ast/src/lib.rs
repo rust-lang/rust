@@ -20,6 +20,7 @@
 #![feature(rustdoc_internals)]
 #![feature(stmt_expr_attributes)]
 #![warn(unreachable_pub)]
+#![warn(unused_crate_dependencies)]
 // tidy-alphabetical-end
 
 pub mod util {

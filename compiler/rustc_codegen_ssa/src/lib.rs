@@ -15,6 +15,7 @@
 #![feature(trait_alias)]
 #![feature(try_blocks)]
 #![warn(unreachable_pub)]
+#![warn(unused_crate_dependencies)]
 // tidy-alphabetical-end
 
 //! This crate contains codegen code that is used by all codegen backends (LLVM and others).

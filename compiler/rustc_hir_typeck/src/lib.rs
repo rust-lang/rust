@@ -9,6 +9,7 @@
 #![feature(never_type)]
 #![feature(try_blocks)]
 #![warn(unreachable_pub)]
+#![warn(unused_crate_dependencies)]
 // tidy-alphabetical-end
 
 mod _match;

@@ -74,6 +74,7 @@ This API is completely unstable and subject to change.
 #![feature(try_blocks)]
 #![feature(unwrap_infallible)]
 #![warn(unreachable_pub)]
+#![warn(unused_crate_dependencies)]
 // tidy-alphabetical-end
 
 // These are used by Clippy.

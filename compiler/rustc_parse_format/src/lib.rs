@@ -14,6 +14,7 @@
     test(attr(deny(warnings)))
 )]
 #![warn(unreachable_pub)]
+#![warn(unused_crate_dependencies)]
 // tidy-alphabetical-end
 
 pub use Alignment::*;

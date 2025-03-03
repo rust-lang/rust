@@ -17,6 +17,7 @@
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
 #![warn(unreachable_pub)]
+#![warn(unused_crate_dependencies)]
 // tidy-alphabetical-end
 
 use std::path::{Path, PathBuf};

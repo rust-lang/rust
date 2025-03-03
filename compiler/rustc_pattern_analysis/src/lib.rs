@@ -5,6 +5,9 @@
 // tidy-alphabetical-start
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
+// FIXME(nnethercote) this should be `warn`, but we get some false positives
+// for crates used only within `compiler/rustc_pattern_analysis/tests/`.
+#![allow(unused_crate_dependencies)]
 #![cfg_attr(feature = "rustc", feature(let_chains))]
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end

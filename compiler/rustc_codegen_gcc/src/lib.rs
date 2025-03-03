@@ -20,6 +20,7 @@
 #![allow(broken_intra_doc_links)]
 #![recursion_limit = "256"]
 #![warn(rust_2018_idioms)]
+#![warn(unused_crate_dependencies)]
 #![warn(unused_lifetimes)]
 #![deny(clippy::pattern_type_mismatch)]
 #![allow(clippy::needless_lifetimes)]

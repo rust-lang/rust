@@ -6,6 +6,7 @@
 #![cfg_attr(feature = "nightly", feature(rustdoc_internals))]
 #![cfg_attr(feature = "nightly", feature(step_trait))]
 #![warn(unreachable_pub)]
+#![warn(unused_crate_dependencies)]
 // tidy-alphabetical-end
 
 /*! ABI handling for rustc
