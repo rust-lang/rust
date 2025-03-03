@@ -342,6 +342,7 @@ struct AllTypes {
     attribute_macros: FxIndexSet<ItemEntry>,
     derive_macros: FxIndexSet<ItemEntry>,
     trait_aliases: FxIndexSet<ItemEntry>,
+    tests: FxIndexSet<ItemEntry>,
 }
 
 impl AllTypes {
@@ -361,6 +362,7 @@ impl AllTypes {
             attribute_macros: new_set(100),
             derive_macros: new_set(100),
             trait_aliases: new_set(100),
+            tests: new_set(100),
         }
     }
 
@@ -386,6 +388,7 @@ impl AllTypes {
                 }
                 ItemType::ProcDerive => self.derive_macros.insert(ItemEntry::new(new_url, name)),
                 ItemType::TraitAlias => self.trait_aliases.insert(ItemEntry::new(new_url, name)),
+                ItemType::Test => self.tests.insert(ItemEntry::new(new_url, name)),
                 _ => true,
             };
         }
@@ -415,6 +418,9 @@ impl AllTypes {
         if !self.functions.is_empty() {
             sections.insert(ItemSection::Functions);
         }
+        if !self.tests.is_empty() {
+            sections.insert(ItemSection::Tests);
+        }
         if !self.type_aliases.is_empty() {
             sections.insert(ItemSection::TypeAliases);
         }
@@ -432,6 +438,9 @@ impl AllTypes {
         }
         if !self.trait_aliases.is_empty() {
             sections.insert(ItemSection::TraitAliases);
+        }
+        if !self.tests.is_empty() {
+            sections.insert(ItemSection::Tests);
         }
 
         sections
@@ -471,6 +480,7 @@ impl AllTypes {
         print_entries(f, &self.attribute_macros, ItemSection::AttributeMacros);
         print_entries(f, &self.derive_macros, ItemSection::DeriveMacros);
         print_entries(f, &self.functions, ItemSection::Functions);
+        print_entries(f, &self.tests, ItemSection::Tests);
         print_entries(f, &self.type_aliases, ItemSection::TypeAliases);
         print_entries(f, &self.trait_aliases, ItemSection::TraitAliases);
         print_entries(f, &self.statics, ItemSection::Statics);
@@ -2385,6 +2395,7 @@ pub(crate) enum ItemSection {
     Statics,
     Traits,
     Functions,
+    Tests,
     TypeAliases,
     Unions,
     Implementations,
@@ -2417,6 +2428,7 @@ impl ItemSection {
             Statics,
             Traits,
             Functions,
+            Tests,
             TypeAliases,
             Unions,
             Implementations,
@@ -2442,6 +2454,7 @@ impl ItemSection {
             Self::Unions => "unions",
             Self::Enums => "enums",
             Self::Functions => "functions",
+            Self::Tests => "tests",
             Self::TypeAliases => "types",
             Self::Statics => "statics",
             Self::Constants => "constants",
@@ -2471,6 +2484,7 @@ impl ItemSection {
             Self::Unions => "Unions",
             Self::Enums => "Enums",
             Self::Functions => "Functions",
+            Self::Tests => "Tests",
             Self::TypeAliases => "Type Aliases",
             Self::Statics => "Statics",
             Self::Constants => "Constants",
@@ -2501,6 +2515,7 @@ fn item_ty_to_section(ty: ItemType) -> ItemSection {
         ItemType::Union => ItemSection::Unions,
         ItemType::Enum => ItemSection::Enums,
         ItemType::Function => ItemSection::Functions,
+        ItemType::Test => ItemSection::Tests,
         ItemType::TypeAlias => ItemSection::TypeAliases,
         ItemType::Static => ItemSection::Statics,
         ItemType::Constant => ItemSection::Constants,
