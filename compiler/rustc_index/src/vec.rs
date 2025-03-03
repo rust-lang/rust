@@ -93,6 +93,8 @@ impl<I: Idx, T> IndexVec<I, T> {
     /// be allocated only once, with a capacity of at least `n`.)
     #[inline]
     pub fn from_fn_n(func: impl FnMut(I) -> T, n: usize) -> Self {
+        // Allow the optimizer to elide the bounds checking when creating each index.
+        let _ = I::new(n);
         IndexVec::from_raw((0..n).map(I::new).map(func).collect())
     }
 
@@ -128,6 +130,8 @@ impl<I: Idx, T> IndexVec<I, T> {
     pub fn into_iter_enumerated(
         self,
     ) -> impl DoubleEndedIterator<Item = (I, T)> + ExactSizeIterator {
+        // Allow the optimizer to elide the bounds checking when creating each index.
+        let _ = I::new(self.len());
         self.raw.into_iter().enumerate().map(|(n, t)| (I::new(n), t))
     }
 
