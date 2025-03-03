@@ -468,6 +468,8 @@ impl f16 {
 
     /// Returns the natural logarithm of the number.
     ///
+    /// This returns NaN when the number is negative, and negative infinity when number is zero.
+    ///
     /// # Unspecified precision
     ///
     /// The precision of this function is non-deterministic. This means it varies by platform,
@@ -498,6 +500,8 @@ impl f16 {
     }
 
     /// Returns the logarithm of the number with respect to an arbitrary base.
+    ///
+    /// This returns NaN when the number is negative, and negative infinity when number is zero.
     ///
     /// The result might not be correctly rounded owing to implementation details;
     /// `self.log2()` can produce more accurate results for base 2, and
@@ -532,6 +536,8 @@ impl f16 {
 
     /// Returns the base 2 logarithm of the number.
     ///
+    /// This returns NaN when the number is negative, and negative infinity when number is zero.
+    ///
     /// # Unspecified precision
     ///
     /// The precision of this function is non-deterministic. This means it varies by platform,
@@ -560,6 +566,8 @@ impl f16 {
     }
 
     /// Returns the base 10 logarithm of the number.
+    ///
+    /// This returns NaN when the number is negative, and negative infinity when number is zero.
     ///
     /// # Unspecified precision
     ///
