@@ -452,7 +452,7 @@ pub(crate) struct UnusedMultiple {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(attr_parsing_unused_multiple)]
+#[diag(attr_parsing_unused_duplicate)]
 pub(crate) struct UnusedDuplicate {
     #[suggestion(code = "", applicability = "machine-applicable")]
     pub this: Span,
