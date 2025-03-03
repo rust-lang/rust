@@ -32,23 +32,40 @@
 use std::collections::HashMap;
 use std::hash::{BuildHasher, Hash};
 
+pub use parking_lot::{
+    MappedRwLockReadGuard as MappedReadGuard, MappedRwLockWriteGuard as MappedWriteGuard,
+    RwLockReadGuard as ReadGuard, RwLockWriteGuard as WriteGuard,
+};
+
+pub use self::atomic::AtomicU64;
+pub use self::freeze::{FreezeLock, FreezeReadGuard, FreezeWriteGuard};
+#[doc(no_inline)]
+pub use self::lock::{Lock, LockGuard, Mode};
+pub use self::mode::{is_dyn_thread_safe, set_dyn_thread_safe_mode};
+pub use self::parallel::{
+    join, par_for_each_in, par_map, parallel_guard, scope, try_par_for_each_in,
+};
+pub use self::vec::{AppendOnlyIndexVec, AppendOnlyVec};
+pub use self::worker_local::{Registry, WorkerLocal};
 pub use crate::marker::*;
 
-mod lock;
-#[doc(no_inline)]
-pub use lock::{Lock, LockGuard, Mode};
-
-mod worker_local;
-pub use worker_local::{Registry, WorkerLocal};
-
-mod parallel;
-pub use parallel::{join, par_for_each_in, par_map, parallel_guard, scope, try_par_for_each_in};
-pub use vec::{AppendOnlyIndexVec, AppendOnlyVec};
-
-mod vec;
-
 mod freeze;
-pub use freeze::{FreezeLock, FreezeReadGuard, FreezeWriteGuard};
+mod lock;
+mod parallel;
+mod vec;
+mod worker_local;
+
+/// Keep the conditional imports together in a submodule, so that import-sorting
+/// doesn't split them up.
+mod atomic {
+    // Most hosts can just use a regular AtomicU64.
+    #[cfg(target_has_atomic = "64")]
+    pub use std::sync::atomic::AtomicU64;
+
+    // Some 32-bit hosts don't have AtomicU64, so use a fallback.
+    #[cfg(not(target_has_atomic = "64"))]
+    pub use portable_atomic::AtomicU64;
+}
 
 mod mode {
     use std::sync::atomic::{AtomicU8, Ordering};
@@ -92,18 +109,6 @@ mod mode {
 
 // FIXME(parallel_compiler): Get rid of these aliases across the compiler.
 
-// Use portable AtomicU64 for targets without native 64-bit atomics
-#[cfg(target_has_atomic = "64")]
-pub use std::sync::atomic::AtomicU64;
-
-pub use mode::{is_dyn_thread_safe, set_dyn_thread_safe_mode};
-pub use parking_lot::{
-    MappedRwLockReadGuard as MappedReadGuard, MappedRwLockWriteGuard as MappedWriteGuard,
-    RwLockReadGuard as ReadGuard, RwLockWriteGuard as WriteGuard,
-};
-#[cfg(not(target_has_atomic = "64"))]
-pub use portable_atomic::AtomicU64;
-
 #[derive(Debug, Default)]
 pub struct MTLock<T>(Lock<T>);
 
@@ -134,8 +139,6 @@ impl<T> MTLock<T> {
     }
 }
 
-use parking_lot::RwLock as InnerRwLock;
-
 /// This makes locks panic if they are already held.
 /// It is only useful when you are running in a single thread
 const ERROR_CHECKING: bool = false;
@@ -157,12 +160,12 @@ impl<K: Eq + Hash, V: Eq, S: BuildHasher> HashMapExt<K, V> for HashMap<K, V, S> 
 }
 
 #[derive(Debug, Default)]
-pub struct RwLock<T>(InnerRwLock<T>);
+pub struct RwLock<T>(parking_lot::RwLock<T>);
 
 impl<T> RwLock<T> {
     #[inline(always)]
     pub fn new(inner: T) -> Self {
-        RwLock(InnerRwLock::new(inner))
+        RwLock(parking_lot::RwLock::new(inner))
     }
 
     #[inline(always)]
