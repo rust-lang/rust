@@ -910,7 +910,7 @@ impl<T> RefCell<T> {
     #[rustc_confusables("swap")]
     #[rustc_const_unstable(feature = "const_ref_cell", issue = "137844")]
     pub const fn replace(&self, t: T) -> T {
-        mem::replace(self.borrow_mut().as_mut(), t)
+        mem::replace(&mut self.borrow_mut(), t)
     }
 
     /// Replaces the wrapped value with a new one computed from `f`, returning
@@ -962,7 +962,7 @@ impl<T> RefCell<T> {
     #[stable(feature = "refcell_swap", since = "1.24.0")]
     #[rustc_const_unstable(feature = "const_ref_cell", issue = "137844")]
     pub const fn swap(&self, other: &Self) {
-        mem::swap(self.borrow_mut().as_mut(), other.borrow_mut().as_mut())
+        mem::swap(&mut *self.borrow_mut(), &mut *other.borrow_mut())
     }
 }
 
@@ -1452,6 +1452,8 @@ impl<'b> BorrowRef<'b> {
             Some(BorrowRef { borrow })
         }
     }
+
+    /// `Clone` is not a `const_trait`, so work around that by making our own method
     #[inline]
     #[rustc_const_unstable(feature = "const_ref_cell", issue = "137844")]
     const fn clone(&self) -> Self {
@@ -1671,12 +1673,6 @@ impl<T: ?Sized + fmt::Display> fmt::Display for Ref<'_, T> {
 }
 
 impl<'b, T: ?Sized> RefMut<'b, T> {
-    #[inline]
-    const fn as_mut(&mut self) -> &mut T {
-        // SAFETY: the value is accessible as long as we hold our borrow.
-        unsafe { self.value.as_mut() }
-    }
-
     /// Makes a new `RefMut` for a component of the borrowed data, e.g., an enum
     /// variant.
     ///
@@ -1897,7 +1893,8 @@ pub struct RefMut<'b, T: ?Sized + 'b> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> Deref for RefMut<'_, T> {
+#[rustc_const_unstable(feature = "const_deref", issue = "88955")]
+impl<T: ?Sized> const Deref for RefMut<'_, T> {
     type Target = T;
 
     #[inline]
@@ -1908,10 +1905,12 @@ impl<T: ?Sized> Deref for RefMut<'_, T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> DerefMut for RefMut<'_, T> {
+#[rustc_const_unstable(feature = "const_deref", issue = "88955")]
+impl<T: ?Sized> const DerefMut for RefMut<'_, T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut T {
-        self.as_mut()
+        // SAFETY: the value is accessible as long as we hold our borrow.
+        unsafe { self.value.as_mut() }
     }
 }
 
