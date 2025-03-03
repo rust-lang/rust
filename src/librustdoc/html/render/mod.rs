@@ -47,7 +47,6 @@ use rinja::Template;
 use rustc_attr_parsing::{
     ConstStability, DeprecatedSince, Deprecation, RustcVersion, StabilityLevel, StableSince,
 };
-use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::Mutability;
 use rustc_hir::def_id::{DefId, DefIdSet};
@@ -82,7 +81,7 @@ use crate::html::{highlight, sources};
 use crate::scrape_examples::{CallData, CallLocation};
 use crate::{DOC_RUST_LANG_ORG_VERSION, try_none};
 
-pub(crate) fn ensure_trailing_slash(v: &str) -> impl fmt::Display + '_ {
+pub(crate) fn ensure_trailing_slash(v: &str) -> impl fmt::Display {
     fmt::from_fn(move |f| {
         if !v.ends_with('/') && !v.is_empty() { write!(f, "{v}/") } else { f.write_str(v) }
     })
@@ -310,7 +309,7 @@ impl ItemEntry {
 }
 
 impl ItemEntry {
-    pub(crate) fn print(&self) -> impl fmt::Display + '_ {
+    pub(crate) fn print(&self) -> impl fmt::Display {
         fmt::from_fn(move |f| write!(f, "<a href=\"{}\">{}</a>", self.url, Escape(&self.name)))
     }
 }
@@ -505,12 +504,12 @@ fn scrape_examples_help(shared: &SharedContext<'_>) -> String {
     )
 }
 
-fn document<'a, 'cx: 'a>(
-    cx: &'a Context<'cx>,
-    item: &'a clean::Item,
-    parent: Option<&'a clean::Item>,
+fn document(
+    cx: &Context<'_>,
+    item: &clean::Item,
+    parent: Option<&clean::Item>,
     heading_offset: HeadingOffset,
-) -> impl fmt::Display + 'a + Captures<'cx> {
+) -> impl fmt::Display {
     if let Some(ref name) = item.name {
         info!("Documenting {name}");
     }
@@ -526,12 +525,12 @@ fn document<'a, 'cx: 'a>(
 }
 
 /// Render md_text as markdown.
-fn render_markdown<'a, 'cx: 'a>(
-    cx: &'a Context<'cx>,
-    md_text: &'a str,
+fn render_markdown(
+    cx: &Context<'_>,
+    md_text: &str,
     links: Vec<RenderedLink>,
     heading_offset: HeadingOffset,
-) -> impl fmt::Display + 'a + Captures<'cx> {
+) -> impl fmt::Display {
     fmt::from_fn(move |f| {
         write!(
             f,
@@ -552,13 +551,13 @@ fn render_markdown<'a, 'cx: 'a>(
 
 /// Writes a documentation block containing only the first paragraph of the documentation. If the
 /// docs are longer, a "Read more" link is appended to the end.
-fn document_short<'a, 'cx: 'a>(
-    item: &'a clean::Item,
-    cx: &'a Context<'cx>,
-    link: AssocItemLink<'a>,
-    parent: &'a clean::Item,
+fn document_short(
+    item: &clean::Item,
+    cx: &Context<'_>,
+    link: AssocItemLink<'_>,
+    parent: &clean::Item,
     show_def_docs: bool,
-) -> impl fmt::Display + 'a + Captures<'cx> {
+) -> impl fmt::Display {
     fmt::from_fn(move |f| {
         document_item_info(cx, item, Some(parent)).render_into(f).unwrap();
         if !show_def_docs {
@@ -595,28 +594,28 @@ fn document_short<'a, 'cx: 'a>(
     })
 }
 
-fn document_full_collapsible<'a, 'cx: 'a>(
-    item: &'a clean::Item,
-    cx: &'a Context<'cx>,
+fn document_full_collapsible(
+    item: &clean::Item,
+    cx: &Context<'_>,
     heading_offset: HeadingOffset,
-) -> impl fmt::Display + 'a + Captures<'cx> {
+) -> impl fmt::Display {
     document_full_inner(item, cx, true, heading_offset)
 }
 
-fn document_full<'a, 'cx: 'a>(
-    item: &'a clean::Item,
-    cx: &'a Context<'cx>,
+fn document_full(
+    item: &clean::Item,
+    cx: &Context<'_>,
     heading_offset: HeadingOffset,
-) -> impl fmt::Display + 'a + Captures<'cx> {
+) -> impl fmt::Display {
     document_full_inner(item, cx, false, heading_offset)
 }
 
-fn document_full_inner<'a, 'cx: 'a>(
-    item: &'a clean::Item,
-    cx: &'a Context<'cx>,
+fn document_full_inner(
+    item: &clean::Item,
+    cx: &Context<'_>,
     is_collapsible: bool,
     heading_offset: HeadingOffset,
-) -> impl fmt::Display + 'a + Captures<'cx> {
+) -> impl fmt::Display {
     fmt::from_fn(move |f| {
         if let Some(s) = item.opt_doc_value() {
             debug!("Doc block: =====\n{s}\n=====");
@@ -797,11 +796,11 @@ pub(crate) fn render_impls(
 }
 
 /// Build a (possibly empty) `href` attribute (a key-value pair) for the given associated item.
-fn assoc_href_attr<'a, 'tcx>(
+fn assoc_href_attr(
     it: &clean::Item,
-    link: AssocItemLink<'a>,
-    cx: &Context<'tcx>,
-) -> Option<impl fmt::Display + 'a + Captures<'tcx>> {
+    link: AssocItemLink<'_>,
+    cx: &Context<'_>,
+) -> Option<impl fmt::Display> {
     let name = it.name.unwrap();
     let item_type = it.type_();
 
@@ -812,7 +811,7 @@ fn assoc_href_attr<'a, 'tcx>(
     }
 
     let href = match link {
-        AssocItemLink::Anchor(Some(ref id)) => Href::AnchorId(id),
+        AssocItemLink::Anchor(Some(id)) => Href::AnchorId(id),
         AssocItemLink::Anchor(None) => Href::Anchor(item_type),
         AssocItemLink::GotoSource(did, provided_methods) => {
             // We're creating a link from the implementation of an associated item to its
@@ -877,15 +876,15 @@ enum AssocConstValue<'a> {
     None,
 }
 
-fn assoc_const<'a, 'tcx>(
-    it: &'a clean::Item,
-    generics: &'a clean::Generics,
-    ty: &'a clean::Type,
-    value: AssocConstValue<'a>,
-    link: AssocItemLink<'a>,
+fn assoc_const(
+    it: &clean::Item,
+    generics: &clean::Generics,
+    ty: &clean::Type,
+    value: AssocConstValue<'_>,
+    link: AssocItemLink<'_>,
     indent: usize,
-    cx: &'a Context<'tcx>,
-) -> impl fmt::Display + 'a + Captures<'tcx> {
+    cx: &Context<'_>,
+) -> impl fmt::Display {
     let tcx = cx.tcx();
     fmt::from_fn(move |w| {
         write!(
@@ -917,15 +916,15 @@ fn assoc_const<'a, 'tcx>(
     })
 }
 
-fn assoc_type<'a, 'tcx>(
-    it: &'a clean::Item,
-    generics: &'a clean::Generics,
-    bounds: &'a [clean::GenericBound],
-    default: Option<&'a clean::Type>,
-    link: AssocItemLink<'a>,
+fn assoc_type(
+    it: &clean::Item,
+    generics: &clean::Generics,
+    bounds: &[clean::GenericBound],
+    default: Option<&clean::Type>,
+    link: AssocItemLink<'_>,
     indent: usize,
-    cx: &'a Context<'tcx>,
-) -> impl fmt::Display + 'a + Captures<'tcx> {
+    cx: &Context<'_>,
+) -> impl fmt::Display {
     fmt::from_fn(move |w| {
         write!(
             w,
@@ -947,15 +946,15 @@ fn assoc_type<'a, 'tcx>(
     })
 }
 
-fn assoc_method<'a, 'tcx>(
-    meth: &'a clean::Item,
-    g: &'a clean::Generics,
-    d: &'a clean::FnDecl,
-    link: AssocItemLink<'a>,
+fn assoc_method(
+    meth: &clean::Item,
+    g: &clean::Generics,
+    d: &clean::FnDecl,
+    link: AssocItemLink<'_>,
     parent: ItemType,
-    cx: &'a Context<'tcx>,
+    cx: &Context<'_>,
     render_mode: RenderMode,
-) -> impl fmt::Display + 'a + Captures<'tcx> {
+) -> impl fmt::Display {
     let tcx = cx.tcx();
     let header = meth.fn_header(tcx).expect("Trying to get header from a non-function item");
     let name = meth.name.as_ref().unwrap();
@@ -1031,7 +1030,7 @@ fn render_stability_since_raw_with_extra(
     stable_version: Option<StableSince>,
     const_stability: Option<ConstStability>,
     extra_class: &str,
-) -> Option<impl fmt::Display + '_> {
+) -> Option<impl fmt::Display> {
     let mut title = String::new();
     let mut stability = String::new();
 
@@ -1102,13 +1101,13 @@ fn render_stability_since_raw(
     render_stability_since_raw_with_extra(ver, const_stability, "")
 }
 
-fn render_assoc_item<'a, 'tcx>(
-    item: &'a clean::Item,
-    link: AssocItemLink<'a>,
+fn render_assoc_item(
+    item: &clean::Item,
+    link: AssocItemLink<'_>,
     parent: ItemType,
-    cx: &'a Context<'tcx>,
+    cx: &Context<'_>,
     render_mode: RenderMode,
-) -> impl fmt::Display + 'a + Captures<'tcx> {
+) -> impl fmt::Display {
     fmt::from_fn(move |f| match &item.kind {
         clean::StrippedItem(..) => Ok(()),
         clean::RequiredMethodItem(m) | clean::MethodItem(m, _) => {
@@ -1144,7 +1143,7 @@ fn render_assoc_item<'a, 'tcx>(
             cx,
         )
         .fmt(f),
-        clean::RequiredAssocTypeItem(ref generics, ref bounds) => assoc_type(
+        clean::RequiredAssocTypeItem(generics, bounds) => assoc_type(
             item,
             generics,
             bounds,
@@ -1154,7 +1153,7 @@ fn render_assoc_item<'a, 'tcx>(
             cx,
         )
         .fmt(f),
-        clean::AssocTypeItem(ref ty, ref bounds) => assoc_type(
+        clean::AssocTypeItem(ty, bounds) => assoc_type(
             item,
             &ty.generics,
             bounds,
@@ -1170,11 +1169,7 @@ fn render_assoc_item<'a, 'tcx>(
 
 // When an attribute is rendered inside a `<pre>` tag, it is formatted using
 // a whitespace prefix and newline.
-fn render_attributes_in_pre<'a, 'tcx: 'a>(
-    it: &'a clean::Item,
-    prefix: &'a str,
-    cx: &'a Context<'tcx>,
-) -> impl fmt::Display + Captures<'a> + Captures<'tcx> {
+fn render_attributes_in_pre(it: &clean::Item, prefix: &str, cx: &Context<'_>) -> impl fmt::Display {
     fmt::from_fn(move |f| {
         for a in it.attributes(cx.tcx(), cx.cache(), false) {
             writeln!(f, "{prefix}{a}")?;
@@ -1206,12 +1201,12 @@ impl<'a> AssocItemLink<'a> {
     }
 }
 
-pub fn write_section_heading<'a>(
-    title: &'a str,
-    id: &'a str,
-    extra_class: Option<&'a str>,
-    extra: impl fmt::Display + 'a,
-) -> impl fmt::Display + 'a {
+pub fn write_section_heading(
+    title: &str,
+    id: &str,
+    extra_class: Option<&str>,
+    extra: impl fmt::Display,
+) -> impl fmt::Display {
     fmt::from_fn(move |w| {
         let (extra_class, whitespace) = match extra_class {
             Some(extra) => (extra, " "),
@@ -1227,7 +1222,7 @@ pub fn write_section_heading<'a>(
     })
 }
 
-fn write_impl_section_heading<'a>(title: &'a str, id: &'a str) -> impl fmt::Display + 'a {
+fn write_impl_section_heading(title: &str, id: &str) -> impl fmt::Display {
     write_section_heading(title, id, None, "")
 }
 
@@ -1276,12 +1271,12 @@ pub(crate) fn render_all_impls(
     }
 }
 
-fn render_assoc_items<'a, 'cx: 'a>(
-    cx: &'a Context<'cx>,
-    containing_item: &'a clean::Item,
+fn render_assoc_items(
+    cx: &Context<'_>,
+    containing_item: &clean::Item,
     it: DefId,
-    what: AssocItemRender<'a>,
-) -> impl fmt::Display + 'a + Captures<'cx> {
+    what: AssocItemRender<'_>,
+) -> impl fmt::Display {
     fmt::from_fn(move |f| {
         let mut derefs = DefIdSet::default();
         derefs.insert(it);
@@ -1466,10 +1461,10 @@ fn should_render_item(item: &clean::Item, deref_mut_: bool, tcx: TyCtxt<'_>) -> 
     }
 }
 
-pub(crate) fn notable_traits_button<'a, 'tcx>(
-    ty: &'a clean::Type,
-    cx: &'a Context<'tcx>,
-) -> Option<impl fmt::Display + 'a + Captures<'tcx>> {
+pub(crate) fn notable_traits_button(
+    ty: &clean::Type,
+    cx: &Context<'_>,
+) -> Option<impl fmt::Display> {
     let mut has_notable_trait = false;
 
     if ty.is_unit() {
@@ -1623,16 +1618,16 @@ struct ImplRenderingParameters {
     toggle_open_by_default: bool,
 }
 
-fn render_impl<'a, 'tcx>(
-    cx: &'a Context<'tcx>,
-    i: &'a Impl,
-    parent: &'a clean::Item,
-    link: AssocItemLink<'a>,
+fn render_impl(
+    cx: &Context<'_>,
+    i: &Impl,
+    parent: &clean::Item,
+    link: AssocItemLink<'_>,
     render_mode: RenderMode,
     use_absolute: Option<bool>,
-    aliases: &'a [String],
+    aliases: &[String],
     rendering_params: ImplRenderingParameters,
-) -> impl fmt::Display + 'a + Captures<'tcx> {
+) -> impl fmt::Display {
     fmt::from_fn(move |w| {
         let cache = &cx.shared.cache;
         let traits = &cache.traits;
@@ -1780,7 +1775,7 @@ fn render_impl<'a, 'tcx>(
                         );
                     }
                 }
-                clean::RequiredAssocConstItem(ref generics, ref ty) => {
+                clean::RequiredAssocConstItem(generics, ty) => {
                     let source_id = format!("{item_type}.{name}");
                     let id = cx.derive_id(&source_id);
                     write_str(
@@ -1847,7 +1842,7 @@ fn render_impl<'a, 'tcx>(
                         ),
                     );
                 }
-                clean::RequiredAssocTypeItem(ref generics, ref bounds) => {
+                clean::RequiredAssocTypeItem(generics, bounds) => {
                     let source_id = format!("{item_type}.{name}");
                     let id = cx.derive_id(&source_id);
                     write_str(
@@ -2135,11 +2130,11 @@ fn render_impl<'a, 'tcx>(
 
 // Render the items that appear on the right side of methods, impls, and
 // associated types. For example "1.0.0 (const: 1.39.0) · source".
-fn render_rightside<'a, 'tcx>(
-    cx: &'a Context<'tcx>,
-    item: &'a clean::Item,
+fn render_rightside(
+    cx: &Context<'_>,
+    item: &clean::Item,
     render_mode: RenderMode,
-) -> impl fmt::Display + 'a + Captures<'tcx> {
+) -> impl fmt::Display {
     let tcx = cx.tcx();
 
     fmt::from_fn(move |w| {
@@ -2174,17 +2169,17 @@ fn render_rightside<'a, 'tcx>(
     })
 }
 
-pub(crate) fn render_impl_summary<'a, 'tcx>(
-    cx: &'a Context<'tcx>,
-    i: &'a Impl,
-    parent: &'a clean::Item,
+pub(crate) fn render_impl_summary(
+    cx: &Context<'_>,
+    i: &Impl,
+    parent: &clean::Item,
     show_def_docs: bool,
     use_absolute: Option<bool>,
     // This argument is used to reference same type with different paths to avoid duplication
     // in documentation pages for trait with automatic implementations like "Send" and "Sync".
-    aliases: &'a [String],
-    doc: Option<&'a str>,
-) -> impl fmt::Display + 'a + Captures<'tcx> {
+    aliases: &[String],
+    doc: Option<&str>,
+) -> impl fmt::Display {
     fmt::from_fn(move |w| {
         let inner_impl = i.inner_impl();
         let id = cx.derive_id(get_id_for_impl(cx.tcx(), i.impl_item.item_id));
