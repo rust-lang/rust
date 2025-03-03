@@ -469,6 +469,9 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for LinkingFailed<'_> {
                 diag.note(fluent::codegen_ssa_use_cargo_directive);
             }
         }
+        if self.linker_path.display().to_string().contains("cc") {
+            diag.help("consider adding the llvm-tools component to your rustup installation");
+        }
         diag
     }
 }
