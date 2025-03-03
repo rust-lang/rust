@@ -669,12 +669,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if !errors.is_empty() {
             self.adjust_fulfillment_errors_for_expr_obligation(&mut errors);
-            let errors_causecode = errors
-                .iter()
-                .map(|e| (e.obligation.cause.span, e.root_obligation.cause.code().clone()))
-                .collect::<Vec<_>>();
             self.err_ctxt().report_fulfillment_errors(errors);
-            self.collect_unused_stmts_for_coerce_return_ty(errors_causecode);
         }
     }
 
