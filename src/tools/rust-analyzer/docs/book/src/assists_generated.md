@@ -28,6 +28,32 @@ fn foo(n: i32) -> i32 {
 ```
 
 
+### `add_explicit_enum_discriminant`
+**Source:**  [add_explicit_enum_discriminant.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/add_explicit_enum_discriminant.rs#L11) 
+
+Adds explicit discriminant to all enum variants.
+
+#### Before
+```rust
+enum TheEnum┃ {
+    Foo,
+    Bar,
+    Baz = 42,
+    Quux,
+}
+```
+
+#### After
+```rust
+enum TheEnum {
+    Foo = 0,
+    Bar = 1,
+    Baz = 42,
+    Quux = 43,
+}
+```
+
+
 ### `add_explicit_type`
 **Source:**  [add_explicit_type.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/add_explicit_type.rs#L7) 
 
@@ -350,40 +376,6 @@ fn some_function(x: i32) {
 ```
 
 
-### `bool_to_enum`
-**Source:**  [bool_to_enum.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/bool_to_enum.rs#L29) 
-
-This converts boolean local variables, fields, constants, and statics into a new
-enum with two variants `Bool::True` and `Bool::False`, as well as replacing
-all assignments with the variants and replacing all usages with `== Bool::True` or
-`== Bool::False`.
-
-#### Before
-```rust
-fn main() {
-    let ┃bool = true;
-
-    if bool {
-        println!("foo");
-    }
-}
-```
-
-#### After
-```rust
-#[derive(PartialEq, Eq)]
-enum Bool { True, False }
-
-fn main() {
-    let bool = Bool::True;
-
-    if bool == Bool::True {
-        println!("foo");
-    }
-}
-```
-
-
 ### `change_visibility`
 **Source:**  [change_visibility.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/change_visibility.rs#L13) 
 
@@ -437,6 +429,40 @@ fn main() {
         Some(val)
     } else {
         None
+    }
+}
+```
+
+
+### `convert_bool_to_enum`
+**Source:**  [convert_bool_to_enum.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/convert_bool_to_enum.rs#L29) 
+
+This converts boolean local variables, fields, constants, and statics into a new
+enum with two variants `Bool::True` and `Bool::False`, as well as replacing
+all assignments with the variants and replacing all usages with `== Bool::True` or
+`== Bool::False`.
+
+#### Before
+```rust
+fn main() {
+    let ┃bool = true;
+
+    if bool {
+        println!("foo");
+    }
+}
+```
+
+#### After
+```rust
+#[derive(PartialEq, Eq)]
+enum Bool { True, False }
+
+fn main() {
+    let bool = Bool::True;
+
+    if bool == Bool::True {
+        println!("foo");
     }
 }
 ```
@@ -1043,28 +1069,50 @@ pub use foo::{Bar, Baz};
 ```
 
 
-### `explicit_enum_discriminant`
-**Source:**  [explicit_enum_discriminant.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/explicit_enum_discriminant.rs#L11) 
+### `expand_record_rest_pattern`
+**Source:**  [expand_rest_pattern.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/expand_rest_pattern.rs#L24) 
 
-Adds explicit discriminant to all enum variants.
+Fills fields by replacing rest pattern in record patterns.
 
 #### Before
 ```rust
-enum TheEnum┃ {
-    Foo,
-    Bar,
-    Baz = 42,
-    Quux,
+struct Bar { y: Y, z: Z }
+
+fn foo(bar: Bar) {
+    let Bar { ..┃ } = bar;
 }
 ```
 
 #### After
 ```rust
-enum TheEnum {
-    Foo = 0,
-    Bar = 1,
-    Baz = 42,
-    Quux = 43,
+struct Bar { y: Y, z: Z }
+
+fn foo(bar: Bar) {
+    let Bar { y, z  } = bar;
+}
+```
+
+
+### `expand_tuple_struct_rest_pattern`
+**Source:**  [expand_rest_pattern.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/expand_rest_pattern.rs#L80) 
+
+Fills fields by replacing rest pattern in tuple struct patterns.
+
+#### Before
+```rust
+struct Bar(Y, Z);
+
+fn foo(bar: Bar) {
+    let Bar(..┃) = bar;
+}
+```
+
+#### After
+```rust
+struct Bar(Y, Z);
+
+fn foo(bar: Bar) {
+    let Bar(_0, _1) = bar;
 }
 ```
 
@@ -1251,30 +1299,6 @@ fn main() {
 fn main() {
     let ┃var_name = 1 + 2;
     var_name * 4;
-}
-```
-
-
-### `fill_record_pattern_fields`
-**Source:**  [fill_record_pattern_fields.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/fill_record_pattern_fields.rs#L8) 
-
-Fills fields by replacing rest pattern in record patterns.
-
-#### Before
-```rust
-struct Bar { y: Y, z: Z }
-
-fn foo(bar: Bar) {
-    let Bar { ..┃ } = bar;
-}
-```
-
-#### After
-```rust
-struct Bar { y: Y, z: Z }
-
-fn foo(bar: Bar) {
-    let Bar { y, z  } = bar;
 }
 ```
 
@@ -2423,22 +2447,6 @@ fn main() -> () {
 ```
 
 
-### `introduce_named_generic`
-**Source:**  [introduce_named_generic.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/introduce_named_generic.rs#L7) 
-
-Replaces `impl Trait` function argument with the named generic.
-
-#### Before
-```rust
-fn foo(bar: ┃impl Bar) {}
-```
-
-#### After
-```rust
-fn foo<┃B: Bar>(bar: B) {}
-```
-
-
 ### `introduce_named_lifetime`
 **Source:**  [introduce_named_lifetime.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/introduce_named_lifetime.rs#L13) 
 
@@ -2464,6 +2472,22 @@ impl<'a> Cursor<'a> {
         }
     }
 }
+```
+
+
+### `introduce_named_type_parameter`
+**Source:**  [introduce_named_type_parameter.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/introduce_named_type_parameter.rs#L7) 
+
+Replaces `impl Trait` function argument with the named generic.
+
+#### Before
+```rust
+fn foo(bar: ┃impl Bar) {}
+```
+
+#### After
+```rust
+fn foo<┃B: Bar>(bar: B) {}
 ```
 
 

@@ -26,7 +26,7 @@ use crate::{
     utils,
 };
 
-// Assist: bool_to_enum
+// Assist: convert_bool_to_enum
 //
 // This converts boolean local variables, fields, constants, and statics into a new
 // enum with two variants `Bool::True` and `Bool::False`, as well as replacing
@@ -55,14 +55,14 @@ use crate::{
 //     }
 // }
 // ```
-pub(crate) fn bool_to_enum(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn convert_bool_to_enum(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let BoolNodeData { target_node, name, ty_annotation, initializer, definition } =
         find_bool_node(ctx)?;
     let target_module = ctx.sema.scope(&target_node)?.module().nearest_non_block_module(ctx.db());
 
     let target = name.syntax().text_range();
     acc.add(
-        AssistId("bool_to_enum", AssistKind::RefactorRewrite),
+        AssistId("convert_bool_to_enum", AssistKind::RefactorRewrite),
         "Convert boolean to enum",
         target,
         |edit| {
@@ -549,7 +549,7 @@ mod tests {
     #[test]
     fn parameter_with_first_param_usage() {
         check_assist(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 fn function($0foo: bool, bar: bool) {
     if foo {
@@ -573,7 +573,7 @@ fn function(foo: Bool, bar: bool) {
     #[test]
     fn no_duplicate_enums() {
         check_assist(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 #[derive(PartialEq, Eq)]
 enum Bool { True, False }
@@ -600,7 +600,7 @@ fn function(foo: bool, bar: Bool) {
     #[test]
     fn parameter_with_last_param_usage() {
         check_assist(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 fn function(foo: bool, $0bar: bool) {
     if bar {
@@ -624,7 +624,7 @@ fn function(foo: bool, bar: Bool) {
     #[test]
     fn parameter_with_middle_param_usage() {
         check_assist(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 fn function(foo: bool, $0bar: bool, baz: bool) {
     if bar {
@@ -648,7 +648,7 @@ fn function(foo: bool, bar: Bool, baz: bool) {
     #[test]
     fn parameter_with_closure_usage() {
         check_assist(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 fn main() {
     let foo = |$0bar: bool| bar;
@@ -668,7 +668,7 @@ fn main() {
     #[test]
     fn local_variable_with_usage() {
         check_assist(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 fn main() {
     let $0foo = true;
@@ -697,7 +697,7 @@ fn main() {
     fn local_variable_with_usage_negated() {
         cov_mark::check!(replaces_negation);
         check_assist(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 fn main() {
     let $0foo = true;
@@ -726,7 +726,7 @@ fn main() {
     fn local_variable_with_type_annotation() {
         cov_mark::check!(replaces_ty_annotation);
         check_assist(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 fn main() {
     let $0foo: bool = false;
@@ -746,7 +746,7 @@ fn main() {
     #[test]
     fn local_variable_with_non_literal_initializer() {
         check_assist(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 fn main() {
     let $0foo = 1 == 2;
@@ -766,7 +766,7 @@ fn main() {
     #[test]
     fn local_variable_binexpr_usage() {
         check_assist(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 fn main() {
     let $0foo = false;
@@ -796,7 +796,7 @@ fn main() {
     #[test]
     fn local_variable_unop_usage() {
         check_assist(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 fn main() {
     let $0foo = true;
@@ -825,7 +825,7 @@ fn main() {
     fn local_variable_assigned_later() {
         cov_mark::check!(replaces_assignment);
         check_assist(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 fn main() {
     let $0foo: bool;
@@ -847,7 +847,7 @@ fn main() {
     #[test]
     fn local_variable_does_not_apply_recursively() {
         check_assist(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 fn main() {
     let $0foo = true;
@@ -878,7 +878,7 @@ fn main() {
     fn local_variable_nested_in_negation() {
         cov_mark::check!(dont_overwrite_expression_inside_negation);
         check_assist(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 fn main() {
     if !"foo".chars().any(|c| {
@@ -909,7 +909,7 @@ fn main() {
     fn local_variable_non_bool() {
         cov_mark::check!(not_applicable_non_bool_local);
         check_assist_not_applicable(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 fn main() {
     let $0foo = 1;
@@ -921,7 +921,7 @@ fn main() {
     #[test]
     fn local_variable_cursor_not_on_ident() {
         check_assist_not_applicable(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 fn main() {
     let foo = $0true;
@@ -933,7 +933,7 @@ fn main() {
     #[test]
     fn local_variable_non_ident_pat() {
         check_assist_not_applicable(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 fn main() {
     let ($0foo, bar) = (true, false);
@@ -945,7 +945,7 @@ fn main() {
     #[test]
     fn local_var_init_struct_usage() {
         check_assist(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 struct Foo {
     foo: bool,
@@ -975,7 +975,7 @@ fn main() {
     #[test]
     fn local_var_init_struct_usage_in_macro() {
         check_assist(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 struct Struct {
     boolean: bool,
@@ -1018,7 +1018,7 @@ fn new() -> Struct {
     fn field_struct_basic() {
         cov_mark::check!(replaces_record_expr);
         check_assist(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 struct Foo {
     $0bar: bool,
@@ -1057,7 +1057,7 @@ fn main() {
     fn field_enum_basic() {
         cov_mark::check!(replaces_record_pat);
         check_assist(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 enum Foo {
     Foo,
@@ -1100,7 +1100,7 @@ fn main() {
     fn field_enum_cross_file() {
         // FIXME: The import is missing
         check_assist(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 //- /foo.rs
 pub enum Foo {
@@ -1151,7 +1151,7 @@ fn main() {
     fn field_enum_shorthand() {
         cov_mark::check!(replaces_record_pat_shorthand);
         check_assist(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 enum Foo {
     Foo,
@@ -1200,7 +1200,7 @@ fn main() {
     fn field_enum_replaces_literal_patterns() {
         cov_mark::check!(replaces_literal_pat);
         check_assist(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 enum Foo {
     Foo,
@@ -1238,7 +1238,7 @@ fn main() {
     #[test]
     fn field_enum_keeps_wildcard_patterns() {
         check_assist(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 enum Foo {
     Foo,
@@ -1276,7 +1276,7 @@ fn main() {
     #[test]
     fn field_union_basic() {
         check_assist(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 union Foo {
     $0foo: bool,
@@ -1314,7 +1314,7 @@ fn main() {
     #[test]
     fn field_negated() {
         check_assist(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 struct Foo {
     $0bar: bool,
@@ -1350,7 +1350,7 @@ fn main() {
     #[test]
     fn field_in_mod_properly_indented() {
         check_assist(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 mod foo {
     struct Bar {
@@ -1386,7 +1386,7 @@ mod foo {
     #[test]
     fn field_multiple_initializations() {
         check_assist(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 struct Foo {
     $0bar: bool,
@@ -1427,7 +1427,7 @@ fn main() {
     fn field_assigned_to_another() {
         cov_mark::check!(dont_assign_incorrect_ref);
         check_assist(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 struct Foo {
     $0foo: bool,
@@ -1469,7 +1469,7 @@ fn main() {
     #[test]
     fn field_initialized_with_other() {
         check_assist(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 struct Foo {
     $0foo: bool,
@@ -1507,7 +1507,7 @@ fn main() {
     #[test]
     fn field_method_chain_usage() {
         check_assist(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 struct Foo {
     $0bool: bool,
@@ -1539,7 +1539,7 @@ fn main() {
     #[test]
     fn field_in_macro() {
         check_assist(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 struct Struct {
     $0boolean: bool,
@@ -1580,7 +1580,7 @@ fn new() -> Struct {
     fn field_non_bool() {
         cov_mark::check!(not_applicable_non_bool_field);
         check_assist_not_applicable(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 struct Foo {
     $0bar: usize,
@@ -1596,7 +1596,7 @@ fn main() {
     #[test]
     fn const_basic() {
         check_assist(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 const $0FOO: bool = false;
 
@@ -1624,7 +1624,7 @@ fn main() {
     #[test]
     fn const_in_module() {
         check_assist(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 fn main() {
     if foo::FOO {
@@ -1658,7 +1658,7 @@ mod foo {
     #[test]
     fn const_in_module_with_import() {
         check_assist(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 fn main() {
     use foo::FOO;
@@ -1696,7 +1696,7 @@ mod foo {
     #[test]
     fn const_cross_file() {
         check_assist(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 //- /main.rs
 mod foo;
@@ -1734,7 +1734,7 @@ pub const FOO: Bool = Bool::True;
     #[test]
     fn const_cross_file_and_module() {
         check_assist(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 //- /main.rs
 mod foo;
@@ -1780,7 +1780,7 @@ pub mod bar {
     #[test]
     fn const_in_impl_cross_file() {
         check_assist(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 //- /main.rs
 mod foo;
@@ -1824,7 +1824,7 @@ fn foo() -> bool {
     #[test]
     fn const_in_trait() {
         check_assist(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 trait Foo {
     const $0BOOL: bool;
@@ -1865,7 +1865,7 @@ fn main() {
     fn const_non_bool() {
         cov_mark::check!(not_applicable_non_bool_const);
         check_assist_not_applicable(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 const $0FOO: &str = "foo";
 
@@ -1879,7 +1879,7 @@ fn main() {
     #[test]
     fn static_basic() {
         check_assist(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 static mut $0BOOL: bool = true;
 
@@ -1910,7 +1910,7 @@ fn main() {
     fn static_non_bool() {
         cov_mark::check!(not_applicable_non_bool_static);
         check_assist_not_applicable(
-            bool_to_enum,
+            convert_bool_to_enum,
             r#"
 static mut $0FOO: usize = 0;
 
@@ -1925,6 +1925,6 @@ fn main() {
 
     #[test]
     fn not_applicable_to_other_names() {
-        check_assist_not_applicable(bool_to_enum, "fn $0main() {}")
+        check_assist_not_applicable(convert_bool_to_enum, "fn $0main() {}")
     }
 }
