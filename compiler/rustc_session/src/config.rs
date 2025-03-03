@@ -872,18 +872,13 @@ pub enum PrintKind {
     DeploymentTarget,
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, Default)]
 pub struct NextSolverConfig {
     /// Whether the new trait solver should be enabled in coherence.
-    pub coherence: bool,
+    pub coherence: bool = true,
     /// Whether the new trait solver should be enabled everywhere.
     /// This is only `true` if `coherence` is also enabled.
-    pub globally: bool,
-}
-impl Default for NextSolverConfig {
-    fn default() -> Self {
-        NextSolverConfig { coherence: true, globally: false }
-    }
+    pub globally: bool = false,
 }
 
 #[derive(Clone)]
