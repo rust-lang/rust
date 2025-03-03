@@ -12,6 +12,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::HirId;
 use rustc_lint_defs::Applicability;
 use rustc_resolve::rustdoc::source_span_for_markdown_range;
@@ -39,6 +40,8 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
     // the new parser and old parser.
     let mut missing_footnote_references = BTreeMap::new();
     let mut found_footnote_references = BTreeSet::new();
+    let mut footnote_references = FxHashSet::default();
+    let mut footnote_definitions = FxHashMap::default();
 
     // populate problem cases from new parser
     {
@@ -51,13 +54,20 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
         }
         let parser_new = cmarkn::Parser::new_ext(dox, main_body_opts_new()).into_offset_iter();
         for (event, span) in parser_new {
-            if let cmarkn::Event::Start(cmarkn::Tag::BlockQuote(_)) = event {
-                if !dox[span.clone()].starts_with("> ") {
-                    spaceless_block_quotes.insert(span.start);
+            match event {
+                cmarkn::Event::Start(cmarkn::Tag::BlockQuote(_)) => {
+                    if !dox[span.clone()].starts_with("> ") {
+                        spaceless_block_quotes.insert(span.start);
+                    }
                 }
-            }
-            if let cmarkn::Event::FootnoteReference(_) = event {
-                found_footnote_references.insert(span.start + 1);
+                cmarkn::Event::FootnoteReference(label) => {
+                    found_footnote_references.insert(span.start + 1);
+                    footnote_references.insert(label);
+                }
+                cmarkn::Event::Start(cmarkn::Tag::FootnoteDefinition(label)) => {
+                    footnote_definitions.insert(label, span.start + 1);
+                }
+                _ => {}
             }
         }
     }
@@ -83,6 +93,23 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
                     missing_footnote_references.insert(span.start + 1, span);
                 }
             }
+        }
+    }
+
+    #[allow(rustc::potential_query_instability)]
+    for (footnote, span) in footnote_definitions {
+        if !footnote_references.contains(&footnote) {
+            let span = source_span_for_markdown_range(
+                tcx,
+                dox,
+                &(span..span + 1),
+                &item.attrs.doc_strings,
+            )
+            .unwrap_or_else(|| item.attr_span(tcx));
+
+            tcx.node_span_lint(crate::lint::UNUSED_FOOTNOTE_DEFINITION, hir_id, span, |lint| {
+                lint.primary_message("unused footnote definition");
+            });
         }
     }
 
@@ -117,29 +144,33 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
                 .map(|span| (span, true))
                 .unwrap_or_else(|| (item.attr_span(tcx), false));
 
-        tcx.node_span_lint(crate::lint::UNPORTABLE_MARKDOWN, hir_id, ref_span, |lint| {
-            lint.primary_message("unportable markdown");
-            if precise {
+        if precise {
+            tcx.node_span_lint(crate::lint::BROKEN_FOOTNOTE, hir_id, ref_span, |lint| {
+                lint.primary_message("no footnote definition matching this footnote");
                 lint.span_suggestion(
                     ref_span.shrink_to_lo(),
                     "if it should not be a footnote, escape it",
                     "\\",
                     Applicability::MaybeIncorrect,
                 );
-            }
-            if dox.as_bytes().get(span.end) == Some(&b'[') {
-                lint.help("confusing footnote reference and link");
-                if precise {
-                    lint.span_suggestion(
-                        ref_span.shrink_to_hi(),
-                        "if the footnote is intended, add a space",
-                        " ",
-                        Applicability::MaybeIncorrect,
-                    );
-                } else {
-                    lint.help("there should be a space between the link and the footnote");
+            });
+        } else {
+            tcx.node_span_lint(crate::lint::UNPORTABLE_MARKDOWN, hir_id, ref_span, |lint| {
+                lint.primary_message("unportable markdown");
+                if dox.as_bytes().get(span.end) == Some(&b'[') {
+                    lint.help("confusing footnote reference and link");
+                    if precise {
+                        lint.span_suggestion(
+                            ref_span.shrink_to_hi(),
+                            "if the footnote is intended, add a space",
+                            " ",
+                            Applicability::MaybeIncorrect,
+                        );
+                    } else {
+                        lint.help("there should be a space between the link and the footnote");
+                    }
                 }
-            }
-        });
+            });
+        }
     }
 }
