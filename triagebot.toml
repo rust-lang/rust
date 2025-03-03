@@ -207,7 +207,7 @@ trigger_files = [
     "tests/rustdoc",
     "tests/rustdoc-ui",
     "tests/rustdoc-gui",
-    "tests/rustdoc-js",
+    "tests/rustdoc-js/",
     "tests/rustdoc-js-std",
     "tests/rustdoc-json",
 
@@ -1307,7 +1307,7 @@ project-exploit-mitigations = [
 "/tests/rustdoc" =                                       ["rustdoc"]
 "/tests/rustdoc-gui" =                                   ["rustdoc"]
 "/tests/rustdoc-js-std" =                                ["rustdoc"]
-"/tests/rustdoc-js" =                                    ["rustdoc"]
+"/tests/rustdoc-js/" =                                   ["rustdoc"]
 "/tests/rustdoc-json" =                                  ["@aDotInTheVoid"]
 "/tests/rustdoc-ui" =                                    ["rustdoc"]
 "/tests/ui" =                                            ["compiler"]
