@@ -1,5 +1,5 @@
 error[E0455]: link kind `raw-dylib` is only supported on Windows targets
-  --> $DIR/raw-dylib-windows-only.rs:3:29
+  --> $DIR/raw-dylib-windows-only.rs:6:29
    |
 LL | #[link(name = "foo", kind = "raw-dylib")]
    |                             ^^^^^^^^^^^
