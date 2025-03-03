@@ -210,9 +210,13 @@ itself back on after some time).
 
 ### MSVC
 
-MSVC builds of Rust additionally require an installation of Visual Studio 2017
-(or later) so `rustc` can use its linker. The simplest way is to get
-[Visual Studio], check the "C++ build tools" and "Windows 10 SDK" workload.
+MSVC builds of Rust additionally requires an installation of:
+
+- Visual Studio 2022 (or later) build tools so `rustc` can use its linker. Older
+  Visual Studio versions such as 2019 *may* work but aren't actively tested.
+- A recent Windows 10 or 11 SDK.
+
+The simplest way is to get [Visual Studio], check the "C++ build tools".
 
 [Visual Studio]: https://visualstudio.microsoft.com/downloads/
 
