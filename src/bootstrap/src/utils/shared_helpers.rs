@@ -121,5 +121,6 @@ pub const FLAGS_FOR_RUSTC: &[&'static str] = &[
     // FIXME(edition_2024): Change this to `-Wrust_2024_idioms` when all of the
     // individual lints are satisfied.
     "-Wkeyword_idents_2024",
+    "-Wunreachable_pub",
     "-Wunsafe_op_in_unsafe_fn",
 ];
