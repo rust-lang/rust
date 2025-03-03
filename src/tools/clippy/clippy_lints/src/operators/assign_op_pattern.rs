@@ -112,6 +112,7 @@ fn imm_borrows_in_expr(cx: &LateContext<'_>, e: &hir::Expr<'_>) -> HirIdSet {
         }
 
         fn consume(&mut self, _: &PlaceWithHirId<'_>, _: HirId) {}
+        fn use_cloned(&mut self, _: &PlaceWithHirId<'_>, _: HirId) {}
         fn mutate(&mut self, _: &PlaceWithHirId<'_>, _: HirId) {}
         fn fake_read(&mut self, _: &PlaceWithHirId<'_>, _: FakeReadCause, _: HirId) {}
         fn copy(&mut self, _: &PlaceWithHirId<'_>, _: HirId) {}
@@ -137,6 +138,7 @@ fn mut_borrows_in_expr(cx: &LateContext<'_>, e: &hir::Expr<'_>) -> HirIdSet {
         }
 
         fn consume(&mut self, _: &PlaceWithHirId<'_>, _: HirId) {}
+        fn use_cloned(&mut self, _: &PlaceWithHirId<'_>, _: HirId) {}
         fn mutate(&mut self, _: &PlaceWithHirId<'_>, _: HirId) {}
         fn fake_read(&mut self, _: &PlaceWithHirId<'_>, _: FakeReadCause, _: HirId) {}
         fn copy(&mut self, _: &PlaceWithHirId<'_>, _: HirId) {}

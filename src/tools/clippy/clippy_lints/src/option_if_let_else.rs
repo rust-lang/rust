@@ -177,7 +177,7 @@ fn try_get_option_occurrence<'tcx>(
                         .then_some(())
                         .and_then(|()| none_captures.get(local_id))
                 }) {
-                    Some(CaptureKind::Value | CaptureKind::Ref(Mutability::Mut)) => return None,
+                    Some(CaptureKind::Value | CaptureKind::Use | CaptureKind::Ref(Mutability::Mut)) => return None,
                     Some(CaptureKind::Ref(Mutability::Not)) if as_mut => return None,
                     Some(CaptureKind::Ref(Mutability::Not)) | None => (),
                 }

@@ -147,6 +147,8 @@ impl<'tcx> Delegate<'tcx> for MoveDelegate {
         }
     }
 
+    fn use_cloned(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
+
     fn borrow(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId, _: BorrowKind) {}
 
     fn mutate(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}

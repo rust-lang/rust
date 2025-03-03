@@ -147,6 +147,7 @@ impl<'a> Sugg<'a> {
             | ExprKind::Become(..)
             | ExprKind::Struct(..)
             | ExprKind::Tup(..)
+            | ExprKind::Use(..)
             | ExprKind::Err(_)
             | ExprKind::UnsafeBinderCast(..) => Sugg::NonParen(get_snippet(expr.span)),
             ExprKind::DropTemps(inner) => Self::hir_from_snippet(inner, get_snippet),
@@ -217,6 +218,7 @@ impl<'a> Sugg<'a> {
             | ast::ExprKind::Try(..)
             | ast::ExprKind::TryBlock(..)
             | ast::ExprKind::Tup(..)
+            | ast::ExprKind::Use(..)
             | ast::ExprKind::Array(..)
             | ast::ExprKind::While(..)
             | ast::ExprKind::Await(..)
@@ -834,6 +836,8 @@ impl<'tcx> DerefDelegate<'_, 'tcx> {
 
 impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
     fn consume(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
+
+    fn use_cloned(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
 
     fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId, _: ty::BorrowKind) {
         if let PlaceBase::Local(id) = cmt.place.base {

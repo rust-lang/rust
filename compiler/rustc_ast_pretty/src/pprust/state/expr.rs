@@ -574,6 +574,14 @@ impl<'a> State<'a> {
                 );
                 self.word(".await");
             }
+            ast::ExprKind::Use(expr, _) => {
+                self.print_expr_cond_paren(
+                    expr,
+                    expr.precedence() < ExprPrecedence::Unambiguous,
+                    fixup,
+                );
+                self.word(".use");
+            }
             ast::ExprKind::Assign(lhs, rhs, _) => {
                 self.print_expr_cond_paren(
                     lhs,
@@ -885,6 +893,7 @@ impl<'a> State<'a> {
     fn print_capture_clause(&mut self, capture_clause: ast::CaptureBy) {
         match capture_clause {
             ast::CaptureBy::Value { .. } => self.word_space("move"),
+            ast::CaptureBy::Use { .. } => self.word_space("use"),
             ast::CaptureBy::Ref => {}
         }
     }

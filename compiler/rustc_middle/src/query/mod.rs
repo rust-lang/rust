@@ -1533,6 +1533,11 @@ rustc_queries! {
     query is_copy_raw(env: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` is `Copy`", env.value }
     }
+    /// Trait selection queries. These are best used by invoking `ty.is_use_cloned_modulo_regions()`,
+    /// `ty.is_use_cloned()`, etc, since that will prune the environment where possible.
+    query is_use_cloned_raw(env: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> bool {
+        desc { "computing whether `{}` is `UseCloned`", env.value }
+    }
     /// Query backing `Ty::is_sized`.
     query is_sized_raw(env: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` is `Sized`", env.value }

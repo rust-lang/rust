@@ -43,11 +43,11 @@ error: expected expression, found reserved keyword `try`
 LL |     try
    |     ^^^ expected expression
 
-error: expected one of `move`, `|`, or `||`, found keyword `let`
+error: expected one of `move`, `use`, `|`, or `||`, found keyword `let`
   --> $DIR/block-no-opening-brace.rs:33:9
    |
 LL |     async
-   |          - expected one of `move`, `|`, or `||`
+   |          - expected one of `move`, `use`, `|`, or `||`
 LL |         let x = 0;
    |         ^^^ unexpected token
 

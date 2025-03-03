@@ -582,6 +582,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Yield { .. }
             | ExprKind::ThreadLocalRef(_)
             | ExprKind::Call { .. }
+            | ExprKind::ByUse { .. }
             | ExprKind::WrapUnsafeBinder { .. } => {
                 // these are not places, so we need to make a temporary.
                 debug_assert!(!matches!(Category::of(&expr.kind), Some(Category::Place)));
