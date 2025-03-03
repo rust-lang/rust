@@ -3,7 +3,7 @@ use std::fmt::Write;
 use std::marker::PhantomData;
 use std::ops::{Range, RangeInclusive};
 
-use rand::distributions::{Distribution, Uniform};
+use rand::distr::{Distribution, Uniform};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
@@ -40,7 +40,7 @@ impl<F: Float> Generator<F> for RandDigits<F> {
 
     fn new() -> Self {
         let rng = ChaCha8Rng::from_seed(SEED);
-        let range = Uniform::from(0..10);
+        let range = Uniform::try_from(0..10).unwrap();
 
         Self { rng, iter: 0..ITERATIONS, uniform: range, marker: PhantomData }
     }
@@ -55,11 +55,11 @@ impl<F: Float> Iterator for RandDigits<F> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let _ = self.iter.next()?;
-        let num_digits = self.rng.gen_range(POSSIBLE_NUM_DIGITS);
-        let has_decimal = self.rng.gen_bool(0.2);
-        let has_exp = self.rng.gen_bool(0.2);
+        let num_digits = self.rng.random_range(POSSIBLE_NUM_DIGITS);
+        let has_decimal = self.rng.random_bool(0.2);
+        let has_exp = self.rng.random_bool(0.2);
 
-        let dec_pos = if has_decimal { Some(self.rng.gen_range(0..num_digits)) } else { None };
+        let dec_pos = if has_decimal { Some(self.rng.random_range(0..num_digits)) } else { None };
 
         let mut s = String::with_capacity(num_digits);
 
@@ -75,7 +75,7 @@ impl<F: Float> Iterator for RandDigits<F> {
         }
 
         if has_exp {
-            let exp = self.rng.gen_range(EXP_RANGE);
+            let exp = self.rng.random_range(EXP_RANGE);
             write!(s, "e{exp}").unwrap();
         }
 
