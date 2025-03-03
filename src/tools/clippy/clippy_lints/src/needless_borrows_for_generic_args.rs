@@ -174,6 +174,7 @@ fn needless_borrow_count<'tcx>(
 ) -> usize {
     let destruct_trait_def_id = cx.tcx.lang_items().destruct_trait();
     let sized_trait_def_id = cx.tcx.lang_items().sized_trait();
+    let meta_sized_trait_def_id = cx.tcx.lang_items().meta_sized_trait();
     let drop_trait_def_id = cx.tcx.lang_items().drop_trait();
 
     let fn_sig = cx.tcx.fn_sig(fn_id).instantiate_identity().skip_binder();
@@ -209,6 +210,7 @@ fn needless_borrow_count<'tcx>(
         .all(|trait_def_id| {
             Some(trait_def_id) == destruct_trait_def_id
                 || Some(trait_def_id) == sized_trait_def_id
+                || Some(trait_def_id) == meta_sized_trait_def_id
                 || cx.tcx.is_diagnostic_item(sym::Any, trait_def_id)
         })
     {

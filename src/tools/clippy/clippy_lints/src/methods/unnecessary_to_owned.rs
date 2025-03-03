@@ -388,9 +388,11 @@ fn check_other_call_arg<'tcx>(
         && let (input, n_refs) = peel_middle_ty_refs(*input)
         && let (trait_predicates, _) = get_input_traits_and_projections(cx, callee_def_id, input)
         && let Some(sized_def_id) = cx.tcx.lang_items().sized_trait()
+        && let Some(meta_sized_def_id) = cx.tcx.lang_items().meta_sized_trait()
         && let [trait_predicate] = trait_predicates
             .iter()
             .filter(|trait_predicate| trait_predicate.def_id() != sized_def_id)
+            .filter(|trait_predicate| trait_predicate.def_id() != meta_sized_def_id)
             .collect::<Vec<_>>()[..]
         && let Some(deref_trait_id) = cx.tcx.get_diagnostic_item(sym::Deref)
         && let Some(as_ref_trait_id) = cx.tcx.get_diagnostic_item(sym::AsRef)
