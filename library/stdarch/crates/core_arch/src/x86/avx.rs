@@ -1053,8 +1053,8 @@ pub fn _mm256_cvtsi256_si32(a: __m256i) -> i32 {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vzeroall))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_zeroall() {
-    vzeroall()
+pub fn _mm256_zeroall() {
+    unsafe { vzeroall() }
 }
 
 /// Zeroes the upper 128 bits of all YMM registers;
@@ -1065,8 +1065,8 @@ pub unsafe fn _mm256_zeroall() {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vzeroupper))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_zeroupper() {
-    vzeroupper()
+pub fn _mm256_zeroupper() {
+    unsafe { vzeroupper() }
 }
 
 /// Shuffles single-precision (32-bit) floating-point elements in `a`
