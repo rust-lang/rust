@@ -182,20 +182,6 @@ jobs:
       - name: show the current environment
         run: src/ci/scripts/dump-environment.sh
 
-      # Temporary fix to unblock CI
-      # Remove the latest Windows SDK for 32-bit Windows MSVC builds.
-      # See issue https://github.com/rust-lang/rust/issues/137733 for more details.
-      - name: Remove Windows SDK 10.0.26100.0
-        shell: powershell
-        if: ${{ matrix.name == 'i686-msvc-1' || matrix.name == 'i686-msvc-2' || matrix.name == 'dist-i686-msvc' }}
-        run: |
-          $kits = (Get-ItemProperty -path 'HKLM:\SOFTWARE\Microsoft\Windows Kits\Installed Roots').KitsRoot10
-          $sdk_version = "10.0.26100.0"
-
-          foreach ($kind in 'Bin', 'Lib', 'Include') {
-            Remove-Item -Force -Recurse $kits\$kind\$sdk_version -ErrorAction Continue
-          }
-
       - name: run the build
         # Redirect stderr to stdout to avoid reordering the two streams in the GHA logs.
         run: src/ci/scripts/run-build-from-ci.sh 2>&1
