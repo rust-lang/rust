@@ -2060,7 +2060,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 
     /// Returns the representative `RegionVid` for a given SCC.
-    /// See [`RegionTracker`] for how a region variable ID is chosen.
+    /// See [`crate::eliminate_placeholders`] for how a region variable ID is chosen.
     ///
     /// It is a hacky way to manage checking regions for equality,
     /// since we can 'canonicalize' each region to the representative
