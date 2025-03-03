@@ -114,7 +114,7 @@ Some errors have detailed explanations: E0570, E0658.
 For more information about an error, try `rustc --explain E0570`.
 Future incompatibility report: Future breakage diagnostic:
 warning: the calling convention "gpu-kernel" is not supported on this target
-  --> $DIR/feature-gate-abi_gpu_kernel.rs:39:11
+  --> $DIR/feature-gate-abi_gpu_kernel.rs:37:11
    |
 LL | type A1 = extern "gpu-kernel" fn(_: ());
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
