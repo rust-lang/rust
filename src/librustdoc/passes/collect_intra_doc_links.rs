@@ -455,14 +455,7 @@ impl<'tcx> LinkCollector<'_, 'tcx> {
                 )
             })
             .and_then(|res| res.try_into().ok())
-            .or_else(|| resolve_primitive(path_str, ns))
-            .or_else(|| {
-                if self.cx.tcx.crate_name(LOCAL_CRATE).as_str() == path_str {
-                    Some(Res::from_def_id(self.cx.tcx, CRATE_DEF_ID.to_def_id()))
-                } else {
-                    None
-                }
-            });
+            .or_else(|| resolve_primitive(path_str, ns));
         debug!("{path_str} resolved to {result:?} in namespace {ns:?}");
         result
     }

@@ -4951,9 +4951,25 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     path = &path[..idx];
                     need_traits_in_scope = true;
                     for ns in [TypeNS, ValueNS, MacroNS] {
-                        self.resolve_and_cache_rustdoc_path(path, ns);
+                        if let Some(res) = self.resolve_and_cache_rustdoc_path(path, ns) {
+                            // Rustdoc ignores tool attribute resolutions and attempts
+                            // to resolve their prefixes for diagnostics.
+                            any_resolved |=
+                                !matches!(res, Res::NonMacroAttr(NonMacroAttrKind::Tool));
+                        }
                     }
                 }
+            }
+            // Only link to current crate if nothing else matched.
+            if !any_resolved && &*path_str == self.r.tcx.crate_name(LOCAL_CRATE).as_str() {
+                self.r
+                    .doc_link_resolutions
+                    .entry(self.parent_scope.module.nearest_parent_mod().expect_local())
+                    .or_default()
+                    .insert(
+                        (Symbol::intern(&path_str), ValueNS),
+                        Some(Res::Def(DefKind::Mod, CRATE_DEF_ID.to_def_id())),
+                    );
             }
         }
 
