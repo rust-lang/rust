@@ -85,25 +85,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         })
     }
 
-    /// Resolves type and const variables in `ty` if possible. Unlike the infcx
+    /// Resolves type and const variables in `t` if possible. Unlike the infcx
     /// version (resolve_vars_if_possible), this version will
     /// also select obligations if it seems useful, in an effort
     /// to get more type information.
     // FIXME(-Znext-solver): A lot of the calls to this method should
     // probably be `try_structurally_resolve_type` or `structurally_resolve_type` instead.
     #[instrument(skip(self), level = "debug", ret)]
-    pub(crate) fn resolve_vars_with_obligations(&self, mut ty: Ty<'tcx>) -> Ty<'tcx> {
+    pub(crate) fn resolve_vars_with_obligations<T: TypeFoldable<TyCtxt<'tcx>>>(
+        &self,
+        mut t: T,
+    ) -> T {
         // No Infer()? Nothing needs doing.
-        if !ty.has_non_region_infer() {
+        if !t.has_non_region_infer() {
             debug!("no inference var, nothing needs doing");
-            return ty;
+            return t;
         }
 
-        // If `ty` is a type variable, see whether we already know what it is.
-        ty = self.resolve_vars_if_possible(ty);
-        if !ty.has_non_region_infer() {
-            debug!(?ty);
-            return ty;
+        // If `t` is a type variable, see whether we already know what it is.
+        t = self.resolve_vars_if_possible(t);
+        if !t.has_non_region_infer() {
+            debug!(?t);
+            return t;
         }
 
         // If not, try resolving pending obligations as much as
@@ -111,7 +114,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // indirect dependencies that don't seem worth tracking
         // precisely.
         self.select_obligations_where_possible(|_| {});
-        self.resolve_vars_if_possible(ty)
+        self.resolve_vars_if_possible(t)
     }
 
     pub(crate) fn record_deferred_call_resolution(
@@ -519,7 +522,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn lower_const_arg(
         &self,
         const_arg: &'tcx hir::ConstArg<'tcx>,
-        feed: FeedConstTy,
+        feed: FeedConstTy<'_, 'tcx>,
     ) -> ty::Const<'tcx> {
         let ct = self.lowerer().lower_const_arg(const_arg, feed);
         self.register_wf_obligation(
@@ -1135,7 +1138,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .last()
             .is_some_and(|GenericPathSegment(def_id, _)| tcx.generics_of(*def_id).has_self);
 
-        let (res, self_ctor_args) = if let Res::SelfCtor(impl_def_id) = res {
+        let (res, implicit_args) = if let Res::Def(DefKind::ConstParam, def) = res {
+            // types of const parameters are somewhat special as they are part of
+            // the same environment as the const parameter itself. this means that
+            // unlike most paths `type-of(N)` can return a type naming parameters
+            // introduced by the containing item, rather than provided through `N`.
+            //
+            // for example given `<T, const M: usize, const N: [T; M]>` and some
+            // `let a = N;` expression. The path to `N` would wind up with no args
+            // (as it has no args), but instantiating the early binder on `typeof(N)`
+            // requires providing generic arguments for `[T, M, N]`.
+            (res, Some(ty::GenericArgs::identity_for_item(tcx, tcx.parent(def))))
+        } else if let Res::SelfCtor(impl_def_id) = res {
             let ty = LoweredTy::from_raw(
                 self,
                 span,
@@ -1261,6 +1275,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             fn provided_kind(
                 &mut self,
+                preceding_args: &[ty::GenericArg<'tcx>],
                 param: &ty::GenericParamDef,
                 arg: &GenericArg<'tcx>,
             ) -> ty::GenericArg<'tcx> {
@@ -1280,7 +1295,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => self
                         .fcx
                         // Ambiguous parts of `ConstArg` are handled in the match arms below
-                        .lower_const_arg(ct.as_unambig_ct(), FeedConstTy::Param(param.def_id))
+                        .lower_const_arg(
+                            ct.as_unambig_ct(),
+                            FeedConstTy::Param(param.def_id, preceding_args),
+                        )
                         .into(),
                     (&GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {
                         self.fcx.ct_infer(Some(param), inf.span).into()
@@ -1320,7 +1338,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        let args_raw = self_ctor_args.unwrap_or_else(|| {
+        let args_raw = implicit_args.unwrap_or_else(|| {
             lower_generic_args(
                 self,
                 def_id,
@@ -1454,7 +1472,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         sp: Span,
         ct: ty::Const<'tcx>,
     ) -> ty::Const<'tcx> {
-        // FIXME(min_const_generic_exprs): We could process obligations here if `ct` is a var.
+        let ct = self.resolve_vars_with_obligations(ct);
 
         if self.next_trait_solver()
             && let ty::ConstKind::Unevaluated(..) = ct.kind()
@@ -1507,6 +1525,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let err = Ty::new_error(self.tcx, e);
             self.demand_suptype(sp, err, ty);
             err
+        }
+    }
+
+    pub(crate) fn structurally_resolve_const(
+        &self,
+        sp: Span,
+        ct: ty::Const<'tcx>,
+    ) -> ty::Const<'tcx> {
+        let ct = self.try_structurally_resolve_const(sp, ct);
+
+        if !ct.is_ct_infer() {
+            ct
+        } else {
+            let e = self.tainted_by_errors().unwrap_or_else(|| {
+                self.err_ctxt()
+                    .emit_inference_failure_err(
+                        self.body_id,
+                        sp,
+                        ct.into(),
+                        TypeAnnotationNeeded::E0282,
+                        true,
+                    )
+                    .emit()
+            });
+            // FIXME: Infer `?ct = {const error}`?
+            ty::Const::new_error(self.tcx, e)
         }
     }
 

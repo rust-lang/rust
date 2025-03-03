@@ -1259,7 +1259,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
         let layout = self.ecx.layout_of(lhs_ty).ok()?;
 
-        let as_bits = |value| {
+        let as_bits = |value: VnIndex| {
             let constant = self.evaluated[value].as_ref()?;
             if layout.backend_repr.is_scalar() {
                 let scalar = self.ecx.read_scalar(constant).discard_err()?;
@@ -1567,7 +1567,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             BackendRepr::ScalarPair(a, b) => {
                 !a.is_always_valid(&self.ecx) || !b.is_always_valid(&self.ecx)
             }
-            BackendRepr::Vector { .. } | BackendRepr::Memory { .. } => false,
+            BackendRepr::SimdVector { .. } | BackendRepr::Memory { .. } => false,
         }
     }
 

@@ -265,7 +265,7 @@ impl ExternalCrate {
                     let attr_value = attr.value_str().expect("syntax should already be validated");
                     let Some(prim) = PrimitiveType::from_symbol(attr_value) else {
                         span_bug!(
-                            attr.span,
+                            attr.span(),
                             "primitive `{attr_value}` is not a member of `PrimitiveType`"
                         );
                     };

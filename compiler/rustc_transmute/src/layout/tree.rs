@@ -237,7 +237,7 @@ pub(crate) mod rustc {
 
                 ty::Tuple(members) => Self::from_tuple((ty, layout), members, cx),
 
-                ty::Array(inner_ty, len) => {
+                ty::Array(inner_ty, _len) => {
                     let FieldsShape::Array { stride, count } = &layout.fields else {
                         return Err(Err::NotYetSupported);
                     };
@@ -282,7 +282,6 @@ pub(crate) mod rustc {
                 FieldsShape::Primitive => {
                     assert_eq!(members.len(), 1);
                     let inner_ty = members[0];
-                    let inner_layout = layout_of(cx, inner_ty)?;
                     Self::from_ty(inner_ty, cx)
                 }
                 FieldsShape::Arbitrary { offsets, .. } => {
@@ -345,7 +344,7 @@ pub(crate) mod rustc {
                     // the enum delegates its layout to the variant at `index`.
                     layout_of_variant(*index, None)
                 }
-                Variants::Multiple { tag, tag_encoding, tag_field, .. } => {
+                Variants::Multiple { tag: _, tag_encoding, tag_field, .. } => {
                     // `Variants::Multiple` denotes an enum with multiple
                     // variants. The layout of such an enum is the disjunction
                     // of the layouts of its tagged variants.
@@ -356,7 +355,7 @@ pub(crate) mod rustc {
 
                     let variants = def.discriminants(cx.tcx()).try_fold(
                         Self::uninhabited(),
-                        |variants, (idx, ref discriminant)| {
+                        |variants, (idx, _discriminant)| {
                             let variant = layout_of_variant(idx, Some(tag_encoding.clone()))?;
                             Result::<Self, Err>::Ok(variants.or(variant))
                         },
@@ -414,7 +413,7 @@ pub(crate) mod rustc {
 
             // Append the fields, in memory order, to the layout.
             let inverse_memory_index = memory_index.invert_bijective_mapping();
-            for (memory_idx, &field_idx) in inverse_memory_index.iter_enumerated() {
+            for &field_idx in inverse_memory_index.iter() {
                 // Add interfield padding.
                 let padding_needed = offsets[field_idx] - size;
                 let padding = Self::padding(padding_needed.bytes_usize());
@@ -468,15 +467,14 @@ pub(crate) mod rustc {
 
             // This constructor does not support non-`FieldsShape::Union`
             // layouts. Fields of this shape are all placed at offset 0.
-            let FieldsShape::Union(fields) = layout.fields() else {
+            let FieldsShape::Union(_fields) = layout.fields() else {
                 return Err(Err::NotYetSupported);
             };
 
             let fields = &def.non_enum_variant().fields;
             let fields = fields.iter_enumerated().try_fold(
                 Self::uninhabited(),
-                |fields, (idx, field_def)| {
-                    let field_def = Def::Field(field_def);
+                |fields, (idx, _field_def)| {
                     let field_ty = ty_field(cx, (ty, layout), idx);
                     let field_layout = layout_of(cx, field_ty)?;
                     let field = Self::from_ty(field_ty, cx)?;

@@ -1,0 +1,19 @@
+[package]
+name = "citool"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4.5", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_yaml = "0.9"
+serde_json = "1"
+
+[dev-dependencies]
+insta = "1"
+
+# Tell cargo that citool is its own workspace.
+# If this is omitted, cargo will look for a workspace elsewhere.
+# We want to avoid this, since citool is independent of the other crates.
+[workspace]

@@ -237,8 +237,7 @@ impl<'tcx> Context<'tcx> {
         };
 
         if !render_redirect_pages {
-            let mut page_buffer = String::new();
-            print_item(self, it, &mut page_buffer);
+            let content = print_item(self, it);
             let page = layout::Page {
                 css_class: tyname_s,
                 root_path: &self.root_path(),
@@ -254,7 +253,7 @@ impl<'tcx> Context<'tcx> {
                 BufDisplay(|buf: &mut String| {
                     print_sidebar(self, it, buf);
                 }),
-                page_buffer,
+                content,
                 &self.shared.style_files,
             )
         } else {

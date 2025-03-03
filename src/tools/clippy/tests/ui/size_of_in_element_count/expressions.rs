@@ -13,15 +13,15 @@ fn main() {
 
     // Count expression involving multiplication of size_of (Should trigger the lint)
     unsafe { copy_nonoverlapping(x.as_ptr(), y.as_mut_ptr(), size_of::<u16>() * SIZE) };
-    //~^ ERROR: found a count of bytes instead of a count of elements of `T`
+    //~^ size_of_in_element_count
 
     // Count expression involving nested multiplications of size_of (Should trigger the lint)
     unsafe { copy_nonoverlapping(x.as_ptr(), y.as_mut_ptr(), HALF_SIZE * size_of_val(&x[0]) * 2) };
-    //~^ ERROR: found a count of bytes instead of a count of elements of `T`
+    //~^ size_of_in_element_count
 
     // Count expression involving divisions of size_of (Should trigger the lint)
     unsafe { copy(x.as_ptr(), y.as_mut_ptr(), DOUBLE_SIZE * size_of::<u16>() / 2) };
-    //~^ ERROR: found a count of bytes instead of a count of elements of `T`
+    //~^ size_of_in_element_count
 
     // Count expression involving divisions by size_of (Should not trigger the lint)
     unsafe { copy(x.as_ptr(), y.as_mut_ptr(), DOUBLE_SIZE / size_of::<u16>()) };
@@ -31,7 +31,7 @@ fn main() {
 
     // Count expression involving recursive divisions by size_of (Should trigger the lint)
     unsafe { copy(x.as_ptr(), y.as_mut_ptr(), DOUBLE_SIZE / (2 / size_of::<u16>())) };
-    //~^ ERROR: found a count of bytes instead of a count of elements of `T`
+    //~^ size_of_in_element_count
 
     // No size_of calls (Should not trigger the lint)
     unsafe { copy(x.as_ptr(), y.as_mut_ptr(), SIZE) };

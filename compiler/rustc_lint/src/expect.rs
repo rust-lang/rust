@@ -38,7 +38,8 @@ fn check_expectations(tcx: TyCtxt<'_>, tool_filter: Option<Symbol>) {
             }
             LintExpectationId::Stable { hir_id, attr_index, lint_index: Some(lint_index) } => {
                 // We are an `eval_always` query, so looking at the attribute's `AttrId` is ok.
-                let attr_id = tcx.hir().attrs(hir_id)[attr_index as usize].id;
+                let attr_id = tcx.hir().attrs(hir_id)[attr_index as usize].id();
+
                 (attr_id, lint_index)
             }
             _ => panic!("fulfilled expectations must have a lint index"),

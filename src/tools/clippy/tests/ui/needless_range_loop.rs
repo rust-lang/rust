@@ -14,8 +14,8 @@ fn main() {
     let mut vec = vec![1, 2, 3, 4];
     let vec2 = vec![1, 2, 3, 4];
     for i in 0..vec.len() {
-        //~^ ERROR: the loop variable `i` is only used to index `vec`
-        //~| NOTE: `-D clippy::needless-range-loop` implied by `-D warnings`
+        //~^ needless_range_loop
+
         println!("{}", vec[i]);
     }
 
@@ -25,23 +25,27 @@ fn main() {
     }
 
     for i in 0..vec.len() {
-        //~^ ERROR: the loop variable `i` is only used to index `vec`
+        //~^ needless_range_loop
+
         let _ = vec[i];
     }
 
     // ICE #746
     for j in 0..4 {
-        //~^ ERROR: the loop variable `j` is only used to index `STATIC`
+        //~^ needless_range_loop
+
         println!("{:?}", STATIC[j]);
     }
 
     for j in 0..4 {
-        //~^ ERROR: the loop variable `j` is only used to index `CONST`
+        //~^ needless_range_loop
+
         println!("{:?}", CONST[j]);
     }
 
     for i in 0..vec.len() {
-        //~^ ERROR: the loop variable `i` is used to index `vec`
+        //~^ needless_range_loop
+
         println!("{} {}", vec[i], i);
     }
     for i in 0..vec.len() {
@@ -50,48 +54,57 @@ fn main() {
     }
 
     for i in 0..vec.len() {
-        //~^ ERROR: the loop variable `i` is only used to index `vec2`
+        //~^ needless_range_loop
+
         println!("{}", vec2[i]);
     }
 
     for i in 5..vec.len() {
-        //~^ ERROR: the loop variable `i` is only used to index `vec`
+        //~^ needless_range_loop
+
         println!("{}", vec[i]);
     }
 
     for i in 0..MAX_LEN {
-        //~^ ERROR: the loop variable `i` is only used to index `vec`
+        //~^ needless_range_loop
+
         println!("{}", vec[i]);
     }
 
     for i in 0..=MAX_LEN {
-        //~^ ERROR: the loop variable `i` is only used to index `vec`
+        //~^ needless_range_loop
+
         println!("{}", vec[i]);
     }
 
     for i in 5..10 {
-        //~^ ERROR: the loop variable `i` is only used to index `vec`
+        //~^ needless_range_loop
+
         println!("{}", vec[i]);
     }
 
     for i in 5..=10 {
-        //~^ ERROR: the loop variable `i` is only used to index `vec`
+        //~^ needless_range_loop
+
         println!("{}", vec[i]);
     }
 
     for i in 5..vec.len() {
-        //~^ ERROR: the loop variable `i` is used to index `vec`
+        //~^ needless_range_loop
+
         println!("{} {}", vec[i], i);
     }
 
     for i in 5..10 {
-        //~^ ERROR: the loop variable `i` is used to index `vec`
+        //~^ needless_range_loop
+
         println!("{} {}", vec[i], i);
     }
 
     // #2542
     for i in 0..vec.len() {
-        //~^ ERROR: the loop variable `i` is used to index `vec`
+        //~^ needless_range_loop
+
         vec[i] = Some(1).unwrap_or_else(|| panic!("error on {}", i));
     }
 

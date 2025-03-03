@@ -1,5 +1,5 @@
 error[E0782]: expected a type, found a trait
-  --> $DIR/ice-return-unsized-can-impl-2.rs:11:20
+  --> $DIR/ice-return-unsized-can-impl-2.rs:12:20
    |
 LL |     fn concrete(b: B) -> B;
    |                    ^
@@ -16,7 +16,7 @@ LL |     fn concrete(b: impl B) -> B;
    |                    ++++
 
 error[E0782]: expected a type, found a trait
-  --> $DIR/ice-return-unsized-can-impl-2.rs:11:26
+  --> $DIR/ice-return-unsized-can-impl-2.rs:12:26
    |
 LL |     fn concrete(b: B) -> B;
    |                          ^

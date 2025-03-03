@@ -30,14 +30,22 @@ fn main() {
     let c: SimpleResult = Err(err);
 
     let a = Some(fun(x));
+    //~^ unnecessary_map_on_constructor
     let b: SimpleResult = Ok(fun(x));
+    //~^ unnecessary_map_on_constructor
     let c: SimpleResult = Err(notfun(err));
+    //~^ unnecessary_map_on_constructor
 
     let a = Option::Some(fun(x));
+    //~^ unnecessary_map_on_constructor
     let b: SimpleResult = SimpleResult::Ok(fun(x));
+    //~^ unnecessary_map_on_constructor
     let c: SimpleResult = SimpleResult::Err(notfun(err));
+    //~^ unnecessary_map_on_constructor
     let b: std::result::Result<i32, SimpleError> = Ok(fun(x));
+    //~^ unnecessary_map_on_constructor
     let c: std::result::Result<i32, SimpleError> = Err(notfun(err));
+    //~^ unnecessary_map_on_constructor
 
     let a = Some(fun(x));
     let b: SimpleResult = Ok(fun(x));

@@ -17,6 +17,7 @@ type PtrMutU8 = *mut u8;
 
 fn owo<T>(ptr: *const T) -> *const T {
     ptr as *const T
+    //~^ unnecessary_cast
 }
 
 fn uwu<T, U>(ptr: *const T) -> *const U {
@@ -52,21 +53,32 @@ fn bbb() -> UnsignedThirtyTwoBitInteger {
 fn main() {
     // Test cast_unnecessary
     1i32 as i32;
+    //~^ unnecessary_cast
     1f32 as f32;
+    //~^ unnecessary_cast
     false as bool;
+    //~^ unnecessary_cast
     &1i32 as &i32;
 
     -1_i32 as i32;
+    //~^ unnecessary_cast
     - 1_i32 as i32;
+    //~^ unnecessary_cast
     -1f32 as f32;
+    //~^ unnecessary_cast
     1_i32 as i32;
+    //~^ unnecessary_cast
     1_f32 as f32;
+    //~^ unnecessary_cast
 
     let _: *mut u8 = [1u8, 2].as_ptr() as *const u8 as *mut u8;
+    //~^ unnecessary_cast
 
     [1u8, 2].as_ptr() as *const u8;
+    //~^ unnecessary_cast
     [1u8, 2].as_ptr() as *mut u8;
     [1u8, 2].as_mut_ptr() as *mut u8;
+    //~^ unnecessary_cast
     [1u8, 2].as_mut_ptr() as *const u8;
     [1u8, 2].as_ptr() as PtrConstU8;
     [1u8, 2].as_ptr() as PtrMutU8;
@@ -78,9 +90,12 @@ fn main() {
     let _: *mut u8 = [1u8, 2].as_mut_ptr() as *mut _;
 
     owo::<u32>([1u32].as_ptr()) as *const u32;
+    //~^ unnecessary_cast
     uwu::<u32, u8>([1u32].as_ptr()) as *const u8;
+    //~^ unnecessary_cast
     // this will not lint in the function body even though they have the same type, instead here
     uwu::<u32, u32>([1u32].as_ptr()) as *const u32;
+    //~^ unnecessary_cast
 
     // macro version
     macro_rules! foo {
@@ -116,8 +131,10 @@ fn main() {
     let pid = unsafe { fake_libc::getpid() };
     pid as i32;
     aaa() as u32;
+    //~^ unnecessary_cast
     let x = aaa();
     aaa() as u32;
+    //~^ unnecessary_cast
     // Will not lint currently.
     bbb() as u32;
     let x = bbb();
@@ -154,13 +171,21 @@ mod fixable {
     fn main() {
         // casting integer literal to float is unnecessary
         100 as f32;
+        //~^ unnecessary_cast
         100 as f64;
+        //~^ unnecessary_cast
         100_i32 as f64;
+        //~^ unnecessary_cast
         let _ = -100 as f32;
+        //~^ unnecessary_cast
         let _ = -100 as f64;
+        //~^ unnecessary_cast
         let _ = -100_i32 as f64;
+        //~^ unnecessary_cast
         100. as f32;
+        //~^ unnecessary_cast
         100. as f64;
+        //~^ unnecessary_cast
         // Should not trigger
         #[rustfmt::skip]
         let v = vec!(1);
@@ -173,32 +198,44 @@ mod fixable {
         0b11 as f64;
 
         1 as u32;
+        //~^ unnecessary_cast
         0x10 as i32;
+        //~^ unnecessary_cast
         0b10 as usize;
+        //~^ unnecessary_cast
         0o73 as u16;
+        //~^ unnecessary_cast
         1_000_000_000 as u32;
+        //~^ unnecessary_cast
 
         1.0 as f64;
+        //~^ unnecessary_cast
         0.5 as f32;
+        //~^ unnecessary_cast
 
         1.0 as u16;
 
         let _ = -1 as i32;
+        //~^ unnecessary_cast
         let _ = -1.0 as f32;
+        //~^ unnecessary_cast
 
         let _ = 1 as I32Alias;
         let _ = &1 as &I32Alias;
 
         let x = 1i32;
         let _ = &(x as i32);
+        //~^ unnecessary_cast
     }
 
     type I32Alias = i32;
 
     fn issue_9380() {
         let _: i32 = -(1) as i32;
+        //~^ unnecessary_cast
         let _: f32 = -(1) as f32;
         let _: i64 = -(1) as i64;
+        //~^ unnecessary_cast
         let _: i64 = -(1.0) as i64;
 
         let _ = -(1 + 1) as i64;
@@ -206,8 +243,11 @@ mod fixable {
 
     fn issue_9563() {
         let _: f64 = (-8.0 as f64).exp();
+        //~^ unnecessary_cast
         #[allow(ambiguous_negative_literals)]
         let _: f64 = -(8.0 as f64).exp(); // should suggest `-8.0_f64.exp()` here not to change code behavior
+        //
+        //~^^ unnecessary_cast
     }
 
     fn issue_9562_non_literal() {
@@ -216,6 +256,7 @@ mod fixable {
         }
 
         let _num = foo() as f32;
+        //~^ unnecessary_cast
     }
 
     fn issue_9603() {
@@ -226,5 +267,6 @@ mod fixable {
     // `*x.pow(2)` which tries to dereference the return value rather than `x`.
     fn issue_11968(x: &usize) -> usize {
         (*x as usize).pow(2)
+        //~^ unnecessary_cast
     }
 }

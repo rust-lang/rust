@@ -11,6 +11,7 @@ mod float_cmp;
 mod float_equality_without_abs;
 mod identity_op;
 mod integer_division;
+mod manual_midpoint;
 mod misrefactored_assign_op;
 mod modulo_arithmetic;
 mod modulo_one;
@@ -24,6 +25,7 @@ mod verbose_bit_mask;
 pub(crate) mod arithmetic_side_effects;
 
 use clippy_config::Conf;
+use clippy_utils::msrvs::Msrv;
 use rustc_hir::{Body, Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
@@ -834,10 +836,35 @@ declare_clippy_lint! {
     "explicit self-assignment"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for manual implementation of `midpoint`.
+    ///
+    /// ### Why is this bad?
+    /// Using `(x + y) / 2` might cause an overflow on the intermediate
+    /// addition result.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let a: u32 = 0;
+    /// let c = (a + 10) / 2;
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// # let a: u32 = 0;
+    /// let c = u32::midpoint(a, 10);
+    /// ```
+    #[clippy::version = "1.87.0"]
+    pub MANUAL_MIDPOINT,
+    pedantic,
+    "manual implementation of `midpoint` which can overflow"
+}
+
 pub struct Operators {
     arithmetic_context: numeric_arithmetic::Context,
     verbose_bit_mask_threshold: u64,
     modulo_arithmetic_allow_comparison_to_zero: bool,
+    msrv: Msrv,
 }
 impl Operators {
     pub fn new(conf: &'static Conf) -> Self {
@@ -845,6 +872,7 @@ impl Operators {
             arithmetic_context: numeric_arithmetic::Context::default(),
             verbose_bit_mask_threshold: conf.verbose_bit_mask_threshold,
             modulo_arithmetic_allow_comparison_to_zero: conf.allow_comparison_to_zero,
+            msrv: conf.msrv,
         }
     }
 }
@@ -876,6 +904,7 @@ impl_lint_pass!(Operators => [
     NEEDLESS_BITWISE_BOOL,
     PTR_EQ,
     SELF_ASSIGNMENT,
+    MANUAL_MIDPOINT,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Operators {
@@ -893,6 +922,7 @@ impl<'tcx> LateLintPass<'tcx> for Operators {
                     identity_op::check(cx, e, op.node, lhs, rhs);
                     needless_bitwise_bool::check(cx, e, op.node, lhs, rhs);
                     ptr_eq::check(cx, e, op.node, lhs, rhs);
+                    manual_midpoint::check(cx, e, op.node, lhs, rhs, self.msrv);
                 }
                 self.arithmetic_context.check_binary(cx, e, op.node, lhs, rhs);
                 bit_mask::check(cx, e, op.node, lhs, rhs);

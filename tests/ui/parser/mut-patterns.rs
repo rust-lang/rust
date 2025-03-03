@@ -45,7 +45,7 @@ pub fn main() {
     // Make sure we don't accidentally allow `mut $p` where `$p:pat`.
     macro_rules! foo {
         ($p:pat) => {
-            let mut $p = 0; //~ ERROR expected identifier, found `x`
+            let mut $p = 0; //~ ERROR expected identifier, found metavariable
         }
     }
     foo!(x);

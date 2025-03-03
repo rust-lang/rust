@@ -414,9 +414,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         if self.tcx().features().generic_const_exprs() {
             assume = crate::traits::evaluate_const(self.infcx, assume, obligation.param_env)
         }
-        let Some(assume) =
-            rustc_transmute::Assume::from_const(self.infcx.tcx, obligation.param_env, assume)
-        else {
+        let Some(assume) = rustc_transmute::Assume::from_const(self.infcx.tcx, assume) else {
             return Err(Unimplemented);
         };
 
@@ -424,12 +422,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let src = predicate.trait_ref.args.type_at(1);
 
         debug!(?src, ?dst);
-        let mut transmute_env = rustc_transmute::TransmuteTypeEnv::new(self.infcx);
-        let maybe_transmutable = transmute_env.is_transmutable(
-            obligation.cause.clone(),
-            rustc_transmute::Types { dst, src },
-            assume,
-        );
+        let mut transmute_env = rustc_transmute::TransmuteTypeEnv::new(self.infcx.tcx);
+        let maybe_transmutable =
+            transmute_env.is_transmutable(rustc_transmute::Types { dst, src }, assume);
 
         let fully_flattened = match maybe_transmutable {
             Answer::No(_) => Err(Unimplemented)?,

@@ -281,6 +281,8 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         ("riscv32" | "riscv64", "zaamo") if get_version().0 < 19 => None,
         ("riscv32" | "riscv64", "zabha") if get_version().0 < 19 => None,
         ("riscv32" | "riscv64", "zalrsc") if get_version().0 < 19 => None,
+        ("riscv32" | "riscv64", "zama16b") if get_version().0 < 19 => None,
+        ("riscv32" | "riscv64", "zacas") if get_version().0 < 20 => None,
         // Enable the evex512 target feature if an avx512 target feature is enabled.
         ("x86", s) if s.starts_with("avx512") => {
             Some(LLVMFeature::with_dependency(s, TargetFeatureFoldStrength::EnableOnly("evex512")))
@@ -329,7 +331,8 @@ pub(crate) fn target_features_cfg(sess: &Session, allow_unstable: bool) -> Vec<S
                 if let Some(feat) = to_llvm_features(sess, feature) {
                     for llvm_feature in feat {
                         let cstr = SmallCStr::new(llvm_feature);
-                        if !unsafe { llvm::LLVMRustHasFeature(&target_machine, cstr.as_ptr()) } {
+                        if !unsafe { llvm::LLVMRustHasFeature(target_machine.raw(), cstr.as_ptr()) }
+                        {
                             return false;
                         }
                     }
@@ -451,8 +454,8 @@ pub(crate) fn print(req: &PrintRequest, out: &mut String, sess: &Session) {
     require_inited();
     let tm = create_informational_target_machine(sess, false);
     match req.kind {
-        PrintKind::TargetCPUs => print_target_cpus(sess, &tm, out),
-        PrintKind::TargetFeatures => print_target_features(sess, &tm, out),
+        PrintKind::TargetCPUs => print_target_cpus(sess, tm.raw(), out),
+        PrintKind::TargetFeatures => print_target_features(sess, tm.raw(), out),
         _ => bug!("rustc_codegen_llvm can't handle print request: {:?}", req),
     }
 }

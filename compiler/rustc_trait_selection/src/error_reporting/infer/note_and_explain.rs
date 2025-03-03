@@ -522,7 +522,8 @@ impl<T> Trait<T> for X {
                 }
             }
             TypeError::TargetFeatureCast(def_id) => {
-                let target_spans = tcx.get_attrs(def_id, sym::target_feature).map(|attr| attr.span);
+                let target_spans =
+                    tcx.get_attrs(def_id, sym::target_feature).map(|attr| attr.span());
                 diag.note(
                     "functions with `#[target_feature]` can only be coerced to `unsafe` function pointers"
                 );

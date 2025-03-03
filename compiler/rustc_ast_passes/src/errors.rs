@@ -535,7 +535,6 @@ pub(crate) struct WhereClauseBeforeTypeAlias {
 }
 
 #[derive(Subdiagnostic)]
-
 pub(crate) enum WhereClauseBeforeTypeAliasSugg {
     #[suggestion(ast_passes_remove_suggestion, applicability = "machine-applicable", code = "")]
     Remove {
@@ -730,13 +729,6 @@ pub(crate) struct AssociatedSuggestion2 {
     pub predicate: Span,
     pub trait_segment: Ident,
     pub potential_assoc: Ident,
-}
-
-#[derive(Diagnostic)]
-#[diag(ast_passes_stability_outside_std, code = E0734)]
-pub(crate) struct StabilityOutsideStd {
-    #[primary_span]
-    pub span: Span,
 }
 
 #[derive(Diagnostic)]

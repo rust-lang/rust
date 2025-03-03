@@ -1,5 +1,3 @@
-use std::assert_matches::debug_assert_matches;
-
 use rustc_abi::FieldIdx;
 use rustc_ast::InlineAsmTemplatePiece;
 use rustc_data_structures::fx::FxIndexSet;
@@ -21,33 +19,39 @@ pub struct InlineAsmCtxt<'a, 'tcx: 'a> {
     typing_env: ty::TypingEnv<'tcx>,
     target_features: &'tcx FxIndexSet<Symbol>,
     expr_ty: Box<dyn Fn(&hir::Expr<'tcx>) -> Ty<'tcx> + 'a>,
+    node_ty: Box<dyn Fn(hir::HirId) -> Ty<'tcx> + 'a>,
 }
 
 enum NonAsmTypeReason<'tcx> {
     UnevaluatedSIMDArrayLength(DefId, ty::Const<'tcx>),
     Invalid(Ty<'tcx>),
     InvalidElement(DefId, Ty<'tcx>),
+    NotSizedPtr(Ty<'tcx>),
 }
 
 impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
     pub fn new(
         tcx: TyCtxt<'tcx>,
         def_id: LocalDefId,
-        get_operand_ty: impl Fn(&hir::Expr<'tcx>) -> Ty<'tcx> + 'a,
+        typing_env: ty::TypingEnv<'tcx>,
+        expr_ty: impl Fn(&hir::Expr<'tcx>) -> Ty<'tcx> + 'a,
+        node_ty: impl Fn(hir::HirId) -> Ty<'tcx> + 'a,
     ) -> Self {
         InlineAsmCtxt {
             tcx,
-            typing_env: ty::TypingEnv {
-                typing_mode: ty::TypingMode::non_body_analysis(),
-                param_env: ty::ParamEnv::empty(),
-            },
+            typing_env,
             target_features: tcx.asm_target_features(def_id),
-            expr_ty: Box::new(get_operand_ty),
+            expr_ty: Box::new(expr_ty),
+            node_ty: Box::new(node_ty),
         }
     }
 
     fn expr_ty(&self, expr: &hir::Expr<'tcx>) -> Ty<'tcx> {
         (self.expr_ty)(expr)
+    }
+
+    fn node_ty(&self, hir_id: hir::HirId) -> Ty<'tcx> {
+        (self.node_ty)(hir_id)
     }
 
     // FIXME(compiler-errors): This could use `<$ty as Pointee>::Metadata == ()`
@@ -83,7 +87,13 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             ty::Float(FloatTy::F64) => Ok(InlineAsmType::F64),
             ty::Float(FloatTy::F128) => Ok(InlineAsmType::F128),
             ty::FnPtr(..) => Ok(asm_ty_isize),
-            ty::RawPtr(ty, _) if self.is_thin_ptr_ty(ty) => Ok(asm_ty_isize),
+            ty::RawPtr(elem_ty, _) => {
+                if self.is_thin_ptr_ty(elem_ty) {
+                    Ok(asm_ty_isize)
+                } else {
+                    Err(NonAsmTypeReason::NotSizedPtr(ty))
+                }
+            }
             ty::Adt(adt, args) if adt.repr().simd() => {
                 let fields = &adt.non_enum_variant().fields;
                 let field = &fields[FieldIdx::ZERO];
@@ -188,6 +198,16 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                             "only integers, floats, SIMD vectors, pointers and function pointers \
                             can be used as arguments for inline assembly",
                         ).emit();
+                    }
+                    NonAsmTypeReason::NotSizedPtr(ty) => {
+                        let msg = format!(
+                            "cannot use value of unsized pointer type `{ty}` for inline assembly"
+                        );
+                        self.tcx
+                            .dcx()
+                            .struct_span_err(expr.span, msg)
+                            .with_note("only sized pointers can be used in inline assembly")
+                            .emit();
                     }
                     NonAsmTypeReason::InvalidElement(did, ty) => {
                         let msg = format!(
@@ -472,12 +492,23 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                         );
                     }
                 }
-                // Typeck has checked that Const operands are integers.
                 hir::InlineAsmOperand::Const { anon_const } => {
-                    debug_assert_matches!(
-                        self.tcx.type_of(anon_const.def_id).instantiate_identity().kind(),
-                        ty::Error(_) | ty::Int(_) | ty::Uint(_)
-                    );
+                    let ty = self.node_ty(anon_const.hir_id);
+                    match ty.kind() {
+                        ty::Error(_) => {}
+                        _ if ty.is_integral() => {}
+                        _ => {
+                            self.tcx
+                                .dcx()
+                                .struct_span_err(op_sp, "invalid type for `const` operand")
+                                .with_span_label(
+                                    self.tcx.def_span(anon_const.def_id),
+                                    format!("is {} `{}`", ty.kind().article(), ty),
+                                )
+                                .with_help("`const` operands must be of an integer type")
+                                .emit();
+                        }
+                    }
                 }
                 // Typeck has checked that SymFn refers to a function.
                 hir::InlineAsmOperand::SymFn { expr } => {

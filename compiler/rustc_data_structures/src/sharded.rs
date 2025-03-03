@@ -143,6 +143,9 @@ pub fn shards() -> usize {
 pub type ShardedHashMap<K, V> = Sharded<FxHashMap<K, V>>;
 
 impl<K: Eq, V> ShardedHashMap<K, V> {
+    pub fn with_capacity(cap: usize) -> Self {
+        Self::new(|| FxHashMap::with_capacity_and_hasher(cap, rustc_hash::FxBuildHasher::default()))
+    }
     pub fn len(&self) -> usize {
         self.lock_shards().map(|shard| shard.len()).sum()
     }

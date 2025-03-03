@@ -35,6 +35,7 @@ impl Clone for V {
     fn clone(&self) -> Self {
         // Lint: `Self` implements `Copy`
         Self { ..*self }
+        //~^ unnecessary_struct_initialization
     }
 }
 
@@ -42,9 +43,11 @@ fn main() {
     // Should lint: `a` would be consumed anyway
     let a = S { f: String::from("foo") };
     let mut b = S { ..a };
+    //~^ unnecessary_struct_initialization
 
     // Should lint: `b` would be consumed, and is mutable
     let c = &mut S { ..b };
+    //~^ unnecessary_struct_initialization
 
     // Should not lint as `d` is not mutable
     let d = S { f: String::from("foo") };
@@ -53,9 +56,11 @@ fn main() {
     // Should lint as `f` would be consumed anyway
     let f = S { f: String::from("foo") };
     let g = &S { ..f };
+    //~^ unnecessary_struct_initialization
 
     // Should lint: the result of an expression is mutable
     let h = &mut S {
+        //~^ unnecessary_struct_initialization
         ..*Box::new(S { f: String::from("foo") })
     };
 
@@ -75,12 +80,14 @@ fn main() {
 
     // Should lint: the result of an expression is mutable and temporary
     let p = &mut T {
+        //~^ unnecessary_struct_initialization
         ..*Box::new(T { f: 5 })
     };
 
     // Should lint: all fields of `q` would be consumed anyway
     let q = W { f1: 42, f2: 1337 };
     let r = W { f1: q.f1, f2: q.f2 };
+    //~^ unnecessary_struct_initialization
 
     // Should not lint: not all fields of `t` from same source
     let s = W { f1: 1337, f2: 42 };
@@ -92,6 +99,7 @@ fn main() {
     // Should lint: all fields of `v` would be consumed anyway
     let v = W { f1: 42, f2: 1337 };
     let w = W { f1: v.f1, ..v };
+    //~^ unnecessary_struct_initialization
 
     // Should not lint: source differs between fields and base
     let x = W { f1: 42, f2: 1337 };
@@ -100,6 +108,7 @@ fn main() {
     // Should lint: range desugars to struct
     let r1 = 0..5;
     let r2 = r1.start..r1.end;
+    //~^ unnecessary_struct_initialization
 
     references();
     shorthand();
@@ -113,6 +122,7 @@ fn references() {
     // Should lint as `d` is a shared reference
     let c = W { f1: 42, f2: 1337 };
     let d = &W { f1: c.f1, f2: c.f2 };
+    //~^ unnecessary_struct_initialization
 
     // Should not lint as `e` is not mutable
     let e = W { f1: 42, f2: 1337 };
@@ -121,6 +131,7 @@ fn references() {
     // Should lint as `h` is a shared reference
     let g = W { f1: 42, f2: 1337 };
     let h = &W { f1: g.f1, ..g };
+    //~^ unnecessary_struct_initialization
 
     // Should not lint as `j` is copy
     let i = V { f: 0x1701d };

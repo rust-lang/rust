@@ -30,7 +30,7 @@ use super::url_parts_builder::{UrlPartsBuilder, estimate_item_path_byte_length};
 use crate::clean::types::ExternalLocation;
 use crate::clean::utils::find_nearest_parent_module;
 use crate::clean::{self, ExternalCrate, PrimitiveType};
-use crate::display::Joined as _;
+use crate::display::{Joined as _, MaybeDisplay as _};
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::html::escape::{Escape, EscapeBodyText};
@@ -178,12 +178,12 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
     cx: &'a Context<'tcx>,
     indent: usize,
     ending: Ending,
-) -> impl Display + 'a + Captures<'tcx> {
-    fmt::from_fn(move |f| {
-        if gens.where_predicates.is_empty() {
-            return Ok(());
-        }
+) -> Option<impl Display + 'a + Captures<'tcx>> {
+    if gens.where_predicates.is_empty() {
+        return None;
+    }
 
+    Some(fmt::from_fn(move |f| {
         let where_preds = fmt::from_fn(|f| {
             gens.where_predicates
                 .iter()
@@ -246,7 +246,7 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
             }
         };
         write!(f, "{clause}")
-    })
+    }))
 }
 
 impl clean::Lifetime {
@@ -1179,7 +1179,7 @@ impl clean::Impl {
                 self.print_type(&self.for_, f, use_absolute, cx)?;
             }
 
-            print_where_clause(&self.generics, cx, 0, Ending::Newline).fmt(f)
+            print_where_clause(&self.generics, cx, 0, Ending::Newline).maybe_display().fmt(f)
         })
     }
     fn print_type<'a, 'tcx: 'a>(

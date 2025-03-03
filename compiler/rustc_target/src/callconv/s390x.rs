@@ -8,7 +8,7 @@ use crate::spec::HasTargetSpec;
 
 fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
     let size = ret.layout.size;
-    if size.bits() <= 128 && matches!(ret.layout.backend_repr, BackendRepr::Vector { .. }) {
+    if size.bits() <= 128 && matches!(ret.layout.backend_repr, BackendRepr::SimdVector { .. }) {
         return;
     }
     if !ret.layout.is_aggregate() && size.bits() <= 64 {
@@ -40,7 +40,7 @@ where
 
     let size = arg.layout.size;
     if size.bits() <= 128 {
-        if let BackendRepr::Vector { .. } = arg.layout.backend_repr {
+        if let BackendRepr::SimdVector { .. } = arg.layout.backend_repr {
             // pass non-wrapped vector types using `PassMode::Direct`
             return;
         }

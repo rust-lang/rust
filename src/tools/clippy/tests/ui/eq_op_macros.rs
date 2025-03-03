@@ -6,9 +6,13 @@ macro_rules! assert_in_macro_def {
     () => {
         let a = 42;
         assert_eq!(a, a);
+        //~^ eq_op
         assert_ne!(a, a);
+        //~^ eq_op
         debug_assert_eq!(a, a);
+        //~^ eq_op
         debug_assert_ne!(a, a);
+        //~^ eq_op
     };
 }
 
@@ -21,9 +25,11 @@ fn main() {
 
     // lint identical args in `assert_eq!`
     assert_eq!(a, a);
-    //~^ ERROR: identical args used in this `assert_eq!` macro call
+    //~^ eq_op
+
     assert_eq!(a + 1, a + 1);
-    //~^ ERROR: identical args used in this `assert_eq!` macro call
+    //~^ eq_op
+
     // ok
     assert_eq!(a, b);
     assert_eq!(a, a + 1);
@@ -31,9 +37,11 @@ fn main() {
 
     // lint identical args in `assert_ne!`
     assert_ne!(a, a);
-    //~^ ERROR: identical args used in this `assert_ne!` macro call
+    //~^ eq_op
+
     assert_ne!(a + 1, a + 1);
-    //~^ ERROR: identical args used in this `assert_ne!` macro call
+    //~^ eq_op
+
     // ok
     assert_ne!(a, b);
     assert_ne!(a, a + 1);
@@ -41,9 +49,11 @@ fn main() {
 
     // lint identical args in `debug_assert_eq!`
     debug_assert_eq!(a, a);
-    //~^ ERROR: identical args used in this `debug_assert_eq!` macro call
+    //~^ eq_op
+
     debug_assert_eq!(a + 1, a + 1);
-    //~^ ERROR: identical args used in this `debug_assert_eq!` macro call
+    //~^ eq_op
+
     // ok
     debug_assert_eq!(a, b);
     debug_assert_eq!(a, a + 1);
@@ -51,9 +61,11 @@ fn main() {
 
     // lint identical args in `debug_assert_ne!`
     debug_assert_ne!(a, a);
-    //~^ ERROR: identical args used in this `debug_assert_ne!` macro call
+    //~^ eq_op
+
     debug_assert_ne!(a + 1, a + 1);
-    //~^ ERROR: identical args used in this `debug_assert_ne!` macro call
+    //~^ eq_op
+
     // ok
     debug_assert_ne!(a, b);
     debug_assert_ne!(a, a + 1);

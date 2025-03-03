@@ -11,12 +11,14 @@ fn main() {
     } else if y == "world" {
         println!("world!")
     }
+    //~^^^^^ collapsible_else_if
 
     if x == "hello" {
         print!("Hello ");
     } else if let Some(42) = Some(42) {
         println!("world!")
     }
+    //~^^^^^ collapsible_else_if
 
     if x == "hello" {
         print!("Hello ");
@@ -26,6 +28,7 @@ fn main() {
     else {
         println!("!")
     }
+    //~^^^^^^^^ collapsible_else_if
 
     if x == "hello" {
         print!("Hello ");
@@ -35,6 +38,7 @@ fn main() {
     else {
         println!("!")
     }
+    //~^^^^^^^^ collapsible_else_if
 
     if let Some(42) = Some(42) {
         print!("Hello ");
@@ -44,6 +48,7 @@ fn main() {
     else {
         println!("!")
     }
+    //~^^^^^^^^ collapsible_else_if
 
     if let Some(42) = Some(42) {
         print!("Hello ");
@@ -53,6 +58,7 @@ fn main() {
     else {
         println!("!")
     }
+    //~^^^^^^^^ collapsible_else_if
 
     if let Some(42) = Some(42) {
         print!("Hello ");
@@ -62,6 +68,7 @@ fn main() {
     else {
         println!("!")
     }
+    //~^^^^^^^^ collapsible_else_if
 
     if x == "hello" {
         print!("Hello ");
@@ -77,4 +84,5 @@ fn main() {
 fn issue_7318() {
     if true { println!("I've been resolved!")
     }else if false {}
+    //~^^^ collapsible_else_if
 }

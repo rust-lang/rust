@@ -2,14 +2,9 @@
 // FIXME: broken codegen on big-endian (https://github.com/rust-lang/rust/issues/127205)
 // This should be merged into `simd-bitmask` once that's fixed.
 //@ ignore-endian-big
-#![feature(repr_simd, intrinsics)]
+#![feature(repr_simd, core_intrinsics)]
 
-#[rustc_intrinsic]
-unsafe fn simd_bitmask<T, U>(v: T) -> U;
-
-#[rustc_intrinsic]
-unsafe fn simd_select_bitmask<T, U>(m: T, a: U, b: U) -> U;
-
+use std::intrinsics::simd::{simd_bitmask, simd_select_bitmask};
 
 fn main() {
     // Non-power-of-2 multi-byte mask.

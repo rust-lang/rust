@@ -7,27 +7,33 @@ fn main() {
     let item1 = 2;
     {
         let item = &item1;
+        //~^ single_element_loop
         dbg!(item);
     }
 
     {
         let item = &item1;
+        //~^ single_element_loop
         dbg!(item);
     }
 
     for item in 0..5 {
+        //~^ single_element_loop
         dbg!(item);
     }
 
     for item in 0..5 {
+        //~^ single_element_loop
         dbg!(item);
     }
 
     for item in 0..5 {
+        //~^ single_element_loop
         dbg!(item);
     }
 
     for item in 0..5 {
+        //~^ single_element_loop
         dbg!(item);
     }
 
@@ -48,6 +54,7 @@ fn main() {
     // should lint (issue #10018)
     {
         let _ = 42;
+        //~^ single_element_loop
         let _f = |n: u32| {
             for i in 0..n {
                 if i > 10 {
@@ -63,6 +70,7 @@ fn main() {
 
     {
         let (Ok(mut _x) | Err(mut _x)) = res_void;
+        //~^ single_element_loop
         let ptr: *const bool = std::ptr::null();
     }
 }

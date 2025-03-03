@@ -905,16 +905,8 @@ fn visit_nonterminal<T: MutVisitor>(vis: &mut T, nt: &mut token::Nonterminal) {
                 vis.flat_map_stmt(stmt).expect_one("expected visitor to produce exactly one item")
             })
         }),
-        token::NtPat(pat) => vis.visit_pat(pat),
         token::NtExpr(expr) => vis.visit_expr(expr),
         token::NtLiteral(expr) => vis.visit_expr(expr),
-        token::NtMeta(item) => {
-            let AttrItem { unsafety: _, path, args, tokens } = item.deref_mut();
-            vis.visit_path(path);
-            visit_attr_args(vis, args);
-            visit_lazy_tts(vis, tokens);
-        }
-        token::NtPath(path) => vis.visit_path(path),
     }
 }
 

@@ -7,7 +7,6 @@ use rustc_infer::infer::canonical::{
     Canonical, CanonicalExt as _, CanonicalQueryInput, CanonicalVarInfo, CanonicalVarValues,
 };
 use rustc_infer::infer::{InferCtxt, RegionVariableOrigin, TyCtxtInferExt};
-use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::solve::Goal;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt as _};
@@ -222,7 +221,6 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
     // register candidates. We probably need to register >1 since we may have an OR of ANDs.
     fn is_transmutable(
         &self,
-        param_env: ty::ParamEnv<'tcx>,
         dst: Ty<'tcx>,
         src: Ty<'tcx>,
         assume: ty::Const<'tcx>,
@@ -231,16 +229,14 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         // which will ICE for region vars.
         let (dst, src) = self.tcx.erase_regions((dst, src));
 
-        let Some(assume) = rustc_transmute::Assume::from_const(self.tcx, param_env, assume) else {
+        let Some(assume) = rustc_transmute::Assume::from_const(self.tcx, assume) else {
             return Err(NoSolution);
         };
 
         // FIXME(transmutability): This really should be returning nested goals for `Answer::If*`
-        match rustc_transmute::TransmuteTypeEnv::new(&self.0).is_transmutable(
-            ObligationCause::dummy(),
-            rustc_transmute::Types { src, dst },
-            assume,
-        ) {
+        match rustc_transmute::TransmuteTypeEnv::new(self.0.tcx)
+            .is_transmutable(rustc_transmute::Types { src, dst }, assume)
+        {
             rustc_transmute::Answer::Yes => Ok(Certainty::Yes),
             rustc_transmute::Answer::No(_) | rustc_transmute::Answer::If(_) => Err(NoSolution),
         }

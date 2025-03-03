@@ -67,10 +67,7 @@ mod libc {
 mod intrinsics {
     #[rustc_nounwind]
     #[rustc_intrinsic]
-    #[rustc_intrinsic_must_be_overridden]
-    pub fn abort() -> ! {
-        loop {}
-    }
+    pub fn abort() -> !;
 }
 
 #[lang = "panic"]

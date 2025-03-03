@@ -9,7 +9,7 @@ LL |         asm!("");
    = help: to override `-D warnings` add `#[allow(clippy::inline_asm_x86_intel_syntax)]`
 
 error: Intel x86 assembly syntax used
-  --> tests/ui/asm_syntax_x86.rs:10:9
+  --> tests/ui/asm_syntax_x86.rs:11:9
    |
 LL |         asm!("", options());
    |         ^^^^^^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL |         asm!("", options());
    = help: use AT&T x86 assembly syntax
 
 error: Intel x86 assembly syntax used
-  --> tests/ui/asm_syntax_x86.rs:12:9
+  --> tests/ui/asm_syntax_x86.rs:14:9
    |
 LL |         asm!("", options(nostack));
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL |         asm!("", options(nostack));
    = help: use AT&T x86 assembly syntax
 
 error: Intel x86 assembly syntax used
-  --> tests/ui/asm_syntax_x86.rs:18:5
+  --> tests/ui/asm_syntax_x86.rs:21:5
    |
 LL |     global_asm!("");
    |     ^^^^^^^^^^^^^^^
@@ -33,7 +33,7 @@ LL |     global_asm!("");
    = help: use AT&T x86 assembly syntax
 
 error: Intel x86 assembly syntax used
-  --> tests/ui/asm_syntax_x86.rs:20:5
+  --> tests/ui/asm_syntax_x86.rs:24:5
    |
 LL |     global_asm!("", options());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -41,7 +41,7 @@ LL |     global_asm!("", options());
    = help: use AT&T x86 assembly syntax
 
 error: AT&T x86 assembly syntax used
-  --> tests/ui/asm_syntax_x86.rs:33:9
+  --> tests/ui/asm_syntax_x86.rs:38:9
    |
 LL |         asm!("", options(att_syntax));
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -51,7 +51,7 @@ LL |         asm!("", options(att_syntax));
    = help: to override `-D warnings` add `#[allow(clippy::inline_asm_x86_att_syntax)]`
 
 error: AT&T x86 assembly syntax used
-  --> tests/ui/asm_syntax_x86.rs:35:9
+  --> tests/ui/asm_syntax_x86.rs:41:9
    |
 LL |         asm!("", options(nostack, att_syntax));
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -59,7 +59,7 @@ LL |         asm!("", options(nostack, att_syntax));
    = help: use Intel x86 assembly syntax
 
 error: AT&T x86 assembly syntax used
-  --> tests/ui/asm_syntax_x86.rs:41:5
+  --> tests/ui/asm_syntax_x86.rs:47:5
    |
 LL |     global_asm!("", options(att_syntax));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

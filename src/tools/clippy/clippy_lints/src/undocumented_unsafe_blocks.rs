@@ -1,5 +1,5 @@
-use std::sync::Arc;
 use std::ops::ControlFlow;
+use std::sync::Arc;
 
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
@@ -432,7 +432,7 @@ fn include_attrs_in_span(cx: &LateContext<'_>, hir_id: HirId, span: Span) -> Spa
         .hir()
         .attrs(hir_id)
         .iter()
-        .fold(span, |acc, attr| acc.to(attr.span)))
+        .fold(span, |acc, attr| acc.to(attr.span())))
 }
 
 enum HasSafetyComment {

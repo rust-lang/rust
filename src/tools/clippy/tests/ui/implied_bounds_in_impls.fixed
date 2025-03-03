@@ -11,6 +11,7 @@ fn normal_deref<T>(x: T) -> impl Deref<Target = T> {
 
 // Deref implied by DerefMut
 fn deref_derefmut<T>(x: T) -> impl DerefMut<Target = T> {
+    //~^ implied_bounds_in_impls
     Box::new(x)
 }
 
@@ -28,14 +29,19 @@ impl<V> GenericSubtrait<(), i32, V> for () {}
 impl<V> GenericSubtrait<(), i64, V> for () {}
 
 fn generics_implied<U, W>() -> impl GenericSubtrait<U, W, U>
+//~^ implied_bounds_in_impls
 where
     (): GenericSubtrait<U, W, U>,
 {
 }
 
 fn generics_implied_multi<V>() -> impl GenericSubtrait<(), i32, V> {}
+//~^ implied_bounds_in_impls
+//~| implied_bounds_in_impls
 
 fn generics_implied_multi2<T, V>() -> impl GenericSubtrait<(), T, V>
+//~^ implied_bounds_in_impls
+//~| implied_bounds_in_impls
 where
     (): GenericSubtrait<(), T, V> + GenericTrait<T>,
 {
@@ -46,21 +52,25 @@ fn generics_different() -> impl GenericTrait<i32> + GenericSubtrait<(), i64, ()>
 
 // i32 == i32, GenericSubtrait<_, i32, _> does imply GenericTrait<i32>, lint
 fn generics_same() -> impl GenericSubtrait<(), i32, ()> {}
+//~^ implied_bounds_in_impls
 
 trait SomeTrait {
     // Check that it works in trait declarations.
     fn f() -> impl DerefMut<Target = u8>;
+    //~^ implied_bounds_in_impls
 }
 struct SomeStruct;
 impl SomeStruct {
     // Check that it works in inherent impl blocks.
     fn f() -> impl DerefMut<Target = u8> {
+        //~^ implied_bounds_in_impls
         Box::new(123)
     }
 }
 impl SomeTrait for SomeStruct {
     // Check that it works in trait impls.
     fn f() -> impl DerefMut<Target = u8> {
+        //~^ implied_bounds_in_impls
         Box::new(42)
     }
 }
@@ -72,7 +82,9 @@ mod issue11422 {
     // `PartialOrd` has a default generic parameter and does not need to be explicitly specified.
     // This needs special handling.
     fn default_generic_param1() -> impl PartialOrd + Debug {}
+    //~^ implied_bounds_in_impls
     fn default_generic_param2() -> impl PartialOrd + Debug {}
+    //~^ implied_bounds_in_impls
 
     // Referring to `Self` in the supertrait clause needs special handling.
     trait Trait1<X: ?Sized> {}
@@ -86,11 +98,13 @@ mod issue11422 {
 mod issue11435 {
     // Associated type needs to be included on DoubleEndedIterator in the suggestion
     fn my_iter() -> impl DoubleEndedIterator<Item = u32> {
+        //~^ implied_bounds_in_impls
         0..5
     }
 
     // Removing the `Clone` bound should include the `+` behind it in its remove suggestion
     fn f() -> impl Copy {
+        //~^ implied_bounds_in_impls
         1
     }
 
@@ -105,6 +119,7 @@ mod issue11435 {
 
     // When the other trait has generics, it shouldn't add another pair of `<>`
     fn f2() -> impl Trait2<i32, U = i64> {}
+    //~^ implied_bounds_in_impls
 
     trait Trait3<T, U, V> {
         type X;
@@ -120,6 +135,7 @@ mod issue11435 {
     // Associated type `X` is specified, but `Y` is not, so only that associated type should be moved
     // over
     fn f3() -> impl Trait4<i8, X = i32, Y = i128> {}
+    //~^ implied_bounds_in_impls
 }
 
 fn issue11880() {
@@ -147,14 +163,19 @@ fn issue11880() {
     // X::T is never constrained in the first place, so it can be omitted
     // and left unconstrained
     fn f3() -> impl Y {}
+    //~^ implied_bounds_in_impls
     fn f4() -> impl Y<T = u32> {}
+    //~^ implied_bounds_in_impls
     fn f5() -> impl Y<T = u32, U = String> {}
+    //~^ implied_bounds_in_impls
 }
 
 fn apit(_: impl DerefMut) {}
+//~^ implied_bounds_in_impls
 
 trait Rpitit {
     fn f() -> impl DerefMut;
+    //~^ implied_bounds_in_impls
 }
 
 trait Atpit {
@@ -163,12 +184,14 @@ trait Atpit {
 }
 impl Atpit for () {
     type Assoc = impl DerefMut;
+    //~^ implied_bounds_in_impls
     fn define() -> Self::Assoc {
         &mut [] as &mut [()]
     }
 }
 
 type Tait = impl DerefMut;
+//~^ implied_bounds_in_impls
 fn define() -> Tait {
     &mut [] as &mut [()]
 }

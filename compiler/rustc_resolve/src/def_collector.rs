@@ -3,6 +3,7 @@ use std::mem;
 use rustc_ast::visit::FnKind;
 use rustc_ast::*;
 use rustc_ast_pretty::pprust;
+use rustc_attr_parsing::{AttributeParser, OmitDoc};
 use rustc_expand::expand::AstFragment;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
@@ -132,8 +133,24 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             ItemKind::Fn(..) | ItemKind::Delegation(..) => DefKind::Fn,
             ItemKind::MacroDef(def) => {
                 let edition = i.span.edition();
+
+                // FIXME(jdonszelmann) make one of these in the resolver?
+                // FIXME(jdonszelmann) don't care about tools here maybe? Just parse what we can.
+                // Does that prevents errors from happening? maybe
+                let parser = AttributeParser::new(
+                    &self.resolver.tcx.sess,
+                    self.resolver.tcx.features(),
+                    Vec::new(),
+                );
+                let attrs = parser.parse_attribute_list(
+                    &i.attrs,
+                    i.span,
+                    OmitDoc::Skip,
+                    std::convert::identity,
+                );
+
                 let macro_data =
-                    self.resolver.compile_macro(def, i.ident, &i.attrs, i.span, i.id, edition);
+                    self.resolver.compile_macro(def, i.ident, &attrs, i.span, i.id, edition);
                 let macro_kind = macro_data.ext.macro_kind();
                 opt_macro_data = Some(macro_data);
                 DefKind::Macro(macro_kind)
@@ -441,5 +458,44 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
         let orig_in_attr = mem::replace(&mut self.in_attr, true);
         visit::walk_attribute(self, attr);
         self.in_attr = orig_in_attr;
+    }
+
+    fn visit_inline_asm(&mut self, asm: &'a InlineAsm) {
+        let InlineAsm {
+            asm_macro: _,
+            template: _,
+            template_strs: _,
+            operands,
+            clobber_abis: _,
+            options: _,
+            line_spans: _,
+        } = asm;
+        for (op, _span) in operands {
+            match op {
+                InlineAsmOperand::In { expr, reg: _ }
+                | InlineAsmOperand::Out { expr: Some(expr), reg: _, late: _ }
+                | InlineAsmOperand::InOut { expr, reg: _, late: _ } => {
+                    self.visit_expr(expr);
+                }
+                InlineAsmOperand::Out { expr: None, reg: _, late: _ } => {}
+                InlineAsmOperand::SplitInOut { in_expr, out_expr, reg: _, late: _ } => {
+                    self.visit_expr(in_expr);
+                    if let Some(expr) = out_expr {
+                        self.visit_expr(expr);
+                    }
+                }
+                InlineAsmOperand::Const { anon_const } => {
+                    let def = self.create_def(
+                        anon_const.id,
+                        kw::Empty,
+                        DefKind::InlineConst,
+                        anon_const.value.span,
+                    );
+                    self.with_parent(def, |this| visit::walk_anon_const(this, anon_const));
+                }
+                InlineAsmOperand::Sym { sym } => self.visit_inline_asm_sym(sym),
+                InlineAsmOperand::Label { block } => self.visit_block(block),
+            }
+        }
     }
 }

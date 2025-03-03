@@ -8,7 +8,7 @@ LL | #![doc = include_str!("../approx_const.rs")]
    = help: to override `-D warnings` add `#[allow(clippy::doc_include_without_cfg)]`
 
 error: included a file in documentation unconditionally
-  --> tests/ui/doc/doc_include_without_cfg.rs:31:1
+  --> tests/ui/doc/doc_include_without_cfg.rs:32:1
    |
 LL | #[doc = include_str!("../approx_const.rs")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `cfg_attr(doc, doc = "...")`: `#[cfg_attr(doc, doc = include_str!("../approx_const.rs"))]`

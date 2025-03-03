@@ -359,7 +359,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         let offset = self.layout.fields.offset(i);
 
         if !bx.is_backend_ref(self.layout) && bx.is_backend_ref(field) {
-            if let BackendRepr::Vector { count, .. } = self.layout.backend_repr
+            if let BackendRepr::SimdVector { count, .. } = self.layout.backend_repr
                 && let BackendRepr::Memory { sized: true } = field.backend_repr
                 && count.is_power_of_two()
             {
@@ -404,7 +404,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                 }
             };
             OperandValue::Immediate(match field.backend_repr {
-                BackendRepr::Vector { .. } => imm,
+                BackendRepr::SimdVector { .. } => imm,
                 BackendRepr::Scalar(out_scalar) => {
                     let Some(in_scalar) = in_scalar else {
                         span_bug!(
@@ -666,7 +666,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     // However, some SIMD types do not actually use the vector ABI
                     // (in particular, packed SIMD types do not). Ensure we exclude those.
                     let layout = bx.layout_of(constant_ty);
-                    if let BackendRepr::Vector { .. } = layout.backend_repr {
+                    if let BackendRepr::SimdVector { .. } = layout.backend_repr {
                         let (llval, ty) = self.immediate_const_vector(bx, constant);
                         return OperandRef {
                             val: OperandValue::Immediate(llval),

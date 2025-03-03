@@ -63,7 +63,7 @@ fn uncached_gcc_type<'gcc, 'tcx>(
 ) -> Type<'gcc> {
     match layout.backend_repr {
         BackendRepr::Scalar(_) => bug!("handled elsewhere"),
-        BackendRepr::Vector { ref element, count } => {
+        BackendRepr::SimdVector { ref element, count } => {
             let element = layout.scalar_gcc_type_at(cx, element, Size::ZERO);
             let element =
                 // NOTE: gcc doesn't allow pointer types in vectors.
@@ -178,7 +178,7 @@ pub trait LayoutGccExt<'tcx> {
 impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
     fn is_gcc_immediate(&self) -> bool {
         match self.backend_repr {
-            BackendRepr::Scalar(_) | BackendRepr::Vector { .. } => true,
+            BackendRepr::Scalar(_) | BackendRepr::SimdVector { .. } => true,
             BackendRepr::ScalarPair(..) | BackendRepr::Memory { .. } => false,
         }
     }
@@ -186,9 +186,9 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
     fn is_gcc_scalar_pair(&self) -> bool {
         match self.backend_repr {
             BackendRepr::ScalarPair(..) => true,
-            BackendRepr::Scalar(_) | BackendRepr::Vector { .. } | BackendRepr::Memory { .. } => {
-                false
-            }
+            BackendRepr::Scalar(_)
+            | BackendRepr::SimdVector { .. }
+            | BackendRepr::Memory { .. } => false,
         }
     }
 

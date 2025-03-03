@@ -46,7 +46,7 @@ fn entry_fn(tcx: TyCtxt<'_>, (): ()) -> Option<(DefId, EntryFnType)> {
 
 fn attr_span_by_symbol(ctxt: &EntryContext<'_>, id: ItemId, sym: Symbol) -> Option<Span> {
     let attrs = ctxt.tcx.hir().attrs(id.hir_id());
-    attr::find_by_name(attrs, sym).map(|attr| attr.span)
+    attr::find_by_name(attrs, sym).map(|attr| attr.span())
 }
 
 fn check_and_search_item(id: ItemId, ctxt: &mut EntryContext<'_>) {

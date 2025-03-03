@@ -4,7 +4,7 @@ use std::mem;
 use ast::token::IdentIsRaw;
 use rustc_ast::ast::*;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, TokenKind};
+use rustc_ast::token::{self, Delimiter, InvisibleOrigin, MetaVarKind, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::util::case::Case;
 use rustc_ast::{self as ast};
@@ -3071,8 +3071,10 @@ impl<'a> Parser<'a> {
 
     fn is_named_param(&self) -> bool {
         let offset = match &self.token.kind {
-            token::Interpolated(nt) => match &**nt {
-                token::NtPat(..) => return self.look_ahead(1, |t| t == &token::Colon),
+            token::OpenDelim(Delimiter::Invisible(origin)) => match origin {
+                InvisibleOrigin::MetaVar(MetaVarKind::Pat(_)) => {
+                    return self.check_noexpect_past_close_delim(&token::Colon);
+                }
                 _ => 0,
             },
             token::BinOp(token::And) | token::AndAnd => 1,

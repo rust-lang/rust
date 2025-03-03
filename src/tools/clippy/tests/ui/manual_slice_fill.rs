@@ -1,5 +1,5 @@
 #![warn(clippy::manual_slice_fill)]
-#![allow(clippy::needless_range_loop)]
+#![allow(clippy::needless_range_loop, clippy::useless_vec)]
 
 macro_rules! assign_element {
     ($slice:ident, $index:expr) => {
@@ -23,21 +23,25 @@ fn should_lint() {
     let mut some_slice = [1, 2, 3, 4, 5];
 
     for i in 0..some_slice.len() {
+        //~^ manual_slice_fill
         some_slice[i] = 0;
     }
 
     let x = 5;
     for i in 0..some_slice.len() {
+        //~^ manual_slice_fill
         some_slice[i] = x;
     }
 
     for i in &mut some_slice {
+        //~^ manual_slice_fill
         *i = 0;
     }
 
     // This should trigger `manual_slice_fill`, but the applicability is `MaybeIncorrect` since comments
     // within the loop might be purely informational.
     for i in 0..some_slice.len() {
+        //~^ manual_slice_fill
         some_slice[i] = 0;
         // foo
     }
@@ -106,5 +110,29 @@ fn should_not_lint() {
     // Should not lint because `NoClone` does not have `Clone` trait.
     for i in &mut vec {
         *i = None;
+    }
+}
+
+fn issue_14192() {
+    let mut tmp = vec![0; 3];
+
+    for i in 0..tmp.len() {
+        tmp[i] = i;
+    }
+
+    for i in 0..tmp.len() {
+        tmp[i] = 2 + i;
+    }
+
+    for i in 0..tmp.len() {
+        tmp[0] = i;
+    }
+}
+
+fn issue14189() {
+    // Should not lint because `!*b` is not constant
+    let mut tmp = vec![1, 2, 3];
+    for b in &mut tmp {
+        *b = !*b;
     }
 }
