@@ -14,7 +14,7 @@ use rustc_attr_parsing::{AttributeKind, ReprAttr, find_attr};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, DiagCtxtHandle, IntoDiagArg, MultiSpan, StashKey};
 use rustc_feature::{AttributeDuplicates, AttributeType, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute};
-use rustc_hir::def_id::LocalModDefId;
+use rustc_hir::def_id::{LOCAL_CRATE, LocalModDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{
     self as hir, self, AssocItemKind, Attribute, CRATE_HIR_ID, CRATE_OWNER_ID, FnSig, ForeignItem,
@@ -217,6 +217,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         [sym::rustc_has_incoherent_inherent_impls, ..] => {
                             self.check_has_incoherent_inherent_impls(attr, span, target)
                         }
+                        [sym::rustc_stable_impl_id, ..] => {
+                            self.check_stable_impl_id(span, item)
+                        }
                         [sym::ffi_pure, ..] => self.check_ffi_pure(attr.span(), attrs, target),
                         [sym::ffi_const, ..] => self.check_ffi_const(attr.span(), target),
                         [sym::link_ordinal, ..] => self.check_link_ordinal(attr, span, target),
@@ -268,6 +271,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::forbid
                             | sym::cfg
                             | sym::cfg_attr
+                            | sym::export // handled in `check_export`
                             // need to be fixed
                             | sym::cfi_encoding // FIXME(cfi_encoding)
                             | sym::pointee // FIXME(derive_coerce_pointee)
@@ -1434,6 +1438,20 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 self.tcx
                     .dcx()
                     .emit_err(errors::HasIncoherentInherentImpl { attr_span: attr.span(), span });
+            }
+        }
+    }
+
+    fn check_stable_impl_id(&self, span: Span, item: Option<ItemLike<'_>>) {
+        if let Some(item) = item
+            && let ItemLike::Item(item) = item
+            && let hir::ItemKind::Impl(impl_) = item.kind
+            && impl_.of_trait.is_none()
+        {
+            let def_id = item.owner_id.def_id.to_def_id();
+            if self.tcx.is_exportable(def_id) {
+                let id = self.tcx.stable_order_of_exportable_impls(LOCAL_CRATE)[&def_id];
+                self.tcx.dcx().emit_err(errors::ReportStableImplId { id, span });
             }
         }
     }

@@ -19,7 +19,8 @@ use rustc_session::cstore::ExternCrate;
 use rustc_span::{Span, kw};
 
 use crate::errors::{
-    DuplicateLangItem, IncorrectTarget, LangItemOnIncorrectTarget, UnknownLangItem,
+    DuplicateLangItem, IncorrectCrateType, IncorrectTarget, LangItemOnIncorrectTarget,
+    UnknownLangItem,
 };
 use crate::weak_lang_items;
 
@@ -236,6 +237,10 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
             }
         }
 
+        if self.tcx.crate_types().contains(&rustc_session::config::CrateType::Sdylib) {
+            self.tcx.dcx().emit_err(IncorrectCrateType { span: attr_span });
+        }
+
         self.collect_item(lang_item, item_def_id.to_def_id(), Some(item_span));
     }
 }
@@ -268,7 +273,9 @@ fn get_lang_items(tcx: TyCtxt<'_>, (): ()) -> LanguageItems {
 impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
     fn visit_item(&mut self, i: &'ast ast::Item) {
         let target = match &i.kind {
-            ast::ItemKind::ExternCrate(_) => Target::ExternCrate,
+            ast::ItemKind::ExternCrate(..) | ast::ItemKind::ExternDynCrate(..) => {
+                Target::ExternCrate
+            }
             ast::ItemKind::Use(_) => Target::Use,
             ast::ItemKind::Static(_) => Target::Static,
             ast::ItemKind::Const(_) => Target::Const,
