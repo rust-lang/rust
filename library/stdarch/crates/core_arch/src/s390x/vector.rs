@@ -184,6 +184,8 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.s390.vavglh"] fn vavglh(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_short;
     #[link_name = "llvm.s390.vavglf"] fn vavglf(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int;
     #[link_name = "llvm.s390.vavglg"] fn vavglg(a: vector_unsigned_long_long, b: vector_unsigned_long_long) -> vector_unsigned_long_long;
+
+    #[link_name = "llvm.s390.vcksm"] fn vcksm(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int;
 }
 
 impl_from! { i8x16, u8x16,  i16x8, u16x8, i32x4, u32x4, i64x2, u64x2, f32x4, f64x2 }
@@ -3383,6 +3385,15 @@ pub unsafe fn vec_msub<T: sealed::VectorMadd>(a: T, b: T, c: T) -> T {
     a.vec_msub(b, c)
 }
 
+/// Vector Checksum
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+#[cfg_attr(test, assert_instr(vcksm))]
+pub unsafe fn vec_checksum(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int {
+    vcksm(a, b)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -4228,5 +4239,11 @@ mod tests {
         [2, 1, u32::MAX, 0],
         [4, 2, 2, 0],
         [3, (1u32 + 2).div_ceil(2), (u32::MAX as u64 + 2u64).div_ceil(2) as u32, 0]
+    }
+
+    test_vec_2! { test_vec_checksum, vec_checksum, u32x4,
+        [1, 2, 3, u32::MAX],
+        [5, 6, 7, 8],
+        [0, 12, 0, 0]
     }
 }
