@@ -653,6 +653,20 @@ mod dist {
             &["compiler/rustc".into(), "library".into()],
         );
 
+        assert_eq!(builder.config.stage, 2);
+
+        // `compile::Rustc` includes one-stage-off compiler information as the target compiler
+        // artifacts get copied from there to the target stage sysroot.
+        // For example, `stage2/bin/rustc` gets copied from the `stage1-rustc` build directory.
+        assert_eq!(
+            first(builder.cache.all::<compile::Rustc>()),
+            &[
+                rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 0),
+                rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 1),
+                rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_2, stage = 1),
+            ]
+        );
+
         assert_eq!(
             first(builder.cache.all::<compile::Std>()),
             &[
@@ -664,15 +678,34 @@ mod dist {
                 std!(TEST_TRIPLE_1 => TEST_TRIPLE_3, stage = 2),
             ]
         );
-        assert_eq!(builder.cache.all::<compile::Assemble>().len(), 5);
+
         assert_eq!(
-            first(builder.cache.all::<compile::Rustc>()),
+            first(builder.cache.all::<compile::Assemble>()),
             &[
-                rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 0),
-                rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 1),
-                rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 2),
-                rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_2, stage = 1),
-                rustc!(TEST_TRIPLE_1 => TEST_TRIPLE_2, stage = 2),
+                compile::Assemble {
+                    target_compiler: Compiler {
+                        host: TargetSelection::from_user(TEST_TRIPLE_1),
+                        stage: 0
+                    }
+                },
+                compile::Assemble {
+                    target_compiler: Compiler {
+                        host: TargetSelection::from_user(TEST_TRIPLE_1),
+                        stage: 1
+                    }
+                },
+                compile::Assemble {
+                    target_compiler: Compiler {
+                        host: TargetSelection::from_user(TEST_TRIPLE_1),
+                        stage: 2
+                    }
+                },
+                compile::Assemble {
+                    target_compiler: Compiler {
+                        host: TargetSelection::from_user(TEST_TRIPLE_2),
+                        stage: 2
+                    }
+                },
             ]
         );
     }
