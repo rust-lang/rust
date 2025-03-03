@@ -15,6 +15,7 @@
 #![feature(cell_update)]
 #![feature(char_max_len)]
 #![feature(clone_to_uninit)]
+#![feature(const_destruct)]
 #![feature(const_eval_select)]
 #![feature(const_ref_cell)]
 #![feature(const_swap_nonoverlapping)]

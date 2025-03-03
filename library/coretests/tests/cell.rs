@@ -487,6 +487,32 @@ fn const_refcell() {
             panic!("should never be called");
         }
     }
+
+    // Check that `borrow` is usable at compile-time
+    const BORROW_TEST: RefCell<u32> = {
+        let a = RefCell::new(0);
+        {
+            assert!(a.try_borrow().is_ok());
+            assert!(a.try_borrow_mut().is_ok());
+            let _a = a.borrow();
+            assert!(a.try_borrow().is_ok());
+            assert!(a.try_borrow_mut().is_err());
+        }
+        a
+    };
+    // Check that `borrow` is usable at compile-time
+    const BORROW_MUT_TEST: RefCell<u32> = {
+        let a = RefCell::new(0);
+        {
+            assert!(a.try_borrow().is_ok());
+            assert!(a.try_borrow_mut().is_ok());
+            let _a = a.borrow_mut();
+            assert!(a.try_borrow().is_err());
+            assert!(a.try_borrow_mut().is_err());
+        }
+        a
+    };
+
     // Check that `replace` is usable at compile-time
     const REPLACE_TEST: u32 = {
         let a = RefCell::new(0);
@@ -495,6 +521,7 @@ fn const_refcell() {
         assert!(a == 10);
         a
     };
+    // Check that `replace` is usable at compile-time
     const REPLACE_DUMMY_TEST: RefCell<Dummy> = {
         let a = RefCell::new(Dummy);
         forget(a.replace(Dummy));
