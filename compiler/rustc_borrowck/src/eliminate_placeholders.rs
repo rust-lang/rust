@@ -12,11 +12,12 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::scc::{self, Sccs};
 use rustc_index::IndexVec;
 use rustc_infer::infer::NllRegionVariableOrigin;
-use rustc_infer::infer::outlives::test_type_match;
+use rustc_infer::infer::outlives::test_type_match::MatchAgainstHigherRankedOutlives;
 use rustc_infer::infer::region_constraints::{GenericKind, VarInfos, VerifyBound};
-use rustc_middle::ty::{Region, RegionVid, TyCtxt, UniverseIndex};
+use rustc_infer::infer::relate::TypeRelation;
+use rustc_middle::ty::{self, Region, RegionVid, TyCtxt, UniverseIndex};
 use rustc_span::Span;
-use tracing::{debug, info, instrument, trace};
+use tracing::{debug, instrument, trace};
 
 use crate::constraints::graph::{ConstraintGraph, Normal};
 use crate::constraints::{ConstraintSccIndex, OutlivesConstraintSet};
@@ -617,31 +618,39 @@ fn rewrite_verify_bound<'t>(
         // equality, and it does -- except that we do not track placeholders,
         // and so in the event that you have two empty regions, one of which is
         // in an unnameable universe, they would compare equal since they
-        // are both empty. This bit checks if we
-        VerifyBound::IfEq(binder) => {
-            match test_type_match::extract_verify_if_eq(tcx, &binder, generic_kind.to_ty(tcx)) {
-                Some(r) => {
-                    let r_vid = universal_regions.to_region_vid(r);
-                    let r_scc = scc_annotations[sccs.scc(r_vid)];
-                    let l_scc = scc_annotations[lower_scc];
-                    let in_same_universe = r_scc.universe_compatible_with(l_scc)
-                        && l_scc.universe_compatible_with(r_scc);
-                    let reaches_same_placeholders =
-                        r_scc.reachable_placeholders == l_scc.reachable_placeholders;
+        // are both empty. This bit ensures that whatever comes out of the
+        // bound also matches the placeholder reachability of the lower bound.
+        VerifyBound::IfEq(verify_if_eq_b) => {
+            let mut m = MatchAgainstHigherRankedOutlives::new(tcx);
+            let verify_if_eq = verify_if_eq_b.skip_binder();
+            // We ignore the error here because we are not concerned with if the
+            // match actually held -- we can't tell that yet -- we just want to
+            // see if the resulting region can't match for universe-related
+            // reasons.
+            let _what_error = m.relate(verify_if_eq.ty, generic_kind.to_ty(tcx));
 
-                    if in_same_universe && reaches_same_placeholders {
-                        Either::Left(bound)
-                    } else {
-                        Either::Right(RewrittenVerifyBound::Unsatisfied)
-                    }
+            let r = if let ty::RegionKind::ReBound(depth, br) = verify_if_eq.bound.kind() {
+                assert!(depth == ty::INNERMOST);
+                match m.map.get(&br) {
+                    Some(&r) => r,
+                    None => tcx.lifetimes.re_static,
                 }
-                None => {
-                    info!(
-                        "Failed to extract type from {:#?}; assuming we are fine!",
-                        generic_kind.to_ty(tcx)
-                    );
-                    Either::Left(bound)
-                }
+            } else {
+                verify_if_eq.bound
+            };
+
+            let r_vid = universal_regions.to_region_vid(r);
+            let r_scc = scc_annotations[sccs.scc(r_vid)];
+            let l_scc = scc_annotations[lower_scc];
+            let in_same_universe =
+                r_scc.universe_compatible_with(l_scc) && l_scc.universe_compatible_with(r_scc);
+            let reaches_same_placeholders =
+                r_scc.reachable_placeholders == l_scc.reachable_placeholders;
+
+            if in_same_universe && reaches_same_placeholders {
+                Either::Left(bound)
+            } else {
+                Either::Right(RewrittenVerifyBound::Unsatisfied)
             }
         }
         // Rewrite an outlives bound to an outlives-static bound upon referencing
