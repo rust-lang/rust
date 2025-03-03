@@ -457,7 +457,7 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for LinkingFailed<'_> {
             diag.note("some arguments are omitted. use `--verbose` to show all linker arguments");
         }
 
-        diag.note(self.escaped_output);
+        diag.note(self.escaped_output.clone());
 
         // Trying to match an error from OS linkers
         // which by now we have no way to translate.
@@ -468,6 +468,9 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for LinkingFailed<'_> {
             if rustc_session::utils::was_invoked_from_cargo() {
                 diag.note(fluent::codegen_ssa_use_cargo_directive);
             }
+        }
+        if self.escaped_output.contains("unable to find library -lLLVM-") {
+            diag.help("consider adding the llvm-tools component to your rustup installation");
         }
         diag
     }
