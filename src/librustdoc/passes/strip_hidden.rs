@@ -7,9 +7,8 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::sym;
 use tracing::debug;
 
-use crate::clean;
 use crate::clean::utils::inherits_doc_hidden;
-use crate::clean::{Item, ItemIdSet};
+use crate::clean::{self, Item, ItemIdSet, reexport_chain};
 use crate::core::DocContext;
 use crate::fold::{DocFolder, strip_item};
 use crate::passes::{ImplStripper, Pass};
@@ -89,6 +88,25 @@ impl Stripper<'_, '_> {
 impl DocFolder for Stripper<'_, '_> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         let has_doc_hidden = i.is_doc_hidden();
+
+        if let clean::ImportItem(clean::Import { source, .. }) = &i.kind
+            && let Some(source_did) = source.did
+            && let Some(import_def_id) = i.def_id().and_then(|def_id| def_id.as_local())
+        {
+            let reexports = reexport_chain(self.tcx, import_def_id, source_did);
+
+            // Check if any reexport in the chain has a hidden source
+            let has_hidden_source = reexports
+                .iter()
+                .filter_map(|reexport| reexport.id())
+                .any(|reexport_did| self.tcx.is_doc_hidden(reexport_did))
+                || self.tcx.is_doc_hidden(source_did);
+
+            if has_hidden_source {
+                return None;
+            }
+        }
+
         let is_impl_or_exported_macro = match i.kind {
             clean::ImplItem(..) => true,
             // If the macro has the `#[macro_export]` attribute, it means it's accessible at the
