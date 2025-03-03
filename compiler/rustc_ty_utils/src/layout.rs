@@ -610,6 +610,9 @@ fn layout_of_uncached<'tcx>(
                 ));
             }
 
+            // UnsafeCell and UnsafePinned both disable niche optimizations
+            let is_special_no_niche = def.is_unsafe_cell() || def.is_unsafe_pinned();
+
             let get_discriminant_type =
                 |min, max| abi::Integer::repr_discr(tcx, ty, &def.repr(), min, max);
 
@@ -638,7 +641,7 @@ fn layout_of_uncached<'tcx>(
                     &def.repr(),
                     &variants,
                     def.is_enum(),
-                    def.is_unsafe_cell(),
+                    is_special_no_niche,
                     tcx.layout_scalar_valid_range(def.did()),
                     get_discriminant_type,
                     discriminants_iter(),
@@ -664,7 +667,7 @@ fn layout_of_uncached<'tcx>(
                     &def.repr(),
                     &variants,
                     def.is_enum(),
-                    def.is_unsafe_cell(),
+                    is_special_no_niche,
                     tcx.layout_scalar_valid_range(def.did()),
                     get_discriminant_type,
                     discriminants_iter(),
