@@ -86,14 +86,14 @@ pub(super) fn can_match_erased_ty<'tcx>(
     }
 }
 
-struct MatchAgainstHigherRankedOutlives<'tcx> {
+pub struct MatchAgainstHigherRankedOutlives<'tcx> {
     tcx: TyCtxt<'tcx>,
     pattern_depth: ty::DebruijnIndex,
-    map: FxHashMap<ty::BoundRegion, ty::Region<'tcx>>,
+    pub map: FxHashMap<ty::BoundRegion, ty::Region<'tcx>>,
 }
 
 impl<'tcx> MatchAgainstHigherRankedOutlives<'tcx> {
-    fn new(tcx: TyCtxt<'tcx>) -> MatchAgainstHigherRankedOutlives<'tcx> {
+    pub fn new(tcx: TyCtxt<'tcx>) -> MatchAgainstHigherRankedOutlives<'tcx> {
         MatchAgainstHigherRankedOutlives {
             tcx,
             pattern_depth: ty::INNERMOST,
