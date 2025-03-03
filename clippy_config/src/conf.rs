@@ -950,17 +950,10 @@ impl serde::de::Error for FieldError {
             }
         }
 
-        let suggestion = expected
-            .iter()
-            .filter_map(|expected| {
-                let dist = edit_distance(field, expected, 4)?;
-                Some((dist, expected))
-            })
-            .min_by_key(|&(dist, _)| dist)
-            .map(|(_, suggestion)| Suggestion {
-                message: "perhaps you meant",
-                suggestion,
-            });
+        let suggestion = suggest_candidate(field, expected).map(|suggestion| Suggestion {
+            message: "perhaps you meant",
+            suggestion,
+        });
 
         Self { error: msg, suggestion }
     }
@@ -996,6 +989,22 @@ fn calculate_dimensions(fields: &[&str]) -> (usize, Vec<usize>) {
         .collect::<Vec<_>>();
 
     (rows, column_widths)
+}
+
+/// Given a user-provided value that couldn't be matched to a known option, finds the most likely
+/// candidate among candidates that the user might have meant.
+fn suggest_candidate<'a, I>(value: &str, candidates: I) -> Option<&'a str>
+where
+    I: IntoIterator<Item = &'a str>,
+{
+    candidates
+        .into_iter()
+        .filter_map(|expected| {
+            let dist = edit_distance(value, expected, 4)?;
+            Some((dist, expected))
+        })
+        .min_by_key(|&(dist, _)| dist)
+        .map(|(_, suggestion)| suggestion)
 }
 
 #[cfg(test)]
