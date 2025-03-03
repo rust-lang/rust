@@ -174,6 +174,16 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.s390.vupllb"] fn vupllb (a: vector_unsigned_char) -> vector_unsigned_short;
     #[link_name = "llvm.s390.vupllh"] fn vupllh (a: vector_unsigned_short) -> vector_unsigned_int;
     #[link_name = "llvm.s390.vupllf"] fn vupllf (a: vector_unsigned_int) -> vector_unsigned_long_long;
+
+    #[link_name = "llvm.s390.vavgb"] fn vavgb(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char;
+    #[link_name = "llvm.s390.vavgh"] fn vavgh(a: vector_signed_short, b: vector_signed_short) -> vector_signed_short;
+    #[link_name = "llvm.s390.vavgf"] fn vavgf(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int;
+    #[link_name = "llvm.s390.vavgg"] fn vavgg(a: vector_signed_long_long, b: vector_signed_long_long) -> vector_signed_long_long;
+
+    #[link_name = "llvm.s390.vavglb"] fn vavglb(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_char;
+    #[link_name = "llvm.s390.vavglh"] fn vavglh(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_short;
+    #[link_name = "llvm.s390.vavglf"] fn vavglf(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int;
+    #[link_name = "llvm.s390.vavglg"] fn vavglg(a: vector_unsigned_long_long, b: vector_unsigned_long_long) -> vector_unsigned_long_long;
 }
 
 impl_from! { i8x16, u8x16,  i16x8, u16x8, i32x4, u32x4, i64x2, u64x2, f32x4, f64x2 }
@@ -2356,6 +2366,24 @@ mod sealed {
     impl_vec_trait! {[VectorUnpackl vec_unpackl]+ vupllb (vector_bool_char) -> vector_bool_short}
     impl_vec_trait! {[VectorUnpackl vec_unpackl]+ vupllh (vector_bool_short) -> vector_bool_int}
     impl_vec_trait! {[VectorUnpackl vec_unpackl]+ vupllf (vector_bool_int) -> vector_bool_long_long}
+
+    test_impl! { vec_vavgb(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char [ vavgb, vavgb ] }
+    test_impl! { vec_vavgh(a: vector_signed_short, b: vector_signed_short) -> vector_signed_short [ vavgh, vavgh ] }
+    test_impl! { vec_vavgf(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int [ vavgf, vavgf ] }
+    test_impl! { vec_vavgg(a: vector_signed_long_long, b: vector_signed_long_long) -> vector_signed_long_long [ vavgg, vavgg ] }
+
+    test_impl! { vec_vavglb(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_char [ vavglb, vavglb ] }
+    test_impl! { vec_vavglh(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_short [ vavglh, vavglh ] }
+    test_impl! { vec_vavglf(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int [ vavglf, vavglf ] }
+    test_impl! { vec_vavglg(a: vector_unsigned_long_long, b: vector_unsigned_long_long) -> vector_unsigned_long_long [ vavglg, vavglg ] }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorAvg<Other> {
+        type Result;
+        unsafe fn vec_avg(self, b: Other) -> Self::Result;
+    }
+
+    impl_vec_trait! { [VectorAvg vec_avg] 2 (vec_vavglb, vec_vavgb, vec_vavglh, vec_vavgh, vec_vavglf, vec_vavgf, vec_vavglg, vec_vavgg) }
 }
 
 /// Load Count to Block Boundary
@@ -2730,6 +2758,14 @@ where
     T: sealed::VectorRint,
 {
     a.vec_rint()
+}
+
+/// Vector Average
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_avg<T: sealed::VectorAvg<U>, U>(a: T, b: U) -> T::Result {
+    a.vec_avg(b)
 }
 
 /// Vector Shift Left
@@ -4186,5 +4222,11 @@ mod tests {
     test_vec_1! { test_vec_unpackl_u, vec_unpackl, u16x8 -> u32x4,
         [0, 0, 0, 0, 0x1234, 0xFFFF, 0x0F0F, 0x8000],
         [0x1234, 0xFFFF, 0x0F0F, 0x8000]
+    }
+
+    test_vec_2! { test_vec_avg, vec_avg, u32x4,
+        [2, 1, u32::MAX, 0],
+        [4, 2, 2, 0],
+        [3, (1u32 + 2).div_ceil(2), (u32::MAX as u64 + 2u64).div_ceil(2) as u32, 0]
     }
 }
