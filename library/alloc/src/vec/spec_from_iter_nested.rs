@@ -23,6 +23,12 @@ where
         // vector being full in the few subsequent loop iterations.
         // So we get better branch prediction.
         let (low, high) = iterator.size_hint();
+        assert!(
+            high.is_none_or(|high| low <= high),
+            "size_hint ({low:?}, {high:?}) is malformed from iterator {} collecting into {}",
+            core::any::type_name::<I>(), core::any::type_name::<Self>(),
+        );
+
         let Some(first) = iterator.next() else {
             return Vec::new();
         };
