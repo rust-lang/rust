@@ -432,7 +432,8 @@ to Miri failing to detect cases of undefined behavior in a program.
 * `-Zmiri-track-weak-memory-loads` shows a backtrace when weak memory emulation returns an outdated
   value from a load. This can help diagnose problems that disappear under
   `-Zmiri-disable-weak-memory-emulation`.
-* `-Zmiri-tree-borrows` replaces [Stacked Borrows] with the [Tree Borrows] rules.
+* <a name="-Zmiri-tree-borrows"><!-- The playground links here --></a>
+  `-Zmiri-tree-borrows` replaces [Stacked Borrows] with the [Tree Borrows] rules.
   Tree Borrows is even more experimental than Stacked Borrows. While Tree Borrows
   is still sound in the sense of catching all aliasing violations that current versions
   of the compiler might exploit, it is likely that the eventual final aliasing model
