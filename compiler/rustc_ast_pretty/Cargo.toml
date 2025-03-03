@@ -7,8 +7,11 @@ edition = "2024"
 # tidy-alphabetical-start
 itertools = "0.12"
 rustc_ast = { path = "../rustc_ast" }
-rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_lexer = { path = "../rustc_lexer" }
 rustc_span = { path = "../rustc_span" }
+# tidy-alphabetical-end
+
+[dev-dependencies]
+# tidy-alphabetical-start
 thin-vec = "0.2.12"
 # tidy-alphabetical-end

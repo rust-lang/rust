@@ -1,3 +1,6 @@
+// FIXME
+#![allow(unused_crate_dependencies)]
+
 use rustc_serialize::Decoder;
 use rustc_serialize::leb128::*;
 use rustc_serialize::opaque::{MAGIC_END_BYTES, MemDecoder};
