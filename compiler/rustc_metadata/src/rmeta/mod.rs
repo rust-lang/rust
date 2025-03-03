@@ -333,10 +333,30 @@ pub(crate) struct CrateDep {
     pub is_private: bool,
 }
 
-#[derive(MetadataEncodable, MetadataDecodable)]
 pub(crate) struct TraitImpls {
     trait_id: (u32, DefIndex),
     impls: LazyArray<(DefIndex, Option<SimplifiedType>)>,
+}
+
+use rustc_serialize::{Encodable, Decodable};
+impl<'tcx, '__a> Encodable<EncodeContext<'__a, 'tcx>> for TraitImpls {
+    #[inline]
+    fn encode(&self, s: &mut EncodeContext<'__a, 'tcx>) {
+        (&b"<<TraitImpls>>"[..]).encode(s);
+        self.trait_id.encode(s);
+        self.impls.encode(s);
+    }
+}
+
+impl<'tcx, '__a> Decodable<DecodeContext<'__a, 'tcx>> for TraitImpls {
+    #[inline]
+    fn decode(d: &mut DecodeContext<'__a, 'tcx>) -> Self {
+        let _header: Vec<u8> = Decodable::decode(d);
+        Self {
+            trait_id: Decodable::decode(d),
+            impls: Decodable::decode(d),
+        }
+    }
 }
 
 #[derive(MetadataEncodable, MetadataDecodable)]
