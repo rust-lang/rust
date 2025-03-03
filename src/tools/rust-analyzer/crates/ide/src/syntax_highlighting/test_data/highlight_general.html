@@ -14,12 +14,6 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .string_literal     { color: #CC9393; }
 .field              { color: #94BFF3; }
 .function           { color: #93E0E3; }
-.function.unsafe    { color: #BC8383; }
-.trait.unsafe       { color: #BC8383; }
-.operator.unsafe    { color: #BC8383; }
-.mutable.unsafe     { color: #BC8383; text-decoration: underline; }
-.keyword.unsafe     { color: #BC8383; font-weight: bold; }
-.macro.unsafe       { color: #BC8383; }
 .parameter          { color: #94BFF3; }
 .text               { color: #DCDCCC; }
 .type               { color: #7CB8BB; }
@@ -41,6 +35,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .control            { font-style: italic; }
 .reference          { font-style: italic; font-weight: bold; }
 .const              { font-weight: bolder; }
+.unsafe             { color: #BC8383; }
 
 .invalid_escape_sequence { color: #FC5555; text-decoration: wavy underline; }
 .unresolved_reference    { color: #FC5555; text-decoration: wavy underline; }
@@ -109,7 +104,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="keyword control">loop</span> <span class="brace">{</span><span class="brace">}</span>
 <span class="brace">}</span>
 
-<span class="keyword">fn</span> <span class="function declaration">const_param</span><span class="angle">&lt;</span><span class="keyword">const</span> <span class="const_param const declaration">FOO</span><span class="colon">:</span> <span class="builtin_type">usize</span><span class="angle">&gt;</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">usize</span> <span class="brace">{</span>
+<span class="keyword">fn</span> <span class="function declaration">const_param</span><span class="angle">&lt;</span><span class="keyword const">const</span> <span class="const_param const declaration">FOO</span><span class="colon">:</span> <span class="builtin_type">usize</span><span class="angle">&gt;</span><span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">usize</span> <span class="brace">{</span>
     <span class="function">const_param</span><span class="operator">::</span><span class="angle">&lt;</span><span class="brace">{</span> <span class="const_param const">FOO</span> <span class="brace">}</span><span class="angle">&gt;</span><span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>
     <span class="const_param const">FOO</span>
 <span class="brace">}</span>

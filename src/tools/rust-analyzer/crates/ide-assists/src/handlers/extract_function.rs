@@ -750,7 +750,10 @@ impl FunctionBody {
                         ast::Stmt::Item(_) => (),
                         ast::Stmt::LetStmt(stmt) => {
                             if let Some(pat) = stmt.pat() {
-                                walk_pat(&pat, cb);
+                                walk_pat(&pat, &mut |pat| {
+                                    cb(pat);
+                                    std::ops::ControlFlow::<(), ()>::Continue(())
+                                });
                             }
                             if let Some(expr) = stmt.initializer() {
                                 walk_patterns_in_expr(&expr, cb);

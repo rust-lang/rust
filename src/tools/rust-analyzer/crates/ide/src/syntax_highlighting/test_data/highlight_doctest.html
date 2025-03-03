@@ -14,12 +14,6 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .string_literal     { color: #CC9393; }
 .field              { color: #94BFF3; }
 .function           { color: #93E0E3; }
-.function.unsafe    { color: #BC8383; }
-.trait.unsafe       { color: #BC8383; }
-.operator.unsafe    { color: #BC8383; }
-.mutable.unsafe     { color: #BC8383; text-decoration: underline; }
-.keyword.unsafe     { color: #BC8383; font-weight: bold; }
-.macro.unsafe       { color: #BC8383; }
 .parameter          { color: #94BFF3; }
 .text               { color: #DCDCCC; }
 .type               { color: #7CB8BB; }
@@ -41,6 +35,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .control            { font-style: italic; }
 .reference          { font-style: italic; font-weight: bold; }
 .const              { font-weight: bolder; }
+.unsafe             { color: #BC8383; }
 
 .invalid_escape_sequence { color: #FC5555; text-decoration: wavy underline; }
 .unresolved_reference    { color: #FC5555; text-decoration: wavy underline; }
@@ -129,7 +124,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="comment documentation">///</span>
     <span class="comment documentation">/// ```</span>
     <span class="comment documentation">///</span><span class="comment documentation"> </span><span class="comment injected">// functions</span>
-    <span class="comment documentation">///</span><span class="comment documentation"> </span><span class="keyword injected">fn</span><span class="none injected"> </span><span class="function declaration injected">foo</span><span class="angle injected">&lt;</span><span class="type_param declaration injected">T</span><span class="comma injected">,</span><span class="none injected"> </span><span class="keyword injected">const</span><span class="none injected"> </span><span class="const_param const declaration injected">X</span><span class="colon injected">:</span><span class="none injected"> </span><span class="builtin_type injected">usize</span><span class="angle injected">&gt;</span><span class="parenthesis injected">(</span><span class="value_param declaration injected">arg</span><span class="colon injected">:</span><span class="none injected"> </span><span class="builtin_type injected">i32</span><span class="parenthesis injected">)</span><span class="none injected"> </span><span class="brace injected">{</span>
+    <span class="comment documentation">///</span><span class="comment documentation"> </span><span class="keyword injected">fn</span><span class="none injected"> </span><span class="function declaration injected">foo</span><span class="angle injected">&lt;</span><span class="type_param declaration injected">T</span><span class="comma injected">,</span><span class="none injected"> </span><span class="keyword const injected">const</span><span class="none injected"> </span><span class="const_param const declaration injected">X</span><span class="colon injected">:</span><span class="none injected"> </span><span class="builtin_type injected">usize</span><span class="angle injected">&gt;</span><span class="parenthesis injected">(</span><span class="value_param declaration injected">arg</span><span class="colon injected">:</span><span class="none injected"> </span><span class="builtin_type injected">i32</span><span class="parenthesis injected">)</span><span class="none injected"> </span><span class="brace injected">{</span>
     <span class="comment documentation">///</span><span class="comment documentation"> </span><span class="none injected">    </span><span class="keyword injected">let</span><span class="none injected"> </span><span class="variable declaration injected">x</span><span class="colon injected">:</span><span class="none injected"> </span><span class="type_param injected">T</span><span class="none injected"> </span><span class="operator injected">=</span><span class="none injected"> </span><span class="const_param const injected">X</span><span class="semicolon injected">;</span>
     <span class="comment documentation">///</span><span class="comment documentation"> </span><span class="brace injected">}</span>
     <span class="comment documentation">/// ```</span>

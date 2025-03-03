@@ -443,7 +443,7 @@ fn main() {
 
 
 ### `convert_closure_to_fn`
-**Source:**  [convert_closure_to_fn.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/convert_closure_to_fn.rs#L27) 
+**Source:**  [convert_closure_to_fn.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/convert_closure_to_fn.rs#L25) 
 
 This converts a closure to a freestanding function, changing all captures to parameters.
 
@@ -1348,7 +1348,7 @@ fn main() {
 ### `flip_or_pattern`
 **Source:**  [flip_or_pattern.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/flip_or_pattern.rs#L9) 
 
-Flips two trait bounds.
+Flips two patterns in an or-pattern.
 
 #### Before
 ```rust
@@ -2278,7 +2278,7 @@ fn bar() {
 
 
 ### `inline_local_variable`
-**Source:**  [inline_local_variable.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/inline_local_variable.rs#L21) 
+**Source:**  [inline_local_variable.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/inline_local_variable.rs#L17) 
 
 Inlines a local variable.
 
