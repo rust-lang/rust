@@ -11,11 +11,6 @@ tracing-subscriber = { version = "0.3.3", default-features = false, features = [
 tracing-tree = "0.3.1"
 # tidy-alphabetical-end
 
-[dev-dependencies]
-# tidy-alphabetical-start
-rustc_span = { path = "../rustc_span" }
-# tidy-alphabetical-end
-
 [features]
 # tidy-alphabetical-start
 max_level_info = ['tracing/max_level_info']
