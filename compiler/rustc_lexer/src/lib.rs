@@ -24,6 +24,7 @@
 // so no `#![feature]` attributes should be added.
 #![deny(unstable_features)]
 #![warn(unreachable_pub)]
+#![warn(unused_crate_dependencies)]
 // tidy-alphabetical-end
 
 mod cursor;

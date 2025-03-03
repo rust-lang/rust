@@ -25,6 +25,7 @@
 #![feature(rustdoc_internals)]
 #![recursion_limit = "512"] // For rustdoc
 #![warn(unreachable_pub)]
+#![warn(unused_crate_dependencies)]
 // tidy-alphabetical-end
 
 mod errors;

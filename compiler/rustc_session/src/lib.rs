@@ -7,6 +7,7 @@
 // with macro_rules, it is necessary to use recursive mechanic ("Incremental TT Munchers").
 #![recursion_limit = "256"]
 #![warn(unreachable_pub)]
+#![warn(unused_crate_dependencies)]
 // tidy-alphabetical-end
 
 pub mod errors;

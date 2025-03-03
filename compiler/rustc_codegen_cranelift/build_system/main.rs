@@ -1,6 +1,7 @@
 #![warn(rust_2018_idioms)]
 #![warn(unused_lifetimes)]
 #![warn(unreachable_pub)]
+#![warn(unused_crate_dependencies)]
 
 use std::path::PathBuf;
 use std::{env, process};

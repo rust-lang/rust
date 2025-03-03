@@ -1,5 +1,6 @@
 // tidy-alphabetical-start
 #![warn(unreachable_pub)]
+#![warn(unused_crate_dependencies)]
 // tidy-alphabetical-end
 
 use rustc_abi::ExternAbi;

@@ -13,6 +13,7 @@
 #![feature(let_chains)]
 #![feature(string_from_utf8_lossy_owned)]
 #![warn(unreachable_pub)]
+#![warn(unused_crate_dependencies)]
 // tidy-alphabetical-end
 
 use std::path::{Path, PathBuf};

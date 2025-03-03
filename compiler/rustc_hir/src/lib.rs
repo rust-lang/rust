@@ -14,6 +14,7 @@
 #![feature(rustc_attrs)]
 #![feature(variant_count)]
 #![warn(unreachable_pub)]
+#![warn(unused_crate_dependencies)]
 // tidy-alphabetical-end
 
 extern crate self as rustc_hir;

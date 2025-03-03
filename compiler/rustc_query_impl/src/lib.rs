@@ -9,6 +9,7 @@
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
 #![warn(unreachable_pub)]
+#![warn(unused_crate_dependencies)]
 // tidy-alphabetical-end
 
 use rustc_data_structures::stable_hasher::HashStable;

@@ -3216,7 +3216,6 @@ dependencies = [
  "rustc_index",
  "rustc_macros",
  "rustc_middle",
- "rustc_parse",
  "rustc_session",
  "rustc_span",
  "rustc_target",
@@ -3251,7 +3250,6 @@ version = "0.0.0"
 dependencies = [
  "itertools",
  "rustc_ast",
- "rustc_data_structures",
  "rustc_lexer",
  "rustc_span",
  "thin-vec",
@@ -3279,14 +3277,12 @@ dependencies = [
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_attr_data_structures",
- "rustc_data_structures",
  "rustc_errors",
  "rustc_feature",
  "rustc_fluent_macro",
  "rustc_hir",
  "rustc_lexer",
  "rustc_macros",
- "rustc_serialize",
  "rustc_session",
  "rustc_span",
  "thin-vec",
@@ -3413,7 +3409,6 @@ dependencies = [
  "rustc_abi",
  "rustc_arena",
  "rustc_ast",
- "rustc_ast_pretty",
  "rustc_attr_parsing",
  "rustc_data_structures",
  "rustc_errors",
@@ -3421,7 +3416,6 @@ dependencies = [
  "rustc_fs_util",
  "rustc_hashes",
  "rustc_hir",
- "rustc_hir_pretty",
  "rustc_incremental",
  "rustc_index",
  "rustc_macros",
@@ -3872,7 +3866,6 @@ dependencies = [
  "rustc_query_impl",
  "rustc_query_system",
  "rustc_resolve",
- "rustc_serialize",
  "rustc_session",
  "rustc_span",
  "rustc_symbol_mangling",
@@ -4037,13 +4030,11 @@ dependencies = [
 name = "rustc_mir_build"
 version = "0.0.0"
 dependencies = [
- "either",
  "itertools",
  "rustc_abi",
  "rustc_apfloat",
  "rustc_arena",
  "rustc_ast",
- "rustc_attr_parsing",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_fluent_macro",
@@ -4250,7 +4241,6 @@ name = "rustc_query_impl"
 version = "0.0.0"
 dependencies = [
  "measureme",
- "rustc_attr_data_structures",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hashes",
@@ -4324,7 +4314,6 @@ version = "0.0.0"
 dependencies = [
  "bitflags",
  "rustc_abi",
- "rustc_ast",
  "rustc_data_structures",
  "rustc_hir",
  "rustc_middle",
@@ -4379,7 +4368,6 @@ name = "rustc_smir"
 version = "0.0.0"
 dependencies = [
  "rustc_abi",
- "rustc_ast",
  "rustc_data_structures",
  "rustc_hir",
  "rustc_hir_pretty",
@@ -4421,7 +4409,6 @@ dependencies = [
  "punycode",
  "rustc-demangle",
  "rustc_abi",
- "rustc_ast",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hashes",

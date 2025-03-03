@@ -33,6 +33,7 @@
 #![feature(rustdoc_internals)]
 #![feature(slice_as_chunks)]
 #![warn(unreachable_pub)]
+#![warn(unused_crate_dependencies)]
 // tidy-alphabetical-end
 
 // The code produced by the `Encodable`/`Decodable` derive macros refer to

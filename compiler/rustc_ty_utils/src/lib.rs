@@ -17,6 +17,7 @@
 #![feature(never_type)]
 #![feature(rustdoc_internals)]
 #![warn(unreachable_pub)]
+#![warn(unused_crate_dependencies)]
 // tidy-alphabetical-end
 
 use rustc_middle::query::Providers;

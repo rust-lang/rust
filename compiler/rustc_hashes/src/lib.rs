@@ -13,6 +13,10 @@
 //! connect the fact that they can only be produced by a `StableHasher` to their
 //! `Encode`/`Decode` impls.
 
+// tidy-alphabetical-start
+#![warn(unused_crate_dependencies)]
+// tidy-alphabetical-end
+
 use std::fmt;
 use std::ops::BitXorAssign;
 

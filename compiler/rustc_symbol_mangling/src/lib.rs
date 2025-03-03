@@ -94,6 +94,7 @@
 #![feature(let_chains)]
 #![feature(rustdoc_internals)]
 #![warn(unreachable_pub)]
+#![warn(unused_crate_dependencies)]
 // tidy-alphabetical-end
 
 use rustc_hir::def::DefKind;

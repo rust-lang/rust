@@ -8,6 +8,7 @@
 #![feature(rustdoc_internals)]
 #![feature(track_path)]
 #![warn(unreachable_pub)]
+#![warn(unused_crate_dependencies)]
 // tidy-alphabetical-end
 
 use proc_macro::TokenStream;

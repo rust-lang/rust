@@ -10,6 +10,7 @@
 #![cfg_attr(feature = "nightly", feature(never_type))]
 #![cfg_attr(feature = "nightly", feature(rustc_attrs))]
 #![warn(unreachable_pub)]
+#![warn(unused_crate_dependencies)]
 // tidy-alphabetical-end
 
 #[cfg(feature = "nightly")]

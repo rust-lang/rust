@@ -7,6 +7,7 @@
 )]
 #![cfg_attr(feature = "nightly", allow(internal_features))]
 #![warn(unreachable_pub)]
+#![warn(unused_crate_dependencies)]
 // tidy-alphabetical-end
 
 extern crate self as rustc_type_ir;

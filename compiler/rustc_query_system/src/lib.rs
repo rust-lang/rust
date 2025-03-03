@@ -7,6 +7,7 @@
 #![feature(let_chains)]
 #![feature(min_specialization)]
 #![warn(unreachable_pub)]
+#![warn(unused_crate_dependencies)]
 // tidy-alphabetical-end
 
 pub mod cache;

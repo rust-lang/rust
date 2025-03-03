@@ -37,6 +37,7 @@
 #![feature(thread_id_value)]
 #![feature(type_alias_impl_trait)]
 #![feature(unwrap_infallible)]
+#![warn(unused_crate_dependencies)]
 // tidy-alphabetical-end
 
 use std::fmt;

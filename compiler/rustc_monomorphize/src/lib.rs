@@ -5,6 +5,7 @@
 #![feature(impl_trait_in_assoc_type)]
 #![feature(let_chains)]
 #![warn(unreachable_pub)]
+#![warn(unused_crate_dependencies)]
 // tidy-alphabetical-end
 
 use rustc_hir::lang_items::LangItem;

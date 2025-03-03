@@ -3,6 +3,7 @@
 // tidy-alphabetical-start
 #![recursion_limit = "256"]
 #![warn(unreachable_pub)]
+#![warn(unused_crate_dependencies)]
 // tidy-alphabetical-end
 
 mod codegen;

@@ -9,6 +9,7 @@
 #![feature(let_chains)]
 #![feature(try_blocks)]
 #![warn(unreachable_pub)]
+#![warn(unused_crate_dependencies)]
 // tidy-alphabetical-end
 
 // The `builder` module used to be named `build`, but that was causing GitHub's

@@ -3,6 +3,9 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![allow(rustc::internal)]
+// FIXME(nnethercote) this should be `warn`, but we get some false positives
+// for crates used only within `compiler/rustc_serialize/tests/`.
+#![allow(unused_crate_dependencies)]
 #![cfg_attr(test, feature(test))]
 #![doc(
     html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",

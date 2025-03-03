@@ -14,6 +14,7 @@
 #![feature(stmt_expr_attributes)]
 #![feature(try_blocks)]
 #![warn(unreachable_pub)]
+#![warn(unused_crate_dependencies)]
 // tidy-alphabetical-end
 
 use std::borrow::Cow;

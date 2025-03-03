@@ -62,6 +62,7 @@
 #![feature(type_alias_impl_trait)]
 #![feature(yeet_expr)]
 #![warn(unreachable_pub)]
+#![warn(unused_crate_dependencies)]
 // tidy-alphabetical-end
 
 #[cfg(test)]

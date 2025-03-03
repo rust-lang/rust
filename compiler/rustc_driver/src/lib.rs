@@ -5,6 +5,7 @@
 #![allow(internal_features)]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
+#![warn(unused_crate_dependencies)]
 // tidy-alphabetical-end
 
 pub use rustc_driver_impl::*;

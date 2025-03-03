@@ -7,6 +7,7 @@
 // tidy-alphabetical-start
 #![allow(rustc::usage_of_type_ir_inherent)]
 #![warn(unreachable_pub)]
+#![warn(unused_crate_dependencies)]
 // tidy-alphabetical-end
 
 pub mod canonicalizer;
