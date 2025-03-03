@@ -7,10 +7,12 @@ fn set(x: &isize) -> isize {
     *x
 }
 
+#[define_opaques(Tait)]
 fn d(x: Tait) {
     set(x);
 }
 
+#[define_opaques(Tait)]
 fn other_define() -> Tait {
     ()
 }

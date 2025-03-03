@@ -7,10 +7,12 @@ fn main() {}
 // two definitions with different types
 type Foo = impl std::fmt::Debug;
 
+#[define_opaques(Foo)]
 fn foo() -> Foo {
     ""
 }
 
+#[define_opaques(Foo)]
 fn bar(arg: bool) -> Foo {
     if arg {
         panic!()
@@ -19,6 +21,7 @@ fn bar(arg: bool) -> Foo {
     }
 }
 
+#[define_opaques(Foo)]
 fn boo(arg: bool) -> Foo {
     if arg {
         loop {}
@@ -27,6 +30,7 @@ fn boo(arg: bool) -> Foo {
     }
 }
 
+#[define_opaques(Foo)]
 fn bar2(arg: bool) -> Foo {
     if arg {
         "bar2"
@@ -35,6 +39,7 @@ fn bar2(arg: bool) -> Foo {
     }
 }
 
+#[define_opaques(Foo)]
 fn boo2(arg: bool) -> Foo {
     if arg {
         "boo2"

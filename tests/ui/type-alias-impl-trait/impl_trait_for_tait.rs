@@ -4,6 +4,7 @@
 #![feature(type_alias_impl_trait)]
 type Alias = impl Sized;
 
+#[define_opaques(Alias)]
 fn constrain() -> Alias {
     1i32
 }

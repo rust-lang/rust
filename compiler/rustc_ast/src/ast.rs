@@ -3419,6 +3419,7 @@ pub struct Fn {
     pub generics: Generics,
     pub sig: FnSig,
     pub contract: Option<P<FnContract>>,
+    pub define_opaques: Option<ThinVec<(NodeId, Path)>>,
     pub body: Option<P<Block>>,
 }
 
@@ -3716,7 +3717,7 @@ mod size_asserts {
     static_assert_size!(Block, 32);
     static_assert_size!(Expr, 72);
     static_assert_size!(ExprKind, 40);
-    static_assert_size!(Fn, 168);
+    static_assert_size!(Fn, 176);
     static_assert_size!(ForeignItem, 88);
     static_assert_size!(ForeignItemKind, 16);
     static_assert_size!(GenericArg, 24);

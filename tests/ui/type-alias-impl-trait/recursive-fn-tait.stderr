@@ -1,11 +1,11 @@
 error: concrete type differs from previous defining opaque type use
-  --> $DIR/recursive-fn-tait.rs:14:5
+  --> $DIR/recursive-fn-tait.rs:16:5
    |
 LL |     move |x: usize| m(n(x))
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ expected `{closure@$DIR/recursive-fn-tait.rs:7:5: 7:16}`, got `{closure@$DIR/recursive-fn-tait.rs:14:5: 14:20}`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ expected `{closure@$DIR/recursive-fn-tait.rs:8:5: 8:16}`, got `{closure@$DIR/recursive-fn-tait.rs:16:5: 16:20}`
    |
 note: previous use here
-  --> $DIR/recursive-fn-tait.rs:7:5
+  --> $DIR/recursive-fn-tait.rs:8:5
    |
 LL |     |_: usize |loop {}
    |     ^^^^^^^^^^^^^^^^^^
