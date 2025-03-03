@@ -53,8 +53,6 @@ pub use diagnostic_impls::{
     DiagArgFromDisplay, DiagSymbolList, ElidedLifetimeInPathSubdiag, ExpectedLifetimeParameter,
     IndicateAnonymousLifetime, SingleLabelManySpans,
 };
-use rustc_lint_defs::Lint;
-use rustc_hir::HirId;
 pub use emitter::ColorConfig;
 use emitter::{DynEmitter, Emitter, is_case_difference, is_different};
 use rustc_data_structures::AtomicRef;
@@ -66,8 +64,9 @@ pub use rustc_error_messages::{
     SubdiagMessage, fallback_fluent_bundle, fluent_bundle,
 };
 use rustc_hashes::Hash128;
-use rustc_lint_defs::LintExpectationId;
+use rustc_hir::HirId;
 pub use rustc_lint_defs::{Applicability, listify, pluralize};
+use rustc_lint_defs::{Lint, LintExpectationId};
 use rustc_macros::{Decodable, Encodable};
 pub use rustc_span::ErrorGuaranteed;
 pub use rustc_span::fatal_error::{FatalError, FatalErrorMarker};
@@ -542,7 +541,7 @@ pub type HirDelayedLint = (
     &'static Lint,
     HirId,
     Span,
-    Box<dyn DynSend + for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>) + 'static>
+    Box<dyn DynSend + for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>) + 'static>,
 );
 
 /// This inner struct exists to keep it all behind a single lock;
