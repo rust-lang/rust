@@ -10,13 +10,21 @@
 // - `catchpad ... [ptr null]` on Wasm (otherwise LLVM gets confused)
 // - `catchpad ... [ptr null, i32 64, ptr null]` on Windows (otherwise we catch SEH exceptions)
 
-#![feature(no_core, lang_items, rustc_attrs)]
+#![feature(no_core, lang_items, rustc_attrs, const_trait_impl)]
 #![crate_type = "lib"]
 #![no_std]
 #![no_core]
 
+#[lang = "pointeesized"]
+pub trait PointeeSized {}
+
+#[lang = "metasized"]
+#[const_trait]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-trait Sized {}
+#[const_trait]
+pub trait Sized: MetaSized {}
 
 unsafe extern "C-unwind" {
     safe fn unwinds();

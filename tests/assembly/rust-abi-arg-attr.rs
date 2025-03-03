@@ -9,16 +9,22 @@
 //@ [loongarch64] compile-flags: --target loongarch64-unknown-linux-gnu
 //@ [loongarch64] needs-llvm-components: loongarch
 
-#![feature(no_core, lang_items, intrinsics, rustc_attrs)]
+#![feature(no_core, lang_items, intrinsics, rustc_attrs, const_trait_impl)]
 #![crate_type = "lib"]
 #![no_std]
 #![no_core]
-
 // FIXME: Migrate these code after PR #130693 is landed.
-// vvvvv core
+
+#[lang = "pointeesized"]
+pub trait PointeeSized {}
+
+#[lang = "metasized"]
+#[const_trait]
+pub trait MetaSized: PointeeSized {}
 
 #[lang = "sized"]
-trait Sized {}
+#[const_trait]
+pub trait Sized: MetaSized {}
 
 #[lang = "copy"]
 trait Copy {}

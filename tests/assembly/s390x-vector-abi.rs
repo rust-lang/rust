@@ -11,16 +11,23 @@
 //@[z13_no_vector] compile-flags: --target s390x-unknown-linux-gnu -C target-cpu=z13 -C target-feature=-vector --cfg no_vector
 //@[z13_no_vector] needs-llvm-components: systemz
 
-#![feature(no_core, lang_items, repr_simd, s390x_target_feature)]
+#![feature(no_core, lang_items, repr_simd, s390x_target_feature, const_trait_impl)]
 #![no_core]
 #![crate_type = "lib"]
 #![allow(non_camel_case_types)]
-
 // Cases where vector feature is disabled are rejected.
 // See tests/ui/simd-abi-checks-s390x.rs for test for them.
 
+#[lang = "pointeesized"]
+pub trait PointeeSized {}
+
+#[lang = "metasized"]
+#[const_trait]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-pub trait Sized {}
+#[const_trait]
+pub trait Sized: MetaSized {}
 #[lang = "copy"]
 pub trait Copy {}
 #[lang = "freeze"]

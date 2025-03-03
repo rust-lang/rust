@@ -3,11 +3,10 @@ use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes};
 use rustc_infer::traits::{
     ImplDerivedHostCause, ImplSource, Obligation, ObligationCauseCode, PredicateObligation,
 };
-use rustc_middle::span_bug;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
-use rustc_middle::ty::{self, TypingMode};
+use rustc_middle::ty::{self, TypeVisitableExt};
 use rustc_type_ir::elaborate::elaborate;
-use rustc_type_ir::solve::NoSolution;
+use rustc_type_ir::solve::{NoSolution, Sizedness};
 use thin_vec::{ThinVec, thin_vec};
 
 use super::SelectionContext;
@@ -24,18 +23,23 @@ pub fn evaluate_host_effect_obligation<'tcx>(
     selcx: &mut SelectionContext<'_, 'tcx>,
     obligation: &HostEffectObligation<'tcx>,
 ) -> Result<ThinVec<PredicateObligation<'tcx>>, EvaluationFailure> {
-    if matches!(selcx.infcx.typing_mode(), TypingMode::Coherence) {
-        span_bug!(
-            obligation.cause.span,
-            "should not select host obligation in old solver in intercrate mode"
-        );
-    }
-
     let ref obligation = selcx.infcx.resolve_vars_if_possible(obligation.clone());
 
     // Force ambiguity for infer self ty.
     if obligation.predicate.self_ty().is_ty_var() {
         return Err(EvaluationFailure::Ambiguous);
+    }
+
+    // FIXME: during implementation of `#![feature(sized_hierarchy)]`, when evaluating a host
+    // effect predicate on an opaque in addr2line, running `evaluate_host_effect_from_bounds` first
+    // would create an opaque type which wouldn't be removed from opaque type storage and that
+    // would cause a delayed bug - creating a small reproduction of this has been tricky but if
+    // `builtin_impls` checking is moved below `evaluate_host_effect_from_item_bounds` then it will
+    // trigger.
+    match evaluate_host_effect_from_builtin_impls(selcx, obligation) {
+        Ok(result) => return Ok(result),
+        Err(EvaluationFailure::Ambiguous) => return Err(EvaluationFailure::Ambiguous),
+        Err(EvaluationFailure::NoSolution) => {}
     }
 
     match evaluate_host_effect_from_bounds(selcx, obligation) {
@@ -45,12 +49,6 @@ pub fn evaluate_host_effect_obligation<'tcx>(
     }
 
     match evaluate_host_effect_from_item_bounds(selcx, obligation) {
-        Ok(result) => return Ok(result),
-        Err(EvaluationFailure::Ambiguous) => return Err(EvaluationFailure::Ambiguous),
-        Err(EvaluationFailure::NoSolution) => {}
-    }
-
-    match evaluate_host_effect_from_builtin_impls(selcx, obligation) {
         Ok(result) => return Ok(result),
         Err(EvaluationFailure::Ambiguous) => return Err(EvaluationFailure::Ambiguous),
         Err(EvaluationFailure::NoSolution) => {}
@@ -242,7 +240,42 @@ fn evaluate_host_effect_from_builtin_impls<'tcx>(
 ) -> Result<ThinVec<PredicateObligation<'tcx>>, EvaluationFailure> {
     match selcx.tcx().as_lang_item(obligation.predicate.def_id()) {
         Some(LangItem::Destruct) => evaluate_host_effect_for_destruct_goal(selcx, obligation),
+        Some(LangItem::Sized) => {
+            evaluate_host_effect_for_sizedness_goal(selcx, obligation, Sizedness::Sized)
+        }
+        Some(LangItem::MetaSized) => {
+            evaluate_host_effect_for_sizedness_goal(selcx, obligation, Sizedness::MetaSized)
+        }
+        Some(LangItem::PointeeSized) => {
+            evaluate_host_effect_for_sizedness_goal(selcx, obligation, Sizedness::PointeeSized)
+        }
         _ => Err(EvaluationFailure::NoSolution),
+    }
+}
+
+// NOTE: Keep this in sync with `const_conditions_for_sizedness` in the new solver.
+fn evaluate_host_effect_for_sizedness_goal<'tcx>(
+    selcx: &mut SelectionContext<'_, 'tcx>,
+    obligation: &HostEffectObligation<'tcx>,
+    sizedness: Sizedness,
+) -> Result<ThinVec<PredicateObligation<'tcx>>, EvaluationFailure> {
+    let tcx = selcx.tcx();
+    let self_ty = obligation.predicate.self_ty();
+
+    if !self_ty.has_non_const_sizedness() && matches!(sizedness, Sizedness::Sized) {
+        let metasized_def_id = tcx.require_lang_item(LangItem::MetaSized, None);
+        let metasized_trait_ref = ty::TraitRef::new(tcx, metasized_def_id, [self_ty]);
+        let metasized_obligation = obligation.with(
+            tcx,
+            ty::Binder::dummy(metasized_trait_ref)
+                .to_host_effect_clause(tcx, obligation.predicate.constness),
+        );
+        Ok(thin_vec![metasized_obligation])
+    } else if !self_ty.has_non_const_sizedness() {
+        // `MetaSized` has no conditionally const supertrait
+        Ok(thin_vec![])
+    } else {
+        Err(EvaluationFailure::NoSolution)
     }
 }
 

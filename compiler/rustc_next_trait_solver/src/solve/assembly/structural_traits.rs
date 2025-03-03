@@ -6,6 +6,8 @@ use rustc_type_ir::data_structures::HashMap;
 use rustc_type_ir::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
+use rustc_type_ir::solve::Sizedness;
+use rustc_type_ir::visit::TypeVisitableExt;
 use rustc_type_ir::{self as ty, Interner, Movability, Mutability, Upcast as _, elaborate};
 use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
 use tracing::instrument;
@@ -105,9 +107,47 @@ where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
+    instantiate_constituent_tys_for_sizedness_trait(ecx, Sizedness::Sized, ty)
+}
+
+#[instrument(level = "trace", skip(ecx), ret)]
+pub(in crate::solve) fn instantiate_constituent_tys_for_metasized_trait<D, I>(
+    ecx: &EvalCtxt<'_, D>,
+    ty: I::Ty,
+) -> Result<ty::Binder<I, Vec<I::Ty>>, NoSolution>
+where
+    D: SolverDelegate<Interner = I>,
+    I: Interner,
+{
+    instantiate_constituent_tys_for_sizedness_trait(ecx, Sizedness::MetaSized, ty)
+}
+
+#[instrument(level = "trace", skip(ecx), ret)]
+pub(in crate::solve) fn instantiate_constituent_tys_for_pointeesized_trait<D, I>(
+    ecx: &EvalCtxt<'_, D>,
+    ty: I::Ty,
+) -> Result<ty::Binder<I, Vec<I::Ty>>, NoSolution>
+where
+    D: SolverDelegate<Interner = I>,
+    I: Interner,
+{
+    instantiate_constituent_tys_for_sizedness_trait(ecx, Sizedness::PointeeSized, ty)
+}
+
+#[instrument(level = "trace", skip(ecx), ret)]
+fn instantiate_constituent_tys_for_sizedness_trait<D, I>(
+    ecx: &EvalCtxt<'_, D>,
+    sizedness: Sizedness,
+    ty: I::Ty,
+) -> Result<ty::Binder<I, Vec<I::Ty>>, NoSolution>
+where
+    D: SolverDelegate<Interner = I>,
+    I: Interner,
+{
     match ty.kind() {
-        // impl Sized for u*, i*, bool, f*, FnDef, FnPtr, *(const/mut) T, char, &mut? T, [T; N], dyn* Trait, !
-        // impl Sized for Coroutine, CoroutineWitness, Closure, CoroutineClosure
+        // impl {Meta,Pointee,}Sized for u*, i*, bool, f*, FnDef, FnPtr, *(const/mut) T, char
+        // impl {Meta,Pointee,}Sized for &mut? T, [T; N], dyn* Trait, !, Coroutine, CoroutineWitness
+        // impl {Meta,Pointee,}Sized for Closure, CoroutineClosure
         ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
         | ty::Uint(_)
         | ty::Int(_)
@@ -128,13 +168,19 @@ where
         | ty::Dynamic(_, _, ty::DynStar)
         | ty::Error(_) => Ok(ty::Binder::dummy(vec![])),
 
-        ty::Str
-        | ty::Slice(_)
-        | ty::Dynamic(..)
-        | ty::Foreign(..)
-        | ty::Alias(..)
-        | ty::Param(_)
-        | ty::Placeholder(..) => Err(NoSolution),
+        // impl {Meta,Pointee,}Sized for str, [T], dyn Trait
+        ty::Str | ty::Slice(_) | ty::Dynamic(..) => match sizedness {
+            Sizedness::Sized => Err(NoSolution),
+            Sizedness::MetaSized | Sizedness::PointeeSized => Ok(ty::Binder::dummy(vec![])),
+        },
+
+        // impl PointeeSized for extern type
+        ty::Foreign(..) => match sizedness {
+            Sizedness::Sized | Sizedness::MetaSized => Err(NoSolution),
+            Sizedness::PointeeSized => Ok(ty::Binder::dummy(vec![])),
+        },
+
+        ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) => Err(NoSolution),
 
         ty::Bound(..)
         | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {
@@ -143,26 +189,60 @@ where
 
         ty::UnsafeBinder(bound_ty) => Ok(bound_ty.map_bound(|ty| vec![ty])),
 
-        // impl Sized for ()
-        // impl Sized for (T1, T2, .., Tn) where Tn: Sized if n >= 1
+        // impl {Meta,}Sized for ()
+        // impl {Meta,}Sized for (T1, T2, .., Tn) where Tn: {Meta,}Sized if n >= 1
         ty::Tuple(tys) => Ok(ty::Binder::dummy(tys.last().map_or_else(Vec::new, |ty| vec![ty]))),
 
-        // impl Sized for Adt<Args...> where sized_constraint(Adt)<Args...>: Sized
-        //   `sized_constraint(Adt)` is the deepest struct trail that can be determined
+        // impl {Meta,}Sized for Adt<Args...> where {meta,}sized_constraint(Adt)<Args...>: {Meta,}Sized
+        //   `{meta,}sized_constraint(Adt)` is the deepest struct trail that can be determined
         //   by the definition of `Adt`, independent of the generic args.
-        // impl Sized for Adt<Args...> if sized_constraint(Adt) == None
-        //   As a performance optimization, `sized_constraint(Adt)` can return `None`
-        //   if the ADTs definition implies that it is sized by for all possible args.
+        // impl {Meta,}Sized for Adt<Args...> if {meta,}sized_constraint(Adt) == None
+        //   As a performance optimization, `{meta,}sized_constraint(Adt)` can return `None`
+        //   if the ADTs definition implies that it is {meta,}sized by for all possible args.
         //   In this case, the builtin impl will have no nested subgoals. This is a
-        //   "best effort" optimization and `sized_constraint` may return `Some`, even
-        //   if the ADT is sized for all possible args.
+        //   "best effort" optimization and `{meta,}sized_constraint` may return `Some`, even
+        //   if the ADT is {meta,}sized for all possible args.
         ty::Adt(def, args) => {
-            if let Some(sized_crit) = def.sized_constraint(ecx.cx()) {
-                Ok(ty::Binder::dummy(vec![sized_crit.instantiate(ecx.cx(), args)]))
+            let crit = match sizedness {
+                Sizedness::Sized => def.sized_constraint(ecx.cx()),
+                Sizedness::MetaSized => def.metasized_constraint(ecx.cx()),
+                Sizedness::PointeeSized => def.pointeesized_constraint(ecx.cx()),
+            };
+            if let Some(crit) = crit {
+                Ok(ty::Binder::dummy(vec![crit.instantiate(ecx.cx(), args)]))
             } else {
                 Ok(ty::Binder::dummy(vec![]))
             }
         }
+    }
+}
+
+/// Returns the trait refs which need to hold for `self_ty`, with a given `sizedness` trait, to be
+/// `const` - can return `Err(NoSolution)` if the given `self_ty` cannot be const.
+///
+/// This only checks the conditions for constness, not the conditions for the given `sizedness`
+/// trait to be implemented (see the trait goal for that), as these are orthogonal. This means that
+/// the effect predicate can succeed while the trait predicate can fail - this is unintuitive but
+/// allows this function to be much simpler.
+// NOTE: Keep this in sync with `evaluate_host_effect_for_sizedness_goal` in the old solver.
+#[instrument(level = "trace", skip(cx), ret)]
+pub(in crate::solve) fn const_conditions_for_sizedness<I: Interner>(
+    cx: I,
+    self_ty: I::Ty,
+    sizedness: Sizedness,
+) -> Result<Vec<ty::TraitRef<I>>, NoSolution> {
+    // The specific degree of sizedness is orthogonal to whether a type implements any given
+    // sizedness trait const-ly or not.
+
+    if !self_ty.has_non_const_sizedness() && matches!(sizedness, Sizedness::Sized) {
+        let metasized_def_id = cx.require_lang_item(TraitSolverLangItem::MetaSized);
+        let metasized_trait_ref = ty::TraitRef::new(cx, metasized_def_id, [self_ty]);
+        Ok(vec![metasized_trait_ref])
+    } else if !self_ty.has_non_const_sizedness() {
+        // `MetaSized` has no conditionally const supertrait
+        Ok(vec![])
+    } else {
+        Err(NoSolution)
     }
 }
 

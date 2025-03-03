@@ -9,12 +9,14 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![allow(rustc::usage_of_ty_tykind)]
+#![cfg_attr(not(bootstrap), allow(sized_hierarchy_migration))]
 #![doc(
     html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",
     test(attr(allow(unused_variables), deny(warnings)))
 )]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
+#![feature(sized_hierarchy)]
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end
 

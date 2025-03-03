@@ -8,7 +8,7 @@ trait Overflow {
 }
 impl<T> Overflow for T {
     type Assoc = <T as Overflow>::Assoc;
-    //~^ ERROR: overflow
+    //~^ ERROR overflow evaluating the requirement `<T as Overflow>::Assoc == _`
 }
 
 

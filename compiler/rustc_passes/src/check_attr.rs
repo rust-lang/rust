@@ -217,6 +217,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         [sym::rustc_has_incoherent_inherent_impls, ..] => {
                             self.check_has_incoherent_inherent_impls(attr, span, target)
                         }
+                        [sym::rustc_non_const_sized, ..] => {
+                            self.check_rustc_non_const_sized(span, target)
+                        }
                         [sym::ffi_pure, ..] => self.check_ffi_pure(attr.span(), attrs, target),
                         [sym::ffi_const, ..] => self.check_ffi_const(attr.span(), target),
                         [sym::link_ordinal, ..] => self.check_link_ordinal(attr, span, target),
@@ -2575,6 +2578,18 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 self.dcx().emit_err(errors::RustcForceInline { attr_span: attr.span(), span });
             }
             (_, None) => (),
+        }
+    }
+
+    /// `#[rustc_non_const_sized]` is a testing attribute for forcing `const Sized` not to be
+    /// implemented (while there are no types which are non-`const Sized`) - it should only be
+    /// applied to structs or enums.
+    fn check_rustc_non_const_sized(&self, span: Span, target: Target) {
+        match target {
+            Target::Struct | Target::Enum => (),
+            _ => {
+                self.dcx().emit_err(errors::RustcNonConstSized { attr_span: span });
+            }
         }
     }
 

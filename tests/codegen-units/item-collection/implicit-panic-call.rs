@@ -3,7 +3,7 @@
 // rust-lang/rust#90405
 // Ensure implicit panic calls are collected
 
-#![feature(lang_items)]
+#![feature(lang_items, const_trait_impl)]
 #![feature(no_core)]
 #![crate_type = "lib"]
 #![no_core]
@@ -30,8 +30,16 @@ fn panic_div_overflow() -> ! {
     loop {}
 }
 
+#[lang = "pointeesized"]
+pub trait PointeeSized {}
+
+#[lang = "metasized"]
+#[const_trait]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-trait Sized {}
+#[const_trait]
+pub trait Sized: MetaSized {}
 
 #[lang = "copy"]
 trait Copy {}

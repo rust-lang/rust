@@ -1,7 +1,7 @@
 //@ compile-flags:-C panic=abort
 
 #![feature(lang_items)]
-#![feature(no_core)]
+#![feature(no_core, const_trait_impl)]
 #![no_core]
 #![no_main]
 
@@ -11,5 +11,13 @@ fn panic() -> ! {
     loop {}
 }
 
+#[lang = "pointeesized"]
+pub trait PointeeSized {}
+
+#[lang = "metasized"]
+#[const_trait]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-trait Sized {}
+#[const_trait]
+trait Sized: MetaSized {}

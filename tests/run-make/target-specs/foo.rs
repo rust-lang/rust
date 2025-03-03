@@ -1,11 +1,19 @@
-#![feature(lang_items, no_core, auto_traits)]
+#![feature(lang_items, no_core, auto_traits, const_trait_impl)]
 #![no_core]
 
 #[lang = "copy"]
 trait Copy {}
 
+#[lang = "pointeesized"]
+pub trait PointeeSized {}
+
+#[lang = "metasized"]
+#[const_trait]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-trait Sized {}
+#[const_trait]
+trait Sized: MetaSized {}
 
 #[lang = "freeze"]
 auto trait Freeze {}

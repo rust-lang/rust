@@ -3,14 +3,17 @@
 //! This used to ICE in layout computation, because `<u8 as A>::B` fails to normalize
 //! due to the unconstrained param on the impl.
 
-#![feature(rustc_attrs)]
+#![allow(sized_hierarchy_migration)]
+#![feature(rustc_attrs, sized_hierarchy)]
 #![crate_type = "lib"]
+
+use std::marker::PointeeSized;
 
 trait A {
     const B: usize;
 }
 
-impl<C: ?Sized> A for u8 { //~ ERROR: the type parameter `C` is not constrained
+impl<C: PointeeSized> A for u8 { //~ ERROR: the type parameter `C` is not constrained
     const B: usize = 42;
 }
 

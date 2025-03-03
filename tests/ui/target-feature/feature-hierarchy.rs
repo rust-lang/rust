@@ -6,16 +6,26 @@
 //@ build-pass
 #![no_core]
 #![crate_type = "rlib"]
-#![feature(intrinsics, rustc_attrs, no_core, lang_items, staged_api)]
+#![feature(intrinsics, rustc_attrs, no_core, lang_items, staged_api, const_trait_impl)]
 #![stable(feature = "test", since = "1.0.0")]
 
 // Tests vetting "feature hierarchies" in the cases where we impose them.
 
 // Supporting minimal rust core code
+#[lang = "pointeesized"]
+trait PointeeSized {}
+
+#[lang = "metasized"]
+#[const_trait]
+trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-trait Sized {}
+#[const_trait]
+trait Sized: MetaSized {}
+
 #[lang = "copy"]
 trait Copy {}
+
 impl Copy for bool {}
 
 #[stable(feature = "test", since = "1.0.0")]
