@@ -195,9 +195,7 @@ impl Stage for Late {
         diag: impl DynSend + for<'x> LintDiagnostic<'x, ()> + 'static,
     ) {
         println!("stashing lint");
-        dcx.delay_lint_during_ast_lowering((lint, id, span, Box::new(|x| {
-            diag.decorate_lint(x)
-        })));
+        dcx.delay_lint_during_ast_lowering((lint, id, span, Box::new(|x| diag.decorate_lint(x))));
     }
 }
 
@@ -221,7 +219,7 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
     }
 
     pub(crate) fn emit_lint(
-        & self,
+        &self,
         lint: &'static Lint,
         span: Span,
         diag: impl DynSend + for<'x> LintDiagnostic<'x, ()> + 'static,
@@ -316,12 +314,12 @@ impl<'sess> AttributeParser<'sess, Early> {
     ) -> Option<Attribute> {
         let mut p = Self { features: None, tools: Vec::new(), parse_only: Some(sym), sess };
         let mut parsed = p.parse_attribute_list(
-                attrs,
-                target_span,
-                target_node_id,
-                OmitDoc::Skip,
-                std::convert::identity,
-            );
+            attrs,
+            target_span,
+            target_node_id,
+            OmitDoc::Skip,
+            std::convert::identity,
+        );
         assert!(parsed.len() <= 1);
 
         parsed.pop()

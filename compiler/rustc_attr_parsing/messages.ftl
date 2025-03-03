@@ -135,9 +135,7 @@ attr_parsing_unused_duplicate =
     unused attribute
     .suggestion = remove this attribute
     .note = attribute also specified here
-    .warn = {-attr_parsing_previously_accepted}
-
-
+    .warn = {-passes_previously_accepted}
 attr_parsing_unused_multiple =
     multiple `{$name}` attributes
     .suggestion = remove this attribute
