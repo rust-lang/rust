@@ -233,11 +233,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         self.print_def_path(def_id, args)
     }
 
-    fn in_binder<T>(
-        &mut self,
-        value: &ty::Binder<'tcx, T>,
-        _mode: WrapBinderMode,
-    ) -> Result<(), PrintError>
+    fn print_in_binder<T>(&mut self, value: &ty::Binder<'tcx, T>) -> Result<(), PrintError>
     where
         T: Print<'tcx, Self> + TypeFoldable<TyCtxt<'tcx>>,
     {
@@ -2391,15 +2387,11 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
         Ok(())
     }
 
-    fn in_binder<T>(
-        &mut self,
-        value: &ty::Binder<'tcx, T>,
-        mode: WrapBinderMode,
-    ) -> Result<(), PrintError>
+    fn print_in_binder<T>(&mut self, value: &ty::Binder<'tcx, T>) -> Result<(), PrintError>
     where
         T: Print<'tcx, Self> + TypeFoldable<TyCtxt<'tcx>>,
     {
-        self.pretty_in_binder(value, mode)
+        self.pretty_print_in_binder(value)
     }
 
     fn wrap_binder<T, C: FnOnce(&T, &mut Self) -> Result<(), PrintError>>(
@@ -2835,16 +2827,15 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
         Ok((new_value, map))
     }
 
-    pub fn pretty_in_binder<T>(
+    pub fn pretty_print_in_binder<T>(
         &mut self,
         value: &ty::Binder<'tcx, T>,
-        mode: WrapBinderMode,
     ) -> Result<(), fmt::Error>
     where
         T: Print<'tcx, Self> + TypeFoldable<TyCtxt<'tcx>>,
     {
         let old_region_index = self.region_index;
-        let (new_value, _) = self.name_all_regions(value, mode)?;
+        let (new_value, _) = self.name_all_regions(value, WrapBinderMode::ForAll)?;
         new_value.print(self)?;
         self.region_index = old_region_index;
         self.binder_depth -= 1;
@@ -2920,7 +2911,7 @@ where
     T: Print<'tcx, P> + TypeFoldable<TyCtxt<'tcx>>,
 {
     fn print(&self, cx: &mut P) -> Result<(), PrintError> {
-        cx.in_binder(self, WrapBinderMode::ForAll)
+        cx.print_in_binder(self)
     }
 }
 
