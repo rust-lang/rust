@@ -141,6 +141,7 @@ impl ModuleConfig {
             || match kind {
                 ModuleKind::Regular => sess.opts.output_types.contains_key(&OutputType::Object),
                 ModuleKind::Allocator => false,
+                ModuleKind::PersonalityStub => false,
                 ModuleKind::Metadata => sess.opts.output_types.contains_key(&OutputType::Metadata),
             };
 
@@ -346,6 +347,7 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     pub regular_module_config: Arc<ModuleConfig>,
     pub metadata_module_config: Arc<ModuleConfig>,
     pub allocator_module_config: Arc<ModuleConfig>,
+    pub personality_stub_module_config: Arc<ModuleConfig>,
     pub tm_factory: TargetMachineFactoryFn<B>,
     pub msvc_imps_needed: bool,
     pub is_pe_coff: bool,
@@ -390,6 +392,7 @@ impl<B: WriteBackendMethods> CodegenContext<B> {
             ModuleKind::Regular => &self.regular_module_config,
             ModuleKind::Metadata => &self.metadata_module_config,
             ModuleKind::Allocator => &self.allocator_module_config,
+            ModuleKind::PersonalityStub => &self.personality_stub_module_config,
         }
     }
 }
@@ -444,6 +447,7 @@ fn generate_lto_work<B: ExtraBackendMethods>(
 struct CompiledModules {
     modules: Vec<CompiledModule>,
     allocator_module: Option<CompiledModule>,
+    personality_stub_module: Option<CompiledModule>,
 }
 
 fn need_bitcode_in_object(tcx: TyCtxt<'_>) -> bool {
@@ -481,6 +485,7 @@ pub(crate) fn start_async_codegen<B: ExtraBackendMethods>(
     let regular_config = ModuleConfig::new(ModuleKind::Regular, tcx, no_builtins);
     let metadata_config = ModuleConfig::new(ModuleKind::Metadata, tcx, no_builtins);
     let allocator_config = ModuleConfig::new(ModuleKind::Allocator, tcx, no_builtins);
+    let personality_stub_config = ModuleConfig::new(ModuleKind::PersonalityStub, tcx, no_builtins);
 
     let (shared_emitter, shared_emitter_main) = SharedEmitter::new();
     let (codegen_worker_send, codegen_worker_receive) = channel();
@@ -495,6 +500,7 @@ pub(crate) fn start_async_codegen<B: ExtraBackendMethods>(
         Arc::new(regular_config),
         Arc::new(metadata_config),
         Arc::new(allocator_config),
+        Arc::new(personality_stub_config),
         coordinator_send.clone(),
     );
 
@@ -705,6 +711,11 @@ fn produce_final_output_artifacts(
         if !user_wants_bitcode {
             if let Some(ref allocator_module) = compiled_modules.allocator_module {
                 if let Some(ref path) = allocator_module.bytecode {
+                    ensure_removed(sess.dcx(), path);
+                }
+            }
+            if let Some(ref personality_stub_module) = compiled_modules.personality_stub_module {
+                if let Some(ref path) = personality_stub_module.bytecode {
                     ensure_removed(sess.dcx(), path);
                 }
             }
@@ -1113,6 +1124,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
     regular_config: Arc<ModuleConfig>,
     metadata_config: Arc<ModuleConfig>,
     allocator_config: Arc<ModuleConfig>,
+    personality_stub_config: Arc<ModuleConfig>,
     tx_to_llvm_workers: Sender<Box<dyn Any + Send>>,
 ) -> thread::JoinHandle<Result<CompiledModules, ()>> {
     let coordinator_send = tx_to_llvm_workers;
@@ -1206,6 +1218,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         regular_module_config: regular_config,
         metadata_module_config: metadata_config,
         allocator_module_config: allocator_config,
+        personality_stub_module_config: personality_stub_config,
         tm_factory: backend.target_machine_factory(tcx.sess, ol, backend_features),
         msvc_imps_needed: msvc_imps_needed(tcx),
         is_pe_coff: tcx.sess.target.is_like_windows,
@@ -1371,6 +1384,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         let mut autodiff_items = Vec::new();
         let mut compiled_modules = vec![];
         let mut compiled_allocator_module = None;
+        let mut compiled_personality_stub_module = None;
         let mut needs_link = Vec::new();
         let mut needs_fat_lto = Vec::new();
         let mut needs_thin_lto = Vec::new();
@@ -1659,6 +1673,10 @@ fn start_executing_work<B: ExtraBackendMethods>(
                                     assert!(compiled_allocator_module.is_none());
                                     compiled_allocator_module = Some(compiled_module);
                                 }
+                                ModuleKind::PersonalityStub => {
+                                    assert!(compiled_personality_stub_module.is_none());
+                                    compiled_personality_stub_module = Some(compiled_module);
+                                }
                                 ModuleKind::Metadata => bug!("Should be handled separately"),
                             }
                         }
@@ -1725,6 +1743,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         Ok(CompiledModules {
             modules: compiled_modules,
             allocator_module: compiled_allocator_module,
+            personality_stub_module: compiled_personality_stub_module,
         })
     })
     .expect("failed to spawn coordinator thread");
@@ -2088,6 +2107,7 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
 
                 modules: compiled_modules.modules,
                 allocator_module: compiled_modules.allocator_module,
+                personality_stub_module: compiled_modules.personality_stub_module,
                 metadata_module: self.metadata_module,
             },
             work_products,

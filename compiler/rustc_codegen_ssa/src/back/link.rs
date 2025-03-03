@@ -208,6 +208,9 @@ pub fn link_binary(
         if let Some(ref allocator_module) = codegen_results.allocator_module {
             remove_temps_from_module(allocator_module);
         }
+        if let Some(ref personality_stub_module) = codegen_results.personality_stub_module {
+            remove_temps_from_module(personality_stub_module);
+        }
 
         // Remove the temporary files if output goes to stdout
         for temp in tempfiles_for_stdout_output {
@@ -330,6 +333,11 @@ fn link_rlib<'a>(
         RlibFlavor::Normal => {}
         RlibFlavor::StaticlibBase => {
             let obj = codegen_results.allocator_module.as_ref().and_then(|m| m.object.as_ref());
+            if let Some(obj) = obj {
+                ab.add_file(obj);
+            }
+            let obj =
+                codegen_results.personality_stub_module.as_ref().and_then(|m| m.object.as_ref());
             if let Some(obj) = obj {
                 ab.add_file(obj);
             }
@@ -2197,6 +2205,18 @@ fn add_local_crate_allocator_objects(cmd: &mut dyn Linker, codegen_results: &Cod
     }
 }
 
+/// Add object files for the personality stub linked once if necessary for the whole crate tree.
+fn add_local_crate_personality_stub_objects(
+    cmd: &mut dyn Linker,
+    codegen_results: &CodegenResults,
+) {
+    if let Some(obj) =
+        codegen_results.personality_stub_module.as_ref().and_then(|m| m.object.as_ref())
+    {
+        cmd.add_object(obj);
+    }
+}
+
 /// Add object files containing metadata for the current crate.
 fn add_local_crate_metadata_objects(
     cmd: &mut dyn Linker,
@@ -2380,6 +2400,7 @@ fn linker_with_args(
     add_local_crate_regular_objects(cmd, codegen_results);
     add_local_crate_metadata_objects(cmd, crate_type, codegen_results);
     add_local_crate_allocator_objects(cmd, codegen_results);
+    add_local_crate_personality_stub_objects(cmd, codegen_results);
 
     // Avoid linking to dynamic libraries unless they satisfy some undefined symbols
     // at the point at which they are specified on the command line.
