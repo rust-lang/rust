@@ -268,7 +268,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 }
                 GenericArgs::Parenthesized(data) => match generic_args_mode {
                     GenericArgsMode::ReturnTypeNotation => {
-                        tracing::info!(?data, ?data.inputs);
                         let err = match (&data.inputs[..], &data.output) {
                             ([_, ..], FnRetTy::Default(_)) => {
                                 BadReturnTypeNotation::Inputs { span: data.inputs_span }
