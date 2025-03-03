@@ -238,6 +238,7 @@ impl FromClean<clean::GenericArgs> for GenericArgs {
                 inputs: inputs.into_json(renderer),
                 output: output.map(|a| (*a).into_json(renderer)),
             },
+            ReturnTypeNotation => GenericArgs::ReturnTypeNotation,
         }
     }
 }

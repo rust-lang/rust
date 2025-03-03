@@ -345,6 +345,9 @@ impl clean::GenericArgs {
                         }
                     }
                 }
+                clean::GenericArgs::ReturnTypeNotation => {
+                    f.write_str("(..)")?;
+                }
             }
             Ok(())
         })
